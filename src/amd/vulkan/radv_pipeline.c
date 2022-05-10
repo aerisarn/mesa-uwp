@@ -2769,6 +2769,29 @@ radv_lower_multiview(nir_shader *nir)
    return progress;
 }
 
+static bool
+radv_export_implicit_primitive_id(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   b.cursor = nir_after_cf_list(&impl->body);
+
+   nir_variable *var = nir_variable_create(nir, nir_var_shader_out, glsl_int_type(), NULL);
+   var->data.location = VARYING_SLOT_PRIMITIVE_ID;
+   var->data.interpolation = INTERP_MODE_NONE;
+
+   nir_store_var(&b, var, nir_load_primitive_id(&b), 1);
+
+   /* Update outputs_written to reflect that the pass added a new output. */
+   nir->info.outputs_written |= BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_ID);
+
+   nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
+
+   return true;
+}
+
 static void
 radv_link_shaders(struct radv_pipeline *pipeline,
                   const struct radv_pipeline_key *pipeline_key,
@@ -2874,6 +2897,19 @@ radv_link_shaders(struct radv_pipeline *pipeline,
                      nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
          }
       }
+   }
+
+   /* Export the primitive ID when VS or TES don't export it because it's implicit, while it's
+    * required for GS or MS. The primitive ID is added during lowering for NGG.
+    */
+   if (stages[MESA_SHADER_FRAGMENT].nir &&
+       (stages[MESA_SHADER_FRAGMENT].nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID) &&
+       !(stages[pipeline->graphics.last_vgt_api_stage].nir->info.outputs_written & VARYING_BIT_PRIMITIVE_ID) &&
+       ((pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX &&
+         !stages[MESA_SHADER_VERTEX].info.is_ngg) ||
+        (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL &&
+         !stages[MESA_SHADER_TESS_EVAL].info.is_ngg))) {
+      radv_export_implicit_primitive_id(stages[pipeline->graphics.last_vgt_api_stage].nir);
    }
 
    if (!optimize_conservatively) {

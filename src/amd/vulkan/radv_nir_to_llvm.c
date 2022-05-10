@@ -1046,7 +1046,7 @@ handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_prim_id, boo
    }
 
    /* Allocate a temporary array for the output values. */
-   unsigned num_outputs = util_bitcount64(ctx->output_mask) + export_prim_id;
+   unsigned num_outputs = util_bitcount64(ctx->output_mask);
    outputs = malloc(num_outputs * sizeof(outputs[0]));
 
    for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
@@ -1069,20 +1069,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_prim_id, boo
          outputs[noutput].values[j] = ac_to_float(&ctx->ac, radv_load_output(ctx, i, j));
       }
 
-      noutput++;
-   }
-
-   /* Export PrimitiveID. */
-   if (export_prim_id) {
-      outputs[noutput].slot_name = VARYING_SLOT_PRIMITIVE_ID;
-      outputs[noutput].slot_index = 0;
-      outputs[noutput].usage_mask = 0x1;
-      if (ctx->stage == MESA_SHADER_TESS_EVAL)
-         outputs[noutput].values[0] = ac_get_arg(&ctx->ac, ctx->args->ac.tes_patch_id);
-      else
-         outputs[noutput].values[0] = ac_get_arg(&ctx->ac, ctx->args->ac.vs_prim_id);
-      for (unsigned j = 1; j < 4; j++)
-         outputs[noutput].values[j] = ctx->ac.f32_0;
       noutput++;
    }
 

@@ -8872,6 +8872,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
              * even if there is no SW GS. */
             bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.gs_prim_id));
             break;
+         } else if (ctx->shader->info.stage == MESA_SHADER_VERTEX) {
+            bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.vs_prim_id));
+            break;
          }
          unreachable("Unimplemented shader stage for nir_intrinsic_load_primitive_id");
       }
@@ -10631,16 +10634,6 @@ create_vs_exports(isel_context* ctx)
 
    assert(outinfo);
    ctx->block->kind |= block_kind_export_end;
-
-   if (outinfo->export_prim_id && ctx->stage.hw != HWStage::NGG) {
-      ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
-      if (ctx->stage.has(SWStage::TES))
-         ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] =
-            get_arg(ctx, ctx->args->ac.tes_patch_id);
-      else
-         ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] =
-            get_arg(ctx, ctx->args->ac.vs_prim_id);
-   }
 
    /* Hardware requires position data to always be exported, even if the
     * application did not write gl_Position.
