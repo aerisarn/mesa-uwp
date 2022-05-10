@@ -82,6 +82,8 @@ struct drm_amdgpu_info_device {
    uint64_t tcc_disabled_mask;
 };
 struct drm_amdgpu_info_hw_ip {
+   uint32_t hw_ip_version_major;
+   uint32_t hw_ip_version_minor;
    uint32_t ib_start_alignment;
    uint32_t ib_size_alignment;
    uint32_t available_rings;
