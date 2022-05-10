@@ -3337,10 +3337,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
       assert(outinfo);
       outinfo->export_clip_dists |= ps_clip_dists_in;
-      if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_MESH) {
-         outinfo->export_prim_id_per_primitive |= ps_prim_id_in;
-      } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX ||
-                 pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
+      if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX ||
+          pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
          outinfo->export_prim_id |= ps_prim_id_in;
       }
 

@@ -561,8 +561,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
          assign_outinfo_param(outinfo, VARYING_SLOT_LAYER, &total_param_exports);
       if (outinfo->writes_viewport_index_per_primitive)
          assign_outinfo_param(outinfo, VARYING_SLOT_VIEWPORT, &total_param_exports);
-      if (outinfo->export_prim_id_per_primitive)
-         assign_outinfo_param(outinfo, VARYING_SLOT_PRIMITIVE_ID, &total_param_exports);
 
       outinfo->prim_param_exports = total_param_exports - outinfo->param_exports;
    }

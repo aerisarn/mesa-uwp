@@ -61,7 +61,6 @@ radv_aco_convert_shader_vp_info(struct aco_vp_output_info *aco_info,
    ASSIGN_FIELD(writes_primitive_shading_rate);
    ASSIGN_FIELD(writes_primitive_shading_rate_per_primitive);
    ASSIGN_FIELD(export_prim_id);
-   ASSIGN_FIELD(export_prim_id_per_primitive);
    ASSIGN_FIELD(export_clip_dists);
    /* don't use export params */
 }
