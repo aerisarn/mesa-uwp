@@ -3173,7 +3173,9 @@ generate_fragment(struct llvmpipe_context *lp,
    }
 
    /* code generated texture sampling */
-   sampler = lp_llvm_sampler_soa_create(lp_fs_variant_key_samplers(key), key->nr_samplers);
+   sampler = lp_llvm_sampler_soa_create(lp_fs_variant_key_samplers(key),
+                                        MAX2(key->nr_samplers,
+                                             key->nr_sampler_views));
    image = lp_llvm_image_soa_create(lp_fs_variant_key_images(key), key->nr_images);
 
    num_fs = 16 / fs_type.length; /* number of loops per 4x4 stamp */

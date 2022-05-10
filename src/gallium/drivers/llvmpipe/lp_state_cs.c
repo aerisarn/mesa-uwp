@@ -180,7 +180,9 @@ generate_compute(struct llvmpipe_context *lp,
    builder = gallivm->builder;
    assert(builder);
    LLVMPositionBuilderAtEnd(builder, block);
-   sampler = lp_llvm_sampler_soa_create(lp_cs_variant_key_samplers(key), key->nr_samplers);
+   sampler = lp_llvm_sampler_soa_create(lp_cs_variant_key_samplers(key),
+                                        MAX2(key->nr_samplers,
+                                             key->nr_sampler_views));
    image = lp_llvm_image_soa_create(lp_cs_variant_key_images(key), key->nr_images);
 
    struct lp_build_loop_state loop_state[4];

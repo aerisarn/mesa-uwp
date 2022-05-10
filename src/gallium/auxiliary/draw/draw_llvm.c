@@ -2050,8 +2050,9 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    fake_buf_ptr = LLVMBuildGEP2(builder, LLVMInt8TypeInContext(context), fake_buf, &bld.zero, 1, "");
 
    /* code generated texture sampling */
-   sampler = draw_llvm_sampler_soa_create(draw_llvm_variant_key_samplers(key), key->nr_samplers);
-
+   sampler = draw_llvm_sampler_soa_create(draw_llvm_variant_key_samplers(key),
+                                          MAX2(key->nr_samplers,
+                                               key->nr_sampler_views));
    image = draw_llvm_image_soa_create(draw_llvm_variant_key_images(key),
                                       key->nr_images);
 
@@ -2853,7 +2854,9 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
       draw_gs_jit_context_num_ssbos(variant->gallivm, context_ptr);
 
    /* code generated texture sampling */
-   sampler = draw_llvm_sampler_soa_create(variant->key.samplers, variant->key.nr_samplers);
+   sampler = draw_llvm_sampler_soa_create(variant->key.samplers,
+                                          MAX2(variant->key.nr_samplers,
+                                               variant->key.nr_sampler_views));
    image = draw_llvm_image_soa_create(draw_gs_llvm_variant_key_images(&variant->key),
                                       variant->key.nr_images);
    mask_val = generate_mask_value(variant, gs_type);
@@ -3495,7 +3498,9 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
    ssbos_ptr = draw_tcs_jit_context_ssbos(variant->gallivm, context_ptr);
    num_ssbos_ptr =
       draw_tcs_jit_context_num_ssbos(variant->gallivm, context_ptr);
-   sampler = draw_llvm_sampler_soa_create(variant->key.samplers, variant->key.nr_samplers);
+   sampler = draw_llvm_sampler_soa_create(variant->key.samplers,
+                                          MAX2(variant->key.nr_samplers,
+                                               variant->key.nr_sampler_views));
    image = draw_llvm_image_soa_create(draw_tcs_llvm_variant_key_images(&variant->key),
                                       variant->key.nr_images);
 
@@ -4010,7 +4015,9 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    ssbos_ptr = draw_tes_jit_context_ssbos(variant->gallivm, context_ptr);
    num_ssbos_ptr =
       draw_tes_jit_context_num_ssbos(variant->gallivm, context_ptr);
-   sampler = draw_llvm_sampler_soa_create(variant->key.samplers, variant->key.nr_samplers);
+   sampler = draw_llvm_sampler_soa_create(variant->key.samplers,
+                                          MAX2(variant->key.nr_samplers,
+                                               variant->key.nr_sampler_views));
    image = draw_llvm_image_soa_create(draw_tes_llvm_variant_key_images(&variant->key),
                                       variant->key.nr_images);
    step = lp_build_const_int32(gallivm, vector_length);
