@@ -80,8 +80,11 @@ protected:
 
    static void preload_moves(bi_builder *b, bi_index dest, int count, int idx)
    {
+      bi_instr *I = bi_collect_i32_to(b, dest);
+      I->nr_srcs = count;
+
       for (int i = 0; i < count; ++i)
-         bi_mov_i32_to(b, bi_word(dest, i), bi_register(idx*4 + i));
+         I->src[i] = bi_register(idx*4 + i);
    }
 };
 

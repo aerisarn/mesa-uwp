@@ -133,6 +133,8 @@ bi_count_write_registers(const bi_instr *ins, unsigned d)
                 return 2;
         } else if (ins->op == BI_OPCODE_TEXC && d == 1) {
                 return ins->sr_count_2;
+        } else if (ins->op == BI_OPCODE_COLLECT_I32 && d == 0) {
+                return ins->nr_srcs;
         }
 
         return 1;

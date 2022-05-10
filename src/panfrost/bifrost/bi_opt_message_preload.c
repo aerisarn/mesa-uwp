@@ -127,9 +127,10 @@ bi_opt_message_preload(bi_context *ctx)
                 /* Replace with moves at the start. Ideally, they will be
                  * coalesced out or copy propagated.
                  */
-                for (unsigned i = 0; i < bi_count_write_registers(I, 0); ++i) {
-                        bi_mov_i32_to(&b, bi_word(I->dest[0], i),
-                                          bi_register((nr_preload * 4) + i));
+                bi_instr *collect = bi_collect_i32_to(&b, I->dest[0]);
+                collect->nr_srcs = bi_count_write_registers(I, 0);
+                for (unsigned i = 0; i < collect->nr_srcs; ++i) {
+                        collect->src[i] = bi_register((nr_preload * 4) + i);
                 }
 
                 bi_remove_instruction(I);

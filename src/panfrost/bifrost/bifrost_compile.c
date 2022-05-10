@@ -225,6 +225,39 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
                 unsigned count,
                 unsigned bitsize);
 
+static bi_instr *
+bi_collect_v2i32_to(bi_builder *b, bi_index dst, bi_index s0, bi_index s1)
+{
+        bi_instr *I = bi_collect_i32_to(b, dst);
+
+        I->nr_srcs = 2;
+        I->src[0] = s0;
+        I->src[1] = s1;
+
+        return I;
+}
+
+static bi_instr *
+bi_collect_v3i32_to(bi_builder *b, bi_index dst, bi_index s0, bi_index s1, bi_index s2)
+{
+        bi_instr *I = bi_collect_i32_to(b, dst);
+
+        I->nr_srcs = 3;
+        I->src[0] = s0;
+        I->src[1] = s1;
+        I->src[2] = s2;
+
+        return I;
+}
+
+static bi_index
+bi_collect_v2i32(bi_builder *b, bi_index s0, bi_index s1)
+{
+        bi_index dst = bi_temp(b->shader);
+        bi_collect_v2i32_to(b, dst, s0, s1);
+        return dst;
+}
+
 /* Bifrost's load instructions lack a component offset despite operating in
  * terms of vec4 slots. Usually I/O vectorization avoids nonzero components,
  * but they may be unavoidable with separate shaders in use. To solve this, we
@@ -416,6 +449,8 @@ static void
 bi_make_vec16_to(bi_builder *b, bi_index dst, bi_index *src,
                 unsigned *channel, unsigned count)
 {
+        bi_index srcs[BI_MAX_VEC];
+
         for (unsigned i = 0; i < count; i += 2) {
                 bool next = (i + 1) < count;
 
@@ -428,42 +463,37 @@ bi_make_vec16_to(bi_builder *b, bi_index dst, bi_index *src,
                 bi_index h0 = bi_half(w0, chan & 1);
                 bi_index h1 = bi_half(w1, nextc & 1);
 
-                bi_index to = bi_word(dst, i >> 1);
-
                 if (bi_is_word_equiv(w0, w1) && (chan & 1) == 0 && ((nextc & 1) == 1))
-                        bi_mov_i32_to(b, to, w0);
+                        srcs[i >> 1] = bi_mov_i32(b, w0);
                 else if (bi_is_word_equiv(w0, w1))
-                        bi_swz_v2i16_to(b, to, bi_swz_16(w0, chan & 1, nextc & 1));
+                        srcs[i >> 1] = bi_swz_v2i16(b, bi_swz_16(w0, chan & 1, nextc & 1));
                 else
-                        bi_mkvec_v2i16_to(b, to, h0, h1);
+                        srcs[i >> 1] = bi_mkvec_v2i16(b, h0, h1);
         }
+
+        bi_instr *I = bi_collect_i32_to(b, dst);
+        I->nr_srcs = DIV_ROUND_UP(count, 2);
+
+        for (unsigned i = 0; i < I->nr_srcs; ++i)
+                I->src[i] = srcs[i];
 }
 
 static void
-bi_make_vec_to(bi_builder *b, bi_index final_dst,
+bi_make_vec_to(bi_builder *b, bi_index dst,
                 bi_index *src,
                 unsigned *channel,
                 unsigned count,
                 unsigned bitsize)
 {
-        /* If we reads our own output, we need a temporary move to allow for
-         * swapping. TODO: Could do a bit better for pairwise swaps of 16-bit
-         * vectors */
-        bool reads_self = false;
-
-        for (unsigned i = 0; i < count; ++i)
-                reads_self |= bi_is_equiv(final_dst, src[i]);
-
-        /* SSA can't read itself */
-        assert(!reads_self || final_dst.reg);
-
-        bi_index dst = reads_self ? bi_temp(b->shader) : final_dst;
-
         if (bitsize == 32) {
-                for (unsigned i = 0; i < count; ++i) {
-                        bi_mov_i32_to(b, bi_word(dst, i),
-                                        bi_word(src[i], channel ? channel[i] : 0));
-                }
+                bi_instr *I = bi_collect_i32_to(b, dst);
+                I->nr_srcs = count;
+
+                for (unsigned i = 0; i < count; ++i)
+                        I->src[i] = bi_word(src[i], channel ? channel[i] : 0);
+
+                if (I->nr_srcs == 1)
+                        I->op = BI_OPCODE_MOV_I32;
         } else if (bitsize == 16) {
                 bi_make_vec16_to(b, dst, src, channel, count);
         } else if (bitsize == 8 && count == 1) {
@@ -472,17 +502,6 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
                                         channel[0] & 3));
         } else {
                 unreachable("8-bit mkvec not yet supported");
-        }
-
-        /* Emit an explicit copy if needed */
-        if (!bi_is_equiv(dst, final_dst)) {
-                unsigned shift = (bitsize == 8) ? 2 : (bitsize == 16) ? 1 : 0;
-                unsigned vec = (1 << shift);
-
-                for (unsigned i = 0; i < count; i += vec) {
-                        bi_mov_i32_to(b, bi_word(final_dst, i >> shift),
-                                        bi_word(dst, i >> shift));
-                }
         }
 }
 
@@ -626,9 +645,9 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
         } else if (b->shader->inputs->is_blend) {
                 uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
 
-                bi_index desc = bi_temp(b->shader);
-                bi_mov_i32_to(b, bi_word(desc, 0), bi_imm_u32(blend_desc));
-                bi_mov_i32_to(b, bi_word(desc, 1), bi_imm_u32(blend_desc >> 32));
+                bi_index desc =
+                        bi_collect_v2i32(b, bi_imm_u32(blend_desc),
+                                            bi_imm_u32(blend_desc >> 32));
 
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
@@ -961,8 +980,8 @@ bi_handle_segment(bi_builder *b, bi_index *addr, bi_index *addr_hi, enum bi_seg 
                         *addr = base;
                 }
         } else {
-                *addr = bi_iadd_u32(b, base, *addr, false);
-                bi_mov_i32_to(b, bi_word(*addr, 1), bi_imm_u32(0));
+                *addr = bi_collect_v2i32(b, bi_iadd_u32(b, base, *addr, false),
+                                            bi_imm_u32(0));
         }
 
         *addr_hi = bi_word(*addr, 1);
@@ -1639,10 +1658,9 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
 	case nir_intrinsic_load_sample_positions_pan:
-                bi_mov_i32_to(b, bi_word(dst, 0),
-                                bi_fau(BIR_FAU_SAMPLE_POS_ARRAY, false));
-                bi_mov_i32_to(b, bi_word(dst, 1),
-                                bi_fau(BIR_FAU_SAMPLE_POS_ARRAY, true));
+                bi_collect_v2i32_to(b, dst,
+                                    bi_fau(BIR_FAU_SAMPLE_POS_ARRAY, false),
+                                    bi_fau(BIR_FAU_SAMPLE_POS_ARRAY, true));
                 break;
 
 	case nir_intrinsic_load_sample_mask_in:
@@ -1694,20 +1712,21 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_local_invocation_id:
-                for (unsigned i = 0; i < 3; ++i)
-                        bi_u16_to_u32_to(b, bi_word(dst, i),
-                                         bi_half(bi_register(55 + i / 2), i % 2));
+                bi_collect_v3i32_to(b, dst,
+                                    bi_u16_to_u32(b, bi_half(bi_register(55), 0)),
+                                    bi_u16_to_u32(b, bi_half(bi_register(55), 1)),
+                                    bi_u16_to_u32(b, bi_half(bi_register(56), 0)));
                 break;
 
         case nir_intrinsic_load_workgroup_id:
-                for (unsigned i = 0; i < 3; ++i)
-                        bi_mov_i32_to(b, bi_word(dst, i), bi_register(57 + i));
+                bi_collect_v3i32_to(b, dst, bi_register(57), bi_register(58),
+                                    bi_register(59));
                 break;
 
         case nir_intrinsic_load_global_invocation_id:
         case nir_intrinsic_load_global_invocation_id_zero_base:
-                for (unsigned i = 0; i < 3; ++i)
-                        bi_mov_i32_to(b, bi_word(dst, i), bi_register(60 + i));
+                bi_collect_v3i32_to(b, dst, bi_register(60), bi_register(61),
+                                    bi_register(62));
                 break;
 
         case nir_intrinsic_shader_clock:
@@ -2128,13 +2147,15 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 return;
 
         case nir_op_pack_64_2x32_split:
-                bi_mov_i32_to(b, bi_word(dst, 0), bi_src_index(&instr->src[0].src));
-                bi_mov_i32_to(b, bi_word(dst, 1), bi_src_index(&instr->src[1].src));
+                bi_collect_v2i32_to(b, dst,
+                                    bi_src_index(&instr->src[0].src),
+                                    bi_src_index(&instr->src[1].src));
                 return;
 
         case nir_op_pack_64_2x32:
-                bi_mov_i32_to(b, bi_word(dst, 0), bi_word(bi_src_index(&instr->src[0].src), 0));
-                bi_mov_i32_to(b, bi_word(dst, 1), bi_word(bi_src_index(&instr->src[0].src), 1));
+                bi_collect_v2i32_to(b, dst,
+                                    bi_word(bi_src_index(&instr->src[0].src), 0),
+                                    bi_word(bi_src_index(&instr->src[0].src), 1));
                 return;
 
         case nir_op_pack_uvec2_to_uint: {

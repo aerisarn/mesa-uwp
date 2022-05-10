@@ -52,12 +52,14 @@ lower_split_src(bi_context *ctx, bi_instr *I, unsigned s)
 
    /* Allocate temporary before the instruction */
    bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
-   bi_index collect = bi_temp(ctx);
+   bi_index vec = bi_temp(ctx);
+   bi_instr *collect = bi_collect_i32_to(&b, vec);
+   collect->nr_srcs = 2;
 
    /* Emit collect */
    for (unsigned w = 0; w < 2; ++w) {
-      bi_mov_i32_to(&b, bi_word(collect, w), I->src[s + w]);
-      I->src[s + w] = bi_word(collect, w);
+      collect->src[w] = I->src[s + w];
+      I->src[s + w] = bi_word(vec, w);
    }
 }
 
