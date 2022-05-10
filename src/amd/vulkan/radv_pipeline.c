@@ -5788,7 +5788,7 @@ radv_pipeline_emit_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf *cs
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       ge_cntl = S_03096C_PRIMS_PER_SUBGRP(ngg_state->max_gsprims) |
-                S_03096C_VERT_GRP_SIZE(ngg_state->enable_vertex_grouping
+                S_03096C_VERTS_PER_SUBGRP(ngg_state->enable_vertex_grouping
                                           ? ngg_state->hw_max_esverts
                                           : 256) | /* 256 = disable vertex grouping */
                 S_03096C_BREAK_PRIMGRP_AT_EOI(break_wave_at_eoi) |
