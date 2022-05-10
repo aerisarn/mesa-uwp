@@ -80,6 +80,7 @@ enum radeon_bo_flag
     * This guarantees that this buffer will never be moved to GTT.
     */
   RADEON_FLAG_DISCARDABLE = (1 << 10),
+  RADEON_FLAG_MALL_NOALLOC = (1 << 11), /* don't cache in the infinity cache */
 };
 
 enum radeon_map_flags
@@ -721,6 +722,7 @@ radeon_bo_reference(struct radeon_winsys *rws, struct pb_buffer **dst, struct pb
 #define RADEON_HEAP_BIT_ENCRYPTED      (1 << 3) /* both VRAM and GTT */
 
 #define RADEON_HEAP_BIT_NO_CPU_ACCESS  (1 << 4) /* VRAM only */
+#define RADEON_HEAP_BIT_MALL_NOALLOC   (1 << 5) /* VRAM only */
 
 #define RADEON_HEAP_BIT_WC             (1 << 4) /* GTT only, VRAM implies this to be true */
 #define RADEON_HEAP_BIT_GL2_BYPASS     (1 << 5) /* GTT only */
@@ -755,6 +757,8 @@ static inline unsigned radeon_flags_from_heap(int heap)
       flags |= RADEON_FLAG_GTT_WC;
       if (heap & RADEON_HEAP_BIT_NO_CPU_ACCESS)
          flags |= RADEON_FLAG_NO_CPU_ACCESS;
+      if (heap & RADEON_HEAP_BIT_MALL_NOALLOC)
+         flags |= RADEON_FLAG_MALL_NOALLOC;
    } else {
       /* GTT only */
       if (heap & RADEON_HEAP_BIT_WC)
@@ -788,6 +792,7 @@ static void radeon_canonicalize_bo_flags(enum radeon_bo_domain *_domain,
       break;
    case RADEON_DOMAIN_GTT:
       flags &= ~RADEON_FLAG_NO_CPU_ACCESS;
+      flags &= ~RADEON_FLAG_MALL_NOALLOC;
       break;
    case RADEON_DOMAIN_GDS:
    case RADEON_DOMAIN_OA:
@@ -833,6 +838,8 @@ static inline int radeon_get_heap_index(enum radeon_bo_domain domain, enum radeo
       heap |= RADEON_HEAP_BIT_VRAM;
       if (flags & RADEON_FLAG_NO_CPU_ACCESS)
          heap |= RADEON_HEAP_BIT_NO_CPU_ACCESS;
+      if (flags & RADEON_FLAG_MALL_NOALLOC)
+         heap |= RADEON_HEAP_BIT_MALL_NOALLOC;
       /* RADEON_FLAG_WC is ignored and implied to be true for VRAM */
       /* RADEON_FLAG_GL2_BYPASS is ignored and implied to be false for VRAM */
    } else if (domain == RADEON_DOMAIN_GTT) {
@@ -842,6 +849,7 @@ static inline int radeon_get_heap_index(enum radeon_bo_domain domain, enum radeo
       if (flags & RADEON_FLAG_GL2_BYPASS)
          heap |= RADEON_HEAP_BIT_GL2_BYPASS;
       /* RADEON_FLAG_NO_CPU_ACCESS is ignored and implied to be false for GTT */
+      /* RADEON_FLAG_MALL_NOALLOC is ignored and implied to be false for GTT */
    } else {
       return -1; /*  */
    }

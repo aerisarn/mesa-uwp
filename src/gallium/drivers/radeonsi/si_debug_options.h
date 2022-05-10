@@ -17,6 +17,7 @@ OPT_BOOL(fp16, false, "Enable FP16 for mediump.")
 OPT_INT(tc_max_cpu_storage_size, 2500, "Enable the CPU storage for pipelined buffer uploads in TC.")
 OPT_BOOL(force_use_fma32, false, "Force use fma32 instruction for GPU family newer than gfx9")
 OPT_BOOL(dcc_msaa, false, "Enable DCC for MSAA")
+OPT_BOOL(mall_noalloc, false, "Don't use MALL (infinity cache)")
 
 #undef OPT_BOOL
 #undef OPT_INT

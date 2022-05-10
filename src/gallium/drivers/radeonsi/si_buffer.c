@@ -151,6 +151,10 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
        sscreen->info.drm_major == 3 && sscreen->info.drm_minor >= 47)
       res->flags |= RADEON_FLAG_DISCARDABLE;
 
+   if (res->domains == RADEON_DOMAIN_VRAM &&
+       sscreen->options.mall_noalloc)
+      res->flags |= RADEON_FLAG_MALL_NOALLOC;
+
    /* Set expected VRAM and GART usage for the buffer. */
    res->memory_usage_kb = MAX2(1, size / 1024);
 
