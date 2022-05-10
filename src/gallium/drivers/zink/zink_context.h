@@ -214,6 +214,7 @@ struct zink_context {
    uint32_t writable_ssbos[PIPE_SHADER_TYPES];
    struct zink_image_view image_views[PIPE_SHADER_TYPES][ZINK_MAX_SHADER_IMAGES];
 
+   uint32_t transient_attachments;
    struct pipe_framebuffer_state fb_state;
    struct hash_table framebuffer_cache;
 

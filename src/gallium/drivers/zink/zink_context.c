@@ -2384,10 +2384,14 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    zink_update_fbfetch(ctx);
    unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
    ctx->gfx_pipeline_state.void_alpha_attachments = 0;
+   ctx->transient_attachments = 0;
+
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (psurf) {
          struct zink_surface *transient = zink_transient_surface(psurf);
+         if (transient)
+            ctx->transient_attachments |= BITFIELD_BIT(i);
          if (!samples)
             samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
          struct zink_resource *res = zink_resource(psurf->texture);
@@ -2410,6 +2414,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
       struct zink_surface *transient = zink_transient_surface(psurf);
+      if (transient)
+         ctx->transient_attachments |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       if (!samples)
          samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
       zink_resource(psurf->texture)->fb_binds++;
