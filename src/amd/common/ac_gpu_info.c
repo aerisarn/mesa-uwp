@@ -1763,7 +1763,7 @@ void ac_get_hs_info(struct radeon_info *info,
    bool double_offchip_buffers = info->chip_class >= GFX7 &&
                                  info->family != CHIP_CARRIZO &&
                                  info->family != CHIP_STONEY;
-   unsigned max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
+   unsigned max_offchip_buffers_per_se;
    unsigned max_offchip_buffers;
    unsigned offchip_granularity;
    unsigned hs_offchip_param;
@@ -1783,12 +1783,16 @@ void ac_get_hs_info(struct radeon_info *info,
     *
     * Follow AMDVLK here.
     */
-   if (info->chip_class >= GFX10) {
+   if (info->chip_class >= GFX11) {
+      max_offchip_buffers_per_se = 256; /* TODO: we could decrease this to reduce memory/cache usage */
+   } else if (info->chip_class >= GFX10) {
       max_offchip_buffers_per_se = 128;
-   } else if (info->family == CHIP_VEGA10 ||
-              info->chip_class == GFX7 ||
-              info->chip_class == GFX6)
-      --max_offchip_buffers_per_se;
+   } else if (info->family == CHIP_VEGA12 || info->family == CHIP_VEGA20) {
+      /* Only certain chips can use the maximum value. */
+      max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
+   } else {
+      max_offchip_buffers_per_se = double_offchip_buffers ? 127 : 63;
+   }
 
    max_offchip_buffers = max_offchip_buffers_per_se * info->max_se;
 
@@ -1820,7 +1824,11 @@ void ac_get_hs_info(struct radeon_info *info,
 
    hs->max_offchip_buffers = max_offchip_buffers;
 
-   if (info->chip_class >= GFX10_3) {
+   if (info->chip_class >= GFX11) {
+      /* OFFCHIP_BUFFERING is per SE. */
+      hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers_per_se - 1) |
+                         S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
+   } else if (info->chip_class >= GFX10_3) {
       hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
                          S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
    } else if (info->chip_class >= GFX7) {
@@ -1834,7 +1842,7 @@ void ac_get_hs_info(struct radeon_info *info,
 
    hs->hs_offchip_param = hs_offchip_param;
 
-   hs->tess_factor_ring_size = 32768 * info->max_se;
+   hs->tess_factor_ring_size = 48 * 1024 * info->max_se;
    hs->tess_offchip_ring_offset = align(hs->tess_factor_ring_size, 64 * 1024);
    hs->tess_offchip_ring_size = hs->max_offchip_buffers * hs->tess_offchip_block_dw_size * 4;
 }
