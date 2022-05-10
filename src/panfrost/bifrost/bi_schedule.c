@@ -125,7 +125,7 @@ struct bi_clause_state {
         /* Indices already accessed, this needs to be tracked to avoid hazards
          * around message-passing instructions */
         unsigned access_count;
-        bi_index accesses[(BI_MAX_SRCS + 2) * 16];
+        bi_index accesses[(BI_MAX_SRCS + BI_MAX_DESTS) * 16];
 
         unsigned tuple_count;
         struct bi_const_state consts[8];
