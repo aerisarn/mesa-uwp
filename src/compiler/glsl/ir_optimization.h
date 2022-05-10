@@ -55,7 +55,6 @@ struct gl_shader_program;
 #define DDIV_TO_MUL_RCP           0x100000
 #define DIV_TO_MUL_RCP            (FDIV_TO_MUL_RCP | DDIV_TO_MUL_RCP)
 #define SQRT_TO_ABS_SQRT          0x200000
-#define MUL64_TO_MUL_AND_MUL_HIGH 0x400000
 
 /* Operations for lower_64bit_integer_instructions() */
 #define DIV64                     (1U << 0)

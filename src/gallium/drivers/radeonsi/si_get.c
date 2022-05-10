@@ -1081,6 +1081,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_insert_word = true,
       .lower_rotate = true,
       .lower_to_scalar = true,
+      .lower_int64_options = nir_lower_imul_2x32_64,
       .has_sdot_4x8 = sscreen->info.has_accelerated_dot_product,
       .has_udot_4x8 = sscreen->info.has_accelerated_dot_product,
       .has_dot_2x16 = sscreen->info.has_accelerated_dot_product,

@@ -3393,7 +3393,7 @@ nvir_nir_shader_compiler_options(int chipset)
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_logic64 : 0) |
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_minmax64 : 0) |
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_shift64 : 0) |
-      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_2x32_64 : 0) |
+      nir_lower_imul_2x32_64 |
       ((chipset >= NVISA_GM107_CHIPSET) ? nir_lower_extract64 : 0) |
       nir_lower_ufind_msb64
    );

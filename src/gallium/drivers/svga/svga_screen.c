@@ -762,6 +762,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    .lower_extract_word = true,                                                \
    .lower_insert_byte = true,                                                 \
    .lower_insert_word = true,                                                 \
+   .lower_int64_options = nir_lower_imul_2x32_64,                             \
    .lower_fdph = true,                                                        \
    .lower_flrp64 = true,                                                      \
    .lower_rotate = true,                                                      \
