@@ -185,6 +185,7 @@ v3dv_DestroyPipeline(VkDevice _device,
 static const struct spirv_to_nir_options default_spirv_options =  {
    .caps = {
       .device_group = true,
+      .float_controls = true,
       .multiview = true,
       .storage_8bit = true,
       .storage_16bit = true,
