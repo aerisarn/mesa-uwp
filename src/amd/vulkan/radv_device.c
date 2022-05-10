@@ -437,6 +437,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_pipeline_library = !device->use_llvm,
       .KHR_push_descriptor = true,
       .KHR_ray_query = radv_enable_rt(device, false),
+      .KHR_ray_tracing_maintenance1 = radv_enable_rt(device, false),
       .KHR_ray_tracing_pipeline = radv_enable_rt(device, true),
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
@@ -1676,6 +1677,13 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
          features->rayTracingPipelineTraceRaysIndirect = true;
          features->rayTraversalPrimitiveCulling = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MAINTENANCE_1_FEATURES_KHR: {
+         VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR *features =
+            (VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR *)ext;
+         features->rayTracingMaintenance1 = true;
+         features->rayTracingPipelineTraceRaysIndirect2 = radv_enable_rt(pdevice, true);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES: {
