@@ -1,2 +1,3 @@
 WGL_ARB_create_context_robustness
 d3d12 ARB_robust_buffer_access_behavior
+VK_EXT_robustness2 for lavapipe
