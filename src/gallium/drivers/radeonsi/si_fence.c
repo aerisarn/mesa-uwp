@@ -99,6 +99,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigne
                ctx->eop_bug_scratch_tmz =
                   si_aligned_buffer_create(&sscreen->b,
                                            PIPE_RESOURCE_FLAG_ENCRYPTED |
+                                           PIPE_RESOURCE_FLAG_UNMAPPABLE |
                                            SI_RESOURCE_FLAG_DRIVER_INTERNAL,
                                            PIPE_USAGE_DEFAULT,
                                            16 * sscreen->info.max_render_backends, 256);
