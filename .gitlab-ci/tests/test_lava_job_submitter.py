@@ -38,7 +38,6 @@ from lava.lava_job_submitter import (
     NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
     LAVAJob,
     follow_job_execution,
-    get_job_results,
     hide_sensitive_data,
     retriable_follow_job,
 )
@@ -46,8 +45,12 @@ from lava.lava_job_submitter import (
 NUMBER_OF_MAX_ATTEMPTS = NUMBER_OF_RETRIES_TIMEOUT_DETECTION + 1
 
 
-def jobs_logs_response(finished=False, msg=None, lvl="target") -> Tuple[bool, str]:
+def jobs_logs_response(finished=False, msg=None, lvl="target", result=None) -> Tuple[bool, str]:
     timed_msg = {"dt": str(datetime.now()), "msg": "New message", "lvl": lvl}
+    if result:
+        timed_msg["lvl"] = "target"
+        timed_msg["msg"] = f"hwci: mesa: {result}"
+
     logs = [timed_msg] if msg is None else msg
 
     return finished, yaml.safe_dump(logs)
@@ -131,7 +134,7 @@ def level_generator():
     # Tests all known levels by default
     yield from cycle(( "results", "feedback", "warning", "error", "debug", "target" ))
 
-def generate_n_logs(n=1, tick_fn: Union[Generator, Iterable[int], int]=1, level_fn=level_generator):
+def generate_n_logs(n=1, tick_fn: Union[Generator, Iterable[int], int]=1, level_fn=level_generator, result="pass"):
     """Simulate a log partitionated in n components"""
     level_gen = level_fn()
 
@@ -153,7 +156,7 @@ def generate_n_logs(n=1, tick_fn: Union[Generator, Iterable[int], int]=1, level_
                 yield jobs_logs_response(finished=False, msg=[], lvl=level)
 
             time_travel.tick(tick_sec)
-            yield jobs_logs_response(finished=True)
+            yield jobs_logs_response(finished=True, result=result)
 
 
 NETWORK_EXCEPTION = xmlrpc.client.ProtocolError("", 0, "test", {})
@@ -192,7 +195,7 @@ PROXY_SCENARIOS = {
         },
     ),
     "no retries, but testsuite fails": (
-        generate_n_logs(n=1, tick_fn=0),
+        generate_n_logs(n=1, tick_fn=0, result="fail"),
         does_not_raise(),
         False,
         {
@@ -202,7 +205,7 @@ PROXY_SCENARIOS = {
         },
     ),
     "no retries, one testsuite fails": (
-        generate_n_logs(n=1, tick_fn=0),
+        generate_n_logs(n=1, tick_fn=0, result="fail"),
         does_not_raise(),
         False,
         {
@@ -220,7 +223,7 @@ PROXY_SCENARIOS = {
     ),
     # If a protocol error happens, _call_proxy will retry without affecting timeouts
     "unstable connection, ProtocolError followed by final message": (
-        (NETWORK_EXCEPTION, jobs_logs_response(finished=True)),
+        (NETWORK_EXCEPTION, jobs_logs_response(finished=True, result="pass")),
         does_not_raise(),
         True,
         {},
@@ -247,8 +250,8 @@ def test_retriable_follow_job(
 ):
     with expectation:
         proxy = mock_proxy(side_effect=side_effect, **proxy_args)
-        result = retriable_follow_job(proxy, "")
-        assert job_result == result
+        job: LAVAJob = retriable_follow_job(proxy, "")
+        assert job_result == (job.status == "pass")
 
 
 WAIT_FOR_JOB_SCENARIOS = {
@@ -270,7 +273,7 @@ def test_simulate_a_long_wait_to_start_a_job(
     mock_proxy_waiting_time,
 ):
     start_time = datetime.now()
-    result = retriable_follow_job(
+    job: LAVAJob = retriable_follow_job(
         mock_proxy_waiting_time(
             frozen_time, side_effect=side_effect, wait_time=wait_time
         ),
@@ -280,7 +283,7 @@ def test_simulate_a_long_wait_to_start_a_job(
     end_time = datetime.now()
     delta_time = end_time - start_time
 
-    assert has_finished == result
+    assert has_finished == (job.status == "pass")
     assert delta_time.total_seconds() >= wait_time
 
 
@@ -314,11 +317,6 @@ def test_hide_sensitive_data(input, expectation, tag):
     result = yaml.safe_load(yaml_result)
 
     assert result == expectation
-
-
-def test_get_job_results(mock_proxy):
-    proxy = mock_proxy()
-    get_job_results(proxy, 1, "0_mesa")
 
 
 CORRUPTED_LOG_SCENARIOS = {

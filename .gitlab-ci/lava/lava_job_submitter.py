@@ -65,9 +65,15 @@ NUMBER_OF_RETRIES_TIMEOUT_DETECTION = int(getenv("LAVA_NUMBER_OF_RETRIES_TIMEOUT
 # How many attempts should be made when a timeout happen during LAVA device boot.
 NUMBER_OF_ATTEMPTS_LAVA_BOOT = int(getenv("LAVA_NUMBER_OF_ATTEMPTS_LAVA_BOOT", 3))
 
+# Helper constants to colorize the job output
+CONSOLE_LOG_COLOR_GREEN = "\x1b[1;32;5;197m"
+CONSOLE_LOG_COLOR_RED = "\x1b[1;38;5;197m"
+CONSOLE_LOG_COLOR_RESET = "\x1b[0m"
+
 
 def print_log(msg):
     print("{}: {}".format(datetime.now(), msg))
+
 
 def fatal_err(msg):
     print_log(msg)
@@ -234,6 +240,8 @@ def _call_proxy(fn, *args):
 
 
 class LAVAJob:
+    color_status_map = {"pass": CONSOLE_LOG_COLOR_GREEN}
+
     def __init__(self, proxy, definition):
         self.job_id = None
         self.proxy = proxy
@@ -241,9 +249,11 @@ class LAVAJob:
         self.last_log_line = 0
         self.last_log_time = None
         self.is_finished = False
+        self.status = "created"
 
     def heartbeat(self):
         self.last_log_time = datetime.now()
+        self.status = "running"
 
     def validate(self) -> Optional[dict]:
         """Returns a dict with errors, if the validation fails.
@@ -294,6 +304,27 @@ class LAVAJob:
                 f"Could not get LAVA job logs. Reason: {mesa_ci_err}"
             ) from mesa_ci_err
 
+    def parse_job_result_from_log(self, lava_lines: list[dict[str, str]]) -> None:
+        """Use the console log to catch if the job has completed successfully or
+        not.
+        Returns true only the job finished by looking into the log result
+        parsing.
+        """
+        log_lines = [l["msg"] for l in lava_lines if l["lvl"] == "target"]
+        for line in log_lines:
+            if result := re.search(r"hwci: mesa: (\S*)", line):
+                self.is_finished = True
+                self.status = result.group(1)
+                color = LAVAJob.color_status_map.get(self.status, CONSOLE_LOG_COLOR_RED)
+                print_log(
+                    f"{color}"
+                    f"LAVA Job finished with result: {self.status}"
+                    f"{CONSOLE_LOG_COLOR_RESET}"
+                )
+
+                # We reached the log end here. hwci script has finished.
+                break
+
 
 def find_exception_from_metadata(metadata, job_id):
     if "result" not in metadata or metadata["result"] != "fail":
@@ -320,34 +351,17 @@ def find_exception_from_metadata(metadata, job_id):
     return metadata
 
 
-def get_job_results(proxy, job_id, test_suite):
+def find_lava_error(job) -> None:
     # Look for infrastructure errors and retry if we see them.
-    results_yaml = _call_proxy(proxy.results.get_testjob_results_yaml, job_id)
+    results_yaml = _call_proxy(job.proxy.results.get_testjob_results_yaml, job.job_id)
     results = yaml.load(results_yaml, Loader=loader(False))
     for res in results:
         metadata = res["metadata"]
-        find_exception_from_metadata(metadata, job_id)
+        find_exception_from_metadata(metadata, job.job_id)
 
-    results_yaml = _call_proxy(
-        proxy.results.get_testsuite_results_yaml, job_id, test_suite
-    )
-    results: list = yaml.load(results_yaml, Loader=loader(False))
-    if not results:
-        raise MesaCIException(
-            f"LAVA: no result for test_suite '{test_suite}'"
-        )
-
-    for metadata in results:
-        test_case = metadata["name"]
-        result = metadata["metadata"]["result"]
-        print_log(
-            f"LAVA: result for test_suite '{test_suite}', "
-            f"test_case '{test_case}': {result}"
-        )
-        if result != "pass":
-            return False
-
-    return True
+    # If we reach this far, it means that the job ended without hwci script
+    # result and no LAVA infrastructure problem was found
+    job.status = "fail"
 
 
 def show_job_data(job):
@@ -362,8 +376,8 @@ def parse_lava_lines(new_lines) -> list[str]:
         if line["lvl"] in ["results", "feedback"]:
             continue
         elif line["lvl"] in ["warning", "error"]:
-            prefix = "\x1b[1;38;5;197m"
-            suffix = "\x1b[0m"
+            prefix = CONSOLE_LOG_COLOR_RED
+            suffix = CONSOLE_LOG_COLOR_RESET
         elif line["lvl"] == "input":
             prefix = "$ "
             suffix = ""
@@ -376,7 +390,7 @@ def parse_lava_lines(new_lines) -> list[str]:
     return parsed_lines
 
 
-def fetch_logs(job, max_idle_time):
+def fetch_logs(job, max_idle_time) -> None:
     # Poll to check for new logs, assuming that a prolonged period of
     # silence means that the device has died and we should try it again
     if datetime.now() - job.last_log_time > max_idle_time:
@@ -398,15 +412,17 @@ def fetch_logs(job, max_idle_time):
     # Retry the log fetching several times before exposing the error.
     for _ in range(5):
         with contextlib.suppress(MesaCIParseException):
-            new_lines = job.get_logs()
+            new_log_lines = job.get_logs()
             break
     else:
         raise MesaCIParseException
 
-    parsed_lines = parse_lava_lines(new_lines)
+    parsed_lines = parse_lava_lines(new_log_lines)
 
     for line in parsed_lines:
         print_log(line)
+
+    job.parse_job_result_from_log(new_log_lines)
 
 
 def follow_job_execution(job):
@@ -429,16 +445,22 @@ def follow_job_execution(job):
         fetch_logs(job, max_idle_time)
 
     show_job_data(job)
-    return get_job_results(job.proxy, job.job_id, "0_mesa")
+
+    # Mesa Developers expect to have a simple pass/fail job result.
+    # If this does not happen, it probably means a LAVA infrastructure error
+    # happened.
+    if job.status not in ["pass", "fail"]:
+        find_lava_error(job)
 
 
-def retriable_follow_job(proxy, job_definition):
+def retriable_follow_job(proxy, job_definition) -> LAVAJob:
     retry_count = NUMBER_OF_RETRIES_TIMEOUT_DETECTION
 
     for attempt_no in range(1, retry_count + 2):
         job = LAVAJob(proxy, job_definition)
         try:
-            return follow_job_execution(job)
+            follow_job_execution(job)
+            return job
         except MesaCIException as mesa_exception:
             print_log(mesa_exception)
             job.cancel()
@@ -477,8 +499,8 @@ def main(args):
     if args.validate_only:
         return
 
-    has_job_passed = retriable_follow_job(proxy, job_definition)
-    exit_code = 0 if has_job_passed else 1
+    finished_job = retriable_follow_job(proxy, job_definition)
+    exit_code = 0 if finished_job.status == "pass" else 1
     sys.exit(exit_code)
 
 
