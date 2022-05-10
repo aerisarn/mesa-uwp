@@ -304,6 +304,26 @@ equals_render_pass_state(const void *a, const void *b)
    return memcmp(a, b, offsetof(struct zink_render_pass_state, rts) + sizeof(s_a->rts[0]) * s_a->num_rts) == 0;
 }
 
+void
+zink_init_color_attachment(struct zink_context *ctx, unsigned i, struct zink_rt_attrib *rt)
+{
+   const struct pipe_framebuffer_state *fb = &ctx->fb_state;
+   struct pipe_surface *psurf = fb->cbufs[i];
+   if (psurf && !zink_use_dummy_attachments(ctx)) {
+      struct zink_surface *surf = zink_csurface(psurf);
+      struct zink_surface *transient = zink_transient_surface(psurf);
+      rt->format = surf->info.format[0];
+      rt->samples = MAX3(transient ? transient->base.nr_samples : 0, psurf->texture->nr_samples, 1);
+      rt->clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
+      rt->swapchain = ctx->new_swapchain && (psurf->texture->bind & PIPE_BIND_DISPLAY_TARGET);
+      rt->fbfetch = (ctx->fbfetch_outputs & BITFIELD_BIT(i)) > 0;
+   } else {
+      memset(rt, 0, sizeof(struct zink_rt_attrib));
+      rt->format = VK_FORMAT_R8G8B8A8_UNORM;
+      rt->samples = fb->samples;
+   }
+}
+
 static struct zink_render_pass *
 get_render_pass(struct zink_context *ctx)
 {
@@ -313,27 +333,20 @@ get_render_pass(struct zink_context *ctx)
    uint32_t clears = 0;
    state.samples = fb->samples > 0;
 
-   u_foreach_bit(i, ctx->fbfetch_outputs)
-      state.rts[i].fbfetch = true;
-
    for (int i = 0; i < fb->nr_cbufs; i++) {
+      zink_init_color_attachment(ctx, i, &state.rts[i]);
       struct pipe_surface *surf = fb->cbufs[i];
       if (surf && !zink_use_dummy_attachments(ctx)) {
-         struct zink_surface *transient = zink_transient_surface(surf);
-         state.rts[i].format = zink_get_format(screen, surf->format);
-         state.rts[i].samples = MAX3(transient ? transient->base.nr_samples : 0, surf->texture->nr_samples, 1);
-         state.rts[i].clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
          clears |= !!state.rts[i].clear_color ? PIPE_CLEAR_COLOR0 << i : 0;
-         state.rts[i].swapchain = ctx->new_swapchain && (surf->texture->bind & PIPE_BIND_DISPLAY_TARGET);
+         struct zink_surface *transient = zink_transient_surface(surf);
          if (transient) {
             state.num_cresolves++;
             state.rts[i].resolve = true;
             if (!state.rts[i].clear_color)
                state.msaa_expand_mask |= BITFIELD_BIT(i);
+         } else {
+            state.rts[i].resolve = false;
          }
-      } else {
-         state.rts[i].format = VK_FORMAT_R8G8B8A8_UNORM;
-         state.rts[i].samples = fb->samples;
       }
       state.num_rts++;
    }

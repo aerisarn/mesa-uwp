@@ -101,4 +101,6 @@ bool
 zink_init_render_pass(struct zink_context *ctx);
 void
 zink_render_update_swapchain(struct zink_context *ctx);
+void
+zink_init_color_attachment(struct zink_context *ctx, unsigned i, struct zink_rt_attrib *rt);
 #endif
