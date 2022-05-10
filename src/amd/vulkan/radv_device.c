@@ -544,7 +544,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .AMD_shader_core_properties = true,
       .AMD_shader_core_properties2 = true,
       .AMD_shader_explicit_vertex_parameter = true,
-      .AMD_shader_fragment_mask = true,
+      .AMD_shader_fragment_mask = device->rad_info.gfx_level < GFX11,
       .AMD_shader_image_load_store_lod = true,
       .AMD_shader_trinary_minmax = true,
       .AMD_texture_gather_bias_lod = true,
