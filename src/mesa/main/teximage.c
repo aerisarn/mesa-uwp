@@ -2824,7 +2824,7 @@ _mesa_choose_texture_format(struct gl_context *ctx,
                             GLenum internalFormat, GLenum format, GLenum type,
                             unsigned samples)
 {
-   mesa_format f;
+   mesa_format f = MESA_FORMAT_NONE;
 
    /* see if we've already chosen a format for the previous level */
    if (level > 0) {
@@ -2843,6 +2843,7 @@ _mesa_choose_texture_format(struct gl_context *ctx,
    }
 
    if (samples > 0) {
+      unsigned trySamples = samples;
       /* TODO: This somewhat duplicates the logic in st_texture_storage. */
       /* Find msaa sample count which is actually supported.  For example,
        * if the user requests 1x but only 4x or 8x msaa is supported, we'll
@@ -2850,19 +2851,22 @@ _mesa_choose_texture_format(struct gl_context *ctx,
        */
       if (ctx->Const.MaxSamples > 1 && samples == 1) {
          /* don't try num_samples = 1 with drivers that support real msaa */
-         samples = 2;
+         trySamples = 2;
       }
 
-      for (; samples <= ctx->Const.MaxSamples; samples++) {
+      for (; trySamples <= ctx->Const.MaxSamples; trySamples++) {
          f = st_ChooseTextureFormat(ctx, target, internalFormat,
-                                    format, type, samples);
-         if (f != PIPE_FORMAT_NONE)
+                                    format, type, trySamples);
+         if (f != MESA_FORMAT_NONE)
             break;
       }
-   } else {
+   }
+
+   if (f == MESA_FORMAT_NONE) {
       f = st_ChooseTextureFormat(ctx, target, internalFormat,
                                  format, type, samples);
    }
+
    assert(f != MESA_FORMAT_NONE);
    return f;
 }
