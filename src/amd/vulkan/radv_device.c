@@ -1584,7 +1584,9 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
          features->pipelineFragmentShadingRate = true;
          features->primitiveFragmentShadingRate = true;
-         features->attachmentFragmentShadingRate = !(pdevice->instance->debug_flags & RADV_DEBUG_NO_HIZ);
+         features->attachmentFragmentShadingRate =
+            !(pdevice->instance->debug_flags & RADV_DEBUG_NO_HIZ) &&
+            pdevice->rad_info.gfx_level < GFX11; /* TODO: VRS no longer uses HTILE. */
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: {
