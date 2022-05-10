@@ -108,8 +108,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineColorBlendStateCreateInfo blend_state = {0};
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
    if (state->blend_state) {
-      unsigned num_attachments = state->render_pass->state.num_rts;
-      if (state->render_pass->state.have_zsbuf)
+      unsigned num_attachments = state->render_pass ?
+                                 state->render_pass->state.num_rts :
+                                 state->rendering_info.colorAttachmentCount;
+      if (state->render_pass && state->render_pass->state.have_zsbuf)
          num_attachments--;
       if (state->void_alpha_attachments) {
          for (unsigned i = 0; i < num_attachments; i++) {
@@ -315,7 +317,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.layout = prog->base.layout;
-   pci.renderPass = state->render_pass->render_pass;
+   if (state->render_pass)
+      pci.renderPass = state->render_pass->render_pass;
+   else
+      pci.pNext = &state->rendering_info;
    if (!screen->info.have_EXT_vertex_input_dynamic_state || !state->element_state->num_attribs)
       pci.pVertexInputState = &vertex_input_state;
    pci.pInputAssemblyState = &primitive_state;

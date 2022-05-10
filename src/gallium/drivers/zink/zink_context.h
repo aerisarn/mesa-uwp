@@ -152,6 +152,11 @@ struct zink_bindless_descriptor {
    uint32_t access; //PIPE_ACCESS_...
 };
 
+struct zink_rendering_info {
+   VkPipelineRenderingCreateInfo info;
+   unsigned id;
+};
+
 static inline struct zink_resource *
 zink_descriptor_surface_resource(struct zink_descriptor_surface *ds)
 {
@@ -249,6 +254,11 @@ struct zink_context {
    unsigned dirty_shader_stages : 6; /* mask of changed shader stages */
    bool last_vertex_stage_dirty;
 
+   struct {
+      VkRenderingAttachmentInfo attachments[PIPE_MAX_COLOR_BUFS + 2]; //+depth, +stencil
+      VkRenderingInfo info;
+   } dynamic_fb;
+   struct set rendering_state_cache;
    struct set render_pass_state_cache;
    struct hash_table *render_pass_cache;
    bool new_swapchain;

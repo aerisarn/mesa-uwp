@@ -242,6 +242,9 @@ equals_gfx_pipeline_state(const void *a, const void *b)
    const struct zink_gfx_pipeline_state *sb = b;
    if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
       return false;
+   /* dynamic vs rp */
+   if (!!sa->render_pass != !!sb->render_pass)
+      return false;
    if (!sa->have_EXT_extended_dynamic_state || !sa->uses_dynamic_stride) {
       if (sa->vertex_buffers_enabled_mask != sb->vertex_buffers_enabled_mask)
          return false;

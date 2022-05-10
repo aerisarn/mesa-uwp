@@ -1996,13 +1996,155 @@ zink_update_vk_sample_locations(struct zink_context *ctx)
    }
 }
 
+static unsigned
+find_rp_state(struct zink_context *ctx)
+{
+   bool found = false;
+   struct set_entry *he = _mesa_set_search_or_add(&ctx->rendering_state_cache, &ctx->gfx_pipeline_state.rendering_info, &found);
+   struct zink_rendering_info *info;
+   if (found) {
+      info = (void*)he->key;
+      return info->id;
+   }
+   info = ralloc(ctx, struct zink_rendering_info);
+   memcpy(info, &ctx->gfx_pipeline_state.rendering_info, sizeof(VkPipelineRenderingCreateInfo));
+   info->id = ctx->rendering_state_cache.entries;
+   he->key = info;
+   return info->id;
+}
+
+static unsigned
+begin_rendering(struct zink_context *ctx)
+{
+   unsigned clear_buffers = 0;
+   ctx->gfx_pipeline_state.render_pass = NULL;
+   zink_update_vk_sample_locations(ctx);
+   zink_render_update_swapchain(ctx);
+   bool has_depth = false;
+   bool has_stencil = false;
+   if (ctx->rp_changed) {
+      /* init imageviews, base loadOp, formats */
+      for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
+         VkImageView iv = zink_prep_fb_attachment(ctx, surf, i);
+         if (!iv)
+            /* dead swapchain */
+            return 0;
+         ctx->dynamic_fb.attachments[i].imageView = iv;
+         ctx->dynamic_fb.attachments[i].loadOp = !surf || (surf->is_swapchain && ctx->new_swapchain) ?
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE :
+                                                 VK_ATTACHMENT_LOAD_OP_LOAD;
+         ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_R8G8B8A8_UNORM;
+      }
+
+      /* unset depth and stencil info: reset below */
+      ctx->dynamic_fb.info.pDepthAttachment = NULL;
+      ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+      ctx->dynamic_fb.info.pStencilAttachment = NULL;
+      ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+
+      if (ctx->fb_state.zsbuf) {
+         struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
+         has_depth = util_format_has_depth(util_format_description(ctx->fb_state.zsbuf->format));
+         has_stencil = util_format_has_stencil(util_format_description(ctx->fb_state.zsbuf->format));
+         VkImageView iv = zink_prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
+
+         /* depth may or may not be used but init it anyway */
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].imageView = iv;
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].imageLayout = zink_resource(surf->base.texture)->layout;
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+         /* stencil may or may not be used but init it anyway */
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageView = iv;
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageLayout = zink_resource(surf->base.texture)->layout;
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+         if (has_depth) {
+            ctx->dynamic_fb.info.pDepthAttachment = &ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS];
+            ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = surf->info.format[0];
+            /* stencil info only set for clears below */
+         }
+         if (has_stencil) {
+            /* must be stencil-only */
+            ctx->dynamic_fb.info.pStencilAttachment = &ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS + 1];
+            ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = surf->info.format[0];
+         }
+      } else {
+         ctx->dynamic_fb.info.pDepthAttachment = NULL;
+         ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+      }
+   }
+
+   /* similar to begin_render_pass(), but just filling in VkRenderingInfo */
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      /* these are no-ops */
+      if (!ctx->fb_state.cbufs[i] || !zink_fb_clear_enabled(ctx, i))
+         continue;
+      /* these need actual clear calls inside the rp */
+      struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(&ctx->fb_clears[i], 0);
+      if (zink_fb_clear_needs_explicit(&ctx->fb_clears[i])) {
+         clear_buffers |= (PIPE_CLEAR_COLOR0 << i);
+         if (zink_fb_clear_count(&ctx->fb_clears[i]) < 2 ||
+             zink_fb_clear_element_needs_explicit(clear))
+            continue;
+      }
+      /* we now know there's one clear that can be done here */
+      zink_fb_clear_util_unpack_clear_color(clear, ctx->fb_state.cbufs[i]->format, (void*)&ctx->dynamic_fb.attachments[i].clearValue);
+      ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+   }
+   if (ctx->fb_state.zsbuf && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS)) {
+      struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
+      struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
+      if (!zink_fb_clear_element_needs_explicit(clear)) {
+         /* base zs clear info */
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].clearValue.depthStencil.depth = clear->zs.depth;
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].clearValue.depthStencil.stencil = clear->zs.stencil;
+         /* always init separate stencil attachment */
+         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].clearValue.depthStencil.stencil = clear->zs.stencil;
+         if ((zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH))
+            /* initiate a depth clear */
+            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+         if ((zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL)) {
+            /* use a stencil clear, also set stencil attachment */
+            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+         }
+      }
+      if (zink_fb_clear_needs_explicit(fb_clear)) {
+         for (int j = !zink_fb_clear_element_needs_explicit(clear);
+              (clear_buffers & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL && j < zink_fb_clear_count(fb_clear);
+              j++)
+            clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
+      }
+   }
+   /* validate zs VUs: attachment must be null or format must be valid */
+   assert(!ctx->dynamic_fb.info.pDepthAttachment || ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat);
+   assert(!ctx->dynamic_fb.info.pStencilAttachment || ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat);
+
+   /* update pipeline info id for compatibility VUs */
+   unsigned rp_state = find_rp_state(ctx);
+   ctx->gfx_pipeline_state.dirty |= ctx->gfx_pipeline_state.rp_state != rp_state;
+   ctx->gfx_pipeline_state.rp_state = rp_state;
+
+   VKCTX(CmdBeginRendering)(ctx->batch.state->cmdbuf, &ctx->dynamic_fb.info);
+   ctx->batch.in_rp = true;
+   ctx->new_swapchain = false;
+   return clear_buffers;
+}
+
 void
 zink_batch_rp(struct zink_context *ctx)
 {
    if (ctx->batch.in_rp)
       return;
    unsigned clear_buffers;
-   clear_buffers = zink_begin_render_pass(ctx);
+   /* use renderpass for multisample-to-singlesample or fbfetch:
+    * - msrtss is TODO
+    * - dynamic rendering doesn't have input attachments
+    */
+   if (!zink_screen(ctx->base.screen)->info.have_KHR_dynamic_rendering || ctx->transient_attachments || ctx->fbfetch_outputs)
+      clear_buffers = zink_begin_render_pass(ctx);
+   else
+      clear_buffers = begin_rendering(ctx);
    if (!ctx->batch.in_rp)
       return; //dead swapchain
    if (ctx->render_condition.query)
@@ -2019,6 +2161,10 @@ zink_batch_no_rp(struct zink_context *ctx)
       zink_stop_conditional_render(ctx);
    if (ctx->gfx_pipeline_state.render_pass)
       zink_end_render_pass(ctx);
+   else {
+      VKCTX(CmdEndRendering)(ctx->batch.state->cmdbuf);
+      ctx->batch.in_rp = false;
+   }
    assert(!ctx->batch.in_rp);
 }
 
@@ -2044,8 +2190,18 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
       if (!i)
          zink_update_fbfetch(ctx);
    }
-   VkImageLayout layout = zink_render_pass_attachment_get_barrier_info(&ctx->gfx_pipeline_state.render_pass->state.rts[i],
-                                                                       i < ctx->fb_state.nr_cbufs, &pipeline, &access);
+   VkImageLayout layout;
+   if (ctx->gfx_pipeline_state.render_pass) {
+      layout = zink_render_pass_attachment_get_barrier_info(&ctx->gfx_pipeline_state.render_pass->state.rts[i],
+                                                            i < ctx->fb_state.nr_cbufs, &pipeline, &access);
+   } else {
+      struct zink_rt_attrib rt;
+      if (i < ctx->fb_state.nr_cbufs)
+         zink_init_color_attachment(ctx, i, &rt);
+      else
+         zink_init_zs_attachment(ctx, &rt);
+      layout = zink_render_pass_attachment_get_barrier_info(&rt, i < ctx->fb_state.nr_cbufs, &pipeline, &access);
+   }
    zink_resource_image_barrier(ctx, res, layout, access, pipeline);
    if (i == ctx->fb_state.nr_cbufs && res->bind_count[0] && res->bind_count[0] != res->image_bind_count[0]) {
       unsigned find = res->bind_count[0] - res->image_bind_count[0];
@@ -2058,6 +2214,35 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
       }
    }
    return surf->image_view;
+}
+
+static uint32_t
+hash_rendering_state(const void *key)
+{
+   const VkPipelineRenderingCreateInfo *info = key;
+   uint32_t hash = 0;
+   /*
+    uint32_t           colorAttachmentCount;
+    const VkFormat*    pColorAttachmentFormats;
+    VkFormat           depthAttachmentFormat;
+    VkFormat           stencilAttachmentFormat;
+    * this data is not optimally arranged, so it must be manually hashed
+    */
+   hash = XXH32(&info->colorAttachmentCount, sizeof(uint32_t), hash);
+   hash = XXH32(&info->depthAttachmentFormat, sizeof(uint32_t), hash);
+   hash = XXH32(&info->stencilAttachmentFormat, sizeof(VkFormat), hash);
+   return XXH32(info->pColorAttachmentFormats, sizeof(VkFormat) * info->colorAttachmentCount, hash);
+}
+
+static bool
+equals_rendering_state(const void *a, const void *b)
+{
+   const VkPipelineRenderingCreateInfo *ai = a;
+   const VkPipelineRenderingCreateInfo *bi = b;
+   return ai->colorAttachmentCount == bi->colorAttachmentCount &&
+          ai->depthAttachmentFormat == bi->depthAttachmentFormat &&
+          ai->stencilAttachmentFormat == bi->stencilAttachmentFormat &&
+          !memcmp(ai->pColorAttachmentFormats, bi->pColorAttachmentFormats, sizeof(VkFormat) * ai->colorAttachmentCount);
 }
 
 static uint32_t
@@ -2310,6 +2495,7 @@ rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res, bool 
 static void
 unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned idx, bool changed)
 {
+   ctx->dynamic_fb.attachments[idx].imageView = VK_NULL_HANDLE;
    if (!surf)
       return;
    struct zink_surface *transient = zink_transient_surface(surf);
@@ -2397,6 +2583,16 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
    ctx->gfx_pipeline_state.void_alpha_attachments = 0;
    ctx->transient_attachments = 0;
+
+   ctx->dynamic_fb.info.renderArea.offset.x = 0;
+   ctx->dynamic_fb.info.renderArea.offset.y = 0;
+   ctx->dynamic_fb.info.renderArea.extent.width = state->width;
+   ctx->dynamic_fb.info.renderArea.extent.height = state->height;
+   ctx->dynamic_fb.info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
+   unsigned layers = util_framebuffer_get_num_layers(state);
+   ctx->rp_changed |= ctx->dynamic_fb.info.layerCount != layers;
+   ctx->dynamic_fb.info.layerCount = layers;
+   ctx->gfx_pipeline_state.rendering_info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
 
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
@@ -4011,6 +4207,17 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    _mesa_hash_table_init(&ctx->framebuffer_cache, ctx, hash_framebuffer_imageless, equals_framebuffer_imageless);
    if (!zink_init_render_pass(ctx))
       goto fail;
+   _mesa_set_init(&ctx->rendering_state_cache, ctx, hash_rendering_state, equals_rendering_state);
+   ctx->dynamic_fb.info.pColorAttachments = ctx->dynamic_fb.attachments;
+   ctx->dynamic_fb.info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->dynamic_fb.attachments); i++) {
+      VkRenderingAttachmentInfo *att = &ctx->dynamic_fb.attachments[i];
+      att->sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+      att->imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      att->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+   }
+   ctx->gfx_pipeline_state.rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+   ctx->gfx_pipeline_state.rendering_info.pColorAttachmentFormats = ctx->gfx_pipeline_state.rendering_formats;
 
    const uint32_t data[] = {0};
    if (!is_copy_only) {

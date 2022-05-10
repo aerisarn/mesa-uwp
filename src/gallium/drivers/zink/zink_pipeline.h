@@ -86,6 +86,8 @@ struct zink_gfx_pipeline_state {
    } shader_keys;
    struct zink_blend_state *blend_state;
    struct zink_render_pass *render_pass;
+   VkFormat rendering_formats[PIPE_MAX_COLOR_BUFS];
+   VkPipelineRenderingCreateInfo rendering_info;
    VkPipeline pipeline;
    unsigned idx : 8;
    enum pipe_prim_type gfx_prim_mode; //pending mode
