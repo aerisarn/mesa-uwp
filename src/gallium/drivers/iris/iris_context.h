@@ -53,7 +53,7 @@ struct blorp_params;
 #define IRIS_MAX_SSBOS 16
 #define IRIS_MAX_VIEWPORTS 16
 #define IRIS_MAX_CLIP_PLANES 8
-#define IRIS_MAX_GLOBAL_BINDINGS 32
+#define IRIS_MAX_GLOBAL_BINDINGS 128
 
 enum iris_param_domain {
    BRW_PARAM_DOMAIN_BUILTIN = 0,
