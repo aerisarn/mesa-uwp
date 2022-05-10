@@ -30,6 +30,7 @@ from nir_opcodes import type_sizes
 import itertools
 import struct
 from math import pi
+import math
 
 # Convenience variables
 a = 'a'
@@ -1012,6 +1013,8 @@ for op in ['iand', 'ior', 'ixor']:
 
 # Integer sizes
 for s in [8, 16, 32, 64]:
+    last_shift_bit = int(math.log2(s)) - 1
+
     optimizations.extend([
        (('iand', ('ieq', 'a@{}'.format(s), 0), ('ieq', 'b@{}'.format(s), 0)), ('ieq', ('ior', a, b), 0), 'options->lower_umax'),
        (('ior',  ('ine', 'a@{}'.format(s), 0), ('ine', 'b@{}'.format(s), 0)), ('ine', ('ior', a, b), 0), 'options->lower_umin'),
@@ -1027,6 +1030,7 @@ for s in [8, 16, 32, 64]:
        (('ishl', 'a@{}'.format(s), ('iand', s - 1, b)), ('ishl', a, b)),
        (('ishr', 'a@{}'.format(s), ('iand', s - 1, b)), ('ishr', a, b)),
        (('ushr', 'a@{}'.format(s), ('iand', s - 1, b)), ('ushr', a, b)),
+       (('ushr', 'a@{}'.format(s), ('ishl(is_used_once)', ('iand', b, 1), last_shift_bit)), ('ushr', a, ('ishl', b, last_shift_bit))),
     ])
 
 optimizations.extend([
