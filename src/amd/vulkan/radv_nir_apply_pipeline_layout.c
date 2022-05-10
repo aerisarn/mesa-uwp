@@ -468,8 +468,7 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
    } else if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_BUFFER,
                                tex->texture_non_uniform, tex, false);
-   } else if (tex->op == nir_texop_fragment_mask_fetch_amd ||
-              tex->op == nir_texop_samples_identical) {
+   } else if (tex->op == nir_texop_fragment_mask_fetch_amd) {
       image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_FMASK,
                                tex->texture_non_uniform, tex, false);
    } else {
