@@ -224,10 +224,11 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
    }
 
    if (!has_clear_state) {
-      if (physical_device->rad_info.gfx_level < GFX11)
+      if (physical_device->rad_info.gfx_level < GFX11) {
          radeon_set_context_reg(cs, R_028A5C_VGT_GS_PER_VS, 0x2);
+         radeon_set_context_reg(cs, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
+      }
       radeon_set_context_reg(cs, R_028A8C_VGT_PRIMITIVEID_RESET, 0x0);
-      radeon_set_context_reg(cs, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
    }
 
    if (physical_device->rad_info.gfx_level <= GFX9)
@@ -330,8 +331,9 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
                         S_00B324_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
    }
 
-   radeon_set_sh_reg(cs, R_00B124_SPI_SHADER_PGM_HI_VS,
-                     S_00B124_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+   if (device->physical_device->rad_info.gfx_level < GFX11)
+      radeon_set_sh_reg(cs, R_00B124_SPI_SHADER_PGM_HI_VS,
+                        S_00B124_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
 
    unsigned cu_mask_ps = 0xffffffff;
 
@@ -347,7 +349,8 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       cu_mask_ps = u_bit_consecutive(0, physical_device->rad_info.min_good_cu_per_sa);
 
    if (physical_device->rad_info.gfx_level >= GFX7) {
-      if (physical_device->rad_info.gfx_level >= GFX10) {
+      if (physical_device->rad_info.gfx_level >= GFX10 &&
+          physical_device->rad_info.gfx_level < GFX11) {
          /* Logical CUs 16 - 31 */
          ac_set_reg_cu_en(cs, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff),
                           C_00B404_CU_EN, 16, &physical_device->rad_info,
