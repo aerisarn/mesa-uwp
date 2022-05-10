@@ -1117,13 +1117,6 @@ struct v3dv_job {
    } csd;
 };
 
-struct v3dv_wait_thread_info {
-   struct v3dv_job *job;
-
-   /* Semaphores info for any postponed jobs after a wait event */
-   struct v3dv_submit_sync_info *sync_info;
-};
-
 void v3dv_job_init(struct v3dv_job *job,
                    enum v3dv_job_type type,
                    struct v3dv_device *device,
