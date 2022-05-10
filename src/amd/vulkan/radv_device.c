@@ -400,7 +400,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
    *ext = (struct vk_device_extension_table){
       .KHR_8bit_storage = true,
       .KHR_16bit_storage = true,
-      .KHR_acceleration_structure = radv_enable_rt(device),
+      .KHR_acceleration_structure = radv_enable_rt(device, false),
       .KHR_bind_memory2 = true,
       .KHR_buffer_device_address = true,
       .KHR_copy_commands2 = true,
@@ -435,8 +435,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_pipeline_executable_properties = true,
       .KHR_pipeline_library = !device->use_llvm,
       .KHR_push_descriptor = true,
-      .KHR_ray_query = radv_enable_rt(device),
-      .KHR_ray_tracing_pipeline = radv_enable_rt(device),
+      .KHR_ray_query = radv_enable_rt(device, false),
+      .KHR_ray_tracing_pipeline = radv_enable_rt(device, true),
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
@@ -921,7 +921,7 @@ static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_P
                                                              {"sam", RADV_PERFTEST_SAM},
                                                              {"rt", RADV_PERFTEST_RT},
                                                              {"nggc", RADV_PERFTEST_NGGC},
-                                                             {"force_emulate_rt", RADV_PERFTEST_FORCE_EMULATE_RT},
+                                                             {"emulate_rt", RADV_PERFTEST_EMULATE_RT},
                                                              {"nv_ms", RADV_PERFTEST_NV_MS},
                                                              {"rtwave64", RADV_PERFTEST_RT_WAVE_64},
                                                              {NULL, 0}};
