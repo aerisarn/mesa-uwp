@@ -95,7 +95,7 @@ void
 zink_end_render_pass(struct zink_context *ctx);
 
 VkImageLayout
-zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, unsigned idx, VkPipelineStageFlags *pipeline, VkAccessFlags *access);
+zink_render_pass_attachment_get_barrier_info(const struct zink_rt_attrib *rt, bool color, VkPipelineStageFlags *pipeline, VkAccessFlags *access);
 
 bool
 zink_init_render_pass(struct zink_context *ctx);

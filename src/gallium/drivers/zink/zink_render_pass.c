@@ -242,13 +242,11 @@ zink_destroy_render_pass(struct zink_screen *screen,
 }
 
 VkImageLayout
-zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, unsigned idx,
+zink_render_pass_attachment_get_barrier_info(const struct zink_rt_attrib *rt, bool color,
                                              VkPipelineStageFlags *pipeline, VkAccessFlags *access)
 {
    *access = 0;
-   assert(idx < rp->state.num_rts);
-   const struct zink_rt_attrib *rt = &rp->state.rts[idx];
-   if (idx < rp->state.num_cbufs) {
+   if (color) {
       *pipeline = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       *access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       if (!rt->clear_color && !rt->swapchain)
@@ -256,7 +254,6 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
       return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
    }
 
-   assert(rp->state.have_zsbuf);
    *pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
    if (rt->mixed_zs) {
       *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
