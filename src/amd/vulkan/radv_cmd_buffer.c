@@ -3686,6 +3686,7 @@ static void
 radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   enum amd_gfx_level gfx_level = pipeline->base.device->physical_device->rad_info.gfx_level;
    const unsigned stage = pipeline->last_vgt_api_stage;
    struct radv_userdata_info *loc;
    uint32_t vrs_rates = 0;
@@ -3704,13 +3705,13 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
 
    switch (cmd_buffer->device->force_vrs) {
    case RADV_FORCE_VRS_2x2:
-      vrs_rates = (1u << 2) | (1u << 4);
+      vrs_rates = gfx_level >= GFX11 ? V_0283D0_VRS_SHADING_RATE_2X2 : (1u << 2) | (1u << 4);
       break;
    case RADV_FORCE_VRS_2x1:
-      vrs_rates = (1u << 2) | (0u << 4);
+      vrs_rates = gfx_level >= GFX11 ? V_0283D0_VRS_SHADING_RATE_2X1 : (1u << 2) | (0u << 4);
       break;
    case RADV_FORCE_VRS_1x2:
-      vrs_rates = (0u << 2) | (1u << 4);
+      vrs_rates = gfx_level >= GFX11 ? V_0283D0_VRS_SHADING_RATE_1X2 : (0u << 2) | (1u << 4);
       break;
    default:
       break;
