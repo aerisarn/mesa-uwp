@@ -765,6 +765,7 @@ struct radv_queue {
    struct radeon_winsys_ctx *hw_ctx;
    enum radeon_ctx_priority priority;
    struct radv_queue_state state;
+   struct radv_queue_state *ace_internal_state;
 };
 
 #define RADV_BORDER_COLOR_COUNT       4096
