@@ -1203,6 +1203,15 @@ bi_before_nonempty_block(bi_block *block)
         return bi_before_instr(I);
 }
 
+static inline bi_cursor
+bi_before_block(bi_block *block)
+{
+        if (list_is_empty(&block->instructions))
+                return bi_after_block(block);
+        else
+                return bi_before_nonempty_block(block);
+}
+
 /* Invariant: a tuple must be nonempty UNLESS it is the last tuple of a clause,
  * in which case there must exist a nonempty penultimate tuple */
 
