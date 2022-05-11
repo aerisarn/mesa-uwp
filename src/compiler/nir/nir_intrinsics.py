@@ -1327,6 +1327,9 @@ system_value("task_ring_entry_amd", 1)
 # Pointer into the draw and payload rings
 system_value("task_ib_addr", 2)
 system_value("task_ib_stride", 1)
+# Descriptor where NGG attributes are stored on GFX11.
+system_value("ring_attr_amd", 4)
+system_value("ring_attr_offset_amd", 1)
 
 # Number of patches processed by each TCS workgroup
 system_value("tcs_num_patches_amd", 1)
