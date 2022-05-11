@@ -910,8 +910,6 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
 			   (box->height % gheight) ? box->height % gheight : gheight,
 			   (box->depth % gdepth) ? box->depth % gdepth : gdepth
    };
-   /* TODO: msaa needs miptail */
-   //VkSparseImageOpaqueMemoryBindInfo sparse_obind;
 #define NUM_BATCHED_BINDS 50
    VkSparseImageMemoryBind ibind[NUM_BATCHED_BINDS];
    uint32_t backing_start[NUM_BATCHED_BINDS], backing_size[NUM_BATCHED_BINDS];
