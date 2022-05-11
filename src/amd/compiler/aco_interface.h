@@ -43,6 +43,19 @@ struct aco_compiler_statistic_info {
    char desc[64];
 };
 
+typedef void (aco_callback)(void **priv_ptr,
+                            gl_shader_stage stage,
+                            bool is_gs_copy_shader,
+                            const struct ac_shader_config *config,
+                            const char *llvm_ir_str,
+                            unsigned llvm_ir_size,
+                            const char *disasm_str,
+                            unsigned disasm_size,
+                            uint32_t *statistics,
+                            uint32_t stats_size,
+                            uint32_t exec_size,
+                            const uint32_t *code,
+                            uint32_t code_dw);
 extern const unsigned aco_num_statistics;
 extern const struct aco_compiler_statistic_info* aco_statistic_infos;
 
@@ -50,7 +63,8 @@ void aco_compile_shader(const struct aco_compiler_options* options,
                         const struct aco_shader_info* info,
                         unsigned shader_count, struct nir_shader* const* shaders,
                         const struct radv_shader_args *args,
-                        struct radv_shader_binary** binary);
+                        aco_callback *build_binary,
+                        void **binary);
 
 void aco_compile_vs_prolog(const struct aco_compiler_options* options,
                            const struct aco_shader_info* info,
