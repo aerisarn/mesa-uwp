@@ -2329,6 +2329,33 @@ upload_shader_part(struct radv_device *device, struct radv_shader_part_binary *b
    return shader_part;
 }
 
+static void radv_aco_build_prolog(void **bin,
+                                  uint32_t num_sgprs,
+                                  uint32_t num_vgprs,
+                                  uint32_t num_preserved_sgprs,
+                                  const uint32_t *code,
+                                  uint32_t code_size,
+                                  const char *disasm_str,
+                                  uint32_t disasm_size)
+{
+   struct radv_shader_part_binary **binary = (struct radv_shader_part_binary **)bin;
+   size_t size = code_size * sizeof(uint32_t) + sizeof(struct radv_shader_part_binary);
+
+   size += disasm_size;
+   struct radv_shader_part_binary *prolog_binary = (struct radv_shader_part_binary *)calloc(size, 1);
+
+   prolog_binary->num_sgprs = num_sgprs;
+   prolog_binary->num_vgprs = num_vgprs;
+   prolog_binary->num_preserved_sgprs = num_preserved_sgprs;
+   prolog_binary->code_size = code_size * sizeof(uint32_t);
+   memcpy(prolog_binary->data, code, prolog_binary->code_size);
+   if (disasm_size)
+      memcpy((char*)prolog_binary->data + prolog_binary->code_size,
+             disasm_str, disasm_size);
+
+   *binary = prolog_binary;
+}
+
 struct radv_shader_part *
 radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_key *key)
 {
@@ -2373,7 +2400,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    radv_aco_convert_shader_info(&ac_info, &info);
    radv_aco_convert_opts(&ac_opts, &options);
    radv_aco_convert_vs_prolog_key(&ac_key, key);
-   aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_key, &args, &binary);
+   aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_key, &args, &radv_aco_build_prolog, (void **)&binary);
    struct radv_shader_part *prolog = upload_shader_part(device, binary, info.wave_size);
    if (prolog) {
       prolog->nontrivial_divisors = key->state->nontrivial_divisors;
