@@ -1564,7 +1564,6 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .subminor = 7,
          .patch = 1,
       },
-
       .supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
       .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
       /* FIXME: if we want to support independentResolveNone then we would
@@ -1603,6 +1602,10 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .shaderRoundingModeRTZFloat16 = false,
       .shaderRoundingModeRTZFloat32 = false,
       .shaderRoundingModeRTZFloat64 = false,
+
+      /* V3D doesn't support min/max filtering */
+      .filterMinmaxSingleComponentFormats = false,
+      .filterMinmaxImageComponentMapping = false,
    };
    memset(vk12.driverName, 0, VK_MAX_DRIVER_NAME_SIZE);
    snprintf(vk12.driverName, VK_MAX_DRIVER_NAME_SIZE, "V3DV Mesa");
