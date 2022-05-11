@@ -769,7 +769,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       break;
    }
    case nir_op_bit_count: {
-      if (ctx->compiler->gen < 5) {
+      if (ctx->compiler->gen < 5 || (src[0]->dsts[0]->flags & IR3_REG_HALF)) {
          dst[0] = ir3_CBITS_B(b, src[0], 0);
          break;
       }
