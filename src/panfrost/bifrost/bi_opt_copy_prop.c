@@ -48,7 +48,7 @@ bi_reads_fau(bi_instr *ins)
 void
 bi_opt_copy_prop(bi_context *ctx)
 {
-        bi_index *replacement = calloc(sizeof(bi_index), ((ctx->ssa_alloc + 1) << 2));
+        bi_index *replacement = calloc(sizeof(bi_index), ctx->ssa_alloc);
 
         bi_foreach_instr_global_safe(ctx, ins) {
                 if (bi_is_copy(ins)) {
@@ -57,13 +57,13 @@ bi_opt_copy_prop(bi_context *ctx)
                         /* Peek through one layer so copyprop converges in one
                          * iteration for chained moves */
                         if (bi_is_ssa(replace)) {
-                                bi_index chained = replacement[bi_word_node(replace)];
+                                bi_index chained = replacement[replace.value];
 
                                 if (!bi_is_null(chained))
                                         replace = chained;
                         }
 
-                        replacement[bi_word_node(ins->dest[0])] = replace;
+                        replacement[ins->dest[0].value] = replace;
                 }
 
                 bi_foreach_src(ins, s) {
@@ -72,7 +72,7 @@ bi_opt_copy_prop(bi_context *ctx)
                         if (use.type != BI_INDEX_NORMAL || use.reg) continue;
                         if (bi_is_staging_src(ins, s)) continue;
 
-                        bi_index repl = replacement[bi_word_node(use)];
+                        bi_index repl = replacement[use.value];
 
                         if (repl.type == BI_INDEX_CONSTANT && bi_reads_fau(ins))
                                 continue;
