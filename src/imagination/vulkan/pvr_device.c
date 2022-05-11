@@ -658,39 +658,129 @@ void pvr_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    }
 }
 
-/* clang-format off */
-/* FIXME: Clang-format places multiple initializers on the same line, fix this
- * and remove clang-format on/off comments.
- */
-static const struct pvr_descriptor_limits bvnc_4_V_2_51_descriptor_limits = {
-   .max_per_stage_resources = 456U,
-   .max_per_stage_samplers = 64U,
-   .max_per_stage_uniform_buffers = 96U,
-   .max_per_stage_storage_buffers = 96U,
-   .max_per_stage_sampled_images = 128U,
-   .max_per_stage_storage_images = 64U,
-   .max_per_stage_input_attachments = 8U,
+/* TODO: See if this function can be improved once fully implemented. */
+uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
+   const struct pvr_device_info *dev_info,
+   uint32_t fs_common_size,
+   uint32_t min_tiles_in_flight)
+{
+   uint32_t max_tiles_in_flight;
+   uint32_t num_allocs;
+
+   if (PVR_HAS_FEATURE(dev_info, s8xe)) {
+      num_allocs = PVR_GET_FEATURE_VALUE(dev_info, num_raster_pipes, 0U);
+   } else {
+      uint32_t num_phantoms = rogue_get_num_phantoms(dev_info);
+      uint32_t min_cluster_per_phantom = 0;
+
+      if (num_phantoms > 1) {
+         pvr_finishme("Unimplemented path!!");
+      } else {
+         min_cluster_per_phantom =
+            PVR_GET_FEATURE_VALUE(dev_info, num_clusters, 1U);
+      }
+
+      if (num_phantoms > 1)
+         pvr_finishme("Unimplemented path!!");
+
+      if (num_phantoms > 2)
+         pvr_finishme("Unimplemented path!!");
+
+      if (num_phantoms > 3)
+         pvr_finishme("Unimplemented path!!");
+
+      if (min_cluster_per_phantom >= 4)
+         num_allocs = 1;
+      else if (min_cluster_per_phantom == 2)
+         num_allocs = 2;
+      else
+         num_allocs = 4;
+   }
+
+   max_tiles_in_flight =
+      PVR_GET_FEATURE_VALUE(dev_info, isp_max_tiles_in_flight, 1U);
+
+   if (fs_common_size == UINT_MAX) {
+      uint32_t max_common_size;
+
+      num_allocs *= MIN2(min_tiles_in_flight, max_tiles_in_flight);
+
+      if (!PVR_HAS_ERN(dev_info, 38748)) {
+         /* Hardware needs space for one extra shared allocation. */
+         num_allocs += 1;
+      }
+
+      max_common_size = rogue_get_reserved_shared_size(dev_info) -
+                        rogue_get_max_coeffs(dev_info);
+
+      /* Double resource requirements to deal with fragmentation. */
+      max_common_size /= num_allocs * 2;
+      max_common_size =
+         ROUND_DOWN_TO(max_common_size,
+                       PVRX(TA_STATE_PDS_SIZEINFO2_USC_SHAREDSIZE_UNIT_SIZE));
+
+      return max_common_size;
+   } else if (fs_common_size == 0) {
+      return max_tiles_in_flight;
+   }
+
+   pvr_finishme("Unimplemented path!!");
+
+   return 0;
+}
+
+struct pvr_descriptor_limits {
+   uint32_t max_per_stage_resources;
+   uint32_t max_per_stage_samplers;
+   uint32_t max_per_stage_uniform_buffers;
+   uint32_t max_per_stage_storage_buffers;
+   uint32_t max_per_stage_sampled_images;
+   uint32_t max_per_stage_storage_images;
+   uint32_t max_per_stage_input_attachments;
 };
-/* clang-format on */
 
 static const struct pvr_descriptor_limits *
 pvr_get_physical_device_descriptor_limits(struct pvr_physical_device *pdevice)
 {
-   /* Series 6XT - GX6x50 - Clyde */
-   if (pdevice->dev_info.ident.b == 4 && pdevice->dev_info.ident.n == 2)
-      return &bvnc_4_V_2_51_descriptor_limits;
+   enum pvr_descriptor_cs_level {
+      /* clang-format off */
+      CS4096, /* 6XT and some XE cores with large CS. */
+      CS2560, /* Mid range Rogue XE cores. */
+      CS2048, /* Low end Rogue XE cores. */
+      CS1536, /* Ultra-low-end 9XEP. */
+      CS680,  /* lower limits for older devices. */
+      CS408,  /* 7XE. */
+      /* clang-format on */
+   };
 
-   vk_errorf(pdevice,
-             VK_ERROR_INCOMPATIBLE_DRIVER,
-             "No device ID found for BVNC %d.%d.%d.%d",
-             pdevice->dev_info.ident.b,
-             pdevice->dev_info.ident.v,
-             pdevice->dev_info.ident.n,
-             pdevice->dev_info.ident.c);
+   static const struct pvr_descriptor_limits descriptor_limits[] = {
+      [CS4096] = { 1160U, 256U, 192U, 144U, 256U, 256U, 8U, },
+      [CS2560] = {  648U, 128U, 128U, 128U, 128U, 128U, 8U, },
+      [CS2048] = {  584U, 128U,  96U,  64U, 128U, 128U, 8U, },
+      [CS1536] = {  456U,  64U,  96U,  64U, 128U,  64U, 8U, },
+      [CS680]  = {  224U,  32U,  64U,  36U,  48U,   8U, 8U, },
+      [CS408]  = {  128U,  16U,  40U,  28U,  16U,   8U, 8U, },
+   };
 
-   assert(false);
+   const uint32_t common_size =
+      pvr_calc_fscommon_size_and_tiles_in_flight(&pdevice->dev_info, -1, 1);
+   enum pvr_descriptor_cs_level cs_level;
 
-   return NULL;
+   if (common_size >= 2048) {
+      cs_level = CS2048;
+   } else if (common_size >= 1526) {
+      cs_level = CS1536;
+   } else if (common_size >= 680) {
+      cs_level = CS680;
+   } else if (common_size >= 408) {
+      cs_level = CS408;
+   } else {
+      mesa_loge("This core appears to have a very limited amount of shared "
+                "register space and may not meet the Vulkan spec limits.");
+      abort();
+   }
+
+   return &descriptor_limits[cs_level];
 }
 
 void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,

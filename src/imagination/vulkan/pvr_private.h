@@ -181,16 +181,6 @@ struct pvr_instance;
 struct pvr_render_ctx;
 struct rogue_compiler;
 
-struct pvr_descriptor_limits {
-   uint32_t max_per_stage_resources;
-   uint32_t max_per_stage_samplers;
-   uint32_t max_per_stage_uniform_buffers;
-   uint32_t max_per_stage_storage_buffers;
-   uint32_t max_per_stage_sampled_images;
-   uint32_t max_per_stage_storage_images;
-   uint32_t max_per_stage_input_attachments;
-};
-
 struct pvr_physical_device {
    struct vk_physical_device vk;
 
@@ -1254,6 +1244,11 @@ struct pvr_load_op {
    struct pvr_pds_upload pds_tex_state_prog;
    uint32_t temps_count;
 };
+
+uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
+   const struct pvr_device_info *dev_info,
+   uint32_t fs_common_size,
+   uint32_t min_tiles_in_flight);
 
 VkResult pvr_wsi_init(struct pvr_physical_device *pdevice);
 void pvr_wsi_finish(struct pvr_physical_device *pdevice);
