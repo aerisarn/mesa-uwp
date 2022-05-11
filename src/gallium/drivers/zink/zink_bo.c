@@ -920,7 +920,7 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
    for (unsigned l = 0; l < level; l++) {
       unsigned mipwidth = DIV_ROUND_UP(MAX2(res->base.b.width0 >> l, 1), gwidth);
       unsigned mipheight = DIV_ROUND_UP(MAX2(res->base.b.height0 >> l, 1), gheight);
-      unsigned mipdepth = DIV_ROUND_UP(MAX2(res->base.b.depth0 >> l, 1), gdepth);
+      unsigned mipdepth = DIV_ROUND_UP(res->base.b.array_size > 1 ? res->base.b.array_size : MAX2(res->base.b.depth0 >> l, 1), gdepth);
       va_page_offset += mipwidth * mipheight * mipdepth;
    }
    for (unsigned d = 0; d < ndepth; d++) {
