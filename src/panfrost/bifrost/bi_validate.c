@@ -53,6 +53,57 @@ bi_validate_initialization(bi_context *ctx)
         return success;
 }
 
+/*
+ * Validate that there are no bi_registers accessed except at the beginning of
+ * the start block, and that preloads are unique. This ensures RA can coalesce
+ * preloads without interference tracking.
+ */
+static bool
+bi_validate_preload(bi_context *ctx)
+{
+        bool start = true;
+        uint64_t preloaded = 0;
+
+        bi_foreach_block(ctx, block) {
+                bi_foreach_instr_in_block(block, I) {
+                        /* No instruction should have a register destination */
+                        bi_foreach_dest(I, d) {
+                                if (I->dest[d].type == BI_INDEX_REGISTER)
+                                        return false;
+                        }
+
+                        /* Preloads are register moves at the start */
+                        bool is_preload =
+                                start && I->op == BI_OPCODE_MOV_I32 &&
+                                I->src[0].type == BI_INDEX_REGISTER;
+
+                        /* After the first nonpreload, we're done preloading */
+                        start &= is_preload;
+
+                        /* Only preloads may have a register source */
+                        bi_foreach_src(I, s) {
+                                if (I->src[s].type == BI_INDEX_REGISTER && !is_preload)
+                                        return false;
+                        }
+
+                        /* Check uniqueness */
+                        if (is_preload) {
+                                unsigned r = I->src[0].value;
+
+                                if (preloaded & BITFIELD64_BIT(r))
+                                        return false;
+
+                                preloaded |= BITFIELD64_BIT(r);
+                        }
+                }
+
+                /* Only the first block may preload */
+                start = false;
+        }
+
+        return true;
+}
+
 void
 bi_validate(bi_context *ctx, const char *after)
 {
@@ -63,6 +114,11 @@ bi_validate(bi_context *ctx, const char *after)
 
         if (!bi_validate_initialization(ctx)) {
                 fprintf(stderr, "Uninitialized data read after %s\n", after);
+                fail = true;
+        }
+
+        if (!bi_validate_preload(ctx)) {
+                fprintf(stderr, "Unexpected preload after %s\n", after);
                 fail = true;
         }
 
