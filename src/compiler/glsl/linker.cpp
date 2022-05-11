@@ -69,6 +69,7 @@
 #include "glsl_symbol_table.h"
 #include "glsl_parser_extras.h"
 #include "ir.h"
+#include "nir.h"
 #include "program.h"
 #include "program/prog_instruction.h"
 #include "program/program.h"
@@ -448,39 +449,6 @@ private:
    bool invalid_stream_id_from_emit_vertex;
    bool end_primitive_found;
    unsigned used_streams;
-};
-
-/* Class that finds array derefs and check if indexes are dynamic. */
-class dynamic_sampler_array_indexing_visitor : public ir_hierarchical_visitor
-{
-public:
-   dynamic_sampler_array_indexing_visitor() :
-      dynamic_sampler_array_indexing(false)
-   {
-   }
-
-   ir_visitor_status visit_enter(ir_dereference_array *ir)
-   {
-      if (!ir->variable_referenced())
-         return visit_continue;
-
-      if (!ir->variable_referenced()->type->contains_sampler())
-         return visit_continue;
-
-      if (!ir->array_index->constant_expression_value(ralloc_parent(ir))) {
-         dynamic_sampler_array_indexing = true;
-         return visit_stop;
-      }
-      return visit_continue;
-   }
-
-   bool uses_dynamic_sampler_array_indexing()
-   {
-      return dynamic_sampler_array_indexing;
-   }
-
-private:
-   bool dynamic_sampler_array_indexing;
 };
 
 } /* anonymous namespace */
@@ -3383,42 +3351,6 @@ check_explicit_uniform_locations(const struct gl_extensions *exts,
    prog->NumExplicitUniformLocations = entries_total;
 }
 
-/**
- * This check is done to make sure we allow only constant expression
- * indexing and "constant-index-expression" (indexing with an expression
- * that includes loop induction variable).
- */
-static bool
-validate_sampler_array_indexing(const struct gl_constants *consts,
-                                struct gl_shader_program *prog)
-{
-   dynamic_sampler_array_indexing_visitor v;
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i] == NULL)
-         continue;
-
-      bool no_dynamic_indexing =
-         consts->ShaderCompilerOptions[i].EmitNoIndirectSampler;
-
-      /* Search for array derefs in shader. */
-      v.run(prog->_LinkedShaders[i]->ir);
-      if (v.uses_dynamic_sampler_array_indexing()) {
-         const char *msg = "sampler arrays indexed with non-constant "
-                           "expressions is forbidden in GLSL %s %u";
-         /* Backend has indicated that it has no dynamic indexing support. */
-         if (no_dynamic_indexing) {
-            linker_error(prog, msg, prog->IsES ? "ES" : "",
-                         prog->data->Version);
-            return false;
-         } else {
-            linker_warning(prog, msg, prog->IsES ? "ES" : "",
-                           prog->data->Version);
-         }
-      }
-   }
-   return true;
-}
-
 static void
 link_assign_subroutine_types(struct gl_shader_program *prog)
 {
@@ -3990,16 +3922,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
                                          consts->Program[i].MaxUniformComponents))
          linker_optimisation_loop(consts, prog->_LinkedShaders[i]->ir, i);
 
-   }
-
-   /* Validation for special cases where we allow sampler array indexing
-    * with loop induction variable. This check emits a warning or error
-    * depending if backend can handle dynamic indexing.
-    */
-   if ((!prog->IsES && prog->data->Version < 130) ||
-       (prog->IsES && prog->data->Version < 300)) {
-      if (!validate_sampler_array_indexing(consts, prog))
-         goto done;
    }
 
    /* Check and validate stream emissions in geometry shaders */

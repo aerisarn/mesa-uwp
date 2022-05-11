@@ -778,6 +778,83 @@ check_image_resources(const struct gl_constants *consts,
                          " buffers and fragment outputs\n");
 }
 
+static bool
+is_sampler_array_accessed_indirectly(nir_deref_instr *deref)
+{
+   for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
+      if (d->deref_type != nir_deref_type_array)
+         continue;
+
+      if (nir_src_is_const(d->arr.index))
+         continue;
+
+      return true;
+   }
+
+   return false;
+}
+
+/**
+ * This check is done to make sure we allow only constant expression
+ * indexing and "constant-index-expression" (indexing with an expression
+ * that includes loop induction variable).
+ */
+static bool
+validate_sampler_array_indexing(const struct gl_constants *consts,
+                                struct gl_shader_program *prog)
+{
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (prog->_LinkedShaders[i] == NULL)
+         continue;
+
+      bool no_dynamic_indexing =
+         consts->ShaderCompilerOptions[i].NirOptions->force_indirect_unrolling_sampler;
+
+      bool uses_indirect_sampler_array_indexing = false;
+      nir_foreach_function(function, prog->_LinkedShaders[i]->Program->nir) {
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr(instr, block) {
+               /* Check if a sampler array is accessed indirectly */
+               if (instr->type == nir_instr_type_tex) {
+                  nir_tex_instr *tex_instr = nir_instr_as_tex(instr);
+                  int sampler_idx =
+                     nir_tex_instr_src_index(tex_instr, nir_tex_src_sampler_deref);
+                  if (sampler_idx >= 0) {
+                     nir_deref_instr *deref =
+                        nir_instr_as_deref(tex_instr->src[sampler_idx].src.ssa->parent_instr);
+                     if (is_sampler_array_accessed_indirectly(deref)) {
+                        uses_indirect_sampler_array_indexing = true;
+                        break;
+                     }
+                  }
+               }
+            }
+
+            if (uses_indirect_sampler_array_indexing)
+               break;
+         }
+         if (uses_indirect_sampler_array_indexing)
+            break;
+      }
+
+      if (uses_indirect_sampler_array_indexing) {
+         const char *msg = "sampler arrays indexed with non-constant "
+                           "expressions is forbidden in GLSL %s %u";
+         /* Backend has indicated that it has no dynamic indexing support. */
+         if (no_dynamic_indexing) {
+            linker_error(prog, msg, prog->IsES ? "ES" : "",
+                         prog->data->Version);
+            return false;
+         } else {
+            linker_warning(prog, msg, prog->IsES ? "ES" : "",
+                           prog->data->Version);
+         }
+      }
+   }
+
+   return true;
+}
+
 bool
 gl_nir_link_glsl(const struct gl_constants *consts,
                  const struct gl_extensions *exts,
@@ -789,6 +866,16 @@ gl_nir_link_glsl(const struct gl_constants *consts,
 
    if (!gl_nir_link_varyings(consts, exts, api, prog))
       return false;
+
+   /* Validation for special cases where we allow sampler array indexing
+    * with loop induction variable. This check emits a warning or error
+    * depending if backend can handle dynamic indexing.
+    */
+   if ((!prog->IsES && prog->data->Version < 130) ||
+       (prog->IsES && prog->data->Version < 300)) {
+      if (!validate_sampler_array_indexing(consts, prog))
+         return false;
+   }
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = prog->_LinkedShaders[i];
