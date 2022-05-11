@@ -533,7 +533,7 @@ zink_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *dst,
       if (fb_changed) {
          ctx->fb_state.width = dstx + width;
          ctx->fb_state.height = dsty + height;
-         zink_update_framebuffer_state(ctx, orig_width, orig_height);
+         ctx->fb_changed = true;
          zink_batch_no_rp(ctx);
       }
       zink_clear(pctx, clear_flags, &scissor, NULL, depth, stencil);
@@ -541,7 +541,7 @@ zink_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *dst,
       if (fb_changed) {
          ctx->fb_state.width = orig_width;
          ctx->fb_state.height = orig_height;
-         zink_update_framebuffer_state(ctx, dstx + width, dsty + height);
+         ctx->fb_changed = true;
          zink_batch_no_rp(ctx);
       }
    } else {

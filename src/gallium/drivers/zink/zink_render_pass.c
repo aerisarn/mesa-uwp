@@ -453,6 +453,7 @@ setup_framebuffer(struct zink_context *ctx)
    if (!ctx->fb_changed)
       return;
 
+   zink_update_framebuffer_state(ctx);
    zink_init_framebuffer(screen, ctx->framebuffer, rp);
    ctx->fb_changed = false;
    ctx->gfx_pipeline_state.render_pass = rp;
@@ -677,7 +678,9 @@ zink_render_update_swapchain(struct zink_context *ctx)
       ctx->fb_state.width = ctx->swapchain_size.width;
       ctx->fb_state.height = ctx->swapchain_size.height;
       zink_kopper_fixup_depth_buffer(ctx);
-      zink_update_framebuffer_state(ctx, old_w, old_h);
+      if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
+         ctx->scissor_changed = true;
+      zink_update_framebuffer_state(ctx);
       ctx->swapchain_size.width = ctx->swapchain_size.height = 0;
    }
 }

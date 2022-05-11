@@ -86,5 +86,5 @@ struct zink_framebuffer *
 zink_get_framebuffer(struct zink_context *ctx);
 
 void
-zink_update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h);
+zink_update_framebuffer_state(struct zink_context *ctx);
 #endif

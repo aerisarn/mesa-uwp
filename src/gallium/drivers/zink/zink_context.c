@@ -2351,7 +2351,7 @@ zink_set_color_write_enables(struct zink_context *ctx)
       /* use dummy color buffers instead of the more sane option */
       zink_batch_no_rp(ctx);
       ctx->rp_changed = true;
-      zink_update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
+      zink_update_framebuffer_state(ctx);
    } else {
       reapply_color_write(ctx);
    }
@@ -2434,7 +2434,9 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
    rebind_fb_state(ctx, NULL, true);
    ctx->fb_state.samples = MAX2(samples, 1);
-   zink_update_framebuffer_state(ctx, w, h);
+   zink_update_framebuffer_state(ctx);
+   if (ctx->fb_state.width != w || ctx->fb_state.height != h)
+      ctx->scissor_changed = true;
 
    uint8_t rast_samples = ctx->fb_state.samples - 1;
    if (rast_samples != ctx->gfx_pipeline_state.rast_samples)

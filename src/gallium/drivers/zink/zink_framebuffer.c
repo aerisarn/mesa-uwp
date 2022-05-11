@@ -209,10 +209,8 @@ debug_describe_zink_framebuffer(char* buf, const struct zink_framebuffer *ptr)
 }
 
 void
-zink_update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h)
+zink_update_framebuffer_state(struct zink_context *ctx)
 {
-   if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
-      ctx->scissor_changed = true;
    /* get_framebuffer adds a ref if the fb is reused or created;
     * always do get_framebuffer first to avoid deleting the same fb
     * we're about to use
