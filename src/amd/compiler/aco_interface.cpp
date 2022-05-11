@@ -26,7 +26,6 @@
 
 #include "aco_ir.h"
 
-#include "vulkan/radv_shader.h"
 #include "vulkan/radv_shader_args.h"
 
 #include "util/memstream.h"
