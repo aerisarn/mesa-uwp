@@ -60,6 +60,7 @@ libwayland_drm = static_library(
 wp_dir = dep_wl_protocols.get_variable(pkgconfig : 'pkgdatadir')
 wp_protos = {
   'linux-dmabuf-unstable-v1': 'unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml',
+  'presentation-time': 'stable/presentation-time/presentation-time.xml',
 }
 wp_files = {}
 foreach name, xml : wp_protos

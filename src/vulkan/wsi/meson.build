@@ -32,6 +32,7 @@ endif
 if with_platform_wayland
   files_vulkan_wsi += files('wsi_common_wayland.c')
   files_vulkan_wsi += wp_files['linux-dmabuf-unstable-v1']
+  files_vulkan_wsi += wp_files['presentation-time']
 endif
 
 if with_platform_windows
