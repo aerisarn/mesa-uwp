@@ -157,7 +157,7 @@ bi_opt_cse(bi_context *ctx)
         struct set *instr_set = _mesa_set_create(NULL, hash_instr, instrs_equal);
 
         bi_foreach_block(ctx, block) {
-                bi_index *replacement = calloc(sizeof(bi_index), ((ctx->ssa_alloc + 1) << 2));
+                bi_index *replacement = calloc(sizeof(bi_index), ctx->ssa_alloc);
                 _mesa_set_clear(instr_set, NULL);
 
                 bi_foreach_instr_in_block(block, instr) {
@@ -170,7 +170,7 @@ bi_opt_cse(bi_context *ctx)
                                 if (!bi_is_ssa(instr->src[s]))
                                         continue;
 
-                                bi_index repl = replacement[bi_word_node(instr->src[s])];
+                                bi_index repl = replacement[instr->src[s].value];
                                 if (!bi_is_null(repl))
                                         instr->src[s] = bi_replace_index(instr->src[s], repl);
                         }
@@ -186,7 +186,7 @@ bi_opt_cse(bi_context *ctx)
 
                                 bi_foreach_dest(instr, d) {
                                         if (!bi_is_null(instr->dest[d]))
-                                                replacement[bi_word_node(instr->dest[d])] = match->dest[d];
+                                                replacement[instr->dest[d].value] = match->dest[d];
                                 }
                         }
                 }
