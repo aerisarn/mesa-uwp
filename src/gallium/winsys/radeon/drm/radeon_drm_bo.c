@@ -1013,18 +1013,13 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
    struct radeon_bo *bo;
    int heap = -1;
 
+   radeon_canonicalize_bo_flags(&domain, &flags);
+
    assert(!(flags & RADEON_FLAG_SPARSE)); /* not supported */
 
    /* Only 32-bit sizes are supported. */
    if (size > UINT_MAX)
       return NULL;
-
-   /* VRAM implies WC. This is not optional. */
-   if (domain & RADEON_DOMAIN_VRAM)
-      flags |= RADEON_FLAG_GTT_WC;
-   /* NO_CPU_ACCESS is valid with VRAM only. */
-   if (domain != RADEON_DOMAIN_VRAM)
-      flags &= ~RADEON_FLAG_NO_CPU_ACCESS;
 
    /* Sub-allocate small buffers from slabs. */
    if (!(flags & RADEON_FLAG_NO_SUBALLOC) &&
@@ -1034,7 +1029,7 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
       struct pb_slab_entry *entry;
       int heap = radeon_get_heap_index(domain, flags);
 
-      if (heap < 0 || heap >= RADEON_MAX_SLAB_HEAPS)
+      if (heap < 0 || heap >= RADEON_NUM_HEAPS)
          goto no_slab;
 
       entry = pb_slab_alloc(&ws->bo_slabs, size, heap);
@@ -1070,7 +1065,7 @@ no_slab:
    /* Shared resources don't use cached heaps. */
    if (use_reusable_pool) {
       heap = radeon_get_heap_index(domain, flags);
-      assert(heap >= 0 && heap < RADEON_MAX_CACHED_HEAPS);
+      assert(heap >= 0 && heap < RADEON_NUM_HEAPS);
 
       bo = radeon_bo(pb_cache_reclaim_buffer(&ws->bo_cache, size, alignment,
                                              0, heap));

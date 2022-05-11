@@ -451,7 +451,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
          goto fail_alloc;
 
       /* Create managers. */
-      pb_cache_init(&aws->bo_cache, RADEON_MAX_CACHED_HEAPS,
+      pb_cache_init(&aws->bo_cache, RADEON_NUM_HEAPS,
                     500000, aws->check_vm ? 1.0f : 2.0f, 0,
                     (aws->info.vram_size + aws->info.gart_size) / 8, aws,
                     /* Cast to void* because one of the function parameters
@@ -471,7 +471,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 
          if (!pb_slabs_init(&aws->bo_slabs[i],
                             min_order, max_order,
-                            RADEON_MAX_SLAB_HEAPS, true,
+                            RADEON_NUM_HEAPS, true,
                             aws,
                             amdgpu_bo_can_reclaim_slab,
                             amdgpu_bo_slab_alloc_normal,
@@ -486,7 +486,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
          if (aws->info.has_tmz_support &&
              !pb_slabs_init(&aws->bo_slabs_encrypted[i],
                             min_order, max_order,
-                            RADEON_MAX_SLAB_HEAPS, true,
+                            RADEON_NUM_HEAPS, true,
                             aws,
                             amdgpu_bo_can_reclaim_slab,
                             amdgpu_bo_slab_alloc_encrypted,

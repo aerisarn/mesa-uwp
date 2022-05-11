@@ -851,7 +851,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    if (!do_winsys_init(ws))
       goto fail1;
 
-   pb_cache_init(&ws->bo_cache, RADEON_MAX_CACHED_HEAPS,
+   pb_cache_init(&ws->bo_cache, RADEON_NUM_HEAPS,
                  500000, ws->check_vm ? 1.0f : 2.0f, 0,
                  MIN2(ws->info.vram_size, ws->info.gart_size), NULL,
                  radeon_bo_destroy,
@@ -864,7 +864,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
        */
       if (!pb_slabs_init(&ws->bo_slabs,
                          RADEON_SLAB_MIN_SIZE_LOG2, RADEON_SLAB_MAX_SIZE_LOG2,
-                         RADEON_MAX_SLAB_HEAPS, false,
+                         RADEON_NUM_HEAPS, false,
                          ws,
                          radeon_bo_can_reclaim_slab,
                          radeon_bo_slab_alloc,

@@ -1362,17 +1362,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
    struct amdgpu_winsys_bo *bo;
    int heap = -1;
 
-   if (domain & (RADEON_DOMAIN_GDS | RADEON_DOMAIN_OA))
-      flags |= RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_SUBALLOC;
-
-   /* VRAM implies WC. This is not optional. */
-   assert(!(domain & RADEON_DOMAIN_VRAM) || flags & RADEON_FLAG_GTT_WC);
-
-   /* NO_CPU_ACCESS is not valid with GTT. */
-   assert(!(domain & RADEON_DOMAIN_GTT) || !(flags & RADEON_FLAG_NO_CPU_ACCESS));
-
-   /* Sparse buffers must have NO_CPU_ACCESS set. */
-   assert(!(flags & RADEON_FLAG_SPARSE) || flags & RADEON_FLAG_NO_CPU_ACCESS);
+   radeon_canonicalize_bo_flags(&domain, &flags);
 
    struct pb_slabs *slabs = ((flags & RADEON_FLAG_ENCRYPTED) && ws->info.has_tmz_support) ?
       ws->bo_slabs_encrypted : ws->bo_slabs;
@@ -1385,7 +1375,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       struct pb_slab_entry *entry;
       int heap = radeon_get_heap_index(domain, flags);
 
-      if (heap < 0 || heap >= RADEON_MAX_SLAB_HEAPS)
+      if (heap < 0 || heap >= RADEON_NUM_HEAPS)
          goto no_slab;
 
       unsigned alloc_size = size;
@@ -1457,7 +1447,7 @@ no_slab:
 
    if (use_reusable_pool) {
        heap = radeon_get_heap_index(domain, flags & ~RADEON_FLAG_ENCRYPTED);
-       assert(heap >= 0 && heap < RADEON_MAX_CACHED_HEAPS);
+       assert(heap >= 0 && heap < RADEON_NUM_HEAPS);
 
        /* Get a buffer from the cache. */
        bo = (struct amdgpu_winsys_bo*)
