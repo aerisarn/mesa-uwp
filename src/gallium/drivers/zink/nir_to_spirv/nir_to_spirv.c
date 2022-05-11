@@ -3460,6 +3460,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          result = spirv_builder_emit_image_fetch(&ctx->builder, actual_dest_type,
                                                  image, coord, lod, sample, const_offset, offset, tex->is_sparse);
    } else {
+      if (tex->op == nir_texop_txl)
+         min_lod = 0;
       result = spirv_builder_emit_image_sample(&ctx->builder,
                                                actual_dest_type, load,
                                                coord,
