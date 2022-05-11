@@ -763,9 +763,6 @@ typedef struct {
        unsigned ssa_alloc;
        unsigned reg_alloc;
 
-       /* Analysis results */
-       bool has_liveness;
-
        /* Mask of UBOs that need to be uploaded */
        uint32_t ubo_mask;
 
@@ -1087,7 +1084,6 @@ bool bi_opt_constant_fold(bi_context *ctx);
 
 void bi_compute_liveness(bi_context *ctx);
 void bi_liveness_ins_update(uint8_t *live, bi_instr *ins, unsigned max);
-void bi_invalidate_liveness(bi_context *ctx);
 
 void bi_postra_liveness(bi_context *ctx);
 uint64_t bi_postra_liveness_ins(uint64_t live, bi_instr *ins);

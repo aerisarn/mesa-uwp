@@ -91,9 +91,6 @@ liveness_block_update(bi_block *blk, unsigned temp_count)
 void
 bi_compute_liveness(bi_context *ctx)
 {
-        if (ctx->has_liveness)
-                return;
-
         unsigned temp_count = bi_max_temp(ctx);
 
         u_worklist worklist;
@@ -126,14 +123,4 @@ bi_compute_liveness(bi_context *ctx)
         }
 
         u_worklist_fini(&worklist);
-
-        ctx->has_liveness = true;
-}
-
-/* Once liveness data is no longer valid, call this */
-
-void
-bi_invalidate_liveness(bi_context *ctx)
-{
-        ctx->has_liveness = false;
 }

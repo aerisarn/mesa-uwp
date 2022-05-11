@@ -32,7 +32,6 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
 {
         unsigned temp_count = bi_max_temp(ctx);
 
-        bi_invalidate_liveness(ctx);
         bi_compute_liveness(ctx);
 
         bi_foreach_block_rev(ctx, block) {

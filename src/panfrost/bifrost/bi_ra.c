@@ -780,7 +780,6 @@ bi_register_allocate(bi_context *ctx)
 
         /* Try with reduced register pressure to improve thread count */
         if (ctx->arch >= 7) {
-                bi_invalidate_liveness(ctx);
                 l = bi_allocate_registers(ctx, &success, false);
 
                 if (success) {
@@ -793,7 +792,6 @@ bi_register_allocate(bi_context *ctx)
 
         /* Otherwise, use the register file and spill until we succeed */
         while (!success && ((iter_count--) > 0)) {
-                bi_invalidate_liveness(ctx);
                 l = bi_allocate_registers(ctx, &success, true);
 
                 if (success) {

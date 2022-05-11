@@ -40,7 +40,6 @@ bi_validate_initialization(bi_context *ctx)
         /* Calculate the live set */
         bi_block *entry = bi_entry_block(ctx);
         unsigned temp_count = bi_max_temp(ctx);
-        bi_invalidate_liveness(ctx);
         bi_compute_liveness(ctx);
 
         /* Validate that the live set is indeed empty */
