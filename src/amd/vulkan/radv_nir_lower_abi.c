@@ -161,6 +161,21 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_viewport_y_offset:
       return ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_translate[1]);
 
+   case nir_intrinsic_load_ring_task_draw_amd:
+      return load_ring(b, RING_TS_DRAW, s);
+
+   case nir_intrinsic_load_ring_task_payload_amd:
+      return load_ring(b, RING_TS_PAYLOAD, s);
+
+   case nir_intrinsic_load_task_ring_entry_amd:
+      return ac_nir_load_arg(b, &s->args->ac, s->args->ac.task_ring_entry);
+
+   case nir_intrinsic_load_task_ib_addr:
+      return ac_nir_load_arg(b, &s->args->ac, s->args->task_ib_addr);
+
+   case nir_intrinsic_load_task_ib_stride:
+      return ac_nir_load_arg(b, &s->args->ac, s->args->task_ib_stride);
+
    default:
       unreachable("invalid NIR RADV ABI intrinsic.");
    }
@@ -197,7 +212,12 @@ filter_abi_instr(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_load_viewport_x_scale ||
           intrin->intrinsic == nir_intrinsic_load_viewport_x_offset ||
           intrin->intrinsic == nir_intrinsic_load_viewport_y_scale ||
-          intrin->intrinsic == nir_intrinsic_load_viewport_y_offset;
+          intrin->intrinsic == nir_intrinsic_load_viewport_y_offset ||
+          intrin->intrinsic == nir_intrinsic_load_ring_task_draw_amd ||
+          intrin->intrinsic == nir_intrinsic_load_ring_task_payload_amd ||
+          intrin->intrinsic == nir_intrinsic_load_task_ring_entry_amd ||
+          intrin->intrinsic == nir_intrinsic_load_task_ib_addr ||
+          intrin->intrinsic == nir_intrinsic_load_task_ib_stride;
 }
 
 void
