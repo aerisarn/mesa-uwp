@@ -933,7 +933,7 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
             // Offset
             ibind[i].offset.x = w * gwidth;
             ibind[i].offset.y = h * gheight;
-            if (res->base.b.target == PIPE_TEXTURE_CUBE) {
+            if (res->base.b.array_size > 1) {
                ibind[i].subresource.arrayLayer = d * gdepth;
                ibind[i].offset.z = 0;
             } else {
