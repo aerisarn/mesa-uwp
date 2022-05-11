@@ -748,6 +748,17 @@ typedef struct {
        bi_block *continue_block;
        bool emitted_atest;
 
+       /* During NIR->BIR, the coverage bitmap. If this is NULL, the default
+        * coverage bitmap should be source from preloaded register r60. This is
+        * written by ATEST and ZS_EMIT
+        */
+       bi_index coverage;
+
+       /* During NIR->BIR, table of preloaded registers, or NULL if never
+        * preloaded.
+        */
+       bi_index preloaded[64];
+
        /* For creating temporaries */
        unsigned ssa_alloc;
        unsigned reg_alloc;
@@ -1327,23 +1338,6 @@ bi_dontcare(bi_builder *b)
                return bi_zero();
         else
                return bi_passthrough(BIFROST_SRC_FAU_HI);
-}
-
-/*
- * Vertex ID and Instance ID are preloaded registers. Where they are preloaded
- * changed from Bifrost to Valhall. Provide helpers that smooth over the
- * architectural difference.
- */
-static inline bi_index
-bi_vertex_id(bi_builder *b)
-{
-        return bi_register((b->shader->arch >= 9) ? 60 : 61);
-}
-
-static inline bi_index
-bi_instance_id(bi_builder *b)
-{
-        return bi_register((b->shader->arch >= 9) ? 61 : 62);
 }
 
 #define bi_worklist_init(ctx, w) u_worklist_init(w, ctx->num_blocks, ctx)

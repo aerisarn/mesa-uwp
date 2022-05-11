@@ -352,10 +352,56 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
                         node = bi_get_node(ins->src[4]);
                         if (node < node_count)
                                 l->solutions[node] = 4;
+
+                        /* Writes to R48 */
+                        node = bi_get_node(ins->dest[0]);
+                        if (!bi_is_null(ins->dest[0])) {
+                                assert(node < node_count);
+                                l->solutions[node] = 48;
+                        }
+                }
+
+                /* Coverage mask writes stay in R60 */
+                if ((ins->op == BI_OPCODE_ATEST ||
+                     ins->op == BI_OPCODE_ZS_EMIT) &&
+                    !bi_is_null(ins->dest[0])) {
+                        unsigned node = bi_get_node(ins->dest[0]);
+                        assert(node < node_count);
+                        l->solutions[node] = 60;
                 }
         }
 
         bi_compute_interference(ctx, l, full_regs);
+
+        /* Coalesce register moves if we're allowed. We need to be careful due
+         * to the restricted affinity induced by the blend shader ABI.
+         */
+        bi_foreach_instr_global(ctx, I) {
+                if (I->op != BI_OPCODE_MOV_I32) continue;
+                if (I->src[0].type != BI_INDEX_REGISTER) continue;
+
+                unsigned reg = I->src[0].value;
+                unsigned node = bi_get_node(I->dest[0]);
+                assert(node < node_count);
+
+                if (l->solutions[node] != ~0) continue;
+
+                uint64_t affinity = l->affinity[node];
+
+                if (ctx->inputs->is_blend) {
+                        /* We're allowed to coalesce the moves to these */
+                        affinity |= BITFIELD64_BIT(48);
+                        affinity |= BITFIELD64_BIT(60);
+                }
+
+                /* Try to coalesce */
+                if (affinity & BITFIELD64_BIT(reg)) {
+                        l->solutions[node] = reg;
+
+                        if (!lcra_test_linear(l, l->solutions, node))
+                                l->solutions[node] = ~0;
+                }
+        }
 
         *success = lcra_solve(l);
 
