@@ -1080,6 +1080,8 @@ wsi_common_queue_present(const struct wsi_device *wsi,
 
    const VkPresentRegionsKHR *regions =
       vk_find_struct_const(pPresentInfo->pNext, PRESENT_REGIONS_KHR);
+   const VkPresentIdKHR *present_ids =
+      vk_find_struct_const(pPresentInfo->pNext, PRESENT_ID_KHR);
 
    for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
       VK_FROM_HANDLE(wsi_swapchain, swapchain, pPresentInfo->pSwapchains[i]);
@@ -1227,7 +1229,11 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       if (regions && regions->pRegions)
          region = &regions->pRegions[i];
 
-      result = swapchain->queue_present(swapchain, image_index, region);
+      uint64_t present_id = 0;
+      if (present_ids && present_ids->pPresentIds)
+         present_id = present_ids->pPresentIds[i];
+
+      result = swapchain->queue_present(swapchain, image_index, present_id, region);
       if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
          goto fail_present;
 
@@ -1788,4 +1794,13 @@ wsi_configure_cpu_image(const struct wsi_swapchain *chain,
    info->alloc_shm = params->alloc_shm;
 
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+wsi_WaitForPresentKHR(VkDevice device, VkSwapchainKHR _swapchain,
+                      uint64_t presentId, uint64_t timeout)
+{
+   VK_FROM_HANDLE(wsi_swapchain, swapchain, _swapchain);
+   assert(swapchain->wait_for_present);
+   return swapchain->wait_for_present(swapchain, presentId, timeout);
 }

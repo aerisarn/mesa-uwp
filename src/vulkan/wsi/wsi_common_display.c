@@ -1910,6 +1910,7 @@ _wsi_display_queue_next(struct wsi_swapchain *drv_chain)
 static VkResult
 wsi_display_queue_present(struct wsi_swapchain *drv_chain,
                           uint32_t image_index,
+                          uint64_t present_id,
                           const VkPresentRegionKHR *damage)
 {
    struct wsi_display_swapchain *chain =

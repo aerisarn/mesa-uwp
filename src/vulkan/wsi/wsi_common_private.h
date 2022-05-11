@@ -162,7 +162,11 @@ struct wsi_swapchain {
                                   uint32_t *image_index);
    VkResult (*queue_present)(struct wsi_swapchain *swap_chain,
                              uint32_t image_index,
+                             uint64_t present_id,
                              const VkPresentRegionKHR *damage);
+   VkResult (*wait_for_present)(struct wsi_swapchain *swap_chain,
+                                uint64_t present_id,
+                                uint64_t timeout);
 };
 
 bool
