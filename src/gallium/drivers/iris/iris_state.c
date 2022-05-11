@@ -1058,6 +1058,14 @@ iris_init_render_context(struct iris_batch *batch)
 
    iris_init_common_context(batch);
 
+#if GFX_VERx10 == 125
+   /* Wa_14015207028 */
+   iris_emit_reg(batch, GENX(VFG_PREEMPTION_CHICKEN_BITS), vfgc) {
+      vfgc.PolygonTrifanLineLoopPreemptionDisable = true;
+      vfgc.PolygonTrifanLineLoopPreemptionDisableMask = true;
+   };
+#endif
+
 #if GFX_VER >= 9
    iris_emit_reg(batch, GENX(CS_DEBUG_MODE2), reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
