@@ -3,7 +3,9 @@
 
 #include <string.h>
 #include "nouveau_winsys.h"
+#include "nouveau_context.h"
 #include "nouveau_buffer.h"
+#include "nv30_context.h"
 
 /*XXX: rnn */
 #define NV40_3D_VTXTEX_OFFSET(i) (0x0900 + ((i) * 0x20)) // 401e80
@@ -29,8 +31,8 @@ PUSH_RELOC(struct nouveau_pushbuf *push, struct nouveau_bo *bo, uint32_t offset,
 static inline struct nouveau_bufctx *
 bufctx(struct nouveau_pushbuf *push)
 {
-   struct nouveau_bufctx **pctx = push->user_priv;
-   return *pctx;
+   struct nouveau_pushbuf_priv *p = push->user_priv;
+   return nv30_context(&p->context->pipe)->bufctx;
 }
 
 static inline void

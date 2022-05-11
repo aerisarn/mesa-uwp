@@ -249,11 +249,11 @@ nv84_decoder_destroy(struct pipe_video_codec *decoder)
    nouveau_object_del(&dec->vp);
 
    nouveau_bufctx_del(&dec->bsp_bufctx);
-   nouveau_pushbuf_del(&dec->bsp_pushbuf);
+   nouveau_pushbuf_destroy(&dec->bsp_pushbuf);
    nouveau_object_del(&dec->bsp_channel);
 
    nouveau_bufctx_del(&dec->vp_bufctx);
-   nouveau_pushbuf_del(&dec->vp_pushbuf);
+   nouveau_pushbuf_destroy(&dec->vp_pushbuf);
    nouveau_object_del(&dec->vp_channel);
 
    nouveau_client_del(&dec->client);
@@ -337,8 +337,8 @@ nv84_create_decoder(struct pipe_context *context,
       if (ret)
          goto fail;
 
-      ret = nouveau_pushbuf_new(dec->client, dec->bsp_channel, 4,
-                                32 * 1024, true, &dec->bsp_pushbuf);
+      ret = nouveau_pushbuf_create(screen, &nv50->base, dec->client, dec->bsp_channel,
+                                   4, 32 * 1024, true, &dec->bsp_pushbuf);
       if (ret)
          goto fail;
 
@@ -352,8 +352,8 @@ nv84_create_decoder(struct pipe_context *context,
                             &nv04_data, sizeof(nv04_data), &dec->vp_channel);
    if (ret)
       goto fail;
-   ret = nouveau_pushbuf_new(dec->client, dec->vp_channel, 4,
-                             32 * 1024, true, &dec->vp_pushbuf);
+   ret = nouveau_pushbuf_create(screen, &nv50->base, dec->client, dec->vp_channel,
+                                4, 32 * 1024, true, &dec->vp_pushbuf);
    if (ret)
       goto fail;
 

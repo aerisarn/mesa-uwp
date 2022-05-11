@@ -624,9 +624,6 @@ nv50_screen_destroy(struct pipe_screen *pscreen)
    if (!nouveau_drm_screen_unref(&screen->base))
       return;
 
-   if (screen->base.pushbuf)
-      screen->base.pushbuf->user_priv = NULL;
-
    if (screen->blitter)
       nv50_blitter_destroy(screen);
    if (screen->pm.prog) {
@@ -660,10 +657,11 @@ nv50_screen_destroy(struct pipe_screen *pscreen)
 }
 
 static void
-nv50_screen_fence_emit(struct pipe_screen *pscreen, u32 *sequence)
+nv50_screen_fence_emit(struct pipe_context *pcontext, u32 *sequence)
 {
-   struct nv50_screen *screen = nv50_screen(pscreen);
-   struct nouveau_pushbuf *push = screen->base.pushbuf;
+   struct nv50_context *nv50 = nv50_context(pcontext);
+   struct nv50_screen *screen = nv50->screen;
+   struct nouveau_pushbuf *push = nv50->base.pushbuf;
 
    /* we need to do it after possible flush in MARK_RING */
    *sequence = ++screen->base.fence.sequence;
@@ -1029,7 +1027,6 @@ nv50_screen_create(struct nouveau_device *dev)
    screen->base.sysmem_bindings |=
       PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_INDEX_BUFFER;
 
-   screen->base.pushbuf->user_priv = screen;
    screen->base.pushbuf->rsvd_kick = 5;
 
    chan = screen->base.channel;

@@ -36,6 +36,7 @@
 
 #include "nv30/nv30_context.h"
 #include "nv30/nv30_transfer.h"
+#include "nv30/nv30_winsys.h"
 
 /* Various helper functions to transfer different types of data in a number
  * of different ways.

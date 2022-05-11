@@ -132,16 +132,13 @@ nv50_emit_string_marker(struct pipe_context *pipe, const char *str, int len)
 }
 
 void
-nv50_default_kick_notify(struct nouveau_pushbuf *push)
+nv50_default_kick_notify(struct nouveau_context *context)
 {
-   struct nv50_screen *screen = push->user_priv;
-   struct nv50_context *context = screen->cur_ctx;
+   struct nv50_context *nv50 = nv50_context(&context->pipe);
 
-   if (context) {
-      nouveau_fence_next(&context->base);
-      nouveau_fence_update(&screen->base, true);
-      context->state.flushed = true;
-   }
+   nouveau_fence_next(context);
+   nouveau_fence_update(context->screen, true);
+   nv50->state.flushed = true;
 }
 
 static void
@@ -313,7 +310,8 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    if (!nv50_blitctx_create(nv50))
       goto out_err;
 
-   nouveau_context_init(&nv50->base, &screen->base);
+   if (nouveau_context_init(&nv50->base, &screen->base))
+      goto out_err;
 
    ret = nouveau_bufctx_new(nv50->base.client, 2, &nv50->bufctx);
    if (!ret)
@@ -355,9 +353,11 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
        */
       nv50->state = screen->save_state;
       screen->cur_ctx = nv50;
-      nouveau_pushbuf_bufctx(screen->base.pushbuf, nv50->bufctx);
    }
-   nv50->base.pushbuf->kick_notify = nv50_default_kick_notify;
+   nouveau_pushbuf_bufctx(nv50->base.pushbuf, nv50->bufctx);
+   nv50->base.kick_notify = nv50_default_kick_notify;
+   nv50->base.pushbuf->rsvd_kick = 5;
+   PUSH_SPACE(nv50->base.pushbuf, 8);
 
    nv50_init_query_functions(nv50);
    nv50_init_surface_functions(nv50);

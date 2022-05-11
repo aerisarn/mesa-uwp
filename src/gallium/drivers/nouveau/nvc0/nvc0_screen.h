@@ -152,10 +152,10 @@ int nvc0_screen_tsc_alloc(struct nvc0_screen *, void *);
 int nve4_screen_compute_setup(struct nvc0_screen *, struct nouveau_pushbuf *);
 int nvc0_screen_compute_setup(struct nvc0_screen *, struct nouveau_pushbuf *);
 
-int nvc0_screen_resize_text_area(struct nvc0_screen *, uint64_t);
+int nvc0_screen_resize_text_area(struct nvc0_screen *, struct nouveau_pushbuf *, uint64_t);
 
 // 3D Only
-void nvc0_screen_bind_cb_3d(struct nvc0_screen *, bool *, int, int, int, uint64_t);
+void nvc0_screen_bind_cb_3d(struct nvc0_screen *, struct nouveau_pushbuf *, bool *, int, int, int, uint64_t);
 
 struct nvc0_format {
    uint32_t rt;

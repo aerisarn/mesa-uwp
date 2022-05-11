@@ -214,11 +214,11 @@ nouveau_vp3_decoder_destroy(struct pipe_video_codec *decoder)
 
    if (dec->channel[0] != dec->channel[1]) {
       for (i = 0; i < 3; ++i) {
-         nouveau_pushbuf_del(&dec->pushbuf[i]);
+         nouveau_pushbuf_destroy(&dec->pushbuf[i]);
          nouveau_object_del(&dec->channel[i]);
       }
    } else {
-      nouveau_pushbuf_del(dec->pushbuf);
+      nouveau_pushbuf_destroy(dec->pushbuf);
       nouveau_object_del(dec->channel);
    }
 

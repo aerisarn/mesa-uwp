@@ -79,7 +79,7 @@ nouveau_fence_emit(struct nouveau_fence *fence)
 
    fence_list->tail = fence;
 
-   fence_list->emit(&screen->base, &fence->sequence);
+   fence_list->emit(&fence->context->pipe, &fence->sequence);
 
    assert(fence->state == NOUVEAU_FENCE_STATE_EMITTING);
    fence->state = NOUVEAU_FENCE_STATE_EMITTED;
@@ -189,6 +189,7 @@ nouveau_fence_signalled(struct nouveau_fence *fence)
 static bool
 nouveau_fence_kick(struct nouveau_fence *fence)
 {
+   struct nouveau_context *context = fence->context;
    struct nouveau_screen *screen = fence->screen;
    bool current = !fence->sequence;
 
@@ -196,12 +197,12 @@ nouveau_fence_kick(struct nouveau_fence *fence)
    assert(fence->state != NOUVEAU_FENCE_STATE_EMITTING);
 
    if (fence->state < NOUVEAU_FENCE_STATE_EMITTED) {
-      PUSH_SPACE(screen->pushbuf, 8);
+      PUSH_SPACE(context->pushbuf, 8);
       nouveau_fence_emit(fence);
    }
 
    if (fence->state < NOUVEAU_FENCE_STATE_FLUSHED)
-      if (nouveau_pushbuf_kick(screen->pushbuf, screen->pushbuf->channel))
+      if (nouveau_pushbuf_kick(context->pushbuf, context->pushbuf->channel))
          return false;
 
    if (current)

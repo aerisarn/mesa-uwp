@@ -35,7 +35,7 @@ struct nouveau_fence_list {
    struct nouveau_fence *tail;
    uint32_t sequence;
    uint32_t sequence_ack;
-   void (*emit)(struct pipe_screen *, uint32_t *sequence);
+   void (*emit)(struct pipe_context *, uint32_t *sequence);
    uint32_t (*update)(struct pipe_screen *);
 };
 

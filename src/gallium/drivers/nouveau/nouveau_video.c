@@ -486,7 +486,7 @@ nouveau_decoder_destroy(struct pipe_video_codec *decoder)
    if (dec->bufctx)
       nouveau_bufctx_del(&dec->bufctx);
    if (dec->push)
-      nouveau_pushbuf_del(&dec->push);
+      nouveau_pushbuf_destroy(&dec->push);
    if (dec->client)
       nouveau_client_del(&dec->client);
    if (dec->chan)
@@ -532,7 +532,7 @@ nouveau_create_decoder(struct pipe_context *context,
    ret = nouveau_client_new(screen->device, &dec->client);
    if (ret)
       goto fail;
-   ret = nouveau_pushbuf_new(dec->client, dec->chan, 2, 4096, 1, &dec->push);
+   ret = nouveau_pushbuf_create(screen, nouveau_context(context), dec->client, dec->chan, 2, 4096, 1, &dec->push);
    if (ret)
       goto fail;
    ret = nouveau_bufctx_new(dec->client, NV31_VIDEO_BIND_COUNT, &dec->bufctx);

@@ -33,19 +33,15 @@
 #include "nv30/nv30_context.h"
 #include "nv30/nv30_transfer.h"
 #include "nv30/nv30_state.h"
+#include "nv30/nv30_winsys.h"
 
 static void
 nv30_context_kick_notify(struct nouveau_pushbuf *push)
 {
-   struct nouveau_screen *screen;
-   struct nv30_context *nv30;
+   struct nouveau_pushbuf_priv *p = push->user_priv;
+   struct nouveau_screen *screen = p->screen;
 
-   if (!push->user_priv)
-      return;
-   nv30 = container_of(push->user_priv, struct nv30_context, bufctx);
-   screen = &nv30->screen->base;
-
-   nouveau_fence_next(&nv30->base);
+   nouveau_fence_next(p->context);
    nouveau_fence_update(screen, true);
 
    if (push->bufctx) {
@@ -53,13 +49,13 @@ nv30_context_kick_notify(struct nouveau_pushbuf *push)
       LIST_FOR_EACH_ENTRY(bref, &push->bufctx->current, thead) {
          struct nv04_resource *res = bref->priv;
          if (res && res->mm) {
-            nouveau_fence_ref(nv30->base.fence, &res->fence);
+            nouveau_fence_ref(p->context->fence, &res->fence);
 
             if (bref->flags & NOUVEAU_BO_RD)
                res->status |= NOUVEAU_BUFFER_STATUS_GPU_READING;
 
             if (bref->flags & NOUVEAU_BO_WR) {
-               nouveau_fence_ref(nv30->base.fence, &res->fence_wr);
+               nouveau_fence_ref(p->context->fence, &res->fence_wr);
                res->status |= NOUVEAU_BUFFER_STATUS_GPU_WRITING |
                   NOUVEAU_BUFFER_STATUS_DIRTY;
             }
@@ -168,9 +164,6 @@ nv30_context_destroy(struct pipe_context *pipe)
    if (nv30->blit_fp)
       pipe_resource_reference(&nv30->blit_fp, NULL);
 
-   if (nv30->screen->base.pushbuf->user_priv == &nv30->bufctx)
-      nv30->screen->base.pushbuf->user_priv = NULL;
-
    nouveau_bufctx_del(&nv30->bufctx);
 
    if (nv30->screen->cur_ctx == nv30)
@@ -207,7 +200,10 @@ nv30_context_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    pipe->destroy = nv30_context_destroy;
    pipe->flush = nv30_context_flush;
 
-   nouveau_context_init(&nv30->base, &screen->base);
+   if (nouveau_context_init(&nv30->base, &screen->base)) {
+      nv30_context_destroy(pipe);
+      return NULL;
+   }
    nv30->base.pushbuf->kick_notify = nv30_context_kick_notify;
 
    nv30->base.pipe.stream_uploader = u_upload_create_default(&nv30->base.pipe);

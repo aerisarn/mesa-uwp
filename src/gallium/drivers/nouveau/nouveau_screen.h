@@ -110,6 +110,11 @@ struct nouveau_screen {
 #endif
 };
 
+struct nouveau_pushbuf_priv {
+   struct nouveau_screen *screen;
+   struct nouveau_context *context;
+};
+
 #define NV_VRAM_DOMAIN(screen) ((screen)->vram_domain)
 
 #ifdef NOUVEAU_ENABLE_DRIVER_STATISTICS
@@ -149,5 +154,11 @@ int nouveau_screen_init(struct nouveau_screen *, struct nouveau_device *);
 void nouveau_screen_fini(struct nouveau_screen *);
 
 void nouveau_screen_init_vdec(struct nouveau_screen *);
+
+int
+nouveau_pushbuf_create(struct nouveau_screen *, struct nouveau_context *, struct nouveau_client *,
+                       struct nouveau_object *chan, int nr, uint32_t size, bool immediate,
+                       struct nouveau_pushbuf **);
+void nouveau_pushbuf_destroy(struct nouveau_pushbuf **);
 
 #endif

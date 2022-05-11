@@ -905,7 +905,7 @@ nvc0_program_upload(struct nvc0_context *nvc0, struct nvc0_program *prog)
       IMMED_NVC0(nvc0->base.pushbuf, NVC0_3D(SERIALIZE), 0);
 
       if ((screen->text->size << 1) <= (1 << 23)) {
-         ret = nvc0_screen_resize_text_area(screen, screen->text->size << 1);
+         ret = nvc0_screen_resize_text_area(screen, nvc0->base.pushbuf, screen->text->size << 1);
          if (ret) {
             NOUVEAU_ERR("Error allocating TEXT area: %d\n", ret);
             return false;

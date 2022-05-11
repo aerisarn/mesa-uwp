@@ -33,6 +33,7 @@
 #include "nv30/nv30_context.h"
 #include "nv30/nv30_resource.h"
 #include "nv30/nv30_transfer.h"
+#include "nv30/nv30_winsys.h"
 
 static inline unsigned
 layer_offset(struct pipe_resource *pt, unsigned level, unsigned layer)

@@ -338,7 +338,7 @@ nvc0_resource_validate(struct nvc0_context *nvc0, struct nv04_resource *res, uin
 struct pipe_context *nvc0_create(struct pipe_screen *, void *, unsigned flags);
 void nvc0_bufctx_fence(struct nvc0_context *, struct nouveau_bufctx *,
                        bool on_flush);
-void nvc0_default_kick_notify(struct nouveau_pushbuf *);
+void nvc0_default_kick_notify(struct nouveau_context *);
 const void *nvc0_get_sample_locations(unsigned);
 
 /* nvc0_draw.c */

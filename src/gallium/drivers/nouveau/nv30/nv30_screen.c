@@ -39,6 +39,7 @@
 #include "nv30/nv30_context.h"
 #include "nv30/nv30_resource.h"
 #include "nv30/nv30_format.h"
+#include "nv30/nv30_winsys.h"
 
 #define RANKINE_0397_CHIPSET 0x00000003
 #define RANKINE_0497_CHIPSET 0x000001e0
@@ -519,10 +520,11 @@ nv30_screen_get_compiler_options(struct pipe_screen *pscreen,
 }
 
 static void
-nv30_screen_fence_emit(struct pipe_screen *pscreen, uint32_t *sequence)
+nv30_screen_fence_emit(struct pipe_context *pcontext, uint32_t *sequence)
 {
-   struct nv30_screen *screen = nv30_screen(pscreen);
-   struct nouveau_pushbuf *push = screen->base.pushbuf;
+   struct nv30_context *nv30 = nv30_context(pcontext);
+   struct nv30_screen *screen = nv30->screen;
+   struct nouveau_pushbuf *push = nv30->base.pushbuf;
 
    *sequence = ++screen->base.fence.sequence;
 
