@@ -449,9 +449,25 @@ deep_copy_graphics_create_info(void *mem_ctx,
 
    if (shaders & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
       assert(rp_info);
+      bool have_output = (shaders & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) > 0;
       /* pDepthStencilState */
       if (src->pDepthStencilState && !rasterization_disabled &&
-          (has_depth || has_stencil)) {
+          /*
+             VUID-VkGraphicsPipelineCreateInfo-renderPass-06053
+             * If renderPass is VK_NULL_HANDLE, the pipeline is being created with fragment shader
+               state and fragment output interface state, and either of
+               VkPipelineRenderingCreateInfo::depthAttachmentFormat
+               or
+               VkPipelineRenderingCreateInfo::stencilAttachmentFormat
+               are not VK_FORMAT_UNDEFINED, pDepthStencilState must be a valid pointer to a valid
+               VkPipelineDepthStencilStateCreateInfo structure
+
+             VUID-VkGraphicsPipelineCreateInfo-renderPass-06590
+             * If renderPass is VK_NULL_HANDLE and the pipeline is being created with fragment shader
+               state but not fragment output interface state, pDepthStencilState must be a valid pointer
+               to a valid VkPipelineDepthStencilStateCreateInfo structure
+          */
+          (!have_output || has_depth || has_stencil)) {
          LVP_PIPELINE_DUP(dst->pDepthStencilState,
                           src->pDepthStencilState,
                           VkPipelineDepthStencilStateCreateInfo,
