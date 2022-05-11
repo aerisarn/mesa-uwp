@@ -322,6 +322,7 @@ init_render_queue_state(struct anv_queue *queue)
       }
    }
 
+#if GFX_VERx10 < 125
    /* an unknown issue is causing vs push constants to become
     * corrupted during object-level preemption. For now, restrict
     * to command buffer level preemption to avoid rendering
@@ -336,6 +337,18 @@ init_render_queue_state(struct anv_queue *queue)
       cc1.DisablePreemptionandHighPriorityPausingdueto3DPRIMITIVECommandMask = true;
 #endif
    }
+#endif
+
+   /* Wa_14015207028
+    *
+    * Disable batch level preemption for some primitive topologies.
+    */
+#if GFX_VERx10 == 125
+      anv_batch_write_reg(&batch, GENX(VFG_PREEMPTION_CHICKEN_BITS), vfgc) {
+         vfgc.PolygonTrifanLineLoopPreemptionDisable = true;
+         vfgc.PolygonTrifanLineLoopPreemptionDisableMask = true;
+      }
+#endif
 
 #if GFX_VERx10 == 120
    /* Wa_1806527549 says to disable the following HiZ optimization when the
