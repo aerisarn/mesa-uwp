@@ -735,7 +735,8 @@ opt_gcm_impl(nir_shader *shader, nir_function_impl *impl, bool value_number)
    nir_metadata_require(impl, nir_metadata_block_index |
                               nir_metadata_dominance);
    nir_metadata_require(impl, nir_metadata_loop_analysis,
-                        shader->options->force_indirect_unrolling);
+                        shader->options->force_indirect_unrolling,
+                        shader->options->force_indirect_unrolling_sampler);
 
    /* A previous pass may have left pass_flags dirty, so clear it all out. */
    nir_foreach_block(block, impl)

@@ -1090,10 +1090,12 @@ exit:
 
 static bool
 nir_opt_loop_unroll_impl(nir_function_impl *impl,
-                         nir_variable_mode indirect_mask)
+                         nir_variable_mode indirect_mask,
+                         bool force_unroll_sampler_indirect)
 {
    bool progress = false;
-   nir_metadata_require(impl, nir_metadata_loop_analysis, indirect_mask);
+   nir_metadata_require(impl, nir_metadata_loop_analysis, indirect_mask,
+                        (int) force_unroll_sampler_indirect);
    nir_metadata_require(impl, nir_metadata_block_index);
 
    bool has_nested_loop = false;
@@ -1119,10 +1121,12 @@ nir_opt_loop_unroll(nir_shader *shader)
 {
    bool progress = false;
 
+   bool force_unroll_sampler_indirect = shader->options->force_indirect_unrolling_sampler;
    nir_variable_mode indirect_mask = shader->options->force_indirect_unrolling;
    nir_foreach_function(function, shader) {
       if (function->impl) {
-         progress |= nir_opt_loop_unroll_impl(function->impl, indirect_mask);
+         progress |= nir_opt_loop_unroll_impl(function->impl, indirect_mask,
+                                              force_unroll_sampler_indirect);
       }
    }
    return progress;

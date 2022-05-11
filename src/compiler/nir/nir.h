@@ -3578,6 +3578,11 @@ typedef struct nir_shader_compiler_options {
     * vectorized IO can pack more varyings when linking. */
    bool linker_ignore_precision;
 
+   /* Specifies if indirect sampler array access will trigger forced loop
+    * unrolling.
+    */
+   bool force_indirect_unrolling_sampler;
+
    /**
     * Specifies which type of indirectly accessed variables should force
     * loop unrolling.
@@ -5312,7 +5317,8 @@ void nir_live_ssa_defs_impl(nir_function_impl *impl);
 const BITSET_WORD *nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx);
 
 void nir_loop_analyze_impl(nir_function_impl *impl,
-                           nir_variable_mode indirect_mask);
+                           nir_variable_mode indirect_mask,
+                           bool force_unroll_sampler_indirect);
 
 bool nir_ssa_defs_interfere(nir_ssa_def *a, nir_ssa_def *b);
 
