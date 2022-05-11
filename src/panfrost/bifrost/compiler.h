@@ -200,14 +200,6 @@ bi_passthrough(enum bifrost_packed_src value)
         };
 }
 
-/* Extracts a word from a vectored index */
-static inline bi_index
-bi_word(bi_index idx, unsigned component)
-{
-        idx.offset += component;
-        return idx;
-}
-
 /* Helps construct swizzles */
 static inline bi_index
 bi_swz_16(bi_index idx, bool x, bool y)
@@ -1335,13 +1327,6 @@ bi_dontcare(bi_builder *b)
                return bi_zero();
         else
                return bi_passthrough(BIFROST_SRC_FAU_HI);
-}
-
-static inline unsigned
-bi_word_node(bi_index idx)
-{
-        assert(idx.type == BI_INDEX_NORMAL && !idx.reg);
-        return (idx.value << 2) | idx.offset;
 }
 
 /*
