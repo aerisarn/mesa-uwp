@@ -1606,6 +1606,9 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       /* V3D doesn't support min/max filtering */
       .filterMinmaxSingleComponentFormats = false,
       .filterMinmaxImageComponentMapping = false,
+
+      .framebufferIntegerColorSampleCounts =
+         VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT,
    };
    memset(vk12.driverName, 0, VK_MAX_DRIVER_NAME_SIZE);
    snprintf(vk12.driverName, VK_MAX_DRIVER_NAME_SIZE, "V3DV Mesa");
