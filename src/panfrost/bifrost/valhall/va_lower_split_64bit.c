@@ -56,10 +56,15 @@ lower_split_src(bi_context *ctx, bi_instr *I, unsigned s)
    bi_instr *collect = bi_collect_i32_to(&b, vec);
    collect->nr_srcs = 2;
 
+   bi_instr *split = bi_split_i32_to(&b, bi_null(), vec);
+   split->nr_dests = 2;
+
    /* Emit collect */
    for (unsigned w = 0; w < 2; ++w) {
       collect->src[w] = I->src[s + w];
-      I->src[s + w] = bi_word(vec, w);
+
+      split->dest[w] = bi_temp(ctx);
+      I->src[s + w] = split->dest[w];
    }
 }
 
