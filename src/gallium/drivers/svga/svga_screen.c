@@ -770,16 +770,26 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    .max_unroll_iterations = 32,                                               \
    .use_interpolated_input_intrinsics = true
 
+#define VGPU10_OPTIONS                                                        \
+   .lower_doubles_options = nir_lower_dfloor,                                 \
+   .lower_fmod = true,                                                        \
+   .lower_fpow = true
+
 static const nir_shader_compiler_options svga_vgpu9_compiler_options = {
    COMMON_OPTIONS,
    .lower_bitops = true,
+   .force_indirect_unrolling_sampler = true,
 };
 
 static const nir_shader_compiler_options svga_vgpu10_compiler_options = {
    COMMON_OPTIONS,
-   .lower_doubles_options = nir_lower_dfloor,
-   .lower_fmod = true,
-   .lower_fpow = true,
+   VGPU10_OPTIONS,
+   .force_indirect_unrolling_sampler = true,
+};
+
+static const nir_shader_compiler_options svga_gl4_compiler_options = {
+   COMMON_OPTIONS,
+   VGPU10_OPTIONS,
 };
 
 static const void *
@@ -792,7 +802,9 @@ svga_get_compiler_options(struct pipe_screen *pscreen,
 
    assert(ir == PIPE_SHADER_IR_NIR);
 
-   if (sws->have_vgpu10)
+   if (sws->have_gl43 || sws->have_sm5)
+      return &svga_gl4_compiler_options;
+   else if (sws->have_vgpu10)
       return &svga_vgpu10_compiler_options;
    else
       return &svga_vgpu9_compiler_options;

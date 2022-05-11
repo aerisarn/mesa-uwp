@@ -3527,6 +3527,9 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s,
       !screen->get_shader_param(screen, pipe_shader_type_from_mesa(s->info.stage),
                                 PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED);
 
+   bool force_indirect_unrolling_sampler =
+      screen->get_param(screen, PIPE_CAP_GLSL_FEATURE_LEVEL) < 400;
+
    nir_variable_mode no_indirects_mask = ntt_no_indirects_mask(s, screen);
 
    if (!options->lower_extract_byte ||
@@ -3540,7 +3543,8 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s,
        !options->lower_uniforms_to_ubo ||
        !options->lower_vector_cmp ||
        options->lower_fsqrt != lower_fsqrt ||
-       options->force_indirect_unrolling != no_indirects_mask) {
+       options->force_indirect_unrolling != no_indirects_mask ||
+       force_indirect_unrolling_sampler) {
       nir_shader_compiler_options *new_options = ralloc(s, nir_shader_compiler_options);
       *new_options = *s->options;
 
@@ -3556,6 +3560,7 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s,
       new_options->lower_vector_cmp = true;
       new_options->lower_fsqrt = lower_fsqrt;
       new_options->force_indirect_unrolling = no_indirects_mask;
+      new_options->force_indirect_unrolling_sampler = force_indirect_unrolling_sampler;
 
       s->options = new_options;
    }

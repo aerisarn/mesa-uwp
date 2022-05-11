@@ -496,6 +496,7 @@ static const nir_shader_compiler_options nv30_base_compiler_options = {
    .lower_rotate = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
+   .force_indirect_unrolling_sampler = true,
    .max_unroll_iterations = 32,
 
    .use_interpolated_input_intrinsics = true,

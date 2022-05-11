@@ -194,6 +194,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
 
       nir_options->force_indirect_unrolling |=
          brw_nir_no_indirect_mask(compiler, i);
+      nir_options->force_indirect_unrolling_sampler = devinfo->ver < 7;
 
       if (compiler->use_tcs_8_patch) {
          /* TCS 8_PATCH mode has multiple patches per subgroup */

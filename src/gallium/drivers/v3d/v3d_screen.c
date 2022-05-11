@@ -738,6 +738,7 @@ static const nir_shader_compiler_options v3d_nir_options = {
          * limit register pressure impact.
          */
         .max_unroll_iterations = 16,
+        .force_indirect_unrolling_sampler = true,
 };
 
 static const void *
