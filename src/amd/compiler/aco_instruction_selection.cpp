@@ -11070,7 +11070,10 @@ add_startpgm(struct isel_context* ctx)
     * handling spilling.
     */
    ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
-   ctx->program->scratch_offset = get_arg(ctx, ctx->args->ac.scratch_offset);
+   if (ctx->args->ac.scratch_offset.used) {
+      /* FIXME: Fix scratch loads/stores on GFX11. */
+      ctx->program->scratch_offset = get_arg(ctx, ctx->args->ac.scratch_offset);
+   }
 
    if (ctx->stage.has(SWStage::VS) && ctx->program->info.vs.dynamic_inputs) {
       unsigned num_attributes = util_last_bit(ctx->program->info.vs.vb_desc_usage_mask);
