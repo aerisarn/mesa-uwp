@@ -1332,22 +1332,23 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
                  enum radeon_bo_flag flags)
 {
    struct amdgpu_winsys_bo *bo;
-   int heap = -1;
 
    radeon_canonicalize_bo_flags(&domain, &flags);
 
+   /* Handle sparse buffers first. */
+   if (flags & RADEON_FLAG_SPARSE) {
+      assert(RADEON_SPARSE_PAGE_SIZE % alignment == 0);
+
+      return amdgpu_bo_sparse_create(ws, size, domain, flags);
+   }
+
    struct pb_slabs *last_slab = &ws->bo_slabs[NUM_SLAB_ALLOCATORS - 1];
    unsigned max_slab_entry_size = 1 << (last_slab->min_order + last_slab->num_orders - 1);
+   int heap = radeon_get_heap_index(domain, flags);
 
    /* Sub-allocate small buffers from slabs. */
-   if (!(flags & (RADEON_FLAG_NO_SUBALLOC | RADEON_FLAG_SPARSE)) &&
-       size <= max_slab_entry_size) {
+   if (heap >= 0 && size <= max_slab_entry_size) {
       struct pb_slab_entry *entry;
-      int heap = radeon_get_heap_index(domain, flags);
-
-      if (heap < 0 || heap >= RADEON_NUM_HEAPS)
-         goto no_slab;
-
       unsigned alloc_size = size;
 
       /* Always use slabs for sizes less than 4 KB because the kernel aligns
@@ -1395,15 +1396,6 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
    }
 no_slab:
 
-   if (flags & RADEON_FLAG_SPARSE) {
-      assert(RADEON_SPARSE_PAGE_SIZE % alignment == 0);
-
-      return amdgpu_bo_sparse_create(ws, size, domain, flags);
-   }
-
-   /* This flag is irrelevant for the cache. */
-   flags &= ~RADEON_FLAG_NO_SUBALLOC;
-
    /* Align size to page size. This is the minimum alignment for normal
     * BOs. Aligning this here helps the cached bufmgr. Especially small BOs,
     * like constant/uniform buffers, can benefit from better and more reuse.
@@ -1416,7 +1408,8 @@ no_slab:
    bool use_reusable_pool = flags & RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
    if (use_reusable_pool) {
-       heap = radeon_get_heap_index(domain, flags);
+       /* RADEON_FLAG_NO_SUBALLOC is irrelevant for the cache. */
+       heap = radeon_get_heap_index(domain, flags & ~RADEON_FLAG_NO_SUBALLOC);
        assert(heap >= 0 && heap < RADEON_NUM_HEAPS);
 
        /* Get a buffer from the cache. */
