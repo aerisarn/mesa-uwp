@@ -903,7 +903,7 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
       case aco_opcode::s_cbranch_execnz: inv = aco_opcode::s_cbranch_execz; break;
       default: unreachable("Unhandled long jump.");
       }
-      instr.reset(bld.sopp(inv, -1, 7));
+      instr.reset(bld.sopp(inv, -1, 6));
       emit_instruction(ctx, out, instr.get());
    }
 
@@ -916,10 +916,7 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
    emit_instruction(ctx, out, instr.get());
    branch->pass_flags = out.size();
 
-   instr.reset(bld.sop2(aco_opcode::s_addc_u32, def_tmp_hi, op_tmp_hi,
-                        Operand::c32(backwards ? UINT32_MAX : 0u))
-                  .instr);
-   emit_instruction(ctx, out, instr.get());
+   /* s_addc_u32 for high 32 bits not needed because the program is in a 32-bit VA range */
 
    /* restore SCC and clear the LSB of the new PC */
    instr.reset(bld.sopc(aco_opcode::s_bitcmp1_b32, def_tmp_lo, op_tmp_lo, Operand::zero()).instr);
