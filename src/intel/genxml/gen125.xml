@@ -8086,6 +8086,13 @@
     <field name="GAC Done" start="31" end="31" type="bool"/>
   </register>
 
+  <register name="VFG_PREEMPTION_CHICKEN_BITS" length="1" num="0x83B4">
+    <field name="Batch Preemption Disable" start="8" end="8" type="bool"/>
+    <field name="PolygonTrifanLineLoop Preemption Disable" start="4" end="4" type="bool"/>
+    <field name="Batch Preemption Disable Mask" start="24" end="24" type="bool"/>
+    <field name="PolygonTrifanLineLoop Preemption Disable Mask" start="20" end="20" type="bool"/>
+  </register>
+
   <register name="VS_INVOCATION_COUNT" length="2" num="0x2320">
     <field name="VS Invocation Count Report" start="0" end="63" type="uint"/>
   </register>
