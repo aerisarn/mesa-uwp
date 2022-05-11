@@ -113,6 +113,63 @@ get_disasm_string(aco::Program* program, std::vector<uint32_t>& code,
    return disasm;
 }
 
+static void
+aco_build_radv_shader_binary(struct radv_shader_binary **binary,
+                             gl_shader_stage stage,
+                             bool is_gs_copy_shader,
+                             const ac_shader_config *config,
+                             const char *llvm_ir_str,
+                             unsigned llvm_ir_size,
+                             const char *disasm_str,
+                             unsigned disasm_size,
+                             uint32_t *statistics,
+                             uint32_t stats_size,
+                             uint32_t exec_size,
+                             const uint32_t *code,
+                             uint32_t code_dw)
+{
+   size_t size = llvm_ir_size;
+
+   size += disasm_size;
+   size += stats_size;
+
+   size += code_dw * sizeof(uint32_t) + sizeof(radv_shader_binary_legacy);
+
+   /* We need to calloc to prevent unintialized data because this will be used
+    * directly for the disk cache. Uninitialized data can appear because of
+    * padding in the struct or because legacy_binary->data can be at an offset
+    * from the start less than sizeof(radv_shader_binary_legacy). */
+   radv_shader_binary_legacy *legacy_binary = (radv_shader_binary_legacy *)calloc(size, 1);
+   legacy_binary->base.type = RADV_BINARY_TYPE_LEGACY;
+   legacy_binary->base.stage = stage;
+   legacy_binary->base.is_gs_copy_shader = is_gs_copy_shader;
+   legacy_binary->base.total_size = size;
+   legacy_binary->base.config = *config;
+
+   if (stats_size)
+      memcpy(legacy_binary->data, statistics, stats_size);
+   legacy_binary->stats_size = stats_size;
+
+   memcpy(legacy_binary->data + legacy_binary->stats_size, code,
+          code_dw * sizeof(uint32_t));
+   legacy_binary->exec_size = exec_size;
+   legacy_binary->code_size = code_dw * sizeof(uint32_t);
+
+   legacy_binary->disasm_size = 0;
+   legacy_binary->ir_size = llvm_ir_size;
+
+   memcpy((char*)legacy_binary->data + legacy_binary->stats_size + legacy_binary->code_size,
+          llvm_ir_str, llvm_ir_size);
+
+   legacy_binary->disasm_size = disasm_size;
+   if (disasm_size) {
+      memcpy((char*)legacy_binary->data + legacy_binary->stats_size +
+             legacy_binary->code_size + llvm_ir_size, disasm_str,
+             disasm_size);
+   }
+   *binary = (radv_shader_binary*)legacy_binary;
+}
+
 void
 aco_compile_shader(const struct aco_compiler_options* options,
                    const struct aco_shader_info* info,
@@ -237,55 +294,27 @@ aco_compile_shader(const struct aco_compiler_options* options,
 
    bool get_disasm = options->dump_shader || options->record_ir;
 
-   size_t size = llvm_ir.size();
-
    std::string disasm;
-   if (get_disasm) {
+   if (get_disasm)
       disasm = get_disasm_string(program.get(), code, exec_size);
-      size += disasm.size();
-   }
 
    size_t stats_size = 0;
    if (program->collect_statistics)
       stats_size = aco::num_statistics * sizeof(uint32_t);
-   size += stats_size;
 
-   size += code.size() * sizeof(uint32_t) + sizeof(radv_shader_binary_legacy);
-   /* We need to calloc to prevent unintialized data because this will be used
-    * directly for the disk cache. Uninitialized data can appear because of
-    * padding in the struct or because legacy_binary->data can be at an offset
-    * from the start less than sizeof(radv_shader_binary_legacy). */
-   radv_shader_binary_legacy* legacy_binary = (radv_shader_binary_legacy*)calloc(size, 1);
-
-   legacy_binary->base.type = RADV_BINARY_TYPE_LEGACY;
-   legacy_binary->base.stage = shaders[shader_count - 1]->info.stage;
-   legacy_binary->base.is_gs_copy_shader = args->is_gs_copy_shader;
-   legacy_binary->base.total_size = size;
-
-   if (program->collect_statistics)
-      memcpy(legacy_binary->data, program->statistics, aco::num_statistics * sizeof(uint32_t));
-   legacy_binary->stats_size = stats_size;
-
-   memcpy(legacy_binary->data + legacy_binary->stats_size, code.data(),
-          code.size() * sizeof(uint32_t));
-   legacy_binary->exec_size = exec_size;
-   legacy_binary->code_size = code.size() * sizeof(uint32_t);
-
-   legacy_binary->base.config = config;
-   legacy_binary->disasm_size = 0;
-   legacy_binary->ir_size = llvm_ir.size();
-
-   llvm_ir.copy((char*)legacy_binary->data + legacy_binary->stats_size + legacy_binary->code_size,
-                llvm_ir.size());
-
-   if (get_disasm) {
-      disasm.copy((char*)legacy_binary->data + legacy_binary->stats_size +
-                     legacy_binary->code_size + llvm_ir.size(),
-                  disasm.size());
-      legacy_binary->disasm_size = disasm.size();
-   }
-
-   *binary = (radv_shader_binary*)legacy_binary;
+   aco_build_radv_shader_binary(binary,
+                                shaders[shader_count - 1]->info.stage,
+                                args->is_gs_copy_shader,
+                                &config,
+                                llvm_ir.c_str(),
+                                llvm_ir.size(),
+                                disasm.c_str(),
+                                disasm.size(),
+                                program->statistics,
+                                stats_size,
+                                exec_size,
+                                code.data(),
+                                code.size());
 }
 
 void
