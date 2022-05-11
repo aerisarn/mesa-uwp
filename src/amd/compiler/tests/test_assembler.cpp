@@ -291,3 +291,26 @@ BEGIN_TEST(assembler.smem_offset)
       finish_assembler_test();
    }
 END_TEST
+
+BEGIN_TEST(assembler.p_constaddr)
+   if (!setup_cs(NULL, GFX9))
+      return;
+
+   Definition dst0 = bld.def(s2);
+   Definition dst1 = bld.def(s2);
+   dst0.setFixed(PhysReg(0));
+   dst1.setFixed(PhysReg(2));
+
+   //>> s_getpc_b64 s[0:1] ; be801c00
+   //! s_add_u32 s0, s0, 32 ; 8000ff00 00000020
+   //! s_addc_u32 s1, s1, 0 ; 82018001
+   bld.pseudo(aco_opcode::p_constaddr, dst0, Operand::zero());
+
+   //! s_getpc_b64 s[2:3] ; be821c00
+   //! s_add_u32 s2, s2, 48 ; 8002ff02 00000030
+   //! s_addc_u32 s3, s3, 0 ; 82038003
+   bld.pseudo(aco_opcode::p_constaddr, dst1, Operand::c32(32));
+
+   aco::lower_to_hw_instr(program.get());
+   finish_assembler_test();
+END_TEST
