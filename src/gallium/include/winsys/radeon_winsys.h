@@ -714,14 +714,15 @@ radeon_bo_reference(struct radeon_winsys *rws, struct pb_buffer **dst, struct pb
 #define RADEON_HEAP_BIT_VRAM           (1 << 0) /* if false, it's GTT */
 #define RADEON_HEAP_BIT_READ_ONLY      (1 << 1) /* both VRAM and GTT */
 #define RADEON_HEAP_BIT_32BIT          (1 << 2) /* both VRAM and GTT */
+#define RADEON_HEAP_BIT_ENCRYPTED      (1 << 3) /* both VRAM and GTT */
 
-#define RADEON_HEAP_BIT_NO_CPU_ACCESS  (1 << 3) /* VRAM only */
+#define RADEON_HEAP_BIT_NO_CPU_ACCESS  (1 << 4) /* VRAM only */
 
-#define RADEON_HEAP_BIT_WC             (1 << 3) /* GTT only, VRAM implies this to be true */
-#define RADEON_HEAP_BIT_GL2_BYPASS     (1 << 4) /* GTT only */
+#define RADEON_HEAP_BIT_WC             (1 << 4) /* GTT only, VRAM implies this to be true */
+#define RADEON_HEAP_BIT_GL2_BYPASS     (1 << 5) /* GTT only */
 
 /* The number of all possible heap descriptions using the bits above. */
-#define RADEON_NUM_HEAPS               (1 << 5)
+#define RADEON_NUM_HEAPS               (1 << 6)
 
 static inline enum radeon_bo_domain radeon_domain_from_heap(int heap)
 {
@@ -743,6 +744,8 @@ static inline unsigned radeon_flags_from_heap(int heap)
       flags |= RADEON_FLAG_READ_ONLY;
    if (heap & RADEON_HEAP_BIT_32BIT)
       flags |= RADEON_FLAG_32BIT;
+   if (heap & RADEON_HEAP_BIT_ENCRYPTED)
+      flags |= RADEON_FLAG_ENCRYPTED;
 
    if (heap & RADEON_HEAP_BIT_VRAM) {
       flags |= RADEON_FLAG_GTT_WC;
@@ -808,8 +811,7 @@ static inline int radeon_get_heap_index(enum radeon_bo_domain domain, enum radeo
 
    /* These are unsupported flags. */
    /* RADEON_FLAG_DRIVER_INTERNAL is ignored. It doesn't affect allocators. */
-   /* TODO: handle ENCRYPTED better */
-   if (flags & (RADEON_FLAG_NO_SUBALLOC | RADEON_FLAG_SPARSE | RADEON_FLAG_ENCRYPTED))
+   if (flags & (RADEON_FLAG_NO_SUBALLOC | RADEON_FLAG_SPARSE))
       return -1;
 
    int heap = 0;
@@ -818,6 +820,8 @@ static inline int radeon_get_heap_index(enum radeon_bo_domain domain, enum radeo
       heap |= RADEON_HEAP_BIT_READ_ONLY;
    if (flags & RADEON_FLAG_32BIT)
       heap |= RADEON_HEAP_BIT_32BIT;
+   if (flags & RADEON_FLAG_ENCRYPTED)
+      heap |= RADEON_HEAP_BIT_ENCRYPTED;
 
    if (domain == RADEON_DOMAIN_VRAM) {
       /* VRAM | GTT shouldn't occur, but if it does, ignore GTT. */

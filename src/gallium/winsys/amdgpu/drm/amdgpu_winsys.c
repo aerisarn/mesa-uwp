@@ -474,22 +474,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                             RADEON_NUM_HEAPS, true,
                             aws,
                             amdgpu_bo_can_reclaim_slab,
-                            amdgpu_bo_slab_alloc_normal,
-                            /* Cast to void* because one of the function parameters
-                             * is a struct pointer instead of void*. */
-                            (void*)amdgpu_bo_slab_free)) {
-            amdgpu_winsys_destroy(&ws->base);
-            simple_mtx_unlock(&dev_tab_mutex);
-            return NULL;
-         }
-
-         if (aws->info.has_tmz_support &&
-             !pb_slabs_init(&aws->bo_slabs_encrypted[i],
-                            min_order, max_order,
-                            RADEON_NUM_HEAPS, true,
-                            aws,
-                            amdgpu_bo_can_reclaim_slab,
-                            amdgpu_bo_slab_alloc_encrypted,
+                            amdgpu_bo_slab_alloc,
                             /* Cast to void* because one of the function parameters
                              * is a struct pointer instead of void*. */
                             (void*)amdgpu_bo_slab_free)) {
