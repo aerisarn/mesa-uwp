@@ -155,17 +155,17 @@ bi_fuse_discard_fcmp(bi_instr *I, bi_instr *mod, unsigned arch)
 void
 bi_opt_mod_prop_forward(bi_context *ctx)
 {
-        bi_instr **lut = calloc(sizeof(bi_instr *), ((ctx->ssa_alloc + 1) << 2));
+        bi_instr **lut = calloc(sizeof(bi_instr *), ctx->ssa_alloc);
 
         bi_foreach_instr_global_safe(ctx, I) {
                 if (bi_is_ssa(I->dest[0]))
-                        lut[bi_word_node(I->dest[0])] = I;
+                        lut[I->dest[0].value] = I;
 
                 bi_foreach_src(I, s) {
                         if (!bi_is_ssa(I->src[s]))
                                 continue;
 
-                        bi_instr *mod = lut[bi_word_node(I->src[s])];
+                        bi_instr *mod = lut[I->src[s].value];
 
                         if (!mod)
                                 continue;
@@ -263,14 +263,14 @@ bi_optimizer_var_tex(bi_context *ctx, bi_instr *var, bi_instr *tex)
 void
 bi_opt_mod_prop_backward(bi_context *ctx)
 {
-        unsigned count = ((ctx->ssa_alloc + 1) << 2);
+        unsigned count = ctx->ssa_alloc;
         bi_instr **uses = calloc(count, sizeof(*uses));
         BITSET_WORD *multiple = calloc(BITSET_WORDS(count), sizeof(*multiple));
 
         bi_foreach_instr_global_rev(ctx, I) {
                 bi_foreach_src(I, s) {
                         if (bi_is_ssa(I->src[s])) {
-                                unsigned v = bi_word_node(I->src[s]);
+                                unsigned v = I->src[s].value;
 
                                 if (uses[v] && uses[v] != I)
                                         BITSET_SET(multiple, v);
@@ -282,9 +282,9 @@ bi_opt_mod_prop_backward(bi_context *ctx)
                 if (!bi_is_ssa(I->dest[0]))
                         continue;
 
-                bi_instr *use = uses[bi_word_node(I->dest[0])];
+                bi_instr *use = uses[I->dest[0].value];
 
-                if (!use || BITSET_TEST(multiple, bi_word_node(I->dest[0])))
+                if (!use || BITSET_TEST(multiple, I->dest[0].value))
                         continue;
 
                 /* Destination has a single use, try to propagate */
