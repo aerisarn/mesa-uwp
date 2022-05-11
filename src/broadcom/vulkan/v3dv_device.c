@@ -1201,6 +1201,8 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .imagelessFramebuffer = true,
       .timelineSemaphore = true,
 
+      .samplerMirrorClampToEdge = true,
+
       .vulkanMemoryModel = true,
       .vulkanMemoryModelDeviceScope = true,
       .vulkanMemoryModelAvailabilityVisibilityChains = true,
