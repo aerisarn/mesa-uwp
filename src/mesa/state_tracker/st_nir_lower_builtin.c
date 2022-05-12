@@ -166,12 +166,12 @@ lower_builtin_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
    if (intrin->intrinsic != nir_intrinsic_load_deref)
       return false;
 
-   nir_variable *var =
-      nir_deref_instr_get_variable(nir_src_as_deref(intrin->src[0]));
-   if (var->data.mode != nir_var_uniform)
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   if (!nir_deref_mode_is(deref, nir_var_uniform))
       return false;
 
    /* built-in's will always start with "gl_" */
+   nir_variable *var = nir_deref_instr_get_variable(deref);
    if (strncmp(var->name, "gl_", 3) != 0)
       return false;
 
