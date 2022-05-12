@@ -280,6 +280,9 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
    bo->funcs = &funcs;
    bo->handle = handle;
 
+   /* Don't assume we can mmap an imported bo: */
+   bo->alloc_flags = FD_BO_NOMAP;
+
    struct drm_virtgpu_resource_info args = {
          .bo_handle = handle,
    };
