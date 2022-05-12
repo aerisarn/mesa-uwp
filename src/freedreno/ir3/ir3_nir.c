@@ -696,6 +696,8 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    bool more_late_algebraic = true;
    while (more_late_algebraic) {
       more_late_algebraic = OPT(s, nir_opt_algebraic_late);
+      if (!more_late_algebraic)
+         OPT(s, nir_fold_16bit_sampler_conversions, 0, ~0);
       OPT_V(s, nir_opt_constant_folding);
       OPT_V(s, nir_copy_prop);
       OPT_V(s, nir_opt_dce);
