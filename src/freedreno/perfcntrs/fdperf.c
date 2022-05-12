@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <xf86drm.h>
 
 #include "drm/freedreno_drmif.h"
@@ -44,6 +45,13 @@
 #include "freedreno_perfcntr.h"
 
 #define MAX_CNTR_PER_GROUP 24
+#define REFRESH_MS         500
+
+static struct {
+   int refresh_ms;
+} options = {
+   .refresh_ms = REFRESH_MS,
+};
 
 /* NOTE first counter group should always be CP, since we unconditionally
  * use CP counter to measure the gpu freq.
@@ -285,8 +293,6 @@ resample_counter(struct counter_group *group, int ctr)
    group->stime[ctr] = t;
 }
 
-#define REFRESH_MS 500
-
 /* sample all the counters: */
 static void
 resample(void)
@@ -294,7 +300,7 @@ resample(void)
    static uint64_t last_time;
    uint64_t current_time = gettime_us();
 
-   if ((current_time - last_time) < (REFRESH_MS * 1000 / 2))
+   if ((current_time - last_time) < (options.refresh_ms * 1000 / 2))
       return;
 
    last_time = current_time;
@@ -643,7 +649,7 @@ main_ui(void)
       goto out;
 
    cbreak();
-   wtimeout(mainwin, REFRESH_MS);
+   wtimeout(mainwin, options.refresh_ms);
    noecho();
    keypad(mainwin, TRUE);
    curs_set(0);
@@ -833,6 +839,35 @@ config_restore(void)
    }
 }
 
+static void
+print_usage(const char *argv0)
+{
+   fprintf(stderr,
+           "Usage: %s [OPTION]...\n"
+           "\n"
+           "  -r <N>     refresh every N milliseconds\n"
+           "  -h         show this message\n",
+           argv0);
+   exit(2);
+}
+
+static void
+parse_options(int argc, char **argv)
+{
+   int c;
+
+   while ((c = getopt(argc, argv, "r:")) != -1) {
+      switch (c) {
+      case 'r':
+         options.refresh_ms = atoi(optarg);
+         break;
+      default:
+         print_usage(argv[0]);
+         break;
+      }
+   }
+}
+
 /*
  * main
  */
@@ -840,6 +875,8 @@ config_restore(void)
 int
 main(int argc, char **argv)
 {
+   parse_options(argc, argv);
+
    find_device();
 
    const struct fd_perfcntr_group *groups;
