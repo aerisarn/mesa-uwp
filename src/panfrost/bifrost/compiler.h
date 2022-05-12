@@ -1271,6 +1271,21 @@ bi_after_instr(bi_instr *instr)
 }
 
 static inline bi_cursor
+bi_after_block_logical(bi_block *block)
+{
+        if (list_is_empty(&block->instructions))
+                return bi_after_block(block);
+
+        bi_instr *last = list_last_entry(&block->instructions, bi_instr, link);
+        assert(last != NULL);
+
+        if (last->branch_target)
+                return bi_before_instr(last);
+        else
+                return bi_after_block(block);
+}
+
+static inline bi_cursor
 bi_before_nonempty_block(bi_block *block)
 {
         bi_instr *I = list_first_entry(&block->instructions, bi_instr, link);
