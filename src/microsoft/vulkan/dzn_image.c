@@ -521,6 +521,7 @@ dzn_image_layout_to_state(VkImageLayout layout, VkImageAspectFlagBits aspect)
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
    case VK_IMAGE_LAYOUT_UNDEFINED:
    case VK_IMAGE_LAYOUT_GENERAL:
+   case VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA:
       /* YOLO! */
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
       return D3D12_RESOURCE_STATE_COMMON;

@@ -488,11 +488,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
       subpass->view_mask = desc->viewMask ? desc->viewMask : 1;
       pass->view_mask |= subpass->view_mask;
 
-      assert(desc->colorAttachmentCount <= 32);
-      uint32_t color_self_deps = 0;
-      bool has_depth_self_dep = false;
-      bool has_stencil_self_dep = false;
-
       subpass->input_count = desc->inputAttachmentCount;
       if (desc->inputAttachmentCount > 0) {
          subpass->input_attachments = next_subpass_attachment;
@@ -504,25 +499,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
                                        &desc->pInputAttachments[a],
                                        pCreateInfo->pAttachments,
                                        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-
-            if (desc->pInputAttachments[a].attachment != VK_ATTACHMENT_UNUSED) {
-               for (uint32_t c = 0; c < desc->colorAttachmentCount; c++) {
-                  if (desc->pColorAttachments[c].attachment ==
-                      desc->pInputAttachments[a].attachment)
-                     color_self_deps |= (1u << c);
-               }
-
-               if (desc->pDepthStencilAttachment != NULL &&
-                   desc->pDepthStencilAttachment->attachment ==
-                      desc->pInputAttachments[a].attachment) {
-                  VkImageAspectFlags aspects =
-                     subpass->input_attachments[a].aspects;
-                  if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-                     has_depth_self_dep = true;
-                  if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-                     has_stencil_self_dep = true;
-               }
-            }
          }
       }
 
@@ -614,6 +590,48 @@ vk_common_CreateRenderPass2(VkDevice _device,
                                     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR);
          subpass->fragment_shading_rate_attachment_texel_size =
             fsr_att_info->shadingRateAttachmentTexelSize;
+      }
+
+      /* Figure out any self-dependencies */
+      assert(desc->colorAttachmentCount <= 32);
+      uint32_t color_self_deps = 0;
+      bool has_depth_self_dep = false;
+      bool has_stencil_self_dep = false;
+      for (uint32_t a = 0; a < desc->inputAttachmentCount; a++) {
+         if (desc->pInputAttachments[a].attachment == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         for (uint32_t c = 0; c < desc->colorAttachmentCount; c++) {
+            if (desc->pColorAttachments[c].attachment ==
+                desc->pInputAttachments[a].attachment) {
+               subpass->input_attachments[a].layout =
+                  VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA;
+               subpass->color_attachments[c].layout =
+                  VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA;
+               color_self_deps |= (1u << c);
+            }
+         }
+
+         if (desc->pDepthStencilAttachment != NULL &&
+             desc->pDepthStencilAttachment->attachment ==
+                desc->pInputAttachments[a].attachment) {
+            VkImageAspectFlags aspects =
+               subpass->input_attachments[a].aspects;
+            if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+               subpass->input_attachments[a].layout =
+                  VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA;
+               subpass->depth_stencil_attachment->layout =
+                  VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA;
+               has_depth_self_dep = true;
+            }
+            if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+               subpass->input_attachments[a].stencil_layout =
+                  VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA;
+               subpass->depth_stencil_attachment->stencil_layout =
+                  VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA;
+               has_stencil_self_dep = true;
+            }
+         }
       }
 
       VkFormat *color_formats = NULL;
@@ -974,6 +992,14 @@ vk_image_layout_supports_input_attachment(VkImageLayout layout)
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
    case VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:
    case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
+#endif
+   case VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA:
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
       return true;
    default:
       return false;
