@@ -4556,8 +4556,11 @@ static struct pipe_sampler_view *si_create_sampler_view(struct pipe_context *ctx
 
    /* Buffer resource. */
    if (texture->target == PIPE_BUFFER) {
+      uint32_t size = si_clamp_texture_texel_count(sctx->screen->max_texture_buffer_size,
+                                                   state->format, state->u.buf.size);
+
       si_make_buffer_descriptor(sctx->screen, si_resource(texture), state->format,
-                                state->u.buf.offset, state->u.buf.size, view->state);
+                                state->u.buf.offset, size, view->state);
       return &view->base;
    }
 

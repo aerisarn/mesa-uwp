@@ -755,8 +755,10 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
    if (res->b.b.target == PIPE_BUFFER) {
       if (view->access & PIPE_IMAGE_ACCESS_WRITE)
          si_mark_image_range_valid(view);
+      uint32_t size = si_clamp_texture_texel_count(screen->max_texture_buffer_size,
+                                                   view->format, view->u.buf.size);
 
-      si_make_buffer_descriptor(screen, res, view->format, view->u.buf.offset, view->u.buf.size,
+      si_make_buffer_descriptor(screen, res, view->format, view->u.buf.offset, size,
                                 desc);
       si_set_buf_desc_address(res, view->u.buf.offset, desc + 4);
    } else {

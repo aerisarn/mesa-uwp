@@ -650,6 +650,22 @@ static inline unsigned si_get_image_slot(unsigned slot)
    return SI_NUM_IMAGE_SLOTS - 1 - slot;
 }
 
+static inline unsigned si_clamp_texture_texel_count(unsigned max_texture_buffer_size,
+                                                    enum pipe_format format,
+                                                    uint32_t size)
+{
+   /* The spec says:
+    *    The number of texels in the texel array is then clamped to the value of
+    *    the implementation-dependent limit GL_MAX_TEXTURE_BUFFER_SIZE.
+    *
+    * So compute the number of texels, compare to GL_MAX_TEXTURE_BUFFER_SIZE and update it.
+    */
+   unsigned stride = util_format_get_blocksize(format);
+   unsigned num_texels = MIN2(max_texture_buffer_size,
+                               size / stride);
+   return num_texels * stride;
+}
+
 #ifdef __cplusplus
 }
 #endif

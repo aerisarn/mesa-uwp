@@ -1141,6 +1141,9 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    si_init_screen_query_functions(sscreen);
    si_init_screen_live_shader_cache(sscreen);
 
+   sscreen->max_texture_buffer_size = sscreen->b.get_param(
+      &sscreen->b, PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE);
+
    /* Set these flags in debug_flags early, so that the shader cache takes
     * them into account.
     *
