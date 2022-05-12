@@ -19,6 +19,19 @@ pub struct PipeContext {
 unsafe impl Send for PipeContext {}
 unsafe impl Sync for PipeContext {}
 
+#[repr(u32)]
+pub enum RWFlags {
+    RD = pipe_map_flags::PIPE_MAP_READ.0,
+    WR = pipe_map_flags::PIPE_MAP_WRITE.0,
+    RW = pipe_map_flags::PIPE_MAP_READ_WRITE.0,
+}
+
+impl From<RWFlags> for pipe_map_flags {
+    fn from(rw: RWFlags) -> Self {
+        pipe_map_flags(rw as u32)
+    }
+}
+
 impl PipeContext {
     pub(super) fn new(context: *mut pipe_context, screen: &Arc<PipeScreen>) -> Option<Self> {
         let s = Self {
@@ -128,6 +141,7 @@ impl PipeContext {
         offset: i32,
         size: i32,
         block: bool,
+        rw: RWFlags,
     ) -> PipeTransfer {
         let mut b = pipe_box::default();
         let mut out: *mut pipe_transfer = ptr::null_mut();
@@ -140,7 +154,7 @@ impl PipeContext {
         let flags = match block {
             false => pipe_map_flags::PIPE_MAP_UNSYNCHRONIZED,
             true => pipe_map_flags(0),
-        } | pipe_map_flags::PIPE_MAP_READ_WRITE;
+        } | rw.into();
 
         let ptr = unsafe {
             self.pipe.as_ref().buffer_map.unwrap()(
@@ -160,13 +174,19 @@ impl PipeContext {
         unsafe { self.pipe.as_ref().buffer_unmap.unwrap()(self.pipe.as_ptr(), tx) };
     }
 
-    pub fn texture_map(&self, res: &PipeResource, bx: &pipe_box, block: bool) -> PipeTransfer {
+    pub fn texture_map(
+        &self,
+        res: &PipeResource,
+        bx: &pipe_box,
+        block: bool,
+        rw: RWFlags,
+    ) -> PipeTransfer {
         let mut out: *mut pipe_transfer = ptr::null_mut();
 
         let flags = match block {
             false => pipe_map_flags::PIPE_MAP_UNSYNCHRONIZED,
             true => pipe_map_flags(0),
-        } | pipe_map_flags::PIPE_MAP_READ_WRITE;
+        } | rw.into();
 
         let ptr = unsafe {
             self.pipe.as_ref().texture_map.unwrap()(
