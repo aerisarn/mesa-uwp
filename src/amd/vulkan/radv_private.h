@@ -1391,7 +1391,6 @@ struct radv_attachment_state {
    VkClearValue clear_value;
    VkImageLayout current_layout;
    VkImageLayout current_stencil_layout;
-   bool current_in_render_loop;
    struct radv_sample_locations_state sample_location;
 
    union {
@@ -2279,15 +2278,13 @@ struct radv_image {
  */
 bool radv_layout_is_htile_compressed(const struct radv_device *device,
                                      const struct radv_image *image, VkImageLayout layout,
-                                     bool in_render_loop, unsigned queue_mask);
+                                     unsigned queue_mask);
 
 bool radv_layout_can_fast_clear(const struct radv_device *device, const struct radv_image *image,
-                                unsigned level, VkImageLayout layout, bool in_render_loop,
-                                unsigned queue_mask);
+                                unsigned level, VkImageLayout layout, unsigned queue_mask);
 
 bool radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_image *image,
-                                unsigned level, VkImageLayout layout, bool in_render_loop,
-                                unsigned queue_mask);
+                                unsigned level, VkImageLayout layout, unsigned queue_mask);
 
 bool radv_layout_fmask_compressed(const struct radv_device *device, const struct radv_image *image,
                                   VkImageLayout layout, unsigned queue_mask);
@@ -2675,7 +2672,6 @@ struct radv_subpass_attachment {
    uint32_t attachment;
    VkImageLayout layout;
    VkImageLayout stencil_layout;
-   bool in_render_loop;
 };
 
 struct radv_subpass {

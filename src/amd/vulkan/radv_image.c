@@ -34,6 +34,7 @@
 #include "radv_radeon_winsys.h"
 #include "sid.h"
 #include "vk_format.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 
 #include "gfx10_format_table.h"
@@ -2212,7 +2213,7 @@ radv_image_view_finish(struct radv_image_view *iview)
 
 bool
 radv_layout_is_htile_compressed(const struct radv_device *device, const struct radv_image *image,
-                                VkImageLayout layout, bool in_render_loop, unsigned queue_mask)
+                                VkImageLayout layout, unsigned queue_mask)
 {
    switch (layout) {
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
@@ -2236,7 +2237,7 @@ radv_layout_is_htile_compressed(const struct radv_device *device, const struct r
        * queue is likely broken for eg. depth/stencil copies.
        */
       if (radv_image_is_tc_compat_htile(image) && queue_mask & (1u << RADV_QUEUE_GENERAL) &&
-          !in_render_loop && !device->instance->disable_tc_compat_htile_in_general) {
+          !device->instance->disable_tc_compat_htile_in_general) {
          return true;
       } else {
          return false;
@@ -2266,11 +2267,11 @@ radv_layout_is_htile_compressed(const struct radv_device *device, const struct r
 
 bool
 radv_layout_can_fast_clear(const struct radv_device *device, const struct radv_image *image,
-                           unsigned level, VkImageLayout layout, bool in_render_loop,
+                           unsigned level, VkImageLayout layout,
                            unsigned queue_mask)
 {
    if (radv_dcc_enabled(image, level) &&
-       !radv_layout_dcc_compressed(device, image, level, layout, in_render_loop, queue_mask))
+       !radv_layout_dcc_compressed(device, image, level, layout, queue_mask))
       return false;
 
    if (!(image->vk.usage & RADV_IMAGE_USAGE_WRITE_BITS))
@@ -2289,8 +2290,7 @@ radv_layout_can_fast_clear(const struct radv_device *device, const struct radv_i
 
 bool
 radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_image *image,
-                           unsigned level, VkImageLayout layout, bool in_render_loop,
-                           unsigned queue_mask)
+                           unsigned level, VkImageLayout layout, unsigned queue_mask)
 {
    if (!radv_dcc_enabled(image, level))
       return false;
@@ -2308,7 +2308,7 @@ radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_i
        (queue_mask & (1u << RADV_QUEUE_COMPUTE)) && !radv_image_use_dcc_image_stores(device, image))
       return false;
 
-   if (in_render_loop || layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
+   if (layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       /* Do not compress DCC with feedback loops because we can't read&write it without introducing
        * corruption.
        */

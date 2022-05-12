@@ -288,7 +288,7 @@ static void
 radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *src_image,
                                 VkFormat src_format, struct radv_image *dest_image,
                                 unsigned dest_level, VkImageLayout dest_image_layout,
-                                bool dest_render_loop, struct radv_cmd_buffer *cmd_buffer,
+                                struct radv_cmd_buffer *cmd_buffer,
                                 enum radv_resolve_method *method)
 
 {
@@ -302,7 +302,7 @@ radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *s
        * TODO: Add support for layered and int to the fragment path.
        */
       if (radv_layout_dcc_compressed(device, dest_image, dest_level, dest_image_layout,
-                                     dest_render_loop, queue_mask)) {
+                                     queue_mask)) {
          *method = RESOLVE_FRAGMENT;
       } else if (!image_hw_resolve_compat(device, src_image, dest_image)) {
          /* The micro tile mode only needs to match for the HW
@@ -404,7 +404,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                                                       cmd_buffer->qf);
 
    if (radv_layout_dcc_compressed(cmd_buffer->device, dst_image, region->dstSubresource.mipLevel,
-                                  dst_image_layout, false, queue_mask)) {
+                                  dst_image_layout, queue_mask)) {
       VkImageSubresourceRange range = {
          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
          .baseMipLevel = region->dstSubresource.mipLevel,
@@ -566,7 +566,7 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer,
       const VkImageResolve2 *region = &pResolveImageInfo->pRegions[r];
 
       radv_pick_resolve_method_images(cmd_buffer->device, src_image, src_image->vk.format, dst_image,
-                                      region->dstSubresource.mipLevel, dst_image_layout, false,
+                                      region->dstSubresource.mipLevel, dst_image_layout,
                                       cmd_buffer, &resolve_method);
 
       resolve_image(cmd_buffer, src_image, src_image_layout, dst_image, dst_image_layout, region,
@@ -601,7 +601,7 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
                                                          cmd_buffer->qf);
 
       if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dest_iview->vk.base_mip_level,
-                                     dst_image_layout, false, queue_mask)) {
+                                     dst_image_layout, queue_mask)) {
          VkImageSubresourceRange range = {
             .aspectMask = dest_iview->vk.aspects,
             .baseMipLevel = dest_iview->vk.base_mip_level,
@@ -666,7 +666,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 
       radv_pick_resolve_method_images(cmd_buffer->device, src_iview->image, src_iview->vk.format,
                                       dst_iview->image, dst_iview->vk.base_mip_level, dst_att.layout,
-                                      dst_att.in_render_loop, cmd_buffer, &resolve_method);
+                                      cmd_buffer, &resolve_method);
 
       if ((src_iview->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
           subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE) {
@@ -733,7 +733,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 
          radv_pick_resolve_method_images(cmd_buffer->device, src_img, src_iview->vk.format, dst_img,
                                          dst_iview->vk.base_mip_level, dest_att.layout,
-                                         dest_att.in_render_loop, cmd_buffer, &resolve_method);
+                                         cmd_buffer, &resolve_method);
 
          if (resolve_method == RESOLVE_FRAGMENT) {
             break;

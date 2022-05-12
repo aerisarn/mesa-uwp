@@ -26,6 +26,7 @@
  */
 #include "radv_private.h"
 
+#include "vk_render_pass.h"
 #include "vk_util.h"
 
 static void
@@ -288,15 +289,15 @@ radv_render_pass_compile(struct radv_render_pass *pass)
          for (uint32_t k = 0; k < subpass->color_count; ++k) {
             if (subpass->color_attachments[k].attachment ==
                 subpass->input_attachments[j].attachment) {
-               subpass->input_attachments[j].in_render_loop = true;
-               subpass->color_attachments[k].in_render_loop = true;
+               subpass->input_attachments[j].layout = VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+               subpass->color_attachments[k].layout = VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
             }
          }
 
          if (subpass->depth_stencil_attachment && subpass->depth_stencil_attachment->attachment ==
                                                      subpass->input_attachments[j].attachment) {
-            subpass->input_attachments[j].in_render_loop = true;
-            subpass->depth_stencil_attachment->in_render_loop = true;
+            subpass->input_attachments[j].layout = VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+            subpass->depth_stencil_attachment->layout = VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
          }
       }
    }
