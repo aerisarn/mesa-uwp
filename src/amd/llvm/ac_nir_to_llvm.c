@@ -339,7 +339,7 @@ static LLVMValueRef emit_f2f16(struct ac_llvm_context *ctx, LLVMValueRef src0)
    src0 = ac_to_float(ctx, src0);
    result = LLVMBuildFPTrunc(ctx->builder, src0, ctx->f16, "");
 
-   if (ctx->chip_class >= GFX8) {
+   if (ctx->gfx_level >= GFX8) {
       LLVMValueRef args[2];
       /* Check if the result is a denormal - and flush to 0 if so. */
       args[0] = result;
@@ -351,7 +351,7 @@ static LLVMValueRef emit_f2f16(struct ac_llvm_context *ctx, LLVMValueRef src0)
    /* need to convert back up to f32 */
    result = LLVMBuildFPExt(ctx->builder, result, ctx->f32, "");
 
-   if (ctx->chip_class >= GFX8)
+   if (ctx->gfx_level >= GFX8)
       result = LLVMBuildSelect(ctx->builder, cond, ctx->f32_0, result, "");
    else {
       /* for GFX6-GFX7 */
@@ -901,7 +901,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_fmax:
       result = emit_intrin_2f_param(&ctx->ac, "llvm.maxnum", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1]);
-      if (ctx->ac.chip_class < GFX9 && instr->dest.dest.ssa.bit_size == 32) {
+      if (ctx->ac.gfx_level < GFX9 && instr->dest.dest.ssa.bit_size == 32) {
          /* Only pre-GFX9 chips do not flush denorms. */
          result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
       }
@@ -909,19 +909,19 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_fmin:
       result = emit_intrin_2f_param(&ctx->ac, "llvm.minnum", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1]);
-      if (ctx->ac.chip_class < GFX9 && instr->dest.dest.ssa.bit_size == 32) {
+      if (ctx->ac.gfx_level < GFX9 && instr->dest.dest.ssa.bit_size == 32) {
          /* Only pre-GFX9 chips do not flush denorms. */
          result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
       }
       break;
    case nir_op_ffma:
       /* FMA is slow on gfx6-8, so it shouldn't be used. */
-      assert(instr->dest.dest.ssa.bit_size != 32 || ctx->ac.chip_class >= GFX9);
+      assert(instr->dest.dest.ssa.bit_size != 32 || ctx->ac.gfx_level >= GFX9);
       result = emit_intrin_3f_param(&ctx->ac, "llvm.fma", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1], src[2]);
       break;
    case nir_op_ffmaz:
-      assert(LLVM_VERSION_MAJOR >= 12 && ctx->ac.chip_class >= GFX10_3);
+      assert(LLVM_VERSION_MAJOR >= 12 && ctx->ac.gfx_level >= GFX10_3);
       src[0] = ac_to_float(&ctx->ac, src[0]);
       src[1] = ac_to_float(&ctx->ac, src[1]);
       src[2] = ac_to_float(&ctx->ac, src[2]);
@@ -1386,7 +1386,7 @@ static LLVMValueRef get_buffer_size(struct ac_nir_context *ctx, LLVMValueRef des
       LLVMBuildExtractElement(ctx->ac.builder, descriptor, LLVMConstInt(ctx->ac.i32, 2, false), "");
 
    /* GFX8 only */
-   if (ctx->ac.chip_class == GFX8 && in_elements) {
+   if (ctx->ac.gfx_level == GFX8 && in_elements) {
       /* On GFX8, the descriptor contains the size in bytes,
        * but TXQ must return the size in elements.
        * The stride is always non-zero for resources using TXQ.
@@ -1486,7 +1486,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, struct ac
       }
 
       /* Query the texture size. */
-      resinfo.dim = ac_get_sampler_dim(ctx->chip_class, instr->sampler_dim, instr->is_array);
+      resinfo.dim = ac_get_sampler_dim(ctx->gfx_level, instr->sampler_dim, instr->is_array);
       resinfo.opcode = ac_image_get_resinfo;
       resinfo.dmask = 0xf;
       resinfo.lod = ctx->i32_0;
@@ -1611,13 +1611,13 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    if (!ctx->ac.info->has_3d_cube_border_color_mipmap)
       args->level_zero = false;
 
-   if (instr->op == nir_texop_tg4 && ctx->ac.chip_class <= GFX8 &&
+   if (instr->op == nir_texop_tg4 && ctx->ac.gfx_level <= GFX8 &&
        (instr->dest_type & (nir_type_int | nir_type_uint))) {
       return lower_gather4_integer(&ctx->ac, args, instr);
    }
 
    /* Fixup for GFX9 which allocates 1D textures as 2D. */
-   if (instr->op == nir_texop_lod && ctx->ac.chip_class == GFX9) {
+   if (instr->op == nir_texop_lod && ctx->ac.gfx_level == GFX9) {
       if ((args->dim == ac_image_2darray || args->dim == ac_image_2d) && !args->coords[1]) {
          args->coords[1] = ctx->ac.i32_0;
       }
@@ -1777,7 +1777,7 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx, enum gl_access_qual
     * store opcodes not aligned to a dword are affected. The only way to
     * get unaligned stores is through shader images.
     */
-   if (((may_store_unaligned && ctx->ac.chip_class == GFX6) ||
+   if (((may_store_unaligned && ctx->ac.gfx_level == GFX6) ||
         /* If this is write-only, don't keep data in L1 to prevent
          * evicting L1 cache lines that may be needed by other
          * instructions.
@@ -1852,7 +1852,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
       /* Due to alignment issues, split stores of 8-bit/16-bit
        * vectors.
        */
-      if (ctx->ac.chip_class == GFX6 && count > 1 && elem_size_bytes < 4) {
+      if (ctx->ac.gfx_level == GFX6 && count > 1 && elem_size_bytes < 4) {
          writemask |= ((1u << (count - 1)) - 1u) << (start + 1);
          count = 1;
          num_bytes = elem_size_bytes;
@@ -2486,11 +2486,11 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
    ASSERTED bool add_frag_pos =
       (dim == GLSL_SAMPLER_DIM_SUBPASS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
    bool is_ms = (dim == GLSL_SAMPLER_DIM_MS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
-   bool gfx9_1d = ctx->ac.chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D;
+   bool gfx9_1d = ctx->ac.gfx_level == GFX9 && dim == GLSL_SAMPLER_DIM_1D;
    assert(!add_frag_pos && "Input attachments should be lowered by this point.");
    count = image_type_to_components_count(dim, is_array);
 
-   if (ctx->ac.chip_class < GFX11 &&
+   if (ctx->ac.gfx_level < GFX11 &&
        is_ms && (instr->intrinsic == nir_intrinsic_image_deref_load ||
                  instr->intrinsic == nir_intrinsic_bindless_image_load ||
                  instr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
@@ -2529,7 +2529,7 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
             args->coords[1] = ctx->ac.i32_0;
          count++;
       }
-      if (ctx->ac.chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_2D && !is_array) {
+      if (ctx->ac.gfx_level == GFX9 && dim == GLSL_SAMPLER_DIM_2D && !is_array) {
          /* The hw can't bind a slice of a 3D image as a 2D
           * image, because it ignores BASE_ARRAY if the target
           * is 3D. The workaround is to read BASE_ARRAY and set
@@ -2621,7 +2621,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       args.opcode = level_zero ? ac_image_load : ac_image_load_mip;
       args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, false);
       get_image_coords(ctx, instr, dynamic_index, &args, dim, is_array);
-      args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
+      args.dim = ac_get_image_dim(ctx->ac.gfx_level, dim, is_array);
       if (!level_zero)
          args.lod = get_src(ctx, instr->src[3]);
       args.dmask = 15;
@@ -2713,7 +2713,7 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
       args.data[0] = src;
       args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, true);
       get_image_coords(ctx, instr, dynamic_index, &args, dim, is_array);
-      args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
+      args.dim = ac_get_image_dim(ctx->ac.gfx_level, dim, is_array);
       if (!level_zero)
          args.lod = get_src(ctx, instr->src[4]);
       args.dmask = 15;
@@ -2872,7 +2872,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
          args.data[1] = params[1];
       args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, true);
       get_image_coords(ctx, instr, dynamic_index, &args, dim, is_array);
-      args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
+      args.dim = ac_get_image_dim(ctx->ac.gfx_level, dim, is_array);
 
       result = ac_build_image_opcode(&ctx->ac, &args);
    }
@@ -2932,7 +2932,7 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx, const nir_intri
 
       struct ac_image_args args = {0};
 
-      args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
+      args.dim = ac_get_image_dim(ctx->ac.gfx_level, dim, is_array);
       args.dmask = 0xf;
       args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, false);
       args.opcode = ac_image_get_resinfo;
@@ -2942,7 +2942,7 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx, const nir_intri
 
       res = ac_build_image_opcode(&ctx->ac, &args);
 
-      if (ctx->ac.chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D && is_array) {
+      if (ctx->ac.gfx_level == GFX9 && dim == GLSL_SAMPLER_DIM_1D && is_array) {
          LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
          LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, res, two, "");
          res = LLVMBuildInsertElement(ctx->ac.builder, res, layers, ctx->ac.i32_1, "");
@@ -3664,7 +3664,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (ctx->stage == MESA_SHADER_TESS_CTRL) {
          result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_rel_ids), 8, 5);
       } else {
-         if (ctx->ac.chip_class >= GFX10) {
+         if (ctx->ac.gfx_level >= GFX10) {
             result =
                LLVMBuildAnd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->gs_invocation_id),
                             LLVMConstInt(ctx->ac.i32, 127, 0), "");
@@ -4040,8 +4040,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    }
    case nir_intrinsic_shuffle:
-      if (ctx->ac.chip_class == GFX8 || ctx->ac.chip_class == GFX9 ||
-          (ctx->ac.chip_class >= GFX10 && ctx->ac.wave_size == 32)) {
+      if (ctx->ac.gfx_level == GFX8 || ctx->ac.gfx_level == GFX9 ||
+          (ctx->ac.gfx_level >= GFX10 && ctx->ac.wave_size == 32)) {
          result =
             ac_build_shuffle(&ctx->ac, get_src(ctx, instr->src[0]), get_src(ctx, instr->src[1]));
       } else {
@@ -4477,7 +4477,7 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx, LLVMValue
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef img7, samp0;
 
-   if (ctx->ac.chip_class >= GFX8)
+   if (ctx->ac.gfx_level >= GFX8)
       return samp;
 
    img7 = LLVMBuildExtractElement(builder, res, LLVMConstInt(ctx->ac.i32, 7, 0), "");
@@ -4550,7 +4550,7 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       /* The fragment mask is fetched from the compressed
        * multisampled surface.
        */
-      assert(ctx->ac.chip_class < GFX11);
+      assert(ctx->ac.gfx_level < GFX11);
       main_descriptor = AC_DESC_FMASK;
    }
 
@@ -4593,7 +4593,7 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       if (instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
          *samp_ptr = sici_fix_sampler_aniso(ctx, *res_ptr, *samp_ptr);
    }
-   if (ctx->ac.chip_class < GFX11 &&
+   if (ctx->ac.gfx_level < GFX11 &&
        fmask_ptr && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_samples_identical))
       *fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_FMASK, &instr->instr,
                                     texture_dynamic_index, false, false);
@@ -4747,7 +4747,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
     * Z24 anymore. Do it manually here for GFX8-9; GFX10 has
     * an explicitly clamped 32-bit float format.
     */
-   if (args.compare && ctx->ac.chip_class >= GFX8 && ctx->ac.chip_class <= GFX9 &&
+   if (args.compare && ctx->ac.gfx_level >= GFX8 && ctx->ac.gfx_level <= GFX9 &&
        ctx->abi->clamp_shadow_reference) {
       LLVMValueRef upgraded, clamped;
 
@@ -4775,7 +4775,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
          break;
       case GLSL_SAMPLER_DIM_1D:
          num_src_deriv_channels = 1;
-         if (ctx->ac.chip_class == GFX9) {
+         if (ctx->ac.gfx_level == GFX9) {
             num_dest_deriv_channels = 2;
          } else {
             num_dest_deriv_channels = 1;
@@ -4819,7 +4819,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       args.coords[2] = apply_round_slice(&ctx->ac, args.coords[2]);
    }
 
-   if (ctx->ac.chip_class == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
+   if (ctx->ac.gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
        instr->op != nir_texop_lod) {
       LLVMValueRef filler;
       if (instr->op == nir_texop_txf)
@@ -4837,7 +4837,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       args.coords[instr->coord_components] = sample_index;
 
    if (instr->op == nir_texop_samples_identical) {
-      assert(ctx->ac.chip_class < GFX11);
+      assert(ctx->ac.gfx_level < GFX11);
       struct ac_image_args txf_args = {0};
       memcpy(txf_args.coords, args.coords, sizeof(txf_args.coords));
 
@@ -4851,7 +4851,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       goto write_result;
    }
 
-   if (ctx->ac.chip_class < GFX11 &&
+   if (ctx->ac.gfx_level < GFX11 &&
        (instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ||
         instr->sampler_dim == GLSL_SAMPLER_DIM_MS) &&
        instr->op != nir_texop_txs && instr->op != nir_texop_fragment_fetch_amd &&
@@ -4890,7 +4890,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    }
 
    if (instr->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
-      args.dim = ac_get_sampler_dim(ctx->ac.chip_class, instr->sampler_dim, instr->is_array);
+      args.dim = ac_get_sampler_dim(ctx->ac.gfx_level, instr->sampler_dim, instr->is_array);
       args.unorm = instr->sampler_dim == GLSL_SAMPLER_DIM_RECT;
    }
 
@@ -4932,7 +4932,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    else if (instr->is_shadow && instr->is_new_style_shadow && instr->op != nir_texop_txs &&
             instr->op != nir_texop_lod && instr->op != nir_texop_tg4)
       result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
-   else if (ctx->ac.chip_class == GFX9 && instr->op == nir_texop_txs &&
+   else if (ctx->ac.gfx_level == GFX9 && instr->op == nir_texop_txs &&
               instr->sampler_dim == GLSL_SAMPLER_DIM_1D && instr->is_array) {
       LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
       LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, result, two, "");

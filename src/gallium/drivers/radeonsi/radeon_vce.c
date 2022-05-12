@@ -219,7 +219,7 @@ void si_vce_frame_offset(struct rvce_encoder *enc, struct rvce_cpb_slot *slot, s
    struct si_screen *sscreen = (struct si_screen *)enc->screen;
    unsigned pitch, vpitch, fsize;
 
-   if (sscreen->info.chip_class < GFX9) {
+   if (sscreen->info.gfx_level < GFX9) {
       pitch = align(enc->luma->u.legacy.level[0].nblk_x * enc->luma->bpe, 128);
       vpitch = align(enc->luma->u.legacy.level[0].nblk_y, 16);
    } else {
@@ -449,7 +449,7 @@ struct pipe_video_codec *si_vce_create_encoder(struct pipe_context *context,
 
    get_buffer(((struct vl_video_buffer *)tmp_buf)->resources[0], NULL, &tmp_surf);
 
-   cpb_size = (sscreen->info.chip_class < GFX9)
+   cpb_size = (sscreen->info.gfx_level < GFX9)
                  ? align(tmp_surf->u.legacy.level[0].nblk_x * tmp_surf->bpe, 128) *
                       align(tmp_surf->u.legacy.level[0].nblk_y, 32)
                  :

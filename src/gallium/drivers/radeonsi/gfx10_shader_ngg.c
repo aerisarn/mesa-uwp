@@ -1339,7 +1339,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
    ret = LLVMBuildInsertValue(ctx->ac.builder, ret, new_merged_wave_info, 3, "");
    if (ctx->stage == MESA_SHADER_TESS_EVAL)
       ret = si_insert_input_ret(ctx, ret, ctx->args.tess_offchip_offset, 4);
-   if (ctx->ac.chip_class >= GFX11)
+   if (ctx->ac.gfx_level >= GFX11)
       ret = si_insert_input_ret(ctx, ret, ctx->args.gs_attr_offset, 5);
 
    ret = si_insert_input_ptr(ctx, ret, ctx->internal_bindings, 8 + SI_SGPR_INTERNAL_BINDINGS);
@@ -1349,7 +1349,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
                              8 + SI_SGPR_CONST_AND_SHADER_BUFFERS);
    ret = si_insert_input_ptr(ctx, ret, ctx->samplers_and_images, 8 + SI_SGPR_SAMPLERS_AND_IMAGES);
    ret = si_insert_input_ptr(ctx, ret, ctx->vs_state_bits, 8 + SI_SGPR_VS_STATE_BITS);
-   if (ctx->ac.chip_class >= GFX11)
+   if (ctx->ac.gfx_level >= GFX11)
       ret = si_insert_input_ptr(ctx, ret, ctx->gs_attr_address, 8 + GFX9_SGPR_ATTRIBUTE_RING_ADDR);
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
@@ -2282,7 +2282,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 
    /* All these are per subgroup: */
    const unsigned min_esverts =
-      gs_sel->screen->info.chip_class >= GFX10_3 ? 29 : (24 - 1 + max_verts_per_prim);
+      gs_sel->screen->info.gfx_level >= GFX10_3 ? 29 : (24 - 1 + max_verts_per_prim);
    bool max_vert_out_per_gs_instance = false;
    unsigned max_gsprims_base = gs_sel->screen->ngg_subgroup_size; /* default prim group size clamp */
    unsigned max_esverts_base = gs_sel->screen->ngg_subgroup_size;

@@ -47,7 +47,7 @@ extern const struct gfx10_format gfx11_format_table[PIPE_FORMAT_COUNT];
 static inline
 const struct gfx10_format* ac_get_gfx10_format_table(struct radeon_info *info)
 {
-   if (info->chip_class >= GFX11)
+   if (info->gfx_level >= GFX11)
       return gfx11_format_table;
    else
       return gfx10_format_table;

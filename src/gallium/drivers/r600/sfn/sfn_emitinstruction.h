@@ -77,7 +77,7 @@ protected:
 
    const nir_variable *get_deref_location(const nir_src& v) const;
 
-   enum chip_class get_chip_class(void) const;
+   enum amd_gfx_level get_chip_class(void) const;
 
    PValue literal(uint32_t value);
 

@@ -262,7 +262,7 @@ setup_vs_output_info(isel_context* ctx, nir_shader* nir,
     * as soon as it encounters a DONE pos export. When this happens, PS waves can launch
     * before the NGG (or VS) waves finish.
     */
-   ctx->program->early_rast = ctx->program->chip_class >= GFX10 && outinfo->param_exports == 0;
+   ctx->program->early_rast = ctx->program->gfx_level >= GFX10 && outinfo->param_exports == 0;
 }
 
 void
@@ -863,8 +863,8 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
       default: unreachable("Shader stage not implemented");
       }
    }
-   bool gfx9_plus = options->chip_class >= GFX9;
-   bool ngg = info->is_ngg && options->chip_class >= GFX10;
+   bool gfx9_plus = options->gfx_level >= GFX9;
+   bool ngg = info->is_ngg && options->gfx_level >= GFX10;
    HWStage hw_stage{};
    if (sw_stage == SWStage::VS && info->vs.as_es && !ngg)
       hw_stage = HWStage::ES;
@@ -907,8 +907,8 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
    else
       unreachable("Shader stage not implemented");
 
-   init_program(program, Stage{hw_stage, sw_stage}, info, options->chip_class,
-                options->family, options->wgp_mode, config);
+   init_program(program, Stage{hw_stage, sw_stage}, info, options->gfx_level, options->family,
+                options->wgp_mode, config);
 
    isel_context ctx = {};
    ctx.program = program;
@@ -921,7 +921,7 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
 
    /* Mesh shading only works on GFX10.3+. */
    ASSERTED bool mesh_shading = ctx.stage.has(SWStage::TS) || ctx.stage.has(SWStage::MS);
-   assert(!mesh_shading || ctx.program->chip_class >= GFX10_3);
+   assert(!mesh_shading || ctx.program->gfx_level >= GFX10_3);
 
    if (ctx.stage == tess_control_hs)
       setup_tcs_info(&ctx, shaders[0], NULL);

@@ -46,7 +46,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f);
 /** Whether the shader runs as a combination of multiple API shaders */
 bool si_is_multi_part_shader(struct si_shader *shader)
 {
-   if (shader->selector->screen->info.chip_class <= GFX8 ||
+   if (shader->selector->screen->info.gfx_level <= GFX8 ||
        shader->selector->stage > MESA_SHADER_GEOMETRY)
       return false;
 
@@ -220,10 +220,10 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
    case MESA_SHADER_TESS_CTRL:
       /* Return this so that LLVM doesn't remove s_barrier
        * instructions on chips where we use s_barrier. */
-      return shader->selector->screen->info.chip_class >= GFX7 ? 128 : 0;
+      return shader->selector->screen->info.gfx_level >= GFX7 ? 128 : 0;
 
    case MESA_SHADER_GEOMETRY:
-      return shader->selector->screen->info.chip_class >= GFX9 ? 128 : 0;
+      return shader->selector->screen->info.gfx_level >= GFX9 ? 128 : 0;
 
    case MESA_SHADER_COMPUTE:
       break; /* see below */
@@ -306,11 +306,11 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_
 
    ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.vertex_id);
    if (shader->key.ge.as_ls) {
-      if (ctx->screen->info.chip_class >= GFX11) {
+      if (ctx->screen->info.gfx_level >= GFX11) {
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
-      } else if (ctx->screen->info.chip_class >= GFX10) {
+      } else if (ctx->screen->info.gfx_level >= GFX10) {
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.vs_rel_patch_id);
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
@@ -319,7 +319,7 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* unused */
       }
-   } else if (ctx->screen->info.chip_class >= GFX10) {
+   } else if (ctx->screen->info.gfx_level >= GFX10) {
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
                  &ctx->args.vs_prim_id); /* user vgpr or PrimID (legacy) */
@@ -394,7 +394,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
    memset(&ctx->args, 0, sizeof(ctx->args));
 
    /* Set MERGED shaders. */
-   if (ctx->screen->info.chip_class >= GFX9 && stage <= MESA_SHADER_GEOMETRY) {
+   if (ctx->screen->info.gfx_level >= GFX9 && stage <= MESA_SHADER_GEOMETRY) {
       if (shader->key.ge.as_ls || stage == MESA_SHADER_TESS_CTRL)
          stage = SI_SHADER_MERGED_VERTEX_TESSCTRL; /* LS or HS */
       else if (shader->key.ge.as_es || shader->key.ge.as_ngg || stage == MESA_SHADER_GEOMETRY)
@@ -471,7 +471,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.merged_wave_info);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tcs_factor_offset);
-      if (ctx->screen->info.chip_class >= GFX11)
+      if (ctx->screen->info.gfx_level >= GFX11)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tcs_wave_id);
       else
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.scratch_offset);
@@ -544,7 +544,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.merged_wave_info);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
-      if (ctx->screen->info.chip_class >= GFX11)
+      if (ctx->screen->info.gfx_level >= GFX11)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.gs_attr_offset);
       else
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.scratch_offset);
@@ -578,7 +578,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
          }
 
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
-         if (ctx->screen->info.chip_class >= GFX11)
+         if (ctx->screen->info.gfx_level >= GFX11)
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->gs_attr_address);
          else
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
@@ -777,7 +777,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
       /* Hardware VGPRs. */
       /* Thread IDs are packed in VGPR0, 10 bits per component or stored in 3 separate VGPRs */
-      if (ctx->screen->info.chip_class >= GFX11 ||
+      if (ctx->screen->info.gfx_level >= GFX11 ||
           (!ctx->screen->info.has_graphics && ctx->screen->info.family >= CHIP_ALDEBARAN))
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.local_invocation_ids);
       else
@@ -801,8 +801,8 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
 static unsigned get_lds_granularity(struct si_screen *screen, gl_shader_stage stage)
 {
-   return screen->info.chip_class >= GFX11 && stage == MESA_SHADER_FRAGMENT ? 1024 :
-          screen->info.chip_class >= GFX7 ? 512 : 256;
+   return screen->info.gfx_level >= GFX11 && stage == MESA_SHADER_FRAGMENT ? 1024 :
+          screen->info.gfx_level >= GFX7 ? 512 : 256;
 }
 
 static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *shader,
@@ -830,7 +830,7 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
    struct ac_rtld_symbol lds_symbols[2];
    unsigned num_lds_symbols = 0;
 
-   if (sel && screen->info.chip_class >= GFX9 && !shader->is_gs_copy_shader &&
+   if (sel && screen->info.gfx_level >= GFX9 && !shader->is_gs_copy_shader &&
        (sel->stage == MESA_SHADER_GEOMETRY ||
         (sel->stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg))) {
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
@@ -877,7 +877,7 @@ static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_sh
    return size;
 }
 
-static bool si_get_external_symbol(enum chip_class chip_class, void *data, const char *name,
+static bool si_get_external_symbol(enum amd_gfx_level gfx_level, void *data, const char *name,
                                    uint64_t *value)
 {
    uint64_t *scratch_va = data;
@@ -890,7 +890,7 @@ static bool si_get_external_symbol(enum chip_class chip_class, void *data, const
       /* Enable scratch coalescing. */
       *value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32);
 
-      if (chip_class >= GFX11)
+      if (gfx_level >= GFX11)
          *value |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
       else
          *value |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
@@ -1234,7 +1234,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       break;
 
    case MESA_SHADER_TESS_CTRL:
-      if (shader->selector->screen->info.chip_class >= GFX9) {
+      if (shader->selector->screen->info.gfx_level >= GFX9) {
          si_dump_shader_key_vs(key, &key->ge.part.tcs.ls_prolog, "part.tcs.ls_prolog", f);
       }
       fprintf(f, "  part.tcs.epilog.prim_mode = %u\n", key->ge.part.tcs.epilog.prim_mode);
@@ -1254,7 +1254,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       if (shader->is_gs_copy_shader)
          break;
 
-      if (shader->selector->screen->info.chip_class >= GFX9 &&
+      if (shader->selector->screen->info.gfx_level >= GFX9 &&
           key->ge.part.gs.es->stage == MESA_SHADER_VERTEX) {
          si_dump_shader_key_vs(key, &key->ge.part.gs.vs_prolog, "part.gs.vs_prolog", f);
       }
@@ -1601,7 +1601,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
    /* Loop unrolling caused by uniform inlining can help eliminate indirect indexing, so
     * this should be done after that.
     */
-   progress2 |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.chip_class);
+   progress2 |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.gfx_level);
    if (progress2)
       si_nir_opts(sel->screen, nir, false);
 
@@ -1825,7 +1825,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    }
 
    /* Add the scratch offset to input SGPRs. */
-   if (sel->screen->info.chip_class < GFX11 &&
+   if (sel->screen->info.gfx_level < GFX11 &&
        shader->config.scratch_bytes_per_wave && !si_is_merged_shader(shader))
       shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
@@ -1987,7 +1987,7 @@ void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *k
 static bool si_shader_select_tcs_parts(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                                        struct si_shader *shader, struct util_debug_callback *debug)
 {
-   if (sscreen->info.chip_class >= GFX9) {
+   if (sscreen->info.gfx_level >= GFX9) {
       struct si_shader *ls_main_part = shader->key.ge.part.tcs.ls->main_shader_part_ls;
 
       if (!si_get_vs_prolog(sscreen, compiler, shader, debug, ls_main_part,
@@ -2013,7 +2013,7 @@ static bool si_shader_select_tcs_parts(struct si_screen *sscreen, struct ac_llvm
 static bool si_shader_select_gs_parts(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                                       struct si_shader *shader, struct util_debug_callback *debug)
 {
-   if (sscreen->info.chip_class >= GFX9) {
+   if (sscreen->info.gfx_level >= GFX9) {
       struct si_shader *es_main_part;
 
       if (shader->key.ge.as_ngg)
@@ -2445,7 +2445,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
          fprintf(stderr, "Failed to compute subgroup info\n");
          return false;
       }
-   } else if (sscreen->info.chip_class >= GFX9 && sel->stage == MESA_SHADER_GEOMETRY) {
+   } else if (sscreen->info.gfx_level >= GFX9 && sel->stage == MESA_SHADER_GEOMETRY) {
       gfx9_get_gs_info(shader->previous_stage_sel, sel, &shader->gs_info);
    }
 

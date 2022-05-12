@@ -241,7 +241,7 @@ static void si_emit_one_scissor(struct si_context *ctx, struct radeon_cmdbuf *cs
    /* Workaround for a hw bug on GFX6 that occurs when PA_SU_HARDWARE_-
     * SCREEN_OFFSET != 0 and any_scissor.BR_X/Y <= 0.
     */
-   if (ctx->chip_class == GFX6 && (final.maxx == 0 || final.maxy == 0)) {
+   if (ctx->gfx_level == GFX6 && (final.maxx == 0 || final.maxy == 0)) {
       radeon_emit(S_028250_TL_X(1) | S_028250_TL_Y(1) | S_028250_WINDOW_OFFSET_DISABLE(1));
       radeon_emit(S_028254_BR_X(1) | S_028254_BR_Y(1));
       radeon_end();
@@ -290,8 +290,8 @@ static void si_emit_guardband(struct si_context *ctx)
 
    /* GFX6-GFX7 need to align the offset to an ubertile consisting of all SEs. */
    const unsigned hw_screen_offset_alignment =
-      ctx->chip_class >= GFX11 ? 32 :
-      ctx->chip_class >= GFX8 ? 16 : MAX2(ctx->screen->se_tile_repeat, 16);
+      ctx->gfx_level >= GFX11 ? 32 :
+      ctx->gfx_level >= GFX8 ? 16 : MAX2(ctx->screen->se_tile_repeat, 16);
 
    /* Indexed by quantization modes */
    static int max_viewport_size[] = {65535, 16383, 4095};

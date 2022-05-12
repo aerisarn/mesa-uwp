@@ -32,10 +32,10 @@
 static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_coherency coher,
                                              uint64_t size)
 {
-   if ((sctx->chip_class >= GFX9 && (coher == SI_COHERENCY_CB_META ||
+   if ((sctx->gfx_level >= GFX9 && (coher == SI_COHERENCY_CB_META ||
                                      coher == SI_COHERENCY_DB_META ||
                                      coher == SI_COHERENCY_CP)) ||
-       (sctx->chip_class >= GFX7 && coher == SI_COHERENCY_SHADER))
+       (sctx->gfx_level >= GFX7 && coher == SI_COHERENCY_SHADER))
       return L2_LRU; /* it's faster if L2 doesn't evict anything  */
 
    return L2_BYPASS;
@@ -152,7 +152,7 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
 
       if (flags & SI_OP_CS_IMAGE) {
          /* Make sure image stores are visible to CB, which doesn't use L2 on GFX6-8. */
-         sctx->flags |= sctx->chip_class <= GFX8 ? SI_CONTEXT_WB_L2 : 0;
+         sctx->flags |= sctx->gfx_level <= GFX8 ? SI_CONTEXT_WB_L2 : 0;
          /* Make sure image stores are visible to all CUs. */
          sctx->flags |= SI_CONTEXT_INV_VCACHE;
       } else {
@@ -386,7 +386,7 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
    if (aligned_size >= 4) {
       uint64_t compute_min_size;
 
-      if (sctx->chip_class <= GFX8) {
+      if (sctx->gfx_level <= GFX8) {
          /* CP DMA clears are terribly slow with GTT on GFX6-8, which can always
           * happen due to BO evictions.
           */
@@ -604,7 +604,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    /* src and dst have the same number of samples. */
    si_make_CB_shader_coherent(sctx, src->nr_samples, true,
                               ssrc->surface.u.gfx9.color.dcc.pipe_aligned);
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       /* GFX10+ uses DCC stores so si_make_CB_shader_coherent is required for dst too */
       si_make_CB_shader_coherent(sctx, dst->nr_samples, true,
                                  sdst->surface.u.gfx9.color.dcc.pipe_aligned);
@@ -631,7 +631,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    if (is_dcc_decompress)
       image[1].access |= SI_IMAGE_ACCESS_DCC_OFF;
-   else if (sctx->chip_class >= GFX10)
+   else if (sctx->gfx_level >= GFX10)
       image[1].access |= SI_IMAGE_ACCESS_ALLOW_DCC_STORE;
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, image);
@@ -759,7 +759,7 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
 {
    struct si_texture *tex = (struct si_texture*)res;
 
-   assert(sctx->chip_class < GFX11);
+   assert(sctx->gfx_level < GFX11);
 
    /* Set the DCC buffer. */
    assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
@@ -813,7 +813,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    unsigned log_samples = util_logbase2(tex->nr_samples);
    assert(tex->nr_samples >= 2);
 
-   assert(sctx->chip_class < GFX11);
+   assert(sctx->gfx_level < GFX11);
 
    /* EQAA FMASK expansion is unimplemented. */
    if (tex->nr_samples != tex->nr_storage_samples)

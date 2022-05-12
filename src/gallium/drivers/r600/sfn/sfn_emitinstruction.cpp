@@ -124,7 +124,7 @@ PValue EmitInstruction::create_register_from_nir_src(const nir_src& src, unsigne
    return m_proc.create_register_from_nir_src(src, swizzle);
 }
 
-enum chip_class EmitInstruction::get_chip_class(void) const
+enum amd_gfx_level EmitInstruction::get_chip_class(void) const
 {
    return m_proc.get_chip_class();
 }

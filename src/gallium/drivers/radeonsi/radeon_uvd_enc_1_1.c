@@ -756,7 +756,7 @@ static void radeon_uvd_enc_ctx(struct radeon_uvd_encoder *enc)
    struct si_screen *sscreen = (struct si_screen *)enc->screen;
 
    enc->enc_pic.ctx_buf.swizzle_mode = 0;
-   if (sscreen->info.chip_class < GFX9) {
+   if (sscreen->info.gfx_level < GFX9) {
       enc->enc_pic.ctx_buf.rec_luma_pitch = (enc->luma->u.legacy.level[0].nblk_x * enc->luma->bpe);
       enc->enc_pic.ctx_buf.rec_chroma_pitch =
          (enc->chroma->u.legacy.level[0].nblk_x * enc->chroma->bpe);
@@ -874,7 +874,7 @@ static void radeon_uvd_enc_encode_params_hevc(struct radeon_uvd_encoder *enc)
    }
 
    enc->enc_pic.enc_params.allowed_max_bitstream_size = enc->bs_size;
-   if (sscreen->info.chip_class < GFX9) {
+   if (sscreen->info.gfx_level < GFX9) {
       enc->enc_pic.enc_params.input_pic_luma_pitch =
          (enc->luma->u.legacy.level[0].nblk_x * enc->luma->bpe);
       enc->enc_pic.enc_params.input_pic_chroma_pitch =
@@ -897,7 +897,7 @@ static void radeon_uvd_enc_encode_params_hevc(struct radeon_uvd_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.enc_params.pic_type);
    RADEON_ENC_CS(enc->enc_pic.enc_params.allowed_max_bitstream_size);
 
-   if (sscreen->info.chip_class < GFX9) {
+   if (sscreen->info.gfx_level < GFX9) {
       RADEON_ENC_READ(enc->handle, RADEON_DOMAIN_VRAM, (uint64_t)enc->luma->u.legacy.level[0].offset_256B * 256);
       RADEON_ENC_READ(enc->handle, RADEON_DOMAIN_VRAM, (uint64_t)enc->chroma->u.legacy.level[0].offset_256B * 256);
    } else {

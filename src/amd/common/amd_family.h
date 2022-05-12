@@ -135,7 +135,7 @@ enum radeon_family
    CHIP_LAST,
 };
 
-enum chip_class
+enum amd_gfx_level
 {
    CLASS_UNKNOWN = 0,
    R300,

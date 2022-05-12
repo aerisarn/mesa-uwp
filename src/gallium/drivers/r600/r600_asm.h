@@ -254,7 +254,7 @@ struct r600_stack_info {
 };
 
 struct r600_bytecode {
-	enum chip_class			chip_class;
+	enum amd_gfx_level			gfx_level;
 	enum radeon_family		family;
 	bool				has_compressed_msaa_texturing;
 	int				type;
@@ -295,7 +295,7 @@ int eg_bytecode_alu_build(struct r600_bytecode *bc,
 			  struct r600_bytecode_alu *alu, unsigned id);
 /* r600_asm.c */
 void r600_bytecode_init(struct r600_bytecode *bc,
-			enum chip_class chip_class,
+			enum amd_gfx_level gfx_level,
 			enum radeon_family family,
 			bool has_compressed_msaa_texturing);
 void r600_bytecode_clear(struct r600_bytecode *bc);

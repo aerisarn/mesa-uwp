@@ -112,7 +112,7 @@ get_perf_info(Program* program, aco_ptr<Instruction>& instr)
 #define WAIT(res)          BlockCycleEstimator::res, 0
 #define WAIT_USE(res, cnt) BlockCycleEstimator::res, cnt
 
-   if (program->chip_class >= GFX10) {
+   if (program->gfx_level >= GFX10) {
       /* fp64 might be incorrect */
       switch (cls) {
       case instr_class::valu32:
@@ -265,9 +265,9 @@ get_wait_imm(Program* program, aco_ptr<Instruction>& instr)
    } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt) {
       return wait_imm(0, 0, 0, instr->sopk().imm);
    } else {
-      unsigned max_lgkm_cnt = program->chip_class >= GFX10 ? 62 : 14;
+      unsigned max_lgkm_cnt = program->gfx_level >= GFX10 ? 62 : 14;
       unsigned max_exp_cnt = 6;
-      unsigned max_vm_cnt = program->chip_class >= GFX9 ? 62 : 14;
+      unsigned max_vm_cnt = program->gfx_level >= GFX9 ? 62 : 14;
       unsigned max_vs_cnt = 62;
 
       wait_counter_info wait_info = get_wait_counter_info(instr);
@@ -306,7 +306,7 @@ BlockCycleEstimator::get_dependency_cost(aco_ptr<Instruction>& instr)
    if (instr->opcode == aco_opcode::s_endpgm) {
       for (unsigned i = 0; i < 512; i++)
          deps_available = MAX2(deps_available, reg_available[i]);
-   } else if (program->chip_class >= GFX10) {
+   } else if (program->gfx_level >= GFX10) {
       for (Operand& op : instr->operands) {
          if (op.isConstant() || op.isUndefined())
             continue;
@@ -315,7 +315,7 @@ BlockCycleEstimator::get_dependency_cost(aco_ptr<Instruction>& instr)
       }
    }
 
-   if (program->chip_class < GFX10)
+   if (program->gfx_level < GFX10)
       deps_available = align(deps_available, 4);
 
    return deps_available - cur_cycle;
@@ -357,7 +357,7 @@ BlockCycleEstimator::add(aco_ptr<Instruction>& instr)
    cur_cycle += get_dependency_cost(instr);
 
    unsigned start;
-   bool dual_issue = program->chip_class >= GFX10 && program->wave_size == 64 &&
+   bool dual_issue = program->gfx_level >= GFX10 && program->wave_size == 64 &&
                      is_vector(instr->opcode) && program->workgroup_size > 32;
    for (unsigned i = 0; i < (dual_issue ? 2 : 1); i++) {
       cur_cycle += cycles_until_res_available(instr);
@@ -366,7 +366,7 @@ BlockCycleEstimator::add(aco_ptr<Instruction>& instr)
       use_resources(instr);
 
       /* GCN is in-order and doesn't begin the next instruction until the current one finishes */
-      cur_cycle += program->chip_class >= GFX10 ? 1 : perf.latency;
+      cur_cycle += program->gfx_level >= GFX10 ? 1 : perf.latency;
    }
 
    wait_imm imm = get_wait_imm(program, instr);

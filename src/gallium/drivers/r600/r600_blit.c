@@ -131,7 +131,7 @@ static void r600_blit_decompress_depth(struct pipe_context *ctx,
 	/* XXX Decompressing MSAA depth textures is broken on R6xx.
 	 * There is also a hardlock if CMASK and FMASK are not present.
 	 * Just skip this until we find out how to fix it. */
-	if (rctx->b.chip_class == R600 && max_sample > 0) {
+	if (rctx->b.gfx_level == R600 && max_sample > 0) {
 		texture->dirty_level_mask = 0;
 		return;
 	}
@@ -470,7 +470,7 @@ static void r600_clear(struct pipe_context *ctx, unsigned buffers,
 	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct pipe_framebuffer_state *fb = &rctx->framebuffer.state;
 
-	if (buffers & PIPE_CLEAR_COLOR && rctx->b.chip_class >= EVERGREEN) {
+	if (buffers & PIPE_CLEAR_COLOR && rctx->b.gfx_level >= EVERGREEN) {
 		evergreen_do_fast_color_clear(&rctx->b, fb, &rctx->framebuffer.atom,
 					      &buffers, NULL, color);
 		if (!buffers)
@@ -648,7 +648,7 @@ static void r600_clear_buffer(struct pipe_context *ctx, struct pipe_resource *ds
 	struct r600_context *rctx = (struct r600_context*)ctx;
 
 	if (rctx->screen->b.has_cp_dma &&
-	    rctx->b.chip_class >= EVERGREEN &&
+	    rctx->b.gfx_level >= EVERGREEN &&
 	    offset % 4 == 0 && size % 4 == 0) {
 		evergreen_cp_dma_clear_buffer(rctx, dst, offset, size, value, coher);
 	} else if (rctx->screen->b.has_streamout && offset % 4 == 0 && size % 4 == 0) {
@@ -796,7 +796,7 @@ void r600_resource_copy_region(struct pipe_context *ctx,
 					      dst->width0, dst->height0,
 					      dst_width, dst_height);
 
-	if (rctx->b.chip_class >= EVERGREEN) {
+	if (rctx->b.gfx_level >= EVERGREEN) {
 		src_view = evergreen_create_sampler_view_custom(ctx, src, &src_templ,
 								src_width0, src_height0,
 								src_force_level);
@@ -829,7 +829,7 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx,
 	unsigned dst_height = u_minify(info->dst.resource->height0, info->dst.level);
 	enum pipe_format format = info->src.format;
 	unsigned sample_mask =
-		rctx->b.chip_class == CAYMAN ? ~0 :
+		rctx->b.gfx_level == CAYMAN ? ~0 :
 		((1ull << MAX2(1, info->src.resource->nr_samples)) - 1);
 	struct pipe_resource *tmp, templ;
 	struct pipe_blit_info blit;

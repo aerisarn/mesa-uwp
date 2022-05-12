@@ -406,7 +406,7 @@ static void si_emit_dpbb_disable(struct si_context *sctx)
 {
    radeon_begin(&sctx->gfx_cs);
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       struct uvec2 bin_size = {};
       struct uvec2 bin_size_extend = {};
 
@@ -446,7 +446,7 @@ void si_emit_dpbb_state(struct si_context *sctx)
    struct si_state_dsa *dsa = sctx->queued.named.dsa;
    unsigned db_shader_control = sctx->ps_db_shader_control;
 
-   assert(sctx->chip_class >= GFX9);
+   assert(sctx->gfx_level >= GFX9);
 
    if (!sscreen->dpbb_allowed || sctx->dpbb_force_off ||
        sctx->dpbb_force_off_profile_vs || sctx->dpbb_force_off_profile_ps) {
@@ -475,7 +475,7 @@ void si_emit_dpbb_state(struct si_context *sctx)
       sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit;
    struct uvec2 color_bin_size, depth_bin_size;
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       gfx10_get_bin_sizes(sctx, cb_target_enabled_4bit, &color_bin_size, &depth_bin_size);
    } else {
       color_bin_size = si_get_color_bin_size(sctx, cb_target_enabled_4bit);

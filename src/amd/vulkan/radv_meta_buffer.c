@@ -235,7 +235,7 @@ radv_prefer_compute_dma(const struct radv_device *device, uint64_t size,
 {
    bool use_compute = size >= RADV_BUFFER_OPS_CS_THRESHOLD;
 
-   if (device->physical_device->rad_info.chip_class >= GFX10 &&
+   if (device->physical_device->rad_info.gfx_level >= GFX10 &&
        device->physical_device->rad_info.has_dedicated_vram) {
       if ((src_bo && !(src_bo->initial_domain & RADEON_DOMAIN_VRAM)) ||
           !(dst_bo->initial_domain & RADEON_DOMAIN_VRAM)) {

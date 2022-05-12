@@ -148,7 +148,7 @@ allocate_inline_push_consts(const struct radv_shader_info *info,
 }
 
 static void
-allocate_user_sgprs(enum chip_class chip_class, const struct radv_shader_info *info,
+allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info *info,
                     struct radv_shader_args *args, gl_shader_stage stage, bool has_previous_stage,
                     gl_shader_stage previous_stage, bool needs_view_index, bool has_api_gs,
                     struct user_sgpr_info *user_sgpr_info)
@@ -224,7 +224,7 @@ allocate_user_sgprs(enum chip_class chip_class, const struct radv_shader_info *i
       user_sgpr_count++;
 
    uint32_t available_sgprs =
-      chip_class >= GFX9 && stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_TASK ? 32 : 16;
+      gfx_level >= GFX9 && stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_TASK ? 32 : 16;
    uint32_t remaining_sgprs = available_sgprs - user_sgpr_count;
    uint32_t num_desc_set = util_bitcount(info->desc_set_used_mask);
 
@@ -295,18 +295,18 @@ declare_vs_specific_input_sgprs(const struct radv_shader_info *info, struct radv
 }
 
 static void
-declare_vs_input_vgprs(enum chip_class chip_class, const struct radv_shader_info *info,
+declare_vs_input_vgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info *info,
                        struct radv_shader_args *args)
 {
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vertex_id);
    if (!args->is_gs_copy_shader) {
       if (info->vs.as_ls) {
 
-         if (chip_class >= GFX11) {
+         if (gfx_level >= GFX11) {
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
-         } else if (chip_class >= GFX10) {
+         } else if (gfx_level >= GFX10) {
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vs_rel_patch_id);
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user vgpr */
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
@@ -316,7 +316,7 @@ declare_vs_input_vgprs(enum chip_class chip_class, const struct radv_shader_info
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* unused */
          }
       } else {
-         if (chip_class >= GFX10) {
+         if (gfx_level >= GFX10) {
             if (info->is_ngg) {
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user vgpr */
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user vgpr */
@@ -524,7 +524,7 @@ set_ms_input_locs(struct radv_shader_args *args, uint8_t *user_sgpr_idx)
 }
 
 void
-radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_key *key,
+radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipeline_key *key,
                          const struct radv_shader_info *info, gl_shader_stage stage,
                          bool has_previous_stage, gl_shader_stage previous_stage,
                          struct radv_shader_args *args)
@@ -533,7 +533,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
    bool needs_view_index = info->uses_view_index;
    bool has_api_gs = stage == MESA_SHADER_GEOMETRY;
 
-   if (chip_class >= GFX10 && info->is_ngg && stage != MESA_SHADER_GEOMETRY) {
+   if (gfx_level >= GFX10 && info->is_ngg && stage != MESA_SHADER_GEOMETRY) {
       /* Handle all NGG shaders as GS to simplify the code here. */
       previous_stage = stage;
       stage = MESA_SHADER_GEOMETRY;
@@ -545,7 +545,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
    for (int i = 0; i < AC_UD_MAX_UD; i++)
       args->user_sgprs_locs.shader_data[i].sgpr_idx = -1;
 
-   allocate_user_sgprs(chip_class, info, args, stage, has_previous_stage, previous_stage,
+   allocate_user_sgprs(gfx_level, info, args, stage, has_previous_stage, previous_stage,
                        needs_view_index, has_api_gs, &user_sgpr_info);
 
    if (args->explicit_scratch_args) {
@@ -603,7 +603,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
       }
 
-      if (chip_class >= GFX11)
+      if (gfx_level >= GFX11)
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.local_invocation_ids);
       else
          ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_INT, &args->ac.local_invocation_ids);
@@ -636,7 +636,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
       }
 
-      declare_vs_input_vgprs(chip_class, info, args);
+      declare_vs_input_vgprs(gfx_level, info, args);
       break;
    case MESA_SHADER_TESS_CTRL:
       if (has_previous_stage) {
@@ -645,7 +645,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.merged_wave_info);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_factor_offset);
 
-         if (chip_class >= GFX11) {
+         if (gfx_level >= GFX11) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_wave_id);
          } else {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
@@ -665,7 +665,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_patch_id);
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_rel_ids);
 
-         declare_vs_input_vgprs(chip_class, info, args);
+         declare_vs_input_vgprs(gfx_level, info, args);
       } else {
          declare_global_input_sgprs(info, &user_sgpr_info, args);
 
@@ -747,7 +747,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[2]);
 
          if (previous_stage == MESA_SHADER_VERTEX) {
-            declare_vs_input_vgprs(chip_class, info, args);
+            declare_vs_input_vgprs(gfx_level, info, args);
          } else if (previous_stage == MESA_SHADER_TESS_EVAL) {
             declare_tes_input_vgprs(args);
          } else if (previous_stage == MESA_SHADER_MESH) {

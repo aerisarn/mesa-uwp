@@ -132,7 +132,7 @@ struct ac_llvm_context {
    unsigned uniform_md_kind;
    LLVMValueRef empty_md;
 
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
    enum radeon_family family;
    const struct radeon_info *info;
 
@@ -145,7 +145,7 @@ struct ac_llvm_context {
 };
 
 void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *compiler,
-                          enum chip_class chip_class, enum radeon_family family,
+                          enum amd_gfx_level gfx_level, enum radeon_family family,
                           const struct radeon_info *info,
                           enum ac_float_mode float_mode, unsigned wave_size,
                           unsigned ballot_mask_bits);

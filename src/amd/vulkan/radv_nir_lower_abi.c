@@ -30,7 +30,7 @@
 #include "radv_shader_args.h"
 
 typedef struct {
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
    const struct radv_shader_args *args;
    const struct radv_shader_info *info;
    const struct radv_pipeline_key *pl_key;
@@ -221,14 +221,12 @@ filter_abi_instr(const nir_instr *instr,
 }
 
 void
-radv_nir_lower_abi(nir_shader *shader,
-                   enum chip_class chip_class,
-                   const struct radv_shader_info *info,
-                   const struct radv_shader_args *args,
+radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
+                   const struct radv_shader_info *info, const struct radv_shader_args *args,
                    const struct radv_pipeline_key *pl_key)
 {
    lower_abi_state state = {
-      .chip_class = chip_class,
+      .gfx_level = gfx_level,
       .info = info,
       .args = args,
       .pl_key = pl_key,

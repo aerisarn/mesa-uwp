@@ -11,7 +11,7 @@ class TEvalShaderFromNir : public VertexStage
 public:
 	TEvalShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel,
                            const r600_shader_key& key, r600_shader *gs_shader,
-                           enum chip_class chip_class);
+                           enum amd_gfx_level gfx_level);
         bool scan_sysvalue_access(nir_instr *instr) override;
         PValue primitive_id() override {return m_primitive_id;}
      private:

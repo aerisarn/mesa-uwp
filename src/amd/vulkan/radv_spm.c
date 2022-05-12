@@ -200,7 +200,7 @@ radv_spm_init(struct radv_device *device)
       {GL1C, 0, 0xe},   /* Number of GL1C requests. */
       {GL1C, 0, 0x12},  /* Number of GL1C misses. */
       {GL2C, 0, 0x3},   /* Number of GL2C requests. */
-      {GL2C, 0, info->chip_class >= GFX10_3 ? 0x2b : 0x23},  /* Number of GL2C misses. */
+      {GL2C, 0, info->gfx_level >= GFX10_3 ? 0x2b : 0x23},  /* Number of GL2C misses. */
    };
 
    if (!ac_init_perfcounters(info, false, false, pc))

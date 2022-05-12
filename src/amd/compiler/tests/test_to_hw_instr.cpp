@@ -44,7 +44,7 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
    v1_b3.reg_b += 3;
 
    for (unsigned i = GFX6; i <= GFX7; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       //~gfx[67]>>  p_unit_test 0
@@ -224,7 +224,7 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
    }
 
    for (unsigned i = GFX8; i <= GFX9; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       //~gfx[89]>> p_unit_test 0
@@ -374,7 +374,7 @@ BEGIN_TEST(to_hw_instr.subdword_constant)
    v1_hi.reg_b += 2;
 
    for (unsigned i = GFX9; i <= GFX10; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       /* 16-bit pack */
@@ -503,7 +503,7 @@ BEGIN_TEST(to_hw_instr.extract)
 
    for (unsigned i = GFX7; i <= GFX9; i++) {
    for (unsigned is_signed = 0; is_signed <= 1; is_signed++) {
-      if (!setup_cs(NULL, (chip_class)i, CHIP_UNKNOWN, is_signed ? "_signed" : "_unsigned"))
+      if (!setup_cs(NULL, (amd_gfx_level)i, CHIP_UNKNOWN, is_signed ? "_signed" : "_unsigned"))
          continue;
 
 #define EXT(idx, size)                                                                             \
@@ -591,7 +591,7 @@ BEGIN_TEST(to_hw_instr.insert)
    PhysReg v1_lo{257};
 
    for (unsigned i = GFX7; i <= GFX9; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
 #define INS(idx, size)                                                                             \

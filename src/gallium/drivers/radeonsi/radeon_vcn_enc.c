@@ -477,7 +477,7 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder, void *feed
 }
 
 static int setup_dpb(struct radeon_encoder *enc, enum pipe_format buffer_format,
-                     enum chip_class chip_class)
+                     enum amd_gfx_level gfx_level)
 {
    uint32_t aligned_width = align(enc->base.width, 16);
    uint32_t aligned_height = align(enc->base.height, 16);
@@ -494,7 +494,7 @@ static int setup_dpb(struct radeon_encoder *enc, enum pipe_format buffer_format,
 
    int i;
    for (i = 0; i < num_reconstructed_pictures; i++) {
-      if (chip_class >= GFX11) {
+      if (gfx_level >= GFX11) {
          enc->enc_pic.ctx_buf.reconstructed_pictures_v4_0[i].luma_offset = offset;
          offset += luma_size;
          enc->enc_pic.ctx_buf.reconstructed_pictures_v4_0[i].chroma_offset = offset;
@@ -572,7 +572,7 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
 
    get_buffer(((struct vl_video_buffer *)tmp_buf)->resources[0], NULL, &tmp_surf);
 
-   cpb_size = (sscreen->info.chip_class < GFX9)
+   cpb_size = (sscreen->info.gfx_level < GFX9)
                  ? align(tmp_surf->u.legacy.level[0].nblk_x * tmp_surf->bpe, 128) *
                       align(tmp_surf->u.legacy.level[0].nblk_y, 32)
                  : align(tmp_surf->u.gfx9.surf_pitch * tmp_surf->bpe, 256) *
@@ -582,14 +582,14 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
    cpb_size = cpb_size * enc->cpb_num;
    tmp_buf->destroy(tmp_buf);
 
-   cpb_size += setup_dpb(enc, templat.buffer_format, sscreen->info.chip_class);
+   cpb_size += setup_dpb(enc, templat.buffer_format, sscreen->info.gfx_level);
 
    if (!si_vid_create_buffer(enc->screen, &enc->cpb, cpb_size, PIPE_USAGE_DEFAULT)) {
       RVID_ERR("Can't create CPB buffer.\n");
       goto error;
    }
 
-   if (sscreen->info.chip_class >= GFX11)
+   if (sscreen->info.gfx_level >= GFX11)
       radeon_enc_4_0_init(enc);
    else if (sscreen->info.family >= CHIP_SIENNA_CICHLID)
       radeon_enc_3_0_init(enc);

@@ -293,11 +293,11 @@ calc_waves_per_workgroup(Program* program)
 uint16_t
 get_extra_sgprs(Program* program)
 {
-   if (program->chip_class >= GFX10) {
+   if (program->gfx_level >= GFX10) {
       assert(!program->needs_flat_scr);
       assert(!program->dev.xnack_enabled);
       return 0;
-   } else if (program->chip_class >= GFX8) {
+   } else if (program->gfx_level >= GFX8) {
       if (program->needs_flat_scr)
          return 6;
       else if (program->dev.xnack_enabled)
@@ -439,7 +439,7 @@ live_var_analysis(Program* program)
    std::vector<PhiInfo> phi_info(program->blocks.size());
    RegisterDemand new_demand;
 
-   program->needs_vcc = program->chip_class >= GFX10;
+   program->needs_vcc = program->gfx_level >= GFX10;
 
    /* this implementation assumes that the block idx corresponds to the block's position in
     * program->blocks vector */

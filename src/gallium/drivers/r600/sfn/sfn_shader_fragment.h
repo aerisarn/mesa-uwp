@@ -37,7 +37,7 @@ class FragmentShaderFromNir : public ShaderFromNirProcessor {
 public:
    FragmentShaderFromNir(const nir_shader& nir, r600_shader& sh_info,
                          r600_pipe_shader_selector &sel, const r600_shader_key &key,
-                         enum chip_class chip_class);
+                         enum amd_gfx_level gfx_level);
    bool scan_sysvalue_access(nir_instr *instr) override;
 private:
 

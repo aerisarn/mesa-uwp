@@ -43,7 +43,7 @@ extern FILE *output;
 
 bool set_variant(const char *name);
 
-inline bool set_variant(chip_class cls, const char *rest="")
+inline bool set_variant(amd_gfx_level cls, const char *rest="")
 {
    char buf[8+strlen(rest)];
    if (cls != GFX10_3) {

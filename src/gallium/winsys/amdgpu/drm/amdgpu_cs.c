@@ -954,7 +954,7 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    cs->ip_type = ip_type;
    cs->stop_exec_on_failure = stop_exec_on_failure;
    cs->noop = ctx->ws->noop_cs;
-   cs->has_chaining = ctx->ws->info.chip_class >= GFX7 &&
+   cs->has_chaining = ctx->ws->info.gfx_level >= GFX7 &&
                       (ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE);
 
    struct amdgpu_cs_fence_info fence_info;
@@ -1660,7 +1660,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    /* Pad the IB according to the mask. */
    switch (cs->ip_type) {
    case AMD_IP_SDMA:
-      if (ws->info.chip_class <= GFX6) {
+      if (ws->info.gfx_level <= GFX6) {
          while (rcs->current.cdw & ib_pad_dw_mask)
             radeon_emit(rcs, 0xf0000000); /* NOP packet */
       } else {

@@ -5,7 +5,7 @@ from canonicalize import json_canonicalize
 
 ######### BEGIN HARDCODED CONFIGURATION
 
-gfx_versions = {
+gfx_levels = {
     'gfx6': [
         [],
         'asic_reg/gca/gfx_6_0_d.h',
@@ -68,7 +68,7 @@ re_shift = re.compile(r'^#define (?P<name>\w+)__(?P<field>\w+)__SHIFT\s+(?P<valu
 # match: #define SDMA0_DEC_START__START_MASK                    0xFFFFFFFF
 re_mask = re.compile(r'^#define (?P<name>\w+)__(?P<field>\w+)_MASK\s+(?P<value>[0-9a-fA-Fx]+)L?\n')
 
-def register_filter(gfx_version, name, offset, already_added):
+def register_filter(gfx_level, name, offset, already_added):
     # Only accept writeable registers and debug registers
     return ((offset // 0x1000 in [0xB, 0x28, 0x30, 0x31, 0x34, 0x35, 0x36, 0x37] or
              # Add SQ_WAVE registers for trap handlers
@@ -81,7 +81,7 @@ def register_filter(gfx_version, name, offset, already_added):
                name.startswith('GRBM_STATUS') or
                name.startswith('CP_CP'))) or
              # Add all registers in the 0x8000 range for gfx6
-             (gfx_version == 'gfx6' and offset // 0x1000 == 0x8) or
+             (gfx_level == 'gfx6' and offset // 0x1000 == 0x8) or
              # Add registers in the 0x9000 range
              (offset // 0x1000 == 0x9 and
               (name in ['TA_CS_BC_BASE_ADDR', 'GB_ADDR_CONFIG', 'SPI_CONFIG_CNTL'] or
@@ -689,11 +689,11 @@ fields_missing = {
 def bitcount(n):
     return bin(n).count('1')
 
-def generate_json(gfx_version, amd_headers_path):
-    gc_base_offsets = gfx_versions[gfx_version][0]
+def generate_json(gfx_level, amd_headers_path):
+    gc_base_offsets = gfx_levels[gfx_level][0]
 
     # Add the path to the filenames
-    filenames = [amd_headers_path + '/' + a for a in gfx_versions[gfx_version][1:]]
+    filenames = [amd_headers_path + '/' + a for a in gfx_levels[gfx_level][1:]]
 
     # Open the files
     files = [open(a, 'r').readlines() if a is not None else None for a in filenames]
@@ -726,9 +726,9 @@ def generate_json(gfx_version, amd_headers_path):
             name = name[:-4]
 
         # Only accept writeable registers and debug registers
-        if register_filter(gfx_version, name, offset, offset in added_offsets):
+        if register_filter(gfx_level, name, offset, offset in added_offsets):
             regs[name] = {
-                'chips': [gfx_version],
+                'chips': [gfx_level],
                 'map': {'at': offset, 'to': 'mm'},
                 'name': name,
             }
@@ -765,7 +765,7 @@ def generate_json(gfx_version, amd_headers_path):
     re_enum_end = re.compile(r'^} \w+;\n')
     inside_enum = False
     name = None
-    enums = enums_missing[gfx_version] if gfx_version in enums_missing else {}
+    enums = enums_missing[gfx_level] if gfx_level in enums_missing else {}
 
     for line in files[2]:
         r = re_enum_begin.match(line)
@@ -795,7 +795,7 @@ def generate_json(gfx_version, amd_headers_path):
     # Assemble everything
     reg_types = {}
     reg_mappings = []
-    missing_fields = fields_missing[gfx_version] if gfx_version in fields_missing else {}
+    missing_fields = fields_missing[gfx_level] if gfx_level in fields_missing else {}
 
     for (name, reg) in regs.items():
         type = {'fields': []}
@@ -823,7 +823,7 @@ def generate_json(gfx_version, amd_headers_path):
                     if type_name is not None:
                         if type_name not in enums:
                             print('{0}: {1} type not found for {2}.{3}'
-                                  .format(gfx_version, type_name, name, field), file=sys.stderr)
+                                  .format(gfx_level, type_name, name, field), file=sys.stderr)
                         else:
                             new['enum_ref'] = type_name
 
@@ -868,8 +868,8 @@ def generate_json(gfx_version, amd_headers_path):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) <= 1 or (sys.argv[1] not in gfx_versions and sys.argv[1] != 'all'):
-        print('First parameter should be one of: all, ' + ', '.join(gfx_versions.keys()), file=sys.stderr)
+    if len(sys.argv) <= 1 or (sys.argv[1] not in gfx_levels and sys.argv[1] != 'all'):
+        print('First parameter should be one of: all, ' + ', '.join(gfx_levels.keys()), file=sys.stderr)
         sys.exit(1)
 
     if len(sys.argv) <= 2:
@@ -877,8 +877,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if sys.argv[1] == 'all':
-        for gfx_version in gfx_versions.keys():
-            print(generate_json(gfx_version, sys.argv[2]), file=open(gfx_version + '.json', 'w'))
+        for gfx_level in gfx_levels.keys():
+            print(generate_json(gfx_level, sys.argv[2]), file=open(gfx_level + '.json', 'w'))
         sys.exit(0)
 
     print(generate_json(sys.argv[1], sys.argv[2]))

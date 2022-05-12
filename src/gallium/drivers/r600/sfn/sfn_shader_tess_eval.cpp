@@ -5,9 +5,9 @@ namespace r600 {
 
 TEvalShaderFromNir::TEvalShaderFromNir(r600_pipe_shader *sh, r600_pipe_shader_selector& sel,
                                        const r600_shader_key& key, r600_shader *gs_shader,
-                                       enum chip_class chip_class):
+                                       enum amd_gfx_level gfx_level):
    VertexStage(PIPE_SHADER_TESS_EVAL, sel, sh->shader,
-               sh->scratch_space_needed, chip_class, key.tes.first_atomic_counter),
+               sh->scratch_space_needed, gfx_level, key.tes.first_atomic_counter),
    m_reserved_registers(0),
    m_key(key)
 

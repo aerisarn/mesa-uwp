@@ -299,7 +299,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
 
    va = tex->buffer.gpu_address;
 
-   if (sscreen->info.chip_class >= GFX9) {
+   if (sscreen->info.gfx_level >= GFX9) {
       /* Only stencil_offset needs to be added here. */
       if (is_stencil)
          va += tex->surface.u.gfx9.zs.stencil_offset;
@@ -315,14 +315,14 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
    /* Only macrotiled modes can set tile swizzle.
     * GFX9 doesn't use (legacy) base_level_info.
     */
-   if (sscreen->info.chip_class >= GFX9 || base_level_info->mode == RADEON_SURF_MODE_2D)
+   if (sscreen->info.gfx_level >= GFX9 || base_level_info->mode == RADEON_SURF_MODE_2D)
       state[0] |= tex->surface.tile_swizzle;
 
-   if (sscreen->info.chip_class >= GFX8) {
+   if (sscreen->info.gfx_level >= GFX8) {
       if (!(access & SI_IMAGE_ACCESS_DCC_OFF) && vi_dcc_enabled(tex, first_level)) {
          meta_va = tex->buffer.gpu_address + tex->surface.meta_offset;
 
-         if (sscreen->info.chip_class == GFX8) {
+         if (sscreen->info.gfx_level == GFX8) {
             meta_va += tex->surface.u.legacy.color.dcc_level[base_level].dcc_offset;
             assert(base_level_info->mode == RADEON_SURF_MODE_2D);
          }
@@ -339,10 +339,10 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
          state[6] |= S_008F28_COMPRESSION_EN(1);
    }
 
-   if (sscreen->info.chip_class >= GFX8 && sscreen->info.chip_class <= GFX9)
+   if (sscreen->info.gfx_level >= GFX8 && sscreen->info.gfx_level <= GFX9)
       state[7] = meta_va >> 8;
 
-   if (sscreen->info.chip_class >= GFX10) {
+   if (sscreen->info.gfx_level >= GFX10) {
       if (is_stencil) {
          state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
       } else {
@@ -369,7 +369,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
                       * The same limitations apply to SDMA compressed stores because
                       * SDMA uses the same DCC codec.
                       */
-                     S_00A018_WRITE_COMPRESS_ENABLE(ac_surface_supports_dcc_image_stores(sscreen->info.chip_class, &tex->surface) &&
+                     S_00A018_WRITE_COMPRESS_ENABLE(ac_surface_supports_dcc_image_stores(sscreen->info.gfx_level, &tex->surface) &&
                                                     (access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE));
 
          /* TC-compatible MSAA HTILE requires ITERATE_256. */
@@ -378,7 +378,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       }
 
       state[7] = meta_va >> 16;
-   } else if (sscreen->info.chip_class == GFX9) {
+   } else if (sscreen->info.gfx_level == GFX9) {
       if (is_stencil) {
          state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
          state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.zs.stencil_epitch);
@@ -789,7 +789,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
       unsigned depth = res->b.b.depth0;
       unsigned hw_level = level;
 
-      if (ctx->chip_class <= GFX8) {
+      if (ctx->gfx_level <= GFX8) {
          /* Always force the base level to the selected level.
           *
           * This is required for 3D textures, where otherwise
@@ -803,7 +803,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
       }
 
       if (access & SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT) {
-         if (ctx->chip_class >= GFX9) {
+         if (ctx->gfx_level >= GFX9) {
             /* Since the aligned width and height are derived from the width and height
              * by the hw, set them directly as the width and height, so that UINT formats
              * get exactly the same layout as BCn formats.
@@ -1080,10 +1080,10 @@ static void si_init_buffer_resources(struct si_context *sctx,
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
-      if (sctx->chip_class >= GFX11) {
+      if (sctx->gfx_level >= GFX11) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW);
-      } else if (sctx->chip_class >= GFX10) {
+      } else if (sctx->gfx_level >= GFX10) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
@@ -1213,7 +1213,7 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
 
    /* GFX7 cannot unbind a constant buffer (S_BUFFER_LOAD is buggy
     * with a NULL buffer). We need to use a dummy buffer instead. */
-   if (sctx->chip_class == GFX7 && (!input || (!input->buffer && !input->user_buffer)))
+   if (sctx->gfx_level == GFX7 && (!input || (!input->buffer && !input->user_buffer)))
       input = &sctx->null_const_buf;
 
    if (input && (input->buffer || input->user_buffer)) {
@@ -1529,7 +1529,7 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
          break;
       }
 
-      if (sctx->chip_class >= GFX8 && stride)
+      if (sctx->gfx_level >= GFX8 && stride)
          num_records *= stride;
 
       /* Set the descriptor. */
@@ -1541,10 +1541,10 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
                 S_008F0C_INDEX_STRIDE(index_stride) | S_008F0C_ADD_TID_ENABLE(add_tid);
 
-      if (sctx->chip_class >= GFX11) {
+      if (sctx->gfx_level >= GFX11) {
          assert(!swizzle || element_size == 1 || element_size == 3); /* 4 or 16 bytes */
          desc[1] |= S_008F04_SWIZZLE_ENABLE_GFX11(swizzle ? element_size : 0);
-      } else if (sctx->chip_class >= GFX9) {
+      } else if (sctx->gfx_level >= GFX9) {
          assert(!swizzle || element_size == 1); /* only 4 bytes on GFX9 */
          desc[1] |= S_008F04_SWIZZLE_ENABLE_GFX6(swizzle);
       } else {
@@ -1552,10 +1552,10 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
          desc[3] |= S_008F0C_ELEMENT_SIZE(element_size);
       }
 
-      if (sctx->chip_class >= GFX11) {
+      if (sctx->gfx_level >= GFX11) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED);
-      } else if (sctx->chip_class >= GFX10) {
+      } else if (sctx->gfx_level >= GFX10) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
@@ -2072,7 +2072,7 @@ void si_shader_pointers_mark_dirty(struct si_context *sctx)
    sctx->compute_bindless_pointer_dirty = sctx->bindless_descriptors.buffer != NULL;
    sctx->compute_shaderbuf_sgprs_dirty = true;
    sctx->compute_image_sgprs_dirty = true;
-   if (sctx->chip_class >= GFX11)
+   if (sctx->gfx_level >= GFX11)
       sctx->gs_attribute_ring_pointer_dirty = true;
 }
 
@@ -2105,14 +2105,14 @@ static void si_set_user_data_base(struct si_context *sctx, unsigned shader, uint
 void si_shader_change_notify(struct si_context *sctx)
 {
    si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
-                         si_get_user_data_base(sctx->chip_class,
+                         si_get_user_data_base(sctx->gfx_level,
                                                sctx->shader.tes.cso ? TESS_ON : TESS_OFF,
                                                sctx->shader.gs.cso ? GS_ON : GS_OFF,
                                                sctx->ngg ? NGG_ON : NGG_OFF,
                                                PIPE_SHADER_VERTEX));
 
    si_set_user_data_base(sctx, PIPE_SHADER_TESS_EVAL,
-                         si_get_user_data_base(sctx->chip_class,
+                         si_get_user_data_base(sctx->gfx_level,
                                                sctx->shader.tes.cso ? TESS_ON : TESS_OFF,
                                                sctx->shader.gs.cso ? GS_ON : GS_OFF,
                                                sctx->ngg ? NGG_ON : NGG_OFF,
@@ -2172,13 +2172,13 @@ static void si_emit_global_shader_pointers(struct si_context *sctx, struct si_de
 {
    radeon_begin(&sctx->gfx_cs);
 
-   if (sctx->chip_class >= GFX11) {
+   if (sctx->gfx_level >= GFX11) {
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B030_SPI_SHADER_USER_DATA_PS_0);
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B230_SPI_SHADER_USER_DATA_GS_0);
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B430_SPI_SHADER_USER_DATA_HS_0);
       radeon_end();
       return;
-   } else if (sctx->chip_class >= GFX10) {
+   } else if (sctx->gfx_level >= GFX10) {
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B030_SPI_SHADER_USER_DATA_PS_0);
       /* HW VS stage only used in non-NGG mode. */
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B130_SPI_SHADER_USER_DATA_VS_0);
@@ -2186,7 +2186,7 @@ static void si_emit_global_shader_pointers(struct si_context *sctx, struct si_de
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B430_SPI_SHADER_USER_DATA_HS_0);
       radeon_end();
       return;
-   } else if (sctx->chip_class == GFX9 && sctx->shadowed_regs) {
+   } else if (sctx->gfx_level == GFX9 && sctx->shadowed_regs) {
       /* We can't use the COMMON registers with register shadowing. */
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B030_SPI_SHADER_USER_DATA_PS_0);
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B130_SPI_SHADER_USER_DATA_VS_0);
@@ -2194,7 +2194,7 @@ static void si_emit_global_shader_pointers(struct si_context *sctx, struct si_de
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B430_SPI_SHADER_USER_DATA_LS_0);
       radeon_end();
       return;
-   } else if (sctx->chip_class == GFX9) {
+   } else if (sctx->gfx_level == GFX9) {
       /* Broadcast it to all shader stages. */
       radeon_emit_one_32bit_pointer(sctx, descs, R_00B530_SPI_SHADER_USER_DATA_COMMON_0);
       radeon_end();
@@ -2231,7 +2231,7 @@ void si_emit_graphics_shader_pointers(struct si_context *sctx)
                                        sh_base[PIPE_SHADER_GEOMETRY]);
 
    if (sctx->gs_attribute_ring_pointer_dirty) {
-      assert(sctx->chip_class >= GFX11);
+      assert(sctx->gfx_level >= GFX11);
       radeon_set_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 + GFX9_SGPR_ATTRIBUTE_RING_ADDR * 4,
                         sctx->screen->attribute_ring->gpu_address);
       sctx->gs_attribute_ring_pointer_dirty = false;
@@ -2700,7 +2700,7 @@ void si_init_all_descriptors(struct si_context *sctx)
    unsigned first_shader = sctx->has_graphics ? 0 : PIPE_SHADER_COMPUTE;
    unsigned hs_sgpr0, gs_sgpr0;
 
-   if (sctx->chip_class >= GFX11) {
+   if (sctx->gfx_level >= GFX11) {
       hs_sgpr0 = R_00B420_SPI_SHADER_PGM_LO_HS;
       gs_sgpr0 = R_00B220_SPI_SHADER_PGM_LO_GS;
    } else {
@@ -2710,7 +2710,7 @@ void si_init_all_descriptors(struct si_context *sctx)
 
    for (i = first_shader; i < SI_NUM_SHADERS; i++) {
       bool is_2nd =
-         sctx->chip_class >= GFX9 && (i == PIPE_SHADER_TESS_CTRL || i == PIPE_SHADER_GEOMETRY);
+         sctx->gfx_level >= GFX9 && (i == PIPE_SHADER_TESS_CTRL || i == PIPE_SHADER_GEOMETRY);
       unsigned num_sampler_slots = SI_NUM_IMAGE_SLOTS / 2 + SI_NUM_SAMPLERS;
       unsigned num_buffer_slots = SI_NUM_SHADER_BUFFERS + SI_NUM_CONST_BUFFERS;
       int rel_dw_offset;
@@ -2720,7 +2720,7 @@ void si_init_all_descriptors(struct si_context *sctx)
          if (i == PIPE_SHADER_TESS_CTRL) {
             rel_dw_offset =
                (hs_sgpr0 - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
-         } else if (sctx->chip_class >= GFX10) { /* PIPE_SHADER_GEOMETRY */
+         } else if (sctx->gfx_level >= GFX10) { /* PIPE_SHADER_GEOMETRY */
             rel_dw_offset =
                (gs_sgpr0 - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
          } else {
@@ -2740,7 +2740,7 @@ void si_init_all_descriptors(struct si_context *sctx)
          if (i == PIPE_SHADER_TESS_CTRL) {
             rel_dw_offset =
                (hs_sgpr0 + 4 - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
-         } else if (sctx->chip_class >= GFX10) { /* PIPE_SHADER_GEOMETRY */
+         } else if (sctx->gfx_level >= GFX10) { /* PIPE_SHADER_GEOMETRY */
             rel_dw_offset =
                (gs_sgpr0 + 4 - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
          } else {
@@ -2800,13 +2800,13 @@ void si_init_all_descriptors(struct si_context *sctx)
 
    /* Set default and immutable mappings. */
    si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
-                         si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
+                         si_get_user_data_base(sctx->gfx_level, TESS_OFF, GS_OFF,
                                                sctx->ngg, PIPE_SHADER_VERTEX));
    si_set_user_data_base(sctx, PIPE_SHADER_TESS_CTRL,
-                         si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
+                         si_get_user_data_base(sctx->gfx_level, TESS_OFF, GS_OFF,
                                                NGG_OFF, PIPE_SHADER_TESS_CTRL));
    si_set_user_data_base(sctx, PIPE_SHADER_GEOMETRY,
-                         si_get_user_data_base(sctx->chip_class, TESS_OFF, GS_OFF,
+                         si_get_user_data_base(sctx->gfx_level, TESS_OFF, GS_OFF,
                                                NGG_OFF, PIPE_SHADER_GEOMETRY));
    si_set_user_data_base(sctx, PIPE_SHADER_FRAGMENT, R_00B030_SPI_SHADER_USER_DATA_PS_0);
 

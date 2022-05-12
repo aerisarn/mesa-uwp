@@ -285,7 +285,7 @@ static uint32_t get_nop_packet(struct radv_amdgpu_cs *cs)
    case AMDGPU_HW_IP_COMPUTE:
       return cs->ws->info.gfx_ib_pad_with_type2 ?  PKT2_NOP_PAD : PKT3_NOP_PAD;
    case AMDGPU_HW_IP_DMA:
-      return cs->ws->info.chip_class <= GFX6 ? 0xF0000000 : SDMA_NOP_PAD;
+      return cs->ws->info.gfx_level <= GFX6 ? 0xF0000000 : SDMA_NOP_PAD;
    case AMDGPU_HW_IP_UVD:
    case AMDGPU_HW_IP_UVD_ENC:
       return PKT2_NOP_PAD;
@@ -1492,7 +1492,7 @@ radv_amdgpu_winsys_cs_dump(struct radeon_cmdbuf *_cs, FILE *file, const int *tra
       num_dw = cs->ib.size;
    }
    assert(ib);
-   ac_parse_ib(file, ib, num_dw, trace_ids, trace_id_count, "main IB", cs->ws->info.chip_class,
+   ac_parse_ib(file, ib, num_dw, trace_ids, trace_id_count, "main IB", cs->ws->info.gfx_level,
                radv_amdgpu_winsys_get_cpu_addr, cs);
 }
 

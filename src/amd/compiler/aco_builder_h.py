@@ -361,10 +361,10 @@ public:
    Result v_mul_imm(Definition dst, Temp tmp, uint32_t imm, bool bits24=false)
    {
       assert(tmp.type() == RegType::vgpr);
-      bool has_lshl_add = program->chip_class >= GFX9;
+      bool has_lshl_add = program->gfx_level >= GFX9;
       /* v_mul_lo_u32 has 1.6x the latency of most VALU on GFX10 (8 vs 5 cycles),
        * compared to 4x the latency on <GFX10. */
-      unsigned mul_cost = program->chip_class >= GFX10 ? 1 : (4 + Operand::c32(imm).isLiteral());
+      unsigned mul_cost = program->gfx_level >= GFX10 ? 1 : (4 + Operand::c32(imm).isLiteral());
       if (imm == 0) {
          return copy(dst, Operand::zero());
       } else if (imm == 1) {
@@ -426,9 +426,9 @@ public:
 
       if (!carry_in.op.isUndefined())
          return vop2(aco_opcode::v_addc_co_u32, Definition(dst), def(lm), a, b, carry_in);
-      else if (program->chip_class >= GFX10 && carry_out)
+      else if (program->gfx_level >= GFX10 && carry_out)
          return vop3(aco_opcode::v_add_co_u32_e64, Definition(dst), def(lm), a, b);
-      else if (program->chip_class < GFX9 || carry_out)
+      else if (program->gfx_level < GFX9 || carry_out)
          return vop2(aco_opcode::v_add_co_u32, Definition(dst), def(lm), a, b);
       else
          return vop2(aco_opcode::v_add_u32, Definition(dst), a, b);
@@ -436,7 +436,7 @@ public:
 
    Result vsub32(Definition dst, Op a, Op b, bool carry_out=false, Op borrow=Op(Operand(s2)))
    {
-      if (!borrow.op.isUndefined() || program->chip_class < GFX9)
+      if (!borrow.op.isUndefined() || program->gfx_level < GFX9)
          carry_out = true;
 
       bool reverse = !b.op.isTemp() || b.op.regClass().type() != RegType::vgpr;
@@ -457,10 +457,10 @@ public:
          op = reverse ? aco_opcode::v_subrev_u32 : aco_opcode::v_sub_u32;
       }
       bool vop3 = false;
-      if (program->chip_class >= GFX10 && op == aco_opcode::v_subrev_co_u32) {
+      if (program->gfx_level >= GFX10 && op == aco_opcode::v_subrev_co_u32) {
         vop3 = true;
         op = aco_opcode::v_subrev_co_u32_e64;
-      } else if (program->chip_class >= GFX10 && op == aco_opcode::v_sub_co_u32) {
+      } else if (program->gfx_level >= GFX10 && op == aco_opcode::v_sub_co_u32) {
         vop3 = true;
         op = aco_opcode::v_sub_co_u32_e64;
       }
@@ -485,13 +485,13 @@ public:
 
    Result readlane(Definition dst, Op vsrc, Op lane)
    {
-      if (program->chip_class >= GFX8)
+      if (program->gfx_level >= GFX8)
          return vop3(aco_opcode::v_readlane_b32_e64, dst, vsrc, lane);
       else
          return vop2(aco_opcode::v_readlane_b32, dst, vsrc, lane);
    }
    Result writelane(Definition dst, Op val, Op lane, Op vsrc) {
-      if (program->chip_class >= GFX8)
+      if (program->gfx_level >= GFX8)
          return vop3(aco_opcode::v_writelane_b32_e64, dst, val, lane, vsrc);
       else
          return vop2(aco_opcode::v_writelane_b32, dst, val, lane, vsrc);

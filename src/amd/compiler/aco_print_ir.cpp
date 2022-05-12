@@ -284,7 +284,7 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       uint16_t imm = instr->sopp().imm;
       switch (instr->opcode) {
       case aco_opcode::s_waitcnt: {
-         /* we usually should check the chip class for vmcnt/lgkm, but
+         /* we usually should check the gfx level for vmcnt/lgkm, but
           * insert_waitcnt() should fill it in regardless. */
          unsigned vmcnt = (imm & 0xF) | ((imm & (0x3 << 14)) >> 10);
          if (vmcnt != 63)

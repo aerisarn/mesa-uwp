@@ -121,7 +121,7 @@
 
 typedef struct {
    /* Which hardware generation we're dealing with */
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
 
    /* True if merged VS+TCS (on GFX9+) has the same number
     * of input and output patch size.
@@ -545,7 +545,7 @@ hs_emit_write_tess_factors(nir_shader *shader,
    nir_ssa_def *tess_factors_offset = nir_imul_imm(b, rel_patch_id, (inner_comps + outer_comps) * 4u);
    unsigned tess_factors_const_offset = 0;
 
-   if (st->chip_class <= GFX8) {
+   if (st->gfx_level <= GFX8) {
       /* Store the dynamic HS control word. */
       nir_if *rel_patch_id_zero = nir_push_if(b, nir_ieq_imm(b, rel_patch_id, 0));
       nir_ssa_def *ctrlw = nir_imm_int(b, 0x80000000u);
@@ -671,7 +671,7 @@ ac_nir_lower_hs_inputs_to_mem(nir_shader *shader,
 
 void
 ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
-                               enum chip_class chip_class,
+                               enum amd_gfx_level gfx_level,
                                bool tes_reads_tessfactors,
                                uint64_t tes_inputs_read,
                                uint64_t tes_patch_inputs_read,
@@ -683,7 +683,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
    assert(shader->info.stage == MESA_SHADER_TESS_CTRL);
 
    lower_tess_io_state state = {
-      .chip_class = chip_class,
+      .gfx_level = gfx_level,
       .tes_reads_tessfactors = tes_reads_tessfactors,
       .tes_inputs_read = tes_inputs_read,
       .tes_patch_inputs_read = tes_patch_inputs_read,

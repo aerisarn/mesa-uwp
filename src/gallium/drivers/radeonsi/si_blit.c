@@ -99,7 +99,7 @@ void si_blitter_end(struct si_context *sctx)
     * non-global VS user SGPRs. */
    sctx->shader_pointers_dirty |= SI_DESCS_SHADER_MASK(VERTEX);
 
-   if (sctx->chip_class >= GFX11)
+   if (sctx->gfx_level >= GFX11)
       sctx->gs_attribute_ring_pointer_dirty = true;
 
    /* Reset SI_SGPR_SMALL_PRIM_CULL_INFO: */
@@ -451,7 +451,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
       goto expand_fmask;
 
    /* No color decompression is needed on GFX11. */
-   assert(sctx->chip_class < GFX11 || need_dcc_decompress);
+   assert(sctx->gfx_level < GFX11 || need_dcc_decompress);
 
    if (unlikely(sctx->log))
       u_log_printf(sctx->log,
@@ -460,7 +460,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
                    first_level, last_level, level_mask);
 
    if (need_dcc_decompress) {
-      assert(sctx->chip_class == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2);
+      assert(sctx->gfx_level == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2);
       custom_blend = sctx->custom_blend_dcc_decompress;
 
       assert(vi_dcc_enabled(tex, first_level));
@@ -540,7 +540,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
 
 expand_fmask:
    if (need_fmask_expand && tex->surface.fmask_offset && !tex->fmask_is_identity) {
-      assert(sctx->chip_class < GFX11); /* no FMASK on gfx11 */
+      assert(sctx->gfx_level < GFX11); /* no FMASK on gfx11 */
       si_compute_expand_fmask(&sctx->b, &tex->buffer.b.b);
       tex->fmask_is_identity = true;
    }
@@ -804,7 +804,7 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
       }
    }
 
-   if (sctx->chip_class == GFX10_3 && need_flush) {
+   if (sctx->gfx_level == GFX10_3 && need_flush) {
       /* This fixes a corruption with the following sequence:
        *   - fast clear depth
        *   - decompress depth
@@ -903,7 +903,7 @@ static bool si_can_use_compute_blit(struct si_context *sctx, enum pipe_format fo
       return false;
 
    /* Image stores support DCC since GFX10. */
-   if (has_dcc && is_store && sctx->chip_class < GFX10)
+   if (has_dcc && is_store && sctx->gfx_level < GFX10)
       return false;
 
    return true;
@@ -1168,7 +1168,7 @@ resolve_to_temp:
                  SI_RESOURCE_FLAG_DISABLE_DCC | SI_RESOURCE_FLAG_DRIVER_INTERNAL;
 
    /* The src and dst microtile modes must be the same. */
-   if (sctx->chip_class <= GFX8 && src->surface.micro_tile_mode == RADEON_MICRO_MODE_DISPLAY)
+   if (sctx->gfx_level <= GFX8 && src->surface.micro_tile_mode == RADEON_MICRO_MODE_DISPLAY)
       templ.bind = PIPE_BIND_SCANOUT;
    else
       templ.bind = 0;
@@ -1206,11 +1206,11 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    /* Gfx11 doesn't have CB_RESOLVE. */
    /* TODO: Use compute-based resolving instead. */
-   if (sctx->chip_class < GFX11 && do_hardware_msaa_resolve(ctx, info))
+   if (sctx->gfx_level < GFX11 && do_hardware_msaa_resolve(ctx, info))
       return;
 
    if ((info->dst.resource->bind & PIPE_BIND_PRIME_BLIT_DST) && sdst->surface.is_linear &&
-       sctx->chip_class >= GFX7) {
+       sctx->gfx_level >= GFX7) {
       struct si_texture *ssrc = (struct si_texture *)info->src.resource;
       /* Use SDMA or async compute when copying to a DRI_PRIME imported linear surface. */
       bool async_copy = info->dst.box.x == 0 && info->dst.box.y == 0 && info->dst.box.z == 0 &&
@@ -1345,7 +1345,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
    if (!tex->surface.meta_offset || !sctx->has_graphics)
       return;
 
-   if (sctx->chip_class == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2) {
+   if (sctx->gfx_level == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2) {
       si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
                                util_max_layer(&tex->buffer.b.b, 0), true, false);
    } else {

@@ -155,7 +155,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    /* Remove images with FMASK from the bitmask.  We only care about the first
     * 3 anyway, so we can take msaa_images[0] and ignore the rest.
     */
-   if (sscreen->info.chip_class < GFX11)
+   if (sscreen->info.gfx_level < GFX11)
       non_fmask_images &= ~sel->info.base.msaa_images[0];
 
    for (unsigned i = 0; i < 3 && non_fmask_images & (1 << i); i++) {
@@ -200,10 +200,10 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
                                               sscreen->info.wave64_vgpr_alloc_granularity == 8) ? 8 : 4)) |
                              S_00B848_DX10_CLAMP(1) |
                              S_00B848_MEM_ORDERED(si_shader_mem_ordered(shader)) |
-                             S_00B848_WGP_MODE(sscreen->info.chip_class >= GFX10) |
+                             S_00B848_WGP_MODE(sscreen->info.gfx_level >= GFX10) |
                              S_00B848_FLOAT_MODE(shader->config.float_mode);
 
-      if (sscreen->info.chip_class < GFX10) {
+      if (sscreen->info.gfx_level < GFX10) {
          shader->config.rsrc1 |= S_00B848_SGPRS((shader->config.num_sgprs - 1) / 8);
       }
 
@@ -385,7 +385,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
    radeon_emit(S_00B858_SH0_CU_EN(info->spi_cu_en) | S_00B858_SH1_CU_EN(info->spi_cu_en));
    radeon_emit(S_00B858_SH0_CU_EN(info->spi_cu_en) | S_00B858_SH1_CU_EN(info->spi_cu_en));
 
-   if (sctx->chip_class == GFX6) {
+   if (sctx->gfx_level == GFX6) {
       /* This register has been moved to R_00CD20_COMPUTE_MAX_WAVE_ID
        * and is now per pipe, so it should be handled in the
        * kernel if we want to use something other than the default value.
@@ -402,7 +402,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       }
    }
 
-   if (sctx->chip_class >= GFX7) {
+   if (sctx->gfx_level >= GFX7) {
       /* Also set R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE2 / SE3 */
       radeon_set_sh_reg_seq(R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2, 2);
       radeon_emit(S_00B858_SH0_CU_EN(info->spi_cu_en) | S_00B858_SH1_CU_EN(info->spi_cu_en));
@@ -428,10 +428,10 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
    /* cs_preamble_state initializes this for the gfx queue, so only do this
     * if we are on a compute queue.
     */
-   if (sctx->chip_class >= GFX9 && sctx->chip_class < GFX11 &&
+   if (sctx->gfx_level >= GFX9 && sctx->gfx_level < GFX11 &&
        (cs != &sctx->gfx_cs || !sctx->screen->info.has_graphics)) {
       radeon_set_uconfig_reg(R_0301EC_CP_COHER_START_DELAY,
-                             sctx->chip_class >= GFX10 ? 0x20 : 0);
+                             sctx->gfx_level >= GFX10 ? 0x20 : 0);
    }
 
    if (!info->has_graphics && info->family >= CHIP_ARCTURUS) {
@@ -442,7 +442,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       radeon_emit(S_00B858_SH0_CU_EN(info->spi_cu_en) | S_00B858_SH1_CU_EN(info->spi_cu_en));
    }
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       radeon_set_sh_reg_seq(R_00B890_COMPUTE_USER_ACCUM_0, 4);
       radeon_emit(0); /* R_00B890_COMPUTE_USER_ACCUM_0 */
       radeon_emit(0); /* R_00B894_COMPUTE_USER_ACCUM_1 */
@@ -451,11 +451,11 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
 
       radeon_set_sh_reg(R_00B9F4_COMPUTE_DISPATCH_TUNNEL, 0);
 
-      if (sctx->chip_class < GFX11)
+      if (sctx->gfx_level < GFX11)
          radeon_set_sh_reg(R_00B8A0_COMPUTE_PGM_RSRC3, 0);
    }
 
-   if (sctx->chip_class >= GFX11) {
+   if (sctx->gfx_level >= GFX11) {
       radeon_set_sh_reg_seq(R_00B8AC_COMPUTE_STATIC_THREAD_MGMT_SE4, 4);
       radeon_emit(S_00B8AC_SA0_CU_EN(info->spi_cu_en) | S_00B8AC_SA1_CU_EN(info->spi_cu_en)); /* SE4 */
       radeon_emit(S_00B8AC_SA0_CU_EN(info->spi_cu_en) | S_00B8AC_SA1_CU_EN(info->spi_cu_en)); /* SE5 */
@@ -490,7 +490,7 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx, struct si_s
    }
 
    if (sctx->compute_scratch_buffer != shader->scratch_bo && scratch_needed) {
-      if (sctx->chip_class < GFX11) {
+      if (sctx->gfx_level < GFX11) {
          uint64_t scratch_va = sctx->compute_scratch_buffer->gpu_address;
 
          if (!si_shader_binary_upload(sctx->screen, shader, scratch_va))
@@ -530,7 +530,7 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
        * allocated in the shader and 4 bytes allocated by the state
        * tracker, then we will set LDS_SIZE to 512 bytes rather than 256.
        */
-      if (sctx->chip_class <= GFX6) {
+      if (sctx->gfx_level <= GFX6) {
          lds_blocks += align(program->sel.info.base.shared_size, 256) >> 8;
       } else {
          lds_blocks += align(program->sel.info.base.shared_size, 512) >> 9;
@@ -569,12 +569,12 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
    radeon_begin(cs);
    radeon_set_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
 
-   if (sctx->chip_class >= GFX11) {
+   if (sctx->gfx_level >= GFX11) {
       radeon_set_sh_reg(R_00B8A0_COMPUTE_PGM_RSRC3,
                         S_00B8A0_INST_PREF_SIZE(si_calc_inst_pref_size(shader)));
    }
 
-   if (sctx->chip_class >= GFX11 && shader->scratch_bo) {
+   if (sctx->gfx_level >= GFX11 && shader->scratch_bo) {
       radeon_set_sh_reg_seq(R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO, 4);
       radeon_emit(sctx->compute_scratch_buffer->gpu_address >> 8);
       radeon_emit(sctx->compute_scratch_buffer->gpu_address >> 40);
@@ -612,7 +612,7 @@ static void setup_scratch_rsrc_user_sgprs(struct si_context *sctx,
    uint32_t scratch_dword0 = scratch_va & 0xffffffff;
    uint32_t scratch_dword1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
 
-   if (sctx->chip_class >= GFX11)
+   if (sctx->gfx_level >= GFX11)
       scratch_dword1 |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
    else
       scratch_dword1 |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
@@ -621,12 +621,12 @@ static void setup_scratch_rsrc_user_sgprs(struct si_context *sctx,
    uint32_t scratch_dword2 = 0xffffffff;
    uint32_t scratch_dword3 = S_008F0C_INDEX_STRIDE(3) | S_008F0C_ADD_TID_ENABLE(1);
 
-   if (sctx->chip_class >= GFX9) {
+   if (sctx->gfx_level >= GFX9) {
       assert(max_private_element_size == 1); /* only 4 bytes on GFX9 */
    } else {
       scratch_dword3 |= S_008F0C_ELEMENT_SIZE(max_private_element_size);
 
-      if (sctx->chip_class < GFX8) {
+      if (sctx->gfx_level < GFX8) {
          /* BUF_DATA_FORMAT is ignored, but it cannot be
           * BUF_DATA_FORMAT_INVALID. */
          scratch_dword3 |= S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_8);
@@ -811,7 +811,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       DIV_ROUND_UP(threads_per_threadgroup, sctx->cs_shader_state.program->shader.wave_size);
    unsigned threadgroups_per_cu = 1;
 
-   if (sctx->chip_class >= GFX10 && waves_per_threadgroup == 1)
+   if (sctx->gfx_level >= GFX10 && waves_per_threadgroup == 1)
       threadgroups_per_cu = 2;
 
    if (unlikely(sctx->thread_trace_enabled)) {
@@ -829,7 +829,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
    unsigned dispatch_initiator = S_00B800_COMPUTE_SHADER_EN(1) | S_00B800_FORCE_START_AT_000(1) |
                                  /* If the KMD allows it (there is a KMD hw register for it),
                                   * allow launching waves out-of-order. (same as Vulkan) */
-                                 S_00B800_ORDER_MODE(sctx->chip_class >= GFX7) |
+                                 S_00B800_ORDER_MODE(sctx->gfx_level >= GFX7) |
                                  S_00B800_CS_W32_EN(sctx->cs_shader_state.program->shader.wave_size == 32);
 
    const uint *last_block = info->last_block;
@@ -881,7 +881,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       radeon_emit(dispatch_initiator);
    }
 
-   if (unlikely(sctx->thread_trace_enabled && sctx->chip_class >= GFX9)) {
+   if (unlikely(sctx->thread_trace_enabled && sctx->gfx_level >= GFX9)) {
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) | EVENT_INDEX(0));
    }
@@ -969,7 +969,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       si_context_add_resource_size(sctx, info->indirect);
 
       /* Indirect buffers use TC L2 on GFX9, but not older hw. */
-      if (sctx->chip_class <= GFX8 && si_resource(info->indirect)->TC_L2_dirty) {
+      if (sctx->gfx_level <= GFX8 && si_resource(info->indirect)->TC_L2_dirty) {
          sctx->flags |= SI_CONTEXT_WB_L2;
          si_resource(info->indirect)->TC_L2_dirty = false;
       }
@@ -1029,7 +1029,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
    }
 
    /* Prefetch the compute shader to L2. */
-   if (sctx->chip_class >= GFX7 && prefetch)
+   if (sctx->gfx_level >= GFX7 && prefetch)
       si_cp_dma_prefetch(sctx, &program->shader.bo->b.b, 0, program->shader.bo->b.b.width0);
 
    if (program->ir_type != PIPE_SHADER_IR_NATIVE)

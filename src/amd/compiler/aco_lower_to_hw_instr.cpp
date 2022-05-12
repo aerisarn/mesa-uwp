@@ -68,7 +68,7 @@ uint8_t int8_mul_table[512] = {
    1, 250, 1,  251, 1,  252, 1,  253, 1,  254, 1, 255};
 
 aco_opcode
-get_reduce_opcode(chip_class chip, ReduceOp op)
+get_reduce_opcode(amd_gfx_level gfx_level, ReduceOp op)
 {
    /* Because some 16-bit instructions are already VOP3 on GFX10, we use the
     * 32-bit opcodes (VOP2) which allows to remove the tempory VGPR and to use
@@ -77,9 +77,9 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
    switch (op) {
    case iadd8:
    case iadd16:
-      if (chip >= GFX10) {
+      if (gfx_level >= GFX10) {
          return aco_opcode::v_add_u32;
-      } else if (chip >= GFX8) {
+      } else if (gfx_level >= GFX8) {
          return aco_opcode::v_add_u16;
       } else {
          return aco_opcode::v_add_co_u32;
@@ -87,9 +87,9 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
       break;
    case imul8:
    case imul16:
-      if (chip >= GFX10) {
+      if (gfx_level >= GFX10) {
          return aco_opcode::v_mul_lo_u16_e64;
-      } else if (chip >= GFX8) {
+      } else if (gfx_level >= GFX8) {
          return aco_opcode::v_mul_lo_u16;
       } else {
          return aco_opcode::v_mul_u32_u24;
@@ -99,9 +99,9 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
    case fmul16: return aco_opcode::v_mul_f16;
    case imax8:
    case imax16:
-      if (chip >= GFX10) {
+      if (gfx_level >= GFX10) {
          return aco_opcode::v_max_i32;
-      } else if (chip >= GFX8) {
+      } else if (gfx_level >= GFX8) {
          return aco_opcode::v_max_i16;
       } else {
          return aco_opcode::v_max_i32;
@@ -109,9 +109,9 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
       break;
    case imin8:
    case imin16:
-      if (chip >= GFX10) {
+      if (gfx_level >= GFX10) {
          return aco_opcode::v_min_i32;
-      } else if (chip >= GFX8) {
+      } else if (gfx_level >= GFX8) {
          return aco_opcode::v_min_i16;
       } else {
          return aco_opcode::v_min_i32;
@@ -119,9 +119,9 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
       break;
    case umin8:
    case umin16:
-      if (chip >= GFX10) {
+      if (gfx_level >= GFX10) {
          return aco_opcode::v_min_u32;
-      } else if (chip >= GFX8) {
+      } else if (gfx_level >= GFX8) {
          return aco_opcode::v_min_u16;
       } else {
          return aco_opcode::v_min_u32;
@@ -129,9 +129,9 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
       break;
    case umax8:
    case umax16:
-      if (chip >= GFX10) {
+      if (gfx_level >= GFX10) {
          return aco_opcode::v_max_u32;
-      } else if (chip >= GFX8) {
+      } else if (gfx_level >= GFX8) {
          return aco_opcode::v_max_u16;
       } else {
          return aco_opcode::v_max_u32;
@@ -139,7 +139,7 @@ get_reduce_opcode(chip_class chip, ReduceOp op)
       break;
    case fmin16: return aco_opcode::v_min_f16;
    case fmax16: return aco_opcode::v_max_f16;
-   case iadd32: return chip >= GFX9 ? aco_opcode::v_add_u32 : aco_opcode::v_add_co_u32;
+   case iadd32: return gfx_level >= GFX9 ? aco_opcode::v_add_u32 : aco_opcode::v_add_co_u32;
    case imul32: return aco_opcode::v_mul_lo_u32;
    case fadd32: return aco_opcode::v_add_f32;
    case fmul32: return aco_opcode::v_mul_f32;
@@ -209,7 +209,7 @@ emit_int64_dpp_op(lower_context* ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg
    Operand vtmp_op[] = {Operand(vtmp_reg, v1), Operand(PhysReg{vtmp_reg + 1}, v1)};
    Operand vtmp_op64 = Operand(vtmp_reg, v2);
    if (op == iadd64) {
-      if (ctx->program->chip_class >= GFX10) {
+      if (ctx->program->gfx_level >= GFX10) {
          if (identity)
             bld.vop1(aco_opcode::v_mov_b32, vtmp_def[0], identity[0]);
          bld.vop1_dpp(aco_opcode::v_mov_b32, vtmp_def[0], src0[0], dpp_ctrl, row_mask, bank_mask,
@@ -323,7 +323,7 @@ emit_int64_op(lower_context* ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg src
    }
 
    if (op == iadd64) {
-      if (ctx->program->chip_class >= GFX10) {
+      if (ctx->program->gfx_level >= GFX10) {
          bld.vop3(aco_opcode::v_add_co_u32_e64, dst[0], bld.def(bld.lm, vcc), src0[0], src1[0]);
       } else {
          bld.vop2(aco_opcode::v_add_co_u32, dst[0], bld.def(bld.lm, vcc), src0[0], src1[0]);
@@ -393,7 +393,7 @@ emit_dpp_op(lower_context* ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg src1_
    Operand src0(src0_reg, rc);
    Operand src1(src1_reg, rc);
 
-   aco_opcode opcode = get_reduce_opcode(ctx->program->chip_class, op);
+   aco_opcode opcode = get_reduce_opcode(ctx->program->gfx_level, op);
    bool vop3 = is_vop3_reduce_opcode(opcode);
 
    if (!vop3) {
@@ -433,7 +433,7 @@ emit_op(lower_context* ctx, PhysReg dst_reg, PhysReg src0_reg, PhysReg src1_reg,
    Operand src0(src0_reg, RegClass(src0_reg.reg() >= 256 ? RegType::vgpr : RegType::sgpr, size));
    Operand src1(src1_reg, rc);
 
-   aco_opcode opcode = get_reduce_opcode(ctx->program->chip_class, op);
+   aco_opcode opcode = get_reduce_opcode(ctx->program->gfx_level, op);
    bool vop3 = is_vop3_reduce_opcode(opcode);
 
    if (opcode == aco_opcode::num_opcodes) {
@@ -492,7 +492,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       /* p_exclusive_scan needs it to be a sgpr or inline constant for the v_writelane_b32
        * except on GFX10, where v_writelane_b32 can take a literal. */
       if (identity[i].isLiteral() && op == aco_opcode::p_exclusive_scan &&
-          ctx->program->chip_class < GFX10) {
+          ctx->program->gfx_level < GFX10) {
          bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg{sitmp + i}, s1), identity[i]);
          identity[i] = Operand(PhysReg{sitmp + i}, s1);
 
@@ -511,7 +511,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
    }
 
    if (src.regClass() == v1b) {
-      if (ctx->program->chip_class >= GFX8) {
+      if (ctx->program->gfx_level >= GFX8) {
          aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(
             aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
          sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
@@ -532,7 +532,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
                   Operand::c32(8u));
       }
    } else if (src.regClass() == v2b) {
-      if (ctx->program->chip_class >= GFX10 &&
+      if (ctx->program->gfx_level >= GFX10 &&
           (reduce_op == iadd16 || reduce_op == imax16 || reduce_op == imin16 ||
            reduce_op == umin16 || reduce_op == umax16)) {
          aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(
@@ -543,7 +543,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
          sdwa->sel[0] = SubdwordSel(2, 0, sext);
          sdwa->dst_sel = SubdwordSel::dword;
          bld.insert(std::move(sdwa));
-      } else if (ctx->program->chip_class == GFX6 || ctx->program->chip_class == GFX7) {
+      } else if (ctx->program->gfx_level == GFX6 || ctx->program->gfx_level == GFX7) {
          aco_opcode opcode;
 
          if (reduce_op == imin16 || reduce_op == imax16 || reduce_op == iadd16)
@@ -562,7 +562,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       if (cluster_size == 1)
          break;
 
-      if (ctx->program->chip_class <= GFX7) {
+      if (ctx->program->gfx_level <= GFX7) {
          reduction_needs_last_op = true;
          emit_ds_swizzle(bld, vtmp, tmp, src.size(), (1 << 15) | dpp_quad_perm(1, 0, 3, 2));
          if (cluster_size == 2)
@@ -609,7 +609,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       if (cluster_size == 16)
          break;
 
-      if (ctx->program->chip_class >= GFX10) {
+      if (ctx->program->gfx_level >= GFX10) {
          /* GFX10+ doesn't support row_bcast15 and row_bcast31 */
          for (unsigned i = 0; i < src.size(); i++)
             bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp + i}, v1),
@@ -641,7 +641,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
                   false);
       break;
    case aco_opcode::p_exclusive_scan:
-      if (ctx->program->chip_class >= GFX10) { /* gfx10 doesn't support wf_sr1, so emulate it */
+      if (ctx->program->gfx_level >= GFX10) { /* gfx10 doesn't support wf_sr1, so emulate it */
          /* shift rows right */
          emit_dpp_mov(ctx, vtmp, tmp, src.size(), dpp_row_sr(1), 0xf, 0xf, true);
 
@@ -668,7 +668,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
             }
          }
          std::swap(tmp, vtmp);
-      } else if (ctx->program->chip_class >= GFX8) {
+      } else if (ctx->program->gfx_level >= GFX8) {
          emit_dpp_mov(ctx, tmp, tmp, src.size(), dpp_wf_sr1, 0xf, 0xf, true);
       } else {
          // TODO: use LDS on CS with a single write and shifted read
@@ -718,7 +718,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       for (unsigned i = 0; i < src.size(); i++) {
          if (!identity[i].isConstant() ||
              identity[i].constantValue()) { /* bound_ctrl should take care of this overwise */
-            if (ctx->program->chip_class < GFX10)
+            if (ctx->program->gfx_level < GFX10)
                assert((identity[i].isConstant() && !identity[i].isLiteral()) ||
                       identity[i].physReg() == PhysReg{sitmp + i});
             bld.writelane(Definition(PhysReg{tmp + i}, v1), identity[i], Operand::zero(),
@@ -728,7 +728,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       FALLTHROUGH;
    case aco_opcode::p_inclusive_scan:
       assert(cluster_size == ctx->program->wave_size);
-      if (ctx->program->chip_class <= GFX7) {
+      if (ctx->program->gfx_level <= GFX7) {
          emit_ds_swizzle(bld, vtmp, tmp, src.size(), ds_pattern_bitmode(0x1e, 0x00, 0x00));
          bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand::c32(0xAAAAAAAAu));
          bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(exec_lo, s1));
@@ -777,7 +777,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
                   identity);
       emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_row_sr(8), 0xf, 0xf, false,
                   identity);
-      if (ctx->program->chip_class >= GFX10) {
+      if (ctx->program->gfx_level >= GFX10) {
          bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_lo, s1), Operand::c32(16u),
                   Operand::c32(16u));
          bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_hi, s1), Operand::c32(16u),
@@ -847,7 +847,7 @@ emit_gfx10_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builde
     * manually swap the data between the two halves using two shared VGPRs.
     */
 
-   assert(program->chip_class >= GFX10);
+   assert(program->gfx_level >= GFX10);
    assert(program->wave_size == 64);
 
    unsigned shared_vgpr_reg_0 = align(program->config->num_vgprs, 4) + 256;
@@ -976,7 +976,7 @@ split_copy(lower_context* ctx, unsigned offset, Definition* def, Operand* op,
    op_reg.reg_b += offset;
 
    /* 64-bit VGPR copies (implemented with v_lshrrev_b64) are slow before GFX10 */
-   if (ctx->program->chip_class < GFX10 && src.def.regClass().type() == RegType::vgpr)
+   if (ctx->program->gfx_level < GFX10 && src.def.regClass().type() == RegType::vgpr)
       max_size = MIN2(max_size, 4);
    unsigned max_align = src.def.regClass().type() == RegType::vgpr ? 4 : 16;
 
@@ -998,7 +998,7 @@ split_copy(lower_context* ctx, unsigned offset, Definition* def, Operand* op,
    if (src.op.isConstant()) {
       assert(bytes >= 1 && bytes <= 8);
       uint64_t val = src.op.constantValue64() >> (offset * 8u);
-      *op = Operand::get_const(ctx->program->chip_class, val, bytes);
+      *op = Operand::get_const(ctx->program->gfx_level, val, bytes);
    } else {
       RegClass op_cls = src.op.regClass().resize(bytes);
       *op = Operand(op_reg, op_cls);
@@ -1045,7 +1045,7 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
       }
    }
 
-   if (op.bytes() == 4 && op.constantEquals(0x3e22f983) && ctx->program->chip_class >= GFX8)
+   if (op.bytes() == 4 && op.constantEquals(0x3e22f983) && ctx->program->gfx_level >= GFX8)
       op.setFixed(PhysReg{248}); /* it can be an inline constant on GFX8+ */
 
    if (dst.regClass() == s1) {
@@ -1066,7 +1066,7 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
    } else {
       assert(dst.regClass() == v1b || dst.regClass() == v2b);
 
-      if (dst.regClass() == v1b && ctx->program->chip_class >= GFX9) {
+      if (dst.regClass() == v1b && ctx->program->gfx_level >= GFX9) {
          uint8_t val = op.constantValue();
          Operand op32 = Operand::c32((uint32_t)val | (val & 0x80u ? 0xffffff00u : 0u));
          if (op32.isLiteral()) {
@@ -1078,7 +1078,7 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
          } else {
             bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op32);
          }
-      } else if (dst.regClass() == v2b && ctx->program->chip_class >= GFX9 && !op.isLiteral()) {
+      } else if (dst.regClass() == v2b && ctx->program->gfx_level >= GFX9 && !op.isLiteral()) {
          if (op.constantValue() >= 0xfff0 || op.constantValue() <= 64) {
             /* use v_mov_b32 to avoid possible issues with denormal flushing or
              * NaN. v_add_f16 is still needed for float constants. */
@@ -1087,7 +1087,7 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
          } else {
             bld.vop2_sdwa(aco_opcode::v_add_f16, dst, op, Operand::zero());
          }
-      } else if (dst.regClass() == v2b && ctx->program->chip_class >= GFX10 &&
+      } else if (dst.regClass() == v2b && ctx->program->gfx_level >= GFX10 &&
                  (ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
          if (dst.physReg().byte() == 2) {
             Operand def_lo(dst.physReg().advance(-2), v2b);
@@ -1144,7 +1144,7 @@ swap_linear_vgpr(Builder& bld, Definition def, Operand op, bool preserve_scc, Ph
    Definition op_as_def = Definition(op.physReg(), op.regClass());
 
    for (unsigned i = 0; i < 2; i++) {
-      if (bld.program->chip_class >= GFX9) {
+      if (bld.program->gfx_level >= GFX9) {
          bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
       } else {
          bld.vop2(aco_opcode::v_xor_b32, op_as_def, op, def_as_op);
@@ -1191,7 +1191,7 @@ do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool* pres
          bld.sop1(aco_opcode::s_mov_b32, def, op);
       } else if (def.regClass() == s2) {
          bld.sop1(aco_opcode::s_mov_b64, def, op);
-      } else if (def.regClass().is_subdword() && ctx->program->chip_class < GFX8) {
+      } else if (def.regClass().is_subdword() && ctx->program->gfx_level < GFX8) {
          if (op.physReg().byte()) {
             assert(def.physReg().byte() == 0);
             bld.vop2(aco_opcode::v_lshrrev_b32, def, Operand::c32(op.physReg().byte() * 8), op);
@@ -1284,7 +1284,7 @@ do_swap(lower_context* ctx, Builder& bld, const copy_operation& copy, bool prese
       Definition op_as_def = Definition(op.physReg(), op.regClass());
       if (def.regClass().is_linear_vgpr()) {
          swap_linear_vgpr(bld, def, op, preserve_scc, pi->scratch_sgpr);
-      } else if (ctx->program->chip_class >= GFX9 && def.regClass() == v1) {
+      } else if (ctx->program->gfx_level >= GFX9 && def.regClass() == v1) {
          bld.vop1(aco_opcode::v_swap_b32, def, op_as_def, op, def_as_op);
       } else if (def.regClass() == v1) {
          assert(def.physReg().byte() == 0 && op.physReg().byte() == 0);
@@ -1333,7 +1333,7 @@ do_swap(lower_context* ctx, Builder& bld, const copy_operation& copy, bool prese
       offset += def.bytes();
    }
 
-   if (ctx->program->chip_class <= GFX7)
+   if (ctx->program->gfx_level <= GFX7)
       return;
 
    /* fixup in case we swapped bytes we shouldn't have */
@@ -1352,8 +1352,8 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
    }
 
    bool can_use_pack = (ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in) &&
-                       (ctx->program->chip_class >= GFX10 ||
-                        (ctx->program->chip_class >= GFX9 && !lo.isLiteral() && !hi.isLiteral()));
+                       (ctx->program->gfx_level >= GFX10 ||
+                        (ctx->program->gfx_level >= GFX9 && !lo.isLiteral() && !hi.isLiteral()));
 
    if (can_use_pack) {
       Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, lo, hi);
@@ -1365,7 +1365,7 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
    /* a single alignbyte can be sufficient: hi can be a 32-bit integer constant */
    if (lo.physReg().byte() == 2 && hi.physReg().byte() == 0 &&
        (!hi.isConstant() || !Operand::c32(hi.constantValue()).isLiteral() ||
-        ctx->program->chip_class >= GFX10)) {
+        ctx->program->gfx_level >= GFX10)) {
       bld.vop3(aco_opcode::v_alignbyte_b32, def, hi, lo, Operand::c32(2u));
       return;
    }
@@ -1404,7 +1404,7 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
       assert(hi.physReg().byte() == 0);
       bld.vop2(aco_opcode::v_lshlrev_b32, def_hi, Operand::c32(16u), hi);
       hi.setFixed(def.physReg().advance(2));
-   } else if (ctx->program->chip_class >= GFX8) {
+   } else if (ctx->program->gfx_level >= GFX8) {
       /* either lo or hi can be placed with just a v_mov */
       assert(lo.physReg().byte() == 0 || hi.physReg().byte() == 2);
       Operand& op = lo.physReg().byte() == 0 ? lo : hi;
@@ -1413,7 +1413,7 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
       op.setFixed(reg);
    }
 
-   if (ctx->program->chip_class >= GFX8) {
+   if (ctx->program->gfx_level >= GFX8) {
       /* either hi or lo are already placed correctly */
       if (lo.physReg().reg() == def.physReg().reg())
          bld.vop1_sdwa(aco_opcode::v_mov_b32, def_hi, hi);
@@ -1467,7 +1467,7 @@ try_coalesce_copies(lower_context* ctx, std::map<PhysReg, copy_operation>& copy_
 
    /* don't create 64-bit copies before GFX10 */
    if (copy.bytes >= 4 && copy.def.regClass().type() == RegType::vgpr &&
-       ctx->program->chip_class < GFX10)
+       ctx->program->gfx_level < GFX10)
       return;
 
    unsigned new_size = copy.bytes + other->second.bytes;
@@ -1479,7 +1479,7 @@ try_coalesce_copies(lower_context* ctx, std::map<PhysReg, copy_operation>& copy_
       if (!Operand::is_constant_representable(val, new_size, true,
                                               copy.def.regClass().type() == RegType::vgpr))
          return;
-      copy.op = Operand::get_const(ctx->program->chip_class, val, new_size);
+      copy.op = Operand::get_const(ctx->program->gfx_level, val, new_size);
    } else {
       if (other->second.op.physReg() != copy.op.physReg().advance(copy.bytes))
          return;
@@ -1493,7 +1493,7 @@ try_coalesce_copies(lower_context* ctx, std::map<PhysReg, copy_operation>& copy_
 
 void
 handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
-                chip_class chip_class, Pseudo_instruction* pi)
+                amd_gfx_level gfx_level, Pseudo_instruction* pi)
 {
    Builder bld(ctx->program, &ctx->instructions);
    unsigned num_instructions_before = ctx->instructions.size();
@@ -1599,7 +1599,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
 
       /* on GFX6/7, we need some small workarounds as there is no
        * SDWA instruction to do partial register writes */
-      if (ctx->program->chip_class < GFX8 && it->second.bytes < 4) {
+      if (ctx->program->gfx_level < GFX8 && it->second.bytes < 4) {
          if (it->first.byte() == 0 && it->second.op.physReg().byte() == 0 && !it->second.is_used &&
              pi->opcode == aco_opcode::p_split_vector) {
             /* Other operations might overwrite the high bits, so change all users
@@ -1664,7 +1664,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
             bool partial_copy = (has_zero_use_bytes == 0xf) || (has_zero_use_bytes == 0xf0);
             for (std::pair<const PhysReg, copy_operation>& copy : copy_map) {
                /* on GFX6/7, we can only do copies with full registers */
-               if (partial_copy || ctx->program->chip_class <= GFX7)
+               if (partial_copy || ctx->program->gfx_level <= GFX7)
                   break;
                for (uint16_t i = 0; i < copy.second.bytes; i++) {
                   /* distance might underflow */
@@ -1790,7 +1790,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
       }
 
       /* GFX6-7 can only swap full registers */
-      if (ctx->program->chip_class <= GFX7)
+      if (ctx->program->gfx_level <= GFX7)
          swap.bytes = align(swap.bytes, 4);
 
       do_swap(ctx, bld, swap, preserve_scc, pi);
@@ -1868,7 +1868,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
 void
 emit_set_mode(Builder& bld, float_mode new_mode, bool set_round, bool set_denorm)
 {
-   if (bld.program->chip_class >= GFX10) {
+   if (bld.program->gfx_level >= GFX10) {
       if (set_round)
          bld.sopp(aco_opcode::s_round_mode, -1, new_mode.round);
       if (set_denorm)
@@ -1938,7 +1938,7 @@ lower_to_hw_instr(Program* program)
                                    : RegClass(instr->operands[0].getTemp().type(), def.size());
                std::map<PhysReg, copy_operation> copy_operations;
                copy_operations[def.physReg()] = {Operand(reg, op_rc), def, def.bytes()};
-               handle_operands(copy_operations, &ctx, program->chip_class, pi);
+               handle_operands(copy_operations, &ctx, program->gfx_level, pi);
                break;
             }
             case aco_opcode::p_create_vector: {
@@ -1967,7 +1967,7 @@ lower_to_hw_instr(Program* program)
                   copy_operations[def.physReg()] = {op, def, op.bytes()};
                   reg.reg_b += op.bytes();
                }
-               handle_operands(copy_operations, &ctx, program->chip_class, pi);
+               handle_operands(copy_operations, &ctx, program->gfx_level, pi);
                break;
             }
             case aco_opcode::p_split_vector: {
@@ -1982,7 +1982,7 @@ lower_to_hw_instr(Program* program)
                   copy_operations[def.physReg()] = {op, def, def.bytes()};
                   reg.reg_b += def.bytes();
                }
-               handle_operands(copy_operations, &ctx, program->chip_class, pi);
+               handle_operands(copy_operations, &ctx, program->gfx_level, pi);
                break;
             }
             case aco_opcode::p_parallelcopy:
@@ -1993,7 +1993,7 @@ lower_to_hw_instr(Program* program)
                   copy_operations[instr->definitions[j].physReg()] = {
                      instr->operands[j], instr->definitions[j], instr->operands[j].bytes()};
                }
-               handle_operands(copy_operations, &ctx, program->chip_class, pi);
+               handle_operands(copy_operations, &ctx, program->gfx_level, pi);
                break;
             }
             case aco_opcode::p_exit_early_if: {
@@ -2030,7 +2030,7 @@ lower_to_hw_instr(Program* program)
 
                   bld.reset(discard_block);
                   bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1), 0,
-                          program->chip_class >= GFX11 ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_NULL,
+                          program->gfx_level >= GFX11 ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_NULL,
                           false, true, true);
                   bld.sopp(aco_opcode::s_endpgm);
 
@@ -2072,7 +2072,7 @@ lower_to_hw_instr(Program* program)
                   std::map<PhysReg, copy_operation> copy_operations;
                   copy_operations[instr->definitions[0].physReg()] = {
                      instr->operands[0], instr->definitions[0], instr->definitions[0].bytes()};
-                  handle_operands(copy_operations, &ctx, program->chip_class, pi);
+                  handle_operands(copy_operations, &ctx, program->gfx_level, pi);
                } else {
                   assert(instr->operands[0].regClass().type() == RegType::vgpr);
                   assert(instr->definitions[0].regClass().type() == RegType::sgpr);
@@ -2086,9 +2086,9 @@ lower_to_hw_instr(Program* program)
                break;
             }
             case aco_opcode::p_bpermute: {
-               if (ctx.program->chip_class <= GFX7)
+               if (ctx.program->gfx_level <= GFX7)
                   emit_gfx6_bpermute(program, instr, bld);
-               else if (ctx.program->chip_class >= GFX10 && ctx.program->wave_size == 64)
+               else if (ctx.program->gfx_level >= GFX10 && ctx.program->wave_size == 64)
                   emit_gfx10_wave64_bpermute(program, instr, bld);
                else
                   unreachable("Current hardware supports ds_bpermute, don't emit p_bpermute.");
@@ -2129,7 +2129,7 @@ lower_to_hw_instr(Program* program)
                               bld.def(s1, scc), op, Operand::c32((bits << 16) | offset));
                   }
                } else if ((dst.regClass() == v1 && op.regClass() == v1) ||
-                          ctx.program->chip_class <= GFX7) {
+                          ctx.program->gfx_level <= GFX7) {
                   assert(op.physReg().byte() == 0 && dst.physReg().byte() == 0);
                   if (offset == (32 - bits) && op.regClass() != s1) {
                      bld.vop2(signext ? aco_opcode::v_ashrrev_i32 : aco_opcode::v_lshrrev_b32, dst,
@@ -2171,13 +2171,13 @@ lower_to_hw_instr(Program* program)
                      bld.sop2(aco_opcode::s_lshl_b32, dst, bld.def(s1, scc),
                               Operand(dst.physReg(), s1), Operand::c32(offset));
                   }
-               } else if (dst.regClass() == v1 || ctx.program->chip_class <= GFX7) {
+               } else if (dst.regClass() == v1 || ctx.program->gfx_level <= GFX7) {
                   if (offset == (dst.bytes() * 8u - bits)) {
                      bld.vop2(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset), op);
                   } else if (offset == 0) {
                      bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand::zero(), Operand::c32(bits));
-                  } else if (program->chip_class >= GFX9 ||
-                             (op.regClass() != s1 && program->chip_class >= GFX8)) {
+                  } else if (program->gfx_level >= GFX9 ||
+                             (op.regClass() != s1 && program->gfx_level >= GFX8)) {
                      bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op).instr->sdwa().dst_sel =
                         SubdwordSel(bits / 8, offset / 8, false);
                   } else {
@@ -2237,7 +2237,7 @@ lower_to_hw_instr(Program* program)
                   } else if (inst->isVALU() || inst->isVINTRP()) {
                      num_vector++;
                      /* VALU which writes SGPRs are always executed on GFX10+ */
-                     if (ctx.program->chip_class >= GFX10) {
+                     if (ctx.program->gfx_level >= GFX10) {
                         for (Definition& def : inst->definitions) {
                            if (def.regClass().type() == RegType::sgpr)
                               num_scalar++;
@@ -2259,7 +2259,7 @@ lower_to_hw_instr(Program* program)
 
                   /* Under these conditions, we shouldn't remove the branch */
                   unsigned est_cycles;
-                  if (ctx.program->chip_class >= GFX10)
+                  if (ctx.program->gfx_level >= GFX10)
                      est_cycles = num_scalar * 2 + num_vector;
                   else
                      est_cycles = num_scalar * 4 + num_vector * 4;

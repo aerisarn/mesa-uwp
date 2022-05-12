@@ -731,7 +731,7 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen, unsigned
       query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
       query->index = index;
       if ((index == PIPE_STAT_QUERY_GS_PRIMITIVES || index == PIPE_STAT_QUERY_GS_INVOCATIONS) &&
-          sscreen->use_ngg && (sscreen->info.chip_class >= GFX10 && sscreen->info.chip_class <= GFX10_3))
+          sscreen->use_ngg && (sscreen->info.gfx_level >= GFX10 && sscreen->info.gfx_level <= GFX10_3))
          query->flags |= SI_QUERY_EMULATE_GS_COUNTERS;
       break;
    default:
@@ -803,7 +803,7 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
       radeon_begin(cs);
-      if (sctx->chip_class >= GFX11) {
+      if (sctx->gfx_level >= GFX11) {
          uint64_t rb_mask = BITFIELD64_MASK(sctx->screen->info.max_render_backends);
 
          radeon_emit(PKT3(PKT3_EVENT_WRITE, 2, 0));
@@ -815,7 +815,7 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
       }
 
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 2, 0));
-      if (sctx->chip_class >= GFX11)
+      if (sctx->gfx_level >= GFX11)
          radeon_emit(EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
       else
          radeon_emit(EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
@@ -926,7 +926,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
       va += 8;
       radeon_begin(cs);
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 2, 0));
-      if (sctx->chip_class >= GFX11)
+      if (sctx->gfx_level >= GFX11)
          radeon_emit(EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
       else
          radeon_emit(EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
@@ -1031,7 +1031,7 @@ static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, 
 
    radeon_begin(cs);
 
-   if (ctx->chip_class >= GFX9) {
+   if (ctx->gfx_level >= GFX9) {
       radeon_emit(PKT3(PKT3_SET_PREDICATION, 2, 0));
       radeon_emit(op);
       radeon_emit(va);
@@ -1668,8 +1668,8 @@ static void si_render_condition(struct pipe_context *ctx, struct pipe_query *que
        * SET_PREDICATION packets to give the wrong answer for
        * non-inverted stream overflow predication.
        */
-      if (((sctx->chip_class == GFX8 && sctx->screen->info.pfp_fw_feature < 49) ||
-           (sctx->chip_class == GFX9 && sctx->screen->info.pfp_fw_feature < 38)) &&
+      if (((sctx->gfx_level == GFX8 && sctx->screen->info.pfp_fw_feature < 49) ||
+           (sctx->gfx_level == GFX9 && sctx->screen->info.pfp_fw_feature < 38)) &&
           !condition &&
           (squery->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE ||
            (squery->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE &&
@@ -1837,7 +1837,7 @@ static unsigned si_get_num_queries(struct si_screen *sscreen)
 {
    /* amdgpu */
    if (sscreen->info.is_amdgpu) {
-      if (sscreen->info.chip_class >= GFX8)
+      if (sscreen->info.gfx_level >= GFX8)
          return ARRAY_SIZE(si_driver_query_list);
       else
          return ARRAY_SIZE(si_driver_query_list) - 7;
@@ -1845,7 +1845,7 @@ static unsigned si_get_num_queries(struct si_screen *sscreen)
 
    /* radeon */
    if (sscreen->info.has_read_registers_query) {
-      if (sscreen->info.chip_class == GFX7)
+      if (sscreen->info.gfx_level == GFX7)
          return ARRAY_SIZE(si_driver_query_list) - 6;
       else
          return ARRAY_SIZE(si_driver_query_list) - 7;

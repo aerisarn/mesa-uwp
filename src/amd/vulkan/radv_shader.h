@@ -129,7 +129,7 @@ struct radv_nir_compiler_options {
    uint8_t enable_mrt_output_nan_fixup;
    bool wgp_mode;
    enum radeon_family family;
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
    const struct radeon_info *info;
    uint32_t address32_hi;
 
@@ -484,7 +484,7 @@ struct radv_shader {
    uint32_t exec_size;
    struct radv_shader_info info;
 
-   /* debug only */
+   /* debug only */
    char *spirv;
    uint32_t spirv_size;
    char *nir_string;
@@ -528,9 +528,8 @@ nir_shader *radv_shader_compile_to_nir(struct radv_device *device,
                                        const struct radv_pipeline_stage *stage,
                                        const struct radv_pipeline_key *key);
 
-void radv_nir_lower_abi(nir_shader *shader, enum chip_class chip_class,
-                        const struct radv_shader_info *info,
-                        const struct radv_shader_args *args,
+void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
+                        const struct radv_shader_info *info, const struct radv_shader_args *args,
                         const struct radv_pipeline_key *pl_key);
 
 void radv_init_shader_arenas(struct radv_device *device);
@@ -601,7 +600,7 @@ VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline
                                 gl_shader_stage stage, FILE *output);
 
 static inline unsigned
-calculate_tess_lds_size(enum chip_class chip_class, unsigned tcs_num_input_vertices,
+calculate_tess_lds_size(enum amd_gfx_level gfx_level, unsigned tcs_num_input_vertices,
                         unsigned tcs_num_output_vertices, unsigned tcs_num_inputs,
                         unsigned tcs_num_patches, unsigned tcs_num_outputs,
                         unsigned tcs_num_patch_outputs)
@@ -618,7 +617,7 @@ calculate_tess_lds_size(enum chip_class chip_class, unsigned tcs_num_input_verti
 
    unsigned lds_size = output_patch0_offset + output_patch_size * tcs_num_patches;
 
-   if (chip_class >= GFX7) {
+   if (gfx_level >= GFX7) {
       assert(lds_size <= 65536);
       lds_size = align(lds_size, 512) / 512;
    } else {
@@ -633,7 +632,7 @@ static inline unsigned
 get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_vertices,
                     unsigned tcs_num_inputs, unsigned tcs_num_outputs,
                     unsigned tcs_num_patch_outputs, unsigned tess_offchip_block_dw_size,
-                    enum chip_class chip_class, enum radeon_family family)
+                    enum amd_gfx_level gfx_level, enum radeon_family family)
 {
    uint32_t input_vertex_size = tcs_num_inputs * 16;
    uint32_t input_patch_size = tcs_num_input_vertices * input_vertex_size;
@@ -656,7 +655,7 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_ver
     *
     * Test: dEQP-VK.tessellation.shader_input_output.barrier
     */
-   if (chip_class >= GFX7 && family != CHIP_STONEY)
+   if (gfx_level >= GFX7 && family != CHIP_STONEY)
       hardware_lds_size = 65536;
 
    if (input_patch_size + output_patch_size)
@@ -670,7 +669,7 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_ver
    num_patches = MIN2(num_patches, 40);
 
    /* GFX6 bug workaround - limit LS-HS threadgroups to only one wave. */
-   if (chip_class == GFX6) {
+   if (gfx_level == GFX6) {
       unsigned one_wave = 64 / MAX2(tcs_num_input_vertices, tcs_num_output_vertices);
       num_patches = MIN2(num_patches, one_wave);
    }

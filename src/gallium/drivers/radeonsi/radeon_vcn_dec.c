@@ -2770,7 +2770,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    dec->ws = ws;
 
    if (u_reduce_video_profile(templ->profile) != PIPE_VIDEO_FORMAT_JPEG &&
-       sctx->chip_class >= GFX11)
+       sctx->gfx_level >= GFX11)
       dec->vcn_dec_sw_ring = true;
 
    if (!ws->cs_create(&dec->cs, sctx->ctx, ring, NULL, NULL, false)) {

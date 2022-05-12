@@ -37,7 +37,7 @@ namespace {
 
 struct ra_ctx;
 
-unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr,
+unsigned get_subdword_operand_stride(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr,
                                      unsigned idx, RegClass rc);
 void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, unsigned byte,
                           RegClass rc);
@@ -214,7 +214,7 @@ struct DefInfo {
 
       if (rc.is_subdword() && operand >= 0) {
          /* stride in bytes */
-         stride = get_subdword_operand_stride(ctx.program->chip_class, instr, operand, rc);
+         stride = get_subdword_operand_stride(ctx.program->gfx_level, instr, operand, rc);
       } else if (rc.is_subdword()) {
          std::pair<unsigned, unsigned> info = get_subdword_definition_info(ctx.program, instr, rc);
          stride = info.first;
@@ -229,7 +229,7 @@ struct DefInfo {
                stride = DIV_ROUND_UP(stride, 4);
          }
          assert(stride > 0);
-      } else if (instr->isMIMG() && instr->mimg().d16 && ctx.program->chip_class <= GFX9) {
+      } else if (instr->isMIMG() && instr->mimg().d16 && ctx.program->gfx_level <= GFX9) {
          /* Workaround GFX9 hardware bug for D16 image instructions: FeatureImageGather4D16Bug
           *
           * The register use is not calculated correctly, and the hardware assumes a
@@ -239,7 +239,7 @@ struct DefInfo {
           * https://reviews.llvm.org/D81172
           */
          bool imageGather4D16Bug = operand == -1 && rc == v2 && instr->mimg().dmask != 0xF;
-         assert(ctx.program->chip_class == GFX9 && "Image D16 on GFX8 not supported.");
+         assert(ctx.program->gfx_level == GFX9 && "Image D16 on GFX8 not supported.");
 
          if (imageGather4D16Bug)
             bounds.size -= rc.bytes() / 4;
@@ -490,14 +490,14 @@ print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
 }
 
 unsigned
-get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, unsigned idx,
-                            RegClass rc)
+get_subdword_operand_stride(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr,
+                            unsigned idx, RegClass rc)
 {
    if (instr->isPseudo()) {
       /* v_readfirstlane_b32 cannot use SDWA */
       if (instr->opcode == aco_opcode::p_as_uniform)
          return 4;
-      else if (chip >= GFX8)
+      else if (gfx_level >= GFX8)
          return rc.bytes() % 2 == 0 ? 2 : 1;
       else
          return 4;
@@ -505,9 +505,9 @@ get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, 
 
    assert(rc.bytes() <= 2);
    if (instr->isVALU()) {
-      if (can_use_SDWA(chip, instr, false))
+      if (can_use_SDWA(gfx_level, instr, false))
          return rc.bytes();
-      if (can_use_opsel(chip, instr->opcode, idx))
+      if (can_use_opsel(gfx_level, instr->opcode, idx))
          return 2;
       if (instr->format == Format::VOP3P)
          return 2;
@@ -516,7 +516,7 @@ get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, 
    switch (instr->opcode) {
    case aco_opcode::v_cvt_f32_ubyte0: return 1;
    case aco_opcode::ds_write_b8:
-   case aco_opcode::ds_write_b16: return chip >= GFX9 ? 2 : 4;
+   case aco_opcode::ds_write_b16: return gfx_level >= GFX9 ? 2 : 4;
    case aco_opcode::buffer_store_byte:
    case aco_opcode::buffer_store_short:
    case aco_opcode::buffer_store_format_d16_x:
@@ -525,7 +525,7 @@ get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, 
    case aco_opcode::scratch_store_byte:
    case aco_opcode::scratch_store_short:
    case aco_opcode::global_store_byte:
-   case aco_opcode::global_store_short: return chip >= GFX9 ? 2 : 4;
+   case aco_opcode::global_store_short: return gfx_level >= GFX9 ? 2 : 4;
    default: return 4;
    }
 }
@@ -534,7 +534,7 @@ void
 add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, unsigned byte,
                      RegClass rc)
 {
-   chip_class chip = ctx.program->chip_class;
+   amd_gfx_level gfx_level = ctx.program->gfx_level;
    if (instr->isPseudo() || byte == 0)
       return;
 
@@ -563,8 +563,8 @@ add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, uns
       }
 
       /* use SDWA */
-      assert(can_use_SDWA(chip, instr, false));
-      convert_to_SDWA(chip, instr);
+      assert(can_use_SDWA(gfx_level, instr, false));
+      convert_to_SDWA(gfx_level, instr);
       return;
    }
 
@@ -600,10 +600,10 @@ add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, uns
 std::pair<unsigned, unsigned>
 get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr, RegClass rc)
 {
-   chip_class chip = program->chip_class;
+   amd_gfx_level gfx_level = program->gfx_level;
 
    if (instr->isPseudo()) {
-      if (chip >= GFX8)
+      if (gfx_level >= GFX8)
          return std::make_pair(rc.bytes() % 2 == 0 ? 2 : 1, rc.bytes());
       else
          return std::make_pair(4, rc.size() * 4u);
@@ -612,16 +612,16 @@ get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr
    if (instr->isVALU() || instr->isVINTRP()) {
       assert(rc.bytes() <= 2);
 
-      if (can_use_SDWA(chip, instr, false))
+      if (can_use_SDWA(gfx_level, instr, false))
          return std::make_pair(rc.bytes(), rc.bytes());
 
       unsigned bytes_written = 4u;
-      if (instr_is_16bit(chip, instr->opcode))
+      if (instr_is_16bit(gfx_level, instr->opcode))
          bytes_written = 2u;
 
       unsigned stride = 4u;
       if (instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
-          can_use_opsel(chip, instr->opcode, -1))
+          can_use_opsel(gfx_level, instr->opcode, -1))
          stride = 2u;
 
       return std::make_pair(stride, bytes_written);
@@ -645,7 +645,7 @@ get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr
    case aco_opcode::buffer_load_sbyte_d16:
    case aco_opcode::buffer_load_short_d16:
    case aco_opcode::buffer_load_format_d16_x: {
-      assert(chip >= GFX9);
+      assert(gfx_level >= GFX9);
       if (!program->dev.sram_ecc_enabled)
          return std::make_pair(2u, 2u);
       else
@@ -654,7 +654,7 @@ get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr
    /* 3-component D16 loads */
    case aco_opcode::buffer_load_format_d16_xyz:
    case aco_opcode::tbuffer_load_format_d16_xyz: {
-      assert(chip >= GFX9);
+      assert(gfx_level >= GFX9);
       if (!program->dev.sram_ecc_enabled)
          return std::make_pair(4u, 6u);
       break;
@@ -664,7 +664,7 @@ get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr
    }
 
    if (instr->isMIMG() && instr->mimg().d16 && !program->dev.sram_ecc_enabled) {
-      assert(chip >= GFX9);
+      assert(gfx_level >= GFX9);
       return std::make_pair(4u, rc.bytes());
    }
 
@@ -678,16 +678,16 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
       return;
 
    if (instr->isVALU()) {
-      chip_class chip = program->chip_class;
+      amd_gfx_level gfx_level = program->gfx_level;
       assert(instr->definitions[0].bytes() <= 2);
 
-      if (reg.byte() == 0 && instr_is_16bit(chip, instr->opcode))
+      if (reg.byte() == 0 && instr_is_16bit(gfx_level, instr->opcode))
          return;
 
       /* check if we can use opsel */
       if (instr->format == Format::VOP3) {
          assert(reg.byte() == 2);
-         assert(can_use_opsel(chip, instr->opcode, -1));
+         assert(can_use_opsel(gfx_level, instr->opcode, -1));
          instr->vop3().opsel |= (1 << 3); /* dst in high half */
          return;
       }
@@ -698,8 +698,8 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
       }
 
       /* use SDWA */
-      assert(can_use_SDWA(chip, instr, false));
-      convert_to_SDWA(chip, instr);
+      assert(can_use_SDWA(gfx_level, instr, false));
+      convert_to_SDWA(gfx_level, instr);
       return;
    }
 
@@ -1053,7 +1053,7 @@ get_reg_for_create_vector_copy(ra_ctx& ctx, RegisterFile& reg_file,
       reg.reg_b += instr->operands[i].bytes();
    }
 
-   if (ctx.program->chip_class <= GFX8)
+   if (ctx.program->gfx_level <= GFX8)
       return {PhysReg(), false};
 
    /* check if the previous position was in vector */
@@ -1886,7 +1886,7 @@ handle_pseudo(ra_ctx& ctx, const RegisterFile& reg_file, Instruction* instr)
          reads_subdword = true;
    }
    bool needs_scratch_reg = (writes_linear && reads_linear && reg_file[scc]) ||
-                            (ctx.program->chip_class <= GFX7 && reads_subdword);
+                            (ctx.program->gfx_level <= GFX7 && reads_subdword);
    if (!needs_scratch_reg)
       return;
 
@@ -1910,7 +1910,7 @@ handle_pseudo(ra_ctx& ctx, const RegisterFile& reg_file, Instruction* instr)
 }
 
 bool
-operand_can_use_reg(chip_class chip, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg,
+operand_can_use_reg(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg,
                     RegClass rc)
 {
    if (instr->operands[idx].isFixed())
@@ -1918,7 +1918,7 @@ operand_can_use_reg(chip_class chip, aco_ptr<Instruction>& instr, unsigned idx, 
 
    bool is_writelane = instr->opcode == aco_opcode::v_writelane_b32 ||
                        instr->opcode == aco_opcode::v_writelane_b32_e64;
-   if (chip <= GFX9 && is_writelane && idx <= 1) {
+   if (gfx_level <= GFX9 && is_writelane && idx <= 1) {
       /* v_writelane_b32 can take two sgprs but only if one is m0. */
       bool is_other_sgpr =
          instr->operands[!idx].isTemp() &&
@@ -1930,7 +1930,7 @@ operand_can_use_reg(chip_class chip, aco_ptr<Instruction>& instr, unsigned idx, 
    }
 
    if (reg.byte()) {
-      unsigned stride = get_subdword_operand_stride(chip, instr, idx, rc);
+      unsigned stride = get_subdword_operand_stride(gfx_level, instr, idx, rc);
       if (reg.byte() % stride)
          return false;
    }
@@ -1940,7 +1940,7 @@ operand_can_use_reg(chip_class chip, aco_ptr<Instruction>& instr, unsigned idx, 
       return reg != scc && reg != exec &&
              (reg != m0 || idx == 1 || idx == 3) && /* offset can be m0 */
              (reg != vcc || (instr->definitions.empty() && idx == 2) ||
-              chip >= GFX10); /* sdata can be vcc */
+              gfx_level >= GFX10); /* sdata can be vcc */
    default:
       // TODO: there are more instructions with restrictions on registers
       return true;
@@ -2389,7 +2389,7 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
                     instr->operands[0].isFirstKillBeforeDef()) {
             ctx.split_vectors[instr->operands[0].tempId()] = instr.get();
          } else if (instr->isVOPC() && !instr->isVOP3()) {
-            if (!instr->isSDWA() || ctx.program->chip_class == GFX8)
+            if (!instr->isSDWA() || ctx.program->gfx_level == GFX8)
                ctx.assignments[instr->definitions[0].tempId()].vcc = true;
          } else if (instr->isVOP2() && !instr->isVOP3()) {
             if (instr->operands.size() == 3 && instr->operands[2].isTemp() &&
@@ -2437,7 +2437,7 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
                case aco_opcode::v_fma_f32:
                case aco_opcode::v_fma_f16:
                case aco_opcode::v_pk_fma_f16:
-                  if (ctx.program->chip_class < GFX10)
+                  if (ctx.program->gfx_level < GFX10)
                      continue;
                   FALLTHROUGH;
                case aco_opcode::v_mad_f32:
@@ -2642,12 +2642,12 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             assert(ctx.assignments[operand.tempId()].assigned);
 
             PhysReg reg = ctx.assignments[operand.tempId()].reg;
-            if (operand_can_use_reg(program->chip_class, instr, i, reg, operand.regClass()))
+            if (operand_can_use_reg(program->gfx_level, instr, i, reg, operand.regClass()))
                operand.setFixed(reg);
             else
                get_reg_for_operand(ctx, register_file, parallelcopy, instr, operand, i);
 
-            if (instr->isEXP() || (instr->isVMEM() && i == 3 && ctx.program->chip_class == GFX6) ||
+            if (instr->isEXP() || (instr->isVMEM() && i == 3 && ctx.program->gfx_level == GFX6) ||
                 (instr->isDS() && instr->ds().gds)) {
                for (unsigned j = 0; j < operand.size(); j++)
                   ctx.war_hint.set(operand.physReg().reg() + j);
@@ -2662,11 +2662,11 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
 
          /* try to optimize v_mad_f32 -> v_mac_f32 */
          if ((instr->opcode == aco_opcode::v_mad_f32 ||
-              (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10) ||
+              (instr->opcode == aco_opcode::v_fma_f32 && program->gfx_level >= GFX10) ||
               instr->opcode == aco_opcode::v_mad_f16 ||
               instr->opcode == aco_opcode::v_mad_legacy_f16 ||
-              (instr->opcode == aco_opcode::v_fma_f16 && program->chip_class >= GFX10) ||
-              (instr->opcode == aco_opcode::v_pk_fma_f16 && program->chip_class >= GFX10) ||
+              (instr->opcode == aco_opcode::v_fma_f16 && program->gfx_level >= GFX10) ||
+              (instr->opcode == aco_opcode::v_pk_fma_f16 && program->gfx_level >= GFX10) ||
               (instr->opcode == aco_opcode::v_mad_legacy_f32 && program->dev.has_mac_legacy32) ||
               (instr->opcode == aco_opcode::v_fma_legacy_f32 && program->dev.has_mac_legacy32) ||
               (instr->opcode == aco_opcode::v_dot4_i32_i8 && program->family != CHIP_VEGA20)) &&
@@ -2953,7 +2953,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
 
             /* if the first operand is a literal, we have to move it to a reg */
             if (instr->operands.size() && instr->operands[0].isLiteral() &&
-                program->chip_class < GFX10) {
+                program->gfx_level < GFX10) {
                bool can_sgpr = true;
                /* check, if we have to move to vgpr */
                for (const Operand& op : instr->operands) {

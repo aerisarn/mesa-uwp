@@ -1413,17 +1413,17 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset,
    uint32_t rsrc_conf =
       S_008F0C_ADD_TID_ENABLE(1) | S_008F0C_INDEX_STRIDE(ctx.program->wave_size == 64 ? 3 : 2);
 
-   if (ctx.program->chip_class >= GFX10) {
+   if (ctx.program->gfx_level >= GFX10) {
       rsrc_conf |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                    S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
-                   S_008F0C_RESOURCE_LEVEL(ctx.program->chip_class < GFX11);
-   } else if (ctx.program->chip_class <= GFX7) {
+                   S_008F0C_RESOURCE_LEVEL(ctx.program->gfx_level < GFX11);
+   } else if (ctx.program->gfx_level <= GFX7) {
       /* dfmt modifies stride on GFX8/GFX9 when ADD_TID_EN=1 */
       rsrc_conf |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
                    S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
    }
    /* older generations need element size = 4 bytes. element size removed in GFX9 */
-   if (ctx.program->chip_class <= GFX8)
+   if (ctx.program->gfx_level <= GFX8)
       rsrc_conf |= S_008F0C_ELEMENT_SIZE(1);
 
    return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), private_segment_buffer,

@@ -57,7 +57,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
    param = si_shader_io_get_unique_index(info->input[input_index].semantic, false);
 
    /* GFX9 has the ESGS ring in LDS. */
-   if (ctx->screen->info.chip_class >= GFX9) {
+   if (ctx->screen->info.gfx_level >= GFX9) {
       unsigned offset = param * 4 + swizzle;
 
       vtx_offset = LLVMBuildAdd(ctx->ac.builder, ctx->gs_vtx_offset[vtx_offset_param],
@@ -111,7 +111,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
    else
       ret = si_insert_input_ret(ctx, ret, ctx->args.gs2vs_offset, 2);
    ret = si_insert_input_ret(ctx, ret, ctx->args.merged_wave_info, 3);
-   if (ctx->screen->info.chip_class >= GFX11)
+   if (ctx->screen->info.gfx_level >= GFX11)
       ret = si_insert_input_ret(ctx, ret, ctx->args.gs_attr_offset, 5);
    else
       ret = si_insert_input_ret(ctx, ret, ctx->args.scratch_offset, 5);
@@ -121,7 +121,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
    if (ctx->screen->use_ngg) {
       ret = si_insert_input_ptr(ctx, ret, ctx->vs_state_bits, 8 + SI_SGPR_VS_STATE_BITS);
       ret = si_insert_input_ptr(ctx, ret, ctx->small_prim_cull_info, 8 + GFX9_SGPR_SMALL_PRIM_CULL_INFO);
-      if (ctx->screen->info.chip_class >= GFX11)
+      if (ctx->screen->info.gfx_level >= GFX11)
          ret = si_insert_input_ptr(ctx, ret, ctx->gs_attr_address, 8 + GFX9_SGPR_ATTRIBUTE_RING_ADDR);
    }
 
@@ -144,7 +144,7 @@ void si_llvm_es_build_end(struct si_shader_context *ctx)
    unsigned chan;
    int i;
 
-   if (ctx->screen->info.chip_class >= GFX9 && info->num_outputs) {
+   if (ctx->screen->info.gfx_level >= GFX9 && info->num_outputs) {
       unsigned itemsize_dw = es->selector->info.esgs_itemsize / 4;
       LLVMValueRef vertex_idx = ac_get_thread_id(&ctx->ac);
       LLVMValueRef wave_idx = si_unpack_param(ctx, ctx->args.merged_wave_info, 24, 4);
@@ -174,7 +174,7 @@ void si_llvm_es_build_end(struct si_shader_context *ctx)
          out_val = ac_to_integer(&ctx->ac, out_val);
 
          /* GFX9 has the ESGS ring in LDS. */
-         if (ctx->screen->info.chip_class >= GFX9) {
+         if (ctx->screen->info.gfx_level >= GFX9) {
             LLVMValueRef idx = LLVMConstInt(ctx->ac.i32, param * 4 + chan, false);
             idx = LLVMBuildAdd(ctx->ac.builder, lds_base, idx, "");
             ac_build_indexed_store(&ctx->ac, ctx->esgs_ring, idx, out_val);
@@ -188,13 +188,13 @@ void si_llvm_es_build_end(struct si_shader_context *ctx)
       }
    }
 
-   if (ctx->screen->info.chip_class >= GFX9)
+   if (ctx->screen->info.gfx_level >= GFX9)
       si_set_es_return_value_for_gs(ctx);
 }
 
 static LLVMValueRef si_get_gs_wave_id(struct si_shader_context *ctx)
 {
-   if (ctx->screen->info.chip_class >= GFX9)
+   if (ctx->screen->info.gfx_level >= GFX9)
       return si_unpack_param(ctx, ctx->args.merged_wave_info, 16, 8);
    else
       return ac_get_arg(&ctx->ac, ctx->args.gs_wave_id);
@@ -214,7 +214,7 @@ void si_llvm_gs_build_end(struct si_shader_context *ctx)
 
    assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
 
-   if (ctx->screen->info.chip_class >= GFX10)
+   if (ctx->screen->info.gfx_level >= GFX10)
       ac_build_waitcnt(&ctx->ac, AC_WAIT_VSTORE);
 
    if (ctx->screen->use_ngg) {
@@ -265,7 +265,7 @@ void si_llvm_gs_build_end(struct si_shader_context *ctx)
 
    ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE, si_get_gs_wave_id(ctx));
 
-   if (ctx->screen->info.chip_class >= GFX9)
+   if (ctx->screen->info.gfx_level >= GFX9)
       ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 }
 
@@ -366,7 +366,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
 {
    LLVMBuilderRef builder = ctx->ac.builder;
 
-   if (ctx->screen->info.chip_class <= GFX8) {
+   if (ctx->screen->info.gfx_level <= GFX8) {
       LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_ESGS, 0);
       LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
 
@@ -384,7 +384,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
                                                           S_008F0C_ADD_TID_ENABLE(1), 0), "");
 
          /* If MUBUF && ADD_TID_ENABLE, DATA_FORMAT means STRIDE[14:17] on gfx8-9, so set 0. */
-         if (ctx->screen->info.chip_class == GFX8) {
+         if (ctx->screen->info.gfx_level == GFX8) {
             desc3 = LLVMBuildAnd(builder, desc3,
                                  LLVMConstInt(ctx->ac.i32, C_008F0C_DATA_FORMAT, 0), "");
          }
@@ -406,7 +406,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
 
 void si_preload_gs_rings(struct si_shader_context *ctx)
 {
-   if (ctx->ac.chip_class >= GFX11)
+   if (ctx->ac.gfx_level >= GFX11)
       return;
 
    const struct si_shader_selector *sel = ctx->shader->selector;
@@ -464,12 +464,12 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
          S_008F0C_INDEX_STRIDE(1) | /* index_stride = 16 (elements) */
          S_008F0C_ADD_TID_ENABLE(1);
 
-      if (ctx->ac.chip_class >= GFX10) {
+      if (ctx->ac.gfx_level >= GFX10) {
          rsrc3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
          /* If MUBUF && ADD_TID_ENABLE, DATA_FORMAT means STRIDE[14:17] on gfx8-9, so set 0. */
-         unsigned data_format = ctx->ac.chip_class == GFX8 || ctx->ac.chip_class == GFX9 ?
+         unsigned data_format = ctx->ac.gfx_level == GFX8 || ctx->ac.gfx_level == GFX9 ?
                                    0 : V_008F0C_BUF_DATA_FORMAT_32;
 
          rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |

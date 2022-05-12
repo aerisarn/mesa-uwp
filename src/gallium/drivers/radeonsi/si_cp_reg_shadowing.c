@@ -35,7 +35,7 @@ static void si_build_load_reg(struct si_screen *sscreen, struct si_pm4_state *pm
    unsigned packet, num_ranges, offset;
    const struct ac_reg_range *ranges;
 
-   ac_get_reg_ranges(sscreen->info.chip_class, sscreen->info.family,
+   ac_get_reg_ranges(sscreen->info.gfx_level, sscreen->info.family,
                      type, &num_ranges, &ranges);
 
    switch (type) {
@@ -90,7 +90,7 @@ si_create_shadowing_ib_preamble(struct si_context *sctx)
    si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
    si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       unsigned gcr_cntl = S_586_GL2_INV(1) | S_586_GL2_WB(1) |
                           S_586_GLM_INV(1) | S_586_GLM_WB(1) |
                           S_586_GL1_INV(1) | S_586_GLV_INV(1) |
@@ -104,7 +104,7 @@ si_create_shadowing_ib_preamble(struct si_context *sctx)
       si_pm4_cmd_add(pm4, 0);		/* CP_COHER_BASE_HI */
       si_pm4_cmd_add(pm4, 0x0000000A);  /* POLL_INTERVAL */
       si_pm4_cmd_add(pm4, gcr_cntl);	/* GCR_CNTL */
-   } else if (sctx->chip_class == GFX9) {
+   } else if (sctx->gfx_level == GFX9) {
       unsigned cp_coher_cntl = S_0301F0_SH_ICACHE_ACTION_ENA(1) |
                                S_0301F0_SH_KCACHE_ACTION_ENA(1) |
                                S_0301F0_TC_ACTION_ENA(1) |

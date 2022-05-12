@@ -72,7 +72,7 @@ static void r600_destroy_context(struct pipe_context *context)
 
 	r600_sb_context_destroy(rctx->sb_context);
 
-	for (sh = 0; sh < (rctx->b.chip_class < EVERGREEN ? R600_NUM_HW_STAGES : EG_NUM_HW_STAGES); sh++) {
+	for (sh = 0; sh < (rctx->b.gfx_level < EVERGREEN ? R600_NUM_HW_STAGES : EG_NUM_HW_STAGES); sh++) {
 		r600_resource_reference(&rctx->scratch_buffers[sh].buffer, NULL);
 	}
 	r600_resource_reference(&rctx->dummy_cmask, NULL);
@@ -169,13 +169,13 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
 		rctx->is_debug = true;
 	r600_init_common_state_functions(rctx);
 
-	switch (rctx->b.chip_class) {
+	switch (rctx->b.gfx_level) {
 	case R600:
 	case R700:
 		r600_init_state_functions(rctx);
 		r600_init_atom_start_cs(rctx);
 		rctx->custom_dsa_flush = r600_create_db_flush_dsa(rctx);
-		rctx->custom_blend_resolve = rctx->b.chip_class == R700 ? r700_create_resolve_blend(rctx)
+		rctx->custom_blend_resolve = rctx->b.gfx_level == R700 ? r700_create_resolve_blend(rctx)
 								      : r600_create_resolve_blend(rctx);
 		rctx->custom_blend_decompress = r600_create_decompress_blend(rctx);
 		rctx->has_vertex_cache = !(rctx->b.family == CHIP_RV610 ||
@@ -205,7 +205,7 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
 							 PIPE_USAGE_DEFAULT, 32);
 		break;
 	default:
-		R600_ERR("Unsupported chip class %d.\n", rctx->b.chip_class);
+		R600_ERR("Unsupported gfx level %d.\n", rctx->b.gfx_level);
 		goto fail;
 	}
 
@@ -339,7 +339,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return !R600_BIG_ENDIAN && rscreen->b.info.has_userptr;
 
 	case PIPE_CAP_COMPUTE:
-		return rscreen->b.chip_class > R700;
+		return rscreen->b.gfx_level > R700;
 
 	case PIPE_CAP_TGSI_TEXCOORD:
 		return 1;
@@ -524,7 +524,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_UMA:
 		return 0;
 	case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
-		return rscreen->b.chip_class >= R700;
+		return rscreen->b.gfx_level >= R700;
 	case PIPE_CAP_PCI_GROUP:
 		return rscreen->b.info.pci_domain;
 	case PIPE_CAP_PCI_BUS:
@@ -721,7 +721,7 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 		return NULL;
 	}
 
-	if (rscreen->b.info.chip_class >= EVERGREEN) {
+	if (rscreen->b.info.gfx_level >= EVERGREEN) {
 		rscreen->b.b.is_format_supported = evergreen_is_format_supported;
 	} else {
 		rscreen->b.b.is_format_supported = r600_is_format_supported;
@@ -742,7 +742,7 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 	}
 
 	/* Figure out streamout kernel support. */
-	switch (rscreen->b.chip_class) {
+	switch (rscreen->b.gfx_level) {
 	case R600:
 		if (rscreen->b.family < CHIP_RS780) {
 			rscreen->b.has_streamout = rscreen->b.info.drm_minor >= 14;
@@ -763,7 +763,7 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 	}
 
 	/* MSAA support. */
-	switch (rscreen->b.chip_class) {
+	switch (rscreen->b.gfx_level) {
 	case R600:
 	case R700:
 		rscreen->has_msaa = rscreen->b.info.drm_minor >= 22;

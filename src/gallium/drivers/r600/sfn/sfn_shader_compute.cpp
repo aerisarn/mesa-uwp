@@ -32,9 +32,9 @@ namespace r600 {
 ComputeShaderFromNir::ComputeShaderFromNir(r600_pipe_shader *sh,
                                            r600_pipe_shader_selector& sel,
                                            UNUSED const r600_shader_key& key,
-                                           enum chip_class chip_class):
+                                           enum amd_gfx_level gfx_level):
      ShaderFromNirProcessor (PIPE_SHADER_COMPUTE, sel, sh->shader,
-                             sh->scratch_space_needed, chip_class, 0),
+                             sh->scratch_space_needed, gfx_level, 0),
      m_reserved_registers(0)
 {
 }

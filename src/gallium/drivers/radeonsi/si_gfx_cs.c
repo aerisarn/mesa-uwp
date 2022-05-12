@@ -57,7 +57,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
    if (!sscreen->info.kernel_flushes_tc_l2_after_ib) {
       wait_flags |= wait_ps_cs | SI_CONTEXT_INV_L2;
-   } else if (ctx->chip_class == GFX6) {
+   } else if (ctx->gfx_level == GFX6) {
       /* The kernel flushes L2 before shaders are finished. */
       wait_flags |= wait_ps_cs;
    } else if (!(flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW) ||
@@ -112,13 +112,13 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
    /* Make sure CP DMA is idle at the end of IBs after L2 prefetches
     * because the kernel doesn't wait for it. */
-   if (ctx->chip_class >= GFX7)
+   if (ctx->gfx_level >= GFX7)
       si_cp_dma_wait_for_idle(ctx, &ctx->gfx_cs);
 
    /* If we use s_sendmsg to set tess factors to all 0 or all 1 instead of writing to the tess
     * factor buffer, we need this at the end of command buffers:
     */
-   if (ctx->chip_class == GFX11 && ctx->tess_rings) {
+   if (ctx->gfx_level == GFX11 && ctx->tess_rings) {
       radeon_begin(cs);
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
@@ -490,7 +490,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       if (!has_clear_state || ctx->blend_color_any_nonzeros)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.blend_color);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.db_render_state);
-      if (ctx->chip_class >= GFX9)
+      if (ctx->gfx_level >= GFX9)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.dpbb_state);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.stencil_ref);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.spi_map);
@@ -574,15 +574,15 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, uns
 {
    bool compute_ib = !sctx->has_graphics;
 
-   assert(sctx->chip_class <= GFX9);
+   assert(sctx->gfx_level <= GFX9);
 
    /* This seems problematic with GFX7 (see #4764) */
-   if (sctx->chip_class != GFX7)
+   if (sctx->gfx_level != GFX7)
       cp_coher_cntl |= 1u << 31; /* don't sync PFP, i.e. execute the sync in ME */
 
    radeon_begin(cs);
 
-   if (sctx->chip_class == GFX9 || compute_ib) {
+   if (sctx->gfx_level == GFX9 || compute_ib) {
       /* Flush caches and wait for the caches to assert idle. */
       radeon_emit(PKT3(PKT3_ACQUIRE_MEM, 5, 0));
       radeon_emit(cp_coher_cntl); /* CP_COHER_CNTL */
@@ -695,7 +695,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       }
 
       /* Gfx11 can't flush DB_META and should use a TS event instead. */
-      if (ctx->chip_class != GFX11 && flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
+      if (ctx->gfx_level != GFX11 && flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
          /* Flush HTILE. Will wait for idle later. */
          radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
          radeon_emit(EVENT_TYPE(V_028A90_FLUSH_AND_INV_DB_META) | EVENT_INDEX(0));
@@ -710,7 +710,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       } else if (flags & SI_CONTEXT_FLUSH_AND_INV_CB) {
          cb_db_event = V_028A90_FLUSH_AND_INV_CB_DATA_TS;
       } else if (flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
-         if (ctx->chip_class == GFX11)
+         if (ctx->gfx_level == GFX11)
             cb_db_event = V_028A90_CACHE_FLUSH_AND_INV_TS_EVENT;
          else
             cb_db_event = V_028A90_FLUSH_AND_INV_DB_DATA_TS;
@@ -843,7 +843,7 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
    uint32_t cp_coher_cntl = 0;
    const uint32_t flush_cb_db = flags & (SI_CONTEXT_FLUSH_AND_INV_CB | SI_CONTEXT_FLUSH_AND_INV_DB);
 
-   assert(sctx->chip_class <= GFX9);
+   assert(sctx->gfx_level <= GFX9);
 
    if (flags & SI_CONTEXT_FLUSH_AND_INV_CB)
       sctx->num_cb_cache_flushes++;
@@ -863,7 +863,7 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
    if (flags & SI_CONTEXT_INV_SCACHE)
       cp_coher_cntl |= S_0085F0_SH_KCACHE_ACTION_ENA(1);
 
-   if (sctx->chip_class <= GFX8) {
+   if (sctx->gfx_level <= GFX8) {
       if (flags & SI_CONTEXT_FLUSH_AND_INV_CB) {
          cp_coher_cntl |= S_0085F0_CB_ACTION_ENA(1) | S_0085F0_CB0_DEST_BASE_ENA(1) |
                           S_0085F0_CB1_DEST_BASE_ENA(1) | S_0085F0_CB2_DEST_BASE_ENA(1) |
@@ -872,7 +872,7 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
                           S_0085F0_CB7_DEST_BASE_ENA(1);
 
          /* Necessary for DCC */
-         if (sctx->chip_class == GFX8)
+         if (sctx->gfx_level == GFX8)
             si_cp_release_mem(sctx, cs, V_028A90_FLUSH_AND_INV_CB_DATA_TS, 0, EOP_DST_SEL_MEM,
                               EOP_INT_SEL_NONE, EOP_DATA_SEL_DISCARD, NULL, 0, 0, SI_NOT_QUERY);
       }
@@ -935,7 +935,7 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
    /* GFX9: Wait for idle if we're flushing CB or DB. ACQUIRE_MEM doesn't
     * wait for idle on GFX9. We have to use a TS event.
     */
-   if (sctx->chip_class == GFX9 && flush_cb_db) {
+   if (sctx->gfx_level == GFX9 && flush_cb_db) {
       uint64_t va;
       unsigned tc_flags, cb_db_event;
 
@@ -1011,13 +1011,13 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
     *
     * GFX6-GFX7 don't support L2 write-back.
     */
-   if (flags & SI_CONTEXT_INV_L2 || (sctx->chip_class <= GFX7 && (flags & SI_CONTEXT_WB_L2))) {
+   if (flags & SI_CONTEXT_INV_L2 || (sctx->gfx_level <= GFX7 && (flags & SI_CONTEXT_WB_L2))) {
       /* Invalidate L1 & L2. (L1 is always invalidated on GFX6)
        * WB must be set on GFX8+ when TC_ACTION is set.
        */
       si_emit_surface_sync(sctx, cs,
                            cp_coher_cntl | S_0085F0_TC_ACTION_ENA(1) | S_0085F0_TCL1_ACTION_ENA(1) |
-                              S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8));
+                              S_0301F0_TC_WB_ACTION_ENA(sctx->gfx_level >= GFX8));
       cp_coher_cntl = 0;
       sctx->num_L2_invalidates++;
    } else {

@@ -108,7 +108,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
          unsigned cs_dwords_per_thread =
             test_cs ? cs_dwords_per_thread_list[cs_method % NUM_SHADERS] : 0;
 
-         if (sctx->chip_class == GFX6) {
+         if (sctx->gfx_level == GFX6) {
             /* GFX6 doesn't support CP DMA operations through L2. */
             if (test_cp && cache_policy != L2_BYPASS)
                continue;
@@ -120,7 +120,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
          /* SI_RESOURCE_FLAG_UNCACHED setting RADEON_FLAG_UNCACHED doesn't affect
           * chips before gfx9.
           */
-         if (test_cs && cache_policy && sctx->chip_class < GFX9)
+         if (test_cs && cache_policy && sctx->gfx_level < GFX9)
             continue;
 
          printf("%s ,", placement_str[placement]);
@@ -331,7 +331,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
                /* Ban CP DMA clears via MC on <= GFX8. They are super slow
                 * on GTT, which we can get due to BO evictions.
                 */
-               if (sctx->chip_class <= GFX8 && placement == 1 && r->is_cp &&
+               if (sctx->gfx_level <= GFX8 && placement == 1 && r->is_cp &&
                    r->cache_policy == L2_BYPASS)
                   continue;
 

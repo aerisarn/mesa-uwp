@@ -80,7 +80,7 @@ bool NirLowerInstruction::run(nir_shader *shader)
 
 
 ShaderFromNir::ShaderFromNir():sh(nullptr),
-   chip_class(CLASS_UNKNOWN),
+   gfx_level(CLASS_UNKNOWN),
    m_current_if_id(0),
    m_current_loop_id(0),
    scratch_size(0)
@@ -89,35 +89,35 @@ ShaderFromNir::ShaderFromNir():sh(nullptr),
 
 bool ShaderFromNir::lower(const nir_shader *shader, r600_pipe_shader *pipe_shader,
                           r600_pipe_shader_selector *sel, r600_shader_key& key,
-                          struct r600_shader* gs_shader, enum chip_class _chip_class)
+                          struct r600_shader* gs_shader, enum amd_gfx_level _chip_class)
 {
    sh = shader;
-   chip_class = _chip_class;
+   gfx_level = _chip_class;
    assert(sh);
 
    switch (shader->info.stage) {
    case MESA_SHADER_VERTEX:
-      impl.reset(new VertexShaderFromNir(pipe_shader, *sel, key, gs_shader, chip_class));
+      impl.reset(new VertexShaderFromNir(pipe_shader, *sel, key, gs_shader, gfx_level));
       break;
    case MESA_SHADER_TESS_CTRL:
       sfn_log << SfnLog::trans << "Start TCS\n";
-      impl.reset(new TcsShaderFromNir(pipe_shader, *sel, key, chip_class));
+      impl.reset(new TcsShaderFromNir(pipe_shader, *sel, key, gfx_level));
       break;
    case MESA_SHADER_TESS_EVAL:
       sfn_log << SfnLog::trans << "Start TESS_EVAL\n";
-      impl.reset(new TEvalShaderFromNir(pipe_shader, *sel, key, gs_shader, chip_class));
+      impl.reset(new TEvalShaderFromNir(pipe_shader, *sel, key, gs_shader, gfx_level));
       break;
    case MESA_SHADER_GEOMETRY:
       sfn_log << SfnLog::trans << "Start GS\n";
-      impl.reset(new GeometryShaderFromNir(pipe_shader, *sel, key, chip_class));
+      impl.reset(new GeometryShaderFromNir(pipe_shader, *sel, key, gfx_level));
       break;
    case MESA_SHADER_FRAGMENT:
       sfn_log << SfnLog::trans << "Start FS\n";
-      impl.reset(new FragmentShaderFromNir(*shader, pipe_shader->shader, *sel, key, chip_class));
+      impl.reset(new FragmentShaderFromNir(*shader, pipe_shader->shader, *sel, key, gfx_level));
       break;
    case MESA_SHADER_COMPUTE:
       sfn_log << SfnLog::trans << "Start CS\n";
-      impl.reset(new ComputeShaderFromNir(pipe_shader, *sel, key, chip_class));
+      impl.reset(new ComputeShaderFromNir(pipe_shader, *sel, key, gfx_level));
       break;
    default:
       return false;
@@ -813,7 +813,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    /* Cayman seems very crashy about accessing images that don't exists or are
     * accessed out of range, this lowering seems to help (but it can also be
     * another problem */
-   if (sel->nir->info.num_images > 0 && rctx->b.chip_class == CAYMAN)
+   if (sel->nir->info.num_images > 0 && rctx->b.gfx_level == CAYMAN)
        NIR_PASS_V(sel->nir, r600_legalize_image_load_store);
 
    NIR_PASS_V(sel->nir, nir_lower_vars_to_ssa);
@@ -980,7 +980,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
       gs_shader = &rctx->gs_shader->current->shader;
    r600_screen *rscreen = rctx->screen;
 
-   bool r = convert.lower(sh, pipeshader, sel, *key, gs_shader, rscreen->b.chip_class);
+   bool r = convert.lower(sh, pipeshader, sel, *key, gs_shader, rscreen->b.gfx_level);
    if (!r || rctx->screen->b.debug_flags & DBG_ALL_SHADERS) {
       static int shnr = 0;
 
@@ -1002,7 +1002,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    auto shader = convert.shader();
 
-   r600_bytecode_init(&pipeshader->shader.bc, rscreen->b.chip_class, rscreen->b.family,
+   r600_bytecode_init(&pipeshader->shader.bc, rscreen->b.gfx_level, rscreen->b.family,
                       rscreen->has_compressed_msaa_texturing);
 
    r600::sfn_log << r600::SfnLog::shader_info

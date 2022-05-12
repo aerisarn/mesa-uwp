@@ -53,7 +53,7 @@ radv_amdgpu_bo_va_op(struct radv_amdgpu_winsys *ws, amdgpu_bo_handle bo, uint64_
    if (bo) {
       flags = AMDGPU_VM_PAGE_READABLE | AMDGPU_VM_PAGE_EXECUTABLE;
 
-      if ((bo_flags & RADEON_FLAG_VA_UNCACHED) && ws->info.chip_class >= GFX9)
+      if ((bo_flags & RADEON_FLAG_VA_UNCACHED) && ws->info.gfx_level >= GFX9)
          flags |= AMDGPU_VM_MTYPE_UC;
 
       if (!(bo_flags & RADEON_FLAG_READ_ONLY))
@@ -573,7 +573,7 @@ radv_amdgpu_get_optimal_vm_alignment(struct radv_amdgpu_winsys *ws, uint64_t siz
    /* Gfx9: Increase the VM alignment to the most significant bit set
     * in the size for faster address translation.
     */
-   if (ws->info.chip_class >= GFX9) {
+   if (ws->info.gfx_level >= GFX9) {
       unsigned msb = util_last_bit64(size); /* 0 = no bit is set */
       uint64_t msb_alignment = msb ? 1ull << (msb - 1) : 0;
 
@@ -870,7 +870,7 @@ radv_amdgpu_winsys_bo_set_metadata(struct radeon_winsys *_ws, struct radeon_wins
    struct amdgpu_bo_metadata metadata = {0};
    uint64_t tiling_flags = 0;
 
-   if (ws->info.chip_class >= GFX9) {
+   if (ws->info.gfx_level >= GFX9) {
       tiling_flags |= AMDGPU_TILING_SET(SWIZZLE_MODE, md->u.gfx9.swizzle_mode);
       tiling_flags |= AMDGPU_TILING_SET(DCC_OFFSET_256B, md->u.gfx9.dcc_offset_256b);
       tiling_flags |= AMDGPU_TILING_SET(DCC_PITCH_MAX, md->u.gfx9.dcc_pitch_max);
@@ -924,7 +924,7 @@ radv_amdgpu_winsys_bo_get_metadata(struct radeon_winsys *_ws, struct radeon_wins
 
    uint64_t tiling_flags = info.metadata.tiling_info;
 
-   if (ws->info.chip_class >= GFX9) {
+   if (ws->info.gfx_level >= GFX9) {
       md->u.gfx9.swizzle_mode = AMDGPU_TILING_GET(tiling_flags, SWIZZLE_MODE);
       md->u.gfx9.scanout = AMDGPU_TILING_GET(tiling_flags, SCANOUT);
    } else {

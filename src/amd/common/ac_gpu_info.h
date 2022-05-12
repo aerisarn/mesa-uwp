@@ -63,7 +63,7 @@ struct radeon_info {
    uint32_t pci_id;
    uint32_t pci_rev_id;
    enum radeon_family family;
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
    uint32_t family_id;
    uint32_t chip_external_rev;
    uint32_t clock_crystal_freq;
@@ -253,7 +253,7 @@ void ac_compute_driver_uuid(char *uuid, size_t size);
 
 void ac_compute_device_uuid(struct radeon_info *info, char *uuid, size_t size);
 void ac_print_gpu_info(struct radeon_info *info, FILE *f);
-int ac_get_gs_table_depth(enum chip_class chip_class, enum radeon_family family);
+int ac_get_gs_table_depth(enum amd_gfx_level gfx_level, enum radeon_family family);
 void ac_get_raster_config(struct radeon_info *info, uint32_t *raster_config_p,
                           uint32_t *raster_config_1_p, uint32_t *se_tile_repeat_p);
 void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,

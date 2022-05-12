@@ -50,14 +50,14 @@ static void set_micro_tile_mode(struct radeon_surf *surf,
 {
    uint32_t tile_mode;
 
-   if (info->chip_class < GFX6) {
+   if (info->gfx_level < GFX6) {
       surf->micro_tile_mode = 0;
       return;
    }
 
    tile_mode = info->si_tile_mode_array[surf->u.legacy.tiling_index[0]];
 
-   if (info->chip_class >= GFX7)
+   if (info->gfx_level >= GFX7)
       surf->micro_tile_mode = G_009910_MICRO_TILE_MODE_NEW(tile_mode);
    else
       surf->micro_tile_mode = G_009910_MICRO_TILE_MODE(tile_mode);
@@ -231,7 +231,7 @@ static void si_compute_cmask(const struct radeon_info *info,
    if (surf->flags & RADEON_SURF_Z_OR_SBUFFER)
       return;
 
-   assert(info->chip_class <= GFX8);
+   assert(info->gfx_level <= GFX8);
 
    switch (num_pipes) {
    case 2:
@@ -304,7 +304,7 @@ static void si_compute_htile(const struct radeon_info *info,
      * are always reproducible. I think I have seen the test hang
      * on Carrizo too, though it was very rare there.
      */
-   if (info->chip_class >= GFX7 && num_pipes < 4)
+   if (info->gfx_level >= GFX7 && num_pipes < 4)
       num_pipes = 4;
 
    switch (num_pipes) {

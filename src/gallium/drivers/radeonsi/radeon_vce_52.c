@@ -190,7 +190,7 @@ static void create(struct rvce_encoder *enc)
    RVCE_CS(enc->base.width);  // encImageWidth
    RVCE_CS(enc->base.height); // encImageHeight
 
-   if (sscreen->info.chip_class < GFX9) {
+   if (sscreen->info.gfx_level < GFX9) {
       RVCE_CS(enc->luma->u.legacy.level[0].nblk_x * enc->luma->bpe);     // encRefPicLumaPitch
       RVCE_CS(enc->chroma->u.legacy.level[0].nblk_x * enc->chroma->bpe); // encRefPicChromaPitch
       RVCE_CS(align(enc->luma->u.legacy.level[0].nblk_y, 16) / 8);       // encRefYHeightInQw
@@ -261,7 +261,7 @@ static void encode(struct rvce_encoder *enc)
    RVCE_CS(enc->enc_pic.eo.end_of_sequence);
    RVCE_CS(enc->enc_pic.eo.end_of_stream);
 
-   if (sscreen->info.chip_class < GFX9) {
+   if (sscreen->info.gfx_level < GFX9) {
       RVCE_READ(enc->handle, RADEON_DOMAIN_VRAM,
                 (uint64_t)enc->luma->u.legacy.level[0].offset_256B * 256); // inputPictureLumaAddressHi/Lo
       RVCE_READ(enc->handle, RADEON_DOMAIN_VRAM,

@@ -940,7 +940,7 @@ struct si_context {
    struct pipe_context b; /* base class */
 
    enum radeon_family family;
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
 
    struct radeon_winsys *ws;
    struct radeon_winsys_ctx *ctx;
@@ -1600,7 +1600,7 @@ bool vi_dcc_formats_are_incompatible(struct pipe_resource *tex, unsigned level,
                                      enum pipe_format view_format);
 void vi_disable_dcc_if_incompatible_format(struct si_context *sctx, struct pipe_resource *tex,
                                            unsigned level, enum pipe_format view_format);
-unsigned si_translate_colorswap(enum chip_class chip_class, enum pipe_format format,
+unsigned si_translate_colorswap(enum amd_gfx_level gfx_level, enum pipe_format format,
                                 bool do_endian_swap);
 bool si_texture_disable_dcc(struct si_context *sctx, struct si_texture *tex);
 void si_init_screen_texture_functions(struct si_screen *sscreen);
@@ -1788,12 +1788,12 @@ static inline void si_make_CB_shader_coherent(struct si_context *sctx, unsigned 
    sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB | SI_CONTEXT_INV_VCACHE;
    sctx->force_cb_shader_coherent = false;
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       if (sctx->screen->info.tcc_rb_non_coherent)
          sctx->flags |= SI_CONTEXT_INV_L2;
       else if (shaders_read_metadata)
          sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
-   } else if (sctx->chip_class == GFX9) {
+   } else if (sctx->gfx_level == GFX9) {
       /* Single-sample color is coherent with shaders on GFX9, but
        * L2 metadata must be flushed if shaders read metadata.
        * (DCC, CMASK).
@@ -1813,12 +1813,12 @@ static inline void si_make_DB_shader_coherent(struct si_context *sctx, unsigned 
 {
    sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB | SI_CONTEXT_INV_VCACHE;
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       if (sctx->screen->info.tcc_rb_non_coherent)
          sctx->flags |= SI_CONTEXT_INV_L2;
       else if (shaders_read_metadata)
          sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
-   } else if (sctx->chip_class == GFX9) {
+   } else if (sctx->gfx_level == GFX9) {
       /* Single-sample depth (not stencil) is coherent with shaders
        * on GFX9, but L2 metadata must be flushed if shaders read
        * metadata.
@@ -1847,7 +1847,7 @@ static inline bool si_htile_enabled(struct si_texture *tex, unsigned level, unsi
       return false;
 
    struct si_screen *sscreen = (struct si_screen *)tex->buffer.b.b.screen;
-   if (sscreen->info.chip_class >= GFX8) {
+   if (sscreen->info.gfx_level >= GFX8) {
       return level < tex->surface.num_meta_levels;
    } else {
       /* GFX6-7 don't have TC-compatible HTILE, which means they have to run
@@ -2037,17 +2037,17 @@ static inline unsigned si_get_num_coverage_samples(struct si_context *sctx)
 }
 
 static unsigned ALWAYS_INLINE
-si_num_vbos_in_user_sgprs_inline(enum chip_class chip_class)
+si_num_vbos_in_user_sgprs_inline(enum amd_gfx_level gfx_level)
 {
    /* This decreases CPU overhead if all descriptors are in user SGPRs because we don't
     * have to allocate and count references for the upload buffer.
     */
-   return chip_class >= GFX9 ? 5 : 1;
+   return gfx_level >= GFX9 ? 5 : 1;
 }
 
 static inline unsigned si_num_vbos_in_user_sgprs(struct si_screen *sscreen)
 {
-   return si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
+   return si_num_vbos_in_user_sgprs_inline(sscreen->info.gfx_level);
 }
 
 #define PRINT_ERR(fmt, args...)                                                                    \

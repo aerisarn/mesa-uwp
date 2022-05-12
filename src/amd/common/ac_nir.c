@@ -37,7 +37,7 @@ ac_nir_load_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_
 
 bool
 ac_nir_lower_indirect_derefs(nir_shader *shader,
-                             enum chip_class chip_class)
+                             enum amd_gfx_level gfx_level)
 {
    bool progress = false;
 
@@ -49,7 +49,7 @@ ac_nir_lower_indirect_derefs(nir_shader *shader,
             glsl_get_natural_size_align_bytes);
 
    /* LLVM doesn't support VGPR indexing on GFX9. */
-   bool llvm_has_working_vgpr_indexing = chip_class != GFX9;
+   bool llvm_has_working_vgpr_indexing = gfx_level != GFX9;
 
    /* TODO: Indirect indexing of GS inputs is unimplemented.
     *

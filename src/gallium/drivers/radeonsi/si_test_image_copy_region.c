@@ -238,7 +238,7 @@ static void print_image_attrs(struct si_screen *sscreen, struct si_texture *tex)
 {
    const char *mode;
 
-   if (sscreen->info.chip_class >= GFX9) {
+   if (sscreen->info.gfx_level >= GFX9) {
       static const char *modes[32] = {
          [ADDR_SW_LINEAR] = "LINEAR",
          [ADDR_SW_4KB_S_X] = "4KB_S_X",

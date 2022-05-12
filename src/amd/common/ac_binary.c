@@ -92,7 +92,7 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes, unsigned wav
          break;
       case R_0286E8_SPI_TMPRING_SIZE:
       case R_00B860_COMPUTE_TMPRING_SIZE:
-         if (info->chip_class >= GFX11)
+         if (info->gfx_level >= GFX11)
             conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(value) * 256;
          else
             conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(value) * 1024;
@@ -126,7 +126,7 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes, unsigned wav
     *
     * For shader-db stats, set num_vgprs that the hw actually uses.
     */
-   if (info->chip_class == GFX10_3) {
+   if (info->gfx_level == GFX10_3) {
       conf->num_vgprs = align(conf->num_vgprs, wave_size == 32 ? 16 : 8);
    }
 

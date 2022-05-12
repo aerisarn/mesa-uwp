@@ -212,7 +212,7 @@ aco_compile_shader(const struct radv_nir_compiler_options* options,
    aco::insert_wait_states(program.get());
    aco::insert_NOPs(program.get());
 
-   if (program->chip_class >= GFX10)
+   if (program->gfx_level >= GFX10)
       aco::form_hard_clauses(program.get());
 
    if (program->collect_statistics || (aco::debug_flags & aco::DEBUG_PERF_INFO))

@@ -143,7 +143,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
     * Only CP DMA and optimized compute benefit from this.
     * GFX8 and older don't support RADEON_FLAG_UNCACHED.
     */
-   if (sscreen->info.chip_class >= GFX9 &&
+   if (sscreen->info.gfx_level >= GFX9 &&
        res->b.b.flags & SI_RESOURCE_FLAG_UNCACHED)
       res->flags |= RADEON_FLAG_UNCACHED;
 

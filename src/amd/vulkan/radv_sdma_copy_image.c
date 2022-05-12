@@ -121,7 +121,7 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
       unsigned linear_slice_pitch = region->bufferRowLength * copy_height;
       uint64_t tiled_address = src_address;
       uint64_t linear_address = dst_address;
-      bool is_v5 = device->physical_device->rad_info.chip_class >= GFX10;
+      bool is_v5 = device->physical_device->rad_info.gfx_level >= GFX10;
       /* Only SDMA 5 supports DCC with SDMA */
       bool dcc = radv_dcc_enabled(image, 0) && is_v5;
 
@@ -191,6 +191,6 @@ bool
 radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                      struct radv_buffer *buffer, const VkBufferImageCopy2 *region)
 {
-   assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9);
+   assert(cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9);
    return radv_sdma_v4_v5_copy_image_to_buffer(cmd_buffer, image, buffer, region);
 }

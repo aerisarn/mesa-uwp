@@ -35,7 +35,7 @@ typedef void (*gpu_init_func)(struct radeon_info *info);
 static void init_vega10(struct radeon_info *info)
 {
    info->family = CHIP_VEGA10;
-   info->chip_class = GFX9;
+   info->gfx_level = GFX9;
    info->family_id = AMDGPU_FAMILY_AI;
    info->chip_external_rev = 0x01;
    info->use_display_dcc_unaligned = false;
@@ -50,7 +50,7 @@ static void init_vega10(struct radeon_info *info)
 static void init_vega20(struct radeon_info *info)
 {
    info->family = CHIP_VEGA20;
-   info->chip_class = GFX9;
+   info->gfx_level = GFX9;
    info->family_id = AMDGPU_FAMILY_AI;
    info->chip_external_rev = 0x30;
    info->use_display_dcc_unaligned = false;
@@ -66,7 +66,7 @@ static void init_vega20(struct radeon_info *info)
 static void init_raven(struct radeon_info *info)
 {
    info->family = CHIP_RAVEN;
-   info->chip_class = GFX9;
+   info->gfx_level = GFX9;
    info->family_id = AMDGPU_FAMILY_RV;
    info->chip_external_rev = 0x01;
    info->use_display_dcc_unaligned = false;
@@ -81,7 +81,7 @@ static void init_raven(struct radeon_info *info)
 static void init_raven2(struct radeon_info *info)
 {
    info->family = CHIP_RAVEN2;
-   info->chip_class = GFX9;
+   info->gfx_level = GFX9;
    info->family_id = AMDGPU_FAMILY_RV;
    info->chip_external_rev = 0x82;
    info->use_display_dcc_unaligned = true;
@@ -96,7 +96,7 @@ static void init_raven2(struct radeon_info *info)
 static void init_navi10(struct radeon_info *info)
 {
    info->family = CHIP_NAVI10;
-   info->chip_class = GFX10;
+   info->gfx_level = GFX10;
    info->family_id = AMDGPU_FAMILY_NV;
    info->chip_external_rev = 3;
    info->use_display_dcc_unaligned = false;
@@ -110,7 +110,7 @@ static void init_navi10(struct radeon_info *info)
 static void init_navi14(struct radeon_info *info)
 {
    info->family = CHIP_NAVI14;
-   info->chip_class = GFX10;
+   info->gfx_level = GFX10;
    info->family_id = AMDGPU_FAMILY_NV;
    info->chip_external_rev = 0x15;
    info->use_display_dcc_unaligned = false;
@@ -124,7 +124,7 @@ static void init_navi14(struct radeon_info *info)
 static void init_gfx103(struct radeon_info *info)
 {
    info->family = CHIP_SIENNA_CICHLID; /* This doesn't affect tests. */
-   info->chip_class = GFX10_3;
+   info->gfx_level = GFX10_3;
    info->family_id = AMDGPU_FAMILY_NV;
    info->chip_external_rev = 0x28;
    info->use_display_dcc_unaligned = false;
@@ -140,7 +140,7 @@ static void init_gfx103(struct radeon_info *info)
 static void init_gfx11(struct radeon_info *info)
 {
    info->family = CHIP_UNKNOWN;
-   info->chip_class = GFX11;
+   info->gfx_level = GFX11;
    info->family_id = 0x00;
    info->chip_external_rev = 0x01;
    info->use_display_dcc_unaligned = false;
@@ -192,7 +192,7 @@ static struct radeon_info get_radeon_info(struct testcase *testcase)
 
    testcase->init(&info);
 
-   switch(info.chip_class) {
+   switch(info.gfx_level) {
    case GFX9:
       info.gb_addr_config = (info.gb_addr_config &
                              C_0098F8_NUM_PIPES &
@@ -213,7 +213,7 @@ static struct radeon_info get_radeon_info(struct testcase *testcase)
                              S_0098F8_NUM_PIPES(testcase->pipes) |
                              S_0098F8_NUM_PKRS(testcase->banks_or_pkrs);
       /* 1 packer implies 1 RB except gfx10 where the field is ignored. */
-      info.max_render_backends = info.chip_class == GFX10 || testcase->banks_or_pkrs ? 2 : 1;
+      info.max_render_backends = info.gfx_level == GFX10 || testcase->banks_or_pkrs ? 2 : 1;
       break;
    default:
       unreachable("Unhandled generation");

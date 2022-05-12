@@ -655,7 +655,7 @@ static struct pipe_query *r600_query_hw_create(struct r600_common_screen *rscree
 		break;
 	case PIPE_QUERY_PIPELINE_STATISTICS:
 		/* 11 values on EG, 8 on R600. */
-		query->result_size = (rscreen->chip_class >= EVERGREEN ? 11 : 8) * 16;
+		query->result_size = (rscreen->gfx_level >= EVERGREEN ? 11 : 8) * 16;
 		query->result_size += 8; /* for the fence + alignment */
 		query->num_cs_dw_begin = 6;
 		query->num_cs_dw_end = 6 + r600_gfx_write_fence_dwords(rscreen);
@@ -1232,7 +1232,7 @@ static void r600_query_hw_add_result(struct r600_common_screen *rscreen,
 		}
 		break;
 	case PIPE_QUERY_PIPELINE_STATISTICS:
-		if (rscreen->chip_class >= EVERGREEN) {
+		if (rscreen->gfx_level >= EVERGREEN) {
 			result->pipeline_statistics.ps_invocations +=
 				r600_query_read_result(buffer, 0, 22, false);
 			result->pipeline_statistics.c_primitives +=
@@ -1849,7 +1849,7 @@ void r600_query_fix_enabled_rb_mask(struct r600_common_screen *rscreen)
 	}
 	max_rbs = ctx->screen->info.max_render_backends;
 
-	assert(rscreen->chip_class <= CAYMAN);
+	assert(rscreen->gfx_level <= CAYMAN);
 
 	/*
 	 * if backend_map query is supported by the kernel.
@@ -1859,12 +1859,12 @@ void r600_query_fix_enabled_rb_mask(struct r600_common_screen *rscreen)
 	 * (Albeit some chips with just one active rb can have a valid 0 map.)
 	 */ 
 	if (rscreen->info.r600_gb_backend_map_valid &&
-	    (ctx->chip_class < EVERGREEN || rscreen->info.r600_gb_backend_map != 0)) {
+	    (ctx->gfx_level < EVERGREEN || rscreen->info.r600_gb_backend_map != 0)) {
 		unsigned num_tile_pipes = rscreen->info.num_tile_pipes;
 		unsigned backend_map = rscreen->info.r600_gb_backend_map;
 		unsigned item_width, item_mask;
 
-		if (ctx->chip_class >= EVERGREEN) {
+		if (ctx->gfx_level >= EVERGREEN) {
 			item_width = 4;
 			item_mask = 0x7;
 		} else {

@@ -27,7 +27,7 @@ using namespace aco;
 
 BEGIN_TEST(assembler.s_memtime)
    for (unsigned i = GFX6; i <= GFX10; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       //~gfx[6-7]>> c7800000
@@ -41,7 +41,7 @@ BEGIN_TEST(assembler.s_memtime)
 END_TEST
 
 BEGIN_TEST(assembler.branch_3f)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //! BB0:
@@ -60,7 +60,7 @@ BEGIN_TEST(assembler.branch_3f)
 END_TEST
 
 BEGIN_TEST(assembler.long_jump.unconditional_forwards)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //!BB0:
@@ -90,7 +90,7 @@ BEGIN_TEST(assembler.long_jump.unconditional_forwards)
 END_TEST
 
 BEGIN_TEST(assembler.long_jump.conditional_forwards)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //! BB0:
@@ -123,7 +123,7 @@ BEGIN_TEST(assembler.long_jump.conditional_forwards)
 END_TEST
 
 BEGIN_TEST(assembler.long_jump.unconditional_backwards)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //!BB0:
@@ -151,7 +151,7 @@ BEGIN_TEST(assembler.long_jump.unconditional_backwards)
 END_TEST
 
 BEGIN_TEST(assembler.long_jump.conditional_backwards)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //!BB0:
@@ -180,7 +180,7 @@ BEGIN_TEST(assembler.long_jump.conditional_backwards)
 END_TEST
 
 BEGIN_TEST(assembler.long_jump.3f)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //! BB0:
@@ -205,7 +205,7 @@ BEGIN_TEST(assembler.long_jump.3f)
 END_TEST
 
 BEGIN_TEST(assembler.long_jump.constaddr)
-   if (!setup_cs(NULL, (chip_class)GFX10))
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
       return;
 
    //>> s_getpc_b64 s[0:1]                                          ; be801f00
@@ -232,7 +232,7 @@ END_TEST
 
 BEGIN_TEST(assembler.v_add3)
    for (unsigned i = GFX9; i <= GFX10; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       //~gfx9>> v_add3_u32 v0, 0, 0, 0 ; d1ff0000 02010080
@@ -250,7 +250,7 @@ END_TEST
 
 BEGIN_TEST(assembler.v_add3_clamp)
    for (unsigned i = GFX9; i <= GFX10; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       //~gfx9>> integer addition + clamp ; d1ff8000 02010080
@@ -269,7 +269,7 @@ END_TEST
 
 BEGIN_TEST(assembler.smem_offset)
    for (unsigned i = GFX9; i <= GFX10; i++) {
-      if (!setup_cs(NULL, (chip_class)i))
+      if (!setup_cs(NULL, (amd_gfx_level)i))
          continue;
 
       Definition dst(PhysReg(7), s1);

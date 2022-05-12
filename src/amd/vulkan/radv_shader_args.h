@@ -76,7 +76,7 @@ radv_shader_args_from_ac(struct ac_shader_args *args)
 struct radv_pipeline_key;
 struct radv_shader_info;
 
-void radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_key *key,
+void radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipeline_key *key,
                               const struct radv_shader_info *info, gl_shader_stage stage,
                               bool has_previous_stage, gl_shader_stage previous_stage,
                               struct radv_shader_args *args);

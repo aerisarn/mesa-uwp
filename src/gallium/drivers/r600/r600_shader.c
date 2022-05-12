@@ -343,7 +343,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 			evergreen_update_vs_state(ctx, shader);
 		break;
 	case PIPE_SHADER_GEOMETRY:
-		if (rctx->b.chip_class >= EVERGREEN) {
+		if (rctx->b.gfx_level >= EVERGREEN) {
 			evergreen_update_gs_state(ctx, shader);
 			evergreen_update_vs_state(ctx, shader->gs_copy_shader);
 		} else {
@@ -353,7 +353,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		break;
 	case PIPE_SHADER_VERTEX:
 		export_shader = key.vs.as_es;
-		if (rctx->b.chip_class >= EVERGREEN) {
+		if (rctx->b.gfx_level >= EVERGREEN) {
 			if (key.vs.as_ls)
 				evergreen_update_ls_state(ctx, shader);
 			else if (key.vs.as_es)
@@ -368,7 +368,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		}
 		break;
 	case PIPE_SHADER_FRAGMENT:
-		if (rctx->b.chip_class >= EVERGREEN) {
+		if (rctx->b.gfx_level >= EVERGREEN) {
 			evergreen_update_ps_state(ctx, shader);
 		} else {
 			r600_update_ps_state(ctx, shader);
@@ -834,7 +834,7 @@ static int single_alu_op2(struct r600_shader_ctx *ctx, int op,
 	struct r600_bytecode_alu alu;
 	int r, i;
 
-	if (ctx->bc->chip_class == CAYMAN && op == ALU_OP2_MULLO_INT) {
+	if (ctx->bc->gfx_level == CAYMAN && op == ALU_OP2_MULLO_INT) {
 		for (i = 0; i < 4; i++) {
 			memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 			alu.op = op;
@@ -1117,7 +1117,7 @@ static int tgsi_declaration(struct r600_shader_ctx *ctx)
 					ctx->shader->ps_prim_id_input = i;
 					break;
 				}
-				if (ctx->bc->chip_class >= EVERGREEN) {
+				if (ctx->bc->gfx_level >= EVERGREEN) {
 					if ((r = evergreen_interp_input(ctx, i)))
 						return r;
 				}
@@ -1361,7 +1361,7 @@ static int allocate_system_value_inputs(struct r600_shader_ctx *ctx, int gpr_off
 		inputs[1].enabled = true;
 	}
 
-	if (ctx->bc->chip_class >= EVERGREEN) {
+	if (ctx->bc->gfx_level >= EVERGREEN) {
 		int num_baryc = 0;
 		/* assign gpr to each interpolator according to priority */
 		for (i = 0; i < ARRAY_SIZE(ctx->eg_interpolators); i++) {
@@ -1638,7 +1638,7 @@ static void tgsi_src(struct r600_shader_ctx *ctx,
 
 			r600_src->sel = reg;
 
-			if (ctx->bc->chip_class < R700) {
+			if (ctx->bc->gfx_level < R700) {
 				struct r600_bytecode_output cf;
 
 				memset(&cf, 0, sizeof(struct r600_bytecode_output));
@@ -1985,7 +1985,7 @@ static int fetch_gs_input(struct r600_shader_ctx *ctx, struct tgsi_full_src_regi
 	vtx.dst_sel_y = 1;		/* SEL_Y */
 	vtx.dst_sel_z = 2;		/* SEL_Z */
 	vtx.dst_sel_w = 3;		/* SEL_W */
-	if (ctx->bc->chip_class >= EVERGREEN) {
+	if (ctx->bc->gfx_level >= EVERGREEN) {
 		vtx.use_const_fields = 1;
 	} else {
 		vtx.data_format = FMT_32_32_32_32_FLOAT;
@@ -2501,7 +2501,7 @@ static int emit_streamout(struct r600_shader_ctx *ctx, struct pipe_stream_output
 		output.array_size = 0xFFF;
 		output.comp_mask = ((1 << so->output[i].num_components) - 1) << start_comp[i];
 
-		if (ctx->bc->chip_class >= EVERGREEN) {
+		if (ctx->bc->gfx_level >= EVERGREEN) {
 			switch (so->output[i].output_buffer) {
 			case 0:
 				output.op = CF_OP_MEM_STREAM0_BUF0;
@@ -2604,7 +2604,7 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 	ctx.bc = &ctx.shader->bc;
 	ctx.type = ctx.bc->type = PIPE_SHADER_VERTEX;
 
-	r600_bytecode_init(ctx.bc, rctx->b.chip_class, rctx->b.family,
+	r600_bytecode_init(ctx.bc, rctx->b.gfx_level, rctx->b.family,
 			   rctx->screen->has_compressed_msaa_texturing);
 
 	ctx.bc->isa = rctx->isa;
@@ -2649,7 +2649,7 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 		vtx.dst_sel_y = 1;
 		vtx.dst_sel_z = 2;
 		vtx.dst_sel_w = 3;
-		if (rctx->b.chip_class >= EVERGREEN) {
+		if (rctx->b.gfx_level >= EVERGREEN) {
 			vtx.use_const_fields = 1;
 		} else {
 			vtx.data_format = FMT_32_32_32_32_FLOAT;
@@ -2704,7 +2704,7 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 	}
 
 	/* bc adds nops - copy it */
-	if (ctx.bc->chip_class == R600) {
+	if (ctx.bc->gfx_level == R600) {
 		memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 		alu.op = ALU_OP0_NOP;
 		alu.last = 1;
@@ -2870,7 +2870,7 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 	cf_pop->cf_addr = cf_pop->id + 2;
 	cf_pop->pop_count = 1;
 
-	if (ctx.bc->chip_class == CAYMAN)
+	if (ctx.bc->gfx_level == CAYMAN)
 		cm_bytecode_add_cf_end(ctx.bc);
 	else {
 		r600_bytecode_add_cfinst(ctx.bc, CF_OP_NOP);
@@ -3460,7 +3460,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 	ctx.bc = &shader->bc;
 	ctx.shader = shader;
 
-	r600_bytecode_init(ctx.bc, rscreen->b.chip_class, rscreen->b.family,
+	r600_bytecode_init(ctx.bc, rscreen->b.gfx_level, rscreen->b.family,
 			   rscreen->has_compressed_msaa_texturing);
 	ctx.tokens = tokens;
 	tgsi_scan_shader(tokens, &ctx.info);
@@ -3589,7 +3589,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 			r600_bytecode_add_cfinst(ctx.bc, CF_OP_CALL_FS);
 	}
 	if (ctx.type == PIPE_SHADER_FRAGMENT) {
-		if (ctx.bc->chip_class >= EVERGREEN)
+		if (ctx.bc->gfx_level >= EVERGREEN)
 			ctx.file_offset[TGSI_FILE_INPUT] = evergreen_gpr_count(&ctx);
 		else
 			ctx.file_offset[TGSI_FILE_INPUT] = allocate_system_value_inputs(&ctx, ctx.file_offset[TGSI_FILE_INPUT]);
@@ -3798,7 +3798,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 				// Non LLVM path computes it later (in process_twoside_color)
 				ctx.shader->input[ni].lds_pos = next_lds_loc++;
 				ctx.shader->input[i].back_color_input = ni;
-				if (ctx.bc->chip_class >= EVERGREEN) {
+				if (ctx.bc->gfx_level >= EVERGREEN) {
 					if ((r = evergreen_interp_input(&ctx, ni)))
 						return r;
 				}
@@ -3807,7 +3807,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 	}
 
 	if (ctx.shader->uses_helper_invocation) {
-		if (ctx.bc->chip_class == CAYMAN)
+		if (ctx.bc->gfx_level == CAYMAN)
 			r = cm_load_helper_invocation(&ctx);
 		else
 			r = eg_load_helper_invocation(&ctx);
@@ -3865,7 +3865,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 	}
 
 	if (ctx.fragcoord_input >= 0) {
-		if (ctx.bc->chip_class == CAYMAN) {
+		if (ctx.bc->gfx_level == CAYMAN) {
 			for (j = 0 ; j < 4; j++) {
 				struct r600_bytecode_alu alu;
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
@@ -3901,7 +3901,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 		int r;
 
 		/* GS thread with no output workaround - emit a cut at start of GS */
-		if (ctx.bc->chip_class == R600)
+		if (ctx.bc->gfx_level == R600)
 			r600_bytecode_add_cfinst(ctx.bc, CF_OP_CUT_VERTEX);
 
 		for (j = 0; j < 4; j++) {
@@ -3980,9 +3980,9 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 				if ((r = tgsi_split_lds_inputs(&ctx)))
 					goto out_err;
 			}
-			if (ctx.bc->chip_class == CAYMAN)
+			if (ctx.bc->gfx_level == CAYMAN)
 				ctx.inst_info = &cm_shader_tgsi_instruction[opcode];
-			else if (ctx.bc->chip_class >= EVERGREEN)
+			else if (ctx.bc->gfx_level >= EVERGREEN)
 				ctx.inst_info = &eg_shader_tgsi_instruction[opcode];
 			else
 				ctx.inst_info = &r600_shader_tgsi_instruction[opcode];
@@ -4219,7 +4219,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 
 					if (shader->output[i].sid > shader->ps_export_highest)
 						shader->ps_export_highest = shader->output[i].sid;
-					if (shader->fs_write_all && (rscreen->b.chip_class >= EVERGREEN)) {
+					if (shader->fs_write_all && (rscreen->b.gfx_level >= EVERGREEN)) {
 						for (k = 1; k < max_color_exports; k++) {
 							j++;
 							memset(&output[j], 0, sizeof(struct r600_bytecode_output));
@@ -4346,7 +4346,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 	}
 
 	/* add program end */
-	if (ctx.bc->chip_class == CAYMAN)
+	if (ctx.bc->gfx_level == CAYMAN)
 		cm_bytecode_add_cf_end(ctx.bc);
 	else {
 		const struct cf_op_info *last = NULL;
@@ -4978,7 +4978,7 @@ static int egcm_int_to_double(struct r600_shader_ctx *ctx)
 				alu.dst.sel = temp_reg;
 				alu.dst.chan = i;
 				alu.dst.write = 1;
-				if (ctx->bc->chip_class == CAYMAN)
+				if (ctx->bc->gfx_level == CAYMAN)
 					alu.last = i == dchan + 1;
 				else
 					alu.last = 1; /* trans only ops on evergreen */
@@ -5095,7 +5095,7 @@ static int cayman_emit_unary_double_raw(struct r600_bytecode *bc,
 		alu.dst.chan = i;
 		alu.dst.write = (i == 0 || i == 1);
 
-		if (bc->chip_class != CAYMAN || i == last_slot - 1)
+		if (bc->gfx_level != CAYMAN || i == last_slot - 1)
 			alu.last = 1;
 		r = r600_bytecode_add_alu(bc, &alu);
 		if (r)
@@ -5392,7 +5392,7 @@ static int tgsi_setup_trig(struct r600_shader_ctx *ctx)
 	alu.src[2].sel = V_SQ_ALU_SRC_LITERAL;
 	alu.src[2].chan = 0;
 
-	if (ctx->bc->chip_class == R600) {
+	if (ctx->bc->gfx_level == R600) {
 		alu.src[1].value = u_bitcast_f2u(2.0f * M_PI);
 		alu.src[2].value = u_bitcast_f2u(-M_PI);
 	} else {
@@ -5544,7 +5544,7 @@ static int tgsi_lit(struct r600_shader_ctx *ctx)
 		int sel;
 		unsigned i;
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				/* tmp.z = log(tmp.x) */
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
@@ -5597,7 +5597,7 @@ static int tgsi_lit(struct r600_shader_ctx *ctx)
 		if (r)
 			return r;
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				/* dst.z = exp(tmp.x) */
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
@@ -5828,7 +5828,7 @@ static int emit_mul_int_op(struct r600_bytecode *bc,
 	struct r600_bytecode_alu alu;
 	int i, r;
 	alu = *alu_src;
-	if (bc->chip_class == CAYMAN) {
+	if (bc->gfx_level == CAYMAN) {
 		for (i = 0; i < 4; i++) {
 			alu.dst.chan = i;
 			alu.dst.write = (i == alu_src->dst.chan);
@@ -6008,7 +6008,7 @@ static int tgsi_divmod(struct r600_shader_ctx *ctx, int mod, int signed_op)
 		}
 
 		/* 1. tmp0.x = rcp_u (src2)     = 2^32/src2 + e, where e is rounding error */
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			/* tmp3.x = u2f(src2) */
 			memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 			alu.op = ALU_OP1_UINT_TO_FLT;
@@ -7457,7 +7457,7 @@ static int do_vtx_fetch_inst(struct r600_shader_ctx *ctx, boolean src_requires_l
 	if ((r = r600_bytecode_add_vtx(ctx->bc, &vtx)))
 		return r;
 
-	if (ctx->bc->chip_class >= EVERGREEN)
+	if (ctx->bc->gfx_level >= EVERGREEN)
 		return 0;
 
 	for (i = 0; i < 4; i++) {
@@ -7517,7 +7517,7 @@ static int r600_do_buffer_txq(struct r600_shader_ctx *ctx, int reg_idx, int offs
 	int id = tgsi_tex_get_src_gpr(ctx, reg_idx) + offset;
 	int sampler_index_mode = inst->Src[reg_idx].Indirect.Index == 2 ? 2 : 0; // CF_INDEX_1 : CF_INDEX_NONE
 
-	if (ctx->bc->chip_class < EVERGREEN) {
+	if (ctx->bc->gfx_level < EVERGREEN) {
 		struct r600_bytecode_alu alu;
 		memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 		alu.op = ALU_OP1_MOV;
@@ -7610,12 +7610,12 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 
 	if (inst->Texture.Texture == TGSI_TEXTURE_BUFFER) {
 		if (inst->Instruction.Opcode == TGSI_OPCODE_TXQ) {
-			if (ctx->bc->chip_class < EVERGREEN)
+			if (ctx->bc->gfx_level < EVERGREEN)
 				ctx->shader->uses_tex_buffers = true;
 			return r600_do_buffer_txq(ctx, 1, 0, R600_MAX_CONST_BUFFERS);
 		}
 		else if (inst->Instruction.Opcode == TGSI_OPCODE_TXF) {
-			if (ctx->bc->chip_class < EVERGREEN)
+			if (ctx->bc->gfx_level < EVERGREEN)
 				ctx->shader->uses_tex_buffers = true;
 			return do_vtx_fetch_inst(ctx, src_requires_loading);
 		}
@@ -7624,7 +7624,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 	if (inst->Instruction.Opcode == TGSI_OPCODE_TXP) {
 		int out_chan;
 		/* Add perspective divide */
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			out_chan = 2;
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
@@ -7712,7 +7712,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 		}
 
 		/* tmp1.z = RCP_e(|tmp1.z|) */
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 				alu.op = ALU_OP1_RECIP_IEEE;
@@ -7812,7 +7812,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 
 		if (inst->Texture.Texture == TGSI_TEXTURE_CUBE_ARRAY ||
 		    inst->Texture.Texture == TGSI_TEXTURE_SHADOWCUBE_ARRAY) {
-			if (ctx->bc->chip_class >= EVERGREEN) {
+			if (ctx->bc->gfx_level >= EVERGREEN) {
 				int mytmp = r600_get_temp(ctx);
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 				alu.op = ALU_OP1_MOV;
@@ -7875,7 +7875,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 				r = r600_bytecode_add_alu(ctx->bc, &alu);
 				if (r)
 					return r;
-			} else if (ctx->bc->chip_class < EVERGREEN) {
+			} else if (ctx->bc->gfx_level < EVERGREEN) {
 				memset(&tex, 0, sizeof(struct r600_bytecode_tex));
 				tex.op = FETCH_OP_SET_CUBEMAP_INDEX;
 				tex.sampler_id = tgsi_tex_get_src_gpr(ctx, sampler_src_reg);
@@ -8069,7 +8069,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 					return r;
 
 				/* coord.xy = -0.5 * (1.0/int_to_flt(size)) + coord.xy */
-				if (ctx->bc->chip_class == CAYMAN) {
+				if (ctx->bc->gfx_level == CAYMAN) {
 					/* */
 					for (i = 0; i < 2; i++) {
 						memset(&alu, 0, sizeof(struct r600_bytecode_alu));
@@ -8372,7 +8372,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 		alu.op = ALU_OP1_MOV;
 
 		alu.src[0].sel = R600_SHADER_BUFFER_INFO_SEL;
-		if (ctx->bc->chip_class >= EVERGREEN) {
+		if (ctx->bc->gfx_level >= EVERGREEN) {
 			/* with eg each dword is number of cubes */
 			alu.src[0].sel += id / 4;
 			alu.src[0].chan = id % 4;
@@ -8487,7 +8487,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 			tex.inst_mod = texture_component_select;
 		}
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			tex.dst_sel_x = (inst->Dst[0].Register.WriteMask & 1) ? 0 : 7;
 			tex.dst_sel_y = (inst->Dst[0].Register.WriteMask & 2) ? 1 : 7;
 			tex.dst_sel_z = (inst->Dst[0].Register.WriteMask & 4) ? 2 : 7;
@@ -8598,7 +8598,7 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 		array_index_offset_channel = tex.src_sel_z;
 	} else if  ((inst->Texture.Texture == TGSI_TEXTURE_CUBE_ARRAY ||
 		    inst->Texture.Texture == TGSI_TEXTURE_SHADOWCUBE_ARRAY) &&
-		    (ctx->bc->chip_class >= EVERGREEN))
+		    (ctx->bc->gfx_level >= EVERGREEN))
 		/* the array index is read from Z, coordinate will be corrected elsewhere  */
 		tex.coord_type_z = 0;
 
@@ -8683,7 +8683,7 @@ static int tgsi_set_gds_temp(struct r600_shader_ctx *ctx,
 	struct tgsi_full_instruction *inst = &ctx->parse.FullToken.FullInstruction;
 	int uav_id, uav_index_mode = 0;
 	int r;
-	bool is_cm = (ctx->bc->chip_class == CAYMAN);
+	bool is_cm = (ctx->bc->gfx_level == CAYMAN);
 
 	uav_id = find_hw_atomic_counter(ctx, &inst->Src[0]);
 
@@ -8732,7 +8732,7 @@ static int tgsi_load_gds(struct r600_shader_ctx *ctx)
 	struct r600_bytecode_gds gds;
 	int uav_id = 0;
 	int uav_index_mode = 0;
-	bool is_cm = (ctx->bc->chip_class == CAYMAN);
+	bool is_cm = (ctx->bc->gfx_level == CAYMAN);
 
 	r = tgsi_set_gds_temp(ctx, &uav_id, &uav_index_mode);
 	if (r)
@@ -9294,7 +9294,7 @@ static int tgsi_atomic_op_rat(struct r600_shader_ctx *ctx)
 		memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 		alu.op = ALU_OP1_MOV;
 		alu.dst.sel = ctx->thread_id_gpr;
-		if (ctx->bc->chip_class == CAYMAN)
+		if (ctx->bc->gfx_level == CAYMAN)
 			alu.dst.chan = 2;
 		else
 			alu.dst.chan = 3;
@@ -9415,7 +9415,7 @@ static int tgsi_atomic_op_gds(struct r600_shader_ctx *ctx)
 	int r;
 	int uav_id = 0;
 	int uav_index_mode = 0;
-	bool is_cm = (ctx->bc->chip_class == CAYMAN);
+	bool is_cm = (ctx->bc->gfx_level == CAYMAN);
 
 	if (gds_op == -1) {
 		fprintf(stderr, "unknown GDS op for opcode %d\n", inst->Instruction.Opcode);
@@ -9598,7 +9598,7 @@ static int tgsi_resq(struct r600_shader_ctx *ctx)
 
 	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER ||
 	    (inst->Src[0].Register.File == TGSI_FILE_IMAGE && inst->Memory.Texture == TGSI_TEXTURE_BUFFER)) {
-		if (ctx->bc->chip_class < EVERGREEN)
+		if (ctx->bc->gfx_level < EVERGREEN)
 			ctx->shader->uses_tex_buffers = true;
 		unsigned eg_buffer_base = 0;
 		eg_buffer_base = R600_IMAGE_REAL_RESOURCE_OFFSET;
@@ -9868,7 +9868,7 @@ static int tgsi_exp(struct r600_shader_ctx *ctx)
 		if (r)
 			return r;
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				alu.op = ALU_OP1_EXP_IEEE;
 				alu.src[0].sel = ctx->temp_reg;
@@ -9922,7 +9922,7 @@ static int tgsi_exp(struct r600_shader_ctx *ctx)
 
 	/* result.z = RoughApprox2ToX(tmp);*/
 	if ((inst->Dst[0].Register.WriteMask >> 2) & 0x1) {
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 				alu.op = ALU_OP1_EXP_IEEE;
@@ -9984,7 +9984,7 @@ static int tgsi_log(struct r600_shader_ctx *ctx)
 
 	/* result.x = floor(log2(|src|)); */
 	if (inst->Dst[0].Register.WriteMask & 1) {
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 
@@ -10036,7 +10036,7 @@ static int tgsi_log(struct r600_shader_ctx *ctx)
 	/* result.y = |src.x| / (2 ^ floor(log2(|src.x|))); */
 	if ((inst->Dst[0].Register.WriteMask >> 1) & 1) {
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 
@@ -10087,7 +10087,7 @@ static int tgsi_log(struct r600_shader_ctx *ctx)
 		if (r)
 			return r;
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 				alu.op = ALU_OP1_EXP_IEEE;
@@ -10121,7 +10121,7 @@ static int tgsi_log(struct r600_shader_ctx *ctx)
 				return r;
 		}
 
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 				alu.op = ALU_OP1_RECIP_IEEE;
@@ -10177,7 +10177,7 @@ static int tgsi_log(struct r600_shader_ctx *ctx)
 
 	/* result.z = log2(|src|);*/
 	if ((inst->Dst[0].Register.WriteMask >> 2) & 1) {
-		if (ctx->bc->chip_class == CAYMAN) {
+		if (ctx->bc->gfx_level == CAYMAN) {
 			for (i = 0; i < 3; i++) {
 				memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 
@@ -10462,7 +10462,7 @@ static inline int callstack_update_max_depth(struct r600_shader_ctx *ctx,
 	elements = (stack->loop + stack->push_wqm ) * entry_size;
 	elements += stack->push;
 
-	switch (ctx->bc->chip_class) {
+	switch (ctx->bc->gfx_level) {
 	case R600:
 	case R700:
 		/* pre-r8xx: if any non-WQM PUSH instruction is invoked, 2 elements on
@@ -10640,10 +10640,10 @@ static int emit_if(struct r600_shader_ctx *ctx, int opcode,
 	bool needs_workaround = false;
 	int elems = callstack_push(ctx, FC_PUSH_VPM);
 
-	if (ctx->bc->chip_class == CAYMAN && ctx->bc->stack.loop > 1)
+	if (ctx->bc->gfx_level == CAYMAN && ctx->bc->stack.loop > 1)
 		needs_workaround = true;
 
-	if (ctx->bc->chip_class == EVERGREEN && ctx_needs_stack_workaround_8xx(ctx)) {
+	if (ctx->bc->gfx_level == EVERGREEN && ctx_needs_stack_workaround_8xx(ctx)) {
 		unsigned dmod1 = (elems - 1) % ctx->bc->stack.entry_size;
 		unsigned dmod2 = (elems) % ctx->bc->stack.entry_size;
 

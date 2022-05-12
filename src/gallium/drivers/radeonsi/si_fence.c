@@ -77,7 +77,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigne
 
    radeon_begin(cs);
 
-   if (ctx->chip_class >= GFX9 || (compute_ib && ctx->chip_class >= GFX7)) {
+   if (ctx->gfx_level >= GFX9 || (compute_ib && ctx->gfx_level >= GFX7)) {
       /* A ZPASS_DONE or PIXEL_STAT_DUMP_EVENT (of the DB occlusion
        * counters) must immediately precede every timestamp event to
        * prevent a GPU hang on GFX9.
@@ -85,7 +85,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigne
        * Occlusion queries don't need to do it here, because they
        * always do ZPASS_DONE before the timestamp.
        */
-      if (ctx->chip_class == GFX9 && !compute_ib && query_type != PIPE_QUERY_OCCLUSION_COUNTER &&
+      if (ctx->gfx_level == GFX9 && !compute_ib && query_type != PIPE_QUERY_OCCLUSION_COUNTER &&
           query_type != PIPE_QUERY_OCCLUSION_PREDICATE &&
           query_type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
          struct si_screen *sscreen = ctx->screen;
@@ -116,17 +116,17 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigne
                                    RADEON_USAGE_WRITE | RADEON_PRIO_QUERY);
       }
 
-      radeon_emit(PKT3(PKT3_RELEASE_MEM, ctx->chip_class >= GFX9 ? 6 : 5, 0));
+      radeon_emit(PKT3(PKT3_RELEASE_MEM, ctx->gfx_level >= GFX9 ? 6 : 5, 0));
       radeon_emit(op);
       radeon_emit(sel);
       radeon_emit(va);        /* address lo */
       radeon_emit(va >> 32);  /* address hi */
       radeon_emit(new_fence); /* immediate data lo */
       radeon_emit(0);         /* immediate data hi */
-      if (ctx->chip_class >= GFX9)
+      if (ctx->gfx_level >= GFX9)
          radeon_emit(0); /* unused */
    } else {
-      if (ctx->chip_class == GFX7 || ctx->chip_class == GFX8) {
+      if (ctx->gfx_level == GFX7 || ctx->gfx_level == GFX8) {
          struct si_resource *scratch = ctx->eop_bug_scratch;
          uint64_t va = scratch->gpu_address;
 
@@ -164,7 +164,7 @@ unsigned si_cp_write_fence_dwords(struct si_screen *screen)
 {
    unsigned dwords = 6;
 
-   if (screen->info.chip_class == GFX7 || screen->info.chip_class == GFX8)
+   if (screen->info.gfx_level == GFX7 || screen->info.gfx_level == GFX8)
       dwords *= 2;
 
    return dwords;

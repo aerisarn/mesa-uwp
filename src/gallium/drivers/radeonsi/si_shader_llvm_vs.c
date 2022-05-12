@@ -602,7 +602,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
 
       if (writes_vrs) {
          LLVMValueRef rates;
-         if (ctx->screen->info.chip_class >= GFX11) {
+         if (ctx->screen->info.gfx_level >= GFX11) {
             /* Bits [2:5] = VRS rate
              *
              * The range is [0, 15].
@@ -637,7 +637,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
          pos_args[1].out[1] = ac_to_float(&ctx->ac, v);
       }
 
-      if (ctx->screen->info.chip_class >= GFX9) {
+      if (ctx->screen->info.gfx_level >= GFX9) {
          /* GFX9 has the layer in out.z[10:0] and the viewport
           * index in out.z[19:16].
           */
@@ -671,7 +671,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
    /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
     * Setting valid_mask=1 prevents it and has no other effect.
     */
-   if (ctx->screen->info.chip_class == GFX10)
+   if (ctx->screen->info.gfx_level == GFX10)
       pos_args[0].valid_mask = 1;
 
    pos_idx = 0;
@@ -692,7 +692,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
           *
           * VLOAD is for atomics with return.
           */
-         if (ctx->screen->info.chip_class >= GFX10 &&
+         if (ctx->screen->info.gfx_level >= GFX10 &&
              !shader->info.nr_param_exports &&
              shader->selector->info.base.writes_memory)
             ac_build_waitcnt(&ctx->ac, AC_WAIT_VLOAD | AC_WAIT_VSTORE);
@@ -721,7 +721,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
                                   &param_exports[offset]);
    }
 
-   if (ctx->screen->info.chip_class >= GFX11) {
+   if (ctx->screen->info.gfx_level >= GFX11) {
       /* Get the attribute ring address and descriptor. */
       LLVMValueRef attr_address;
       if (ctx->stage == MESA_SHADER_VERTEX && shader->selector->info.base.vs.blit_sgprs_amd) {
@@ -910,7 +910,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    }
 
    unsigned vertex_id_vgpr = first_vs_vgpr;
-   unsigned instance_id_vgpr = ctx->screen->info.chip_class >= GFX10
+   unsigned instance_id_vgpr = ctx->screen->info.gfx_level >= GFX10
                                   ? first_vs_vgpr + 3
                                   : first_vs_vgpr + (key->vs_prolog.as_ls ? 2 : 1);
 

@@ -147,7 +147,7 @@ bool AssemblyFromShaderLegacy::do_lower(const std::vector<InstructionBlock>& ir)
    else if (impl->m_bc->cf_last->op == CF_OP_CALL_FS)
       impl->m_bc->cf_last->op = CF_OP_NOP;
 
-   if (impl->m_shader->bc.chip_class != CAYMAN)
+   if (impl->m_shader->bc.gfx_level != CAYMAN)
       impl->m_bc->cf_last->end_of_program = 1;
    else
       cm_bytecode_add_cf_end(impl->m_bc);
@@ -480,7 +480,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const IfInstruction & if_instr)
    int elems = m_callstack.push(FC_PUSH_VPM);
    bool needs_workaround = false;
 
-   if (m_bc->chip_class == CAYMAN && m_bc->stack.loop > 1)
+   if (m_bc->gfx_level == CAYMAN && m_bc->stack.loop > 1)
       needs_workaround = true;
 
    if (m_bc->family != CHIP_HEMLOCK &&
@@ -717,7 +717,7 @@ bool AssemblyFromShaderLegacyImpl::visit(const FetchInstruction& fetch_instr)
       }
    }
 
-   bool use_tc = fetch_instr.use_tc() || (m_bc->chip_class == CAYMAN);
+   bool use_tc = fetch_instr.use_tc() || (m_bc->gfx_level == CAYMAN);
    if (!use_tc &&
        vtx_fetch_results.find(fetch_instr.src().sel()) !=
        vtx_fetch_results.end()) {
@@ -1085,7 +1085,7 @@ AssemblyFromShaderLegacyImpl::emit_index_reg(const Value& addr, unsigned idx)
       if ((m_bc->cf_last->ndw>>1) >= 110)
          m_bc->force_add_cf = 1;
 
-      if (m_bc->chip_class != CAYMAN) {
+      if (m_bc->gfx_level != CAYMAN) {
 
          EAluOp idxop = idx ? op1_set_cf_idx1 : op1_set_cf_idx0;
          memset(&alu, 0, sizeof(alu));

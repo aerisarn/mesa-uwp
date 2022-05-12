@@ -169,7 +169,7 @@ is_pre_gs_stage(gl_shader_stage stage)
 static void
 create_function(struct radv_shader_context *ctx, gl_shader_stage stage, bool has_previous_stage)
 {
-   if (ctx->ac.chip_class >= GFX10) {
+   if (ctx->ac.gfx_level >= GFX10) {
       if (is_pre_gs_stage(stage) && ctx->shader_info->is_ngg) {
          /* On GFX10, VS is merged into GS for NGG. */
          stage = MESA_SHADER_GEOMETRY;
@@ -466,11 +466,11 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
     * dynamic) is unaligned and also if the VBO offset is aligned to a scalar (eg. stride is 8 and
     * VBO offset is 2 for R16G16B16A16_SNORM).
     */
-   if (ctx->ac.chip_class == GFX6 || ctx->ac.chip_class >= GFX10) {
+   if (ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10) {
       unsigned chan_format = vtx_info->chan_format;
       LLVMValueRef values[4];
 
-      assert(ctx->ac.chip_class == GFX6 || ctx->ac.chip_class >= GFX10);
+      assert(ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10);
 
       for (unsigned chan = 0; chan < num_channels; chan++) {
          unsigned chan_offset = attrib_offset + chan * vtx_info->chan_byte_size;
@@ -645,7 +645,7 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
          break;
 
       case V_028714_SPI_SHADER_32_AR:
-         if (ctx->ac.chip_class >= GFX10) {
+         if (ctx->ac.gfx_level >= GFX10) {
             args->enabled_channels = 0x3;
             args->out[0] = values[0];
             args->out[1] = values[3];
@@ -986,7 +986,7 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
       if (outinfo->writes_layer == true)
          pos_args[1].out[2] = layer_value;
       if (outinfo->writes_viewport_index == true) {
-         if (ctx->options->chip_class >= GFX9) {
+         if (ctx->options->gfx_level >= GFX9) {
             /* GFX9 has the layer in out.z[10:0] and the viewport
              * index in out.z[19:16].
              */
@@ -1011,7 +1011,7 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
    /* GFX10 skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
     * Setting valid_mask=1 prevents it and has no other effect.
     */
-   if (ctx->ac.chip_class == GFX10)
+   if (ctx->ac.gfx_level == GFX10)
       pos_args[0].valid_mask = 1;
 
    pos_idx = 0;
@@ -1822,7 +1822,7 @@ emit_gs_epilogue(struct radv_shader_context *ctx)
       return;
    }
 
-   if (ctx->ac.chip_class >= GFX10)
+   if (ctx->ac.gfx_level >= GFX10)
       ac_build_waitcnt(&ctx->ac, AC_WAIT_VSTORE);
 
    ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE, ctx->gs_wave_id);
@@ -1881,7 +1881,7 @@ ac_llvm_finalize_module(struct radv_shader_context *ctx, LLVMPassManagerRef pass
 static void
 ac_setup_rings(struct radv_shader_context *ctx)
 {
-   if (ctx->options->chip_class <= GFX8 &&
+   if (ctx->options->gfx_level <= GFX8 &&
        (ctx->stage == MESA_SHADER_GEOMETRY ||
         (ctx->stage == MESA_SHADER_VERTEX && ctx->shader_info->vs.as_es) ||
         (ctx->stage == MESA_SHADER_TESS_EVAL && ctx->shader_info->tes.as_es))) {
@@ -2041,13 +2041,13 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
       float_mode = AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO;
    }
 
-   ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class, options->family,
-                        options->info, float_mode, info->wave_size, info->ballot_bit_size);
+   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family, options->info,
+                        float_mode, info->wave_size, info->ballot_bit_size);
    ctx.context = ctx.ac.context;
 
    ctx.max_workgroup_size = info->workgroup_size;
 
-   if (ctx.ac.chip_class >= GFX10) {
+   if (ctx.ac.gfx_level >= GFX10) {
       if (is_pre_gs_stage(shaders[0]->info.stage) && info->is_ngg) {
          ctx.max_workgroup_size = 128;
       }
@@ -2091,7 +2091,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
          declare_esgs_ring(&ctx);
 
       /* GFX10 hang workaround - there needs to be an s_barrier before gs_alloc_req always */
-      if (ctx.ac.chip_class == GFX10 && shader_count == 1)
+      if (ctx.ac.gfx_level == GFX10 && shader_count == 1)
          ac_build_s_barrier(&ctx.ac, shaders[0]->info.stage);
    }
 
@@ -2426,8 +2426,8 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 
    assert(args->is_gs_copy_shader);
 
-   ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class, options->family,
-                        options->info, AC_FLOAT_MODE_DEFAULT, 64, 64);
+   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family, options->info,
+                        AC_FLOAT_MODE_DEFAULT, 64, 64);
    ctx.context = ctx.ac.context;
 
    ctx.stage = MESA_SHADER_VERTEX;

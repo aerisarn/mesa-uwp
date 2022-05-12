@@ -160,7 +160,7 @@ static void si_late_optimize_16bit_samplers(struct si_screen *sscreen, nir_shade
     * based on those two.
     */
    /* TODO: The constraints can't represent the ddx constraint. */
-   /*bool has_g16 = sscreen->info.chip_class >= GFX10 && LLVM_VERSION_MAJOR >= 12;*/
+   /*bool has_g16 = sscreen->info.gfx_level >= GFX10 && LLVM_VERSION_MAJOR >= 12;*/
    bool has_g16 = false;
    nir_tex_src_type_constraints tex_constraints = {
       [nir_tex_src_comparator]   = {true, 32},

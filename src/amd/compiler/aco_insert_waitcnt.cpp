@@ -170,7 +170,7 @@ struct wait_entry {
 
 struct wait_ctx {
    Program* program;
-   enum chip_class chip_class;
+   enum amd_gfx_level gfx_level;
    uint16_t max_vm_cnt;
    uint16_t max_exp_cnt;
    uint16_t max_lgkm_cnt;
@@ -192,11 +192,11 @@ struct wait_ctx {
 
    wait_ctx() {}
    wait_ctx(Program* program_)
-       : program(program_), chip_class(program_->chip_class),
-         max_vm_cnt(program_->chip_class >= GFX9 ? 62 : 14), max_exp_cnt(6),
-         max_lgkm_cnt(program_->chip_class >= GFX10 ? 62 : 14),
-         max_vs_cnt(program_->chip_class >= GFX10 ? 62 : 0),
-         unordered_events(event_smem | (program_->chip_class < GFX10 ? event_flat : 0))
+       : program(program_), gfx_level(program_->gfx_level),
+         max_vm_cnt(program_->gfx_level >= GFX9 ? 62 : 14), max_exp_cnt(6),
+         max_lgkm_cnt(program_->gfx_level >= GFX10 ? 62 : 14),
+         max_vs_cnt(program_->gfx_level >= GFX10 ? 62 : 0),
+         unordered_events(event_smem | (program_->gfx_level < GFX10 ? event_flat : 0))
    {}
 
    bool join(const wait_ctx* other, bool logical)
@@ -295,7 +295,7 @@ parse_wait_instr(wait_ctx& ctx, wait_imm& imm, Instruction* instr)
       imm.vs = std::min<uint8_t>(imm.vs, instr->sopk().imm);
       return true;
    } else if (instr->opcode == aco_opcode::s_waitcnt) {
-      imm.combine(wait_imm(ctx.chip_class, instr->sopp().imm));
+      imm.combine(wait_imm(ctx.gfx_level, instr->sopp().imm));
       return true;
    }
    return false;
@@ -339,7 +339,7 @@ force_waitcnt(wait_ctx& ctx, wait_imm& imm)
    if (ctx.lgkm_cnt)
       imm.lgkm = 0;
 
-   if (ctx.chip_class >= GFX10) {
+   if (ctx.gfx_level >= GFX10) {
       if (ctx.vs_cnt)
          imm.vs = 0;
    }
@@ -362,11 +362,11 @@ kill(wait_imm& imm, Instruction* instr, wait_ctx& ctx, memory_sync_info sync_inf
     * It shouldn't cost anything anyways since we're about to do s_endpgm.
     */
    if (ctx.lgkm_cnt && instr->opcode == aco_opcode::s_dcache_wb) {
-      assert(ctx.chip_class >= GFX8);
+      assert(ctx.gfx_level >= GFX8);
       imm.lgkm = 0;
    }
 
-   if (ctx.chip_class >= GFX10 && instr->isSMEM()) {
+   if (ctx.gfx_level >= GFX10 && instr->isSMEM()) {
       /* GFX10: A store followed by a load at the same address causes a problem because
        * the load doesn't load the correct values unless we wait for the store first.
        * This is NOT mitigated by an s_nop.
@@ -547,7 +547,7 @@ update_counters(wait_ctx& ctx, wait_event event, memory_sync_info sync = memory_
 void
 update_counters_for_flat_load(wait_ctx& ctx, memory_sync_info sync = memory_sync_info())
 {
-   assert(ctx.chip_class < GFX10);
+   assert(ctx.gfx_level < GFX10);
 
    if (ctx.lgkm_cnt <= ctx.max_lgkm_cnt)
       ctx.lgkm_cnt++;
@@ -634,7 +634,7 @@ gen(Instruction* instr, wait_ctx& ctx)
    }
    case Format::FLAT: {
       FLAT_instruction& flat = instr->flat();
-      if (ctx.chip_class < GFX10 && !instr->definitions.empty())
+      if (ctx.gfx_level < GFX10 && !instr->definitions.empty())
          update_counters_for_flat_load(ctx, flat.sync);
       else
          update_counters(ctx, event_flat, flat.sync);
@@ -649,7 +649,7 @@ gen(Instruction* instr, wait_ctx& ctx)
 
       if (!instr->definitions.empty())
          insert_wait_entry(ctx, instr->definitions[0], event_smem);
-      else if (ctx.chip_class >= GFX10 && !smem.sync.can_reorder())
+      else if (ctx.gfx_level >= GFX10 && !smem.sync.can_reorder())
          ctx.pending_s_buffer_store = true;
 
       break;
@@ -675,7 +675,7 @@ gen(Instruction* instr, wait_ctx& ctx)
    case Format::MIMG:
    case Format::GLOBAL: {
       wait_event ev =
-         !instr->definitions.empty() || ctx.chip_class < GFX10 ? event_vmem : event_vmem_store;
+         !instr->definitions.empty() || ctx.gfx_level < GFX10 ? event_vmem : event_vmem_store;
       update_counters(ctx, ev, get_sync_info(instr));
 
       bool has_sampler = instr->isMIMG() && !instr->operands[1].isUndefined() &&
@@ -684,11 +684,11 @@ gen(Instruction* instr, wait_ctx& ctx)
       if (!instr->definitions.empty())
          insert_wait_entry(ctx, instr->definitions[0], ev, has_sampler);
 
-      if (ctx.chip_class == GFX6 && instr->format != Format::MIMG && instr->operands.size() == 4) {
+      if (ctx.gfx_level == GFX6 && instr->format != Format::MIMG && instr->operands.size() == 4) {
          ctx.exp_cnt++;
          update_counters(ctx, event_vmem_gpr_lock);
          insert_wait_entry(ctx, instr->operands[3], event_vmem_gpr_lock);
-      } else if (ctx.chip_class == GFX6 && instr->isMIMG() && !instr->operands[2].isUndefined()) {
+      } else if (ctx.gfx_level == GFX6 && instr->isMIMG() && !instr->operands[2].isUndefined()) {
          ctx.exp_cnt++;
          update_counters(ctx, event_vmem_gpr_lock);
          insert_wait_entry(ctx, instr->operands[2], event_vmem_gpr_lock);
@@ -709,7 +709,7 @@ void
 emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wait_imm& imm)
 {
    if (imm.vs != wait_imm::unset_counter) {
-      assert(ctx.chip_class >= GFX10);
+      assert(ctx.gfx_level >= GFX10);
       SOPK_instruction* waitcnt_vs =
          create_instruction<SOPK_instruction>(aco_opcode::s_waitcnt_vscnt, Format::SOPK, 0, 1);
       waitcnt_vs->definitions[0] = Definition(sgpr_null, s1);
@@ -720,7 +720,7 @@ emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wai
    if (!imm.empty()) {
       SOPP_instruction* waitcnt =
          create_instruction<SOPP_instruction>(aco_opcode::s_waitcnt, Format::SOPP, 0, 0);
-      waitcnt->imm = imm.pack(ctx.chip_class);
+      waitcnt->imm = imm.pack(ctx.gfx_level);
       waitcnt->block = -1;
       instructions.emplace_back(waitcnt);
    }

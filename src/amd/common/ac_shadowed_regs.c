@@ -1240,7 +1240,7 @@ static const struct ac_reg_range Gfx11NonShadowedRanges[] =
    },
 };
 
-void ac_get_reg_ranges(enum chip_class chip_class, enum radeon_family family,
+void ac_get_reg_ranges(enum amd_gfx_level gfx_level, enum radeon_family family,
                        enum ac_reg_range_type type, unsigned *num_ranges,
                        const struct ac_reg_range **ranges)
 {
@@ -1255,51 +1255,51 @@ void ac_get_reg_ranges(enum chip_class chip_class, enum radeon_family family,
 
    switch (type) {
    case SI_REG_RANGE_UCONFIG:
-      if (chip_class == GFX11)
+      if (gfx_level == GFX11)
          RETURN(Gfx11UserConfigShadowRange);
-      else if (chip_class == GFX10_3)
+      else if (gfx_level == GFX10_3)
          RETURN(Gfx103UserConfigShadowRange);
-      else if (chip_class == GFX10)
+      else if (gfx_level == GFX10)
          RETURN(Nv10UserConfigShadowRange);
-      else if (chip_class == GFX9)
+      else if (gfx_level == GFX9)
          RETURN(Gfx9UserConfigShadowRange);
       break;
    case SI_REG_RANGE_CONTEXT:
-      if (chip_class == GFX11)
+      if (gfx_level == GFX11)
          RETURN(Gfx11ContextShadowRange);
-      else if (chip_class == GFX10_3)
+      else if (gfx_level == GFX10_3)
          RETURN(Gfx103ContextShadowRange);
-      else if (chip_class == GFX10)
+      else if (gfx_level == GFX10)
          RETURN(Nv10ContextShadowRange);
-      else if (chip_class == GFX9)
+      else if (gfx_level == GFX9)
          RETURN(Gfx9ContextShadowRange);
       break;
    case SI_REG_RANGE_SH:
-      if (chip_class == GFX11)
+      if (gfx_level == GFX11)
          RETURN(Gfx11ShShadowRange);
-      else if (chip_class == GFX10_3 || chip_class == GFX10)
+      else if (gfx_level == GFX10_3 || gfx_level == GFX10)
          RETURN(Gfx10ShShadowRange);
       else if (family == CHIP_RAVEN2 || family == CHIP_RENOIR)
          RETURN(Gfx9ShShadowRangeRaven2);
-      else if (chip_class == GFX9)
+      else if (gfx_level == GFX9)
          RETURN(Gfx9ShShadowRange);
       break;
    case SI_REG_RANGE_CS_SH:
-      if (chip_class == GFX11)
+      if (gfx_level == GFX11)
          RETURN(Gfx11CsShShadowRange);
-      else if (chip_class == GFX10_3 || chip_class == GFX10)
+      else if (gfx_level == GFX10_3 || gfx_level == GFX10)
          RETURN(Gfx10CsShShadowRange);
       else if (family == CHIP_RAVEN2 || family == CHIP_RENOIR)
          RETURN(Gfx9CsShShadowRangeRaven2);
-      else if (chip_class == GFX9)
+      else if (gfx_level == GFX9)
          RETURN(Gfx9CsShShadowRange);
       break;
    case SI_REG_RANGE_NON_SHADOWED:
-      if (chip_class == GFX11)
+      if (gfx_level == GFX11)
          RETURN(Gfx11NonShadowedRanges);
-      else if (chip_class == GFX10_3)
+      else if (gfx_level == GFX10_3)
          RETURN(Gfx103NonShadowedRanges);
-      else if (chip_class == GFX10)
+      else if (gfx_level == GFX10)
          RETURN(Navi10NonShadowedRanges);
       else
          assert(0);
@@ -4031,13 +4031,13 @@ void ac_emulate_clear_state(const struct radeon_info *info, struct radeon_cmdbuf
    unsigned reg_offset = R_02835C_PA_SC_TILE_STEERING_OVERRIDE;
    uint32_t reg_value = info->pa_sc_tile_steering_override;
 
-   if (info->chip_class >= GFX11) {
+   if (info->gfx_level >= GFX11) {
       gfx11_emulate_clear_state(cs, 1, &reg_offset, &reg_value, set_context_reg_seq_array);
-   } else if (info->chip_class == GFX10_3) {
+   } else if (info->gfx_level == GFX10_3) {
       gfx103_emulate_clear_state(cs, 1, &reg_offset, &reg_value, set_context_reg_seq_array);
-   } else if (info->chip_class == GFX10) {
+   } else if (info->gfx_level == GFX10) {
       gfx10_emulate_clear_state(cs, 1, &reg_offset, &reg_value, set_context_reg_seq_array);
-   } else if (info->chip_class == GFX9) {
+   } else if (info->gfx_level == GFX9) {
       gfx9_emulate_clear_state(cs, set_context_reg_seq_array);
    } else {
       unreachable("unimplemented");
@@ -4047,7 +4047,7 @@ void ac_emulate_clear_state(const struct radeon_info *info, struct radeon_cmdbuf
 /* Debug helper to find if any registers are missing in the tables above.
  * Call this in the driver whenever you set a register.
  */
-void ac_check_shadowed_regs(enum chip_class chip_class, enum radeon_family family,
+void ac_check_shadowed_regs(enum amd_gfx_level gfx_level, enum radeon_family family,
                             unsigned reg_offset, unsigned count)
 {
    bool found = false;
@@ -4057,7 +4057,7 @@ void ac_check_shadowed_regs(enum chip_class chip_class, enum radeon_family famil
       const struct ac_reg_range *ranges;
       unsigned num_ranges;
 
-      ac_get_reg_ranges(chip_class, family, type, &num_ranges, &ranges);
+      ac_get_reg_ranges(gfx_level, family, type, &num_ranges, &ranges);
 
       for (unsigned i = 0; i < num_ranges; i++) {
          unsigned end_reg_offset = reg_offset + count * 4;
@@ -4080,10 +4080,10 @@ void ac_check_shadowed_regs(enum chip_class chip_class, enum radeon_family famil
    if (!found || !shadowed) {
       printf("register %s: ", !found ? "not found" : "not shadowed");
       if (count > 1) {
-         printf("%s .. %s\n", ac_get_register_name(chip_class, reg_offset),
-                ac_get_register_name(chip_class, reg_offset + (count - 1) * 4));
+         printf("%s .. %s\n", ac_get_register_name(gfx_level, reg_offset),
+                ac_get_register_name(gfx_level, reg_offset + (count - 1) * 4));
       } else {
-         printf("%s\n", ac_get_register_name(chip_class, reg_offset));
+         printf("%s\n", ac_get_register_name(gfx_level, reg_offset));
       }
    }
 }
@@ -4102,13 +4102,13 @@ void ac_print_shadowed_regs(const struct radeon_info *info)
       const struct ac_reg_range *ranges;
       unsigned num_ranges;
 
-      ac_get_reg_ranges(info->chip_class, info->family, type, &num_ranges, &ranges);
+      ac_get_reg_ranges(info->gfx_level, info->family, type, &num_ranges, &ranges);
 
       for (unsigned i = 0; i < num_ranges; i++) {
          for (unsigned j = 0; j < ranges[i].size / 4; j++) {
             unsigned offset = ranges[i].offset + j * 4;
 
-            const char *name = ac_get_register_name(info->chip_class, offset);
+            const char *name = ac_get_register_name(info->gfx_level, offset);
             unsigned value = -1;
 
 #ifndef _WIN32

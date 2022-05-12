@@ -60,25 +60,25 @@ static void handle_env_var_force_family(struct amdgpu_winsys *ws)
 
       for (i = CHIP_TAHITI; i < CHIP_LAST; i++) {
          if (!strcmp(family, ac_get_llvm_processor_name(i))) {
-            /* Override family and chip_class. */
+            /* Override family and gfx_level. */
             ws->info.family = i;
             ws->info.name = "NOOP";
             strcpy(ws->info.lowercase_name , "noop");
 
             if (i >= CHIP_GFX1100)
-               ws->info.chip_class = GFX11;
+               ws->info.gfx_level = GFX11;
             else if (i >= CHIP_SIENNA_CICHLID)
-               ws->info.chip_class = GFX10_3;
+               ws->info.gfx_level = GFX10_3;
             else if (i >= CHIP_NAVI10)
-               ws->info.chip_class = GFX10;
+               ws->info.gfx_level = GFX10;
             else if (i >= CHIP_VEGA10)
-               ws->info.chip_class = GFX9;
+               ws->info.gfx_level = GFX9;
             else if (i >= CHIP_TONGA)
-               ws->info.chip_class = GFX8;
+               ws->info.gfx_level = GFX8;
             else if (i >= CHIP_BONAIRE)
-               ws->info.chip_class = GFX7;
+               ws->info.gfx_level = GFX7;
             else
-               ws->info.chip_class = GFX6;
+               ws->info.gfx_level = GFX6;
 
             /* Don't submit any IBs. */
             setenv("RADEON_NOOP", "1", 1);

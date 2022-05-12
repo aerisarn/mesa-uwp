@@ -158,7 +158,7 @@ radv_translate_vertex_format(const struct radv_physical_device *pdevice, VkForma
    *dfmt = radv_translate_buffer_dataformat(desc, 0);
 
    *alpha_adjust = ALPHA_ADJUST_NONE;
-   if (pdevice->rad_info.chip_class <= GFX8 && pdevice->rad_info.family != CHIP_STONEY) {
+   if (pdevice->rad_info.gfx_level <= GFX8 && pdevice->rad_info.family != CHIP_STONEY) {
       switch (format) {
       case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
       case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
@@ -599,7 +599,7 @@ radv_is_storage_image_format_supported(struct radv_physical_device *physical_dev
       /* TODO: FMASK formats. */
       return true;
    case V_008F14_IMG_DATA_FORMAT_5_9_9_9:
-      return physical_device->rad_info.chip_class >= GFX10_3;
+      return physical_device->rad_info.gfx_level >= GFX10_3;
    default:
       return false;
    }
@@ -640,7 +640,7 @@ radv_is_colorbuffer_format_supported(const struct radv_physical_device *pdevice,
    } else
       *blendable = true;
 
-   if (format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 && pdevice->rad_info.chip_class < GFX10_3)
+   if (format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 && pdevice->rad_info.gfx_level < GFX10_3)
       return false;
 
    return color_format != V_028C70_COLOR_INVALID && color_swap != ~0U && color_num_format != ~0;
@@ -1471,7 +1471,7 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
    uint32_t maxArraySize;
    VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
    const struct util_format_description *desc = vk_format_description(format);
-   enum chip_class chip_class = physical_device->rad_info.chip_class;
+   enum amd_gfx_level gfx_level = physical_device->rad_info.gfx_level;
    VkImageTiling tiling = info->tiling;
    const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *mod_info =
       vk_find_struct_const(info->pNext, PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
@@ -1503,17 +1503,17 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
       maxExtent.height = 1;
       maxExtent.depth = 1;
       maxMipLevels = 15; /* log2(maxWidth) + 1 */
-      maxArraySize = chip_class >= GFX10 ? 8192 : 2048;
+      maxArraySize = gfx_level >= GFX10 ? 8192 : 2048;
       break;
    case VK_IMAGE_TYPE_2D:
       maxExtent.width = 16384;
       maxExtent.height = 16384;
       maxExtent.depth = 1;
       maxMipLevels = 15; /* log2(maxWidth) + 1 */
-      maxArraySize = chip_class >= GFX10 ? 8192 : 2048;
+      maxArraySize = gfx_level >= GFX10 ? 8192 : 2048;
       break;
    case VK_IMAGE_TYPE_3D:
-      if (chip_class >= GFX10) {
+      if (gfx_level >= GFX10) {
          maxExtent.width = 8192;
          maxExtent.height = 8192;
          maxExtent.depth = 8192;
@@ -1555,7 +1555,7 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
    }
 
    /* We can't create 3d compressed 128bpp images that can be rendered to on GFX9 */
-   if (physical_device->rad_info.chip_class >= GFX9 && info->type == VK_IMAGE_TYPE_3D &&
+   if (physical_device->rad_info.gfx_level >= GFX9 && info->type == VK_IMAGE_TYPE_3D &&
        vk_format_get_blocksizebits(format) == 128 && vk_format_is_compressed(format) &&
        (info->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
        ((info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) ||
@@ -1624,7 +1624,7 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
 
    if (info->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) {
       /* Sparse textures are only supported on GFX8+. */
-      if (physical_device->rad_info.chip_class < GFX8)
+      if (physical_device->rad_info.gfx_level < GFX8)
          goto unsupported;
 
       if (vk_format_get_plane_count(format) > 1 || info->type != VK_IMAGE_TYPE_2D ||
@@ -1851,7 +1851,7 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    }
 
    if (texture_lod_props) {
-      if (physical_device->rad_info.chip_class >= GFX9) {
+      if (physical_device->rad_info.gfx_level >= GFX9) {
          texture_lod_props->supportsTextureGatherLODBiasAMD = true;
       } else {
          texture_lod_props->supportsTextureGatherLODBiasAMD = !vk_format_is_int(format);
@@ -1885,7 +1885,7 @@ fill_sparse_image_format_properties(struct radv_physical_device *pdev, VkFormat 
    /* On GFX8 we first subdivide by level and then layer, leading to a single
     * miptail. On GFX9+ we first subdivide by layer and then level which results
     * in a miptail per layer. */
-   if (pdev->rad_info.chip_class < GFX9)
+   if (pdev->rad_info.gfx_level < GFX9)
       prop->flags |= VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT;
 
    /* This assumes the sparse image tile size is always 64 KiB (1 << 16) */
@@ -1956,7 +1956,7 @@ radv_GetImageSparseMemoryRequirements2(VkDevice _device,
       req->memoryRequirements.imageMipTailFirstLod = image->planes[0].surface.first_mip_tail_level;
 
       if (req->memoryRequirements.imageMipTailFirstLod < image->info.levels) {
-         if (device->physical_device->rad_info.chip_class >= GFX9) {
+         if (device->physical_device->rad_info.gfx_level >= GFX9) {
             /* The tail is always a single tile per layer. */
             req->memoryRequirements.imageMipTailSize = 65536;
             req->memoryRequirements.imageMipTailOffset =

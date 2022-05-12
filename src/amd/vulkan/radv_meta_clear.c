@@ -1268,7 +1268,7 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
    uint64_t offset = image->offset + image->planes[0].surface.cmask_offset;
    uint64_t size;
 
-   if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9) {
       /* TODO: clear layers. */
       size = image->planes[0].surface.cmask_size;
    } else {
@@ -1314,12 +1314,12 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
       uint32_t level = range->baseMipLevel + l;
       uint64_t size;
 
-      if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
          /* DCC for mipmaps+layers is currently disabled. */
          offset += image->planes[0].surface.meta_slice_size * range->baseArrayLayer +
                    image->planes[0].surface.u.gfx9.meta_levels[level].offset;
          size = image->planes[0].surface.u.gfx9.meta_levels[level].size * layer_count;
-      } else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
+      } else if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9) {
          /* Mipmap levels and layers aren't implemented. */
          assert(level == 0);
          size = image->planes[0].surface.meta_size;
@@ -1472,7 +1472,7 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
    htile_mask = radv_get_htile_mask(cmd_buffer->device, image, range->aspectMask);
 
    if (level_count != image->info.levels) {
-      assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
+      assert(cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10);
 
       /* Clear individuals levels separately. */
       for (uint32_t l = 0; l < level_count; l++) {
@@ -1667,7 +1667,7 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
                                    &can_avoid_fast_clear_elim);
 
       if (iview->image->info.levels > 1) {
-         if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
             uint32_t last_level = iview->base_mip + iview->level_count - 1;
             if (last_level >= iview->image->planes[0].surface.num_meta_levels) {
                /* Do not fast clears if one level can't be fast cleard. */

@@ -43,7 +43,7 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
    struct si_shader_info *info = shader ? &shader->selector->info : NULL;
    gl_shader_stage stage = shader ? shader->selector->stage : MESA_SHADER_COMPUTE;
 
-   if (sscreen->info.chip_class < GFX10)
+   if (sscreen->info.gfx_level < GFX10)
       return 64;
 
    /* Legacy GS only supports Wave64. */
@@ -118,7 +118,7 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
     * know why this helps.
     */
    if (stage <= MESA_SHADER_GEOMETRY &&
-       !(sscreen->info.chip_class == GFX10 && shader && shader->key.ge.opt.ngg_culling))
+       !(sscreen->info.gfx_level == GFX10 && shader && shader->key.ge.opt.ngg_culling))
       return 32;
 
    /* TODO: Merged shaders must use the same wave size because the driver doesn't recompile
@@ -501,7 +501,7 @@ void si_destroy_shader_cache(struct si_screen *sscreen)
 
 bool si_shader_mem_ordered(struct si_shader *shader)
 {
-   if (shader->selector->screen->info.chip_class < GFX10)
+   if (shader->selector->screen->info.gfx_level < GFX10)
       return false;
 
    /* Return true if both types of VMEM that return something are used. */
@@ -588,7 +588,7 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
 static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen, struct si_shader_selector *sel,
                                          struct si_shader *shader)
 {
-   if (sscreen->info.family < CHIP_POLARIS10 || sscreen->info.chip_class >= GFX10)
+   if (sscreen->info.family < CHIP_POLARIS10 || sscreen->info.gfx_level >= GFX10)
       return;
 
    /* VS as VS, or VS as ES: */
@@ -646,7 +646,7 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
    unsigned max = 0;
 
    if (shader->info.uses_instanceid) {
-      if (sscreen->info.chip_class >= GFX10)
+      if (sscreen->info.gfx_level >= GFX10)
          max = MAX2(max, 3);
       else if (is_ls)
          max = MAX2(max, 2); /* use (InstanceID / StepRate0) because StepRate0 == 1 */
@@ -660,7 +660,7 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
    /* GFX11: We prefer to compute RelAutoIndex using (WaveID * WaveSize + ThreadID).
     * Older chips didn't have WaveID in LS.
     */
-   if (is_ls && sscreen->info.chip_class <= GFX10_3)
+   if (is_ls && sscreen->info.gfx_level <= GFX10_3)
       max = MAX2(max, 1); /* RelAutoIndex */
 
    return max;
@@ -669,7 +669,7 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
 unsigned si_calc_inst_pref_size(struct si_shader *shader)
 {
    /* TODO: Disable for now. */
-   if (shader->selector->screen->info.chip_class == GFX11)
+   if (shader->selector->screen->info.gfx_level == GFX11)
       return 0;
 
    /* inst_pref_size is calculated in cache line size granularity */
@@ -682,7 +682,7 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
    struct si_pm4_state *pm4;
    uint64_t va;
 
-   assert(sscreen->info.chip_class <= GFX8);
+   assert(sscreen->info.gfx_level <= GFX8);
 
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
@@ -711,15 +711,15 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 
    va = shader->bo->gpu_address;
 
-   if (sscreen->info.chip_class >= GFX9) {
-      if (sscreen->info.chip_class >= GFX11) {
+   if (sscreen->info.gfx_level >= GFX9) {
+      if (sscreen->info.gfx_level >= GFX11) {
          ac_set_reg_cu_en(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
                           S_00B404_INST_PREF_SIZE(si_calc_inst_pref_size(shader)) |
                           S_00B404_CU_EN(0xffff),
                           C_00B404_CU_EN, 16, &sscreen->info,
                           (void (*)(void*, unsigned, uint32_t))si_pm4_set_reg_idx3);
       }
-      if (sscreen->info.chip_class >= GFX10) {
+      if (sscreen->info.gfx_level >= GFX10) {
          si_pm4_set_reg(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
       } else {
          si_pm4_set_reg(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
@@ -730,7 +730,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
       shader->config.rsrc2 = S_00B42C_USER_SGPR(num_user_sgprs) |
                              S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 
-      if (sscreen->info.chip_class >= GFX10)
+      if (sscreen->info.gfx_level >= GFX10)
          shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
       else
          shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
@@ -746,16 +746,16 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
    si_pm4_set_reg(
       pm4, R_00B428_SPI_SHADER_PGM_RSRC1_HS,
       S_00B428_VGPRS((shader->config.num_vgprs - 1) / (shader->wave_size == 32 ? 8 : 4)) |
-         (sscreen->info.chip_class <= GFX9 ? S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8)
+         (sscreen->info.gfx_level <= GFX9 ? S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8)
                                            : 0) |
          S_00B428_DX10_CLAMP(1) | S_00B428_MEM_ORDERED(si_shader_mem_ordered(shader)) |
-         S_00B428_WGP_MODE(sscreen->info.chip_class >= GFX10) |
+         S_00B428_WGP_MODE(sscreen->info.gfx_level >= GFX10) |
          S_00B428_FLOAT_MODE(shader->config.float_mode) |
-         S_00B428_LS_VGPR_COMP_CNT(sscreen->info.chip_class >= GFX9
+         S_00B428_LS_VGPR_COMP_CNT(sscreen->info.gfx_level >= GFX9
                                       ? si_get_vs_vgpr_comp_cnt(sscreen, shader, false)
                                       : 0));
 
-   if (sscreen->info.chip_class <= GFX8) {
+   if (sscreen->info.gfx_level <= GFX8) {
       si_pm4_set_reg(pm4, R_00B42C_SPI_SHADER_PGM_RSRC2_HS, shader->config.rsrc2);
    }
 }
@@ -790,7 +790,7 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
    uint64_t va;
    unsigned oc_lds_en;
 
-   assert(sscreen->info.chip_class <= GFX8);
+   assert(sscreen->info.gfx_level <= GFX8);
 
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
@@ -956,7 +956,7 @@ static void si_emit_shader_gs(struct si_context *sctx)
    radeon_opt_set_context_reg(sctx, R_028B90_VGT_GS_INSTANCE_CNT, SI_TRACKED_VGT_GS_INSTANCE_CNT,
                               shader->ctx_reg.gs.vgt_gs_instance_cnt);
 
-   if (sctx->chip_class >= GFX9) {
+   if (sctx->gfx_level >= GFX9) {
       /* R_028A44_VGT_GS_ONCHIP_CNTL */
       radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  shader->ctx_reg.gs.vgt_gs_onchip_cntl);
@@ -981,30 +981,30 @@ static void si_emit_shader_gs(struct si_context *sctx)
 
    /* These don't cause any context rolls. */
    if (sctx->screen->info.spi_cu_en_has_effect) {
-      if (sctx->chip_class >= GFX7) {
+      if (sctx->gfx_level >= GFX7) {
          ac_set_reg_cu_en(&sctx->gfx_cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
                           shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs,
                           C_00B21C_CU_EN, 0, &sctx->screen->info,
                           (void (*)(void*, unsigned, uint32_t))
-                          (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
+                          (sctx->gfx_level >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
          sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS);
       }
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->gfx_level >= GFX10) {
          ac_set_reg_cu_en(&sctx->gfx_cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
                           shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs,
                           C_00B204_CU_EN_GFX10, 16, &sctx->screen->info,
                           (void (*)(void*, unsigned, uint32_t))
-                          (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
+                          (sctx->gfx_level >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
          sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS);
       }
    } else {
       radeon_begin_again(&sctx->gfx_cs);
-      if (sctx->chip_class >= GFX7) {
+      if (sctx->gfx_level >= GFX7) {
          radeon_opt_set_sh_reg_idx3(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
                                     SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
                                     shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs);
       }
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->gfx_level >= GFX10) {
          radeon_opt_set_sh_reg_idx3(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
                                     SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
                                     shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs);
@@ -1023,7 +1023,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    unsigned max_stream = util_last_bit(sel->info.base.gs.active_stream_mask);
    unsigned offset;
 
-   assert(sscreen->info.chip_class < GFX11); /* gfx11 doesn't have the legacy pipeline */
+   assert(sscreen->info.gfx_level < GFX11); /* gfx11 doesn't have the legacy pipeline */
 
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
@@ -1064,7 +1064,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
    va = shader->bo->gpu_address;
 
-   if (sscreen->info.chip_class >= GFX9) {
+   if (sscreen->info.gfx_level >= GFX9) {
       unsigned input_prim = sel->info.base.gs.input_primitive;
       gl_shader_stage es_stage = shader->key.ge.part.gs.es->stage;
       unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
@@ -1094,7 +1094,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       else
          num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
 
-      if (sscreen->info.chip_class >= GFX10) {
+      if (sscreen->info.gfx_level >= GFX10) {
          si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
       } else {
          si_pm4_set_reg(pm4, R_00B210_SPI_SHADER_PGM_LO_ES, va >> 8);
@@ -1102,7 +1102,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
       uint32_t rsrc1 = S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) | S_00B228_DX10_CLAMP(1) |
                        S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
-                       S_00B228_WGP_MODE(sscreen->info.chip_class >= GFX10) |
+                       S_00B228_WGP_MODE(sscreen->info.gfx_level >= GFX10) |
                        S_00B228_FLOAT_MODE(shader->config.float_mode) |
                        S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
       uint32_t rsrc2 = S_00B22C_USER_SGPR(num_user_sgprs) |
@@ -1111,7 +1111,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
                        S_00B22C_LDS_SIZE(shader->config.lds_size) |
                        S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 
-      if (sscreen->info.chip_class >= GFX10) {
+      if (sscreen->info.gfx_level >= GFX10) {
          rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
       } else {
          rsrc1 |= S_00B228_SGPRS((shader->config.num_sgprs - 1) / 8);
@@ -1124,7 +1124,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs = S_00B21C_CU_EN(0xffff) |
                                                    S_00B21C_WAVE_LIMIT(0x3F);
       shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs =
-         (sscreen->info.chip_class >= GFX11 ? S_00B204_CU_EN_GFX11(1) : S_00B204_CU_EN_GFX10(0xffff)) |
+         (sscreen->info.gfx_level >= GFX11 ? S_00B204_CU_EN_GFX11(1) : S_00B204_CU_EN_GFX10(0xffff)) |
          S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
 
       shader->ctx_reg.gs.vgt_gs_onchip_cntl =
@@ -1189,7 +1189,7 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                               shader->ctx_reg.ngg.ge_ngg_subgrp_cntl);
    radeon_opt_set_context_reg(sctx, R_028A84_VGT_PRIMITIVEID_EN, SI_TRACKED_VGT_PRIMITIVEID_EN,
                               shader->ctx_reg.ngg.vgt_primitiveid_en);
-   if (sctx->chip_class < GFX11) {
+   if (sctx->gfx_level < GFX11) {
       radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  shader->ctx_reg.ngg.vgt_gs_onchip_cntl);
    }
@@ -1220,12 +1220,12 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                        shader->ctx_reg.ngg.spi_shader_pgm_rsrc3_gs,
                        C_00B21C_CU_EN, 0, &sctx->screen->info,
                        (void (*)(void*, unsigned, uint32_t))
-                       (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
+                       (sctx->gfx_level >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
       ac_set_reg_cu_en(&sctx->gfx_cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
                        shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs,
                        C_00B204_CU_EN_GFX10, 16, &sctx->screen->info,
                        (void (*)(void*, unsigned, uint32_t))
-                       (sctx->chip_class >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
+                       (sctx->gfx_level >= GFX10 ? radeon_set_sh_reg_idx3_func : radeon_set_sh_reg_func));
       sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS) &
                                       ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS);
    } else {
@@ -1420,7 +1420,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
          S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
          /* Disable the WGP mode on gfx10.3 because it can hang. (it happened on VanGogh)
           * Let's disable it on all chips that disable exactly 1 CU per SA for GS. */
-         S_00B228_WGP_MODE(sscreen->info.chip_class == GFX10) |
+         S_00B228_WGP_MODE(sscreen->info.gfx_level == GFX10) |
          S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
    si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
                   S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0) |
@@ -1432,7 +1432,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 
    shader->ctx_reg.ngg.spi_shader_pgm_rsrc3_gs = S_00B21C_CU_EN(cu_mask) |
                                                  S_00B21C_WAVE_LIMIT(0x3F);
-   if (sscreen->info.chip_class >= GFX11) {
+   if (sscreen->info.gfx_level >= GFX11) {
       shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs =
          S_00B204_CU_EN_GFX11(0x1) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64) |
          S_00B204_INST_PREF_SIZE(si_calc_inst_pref_size(shader));
@@ -1487,7 +1487,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.pa_cl_ngg_cntl =
       S_028838_INDEX_BUF_EDGE_FLAG_ENA(gfx10_edgeflags_have_effect(shader)) |
       /* Reuse for NGG. */
-      S_028838_VERTEX_REUSE_DEPTH(sscreen->info.chip_class >= GFX10_3 ? 30 : 0);
+      S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
 
    /* Oversubscribe PC. This improves performance when there are too many varyings. */
@@ -1508,7 +1508,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
-   if (sscreen->info.chip_class >= GFX11) {
+   if (sscreen->info.gfx_level >= GFX11) {
       shader->ge_cntl = S_03096C_PRIMS_PER_SUBGRP(shader->ngg.max_gsprims) |
                         S_03096C_VERTS_PER_SUBGRP(shader->ngg.hw_max_esverts) |
                         S_03096C_BREAK_PRIMGRP_AT_EOI(break_wave_at_eoi) |
@@ -1532,7 +1532,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
     *
     * Tessellation is unaffected because it always sets GE_CNTL.VERT_GRP_SIZE = 0.
     */
-   if ((sscreen->info.chip_class == GFX10) &&
+   if ((sscreen->info.gfx_level == GFX10) &&
        (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
        shader->ngg.hw_max_esverts != 256 &&
        shader->ngg.hw_max_esverts > 5) {
@@ -1570,7 +1570,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
    radeon_opt_set_context_reg(sctx, R_028A84_VGT_PRIMITIVEID_EN, SI_TRACKED_VGT_PRIMITIVEID_EN,
                               shader->ctx_reg.vs.vgt_primitiveid_en);
 
-   if (sctx->chip_class <= GFX8) {
+   if (sctx->gfx_level <= GFX8) {
       radeon_opt_set_context_reg(sctx, R_028AB4_VGT_REUSE_OFF, SI_TRACKED_VGT_REUSE_OFF,
                                  shader->ctx_reg.vs.vgt_reuse_off);
    }
@@ -1595,7 +1595,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
                                  shader->vgt_vertex_reuse_block_cntl);
 
    /* Required programming for tessellation. (legacy pipeline only) */
-   if (sctx->chip_class >= GFX10 && shader->selector->stage == MESA_SHADER_TESS_EVAL) {
+   if (sctx->gfx_level >= GFX10 && shader->selector->stage == MESA_SHADER_TESS_EVAL) {
       radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL,
                                  SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  S_028A44_ES_VERTS_PER_SUBGRP(250) |
@@ -1606,7 +1606,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
    radeon_end_update_context_roll(sctx);
 
    /* GE_PC_ALLOC is not a context register, so it doesn't cause a context roll. */
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->gfx_level >= GFX10) {
       radeon_begin_again(&sctx->gfx_cs);
       radeon_opt_set_uconfig_reg(sctx, R_030980_GE_PC_ALLOC, SI_TRACKED_GE_PC_ALLOC,
                                  shader->ctx_reg.vs.ge_pc_alloc);
@@ -1633,7 +1633,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                           info->base.vs.window_space_position : 0;
    bool enable_prim_id = shader->key.ge.mono.u.vs_export_prim_id || info->uses_primid;
 
-   assert(sscreen->info.chip_class < GFX11);
+   assert(sscreen->info.gfx_level < GFX11);
 
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
@@ -1659,11 +1659,11 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
       shader->ctx_reg.vs.vgt_primitiveid_en = enable_prim_id;
    } else {
       shader->ctx_reg.vs.vgt_gs_mode =
-         ac_vgt_gs_mode(gs->info.base.gs.vertices_out, sscreen->info.chip_class);
+         ac_vgt_gs_mode(gs->info.base.gs.vertices_out, sscreen->info.gfx_level);
       shader->ctx_reg.vs.vgt_primitiveid_en = 0;
    }
 
-   if (sscreen->info.chip_class <= GFX8) {
+   if (sscreen->info.gfx_level <= GFX8) {
       /* Reuse needs to be set off if we write oViewport. */
       shader->ctx_reg.vs.vgt_reuse_off = S_028AB4_REUSE_OFF(info->writes_viewport_index);
    }
@@ -1691,7 +1691,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    nparams = MAX2(shader->info.nr_param_exports, 1);
    shader->ctx_reg.vs.spi_vs_out_config = S_0286C4_VS_EXPORT_COUNT(nparams - 1);
 
-   if (sscreen->info.chip_class >= GFX10) {
+   if (sscreen->info.gfx_level >= GFX10) {
       shader->ctx_reg.vs.spi_vs_out_config |=
          S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
    }
@@ -1715,12 +1715,12 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 
    oc_lds_en = shader->selector->stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
-   if (sscreen->info.chip_class >= GFX7) {
+   if (sscreen->info.gfx_level >= GFX7) {
       ac_set_reg_cu_en(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
                        S_00B118_CU_EN(cu_mask) | S_00B118_WAVE_LIMIT(0x3F),
                        C_00B118_CU_EN, 0, &sscreen->info,
                        (void (*)(void*, unsigned, uint32_t))
-                       (sscreen->info.chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
+                       (sscreen->info.gfx_level >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
       si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(late_alloc_wave64));
    }
 
@@ -1736,12 +1736,12 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    uint32_t rsrc2 = S_00B12C_USER_SGPR(num_user_sgprs) | S_00B12C_OC_LDS_EN(oc_lds_en) |
                     S_00B12C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 
-   if (sscreen->info.chip_class >= GFX10)
+   if (sscreen->info.gfx_level >= GFX10)
       rsrc2 |= S_00B12C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
-   else if (sscreen->info.chip_class == GFX9)
+   else if (sscreen->info.gfx_level == GFX9)
       rsrc2 |= S_00B12C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
 
-   if (sscreen->info.chip_class <= GFX9)
+   if (sscreen->info.gfx_level <= GFX9)
       rsrc1 |= S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8);
 
    if (!sscreen->use_ngg_streamout) {
@@ -1920,7 +1920,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     * the color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
     */
-   if ((sscreen->info.chip_class <= GFX9 || info->base.fs.uses_discard ||
+   if ((sscreen->info.gfx_level <= GFX9 || info->base.fs.uses_discard ||
         shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS) &&
        !spi_shader_col_format && !info->writes_z && !info->writes_stencil &&
        !info->writes_samplemask)
@@ -1936,7 +1936,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
                        S_0286D8_PS_W32_EN(shader->wave_size == 32);
 
    /* Workaround when there are no PS inputs but LDS is used. */
-   if (sscreen->info.chip_class == GFX11 && !num_interp && shader->config.lds_size)
+   if (sscreen->info.gfx_level == GFX11 && !num_interp && shader->config.lds_size)
       spi_ps_in_control |= S_0286D8_PARAM_GEN(1);
 
    shader->ctx_reg.ps.num_interp = num_interp;
@@ -1957,7 +1957,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
       S_00B028_DX10_CLAMP(1) | S_00B028_MEM_ORDERED(si_shader_mem_ordered(shader)) |
       S_00B028_FLOAT_MODE(shader->config.float_mode);
 
-   if (sscreen->info.chip_class < GFX10) {
+   if (sscreen->info.gfx_level < GFX10) {
       rsrc1 |= S_00B028_SGPRS((shader->config.num_sgprs - 1) / 8);
    }
 
@@ -1967,7 +1967,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
                      S_00B02C_USER_SGPR(SI_PS_NUM_USER_SGPR) |
                      S_00B32C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
 
-   if (sscreen->info.chip_class >= GFX11) {
+   if (sscreen->info.gfx_level >= GFX11) {
       unsigned cu_mask_ps = gfx103_get_cu_mask_ps(sscreen);
 
       ac_set_reg_cu_en(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
@@ -2184,7 +2184,7 @@ void si_ps_key_update_framebuffer(struct si_context *sctx)
       /* 1D textures are allocated and used as 2D on GFX9. */
       key->ps.mono.fbfetch_msaa = sctx->framebuffer.nr_samples > 1;
       key->ps.mono.fbfetch_is_1D =
-         sctx->chip_class != GFX9 &&
+         sctx->gfx_level != GFX9 &&
          (tex->target == PIPE_TEXTURE_1D || tex->target == PIPE_TEXTURE_1D_ARRAY);
       key->ps.mono.fbfetch_layered =
          tex->target == PIPE_TEXTURE_1D_ARRAY || tex->target == PIPE_TEXTURE_2D_ARRAY ||
@@ -2220,7 +2220,7 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
        sctx->framebuffer.spi_shader_col_format);
    key->ps.part.epilog.spi_shader_col_format &= blend->cb_target_enabled_4bit;
 
-   key->ps.part.epilog.dual_src_blend_swizzle = sctx->chip_class >= GFX11 &&
+   key->ps.part.epilog.dual_src_blend_swizzle = sctx->gfx_level >= GFX11 &&
                                                 blend->dual_src_blend &&
                                                 (sel->info.colors_written_4bit & 0xff) == 0xff;
 
@@ -2242,7 +2242,7 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
     * to the range supported by the type if a channel has less
     * than 16 bits and the export format is 16_ABGR.
     */
-   if (sctx->chip_class <= GFX7 && sctx->family != CHIP_HAWAII) {
+   if (sctx->gfx_level <= GFX7 && sctx->family != CHIP_HAWAII) {
       key->ps.part.epilog.color_is_int8 = sctx->framebuffer.color_is_int8;
       key->ps.part.epilog.color_is_int10 = sctx->framebuffer.color_is_int10;
    }
@@ -2280,7 +2280,7 @@ void si_ps_key_update_blend_rasterizer(struct si_context *sctx)
 
    key->ps.part.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
    key->ps.part.epilog.alpha_to_coverage_via_mrtz =
-      sctx->chip_class >= GFX11 && blend->alpha_to_coverage && rs->multisample_enable &&
+      sctx->gfx_level >= GFX11 && blend->alpha_to_coverage && rs->multisample_enable &&
       (ps->info.writes_z || ps->info.writes_stencil || ps->info.writes_samplemask);
 }
 
@@ -2405,7 +2405,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          si_clear_vs_key_outputs(sctx, sel, key);
       break;
    case MESA_SHADER_TESS_CTRL:
-      if (sctx->chip_class >= GFX9) {
+      if (sctx->gfx_level >= GFX9) {
          si_get_vs_key_inputs(sctx, key, &key->ge.part.tcs.ls_prolog);
          key->ge.part.tcs.ls = sctx->shader.vs.cso;
       }
@@ -2417,7 +2417,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          si_clear_vs_key_outputs(sctx, sel, key);
       break;
    case MESA_SHADER_GEOMETRY:
-      if (sctx->chip_class >= GFX9) {
+      if (sctx->gfx_level >= GFX9) {
          if (sctx->shader.tes.cso) {
             si_clear_vs_key_inputs(sctx, key, &key->ge.part.gs.vs_prolog);
             key->ge.part.gs.es = sctx->shader.tes.cso;
@@ -2690,7 +2690,7 @@ current_not_ready:
    shader->compiler_ctx_state.is_debug_context = sctx->is_debug;
 
    /* If this is a merged shader, get the first shader's selector. */
-   if (sscreen->info.chip_class >= GFX9) {
+   if (sscreen->info.gfx_level >= GFX9) {
       if (sel->stage == MESA_SHADER_TESS_CTRL)
          previous_stage_sel = ((struct si_shader_key_ge*)key)->part.tcs.ls;
       else if (sel->stage == MESA_SHADER_GEOMETRY)
@@ -3070,7 +3070,7 @@ void si_get_active_slot_masks(struct si_screen *sscreen, const struct si_shader_
     * and so we can benefit from a better cache hit rate if we keep image
     * descriptors together.
     */
-   if (sscreen->info.chip_class < GFX11 && num_msaa_images)
+   if (sscreen->info.gfx_level < GFX11 && num_msaa_images)
       num_images = SI_NUM_IMAGES + num_msaa_images; /* add FMASK descriptors */
 
    start = si_get_image_slot(num_images - 1) / 2;
@@ -3087,7 +3087,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    if (!sel)
       return NULL;
 
-   if (sscreen->info.chip_class == GFX11 && state->stream_output.num_outputs) {
+   if (sscreen->info.gfx_level == GFX11 && state->stream_output.num_outputs) {
       fprintf(stderr, "radeonsi: streamout unimplemented\n");
       abort();
    }
@@ -3134,8 +3134,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
        * - num_invocations * gs.vertices_out > 256
        * - LDS usage is too high
        */
-      sel->tess_turns_off_ngg = sscreen->info.chip_class >= GFX10 &&
-                                sscreen->info.chip_class <= GFX10_3 &&
+      sel->tess_turns_off_ngg = sscreen->info.gfx_level >= GFX10 &&
+                                sscreen->info.gfx_level <= GFX10_3 &&
                                 (sel->info.base.gs.invocations * sel->info.base.gs.vertices_out > 256 ||
                                  sel->info.base.gs.invocations * sel->info.base.gs.vertices_out *
                                  (sel->info.num_outputs * 4 + 1) > 6500 /* max dw per GS primitive */);
@@ -3158,7 +3158,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    }
 
    bool ngg_culling_allowed =
-      sscreen->info.chip_class >= GFX10 &&
+      sscreen->info.gfx_level >= GFX10 &&
       sscreen->use_ngg_culling &&
       sel->info.writes_position &&
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
@@ -3362,7 +3362,7 @@ bool si_update_ngg(struct si_context *sctx)
        */
       if (sctx->screen->info.has_vgt_flush_ngg_legacy_bug && !new_ngg) {
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
-         if (sctx->chip_class == GFX10) {
+         if (sctx->gfx_level == GFX10) {
             /* Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/2941 */
             si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
          }
@@ -3489,7 +3489,7 @@ void si_update_ps_kill_enable(struct si_context *sctx)
 
 void si_update_vrs_flat_shading(struct si_context *sctx)
 {
-   if (sctx->chip_class >= GFX10_3 && sctx->shader.ps.cso) {
+   if (sctx->gfx_level >= GFX10_3 && sctx->shader.ps.cso) {
       struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
       struct si_shader_info *info = &sctx->shader.ps.cso->info;
       bool allow_flat_shading = info->allow_flat_shading;
@@ -3574,10 +3574,10 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
    switch (shader->selector->stage) {
    case MESA_SHADER_VERTEX:
       if (shader->key.ge.as_ls) {
-         if (sctx->chip_class <= GFX8)
+         if (sctx->gfx_level <= GFX8)
             state_index = SI_STATE_IDX(ls);
       } else if (shader->key.ge.as_es) {
-         if (sctx->chip_class <= GFX8)
+         if (sctx->gfx_level <= GFX8)
             state_index = SI_STATE_IDX(es);
       } else if (shader->key.ge.as_ngg) {
          state_index = SI_STATE_IDX(gs);
@@ -3590,7 +3590,7 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
       break;
    case MESA_SHADER_TESS_EVAL:
       if (shader->key.ge.as_es) {
-         if (sctx->chip_class <= GFX8)
+         if (sctx->gfx_level <= GFX8)
             state_index = SI_STATE_IDX(es);
       } else if (shader->key.ge.as_ngg) {
          state_index = SI_STATE_IDX(gs);
@@ -3703,7 +3703,7 @@ static void si_emit_vgt_flush(struct radeon_cmdbuf *cs)
 /* Initialize state related to ESGS / GSVS ring buffers */
 bool si_update_gs_ring_buffers(struct si_context *sctx)
 {
-   assert(sctx->chip_class < GFX11);
+   assert(sctx->gfx_level < GFX11);
 
    struct si_shader_selector *es =
       sctx->shader.tes.cso ? sctx->shader.tes.cso : sctx->shader.vs.cso;
@@ -3717,7 +3717,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    /* On GFX6-GFX7, the value comes from VGT_GS_VERTEX_REUSE = 16.
     * On GFX8+, the value comes from VGT_VERTEX_REUSE_BLOCK_CNTL = 30 (+2).
     */
-   unsigned gs_vertex_reuse = (sctx->chip_class >= GFX8 ? 32 : 16) * num_se;
+   unsigned gs_vertex_reuse = (sctx->gfx_level >= GFX8 ? 32 : 16) * num_se;
    unsigned alignment = 256 * num_se;
    /* The maximum size is 63.999 MB per SE. */
    unsigned max_size = ((unsigned)(63.999 * 1024 * 1024) & ~255) * num_se;
@@ -3742,7 +3742,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
     *
     * GFX9 doesn't have the ESGS ring.
     */
-   bool update_esgs = sctx->chip_class <= GFX8 && esgs_ring_size &&
+   bool update_esgs = sctx->gfx_level <= GFX8 && esgs_ring_size &&
                       (!sctx->esgs_ring || sctx->esgs_ring->width0 < esgs_ring_size);
    bool update_gsvs =
       gsvs_ring_size && (!sctx->gsvs_ring || sctx->gsvs_ring->width0 < gsvs_ring_size);
@@ -3774,7 +3774,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
 
    /* Set ring bindings. */
    if (sctx->esgs_ring) {
-      assert(sctx->chip_class <= GFX8);
+      assert(sctx->gfx_level <= GFX8);
       si_set_ring_buffer(sctx, SI_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, false,
                          false, 0, 0, 0);
    }
@@ -3787,7 +3787,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
       /* These registers will be shadowed, so set them only once. */
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
-      assert(sctx->chip_class >= GFX7);
+      assert(sctx->gfx_level >= GFX7);
 
       si_emit_vgt_flush(cs);
 
@@ -3795,7 +3795,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
 
       /* Set the GS registers. */
       if (sctx->esgs_ring) {
-         assert(sctx->chip_class <= GFX8);
+         assert(sctx->gfx_level <= GFX8);
          radeon_set_uconfig_reg(R_030900_VGT_ESGS_RING_SIZE,
                                 sctx->esgs_ring->width0 / 256);
       }
@@ -3813,9 +3813,9 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    if (!pm4)
       return false;
 
-   if (sctx->chip_class >= GFX7) {
+   if (sctx->gfx_level >= GFX7) {
       if (sctx->esgs_ring) {
-         assert(sctx->chip_class <= GFX8);
+         assert(sctx->gfx_level <= GFX8);
          si_pm4_set_reg(pm4, R_030900_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
       }
       if (sctx->gsvs_ring)
@@ -3996,7 +3996,7 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
          si_context_add_resource_size(sctx, &sctx->scratch_buffer->b.b);
       }
 
-      if (sctx->chip_class < GFX11 && !si_update_scratch_relocs(sctx))
+      if (sctx->gfx_level < GFX11 && !si_update_scratch_relocs(sctx))
          return false;
    }
 
@@ -4032,7 +4032,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
       si_resource(sctx->tess_rings)->gpu_address + sctx->screen->hs.tess_offchip_ring_size;
 
    unsigned tf_ring_size_field = sctx->screen->hs.tess_factor_ring_size / 4;
-   if (sctx->chip_class >= GFX11)
+   if (sctx->gfx_level >= GFX11)
       tf_ring_size_field /= sctx->screen->info.max_se;
 
    assert((tf_ring_size_field & C_030938_SIZE) == 0);
@@ -4042,7 +4042,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
       /* TODO: tmz + shadowed_regs support */
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
-      assert(sctx->chip_class >= GFX7);
+      assert(sctx->gfx_level >= GFX7);
 
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(sctx->tess_rings),
                                 RADEON_USAGE_READWRITE | RADEON_PRIO_SHADER_RINGS);
@@ -4053,10 +4053,10 @@ void si_init_tess_factor_ring(struct si_context *sctx)
       radeon_set_uconfig_reg(R_030938_VGT_TF_RING_SIZE,
                              S_030938_SIZE(tf_ring_size_field));
       radeon_set_uconfig_reg(R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->gfx_level >= GFX10) {
          radeon_set_uconfig_reg(R_030984_VGT_TF_MEMORY_BASE_HI,
                                 S_030984_BASE_HI(factor_va >> 40));
-      } else if (sctx->chip_class == GFX9) {
+      } else if (sctx->gfx_level == GFX9) {
          radeon_set_uconfig_reg(R_030944_VGT_TF_MEMORY_BASE_HI,
                                 S_030944_BASE_HI(factor_va >> 40));
       }
@@ -4070,14 +4070,14 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    si_cs_preamble_add_vgt_flush(sctx);
 
    /* Append these registers to the init config state. */
-   if (sctx->chip_class >= GFX7) {
+   if (sctx->gfx_level >= GFX7) {
       si_pm4_set_reg(sctx->cs_preamble_state, R_030938_VGT_TF_RING_SIZE,
                      S_030938_SIZE(tf_ring_size_field));
       si_pm4_set_reg(sctx->cs_preamble_state, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
-      if (sctx->chip_class >= GFX10)
+      if (sctx->gfx_level >= GFX10)
          si_pm4_set_reg(sctx->cs_preamble_state, R_030984_VGT_TF_MEMORY_BASE_HI,
                         S_030984_BASE_HI(factor_va >> 40));
-      else if (sctx->chip_class == GFX9)
+      else if (sctx->gfx_level == GFX9)
          si_pm4_set_reg(sctx->cs_preamble_state, R_030944_VGT_TF_MEMORY_BASE_HI,
                         S_030944_BASE_HI(factor_va >> 40));
       si_pm4_set_reg(sctx->cs_preamble_state, R_03093C_VGT_HS_OFFCHIP_PARAM,
@@ -4141,10 +4141,10 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
    } else if (key.u.gs)
       stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 
-   if (screen->info.chip_class >= GFX9)
+   if (screen->info.gfx_level >= GFX9)
       stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
 
-   if (screen->info.chip_class >= GFX10) {
+   if (screen->info.gfx_level >= GFX10) {
       stages |= S_028B54_HS_W32_EN(key.u.hs_wave32) |
                 S_028B54_GS_W32_EN(key.u.gs_wave32) |
                 S_028B54_VS_W32_EN(key.u.vs_wave32);
@@ -4161,7 +4161,7 @@ static void si_emit_scratch_state(struct si_context *sctx)
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    radeon_begin(cs);
-   if (sctx->chip_class >= GFX11) {
+   if (sctx->gfx_level >= GFX11) {
       radeon_set_context_reg_seq(R_0286E8_SPI_TMPRING_SIZE, 3);
       radeon_emit(sctx->spi_tmpring_size);                  /* SPI_TMPRING_SIZE */
       radeon_emit(sctx->scratch_buffer->gpu_address >> 8);  /* SPI_GFX_SCRATCH_BASE_LO */

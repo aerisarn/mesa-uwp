@@ -132,7 +132,7 @@ void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscre
    ctx->screen = sscreen;
    ctx->compiler = compiler;
 
-   ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class, sscreen->info.family,
+   ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.gfx_level, sscreen->info.family,
                         &sscreen->info, AC_FLOAT_MODE_DEFAULT_OPENGL, wave_size, 64);
 }
 
@@ -150,7 +150,7 @@ void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTy
    gl_shader_stage real_stage = ctx->stage;
 
    /* LS is merged into HS (TCS), and ES is merged into GS. */
-   if (ctx->screen->info.chip_class >= GFX9 && ctx->stage <= MESA_SHADER_GEOMETRY) {
+   if (ctx->screen->info.gfx_level >= GFX9 && ctx->stage <= MESA_SHADER_GEOMETRY) {
       if (ctx->shader->key.ge.as_ls)
          real_stage = MESA_SHADER_TESS_CTRL;
       else if (ctx->shader->key.ge.as_es || ctx->shader->key.ge.as_ngg)
@@ -927,7 +927,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    }
 
    /* For merged shaders (VS-TCS, VS-GS, TES-GS): */
-   if (ctx->screen->info.chip_class >= GFX9 && si_is_merged_shader(shader)) {
+   if (ctx->screen->info.gfx_level >= GFX9 && si_is_merged_shader(shader)) {
       /* TES is special because it has only 1 shader part if NGG shader culling is disabled,
        * and therefore it doesn't use the wrapper function.
        */
@@ -950,7 +950,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       if ((ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL) &&
           shader->key.ge.as_ngg && !shader->key.ge.as_es && !shader->key.ge.opt.ngg_culling) {
          /* GFX10 requires a barrier before gs_alloc_req due to a hw bug. */
-         if (ctx->screen->info.chip_class == GFX10)
+         if (ctx->screen->info.gfx_level == GFX10)
             ac_build_s_barrier(&ctx->ac, ctx->stage);
 
          gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
@@ -1033,7 +1033,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       /* Unpack GS vertex offsets. */
       for (unsigned i = 0; i < 6; i++) {
-         if (ctx->screen->info.chip_class >= GFX9) {
+         if (ctx->screen->info.gfx_level >= GFX9) {
             ctx->gs_vtx_offset[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
          } else {
             ctx->gs_vtx_offset[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
@@ -1041,7 +1041,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       }
 
       /* Apply the hw bug workaround for triangle strips with adjacency. */
-      if (ctx->screen->info.chip_class <= GFX9 &&
+      if (ctx->screen->info.gfx_level <= GFX9 &&
           ctx->shader->key.ge.mono.u.gs_tri_strip_adj_fix) {
          LLVMValueRef prim_id = ac_get_arg(&ctx->ac, ctx->args.gs_prim_id);
          /* Remap GS vertex offsets for every other primitive. */
@@ -1136,7 +1136,7 @@ static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
       return false;
 
    /* Assume a slow CPU. */
-   assert(!sel->screen->info.has_dedicated_vram && sel->screen->info.chip_class <= GFX8);
+   assert(!sel->screen->info.has_dedicated_vram && sel->screen->info.gfx_level <= GFX8);
 
    /* For a crazy dEQP test containing 2597 memory opcodes, mostly
     * buffer stores. */
@@ -1221,7 +1221,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 
       si_build_wrapper_function(&ctx, parts, 3, 0, 0, false);
    } else if (shader->is_monolithic && sel->stage == MESA_SHADER_TESS_CTRL) {
-      if (sscreen->info.chip_class >= GFX9) {
+      if (sscreen->info.gfx_level >= GFX9) {
          struct si_shader_selector *ls = shader->key.ge.part.tcs.ls;
          LLVMValueRef parts[4];
          bool vs_needs_prolog =
@@ -1289,7 +1289,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          si_build_wrapper_function(&ctx, parts, 2, 0, 0, false);
       }
    } else if (shader->is_monolithic && sel->stage == MESA_SHADER_GEOMETRY) {
-      if (ctx.screen->info.chip_class >= GFX9) {
+      if (ctx.screen->info.gfx_level >= GFX9) {
          struct si_shader_selector *es = shader->key.ge.part.gs.es;
          LLVMValueRef es_prolog = NULL;
          LLVMValueRef es_main = NULL;

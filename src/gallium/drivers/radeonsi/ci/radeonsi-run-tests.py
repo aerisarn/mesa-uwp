@@ -213,7 +213,7 @@ env["WAFFLE_GBM_DEVICE"] = available_gpus[args.gpu][0]
 # Use piglit's glinfo to determine the GPU name
 gpu_name = "unknown"
 gpu_name_full = ""
-chip_class = -1
+gfx_level = -1
 
 env["AMD_DEBUG"] = "info"
 p = subprocess.run(
@@ -230,8 +230,8 @@ for line in p.stdout.decode().split("\n"):
         gpu_name_full = "(".join(line.split("(")[:-1]).strip()
         gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
-    elif "chip_class" in line:
-        chip_class = int(line.split("=")[1])
+    elif "gfx_level" in line:
+        gfx_level = int(line.split("=")[1])
 
 output_folder = args.output_folder
 print_green("Tested GPU: '{}' ({}) {}".format(gpu_name_full, gpu_name, gpu_device))
@@ -251,7 +251,7 @@ logfile = open(os.path.join(output_folder, "{}-run-tests.log".format(gpu_name)),
 spin = itertools.cycle("-\\|/")
 
 
-def chip_class_to_str(cl):
+def gfx_level_to_str(cl):
     supported = ["gfx6", "gfx7", "gfx8", "gfx9", "gfx10", "gfx10_3", "gfx11"]
     if 8 <= cl and cl < 8 + len(supported):
         return supported[cl - 8]
@@ -320,31 +320,31 @@ def parse_test_filters(include_tests):
     return cmd
 
 
-def select_baseline(basepath, chip_class, gpu_name):
-    chip_class_str = chip_class_to_str(chip_class)
+def select_baseline(basepath, gfx_level, gpu_name):
+    gfx_level_str = gfx_level_to_str(gfx_level)
 
     # select the best baseline we can find
     # 1. exact match
-    exact = os.path.join(base, "{}-{}-fail.csv".format(chip_class_str, gpu_name))
+    exact = os.path.join(base, "{}-{}-fail.csv".format(gfx_level_str, gpu_name))
     if os.path.exists(exact):
         return exact
-    # 2. any baseline with the same chip_class
-    while chip_class >= 8:
+    # 2. any baseline with the same gfx_level
+    while gfx_level >= 8:
         for subdir, dirs, files in os.walk(basepath):
             for file in files:
-                if file.find(chip_class_str) == 0 and file.endswith("-fail.csv"):
+                if file.find(gfx_level_str) == 0 and file.endswith("-fail.csv"):
                     return os.path.join(base, file)
         # No match. Try an earlier class
-        chip_class = chip_class - 1
-        chip_class_str = chip_class_to_str(chip_class)
+        gfx_level = gfx_level - 1
+        gfx_level_str = gfx_level_to_str(gfx_level)
 
     return exact
 
 
 filters_args = parse_test_filters(args.include_tests)
-baseline = select_baseline(base, chip_class, gpu_name)
+baseline = select_baseline(base, gfx_level, gpu_name)
 flakes = os.path.join(
-    base, "{}-{}-flakes.csv".format(chip_class_to_str(chip_class), gpu_name)
+    base, "{}-{}-flakes.csv".format(gfx_level_to_str(gfx_level), gpu_name)
 )
 
 if os.path.exists(baseline):

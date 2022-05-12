@@ -261,7 +261,7 @@ static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE
 
    /* Validate that the packed gfx9_meta_equation structure can fit all fields. */
    const struct gfx9_meta_equation eq;
-   if (info->chip_class == GFX9) {
+   if (info->gfx_level == GFX9) {
       /* The bit array is smaller in gfx9_meta_equation than in addrlib. */
       assert(dout.equation.gfx9.num_bits <= ARRAY_SIZE(eq.u.gfx9.bit));
    } else {
@@ -284,7 +284,7 @@ static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE
                }
 
                unsigned addr;
-               if (info->chip_class == GFX9) {
+               if (info->gfx_level == GFX9) {
                   addr = gfx9_meta_addr_from_coord(info, &dout.equation.gfx9, dout.metaBlkWidth, dout.metaBlkHeight,
                                                    dout.metaBlkDepth, dout.pitch, dout.height,
                                                    in.x, in.y, in.slice, in.sample, in.pipeXor, NULL);
@@ -321,7 +321,7 @@ static void run_dcc_address_test(const char *name, const struct radeon_info *inf
    unsigned last_size, max_samples, min_bpp, max_bpp;
    unsigned swizzle_modes[2], num_swizzle_modes = 0;
 
-   switch (info->chip_class) {
+   switch (info->gfx_level) {
    case GFX9:
       swizzle_modes[num_swizzle_modes++] = ADDR_SW_64KB_S_X;
       break;
@@ -334,7 +334,7 @@ static void run_dcc_address_test(const char *name, const struct radeon_info *inf
       swizzle_modes[num_swizzle_modes++] = ADDR_SW_256KB_R_X;
       break;
    default:
-      unreachable("unhandled gfx version");
+      unreachable("unhandled gfx level");
    }
 
    if (full) {
@@ -366,7 +366,7 @@ static void run_dcc_address_test(const char *name, const struct radeon_info *inf
       for (unsigned swizzle_mode = 0; swizzle_mode < num_swizzle_modes; swizzle_mode++) {
          for (unsigned bpp = min_bpp; bpp <= max_bpp; bpp *= 2) {
             /* addrlib can do DccAddrFromCoord with MSAA images only on gfx9 */
-            for (unsigned samples = 1; samples <= (info->chip_class == GFX9 ? max_samples : 1); samples *= 2) {
+            for (unsigned samples = 1; samples <= (info->gfx_level == GFX9 ? max_samples : 1); samples *= 2) {
                for (int rb_aligned = true; rb_aligned >= (samples > 1 ? true : false); rb_aligned--) {
                   for (int pipe_aligned = true; pipe_aligned >= (samples > 1 ? true : false); pipe_aligned--) {
                      for (unsigned mrt_index = 0; mrt_index < 2; mrt_index++) {
@@ -501,7 +501,7 @@ static void run_htile_address_test(const char *name, const struct radeon_info *i
    unsigned first_size = 0, last_size = 6*6 - 1;
    unsigned swizzle_modes[2], num_swizzle_modes = 0;
 
-   switch (info->chip_class) {
+   switch (info->gfx_level) {
    case GFX9:
    case GFX10:
    case GFX10_3:
@@ -512,7 +512,7 @@ static void run_htile_address_test(const char *name, const struct radeon_info *i
       swizzle_modes[num_swizzle_modes++] = ADDR_SW_256KB_Z_X;
       break;
    default:
-      unreachable("unhandled gfx version");
+      unreachable("unhandled gfx level");
    }
 
    /* The test coverage is reduced for Gitlab CI because it timeouts. */
@@ -638,7 +638,7 @@ static bool one_cmask_address_test(const char *name, const char *test, ADDR_HAND
 
             unsigned addr, bit_position;
 
-            if (info->chip_class == GFX9) {
+            if (info->gfx_level == GFX9) {
                addr = gfx9_meta_addr_from_coord(info, &cout.equation.gfx9,
                                                 cout.metaBlkWidth, cout.metaBlkHeight, 1,
                                                 cout.pitch, cout.height,
@@ -672,11 +672,11 @@ static void run_cmask_address_test(const char *name, const struct radeon_info *i
 {
    unsigned total = 0;
    unsigned fails = 0;
-   unsigned swizzle_mode = info->chip_class == GFX9 ? ADDR_SW_64KB_S_X : ADDR_SW_64KB_Z_X;
+   unsigned swizzle_mode = info->gfx_level == GFX9 ? ADDR_SW_64KB_S_X : ADDR_SW_64KB_Z_X;
    unsigned first_size = 0, last_size = 6*6 - 1, max_bpp = 32;
 
    /* GFX11 doesn't have CMASK. */
-   if (info->chip_class >= GFX11)
+   if (info->gfx_level >= GFX11)
       return;
 
    /* The test coverage is reduced for Gitlab CI because it timeouts. */
@@ -738,7 +738,7 @@ int main(int argc, char **argv)
       struct radeon_info info = get_radeon_info(&testcases[i]);
 
       /* Only GFX10+ is currently supported. */
-      if (info.chip_class < GFX10)
+      if (info.gfx_level < GFX10)
          continue;
 
       run_htile_address_test(testcases[i].name, &info, full);

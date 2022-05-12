@@ -1598,14 +1598,14 @@ uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool inst
                                    bool indirect_draw, bool count_from_stream_output,
                                    uint32_t draw_vertex_count, unsigned topology,
                                    bool prim_restart_enable);
-void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum chip_class chip_class, bool is_mec,
+void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level, bool is_mec,
                                 unsigned event, unsigned event_flags, unsigned dst_sel,
                                 unsigned data_sel, uint64_t va, uint32_t new_fence,
                                 uint64_t gfx9_eop_bug_va);
 
 void radv_cp_wait_mem(struct radeon_cmdbuf *cs, uint32_t op, uint64_t va, uint32_t ref,
                       uint32_t mask);
-void si_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum chip_class chip_class,
+void si_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
                             uint32_t *fence_ptr, uint64_t va, bool is_mec,
                             enum radv_cmd_flush_bits flush_bits,
                             enum rgp_flush_bits *sqtt_flush_bits, uint64_t gfx9_eop_bug_va);
@@ -2283,7 +2283,7 @@ radv_image_is_tc_compat_htile(const struct radv_image *image)
 static inline bool
 radv_image_tile_stencil_disabled(const struct radv_device *device, const struct radv_image *image)
 {
-   if (device->physical_device->rad_info.chip_class >= GFX9) {
+   if (device->physical_device->rad_info.gfx_level >= GFX9) {
       return !vk_format_has_stencil(image->vk_format) && !radv_image_has_vrs_htile(device, image);
    } else {
       /* Due to a hw bug, TILE_STENCIL_DISABLE must be set to 0 for
@@ -2392,11 +2392,10 @@ static inline bool
 radv_image_get_iterate256(struct radv_device *device, struct radv_image *image)
 {
    /* ITERATE_256 is required for depth or stencil MSAA images that are TC-compatible HTILE. */
-   return device->physical_device->rad_info.chip_class >= GFX10 &&
-          (image->usage & (VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                           VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
-          radv_image_is_tc_compat_htile(image) &&
-          image->info.samples > 1;
+   return device->physical_device->rad_info.gfx_level >= GFX10 &&
+          (image->usage &
+           (VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
+          radv_image_is_tc_compat_htile(image) && image->info.samples > 1;
 }
 
 unsigned radv_image_queue_family_mask(const struct radv_image *image,
@@ -2968,8 +2967,8 @@ radv_use_llvm_for_stage(struct radv_device *device, UNUSED gl_shader_stage stage
 static inline bool
 radv_has_shader_buffer_float_minmax(const struct radv_physical_device *pdevice)
 {
-   return (pdevice->rad_info.chip_class <= GFX7 && !pdevice->use_llvm) ||
-          pdevice->rad_info.chip_class >= GFX10;
+   return (pdevice->rad_info.gfx_level <= GFX7 && !pdevice->use_llvm) ||
+          pdevice->rad_info.gfx_level >= GFX10;
 }
 
 struct radv_acceleration_structure {

@@ -773,7 +773,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       info->num_vs_inputs =
          nir->info.stage == MESA_SHADER_VERTEX && !info->base.vs.blit_sgprs_amd ? info->num_inputs : 0;
-      unsigned num_vbos_in_sgprs = si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
+      unsigned num_vbos_in_sgprs = si_num_vbos_in_user_sgprs_inline(sscreen->info.gfx_level);
       info->num_vbos_in_user_sgprs = MIN2(info->num_vs_inputs, num_vbos_in_sgprs);
 
       /* The prolog is a no-op if there are no inputs. */
@@ -795,7 +795,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       /* For the ESGS ring in LDS, add 1 dword to reduce LDS bank
        * conflicts, i.e. each vertex will start at a different bank.
        */
-      if (sscreen->info.chip_class >= GFX9)
+      if (sscreen->info.gfx_level >= GFX9)
          info->esgs_itemsize += 4;
 
       assert(((info->esgs_itemsize / 4) & C_028AAC_ITEMSIZE) == 0);

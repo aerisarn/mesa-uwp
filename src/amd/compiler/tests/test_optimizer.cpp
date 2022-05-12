@@ -28,7 +28,7 @@ using namespace aco;
 BEGIN_TEST(optimize.neg)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, s1: %c, s1: %d = p_startpgm
-      if (!setup_cs("v1 v1 s1 s1", (chip_class)i))
+      if (!setup_cs("v1 v1 s1 s1", (amd_gfx_level)i))
          continue;
 
       //! v1: %res0 = v_mul_f32 %a, -%b
@@ -272,7 +272,7 @@ Temp create_subbrev_co(Operand op0, Operand op1, Operand op2)
 BEGIN_TEST(optimize.cndmask)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, s1: %b, s2: %c = p_startpgm
-      if (!setup_cs("v1 s1 s2", (chip_class)i))
+      if (!setup_cs("v1 s1 s2", (amd_gfx_level)i))
          continue;
 
       Temp subbrev;
@@ -316,7 +316,7 @@ END_TEST
 BEGIN_TEST(optimize.add_lshl)
    for (unsigned i = GFX8; i <= GFX10; i++) {
       //>> s1: %a, v1: %b = p_startpgm
-      if (!setup_cs("s1 v1", (chip_class)i))
+      if (!setup_cs("s1 v1", (amd_gfx_level)i))
          continue;
 
       Temp shift;
@@ -398,7 +398,7 @@ END_TEST
 BEGIN_TEST(optimize.bcnt)
    for (unsigned i = GFX8; i <= GFX10; i++) {
       //>> v1: %a, s1: %b = p_startpgm
-      if (!setup_cs("v1 s1", (chip_class)i))
+      if (!setup_cs("v1 s1", (amd_gfx_level)i))
          continue;
 
       Temp bcnt;
@@ -714,7 +714,7 @@ END_TEST
 BEGIN_TEST(optimize.minmax)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a = p_startpgm
-      if (!setup_cs("v1", (chip_class)i))
+      if (!setup_cs("v1", (amd_gfx_level)i))
          continue;
 
       //! v1: %res0 = v_max3_f32 0, -0, %a
@@ -737,7 +737,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_32_24)
    for (unsigned i = GFX8; i <= GFX9; i++) {
       //>> v1: %a, v1: %b, v1: %c = p_startpgm
-      if (!setup_cs("v1 v1 v1", (chip_class)i))
+      if (!setup_cs("v1 v1 v1", (amd_gfx_level)i))
          continue;
 
       //! v1: %res0 = v_mad_u32_u24 %b, %c, %a
@@ -758,7 +758,7 @@ END_TEST
 BEGIN_TEST(optimize.add_lshlrev)
    for (unsigned i = GFX8; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, s1: %c = p_startpgm
-      if (!setup_cs("v1 v1 s1", (chip_class)i))
+      if (!setup_cs("v1 v1 s1", (amd_gfx_level)i))
          continue;
 
       Temp lshl;
@@ -886,7 +886,7 @@ BEGIN_TEST(optimize.denorm_propagation)
          sprintf(subvariant, "_%s_%s_%s_%s",
                  cfg.flush ? "flush" : "keep", srcdest_op_name(cfg.src),
                  denorm_op_names[(int)cfg.op], srcdest_op_name(cfg.dest));
-         if (!setup_cs("v1 s2", (chip_class)i, CHIP_UNKNOWN, subvariant))
+         if (!setup_cs("v1 s2", (amd_gfx_level)i, CHIP_UNKNOWN, subvariant))
             continue;
 
          bool can_propagate = cfg.src == aco_opcode::v_rcp_f32 || (i >= GFX9 && cfg.src == aco_opcode::v_min_f32) ||
@@ -1161,7 +1161,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.input_conv.basic)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v2b: %a16 = p_startpgm
-      if (!setup_cs("v1 v2b", (chip_class)i))
+      if (!setup_cs("v1 v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1196,7 +1196,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.input_conv.precision)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v2b: %a16 = p_startpgm
-      if (!setup_cs("v1 v2b", (chip_class)i))
+      if (!setup_cs("v1 v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1249,7 +1249,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.input_conv.modifiers)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v2b: %a16 = p_startpgm
-      if (!setup_cs("v1 v2b", (chip_class)i))
+      if (!setup_cs("v1 v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1344,7 +1344,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.output_conv.basic)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, v1: %c, v2b: %a16, v2b: %b16 = p_startpgm
-      if (!setup_cs("v1 v1 v1 v2b v2b", (chip_class)i))
+      if (!setup_cs("v1 v1 v1 v2b v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1386,7 +1386,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.output_conv.precision)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v2b: %a16 = p_startpgm
-      if (!setup_cs("v2b", (chip_class)i))
+      if (!setup_cs("v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1410,7 +1410,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.output_conv.modifiers)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, v2b: %a16, v2b: %b16 = p_startpgm
-      if (!setup_cs("v1 v1 v2b v2b", (chip_class)i))
+      if (!setup_cs("v1 v1 v2b v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1459,7 +1459,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.fma.basic)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, v1: %c, v2b: %a16, v2b: %c16 = p_startpgm
-      if (!setup_cs("v1 v1 v1 v2b v2b", (chip_class)i))
+      if (!setup_cs("v1 v1 v1 v2b v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1513,7 +1513,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.fma.precision)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v1: %b, v1: %c, v2b: %a16, v2b: %b16 = p_startpgm
-      if (!setup_cs("v1 v1 v1 v2b v2b", (chip_class)i))
+      if (!setup_cs("v1 v1 v1 v2b v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1575,7 +1575,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.clamp)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v2b: %a16 = p_startpgm
-      if (!setup_cs("v1 v2b", (chip_class)i))
+      if (!setup_cs("v1 v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
@@ -1602,7 +1602,7 @@ END_TEST
 BEGIN_TEST(optimize.mad_mix.cast)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       //>> v1: %a, v2b: %a16 = p_startpgm
-      if (!setup_cs("v1 v2b", (chip_class)i))
+      if (!setup_cs("v1 v2b", (amd_gfx_level)i))
          continue;
 
       program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;

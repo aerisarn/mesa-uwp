@@ -646,7 +646,7 @@ static void evergreen_emit_dispatch(struct r600_context *rctx,
 	radeon_emit(cs, info->block[1]); /* R_0286F0_SPI_COMPUTE_NUM_THREAD_Y */
 	radeon_emit(cs, info->block[2]); /* R_0286F4_SPI_COMPUTE_NUM_THREAD_Z */
 
-	if (rctx->b.chip_class < CAYMAN) {
+	if (rctx->b.gfx_level < CAYMAN) {
 		assert(lds_size <= 8192);
 	} else {
 		/* Cayman appears to have a slightly smaller limit, see the
@@ -796,7 +796,7 @@ static void compute_emit_cs(struct r600_context *rctx,
 	r600_emit_command_buffer(cs, &rctx->start_compute_cs_cmd);
 
 	/* emit config state */
-	if (rctx->b.chip_class == EVERGREEN) {
+	if (rctx->b.gfx_level == EVERGREEN) {
 		if (rctx->cs_shader_state.shader->ir_type == PIPE_SHADER_IR_TGSI||
 		    rctx->cs_shader_state.shader->ir_type == PIPE_SHADER_IR_NIR) {
 			radeon_set_config_reg_seq(cs, R_008C04_SQ_GPR_RESOURCE_MGMT_1, 3);
@@ -858,7 +858,7 @@ static void compute_emit_cs(struct r600_context *rctx,
 	r600_flush_emit(rctx);
 	rctx->b.flags = 0;
 
-	if (rctx->b.chip_class >= CAYMAN) {
+	if (rctx->b.gfx_level >= CAYMAN) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(EVENT_TYPE_CS_PARTIAL_FLUSH) | EVENT_INDEX(4));
 		/* DEALLOC_STATE prevents the GPU from hanging when a
@@ -1117,7 +1117,7 @@ void evergreen_init_atom_start_compute_cs(struct r600_context *rctx)
 	r600_store_config_reg(cb, R_008958_VGT_PRIMITIVE_TYPE,
 						V_008958_DI_PT_POINTLIST);
 
-	if (rctx->b.chip_class < CAYMAN) {
+	if (rctx->b.gfx_level < CAYMAN) {
 
 		/* These registers control which simds can be used by each stage.
 		 * The default for these registers is 0xffffffff, which means
@@ -1167,7 +1167,7 @@ void evergreen_init_atom_start_compute_cs(struct r600_context *rctx)
 	 * allocate the appropriate amount of LDS dwords using the
 	 * CM_R_0288E8_SQ_LDS_ALLOC register.
 	 */
-	if (rctx->b.chip_class < CAYMAN) {
+	if (rctx->b.gfx_level < CAYMAN) {
 		r600_store_config_reg(cb, R_008E2C_SQ_LDS_RESOURCE_MGMT,
 			S_008E2C_NUM_PS_LDS(0x0000) | S_008E2C_NUM_LS_LDS(8192));
 	} else {
@@ -1178,7 +1178,7 @@ void evergreen_init_atom_start_compute_cs(struct r600_context *rctx)
 
 	/* Context Registers */
 
-	if (rctx->b.chip_class < CAYMAN) {
+	if (rctx->b.gfx_level < CAYMAN) {
 		/* workaround for hw issues with dyn gpr - must set all limits
 		 * to 240 instead of 0, 0x1e == 240 / 8
 		 */
