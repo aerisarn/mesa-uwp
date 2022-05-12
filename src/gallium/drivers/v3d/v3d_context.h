@@ -103,7 +103,9 @@ void v3d_job_add_bo(struct v3d_job *job, struct v3d_bo *bo);
 #define MAX_JOB_SCISSORS 16
 
 enum v3d_sampler_state_variant {
-        V3D_SAMPLER_STATE_BORDER_0,
+        V3D_SAMPLER_STATE_BORDER_0000,
+        V3D_SAMPLER_STATE_BORDER_0001,
+        V3D_SAMPLER_STATE_BORDER_1111,
         V3D_SAMPLER_STATE_F16,
         V3D_SAMPLER_STATE_F16_UNORM,
         V3D_SAMPLER_STATE_F16_SNORM,
