@@ -5512,12 +5512,13 @@ emit_output_declarations(struct svga_shader_emitter_v10 *emit)
 
       /* Emit the declaration for the clip distance shadow copy which
        * will be used for stream output purpose and for clip distance
-       * varying variable
+       * varying variable. Note all clip distances
+       * will be written regardless of the enabled clipping planes.
        */
       emit_output_declaration(emit, VGPU10_OPCODE_DCL_OUTPUT,
                               emit->clip_dist_so_index,
                               VGPU10_NAME_UNDEFINED,
-                              emit->output_usage_mask[emit->clip_dist_out_index],
+                              VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
                               TRUE,
                               SVGADX_SIGNATURE_SEMANTIC_NAME_UNDEFINED);
 
@@ -5526,7 +5527,7 @@ emit_output_declarations(struct svga_shader_emitter_v10 *emit)
          emit_output_declaration(emit, VGPU10_OPCODE_DCL_OUTPUT,
                                  emit->clip_dist_so_index + 1,
                                  VGPU10_NAME_UNDEFINED,
-                                 emit->output_usage_mask[emit->clip_dist_out_index+1],
+                                 VGPU10_OPERAND_4_COMPONENT_MASK_ALL,
                                  TRUE,
                                  SVGADX_SIGNATURE_SEMANTIC_NAME_UNDEFINED);
       }
