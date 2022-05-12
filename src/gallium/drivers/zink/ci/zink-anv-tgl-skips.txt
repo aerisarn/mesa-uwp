@@ -1,0 +1,3 @@
+#these take too long to finish in ci
+KHR-GL46.texture_swizzle.smoke
+KHR-GL46.copy_image.functional
