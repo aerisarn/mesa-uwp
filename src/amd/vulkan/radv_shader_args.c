@@ -599,7 +599,7 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tg_size);
       }
 
-      if (args->explicit_scratch_args) {
+      if (args->explicit_scratch_args && gfx_level < GFX11) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
       }
 
@@ -716,7 +716,10 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.merged_wave_info);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
 
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+         if (gfx_level < GFX11) {
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+         }
+
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); // unknown
 
@@ -783,7 +786,7 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
       declare_global_input_sgprs(info, &user_sgpr_info, args);
 
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask);
-      if (args->explicit_scratch_args) {
+      if (args->explicit_scratch_args && gfx_level < GFX11) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
       }
 
