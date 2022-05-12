@@ -396,12 +396,35 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
    }
 
-   /* We need to lower nir_texop_txs with LOD before we lower descriptor
-    * access because nir_texop_txs gets turned into a descriptor UBO read
-    * and a bit of math by the descriptor lowering code.
+   /* Do texture lowering here.  Yes, it's a duplication of the texture
+    * lowering in bifrost_compile.  However, we need to lower texture stuff
+    * now, before we call panvk_per_arch(nir_lower_descriptors)() because some
+    * of the texture lowering generates nir_texop_txs which we handle as part
+    * of descriptor lowering.
+    *
+    * TODO: We really should be doing this in common code, not dpulicated in
+    * panvk.  In order to do that, we need to rework the panfrost compile
+    * flow to look more like the Intel flow:
+    *
+    *  1. Compile SPIR-V to NIR and maybe do a tiny bit of lowering that needs
+    *     to be done really early.
+    *
+    *  2. bi_preprocess_nir: Does common lowering and runs the optimization
+    *     loop.  Nothing here should be API-specific.
+    *
+    *  3. Do additional lowering in panvk
+    *
+    *  4. bi_postprocess_nir: Does final lowering and runs the optimization
+    *     loop again.  This can happen as part of the final compile.
+    *
+    * This would give us a better place to do panvk-specific lowering.
     */
    nir_lower_tex_options lower_tex_options = {
       .lower_txs_lod = true,
+      .lower_txp = ~0,
+      .lower_tg4_broadcom_swizzle = true,
+      .lower_txd = true,
+      .lower_invalid_implicit_lod = true,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 

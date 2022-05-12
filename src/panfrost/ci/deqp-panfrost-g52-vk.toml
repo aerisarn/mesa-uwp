@@ -45,4 +45,5 @@ include = [
     "dEQP-VK.spirv_assembly.instruction.compute.shader_default_output.*",
     "dEQP-VK.spirv_assembly.instruction.compute.workgroup_memory.*",
     "dEQP-VK.ssbo.layout.single_basic_type.*",
+    "dEQP-VK.texture.explicit_lod.*.derivatives.*",
 ]
