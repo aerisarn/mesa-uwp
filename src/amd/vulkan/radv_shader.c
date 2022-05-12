@@ -1059,34 +1059,36 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       if (info->vs.as_ls) {
-         NIR_PASS_V(nir, ac_nir_lower_ls_outputs_to_mem, info->vs.tcs_in_out_eq,
+         NIR_PASS_V(nir, ac_nir_lower_ls_outputs_to_mem, NULL, info->vs.tcs_in_out_eq,
                     info->vs.tcs_temp_only_input_mask);
          return true;
       } else if (info->vs.as_es) {
-         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem,
+         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL,
                     device->physical_device->rad_info.gfx_level, info->vs.num_linked_outputs);
          return true;
       }
    } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
-      NIR_PASS_V(nir, ac_nir_lower_hs_inputs_to_mem, info->vs.tcs_in_out_eq);
-      NIR_PASS_V(nir, ac_nir_lower_hs_outputs_to_mem, device->physical_device->rad_info.gfx_level,
+      NIR_PASS_V(nir, ac_nir_lower_hs_inputs_to_mem, NULL, info->vs.tcs_in_out_eq);
+      NIR_PASS_V(nir, ac_nir_lower_hs_outputs_to_mem, NULL,
+                 device->physical_device->rad_info.gfx_level,
                  info->tcs.tes_reads_tess_factors, info->tcs.tes_inputs_read,
                  info->tcs.tes_patch_inputs_read, info->tcs.num_linked_outputs,
                  info->tcs.num_linked_patch_outputs, true);
 
       return true;
    } else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      NIR_PASS_V(nir, ac_nir_lower_tes_inputs_to_mem, info->tes.num_linked_inputs,
+      NIR_PASS_V(nir, ac_nir_lower_tes_inputs_to_mem, NULL, info->tes.num_linked_inputs,
                  info->tes.num_linked_patch_inputs);
 
       if (info->tes.as_es) {
-         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem,
+         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL,
                     device->physical_device->rad_info.gfx_level, info->tes.num_linked_outputs);
       }
 
       return true;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      NIR_PASS_V(nir, ac_nir_lower_gs_inputs_to_mem, device->physical_device->rad_info.gfx_level,
+      NIR_PASS_V(nir, ac_nir_lower_gs_inputs_to_mem, NULL,
+                 device->physical_device->rad_info.gfx_level,
                  info->gs.num_linked_inputs);
       return true;
    } else if (nir->info.stage == MESA_SHADER_TASK) {

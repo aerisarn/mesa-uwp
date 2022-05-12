@@ -123,6 +123,9 @@ typedef struct {
    /* Which hardware generation we're dealing with */
    enum amd_gfx_level gfx_level;
 
+   /* I/O semantic -> real location used by lowering. */
+   ac_nir_map_io_driver_location map_io;
+
    /* True if merged VS+TCS (on GFX9+) has the same number
     * of input and output patch size.
     */
@@ -239,7 +242,7 @@ lower_ls_output_store(nir_builder *b,
    nir_ssa_def *vertex_idx = nir_load_local_invocation_index(b);
    nir_ssa_def *base_off_var = nir_imul(b, vertex_idx, nir_load_lshs_vertex_stride_amd(b));
 
-   nir_ssa_def *io_off = nir_build_calc_io_offset(b, intrin, nir_imm_int(b, 16u), 4u);
+   nir_ssa_def *io_off = ac_nir_calc_io_offset(b, intrin, nir_imm_int(b, 16u), 4u, st->map_io);
    unsigned write_mask = nir_intrinsic_write_mask(intrin);
 
    nir_ssa_def *off = nir_iadd_nuw(b, base_off_var, io_off);
@@ -299,7 +302,7 @@ hs_per_vertex_input_lds_offset(nir_builder *b,
 
    nir_ssa_def *tcs_in_current_patch_offset = nir_imul(b, rel_patch_id, tcs_in_patch_stride);
 
-   nir_ssa_def *io_offset = nir_build_calc_io_offset(b, instr, nir_imm_int(b, 16u), 4u);
+   nir_ssa_def *io_offset = ac_nir_calc_io_offset(b, instr, nir_imm_int(b, 16u), 4u, st->map_io);
 
    return nir_iadd_nuw(b, nir_iadd_nuw(b, tcs_in_current_patch_offset, vertex_index_off), io_offset);
 }
@@ -323,7 +326,7 @@ hs_output_lds_offset(nir_builder *b,
    nir_ssa_def *output_patch0_offset = nir_imul(b, input_patch_size, tcs_num_patches);
 
    nir_ssa_def *off = intrin
-                    ? nir_build_calc_io_offset(b, intrin, nir_imm_int(b, 16u), 4u)
+                    ? ac_nir_calc_io_offset(b, intrin, nir_imm_int(b, 16u), 4u, st->map_io)
                     : nir_imm_int(b, 0);
 
    nir_ssa_def *rel_patch_id = nir_load_tess_rel_patch_id_amd(b);
@@ -353,7 +356,7 @@ hs_per_vertex_output_vmem_offset(nir_builder *b,
 
    nir_ssa_def *tcs_num_patches = nir_load_tcs_num_patches_amd(b);
    nir_ssa_def *attr_stride = nir_imul(b, tcs_num_patches, nir_imul_imm(b, out_vertices_per_patch, 16u));
-   nir_ssa_def *io_offset = nir_build_calc_io_offset(b, intrin, attr_stride, 4u);
+   nir_ssa_def *io_offset = ac_nir_calc_io_offset(b, intrin, attr_stride, 4u, st->map_io);
 
    nir_ssa_def *rel_patch_id = nir_load_tess_rel_patch_id_amd(b);
    nir_ssa_def *patch_offset = nir_imul(b, rel_patch_id, nir_imul_imm(b, out_vertices_per_patch, 16u));
@@ -379,7 +382,7 @@ hs_per_patch_output_vmem_offset(nir_builder *b,
    nir_ssa_def *per_patch_data_offset = nir_imul(b, tcs_num_patches, per_vertex_output_patch_size);
 
    nir_ssa_def * off = intrin
-                    ? nir_build_calc_io_offset(b, intrin, nir_imul_imm(b, tcs_num_patches, 16u), 4u)
+                    ? ac_nir_calc_io_offset(b, intrin, nir_imul_imm(b, tcs_num_patches, 16u), 4u, st->map_io)
                     : nir_imm_int(b, 0);
 
    if (const_base_offset)
@@ -650,6 +653,7 @@ filter_any_input_access(const nir_instr *instr,
 
 void
 ac_nir_lower_ls_outputs_to_mem(nir_shader *shader,
+                               ac_nir_map_io_driver_location map,
                                bool tcs_in_out_eq,
                                uint64_t tcs_temp_only_inputs)
 {
@@ -658,6 +662,7 @@ ac_nir_lower_ls_outputs_to_mem(nir_shader *shader,
    lower_tess_io_state state = {
       .tcs_in_out_eq = tcs_in_out_eq,
       .tcs_temp_only_inputs = tcs_in_out_eq ? tcs_temp_only_inputs : 0,
+      .map_io = map,
    };
 
    nir_shader_instructions_pass(shader,
@@ -668,12 +673,14 @@ ac_nir_lower_ls_outputs_to_mem(nir_shader *shader,
 
 void
 ac_nir_lower_hs_inputs_to_mem(nir_shader *shader,
+                              ac_nir_map_io_driver_location map,
                               bool tcs_in_out_eq)
 {
    assert(shader->info.stage == MESA_SHADER_TESS_CTRL);
 
    lower_tess_io_state state = {
       .tcs_in_out_eq = tcs_in_out_eq,
+      .map_io = map,
    };
 
    nir_shader_lower_instructions(shader,
@@ -684,6 +691,7 @@ ac_nir_lower_hs_inputs_to_mem(nir_shader *shader,
 
 void
 ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
+                               ac_nir_map_io_driver_location map,
                                enum amd_gfx_level gfx_level,
                                bool tes_reads_tessfactors,
                                uint64_t tes_inputs_read,
@@ -702,6 +710,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
       .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
       .tcs_num_reserved_patch_outputs = num_reserved_tcs_patch_outputs,
       .tcs_out_patch_fits_subgroup = 32 % shader->info.tess.tcs_vertices_out == 0,
+      .map_io = map,
    };
 
    nir_shader_lower_instructions(shader,
@@ -715,6 +724,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
 
 void
 ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
+                               ac_nir_map_io_driver_location map,
                                unsigned num_reserved_tcs_outputs,
                                unsigned num_reserved_tcs_patch_outputs)
 {
@@ -723,6 +733,7 @@ ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
    lower_tess_io_state state = {
       .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
       .tcs_num_reserved_patch_outputs = num_reserved_tcs_patch_outputs,
+      .map_io = map,
    };
 
    nir_shader_lower_instructions(shader,

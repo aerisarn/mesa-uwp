@@ -48,6 +48,9 @@ enum
    AC_EXP_PARAM_UNDEFINED = 255, /* deprecated, use AC_EXP_PARAM_DEFAULT_VAL_0000 instead */
 };
 
+/* Maps I/O semantics to the actual location used by the lowering pass. */
+typedef unsigned (*ac_nir_map_io_driver_location)(unsigned semantic);
+
 /* Forward declaration of nir_builder so we don't have to include nir_builder.h here */
 struct nir_builder;
 typedef struct nir_builder nir_builder;
@@ -55,21 +58,31 @@ typedef struct nir_builder nir_builder;
 nir_ssa_def *
 ac_nir_load_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_arg arg);
 
+nir_ssa_def *
+ac_nir_calc_io_offset(nir_builder *b,
+                      nir_intrinsic_instr *intrin,
+                      nir_ssa_def *base_stride,
+                      unsigned component_stride,
+                      ac_nir_map_io_driver_location map_io);
+
 bool ac_nir_optimize_outputs(nir_shader *nir, bool sprite_tex_disallowed,
                              int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS],
                              uint8_t param_export_index[NUM_TOTAL_VARYING_SLOTS]);
 
 void
 ac_nir_lower_ls_outputs_to_mem(nir_shader *ls,
+                               ac_nir_map_io_driver_location map,
                                bool tcs_in_out_eq,
                                uint64_t tcs_temp_only_inputs);
 
 void
 ac_nir_lower_hs_inputs_to_mem(nir_shader *shader,
+                              ac_nir_map_io_driver_location map,
                               bool tcs_in_out_eq);
 
 void
 ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
+                               ac_nir_map_io_driver_location map,
                                enum amd_gfx_level gfx_level,
                                bool tes_reads_tessfactors,
                                uint64_t tes_inputs_read,
@@ -80,16 +93,19 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
 
 void
 ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
+                               ac_nir_map_io_driver_location map,
                                unsigned num_reserved_tcs_outputs,
                                unsigned num_reserved_tcs_patch_outputs);
 
 void
 ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
+                               ac_nir_map_io_driver_location map,
                                enum amd_gfx_level gfx_level,
                                unsigned num_reserved_es_outputs);
 
 void
 ac_nir_lower_gs_inputs_to_mem(nir_shader *shader,
+                              ac_nir_map_io_driver_location map,
                               enum amd_gfx_level gfx_level,
                               unsigned num_reserved_es_outputs);
 

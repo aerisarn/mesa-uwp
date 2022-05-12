@@ -35,6 +35,37 @@ ac_nir_load_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_
       return nir_load_vector_arg_amd(b, num_components, .base = arg.arg_index);
 }
 
+/**
+ * This function takes an I/O intrinsic like load/store_input,
+ * and emits a sequence that calculates the full offset of that instruction,
+ * including a stride to the base and component offsets.
+ */
+nir_ssa_def *
+ac_nir_calc_io_offset(nir_builder *b,
+                      nir_intrinsic_instr *intrin,
+                      nir_ssa_def *base_stride,
+                      unsigned component_stride,
+                      ac_nir_map_io_driver_location map_io)
+{
+   unsigned base = nir_intrinsic_base(intrin);
+   unsigned semantic = nir_intrinsic_io_semantics(intrin).location;
+   unsigned mapped_driver_location = map_io ? map_io(semantic) : base;
+
+   /* base is the driver_location, which is in slots (1 slot = 4x4 bytes) */
+   nir_ssa_def *base_op = nir_imul_imm(b, base_stride, mapped_driver_location);
+
+   /* offset should be interpreted in relation to the base,
+    * so the instruction effectively reads/writes another input/output
+    * when it has an offset
+    */
+   nir_ssa_def *offset_op = nir_imul(b, base_stride, nir_ssa_for_src(b, *nir_get_io_offset_src(intrin), 1));
+
+   /* component is in bytes */
+   unsigned const_op = nir_intrinsic_component(intrin) * component_stride;
+
+   return nir_iadd_imm_nuw(b, nir_iadd_nuw(b, base_op, offset_op), const_op);
+}
+
 bool
 ac_nir_lower_indirect_derefs(nir_shader *shader,
                              enum amd_gfx_level gfx_level)
