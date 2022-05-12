@@ -208,15 +208,12 @@ fd_device_version(struct fd_device *dev)
    return dev->version;
 }
 
+DEBUG_GET_ONCE_BOOL_OPTION(libgl, "LIBGL_DEBUG", false)
+
 bool
 fd_dbg(void)
 {
-   static int dbg;
-
-   if (!dbg)
-      dbg = getenv("LIBGL_DEBUG") ? 1 : -1;
-
-   return dbg == 1;
+   return debug_get_option_libgl();
 }
 
 bool
