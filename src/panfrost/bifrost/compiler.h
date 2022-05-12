@@ -260,6 +260,7 @@ bi_replace_index(bi_index old, bi_index replacement)
         replacement.abs = old.abs;
         replacement.neg = old.neg;
         replacement.swizzle = old.swizzle;
+        replacement.discard = false; /* needs liveness analysis to set */
         return replacement;
 }
 
