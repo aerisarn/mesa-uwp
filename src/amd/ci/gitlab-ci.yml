@@ -70,7 +70,9 @@ radv_stoney_vkcts:amd64:
   variables:
     # FIXME: Create this baseline for KABINI
     GPU_VERSION: radv-kabini-aco
+    B2C_TIMEOUT_BOOT_MINUTES: 360
     B2C_TIMEOUT_OVERALL_MINUTES: 360
+    B2C_TIMEOUT_BOOT_RETRIES: 0
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=8g'
   tags:
     - amdgpu:codename:KABINI
@@ -88,13 +90,15 @@ radv_stoney_vkcts:amd64:
     GPU_VERSION: radv-stoney-aco
     # Note, it only has a wee 32g disk!
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=8g'
+    B2C_TIMEOUT_BOOT_MINUTES: 240
+    B2C_TIMEOUT_OVERALL_MINUTES: 240
+    B2C_TIMEOUT_BOOT_RETRIES: 0
   tags:
     - amdgpu:codename:STONEY
 
 deqp-polaris10-valve:
   extends:
     - .deqp-test-valve
-  timeout: 3h 10m
   variables:
     GPU_VERSION: radv-polaris10-aco
     FDO_CI_CONCURRENT: 16
@@ -107,7 +111,6 @@ deqp-polaris10-valve:
 deqp-vega10-valve:
   extends:
     - .deqp-test-valve
-  timeout: 3h 10m
   variables:
     GPU_VERSION: radv-vega10-aco
     FDO_CI_CONCURRENT: 16
@@ -118,7 +121,6 @@ deqp-vega10-valve:
 deqp-renoir-valve:
   extends:
     - .deqp-test-valve
-  timeout: 2h 10m
   variables:
     GPU_VERSION: radv-renoir-aco
     FDO_CI_CONCURRENT: 24
@@ -129,7 +131,6 @@ deqp-renoir-valve:
 deqp-navi10-valve:
   extends:
     - .deqp-test-valve
-  timeout: 2h 10m
   variables:
     GPU_VERSION: radv-navi10-aco
     FDO_CI_CONCURRENT: 24
@@ -144,7 +145,6 @@ deqp-navi10-valve:
 deqp-navi21-valve:
   extends:
     - .deqp-test-valve
-  timeout: 2h 10m
   variables:
     GPU_VERSION: radv-sienna_cichlid-aco
     FDO_CI_CONCURRENT: 16
@@ -155,13 +155,12 @@ deqp-navi21-valve:
 deqp-vangogh-valve:
   extends:
     - .deqp-test-valve
-  timeout: 7h 10m
+  timeout: 2h 10m
   variables:
     GPU_VERSION: radv-vangogh-aco
     FDO_CI_CONCURRENT: 8
-    B2C_TIMEOUT_BOOT_MINUTES: 420     # 7 hours
-    B2C_TIMEOUT_OVERALL_MINUTES: 420  # 7 hours
-    B2C_TIMEOUT_MINUTES: 3
+    B2C_TIMEOUT_BOOT_MINUTES: 65
+    B2C_TIMEOUT_OVERALL_MINUTES: 120
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
   tags:
     - amdgpu:codename:VANGOGH

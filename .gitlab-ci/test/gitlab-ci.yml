@@ -187,6 +187,7 @@
   image: registry.freedesktop.org/mupuf/valve-infra/mesa-trigger:2022-03-03.2
   extends:
     - .use-debian/x86_test-vk
+  timeout: 1h 40m
   variables:
     # No need by default to pull the whole repo
     GIT_STRATEGY: none
@@ -199,12 +200,12 @@
     B2C_POWEROFF_DELAY: 15
     B2C_SESSION_END_REGEX: '^.*It''s now safe to turn off your computer\r$'
     B2C_SESSION_REBOOT_REGEX: '(GPU hang detected!|\*ERROR\* ring [^\s]+ timeout|The CS has been cancelled because the context is lost)'
-    B2C_TIMEOUT_BOOT_MINUTES: 240
-    B2C_TIMEOUT_BOOT_RETRIES: 2
+    B2C_TIMEOUT_BOOT_MINUTES: 45
+    B2C_TIMEOUT_BOOT_RETRIES: 1
     B2C_TIMEOUT_FIRST_MINUTES: 5
     B2C_TIMEOUT_FIRST_RETRIES: 3
     B2C_TIMEOUT_MINUTES: 2
-    B2C_TIMEOUT_OVERALL_MINUTES: 240
+    B2C_TIMEOUT_OVERALL_MINUTES: 90
     B2C_TIMEOUT_RETRIES: 0
 
     # As noted in the top description, we make a distinction between the
