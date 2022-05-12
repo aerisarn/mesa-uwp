@@ -934,6 +934,10 @@ system_value("user_data_amd", 4)
 #
 # The vec2 value produced by these intrinsics is intended for use as the
 # barycoord source of a load_interpolated_input intrinsic.
+#
+# The vec3 variants are intended to be used for input barycentric coordinates
+# which are system values on most hardware, compared to the vec2 variants which
+# interpolates input varyings.
 
 def barycentric(name, dst_comp, src_comp=[]):
     intrinsic("load_barycentric_" + name, src_comp=src_comp, dest_comp=dst_comp,
@@ -941,13 +945,18 @@ def barycentric(name, dst_comp, src_comp=[]):
 
 # no sources.
 barycentric("pixel", 2)
+barycentric("coord_pixel", 3)
 barycentric("centroid", 2)
+barycentric("coord_centroid", 3)
 barycentric("sample", 2)
+barycentric("coord_sample", 3)
 barycentric("model", 3)
 # src[] = { sample_id }.
 barycentric("at_sample", 2, [1])
+barycentric("coord_at_sample", 3, [1])
 # src[] = { offset.xy }.
 barycentric("at_offset", 2, [2])
+barycentric("coord_at_offset", 3, [2])
 
 # Load sample position:
 #

@@ -826,6 +826,14 @@ typedef enum
    SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL,
 
    /**
+    * \name VK_KHR_fragment_shader_barycentric
+    */
+   /*@{*/
+   SYSTEM_VALUE_BARYCENTRIC_PERSP_COORD,
+   SYSTEM_VALUE_BARYCENTRIC_LINEAR_COORD,
+   /*@}*/
+
+   /**
     * \name Ray tracing shader system values
     */
    /*@{*/

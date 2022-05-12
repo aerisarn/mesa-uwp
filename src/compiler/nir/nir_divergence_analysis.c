@@ -478,6 +478,11 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_barycentric_model:
    case nir_intrinsic_load_barycentric_at_sample:
    case nir_intrinsic_load_barycentric_at_offset:
+   case nir_intrinsic_load_barycentric_coord_pixel:
+   case nir_intrinsic_load_barycentric_coord_centroid:
+   case nir_intrinsic_load_barycentric_coord_sample:
+   case nir_intrinsic_load_barycentric_coord_at_sample:
+   case nir_intrinsic_load_barycentric_coord_at_offset:
    case nir_intrinsic_interp_deref_at_offset:
    case nir_intrinsic_interp_deref_at_sample:
    case nir_intrinsic_interp_deref_at_centroid:

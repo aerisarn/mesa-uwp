@@ -700,6 +700,19 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          shader->info.fs.uses_sample_qualifier = true;
       break;
 
+   case nir_intrinsic_load_barycentric_coord_pixel:
+   case nir_intrinsic_load_barycentric_coord_centroid:
+   case nir_intrinsic_load_barycentric_coord_sample:
+   case nir_intrinsic_load_barycentric_coord_at_offset:
+   case nir_intrinsic_load_barycentric_coord_at_sample:
+      if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_SMOOTH ||
+          nir_intrinsic_interp_mode(instr) == INTERP_MODE_NONE) {
+         BITSET_SET(shader->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_PERSP_COORD);
+      } else if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_NOPERSPECTIVE) {
+         BITSET_SET(shader->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_LINEAR_COORD);
+      }
+      break;
+
    case nir_intrinsic_quad_broadcast:
    case nir_intrinsic_quad_swap_horizontal:
    case nir_intrinsic_quad_swap_vertical:
