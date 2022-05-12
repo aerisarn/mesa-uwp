@@ -655,8 +655,10 @@ VkResult pvr_srv_winsys_render_submit(
                                         sizeof(frag_cmd),
                                         (uint8_t *)&frag_cmd,
                                         submit_info->job_num,
-                                        true, /* Always kick the TA. */
-                                        true, /* Always kick a PR. */
+                                        /* Always kick the TA. */
+                                        true,
+                                        /* Always kick a PR. */
+                                        true,
                                         submit_info->run_frag,
                                         false,
                                         0,
