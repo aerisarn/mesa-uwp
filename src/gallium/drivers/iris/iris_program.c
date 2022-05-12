@@ -923,7 +923,7 @@ iris_setup_binding_table(const struct intel_device_info *devinfo,
    bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE_HIGH64] =
       info->textures_used[2] | ((uint64_t)info->textures_used[3]) << 32;
 
-   bt->sizes[IRIS_SURFACE_GROUP_IMAGE] = info->num_images;
+   bt->sizes[IRIS_SURFACE_GROUP_IMAGE] = BITSET_LAST_BIT(info->images_used);
 
    /* Allocate an extra slot in the UBO section for NIR constants.
     * Binding table compaction will remove it if unnecessary.
