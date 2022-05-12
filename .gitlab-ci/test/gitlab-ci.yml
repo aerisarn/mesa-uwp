@@ -198,7 +198,7 @@
     B2C_LOG_LEVEL: 6
     B2C_POWEROFF_DELAY: 15
     B2C_SESSION_END_REGEX: '^.*It''s now safe to turn off your computer\r$'
-    B2C_SESSION_REBOOT_REGEX: 'GPU hang detected!'
+    B2C_SESSION_REBOOT_REGEX: '(GPU hang detected!|\*ERROR\* ring [^\s]+ timeout|The CS has been cancelled because the context is lost)'
     B2C_TIMEOUT_BOOT_MINUTES: 240
     B2C_TIMEOUT_BOOT_RETRIES: 2
     B2C_TIMEOUT_FIRST_MINUTES: 5
