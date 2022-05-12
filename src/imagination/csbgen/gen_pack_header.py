@@ -160,7 +160,7 @@ class Csbgen(Node):
 
             self._structs[element.name] = element
         elif isinstance(element, Define):
-            define_names = map(lambda d: d.full_name, self._defines)
+            define_names = [d.full_name for d in self._defines]
             if element.full_name in define_names:
                 raise RuntimeError("Define redefined. Define: %s" % element.full_name)
 
@@ -317,10 +317,8 @@ class Struct(Node):
             super().add(element)
 
     def _emit_header(self, root: Csbgen) -> None:
-        fields = filter(lambda f: hasattr(f, "default"), self.fields)
-
         default_fields = []
-        for field in fields:
+        for field in (f for f in self.fields if f.default is not None):
             if field.is_builtin_type:
                 default_fields.append("    .%-35s = %6d" % (field.name, field.default))
             else:
@@ -346,9 +344,7 @@ class Struct(Node):
         print("")
 
     def _emit_helper_macros(self) -> None:
-        fields_with_defines = filter(lambda f: f.defines, self.fields)
-
-        for field in fields_with_defines:
+        for field in (f for f in self.fields if f.defines):
             print("/* Helper macros for %s */" % field.name)
 
             for define in field.defines:
@@ -394,12 +390,12 @@ class Field(Node):
     start: int
     end: int
     type: str
-    default: t.Union[str, int]
+    default: t.Optional[t.Union[str, int]]
     shift: t.Optional[int]
     _defines: t.Dict[str, Define]
 
     def __init__(self, parent: Node, name: str, start: int, end: int, ty: str, *,
-                 default: str = None, shift: int = None) -> None:
+                 default: t.Optional[str] = None, shift: t.Optional[int] = None) -> None:
         super().__init__(parent, name)
 
         self.start = start
@@ -423,6 +419,8 @@ class Field(Node):
                 self.default = safe_name(default)
             else:
                 self.default = num_from_str(default)
+        else:
+            self.default = None
 
         if shift is not None:
             if self.type != "address":
