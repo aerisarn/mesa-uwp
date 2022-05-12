@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import copy
 import os
-import sys
 import textwrap
 import typing as t
 import xml.parsers.expat as expat
@@ -966,11 +965,14 @@ class Parser:
         file.close()
 
 
-if len(sys.argv) < 2:
-    print("No input xml file specified")
-    sys.exit(1)
+if __name__ == "__main__":
+    import sys
 
-input_file = sys.argv[1]
+    if len(sys.argv) < 2:
+        print("No input xml file specified")
+        sys.exit(1)
 
-p = Parser()
-p.parse(input_file)
+    input_file = sys.argv[1]
+
+    p = Parser()
+    p.parse(input_file)
