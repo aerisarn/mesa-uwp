@@ -3,7 +3,7 @@ variables:
    DEBIAN_BASE_TAG: "2022-04-24-libdrm"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-04-24-libdrm"
+   DEBIAN_BUILD_TAG: "2022-05-12-DirectX-Headers"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 

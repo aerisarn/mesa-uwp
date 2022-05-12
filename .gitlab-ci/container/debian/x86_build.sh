@@ -89,7 +89,7 @@ cd shader-db
 make
 popd
 
-git clone https://github.com/microsoft/DirectX-Headers -b v1.0.1 --depth 1
+git clone https://github.com/microsoft/DirectX-Headers -b v1.602.0-r1 --depth 1
 pushd DirectX-Headers
 mkdir build
 cd build
