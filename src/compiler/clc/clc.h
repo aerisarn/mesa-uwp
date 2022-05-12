@@ -49,6 +49,14 @@ enum clc_spirv_version {
    CLC_SPIRV_VERSION_1_4,
 };
 
+struct clc_optional_features {
+   bool fp64;
+   bool int64;
+   bool images;
+   bool images_read_write;
+   bool images_write_3d;
+};
+
 struct clc_compile_args {
    const struct clc_named_value *headers;
    unsigned num_headers;
@@ -58,6 +66,7 @@ struct clc_compile_args {
 
    /* SPIRV version to target. */
    enum clc_spirv_version spirv_version;
+   struct clc_optional_features features;
 
    /* Allowed extensions SPIRV extensions the OpenCL->SPIRV translation can
     * enable. A pointer to a NULL terminated array of strings, allow any

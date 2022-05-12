@@ -861,6 +861,33 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
 #endif
 #endif
 
+#if LLVM_VERSION_MAJOR >= 14
+   c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("-all");
+   c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_byte_addressable_store");
+   c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_global_int32_base_atomics");
+   c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_global_int32_extended_atomics");
+   c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_local_int32_base_atomics");
+   c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_local_int32_extended_atomics");
+   if (args->features.fp64) {
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_fp64");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_fp64");
+   }
+   if (args->features.int64) {
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cles_khr_int64");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_int64");
+   }
+   if (args->features.images) {
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_images");
+   }
+   if (args->features.images_read_write) {
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_read_write_images");
+   }
+   if (args->features.images_write_3d) {
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+cl_khr_3d_image_writes");
+      c->getTargetOpts().OpenCLExtensionsAsWritten.push_back("+__opencl_c_3d_image_writes");
+   }
+#endif
+
    if (args->num_headers) {
       ::llvm::SmallString<128> tmp_header_path;
       ::llvm::sys::path::system_temp_directory(true, tmp_header_path);
