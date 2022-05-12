@@ -3280,12 +3280,15 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
    /* GETLOD returns results in 4.8 fixed point */
    if (opc == OPC_GETLOD) {
-      struct ir3_instruction *factor = create_immed(b, fui(1.0 / 256));
+      bool half = nir_dest_bit_size(tex->dest) == 16;
+      struct ir3_instruction *factor =
+         half ? create_immed_typed(b, _mesa_float_to_half(1.0 / 256), TYPE_F16)
+              : create_immed(b, fui(1.0 / 256));
 
-      compile_assert(ctx, tex->dest_type == nir_type_float32);
       for (i = 0; i < 2; i++) {
-         dst[i] =
-            ir3_MUL_F(b, ir3_COV(b, dst[i], TYPE_S32, TYPE_F32), 0, factor, 0);
+         dst[i] = ir3_MUL_F(
+            b, ir3_COV(b, dst[i], TYPE_S32, half ? TYPE_F16 : TYPE_F32), 0,
+            factor, 0);
       }
    }
 
