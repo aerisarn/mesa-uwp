@@ -200,6 +200,9 @@ class Csbgen(Node):
     def get_enum(self, enum_name: str) -> Enum:
         return self._enums[enum_name]
 
+    def get_struct(self, struct_name: str) -> Struct:
+        return self._structs[struct_name]
+
 
 class Enum(Node):
     __slots__ = ["_values"]
@@ -369,6 +372,23 @@ class Struct(Node):
 
         print("}\n")
 
+    def _emit_unpack_function(self, root: Csbgen) -> None:
+        print(textwrap.dedent("""\
+            static inline __attribute__((always_inline)) void
+            %s_unpack(__attribute__((unused)) const void * restrict src,
+                    %s__attribute__((unused)) struct %s * restrict values)
+            {""") % (self.full_name, ' ' * len(self.full_name), self.full_name))
+
+        group = Group(0, 1, self.size, self.fields)
+        dwords, length = group.collect_dwords_and_length()
+        if length:
+            # Cast src to make header C++ friendly
+            print("    const uint32_t * restrict dw = (const uint32_t * restrict) src;")
+
+        group.emit_unpack_function(root, dwords, length)
+
+        print("}\n")
+
     def emit(self, root: Csbgen) -> None:
         print("#define %-33s %6d" % (self.full_name + "_length", self.length))
 
@@ -382,6 +402,7 @@ class Struct(Node):
         print("};\n")
 
         self._emit_pack_function(root)
+        self._emit_unpack_function(root)
 
 
 class Field(Node):
@@ -838,6 +859,73 @@ class Group:
 
             print("    dw[%d] = %s;" % (index, v))
             print("    dw[%d] = %s >> 32;" % (index + 1, v))
+
+    def emit_unpack_function(self, root: Csbgen, dwords: t.Dict[int, Group.DWord], length: int) -> None:
+        for index in range(length):
+            # Ignore MBZ dwords
+            if index not in dwords:
+                continue
+
+            # For 64 bit dwords, we aliased the two dword entries in the dword
+            # dict it occupies. Now that we're emitting the unpack function,
+            # skip the duplicate entries.
+            dw = dwords[index]
+            if index > 0 and index - 1 in dwords and dw == dwords[index - 1]:
+                continue
+
+            # Special case: only one field and it's a struct at the beginning
+            # of the dword. In this case we unpack directly from the
+            # source. This is the only way we handle embedded structs
+            # larger than 32 bits.
+            if len(dw.fields) == 1:
+                field = dw.fields[0]
+                if root.is_known_struct(field.type) and field.start % 32 == 0:
+                    prefix = root.get_struct(field.type)
+                    print("")
+                    print("    %s_unpack(data, &dw[%d], &values->%s);" % (prefix, index, field.name))
+                    continue
+
+            dword_start = index * 32
+
+            if dw.size == 32:
+                v = "dw[%d]" % index
+            elif dw.size == 64:
+                v = "v%d" % index
+                print("    const uint%d_t %s = dw[%d] | ((uint64_t)dw[%d] << 32);" % (dw.size, v, index, index + 1))
+            else:
+                raise RuntimeError("Unsupported dword size %d" % dw.size)
+
+            # Unpack any fields of struct type first.
+            for field_index, field in enumerate(f for f in dw.fields if root.is_known_struct(f.type)):
+                prefix = root.get_struct(field.type).prefix
+                vname = "v%d_%d" % (index, field_index)
+                print("")
+                print("    uint32_t %s = __pvr_uint_unpack(%s, %d, %d);"
+                      % (vname, v, field.start - dword_start, field.end - dword_start))
+                print("    %s_unpack(data, &%s, &values->%s);" % (prefix, vname, field.name))
+
+            for field in dw.fields:
+                dword_field_start = field.start - dword_start
+                dword_field_end = field.end - dword_start
+
+                if field.type == "mbo" or root.is_known_struct(field.type):
+                    continue
+                elif field.type == "uint" or root.is_known_enum(field.type) or field.type == "bool":
+                    print("    values->%s = __pvr_uint_unpack(%s, %d, %d);"
+                          % (field.name, v, dword_field_start, dword_field_end))
+                elif field.type == "int":
+                    print("    values->%s = __pvr_sint_unpack(%s, %d, %d);"
+                          % (field.name, v, dword_field_start, dword_field_end))
+                elif field.type == "float":
+                    print("    values->%s = __pvr_float_unpack(%s);" % (field.name, v))
+                elif field.type == "offset":
+                    print("    values->%s = __pvr_offset_unpack(%s, %d, %d);"
+                          % (field.name, v, dword_field_start, dword_field_end))
+                elif field.type == "address":
+                    print("    values->%s = __pvr_address_unpack(%s, %d, %d, %d);"
+                          % (field.name, v, field.shift, dword_field_start, dword_field_end))
+                else:
+                    print("/* unhandled field %s, type %s */" % (field.name, field.type))
 
 
 class Parser:
