@@ -1203,6 +1203,16 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       .samplerMirrorClampToEdge = true,
 
+      /* These are mandatory by Vulkan 1.2, however, we don't support any of
+       * the optional features affected by them (non 32-bit types for
+       * shaderSubgroupExtendedTypes and additional subgroup ballot for
+       * subgroupBroadcastDynamicId), so in practice setting them to true
+       * doesn't have any implications for us until we implement any of these
+       * optional features.
+       */
+      .shaderSubgroupExtendedTypes = true,
+      .subgroupBroadcastDynamicId = true,
+
       .vulkanMemoryModel = true,
       .vulkanMemoryModelDeviceScope = true,
       .vulkanMemoryModelAvailabilityVisibilityChains = true,
