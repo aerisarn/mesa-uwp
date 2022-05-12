@@ -1356,10 +1356,8 @@ intrinsic("overwrite_vs_arguments_amd", src_comp=[1, 1], indices=[])
 # Overwrites TES input registers, for use with vertex compaction after culling. src = {tes_u, tes_v, rel_patch_id, patch_id}.
 intrinsic("overwrite_tes_arguments_amd", src_comp=[1, 1, 1, 1], indices=[])
 
-# loads a descriptor for an sbt.
-# src = [index] BINDING = which table
-intrinsic("load_sbt_amd", dest_comp=4, bit_sizes=[32], indices=[BINDING],
-          flags=[CAN_ELIMINATE, CAN_REORDER])
+# The address of the sbt descriptors.
+system_value("sbt_base_amd", 1, bit_sizes=[64])
 
 # 1. HW descriptor
 # 2. BVH node(64-bit pointer as 2x32 ...)

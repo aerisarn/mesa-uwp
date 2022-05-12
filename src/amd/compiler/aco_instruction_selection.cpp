@@ -5755,19 +5755,6 @@ visit_load_ubo(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
-visit_load_sbt_amd(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   unsigned binding = nir_intrinsic_binding(instr);
-
-   Builder bld(ctx->program, ctx->block);
-   Temp desc_base = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.sbt_descriptors));
-   Operand desc_off = bld.copy(bld.def(s1), Operand::c32(binding * 16u));
-   bld.smem(aco_opcode::s_load_dwordx4, Definition(dst), desc_base, desc_off);
-   emit_split_vector(ctx, dst, 4);
-}
-
-void
 visit_load_push_constant(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -9082,7 +9069,12 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
              true);
       break;
    }
-   case nir_intrinsic_load_sbt_amd: visit_load_sbt_amd(ctx, instr); break;
+   case nir_intrinsic_load_sbt_base_amd: {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Temp addr = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.sbt_descriptors));
+      bld.copy(Definition(dst), Operand(addr));
+      break;
+   }
    case nir_intrinsic_bvh64_intersect_ray_amd: visit_bvh64_intersect_ray_amd(ctx, instr); break;
    case nir_intrinsic_overwrite_vs_arguments_amd: {
       ctx->arg_temps[ctx->args->ac.vertex_id.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);

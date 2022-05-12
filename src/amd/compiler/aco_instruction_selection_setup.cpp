@@ -603,6 +603,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_workgroup_id:
                case nir_intrinsic_load_num_workgroups:
                case nir_intrinsic_load_ray_launch_size_addr_amd:
+               case nir_intrinsic_load_sbt_base_amd:
                case nir_intrinsic_load_subgroup_id:
                case nir_intrinsic_load_num_subgroups:
                case nir_intrinsic_load_first_vertex:
@@ -725,7 +726,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_inclusive_scan:
                case nir_intrinsic_exclusive_scan:
                case nir_intrinsic_reduce:
-               case nir_intrinsic_load_sbt_amd:
                case nir_intrinsic_load_ubo:
                case nir_intrinsic_load_ssbo:
                case nir_intrinsic_load_global_amd:

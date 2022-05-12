@@ -197,7 +197,7 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_store_output:
       gather_intrinsic_store_output_info(nir, instr, info);
       break;
-   case nir_intrinsic_load_sbt_amd:
+   case nir_intrinsic_load_sbt_base_amd:
       info->cs.uses_sbt = true;
       break;
    case nir_intrinsic_load_force_vrs_rates_amd:

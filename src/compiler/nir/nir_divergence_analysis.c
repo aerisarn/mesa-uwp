@@ -107,6 +107,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_num_subgroups:
    case nir_intrinsic_load_ray_launch_size:
    case nir_intrinsic_load_ray_launch_size_addr_amd:
+   case nir_intrinsic_load_sbt_base_amd:
    case nir_intrinsic_load_subgroup_size:
    case nir_intrinsic_load_subgroup_eq_mask:
    case nir_intrinsic_load_subgroup_ge_mask:
@@ -373,7 +374,6 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_masked_swizzle_amd:
    case nir_intrinsic_is_sparse_texels_resident:
    case nir_intrinsic_sparse_residency_code_and:
-   case nir_intrinsic_load_sbt_amd:
    case nir_intrinsic_bvh64_intersect_ray_amd:
    case nir_intrinsic_image_deref_load_param_intel:
    case nir_intrinsic_image_load_raw_intel:

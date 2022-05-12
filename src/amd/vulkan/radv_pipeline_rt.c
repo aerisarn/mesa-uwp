@@ -333,23 +333,25 @@ insert_rt_return(nir_builder *b, const struct rt_variables *vars)
 }
 
 enum sbt_type {
-   SBT_RAYGEN,
-   SBT_MISS,
-   SBT_HIT,
-   SBT_CALLABLE,
+   SBT_RAYGEN = offsetof(VkTraceRaysIndirectCommand2KHR, raygenShaderRecordAddress),
+   SBT_MISS = offsetof(VkTraceRaysIndirectCommand2KHR, missShaderBindingTableAddress),
+   SBT_HIT = offsetof(VkTraceRaysIndirectCommand2KHR, hitShaderBindingTableAddress),
+   SBT_CALLABLE = offsetof(VkTraceRaysIndirectCommand2KHR, callableShaderBindingTableAddress),
 };
 
 static nir_ssa_def *
 get_sbt_ptr(nir_builder *b, nir_ssa_def *idx, enum sbt_type binding)
 {
-   nir_ssa_def *desc = nir_load_sbt_amd(b, 4, .binding = binding);
-   nir_ssa_def *base_addr = nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
-   nir_ssa_def *stride = nir_channel(b, desc, 2);
+   nir_ssa_def *desc_base_addr = nir_load_sbt_base_amd(b);
 
-   nir_ssa_def *ret = nir_imul(b, idx, stride);
-   ret = nir_iadd(b, base_addr, nir_u2u64(b, ret));
+   nir_ssa_def *desc =
+      nir_pack_64_2x32(b, nir_build_load_smem_amd(b, 2, desc_base_addr, nir_imm_int(b, binding)));
 
-   return ret;
+   nir_ssa_def *stride_offset = nir_imm_int(b, binding + (binding == SBT_RAYGEN ? 8 : 16));
+   nir_ssa_def *stride =
+      nir_pack_64_2x32(b, nir_build_load_smem_amd(b, 2, desc_base_addr, stride_offset));
+
+   return nir_iadd(b, desc, nir_imul(b, nir_u2u64(b, idx), stride));
 }
 
 static void
