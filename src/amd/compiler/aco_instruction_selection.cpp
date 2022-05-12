@@ -9004,6 +9004,12 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                get_arg(ctx, ctx->args->rt.dynamic_callable_stack_base));
       break;
+   case nir_intrinsic_load_resume_shader_address_amd: {
+      bld.pseudo(aco_opcode::p_resume_shader_address,
+                 Definition(get_ssa_temp(ctx, &instr->dest.ssa)), bld.def(s1, scc),
+                 Operand::c32(nir_intrinsic_call_idx(instr)));
+      break;
+   }
    case nir_intrinsic_overwrite_vs_arguments_amd: {
       ctx->arg_temps[ctx->args->vertex_id.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);
       ctx->arg_temps[ctx->args->instance_id.arg_index] = get_ssa_temp(ctx, instr->src[1].ssa);

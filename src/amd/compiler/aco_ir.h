@@ -1873,6 +1873,7 @@ enum block_kind {
    block_kind_discard_early_exit = 1 << 11,
    block_kind_uses_discard = 1 << 12,
    block_kind_needs_lowering = 1 << 13,
+   block_kind_resume = 1 << 14,
    block_kind_export_end = 1 << 15,
 };
 
@@ -1960,12 +1961,12 @@ struct Block {
    std::vector<unsigned> logical_succs;
    std::vector<unsigned> linear_succs;
    RegisterDemand register_demand = RegisterDemand();
+   uint32_t kind = 0;
+   int32_t logical_idom = -1;
+   int32_t linear_idom = -1;
    uint16_t loop_nest_depth = 0;
    uint16_t divergent_if_logical_depth = 0;
    uint16_t uniform_if_depth = 0;
-   uint16_t kind = 0;
-   int logical_idom = -1;
-   int linear_idom = -1;
 
    /* this information is needed for predecessors to blocks with phis when
     * moving out of ssa */
