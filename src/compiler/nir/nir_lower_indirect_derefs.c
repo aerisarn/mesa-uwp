@@ -244,27 +244,3 @@ nir_lower_indirect_var_derefs(nir_shader *shader, const struct set *vars)
 
    return progress;
 }
-
-/** Lowers indirect variable loads/stores to direct loads/stores.
- *
- * The pass works by replacing any indirect load or store with an if-ladder
- * that does a binary search on the array index. It only changes uniform variable builtins,
- * e.g., gl_LightSource
- */
-bool
-nir_lower_indirect_builtin_uniform_derefs(nir_shader *shader)
-{
-   struct set *vars = _mesa_pointer_set_create(NULL);
-
-   nir_foreach_uniform_variable(var, shader) {
-      /* built-in's will always start with "gl_" */
-      if (strncmp(var->name, "gl_", 3) == 0)
-         _mesa_set_add(vars, var);
-   }
-
-   bool progress = nir_lower_indirect_var_derefs(shader, vars);
-
-   _mesa_set_destroy(vars, NULL);
-
-   return progress;
-}

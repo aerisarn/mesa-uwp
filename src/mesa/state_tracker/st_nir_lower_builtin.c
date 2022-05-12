@@ -232,8 +232,28 @@ lower_builtin_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 void
 st_nir_lower_builtin(nir_shader *shader)
 {
-   if (nir_shader_instructions_pass(shader, lower_builtin_instr,
-                                    nir_metadata_block_index |
-                                    nir_metadata_dominance, NULL))
-      nir_remove_dead_derefs(shader);
+   struct set *vars = _mesa_pointer_set_create(NULL);
+
+   nir_foreach_uniform_variable(var, shader) {
+      /* built-in's will always start with "gl_" */
+      if (strncmp(var->name, "gl_", 3) == 0)
+         _mesa_set_add(vars, var);
+   }
+
+   if (vars->entries > 0) {
+      /* at this point, array uniforms have been split into separate
+       * nir_variable structs where possible. this codepath can't handle
+       * dynamic array indexing, however, so all indirect uniform derefs must
+       * be eliminated beforehand to avoid trying to lower one of those
+       * builtins
+       */
+      nir_lower_indirect_var_derefs(shader, vars);
+
+      if (nir_shader_instructions_pass(shader, lower_builtin_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance, NULL))
+         nir_remove_dead_derefs(shader);
+   }
+
+   _mesa_set_destroy(vars, NULL);
 }
