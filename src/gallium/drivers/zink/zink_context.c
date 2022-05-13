@@ -1372,7 +1372,6 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
          zink_batch_reference_surface(&ctx->batch, image_view->surface);
       zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
    }
-   pipe_resource_reference(&image_view->base.resource, NULL);
    image_view->base.resource = NULL;
    image_view->surface = NULL;
 }
@@ -1466,7 +1465,8 @@ zink_set_shader_images(struct pipe_context *pctx,
             }
             update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
          }
-         util_copy_image_view(&image_view->base, images + i);
+         /* no refs */
+         memcpy(&image_view->base, images + i, sizeof(struct pipe_image_view));
          VkAccessFlags access = 0;
          if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE) {
             zink_resource(image_view->base.resource)->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
