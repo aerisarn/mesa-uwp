@@ -544,8 +544,7 @@ void trace_dump_sampler_state(const struct pipe_sampler_state *state)
 }
 
 
-void trace_dump_sampler_view_template(const struct pipe_sampler_view *state,
-                                      enum pipe_texture_target target)
+void trace_dump_sampler_view_template(const struct pipe_sampler_view *state)
 {
    if (!trace_dumping_enabled_locked())
       return;
@@ -558,15 +557,16 @@ void trace_dump_sampler_view_template(const struct pipe_sampler_view *state,
    trace_dump_struct_begin("pipe_sampler_view");
 
    trace_dump_member(format, state, format);
-   trace_dump_member(ptr, state, texture);
 
    trace_dump_member_begin("target");
-   trace_dump_enum(tr_util_pipe_texture_target_name(target));
+   trace_dump_enum(tr_util_pipe_texture_target_name(state->target));
    trace_dump_member_end();
+
+   trace_dump_member(ptr, state, texture);
 
    trace_dump_member_begin("u");
    trace_dump_struct_begin(""); /* anonymous */
-   if (target == PIPE_BUFFER) {
+   if (state->target == PIPE_BUFFER) {
       trace_dump_member_begin("buf");
       trace_dump_struct_begin(""); /* anonymous */
       trace_dump_member(uint, &state->u.buf, offset);

@@ -1070,7 +1070,7 @@ trace_context_create_sampler_view(struct pipe_context *_pipe,
    trace_dump_arg(ptr, resource);
 
    trace_dump_arg_begin("templ");
-   trace_dump_sampler_view_template(templ, resource->target);
+   trace_dump_sampler_view_template(templ);
    trace_dump_arg_end();
 
    result = pipe->create_sampler_view(pipe, resource, templ);
