@@ -159,12 +159,12 @@ class Csbgen(Node):
         })
 
         for define in self._defines:
-            define.emit(self)
+            define.emit()
 
         print()
 
         for enum in self._enums.values():
-            enum.emit(self)
+            enum.emit()
 
         for struct in self._structs.values():
             struct.emit(self)
@@ -207,7 +207,7 @@ class Enum(Node):
 
         self._values[element.name] = element
 
-    def emit(self, root):
+    def emit(self):
         # This check is invalid if tags other than Value can be nested within an enum.
         if not self._values.values():
             raise RuntimeError("Enum definition is empty. Enum: '%s'" % self.full_name)
@@ -313,14 +313,14 @@ class Struct(Node):
         print(",  \\\n".join(default_fields))
         print("")
 
-    def _emit_helper_macros(self, root):
+    def _emit_helper_macros(self):
         fields_with_defines = filter(lambda f: f.defines, self.fields)
 
         for field in fields_with_defines:
             print("/* Helper macros for %s */" % field.name)
 
             for define in field.defines:
-                define.emit(root)
+                define.emit()
 
             print()
 
@@ -346,7 +346,7 @@ class Struct(Node):
 
         self._emit_header(root)
 
-        self._emit_helper_macros(root)
+        self._emit_helper_macros()
 
         print("struct %s {" % self.full_name)
         for child in self._children.values():
@@ -461,7 +461,7 @@ class Define(Node):
 
         self.parent.add(self)
 
-    def emit(self, root):
+    def emit(self):
         print("#define %-40s %d" % (self.full_name, self.value))
 
 
