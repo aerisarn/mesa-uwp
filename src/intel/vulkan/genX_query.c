@@ -932,6 +932,10 @@ void genX(CmdBeginQueryIndexedEXT)(
       break;
 
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+         pc.StallAtPixelScoreboard = true;
+      }
       mi_store(&b, mi_mem64(anv_address_add(query_addr, 8)),
                    mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
       break;
