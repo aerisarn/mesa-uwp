@@ -2749,6 +2749,18 @@ radv_get_shader_name(const struct radv_shader_info *info, gl_shader_stage stage)
       return "Mesh Shader as NGG";
    case MESA_SHADER_TASK:
       return "Task Shader as CS";
+   case MESA_SHADER_RAYGEN:
+      return "Ray Generation Shader as CS Function";
+   case MESA_SHADER_CLOSEST_HIT:
+      return "Closest Hit Shader as CS Function";
+   case MESA_SHADER_INTERSECTION:
+      return "Intersection Shader as CS Function";
+   case MESA_SHADER_ANY_HIT:
+      return "Any Hit Shader as CS Function";
+   case MESA_SHADER_MISS:
+      return "Miss Shader as CS Function";
+   case MESA_SHADER_CALLABLE:
+      return "Callable Shader as CS Function";
    default:
       return "Unknown shader";
    };
