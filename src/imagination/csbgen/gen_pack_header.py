@@ -856,9 +856,6 @@ class Parser:
         self.filename = ""
 
     def start_element(self, name: str, attrs: t.Dict[str, str]) -> None:
-        if not name == "csbgen":
-            parent = self.context[-1]
-
         if name == "csbgen":
             if self.context:
                 raise RuntimeError(
@@ -868,8 +865,11 @@ class Parser:
 
             csbgen = Csbgen(attrs["name"], attrs["prefix"], self.filename)
             self.context.append(csbgen)
+            return
 
-        elif name == "struct":
+        parent = self.context[-1]
+
+        if name == "struct":
             struct = Struct(parent, attrs["name"], int(attrs["length"]))
             self.context.append(struct)
 
