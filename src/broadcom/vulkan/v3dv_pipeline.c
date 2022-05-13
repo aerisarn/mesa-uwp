@@ -3527,7 +3527,11 @@ pipeline_collect_executable_data(struct v3dv_pipeline *pipeline)
 
    /* Map the assembly BO so we can read the pipeline's QPU code */
    struct v3dv_bo *qpu_bo = pipeline->shared_data->assembly_bo;
-   v3dv_bo_map(pipeline->device, qpu_bo, qpu_bo->size);
+
+   if (!v3dv_bo_map(pipeline->device, qpu_bo, qpu_bo->size)) {
+      fprintf(stderr, "failed to map QPU buffer\n");
+      return;
+   }
 
    for (int s = BROADCOM_SHADER_VERTEX; s <= BROADCOM_SHADER_COMPUTE; s++) {
       VkShaderStageFlags vk_stage =
