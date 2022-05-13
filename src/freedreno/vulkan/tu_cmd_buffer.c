@@ -670,8 +670,6 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
    tu6_emit_window_scissor(cs, x1, y1, x2, y2);
    tu6_emit_window_offset(cs, x1, y1);
 
-   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
-
    if (use_hw_binning(cmd)) {
       tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
 
@@ -1290,9 +1288,6 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
 
-   /* enable stream-out, with sysmem there is only one pass: */
-   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
-
    tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
    tu_cs_emit(cs, 0x1);
 
@@ -1340,9 +1335,6 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
    if (use_hw_binning(cmd)) {
-      /* enable stream-out during binning pass: */
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
-
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_RENDER_MODE(BINNING_PASS) |
                         A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
@@ -1350,9 +1342,6 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
       tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, true);
 
       tu6_emit_binning_pass(cmd, cs);
-
-      /* and disable stream-out for draw pass: */
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(true));
 
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_FORCE_LRZ_WRITE_DIS |
@@ -1370,9 +1359,6 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
       tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       tu_cs_emit(cs, 0x1);
    } else {
-      /* no binning pass, so enable stream-out for draw pass:: */
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
-
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
    }
@@ -2151,6 +2137,8 @@ tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
                           CP_COND_REG_EXEC_0_SYSMEM |
                           CP_COND_REG_EXEC_0_BINNING);
 
+   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
+
    /* TODO: only update offset for active buffers */
    for (uint32_t i = 0; i < IR3_MAX_SO_BUFFERS; i++)
       tu_cs_emit_regs(cs, A6XX_VPC_SO_BUFFER_OFFSET(i, cmd->state.streamout_offset[i]));
@@ -2196,6 +2184,8 @@ tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
    tu_cond_exec_start(cs, CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
                           CP_COND_REG_EXEC_0_SYSMEM |
                           CP_COND_REG_EXEC_0_BINNING);
+
+   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(true));
 
    /* TODO: only flush buffers that need to be flushed */
    for (uint32_t i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
