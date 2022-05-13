@@ -104,6 +104,51 @@ bi_validate_preload(bi_context *ctx)
         return true;
 }
 
+/*
+ * Type check the dimensionality of sources and destinations. This occurs in two
+ * passes, first to gather all destination sizes, second to validate all source
+ * sizes. Depends on SSA form.
+ */
+static bool
+bi_validate_width(bi_context *ctx)
+{
+        bool succ = true;
+        uint8_t *width = calloc(ctx->ssa_alloc, sizeof(uint8_t));
+
+        bi_foreach_instr_global(ctx, I) {
+                bi_foreach_dest(I, d) {
+                        if (bi_is_null(I->dest[d])) continue;
+                        if (!bi_is_ssa(I->dest[d])) continue;
+
+                        unsigned v = I->dest[d].value;
+                        assert(width[v] == 0 && "broken SSA");
+
+                        width[v] = bi_count_write_registers(I, d);
+                }
+        }
+
+        bi_foreach_instr_global(ctx, I) {
+                bi_foreach_src(I, s) {
+                        if (!bi_is_ssa(I->src[s])) continue;
+
+                        unsigned v = I->src[s].value;
+                        unsigned n = bi_count_read_registers(I, s);
+
+                        if (width[v] != n) {
+                                succ = false;
+                                fprintf(stderr,
+                                        "source %u, expected width %u, got width %u\n",
+                                        s, n, width[v]);
+                                bi_print_instr(I, stderr);
+                                fprintf(stderr, "\n");
+                        }
+                }
+        }
+
+        free(width);
+        return succ;
+}
+
 void
 bi_validate(bi_context *ctx, const char *after)
 {
@@ -122,7 +167,10 @@ bi_validate(bi_context *ctx, const char *after)
                 fail = true;
         }
 
-        /* TODO: Validate more invariants */
+        if (!bi_validate_width(ctx)) {
+                fprintf(stderr, "Unexpected vector with after %s\n", after);
+                fail = true;
+        }
 
         if (fail) {
                 bi_print_shader(ctx, stderr);
