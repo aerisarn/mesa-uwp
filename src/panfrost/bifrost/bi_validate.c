@@ -170,6 +170,26 @@ bi_validate_dest(bi_context *ctx)
         return succ;
 }
 
+/*
+ * Validate that phis only appear at the beginning of blocks.
+ */
+static bool
+bi_validate_phi_ordering(bi_context *ctx)
+{
+        bi_foreach_block(ctx, block) {
+                bool start = true;
+
+                bi_foreach_instr_in_block(block, I) {
+                        if (start)
+                                start = I->op == BI_OPCODE_PHI;
+                        else if (I->op == BI_OPCODE_PHI)
+                                return false;
+                }
+        }
+
+        return true;
+}
+
 void
 bi_validate(bi_context *ctx, const char *after)
 {
@@ -195,6 +215,11 @@ bi_validate(bi_context *ctx, const char *after)
 
         if (!bi_validate_dest(ctx)) {
                 fprintf(stderr, "Unexpected source/dest after %s\n", after);
+                fail = true;
+        }
+
+        if (!bi_validate_phi_ordering(ctx)) {
+                fprintf(stderr, "Unexpected phi ordering after %s\n", after);
                 fail = true;
         }
 
