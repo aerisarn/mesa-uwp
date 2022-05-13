@@ -757,38 +757,29 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    return 0;
 }
 
-static const nir_shader_compiler_options svga_vgpu9_compiler_options = {
-   .lower_bitops = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_insert_byte = true,
-   .lower_insert_word = true,
-   .lower_fdph = true,
-   .lower_flrp64 = true,
-   .lower_rotate = true,
-   .lower_uniforms_to_ubo = true,
-   .lower_vector_cmp = true,
+#define COMMON_OPTIONS                                                        \
+   .lower_extract_byte = true,                                                \
+   .lower_extract_word = true,                                                \
+   .lower_insert_byte = true,                                                 \
+   .lower_insert_word = true,                                                 \
+   .lower_fdph = true,                                                        \
+   .lower_flrp64 = true,                                                      \
+   .lower_rotate = true,                                                      \
+   .lower_uniforms_to_ubo = true,                                             \
+   .lower_vector_cmp = true,                                                  \
+   .max_unroll_iterations = 32,                                               \
+   .use_interpolated_input_intrinsics = true
 
-   .max_unroll_iterations = 32,
-   .use_interpolated_input_intrinsics = true,
+static const nir_shader_compiler_options svga_vgpu9_compiler_options = {
+   COMMON_OPTIONS,
+   .lower_bitops = true,
 };
 
 static const nir_shader_compiler_options svga_vgpu10_compiler_options = {
+   COMMON_OPTIONS,
    .lower_doubles_options = nir_lower_dfloor,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_insert_byte = true,
-   .lower_insert_word = true,
-   .lower_fdph = true,
-   .lower_flrp64 = true,
    .lower_fmod = true,
    .lower_fpow = true,
-   .lower_rotate = true,
-   .lower_uniforms_to_ubo = true,
-   .lower_vector_cmp = true,
-
-   .max_unroll_iterations = 32,
-   .use_interpolated_input_intrinsics = true,
 };
 
 static const void *
