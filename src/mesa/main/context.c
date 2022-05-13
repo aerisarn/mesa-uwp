@@ -1168,6 +1168,7 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    free(ctx->Save);
    free(ctx->ContextLost);
    free(ctx->MarshalExec);
+   free(ctx->HWSelectModeBeginEnd);
 
    /* Shared context state (display lists, textures, etc) */
    _mesa_reference_shared_state(ctx, &ctx->Shared, NULL);

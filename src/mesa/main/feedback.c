@@ -230,6 +230,15 @@ alloc_select_resource(struct gl_context *ctx)
    if (!ctx->Const.HardwareAcceleratedSelect)
       return;
 
+   if (!ctx->HWSelectModeBeginEnd) {
+      ctx->HWSelectModeBeginEnd = _mesa_alloc_dispatch_table(false);
+      if (!ctx->HWSelectModeBeginEnd) {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "Cannot allocate HWSelectModeBeginEnd");
+         return;
+      }
+      vbo_install_hw_select_begin_end(ctx);
+   }
+
    if (!s->SaveBuffer) {
       s->SaveBuffer = malloc(NAME_STACK_BUFFER_SIZE);
       if (!s->SaveBuffer) {

@@ -477,7 +477,7 @@ is_vertex_position(const struct gl_context *ctx, GLuint index)
  * \param C  cast type (uint32_t or uint64_t)
  * \param V0, V1, v2, V3  attribute value
  */
-#define ATTR_UNION(A, N, T, C, V0, V1, V2, V3)                          \
+#define ATTR_UNION_BASE(A, N, T, C, V0, V1, V2, V3)                     \
 do {                                                                    \
    struct vbo_exec_context *exec = &vbo_context(ctx)->exec;             \
    int sz = (sizeof(C) / sizeof(GLfloat));                              \
@@ -562,6 +562,9 @@ do {                                                                    \
 #define ERROR(err) _mesa_error(ctx, err, __func__)
 #define TAG(x) _mesa_##x
 #define SUPPRESS_STATIC
+
+#define ATTR_UNION(A, N, T, C, V0, V1, V2, V3) \
+   ATTR_UNION_BASE(A, N, T, C, V0, V1, V2, V3)
 
 #include "vbo_attrib_tmp.h"
 
@@ -842,7 +845,8 @@ _mesa_Begin(GLenum mode)
 
    ctx->Driver.CurrentExecPrimitive = mode;
 
-   ctx->Exec = ctx->BeginEnd;
+   ctx->Exec = _mesa_hw_select_enabled(ctx) ?
+      ctx->HWSelectModeBeginEnd : ctx->BeginEnd;
 
    /* We may have been called from a display list, in which case we should
     * leave dlist.c's dispatch table in place.
@@ -908,7 +912,8 @@ _mesa_End(void)
 
    if (ctx->GLThread.enabled) {
       ctx->CurrentServerDispatch = ctx->Exec;
-   } else if (ctx->CurrentClientDispatch == ctx->BeginEnd) {
+   } else if (ctx->CurrentClientDispatch == ctx->BeginEnd ||
+              ctx->CurrentClientDispatch == ctx->HWSelectModeBeginEnd) {
       ctx->CurrentClientDispatch = ctx->CurrentServerDispatch = ctx->Exec;
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
@@ -1214,4 +1219,33 @@ _es_Materialf(GLenum face, GLenum pname, GLfloat param)
    p[0] = param;
    p[1] = p[2] = p[3] = 0.0F;
    _mesa_Materialfv(face, pname, p);
+}
+
+#undef TAG
+#undef SUPPRESS_STATIC
+#define TAG(x) _hw_select_##x
+/* filter out none vertex api */
+#define HW_SELECT_MODE
+
+#undef ATTR_UNION
+#define ATTR_UNION(A, N, T, C, V0, V1, V2, V3)     \
+   do {                                            \
+      if ((A) == 0) {                              \
+         /* TODO: insert name stack attr. */       \
+      }                                            \
+      ATTR_UNION_BASE(A, N, T, C, V0, V1, V2, V3); \
+   } while (0)
+
+#include "vbo_attrib_tmp.h"
+
+void
+vbo_install_hw_select_begin_end(struct gl_context *ctx)
+{
+   int numEntries = MAX2(_gloffset_COUNT, _glapi_get_dispatch_table_size());
+   memcpy(ctx->HWSelectModeBeginEnd, ctx->BeginEnd, numEntries * sizeof(_glapi_proc));
+
+#undef NAME
+#define NAME(x) _hw_select_##x
+   struct _glapi_table *tab = ctx->HWSelectModeBeginEnd;
+   #include "api_hw_select_init.h"
 }

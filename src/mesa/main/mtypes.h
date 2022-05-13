@@ -3256,6 +3256,11 @@ struct gl_context
     */
    struct _glapi_table *BeginEnd;
    /**
+    * Same as BeginEnd except vertex postion set functions. Used when
+    * HW GL_SELECT mode instead of BeginEnd.
+    */
+   struct _glapi_table *HWSelectModeBeginEnd;
+   /**
     * Dispatch table for when a graphics reset has happened.
     */
    struct _glapi_table *ContextLost;
