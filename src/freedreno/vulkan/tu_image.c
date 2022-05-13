@@ -357,8 +357,7 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
    image->layer_count = pCreateInfo->arrayLayers;
 
    enum a6xx_tile_mode tile_mode = TILE6_3;
-   bool ubwc_enabled =
-      !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
+   bool ubwc_enabled = true;
 
    /* use linear tiling if requested */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR || modifier == DRM_FORMAT_MOD_LINEAR) {
@@ -450,7 +449,10 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
       ubwc_enabled = false;
 
    /* expect UBWC enabled if we asked for it */
-   assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
+   if (modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED)
+      assert(ubwc_enabled);
+   else if (device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC)
+      ubwc_enabled = false;
 
    /* Non-UBWC tiled R8G8 is probably buggy since media formats are always
     * either linear or UBWC. There is no simple test to reproduce the bug.
