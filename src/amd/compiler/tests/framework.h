@@ -47,7 +47,7 @@ inline bool set_variant(amd_gfx_level cls, const char *rest="")
 {
    char buf[8+strlen(rest)];
    if (cls != GFX10_3) {
-      snprintf(buf, sizeof(buf), "gfx%d%s", cls - GFX6 + 6, rest);
+      snprintf(buf, sizeof(buf), "gfx%d%s", cls - GFX6 + 6 - (cls > GFX10_3), rest);
    } else {
       snprintf(buf, sizeof(buf), "gfx10_3%s", rest);
    }
