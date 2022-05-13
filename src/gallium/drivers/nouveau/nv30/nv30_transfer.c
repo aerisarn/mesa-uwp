@@ -156,7 +156,7 @@ nv30_transfer_rect_blit(XFER_ARGS)
    u32 format, stride;
 
    if (!PUSH_SPACE_EX(push, 512, 8, 0) ||
-       nouveau_pushbuf_refn (push, refs, ARRAY_SIZE(refs)))
+       PUSH_REFN(push, refs, ARRAY_SIZE(refs)))
       return;
 
    /* various switches depending on cpp of the transfer */
@@ -432,7 +432,7 @@ nv30_transfer_rect_sifm(XFER_ARGS)
    }
 
    if (!PUSH_SPACE_EX(push, 64, 6, 0) ||
-       nouveau_pushbuf_refn (push, refs, 2))
+       PUSH_REFN(push, refs, 2))
       return;
 
    if (dst->pitch) {
@@ -517,7 +517,7 @@ nv30_transfer_rect_m2mf(XFER_ARGS)
       unsigned lines = (h > 2047) ? 2047 : h;
 
       if (!PUSH_SPACE_EX(push, 32, 2, 0) ||
-          nouveau_pushbuf_refn (push, refs, 2))
+          PUSH_REFN(push, refs, 2))
          return;
 
       BEGIN_NV04(push, NV03_M2MF(OFFSET_IN), 8);
@@ -709,7 +709,7 @@ nv30_transfer_copy_data(struct nouveau_context *nv,
       pages -= lines;
 
       if (!PUSH_SPACE_EX(push, 32, 2, 0) ||
-          nouveau_pushbuf_refn (push, refs, 2))
+          PUSH_REFN(push, refs, 2))
          return;
 
       BEGIN_NV04(push, NV03_M2MF(OFFSET_IN), 8);
@@ -733,7 +733,7 @@ nv30_transfer_copy_data(struct nouveau_context *nv,
 
    if (size) {
       if (!PUSH_SPACE_EX(push, 32, 2, 0) ||
-          nouveau_pushbuf_refn (push, refs, 2))
+          PUSH_REFN(push, refs, 2))
          return;
 
       BEGIN_NV04(push, NV03_M2MF(OFFSET_IN), 8);

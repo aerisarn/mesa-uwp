@@ -201,7 +201,7 @@ nv84_decoder_bsp(struct nv84_decoder *dec,
    memcpy(dec->bitstream->map + 0x600, more_params, sizeof(more_params));
 
    PUSH_SPACE(push, 5 + 21 + 3 + 2 + 4 + 2);
-   nouveau_pushbuf_refn(push, bo_refs, ARRAY_SIZE(bo_refs));
+   PUSH_REFN(push, bo_refs, ARRAY_SIZE(bo_refs));
 
    /* Wait for the fence = 1 */
    BEGIN_NV04(push, SUBC_BSP(0x10), 4);

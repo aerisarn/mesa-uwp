@@ -82,7 +82,7 @@ nv50_hw_query_get(struct nouveau_pushbuf *push, struct nv50_query *q,
    offset += hq->offset;
 
    PUSH_SPACE(push, 5);
-   PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
+   PUSH_REF1 (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
    BEGIN_NV04(push, NV50_3D(QUERY_ADDRESS_HIGH), 4);
    PUSH_DATAh(push, hq->bo->offset + offset);
    PUSH_DATA (push, hq->bo->offset + offset);
@@ -471,7 +471,7 @@ nv84_hw_query_fifo_wait(struct nouveau_pushbuf *push, struct nv50_query *q)
    assert(!hq->is64bit);
 
    PUSH_SPACE(push, 5);
-   PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
+   PUSH_REF1 (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
    BEGIN_NV04(push, SUBC_3D(NV84_SUBCHAN_SEMAPHORE_ADDRESS_HIGH), 4);
    PUSH_DATAh(push, hq->bo->offset + offset);
    PUSH_DATA (push, hq->bo->offset + offset);

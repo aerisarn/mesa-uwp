@@ -870,9 +870,9 @@ nvc0_draw_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
       }
 
       PUSH_SPACE_EX(push, 16, 0, pushes + !!buf_count);
-      PUSH_REFN(push, buf->bo, NOUVEAU_BO_RD | buf->domain);
+      PUSH_REF1(push, buf->bo, NOUVEAU_BO_RD | buf->domain);
       if (buf_count)
-         PUSH_REFN(push, buf_count->bo, NOUVEAU_BO_RD | buf_count->domain);
+         PUSH_REF1(push, buf_count->bo, NOUVEAU_BO_RD | buf_count->domain);
       PUSH_DATA(push,
                 NVC0_FIFO_PKHDR_1I(0, macro, 3 + !!buf_count + draws * size));
       PUSH_DATA(push, nvc0_prim_gl(info->mode));

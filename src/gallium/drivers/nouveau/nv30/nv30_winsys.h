@@ -40,13 +40,6 @@ PUSH_RESET(struct nouveau_pushbuf *push, int bin)
 }
 
 static inline void
-PUSH_REFN(struct nouveau_pushbuf *push, int bin,
-     struct nouveau_bo *bo, uint32_t access)
-{
-   nouveau_bufctx_refn(bufctx(push), bin, bo, access);
-}
-
-static inline void
 PUSH_MTHDl(struct nouveau_pushbuf *push, int subc, int mthd, int bin,
       struct nouveau_bo *bo, uint32_t offset, uint32_t access)
 {

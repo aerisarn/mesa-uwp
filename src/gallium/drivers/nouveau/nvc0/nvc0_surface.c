@@ -301,7 +301,7 @@ nvc0_clear_render_target(struct pipe_context *pipe,
    if (!PUSH_SPACE(push, 32 + sf->depth))
       return;
 
-   PUSH_REFN (push, res->bo, res->domain | NOUVEAU_BO_WR);
+   PUSH_REF1 (push, res->bo, res->domain | NOUVEAU_BO_WR);
 
    BEGIN_NVC0(push, NVC0_3D(CLEAR_COLOR(0)), 4);
    PUSH_DATAf(push, color->f[0]);
@@ -571,7 +571,7 @@ nvc0_clear_buffer(struct pipe_context *pipe,
    if (!PUSH_SPACE(push, 40))
       return;
 
-   PUSH_REFN (push, buf->bo, buf->domain | NOUVEAU_BO_WR);
+   PUSH_REF1 (push, buf->bo, buf->domain | NOUVEAU_BO_WR);
 
    BEGIN_NVC0(push, NVC0_3D(CLEAR_COLOR(0)), 4);
    PUSH_DATA (push, color.ui[0]);
@@ -639,7 +639,7 @@ nvc0_clear_depth_stencil(struct pipe_context *pipe,
    if (!PUSH_SPACE(push, 32 + sf->depth))
       return;
 
-   PUSH_REFN (push, mt->base.bo, mt->base.domain | NOUVEAU_BO_WR);
+   PUSH_REF1 (push, mt->base.bo, mt->base.domain | NOUVEAU_BO_WR);
 
    if (clear_flags & PIPE_CLEAR_DEPTH) {
       BEGIN_NVC0(push, NVC0_3D(CLEAR_DEPTH), 1);

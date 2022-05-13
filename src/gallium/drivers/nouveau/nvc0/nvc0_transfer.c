@@ -598,7 +598,7 @@ nvc0_cb_bo_push(struct nouveau_context *nv,
       unsigned nr = MIN2(words, NV04_PFIFO_MAX_PACKET_LEN - 1);
 
       PUSH_SPACE(push, nr + 2);
-      PUSH_REFN (push, bo, NOUVEAU_BO_WR | domain);
+      PUSH_REF1 (push, bo, NOUVEAU_BO_WR | domain);
       BEGIN_1IC0(push, NVC0_3D(CB_POS), nr + 1);
       PUSH_DATA (push, offset);
       PUSH_DATAp(push, data, nr);

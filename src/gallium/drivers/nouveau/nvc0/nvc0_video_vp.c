@@ -114,7 +114,7 @@ nvc0_decoder_vp(struct nouveau_vp3_decoder *dec, union pipe_desc desc,
 
    PUSH_SPACE_EX(push, 32 + codec_extra, num_refs, 0);
 
-   nouveau_pushbuf_refn(push, bo_refs, num_refs);
+   PUSH_REFN(push, bo_refs, num_refs);
 
    bsp_addr = bsp_bo->offset >> 8;
 #if NOUVEAU_VP3_DEBUG_FENCE

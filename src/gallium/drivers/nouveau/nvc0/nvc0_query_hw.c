@@ -74,7 +74,7 @@ nvc0_hw_query_get(struct nouveau_pushbuf *push, struct nvc0_query *q,
    offset += hq->offset;
 
    PUSH_SPACE(push, 5);
-   PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
+   PUSH_REF1 (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
    BEGIN_NVC0(push, NVC0_3D(QUERY_ADDRESS_HIGH), 4);
    PUSH_DATAh(push, hq->bo->offset + offset);
    PUSH_DATA (push, hq->bo->offset + offset);
@@ -130,7 +130,7 @@ nvc0_hw_query_write_compute_invocations(struct nvc0_context *nvc0,
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
 
    PUSH_SPACE_EX(push, 16, 0, 8);
-   PUSH_REFN(push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
+   PUSH_REF1(push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_WR);
    BEGIN_1IC0(push, NVC0_3D(MACRO_COMPUTE_COUNTER_TO_QUERY), 4);
    PUSH_DATA (push, nvc0->compute_invocations);
    PUSH_DATAh(push, nvc0->compute_invocations);
@@ -436,8 +436,8 @@ nvc0_hw_get_query_result_resource(struct nvc0_context *nvc0,
       nvc0_hw_query_fifo_wait(nvc0, q);
 
    PUSH_SPACE_EX(push, 32, 2, 3);
-   PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
-   PUSH_REFN (push, buf->bo, buf->domain | NOUVEAU_BO_WR);
+   PUSH_REF1 (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
+   PUSH_REF1 (push, buf->bo, buf->domain | NOUVEAU_BO_WR);
    BEGIN_1IC0(push, NVC0_3D(MACRO_QUERY_BUFFER_WRITE), 9);
    switch (q->type) {
    case PIPE_QUERY_OCCLUSION_PREDICATE:
@@ -629,7 +629,7 @@ nvc0_hw_query_pushbuf_submit(struct nouveau_pushbuf *push,
 {
    struct nvc0_hw_query *hq = nvc0_hw_query(q);
 
-   PUSH_REFN(push, hq->bo, NOUVEAU_BO_RD | NOUVEAU_BO_GART);
+   PUSH_REF1(push, hq->bo, NOUVEAU_BO_RD | NOUVEAU_BO_GART);
    nouveau_pushbuf_data(push, hq->bo, hq->offset + result_offset, 4 |
                         NVC0_IB_ENTRY_1_NO_PREFETCH);
 }
@@ -646,7 +646,7 @@ nvc0_hw_query_fifo_wait(struct nvc0_context *nvc0, struct nvc0_query *q)
       nouveau_fence_emit(hq->fence);
 
    PUSH_SPACE(push, 5);
-   PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
+   PUSH_REF1 (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
    BEGIN_NVC0(push, SUBC_3D(NV84_SUBCHAN_SEMAPHORE_ADDRESS_HIGH), 4);
    if (hq->is64bit) {
       PUSH_DATAh(push, nvc0->screen->fence.bo->offset);

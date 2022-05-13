@@ -511,7 +511,7 @@ nv50_cb_bo_push(struct nouveau_context *nv,
       unsigned nr = MIN2(words, NV04_PFIFO_MAX_PACKET_LEN);
 
       PUSH_SPACE(push, nr + 3);
-      PUSH_REFN (push, bo, NOUVEAU_BO_WR | domain);
+      PUSH_REF1 (push, bo, NOUVEAU_BO_WR | domain);
       BEGIN_NV04(push, NV50_3D(CB_ADDR), 1);
       PUSH_DATA (push, (offset << 6) | bufid);
       BEGIN_NI04(push, NV50_3D(CB_DATA(0)), nr);

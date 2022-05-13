@@ -298,7 +298,7 @@ nv50_clear_render_target(struct pipe_context *pipe,
    if (!PUSH_SPACE_EX(push, 64 + sf->depth, 1, 0))
       return;
 
-   PUSH_REFN(push, bo, mt->base.domain | NOUVEAU_BO_WR);
+   PUSH_REF1(push, bo, mt->base.domain | NOUVEAU_BO_WR);
 
    BEGIN_NV04(push, NV50_3D(SCREEN_SCISSOR_HORIZ), 2);
    PUSH_DATA (push, ( width << 16) | dstx);
@@ -397,7 +397,7 @@ nv50_clear_depth_stencil(struct pipe_context *pipe,
    if (!PUSH_SPACE_EX(push, 64 + sf->depth, 1, 0))
       return;
 
-   PUSH_REFN(push, bo, mt->base.domain | NOUVEAU_BO_WR);
+   PUSH_REF1(push, bo, mt->base.domain | NOUVEAU_BO_WR);
 
    BEGIN_NV04(push, NV50_3D(SCREEN_SCISSOR_HORIZ), 2);
    PUSH_DATA (push, ( width << 16) | dstx);
@@ -774,7 +774,7 @@ nv50_clear_buffer(struct pipe_context *pipe,
    if (!PUSH_SPACE_EX(push, 64, 1, 0))
       return;
 
-   PUSH_REFN(push, buf->bo, buf->domain | NOUVEAU_BO_WR);
+   PUSH_REF1(push, buf->bo, buf->domain | NOUVEAU_BO_WR);
 
    BEGIN_NV04(push, NV50_3D(SCREEN_SCISSOR_HORIZ), 2);
    PUSH_DATA (push, width << 16);

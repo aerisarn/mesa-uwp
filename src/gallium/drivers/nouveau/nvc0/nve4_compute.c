@@ -546,7 +546,7 @@ nve4_compute_upload_input(struct nvc0_context *nvc0,
       uint32_t offset = res->offset + info->indirect_offset;
 
       PUSH_SPACE_EX(push, 32, 0, 1);
-      PUSH_REFN(push, res->bo, NOUVEAU_BO_RD | res->domain);
+      PUSH_REF1(push, res->bo, NOUVEAU_BO_RD | res->domain);
 
       BEGIN_1IC0(push, NVE4_CP(UPLOAD_EXEC), 1 + 8);
       PUSH_DATA (push, NVE4_COMPUTE_UPLOAD_EXEC_LINEAR | (0x20 << 1));
@@ -830,7 +830,7 @@ nve4_upload_indirect_desc(struct nouveau_pushbuf *push,
    PUSH_DATA (push, 1);
 
    PUSH_SPACE_EX(push, 32, 0, 1);
-   PUSH_REFN(push, res->bo, NOUVEAU_BO_RD | res->domain);
+   PUSH_REF1(push, res->bo, NOUVEAU_BO_RD | res->domain);
 
    BEGIN_1IC0(push, NVE4_CP(UPLOAD_EXEC), 1 + (length / 4));
    PUSH_DATA (push, NVE4_COMPUTE_UPLOAD_EXEC_LINEAR | (0x08 << 1));
@@ -924,7 +924,7 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    /* upload descriptor and flush */
    PUSH_SPACE_EX(push, 32, 1, 0);
-   PUSH_REFN(push, screen->text, NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD);
+   PUSH_REF1(push, screen->text, NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD);
    BEGIN_NVC0(push, NVE4_CP(LAUNCH_DESC_ADDRESS), 1);
    PUSH_DATA (push, desc_gpuaddr >> 8);
    BEGIN_NVC0(push, NVE4_CP(LAUNCH), 1);

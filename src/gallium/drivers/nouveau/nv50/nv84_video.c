@@ -496,7 +496,7 @@ nv84_create_decoder(struct pipe_context *context,
       context->clear_render_target(context, &surf.base, &color, 0, 0, 1024, 1, false);
 
       PUSH_SPACE(nv50->base.pushbuf, 5);
-      PUSH_REFN(nv50->base.pushbuf, dec->fence, NOUVEAU_BO_VRAM | NOUVEAU_BO_RDWR);
+      PUSH_REF1(nv50->base.pushbuf, dec->fence, NOUVEAU_BO_VRAM | NOUVEAU_BO_RDWR);
       /* The clear_render_target is done via 3D engine, so use it to write to a
        * sempahore to indicate that it's done.
        */

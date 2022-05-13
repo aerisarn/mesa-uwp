@@ -47,7 +47,7 @@ nvc0_decoder_setup_ppp(struct nouveau_vp3_decoder *dec, struct nouveau_vp3_video
       bo_refs[i].bo = mt->base.bo;
    }
 
-   nouveau_pushbuf_refn(push, bo_refs, num_refs);
+   PUSH_REFN(push, bo_refs, num_refs);
    nouveau_vp3_ycbcr_offsets(dec, &y2, &cbcr, &cbcr2);
 
    BEGIN_NVC0(push, SUBC_PPP(0x700), 10);

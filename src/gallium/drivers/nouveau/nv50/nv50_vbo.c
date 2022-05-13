@@ -632,7 +632,7 @@ nv50_draw_elements(struct nv50_context *nv50, bool shorten,
          PUSH_DATA (push, prim);
 
          PUSH_SPACE_EX(push, 16, 0, 1);
-         PUSH_REFN(push, buf->bo, NOUVEAU_BO_RD | buf->domain);
+         PUSH_REF1(push, buf->bo, NOUVEAU_BO_RD | buf->domain);
 
          switch (index_size) {
          case 4:

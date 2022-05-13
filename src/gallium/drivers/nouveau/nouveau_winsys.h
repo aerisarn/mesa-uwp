@@ -69,6 +69,19 @@ PUSH_DATAf(struct nouveau_pushbuf *push, float f)
    PUSH_DATA(push, u.i);
 }
 
+static inline int
+PUSH_REFN(struct nouveau_pushbuf *push, struct nouveau_pushbuf_refn *refs, int nr)
+{
+   return nouveau_pushbuf_refn(push, refs, nr);
+}
+
+static inline int
+PUSH_REF1(struct nouveau_pushbuf *push, struct nouveau_bo *bo, uint32_t flags)
+{
+   struct nouveau_pushbuf_refn ref = { bo, flags };
+   return PUSH_REFN(push, &ref, 1);
+}
+
 static inline void
 PUSH_KICK(struct nouveau_pushbuf *push)
 {

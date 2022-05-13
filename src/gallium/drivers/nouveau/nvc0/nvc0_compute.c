@@ -465,14 +465,14 @@ nvc0_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    PUSH_DATA (push, info->block[2]);
 
    PUSH_SPACE_EX(push, 32, 2, 1);
-   PUSH_REFN(push, screen->text, NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD);
+   PUSH_REF1(push, screen->text, NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD);
 
    if (unlikely(info->indirect)) {
       struct nv04_resource *res = nv04_resource(info->indirect);
       uint32_t offset = res->offset + info->indirect_offset;
       unsigned macro = NVC0_CP_MACRO_LAUNCH_GRID_INDIRECT;
 
-      PUSH_REFN(push, res->bo, NOUVEAU_BO_RD | res->domain);
+      PUSH_REF1(push, res->bo, NOUVEAU_BO_RD | res->domain);
       PUSH_DATA(push, NVC0_FIFO_PKHDR_1I(1, macro, 3));
       nouveau_pushbuf_data(push, res->bo, offset,
                            NVC0_IB_ENTRY_1_NO_PREFETCH | 3 * 4);
@@ -512,7 +512,7 @@ nvc0_compute_update_indirect_invocations(struct nvc0_context *nvc0,
    uint32_t offset = res->offset + info->indirect_offset;
 
    PUSH_SPACE_EX(push, 16, 0, 8);
-   PUSH_REFN(push, res->bo, NOUVEAU_BO_RD | res->domain);
+   PUSH_REF1(push, res->bo, NOUVEAU_BO_RD | res->domain);
    BEGIN_1IC0(push, NVC0_3D(MACRO_COMPUTE_COUNTER), 7);
    PUSH_DATA(push, 6);
    PUSH_DATA(push, info->block[0]);
