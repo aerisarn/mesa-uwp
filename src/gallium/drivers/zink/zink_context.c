@@ -1414,7 +1414,7 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
    unsigned depth = 1 + tmpl.u.tex.last_layer - tmpl.u.tex.first_layer;
    switch (target) {
    case PIPE_TEXTURE_3D:
-      if (depth < res->base.b.depth0) {
+      if (depth < u_minify(res->base.b.depth0, view->u.tex.level)) {
          assert(depth == 1);
          target = PIPE_TEXTURE_2D;
       } else {
