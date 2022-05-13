@@ -1175,6 +1175,32 @@ trace_screen_query_dmabuf_modifiers(struct pipe_screen *_screen, enum pipe_forma
 }
 
 static bool
+trace_screen_is_compute_copy_faster(struct pipe_screen *_screen, enum pipe_format src_format,
+                                    enum pipe_format dst_format, unsigned width, unsigned height,
+                                    unsigned depth, bool cpu)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "is_compute_copy_faster");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(format, src_format);
+   trace_dump_arg(format, dst_format);
+   trace_dump_arg(uint, width);
+   trace_dump_arg(uint, height);
+   trace_dump_arg(uint, depth);
+   trace_dump_arg(bool, cpu);
+
+   bool ret = screen->is_compute_copy_faster(screen, src_format, dst_format, width, height, depth, cpu);
+
+   trace_dump_ret(bool, ret);
+
+   trace_dump_call_end();
+   return ret;
+}
+
+static bool
 trace_screen_is_dmabuf_modifier_supported(struct pipe_screen *_screen, uint64_t modifier, enum pipe_format format, bool *external_only)
 {
    struct trace_screen *tr_scr = trace_screen(_screen);
@@ -1381,6 +1407,7 @@ trace_screen_create(struct pipe_screen *screen)
    tr_scr->base.unmap_memory = trace_screen_unmap_memory;
    SCR_INIT(query_memory_info);
    SCR_INIT(query_dmabuf_modifiers);
+   SCR_INIT(is_compute_copy_faster);
    SCR_INIT(is_dmabuf_modifier_supported);
    SCR_INIT(get_dmabuf_modifier_planes);
    SCR_INIT(check_resource_capability);
