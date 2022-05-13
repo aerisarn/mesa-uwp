@@ -1468,11 +1468,11 @@ zink_set_shader_images(struct pipe_context *pctx,
          /* no refs */
          memcpy(&image_view->base, images + i, sizeof(struct pipe_image_view));
          VkAccessFlags access = 0;
-         if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE) {
+         if (images[i].access & PIPE_IMAGE_ACCESS_WRITE) {
             res->write_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
             access |= VK_ACCESS_SHADER_WRITE_BIT;
          }
-         if (image_view->base.access & PIPE_IMAGE_ACCESS_READ) {
+         if (images[i].access & PIPE_IMAGE_ACCESS_READ) {
             access |= VK_ACCESS_SHADER_READ_BIT;
          }
          res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
