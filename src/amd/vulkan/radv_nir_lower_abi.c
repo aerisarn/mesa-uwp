@@ -39,7 +39,12 @@ typedef struct {
 static nir_ssa_def *
 load_ring(nir_builder *b, unsigned ring, lower_abi_state *s)
 {
-   nir_ssa_def *ring_offsets = ac_nir_load_arg(b, &s->args->ac, s->args->ring_offsets);
+   struct ac_arg arg =
+      b->shader->info.stage == MESA_SHADER_TASK ?
+      s->args->task_ring_offsets :
+      s->args->ring_offsets;
+
+   nir_ssa_def *ring_offsets = ac_nir_load_arg(b, &s->args->ac, arg);
    ring_offsets = nir_pack_64_2x32_split(b, nir_channel(b, ring_offsets, 0), nir_channel(b, ring_offsets, 1));
    return nir_load_smem_amd(b, 4, ring_offsets, nir_imm_int(b, ring * 16u), .align_mul = 4u);
 }
