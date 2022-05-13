@@ -2055,6 +2055,10 @@ bi_lower_fau(bi_context *ctx)
                         constants[cwords++] = ins->src[3].value;
                 }
 
+                /* Phis get split up into moves so are unrestricted */
+                if (ins->op == BI_OPCODE_PHI)
+                        continue;
+
                 bi_foreach_src(ins, s) {
                         if (bi_check_fau_src(ins, s, constants, &cwords, &fau)) continue;
 
