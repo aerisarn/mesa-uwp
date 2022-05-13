@@ -755,20 +755,19 @@ class Group(object):
                 print(" |\n".join("      " + f for f in non_address_fields) + ";")
 
             if dw.size == 32:
-                for i in range(address_count):
+                for addr in dw.addresses:
                     print("    dw[%d] = __pvr_address(values->%s, %d, %d, %d) | %s;"
-                          % (index, dw.addresses[i].name + field.dim, dw.addresses[i].shift,
-                             dw.addresses[i].start - dword_start, dw.addresses[i].end - dword_start, v))
+                          % (index, addr.name + field.dim, addr.shift, addr.start - dword_start,
+                             addr.end - dword_start, v))
                 continue
 
             v_accumulated_addr = ""
-            for i in range(address_count):
+            for i, addr in enumerate(dw.addresses):
                 v_address = "v%d_address" % i
                 v_accumulated_addr += "v%d_address" % i
                 print("    const uint64_t %s =" % v_address)
                 print("      __pvr_address(values->%s, %d, %d, %d);"
-                      % (dw.addresses[i].name + field.dim, dw.addresses[i].shift,
-                         dw.addresses[i].start - dword_start, dw.addresses[i].end - dword_start))
+                      % (addr.name + field.dim, addr.shift, addr.start - dword_start, addr.end - dword_start))
                 if i < (address_count - 1):
                     v_accumulated_addr += " |\n            "
 
