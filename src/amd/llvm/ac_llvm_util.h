@@ -89,6 +89,7 @@ struct ac_llvm_compiler {
    struct ac_compiler_passes *low_opt_passes;
 };
 
+LLVMTargetRef ac_get_llvm_target(const char *triple);
 const char *ac_get_llvm_processor_name(enum radeon_family family);
 bool ac_is_llvm_processor_supported(LLVMTargetMachineRef tm, const char *processor);
 void ac_add_attr_dereferenceable(LLVMValueRef val, uint64_t bytes);

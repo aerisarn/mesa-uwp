@@ -87,7 +87,7 @@ void ac_init_llvm_once(void)
 #endif
 }
 
-static LLVMTargetRef ac_get_llvm_target(const char *triple)
+LLVMTargetRef ac_get_llvm_target(const char *triple)
 {
    LLVMTargetRef target = NULL;
    char *err_message = NULL;

@@ -407,7 +407,18 @@ check_print_asm_support(Program* program)
 #ifdef LLVM_AVAILABLE
    if (program->gfx_level >= GFX8) {
       /* LLVM disassembler only supports GFX8+ */
-      return true;
+      const char* name = ac_get_llvm_processor_name(program->family);
+      const char* triple = "amdgcn--";
+      LLVMTargetRef target = ac_get_llvm_target(triple);
+
+      LLVMTargetMachineRef tm = LLVMCreateTargetMachine(
+         target, triple, name, "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+
+      bool supported = ac_is_llvm_processor_supported(tm, name);
+      LLVMDisposeTargetMachine(tm);
+
+      if (supported)
+         return true;
    }
 #endif
 
