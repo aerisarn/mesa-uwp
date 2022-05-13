@@ -613,7 +613,7 @@ class Group(object):
             self.fields = []
             self.addresses = []
 
-    def collect_dwords(self, dwords, start, dim):
+    def collect_dwords(self, dwords, start):
         for field in self.fields:
             index = (start + field.start) // 32
             if index not in dwords:
@@ -622,7 +622,6 @@ class Group(object):
             clone = copy.copy(field)
             clone.start = clone.start + start
             clone.end = clone.end + start
-            clone.dim = dim
             dwords[index].fields.append(clone)
 
             if field.type == "address":
@@ -679,11 +678,10 @@ class Group(object):
             # larger than 32 bits.
             if len(dw.fields) == 1:
                 field = dw.fields[0]
-                name = field.name + field.dim
                 if root.is_known_struct(field.type) and field.start % 32 == 0:
                     print("")
                     print("    %s_pack(data, &dw[%d], &values->%s);"
-                          % (self.parser.gen_prefix(safe_name(field.type)), index, name))
+                          % (self.parser.gen_prefix(safe_name(field.type)), index, field.name))
                     continue
 
             # Pack any fields of struct type first so we have integer values
@@ -691,11 +689,10 @@ class Group(object):
             field_index = 0
             for field in dw.fields:
                 if isinstance(field, Field) and root.is_known_struct(field.type):
-                    name = field.name + field.dim
                     print("")
                     print("    uint32_t v%d_%d;" % (index, field_index))
                     print("    %s_pack(data, &v%d_%d, &values->%s);"
-                          % (self.parser.gen_prefix(safe_name(field.type)), index, field_index, name))
+                          % (self.parser.gen_prefix(safe_name(field.type)), index, field_index, field.name))
                     field_index = field_index + 1
 
             print("")
@@ -714,9 +711,6 @@ class Group(object):
             field_index = 0
             non_address_fields = []
             for field in dw.fields:
-                if field.type != "mbo":
-                    name = field.name + field.dim
-
                 if field.type == "mbo":
                     non_address_fields.append("__pvr_mbo(%d, %d)"
                                               % (field.start - dword_start, field.end - dword_start))
@@ -724,21 +718,21 @@ class Group(object):
                     pass
                 elif field.type == "uint":
                     non_address_fields.append("__pvr_uint(values->%s, %d, %d)"
-                                              % (name, field.start - dword_start, field.end - dword_start))
+                                              % (field.name, field.start - dword_start, field.end - dword_start))
                 elif root.is_known_enum(field.type):
                     non_address_fields.append("__pvr_uint(values->%s, %d, %d)"
-                                              % (name, field.start - dword_start, field.end - dword_start))
+                                              % (field.name, field.start - dword_start, field.end - dword_start))
                 elif field.type == "int":
                     non_address_fields.append("__pvr_sint(values->%s, %d, %d)"
-                                              % (name, field.start - dword_start, field.end - dword_start))
+                                              % (field.name, field.start - dword_start, field.end - dword_start))
                 elif field.type == "bool":
                     non_address_fields.append("__pvr_uint(values->%s, %d, %d)"
-                                              % (name, field.start - dword_start, field.end - dword_start))
+                                              % (field.name, field.start - dword_start, field.end - dword_start))
                 elif field.type == "float":
-                    non_address_fields.append("__pvr_float(values->%s)" % name)
+                    non_address_fields.append("__pvr_float(values->%s)" % field.name)
                 elif field.type == "offset":
                     non_address_fields.append("__pvr_offset(values->%s, %d, %d)"
-                                              % (name, field.start - dword_start, field.end - dword_start))
+                                              % (field.name, field.start - dword_start, field.end - dword_start))
                 elif field.is_struct_type():
                     non_address_fields.append("__pvr_uint(v%d_%d, %d, %d)"
                                               % (index, field_index, field.start - dword_start,
@@ -746,7 +740,7 @@ class Group(object):
                     field_index = field_index + 1
                 else:
                     non_address_fields.append(
-                        "/* unhandled field %s," " type %s */\n" % (name, field.type)
+                        "/* unhandled field %s," " type %s */\n" % (field.name, field.type)
                     )
 
             if non_address_fields:
@@ -755,7 +749,7 @@ class Group(object):
             if dw.size == 32:
                 for addr in dw.addresses:
                     print("    dw[%d] = __pvr_address(values->%s, %d, %d, %d) | %s;"
-                          % (index, addr.name + field.dim, addr.shift, addr.start - dword_start,
+                          % (index, addr.name, addr.shift, addr.start - dword_start,
                              addr.end - dword_start, v))
                 continue
 
@@ -765,7 +759,7 @@ class Group(object):
                 v_accumulated_addr += "v%d_address" % i
                 print("    const uint64_t %s =" % v_address)
                 print("      __pvr_address(values->%s, %d, %d, %d);"
-                      % (addr.name + field.dim, addr.shift, addr.start - dword_start, addr.end - dword_start))
+                      % (addr.name, addr.shift, addr.start - dword_start, addr.end - dword_start))
                 if i < (address_count - 1):
                     v_accumulated_addr += " |\n            "
 
