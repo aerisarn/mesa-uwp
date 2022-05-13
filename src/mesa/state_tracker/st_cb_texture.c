@@ -2435,8 +2435,11 @@ st_GetTexSubImage(struct gl_context * ctx,
       goto non_blit_transfer;
    }
 
+   if (stImage->pt != stObj->pt)
+      goto non_blit_transfer;
+
    /* Handle non-finalized textures. */
-   if (!stImage->pt || stImage->pt != stObj->pt || !src) {
+   if (!stImage->pt || !src) {
       goto cpu_transfer;
    }
 
