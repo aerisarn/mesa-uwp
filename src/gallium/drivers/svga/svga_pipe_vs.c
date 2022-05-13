@@ -55,6 +55,8 @@ svga_create_vs_state(struct pipe_context *pipe,
    if (!vs)
       goto done;
 
+   vs->base.get_dummy_shader = svga_get_compiled_dummy_vertex_shader;
+
    {
       /* Need to do construct a new template in case we substituted a
        * debug shader.

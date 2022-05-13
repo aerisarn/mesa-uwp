@@ -33,35 +33,6 @@
 #include "svga_shader.h"
 
 
-/**
- * Translate TGSI shader into an svga shader variant.
- */
-static enum pipe_error
-compile_tcs(struct svga_context *svga,
-           struct svga_tcs_shader *tcs,
-           const struct svga_compile_key *key,
-           struct svga_shader_variant **out_variant)
-{
-   struct svga_shader_variant *variant;
-   enum pipe_error ret = PIPE_ERROR;
-
-   variant = svga_tgsi_vgpu10_translate(svga, &tcs->base, key,
-                                        PIPE_SHADER_TESS_CTRL);
-   if (!variant)
-      return PIPE_ERROR;
-
-   ret = svga_define_shader(svga, variant);
-   if (ret != PIPE_OK) {
-      svga_destroy_shader_variant(svga, variant);
-      return ret;
-   }
-
-   *out_variant = variant;
-
-   return PIPE_OK;
-}
-
-
 static void
 make_tcs_key(struct svga_context *svga, struct svga_compile_key *key)
 {
@@ -143,14 +114,9 @@ emit_hw_tcs(struct svga_context *svga, uint64_t dirty)
    variant = svga_search_shader_key(&tcs->base, &key);
 
    if (!variant) {
-      ret = compile_tcs(svga, tcs, &key, &variant);
+      ret = svga_compile_shader(svga, &tcs->base, &key, &variant);
       if (ret != PIPE_OK)
          goto done;
-
-      /* insert the new variant at head of linked list */
-      assert(variant);
-      variant->next = tcs->base.variants;
-      tcs->base.variants = variant;
    }
 
    if (variant != svga->state.hw_draw.tcs) {
@@ -182,35 +148,6 @@ struct svga_tracked_state svga_hw_tcs =
     SVGA_NEW_TCS_RAW_BUFFER),
    emit_hw_tcs
 };
-
-
-/**
- * Translate TGSI shader into an svga shader variant.
- */
-static enum pipe_error
-compile_tes(struct svga_context *svga,
-           struct svga_tes_shader *tes,
-           const struct svga_compile_key *key,
-           struct svga_shader_variant **out_variant)
-{
-   struct svga_shader_variant *variant;
-   enum pipe_error ret = PIPE_ERROR;
-
-   variant = svga_tgsi_vgpu10_translate(svga, &tes->base, key,
-                                        PIPE_SHADER_TESS_EVAL);
-   if (!variant)
-      return PIPE_ERROR;
-
-   ret = svga_define_shader(svga, variant);
-   if (ret != PIPE_OK) {
-      svga_destroy_shader_variant(svga, variant);
-      return ret;
-   }
-
-   *out_variant = variant;
-
-   return PIPE_OK;
-}
 
 
 static void
@@ -345,14 +282,9 @@ emit_hw_tes(struct svga_context *svga, uint64_t dirty)
    variant = svga_search_shader_key(&tes->base, &key);
 
    if (!variant) {
-      ret = compile_tes(svga, tes, &key, &variant);
+      ret = svga_compile_shader(svga, &tes->base, &key, &variant);
       if (ret != PIPE_OK)
          goto done;
-
-      /* insert the new variant at head of linked list */
-      assert(variant);
-      variant->next = tes->base.variants;
-      tes->base.variants = variant;
    }
 
    if (variant != svga->state.hw_draw.tes) {

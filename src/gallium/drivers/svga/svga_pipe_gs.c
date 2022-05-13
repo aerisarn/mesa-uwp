@@ -61,6 +61,7 @@ svga_create_gs_state(struct pipe_context *pipe,
    tmp.type = PIPE_SHADER_IR_TGSI;
    tmp.tokens = gs->base.tokens;
 
+   gs->base.get_dummy_shader = svga_get_compiled_dummy_geometry_shader;
    gs->draw_shader = draw_create_geometry_shader(svga->swtnl.draw, &tmp);
 
 done:

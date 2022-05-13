@@ -63,6 +63,8 @@ svga_create_fs_state(struct pipe_context *pipe,
 
    fs->generic_inputs = svga_get_generic_inputs_mask(&fs->base.tgsi_info);
 
+   fs->base.get_dummy_shader = svga_get_compiled_dummy_fragment_shader;
+
    svga_remap_generics(fs->base.info.generic_inputs_mask,
                        fs->generic_remap_table);
 

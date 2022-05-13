@@ -80,31 +80,16 @@ get_dummy_fragment_shader(void)
 }
 
 
-static struct svga_shader_variant *
-translate_fragment_program(struct svga_context *svga,
-                           const struct svga_fragment_shader *fs,
-                           const struct svga_compile_key *key)
-{
-   if (svga_have_vgpu10(svga)) {
-      return svga_tgsi_vgpu10_translate(svga, &fs->base, key,
-                                        PIPE_SHADER_FRAGMENT);
-   }
-   else {
-      return svga_tgsi_vgpu9_translate(svga, &fs->base, key,
-                                       PIPE_SHADER_FRAGMENT);
-   }
-}
-
-
 /**
  * Replace the given shader's instruction with a simple constant-color
  * shader.  We use this when normal shader translation fails.
  */
-static struct svga_shader_variant *
-get_compiled_dummy_shader(struct svga_context *svga,
-                          struct svga_fragment_shader *fs,
-                          const struct svga_compile_key *key)
+struct svga_shader_variant *
+svga_get_compiled_dummy_fragment_shader(struct svga_context *svga,
+                                        struct svga_shader *shader,
+                                        const struct svga_compile_key *key)
 {
+   struct svga_fragment_shader *fs = (struct svga_fragment_shader *)shader;
    const struct tgsi_token *dummy = get_dummy_fragment_shader();
    struct svga_shader_variant *variant;
 
@@ -119,58 +104,8 @@ get_compiled_dummy_shader(struct svga_context *svga,
    svga_remap_generics(fs->base.info.generic_inputs_mask,
                        fs->generic_remap_table);
 
-   variant = translate_fragment_program(svga, fs, key);
+   variant = svga_tgsi_compile_shader(svga, shader, key);
    return variant;
-}
-
-
-/**
- * Translate TGSI shader into an svga shader variant.
- */
-static enum pipe_error
-compile_fs(struct svga_context *svga,
-           struct svga_fragment_shader *fs,
-           const struct svga_compile_key *key,
-           struct svga_shader_variant **out_variant)
-{
-   struct svga_shader_variant *variant;
-   enum pipe_error ret = PIPE_ERROR;
-
-   variant = translate_fragment_program(svga, fs, key);
-   if (variant == NULL) {
-      debug_printf("Failed to compile fragment shader,"
-                   " using dummy shader instead.\n");
-      variant = get_compiled_dummy_shader(svga, fs, key);
-   }
-   else if (svga_shader_too_large(svga, variant)) {
-      /* too big, use dummy shader */
-      debug_printf("Shader too large (%u bytes),"
-                   " using dummy shader instead.\n",
-                   (unsigned) (variant->nr_tokens
-                               * sizeof(variant->tokens[0])));
-      /* Free the too-large variant */
-      svga_destroy_shader_variant(svga, variant);
-      /* Use simple pass-through shader instead */
-      variant = get_compiled_dummy_shader(svga, fs, key);
-   }
-
-   if (!variant) {
-      return PIPE_ERROR;
-   }
-
-   ret = svga_define_shader(svga, variant);
-   if (ret != PIPE_OK) {
-      svga_destroy_shader_variant(svga, variant);
-      return ret;
-   }
-
-   *out_variant = variant;
-
-   /* insert variant at head of linked list */
-   variant->next = fs->base.variants;
-   fs->base.variants = variant;
-
-   return PIPE_OK;
 }
 
 
@@ -463,7 +398,7 @@ emit_hw_fs(struct svga_context *svga, uint64_t dirty)
 
    variant = svga_search_shader_key(&fs->base, &key);
    if (!variant) {
-      ret = compile_fs(svga, fs, &key, &variant);
+      ret = svga_compile_shader(svga, &fs->base, &key, &variant);
       if (ret != PIPE_OK)
          goto done;
    }

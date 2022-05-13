@@ -947,3 +947,64 @@ svga_create_shader(struct pipe_context *pipe,
 
    return shader;
 }
+
+
+/**
+ * Helper function to compile a shader.
+ * Depending on the shader IR type, it calls the corresponding
+ * compile shader function.
+ */
+enum pipe_error
+svga_compile_shader(struct svga_context *svga,
+                    struct svga_shader *shader,
+                    const struct svga_compile_key *key,
+                    struct svga_shader_variant **out_variant)
+{
+   struct svga_shader_variant *variant = NULL;
+   enum pipe_error ret = PIPE_ERROR;
+
+   if (shader->type == PIPE_SHADER_IR_TGSI) {
+      variant = svga_tgsi_compile_shader(svga, shader, key);
+   } else {
+      debug_printf("Unexpected nir shader\n");
+      assert(0);
+   }
+
+   if (variant == NULL) {
+      if (shader->get_dummy_shader != NULL) {
+         debug_printf("Failed to compile shader, using dummy shader.\n");
+         variant = shader->get_dummy_shader(svga, shader, key);
+      }
+   }
+   else if (svga_shader_too_large(svga, variant)) {
+      /* too big, use shader */
+      if (shader->get_dummy_shader != NULL) {
+         debug_printf("Shader too large (%u bytes), using dummy shader.\n",
+                      (unsigned)(variant->nr_tokens
+                                 * sizeof(variant->tokens[0])));
+
+         /* Free the too-large variant */
+         svga_destroy_shader_variant(svga, variant);
+
+         /* Use simple pass-through shader instead */
+         variant = shader->get_dummy_shader(svga, shader, key);
+      }
+   }
+
+   if (variant == NULL)
+      return PIPE_ERROR;
+
+   ret = svga_define_shader(svga, variant);
+   if (ret != PIPE_OK) {
+      svga_destroy_shader_variant(svga, variant);
+      return ret;
+   }
+
+   *out_variant = variant;
+
+   /* insert variant at head of linked list */
+   variant->next = shader->variants;
+   shader->variants = variant;
+
+   return PIPE_OK;
+}

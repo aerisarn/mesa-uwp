@@ -371,6 +371,11 @@ struct svga_shader
    /** Head of linked list of compiled variants */
    struct svga_shader_variant *variants;
 
+   /* Get dummy shader variant */
+   struct svga_shader_variant *(*get_dummy_shader)(struct svga_context *,
+                                                   struct svga_shader *,
+                                                   const struct svga_compile_key *);
+
    unsigned id;  /**< for debugging only */
 };
 
@@ -489,6 +494,12 @@ svga_create_shader(struct pipe_context *pipe,
                    unsigned len);
 
 enum pipe_error
+svga_compile_shader(struct svga_context *svga,
+                    struct svga_shader *shader,
+                    const struct svga_compile_key *key,
+                    struct svga_shader_variant **out_variant);
+
+enum pipe_error
 svga_define_shader(struct svga_context *svga,
                    struct svga_shader_variant *variant);
 
@@ -604,5 +615,20 @@ svga_is_using_flat_shading(const struct svga_context *svga)
          svga_fs_variant(svga->state.hw_draw.fs)->uses_flat_interp : FALSE;
 }
 
+struct svga_shader_variant *
+svga_get_compiled_dummy_vertex_shader(struct svga_context *svga,
+                                      struct svga_shader *shader,
+                                      const struct svga_compile_key *key);
+
+
+struct svga_shader_variant *
+svga_get_compiled_dummy_fragment_shader(struct svga_context *svga,
+                                        struct svga_shader *shader,
+                                        const struct svga_compile_key *key);
+
+struct svga_shader_variant *
+svga_get_compiled_dummy_geometry_shader(struct svga_context *svga,
+                                        struct svga_shader *shader,
+                                        const struct svga_compile_key *key);
 
 #endif /* SVGA_SHADER_H */

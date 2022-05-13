@@ -70,31 +70,16 @@ get_dummy_vertex_shader(void)
 }
 
 
-static struct svga_shader_variant *
-translate_vertex_program(struct svga_context *svga,
-                         const struct svga_vertex_shader *vs,
-                         const struct svga_compile_key *key)
-{
-   if (svga_have_vgpu10(svga)) {
-      return svga_tgsi_vgpu10_translate(svga, &vs->base, key,
-                                        PIPE_SHADER_VERTEX);
-   }
-   else {
-      return svga_tgsi_vgpu9_translate(svga, &vs->base, key,
-                                       PIPE_SHADER_VERTEX);
-   }
-}
-
-
 /**
  * Replace the given shader's instruction with a simple / dummy shader.
  * We use this when normal shader translation fails.
  */
-static struct svga_shader_variant *
-get_compiled_dummy_vertex_shader(struct svga_context *svga,
-                                 struct svga_vertex_shader *vs,
-                                 const struct svga_compile_key *key)
+struct svga_shader_variant *
+svga_get_compiled_dummy_vertex_shader(struct svga_context *svga,
+                                      struct svga_shader *shader,
+                                      const struct svga_compile_key *key)
 {
+   struct svga_vertex_shader *vs = (struct svga_vertex_shader *)shader;
    const struct tgsi_token *dummy = get_dummy_vertex_shader();
    struct svga_shader_variant *variant;
 
@@ -107,54 +92,8 @@ get_compiled_dummy_vertex_shader(struct svga_context *svga,
 
    svga_tgsi_scan_shader(&vs->base);
 
-   variant = translate_vertex_program(svga, vs, key);
+   variant = svga_tgsi_compile_shader(svga, shader, key);
    return variant;
-}
-
-
-/**
- * Translate TGSI shader into an svga shader variant.
- */
-static enum pipe_error
-compile_vs(struct svga_context *svga,
-           struct svga_vertex_shader *vs,
-           const struct svga_compile_key *key,
-           struct svga_shader_variant **out_variant)
-{
-   struct svga_shader_variant *variant;
-   enum pipe_error ret = PIPE_ERROR;
-
-   variant = translate_vertex_program(svga, vs, key);
-   if (variant == NULL) {
-      debug_printf("Failed to compile vertex shader,"
-                   " using dummy shader instead.\n");
-      variant = get_compiled_dummy_vertex_shader(svga, vs, key);
-   }
-   else if (svga_shader_too_large(svga, variant)) {
-      /* too big, use dummy shader */
-      debug_printf("Shader too large (%u bytes),"
-                   " using dummy shader instead.\n",
-                   (unsigned) (variant->nr_tokens
-                               * sizeof(variant->tokens[0])));
-      /* Free the too-large variant */
-      svga_destroy_shader_variant(svga, variant);
-      /* Use simple pass-through shader instead */
-      variant = get_compiled_dummy_vertex_shader(svga, vs, key);
-   }
-
-   if (!variant) {
-      return PIPE_ERROR;
-   }
-
-   ret = svga_define_shader(svga, variant);
-   if (ret != PIPE_OK) {
-      svga_destroy_shader_variant(svga, variant);
-      return ret;
-   }
-
-   *out_variant = variant;
-
-   return PIPE_OK;
 }
 
 
@@ -329,7 +268,7 @@ compile_passthrough_vs(struct svga_context *svga,
    memset(&key, 0, sizeof(key));
    key.vs.undo_viewport = 1;
 
-   ret = compile_vs(svga, &new_vs, &key, &variant);
+   ret = svga_compile_shader(svga, &new_vs.base, &key, &variant);
    if (ret != PIPE_OK)
       return ret;
 
@@ -393,15 +332,10 @@ emit_hw_vs(struct svga_context *svga, uint64_t dirty)
             ret = compile_passthrough_vs(svga, vs, fs, &variant);
          }
          else {
-            ret = compile_vs(svga, vs, &key, &variant);
+            ret = svga_compile_shader(svga, &vs->base, &key, &variant);
          }
          if (ret != PIPE_OK)
             goto done;
-
-         /* insert the new variant at head of linked list */
-         assert(variant);
-         variant->next = vs->base.variants;
-         vs->base.variants = variant;
       }
    }
 

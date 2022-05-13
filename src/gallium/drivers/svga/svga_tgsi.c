@@ -515,3 +515,20 @@ svga_tgsi_scan_shader(struct svga_shader *shader)
       break;
    }
 }
+
+
+/**
+ * Compile a TGSI shader
+ */
+struct svga_shader_variant *
+svga_tgsi_compile_shader(struct svga_context *svga,
+                         struct svga_shader *shader,
+                         const struct svga_compile_key *key)
+{
+   if (svga_have_vgpu10(svga)) {
+      return svga_tgsi_vgpu10_translate(svga, shader, key, shader->stage);
+   }
+   else {
+      return svga_tgsi_vgpu9_translate(svga, shader, key, shader->stage);
+   }
+}
