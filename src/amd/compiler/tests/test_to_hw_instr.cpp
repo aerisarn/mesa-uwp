@@ -464,6 +464,50 @@ BEGIN_TEST(to_hw_instr.subdword_constant)
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v1), Definition(v1_lo, v1b),
                  Operand::zero(), Operand::zero(1));
 
+      bld.reset(program->create_and_insert_block());
+      program->blocks[0].linear_succs.push_back(1);
+      program->blocks[1].linear_preds.push_back(0);
+
+      /* Prevent usage of v_pack_b32_f16, so we use v_perm_b32 instead. */
+      program->blocks[1].fp_mode.denorm16_64 = fp_denorm_flush;
+
+      //>> p_unit_test 13
+      //~gfx9! v1: %_:v[0] = v_and_b32 0xffff0000, %_:v[0]
+      //~gfx9! v1: %_:v[0] = v_or_b32 0xff, %_:v[0]
+      //~gfx(10|11)! v1: %_:v[0] = v_perm_b32 0, %_:v[0], 0x7060c0d
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(13u));
+      bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v2b),
+                 Operand::c16(0x00ff));
+
+      //! p_unit_test 14
+      //~gfx9! v1: %_:v[0] = v_and_b32 0xffff, %_:v[0]
+      //~gfx9! v1: %_:v[0] = v_or_b32 0xff000000, %_:v[0]
+      //~gfx(10|11)! v1: %_:v[0] = v_perm_b32 0, %_:v[0], 0xd0c0504
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(14u));
+      bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_hi, v2b),
+                 Operand::c16(0xff00));
+
+      //! p_unit_test 15
+      //~gfx(9|10)! v2b: %_:v[0][0:16] = v_mov_b32 0 dst_sel:uword0 dst_preserve src0_sel:dword
+      //~gfx11! v1: %_:v[0] = v_perm_b32 0, %_:v[0], 0x7060c0c
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(15u));
+      bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v2b),
+                 Operand::zero(2));
+
+      //! p_unit_test 16
+      //~gfx(9|10)! v1b: %_:v[0][0:8] = v_mov_b32 -1 dst_sel:ubyte0 dst_preserve src0_sel:dword
+      //~gfx11! v1: %_:v[0] = v_perm_b32 0, %_:v[0], 0x706050d
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(16u));
+      bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v1b),
+                 Operand::c8(0xff));
+
+      //! p_unit_test 17
+      //~gfx(9|10)! v1b: %_:v[0][0:8] = v_mov_b32 0 dst_sel:ubyte0 dst_preserve src0_sel:dword
+      //~gfx11! v1: %_:v[0] = v_perm_b32 0, %_:v[0], 0x706050c
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(17u));
+      bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v1b),
+                 Operand::zero(1));
+
       //! s_endpgm
 
       finish_to_hw_instr_test();

@@ -1085,6 +1085,10 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
       assert(dst.regClass() == v1b || dst.regClass() == v2b);
 
       bool use_sdwa = ctx->program->gfx_level >= GFX9 && ctx->program->gfx_level < GFX11;
+      /* We need the v_perm_b32 (VOP3) to be able to take literals, and that's a GFX10+ feature. */
+      bool can_use_perm = ctx->program->gfx_level >= GFX10 &&
+                          (op.constantEquals(0) || op.constantEquals(0xff) ||
+                           op.constantEquals(0xffff) || op.constantEquals(0xff00));
       if (dst.regClass() == v1b && use_sdwa) {
          uint8_t val = op.constantValue();
          Operand op32 = Operand::c32((uint32_t)val | (val & 0x80u ? 0xffffff00u : 0u));
@@ -1118,6 +1122,12 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
             Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, op, def_hi);
             instr->vop3().opsel = 2;
          }
+      } else if (can_use_perm) {
+         uint8_t swiz[] = {4, 5, 6, 7};
+         swiz[dst.physReg().byte()] = op.constantValue() & 0xff ? bperm_255 : bperm_0;
+         if (dst.bytes() == 2)
+            swiz[dst.physReg().byte() + 1] = op.constantValue() >> 8 ? bperm_255 : bperm_0;
+         create_bperm(bld, swiz, dst, Operand::zero());
       } else {
          uint32_t offset = dst.physReg().byte() * 8u;
          uint32_t mask = ((1u << (dst.bytes() * 8)) - 1) << offset;
