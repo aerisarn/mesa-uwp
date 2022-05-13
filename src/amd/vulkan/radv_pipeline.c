@@ -3314,30 +3314,11 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
 }
 
 static void
-radv_fill_shader_info(struct radv_pipeline *pipeline,
-                      struct radv_pipeline_layout *pipeline_layout,
-                      const struct radv_pipeline_key *pipeline_key,
-                      struct radv_pipeline_stage *stages)
+radv_fill_shader_info_ngg(struct radv_pipeline *pipeline,
+                          const struct radv_pipeline_key *pipeline_key,
+                          struct radv_pipeline_stage *stages)
 {
    struct radv_device *device = pipeline->device;
-   unsigned active_stages = 0;
-   unsigned filled_stages = 0;
-
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
-      if (stages[i].nir)
-         active_stages |= (1 << i);
-   }
-
-   if (stages[MESA_SHADER_TESS_CTRL].nir) {
-      stages[MESA_SHADER_VERTEX].info.vs.as_ls = true;
-   }
-
-   if (stages[MESA_SHADER_GEOMETRY].nir) {
-      if (stages[MESA_SHADER_TESS_CTRL].nir)
-         stages[MESA_SHADER_TESS_EVAL].info.tes.as_es = true;
-      else
-         stages[MESA_SHADER_VERTEX].info.vs.as_es = true;
-   }
 
    if (pipeline_key->use_ngg) {
       if (stages[MESA_SHADER_TESS_CTRL].nir) {
@@ -3395,6 +3376,33 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
             stages[MESA_SHADER_VERTEX].info.is_ngg_passthrough = true;
          }
       }
+   }
+}
+
+static void
+radv_fill_shader_info(struct radv_pipeline *pipeline,
+                      struct radv_pipeline_layout *pipeline_layout,
+                      const struct radv_pipeline_key *pipeline_key,
+                      struct radv_pipeline_stage *stages)
+{
+   struct radv_device *device = pipeline->device;
+   unsigned active_stages = 0;
+   unsigned filled_stages = 0;
+
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (stages[i].nir)
+         active_stages |= (1 << i);
+   }
+
+   if (stages[MESA_SHADER_TESS_CTRL].nir) {
+      stages[MESA_SHADER_VERTEX].info.vs.as_ls = true;
+   }
+
+   if (stages[MESA_SHADER_GEOMETRY].nir) {
+      if (stages[MESA_SHADER_TESS_CTRL].nir)
+         stages[MESA_SHADER_TESS_EVAL].info.tes.as_es = true;
+      else
+         stages[MESA_SHADER_VERTEX].info.vs.as_es = true;
    }
 
    if (stages[MESA_SHADER_FRAGMENT].nir) {
@@ -4535,6 +4543,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    bool optimize_conservatively = pipeline_key->optimisations_disabled;
+
+   /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
+   radv_fill_shader_info_ngg(pipeline, pipeline_key, stages);
 
    radv_link_shaders(pipeline, pipeline_key, stages, optimize_conservatively);
    radv_set_driver_locations(pipeline, stages);
