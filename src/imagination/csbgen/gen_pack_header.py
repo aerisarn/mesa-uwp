@@ -27,14 +27,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import argparse
-import ast
-import xml.parsers.expat
-import re
-import sys
 import copy
 import os
+import sys
 import textwrap
+import xml.parsers.expat as expat
+from ast import literal_eval
 
 
 MIT_LICENSE_COMMENT = """/*
@@ -785,7 +783,7 @@ class Group(object):
 
 class Parser(object):
     def __init__(self):
-        self.parser = xml.parsers.expat.ParserCreate()
+        self.parser = expat.ParserCreate()
         self.parser.StartElementHandler = self.start_element
         self.parser.EndElementHandler = self.end_element
 
@@ -827,11 +825,11 @@ class Parser(object):
             self.context.append(enum)
 
         elif name == "value":
-            value = Value(parent, attrs["name"], ast.literal_eval(attrs["value"]))
+            value = Value(parent, attrs["name"], literal_eval(attrs["value"]))
             self.context.append(value)
 
         elif name == "define":
-            define = Define(parent, attrs["name"], ast.literal_eval(attrs["value"]))
+            define = Define(parent, attrs["name"], literal_eval(attrs["value"]))
             self.context.append(define)
 
         elif name == "condition":
