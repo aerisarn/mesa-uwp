@@ -7725,10 +7725,8 @@ emit_addition_uniform_reduce(isel_context* ctx, nir_op op, Definition dst, nir_s
          bld.pseudo(aco_opcode::p_extract_vector, dst, count, Operand::zero());
       else if (nir_src_as_uint(src) == 1)
          bld.copy(dst, count);
-      else if (nir_src_as_uint(src) == 0 && dst.bytes() <= 2)
-         bld.vop1(aco_opcode::v_mov_b32, dst, Operand::zero()); /* RA will use SDWA if possible */
       else if (nir_src_as_uint(src) == 0)
-         bld.copy(dst, Operand::zero());
+         bld.copy(dst, Operand::zero(dst.bytes()));
       else if (count.type() == RegType::vgpr)
          bld.v_mul_imm(dst, count, nir_src_as_uint(src));
       else
