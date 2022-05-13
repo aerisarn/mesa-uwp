@@ -35,7 +35,8 @@ BEGIN_TEST(regalloc.subdword_alloc.reuse_16bit_operands)
     * result in v0.
     */
 
-   for (amd_gfx_level cc = GFX8; cc < NUM_GFX_VERSIONS; cc = (amd_gfx_level)((unsigned)cc + 1)) {
+   /* TODO: is this possible to do on GFX11? */
+   for (amd_gfx_level cc = GFX8; cc <= GFX10_3; cc = (amd_gfx_level)((unsigned)cc + 1)) {
       for (bool pessimistic : { false, true }) {
          const char* subvariant = pessimistic ? "/pessimistic" : "/optimistic";
 
