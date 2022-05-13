@@ -1945,14 +1945,15 @@ struct Block {
  */
 enum class SWStage : uint16_t {
    None = 0,
-   VS = 1 << 0,     /* Vertex Shader */
-   GS = 1 << 1,     /* Geometry Shader */
-   TCS = 1 << 2,    /* Tessellation Control aka Hull Shader */
-   TES = 1 << 3,    /* Tessellation Evaluation aka Domain Shader */
-   FS = 1 << 4,     /* Fragment aka Pixel Shader */
-   CS = 1 << 5,     /* Compute Shader */
-   TS = 1 << 6,     /* Task Shader */
-   MS = 1 << 7,     /* Mesh Shader */
+   VS = 1 << 0,  /* Vertex Shader */
+   GS = 1 << 1,  /* Geometry Shader */
+   TCS = 1 << 2, /* Tessellation Control aka Hull Shader */
+   TES = 1 << 3, /* Tessellation Evaluation aka Domain Shader */
+   FS = 1 << 4,  /* Fragment aka Pixel Shader */
+   CS = 1 << 5,  /* Compute Shader */
+   TS = 1 << 6,  /* Task Shader */
+   MS = 1 << 7,  /* Mesh Shader */
+   RT = 1 << 8,  /* Raytracing Shader */
 
    /* Stage combinations merged to run on a single HWStage */
    VS_GS = VS | GS,
@@ -2036,6 +2037,8 @@ static constexpr Stage tess_control_hs(HWStage::HS, SWStage::TCS);
 static constexpr Stage tess_eval_es(HWStage::ES,
                                     SWStage::TES); /* tesselation evaluation before geometry */
 static constexpr Stage geometry_gs(HWStage::GS, SWStage::GS);
+/* Raytracing */
+static constexpr Stage raytracing_cs(HWStage::CS, SWStage::RT);
 
 struct DeviceInfo {
    uint16_t lds_encoding_granule;

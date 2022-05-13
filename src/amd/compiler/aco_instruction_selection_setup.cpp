@@ -306,7 +306,13 @@ setup_variables(isel_context* ctx, nir_shader* nir)
       break;
    }
    case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TASK: {
+   case MESA_SHADER_TASK:
+   case MESA_SHADER_RAYGEN:
+   case MESA_SHADER_CLOSEST_HIT:
+   case MESA_SHADER_MISS:
+   case MESA_SHADER_CALLABLE:
+   case MESA_SHADER_INTERSECTION:
+   case MESA_SHADER_ANY_HIT: {
       ctx->program->config->lds_size =
          DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
       break;
@@ -774,6 +780,12 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
       case MESA_SHADER_COMPUTE: sw_stage = sw_stage | SWStage::CS; break;
       case MESA_SHADER_TASK: sw_stage = sw_stage | SWStage::TS; break;
       case MESA_SHADER_MESH: sw_stage = sw_stage | SWStage::MS; break;
+      case MESA_SHADER_RAYGEN:
+      case MESA_SHADER_CLOSEST_HIT:
+      case MESA_SHADER_MISS:
+      case MESA_SHADER_CALLABLE:
+      case MESA_SHADER_INTERSECTION:
+      case MESA_SHADER_ANY_HIT: sw_stage = SWStage::RT; break;
       default: unreachable("Shader stage not implemented");
       }
    }
@@ -822,6 +834,8 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
       hw_stage = HWStage::GS; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
    else if (sw_stage == SWStage::TES_GS && ngg)
       hw_stage = HWStage::NGG; /* GFX10+: TES+GS merged into an NGG GS */
+   else if (sw_stage == SWStage::RT)
+      hw_stage = HWStage::CS; /* Raytracing shaders run as CS */
    else
       unreachable("Shader stage not implemented");
 
