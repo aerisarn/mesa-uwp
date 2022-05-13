@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2014 VMware, Inc.  All rights reserved.
+ * Copyright 2014-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -114,7 +114,7 @@ make_gs_key(struct svga_context *svga, struct svga_compile_key *key)
    memcpy(key->generic_remap_table, gs->generic_remap_table,
           sizeof(gs->generic_remap_table));
 
-   key->gs.vs_generic_outputs = svga->curr.vs->generic_outputs;
+   key->gs.vs_generic_outputs = svga->curr.vs->base.info.generic_outputs_mask;
 
    key->gs.need_prescale = svga->state.hw_clear.prescale[0].enabled;
 
@@ -135,9 +135,6 @@ make_gs_key(struct svga_context *svga, struct svga_compile_key *key)
 
    /* Mark this as the last shader in the vertex processing stage */
    key->last_vertex_stage = 1;
-
-   if (svga_have_gl43(svga))
-      key->image_size_used = gs->base.info.opcode_count[TGSI_OPCODE_RESQ] ? 1 : 0;
 }
 
 

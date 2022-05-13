@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2008-2009 VMware, Inc.  All rights reserved.
+ * Copyright 2008-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -115,9 +115,9 @@ get_compiled_dummy_shader(struct svga_context *svga,
    FREE((void *) fs->base.tokens);
    fs->base.tokens = dummy;
 
-   tgsi_scan_shader(fs->base.tokens, &fs->base.info);
-   fs->generic_inputs = svga_get_generic_inputs_mask(&fs->base.info);
-   svga_remap_generics(fs->generic_inputs, fs->generic_remap_table);
+   svga_tgsi_scan_shader(&fs->base);
+   svga_remap_generics(fs->base.info.generic_inputs_mask,
+                       fs->generic_remap_table);
 
    variant = translate_fragment_program(svga, fs, key);
    return variant;
@@ -194,11 +194,13 @@ make_fs_key(const struct svga_context *svga,
 
    /* SVGA_NEW_GS, SVGA_NEW_VS
     */
-   if (svga->curr.gs) {
-      key->fs.gs_generic_outputs = svga->curr.gs->generic_outputs;
-      key->fs.layer_to_zero = !svga->curr.gs->base.info.writes_layer;
+   struct svga_geometry_shader *gs = svga->curr.gs;
+   struct svga_vertex_shader *vs = svga->curr.vs;
+   if (gs) {
+      key->fs.gs_generic_outputs = gs->base.info.generic_outputs_mask;
+      key->fs.layer_to_zero = !gs->base.info.writes_layer;
    } else {
-      key->fs.vs_generic_outputs = svga->curr.vs->generic_outputs;
+      key->fs.vs_generic_outputs = vs->base.info.generic_outputs_mask;
       key->fs.layer_to_zero = 1;
    }
 
@@ -218,10 +220,10 @@ make_fs_key(const struct svga_context *svga,
        */
       if (svga->curr.tes) {
          shader = &svga->curr.tes->base;
-         prim_mode = shader->info.properties[TGSI_PROPERTY_TES_PRIM_MODE];
+         prim_mode = shader->info.tes.prim_mode;
       } else if (svga->curr.gs) {
          shader = &svga->curr.gs->base;
-         prim_mode = shader->info.properties[TGSI_PROPERTY_GS_OUTPUT_PRIM];
+         prim_mode = shader->info.gs.out_prim;
       } else {
          shader = &svga->curr.vs->base;
          prim_mode = svga->curr.reduced_prim;
@@ -363,14 +365,11 @@ make_fs_key(const struct svga_context *svga,
    }
 
    /* SVGA_NEW_FRAME_BUFFER | SVGA_NEW_BLEND */
-   if (fs->base.info.properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] ||
+   if (fs->base.info.fs.color0_writes_all_cbufs ||
        svga->curr.blend->need_white_fragments) {
       /* Replicate color0 output (or white) to N colorbuffers */
       key->fs.write_color0_to_n_cbufs = svga->curr.framebuffer.nr_cbufs;
    }
-
-   if (svga_have_gl43(svga))
-      key->image_size_used = fs->base.info.opcode_count[TGSI_OPCODE_RESQ] ? 1 : 0;
 
    return PIPE_OK;
 }

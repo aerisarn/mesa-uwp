@@ -30,6 +30,7 @@
 #include "svga_cmd.h"
 #include "svga_format.h"
 #include "svga_shader.h"
+#include "svga_tgsi.h"
 #include "svga_resource_texture.h"
 #include "VGPU10ShaderTokens.h"
 #include "tgsi/tgsi_parse.h"
@@ -468,8 +469,8 @@ svga_init_shader_key_common(const struct svga_context *svga,
    }
 
    if (svga_have_gl43(svga)) {
-      if (shader->info.images_declared || shader->info.hw_atomic_declared ||
-          shader->info.shader_buffers_declared) {
+      if (shader->info.uses_images || shader->info.uses_hw_atomic ||
+          shader->info.uses_shader_buffers) {
 
          /* Save the uavSpliceIndex which is the index used for the first uav
           * in the draw pipeline. For compute, uavSpliceIndex is always 0.
@@ -537,6 +538,8 @@ svga_init_shader_key_common(const struct svga_context *svga,
             else
                key->atomic_buf_uav_index[i] = SVGA3D_INVALID_ID;
          }
+
+         key->image_size_used = shader->info.uses_image_size;
       }
 
       /* Save info about which constant buffers are to be viewed
@@ -928,8 +931,8 @@ svga_create_shader(struct pipe_context *pipe,
    shader->tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
 
    if (shader->type == PIPE_SHADER_IR_TGSI) {
-      /* Collect basic info that we'll need later */
-      tgsi_scan_shader(shader->tokens, &shader->info);
+      /* Collect basic info of the shader */
+      svga_tgsi_scan_shader(shader);
    }
    else {
       debug_printf("Unexpected nir shader\n");

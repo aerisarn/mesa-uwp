@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2008-2009 VMware, Inc.  All rights reserved.
+ * Copyright 2008-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -105,8 +105,7 @@ get_compiled_dummy_vertex_shader(struct svga_context *svga,
    FREE((void *) vs->base.tokens);
    vs->base.tokens = dummy;
 
-   tgsi_scan_shader(vs->base.tokens, &vs->base.info);
-   vs->generic_outputs = svga_get_generic_outputs_mask(&vs->base.info);
+   svga_tgsi_scan_shader(&vs->base);
 
    variant = translate_vertex_program(svga, vs, key);
    return variant;
@@ -188,7 +187,7 @@ make_vs_key(struct svga_context *svga, struct svga_compile_key *key)
    key->vs.allow_psiz = svga->curr.rast->templ.point_size_per_vertex;
 
    /* SVGA_NEW_FS */
-   key->vs.fs_generic_inputs = svga->curr.fs->generic_inputs;
+   key->vs.fs_generic_inputs = svga->curr.fs->base.info.generic_inputs_mask;
 
    svga_remap_generics(key->vs.fs_generic_inputs, key->generic_remap_table);
 
@@ -214,9 +213,6 @@ make_vs_key(struct svga_context *svga, struct svga_compile_key *key)
     */
    key->last_vertex_stage = !(svga->curr.gs ||
                               svga->curr.tcs || svga->curr.tes);
-
-   if (svga_have_gl43(svga))
-      key->image_size_used = vs->base.info.opcode_count[TGSI_OPCODE_RESQ] ? 1 : 0;
 }
 
 
@@ -285,7 +281,7 @@ compile_passthrough_vs(struct svga_context *svga,
    assert(svga_have_vgpu10(svga));
    assert(fs);
 
-   num_inputs = fs->base.info.num_inputs;
+   num_inputs = fs->base.tgsi_info.num_inputs;
 
    ureg = ureg_create(PIPE_SHADER_VERTEX);
    if (!ureg)
@@ -305,13 +301,13 @@ compile_passthrough_vs(struct svga_context *svga,
     * number of inputs to the vertex shader.
     */
    for (i = 0; i < num_inputs; i++) {
-      switch (fs->base.info.input_semantic_name[i]) {
+      switch (fs->base.tgsi_info.input_semantic_name[i]) {
       case TGSI_SEMANTIC_COLOR:
       case TGSI_SEMANTIC_GENERIC:
       case TGSI_SEMANTIC_FOG:
          dst[num_elements] = ureg_DECL_output(ureg,
-                                fs->base.info.input_semantic_name[i],
-                                fs->base.info.input_semantic_index[i]);
+                                fs->base.tgsi_info.input_semantic_name[i],
+                                fs->base.tgsi_info.input_semantic_index[i]);
          src[num_elements] = ureg_DECL_vs_input(ureg, num_elements);
          num_elements++;
          break;
@@ -328,7 +324,7 @@ compile_passthrough_vs(struct svga_context *svga,
 
    memset(&new_vs, 0, sizeof(new_vs));
    new_vs.base.tokens = ureg_get_tokens(ureg, NULL);
-   tgsi_scan_shader(new_vs.base.tokens, &new_vs.base.info);
+   svga_tgsi_scan_shader(&new_vs.base);
 
    memset(&key, 0, sizeof(key));
    key.vs.undo_viewport = 1;

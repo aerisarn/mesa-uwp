@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2008-2009 VMware, Inc.  All rights reserved.
+ * Copyright 2008-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -75,5 +75,8 @@ svga_tgsi_vgpu10_translate(struct svga_context *svga,
                            enum pipe_shader_type unit);
 
 boolean svga_shader_verify(const uint32_t *tokens, unsigned nr_tokens);
+
+void
+svga_tgsi_scan_shader(struct svga_shader *shader);
 
 #endif

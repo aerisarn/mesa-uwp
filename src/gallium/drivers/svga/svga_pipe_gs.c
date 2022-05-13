@@ -63,8 +63,6 @@ svga_create_gs_state(struct pipe_context *pipe,
 
    gs->draw_shader = draw_create_geometry_shader(svga->swtnl.draw, &tmp);
 
-   gs->generic_outputs = svga_get_generic_outputs_mask(&gs->base.info);
-
 done:
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return gs;

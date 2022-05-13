@@ -55,8 +55,6 @@ svga_create_vs_state(struct pipe_context *pipe,
    if (!vs)
       goto done;
 
-   vs->generic_outputs = svga_get_generic_outputs_mask(&vs->base.info);
-
    {
       /* Need to do construct a new template in case we substituted a
        * debug shader.

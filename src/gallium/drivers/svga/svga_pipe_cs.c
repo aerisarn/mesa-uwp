@@ -36,7 +36,7 @@
 #include "svga_shader.h"
 #include "svga_streamout.h"
 #include "svga_resource_buffer.h"
-
+#include "svga_tgsi.h"
 
 /**
  * Create the compute program.
@@ -63,7 +63,7 @@ svga_create_compute_state(struct pipe_context *pipe,
    }
 
    /* Collect shader basic info */
-   tgsi_scan_shader(cs->base.tokens, &cs->base.info);
+   svga_tgsi_scan_shader(&cs->base);
 
    cs->base.id = svga->debug.shader_id++;
 

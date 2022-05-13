@@ -29,6 +29,7 @@
 #include "svga3d_reg.h"
 #include "svga_context.h"
 #include "svga_streamout.h"
+#include "compiler/shader_enums.h"
 
 
 /**
@@ -296,15 +297,70 @@ struct svga_cs_variant
 };
 
 
+struct svga_shader_info
+{
+   ubyte num_inputs;
+   ubyte num_outputs;
+
+   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS];
+   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
+   ubyte input_usage_mask[PIPE_MAX_SHADER_INPUTS];
+   ubyte output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
+   ubyte output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
+   ubyte output_usage_mask[PIPE_MAX_SHADER_OUTPUTS];
+
+   uint64_t generic_inputs_mask;
+   uint64_t generic_outputs_mask;
+
+   boolean writes_edgeflag;
+   boolean writes_layer;
+   boolean writes_position;
+   boolean writes_psize;
+   boolean writes_viewport_index;
+
+   boolean uses_grid_size;
+   boolean uses_const_buffers;
+   boolean uses_hw_atomic;
+   boolean uses_images;
+   boolean uses_image_size;
+   boolean uses_shader_buffers;
+
+   unsigned const_buffers_declared;  /* bitmask of declared const buffers */
+   unsigned constbuf0_num_uniforms;  /* number of uniforms in constbuf0 */
+
+   struct {
+      boolean color0_writes_all_cbufs;
+   } fs;
+
+  struct {
+      enum pipe_prim_type in_prim;
+      enum pipe_prim_type out_prim;
+   } gs;
+
+   struct {
+      unsigned vertices_out;        /* number of vertices in tcs patch */
+      boolean writes_tess_factor;
+   } tcs;
+
+   struct {
+      enum pipe_prim_type prim_mode;
+      boolean reads_control_point;
+      boolean reads_tess_factor;
+   } tes;
+};
+
+
 struct svga_shader
 {
    enum pipe_shader_ir type;            /* IR type */
    enum pipe_shader_type stage;         /* shader stage */
 
+   struct svga_shader_info info;        /* shader info */
+
    /* TGSI */
    const struct tgsi_token *tokens;
    struct svga_token_key token_key;     /* token key for the token string */
-   struct tgsi_shader_info info;
+   struct tgsi_shader_info tgsi_info;
 
    /* List of shaders with tokens derived from the same token string */
    struct svga_shader *next;

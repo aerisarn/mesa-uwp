@@ -61,8 +61,10 @@ svga_create_fs_state(struct pipe_context *pipe,
    tmp.type = PIPE_SHADER_IR_TGSI;
    tmp.tokens = fs->base.tokens;
 
-   fs->generic_inputs = svga_get_generic_inputs_mask(&fs->base.info);
-   svga_remap_generics(fs->generic_inputs, fs->generic_remap_table);
+   fs->generic_inputs = svga_get_generic_inputs_mask(&fs->base.tgsi_info);
+
+   svga_remap_generics(fs->base.info.generic_inputs_mask,
+                       fs->generic_remap_table);
 
    fs->draw_shader = draw_create_fragment_shader(svga->swtnl.draw, &tmp);
 

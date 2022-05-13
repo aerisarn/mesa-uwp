@@ -71,8 +71,6 @@ svga_create_tcs_state(struct pipe_context *pipe,
    if (!tcs)
       goto done;
 
-   tcs->generic_outputs = svga_get_generic_outputs_mask(&tcs->base.info);
-
 done:
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return tcs;
@@ -149,8 +147,6 @@ svga_create_tes_state(struct pipe_context *pipe,
 
    if (!tes)
       goto done;
-
-   tes->generic_inputs = svga_get_generic_inputs_mask(&tes->base.info);
 
 done:
    SVGA_STATS_TIME_POP(svga_sws(svga));

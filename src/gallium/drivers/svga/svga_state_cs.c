@@ -90,8 +90,6 @@ make_cs_key(struct svga_context *svga,
       memcpy(key->cs.grid_size, map, 3 * sizeof(uint));
       pipe_buffer_unmap(&svga->pipe, transfer);
    }
-
-   key->image_size_used = cs->base.info.opcode_count[TGSI_OPCODE_RESQ] ? 1 : 0;
 }
 
 

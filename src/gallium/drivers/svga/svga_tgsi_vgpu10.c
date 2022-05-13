@@ -12737,8 +12737,8 @@ compute_input_mapping(struct svga_context *svga,
    }
 
    if (prevShader != NULL) {
-      svga_link_shaders(&prevShader->info, &emit->info, &emit->linkage);
-      emit->prevShaderInfo = &prevShader->info;
+      svga_link_shaders(&prevShader->tgsi_info, &emit->info, &emit->linkage);
+      emit->prevShaderInfo = &prevShader->tgsi_info;
    } 
    else {
       /**
@@ -12978,7 +12978,7 @@ svga_tgsi_vgpu10_translate(struct svga_context *svga,
    if (tokens != shader->tokens) {
       tgsi_scan_shader(tokens, &emit->info);
    } else {
-      emit->info = shader->info;
+      emit->info = shader->tgsi_info;
    }
 
    emit->num_outputs = emit->info.num_outputs;
