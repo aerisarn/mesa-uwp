@@ -2873,7 +2873,6 @@ find_layer_out_var(nir_shader *nir)
       return var;
 
    var = nir_variable_create(nir, nir_var_shader_out, glsl_int_type(), "layer id");
-   var->data.per_primitive = nir->info.stage == MESA_SHADER_MESH;
    var->data.location = VARYING_SLOT_LAYER;
    var->data.interpolation = INTERP_MODE_NONE;
 
@@ -2883,6 +2882,13 @@ find_layer_out_var(nir_shader *nir)
 static bool
 radv_lower_multiview(nir_shader *nir)
 {
+   /* This pass is not suitable for mesh shaders, because it can't know
+    * the mapping between API mesh shader invocations and output primitives.
+    * Needs to be handled in ac_nir_lower_ngg.
+    */
+   if (nir->info.stage == MESA_SHADER_MESH)
+      return false;
+
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
 
@@ -2924,8 +2930,6 @@ radv_lower_multiview(nir_shader *nir)
 
          /* Update outputs_written to reflect that the pass added a new output. */
          nir->info.outputs_written |= BITFIELD64_BIT(VARYING_SLOT_LAYER);
-         if (nir->info.stage == MESA_SHADER_MESH)
-            nir->info.per_primitive_outputs |= BITFIELD64_BIT(VARYING_SLOT_LAYER);
 
          progress = true;
          if (nir->info.stage == MESA_SHADER_VERTEX)
@@ -4764,7 +4768,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          /* Gather info again, information such as outputs_read can be out-of-date. */
          nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
-         radv_lower_io(device, stages[i].nir);
+         radv_lower_io(device, stages[i].nir, stages[MESA_SHADER_MESH].nir);
 
          stages[i].feedback.duration += os_time_get_nano() - stage_start;
       }

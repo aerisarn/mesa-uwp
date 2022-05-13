@@ -125,7 +125,8 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
-                    unsigned wave_size);
+                    unsigned wave_size,
+                    bool multiview);
 
 void
 ac_nir_apply_first_task_to_task_shader(nir_shader *shader);

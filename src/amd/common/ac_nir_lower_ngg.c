@@ -112,6 +112,9 @@ typedef struct
 
    nir_ssa_def *workgroup_index;
 
+   /* True if the lowering needs to insert the layer output. */
+   bool insert_layer_output;
+
    struct {
       /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
       uint32_t components_mask;
@@ -2535,6 +2538,15 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
       ms_emit_arrayed_outputs(b, invocation_index, s->per_primitive_outputs,
                               s->num_per_primitive_outputs, s->prim_attr_lds_addr, s);
 
+      /* Insert layer output store if the pipeline uses multiview but the API shader doesn't write it. */
+      if (s->insert_layer_output) {
+         nir_ssa_def *layer = nir_load_view_index(b);
+         const nir_io_semantics io_sem = { .location = VARYING_SLOT_LAYER, .num_slots = 1 };
+         nir_store_output(b, layer, nir_imm_int(b, 0), .base = VARYING_SLOT_LAYER, .component = 0, .io_semantics = io_sem);
+         b->shader->info.outputs_written |= VARYING_BIT_LAYER;
+         b->shader->info.per_primitive_outputs |= VARYING_BIT_LAYER;
+      }
+
       /* Primitive connectivity data: describes which vertices the primitive uses. */
       nir_ssa_def *prim_idx_addr = nir_imul_imm(b, invocation_index, s->vertices_per_prim);
       nir_ssa_def *indices_loaded = nir_load_shared(b, s->vertices_per_prim, 8, prim_idx_addr, .base = s->prim_vtx_indices_addr);
@@ -2697,7 +2709,8 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
-                    unsigned wave_size)
+                    unsigned wave_size,
+                    bool multiview)
 {
    unsigned vertices_per_prim =
       num_mesh_vertices_per_primitive(shader->info.mesh.primitive_type);
@@ -2761,6 +2774,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
       .numprims_lds_addr = numprims_lds_addr,
       .api_workgroup_size = api_workgroup_size,
       .hw_workgroup_size = hw_workgroup_size,
+      .insert_layer_output = multiview && !(shader->info.outputs_written & VARYING_BIT_LAYER),
    };
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);

@@ -509,6 +509,12 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       uint64_t per_vtx_mask =
          nir->info.outputs_written & ~nir->info.per_primitive_outputs & ~special_mask;
 
+      /* Mesh multivew is only lowered in ac_nir_lower_ngg, so we have to fake it here. */
+      if (nir->info.stage == MESA_SHADER_MESH && pipeline_key->has_multiview_view_index) {
+         per_prim_mask |= VARYING_BIT_LAYER;
+         info->uses_view_index = true;
+      }
+
       /* Per vertex outputs. */
       outinfo->writes_pointsize = per_vtx_mask & VARYING_BIT_PSIZ;
       outinfo->writes_viewport_index = per_vtx_mask & VARYING_BIT_VIEWPORT;

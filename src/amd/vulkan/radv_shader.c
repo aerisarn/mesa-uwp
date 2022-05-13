@@ -991,7 +991,7 @@ find_layer_in_var(nir_shader *nir)
  */
 
 static bool
-lower_view_index(nir_shader *nir)
+lower_view_index(nir_shader *nir, bool per_primitive)
 {
    bool progress = false;
    nir_function_impl *entry = nir_shader_get_entrypoint(nir);
@@ -1011,12 +1011,15 @@ lower_view_index(nir_shader *nir)
          if (!layer)
             layer = find_layer_in_var(nir);
 
+         layer->data.per_primitive = per_primitive;
          b.cursor = nir_before_instr(instr);
          nir_ssa_def *def = nir_load_var(&b, layer);
          nir_ssa_def_rewrite_uses(&load->dest.ssa, def);
 
          /* Update inputs_read to reflect that the pass added a new input. */
          nir->info.inputs_read |= VARYING_BIT_LAYER;
+         if (per_primitive)
+            nir->info.per_primitive_inputs |= VARYING_BIT_LAYER;
 
          nir_instr_remove(instr);
          progress = true;
@@ -1032,13 +1035,13 @@ lower_view_index(nir_shader *nir)
 }
 
 void
-radv_lower_io(struct radv_device *device, nir_shader *nir)
+radv_lower_io(struct radv_device *device, nir_shader *nir, bool is_mesh_shading)
 {
    if (nir->info.stage == MESA_SHADER_COMPUTE)
       return;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS(_, nir, lower_view_index);
+      NIR_PASS(_, nir, lower_view_index, is_mesh_shading);
       nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, MESA_SHADER_FRAGMENT);
    }
 
@@ -1239,7 +1242,7 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
                  info->ngg_info.esgs_ring_size, info->gs.gsvs_vertex_size,
                  info->ngg_info.ngg_emit_size * 4u, pl_key->vs.provoking_vtx_last);
    } else if (nir->info.stage == MESA_SHADER_MESH) {
-      NIR_PASS_V(nir, ac_nir_lower_ngg_ms, info->wave_size);
+      NIR_PASS_V(nir, ac_nir_lower_ngg_ms, info->wave_size, pl_key->has_multiview_view_index);
    } else {
       unreachable("invalid SW stage passed to radv_lower_ngg");
    }
