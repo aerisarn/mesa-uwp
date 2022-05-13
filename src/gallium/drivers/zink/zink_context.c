@@ -1452,18 +1452,9 @@ zink_set_shader_images(struct pipe_context *pctx,
       struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + i];
       if (images && images[i].resource) {
          struct zink_resource *res = zink_resource(images[i].resource);
-         struct zink_resource *old_res = zink_resource(image_view->base.resource);
          if (!zink_resource_object_init_storage(ctx, res)) {
             debug_printf("couldn't create storage image!");
             continue;
-         }
-         if (res != old_res) {
-            if (old_res) {
-               unbind_shader_image_counts(ctx, old_res, p_stage == PIPE_SHADER_COMPUTE, image_view->base.access & PIPE_IMAGE_ACCESS_WRITE);
-               if (!old_res->obj->is_buffer && !old_res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE])
-                  check_for_layout_update(ctx, old_res, p_stage == PIPE_SHADER_COMPUTE);
-            }
-            update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
          }
          /* no refs */
          VkAccessFlags access = 0;
@@ -1476,14 +1467,24 @@ zink_set_shader_images(struct pipe_context *pctx,
          }
          res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          if (images[i].resource->target == PIPE_BUFFER) {
-            image_view->buffer_view = create_image_bufferview(ctx, &images[i]);
-            assert(image_view->buffer_view);
+            struct zink_buffer_view *bv = create_image_bufferview(ctx, &images[i]);
+            assert(bv);
+            if (image_view->buffer_view != bv) {
+               update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
+               unbind_shader_image(ctx, p_stage, start_slot + i);
+            }
+            image_view->buffer_view = bv;
             zink_batch_usage_set(&image_view->buffer_view->batch_uses, ctx->batch.state);
             zink_resource_buffer_barrier(ctx, res, access,
                                          zink_pipeline_flags_from_pipe_stage(p_stage));
          } else {
-            image_view->surface = create_image_surface(ctx, &images[i], p_stage == PIPE_SHADER_COMPUTE);
-            assert(image_view->surface);
+            struct zink_surface *surface = create_image_surface(ctx, &images[i], p_stage == PIPE_SHADER_COMPUTE);
+            assert(surface);
+            if (image_view->surface != surface) {
+               update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
+               unbind_shader_image(ctx, p_stage, start_slot + i);
+            }
+            image_view->surface = surface;
             finalize_image_bind(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
             zink_batch_usage_set(&image_view->surface->batch_uses, ctx->batch.state);
          }
