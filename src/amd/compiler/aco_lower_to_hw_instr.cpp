@@ -1405,7 +1405,9 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
       bld.vop2(aco_opcode::v_lshlrev_b32, def_hi, Operand::c32(16u), hi);
       hi.setFixed(def.physReg().advance(2));
    } else if (ctx->program->gfx_level >= GFX8) {
-      /* either lo or hi can be placed with just a v_mov */
+      /* Either lo or hi can be placed with just a v_mov. SDWA is not needed, because
+       * op.physReg().byte()==def.physReg().byte() and the other half will be overwritten.
+       */
       assert(lo.physReg().byte() == 0 || hi.physReg().byte() == 2);
       Operand& op = lo.physReg().byte() == 0 ? lo : hi;
       PhysReg reg = def.physReg().advance(op.physReg().byte());
