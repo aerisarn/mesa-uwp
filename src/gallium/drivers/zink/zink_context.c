@@ -1493,7 +1493,7 @@ zink_set_shader_images(struct pipe_context *pctx,
          update = true;
          update_descriptor_state_image(ctx, p_stage, start_slot + i, res);
       } else if (image_view->base.resource) {
-         update |= !!image_view->base.resource;
+         update = true;
 
          unbind_shader_image(ctx, p_stage, start_slot + i);
          update_descriptor_state_image(ctx, p_stage, start_slot + i, NULL);
