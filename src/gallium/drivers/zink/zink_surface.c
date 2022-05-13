@@ -342,8 +342,8 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    if (surface->simage_view)
       return false;
    assert(!res->obj->dt);
-   VkImageViewCreateInfo ivci = create_ivci(screen,
-                                            zink_resource((*psurface)->texture), (*psurface), surface->base.texture->target);
+   VkImageViewCreateInfo ivci = surface->ivci;
+   ivci.image = res->obj->image;
    uint32_t hash = hash_ivci(&ivci);
 
    simple_mtx_lock(&res->surface_mtx);
