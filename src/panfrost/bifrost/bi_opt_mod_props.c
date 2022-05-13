@@ -289,8 +289,21 @@ bi_opt_mod_prop_backward(bi_context *ctx)
 
                 /* Destination has a single use, try to propagate */
                 bool propagated =
-                        bi_optimizer_clamp(I, use) ||
-                        bi_optimizer_var_tex(ctx, I, use);
+                        bi_optimizer_clamp(I, use);
+
+                if (!propagated && I->op == BI_OPCODE_LD_VAR_IMM && use->op == BI_OPCODE_SPLIT_I32) {
+                        /* Need to see through the split in a
+                         * ld_var_imm/split/var_tex  sequence
+                         */
+                        assert(bi_is_ssa(use->dest[0]));
+                        bi_instr *tex = uses[use->dest[0].value];
+
+                        if (!tex || BITSET_TEST(multiple, use->dest[0].value))
+                                continue;
+
+                        use = tex;
+                        propagated = bi_optimizer_var_tex(ctx, I, use);
+                }
 
                 if (propagated) {
                         bi_remove_instruction(use);
