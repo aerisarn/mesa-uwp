@@ -1856,18 +1856,21 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 done:
 
    if (pipeline->shaders[MESA_SHADER_FRAGMENT] != NULL) {
-      const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
+      struct anv_shader_bin *fs = pipeline->shaders[MESA_SHADER_FRAGMENT];
+      const struct brw_wm_prog_data *wm_prog_data =
+         brw_wm_prog_data_const(fs->prog_data);
+
       if (wm_prog_data->color_outputs_written == 0 &&
           !wm_prog_data->has_side_effects &&
           !wm_prog_data->uses_omask &&
           !wm_prog_data->uses_kill &&
           wm_prog_data->computed_depth_mode == BRW_PSCDEPTH_OFF &&
-          !wm_prog_data->computed_stencil) {
+          !wm_prog_data->computed_stencil &&
+          fs->xfb_info == NULL) {
          /* This can happen if we decided to implicitly disable the fragment
           * shader.  See anv_pipeline_compile_fs().
           */
-         anv_shader_bin_unref(pipeline->base.device,
-                              pipeline->shaders[MESA_SHADER_FRAGMENT]);
+         anv_shader_bin_unref(pipeline->base.device, fs);
          pipeline->shaders[MESA_SHADER_FRAGMENT] = NULL;
          pipeline->active_stages &= ~VK_SHADER_STAGE_FRAGMENT_BIT;
       }
