@@ -9224,6 +9224,16 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
                Operand::c32(aco_symbol_lds_ngg_gs_out_vertex_base));
       break;
    }
+   case nir_intrinsic_store_scalar_arg_amd: {
+      ctx->arg_temps[nir_intrinsic_base(instr)] =
+         bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+      break;
+   }
+   case nir_intrinsic_store_vector_arg_amd: {
+      ctx->arg_temps[nir_intrinsic_base(instr)] =
+         as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+      break;
+   }
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();

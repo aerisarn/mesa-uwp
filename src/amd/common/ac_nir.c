@@ -23,6 +23,18 @@ ac_nir_load_arg_at_offset(nir_builder *b, const struct ac_shader_args *ac_args,
       return nir_load_vector_arg_amd(b, num_components, .base = arg_index);
 }
 
+void
+ac_nir_store_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_arg arg,
+                 nir_ssa_def *val)
+{
+   assert(nir_cursor_current_block(b->cursor)->cf_node.parent->type == nir_cf_node_function);
+
+   if (ac_args->args[arg.arg_index].file == AC_ARG_SGPR)
+      nir_store_scalar_arg_amd(b, val, .base = arg.arg_index);
+   else
+      nir_store_vector_arg_amd(b, val, .base = arg.arg_index);
+}
+
 nir_ssa_def *
 ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_arg arg,
                   unsigned rshift, unsigned bitwidth)
