@@ -200,7 +200,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
        * plus this CP_EVENT_WRITE at the end in it's own IB..
        */
       OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-      OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(UNK_25));
+      OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(LRZ_CLEAR));
 
       if (rsc->stencil) {
          stride = fd_resource_pitch(rsc->stencil, zsbuf->u.tex.level);

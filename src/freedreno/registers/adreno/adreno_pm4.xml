@@ -43,7 +43,18 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="PC_CCU_FLUSH_DEPTH_TS" value="28" varset="chip" variants="A5XX-"/>
 	<value name="PC_CCU_FLUSH_COLOR_TS" value="29" varset="chip" variants="A5XX-"/>
 	<value name="BLIT" value="30" varset="chip" variants="A5XX-"/>
-	<value name="UNK_25" value="37" varset="chip" variants="A5XX"/>
+	<doc>
+		Clears based on GRAS_LRZ_CNTL configuration, could clear
+		fast-clear buffer or LRZ direction.
+		LRZ direction is stored at lrz_fc_offset + 0x200, has 1 byte which
+		could be expressed by enum:
+			CUR_DIR_DISABLED = 0x0
+			CUR_DIR_GE = 0x1
+			CUR_DIR_LE = 0x2
+			CUR_DIR_UNSET = 0x3
+		Clear of direction means setting the direction to CUR_DIR_UNSET.
+	</doc>
+	<value name="LRZ_CLEAR" value="37" varset="chip" variants="A5XX-"/>
 	<value name="LRZ_FLUSH" value="38" varset="chip" variants="A5XX-"/>
 	<value name="BLIT_OP_FILL_2D" value="39" varset="chip" variants="A5XX-"/>
 	<value name="BLIT_OP_COPY_2D" value="40" varset="chip" variants="A5XX-"/>
