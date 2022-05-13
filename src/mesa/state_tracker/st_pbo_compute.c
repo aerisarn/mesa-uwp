@@ -1050,10 +1050,10 @@ st_GetTexSubImage_shader(struct gl_context * ctx,
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->screen;
    struct gl_texture_object *stObj = texImage->TexObject;
-   struct pipe_resource *src = stObj->pt;
+   struct pipe_resource *src = texImage->pt;
    struct pipe_resource *dst = NULL;
    enum pipe_format dst_format, src_format;
-   unsigned level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
+   unsigned level = (texImage->pt != stObj->pt ? 0 : texImage->Level) + texImage->TexObject->Attrib.MinLevel;
    unsigned layer = texImage->Face + texImage->TexObject->Attrib.MinLayer;
    enum pipe_texture_target view_target;
 
