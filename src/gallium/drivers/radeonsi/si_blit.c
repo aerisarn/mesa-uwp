@@ -953,10 +953,19 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
 
    si_use_compute_copy_for_float_formats(sctx, dst, dst_level);
 
-   if (si_can_use_compute_blit(sctx, dst->format, dst->nr_samples, true,
-                               vi_dcc_enabled(sdst, dst_level)) &&
-       si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
-                               vi_dcc_enabled(ssrc, src_level))) {
+   /* The compute copy is mandatory for compressed and subsampled formats because the gfx copy
+    * doesn't support them. In all other cases, call si_can_use_compute_blit.
+    *
+    * The format is identical (we only need to check the src format) except compressed formats,
+    * which can be paired with an equivalent integer format.
+    */
+   if (util_format_is_compressed(src->format) ||
+       util_format_is_compressed(dst->format) ||
+       util_format_is_subsampled_422(src->format) ||
+       (si_can_use_compute_blit(sctx, dst->format, dst->nr_samples, true,
+                                vi_dcc_enabled(sdst, dst_level)) &&
+        si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
+                                vi_dcc_enabled(ssrc, src_level)))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
                             src_box, false, SI_OP_SYNC_BEFORE_AFTER);
       return;
