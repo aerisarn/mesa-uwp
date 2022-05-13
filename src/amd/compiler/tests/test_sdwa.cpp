@@ -48,14 +48,14 @@ BEGIN_TEST(validate.sdwa.allow)
 END_TEST
 
 BEGIN_TEST(validate.sdwa.support)
-   for (unsigned i = GFX7; i <= GFX10; i++) {
+   for (unsigned i = GFX7; i <= GFX11; i++) {
       //>> v1: %a, v1: %b, s1: %c, s1: %d = p_startpgm
       if (!setup_cs("v1 v1 s1 s1", (amd_gfx_level)i))
          continue;
       //>> Validation results:
 
-      //~gfx7! SDWA is GFX8 to GFX10.3 only: v1: %t0 = v_mul_f32 %a, %b dst_sel:dword src0_sel:dword src1_sel:dword
-      //~gfx7! Validation failed
+      //~gfx(7|11)! SDWA is GFX8 to GFX10.3 only: v1: %t0 = v_mul_f32 %a, %b dst_sel:dword src0_sel:dword src1_sel:dword
+      //~gfx(7|11)! Validation failed
       //~gfx([89]|10)! Validation passed
       bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]);
 
