@@ -193,7 +193,7 @@ can_use_SDWA(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr, bool pr
    if (!instr->isVALU())
       return false;
 
-   if (gfx_level < GFX8 || instr->isDPP() || instr->isVOP3P())
+   if (gfx_level < GFX8 || gfx_level >= GFX11 || instr->isDPP() || instr->isVOP3P())
       return false;
 
    if (instr->isSDWA())

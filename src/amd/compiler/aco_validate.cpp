@@ -153,7 +153,8 @@ validate_ir(Program* program)
                      base_format == Format::VOPC,
                   "Format cannot have SDWA applied", instr.get());
 
-            check(program->gfx_level >= GFX8, "SDWA is GFX8+ only", instr.get());
+            check(program->gfx_level >= GFX8, "SDWA is GFX8 to GFX10.3 only", instr.get());
+            check(program->gfx_level < GFX11, "SDWA is GFX8 to GFX10.3 only", instr.get());
 
             SDWA_instruction& sdwa = instr->sdwa();
             check(sdwa.omod == 0 || program->gfx_level >= GFX9, "SDWA omod only supported on GFX9+",

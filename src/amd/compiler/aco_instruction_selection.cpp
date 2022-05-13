@@ -11711,7 +11711,7 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
    Operand fetch_index(tmp_vgpr0, v1);
 
    Operand div_info(tmp_sgpr, s1);
-   if (bld.program->gfx_level >= GFX8) {
+   if (bld.program->gfx_level >= GFX8 && bld.program->gfx_level < GFX11) {
       /* use SDWA */
       if (bld.program->gfx_level < GFX9) {
          bld.vop1(aco_opcode::v_mov_b32, Definition(tmp_vgpr1, v1), div_info);

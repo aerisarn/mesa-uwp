@@ -54,7 +54,7 @@ BEGIN_TEST(validate.sdwa.support)
          continue;
       //>> Validation results:
 
-      //~gfx7! SDWA is GFX8+ only: v1: %t0 = v_mul_f32 %a, %b dst_sel:dword src0_sel:dword src1_sel:dword
+      //~gfx7! SDWA is GFX8 to GFX10.3 only: v1: %t0 = v_mul_f32 %a, %b dst_sel:dword src0_sel:dword src1_sel:dword
       //~gfx7! Validation failed
       //~gfx([89]|10)! Validation passed
       bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]);

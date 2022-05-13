@@ -705,6 +705,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          out.push_back(encoding);
          return;
       } else if (instr->isSDWA()) {
+         assert(ctx.gfx_level >= GFX8 && ctx.gfx_level < GFX11);
          SDWA_instruction& sdwa = instr->sdwa();
 
          /* first emit the instruction without the SDWA operand */
