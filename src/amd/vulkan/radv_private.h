@@ -1012,7 +1012,11 @@ struct radv_descriptor_pool {
 
    uint32_t entry_count;
    uint32_t max_entry_count;
-   struct radv_descriptor_pool_entry entries[0];
+
+   union {
+      struct radv_descriptor_set_layout *layouts[0];
+      struct radv_descriptor_pool_entry entries[0];
+   };
 };
 
 struct radv_descriptor_update_template_entry {
