@@ -272,7 +272,7 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
                                     struct si_shader_output_values *shader_out);
 void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_output_values *outputs,
                             unsigned noutput, unsigned stream);
-void si_llvm_build_vs_exports(struct si_shader_context *ctx,
+void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_export_threads,
                               struct si_shader_output_values *outputs, unsigned noutput);
 void si_llvm_vs_build_end(struct si_shader_context *ctx);
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
