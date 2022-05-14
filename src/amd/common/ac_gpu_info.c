@@ -538,7 +538,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    for (unsigned ip_type = 0; ip_type < AMD_NUM_IP_TYPES; ip_type++) {
-      struct drm_amdgpu_info_hw_ip ip_info;
+      struct drm_amdgpu_info_hw_ip ip_info = {0};
 
       r = amdgpu_query_hw_ip_info(dev, ip_type, 0, &ip_info);
       if (r || !ip_info.available_rings)
