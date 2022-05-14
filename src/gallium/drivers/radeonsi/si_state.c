@@ -5883,14 +5883,11 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                      S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
 
       /* We must wait for idle before changing the SPI attribute ring registers. */
-      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-
-      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
-
-      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+      /* TODO: Find a more reliable way to wait for idle. */
+      for (unsigned i = 0; i < 4; i++) {
+         si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+         si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+      }
 
       si_pm4_set_reg(pm4, R_031110_SPI_GS_THROTTLE_CNTL1, 0x12355123);
       si_pm4_set_reg(pm4, R_031114_SPI_GS_THROTTLE_CNTL2, 0x1544D);
