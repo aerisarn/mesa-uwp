@@ -304,7 +304,11 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
 
    /* Set all cleared context registers to saved. */
    ctx->tracked_regs.reg_saved = BITFIELD64_MASK(SI_TRACKED_GE_PC_ALLOC);
-   ctx->last_gs_out_prim = 0; /* cleared by CLEAR_STATE */
+
+   if (ctx->gfx_level >= GFX11)
+      ctx->last_gs_out_prim = -1; /* uconfig register, unknown value */
+   else
+      ctx->last_gs_out_prim = 0; /* context register cleared by CLEAR_STATE */
 }
 
 void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper,
