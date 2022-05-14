@@ -416,10 +416,6 @@ static void si_log_chunk_type_cs_print(void *data, FILE *f)
          if (ctx->cs_preamble_state)
             ac_parse_ib(f, ctx->cs_preamble_state->pm4, ctx->cs_preamble_state->ndw, NULL, 0,
                         "IB2: Init config", ctx->gfx_level, NULL, NULL);
-
-         if (ctx->cs_preamble_gs_rings)
-            ac_parse_ib(f, ctx->cs_preamble_gs_rings->pm4, ctx->cs_preamble_gs_rings->ndw, NULL, 0,
-                        "IB2: Init GS rings", ctx->gfx_level, NULL, NULL);
       }
 
       if (scs->flushed) {

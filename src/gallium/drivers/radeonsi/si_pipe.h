@@ -1051,10 +1051,12 @@ struct si_context {
 
    /* Precomputed states. */
    struct si_pm4_state *cs_preamble_state;
-   struct si_pm4_state *cs_preamble_tess_rings;
-   struct si_pm4_state *cs_preamble_tess_rings_tmz;
-   struct si_pm4_state *cs_preamble_gs_rings;
+   struct si_pm4_state *cs_preamble_state_tmz;
+   uint16_t gs_ring_state_dw_offset;
+   uint16_t gs_ring_state_dw_offset_tmz;
    bool cs_preamble_has_vgt_flush;
+   bool cs_preamble_has_vgt_flush_tmz;
+
    struct si_pm4_state *vgt_shader_config[SI_NUM_VGT_STAGES_STATES];
 
    /* shaders */

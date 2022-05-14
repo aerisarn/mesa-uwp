@@ -3666,22 +3666,27 @@ static void si_delete_shader_selector(struct pipe_context *ctx, void *state)
 /**
  * Writing CONFIG or UCONFIG VGT registers requires VGT_FLUSH before that.
  */
-static void si_cs_preamble_add_vgt_flush(struct si_context *sctx)
+static void si_cs_preamble_add_vgt_flush(struct si_context *sctx, bool tmz)
 {
+   struct si_pm4_state *pm4 = tmz ? sctx->cs_preamble_state_tmz : sctx->cs_preamble_state;
+   bool *has_vgt_flush = tmz ? &sctx->cs_preamble_has_vgt_flush_tmz :
+                               &sctx->cs_preamble_has_vgt_flush;
+
    /* We shouldn't get here if registers are shadowed. */
    assert(!sctx->shadowed_regs);
 
-   if (sctx->cs_preamble_has_vgt_flush)
+   if (*has_vgt_flush)
       return;
 
    /* Done by Vulkan before VGT_FLUSH. */
-   si_pm4_cmd_add(sctx->cs_preamble_state, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   si_pm4_cmd_add(sctx->cs_preamble_state, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+   si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+   si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
 
    /* VGT_FLUSH is required even if VGT is idle. It resets VGT pointers. */
-   si_pm4_cmd_add(sctx->cs_preamble_state, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   si_pm4_cmd_add(sctx->cs_preamble_state, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
-   sctx->cs_preamble_has_vgt_flush = true;
+   si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+   si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+
+   *has_vgt_flush = true;
 }
 
 /**
@@ -3709,7 +3714,6 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    struct si_shader_selector *es =
       sctx->shader.tes.cso ? sctx->shader.tes.cso : sctx->shader.vs.cso;
    struct si_shader_selector *gs = sctx->shader.gs.cso;
-   struct si_pm4_state *pm4;
 
    /* Chip constants. */
    unsigned num_se = sctx->screen->info.max_se;
@@ -3811,31 +3815,42 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    }
 
    /* The codepath without register shadowing. */
-   /* Create the "cs_preamble_gs_rings" state. */
-   pm4 = CALLOC_STRUCT(si_pm4_state);
-   if (!pm4)
-      return false;
+   for (unsigned tmz = 0; tmz <= 1; tmz++) {
+      struct si_pm4_state *pm4 = tmz ? sctx->cs_preamble_state_tmz : sctx->cs_preamble_state;
+      uint16_t *gs_ring_state_dw_offset = tmz ? &sctx->gs_ring_state_dw_offset_tmz :
+                                                &sctx->gs_ring_state_dw_offset;
+      unsigned old_ndw = 0;
 
-   if (sctx->gfx_level >= GFX7) {
-      if (sctx->esgs_ring) {
-         assert(sctx->gfx_level <= GFX8);
-         si_pm4_set_reg(pm4, R_030900_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
+      si_cs_preamble_add_vgt_flush(sctx, tmz);
+
+      if (!*gs_ring_state_dw_offset) {
+         /* We are here for the first time. The packets will be added. */
+         *gs_ring_state_dw_offset = pm4->ndw;
+      } else {
+         /* We have been here before. Overwrite the previous packets. */
+         old_ndw = pm4->ndw;
+         pm4->ndw = *gs_ring_state_dw_offset;
       }
-      if (sctx->gsvs_ring)
-         si_pm4_set_reg(pm4, R_030904_VGT_GSVS_RING_SIZE, sctx->gsvs_ring->width0 / 256);
-   } else {
-      if (sctx->esgs_ring)
-         si_pm4_set_reg(pm4, R_0088C8_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
-      if (sctx->gsvs_ring)
-         si_pm4_set_reg(pm4, R_0088CC_VGT_GSVS_RING_SIZE, sctx->gsvs_ring->width0 / 256);
+
+      if (sctx->gfx_level >= GFX7) {
+         if (sctx->esgs_ring) {
+            assert(sctx->gfx_level <= GFX8);
+            si_pm4_set_reg(pm4, R_030900_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
+         }
+         if (sctx->gsvs_ring)
+            si_pm4_set_reg(pm4, R_030904_VGT_GSVS_RING_SIZE, sctx->gsvs_ring->width0 / 256);
+      } else {
+         if (sctx->esgs_ring)
+            si_pm4_set_reg(pm4, R_0088C8_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
+         if (sctx->gsvs_ring)
+            si_pm4_set_reg(pm4, R_0088CC_VGT_GSVS_RING_SIZE, sctx->gsvs_ring->width0 / 256);
+      }
+
+      if (old_ndw) {
+         pm4->ndw = old_ndw;
+         pm4->last_opcode = 255; /* invalid opcode (we don't save the last opcode) */
+      }
    }
-
-   /* Set the state. */
-   if (sctx->cs_preamble_gs_rings)
-      si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
-   sctx->cs_preamble_gs_rings = pm4;
-
-   si_cs_preamble_add_vgt_flush(sctx);
 
    /* Flush the context to re-emit both cs_preamble states. */
    sctx->initial_gfx_cs_size = 0; /* force flush */
@@ -4081,42 +4096,31 @@ void si_init_tess_factor_ring(struct si_context *sctx)
       return;
    }
 
-   /* The codepath without register shadowing. */
-   si_cs_preamble_add_vgt_flush(sctx);
+   /* The codepath without register shadowing is below. */
+   /* Add these registers to cs_preamble_state. */
+   for (unsigned tmz = 0; tmz <= 1; tmz++) {
+      struct si_pm4_state *pm4 = tmz ? sctx->cs_preamble_state_tmz : sctx->cs_preamble_state;
+      struct pipe_resource *tf_ring = tmz ? sctx->tess_rings_tmz : sctx->tess_rings;
 
-   /* Append these registers to the init config state. */
-   if (sctx->gfx_level >= GFX7) {
-      si_pm4_set_reg(sctx->cs_preamble_state, R_030938_VGT_TF_RING_SIZE,
-                     S_030938_SIZE(tf_ring_size_field));
-      si_pm4_set_reg(sctx->cs_preamble_state, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
-      if (sctx->gfx_level >= GFX10)
-         si_pm4_set_reg(sctx->cs_preamble_state, R_030984_VGT_TF_MEMORY_BASE_HI,
-                        S_030984_BASE_HI(factor_va >> 40));
-      else if (sctx->gfx_level == GFX9)
-         si_pm4_set_reg(sctx->cs_preamble_state, R_030944_VGT_TF_MEMORY_BASE_HI,
-                        S_030944_BASE_HI(factor_va >> 40));
-      si_pm4_set_reg(sctx->cs_preamble_state, R_03093C_VGT_HS_OFFCHIP_PARAM,
-                     sctx->screen->hs.hs_offchip_param);
-   } else {
-      struct si_pm4_state *pm4 = CALLOC_STRUCT(si_pm4_state);
+      if (!tf_ring)
+         continue; /* TMZ not supported */
 
-      si_pm4_set_reg(pm4, R_008988_VGT_TF_RING_SIZE,
-                     S_008988_SIZE(tf_ring_size_field));
-      si_pm4_set_reg(pm4, R_0089B8_VGT_TF_MEMORY_BASE, factor_va >> 8);
-      si_pm4_set_reg(pm4, R_0089B0_VGT_HS_OFFCHIP_PARAM,
-                     sctx->screen->hs.hs_offchip_param);
-      sctx->cs_preamble_tess_rings = pm4;
+      uint64_t va = si_resource(tf_ring)->gpu_address + sctx->screen->hs.tess_offchip_ring_size;
 
-      if (sctx->screen->info.has_tmz_support) {
-         pm4 = CALLOC_STRUCT(si_pm4_state);
-         uint64_t factor_va_tmz =
-            si_resource(sctx->tess_rings_tmz)->gpu_address + sctx->screen->hs.tess_offchip_ring_size;
-         si_pm4_set_reg(pm4, R_008988_VGT_TF_RING_SIZE,
-                     S_008988_SIZE(tf_ring_size_field));
-         si_pm4_set_reg(pm4, R_0089B8_VGT_TF_MEMORY_BASE, factor_va_tmz >> 8);
-         si_pm4_set_reg(pm4, R_0089B0_VGT_HS_OFFCHIP_PARAM,
-                        sctx->screen->hs.hs_offchip_param);
-         sctx->cs_preamble_tess_rings_tmz = pm4;
+      si_cs_preamble_add_vgt_flush(sctx, tmz);
+
+      if (sctx->gfx_level >= GFX7) {
+         si_pm4_set_reg(pm4, R_030938_VGT_TF_RING_SIZE, S_030938_SIZE(tf_ring_size_field));
+         si_pm4_set_reg(pm4, R_03093C_VGT_HS_OFFCHIP_PARAM, sctx->screen->hs.hs_offchip_param);
+         si_pm4_set_reg(pm4, R_030940_VGT_TF_MEMORY_BASE, va >> 8);
+         if (sctx->gfx_level >= GFX10)
+            si_pm4_set_reg(pm4, R_030984_VGT_TF_MEMORY_BASE_HI, S_030984_BASE_HI(va >> 40));
+         else if (sctx->gfx_level == GFX9)
+            si_pm4_set_reg(pm4, R_030944_VGT_TF_MEMORY_BASE_HI, S_030944_BASE_HI(va >> 40));
+      } else {
+         si_pm4_set_reg(pm4, R_008988_VGT_TF_RING_SIZE, S_008988_SIZE(tf_ring_size_field));
+         si_pm4_set_reg(pm4, R_0089B8_VGT_TF_MEMORY_BASE, factor_va >> 8);
+         si_pm4_set_reg(pm4, R_0089B0_VGT_HS_OFFCHIP_PARAM, sctx->screen->hs.hs_offchip_param);
       }
    }
 

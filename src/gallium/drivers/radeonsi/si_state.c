@@ -5905,4 +5905,8 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    }
 
    sctx->cs_preamble_state = pm4;
+
+   /* Make a copy of the preamble for TMZ. */
+   sctx->cs_preamble_state_tmz = (struct si_pm4_state *)CALLOC_STRUCT(si_cs_preamble);
+   memcpy(sctx->cs_preamble_state_tmz, sctx->cs_preamble_state, sizeof(struct si_cs_preamble));
 }
