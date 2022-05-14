@@ -90,7 +90,8 @@ enum ac_descriptor_type
    AC_DESC_PLANE_2,
 };
 
-unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask);
+unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask,
+                                    bool writes_mrt0_alpha);
 
 unsigned ac_get_cb_shader_mask(unsigned spi_shader_col_format);
 

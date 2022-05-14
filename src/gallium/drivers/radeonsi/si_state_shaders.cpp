@@ -1943,7 +1943,8 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    shader->ctx_reg.ps.spi_baryc_cntl = spi_baryc_cntl;
    shader->ctx_reg.ps.spi_ps_in_control = spi_ps_in_control;
    shader->ctx_reg.ps.spi_shader_z_format =
-      ac_get_spi_shader_z_format(info->writes_z, info->writes_stencil, info->writes_samplemask);
+      ac_get_spi_shader_z_format(info->writes_z, info->writes_stencil, info->writes_samplemask,
+                                 shader->key.ps.part.epilog.alpha_to_coverage_via_mrtz);
    shader->ctx_reg.ps.spi_shader_col_format = spi_shader_col_format;
    shader->ctx_reg.ps.cb_shader_mask = cb_shader_mask;
 

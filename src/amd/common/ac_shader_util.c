@@ -31,11 +31,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask)
+unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask,
+                                    bool writes_mrt0_alpha)
 {
-   if (writes_z) {
+   /* If writes_mrt0_alpha is true, one other flag must be true too. */
+   assert(!writes_mrt0_alpha || writes_z || writes_stencil || writes_samplemask);
+
+   if (writes_z || writes_mrt0_alpha) {
       /* Z needs 32 bits. */
-      if (writes_samplemask)
+      if (writes_samplemask || writes_mrt0_alpha)
          return V_028710_SPI_SHADER_32_ABGR;
       else if (writes_stencil)
          return V_028710_SPI_SHADER_32_GR;
