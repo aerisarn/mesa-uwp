@@ -841,6 +841,6 @@ void ac_get_scratch_tmpring_size(const struct radeon_info *info, bool compute,
       max_scratch_waves /= info->num_se; /* WAVES is per SE for SPI_TMPRING_SIZE. */
 
    /* TODO: We could decrease WAVES to make the whole buffer fit into the infinity cache. */
-   *tmpring_size = S_0286E8_WAVES(info->max_scratch_waves) |
+   *tmpring_size = S_0286E8_WAVES(max_scratch_waves) |
                    S_0286E8_WAVESIZE(*max_seen_bytes_per_wave >> size_shift);
 }
