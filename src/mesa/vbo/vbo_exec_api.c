@@ -850,7 +850,7 @@ _mesa_Begin(GLenum mode)
    if (ctx->GLThread.enabled) {
       ctx->CurrentServerDispatch = ctx->Exec;
    } else if (ctx->CurrentClientDispatch == ctx->OutsideBeginEnd) {
-      ctx->CurrentClientDispatch = ctx->Exec;
+      ctx->CurrentClientDispatch = ctx->CurrentServerDispatch = ctx->Exec;
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
    } else {
       assert(ctx->CurrentClientDispatch == ctx->Save);
@@ -909,7 +909,7 @@ _mesa_End(void)
    if (ctx->GLThread.enabled) {
       ctx->CurrentServerDispatch = ctx->Exec;
    } else if (ctx->CurrentClientDispatch == ctx->BeginEnd) {
-      ctx->CurrentClientDispatch = ctx->Exec;
+      ctx->CurrentClientDispatch = ctx->CurrentServerDispatch = ctx->Exec;
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
 
