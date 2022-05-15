@@ -1556,7 +1556,7 @@ dzn_descriptor_heap_pool_reset(struct dzn_descriptor_heap_pool *pool)
 {
    pool->offset = 0;
    list_splicetail(&pool->active_heaps, &pool->free_heaps);
-   list_inithead(&pool->free_heaps);
+   list_inithead(&pool->active_heaps);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
