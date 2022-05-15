@@ -465,23 +465,39 @@ agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf, unsigned mappings, ui
 #endif
 }
 
+/*
+ * Wait for a frame to finish rendering.
+ *
+ * The macOS kernel indicates that rendering has finished using a notification
+ * queue. The kernel will send two messages on the notification queue. The
+ * second message indicates that rendering has completed. This simple routine
+ * waits for both messages. It's important that IODataQueueDequeue is used in a
+ * loop to flush the entire queue before calling
+ * IODataQueueWaitForAvailableData. Otherwise, we can race and get stuck in
+ * WaitForAvailabaleData.
+ */
 void
 agx_wait_queue(struct agx_command_queue queue)
 {
 #if __APPLE__
-   IOReturn ret = IODataQueueWaitForAvailableData(queue.notif.queue, queue.notif.port);
+   uint64_t data[4];
+   unsigned sz = sizeof(data);
+   unsigned message_id = 0;
+   uint64_t magic_numbers[2] = { 0xABCD, 0x1234 };
 
-	   uint64_t data[4];
-	   unsigned sz = sizeof(data);
-      ret = IODataQueueDequeue(queue.notif.queue, data, &sz);
-      assert(sz == sizeof(data));
-      assert(data[0] == 0xABCD);
+   while (message_id < 2) {
+      IOReturn ret = IODataQueueWaitForAvailableData(queue.notif.queue, queue.notif.port);
 
-      ret = IODataQueueWaitForAvailableData(queue.notif.queue, queue.notif.port);
-      ret = IODataQueueDequeue(queue.notif.queue, data, &sz);
-      assert(sz == sizeof(data));
-      assert(data[0] == 0x1234);
+      if (ret) {
+         fprintf(stderr, "Error waiting for available data\n");
+         return;
+      }
 
-   assert(!IODataQueueDataAvailable(queue.notif.queue));
+      while (IODataQueueDequeue(queue.notif.queue, data, &sz) == kIOReturnSuccess) {
+         assert(sz == sizeof(data));
+         assert(data[0] == magic_numbers[message_id]);
+         message_id++;
+      }
+   }
 #endif
 }
