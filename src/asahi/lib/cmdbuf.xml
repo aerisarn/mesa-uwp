@@ -676,8 +676,8 @@
     <field name="Depth clear value" start="0:0" size="32" type="hex"/>
     <field name="Stencil clear value" start="1:0" size="8" type="uint"/>
     <field name="Unk 1" start="1:8" size="8" type="hex" default="3"/>
-    <field name="Set when reloading Z 1" start="3:8" size="1" type="bool"/>
-    <field name="Set when reloading Z 2" start="4:24" size="1" type="bool"/>
+    <field name="Set when reloading Z or S 1" start="3:8" size="1" type="bool"/>
+    <field name="Set when reloading Z or S 2" start="4:24" size="1" type="bool"/>
     <field name="Z16 Unorm attachment" start="5:8" size="1" type="bool"/>
     <field name="Unk 3" start="6:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 4" start="7:0" size="32" type="hex" default="0xffffffff"/>

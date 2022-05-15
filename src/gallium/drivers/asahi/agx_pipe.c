@@ -542,6 +542,7 @@ agx_flush(struct pipe_context *pctx,
                pipeline_reload,
                pipeline_store,
                clear_pipeline_textures,
+               ctx->batch->clear,
                ctx->batch->clear_depth,
                ctx->batch->clear_stencil);
 
