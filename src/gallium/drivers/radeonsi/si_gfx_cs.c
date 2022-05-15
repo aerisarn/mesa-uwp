@@ -436,8 +436,13 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    si_pm4_reset_emitted(ctx, first_cs);
 
    /* The CS initialization should be emitted before everything else. */
-   if (ctx->cs_preamble_state)
-      si_pm4_emit(ctx, unlikely(is_secure) ? ctx->cs_preamble_state_tmz : ctx->cs_preamble_state);
+   if (ctx->cs_preamble_state) {
+      struct si_pm4_state *preamble = is_secure ? ctx->cs_preamble_state_tmz :
+                                                  ctx->cs_preamble_state;
+      ctx->ws->cs_set_preamble(&ctx->gfx_cs, preamble->pm4, preamble->ndw,
+                               preamble != ctx->last_preamble);
+      ctx->last_preamble = preamble;
+   }
 
    if (ctx->queued.named.ls)
       ctx->prefetch_L2_mask |= SI_PREFETCH_LS;

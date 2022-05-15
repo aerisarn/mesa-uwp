@@ -215,6 +215,13 @@ radeon_drm_cs_create(struct radeon_cmdbuf *rcs,
    return true;
 }
 
+static void radeon_drm_cs_set_preamble(struct radeon_cmdbuf *cs, const uint32_t *preamble_ib,
+                                       unsigned preamble_num_dw, bool preamble_changed)
+{
+   /* The radeon kernel driver doesn't support preambles. */
+   radeon_emit_array(cs, preamble_ib, preamble_num_dw);
+}
+
 int radeon_lookup_buffer(struct radeon_cs_context *csc, struct radeon_bo *bo)
 {
    unsigned hash = bo->hash & (ARRAY_SIZE(csc->reloc_indices_hashlist)-1);
@@ -853,6 +860,7 @@ void radeon_drm_cs_init_functions(struct radeon_drm_winsys *ws)
    ws->base.ctx_destroy = radeon_drm_ctx_destroy;
    ws->base.ctx_query_reset_status = radeon_drm_ctx_query_reset_status;
    ws->base.cs_create = radeon_drm_cs_create;
+   ws->base.cs_set_preamble = radeon_drm_cs_set_preamble;
    ws->base.cs_destroy = radeon_drm_cs_destroy;
    ws->base.cs_add_buffer = radeon_drm_cs_add_buffer;
    ws->base.cs_lookup_buffer = radeon_drm_cs_lookup_buffer;
