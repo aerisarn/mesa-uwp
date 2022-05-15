@@ -873,13 +873,18 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
        * the next IB starts drawing, and so the cache flush at the end of IB
        * is always late.
        */
-      if (ws->info.drm_minor >= 26)
+      if (ws->info.drm_minor >= 26) {
+         cs->ib[IB_PREAMBLE].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
          cs->ib[IB_MAIN].flags = AMDGPU_IB_FLAG_TC_WB_NOT_INVALIDATE;
+      }
       break;
 
    default:
       assert(0);
    }
+
+   cs->ib[IB_PREAMBLE].flags |= AMDGPU_IB_FLAG_PREAMBLE;
+   cs->ib[IB_PREAMBLE].ip_type = cs->ib[IB_MAIN].ip_type;
 
    cs->last_added_bo = NULL;
    return true;
@@ -1047,8 +1052,6 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    amdgpu_bo_unmap(&ws->dummy_ws.base, preamble_bo);
 
    for (unsigned i = 0; i < 2; i++) {
-      csc[i]->ib[IB_PREAMBLE] = csc[i]->ib[IB_MAIN];
-      csc[i]->ib[IB_PREAMBLE].flags |= AMDGPU_IB_FLAG_PREAMBLE;
       csc[i]->ib[IB_PREAMBLE].va_start = amdgpu_winsys_bo(preamble_bo)->va;
       csc[i]->ib[IB_PREAMBLE].ib_bytes = preamble_num_dw * 4;
 
