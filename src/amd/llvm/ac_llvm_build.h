@@ -342,7 +342,7 @@ struct ac_export_args {
 
 void ac_build_export(struct ac_llvm_context *ctx, struct ac_export_args *a);
 
-void ac_build_export_null(struct ac_llvm_context *ctx);
+void ac_build_export_null(struct ac_llvm_context *ctx, bool uses_discard);
 
 enum ac_image_opcode
 {

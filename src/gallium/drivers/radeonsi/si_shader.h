@@ -642,6 +642,7 @@ union si_shader_part_key {
    struct {
       struct si_ps_epilog_bits states;
       unsigned wave32 : 1;
+      unsigned uses_discard : 1;
       unsigned colors_written : 8;
       unsigned color_types : 16;
       unsigned writes_z : 1;
@@ -1051,6 +1052,14 @@ static inline bool si_shader_uses_streamout(struct si_shader *shader)
    return shader->selector->stage <= MESA_SHADER_GEOMETRY &&
           shader->selector->info.enabled_streamout_buffer_mask &&
           !shader->key.ge.opt.remove_streamout;
+}
+
+static inline bool si_shader_uses_discard(struct si_shader *shader)
+{
+   /* Changes to this should also update ps_modifies_zs. */
+   return shader->selector->info.base.fs.uses_discard ||
+          shader->key.ps.part.prolog.poly_stipple ||
+          shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS;
 }
 
 #ifdef __cplusplus

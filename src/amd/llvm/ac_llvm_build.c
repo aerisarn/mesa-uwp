@@ -1996,9 +1996,15 @@ void ac_build_export(struct ac_llvm_context *ctx, struct ac_export_args *a)
    }
 }
 
-void ac_build_export_null(struct ac_llvm_context *ctx)
+void ac_build_export_null(struct ac_llvm_context *ctx, bool uses_discard)
 {
    struct ac_export_args args;
+
+   /* Gfx10+ doesn't need to export anything if we don't need to export the EXEC mask
+    * for discard.
+    */
+   if (ctx->gfx_level >= GFX10 && !uses_discard)
+      return;
 
    args.enabled_channels = 0x0; /* enabled channels */
    args.valid_mask = 1;         /* whether the EXEC mask is valid */

@@ -946,7 +946,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       for (unsigned i = 0; i < exp.num; i++)
          ac_build_export(&ctx->ac, &exp.args[i]);
    } else {
-      ac_build_export_null(&ctx->ac);
+      ac_build_export_null(&ctx->ac, key->ps_epilog.uses_discard);
    }
 
    /* Compile. */

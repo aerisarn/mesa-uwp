@@ -1871,10 +1871,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
       S_02880C_Z_EXPORT_ENABLE(info->writes_z) |
       S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(info->writes_stencil) |
       S_02880C_MASK_EXPORT_ENABLE(info->writes_samplemask) |
-      /* Changes KILL_ENABLE should also update ps_modifies_zs. */
-      S_02880C_KILL_ENABLE(info->base.fs.uses_discard ||
-                           shader->key.ps.part.prolog.poly_stipple ||
-                           shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS);
+      S_02880C_KILL_ENABLE(si_shader_uses_discard(shader));
 
    switch (info->base.fs.depth_layout) {
    case FRAG_DEPTH_LAYOUT_GREATER:
