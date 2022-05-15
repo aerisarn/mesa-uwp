@@ -304,6 +304,10 @@ dri2_allocate_buffer(__DRIscreen *sPriv,
    unsigned bind = 0;
    struct winsys_handle whandle;
 
+   /* struct pipe_resource height0 is 16-bit, avoid overflow */
+   if (height > 0xffff)
+      return NULL;
+
    switch (attachment) {
       case __DRI_BUFFER_FRONT_LEFT:
       case __DRI_BUFFER_FAKE_FRONT_LEFT:
