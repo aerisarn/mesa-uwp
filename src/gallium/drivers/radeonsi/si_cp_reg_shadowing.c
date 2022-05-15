@@ -196,8 +196,8 @@ void si_init_cp_reg_shadowing(struct si_context *sctx)
       /* Setup preemption. The shadowing preamble will be executed as a preamble IB,
        * which will load register values from memory on a context switch.
        */
-      sctx->ws->cs_setup_preemption(&sctx->gfx_cs, shadowing_preamble->pm4,
-                                    shadowing_preamble->ndw);
+      sctx->ws->cs_set_preamble(&sctx->gfx_cs, shadowing_preamble->pm4, shadowing_preamble->ndw,
+                                false, true);
       si_pm4_free_state(sctx, shadowing_preamble, ~0);
    }
 }

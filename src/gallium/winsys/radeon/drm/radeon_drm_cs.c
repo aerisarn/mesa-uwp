@@ -216,11 +216,15 @@ radeon_drm_cs_create(struct radeon_cmdbuf *rcs,
    return true;
 }
 
-static void radeon_drm_cs_set_preamble(struct radeon_cmdbuf *cs, const uint32_t *preamble_ib,
-                                       unsigned preamble_num_dw, bool preamble_changed)
+static bool radeon_drm_cs_set_preamble(struct radeon_cmdbuf *cs, const uint32_t *preamble_ib,
+                                       unsigned preamble_num_dw, bool preamble_changed,
+                                       bool enable_preemption)
 {
+   assert(!enable_preemption);
+
    /* The radeon kernel driver doesn't support preambles. */
    radeon_emit_array(cs, preamble_ib, preamble_num_dw);
+   return true;
 }
 
 int radeon_lookup_buffer(struct radeon_cs_context *csc, struct radeon_bo *bo)

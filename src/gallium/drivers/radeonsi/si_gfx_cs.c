@@ -440,7 +440,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       struct si_pm4_state *preamble = is_secure ? ctx->cs_preamble_state_tmz :
                                                   ctx->cs_preamble_state;
       ctx->ws->cs_set_preamble(&ctx->gfx_cs, preamble->pm4, preamble->ndw,
-                               preamble != ctx->last_preamble);
+                               preamble != ctx->last_preamble, false);
       ctx->last_preamble = preamble;
    }
 
