@@ -1921,7 +1921,9 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     * the color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
     */
-   if ((sscreen->info.gfx_level <= GFX9 || info->base.fs.uses_discard ||
+   if ((sscreen->info.gfx_level <= GFX9 ||
+        info->base.fs.uses_discard ||
+        shader->key.ps.part.prolog.poly_stipple ||
         shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS) &&
        !spi_shader_col_format && !info->writes_z && !info->writes_stencil &&
        !info->writes_samplemask)
@@ -2123,10 +2125,13 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
    /* Find out if PS is disabled. */
    bool ps_disabled = true;
    if (ps) {
-      bool ps_modifies_zs = ps->info.base.fs.uses_discard || ps->info.writes_z || ps->info.writes_stencil ||
+      bool ps_modifies_zs = ps->info.base.fs.uses_discard ||
+                            ps->info.writes_z ||
+                            ps->info.writes_stencil ||
                             ps->info.writes_samplemask ||
                             sctx->queued.named.blend->alpha_to_coverage ||
-                            sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS;
+                            sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS ||
+                            sctx->queued.named.rasterizer->poly_stipple_enable;
       unsigned ps_colormask = si_get_total_colormask(sctx);
 
       ps_disabled = sctx->queued.named.rasterizer->rasterizer_discard ||
@@ -3478,8 +3483,10 @@ void si_update_ps_kill_enable(struct si_context *sctx)
    if (!sctx->shader.ps.cso)
       return;
 
+   /* Changes to KILL_ENABLE should also update si_shader_ps. */
    unsigned db_shader_control = sctx->shader.ps.cso->info.db_shader_control |
-                                S_02880C_KILL_ENABLE(sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
+                                S_02880C_KILL_ENABLE(sctx->queued.named.rasterizer->poly_stipple_enable ||
+                                                     sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
 
    if (sctx->ps_db_shader_control != db_shader_control) {
       sctx->ps_db_shader_control = db_shader_control;
