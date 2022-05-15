@@ -238,7 +238,7 @@ radv_prefer_compute_dma(const struct radv_device *device, uint64_t size,
    if (device->physical_device->rad_info.gfx_level >= GFX10 &&
        device->physical_device->rad_info.has_dedicated_vram) {
       if ((src_bo && !(src_bo->initial_domain & RADEON_DOMAIN_VRAM)) ||
-          !(dst_bo->initial_domain & RADEON_DOMAIN_VRAM)) {
+          (dst_bo && !(dst_bo->initial_domain & RADEON_DOMAIN_VRAM))) {
          /* Prefer CP DMA for GTT on dGPUS due to slow PCIe. */
          use_compute = false;
       }
@@ -249,17 +249,16 @@ radv_prefer_compute_dma(const struct radv_device *device, uint64_t size,
 
 uint32_t
 radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *image,
-                 struct radeon_winsys_bo *bo, uint64_t offset, uint64_t size, uint32_t value)
+                 struct radeon_winsys_bo *bo, uint64_t va, uint64_t size, uint32_t value)
 {
    bool use_compute = radv_prefer_compute_dma(cmd_buffer->device, size, NULL, bo);
    uint32_t flush_bits = 0;
 
-   assert(!(offset & 3));
+   assert(!(va & 3));
    assert(!(size & 3));
 
-   uint64_t va = radv_buffer_get_va(bo) + offset;
-
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, bo);
+   if (bo)
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, bo);
 
    if (use_compute) {
       cmd_buffer->state.flush_bits |=
@@ -305,7 +304,8 @@ radv_CmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSi
    if (fillSize == VK_WHOLE_SIZE)
       fillSize = (dst_buffer->size - dstOffset) & ~3ull;
 
-   radv_fill_buffer(cmd_buffer, NULL, dst_buffer->bo, dst_buffer->offset + dstOffset, fillSize,
+   radv_fill_buffer(cmd_buffer, NULL, dst_buffer->bo,
+                    radv_buffer_get_va(dst_buffer->bo) + dst_buffer->offset + dstOffset, fillSize,
                     data);
 }
 

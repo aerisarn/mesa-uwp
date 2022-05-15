@@ -1364,12 +1364,15 @@ radv_CmdResetQueryPool(VkCommandBuffer commandBuffer, VkQueryPool queryPool, uin
     */
    cmd_buffer->state.flush_bits |= cmd_buffer->active_query_flush_bits;
 
-   flush_bits |= radv_fill_buffer(cmd_buffer, NULL, pool->bo, firstQuery * pool->stride,
+   flush_bits |= radv_fill_buffer(cmd_buffer, NULL, pool->bo,
+                                  radv_buffer_get_va(pool->bo) + firstQuery * pool->stride,
                                   queryCount * pool->stride, value);
 
    if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
-      flush_bits |= radv_fill_buffer(cmd_buffer, NULL, pool->bo,
-                                     pool->availability_offset + firstQuery * 4, queryCount * 4, 0);
+      flush_bits |=
+         radv_fill_buffer(cmd_buffer, NULL, pool->bo,
+                          radv_buffer_get_va(pool->bo) + pool->availability_offset + firstQuery * 4,
+                          queryCount * 4, 0);
    }
 
    if (flush_bits) {

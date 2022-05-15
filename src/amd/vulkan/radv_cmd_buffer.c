@@ -8231,7 +8231,8 @@ radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
       /* Initialize the mipmap levels without DCC. */
       if (size != image->planes[0].surface.meta_size) {
          flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo,
-                                        image->offset + image->planes[0].surface.meta_offset + size,
+                                        radv_buffer_get_va(image->bo) + image->offset +
+                                           image->planes[0].surface.meta_offset + size,
                                         image->planes[0].surface.meta_size - size, 0xffffffff);
       }
    }
