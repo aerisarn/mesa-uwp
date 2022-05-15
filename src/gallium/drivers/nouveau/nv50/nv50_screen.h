@@ -62,6 +62,7 @@ struct nv50_screen {
 
    struct nv50_context *cur_ctx;
    struct nv50_graph_state save_state;
+   simple_mtx_t state_lock;
 
    int num_occlusion_queries_active;
 

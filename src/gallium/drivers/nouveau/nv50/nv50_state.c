@@ -774,9 +774,12 @@ nv50_sp_state_create(struct pipe_context *pipe,
 static void
 nv50_sp_state_delete(struct pipe_context *pipe, void *hwcso)
 {
+   struct nv50_context *nv50 = nv50_context(pipe);
    struct nv50_program *prog = (struct nv50_program *)hwcso;
 
-   nv50_program_destroy(nv50_context(pipe), prog);
+   simple_mtx_lock(&nv50->screen->state_lock);
+   nv50_program_destroy(nv50, prog);
+   simple_mtx_unlock(&nv50->screen->state_lock);
 
    if (prog->pipe.type == PIPE_SHADER_IR_TGSI)
       FREE((void *)prog->pipe.tokens);

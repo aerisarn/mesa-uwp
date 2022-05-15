@@ -128,6 +128,7 @@ nv50_program_validate(struct nv50_context *nv50, struct nv50_program *prog)
    if (prog->mem)
       return true;
 
+   simple_mtx_assert_locked(&nv50->screen->state_lock);
    return nv50_program_upload_code(nv50, prog);
 }
 

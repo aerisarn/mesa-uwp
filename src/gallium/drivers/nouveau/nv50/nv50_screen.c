@@ -652,6 +652,7 @@ nv50_screen_destroy(struct pipe_screen *pscreen)
    nouveau_object_del(&screen->sync);
 
    nouveau_screen_fini(&screen->base);
+   simple_mtx_destroy(&screen->state_lock);
 
    FREE(screen);
 }
@@ -1013,6 +1014,7 @@ nv50_screen_create(struct nouveau_device *dev)
    pscreen = &screen->base.base;
    pscreen->destroy = nv50_screen_destroy;
 
+   simple_mtx_init(&screen->state_lock, mtx_plain);
    ret = nouveau_screen_init(&screen->base, dev);
    if (ret) {
       NOUVEAU_ERR("nouveau_screen_init failed: %d\n", ret);

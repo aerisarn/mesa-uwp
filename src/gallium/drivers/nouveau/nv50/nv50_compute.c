@@ -567,10 +567,11 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    struct nv50_program *cp = nv50->compprog;
    bool ret;
 
+   simple_mtx_lock(&nv50->screen->state_lock);
    ret = !nv50_state_validate_cp(nv50, ~0);
    if (ret) {
       NOUVEAU_ERR("Failed to launch grid !\n");
-      return;
+      goto out;
    }
 
    nv50_compute_upload_input(nv50, info->input);
@@ -622,4 +623,8 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    nv50->compute_invocations += info->block[0] * info->block[1] * info->block[2] *
       grid[0] * grid[1] * grid[2];
+
+out:
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nv50->screen->state_lock);
 }

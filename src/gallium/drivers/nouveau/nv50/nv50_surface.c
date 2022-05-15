@@ -534,9 +534,11 @@ nv50_clear(struct pipe_context *pipe, unsigned buffers, const struct pipe_scisso
    unsigned i, j, k;
    uint32_t mode = 0;
 
+   simple_mtx_lock(&nv50->screen->state_lock);
+
    /* don't need NEW_BLEND, COLOR_MASK doesn't affect CLEAR_BUFFERS */
    if (!nv50_state_validate_3d(nv50, NV50_NEW_3D_FRAMEBUFFER))
-      return;
+      goto out;
 
    if (scissor_state) {
       uint32_t minx = scissor_state->minx;
@@ -544,7 +546,7 @@ nv50_clear(struct pipe_context *pipe, unsigned buffers, const struct pipe_scisso
       uint32_t miny = scissor_state->miny;
       uint32_t maxy = MIN2(fb->height, scissor_state->maxy);
       if (maxx <= minx || maxy <= miny)
-         return;
+         goto out;
 
       BEGIN_NV04(push, NV50_3D(SCREEN_SCISSOR_HORIZ), 2);
       PUSH_DATA (push, minx | (maxx - minx) << 16);
@@ -622,6 +624,10 @@ nv50_clear(struct pipe_context *pipe, unsigned buffers, const struct pipe_scisso
       PUSH_DATA (push, fb->width << 16);
       PUSH_DATA (push, fb->height << 16);
    }
+
+out:
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nv50->screen->state_lock);
 }
 
 static void
@@ -1773,6 +1779,7 @@ nv50_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
         info->src.box.height != -info->dst.box.height))
       eng3d = true;
 
+   simple_mtx_lock(&nv50->screen->state_lock);
    if (nv50->screen->num_occlusion_queries_active) {
       BEGIN_NV04(push, NV50_3D(SAMPLECNT_ENABLE), 1);
       PUSH_DATA (push, 0);
@@ -1787,6 +1794,8 @@ nv50_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
       BEGIN_NV04(push, NV50_3D(SAMPLECNT_ENABLE), 1);
       PUSH_DATA (push, 1);
    }
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nv50->screen->state_lock);
 }
 
 static void

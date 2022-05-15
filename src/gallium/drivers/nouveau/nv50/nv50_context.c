@@ -180,11 +180,13 @@ nv50_destroy(struct pipe_context *pipe)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
 
+   simple_mtx_lock(&nv50->screen->state_lock);
    if (nv50->screen->cur_ctx == nv50) {
       nv50->screen->cur_ctx = NULL;
       /* Save off the state in case another context gets created */
       nv50->screen->save_state = nv50->state;
    }
+   simple_mtx_unlock(&nv50->screen->state_lock);
 
    if (nv50->base.pipe.stream_uploader)
       u_upload_destroy(nv50->base.pipe.stream_uploader);
@@ -347,6 +349,7 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
    pipe->get_sample_position = nv50_context_get_sample_position;
    pipe->emit_string_marker = nv50_emit_string_marker;
 
+   simple_mtx_lock(&screen->state_lock);
    if (!screen->cur_ctx) {
       /* Restore the last context's state here, normally handled during
        * context switch
@@ -354,6 +357,8 @@ nv50_create(struct pipe_screen *pscreen, void *priv, unsigned ctxflags)
       nv50->state = screen->save_state;
       screen->cur_ctx = nv50;
    }
+   simple_mtx_unlock(&screen->state_lock);
+
    nouveau_pushbuf_bufctx(nv50->base.pushbuf, nv50->bufctx);
    nv50->base.kick_notify = nv50_default_kick_notify;
    nv50->base.pushbuf->rsvd_kick = 5;

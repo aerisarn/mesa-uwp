@@ -811,6 +811,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    if (unlikely(nv50->num_so_targets && !nv50->gmtyprog))
       nv50->state.prim_size = nv50_pipe_prim_to_prim_size[info->mode];
 
+   simple_mtx_lock(&nv50->screen->state_lock);
    nv50_state_validate_3d(nv50, ~0);
 
    nv50->base.kick_notify = nv50_draw_vbo_kick_notify;
@@ -920,6 +921,9 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    }
 
 cleanup:
+   PUSH_KICK(push);
+   simple_mtx_unlock(&nv50->screen->state_lock);
+
    nv50->base.kick_notify = nv50_default_kick_notify;
 
    nv50_release_user_vbufs(nv50);

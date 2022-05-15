@@ -450,6 +450,7 @@ nv50_switch_pipe_context(struct nv50_context *ctx_to)
 {
    struct nv50_context *ctx_from = ctx_to->screen->cur_ctx;
 
+   simple_mtx_assert_locked(&ctx_to->screen->state_lock);
    if (ctx_from)
       ctx_to->state = ctx_from->state;
    else
@@ -535,6 +536,8 @@ nv50_state_validate(struct nv50_context *nv50, uint32_t mask,
    uint32_t state_mask;
    int ret;
    unsigned i;
+
+   simple_mtx_assert_locked(&nv50->screen->state_lock);
 
    if (nv50->screen->cur_ctx != nv50)
       nv50_switch_pipe_context(nv50);

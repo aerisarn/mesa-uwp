@@ -486,6 +486,7 @@ nv50_program_upload_code(struct nv50_context *nv50, struct nv50_program *prog)
       return false;
    }
 
+   simple_mtx_assert_locked(&nv50->screen->state_lock);
    ret = nouveau_heap_alloc(heap, size, prog, &prog->mem);
    if (ret) {
       /* Out of space: evict everything to compactify the code segment, hoping
@@ -545,8 +546,11 @@ nv50_program_destroy(struct nv50_context *nv50, struct nv50_program *p)
    const struct pipe_shader_state pipe = p->pipe;
    const ubyte type = p->type;
 
-   if (p->mem)
+   if (p->mem) {
+      if (nv50)
+         simple_mtx_assert_locked(&nv50->screen->state_lock);
       nouveau_heap_free(&p->mem);
+   }
 
    FREE(p->code);
 
