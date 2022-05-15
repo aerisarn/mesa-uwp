@@ -1939,11 +1939,10 @@ radix_sort_fill_buffer(VkCommandBuffer commandBuffer,
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   assert(size % 4 == 0);
    assert(size != VK_WHOLE_SIZE);
 
-   radv_fill_buffer_shader(cmd_buffer, buffer_info->devaddr + buffer_info->offset + offset, size,
-                           data);
+   radv_fill_buffer(cmd_buffer, NULL, NULL, buffer_info->devaddr + buffer_info->offset + offset,
+                    size, data);
 }
 
 VkResult
