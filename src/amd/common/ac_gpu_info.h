@@ -97,6 +97,7 @@ struct radeon_info {
    bool has_sqtt_rb_harvest_bug;
    bool has_sqtt_auto_flush_mode_bug;
    bool never_send_perfcounter_stop;
+   bool discardable_allows_big_page;
 
    /* Display features. */
    /* There are 2 display DCC codepaths, because display expects unaligned DCC. */

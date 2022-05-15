@@ -148,8 +148,11 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
       res->flags |= RADEON_FLAG_GL2_BYPASS;
 
    if (res->b.b.flags & SI_RESOURCE_FLAG_DISCARDABLE &&
-       sscreen->info.drm_major == 3 && sscreen->info.drm_minor >= 47)
+       sscreen->info.drm_major == 3 && sscreen->info.drm_minor >= 47) {
+      /* Assume VRAM, so that we can use BIG_PAGE. */
+      assert(res->domains == RADEON_DOMAIN_VRAM);
       res->flags |= RADEON_FLAG_DISCARDABLE;
+   }
 
    if (res->domains == RADEON_DOMAIN_VRAM &&
        sscreen->options.mall_noalloc)

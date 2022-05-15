@@ -5913,6 +5913,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_03111C_SPI_ATTRIBUTE_RING_SIZE,
                      S_03111C_MEM_SIZE(((sscreen->attribute_ring->bo_size /
                                          sscreen->info.max_se) >> 16) - 1) |
+                     S_03111C_BIG_PAGE(sscreen->info.discardable_allows_big_page) |
                      S_03111C_L1_POLICY(1));
    }
 

@@ -1222,6 +1222,13 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->num_physical_wave64_vgprs_per_simd = info->gfx_level >= GFX10 ? 512 : 256;
    info->num_simd_per_compute_unit = info->gfx_level >= GFX10 ? 2 : 4;
 
+   /* BIG_PAGE is supported since gfx10.3 and requires VRAM. VRAM is only guaranteed
+    * with AMDGPU_GEM_CREATE_DISCARDABLE. DISCARDABLE was added in DRM 3.47.0.
+    */
+   info->discardable_allows_big_page = info->gfx_level >= GFX10_3 &&
+                                       info->has_dedicated_vram &&
+                                       info->drm_minor >= 47;
+
    /* The maximum number of scratch waves. The number is only a function of the number of CUs.
     * It should be large enough to hold at least 1 threadgroup. Use the minimum per-SA CU count.
     *
@@ -1342,6 +1349,8 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    never_stop_sq_perf_counters = %i\n", info->never_stop_sq_perf_counters);
    fprintf(f, "    has_sqtt_rb_harvest_bug = %i\n", info->has_sqtt_rb_harvest_bug);
    fprintf(f, "    has_sqtt_auto_flush_mode_bug = %i\n", info->has_sqtt_auto_flush_mode_bug);
+   fprintf(f, "    never_send_perfcounter_stop = %i\n", info->never_send_perfcounter_stop);
+   fprintf(f, "    discardable_allows_big_page = %i\n", info->discardable_allows_big_page);
 
    fprintf(f, "Display features:\n");
    fprintf(f, "    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
