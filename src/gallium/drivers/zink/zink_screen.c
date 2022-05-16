@@ -34,6 +34,7 @@
 #include "zink_instance.h"
 #include "zink_program.h"
 #include "zink_public.h"
+#include "zink_query.h"
 #include "zink_resource.h"
 #include "nir_to_spirv/nir_to_spirv.h" // for SPIRV_VERSION
 
@@ -2195,6 +2196,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.get_vendor = zink_get_vendor;
    screen->base.get_device_vendor = zink_get_device_vendor;
    screen->base.get_compute_param = zink_get_compute_param;
+   screen->base.get_timestamp = zink_get_timestamp;
    screen->base.query_memory_info = zink_query_memory_info;
    screen->base.get_param = zink_get_param;
    screen->base.get_paramf = zink_get_paramf;
