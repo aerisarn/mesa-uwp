@@ -1001,6 +1001,7 @@ static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
  * pvr_srv_setup_static_pixel_event_program().
  */
 static void pvr_device_get_pixel_event_pds_program_data_size(
+   const struct pvr_device_info *dev_info,
    uint32_t *const data_size_in_dwords_out)
 {
    struct pvr_pds_event_program program = {
@@ -1008,7 +1009,7 @@ static void pvr_device_get_pixel_event_pds_program_data_size(
       .num_emit_word_pairs = 0,
    };
 
-   pvr_pds_set_sizes_pixel_event(&program);
+   pvr_pds_set_sizes_pixel_event(&program, dev_info);
 
    *data_size_in_dwords_out = program.data_size;
 }
@@ -1177,6 +1178,7 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
     * on each kick.
     */
    pvr_device_get_pixel_event_pds_program_data_size(
+      &pdevice->dev_info,
       &device->pixel_event_data_size_in_dwords);
 
    device->global_queue_job_count = 0;
