@@ -1785,6 +1785,11 @@ to upconvert to 32b float internally?
 		<bitfield name="LRZ_WRITE" pos="1" type="boolean"/>
 		<doc>update MAX instead of MIN value, ie. GL_GREATER/GL_GEQUAL</doc>
 		<bitfield name="GREATER" pos="2" type="boolean"/>
+		<doc>
+			Clears the LRZ block being touched to:
+			- 0.0 if GREATER
+			- 1.0 if LESS
+		</doc>
 		<bitfield name="FC_ENABLE" pos="3" type="boolean"/>
 		<!-- set when depth-test + depth-write enabled -->
 		<bitfield name="Z_TEST_ENABLE" pos="4" type="boolean"/>
@@ -1857,6 +1862,14 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8109" name="GRAS_SAMPLE_CNTL">
 		<bitfield name="PER_SAMP_MODE" pos="0" type="boolean"/>
 	</reg32>
+	<!--
+	LRZ buffer represents a single array layer + mip level, and there is
+	a single buffer per depth image. Thus to reuse LRZ between renderpasses
+	it is necessary to track the depth view used in the past renderpass, which
+	GRAS_LRZ_DEPTH_VIEW is for.
+	GRAS_LRZ_CNTL checks if current value of GRAS_LRZ_DEPTH_VIEW is equal to
+	the value stored in the LRZ buffer, if not - LRZ is disabled.
+	-->
 	<reg32 offset="0x810a" name="GRAS_LRZ_DEPTH_VIEW">
 		<bitfield name="BASE_LAYER" low="0" high="10" type="uint"/>
 		<bitfield name="LAYER_COUNT" low="16" high="26" type="uint"/>

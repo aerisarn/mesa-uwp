@@ -316,6 +316,15 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
       A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_PITCH(ubwc_pitch) |
       A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
 
+   const struct util_format_description *format_desc =
+      util_format_description(args->format);
+   if (util_format_has_depth(format_desc)) {
+      view->GRAS_LRZ_DEPTH_VIEW =
+         A6XX_GRAS_LRZ_DEPTH_VIEW_BASE_LAYER(args->base_array_layer) |
+         A6XX_GRAS_LRZ_DEPTH_VIEW_LAYER_COUNT(args->layer_count) |
+         A6XX_GRAS_LRZ_DEPTH_VIEW_BASE_MIP_LEVEL(args->base_miplevel);
+   }
+
    view->base_addr = base_addr;
    view->ubwc_addr = ubwc_addr;
    view->layer_size = layer_size;

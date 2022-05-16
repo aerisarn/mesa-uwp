@@ -138,6 +138,10 @@ class A6xxGPUInfo(GPUInfo):
         self.a6xx.has_cp_reg_write = True
         self.a6xx.has_8bpp_ubwc = True
 
+        # All a6xx gens support lrz fast-clear, however newer blob driver
+        # (v615) doesn't use it for gen1 and gen2.
+        self.a6xx.enable_lrz_fast_clear = True
+
         for name, val in template.items():
             if name == "magic": # handled above
                 continue
@@ -245,6 +249,8 @@ a6xx_gen3 = dict(
         has_ccu_flush_bug = True,
         has_8bpp_ubwc = False,
         has_dp2acc = True,
+        has_lrz_dir_tracking = True,
+        lrz_track_quirk = True,
         magic = dict(
             # this seems to be a chicken bit that fixes cubic filtering:
             TPL1_DBG_ECO_CNTL = 0x1000000,
@@ -271,6 +277,7 @@ a6xx_gen4 = dict(
         has_getfiberid = True,
         has_dp2acc = True,
         has_dp4acc = True,
+        has_lrz_dir_tracking = True,
         magic = dict(
             TPL1_DBG_ECO_CNTL = 0x5008000,
         ),

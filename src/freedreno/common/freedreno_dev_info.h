@@ -133,6 +133,10 @@ struct fd_dev_info {
          bool has_dp2acc;
          bool has_dp4acc;
 
+         bool enable_lrz_fast_clear;
+         bool has_lrz_dir_tracking;
+         bool lrz_track_quirk;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_POWER_CNTL;

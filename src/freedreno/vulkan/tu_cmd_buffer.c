@@ -218,11 +218,6 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
       tu_cs_emit_regs(cs,
                       A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = DEPTH6_NONE));
 
-      tu_cs_emit_regs(cs,
-                      A6XX_GRAS_LRZ_BUFFER_BASE(0),
-                      A6XX_GRAS_LRZ_BUFFER_PITCH(0),
-                      A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE(0));
-
       tu_cs_emit_regs(cs, A6XX_RB_STENCIL_INFO(0));
 
       return;
@@ -246,10 +241,6 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE, 3);
    tu_cs_image_flag_ref(cs, &iview->view, 0);
-
-   tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_BUFFER_BASE(.qword = iview->image->iova + iview->image->lrz_offset),
-                   A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = iview->image->lrz_pitch),
-                   A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
 
    if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
        attachment->format == VK_FORMAT_S8_UINT) {
@@ -1243,6 +1234,7 @@ tu_set_input_attachments(struct tu_cmd_buffer *cmd, const struct tu_subpass *sub
                          tu_emit_input_attachments(cmd, subpass, false));
 }
 
+
 static void
 tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
                          const VkRenderPassBeginInfo *info)
@@ -1274,14 +1266,15 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
+   tu_lrz_sysmem_begin(cmd, cs);
+
    assert(fb->width > 0 && fb->height > 0);
    tu6_emit_window_scissor(cs, 0, 0, fb->width - 1, fb->height - 1);
    tu6_emit_window_offset(cs, 0, 0);
 
    tu6_emit_bin_size(cs, 0, 0,
-                     A6XX_RB_BIN_CONTROL_BUFFERS_LOCATION(BUFFERS_IN_SYSMEM));
-
-   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
+                     A6XX_RB_BIN_CONTROL_BUFFERS_LOCATION(BUFFERS_IN_SYSMEM) |
+                     A6XX_RB_BIN_CONTROL_FORCE_LRZ_WRITE_DIS);
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
@@ -1318,7 +1311,7 @@ tu6_sysmem_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
 
-   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
+   tu_lrz_sysmem_end(cmd, cs);
 
    tu_cs_sanity_check(cs);
 }
@@ -1329,7 +1322,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 {
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
 
-   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
+   tu_lrz_tiling_begin(cmd, cs);
 
    tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    tu_cs_emit(cs, 0x0);
@@ -1424,10 +1417,7 @@ tu6_tile_render_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu_cs_emit_call(cs, &cmd->draw_epilogue_cs);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_LRZ_CNTL(0));
-
-   tu6_emit_event_write(cmd, cs, LRZ_FLUSH);
+   tu_lrz_tiling_end(cmd, cs);
 
    tu6_emit_event_write(cmd, cs, PC_CCU_RESOLVE_TS);
 
@@ -1770,9 +1760,13 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       }
 
       if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
+         TU_FROM_HANDLE(tu_framebuffer, fb, pBeginInfo->pInheritanceInfo->framebuffer);
+
          cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
          cmd_buffer->state.subpass =
             &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
+
+         tu_lrz_begin_secondary_cmdbuf(cmd_buffer, fb);
       } else {
          /* When executing in the middle of another command buffer, the CCU
           * state is unknown.
@@ -3359,6 +3353,11 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
          cmd->state.draw_cs_writes_to_cond_pred |=
             secondary->state.draw_cs_writes_to_cond_pred;
 
+         /* If LRZ was made invalid in secondary - we should disable
+          * LRZ retroactively for the whole renderpass.
+          */
+         if (!secondary->state.lrz.valid)
+            cmd->state.lrz.valid = false;
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
@@ -3370,7 +3369,7 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    }
    cmd->state.dirty = ~0u; /* TODO: set dirty only what needs to be */
 
-   if (cmd->state.pass) {
+   if (!cmd->state.lrz.gpu_dir_tracking && cmd->state.pass) {
       /* After a secondary command buffer is executed, LRZ is not valid
        * until it is cleared again.
        */
@@ -3577,31 +3576,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    if (pass->subpasses[0].feedback_invalidate)
       cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_CACHE_INVALIDATE;
 
-   /* Track LRZ valid state */
-   uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
-   if (a != VK_ATTACHMENT_UNUSED) {
-      const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
-      struct tu_image *image = cmd->state.attachments[a]->image;
-      /* if image has lrz and it isn't a stencil-only clear: */
-      if (image->lrz_height &&
-          (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT))) {
-         cmd->state.lrz.image = image;
-         cmd->state.lrz.valid = true;
-         cmd->state.lrz.prev_direction = TU_LRZ_UNKNOWN;
-
-         tu6_clear_lrz(cmd, &cmd->cs, image, &pRenderPassBegin->pClearValues[a]);
-
-         /* Clearing writes via CCU color in the PS stage, and LRZ is read via
-          * UCHE in the earlier GRAS stage.
-          */
-         cmd->state.cache.flush_bits |=
-            TU_CMD_FLAG_CCU_FLUSH_COLOR | TU_CMD_FLAG_CACHE_INVALIDATE |
-            TU_CMD_FLAG_WAIT_FOR_IDLE;
-      } else {
-         cmd->state.lrz.valid = false;
-      }
-      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
-   }
+   tu_lrz_begin_renderpass(cmd, pRenderPassBegin);
 
    cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
 
@@ -3753,253 +3728,6 @@ tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
       tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
 
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
-}
-
-/* update lrz state based on stencil-test func:
- *
- * Conceptually the order of the pipeline is:
- *
- *
- *   FS -> Alpha-Test  ->  Stencil-Test  ->  Depth-Test
- *                              |                |
- *                       if wrmask != 0     if wrmask != 0
- *                              |                |
- *                              v                v
- *                        Stencil-Write      Depth-Write
- *
- * Because Stencil-Test can have side effects (Stencil-Write) prior
- * to depth test, in this case we potentially need to disable early
- * lrz-test. See:
- *
- * https://www.khronos.org/opengl/wiki/Per-Sample_Processing
- */
-static void
-tu6_lrz_stencil_op(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
-                   VkCompareOp func,
-                   bool stencil_write,
-                   bool *invalidate_lrz)
-{
-   switch (func) {
-   case VK_COMPARE_OP_ALWAYS:
-      /* nothing to do for LRZ, but for stencil test when stencil-
-       * write is enabled, we need to disable lrz-test, since
-       * conceptually stencil test and write happens before depth-test.
-       */
-      if (stencil_write) {
-         gras_lrz_cntl->enable = false;
-         gras_lrz_cntl->z_test_enable = false;
-         *invalidate_lrz = true;
-      }
-      break;
-   case VK_COMPARE_OP_NEVER:
-      /* fragment never passes, disable lrz_write for this draw. */
-      gras_lrz_cntl->lrz_write = false;
-      break;
-   default:
-      /* whether the fragment passes or not depends on result
-       * of stencil test, which we cannot know when doing binning
-       * pass.
-       */
-      gras_lrz_cntl->lrz_write = false;
-      /* similarly to the VK_COMPARE_OP_ALWAYS case, if there are side-
-       * effects from stencil test we need to disable lrz-test.
-       */
-      if (stencil_write) {
-         gras_lrz_cntl->enable = false;
-         gras_lrz_cntl->z_test_enable = false;
-         *invalidate_lrz = true;
-      }
-      break;
-   }
-}
-
-static struct A6XX_GRAS_LRZ_CNTL
-tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
-                        const uint32_t a)
-{
-   struct tu_pipeline *pipeline = cmd->state.pipeline;
-   bool z_test_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
-   bool z_write_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
-   bool z_read_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE;
-   bool z_bounds_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE;
-   VkCompareOp depth_compare_op = (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
-
-   struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = { 0 };
-
-   /* What happens in FS could affect LRZ, e.g.: writes to gl_FragDepth
-    * or early fragment tests.
-    */
-   if (pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ) {
-      cmd->state.lrz.valid = false;
-      return gras_lrz_cntl;
-   }
-
-   /* If depth test is disabled we shouldn't touch LRZ.
-    * Same if there is no depth attachment.
-    */
-   if (a == VK_ATTACHMENT_UNUSED || !z_test_enable ||
-       (cmd->device->instance->debug_flags & TU_DEBUG_NOLRZ))
-      return gras_lrz_cntl;
-
-   if (!cmd->state.attachments) {
-      /* Secondary cmdbuf - there is nothing we could do. */
-      return gras_lrz_cntl;
-   }
-
-   gras_lrz_cntl.enable = z_test_enable;
-   gras_lrz_cntl.lrz_write =
-      z_write_enable &&
-      !(pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE);
-   gras_lrz_cntl.z_test_enable = z_read_enable;
-   gras_lrz_cntl.z_bounds_enable = z_bounds_enable;
-
-   /* See comment in tu_pipeline about disabling LRZ write for blending. */
-   if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP)) &&
-       cmd->state.logic_op_enabled && cmd->state.rop_reads_dst)
-      gras_lrz_cntl.lrz_write = false;
-
-   if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
-        cmd->state.color_write_enable != MASK(cmd->state.pipeline->num_rts))
-      gras_lrz_cntl.lrz_write = false;
-
-   /* LRZ is disabled until it is cleared, which means that one "wrong"
-    * depth test or shader could disable LRZ until depth buffer is cleared.
-    */
-   bool disable_lrz = false;
-   bool temporary_disable_lrz = false;
-
-   /* If Z is not written - it doesn't affect LRZ buffer state.
-    * Which means two things:
-    * - Don't lock direction until Z is written for the first time;
-    * - If Z isn't written and direction IS locked it's possible to just
-    *   temporary disable LRZ instead of fully bailing out, when direction
-    *   is changed.
-    */
-
-   enum tu_lrz_direction lrz_direction = TU_LRZ_UNKNOWN;
-   switch (depth_compare_op) {
-   case VK_COMPARE_OP_ALWAYS:
-   case VK_COMPARE_OP_NOT_EQUAL:
-      /* OP_ALWAYS and OP_NOT_EQUAL could have depth value of any direction,
-       * so if there is a depth write - LRZ must be disabled.
-       */
-      if (z_write_enable) {
-         perf_debug(cmd->device, "Invalidating LRZ due to ALWAYS/NOT_EQUAL");
-         disable_lrz = true;
-      } else {
-         perf_debug(cmd->device, "Skipping LRZ due to ALWAYS/NOT_EQUAL");
-         temporary_disable_lrz = true;
-      }
-      break;
-   case VK_COMPARE_OP_EQUAL:
-   case VK_COMPARE_OP_NEVER:
-      /* Blob disables LRZ for OP_EQUAL, and from our empirical
-       * evidence it is a right thing to do.
-       *
-       * Both OP_EQUAL and OP_NEVER don't change LRZ buffer so
-       * we could just temporary disable LRZ.
-       */
-      temporary_disable_lrz = true;
-      break;
-   case VK_COMPARE_OP_GREATER:
-   case VK_COMPARE_OP_GREATER_OR_EQUAL:
-      lrz_direction = TU_LRZ_GREATER;
-      gras_lrz_cntl.greater = true;
-      break;
-   case VK_COMPARE_OP_LESS:
-   case VK_COMPARE_OP_LESS_OR_EQUAL:
-      lrz_direction = TU_LRZ_LESS;
-      gras_lrz_cntl.greater = false;
-      break;
-   default:
-      unreachable("bad VK_COMPARE_OP value or uninitialized");
-      break;
-   };
-
-   /* If depthfunc direction is changed, bail out on using LRZ. The
-    * LRZ buffer encodes a min/max depth value per block, but if
-    * we switch from GT/GE <-> LT/LE, those values cannot be
-    * interpreted properly.
-    */
-   if (cmd->state.lrz.prev_direction != TU_LRZ_UNKNOWN &&
-       lrz_direction != TU_LRZ_UNKNOWN &&
-       cmd->state.lrz.prev_direction != lrz_direction) {
-      if (z_write_enable) {
-         perf_debug(cmd->device, "Invalidating LRZ due to direction change");
-         disable_lrz = true;
-      } else {
-         perf_debug(cmd->device, "Skipping LRZ due to direction change");
-         temporary_disable_lrz = true;
-      }
-   }
-
-   /* Consider the following sequence of depthfunc changes:
-    *
-    * - COMPARE_OP_GREATER -> COMPARE_OP_EQUAL -> COMPARE_OP_GREATER
-    * LRZ is disabled during COMPARE_OP_EQUAL but could be enabled
-    * during second VK_COMPARE_OP_GREATER.
-    *
-    * - COMPARE_OP_GREATER -> COMPARE_OP_EQUAL -> COMPARE_OP_LESS
-    * Here, LRZ is disabled during COMPARE_OP_EQUAL and should become
-    * invalid during COMPARE_OP_LESS.
-    *
-    * This shows that we should keep last KNOWN direction.
-    */
-   if (z_write_enable && lrz_direction != TU_LRZ_UNKNOWN)
-      cmd->state.lrz.prev_direction = lrz_direction;
-
-   /* Invalidate LRZ and disable write if stencil test is enabled */
-   bool stencil_test_enable = cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;
-   if (stencil_test_enable) {
-      bool stencil_front_writemask =
-         (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
-         (cmd->state.dynamic_stencil_wrmask & 0xff) :
-         (pipeline->stencil_wrmask & 0xff);
-
-      bool stencil_back_writemask =
-         (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
-         ((cmd->state.dynamic_stencil_wrmask & 0xff00) >> 8) :
-         (pipeline->stencil_wrmask & 0xff00) >> 8;
-
-      VkCompareOp stencil_front_compare_op =
-         (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC__SHIFT;
-
-      VkCompareOp stencil_back_compare_op =
-         (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC_BF__SHIFT;
-
-      tu6_lrz_stencil_op(&gras_lrz_cntl, stencil_front_compare_op,
-                         stencil_front_writemask, &disable_lrz);
-
-      tu6_lrz_stencil_op(&gras_lrz_cntl, stencil_back_compare_op,
-                         stencil_back_writemask, &disable_lrz);
-   }
-
-   if (disable_lrz)
-      cmd->state.lrz.valid = false;
-
-   if (temporary_disable_lrz)
-      gras_lrz_cntl.enable = false;
-
-   cmd->state.lrz.enabled = cmd->state.lrz.valid && gras_lrz_cntl.enable;
-   if (!cmd->state.lrz.enabled)
-      memset(&gras_lrz_cntl, 0, sizeof(gras_lrz_cntl));
-
-   return gras_lrz_cntl;
-}
-
-static void
-tu6_build_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   const uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
-   struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = tu6_calculate_lrz_state(cmd, a);
-
-   tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_CNTL(
-      .enable = gras_lrz_cntl.enable,
-      .greater = gras_lrz_cntl.greater,
-      .lrz_write = gras_lrz_cntl.lrz_write,
-      .z_test_enable = gras_lrz_cntl.z_test_enable,
-      .z_bounds_enable = gras_lrz_cntl.z_bounds_enable));
-   tu_cs_emit_regs(cs, A6XX_RB_LRZ_CNTL(.enable = gras_lrz_cntl.enable));
 }
 
 static bool
@@ -4186,7 +3914,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       struct tu_cs cs;
       cmd->state.lrz_and_depth_plane_state =
          tu_cs_draw_state(&cmd->sub_cs, &cs, 8);
-      tu6_build_lrz(cmd, &cs);
+      tu6_emit_lrz(cmd, &cs);
       tu6_build_depth_plane_z_mode(cmd, &cs);
    }
 

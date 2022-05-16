@@ -1304,6 +1304,15 @@ tu6_clear_lrz(struct tu_cmd_buffer *cmd,
 {
    const struct blit_ops *ops = &r2d_ops;
 
+   /* It is assumed that LRZ cache is invalidated at this point for
+    * the writes here to become visible to LRZ.
+    *
+    * LRZ writes are going through UCHE cache, flush UCHE before changing
+    * LRZ via CCU. Don't need to invalidate CCU since we are presumably
+    * writing whole cache lines we assume to be 64 bytes.
+    */
+   tu6_emit_event_write(cmd, &cmd->cs, CACHE_FLUSH_TS);
+
    ops->setup(cmd, cs, PIPE_FORMAT_Z16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT, 0, true, false,
               VK_SAMPLE_COUNT_1_BIT);
    ops->clear_value(cs, PIPE_FORMAT_Z16_UNORM, value);
@@ -1311,6 +1320,32 @@ tu6_clear_lrz(struct tu_cmd_buffer *cmd,
                    image->iova + image->lrz_offset,
                    image->lrz_pitch * 2);
    ops->coords(cs, &(VkOffset2D) {}, NULL, &(VkExtent2D) {image->lrz_pitch, image->lrz_height});
+   ops->run(cmd, cs);
+   ops->teardown(cmd, cs);
+
+   /* Clearing writes via CCU color in the PS stage, and LRZ is read via
+    * UCHE in the earlier GRAS stage.
+    */
+   cmd->state.cache.flush_bits |=
+      TU_CMD_FLAG_CCU_FLUSH_COLOR | TU_CMD_FLAG_CACHE_INVALIDATE |
+      TU_CMD_FLAG_WAIT_FOR_IDLE;
+}
+
+void
+tu6_dirty_lrz_fc(struct tu_cmd_buffer *cmd,
+                 struct tu_cs *cs,
+                 struct tu_image *image)
+{
+   const struct blit_ops *ops = &r2d_ops;
+   VkClearValue clear = { .color = { .uint32[0] = 0xffffffff } };
+
+   /* LRZ fast-clear buffer is always allocated with 512 bytes size. */
+   ops->setup(cmd, cs, PIPE_FORMAT_R32_UINT, VK_IMAGE_ASPECT_COLOR_BIT, 0, true, false,
+              VK_SAMPLE_COUNT_1_BIT);
+   ops->clear_value(cs, PIPE_FORMAT_R32_UINT, &clear);
+   ops->dst_buffer(cs, PIPE_FORMAT_R32_UINT,
+                   image->iova + image->lrz_fc_offset, 512);
+   ops->coords(cs, &(VkOffset2D) {}, NULL, &(VkExtent2D) {128, 1});
    ops->run(cmd, cs);
    ops->teardown(cmd, cs);
 }
@@ -1536,6 +1571,10 @@ tu_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
       tu6_blit_image(cmd, src_image, dst_image, pBlitImageInfo->pRegions + i,
                      pBlitImageInfo->filter);
    }
+
+   if (dst_image->lrz_height) {
+      tu_disable_lrz(cmd, &cmd->cs, dst_image);
+   }
 }
 
 static void
@@ -1640,6 +1679,10 @@ tu_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
    for (unsigned i = 0; i < pCopyBufferToImageInfo->regionCount; ++i)
       tu_copy_buffer_to_image(cmd, src_buffer, dst_image,
                               pCopyBufferToImageInfo->pRegions + i);
+
+   if (dst_image->lrz_height) {
+      tu_disable_lrz(cmd, &cmd->cs, dst_image);
+   }
 }
 
 static void
@@ -1953,6 +1996,10 @@ tu_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
 
       tu_copy_image_to_image(cmd, src_image, dst_image,
                              pCopyImageInfo->pRegions + i);
+   }
+
+   if (dst_image->lrz_height) {
+      tu_disable_lrz(cmd, &cmd->cs, dst_image);
    }
 }
 
@@ -2284,6 +2331,8 @@ tu_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
 
       clear_image(cmd, image, (const VkClearValue*) pDepthStencil, range, range->aspectMask);
    }
+
+   tu_lrz_clear_depth_image(cmd, image, pDepthStencil, rangeCount, pRanges);
 }
 
 static void
@@ -2643,8 +2692,8 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
    for (uint32_t j = 0; j < attachmentCount; j++) {
       if ((pAttachments[j].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) == 0)
          continue;
-      cmd->state.lrz.valid = false;
-      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+
+      tu_lrz_disable_during_renderpass(cmd);
    }
 
    /* vkCmdClearAttachments is supposed to respect the predicate if active.

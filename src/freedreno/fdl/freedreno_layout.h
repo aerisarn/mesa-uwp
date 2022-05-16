@@ -313,6 +313,8 @@ struct fdl6_view {
    uint32_t RB_2D_DST_INFO;
 
    uint32_t RB_BLIT_DST_INFO;
+
+   uint32_t GRAS_LRZ_DEPTH_VIEW;
 };
 
 void

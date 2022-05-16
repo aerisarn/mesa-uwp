@@ -265,6 +265,7 @@ enum tu_debug_flags
    TU_DEBUG_LAYOUT = 1 << 16,
    TU_DEBUG_LOG_SKIP_GMEM_OPS = 1 << 17,
    TU_DEBUG_PERF = 1 << 18,
+   TU_DEBUG_NOLRZFC = 1 << 19,
 };
 
 struct tu_instance
@@ -1126,11 +1127,16 @@ struct tu_lrz_pipeline
 struct tu_lrz_state
 {
    /* Depth/Stencil image currently on use to do LRZ */
-   struct tu_image *image;
+   const struct tu_image_view *image_view;
+   VkClearValue depth_clear_value;
    /* If LRZ is in invalid state we cannot use it until depth is cleared */
    bool valid : 1;
    /* Allows to temporary disable LRZ */
    bool enabled : 1;
+   bool fast_clear : 1;
+   bool gpu_dir_tracking : 1;
+   /* Continue using old LRZ state (LOAD_OP_LOAD of depth) */
+   bool reuse_previous_state : 1;
    enum tu_lrz_direction prev_direction;
 };
 
@@ -1535,15 +1541,57 @@ struct tu_pipeline
    struct util_dynarray executables;
 };
 
+struct tu_image;
+
+void
+tu6_clear_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image, const VkClearValue *value);
+
+void
+tu6_dirty_lrz_fc(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image);
+
+void
+tu6_emit_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+
+void
+tu_disable_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
+               struct tu_image *image);
+
+void
+tu_lrz_clear_depth_image(struct tu_cmd_buffer *cmd,
+                         struct tu_image *image,
+                         const VkClearDepthStencilValue *pDepthStencil,
+                         uint32_t rangeCount,
+                         const VkImageSubresourceRange *pRanges);
+
+void
+tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
+                        const VkRenderPassBeginInfo *pRenderPassBegin);
+
+void
+tu_lrz_begin_secondary_cmdbuf(struct tu_cmd_buffer *cmd,
+                              struct tu_framebuffer *fb);
+
+void
+tu_lrz_tiling_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+
+void
+tu_lrz_tiling_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+
+void
+tu_lrz_sysmem_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+
+void
+tu_lrz_sysmem_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+
+void
+tu_lrz_disable_during_renderpass(struct tu_cmd_buffer *cmd);
+
 void
 tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport, uint32_t num_viewport,
                   bool z_negative_one_to_one);
 
 void
 tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scs, uint32_t scissor_count);
-
-void
-tu6_clear_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image, const VkClearValue *value);
 
 void
 tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc);
@@ -1691,6 +1739,8 @@ struct tu_image
    uint32_t lrz_height;
    uint32_t lrz_pitch;
    uint32_t lrz_offset;
+   uint32_t lrz_fc_offset;
+   uint32_t lrz_fc_size;
 
    bool shareable;
 };
