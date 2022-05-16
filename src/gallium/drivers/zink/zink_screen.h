@@ -67,6 +67,7 @@ enum zink_descriptor_type;
 #define ZINK_DEBUG_TGSI 0x4
 #define ZINK_DEBUG_VALIDATION 0x8
 #define ZINK_DEBUG_SYNC 0x10
+#define ZINK_DEBUG_COMPACT (1<<5)
 
 #define NUM_SLAB_ALLOCATORS 3
 #define MIN_SLAB_ORDER 8
@@ -78,7 +79,11 @@ enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_LAZY,
    ZINK_DESCRIPTOR_MODE_NOFALLBACK,
    ZINK_DESCRIPTOR_MODE_NOTEMPLATES,
+   ZINK_DESCRIPTOR_MODE_COMPACT,
 };
+
+//keep in sync with zink_descriptor_type since headers can't be cross-included
+#define ZINK_MAX_DESCRIPTOR_SETS 6
 
 struct zink_modifier_prop {
     uint32_t                             drmFormatModifierCount;
@@ -164,6 +169,7 @@ struct zink_screen {
 
    struct vk_dispatch_table vk;
 
+   bool compact_descriptors;
    uint8_t desc_set_id[ZINK_MAX_DESCRIPTOR_SETS];
    bool (*descriptor_program_init)(struct zink_context *ctx, struct zink_program *pg);
    void (*descriptor_program_deinit)(struct zink_context *ctx, struct zink_program *pg);

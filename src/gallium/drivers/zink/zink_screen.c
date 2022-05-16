@@ -79,6 +79,7 @@ zink_debug_options[] = {
    { "tgsi", ZINK_DEBUG_TGSI, "Dump TGSI during program compile" },
    { "validation", ZINK_DEBUG_VALIDATION, "Dump Validation layer output" },
    { "sync", ZINK_DEBUG_SYNC, "Force synchronization before draws/dispatches" },
+   { "compact", ZINK_DEBUG_COMPACT, "Use only 4 descriptor sets" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2180,12 +2181,23 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_verify_device_extensions(screen);
 
-   screen->desc_set_id[ZINK_DESCRIPTOR_TYPES] = 0;
-   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UBO] = 1;
-   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = 2;
-   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 3;
-   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 4;
-   screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
+   if ((zink_debug & ZINK_DEBUG_COMPACT) ||
+       screen->info.props.limits.maxBoundDescriptorSets < ZINK_MAX_DESCRIPTOR_SETS) {
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPES] = 0;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UBO] = 1;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 1;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = 2;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 2;
+      screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 3;
+      screen->compact_descriptors = true;
+   } else {
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPES] = 0;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UBO] = 1;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = 2;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 3;
+      screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 4;
+      screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
+   }
 
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))
       goto fail;

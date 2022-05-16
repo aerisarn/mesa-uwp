@@ -141,12 +141,30 @@ descriptor_program_num_sizes(VkDescriptorPoolSize *sizes, enum zink_descriptor_t
    unreachable("unknown type");
 }
 
+static uint16_t
+descriptor_program_num_sizes_compact(VkDescriptorPoolSize *sizes, unsigned desc_set)
+{
+   switch (desc_set) {
+   case ZINK_DESCRIPTOR_TYPE_UBO:
+      return !!sizes[ZDS_INDEX_COMP_UBO].descriptorCount + !!sizes[ZDS_INDEX_COMP_STORAGE_BUFFER].descriptorCount;
+   case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+      return !!sizes[ZDS_INDEX_COMP_COMBINED_SAMPLER].descriptorCount +
+             !!sizes[ZDS_INDEX_COMP_UNIFORM_TEXELS].descriptorCount +
+             !!sizes[ZDS_INDEX_COMP_STORAGE_IMAGE].descriptorCount +
+             !!sizes[ZDS_INDEX_COMP_STORAGE_TEXELS].descriptorCount;
+   case ZINK_DESCRIPTOR_TYPE_SSBO:
+   case ZINK_DESCRIPTOR_TYPE_IMAGE:
+   default: break;
+   }
+   unreachable("unknown type");
+}
+
 bool
 zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program *pg)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
-   VkDescriptorUpdateTemplateEntry entries[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
+   VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 64];
+   VkDescriptorUpdateTemplateEntry entries[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 64];
    unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {0};
    uint8_t has_bindings = 0;
    unsigned push_count = 0;
@@ -200,14 +218,17 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
             binding->stageFlags = stage_flags;
             binding->pImmutableSamplers = NULL;
 
-            enum zink_descriptor_size_index idx = zink_vktype_to_size_idx(shader->bindings[j][k].type);
+            unsigned idx = screen->compact_descriptors ? zink_vktype_to_size_idx_comp(shader->bindings[j][k].type) :
+                                                         zink_vktype_to_size_idx(shader->bindings[j][k].type);
             sizes[idx].descriptorCount += shader->bindings[j][k].size;
             sizes[idx].type = shader->bindings[j][k].type;
             init_template_entry(shader, j, k, &entries[desc_set][entry_idx[desc_set]], &entry_idx[desc_set], screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY);
             num_bindings[desc_set]++;
             has_bindings |= BITFIELD_BIT(desc_set);
          }
-         num_type_sizes[desc_set] = descriptor_program_num_sizes(sizes, j);
+         num_type_sizes[desc_set] = screen->compact_descriptors ?
+                                    descriptor_program_num_sizes_compact(sizes, desc_set) :
+                                    descriptor_program_num_sizes(sizes, j);
       }
       pg->dd->bindless |= shader->bindless;
    }
@@ -630,8 +651,11 @@ zink_context_invalidate_descriptor_state_lazy(struct zink_context *ctx, enum pip
 {
    if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start)
       dd_lazy(ctx)->push_state_changed[shader == PIPE_SHADER_COMPUTE] = true;
-   else
+   else {
+      if (zink_screen(ctx->base.screen)->compact_descriptors && type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
+         type -= 2;
       dd_lazy(ctx)->state_changed[shader == PIPE_SHADER_COMPUTE] |= BITFIELD_BIT(type);
+   }
 }
 
 void
