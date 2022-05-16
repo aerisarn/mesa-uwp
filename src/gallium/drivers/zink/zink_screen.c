@@ -186,7 +186,7 @@ disk_cache_init(struct zink_screen *screen)
 
    screen->disk_cache = disk_cache_create(buf, screen->info.props.deviceName, 0);
    if (!screen->disk_cache)
-      return false;
+      return true;
 
    if (!util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen) ||
       !util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
