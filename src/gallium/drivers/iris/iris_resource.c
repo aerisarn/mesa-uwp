@@ -914,26 +914,45 @@ static bool
 iris_resource_init_aux_buf(struct iris_screen *screen,
                            struct iris_resource *res)
 {
-   void *map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
+   void *map = NULL;
 
-   if (!map)
-      return false;
+   if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID &&
+       res->aux.surf.size_B > 0) {
+      if (!map)
+         map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
+      if (!map)
+         return false;
 
-   if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID) {
       /* See iris_resource_configure_aux for the memset_value rationale. */
       uint8_t memset_value = isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0;
       memset((char*)map + res->aux.offset, memset_value,
              res->aux.surf.size_B);
    }
 
-   memset((char*)map + res->aux.extra_aux.offset,
-          0, res->aux.extra_aux.surf.size_B);
+   if (res->aux.extra_aux.surf.size_B > 0) {
+      if (!map)
+         map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
+      if (!map)
+         return false;
 
-   /* Zero the indirect clear color to match ::fast_clear_color. */
-   memset((char *)map + res->aux.clear_color_offset, 0,
-          iris_get_aux_clear_color_state_size(screen, res));
+      memset((char*)map + res->aux.extra_aux.offset,
+             0, res->aux.extra_aux.surf.size_B);
+   }
 
-   iris_bo_unmap(res->bo);
+   unsigned clear_color_size =
+      iris_get_aux_clear_color_state_size(screen, res);
+   if (clear_color_size > 0) {
+      if (!map)
+         map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
+      if (!map)
+         return false;
+
+      /* Zero the indirect clear color to match ::fast_clear_color. */
+      memset((char *)map + res->aux.clear_color_offset, 0, clear_color_size);
+   }
+
+   if (map)
+      iris_bo_unmap(res->bo);
 
    if (res->aux.surf.size_B > 0) {
       res->aux.bo = res->bo;
@@ -941,7 +960,7 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
       map_aux_addresses(screen, res, res->internal_format, 0);
    }
 
-   if (iris_get_aux_clear_color_state_size(screen, res) > 0) {
+   if (clear_color_size > 0) {
       res->aux.clear_color_bo = res->bo;
       iris_bo_reference(res->aux.clear_color_bo);
    }
