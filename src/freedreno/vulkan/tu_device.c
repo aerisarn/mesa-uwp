@@ -216,6 +216,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_image_robustness = true,
       .EXT_primitives_generated_query = true,
       .EXT_image_view_min_lod = true,
+      .EXT_pipeline_creation_feedback = true,
 #ifndef TU_USE_KGSL
       .EXT_physical_device_drm = true,
 #endif

@@ -485,7 +485,7 @@ Vulkan 1.3 -- all DONE: anv, radv, lvp
   VK_EXT_extended_dynamic_state2                        DONE (anv, lvp, radv, tu)
   VK_EXT_inline_uniform_block                           DONE (anv, radv, v3dv)
   VK_EXT_pipeline_creation_cache_control                DONE (anv, radv, v3dv)
-  VK_EXT_pipeline_creation_feedback                     DONE (anv, radv, v3dv)
+  VK_EXT_pipeline_creation_feedback                     DONE (anv, radv, tu, v3dv)
   VK_EXT_private_data                                   DONE (anv, lvp, radv, tu, v3dv)
   VK_EXT_image_robustness                               DONE (anv, radv, tu)
   VK_EXT_shader_demote_to_helper_invocation             DONE (anv, radv, tu)
