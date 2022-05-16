@@ -275,14 +275,14 @@ radv_spirv_nir_debug(void *private_data, enum nir_spirv_debug_level level, size_
 }
 
 static void
-radv_compiler_debug(void *private_data, enum radv_compiler_debug_level level, const char *message)
+radv_compiler_debug(void *private_data, enum aco_compiler_debug_level level, const char *message)
 {
    struct radv_shader_debug_data *debug_data = private_data;
    struct radv_instance *instance = debug_data->device->instance;
 
    static const VkDebugReportFlagsEXT vk_flags[] = {
-      [RADV_COMPILER_DEBUG_LEVEL_PERFWARN] = VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-      [RADV_COMPILER_DEBUG_LEVEL_ERROR] = VK_DEBUG_REPORT_ERROR_BIT_EXT,
+      [ACO_COMPILER_DEBUG_LEVEL_PERFWARN] = VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
+      [ACO_COMPILER_DEBUG_LEVEL_ERROR] = VK_DEBUG_REPORT_ERROR_BIT_EXT,
    };
 
    /* VK_DEBUG_REPORT_DEBUG_BIT_EXT specifies diagnostic information
@@ -2012,8 +2012,10 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 #endif
    } else {
       struct aco_shader_info ac_info;
+      struct aco_compiler_options ac_opts;
+      radv_aco_convert_opts(&ac_opts, options);
       radv_aco_convert_shader_info(&ac_info, info);
-      aco_compile_shader(options, &ac_info, shader_count, shaders, args, &binary);
+      aco_compile_shader(&ac_opts, &ac_info, shader_count, shaders, args, &binary);
    }
 
    binary->info = *info;
@@ -2208,9 +2210,11 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    struct radv_prolog_binary *binary = NULL;
    struct aco_shader_info ac_info;
    struct aco_vs_prolog_key ac_key;
+   struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info);
+   radv_aco_convert_opts(&ac_opts, &options);
    radv_aco_convert_vs_prolog_key(&ac_key, key);
-   aco_compile_vs_prolog(&options, &ac_info, &ac_key, &args, &binary);
+   aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_key, &args, &binary);
    struct radv_shader_prolog *prolog = upload_vs_prolog(device, binary, info.wave_size);
    if (prolog) {
       prolog->nontrivial_divisors = key->state->nontrivial_divisors;

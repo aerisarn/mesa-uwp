@@ -121,11 +121,48 @@ radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_key *aco_info,
    ASSIGN_FIELD(is_ngg);
    ASSIGN_FIELD(next_stage);
 }
+
+static inline void
+radv_aco_convert_pipe_key(struct aco_stage_input *aco_info,
+                          const struct radv_pipeline_key *radv)
+{
+   ASSIGN_FIELD(optimisations_disabled);
+   ASSIGN_FIELD(image_2d_view_of_3d);
+   ASSIGN_FIELD(vs.instance_rate_inputs);
+   ASSIGN_FIELD_CP(vs.instance_rate_divisors);
+   ASSIGN_FIELD_CP(vs.vertex_attribute_formats);
+   ASSIGN_FIELD_CP(vs.vertex_attribute_bindings);
+   ASSIGN_FIELD_CP(vs.vertex_attribute_offsets);
+   ASSIGN_FIELD_CP(vs.vertex_attribute_strides);
+   ASSIGN_FIELD_CP(vs.vertex_binding_align);
+   ASSIGN_FIELD(tcs.tess_input_vertices);
+   ASSIGN_FIELD(ps.col_format);
+   ASSIGN_FIELD(ps.num_samples);
+   ASSIGN_FIELD(ps.alpha_to_coverage_via_mrtz);
+}
+
+static inline void
+radv_aco_convert_opts(struct aco_compiler_options *aco_info,
+                      const struct radv_nir_compiler_options *radv)
+{
+   radv_aco_convert_pipe_key(&aco_info->key, &radv->key);
+   ASSIGN_FIELD(robust_buffer_access);
+   ASSIGN_FIELD(dump_shader);
+   ASSIGN_FIELD(dump_preoptir);
+   ASSIGN_FIELD(record_ir);
+   ASSIGN_FIELD(record_stats);
+   ASSIGN_FIELD(has_ls_vgpr_init_bug);
+   ASSIGN_FIELD(wgp_mode);
+   ASSIGN_FIELD(family);
+   ASSIGN_FIELD(gfx_level);
+   ASSIGN_FIELD(address32_hi);
+   ASSIGN_FIELD(debug.func);
+   ASSIGN_FIELD(debug.private_data);
+}
 #undef ASSIGN_VS_STATE_FIELD
 #undef ASSIGN_VS_STATE_FIELD_CP
 #undef ASSIGN_FIELD
 #undef ASSIGN_FIELD_CP
 #undef ASSIGN_OUTINFO
-
 
 #endif

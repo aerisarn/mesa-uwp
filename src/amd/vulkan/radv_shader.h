@@ -39,6 +39,8 @@
 #include "vulkan/runtime/vk_shader_module.h"
 #include "vulkan/vulkan.h"
 
+#include "aco_shader_info.h"
+
 #define RADV_VERT_ATTRIB_MAX MAX2(VERT_ATTRIB_MAX, VERT_ATTRIB_GENERIC0 + MAX_VERTEX_ATTRIBS)
 
 struct radv_physical_device;
@@ -112,11 +114,6 @@ struct radv_pipeline_key {
    } cs;
 };
 
-enum radv_compiler_debug_level {
-   RADV_COMPILER_DEBUG_LEVEL_PERFWARN,
-   RADV_COMPILER_DEBUG_LEVEL_ERROR,
-};
-
 struct radv_nir_compiler_options {
    struct radv_pipeline_key key;
    bool robust_buffer_access;
@@ -134,7 +131,7 @@ struct radv_nir_compiler_options {
    bool has_3d_cube_border_color_mipmap;
 
    struct {
-      void (*func)(void *private_data, enum radv_compiler_debug_level level, const char *message);
+      void (*func)(void *private_data, enum aco_compiler_debug_level level, const char *message);
       void *private_data;
    } debug;
 };

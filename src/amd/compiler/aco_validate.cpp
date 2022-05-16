@@ -34,7 +34,7 @@
 namespace aco {
 
 static void
-aco_log(Program* program, enum radv_compiler_debug_level level, const char* prefix,
+aco_log(Program* program, enum aco_compiler_debug_level level, const char* prefix,
         const char* file, unsigned line, const char* fmt, va_list args)
 {
    char* msg;
@@ -62,7 +62,7 @@ _aco_perfwarn(Program* program, const char* file, unsigned line, const char* fmt
    va_list args;
 
    va_start(args, fmt);
-   aco_log(program, RADV_COMPILER_DEBUG_LEVEL_PERFWARN, "ACO PERFWARN:\n", file, line, fmt, args);
+   aco_log(program, ACO_COMPILER_DEBUG_LEVEL_PERFWARN, "ACO PERFWARN:\n", file, line, fmt, args);
    va_end(args);
 }
 
@@ -72,7 +72,7 @@ _aco_err(Program* program, const char* file, unsigned line, const char* fmt, ...
    va_list args;
 
    va_start(args, fmt);
-   aco_log(program, RADV_COMPILER_DEBUG_LEVEL_ERROR, "ACO ERROR:\n", file, line, fmt, args);
+   aco_log(program, ACO_COMPILER_DEBUG_LEVEL_ERROR, "ACO ERROR:\n", file, line, fmt, args);
    va_end(args);
 }
 

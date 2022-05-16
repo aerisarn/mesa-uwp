@@ -27,7 +27,7 @@
 
 #include "aco_opcodes.h"
 #include "aco_util.h"
-
+#include "aco_interface.h"
 #include "aco_shader_info.h"
 #include "vulkan/radv_shader.h"
 
@@ -2090,7 +2090,7 @@ public:
    struct {
       FILE* output = stderr;
       bool shorten_messages = false;
-      void (*func)(void* private_data, enum radv_compiler_debug_level level, const char* message);
+      void (*func)(void* private_data, enum aco_compiler_debug_level level, const char* message);
       void* private_data;
    } debug;
 
@@ -2155,21 +2155,21 @@ void init_program(Program* program, Stage stage, const struct aco_shader_info* i
                   ac_shader_config* config);
 
 void select_program(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
-                    ac_shader_config* config, const struct radv_nir_compiler_options* options,
+                    ac_shader_config* config, const struct aco_compiler_options* options,
                     const struct aco_shader_info* info,
                     const struct radv_shader_args* args);
 void select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
-                           const struct radv_nir_compiler_options* options,
+                           const struct aco_compiler_options* options,
                            const struct aco_shader_info* info,
                            const struct radv_shader_args* args);
 void select_trap_handler_shader(Program* program, struct nir_shader* shader,
                                 ac_shader_config* config,
-                                const struct radv_nir_compiler_options* options,
+                                const struct aco_compiler_options* options,
                                 const struct aco_shader_info* info,
                                 const struct radv_shader_args* args);
 void select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key,
                       ac_shader_config* config,
-                      const struct radv_nir_compiler_options* options,
+                      const struct aco_compiler_options* options,
                       const struct aco_shader_info* info,
                       const struct radv_shader_args* args,
                       unsigned* num_preserved_sgprs);

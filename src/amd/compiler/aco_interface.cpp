@@ -104,7 +104,7 @@ get_disasm_string(aco::Program* program, std::vector<uint32_t>& code,
 }
 
 void
-aco_compile_shader(const struct radv_nir_compiler_options* options,
+aco_compile_shader(const struct aco_compiler_options* options,
                    const struct aco_shader_info* info,
                    unsigned shader_count, struct nir_shader* const* shaders,
                    const struct radv_shader_args *args,
@@ -279,7 +279,7 @@ aco_compile_shader(const struct radv_nir_compiler_options* options,
 }
 
 void
-aco_compile_vs_prolog(const struct radv_nir_compiler_options* options,
+aco_compile_vs_prolog(const struct aco_compiler_options* options,
                       const struct aco_shader_info* info,
                       const struct aco_vs_prolog_key* key,
                       const struct radv_shader_args* args,

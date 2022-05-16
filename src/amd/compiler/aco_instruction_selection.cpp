@@ -27,6 +27,7 @@
 
 #include "aco_builder.h"
 #include "aco_ir.h"
+#include "aco_interface.h"
 
 #include "common/ac_nir.h"
 #include "common/sid.h"
@@ -11375,7 +11376,7 @@ ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt)
 
 void
 select_program(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
-               ac_shader_config* config, const struct radv_nir_compiler_options* options,
+               ac_shader_config* config, const struct aco_compiler_options* options,
                const struct aco_shader_info* info,
                const struct radv_shader_args* args)
 {
@@ -11503,7 +11504,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
 void
 select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
-                      const struct radv_nir_compiler_options* options,
+                      const struct aco_compiler_options* options,
                       const struct aco_shader_info* info,
                       const struct radv_shader_args* args)
 {
@@ -11602,7 +11603,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
 
 void
 select_trap_handler_shader(Program* program, struct nir_shader* shader, ac_shader_config* config,
-                           const struct radv_nir_compiler_options* options,
+                           const struct aco_compiler_options* options,
                            const struct aco_shader_info* info,
                            const struct radv_shader_args* args)
 {
@@ -11766,7 +11767,7 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
 
 void
 select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shader_config* config,
-                 const struct radv_nir_compiler_options* options,
+                 const struct aco_compiler_options* options,
                  const struct aco_shader_info* info,
                  const struct radv_shader_args* args, unsigned* num_preserved_sgprs)
 {

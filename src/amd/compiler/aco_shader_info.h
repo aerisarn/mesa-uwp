@@ -36,6 +36,7 @@ extern "C" {
 #define ACO_MAX_SO_OUTPUTS 64
 #define ACO_MAX_SO_BUFFERS 4
 #define ACO_MAX_VERTEX_ATTRIBS 32
+#define ACO_MAX_VBS 32
 
 struct aco_vs_input_state {
    uint32_t instance_rate_inputs;
@@ -137,6 +138,55 @@ struct aco_shader_info {
    struct aco_streamout_info so;
 
    uint32_t gfx9_gs_ring_lds_size;
+};
+
+enum aco_compiler_debug_level {
+   ACO_COMPILER_DEBUG_LEVEL_PERFWARN,
+   ACO_COMPILER_DEBUG_LEVEL_ERROR,
+};
+
+struct aco_stage_input {
+   uint32_t optimisations_disabled : 1;
+   uint32_t image_2d_view_of_3d : 1;
+   struct {
+      uint32_t instance_rate_inputs;
+      uint32_t instance_rate_divisors[ACO_MAX_VERTEX_ATTRIBS];
+      uint8_t vertex_attribute_formats[ACO_MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_attribute_bindings[ACO_MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_attribute_offsets[ACO_MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_attribute_strides[ACO_MAX_VERTEX_ATTRIBS];
+      uint8_t vertex_binding_align[ACO_MAX_VBS];
+   } vs;
+
+   struct {
+      unsigned tess_input_vertices;
+   } tcs;
+
+   struct {
+      uint32_t col_format;
+      uint8_t num_samples;
+
+      /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
+      bool alpha_to_coverage_via_mrtz;
+   } ps;
+};
+
+struct aco_compiler_options {
+   struct aco_stage_input key;
+   bool robust_buffer_access;
+   bool dump_shader;
+   bool dump_preoptir;
+   bool record_ir;
+   bool record_stats;
+   bool has_ls_vgpr_init_bug;
+   bool wgp_mode;
+   enum radeon_family family;
+   enum amd_gfx_level gfx_level;
+   uint32_t address32_hi;
+   struct {
+      void (*func)(void *private_data, enum aco_compiler_debug_level level, const char *message);
+      void *private_data;
+   } debug;
 };
 
 #ifdef __cplusplus
