@@ -381,6 +381,25 @@ def fix_lava_color_log(line):
     line["msg"] = re.sub(r"(\[\d{1,2}m)", "\x1b" + r"\1", line["msg"])
 
 
+def fix_lava_gitlab_section_log(line):
+    """This function is a temporary solution for the Gitlab section markers
+    mangling problem. Gitlab parses the following lines to define a collapsible
+    gitlab section in their log:
+    - \x1b[0Ksection_start:timestamp:section_id[collapsible=true/false]\r\x1b[0Ksection_header
+    - \x1b[0Ksection_end:timestamp:section_id\r\x1b[0K
+    There is some problem in message passing between the LAVA dispatcher and the
+    device under test (DUT), that digests \x1b and \r control characters
+    incorrectly. When this problem is fixed on the LAVA side, one should remove
+    this function.
+    """
+    if match := re.match(r"\[0K(section_\w+):(\d+):(\S+)\[0K([\S ]+)?", line["msg"]):
+        marker, timestamp, id_collapsible, header = match.groups()
+        # The above regex serves for both section start and end lines.
+        # When the header is None, it means we are dealing with `section_end` line
+        header = header or ""
+        line["msg"] = f"\x1b[0K{marker}:{timestamp}:{id_collapsible}\r\x1b[0K{header}"
+
+
 def parse_lava_lines(new_lines) -> list[str]:
     parsed_lines: list[str] = []
     for line in new_lines:

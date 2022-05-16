@@ -38,6 +38,7 @@ from lava.lava_job_submitter import (
     NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
     LAVAJob,
     fix_lava_color_log,
+    fix_lava_gitlab_section_log,
     follow_job_execution,
     hide_sensitive_data,
     retriable_follow_job,
@@ -373,5 +374,41 @@ COLOR_MANGLED_SCENARIOS = {
 )
 def test_fix_lava_color_log(message, fixed_message):
     fix_lava_color_log(message)
+
+    assert message["msg"] == fixed_message
+
+
+GITLAB_SECTION_MANGLED_SCENARIOS = {
+    "Mangled section_start at target level": (
+        create_lava_yaml_msg(
+            msg="[0Ksection_start:1652658415:deqp[collapsed=false][0Kdeqp-runner",
+            lvl="target",
+        ),
+        "\x1b[0Ksection_start:1652658415:deqp[collapsed=false]\r\x1b[0Kdeqp-runner",
+    ),
+    "Mangled section_start at target level with header with spaces": (
+        create_lava_yaml_msg(
+            msg="[0Ksection_start:1652658415:deqp[collapsed=false][0Kdeqp runner stats",
+            lvl="target",
+        ),
+        "\x1b[0Ksection_start:1652658415:deqp[collapsed=false]\r\x1b[0Kdeqp runner stats",
+    ),
+    "Mangled section_end at target level": (
+        create_lava_yaml_msg(
+            msg="[0Ksection_end:1652658415:test_setup[0K",
+            lvl="target",
+        ),
+        "\x1b[0Ksection_end:1652658415:test_setup\r\x1b[0K",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "message, fixed_message",
+    GITLAB_SECTION_MANGLED_SCENARIOS.values(),
+    ids=GITLAB_SECTION_MANGLED_SCENARIOS.keys(),
+)
+def test_fix_lava_gitlab_section_log(message, fixed_message):
+    fix_lava_gitlab_section_log(message)
 
     assert message["msg"] == fixed_message
