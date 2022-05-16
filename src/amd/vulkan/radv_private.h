@@ -1877,6 +1877,13 @@ struct radv_vertex_input_info {
    bool primitive_restart_enable;
 };
 
+struct radv_pre_raster_info {
+   struct {
+      uint32_t patch_control_points;
+      VkTessellationDomainOrigin domain_origin;
+   } tess;
+};
+
 struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;

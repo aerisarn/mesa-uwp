@@ -113,18 +113,6 @@ radv_pipeline_get_multisample_state(const struct radv_pipeline *pipeline,
    return NULL;
 }
 
-static const VkPipelineTessellationStateCreateInfo *
-radv_pipeline_get_tessellation_state(const struct radv_pipeline *pipeline,
-                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkShaderStageFlagBits tess_stages = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                             VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-
-   if ((pipeline->active_stages & tess_stages) == tess_stages)
-      return pCreateInfo->pTessellationState;
-   return NULL;
-}
-
 static bool
 radv_pipeline_has_ds_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
@@ -1695,6 +1683,29 @@ radv_pipeline_init_vertex_input_interface(struct radv_pipeline *pipeline,
    return vi_info;
 }
 
+static struct radv_pre_raster_info
+radv_pipeline_init_pre_raster_info(struct radv_pipeline *pipeline,
+                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkPipelineTessellationStateCreateInfo *ts = pCreateInfo->pTessellationState;
+   const VkShaderStageFlagBits tess_stages = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                             VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+   struct radv_pre_raster_info pre_rast_info = {0};
+
+   /* Tessellation */
+   if ((pipeline->active_stages & tess_stages) == tess_stages) {
+      pre_rast_info.tess.patch_control_points = ts->patchControlPoints;
+
+      const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
+         vk_find_struct_const(ts->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
+      if (domain_origin_state) {
+         pre_rast_info.tess.domain_origin = domain_origin_state->domainOrigin;
+      }
+   }
+
+   return pre_rast_info;
+}
+
 static void
 radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
                                         const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -3106,6 +3117,7 @@ static struct radv_pipeline_key
 radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_vertex_input_info *vi_info,
+                                    const struct radv_pre_raster_info *pre_rast_info,
                                     const struct radv_blend_state *blend)
 {
    struct radv_device *device = pipeline->device;
@@ -3137,10 +3149,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       key.vs.vertex_binding_align[i] = vi_info->vertex_binding_align[i];
    }
 
-   const VkPipelineTessellationStateCreateInfo *tess =
-      radv_pipeline_get_tessellation_state(pipeline, pCreateInfo);
-   if (tess)
-      key.tcs.tess_input_vertices = tess->patchControlPoints;
+   key.tcs.tess_input_vertices = pre_rast_info->tess.patch_control_points;
 
    const VkPipelineMultisampleStateCreateInfo *vkms =
       radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
@@ -5803,14 +5812,15 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs, struct radeon_
 static void
 radv_pipeline_generate_tess_state(struct radeon_cmdbuf *ctx_cs,
                                   const struct radv_pipeline *pipeline,
-                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                  const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                  const struct radv_pre_raster_info *pre_rast_info)
 {
    struct radv_shader *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
    unsigned type = 0, partitioning = 0, topology = 0, distribution_mode = 0;
    unsigned num_tcs_input_cp, num_tcs_output_cp, num_patches;
    unsigned ls_hs_config;
 
-   num_tcs_input_cp = pCreateInfo->pTessellationState->patchControlPoints;
+   num_tcs_input_cp = pre_rast_info->tess.patch_control_points;
    num_tcs_output_cp =
       pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; // TCS VERTICES OUT
    num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
@@ -5853,12 +5863,7 @@ radv_pipeline_generate_tess_state(struct radeon_cmdbuf *ctx_cs,
    }
 
    bool ccw = tes->info.tes.ccw;
-   const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
-      vk_find_struct_const(pCreateInfo->pTessellationState,
-                           PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
-
-   if (domain_origin_state &&
-       domain_origin_state->domainOrigin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
+   if (pre_rast_info->tess.domain_origin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
       ccw = !ccw;
 
    if (tes->info.tes.point_mode)
@@ -6473,7 +6478,8 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const struct radv_blend_state *blend,
                            const struct radv_depth_stencil_state *ds_state,
-                           uint32_t vgt_gs_out_prim_type)
+                           uint32_t vgt_gs_out_prim_type,
+                           const struct radv_pre_raster_info *pre_rast_info)
 {
    struct radeon_cmdbuf *ctx_cs = &pipeline->ctx_cs;
    struct radeon_cmdbuf *cs = &pipeline->cs;
@@ -6493,7 +6499,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 
    if (radv_pipeline_has_tess(pipeline)) {
       radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline);
-      radv_pipeline_generate_tess_state(ctx_cs, pipeline, pCreateInfo);
+      radv_pipeline_generate_tess_state(ctx_cs, pipeline, pCreateInfo, pre_rast_info);
    }
 
    radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline);
@@ -6731,11 +6737,14 @@ radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *
    struct radv_vertex_input_info vi_info =
       radv_pipeline_init_vertex_input_interface(pipeline, pCreateInfo);
 
+   struct radv_pre_raster_info pre_rast_info =
+      radv_pipeline_init_pre_raster_info(pipeline, pCreateInfo);
+
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
    struct radv_pipeline_key key =
-      radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &vi_info, &blend);
+      radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &vi_info, &pre_rast_info, &blend);
 
    result = radv_create_shaders(pipeline, pipeline_layout, device, cache, &key, pCreateInfo->pStages,
                                 pCreateInfo->stageCount, pCreateInfo->flags, NULL,
@@ -6789,8 +6798,7 @@ radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *
    }
 
    if (radv_pipeline_has_tess(pipeline)) {
-      pipeline->graphics.tess_patch_control_points =
-         pCreateInfo->pTessellationState->patchControlPoints;
+      pipeline->graphics.tess_patch_control_points = pre_rast_info.tess.patch_control_points;
    }
 
    if (!radv_pipeline_has_mesh(pipeline))
@@ -6819,7 +6827,8 @@ radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *
       radv_pipeline_init_extra(pipeline, pCreateInfo, extra, &blend, &ds_state, &vgt_gs_out_prim_type);
    }
 
-   radv_pipeline_generate_pm4(pipeline, pCreateInfo, &blend, &ds_state, vgt_gs_out_prim_type);
+   radv_pipeline_generate_pm4(pipeline, pCreateInfo, &blend, &ds_state, vgt_gs_out_prim_type,
+                              &pre_rast_info);
 
    return result;
 }
