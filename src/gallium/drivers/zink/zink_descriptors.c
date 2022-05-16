@@ -982,7 +982,7 @@ zink_descriptor_pool_reference(struct zink_context *ctx,
 }
 
 static void
-create_descriptor_ref_template(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type)
+create_descriptor_ref_template(struct zink_context *ctx, struct zink_program *pg)
 {
    struct zink_shader **stages;
    if (pg->is_compute)
@@ -991,51 +991,56 @@ create_descriptor_ref_template(struct zink_context *ctx, struct zink_program *pg
       stages = ((struct zink_gfx_program*)pg)->shaders;
    unsigned num_shaders = pg->is_compute ? 1 : ZINK_SHADER_COUNT;
 
-   for (int i = 0; i < num_shaders; i++) {
-      struct zink_shader *shader = stages[i];
-      if (!shader)
-         continue;
+   for (unsigned type = 0; type < ZINK_DESCRIPTOR_TYPES; type++) {
+      for (int i = 0; i < num_shaders; i++) {
+         struct zink_shader *shader = stages[i];
+         if (!shader)
+            continue;
 
-      for (int j = 0; j < shader->num_bindings[type]; j++) {
-          int index = shader->bindings[type][j].index;
-          if (type == ZINK_DESCRIPTOR_TYPE_UBO && !index)
-             continue;
-          pdd_cached(pg)->num_refs[type] += shader->bindings[type][j].size;
+         for (int j = 0; j < shader->num_bindings[type]; j++) {
+             int index = shader->bindings[type][j].index;
+             if (type == ZINK_DESCRIPTOR_TYPE_UBO && !index)
+                continue;
+             pdd_cached(pg)->num_refs[type] += shader->bindings[type][j].size;
+         }
       }
-   }
 
-   pdd_cached(pg)->refs[type] = ralloc_array(pg->dd, union zink_program_descriptor_refs, pdd_cached(pg)->num_refs[type]);
-   if (!pdd_cached(pg)->refs[type])
-      return;
-
-   unsigned ref_idx = 0;
-   for (int i = 0; i < num_shaders; i++) {
-      struct zink_shader *shader = stages[i];
-      if (!shader)
+      if (!pdd_cached(pg)->num_refs[type])
          continue;
 
-      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-      for (int j = 0; j < shader->num_bindings[type]; j++) {
-         int index = shader->bindings[type][j].index;
-         for (unsigned k = 0; k < shader->bindings[type][j].size; k++) {
-            switch (type) {
-            case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-               pdd_cached(pg)->refs[type][ref_idx].sampler.sampler_state = (struct zink_sampler_state**)&ctx->sampler_states[stage][index + k];
-               pdd_cached(pg)->refs[type][ref_idx].sampler.dsurf = &ctx->di.sampler_surfaces[stage][index + k];
-               break;
-            case ZINK_DESCRIPTOR_TYPE_IMAGE:
-               pdd_cached(pg)->refs[type][ref_idx].dsurf = &ctx->di.image_surfaces[stage][index + k];
-               break;
-            case ZINK_DESCRIPTOR_TYPE_UBO:
-               if (!index)
-                  continue;
-               FALLTHROUGH;
-            default:
-               pdd_cached(pg)->refs[type][ref_idx].res = &ctx->di.descriptor_res[type][stage][index + k];
-               break;
+      pdd_cached(pg)->refs[type] = ralloc_array(pg->dd, union zink_program_descriptor_refs, pdd_cached(pg)->num_refs[type]);
+      if (!pdd_cached(pg)->refs[type])
+         return;
+
+      unsigned ref_idx = 0;
+      for (int i = 0; i < num_shaders; i++) {
+         struct zink_shader *shader = stages[i];
+         if (!shader)
+            continue;
+
+         enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+         for (int j = 0; j < shader->num_bindings[type]; j++) {
+            int index = shader->bindings[type][j].index;
+            for (unsigned k = 0; k < shader->bindings[type][j].size; k++) {
+               switch (type) {
+               case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+                  pdd_cached(pg)->refs[type][ref_idx].sampler.sampler_state = (struct zink_sampler_state**)&ctx->sampler_states[stage][index + k];
+                  pdd_cached(pg)->refs[type][ref_idx].sampler.dsurf = &ctx->di.sampler_surfaces[stage][index + k];
+                  break;
+               case ZINK_DESCRIPTOR_TYPE_IMAGE:
+                  pdd_cached(pg)->refs[type][ref_idx].dsurf = &ctx->di.image_surfaces[stage][index + k];
+                  break;
+               case ZINK_DESCRIPTOR_TYPE_UBO:
+                  if (!index)
+                     continue;
+                  FALLTHROUGH;
+               default:
+                  pdd_cached(pg)->refs[type][ref_idx].res = &ctx->di.descriptor_res[type][stage][index + k];
+                  break;
+               }
+               assert(ref_idx < pdd_cached(pg)->num_refs[type]);
+               ref_idx++;
             }
-            assert(ref_idx < pdd_cached(pg)->num_refs[type]);
-            ref_idx++;
          }
       }
    }
@@ -1057,6 +1062,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
    if (!pg->dd)
       return true;
 
+   bool has_pools = false;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (!pg->dd->pool_key[i])
          continue;
@@ -1066,11 +1072,11 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       if (!pool)
          return false;
       pdd_cached(pg)->pool[i] = pool;
-
-      if (screen->info.have_KHR_descriptor_update_template &&
-          screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
-         create_descriptor_ref_template(ctx, pg, i);
+      has_pools = true;
    }
+   if (has_pools && screen->info.have_KHR_descriptor_update_template &&
+       screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
+      create_descriptor_ref_template(ctx, pg);
 
    return true;
 }
