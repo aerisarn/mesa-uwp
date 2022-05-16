@@ -1224,7 +1224,11 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       if (!pscreen->resource_get_handle(pscreen, pctx, pres, &whandle, handle_usage))
          return false;
 
-      *value = (uint64_t)whandle.handle;
+#ifdef _WIN32
+      *value = (uintptr_t)whandle.handle;
+#else
+      *value = whandle.handle;
+#endif
       break;
 #else
       (void)whandle;
