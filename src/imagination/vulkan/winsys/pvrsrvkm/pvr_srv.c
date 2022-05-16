@@ -128,6 +128,7 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
    const struct pvr_winsys_static_data_offsets no_static_data_offsets = { 0 };
 
    char heap_name[PVR_SRV_DEVMEM_HEAPNAME_MAXLENGTH];
+   int transfer_3d_heap_idx = -1;
    int vis_test_heap_idx = -1;
    int general_heap_idx = -1;
    int rgn_hdr_heap_idx = -1;
@@ -178,6 +179,11 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
                          PVR_SRV_RGNHDR_BRN_63142_HEAP_IDENT,
                          sizeof(PVR_SRV_RGNHDR_BRN_63142_HEAP_IDENT)) == 0) {
          rgn_hdr_heap_idx = i;
+      } else if (transfer_3d_heap_idx == -1 &&
+                 strncmp(heap_name,
+                         PVR_SRV_TRANSFER_3D_HEAP_IDENT,
+                         sizeof(PVR_SRV_TRANSFER_3D_HEAP_IDENT)) == 0) {
+         transfer_3d_heap_idx = i;
       } else if (usc_heap_idx == -1 &&
                  strncmp(heap_name,
                          PVR_SRV_USCCODE_HEAP_IDENT,
@@ -192,7 +198,8 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
    }
 
    /* Check for and initialise required heaps. */
-   if (general_heap_idx == -1 || pds_heap_idx == -1 || usc_heap_idx == -1 ||
+   if (general_heap_idx == -1 || pds_heap_idx == -1 ||
+       transfer_3d_heap_idx == -1 || usc_heap_idx == -1 ||
        vis_test_heap_idx == -1) {
       result = vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
       goto err_pvr_srv_int_ctx_destroy;
@@ -213,11 +220,18 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
       goto err_pvr_srv_heap_finish_general;
 
    result = pvr_srv_heap_init(srv_ws,
+                              &srv_ws->transfer_3d_heap,
+                              transfer_3d_heap_idx,
+                              &no_static_data_offsets);
+   if (result != VK_SUCCESS)
+      goto err_pvr_srv_heap_finish_pds;
+
+   result = pvr_srv_heap_init(srv_ws,
                               &srv_ws->usc_heap,
                               usc_heap_idx,
                               &usc_heap_static_data_offsets);
    if (result != VK_SUCCESS)
-      goto err_pvr_srv_heap_finish_pds;
+      goto err_pvr_srv_heap_finish_transfer_3d;
 
    result = pvr_srv_heap_init(srv_ws,
                               &srv_ws->vis_test_heap,
@@ -234,6 +248,7 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
                                  &no_static_data_offsets);
       if (result != VK_SUCCESS)
          goto err_pvr_srv_heap_finish_vis_test;
+
       srv_ws->rgn_hdr_heap_present = true;
    } else {
       srv_ws->rgn_hdr_heap_present = false;
@@ -275,6 +290,9 @@ err_pvr_srv_heap_finish_vis_test:
 err_pvr_srv_heap_finish_usc:
    pvr_srv_heap_finish(srv_ws, &srv_ws->usc_heap);
 
+err_pvr_srv_heap_finish_transfer_3d:
+   pvr_srv_heap_finish(srv_ws, &srv_ws->transfer_3d_heap);
+
 err_pvr_srv_heap_finish_pds:
    pvr_srv_heap_finish(srv_ws, &srv_ws->pds_heap);
 
@@ -309,6 +327,12 @@ static void pvr_srv_memctx_finish(struct pvr_srv_winsys *srv_ws)
 
    if (!pvr_srv_heap_finish(srv_ws, &srv_ws->usc_heap))
       vk_errorf(NULL, VK_ERROR_UNKNOWN, "USC heap in use, can not deinit");
+
+   if (!pvr_srv_heap_finish(srv_ws, &srv_ws->transfer_3d_heap)) {
+      vk_errorf(NULL,
+                VK_ERROR_UNKNOWN,
+                "Transfer 3D heap in use, can not deinit");
+   }
 
    if (!pvr_srv_heap_finish(srv_ws, &srv_ws->pds_heap))
       vk_errorf(NULL, VK_ERROR_UNKNOWN, "PDS heap in use, can not deinit");
@@ -392,6 +416,7 @@ static void pvr_srv_winsys_get_heaps_info(struct pvr_winsys *ws,
 
    heaps->general_heap = &srv_ws->general_heap.base;
    heaps->pds_heap = &srv_ws->pds_heap.base;
+   heaps->transfer_3d_heap = &srv_ws->transfer_3d_heap.base;
    heaps->usc_heap = &srv_ws->usc_heap.base;
    heaps->vis_test_heap = &srv_ws->vis_test_heap.base;
 
