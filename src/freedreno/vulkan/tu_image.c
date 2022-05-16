@@ -296,6 +296,13 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
        format == VK_FORMAT_S8_UINT)
       return false;
 
+   /* In copy_format, we treat snorm as unorm to avoid clamping.  But snorm
+    * and unorm are UBWC incompatible for special values such as all 0's or
+    * all 1's.  Disable UBWC for snorm.
+    */
+   if (vk_format_is_snorm(format))
+      return false;
+
    if (!info->a6xx.has_8bpp_ubwc &&
        (format == VK_FORMAT_R8_UNORM ||
         format == VK_FORMAT_R8_SNORM ||
