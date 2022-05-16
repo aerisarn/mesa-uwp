@@ -2041,7 +2041,8 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
       float_mode = AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO;
    }
 
-   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family, options->info,
+   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family,
+                        options->has_3d_cube_border_color_mipmap,
                         float_mode, info->wave_size, info->ballot_bit_size);
    ctx.context = ctx.ac.context;
 
@@ -2426,7 +2427,8 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 
    assert(args->is_gs_copy_shader);
 
-   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family, options->info,
+   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family,
+                        options->has_3d_cube_border_color_mipmap,
                         AC_FLOAT_MODE_DEFAULT, 64, 64);
    ctx.context = ctx.ac.context;
 

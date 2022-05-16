@@ -134,7 +134,7 @@ struct ac_llvm_context {
 
    enum amd_gfx_level gfx_level;
    enum radeon_family family;
-   const struct radeon_info *info;
+   bool has_3d_cube_border_color_mipmap;
 
    unsigned wave_size;
    unsigned ballot_mask_bits;
@@ -146,7 +146,7 @@ struct ac_llvm_context {
 
 void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *compiler,
                           enum amd_gfx_level gfx_level, enum radeon_family family,
-                          const struct radeon_info *info,
+                          bool has_3d_cube_border_color_mipmap,
                           enum ac_float_mode float_mode, unsigned wave_size,
                           unsigned ballot_mask_bits);
 

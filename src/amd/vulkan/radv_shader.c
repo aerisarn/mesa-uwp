@@ -1987,7 +1987,7 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 
    options->family = chip_family;
    options->gfx_level = device->physical_device->rad_info.gfx_level;
-   options->info = &device->physical_device->rad_info;
+   options->has_3d_cube_border_color_mipmap = device->physical_device->rad_info.has_3d_cube_border_color_mipmap;
    options->dump_shader = radv_can_dump_shader(device, shaders[0], gs_copy_shader || trap_handler_shader);
    options->dump_preoptir =
       options->dump_shader && device->instance->debug_flags & RADV_DEBUG_PREOPTIR;
@@ -2175,7 +2175,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    struct radv_nir_compiler_options options = {0};
    options.family = device->physical_device->rad_info.family;
    options.gfx_level = device->physical_device->rad_info.gfx_level;
-   options.info = &device->physical_device->rad_info;
+   options.has_3d_cube_border_color_mipmap = device->physical_device->rad_info.has_3d_cube_border_color_mipmap;
    options.address32_hi = device->physical_device->rad_info.address32_hi;
    options.dump_shader = device->instance->debug_flags & RADV_DEBUG_DUMP_PROLOGS;
    options.record_ir = device->instance->debug_flags & RADV_DEBUG_HANG;

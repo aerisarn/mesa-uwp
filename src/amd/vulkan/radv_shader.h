@@ -130,8 +130,8 @@ struct radv_nir_compiler_options {
    bool wgp_mode;
    enum radeon_family family;
    enum amd_gfx_level gfx_level;
-   const struct radeon_info *info;
    uint32_t address32_hi;
+   bool has_3d_cube_border_color_mipmap;
 
    struct {
       void (*func)(void *private_data, enum radv_compiler_debug_level level, const char *message);
