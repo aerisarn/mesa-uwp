@@ -74,12 +74,16 @@ struct wsi_image {
       VkCommandBuffer *blit_cmd_buffers;
    } buffer;
 
+#ifndef _WIN32
    uint64_t drm_modifier;
+#endif
    int num_planes;
    uint32_t sizes[4];
    uint32_t offsets[4];
    uint32_t row_pitches[4];
+#ifndef _WIN32
    int dma_buf_fd;
+#endif
 };
 
 struct wsi_swapchain {
