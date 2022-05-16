@@ -420,7 +420,7 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
       }
 
       if (v->disasm_info.write_disasm) {
-         v->disasm_info.nir = nir_shader_as_str(shader->nir, shader);
+         v->disasm_info.nir = nir_shader_as_str(shader->nir, v);
       }
 
       shader->nir_finalized = true;
