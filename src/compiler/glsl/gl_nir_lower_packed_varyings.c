@@ -937,7 +937,7 @@ lower_output_var(struct lower_packed_varyings_state *state, nir_variable *var)
             state->b.cursor = nir_before_instr(nir_block_last_instr(block));
             pack_output_var(state, var);
          } else if (block == nir_impl_last_block(state->impl)) {
-            state->b.cursor = nir_after_instr(nir_block_last_instr(block));
+            state->b.cursor = nir_after_block(block);
             pack_output_var(state, var);
          }
       } else {
