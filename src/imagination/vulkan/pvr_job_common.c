@@ -104,7 +104,7 @@ void pvr_pbe_get_src_format_and_gamma(VkFormat vk_format,
    }
 }
 
-static void pvr_pbe_get_src_pos(struct pvr_device *device,
+static void pvr_pbe_get_src_pos(const struct pvr_device_info *dev_info,
                                 enum pvr_pbe_source_start_pos source_start,
                                 uint32_t *const src_pos_out,
                                 bool *const src_pos_offset_128_out)
@@ -126,7 +126,7 @@ static void pvr_pbe_get_src_pos(struct pvr_device *device,
 
    case PVR_PBE_STARTPOS_BIT0:
    default:
-      if (PVR_HAS_FEATURE(&device->pdevice->dev_info, eight_output_registers)) {
+      if (PVR_HAS_FEATURE(dev_info, eight_output_registers)) {
          switch (source_start) {
          case PVR_PBE_STARTPOS_BIT128:
             *src_pos_out = PVRX(PBESTATE_SOURCE_POS_START_BIT0);
@@ -160,7 +160,7 @@ static void pvr_pbe_get_src_pos(struct pvr_device *device,
 }
 
 void pvr_pbe_pack_state(
-   struct pvr_device *device,
+   const struct pvr_device_info *dev_info,
    const struct pvr_pbe_surf_params *surface_params,
    const struct pvr_pbe_render_params *render_params,
    uint32_t pbe_cs_words[static const ROGUE_NUM_PBESTATE_STATE_WORDS],
@@ -201,7 +201,7 @@ void pvr_pbe_pack_state(
 
       state.source_format = surface_params->source_format;
 
-      pvr_pbe_get_src_pos(device,
+      pvr_pbe_get_src_pos(dev_info,
                           render_params->source_start,
                           &state.source_pos,
                           &state.source_pos_offset_128);

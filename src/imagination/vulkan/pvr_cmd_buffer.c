@@ -696,7 +696,7 @@ static inline uint32_t pvr_stride_from_pitch(uint32_t pitch, VkFormat vk_format)
 }
 
 static void pvr_setup_pbe_state(
-   struct pvr_device *const device,
+   const struct pvr_device_info *dev_info,
    struct pvr_framebuffer *framebuffer,
    uint32_t mrt_index,
    const struct usc_mrt_resource *mrt_resource,
@@ -707,7 +707,6 @@ static void pvr_setup_pbe_state(
    uint32_t pbe_cs_words[static const ROGUE_NUM_PBESTATE_STATE_WORDS],
    uint64_t pbe_reg_words[static const ROGUE_NUM_PBESTATE_REG_WORDS])
 {
-   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    const struct pvr_image *image = iview->image;
    uint32_t level_pitch = image->mip_levels[iview->vk.base_mip_level].pitch;
 
@@ -817,7 +816,7 @@ static void pvr_setup_pbe_state(
    render_params.slice = 0;
    render_params.mrt_index = mrt_index;
 
-   pvr_pbe_pack_state(device,
+   pvr_pbe_pack_state(dev_info,
                       &surface_params,
                       &render_params,
                       pbe_cs_words,
@@ -867,11 +866,10 @@ pvr_pass_get_pixel_output_width(const struct pvr_render_pass *pass,
    return util_next_power_of_two(width);
 }
 
-static VkResult pvr_sub_cmd_gfx_job_init(struct pvr_device *device,
+static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_sub_cmd *sub_cmd)
 {
-   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    struct pvr_render_pass_info *render_pass_info =
       &cmd_buffer->state.render_pass_info;
    const struct pvr_renderpass_hwsetup_render *hw_render =
@@ -898,7 +896,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(struct pvr_device *device,
       if (surface->need_resolve)
          pvr_finishme("Set up job resolve information.");
 
-      pvr_setup_pbe_state(device,
+      pvr_setup_pbe_state(dev_info,
                           render_pass_info->framebuffer,
                           surface->mrt_index,
                           mrt_resource,
@@ -1064,12 +1062,10 @@ static VkResult pvr_sub_cmd_gfx_job_init(struct pvr_device *device,
  */
 #define PVR_IDF_WDF_IN_REGISTER_CONST_COUNT 12U
 
-static void pvr_sub_cmd_compute_job_init(struct pvr_device *device,
+static void pvr_sub_cmd_compute_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_sub_cmd *sub_cmd)
 {
-   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
-
    if (sub_cmd->compute.uses_barrier) {
       sub_cmd->compute.submit_info.flags |=
          PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
@@ -1391,7 +1387,9 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
          return result;
       }
 
-      result = pvr_sub_cmd_gfx_job_init(device, cmd_buffer, sub_cmd);
+      result = pvr_sub_cmd_gfx_job_init(&device->pdevice->dev_info,
+                                        cmd_buffer,
+                                        sub_cmd);
       if (result != VK_SUCCESS) {
          state->status = result;
          return result;
@@ -1408,7 +1406,9 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
          return result;
       }
 
-      pvr_sub_cmd_compute_job_init(device, cmd_buffer, sub_cmd);
+      pvr_sub_cmd_compute_job_init(&device->pdevice->dev_info,
+                                   cmd_buffer,
+                                   sub_cmd);
       break;
 
    case PVR_SUB_CMD_TYPE_TRANSFER:

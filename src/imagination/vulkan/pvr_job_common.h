@@ -125,7 +125,7 @@ struct pvr_pbe_render_params {
 };
 
 void pvr_pbe_pack_state(
-   struct pvr_device *device,
+   const struct pvr_device_info *dev_info,
    const struct pvr_pbe_surf_params *surface_params,
    const struct pvr_pbe_render_params *render_params,
    uint32_t pbe_cs_words[static const ROGUE_NUM_PBESTATE_STATE_WORDS],
