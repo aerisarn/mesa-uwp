@@ -1688,6 +1688,7 @@ radv_pipeline_init_pre_raster_info(struct radv_pipeline *pipeline,
                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineTessellationStateCreateInfo *ts = pCreateInfo->pTessellationState;
+   const VkPipelineViewportStateCreateInfo *vp = pCreateInfo->pViewportState;
    const VkShaderStageFlagBits tess_stages = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                              VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
    struct radv_pre_raster_info pre_rast_info = {0};
@@ -1700,6 +1701,15 @@ radv_pipeline_init_pre_raster_info(struct radv_pipeline *pipeline,
          vk_find_struct_const(ts->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
       if (domain_origin_state) {
          pre_rast_info.tess.domain_origin = domain_origin_state->domainOrigin;
+      }
+   }
+
+   /* Viewport */
+   if (radv_is_raster_enabled(pipeline, pCreateInfo)) {
+      const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
+         vk_find_struct_const(vp->pNext, PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
+      if (depth_clip_control) {
+         pre_rast_info.viewport.negative_one_to_one = !!depth_clip_control->negativeOneToOne;
       }
    }
 
@@ -2006,21 +2016,6 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
    pipeline->graphics.uses_conservative_overestimate =
       radv_get_conservative_raster_mode(pCreateInfo->pRasterizationState) ==
          VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
-}
-
-static void
-radv_pipeline_init_viewport_state(struct radv_pipeline *pipeline,
-                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   if (!radv_is_raster_enabled(pipeline, pCreateInfo))
-      return;
-
-   const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
-      vk_find_struct_const(pCreateInfo->pViewportState->pNext,
-                           PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
-   if (depth_clip_control) {
-      pipeline->graphics.negative_one_to_one = !!depth_clip_control->negativeOneToOne;
-   }
 }
 
 static struct radv_depth_stencil_state
@@ -6757,7 +6752,9 @@ radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *
    if (!radv_pipeline_has_mesh(pipeline))
       radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo, &vi_info);
    radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, &vi_info);
-   radv_pipeline_init_viewport_state(pipeline, pCreateInfo);
+
+   pipeline->graphics.negative_one_to_one = pre_rast_info.viewport.negative_one_to_one;
+
    radv_pipeline_init_raster_state(pipeline, pCreateInfo);
 
    struct radv_depth_stencil_state ds_state =

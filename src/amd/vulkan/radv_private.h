@@ -1882,6 +1882,10 @@ struct radv_pre_raster_info {
       uint32_t patch_control_points;
       VkTessellationDomainOrigin domain_origin;
    } tess;
+
+   struct {
+      bool negative_one_to_one;
+   } viewport;
 };
 
 struct radv_pipeline {
