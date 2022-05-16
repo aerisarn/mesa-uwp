@@ -154,15 +154,6 @@ bi_index_to_key(bi_index idx)
 static bi_index
 bi_extract(bi_builder *b, bi_index vec, unsigned channel)
 {
-        /* Extract caching relies on SSA form. It is incorrect for nir_register.
-         * Bypass the cache and emit an explicit split for registers.
-         */
-        if (vec.reg) {
-                bi_instr *I = bi_split_i32_to(b, channel + 1, vec);
-                I->dest[channel] = bi_temp(b->shader);
-                return I->dest[channel];
-        }
-
         bi_index *components =
                 _mesa_hash_table_u64_search(b->shader->allocated_vec,
                                             bi_index_to_key(vec));
@@ -4465,25 +4456,6 @@ bi_scalarize_filter(const nir_instr *instr, const void *data)
         }
 }
 
-/* XXX: This is a kludge to workaround NIR's lack of divergence metadata. If we
- * keep divergence info around after we consume it for indirect lowering,
- * nir_convert_from_ssa will regress code quality since it will avoid
- * coalescing divergent with non-divergent nodes. */
-
-static bool
-nir_invalidate_divergence_ssa(nir_ssa_def *ssa, UNUSED void *data)
-{
-        ssa->divergent = false;
-        return true;
-}
-
-static bool
-nir_invalidate_divergence(struct nir_builder *b, nir_instr *instr,
-                UNUSED void *data)
-{
-        return nir_foreach_ssa_def(instr, nir_invalidate_divergence_ssa, NULL);
-}
-
 /* Ensure we write exactly 4 components */
 static nir_ssa_def *
 bifrost_nir_valid_channel(nir_builder *b, nir_ssa_def *in,
@@ -4687,8 +4659,6 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS_V(nir, nir_divergence_analysis);
                 NIR_PASS_V(nir, bi_lower_divergent_indirects,
                                 pan_subgroup_size(gpu_id >> 12));
-                NIR_PASS_V(nir, nir_shader_instructions_pass,
-                        nir_invalidate_divergence, nir_metadata_all, NULL);
         }
 }
 
