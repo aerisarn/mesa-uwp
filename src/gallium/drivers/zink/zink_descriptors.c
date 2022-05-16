@@ -1672,6 +1672,7 @@ update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type
 static void
 zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_program *pg)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (pg->dd->push_usage && (!ctx->dd->push_valid[pg->is_compute] ||
                                            pg->dd->push_usage != ctx->dd->last_push_usage[pg->is_compute])) {
       uint32_t hash = 0;
@@ -1698,7 +1699,7 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
       ctx->dd->last_push_usage[pg->is_compute] = pg->dd->push_usage;
    }
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (pdd_cached(pg)->pool[i] && pdd_cached(pg)->cache_misses[i] < MAX_CACHE_MISSES &&
+      if (pdd_cached(pg)->pool[screen->desc_set_id[i] - 1] && pdd_cached(pg)->cache_misses[i] < MAX_CACHE_MISSES &&
           !ctx->dd->descriptor_states[pg->is_compute].valid[i])
          update_descriptor_state(ctx, i, pg->is_compute);
    }
