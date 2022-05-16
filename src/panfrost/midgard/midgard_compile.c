@@ -1763,11 +1763,7 @@ output_load_rt_addr(compiler_context *ctx, nir_intrinsic_instr *instr)
         if (ctx->inputs->is_blend)
                 return MIDGARD_COLOR_RT0 + ctx->inputs->blend.rt;
 
-        const nir_variable *var;
-        var = nir_find_variable_with_driver_location(ctx->nir, nir_var_shader_out, nir_intrinsic_base(instr));
-        assert(var);
-
-        unsigned loc = var->data.location;
+        unsigned loc = nir_intrinsic_io_semantics(instr).location;
 
         if (loc >= FRAG_RESULT_DATA0)
                 return loc - FRAG_RESULT_DATA0;
@@ -1988,15 +1984,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         }
 
                         if (writeout & PAN_WRITEOUT_C) {
-                                const nir_variable *var =
-                                        nir_find_variable_with_driver_location(ctx->nir, nir_var_shader_out,
-                                                 nir_intrinsic_base(instr));
+                                nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
 
-                                assert(var != NULL);
-                                assert(var->data.location >= FRAG_RESULT_DATA0);
-
-                                rt = MIDGARD_COLOR_RT0 + var->data.location -
-                                     FRAG_RESULT_DATA0;
+                                rt = MIDGARD_COLOR_RT0 +
+                                     (sem.location - FRAG_RESULT_DATA0);
                         } else {
                                 rt = MIDGARD_ZS_RT;
                         }

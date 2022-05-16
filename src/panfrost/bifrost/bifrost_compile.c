@@ -859,12 +859,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         bool emit_blend = writeout & (PAN_WRITEOUT_C);
         bool emit_zs = writeout & (PAN_WRITEOUT_Z | PAN_WRITEOUT_S);
 
-        const nir_variable *var =
-                nir_find_variable_with_driver_location(b->shader->nir,
-                                                       nir_var_shader_out, nir_intrinsic_base(instr));
-
-        unsigned loc = var ? var->data.location : 0;
-
+        unsigned loc = nir_intrinsic_io_semantics(instr).location;
         bi_index src0 = bi_src_index(&instr->src[0]);
 
         /* By ISA convention, the coverage mask is stored in R60. The store
@@ -924,10 +919,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 /* Explicit copy since BLEND inputs are precoloured to R0-R3,
                  * TODO: maybe schedule around this or implement in RA as a
                  * spill */
-                bool has_mrt = false;
-
-                nir_foreach_shader_out_variable(var, b->shader->nir)
-                        has_mrt |= (var->data.location > FRAG_RESULT_DATA0);
+                bool has_mrt = (b->shader->nir->info.outputs_written >> FRAG_RESULT_DATA1);
 
                 if (has_mrt) {
                         bi_index srcs[4] = { color, color, color, color };
@@ -1578,10 +1570,8 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
 
         /* Get the render target */
         if (!b->shader->inputs->is_blend) {
-                const nir_variable *var =
-                        nir_find_variable_with_driver_location(b->shader->nir,
-                                        nir_var_shader_out, nir_intrinsic_base(instr));
-                unsigned loc = var->data.location;
+                nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+                unsigned loc = sem.location;
                 assert(loc >= FRAG_RESULT_DATA0);
                 rt = (loc - FRAG_RESULT_DATA0);
         }
