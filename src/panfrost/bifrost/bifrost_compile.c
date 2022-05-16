@@ -3988,7 +3988,6 @@ emit_block(bi_context *ctx, nir_block *block)
 
         nir_foreach_instr(instr, block) {
                 bi_emit_instr(&_b, instr);
-                ++ctx->instruction_count;
         }
 
         return ctx->current_block;
@@ -4009,9 +4008,8 @@ emit_if(bi_context *ctx, nir_if *nif)
         bi_block *then_block = emit_cf_list(ctx, &nif->then_list);
         bi_block *end_then_block = ctx->current_block;
 
-        /* Emit second block, and check if it's empty */
+        /* Emit second block */
 
-        int count_in = ctx->instruction_count;
         bi_block *else_block = emit_cf_list(ctx, &nif->else_list);
         bi_block *end_else_block = ctx->current_block;
         ctx->after_block = create_empty_block(ctx);
@@ -4021,20 +4019,15 @@ emit_if(bi_context *ctx, nir_if *nif)
         assert(then_block);
         assert(else_block);
 
-        if (ctx->instruction_count == count_in) {
-                then_branch->branch_target = ctx->after_block;
-                bi_block_add_successor(end_then_block, ctx->after_block); /* fallthrough */
-        } else {
-                then_branch->branch_target = else_block;
+        then_branch->branch_target = else_block;
 
-                /* Emit a jump from the end of the then block to the end of the else */
-                _b.cursor = bi_after_block(end_then_block);
-                bi_instr *then_exit = bi_jump(&_b, bi_zero());
-                then_exit->branch_target = ctx->after_block;
+        /* Emit a jump from the end of the then block to the end of the else */
+        _b.cursor = bi_after_block(end_then_block);
+        bi_instr *then_exit = bi_jump(&_b, bi_zero());
+        then_exit->branch_target = ctx->after_block;
 
-                bi_block_add_successor(end_then_block, then_exit->branch_target);
-                bi_block_add_successor(end_else_block, ctx->after_block); /* fallthrough */
-        }
+        bi_block_add_successor(end_then_block, then_exit->branch_target);
+        bi_block_add_successor(end_else_block, ctx->after_block); /* fallthrough */
 
         bi_block_add_successor(before_block, then_branch->branch_target); /* then_branch */
         bi_block_add_successor(before_block, then_block); /* fallthrough */
