@@ -64,13 +64,12 @@ st_choose_matching_format_noverify(struct st_context *st,
 
 extern enum pipe_format
 st_choose_matching_format(struct st_context *st, unsigned bind,
-			  GLenum format, GLenum type, unsigned num_samples,
-                          unsigned num_storage_samples, GLboolean swapBytes);
+			  GLenum format, GLenum type, GLboolean swapBytes);
 
 extern mesa_format
 st_ChooseTextureFormat(struct gl_context * ctx, GLenum target,
                        GLint internalFormat,
-                       GLenum format, GLenum type, unsigned samples);
+                       GLenum format, GLenum type);
 
 void
 st_QueryInternalFormat(struct gl_context *ctx, GLenum target,

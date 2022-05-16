@@ -997,8 +997,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * same format-choice logic as for textures.
        */
       texformat = st_ChooseTextureFormat(ctx, target, internalformat,
-                                         GL_NONE /*format */, GL_NONE /* type */,
-                                         0);
+                                         GL_NONE /*format */, GL_NONE /* type */);
 
       if (texformat == MESA_FORMAT_NONE || baseformat <= 0)
          goto end;

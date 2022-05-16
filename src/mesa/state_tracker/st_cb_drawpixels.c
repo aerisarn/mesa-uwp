@@ -629,7 +629,7 @@ make_texture(struct st_context *st,
     * image to draw.
     */
    pipeFormat = st_choose_matching_format(st, PIPE_BIND_SAMPLER_VIEW,
-                                          format, type, 0, 0, unpack->SwapBytes);
+                                          format, type, unpack->SwapBytes);
 
    if (pipeFormat == PIPE_FORMAT_NONE) {
       /* Use the generic approach. */
