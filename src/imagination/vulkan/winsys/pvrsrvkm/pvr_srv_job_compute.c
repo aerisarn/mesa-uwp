@@ -222,8 +222,12 @@ VkResult pvr_srv_winsys_compute_submit(
    if (result != VK_SUCCESS)
       goto err_close_in_fd;
 
-   srv_signal_sync = to_srv_sync(signal_sync);
-   pvr_srv_set_sync_payload(srv_signal_sync, fence);
+   if (signal_sync) {
+      srv_signal_sync = to_srv_sync(signal_sync);
+      pvr_srv_set_sync_payload(srv_signal_sync, fence);
+   } else if (fence != -1) {
+      close(fence);
+   }
 
    return VK_SUCCESS;
 

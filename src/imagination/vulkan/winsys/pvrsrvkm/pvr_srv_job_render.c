@@ -680,10 +680,19 @@ VkResult pvr_srv_winsys_render_submit(
    if (result != VK_SUCCESS)
       goto err_close_in_fds;
 
-   srv_signal_sync_geom = to_srv_sync(signal_sync_geom);
-   srv_signal_sync_frag = to_srv_sync(signal_sync_frag);
-   pvr_srv_set_sync_payload(srv_signal_sync_geom, fence_geom);
-   pvr_srv_set_sync_payload(srv_signal_sync_frag, fence_frag);
+   if (signal_sync_geom) {
+      srv_signal_sync_geom = to_srv_sync(signal_sync_geom);
+      pvr_srv_set_sync_payload(srv_signal_sync_geom, fence_geom);
+   } else if (fence_geom != -1) {
+      close(fence_geom);
+   }
+
+   if (signal_sync_frag) {
+      srv_signal_sync_frag = to_srv_sync(signal_sync_frag);
+      pvr_srv_set_sync_payload(srv_signal_sync_frag, fence_frag);
+   } else if (fence_frag != -1) {
+      close(fence_frag);
+   }
 
    return VK_SUCCESS;
 
