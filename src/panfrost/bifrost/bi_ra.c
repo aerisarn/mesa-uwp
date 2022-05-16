@@ -571,6 +571,147 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
         return (channels * 4);
 }
 
+/*
+ * For transition, lower collects and splits before RA, rather than after RA.
+ * LCRA knows how to deal with offsets (broken SSA), but not how to coalesce
+ * these vector moves.
+ */
+static void
+bi_lower_vector(bi_context *ctx)
+{
+        bi_index *remap = calloc(ctx->ssa_alloc, sizeof(bi_index));
+
+        bi_foreach_instr_global_safe(ctx, I) {
+                bi_builder b = bi_init_builder(ctx, bi_after_instr(I));
+
+                if (I->op == BI_OPCODE_SPLIT_I32) {
+                        bi_index src = I->src[0];
+                        assert(src.offset == 0);
+
+                        for (unsigned i = 0; i < I->nr_dests; ++i) {
+                                if (bi_is_null(I->dest[i]))
+                                        continue;
+
+                                src.offset = i;
+                                bi_mov_i32_to(&b, I->dest[i], src);
+
+                                if (bi_is_ssa(I->dest[i]))
+                                        remap[I->dest[i].value] = src;
+                        }
+
+                        bi_remove_instruction(I);
+                } else if (I->op == BI_OPCODE_COLLECT_I32) {
+                        bi_index dest = I->dest[0];
+                        assert(dest.offset == 0);
+                        assert((bi_is_ssa(dest) || I->nr_srcs == 1) && "nir_lower_phis_to_scalar");
+
+                        for (unsigned i = 0; i < I->nr_srcs; ++i) {
+                                if (bi_is_null(I->src[i]))
+                                        continue;
+
+                                dest.offset = i;
+                                bi_mov_i32_to(&b, dest, I->src[i]);
+                        }
+
+                        bi_remove_instruction(I);
+                }
+        }
+
+        bi_foreach_instr_global(ctx, I) {
+                bi_foreach_src(I, s) {
+                        if (bi_is_ssa(I->src[s]) && !bi_is_null(remap[I->src[s].value]))
+                                I->src[s] = bi_replace_index(I->src[s], remap[I->src[s].value]);
+                }
+        }
+
+        free(remap);
+
+        /* After generating a pile of moves, clean up */
+        bi_opt_dead_code_eliminate(ctx);
+}
+
+/*
+ * Check if the instruction requires a "tied" operand. Such instructions MUST
+ * allocate their source and destination to the same register. This is a
+ * constraint on RA, and may require extra moves.
+ *
+ * In particular, this is the case for Bifrost instructions that both read and
+ * write with the staging register mechanism.
+ */
+static bool
+bi_is_tied(const bi_instr *I)
+{
+        if (bi_is_null(I->src[0]))
+                return false;
+
+        return (I->op == BI_OPCODE_TEXC ||
+                I->op == BI_OPCODE_ATOM_RETURN_I32 ||
+                I->op == BI_OPCODE_AXCHG_I32 ||
+                I->op == BI_OPCODE_ACMPXCHG_I32);
+}
+
+/*
+ * For transition, coalesce tied operands together, as LCRA knows how to handle
+ * non-SSA operands but doesn't know about tied operands.
+ *
+ * This breaks the SSA form of the program, but that doesn't matter for LCRA.
+ */
+static void
+bi_coalesce_tied(bi_context *ctx)
+{
+        bi_foreach_instr_global(ctx, I) {
+                if (!bi_is_tied(I)) continue;
+
+                bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
+                unsigned n = bi_count_read_registers(I, 0);
+
+                for (unsigned i = 0; i < n; ++i) {
+                        bi_index dst = I->dest[0], src = I->src[0];
+
+                        assert(dst.offset == 0 && src.offset == 0);
+                        dst.offset = src.offset = i;
+
+                        bi_mov_i32_to(&b, dst, src);
+                }
+
+                I->src[0] = bi_replace_index(I->src[0], I->dest[0]);
+        }
+}
+
+static unsigned
+find_or_allocate_temp(unsigned *map, unsigned value, unsigned *alloc)
+{
+        if (!map[value])
+                map[value] = ++(*alloc);
+
+        assert(map[value]);
+        return map[value] - 1;
+}
+
+/* Reassigns numbering to get rid of gaps in the indices and to prioritize
+ * smaller register classes */
+
+static void
+squeeze_index(bi_context *ctx)
+{
+        unsigned *map = rzalloc_array(ctx, unsigned, ctx->ssa_alloc);
+        ctx->ssa_alloc = 0;
+
+        bi_foreach_instr_global(ctx, I) {
+                bi_foreach_dest(I, d) {
+                        if (I->dest[d].type == BI_INDEX_NORMAL)
+                                I->dest[d].value = find_or_allocate_temp(map, I->dest[d].value, &ctx->ssa_alloc);
+                }
+
+                bi_foreach_src(I, s) {
+                        if (I->src[s].type == BI_INDEX_NORMAL)
+                                I->src[s].value = find_or_allocate_temp(map, I->src[s].value, &ctx->ssa_alloc);
+                }
+        }
+
+        ralloc_free(map);
+}
+
 void
 bi_register_allocate(bi_context *ctx)
 {
@@ -584,6 +725,12 @@ bi_register_allocate(bi_context *ctx)
 
         if (ctx->arch >= 9)
                 va_lower_split_64bit(ctx);
+
+        bi_lower_vector(ctx);
+
+        /* Lower tied operands. SSA is broken from here on. */
+        bi_coalesce_tied(ctx);
+        squeeze_index(ctx);
 
         /* Try with reduced register pressure to improve thread count */
         if (ctx->arch >= 7) {

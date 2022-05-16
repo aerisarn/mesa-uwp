@@ -93,6 +93,8 @@ bi_count_read_registers(const bi_instr *ins, unsigned s)
                 return bi_count_staging_registers(ins);
         else if (s == 4 && ins->op == BI_OPCODE_BLEND)
                 return ins->sr_count_2; /* Dual source blending */
+        else if (s == 0 && ins->op == BI_OPCODE_SPLIT_I32)
+                return ins->nr_dests;
         else
                 return 1;
 }
