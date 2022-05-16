@@ -43,6 +43,11 @@
 
 #include <vulkan/vulkan.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern uint32_t zink_debug;
 struct hash_table;
 struct util_dl_library;
@@ -294,5 +299,9 @@ zink_stub_function_not_loaded(void);
          warned = true; \
       } \
    } while (0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
