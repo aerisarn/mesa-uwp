@@ -314,7 +314,7 @@ unsupported:
 
 bool pvr_format_is_pbe_downscalable(VkFormat vk_format)
 {
-   if (vk_format_is_pure_integer(vk_format)) {
+   if (vk_format_is_int(vk_format)) {
       /* PBE downscale behavior for integer formats does not match Vulkan
        * spec. Vulkan requires a single sample to be chosen instead of
        * taking the average sample color.

@@ -74,7 +74,7 @@ void pvr_pbe_get_src_format_and_gamma(VkFormat vk_format,
    *gamma_out = default_gamma;
 
    if (vk_format_has_32bit_component(vk_format) ||
-       vk_format_is_pure_integer(vk_format)) {
+       vk_format_is_int(vk_format)) {
       *src_format_out = PVRX(PBESTATE_SOURCE_FORMAT_8_PER_CHANNEL);
    } else if (vk_format_is_float(vk_format)) {
       *src_format_out = PVRX(PBESTATE_SOURCE_FORMAT_F16_PER_CHANNEL);
