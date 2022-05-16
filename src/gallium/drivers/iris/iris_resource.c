@@ -471,8 +471,10 @@ iris_resource_alloc_flags(const struct iris_screen *screen,
                        PIPE_RESOURCE_FLAG_MAP_PERSISTENT))
       flags |= BO_ALLOC_SMEM;
 
-   if (screen->devinfo.verx10 >= 125 && isl_aux_usage_has_ccs(aux_usage))
+   if (screen->devinfo.verx10 >= 125 && isl_aux_usage_has_ccs(aux_usage)) {
+      assert((flags & BO_ALLOC_SMEM) == 0);
       flags |= BO_ALLOC_LMEM;
+   }
 
    if ((templ->bind & PIPE_BIND_SHARED) ||
        util_format_get_num_planes(templ->format) > 1)
