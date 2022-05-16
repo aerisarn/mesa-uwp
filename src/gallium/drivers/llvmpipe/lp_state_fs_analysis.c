@@ -173,8 +173,12 @@ finished:
    return TRUE;
 }
 
+
+/*
+ * Examine the NIR shader to determine if it's "linear".
+ */
 static bool
-llvmpipe_nir_fn_is_linear_compat(struct nir_shader *shader,
+llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
                                  nir_function_impl *impl,
                                  struct lp_tgsi_info *info)
 {
@@ -254,7 +258,7 @@ llvmpipe_nir_fn_is_linear_compat(struct nir_shader *shader,
             break;
          }
          case nir_instr_type_alu: {
-            nir_alu_instr *alu = nir_instr_as_alu(instr);
+            const nir_alu_instr *alu = nir_instr_as_alu(instr);
             if (alu->op != nir_op_mov &&
                 alu->op != nir_op_vec2 &&
                 alu->op != nir_op_vec4 &&
@@ -264,6 +268,9 @@ llvmpipe_nir_fn_is_linear_compat(struct nir_shader *shader,
             if (alu->op == nir_op_fmul) {
                unsigned num_src = nir_op_infos[alu->op].num_inputs;;
                for (unsigned s = 0; s < num_src; s++) {
+                  /* If the MUL uses immediate values, the values must
+                   * be 32-bit floats in the range [0,1].
+                   */
                   if (nir_src_is_const(alu->src[s].src)) {
                      nir_load_const_instr *load =
                         nir_instr_as_load_const(alu->src[s].src.ssa->parent_instr);
@@ -289,6 +296,7 @@ llvmpipe_nir_fn_is_linear_compat(struct nir_shader *shader,
    return true;
 }
 
+
 static bool
 llvmpipe_nir_is_linear_compat(struct nir_shader *shader,
                               struct lp_tgsi_info *info)
@@ -301,6 +309,7 @@ llvmpipe_nir_is_linear_compat(struct nir_shader *shader,
    }
    return true;
 }
+
 
 void
 llvmpipe_fs_analyse_nir(struct lp_fragment_shader *shader)
@@ -317,6 +326,7 @@ llvmpipe_fs_analyse_nir(struct lp_fragment_shader *shader)
       shader->kind = LP_FS_KIND_LLVM_LINEAR;
    }
 }
+
 
 void
 llvmpipe_fs_analyse(struct lp_fragment_shader *shader,
