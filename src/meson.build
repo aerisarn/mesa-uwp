@@ -106,7 +106,7 @@ endif
 if with_microsoft_clc or with_gallium_d3d12 or with_spirv_to_dxil or with_microsoft_vk
   subdir('microsoft')
 endif
-if with_gallium_nouveau
+if with_any_nouveau
   subdir('nouveau')
 endif
 if with_gallium_asahi or with_tools.contains('asahi')

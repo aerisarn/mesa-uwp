@@ -1,0 +1,325 @@
+#include "nvk_physical_device.h"
+
+#include "nvk_entrypoints.h"
+#include "nvk_instance.h"
+
+#include "vulkan/runtime/vk_device.h"
+#include "vulkan/wsi/wsi_common.h"
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
+   VkPhysicalDeviceFeatures2 *pFeatures)
+{
+   // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+
+   pFeatures->features = (VkPhysicalDeviceFeatures) {
+      .robustBufferAccess = true,
+      /* More features */
+   };
+
+   VkPhysicalDeviceVulkan11Features core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+      /* Vulkan 1.1 features */
+   };
+
+   VkPhysicalDeviceVulkan12Features core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+      /* Vulkan 1.2 features */
+   };
+
+   VkPhysicalDeviceVulkan13Features core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+      /* Vulkan 1.3 features */
+   };
+
+   vk_foreach_struct(ext, pFeatures->pNext)
+   {
+      if (vk_get_physical_device_core_1_1_feature_ext(ext, &core_1_1))
+         continue;
+      if (vk_get_physical_device_core_1_2_feature_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_feature_ext(ext, &core_1_3))
+         continue;
+
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
+         VkPhysicalDevice4444FormatsFeaturesEXT *features = (void *)ext;
+         features->formatA4R4G4B4 = true;
+         features->formatA4B4G4R4 = true;
+         break;
+      }
+      /* More feature structs */
+      default:
+         break;
+      }
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
+   VkPhysicalDeviceProperties2 *pProperties)
+{
+   // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+
+   pProperties->properties = (VkPhysicalDeviceProperties) {
+      .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
+      .driverVersion = vk_get_driver_version(),
+      /* More properties */
+   };
+
+   VkPhysicalDeviceVulkan11Properties core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+      /* Vulkan 1.1 properties */
+   };
+
+   VkPhysicalDeviceVulkan12Properties core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+      /* Vulkan 1.2 properties */
+   };
+
+   VkPhysicalDeviceVulkan13Properties core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
+      /* Vulkan 1.3 properties */
+   };
+
+   vk_foreach_struct(ext, pProperties->pNext)
+   {
+      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
+         continue;
+      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
+         continue;
+
+      switch (ext->sType) {
+      /* More property structs */
+      default:
+         break;
+      }
+   }
+}
+
+PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
+{
+   VK_FROM_HANDLE(nvk_instance, instance, _instance);
+   return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
+}
+
+static void
+nvk_get_device_extensions(const struct nvk_physical_device *device,
+   struct vk_device_extension_table *ext)
+{
+   *ext = (struct vk_device_extension_table) {
+      .KHR_variable_pointers = true,
+   };
+}
+
+static VkResult
+nvk_physical_device_try_create(struct nvk_instance *instance,
+   drmDevicePtr drm_device,
+   struct nvk_physical_device **device_out)
+{
+   // const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
+   const char *path = drm_device->nodes[DRM_NODE_RENDER];
+   VkResult result;
+   int fd;
+
+   fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      if (errno == ENOMEM) {
+         return vk_errorf(
+            instance, VK_ERROR_OUT_OF_HOST_MEMORY, "Unable to open device %s: out of memory", path);
+      }
+      return vk_errorf(
+         instance, VK_ERROR_INCOMPATIBLE_DRIVER, "Unable to open device %s: %m", path);
+   }
+
+   vk_warn_non_conformant_implementation("nvk");
+
+   struct nvk_physical_device *device =
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+
+   if (device == NULL) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_fd;
+   }
+
+   struct vk_physical_device_dispatch_table dispatch_table;
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &nvk_physical_device_entrypoints, true);
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &wsi_physical_device_entrypoints, false);
+
+   struct vk_device_extension_table supported_extensions;
+   nvk_get_device_extensions(device, &supported_extensions);
+
+   result = vk_physical_device_init(&device->vk, &instance->vk,
+                                    &supported_extensions, NULL,
+                                    &dispatch_table);
+
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail_alloc;
+   }
+
+   device->instance = instance;
+
+   *device_out = device;
+
+   return VK_SUCCESS;
+
+fail_alloc:
+   vk_free(&instance->vk.alloc, device);
+
+fail_fd:
+   close(fd);
+   return result;
+}
+
+void
+nvk_physical_device_destroy(struct nvk_physical_device *device)
+{
+   vk_free(&device->instance->vk.alloc, device);
+}
+
+static VkResult
+nvk_enumerate_physical_devices(struct nvk_instance *instance)
+{
+   if (instance->physical_devices_enumerated)
+      return VK_SUCCESS;
+
+   instance->physical_devices_enumerated = true;
+
+   int max_devices = drmGetDevices2(0, NULL, 0);
+   if (max_devices < 1)
+      return VK_SUCCESS;
+
+   drmDevicePtr *devices = MALLOC(max_devices * sizeof(drmDevicePtr));
+   drmGetDevices2(0, devices, max_devices);
+
+   VkResult result = VK_SUCCESS;
+   for (unsigned i = 0; i < (unsigned)max_devices; i++) {
+      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
+         devices[i]->bustype == DRM_BUS_PCI && devices[i]->deviceinfo.pci->vendor_id == 0x10de) {
+         struct nvk_physical_device *pdevice;
+         result = nvk_physical_device_try_create(instance, devices[i], &pdevice);
+         /* Incompatible DRM device, skip. */
+         if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
+            result = VK_SUCCESS;
+            continue;
+         }
+
+         /* Error creating the physical device, report the error. */
+         if (result != VK_SUCCESS)
+            break;
+
+         list_addtail(&pdevice->link, &instance->physical_devices);
+      }
+   }
+   drmFreeDevices(devices, max_devices);
+   FREE(devices);
+
+   /* If we successfully enumerated any devices, call it success */
+   return result;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_EnumeratePhysicalDevices(VkInstance _instance,
+   uint32_t *pPhysicalDeviceCount,
+   VkPhysicalDevice *pPhysicalDevices)
+{
+   VK_FROM_HANDLE(nvk_instance, instance, _instance);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices, pPhysicalDeviceCount);
+
+   VkResult result = nvk_enumerate_physical_devices(instance);
+   if (result != VK_SUCCESS)
+      return result;
+
+   list_for_each_entry(struct nvk_physical_device, pdevice, &instance->physical_devices, link)
+   {
+      vk_outarray_append_typed(VkPhysicalDevice, &out, i)
+      {
+         *i = nvk_physical_device_to_handle(pdevice);
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_EnumeratePhysicalDeviceGroups(VkInstance _instance,
+   uint32_t *pPhysicalDeviceGroupCount,
+   VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
+{
+   VK_FROM_HANDLE(nvk_instance, instance, _instance);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties,
+      out,
+      pPhysicalDeviceGroupProperties,
+      pPhysicalDeviceGroupCount);
+
+   VkResult result = nvk_enumerate_physical_devices(instance);
+   if (result != VK_SUCCESS)
+      return result;
+
+   list_for_each_entry(struct nvk_physical_device, pdevice, &instance->physical_devices, link)
+   {
+      vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p)
+      {
+         p->physicalDeviceCount = 1;
+         memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
+         p->physicalDevices[0] = nvk_physical_device_to_handle(pdevice);
+         p->subsetAllocation = false;
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
+   VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
+{
+   vk_foreach_struct(ext, pMemoryProperties->pNext)
+   {
+      switch (ext->sType) {
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
+   uint32_t *pQueueFamilyPropertyCount,
+   VkQueueFamilyProperties2 *pQueueFamilyProperties)
+{
+   // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+   VK_OUTARRAY_MAKE_TYPED(
+      VkQueueFamilyProperties2, out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
+   VkFormat vk_format,
+   VkFormatProperties2 *pFormatProperties)
+{
+   vk_foreach_struct(ext, pFormatProperties->pNext)
+   {
+      /* Use unsigned since some cases are not in the VkStructureType enum. */
+      switch ((unsigned)ext->sType) {
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
+   const VkPhysicalDeviceImageFormatInfo2 *base_info,
+   VkImageFormatProperties2 *base_props)
+{
+   return VK_ERROR_FORMAT_NOT_SUPPORTED;
+}

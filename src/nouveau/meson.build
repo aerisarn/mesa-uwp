@@ -18,6 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+subdir('compiler')
+if with_nouveau_vk
+  subdir('vulkan')
+endif
 if with_tools.contains('drm-shim')
   subdir('drm-shim')
 endif
