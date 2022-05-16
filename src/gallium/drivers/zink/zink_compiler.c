@@ -1695,30 +1695,35 @@ analyze_io(struct zink_shader *zs, nir_shader *shader)
    return ret;
 }
 
+struct zink_bindless_info {
+   nir_variable *bindless[4];
+   unsigned bindless_set;
+};
+
 /* this is a "default" bindless texture used if the shader has no texture variables */
 static nir_variable *
-create_bindless_texture(nir_shader *nir, nir_tex_instr *tex)
+create_bindless_texture(nir_shader *nir, nir_tex_instr *tex, unsigned descriptor_set)
 {
    unsigned binding = tex->sampler_dim == GLSL_SAMPLER_DIM_BUF ? 1 : 0;
    nir_variable *var;
 
    const struct glsl_type *sampler_type = glsl_sampler_type(tex->sampler_dim, tex->is_shadow, tex->is_array, GLSL_TYPE_FLOAT);
    var = nir_variable_create(nir, nir_var_uniform, glsl_array_type(sampler_type, ZINK_MAX_BINDLESS_HANDLES, 0), "bindless_texture");
-   var->data.descriptor_set = ZINK_DESCRIPTOR_BINDLESS;
+   var->data.descriptor_set = descriptor_set;
    var->data.driver_location = var->data.binding = binding;
    return var;
 }
 
 /* this is a "default" bindless image used if the shader has no image variables */
 static nir_variable *
-create_bindless_image(nir_shader *nir, enum glsl_sampler_dim dim)
+create_bindless_image(nir_shader *nir, enum glsl_sampler_dim dim, unsigned descriptor_set)
 {
    unsigned binding = dim == GLSL_SAMPLER_DIM_BUF ? 3 : 2;
    nir_variable *var;
 
    const struct glsl_type *image_type = glsl_image_type(dim, false, GLSL_TYPE_FLOAT);
    var = nir_variable_create(nir, nir_var_image, glsl_array_type(image_type, ZINK_MAX_BINDLESS_HANDLES, 0), "bindless_image");
-   var->data.descriptor_set = ZINK_DESCRIPTOR_BINDLESS;
+   var->data.descriptor_set = descriptor_set;
    var->data.driver_location = var->data.binding = binding;
    var->data.image.format = PIPE_FORMAT_R8G8B8A8_UNORM;
    return var;
@@ -1728,7 +1733,7 @@ create_bindless_image(nir_shader *nir, enum glsl_sampler_dim dim)
 static bool
 lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
 {
-   nir_variable **bindless = data;
+   struct zink_bindless_info *bindless = data;
 
    if (in->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(in);
@@ -1736,9 +1741,9 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
       if (idx == -1)
          return false;
 
-      nir_variable *var = tex->sampler_dim == GLSL_SAMPLER_DIM_BUF ? bindless[1] : bindless[0];
+      nir_variable *var = tex->sampler_dim == GLSL_SAMPLER_DIM_BUF ? bindless->bindless[1] : bindless->bindless[0];
       if (!var)
-         var = create_bindless_texture(b->shader, tex);
+         var = create_bindless_texture(b->shader, tex, bindless->bindless_set);
       b->cursor = nir_before_instr(in);
       nir_deref_instr *deref = nir_build_deref_var(b, var);
       if (glsl_type_is_array(var->type))
@@ -1802,9 +1807,9 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
    }
 
    enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
-   nir_variable *var = dim == GLSL_SAMPLER_DIM_BUF ? bindless[3] : bindless[2];
+   nir_variable *var = dim == GLSL_SAMPLER_DIM_BUF ? bindless->bindless[3] : bindless->bindless[2];
    if (!var)
-      var = create_bindless_image(b->shader, dim);
+      var = create_bindless_image(b->shader, dim, bindless->bindless_set);
    instr->intrinsic = op;
    b->cursor = nir_before_instr(in);
    nir_deref_instr *deref = nir_build_deref_var(b, var);
@@ -1815,7 +1820,7 @@ lower_bindless_instr(nir_builder *b, nir_instr *in, void *data)
 }
 
 static bool
-lower_bindless(nir_shader *shader, nir_variable **bindless)
+lower_bindless(nir_shader *shader, struct zink_bindless_info *bindless)
 {
    if (!nir_shader_instructions_pass(shader, lower_bindless_instr, nir_metadata_dominance, bindless))
       return false;
@@ -1868,7 +1873,7 @@ lower_bindless_io(nir_shader *shader)
 }
 
 static uint32_t
-zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
+zink_binding(gl_shader_stage stage, VkDescriptorType type, int index, bool compact_descriptors)
 {
    if (stage == MESA_SHADER_NONE) {
       unreachable("not supported");
@@ -1884,12 +1889,12 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
          return (stage * PIPE_MAX_SAMPLERS) + index;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         return stage;
+         return stage + (compact_descriptors * (ZINK_SHADER_COUNT * 2));
 
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          assert(index < ZINK_MAX_SHADER_IMAGES);
-         return (stage * ZINK_MAX_SHADER_IMAGES) + index;
+         return (stage * ZINK_MAX_SHADER_IMAGES) + index + (compact_descriptors * (ZINK_SHADER_COUNT * PIPE_MAX_SAMPLERS));
 
       default:
          unreachable("unexpected type");
@@ -1898,7 +1903,7 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
 }
 
 static void
-handle_bindless_var(nir_shader *nir, nir_variable *var, const struct glsl_type *type, nir_variable **bindless)
+handle_bindless_var(nir_shader *nir, nir_variable *var, const struct glsl_type *type, struct zink_bindless_info *bindless)
 {
    if (glsl_type_is_struct(type)) {
       for (unsigned i = 0; i < glsl_get_length(type); i++)
@@ -1928,17 +1933,17 @@ handle_bindless_var(nir_shader *nir, nir_variable *var, const struct glsl_type *
       default:
          unreachable("unknown");
    }
-   if (!bindless[binding]) {
-      bindless[binding] = nir_variable_clone(var, nir);
-      bindless[binding]->data.bindless = 0;
-      bindless[binding]->data.descriptor_set = ZINK_DESCRIPTOR_BINDLESS;
-      bindless[binding]->type = glsl_array_type(type, ZINK_MAX_BINDLESS_HANDLES, 0);
-      bindless[binding]->data.driver_location = bindless[binding]->data.binding = binding;
-      if (!bindless[binding]->data.image.format)
-         bindless[binding]->data.image.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-      nir_shader_add_variable(nir, bindless[binding]);
+   if (!bindless->bindless[binding]) {
+      bindless->bindless[binding] = nir_variable_clone(var, nir);
+      bindless->bindless[binding]->data.bindless = 0;
+      bindless->bindless[binding]->data.descriptor_set = bindless->bindless_set;
+      bindless->bindless[binding]->type = glsl_array_type(type, ZINK_MAX_BINDLESS_HANDLES, 0);
+      bindless->bindless[binding]->data.driver_location = bindless->bindless[binding]->data.binding = binding;
+      if (!bindless->bindless[binding]->data.image.format)
+         bindless->bindless[binding]->data.image.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+      nir_shader_add_variable(nir, bindless->bindless[binding]);
    } else {
-      assert(glsl_get_sampler_dim(glsl_without_array(bindless[binding]->type)) == glsl_get_sampler_dim(glsl_without_array(var->type)));
+      assert(glsl_get_sampler_dim(glsl_without_array(bindless->bindless[binding]->type)) == glsl_get_sampler_dim(glsl_without_array(var->type)));
    }
    var->data.mode = nir_var_shader_temp;
 }
@@ -2222,7 +2227,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       fprintf(stderr, "---8<---\n");
    }
 
-   nir_variable *bindless[4] = {0};
+   struct zink_bindless_info bindless = {0};
+   bindless.bindless_set = screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS];
    bool has_bindless_io = false;
    nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
       if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
@@ -2252,7 +2258,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             var->data.binding = !var->data.driver_location ? nir->info.stage :
                                 zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             var->data.driver_location);
+                                             var->data.driver_location,
+                                             screen->compact_descriptors);
             assert(var->data.driver_location || var->data.binding < 10);
             VkDescriptorType vktype = !var->data.driver_location ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             int binding = var->data.binding;
@@ -2265,10 +2272,11 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             ret->num_bindings[ztype]++;
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
-            var->data.descriptor_set = ztype + 1;
+            var->data.descriptor_set = screen->desc_set_id[ztype];
             var->data.binding = zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                             var->data.driver_location);
+                                             var->data.driver_location,
+                                             screen->compact_descriptors);
             ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
             ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
             ret->bindings[ztype][ret->num_bindings[ztype]].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -2280,15 +2288,15 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    var->data.mode == nir_var_image);
             if (var->data.bindless) {
                ret->bindless = true;
-               handle_bindless_var(nir, var, type, bindless);
+               handle_bindless_var(nir, var, type, &bindless);
             } else if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
                ztype = zink_desc_type_from_vktype(vktype);
                if (vktype == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
                   ret->num_texel_buffers++;
                var->data.driver_location = var->data.binding;
-               var->data.descriptor_set = ztype + 1;
-               var->data.binding = zink_binding(nir->info.stage, vktype, var->data.driver_location);
+               var->data.descriptor_set = screen->desc_set_id[ztype];
+               var->data.binding = zink_binding(nir->info.stage, vktype, var->data.driver_location, screen->compact_descriptors);
                ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
                ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
                ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
@@ -2302,7 +2310,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       }
    }
    bool bindless_lowered = false;
-   NIR_PASS(bindless_lowered, nir, lower_bindless, bindless);
+   NIR_PASS(bindless_lowered, nir, lower_bindless, &bindless);
    ret->bindless |= bindless_lowered;
 
    ret->nir = nir;
