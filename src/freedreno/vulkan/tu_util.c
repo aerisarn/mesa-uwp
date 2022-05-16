@@ -208,6 +208,35 @@ tu_tiling_config_update_pipes(struct tu_framebuffer *fb,
           sizeof(uint32_t) * (max_pipe_count - used_pipe_count));
 }
 
+static bool
+is_hw_binning_possible(const struct tu_framebuffer *fb)
+{
+   /* Similar to older gens, # of tiles per pipe cannot be more than 32.
+    * But there are no hangs with 16 or more tiles per pipe in either
+    * X or Y direction, so that limit does not seem to apply.
+    */
+   uint32_t tiles_per_pipe = fb->pipe0.width * fb->pipe0.height;
+   return tiles_per_pipe <= 32;
+}
+
+static void
+tu_tiling_config_update_binning(struct tu_framebuffer *fb, const struct tu_device *device)
+{
+   fb->binning_possible = is_hw_binning_possible(fb);
+
+   if (fb->binning_possible) {
+      fb->binning = (fb->tile_count.width * fb->tile_count.height) > 2;
+
+      if (unlikely(device->physical_device->instance->debug_flags & TU_DEBUG_FORCEBIN))
+         fb->binning = true;
+      if (unlikely(device->physical_device->instance->debug_flags &
+                   TU_DEBUG_NOBIN))
+         fb->binning = false;
+   } else {
+      fb->binning = false;
+   }
+}
+
 void
 tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
                              const struct tu_device *device,
@@ -216,6 +245,7 @@ tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
    tu_tiling_config_update_tile_layout(fb, device, pass);
    tu_tiling_config_update_pipe_layout(fb, device);
    tu_tiling_config_update_pipes(fb, device);
+   tu_tiling_config_update_binning(fb, device);
 }
 
 void

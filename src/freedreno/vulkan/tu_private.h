@@ -1816,6 +1816,12 @@ struct tu_framebuffer
    /* number of VSC pipes */
    VkExtent2D pipe_count;
 
+   /* Whether binning should be used for gmem rendering using this framebuffer. */
+   bool binning;
+
+   /* Whether binning could be used for gmem rendering using this framebuffer. */
+   bool binning_possible;
+
    /* pipe register values */
    uint32_t pipe_config[MAX_VSC_PIPES];
    uint32_t pipe_sizes[MAX_VSC_PIPES];
