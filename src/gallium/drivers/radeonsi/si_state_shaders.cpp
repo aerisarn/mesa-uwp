@@ -2325,10 +2325,15 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
     * Check if any output is eliminated.
     *
     * Dual source blending never has color buffer 1 enabled, so ignore it.
+    *
+    * On gfx11, pixel shaders that write memory should be compiled with an inlined epilog,
+    * so that the compiler can see s_endpgm and deallocates VGPRs before memory stores return.
     */
    if (sel->info.colors_written_4bit &
        (blend->dual_src_blend ? 0xffffff0f : 0xffffffff) &
        ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
+      key->ps.opt.prefer_mono = 1;
+   else if (sctx->gfx_level >= GFX11 && sel->info.base.writes_memory)
       key->ps.opt.prefer_mono = 1;
    else
       key->ps.opt.prefer_mono = 0;
