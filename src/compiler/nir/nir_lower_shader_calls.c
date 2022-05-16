@@ -1209,6 +1209,45 @@ nir_lower_stack_to_scratch(nir_shader *shader,
                                        &state);
 }
 
+static bool
+opt_remove_respills_instr(struct nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *store_intrin = nir_instr_as_intrinsic(instr);
+   if (store_intrin->intrinsic != nir_intrinsic_store_stack)
+      return false;
+
+   nir_instr *value_instr = store_intrin->src[0].ssa->parent_instr;
+   if (value_instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *load_intrin = nir_instr_as_intrinsic(value_instr);
+   if (load_intrin->intrinsic != nir_intrinsic_load_stack)
+      return false;
+
+   if (nir_intrinsic_base(load_intrin) != nir_intrinsic_base(store_intrin))
+      return false;
+
+   nir_instr_remove(&store_intrin->instr);
+   return true;
+}
+
+/* After shader split, look at stack load/store operations. If we're loading
+ * and storing the same value at the same location, we can drop the store
+ * instruction.
+ */
+static bool
+nir_opt_remove_respills(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader,
+                                       opt_remove_respills_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       NULL);
+}
+
 /** Lower shader call instructions to split shaders.
  *
  * Shader calls can be split into an initial shader and a series of "resume"
@@ -1295,6 +1334,9 @@ nir_lower_shader_calls(nir_shader *shader,
       /* Remove the dummy blocks added by flatten_resume_if_ladder() */
       nir_opt_if(resume_shaders[i], nir_opt_if_optimize_phi_true_false);
    }
+
+   for (unsigned i = 0; i < num_calls; i++)
+      NIR_PASS_V(resume_shaders[i], nir_opt_remove_respills);
 
    NIR_PASS_V(shader, nir_lower_stack_to_scratch, address_format);
    for (unsigned i = 0; i < num_calls; i++)
