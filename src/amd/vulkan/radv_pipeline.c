@@ -1102,14 +1102,14 @@ radv_get_conservative_raster_mode(const VkPipelineRasterizationStateCreateInfo *
 static void
 radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
                                      const struct radv_blend_state *blend,
-                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                     const struct radv_pre_raster_info *pre_rast_info)
 {
    const VkPipelineMultisampleStateCreateInfo *vkms =
       radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
    struct radv_multisample_state *ms = &pipeline->graphics.ms;
    unsigned num_tile_pipes = pipeline->device->physical_device->rad_info.num_tile_pipes;
-   const VkConservativeRasterizationModeEXT mode =
-      radv_get_conservative_raster_mode(pCreateInfo->pRasterizationState);
+   const VkConservativeRasterizationModeEXT mode = pre_rast_info->rast.conservative_mode;
    bool out_of_order_rast = false;
    int ps_iter_samples = 1;
    uint32_t mask = 0xffff;
@@ -1142,10 +1142,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
       ms->num_samples = 1;
    }
 
-   const struct VkPipelineRasterizationStateRasterizationOrderAMD *raster_order =
-      vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
-                           PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD);
-   if (raster_order && raster_order->rasterizationOrder == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
+   if (pre_rast_info->rast.order == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
       /* Out-of-order rasterization is explicitly enabled by the
        * application.
        */
@@ -1180,22 +1177,17 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
       S_028A4C_FORCE_EOV_CNTDWN_ENABLE(1) | S_028A4C_FORCE_EOV_REZ_ENABLE(1);
    ms->pa_sc_mode_cntl_0 = S_028A48_ALTERNATE_RBS_PER_TILE(
                               pipeline->device->physical_device->rad_info.gfx_level >= GFX9) |
-                           S_028A48_VPORT_SCISSOR_ENABLE(1);
+                           S_028A48_VPORT_SCISSOR_ENABLE(1) |
+                           S_028A48_LINE_STIPPLE_ENABLE(pre_rast_info->rast.stippled_line_enable);
 
-   const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line = vk_find_struct_const(
-      pCreateInfo->pRasterizationState->pNext, PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
-   if (rast_line) {
-      ms->pa_sc_mode_cntl_0 |= S_028A48_LINE_STIPPLE_ENABLE(rast_line->stippledLineEnable);
-      if (rast_line->lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
-         /* From the Vulkan spec 1.1.129:
-          *
-          * "When VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT lines
-          *  are being rasterized, sample locations may all be
-          *  treated as being at the pixel center (this may
-          *  affect attribute and depth interpolation)."
-          */
-         ms->num_samples = 1;
-      }
+   if (pre_rast_info->rast.line_raster_mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
+      /* From the Vulkan spec 1.1.129:
+       *
+       * "When VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT lines are being rasterized, sample locations
+       * may all be treated as being at the pixel center (this may affect attribute and depth
+       * interpolation)."
+       */
+      ms->num_samples = 1;
    }
 
    if (ms->num_samples > 1) {
@@ -1410,7 +1402,8 @@ radv_pipeline_is_blend_enabled(const struct radv_pipeline *pipeline,
 
 static uint64_t
 radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
-                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                   const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                   const struct radv_pre_raster_info *pre_rast_info)
 {
    bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
    bool raster_enabled = radv_is_raster_enabled(pipeline, pCreateInfo);
@@ -1436,7 +1429,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
              RADV_DYNAMIC_VERTEX_INPUT;
    }
 
-   if (!pCreateInfo->pRasterizationState->depthBiasEnable &&
+   if (!pre_rast_info->rast.depth_bias_enable &&
        !(pipeline->graphics.dynamic_states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE))
       states &= ~RADV_DYNAMIC_DEPTH_BIAS;
 
@@ -1459,14 +1452,8 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
                              PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT))
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
-   if (!pCreateInfo->pRasterizationState)
+   if (!pre_rast_info->rast.stippled_line_enable)
       states &= ~RADV_DYNAMIC_LINE_STIPPLE;
-   else {
-      const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_info = vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
-                                                                                                 PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
-      if (!rast_line_info || !rast_line_info->stippledLineEnable)
-         states &= ~RADV_DYNAMIC_LINE_STIPPLE;
-   }
 
    if (!radv_is_vrs_enabled(pipeline, pCreateInfo))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
@@ -1689,6 +1676,7 @@ radv_pipeline_init_pre_raster_info(struct radv_pipeline *pipeline,
 {
    const VkPipelineTessellationStateCreateInfo *ts = pCreateInfo->pTessellationState;
    const VkPipelineViewportStateCreateInfo *vp = pCreateInfo->pViewportState;
+   const VkPipelineRasterizationStateCreateInfo *rs = pCreateInfo->pRasterizationState;
    const VkShaderStageFlagBits tess_stages = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                              VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
    struct radv_pre_raster_info pre_rast_info = {0};
@@ -1711,6 +1699,53 @@ radv_pipeline_init_pre_raster_info(struct radv_pipeline *pipeline,
       if (depth_clip_control) {
          pre_rast_info.viewport.negative_one_to_one = !!depth_clip_control->negativeOneToOne;
       }
+   }
+
+   /* Rasterization */
+   pre_rast_info.rast.discard_enable = rs->rasterizerDiscardEnable;
+   pre_rast_info.rast.front_face = rs->frontFace;
+   pre_rast_info.rast.cull_mode = rs->cullMode;
+   pre_rast_info.rast.polygon_mode = si_translate_fill(rs->polygonMode);
+   pre_rast_info.rast.depth_bias_enable = rs->depthBiasEnable;
+   pre_rast_info.rast.depth_clamp_enable = rs->depthClampEnable;
+   pre_rast_info.rast.line_width = rs->lineWidth;
+   pre_rast_info.rast.depth_bias_constant_factor = rs->depthBiasConstantFactor;
+   pre_rast_info.rast.depth_bias_clamp = rs->depthBiasClamp;
+   pre_rast_info.rast.depth_bias_slope_factor = rs->depthBiasSlopeFactor;
+   pre_rast_info.rast.depth_clip_disable = rs->depthClampEnable;
+
+   const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
+      vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
+   if (provoking_vtx_info &&
+       provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
+      pre_rast_info.rast.provoking_vtx_last = true;
+   }
+
+   const VkPipelineRasterizationConservativeStateCreateInfoEXT *conservative_raster =
+      vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT);
+   if (conservative_raster) {
+      pre_rast_info.rast.conservative_mode = conservative_raster->conservativeRasterizationMode;
+   }
+
+   const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_info =
+      vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+   if (rast_line_info) {
+      pre_rast_info.rast.stippled_line_enable = rast_line_info->stippledLineEnable;
+      pre_rast_info.rast.line_raster_mode = rast_line_info->lineRasterizationMode;
+      pre_rast_info.rast.line_stipple_factor = rast_line_info->lineStippleFactor;
+      pre_rast_info.rast.line_stipple_pattern = rast_line_info->lineStipplePattern;
+   }
+
+   const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
+      vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+   if (depth_clip_state) {
+      pre_rast_info.rast.depth_clip_disable = !depth_clip_state->depthClipEnable;
+   }
+
+   const VkPipelineRasterizationStateRasterizationOrderAMD *raster_order =
+      vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD);
+   if (raster_order) {
+      pre_rast_info.rast.order = raster_order->rasterizationOrder;
    }
 
    return pre_rast_info;
@@ -1741,9 +1776,10 @@ radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
 static void
 radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                 const struct radv_vertex_input_info *vi_info)
+                                 const struct radv_vertex_input_info *vi_info,
+                                 const struct radv_pre_raster_info *pre_rast_info)
 {
-   uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, pCreateInfo);
+   uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, pCreateInfo, pre_rast_info);
    uint64_t states = needed_states;
 
    pipeline->dynamic_state = default_dynamic_state;
@@ -1775,15 +1811,13 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_LINE_WIDTH) {
-      assert(pCreateInfo->pRasterizationState);
-      dynamic->line_width = pCreateInfo->pRasterizationState->lineWidth;
+      dynamic->line_width = pre_rast_info->rast.line_width;
    }
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS) {
-      assert(pCreateInfo->pRasterizationState);
-      dynamic->depth_bias.bias = pCreateInfo->pRasterizationState->depthBiasConstantFactor;
-      dynamic->depth_bias.clamp = pCreateInfo->pRasterizationState->depthBiasClamp;
-      dynamic->depth_bias.slope = pCreateInfo->pRasterizationState->depthBiasSlopeFactor;
+      dynamic->depth_bias.bias = pre_rast_info->rast.depth_bias_constant_factor;
+      dynamic->depth_bias.clamp = pre_rast_info->rast.depth_bias_clamp;
+      dynamic->depth_bias.slope = pre_rast_info->rast.depth_bias_slope_factor;
    }
 
    /* Section 9.2 of the Vulkan 1.0.15 spec says:
@@ -1798,11 +1832,11 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_CULL_MODE) {
-      dynamic->cull_mode = pCreateInfo->pRasterizationState->cullMode;
+      dynamic->cull_mode = pre_rast_info->rast.cull_mode;
    }
 
    if (states & RADV_DYNAMIC_FRONT_FACE) {
-      dynamic->front_face = pCreateInfo->pRasterizationState->frontFace;
+      dynamic->front_face = pre_rast_info->rast.front_face;
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
@@ -1910,11 +1944,9 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
       }
    }
 
-   const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_info = vk_find_struct_const(
-      pCreateInfo->pRasterizationState->pNext, PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
    if (needed_states & RADV_DYNAMIC_LINE_STIPPLE) {
-      dynamic->line_stipple.factor = rast_line_info->lineStippleFactor;
-      dynamic->line_stipple.pattern = rast_line_info->lineStipplePattern;
+      dynamic->line_stipple.factor = pre_rast_info->rast.line_stipple_factor;
+      dynamic->line_stipple.pattern = pre_rast_info->rast.line_stipple_pattern;
    }
 
    if (!(states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE) ||
@@ -1930,7 +1962,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
-      dynamic->depth_bias_enable = pCreateInfo->pRasterizationState->depthBiasEnable;
+      dynamic->depth_bias_enable = pre_rast_info->rast.depth_bias_enable;
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
@@ -1938,8 +1970,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
-      dynamic->rasterizer_discard_enable =
-         pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+      dynamic->rasterizer_discard_enable = pre_rast_info->rast.discard_enable;
    }
 
    if (radv_pipeline_has_color_attachments(pCreateInfo) && states & RADV_DYNAMIC_LOGIC_OP) {
@@ -1967,60 +1998,42 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 
 static void
 radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
-                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                const struct radv_pre_raster_info *pre_rast_info)
 {
-   const VkPipelineRasterizationStateCreateInfo *raster_info = pCreateInfo->pRasterizationState;
-   const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
-      vk_find_struct_const(raster_info->pNext,
-                           PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
-   bool provoking_vtx_last = false;
-
-   if (provoking_vtx_info &&
-       provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
-      provoking_vtx_last = true;
-   }
-
    pipeline->graphics.pa_su_sc_mode_cntl =
-      S_028814_FACE(raster_info->frontFace) |
-      S_028814_CULL_FRONT(!!(raster_info->cullMode & VK_CULL_MODE_FRONT_BIT)) |
-      S_028814_CULL_BACK(!!(raster_info->cullMode & VK_CULL_MODE_BACK_BIT)) |
-      S_028814_POLY_MODE(raster_info->polygonMode != VK_POLYGON_MODE_FILL) |
-      S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(raster_info->polygonMode)) |
-      S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(raster_info->polygonMode)) |
-      S_028814_POLY_OFFSET_FRONT_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
-      S_028814_POLY_OFFSET_BACK_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
-      S_028814_POLY_OFFSET_PARA_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
-      S_028814_PROVOKING_VTX_LAST(provoking_vtx_last);
+      S_028814_FACE(pre_rast_info->rast.front_face) |
+      S_028814_CULL_FRONT(!!(pre_rast_info->rast.cull_mode & VK_CULL_MODE_FRONT_BIT)) |
+      S_028814_CULL_BACK(!!(pre_rast_info->rast.cull_mode & VK_CULL_MODE_BACK_BIT)) |
+      S_028814_POLY_MODE(pre_rast_info->rast.polygon_mode != V_028814_X_DRAW_TRIANGLES) |
+      S_028814_POLYMODE_FRONT_PTYPE(pre_rast_info->rast.polygon_mode) |
+      S_028814_POLYMODE_BACK_PTYPE(pre_rast_info->rast.polygon_mode) |
+      S_028814_POLY_OFFSET_FRONT_ENABLE(pre_rast_info->rast.depth_bias_enable) |
+      S_028814_POLY_OFFSET_BACK_ENABLE(pre_rast_info->rast.depth_bias_enable) |
+      S_028814_POLY_OFFSET_PARA_ENABLE(pre_rast_info->rast.depth_bias_enable) |
+      S_028814_PROVOKING_VTX_LAST(pre_rast_info->rast.provoking_vtx_last);
 
    if (pipeline->device->physical_device->rad_info.gfx_level >= GFX10) {
       /* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */
       pipeline->graphics.pa_su_sc_mode_cntl |=
-         S_028814_KEEP_TOGETHER_ENABLE(raster_info->polygonMode != VK_POLYGON_MODE_FILL);
-   }
-
-   bool depth_clip_disable = raster_info->depthClampEnable;
-   const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
-      vk_find_struct_const(raster_info->pNext,
-                           PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
-   if (depth_clip_state) {
-      depth_clip_disable = !depth_clip_state->depthClipEnable;
+         S_028814_KEEP_TOGETHER_ENABLE(pre_rast_info->rast.polygon_mode != V_028814_X_DRAW_TRIANGLES);
    }
 
    pipeline->graphics.pa_cl_clip_cntl =
       S_028810_DX_CLIP_SPACE_DEF(!pipeline->graphics.negative_one_to_one) |
-      S_028810_ZCLIP_NEAR_DISABLE(depth_clip_disable ? 1 : 0) |
-      S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
-      S_028810_DX_RASTERIZATION_KILL(raster_info->rasterizerDiscardEnable ? 1 : 0) |
+      S_028810_ZCLIP_NEAR_DISABLE(pre_rast_info->rast.depth_clip_disable) |
+      S_028810_ZCLIP_FAR_DISABLE(pre_rast_info->rast.depth_clip_disable) |
+      S_028810_DX_RASTERIZATION_KILL(pre_rast_info->rast.discard_enable) |
       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
    pipeline->graphics.uses_conservative_overestimate =
-      radv_get_conservative_raster_mode(pCreateInfo->pRasterizationState) ==
-         VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+      pre_rast_info->rast.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
 }
 
 static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                       const struct radv_pre_raster_info *pre_rast_info)
 {
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       radv_pipeline_get_depth_stencil_state(pipeline, pCreateInfo);
@@ -2059,7 +2072,7 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
    ds_state.db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
                                   S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
 
-   if (!pCreateInfo->pRasterizationState->depthClampEnable && ps->info.ps.writes_z) {
+   if (!pre_rast_info->rast.depth_clamp_enable && ps->info.ps.writes_z) {
       /* From VK_EXT_depth_range_unrestricted spec:
        *
        * "The behavior described in Primitive Clipping still applies.
@@ -3169,14 +3182,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    key.vs.topology = vi_info->primitive_topology;
 
    if (pipeline->device->physical_device->rad_info.gfx_level >= GFX10) {
-      const VkPipelineRasterizationStateCreateInfo *raster_info = pCreateInfo->pRasterizationState;
-      const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
-         vk_find_struct_const(raster_info->pNext,
-                              PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
-      if (provoking_vtx_info &&
-          provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
-         key.vs.provoking_vtx_last = true;
-      }
+      key.vs.provoking_vtx_last = pre_rast_info->rast.provoking_vtx_last;
    }
 
    if (pipeline->device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
@@ -5351,10 +5357,10 @@ radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
                                     const struct radv_pipeline *pipeline,
-                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                    const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                    const struct radv_pre_raster_info *pre_rast_info)
 {
-   const VkPipelineRasterizationStateCreateInfo *vkraster = pCreateInfo->pRasterizationState;
-   const VkConservativeRasterizationModeEXT mode = radv_get_conservative_raster_mode(vkraster);
+   const VkConservativeRasterizationModeEXT mode = pre_rast_info->rast.conservative_mode;
    uint32_t pa_sc_conservative_rast = S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1);
 
    if (pipeline->device->physical_device->rad_info.gfx_level >= GFX9) {
@@ -6486,7 +6492,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 
    radv_pipeline_generate_depth_stencil_state(ctx_cs, ds_state);
    radv_pipeline_generate_blend_state(ctx_cs, pipeline, blend);
-   radv_pipeline_generate_raster_state(ctx_cs, pipeline, pCreateInfo);
+   radv_pipeline_generate_raster_state(ctx_cs, pipeline, pCreateInfo, pre_rast_info);
    radv_pipeline_generate_multisample_state(ctx_cs, pipeline);
    radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
    radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline);
@@ -6748,17 +6754,17 @@ radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *
       return result;
 
    pipeline->graphics.spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
-   radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
+   radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo, &pre_rast_info);
    if (!radv_pipeline_has_mesh(pipeline))
       radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo, &vi_info);
-   radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, &vi_info);
+   radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, &vi_info, &pre_rast_info);
 
    pipeline->graphics.negative_one_to_one = pre_rast_info.viewport.negative_one_to_one;
 
-   radv_pipeline_init_raster_state(pipeline, pCreateInfo);
+   radv_pipeline_init_raster_state(pipeline, pCreateInfo, &pre_rast_info);
 
    struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo);
+      radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo, &pre_rast_info);
 
    if (pipeline->device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, pCreateInfo);

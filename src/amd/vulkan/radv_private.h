@@ -1886,6 +1886,27 @@ struct radv_pre_raster_info {
    struct {
       bool negative_one_to_one;
    } viewport;
+
+   struct {
+      bool discard_enable;
+      VkFrontFace front_face;
+      VkCullModeFlags cull_mode;
+      VkPolygonMode polygon_mode;
+      bool depth_bias_enable;
+      bool depth_clamp_enable;
+      float line_width;
+      float depth_bias_constant_factor;
+      float depth_bias_clamp;
+      float depth_bias_slope_factor;
+      VkConservativeRasterizationModeEXT conservative_mode;
+      bool provoking_vtx_last;
+      bool stippled_line_enable;
+      VkLineRasterizationModeEXT line_raster_mode;
+      uint32_t line_stipple_factor;
+      uint16_t line_stipple_pattern;
+      bool depth_clip_disable;
+      VkRasterizationOrderAMD order;
+   } rast;
 };
 
 struct radv_pipeline {
