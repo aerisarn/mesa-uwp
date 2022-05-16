@@ -101,6 +101,7 @@ struct zink_descriptor_layout {
 
 struct zink_descriptor_pool_key {
    unsigned use_count;
+   unsigned num_type_sizes;
    struct zink_descriptor_layout_key *layout;
    VkDescriptorPoolSize sizes[2];
 };
