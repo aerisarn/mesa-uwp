@@ -36,7 +36,11 @@ lower_split_src(bi_context *ctx, bi_instr *I, unsigned s)
 {
    /* Fix up for mismatch between IR and Valhall BLEND */
    if (I->op == BI_OPCODE_BLEND) {
-      assert(s == 1);
+      /* Only the blend descriptor needs lowering */
+      if (s != 1)
+         return;
+
+      /* But it is in a different place! */
       s = 2;
    }
 
