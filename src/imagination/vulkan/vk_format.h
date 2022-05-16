@@ -48,7 +48,7 @@ vk_format_is_alpha_on_msb(VkFormat vk_format)
 
    return (desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB ||
            desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) &&
-#if defined(UTIL_ARCH_BIG_ENDIAN)
+#if UTIL_ARCH_BIG_ENDIAN
            desc->swizzle[3] == PIPE_SWIZZLE_X;
 #else
            desc->swizzle[3] == PIPE_SWIZZLE_W;
