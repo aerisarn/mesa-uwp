@@ -2180,6 +2180,13 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_verify_device_extensions(screen);
 
+   screen->desc_set_id[ZINK_DESCRIPTOR_TYPES] = 0;
+   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UBO] = 1;
+   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = 2;
+   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 3;
+   screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 4;
+   screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
+
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))
       goto fail;
 

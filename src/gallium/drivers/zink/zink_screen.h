@@ -164,6 +164,7 @@ struct zink_screen {
 
    struct vk_dispatch_table vk;
 
+   uint8_t desc_set_id[ZINK_MAX_DESCRIPTOR_SETS];
    bool (*descriptor_program_init)(struct zink_context *ctx, struct zink_program *pg);
    void (*descriptor_program_deinit)(struct zink_context *ctx, struct zink_program *pg);
    void (*descriptors_update)(struct zink_context *ctx, bool is_compute);
