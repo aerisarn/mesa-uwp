@@ -391,6 +391,18 @@ struct intel_device_info
     * apply_hwconfig is true when the platform should apply hwconfig values
     */
    bool apply_hwconfig;
+
+   struct {
+      bool use_class_instance;
+      struct {
+         uint16_t mem_class;
+         uint16_t mem_instance;
+         struct {
+            uint64_t size;
+            uint64_t free;
+         } mappable;
+      } sram, vram;
+   } mem;
    /** @} */
 };
 

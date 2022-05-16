@@ -1587,6 +1587,45 @@ query_topology(struct intel_device_info *devinfo, int fd)
 
 }
 
+/**
+ * Reports memory region info, and allows buffers to target system-memory,
+ * and/or device local memory.
+ */
+static bool
+query_regions(struct intel_device_info *devinfo, int fd)
+{
+   struct drm_i915_query_memory_regions *meminfo =
+      intel_i915_query_alloc(fd, DRM_I915_QUERY_MEMORY_REGIONS, NULL);
+   if (meminfo == NULL)
+      return false;
+
+   for (int i = 0; i < meminfo->num_regions; i++) {
+      const struct drm_i915_memory_region_info *mem = &meminfo->regions[i];
+      switch (mem->region.memory_class) {
+      case I915_MEMORY_CLASS_SYSTEM:
+         devinfo->mem.sram.mem_class = mem->region.memory_class;
+         devinfo->mem.sram.mem_instance = mem->region.memory_instance;
+         devinfo->mem.sram.mappable.size = mem->probed_size;
+         if (mem->unallocated_size != -1)
+            devinfo->mem.sram.mappable.free = mem->unallocated_size;
+         break;
+      case I915_MEMORY_CLASS_DEVICE:
+         devinfo->mem.vram.mem_class = mem->region.memory_class;
+         devinfo->mem.vram.mem_instance = mem->region.memory_instance;
+         devinfo->mem.vram.mappable.size = mem->probed_size;
+         if (mem->unallocated_size != -1)
+            devinfo->mem.vram.mappable.free = mem->unallocated_size;
+         break;
+      default:
+         break;
+      }
+   }
+
+   free(meminfo);
+   devinfo->mem.use_class_instance = true;
+   return true;
+}
+
 static int
 intel_get_aperture_size(int fd, uint64_t *size)
 {
@@ -1929,6 +1968,14 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
        * will be wrong, affecting GPU metrics. In this case, fail silently.
        */
       getparam_topology(devinfo, fd);
+   }
+
+   query_regions(devinfo, fd);
+
+   /* region info is required for lmem support */
+   if (devinfo->has_local_mem && !devinfo->mem.use_class_instance) {
+      mesa_logw("Could not query local memory size.");
+      return false;
    }
 
    if (devinfo->platform == INTEL_PLATFORM_CHV)
