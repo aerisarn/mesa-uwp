@@ -1921,13 +1921,18 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     * the color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
     */
-   if ((sscreen->info.gfx_level <= GFX9 ||
-        info->base.fs.uses_discard ||
-        shader->key.ps.part.prolog.poly_stipple ||
-        shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS) &&
-       !spi_shader_col_format && !info->writes_z && !info->writes_stencil &&
-       !info->writes_samplemask)
-      spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+   bool has_mrtz = info->writes_z || info->writes_stencil || info->writes_samplemask;
+
+   if (!spi_shader_col_format && !has_mrtz) {
+      if (sscreen->info.gfx_level >= GFX10) {
+         if (info->base.fs.uses_discard ||
+             shader->key.ps.part.prolog.poly_stipple ||
+             shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS)
+            spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+      } else {
+         spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+      }
+   }
 
    shader->ctx_reg.ps.spi_ps_input_ena = input_ena;
    shader->ctx_reg.ps.spi_ps_input_addr = shader->config.spi_ps_input_addr;
