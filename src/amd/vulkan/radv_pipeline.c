@@ -4552,7 +4552,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          ac_nir_lower_global_access(stages[i].nir);
          radv_nir_lower_abi(stages[i].nir, device->physical_device->rad_info.gfx_level,
-                            &stages[i].info, &stages[i].args, pipeline_key);
+                            &stages[i].info, &stages[i].args, pipeline_key,
+                            radv_use_llvm_for_stage(device, i));
          radv_optimize_nir_algebraic(
             stages[i].nir, io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE || i == MESA_SHADER_TASK);
 

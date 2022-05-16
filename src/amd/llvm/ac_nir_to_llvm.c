@@ -3623,6 +3623,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_tess_level_inner_default:
    case nir_intrinsic_load_patch_vertices_in:
    case nir_intrinsic_load_sample_mask_in:
+   case nir_intrinsic_load_ring_tess_factors_amd:
+   case nir_intrinsic_load_ring_tess_offchip_amd:
+   case nir_intrinsic_load_ring_esgs_amd:
       result = ctx->abi->intrinsic_load(ctx->abi, instr->intrinsic);
       break;
    case nir_intrinsic_load_vertex_id:

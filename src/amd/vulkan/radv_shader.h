@@ -527,7 +527,7 @@ nir_shader *radv_shader_compile_to_nir(struct radv_device *device,
 
 void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
                         const struct radv_shader_info *info, const struct radv_shader_args *args,
-                        const struct radv_pipeline_key *pl_key);
+                        const struct radv_pipeline_key *pl_key, bool use_llvm);
 
 void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);

@@ -34,6 +34,7 @@ typedef struct {
    const struct radv_shader_args *args;
    const struct radv_shader_info *info;
    const struct radv_pipeline_key *pl_key;
+   bool use_llvm;
 } lower_abi_state;
 
 static nir_ssa_def *
@@ -190,17 +191,19 @@ static bool
 filter_abi_instr(const nir_instr *instr,
                  UNUSED const void *state)
 {
+   lower_abi_state *s = (lower_abi_state *) state;
+
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   return intrin->intrinsic == nir_intrinsic_load_ring_tess_factors_amd ||
+   return (intrin->intrinsic == nir_intrinsic_load_ring_tess_factors_amd && !s->use_llvm) ||
+          (intrin->intrinsic == nir_intrinsic_load_ring_tess_offchip_amd && !s->use_llvm) ||
+          (intrin->intrinsic == nir_intrinsic_load_ring_esgs_amd && !s->use_llvm) ||
           intrin->intrinsic == nir_intrinsic_load_ring_tess_factors_offset_amd ||
-          intrin->intrinsic == nir_intrinsic_load_ring_tess_offchip_amd ||
           intrin->intrinsic == nir_intrinsic_load_ring_tess_offchip_offset_amd ||
           intrin->intrinsic == nir_intrinsic_load_patch_vertices_in ||
           intrin->intrinsic == nir_intrinsic_load_tcs_num_patches_amd ||
-          intrin->intrinsic == nir_intrinsic_load_ring_esgs_amd ||
           intrin->intrinsic == nir_intrinsic_load_ring_es2gs_offset_amd ||
           intrin->intrinsic == nir_intrinsic_load_tess_rel_patch_id_amd ||
           intrin->intrinsic == nir_intrinsic_load_gs_vertex_offset_amd ||
@@ -228,13 +231,14 @@ filter_abi_instr(const nir_instr *instr,
 void
 radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
                    const struct radv_shader_info *info, const struct radv_shader_args *args,
-                   const struct radv_pipeline_key *pl_key)
+                   const struct radv_pipeline_key *pl_key, bool use_llvm)
 {
    lower_abi_state state = {
       .gfx_level = gfx_level,
       .info = info,
       .args = args,
       .pl_key = pl_key,
+      .use_llvm = use_llvm,
    };
 
    nir_shader_lower_instructions(shader, filter_abi_instr, lower_abi_instr, &state);
