@@ -997,11 +997,10 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
          .extensions = (uintptr_t)&ext_regions,
       };
 
-      /* TODO: Add I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS to create.flags
-       * for IRIS_HEAP_DEVICE_LOCAL_PREFERRED when small BAR uapi is
-       * stabilized.
-       */
-      assert(bufmgr->all_vram_mappable);
+      if (!bufmgr->all_vram_mappable &&
+          bo->real.heap == IRIS_HEAP_DEVICE_LOCAL_PREFERRED) {
+         create.flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
+      }
 
       /* It should be safe to use GEM_CREATE_EXT without checking, since we are
        * in the side of the branch where discrete memory is available. So we
