@@ -3,3 +3,4 @@ d3d12 ARB_robust_buffer_access_behavior
 VK_EXT_robustness2 for lavapipe
 VK_EXT_image_2d_view_of_3d on RADV
 zink GL_EXT_memory_object_win32 and GL_EXT_semaphore_win32 support
+vertexAttributeInstanceRateZeroDivisor support for lavapipe

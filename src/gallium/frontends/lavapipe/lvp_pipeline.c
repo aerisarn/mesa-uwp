@@ -143,17 +143,26 @@ deep_copy_vertex_input_state(void *mem_ctx,
       vk_foreach_struct(ext, src->pNext) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
-            VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_src = (VkPipelineVertexInputDivisorStateCreateInfoEXT *)ext;
-            VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineVertexInputDivisorStateCreateInfoEXT);
-
+            const VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_src = (VkPipelineVertexInputDivisorStateCreateInfoEXT *)ext;
+            unsigned n = ext_src->vertexBindingDivisorCount;
+            if (!n)
+               continue;
+            size_t offset = sizeof(VkPipelineVertexInputDivisorStateCreateInfoEXT);
+            char *p = (char *) ralloc_size(mem_ctx, offset + n * sizeof(VkVertexInputBindingDivisorDescriptionEXT));
+            if (!p)
+               return VK_ERROR_OUT_OF_HOST_MEMORY;
+            VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_dst = (VkPipelineVertexInputDivisorStateCreateInfoEXT *)p;
+            VkVertexInputBindingDivisorDescriptionEXT *dst_divisors = (VkVertexInputBindingDivisorDescriptionEXT *)(p + offset);
             ext_dst->sType = ext_src->sType;
-            ext_dst->vertexBindingDivisorCount = ext_src->vertexBindingDivisorCount;
-
-            LVP_PIPELINE_DUP(ext_dst->pVertexBindingDivisors,
-                             ext_src->pVertexBindingDivisors,
-                             VkVertexInputBindingDivisorDescriptionEXT,
-                             ext_src->vertexBindingDivisorCount);
-
+            ext_dst->pNext = NULL;
+            ext_dst->vertexBindingDivisorCount = n;
+            ext_dst->pVertexBindingDivisors = dst_divisors;
+            const VkVertexInputBindingDivisorDescriptionEXT *src_divisors = ext_src->pVertexBindingDivisors;
+            for (unsigned i = 0; i < n; ++i) {
+               uint32_t d = src_divisors[i].divisor;
+               dst_divisors[i].divisor = d ? d : UINT32_MAX;
+               dst_divisors[i].binding = src_divisors[i].binding;
+            }
             dst->pNext = ext_dst;
             break;
          }

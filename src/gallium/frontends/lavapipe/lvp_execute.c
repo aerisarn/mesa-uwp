@@ -3495,13 +3495,13 @@ static void handle_set_vertex_input(struct vk_cmd_queue_entry *cmd,
       state->velem.velems[location].vertex_buffer_index = attrs[i].binding;
       state->velem.velems[location].src_format = lvp_vk_format_to_pipe_format(attrs[i].format);
       state->vb[attrs[i].binding].stride = binding->stride;
-
+      uint32_t d = binding->divisor;
       switch (binding->inputRate) {
       case VK_VERTEX_INPUT_RATE_VERTEX:
          state->velem.velems[location].instance_divisor = 0;
          break;
       case VK_VERTEX_INPUT_RATE_INSTANCE:
-         state->velem.velems[location].instance_divisor = binding->divisor;
+         state->velem.velems[location].instance_divisor = d ? d : UINT32_MAX;
          break;
       default:
          assert(0);

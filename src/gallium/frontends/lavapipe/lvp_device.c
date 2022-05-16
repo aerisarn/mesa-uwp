@@ -780,11 +780,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
          VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
             (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
-         features->vertexAttributeInstanceRateZeroDivisor = false;
          if (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR) != 0) {
+            features->vertexAttributeInstanceRateZeroDivisor = true;
             features->vertexAttributeInstanceRateDivisor = true;
          } else {
             features->vertexAttributeInstanceRateDivisor = false;
+            features->vertexAttributeInstanceRateZeroDivisor = false;
          }
          break;
       }
