@@ -939,16 +939,19 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
              0, res->aux.extra_aux.surf.size_B);
    }
 
-   unsigned clear_color_size =
-      iris_get_aux_clear_color_state_size(screen, res);
+   unsigned clear_color_size = iris_get_aux_clear_color_state_size(screen, res);
    if (clear_color_size > 0) {
-      if (!map)
-         map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
-      if (!map)
-         return false;
+      if (iris_bo_mmap_mode(res->bo) != IRIS_MMAP_NONE) {
+         if (!map)
+            map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
+         if (!map)
+            return false;
 
-      /* Zero the indirect clear color to match ::fast_clear_color. */
-      memset((char *)map + res->aux.clear_color_offset, 0, clear_color_size);
+         /* Zero the indirect clear color to match ::fast_clear_color. */
+         memset((char *)map + res->aux.clear_color_offset, 0, clear_color_size);
+      } else {
+         res->aux.clear_color_unknown = true;
+      }
    }
 
    if (map)
