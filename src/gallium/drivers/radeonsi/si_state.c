@@ -2971,6 +2971,9 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
     * - FB write -> shader read
     * - shader write -> FB read
     *
+    * Wait for draws because of possible transitions:
+    * - texture -> render (eg: glBlitFramebuffer(with src=dst) then glDraw*)
+    *
     * DB caches are flushed on demand (using si_decompress_textures).
     *
     * When MSAA is enabled, CB and TC caches are flushed on demand
@@ -2986,7 +2989,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
                                  sctx->framebuffer.all_DCC_pipe_aligned);
    }
 
-   sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+   sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_PS_PARTIAL_FLUSH;
 
    /* u_blitter doesn't invoke depth decompression when it does multiple
     * blits in a row, but the only case when it matters for DB is when
