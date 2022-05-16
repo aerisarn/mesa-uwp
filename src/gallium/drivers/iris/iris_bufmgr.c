@@ -238,6 +238,7 @@ struct iris_bufmgr {
    bool has_userptr_probe:1;
    bool bo_reuse:1;
    bool use_global_vm:1;
+   bool all_vram_mappable:1;
 
    struct intel_aux_map_context *aux_map_ctx;
 
@@ -2404,6 +2405,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->has_userptr_probe =
       gem_param(fd, I915_PARAM_HAS_USERPTR_PROBE) >= 1;
    iris_bufmgr_get_meminfo(bufmgr, devinfo);
+   bufmgr->all_vram_mappable = intel_vram_all_mappable(devinfo);
 
    STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
