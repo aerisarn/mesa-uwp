@@ -625,7 +625,7 @@ static void
 tu6_emit_cond_for_load_stores(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                               uint32_t pipe, uint32_t slot, bool wfm)
 {
-   if (use_hw_binning(cmd)) {
+   if (cmd->state.framebuffer->binning_possible) {
       tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
       tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(REG_A6XX_VSC_STATE_REG(pipe)) |
                      A6XX_CP_REG_TEST_0_BIT(slot) |
@@ -666,9 +666,9 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, pipe * cmd->vsc_draw_strm_pitch);
       tu_cs_emit(cs, pipe * 4);
       tu_cs_emit(cs, pipe * cmd->vsc_prim_strm_pitch);
-
-      tu6_emit_cond_for_load_stores(cmd, cs, pipe, slot, true);
    }
+
+   tu6_emit_cond_for_load_stores(cmd, cs, pipe, slot, hw_binning);
 
    tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
    tu_cs_emit(cs, !hw_binning);
@@ -745,7 +745,7 @@ tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu6_emit_blit_scissor(cmd, cs, true);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_load_gmem_attachment(cmd, cs, i, use_hw_binning(cmd), false);
+      tu_load_gmem_attachment(cmd, cs, i, cmd->state.framebuffer->binning, false);
 }
 
 static void
@@ -764,7 +764,7 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    for (uint32_t a = 0; a < pass->attachment_count; ++a) {
       if (pass->attachments[a].gmem_offset >= 0)
-         tu_store_gmem_attachment(cmd, cs, a, a, use_hw_binning(cmd));
+         tu_store_gmem_attachment(cmd, cs, a, a, cmd->state.framebuffer->binning_possible);
    }
 
    if (subpass->resolve_attachments) {
@@ -1339,6 +1339,16 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    } else {
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
+
+      if (fb->binning_possible) {
+         /* Mark all tiles as visible for tu6_emit_cond_for_load_stores(), since
+          * the actual binner didn't run.
+          */
+         int pipe_count = fb->pipe_count.width * fb->pipe_count.height;
+         tu_cs_emit_pkt4(cs, REG_A6XX_VSC_STATE_REG(0), pipe_count);
+         for (int i = 0; i < pipe_count; i++)
+            tu_cs_emit(cs, ~0);
+      }
    }
 
    tu_autotune_begin_renderpass(cmd, cs, autotune_result);
@@ -1400,9 +1410,9 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
-   /* Create gmem load/stores now (at EndRenderPass time)) because they need to
-    * know whether to allow their conditional execution, which is tied to a
-    * state that is known only at the end of the renderpass.  They will be
+   /* Create gmem load/stores now (at EndRenderPass time)) because they needed to
+    * know whether to allow their conditional execution, which was tied to a
+    * state that was known only at the end of the renderpass.  They will be
     * called from tu6_render_tile().
     */
    tu_cs_begin(&cmd->tile_load_cs);
