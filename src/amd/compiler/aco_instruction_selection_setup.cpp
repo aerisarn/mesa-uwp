@@ -611,27 +611,9 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_read_invocation:
                case nir_intrinsic_first_invocation:
                case nir_intrinsic_ballot:
-               case nir_intrinsic_load_ring_tess_factors_amd:
-               case nir_intrinsic_load_ring_tess_factors_offset_amd:
-               case nir_intrinsic_load_ring_tess_offchip_amd:
-               case nir_intrinsic_load_ring_tess_offchip_offset_amd:
-               case nir_intrinsic_load_ring_esgs_amd:
-               case nir_intrinsic_load_ring_es2gs_offset_amd:
                case nir_intrinsic_bindless_image_samples:
                case nir_intrinsic_has_input_vertex_amd:
                case nir_intrinsic_has_input_primitive_amd:
-               case nir_intrinsic_load_workgroup_num_input_vertices_amd:
-               case nir_intrinsic_load_workgroup_num_input_primitives_amd:
-               case nir_intrinsic_load_shader_query_enabled_amd:
-               case nir_intrinsic_load_cull_front_face_enabled_amd:
-               case nir_intrinsic_load_cull_back_face_enabled_amd:
-               case nir_intrinsic_load_cull_ccw_amd:
-               case nir_intrinsic_load_cull_small_primitives_enabled_amd:
-               case nir_intrinsic_load_cull_any_enabled_amd:
-               case nir_intrinsic_load_viewport_x_scale:
-               case nir_intrinsic_load_viewport_y_scale:
-               case nir_intrinsic_load_viewport_x_offset:
-               case nir_intrinsic_load_viewport_y_offset:
                case nir_intrinsic_load_force_vrs_rates_amd:
                case nir_intrinsic_load_scalar_arg_amd:
                case nir_intrinsic_load_smem_amd: type = RegType::sgpr; break;
@@ -716,13 +698,9 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_invocation_id:
                case nir_intrinsic_load_primitive_id:
                case nir_intrinsic_load_buffer_amd:
-               case nir_intrinsic_load_tess_rel_patch_id_amd:
-               case nir_intrinsic_load_gs_vertex_offset_amd:
                case nir_intrinsic_load_initial_edgeflags_amd:
-               case nir_intrinsic_load_packed_passthrough_primitive_amd:
                case nir_intrinsic_gds_atomic_add_amd:
                case nir_intrinsic_bvh64_intersect_ray_amd:
-               case nir_intrinsic_load_cull_small_prim_precision_amd:
                case nir_intrinsic_load_vector_arg_amd: type = RegType::vgpr; break;
                case nir_intrinsic_load_shared:
                case nir_intrinsic_load_shared2_amd:
