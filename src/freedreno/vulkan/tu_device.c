@@ -2611,7 +2611,8 @@ tu_init_sampler(struct tu_device *device,
    if (pCreateInfo->borderColor == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT ||
        pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT) {
       mtx_lock(&device->mutex);
-      border_color = BITSET_FFS(device->custom_border_color);
+      border_color = BITSET_FFS(device->custom_border_color) - 1;
+      assert(border_color < TU_BORDER_COLOR_COUNT);
       BITSET_CLEAR(device->custom_border_color, border_color);
       mtx_unlock(&device->mutex);
       tu6_pack_border_color(device->global_bo->map + gb_offset(bcolor[border_color]),
