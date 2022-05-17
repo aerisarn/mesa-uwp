@@ -2618,12 +2618,21 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
       radv_image_view_finish(&iview);
    } else {
+      unsigned num_samples = 0;
+
+      /* On GFX11, DB_Z_INFO.NUM_SAMPLES should always match the framebuffer samples. It affects
+       * VRS and occlusion queries if depth and stencil are not bound.
+       */
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX11)
+         num_samples = subpass ? util_logbase2(subpass->max_sample_count) : 0;
+
       if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9)
          radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
       else
          radeon_set_context_reg_seq(cmd_buffer->cs, R_028040_DB_Z_INFO, 2);
 
-      radeon_emit(cmd_buffer->cs, S_028040_FORMAT(V_028040_Z_INVALID));       /* DB_Z_INFO */
+      radeon_emit(cmd_buffer->cs, S_028040_FORMAT(V_028040_Z_INVALID) |       /* DB_Z_INFO */
+                                  S_028040_NUM_SAMPLES(num_samples));
       radeon_emit(cmd_buffer->cs, S_028044_FORMAT(V_028044_STENCIL_INVALID)); /* DB_STENCIL_INFO */
    }
    radeon_set_context_reg(cmd_buffer->cs, R_028208_PA_SC_WINDOW_SCISSOR_BR,
