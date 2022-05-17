@@ -3828,7 +3828,7 @@ tu_compute_pipeline_create(VkDevice device,
    pipeline->executables_mem_ctx = ralloc_context(NULL);
    util_dynarray_init(&pipeline->executables, pipeline->executables_mem_ctx);
 
-   struct tu_shader_key key;
+   struct tu_shader_key key = { };
    tu_shader_key_init(&key, stage_info, dev);
 
    void *pipeline_mem_ctx = ralloc_context(NULL);
