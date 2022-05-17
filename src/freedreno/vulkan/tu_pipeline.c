@@ -2745,6 +2745,11 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          goto done;
    }
 
+   if (builder->create_info->flags &
+       VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+      return VK_PIPELINE_COMPILE_REQUIRED;
+   }
+
    nir_shader *nir[ARRAY_SIZE(stage_infos)] = { NULL };
 
    struct tu_shader *shaders[ARRAY_SIZE(nir)] = { NULL };
@@ -3649,7 +3654,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    result = tu_pipeline_builder_compile_shaders(builder, *pipeline);
    if (result != VK_SUCCESS) {
       vk_object_free(&builder->device->vk, builder->alloc, *pipeline);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return result;
    }
 
    result = tu_pipeline_allocate_cs(builder->device, *pipeline,
@@ -3837,15 +3842,25 @@ tu_CreateGraphicsPipelines(VkDevice device,
                            VkPipeline *pPipelines)
 {
    VkResult final_result = VK_SUCCESS;
+   uint32_t i = 0;
 
-   for (uint32_t i = 0; i < count; i++) {
+   for (; i < count; i++) {
       VkResult result = tu_graphics_pipeline_create(device, pipelineCache,
                                                     &pCreateInfos[i], pAllocator,
                                                     &pPipelines[i]);
 
-      if (result != VK_SUCCESS)
+      if (result != VK_SUCCESS) {
          final_result = result;
+         pPipelines[i] = VK_NULL_HANDLE;
+
+         if (pCreateInfos[i].flags &
+             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+            break;
+      }
    }
+
+   for (; i < count; i++)
+      pPipelines[i] = VK_NULL_HANDLE;
 
    return final_result;
 }
@@ -3915,6 +3930,12 @@ tu_compute_pipeline_create(VkDevice device,
    char *nir_initial_disasm = NULL;
 
    if (!compiled) {
+      if (pCreateInfo->flags &
+          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+         result = VK_PIPELINE_COMPILE_REQUIRED;
+         goto fail;
+      }
+
       struct ir3_shader_key ir3_key = {};
 
       nir_shader *nir = tu_spirv_to_nir(dev, pipeline_mem_ctx, stage_info,
@@ -4021,14 +4042,24 @@ tu_CreateComputePipelines(VkDevice device,
                           VkPipeline *pPipelines)
 {
    VkResult final_result = VK_SUCCESS;
+   uint32_t i = 0;
 
-   for (uint32_t i = 0; i < count; i++) {
+   for (; i < count; i++) {
       VkResult result = tu_compute_pipeline_create(device, pipelineCache,
                                                    &pCreateInfos[i],
                                                    pAllocator, &pPipelines[i]);
-      if (result != VK_SUCCESS)
+      if (result != VK_SUCCESS) {
          final_result = result;
+         pPipelines[i] = VK_NULL_HANDLE;
+
+         if (pCreateInfos[i].flags &
+             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+            break;
+      }
    }
+
+   for (; i < count; i++)
+      pPipelines[i] = VK_NULL_HANDLE;
 
    return final_result;
 }

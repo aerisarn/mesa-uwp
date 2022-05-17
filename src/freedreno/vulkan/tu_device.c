@@ -217,6 +217,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_primitives_generated_query = true,
       .EXT_image_view_min_lod = true,
       .EXT_pipeline_creation_feedback = true,
+      .EXT_pipeline_creation_cache_control = true,
 #ifndef TU_USE_KGSL
       .EXT_physical_device_drm = true,
 #endif
@@ -619,7 +620,7 @@ tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
    features->robustImageAccess                   = true;
    features->inlineUniformBlock                  = false;
    features->descriptorBindingInlineUniformBlockUpdateAfterBind = false;
-   features->pipelineCreationCacheControl        = false;
+   features->pipelineCreationCacheControl        = true;
    features->privateData                         = true;
    features->shaderDemoteToHelperInvocation      = true;
    features->shaderTerminateInvocation           = true;
