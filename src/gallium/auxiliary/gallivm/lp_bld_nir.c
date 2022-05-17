@@ -325,7 +325,7 @@ icmp32(struct lp_build_nir_context *bld_base,
 
 /**
  * Get a source register value for an ALU instruction.
- * This is where swizzled are handled.  There should be no negation
+ * This is where swizzles are handled.  There should be no negation
  * or absolute value modifiers.
  * num_components indicates the number of components needed in the
  * returned array or vector.
@@ -335,25 +335,63 @@ get_alu_src(struct lp_build_nir_context *bld_base,
             nir_alu_src src,
             unsigned num_components)
 {
+   assert(!src.negate);
+   assert(!src.abs);
+   assert(num_components >= 1);
+   assert(num_components <= 4);
+
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
+   const unsigned src_components = nir_src_num_components(src.src);
+   assert(src_components > 0);
    LLVMValueRef value = get_src(bld_base, src.src);
-   bool need_swizzle = false;
-
    assert(value);
 
-   if (is_aos(bld_base))
-      return value;
-
-   unsigned src_components = nir_src_num_components(src.src);
-   for (unsigned i = 0; i < num_components; ++i) {
-      assert(src.swizzle[i] < src_components);
-      if (src.swizzle[i] != i)
+   /* check if swizzling needed for the src vector */
+   bool need_swizzle = false;
+   for (unsigned i = 0; i < src_components; ++i) {
+      if (src.swizzle[i] != i) {
          need_swizzle = true;
+         break;
+      }
+   }
+
+   if (is_aos(bld_base) && !need_swizzle) {
+      return value;
    }
 
    if (need_swizzle || num_components != src_components) {
-      if (src_components > 1 && num_components == 1) {
+      if (is_aos(bld_base) && need_swizzle) {
+         // Handle swizzle for AOS
+         assert(LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind);
+
+         // swizzle vector of ((r,g,b,a), (r,g,b,a), (r,g,b,a), (r,g,b,a))
+         assert(bld_base->base.type.width == 8);
+         assert(bld_base->base.type.length == 16);
+
+         // Do our own swizzle here since lp_build_swizzle_aos_n() does
+         // not do what we want.
+         // Ex: value = {r0,g0,b0,a0, r1,g1,b1,a1, r2,g2,b2,a2, r3,g3,b3,a3}.
+         // aos swizzle = {2,1,0,3}  // swap red/blue
+         // shuffles = {2,1,0,3, 6,5,4,7, 10,9,8,11, 14,13,12,15}
+         // result = {b0,g0,r0,a0, b1,g1,r1,a1, b2,g2,r2,a2, b3,g3,r3,a3}.
+         LLVMValueRef shuffles[LP_MAX_VECTOR_WIDTH];
+         for (unsigned i = 0; i < 16; i++) {
+            unsigned chan = i % 4;
+            /* apply src register swizzle */
+            if (chan < num_components) {
+               chan = src.swizzle[chan];
+            } else {
+               chan = src.swizzle[0];
+            }
+            /* apply aos swizzle */
+            chan = lp_nir_aos_swizzle(bld_base, chan);
+            shuffles[i] = lp_build_const_int32(gallivm, (i & ~3) + chan);
+         }
+         value = LLVMBuildShuffleVector(builder, value,
+                                        LLVMGetUndef(LLVMTypeOf(value)),
+                                        LLVMConstVector(shuffles, 16), "");
+      } else if (src_components > 1 && num_components == 1) {
          value = LLVMBuildExtractValue(gallivm->builder, value,
                                        src.swizzle[0], "");
       } else if (src_components == 1 && num_components > 1) {
@@ -369,8 +407,7 @@ get_alu_src(struct lp_build_nir_context *bld_base,
          value = arr;
       }
    }
-   assert(!src.negate);
-   assert(!src.abs);
+
    return value;
 }
 
@@ -1262,14 +1299,6 @@ visit_alu(struct lp_build_nir_context *bld_base,
                            result[0], temp_chan);
       }
    } else if (is_aos(bld_base)) {
-      if (instr->op == nir_op_fmul) {
-         if (LLVMIsConstant(src[0])) {
-            src[0] = lp_nir_aos_conv_const(gallivm, src[0], 1);
-         }
-         if (LLVMIsConstant(src[1])) {
-            src[1] = lp_nir_aos_conv_const(gallivm, src[1], 1);
-         }
-      }
       result[0] = do_alu_action(bld_base, instr, src_bit_size, src);
    } else {
       /* Loop for R,G,B,A channels */

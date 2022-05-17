@@ -358,9 +358,8 @@ get_int_bld(struct lp_build_nir_context *bld_base,
 }
 
 
-LLVMValueRef
-lp_nir_aos_conv_const(struct gallivm_state *gallivm,
-                      LLVMValueRef constval, int nc);
+unsigned
+lp_nir_aos_swizzle(struct lp_build_nir_context *bld_base, unsigned chan);
 
 
 #endif

@@ -90,36 +90,6 @@ swizzle_aos(struct lp_build_nir_context *bld_base,
 }
 
 
-LLVMValueRef
-lp_nir_aos_conv_const(struct gallivm_state *gallivm,
-                      LLVMValueRef constval, int nc)
-{
-   LLVMValueRef elems[16];
-   uint8_t val = 0;
-   /* convert from 1..4 x f32 to 16 x unorm8 */
-   for (unsigned i = 0; i < nc; i++) {
-      LLVMValueRef value =
-         LLVMBuildExtractElement(gallivm->builder, constval,
-                                 lp_build_const_int32(gallivm, i), "");
-      assert(LLVMIsConstant(value));
-      unsigned uval = LLVMConstIntGetZExtValue(value);
-      float f = uif(uval);
-      val = float_to_ubyte(f);
-      for (unsigned j = 0; j < 4; j++) {
-         elems[j * 4 + i] =
-            LLVMConstInt(LLVMInt8TypeInContext(gallivm->context), val, 0);
-      }
-   }
-   for (unsigned i = nc; i < 4; i++) {
-      for (unsigned j = 0; j < 4; j++) {
-         elems[j * 4 + i] =
-            LLVMConstInt(LLVMInt8TypeInContext(gallivm->context), val, 0);
-      }
-   }
-   return LLVMConstVector(elems, 16);
-}
-
-
 static void
 init_var_slots(struct lp_build_nir_context *bld_base,
                nir_variable *var)
@@ -183,10 +153,6 @@ emit_store_var(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    unsigned location = var->data.driver_location;
 
-   if (LLVMIsConstant(vals)) {
-      vals = lp_nir_aos_conv_const(gallivm, vals, num_components);
-   }
-
    if (deref_mode == nir_var_shader_out) {
       LLVMBuildStore(gallivm->builder, vals, bld->outputs[location]);
    }
@@ -205,6 +171,37 @@ emit_load_reg(struct lp_build_nir_context *bld_base,
 }
 
 
+unsigned
+lp_nir_aos_swizzle(struct lp_build_nir_context *bld_base, unsigned chan)
+{
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
+   return bld->swizzles[chan];
+}
+
+
+/*
+ * If an instruction has a writemask like r0.x = foo and the
+ * AOS/linear context uses swizzle={2,1,0,3} we need to change
+ * the writemask to r0.z
+ */
+static unsigned
+swizzle_writemask(struct lp_build_nir_aos_context *bld,
+                  unsigned writemask)
+{
+   assert(writemask != 0x0);
+   assert(writemask != 0xf);
+
+   // Ex: swap r/b channels
+   unsigned new_writemask = 0;
+   for (unsigned chan = 0; chan < 4; chan++) {
+      if (writemask & (1 << chan)) {
+         new_writemask |= 1 << bld->swizzles[chan];
+      }
+   }
+   return new_writemask;
+}
+
+
 static void
 emit_store_reg(struct lp_build_nir_context *bld_base,
                struct lp_build_context *reg_bld,
@@ -214,17 +211,18 @@ emit_store_reg(struct lp_build_nir_context *bld_base,
                LLVMValueRef reg_storage,
                LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
    struct gallivm_state *gallivm = bld_base->base.gallivm;
-
-   if (LLVMIsConstant(vals[0]))
-      vals[0] = lp_nir_aos_conv_const(gallivm, vals[0], 1);
 
    if (writemask == 0xf) {
       LLVMBuildStore(gallivm->builder, vals[0], reg_storage);
       return;
    }
 
-   LLVMValueRef cur = LLVMBuildLoad2(gallivm->builder, reg_bld->vec_type, reg_storage, "");
+   writemask = swizzle_writemask(bld, writemask);
+
+   LLVMValueRef cur = LLVMBuildLoad2(gallivm->builder, reg_bld->vec_type,
+                                     reg_storage, "");
    LLVMTypeRef i32t = LLVMInt32TypeInContext(gallivm->context);
    LLVMValueRef shuffles[LP_MAX_VECTOR_LENGTH];
    for (unsigned j = 0; j < 16; j++) {
@@ -325,21 +323,31 @@ emit_load_const(struct lp_build_nir_context *bld_base,
                 LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
 {
    struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
-   struct gallivm_state *gallivm = bld_base->base.gallivm;
-   LLVMValueRef elems[4];
+   LLVMValueRef elems[16];
    const int nc = instr->def.num_components;
    bool do_swizzle = false;
 
    if (nc == 4)
       do_swizzle = true;
 
-   for (unsigned i = 0; i < nc; i++) {
-      int idx = do_swizzle ? bld->swizzles[i] : i;
-      elems[idx] = LLVMConstInt(LLVMInt32TypeInContext(gallivm->context),
-                                instr->value[i].u32,
-                                bld_base->base.type.sign ? 1 : 0);
+   /* The constant is something like {float, float, float, float}.
+    * We need to convert the float values from [0,1] to ubyte in [0,255].
+    * We previously checked for values outside [0,1] in
+    * llvmpipe_nir_fn_is_linear_compat().
+    * Also, we convert the (typically) 4-element float constant into a
+    * swizzled 16-element ubyte constant (z,y,x,w, z,y,x,w, z,y,x,w, z,y,x,w)
+    * since that's what 'linear' mode operates on.
+    */
+   assert(bld_base->base.type.length <= ARRAY_SIZE(elems));
+   for (unsigned i = 0; i < bld_base->base.type.length; i++) {
+      const unsigned j = do_swizzle ? bld->swizzles[i % nc] : i % nc;
+      assert(instr->value[j].f32 >= 0.0f);
+      assert(instr->value[j].f32 <= 1.0f);
+      const unsigned u8val = float_to_ubyte(instr->value[j].f32);
+      elems[i] = LLVMConstInt(bld_base->uint_bld.int_elem_type, u8val, 0);
    }
-   outval[0] = LLVMConstVector(elems, nc);
+   outval[0] = LLVMConstVector(elems, bld_base->base.type.length);
+   outval[1] = outval[2] = outval[3] = NULL;
 }
 
 
