@@ -35,21 +35,26 @@ bool vl_codec_supported(struct pipe_screen *screen,
    if (profile == PIPE_VIDEO_PROFILE_VC1_SIMPLE ||
        profile == PIPE_VIDEO_PROFILE_VC1_MAIN ||
        profile == PIPE_VIDEO_PROFILE_VC1_ADVANCED) {
-      return VIDEO_CODEC_VC1DEC ? true : false;
+      if (!VIDEO_CODEC_VC1DEC)
+         return false;
    }
    if (profile >= PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE &&
        profile <= PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH444) {
-      if (encode)
-         return VIDEO_CODEC_H264ENC ? true : false;
-      else
-         return VIDEO_CODEC_H264DEC ? true : false;
+      if (encode) {
+         if (!VIDEO_CODEC_H264ENC)
+            return false;
+      } else if (!VIDEO_CODEC_H264DEC) {
+         return false;
+      }
    }
    if (profile >= PIPE_VIDEO_PROFILE_HEVC_MAIN &&
        profile <= PIPE_VIDEO_PROFILE_HEVC_MAIN_444) {
-      if (encode)
-         return VIDEO_CODEC_H265ENC ? true : false;
-      else
-         return VIDEO_CODEC_H265DEC ? true : false;
+      if (encode) {
+         if (!VIDEO_CODEC_H265ENC)
+            return false;
+      } else if (!VIDEO_CODEC_H265DEC) {
+         return false;
+      }
    }
 
    return screen->get_video_param(screen, profile, encode ? PIPE_VIDEO_ENTRYPOINT_ENCODE : PIPE_VIDEO_ENTRYPOINT_BITSTREAM, PIPE_VIDEO_CAP_SUPPORTED);
