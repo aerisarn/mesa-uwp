@@ -397,6 +397,32 @@ pan_rt_init_format(const struct pan_image_view *rt,
         cfg->swizzle = panfrost_translate_swizzle_4(swizzle);
 }
 
+#if PAN_ARCH >= 9
+enum mali_afbc_compression_mode
+pan_afbc_compression_mode(enum pipe_format format)
+{
+        /* There's a special case for texturing the stencil part from a combined
+         * depth/stencil texture, handle it separately.
+         */
+        if (format == PIPE_FORMAT_X24S8_UINT)
+                return MALI_AFBC_COMPRESSION_MODE_X24S8;
+
+        /* Otherwise, map canonical formats to the hardware enum. This only
+         * needs to handle the subset of formats returned by
+         * panfrost_afbc_format.
+         */
+        switch (panfrost_afbc_format(PAN_ARCH, format)) {
+        case PIPE_FORMAT_R8G8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8G8;
+        case PIPE_FORMAT_R8G8B8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8G8B8;
+        case PIPE_FORMAT_R8G8B8A8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8G8B8A8;
+        case PIPE_FORMAT_R5G6B5_UNORM: return MALI_AFBC_COMPRESSION_MODE_R5G6B5;
+        case PIPE_FORMAT_S8_UINT: return MALI_AFBC_COMPRESSION_MODE_S8;
+        case PIPE_FORMAT_NONE: unreachable("invalid format for AFBC");
+        default: unreachable("unknown canonical AFBC format");
+        }
+}
+#endif
+
 static void
 pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
                unsigned cbuf_offset,

@@ -263,6 +263,12 @@ pan_iview_get_surface(const struct pan_image_view *iview,
                       unsigned level, unsigned layer, unsigned sample,
                       struct pan_surface *surf);
 
+
+#if PAN_ARCH >= 9
+enum mali_afbc_compression_mode
+pan_afbc_compression_mode(enum pipe_format format);
+#endif
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
