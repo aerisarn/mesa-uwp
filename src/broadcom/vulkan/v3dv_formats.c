@@ -262,14 +262,14 @@ v3dv_buffer_format_supports_features(struct v3dv_device *device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
-                                       VkFormat format,
-                                       VkFormatProperties* pFormatProperties)
+v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
+                                        VkFormat format,
+                                        VkFormatProperties2 *pFormatProperties)
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physicalDevice);
    const struct v3dv_format *v3dv_format = v3dv_X(pdevice, get_format)(format);
 
-   *pFormatProperties = (VkFormatProperties) {
+   pFormatProperties->formatProperties = (VkFormatProperties) {
       .linearTilingFeatures =
          image_format_features(pdevice, format, v3dv_format, VK_IMAGE_TILING_LINEAR),
       .optimalTilingFeatures =
@@ -277,15 +277,6 @@ v3dv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
       .bufferFeatures =
          buffer_format_features(format, v3dv_format),
    };
-}
-
-VKAPI_ATTR void VKAPI_CALL
-v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
-                                        VkFormat format,
-                                        VkFormatProperties2 *pFormatProperties)
-{
-   v3dv_GetPhysicalDeviceFormatProperties(physicalDevice, format,
-                                          &pFormatProperties->formatProperties);
 
    vk_foreach_struct(ext, pFormatProperties->pNext) {
       switch ((unsigned)ext->sType) {
