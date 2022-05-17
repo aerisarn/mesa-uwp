@@ -1422,6 +1422,19 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
+   /* Create gmem load/stores now (at EndRenderPass time)) because they need to
+    * know whether to allow their conditional execution, which is tied to a
+    * state that is known only at the end of the renderpass.  They will be
+    * called from tu6_render_tile().
+    */
+   tu_cs_begin(&cmd->tile_load_cs);
+   tu6_emit_tile_load(cmd, &cmd->tile_load_cs);
+   tu_cs_end(&cmd->tile_load_cs);
+
+   tu_cs_begin(&cmd->tile_store_cs);
+   tu6_emit_tile_store(cmd, &cmd->tile_store_cs);
+   tu_cs_end(&cmd->tile_store_cs);
+
    tu6_tile_render_begin(cmd, &cmd->cs, autotune_result);
 
    uint32_t pipe = 0;
@@ -1451,6 +1464,12 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
    if (!u_trace_iterator_equal(cmd->trace_renderpass_start, cmd->trace_renderpass_end))
       u_trace_disable_event_range(cmd->trace_renderpass_start,
                                   cmd->trace_renderpass_end);
+
+   /* Reset the gmem load/store CS entry lists so that the next render pass
+    * does its own load/stores.
+    */
+   tu_cs_discard_entries(&cmd->tile_load_cs);
+   tu_cs_discard_entries(&cmd->tile_store_cs);
 }
 
 static void
@@ -1705,9 +1724,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
    tu_cs_begin(&cmd_buffer->cs);
-   tu_cs_begin(&cmd_buffer->tile_load_cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
-   tu_cs_begin(&cmd_buffer->tile_store_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
    /* setup initial configuration into command buffer */
@@ -2274,9 +2291,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    }
 
    tu_cs_end(&cmd_buffer->cs);
-   tu_cs_end(&cmd_buffer->tile_load_cs);
    tu_cs_end(&cmd_buffer->draw_cs);
-   tu_cs_end(&cmd_buffer->tile_store_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
@@ -4794,17 +4809,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
-   /* GMEM loads are created after draw_cs in the separate cs
-    * because they need to know whether to allow their conditional
-    * execution, which is tied to a state that is known only at
-    * the end of the renderpass.
-    */
-   tu6_emit_tile_load(cmd_buffer, &cmd_buffer->tile_load_cs);
-   tu6_emit_tile_store(cmd_buffer, &cmd_buffer->tile_store_cs);
-
-   tu_cs_end(&cmd_buffer->tile_load_cs);
    tu_cs_end(&cmd_buffer->draw_cs);
-   tu_cs_end(&cmd_buffer->tile_store_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
    cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
@@ -4823,12 +4828,8 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
 
    /* discard draw_cs and draw_epilogue_cs entries now that the tiles are
       rendered */
-   tu_cs_discard_entries(&cmd_buffer->tile_load_cs);
-   tu_cs_begin(&cmd_buffer->tile_load_cs);
    tu_cs_discard_entries(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
-   tu_cs_discard_entries(&cmd_buffer->tile_store_cs);
-   tu_cs_begin(&cmd_buffer->tile_store_cs);
    tu_cs_discard_entries(&cmd_buffer->draw_epilogue_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
