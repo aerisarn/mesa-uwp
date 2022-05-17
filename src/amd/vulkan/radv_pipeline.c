@@ -3431,9 +3431,10 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
          num_vertices_per_prim = stages[es_stage].nir->info.tess.point_mode                      ? 1
                                  : stages[es_stage].nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES ? 2
                                                                                           : 3;
-
+      /* TODO: Enable culling for LLVM. */
       stages[es_stage].info.has_ngg_culling = radv_consider_culling(
-         pdevice, stages[es_stage].nir, ps_inputs_read, num_vertices_per_prim, &stages[es_stage].info);
+         pdevice, stages[es_stage].nir, ps_inputs_read, num_vertices_per_prim, &stages[es_stage].info) &&
+         !radv_use_llvm_for_stage(pipeline->device, es_stage);
 
       nir_function_impl *impl = nir_shader_get_entrypoint(stages[es_stage].nir);
       stages[es_stage].info.has_ngg_early_prim_export = exec_list_is_singular(&impl->body);
@@ -4697,8 +4698,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    if (stages[MESA_SHADER_GEOMETRY].nir) {
       unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
 
-      if (pipeline_has_ngg && !radv_use_llvm_for_stage(device, MESA_SHADER_GEOMETRY)) {
-         /* ACO needs NIR to do some of the hard lifting */
+      if (pipeline_has_ngg) {
          nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
                          nir_lower_gs_intrinsics_count_vertices_per_primitive |
                          nir_lower_gs_intrinsics_overwrite_incomplete;
@@ -4861,8 +4861,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          /* Lower I/O intrinsics to memory instructions. */
          bool io_to_mem = radv_lower_io_to_mem(device, &stages[i], pipeline_key);
-         bool lowered_ngg = pipeline_has_ngg && i == *last_vgt_api_stage &&
-                            !radv_use_llvm_for_stage(device, i);
+         bool lowered_ngg = pipeline_has_ngg && i == *last_vgt_api_stage;
          if (lowered_ngg)
             radv_lower_ngg(device, &stages[i], pipeline_key);
 
