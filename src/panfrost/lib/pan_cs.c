@@ -204,12 +204,18 @@ pan_prepare_zs(const struct pan_fb_info *fb,
 
         struct pan_surface surf;
         pan_iview_get_surface(zs, 0, 0, 0, &surf);
+        UNUSED const struct pan_image_slice_layout *slice = &zs->image->layout.slices[level];
 
         if (drm_is_afbc(zs->image->layout.modifier)) {
-#if PAN_ARCH <= 8
-#if PAN_ARCH >= 6
-                const struct pan_image_slice_layout *slice = &zs->image->layout.slices[level];
+#if PAN_ARCH >= 9
+                ext->zs_writeback_base = surf.afbc.header;
+                ext->zs_writeback_row_stride = slice->row_stride;
+                /* TODO: surface stride? */
+                ext->zs_afbc_body_offset = surf.afbc.body - surf.afbc.header;
 
+                /* TODO: stencil AFBC? */
+#else
+#if PAN_ARCH >= 6
                 ext->zs_afbc_row_stride = pan_afbc_stride_blocks(zs->image->layout.modifier, slice->row_stride);
 #else
                 ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
@@ -473,7 +479,18 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
         pan_iview_get_surface(rt, 0, 0, 0, &surf);
 
         if (drm_is_afbc(rt->image->layout.modifier)) {
-#if PAN_ARCH <= 8
+#if PAN_ARCH >= 9
+                if (rt->image->layout.modifier & AFBC_FORMAT_MOD_YTR)
+                        cfg->afbc.yuv_transform = true;
+
+                cfg->afbc.wide_block = panfrost_afbc_is_wide(rt->image->layout.modifier);
+                cfg->afbc.header = surf.afbc.header;
+                cfg->afbc.body_offset = surf.afbc.body - surf.afbc.header;
+                assert(surf.afbc.body >= surf.afbc.header);
+
+                cfg->afbc.compression_mode = pan_afbc_compression_mode(rt->format);
+                cfg->afbc.row_stride = row_stride;
+#else
                 const struct pan_image_slice_layout *slice = &rt->image->layout.slices[level];
 
 #if PAN_ARCH >= 6
