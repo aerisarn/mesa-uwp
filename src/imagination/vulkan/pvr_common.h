@@ -39,9 +39,11 @@
  * relevant for the driver/compiler interface (no Vulkan types).
  */
 
+#include "hwdef/rogue_hw_defs.h"
 #include "pvr_limits.h"
 #include "pvr_types.h"
 #include "util/list.h"
+#include "util/macros.h"
 #include "vk_object.h"
 #include "vk_sync.h"
 
@@ -146,6 +148,13 @@ enum pvr_stage_allocation {
    PVR_STAGE_ALLOCATION_COUNT
 };
 
+enum pvr_filter {
+   PVR_FILTER_DONTCARE, /* Any filtering mode is acceptable. */
+   PVR_FILTER_POINT,
+   PVR_FILTER_LINEAR,
+   PVR_FILTER_BICUBIC,
+};
+
 enum pvr_resolve_op {
    PVR_RESOLVE_BLEND,
    PVR_RESOLVE_MIN,
@@ -201,6 +210,42 @@ union pvr_sampler_descriptor {
       uint32_t word3;
    } data;
 };
+
+struct pvr_combined_image_sampler_descriptor {
+   /* | TEXSTATE_IMAGE_WORD0 | TEXSTATE_{STRIDE_,}IMAGE_WORD1 | */
+   uint64_t image[ROGUE_NUM_TEXSTATE_IMAGE_WORDS];
+   union pvr_sampler_descriptor sampler;
+};
+
+#define CHECK_STRUCT_FIELD_SIZE(_struct_type, _field_name, _size)      \
+   static_assert(sizeof(((struct _struct_type *)NULL)->_field_name) == \
+                    (_size),                                           \
+                 "Size of '" #_field_name "' in '" #_struct_type       \
+                 "' differs from expected")
+
+CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
+                        image,
+                        ROGUE_NUM_TEXSTATE_IMAGE_WORDS * sizeof(uint64_t));
+CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
+                        image,
+                        PVR_IMAGE_DESCRIPTOR_SIZE * sizeof(uint32_t));
+#if 0
+/* TODO: Don't really want to include pvr_csb.h in here since this header is
+ * shared with the compiler. Figure out a better place for these.
+ */
+CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
+                        image,
+                        (pvr_cmd_length(TEXSTATE_IMAGE_WORD0) +
+                         pvr_cmd_length(TEXSTATE_IMAGE_WORD1)) *
+                           sizeof(uint32_t));
+CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
+                        image,
+                        (pvr_cmd_length(TEXSTATE_IMAGE_WORD0) +
+                         pvr_cmd_length(TEXSTATE_STRIDE_IMAGE_WORD1)) *
+                           sizeof(uint32_t));
+#endif
+
+#undef CHECK_STRUCT_FIELD_SIZE
 
 struct pvr_sampler {
    struct vk_object_base base;

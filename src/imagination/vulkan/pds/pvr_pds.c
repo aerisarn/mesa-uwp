@@ -433,22 +433,18 @@ void pvr_pds_pixel_shader_sa_initialize(
  * \param dest_offset Destination offset in the attribute.
  * \param dma_size The size of the DMA in words.
  * \param src_address Source address for the burst.
+ * \param last Last DMA in program.
  * \param dev_info PVR device info structure.
  * \returns The number of DMA transfers required.
  */
-
 uint32_t pvr_pds_encode_dma_burst(uint32_t *dma_control,
                                   uint64_t *dma_address,
                                   uint32_t dest_offset,
                                   uint32_t dma_size,
                                   uint64_t src_address,
+                                  bool last,
                                   const struct pvr_device_info *dev_info)
 {
-   /* Simplified for MS2. */
-
-   /* Force to 1 DMA. */
-   const uint32_t num_kicks = 1;
-
    dma_control[0] = dma_size
                     << PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC1_BSIZE_SHIFT;
    dma_control[0] |= dest_offset
@@ -457,12 +453,15 @@ uint32_t pvr_pds_encode_dma_burst(uint32_t *dma_control,
    dma_control[0] |= PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC1_CMODE_CACHED |
                      PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC1_DEST_COMMON_STORE;
 
-   dma_address[0] = src_address;
-   if (PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls)) {
-      dma_address[0] |= PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC0_SLCMODE_CACHED;
-   }
+   if (last)
+      dma_control[0] |= PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC1_LAST_EN;
 
-   return num_kicks;
+   dma_address[0] = src_address;
+   if (PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls))
+      dma_address[0] |= PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC0_SLCMODE_CACHED;
+
+   /* Force to 1 DMA. */
+   return 1;
 }
 
 /* FIXME: use the csbgen interface and pvr_csb_pack.

@@ -57,6 +57,7 @@ pvr_files = files(
   'pvr_pass.c',
   'pvr_pipeline.c',
   'pvr_pipeline_cache.c',
+  'pvr_transfer_frag_store.c',
   'pvr_query.c',
   'pvr_query_compute.c',
   'pvr_queue.c',

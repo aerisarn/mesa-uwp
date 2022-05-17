@@ -32,6 +32,7 @@
 #include "hwdef/rogue_hw_defs.h"
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
+#include "pvr_common.h"
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
 #include "pvr_device_info.h"
@@ -603,37 +604,6 @@ err_csb_finish:
 
    return result;
 }
-
-struct pvr_combined_image_sampler_descriptor {
-   /* | TEXSTATE_IMAGE_WORD0 | TEXSTATE_{STRIDE_,}IMAGE_WORD1 | */
-   uint64_t image[ROGUE_NUM_TEXSTATE_IMAGE_WORDS];
-   union pvr_sampler_descriptor sampler;
-};
-
-#define CHECK_STRUCT_FIELD_SIZE(_struct_type, _field_name, _size)      \
-   static_assert(sizeof(((struct _struct_type *)NULL)->_field_name) == \
-                    (_size),                                           \
-                 "Size of '" #_field_name "' in '" #_struct_type       \
-                 "' differs from expected")
-
-CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
-                        image,
-                        ROGUE_NUM_TEXSTATE_IMAGE_WORDS * sizeof(uint64_t));
-CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
-                        image,
-                        PVR_IMAGE_DESCRIPTOR_SIZE * sizeof(uint32_t));
-CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
-                        image,
-                        (pvr_cmd_length(TEXSTATE_IMAGE_WORD0) +
-                         pvr_cmd_length(TEXSTATE_IMAGE_WORD1)) *
-                           sizeof(uint32_t));
-CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
-                        image,
-                        (pvr_cmd_length(TEXSTATE_IMAGE_WORD0) +
-                         pvr_cmd_length(TEXSTATE_STRIDE_IMAGE_WORD1)) *
-                           sizeof(uint32_t));
-
-#undef CHECK_STRUCT_FIELD_SIZE
 
 static VkResult pvr_setup_texture_state_words(
    struct pvr_device *device,

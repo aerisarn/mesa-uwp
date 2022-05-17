@@ -25,21 +25,25 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <vulkan/vulkan.h>
 
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
 #include "pvr_cdm_load_sr.h"
+#include "pvr_common.h"
 #include "pvr_csb.h"
 #include "pvr_job_context.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
+#include "pvr_transfer_frag_store.h"
 #include "pvr_types.h"
 #include "pvr_uscgen.h"
 #include "pvr_vdm_load_sr.h"
 #include "pvr_vdm_store_sr.h"
 #include "pvr_winsys.h"
 #include "util/macros.h"
+#include "util/os_file.h"
 #include "util/u_dynarray.h"
 #include "vk_alloc.h"
 #include "vk_log.h"
@@ -1259,15 +1263,30 @@ static void pvr_transfer_eot_shaders_fini(struct pvr_device *device,
 static VkResult pvr_transfer_ctx_shaders_init(struct pvr_device *device,
                                               struct pvr_transfer_ctx *ctx)
 {
-   /* TODO: Setup USC fragments. */
+   VkResult result;
 
-   return pvr_transfer_eot_shaders_init(device, ctx);
+   result = pvr_transfer_frag_store_init(device, &ctx->frag_store);
+   if (result != VK_SUCCESS)
+      goto err_out;
+
+   result = pvr_transfer_eot_shaders_init(device, ctx);
+   if (result != VK_SUCCESS)
+      goto err_frag_store_fini;
+
+   return VK_SUCCESS;
+
+err_frag_store_fini:
+   pvr_transfer_frag_store_fini(device, &ctx->frag_store);
+
+err_out:
+   return result;
 }
 
 static void pvr_transfer_ctx_shaders_fini(struct pvr_device *device,
                                           struct pvr_transfer_ctx *ctx)
 {
    pvr_transfer_eot_shaders_fini(device, ctx);
+   pvr_transfer_frag_store_fini(device, &ctx->frag_store);
 }
 
 VkResult pvr_transfer_ctx_create(struct pvr_device *const device,

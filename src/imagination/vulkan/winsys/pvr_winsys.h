@@ -258,6 +258,7 @@ struct pvr_winsys_transfer_regs {
    uint32_t event_pixel_pds_code;
    uint32_t event_pixel_pds_data;
    uint32_t event_pixel_pds_info;
+   uint32_t frag_screen;
    uint32_t isp_aa;
    uint32_t isp_bgobjvals;
    uint32_t isp_ctl;

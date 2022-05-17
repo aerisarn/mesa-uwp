@@ -624,6 +624,7 @@ uint32_t pvr_pds_encode_dma_burst(uint32_t *dma_control,
                                   uint32_t dest_offset,
                                   uint32_t dma_size,
                                   uint64_t src_address,
+                                  bool last,
                                   const struct pvr_device_info *dev_info);
 
 void pvr_pds_setup_doutu(struct pvr_pds_usc_task_control *usc_task_control,

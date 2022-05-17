@@ -28,6 +28,7 @@
 #include "pvr_clear.h"
 #include "pvr_csb.h"
 #include "pvr_formats.h"
+#include "pvr_job_transfer.h"
 #include "pvr_private.h"
 #include "pvr_shader_factory.h"
 #include "pvr_static_shaders.h"
@@ -114,35 +115,161 @@ void pvr_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
+static struct pvr_transfer_cmd *
+pvr_transfer_cmd_alloc(struct pvr_cmd_buffer *cmd_buffer)
+{
+   struct pvr_transfer_cmd *transfer_cmd;
+
+   transfer_cmd = vk_zalloc(&cmd_buffer->vk.pool->alloc,
+                            sizeof(*transfer_cmd),
+                            8U,
+                            VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!transfer_cmd) {
+      cmd_buffer->state.status =
+         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return NULL;
+   }
+
+   /* transfer_cmd->mapping_count is already set to zero. */
+   transfer_cmd->filter = PVR_FILTER_POINT;
+   transfer_cmd->resolve_op = PVR_RESOLVE_BLEND;
+   transfer_cmd->addr_mode = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+   transfer_cmd->cmd_buffer = cmd_buffer;
+
+   return transfer_cmd;
+}
+
+static void pvr_setup_buffer_surface(struct pvr_transfer_cmd_surface *surface,
+                                     VkRect2D *rect,
+                                     pvr_dev_addr_t dev_addr,
+                                     VkDeviceSize offset,
+                                     VkFormat vk_format,
+                                     uint32_t width,
+                                     uint32_t height)
+{
+   surface->dev_addr = PVR_DEV_ADDR_OFFSET(dev_addr, offset);
+   surface->width = width;
+   surface->height = height;
+   surface->stride = width;
+   surface->vk_format = vk_format;
+   surface->mem_layout = PVR_MEMLAYOUT_LINEAR;
+   surface->sample_count = 1;
+
+   /* Initialize rectangle extent. Also, rectangle.offset should be set to
+    * zero, as the offset is already adjusted in the device address above. We
+    * don't explicitly set offset to zero as transfer_cmd is zero allocated.
+    */
+   rect->extent.width = width;
+   rect->extent.height = height;
+}
+
+static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
+                                           pvr_dev_addr_t src_addr,
+                                           VkDeviceSize src_offset,
+                                           pvr_dev_addr_t dst_addr,
+                                           VkDeviceSize dst_offset,
+                                           VkDeviceSize size)
+{
+   VkDeviceSize offset = 0;
+
+   while (offset < size) {
+      VkDeviceSize remaining_size = size - offset;
+      struct pvr_transfer_cmd *transfer_cmd;
+      uint32_t texel_width;
+      VkDeviceSize texels;
+      VkFormat vk_format;
+      VkResult result;
+      uint32_t height;
+      uint32_t width;
+
+      if (remaining_size >= 16U) {
+         vk_format = VK_FORMAT_R32G32B32A32_UINT;
+         texel_width = 16U;
+      } else if (remaining_size >= 4U) {
+         vk_format = VK_FORMAT_R32_UINT;
+         texel_width = 4U;
+      } else {
+         vk_format = VK_FORMAT_R8_UINT;
+         texel_width = 1U;
+      }
+
+      texels = remaining_size / texel_width;
+
+      /* Try to do max-width rects, fall back to a 1-height rect for the
+       * remainder.
+       */
+      if (texels > PVR_MAX_TRANSFER_SIZE_IN_TEXELS) {
+         width = PVR_MAX_TRANSFER_SIZE_IN_TEXELS;
+         height = texels / PVR_MAX_TRANSFER_SIZE_IN_TEXELS;
+         height = MIN2(height, PVR_MAX_TRANSFER_SIZE_IN_TEXELS);
+      } else {
+         width = texels;
+         height = 1;
+      }
+
+      transfer_cmd = pvr_transfer_cmd_alloc(cmd_buffer);
+      if (!transfer_cmd)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      if (!(transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_FILL)) {
+         pvr_setup_buffer_surface(&transfer_cmd->src,
+                                  &transfer_cmd->mappings[0].src_rect,
+                                  src_addr,
+                                  offset + src_offset,
+                                  vk_format,
+                                  width,
+                                  height);
+         transfer_cmd->src_present = true;
+      }
+
+      pvr_setup_buffer_surface(&transfer_cmd->dst,
+                               &transfer_cmd->scissor,
+                               dst_addr,
+                               offset + dst_offset,
+                               vk_format,
+                               width,
+                               height);
+
+      if (transfer_cmd->src_present)
+         transfer_cmd->mappings[0].dst_rect = transfer_cmd->scissor;
+
+      transfer_cmd->mapping_count++;
+      transfer_cmd->cmd_buffer = cmd_buffer;
+
+      result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
+      if (result != VK_SUCCESS) {
+         vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
+         return result;
+      }
+
+      offset += width * height * texel_width;
+   }
+
+   return VK_SUCCESS;
+}
+
 void pvr_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
                            const VkCopyBufferInfo2 *pCopyBufferInfo)
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    PVR_FROM_HANDLE(pvr_buffer, src, pCopyBufferInfo->srcBuffer);
    PVR_FROM_HANDLE(pvr_buffer, dst, pCopyBufferInfo->dstBuffer);
-   const size_t regions_size =
-      pCopyBufferInfo->regionCount * sizeof(*pCopyBufferInfo->pRegions);
-   struct pvr_transfer_cmd *transfer_cmd;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
 
-   transfer_cmd = vk_alloc(&cmd_buffer->vk.pool->alloc,
-                           sizeof(*transfer_cmd) + regions_size,
-                           8U,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!transfer_cmd) {
-      cmd_buffer->state.status =
-         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+   for (uint32_t i = 0; i < pCopyBufferInfo->regionCount; i++) {
+      VkResult result;
 
-      return;
+      result =
+         pvr_cmd_copy_buffer_region(cmd_buffer,
+                                    src->dev_addr,
+                                    pCopyBufferInfo->pRegions[i].srcOffset,
+                                    dst->dev_addr,
+                                    pCopyBufferInfo->pRegions[i].dstOffset,
+                                    pCopyBufferInfo->pRegions[i].size);
+      if (result != VK_SUCCESS)
+         return;
    }
-
-   transfer_cmd->src = src;
-   transfer_cmd->dst = dst;
-   transfer_cmd->region_count = pCopyBufferInfo->regionCount;
-   memcpy(transfer_cmd->regions, pCopyBufferInfo->pRegions, regions_size);
-
-   pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
 }
 
 /**

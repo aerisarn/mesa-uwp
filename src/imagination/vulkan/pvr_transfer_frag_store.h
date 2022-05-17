@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Imagination Technologies Ltd.
+ * Copyright © 2023 Imagination Technologies Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,31 +21,37 @@
  * SOFTWARE.
  */
 
-#ifndef PVR_JOB_TRANSFER_H
-#define PVR_JOB_TRANSFER_H
+#ifndef PVR_TRANSFER_FRAG_STORE_H
+#define PVR_TRANSFER_FRAG_STORE_H
 
 #include <stdint.h>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
-struct pvr_sub_cmd_transfer;
-struct pvr_transfer_ctx;
-struct vk_sync;
+#include "pvr_device_info.h"
+#include "pvr_uscgen.h"
+#include "pvr_types.h"
+#include "util/hash_table.h"
 
-/**
- * Destination pixels not covered by any of the destination rectangles but
- * inside the scissor are filled with the clear color.
- */
-#define PVR_TRANSFER_CMD_FLAGS_FILL 0x00000800U
-/** If using TQ3D, route to fast2d. */
-#define PVR_TRANSFER_CMD_FLAGS_FAST2D 0x00200000U
-/** Merge a depth or stencil against a depth + stencil texture. */
-#define PVR_TRANSFER_CMD_FLAGS_DSMERGE 0x00000200U
-/** Valid if doing a DS merge with depth + stencil to depth + stencil. */
-#define PVR_TRANSFER_CMD_FLAGS_PICKD 0x00000400U
+struct pvr_device;
 
-VkResult pvr_transfer_job_submit(struct pvr_transfer_ctx *ctx,
-                                 struct pvr_sub_cmd_transfer *sub_cmd,
-                                 struct vk_sync *wait,
-                                 struct vk_sync *signal_sync);
+struct pvr_transfer_frag_store {
+   uint32_t max_multisample;
+   /* Hash table mapping keys, produced by pvr_transfer_frag_shader_key(), to
+    * pvr_transfer_frag_store_entry_data entries.
+    */
+   struct hash_table *hash_table;
+};
 
-#endif /* PVR_JOB_TRANSFER_H */
+VkResult pvr_transfer_frag_store_init(struct pvr_device *device,
+                                      struct pvr_transfer_frag_store *store);
+void pvr_transfer_frag_store_fini(struct pvr_device *device,
+                                  struct pvr_transfer_frag_store *store);
+
+VkResult pvr_transfer_frag_store_get_shader_info(
+   struct pvr_device *device,
+   struct pvr_transfer_frag_store *store,
+   const struct pvr_tq_shader_properties *shader_props,
+   pvr_dev_addr_t *const pds_dev_addr_out,
+   const struct pvr_tq_frag_sh_reg_layout **const reg_layout_out);
+
+#endif /* PVR_TRANSFER_FRAG_STORE_H */

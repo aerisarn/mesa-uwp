@@ -26,6 +26,40 @@ SOFTWARE.
 <csbgen name="ROGUE" prefix="IPF">
 
   <define name="TILE_SIZE_PIXELS" value="32"/>
+  <define name="CONTROL_STREAM_SIZE_DWORDS" value="32"/>
+  <define name="ISP_VERTEX_XY_BIAS_VALUE"   value="4096"/>
+
+  <enum name="COMPRESSION_FORMAT">
+    <value name="UNIQUE_1" value="0"/>
+    <value name="ORIGIN_1_DELTA_1" value="1"/>
+    <value name="ORIGIN_1_DELTA_2" value="2"/>
+    <value name="ORIGIN_1_DELTA_3" value="3"/>
+    <value name="ORIGIN_1_DELTA_4" value="4"/>
+    <value name="ORIGIN_1_DELTA_5" value="5"/>
+    <value name="ORIGIN_1_DELTA_6" value="6"/>
+    <value name="ORIGIN_1_DELTA_7" value="7"/>
+    <value name="RAW_BYTE"         value="8"/>
+    <value name="UNIQUE_2"         value="9"/>
+    <value name="ORIGIN_2_DELTA_1" value="10"/>
+    <value name="ORIGIN_2_DELTA_2" value="11"/>
+    <value name="ORIGIN_2_DELTA_3" value="12"/>
+    <value name="ORIGIN_2_DELTA_4" value="13"/>
+    <value name="ORIGIN_2_DELTA_5" value="14"/>
+    <value name="ORIGIN_2_DELTA_6" value="15"/>
+  </enum>
+
+  <enum name="CS_MASK_FMT">
+    <value name="INDEX" value="0"/>
+    <value name="BYTE"  value="1"/>
+    <value name="BIT"   value="2"/>
+    <value name="FULL"  value="3"/>
+  </enum>
+
+  <enum name="CS_TYPE">
+    <value name="PRIM" value="0"/>
+    <value name="LINK" value="2"/>
+    <value name="TERM" value="3"/>
+  </enum>
 
   <struct name="SCISSOR_WORD_0" length="1">
     <field name="scw0_xmin" start="16" end="31" type="uint"/>
@@ -35,6 +69,102 @@ SOFTWARE.
   <struct name="SCISSOR_WORD_1" length="1">
     <field name="scw1_ymin" start="16" end="31" type="uint"/>
     <field name="scw1_ymax" start="0" end="15" type="uint"/>
+  </struct>
+
+  <struct name="CONTROL_STREAM" length="1">
+    <field name="cs_type" start="30" end="31" type="CS_TYPE"/>
+    <field name="cs_link" start="3" end="29" type="uint">
+      <define name="UNIT_SIZE" value="128"/>
+    </field>
+  </struct>
+
+  <struct name="PRIMITIVE_FORMAT" length="1">
+    <field name="cs_type" start="30" end="31" type="CS_TYPE"/>
+    <field name="cs_isp_state_read" start="29" end="29" type="bool"/>
+    <field name="cs_isp_state_size" start="26" end="28" type="uint"/>
+    <field name="cs_prim_total" start="19" end="25" type="uint"/>
+    <field name="cs_mask_fmt" start="17" end="18" type="CS_MASK_FMT"/>
+    <field name="cs_prim_base_pres" start="16" end="16" type="bool"/>
+    <field name="cs_prim_base_offset" start="0" end="15" type="uint"/>
+  </struct>
+
+  <struct name="PRIMITIVE_BASE" length="1">
+    <field name="cs_prim_base" start="0" end="31" shift="2" type="address"/>
+  </struct>
+
+  <struct name="COMPRESSION_SIZE_WORD" length="1">
+    <field name="cs_isp_comp_table_size" start="27" end="31" type="uint"/>
+    <field name="cs_tsp_comp_format_size" start="21" end="26" type="uint"/>
+    <field name="cs_tsp_comp_table_size" start="9" end="18" type="uint"/>
+    <field name="cs_tsp_comp_vertex_size" start="0" end="8" type="uint"/>
+  </struct>
+
+  <struct name="ISP_COMPRESSION_WORD_0" length="1">
+    <field name="cf_isp_comp_fmt_z1" start="28" end="31" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_z0" start="24" end="27" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_y2" start="20" end="23" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_y1" start="16" end="19" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_y0" start="12" end="15" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_x2" start="8" end="11" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_x1" start="4" end="7" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_x0" start="0" end="3" type="COMPRESSION_FORMAT"/>
+  </struct>
+
+  <struct name="ISP_COMPRESSION_WORD_1" length="1">
+    <field name="vf_prim_msaa" start="16" end="16" type="bool"/>
+    <field name="vf_prim_id_pres" start="15" end="15" type="bool"/>
+    <field name="vf_vertex_clipped" start="14" end="14" type="bool"/>
+    <field name="vf_vertex_total" start="8" end="13" type="uint"/>
+    <field name="cf_isp_comp_fmt_z3" start="4" end="7" type="COMPRESSION_FORMAT"/>
+    <field name="cf_isp_comp_fmt_z2" start="0" end="3" type="COMPRESSION_FORMAT"/>
+  </struct>
+
+  <struct name="INDEX_DATA" length="1">
+    <field name="ix_edge_flag1_ab" start="30" end="30" type="bool"/>
+    <field name="ix_index1_0" start="24" end="29" type="uint"/>
+    <field name="ix_bf_flag0" start="23" end="23" type="bool"/>
+    <field name="ix_edge_flag0_ca" start="22" end="22" type="bool"/>
+    <field name="ix_index0_2" start="16" end="21" type="uint"/>
+    <field name="ix_edge_flag0_bc" start="14" end="14" type="bool"/>
+    <field name="ix_index0_1" start="8" end="13" type="uint"/>
+    <field name="ix_edge_flag0_ab" start="6" end="6" type="bool"/>
+    <field name="ix_index0_0" start="0" end="5" type="uint"/>
+  </struct>
+
+  <struct name="ISP_VERTEX_XY" length="1">
+    <field name="sign" start="23" end="23" type="bool"/>
+    <field name="integer" start="8" end="22" type="uint"/>
+    <field name="frac" start="0" end="7" type="uint"/>
+  </struct>
+
+  <struct name="ISP_VERTEX_WORD_0" length="1">
+    <field name="y0" start="24" end="31" type="uint"/>
+    <field name="x0" start="0" end="23" type="uint"/>
+  </struct>
+
+  <struct name="ISP_VERTEX_WORD_1" length="1">
+    <field name="z0" start="16" end="31" type="uint"/>
+    <field name="y0" start="0" end="15" type="uint">
+      <define name="SHIFT" value="8"/>
+    </field>
+  </struct>
+
+  <struct name="ISP_VERTEX_WORD_2" length="1">
+    <field name="x1" start="16" end="31" type="uint"/>
+    <field name="z0" start="0" end="15" type="uint">
+      <define name="SHIFT" value="16"/>
+    </field>
+  </struct>
+
+  <struct name="ISP_VERTEX_WORD_3" length="1">
+    <field name="y1" start="8" end="31" type="uint"/>
+    <field name="x1" start="0" end="7" type="uint">
+      <define name="SHIFT" value="16"/>
+    </field>
+  </struct>
+
+  <struct name="ISP_VERTEX_WORD_4" length="1">
+    <field name="z1" start="0" end="31" type="uint"/>
   </struct>
 
 </csbgen>
