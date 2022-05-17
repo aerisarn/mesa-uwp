@@ -167,6 +167,12 @@ shaders@ssa@fs-lost-copy-problem,Fail
 shaders@ssa@fs-swap-problem,Fail
 shaders@ssa@fs-while-loop-rotate-value,Fail
 
+spec@!opengl 1.0@depth-clear-precision-check,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth16,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth24_stencil8,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
+
 # "MESA: error: Empty fragment shader"
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
 
