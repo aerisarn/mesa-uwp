@@ -187,7 +187,7 @@ desc_state_hash(const void *key)
    for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
       if (d_key->exists[i]) {
          if (!first)
-            hash = XXH32(&d_key->state[i], sizeof(uint32_t), hash);
+            hash ^= d_key->state[i];
          else
             hash = d_key->state[i];
          first = false;
@@ -1738,9 +1738,7 @@ update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type
                ctx->dd->descriptor_states[is_compute].state[type] = ctx->dd->gfx_descriptor_states[i].state[type];
                first = false;
             } else {
-               ctx->dd->descriptor_states[is_compute].state[type] = XXH32(&ctx->dd->gfx_descriptor_states[i].state[type],
-                                                                      sizeof(uint32_t),
-                                                                      ctx->dd->descriptor_states[is_compute].state[type]);
+               ctx->dd->descriptor_states[is_compute].state[type] ^= ctx->dd->gfx_descriptor_states[i].state[type];
             }
          }
          has_any_usage |= has_usage;
@@ -1768,7 +1766,7 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
             if (first)
                hash = ctx->dd->gfx_push_state[stage];
             else
-               hash = XXH32(&ctx->dd->gfx_push_state[stage], sizeof(uint32_t), hash);
+               hash ^= ctx->dd->gfx_push_state[stage];
             first = false;
          }
       }
@@ -1807,7 +1805,7 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
                   if (first)
                      hash = ctx->dd->compact_gfx_descriptor_states[i].state[n];
                   else
-                     hash = XXH32(&ctx->dd->compact_gfx_descriptor_states[i].state[n], sizeof(uint32_t), hash);
+                     hash ^= ctx->dd->compact_gfx_descriptor_states[i].state[n];
                   first = false;
                } else {
                   ctx->dd->compact_gfx_descriptor_states[i].state[n] = 0;
