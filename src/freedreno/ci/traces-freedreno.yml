@@ -334,8 +334,8 @@ traces:
     expectations:
       - device: freedreno-a306
         checksum: 7d3ee3db4f209066c380f1dcce2d4603
-    # Some speckling on the main specular highlight on a530/a630 that may just be
-    # mediump artifacts
+      # Some speckling on the main specular highlight on a530/a630 that may just be
+      # mediump artifacts
       - device: freedreno-a530
         checksum: 77018ae203d254fdb563de95f41cfb92
       - device: freedreno-a630
@@ -360,8 +360,8 @@ traces:
     expectations:
       - device: freedreno-a306
         checksum: 087367cffd0d45bec5622aa08fa75058
-    # Some speckling on the main specular highlight on a530/a630 that may just be
-    # mediump artifacts
+      # Some speckling on the main specular highlight on a530/a630 that may just be
+      # mediump artifacts
       - device: freedreno-a530
         checksum: 1fddb03346295d4a33e43f8762fc16b4
       - device: freedreno-a630
@@ -418,7 +418,7 @@ traces:
         checksum: ba53d1ffbe911171546a93259fb2e57c
       - device: freedreno-a630
         checksum: 313ef615f0f5a11eeaf95a2a87769a32
-# Note: Requires GL3.3
+  # Note: Requires GL3.3
   - path: gputest/gimark.trace
     expectations:
       - device: freedreno-a630
@@ -427,7 +427,7 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: f83f7ad4b147607e2a7de65a48f8ed4d
-# Note: Requires GL4 (fp64).
+  # Note: Requires GL4 (fp64).
 #  - path: gputest/pixmark-julia-fp64.trace
 #    expectations:
 #      - device: freedreno-a630
@@ -457,7 +457,7 @@ traces:
         checksum: 4faafe5fab0d8ec6d7b549c94f663c92
       - device: freedreno-a630
         checksum: 0a6a16c394a413f02ec2ebcc3251e366
-# Note: Requires GL4 for tess.
+  # Note: Requires GL4 for tess.
   - path: gputest/tessmark.trace
     expectations:
       - device: freedreno-a630
@@ -562,6 +562,21 @@ traces:
       # a306/a530 would need higher GL version to run
       - device: freedreno-a630
         checksum: f6661ed4de9e0a444c6338ebd0cd3768
+  #- path: ror/ror-default.trace
+  #  expectations:
+      # crash
+      #- device: freedreno-a530
+      #  checksum: 0
+      # broken shadows
+      #- device: freedreno-a630
+      #  checksum: 0
+  - path: nheko/nheko-colors.trace
+    expectations:
+      # timeout
+      #- device: freedreno-a530
+      #  checksum: 0
+      - device: freedreno-a630
+        checksum: cd908b6ee9e79472716976854fbbcb21
 #  Throws "Invalid state in _mesa_program_state_string" and
 #  GL_INVALID_OPERATION in glBindTexture(target mismatch), fails to produce
 #  a .png at all.  Renders fine on radeonsi.
