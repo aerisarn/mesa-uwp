@@ -60,6 +60,7 @@ radv_stoney_vkcts:amd64:
     B2C_TEST_SCRIPT: ./install/deqp-runner.sh
     B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache"
     DEQP_VER: vk
+    RADV_PERFTEST: nv_ms
 
 # dEQP never finishes on gfx7 due to all the GPU resets and hangs.
 # Hence, disable it for now.
