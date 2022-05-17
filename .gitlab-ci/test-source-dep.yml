@@ -144,6 +144,11 @@
     - if: '$IGALIA_FARM == "offline"'
       when: never
 
+.anholt-farm-rules:
+  rules:
+    - if: '$ANHOLT_FARM == "offline"'
+      when: never
+
 # Skips freedreno jobs if either of the farms we use are offline.
 .freedreno-farm-rules:
   rules:
@@ -234,6 +239,7 @@
 .nouveau-rules:
   stage: nouveau
   rules:
+    - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:
       - src/nouveau/**/*

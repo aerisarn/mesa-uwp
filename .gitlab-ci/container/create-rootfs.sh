@@ -37,6 +37,9 @@ elif [ $DEBIAN_ARCH = amd64 ]; then
                    spirv-tools
                    sysvinit-core
                   "
+elif [ $DEBIAN_ARCH = armhf ]; then
+    ARCH_PACKAGES="firmware-misc-nonfree
+                  "
 fi
 
 INSTALL_CI_FAIRY_PACKAGES="git

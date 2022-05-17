@@ -50,6 +50,7 @@ elif [[ "$DEBIAN_ARCH" = "armhf" ]]; then
     DEVICE_TREES="arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
     DEVICE_TREES+=" arch/arm/boot/dts/sun8i-h3-libretech-all-h3-cc.dtb"
     DEVICE_TREES+=" arch/arm/boot/dts/imx6q-cubox-i.dtb"
+    DEVICE_TREES+=" arch/arm/boot/dts/tegra124-jetson-tk1.dtb"
     KERNEL_IMAGE_NAME="zImage"
     . .gitlab-ci/container/create-cross-file.sh armhf
 else

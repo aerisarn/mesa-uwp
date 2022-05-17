@@ -42,7 +42,9 @@ elif [[ $arch == "armhf" ]]; then
 
     wget "${ARTIFACTS_URL}"/zImage
 
-    DEVICE_TREES="imx6q-cubox-i.dtb"
+    DEVICE_TREES=""
+    DEVICE_TREES="$DEVICE_TREES imx6q-cubox-i.dtb"
+    DEVICE_TREES="$DEVICE_TREES tegra124-jetson-tk1.dtb"
 
     for DTB in $DEVICE_TREES; do
         wget "${ARTIFACTS_URL}/$DTB"

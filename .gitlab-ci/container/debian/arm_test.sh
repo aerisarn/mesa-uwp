@@ -38,3 +38,9 @@ ln -s \
     /baremetal-files/Image \
     /baremetal-files/tegra210-p3450-0000.dtb \
     /baremetal-files/jetson-nano/boot/
+
+mkdir -p /baremetal-files/jetson-tk1/boot/
+ln -s \
+    /baremetal-files/zImage \
+    /baremetal-files/tegra124-jetson-tk1.dtb \
+    /baremetal-files/jetson-tk1/boot/
