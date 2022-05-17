@@ -3681,6 +3681,8 @@ typedef struct nir_shader {
    /** Size of the constant data associated with the shader, in bytes */
    unsigned constant_data_size;
 
+   struct nir_xfb_info *xfb_info;
+
    unsigned printf_info_count;
    nir_printf_info *printf_info;
 } nir_shader;

@@ -23,6 +23,7 @@
 
 #include "nir.h"
 #include "nir_control_flow.h"
+#include "nir_xfb_info.h"
 
 /* Secret Decoder Ring:
  *   clone_foo():
@@ -783,6 +784,12 @@ nir_shader_clone(void *mem_ctx, const nir_shader *s)
    if (s->constant_data_size > 0) {
       ns->constant_data = ralloc_size(ns, s->constant_data_size);
       memcpy(ns->constant_data, s->constant_data, s->constant_data_size);
+   }
+
+   if (s->xfb_info) {
+      size_t size = nir_xfb_info_size(s->xfb_info->output_count);
+      ns->xfb_info = ralloc_size(ns, size);
+      memcpy(ns->xfb_info, s->xfb_info, size);
    }
 
    free_clone_state(&state);

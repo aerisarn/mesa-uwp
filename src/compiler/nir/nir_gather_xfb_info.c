@@ -184,6 +184,13 @@ nir_shader_get_xfb_info(const nir_shader *shader, void *mem_ctx)
    return nir_gather_xfb_info_with_varyings(shader, mem_ctx, NULL);
 }
 
+void
+nir_shader_gather_xfb_info(nir_shader *shader)
+{
+   ralloc_free(shader->xfb_info);
+   shader->xfb_info = nir_gather_xfb_info_with_varyings(shader, shader, NULL);
+}
+
 nir_xfb_info *
 nir_gather_xfb_info_with_varyings(const nir_shader *shader,
                                   void *mem_ctx,
