@@ -37,6 +37,7 @@
 #include "compiler/glsl/gl_nir.h"
 #include "compiler/glsl/gl_nir_linker.h"
 #include "util/u_sampler.h"
+#include "util/streaming-load-memcpy.h"
 
 #define BGR_FORMAT(NAME) \
     {{ \
@@ -1028,12 +1029,12 @@ copy_converted_buffer(struct gl_context * ctx,
             GLubyte *srcpx = _mesa_image_address(dim, &packing, map,
                                                  width, height, format, type,
                                                  z, y, 0);
-            memcpy(dst, srcpx, util_format_get_stride(dst_format, width));
+            util_streaming_load_memcpy(dst, srcpx, util_format_get_stride(dst_format, width));
          }
       }
    } else {
       /* direct copy for all other cases */
-      memcpy(pixels, map, dst->width0);
+      util_streaming_load_memcpy(pixels, map, dst->width0);
    }
 
    _mesa_unmap_pbo_dest(ctx, pack);
