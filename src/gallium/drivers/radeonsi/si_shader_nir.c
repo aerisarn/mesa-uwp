@@ -251,6 +251,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       .lower_txp = ~0u,
       .lower_txs_cube_array = true,
       .lower_invalid_implicit_lod = true,
+      .lower_tg4_offsets = true,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
