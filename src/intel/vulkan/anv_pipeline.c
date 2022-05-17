@@ -508,6 +508,9 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
             (ms_info->minSampleShading * ms_info->rasterizationSamples) > 1;
          key->multisample_fbo = true;
       }
+
+      if (device->physical->instance->sample_mask_out_opengl_behaviour)
+         key->ignore_sample_mask_out = !key->multisample_fbo;
    }
 
    key->coarse_pixel =
