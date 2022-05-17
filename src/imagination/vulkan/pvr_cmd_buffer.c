@@ -4503,6 +4503,10 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
    unsigned int index_stride = 0;
 
    pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
+      const bool vertex_shader_has_side_effects =
+         cmd_buffer->state.gfx_pipeline->vertex_shader_state.stage_state
+            .has_side_effects;
+
       list0.primitive_topology = pvr_get_hw_primitive_topology(topology);
 
       /* First instance is not handled in the VDM state, it's implemented as
@@ -4540,6 +4544,11 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
          index_buffer_addr.addr += first_index * index_stride;
          list0.index_base_addrmsb = index_buffer_addr;
       }
+
+      list0.degen_cull_enable =
+         PVR_HAS_FEATURE(&cmd_buffer->device->pdevice->dev_info,
+                         vdm_degenerate_culling) &&
+         !vertex_shader_has_side_effects;
 
       list_hdr = list0;
    }

@@ -291,6 +291,7 @@ struct pvr_device_features {
    bool has_uvs_pba_entries : 1;
    bool has_uvs_vtx_entries : 1;
    bool has_vdm_cam_size : 1;
+   bool has_vdm_degenerate_culling : 1;
    bool has_xpu_max_slaves : 1;
    bool has_xt_top_infrastructure : 1;
    bool has_zls_subtile : 1;

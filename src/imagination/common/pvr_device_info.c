@@ -156,6 +156,7 @@ const struct pvr_device_features pvr_device_features_33_V_11_3 = {
    .has_uvs_pba_entries = true,
    .has_uvs_vtx_entries = true,
    .has_vdm_cam_size = true,
+   .has_vdm_degenerate_culling = true,
 
    .common_store_size_in_dwords = 512U * 4U * 4U,
    .isp_max_tiles_in_flight = 1U,
@@ -235,6 +236,7 @@ const struct pvr_device_features pvr_device_features_36_V_104_796 = {
    .has_uvs_pba_entries = true,
    .has_uvs_vtx_entries = true,
    .has_vdm_cam_size = true,
+   .has_vdm_degenerate_culling = true,
    .has_xpu_max_slaves = true,
 
    .common_store_size_in_dwords = 1344U * 4U * 4U,
