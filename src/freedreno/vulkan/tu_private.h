@@ -1300,7 +1300,6 @@ struct tu_cmd_buffer
    VkResult record_result;
 
    struct tu_cs cs;
-   struct tu_cs tile_load_cs;
    struct tu_cs draw_cs;
    struct tu_cs tile_store_cs;
    struct tu_cs draw_epilogue_cs;

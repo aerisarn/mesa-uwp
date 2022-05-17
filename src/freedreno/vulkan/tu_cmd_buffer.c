@@ -618,7 +618,7 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
 
 /* Optimization: there is no reason to load gmem if there is no
  * geometry to process. COND_REG_EXEC predicate is set here,
- * but the actual skip happens in tile_load_cs and tile_store_cs,
+ * but the actual skip happens in tu6_emit_tile_load() and tile_store_cs,
  * for each blit separately.
  */
 static void
@@ -1228,6 +1228,8 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
+   tu6_emit_tile_load(cmd, cs);
+
    tu6_emit_blit_scissor(cmd, cs, false);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
@@ -1360,7 +1362,6 @@ static void
 tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
                 uint32_t pipe, uint32_t slot)
 {
-   tu_cs_emit_call(cs, &cmd->tile_load_cs);
    tu_cs_emit_call(cs, &cmd->draw_cs);
 
    if (use_hw_binning(cmd)) {
@@ -1410,15 +1411,11 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
-   /* Create gmem load/stores now (at EndRenderPass time)) because they needed to
+   /* Create gmem stores now (at EndRenderPass time)) because they needed to
     * know whether to allow their conditional execution, which was tied to a
     * state that was known only at the end of the renderpass.  They will be
     * called from tu6_render_tile().
     */
-   tu_cs_begin(&cmd->tile_load_cs);
-   tu6_emit_tile_load(cmd, &cmd->tile_load_cs);
-   tu_cs_end(&cmd->tile_load_cs);
-
    tu_cs_begin(&cmd->tile_store_cs);
    tu6_emit_tile_store(cmd, &cmd->tile_store_cs);
    tu_cs_end(&cmd->tile_store_cs);
@@ -1453,10 +1450,9 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
       u_trace_disable_event_range(cmd->trace_renderpass_start,
                                   cmd->trace_renderpass_end);
 
-   /* Reset the gmem load/store CS entry lists so that the next render pass
-    * does its own load/stores.
+   /* Reset the gmem store CS entry lists so that the next render pass
+    * does its own stores.
     */
-   tu_cs_discard_entries(&cmd->tile_load_cs);
    tu_cs_discard_entries(&cmd->tile_store_cs);
 }
 
@@ -1517,7 +1513,6 @@ tu_create_cmd_buffer(struct tu_device *device,
    list_inithead(&cmd_buffer->renderpass_autotune_results);
 
    tu_cs_init(&cmd_buffer->cs, device, TU_CS_MODE_GROW, 4096);
-   tu_cs_init(&cmd_buffer->tile_load_cs, device, TU_CS_MODE_GROW, 2048);
    tu_cs_init(&cmd_buffer->draw_cs, device, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->tile_store_cs, device, TU_CS_MODE_GROW, 2048);
    tu_cs_init(&cmd_buffer->draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096);
@@ -1534,7 +1529,6 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    list_del(&cmd_buffer->pool_link);
 
    tu_cs_finish(&cmd_buffer->cs);
-   tu_cs_finish(&cmd_buffer->tile_load_cs);
    tu_cs_finish(&cmd_buffer->draw_cs);
    tu_cs_finish(&cmd_buffer->tile_store_cs);
    tu_cs_finish(&cmd_buffer->draw_epilogue_cs);
@@ -1563,7 +1557,6 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->record_result = VK_SUCCESS;
 
    tu_cs_reset(&cmd_buffer->cs);
-   tu_cs_reset(&cmd_buffer->tile_load_cs);
    tu_cs_reset(&cmd_buffer->draw_cs);
    tu_cs_reset(&cmd_buffer->tile_store_cs);
    tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
