@@ -332,7 +332,7 @@ panfrost_should_afbc(struct panfrost_device *dev,
         case PIPE_TEXTURE_3D:
                 /* 3D AFBC is only supported on Bifrost v7+. It's supposed to
                  * be supported on Midgard but it doesn't seem to work */
-                if (dev->arch < 7)
+                if (dev->arch != 7)
                         return false;
 
                 break;
