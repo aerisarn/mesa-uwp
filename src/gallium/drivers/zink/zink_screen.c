@@ -619,6 +619,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_TRANSFER_MODES: {
       enum pipe_texture_transfer_mode mode = PIPE_TEXTURE_TRANSFER_BLIT;
       if (!screen->is_cpu &&
+          /* this needs substantial perf tuning */
+          screen->info.driver_props.driverID != VK_DRIVER_ID_MESA_TURNIP &&
           screen->info.have_KHR_8bit_storage &&
           screen->info.have_KHR_16bit_storage &&
           screen->info.have_KHR_shader_float16_int8)
