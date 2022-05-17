@@ -362,7 +362,8 @@ si_translate_blend_factor(enum amd_gfx_level gfx_level, VkBlendFactor factor)
    case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
       return V_028780_BLEND_ONE_MINUS_DST_ALPHA;
    case VK_BLEND_FACTOR_CONSTANT_COLOR:
-      return V_028780_BLEND_CONSTANT_COLOR_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_CONSTANT_COLOR_GFX11
+                                : V_028780_BLEND_CONSTANT_COLOR_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
       return gfx_level >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX11
                                  : V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
