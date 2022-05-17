@@ -670,7 +670,9 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
    tu6_emit_window_scissor(cs, x1, y1, x2, y2);
    tu6_emit_window_offset(cs, x1, y1);
 
-   if (use_hw_binning(cmd)) {
+   bool hw_binning = use_hw_binning(cmd);
+
+   if (hw_binning) {
       tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
 
       tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
@@ -684,19 +686,13 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, pipe * cmd->vsc_prim_strm_pitch);
 
       tu6_emit_cond_for_load_stores(cmd, cs, pipe, slot, true);
-
-      tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
-      tu_cs_emit(cs, 0x0);
-
-      tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
-      tu_cs_emit(cs, 0x0);
-   } else {
-      tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
-      tu_cs_emit(cs, 0x1);
-
-      tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
-      tu_cs_emit(cs, 0x0);
    }
+
+   tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
+   tu_cs_emit(cs, !hw_binning);
+
+   tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
+   tu_cs_emit(cs, 0x0);
 }
 
 static void
