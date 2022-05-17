@@ -1201,8 +1201,8 @@ pan_legalize_afbc_format(struct panfrost_context *ctx,
         if (!drm_is_afbc(rsrc->image.layout.modifier))
                 return;
 
-        if (panfrost_afbc_format(dev, pan_blit_format(rsrc->base.format)) ==
-            panfrost_afbc_format(dev, pan_blit_format(format)))
+        if (panfrost_afbc_format(dev->arch, pan_blit_format(rsrc->base.format)) ==
+            panfrost_afbc_format(dev->arch, pan_blit_format(format)))
                 return;
 
         pan_resource_modifier_convert(ctx, rsrc,

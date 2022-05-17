@@ -72,7 +72,7 @@
  * cannot be compressed. */
 
 enum pipe_format
-panfrost_afbc_format(const struct panfrost_device *dev, enum pipe_format format)
+panfrost_afbc_format(unsigned arch, enum pipe_format format)
 {
         /* Don't allow swizzled formats on v7 */
         switch (format) {
@@ -84,7 +84,7 @@ panfrost_afbc_format(const struct panfrost_device *dev, enum pipe_format format)
         case PIPE_FORMAT_A8B8G8R8_UNORM:
         case PIPE_FORMAT_B8G8R8_UNORM:
         case PIPE_FORMAT_B5G6R5_UNORM:
-                if (dev->arch >= 7)
+                if (arch >= 7)
                         return PIPE_FORMAT_NONE;
 
                 break;
@@ -128,7 +128,7 @@ panfrost_afbc_format(const struct panfrost_device *dev, enum pipe_format format)
 bool
 panfrost_format_supports_afbc(const struct panfrost_device *dev, enum pipe_format format)
 {
-        return panfrost_afbc_format(dev, format) != PIPE_FORMAT_NONE;
+        return panfrost_afbc_format(dev->arch, format) != PIPE_FORMAT_NONE;
 }
 
 /* The lossless colour transform (AFBC_FORMAT_MOD_YTR) requires RGB. */
