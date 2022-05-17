@@ -571,10 +571,10 @@ static void pvr_pds_uniform_program_setup_buffers(
    uint32_t buffer_count = 0;
 
    for (size_t u = 0; u < ubo_data->num_ubo_entries; ++u) {
-      struct pvr_pds_buffer *current_buffer = &buffers[buffer_count++];
+      struct pvr_pds_buffer *current_buffer = &buffers[buffer_count];
 
       /* This is fine since buffers_out_ptr is a pointer to an array. */
-      assert(buffer_count <= ARRAY_SIZE(*buffers_out_ptr));
+      assert(buffer_count < ARRAY_SIZE(*buffers_out_ptr));
 
       current_buffer->type = PVR_BUFFER_TYPE_UBO;
       current_buffer->size_in_dwords = ubo_data->size[u];
@@ -587,6 +587,8 @@ static void pvr_pds_uniform_program_setup_buffers(
        * E.g. can multiple UBOs have the same base buffer?
        */
       current_buffer->source_offset = 0;
+
+      buffer_count++;
    }
 
    *buffer_count_out = buffer_count;
