@@ -19,11 +19,12 @@
 # SOFTWARE.
 
 subdir('compiler')
-if with_nouveau_vk
-  subdir('vulkan')
-endif
+subdir('winsys')
 if with_tools.contains('drm-shim')
   subdir('drm-shim')
 endif
 
 subdir('codegen')
+if with_nouveau_vk
+  subdir('vulkan')
+endif
