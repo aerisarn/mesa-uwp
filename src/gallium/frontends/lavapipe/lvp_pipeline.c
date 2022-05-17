@@ -1121,7 +1121,7 @@ lvp_pipeline_compile(struct lvp_pipeline *pipeline,
       if (stage == MESA_SHADER_VERTEX ||
           stage == MESA_SHADER_GEOMETRY ||
           stage == MESA_SHADER_TESS_EVAL) {
-         nir_xfb_info *xfb_info = nir_gather_xfb_info(pipeline->pipeline_nir[stage], NULL);
+         nir_xfb_info *xfb_info = nir_shader_get_xfb_info(pipeline->pipeline_nir[stage], NULL);
          if (xfb_info) {
             uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
             memset(output_mapping, 0, sizeof(output_mapping));

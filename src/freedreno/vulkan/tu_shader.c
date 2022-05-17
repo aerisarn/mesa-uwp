@@ -661,7 +661,7 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 static void
 tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
 {
-   nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
+   nir_xfb_info *xfb = nir_shader_get_xfb_info(nir, NULL);
 
    if (!xfb)
       return;

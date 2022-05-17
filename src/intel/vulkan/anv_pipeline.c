@@ -1774,7 +1774,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       if (s == MESA_SHADER_VERTEX ||
           s == MESA_SHADER_TESS_EVAL ||
           s == MESA_SHADER_GEOMETRY)
-         xfb_info = nir_gather_xfb_info(stages[s].nir, stage_ctx);
+         xfb_info = nir_shader_get_xfb_info(stages[s].nir, stage_ctx);
 
       switch (s) {
       case MESA_SHADER_VERTEX:

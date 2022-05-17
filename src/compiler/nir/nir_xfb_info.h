@@ -75,7 +75,7 @@ nir_xfb_info_size(uint16_t output_count)
 }
 
 nir_xfb_info *
-nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx);
+nir_shader_get_xfb_info(const nir_shader *shader, void *mem_ctx);
 
 nir_xfb_info *
 nir_gather_xfb_info_with_varyings(const nir_shader *shader,

@@ -2816,7 +2816,7 @@ radv_nir_stage_uses_xfb(const nir_shader *nir)
    if (nir->info.stage == MESA_SHADER_MESH)
       return false;
 
-   nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
+   nir_xfb_info *xfb = nir_shader_get_xfb_info(nir, NULL);
    bool uses_xfb = !!xfb;
 
    ralloc_free(xfb);
