@@ -2526,11 +2526,13 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
    struct vk_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    bool disable_constant_encode_ac01 = false;
+   unsigned color_invalid = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
+                            ? G_028C70_FORMAT_GFX11(V_028C70_COLOR_INVALID)
+                            : G_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID);
 
    for (i = 0; i < subpass->color_count; ++i) {
       if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
-         radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C,
-                                S_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID));
+         radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C, color_invalid);
          continue;
       }
 
@@ -2557,8 +2559,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       }
    }
    for (; i < cmd_buffer->state.last_subpass_color_count; i++) {
-      radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C,
-                             S_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID));
+      radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C, color_invalid);
    }
    cmd_buffer->state.last_subpass_color_count = subpass->color_count;
 
