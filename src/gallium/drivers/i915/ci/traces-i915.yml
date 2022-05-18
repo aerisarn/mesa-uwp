@@ -61,3 +61,7 @@ traces:
     expectations:
       - device: i915-g33
         checksum: d17298ad3bb44b43b6c17e017f7c1e6a
+  # Error: waffle_context_create failed
+  #- path: ror/ror-default.trace
+  # User-errors, missing text in application
+  #- path: nheko/nheko-colors.trace
