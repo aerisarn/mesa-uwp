@@ -1472,7 +1472,7 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline)
    /* GS requirement. */
    ia_multi_vgt_param.partial_es_wave = false;
    if (radv_pipeline_has_gs(pipeline) && device->physical_device->rad_info.gfx_level <= GFX8)
-      if (SI_GS_PER_ES / ia_multi_vgt_param.primgroup_size >= pipeline->device->gs_table_depth - 3)
+      if (SI_GS_PER_ES / ia_multi_vgt_param.primgroup_size >= pipeline->device->physical_device->gs_table_depth - 3)
          ia_multi_vgt_param.partial_es_wave = true;
 
    ia_multi_vgt_param.ia_switch_on_eoi = false;

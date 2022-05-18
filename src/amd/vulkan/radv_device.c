@@ -824,6 +824,9 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       goto fail_disk_cache;
    }
 
+   device->gs_table_depth =
+      ac_get_gs_table_depth(device->rad_info.gfx_level, device->rad_info.family);
+
    *device_out = device;
 
    return VK_SUCCESS;
@@ -2735,13 +2738,6 @@ radv_queue_finish(struct radv_queue *queue)
    vk_queue_finish(&queue->vk);
 }
 
-static void
-radv_device_init_gs_info(struct radv_device *device)
-{
-   device->gs_table_depth = ac_get_gs_table_depth(device->physical_device->rad_info.gfx_level,
-                                                  device->physical_device->rad_info.family);
-}
-
 static VkResult
 radv_device_init_border_color(struct radv_device *device)
 {
@@ -3341,8 +3337,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
        */
       device->dispatch_initiator |= S_00B800_ORDER_MODE(1);
    }
-
-   radv_device_init_gs_info(device);
 
    ac_get_hs_info(&device->physical_device->rad_info,
                   &device->hs);

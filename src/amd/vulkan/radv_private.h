@@ -327,6 +327,8 @@ struct radv_physical_device {
 
    enum radv_queue_family vk_queue_to_radv[RADV_MAX_QUEUE_FAMILIES];
    uint32_t num_queues;
+
+   uint32_t gs_table_depth;
 };
 
 struct radv_instance {
@@ -780,7 +782,6 @@ struct radv_device {
    /* Number of entries in the task shader ring buffers. */
    uint32_t task_num_entries;
 
-   uint32_t gs_table_depth;
    struct ac_hs_info hs;
 
    /* MSAA sample locations.
