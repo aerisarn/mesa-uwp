@@ -7039,6 +7039,8 @@ fs_visitor::run_task(bool allow_spilling)
    if (failed)
       return false;
 
+   emit_urb_fence();
+
    emit_cs_terminate();
 
    calculate_cfg();
@@ -7083,6 +7085,8 @@ fs_visitor::run_mesh(bool allow_spilling)
 
    if (failed)
       return false;
+
+   emit_urb_fence();
 
    emit_cs_terminate();
 

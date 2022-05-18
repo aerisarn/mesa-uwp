@@ -327,6 +327,7 @@ public:
    void emit_gs_input_load(const fs_reg &dst, const nir_src &vertex_src,
                            unsigned base_offset, const nir_src &offset_src,
                            unsigned num_components, unsigned first_component);
+   void emit_urb_fence();
    void emit_cs_terminate();
    fs_reg emit_work_group_id_setup();
 
