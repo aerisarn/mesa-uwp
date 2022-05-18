@@ -179,8 +179,8 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		pipe_shader_type_from_mesa(sel->nir->info.stage);
 	
 	bool dump = r600_can_dump_shader(&rctx->screen->b, processor);
-	unsigned use_sb = !(rctx->screen->b.debug_flags & (DBG_NO_SB | DBG_NIR)) ||
-                          (rctx->screen->b.debug_flags & DBG_NIR_SB);
+	unsigned use_sb = !(rctx->screen->b.debug_flags & DBG_NO_SB) ||
+                     (rctx->screen->b.debug_flags & DBG_NIR_SB);
 	unsigned sb_disasm;
 	unsigned export_shader;
 	
@@ -263,6 +263,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 	 * with NTT)
 	 */
 	use_sb &= !(shader->shader.indirect_files & (1 << TGSI_FILE_TEMPORARY));
+	use_sb &= !(shader->shader.indirect_files & (1 << TGSI_FILE_CONSTANT));
 
 	/* sb has scheduling assertion fails with interpolate_at. */
 	use_sb &= !shader->shader.uses_interpolate_at_sample;
