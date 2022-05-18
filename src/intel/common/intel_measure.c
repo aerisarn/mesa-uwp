@@ -406,7 +406,7 @@ intel_measure_push_result(struct intel_measure_device *device,
 
    uint64_t *timestamps = batch->timestamps;
    assert(timestamps != NULL);
-   assert(timestamps[0] != 0);
+   assert(batch->index == 0 || timestamps[0] != 0);
 
    for (int i = 0; i < batch->index; i += 2) {
       const struct intel_measure_snapshot *begin = &batch->snapshots[i];
