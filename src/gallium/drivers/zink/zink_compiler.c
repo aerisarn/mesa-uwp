@@ -1523,6 +1523,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access, zs);
+      need_optimize = true;
    }
    if (inlined_uniforms) {
       optimize_nir(nir);
