@@ -12694,14 +12694,18 @@ transform_fs_pstipple(struct svga_shader_emitter_v10 *emit,
  * Modify the FS to support anti-aliasing point.
  */
 static const struct tgsi_token *
-transform_fs_aapoint(const struct tgsi_token *tokens,
+transform_fs_aapoint(struct svga_context *svga,
+		     const struct tgsi_token *tokens,
                      int aa_coord_index)
 {
+   bool need_texcoord_semantic =
+      svga->pipe.screen->get_param(svga->pipe.screen, PIPE_CAP_TGSI_TEXCOORD);
+
    if (0) {
       debug_printf("Before tgsi_add_aa_point ------------------\n");
       tgsi_dump(tokens,0);
    }
-   tokens = tgsi_add_aa_point(tokens, aa_coord_index);
+   tokens = tgsi_add_aa_point(tokens, aa_coord_index, need_texcoord_semantic);
    if (0) {
       debug_printf("After tgsi_add_aa_point ------------------\n");
       tgsi_dump(tokens, 0);
@@ -12961,7 +12965,8 @@ svga_tgsi_vgpu10_translate(struct svga_context *svga,
          tokens = new_tokens;
       }
       if (key->fs.aa_point) {
-         tokens = transform_fs_aapoint(tokens, key->fs.aa_point_coord_index);
+         tokens = transform_fs_aapoint(svga, tokens,
+			               key->fs.aa_point_coord_index);
       }
    }
 
