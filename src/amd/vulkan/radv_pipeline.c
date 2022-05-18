@@ -6273,7 +6273,7 @@ radv_compute_db_shader_control(const struct radv_device *device,
 
 static void
 radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf *cs,
-                                       struct radv_pipeline *pipeline)
+                                       const struct radv_pipeline *pipeline)
 {
    struct radv_shader *ps;
    bool param_gen;
@@ -6437,7 +6437,7 @@ radv_pipeline_generate_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
 }
 
 static void
-gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs, struct radv_pipeline *pipeline)
+gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs, const struct radv_pipeline *pipeline)
 {
    bool break_wave_at_eoi = false;
    unsigned primgroup_size;
