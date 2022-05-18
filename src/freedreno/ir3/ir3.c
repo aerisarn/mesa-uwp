@@ -67,6 +67,22 @@ ir3_destroy(struct ir3 *shader)
    ralloc_free(shader);
 }
 
+static bool
+is_shared_consts(struct ir3_compiler *compiler,
+                 struct ir3_const_state *const_state,
+                 struct ir3_register *reg)
+{
+   if (const_state->shared_consts_enable && reg->flags & IR3_REG_CONST) {
+      uint32_t min_const_reg = regid(compiler->shared_consts_base_offset, 0);
+      uint32_t max_const_reg =
+         regid(compiler->shared_consts_base_offset +
+               compiler->shared_consts_size, 0);
+      return reg->num >= min_const_reg && min_const_reg < max_const_reg;
+   }
+
+   return false;
+}
+
 static void
 collect_reg_info(struct ir3_instruction *instr, struct ir3_register *reg,
                  struct ir3_info *info)
@@ -78,6 +94,10 @@ collect_reg_info(struct ir3_instruction *instr, struct ir3_register *reg,
       /* nothing to do */
       return;
    }
+
+   /* Shared consts don't need to be included into constlen. */
+   if (is_shared_consts(v->compiler, ir3_const_state(v), reg))
+      return;
 
    if (!(reg->flags & IR3_REG_R)) {
       repeat = 0;

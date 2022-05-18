@@ -214,6 +214,7 @@ struct ir3_const_state {
 
    /* State of ubo access lowered to push consts: */
    struct ir3_ubo_analysis_state ubo_state;
+   bool shared_consts_enable;
 };
 
 /**
@@ -876,6 +877,8 @@ struct ir3_shader {
     * recompiles for GL NOS that doesn't actually apply to the shader.
     */
    struct ir3_shader_key key_mask;
+
+   bool shared_consts_enable;
 };
 
 /**
@@ -893,21 +896,35 @@ ir3_const_state(const struct ir3_shader_variant *v)
 
 /* Given a variant, calculate the maximum constlen it can have.
  */
-
 static inline unsigned
 ir3_max_const(const struct ir3_shader_variant *v)
 {
    const struct ir3_compiler *compiler = v->compiler;
+   bool shared_consts_enable = ir3_const_state(v)->shared_consts_enable;
+
+   /* Shared consts size for CS and FS matches with what's acutally used,
+    * but the size of shared consts for geomtry stages doesn't.
+    * So we use a hw quirk for geometry shared consts.
+    */
+   uint32_t shared_consts_size = shared_consts_enable ?
+         compiler->shared_consts_size : 0;
+
+   uint32_t shared_consts_size_geom = shared_consts_enable ?
+         compiler->geom_shared_consts_size_quirk : 0;
+
+   uint32_t safe_shared_consts_size = shared_consts_enable ?
+      ALIGN_POT(MAX2(DIV_ROUND_UP(shared_consts_size_geom, 4),
+                     DIV_ROUND_UP(shared_consts_size, 5)), 4) : 0;
 
    if ((v->type == MESA_SHADER_COMPUTE) ||
        (v->type == MESA_SHADER_KERNEL)) {
-      return compiler->max_const_compute;
+      return compiler->max_const_compute - shared_consts_size;
    } else if (v->key.safe_constlen) {
-      return compiler->max_const_safe;
+      return compiler->max_const_safe - safe_shared_consts_size;
    } else if (v->type == MESA_SHADER_FRAGMENT) {
-      return compiler->max_const_frag;
+      return compiler->max_const_frag - shared_consts_size;
    } else {
-      return compiler->max_const_geom;
+      return compiler->max_const_geom - shared_consts_size_geom;
    }
 }
 
@@ -925,6 +942,7 @@ ir3_shader_get_variant(struct ir3_shader *shader,
 struct ir3_shader_options {
    unsigned reserved_user_consts;
    enum ir3_wavesize_option api_wavesize, real_wavesize;
+   bool shared_consts_enable;
 };
 
 struct ir3_shader *

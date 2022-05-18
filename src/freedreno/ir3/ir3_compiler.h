@@ -184,6 +184,21 @@ struct ir3_compiler {
    bool has_preamble;
 
    bool push_ubo_with_preamble;
+
+   /* Where the shared consts start in constants file, in vec4's. */
+   uint16_t shared_consts_base_offset;
+
+   /* The size of shared consts for CS and FS(in vec4's).
+    * Also the size that is actually used on geometry stages (on a6xx).
+    */
+   uint64_t shared_consts_size;
+
+   /* Found on a6xx for geometry stages, that is different from
+    * actually used shared consts.
+    *
+    * TODO: Keep an eye on this for next gens.
+    */
+   uint64_t geom_shared_consts_size_quirk;
 };
 
 struct ir3_compiler_options {
