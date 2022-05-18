@@ -5021,11 +5021,6 @@ bi_compile_variant_nir(nir_shader *nir,
                 }
         }
 
-        /* We can only go out-of-SSA after speciailizing IDVS, as opt_dead_cf
-         * doesn't know how to deal with nir_register.
-         */
-        NIR_PASS_V(nir, nir_convert_from_ssa, true);
-
         /* If nothing is pushed, all UBOs need to be uploaded */
         ctx->ubo_mask = ~0;
 

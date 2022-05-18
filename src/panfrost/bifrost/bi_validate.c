@@ -39,15 +39,14 @@ bi_validate_initialization(bi_context *ctx)
 
         /* Calculate the live set */
         bi_block *entry = bi_entry_block(ctx);
-        unsigned temp_count = bi_max_temp(ctx);
-        bi_compute_liveness(ctx);
+        bi_compute_liveness_ssa(ctx);
 
         /* Validate that the live set is indeed empty */
-        for (unsigned i = 0; i < temp_count; ++i) {
-                if (entry->live_in[i] == 0) continue;
-
-                fprintf(stderr, "%s%u\n", (i & PAN_IS_REG) ? "r" : "", i >> 1);
-                success = false;
+        for (unsigned i = 0; i < ctx->ssa_alloc; ++i) {
+                if (BITSET_TEST(entry->ssa_live_in, i)) {
+                        fprintf(stderr, "%u\n", i);
+                        success = false;
+                }
         }
 
         return success;
