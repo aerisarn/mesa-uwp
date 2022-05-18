@@ -1746,11 +1746,8 @@ store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result, bool
 }
 
 static SpvId
-get_dest_type(struct ntv_context *ctx, nir_dest *dest, nir_alu_type type)
+get_alu_type(struct ntv_context *ctx, nir_alu_type type, unsigned num_components, unsigned bit_size)
 {
-   unsigned num_components = nir_dest_num_components(*dest);
-   unsigned bit_size = nir_dest_bit_size(*dest);
-
    if (bit_size == 1)
       return get_bvec_type(ctx, num_components);
 
@@ -1778,6 +1775,14 @@ get_dest_type(struct ntv_context *ctx, nir_dest *dest, nir_alu_type type)
    default:
       unreachable("unsupported nir_alu_type");
    }
+}
+
+static SpvId
+get_dest_type(struct ntv_context *ctx, nir_dest *dest, nir_alu_type type)
+{
+   unsigned num_components = nir_dest_num_components(*dest);
+   unsigned bit_size = nir_dest_bit_size(*dest);
+   return get_alu_type(ctx, type, num_components, bit_size);
 }
 
 static bool
