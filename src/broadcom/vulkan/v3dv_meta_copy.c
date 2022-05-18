@@ -2604,7 +2604,8 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
       };
       break;
    case 2:
-      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
+      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT ||
+             aspect == VK_IMAGE_ASPECT_DEPTH_BIT);
       src_format = VK_FORMAT_R16_UINT;
       dst_format = src_format;
       break;
