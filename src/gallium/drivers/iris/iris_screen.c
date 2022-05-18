@@ -148,13 +148,10 @@ iris_get_video_memory(struct iris_screen *screen)
 {
    uint64_t vram = iris_bufmgr_vram_size(screen->bufmgr);
    uint64_t sram = iris_bufmgr_sram_size(screen->bufmgr);
-   uint64_t osmem;
    if (vram) {
       return vram / (1024 * 1024);
    } else if (sram) {
       return sram / (1024 * 1024);
-   } else if (os_get_available_system_memory(&osmem)) {
-      return osmem / (1024 * 1024);
    } else {
       /* This is the old code path, it get the GGTT size from the kernel
        * (which should always be 4Gb on Gfx8+).

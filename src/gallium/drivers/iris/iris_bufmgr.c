@@ -2329,30 +2329,16 @@ gem_param(int fd, int name)
 }
 
 static bool
-iris_bufmgr_query_meminfo(struct iris_bufmgr *bufmgr)
+iris_bufmgr_get_meminfo(struct iris_bufmgr *bufmgr,
+                        struct intel_device_info *devinfo)
 {
-   struct drm_i915_query_memory_regions *meminfo =
-      intel_i915_query_alloc(bufmgr->fd, DRM_I915_QUERY_MEMORY_REGIONS, NULL);
-   if (meminfo == NULL)
-      return false;
+   bufmgr->sys.region.memory_class = devinfo->mem.sram.mem_class;
+   bufmgr->sys.region.memory_instance = devinfo->mem.sram.mem_instance;
+   bufmgr->sys.size = devinfo->mem.sram.mappable.size;
 
-   for (int i = 0; i < meminfo->num_regions; i++) {
-      const struct drm_i915_memory_region_info *mem = &meminfo->regions[i];
-      switch (mem->region.memory_class) {
-      case I915_MEMORY_CLASS_SYSTEM:
-         bufmgr->sys.region = mem->region;
-         bufmgr->sys.size = mem->probed_size;
-         break;
-      case I915_MEMORY_CLASS_DEVICE:
-         bufmgr->vram.region = mem->region;
-         bufmgr->vram.size = mem->probed_size;
-         break;
-      default:
-         break;
-      }
-   }
-
-   free(meminfo);
+   bufmgr->vram.region.memory_class = devinfo->mem.vram.mem_class;
+   bufmgr->vram.region.memory_instance = devinfo->mem.vram.mem_instance;
+   bufmgr->vram.size = devinfo->mem.vram.mappable.size;
 
    return true;
 }
@@ -2417,7 +2403,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->has_mmap_offset = gem_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
    bufmgr->has_userptr_probe =
       gem_param(fd, I915_PARAM_HAS_USERPTR_PROBE) >= 1;
-   iris_bufmgr_query_meminfo(bufmgr);
+   iris_bufmgr_get_meminfo(bufmgr, devinfo);
 
    STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
