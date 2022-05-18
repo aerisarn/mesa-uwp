@@ -612,7 +612,7 @@ static int check_and_set_bank_swizzle(const struct r600_bytecode *bc,
 	/* Just check every possible combination of bank swizzle.
 	 * Not very efficent, but works on the first try in most of the cases. */
 	for (i = 0; i < 4; i++)
-		if (!slots[i] || !slots[i]->bank_swizzle_force)
+		if (!slots[i] || !slots[i]->bank_swizzle_force || slots[i]->is_lds_idx_op)
 			bank_swizzle[i] = SQ_ALU_VEC_012;
 		else
 			bank_swizzle[i] = slots[i]->bank_swizzle;
@@ -647,7 +647,7 @@ static int check_and_set_bank_swizzle(const struct r600_bytecode *bc,
 			bank_swizzle[4]++;
 		} else {
 			for (i = 0; i < max_slots; i++) {
-				if (!slots[i] || !slots[i]->bank_swizzle_force) {
+				if (!slots[i] || (!slots[i]->bank_swizzle_force && !slots[i]->is_lds_idx_op)) {
 					bank_swizzle[i]++;
 					if (bank_swizzle[i] <= SQ_ALU_VEC_210)
 						break;
@@ -1270,13 +1270,14 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 
 	if (bc->cf_last != NULL && bc->cf_last->op != type) {
 		/* check if we could add it anyway */
-		if (bc->cf_last->op == CF_OP_ALU &&
-			type == CF_OP_ALU_PUSH_BEFORE) {
-			LIST_FOR_EACH_ENTRY(lalu, &bc->cf_last->alu, list) {
-				if (lalu->execute_mask) {
+		if ((bc->cf_last->op == CF_OP_ALU && type == CF_OP_ALU_PUSH_BEFORE) ||
+		 	(bc->cf_last->op == CF_OP_ALU_PUSH_BEFORE && type == CF_OP_ALU)) {
+		 	LIST_FOR_EACH_ENTRY(lalu, &bc->cf_last->alu, list) {
+		 		if (lalu->execute_mask) {
 					bc->force_add_cf = 1;
 					break;
 				}
+		 		type = CF_OP_ALU_PUSH_BEFORE;
 			}
 		} else
 			bc->force_add_cf = 1;
