@@ -69,13 +69,6 @@ TEST_F(LowerIsel, 16BitSwizzles) {
    }
 }
 
-TEST_F(LowerIsel, DiscardImplicitR60) {
-   CASE(bi_discard_f32(b, reg, reg, BI_CMPF_EQ), {
-         bi_instr *I = bi_discard_f32(b, reg, reg, BI_CMPF_EQ);
-         I->dest[0] = bi_register(60);
-   });
-}
-
 TEST_F(LowerIsel, JumpsLoweredToBranches) {
    bi_block block = { };
 

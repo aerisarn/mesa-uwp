@@ -805,14 +805,12 @@
     <mod name="eq" start="36" size="1"/>
   </ins>
 
-  <ins name="DISCARD.f32" title="Discard fragment" opcode="0x20" unit="CVT">
+  <ins name="DISCARD.f32" title="Discard fragment" dests="0" opcode="0x20" unit="CVT">
     <desc>
       Evaluates the given condition, and if it passes, discards the current
-      fragment and terminates the thread. The destination should be set to R60.
-      Only valid in a **fragment** shader.
+      fragment and terminates the thread. Only valid in a **fragment** shader.
     </desc>
     <cmp/>
-    <dest>Updated coverage mask (set to R60)</dest>
     <src absneg="true" swizzle="true">Left value to compare</src>
     <src absneg="true" swizzle="true">Right value to compare</src>
   </ins>

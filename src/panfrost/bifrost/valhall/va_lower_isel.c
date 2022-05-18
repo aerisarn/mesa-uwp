@@ -41,12 +41,6 @@ va_lower_isel(bi_instr *I)
       I->src[1] = bi_zero();
       break;
 
-   /* Needs to output the coverage mask */
-   case BI_OPCODE_DISCARD_F32:
-      assert(bi_is_null(I->dest[0]));
-      I->dest[0] = bi_register(60);
-      break;
-
    /* Extra source in Valhall not yet modeled in the Bifrost IR */
    case BI_OPCODE_ICMP_I32:
       I->op = BI_OPCODE_ICMP_U32;
