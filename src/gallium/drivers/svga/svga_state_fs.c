@@ -169,14 +169,16 @@ make_fs_key(const struct svga_context *svga,
       key->fs.pstipple = (svga->curr.rast->templ.poly_stipple_enable &&
                           prim_mode == PIPE_PRIM_TRIANGLES);
 
-      key->fs.aa_point = (svga->curr.rast->templ.point_smooth &&
-                          prim_mode == PIPE_PRIM_POINTS &&
-                          (svga->curr.rast->pointsize > 1.0 ||
-                           shader->info.writes_psize));
+      if (svga->curr.gs) {
+         key->fs.aa_point = (svga->curr.rast->templ.point_smooth &&
+			     shader->info.gs.in_prim == PIPE_PRIM_POINTS &&
+                             (svga->curr.rast->pointsize > 1.0 ||
+                              shader->info.writes_psize));
 
-      if (key->fs.aa_point && svga->curr.gs) {
-         assert(svga->curr.gs->aa_point_coord_index != -1);
-         key->fs.aa_point_coord_index = svga->curr.gs->aa_point_coord_index;
+         if (key->fs.aa_point) {
+            assert(svga->curr.gs->aa_point_coord_index != -1);
+            key->fs.aa_point_coord_index = svga->curr.gs->aa_point_coord_index;
+	 }
       }
    }
 
