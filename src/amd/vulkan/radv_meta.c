@@ -81,7 +81,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
    if (state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE) {
       assert(!(state->flags & RADV_META_SAVE_COMPUTE_PIPELINE));
 
-      state->old_pipeline = cmd_buffer->state.pipeline;
+      state->old_graphics_pipeline = cmd_buffer->state.pipeline;
 
       /* Save all viewports. */
       state->dynamic.viewport.count = cmd_buffer->state.dynamic.viewport.count;
@@ -171,7 +171,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
    if (state->flags & RADV_META_SAVE_COMPUTE_PIPELINE) {
       assert(!(state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE));
 
-      state->old_pipeline = cmd_buffer->state.compute_pipeline;
+      state->old_compute_pipeline = cmd_buffer->state.compute_pipeline;
    }
 
    if (state->flags & RADV_META_SAVE_DESCRIPTORS) {
@@ -204,7 +204,7 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
 
    if (state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE) {
       radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           radv_pipeline_to_handle(state->old_pipeline));
+                           radv_pipeline_to_handle(&state->old_graphics_pipeline->base));
 
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE;
 
@@ -313,9 +313,9 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
    }
 
    if (state->flags & RADV_META_SAVE_COMPUTE_PIPELINE) {
-      if (state->old_pipeline) {
+      if (state->old_compute_pipeline) {
          radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
-                              radv_pipeline_to_handle(state->old_pipeline));
+                              radv_pipeline_to_handle(&state->old_compute_pipeline->base));
       }
    }
 

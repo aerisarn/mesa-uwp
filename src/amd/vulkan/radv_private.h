@@ -1410,11 +1410,11 @@ struct radv_cmd_state {
 
    uint32_t prefetch_L2_mask;
 
-   struct radv_pipeline *pipeline;
-   struct radv_pipeline *emitted_pipeline;
-   struct radv_pipeline *compute_pipeline;
-   struct radv_pipeline *emitted_compute_pipeline;
-   struct radv_pipeline *rt_pipeline; /* emitted = emitted_compute_pipeline */
+   struct radv_graphics_pipeline *pipeline;
+   struct radv_graphics_pipeline *emitted_pipeline;
+   struct radv_compute_pipeline *compute_pipeline;
+   struct radv_compute_pipeline *emitted_compute_pipeline;
+   struct radv_compute_pipeline *rt_pipeline; /* emitted = emitted_compute_pipeline */
    struct vk_framebuffer *framebuffer;
    struct radv_render_pass *pass;
    const struct radv_subpass *subpass;
@@ -1915,7 +1915,6 @@ struct radv_pipeline {
    enum radv_pipeline_type type;
 
    struct radv_device *device;
-   struct radv_dynamic_state dynamic_state;
 
    struct radv_pipeline_slab *slab;
    struct radeon_winsys_bo *slab_bo;
@@ -1929,74 +1928,7 @@ struct radv_pipeline {
    uint32_t ctx_cs_hash;
    struct radeon_cmdbuf ctx_cs;
 
-   uint32_t binding_stride[MAX_VBS];
-
-   uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
-   uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
-   uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
-
-   bool use_per_attribute_vb_descs;
-   bool can_use_simple_input;
-   uint8_t last_vertex_attrib_bit;
-   uint8_t next_vertex_stage : 8;
-   uint32_t vb_desc_usage_mask;
-   uint32_t vb_desc_alloc_size;
-
    uint32_t user_data_0[MESA_VULKAN_SHADER_STAGES];
-   union {
-      struct {
-         uint64_t dynamic_states;
-         struct radv_multisample_state ms;
-         struct radv_binning_state binning;
-         struct radv_vrs_state vrs;
-         uint32_t spi_baryc_cntl;
-         unsigned esgs_ring_size;
-         unsigned gsvs_ring_size;
-         uint32_t vtx_base_sgpr;
-         struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
-         uint8_t vtx_emit_num;
-         bool uses_drawid;
-         bool uses_baseinstance;
-         bool can_use_guardband;
-         uint64_t needed_dynamic_state;
-         bool disable_out_of_order_rast_for_occlusion;
-         unsigned tess_patch_control_points;
-         unsigned pa_su_sc_mode_cntl;
-         unsigned db_depth_control;
-         unsigned pa_cl_clip_cntl;
-         unsigned cb_color_control;
-         bool uses_dynamic_stride;
-         bool uses_conservative_overestimate;
-         bool negative_one_to_one;
-
-         /* Used for rbplus */
-         uint32_t col_format;
-         uint32_t cb_target_mask;
-
-         /* Whether the pipeline uses NGG (GFX10+). */
-         bool is_ngg;
-         bool has_ngg_culling;
-
-         /* Last pre-PS API stage */
-         gl_shader_stage last_vgt_api_stage;
-
-         /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
-         bool force_vrs_per_vertex;
-      } graphics;
-      struct {
-         struct radv_pipeline_group_handle *rt_group_handles;
-         struct radv_pipeline_shader_stack_size *rt_stack_sizes;
-         bool dynamic_stack_size;
-         uint32_t group_count;
-         bool cs_regalloc_hang_bug;
-      } compute;
-      struct {
-         unsigned stage_count;
-         VkPipelineShaderStageCreateInfo *stages;
-         unsigned group_count;
-         VkRayTracingShaderGroupCreateInfoKHR *groups;
-      } library;
-   };
 
    unsigned max_waves;
    unsigned scratch_bytes_per_wave;
@@ -2011,6 +1943,94 @@ struct radv_pipeline {
    uint32_t push_constant_size;
    uint32_t dynamic_offset_count;
 };
+
+struct radv_graphics_pipeline {
+   struct radv_pipeline base;
+
+   struct radv_dynamic_state dynamic_state;
+
+   uint64_t dynamic_states;
+   struct radv_multisample_state ms;
+   struct radv_binning_state binning;
+   struct radv_vrs_state vrs;
+   uint32_t spi_baryc_cntl;
+   unsigned esgs_ring_size;
+   unsigned gsvs_ring_size;
+   uint32_t vtx_base_sgpr;
+   struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
+   uint8_t vtx_emit_num;
+   uint64_t needed_dynamic_state;
+   unsigned tess_patch_control_points;
+   unsigned pa_su_sc_mode_cntl;
+   unsigned db_depth_control;
+   unsigned pa_cl_clip_cntl;
+   unsigned cb_color_control;
+   uint32_t binding_stride[MAX_VBS];
+   uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
+   uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
+   uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
+   uint8_t last_vertex_attrib_bit;
+   uint8_t next_vertex_stage : 8;
+   uint32_t vb_desc_usage_mask;
+   uint32_t vb_desc_alloc_size;
+
+   /* Last pre-PS API stage */
+   gl_shader_stage last_vgt_api_stage;
+
+   /* Used for rbplus */
+   uint32_t col_format;
+   uint32_t cb_target_mask;
+
+   bool disable_out_of_order_rast_for_occlusion;
+   bool uses_drawid;
+   bool uses_baseinstance;
+   bool can_use_guardband;
+   bool uses_dynamic_stride;
+   bool uses_conservative_overestimate;
+   bool negative_one_to_one;
+   bool use_per_attribute_vb_descs;
+   bool can_use_simple_input;
+
+   /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
+   bool force_vrs_per_vertex;
+
+   /* Whether the pipeline uses NGG (GFX10+). */
+   bool is_ngg;
+   bool has_ngg_culling;
+};
+
+struct radv_compute_pipeline {
+   struct radv_pipeline base;
+
+   bool cs_regalloc_hang_bug;
+
+   /* Raytracing */
+   struct radv_pipeline_group_handle *rt_group_handles;
+   struct radv_pipeline_shader_stack_size *rt_stack_sizes;
+   bool dynamic_stack_size;
+   uint32_t group_count;
+};
+
+struct radv_library_pipeline {
+   struct radv_pipeline base;
+
+   unsigned stage_count;
+   VkPipelineShaderStageCreateInfo *stages;
+   unsigned group_count;
+   VkRayTracingShaderGroupCreateInfoKHR *groups;
+};
+
+#define RADV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)            \
+   static inline struct radv_##pipe_type##_pipeline *                \
+   radv_pipeline_to_##pipe_type(struct radv_pipeline *pipeline)      \
+   {                                                                 \
+      assert(pipeline->type == pipe_enum);                           \
+      return (struct radv_##pipe_type##_pipeline *) pipeline;        \
+   }
+
+RADV_DECL_PIPELINE_DOWNCAST(graphics, RADV_PIPELINE_GRAPHICS)
+RADV_DECL_PIPELINE_DOWNCAST(compute, RADV_PIPELINE_COMPUTE)
+RADV_DECL_PIPELINE_DOWNCAST(library, RADV_PIPELINE_LIBRARY)
 
 struct radv_pipeline_stage {
    gl_shader_stage stage;
@@ -2037,30 +2057,30 @@ struct radv_pipeline_stage {
 };
 
 static inline bool
-radv_pipeline_has_gs(const struct radv_pipeline *pipeline)
+radv_pipeline_has_gs(const struct radv_graphics_pipeline *pipeline)
 {
-   return pipeline->shaders[MESA_SHADER_GEOMETRY] ? true : false;
+   return pipeline->base.shaders[MESA_SHADER_GEOMETRY] ? true : false;
 }
 
 static inline bool
-radv_pipeline_has_tess(const struct radv_pipeline *pipeline)
+radv_pipeline_has_tess(const struct radv_graphics_pipeline *pipeline)
 {
-   return pipeline->shaders[MESA_SHADER_TESS_CTRL] ? true : false;
+   return pipeline->base.shaders[MESA_SHADER_TESS_CTRL] ? true : false;
 }
 
 static inline bool
-radv_pipeline_has_mesh(const struct radv_pipeline *pipeline)
+radv_pipeline_has_mesh(const struct radv_graphics_pipeline *pipeline)
 {
-   return !!pipeline->shaders[MESA_SHADER_MESH];
+   return !!pipeline->base.shaders[MESA_SHADER_MESH];
 }
 
 static inline bool
-radv_pipeline_has_task(const struct radv_pipeline *pipeline)
+radv_pipeline_has_task(const struct radv_graphics_pipeline *pipeline)
 {
-   return !!pipeline->shaders[MESA_SHADER_TASK];
+   return !!pipeline->base.shaders[MESA_SHADER_TASK];
 }
 
-bool radv_pipeline_has_ngg_passthrough(const struct radv_pipeline *pipeline);
+bool radv_pipeline_has_ngg_passthrough(const struct radv_graphics_pipeline *pipeline);
 
 bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
 

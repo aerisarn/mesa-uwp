@@ -46,7 +46,8 @@ struct radv_meta_saved_state {
    uint32_t flags;
 
    struct radv_descriptor_set *old_descriptor_set0;
-   struct radv_pipeline *old_pipeline;
+   struct radv_graphics_pipeline *old_graphics_pipeline;
+   struct radv_compute_pipeline *old_compute_pipeline;
    struct radv_dynamic_state dynamic;
 
    char push_constants[MAX_PUSH_CONSTANTS_SIZE];
@@ -233,9 +234,9 @@ static inline bool
 radv_is_fmask_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_meta_state *meta_state = &cmd_buffer->device->meta_state;
-   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.pipeline;
 
-   return radv_pipeline_to_handle(pipeline) ==
+   return radv_pipeline_to_handle(&pipeline->base) ==
           meta_state->fast_clear_flush.fmask_decompress_pipeline;
 }
 
@@ -246,9 +247,10 @@ static inline bool
 radv_is_dcc_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_meta_state *meta_state = &cmd_buffer->device->meta_state;
-   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.pipeline;
 
-   return radv_pipeline_to_handle(pipeline) == meta_state->fast_clear_flush.dcc_decompress_pipeline;
+   return radv_pipeline_to_handle(&pipeline->base) ==
+          meta_state->fast_clear_flush.dcc_decompress_pipeline;
 }
 
 /* common nir builder helpers */

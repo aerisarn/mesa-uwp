@@ -462,9 +462,9 @@ radv_dump_shaders(struct radv_pipeline *pipeline, VkShaderStageFlagBits active_s
 }
 
 static void
-radv_dump_vertex_descriptors(struct radv_pipeline *pipeline, FILE *f)
+radv_dump_vertex_descriptors(struct radv_graphics_pipeline *pipeline, FILE *f)
 {
-   void *ptr = (uint64_t *)pipeline->device->trace_id_ptr;
+   void *ptr = (uint64_t *)pipeline->base.device->trace_id_ptr;
    uint32_t count = util_bitcount(pipeline->vb_desc_usage_mask);
    uint32_t *vb_ptr = &((uint32_t *)ptr)[3];
 
@@ -526,11 +526,13 @@ radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
 
    pipeline = radv_get_saved_pipeline(queue->device, ring);
    if (pipeline) {
+      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+
       radv_dump_vs_prolog(pipeline, f);
       radv_dump_shaders(pipeline, pipeline->active_stages, dump_dir, f);
       if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR))
          radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
-      radv_dump_vertex_descriptors(pipeline, f);
+      radv_dump_vertex_descriptors(graphics_pipeline, f);
       radv_dump_descriptors(queue->device, f);
    }
 }

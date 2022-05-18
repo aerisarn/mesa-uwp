@@ -532,6 +532,8 @@ void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
 void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);
 
+struct radv_pipeline_shader_stack_size;
+
 VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              struct radv_pipeline_layout *pipeline_layout,
                              struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -539,7 +541,10 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              const VkPipelineShaderStageCreateInfo *pStages,
                              uint32_t stageCount,
                              const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
-                             const VkPipelineCreationFeedbackCreateInfo *creation_feedback);
+                             const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
+                             struct radv_pipeline_shader_stack_size **stack_sizes,
+                             uint32_t *num_stack_sizes,
+                             gl_shader_stage *last_vgt_api_stage);
 
 struct radv_shader_args;
 
