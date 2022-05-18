@@ -2112,6 +2112,73 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = spirv_builder_emit_quadop(&ctx->builder, SpvOpBitFieldInsert, dest_type, src[0], src[1], src[2], src[3]);
       break;
 
+   case nir_op_pack_32_2x16_split:
+   case nir_op_pack_64_2x32_split: {
+      nir_alu_type type = nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
+      if (num_components <= 2) {
+         SpvId components[] = {src[0], src[1]};
+         SpvId vec_type = get_alu_type(ctx, type, num_components * 2, nir_src_bit_size(alu->src[0].src));
+         result = spirv_builder_emit_composite_construct(&ctx->builder, vec_type, components, 2);
+         result = emit_bitcast(ctx, dest_type, result);
+      } else {
+         SpvId components[NIR_MAX_VEC_COMPONENTS];
+         SpvId conv_type = get_alu_type(ctx, type, 1, nir_src_bit_size(alu->src[0].src));
+         SpvId vec_type = get_alu_type(ctx, type, 2, nir_src_bit_size(alu->src[0].src));
+         SpvId dest_scalar_type = get_alu_type(ctx, nir_op_infos[alu->op].output_type, 1, bit_size);
+         for (unsigned i = 0; i < nir_src_num_components(alu->src[0].src); i++) {
+            SpvId conv[2];
+            conv[0] = spirv_builder_emit_composite_extract(&ctx->builder, conv_type, src[0], &i, 1);
+            conv[1] = spirv_builder_emit_composite_extract(&ctx->builder, conv_type, src[1], &i, 1);
+            SpvId vec = spirv_builder_emit_composite_construct(&ctx->builder, vec_type, conv, 2);
+            components[i] = emit_bitcast(ctx, dest_scalar_type, vec);
+         }
+         result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, components, num_components);
+      }
+      break;
+   }
+
+   case nir_op_unpack_32_2x16_split_x:
+   case nir_op_unpack_64_2x32_split_x: {
+      nir_alu_type type = nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
+      SpvId vec_type = get_alu_type(ctx, type, 2, bit_size);
+      unsigned idx = 0;
+      if (num_components == 1) {
+         SpvId vec = emit_bitcast(ctx, vec_type, src[0]);
+         result = spirv_builder_emit_composite_extract(&ctx->builder, dest_type, vec, &idx, 1);
+      } else {
+         SpvId components[NIR_MAX_VEC_COMPONENTS];
+         for (unsigned i = 0; i < nir_src_num_components(alu->src[0].src); i++) {
+            SpvId conv = spirv_builder_emit_composite_extract(&ctx->builder, get_alu_type(ctx, type, 1, nir_src_bit_size(alu->src[0].src)), src[0], &i, 1);
+            conv = emit_bitcast(ctx, vec_type, conv);
+            SpvId conv_type = get_alu_type(ctx, type, 1, bit_size);
+            components[i] = spirv_builder_emit_composite_extract(&ctx->builder, conv_type, conv, &idx, 1);
+         }
+         result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, components, num_components);
+      }
+      break;
+   }
+
+   case nir_op_unpack_32_2x16_split_y:
+   case nir_op_unpack_64_2x32_split_y: {
+      nir_alu_type type = nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[0]);
+      SpvId vec_type = get_alu_type(ctx, type, 2, bit_size);
+      unsigned idx = 1;
+      if (num_components == 1) {
+         SpvId vec = emit_bitcast(ctx, vec_type, src[0]);
+         result = spirv_builder_emit_composite_extract(&ctx->builder, dest_type, vec, &idx, 1);
+      } else {
+         SpvId components[NIR_MAX_VEC_COMPONENTS];
+         for (unsigned i = 0; i < nir_src_num_components(alu->src[0].src); i++) {
+            SpvId conv = spirv_builder_emit_composite_extract(&ctx->builder, get_alu_type(ctx, type, 1, nir_src_bit_size(alu->src[0].src)), src[0], &i, 1);
+            conv = emit_bitcast(ctx, vec_type, conv);
+            SpvId conv_type = get_alu_type(ctx, type, 1, bit_size);
+            components[i] = spirv_builder_emit_composite_extract(&ctx->builder, conv_type, conv, &idx, 1);
+         }
+         result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, components, num_components);
+      }
+      break;
+   }
+
    default:
       fprintf(stderr, "emit_alu: not implemented (%s)\n",
               nir_op_infos[alu->op].name);
