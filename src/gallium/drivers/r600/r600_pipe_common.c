@@ -1361,7 +1361,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_to_scalar = true,
 		.lower_to_scalar_filter = r600_lower_to_scalar_instr_filter,
 		.linker_ignore_precision = true,
-		.lower_fpow = true
+		.lower_fpow = true,
+		.lower_int64_options = ~0
 	};
 
 	rscreen->nir_options = nir_options;
@@ -1378,17 +1379,14 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 	if (rscreen->info.gfx_level < CAYMAN) {
 		rscreen->nir_options.lower_doubles_options = nir_lower_fp64_full_software;
-		rscreen->nir_options.lower_int64_options = ~0;
 	} else {
-           fprintf(stderr, "Don't lower all fp64\n");
 		rscreen->nir_options.lower_doubles_options =
 			nir_lower_ddiv |
-		nir_lower_dfloor |
-		nir_lower_dceil |
-		nir_lower_dmod |
-		nir_lower_dsub |
-		nir_lower_dtrunc;
-		rscreen->nir_options.lower_int64_options = ~0;
+			nir_lower_dfloor |
+			nir_lower_dceil |
+			nir_lower_dmod |
+			nir_lower_dsub |
+			nir_lower_dtrunc;
 	}
 
 	if (!(rscreen->debug_flags & DBG_NIR_PREFERRED)) {
