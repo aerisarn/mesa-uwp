@@ -273,11 +273,30 @@ amdgpu_cs_get_next_fence(struct radeon_cmdbuf *rcs)
 
 /* CONTEXTS */
 
-static struct radeon_winsys_ctx *amdgpu_ctx_create(struct radeon_winsys *ws)
+static uint32_t
+radeon_to_amdgpu_priority(enum radeon_ctx_priority radeon_priority)
+{
+   switch (radeon_priority) {
+   case RADEON_CTX_PRIORITY_REALTIME:
+      return AMDGPU_CTX_PRIORITY_VERY_HIGH;
+   case RADEON_CTX_PRIORITY_HIGH:
+      return AMDGPU_CTX_PRIORITY_HIGH;
+   case RADEON_CTX_PRIORITY_MEDIUM:
+      return AMDGPU_CTX_PRIORITY_NORMAL;
+   case RADEON_CTX_PRIORITY_LOW:
+      return AMDGPU_CTX_PRIORITY_LOW;
+   default:
+      unreachable("Invalid context priority");
+   }
+}
+
+static struct radeon_winsys_ctx *amdgpu_ctx_create(struct radeon_winsys *ws,
+                                                   enum radeon_ctx_priority priority)
 {
    struct amdgpu_ctx *ctx = CALLOC_STRUCT(amdgpu_ctx);
    int r;
    struct amdgpu_bo_alloc_request alloc_buffer = {};
+   uint32_t amdgpu_priority = radeon_to_amdgpu_priority(priority);
    amdgpu_bo_handle buf_handle;
 
    if (!ctx)
@@ -287,9 +306,9 @@ static struct radeon_winsys_ctx *amdgpu_ctx_create(struct radeon_winsys *ws)
    ctx->refcount = 1;
    ctx->initial_num_total_rejected_cs = ctx->ws->num_total_rejected_cs;
 
-   r = amdgpu_cs_ctx_create(ctx->ws->dev, &ctx->ctx);
+   r = amdgpu_cs_ctx_create2(ctx->ws->dev, amdgpu_priority, &ctx->ctx);
    if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_cs_ctx_create failed. (%i)\n", r);
+      fprintf(stderr, "amdgpu: amdgpu_cs_ctx_create2 failed. (%i)\n", r);
       goto error_create;
    }
 

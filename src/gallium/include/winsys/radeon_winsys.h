@@ -122,6 +122,14 @@ enum radeon_value_id
    RADEON_CS_THREAD_TIME,
 };
 
+enum radeon_ctx_priority
+{
+   RADEON_CTX_PRIORITY_LOW = 0,
+   RADEON_CTX_PRIORITY_MEDIUM,
+   RADEON_CTX_PRIORITY_HIGH,
+   RADEON_CTX_PRIORITY_REALTIME,
+};
+
 /* Each group of two has the same priority. */
 #define RADEON_PRIO_FENCE_TRACE (1 << 0)
 #define RADEON_PRIO_SO_FILLED_SIZE (1 << 1)
@@ -465,7 +473,8 @@ struct radeon_winsys {
     * Create a command submission context.
     * Various command streams can be submitted to the same context.
     */
-   struct radeon_winsys_ctx *(*ctx_create)(struct radeon_winsys *ws);
+   struct radeon_winsys_ctx *(*ctx_create)(struct radeon_winsys *ws,
+                                           enum radeon_ctx_priority priority);
 
    /**
     * Destroy a context.

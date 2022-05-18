@@ -465,6 +465,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    struct radeon_winsys *ws = sscreen->ws;
    int shader, i;
    bool stop_exec_on_failure = (flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET) != 0;
+   enum radeon_ctx_priority priority;
 
    if (!sctx) {
       fprintf(stderr, "radeonsi: can't allocate a context\n");
@@ -500,8 +501,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       }
    }
 
+   priority = RADEON_CTX_PRIORITY_MEDIUM;
+
    /* Initialize the context handle and the command stream. */
-   sctx->ctx = sctx->ws->ctx_create(sctx->ws);
+   sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority);
    if (!sctx->ctx) {
       fprintf(stderr, "radeonsi: can't create radeon_winsys_ctx\n");
       goto fail;

@@ -400,7 +400,7 @@ struct pipe_context* r300_create_context(struct pipe_screen* screen,
 
     slab_create_child(&r300->pool_transfers, &r300screen->pool_transfers);
 
-    r300->ctx = rws->ctx_create(rws);
+    r300->ctx = rws->ctx_create(rws, RADEON_CTX_PRIORITY_MEDIUM);
     if (!r300->ctx)
         goto fail;
 

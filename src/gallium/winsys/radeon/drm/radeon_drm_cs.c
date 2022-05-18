@@ -70,7 +70,8 @@ static struct pipe_fence_handle *radeon_cs_create_fence(struct radeon_cmdbuf *rc
 static void radeon_fence_reference(struct pipe_fence_handle **dst,
                                    struct pipe_fence_handle *src);
 
-static struct radeon_winsys_ctx *radeon_drm_ctx_create(struct radeon_winsys *ws)
+static struct radeon_winsys_ctx *radeon_drm_ctx_create(struct radeon_winsys *ws,
+                                                       enum radeon_ctx_priority priority)
 {
    struct radeon_ctx *ctx = CALLOC_STRUCT(radeon_ctx);
    if (!ctx)
