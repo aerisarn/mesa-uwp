@@ -515,6 +515,7 @@ static const nir_shader_compiler_options r500_vs_compiler_options = {
    .max_unroll_iterations = 32,
 
    .use_interpolated_input_intrinsics = true,
+   .no_integers = true,
 };
 
 static const nir_shader_compiler_options r500_fs_compiler_options = {
@@ -543,6 +544,7 @@ static const nir_shader_compiler_options r500_fs_compiler_options = {
    .max_unroll_iterations = 32,
 
    .use_interpolated_input_intrinsics = true,
+   .no_integers = true,
 };
 
 static const nir_shader_compiler_options r300_vs_compiler_options = {
@@ -570,6 +572,7 @@ static const nir_shader_compiler_options r300_vs_compiler_options = {
    .max_unroll_iterations = 32,
 
    .use_interpolated_input_intrinsics = true,
+   .no_integers = true,
 };
 
 static const nir_shader_compiler_options r300_fs_compiler_options = {
@@ -597,6 +600,7 @@ static const nir_shader_compiler_options r300_fs_compiler_options = {
    .max_unroll_iterations = 64,
 
    .use_interpolated_input_intrinsics = true,
+   .no_integers = true,
 };
 
 static const void *

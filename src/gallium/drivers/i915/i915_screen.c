@@ -123,6 +123,7 @@ static const nir_shader_compiler_options i915_compiler_options = {
    .force_indirect_unrolling = nir_var_all,
    .force_indirect_unrolling_sampler = true,
    .max_unroll_iterations = 32,
+   .no_integers = true,
 };
 
 static const struct nir_shader_compiler_options gallivm_nir_options = {

@@ -1392,7 +1392,8 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
             /* The varying is loaded from same uniform, so no need to do any
              * interpolation. Mark it as flat explicitly.
              */
-            if (in_var && in_var->data.interpolation <= INTERP_MODE_NOPERSPECTIVE) {
+            if (!consumer->options->no_integers &&
+                in_var && in_var->data.interpolation <= INTERP_MODE_NOPERSPECTIVE) {
                in_var->data.interpolation = INTERP_MODE_FLAT;
                out_var->data.interpolation = INTERP_MODE_FLAT;
             }

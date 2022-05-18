@@ -3583,6 +3583,13 @@ typedef struct nir_shader_compiler_options {
     */
    bool force_indirect_unrolling_sampler;
 
+   /* Some older drivers don't support GLSL versions with the concept of flat
+    * varyings and also don't support integers. This setting helps us avoid
+    * marking varyings as flat and potentially having them changed to ints via
+    * varying packing.
+    */
+   bool no_integers;
+
    /**
     * Specifies which type of indirectly accessed variables should force
     * loop unrolling.
