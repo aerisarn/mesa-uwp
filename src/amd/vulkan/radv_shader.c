@@ -1098,7 +1098,7 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
 }
 
 bool
-radv_consider_culling(struct radv_device *device, struct nir_shader *nir, uint64_t ps_inputs_read,
+radv_consider_culling(const struct radv_physical_device *pdevice, struct nir_shader *nir, uint64_t ps_inputs_read,
                       unsigned num_vertices_per_primitive, const struct radv_shader_info *info)
 {
    /* Culling doesn't make sense for meta shaders. */
@@ -1113,15 +1113,15 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir, uint64
    if (info->vs.has_prolog)
       return false;
 
-   if (!device->physical_device->use_ngg_culling)
+   if (!pdevice->use_ngg_culling)
       return false;
 
    /* Shader based culling efficiency can depend on PS throughput.
     * Estimate an upper limit for PS input param count based on GPU info.
     */
    unsigned max_ps_params;
-   unsigned max_render_backends = device->physical_device->rad_info.max_render_backends;
-   unsigned max_se = device->physical_device->rad_info.max_se;
+   unsigned max_render_backends = pdevice->rad_info.max_render_backends;
+   unsigned max_se = pdevice->rad_info.max_se;
 
    if (max_render_backends / max_se == 4)
       max_ps_params = 6; /* Navi21 and other GFX10.3 dGPUs. */

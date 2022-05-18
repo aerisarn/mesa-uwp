@@ -1058,7 +1058,7 @@ radv_update_binning_state(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeli
 {
    const struct radv_pipeline *old_pipeline = cmd_buffer->state.emitted_pipeline;
 
-   if (pipeline->device->physical_device->rad_info.gfx_level < GFX9)
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level < GFX9)
       return;
 
    if (old_pipeline &&
