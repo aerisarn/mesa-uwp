@@ -1,2 +1,2 @@
-# #6490
-KHR-Single-GL46.arrays_of_arrays_gl.InteractionFunctionCalls2
+# takes forever, but passes
+KHR-GL46.texture_swizzle.smoke
