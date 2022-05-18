@@ -2011,6 +2011,22 @@ nir_intrinsic_can_reorder(nir_intrinsic_instr *instr)
 
 bool nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr);
 
+static inline bool
+nir_intrinsic_is_ray_query(nir_intrinsic_op intrinsic)
+{
+   switch (intrinsic) {
+   case nir_intrinsic_rq_confirm_intersection:
+   case nir_intrinsic_rq_generate_intersection:
+   case nir_intrinsic_rq_initialize:
+   case nir_intrinsic_rq_load:
+   case nir_intrinsic_rq_proceed:
+   case nir_intrinsic_rq_terminate:
+      return true;
+   default:
+      return false;
+   }
+}
+
 /** Texture instruction source type */
 typedef enum {
    /** Texture coordinate

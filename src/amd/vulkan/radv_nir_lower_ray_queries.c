@@ -692,22 +692,6 @@ lower_rq_terminate(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *inst
    rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, false), 0x1);
 }
 
-static bool
-is_rq_intrinsic(nir_intrinsic_op intrinsic)
-{
-   switch (intrinsic) {
-   case nir_intrinsic_rq_confirm_intersection:
-   case nir_intrinsic_rq_generate_intersection:
-   case nir_intrinsic_rq_initialize:
-   case nir_intrinsic_rq_load:
-   case nir_intrinsic_rq_proceed:
-   case nir_intrinsic_rq_terminate:
-      return true;
-   default:
-      return false;
-   }
-}
-
 bool
 radv_nir_lower_ray_queries(struct nir_shader *shader, struct radv_device *device)
 {
@@ -747,7 +731,7 @@ radv_nir_lower_ray_queries(struct nir_shader *shader, struct radv_device *device
 
             nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
 
-            if (!is_rq_intrinsic(intrinsic->intrinsic))
+            if (!nir_intrinsic_is_ray_query(intrinsic->intrinsic))
                continue;
 
             nir_deref_instr *ray_query_deref =
