@@ -72,7 +72,7 @@ Linux, FreeBSD, and other operating systems.
    osmesa
    debugging
    perf
-   perfetto
+   gpu-perf-tracing
    extensions
    application-issues
    viewperf
