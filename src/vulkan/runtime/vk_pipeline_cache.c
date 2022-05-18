@@ -271,6 +271,9 @@ vk_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache,
                                      const void *data, size_t data_size,
                                      const struct vk_pipeline_cache_object_ops *ops)
 {
+   if (ops == NULL)
+      ops = &raw_data_object_ops;
+
    if (unlikely(ops->deserialize == NULL)) {
       vk_logw(VK_LOG_OBJS(cache),
               "Pipeline cache object cannot be deserialized");
