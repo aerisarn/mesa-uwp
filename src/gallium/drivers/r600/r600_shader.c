@@ -382,10 +382,11 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		goto error;
 	}
 
-	util_debug_message(&rctx->b.debug, SHADER_INFO, "%s shader: %d dw, %d gprs, %d loops, %d cf, %d stack",
+	util_debug_message(&rctx->b.debug, SHADER_INFO, "%s shader: %d dw, %d gprs, %d alu_groups, %d loops, %d cf, %d stack",
 		           _mesa_shader_stage_to_abbrev(tgsi_processor_to_shader_stage(processor)),
 	                   shader->shader.bc.ndw,
 	                   shader->shader.bc.ngpr,
+			   shader->shader.bc.nalu_groups,
 			   shader->shader.num_loops,
 			   shader->shader.bc.ncf,
 			   shader->shader.bc.nstack);

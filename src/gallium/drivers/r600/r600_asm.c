@@ -1347,9 +1347,12 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 			return r;
 
 		if (bc->cf_last->prev_bs_head) {
-			r = merge_inst_groups(bc, slots, bc->cf_last->prev_bs_head);
+         struct r600_bytecode_alu *cur_prev_head = bc->cf_last->prev_bs_head;
+			r = merge_inst_groups(bc, slots, cur_prev_head);
 			if (r)
 				return r;
+         if (cur_prev_head != bc->cf_last->prev_bs_head)
+            bc->nalu_groups--;
 		}
 
 		if (bc->cf_last->prev_bs_head) {
@@ -1381,10 +1384,13 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 		bc->cf_last->prev_bs_head = bc->cf_last->curr_bs_head;
 		bc->cf_last->curr_bs_head = NULL;
 
+		bc->nalu_groups++;
+
 		if (bc->r6xx_nop_after_rel_dst) {
 			for (int i = 0; i < max_slots; ++i) {
 				if (slots[i] && slots[i]->dst.rel) {
 					insert_nop_r6xx(bc, max_slots);
+					bc->nalu_groups++;
 					break;
 				}
 			}

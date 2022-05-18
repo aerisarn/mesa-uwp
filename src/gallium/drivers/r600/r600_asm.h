@@ -262,6 +262,7 @@ struct r600_bytecode {
 	struct r600_bytecode_cf		*cf_last;
 	unsigned			ndw;
 	unsigned			ncf;
+	unsigned			nalu_groups;
 	unsigned			ngpr;
 	unsigned			nstack;
 	unsigned			nlds_dw;
