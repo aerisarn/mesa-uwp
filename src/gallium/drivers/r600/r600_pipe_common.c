@@ -1186,7 +1186,10 @@ r600_get_compiler_options(struct pipe_screen *screen,
 
        struct r600_common_screen *rscreen = (struct r600_common_screen *)screen;
 
-       return &rscreen->nir_options;
+       if (shader != PIPE_SHADER_FRAGMENT)
+          return &rscreen->nir_options;
+       else
+          return &rscreen->nir_options_fs;
 }
 
 extern bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *);
@@ -1355,20 +1358,17 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_bitfield_insert_to_bitfield_select = true,
 		.has_fused_comp_and_csel = true,
 		.lower_find_msb_to_reverse = true,
-                .lower_to_scalar = true,
-                .lower_to_scalar_filter = r600_lower_to_scalar_instr_filter,
-                .linker_ignore_precision = true,
+		.lower_to_scalar = true,
+		.lower_to_scalar_filter = r600_lower_to_scalar_instr_filter,
+		.linker_ignore_precision = true,
+		.lower_fpow = true
 	};
 
 	rscreen->nir_options = nir_options;
 
-        /* The TGSI code path handles OPCODE_POW, but has problems with the
-         * lowered version, the NIT code path does the rightthing with the
-         * lowered code */
-        rscreen->nir_options.lower_fpow = rscreen->debug_flags & DBG_NIR_PREFERRED;
 
-        if (rscreen->info.family < CHIP_CEDAR)
-           rscreen->nir_options.force_indirect_unrolling_sampler = true;
+	if (rscreen->info.family < CHIP_CEDAR)
+		rscreen->nir_options.force_indirect_unrolling_sampler = true;
 
 	if (rscreen->info.gfx_level < EVERGREEN) {
 		/* Pre-EG doesn't have these ALU ops */
@@ -1376,21 +1376,24 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		rscreen->nir_options.lower_bitfield_reverse = true;
 	}
 
-        if (rscreen->info.gfx_level < CAYMAN) {
-           rscreen->nir_options.lower_doubles_options = nir_lower_fp64_full_software;
-           rscreen->nir_options.lower_int64_options = ~0;
-        } else {
-           rscreen->nir_options.lower_doubles_options =
-                 nir_lower_ddiv |
-                 nir_lower_dfloor |
-                 nir_lower_dceil |
-                 nir_lower_dmod |
-                 nir_lower_dsub |
-                 nir_lower_dtrunc;
-           rscreen->nir_options.lower_int64_options = ~0;
-        }
+	if (rscreen->info.gfx_level < CAYMAN) {
+		rscreen->nir_options.lower_doubles_options = nir_lower_fp64_full_software;
+		rscreen->nir_options.lower_int64_options = ~0;
+	} else {
+           fprintf(stderr, "Don't lower all fp64\n");
+		rscreen->nir_options.lower_doubles_options =
+			nir_lower_ddiv |
+		nir_lower_dfloor |
+		nir_lower_dceil |
+		nir_lower_dmod |
+		nir_lower_dsub |
+		nir_lower_dtrunc;
+		rscreen->nir_options.lower_int64_options = ~0;
+	}
 
 	if (!(rscreen->debug_flags & DBG_NIR_PREFERRED)) {
+
+		rscreen->nir_options.lower_fpow = false;
 		/* TGSI is vector, and NIR-to-TGSI doesn't like it when the
 		 * input vars have been scalarized.
 		 */
@@ -1411,6 +1414,9 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		/* TGSI's ifind is reversed from ours, keep it the TGSI way. */
 		rscreen->nir_options.lower_find_msb_to_reverse = false;
 	}
+
+	rscreen->nir_options_fs = rscreen->nir_options;
+	rscreen->nir_options_fs.lower_all_io_to_temps = true;
 
 	return true;
 }
