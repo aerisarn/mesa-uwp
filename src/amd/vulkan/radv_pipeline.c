@@ -5444,7 +5444,6 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs, const struct radv_p
 
 static void
 radv_pipeline_emit_raster_state(struct radeon_cmdbuf *ctx_cs, const struct radv_pipeline *pipeline,
-                                const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                 const struct radv_pre_raster_info *pre_rast_info)
 {
    const VkConservativeRasterizationModeEXT mode = pre_rast_info->rast.conservative_mode;
@@ -5896,7 +5895,6 @@ radv_pipeline_emit_tess_shaders(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdb
 
 static void
 radv_pipeline_emit_tess_state(struct radeon_cmdbuf *ctx_cs, const struct radv_pipeline *pipeline,
-                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
                               const struct radv_pre_raster_info *pre_rast_info)
 {
    struct radv_shader *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
@@ -6573,7 +6571,7 @@ radv_pipeline_emit_pm4(struct radv_pipeline *pipeline,
 
    radv_pipeline_emit_depth_stencil_state(ctx_cs, ds_state);
    radv_pipeline_emit_blend_state(ctx_cs, pipeline, blend);
-   radv_pipeline_emit_raster_state(ctx_cs, pipeline, pCreateInfo, pre_rast_info);
+   radv_pipeline_emit_raster_state(ctx_cs, pipeline, pre_rast_info);
    radv_pipeline_emit_multisample_state(ctx_cs, pipeline);
    radv_pipeline_emit_vgt_gs_mode(ctx_cs, pipeline);
    radv_pipeline_emit_vertex_shader(ctx_cs, cs, pipeline);
@@ -6581,7 +6579,7 @@ radv_pipeline_emit_pm4(struct radv_pipeline *pipeline,
 
    if (radv_pipeline_has_tess(pipeline)) {
       radv_pipeline_emit_tess_shaders(ctx_cs, cs, pipeline);
-      radv_pipeline_emit_tess_state(ctx_cs, pipeline, pCreateInfo, pre_rast_info);
+      radv_pipeline_emit_tess_state(ctx_cs, pipeline, pre_rast_info);
    }
 
    radv_pipeline_emit_geometry_shader(ctx_cs, cs, pipeline);
