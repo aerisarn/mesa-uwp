@@ -272,6 +272,9 @@ index("unsigned", "saturate")
 # Whether or not trace_ray_intel is synchronous
 index("bool", "synchronous")
 
+# Value ID to identify SSA value loaded/stored on the stack
+index("unsigned", "value_id")
+
 intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
@@ -1076,6 +1079,17 @@ store("global", [1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 store("global_2x32", [2], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
 store("scratch", [1], [ALIGN_MUL, ALIGN_OFFSET, WRITE_MASK])
+
+# Intrinsic to load/store from the call stack.
+# BASE is the offset relative to the current position of the stack
+# src[] = { }.
+intrinsic("load_stack", [], dest_comp=0,
+          indices=[BASE, ALIGN_MUL, ALIGN_OFFSET, CALL_IDX, VALUE_ID],
+          flags=[CAN_ELIMINATE])
+# src[] = { value }.
+intrinsic("store_stack", [0],
+          indices=[BASE, ALIGN_MUL, ALIGN_OFFSET, WRITE_MASK, CALL_IDX, VALUE_ID])
+
 
 # A bit field to implement SPIRV FragmentShadingRateKHR
 # bit | name              | description
