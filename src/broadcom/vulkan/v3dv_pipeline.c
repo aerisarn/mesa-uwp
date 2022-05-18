@@ -191,6 +191,8 @@ static const struct spirv_to_nir_options default_spirv_options =  {
       .storage_16bit = true,
       .subgroup_basic = true,
       .variable_pointers = true,
+      .vk_memory_model = true,
+      .vk_memory_model_device_scope = true,
     },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
