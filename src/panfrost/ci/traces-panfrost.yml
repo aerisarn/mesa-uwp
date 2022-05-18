@@ -258,3 +258,14 @@ traces:
   #   expectations:
   #     - device: gl-panfrost-t860
   #       checksum: bbe74b2171d62fc6738086740e1aa0d8
+  # crashes
+  #- path: ror/ror-default.trace
+  #  expectations:
+      #- device: gl-panfrost-t860
+      #  checksum: 0
+  - path: nheko/nheko-colors.trace
+    expectations:
+      - device: gl-panfrost-t760
+        checksum: 03251159007917a90247d2aa2cf5f68b
+      - device: gl-panfrost-t860
+        checksum: 03251159007917a90247d2aa2cf5f68b
