@@ -241,9 +241,24 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                         l->affinity[node] &= (affinity >> offset);
 
                         for (unsigned i = 0; i < node_count; ++i) {
-                                if (live[i]) {
+                                uint8_t r = live[i];
+
+                                /* Nodes only interfere if they occupy
+                                 * /different values/ at the same time
+                                 * (Boissinot). In particular, sources of
+                                 * moves do not interfere with their
+                                 * destinations. This enables a limited form of
+                                 * coalescing.
+                                 */
+                                if (ins->op == BI_OPCODE_MOV_I32 &&
+                                    i == bi_get_node(ins->src[0])) {
+
+                                        r &= ~BITFIELD_BIT(ins->src[0].offset);
+                                }
+
+                                if (r) {
                                         lcra_add_node_interference(l, node,
-                                                        bi_writemask(ins, d), i, live[i]);
+                                                        bi_writemask(ins, d), i, r);
                                 }
                         }
 
