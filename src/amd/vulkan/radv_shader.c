@@ -978,6 +978,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
 
    if (nir->info.ray_queries > 0) {
       NIR_PASS(_, nir, nir_opt_ray_queries);
+      NIR_PASS(_, nir, nir_opt_ray_query_ranges);
       NIR_PASS(_, nir, radv_nir_lower_ray_queries, device);
    }
 
