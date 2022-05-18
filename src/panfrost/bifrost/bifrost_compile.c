@@ -2157,10 +2157,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 return;
         }
 
-        case nir_op_mov:
-        case nir_op_pack_32_2x16: {
-                unsigned src_comps = nir_src_num_components(instr->src[0].src);
-
+        case nir_op_mov: {
                 bi_index idx = bi_src_index(&instr->src[0].src);
                 bi_index unoffset_srcs[4] = { idx, idx, idx, idx };
 
@@ -2171,8 +2168,23 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         comps > 3 ? instr->src[0].swizzle[3] : 0,
                 };
 
-                if (src_sz == 1) src_sz = 16;
-                bi_make_vec_to(b, dst, unoffset_srcs, channels, src_comps, src_sz);
+                bi_make_vec_to(b, dst, unoffset_srcs, channels, comps, src_sz);
+                return;
+        }
+
+        case nir_op_pack_32_2x16: {
+                assert(nir_src_num_components(instr->src[0].src) == 2);
+                assert(comps == 1);
+
+                bi_index idx = bi_src_index(&instr->src[0].src);
+                bi_index unoffset_srcs[4] = { idx, idx, idx, idx };
+
+                unsigned channels[2] = {
+                        instr->src[0].swizzle[0],
+                        instr->src[0].swizzle[1]
+                };
+
+                bi_make_vec_to(b, dst, unoffset_srcs, channels, 2, 16);
                 return;
         }
 
