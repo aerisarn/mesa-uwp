@@ -940,6 +940,7 @@ static int nv50_tls_alloc(struct nv50_screen *screen, unsigned tls_space,
    struct nouveau_device *dev = screen->base.device;
    int ret;
 
+   assert(tls_space % ONE_TEMP_SIZE == 0);
    screen->cur_tls_space = util_next_power_of_two(tls_space / ONE_TEMP_SIZE) *
          ONE_TEMP_SIZE;
    if (nouveau_mesa_debug)

@@ -1362,7 +1362,7 @@ out:
    info_out->bin.maxGPR = prog->maxGPR;
    info_out->bin.code = prog->code;
    info_out->bin.codeSize = prog->binSize;
-   info_out->bin.tlsSpace = prog->tlsSize;
+   info_out->bin.tlsSpace = ALIGN(prog->tlsSize, 0x10);
 
    delete prog;
    nv50_ir::Target::destroy(targ);
