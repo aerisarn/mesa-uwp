@@ -1475,12 +1475,16 @@ redirect_sampler_derefs(struct nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_tex_instr *tex = nir_instr_as_tex(instr);
-   if (!nir_tex_instr_need_sampler(tex))
-      return false;
 
    int sampler_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
    if (sampler_idx == -1) {
-      /* No derefs, must be using indices */
+      /* No sampler deref - does this instruction even need a sampler? If not,
+       * sampler_index doesn't necessarily point to a sampler, so early-out.
+       */
+      if (!nir_tex_instr_need_sampler(tex))
+         return false;
+
+      /* No derefs but needs a sampler, must be using indices */
       nir_variable *bare_sampler = _mesa_hash_table_u64_search(data, tex->sampler_index);
 
       /* Already have a bare sampler here */
