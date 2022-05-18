@@ -29,6 +29,7 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/MC/MCSubtargetInfo.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Transforms/IPO.h>
 
 #include <cstring>
@@ -48,6 +49,11 @@ bool ac_is_llvm_processor_supported(LLVMTargetMachineRef tm, const char *process
 {
    llvm::TargetMachine *TM = reinterpret_cast<llvm::TargetMachine *>(tm);
    return TM->getMCSubtargetInfo()->isCPUStringValid(processor);
+}
+
+void ac_reset_llvm_command_line_parser()
+{
+   llvm::cl::ResetCommandLineParser();
 }
 
 void ac_add_attr_dereferenceable(LLVMValueRef val, uint64_t bytes)
