@@ -26,15 +26,33 @@
 #include "ac_surface.h"
 #include "si_pipe.h"
 
-static void *create_nir_cs(struct si_context *sctx, nir_builder *b)
+static void *create_shader_state(struct si_context *sctx, nir_shader *nir)
 {
-   nir_shader_gather_info(b->shader, nir_shader_get_entrypoint(b->shader));
+   sctx->b.screen->finalize_nir(sctx->b.screen, (void*)nir);
 
-   struct pipe_compute_state state = {0};
-   state.ir_type = PIPE_SHADER_IR_NIR;
-   state.prog = b->shader;
-   sctx->b.screen->finalize_nir(sctx->b.screen, (void*)state.prog);
-   return sctx->b.create_compute_state(&sctx->b, &state);
+   struct pipe_shader_state state = {0};
+   state.type = PIPE_SHADER_IR_NIR;
+   state.ir.nir = nir;
+
+   switch (nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+      return sctx->b.create_vs_state(&sctx->b, &state);
+   case MESA_SHADER_TESS_CTRL:
+      return sctx->b.create_tcs_state(&sctx->b, &state);
+   case MESA_SHADER_TESS_EVAL:
+      return sctx->b.create_tes_state(&sctx->b, &state);
+   case MESA_SHADER_FRAGMENT:
+      return sctx->b.create_fs_state(&sctx->b, &state);
+   case MESA_SHADER_COMPUTE: {
+      struct pipe_compute_state cs_state = {0};
+      cs_state.ir_type = PIPE_SHADER_IR_NIR;
+      cs_state.prog = nir;
+      return sctx->b.create_compute_state(&sctx->b, &cs_state);
+   }
+   default:
+      unreachable("invalid shader stage");
+      return NULL;
+   }
 }
 
 static nir_ssa_def *get_global_ids(nir_builder *b, unsigned num_components)
@@ -115,7 +133,7 @@ void *si_create_copy_image_cs(struct si_context *sctx, bool src_is_1d_array, boo
 
    nir_image_deref_store(&b, deref_ssa(&b, img_dst), coord_dst, undef32, data, zero);
 
-   return create_nir_cs(sctx, &b);
+   return create_shader_state(sctx, b.shader);
 }
 
 void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf)
@@ -163,7 +181,7 @@ void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf)
                                  zero, zero, zero); /* z, sample, pipe_xor */
    nir_store_ssbo(&b, value, zero, dst_offset, .write_mask=0x1, .align_mul=1);
 
-   return create_nir_cs(sctx, &b);
+   return create_shader_state(sctx, b.shader);
 }
 
 void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *tex)
@@ -209,7 +227,7 @@ void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *
     */
    nir_store_ssbo(&b, clear_value, zero, offset, .write_mask=0x1, .align_mul=2);
 
-   return create_nir_cs(sctx, &b);
+   return create_shader_state(sctx, b.shader);
 }
 
 /* Create a compute shader implementing clear_buffer or copy_buffer. */
@@ -247,6 +265,6 @@ void *si_create_clear_buffer_rmw_cs(struct si_context *sctx)
       .access = SI_COMPUTE_DST_CACHE_POLICY != L2_LRU ? ACCESS_STREAM_CACHE_POLICY : 0,
       .align_mul = 4);
 
-   return create_nir_cs(sctx, &b);
+   return create_shader_state(sctx, b.shader);
 }
 
