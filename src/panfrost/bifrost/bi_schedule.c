@@ -787,6 +787,10 @@ bi_reads_t(bi_instr *ins, unsigned src)
         case BI_OPCODE_BLEND:
                 return src != 2 && src != 3;
 
+        /* +JUMP can't read the offset from T */
+        case BI_OPCODE_JUMP:
+                return false;
+
         /* Else, just check if we can read any temps */
         default:
                 return bi_reads_temps(ins, src);
