@@ -1066,7 +1066,7 @@ dzn_image_view_init(struct dzn_device *device,
    uint32_t plane_slice =
       pCreateInfo->subresourceRange.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ? 1 : 0;
 
-   vk_image_view_init(&device->vk, &iview->vk, pCreateInfo);
+   vk_image_view_init(&device->vk, &iview->vk, false, pCreateInfo);
 
    assert(layer_count > 0);
    assert(range->baseMipLevel < image->vk.mip_levels);
