@@ -419,6 +419,8 @@ if args.glcts:
     cmd = [
         "deqp-runner",
         "run",
+        "--tests-per-group",
+        "100",
         "--deqp",
         "{}/external/openglcts/modules/glcts".format(glcts_path),
         "--caselist",
