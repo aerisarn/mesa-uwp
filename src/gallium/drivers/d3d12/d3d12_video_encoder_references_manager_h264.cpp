@@ -63,7 +63,7 @@ d3d12_video_encoder_references_manager_h264::reset_gop_tracking_and_dpb()
 
    // After clearing the DPB, outstanding used allocations should be 1u only for the first allocation for the
    // reconstructed picture of the initial IDR in the GOP
-   assert(m_rDPBStorageManager.get_number_of_in_use_allocations() == m_gopHasInterFrames ? 1u : 0u);
+   assert(m_rDPBStorageManager.get_number_of_in_use_allocations() == (m_gopHasInterFrames ? 1u : 0u));
    assert(m_rDPBStorageManager.get_number_of_tracked_allocations() <=
           (m_MaxDPBCapacity + 1));   // pool is not extended beyond maximum expected usage
 }
