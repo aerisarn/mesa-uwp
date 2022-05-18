@@ -25,7 +25,9 @@
 #define D3D12_FORMATS_H
 
 #include <directx/dxgiformat.h>
-#ifndef _WIN32
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <wsl/winadapter.h>
 #endif
 #include <directx/dxgicommon.h>
