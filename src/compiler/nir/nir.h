@@ -4840,6 +4840,11 @@ typedef struct nir_lower_shader_calls_options {
 
    /* Stack alignment */
    unsigned stack_alignment;
+
+   /* Put loads from the stack as close as possible from where they're needed.
+    * You might want to disable combined_loads for best effects.
+    */
+   bool localized_loads;
 } nir_lower_shader_calls_options;
 
 bool
