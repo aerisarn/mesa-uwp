@@ -657,6 +657,16 @@ ioctl(int fd, unsigned long request, ...)
          return ret;
       }
 
+      case DRM_IOCTL_I915_GEM_CREATE_EXT: {
+         struct drm_i915_gem_create_ext *create = argp;
+
+         ret = libc_ioctl(fd, request, argp);
+         if (ret == 0)
+            add_new_bo(fd, create->handle, create->size, NULL);
+
+         return ret;
+      }
+
       case DRM_IOCTL_I915_GEM_USERPTR: {
          struct drm_i915_gem_userptr *userptr = argp;
 
