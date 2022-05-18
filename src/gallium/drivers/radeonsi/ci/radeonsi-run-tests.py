@@ -98,6 +98,9 @@ parser.add_argument(
     "--no-deqp", dest="deqp", help="Disable dEQP tests", action="store_false"
 )
 parser.add_argument(
+    "--slow", dest="slow", help="Include slowest glcts tests", action="store_true"
+)
+parser.add_argument(
     "--no-deqp-egl",
     dest="deqp_egl",
     help="Disable dEQP-EGL tests",
@@ -128,6 +131,7 @@ parser.set_defaults(deqp_egl=True)
 parser.set_defaults(deqp_gles2=True)
 parser.set_defaults(deqp_gles3=True)
 parser.set_defaults(deqp_gles31=True)
+parser.set_defaults(slow=False)
 
 parser.add_argument(
     "output_folder",
@@ -249,6 +253,18 @@ os.mkdir(new_baseline_folder)
 logfile = open(os.path.join(output_folder, "{}-run-tests.log".format(gpu_name)), "w")
 
 spin = itertools.cycle("-\\|/")
+
+shutil.copy(skips, output_folder)
+skips = os.path.join(output_folder, "skips.csv")
+if not args.slow:
+    # Exclude these 3 tests slow tests
+    with open(skips, "a") as f:
+        print("KHR-GL46.copy_image.functional", file=f)
+        print("KHR-GL46.texture_swizzle.smoke", file=f)
+        print(
+            "KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize",
+            file=f,
+        )
 
 
 def gfx_level_to_str(cl):
