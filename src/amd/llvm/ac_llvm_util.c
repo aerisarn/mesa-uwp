@@ -61,6 +61,10 @@ static void ac_init_llvm_target(void)
       "-structurizecfg-skip-uniform-regions",
 #endif
    };
+
+#if LLVM_VERSION_MAJOR > 11
+   ac_reset_llvm_command_line_parser();
+#endif
    LLVMParseCommandLineOptions(ARRAY_SIZE(argv), argv, NULL);
 }
 
