@@ -65,7 +65,8 @@ struct zink_pipeline_rt {
 };
 
 struct zink_render_pass_pipeline_state {
-   uint32_t num_attachments:26;
+   uint32_t num_attachments:25;
+   uint32_t fbfetch:1;
    uint32_t num_cresolves:4;
    uint32_t num_zsresolves:1;
    bool samples:1; //for fs samplemask
