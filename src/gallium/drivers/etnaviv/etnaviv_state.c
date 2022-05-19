@@ -136,6 +136,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    int nr_samples_color = -1;
    int nr_samples_depth = -1;
    bool target_16bpp = false;
+   bool target_linear = false;
 
    /* Set up TS as well. Warning: this state is used by both the RS and PE */
    uint32_t ts_mem_config = 0;
@@ -148,8 +149,12 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       bool color_supertiled = (res->layout & ETNA_LAYOUT_BIT_SUPER) != 0;
       uint32_t fmt = translate_pe_format(cbuf->base.format);
 
-      assert(res->layout & ETNA_LAYOUT_BIT_TILE); /* Cannot render to linear surfaces */
+      assert((res->layout & ETNA_LAYOUT_BIT_TILE) ||
+             VIV_FEATURE(screen, chipMinorFeatures2, LINEAR_PE));
       etna_update_render_resource(pctx, etna_resource(cbuf->prsc));
+
+      if (res->layout == ETNA_LAYOUT_LINEAR)
+         target_linear = true;
 
       if (fmt >= PE_FORMAT_R16F)
           cs->PE_COLOR_FORMAT = VIVS_PE_COLOR_FORMAT_FORMAT_EXT(fmt) |
@@ -366,7 +371,9 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
     * one per color buffer / depth buffer. To keep the logic simple always use
     * single buffer when this feature is available.
     */
-   if (screen->specs.single_buffer)
+   if (unlikely(target_linear))
+      pe_logic_op |= VIVS_PE_LOGIC_OP_SINGLE_BUFFER(1);
+   else if (screen->specs.single_buffer)
       pe_logic_op |= VIVS_PE_LOGIC_OP_SINGLE_BUFFER(target_16bpp ? 3 : 2);
    cs->PE_LOGIC_OP = pe_logic_op;
 
