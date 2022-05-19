@@ -1170,6 +1170,7 @@ struct anv_device {
     struct list_head                            memory_objects;
 
     struct anv_bo_pool                          batch_bo_pool;
+    struct anv_bo_pool                          utrace_bo_pool;
 
     struct anv_bo_cache                         bo_cache;
 
