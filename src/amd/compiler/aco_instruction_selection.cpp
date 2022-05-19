@@ -4421,7 +4421,47 @@ mubuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
 }
 
 const EmitLoadParameters mubuf_load_params{mubuf_load_callback, true, true, 4096};
-const EmitLoadParameters scratch_load_params{mubuf_load_callback, false, true, 4096};
+
+Temp
+scratch_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned bytes_needed,
+                      unsigned align_, unsigned const_offset, Temp dst_hint)
+{
+   unsigned bytes_size = 0;
+   aco_opcode op;
+   if (bytes_needed == 1 || align_ % 2u) {
+      bytes_size = 1;
+      op = aco_opcode::scratch_load_ubyte;
+   } else if (bytes_needed == 2 || align_ % 4u) {
+      bytes_size = 2;
+      op = aco_opcode::scratch_load_ushort;
+   } else if (bytes_needed <= 4) {
+      bytes_size = 4;
+      op = aco_opcode::scratch_load_dword;
+   } else if (bytes_needed <= 8) {
+      bytes_size = 8;
+      op = aco_opcode::scratch_load_dwordx2;
+   } else if (bytes_needed <= 12) {
+      bytes_size = 12;
+      op = aco_opcode::scratch_load_dwordx3;
+   } else {
+      bytes_size = 16;
+      op = aco_opcode::scratch_load_dwordx4;
+   }
+   RegClass rc = RegClass::get(RegType::vgpr, bytes_size);
+   Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
+   aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(op, Format::SCRATCH, 2, 1)};
+   flat->operands[0] = offset.regClass() == s1 ? Operand(v1) : Operand(offset);
+   flat->operands[1] = offset.regClass() == s1 ? Operand(offset) : Operand(s1);
+   flat->sync = info.sync;
+   flat->offset = const_offset;
+   flat->definitions[0] = Definition(val);
+   bld.insert(std::move(flat));
+
+   return val;
+}
+
+const EmitLoadParameters scratch_mubuf_load_params{mubuf_load_callback, false, true, 4096};
+const EmitLoadParameters scratch_flat_load_params{scratch_load_callback, false, true, 2048};
 
 Temp
 get_gfx6_global_rsrc(Builder& bld, Temp addr)
@@ -7498,27 +7538,40 @@ void
 visit_load_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
-   Temp rsrc = get_scratch_resource(ctx);
-   Temp offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
-   LoadEmitInfo info = {Operand(offset), dst, instr->dest.ssa.num_components,
-                        instr->dest.ssa.bit_size / 8u, rsrc};
+   LoadEmitInfo info = {Operand(v1), dst, instr->dest.ssa.num_components,
+                        instr->dest.ssa.bit_size / 8u};
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
    info.swizzle_component_size = ctx->program->gfx_level <= GFX8 ? 4 : 0;
    info.sync = memory_sync_info(storage_scratch, semantic_private);
-   info.soffset = ctx->program->scratch_offset;
-   emit_load(ctx, bld, info, scratch_load_params);
+   if (ctx->program->gfx_level >= GFX9) {
+      if (nir_src_is_const(instr->src[0])) {
+         uint32_t max = ctx->program->dev.scratch_global_offset_max + 1;
+         info.offset =
+            bld.copy(bld.def(s1), Operand::c32(ROUND_DOWN_TO(nir_src_as_uint(instr->src[0]), max)));
+         info.const_offset = nir_src_as_uint(instr->src[0]) % max;
+      } else {
+         info.offset = Operand(get_ssa_temp(ctx, instr->src[0].ssa));
+      }
+      EmitLoadParameters params = scratch_flat_load_params;
+      params.max_const_offset_plus_one = ctx->program->dev.scratch_global_offset_max + 1;
+      emit_load(ctx, bld, info, params);
+   } else {
+      info.resource = get_scratch_resource(ctx);
+      info.offset = Operand(as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa)));
+      info.soffset = ctx->program->scratch_offset;
+      emit_load(ctx, bld, info, scratch_mubuf_load_params);
+   }
 }
 
 void
 visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
-   Temp rsrc = get_scratch_resource(ctx);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-   Temp offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
+   Temp offset = get_ssa_temp(ctx, instr->src[1].ssa);
 
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
    unsigned writemask = util_widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
@@ -7530,11 +7583,44 @@ visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
    split_buffer_store(ctx, instr, false, RegType::vgpr, data, writemask, swizzle_component_size,
                       &write_count, write_datas, offsets);
 
-   for (unsigned i = 0; i < write_count; i++) {
-      aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
-      Instruction* mubuf = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i],
-                                     offsets[i], true, true);
-      mubuf->mubuf().sync = memory_sync_info(storage_scratch, semantic_private);
+   if (ctx->program->gfx_level >= GFX9) {
+      uint32_t max = ctx->program->dev.scratch_global_offset_max + 1;
+      offset = nir_src_is_const(instr->src[1]) ? Temp(0, s1) : offset;
+      uint32_t base_const_offset =
+         nir_src_is_const(instr->src[1]) ? nir_src_as_uint(instr->src[1]) : 0;
+
+      for (unsigned i = 0; i < write_count; i++) {
+         aco_opcode op;
+         switch (write_datas[i].bytes()) {
+         case 1: op = aco_opcode::scratch_store_byte; break;
+         case 2: op = aco_opcode::scratch_store_short; break;
+         case 4: op = aco_opcode::scratch_store_dword; break;
+         case 8: op = aco_opcode::scratch_store_dwordx2; break;
+         case 12: op = aco_opcode::scratch_store_dwordx3; break;
+         case 16: op = aco_opcode::scratch_store_dwordx4; break;
+         default: unreachable("Unexpected store size");
+         }
+
+         uint32_t const_offset = base_const_offset + offsets[i];
+         assert(const_offset < max || offset.id() == 0);
+
+         Operand addr = offset.regClass() == s1 ? Operand(v1) : Operand(offset);
+         Operand saddr = offset.regClass() == s1 ? Operand(offset) : Operand(s1);
+         if (offset.id() == 0)
+            saddr = bld.copy(bld.def(s1), Operand::c32(ROUND_DOWN_TO(const_offset, max)));
+
+         bld.scratch(op, addr, saddr, write_datas[i], const_offset % max,
+                     memory_sync_info(storage_scratch, semantic_private));
+      }
+   } else {
+      Temp rsrc = get_scratch_resource(ctx);
+      offset = as_vgpr(ctx, offset);
+      for (unsigned i = 0; i < write_count; i++) {
+         aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
+         Instruction* mubuf = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset,
+                                        write_datas[i], offsets[i], true, true);
+         mubuf->mubuf().sync = memory_sync_info(storage_scratch, semantic_private);
+      }
    }
 }
 
