@@ -501,10 +501,25 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       }
    }
 
-   priority = RADEON_CTX_PRIORITY_MEDIUM;
+   if (flags & PIPE_CONTEXT_HIGH_PRIORITY) {
+      priority = RADEON_CTX_PRIORITY_HIGH;
+   } else if (flags & PIPE_CONTEXT_LOW_PRIORITY) {
+      priority = RADEON_CTX_PRIORITY_LOW;
+   } else {
+      priority = RADEON_CTX_PRIORITY_MEDIUM;
+   }
 
    /* Initialize the context handle and the command stream. */
    sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority);
+   if (!sctx->ctx && priority != RADEON_CTX_PRIORITY_MEDIUM) {
+      /* Context priority should be treated as a hint. If context creation
+       * fails with the requested priority, for example because the caller
+       * lacks CAP_SYS_NICE capability or other system resource constraints,
+       * fallback to normal priority.
+       */
+      priority = RADEON_CTX_PRIORITY_MEDIUM;
+      sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority);
+   }
    if (!sctx->ctx) {
       fprintf(stderr, "radeonsi: can't create radeon_winsys_ctx\n");
       goto fail;

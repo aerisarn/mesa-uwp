@@ -254,6 +254,13 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
       return 0;
 
+   case PIPE_CAP_CONTEXT_PRIORITY_MASK:
+      if (!(sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 22))
+         return 0;
+      return PIPE_CONTEXT_PRIORITY_LOW |
+             PIPE_CONTEXT_PRIORITY_MEDIUM |
+             PIPE_CONTEXT_PRIORITY_HIGH;
+
    case PIPE_CAP_FENCE_SIGNAL:
       return sscreen->info.has_syncobj;
 
