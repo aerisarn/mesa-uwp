@@ -755,6 +755,8 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
             (1 << nir_tex_src_ddy),
             ~0);
 
+         OPT(s, nir_fold_16bit_image_load_store_conversions);
+
          /* Now that we stripped off the 16-bit conversions, legalize so that we
           * don't have a mix of 16- and 32-bit args that will need to be
           * collected together in the coordinate vector.
