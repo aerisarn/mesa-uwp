@@ -1646,7 +1646,7 @@ genX(BeginCommandBuffer)(
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       cmd_buffer->usage_flags &= ~VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 
-   trace_intel_begin_cmd_buffer(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_cmd_buffer(&cmd_buffer->trace);
 
    genX(cmd_buffer_emit_state_base_address)(cmd_buffer);
 
@@ -1887,8 +1887,7 @@ genX(EndCommandBuffer)(
 
    emit_isp_disable(cmd_buffer);
 
-   trace_intel_end_cmd_buffer(&cmd_buffer->trace, cmd_buffer,
-                              cmd_buffer->vk.level);
+   trace_intel_end_cmd_buffer(&cmd_buffer->trace, cmd_buffer->vk.level);
 
    anv_cmd_buffer_end_batch_buffer(cmd_buffer);
 
@@ -2367,7 +2366,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    bool trace_flush =
       (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS | ANV_PIPE_INVALIDATE_BITS)) != 0;
    if (trace_flush)
-      trace_intel_begin_stall(&cmd_buffer->trace, cmd_buffer);
+      trace_intel_begin_stall(&cmd_buffer->trace);
 
    if ((GFX_VER >= 8 && GFX_VER <= 9) &&
        (bits & ANV_PIPE_CS_STALL_BIT) &&
@@ -2388,7 +2387,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
                                     bits);
 
    if (trace_flush) {
-      trace_intel_end_stall(&cmd_buffer->trace, cmd_buffer, bits,
+      trace_intel_end_stall(&cmd_buffer->trace, bits,
                             anv_pipe_flush_bit_to_ds_stall_flag, NULL);
    }
 }
@@ -4222,7 +4221,7 @@ void genX(CmdDraw)(
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw", count);
-   trace_intel_begin_draw(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4252,7 +4251,7 @@ void genX(CmdDraw)(
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
-   trace_intel_end_draw(&cmd_buffer->trace, cmd_buffer, count);
+   trace_intel_end_draw(&cmd_buffer->trace, count);
 }
 
 void genX(CmdDrawMultiEXT)(
@@ -4277,7 +4276,7 @@ void genX(CmdDrawMultiEXT)(
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw_multi", count);
-   trace_intel_begin_draw_multi(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_multi(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4310,7 +4309,7 @@ void genX(CmdDrawMultiEXT)(
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
-   trace_intel_end_draw_multi(&cmd_buffer->trace, cmd_buffer, count);
+   trace_intel_end_draw_multi(&cmd_buffer->trace, count);
 }
 
 void genX(CmdDrawIndexed)(
@@ -4336,7 +4335,7 @@ void genX(CmdDrawIndexed)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indexed",
                         count);
-   trace_intel_begin_draw_indexed(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indexed(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4364,7 +4363,7 @@ void genX(CmdDrawIndexed)(
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
-   trace_intel_end_draw_indexed(&cmd_buffer->trace, cmd_buffer, count);
+   trace_intel_end_draw_indexed(&cmd_buffer->trace, count);
 }
 
 void genX(CmdDrawMultiIndexedEXT)(
@@ -4391,7 +4390,7 @@ void genX(CmdDrawMultiIndexedEXT)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indexed_multi",
                         count);
-   trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4479,7 +4478,7 @@ void genX(CmdDrawMultiIndexedEXT)(
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
-   trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, cmd_buffer, count);
+   trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
 }
 
 /* Auto-Draw / Indirect Registers */
@@ -4515,7 +4514,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indirect byte count",
                         instanceCount);
-   trace_intel_begin_draw_indirect_byte_count(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indirect_byte_count(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4563,8 +4562,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
-   trace_intel_end_draw_indirect_byte_count(&cmd_buffer->trace, cmd_buffer,
-                                            instanceCount);
+   trace_intel_end_draw_indirect_byte_count(&cmd_buffer->trace, instanceCount);
 #endif /* GFX_VERx10 >= 75 */
 }
 
@@ -4625,7 +4623,7 @@ void genX(CmdDrawIndirect)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indirect",
                         drawCount);
-   trace_intel_begin_draw_indirect(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indirect(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4660,7 +4658,7 @@ void genX(CmdDrawIndirect)(
       offset += stride;
    }
 
-   trace_intel_end_draw_indirect(&cmd_buffer->trace, cmd_buffer, drawCount);
+   trace_intel_end_draw_indirect(&cmd_buffer->trace, drawCount);
 }
 
 void genX(CmdDrawIndexedIndirect)(
@@ -4682,7 +4680,7 @@ void genX(CmdDrawIndexedIndirect)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indexed indirect",
                         drawCount);
-   trace_intel_begin_draw_indexed_indirect(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indexed_indirect(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4718,7 +4716,7 @@ void genX(CmdDrawIndexedIndirect)(
       offset += stride;
    }
 
-   trace_intel_end_draw_indexed_indirect(&cmd_buffer->trace, cmd_buffer, drawCount);
+   trace_intel_end_draw_indexed_indirect(&cmd_buffer->trace, drawCount);
 }
 
 static struct mi_value
@@ -4849,7 +4847,7 @@ void genX(CmdDrawIndirectCount)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indirect count",
                         0);
-   trace_intel_begin_draw_indirect_count(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indirect_count(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4891,7 +4889,7 @@ void genX(CmdDrawIndirectCount)(
 
    mi_value_unref(&b, max);
 
-   trace_intel_end_draw_indirect_count(&cmd_buffer->trace, cmd_buffer, maxDrawCount);
+   trace_intel_end_draw_indirect_count(&cmd_buffer->trace, maxDrawCount);
 }
 
 void genX(CmdDrawIndexedIndirectCount)(
@@ -4917,7 +4915,7 @@ void genX(CmdDrawIndexedIndirectCount)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw indexed indirect count",
                         0);
-   trace_intel_begin_draw_indexed_indirect_count(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_draw_indexed_indirect_count(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
@@ -4960,8 +4958,7 @@ void genX(CmdDrawIndexedIndirectCount)(
 
    mi_value_unref(&b, max);
 
-   trace_intel_end_draw_indexed_indirect_count(&cmd_buffer->trace,
-                                               cmd_buffer, maxDrawCount);
+   trace_intel_end_draw_indexed_indirect_count(&cmd_buffer->trace, maxDrawCount);
 
 }
 
@@ -5492,7 +5489,7 @@ void genX(CmdDispatchBase)(
                         prog_data->local_size[0] * prog_data->local_size[1] *
                         prog_data->local_size[2]);
 
-   trace_intel_begin_compute(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_compute(&cmd_buffer->trace);
 
    if (prog_data->uses_num_work_groups) {
       struct anv_state state =
@@ -5518,7 +5515,7 @@ void genX(CmdDispatchBase)(
    emit_cs_walker(cmd_buffer, pipeline, false, prog_data, groupCountX,
                   groupCountY, groupCountZ);
 
-   trace_intel_end_compute(&cmd_buffer->trace, cmd_buffer,
+   trace_intel_end_compute(&cmd_buffer->trace,
                            groupCountX, groupCountY, groupCountZ);
 }
 
@@ -5553,7 +5550,7 @@ void genX(CmdDispatchIndirect)(
                         INTEL_SNAPSHOT_COMPUTE,
                         "compute indirect",
                         0);
-   trace_intel_begin_compute(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_compute(&cmd_buffer->trace);
 
    if (prog_data->uses_num_work_groups) {
       cmd_buffer->state.compute.num_workgroups = addr;
@@ -5628,7 +5625,7 @@ void genX(CmdDispatchIndirect)(
 
    emit_cs_walker(cmd_buffer, pipeline, true, prog_data, 0, 0, 0);
 
-   trace_intel_end_compute(&cmd_buffer->trace, cmd_buffer, 0, 0, 0);
+   trace_intel_end_compute(&cmd_buffer->trace, 0, 0, 0);
 }
 
 struct anv_state
@@ -6510,7 +6507,7 @@ void genX(CmdBeginRendering)(
    }
 
    anv_measure_beginrenderpass(cmd_buffer);
-   trace_intel_begin_render_pass(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_render_pass(&cmd_buffer->trace);
 
    gfx->rendering_flags = pRenderingInfo->flags;
    gfx->render_area = pRenderingInfo->renderArea;

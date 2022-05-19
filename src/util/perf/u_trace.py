@@ -210,13 +210,19 @@ void ${trace.tp_perfetto}(
 #endif
 %    endif
 void __trace_${trace_name}(
-       struct u_trace *ut, void *cs
+       struct u_trace *ut
+%    if need_cs_param:
+     , void *cs
+%    endif
 %    for arg in trace.args:
      , ${arg.type} ${arg.var}
 %    endfor
 );
 static inline void trace_${trace_name}(
-     struct u_trace *ut, void *cs
+     struct u_trace *ut
+%    if need_cs_param:
+   , void *cs
+%    endif
 %    for arg in trace.args:
    , ${arg.type} ${arg.var}
 %    endfor
@@ -228,7 +234,10 @@ static inline void trace_${trace_name}(
 %    endif
       return;
    __trace_${trace_name}(
-        ut, cs
+        ut
+%    if need_cs_param:
+      , cs
+%    endif
 %    for arg in trace.args:
       , ${arg.var}
 %    endfor
@@ -349,13 +358,16 @@ static const struct u_tracepoint __tp_${trace_name} = {
  % endif
 };
 void __trace_${trace_name}(
-     struct u_trace *ut, void *cs
+     struct u_trace *ut
+ % if need_cs_param:
+   , void *cs
+ % endif
  % for arg in trace.args:
    , ${arg.type} ${arg.var}
  % endfor
 ) {
    struct trace_${trace_name} *__entry =
-      (struct trace_${trace_name} *)u_trace_append(ut, cs, &__tp_${trace_name});
+      (struct trace_${trace_name} *)u_trace_append(ut, ${cs_param_value + ","} &__tp_${trace_name});
  % if len(trace.tp_struct) == 0:
    (void)__entry;
  % endif
@@ -367,13 +379,18 @@ void __trace_${trace_name}(
 % endfor
 """
 
-def utrace_generate(cpath, hpath, ctx_param):
+def utrace_generate(cpath, hpath, ctx_param, need_cs_param=True):
+    cs_param_value = 'NULL'
+    if need_cs_param:
+        cs_param_value = 'cs'
     if cpath is not None:
         hdr = os.path.basename(cpath).rsplit('.', 1)[0] + '.h'
         with open(cpath, 'w') as f:
             f.write(Template(src_template).render(
                 hdr=hdr,
                 ctx_param=ctx_param,
+                need_cs_param=need_cs_param,
+                cs_param_value=cs_param_value,
                 HEADERS=[h for h in HEADERS if h.scope & HeaderScope.SOURCE],
                 TRACEPOINTS=TRACEPOINTS))
 
@@ -383,6 +400,7 @@ def utrace_generate(cpath, hpath, ctx_param):
             f.write(Template(hdr_template).render(
                 hdrname=hdr.rstrip('.h').upper(),
                 ctx_param=ctx_param,
+                need_cs_param=need_cs_param,
                 HEADERS=[h for h in HEADERS if h.scope & HeaderScope.HEADER],
                 FORWARD_DECLS=FORWARD_DECLS,
                 TRACEPOINTS=TRACEPOINTS))

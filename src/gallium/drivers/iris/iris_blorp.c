@@ -453,7 +453,7 @@ blorp_measure_start(struct blorp_batch *blorp_batch,
    struct iris_context *ice = blorp_batch->blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
 
-   trace_intel_begin_blorp(&batch->trace, batch);
+   trace_intel_begin_blorp(&batch->trace);
 
    if (batch->measure == NULL)
       return;
@@ -468,7 +468,7 @@ blorp_measure_end(struct blorp_batch *blorp_batch,
 {
    struct iris_batch *batch = blorp_batch->driver_batch;
 
-   trace_intel_end_blorp(&batch->trace, batch,
+   trace_intel_end_blorp(&batch->trace,
                          params->x1 - params->x0,
                          params->y1 - params->y0,
                          params->hiz_op,

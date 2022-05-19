@@ -708,7 +708,7 @@ iris_finish_batch(struct iris_batch *batch)
 
    finish_seqno(batch);
 
-   trace_intel_end_batch(&batch->trace, batch, batch->name);
+   trace_intel_end_batch(&batch->trace, batch->name);
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch. */
    uint32_t *map = batch->map_next;

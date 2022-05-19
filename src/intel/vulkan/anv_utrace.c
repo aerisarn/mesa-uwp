@@ -220,10 +220,12 @@ anv_utrace_destroy_ts_buffer(struct u_trace_context *utctx, void *timestamps)
 }
 
 static void
-anv_utrace_record_ts(struct u_trace *ut, void *cs, void *timestamps, unsigned idx,
+anv_utrace_record_ts(struct u_trace *ut, void *cs,
+                     void *timestamps, unsigned idx,
                      bool end_of_pipe)
 {
-   struct anv_cmd_buffer *cmd_buffer = cs;
+   struct anv_cmd_buffer *cmd_buffer =
+      container_of(ut, struct anv_cmd_buffer, trace);
    struct anv_device *device = cmd_buffer->device;
    struct anv_bo *bo = timestamps;
 
