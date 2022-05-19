@@ -158,7 +158,7 @@ class Format(Enum):
          return [('uint8_t', 'opsel_lo', None),
                  ('uint8_t', 'opsel_hi', None)]
       elif self in [Format.FLAT, Format.GLOBAL, Format.SCRATCH]:
-         return [('uint16_t', 'offset', 0),
+         return [('int16_t', 'offset', 0),
                  ('memory_sync_info', 'sync', 'memory_sync_info()'),
                  ('bool', 'glc', 'false'),
                  ('bool', 'slc', 'false'),

@@ -484,7 +484,7 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
    case Format::SCRATCH: {
       const FLAT_instruction& flat = instr->flatlike();
       if (flat.offset)
-         fprintf(output, " offset:%u", flat.offset);
+         fprintf(output, " offset:%d", flat.offset);
       if (flat.glc)
          fprintf(output, " glc");
       if (flat.dlc)

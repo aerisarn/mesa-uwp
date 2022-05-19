@@ -1646,7 +1646,7 @@ struct FLAT_instruction : public Instruction {
    bool nv : 1;
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
    uint8_t padding0 : 2;
-   uint16_t offset; /* Vega/Navi only */
+   int16_t offset; /* Vega/Navi only */
    uint16_t padding1;
 };
 static_assert(sizeof(FLAT_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
@@ -2066,6 +2066,9 @@ struct DeviceInfo {
    bool fused_mad_mix = false;
    bool xnack_enabled = false;
    bool sram_ecc_enabled = false;
+
+   int16_t scratch_global_offset_min;
+   int16_t scratch_global_offset_max;
 };
 
 enum class CompilationProgress {

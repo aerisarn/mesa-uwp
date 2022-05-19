@@ -507,16 +507,19 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       FLAT_instruction& flat = instr->flatlike();
       uint32_t encoding = (0b110111 << 26);
       encoding |= opcode << 18;
-      if (ctx.gfx_level <= GFX9) {
-         assert(flat.offset <= 0x1fff);
+      if (ctx.gfx_level == GFX9 || ctx.gfx_level >= GFX11) {
+         if (instr->isFlat())
+            assert(flat.offset <= 0xfff);
+         else
+            assert(flat.offset >= -4096 && flat.offset < 4096);
          encoding |= flat.offset & 0x1fff;
-      } else if (instr->isFlat()) {
+      } else if (ctx.gfx_level <= GFX8 || instr->isFlat()) {
          /* GFX10 has a 12-bit immediate OFFSET field,
           * but it has a hw bug: it ignores the offset, called FlatSegmentOffsetBug
           */
          assert(flat.offset == 0);
       } else {
-         assert(flat.offset <= 0xfff);
+         assert(flat.offset >= -2048 && flat.offset <= 2047);
          encoding |= flat.offset & 0xfff;
       }
       if (instr->isScratch())

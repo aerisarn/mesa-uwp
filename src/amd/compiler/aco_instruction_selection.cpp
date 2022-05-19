@@ -4467,12 +4467,10 @@ lower_global_address(Builder& bld, uint32_t offset_in, Temp* address_inout,
 
    uint64_t max_const_offset_plus_one =
       1; /* GFX7/8/9: FLAT loads do not support constant offsets */
-   if (bld.program->gfx_level >= GFX10)
-      max_const_offset_plus_one =
-         2048; /* GLOBAL has a 11-bit signed offset field (12 bits if signed) */
-   else if (bld.program->gfx_level == GFX6 || bld.program->gfx_level == GFX9)
-      max_const_offset_plus_one =
-         4096; /* MUBUF/GLOBAL has a 12-bit unsigned offset field (13 bits if signed for GLOBAL) */
+   if (bld.program->gfx_level >= GFX9)
+      max_const_offset_plus_one = bld.program->dev.scratch_global_offset_max;
+   else if (bld.program->gfx_level == GFX6)
+      max_const_offset_plus_one = 4096; /* MUBUF has a 12-bit unsigned offset field */
    uint64_t excess_offset = const_offset - (const_offset % max_const_offset_plus_one);
    const_offset %= max_const_offset_plus_one;
 

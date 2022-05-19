@@ -155,6 +155,18 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
        program->family == CHIP_ARCTURUS || program->family == CHIP_ALDEBARAN)
       program->dev.fused_mad_mix = true;
 
+   if (program->gfx_level >= GFX11) {
+      program->dev.scratch_global_offset_min = -4096;
+      program->dev.scratch_global_offset_max = 4095;
+   } else if (program->gfx_level >= GFX10 || program->gfx_level == GFX8) {
+      program->dev.scratch_global_offset_min = -2048;
+      program->dev.scratch_global_offset_max = 2047;
+   } else if (program->gfx_level == GFX9) {
+      /* The minimum is actually -4096, but negative offsets are broken when SADDR is used. */
+      program->dev.scratch_global_offset_min = 0;
+      program->dev.scratch_global_offset_max = 4095;
+   }
+
    program->wgp_mode = wgp_mode;
 
    program->progress = CompilationProgress::after_isel;
