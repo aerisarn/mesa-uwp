@@ -179,7 +179,7 @@ bi_print_instr(const bi_instr *I, FILE *fp)
     if (I->flow)
         fprintf(fp, ".flow%u", I->flow);
 
-    if (I->op == BI_OPCODE_COLLECT_I32) {
+    if (I->op == BI_OPCODE_COLLECT_I32 || I->op == BI_OPCODE_PHI) {
         for (unsigned i = 0; i < I->nr_srcs; ++i) {
             if (i > 0)
                 fputs(", ", fp);
