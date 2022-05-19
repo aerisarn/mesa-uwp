@@ -256,7 +256,7 @@ traces:
   - path: valve/counterstrike-v2.trace
     expectations:
       - device: gl-virgl
-        checksum: 6298e0897eb1396489c9cbb88f2cac25
+        checksum: 06324f3b7eb2355edf71d0cc3bdf7df3
   - path: valve/counterstrike-source-v2.trace
     expectations:
       - device: gl-virgl
@@ -288,3 +288,12 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: 447cdd1fbb713ed04e4cf00b483916b0
+  # ../src/mesa/main/arrayobj.c:800:_mesa_update_vao_derived_arrays: Assertion `attrib->_EffRelativeOffset < binding->Stride' failed.
+  #- path: ror/ror-default.trace
+  #  expectations:
+      #- device: gl-virgl
+      #  checksum: 0
+  - path: nheko/nheko-colors.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 9877fc41ce761c9ce15561b12ef77c27

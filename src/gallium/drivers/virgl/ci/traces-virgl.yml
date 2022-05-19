@@ -286,3 +286,11 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: fca1fa683ab56352bd96d0777835ae65
+  # ../src/mesa/main/arrayobj.c:800:_mesa_update_vao_derived_arrays: Assertion `attrib->_EffRelativeOffset < binding->Stride' failed.
+  #- path: ror/ror-default.trace
+  #  expectations:
+      #- device: gl-virgl
+  - path: nheko/nheko-colors.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 3a12c08087e16cfae4729f4e9d6c9387
