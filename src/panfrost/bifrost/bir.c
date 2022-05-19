@@ -185,12 +185,6 @@ bi_side_effects(const bi_instr *I)
         if (bi_opcode_props[I->op].last)
                 return true;
 
-        /* On Valhall, nontrivial flow control acts as a side effect and should
-         * not be dead code eliminated away.
-         */
-        if (I->flow)
-                return true;
-
         switch (I->op) {
         case BI_OPCODE_DISCARD_F32:
         case BI_OPCODE_DISCARD_B32:

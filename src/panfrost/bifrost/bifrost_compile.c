@@ -770,11 +770,6 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
         uint64_t blend_desc = inputs->blend.bifrost_blend_desc;
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
 
-        if (b->shader->arch >= 9 && !inputs->is_blend) {
-                bi_instr *I = bi_nop(b);
-                I->flow = 0x9; /* .wait */
-        }
-
         if (inputs->is_blend && inputs->blend.nr_samples > 1) {
                 /* Conversion descriptor comes from the compile inputs, pixel
                  * indices derived at run time based on sample ID */
@@ -827,11 +822,6 @@ bi_skip_atest(bi_context *ctx, bool emit_zs)
 static void
 bi_emit_atest(bi_builder *b, bi_index alpha)
 {
-        if (b->shader->arch >= 9) {
-                bi_instr *I = bi_nop(b);
-                I->flow = 0x8; /* .wait0126 */
-        }
-
         bi_instr *atest = bi_atest_to(b, bi_temp(b->shader), bi_coverage(b), alpha);
         b->shader->emitted_atest = true;
         b->shader->coverage = atest->dest[0];
@@ -1548,11 +1538,6 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                 b->shader->inputs->bifrost.static_rt_conv ?
                 bi_imm_u32(b->shader->inputs->bifrost.rt_conv[rt]) :
                 bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt | (size << 4)), 1, 0);
-
-        if (!b->shader->inputs->is_blend && b->shader->arch >= 9) {
-                bi_instr *I = bi_nop(b);
-                I->flow = 0x9; /* .wait */
-        }
 
         bi_ld_tile_to(b, dest, bi_pixel_indices(b, rt), bi_coverage(b), desc,
                       regfmt, nr - 1);
@@ -4663,19 +4648,6 @@ bifrost_nir_lower_store_component(struct nir_builder *b,
  * That trick doesn't work on Valhall, which needs a NOP inserted in the
  * terminal block instead.
  */
-
-static void
-bi_lower_terminal_block(bi_context *ctx, bi_block *block)
-{
-        bi_builder b = bi_init_builder(ctx, bi_after_block(block));
-
-        /* Ensure the instruction is not dead code eliminated. XXX: This is a
-         * bit of a hack.
-         */
-        bi_instr *I = bi_nop(&b);
-        I->flow = 0xF;
-}
-
 static void
 bi_lower_branch(bi_context *ctx, bi_block *block)
 {
@@ -4701,7 +4673,7 @@ bi_lower_branch(bi_context *ctx, bi_block *block)
                 if (cull_terminal)
                         ins->branch_target = NULL;
                 else if (ins->branch_target)
-                        bi_lower_terminal_block(ctx, ins->branch_target);
+                        ins->branch_target->needs_nop = true;
         }
 }
 
@@ -5075,7 +5047,11 @@ bi_compile_variant_nir(nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
-        if (ctx->arch <= 8) {
+        if (ctx->arch >= 9) {
+                va_assign_slots(ctx);
+                va_insert_flow_control_nops(ctx);
+                va_merge_flow(ctx);
+        } else {
                 bi_schedule(ctx);
                 bi_assign_scoreboard(ctx);
 
