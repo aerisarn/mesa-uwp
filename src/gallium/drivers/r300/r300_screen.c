@@ -488,117 +488,62 @@ static int r300_get_video_param(struct pipe_screen *screen,
    }
 }
 
+#define COMMON_NIR_OPTIONS                    \
+   .fdot_replicates = true,                   \
+   .fuse_ffma32 = true,                       \
+   .fuse_ffma64 = true,                       \
+   .lower_bitops = true,                      \
+   .lower_extract_byte = true,                \
+   .lower_extract_word = true,                \
+   .lower_fdiv = true,                        \
+   .lower_fdph = true,                        \
+   .lower_flrp32 = true,                      \
+   .lower_flrp64 = true,                      \
+   .lower_fmod = true,                        \
+   .lower_fround_even = true,                 \
+   .lower_insert_byte = true,                 \
+   .lower_insert_word = true,                 \
+   .lower_rotate = true,                      \
+   .lower_uniforms_to_ubo = true,             \
+   .lower_vector_cmp = true,                  \
+   .no_integers = true,                       \
+   .use_interpolated_input_intrinsics = true
+
 static const nir_shader_compiler_options r500_vs_compiler_options = {
-   .fdot_replicates = true,
-   .fuse_ffma32 = true,
-   .fuse_ffma64 = true,
-   .lower_bitops = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_fdiv = true,
-   .lower_insert_byte = true,
-   .lower_insert_word = true,
-   .lower_fdph = true,
-   .lower_flrp32 = true,
-   .lower_flrp64 = true,
-   .lower_fmod = true,
-   .lower_fround_even = true,
-   .lower_rotate = true,
-   .lower_uniforms_to_ubo = true,
-   .lower_vector_cmp = true,
+   COMMON_NIR_OPTIONS,
 
    /* Have HW loops support and 1024 max instr count, but don't unroll *too*
     * hard.
     */
    .max_unroll_iterations = 32,
-
-   .use_interpolated_input_intrinsics = true,
-   .no_integers = true,
 };
 
 static const nir_shader_compiler_options r500_fs_compiler_options = {
-   .fdot_replicates = true,
-   .fuse_ffma32 = true,
-   .fuse_ffma64 = true,
-   .lower_bitops = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_fdiv = true,
-   .lower_insert_byte = true,
-   .lower_insert_word = true,
-   .lower_fdph = true,
+   COMMON_NIR_OPTIONS,
    .lower_fpow = true, /* POW is only in the VS */
-   .lower_flrp32 = true,
-   .lower_flrp64 = true,
-   .lower_fmod = true,
-   .lower_fround_even = true,
-   .lower_rotate = true,
-   .lower_uniforms_to_ubo = true,
-   .lower_vector_cmp = true,
 
    /* Have HW loops support and 512 max instr count, but don't unroll *too*
     * hard.
     */
    .max_unroll_iterations = 32,
-
-   .use_interpolated_input_intrinsics = true,
-   .no_integers = true,
 };
 
 static const nir_shader_compiler_options r300_vs_compiler_options = {
-   .fdot_replicates = true,
-   .fuse_ffma32 = true,
-   .fuse_ffma64 = true,
-   .lower_bitops = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_fdiv = true,
-   .lower_insert_byte = true,
-   .lower_insert_word = true,
-   .lower_fdph = true,
+   COMMON_NIR_OPTIONS,
    .lower_fsat = true, /* No fsat in pre-r500 VS */
-   .lower_flrp32 = true,
-   .lower_flrp64 = true,
-   .lower_fmod = true,
-   .lower_fround_even = true,
-   .lower_rotate = true,
-   .lower_uniforms_to_ubo = true,
-   .lower_vector_cmp = true,
    .lower_sincos = true,
 
    /* Note: has HW loops support, but only 256 ALU instructions. */
    .max_unroll_iterations = 32,
-
-   .use_interpolated_input_intrinsics = true,
-   .no_integers = true,
 };
 
 static const nir_shader_compiler_options r300_fs_compiler_options = {
-   .fdot_replicates = true,
-   .fuse_ffma32 = true,
-   .fuse_ffma64 = true,
-   .lower_bitops = true,
-   .lower_extract_byte = true,
-   .lower_extract_word = true,
-   .lower_fdiv = true,
+   COMMON_NIR_OPTIONS,
    .lower_fpow = true, /* POW is only in the VS */
-   .lower_insert_byte = true,
-   .lower_insert_word = true,
-   .lower_fdph = true,
-   .lower_flrp32 = true,
-   .lower_flrp64 = true,
-   .lower_fmod = true,
-   .lower_fround_even = true,
-   .lower_rotate = true,
-   .lower_uniforms_to_ubo = true,
-   .lower_vector_cmp = true,
    .lower_sincos = true,
 
     /* No HW loops support, so set it equal to ALU instr max */
    .max_unroll_iterations = 64,
-
-   .use_interpolated_input_intrinsics = true,
-   .no_integers = true,
 };
 
 static const void *
