@@ -964,54 +964,27 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
    state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
 }
 
-static void vertex_buffers(uint32_t first_binding,
-                           uint32_t binding_count,
-                           const VkBuffer *buffers,
-                           const VkDeviceSize *offsets,
-                           const VkDeviceSize *strides,
-                           struct rendering_state *state)
-{
-   int i;
-   for (i = 0; i < binding_count; i++) {
-      int idx = i + first_binding;
-
-      state->vb[idx].buffer_offset = offsets[i];
-      state->vb[idx].buffer.resource = buffers[i] ? lvp_buffer_from_handle(buffers[i])->bo : NULL;
-
-      if (strides)
-         state->vb[idx].stride = strides[i];
-   }
-   if (first_binding < state->start_vb)
-      state->start_vb = first_binding;
-   if (first_binding + binding_count >= state->num_vb)
-      state->num_vb = first_binding + binding_count;
-   state->vb_dirty = true;
-}
-
-static void handle_vertex_buffers(struct vk_cmd_queue_entry *cmd,
-                                  struct rendering_state *state)
-{
-   struct vk_cmd_bind_vertex_buffers *vcb = &cmd->u.bind_vertex_buffers;
-
-   vertex_buffers(vcb->first_binding,
-                  vcb->binding_count,
-                  vcb->buffers,
-                  vcb->offsets,
-                  NULL,
-                  state);
-}
-
 static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
                                    struct rendering_state *state)
 {
    struct vk_cmd_bind_vertex_buffers2 *vcb = &cmd->u.bind_vertex_buffers2;
 
-   vertex_buffers(vcb->first_binding,
-                  vcb->binding_count,
-                  vcb->buffers,
-                  vcb->offsets,
-                  vcb->strides,
-                  state);
+   int i;
+   for (i = 0; i < vcb->binding_count; i++) {
+      int idx = i + vcb->first_binding;
+
+      state->vb[idx].buffer_offset = vcb->offsets[i];
+      state->vb[idx].buffer.resource =
+         vcb->buffers[i] ? lvp_buffer_from_handle(vcb->buffers[i])->bo : NULL;
+
+      if (vcb->strides)
+         state->vb[idx].stride = vcb->strides[i];
+   }
+   if (vcb->first_binding < state->start_vb)
+      state->start_vb = vcb->first_binding;
+   if (vcb->first_binding + vcb->binding_count >= state->num_vb)
+      state->num_vb = vcb->first_binding + vcb->binding_count;
+   state->vb_dirty = true;
 }
 
 struct dyn_info {
@@ -3678,7 +3651,6 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetStencilReference)
    ENQUEUE_CMD(CmdBindDescriptorSets)
    ENQUEUE_CMD(CmdBindIndexBuffer)
-   ENQUEUE_CMD(CmdBindVertexBuffers)
    ENQUEUE_CMD(CmdBindVertexBuffers2)
    ENQUEUE_CMD(CmdDraw)
    ENQUEUE_CMD(CmdDrawMultiEXT)
@@ -3797,9 +3769,6 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case VK_CMD_BIND_INDEX_BUFFER:
          handle_index_buffer(cmd, state);
-         break;
-      case VK_CMD_BIND_VERTEX_BUFFERS:
-         handle_vertex_buffers(cmd, state);
          break;
       case VK_CMD_BIND_VERTEX_BUFFERS2:
          handle_vertex_buffers2(cmd, state);
