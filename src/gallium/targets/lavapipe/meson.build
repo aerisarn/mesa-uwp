@@ -21,16 +21,21 @@ if with_platform_windows
   icd_file_name = 'vulkan_lvp.dll'
 endif
 
+icd_command = [
+  prog_python, '@INPUT0@',
+  '--api-version', '1.1', '--xml', '@INPUT1@',
+  '--lib-path', join_paths(module_dir, icd_file_name),
+  '--out', '@OUTPUT@',
+]
+if with_platform_windows
+  icd_command += '--use-backslash'
+endif
+
 lvp_icd = custom_target(
   'lvp_icd',
   input : [vk_icd_gen, vk_api_xml],
   output : 'lvp_icd.@0@.json'.format(host_machine.cpu()),
-  command : [
-    prog_python, '@INPUT0@',
-    '--api-version', '1.1', '--xml', '@INPUT1@',
-    '--lib-path', join_paths(module_dir, icd_file_name),
-    '--out', '@OUTPUT@',
-  ],
+  command : icd_command,
   build_by_default : true,
   install_dir : with_vulkan_icd_dir,
   install : true,
