@@ -1857,10 +1857,10 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8109" name="GRAS_SAMPLE_CNTL">
 		<bitfield name="PER_SAMP_MODE" pos="0" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x810a" name="GRAS_UNKNOWN_810A">
-		<bitfield name="UNK0" low="0" high="10" type="uint"/>
-		<bitfield name="UNK16" low="16" high="26" type="uint"/>
-		<bitfield name="UNK28" low="28" high="31" type="uint"/>
+	<reg32 offset="0x810a" name="GRAS_LRZ_DEPTH_VIEW">
+		<bitfield name="BASE_LAYER" low="0" high="10" type="uint"/>
+		<bitfield name="LAYER_COUNT" low="16" high="26" type="uint"/>
+		<bitfield name="BASE_MIP_LEVEL" low="28" high="31" type="uint"/>
 	</reg32>
 
 	<!-- 0x810b-0x810f invalid -->

@@ -1777,12 +1777,12 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<value name="UNK_EVENT_WRITE" value="0x4"/>
 		<doc>
 			Tracks GRAS_LRZ_CNTL::GREATER, GRAS_LRZ_CNTL::DIR, and
-			GRAS_UNKNOWN_810A with previous values, and if one of
+			GRAS_LRZ_DEPTH_VIEW with previous values, and if one of
 			the following is true:
 			- GRAS_LRZ_CNTL::GREATER has changed
 			- GRAS_LRZ_CNTL::DIR has changed, the old value is not
 			  CUR_DIR_GE, and the new value is not CUR_DIR_DISABLED
-			- GRAS_UNKNOWN_810A has changed
+			- GRAS_LRZ_DEPTH_VIEW has changed
 			then it does a LRZ_FLUSH with GRAS_LRZ_CNTL::ENABLE
 			forced to 1.
 			Only exists in a650_sqe.fw.
