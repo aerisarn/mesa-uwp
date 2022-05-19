@@ -755,12 +755,29 @@ parse_base_offset(opt_ctx& ctx, Instruction* instr, unsigned op_index, Temp* bas
 
    Instruction* add_instr = ctx.info[tmp.id()].instr;
 
+   unsigned mask = 0x3;
+   bool is_sub = false;
    switch (add_instr->opcode) {
    case aco_opcode::v_add_u32:
    case aco_opcode::v_add_co_u32:
    case aco_opcode::v_add_co_u32_e64:
    case aco_opcode::s_add_i32:
    case aco_opcode::s_add_u32: break;
+   case aco_opcode::v_sub_u32:
+   case aco_opcode::v_sub_i32:
+   case aco_opcode::v_sub_co_u32:
+   case aco_opcode::v_sub_co_u32_e64:
+   case aco_opcode::s_sub_u32:
+   case aco_opcode::s_sub_i32:
+      mask = 0x2;
+      is_sub = true;
+      break;
+   case aco_opcode::v_subrev_u32:
+   case aco_opcode::v_subrev_co_u32:
+   case aco_opcode::v_subrev_co_u32_e64:
+      mask = 0x1;
+      is_sub = true;
+      break;
    default: return false;
    }
    if (prevent_overflow && !add_instr->definitions[0].isNUW())
@@ -769,12 +786,12 @@ parse_base_offset(opt_ctx& ctx, Instruction* instr, unsigned op_index, Temp* bas
    if (add_instr->usesModifiers())
       return false;
 
-   for (unsigned i = 0; i < 2; i++) {
+   u_foreach_bit (i, mask) {
       if (add_instr->operands[i].isConstant()) {
-         *offset = add_instr->operands[i].constantValue();
+         *offset = add_instr->operands[i].constantValue() * (uint32_t)(is_sub ? -1 : 1);
       } else if (add_instr->operands[i].isTemp() &&
                  ctx.info[add_instr->operands[i].tempId()].is_constant_or_literal(32)) {
-         *offset = ctx.info[add_instr->operands[i].tempId()].val;
+         *offset = ctx.info[add_instr->operands[i].tempId()].val * (uint32_t)(is_sub ? -1 : 1);
       } else {
          continue;
       }
@@ -1873,6 +1890,15 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::s_add_i32:
    case aco_opcode::s_add_u32:
    case aco_opcode::v_subbrev_co_u32:
+   case aco_opcode::v_sub_u32:
+   case aco_opcode::v_sub_i32:
+   case aco_opcode::v_sub_co_u32:
+   case aco_opcode::v_sub_co_u32_e64:
+   case aco_opcode::s_sub_u32:
+   case aco_opcode::s_sub_i32:
+   case aco_opcode::v_subrev_u32:
+   case aco_opcode::v_subrev_co_u32:
+   case aco_opcode::v_subrev_co_u32_e64:
       ctx.info[instr->definitions[0].tempId()].set_add_sub(instr.get());
       break;
    case aco_opcode::s_not_b32:
