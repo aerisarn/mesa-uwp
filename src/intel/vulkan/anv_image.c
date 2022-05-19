@@ -2743,13 +2743,13 @@ anv_CreateBufferView(VkDevice _device,
                                      VK_IMAGE_ASPECT_COLOR_BIT,
                                      VK_IMAGE_TILING_LINEAR);
    const uint32_t format_bs = isl_format_get_layout(view->format)->bpb / 8;
-   view->range = anv_buffer_get_range(buffer, pCreateInfo->offset,
+   view->range = vk_buffer_range(&buffer->vk, pCreateInfo->offset,
                                               pCreateInfo->range);
    view->range = align_down_npot_u32(view->range, format_bs);
 
    view->address = anv_address_add(buffer->address, pCreateInfo->offset);
 
-   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) {
+   if (buffer->vk.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) {
       view->surface_state = alloc_surface_state(device);
 
       anv_fill_buffer_surface_state(device, view->surface_state,
@@ -2759,7 +2759,7 @@ anv_CreateBufferView(VkDevice _device,
       view->surface_state = (struct anv_state){ 0 };
    }
 
-   if (buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+   if (buffer->vk.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
       view->storage_surface_state = alloc_surface_state(device);
       view->lowered_storage_surface_state = alloc_surface_state(device);
 

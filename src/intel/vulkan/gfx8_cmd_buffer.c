@@ -761,7 +761,8 @@ void genX(CmdBindIndexBuffer)(
       ib.L3BypassDisable       = true;
 #endif
       ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
-      ib.BufferSize            = buffer->size - offset;
+      ib.BufferSize            = vk_buffer_range(&buffer->vk, offset,
+                                                 VK_WHOLE_SIZE);
    }
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;

@@ -269,7 +269,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
          ib.BufferEndingAddress   = anv_address_add(buffer->address,
-                                                    buffer->size);
+                                                    buffer->vk.size);
       }
    }
 

@@ -68,6 +68,7 @@
 #include "util/vma.h"
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
+#include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_debug_report.h"
@@ -2190,30 +2191,11 @@ struct anv_pipeline_layout {
 };
 
 struct anv_buffer {
-   struct vk_object_base                        base;
-
-   struct anv_device *                          device;
-   VkDeviceSize                                 size;
-
-   VkBufferCreateFlags                          create_flags;
-   VkBufferUsageFlags                           usage;
+   struct vk_buffer vk;
 
    /* Set when bound */
-   struct anv_address                           address;
+   struct anv_address address;
 };
-
-static inline uint64_t
-anv_buffer_get_range(struct anv_buffer *buffer, uint64_t offset, uint64_t range)
-{
-   assert(offset <= buffer->size);
-   if (range == VK_WHOLE_SIZE) {
-      return buffer->size - offset;
-   } else {
-      assert(range + offset >= range);
-      assert(range + offset <= buffer->size);
-      return range;
-   }
-}
 
 enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_DYNAMIC_VIEWPORT                    = 1 << 0, /* VK_DYNAMIC_STATE_VIEWPORT */
@@ -4520,7 +4502,7 @@ VK_DEFINE_HANDLE_CASTS(anv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_acceleration_structure, base,
                                VkAccelerationStructureKHR,
                                VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, base, VkBuffer,
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, vk.base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer_view, base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW)

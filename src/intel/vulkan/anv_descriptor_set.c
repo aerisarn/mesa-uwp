@@ -1602,7 +1602,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
    }
 
    struct anv_address bind_addr = anv_address_add(buffer->address, offset);
-   uint64_t bind_range = anv_buffer_get_range(buffer, offset, range);
+   uint64_t bind_range = vk_buffer_range(&buffer->vk, offset, range);
    enum anv_descriptor_data data =
       bind_layout->type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
       anv_descriptor_data_for_type(device->physical, type) :

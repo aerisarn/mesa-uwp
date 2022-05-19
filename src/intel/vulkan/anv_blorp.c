@@ -947,7 +947,7 @@ void anv_CmdFillBuffer(
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
 
-   fillSize = anv_buffer_get_range(dst_buffer, dstOffset, fillSize);
+   fillSize = vk_buffer_range(&dst_buffer->vk, dstOffset, fillSize);
 
    /* From the Vulkan spec:
     *

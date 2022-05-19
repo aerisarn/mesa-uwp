@@ -4265,7 +4265,7 @@ anv_bind_buffer_memory(const VkBindBufferMemoryInfo *pBindInfo)
 
    if (mem) {
       assert(pBindInfo->memoryOffset < mem->bo->size);
-      assert(mem->bo->size - pBindInfo->memoryOffset >= buffer->size);
+      assert(mem->bo->size - pBindInfo->memoryOffset >= buffer->vk.size);
       buffer->address = (struct anv_address) {
          .bo = mem->bo,
          .offset = pBindInfo->memoryOffset,
@@ -4440,8 +4440,8 @@ void anv_GetBufferMemoryRequirements2(
    ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
 
    anv_get_buffer_memory_requirements(device,
-                                      buffer->size,
-                                      buffer->usage,
+                                      buffer->vk.size,
+                                      buffer->vk.usage,
                                       pMemoryRequirements);
 }
 
@@ -4475,16 +4475,11 @@ VkResult anv_CreateBuffer(
    if (pCreateInfo->size > device->physical->gtt_size)
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
-
-   buffer = vk_object_alloc(&device->vk, pAllocator, sizeof(*buffer),
-                            VK_OBJECT_TYPE_BUFFER);
+   buffer = vk_buffer_create(&device->vk, pCreateInfo,
+                             pAllocator, sizeof(*buffer));
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   buffer->create_flags = pCreateInfo->flags;
-   buffer->size = pCreateInfo->size;
-   buffer->usage = pCreateInfo->usage;
    buffer->address = ANV_NULL_ADDRESS;
 
    *pBuffer = anv_buffer_to_handle(buffer);
@@ -4503,7 +4498,7 @@ void anv_DestroyBuffer(
    if (!buffer)
       return;
 
-   vk_object_free(&device->vk, pAllocator, buffer);
+   vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
 }
 
 VkDeviceAddress anv_GetBufferDeviceAddress(

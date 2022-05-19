@@ -439,7 +439,7 @@ anv_create_ahw_memory(VkDevice device_h,
       usage = anv_ahw_usage_from_vk_usage(image->vk.create_flags, image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
       ANV_FROM_HANDLE(anv_buffer, buffer, dedicated_info->buffer);
-      w = buffer->size;
+      w = buffer->vk.size;
       format = AHARDWAREBUFFER_FORMAT_BLOB;
       usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
               AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;

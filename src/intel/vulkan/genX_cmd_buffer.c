@@ -2784,9 +2784,9 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   push->dynamic_offsets[binding->dynamic_offset_index];
                uint64_t offset = desc->offset + dynamic_offset;
                /* Clamp to the buffer size */
-               offset = MIN2(offset, desc->buffer->size);
+               offset = MIN2(offset, desc->buffer->vk.size);
                /* Clamp the range to the buffer size */
-               uint32_t range = MIN2(desc->range, desc->buffer->size - offset);
+               uint32_t range = MIN2(desc->range, desc->buffer->vk.size - offset);
 
                /* Align the range for consistency */
                if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
@@ -3133,9 +3133,9 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
             push->dynamic_offsets[range->dynamic_offset_index];
          uint64_t offset = desc->offset + dynamic_offset;
          /* Clamp to the buffer size */
-         offset = MIN2(offset, desc->buffer->size);
+         offset = MIN2(offset, desc->buffer->vk.size);
          /* Clamp the range to the buffer size */
-         uint32_t bound_range = MIN2(desc->range, desc->buffer->size - offset);
+         uint32_t bound_range = MIN2(desc->range, desc->buffer->vk.size - offset);
 
          /* Align the range for consistency */
          bound_range = align_u32(bound_range, ANV_UBO_ALIGNMENT);
@@ -3843,7 +3843,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
              * elements of pname:pBuffers[i] plus pname:pOffsets[i]."
              */
             UNUSED uint32_t size = dynamic_size ?
-               cmd_buffer->state.vertex_bindings[vb].size : buffer->size - offset;
+               cmd_buffer->state.vertex_bindings[vb].size : buffer->vk.size - offset;
 
             state = (struct GENX(VERTEX_BUFFER_STATE)) {
                .VertexBufferIndex = vb,
@@ -3857,7 +3857,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                .AddressModifyEnable = true,
                .BufferPitch = stride,
                .BufferStartingAddress = anv_address_add(buffer->address, offset),
-               .NullVertexBuffer = offset >= buffer->size,
+               .NullVertexBuffer = offset >= buffer->vk.size,
 #if GFX_VER >= 12
                .L3BypassDisable = true,
 #endif
@@ -3870,7 +3870,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                 *
                 * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/7439
                 */
-               .EndAddress = anv_address_add(buffer->address, buffer->size - 1),
+               .EndAddress = anv_address_add(buffer->address, buffer->vk.size - 1),
 #endif
             };
          } else {

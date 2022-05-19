@@ -1220,8 +1220,8 @@ void anv_CmdBindTransformFeedbackBuffersEXT(
          xfb[firstBinding + i].buffer = buffer;
          xfb[firstBinding + i].offset = pOffsets[i];
          xfb[firstBinding + i].size =
-            anv_buffer_get_range(buffer, pOffsets[i],
-                                 pSizes ? pSizes[i] : VK_WHOLE_SIZE);
+            vk_buffer_range(&buffer->vk, pOffsets[i],
+                            pSizes ? pSizes[i] : VK_WHOLE_SIZE);
       }
    }
 }
