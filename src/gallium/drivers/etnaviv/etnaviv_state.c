@@ -135,6 +135,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    struct compiled_framebuffer_state *cs = &ctx->framebuffer;
    int nr_samples_color = -1;
    int nr_samples_depth = -1;
+   bool target_16bpp = false;
 
    /* Set up TS as well. Warning: this state is used by both the RS and PE */
    uint32_t ts_mem_config = 0;
@@ -155,6 +156,9 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
                                 VIVS_PE_COLOR_FORMAT_FORMAT_MASK;
       else
           cs->PE_COLOR_FORMAT = VIVS_PE_COLOR_FORMAT_FORMAT(fmt);
+
+      if (util_format_get_blocksize(cbuf->base.format) <= 2)
+         target_16bpp = true;
 
       cs->PE_COLOR_FORMAT |=
          VIVS_PE_COLOR_FORMAT_COMPONENTS__MASK |
@@ -250,6 +254,9 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       unsigned depth_bits =
          depth_format == VIVS_PE_DEPTH_CONFIG_DEPTH_FORMAT_D16 ? 16 : 24;
       bool depth_supertiled = (res->layout & ETNA_LAYOUT_BIT_SUPER) != 0;
+
+      if (depth_bits == 16)
+         target_16bpp = true;
 
       cs->PE_DEPTH_CONFIG =
          depth_format |
@@ -358,9 +365,9 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    /* Single buffer setup. There is only one switch for this, not a separate
     * one per color buffer / depth buffer. To keep the logic simple always use
     * single buffer when this feature is available.
-    * note: the blob will use 2 in some situations, figure out why?
     */
-   pe_logic_op |= VIVS_PE_LOGIC_OP_SINGLE_BUFFER(screen->specs.single_buffer ? 3 : 0);
+   if (screen->specs.single_buffer)
+      pe_logic_op |= VIVS_PE_LOGIC_OP_SINGLE_BUFFER(target_16bpp ? 3 : 2);
    cs->PE_LOGIC_OP = pe_logic_op;
 
    /* keep copy of original structure */
