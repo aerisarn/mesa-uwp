@@ -1803,7 +1803,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->compiler =
       ir3_compiler_create(NULL, &physical_device->dev_id,
                           &(struct ir3_compiler_options) {
-                              .robust_ubo_access = robust_buffer_access2,
+                              .robust_buffer_access2 = robust_buffer_access2,
                               .push_ubo_with_preamble = true,
                               .disable_cache = true,
                            });

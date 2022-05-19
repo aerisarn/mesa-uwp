@@ -2512,8 +2512,8 @@ tu_hash_stage(struct mesa_sha1 *ctx,
 static void
 tu_hash_compiler(struct mesa_sha1 *ctx, const struct ir3_compiler *compiler)
 {
-   _mesa_sha1_update(ctx, &compiler->robust_ubo_access,
-                     sizeof(compiler->robust_ubo_access));
+   _mesa_sha1_update(ctx, &compiler->robust_buffer_access2,
+                     sizeof(compiler->robust_buffer_access2));
    _mesa_sha1_update(ctx, &ir3_shader_debug, sizeof(ir3_shader_debug));
 }
 

@@ -206,7 +206,7 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->dev = dev;
    compiler->dev_id = dev_id;
    compiler->gen = fd_dev_gen(dev_id);
-   compiler->robust_ubo_access = options->robust_ubo_access;
+   compiler->robust_buffer_access2 = options->robust_buffer_access2;
 
    /* All known GPU's have 32k local memory (aka shared) */
    compiler->local_mem_size = 32 * 1024;
