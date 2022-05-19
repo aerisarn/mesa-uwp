@@ -676,8 +676,9 @@ schedule_SMEM(sched_ctx& ctx, Block* block, std::vector<RegisterDemand>& registe
          break;
       /* only move VMEM instructions below descriptor loads. be more aggressive at higher num_waves
        * to help create more vmem clauses */
-      if (candidate->isVMEM() && (cursor.insert_idx - cursor.source_idx > (ctx.num_waves * 4) ||
-                                  current->operands[0].size() == 4))
+      if ((candidate->isVMEM() || candidate->isFlatLike()) &&
+          (cursor.insert_idx - cursor.source_idx > (ctx.num_waves * 4) ||
+           current->operands[0].size() == 4))
          break;
       /* don't move descriptor loads below buffer loads */
       if (candidate->format == Format::SMEM && current->operands[0].size() == 4 &&
@@ -733,7 +734,7 @@ schedule_SMEM(sched_ctx& ctx, Block* block, std::vector<RegisterDemand>& registe
       /* check if candidate depends on current */
       bool is_dependency = !found_dependency && !ctx.mv.upwards_check_deps(up_cursor);
       /* no need to steal from following VMEM instructions */
-      if (is_dependency && candidate->isVMEM())
+      if (is_dependency && (candidate->isVMEM() || candidate->isFlatLike()))
          break;
 
       if (found_dependency) {
@@ -766,7 +767,7 @@ schedule_SMEM(sched_ctx& ctx, Block* block, std::vector<RegisterDemand>& registe
       MoveResult res = ctx.mv.upwards_move(up_cursor);
       if (res == move_fail_ssa || res == move_fail_rar) {
          /* no need to steal from following VMEM instructions */
-         if (res == move_fail_ssa && candidate->isVMEM())
+         if (res == move_fail_ssa && (candidate->isVMEM() || candidate->isFlatLike()))
             break;
          add_to_hazard_query(&hq, candidate.get());
          ctx.mv.upwards_skip(up_cursor);
