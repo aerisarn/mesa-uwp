@@ -293,7 +293,7 @@ vn_device_init(struct vn_device *dev,
 
    result = vn_device_init_queues(dev, create_info);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto out_destroy_device;
 
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++) {
       struct vn_device_memory_pool *pool = &dev->memory_pools[i];
@@ -302,18 +302,19 @@ vn_device_init(struct vn_device *dev,
 
    result = vn_buffer_cache_init(dev);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto out_memory_pool_fini;
 
    return VK_SUCCESS;
 
-fail:
-   if (dev->queues) {
-      for (uint32_t i = 0; i < dev->queue_count; i++)
-         vn_queue_fini(&dev->queues[i]);
+out_memory_pool_fini:
+   for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
+      vn_device_memory_pool_fini(dev, i);
 
-      vk_free(alloc, dev->queues);
-   }
+   for (uint32_t i = 0; i < dev->queue_count; i++)
+      vn_queue_fini(&dev->queues[i]);
+   vk_free(alloc, dev->queues);
 
+out_destroy_device:
    vn_call_vkDestroyDevice(instance, dev_handle, NULL);
 
    return result;
