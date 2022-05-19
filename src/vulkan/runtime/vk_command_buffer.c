@@ -81,3 +81,18 @@ vk_common_CmdExecuteCommands(VkCommandBuffer commandBuffer,
       vk_cmd_queue_execute(&secondary->cmd_queue, commandBuffer, disp);
    }
 }
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
+                               uint32_t firstBinding,
+                               uint32_t bindingCount,
+                               const VkBuffer *pBuffers,
+                               const VkDeviceSize *pOffsets)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+   const struct vk_device_dispatch_table *disp =
+      &cmd_buffer->base.device->dispatch_table;
+
+   disp->CmdBindVertexBuffers2(commandBuffer, firstBinding, bindingCount,
+                               pBuffers, pOffsets, NULL, NULL);
+}

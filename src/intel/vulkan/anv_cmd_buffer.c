@@ -1197,18 +1197,6 @@ void anv_CmdBindVertexBuffers2(
    }
 }
 
-void anv_CmdBindVertexBuffers(
-    VkCommandBuffer                             commandBuffer,
-    uint32_t                                    firstBinding,
-    uint32_t                                    bindingCount,
-    const VkBuffer*                             pBuffers,
-    const VkDeviceSize*                         pOffsets)
-{
-   return anv_CmdBindVertexBuffers2(commandBuffer, firstBinding,
-                                    bindingCount, pBuffers, pOffsets,
-                                    NULL, NULL);
-}
-
 void anv_CmdBindTransformFeedbackBuffersEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstBinding,

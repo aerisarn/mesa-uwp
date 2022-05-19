@@ -1760,17 +1760,6 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
-                        uint32_t firstBinding,
-                        uint32_t bindingCount,
-                        const VkBuffer *pBuffers,
-                        const VkDeviceSize *pOffsets)
-{
-   tu_CmdBindVertexBuffers2EXT(commandBuffer, firstBinding, bindingCount,
-                               pBuffers, pOffsets, NULL, NULL);
-}
-
-VKAPI_ATTR void VKAPI_CALL
 tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
                             uint32_t firstBinding,
                             uint32_t bindingCount,
