@@ -1782,7 +1782,7 @@ if with_llvm
     error('Lavapipe requires LLVM draw support.')
   endif
 
-  if cc.get_id() != 'msvc'
+  if cc.get_argument_syntax() != 'msvc'
     # LLVM can be built without rtti, turning off rtti changes the ABI of C++
     # programs, so we need to build all C++ code in mesa without rtti as well to
     # ensure that linking works. Note that MSVC does handle mismatching RTTI
