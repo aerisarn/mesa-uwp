@@ -113,7 +113,7 @@ d3d12_video_encoder_update_current_frame_pic_params_info_h264(struct d3d12_video
 {
    struct pipe_h264_enc_picture_desc *h264Pic = (struct pipe_h264_enc_picture_desc *) picture;
    d3d12_video_bitstream_builder_h264 *pH264BitstreamBuilder =
-      dynamic_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
+      static_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
    assert(pH264BitstreamBuilder != nullptr);
 
    bUsedAsReference = !h264Pic->not_referenced;
@@ -774,7 +774,7 @@ d3d12_video_encoder_build_codec_headers_h264(struct d3d12_video_encoder *pD3D12E
                            D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAG_RESOLUTION_CHANGE) != 0);
 
    d3d12_video_bitstream_builder_h264 *pH264BitstreamBuilder =
-      dynamic_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
+      static_cast<d3d12_video_bitstream_builder_h264 *>(pD3D12Enc->m_upBitstreamBuilder.get());
    assert(pH264BitstreamBuilder);
 
    uint32_t active_seq_parameter_set_id = pH264BitstreamBuilder->get_active_sps_id();
