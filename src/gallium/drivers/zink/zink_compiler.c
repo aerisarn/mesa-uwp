@@ -411,6 +411,44 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens)
    return tgsi_to_nir(tokens, screen, false);
 }
 
+
+static bool
+dest_is_64bit(nir_dest *dest, void *state)
+{
+   bool *lower = (bool *)state;
+   if (dest && (nir_dest_bit_size(*dest) == 64)) {
+      *lower = true;
+      return false;
+   }
+   return true;
+}
+
+static bool
+src_is_64bit(nir_src *src, void *state)
+{
+   bool *lower = (bool *)state;
+   if (src && (nir_src_bit_size(*src) == 64)) {
+      *lower = true;
+      return false;
+   }
+   return true;
+}
+
+static bool
+filter_64_bit_instr(const nir_instr *const_instr, UNUSED const void *data)
+{
+   bool lower = false;
+   /* lower_alu_to_scalar required nir_instr to be const, but nir_foreach_*
+    * doesn't have const variants, so do the ugly const_cast here. */
+   nir_instr *instr = (nir_instr *)const_instr;
+
+   nir_foreach_dest(instr, dest_is_64bit, &lower);
+   if (lower)
+      return true;
+   nir_foreach_src(instr, src_is_64bit, &lower);
+   return lower;
+}
+
 static void
 optimize_nir(struct nir_shader *s)
 {
@@ -420,6 +458,9 @@ optimize_nir(struct nir_shader *s)
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_remove_phis);
+      if (s->options->lower_int64_options) {
+         NIR_PASS(progress, s, nir_lower_alu_to_scalar, filter_64_bit_instr, NULL);
+      }
       NIR_PASS(progress, s, nir_opt_dce);
       NIR_PASS(progress, s, nir_opt_dead_cf);
       NIR_PASS(progress, s, nir_lower_phis_to_scalar, false);
