@@ -287,6 +287,9 @@ mdg_should_scalarize(const nir_instr *instr, const void *_unused)
 {
         const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
+        if (nir_src_bit_size(alu->src[0].src) == 64)
+                return true;
+
         if (nir_dest_bit_size(alu->dest.dest) == 64)
                 return true;
 
