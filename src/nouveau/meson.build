@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+subdir('nvidia-headers')
 subdir('compiler')
 subdir('winsys')
 if with_tools.contains('drm-shim')
