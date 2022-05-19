@@ -314,6 +314,15 @@ nvk_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
    // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
    VK_OUTARRAY_MAKE_TYPED(
       VkQueueFamilyProperties2, out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+
+   vk_outarray_append_typed(VkQueueFamilyProperties2, &out, p) {
+      p->queueFamilyProperties.queueFlags = VK_QUEUE_GRAPHICS_BIT |
+                                            VK_QUEUE_COMPUTE_BIT |
+                                            VK_QUEUE_TRANSFER_BIT;
+      p->queueFamilyProperties.queueCount = 1;
+      p->queueFamilyProperties.timestampValidBits = 64;
+      p->queueFamilyProperties.minImageTransferGranularity = (VkExtent3D){1, 1, 1};
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
