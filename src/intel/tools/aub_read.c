@@ -185,7 +185,7 @@ handle_memtrace_reg_write(struct aub_read *read, const uint32_t *p)
    uint64_t context_descriptor;
 
    switch (offset) {
-   case EXECLIST_SUBMITPORT_RCSUNIT: /* render elsp */
+   case RCSUNIT(EXECLIST_SUBMITPORT): /* render elsp */
       read->render_elsp[read->render_elsp_index++] = value;
       if (read->render_elsp_index < 4)
          return;
@@ -195,7 +195,7 @@ handle_memtrace_reg_write(struct aub_read *read, const uint32_t *p)
       context_descriptor = (uint64_t)read->render_elsp[2] << 32 |
          read->render_elsp[3];
       break;
-   case EXECLIST_SUBMITPORT_VCSUNIT0: /* video elsp */
+   case VCSUNIT0(EXECLIST_SUBMITPORT): /* video elsp */
       read->video_elsp[read->video_elsp_index++] = value;
       if (read->video_elsp_index < 4)
          return;
@@ -205,7 +205,7 @@ handle_memtrace_reg_write(struct aub_read *read, const uint32_t *p)
       context_descriptor = (uint64_t)read->video_elsp[2] << 32 |
          read->video_elsp[3];
       break;
-   case EXECLIST_SUBMITPORT_BCSUNIT: /* blitter elsp */
+   case BCSUNIT0(EXECLIST_SUBMITPORT): /* blitter elsp */
       read->blitter_elsp[read->blitter_elsp_index++] = value;
       if (read->blitter_elsp_index < 4)
          return;
@@ -215,35 +215,35 @@ handle_memtrace_reg_write(struct aub_read *read, const uint32_t *p)
       context_descriptor = (uint64_t)read->blitter_elsp[2] << 32 |
          read->blitter_elsp[3];
       break;
-   case EXECLIST_SQ_CONTENTS0_RCSUNIT: /* render elsq0 lo */
+   case RCSUNIT(EXECLIST_SQ_CONTENTS): /* render elsq0 lo */
       read->render_elsp[3] = value;
       return;
-   case (EXECLIST_SQ_CONTENTS0_RCSUNIT + 4): /* render elsq0 hi */
+   case RCSUNIT(EXECLIST_SQ_CONTENTS) + 4: /* render elsq0 hi */
       read->render_elsp[2] = value;
       return;
-   case EXECLIST_SQ_CONTENTS0_VCSUNIT0: /* video elsq0 lo */
+   case VCSUNIT0(EXECLIST_SQ_CONTENTS): /* video elsq0 lo */
       read->video_elsp[3] = value;
       return;
-   case EXECLIST_SQ_CONTENTS0_VCSUNIT0 + 4: /* video elsq0 hi */
+   case VCSUNIT0(EXECLIST_SQ_CONTENTS) + 4: /* video elsq0 hi */
       read->video_elsp[2] = value;
       return;
-   case EXECLIST_SQ_CONTENTS0_BCSUNIT: /* blitter elsq0 lo */
+   case BCSUNIT0(EXECLIST_SQ_CONTENTS): /* blitter elsq0 lo */
       read->blitter_elsp[3] = value;
       return;
-   case (EXECLIST_SQ_CONTENTS0_BCSUNIT + 4): /* blitter elsq0 hi */
+   case BCSUNIT0(EXECLIST_SQ_CONTENTS) + 4: /* blitter elsq0 hi */
       read->blitter_elsp[2] = value;
       return;
-   case EXECLIST_CONTROL_RCSUNIT: /* render elsc */
+   case RCSUNIT(EXECLIST_CONTROL): /* render elsc */
       engine = I915_ENGINE_CLASS_RENDER;
       context_descriptor = (uint64_t)read->render_elsp[2] << 32 |
          read->render_elsp[3];
       break;
-   case EXECLIST_CONTROL_VCSUNIT0: /* video_elsc */
+   case VCSUNIT0(EXECLIST_CONTROL): /* video_elsc */
       engine = I915_ENGINE_CLASS_VIDEO;
       context_descriptor = (uint64_t)read->video_elsp[2] << 32 |
          read->video_elsp[3];
       break;
-   case EXECLIST_CONTROL_BCSUNIT: /* blitter elsc */
+   case BCSUNIT0(EXECLIST_CONTROL): /* blitter elsc */
       engine = I915_ENGINE_CLASS_COPY;
       context_descriptor = (uint64_t)read->blitter_elsp[2] << 32 |
          read->blitter_elsp[3];
