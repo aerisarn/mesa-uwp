@@ -56,6 +56,7 @@ libvn_files = files(
   'vn_descriptor_set.c',
   'vn_device.c',
   'vn_device_memory.c',
+  'vn_feedback.c',
   'vn_icd.c',
   'vn_image.c',
   'vn_instance.c',
