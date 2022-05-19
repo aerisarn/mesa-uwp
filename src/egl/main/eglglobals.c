@@ -91,7 +91,7 @@ struct _egl_global _eglGlobal =
    " EGL_KHR_platform_x11"
 #endif
 #ifdef HAVE_XCB_PLATFORM
-   " EGL_MESA_platform_xcb"
+   " EGL_EXT_platform_xcb"
 #endif
 #ifdef HAVE_DRM_PLATFORM
    " EGL_MESA_platform_gbm"
