@@ -302,7 +302,6 @@ uint64_t IntelDriver::gpu_next()
 
    intel_perf_query_result_accumulate_fields(&perf->result,
                                              selected_query,
-                                             &perf->devinfo,
                                              record_a + 1,
                                              record_b + 1,
                                              false /* no_oa_accumulate */);
