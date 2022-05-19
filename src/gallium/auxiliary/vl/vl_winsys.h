@@ -105,7 +105,7 @@ vl_vgem_drm_screen_create(int fd) { return NULL; }
 struct vl_screen *
 vl_vgem_drm_screen_create(int fd);
 static inline struct vl_screen *
-vl_xlib_swrast_screen_create(Display *display, int screen) { return NULL; }
+vl_xlib_swrast_screen_create(void *display, int screen) { return NULL; }
 #endif
 
 #endif
