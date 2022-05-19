@@ -116,6 +116,47 @@ vn_device_init_queues(struct vn_device *dev,
 }
 
 static bool
+vn_device_queue_family_init(struct vn_device *dev,
+                            const VkDeviceCreateInfo *create_info)
+{
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   uint32_t *queue_families = NULL;
+   uint32_t count = 0;
+
+   queue_families = vk_zalloc(
+      alloc, sizeof(*queue_families) * create_info->queueCreateInfoCount,
+      VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!queue_families)
+      return false;
+
+   for (uint32_t i = 0; i < create_info->queueCreateInfoCount; i++) {
+      const uint32_t index =
+         create_info->pQueueCreateInfos[i].queueFamilyIndex;
+      bool new_index = true;
+
+      for (uint32_t j = 0; j < count; j++) {
+         if (queue_families[j] == index) {
+            new_index = false;
+            break;
+         }
+      }
+      if (new_index)
+         queue_families[count++] = index;
+   }
+
+   dev->queue_families = queue_families;
+   dev->queue_family_count = count;
+
+   return true;
+}
+
+static inline void
+vn_device_queue_family_fini(struct vn_device *dev)
+{
+   vk_free(&dev->base.base.alloc, dev->queue_families);
+}
+
+static bool
 find_extension_names(const char *const *exts,
                      uint32_t ext_count,
                      const char *name)
@@ -291,6 +332,11 @@ vn_device_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
+   if (!vn_device_queue_family_init(dev, create_info)) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto out_destroy_device;
+   }
+
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++) {
       struct vn_device_memory_pool *pool = &dev->memory_pools[i];
       mtx_init(&pool->mutex, mtx_plain);
@@ -313,6 +359,9 @@ out_memory_pool_fini:
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
       vn_device_memory_pool_fini(dev, i);
 
+   vn_device_queue_family_fini(dev);
+
+out_destroy_device:
    vn_call_vkDestroyDevice(instance, dev_handle, NULL);
 
    return result;
@@ -378,6 +427,8 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
 
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
       vn_device_memory_pool_fini(dev, i);
+
+   vn_device_queue_family_fini(dev);
 
    /* We must emit vkDestroyDevice before freeing dev->queues.  Otherwise,
     * another thread might reuse their object ids while they still refer to
