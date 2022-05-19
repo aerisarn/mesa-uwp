@@ -73,6 +73,12 @@ aubinator_error(void *user_data, const void *aub_data, const char *msg)
 }
 
 static void
+aubinator_comment(void *user_data, const char *str)
+{
+   fprintf(outfile, "%s\n", str);
+}
+
+static void
 aubinator_init(void *user_data, int aub_pci_id, const char *app_name)
 {
    pci_id = aub_pci_id;
@@ -373,6 +379,7 @@ int main(int argc, char *argv[])
       .user_data = &mem,
       .error = aubinator_error,
       .info = aubinator_init,
+      .comment = aubinator_comment,
 
       .local_write = aub_mem_local_write,
       .phys_write = aub_mem_phys_write,
