@@ -2596,7 +2596,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
                       LLVMValueRef (*outputs)[4])
 {
    struct lp_build_nir_soa_context bld;
-   struct lp_type type = params->type;
+   const struct lp_type type = params->type;
    struct lp_type res_type;
 
    assert(type.length <= LP_MAX_VECTOR_LENGTH);
