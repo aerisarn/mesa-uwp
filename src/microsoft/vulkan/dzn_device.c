@@ -110,6 +110,7 @@ static const struct debug_control dzn_debug_options[] = {
    { "signature", DZN_DEBUG_SIG },
    { "gbv", DZN_DEBUG_GBV },
    { "d3d12", DZN_DEBUG_D3D12 },
+   { "debugger", DZN_DEBUG_DEBUGGER },
    { NULL, 0 }
 };
 
@@ -178,6 +179,13 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    instance->physical_devices_enumerated = false;
    instance->debug_flags =
       parse_debug_string(getenv("DZN_DEBUG"), dzn_debug_options);
+
+   if (instance->debug_flags & DZN_DEBUG_DEBUGGER) {
+      /* wait for debugger to attach... */
+      while (!IsDebuggerPresent()) {
+         Sleep(100);
+      }
+   }
 
    instance->dxil_validator = dxil_create_validator(NULL);
    instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig();

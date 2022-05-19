@@ -920,6 +920,7 @@ enum dzn_debug_flags {
    DZN_DEBUG_SIG = 1 << 5,
    DZN_DEBUG_GBV = 1 << 6,
    DZN_DEBUG_D3D12 = 1 << 7,
+   DZN_DEBUG_DEBUGGER = 1 << 8,
 };
 
 struct dzn_instance {
