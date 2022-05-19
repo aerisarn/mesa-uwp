@@ -465,12 +465,6 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
 
             nir_alu_type src_type = nir_tex_instr_src_type(tex, i);
 
-            if (src_alu->op == nir_op_mov) {
-               assert(!"The IR shouldn't contain any movs to make this pass"
-                       " effective.");
-               continue;
-            }
-
             /* Handle vector sources that are made of scalar instructions. */
             if (nir_op_is_vec(src_alu->op)) {
                /* See if the vector is made of f16->f32 opcodes. */
