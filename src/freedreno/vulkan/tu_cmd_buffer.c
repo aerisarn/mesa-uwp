@@ -3434,6 +3434,21 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
    tu_flush_for_stage(cache, src_stage, dst_stage);
 }
 
+/* emit mrt/zs/msaa/ubwc state for the subpass that is starting (either at
+ * vkCmdBeginRenderPass2() or vkCmdNextSubpass2())
+ */
+static void
+tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
+{
+   tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
+   tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
+   if (cmd->state.subpass->samples)
+      tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples, cmd->state.line_mode);
+   tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
+
+   tu_set_input_attachments(cmd, cmd->state.subpass);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                        const VkRenderPassBeginInfo *pRenderPassBegin,
@@ -3523,14 +3538,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
 
    tu_emit_renderpass_begin(cmd, pRenderPassBegin);
-
-   tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
-   tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
-   if (cmd->state.subpass->samples)
-      tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples, cmd->state.line_mode);
-   tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
-
-   tu_set_input_attachments(cmd, cmd->state.subpass);
+   tu_emit_subpass_begin(cmd);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3594,14 +3602,7 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    if (cmd->state.subpass->feedback_invalidate)
       cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_CACHE_INVALIDATE;
 
-   /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
-   tu6_emit_zs(cmd, cmd->state.subpass, cs);
-   tu6_emit_mrt(cmd, cmd->state.subpass, cs);
-   if (cmd->state.subpass->samples)
-      tu6_emit_msaa(cs, cmd->state.subpass->samples, cmd->state.line_mode);
-   tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
-
-   tu_set_input_attachments(cmd, cmd->state.subpass);
+   tu_emit_subpass_begin(cmd);
 }
 
 static uint32_t
