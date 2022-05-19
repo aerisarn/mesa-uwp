@@ -256,15 +256,15 @@ traces:
   - path: valve/counterstrike-v2.trace
     expectations:
       - device: gl-virgl
-        checksum: ae2e04d8695dbc7f5561403202e376fc
+        checksum: 6298e0897eb1396489c9cbb88f2cac25
   - path: valve/counterstrike-source-v2.trace
     expectations:
       - device: gl-virgl
-        checksum: 4c19f6060ff0fe0055678c48e1e77282
+        checksum: 8b9e1ea0bf139dfb825d44bd1fda85a5
   - path: valve/half-life-2-v2.trace
     expectations:
       - device: gl-virgl
-        checksum: 323887eedf59fa9282d6c3a4c82c3192
+        checksum: 89f93a1000a8b1245c4114a20f398453
   - path: valve/portal-2-v2.trace
     expectations:
       - device: gl-virgl
