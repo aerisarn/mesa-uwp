@@ -8,6 +8,8 @@
 
 #include <stddef.h>
 
+#include "util/os_misc.h"
+
 struct nouveau_ws_device_priv {
    struct nouveau_ws_device base;
    struct nouveau_drm *drm;
@@ -49,7 +51,8 @@ nouveau_ws_device_new(int fd)
    device->base.device_id = device_id;
    device->base.chipset = dev->chipset;
    device->base.vram_size = dev->vram_size;
-   device->base.gart_size = dev->gart_size;
+   os_get_available_system_memory(&device->base.gart_size);
+   device->base.gart_size = MIN2(device->base.gart_size, dev->gart_size);
    device->base.is_integrated = dev->vram_size == 0;
    device->drm = drm;
    device->dev = dev;

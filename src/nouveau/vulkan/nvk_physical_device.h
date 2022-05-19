@@ -16,6 +16,12 @@ struct nvk_physical_device {
 
    /* Link in nvk_instance::physical_devices */
    struct list_head link;
+
+   // TODO: add mapable VRAM heap if possible
+   VkMemoryHeap mem_heaps[2];
+   VkMemoryType mem_types[2];
+   uint8_t mem_heap_cnt;
+   uint8_t mem_type_cnt;
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_physical_device,

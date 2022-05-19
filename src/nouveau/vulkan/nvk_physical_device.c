@@ -176,6 +176,27 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->instance = instance;
    device->dev = ndev;
 
+   device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+   device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+   device->mem_types[0].heapIndex = 0;
+
+   if (ndev->vram_size) {
+      device->mem_type_cnt = 2;
+      device->mem_heap_cnt = 2;
+
+      device->mem_heaps[0].size = ndev->vram_size;
+      device->mem_heaps[1].size = ndev->gart_size;
+      device->mem_heaps[1].flags = 0;
+      device->mem_types[1].heapIndex = 1;
+      device->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+   } else {
+      device->mem_type_cnt = 1;
+      device->mem_heap_cnt = 1;
+
+      device->mem_heaps[0].size = ndev->gart_size;
+      device->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+   }
+
    *device_out = device;
 
    return VK_SUCCESS;
@@ -296,6 +317,18 @@ VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
 {
+   VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+
+   pMemoryProperties->memoryProperties.memoryHeapCount = pdevice->mem_heap_cnt;
+   for (int i = 0; i < pdevice->mem_heap_cnt; i++) {
+      pMemoryProperties->memoryProperties.memoryHeaps[i] = pdevice->mem_heaps[i];
+   }
+
+   pMemoryProperties->memoryProperties.memoryTypeCount = pdevice->mem_type_cnt;
+   for (int i = 0; i < pdevice->mem_type_cnt; i++) {
+      pMemoryProperties->memoryProperties.memoryTypes[i] = pdevice->mem_types[i];
+   }
+
    vk_foreach_struct(ext, pMemoryProperties->pNext)
    {
       switch (ext->sType) {
