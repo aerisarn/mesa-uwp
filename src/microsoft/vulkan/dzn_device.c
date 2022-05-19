@@ -43,6 +43,7 @@
 #include <stdlib.h>
 
 #include <windows.h>
+#include <shlobj.h>
 
 #include <directx/d3d12sdklayers.h>
 
@@ -111,6 +112,7 @@ static const struct debug_control dzn_debug_options[] = {
    { "gbv", DZN_DEBUG_GBV },
    { "d3d12", DZN_DEBUG_D3D12 },
    { "debugger", DZN_DEBUG_DEBUGGER },
+   { "redirects", DZN_DEBUG_REDIRECTS },
    { NULL, 0 }
 };
 
@@ -184,6 +186,16 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
       /* wait for debugger to attach... */
       while (!IsDebuggerPresent()) {
          Sleep(100);
+      }
+   }
+
+   if (instance->debug_flags & DZN_DEBUG_REDIRECTS) {
+      char home[MAX_PATH], path[MAX_PATH];
+      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, home))) {
+         snprintf(path, sizeof(path), "%s\\stderr.txt", home);
+         freopen(path, "w", stderr);
+         snprintf(path, sizeof(path), "%s\\stdout.txt", home);
+         freopen(path, "w", stdout);
       }
    }
 

@@ -921,6 +921,7 @@ enum dzn_debug_flags {
    DZN_DEBUG_GBV = 1 << 6,
    DZN_DEBUG_D3D12 = 1 << 7,
    DZN_DEBUG_DEBUGGER = 1 << 8,
+   DZN_DEBUG_REDIRECTS = 1 << 9,
 };
 
 struct dzn_instance {
