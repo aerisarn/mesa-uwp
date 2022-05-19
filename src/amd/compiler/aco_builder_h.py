@@ -541,7 +541,8 @@ formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.prod
            ("vop2_e64", [Format.VOP2, Format.VOP3], 'VOP3_instruction', itertools.product([1, 2], [2, 3])),
            ("vopc_e64", [Format.VOPC, Format.VOP3], 'VOP3_instruction', itertools.product([1, 2], [2])),
            ("flat", [Format.FLAT], 'FLAT_instruction', [(0, 3), (1, 2)]),
-           ("global", [Format.GLOBAL], 'FLAT_instruction', [(0, 3), (1, 2)])]
+           ("global", [Format.GLOBAL], 'FLAT_instruction', [(0, 3), (1, 2)]),
+           ("scratch", [Format.SCRATCH], 'FLAT_instruction', [(0, 3), (1, 2)])]
 formats = [(f if len(f) == 5 else f + ('',)) for f in formats]
 %>\\
 % for name, formats, struct, shapes, extra_field_setup in formats:

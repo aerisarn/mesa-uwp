@@ -547,7 +547,11 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding |= instr->operands[1].physReg() << 16;
       } else if (instr->format != Format::FLAT ||
                  ctx.gfx_level >= GFX10) { /* SADDR is actually used with FLAT on GFX10 */
-         if (ctx.gfx_level <= GFX9)
+         /* For GFX10.3 scratch, 0x7F disables both ADDR and SADDR, unlike sgpr_null, which only
+          * disables SADDR.
+          */
+         if (ctx.gfx_level <= GFX9 ||
+             (instr->format == Format::SCRATCH && instr->operands[0].isUndefined()))
             encoding |= 0x7F << 16;
          else
             encoding |= sgpr_null << 16;

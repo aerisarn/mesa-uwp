@@ -262,7 +262,8 @@ validate_ir(Program* program)
                bool can_be_undef = is_phi(instr) || instr->isEXP() || instr->isReduction() ||
                                    instr->opcode == aco_opcode::p_create_vector ||
                                    (flat && i == 1) || (instr->isMIMG() && (i == 1 || i == 2)) ||
-                                   ((instr->isMUBUF() || instr->isMTBUF()) && i == 1);
+                                   ((instr->isMUBUF() || instr->isMTBUF()) && i == 1) ||
+                                   (instr->isScratch() && i == 0);
                check(can_be_undef, "Undefs can only be used in certain operands", instr.get());
             } else {
                check(instr->operands[i].isFixed() || instr->operands[i].isTemp() ||
@@ -658,13 +659,20 @@ validate_ir(Program* program)
                   instr.get());
             FALLTHROUGH;
          case Format::GLOBAL:
-         case Format::SCRATCH: {
             check(
                instr->operands[0].isTemp() && instr->operands[0].regClass().type() == RegType::vgpr,
-               "FLAT/GLOBAL/SCRATCH address must be vgpr", instr.get());
+               "FLAT/GLOBAL address must be vgpr", instr.get());
+            FALLTHROUGH;
+         case Format::SCRATCH: {
+            check(instr->operands[0].hasRegClass() &&
+                     instr->operands[0].regClass().type() == RegType::vgpr,
+                  "FLAT/GLOBAL/SCRATCH address must be undefined or vgpr", instr.get());
             check(instr->operands[1].hasRegClass() &&
                      instr->operands[1].regClass().type() == RegType::sgpr,
                   "FLAT/GLOBAL/SCRATCH sgpr address must be undefined or sgpr", instr.get());
+            if (instr->format == Format::SCRATCH && program->gfx_level < GFX10_3)
+               check(instr->operands[0].isTemp() || instr->operands[1].isTemp(),
+                     "SCRATCH must have either SADDR or ADDR operand", instr.get());
             if (!instr->definitions.empty())
                check(instr->definitions[0].getTemp().type() == RegType::vgpr,
                      "FLAT/GLOBAL/SCRATCH result must be vgpr", instr.get());

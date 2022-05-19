@@ -673,7 +673,8 @@ gen(Instruction* instr, wait_ctx& ctx)
    case Format::MUBUF:
    case Format::MTBUF:
    case Format::MIMG:
-   case Format::GLOBAL: {
+   case Format::GLOBAL:
+   case Format::SCRATCH: {
       wait_event ev =
          !instr->definitions.empty() || ctx.gfx_level < GFX10 ? event_vmem : event_vmem_store;
       update_counters(ctx, ev, get_sync_info(instr));
