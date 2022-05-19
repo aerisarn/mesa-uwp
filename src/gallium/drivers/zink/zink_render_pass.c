@@ -155,6 +155,12 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       }
       pstate->num_attachments++;
    }
+   if (dep_access & VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)
+      pstate->color_read = true;
+   if (dep_access & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+      pstate->depth_read = true;
+   if (dep_access & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+      pstate->depth_write = true;
 
    if (!screen->info.have_KHR_synchronization2)
       dep_pipeline = MAX2(dep_pipeline, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
