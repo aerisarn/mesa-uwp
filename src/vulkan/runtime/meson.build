@@ -24,6 +24,8 @@ vk_physical_device_features_gen_depend_files = [
 ]
 
 vulkan_runtime_files = files(
+  'vk_buffer.c',
+  'vk_buffer.h',
   'vk_cmd_copy.c',
   'vk_cmd_enqueue.c',
   'vk_command_buffer.c',
