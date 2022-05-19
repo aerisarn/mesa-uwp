@@ -447,7 +447,8 @@ collect_preasm_stats(Program* program)
          if (instr->opcode == aco_opcode::p_constaddr)
             program->statistics[statistic_instructions] += 2;
 
-         if (instr->isVMEM() && !instr->operands.empty()) {
+         if ((instr->isVMEM() || instr->isScratch() || instr->isGlobal()) &&
+             !instr->operands.empty()) {
             if (std::none_of(vmem_clause.begin(), vmem_clause.end(),
                              [&](Instruction* other)
                              { return should_form_clause(instr.get(), other); }))
