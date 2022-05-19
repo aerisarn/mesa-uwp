@@ -170,6 +170,7 @@ if with_tests
 	'test/test-scheduler-predicates.cpp',
         'valhall/test/test-add-imm.cpp',
         'valhall/test/test-validate-fau.cpp',
+        'valhall/test/test-insert-flow.cpp',
         'valhall/test/test-lower-isel.cpp',
         'valhall/test/test-packing.cpp',
       ),
