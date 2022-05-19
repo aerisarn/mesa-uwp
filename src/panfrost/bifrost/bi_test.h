@@ -91,6 +91,17 @@ bit_shader_equal(bi_context *A, bi_context *B)
    return true;
 }
 
+#define ASSERT_SHADER_EQUAL(A, B) \
+   if (!bit_shader_equal(A, B)) { \
+      ADD_FAILURE(); \
+      fprintf(stderr, "Pass produced unexpected results"); \
+      fprintf(stderr, "  Actual:\n"); \
+      bi_print_shader(A, stderr); \
+      fprintf(stderr, " Expected:\n"); \
+      bi_print_shader(B, stderr); \
+      fprintf(stderr, "\n"); \
+   } \
+
 #define INSTRUCTION_CASE(instr, expected, pass) do { \
    bi_builder *A = bit_builder(mem_ctx); \
    bi_builder *B = bit_builder(mem_ctx); \
@@ -103,15 +114,7 @@ bit_shader_equal(bi_context *A, bi_context *B)
       expected; \
    } \
    pass(A->shader); \
-   if (!bit_shader_equal(A->shader, B->shader)) { \
-      ADD_FAILURE(); \
-      fprintf(stderr, "Pass produced unexpected results"); \
-      fprintf(stderr, "  Actual:\n"); \
-      bi_print_shader(A->shader, stderr); \
-      fprintf(stderr, "Expected:\n"); \
-      bi_print_shader(B->shader, stderr); \
-      fprintf(stderr, "\n"); \
-   } \
+   ASSERT_SHADER_EQUAL(A->shader, B->shader); \
 } while(0)
 
 #endif
