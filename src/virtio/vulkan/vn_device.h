@@ -23,12 +23,12 @@ struct vn_device {
    struct vn_physical_device *physical_device;
    struct vn_renderer *renderer;
 
-   struct vn_queue *queues;
-   uint32_t queue_count;
-
    struct vn_device_memory_pool memory_pools[VK_MAX_MEMORY_TYPES];
 
    struct vn_buffer_cache buffer_cache;
+
+   struct vn_queue *queues;
+   uint32_t queue_count;
 };
 VK_DEFINE_HANDLE_CASTS(vn_device,
                        base.base.base,

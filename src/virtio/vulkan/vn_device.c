@@ -291,10 +291,6 @@ vn_device_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   result = vn_device_init_queues(dev, create_info);
-   if (result != VK_SUCCESS)
-      goto out_destroy_device;
-
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++) {
       struct vn_device_memory_pool *pool = &dev->memory_pools[i];
       mtx_init(&pool->mutex, mtx_plain);
@@ -304,17 +300,19 @@ vn_device_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto out_memory_pool_fini;
 
+   result = vn_device_init_queues(dev, create_info);
+   if (result != VK_SUCCESS)
+      goto out_buffer_cache_fini;
+
    return VK_SUCCESS;
+
+out_buffer_cache_fini:
+   vn_buffer_cache_fini(dev);
 
 out_memory_pool_fini:
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
       vn_device_memory_pool_fini(dev, i);
 
-   for (uint32_t i = 0; i < dev->queue_count; i++)
-      vn_queue_fini(&dev->queues[i]);
-   vk_free(alloc, dev->queues);
-
-out_destroy_device:
    vn_call_vkDestroyDevice(instance, dev_handle, NULL);
 
    return result;
@@ -373,13 +371,13 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
    if (!dev)
       return;
 
+   for (uint32_t i = 0; i < dev->queue_count; i++)
+      vn_queue_fini(&dev->queues[i]);
+
    vn_buffer_cache_fini(dev);
 
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
       vn_device_memory_pool_fini(dev, i);
-
-   for (uint32_t i = 0; i < dev->queue_count; i++)
-      vn_queue_fini(&dev->queues[i]);
 
    /* We must emit vkDestroyDevice before freeing dev->queues.  Otherwise,
     * another thread might reuse their object ids while they still refer to
