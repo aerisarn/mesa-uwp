@@ -474,6 +474,7 @@ optimize_nir(struct nir_shader *s)
          NIR_PASS_V(s, nir_lower_int64);
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
       NIR_PASS(progress, s, nir_lower_alu_to_scalar, filter_pack_instr, NULL);
+      NIR_PASS(progress, s, nir_opt_copy_prop_vars);
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_remove_phis);
       if (s->options->lower_int64_options) {
