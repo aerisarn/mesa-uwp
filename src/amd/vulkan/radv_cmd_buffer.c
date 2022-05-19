@@ -4703,15 +4703,6 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer, uint32_t firstBinding,
-                          uint32_t bindingCount, const VkBuffer *pBuffers,
-                          const VkDeviceSize *pOffsets)
-{
-   radv_CmdBindVertexBuffers2(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets,
-                              NULL, NULL);
-}
-
-VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer, uint32_t firstBinding,
                            uint32_t bindingCount, const VkBuffer *pBuffers,
                            const VkDeviceSize *pOffsets, const VkDeviceSize *pSizes,
