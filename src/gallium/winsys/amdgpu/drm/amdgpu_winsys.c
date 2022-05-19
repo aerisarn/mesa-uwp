@@ -67,7 +67,7 @@ static void handle_env_var_force_family(struct amdgpu_winsys *ws)
 
             if (i >= CHIP_GFX1100)
                ws->info.gfx_level = GFX11;
-            else if (i >= CHIP_SIENNA_CICHLID)
+            else if (i >= CHIP_NAVI21)
                ws->info.gfx_level = GFX10_3;
             else if (i >= CHIP_NAVI10)
                ws->info.gfx_level = GFX10;

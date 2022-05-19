@@ -593,7 +593,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return 0;
       case PIPE_VIDEO_CAP_EFC_SUPPORTED:
          return ((sscreen->info.family >= CHIP_RENOIR) &&
-                 (sscreen->info.family < CHIP_SIENNA_CICHLID) &&
+                 (sscreen->info.family < CHIP_NAVI21) &&
                  !(sscreen->debug_flags & DBG(NO_EFC)));
       default:
          return 0;
@@ -603,7 +603,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
    switch (param) {
    case PIPE_VIDEO_CAP_SUPPORTED:
       if (codec < PIPE_VIDEO_FORMAT_MPEG4_AVC &&
-          sscreen->info.family >= CHIP_BEIGE_GOBY)
+          sscreen->info.family >= CHIP_NAVI24)
          return false;
       if (codec != PIPE_VIDEO_FORMAT_JPEG &&
           !(sscreen->info.has_video_hw.uvd_decode ||
@@ -660,7 +660,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return false;
          return true;
       case PIPE_VIDEO_FORMAT_AV1:
-         if (sscreen->info.family < CHIP_SIENNA_CICHLID)
+         if (sscreen->info.family < CHIP_NAVI21)
             return false;
          return true;
       default:

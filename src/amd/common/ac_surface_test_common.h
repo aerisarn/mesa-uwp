@@ -123,7 +123,7 @@ static void init_navi14(struct radeon_info *info)
 
 static void init_gfx103(struct radeon_info *info)
 {
-   info->family = CHIP_SIENNA_CICHLID; /* This doesn't affect tests. */
+   info->family = CHIP_NAVI21; /* This doesn't affect tests. */
    info->gfx_level = GFX10_3;
    info->family_id = AMDGPU_FAMILY_NV;
    info->chip_external_rev = 0x28;

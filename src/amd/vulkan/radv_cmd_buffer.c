@@ -5207,7 +5207,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
           cmd_buffer->state.emitted_pipeline->graphics.is_ngg &&
           !cmd_buffer->state.pipeline->graphics.is_ngg) {
          /* Transitioning from NGG to legacy GS requires
-          * VGT_FLUSH on GFX10 and Sienna Cichlid. VGT_FLUSH
+          * VGT_FLUSH on GFX10 and Navi21. VGT_FLUSH
           * is also emitted at the beginning of IBs when legacy
           * GS ring pointers are set.
           */

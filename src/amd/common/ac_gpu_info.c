@@ -722,16 +722,16 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       identify_chip(NAVI10);
       identify_chip(NAVI12);
       identify_chip(NAVI14);
-      identify_chip(SIENNA_CICHLID);
-      identify_chip(NAVY_FLOUNDER);
-      identify_chip(DIMGREY_CAVEFISH);
-      identify_chip(BEIGE_GOBY);
+      identify_chip(NAVI21);
+      identify_chip(NAVI22);
+      identify_chip(NAVI23);
+      identify_chip(NAVI24);
       break;
    case FAMILY_VGH:
       identify_chip(VANGOGH);
       break;
-   case FAMILY_YC:
-      identify_chip(YELLOW_CARP);
+   case FAMILY_RMB:
+      identify_chip(REMBRANDT);
       break;
    case FAMILY_GC_10_3_6:
       identify_chip(GFX1036);
@@ -761,7 +761,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    if (info->family >= CHIP_GFX1100)
       info->gfx_level = GFX11;
-   else if (info->family >= CHIP_SIENNA_CICHLID)
+   else if (info->family >= CHIP_NAVI21)
       info->gfx_level = GFX10_3;
    else if (info->family >= CHIP_NAVI10)
       info->gfx_level = GFX10;
@@ -915,7 +915,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    default:
       info->l2_cache_size = info->num_tcc_blocks * 256 * 1024;
       break;
-   case CHIP_YELLOW_CARP:
+   case CHIP_REMBRANDT:
       info->l2_cache_size = info->num_tcc_blocks * 512 * 1024;
       break;
    }
@@ -1013,18 +1013,18 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Whether chips are affected by the image load/sample/gather hw bug when
     * DCC is enabled (ie. WRITE_COMPRESS_ENABLE should be 0).
     */
-   info->has_image_load_dcc_bug = info->family == CHIP_DIMGREY_CAVEFISH ||
+   info->has_image_load_dcc_bug = info->family == CHIP_NAVI23 ||
                                   info->family == CHIP_VANGOGH ||
-                                  info->family == CHIP_YELLOW_CARP;
+                                  info->family == CHIP_REMBRANDT;
 
    /* DB has a bug when ITERATE_256 is set to 1 that can cause a hang. The
     * workaround is to set DECOMPRESS_ON_Z_PLANES to 2 for 4X MSAA D/S images.
     */
    info->has_two_planes_iterate256_bug = info->gfx_level == GFX10;
 
-   /* GFX10+Sienna: NGG->legacy transitions require VGT_FLUSH. */
+   /* GFX10+Navi21: NGG->legacy transitions require VGT_FLUSH. */
    info->has_vgt_flush_ngg_legacy_bug = info->gfx_level == GFX10 ||
-                                        info->family == CHIP_SIENNA_CICHLID;
+                                        info->family == CHIP_NAVI21;
 
    /* HW bug workaround when CS threadgroups > 256 threads and async compute
     * isn't used, i.e. only one compute job can run at a time.  If async
@@ -1145,17 +1145,17 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       case CHIP_RENOIR:
       case CHIP_NAVI10:
       case CHIP_NAVI12:
-      case CHIP_SIENNA_CICHLID:
-      case CHIP_NAVY_FLOUNDER:
-      case CHIP_DIMGREY_CAVEFISH:
+      case CHIP_NAVI21:
+      case CHIP_NAVI22:
+      case CHIP_NAVI23:
          pc_lines = 1024;
          break;
       case CHIP_NAVI14:
-      case CHIP_BEIGE_GOBY:
+      case CHIP_NAVI24:
          pc_lines = 512;
          break;
       case CHIP_VANGOGH:
-      case CHIP_YELLOW_CARP:
+      case CHIP_REMBRANDT:
       case CHIP_GFX1036:
          pc_lines = 256;
          break;
@@ -1199,9 +1199,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->never_stop_sq_perf_counters = info->gfx_level == GFX10 ||
                                        info->gfx_level == GFX10_3;
    info->never_send_perfcounter_stop = info->gfx_level == GFX11;
-   info->has_sqtt_rb_harvest_bug = (info->family == CHIP_DIMGREY_CAVEFISH ||
-                                    info->family == CHIP_BEIGE_GOBY ||
-                                    info->family == CHIP_YELLOW_CARP ||
+   info->has_sqtt_rb_harvest_bug = (info->family == CHIP_NAVI23 ||
+                                    info->family == CHIP_NAVI24 ||
+                                    info->family == CHIP_REMBRANDT ||
                                     info->family == CHIP_VANGOGH) &&
                                    util_bitcount(info->enabled_rb_mask) !=
                                    info->max_render_backends;

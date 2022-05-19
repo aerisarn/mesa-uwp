@@ -1171,7 +1171,7 @@ bool gfx10_is_ngg_passthrough(struct si_shader *shader)
     * - user GS is turned off (no amplification, no GS instancing, and no culling)
     * - VGT_ESGS_RING_ITEMSIZE is ignored (behaving as if it was equal to 1)
     * - vertex indices are packed into 1 VGPR
-    * - Dimgrey and later chips can optionally skip the gs_alloc_req message
+    * - Navi23 and later chips can optionally skip the gs_alloc_req message
     *
     * NGG passthrough still allows the use of LDS.
     */
@@ -4158,7 +4158,7 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
                 S_028B54_NGG_WAVE_ID_EN(key.u.streamout) |
                 S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough) |
                 S_028B54_PRIMGEN_PASSTHRU_NO_MSG(key.u.ngg_passthrough &&
-                                                 screen->info.family >= CHIP_DIMGREY_CAVEFISH);
+                                                 screen->info.family >= CHIP_NAVI23);
    } else if (key.u.gs)
       stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 

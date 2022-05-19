@@ -1914,7 +1914,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    decode->sw_ctxt_size = RDECODE_SESSION_CONTEXT_SIZE;
    decode->db_pitch = align(dec->base.width, dec->db_alignment);
 
-   if (((struct si_screen*)dec->screen)->info.family >= CHIP_SIENNA_CICHLID &&
+   if (((struct si_screen*)dec->screen)->info.family >= CHIP_NAVI21 &&
        (dec->stream_type == RDECODE_CODEC_VP9 || dec->stream_type == RDECODE_CODEC_AV1 ||
         dec->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10))
       decode->db_aligned_height = align(dec->base.height, 64);
@@ -2807,7 +2807,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++)
       dec->render_pic_list[i] = NULL;
 
-   if (sctx->family >= CHIP_SIENNA_CICHLID && (stream_type == RDECODE_CODEC_H264_PERF)) {
+   if (sctx->family >= CHIP_NAVI21 && (stream_type == RDECODE_CODEC_H264_PERF)) {
       for (i = 0; i < ARRAY_SIZE(dec->h264_valid_ref_num); i++)
          dec->h264_valid_ref_num[i] = (unsigned) -1;
       for (i = 0; i < ARRAY_SIZE(dec->h264_valid_poc_num); i++)
@@ -2853,7 +2853,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       }
    }
 
-   if (sctx->family >= CHIP_SIENNA_CICHLID &&
+   if (sctx->family >= CHIP_NAVI21 &&
          (stream_type == RDECODE_CODEC_VP9 ||
           stream_type == RDECODE_CODEC_AV1 ||
         ((stream_type == RDECODE_CODEC_H265) && templ->expect_chunked_decode) ||
@@ -2902,12 +2902,12 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       break;
    case CHIP_ARCTURUS:
    case CHIP_ALDEBARAN:
-   case CHIP_SIENNA_CICHLID:
-   case CHIP_NAVY_FLOUNDER:
-   case CHIP_DIMGREY_CAVEFISH:
-   case CHIP_BEIGE_GOBY:
+   case CHIP_NAVI21:
+   case CHIP_NAVI22:
+   case CHIP_NAVI23:
+   case CHIP_NAVI24:
    case CHIP_VANGOGH:
-   case CHIP_YELLOW_CARP:
+   case CHIP_REMBRANDT:
    case CHIP_GFX1036:
       dec->reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
       dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;

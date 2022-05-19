@@ -3353,13 +3353,13 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
     */
    switch (device->physical_device->rad_info.family) {
    case CHIP_VANGOGH:
-   case CHIP_BEIGE_GOBY:
-   case CHIP_YELLOW_CARP:
+   case CHIP_NAVI24:
+   case CHIP_REMBRANDT:
       device->task_num_entries = 256;
       break;
-   case CHIP_SIENNA_CICHLID:
-   case CHIP_NAVY_FLOUNDER:
-   case CHIP_DIMGREY_CAVEFISH:
+   case CHIP_NAVI21:
+   case CHIP_NAVI22:
+   case CHIP_NAVI23:
    default:
       device->task_num_entries = 1024;
       break;

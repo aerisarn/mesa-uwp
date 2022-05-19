@@ -370,7 +370,7 @@ VkDevice get_vk_device(enum amd_gfx_level gfx_level)
       family = CHIP_NAVI10;
       break;
    case GFX10_3:
-      family = CHIP_SIENNA_CICHLID;
+      family = CHIP_NAVI21;
       break;
    case GFX11:
       family = CHIP_GFX1100;

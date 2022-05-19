@@ -3200,8 +3200,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    key.use_ngg = pipeline->device->physical_device->use_ngg;
 
    if ((radv_is_vrs_enabled(pipeline, pCreateInfo) || device->force_vrs_enabled) &&
-       (device->physical_device->rad_info.family == CHIP_SIENNA_CICHLID ||
-        device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
+       (device->physical_device->rad_info.family == CHIP_NAVI21 ||
+        device->physical_device->rad_info.family == CHIP_NAVI22 ||
         device->physical_device->rad_info.family == CHIP_VANGOGH))
       key.adjust_frag_coord_z = true;
 

@@ -1090,7 +1090,7 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir, uint64
    unsigned max_se = device->physical_device->rad_info.max_se;
 
    if (max_render_backends / max_se == 4)
-      max_ps_params = 6; /* Sienna Cichlid and other GFX10.3 dGPUs. */
+      max_ps_params = 6; /* Navi21 and other GFX10.3 dGPUs. */
    else
       max_ps_params = 4; /* Navi 1x. */
 

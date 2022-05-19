@@ -161,17 +161,17 @@ const char *ac_get_llvm_processor_name(enum radeon_family family)
       return "gfx1011";
    case CHIP_NAVI14:
       return "gfx1012";
-   case CHIP_SIENNA_CICHLID:
+   case CHIP_NAVI21:
       return "gfx1030";
-   case CHIP_NAVY_FLOUNDER:
+   case CHIP_NAVI22:
       return LLVM_VERSION_MAJOR >= 12 ? "gfx1031" : "gfx1030";
-   case CHIP_DIMGREY_CAVEFISH:
+   case CHIP_NAVI23:
       return LLVM_VERSION_MAJOR >= 12 ? "gfx1032" : "gfx1030";
    case CHIP_VANGOGH:
       return LLVM_VERSION_MAJOR >= 12 ? "gfx1033" : "gfx1030";
-   case CHIP_BEIGE_GOBY:
+   case CHIP_NAVI24:
       return LLVM_VERSION_MAJOR >= 13 ? "gfx1034" : "gfx1030";
-   case CHIP_YELLOW_CARP:
+   case CHIP_REMBRANDT:
       return LLVM_VERSION_MAJOR >= 13 ? "gfx1035" : "gfx1030";
    case CHIP_GFX1036: /* TODO: LLVM 15 doesn't support this yet */
       return "gfx1030";

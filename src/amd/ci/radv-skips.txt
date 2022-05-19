@@ -12,5 +12,5 @@ dEQP-VK.memory.pipeline_barrier.transfer_src_transfer_dst.1048576
 dEQP-VK.api.driver_properties.conformance_version
 
 # Exclude these tests because they randomly hang on Navi10 and randomly fail on
-# Sienna Cichlid.
+# Navi21
 dEQP-VK.renderpass2.depth_stencil_resolve.*_samplemask

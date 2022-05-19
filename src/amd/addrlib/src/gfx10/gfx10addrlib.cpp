@@ -1035,25 +1035,25 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
                 m_settings.isDcn20 = 1;
             }
 
-            if (ASICREV_IS_SIENNA_CICHLID(chipRevision))
+            if (ASICREV_IS_NAVI21_M(chipRevision))
             {
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;
             }
 
-            if (ASICREV_IS_NAVY_FLOUNDER(chipRevision))
+            if (ASICREV_IS_NAVI22_P(chipRevision))
             {
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;
             }
 
-            if (ASICREV_IS_DIMGREY_CAVEFISH(chipRevision))
+            if (ASICREV_IS_NAVI23_P(chipRevision))
             {
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;
             }
 
-            if (ASICREV_IS_BEIGE_GOBY(chipRevision))
+            if (ASICREV_IS_NAVI24_P(chipRevision))
             {
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;
@@ -1072,8 +1072,8 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
             }
             break;
 
-        case FAMILY_YC:
-            if (ASICREV_IS_YELLOW_CARP(chipRevision))
+        case FAMILY_RMB:
+            if (ASICREV_IS_REMBRANDT(chipRevision))
             {
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;
