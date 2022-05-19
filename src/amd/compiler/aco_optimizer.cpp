@@ -1233,6 +1233,20 @@ is_op_canonicalized(opt_ctx& ctx, Operand op)
    return false;
 }
 
+bool
+is_scratch_offset_valid(opt_ctx& ctx, Instruction* instr, int32_t offset)
+{
+   bool negative_unaligned_scratch_offset_bug = ctx.program->gfx_level == GFX10;
+   int32_t min = ctx.program->dev.scratch_global_offset_min;
+   int32_t max = ctx.program->dev.scratch_global_offset_max;
+
+   bool has_vgpr_offset = instr && !instr->operands[0].isUndefined();
+   if (negative_unaligned_scratch_offset_bug && has_vgpr_offset && offset < 0 && offset % 4)
+      return false;
+
+   return offset >= min && offset <= max;
+}
+
 void
 label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -1412,6 +1426,30 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                     base.regClass() == s1 && mubuf.offset + offset < 4096) {
             instr->operands[i].setTemp(base);
             mubuf.offset += offset;
+            continue;
+         }
+      }
+
+      /* SCRATCH: propagate constants and combine additions */
+      else if (instr->isScratch()) {
+         FLAT_instruction& scratch = instr->scratch();
+         Temp base;
+         uint32_t offset;
+         while (info.is_temp())
+            info = ctx.info[info.temp.id()];
+
+         if (i <= 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset, false) &&
+             base.regClass() == instr->operands[i].regClass() &&
+             is_scratch_offset_valid(ctx, instr.get(), scratch.offset + (int32_t)offset)) {
+            instr->operands[i].setTemp(base);
+            scratch.offset += (int32_t)offset;
+            continue;
+         } else if (i <= 1 && info.is_constant_or_literal(32) &&
+                    ctx.program->gfx_level >= GFX10_3 &&
+                    is_scratch_offset_valid(ctx, NULL, scratch.offset + (int32_t)info.val)) {
+            /* GFX10.3+ can disable both SADDR and ADDR. */
+            instr->operands[i] = Operand(instr->operands[i].regClass());
+            scratch.offset += (int32_t)info.val;
             continue;
          }
       }
