@@ -221,9 +221,9 @@ get_wait_counter_info(aco_ptr<Instruction>& instr)
    if (instr->isFlatLike()) {
       unsigned lgkm = instr->isFlat() ? 20 : 0;
       if (!instr->definitions.empty())
-         return wait_counter_info(230, 0, lgkm, 0);
+         return wait_counter_info(320, 0, lgkm, 0);
       else
-         return wait_counter_info(0, 0, lgkm, 230);
+         return wait_counter_info(0, 0, lgkm, 320);
    }
 
    if (instr->isSMEM()) {
