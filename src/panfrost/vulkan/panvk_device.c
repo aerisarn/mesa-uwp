@@ -1304,7 +1304,7 @@ panvk_GetBufferMemoryRequirements2(VkDevice device,
    VK_FROM_HANDLE(panvk_buffer, buffer, pInfo->buffer);
 
    const uint64_t align = 64;
-   const uint64_t size = align64(buffer->size, align);
+   const uint64_t size = align64(buffer->vk.size, align);
 
    pMemoryRequirements->memoryRequirements.memoryTypeBits = 1;
    pMemoryRequirements->memoryRequirements.alignment = align;
@@ -1524,14 +1524,10 @@ panvk_CreateBuffer(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
-   buffer = vk_object_alloc(&device->vk, pAllocator, sizeof(*buffer),
-                            VK_OBJECT_TYPE_BUFFER);
+   buffer = vk_buffer_create(&device->vk, pCreateInfo,
+                             pAllocator, sizeof(*buffer));
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   buffer->size = pCreateInfo->size;
-   buffer->usage = pCreateInfo->usage;
-   buffer->flags = pCreateInfo->flags;
 
    *pBuffer = panvk_buffer_to_handle(buffer);
 
@@ -1549,7 +1545,7 @@ panvk_DestroyBuffer(VkDevice _device,
    if (!buffer)
       return;
 
-   vk_object_free(&device->vk, pAllocator, buffer);
+   vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
 }
 
 VkResult

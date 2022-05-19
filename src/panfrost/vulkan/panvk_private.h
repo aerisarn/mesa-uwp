@@ -49,6 +49,7 @@
 #include "util/list.h"
 #include "util/macros.h"
 #include "vk_alloc.h"
+#include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_device.h"
@@ -525,11 +526,7 @@ struct panvk_descriptor_pool {
 };
 
 struct panvk_buffer {
-   struct vk_object_base base;
-   VkDeviceSize size;
-
-   VkBufferUsageFlags usage;
-   VkBufferCreateFlags flags;
+   struct vk_buffer vk;
 
    struct panfrost_bo *bo;
    VkDeviceSize bo_offset;
@@ -551,14 +548,7 @@ panvk_buffer_range(const struct panvk_buffer *buffer,
    if (buffer->bo == NULL)
       return 0;
 
-   assert(offset <= buffer->size);
-   if (range == VK_WHOLE_SIZE) {
-      return buffer->size - offset;
-   } else {
-      assert(range + offset >= range);
-      assert(range + offset <= buffer->size);
-      return range;
-   }
+   return vk_buffer_range(&buffer->vk, offset, range);
 }
 
 enum panvk_dynamic_state_bits {
@@ -1110,7 +1100,7 @@ VK_DEFINE_HANDLE_CASTS(panvk_physical_device, vk.base, VkPhysicalDevice, VK_OBJE
 VK_DEFINE_HANDLE_CASTS(panvk_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_cmd_pool, vk.base, VkCommandPool, VK_OBJECT_TYPE_COMMAND_POOL)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_buffer, base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_buffer_view, base, VkBufferView, VK_OBJECT_TYPE_BUFFER_VIEW)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_pool, base, VkDescriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_set, base, VkDescriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET)

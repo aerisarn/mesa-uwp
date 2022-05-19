@@ -205,7 +205,7 @@ panvk_per_arch(CreateBufferView)(VkDevice _device,
 
    assert(!(address & 63));
 
-   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) {
+   if (buffer->vk.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) {
       unsigned bo_size =
          PAN_ARCH <= 5 ? (pan_size(SURFACE) + pan_size(TEXTURE)) :
                          pan_size(SURFACE_WITH_STRIDE);
@@ -240,7 +240,7 @@ panvk_per_arch(CreateBufferView)(VkDevice _device,
       }
    }
 
-   if (buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+   if (buffer->vk.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
       uint8_t *attrib_buf = (uint8_t *)view->descs.img_attrib_buf;
 
       pan_pack(attrib_buf, ATTRIBUTE_BUFFER, cfg) {
