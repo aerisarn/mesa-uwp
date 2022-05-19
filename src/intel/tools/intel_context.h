@@ -49,6 +49,9 @@
 #define VCSUNIT0_START       0x12000
 #define VCSUNIT0_END         0x13fff
 
+#define GFX12_VCSUNIT0_START 0x1c0000
+#define GFX12_VCSUNIT0_END   0x1c07ff
+
 #define BCSUNIT0_START       0x22000
 #define BCSUNIT0_END         0x23fff
 
@@ -61,6 +64,7 @@
 
 #define RCSUNIT(reg)                  (RCSUNIT_START  + reg)
 #define VCSUNIT0(reg)                 (VCSUNIT0_START + reg)
+#define GFX12_VCSUNIT0(reg)     (GFX12_VCSUNIT0_START + reg)
 #define BCSUNIT0(reg)                 (BCSUNIT0_START + reg)
 
 #define MEMORY_MAP_SIZE (64 /* MiB */ * 1024 * 1024)
