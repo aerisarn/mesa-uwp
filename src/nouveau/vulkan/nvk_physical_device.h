@@ -3,6 +3,8 @@
 
 #include "nvk_private.h"
 
+#include "nouveau_device.h"
+
 #include "vulkan/runtime/vk_physical_device.h"
 
 struct nvk_instance;
@@ -10,6 +12,7 @@ struct nvk_instance;
 struct nvk_physical_device {
    struct vk_physical_device vk;
    struct nvk_instance *instance;
+   struct nouveau_ws_device *dev;
 
    /* Link in nvk_instance::physical_devices */
    struct list_head link;

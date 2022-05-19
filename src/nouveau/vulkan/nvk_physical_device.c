@@ -59,11 +59,15 @@ VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceProperties2 *pProperties)
 {
-   // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+   VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
 
    pProperties->properties = (VkPhysicalDeviceProperties) {
       .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
       .driverVersion = vk_get_driver_version(),
+      .vendorID = pdevice->dev->vendor_id,
+      .deviceID = pdevice->dev->device_id,
+      .deviceType = pdevice->dev->is_integrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+                                                : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
       /* More properties */
    };
 
@@ -135,6 +139,12 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
          instance, VK_ERROR_INCOMPATIBLE_DRIVER, "Unable to open device %s: %m", path);
    }
 
+   struct nouveau_ws_device *ndev = nouveau_ws_device_new(fd);
+   if (!ndev) {
+      result = vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+      goto fail_fd;
+   }
+
    vk_warn_non_conformant_implementation("nvk");
 
    struct nvk_physical_device *device =
@@ -142,7 +152,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    if (device == NULL) {
       result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_fd;
+      goto fail_dev_alloc;
    }
 
    struct vk_physical_device_dispatch_table dispatch_table;
@@ -164,6 +174,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    }
 
    device->instance = instance;
+   device->dev = ndev;
 
    *device_out = device;
 
@@ -171,6 +182,10 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
 fail_alloc:
    vk_free(&instance->vk.alloc, device);
+
+fail_dev_alloc:
+   nouveau_ws_device_destroy(ndev);
+   return result;
 
 fail_fd:
    close(fd);
@@ -180,6 +195,7 @@ fail_fd:
 void
 nvk_physical_device_destroy(struct nvk_physical_device *device)
 {
+   nouveau_ws_device_destroy(device->dev);
    vk_free(&device->instance->vk.alloc, device);
 }
 
