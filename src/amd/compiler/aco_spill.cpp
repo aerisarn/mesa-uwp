@@ -1408,6 +1408,10 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset, Block& block,
       }
    }
 
+   /* GFX9+ uses scratch_* instructions, which don't use a resource. Return a SADDR instead. */
+   if (ctx.program->gfx_level >= GFX9)
+      return bld.copy(bld.def(s1), Operand::c32(offset));
+
    Temp private_segment_buffer = ctx.program->private_segment_buffer;
    if (ctx.program->stage.hw != HWStage::CS)
       private_segment_buffer =
@@ -1445,17 +1449,29 @@ setup_vgpr_spill_reload(spill_ctx& ctx, Block& block,
    Temp scratch_offset = ctx.program->scratch_offset;
 
    *offset = spill_slot * 4;
+   if (ctx.program->gfx_level >= GFX9) {
+      *offset += ctx.program->dev.scratch_global_offset_min;
 
-   bool add_offset_to_sgpr = ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size +
-                                ctx.vgpr_spill_slots * 4 >
-                             4096;
-   if (!add_offset_to_sgpr)
-      *offset += ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size;
+      if (ctx.scratch_rsrc == Temp()) {
+         int32_t saddr = ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size -
+                         ctx.program->dev.scratch_global_offset_min;
+         ctx.scratch_rsrc =
+            load_scratch_resource(ctx, scratch_offset, block, instructions, saddr);
+      }
+   } else {
+      bool add_offset_to_sgpr =
+         ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size +
+            ctx.vgpr_spill_slots * 4 >
+         4096;
+      if (!add_offset_to_sgpr)
+         *offset += ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size;
 
-   if (ctx.scratch_rsrc == Temp()) {
-      unsigned rsrc_offset = add_offset_to_sgpr ? ctx.program->config->scratch_bytes_per_wave : 0;
-      ctx.scratch_rsrc =
-         load_scratch_resource(ctx, scratch_offset, block, instructions, rsrc_offset);
+      if (ctx.scratch_rsrc == Temp()) {
+         unsigned rsrc_offset =
+            add_offset_to_sgpr ? ctx.program->config->scratch_bytes_per_wave : 0;
+         ctx.scratch_rsrc =
+            load_scratch_resource(ctx, scratch_offset, block, instructions, rsrc_offset);
+      }
    }
 }
 
@@ -1485,11 +1501,19 @@ spill_vgpr(spill_ctx& ctx, Block& block, std::vector<aco_ptr<Instruction>>& inst
       bld.insert(split);
       for (unsigned i = 0; i < temp.size(); i++, offset += 4) {
          Temp elem = split->definitions[i].getTemp();
-         Instruction* instr =
-            bld.mubuf(aco_opcode::buffer_store_dword, ctx.scratch_rsrc, Operand(v1),
-                      ctx.program->scratch_offset, elem, offset, false, true);
-         instr->mubuf().sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+         if (ctx.program->gfx_level >= GFX9) {
+            bld.scratch(aco_opcode::scratch_store_dword, Operand(v1), ctx.scratch_rsrc, elem,
+                        offset, memory_sync_info(storage_vgpr_spill, semantic_private));
+         } else {
+            Instruction* instr =
+               bld.mubuf(aco_opcode::buffer_store_dword, ctx.scratch_rsrc, Operand(v1),
+                         ctx.program->scratch_offset, elem, offset, false, true);
+            instr->mubuf().sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+         }
       }
+   } else if (ctx.program->gfx_level >= GFX9) {
+      bld.scratch(aco_opcode::scratch_store_dword, Operand(v1), ctx.scratch_rsrc, temp, offset,
+                  memory_sync_info(storage_vgpr_spill, semantic_private));
    } else {
       Instruction* instr = bld.mubuf(aco_opcode::buffer_store_dword, ctx.scratch_rsrc, Operand(v1),
                                      ctx.program->scratch_offset, temp, offset, false, true);
@@ -1517,12 +1541,21 @@ reload_vgpr(spill_ctx& ctx, Block& block, std::vector<aco_ptr<Instruction>>& ins
       for (unsigned i = 0; i < def.size(); i++, offset += 4) {
          Temp tmp = bld.tmp(v1);
          vec->operands[i] = Operand(tmp);
-         Instruction* instr =
-            bld.mubuf(aco_opcode::buffer_load_dword, Definition(tmp), ctx.scratch_rsrc, Operand(v1),
-                      ctx.program->scratch_offset, offset, false, true);
-         instr->mubuf().sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+         if (ctx.program->gfx_level >= GFX9) {
+            bld.scratch(aco_opcode::scratch_load_dword, Definition(tmp), Operand(v1),
+                        ctx.scratch_rsrc, offset,
+                        memory_sync_info(storage_vgpr_spill, semantic_private));
+         } else {
+            Instruction* instr =
+               bld.mubuf(aco_opcode::buffer_load_dword, Definition(tmp), ctx.scratch_rsrc,
+                         Operand(v1), ctx.program->scratch_offset, offset, false, true);
+            instr->mubuf().sync = memory_sync_info(storage_vgpr_spill, semantic_private);
+         }
       }
       bld.insert(vec);
+   } else if (ctx.program->gfx_level >= GFX9) {
+      bld.scratch(aco_opcode::scratch_load_dword, def, Operand(v1), ctx.scratch_rsrc, offset,
+                  memory_sync_info(storage_vgpr_spill, semantic_private));
    } else {
       Instruction* instr = bld.mubuf(aco_opcode::buffer_load_dword, def, ctx.scratch_rsrc,
                                      Operand(v1), ctx.program->scratch_offset, offset, false, true);
@@ -1907,7 +1940,10 @@ spill(Program* program, live& live_vars)
    }
    /* add extra SGPRs required for spilling VGPRs */
    if (demand.vgpr + extra_vgprs > vgpr_limit) {
-      extra_sgprs = 5; /* scratch_resource (s4) + scratch_offset (s1) */
+      if (program->gfx_level >= GFX9)
+         extra_sgprs = 1; /* SADDR */
+      else
+         extra_sgprs = 5; /* scratch_resource (s4) + scratch_offset (s1) */
       if (demand.sgpr + extra_sgprs > sgpr_limit) {
          /* re-calculate in case something has changed */
          unsigned sgpr_spills = demand.sgpr + extra_sgprs - sgpr_limit;
