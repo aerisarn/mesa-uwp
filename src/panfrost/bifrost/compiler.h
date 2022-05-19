@@ -684,6 +684,11 @@ typedef struct bi_block {
         /* Scoreboard state at the start/end of block */
         struct bi_scoreboard_state scoreboard_in, scoreboard_out;
 
+        /* On Valhall, indicates we need a terminal NOP to implement jumps to
+         * the end of the shader.
+         */
+        bool needs_nop;
+
         /* Flags available for pass-internal use */
         uint8_t pass_flags;
 } bi_block;

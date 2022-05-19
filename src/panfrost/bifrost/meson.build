@@ -46,6 +46,7 @@ libpanfrost_bifrost_files = files(
   'bi_validate.c',
   'bir.c',
   'bifrost_compile.c',
+  'valhall/va_insert_flow.c',
   'valhall/va_lower_constants.c',
   'valhall/va_lower_isel.c',
   'valhall/va_lower_split_64bit.c',
