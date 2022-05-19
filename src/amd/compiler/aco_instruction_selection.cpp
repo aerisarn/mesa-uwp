@@ -11207,9 +11207,16 @@ add_startpgm(struct isel_context* ctx)
     * handling spilling.
     */
    ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
-   if (ctx->args->ac.scratch_offset.used) {
-      /* FIXME: Fix scratch loads/stores on GFX11. */
+   if (ctx->program->gfx_level <= GFX10_3) {
       ctx->program->scratch_offset = get_arg(ctx, ctx->args->ac.scratch_offset);
+
+      if (ctx->program->gfx_level >= GFX9) {
+         Operand scratch_offset(ctx->program->scratch_offset);
+         scratch_offset.setLateKill(true);
+         Builder bld(ctx->program, ctx->block);
+         bld.pseudo(aco_opcode::p_init_scratch, bld.def(s2), bld.def(s1, scc),
+                    ctx->program->private_segment_buffer, scratch_offset);
+      }
    }
 
    if (ctx->stage.has(SWStage::VS) && ctx->program->info.vs.dynamic_inputs) {

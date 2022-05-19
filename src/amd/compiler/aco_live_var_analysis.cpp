@@ -293,12 +293,14 @@ calc_waves_per_workgroup(Program* program)
 uint16_t
 get_extra_sgprs(Program* program)
 {
+   /* We don't use this register on GFX6-8 and it's removed on GFX10+. */
+   bool needs_flat_scr = program->config->scratch_bytes_per_wave && program->gfx_level == GFX9;
+
    if (program->gfx_level >= GFX10) {
-      assert(!program->needs_flat_scr);
       assert(!program->dev.xnack_enabled);
       return 0;
    } else if (program->gfx_level >= GFX8) {
-      if (program->needs_flat_scr)
+      if (needs_flat_scr)
          return 6;
       else if (program->dev.xnack_enabled)
          return 4;
@@ -308,7 +310,7 @@ get_extra_sgprs(Program* program)
          return 0;
    } else {
       assert(!program->dev.xnack_enabled);
-      if (program->needs_flat_scr)
+      if (needs_flat_scr)
          return 4;
       else if (program->needs_vcc)
          return 2;

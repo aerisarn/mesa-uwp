@@ -249,6 +249,12 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
       assert(startpgm->opcode == aco_opcode::p_startpgm);
       bld.insert(std::move(startpgm));
 
+      unsigned count = 1;
+      if (block->instructions[1]->opcode == aco_opcode::p_init_scratch) {
+         bld.insert(std::move(block->instructions[1]));
+         count++;
+      }
+
       Operand start_exec(bld.lm);
 
       /* exec seems to need to be manually initialized with combined shaders */
@@ -274,7 +280,7 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
          ctx.info[0].exec.emplace_back(start_exec, mask);
       }
 
-      return 1;
+      return count;
    }
 
    /* loop entry block */

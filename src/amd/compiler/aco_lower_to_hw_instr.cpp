@@ -2327,6 +2327,47 @@ lower_to_hw_instr(Program* program)
                }
                break;
             }
+            case aco_opcode::p_init_scratch: {
+               assert(program->gfx_level >= GFX8 && program->gfx_level <= GFX10_3);
+               if (!program->config->scratch_bytes_per_wave)
+                  break;
+
+               Operand scratch_addr = instr->operands[0];
+               Operand scratch_addr_lo(scratch_addr.physReg(), s1);
+               if (program->stage != compute_cs) {
+                  bld.smem(aco_opcode::s_load_dwordx2, instr->definitions[0], scratch_addr,
+                           Operand::zero());
+                  scratch_addr_lo.setFixed(instr->definitions[0].physReg());
+               }
+               Operand scratch_addr_hi(scratch_addr_lo.physReg().advance(4), s1);
+
+               /* Since we know what the high 16 bits of scratch_hi is, we can set all the high 16
+                * bits in the same instruction that we add the carry.
+                */
+               uint32_t hi_add = 0xffff0000 - S_008F04_SWIZZLE_ENABLE_GFX6(1);
+
+               if (program->gfx_level >= GFX10) {
+                  Operand scratch_lo(instr->definitions[0].physReg(), s1);
+                  Operand scratch_hi(instr->definitions[0].physReg().advance(4), s1);
+
+                  bld.sop2(aco_opcode::s_add_u32, Definition(scratch_lo.physReg(), s1),
+                           Definition(scc, s1), scratch_addr_lo, instr->operands[1]);
+                  bld.sop2(aco_opcode::s_addc_u32, Definition(scratch_hi.physReg(), s1),
+                           Definition(scc, s1), scratch_addr_hi, Operand::c32(hi_add),
+                           Operand(scc, s1));
+
+                  /* "((size - 1) << 11) | register" (FLAT_SCRATCH_LO/HI is encoded as register
+                   * 20/21) */
+                  bld.sopk(aco_opcode::s_setreg_b32, scratch_lo, (31 << 11) | 20);
+                  bld.sopk(aco_opcode::s_setreg_b32, scratch_hi, (31 << 11) | 21);
+               } else {
+                  bld.sop2(aco_opcode::s_add_u32, Definition(flat_scr_lo, s1), Definition(scc, s1),
+                           scratch_addr_lo, instr->operands[1]);
+                  bld.sop2(aco_opcode::s_addc_u32, Definition(flat_scr_hi, s1), Definition(scc, s1),
+                           scratch_addr_hi, Operand::c32(hi_add), Operand(scc, s1));
+               }
+               break;
+            }
             default: break;
             }
          } else if (instr->isBranch()) {

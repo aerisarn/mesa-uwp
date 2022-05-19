@@ -592,7 +592,8 @@ needs_exec_mask(const Instruction* instr)
       case aco_opcode::p_end_linear_vgpr:
       case aco_opcode::p_logical_start:
       case aco_opcode::p_logical_end:
-      case aco_opcode::p_startpgm: return instr->reads_exec();
+      case aco_opcode::p_startpgm:
+      case aco_opcode::p_init_scratch: return instr->reads_exec();
       default: break;
       }
    }

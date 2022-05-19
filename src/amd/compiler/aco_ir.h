@@ -451,6 +451,8 @@ struct PhysReg {
 
 /* helper expressions for special registers */
 static constexpr PhysReg m0{124};
+static constexpr PhysReg flat_scr_lo{102}; /* GFX8-GFX9, encoded differently on GFX6-7 */
+static constexpr PhysReg flat_scr_hi{103}; /* GFX8-GFX9, encoded differently on GFX6-7 */
 static constexpr PhysReg vcc{106};
 static constexpr PhysReg vcc_hi{107};
 static constexpr PhysReg tba{108}; /* GFX6-GFX8 */
@@ -2104,7 +2106,6 @@ public:
    bool early_rast = false; /* whether rasterization can start as soon as the 1st DONE pos export */
 
    bool needs_vcc = false;
-   bool needs_flat_scr = false;
 
    CompilationProgress progress;
 

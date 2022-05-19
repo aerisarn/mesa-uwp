@@ -318,6 +318,8 @@ opcode("p_extract") # src1=index, src2=bits, src3=signext
 # (src0 & ((1 << bits) - 1)) << (index * bits)
 opcode("p_insert") # src1=index, src2=bits
 
+opcode("p_init_scratch")
+
 
 # SOP2 instructions: 2 scalar inputs, 1 scalar output (+optional scc)
 SOP2 = {
