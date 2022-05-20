@@ -32,6 +32,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
+   device->pdev = physical_device;
+
    *pDevice = nvk_device_to_handle(device);
 
    return VK_SUCCESS;

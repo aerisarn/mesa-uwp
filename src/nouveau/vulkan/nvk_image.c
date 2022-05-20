@@ -53,3 +53,17 @@ VKAPI_ATTR void VKAPI_CALL nvk_DestroyImage(VkDevice _device,
    nvk_image_finish(image);
    vk_free2(&device->vk.alloc, pAllocator, image);
 }
+
+VKAPI_ATTR void VKAPI_CALL nvk_GetImageMemoryRequirements2(
+   VkDevice _device,
+   const VkImageMemoryRequirementsInfo2 *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
+{
+   vk_foreach_struct_const(ext, pInfo->pNext) {
+      switch (ext->sType) {
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}

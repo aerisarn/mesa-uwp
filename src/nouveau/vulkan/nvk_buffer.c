@@ -1,6 +1,7 @@
 #include "nvk_buffer.h"
 
 #include "nvk_device.h"
+#include "nvk_physical_device.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateBuffer(VkDevice _device,
    const VkBufferCreateInfo *pCreateInfo,
@@ -30,4 +31,27 @@ VKAPI_ATTR void VKAPI_CALL nvk_DestroyBuffer(VkDevice _device,
       return;
 
    vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
+}
+
+VKAPI_ATTR void VKAPI_CALL nvk_GetBufferMemoryRequirements2(
+    VkDevice _device,
+    const VkBufferMemoryRequirementsInfo2 *pInfo,
+    VkMemoryRequirements2 *pMemoryRequirements)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_buffer, buffer, pInfo->buffer);
+
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
+      .size = buffer->vk.size,
+      .alignment = 64, /* TODO */
+      .memoryTypeBits = BITFIELD_MASK(device->pdev->mem_type_cnt),
+   };
+
+   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+      switch (ext->sType) {
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
 }
