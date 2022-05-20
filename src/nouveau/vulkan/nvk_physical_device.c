@@ -199,6 +199,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    *device_out = device;
 
+   close(fd);
    return VK_SUCCESS;
 
 fail_alloc:

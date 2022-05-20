@@ -6,6 +6,7 @@
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
 
+#include "util/os_file.h"
 #include "util/os_misc.h"
 
 struct nouveau_ws_device *
@@ -15,8 +16,9 @@ nouveau_ws_device_new(int fd)
    uint64_t device_id = 0;
    struct nouveau_drm *drm;
    struct nouveau_device *dev;
+   int dup_fd = os_dupfd_cloexec(fd);
 
-   if (nouveau_drm_new(fd, &drm)) {
+   if (nouveau_drm_new(dup_fd, &drm)) {
       return NULL;
    }
 
@@ -41,7 +43,7 @@ nouveau_ws_device_new(int fd)
    device->base.is_integrated = dev->vram_size == 0;
    device->drm = drm;
    device->dev = dev;
-   device->fd = fd;
+   device->fd = dup_fd;
 
    return &device->base;
 
@@ -49,6 +51,7 @@ out_dev:
    nouveau_device_del(&dev);
 out_drm:
    nouveau_drm_del(&drm);
+   close(dup_fd);
    return NULL;
 }
 
