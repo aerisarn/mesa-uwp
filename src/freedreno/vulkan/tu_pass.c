@@ -671,6 +671,16 @@ is_depth_stencil_resolve_enabled(const VkSubpassDescriptionDepthStencilResolve *
    return false;
 }
 
+static void
+tu_subpass_use_attachment(struct tu_render_pass *pass, int i, uint32_t a, const VkRenderPassCreateInfo2KHR *pCreateInfo)
+{
+   struct tu_subpass *subpass = &pass->subpasses[i];
+
+   pass->attachments[a].gmem_offset = 0;
+   update_samples(subpass, pCreateInfo->pAttachments[a].samples);
+   pass->attachments[a].clear_views |= subpass->multiview_mask;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateRenderPass2(VkDevice _device,
                      const VkRenderPassCreateInfo2KHR *pCreateInfo,
@@ -799,13 +809,10 @@ tu_CreateRenderPass2(VkDevice _device,
             subpass->color_attachments[j].attachment = a;
 
             if (a != VK_ATTACHMENT_UNUSED) {
-               pass->attachments[a].gmem_offset = 0;
-               update_samples(subpass, pCreateInfo->pAttachments[a].samples);
+               tu_subpass_use_attachment(pass, i, a, pCreateInfo);
 
                if (vk_format_is_srgb(pass->attachments[a].format))
                   subpass->srgb_cntl |= 1 << j;
-
-               pass->attachments[a].clear_views |= subpass->multiview_mask;
             }
          }
       }
@@ -841,12 +848,8 @@ tu_CreateRenderPass2(VkDevice _device,
       uint32_t a = desc->pDepthStencilAttachment ?
          desc->pDepthStencilAttachment->attachment : VK_ATTACHMENT_UNUSED;
       subpass->depth_stencil_attachment.attachment = a;
-      if (a != VK_ATTACHMENT_UNUSED) {
-            pass->attachments[a].gmem_offset = 0;
-            update_samples(subpass, pCreateInfo->pAttachments[a].samples);
-
-            pass->attachments[a].clear_views |= subpass->multiview_mask;
-      }
+      if (a != VK_ATTACHMENT_UNUSED)
+         tu_subpass_use_attachment(pass, i, a, pCreateInfo);
    }
 
    tu_render_pass_patch_input_gmem(pass);
