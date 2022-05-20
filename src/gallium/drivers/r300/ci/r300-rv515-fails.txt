@@ -95,11 +95,6 @@ dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_2,
 dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_4,Fail
 dEQP-GLES2.functional.texture.specification.teximage2d_align.cube_rgba8888_47_8,Fail
 
-dEQP-GLES2.functional.uniform_api.random.47,Fail
-
-dEQP-GLES2.functional.uniform_api.value.initial.render.basic_array.vec4_both,Fail
-dEQP-GLES2.functional.uniform_api.value.initial.render.array_in_struct.float_vec4_both,Fail
-
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component16,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component24,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_component16,Fail
