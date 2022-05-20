@@ -591,7 +591,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
    const uint32_t pass_att = ds_att->attachment;
    VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
    VkImageAspectFlags aspects = clear_att->aspectMask;
-   const struct radv_image_view *iview =
+   struct radv_image_view *iview =
       cmd_buffer->state.attachments ? cmd_buffer->state.attachments[pass_att].iview : NULL;
    uint32_t samples, samples_log2;
    VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
@@ -634,14 +634,34 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
    if (!pipeline)
       return;
 
-   struct radv_subpass clear_subpass = {
-      .color_count = 0,
-      .color_attachments = NULL,
-      .depth_stencil_attachment = ds_att,
-   };
+   if (ds_resolve_clear) {
+      const VkRenderingAttachmentInfo depth_att = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = radv_image_view_to_handle(iview),
+         .imageLayout = cmd_buffer->state.attachments[pass_att].current_layout,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      };
 
-   if (ds_resolve_clear)
-      radv_cmd_buffer_set_subpass(cmd_buffer, &clear_subpass);
+      const VkRenderingAttachmentInfo stencil_att = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = radv_image_view_to_handle(iview),
+         .imageLayout = cmd_buffer->state.attachments[pass_att].current_stencil_layout,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      };
+
+      const VkRenderingInfo rendering_info = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+         .renderArea = clear_rect->rect,
+         .layerCount = clear_rect->layerCount,
+         .viewMask = subpass->view_mask,
+         .pDepthAttachment = (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) ? &depth_att : NULL,
+         .pStencilAttachment = (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) ? &stencil_att : NULL,
+      };
+
+      radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
+   }
 
    radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -670,7 +690,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
    }
 
    if (ds_resolve_clear)
-      radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
+      radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
 }
 
 static uint32_t
@@ -2030,9 +2050,17 @@ radv_cmd_buffer_clear_subpass(struct radv_cmd_buffer *cmd_buffer)
       }
    }
 
+   radv_meta_restore(&saved_state, cmd_buffer);
+   cmd_buffer->state.flush_bits |= post_flush;
+
    if (cmd_state->subpass->ds_resolve_attachment) {
       uint32_t ds_resolve = cmd_state->subpass->ds_resolve_attachment->attachment;
       if (radv_attachment_needs_clear(cmd_state, ds_resolve)) {
+
+         radv_meta_save(&saved_state, cmd_buffer,
+                        RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_CONSTANTS |
+                        RADV_META_SAVE_PASS | RADV_META_SUSPEND_PREDICATING);
+
          VkClearAttachment clear_att = {
             .aspectMask = cmd_state->attachments[ds_resolve].pending_clear_aspects,
             .clearValue = cmd_state->attachments[ds_resolve].clear_value,
@@ -2040,11 +2068,11 @@ radv_cmd_buffer_clear_subpass(struct radv_cmd_buffer *cmd_buffer)
 
          radv_subpass_clear_attachment(cmd_buffer, &cmd_state->attachments[ds_resolve], &clear_att,
                                        &pre_flush, &post_flush, true);
+
+         radv_meta_restore(&saved_state, cmd_buffer);
+         cmd_buffer->state.flush_bits |= post_flush;
       }
    }
-
-   radv_meta_restore(&saved_state, cmd_buffer);
-   cmd_buffer->state.flush_bits |= post_flush;
 }
 
 static void
@@ -2087,31 +2115,13 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
       .layerCount = layer_count,
    };
 
-   VkRenderingAttachmentInfo color_att = {0}, depth_att = {0}, stencil_att = {0};
-
-   if (range->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-      color_att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-      color_att.imageView = radv_image_view_to_handle(&iview);
-      color_att.imageLayout = image_layout;
-      color_att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-      color_att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-   } else {
-      if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         depth_att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-         depth_att.imageView = radv_image_view_to_handle(&iview);
-         depth_att.imageLayout = image_layout;
-         depth_att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-         depth_att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      }
-
-      if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
-         stencil_att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-         stencil_att.imageView = radv_image_view_to_handle(&iview);
-         stencil_att.imageLayout = image_layout;
-         stencil_att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-         stencil_att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      }
-   }
+   VkRenderingAttachmentInfo att = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = radv_image_view_to_handle(&iview),
+      .imageLayout = image_layout,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+   };
 
    VkRenderingInfo rendering_info = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -2122,15 +2132,14 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
       .layerCount = layer_count,
    };
 
-   if (range->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+   if (image->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       rendering_info.colorAttachmentCount = 1;
-      rendering_info.pColorAttachments = &color_att;
-   } else {
-      if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-         rendering_info.pDepthAttachment = &depth_att;
-      if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-         rendering_info.pStencilAttachment = &stencil_att;
+      rendering_info.pColorAttachments = &att;
    }
+   if (image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      rendering_info.pDepthAttachment = &att;
+   if (image->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+      rendering_info.pStencilAttachment = &att;
 
    radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
 
