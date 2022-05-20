@@ -1784,8 +1784,8 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 
 static void
 radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_image_view *iview,
-                      const VkClearAttachment *clear_att, uint32_t subpass_att,
-                      enum radv_cmd_flush_bits *pre_flush, enum radv_cmd_flush_bits *post_flush)
+                      const VkClearAttachment *clear_att, enum radv_cmd_flush_bits *pre_flush,
+                      enum radv_cmd_flush_bits *post_flush)
 {
    VkClearColorValue clear_value = clear_att->clearValue.color;
    uint32_t clear_color[2], flush_bits = 0;
@@ -1855,7 +1855,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
    /* Update the FCE predicate to perform a fast-clear eliminate. */
    radv_update_fce_metadata(cmd_buffer, iview->image, &range, need_decompress_pass);
 
-   radv_update_color_clear_metadata(cmd_buffer, iview, subpass_att, clear_color);
+   radv_update_color_clear_metadata(cmd_buffer, iview, clear_att->colorAttachment, clear_color);
 }
 
 /**
@@ -1884,7 +1884,7 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *clear_at
 
       if (radv_can_fast_clear_color(cmd_buffer, iview, image_layout, clear_rect,
                                     clear_value, view_mask)) {
-         radv_fast_clear_color(cmd_buffer, iview, clear_att, subpass_att, pre_flush, post_flush);
+         radv_fast_clear_color(cmd_buffer, iview, clear_att, pre_flush, post_flush);
       } else {
          emit_color_clear(cmd_buffer, clear_att, clear_rect, view_mask);
       }
@@ -2192,8 +2192,7 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
    if (vk_format_is_color(format)) {
       if (radv_can_fast_clear_color(cmd_buffer, &iview, image_layout, &clear_rect,
                                     clear_att.clearValue.color, 0)) {
-         radv_fast_clear_color(cmd_buffer, &iview, &clear_att, clear_att.colorAttachment, NULL,
-                               NULL);
+         radv_fast_clear_color(cmd_buffer, &iview, &clear_att, NULL, NULL);
          fast_cleared = true;
       }
    } else {
