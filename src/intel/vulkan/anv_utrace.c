@@ -158,6 +158,7 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
          }
       }
       anv_genX(device->info, emit_so_memcpy_fini)(&flush->memcpy_state);
+      anv_genX(device->info, emit_so_memcpy_end)(&flush->memcpy_state);
 
       u_trace_flush(&flush->ds.trace, flush, true);
 
