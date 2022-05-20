@@ -405,7 +405,7 @@ gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
    if (!xfb)
       return;
 
-   assert(xfb->output_count < MAX_SO_OUTPUTS);
+   assert(xfb->output_count <= MAX_SO_OUTPUTS);
    so->num_outputs = xfb->output_count;
 
    for (unsigned i = 0; i < xfb->output_count; i++) {
