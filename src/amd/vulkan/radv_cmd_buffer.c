@@ -509,6 +509,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->gsvs_ring_size_needed = 0;
    cmd_buffer->tess_rings_needed = false;
    cmd_buffer->task_rings_needed = false;
+   cmd_buffer->mesh_scratch_ring_needed = false;
    cmd_buffer->gds_needed = false;
    cmd_buffer->gds_oa_needed = false;
    cmd_buffer->sample_positions_needed = false;
@@ -5260,6 +5261,9 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
          cmd_buffer->tess_rings_needed = true;
+      if (mesh_shading)
+         cmd_buffer->mesh_scratch_ring_needed |=
+            pipeline->shaders[MESA_SHADER_MESH]->info.ms.needs_ms_scratch_ring;
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TASK)) {
          cmd_buffer->task_rings_needed = true;
@@ -5801,6 +5805,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          primary->tess_rings_needed = true;
       if (secondary->task_rings_needed)
          primary->task_rings_needed = true;
+      if (secondary->mesh_scratch_ring_needed)
+         primary->mesh_scratch_ring_needed = true;
       if (secondary->sample_positions_needed)
          primary->sample_positions_needed = true;
       if (secondary->gds_needed)

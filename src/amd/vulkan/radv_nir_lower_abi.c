@@ -173,6 +173,14 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_ring_task_payload_amd:
       return load_ring(b, RING_TS_PAYLOAD, s);
 
+   case nir_intrinsic_load_ring_mesh_scratch_amd:
+      return load_ring(b, RING_MS_SCRATCH, s);
+
+   case nir_intrinsic_load_ring_mesh_scratch_offset_amd:
+      /* gs_tg_info[0:11] is ordered_wave_id. Multiply by the ring entry size. */
+      return nir_imul_imm(b, nir_iand_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info), 0xfff),
+                                          RADV_MESH_SCRATCH_ENTRY_BYTES);
+
    case nir_intrinsic_load_task_ring_entry_amd:
       return ac_nir_load_arg(b, &s->args->ac, s->args->ac.task_ring_entry);
 
@@ -230,6 +238,8 @@ filter_abi_instr(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_load_viewport_y_offset ||
           intrin->intrinsic == nir_intrinsic_load_ring_task_draw_amd ||
           intrin->intrinsic == nir_intrinsic_load_ring_task_payload_amd ||
+          intrin->intrinsic == nir_intrinsic_load_ring_mesh_scratch_amd ||
+          intrin->intrinsic == nir_intrinsic_load_ring_mesh_scratch_offset_amd ||
           intrin->intrinsic == nir_intrinsic_load_task_ring_entry_amd ||
           intrin->intrinsic == nir_intrinsic_load_task_ib_addr ||
           intrin->intrinsic == nir_intrinsic_load_task_ib_stride ||

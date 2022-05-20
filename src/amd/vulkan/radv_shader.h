@@ -364,6 +364,7 @@ struct radv_shader_info {
    struct {
       struct radv_vs_output_info outinfo;
       enum shader_prim output_prim;
+      bool needs_ms_scratch_ring;
    } ms;
 
    struct radv_streamout_info so;

@@ -717,6 +717,7 @@ struct radv_queue_ring_info {
    uint32_t gsvs_ring_size;
    bool tess_rings;
    bool task_rings;
+   bool mesh_scratch_ring;
    bool gds;
    bool gds_oa;
    bool sample_positions;
@@ -733,6 +734,7 @@ struct radv_queue_state {
    struct radeon_winsys_bo *gsvs_ring_bo;
    struct radeon_winsys_bo *tess_rings_bo;
    struct radeon_winsys_bo *task_rings_bo;
+   struct radeon_winsys_bo *mesh_scratch_ring_bo;
    struct radeon_winsys_bo *gds_bo;
    struct radeon_winsys_bo *gds_oa_bo;
 
@@ -1568,6 +1570,7 @@ struct radv_cmd_buffer {
    uint32_t gsvs_ring_size_needed;
    bool tess_rings_needed;
    bool task_rings_needed;
+   bool mesh_scratch_ring_needed;
    bool gds_needed;    /* for GFX10 streamout and NGG GS queries */
    bool gds_oa_needed; /* for GFX10 streamout */
    bool sample_positions_needed;
