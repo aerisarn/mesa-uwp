@@ -48,6 +48,8 @@
 #include "util/u_memory.h"
 #include "util/u_video.h"
 
+#include <cmath>
+
 /**
  * flush any outstanding command buffers to the hardware
  * should be called before a video_buffer is acessed by the gallium frontend again

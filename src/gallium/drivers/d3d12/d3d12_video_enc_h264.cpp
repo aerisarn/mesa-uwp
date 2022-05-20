@@ -27,6 +27,8 @@
 #include "d3d12_screen.h"
 #include "d3d12_format.h"
 
+#include <cmath>
+
 void
 d3d12_video_encoder_update_current_rate_control_h264(struct d3d12_video_encoder *pD3D12Enc,
                                                      pipe_h264_enc_picture_desc *picture)

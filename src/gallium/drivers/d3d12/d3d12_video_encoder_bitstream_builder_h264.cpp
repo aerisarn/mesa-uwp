@@ -23,6 +23,8 @@
 
 #include "d3d12_video_encoder_bitstream_builder_h264.h"
 
+#include <cmath>
+
 inline H264_SPEC_PROFILES
 Convert12ToSpecH264Profiles(D3D12_VIDEO_ENCODER_PROFILE_H264 profile12)
 {

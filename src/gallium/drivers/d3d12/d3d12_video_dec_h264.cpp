@@ -24,6 +24,8 @@
 #include "d3d12_video_dec.h"
 #include "d3d12_video_dec_h264.h"
 
+#include <cmath>
+
 void
 d3d12_video_decoder_refresh_dpb_active_references_h264(struct d3d12_video_decoder *pD3D12Dec)
 {
