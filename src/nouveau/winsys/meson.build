@@ -1,6 +1,8 @@
 libnouveau_ws = static_library(
   'nouveau_ws',
   [
+    'nouveau_bo.h',
+    'nouveau_bo.c',
     'nouveau_device.h',
     'nouveau_device.c',
     'nouveau_private.h',

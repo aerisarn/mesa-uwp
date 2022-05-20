@@ -103,6 +103,11 @@ nouveau_ws_device_new(int fd)
    device->dev = dev;
    device->fd = dup_fd;
 
+   if (dev->vram_size == 0)
+      device->local_mem_domain = NOUVEAU_GEM_DOMAIN_GART;
+   else
+      device->local_mem_domain = NOUVEAU_GEM_DOMAIN_VRAM;
+
    return &device->base;
 
 out_dev:

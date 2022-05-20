@@ -22,6 +22,7 @@ struct nouveau_ws_device_priv {
    struct nouveau_drm *drm;
    struct nouveau_device *dev;
    int fd;
+   uint32_t local_mem_domain;
 };
 
 static struct nouveau_ws_device_priv *
