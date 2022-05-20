@@ -189,3 +189,16 @@ traces:
     # good rendering, but intermittent timeouts
     #  - device: crocus-hsw
     #    checksum: 008556add75ea5bb022eb99e0b52099b
+  - path: ror/ror-default.trace
+    expectations:
+      # crashes with error: waffle_context_create failed
+      #- device: crocus-g41
+      # missing shadows
+      - device: crocus-hsw
+        checksum: ff8b937b6aa03572eb947d899e4c7abb
+  - path: nheko/nheko-colors.trace
+    expectations:
+      - device: crocus-g41
+        checksum: 3f4bfa1516e50194e4e86978420852c4
+      - device: crocus-hsw
+        checksum: 7a8b329f50653480eda50f53d715ad27
