@@ -193,6 +193,8 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    if (instance->debug_flags & DZN_DEBUG_GBV)
       d3d12_enable_gpu_validation();
 
+   instance->sync_binary_type = vk_sync_binary_get_type(&dzn_sync_type);
+
    *out = dzn_instance_to_handle(instance);
    return VK_SUCCESS;
 }
@@ -266,6 +268,7 @@ dzn_physical_device_create(struct dzn_instance *instance,
 
    uint32_t num_sync_types = 0;
    pdev->sync_types[num_sync_types++] = &dzn_sync_type;
+   pdev->sync_types[num_sync_types++] = &instance->sync_binary_type.sync;
    pdev->sync_types[num_sync_types++] = &vk_sync_dummy_type;
    pdev->sync_types[num_sync_types] = NULL;
    assert(num_sync_types <= MAX_SYNC_TYPES);
