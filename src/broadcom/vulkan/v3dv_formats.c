@@ -350,10 +350,20 @@ get_image_format_properties(
    const VkImageStencilUsageCreateInfo *stencil_usage_info =
       vk_find_struct_const(info->pNext, IMAGE_STENCIL_USAGE_CREATE_INFO);
 
-   VkImageUsageFlags usage =
+   VkImageUsageFlags image_usage =
       info->usage | (stencil_usage_info ? stencil_usage_info->stencilUsage : 0);
 
-   if (usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
+   /* If VK_IMAGE_CREATE_EXTENDED_USAGE_BIT is set it means the usage flags may
+    * not be be supported for the image format but are supported for at least
+    * one compatible format from which an image view can be created for the
+    * image. This means we should not report the format as unsupported based
+    * on the usage flags when usage refers to how an image view may be used
+    * (i.e. as a framebuffer attachment, for sampling, etc).
+    */
+   VkImageUsageFlags view_usage =
+      info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT ? 0 : image_usage;
+
+   if (image_usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
          goto unsupported;
       }
@@ -369,14 +379,14 @@ get_image_format_properties(
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)) {
          goto unsupported;
       }
    }
 
-   if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
-                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+   if (view_usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
          goto unsupported;
       }
@@ -391,19 +401,19 @@ get_image_format_properties(
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (view_usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
          goto unsupported;
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+   if (view_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
          goto unsupported;
       }
    }
 
-   if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+   if (view_usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       if (!(format_feature_flags &
             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
          goto unsupported;
