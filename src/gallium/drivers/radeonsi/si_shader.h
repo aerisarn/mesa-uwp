@@ -686,7 +686,6 @@ struct si_shader_key_ge {
       union si_vs_fix_fetch vs_fix_fetch[SI_MAX_ATTRIBS];
 
       union {
-         uint64_t ff_tcs_inputs_to_copy; /* fixed-func TCS only */
          /* When PS needs PrimID and GS is disabled. */
          unsigned vs_export_prim_id : 1;    /* VS and TES only */
          unsigned gs_tri_strip_adj_fix : 1; /* GS only */

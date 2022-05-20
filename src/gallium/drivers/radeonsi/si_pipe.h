@@ -999,7 +999,7 @@ struct si_context {
    struct si_screen *screen;
    struct util_debug_callback debug;
    struct ac_llvm_compiler compiler; /* only non-threaded compilation */
-   struct si_shader_ctx_state fixed_func_tcs_shader;
+   struct hash_table *fixed_func_tcs_shader_cache;
    struct si_resource *wait_mem_scratch;
    struct si_resource *wait_mem_scratch_tmz;
    unsigned wait_mem_number;
@@ -1076,6 +1076,8 @@ struct si_context {
       struct si_shader_ctx_state shaders[SI_NUM_GRAPHICS_SHADERS];
    };
    struct si_cs_shader_state cs_shader_state;
+   /* if current tcs set by user */
+   bool is_user_tcs;
 
    /* shader information */
    uint64_t ps_inputs_read_or_disabled;
@@ -1557,7 +1559,6 @@ void *si_create_passthrough_tcs(struct si_context *sctx);
 /* si_shaderlib_tgsi.c */
 void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type,
                         unsigned num_layers);
-void *si_create_fixed_func_tcs(struct si_context *sctx);
 void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy);
 void *si_create_clear_buffer_rmw_cs(struct si_context *sctx);

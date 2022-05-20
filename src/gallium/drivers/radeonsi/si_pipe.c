@@ -228,8 +228,13 @@ static void si_destroy_context(struct pipe_context *context)
    for (i = 0; i < ARRAY_SIZE(sctx->vgt_shader_config); i++)
       si_pm4_free_state(sctx, sctx->vgt_shader_config[i], SI_STATE_IDX(vgt_shader_config));
 
-   if (sctx->fixed_func_tcs_shader.cso)
-      sctx->b.delete_tcs_state(&sctx->b, sctx->fixed_func_tcs_shader.cso);
+   if (sctx->fixed_func_tcs_shader_cache) {
+      hash_table_foreach(sctx->fixed_func_tcs_shader_cache, entry) {
+         sctx->b.delete_tcs_state(&sctx->b, entry->data);
+      }
+      _mesa_hash_table_destroy(sctx->fixed_func_tcs_shader_cache, NULL);
+   }
+
    if (sctx->custom_dsa_flush)
       sctx->b.delete_depth_stencil_alpha_state(&sctx->b, sctx->custom_dsa_flush);
    if (sctx->custom_blend_resolve)

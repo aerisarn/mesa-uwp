@@ -71,9 +71,6 @@ static unsigned get_tcs_out_vertex_dw_stride_constant(struct si_shader_context *
 {
    assert(ctx->stage == MESA_SHADER_TESS_CTRL);
 
-   if (ctx->shader->key.ge.mono.u.ff_tcs_inputs_to_copy)
-      return util_last_bit64(ctx->shader->key.ge.mono.u.ff_tcs_inputs_to_copy) * 4;
-
    return util_last_bit64(ctx->shader->selector->info.outputs_written) * 4;
 }
 
@@ -86,9 +83,6 @@ static LLVMValueRef get_tcs_out_vertex_dw_stride(struct si_shader_context *ctx)
 
 static LLVMValueRef get_tcs_out_patch_stride(struct si_shader_context *ctx)
 {
-   if (ctx->shader->key.ge.mono.u.ff_tcs_inputs_to_copy)
-      return si_unpack_param(ctx, ctx->tcs_out_lds_layout, 0, 13);
-
    const struct si_shader_info *info = &ctx->shader->selector->info;
    unsigned tcs_out_vertices = info->base.tess.tcs_vertices_out;
    unsigned vertex_dw_stride = get_tcs_out_vertex_dw_stride_constant(ctx);
@@ -141,7 +135,7 @@ LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx)
       ctx->shader->selector ? ctx->shader->selector->info.base.tess.tcs_vertices_out
                             : 0;
 
-   /* If !tcs_out_vertices, it's either the fixed-func TCS or the TCS epilog. */
+   /* If !tcs_out_vertices, it's the TCS epilog. */
    if (ctx->stage == MESA_SHADER_TESS_CTRL && tcs_out_vertices)
       return LLVMConstInt(ctx->ac.i32, tcs_out_vertices, 0);
 
@@ -550,41 +544,6 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
    }
 }
 
-/**
- * Forward all outputs from the vertex shader to the TES. This is only used
- * for the fixed function TCS.
- */
-static void si_copy_tcs_inputs(struct si_shader_context *ctx)
-{
-   LLVMValueRef invocation_id, buffer, buffer_offset;
-   LLVMValueRef lds_vertex_stride, lds_base;
-   uint64_t inputs;
-
-   invocation_id = si_unpack_param(ctx, ctx->args.tcs_rel_ids, 8, 5);
-   buffer = get_tess_ring_descriptor(ctx, TESS_OFFCHIP_RING_TCS);
-   buffer_offset = ac_get_arg(&ctx->ac, ctx->args.tess_offchip_offset);
-
-   lds_vertex_stride = si_get_tcs_in_vertex_dw_stride(ctx);
-   lds_base = get_tcs_in_current_patch_offset(ctx);
-   lds_base = ac_build_imad(&ctx->ac, invocation_id, lds_vertex_stride, lds_base);
-
-   inputs = ctx->shader->key.ge.mono.u.ff_tcs_inputs_to_copy;
-   while (inputs) {
-      unsigned i = u_bit_scan64(&inputs);
-
-      LLVMValueRef lds_ptr =
-         LLVMBuildAdd(ctx->ac.builder, lds_base, LLVMConstInt(ctx->ac.i32, 4 * i, 0), "");
-
-      LLVMValueRef buffer_addr = get_tcs_tes_buffer_address(
-         ctx, get_rel_patch_id(ctx), invocation_id, LLVMConstInt(ctx->ac.i32, i, 0));
-
-      LLVMValueRef value = lshs_lds_load(ctx, ctx->ac.i32, ~0, lds_ptr);
-
-      ac_build_buffer_store_dword(&ctx->ac, buffer, value, NULL, buffer_addr, buffer_offset,
-                                  ac_glc);
-   }
-}
-
 static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader_part_key *key,
                                   LLVMValueRef rel_patch_id, LLVMValueRef invocation_id,
                                   LLVMValueRef tcs_out_current_patch_data_offset,
@@ -750,8 +709,6 @@ void si_llvm_tcs_build_end(struct si_shader_context *ctx)
 {
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef rel_patch_id, invocation_id, tf_lds_offset;
-
-   si_copy_tcs_inputs(ctx);
 
    rel_patch_id = get_rel_patch_id(ctx);
    invocation_id = si_unpack_param(ctx, ctx->args.tcs_rel_ids, 8, 5);

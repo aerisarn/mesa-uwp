@@ -81,33 +81,6 @@ void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type, 
    return *vs;
 }
 
-/**
- * This is used when TCS is NULL in the VS->TCS->TES chain. In this case,
- * VS passes its outputs to TES directly, so the fixed-function shader only
- * has to write TESSOUTER and TESSINNER.
- */
-void *si_create_fixed_func_tcs(struct si_context *sctx)
-{
-   struct ureg_src outer, inner;
-   struct ureg_dst tessouter, tessinner;
-   struct ureg_program *ureg = ureg_create(PIPE_SHADER_TESS_CTRL);
-
-   if (!ureg)
-      return NULL;
-
-   outer = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL, 0);
-   inner = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL, 0);
-
-   tessouter = ureg_DECL_output(ureg, TGSI_SEMANTIC_TESSOUTER, 0);
-   tessinner = ureg_DECL_output(ureg, TGSI_SEMANTIC_TESSINNER, 0);
-
-   ureg_MOV(ureg, tessouter, outer);
-   ureg_MOV(ureg, tessinner, inner);
-   ureg_END(ureg);
-
-   return ureg_create_shader_and_destroy(ureg, &sctx->b);
-}
-
 /* Create a compute shader implementing clear_buffer or copy_buffer. */
 void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy)

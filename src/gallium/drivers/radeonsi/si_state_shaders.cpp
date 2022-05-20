@@ -3373,7 +3373,6 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    sctx->shader.vs.current = (sel && sel->variants_count) ? sel->variants[0] : NULL;
    sctx->num_vs_blit_sgprs = sel ? sel->info.base.vs.blit_sgprs_amd : 0;
    sctx->vs_uses_draw_id = sel ? sel->info.uses_drawid : false;
-   sctx->fixed_func_tcs_shader.key.ge.mono.u.ff_tcs_inputs_to_copy = sel ? sel->info.outputs_written : 0;
 
    if (si_update_ngg(sctx))
       si_shader_change_notify(sctx);
@@ -3486,6 +3485,11 @@ static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
    struct si_shader_selector *sel = (struct si_shader_selector*)state;
    bool enable_changed = !!sctx->shader.tcs.cso != !!sel;
 
+   /* Note it could happen that user shader sel is same as fixed function shader,
+    * so we should update this field even sctx->shader.tcs.cso == sel.
+    */
+   sctx->is_user_tcs = !!sel;
+
    if (sctx->shader.tcs.cso == sel)
       return;
 
@@ -3518,11 +3522,9 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    si_update_tess_uses_prim_id(sctx);
 
    sctx->shader.tcs.key.ge.part.tcs.epilog.prim_mode =
-   sctx->fixed_func_tcs_shader.key.ge.part.tcs.epilog.prim_mode =
       sel ? sel->info.base.tess._primitive_mode : 0;
 
    sctx->shader.tcs.key.ge.part.tcs.epilog.tes_reads_tess_factors =
-   sctx->fixed_func_tcs_shader.key.ge.part.tcs.epilog.tes_reads_tess_factors =
       sel ? sel->info.reads_tess_factors : 0;
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_TESS_EVAL);
@@ -3976,17 +3978,8 @@ static int si_update_scratch_buffer(struct si_context *sctx, struct si_shader *s
    return 1;
 }
 
-static struct si_shader *si_get_tcs_current(struct si_context *sctx)
-{
-   if (!sctx->shader.tes.cso)
-      return NULL; /* tessellation disabled */
-
-   return sctx->shader.tcs.cso ? sctx->shader.tcs.current : sctx->fixed_func_tcs_shader.current;
-}
-
 static bool si_update_scratch_relocs(struct si_context *sctx)
 {
-   struct si_shader *tcs = si_get_tcs_current(sctx);
    int r;
 
    /* Update the shaders, so that they are using the latest scratch.
@@ -4006,11 +3999,11 @@ static bool si_update_scratch_relocs(struct si_context *sctx)
    if (r == 1)
       si_pm4_bind_state(sctx, gs, sctx->shader.gs.current);
 
-   r = si_update_scratch_buffer(sctx, tcs);
+   r = si_update_scratch_buffer(sctx, sctx->shader.tcs.current);
    if (r < 0)
       return false;
    if (r == 1)
-      si_pm4_bind_state(sctx, hs, tcs);
+      si_pm4_bind_state(sctx, hs, sctx->shader.tcs.current);
 
    /* VS can be bound as LS, ES, or VS. */
    r = si_update_scratch_buffer(sctx, sctx->shader.vs.current);
@@ -4249,6 +4242,53 @@ static void si_emit_scratch_state(struct si_context *sctx)
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->scratch_buffer,
                                 RADEON_USAGE_READWRITE | RADEON_PRIO_SCRATCH_BUFFER);
    }
+}
+
+struct si_fixed_func_tcs_shader_key {
+   uint64_t outputs_written;
+   uint8_t vertices_out;
+};
+
+static uint32_t si_fixed_func_tcs_shader_key_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct si_fixed_func_tcs_shader_key));
+}
+
+static bool si_fixed_func_tcs_shader_key_equals(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct si_fixed_func_tcs_shader_key)) == 0;
+}
+
+bool si_set_tcs_to_fixed_func_shader(struct si_context *sctx)
+{
+   if (!sctx->fixed_func_tcs_shader_cache) {
+      sctx->fixed_func_tcs_shader_cache = _mesa_hash_table_create(
+         NULL, si_fixed_func_tcs_shader_key_hash,
+         si_fixed_func_tcs_shader_key_equals);
+   }
+
+   struct si_fixed_func_tcs_shader_key key;
+   key.outputs_written = sctx->shader.vs.cso->info.outputs_written;
+   key.vertices_out = sctx->patch_vertices;
+
+   struct hash_entry *entry = _mesa_hash_table_search(
+      sctx->fixed_func_tcs_shader_cache, &key);
+
+   struct si_shader_selector *tcs;
+   if (entry)
+      tcs = (struct si_shader_selector *)entry->data;
+   else {
+      tcs = (struct si_shader_selector *)si_create_passthrough_tcs(sctx);
+      if (!tcs)
+         return false;
+      _mesa_hash_table_insert(sctx->fixed_func_tcs_shader_cache, &key, (void *)tcs);
+   }
+
+   sctx->shader.tcs.cso = tcs;
+   sctx->shader.tcs.key.ge.part.tcs.epilog.invoc0_tess_factors_are_def =
+      tcs->info.tessfactors_are_def_in_all_invocs;
+
+   return true;
 }
 
 void si_init_screen_live_shader_cache(struct si_screen *sscreen)

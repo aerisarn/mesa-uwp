@@ -1239,8 +1239,6 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
          si_dump_shader_key_vs(key, &key->ge.part.tcs.ls_prolog, "part.tcs.ls_prolog", f);
       }
       fprintf(f, "  part.tcs.epilog.prim_mode = %u\n", key->ge.part.tcs.epilog.prim_mode);
-      fprintf(f, "  mono.u.ff_tcs_inputs_to_copy = 0x%" PRIx64 "\n",
-              key->ge.mono.u.ff_tcs_inputs_to_copy);
       fprintf(f, "  opt.prefer_mono = %u\n", key->ge.opt.prefer_mono);
       fprintf(f, "  opt.same_patch_vertices = %u\n", key->ge.opt.same_patch_vertices);
       break;
@@ -2018,12 +2016,8 @@ void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *k
    key->tcs_epilog.wave32 = shader->wave_size == 32;
    key->tcs_epilog.states = shader->key.ge.part.tcs.epilog;
 
-   /* If output patches are wholly in one wave, we don't need a barrier.
-    * The fixed-func TCS doesn't set tcs_vertices_out, but it won't use a barrier
-    * anyway because tess levels are always defined in all invocations there.
-    */
+   /* If output patches are wholly in one wave, we don't need a barrier. */
    key->tcs_epilog.noop_s_barrier =
-      shader->selector->info.base.tess.tcs_vertices_out &&
       shader->wave_size % shader->selector->info.base.tess.tcs_vertices_out == 0;
 }
 

@@ -1023,12 +1023,9 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
             /* If both input and output patches are wholly in one wave, we don't need a barrier.
              * That's true when both VS and TCS have the same number of patch vertices and
              * the wave size is a multiple of the number of patch vertices.
-             *
-             * The fixed-func TCS doesn't set tcs_vertices_out.
              */
             if (!shader->key.ge.opt.same_patch_vertices ||
-                (sel->info.base.tess.tcs_vertices_out &&
-                 ctx->ac.wave_size % sel->info.base.tess.tcs_vertices_out != 0))
+                ctx->ac.wave_size % sel->info.base.tess.tcs_vertices_out != 0)
                ac_build_s_barrier(&ctx->ac, ctx->stage);
          }
       } else if (ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
