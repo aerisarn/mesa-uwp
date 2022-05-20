@@ -988,18 +988,8 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       if (result != VK_SUCCESS)
          goto fail_present;
 
-      struct wsi_image *image =
-         swapchain->get_wsi_image(swapchain, image_index);
-
-      struct wsi_memory_signal_submit_info mem_signal = {
-         .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,
-         .pNext = NULL,
-         .memory = image->memory,
-      };
-
       VkSubmitInfo submit_info = {
          .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-         .pNext = &mem_signal,
       };
 
       if (i == 0) {
@@ -1011,47 +1001,53 @@ wsi_common_queue_present(const struct wsi_device *wsi,
          submit_info.pWaitDstStageMask = stage_flags;
       }
 
-      VkFence fence = swapchain->fences[image_index];
+      struct wsi_image *image =
+         swapchain->get_wsi_image(swapchain, image_index);
+
+      VkQueue submit_queue = queue;
       if (swapchain->use_buffer_blit) {
          if (swapchain->buffer_blit_queue == VK_NULL_HANDLE) {
-            /* If we are using default buffer blits, we need to perform the blit now.  The
-             * command buffer is attached to the image.
-             */
             submit_info.commandBufferCount = 1;
             submit_info.pCommandBuffers =
                &image->buffer.blit_cmd_buffers[queue_family_index];
-            mem_signal.memory = image->buffer.memory;
          } else {
-            /* If we are using a blit using the driver's private queue, then do an empty
-             * submit signalling a semaphore, and then submit the blit.
+            /* If we are using a blit using the driver's private queue, then
+             * do an empty submit signalling a semaphore, and then submit the
+             * blit waiting on that.  This ensures proper queue ordering of
+             * vkQueueSubmit() calls.
              */
-            fence = VK_NULL_HANDLE;
             submit_info.signalSemaphoreCount = 1;
-            submit_info.pSignalSemaphores = &swapchain->buffer_blit_semaphores[image_index];
-         }
-      }
+            submit_info.pSignalSemaphores =
+               &swapchain->buffer_blit_semaphores[image_index];
 
-      result = wsi->QueueSubmit(queue, 1, &submit_info, fence);
-      if (result != VK_SUCCESS)
-         goto fail_present;
+            result = wsi->QueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
+            if (result != VK_SUCCESS)
+               goto fail_present;
 
-      if (swapchain->use_buffer_blit && swapchain->buffer_blit_queue != VK_NULL_HANDLE) {
-         submit_info.commandBufferCount = 1;
-
-         if (swapchain->buffer_blit_queue != VK_NULL_HANDLE) {
-            submit_info.pCommandBuffers = &image->buffer.blit_cmd_buffers[0];
+            /* Now prepare the blit submit.  It needs to then wait on the
+             * semaphore we signaled above.
+             */
+            submit_queue = swapchain->buffer_blit_queue;
             submit_info.waitSemaphoreCount = 1;
             submit_info.pWaitSemaphores = submit_info.pSignalSemaphores;
             submit_info.signalSemaphoreCount = 0;
             submit_info.pSignalSemaphores = NULL;
-            /* Submit the copy to the private transfer queue */
-            result = wsi->QueueSubmit(swapchain->buffer_blit_queue,
-                                      1,
-                                      &submit_info,
-                                      swapchain->fences[image_index]);
+            submit_info.commandBufferCount = 1;
+            submit_info.pCommandBuffers = &image->buffer.blit_cmd_buffers[0];
          }
-         mem_signal.memory = image->buffer.memory;
       }
+
+      VkFence fence = swapchain->fences[image_index];
+
+      struct wsi_memory_signal_submit_info mem_signal = {
+         .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,
+         .memory = image->memory,
+      };
+      __vk_append_struct(&submit_info, &mem_signal);
+
+      result = wsi->QueueSubmit(submit_queue, 1, &submit_info, fence);
+      if (result != VK_SUCCESS)
+         goto fail_present;
 
       if (wsi->sw)
 	      wsi->WaitForFences(device, 1, &swapchain->fences[image_index],
