@@ -85,16 +85,31 @@ if with_platform_windows
   icd_file_name = 'vulkan_dzn.dll'
 endif
 
+
+icd_command = [
+   prog_python, '@INPUT0@',
+   '--api-version', '1.1', '--xml', '@INPUT1@',
+   '--lib-path', join_paths(module_dir, icd_file_name),
+   '--out', '@OUTPUT@',
+]
+
+icd_dev_command = [
+   prog_python, '@INPUT0@',
+   '--api-version', '1.1', '--xml', '@INPUT1@',
+   '--lib-path', join_paths(meson.current_build_dir(), icd_file_name),
+   '--out', '@OUTPUT@',
+]
+
+if with_platform_windows
+  icd_command += '--use-backslash'
+  icd_dev_command += '--use-backslash'
+endif
+
 dzn_icd = custom_target(
   'dzn_icd',
   input : [vk_icd_gen, vk_api_xml],
   output : 'dzn_icd.@0@.json'.format(host_machine.cpu()),
-  command : [
-    prog_python, '@INPUT0@',
-    '--api-version', '1.2', '--xml', '@INPUT1@',
-    '--lib-path', join_paths(module_dir, icd_file_name),
-    '--out', '@OUTPUT@',
-  ],
+  command : icd_command,
   build_by_default : true,
   install_dir : with_vulkan_icd_dir,
   install : true,
@@ -106,12 +121,7 @@ if meson.version().version_compare('>= 0.58')
     'dzn_devenv_icd',
     input : [vk_icd_gen, vk_api_xml],
     output : _dev_icdname,
-    command : [
-      prog_python, '@INPUT0@',
-      '--api-version', '1.1', '--xml', '@INPUT1@',
-      '--lib-path', meson.current_build_dir() / icd_file_name,
-      '--out', '@OUTPUT@',
-    ],
+    command : icd_dev_command,
     build_by_default : true,
   )
 
