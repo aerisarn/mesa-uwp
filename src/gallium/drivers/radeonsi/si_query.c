@@ -639,7 +639,7 @@ static bool si_query_hw_prepare_buffer(struct si_context *sctx, struct si_query_
 
 static unsigned si_query_pipestats_num_results(struct si_screen *sscreen)
 {
-   return 11;
+   return sscreen->info.gfx_level >= GFX11 ? 14 : 11;
 }
 
 static unsigned si_query_pipestat_dw_offset(enum pipe_statistics_query_index index)
@@ -656,6 +656,9 @@ static unsigned si_query_pipestat_dw_offset(enum pipe_statistics_query_index ind
    case PIPE_STAT_QUERY_HS_INVOCATIONS: return 16;
    case PIPE_STAT_QUERY_DS_INVOCATIONS: return 18;
    case PIPE_STAT_QUERY_CS_INVOCATIONS: return 20;
+   /* gfx11: MS_INVOCATIONS */
+   /* gfx11: MS_PRIMITIVES */
+   /* gfx11: TS_INVOCATIONS */
    default:
       assert(false);
    }
