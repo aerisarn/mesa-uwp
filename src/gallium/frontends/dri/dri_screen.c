@@ -745,6 +745,8 @@ dri_get_egl_image(struct st_manager *smapi,
        */
       mesa_format mesa_format = driImageFormatToGLFormat(map->dri_format);
       stimg->internalformat = driGLFormatToSizedInternalGLFormat(mesa_format);
+   } else {
+      stimg->internalformat = img->internal_format;
    }
 
    stimg->yuv_color_space = img->yuv_color_space;
