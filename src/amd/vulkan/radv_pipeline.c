@@ -122,26 +122,6 @@ radv_pipeline_has_color_attachments(const struct radv_rendering_info *ri_info)
    return false;
 }
 
-static const VkPipelineColorBlendStateCreateInfo *
-radv_pipeline_get_color_blend_state(const struct radv_graphics_pipeline *pipeline,
-                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineRenderingCreateInfo *ri =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
-   bool has_color_att = false;
-
-   for (uint32_t i = 0; i < ri->colorAttachmentCount; ++i) {
-      if (ri->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
-         has_color_att = true;
-         break;
-      }
-   }
-
-   if (radv_is_raster_enabled(pipeline, pCreateInfo) && has_color_att)
-      return pCreateInfo->pColorBlendState;
-   return NULL;
-}
-
 static bool
 radv_pipeline_has_ngg(const struct radv_graphics_pipeline *pipeline)
 {
@@ -701,19 +681,15 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                const struct radv_graphics_pipeline_info *info)
 {
    const struct radv_device *device = pipeline->base.device;
-   const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
    struct radv_blend_state blend = {0};
    unsigned cb_color_control = 0;
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    int i;
 
-   if (vkblend) {
-      if (vkblend->logicOpEnable)
-         cb_color_control |= S_028808_ROP3(si_translate_blend_logic_op(vkblend->logicOp));
-      else
-         cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
-   }
+   if (info->cb.logic_op_enable)
+      cb_color_control |= S_028808_ROP3(info->cb.logic_op);
+   else
+      cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
 
    if (device->instance->debug_flags & RADV_DEBUG_NO_ATOC_DITHERING)
    {
@@ -734,120 +710,117 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    }
 
    blend.cb_target_mask = 0;
-   if (vkblend) {
-      for (i = 0; i < vkblend->attachmentCount; i++) {
-         const VkPipelineColorBlendAttachmentState *att = &vkblend->pAttachments[i];
-         unsigned blend_cntl = 0;
-         unsigned srcRGB_opt, dstRGB_opt, srcA_opt, dstA_opt;
-         unsigned eqRGB = si_translate_blend_function(att->colorBlendOp);
-         unsigned srcRGB = si_translate_blend_factor(gfx_level, att->srcColorBlendFactor);
-         unsigned dstRGB = si_translate_blend_factor(gfx_level, att->dstColorBlendFactor);
-         unsigned eqA = si_translate_blend_function(att->alphaBlendOp);
-         unsigned srcA = si_translate_blend_factor(gfx_level, att->srcAlphaBlendFactor);
-         unsigned dstA = si_translate_blend_factor(gfx_level, att->dstAlphaBlendFactor);
+   for (i = 0; i < info->cb.att_count; i++) {
+      unsigned blend_cntl = 0;
+      unsigned srcRGB_opt, dstRGB_opt, srcA_opt, dstA_opt;
+      unsigned eqRGB = info->cb.att[i].color_blend_op;
+      unsigned srcRGB = info->cb.att[i].src_color_blend_factor;
+      unsigned dstRGB = info->cb.att[i].dst_color_blend_factor;
+      unsigned eqA = info->cb.att[i].alpha_blend_op;
+      unsigned srcA = info->cb.att[i].src_alpha_blend_factor;
+      unsigned dstA = info->cb.att[i].dst_alpha_blend_factor;
 
-         blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
-                                     S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
+      blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
+                                  S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 
-         if (!att->colorWriteMask)
-            continue;
+      if (!info->cb.att[i].color_write_mask)
+         continue;
 
-         /* Ignore other blend targets if dual-source blending
-          * is enabled to prevent wrong behaviour.
-          */
-         if (blend.mrt0_is_dual_src)
-            continue;
+      /* Ignore other blend targets if dual-source blending
+       * is enabled to prevent wrong behaviour.
+       */
+      if (blend.mrt0_is_dual_src)
+         continue;
 
-         blend.cb_target_mask |= (unsigned)att->colorWriteMask << (4 * i);
-         blend.cb_target_enabled_4bit |= 0xfu << (4 * i);
-         if (!att->blendEnable) {
-            blend.cb_blend_control[i] = blend_cntl;
-            continue;
-         }
-
-         if (is_dual_src(gfx_level, srcRGB) || is_dual_src(gfx_level, dstRGB) ||
-             is_dual_src(gfx_level, srcA) || is_dual_src(gfx_level, dstA))
-            if (i == 0)
-               blend.mrt0_is_dual_src = true;
-
-
-         if (eqRGB == V_028780_COMB_MIN_DST_SRC || eqRGB == V_028780_COMB_MAX_DST_SRC) {
-            srcRGB = V_028780_BLEND_ONE;
-            dstRGB = V_028780_BLEND_ONE;
-         }
-         if (eqA == V_028780_COMB_MIN_DST_SRC || eqA == V_028780_COMB_MAX_DST_SRC) {
-            srcA = V_028780_BLEND_ONE;
-            dstA = V_028780_BLEND_ONE;
-         }
-
-         radv_blend_check_commutativity(gfx_level, &blend, eqRGB, srcRGB, dstRGB, 0x7u << (4 * i));
-         radv_blend_check_commutativity(gfx_level, &blend, eqA, srcA, dstA, 0x8u << (4 * i));
-
-         /* Blending optimizations for RB+.
-          * These transformations don't change the behavior.
-          *
-          * First, get rid of DST in the blend factors:
-          *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
-          */
-         si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB, V_028780_BLEND_DST_COLOR,
-                             V_028780_BLEND_SRC_COLOR);
-
-         si_blend_remove_dst(&eqA, &srcA, &dstA, V_028780_BLEND_DST_COLOR,
-                             V_028780_BLEND_SRC_COLOR);
-
-         si_blend_remove_dst(&eqA, &srcA, &dstA, V_028780_BLEND_DST_ALPHA,
-                             V_028780_BLEND_SRC_ALPHA);
-
-         /* Look up the ideal settings from tables. */
-         srcRGB_opt = si_translate_blend_opt_factor(srcRGB, false);
-         dstRGB_opt = si_translate_blend_opt_factor(dstRGB, false);
-         srcA_opt = si_translate_blend_opt_factor(srcA, true);
-         dstA_opt = si_translate_blend_opt_factor(dstA, true);
-
-         /* Handle interdependencies. */
-         if (si_blend_factor_uses_dst(srcRGB))
-            dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-         if (si_blend_factor_uses_dst(srcA))
-            dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-
-         if (srcRGB == V_028780_BLEND_SRC_ALPHA_SATURATE &&
-             (dstRGB == V_028780_BLEND_ZERO || dstRGB == V_028780_BLEND_SRC_ALPHA ||
-              dstRGB == V_028780_BLEND_SRC_ALPHA_SATURATE))
-            dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
-
-         /* Set the final value. */
-         blend.sx_mrt_blend_opt[i] =
-            S_028760_COLOR_SRC_OPT(srcRGB_opt) | S_028760_COLOR_DST_OPT(dstRGB_opt) |
-            S_028760_COLOR_COMB_FCN(si_translate_blend_opt_function(eqRGB)) |
-            S_028760_ALPHA_SRC_OPT(srcA_opt) | S_028760_ALPHA_DST_OPT(dstA_opt) |
-            S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
-         blend_cntl |= S_028780_ENABLE(1);
-
-         blend_cntl |= S_028780_COLOR_COMB_FCN(eqRGB);
-         blend_cntl |= S_028780_COLOR_SRCBLEND(srcRGB);
-         blend_cntl |= S_028780_COLOR_DESTBLEND(dstRGB);
-         if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
-            blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
-            blend_cntl |= S_028780_ALPHA_COMB_FCN(eqA);
-            blend_cntl |= S_028780_ALPHA_SRCBLEND(srcA);
-            blend_cntl |= S_028780_ALPHA_DESTBLEND(dstA);
-         }
+      blend.cb_target_mask |= (unsigned)info->cb.att[i].color_write_mask << (4 * i);
+      blend.cb_target_enabled_4bit |= 0xfu << (4 * i);
+      if (!info->cb.att[i].blend_enable) {
          blend.cb_blend_control[i] = blend_cntl;
-
-         blend.blend_enable_4bit |= 0xfu << (i * 4);
-
-         if (srcRGB == V_028780_BLEND_SRC_ALPHA || dstRGB == V_028780_BLEND_SRC_ALPHA ||
-             srcRGB == V_028780_BLEND_SRC_ALPHA_SATURATE ||
-             dstRGB == V_028780_BLEND_SRC_ALPHA_SATURATE ||
-             srcRGB == V_028780_BLEND_ONE_MINUS_SRC_ALPHA ||
-             dstRGB == V_028780_BLEND_ONE_MINUS_SRC_ALPHA)
-            blend.need_src_alpha |= 1 << i;
+         continue;
       }
-      for (i = vkblend->attachmentCount; i < 8; i++) {
-         blend.cb_blend_control[i] = 0;
-         blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
-                                     S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
+
+      if (is_dual_src(gfx_level, srcRGB) || is_dual_src(gfx_level, dstRGB) ||
+          is_dual_src(gfx_level, srcA) || is_dual_src(gfx_level, dstA))
+         if (i == 0)
+            blend.mrt0_is_dual_src = true;
+
+
+      if (eqRGB == V_028780_COMB_MIN_DST_SRC || eqRGB == V_028780_COMB_MAX_DST_SRC) {
+         srcRGB = V_028780_BLEND_ONE;
+         dstRGB = V_028780_BLEND_ONE;
       }
+      if (eqA == V_028780_COMB_MIN_DST_SRC || eqA == V_028780_COMB_MAX_DST_SRC) {
+         srcA = V_028780_BLEND_ONE;
+         dstA = V_028780_BLEND_ONE;
+      }
+
+      radv_blend_check_commutativity(gfx_level, &blend, eqRGB, srcRGB, dstRGB, 0x7u << (4 * i));
+      radv_blend_check_commutativity(gfx_level, &blend, eqA, srcA, dstA, 0x8u << (4 * i));
+
+      /* Blending optimizations for RB+.
+       * These transformations don't change the behavior.
+       *
+       * First, get rid of DST in the blend factors:
+       *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
+       */
+      si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB, V_028780_BLEND_DST_COLOR,
+                          V_028780_BLEND_SRC_COLOR);
+
+      si_blend_remove_dst(&eqA, &srcA, &dstA, V_028780_BLEND_DST_COLOR,
+                          V_028780_BLEND_SRC_COLOR);
+
+      si_blend_remove_dst(&eqA, &srcA, &dstA, V_028780_BLEND_DST_ALPHA,
+                          V_028780_BLEND_SRC_ALPHA);
+
+      /* Look up the ideal settings from tables. */
+      srcRGB_opt = si_translate_blend_opt_factor(srcRGB, false);
+      dstRGB_opt = si_translate_blend_opt_factor(dstRGB, false);
+      srcA_opt = si_translate_blend_opt_factor(srcA, true);
+      dstA_opt = si_translate_blend_opt_factor(dstA, true);
+
+      /* Handle interdependencies. */
+      if (si_blend_factor_uses_dst(srcRGB))
+         dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
+      if (si_blend_factor_uses_dst(srcA))
+         dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
+
+      if (srcRGB == V_028780_BLEND_SRC_ALPHA_SATURATE &&
+          (dstRGB == V_028780_BLEND_ZERO || dstRGB == V_028780_BLEND_SRC_ALPHA ||
+           dstRGB == V_028780_BLEND_SRC_ALPHA_SATURATE))
+         dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
+
+      /* Set the final value. */
+      blend.sx_mrt_blend_opt[i] =
+         S_028760_COLOR_SRC_OPT(srcRGB_opt) | S_028760_COLOR_DST_OPT(dstRGB_opt) |
+         S_028760_COLOR_COMB_FCN(si_translate_blend_opt_function(eqRGB)) |
+         S_028760_ALPHA_SRC_OPT(srcA_opt) | S_028760_ALPHA_DST_OPT(dstA_opt) |
+         S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
+      blend_cntl |= S_028780_ENABLE(1);
+
+      blend_cntl |= S_028780_COLOR_COMB_FCN(eqRGB);
+      blend_cntl |= S_028780_COLOR_SRCBLEND(srcRGB);
+      blend_cntl |= S_028780_COLOR_DESTBLEND(dstRGB);
+      if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
+         blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
+         blend_cntl |= S_028780_ALPHA_COMB_FCN(eqA);
+         blend_cntl |= S_028780_ALPHA_SRCBLEND(srcA);
+         blend_cntl |= S_028780_ALPHA_DESTBLEND(dstA);
+      }
+      blend.cb_blend_control[i] = blend_cntl;
+
+      blend.blend_enable_4bit |= 0xfu << (i * 4);
+
+      if (srcRGB == V_028780_BLEND_SRC_ALPHA || dstRGB == V_028780_BLEND_SRC_ALPHA ||
+          srcRGB == V_028780_BLEND_SRC_ALPHA_SATURATE ||
+          dstRGB == V_028780_BLEND_SRC_ALPHA_SATURATE ||
+          srcRGB == V_028780_BLEND_ONE_MINUS_SRC_ALPHA ||
+          dstRGB == V_028780_BLEND_ONE_MINUS_SRC_ALPHA)
+         blend.need_src_alpha |= 1 << i;
+   }
+   for (i = info->cb.att_count; i < 8; i++) {
+      blend.cb_blend_control[i] = 0;
+      blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
+                                  S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
    }
 
    if (device->physical_device->rad_info.has_rbplus) {
@@ -862,7 +835,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
       /* RB+ doesn't work with dual source blending, logic op and
        * RESOLVE.
        */
-      if (blend.mrt0_is_dual_src || (vkblend && vkblend->logicOpEnable) ||
+      if (blend.mrt0_is_dual_src || info->cb.logic_op_enable ||
           (device->physical_device->rad_info.gfx_level >= GFX11 && blend.blend_enable_4bit))
          cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
    }
@@ -1009,15 +982,13 @@ radv_pipeline_out_of_order_rast(struct radv_graphics_pipeline *pipeline,
                                 const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                 const struct radv_graphics_pipeline_info *info)
 {
-   const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
    unsigned colormask = blend->cb_target_enabled_4bit;
 
    if (!pipeline->base.device->physical_device->out_of_order_rast_allowed)
       return false;
 
    /* Be conservative if a logic operation is enabled with color buffers. */
-   if (colormask && vkblend && vkblend->logicOpEnable)
+   if (colormask && info->cb.logic_op_enable)
       return false;
 
    /* Be conservative if an extended dynamic depth/stencil state is
@@ -1373,18 +1344,13 @@ radv_dynamic_state_mask(VkDynamicState state)
 
 static bool
 radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
-                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                               const struct radv_color_blend_info *cb_info)
 {
-   const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
-
-   assert(vkblend);
-
-   for (uint32_t i = 0; i < vkblend->attachmentCount; i++) {
-      const VkPipelineColorBlendAttachmentState *att = &vkblend->pAttachments[i];
-      if (att->colorWriteMask && att->blendEnable)
+   for (uint32_t i = 0; i < cb_info->att_count; i++) {
+      if (cb_info->att[i].color_write_mask && cb_info->att[i].blend_enable)
          return true;
    }
+
    return false;
 }
 
@@ -1444,7 +1410,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
    if (!radv_is_vrs_enabled(pipeline, pCreateInfo))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
-   if (!has_color_att || !radv_pipeline_is_blend_enabled(pipeline, pCreateInfo))
+   if (!has_color_att || !radv_pipeline_is_blend_enabled(pipeline, &info->cb))
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
 
    if (!has_color_att)
@@ -1872,6 +1838,66 @@ radv_pipeline_init_rendering_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
+static struct radv_color_blend_info
+radv_pipeline_init_color_blend_info(struct radv_graphics_pipeline *pipeline,
+                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const VkPipelineColorBlendStateCreateInfo *cb = pCreateInfo->pColorBlendState;
+   const VkPipelineRenderingCreateInfo *ri =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
+   struct radv_color_blend_info info = {0};
+   bool has_color_att = false;
+
+   for (uint32_t i = 0; i < ri->colorAttachmentCount; ++i) {
+      if (ri->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
+         has_color_att = true;
+         break;
+      }
+   }
+
+   if (radv_is_raster_enabled(pipeline, pCreateInfo) && has_color_att) {
+      for (uint32_t i = 0; i < cb->attachmentCount; i++) {
+         const VkPipelineColorBlendAttachmentState *att = &cb->pAttachments[i];
+
+         info.att[i].color_write_mask = att->colorWriteMask;
+         info.att[i].blend_enable = att->blendEnable;
+         info.att[i].color_blend_op = si_translate_blend_function(att->colorBlendOp);
+         info.att[i].alpha_blend_op = si_translate_blend_function(att->alphaBlendOp);
+         info.att[i].src_color_blend_factor =
+            si_translate_blend_factor(pdevice->rad_info.gfx_level, att->srcColorBlendFactor);
+         info.att[i].dst_color_blend_factor =
+            si_translate_blend_factor(pdevice->rad_info.gfx_level, att->dstColorBlendFactor);
+         info.att[i].src_alpha_blend_factor =
+            si_translate_blend_factor(pdevice->rad_info.gfx_level, att->srcAlphaBlendFactor);
+         info.att[i].dst_alpha_blend_factor =
+            si_translate_blend_factor(pdevice->rad_info.gfx_level, att->dstAlphaBlendFactor);
+      }
+      info.att_count = cb->attachmentCount;
+
+      for (uint32_t i = 0; i < 4; i++) {
+         info.blend_constants[i] = cb->blendConstants[i];
+      }
+
+      info.logic_op_enable = cb->logicOpEnable;
+      if (info.logic_op_enable)
+         info.logic_op = si_translate_blend_logic_op(cb->logicOp);
+
+      const VkPipelineColorWriteCreateInfoEXT *color_write_info =
+         vk_find_struct_const(cb->pNext, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
+      if (color_write_info) {
+         for (uint32_t i = 0; i < color_write_info->attachmentCount; i++) {
+            info.color_write_enable |=
+               color_write_info->pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
+         }
+      } else {
+         info.color_write_enable = 0xffffffffu;
+      }
+   }
+
+   return info;
+}
+
 static struct radv_graphics_pipeline_info
 radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1891,6 +1917,7 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
    info.ms = radv_pipeline_init_multisample_info(pipeline, pCreateInfo);
    info.ds = radv_pipeline_init_depth_stencil_info(pipeline, pCreateInfo);
    info.ri = radv_pipeline_init_rendering_info(pipeline, pCreateInfo);
+   info.cb = radv_pipeline_init_color_blend_info(pipeline, pCreateInfo);
 
    return info;
 }
@@ -1966,8 +1993,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
     *    created against does not use any color attachments.
     */
    if (states & RADV_DYNAMIC_BLEND_CONSTANTS) {
-      assert(pCreateInfo->pColorBlendState);
-      typed_memcpy(dynamic->blend_constants, pCreateInfo->pColorBlendState->blendConstants, 4);
+      typed_memcpy(dynamic->blend_constants, info->cb.blend_constants, 4);
    }
 
    if (states & RADV_DYNAMIC_CULL_MODE) {
@@ -2099,23 +2125,15 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (radv_pipeline_has_color_attachments(&info->ri) && states & RADV_DYNAMIC_LOGIC_OP) {
-      if (pCreateInfo->pColorBlendState->logicOpEnable) {
-         dynamic->logic_op = si_translate_blend_logic_op(pCreateInfo->pColorBlendState->logicOp);
+      if (info->cb.logic_op_enable) {
+         dynamic->logic_op = info->cb.logic_op;
       } else {
          dynamic->logic_op = V_028808_ROP3_COPY;
       }
    }
 
    if (states & RADV_DYNAMIC_COLOR_WRITE_ENABLE) {
-      const VkPipelineColorWriteCreateInfoEXT *color_write_info = vk_find_struct_const(
-         pCreateInfo->pColorBlendState->pNext, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
-      if (color_write_info) {
-         dynamic->color_write_enable = 0;
-         for (uint32_t i = 0; i < color_write_info->attachmentCount; i++) {
-            dynamic->color_write_enable |=
-               color_write_info->pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
-         }
-      }
+      dynamic->color_write_enable = info->cb.color_write_enable;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -5288,24 +5306,20 @@ radv_gfx9_compute_bin_size(const struct radv_graphics_pipeline *pipeline,
    unsigned effective_samples = total_samples;
    unsigned color_bytes_per_pixel = 0;
 
-   const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
-   if (vkblend) {
-      for (unsigned i = 0; i < info->ri.color_att_count; i++) {
-         if (!vkblend->pAttachments[i].colorWriteMask)
-            continue;
+   for (unsigned i = 0; i < info->ri.color_att_count; i++) {
+      if (!info->cb.att[i].color_write_mask)
+         continue;
 
-         if (info->ri.color_att_formats[i] == VK_FORMAT_UNDEFINED)
-            continue;
+      if (info->ri.color_att_formats[i] == VK_FORMAT_UNDEFINED)
+         continue;
 
-         color_bytes_per_pixel += vk_format_get_blocksize(info->ri.color_att_formats[i]);
-      }
-
-      /* MSAA images typically don't use all samples all the time. */
-      if (effective_samples >= 2 && ps_iter_samples <= 1)
-         effective_samples = 2;
-      color_bytes_per_pixel *= effective_samples;
+      color_bytes_per_pixel += vk_format_get_blocksize(info->ri.color_att_formats[i]);
    }
+
+   /* MSAA images typically don't use all samples all the time. */
+   if (effective_samples >= 2 && ps_iter_samples <= 1)
+      effective_samples = 2;
+   color_bytes_per_pixel *= effective_samples;
 
    const struct radv_bin_size_entry *color_entry = color_size_table[log_num_rb_per_se][log_num_se];
    while (color_entry[1].bpp <= color_bytes_per_pixel)
@@ -5361,27 +5375,23 @@ radv_gfx10_compute_bin_size(const struct radv_graphics_pipeline *pipeline,
    unsigned color_bytes_per_pixel = 0;
    unsigned fmask_bytes_per_pixel = 0;
 
-   const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
-   if (vkblend) {
-      for (unsigned i = 0; i < info->ri.color_att_count; i++) {
-         if (!vkblend->pAttachments[i].colorWriteMask)
-            continue;
+   for (unsigned i = 0; i < info->ri.color_att_count; i++) {
+      if (!info->cb.att[i].color_write_mask)
+         continue;
 
-         if (info->ri.color_att_formats[i] == VK_FORMAT_UNDEFINED)
-            continue;
+      if (info->ri.color_att_formats[i] == VK_FORMAT_UNDEFINED)
+         continue;
 
-         color_bytes_per_pixel += vk_format_get_blocksize(info->ri.color_att_formats[i]);
+      color_bytes_per_pixel += vk_format_get_blocksize(info->ri.color_att_formats[i]);
 
-         if (total_samples > 1) {
-            assert(samples_log <= 3);
-            const unsigned fmask_array[] = {0, 1, 1, 4};
-            fmask_bytes_per_pixel += fmask_array[samples_log];
-         }
+      if (total_samples > 1) {
+         assert(samples_log <= 3);
+         const unsigned fmask_array[] = {0, 1, 1, 4};
+         fmask_bytes_per_pixel += fmask_array[samples_log];
       }
-
-      color_bytes_per_pixel *= total_samples;
    }
+
+   color_bytes_per_pixel *= total_samples;
    color_bytes_per_pixel = MAX2(color_bytes_per_pixel, 1);
 
    const unsigned color_pixel_count_log = util_logbase2(color_tag_part / color_bytes_per_pixel);
@@ -5430,22 +5440,18 @@ radv_pipeline_init_disabled_binning_state(struct radv_graphics_pipeline *pipelin
                                   S_028C44_DISABLE_START_OF_PRIM(1);
 
    if (pdevice->rad_info.gfx_level >= GFX10) {
-      const VkPipelineColorBlendStateCreateInfo *vkblend =
-         radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
       unsigned min_bytes_per_pixel = 0;
 
-      if (vkblend) {
-         for (unsigned i = 0; i < info->ri.color_att_count; i++) {
-            if (!vkblend->pAttachments[i].colorWriteMask)
-               continue;
+      for (unsigned i = 0; i < info->ri.color_att_count; i++) {
+         if (!info->cb.att[i].color_write_mask)
+            continue;
 
-            if (info->ri.color_att_formats[i] == VK_FORMAT_UNDEFINED)
-               continue;
+         if (info->ri.color_att_formats[i] == VK_FORMAT_UNDEFINED)
+            continue;
 
-            unsigned bytes = vk_format_get_blocksize(info->ri.color_att_formats[i]);
-            if (!min_bytes_per_pixel || bytes < min_bytes_per_pixel)
-               min_bytes_per_pixel = bytes;
-         }
+         unsigned bytes = vk_format_get_blocksize(info->ri.color_att_formats[i]);
+         if (!min_bytes_per_pixel || bytes < min_bytes_per_pixel)
+            min_bytes_per_pixel = bytes;
       }
 
       pa_sc_binner_cntl_0 =
