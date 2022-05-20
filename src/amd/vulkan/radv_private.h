@@ -1858,7 +1858,6 @@ struct radv_pipeline_slab {
 void radv_pipeline_slab_destroy(struct radv_device *device, struct radv_pipeline_slab *slab);
 
 struct radv_vertex_input_info {
-   /* Vertex input */
    uint32_t instance_rate_inputs;
    uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
    uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
@@ -1872,42 +1871,50 @@ struct radv_vertex_input_info {
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
+};
 
-   /* Input assembly */
+struct radv_input_assembly_info {
    uint32_t primitive_topology;
    bool primitive_restart_enable;
 };
 
-struct radv_pre_raster_info {
-   struct {
-      uint32_t patch_control_points;
-      VkTessellationDomainOrigin domain_origin;
-   } tess;
+struct radv_tessellation_info {
+   uint32_t patch_control_points;
+   VkTessellationDomainOrigin domain_origin;
+};
 
-   struct {
-      bool negative_one_to_one;
-   } viewport;
+struct radv_viewport_info {
+   bool negative_one_to_one;
+};
 
-   struct {
-      bool discard_enable;
-      VkFrontFace front_face;
-      VkCullModeFlags cull_mode;
-      VkPolygonMode polygon_mode;
-      bool depth_bias_enable;
-      bool depth_clamp_enable;
-      float line_width;
-      float depth_bias_constant_factor;
-      float depth_bias_clamp;
-      float depth_bias_slope_factor;
-      VkConservativeRasterizationModeEXT conservative_mode;
-      bool provoking_vtx_last;
-      bool stippled_line_enable;
-      VkLineRasterizationModeEXT line_raster_mode;
-      uint32_t line_stipple_factor;
-      uint16_t line_stipple_pattern;
-      bool depth_clip_disable;
-      VkRasterizationOrderAMD order;
-   } rast;
+struct radv_rasterization_info {
+   bool discard_enable;
+   VkFrontFace front_face;
+   VkCullModeFlags cull_mode;
+   VkPolygonMode polygon_mode;
+   bool depth_bias_enable;
+   bool depth_clamp_enable;
+   float line_width;
+   float depth_bias_constant_factor;
+   float depth_bias_clamp;
+   float depth_bias_slope_factor;
+   VkConservativeRasterizationModeEXT conservative_mode;
+   bool provoking_vtx_last;
+   bool stippled_line_enable;
+   VkLineRasterizationModeEXT line_raster_mode;
+   uint32_t line_stipple_factor;
+   uint16_t line_stipple_pattern;
+   bool depth_clip_disable;
+   VkRasterizationOrderAMD order;
+};
+
+struct radv_graphics_pipeline_info {
+   struct radv_vertex_input_info vi;
+   struct radv_input_assembly_info ia;
+
+   struct radv_tessellation_info ts;
+   struct radv_viewport_info vp;
+   struct radv_rasterization_info rs;
 };
 
 struct radv_pipeline {
