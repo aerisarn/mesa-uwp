@@ -574,33 +574,33 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
 
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       struct radv_subpass_attachment src_att = subpass->color_attachments[i];
-      struct radv_subpass_attachment dest_att = subpass->resolve_attachments[i];
+      struct radv_subpass_attachment dst_att = subpass->resolve_attachments[i];
 
-      if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
+      if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
          continue;
 
       struct radv_image_view *src_iview = saved_state.attachments[src_att.attachment].iview;
       struct radv_image *src_img = src_iview->image;
 
-      struct radv_image_view *dest_iview = saved_state.attachments[dest_att.attachment].iview;
-      struct radv_image *dst_img = dest_iview->image;
-      VkImageLayout dst_image_layout = saved_state.attachments[dest_att.attachment].current_layout;
+      struct radv_image_view *dst_iview = saved_state.attachments[dst_att.attachment].iview;
+      struct radv_image *dst_img = dst_iview->image;
+      VkImageLayout dst_image_layout = saved_state.attachments[dst_att.attachment].current_layout;
 
       uint32_t queue_mask = radv_image_queue_family_mask(dst_img, cmd_buffer->qf,
                                                          cmd_buffer->qf);
 
-      if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dest_iview->vk.base_mip_level,
+      if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dst_iview->vk.base_mip_level,
                                      dst_image_layout, queue_mask)) {
          VkImageSubresourceRange range = {
-            .aspectMask = dest_iview->vk.aspects,
-            .baseMipLevel = dest_iview->vk.base_mip_level,
-            .levelCount = dest_iview->vk.level_count,
-            .baseArrayLayer = dest_iview->vk.base_array_layer,
-            .layerCount = dest_iview->vk.layer_count,
+            .aspectMask = dst_iview->vk.aspects,
+            .baseMipLevel = dst_iview->vk.base_mip_level,
+            .levelCount = dst_iview->vk.level_count,
+            .baseArrayLayer = dst_iview->vk.base_array_layer,
+            .layerCount = dst_iview->vk.layer_count,
          };
 
          cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, dst_img, &range, 0xffffffff);
-         saved_state.attachments[dest_att.attachment].current_layout =
+         saved_state.attachments[dst_att.attachment].current_layout =
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       }
 
@@ -614,8 +614,8 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
          },
          {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = radv_image_view_to_handle(dest_iview),
-            .imageLayout = saved_state.attachments[dest_att.attachment].current_layout,
+            .imageView = radv_image_view_to_handle(dst_iview),
+            .imageLayout = saved_state.attachments[dst_att.attachment].current_layout,
             .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
          },
@@ -633,13 +633,13 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
       radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
 
       VkResult ret = build_resolve_pipeline(
-         cmd_buffer->device, radv_format_meta_fs_key(cmd_buffer->device, dest_iview->vk.format));
+         cmd_buffer->device, radv_format_meta_fs_key(cmd_buffer->device, dst_iview->vk.format));
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          continue;
       }
 
-      emit_resolve(cmd_buffer, src_img, dst_img, dest_iview->vk.format, &resolve_area);
+      emit_resolve(cmd_buffer, src_img, dst_img, dst_iview->vk.format, &resolve_area);
 
       radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
    }
@@ -724,23 +724,23 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
    if (subpass->has_color_resolve) {
       for (uint32_t i = 0; i < subpass->color_count; ++i) {
          struct radv_subpass_attachment src_att = subpass->color_attachments[i];
-         struct radv_subpass_attachment dest_att = subpass->resolve_attachments[i];
+         struct radv_subpass_attachment dst_att = subpass->resolve_attachments[i];
 
-         if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
+         if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
             continue;
 
          /* Make sure to not clear color attachments after resolves. */
-         cmd_buffer->state.attachments[dest_att.attachment].pending_clear_aspects = 0;
+         cmd_buffer->state.attachments[dst_att.attachment].pending_clear_aspects = 0;
 
          struct radv_image_view *dst_iview =
-            cmd_buffer->state.attachments[dest_att.attachment].iview;
+            cmd_buffer->state.attachments[dst_att.attachment].iview;
          struct radv_image *dst_img = dst_iview->image;
          struct radv_image_view *src_iview =
             cmd_buffer->state.attachments[src_att.attachment].iview;
          struct radv_image *src_img = src_iview->image;
 
          radv_pick_resolve_method_images(cmd_buffer->device, src_img, src_iview->vk.format, dst_img,
-                                         dst_iview->vk.base_mip_level, dest_att.layout,
+                                         dst_iview->vk.base_mip_level, dst_att.layout,
                                          cmd_buffer, &resolve_method);
 
          if (resolve_method == RESOLVE_FRAGMENT) {
@@ -782,9 +782,9 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       struct radv_subpass_attachment src_att = subpass->color_attachments[i];
-      struct radv_subpass_attachment dest_att = subpass->resolve_attachments[i];
+      struct radv_subpass_attachment dst_att = subpass->resolve_attachments[i];
 
-      if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
+      if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
          continue;
 
       struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
