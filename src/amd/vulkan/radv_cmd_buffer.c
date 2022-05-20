@@ -4552,14 +4552,6 @@ radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.attachments[idx].current_stencil_layout = att.stencil_layout;
 }
 
-void
-radv_cmd_buffer_set_subpass(struct radv_cmd_buffer *cmd_buffer, const struct radv_subpass *subpass)
-{
-   cmd_buffer->state.subpass = subpass;
-
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
-}
-
 static VkResult
 radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
                                       struct radv_render_pass *pass,
@@ -6265,7 +6257,8 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
 
    radv_emit_subpass_barrier(cmd_buffer, &subpass->start_barrier);
 
-   radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
+   cmd_buffer->state.subpass = subpass;
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
 
    radv_describe_barrier_start(cmd_buffer, RGP_BARRIER_EXTERNAL_RENDER_PASS_SYNC);
 
@@ -6361,14 +6354,6 @@ radv_mark_noncoherent_rb(struct radv_cmd_buffer *cmd_buffer)
        !cmd_buffer->state.attachments[subpass->depth_stencil_attachment->attachment]
            .iview->image->l2_coherent)
       cmd_buffer->state.rb_noncoherent_dirty = true;
-}
-
-void
-radv_cmd_buffer_restore_subpass(struct radv_cmd_buffer *cmd_buffer,
-                                const struct radv_subpass *subpass)
-{
-   radv_mark_noncoherent_rb(cmd_buffer);
-   radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 }
 
 static void
