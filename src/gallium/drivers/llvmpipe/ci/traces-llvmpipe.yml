@@ -190,3 +190,11 @@ traces:
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: a1446d0c42a78771240fca6f3b1e10d8
+  #- path: ror/ror-default.trace
+  #  expectations:
+      # timeout 5 min
+      #- device: gl-vmware-llvmpipe
+  - path: nheko/nheko-colors.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: 3a12c08087e16cfae4729f4e9d6c9387
