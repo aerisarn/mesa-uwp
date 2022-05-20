@@ -17,7 +17,7 @@ lima-mali450-test:arm64:
   variables:
     DEQP_EXPECTED_RENDERER: Mali450
 
-.lima-mali450-piglit-gpu:arm64:
+lima-mali450-piglit-gpu:arm64:
   extends:
     - .piglit-test
     - .lava-meson-gxl-s805x-libretech-ac
