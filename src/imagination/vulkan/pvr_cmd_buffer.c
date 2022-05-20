@@ -2760,7 +2760,7 @@ static VkResult pvr_setup_descriptor_mappings(
                PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC1_BSIZE_CLRMSK;
 
             PVR_WRITE(qword_buffer,
-                      0UL,
+                      UINT64_C(0),
                       desc_set_entry->const_offset,
                       pds_info->data_size_in_dwords);
 
