@@ -691,18 +691,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       sctx->b.create_video_buffer = vl_video_buffer_create;
    }
 
-   if (sctx->gfx_level >= GFX9) {
-      sctx->wait_mem_scratch =
-           si_aligned_buffer_create(screen,
-                                    PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
-                                    PIPE_USAGE_DEFAULT, 4,
-                                    sscreen->info.tcc_cache_line_size);
-      if (!sctx->wait_mem_scratch) {
-         fprintf(stderr, "radeonsi: can't create wait_mem_scratch\n");
-         goto fail;
-      }
-   }
-
    /* GFX7 cannot unbind a constant buffer (S_BUFFER_LOAD doesn't skip loads
     * if NUM_RECORDS == 0). We need to use a dummy buffer instead. */
    if (sctx->gfx_level == GFX7) {
@@ -775,10 +763,21 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    si_begin_new_gfx_cs(sctx, true);
    assert(sctx->gfx_cs.current.cdw == sctx->initial_gfx_cs_size);
 
-   /* Initialize per-context buffers. */
-   if (sctx->wait_mem_scratch)
+   if (sctx->gfx_level >= GFX9 && sctx->gfx_level < GFX11) {
+      sctx->wait_mem_scratch =
+           si_aligned_buffer_create(screen,
+                                    PIPE_RESOURCE_FLAG_UNMAPPABLE |
+                                    SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                    PIPE_USAGE_DEFAULT, 4,
+                                    sscreen->info.tcc_cache_line_size);
+      if (!sctx->wait_mem_scratch) {
+         fprintf(stderr, "radeonsi: can't create wait_mem_scratch\n");
+         goto fail;
+      }
+
       si_cp_write_data(sctx, sctx->wait_mem_scratch, 0, 4, V_370_MEM, V_370_ME,
                        &sctx->wait_mem_number);
+   }
 
    if (sctx->gfx_level == GFX7) {
       /* Clear the NULL constant buffer, because loads should return zeros.

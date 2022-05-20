@@ -620,6 +620,8 @@ static struct si_resource *si_get_wait_mem_scratch_bo(struct si_context *ctx,
 {
    struct si_screen *sscreen = ctx->screen;
 
+   assert(ctx->gfx_level < GFX11);
+
    if (likely(!is_secure)) {
       return ctx->wait_mem_scratch;
    } else {
