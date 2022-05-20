@@ -371,9 +371,28 @@ struct ir3_sched_notes {
    bool addr0_conflict, addr1_conflict, pred_conflict;
 };
 
+static bool
+should_skip(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
+{
+   if (ctx->remaining_kills && (is_tex(instr) || is_mem(instr))) {
+      /* avoid texture/memory access if we have unscheduled kills
+       * that could make the expensive operation unnecessary.  By
+       * definition, if there are remaining kills, and this instr
+       * is not a dependency of a kill, there are other instructions
+       * that we can choose from.
+       */
+      struct ir3_sched_node *n = instr->data;
+      if (!n->kill_path)
+         return true;
+   }
+
+   return false;
+}
+
 /* could an instruction be scheduled if specified ssa src was scheduled? */
 static bool
-could_sched(struct ir3_instruction *instr, struct ir3_instruction *src)
+could_sched(struct ir3_sched_ctx *ctx,
+            struct ir3_instruction *instr, struct ir3_instruction *src)
 {
    foreach_ssa_src (other_src, instr) {
       /* if dependency not scheduled, we aren't ready yet: */
@@ -381,7 +400,13 @@ could_sched(struct ir3_instruction *instr, struct ir3_instruction *src)
          return false;
       }
    }
-   return true;
+
+   /* Instructions not in the current block can never be scheduled.
+    */
+   if (instr->block != src->block)
+      return false;
+
+   return !should_skip(ctx, instr);
 }
 
 /* Check if instruction is ok to schedule.  Make sure it is not blocked
@@ -400,17 +425,8 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
       return false;
    }
 
-   if (ctx->remaining_kills && (is_tex(instr) || is_mem(instr))) {
-      /* avoid texture/memory access if we have unscheduled kills
-       * that could make the expensive operation unnecessary.  By
-       * definition, if there are remaining kills, and this instr
-       * is not a dependency of a kill, there are other instructions
-       * that we can choose from.
-       */
-      struct ir3_sched_node *n = instr->data;
-      if (!n->kill_path)
-         return false;
-   }
+   if (should_skip(ctx, instr))
+       return false;
 
    /* For instructions that write address register we need to
     * make sure there is at least one instruction that uses the
@@ -428,7 +444,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
             continue;
          if (indirect->address->def != instr->dsts[0])
             continue;
-         ready = could_sched(indirect, instr);
+         ready = could_sched(ctx, indirect, instr);
       }
 
       /* nothing could be scheduled, so keep looking: */
@@ -445,7 +461,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
             continue;
          if (indirect->address->def != instr->dsts[0])
             continue;
-         ready = could_sched(indirect, instr);
+         ready = could_sched(ctx, indirect, instr);
       }
 
       /* nothing could be scheduled, so keep looking: */
