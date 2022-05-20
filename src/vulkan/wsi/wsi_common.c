@@ -836,7 +836,7 @@ wsi_signal_semaphore_for_image(struct vk_device *device,
 {
    VK_FROM_HANDLE(vk_semaphore, semaphore, _semaphore);
 
-   if (!chain->wsi->signal_fence_with_memory)
+   if (!chain->wsi->signal_semaphore_with_memory)
       return VK_SUCCESS;
 
    vk_semaphore_reset_temporary(device, semaphore);
