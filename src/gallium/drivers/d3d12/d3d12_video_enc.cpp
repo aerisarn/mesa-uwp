@@ -1311,6 +1311,15 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
 
    uint32_t prefixGeneratedHeadersByteSize = d3d12_video_encoder_build_codec_headers(pD3D12Enc);
 
+   // If driver needs offset alignment for bitstream resource, we will pad zeroes on the codec header to this end.
+   if (
+      (pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.CompressedBitstreamBufferAccessAlignment > 1)
+      && ((prefixGeneratedHeadersByteSize % pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.CompressedBitstreamBufferAccessAlignment) != 0)
+   ) {
+      prefixGeneratedHeadersByteSize = ALIGN(prefixGeneratedHeadersByteSize, pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.CompressedBitstreamBufferAccessAlignment);
+      pD3D12Enc->m_BitstreamHeadersBuffer.resize(prefixGeneratedHeadersByteSize, 0);
+   }
+
    const D3D12_VIDEO_ENCODER_ENCODEFRAME_INPUT_ARGUMENTS inputStreamArguments = {
       // D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_DESC
       { // D3D12_VIDEO_ENCODER_SEQUENCE_CONTROL_FLAGS
@@ -1402,6 +1411,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
    };
 
    const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS outputMetadataCmd = {
+      /*If offset were to change, has to be aligned to pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.EncoderMetadataBufferAccessAlignment*/
       { pD3D12Enc->m_spResolvedMetadataBuffer.Get(), 0 }
    };
    pD3D12Enc->m_spEncodeCommandList->ResolveEncoderOutputMetadata(&inputMetadataCmd, &outputMetadataCmd);
