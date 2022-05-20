@@ -869,45 +869,30 @@ si_translate_fill(VkPolygonMode func)
 }
 
 static unsigned
-radv_pipeline_color_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                            const struct radv_graphics_pipeline_info *info)
+radv_pipeline_color_samples( const struct radv_graphics_pipeline_info *info)
 {
-   const VkAttachmentSampleCountInfoAMD *sample_info =
-      vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
-   if (sample_info && sample_info->colorAttachmentCount > 0) {
-      unsigned samples = 1;
-      for (uint32_t i = 0; i < sample_info->colorAttachmentCount; ++i) {
-         if (info->ri.color_att_formats[i] != VK_FORMAT_UNDEFINED) {
-            samples = MAX2(samples, sample_info->pColorAttachmentSamples[i]);
-         }
-      }
-      return samples;
+   if (info->color_att_samples && radv_pipeline_has_color_attachments(&info->ri)) {
+      return info->color_att_samples;
    }
 
    return info->ms.raster_samples;
 }
 
 static unsigned
-radv_pipeline_depth_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                            const struct radv_graphics_pipeline_info *info)
+radv_pipeline_depth_samples(const struct radv_graphics_pipeline_info *info)
 {
-   const VkAttachmentSampleCountInfoAMD *sample_info =
-      vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
-   if (sample_info) {
-      if (radv_pipeline_has_ds_attachments(&info->ri)) {
-         return sample_info->depthStencilAttachmentSamples;
-      }
+   if (info->ds_att_samples && radv_pipeline_has_ds_attachments(&info->ri)) {
+      return info->ds_att_samples;
    }
 
    return info->ms.raster_samples;
 }
 
 static uint8_t
-radv_pipeline_get_ps_iter_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                  const struct radv_graphics_pipeline_info *info)
+radv_pipeline_get_ps_iter_samples(const struct radv_graphics_pipeline_info *info)
 {
    uint32_t ps_iter_samples = 1;
-   uint32_t num_samples = radv_pipeline_color_samples(pCreateInfo, info);
+   uint32_t num_samples = radv_pipeline_color_samples(info);
 
    if (info->ms.sample_shading_enable) {
       ps_iter_samples = ceilf(info->ms.min_sample_shading * num_samples);
@@ -1105,7 +1090,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
       ps_iter_samples = ms->num_samples;
    } else {
-      ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo, info);
+      ps_iter_samples = radv_pipeline_get_ps_iter_samples(info);
    }
 
    if (info->rs.order == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
@@ -1156,7 +1141,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (ms->num_samples > 1) {
-      uint32_t z_samples = radv_pipeline_depth_samples(pCreateInfo, info);
+      uint32_t z_samples = radv_pipeline_depth_samples(info);
       unsigned log_samples = util_logbase2(ms->num_samples);
       unsigned log_z_samples = util_logbase2(z_samples);
       unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
@@ -1919,6 +1904,18 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
    info.ri = radv_pipeline_init_rendering_info(pipeline, pCreateInfo);
    info.cb = radv_pipeline_init_color_blend_info(pipeline, pCreateInfo);
 
+   /* VK_AMD_mixed_attachment_samples */
+   const VkAttachmentSampleCountInfoAMD *sample_info =
+      vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
+   if (sample_info) {
+      for (uint32_t i = 0; i < sample_info->colorAttachmentCount; ++i) {
+         if (info.ri.color_att_formats[i] != VK_FORMAT_UNDEFINED) {
+            info.color_att_samples = MAX2(info.color_att_samples, sample_info->pColorAttachmentSamples[i]);
+         }
+      }
+      info.ds_att_samples = sample_info->depthStencilAttachmentSamples;
+   }
+
    return info;
 }
 
@@ -2226,8 +2223,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       unsigned max_allowed_tiles_in_wave = 0;
-      unsigned num_samples = MAX2(radv_pipeline_color_samples(pCreateInfo, info),
-                                  radv_pipeline_depth_samples(pCreateInfo, info));
+      unsigned num_samples = MAX2(radv_pipeline_color_samples(info),
+                                  radv_pipeline_depth_samples(info));
 
       if (pdevice->rad_info.has_dedicated_vram) {
          if (num_samples == 8)
@@ -3360,7 +3357,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    key.tcs.tess_input_vertices = info->ts.patch_control_points;
 
    if (info->ms.raster_samples > 1) {
-      uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo, info);
+      uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(info);
       key.ps.num_samples = info->ms.raster_samples;
       key.ps.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
    }
