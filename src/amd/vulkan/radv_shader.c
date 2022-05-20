@@ -1240,7 +1240,8 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
                  info->ngg_info.esgs_ring_size, info->gs.gsvs_vertex_size,
                  info->ngg_info.ngg_emit_size * 4u, pl_key->vs.provoking_vtx_last);
    } else if (nir->info.stage == MESA_SHADER_MESH) {
-      NIR_PASS_V(nir, ac_nir_lower_ngg_ms, info->wave_size, pl_key->has_multiview_view_index);
+      bool scratch_ring = false;
+      NIR_PASS_V(nir, ac_nir_lower_ngg_ms, &scratch_ring, info->wave_size, pl_key->has_multiview_view_index);
    } else {
       unreachable("invalid SW stage passed to radv_lower_ngg");
    }

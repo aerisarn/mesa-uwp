@@ -138,6 +138,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
+                    bool *out_needs_scratch_ring,
                     unsigned wave_size,
                     bool multiview);
 
