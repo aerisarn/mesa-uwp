@@ -375,18 +375,18 @@ si_translate_blend_factor(enum amd_gfx_level gfx_level, VkBlendFactor factor)
 }
 
 static uint32_t
-si_translate_blend_opt_function(VkBlendOp op)
+si_translate_blend_opt_function(unsigned op)
 {
    switch (op) {
-   case VK_BLEND_OP_ADD:
+   case V_028780_COMB_DST_PLUS_SRC:
       return V_028760_OPT_COMB_ADD;
-   case VK_BLEND_OP_SUBTRACT:
+   case V_028780_COMB_SRC_MINUS_DST:
       return V_028760_OPT_COMB_SUBTRACT;
-   case VK_BLEND_OP_REVERSE_SUBTRACT:
+   case V_028780_COMB_DST_MINUS_SRC:
       return V_028760_OPT_COMB_REVSUBTRACT;
-   case VK_BLEND_OP_MIN:
+   case V_028780_COMB_MIN_DST_SRC:
       return V_028760_OPT_COMB_MIN;
-   case VK_BLEND_OP_MAX:
+   case V_028780_COMB_MAX_DST_SRC:
       return V_028760_OPT_COMB_MAX;
    default:
       return V_028760_OPT_COMB_BLEND_DISABLED;
@@ -394,24 +394,24 @@ si_translate_blend_opt_function(VkBlendOp op)
 }
 
 static uint32_t
-si_translate_blend_opt_factor(VkBlendFactor factor, bool is_alpha)
+si_translate_blend_opt_factor(unsigned factor, bool is_alpha)
 {
    switch (factor) {
-   case VK_BLEND_FACTOR_ZERO:
+   case V_028780_BLEND_ZERO:
       return V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_ALL;
-   case VK_BLEND_FACTOR_ONE:
+   case V_028780_BLEND_ONE:
       return V_028760_BLEND_OPT_PRESERVE_ALL_IGNORE_NONE;
-   case VK_BLEND_FACTOR_SRC_COLOR:
+   case V_028780_BLEND_SRC_COLOR:
       return is_alpha ? V_028760_BLEND_OPT_PRESERVE_A1_IGNORE_A0
                       : V_028760_BLEND_OPT_PRESERVE_C1_IGNORE_C0;
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+   case V_028780_BLEND_ONE_MINUS_SRC_COLOR:
       return is_alpha ? V_028760_BLEND_OPT_PRESERVE_A0_IGNORE_A1
                       : V_028760_BLEND_OPT_PRESERVE_C0_IGNORE_C1;
-   case VK_BLEND_FACTOR_SRC_ALPHA:
+   case V_028780_BLEND_SRC_ALPHA:
       return V_028760_BLEND_OPT_PRESERVE_A1_IGNORE_A0;
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+   case V_028780_BLEND_ONE_MINUS_SRC_ALPHA:
       return V_028760_BLEND_OPT_PRESERVE_A0_IGNORE_A1;
-   case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+   case V_028780_BLEND_SRC_ALPHA_SATURATE:
       return is_alpha ? V_028760_BLEND_OPT_PRESERVE_ALL_IGNORE_NONE
                       : V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
    default:
@@ -424,41 +424,54 @@ si_translate_blend_opt_factor(VkBlendFactor factor, bool is_alpha)
  *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
  */
 static void
-si_blend_remove_dst(VkBlendOp *func, VkBlendFactor *src_factor, VkBlendFactor *dst_factor,
-                    VkBlendFactor expected_dst, VkBlendFactor replacement_src)
+si_blend_remove_dst(unsigned *func, unsigned *src_factor, unsigned *dst_factor,
+                    unsigned expected_dst, unsigned replacement_src)
 {
-   if (*src_factor == expected_dst && *dst_factor == VK_BLEND_FACTOR_ZERO) {
-      *src_factor = VK_BLEND_FACTOR_ZERO;
+   if (*src_factor == expected_dst && *dst_factor == V_028780_BLEND_ZERO) {
+      *src_factor = V_028780_BLEND_ZERO;
       *dst_factor = replacement_src;
 
       /* Commuting the operands requires reversing subtractions. */
-      if (*func == VK_BLEND_OP_SUBTRACT)
-         *func = VK_BLEND_OP_REVERSE_SUBTRACT;
-      else if (*func == VK_BLEND_OP_REVERSE_SUBTRACT)
-         *func = VK_BLEND_OP_SUBTRACT;
+      if (*func == V_028780_COMB_SRC_MINUS_DST)
+         *func = V_028780_COMB_DST_MINUS_SRC;
+      else if (*func == V_028780_COMB_DST_MINUS_SRC)
+         *func = V_028780_COMB_SRC_MINUS_DST;
    }
 }
 
 static bool
-si_blend_factor_uses_dst(VkBlendFactor factor)
+si_blend_factor_uses_dst(unsigned factor)
 {
-   return factor == VK_BLEND_FACTOR_DST_COLOR || factor == VK_BLEND_FACTOR_DST_ALPHA ||
-          factor == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-          factor == VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA ||
-          factor == VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+   return factor == V_028780_BLEND_DST_COLOR ||
+          factor == V_028780_BLEND_DST_ALPHA ||
+          factor == V_028780_BLEND_SRC_ALPHA_SATURATE ||
+          factor == V_028780_BLEND_ONE_MINUS_DST_ALPHA ||
+          factor == V_028780_BLEND_ONE_MINUS_DST_COLOR;
 }
 
 static bool
-is_dual_src(VkBlendFactor factor)
+is_dual_src(enum amd_gfx_level gfx_level, unsigned factor)
 {
-   switch (factor) {
-   case VK_BLEND_FACTOR_SRC1_COLOR:
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
-   case VK_BLEND_FACTOR_SRC1_ALPHA:
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
-      return true;
-   default:
-      return false;
+   if (gfx_level >= GFX11) {
+      switch (factor) {
+      case V_028780_BLEND_SRC1_COLOR_GFX11:
+      case V_028780_BLEND_INV_SRC1_COLOR_GFX11:
+      case V_028780_BLEND_SRC1_ALPHA_GFX11:
+      case V_028780_BLEND_INV_SRC1_ALPHA_GFX11:
+         return true;
+      default:
+         return false;
+      }
+   } else {
+      switch (factor) {
+      case V_028780_BLEND_SRC1_COLOR_GFX6:
+      case V_028780_BLEND_INV_SRC1_COLOR_GFX6:
+      case V_028780_BLEND_SRC1_ALPHA_GFX6:
+      case V_028780_BLEND_INV_SRC1_ALPHA_GFX6:
+         return true;
+      default:
+         return false;
+      }
    }
 }
 
@@ -632,27 +645,52 @@ radv_format_meta_fs_key(struct radv_device *device, VkFormat format)
 }
 
 static void
-radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkBlendFactor src,
-                               VkBlendFactor dst, unsigned chanmask)
+radv_blend_check_commutativity(enum amd_gfx_level gfx_level, struct radv_blend_state *blend,
+                               unsigned op, unsigned src, unsigned dst, unsigned chanmask)
 {
-   /* Src factor is allowed when it does not depend on Dst. */
-   static const uint32_t src_allowed =
-      (1u << VK_BLEND_FACTOR_ONE) | (1u << VK_BLEND_FACTOR_SRC_COLOR) |
-      (1u << VK_BLEND_FACTOR_SRC_ALPHA) | (1u << VK_BLEND_FACTOR_SRC_ALPHA_SATURATE) |
-      (1u << VK_BLEND_FACTOR_CONSTANT_COLOR) | (1u << VK_BLEND_FACTOR_CONSTANT_ALPHA) |
-      (1u << VK_BLEND_FACTOR_SRC1_COLOR) | (1u << VK_BLEND_FACTOR_SRC1_ALPHA) |
-      (1u << VK_BLEND_FACTOR_ZERO) | (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR) | (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA);
+   bool is_src_allowed = false;
 
-   if (dst == VK_BLEND_FACTOR_ONE && (src_allowed & (1u << src))) {
+   /* Src factor is allowed when it does not depend on Dst. */
+   if (src == V_028780_BLEND_ZERO ||
+       src == V_028780_BLEND_ONE ||
+       src == V_028780_BLEND_SRC_COLOR ||
+       src == V_028780_BLEND_SRC_ALPHA ||
+       src == V_028780_BLEND_SRC_ALPHA_SATURATE ||
+       src == V_028780_BLEND_ONE_MINUS_SRC_COLOR ||
+       src == V_028780_BLEND_ONE_MINUS_SRC_ALPHA) {
+      is_src_allowed = true;
+   }
+
+   if (gfx_level >= GFX11) {
+      if (src == V_028780_BLEND_CONSTANT_COLOR_GFX11 ||
+          src == V_028780_BLEND_CONSTANT_ALPHA_GFX11 ||
+          src == V_028780_BLEND_SRC1_COLOR_GFX11 ||
+          src == V_028780_BLEND_SRC1_ALPHA_GFX11 ||
+          src == V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX11 ||
+          src == V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX11 ||
+          src == V_028780_BLEND_INV_SRC1_COLOR_GFX11 ||
+          src == V_028780_BLEND_INV_SRC1_ALPHA_GFX11) {
+         is_src_allowed = true;
+      }
+   } else {
+      if (src == V_028780_BLEND_CONSTANT_COLOR_GFX6 ||
+          src == V_028780_BLEND_CONSTANT_ALPHA_GFX6 ||
+          src == V_028780_BLEND_SRC1_COLOR_GFX6 ||
+          src == V_028780_BLEND_SRC1_ALPHA_GFX6 ||
+          src == V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6 ||
+          src == V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6 ||
+          src == V_028780_BLEND_INV_SRC1_COLOR_GFX6 ||
+          src == V_028780_BLEND_INV_SRC1_ALPHA_GFX6) {
+         is_src_allowed = true;
+      }
+   }
+
+   if (dst == V_028780_BLEND_ONE && is_src_allowed) {
       /* Addition is commutative, but floating point addition isn't
        * associative: subtle changes can be introduced via different
        * rounding. Be conservative, only enable for min and max.
        */
-      if (op == VK_BLEND_OP_MAX || op == VK_BLEND_OP_MIN)
+      if (op == V_028780_COMB_MAX_DST_SRC || op == V_028780_COMB_MIN_DST_SRC)
          blend->commutative_4bit |= chanmask;
    }
 }
@@ -701,12 +739,12 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          const VkPipelineColorBlendAttachmentState *att = &vkblend->pAttachments[i];
          unsigned blend_cntl = 0;
          unsigned srcRGB_opt, dstRGB_opt, srcA_opt, dstA_opt;
-         VkBlendOp eqRGB = att->colorBlendOp;
-         VkBlendFactor srcRGB = att->srcColorBlendFactor;
-         VkBlendFactor dstRGB = att->dstColorBlendFactor;
-         VkBlendOp eqA = att->alphaBlendOp;
-         VkBlendFactor srcA = att->srcAlphaBlendFactor;
-         VkBlendFactor dstA = att->dstAlphaBlendFactor;
+         unsigned eqRGB = si_translate_blend_function(att->colorBlendOp);
+         unsigned srcRGB = si_translate_blend_factor(gfx_level, att->srcColorBlendFactor);
+         unsigned dstRGB = si_translate_blend_factor(gfx_level, att->dstColorBlendFactor);
+         unsigned eqA = si_translate_blend_function(att->alphaBlendOp);
+         unsigned srcA = si_translate_blend_factor(gfx_level, att->srcAlphaBlendFactor);
+         unsigned dstA = si_translate_blend_factor(gfx_level, att->dstAlphaBlendFactor);
 
          blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
                                      S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
@@ -727,21 +765,23 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
             continue;
          }
 
-         if (is_dual_src(srcRGB) || is_dual_src(dstRGB) || is_dual_src(srcA) || is_dual_src(dstA))
+         if (is_dual_src(gfx_level, srcRGB) || is_dual_src(gfx_level, dstRGB) ||
+             is_dual_src(gfx_level, srcA) || is_dual_src(gfx_level, dstA))
             if (i == 0)
                blend.mrt0_is_dual_src = true;
 
-         if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
-            srcRGB = VK_BLEND_FACTOR_ONE;
-            dstRGB = VK_BLEND_FACTOR_ONE;
+
+         if (eqRGB == V_028780_COMB_MIN_DST_SRC || eqRGB == V_028780_COMB_MAX_DST_SRC) {
+            srcRGB = V_028780_BLEND_ONE;
+            dstRGB = V_028780_BLEND_ONE;
          }
-         if (eqA == VK_BLEND_OP_MIN || eqA == VK_BLEND_OP_MAX) {
-            srcA = VK_BLEND_FACTOR_ONE;
-            dstA = VK_BLEND_FACTOR_ONE;
+         if (eqA == V_028780_COMB_MIN_DST_SRC || eqA == V_028780_COMB_MAX_DST_SRC) {
+            srcA = V_028780_BLEND_ONE;
+            dstA = V_028780_BLEND_ONE;
          }
 
-         radv_blend_check_commutativity(&blend, eqRGB, srcRGB, dstRGB, 0x7u << (4 * i));
-         radv_blend_check_commutativity(&blend, eqA, srcA, dstA, 0x8u << (4 * i));
+         radv_blend_check_commutativity(gfx_level, &blend, eqRGB, srcRGB, dstRGB, 0x7u << (4 * i));
+         radv_blend_check_commutativity(gfx_level, &blend, eqA, srcA, dstA, 0x8u << (4 * i));
 
          /* Blending optimizations for RB+.
           * These transformations don't change the behavior.
@@ -749,14 +789,14 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
           * First, get rid of DST in the blend factors:
           *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
           */
-         si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB, VK_BLEND_FACTOR_DST_COLOR,
-                             VK_BLEND_FACTOR_SRC_COLOR);
+         si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB, V_028780_BLEND_DST_COLOR,
+                             V_028780_BLEND_SRC_COLOR);
 
-         si_blend_remove_dst(&eqA, &srcA, &dstA, VK_BLEND_FACTOR_DST_COLOR,
-                             VK_BLEND_FACTOR_SRC_COLOR);
+         si_blend_remove_dst(&eqA, &srcA, &dstA, V_028780_BLEND_DST_COLOR,
+                             V_028780_BLEND_SRC_COLOR);
 
-         si_blend_remove_dst(&eqA, &srcA, &dstA, VK_BLEND_FACTOR_DST_ALPHA,
-                             VK_BLEND_FACTOR_SRC_ALPHA);
+         si_blend_remove_dst(&eqA, &srcA, &dstA, V_028780_BLEND_DST_ALPHA,
+                             V_028780_BLEND_SRC_ALPHA);
 
          /* Look up the ideal settings from tables. */
          srcRGB_opt = si_translate_blend_opt_factor(srcRGB, false);
@@ -770,9 +810,9 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          if (si_blend_factor_uses_dst(srcA))
             dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
 
-         if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE &&
-             (dstRGB == VK_BLEND_FACTOR_ZERO || dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-              dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE))
+         if (srcRGB == V_028780_BLEND_SRC_ALPHA_SATURATE &&
+             (dstRGB == V_028780_BLEND_ZERO || dstRGB == V_028780_BLEND_SRC_ALPHA ||
+              dstRGB == V_028780_BLEND_SRC_ALPHA_SATURATE))
             dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
 
          /* Set the final value. */
@@ -783,24 +823,24 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
             S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
          blend_cntl |= S_028780_ENABLE(1);
 
-         blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
-         blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(gfx_level, srcRGB));
-         blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(gfx_level, dstRGB));
+         blend_cntl |= S_028780_COLOR_COMB_FCN(eqRGB);
+         blend_cntl |= S_028780_COLOR_SRCBLEND(srcRGB);
+         blend_cntl |= S_028780_COLOR_DESTBLEND(dstRGB);
          if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
             blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
-            blend_cntl |= S_028780_ALPHA_COMB_FCN(si_translate_blend_function(eqA));
-            blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(gfx_level, srcA));
-            blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(gfx_level, dstA));
+            blend_cntl |= S_028780_ALPHA_COMB_FCN(eqA);
+            blend_cntl |= S_028780_ALPHA_SRCBLEND(srcA);
+            blend_cntl |= S_028780_ALPHA_DESTBLEND(dstA);
          }
          blend.cb_blend_control[i] = blend_cntl;
 
          blend.blend_enable_4bit |= 0xfu << (i * 4);
 
-         if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA || dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-             srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-             dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-             srcRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ||
-             dstRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+         if (srcRGB == V_028780_BLEND_SRC_ALPHA || dstRGB == V_028780_BLEND_SRC_ALPHA ||
+             srcRGB == V_028780_BLEND_SRC_ALPHA_SATURATE ||
+             dstRGB == V_028780_BLEND_SRC_ALPHA_SATURATE ||
+             srcRGB == V_028780_BLEND_ONE_MINUS_SRC_ALPHA ||
+             dstRGB == V_028780_BLEND_ONE_MINUS_SRC_ALPHA)
             blend.need_src_alpha |= 1 << i;
       }
       for (i = vkblend->attachmentCount; i < 8; i++) {
