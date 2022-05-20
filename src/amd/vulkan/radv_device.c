@@ -2998,15 +2998,6 @@ radv_device_finish_vrs_image(struct radv_device *device)
                      &device->meta_state.alloc);
 }
 
-static VkResult
-radv_create_sync_for_memory(struct vk_device *device,
-                           VkDeviceMemory memory,
-                           bool signal_memory,
-                           struct vk_sync **sync_out)
-{
-   return vk_sync_create(device, &vk_sync_dummy_type, 0, 1, sync_out);
-}
-
 static enum radv_force_vrs
 radv_parse_vrs_rates(const char *str)
 {
@@ -3283,7 +3274,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    simple_mtx_init(&device->trace_mtx, mtx_plain);
 
    device->ws = physical_device->ws;
-   device->vk.create_sync_for_memory = radv_create_sync_for_memory;
    vk_device_set_drm_fd(&device->vk, device->ws->get_fd(device->ws));
 
    /* With update after bind we can't attach bo's to the command buffer
