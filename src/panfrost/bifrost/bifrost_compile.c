@@ -5215,7 +5215,13 @@ bi_compile_variant(nir_shader *nir,
 
                 assert(write != NULL);
 
-                /* Remove it, TODO: DCE */
+                /* NOP it out, preserving its flow control. TODO: maybe DCE */
+                if (write->flow) {
+                        bi_builder b = bi_init_builder(ctx, bi_before_instr(write));
+                        bi_instr *nop = bi_nop(&b);
+                        nop->flow = write->flow;
+                }
+
                 bi_remove_instruction(write);
 
                 info->vs.no_psiz_offset = binary->size;
