@@ -9,6 +9,63 @@
 #include "util/os_file.h"
 #include "util/os_misc.h"
 
+static uint8_t
+sm_for_chipset(uint16_t chipset)
+{
+   if (chipset >= 0x180)
+      return 0x90;
+   else if (chipset == 0x17b)
+      return 0x87;
+   else if (chipset >= 0x172)
+      return 0x86;
+   else if (chipset >= 0x170)
+      return 0x80;
+   else if (chipset >= 0x160)
+      return 0x75;
+   else if (chipset >= 0x14b)
+      return 0x72;
+   else if (chipset >= 0x140)
+      return 0x70;
+   else if (chipset >= 0x13b)
+      return 0x62;
+   else if (chipset >= 0x132)
+      return 0x61;
+   else if (chipset >= 0x130)
+      return 0x60;
+   else if (chipset >= 0x12b)
+      return 0x53;
+   else if (chipset >= 0x120)
+      return 0x52;
+   else if (chipset >= 0x110)
+      return 0x50;
+   // TODO: 0x37
+   else if (chipset >= 0x0f0)
+      return 0x35;
+   else if (chipset >= 0x0ea)
+      return 0x32;
+   else if (chipset >= 0x0e0)
+      return 0x30;
+   // GF110 is SM20
+   else if (chipset == 0x0c8)
+      return 0x20;
+   else if (chipset >= 0x0c1)
+      return 0x21;
+   else if (chipset >= 0x0c0)
+      return 0x20;
+   else if (chipset >= 0x0a3)
+      return 0x12;
+   // GT200 is SM13
+   else if (chipset >= 0x0a0)
+      return 0x13;
+   else if (chipset >= 0x080)
+      return 0x11;
+   // this has to be == because 0x63 is older than 0x50 and has no compute
+   else if (chipset == 0x050)
+      return 0x10;
+   // no compute
+   return 0x00;
+}
+
 struct nouveau_ws_device *
 nouveau_ws_device_new(int fd)
 {
@@ -37,6 +94,7 @@ nouveau_ws_device_new(int fd)
    device->base.vendor_id = 0x10de;
    device->base.device_id = device_id;
    device->base.chipset = dev->chipset;
+   device->base.sm = sm_for_chipset(dev->chipset);
    device->base.vram_size = dev->vram_size;
    os_get_available_system_memory(&device->base.gart_size);
    device->base.gart_size = MIN2(device->base.gart_size, dev->gart_size);
