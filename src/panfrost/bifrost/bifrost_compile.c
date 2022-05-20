@@ -5080,10 +5080,11 @@ bi_compile_variant_nir(nir_shader *nir,
                 bi_assign_scoreboard(ctx);
 
                 /* Analyze after scheduling since we depend on instruction
-                 * order. This routine assumes the IR is using clauses, so it is
-                 * Bifrost only.
+                 * order. Valhall calls as part of va_insert_flow_control_nops,
+                 * as the handling for clauses differs from instructions.
                  */
                 bi_analyze_helper_terminate(ctx);
+                bi_mark_clauses_td(ctx);
         }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)

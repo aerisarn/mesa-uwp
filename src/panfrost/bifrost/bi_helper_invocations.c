@@ -83,7 +83,7 @@ bi_has_skip_bit(enum bi_opcode op)
  * reads from other subgroup lanes)? This only applies to fragment shaders.
  * Other shader stages do not have a notion of helper threads. */
 
-static bool
+bool
 bi_instr_uses_helpers(bi_instr *I)
 {
         switch (I->op) {
@@ -120,7 +120,7 @@ bi_block_uses_helpers(bi_block *block)
         return false;
 }
 
-static bool
+bool
 bi_block_terminates_helpers(bi_block *block)
 {
         /* Can't terminate if a successor needs helpers */
@@ -169,6 +169,13 @@ bi_analyze_helper_terminate(bi_context *ctx)
                 if (block->pass_flags == 0 && bi_block_uses_helpers(block))
                         bi_propagate_pass_flag(block);
         }
+}
+
+void
+bi_mark_clauses_td(bi_context *ctx)
+{
+        if (ctx->stage != MESA_SHADER_FRAGMENT || ctx->inputs->is_blend)
+                return;
 
         /* Finally, mark clauses requiring helpers */
         bi_foreach_block(ctx, block) {
