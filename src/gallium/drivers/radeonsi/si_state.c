@@ -5900,12 +5900,32 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028620_PA_RATE_CNTL,
                      S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
 
-      /* We must wait for idle before changing the SPI attribute ring registers. */
-      /* TODO: Find a more reliable way to wait for idle. */
-      for (unsigned i = 0; i < 4; i++) {
-         si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
-         si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-      }
+      /* We must wait for idle using an EOP event before changing the attribute ring registers.
+       * Use the bottom-of-pipe EOP event, but increment the PWS counter instead of writing memory.
+       */
+      si_pm4_cmd_add(pm4, PKT3(PKT3_RELEASE_MEM, 6, 0));
+      si_pm4_cmd_add(pm4, S_490_EVENT_TYPE(V_028A90_BOTTOM_OF_PIPE_TS) |
+                          S_490_EVENT_INDEX(5) |
+                          S_490_PWS_ENABLE(1));
+      si_pm4_cmd_add(pm4, 0); /* DST_SEL, INT_SEL, DATA_SEL */
+      si_pm4_cmd_add(pm4, 0); /* ADDRESS_LO */
+      si_pm4_cmd_add(pm4, 0); /* ADDRESS_HI */
+      si_pm4_cmd_add(pm4, 0); /* DATA_LO */
+      si_pm4_cmd_add(pm4, 0); /* DATA_HI */
+      si_pm4_cmd_add(pm4, 0); /* INT_CTXID */
+
+      /* Wait for the PWS counter. */
+      si_pm4_cmd_add(pm4, PKT3(PKT3_ACQUIRE_MEM, 6, 0));
+      si_pm4_cmd_add(pm4, S_580_PWS_STAGE_SEL(V_580_CP_ME) |
+                          S_580_PWS_COUNTER_SEL(V_580_TS_SELECT) |
+                          S_580_PWS_ENA2(1) |
+                          S_580_PWS_COUNT(0));
+      si_pm4_cmd_add(pm4, 0xffffffff); /* GCR_SIZE */
+      si_pm4_cmd_add(pm4, 0x01ffffff); /* GCR_SIZE_HI */
+      si_pm4_cmd_add(pm4, 0); /* GCR_BASE_LO */
+      si_pm4_cmd_add(pm4, 0); /* GCR_BASE_HI */
+      si_pm4_cmd_add(pm4, S_585_PWS_ENA(1));
+      si_pm4_cmd_add(pm4, 0); /* GCR_CNTL */
 
       si_pm4_set_reg(pm4, R_031110_SPI_GS_THROTTLE_CNTL1, 0x12355123);
       si_pm4_set_reg(pm4, R_031114_SPI_GS_THROTTLE_CNTL2, 0x1544D);
