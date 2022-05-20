@@ -786,10 +786,10 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
 void
 radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+   VkRect2D resolve_area = cmd_buffer->state.render_area;
+   uint32_t layer_count = cmd_buffer->state.framebuffer->layers;
    struct radv_subpass_barrier barrier;
-   uint32_t layer_count = fb->layers;
 
    if (subpass->view_mask)
       layer_count = util_last_bit(subpass->view_mask);
@@ -814,7 +814,11 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 
       VkImageResolve2 region = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2,
-         .extent = (VkExtent3D){fb->width, fb->height, 1},
+         .extent = {
+            .width = resolve_area.extent.width,
+            .height = resolve_area.extent.height,
+            .depth = 1,
+         },
          .srcSubresource =
             (VkImageSubresourceLayers){
                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -829,8 +833,8 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
                .baseArrayLayer = dst_iview->vk.base_array_layer,
                .layerCount = layer_count,
             },
-         .srcOffset = (VkOffset3D){0, 0, 0},
-         .dstOffset = (VkOffset3D){0, 0, 0},
+         .srcOffset = { resolve_area.offset.x, resolve_area.offset.y, 0 },
+         .dstOffset = { resolve_area.offset.x, resolve_area.offset.y, 0 },
       };
 
       radv_meta_resolve_compute_image(cmd_buffer, src_iview->image, src_iview->vk.format,

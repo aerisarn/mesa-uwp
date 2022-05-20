@@ -231,8 +231,7 @@ cleanup:
 
 static void
 emit_resolve(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *src_image,
-             const struct radv_image *dst_image, VkFormat vk_format, const VkOffset2D *dest_offset,
-             const VkExtent2D *resolve_extent)
+             const struct radv_image *dst_image, VkFormat vk_format, const VkRect2D *resolve_area)
 {
    struct radv_device *device = cmd_buffer->device;
    VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
@@ -247,18 +246,14 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *src_im
                         device->meta_state.resolve.pipeline[fs_key]);
 
    radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                       &(VkViewport){.x = dest_offset->x,
-                                     .y = dest_offset->y,
-                                     .width = resolve_extent->width,
-                                     .height = resolve_extent->height,
+                       &(VkViewport){.x = resolve_area->offset.x,
+                                     .y = resolve_area->offset.y,
+                                     .width = resolve_area->extent.width,
+                                     .height = resolve_area->extent.height,
                                      .minDepth = 0.0f,
                                      .maxDepth = 1.0f});
 
-   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                      &(VkRect2D){
-                         .offset = *dest_offset,
-                         .extent = *resolve_extent,
-                      });
+   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, resolve_area);
 
    radv_CmdDraw(cmd_buffer_h, 3, 1, 0, 0);
    cmd_buffer->state.flush_bits |=
@@ -491,14 +486,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
       radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
 
       emit_resolve(cmd_buffer, src_image, dst_image, dst_iview.vk.format,
-                   &(VkOffset2D){
-                      .x = dstOffset.x,
-                      .y = dstOffset.y,
-                   },
-                   &(VkExtent2D){
-                      .width = extent.width,
-                      .height = extent.height,
-                   });
+                   &rendering_info.renderArea);
 
       radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
 
@@ -577,8 +565,8 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer,
 static void
 radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+   VkRect2D resolve_area = cmd_buffer->state.render_area;
    struct radv_meta_saved_state saved_state;
 
    radv_meta_save(&saved_state, cmd_buffer, RADV_META_SAVE_GRAPHICS_PIPELINE);
@@ -630,8 +618,7 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
          continue;
       }
 
-      emit_resolve(cmd_buffer, src_img, dst_img, dest_iview->vk.format, &(VkOffset2D){0, 0},
-                   &(VkExtent2D){fb->width, fb->height});
+      emit_resolve(cmd_buffer, src_img, dst_img, dest_iview->vk.format, &resolve_area);
 
       radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
    }
