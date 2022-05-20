@@ -242,3 +242,11 @@ traces:
     expectations:
       - device: gl-radeonsi-stoney
         checksum: 60f74020451e9beaf586b4551541b763
+  - path: ror/ror-default.trace
+    expectations:
+      - device: gl-radeonsi-stoney
+        checksum: ea53f93df31703bf7a07a4efb922608f
+  - path: nheko/nheko-colors.trace
+    expectations:
+      - device: gl-radeonsi-stoney
+        checksum: d3234cd6ccc2ab5d3ceab7db79300c69
