@@ -939,6 +939,11 @@ wsi_common_queue_present(const struct wsi_device *wsi,
 {
    VkResult final_result = VK_SUCCESS;
 
+   STACK_ARRAY(VkPipelineStageFlags, stage_flags,
+               pPresentInfo->waitSemaphoreCount);
+   for (uint32_t s = 0; s < pPresentInfo->waitSemaphoreCount; s++)
+      stage_flags[s] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
    const VkPresentRegionsKHR *regions =
       vk_find_struct_const(pPresentInfo->pNext, PRESENT_REGIONS_KHR);
 
@@ -993,27 +998,12 @@ wsi_common_queue_present(const struct wsi_device *wsi,
          .pNext = &mem_signal,
       };
 
-      VkPipelineStageFlags *stage_flags = NULL;
       if (i == 0) {
          /* We only need/want to wait on semaphores once.  After that, we're
           * guaranteed ordering since it all happens on the same queue.
           */
          submit_info.waitSemaphoreCount = pPresentInfo->waitSemaphoreCount;
          submit_info.pWaitSemaphores = pPresentInfo->pWaitSemaphores;
-
-         /* Set up the pWaitDstStageMasks */
-         stage_flags = vk_alloc(&swapchain->alloc,
-                                sizeof(VkPipelineStageFlags) *
-                                pPresentInfo->waitSemaphoreCount,
-                                8,
-                                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-         if (!stage_flags) {
-            result = VK_ERROR_OUT_OF_HOST_MEMORY;
-            goto fail_present;
-         }
-         for (uint32_t s = 0; s < pPresentInfo->waitSemaphoreCount; s++)
-            stage_flags[s] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
          submit_info.pWaitDstStageMask = stage_flags;
       }
 
@@ -1042,7 +1032,6 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       }
 
       result = wsi->QueueSubmit(queue, 1, &submit_info, fence);
-      vk_free(&swapchain->alloc, stage_flags);
       if (result != VK_SUCCESS)
          goto fail_present;
 
@@ -1089,6 +1078,8 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       if (final_result == VK_SUCCESS)
          final_result = result;
    }
+
+   STACK_ARRAY_FINISH(stage_flags);
 
    return final_result;
 }
