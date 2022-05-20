@@ -1400,6 +1400,12 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
 
+   if (ctx->dd->pg[is_compute] != pg) {
+      for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
+            bool has_usage = !!pg->dsl[h + 1];
+            ctx->dd->changed[is_compute][h] |= has_usage;
+      }
+   }
    zink_context_update_descriptor_states(ctx, pg);
    bool cache_hit;
    VkDescriptorSet desc_set = VK_NULL_HANDLE;
@@ -1440,7 +1446,6 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    {
       for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
          if (pdd_cached(pg)->cache_misses[h] < MAX_CACHE_MISSES) {
-            ctx->dd->changed[is_compute][h] |= ctx->dd->pg[is_compute] != pg;
             if (pg->dsl[h + 1]) {
                /* null set has null pool */
                if (pdd_cached(pg)->pool[h]) {
