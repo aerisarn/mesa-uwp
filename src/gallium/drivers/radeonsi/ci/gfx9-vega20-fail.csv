@@ -158,9 +158,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode full precision,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageStore,Fail
 spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 wgl@wgl-multi-context-single-window,Fail
 wgl@wgl-multi-window-single-context,Fail

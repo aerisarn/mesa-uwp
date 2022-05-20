@@ -956,9 +956,6 @@ spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH_COMPONENT24/Destinatio
 spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Crash
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Crash
 spec@nv_read_depth@read_depth_gles3,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageStore,Fail
 spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail

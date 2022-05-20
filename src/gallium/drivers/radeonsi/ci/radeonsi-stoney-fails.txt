@@ -126,9 +126,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode ful
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageStore,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Fail
 
 CreateContext/VAAPICreateContext.CreateContext/1035,Crash
 CreateContext/VAAPICreateContext.CreateContext/1120,Crash

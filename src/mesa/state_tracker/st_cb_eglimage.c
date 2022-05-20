@@ -272,12 +272,16 @@ st_bind_egl_image(struct gl_context *ctx,
    GLenum internalFormat;
    mesa_format texFormat;
 
-   /* map pipe format to base format */
-   if (util_format_get_component_bits(stimg->format,
-                                      UTIL_FORMAT_COLORSPACE_RGB, 3) > 0)
-      internalFormat = GL_RGBA;
-   else
-      internalFormat = GL_RGB;
+   if (stimg->internalformat) {
+      internalFormat = stimg->internalformat;
+   } else {
+      /* map pipe format to base format */
+      if (util_format_get_component_bits(stimg->format,
+                                         UTIL_FORMAT_COLORSPACE_RGB, 3) > 0)
+         internalFormat = GL_RGBA;
+      else
+         internalFormat = GL_RGB;
+   }
 
    /* switch to surface based */
    if (!texObj->surface_based) {

@@ -362,10 +362,6 @@ spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 spec@khr_texture_compression_astc@array-gles,Fail
 spec@khr_texture_compression_astc@array-gles@12x12 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles@5x5 Block Dim,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
-spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageStore,Fail
-
 
 #literally no driver can pass these
 spec@!opengl 1.0@rasterpos,Fail
