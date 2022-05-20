@@ -135,7 +135,7 @@ vn_feedback_buffer_destroy(struct vn_device *dev,
 }
 
 static VkResult
-vn_feedback_pool_grow(struct vn_feedback_pool *pool)
+vn_feedback_pool_grow_locked(struct vn_feedback_pool *pool)
 {
    VN_TRACE_FUNC();
    struct vn_feedback_buffer *feedback_buf = NULL;
@@ -159,19 +159,107 @@ vn_feedback_pool_init(struct vn_device *dev,
                       uint32_t size,
                       const VkAllocationCallbacks *alloc)
 {
+   simple_mtx_init(&pool->mutex, mtx_plain);
+
    pool->device = dev;
    pool->alloc = alloc;
    pool->size = size;
    pool->used = size;
    list_inithead(&pool->feedback_buffers);
+   list_inithead(&pool->free_slots);
 
-   return vn_feedback_pool_grow(pool);
+   /* no lock needed upon init */
+   return vn_feedback_pool_grow_locked(pool);
 }
 
 void
 vn_feedback_pool_fini(struct vn_feedback_pool *pool)
 {
+   list_for_each_entry_safe(struct vn_feedback_slot, slot, &pool->free_slots,
+                            head)
+      vk_free(pool->alloc, slot);
+
    list_for_each_entry_safe(struct vn_feedback_buffer, feedback_buf,
                             &pool->feedback_buffers, head)
       vn_feedback_buffer_destroy(pool->device, feedback_buf, pool->alloc);
+
+   simple_mtx_destroy(&pool->mutex);
+}
+
+static struct vn_feedback_buffer *
+vn_feedback_pool_alloc_locked(struct vn_feedback_pool *pool,
+                              uint32_t size,
+                              uint32_t *out_offset)
+{
+   VN_TRACE_FUNC();
+   const uint32_t aligned_size = align(size, 4);
+
+   if (unlikely(aligned_size > pool->size - pool->used)) {
+      VkResult result = vn_feedback_pool_grow_locked(pool);
+      if (result != VK_SUCCESS)
+         return NULL;
+
+      assert(aligned_size <= pool->size - pool->used);
+   }
+
+   *out_offset = pool->used;
+   pool->used += aligned_size;
+
+   return list_first_entry(&pool->feedback_buffers, struct vn_feedback_buffer,
+                           head);
+}
+
+struct vn_feedback_slot *
+vn_feedback_pool_alloc(struct vn_feedback_pool *pool,
+                       enum vn_feedback_type type)
+{
+   /* TODO Make slot size variable for VkQueryPool feedback. Currently it's
+    * MAX2(sizeof(VkResult), sizeof(uint64_t)).
+    */
+   static const uint32_t slot_size = 8;
+   struct vn_feedback_buffer *feedback_buf;
+   uint32_t offset;
+   struct vn_feedback_slot *slot;
+
+   simple_mtx_lock(&pool->mutex);
+   if (!list_is_empty(&pool->free_slots)) {
+      slot =
+         list_first_entry(&pool->free_slots, struct vn_feedback_slot, head);
+      list_del(&slot->head);
+      simple_mtx_unlock(&pool->mutex);
+
+      slot->type = type;
+      return slot;
+   }
+
+   slot = vk_alloc(pool->alloc, sizeof(*slot), VN_DEFAULT_ALIGN,
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!slot) {
+      simple_mtx_unlock(&pool->mutex);
+      return NULL;
+   }
+
+   feedback_buf = vn_feedback_pool_alloc_locked(pool, slot_size, &offset);
+   simple_mtx_unlock(&pool->mutex);
+
+   if (!feedback_buf) {
+      vk_free(pool->alloc, slot);
+      return NULL;
+   }
+
+   slot->type = type;
+   slot->offset = offset;
+   slot->buffer = feedback_buf->buffer;
+   slot->data = feedback_buf->data + offset;
+
+   return slot;
+}
+
+void
+vn_feedback_pool_free(struct vn_feedback_pool *pool,
+                      struct vn_feedback_slot *slot)
+{
+   simple_mtx_lock(&pool->mutex);
+   list_add(&slot->head, &pool->free_slots);
+   simple_mtx_unlock(&pool->mutex);
 }
