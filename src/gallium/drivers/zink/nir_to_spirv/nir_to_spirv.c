@@ -2268,9 +2268,9 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    const struct glsl_type *gtype = nir_src_as_deref(intr->src[0])->type;
    SpvId type = get_glsl_type(ctx, gtype);
    nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
-   unsigned num_writes = util_bitcount(nir_intrinsic_write_mask(intr));
    unsigned wrmask = nir_intrinsic_write_mask(intr);
-   if (num_writes && num_writes != intr->num_components) {
+   if (!glsl_type_is_scalar(gtype) &&
+       wrmask != BITFIELD_MASK(glsl_get_length(gtype))) {
       /* no idea what we do if this fails */
       assert(glsl_type_is_array(gtype) || glsl_type_is_vector(gtype));
 
@@ -2279,14 +2279,14 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       SpvId member_type;
       if (glsl_type_is_vector(gtype)) {
          result_type = get_glsl_basetype(ctx, glsl_get_base_type(gtype));
-         member_type = get_uvec_type(ctx, 32, 1);
+         member_type = get_uvec_type(ctx, glsl_get_bit_size(gtype), 1);
       } else
          member_type = result_type = get_glsl_type(ctx, glsl_get_array_element(gtype));
       SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                   SpvStorageClassOutput,
                                                   result_type);
       for (unsigned i = 0; i < 4; i++)
-         if ((wrmask >> i) & 1) {
+         if (wrmask & BITFIELD_BIT(i)) {
             SpvId idx = emit_uint_const(ctx, 32, i);
             SpvId val = spirv_builder_emit_composite_extract(&ctx->builder, member_type, src, &i, 1);
             val = emit_bitcast(ctx, result_type, val);
