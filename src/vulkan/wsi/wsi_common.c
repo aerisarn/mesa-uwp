@@ -33,6 +33,8 @@
 #include "vk_physical_device.h"
 #include "vk_queue.h"
 #include "vk_semaphore.h"
+#include "vk_sync.h"
+#include "vk_sync_dummy.h"
 #include "vk_util.h"
 
 #include <time.h>
@@ -834,15 +836,22 @@ wsi_signal_semaphore_for_image(struct vk_device *device,
                                const struct wsi_image *image,
                                VkSemaphore _semaphore)
 {
-   VK_FROM_HANDLE(vk_semaphore, semaphore, _semaphore);
-
-   if (!chain->wsi->signal_semaphore_with_memory)
+   if (device->physical->supported_sync_types == NULL)
       return VK_SUCCESS;
 
+   VK_FROM_HANDLE(vk_semaphore, semaphore, _semaphore);
+
    vk_semaphore_reset_temporary(device, semaphore);
-   return device->create_sync_for_memory(device, image->memory,
-                                         false /* signal_memory */,
-                                         &semaphore->temporary);
+
+   if (chain->wsi->signal_semaphore_with_memory) {
+      return device->create_sync_for_memory(device, image->memory,
+                                            false /* signal_memory */,
+                                            &semaphore->temporary);
+   } else {
+      return vk_sync_create(device, &vk_sync_dummy_type,
+                            0 /* flags */, 0 /* initial_value */,
+                            &semaphore->temporary);
+   }
 }
 
 static VkResult
@@ -851,15 +860,22 @@ wsi_signal_fence_for_image(struct vk_device *device,
                            const struct wsi_image *image,
                            VkFence _fence)
 {
-   VK_FROM_HANDLE(vk_fence, fence, _fence);
-
-   if (!chain->wsi->signal_fence_with_memory)
+   if (device->physical->supported_sync_types == NULL)
       return VK_SUCCESS;
 
+   VK_FROM_HANDLE(vk_fence, fence, _fence);
+
    vk_fence_reset_temporary(device, fence);
-   return device->create_sync_for_memory(device, image->memory,
-                                         false /* signal_memory */,
-                                         &fence->temporary);
+
+   if (chain->wsi->signal_fence_with_memory) {
+      return device->create_sync_for_memory(device, image->memory,
+                                            false /* signal_memory */,
+                                            &fence->temporary);
+   } else {
+      return vk_sync_create(device, &vk_sync_dummy_type,
+                            0 /* flags */, 0 /* initial_value */,
+                            &fence->temporary);
+   }
 }
 
 VkResult
