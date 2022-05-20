@@ -297,6 +297,16 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
       ac_parse_set_reg_packet(f, count, SI_SH_REG_OFFSET, ib);
       break;
    case PKT3_ACQUIRE_MEM:
+      if (ib->gfx_level >= GFX11 && G_585_PWS_ENA(ib->ib[ib->cur_dw + 5])) {
+         ac_dump_reg(f, ib->gfx_level, R_580_ACQUIRE_MEM_PWS_2, ac_ib_get(ib), ~0);
+         print_named_value(f, "GCR_SIZE", ac_ib_get(ib), 32);
+         print_named_value(f, "GCR_SIZE_HI", ac_ib_get(ib), 25);
+         print_named_value(f, "GCR_BASE_LO", ac_ib_get(ib), 32);
+         print_named_value(f, "GCR_BASE_HI", ac_ib_get(ib), 32);
+         ac_dump_reg(f, ib->gfx_level, R_585_ACQUIRE_MEM_PWS_7, ac_ib_get(ib), ~0);
+         ac_dump_reg(f, ib->gfx_level, R_586_GCR_CNTL, ac_ib_get(ib), ~0);
+         break;
+      }
       ac_dump_reg(f, ib->gfx_level, R_0301F0_CP_COHER_CNTL, ac_ib_get(ib), ~0);
       ac_dump_reg(f, ib->gfx_level, R_0301F4_CP_COHER_SIZE, ac_ib_get(ib), ~0);
       ac_dump_reg(f, ib->gfx_level, R_030230_CP_COHER_SIZE_HI, ac_ib_get(ib), ~0);
