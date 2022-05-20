@@ -710,6 +710,31 @@ bi_exit_block(struct list_head *blocks)
         return last;
 }
 
+static inline void
+bi_block_add_successor(bi_block *block, bi_block *successor)
+{
+        assert(block != NULL && successor != NULL);
+
+        /* Cull impossible edges */
+        if (block->unconditional_jumps)
+                return;
+
+        for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
+                if (block->successors[i]) {
+                       if (block->successors[i] == successor)
+                               return;
+                       else
+                               continue;
+                }
+
+                block->successors[i] = successor;
+                util_dynarray_append(&successor->predecessors, bi_block *, block);
+                return;
+        }
+
+        unreachable("Too many successors");
+}
+
 /* Subset of pan_shader_info needed per-variant, in order to support IDVS */
 struct bi_shader_info {
         struct panfrost_ubo_push *push;

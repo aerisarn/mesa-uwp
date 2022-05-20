@@ -116,31 +116,6 @@ bi_instance_id(bi_builder *b)
 }
 
 static void
-bi_block_add_successor(bi_block *block, bi_block *successor)
-{
-        assert(block != NULL && successor != NULL);
-
-        /* Cull impossible edges */
-        if (block->unconditional_jumps)
-                return;
-
-        for (unsigned i = 0; i < ARRAY_SIZE(block->successors); ++i) {
-                if (block->successors[i]) {
-                       if (block->successors[i] == successor)
-                               return;
-                       else
-                               continue;
-                }
-
-                block->successors[i] = successor;
-                util_dynarray_append(&successor->predecessors, bi_block *, block);
-                return;
-        }
-
-        unreachable("Too many successors");
-}
-
-static void
 bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
 {
         bi_instr *branch = bi_jump(b, bi_zero());
