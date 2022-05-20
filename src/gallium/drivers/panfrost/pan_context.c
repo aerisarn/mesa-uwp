@@ -526,6 +526,10 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
         if (type == PIPE_SHADER_FRAGMENT && !ctx->shader[PIPE_SHADER_VERTEX])
                 return;
 
+        /* Also defer, happens with GALLIUM_HUD */
+        if (!ctx->shader[type])
+                return;
+
         /* Match the appropriate variant */
         signed variant = -1;
         struct panfrost_shader_variants *variants = ctx->shader[type];
