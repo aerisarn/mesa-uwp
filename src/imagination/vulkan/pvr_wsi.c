@@ -31,10 +31,7 @@
 
 #include "pvr_private.h"
 #include "util/u_atomic.h"
-#include "vk_fence.h"
 #include "vk_object.h"
-#include "vk_semaphore.h"
-#include "vk_sync_dummy.h"
 #include "wsi_common.h"
 
 static PFN_vkVoidFunction pvr_wsi_proc_addr(VkPhysicalDevice physicalDevice,
@@ -88,46 +85,4 @@ VkResult pvr_QueuePresentKHR(VkQueue _queue,
    p_atomic_inc(&queue->device->global_queue_present_count);
 
    return VK_SUCCESS;
-}
-
-VkResult pvr_AcquireNextImage2KHR(VkDevice _device,
-                                  const VkAcquireNextImageInfoKHR *pAcquireInfo,
-                                  uint32_t *pImageIndex)
-{
-   VK_FROM_HANDLE(vk_semaphore, sem, pAcquireInfo->semaphore);
-   VK_FROM_HANDLE(vk_fence, fence, pAcquireInfo->fence);
-   PVR_FROM_HANDLE(pvr_device, device, _device);
-   VkResult result;
-   VkResult ret;
-
-   result = wsi_common_acquire_next_image2(&device->pdevice->wsi_device,
-                                           _device,
-                                           pAcquireInfo,
-                                           pImageIndex);
-   if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-      return result;
-
-   if (fence) {
-      vk_fence_reset_temporary(&device->vk, fence);
-      ret = vk_sync_create(&device->vk,
-                           &vk_sync_dummy_type,
-                           0U,
-                           0UL,
-                           &fence->temporary);
-      if (ret != VK_SUCCESS)
-         return ret;
-   }
-
-   if (sem) {
-      vk_semaphore_reset_temporary(&device->vk, sem);
-      ret = vk_sync_create(&device->vk,
-                           &vk_sync_dummy_type,
-                           0U,
-                           0UL,
-                           &sem->temporary);
-      if (ret != VK_SUCCESS)
-         return ret;
-   }
-
-   return result;
 }
