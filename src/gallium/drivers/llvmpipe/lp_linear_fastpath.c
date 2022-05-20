@@ -189,7 +189,7 @@ lp_linear_purple(const struct lp_rast_state *state,
 }
 
 
-/* Examine the fragment shader varient and determine whether we can
+/* Examine the fragment shader variant and determine whether we can
  * substitute a fastpath linear shader implementation.
  */
 boolean
