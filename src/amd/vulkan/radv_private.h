@@ -1893,6 +1893,10 @@ struct radv_tessellation_info {
 
 struct radv_viewport_info {
    bool negative_one_to_one;
+   uint8_t viewport_count;
+   uint8_t scissor_count;
+   VkRect2D scissors[MAX_SCISSORS];
+   VkViewport viewports[MAX_VIEWPORTS];
 };
 
 struct radv_rasterization_info {

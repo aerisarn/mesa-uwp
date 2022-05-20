@@ -1694,6 +1694,16 @@ radv_pipeline_init_viewport_info(struct radv_graphics_pipeline *pipeline,
    struct radv_viewport_info info = {0};
 
    if (radv_is_raster_enabled(pipeline, pCreateInfo)) {
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_VIEWPORT)) {
+         typed_memcpy(info.viewports, vp->pViewports, vp->viewportCount);
+      }
+      info.viewport_count = vp->viewportCount;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_SCISSOR)) {
+         typed_memcpy(info.scissors, vp->pScissors, vp->scissorCount);
+      }
+      info.scissor_count = vp->scissorCount;
+
       const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
          vk_find_struct_const(vp->pNext, PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
       if (depth_clip_control) {
@@ -1817,12 +1827,9 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
    if (needed_states & RADV_DYNAMIC_VIEWPORT) {
-      assert(pCreateInfo->pViewportState);
-
-      dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
+      dynamic->viewport.count = info->vp.viewport_count;
       if (states & RADV_DYNAMIC_VIEWPORT) {
-         typed_memcpy(dynamic->viewport.viewports, pCreateInfo->pViewportState->pViewports,
-                      pCreateInfo->pViewportState->viewportCount);
+         typed_memcpy(dynamic->viewport.viewports, info->vp.viewports, info->vp.viewport_count);
          for (unsigned i = 0; i < dynamic->viewport.count; i++)
             radv_get_viewport_xform(&dynamic->viewport.viewports[i],
                                     dynamic->viewport.xform[i].scale, dynamic->viewport.xform[i].translate);
@@ -1830,10 +1837,9 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (needed_states & RADV_DYNAMIC_SCISSOR) {
-      dynamic->scissor.count = pCreateInfo->pViewportState->scissorCount;
+      dynamic->scissor.count = info->vp.scissor_count;
       if (states & RADV_DYNAMIC_SCISSOR) {
-         typed_memcpy(dynamic->scissor.scissors, pCreateInfo->pViewportState->pScissors,
-                      pCreateInfo->pViewportState->scissorCount);
+         typed_memcpy(dynamic->scissor.scissors, info->vp.scissors, info->vp.scissor_count);
       }
    }
 
