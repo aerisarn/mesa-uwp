@@ -822,6 +822,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
       }
    };
 
+   VkSampleLocationsInfoEXT sample_loc_info;
    if (src_image->vk.create_flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT) {
       /* If the depth/stencil image uses different sample
        * locations, we need them during HTILE decompressions.
@@ -829,13 +830,14 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
       struct radv_sample_locations_state *sample_locs =
          radv_get_resolve_sample_locations(cmd_buffer);
 
-      barrier.pNext = &(VkSampleLocationsInfoEXT){
+      sample_loc_info = (VkSampleLocationsInfoEXT){
          .sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT,
          .sampleLocationsPerPixel = sample_locs->per_pixel,
          .sampleLocationGridSize = sample_locs->grid_size,
          .sampleLocationsCount = sample_locs->count,
          .pSampleLocations = sample_locs->locations,
       };
+      barrier.pNext = &sample_loc_info;
    }
 
    VkDependencyInfo dep_info = {
