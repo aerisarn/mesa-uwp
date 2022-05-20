@@ -185,7 +185,7 @@ debian/x86_test-gl:
   extends: .use-debian/x86_test-base
   variables:
     FDO_DISTRIBUTION_EXEC: 'env KERNEL_URL=${KERNEL_URL} FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
-    KERNEL_URL: &kernel-rootfs-url "https://gitlab.freedesktop.org/gfx-ci/linux/-/archive/v5.16-for-mesa-ci-991fec6622591/linux-v5.16-for-mesa-ci-991fec6622591.tar.bz2"
+    KERNEL_URL: &kernel-rootfs-url "https://gitlab.freedesktop.org/gfx-ci/linux/-/archive/v5.17-for-mesa-ci-b78f7870d97b/linux-v5.17-for-mesa-ci-b78f7870d97b.tar.bz2"
     MESA_IMAGE_TAG: &debian-x86_test-gl ${DEBIAN_X86_TEST_GL_TAG}
 
 .use-debian/x86_test-gl:

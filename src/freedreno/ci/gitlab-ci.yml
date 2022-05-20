@@ -148,7 +148,7 @@ a618_vk:
     GPU_VERSION: freedreno-a618
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
     DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
-    DTB: sc7180-trogdor-lazor-limozeen-nots
+    DTB: sc7180-trogdor-lazor-limozeen-nots-r5
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
