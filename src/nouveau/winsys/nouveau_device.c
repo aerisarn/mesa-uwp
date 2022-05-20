@@ -6,22 +6,7 @@
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
 
-#include <stddef.h>
-
 #include "util/os_misc.h"
-
-struct nouveau_ws_device_priv {
-   struct nouveau_ws_device base;
-   struct nouveau_drm *drm;
-   struct nouveau_device *dev;
-   int fd;
-};
-
-static struct nouveau_ws_device_priv *
-nouveau_ws_device(struct nouveau_ws_device *dev)
-{
-   return container_of(dev, struct nouveau_ws_device_priv, base);
-}
 
 struct nouveau_ws_device *
 nouveau_ws_device_new(int fd)

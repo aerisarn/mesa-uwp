@@ -3,6 +3,8 @@
 
 #include "nouveau_private.h"
 
+#include <stddef.h>
+
 struct nouveau_ws_device {
    uint16_t vendor_id;
    uint16_t device_id;
@@ -11,6 +13,20 @@ struct nouveau_ws_device {
    uint64_t gart_size;
    bool is_integrated;
 };
+
+/* don't use directly, gets removed once the new UAPI is here */
+struct nouveau_ws_device_priv {
+   struct nouveau_ws_device base;
+   struct nouveau_drm *drm;
+   struct nouveau_device *dev;
+   int fd;
+};
+
+static struct nouveau_ws_device_priv *
+nouveau_ws_device(struct nouveau_ws_device *dev)
+{
+   return container_of(dev, struct nouveau_ws_device_priv, base);
+}
 
 struct nouveau_ws_device *nouveau_ws_device_new(int fd);
 void nouveau_ws_device_destroy(struct nouveau_ws_device *);
