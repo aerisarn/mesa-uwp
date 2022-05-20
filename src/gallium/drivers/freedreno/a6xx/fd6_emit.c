@@ -132,14 +132,14 @@ setup_border_colors(struct fd_texture_stateobj *tex,
           * stencil border color value in bc->ui[0] but according
           * to desc->swizzle and desc->channel, the .x/.w component
           * is NONE and the stencil value is in the y component.
-          * Meanwhile the hardware wants this in the .w component
-          * for x24s8 and the .x component for x32_s8x24.
+          * Meanwhile the hardware wants this in the .x component
+          * for x24s8 and x32_s8x24.
           */
          if ((format == PIPE_FORMAT_X24S8_UINT) ||
              (format == PIPE_FORMAT_X32_S8X24_UINT)) {
             if (j == 0) {
                c = 1;
-               cd = (format == PIPE_FORMAT_X32_S8X24_UINT) ? 0 : 3;
+               cd = 0;
             } else {
                continue;
             }

@@ -374,6 +374,10 @@ fd6_pipe2swap(enum pipe_format format, enum a6xx_tile_mode tile_mode)
    if (!formats[format].present)
       return WZYX;
 
+   /* It seems CCU ignores swap and always uses WZYX when tiled.  TP, on the
+    * other hand, always respects swap.  We should return WZYX such that CCU
+    * and TP agree each other.
+    */
    if (tile_mode)
       return WZYX;
 
@@ -436,6 +440,18 @@ fd6_texture_swap(enum pipe_format format, enum a6xx_tile_mode tile_mode)
          break;
       }
    }
+
+   /* format is PIPE_FORMAT_X24S8_UINT when texturing the stencil aspect of
+    * PIPE_FORMAT_Z24_UNORM_S8_UINT.  Because we map the format to
+    * FMT6_8_8_8_8_UINT, return XYZW such that the stencil value is in X
+    * component.
+    *
+    * We used to return WZYX and apply swizzles.  That required us to
+    * un-swizzle the user-specified border color, which could not be done for
+    * turnip.
+    */
+   if (format == PIPE_FORMAT_X24S8_UINT)
+      return XYZW;
 
    return fd6_pipe2swap(format, tile_mode);
 }

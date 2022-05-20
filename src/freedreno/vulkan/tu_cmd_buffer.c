@@ -1140,8 +1140,12 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       if (i % 2 == 1 && att->format == VK_FORMAT_D24_UNORM_S8_UINT) {
          /* note this works because spec says fb and input attachments
           * must use identity swizzle
+          *
+          * Also we clear swap to WZYX.  This is because the view might have
+          * picked XYZW to work better with border colors.
           */
          dst[0] &= ~(A6XX_TEX_CONST_0_FMT__MASK |
+            A6XX_TEX_CONST_0_SWAP__MASK |
             A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
             A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK);
          if (!cmd->device->physical_device->info->a6xx.has_z24uint_s8uint) {
