@@ -68,6 +68,10 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .deviceID = pdevice->dev->device_id,
       .deviceType = pdevice->dev->is_integrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
                                                 : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
+      .limits = (VkPhysicalDeviceLimits) {
+         .nonCoherentAtomSize = 64,
+      },
+
       /* More properties */
    };
 
