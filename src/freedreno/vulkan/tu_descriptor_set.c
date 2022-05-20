@@ -455,6 +455,8 @@ tu_CreatePipelineLayout(VkDevice _device,
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       TU_FROM_HANDLE(tu_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
+
+      assert(set < MAX_SETS);
       layout->set[set].layout = set_layout;
       layout->set[set].dynamic_offset_start = dynamic_offset_size;
       tu_descriptor_set_layout_ref(set_layout);
