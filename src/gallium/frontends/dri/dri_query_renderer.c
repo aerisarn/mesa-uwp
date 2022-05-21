@@ -98,8 +98,8 @@ dri2_query_renderer_integer(__DRIscreen *_screen, int param,
       return 0;
    case __DRI2_RENDERER_ACCELERATED:
       value[0] =
-         (unsigned int)screen->base.screen->get_param(screen->base.screen,
-                                                      PIPE_CAP_ACCELERATED);
+         (unsigned int)!!screen->base.screen->get_param(screen->base.screen,
+                                                        PIPE_CAP_ACCELERATED);
       return 0;
 
    case __DRI2_RENDERER_VIDEO_MEMORY: {

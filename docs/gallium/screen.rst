@@ -256,7 +256,10 @@ The integer capabilities:
   not available one should return 0xFFFFFFFF.
 * ``PIPE_CAP_DEVICE_ID``: The device ID (PCI ID) of the underlying hardware.
   0xFFFFFFFF if not available.
-* ``PIPE_CAP_ACCELERATED``: Whether the renderer is hardware accelerated.
+* ``PIPE_CAP_ACCELERATED``: Whether the renderer is hardware accelerated. 0 means
+  not accelerated (ie. CPU rendering), 1 means accelerated (ie. GPU rendering),
+  -1 means unknown (ie. an API translation driver which doesn't known what kind of
+  hardware it's running above).
 * ``PIPE_CAP_VIDEO_MEMORY``: The amount of video memory in megabytes.
 * ``PIPE_CAP_UMA``: If the device has a unified memory architecture or on-card
   memory and GART.

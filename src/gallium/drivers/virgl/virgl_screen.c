@@ -330,7 +330,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_DEVICE_ID:
       return 0x1010;
    case PIPE_CAP_ACCELERATED:
-      return 1;
+      return -1; /* -1 means unknown */
    case PIPE_CAP_UMA:
    case PIPE_CAP_VIDEO_MEMORY:
       if (vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_VIDEO_MEMORY)
