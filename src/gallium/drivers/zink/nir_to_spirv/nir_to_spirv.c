@@ -4177,18 +4177,19 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    nir_foreach_shader_in_variable(var, s)
       emit_input(&ctx, var);
 
-   int max_output = -1;
+   int max_output = 0;
    nir_foreach_shader_out_variable(var, s) {
       /* ignore SPIR-V built-ins, tagged with a sentinel value */
       if (var->data.driver_location != UINT_MAX) {
          assert(var->data.driver_location < INT_MAX);
-         max_output = MAX2(max_output, (int)var->data.driver_location);
+         unsigned extent = glsl_count_attribute_slots(var->type, false);
+         max_output = MAX2(max_output, (int)var->data.driver_location + extent);
       }
       emit_output(&ctx, var);
    }
 
    if (sinfo->last_vertex)
-      emit_so_info(&ctx, sinfo, max_output + 1);
+      emit_so_info(&ctx, sinfo, max_output);
    uint32_t tcs_vertices_out_word = 0;
 
    /* we have to reverse iterate to match what's done in zink_compiler.c */
