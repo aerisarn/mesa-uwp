@@ -449,6 +449,25 @@ filter_64_bit_instr(const nir_instr *const_instr, UNUSED const void *data)
    return lower;
 }
 
+static bool
+filter_pack_instr(const nir_instr *const_instr, UNUSED const void *data)
+{
+   nir_instr *instr = (nir_instr *)const_instr;
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   switch (alu->op) {
+   case nir_op_pack_64_2x32_split:
+   case nir_op_pack_32_2x16_split:
+   case nir_op_unpack_32_2x16_split_x:
+   case nir_op_unpack_32_2x16_split_y:
+   case nir_op_unpack_64_2x32_split_x:
+   case nir_op_unpack_64_2x32_split_y:
+      return true;
+   default:
+      break;
+   }
+   return false;
+}
+
 static void
 optimize_nir(struct nir_shader *s)
 {
@@ -456,6 +475,7 @@ optimize_nir(struct nir_shader *s)
    do {
       progress = false;
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
+      NIR_PASS(progress, s, nir_lower_alu_to_scalar, filter_pack_instr, NULL);
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_remove_phis);
       if (s->options->lower_int64_options) {
