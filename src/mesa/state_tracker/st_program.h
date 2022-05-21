@@ -56,6 +56,9 @@ struct st_external_sampler_key
    GLuint lower_yuv;
    GLuint lower_yu_yv;
    GLuint lower_y41x;
+   GLuint bt709;
+   GLuint bt2020;
+   GLuint yuv_full_range;
 };
 
 static inline struct st_external_sampler_key
@@ -125,6 +128,20 @@ st_get_external_sampler_key(struct st_context *st, struct gl_program *prog)
                 format);
          break;
       }
+
+      switch (stObj->yuv_color_space) {
+      case GL_TEXTURE_YUV_COLOR_SPACE_REC601:
+         break;
+      case GL_TEXTURE_YUV_COLOR_SPACE_REC709:
+         key.bt709 |= (1 << unit);
+         break;
+      case GL_TEXTURE_YUV_COLOR_SPACE_REC2020:
+         key.bt2020 |= (1 << unit);
+         break;
+      }
+
+      if (stObj->yuv_full_range)
+         key.yuv_full_range |= (1 << unit);
    }
 
    return key;

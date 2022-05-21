@@ -1020,6 +1020,9 @@ st_create_fp_variant(struct st_context *st,
       options.lower_yuv_external = key->external.lower_yuv;
       options.lower_yu_yv_external = key->external.lower_yu_yv;
       options.lower_y41x_external = key->external.lower_y41x;
+      options.bt709_external = key->external.bt709;
+      options.bt2020_external = key->external.bt2020;
+      options.yuv_full_range_external = key->external.yuv_full_range;
       NIR_PASS_V(state.ir.nir, nir_lower_tex, &options);
       finalize = true;
       need_lower_tex_src_plane = true;
