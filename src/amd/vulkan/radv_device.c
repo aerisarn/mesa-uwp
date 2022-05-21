@@ -805,7 +805,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
          result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                             "failed to stat DRM primary node %s",
                             drm_device->nodes[DRM_NODE_PRIMARY]);
-         goto fail_disk_cache;
+         goto fail_perfcounters;
       }
       device->primary_devid = primary_stat.st_rdev;
 
@@ -814,7 +814,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
          result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                             "failed to stat DRM render node %s",
                             drm_device->nodes[DRM_NODE_RENDER]);
-         goto fail_disk_cache;
+         goto fail_perfcounters;
       }
       device->render_devid = render_stat.st_rdev;
    }
@@ -825,6 +825,9 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    radv_physical_device_init_queue_table(device);
 
+   /* We don't check the error code, but later check if it is initialized. */
+   ac_init_perfcounters(&device->rad_info, false, false, &device->ac_perfcounters);
+
    /* The WSI is structured as a layer on top of the driver, so this has
     * to be the last part of initialization (at least until we get other
     * semi-layers).
@@ -832,7 +835,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    result = radv_init_wsi(device);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
-      goto fail_disk_cache;
+      goto fail_perfcounters;
    }
 
    device->gs_table_depth =
@@ -845,7 +848,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    return VK_SUCCESS;
 
-fail_disk_cache:
+fail_perfcounters:
+   ac_destroy_perfcounters(&device->ac_perfcounters);
    disk_cache_destroy(device->disk_cache);
 #ifdef ENABLE_SHADER_CACHE
 fail_wsi:
@@ -867,6 +871,7 @@ static void
 radv_physical_device_destroy(struct radv_physical_device *device)
 {
    radv_finish_wsi(device);
+   ac_destroy_perfcounters(&device->ac_perfcounters);
    device->ws->destroy(device->ws);
    disk_cache_destroy(device->disk_cache);
    if (device->local_fd != -1)

@@ -333,6 +333,9 @@ struct radv_physical_device {
 
    struct ac_hs_info hs;
    struct ac_task_info task_info;
+
+   /* Performance counters. */
+   struct ac_perfcounters ac_perfcounters;
 };
 
 struct radv_instance {
@@ -867,9 +870,6 @@ struct radv_device {
 
    /* SPM. */
    struct ac_spm_trace_data spm_trace;
-
-   /* Performance counters. */
-   struct ac_perfcounters perfcounters;
 
    /* Trap handler. */
    struct radv_trap_handler_shader *trap_handler_shader;
