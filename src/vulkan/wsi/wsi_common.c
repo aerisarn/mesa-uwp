@@ -524,7 +524,10 @@ wsi_destroy_image(const struct wsi_swapchain *chain,
 #endif
 
    if (image->buffer.blit_cmd_buffers) {
-      for (uint32_t i = 0; i < wsi->queue_family_count; i++) {
+      int cmd_buffer_count =
+         chain->buffer_blit_queue != VK_NULL_HANDLE ? 1 : wsi->queue_family_count;
+
+      for (uint32_t i = 0; i < cmd_buffer_count; i++) {
          wsi->FreeCommandBuffers(chain->device, chain->cmd_pools[i],
                                  1, &image->buffer.blit_cmd_buffers[i]);
       }
