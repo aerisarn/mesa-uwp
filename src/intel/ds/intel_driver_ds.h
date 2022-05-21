@@ -119,8 +119,14 @@ struct intel_ds_stage {
    /* Unique stage IID */
    uint64_t stage_iid;
 
-   /* Start timestamp of the last work element */
-   uint64_t start_ns;
+   /* Start timestamp of the last work element. We have a array indexed by
+    * level so that we can track multi levels of events (like
+    * primary/secondary command buffers).
+    */
+   uint64_t start_ns[5];
+
+   /* Current number of valid elements in start_ns */
+   uint32_t level;
 };
 
 struct intel_ds_queue {

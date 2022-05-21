@@ -197,7 +197,7 @@ send_descriptors(IntelRenderpassDataSource::TraceContext &ctx,
    device->event_id = 0;
    u_vector_foreach(queue, &device->queues) {
       for (uint32_t s = 0; s < ARRAY_SIZE(queue->stages); s++) {
-         queue->stages[s].start_ns = 0;
+         queue->stages[s].start_ns[0] = 0;
       }
    }
 
@@ -261,16 +261,17 @@ static void
 begin_event(struct intel_ds_queue *queue, uint64_t ts_ns,
             enum intel_ds_queue_stage stage_id)
 {
+   uint32_t level = queue->stages[stage_id].level;
    /* If we haven't managed to calibrate the alignment between GPU and CPU
     * timestamps yet, then skip this trace, otherwise perfetto won't know
     * what to do with it.
     */
    if (!queue->device->sync_gpu_ts) {
-      queue->stages[stage_id].start_ns = 0;
+      queue->stages[stage_id].start_ns[level] = 0;
       return;
    }
 
-   queue->stages[stage_id].start_ns = ts_ns;
+   queue->stages[stage_id].start_ns[level] = ts_ns;
 }
 
 static void
@@ -288,8 +289,12 @@ end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
    if (!device->sync_gpu_ts)
       return;
 
+   if (queue->stages[stage_id].level == 0)
+      return;
+
+   uint32_t level = --queue->stages[stage_id].level;
    struct intel_ds_stage *stage = &queue->stages[stage_id];
-   uint64_t start_ns = stage->start_ns;
+   uint64_t start_ns = stage->start_ns[level];
 
    if (!start_ns)
       return;
@@ -326,7 +331,7 @@ end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
       }
    });
 
-   stage->start_ns = 0;
+   stage->start_ns[level] = 0;
 }
 
 static void
@@ -402,7 +407,6 @@ extern "C" {
                 &trace_payload_as_extra_intel_end_##event_name);        \
    }                                                                    \
 
-
 CREATE_DUAL_EVENT_CALLBACK(batch, INTEL_DS_QUEUE_STAGE_CMD_BUFFER)
 CREATE_DUAL_EVENT_CALLBACK(cmd_buffer, INTEL_DS_QUEUE_STAGE_CMD_BUFFER)
 CREATE_DUAL_EVENT_CALLBACK(render_pass, INTEL_DS_QUEUE_STAGE_RENDER_PASS)
@@ -444,8 +448,8 @@ intel_ds_end_stall(struct intel_ds_device *device,
 {
    const struct intel_ds_flush_data *flush =
       (const struct intel_ds_flush_data *) flush_data;
-   end_event(flush->queue, ts_ns, INTEL_DS_QUEUE_STAGE_STALL, flush->submission_id,
-             payload,
+   end_event(flush->queue, ts_ns, INTEL_DS_QUEUE_STAGE_STALL,
+             flush->submission_id, payload,
              (trace_payload_as_extra_func)custom_trace_payload_as_extra_end_stall);
 }
 
