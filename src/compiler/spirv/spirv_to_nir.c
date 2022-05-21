@@ -3898,6 +3898,11 @@ vtn_vector_shuffle(struct vtn_builder *b, unsigned num_components,
 
    for (unsigned i = 0; i < num_components; i++) {
       uint32_t index = indices[i];
+      unsigned total_components = src0->num_components + src1->num_components;
+      vtn_fail_if(index != 0xffffffff && index >= total_components,
+                  "OpVectorShuffle: All Component literals must either be "
+                  "FFFFFFFF or in [0, N - 1] (inclusive)");
+
       if (index == 0xffffffff) {
          vec->src[i].src =
             nir_src_for_ssa(nir_ssa_undef(&b->nb, 1, src0->bit_size));
