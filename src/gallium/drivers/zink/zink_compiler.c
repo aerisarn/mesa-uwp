@@ -2309,6 +2309,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    bindless.bindless_set = screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS];
    bool has_bindless_io = false;
    nir_foreach_variable_with_modes(var, nir, nir_var_shader_in | nir_var_shader_out) {
+      var->data.is_xfb = false;
       if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
          has_bindless_io = true;
          break;
