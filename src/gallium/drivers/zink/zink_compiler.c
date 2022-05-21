@@ -795,6 +795,9 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
          nir_variable *var = NULL;
          while (!var)
             var = find_var_with_location_frac(zs->nir, slot--, output->start_component, have_psiz);
+         /* this is a lowered 64bit variable that can't be exported due to packing */
+         if (var->data.is_xfb)
+            goto out;
 
          unsigned num_slots = glsl_count_vec4_slots(var->type, false, false);
          /* for each variable, iterate over all the variable's slots and inline the outputs */
