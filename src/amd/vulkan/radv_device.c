@@ -3915,8 +3915,8 @@ radv_emit_compute_scratch(struct radv_device *device, struct radeon_cmdbuf *cs,
 }
 
 static void
-radv_emit_global_shader_pointers(struct radv_device *device, struct radeon_cmdbuf *cs,
-                                 struct radeon_winsys_bo *descriptor_bo)
+radv_emit_graphics_shader_pointers(struct radv_device *device, struct radeon_cmdbuf *cs,
+                                   struct radeon_winsys_bo *descriptor_bo)
 {
    uint64_t va;
 
@@ -4156,7 +4156,7 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
          radv_emit_gs_ring_sizes(device, cs, esgs_ring_bo, needs->esgs_ring_size, gsvs_ring_bo,
                                  needs->gsvs_ring_size);
          radv_emit_tess_factor_ring(device, cs, tess_rings_bo);
-         radv_emit_global_shader_pointers(device, cs, descriptor_bo);
+         radv_emit_graphics_shader_pointers(device, cs, descriptor_bo);
          radv_emit_compute_scratch(device, cs, needs->compute_scratch_size_per_wave,
                                    needs->compute_scratch_waves, compute_scratch_bo);
          radv_emit_graphics_scratch(device, cs, needs->scratch_size_per_wave, needs->scratch_waves,
@@ -4164,7 +4164,6 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
          break;
       case RADV_QUEUE_COMPUTE:
          radv_init_compute_state(cs, device);
-         radv_emit_global_shader_pointers(device, cs, descriptor_bo);
          radv_emit_compute_scratch(device, cs, needs->compute_scratch_size_per_wave,
                                    needs->compute_scratch_waves, compute_scratch_bo);
          break;
