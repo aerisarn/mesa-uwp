@@ -672,7 +672,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.props.deviceID;
 
    case PIPE_CAP_ACCELERATED:
-      return 1;
+      return !screen->is_cpu;
    case PIPE_CAP_VIDEO_MEMORY:
       return get_video_mem(screen) >> 20;
    case PIPE_CAP_UMA:
