@@ -507,8 +507,8 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
                                nir_ssa_def *result, struct ray_query_vars *vars,
                                nir_ssa_def *bvh_node)
 {
-   nir_ssa_def *dist = nir_vector_extract(b, result, nir_imm_int(b, 0));
-   nir_ssa_def *div = nir_vector_extract(b, result, nir_imm_int(b, 1));
+   nir_ssa_def *dist = nir_channel(b, result, 0);
+   nir_ssa_def *div = nir_channel(b, result, 1);
    dist = nir_fdiv(b, dist, div);
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
    nir_ssa_def *switch_ccw =
@@ -795,7 +795,7 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
 
                /* box */
                for (unsigned i = 4; i-- > 0;) {
-                  nir_ssa_def *new_node = nir_vector_extract(b, result, nir_imm_int(b, i));
+                  nir_ssa_def *new_node = nir_channel(b, result, i);
                   nir_push_if(b, nir_ine_imm(b, new_node, 0xffffffff));
                   {
                      rq_store_array(b, index, vars->stack, rq_load_var(b, index, vars->trav.stack),

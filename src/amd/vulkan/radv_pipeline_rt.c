@@ -1113,8 +1113,8 @@ insert_traversal_triangle_case(struct radv_device *device,
                                nir_ssa_def *result, const struct rt_variables *vars,
                                const struct rt_traversal_vars *trav_vars, nir_ssa_def *bvh_node)
 {
-   nir_ssa_def *dist = nir_vector_extract(b, result, nir_imm_int(b, 0));
-   nir_ssa_def *div = nir_vector_extract(b, result, nir_imm_int(b, 1));
+   nir_ssa_def *dist = nir_channel(b, result, 0);
+   nir_ssa_def *div = nir_channel(b, result, 1);
    dist = nir_fdiv(b, dist, div);
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
    nir_ssa_def *switch_ccw =
@@ -1552,7 +1552,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
             }
 
             for (unsigned i = 4; i-- > 0; ) {
-               nir_ssa_def *new_node = nir_vector_extract(b, result, nir_imm_int(b, i));
+               nir_ssa_def *new_node = nir_channel(b, result, i);
                nir_push_if(b, nir_ine_imm(b, new_node, 0xffffffff));
                {
                   nir_store_shared(b, new_node, nir_load_var(b, trav_vars.stack), .base = 0,
