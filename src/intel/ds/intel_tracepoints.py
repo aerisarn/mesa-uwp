@@ -57,6 +57,14 @@ def define_tracepoints(args):
                  tp_args=[Arg(type='uint8_t', var='level', c_format='%hhu'),],
                  end_pipelined=False)
 
+    # Annotations for Cmd(Begin|End)DebugUtilsLabelEXT
+    begin_end_tp('cmd_buffer_annotation',
+                 tp_args=[ArgStruct(type='unsigned', var='len'),
+                          ArgStruct(type='const char *', var='str'),],
+                 tp_struct=[Arg(type='uint8_t', name='dummy', var='0', c_format='%hhu'),
+                            Arg(type='char', name='str', var='str', c_format='%s', length_arg='len + 1', copy_func='strncpy'),],
+                 end_pipelined=True)
+
     begin_end_tp('xfb',
                  end_pipelined=False)
 
