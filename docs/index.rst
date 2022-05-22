@@ -84,6 +84,7 @@ Linux, FreeBSD, and other operating systems.
    :hidden:
 
    drivers/anv
+   drivers/asahi
    drivers/d3d12
    drivers/freedreno
    drivers/lima
