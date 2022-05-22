@@ -299,7 +299,6 @@ end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
    if (!start_ns)
       return;
 
-   uint64_t evt_id = device->event_id++;
 
    IntelRenderpassDataSource::Trace([=](IntelRenderpassDataSource::TraceContext tctx) {
       if (auto state = tctx.GetIncrementalState(); state->was_cleared) {
@@ -308,6 +307,8 @@ end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
       }
 
       sync_timestamp(tctx, queue->device);
+
+      uint64_t evt_id = device->event_id++;
 
       auto packet = tctx.NewTracePacket();
 
