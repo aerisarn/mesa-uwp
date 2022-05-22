@@ -425,6 +425,7 @@ static enum agx_texture_dimension
 agx_translate_texture_dimension(enum pipe_texture_target dim)
 {
    switch (dim) {
+   case PIPE_TEXTURE_RECT:
    case PIPE_TEXTURE_2D: return AGX_TEXTURE_DIMENSION_2D;
    case PIPE_TEXTURE_2D_ARRAY: return AGX_TEXTURE_DIMENSION_2D_ARRAY;
    case PIPE_TEXTURE_3D: return AGX_TEXTURE_DIMENSION_3D;
