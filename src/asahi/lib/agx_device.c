@@ -319,7 +319,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    dev->queue = agx_create_command_queue(dev);
    dev->cmdbuf = agx_shmem_alloc(dev, 0x4000, true); // length becomes kernelCommandDataSize
-   dev->memmap = agx_shmem_alloc(dev, 0x4000, false);
+   dev->memmap = agx_shmem_alloc(dev, 0x10000, false);
    agx_get_global_ids(dev);
 
    return true;
