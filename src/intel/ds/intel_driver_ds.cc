@@ -588,6 +588,7 @@ intel_driver_ds_init(void)
 {
    call_once(&intel_driver_ds_once_flag,
              intel_driver_ds_init_once);
+   intel_gpu_tracepoint_config_variable();
 }
 
 void

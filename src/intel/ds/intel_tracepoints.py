@@ -24,6 +24,12 @@
 import argparse
 import sys
 
+# List of the default tracepoints enabled. By default most tracepoints are
+# enabled, set tp_default=False to disable them by default.
+#
+# Currently only stall is disabled by default
+intel_default_tps = []
+
 #
 # Tracepoint definitions:
 #
@@ -38,10 +44,16 @@ def define_tracepoints(args):
     Header('blorp/blorp_priv.h', scope=HeaderScope.HEADER)
     Header('ds/intel_driver_ds.h', scope=HeaderScope.HEADER)
 
-    def begin_end_tp(name, tp_args=[], tp_struct=None, tp_print=None, end_pipelined=True):
+    def begin_end_tp(name, tp_args=[], tp_struct=None, tp_print=None,
+                     tp_default_enabled=True, end_pipelined=True):
+        global intel_default_tps
+        if tp_default_enabled:
+            intel_default_tps.append(name)
         Tracepoint('intel_begin_{0}'.format(name),
+                   toggle_name=name,
                    tp_perfetto='intel_ds_begin_{0}'.format(name))
         Tracepoint('intel_end_{0}'.format(name),
+                   toggle_name=name,
                    args=tp_args,
                    tp_struct=tp_struct,
                    tp_perfetto='intel_ds_end_{0}'.format(name),
@@ -176,6 +188,7 @@ def define_tracepoints(args):
                  tp_struct=[Arg(type='uint32_t', name='flags', var='decode_cb(flags)', c_format='0x%x'),
                             Arg(type='const char *', name='reason', var='reason', c_format='%s'),],
                  tp_print=stall_args(stall_flags),
+                 tp_default_enabled=False,
                  end_pipelined=False)
 
 
@@ -185,7 +198,9 @@ def generate_code(args):
 
     utrace_generate(cpath=args.utrace_src, hpath=args.utrace_hdr,
                     ctx_param='struct intel_ds_device *dev',
-                    need_cs_param=False)
+                    need_cs_param=False,
+                    trace_toggle_name='intel_gpu_tracepoint',
+                    trace_toggle_defaults=intel_default_tps)
     utrace_generate_perfetto_utils(hpath=args.perfetto_hdr)
 
 
