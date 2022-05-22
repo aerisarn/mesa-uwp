@@ -2589,7 +2589,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->dynamic_fb.info.renderArea.extent.width = state->width;
    ctx->dynamic_fb.info.renderArea.extent.height = state->height;
    ctx->dynamic_fb.info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
-   unsigned layers = util_framebuffer_get_num_layers(state);
+   unsigned layers = MAX2(util_framebuffer_get_num_layers(state), 1);
    ctx->rp_changed |= ctx->dynamic_fb.info.layerCount != layers;
    ctx->dynamic_fb.info.layerCount = layers;
    ctx->gfx_pipeline_state.rendering_info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
