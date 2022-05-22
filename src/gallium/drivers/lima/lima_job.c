@@ -1112,6 +1112,14 @@ lima_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
    }
 }
 
+static void
+lima_texture_barrier(struct pipe_context *pctx, unsigned flags)
+{
+    struct lima_context *ctx = lima_context(pctx);
+
+    lima_flush(ctx);
+}
+
 static bool
 lima_job_compare(const void *s1, const void *s2)
 {
@@ -1146,6 +1154,7 @@ bool lima_job_init(struct lima_context *ctx)
    }
 
    ctx->base.flush = lima_pipe_flush;
+   ctx->base.texture_barrier = lima_texture_barrier;
 
    return true;
 }
