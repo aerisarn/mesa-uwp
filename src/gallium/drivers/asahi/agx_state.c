@@ -1626,6 +1626,9 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       (info->mode == PIPE_PRIM_LINE_STRIP) ||
       (info->mode == PIPE_PRIM_LINE_LOOP);
 
+   ptrdiff_t encoder_use = batch->encoder_current - (uint8_t *) batch->encoder->ptr.cpu;
+   assert((encoder_use + 1024) < batch->encoder->size && "todo: how to expand encoder?");
+
    uint8_t *out = agx_encode_state(ctx, batch->encoder_current,
                                    agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX),
                                    agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
