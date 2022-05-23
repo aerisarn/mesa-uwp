@@ -3217,7 +3217,7 @@ fs_visitor::eliminate_find_live_channel()
          /* This can potentially make control flow non-uniform until the end
           * of the program.
           */
-         return progress;
+         goto out;
 
       case SHADER_OPCODE_FIND_LIVE_CHANNEL:
          if (depth == 0) {
@@ -3234,6 +3234,7 @@ fs_visitor::eliminate_find_live_channel()
       }
    }
 
+out:
    if (progress)
       invalidate_analysis(DEPENDENCY_INSTRUCTION_DETAIL);
 
