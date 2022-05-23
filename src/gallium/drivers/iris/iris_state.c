@@ -2345,7 +2345,7 @@ static void
 alloc_surface_states(struct iris_surface_state *surf_state,
                      unsigned aux_usages)
 {
-   const unsigned surf_size = 4 * GENX(RENDER_SURFACE_STATE_length);
+   enum { surf_size = 4 * GENX(RENDER_SURFACE_STATE_length) };
 
    /* If this changes, update this to explicitly align pointers */
    STATIC_ASSERT(surf_size == SURFACE_STATE_ALIGNMENT);
@@ -6235,7 +6235,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          for (int i = 0; i < 4; i++) {
             struct iris_stream_output_target *tgt =
                (void *) ice->state.so_target[i];
-            const uint32_t dwords = GENX(3DSTATE_SO_BUFFER_length);
+            enum { dwords = GENX(3DSTATE_SO_BUFFER_length) };
             uint32_t *so_buffers = genx->so_buffers + i * dwords;
             bool zero_offset = false;
 
