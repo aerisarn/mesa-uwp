@@ -195,7 +195,7 @@ GL 4.3, GLSL 4.30 -- all DONE: i965/gen8+, nvc0, r600, radeonsi, llvmpipe, virgl
 GL 4.4, GLSL 4.40 -- all DONE: i965/gen8+, nvc0, r600, radeonsi, llvmpipe, zink
 
   GL_MAX_VERTEX_ATTRIB_STRIDE                           DONE (all drivers)
-  GL_ARB_buffer_storage                                 DONE (freedreno, i965, nv50, v3d, vc4)
+  GL_ARB_buffer_storage                                 DONE (freedreno, i965, nv50, v3d, vc4, lima)
   GL_ARB_clear_texture                                  DONE (i965, nv50, softpipe, virgl)
   GL_ARB_enhanced_layouts                               DONE (i965, nv50, softpipe, virgl)
   - compile-time constant expressions                   DONE
