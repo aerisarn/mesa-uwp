@@ -739,8 +739,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 if (!rsc)
                         continue;
 
-                const uint32_t size =
-                        cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD);
+                enum { size = cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD) };
                 cl_emit_with_prepacked(&job->indirect,
                                        GL_SHADER_STATE_ATTRIBUTE_RECORD,
                                        &vtx->attrs[i * size], attr) {
