@@ -154,6 +154,11 @@ typedef struct {
     * subgroup that reads them.
     */
    bool tcs_out_patch_fits_subgroup;
+
+   /* Set if all invocations will write to all tess factors, so tess factors
+    * can be passed by register.
+    */
+   bool tcs_pass_tessfactors_by_reg;
 } lower_tess_io_state;
 
 static bool
@@ -402,7 +407,7 @@ lower_hs_per_vertex_input_load(nir_builder *b,
                           .align_mul = 16u, .align_offset = (nir_intrinsic_component(intrin) * 4u) % 16u);
 }
 
-static void
+static nir_ssa_def *
 lower_hs_output_store(nir_builder *b,
                       nir_intrinsic_instr *intrin,
                       lower_tess_io_state *st)
@@ -416,7 +421,8 @@ lower_hs_output_store(nir_builder *b,
    bool is_tess_factor = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ||
                          semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER;
    bool write_to_vmem = !is_tess_factor && tcs_output_needs_vmem(intrin, st);
-   bool write_to_lds = is_tess_factor || tcs_output_needs_lds(intrin, b->shader);
+   bool write_to_lds = (is_tess_factor && !st->tcs_pass_tessfactors_by_reg) ||
+      tcs_output_needs_lds(intrin, b->shader);
 
    if (write_to_vmem) {
       nir_ssa_def *vmem_off = intrin->intrinsic == nir_intrinsic_store_per_vertex_output
@@ -439,6 +445,13 @@ lower_hs_output_store(nir_builder *b,
       nir_store_shared(b, store_val, lds_off, .write_mask = write_mask,
                        .align_mul = 16u, .align_offset = (nir_intrinsic_component(intrin) * 4u) % 16u);
    }
+
+   /* Keep tess factor nir_store_output instruction if it's going to be passed
+    * by reg instead of LDS, because it's used by radeonsi llvm backend to generate
+    * llvm variable which is read by the final llvm tess factor write epilog.
+    */
+   return is_tess_factor && st->tcs_pass_tessfactors_by_reg ?
+      NIR_LOWER_INSTR_PROGRESS : NIR_LOWER_INSTR_PROGRESS_REPLACE;
 }
 
 static nir_ssa_def *
@@ -481,8 +494,7 @@ lower_hs_output_access(nir_builder *b,
 
    if (intrin->intrinsic == nir_intrinsic_store_output ||
        intrin->intrinsic == nir_intrinsic_store_per_vertex_output) {
-      lower_hs_output_store(b, intrin, st);
-      return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+      return lower_hs_output_store(b, intrin, st);
    } else if (intrin->intrinsic == nir_intrinsic_load_output ||
               intrin->intrinsic == nir_intrinsic_load_per_vertex_output) {
       return lower_hs_output_load(b, intrin, st);
@@ -693,6 +705,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
                                uint64_t tes_patch_inputs_read,
                                unsigned num_reserved_tcs_outputs,
                                unsigned num_reserved_tcs_patch_outputs,
+                               bool pass_tessfactors_by_reg,
                                bool emit_tess_factor_write)
 {
    assert(shader->info.stage == MESA_SHADER_TESS_CTRL);
@@ -705,6 +718,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
       .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
       .tcs_num_reserved_patch_outputs = num_reserved_tcs_patch_outputs,
       .tcs_out_patch_fits_subgroup = 32 % shader->info.tess.tcs_vertices_out == 0,
+      .tcs_pass_tessfactors_by_reg = pass_tessfactors_by_reg,
       .map_io = map,
    };
 
