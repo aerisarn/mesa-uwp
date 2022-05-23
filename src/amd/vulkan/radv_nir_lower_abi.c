@@ -197,6 +197,15 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       return nir_imm_int(b, io_num * 16);
    }
 
+   case nir_intrinsic_load_hs_out_patch_data_offset_amd: {
+      unsigned num_patches = s->info->num_tess_patches;
+      unsigned out_vertices_per_patch = b->shader->info.tess.tcs_vertices_out;
+      unsigned num_tcs_outputs = stage == MESA_SHADER_TESS_CTRL ?
+         s->info->tcs.num_linked_outputs : s->info->tes.num_linked_inputs;
+      int per_vertex_output_patch_size = out_vertices_per_patch * num_tcs_outputs * 16u;
+      return nir_imm_int(b, num_patches * per_vertex_output_patch_size);
+   }
+
    default:
       unreachable("invalid NIR RADV ABI intrinsic.");
    }
@@ -243,7 +252,8 @@ filter_abi_instr(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_load_task_ring_entry_amd ||
           intrin->intrinsic == nir_intrinsic_load_task_ib_addr ||
           intrin->intrinsic == nir_intrinsic_load_task_ib_stride ||
-          intrin->intrinsic == nir_intrinsic_load_lshs_vertex_stride_amd;
+          intrin->intrinsic == nir_intrinsic_load_lshs_vertex_stride_amd ||
+          intrin->intrinsic == nir_intrinsic_load_hs_out_patch_data_offset_amd;
 }
 
 void
