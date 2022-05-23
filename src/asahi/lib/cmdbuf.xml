@@ -451,7 +451,7 @@
     <field name="Unk 6" size="8" start="3:24" type="hex" default="0x0"/>
     <field name="Preshader unk" size="16" start="4:0" type="hex" default="0x0"/>
     <field name="Preshader code" size="32" start="4:16" type="address"/>
-    <field name="Unk 7" size="16" start="5:16" type="hex" default="0x0"/> <!-- blob is inconsistent -->
+    <field name="Unk 7" size="16" start="5:16" type="hex" default="0x0"/> <!-- garbage? -->
   </struct>
 
   <struct name="Fragment Parameters" size="4">
@@ -465,7 +465,7 @@
     <field name="Unk 3" size="4" start="28" type="hex" default="0xf"/>
   </struct>
 
-  <struct name="Set shader extended" size="32">
+  <struct name="Set shader extended" size="28">
     <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
     <field name="Unk 1" size="24" start="0:8" type="hex" default="0x2010bd"/>
     <field name="Unk 2" size="8" start="1:0" type="hex" default="0x0d"/>
@@ -483,8 +483,7 @@
     <field name="Unk 6" size="8" start="4:24" type="hex" default="0x0"/>
     <field name="Preshader unk" size="16" start="5:0" type="hex" default="0x0"/>
     <field name="Preshader code" size="32" start="5:16" type="address"/>
-    <field name="Unk 7" size="16" start="6:16" type="hex" default="0x0"/> <!-- blob is inconsistent -->
-    <field name="Unk 8" size="32" start="7:0" type="hex" default="0x0"/> <!-- may not exist -->
+    <field name="Unk 7" size="16" start="6:16" type="hex" default="0x0"/> <!-- garbage? -->
   </struct>
 
   <!--- Command to bind a vertex pipeline, followed by subcommands. Counts are
