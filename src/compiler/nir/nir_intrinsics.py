@@ -692,7 +692,8 @@ intrinsic("load_vulkan_descriptor", src_comp=[-1], dest_comp=0,
 #    in ssbo_atomic_add, etc).
 # 3: For CompSwap only: the second data parameter.
 #
-# All shared variable operations take 2 sources except CompSwap that takes 3.
+# All shared (and task payload) variable operations take 2 sources
+# except CompSwap that takes 3.
 # These sources represent:
 #
 # 0: The offset into the shared variable storage region that the atomic
@@ -716,6 +717,7 @@ def memory_atomic_data1(name):
     intrinsic("deref_atomic_" + name,  src_comp=[-1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("ssbo_atomic_" + name,  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("shared_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE])
+    intrinsic("task_payload_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE])
     intrinsic("global_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[])
     intrinsic("global_atomic_" + name + "_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
     if not name.startswith('f'):
@@ -725,6 +727,7 @@ def memory_atomic_data2(name):
     intrinsic("deref_atomic_" + name,  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("ssbo_atomic_" + name,  src_comp=[-1, 1, 1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("shared_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
+    intrinsic("task_payload_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
     intrinsic("global_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[])
     intrinsic("global_atomic_" + name + "_amd",  src_comp=[1, 1, 1, 1], dest_comp=1, indices=[BASE])
     if not name.startswith('f'):

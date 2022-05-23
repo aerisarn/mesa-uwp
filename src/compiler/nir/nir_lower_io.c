@@ -121,6 +121,31 @@ shared_atomic_for_deref(nir_intrinsic_op deref_op)
    }
 }
 
+static nir_intrinsic_op
+task_payload_atomic_for_deref(nir_intrinsic_op deref_op)
+{
+   switch (deref_op) {
+#define OP(O) case nir_intrinsic_deref_##O: return nir_intrinsic_task_payload_##O;
+   OP(atomic_exchange)
+   OP(atomic_comp_swap)
+   OP(atomic_add)
+   OP(atomic_imin)
+   OP(atomic_umin)
+   OP(atomic_imax)
+   OP(atomic_umax)
+   OP(atomic_and)
+   OP(atomic_or)
+   OP(atomic_xor)
+   OP(atomic_fadd)
+   OP(atomic_fmin)
+   OP(atomic_fmax)
+   OP(atomic_fcomp_swap)
+#undef OP
+   default:
+      unreachable("Invalid task payload atomic");
+   }
+}
+
 void
 nir_assign_var_locations(nir_shader *shader, nir_variable_mode mode,
                          unsigned *size,
@@ -1734,6 +1759,10 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(addr_format_is_offset(addr_format, mode));
       op = shared_atomic_for_deref(intrin->intrinsic);
       break;
+   case nir_var_mem_task_payload:
+      assert(addr_format_is_offset(addr_format, mode));
+      op = task_payload_atomic_for_deref(intrin->intrinsic);
+      break;
    default:
       unreachable("Unsupported explicit IO variable mode");
    }
@@ -2560,6 +2589,20 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_shared_atomic_umax:
    case nir_intrinsic_shared_atomic_umin:
    case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_task_payload_atomic_add:
+   case nir_intrinsic_task_payload_atomic_imin:
+   case nir_intrinsic_task_payload_atomic_umin:
+   case nir_intrinsic_task_payload_atomic_imax:
+   case nir_intrinsic_task_payload_atomic_umax:
+   case nir_intrinsic_task_payload_atomic_and:
+   case nir_intrinsic_task_payload_atomic_or:
+   case nir_intrinsic_task_payload_atomic_xor:
+   case nir_intrinsic_task_payload_atomic_exchange:
+   case nir_intrinsic_task_payload_atomic_comp_swap:
+   case nir_intrinsic_task_payload_atomic_fadd:
+   case nir_intrinsic_task_payload_atomic_fmin:
+   case nir_intrinsic_task_payload_atomic_fmax:
+   case nir_intrinsic_task_payload_atomic_fcomp_swap:
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_and:
    case nir_intrinsic_global_atomic_comp_swap:
