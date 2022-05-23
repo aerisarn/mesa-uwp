@@ -69,25 +69,9 @@
 /**
  * Static (compile-time) assertion.
  */
-#if defined(_MSC_VER)
-   /* MSVC doesn't like VLA's, but it also dislikes zero length arrays
-    * (which gcc is happy with), so we have to define STATIC_ASSERT()
-    * slightly differently.
-    */
-#  define STATIC_ASSERT(COND) do {         \
-      (void) sizeof(char [(COND) != 0]);   \
-   } while (0)
-#elif defined(__GNUC__)
-   /* This version of STATIC_ASSERT() relies on VLAs.  If COND is
-    * false/zero, the array size will be -1 and we'll get a compile
-    * error
-    */
-#  define STATIC_ASSERT(COND) do {         \
-      (void) sizeof(char [1 - 2*!(COND)]); \
-   } while (0)
-#else
-#  define STATIC_ASSERT(COND) do { } while (0)
-#endif
+#define STATIC_ASSERT(cond) do { \
+   static_assert(cond, #cond); \
+} while (0)
 
 /**
  * container_of - cast a member of a structure out to the containing structure
