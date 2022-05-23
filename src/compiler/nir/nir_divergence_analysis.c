@@ -349,6 +349,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_sample_pos_from_id:
    case nir_intrinsic_load_kernel_input:
+   case nir_intrinsic_load_task_payload:
    case nir_intrinsic_load_buffer_amd:
    case nir_intrinsic_image_samples:
    case nir_intrinsic_image_deref_samples:
