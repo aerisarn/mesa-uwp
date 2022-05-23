@@ -422,7 +422,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
       assert(size == AGX_SET_INDEX_LENGTH);
       DUMP_CL(SET_INDEX, map, "Set index");
    } else if (tag == 0x800000) {
-      assert(size == (AGX_BIND_FRAGMENT_PIPELINE_LENGTH - 4));
+      assert(size == AGX_BIND_FRAGMENT_PIPELINE_LENGTH);
 
       agx_unpack(agxdecode_dump_stream, map, BIND_FRAGMENT_PIPELINE, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
