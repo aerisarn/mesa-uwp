@@ -199,14 +199,14 @@ struct agx_sampler_state {
    struct pipe_sampler_state base;
 
    /* Prepared descriptor */
-   struct agx_bo *desc;
+   struct agx_sampler_packed desc;
 };
 
 struct agx_sampler_view {
    struct pipe_sampler_view base;
 
    /* Prepared descriptor */
-   struct agx_bo *desc;
+   struct agx_texture_packed desc;
 };
 
 struct agx_screen {

@@ -340,13 +340,12 @@ static void *
 agx_create_sampler_state(struct pipe_context *pctx,
                          const struct pipe_sampler_state *state)
 {
-   struct agx_device *dev = agx_device(pctx->screen);
-   struct agx_bo *bo = agx_bo_create(dev, AGX_SAMPLER_LENGTH,
-                                     AGX_MEMORY_TYPE_FRAMEBUFFER);
+   struct agx_sampler_state *so = CALLOC_STRUCT(agx_sampler_state);
+   so->base = *state;
 
    assert(state->lod_bias == 0 && "todo: lod bias");
 
-   agx_pack(bo->ptr.cpu, SAMPLER, cfg) {
+   agx_pack(&so->desc, SAMPLER, cfg) {
       cfg.minimum_lod = state->min_lod;
       cfg.maximum_lod = state->max_lod;
       cfg.magnify_linear = (state->mag_img_filter == PIPE_TEX_FILTER_LINEAR);
@@ -359,9 +358,6 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.compare_func = agx_compare_funcs[state->compare_func];
    }
 
-   struct agx_sampler_state *so = CALLOC_STRUCT(agx_sampler_state);
-   so->base = *state;
-   so->desc = bo;
 
    return so;
 }
@@ -370,7 +366,7 @@ static void
 agx_delete_sampler_state(struct pipe_context *ctx, void *state)
 {
    struct agx_sampler_state *so = state;
-   agx_bo_unreference(so->desc);
+   FREE(so);
 }
 
 static void
@@ -439,16 +435,11 @@ agx_create_sampler_view(struct pipe_context *pctx,
                         struct pipe_resource *texture,
                         const struct pipe_sampler_view *state)
 {
-   struct agx_device *dev = agx_device(pctx->screen);
    struct agx_resource *rsrc = agx_resource(texture);
    struct agx_sampler_view *so = CALLOC_STRUCT(agx_sampler_view);
 
    if (!so)
       return NULL;
-
-   /* We prepare the descriptor at CSO create time */
-   so->desc = agx_bo_create(dev, AGX_TEXTURE_LENGTH,
-                            AGX_MEMORY_TYPE_FRAMEBUFFER);
 
    const struct util_format_description *desc =
       util_format_description(state->format);
@@ -471,7 +462,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
           (state->u.tex.last_layer == state->u.tex.first_layer));
 
    /* Pack the descriptor into GPU memory */
-   agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
+   agx_pack(&so->desc, TEXTURE, cfg) {
       cfg.dimension = agx_translate_texture_dimension(state->target);
       cfg.layout = agx_translate_layout(rsrc->modifier);
       cfg.format = agx_pixel_format[state->format].hw;
@@ -550,7 +541,6 @@ agx_sampler_view_destroy(struct pipe_context *ctx,
 {
    struct agx_sampler_view *view = (struct agx_sampler_view *) pview;
    pipe_resource_reference(&view->base.texture, NULL);
-   agx_bo_unreference(view->desc);
    FREE(view);
 }
 
@@ -1078,9 +1068,9 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
 {
    /* Pipelines must be 64-byte aligned */
    struct agx_ptr ptr = agx_pool_alloc_aligned(&ctx->batch->pipeline_pool,
-                        (16 * AGX_BIND_UNIFORM_LENGTH) + // XXX: correct sizes, break up at compile time
-                        (ctx->stage[stage].texture_count * AGX_BIND_TEXTURE_LENGTH) +
-                        (PIPE_MAX_SAMPLERS * AGX_BIND_SAMPLER_LENGTH) +
+                        (cs->info.push_ranges * AGX_BIND_UNIFORM_LENGTH) +
+                        AGX_BIND_TEXTURE_LENGTH +
+                        AGX_BIND_SAMPLER_LENGTH +
                         AGX_SET_SHADER_EXTENDED_LENGTH + 8,
                         64);
 
@@ -1098,34 +1088,49 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
       record += AGX_BIND_UNIFORM_LENGTH;
    }
 
-   for (unsigned i = 0; i < ctx->stage[stage].texture_count; ++i) {
+   unsigned nr_textures = ctx->stage[stage].texture_count;
+   unsigned nr_samplers = ctx->stage[stage].sampler_count;
+
+   struct agx_ptr T_tex = agx_pool_alloc_aligned(&ctx->batch->pool,
+         AGX_TEXTURE_LENGTH * nr_textures, 64);
+
+   struct agx_ptr T_samp = agx_pool_alloc_aligned(&ctx->batch->pool,
+         AGX_SAMPLER_LENGTH * nr_samplers, 64);
+
+   struct agx_texture_packed *textures = T_tex.cpu;
+   struct agx_sampler_packed *samplers = T_samp.cpu;
+
+   /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
+   for (unsigned i = 0; i < nr_textures; ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
-      agx_batch_add_bo(ctx->batch, tex->desc);
       agx_batch_add_bo(ctx->batch, agx_resource(tex->base.texture)->bo);
 
+      textures[i] = tex->desc;
+   }
 
+   /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
+   for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; ++i) {
+      struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
+
+      if (sampler)
+         samplers[i] = sampler->desc;
+   }
+
+   if (nr_textures) {
       agx_pack(record, BIND_TEXTURE, cfg) {
-         cfg.start = i;
-         cfg.count = 1;
-         cfg.buffer = tex->desc->ptr.gpu;
+         cfg.start = 0;
+         cfg.count = nr_textures;
+         cfg.buffer = T_tex.gpu;
       }
 
       record += AGX_BIND_TEXTURE_LENGTH;
    }
 
-   for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; ++i) {
-      struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
-
-      if (!sampler)
-         continue;
-
-      struct agx_bo *bo = sampler->desc;
-      agx_batch_add_bo(ctx->batch, bo);
-
+   if (nr_samplers) {
       agx_pack(record, BIND_SAMPLER, cfg) {
-         cfg.start = i;
-         cfg.count = 1;
-         cfg.buffer = bo->ptr.gpu;
+         cfg.start = 0;
+         cfg.count = nr_samplers;
+         cfg.buffer = T_samp.gpu;
       }
 
       record += AGX_BIND_SAMPLER_LENGTH;
