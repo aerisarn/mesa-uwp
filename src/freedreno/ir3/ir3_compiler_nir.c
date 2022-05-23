@@ -1747,29 +1747,27 @@ create_sysval_input(struct ir3_context *ctx, gl_system_value slot,
 static struct ir3_instruction *
 get_barycentric(struct ir3_context *ctx, enum ir3_bary bary)
 {
-   static const gl_system_value sysval_base =
-      SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
-
-   STATIC_ASSERT(sysval_base + IJ_PERSP_PIXEL ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_PIXEL ==
                  SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
-   STATIC_ASSERT(sysval_base + IJ_PERSP_SAMPLE ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_SAMPLE ==
                  SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
-   STATIC_ASSERT(sysval_base + IJ_PERSP_CENTROID ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_CENTROID ==
                  SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
-   STATIC_ASSERT(sysval_base + IJ_PERSP_SIZE ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_SIZE ==
                  SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE);
-   STATIC_ASSERT(sysval_base + IJ_LINEAR_PIXEL ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_LINEAR_PIXEL ==
                  SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
-   STATIC_ASSERT(sysval_base + IJ_LINEAR_CENTROID ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_LINEAR_CENTROID ==
                  SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID);
-   STATIC_ASSERT(sysval_base + IJ_LINEAR_SAMPLE ==
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_LINEAR_SAMPLE ==
                  SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE);
 
    if (!ctx->ij[bary]) {
       struct ir3_instruction *xy[2];
       struct ir3_instruction *ij;
 
-      ij = create_sysval_input(ctx, sysval_base + bary, 0x3);
+      ij = create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL +
+                               bary, 0x3);
       ir3_split_dest(ctx->in_block, xy, ij, 0, 2);
 
       ctx->ij[bary] = ir3_create_collect(ctx->in_block, xy, 2);
