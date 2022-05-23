@@ -1393,9 +1393,9 @@ demo_linkage(struct agx_compiled_shader *vs, struct agx_pool *pool)
 
    agx_pack(t.cpu, LINKAGE, cfg) {
       cfg.varying_count = vs->info.varyings.nr_slots;
-
-      // 0x2 for fragcoordz, 0x1 for varyings at all
-      cfg.unk_1 = 0x210000 | (vs->info.writes_psiz ? 0x40000 : 0);
+      cfg.any_varyings = !!cfg.varying_count;
+      cfg.has_point_size = vs->info.writes_psiz;
+      cfg.has_frag_coord_z = 1;
    };
 
    return t.gpu;
