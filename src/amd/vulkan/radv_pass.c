@@ -142,7 +142,7 @@ radv_render_pass_add_implicit_deps(struct radv_render_pass *pass)
           */
          if (pass_att->first_subpass_idx == i && !subpass->has_ingoing_dep &&
              ((subpass_att->layout != initial_layout) ||
-              (subpass_att->layout != stencil_initial_layout))) {
+              (subpass_att->stencil_layout != stencil_initial_layout))) {
             add_ingoing_dep = true;
          }
 
@@ -152,7 +152,7 @@ radv_render_pass_add_implicit_deps(struct radv_render_pass *pass)
           */
          if (pass_att->last_subpass_idx == i && !subpass->has_outgoing_dep &&
              ((subpass_att->layout != final_layout) ||
-              (subpass_att->layout != stencil_final_layout))) {
+              (subpass_att->stencil_layout != stencil_final_layout))) {
             add_outgoing_dep = true;
          }
       }
