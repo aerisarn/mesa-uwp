@@ -505,6 +505,7 @@ class Condition(Node):
 
         return fields
 
+    @staticmethod
     def _is_valid_type(ty):
         types = {"if", "elif", "else", "endif"}
         return ty in types
