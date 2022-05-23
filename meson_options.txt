@@ -536,3 +536,9 @@ option(
   ],
   description : 'List of patent encumbered codecs to build support for. Distros might want to consult their legal department before enabling these. This is used for all video APIs (vaapi, vdpau, vulkan). Non-patent encumbered codecs will be enabled by default.'
 )
+option(
+  'gallium-d3d12-video',
+  type : 'feature',
+  value : 'auto',
+  description : 'build gallium d3d12 with video support.',
+)

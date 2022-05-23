@@ -64,7 +64,7 @@ libva_gallium = shared_library(
 foreach d : [[with_gallium_r600, 'r600'],
              [with_gallium_radeonsi, 'radeonsi'],
              [with_gallium_nouveau, 'nouveau'],
-             [with_gallium_d3d12, 'd3d12']]
+             [with_gallium_d3d12_video, 'd3d12']]
   if d[0]
     va_drivers += '@0@_drv_video.so'.format(d[1])
   endif

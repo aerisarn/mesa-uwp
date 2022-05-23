@@ -69,7 +69,7 @@ foreach d : [[with_gallium_r300, 'r300'],
              [with_gallium_r600, 'r600'],
              [with_gallium_radeonsi, 'radeonsi'],
              [with_gallium_nouveau, 'nouveau'],
-             [with_gallium_d3d12, 'd3d12']]
+             [with_gallium_d3d12_video, 'd3d12']]
   if d[0]
     vdpau_drivers += 'libvdpau_@0@.so.@1@.@2@.0'.format(d[1], VDPAU_MAJOR, VDPAU_MINOR)
   endif

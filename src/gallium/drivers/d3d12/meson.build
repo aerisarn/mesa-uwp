@@ -47,20 +47,25 @@ files_libd3d12 = files(
   'd3d12_surface.cpp',
   'd3d12_tcs_variant.cpp',
   'D3D12ResourceState.cpp',
-  'd3d12_video_dec.cpp',
-  'd3d12_video_dec_references_mgr.cpp',
-  'd3d12_video_dec_h264.cpp',
-  'd3d12_video_buffer.cpp',
-  'd3d12_video_enc.cpp',
-  'd3d12_video_enc_h264.cpp',
-  'd3d12_video_encoder_references_manager_h264.cpp',
-  'd3d12_video_encoder_nalu_writer_h264.cpp',
-  'd3d12_video_encoder_bitstream_builder_h264.cpp',
-  'd3d12_video_encoder_bitstream.cpp',
-  'd3d12_video_texture_array_dpb_manager.cpp',
-  'd3d12_video_array_of_textures_dpb_manager.cpp',
-  'd3d12_video_screen.cpp',
 )
+
+if with_gallium_d3d12_video
+  files_libd3d12 += [
+    'd3d12_video_dec.cpp',
+    'd3d12_video_dec_references_mgr.cpp',
+    'd3d12_video_dec_h264.cpp',
+    'd3d12_video_buffer.cpp',
+    'd3d12_video_enc.cpp',
+    'd3d12_video_enc_h264.cpp',
+    'd3d12_video_encoder_references_manager_h264.cpp',
+    'd3d12_video_encoder_nalu_writer_h264.cpp',
+    'd3d12_video_encoder_bitstream_builder_h264.cpp',
+    'd3d12_video_encoder_bitstream.cpp',
+    'd3d12_video_texture_array_dpb_manager.cpp',
+    'd3d12_video_array_of_textures_dpb_manager.cpp',
+    'd3d12_video_screen.cpp',
+  ]
+endif
 
 if host_machine.system() == 'windows'
   files_libd3d12 += files('d3d12_dxgi_screen.cpp')
