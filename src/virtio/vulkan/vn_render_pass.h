@@ -29,14 +29,26 @@ struct vn_render_pass {
 
    VkExtent2D granularity;
 
-   /* track attachments that have PRESENT_SRC as their initialLayout or
-    * finalLayout
+   uint32_t present_count;
+   uint32_t present_acquire_count;
+   uint32_t present_release_count;
+
+   /* Attachments where initialLayout or finalLayout was
+    * VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
     */
-   uint32_t acquire_count;
-   uint32_t release_count;
-   uint32_t present_src_count;
-   struct vn_present_src_attachment present_src_attachments[];
+   struct vn_present_src_attachment *present_attachments;
+
+   /* Slice of present_attachments where initialLayout was
+    * VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
+    */
+   struct vn_present_src_attachment *present_acquire_attachments;
+
+   /* Slice of present_attachments where finalLayout was
+    * VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
+    */
+   struct vn_present_src_attachment *present_release_attachments;
 };
+
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_render_pass,
                                base.base,
                                VkRenderPass,

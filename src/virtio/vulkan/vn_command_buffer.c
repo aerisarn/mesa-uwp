@@ -366,7 +366,7 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
    cmd->builder.render_pass = pass;
    cmd->builder.framebuffer = fb;
 
-   if (!pass->present_src_count ||
+   if (!pass->present_count ||
        cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
       return;
 
@@ -386,22 +386,23 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
    }
 
    const struct vn_image **images =
-      vk_alloc(&cmd->allocator, sizeof(*images) * pass->present_src_count,
+      vk_alloc(&cmd->allocator, sizeof(*images) * pass->present_count,
                VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!images) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
       return;
    }
 
-   for (uint32_t i = 0; i < pass->present_src_count; i++) {
-      const uint32_t index = pass->present_src_attachments[i].index;
+   for (uint32_t i = 0; i < pass->present_count; i++) {
+      const uint32_t index = pass->present_attachments[i].index;
       assert(index < view_count);
       images[i] = vn_image_view_from_handle(views[index])->image;
    }
 
-   if (pass->acquire_count) {
-      vn_cmd_transfer_present_src_images(
-         cmd, images, pass->present_src_attachments, pass->acquire_count);
+   if (pass->present_acquire_count) {
+      vn_cmd_transfer_present_src_images(cmd, images,
+                                         pass->present_acquire_attachments,
+                                         pass->present_acquire_count);
    }
 
    cmd->builder.present_src_images = images;
@@ -415,17 +416,17 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
    cmd->builder.render_pass = NULL;
    cmd->builder.framebuffer = NULL;
 
-   if (!pass->present_src_count || !cmd->builder.present_src_images)
+   if (!pass->present_count || !cmd->builder.present_src_images)
       return;
 
    const struct vn_image **images = cmd->builder.present_src_images;
    cmd->builder.present_src_images = NULL;
 
-   if (pass->release_count) {
+   if (pass->present_release_count) {
       vn_cmd_transfer_present_src_images(
-         cmd, images + pass->acquire_count,
-         pass->present_src_attachments + pass->acquire_count,
-         pass->release_count);
+         cmd, images + pass->present_acquire_count,
+         pass->present_release_attachments,
+         pass->present_release_count);
    }
 
    vk_free(&cmd->allocator, images);
