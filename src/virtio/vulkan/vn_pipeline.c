@@ -248,10 +248,10 @@ vn_MergePipelineCaches(VkDevice device,
 /** Fixes for a single VkGraphicsPipelineCreateInfo. */
 struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
+   bool ignore_viewport_state;
+   bool ignore_multisample_state;
 
    /* Ignore the following:
-    *    pViewportState
-    *    pMultisampleState
     *    pDepthStencilState
     *    pColorBlendState
     */
@@ -353,7 +353,7 @@ vn_fix_graphics_pipeline_create_info(
       const bool UNUSED has_vertex_input_state = true;
 
       /* VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT */
-      const bool UNUSED has_pre_raster_state = true;
+      const bool has_pre_raster_state = true;
 
       /* The spec does not assign a name to this state. We define it just to
        * deduplicate code.
@@ -374,9 +374,9 @@ vn_fix_graphics_pipeline_create_info(
       const bool UNUSED has_fragment_shader_state = has_raster_state;
 
       /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT */
-      const bool UNUSED has_fragment_output_state = has_raster_state;
+      const bool has_fragment_output_state = has_raster_state;
 
-      /* Fix pTessellationState?
+      /* Ignore pTessellationState?
        *    VUID-VkGraphicsPipelineCreateInfo-pStages-00731
        */
       if (info->pTessellationState &&
@@ -386,13 +386,30 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
+      /* Ignore pViewportState?
+       *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00750
+       *    VUID-VkGraphicsPipelineCreateInfo-pViewportState-04892
+       */
+      if (info->pViewportState &&
+          !(has_pre_raster_state && has_raster_state)) {
+         fix.ignore_viewport_state = true;
+         any_fix = true;
+      }
+
+      /* Ignore pMultisampleState?
+       *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00751
+       */
+      if (info->pMultisampleState && !has_fragment_output_state) {
+         fix.ignore_multisample_state = true;
+         any_fix = true;
+      }
+
       /* FIXME: Conditions for ignoring pDepthStencilState and
        * pColorBlendState miss some cases that depend on the render pass. Make
        * them agree with the VUIDs.
        */
       if (!has_raster_state &&
-          (info->pViewportState || info->pMultisampleState ||
-           info->pDepthStencilState || info->pColorBlendState)) {
+          (info->pDepthStencilState || info->pColorBlendState)) {
          fix.ignore_raster_dedicated_states = true;
          any_fix = true;
       }
@@ -413,9 +430,13 @@ vn_fix_graphics_pipeline_create_info(
       if (fix.ignore_tessellation_state)
          fixes->create_infos[i].pTessellationState = NULL;
 
-      if (fix.ignore_raster_dedicated_states) {
+      if (fix.ignore_viewport_state)
          fixes->create_infos[i].pViewportState = NULL;
+
+      if (fix.ignore_multisample_state)
          fixes->create_infos[i].pMultisampleState = NULL;
+
+      if (fix.ignore_raster_dedicated_states) {
          fixes->create_infos[i].pDepthStencilState = NULL;
          fixes->create_infos[i].pColorBlendState = NULL;
       }
