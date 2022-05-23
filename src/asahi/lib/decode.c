@@ -359,21 +359,30 @@ agxdecode_pipeline(const uint8_t *map, UNUSED bool verbose)
       agx_unpack(agxdecode_dump_stream, map, BIND_TEXTURE, temp);
       DUMP_UNPACKED(BIND_TEXTURE, temp, "Bind texture\n");
 
-      uint8_t *tex = agxdecode_fetch_gpu_mem(temp.buffer, 64);
-      /* Texture length seen to be <= 0x18 bytes, samplers only need 8 byte
-       * alignment */
-      agx_unpack(agxdecode_dump_stream, tex, TEXTURE, t);
-      DUMP_CL(TEXTURE, tex, "Texture");
-      DUMP_CL(RENDER_TARGET, tex, "Render target");
+      uint8_t *tex = agxdecode_fetch_gpu_mem(temp.buffer,
+            AGX_TEXTURE_LENGTH * temp.count);
+
+      /* Note: samplers only need 8 byte alignment? */
+      for (unsigned i = 0; i < temp.count; ++i) {
+         agx_unpack(agxdecode_dump_stream, tex, TEXTURE, t);
+         DUMP_CL(TEXTURE, tex, "Texture");
+         DUMP_CL(RENDER_TARGET, tex, "Render target");
+
+         tex += AGX_TEXTURE_LENGTH;
+      }
 
       return AGX_BIND_TEXTURE_LENGTH;
    } else if (map[0] == 0x9D) {
       agx_unpack(agxdecode_dump_stream, map, BIND_SAMPLER, temp);
       DUMP_UNPACKED(BIND_SAMPLER, temp, "Bind sampler\n");
 
-      uint8_t *samp = agxdecode_fetch_gpu_mem(temp.buffer, 64);
-      DUMP_CL(SAMPLER, samp, "Sampler");
-      hexdump(agxdecode_dump_stream, samp + AGX_SAMPLER_LENGTH, 64 - AGX_SAMPLER_LENGTH, false);
+      uint8_t *samp = agxdecode_fetch_gpu_mem(temp.buffer,
+            AGX_SAMPLER_LENGTH * temp.count);
+
+      for (unsigned i = 0; i < temp.count; ++i) {
+         DUMP_CL(SAMPLER, samp, "Sampler");
+         samp += AGX_SAMPLER_LENGTH;
+      }
 
       return AGX_BIND_SAMPLER_LENGTH;
    } else if (map[0] == 0x1D) {

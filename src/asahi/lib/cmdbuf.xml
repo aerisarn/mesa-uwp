@@ -161,7 +161,7 @@
     <field name="Type" size="3" start="7" type="Texture Type"/>
   </struct>
 
-  <struct name="Render Target" size="16">
+  <struct name="Render Target" size="24">
     <field name="Unknown" size="4" start="0" type="hex" default="0x2"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
     <field name="Format" size="10" start="6" type="Pixel Format"/>
@@ -197,8 +197,7 @@
     <value name="Cube" value="6"/>
   </enum>
 
-  <!-- Payloads follow, right-shifted by 4 because of course -->
-  <struct name="Texture" size="16">
+  <struct name="Texture" size="24">
     <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
     <field name="Format" size="10" start="6" type="Pixel Format"/>
