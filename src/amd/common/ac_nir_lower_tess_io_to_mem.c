@@ -107,7 +107,7 @@
  * attr 1 of patch 0 vertex 2
  * ...
  * ...
- * per-patch attr 0 of patch 0
+ * per-patch attr 0 of patch 0  <─── hs_out_patch_data_offset_amd
  * per-patch attr 0 of patch 1
  * per-patch attr 0 of patch 2  <─── hs_per_patch_output_vmem_offset (attribute slot = 0, rel_patch_id = 2)
  * ...
@@ -373,13 +373,8 @@ hs_per_patch_output_vmem_offset(nir_builder *b,
                                 nir_intrinsic_instr *intrin,
                                 unsigned const_base_offset)
 {
-   nir_ssa_def *out_vertices_per_patch = b->shader->info.stage == MESA_SHADER_TESS_CTRL
-                                         ? nir_imm_int(b, b->shader->info.tess.tcs_vertices_out)
-                                         : nir_load_patch_vertices_in(b);
-
    nir_ssa_def *tcs_num_patches = nir_load_tcs_num_patches_amd(b);
-   nir_ssa_def *per_vertex_output_patch_size = nir_imul_imm(b, out_vertices_per_patch, st->tcs_num_reserved_outputs * 16u);
-   nir_ssa_def *per_patch_data_offset = nir_imul(b, tcs_num_patches, per_vertex_output_patch_size);
+   nir_ssa_def *per_patch_data_offset = nir_load_hs_out_patch_data_offset_amd(b);
 
    nir_ssa_def * off = intrin
                     ? ac_nir_calc_io_offset(b, intrin, nir_imul_imm(b, tcs_num_patches, 16u), 4u, st->map_io)
@@ -724,13 +719,11 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
 
 void
 ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
-                               ac_nir_map_io_driver_location map,
-                               unsigned num_reserved_tcs_outputs)
+                               ac_nir_map_io_driver_location map)
 {
    assert(shader->info.stage == MESA_SHADER_TESS_EVAL);
 
    lower_tess_io_state state = {
-      .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
       .map_io = map,
    };
 
