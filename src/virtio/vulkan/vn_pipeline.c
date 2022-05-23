@@ -252,11 +252,7 @@ struct vn_graphics_pipeline_create_info_fix {
    bool ignore_viewport_state;
    bool ignore_multisample_state;
    bool ignore_depth_stencil_state;
-
-   /* Ignore the following:
-    *    pColorBlendState
-    */
-   bool ignore_raster_dedicated_states;
+   bool ignore_color_blend_state;
 };
 
 /** Temporary storage for fixes in vkCreateGraphicsPipelines. */
@@ -379,7 +375,7 @@ vn_fix_graphics_pipeline_create_info(
           info->pRasterizationState->rasterizerDiscardEnable == VK_FALSE);
 
       /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT */
-      const bool UNUSED has_fragment_shader_state = has_raster_state;
+      const bool has_fragment_shader_state = has_raster_state;
 
       /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT */
       const bool has_fragment_output_state = has_raster_state;
@@ -425,13 +421,17 @@ vn_fix_graphics_pipeline_create_info(
          }
       }
 
-      /* FIXME: Conditions for ignoring
-       * pColorBlendState miss some cases that depend on the render pass. Make
-       * them agree with the VUIDs.
+      /* Ignore pColorBlendState?
+       *    VUID-VkGraphicsPipelineCreateInfo-renderPass-06044
        */
-      if (!has_raster_state && info->pColorBlendState) {
-         fix.ignore_raster_dedicated_states = true;
-         any_fix = true;
+      if (info->pColorBlendState) {
+         const bool has_static_attachment =
+            subpass && subpass->has_color_attachment;
+
+         if (!has_fragment_output_state || !has_static_attachment) {
+            fix.ignore_color_blend_state = true;
+            any_fix = true;
+         }
       }
 
       if (!any_fix)
@@ -459,9 +459,8 @@ vn_fix_graphics_pipeline_create_info(
       if (fix.ignore_depth_stencil_state)
          fixes->create_infos[i].pDepthStencilState = NULL;
 
-      if (fix.ignore_raster_dedicated_states) {
+      if (fix.ignore_color_blend_state)
          fixes->create_infos[i].pColorBlendState = NULL;
-      }
    }
 
    if (!fixes)
