@@ -366,8 +366,8 @@ tu_cond_exec_end(struct tu_cs *cs)
    const struct fd_reg_pair regs[] = { __VA_ARGS__ };   \
    unsigned count = ARRAY_SIZE(regs);                   \
                                                         \
-   STATIC_ASSERT(count > 0);                            \
-   STATIC_ASSERT(count <= 16);                          \
+   STATIC_ASSERT(ARRAY_SIZE(regs) > 0);                 \
+   STATIC_ASSERT(ARRAY_SIZE(regs) <= 16);               \
                                                         \
    tu_cs_emit_pkt4((cs), regs[0].reg, count);             \
    uint32_t *p = (cs)->cur;                               \
