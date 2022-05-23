@@ -1989,6 +1989,11 @@ struct radv_color_blend_info {
    } att[MAX_RTS];
 };
 
+struct radv_fragment_shading_rate_info {
+   VkExtent2D size;
+   VkFragmentShadingRateCombinerOpKHR combiner_ops[2];
+};
+
 struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
    struct radv_input_assembly_info ia;
@@ -2002,6 +2007,8 @@ struct radv_graphics_pipeline_info {
    struct radv_depth_stencil_info ds;
    struct radv_rendering_info ri;
    struct radv_color_blend_info cb;
+
+   struct radv_fragment_shading_rate_info fsr;
 
    /* VK_AMD_mixed_attachment_samples */
    uint8_t color_att_samples;

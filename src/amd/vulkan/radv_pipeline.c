@@ -1903,6 +1903,27 @@ radv_pipeline_init_color_blend_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
+static struct radv_fragment_shading_rate_info
+radv_pipeline_init_fragment_shading_rate_info(struct radv_graphics_pipeline *pipeline,
+                                              const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkPipelineFragmentShadingRateStateCreateInfoKHR *shading_rate =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
+   struct radv_fragment_shading_rate_info info = {0};
+
+   if (shading_rate && !(pipeline->dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE)) {
+      info.size = shading_rate->fragmentSize;
+      for (int i = 0; i < 2; i++)
+         info.combiner_ops[i] = shading_rate->combinerOps[i];
+   } else {
+      info.size = (VkExtent2D){ 1, 1 };
+      info.combiner_ops[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+      info.combiner_ops[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+   }
+
+   return info;
+}
+
 static struct radv_graphics_pipeline_info
 radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1924,6 +1945,8 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
    info.ds = radv_pipeline_init_depth_stencil_info(pipeline, pCreateInfo);
    info.ri = radv_pipeline_init_rendering_info(pipeline, pCreateInfo);
    info.cb = radv_pipeline_init_color_blend_info(pipeline, pCreateInfo);
+
+   info.fsr = radv_pipeline_init_fragment_shading_rate_info(pipeline, pCreateInfo);
 
    /* VK_AMD_mixed_attachment_samples */
    const VkAttachmentSampleCountInfoAMD *sample_info =
@@ -2118,12 +2141,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
        !(states & RADV_DYNAMIC_VERTEX_INPUT))
       pipeline->uses_dynamic_stride = true;
 
-   const VkPipelineFragmentShadingRateStateCreateInfoKHR *shading_rate = vk_find_struct_const(
-      pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
    if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
-      dynamic->fragment_shading_rate.size = shading_rate->fragmentSize;
+      dynamic->fragment_shading_rate.size = info->fsr.size;
       for (int i = 0; i < 2; i++)
-         dynamic->fragment_shading_rate.combiner_ops[i] = shading_rate->combinerOps[i];
+         dynamic->fragment_shading_rate.combiner_ops[i] = info->fsr.combiner_ops[i];
    }
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
