@@ -780,6 +780,11 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       return LLVMBuildShl(ctx->ac.builder, si_get_tcs_in_vertex_dw_stride(ctx),
                           LLVMConstInt(ctx->ac.i32, 2, 0), "");
 
+   case nir_intrinsic_load_tcs_num_patches_amd:
+      return LLVMBuildAdd(ctx->ac.builder,
+                          si_unpack_param(ctx, ctx->tcs_offchip_layout, 0, 6),
+                          ctx->ac.i32_1, "");
+
    default:
       return NULL;
    }
