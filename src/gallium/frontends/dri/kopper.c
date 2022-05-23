@@ -42,7 +42,7 @@
 
 #include <vulkan/vulkan.h>
 
-
+#ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
 #include <xcb/present.h>
@@ -50,6 +50,7 @@
 #include "util/libsync.h"
 #include <X11/Xlib-xcb.h>
 #include "drm-uapi/drm_fourcc.h"
+#endif
 
 struct kopper_drawable {
    struct dri_drawable base;
