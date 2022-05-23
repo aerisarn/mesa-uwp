@@ -422,14 +422,14 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
       assert(size == AGX_SET_INDEX_LENGTH);
       DUMP_CL(SET_INDEX, map, "Set index");
    } else if (tag == 0x800000) {
-      assert(size == (AGX_BIND_PIPELINE_LENGTH - 4));
+      assert(size == (AGX_BIND_FRAGMENT_PIPELINE_LENGTH - 4));
 
-      agx_unpack(agxdecode_dump_stream, map, BIND_PIPELINE, cmd);
+      agx_unpack(agxdecode_dump_stream, map, BIND_FRAGMENT_PIPELINE, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
 
       /* TODO: parse */
-      if (cmd.fs_varyings) {
-         uint8_t *map = agxdecode_fetch_gpu_mem(cmd.fs_varyings, 128);
+      if (cmd.varyings) {
+         uint8_t *map = agxdecode_fetch_gpu_mem(cmd.varyings, 128);
          hexdump(agxdecode_dump_stream, map, 128, false);
 
          DUMP_CL(VARYING_HEADER, map, "Varying header:");
@@ -441,7 +441,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
          }
       }
 
-      DUMP_UNPACKED(BIND_PIPELINE, cmd, "Bind fragment pipeline\n");
+      DUMP_UNPACKED(BIND_FRAGMENT_PIPELINE, cmd, "Bind fragment pipeline\n");
    } else if (size == 0) {
       pipeline_base = va;
    } else {
@@ -459,10 +459,10 @@ agxdecode_cmd(const uint8_t *map, bool verbose)
       DUMP_UNPACKED(LAUNCH, cmd, "Launch\n");
       return AGX_LAUNCH_LENGTH;
    } else if (map[0] == 0x2E && map[1] == 0x00 && map[2] == 0x00 && map[3] == 0x40) {
-      agx_unpack(agxdecode_dump_stream, map, BIND_PIPELINE, cmd);
+      agx_unpack(agxdecode_dump_stream, map, BIND_VERTEX_PIPELINE, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
-      DUMP_UNPACKED(BIND_PIPELINE, cmd, "Bind vertex pipeline\n");
-      return AGX_BIND_PIPELINE_LENGTH;
+      DUMP_UNPACKED(BIND_VERTEX_PIPELINE, cmd, "Bind vertex pipeline\n");
+      return AGX_BIND_VERTEX_PIPELINE_LENGTH;
    } else if (map[3] == 0x61) {
       DUMP_CL(DRAW, map, "Draw");
       return AGX_DRAW_LENGTH;

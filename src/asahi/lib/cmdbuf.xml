@@ -461,11 +461,8 @@
 
   <!--- Command to bind a vertex pipeline, followed by subcommands. Counts are
 	specified in 32-bit word units. Intepretation per-shader stage. -->
-  <struct name="Bind pipeline" size="24">
-    <field name="Tag" size="32" start="0:0" type="hex" default="0x4000002e">
-      <value name="AGX_BIND_PIPELINE_VERTEX" value="0x4000002e"/>
-      <value name="AGX_BIND_PIPELINE_FRAGMENT" value="0x800000"/>
-    </field>
+  <struct name="Bind vertex pipeline" size="24">
+    <field name="Tag" size="32" start="0:0" type="hex" default="0x4000002e"/>
     <!-- 4 if more than 32 textures bound -->
     <field name="Unk 1" size="4" start="1:0" type="hex" default="0x2"/>
     <field name="Groups of 8 immediate textures" start="1:4" size="3" type="uint"/>
@@ -476,15 +473,28 @@
     <field name="Input count" size="8" start="1:16" type="uint" default="0"/>
     <field name="Padding 1" size="8" start="1:24" type="hex" default="0x0"/>
     <field name="Pipeline" size="32" start="2:0" type="address"/>
-
-    <!-- Overlaps -->
-    <field name="FS Varyings" size="32" start="3:0" type="address"/>
-    <field name="VS Output count 1" size="8" start="3:0" type="uint" default="0"/>
-    <field name="VS Output count 2" size="8" start="3:8" type="uint" default="0"/>
+    <field name="Output count 1" size="8" start="3:0" type="uint" default="0"/>
+    <field name="Output count 2" size="8" start="3:8" type="uint" default="0"/>
     <field name="Padding 2" size="16" start="3:16" type="hex" default="0x0"/>
-
     <field name="More than 4 textures" start="4:0" size="1" type="bool"/>
+    <field name="Unk 3" size="32" start="5:0" type="address"/> <!-- C020000 -->
+  </struct>
 
+  <struct name="Bind fragment pipeline" size="24">
+    <field name="Tag" size="32" start="0:0" type="hex" default="0x800000"/>
+    <!-- 4 if more than 32 textures bound -->
+    <field name="Unk 1" size="4" start="1:0" type="hex" default="0x2"/>
+    <field name="Groups of 8 immediate textures" start="1:4" size="3" type="uint"/>
+    <field name="Groups of 4 samplers" start="1:9" size="3" type="uint"/>
+    <!-- When more than 48 textures bound, switches to 0x8, unk1 switches to
+    0x6, and some funny sort of bindless access(?) is used in the shader -->
+    <field name="Unk 2" size="4" start="1:12" type="hex" default="0x1"/>
+    <field name="Input count" size="8" start="1:16" type="uint" default="0"/>
+    <field name="Padding 1" size="8" start="1:24" type="hex" default="0x0"/>
+    <field name="Pipeline" size="32" start="2:0" type="address"/>
+    <field name="Varyings" size="32" start="3:0" type="address"/>
+    <field name="Padding 2" size="16" start="3:16" type="hex" default="0x0"/>
+    <field name="More than 4 textures" start="4:0" size="1" type="bool"/>
     <field name="Unk 3" size="32" start="5:0" type="address"/> <!-- C020000 -->
   </struct>
 
