@@ -17,6 +17,7 @@
 
 #include "vn_device.h"
 #include "vn_physical_device.h"
+#include "vn_render_pass.h"
 
 /* shader module commands */
 
@@ -250,9 +251,9 @@ struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
    bool ignore_viewport_state;
    bool ignore_multisample_state;
+   bool ignore_depth_stencil_state;
 
    /* Ignore the following:
-    *    pDepthStencilState
     *    pColorBlendState
     */
    bool ignore_raster_dedicated_states;
@@ -322,6 +323,13 @@ vn_fix_graphics_pipeline_create_info(
             }
          }
       }
+
+      const struct vn_render_pass *pass =
+         vn_render_pass_from_handle(info->renderPass);
+
+      const struct vn_subpass *subpass = NULL;
+      if (pass)
+         subpass = &pass->subpasses[info->subpass];
 
       /* For each pipeline state category, we define a bool.
        *
@@ -404,12 +412,24 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
-      /* FIXME: Conditions for ignoring pDepthStencilState and
+      /* Ignore pDepthStencilState?
+       *    VUID-VkGraphicsPipelineCreateInfo-renderPass-06043
+       */
+      if (info->pDepthStencilState) {
+         const bool has_static_attachment =
+            subpass && subpass->has_depth_stencil_attachment;
+
+         if (!has_fragment_shader_state || !has_static_attachment) {
+            fix.ignore_depth_stencil_state = true;
+            any_fix = true;
+         }
+      }
+
+      /* FIXME: Conditions for ignoring
        * pColorBlendState miss some cases that depend on the render pass. Make
        * them agree with the VUIDs.
        */
-      if (!has_raster_state &&
-          (info->pDepthStencilState || info->pColorBlendState)) {
+      if (!has_raster_state && info->pColorBlendState) {
          fix.ignore_raster_dedicated_states = true;
          any_fix = true;
       }
@@ -436,8 +456,10 @@ vn_fix_graphics_pipeline_create_info(
       if (fix.ignore_multisample_state)
          fixes->create_infos[i].pMultisampleState = NULL;
 
-      if (fix.ignore_raster_dedicated_states) {
+      if (fix.ignore_depth_stencil_state)
          fixes->create_infos[i].pDepthStencilState = NULL;
+
+      if (fix.ignore_raster_dedicated_states) {
          fixes->create_infos[i].pColorBlendState = NULL;
       }
    }
