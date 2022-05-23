@@ -85,7 +85,6 @@ grow_to_fit(struct blob *blob, size_t additional)
 bool
 blob_align(struct blob *blob, size_t alignment)
 {
-   assert(align64((uintptr_t)blob->data, alignment) == (uintptr_t)blob->data);
    const size_t new_size = align64(blob->size, alignment);
 
    if (blob->size < new_size) {
@@ -103,7 +102,6 @@ blob_align(struct blob *blob, size_t alignment)
 void
 blob_reader_align(struct blob_reader *blob, size_t alignment)
 {
-   assert(align64((uintptr_t)blob->data, alignment) == (uintptr_t)blob->data);
    blob->current = blob->data + align64(blob->current - blob->data, alignment);
 }
 
@@ -310,22 +308,14 @@ blob_skip_bytes(struct blob_reader *blob, size_t size)
       blob->current += size;
 }
 
-/* These next three read functions have identical form. If we add any beyond
- * these first three we should probably switch to generating these with a
- * preprocessor macro.
-*/
-
 #define BLOB_READ_TYPE(name, type)         \
 type                                       \
 name(struct blob_reader *blob)             \
 {                                          \
-   type ret;                               \
+   type ret = 0;                           \
    int size = sizeof(ret);                 \
    blob_reader_align(blob, size);          \
-   if (! ensure_can_read(blob, size))      \
-      return 0;                            \
-   ret = *((type*) blob->current);         \
-   blob->current += size;                  \
+   blob_copy_bytes(blob, &ret, size);      \
    return ret;                             \
 }
 
