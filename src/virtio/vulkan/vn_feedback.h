@@ -64,4 +64,41 @@ void
 vn_feedback_pool_free(struct vn_feedback_pool *pool,
                       struct vn_feedback_slot *slot);
 
+static inline VkResult
+vn_feedback_get_status(struct vn_feedback_slot *slot)
+{
+   return *slot->status;
+}
+
+static inline void
+vn_feedback_reset_status(struct vn_feedback_slot *slot)
+{
+   assert(slot->type == VN_FEEDBACK_TYPE_FENCE ||
+          slot->type == VN_FEEDBACK_TYPE_EVENT);
+   *slot->status =
+      slot->type == VN_FEEDBACK_TYPE_FENCE ? VK_NOT_READY : VK_EVENT_RESET;
+}
+
+static inline void
+vn_feedback_set_status(struct vn_feedback_slot *slot, VkResult status)
+{
+   assert(slot->type == VN_FEEDBACK_TYPE_FENCE ||
+          slot->type == VN_FEEDBACK_TYPE_EVENT);
+   *slot->status = status;
+}
+
+static inline uint64_t
+vn_feedback_get_counter(struct vn_feedback_slot *slot)
+{
+   assert(slot->type == VN_FEEDBACK_TYPE_TIMELINE_SEMAPHORE);
+   return *slot->counter;
+}
+
+static inline void
+vn_feedback_set_counter(struct vn_feedback_slot *slot, uint64_t counter)
+{
+   assert(slot->type == VN_FEEDBACK_TYPE_TIMELINE_SEMAPHORE);
+   *slot->counter = counter;
+}
+
 #endif /* VN_FEEDBACK_H */
