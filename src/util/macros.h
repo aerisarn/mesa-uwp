@@ -299,6 +299,8 @@ do {                       \
  */
 #ifdef HAVE_FUNC_ATTRIBUTE_UNUSED
 #define UNUSED __attribute__((unused))
+#elif defined (_MSC_VER)
+#define UNUSED __pragma(warning(suppress:4100 4101))
 #else
 #define UNUSED
 #endif
