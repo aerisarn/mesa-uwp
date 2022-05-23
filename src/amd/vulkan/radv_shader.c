@@ -1128,8 +1128,7 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
 
       return true;
    } else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      NIR_PASS_V(nir, ac_nir_lower_tes_inputs_to_mem, NULL, info->tes.num_linked_inputs,
-                 info->tes.num_linked_patch_inputs);
+      NIR_PASS_V(nir, ac_nir_lower_tes_inputs_to_mem, NULL, info->tes.num_linked_inputs);
 
       if (info->tes.as_es) {
          NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL,

@@ -725,14 +725,12 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
 void
 ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
                                ac_nir_map_io_driver_location map,
-                               unsigned num_reserved_tcs_outputs,
-                               unsigned num_reserved_tcs_patch_outputs)
+                               unsigned num_reserved_tcs_outputs)
 {
    assert(shader->info.stage == MESA_SHADER_TESS_EVAL);
 
    lower_tess_io_state state = {
       .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
-      .tcs_num_reserved_patch_outputs = num_reserved_tcs_patch_outputs,
       .map_io = map,
    };
 

@@ -94,8 +94,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
 void
 ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
                                ac_nir_map_io_driver_location map,
-                               unsigned num_reserved_tcs_outputs,
-                               unsigned num_reserved_tcs_patch_outputs);
+                               unsigned num_reserved_tcs_outputs);
 
 void
 ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
