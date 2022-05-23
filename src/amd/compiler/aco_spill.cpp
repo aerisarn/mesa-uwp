@@ -1402,7 +1402,7 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset,
    }
 
    Temp private_segment_buffer = ctx.program->private_segment_buffer;
-   if (ctx.program->stage != compute_cs)
+   if (ctx.program->stage.hw != HWStage::CS)
       private_segment_buffer =
          bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), private_segment_buffer, Operand::zero());
 

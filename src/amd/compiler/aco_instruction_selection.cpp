@@ -7327,7 +7327,7 @@ get_scratch_resource(isel_context* ctx)
 {
    Builder bld(ctx->program, ctx->block);
    Temp scratch_addr = ctx->program->private_segment_buffer;
-   if (ctx->stage != compute_cs)
+   if (ctx->stage.hw != HWStage::CS)
       scratch_addr =
          bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), scratch_addr, Operand::zero());
 
@@ -8288,7 +8288,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_load_subgroup_id: {
-      if (ctx->stage == compute_cs) {
+      if (ctx->stage.hw == HWStage::CS) {
          bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                   bld.def(s1, scc), get_arg(ctx, ctx->args->ac.tg_size),
                   Operand::c32(0x6u | (0x6u << 16)));
@@ -8307,7 +8307,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_load_num_subgroups: {
-      if (ctx->stage == compute_cs)
+      if (ctx->stage.hw == HWStage::CS)
          bld.sop2(aco_opcode::s_and_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                   bld.def(s1, scc), Operand::c32(0x3fu), get_arg(ctx, ctx->args->ac.tg_size));
       else if (ctx->stage.hw == HWStage::NGG)
