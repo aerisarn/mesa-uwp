@@ -234,7 +234,7 @@ static inline bool
 radv_is_fmask_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_meta_state *meta_state = &cmd_buffer->device->meta_state;
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
 
    return radv_pipeline_to_handle(&pipeline->base) ==
           meta_state->fast_clear_flush.fmask_decompress_pipeline;
@@ -247,7 +247,7 @@ static inline bool
 radv_is_dcc_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_meta_state *meta_state = &cmd_buffer->device->meta_state;
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
 
    return radv_pipeline_to_handle(&pipeline->base) ==
           meta_state->fast_clear_flush.dcc_decompress_pipeline;

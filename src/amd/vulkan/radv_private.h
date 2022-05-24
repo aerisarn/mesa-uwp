@@ -1418,8 +1418,8 @@ struct radv_cmd_state {
 
    uint32_t prefetch_L2_mask;
 
-   struct radv_graphics_pipeline *pipeline;
-   struct radv_graphics_pipeline *emitted_pipeline;
+   struct radv_graphics_pipeline *graphics_pipeline;
+   struct radv_graphics_pipeline *emitted_graphics_pipeline;
    struct radv_compute_pipeline *compute_pipeline;
    struct radv_compute_pipeline *emitted_compute_pipeline;
    struct radv_compute_pipeline *rt_pipeline; /* emitted = emitted_compute_pipeline */

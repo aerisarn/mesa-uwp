@@ -81,7 +81,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
    if (state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE) {
       assert(!(state->flags & RADV_META_SAVE_COMPUTE_PIPELINE));
 
-      state->old_graphics_pipeline = cmd_buffer->state.pipeline;
+      state->old_graphics_pipeline = cmd_buffer->state.graphics_pipeline;
 
       /* Save all viewports. */
       state->dynamic.viewport.count = cmd_buffer->state.dynamic.viewport.count;
