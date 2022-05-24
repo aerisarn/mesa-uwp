@@ -164,6 +164,30 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 
    feats->vulkan_1_0 = features2.features;
 
+   /* TODO allow sparse resource along with sync feedback
+    *
+    * vkQueueBindSparse relies on explicit sync primitives. To intercept the
+    * timeline semaphores within each bind info to write the feedback buffer,
+    * we have to split the call into bindInfoCount number of calls while
+    * inserting vkQueueSubmit to wait on the signal timeline semaphores before
+    * filling the feedback buffer. To intercept the fence to be signaled, we
+    * have to relocate the fence to another vkQueueSubmit call and potentially
+    * have to use an internal timeline semaphore to synchronize between them.
+    * Those would make the code overly complex, so we disable sparse binding
+    * for simplicity.
+    */
+   if (!VN_PERF(NO_FENCE_FEEDBACK)) {
+      feats->vulkan_1_0.sparseBinding = false;
+      feats->vulkan_1_0.sparseResidencyBuffer = false;
+      feats->vulkan_1_0.sparseResidencyImage2D = false;
+      feats->vulkan_1_0.sparseResidencyImage3D = false;
+      feats->vulkan_1_0.sparseResidency2Samples = false;
+      feats->vulkan_1_0.sparseResidency4Samples = false;
+      feats->vulkan_1_0.sparseResidency8Samples = false;
+      feats->vulkan_1_0.sparseResidency16Samples = false;
+      feats->vulkan_1_0.sparseResidencyAliased = false;
+   }
+
    struct VkPhysicalDeviceVulkan11Features *vk11_feats = &feats->vulkan_1_1;
    struct VkPhysicalDeviceVulkan12Features *vk12_feats = &feats->vulkan_1_2;
 
@@ -465,6 +489,13 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       instance, vn_physical_device_to_handle(physical_dev), &properties2);
 
    props->vulkan_1_0 = properties2.properties;
+
+   /* TODO allow sparse resource along with sync feedback */
+   if (!VN_PERF(NO_FENCE_FEEDBACK)) {
+      props->vulkan_1_0.limits.sparseAddressSpaceSize = 0;
+      props->vulkan_1_0.sparseProperties =
+         (VkPhysicalDeviceSparseProperties){ 0 };
+   }
 
    struct VkPhysicalDeviceProperties *vk10_props = &props->vulkan_1_0;
    struct VkPhysicalDeviceVulkan11Properties *vk11_props = &props->vulkan_1_1;

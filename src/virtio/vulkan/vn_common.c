@@ -35,6 +35,7 @@ static const struct debug_control vn_perf_options[] = {
    { "no_async_buffer_create", VN_PERF_NO_ASYNC_BUFFER_CREATE },
    { "no_async_queue_submit", VN_PERF_NO_ASYNC_QUEUE_SUBMIT },
    { "no_event_feedback", VN_PERF_NO_EVENT_FEEDBACK },
+   { "no_fence_feedback", VN_PERF_NO_FENCE_FEEDBACK },
    { NULL, 0 },
 };
 

@@ -392,6 +392,9 @@ vn_QueueBindSparse(VkQueue _queue,
    struct vn_queue *queue = vn_queue_from_handle(_queue);
    struct vn_device *dev = queue->device;
 
+   /* TODO allow sparse resource along with sync feedback */
+   assert(VN_PERF(NO_FENCE_FEEDBACK));
+
    struct vn_queue_submission submit;
    VkResult result = vn_queue_submission_prepare_bind_sparse(
       &submit, _queue, bindInfoCount, pBindInfo, fence);
