@@ -329,6 +329,11 @@ struct radv_physical_device {
    uint32_t num_queues;
 
    uint32_t gs_table_depth;
+
+   struct ac_hs_info hs;
+
+   /* Number of entries in the task shader ring buffers. */
+   uint32_t task_num_entries;
 };
 
 struct radv_instance {
@@ -786,11 +791,6 @@ struct radv_device {
    bool pbb_allowed;
    uint32_t scratch_waves;
    uint32_t dispatch_initiator;
-
-   /* Number of entries in the task shader ring buffers. */
-   uint32_t task_num_entries;
-
-   struct ac_hs_info hs;
 
    /* MSAA sample locations.
     * The first index is the sample index.

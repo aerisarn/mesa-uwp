@@ -3728,7 +3728,7 @@ gather_tess_info(struct radv_device *device, struct radv_pipeline_stage *stages,
       stages[MESA_SHADER_TESS_CTRL].info.tcs.num_linked_inputs,
       stages[MESA_SHADER_TESS_CTRL].info.tcs.num_linked_outputs,
       stages[MESA_SHADER_TESS_CTRL].info.tcs.num_linked_patch_outputs,
-      device->hs.tess_offchip_block_dw_size, device->physical_device->rad_info.gfx_level,
+      device->physical_device->hs.tess_offchip_block_dw_size, device->physical_device->rad_info.gfx_level,
       device->physical_device->rad_info.family);
 
    /* LDS size used by VS+TCS for storing TCS inputs and outputs. */
