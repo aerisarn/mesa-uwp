@@ -45,6 +45,7 @@
 #include "lima_texture.h"
 #include "lima_fence.h"
 #include "lima_gpu.h"
+#include "lima_blit.h"
 
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
 
@@ -53,9 +54,19 @@ lima_get_fb_info(struct lima_job *job)
 {
    struct lima_context *ctx = job->ctx;
    struct lima_job_fb_info *fb = &job->fb;
+   struct lima_surface *surf = lima_surface(job->key.cbuf);
 
-   fb->width = ctx->framebuffer.base.width;
-   fb->height = ctx->framebuffer.base.height;
+   if (!surf)
+      surf = lima_surface(job->key.zsbuf);
+
+   if (!surf) {
+      /* We don't have neither cbuf nor zsbuf, use dimensions from ctx */
+      fb->width = ctx->framebuffer.base.width;
+      fb->height =  ctx->framebuffer.base.height;
+   } else {
+      fb->width = surf->base.width;
+      fb->height = surf->base.height;
+   }
 
    int width = align(fb->width, 16) >> 4;
    int height = align(fb->height, 16) >> 4;
@@ -86,7 +97,9 @@ lima_get_fb_info(struct lima_job *job)
 }
 
 static struct lima_job *
-lima_job_create(struct lima_context *ctx)
+lima_job_create(struct lima_context *ctx,
+                struct pipe_surface *cbuf,
+                struct pipe_surface *zsbuf)
 {
    struct lima_job *s;
 
@@ -112,9 +125,8 @@ lima_job_create(struct lima_context *ctx)
    util_dynarray_init(&s->plbu_cmd_array, s);
    util_dynarray_init(&s->plbu_cmd_head, s);
 
-   struct lima_context_framebuffer *fb = &ctx->framebuffer;
-   pipe_surface_reference(&s->key.cbuf, fb->base.cbufs[0]);
-   pipe_surface_reference(&s->key.zsbuf, fb->base.zsbuf);
+   pipe_surface_reference(&s->key.cbuf, cbuf);
+   pipe_surface_reference(&s->key.zsbuf, zsbuf);
 
    lima_get_fb_info(s);
 
@@ -145,26 +157,35 @@ lima_job_free(struct lima_job *job)
    ralloc_free(job);
 }
 
-static struct lima_job *
-_lima_job_get(struct lima_context *ctx)
+struct lima_job *
+lima_job_get_with_fb(struct lima_context *ctx,
+                      struct pipe_surface *cbuf,
+                      struct pipe_surface *zsbuf)
 {
-   struct lima_context_framebuffer *fb = &ctx->framebuffer;
    struct lima_job_key local_key = {
-      .cbuf = fb->base.cbufs[0],
-      .zsbuf = fb->base.zsbuf,
+      .cbuf = cbuf,
+      .zsbuf = zsbuf,
    };
 
    struct hash_entry *entry = _mesa_hash_table_search(ctx->jobs, &local_key);
    if (entry)
       return entry->data;
 
-   struct lima_job *job = lima_job_create(ctx);
+   struct lima_job *job = lima_job_create(ctx, cbuf, zsbuf);
    if (!job)
       return NULL;
 
    _mesa_hash_table_insert(ctx->jobs, &job->key, job);
 
    return job;
+}
+
+static struct lima_job *
+_lima_job_get(struct lima_context *ctx)
+{
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+
+   return lima_job_get_with_fb(ctx, fb->base.cbufs[0], fb->base.zsbuf);
 }
 
 /*
@@ -337,112 +358,23 @@ lima_fb_zsbuf_needs_reload(struct lima_job *job)
 static void
 lima_pack_reload_plbu_cmd(struct lima_job *job, struct pipe_surface *psurf)
 {
-   #define lima_reload_render_state_offset 0x0000
-   #define lima_reload_gl_pos_offset       0x0040
-   #define lima_reload_varying_offset      0x0080
-   #define lima_reload_tex_desc_offset     0x00c0
-   #define lima_reload_tex_array_offset    0x0100
-   #define lima_reload_buffer_size         0x0140
-
-   struct lima_context *ctx = job->ctx;
-   struct lima_surface *surf = lima_surface(psurf);
-   int level = psurf->u.tex.level;
-   unsigned first_layer = psurf->u.tex.first_layer;
-
-   uint32_t va;
-   void *cpu = lima_job_create_stream_bo(
-      job, LIMA_PIPE_PP, lima_reload_buffer_size, &va);
-
-   struct lima_screen *screen = lima_screen(ctx->base.screen);
-
-   uint32_t reload_shader_first_instr_size =
-      ((uint32_t *)(screen->pp_buffer->map + pp_reload_program_offset))[0] & 0x1f;
-   uint32_t reload_shader_va = screen->pp_buffer->va + pp_reload_program_offset;
-
-   struct lima_render_state reload_render_state = {
-      .alpha_blend = 0xf03b1ad2,
-      .depth_test = 0x0000000e,
-      .depth_range = 0xffff0000,
-      .stencil_front = 0x00000007,
-      .stencil_back = 0x00000007,
-      .multi_sample = 0x0000f007,
-      .shader_address = reload_shader_va | reload_shader_first_instr_size,
-      .varying_types = 0x00000001,
-      .textures_address = va + lima_reload_tex_array_offset,
-      .aux0 = 0x00004021,
-      .varyings_address = va + lima_reload_varying_offset,
-   };
-
-   if (util_format_is_depth_or_stencil(psurf->format)) {
-      reload_render_state.alpha_blend &= 0x0fffffff;
-      if (psurf->format != PIPE_FORMAT_Z16_UNORM)
-         reload_render_state.depth_test |= 0x400;
-      if (surf->reload & PIPE_CLEAR_DEPTH)
-         reload_render_state.depth_test |= 0x801;
-      if (surf->reload & PIPE_CLEAR_STENCIL) {
-         reload_render_state.depth_test |= 0x1000;
-         reload_render_state.stencil_front = 0x0000024f;
-         reload_render_state.stencil_back = 0x0000024f;
-         reload_render_state.stencil_test = 0x0000ffff;
-      }
-   }
-
-   memcpy(cpu + lima_reload_render_state_offset, &reload_render_state,
-          sizeof(reload_render_state));
-
-   lima_tex_desc *td = cpu + lima_reload_tex_desc_offset;
-   memset(td, 0, lima_min_tex_desc_size);
-   lima_texture_desc_set_res(ctx, td, psurf->texture, level, level, first_layer);
-   td->format = lima_format_get_texel_reload(psurf->format);
-   td->unnorm_coords = 1;
-   td->sampler_dim = LIMA_SAMPLER_DIM_2D;
-   td->min_img_filter_nearest = 1;
-   td->mag_img_filter_nearest = 1;
-   td->wrap_s = LIMA_TEX_WRAP_CLAMP_TO_EDGE;
-   td->wrap_t = LIMA_TEX_WRAP_CLAMP_TO_EDGE;
-   td->wrap_r = LIMA_TEX_WRAP_CLAMP_TO_EDGE;
-
-   uint32_t *ta = cpu + lima_reload_tex_array_offset;
-   ta[0] = va + lima_reload_tex_desc_offset;
-
    struct lima_job_fb_info *fb = &job->fb;
-   float reload_gl_pos[] = {
-      fb->width, 0,          0, 1,
-      0,         0,          0, 1,
-      0,         fb->height, 0, 1,
+   struct pipe_box src = {
+      .x = 0,
+      .y = 0,
+      .width = fb->width,
+      .height = fb->height,
    };
-   memcpy(cpu + lima_reload_gl_pos_offset, reload_gl_pos,
-          sizeof(reload_gl_pos));
 
-   float reload_varying[] = {
-      fb->width, 0,          0, 0,
-      0,         fb->height, 0, 0,
+   struct pipe_box dst = {
+      .x = 0,
+      .y = 0,
+      .width = fb->width,
+      .height = fb->height,
    };
-   memcpy(cpu + lima_reload_varying_offset, reload_varying,
-          sizeof(reload_varying));
-
-   PLBU_CMD_BEGIN(&job->plbu_cmd_head, 20);
-
-   PLBU_CMD_VIEWPORT_LEFT(0);
-   PLBU_CMD_VIEWPORT_RIGHT(fui(fb->width));
-   PLBU_CMD_VIEWPORT_BOTTOM(0);
-   PLBU_CMD_VIEWPORT_TOP(fui(fb->height));
-
-   PLBU_CMD_RSW_VERTEX_ARRAY(
-      va + lima_reload_render_state_offset,
-      va + lima_reload_gl_pos_offset);
-
-   PLBU_CMD_UNKNOWN2();
-   PLBU_CMD_UNKNOWN1();
-
-   PLBU_CMD_INDICES(screen->pp_buffer->va + pp_shared_index_offset);
-   PLBU_CMD_INDEXED_DEST(va + lima_reload_gl_pos_offset);
-   PLBU_CMD_DRAW_ELEMENTS(0xf, 0, 3);
-
-   PLBU_CMD_END();
-
-   lima_dump_command_stream_print(job->dump, cpu, lima_reload_buffer_size,
-                                  false, "reload plbu cmd at va %x\n", va);
+   lima_pack_blit_cmd(job, &job->plbu_cmd_head,
+                      psurf, &src, &dst,
+                      PIPE_TEX_FILTER_NEAREST, false);
 }
 
 static void

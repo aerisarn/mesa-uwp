@@ -598,6 +598,8 @@ static const struct debug_named_value lima_debug_options[] = {
           "Precompile shaders for shader-db" },
         { "diskcache", LIMA_DEBUG_DISK_CACHE,
           "print debug info for shader disk cache" },
+        { "noblit", LIMA_DEBUG_NO_BLIT,
+          "use generic u_blitter instead of lima-specific" },
         { NULL }
 };
 
