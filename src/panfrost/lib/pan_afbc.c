@@ -146,3 +146,13 @@ panfrost_afbc_can_ytr(enum pipe_format format)
         /* The fourth channel if it exists doesn't matter */
         return desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB;
 }
+
+/*
+ * Check if the device supports AFBC with tiled headers (and hence also solid
+ * colour blocks).
+ */
+bool
+panfrost_afbc_can_tile(const struct panfrost_device *dev)
+{
+        return (dev->arch >= 7);
+}

@@ -171,6 +171,9 @@ panfrost_afbc_format(const struct panfrost_device *dev, enum pipe_format format)
 bool
 panfrost_afbc_can_ytr(enum pipe_format format);
 
+bool
+panfrost_afbc_can_tile(const struct panfrost_device *dev);
+
 /*
  * Represents the block size of a single plane. For AFBC, this represents the
  * superblock size. For u-interleaving, this represents the tile size.
