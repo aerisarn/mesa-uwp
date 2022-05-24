@@ -3767,7 +3767,8 @@ static void si_emit_msaa_config(struct si_context *sctx)
       S_028A4C_TILE_WALK_ORDER_ENABLE(1) | S_028A4C_MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE(1) |
       S_028A4C_FORCE_EOV_CNTDWN_ENABLE(1) | S_028A4C_FORCE_EOV_REZ_ENABLE(1);
    unsigned db_eqaa = S_028804_HIGH_QUALITY_INTERSECTIONS(1) | S_028804_INCOHERENT_EQAA_READS(1) |
-                      S_028804_INTERPOLATE_COMP_Z(1) | S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
+                      S_028804_INTERPOLATE_COMP_Z(sctx->gfx_level < GFX11) |
+                      S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
    unsigned coverage_samples, color_samples, z_samples;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
