@@ -5150,7 +5150,7 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer,
    cmd_buffer->compute_scratch_waves_wanted =
       MAX2(cmd_buffer->compute_scratch_waves_wanted, pipeline->base.max_waves);
 
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab->alloc->arena->bo);
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
 
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, &pipeline->base);

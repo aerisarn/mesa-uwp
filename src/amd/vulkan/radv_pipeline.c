@@ -3988,7 +3988,7 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
    pipeline->slab_bo = pipeline->slab->alloc->arena->bo;
 
    /* Upload shader binaries. */
-   uint64_t slab_va = radv_buffer_get_va(pipeline->slab->alloc->arena->bo);
+   uint64_t slab_va = radv_buffer_get_va(pipeline->slab_bo);
    uint32_t slab_offset = pipeline->slab->alloc->offset;
    char *slab_ptr = pipeline->slab->alloc->arena->ptr;
 
