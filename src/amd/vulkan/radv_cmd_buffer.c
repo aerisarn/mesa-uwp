@@ -5189,7 +5189,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       cmd_buffer->state.mesh_shading = mesh_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
-      cmd_buffer->push_constant_stages |= pipeline->active_stages;
+      cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
 
       /* the new vertex shader might not have the same user regs */
       if (vtx_emit_count_changed) {

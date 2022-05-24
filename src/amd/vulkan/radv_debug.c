@@ -527,11 +527,18 @@ radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
    pipeline = radv_get_saved_pipeline(queue->device, ring);
    if (pipeline) {
       struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+      VkShaderStageFlags active_stages;
+
+      if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+         active_stages = graphics_pipeline->active_stages;
+      } else {
+         active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
+      }
 
       radv_dump_vs_prolog(pipeline, f);
-      radv_dump_shaders(pipeline, pipeline->active_stages, dump_dir, f);
+      radv_dump_shaders(pipeline, active_stages, dump_dir, f);
       if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR))
-         radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
+         radv_dump_annotated_shaders(pipeline, active_stages, f);
       radv_dump_vertex_descriptors(graphics_pipeline, f);
       radv_dump_descriptors(queue->device, f);
    }

@@ -1937,7 +1937,6 @@ struct radv_pipeline {
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
    struct radv_shader *gs_copy_shader;
-   VkShaderStageFlags active_stages;
 
    struct radeon_cmdbuf cs;
    uint32_t ctx_cs_hash;
@@ -1958,6 +1957,8 @@ struct radv_pipeline {
 
 struct radv_graphics_pipeline {
    struct radv_pipeline base;
+
+   VkShaderStageFlags active_stages;
 
    struct radv_dynamic_state dynamic_state;
 
