@@ -29,7 +29,8 @@ struct state {
    uint32_t topology;
 
    struct primitive_map {
-      unsigned loc[32 + 4]; /* +POSITION +PSIZE +CLIP_DIST0 +CLIP_DIST1 */
+      /* +POSITION, +PSIZE, ... - see shader_io_get_unique_index */
+      unsigned loc[32 + 6];
       unsigned stride;
    } map;
 
@@ -106,8 +107,12 @@ shader_io_get_unique_index(gl_varying_slot slot)
       return 2;
    if (slot == VARYING_SLOT_CLIP_DIST1)
       return 3;
+   if (slot == VARYING_SLOT_VIEWPORT)
+      return 4;
+   if (slot == VARYING_SLOT_LAYER)
+      return 5;
    if (slot >= VARYING_SLOT_VAR0 && slot <= VARYING_SLOT_VAR31)
-      return 4 + (slot - VARYING_SLOT_VAR0);
+      return 6 + (slot - VARYING_SLOT_VAR0);
    unreachable("illegal slot in get unique index\n");
 }
 

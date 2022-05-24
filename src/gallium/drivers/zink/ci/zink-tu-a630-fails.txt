@@ -230,9 +230,6 @@ KHR-GL46.shader_image_load_store.multiple-uniforms,Fail
 KHR-GL46.shader_storage_buffer_object.basic-atomic-case1,Fail
 KHR-GL46.shader_storage_buffer_object.basic-stdLayout-case3-cs,Crash
 KHR-GL46.shader_storage_buffer_object.basic-stdLayout-case3-vs,Crash
-KHR-GL46.shader_viewport_layer_array.ShaderLayerFramebufferLayeredTestCase,Crash
-KHR-GL46.shader_viewport_layer_array.ShaderLayerFramebufferNonLayeredTestCase,Crash
-KHR-GL46.shader_viewport_layer_array.ShaderViewportIndexTestCase,Crash
 KHR-GL46.tessellation_shader.vertex.vertex_ordering,Fail
 KHR-GL46.texture_cube_map_array.color_depth_attachments,Fail
 KHR-GL46.texture_cube_map_array.image_op_geometry_sh,Fail
