@@ -244,7 +244,7 @@ void si_llvm_init_gs_callbacks(struct si_shader_context *ctx);
 /* si_shader_llvm_tess.c */
 LLVMValueRef si_get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx);
 LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx);
-void si_llvm_preload_tes_rings(struct si_shader_context *ctx);
+void si_llvm_preload_tess_rings(struct si_shader_context *ctx);
 void si_llvm_ls_build_end(struct si_shader_context *ctx);
 void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_tcs_build_end(struct si_shader_context *ctx);
