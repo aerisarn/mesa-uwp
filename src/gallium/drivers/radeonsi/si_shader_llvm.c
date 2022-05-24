@@ -788,6 +788,12 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_hs_out_patch_data_offset_amd:
       return si_unpack_param(ctx, ctx->tcs_offchip_layout, 11, 21);
 
+   case nir_intrinsic_load_ring_tess_offchip_amd:
+      return ctx->tess_offchip_ring;
+
+   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
+      return ac_get_arg(&ctx->ac, ctx->args.tess_offchip_offset);
+
    default:
       return NULL;
    }
