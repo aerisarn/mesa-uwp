@@ -173,7 +173,12 @@ pan_nir_lower_zs_store(nir_shader *nir)
                                 nir_builder_init(&b, function->impl);
                                 b.cursor = nir_after_block_before_jump(instr->block);
 
-                                pan_nir_emit_combined_store(&b, intr, writeout | PAN_WRITEOUT_C, stores);
+                                /* Trying to write depth twice results in the
+                                 * wrong blend shader being executed on
+                                 * Midgard */
+                                unsigned this_store = PAN_WRITEOUT_C | (replaced ? 0 : writeout);
+
+                                pan_nir_emit_combined_store(&b, intr, this_store, stores);
 
                                 nir_instr_remove(instr);
 
