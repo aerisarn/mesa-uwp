@@ -22,6 +22,7 @@
  *
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -272,7 +273,7 @@ static void
 do_write(struct aub_read *read, uint32_t address_space, uint64_t addr, const void *data, uint32_t size)
 {
    if (0)
-      fprintf(stderr, "*0x%lx = *0x%p (%d)\n", addr, data, size);
+      fprintf(stderr, "*0x%" PRIx64 " = *0x%p (%d)\n", addr, data, size);
 
    switch (address_space) {
    case 0: /* GGTT */
