@@ -3167,19 +3167,19 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
          radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_FRAGMENT,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
-      if (radv_pipeline_has_mesh(graphics_pipeline))
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH))
          radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_MESH,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
-      if (radv_pipeline_has_gs(graphics_pipeline))
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_GEOMETRY))
          radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_GEOMETRY,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
-      if (radv_pipeline_has_tess(graphics_pipeline))
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
          radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_TESS_CTRL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
-      if (radv_pipeline_has_tess(graphics_pipeline))
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
          radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_TESS_EVAL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    } else {
@@ -3640,7 +3640,7 @@ radv_flush_ngg_gs_state(struct radv_cmd_buffer *cmd_buffer)
    uint32_t ngg_gs_state = 0;
    uint32_t base_reg;
 
-   if (!radv_pipeline_has_gs(pipeline) || !pipeline->is_ngg)
+   if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) || !pipeline->is_ngg)
       return;
 
    /* By default NGG GS queries are disabled but they are enabled if the
@@ -5178,7 +5178,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       if (!pipeline)
          break;
 
-      bool mesh_shading = radv_pipeline_has_mesh(graphics_pipeline);
+      bool mesh_shading = radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH);
       if (mesh_shading != cmd_buffer->state.mesh_shading) {
          /* Re-emit VRS state because the combiner is different (vertex vs primitive).
           * Re-emit primitive topology because the mesh shading pipeline clobbered it.
@@ -5220,7 +5220,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       if (graphics_pipeline->gsvs_ring_size > cmd_buffer->gsvs_ring_size_needed)
          cmd_buffer->gsvs_ring_size_needed = graphics_pipeline->gsvs_ring_size;
 
-      if (radv_pipeline_has_tess(graphics_pipeline))
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
          cmd_buffer->tess_rings_needed = true;
       break;
    }

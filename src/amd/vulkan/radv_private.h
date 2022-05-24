@@ -2072,27 +2072,9 @@ struct radv_pipeline_stage {
 };
 
 static inline bool
-radv_pipeline_has_gs(const struct radv_graphics_pipeline *pipeline)
+radv_pipeline_has_stage(const struct radv_graphics_pipeline *pipeline, gl_shader_stage stage)
 {
-   return pipeline->base.shaders[MESA_SHADER_GEOMETRY] ? true : false;
-}
-
-static inline bool
-radv_pipeline_has_tess(const struct radv_graphics_pipeline *pipeline)
-{
-   return pipeline->base.shaders[MESA_SHADER_TESS_CTRL] ? true : false;
-}
-
-static inline bool
-radv_pipeline_has_mesh(const struct radv_graphics_pipeline *pipeline)
-{
-   return !!pipeline->base.shaders[MESA_SHADER_MESH];
-}
-
-static inline bool
-radv_pipeline_has_task(const struct radv_graphics_pipeline *pipeline)
-{
-   return !!pipeline->base.shaders[MESA_SHADER_TASK];
+   return pipeline->base.shaders[stage];
 }
 
 bool radv_pipeline_has_ngg_passthrough(const struct radv_graphics_pipeline *pipeline);
