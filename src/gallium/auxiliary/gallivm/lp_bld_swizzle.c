@@ -571,7 +571,7 @@ lp_build_swizzle_aos(struct lp_build_context *bld,
 LLVMValueRef
 lp_build_swizzle_soa_channel(struct lp_build_context *bld,
                              const LLVMValueRef *unswizzled,
-                             unsigned swizzle)
+                             enum pipe_swizzle swizzle)
 {
    switch (swizzle) {
    case PIPE_SWIZZLE_X:
