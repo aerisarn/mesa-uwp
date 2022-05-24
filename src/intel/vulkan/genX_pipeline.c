@@ -2713,16 +2713,7 @@ genX(graphics_pipeline_create)(
       return result;
    }
 
-   /* Information on which states are considered dynamic. */
-   const VkPipelineDynamicStateCreateInfo *dyn_info =
-      pCreateInfo->pDynamicState;
-   uint32_t dynamic_states = 0;
-   if (dyn_info) {
-      for (unsigned i = 0; i < dyn_info->dynamicStateCount; i++)
-         dynamic_states |=
-            anv_cmd_dirty_bit_for_vk_dynamic_state(dyn_info->pDynamicStates[i]);
-   }
-
+   uint32_t dynamic_states = pipeline->dynamic_states;
 
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.
