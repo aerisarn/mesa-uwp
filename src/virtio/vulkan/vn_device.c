@@ -300,6 +300,31 @@ vn_device_fix_create_info(const struct vn_device *dev,
    return local_info;
 }
 
+static inline VkResult
+vn_device_feedback_pool_init(struct vn_device *dev)
+{
+   /* The feedback pool defaults to suballocate slots of 8 bytes each. Initial
+    * pool size of 4096 corresponds to a total of 512 fences, semaphores and
+    * events, which well covers the common scenarios. Pool can grow anyway.
+    */
+   static const uint32_t pool_size = 4096;
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+
+   if (VN_PERF(NO_EVENT_FEEDBACK))
+      return VK_SUCCESS;
+
+   return vn_feedback_pool_init(dev, &dev->feedback_pool, pool_size, alloc);
+}
+
+static inline void
+vn_device_feedback_pool_fini(struct vn_device *dev)
+{
+   if (VN_PERF(NO_EVENT_FEEDBACK))
+      return;
+
+   vn_feedback_pool_fini(&dev->feedback_pool);
+}
+
 static VkResult
 vn_device_init(struct vn_device *dev,
                struct vn_physical_device *physical_dev,
@@ -346,11 +371,18 @@ vn_device_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto out_memory_pool_fini;
 
-   result = vn_device_init_queues(dev, create_info);
+   result = vn_device_feedback_pool_init(dev);
    if (result != VK_SUCCESS)
       goto out_buffer_cache_fini;
 
+   result = vn_device_init_queues(dev, create_info);
+   if (result != VK_SUCCESS)
+      goto out_feedback_pool_fini;
+
    return VK_SUCCESS;
+
+out_feedback_pool_fini:
+   vn_device_feedback_pool_fini(dev);
 
 out_buffer_cache_fini:
    vn_buffer_cache_fini(dev);
@@ -422,6 +454,8 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
 
    for (uint32_t i = 0; i < dev->queue_count; i++)
       vn_queue_fini(&dev->queues[i]);
+
+   vn_device_feedback_pool_fini(dev);
 
    vn_buffer_cache_fini(dev);
 

@@ -146,6 +146,7 @@ enum vn_perf {
    VN_PERF_NO_ASYNC_SET_ALLOC = 1ull << 0,
    VN_PERF_NO_ASYNC_BUFFER_CREATE = 1ull << 1,
    VN_PERF_NO_ASYNC_QUEUE_SUBMIT = 1ull << 2,
+   VN_PERF_NO_EVENT_FEEDBACK = 1ull << 3,
 };
 
 typedef uint64_t vn_object_id;

@@ -1141,6 +1141,9 @@ vn_CmdSetEvent(VkCommandBuffer commandBuffer,
                VkPipelineStageFlags stageMask)
 {
    VN_CMD_ENQUEUE(vkCmdSetEvent, commandBuffer, event, stageMask);
+
+   vn_feedback_event_cmd_record(commandBuffer, event, stageMask,
+                                VK_EVENT_SET);
 }
 
 void
@@ -1149,6 +1152,9 @@ vn_CmdResetEvent(VkCommandBuffer commandBuffer,
                  VkPipelineStageFlags stageMask)
 {
    VN_CMD_ENQUEUE(vkCmdResetEvent, commandBuffer, event, stageMask);
+
+   vn_feedback_event_cmd_record(commandBuffer, event, stageMask,
+                                VK_EVENT_RESET);
 }
 
 void

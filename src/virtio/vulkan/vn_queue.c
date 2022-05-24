@@ -1030,6 +1030,33 @@ vn_GetSemaphoreFdKHR(VkDevice device,
 
 /* event commands */
 
+static VkResult
+vn_event_feedback_init(struct vn_device *dev, struct vn_event *ev)
+{
+   struct vn_feedback_slot *slot;
+
+   if (VN_PERF(NO_EVENT_FEEDBACK))
+      return VK_SUCCESS;
+
+   slot = vn_feedback_pool_alloc(&dev->feedback_pool, VN_FEEDBACK_TYPE_EVENT);
+   if (!slot)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   /* newly created event object is in the unsignaled state */
+   vn_feedback_set_status(slot, VK_EVENT_RESET);
+
+   ev->feedback_slot = slot;
+
+   return VK_SUCCESS;
+}
+
+static inline void
+vn_event_feedback_fini(struct vn_device *dev, struct vn_event *ev)
+{
+   if (ev->feedback_slot)
+      vn_feedback_pool_free(&dev->feedback_pool, ev->feedback_slot);
+}
+
 VkResult
 vn_CreateEvent(VkDevice device,
                const VkEventCreateInfo *pCreateInfo,
@@ -1046,6 +1073,13 @@ vn_CreateEvent(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vn_object_base_init(&ev->base, VK_OBJECT_TYPE_EVENT, &dev->base);
+
+   /* feedback is only needed to speed up host operations */
+   if (!(pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT)) {
+      VkResult result = vn_event_feedback_init(dev, ev);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
 
    VkEvent ev_handle = vn_event_to_handle(ev);
    vn_async_vkCreateEvent(dev->instance, device, pCreateInfo, NULL,
@@ -1071,6 +1105,8 @@ vn_DestroyEvent(VkDevice device,
 
    vn_async_vkDestroyEvent(dev->instance, device, event, NULL);
 
+   vn_event_feedback_fini(dev, ev);
+
    vn_object_base_fini(&ev->base);
    vk_free(alloc, ev);
 }
@@ -1079,11 +1115,13 @@ VkResult
 vn_GetEventStatus(VkDevice device, VkEvent event)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   struct vn_event *ev = vn_event_from_handle(event);
+   VkResult result;
 
-   /* TODO When the renderer supports it (requires a new vk extension), there
-    * should be a coherent memory backing the event.
-    */
-   VkResult result = vn_call_vkGetEventStatus(dev->instance, device, event);
+   if (ev->feedback_slot)
+      result = vn_feedback_get_status(ev->feedback_slot);
+   else
+      result = vn_call_vkGetEventStatus(dev->instance, device, event);
 
    return vn_result(dev->instance, result);
 }
@@ -1092,18 +1130,34 @@ VkResult
 vn_SetEvent(VkDevice device, VkEvent event)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   struct vn_event *ev = vn_event_from_handle(event);
 
-   VkResult result = vn_call_vkSetEvent(dev->instance, device, event);
+   if (ev->feedback_slot) {
+      vn_feedback_set_status(ev->feedback_slot, VK_EVENT_SET);
+      vn_async_vkSetEvent(dev->instance, device, event);
+   } else {
+      VkResult result = vn_call_vkSetEvent(dev->instance, device, event);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
 
-   return vn_result(dev->instance, result);
+   return VK_SUCCESS;
 }
 
 VkResult
 vn_ResetEvent(VkDevice device, VkEvent event)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   struct vn_event *ev = vn_event_from_handle(event);
 
-   VkResult result = vn_call_vkResetEvent(dev->instance, device, event);
+   if (ev->feedback_slot) {
+      vn_feedback_reset_status(ev->feedback_slot);
+      vn_async_vkResetEvent(dev->instance, device, event);
+   } else {
+      VkResult result = vn_call_vkResetEvent(dev->instance, device, event);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
 
-   return vn_result(dev->instance, result);
+   return VK_SUCCESS;
 }

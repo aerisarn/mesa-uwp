@@ -13,6 +13,8 @@
 
 #include "vn_common.h"
 
+#include "vn_feedback.h"
+
 struct vn_queue {
    struct vn_object_base base;
 
@@ -72,6 +74,12 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_semaphore,
 
 struct vn_event {
    struct vn_object_base base;
+
+   /* non-NULL if below are satisfied:
+    * - event is created without VK_EVENT_CREATE_DEVICE_ONLY_BIT
+    * - VN_PERF_NO_EVENT_FEEDBACK is disabled
+    */
+   struct vn_feedback_slot *feedback_slot;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_event,
                                base.base,

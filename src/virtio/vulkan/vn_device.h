@@ -15,6 +15,7 @@
 
 #include "vn_buffer.h"
 #include "vn_device_memory.h"
+#include "vn_feedback.h"
 
 struct vn_device {
    struct vn_device_base base;
@@ -30,6 +31,8 @@ struct vn_device {
    struct vn_device_memory_pool memory_pools[VK_MAX_MEMORY_TYPES];
 
    struct vn_buffer_cache buffer_cache;
+
+   struct vn_feedback_pool feedback_pool;
 
    struct vn_queue *queues;
    uint32_t queue_count;

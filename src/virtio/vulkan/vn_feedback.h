@@ -101,4 +101,10 @@ vn_feedback_set_counter(struct vn_feedback_slot *slot, uint64_t counter)
    *slot->counter = counter;
 }
 
+void
+vn_feedback_event_cmd_record(VkCommandBuffer cmd_handle,
+                             VkEvent ev_handle,
+                             VkPipelineStageFlags stage_mask,
+                             VkResult status);
+
 #endif /* VN_FEEDBACK_H */
