@@ -9310,7 +9310,7 @@ radv_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer, VkPipelineStageFlag
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_buffer, buffer, dstBuffer);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint64_t va = radv_buffer_get_va(buffer->bo) + dstOffset;
+   uint64_t va = radv_buffer_get_va(buffer->bo) + buffer->offset + dstOffset;
 
    si_emit_cache_flush(cmd_buffer);
 
