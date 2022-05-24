@@ -868,16 +868,11 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         bool emit_blend = writeout & (PAN_WRITEOUT_C);
         bool emit_zs = writeout & (PAN_WRITEOUT_Z | PAN_WRITEOUT_S);
 
-        unsigned loc = ~0;
+        const nir_variable *var =
+                nir_find_variable_with_driver_location(b->shader->nir,
+                                                       nir_var_shader_out, nir_intrinsic_base(instr));
 
-        if (!combined) {
-                const nir_variable *var =
-                        nir_find_variable_with_driver_location(b->shader->nir,
-                                        nir_var_shader_out, nir_intrinsic_base(instr));
-                assert(var);
-
-                loc = var->data.location;
-        }
+        unsigned loc = var ? var->data.location : 0;
 
         bi_index src0 = bi_src_index(&instr->src[0]);
 
@@ -929,7 +924,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         }
 
         if (emit_blend) {
-                unsigned rt = combined ? 0 : (loc - FRAG_RESULT_DATA0);
+                unsigned rt = loc ? (loc - FRAG_RESULT_DATA0) : 0;
                 bool dual = (writeout & PAN_WRITEOUT_2);
                 bi_index color = bi_src_index(&instr->src[0]);
                 bi_index color2 = dual ? bi_src_index(&instr->src[4]) : bi_null();
