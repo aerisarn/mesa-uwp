@@ -3051,6 +3051,9 @@ generate_fragment(struct llvmpipe_context *lp,
                   struct lp_fragment_shader_variant *variant,
                   unsigned partial_mask)
 {
+   assert(partial_mask == RAST_WHOLE ||
+          partial_mask == RAST_EDGE_TEST);
+
    struct gallivm_state *gallivm = variant->gallivm;
    struct lp_fragment_shader_variant_key *key = &variant->key;
    struct lp_shader_input inputs[PIPE_MAX_SHADER_INPUTS];
