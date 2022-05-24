@@ -5177,6 +5177,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                   read_result, srcs, SURFACE_LOGICAL_NUM_SRCS);
          bld.MOV(dest, read_result);
       }
+
+      shader_stats.fill_count += DIV_ROUND_UP(dispatch_width, 16);
       break;
    }
 
@@ -5250,6 +5252,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          bld.emit(SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL,
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
       }
+      shader_stats.spill_count += DIV_ROUND_UP(dispatch_width, 16);
       break;
    }
 

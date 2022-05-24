@@ -81,6 +81,8 @@ offset(const fs_reg &reg, const brw::fs_builder &bld, unsigned delta)
 struct shader_stats {
    const char *scheduler_mode;
    unsigned promoted_constants;
+   unsigned spill_count;
+   unsigned fill_count;
 };
 
 /**

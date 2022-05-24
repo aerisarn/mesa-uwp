@@ -348,10 +348,10 @@ private:
    void build_interference_graph(bool allow_spilling);
    void discard_interference_graph();
 
-   void emit_unspill(const fs_builder &bld, fs_reg dst,
-                     uint32_t spill_offset, unsigned count);
-   void emit_spill(const fs_builder &bld, fs_reg src,
-                   uint32_t spill_offset, unsigned count);
+   void emit_unspill(const fs_builder &bld, struct shader_stats *stats,
+                     fs_reg dst, uint32_t spill_offset, unsigned count);
+   void emit_spill(const fs_builder &bld, struct shader_stats *stats,
+                   fs_reg src, uint32_t spill_offset, unsigned count);
 
    void set_spill_costs();
    int choose_spill_reg();
@@ -738,7 +738,9 @@ fs_reg_alloc::discard_interference_graph()
 }
 
 void
-fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
+fs_reg_alloc::emit_unspill(const fs_builder &bld,
+                           struct shader_stats *stats,
+                           fs_reg dst,
                            uint32_t spill_offset, unsigned count)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -747,6 +749,8 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
    assert(count % reg_size == 0);
 
    for (unsigned i = 0; i < count / reg_size; i++) {
+      ++stats->fill_count;
+
       fs_inst *unspill_inst;
       if (devinfo->ver >= 9) {
          fs_reg header = this->scratch_header;
@@ -803,7 +807,9 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
 }
 
 void
-fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
+fs_reg_alloc::emit_spill(const fs_builder &bld,
+                         struct shader_stats *stats,
+                         fs_reg src,
                          uint32_t spill_offset, unsigned count)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -812,6 +818,8 @@ fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
    assert(count % reg_size == 0);
 
    for (unsigned i = 0; i < count / reg_size; i++) {
+      ++stats->spill_count;
+
       fs_inst *spill_inst;
       if (devinfo->ver >= 9) {
          fs_reg header = this->scratch_header;
@@ -1098,8 +1106,8 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
              * 32 bit channels.  It shouldn't hurt in any case because the
              * unspill destination is a block-local temporary.
              */
-            emit_unspill(ibld.exec_all().group(width, 0), unspill_dst,
-                         subset_spill_offset, count);
+            emit_unspill(ibld.exec_all().group(width, 0), &fs->shader_stats,
+                         unspill_dst, subset_spill_offset, count);
 	 }
       }
 
@@ -1153,10 +1161,10 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
 	  */
          if (inst->is_partial_write() ||
              (!inst->force_writemask_all && !per_channel))
-            emit_unspill(ubld, spill_src, subset_spill_offset,
-                         regs_written(inst));
+            emit_unspill(ubld, &fs->shader_stats, spill_src,
+                         subset_spill_offset, regs_written(inst));
 
-         emit_spill(ubld.at(block, inst->next), spill_src,
+         emit_spill(ubld.at(block, inst->next), &fs->shader_stats, spill_src,
                     subset_spill_offset, regs_written(inst));
       }
 

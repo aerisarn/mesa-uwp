@@ -1172,6 +1172,8 @@ fs_visitor::init()
 
    this->shader_stats.scheduler_mode = NULL;
    this->shader_stats.promoted_constants = 0,
+   this->shader_stats.spill_count = 0,
+   this->shader_stats.fill_count = 0,
 
    this->grf_used = 0;
    this->spilled_any_registers = false;
