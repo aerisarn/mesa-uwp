@@ -1117,6 +1117,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
       .lower_uniforms_to_ubo = screen->specs.halti >= 2,
       .force_indirect_unrolling = nir_var_all,
       .max_unroll_iterations = 32,
+      .vectorize_io = true,
    };
 
    /* apply debug options that disable individual features */
