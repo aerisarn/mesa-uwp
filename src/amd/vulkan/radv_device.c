@@ -2620,21 +2620,7 @@ radv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
 {
    RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 
-   pMemoryProperties->memoryProperties.memoryTypeCount = pdevice->memory_properties.memoryTypeCount;
-   for (uint32_t i = 0; i < pdevice->memory_properties.memoryTypeCount; i++) {
-      pMemoryProperties->memoryProperties.memoryTypes[i] = (VkMemoryType) {
-         .propertyFlags = pdevice->memory_properties.memoryTypes[i].propertyFlags,
-         .heapIndex     = pdevice->memory_properties.memoryTypes[i].heapIndex,
-      };
-   }
-
-   pMemoryProperties->memoryProperties.memoryHeapCount = pdevice->memory_properties.memoryHeapCount;
-   for (uint32_t i = 0; i < pdevice->memory_properties.memoryHeapCount; i++) {
-      pMemoryProperties->memoryProperties.memoryHeaps[i] = (VkMemoryHeap) {
-         .size    = pdevice->memory_properties.memoryHeaps[i].size,
-         .flags   = pdevice->memory_properties.memoryHeaps[i].flags,
-      };
-   }
+   pMemoryProperties->memoryProperties = pdevice->memory_properties;
 
    VkPhysicalDeviceMemoryBudgetPropertiesEXT *memory_budget =
       vk_find_struct(pMemoryProperties->pNext, PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT);
