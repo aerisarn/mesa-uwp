@@ -1503,17 +1503,6 @@ vn_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 }
 
-void
-vn_GetPhysicalDeviceMemoryProperties(
-   VkPhysicalDevice physicalDevice,
-   VkPhysicalDeviceMemoryProperties *pMemoryProperties)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-
-   *pMemoryProperties = physical_dev->memory_properties.memoryProperties;
-}
-
 static struct vn_format_properties_entry *
 vn_physical_device_get_format_properties(
    struct vn_physical_device *physical_dev, VkFormat format)
