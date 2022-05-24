@@ -26,7 +26,7 @@
 #include "si_shader_internal.h"
 #include "sid.h"
 
-static LLVMValueRef get_rel_patch_id(struct si_shader_context *ctx)
+LLVMValueRef si_get_rel_patch_id(struct si_shader_context *ctx)
 {
    switch (ctx->stage) {
    case MESA_SHADER_TESS_CTRL:
@@ -106,7 +106,7 @@ static LLVMValueRef get_tcs_out_patch0_patch_data_offset(struct si_shader_contex
 static LLVMValueRef get_tcs_in_current_patch_offset(struct si_shader_context *ctx)
 {
    LLVMValueRef patch_stride = get_tcs_in_patch_stride(ctx);
-   LLVMValueRef rel_patch_id = get_rel_patch_id(ctx);
+   LLVMValueRef rel_patch_id = si_get_rel_patch_id(ctx);
 
    return LLVMBuildMul(ctx->ac.builder, patch_stride, rel_patch_id, "");
 }
@@ -115,7 +115,7 @@ static LLVMValueRef get_tcs_out_current_patch_offset(struct si_shader_context *c
 {
    LLVMValueRef patch0_offset = get_tcs_out_patch0_offset(ctx);
    LLVMValueRef patch_stride = get_tcs_out_patch_stride(ctx);
-   LLVMValueRef rel_patch_id = get_rel_patch_id(ctx);
+   LLVMValueRef rel_patch_id = si_get_rel_patch_id(ctx);
 
    return ac_build_imad(&ctx->ac, patch_stride, rel_patch_id, patch0_offset);
 }
@@ -124,7 +124,7 @@ static LLVMValueRef get_tcs_out_current_patch_data_offset(struct si_shader_conte
 {
    LLVMValueRef patch0_patch_data_offset = get_tcs_out_patch0_patch_data_offset(ctx);
    LLVMValueRef patch_stride = get_tcs_out_patch_stride(ctx);
-   LLVMValueRef rel_patch_id = get_rel_patch_id(ctx);
+   LLVMValueRef rel_patch_id = si_get_rel_patch_id(ctx);
 
    return ac_build_imad(&ctx->ac, patch_stride, rel_patch_id, patch0_patch_data_offset);
 }
@@ -258,7 +258,7 @@ static LLVMValueRef get_tcs_tes_buffer_address_from_generic_indices(struct si_sh
       param_index = LLVMConstInt(ctx->ac.i32, param_index_base, 0);
    }
 
-   return get_tcs_tes_buffer_address(ctx, get_rel_patch_id(ctx), vertex_index, param_index);
+   return get_tcs_tes_buffer_address(ctx, si_get_rel_patch_id(ctx), vertex_index, param_index);
 }
 
 static LLVMValueRef buffer_load(struct si_shader_context *ctx, LLVMTypeRef type, unsigned swizzle,
@@ -711,7 +711,7 @@ void si_llvm_tcs_build_end(struct si_shader_context *ctx)
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef rel_patch_id, invocation_id, tf_lds_offset;
 
-   rel_patch_id = get_rel_patch_id(ctx);
+   rel_patch_id = si_get_rel_patch_id(ctx);
    invocation_id = si_unpack_param(ctx, ctx->args.tcs_rel_ids, 8, 5);
    tf_lds_offset = get_tcs_out_current_patch_data_offset(ctx);
 
