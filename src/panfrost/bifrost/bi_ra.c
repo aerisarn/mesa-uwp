@@ -818,6 +818,11 @@ bi_register_allocate(bi_context *ctx)
                         spill_count += bi_spill_register(ctx,
                                         bi_node_to_index(spill_node, bi_max_temp(ctx)),
                                         spill_count);
+
+                        /* In case the spill affected an instruction with tied
+                         * operands, we need to fix up.
+                         */
+                        bi_coalesce_tied(ctx);
                 }
         }
 
