@@ -123,6 +123,7 @@ etna_emit_output(struct etna_compile *c, nir_variable *var, struct etna_inst_src
       c->variant->vs_pointsize_out_reg = src.reg;
       break;
    default:
+      assert(sf->num_reg < ETNA_NUM_INPUTS);
       sf->reg[sf->num_reg].reg = src.reg;
       sf->reg[sf->num_reg].slot = var->data.location;
       sf->reg[sf->num_reg].num_components = glsl_get_components(var->type);
