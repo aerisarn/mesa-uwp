@@ -1948,9 +1948,6 @@ struct radv_pipeline {
    unsigned max_waves;
    unsigned scratch_bytes_per_wave;
 
-   /* Not NULL if graphics pipeline uses streamout. */
-   struct radv_shader *streamout_shader;
-
    /* Unique pipeline hash identifier. */
    uint64_t pipeline_hash;
 
@@ -2012,6 +2009,9 @@ struct radv_graphics_pipeline {
    /* Whether the pipeline uses NGG (GFX10+). */
    bool is_ngg;
    bool has_ngg_culling;
+
+   /* Not NULL if graphics pipeline uses streamout. */
+   struct radv_shader *streamout_shader;
 };
 
 struct radv_compute_pipeline {

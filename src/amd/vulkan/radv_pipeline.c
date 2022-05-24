@@ -6398,7 +6398,7 @@ radv_pipeline_emit_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
 
    if (radv_pipeline_has_ngg(pipeline)) {
       stages |= S_028B54_PRIMGEN_EN(1);
-      if (pipeline->base.streamout_shader)
+      if (pipeline->streamout_shader)
          stages |= S_028B54_NGG_WAVE_ID_EN(1);
       if (radv_pipeline_has_ngg_passthrough(pipeline))
          stages |= S_028B54_PRIMGEN_PASSTHRU_EN(1);
@@ -6700,12 +6700,12 @@ radv_pipeline_init_vertex_input_state(struct radv_graphics_pipeline *pipeline,
 }
 
 static struct radv_shader *
-radv_pipeline_get_streamout_shader(struct radv_pipeline *pipeline)
+radv_pipeline_get_streamout_shader(struct radv_graphics_pipeline *pipeline)
 {
    int i;
 
    for (i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
-      struct radv_shader *shader = radv_get_shader(pipeline, i);
+      struct radv_shader *shader = radv_get_shader(&pipeline->base, i);
 
       if (shader && shader->info.so.num_outputs > 0)
          return shader;
@@ -6945,7 +6945,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    radv_pipeline_init_scratch(device, &pipeline->base);
 
    /* Find the last vertex shader stage that eventually uses streamout. */
-   pipeline->base.streamout_shader = radv_pipeline_get_streamout_shader(&pipeline->base);
+   pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
    pipeline->is_ngg = radv_pipeline_has_ngg(pipeline);
    pipeline->has_ngg_culling =
