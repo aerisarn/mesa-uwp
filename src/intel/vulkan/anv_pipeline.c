@@ -2428,7 +2428,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    assert(pCreateInfo->pRasterizationState);
 
    if (pCreateInfo->pDynamicState) {
-      /* Remove all of the states that are marked as dynamic */
       uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
       for (uint32_t s = 0; s < count; s++) {
          pipeline->dynamic_states |= anv_cmd_dirty_bit_for_vk_dynamic_state(
