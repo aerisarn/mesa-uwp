@@ -534,11 +534,11 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                nir_load_reloc_const_intel(&b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
 
             nir_ssa_def *data =
-               nir_load_global(&b, nir_iadd(&b, const_data_base_addr,
-                                                nir_u2u64(&b, offset)),
-                               load_align,
-                               intrin->dest.ssa.num_components,
-                               intrin->dest.ssa.bit_size);
+               nir_load_global_constant(&b, nir_iadd(&b, const_data_base_addr,
+                                                     nir_u2u64(&b, offset)),
+                                        load_align,
+                                        intrin->dest.ssa.num_components,
+                                        intrin->dest.ssa.bit_size);
 
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
                                      data);
