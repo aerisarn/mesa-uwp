@@ -28,6 +28,7 @@ d3d12_video_encoder_bitstream::d3d12_video_encoder_bitstream()
 {
    m_pBitsBuffer       = nullptr;
    m_uiBitsBufferSize  = 0;
+   m_uiOffset          = 0;
    m_iBitsToGo         = 32;
    m_uintEncBuffer     = 0;
    m_bExternalBuffer   = false;
