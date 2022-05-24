@@ -747,6 +747,13 @@ tu_shader_create(struct tu_device *dev,
                              &shader->multi_pos_output, dev);
    }
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && key->force_sample_interp) {
+      nir_foreach_shader_in_variable(var, nir) {
+         if (!var->data.centroid)
+            var->data.sample = true;
+      }
+   }
+
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_push_const,
               nir_address_format_32bit_offset);
 
