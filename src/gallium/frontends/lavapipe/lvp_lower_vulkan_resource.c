@@ -180,22 +180,31 @@ static nir_ssa_def *lower_vri_intrin_lvd(struct nir_builder *b,
    return nir_vec2(b, index, nir_imm_int(b, 0));
 }
 
-static unsigned
+/*
+ * Return a bitset of the texture units or sampler units used by a
+ * texture instruction.  Note that 'used' is expected to be already
+ * initialized.  i.e. this function does not zero-out the bitset before
+ * setting any bits.
+ */
+static void
 lower_vri_instr_tex_deref(nir_tex_instr *tex,
                           nir_tex_src_type deref_src_type,
                           gl_shader_stage stage,
-                          struct lvp_pipeline_layout *layout)
+                          struct lvp_pipeline_layout *layout,
+                          BITSET_WORD used[], // textures or samplers
+                          size_t used_size)   // used[] size, in bits
 {
    int deref_src_idx = nir_tex_instr_src_index(tex, deref_src_type);
 
    if (deref_src_idx < 0)
-      return 0;
+      return;
 
    nir_deref_instr *deref_instr = nir_src_as_deref(tex->src[deref_src_idx].src);
    nir_variable *var = nir_deref_instr_get_variable(deref_instr);
    unsigned desc_set_idx = var->data.descriptor_set;
    unsigned binding_idx = var->data.binding;
    int value = 0;
+
    const struct lvp_descriptor_set_binding_layout *binding =
       get_binding_layout(layout, desc_set_idx, binding_idx);
    nir_tex_instr_remove_src(tex, deref_src_idx);
@@ -230,31 +239,33 @@ lower_vri_instr_tex_deref(nir_tex_instr *tex,
    if (deref_instr->deref_type == nir_deref_type_array) {
       assert(glsl_type_is_array(var->type));
       assert(value >= 0);
-      if (nir_src_is_const(deref_instr->arr.index))
-         return BITFIELD_BIT(value);
-      unsigned size = glsl_get_aoa_size(var->type);
-      return u_bit_consecutive(value, size);
-   } else
-      return 1u << value;
+      assert(value < used_size);
+      if (nir_src_is_const(deref_instr->arr.index)) {
+         BITSET_SET(used, value);
+      } else {
+         unsigned size = glsl_get_aoa_size(var->type);
+         assert(value + size <= used_size);
+         BITSET_SET_RANGE(used, value, value+size);
+      }
+   } else {
+      assert(value < used_size);
+      BITSET_SET(used, value);
+   }
 }
 
 static void lower_vri_instr_tex(struct nir_builder *b,
                                 nir_tex_instr *tex, void *data_cb)
 {
    struct lvp_pipeline_layout *layout = data_cb;
-   unsigned samplers_used, textures_used;
+   lower_vri_instr_tex_deref(tex, nir_tex_src_sampler_deref,
+                             b->shader->info.stage, layout,
+                             b->shader->info.samplers_used,
+                             BITSET_SIZE(b->shader->info.samplers_used));
 
-   samplers_used = lower_vri_instr_tex_deref(tex, nir_tex_src_sampler_deref, b->shader->info.stage, layout);
-   while (samplers_used) {
-      int i = u_bit_scan(&samplers_used);
-      BITSET_SET(b->shader->info.samplers_used, i);
-   }
-
-   textures_used = lower_vri_instr_tex_deref(tex, nir_tex_src_texture_deref, b->shader->info.stage, layout);
-   while (textures_used) {
-      int i = u_bit_scan(&textures_used);
-      BITSET_SET(b->shader->info.textures_used, i);
-   }
+   lower_vri_instr_tex_deref(tex, nir_tex_src_texture_deref,
+                             b->shader->info.stage, layout,
+                             b->shader->info.textures_used,
+                             BITSET_SIZE(b->shader->info.textures_used));
 }
 
 static void lower_vri_intrin_image(struct nir_builder *b,
