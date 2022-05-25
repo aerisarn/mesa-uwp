@@ -4583,10 +4583,22 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
 
    LLVMValueRef sampler_dynamic_index =
       get_sampler_desc_index(ctx, sampler_deref_instr, &instr->instr, false);
-   if (instr->texture_non_uniform)
+
+   /* instr->sampler_non_uniform and texture_non_uniform are always false in GLSL,
+    * but this can lead to unexpected behavior if texture/sampler index come from
+    * a vertex attribute.
+    * For instance, 2 consecutive draws using 2 different index values,
+    * could be squashed together by the hw - producing a single draw with
+    * non-dynamically uniform index.
+    * To avoid this, detect divergent indexing, and use enter_waterfall.
+    * See https://gitlab.freedesktop.org/mesa/mesa/-/issues/2253.
+    */
+   if (instr->texture_non_uniform ||
+       (ctx->abi->use_waterfall_for_divergent_tex_samplers && texture_deref_instr->dest.ssa.divergent))
       texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, true);
 
-   if (instr->sampler_non_uniform)
+   if (instr->sampler_non_uniform ||
+       (ctx->abi->use_waterfall_for_divergent_tex_samplers && sampler_deref_instr->dest.ssa.divergent))
       sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, true);
 
    *res_ptr = get_sampler_desc(ctx, texture_deref_instr, main_descriptor, &instr->instr,

@@ -129,6 +129,10 @@ struct ac_shader_abi {
 
    /* Whether to inline the compute dispatch size in user sgprs. */
    bool load_grid_size_from_user_sgpr;
+
+   /* Whether to detect divergent textures/samplers index and apply
+    * waterfall to avoid incorrect rendering. */
+   bool use_waterfall_for_divergent_tex_samplers;
 };
 
 #endif /* AC_SHADER_ABI_H */
