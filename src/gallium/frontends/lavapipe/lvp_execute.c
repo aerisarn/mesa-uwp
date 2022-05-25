@@ -329,8 +329,14 @@ static void emit_state(struct rendering_state *state)
       assert(offsetof(struct pipe_rasterizer_state, offset_clamp) - offsetof(struct pipe_rasterizer_state, offset_units) == sizeof(float) * 2);
       if (state->depth_bias.enabled) {
          memcpy(&state->rs_state.offset_units, &state->depth_bias, sizeof(float) * 3);
+         state->rs_state.offset_tri = true;
+         state->rs_state.offset_line = true;
+         state->rs_state.offset_point = true;
       } else {
          memset(&state->rs_state.offset_units, 0, sizeof(float) * 3);
+         state->rs_state.offset_tri = false;
+         state->rs_state.offset_line = false;
+         state->rs_state.offset_point = false;
       }
       cso_set_rasterizer(state->cso, &state->rs_state);
       state->rs_dirty = false;
