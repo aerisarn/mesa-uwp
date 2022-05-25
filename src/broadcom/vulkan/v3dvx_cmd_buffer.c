@@ -1630,7 +1630,7 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
     * pipelines used by the secondaries do, we need to re-start the primary
     * job to enable MSAA. See cmd_buffer_restart_job_for_msaa_if_needed.
     */
-   bool pending_barrier = false;
+   uint8_t pending_barrier = false;
    VkAccessFlags pending_bcl_barrier_buffer_access = 0;
    VkAccessFlags pending_bcl_barrier_image_access = 0;
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
@@ -1720,7 +1720,7 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
             }
          }
 
-         pending_barrier = false;
+         pending_barrier = 0;
          pending_bcl_barrier_buffer_access = 0;
          pending_bcl_barrier_image_access = 0;
       }
@@ -1734,21 +1734,23 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
       /* If this secondary had any pending barrier state we will need that
        * barrier state consumed with whatever comes next in the primary.
        */
-      assert(secondary->state.has_barrier ||
-             (!secondary->state.bcl_barrier_buffer_access &&
-              !secondary->state.bcl_barrier_image_access));
+      assert(secondary->state.barrier.active_mask ||
+             (!secondary->state.barrier.bcl_barrier_buffer_access &&
+              !secondary->state.barrier.bcl_barrier_image_access));
 
-      pending_barrier = secondary->state.has_barrier;
+      pending_barrier = secondary->state.barrier.active_mask;
       pending_bcl_barrier_buffer_access =
-         secondary->state.bcl_barrier_buffer_access;
+         secondary->state.barrier.bcl_barrier_buffer_access;
       pending_bcl_barrier_image_access =
-         secondary->state.bcl_barrier_image_access;
+         secondary->state.barrier.bcl_barrier_image_access;
    }
 
    if (pending_barrier) {
-      primary->state.has_barrier = true;
-      primary->state.bcl_barrier_buffer_access |= pending_bcl_barrier_buffer_access;
-      primary->state.bcl_barrier_image_access |= pending_bcl_barrier_image_access;
+      primary->state.barrier.active_mask = pending_barrier;
+      primary->state.barrier.bcl_barrier_buffer_access |=
+         pending_bcl_barrier_buffer_access;
+      primary->state.barrier.bcl_barrier_image_access |=
+         pending_bcl_barrier_image_access;
    }
 }
 

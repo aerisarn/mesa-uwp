@@ -1036,6 +1036,9 @@ struct v3dv_job {
     */
    bool is_clone;
 
+   /* If the job executes on the transfer stage of the pipeline */
+   bool is_transfer;
+
    enum v3dv_job_type type;
 
    struct v3dv_device *device;
@@ -1188,6 +1191,12 @@ struct v3dv_cmd_pipeline_state {
    struct v3dv_descriptor_state descriptor_state;
 };
 
+enum {
+   V3DV_BARRIER_GRAPHICS_BIT = (1 << 0),
+   V3DV_BARRIER_COMPUTE_BIT  = (1 << 1),
+   V3DV_BARRIER_TRANSFER_BIT = (1 << 2),
+};
+
 struct v3dv_cmd_buffer_state {
    struct v3dv_render_pass *pass;
    struct v3dv_framebuffer *framebuffer;
@@ -1248,12 +1257,16 @@ struct v3dv_cmd_buffer_state {
    /* Used to flag OOM conditions during command buffer recording */
    bool oom;
 
-   /* Whether we have recorded a pipeline barrier that we still need to
-    * process.
-    */
-   bool has_barrier;
-   VkAccessFlags bcl_barrier_buffer_access;
-   VkAccessFlags bcl_barrier_image_access;
+   /* If we are currently recording job(s) for a transfer operation */
+   bool is_transfer;
+
+   /* Barrier state tracking */
+   struct {
+      uint8_t active_mask; /* Bitmask of V3DV_BARRIER_* */
+      /* Access flags relevant to decide about BCL barriers for CLs */
+      VkAccessFlags bcl_barrier_buffer_access;
+      VkAccessFlags bcl_barrier_image_access;
+   } barrier;
 
    /* Secondary command buffer state */
    struct {

@@ -749,6 +749,8 @@ v3dv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
 
    assert(image->vk.samples == VK_SAMPLE_COUNT_1_BIT);
 
+   cmd_buffer->state.is_transfer = true;
+
    for (uint32_t i = 0; i < info->regionCount; i++) {
       if (copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &info->pRegions[i]))
          continue;
@@ -756,6 +758,8 @@ v3dv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
          continue;
       unreachable("Unsupported image to buffer copy.");
    }
+
+   cmd_buffer->state.is_transfer = false;
 }
 
 /**
@@ -1169,6 +1173,8 @@ v3dv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
 
    assert(src->vk.samples == dst->vk.samples);
 
+   cmd_buffer->state.is_transfer = true;
+
    for (uint32_t i = 0; i < info->regionCount; i++) {
       if (copy_image_tfu(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
@@ -1178,6 +1184,8 @@ v3dv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
          continue;
       unreachable("Image copy not supported");
    }
+
+   cmd_buffer->state.is_transfer = false;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1188,6 +1196,8 @@ v3dv_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_buffer, src_buffer, pCopyBufferInfo->srcBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, pCopyBufferInfo->dstBuffer);
 
+   cmd_buffer->state.is_transfer = true;
+
    for (uint32_t i = 0; i < pCopyBufferInfo->regionCount; i++) {
       v3dv_X(cmd_buffer->device, meta_copy_buffer)
          (cmd_buffer,
@@ -1195,6 +1205,8 @@ v3dv_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
           src_buffer->mem->bo, src_buffer->mem_offset,
           &pCopyBufferInfo->pRegions[i]);
    }
+
+   cmd_buffer->state.is_transfer = false;
 }
 
 static void
@@ -1230,6 +1242,8 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
       return;
    }
 
+   cmd_buffer->state.is_transfer = true;
+
    memcpy(src_bo->map, pData, dataSize);
 
    v3dv_bo_unmap(cmd_buffer->device, src_bo);
@@ -1245,11 +1259,12 @@ v3dv_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
       (cmd_buffer, dst_buffer->mem->bo, dst_buffer->mem_offset,
        src_bo, 0, &region);
 
-   if (!copy_job)
-      return;
+   if (copy_job) {
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (uint64_t)(uintptr_t)src_bo, destroy_update_buffer_cb);
+   }
 
-   v3dv_cmd_buffer_add_private_obj(
-      cmd_buffer, (uint64_t)(uintptr_t)src_bo, destroy_update_buffer_cb);
+   cmd_buffer->state.is_transfer = false;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1261,6 +1276,8 @@ v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, dst_buffer, dstBuffer);
+
+   cmd_buffer->state.is_transfer = true;
 
    struct v3dv_bo *bo = dst_buffer->mem->bo;
 
@@ -1276,6 +1293,8 @@ v3dv_CmdFillBuffer(VkCommandBuffer commandBuffer,
 
    v3dv_X(cmd_buffer->device, meta_fill_buffer)
       (cmd_buffer, bo, dstOffset, size, data);
+
+   cmd_buffer->state.is_transfer = false;
 }
 
 /**
@@ -2710,6 +2729,8 @@ v3dv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
 
    assert(image->vk.samples == VK_SAMPLE_COUNT_1_BIT);
 
+   cmd_buffer->state.is_transfer = true;
+
    uint32_t r = 0;
    while (r < info->regionCount) {
       /* The TFU and TLB paths can only copy one region at a time and the region
@@ -2774,6 +2795,8 @@ v3dv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
 handled:
       r += batch_size;
    }
+
+   cmd_buffer->state.is_transfer = false;
 }
 
 static void
@@ -4247,6 +4270,8 @@ v3dv_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
    /* We don't export VK_FORMAT_FEATURE_BLIT_DST_BIT on compressed formats */
    assert(!vk_format_is_compressed(dst->vk.format));
 
+   cmd_buffer->state.is_transfer = true;
+
    for (uint32_t i = 0; i < pBlitImageInfo->regionCount; i++) {
       if (blit_tfu(cmd_buffer, dst, src, &pBlitImageInfo->pRegions[i]))
          continue;
@@ -4260,6 +4285,8 @@ v3dv_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
       }
       unreachable("Unsupported blit operation");
    }
+
+   cmd_buffer->state.is_transfer = false;
 }
 
 static bool
@@ -4363,6 +4390,8 @@ v3dv_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
    assert(src->vk.samples == VK_SAMPLE_COUNT_4_BIT);
    assert(dst->vk.samples == VK_SAMPLE_COUNT_1_BIT);
 
+   cmd_buffer->state.is_transfer = true;
+
    for (uint32_t i = 0; i < info->regionCount; i++) {
       if (resolve_image_tlb(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
@@ -4370,4 +4399,6 @@ v3dv_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
          continue;
       unreachable("Unsupported multismaple resolve operation");
    }
+
+   cmd_buffer->state.is_transfer = false;
 }
