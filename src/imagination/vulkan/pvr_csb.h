@@ -137,6 +137,7 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
 #define pvr_cmd_header(x) PVRX(x##_header)
 #define pvr_cmd_pack(x) PVRX(x##_pack)
 #define pvr_cmd_unpack(x) PVRX(x##_unpack)
+#define pvr_cmd_enum_to_str(x) PVRX(x##_to_str)
 
 /**
  * \brief Merges dwords0 and dwords1 arrays and stores the result into the
