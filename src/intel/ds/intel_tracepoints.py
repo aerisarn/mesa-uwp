@@ -60,11 +60,12 @@ def define_tracepoints(args):
                    tp_print=tp_print,
                    end_of_pipe=end_pipelined)
 
-
+    # Batch buffer tracepoints, only for Iris
     begin_end_tp('batch',
                  tp_args=[Arg(type='uint8_t', var='name', c_format='%hhu'),],
                  end_pipelined=False)
 
+    # Command buffer tracepoints, only for Anv
     begin_end_tp('cmd_buffer',
                  tp_args=[Arg(type='uint8_t', var='level', c_format='%hhu'),],
                  end_pipelined=False)
@@ -77,15 +78,18 @@ def define_tracepoints(args):
                             Arg(type='char', name='str', var='str', c_format='%s', length_arg='len + 1', copy_func='strncpy'),],
                  end_pipelined=True)
 
+    # Transform feedback, only for Anv
     begin_end_tp('xfb',
                  end_pipelined=False)
 
+    # Dynamic rendering tracepoints, only for Anv
     begin_end_tp('render_pass',
                  tp_args=[Arg(type='uint16_t', var='width', c_format='%hu'),
                           Arg(type='uint16_t', var='height', c_format='%hu'),
                           Arg(type='uint8_t', var='att_count', c_format='%hhu'),
                           Arg(type='uint8_t', var='msaa', c_format='%hhu'),])
 
+    # Blorp operations, Anv & Iris
     begin_end_tp('blorp',
                  tp_args=[Arg(type='enum blorp_op', name='op', var='op', c_format='%s', to_prim_type='blorp_op_to_name({})'),
                           Arg(type='uint32_t', name='width', var='width', c_format='%u'),
@@ -96,8 +100,10 @@ def define_tracepoints(args):
                           Arg(type='enum isl_format', name='src_fmt', var='src_fmt', c_format='%s', to_prim_type='isl_format_get_short_name({})'),
                           ])
 
+    # Indirect draw generation, only for Anv
     begin_end_tp('generate_draws')
 
+    # Various draws/dispatch, Anv & Iris
     begin_end_tp('draw',
                  tp_args=[Arg(type='uint32_t', var='count', c_format='%u')])
     begin_end_tp('draw_multi',
