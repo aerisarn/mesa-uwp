@@ -105,9 +105,7 @@ d3d12_video_buffer_create(struct pipe_context *pipe, const struct pipe_video_buf
    return &pD3D12VideoBuffer->base;
 
 failed:
-   if (pD3D12VideoBuffer != nullptr) {
-      d3d12_video_buffer_destroy((struct pipe_video_buffer *) pD3D12VideoBuffer);
-   }
+   d3d12_video_buffer_destroy((struct pipe_video_buffer *) pD3D12VideoBuffer);
 
    return nullptr;
 }
