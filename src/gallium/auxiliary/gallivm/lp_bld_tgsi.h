@@ -55,8 +55,6 @@ extern "C" {
 
 #define LP_CHAN_ALL ~0u
 
-#define LP_MAX_INSTRUCTIONS 256
-
 struct tgsi_full_declaration;
 struct tgsi_full_immediate;
 struct tgsi_full_instruction;
