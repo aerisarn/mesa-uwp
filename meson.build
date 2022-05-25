@@ -550,14 +550,6 @@ if not have_mtls_dialect
   endif
 endif
 
-if with_platform_windows and with_shared_glapi
-  # Windows doesn't support DLL exports/imports being TLS variables. When using shared
-  # glapi, libglapi.dll hosts the TLS, but other DLLs need to use them. Instead of falling
-  # all the way back to using globals and manual per-thread data, keep using TLS but just
-  # put accesses to it behind a function so the variable doesn't need to be exported.
-  pre_args += '-DUSE_TLS_BEHIND_FUNCTIONS'
-endif
-
 if with_glx != 'disabled'
   if not (with_platform_x11 and with_any_opengl)
     error('Cannot build GLX support without X11 platform support and at least one OpenGL API')

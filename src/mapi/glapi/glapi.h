@@ -91,7 +91,7 @@ _GLAPI_EXPORT extern __THREAD_INITIAL_EXEC void * _glapi_tls_Context;
 _GLAPI_EXPORT extern const struct _glapi_table *_glapi_Dispatch;
 _GLAPI_EXPORT extern const void *_glapi_Context;
 
-#if defined (USE_TLS_BEHIND_FUNCTIONS)
+#if DETECT_OS_WINDOWS && !defined(MAPI_MODE_UTIL) && !defined(MAPI_MODE_GLAPI)
 # define GET_DISPATCH() _glapi_get_dispatch()
 # define GET_CURRENT_CONTEXT(C)  struct gl_context *C = (struct gl_context *) _glapi_get_context()
 #else
