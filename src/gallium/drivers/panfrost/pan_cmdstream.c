@@ -3251,6 +3251,7 @@ panfrost_emit_draw(void *out,
                         cfg.pixel_kill_operation = kill.pixel_kill;
                         cfg.zs_update_operation = kill.zs_update;
 
+                        cfg.allow_forward_pixel_to_kill = pan_allow_forward_pixel_to_kill(ctx, fs);
                         cfg.allow_forward_pixel_to_be_killed = !fs->info.fs.sidefx;
 
                         /* Mask of render targets that may be written. A render
