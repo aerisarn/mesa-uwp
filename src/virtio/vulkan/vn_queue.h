@@ -50,6 +50,12 @@ struct vn_fence {
    struct vn_sync_payload permanent;
    struct vn_sync_payload temporary;
 
+   struct {
+      /* non-NULL if VN_PERF_NO_FENCE_FEEDBACK is disabled */
+      struct vn_feedback_slot *slot;
+      VkCommandBuffer *commands;
+   } feedback;
+
    bool is_external;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_fence,
