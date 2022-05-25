@@ -77,6 +77,8 @@ static void r600_blitter_begin(struct pipe_context *ctx, enum r600_blitter_op op
 		util_blitter_save_depth_stencil_alpha(rctx->blitter, rctx->dsa_state.cso);
 		util_blitter_save_stencil_ref(rctx->blitter, &rctx->stencil_ref.pipe_state);
                 util_blitter_save_sample_mask(rctx->blitter, rctx->sample_mask.sample_mask, rctx->ps_iter_samples);
+		util_blitter_save_fragment_constant_buffer_slot(rctx->blitter,
+								&rctx->constbuf_state[PIPE_SHADER_FRAGMENT].cb[0]);
 	}
 
 	if (op & R600_SAVE_FRAMEBUFFER)
