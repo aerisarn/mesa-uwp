@@ -619,10 +619,8 @@ va_pack_instr(const bi_instr *I)
    uint64_t hex = info.exact | (((uint64_t) I->flow) << 59);
    hex |= ((uint64_t) va_select_fau_page(I)) << 57;
 
-   if (info.slot) {
-      uint64_t slot = (I->op == BI_OPCODE_BARRIER) ? 7 : 0;
-      hex |= (slot << 30);
-   }
+   if (info.slot)
+      hex |= ((uint64_t) I->slot << 30);
 
    if (info.sr_count) {
       bool read = bi_opcode_props[I->op].sr_read;
