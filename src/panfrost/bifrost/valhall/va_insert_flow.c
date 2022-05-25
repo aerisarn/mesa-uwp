@@ -451,3 +451,29 @@ va_insert_flow_control_nops(bi_context *ctx)
    if (frag && !start->pass_flags)
       bi_flow(ctx, bi_before_block(start), VA_FLOW_DISCARD);
 }
+
+/*
+ * Assign slots to all asynchronous instructions. A few special instructions
+ * require specific slots. For the rest, we assign slots in a round-robin
+ * fashion to reduce false dependencies when encoding waits.
+ *
+ * This should be called before va_insert_flow_control_nops.
+ */
+void
+va_assign_slots(bi_context *ctx)
+{
+   unsigned counter = 0;
+
+   bi_foreach_instr_global(ctx, I) {
+      if (I->op == BI_OPCODE_BARRIER) {
+         I->slot = 7;
+      } else if (I->op == BI_OPCODE_ZS_EMIT || I->op == BI_OPCODE_ATEST) {
+         I->slot = 0;
+      } else if (bi_opcode_props[I->op].message) {
+         I->slot = counter++;
+
+         if (counter == 3)
+            counter = 0;
+      }
+   }
+}
