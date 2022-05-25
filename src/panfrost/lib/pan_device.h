@@ -272,6 +272,9 @@ panfrost_query_sample_position(
                 unsigned sample_idx,
                 float *out);
 
+unsigned
+panfrost_query_l2_slices(const struct panfrost_device *dev);
+
 static inline struct panfrost_bo *
 pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)
 {

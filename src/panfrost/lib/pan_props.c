@@ -125,6 +125,18 @@ panfrost_query_gpu_revision(int fd)
         return panfrost_query_raw(fd, DRM_PANFROST_PARAM_GPU_REVISION, true, 0);
 }
 
+unsigned
+panfrost_query_l2_slices(const struct panfrost_device *dev)
+{
+        /* Query MEM_FEATURES register */
+        uint32_t mem_features =
+                panfrost_query_raw(dev->fd, DRM_PANFROST_PARAM_MEM_FEATURES,
+                                   true, 0);
+
+        /* L2_SLICES is MEM_FEATURES[11:8] minus(1) */
+        return ((mem_features >> 8) & 0xF) + 1;
+}
+
 static struct panfrost_tiler_features
 panfrost_query_tiler_features(int fd)
 {
