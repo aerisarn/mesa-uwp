@@ -648,7 +648,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
 
                color_formats[a] = att->format;
 
-               assert(samples == 0 || samples == att->samples);
                samples |= att->samples;
             }
          }
@@ -668,7 +667,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
             if (vk_format_has_stencil(att->format))
                stencil_format = att->format;
 
-            assert(samples == 0 || samples == att->samples);
             samples |= att->samples;
          }
       }
