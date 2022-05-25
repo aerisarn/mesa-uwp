@@ -972,7 +972,7 @@ opcode("v_dot4_i32_i8", -1, 0x28, 0x16, Format.VOP3P, InstrClass.Valu32)
 opcode("v_dot4_u32_u8", -1, 0x29, 0x17, Format.VOP3P, InstrClass.Valu32)
 
 
-# VINTERP instructions: 
+# VINTERP instructions:
 VINTRP = {
    (0x00, "v_interp_p1_f32"),
    (0x01, "v_interp_p2_f32"),
