@@ -320,7 +320,7 @@ bool ac_init_spm(const struct radeon_info *info,
          } else {
             counter->offset = segment_offset + odd_line_idx *
                               AC_SPM_NUM_COUNTER_PER_MUXSEL + odd_counter_idx;
-            
+
             spm_trace->muxsel_lines[s][odd_line_idx].muxsel[odd_counter_idx] = spm_trace->counters[i].muxsel;
             if (++odd_counter_idx == AC_SPM_NUM_COUNTER_PER_MUXSEL) {
                odd_counter_idx = 0;
