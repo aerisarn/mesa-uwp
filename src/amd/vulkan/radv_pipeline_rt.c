@@ -1431,7 +1431,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
       nir_ssa_def *desc = create_bvh_descriptor(b);
       nir_ssa_def *vec3ones = nir_channels(b, nir_imm_vec4(b, 1.0, 1.0, 1.0, 1.0), 0x7);
-      
+
       nir_store_var(b, trav_vars.origin, nir_load_var(b, vars->origin), 7);
       nir_store_var(b, trav_vars.dir, nir_load_var(b, vars->direction), 7);
       nir_store_var(b, trav_vars.inv_dir, nir_fdiv(b, vec3ones, nir_load_var(b, trav_vars.dir)), 7);

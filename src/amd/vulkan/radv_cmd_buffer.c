@@ -7685,7 +7685,7 @@ radv_rt_set_args(struct radv_cmd_buffer *cmd_buffer,
       radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
          base_reg + size_loc->sgpr_idx * 4, launch_size_va ? launch_size_va : (va + 64), false);
    }
-   
+
    return true;
 }
 
