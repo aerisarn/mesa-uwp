@@ -1063,6 +1063,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->abi.load_grid_size_from_user_sgpr = true;
    ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero ||
                                 info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
+   ctx->abi.use_waterfall_for_divergent_tex_samplers = true;
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
       LLVMTypeRef type = ctx->ac.f32;
