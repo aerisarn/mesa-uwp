@@ -250,7 +250,7 @@ get_vmem_type(Instruction* instr)
    else if (instr->isMIMG() && !instr->operands[1].isUndefined() &&
             instr->operands[1].regClass() == s4)
       return vmem_sampler;
-   else if (instr->isVMEM())
+   else if (instr->isVMEM() || instr->isScratch() || instr->isGlobal())
       return vmem_nosampler;
    return 0;
 }
