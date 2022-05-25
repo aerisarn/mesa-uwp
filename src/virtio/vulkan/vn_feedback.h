@@ -47,6 +47,12 @@ struct vn_feedback_slot {
    struct list_head head;
 };
 
+struct vn_feedback_cmd_pool {
+   simple_mtx_t mutex;
+
+   VkCommandPool pool;
+};
+
 VkResult
 vn_feedback_pool_init(struct vn_device *dev,
                       struct vn_feedback_pool *pool,
@@ -106,5 +112,11 @@ vn_feedback_event_cmd_record(VkCommandBuffer cmd_handle,
                              VkEvent ev_handle,
                              VkPipelineStageFlags stage_mask,
                              VkResult status);
+
+VkResult
+vn_feedback_cmd_pools_init(struct vn_device *dev);
+
+void
+vn_feedback_cmd_pools_fini(struct vn_device *dev);
 
 #endif /* VN_FEEDBACK_H */

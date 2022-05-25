@@ -322,3 +322,66 @@ vn_feedback_event_cmd_record(VkCommandBuffer cmd_handle,
                          VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 1,
                          &buf_barrier_after, 0, NULL);
 }
+
+VkResult
+vn_feedback_cmd_pools_init(struct vn_device *dev)
+{
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   struct vn_feedback_cmd_pool *pools;
+   VkCommandPoolCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .pNext = NULL,
+      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+   };
+
+   /* TODO will also condition on timeline semaphore feedback */
+   if (VN_PERF(NO_FENCE_FEEDBACK))
+      return VK_SUCCESS;
+
+   assert(dev->queue_family_count);
+
+   pools = vk_zalloc(alloc, sizeof(*pools) * dev->queue_family_count,
+                     VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!pools)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   for (uint32_t i = 0; i < dev->queue_family_count; i++) {
+      VkResult result;
+
+      info.queueFamilyIndex = dev->queue_families[i];
+      result = vn_CreateCommandPool(dev_handle, &info, alloc, &pools[i].pool);
+      if (result != VK_SUCCESS) {
+         for (uint32_t j = 0; j < i; j++) {
+            vn_DestroyCommandPool(dev_handle, pools[j].pool, alloc);
+            simple_mtx_destroy(&pools[j].mutex);
+         }
+
+         vk_free(alloc, pools);
+         return result;
+      }
+
+      simple_mtx_init(&pools[i].mutex, mtx_plain);
+   }
+
+   dev->cmd_pools = pools;
+
+   return VK_SUCCESS;
+}
+
+void
+vn_feedback_cmd_pools_fini(struct vn_device *dev)
+{
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   VkDevice dev_handle = vn_device_to_handle(dev);
+
+   if (!dev->cmd_pools)
+      return;
+
+   for (uint32_t i = 0; i < dev->queue_family_count; i++) {
+      vn_DestroyCommandPool(dev_handle, dev->cmd_pools[i].pool, alloc);
+      simple_mtx_destroy(&dev->cmd_pools[i].mutex);
+   }
+
+   vk_free(alloc, dev->cmd_pools);
+}

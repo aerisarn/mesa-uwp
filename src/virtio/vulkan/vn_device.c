@@ -375,11 +375,18 @@ vn_device_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto out_buffer_cache_fini;
 
-   result = vn_device_init_queues(dev, create_info);
+   result = vn_feedback_cmd_pools_init(dev);
    if (result != VK_SUCCESS)
       goto out_feedback_pool_fini;
 
+   result = vn_device_init_queues(dev, create_info);
+   if (result != VK_SUCCESS)
+      goto out_cmd_pools_fini;
+
    return VK_SUCCESS;
+
+out_cmd_pools_fini:
+   vn_feedback_cmd_pools_fini(dev);
 
 out_feedback_pool_fini:
    vn_device_feedback_pool_fini(dev);
@@ -454,6 +461,8 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
 
    for (uint32_t i = 0; i < dev->queue_count; i++)
       vn_queue_fini(&dev->queues[i]);
+
+   vn_feedback_cmd_pools_fini(dev);
 
    vn_device_feedback_pool_fini(dev);
 
