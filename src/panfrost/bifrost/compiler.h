@@ -390,6 +390,9 @@ typedef struct {
         /* Flow control associated with a Valhall instruction */
         uint8_t flow;
 
+        /* Slot associated with a message-passing instruction */
+        uint8_t slot;
+
         /* Can we spill the value written here? Used to prevent
          * useless double fills */
         bool no_spill;
