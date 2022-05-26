@@ -311,11 +311,13 @@ llvmpipe_nir_is_linear_compat(struct nir_shader *shader,
 }
 
 
+/*
+ * Analyze the given NIR fragment shader and set its shader->kind field
+ * to LP_FS_KIND_x.
+ */
 void
 llvmpipe_fs_analyse_nir(struct lp_fragment_shader *shader)
 {
-   shader->kind = LP_FS_KIND_GENERAL;
-
    if (shader->info.base.num_inputs <= LP_MAX_LINEAR_INPUTS &&
        shader->info.base.num_outputs == 1 &&
        !shader->info.indirect_textures &&
@@ -324,18 +326,21 @@ llvmpipe_fs_analyse_nir(struct lp_fragment_shader *shader)
        shader->info.num_texs <= LP_MAX_LINEAR_TEXTURES &&
        llvmpipe_nir_is_linear_compat(shader->base.ir.nir, &shader->info)) {
       shader->kind = LP_FS_KIND_LLVM_LINEAR;
+   } else {
+      shader->kind = LP_FS_KIND_GENERAL;
    }
 }
 
 
+/*
+ * Analyze the given TGSI fragment shader and set its shader->kind field
+ * to LP_FS_KIND_x.
+ */
 void
 llvmpipe_fs_analyse(struct lp_fragment_shader *shader,
                     const struct tgsi_token *tokens)
 {
-   shader->kind = LP_FS_KIND_GENERAL;
-
-   if (shader->kind == LP_FS_KIND_GENERAL &&
-       shader->info.base.num_inputs <= LP_MAX_LINEAR_INPUTS &&
+   if (shader->info.base.num_inputs <= LP_MAX_LINEAR_INPUTS &&
        shader->info.base.num_outputs == 1 &&
        !shader->info.indirect_textures &&
        !shader->info.sampler_texture_units_different &&
@@ -349,6 +354,8 @@ llvmpipe_fs_analyse(struct lp_fragment_shader *shader,
         shader->info.base.opcode_count[TGSI_OPCODE_END] ==
         shader->info.base.num_instructions)) {
       shader->kind = LP_FS_KIND_LLVM_LINEAR;
+   } else {
+      shader->kind = LP_FS_KIND_GENERAL;
    }
 
    if (shader->kind == LP_FS_KIND_GENERAL &&
