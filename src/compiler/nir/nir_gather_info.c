@@ -36,6 +36,17 @@ src_is_invocation_id(const nir_src *src)
              nir_intrinsic_load_invocation_id;
 }
 
+static bool
+src_is_local_invocation_index(const nir_src *src)
+{
+   assert(src->is_ssa);
+   if (src->ssa->parent_instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   return nir_instr_as_intrinsic(src->ssa->parent_instr)->intrinsic ==
+             nir_intrinsic_load_local_invocation_index;
+}
+
 static void
 get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
                bool *cross_invocation, bool *indirect)
@@ -53,7 +64,10 @@ get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
    /* Vertex index is the outermost array index. */
    if (is_arrayed) {
       assert((*p)->deref_type == nir_deref_type_array);
-      *cross_invocation = !src_is_invocation_id(&(*p)->arr.index);
+      if (shader->info.stage == MESA_SHADER_TESS_CTRL)
+         *cross_invocation = !src_is_invocation_id(&(*p)->arr.index);
+      else if (shader->info.stage == MESA_SHADER_MESH)
+         *cross_invocation = !src_is_local_invocation_index(&(*p)->arr.index);
       p++;
    }
 
@@ -154,6 +168,8 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
             }
          }
 
+         if (cross_invocation && shader->info.stage == MESA_SHADER_MESH)
+            shader->info.mesh.ms_cross_invocation_output_access |= bitfield;
 
          if (var->data.fb_fetch_output) {
             shader->info.outputs_read |= bitfield;
@@ -592,6 +608,13 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
           !src_is_invocation_id(nir_get_io_arrayed_index_src(instr)))
          shader->info.tess.tcs_cross_invocation_outputs_read |= slot_mask;
 
+      /* NV_mesh_shader: mesh shaders can load their outputs. */
+      if (shader->info.stage == MESA_SHADER_MESH &&
+          (instr->intrinsic == nir_intrinsic_load_per_vertex_output ||
+           instr->intrinsic == nir_intrinsic_load_per_primitive_output) &&
+          !src_is_local_invocation_index(nir_get_io_arrayed_index_src(instr)))
+         shader->info.mesh.ms_cross_invocation_output_access |= slot_mask;
+
       if (shader->info.stage == MESA_SHADER_FRAGMENT &&
           nir_intrinsic_io_semantics(instr).fb_fetch_output)
          shader->info.fs.uses_fbfetch_output = true;
@@ -613,6 +636,12 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
             shader->info.outputs_accessed_indirectly_16bit |= slot_mask_16bit;
          }
       }
+
+      if (shader->info.stage == MESA_SHADER_MESH &&
+          (instr->intrinsic == nir_intrinsic_store_per_vertex_output ||
+           instr->intrinsic == nir_intrinsic_store_per_primitive_output) &&
+          !src_is_local_invocation_index(nir_get_io_arrayed_index_src(instr)))
+         shader->info.mesh.ms_cross_invocation_output_access |= slot_mask;
 
       if (shader->info.stage == MESA_SHADER_FRAGMENT &&
           nir_intrinsic_io_semantics(instr).dual_source_blend_index)

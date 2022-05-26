@@ -505,6 +505,11 @@ typedef struct shader_info {
 
       /* Applies to MESH. */
       struct {
+         /* Bit mask of MS outputs that are used
+          * with an index that is NOT the local invocation index.
+          */
+         uint64_t ms_cross_invocation_output_access;
+
          uint16_t max_vertices_out;
          uint16_t max_primitives_out;
          uint16_t primitive_type;  /* GL_POINTS, GL_LINES or GL_TRIANGLES. */
