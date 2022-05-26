@@ -2145,10 +2145,10 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
                          const VkPipelineColorBlendStateCreateInfo *blend_info,
                          const VkFormat attachment_formats[MAX_RTS],
                          uint32_t *blend_enable_mask,
-                         uint8_t *drawcall_base_cost)
+                         uint32_t *color_bandwidth_per_sample)
 {
    *blend_enable_mask = 0;
-   *drawcall_base_cost = 0;
+   *color_bandwidth_per_sample = 0;
 
    bool rop_reads_dst = false;
    uint32_t rb_mrt_control_rop = 0;
@@ -2159,7 +2159,7 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
          A6XX_RB_MRT_CONTROL_ROP_CODE(tu6_rop(blend_info->logicOp));
    }
 
-   uint32_t total_comps = 0;
+   uint32_t total_bpp = 0;
    for (uint32_t i = 0; i < blend_info->attachmentCount; i++) {
       const VkPipelineColorBlendAttachmentState *att =
          &blend_info->pAttachments[i];
@@ -2169,17 +2169,29 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
       uint32_t rb_mrt_blend_control = 0;
       if (format != VK_FORMAT_UNDEFINED) {
          const bool has_alpha = vk_format_has_alpha(format);
-         const uint32_t write_comps = util_bitcount(att->colorWriteMask);
 
          rb_mrt_control =
             tu6_rb_mrt_control(att, rb_mrt_control_rop, has_alpha);
          rb_mrt_blend_control = tu6_rb_mrt_blend_control(att, has_alpha);
 
-         total_comps += write_comps;
+         /* calculate bpp based on format and write mask */
+         uint32_t write_bpp = 0;
+         if (att->colorWriteMask == 0xf) {
+            write_bpp = vk_format_get_blocksizebits(format);
+         } else {
+            const enum pipe_format pipe_format = vk_format_to_pipe_format(format);
+            for (uint32_t i = 0; i < 4; i++) {
+               if (att->colorWriteMask & (1 << i)) {
+                  write_bpp += util_format_get_component_bits(pipe_format,
+                        UTIL_FORMAT_COLORSPACE_RGB, i);
+               }
+            }
+         }
+         total_bpp += write_bpp;
 
          if (att->blendEnable || rop_reads_dst) {
             *blend_enable_mask |= 1 << i;
-            total_comps += write_comps;
+            total_bpp += write_bpp;
          }
       }
 
@@ -2188,7 +2200,7 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
       tu_cs_emit(cs, rb_mrt_blend_control);
    }
 
-   *drawcall_base_cost = total_comps / 4;
+   *color_bandwidth_per_sample = total_bpp / 8;
 }
 
 static void
@@ -3364,6 +3376,8 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
       builder->create_info->pDepthStencilState;
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
+   const enum pipe_format pipe_format =
+      vk_format_to_pipe_format(builder->depth_attachment_format);
    uint32_t rb_depth_cntl = 0, rb_stencil_cntl = 0;
    struct tu_cs cs;
 
@@ -3387,6 +3401,9 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 
       if (ds_info->depthBoundsTestEnable && !ds_info->depthTestEnable)
          tu6_apply_depth_bounds_workaround(builder->device, &rb_depth_cntl);
+
+      pipeline->depth_cpp_per_sample = util_format_get_component_bits(
+            pipe_format, UTIL_FORMAT_COLORSPACE_ZS, 0) / 8;
    } else {
       /* if RB_DEPTH_CNTL is set dynamically, we need to make sure it is set
        * to 0 when this pipeline is used, as enabling depth test when there
@@ -3416,6 +3433,9 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
             A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
             A6XX_RB_STENCIL_CONTROL_STENCIL_READ;
       }
+
+      pipeline->stencil_cpp_per_sample = util_format_get_component_bits(
+            pipe_format, UTIL_FORMAT_COLORSPACE_ZS, 1) / 8;
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
@@ -3505,7 +3525,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    tu6_emit_rb_mrt_controls(&cs, blend_info,
                             builder->color_attachment_formats,
                             &blend_enable_mask,
-                            &pipeline->drawcall_base_cost);
+                            &pipeline->color_bandwidth_per_sample);
 
    tu6_emit_blend_control(&cs, blend_enable_mask,
                           builder->use_dual_src_blend, msaa_info);

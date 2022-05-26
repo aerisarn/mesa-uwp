@@ -491,6 +491,24 @@ fallback_use_bypass(const struct tu_render_pass *pass,
    return true;
 }
 
+static uint32_t
+get_render_pass_pixel_count(const struct tu_cmd_buffer *cmd)
+{
+   const VkExtent2D *extent = &cmd->state.render_area.extent;
+   return extent->width * extent->height;
+}
+
+static uint64_t
+estimate_drawcall_bandwidth(const struct tu_cmd_buffer *cmd,
+                            uint32_t avg_renderpass_sample_count)
+{
+   const struct tu_cmd_state *state = &cmd->state;
+
+   /* sample count times drawcall_bandwidth_per_sample */
+   return (uint64_t)avg_renderpass_sample_count *
+      state->drawcall_bandwidth_per_sample_sum / state->drawcall_count;
+}
+
 bool
 tu_autotune_use_bypass(struct tu_autotune *at,
                        struct tu_cmd_buffer *cmd_buffer,
@@ -539,40 +557,46 @@ tu_autotune_use_bypass(struct tu_autotune *at,
 
    uint32_t avg_samples = 0;
    if (get_history(at, renderpass_key, &avg_samples)) {
-      /* TODO we should account for load/stores/clears/resolves especially
-       * with low drawcall count and ~fb_size samples passed, in D3D11 games
-       * we are seeing many renderpasses like:
-       *  - color attachment load
-       *  - single fullscreen draw
-       *  - color attachment store
+      const uint32_t pass_pixel_count =
+         get_render_pass_pixel_count(cmd_buffer);
+      uint64_t sysmem_bandwidth =
+         (uint64_t)pass->sysmem_bandwidth_per_pixel * pass_pixel_count;
+      uint64_t gmem_bandwidth =
+         (uint64_t)pass->gmem_bandwidth_per_pixel * pass_pixel_count;
+
+      const uint64_t total_draw_call_bandwidth =
+         estimate_drawcall_bandwidth(cmd_buffer, avg_samples);
+
+      /* drawcalls access the memory in sysmem rendering (ignoring CCU) */
+      sysmem_bandwidth += total_draw_call_bandwidth;
+
+      /* drawcalls access gmem in gmem rendering, but we do not want to ignore
+       * them completely.  The state changes between tiles also have an
+       * overhead.  The magic numbers of 11 and 10 are randomly chosen.
        */
+      gmem_bandwidth = (gmem_bandwidth * 11 + total_draw_call_bandwidth) / 10;
 
-      /* Low sample count could mean there was only a clear.. or there was
-       * a clear plus draws that touch no or few samples
-       */
-      if (avg_samples < 500) {
-         if (TU_AUTOTUNE_DEBUG_LOG) {
-            mesa_logi("%016"PRIx64":%u\t avg_samples=%u selecting sysmem",
-               renderpass_key, cmd_buffer->state.drawcall_count, avg_samples);
-         }
-         return true;
-      }
-
-      /* Cost-per-sample is an estimate for the average number of reads+
-       * writes for a given passed sample.
-       */
-      float sample_cost = cmd_buffer->state.total_drawcalls_cost;
-      sample_cost /= cmd_buffer->state.drawcall_count;
-
-      float single_draw_cost = (avg_samples * sample_cost) / cmd_buffer->state.drawcall_count;
-
-      bool select_sysmem = single_draw_cost < 6000.0;
-
+      const bool select_sysmem = sysmem_bandwidth <= gmem_bandwidth;
       if (TU_AUTOTUNE_DEBUG_LOG) {
-         mesa_logi("%016"PRIx64":%u\t avg_samples=%u, "
-             "sample_cost=%f, single_draw_cost=%f selecting %s",
-             renderpass_key, cmd_buffer->state.drawcall_count, avg_samples,
-             sample_cost, single_draw_cost, select_sysmem ? "sysmem" : "gmem");
+         const VkExtent2D *extent = &cmd_buffer->state.render_area.extent;
+         const float drawcall_bandwidth_per_sample =
+            (float)cmd_buffer->state.drawcall_bandwidth_per_sample_sum /
+            cmd_buffer->state.drawcall_count;
+
+         mesa_logi("autotune %016" PRIx64 ":%u selecting %s",
+               renderpass_key,
+               cmd_buffer->state.drawcall_count,
+               select_sysmem ? "sysmem" : "gmem");
+         mesa_logi("   avg_samples=%u, draw_bandwidth_per_sample=%.2f, total_draw_call_bandwidth=%" PRIu64,
+               avg_samples,
+               drawcall_bandwidth_per_sample,
+               total_draw_call_bandwidth);
+         mesa_logi("   render_area=%ux%u, sysmem_bandwidth_per_pixel=%u, gmem_bandwidth_per_pixel=%u",
+               extent->width, extent->height,
+               pass->sysmem_bandwidth_per_pixel,
+               pass->gmem_bandwidth_per_pixel);
+         mesa_logi("   sysmem_bandwidth=%" PRIu64 ", gmem_bandwidth=%" PRIu64,
+               sysmem_bandwidth, gmem_bandwidth);
       }
 
       return select_sysmem;

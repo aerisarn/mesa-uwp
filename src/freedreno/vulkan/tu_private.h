@@ -1223,27 +1223,24 @@ struct tu_cmd_state
     * to:
     *
     *    foreach_draw (...) {
-    *      cost += num_frag_outputs;
-    *      if (blend_enabled)
-    *        cost += num_blend_enabled;
+    *      sum += pipeline->color_bandwidth_per_sample;
     *      if (depth_test_enabled)
-    *        cost++;
+    *        sum += pipeline->depth_cpp_per_sample;
     *      if (depth_write_enabled)
-    *        cost++;
+    *        sum += pipeline->depth_cpp_per_sample;
+    *      if (stencil_write_enabled)
+    *        sum += pipeline->stencil_cpp_per_sample * 2;
     *    }
+    *    drawcall_bandwidth_per_sample = sum / drawcall_count;
     *
-    * The idea is that each sample-passed minimally does one write
-    * per MRT.  If blend is enabled, the hw will additionally do
-    * a framebuffer read per sample-passed (for each MRT with blend
-    * enabled).  If depth-test is enabled, the hw will additionally
-    * a depth buffer read.  If depth-write is enable, the hw will
-    * additionally do a depth buffer write.
+    * It allows us to estimate the total bandwidth of drawcalls later, by
+    * calculating (drawcall_bandwidth_per_sample * zpass_sample_count).
     *
     * This does ignore depth buffer traffic for samples which do not
-    * pass do to depth-test fail, and some other details.  But it is
+    * pass due to depth-test fail, and some other details.  But it is
     * just intended to be a rough estimate that is easy to calculate.
     */
-   uint32_t total_drawcalls_cost;
+   uint32_t drawcall_bandwidth_per_sample_sum;
 
    struct tu_lrz_state lrz;
 
@@ -1506,8 +1503,11 @@ struct tu_pipeline
 
    bool z_negative_one_to_one;
 
-   /* Base drawcall cost for sysmem vs gmem autotuner */
-   uint8_t drawcall_base_cost;
+   /* memory bandwidth cost (in bytes) for color attachments */
+   uint32_t color_bandwidth_per_sample;
+
+   uint32_t depth_cpp_per_sample;
+   uint32_t stencil_cpp_per_sample;
 
    void *executables_mem_ctx;
    /* tu_pipeline_executable */

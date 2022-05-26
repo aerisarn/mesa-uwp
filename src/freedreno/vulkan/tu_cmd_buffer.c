@@ -3991,17 +3991,21 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    /* Fill draw stats for autotuner */
    cmd->state.drawcall_count++;
 
-   cmd->state.total_drawcalls_cost += cmd->state.pipeline->drawcall_base_cost;
+   cmd->state.drawcall_bandwidth_per_sample_sum +=
+      cmd->state.pipeline->color_bandwidth_per_sample;
 
    /* add depth memory bandwidth cost */
+   const uint32_t depth_bandwidth = cmd->state.pipeline->depth_cpp_per_sample;
    if (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE)
-      cmd->state.total_drawcalls_cost++;
+      cmd->state.drawcall_bandwidth_per_sample_sum += depth_bandwidth;
    if (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE)
-      cmd->state.total_drawcalls_cost++;
+      cmd->state.drawcall_bandwidth_per_sample_sum += depth_bandwidth;
 
    /* add stencil memory bandwidth cost */
+   const uint32_t stencil_bandwidth =
+      cmd->state.pipeline->stencil_cpp_per_sample;
    if (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE)
-      cmd->state.total_drawcalls_cost += 2;
+      cmd->state.drawcall_bandwidth_per_sample_sum += stencil_bandwidth * 2;
 
    tu_emit_cache_flush_renderpass(cmd, cs);
 
@@ -4808,7 +4812,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    cmd_buffer->state.has_subpass_predication = false;
    cmd_buffer->state.disable_gmem = false;
    cmd_buffer->state.drawcall_count = 0;
-   cmd_buffer->state.total_drawcalls_cost = 0;
+   cmd_buffer->state.drawcall_bandwidth_per_sample_sum = 0;
 
    /* LRZ is not valid next time we use it */
    cmd_buffer->state.lrz.valid = false;
