@@ -1912,6 +1912,11 @@ struct tu_render_pass
    uint32_t subpass_count;
    uint32_t gmem_pixels;
    uint32_t tile_align_w;
+
+   /* memory bandwidth costs (in bytes) for gmem / sysmem rendering */
+   uint32_t gmem_bandwidth_per_pixel;
+   uint32_t sysmem_bandwidth_per_pixel;
+
    struct tu_subpass_attachment *subpass_attachments;
    struct tu_render_pass_attachment *attachments;
    struct tu_subpass_barrier end_barrier;

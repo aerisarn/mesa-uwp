@@ -885,6 +885,28 @@ tu_CreateRenderPass2(VkDevice _device,
       tu_render_pass_gmem_config(pass, device->physical_device);
    }
 
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      const struct tu_render_pass_attachment *att = &pass->attachments[i];
+
+      /* approximate tu_load_gmem_attachment */
+      if (att->load)
+         pass->gmem_bandwidth_per_pixel += att->cpp;
+
+      /* approximate tu_store_gmem_attachment */
+      if (att->store)
+         pass->gmem_bandwidth_per_pixel += att->cpp;
+
+      /* approximate tu_clear_sysmem_attachment */
+      if (att->clear_mask)
+         pass->sysmem_bandwidth_per_pixel += att->cpp;
+
+      /* approximate tu6_emit_sysmem_resolves */
+      if (att->will_be_resolved) {
+         pass->sysmem_bandwidth_per_pixel +=
+            att->cpp + att->cpp / att->samples;
+      }
+   }
+
    for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
       tu_render_pass_add_subpass_dep(pass, &pCreateInfo->pDependencies[i]);
    }
