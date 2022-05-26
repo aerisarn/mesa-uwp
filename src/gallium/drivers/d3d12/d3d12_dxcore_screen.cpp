@@ -110,7 +110,17 @@ choose_dxcore_adapter(IDXCoreAdapterFactory *factory, LUID *adapter_luid)
       }
 #endif
 
-      // No adapter specified or not found, pick 0 as the default
+      // Adapter not specified or not found, so pick an integrated adapter if possible
+      for (unsigned i = 0; i < list->GetAdapterCount(); ++i) {
+         if (SUCCEEDED(list->GetAdapter(i, &adapter))) {
+            bool is_integrated;
+            if (SUCCEEDED(adapter->GetProperty(DXCoreAdapterProperty::IsIntegrated, &is_integrated)) && is_integrated)
+               return adapter;
+            adapter->Release();
+         }
+      }
+
+      // No integrated GPUs, so pick the first valid one
       if (list->GetAdapterCount() > 0 && SUCCEEDED(list->GetAdapter(0, &adapter)))
          return adapter;
    }
