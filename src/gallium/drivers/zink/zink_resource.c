@@ -606,7 +606,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       bool winsys_modifier = (export_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT) && whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
       uint64_t mods[10];
       bool try_modifiers = false;
-      if ((export_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT) && whandle && whandle->modifier == DRM_FORMAT_MOD_INVALID) {
+      if ((export_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT) &&
+          whandle && whandle->modifier == DRM_FORMAT_MOD_INVALID && whandle->stride) {
          modifiers = mods;
          modifiers_count = screen->modifier_props[templ->format].drmFormatModifierCount;
          for (unsigned j = 0; j < modifiers_count; j++)
