@@ -355,9 +355,8 @@ tu_autotune_on_submit(struct tu_device *dev,
       queue_pending_results(at, cmdbuf);
    }
 
-#if TU_AUTOTUNE_DEBUG_LOG != 0
-   mesa_logi("Total history entries: %u", at->ht->entries);
-#endif
+   if (TU_AUTOTUNE_DEBUG_LOG)
+      mesa_logi("Total history entries: %u", at->ht->entries);
 
    /* Cleanup old entries from history table. The assumption
     * here is that application doesn't hold many old unsubmitted
@@ -369,9 +368,8 @@ tu_autotune_on_submit(struct tu_device *dev,
           (new_fence - history->last_fence) <= MAX_HISTORY_LIFETIME)
          continue;
 
-#if TU_AUTOTUNE_DEBUG_LOG != 0
-      mesa_logi("Removed old history entry %016"PRIx64"", history->key);
-#endif
+      if (TU_AUTOTUNE_DEBUG_LOG)
+         mesa_logi("Removed old history entry %016"PRIx64"", history->key);
 
       u_rwlock_wrlock(&at->ht_lock);
       _mesa_hash_table_remove_key(at->ht, &history->key);
@@ -416,18 +414,18 @@ tu_autotune_init(struct tu_autotune *at, struct tu_device *dev)
 void
 tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
 {
-#if TU_AUTOTUNE_LOG_AT_FINISH != 0
-   while (!list_is_empty(&at->pending_results)) {
-      process_results(at);
-   }
+   if (TU_AUTOTUNE_LOG_AT_FINISH) {
+      while (!list_is_empty(&at->pending_results)) {
+         process_results(at);
+      }
 
-   hash_table_foreach(at->ht, entry) {
-      struct tu_renderpass_history *history = entry->data;
+      hash_table_foreach(at->ht, entry) {
+         struct tu_renderpass_history *history = entry->data;
 
-      mesa_logi("%016"PRIx64" \tavg_passed=%u results=%u",
-                history->key, history->avg_samples, history->num_results);
+         mesa_logi("%016"PRIx64" \tavg_passed=%u results=%u",
+                   history->key, history->avg_samples, history->num_results);
+      }
    }
-#endif
 
    tu_autotune_free_results(dev, &at->pending_results);
 
@@ -553,10 +551,10 @@ tu_autotune_use_bypass(struct tu_autotune *at,
        * a clear plus draws that touch no or few samples
        */
       if (avg_samples < 500) {
-#if TU_AUTOTUNE_DEBUG_LOG != 0
-         mesa_logi("%016"PRIx64":%u\t avg_samples=%u selecting sysmem",
-            renderpass_key, cmd_buffer->state.drawcall_count, avg_samples);
-#endif
+         if (TU_AUTOTUNE_DEBUG_LOG) {
+            mesa_logi("%016"PRIx64":%u\t avg_samples=%u selecting sysmem",
+               renderpass_key, cmd_buffer->state.drawcall_count, avg_samples);
+         }
          return true;
       }
 
@@ -570,12 +568,12 @@ tu_autotune_use_bypass(struct tu_autotune *at,
 
       bool select_sysmem = single_draw_cost < 6000.0;
 
-#if TU_AUTOTUNE_DEBUG_LOG != 0
-      mesa_logi("%016"PRIx64":%u\t avg_samples=%u, "
-          "sample_cost=%f, single_draw_cost=%f selecting %s",
-          renderpass_key, cmd_buffer->state.drawcall_count, avg_samples,
-          sample_cost, single_draw_cost, select_sysmem ? "sysmem" : "gmem");
-#endif
+      if (TU_AUTOTUNE_DEBUG_LOG) {
+         mesa_logi("%016"PRIx64":%u\t avg_samples=%u, "
+             "sample_cost=%f, single_draw_cost=%f selecting %s",
+             renderpass_key, cmd_buffer->state.drawcall_count, avg_samples,
+             sample_cost, single_draw_cost, select_sysmem ? "sysmem" : "gmem");
+      }
 
       return select_sysmem;
    }
