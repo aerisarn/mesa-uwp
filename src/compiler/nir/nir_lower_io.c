@@ -1820,22 +1820,30 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
    case nir_deref_type_var:
       return build_addr_for_var(b, deref->var, addr_format);
 
+   case nir_deref_type_ptr_as_array:
    case nir_deref_type_array: {
       unsigned stride = nir_deref_instr_array_stride(deref);
       assert(stride > 0);
 
+      unsigned offset_bit_size = addr_get_offset_bit_size(base_addr, addr_format);
       nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
-      index = nir_i2i(b, index, addr_get_offset_bit_size(base_addr, addr_format));
-      return build_addr_iadd(b, base_addr, addr_format, deref->modes,
-                                nir_amul_imm(b, index, stride));
-   }
+      nir_ssa_def *offset;
 
-   case nir_deref_type_ptr_as_array: {
-      nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
-      index = nir_i2i(b, index, addr_get_offset_bit_size(base_addr, addr_format));
-      unsigned stride = nir_deref_instr_array_stride(deref);
-      return build_addr_iadd(b, base_addr, addr_format, deref->modes,
-                                nir_amul_imm(b, index, stride));
+      /* If the access chain has been declared in-bounds, then we know it doesn't
+       * overflow the type.  For nir_deref_type_array, this implies it cannot be
+       * negative. Also, since types in NIR have a maximum 32-bit size, we know the
+       * final result will fit in a 32-bit value so we can convert the index to
+       * 32-bit before multiplying and save ourselves from a 64-bit multiply.
+       */
+      if (deref->arr.in_bounds && deref->deref_type == nir_deref_type_array) {
+         index = nir_u2u32(b, index);
+         offset = nir_u2u(b, nir_amul_imm(b, index, stride), offset_bit_size);
+      } else {
+         index = nir_i2i(b, index, offset_bit_size);
+         offset = nir_amul_imm(b, index, stride);
+      }
+
+      return build_addr_iadd(b, base_addr, addr_format, deref->modes, offset);
    }
 
    case nir_deref_type_array_wildcard:
