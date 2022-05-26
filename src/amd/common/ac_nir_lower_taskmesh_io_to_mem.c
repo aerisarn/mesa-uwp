@@ -147,8 +147,16 @@ task_workgroup_index(nir_builder *b,
 {
    nir_ssa_def *id = nir_load_workgroup_id(b, 32);
 
-   /* NV_mesh_shader: workgroups are always 1D, so index is the same as ID.x */
-   return nir_channel(b, id, 0);
+   nir_ssa_def *x = nir_channel(b, id, 0);
+   nir_ssa_def *y = nir_channel(b, id, 1);
+   nir_ssa_def *z = nir_channel(b, id, 2);
+
+   nir_ssa_def *grid_size = nir_load_num_workgroups(b, 32);
+   nir_ssa_def *grid_size_x = nir_channel(b, grid_size, 0);
+   nir_ssa_def *grid_size_y = nir_channel(b, grid_size, 1);
+
+   return nir_iadd(b, nir_imul(b, nir_imul(b, grid_size_x, grid_size_y), z),
+                      nir_iadd(b, nir_imul(b, grid_size_x, y), x));
 }
 
 static nir_ssa_def *
