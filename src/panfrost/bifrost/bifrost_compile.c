@@ -2292,8 +2292,8 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_pack_64_2x32_split:
                 bi_collect_v2i32_to(b, dst,
-                                    bi_src_index(&instr->src[0].src),
-                                    bi_src_index(&instr->src[1].src));
+                                    bi_extract(b, bi_src_index(&instr->src[0].src), instr->src[0].swizzle[0]),
+                                    bi_extract(b, bi_src_index(&instr->src[1].src), instr->src[1].swizzle[0]));
                 return;
 
         case nir_op_pack_64_2x32:
