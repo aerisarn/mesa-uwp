@@ -955,14 +955,16 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
          /* this is always scalarized */
          assert(intr->dest.ssa.num_components == 1);
          /* rewrite as 2x32 */
-         nir_ssa_def *load;
-         if (intr->intrinsic == nir_intrinsic_load_ssbo)
-            load = nir_load_ssbo(b, 2, 32, intr->src[0].ssa, intr->src[1].ssa, .align_mul = 4, .align_offset = 0);
-         else
-            load = nir_load_ubo(b, 2, 32, intr->src[0].ssa, intr->src[1].ssa, .align_mul = 4, .align_offset = 0, .range = 4);
-         nir_intrinsic_set_access(nir_instr_as_intrinsic(load->parent_instr), nir_intrinsic_access(intr));
+         nir_ssa_def *load[2];
+         for (unsigned i = 0; i < 2; i++) {
+            if (intr->intrinsic == nir_intrinsic_load_ssbo)
+               load[i] = nir_load_ssbo(b, 1, 32, intr->src[0].ssa, nir_iadd_imm(b, intr->src[1].ssa, i), .align_mul = 4, .align_offset = 0);
+            else
+               load[i] = nir_load_ubo(b, 1, 32, intr->src[0].ssa, nir_iadd_imm(b, intr->src[1].ssa, i), .align_mul = 4, .align_offset = 0, .range = 4);
+            nir_intrinsic_set_access(nir_instr_as_intrinsic(load[i]->parent_instr), nir_intrinsic_access(intr));
+         }
          /* cast back to 64bit */
-         nir_ssa_def *casted = nir_pack_64_2x32(b, load);
+         nir_ssa_def *casted = nir_pack_64_2x32_split(b, load[0], load[1]);
          nir_ssa_def_rewrite_uses(&intr->dest.ssa, casted);
          nir_instr_remove(instr);
       }
@@ -976,9 +978,11 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
          /* this is always scalarized */
          assert(intr->dest.ssa.num_components == 1);
          /* rewrite as 2x32 */
-         nir_ssa_def *load = nir_load_shared(b, 2, 32, intr->src[0].ssa, .align_mul = 4, .align_offset = 0);
+         nir_ssa_def *load[2];
+         for (unsigned i = 0; i < 2; i++)
+            load[i] = nir_load_shared(b, 1, 32, nir_iadd_imm(b, intr->src[0].ssa, i), .align_mul = 4, .align_offset = 0);
          /* cast back to 64bit */
-         nir_ssa_def *casted = nir_pack_64_2x32(b, load);
+         nir_ssa_def *casted = nir_pack_64_2x32_split(b, load[0], load[1]);
          nir_ssa_def_rewrite_uses(&intr->dest.ssa, casted);
          nir_instr_remove(instr);
          return true;
@@ -993,8 +997,8 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
          assert(intr->src[0].ssa->num_components == 1);
          /* cast to 32bit: nir_unpack_64_2x32 not supported by ntv */
          nir_ssa_def *casted = nir_vec2(b, nir_u2u32(b, intr->src[0].ssa), nir_u2u32(b, nir_ushr_imm(b, intr->src[0].ssa, 32)));
-         /* rewrite as 2x32 */
-         nir_store_ssbo(b, casted, intr->src[1].ssa, intr->src[2].ssa, .align_mul = 4, .align_offset = 0);
+         for (unsigned i = 0; i < 2; i++)
+            nir_store_ssbo(b, nir_channel(b, casted, i), intr->src[1].ssa, nir_iadd_imm(b, intr->src[2].ssa, i), .align_mul = 4, .align_offset = 0);
          nir_instr_remove(instr);
       }
       return true;
@@ -1007,8 +1011,8 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
          assert(intr->src[0].ssa->num_components == 1);
          /* cast to 32bit: nir_unpack_64_2x32 not supported by ntv */
          nir_ssa_def *casted = nir_vec2(b, nir_u2u32(b, intr->src[0].ssa), nir_u2u32(b, nir_ushr_imm(b, intr->src[0].ssa, 32)));
-         /* rewrite as 2x32 */
-         nir_store_shared(b, casted, intr->src[1].ssa, .align_mul = 4, .align_offset = 0);
+         for (unsigned i = 0; i < 2; i++)
+            nir_store_shared(b, nir_channel(b, casted, i), nir_iadd_imm(b, intr->src[1].ssa, i), .align_mul = 4, .align_offset = 0);
          nir_instr_remove(instr);
       }
       return true;
