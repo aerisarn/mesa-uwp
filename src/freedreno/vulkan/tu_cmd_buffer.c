@@ -3992,10 +3992,16 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    cmd->state.drawcall_count++;
 
    cmd->state.total_drawcalls_cost += cmd->state.pipeline->drawcall_base_cost;
+
+   /* add depth memory bandwidth cost */
    if (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE)
       cmd->state.total_drawcalls_cost++;
    if (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE)
       cmd->state.total_drawcalls_cost++;
+
+   /* add stencil memory bandwidth cost */
+   if (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE)
+      cmd->state.total_drawcalls_cost += 2;
 
    tu_emit_cache_flush_renderpass(cmd, cs);
 
