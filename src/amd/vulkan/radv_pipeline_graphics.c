@@ -2571,6 +2571,34 @@ radv_pipeline_create_ps_epilog(struct radv_device *device, struct radv_graphics_
    return true;
 }
 
+static unsigned
+radv_get_rasterization_prim(const struct radv_pipeline_stage *stages,
+                            const struct radv_pipeline_key *pipeline_key)
+{
+   unsigned rast_prim;
+
+   if (pipeline_key->unknown_rast_prim)
+      return -1;
+
+   if (stages[MESA_SHADER_GEOMETRY].nir) {
+      rast_prim =
+         si_conv_gl_prim_to_gs_out(stages[MESA_SHADER_GEOMETRY].nir->info.gs.output_primitive);
+   } else if (stages[MESA_SHADER_TESS_EVAL].nir) {
+      if (stages[MESA_SHADER_TESS_EVAL].nir->info.tess.point_mode) {
+         rast_prim = V_028A6C_POINTLIST;
+      } else {
+         rast_prim =
+            si_conv_tess_prim_to_gs_out(stages[MESA_SHADER_TESS_EVAL].nir->info.tess._primitive_mode);
+      }
+   } else if (stages[MESA_SHADER_MESH].nir) {
+      rast_prim = si_conv_gl_prim_to_gs_out(stages[MESA_SHADER_MESH].nir->info.mesh.primitive_type);
+   } else {
+      rast_prim = si_conv_prim_to_gs_out(pipeline_key->vs.topology, false);
+   }
+
+   return rast_prim;
+}
+
 static bool
 radv_skip_graphics_pipeline_compile(const struct radv_device *device,
                                     const struct radv_graphics_pipeline *pipeline,
@@ -2760,6 +2788,13 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    }
 
    radv_graphics_pipeline_link(device, pipeline, pipeline_key, stages);
+
+   if (stages[MESA_SHADER_FRAGMENT].nir) {
+      unsigned rast_prim = radv_get_rasterization_prim(stages, pipeline_key);
+
+      NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_nir_lower_fs_barycentric, pipeline_key,
+               rast_prim);
+   }
 
    radv_foreach_stage (i, active_nir_stages) {
       int64_t stage_start = os_time_get_nano();
