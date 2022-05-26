@@ -487,6 +487,19 @@ intrinsic("end_primitive_with_counter", src_comp=[1, 1], indices=[STREAM_ID])
 # Contains the final total vertex and primitive counts in the current GS thread.
 intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1], indices=[STREAM_ID])
 
+# Launches mesh shader workgroups from a task shader, with explicit task_payload.
+# Rules:
+# - This is a terminating instruction.
+# - May only occur in workgroup-uniform control flow.
+# - Dispatch sizes may be divergent (in which case the values
+#   from the first invocation are used).
+# Meaning of indices:
+# - BASE: address of the task_payload variable used.
+# - RANGE: size of the task_payload variable used.
+#
+# src[] = {vec(x, y, z)}
+intrinsic("launch_mesh_workgroups", src_comp=[3], indices=[BASE, RANGE])
+
 # Trace a ray through an acceleration structure
 #
 # This instruction has a lot of parameters:
