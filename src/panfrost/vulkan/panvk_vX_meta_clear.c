@@ -481,8 +481,11 @@ panvk_meta_clear_color_img(struct panvk_cmd_buffer *cmdbuf,
                   img->pimage.layout.format, false);
    memcpy(fbinfo->rts[0].clear_value, clearval, sizeof(fbinfo->rts[0].clear_value));
 
+   unsigned level_count = vk_image_subresource_level_count(&img->vk, range);
+   unsigned layer_count = vk_image_subresource_layer_count(&img->vk, range);
+
    for (unsigned level = range->baseMipLevel;
-        level < range->baseMipLevel + range->levelCount; level++) {
+        level < range->baseMipLevel + level_count; level++) {
       view.first_level = view.last_level = level;
       fbinfo->width = u_minify(img->pimage.layout.width, level);
       fbinfo->height = u_minify(img->pimage.layout.height, level);
@@ -490,7 +493,7 @@ panvk_meta_clear_color_img(struct panvk_cmd_buffer *cmdbuf,
       fbinfo->extent.maxy = fbinfo->height - 1;
 
       for (unsigned layer = range->baseArrayLayer;
-           layer < range->baseArrayLayer + range->layerCount; layer++) {
+           layer < range->baseArrayLayer + layer_count; layer++) {
          view.first_layer = view.last_layer = layer;
          panvk_cmd_open_batch(cmdbuf);
          panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
@@ -559,8 +562,11 @@ panvk_meta_clear_zs_img(struct panvk_cmd_buffer *cmdbuf,
    if (fbinfo->zs.clear.s)
       fbinfo->zs.clear_value.stencil = value->stencil;
 
+   unsigned level_count = vk_image_subresource_level_count(&img->vk, range);
+   unsigned layer_count = vk_image_subresource_layer_count(&img->vk, range);
+
    for (unsigned level = range->baseMipLevel;
-        level < range->baseMipLevel + range->levelCount; level++) {
+        level < range->baseMipLevel + level_count; level++) {
       view.first_level = view.last_level = level;
       fbinfo->width = u_minify(img->pimage.layout.width, level);
       fbinfo->height = u_minify(img->pimage.layout.height, level);
@@ -568,7 +574,7 @@ panvk_meta_clear_zs_img(struct panvk_cmd_buffer *cmdbuf,
       fbinfo->extent.maxy = fbinfo->height - 1;
 
       for (unsigned layer = range->baseArrayLayer;
-           layer < range->baseArrayLayer + range->layerCount; layer++) {
+           layer < range->baseArrayLayer + layer_count; layer++) {
          view.first_layer = view.last_layer = layer;
          panvk_cmd_open_batch(cmdbuf);
          panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
