@@ -236,36 +236,48 @@ task_write_draw_ring(nir_builder *b,
 }
 
 static bool
-filter_task_output_or_payload(const nir_instr *instr,
-                              UNUSED const void *state)
+filter_task_intrinsics(const nir_instr *instr,
+                       UNUSED const void *state)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   return intrin->intrinsic == nir_intrinsic_store_output ||
+   return intrin->intrinsic == nir_intrinsic_launch_mesh_workgroups ||
           intrin->intrinsic == nir_intrinsic_store_task_payload ||
           intrin->intrinsic == nir_intrinsic_load_task_payload;
 }
 
 static nir_ssa_def *
-lower_task_output_store(nir_builder *b,
-                        nir_intrinsic_instr *intrin,
-                        lower_tsms_io_state *s)
+lower_task_launch_mesh_workgroups(nir_builder *b,
+                                  nir_intrinsic_instr *intrin,
+                                  lower_tsms_io_state *s)
 {
-   /* NV_mesh_shader:
-    * Task shaders should only have 1 output: TASK_COUNT
-    * which is the number of launched mesh shader workgroups in 1D.
-    *
-    * Task count is one dimensional, but the HW needs X, Y, Z.
-    * Use the shader's value for X, and write Y=1, Z=1.
+   /* This intrinsic must be always in uniform control flow,
+    * so we assume that all invocations are active here.
     */
 
-   nir_ssa_def *store_val = nir_vec3(b, intrin->src[0].ssa,
-                                        nir_imm_int(b, 1),
-                                        nir_imm_int(b, 1));
+   /* Wait for all necessary stores to finish. */
+   nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
+                         .memory_scope = NIR_SCOPE_WORKGROUP,
+                         .memory_semantics = NIR_MEMORY_ACQ_REL,
+                         .memory_modes = nir_var_mem_task_payload | nir_var_shader_out |
+                                         nir_var_mem_ssbo | nir_var_mem_global);
 
-   task_write_draw_ring(b, store_val, 0, s);
+   /* On the first invocation, write the full draw ring entry. */
+   nir_ssa_def *invocation_index = nir_load_local_invocation_index(b);
+   nir_if *if_invocation_index_zero = nir_push_if(b, nir_ieq_imm(b, invocation_index, 0));
+   {
+      nir_ssa_def *dimensions = intrin->src[0].ssa;
+      nir_ssa_def *x = nir_channel(b, dimensions, 0);
+      nir_ssa_def *y = nir_channel(b, dimensions, 1);
+      nir_ssa_def *z = nir_channel(b, dimensions, 2);
+      nir_ssa_def *rdy = task_draw_ready_bit(b, s);
+      nir_ssa_def *store_val = nir_vec4(b, x, y, z, rdy);
+      task_write_draw_ring(b, store_val, 0, s);
+   }
+   nir_pop_if(b, if_invocation_index_zero);
+
    return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 }
 
@@ -321,37 +333,16 @@ lower_task_intrinsics(nir_builder *b,
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    lower_tsms_io_state *s = (lower_tsms_io_state *)state;
 
-   if (intrin->intrinsic == nir_intrinsic_store_output)
-      return lower_task_output_store(b, intrin, s);
-   else if (intrin->intrinsic == nir_intrinsic_store_task_payload)
-      return lower_task_payload_store(b, intrin, s);
-   else if (intrin->intrinsic == nir_intrinsic_load_task_payload)
-      return lower_taskmesh_payload_load(b, intrin, s);
-   else
-      unreachable("unsupported task shader intrinsic");
-}
-
-static void
-emit_task_finale(nir_builder *b, lower_tsms_io_state *s)
-{
-   /* We assume there is always a single end block in the shader. */
-   b->cursor = nir_after_block(nir_impl_last_block(b->impl));
-
-   /* Wait for all task_payload, output, SSBO and global stores to finish. */
-   nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
-                         .memory_scope = NIR_SCOPE_WORKGROUP,
-                         .memory_semantics = NIR_MEMORY_ACQ_REL,
-                         .memory_modes = nir_var_mem_task_payload | nir_var_shader_out |
-                                         nir_var_mem_ssbo | nir_var_mem_global);
-
-   nir_ssa_def *invocation_index = nir_load_local_invocation_index(b);
-   nir_if *if_invocation_index_zero = nir_push_if(b, nir_ieq_imm(b, invocation_index, 0));
-   {
-      /* Write ready bit. */
-      nir_ssa_def *ready_bit = task_draw_ready_bit(b, s);
-      task_write_draw_ring(b, ready_bit, 12, s);
+   switch (intrin->intrinsic) {
+      case nir_intrinsic_store_task_payload:
+         return lower_task_payload_store(b, intrin, s);
+      case nir_intrinsic_load_task_payload:
+         return lower_taskmesh_payload_load(b, intrin, s);
+      case nir_intrinsic_launch_mesh_workgroups:
+         return lower_task_launch_mesh_workgroups(b, intrin, s);
+      default:
+         unreachable("unsupported task shader intrinsic");
    }
-   nir_pop_if(b, if_invocation_index_zero);
 }
 
 void
@@ -360,6 +351,11 @@ ac_nir_lower_task_outputs_to_mem(nir_shader *shader,
                                  unsigned task_num_entries)
 {
    assert(util_is_power_of_two_nonzero(task_num_entries));
+
+   nir_lower_task_shader_options lower_ts_opt = {
+      .payload_to_shared_for_atomics = true,
+   };
+   NIR_PASS(_, shader, nir_lower_task_shader, lower_ts_opt);
 
    lower_tsms_io_state state = {
       .draw_entry_bytes = 16,
@@ -373,13 +369,11 @@ ac_nir_lower_task_outputs_to_mem(nir_shader *shader,
    nir_builder_init(b, impl);
 
    nir_shader_lower_instructions(shader,
-                                 filter_task_output_or_payload,
+                                 filter_task_intrinsics,
                                  lower_task_intrinsics,
                                  &state);
 
-   emit_task_finale(b, &state);
    nir_metadata_preserve(impl, nir_metadata_none);
-
    nir_validate_shader(shader, "after lowering task shader outputs to memory stores");
 }
 
