@@ -14,3 +14,6 @@ dEQP-VK.dynamic_rendering.basic.2_secondary_2_primary_cmdbuffers_resuming,Fail
 dEQP-VK.dynamic_rendering.basic.2_secondary_cmdbuffers_resuming,Fail
 dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_local_bit,Fail
 dEQP-VK.glsl.builtin.precision_double.determinant.compute.mat3,Fail
+# CTS bug (https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3717)
+dEQP-VK.fragment_operations.transient_attachment_bit.color_load_store_op_test_local_bit,Fail
+dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_local_bit,Fail
