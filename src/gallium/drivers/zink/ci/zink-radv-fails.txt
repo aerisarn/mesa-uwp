@@ -459,15 +459,6 @@ spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 
-# need to investigate this at some point
-spec@ext_framebuffer_multisample@accuracy 6 depth_resolve small depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy 8 depth_resolve small depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy all_samples depth_resolve small depthstencil,Fail
-
-spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 2,Fail
-spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 4,Fail
-spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 6,Fail
-spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 8,Fail
 spec@ext_framebuffer_multisample@alpha-to-one-dual-src-blend 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-one-dual-src-blend 4,Fail
 spec@ext_framebuffer_multisample@alpha-to-one-dual-src-blend 6,Fail
@@ -686,7 +677,6 @@ spec@!opengl 1.1@polygon-mode-offset@config 6: Expected blue pixel in center,Fai
 spec@!opengl 1.1@polygon-mode-offset@config 6: Expected white pixel on right edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 6: Expected white pixel on top edge,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
-spec@!opengl 1.1@polygon-offset,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_R3_G3_B2- swizzled- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB10_A2- swizzled- border color only,Fail
