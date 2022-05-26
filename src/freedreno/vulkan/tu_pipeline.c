@@ -1580,9 +1580,6 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
           (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz || fs->writes_smask)) {
          pipeline->lrz.force_late_z = true;
       }
-
-      pipeline->drawcall_base_cost +=
-         util_bitcount(fs_render_components) / util_bitcount(0xf);
    }
 }
 
@@ -2147,9 +2144,11 @@ static void
 tu6_emit_rb_mrt_controls(struct tu_cs *cs,
                          const VkPipelineColorBlendStateCreateInfo *blend_info,
                          const VkFormat attachment_formats[MAX_RTS],
-                         uint32_t *blend_enable_mask)
+                         uint32_t *blend_enable_mask,
+                         uint8_t *drawcall_base_cost)
 {
    *blend_enable_mask = 0;
+   *drawcall_base_cost = 0;
 
    bool rop_reads_dst = false;
    uint32_t rb_mrt_control_rop = 0;
@@ -2160,6 +2159,7 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
          A6XX_RB_MRT_CONTROL_ROP_CODE(tu6_rop(blend_info->logicOp));
    }
 
+   uint32_t total_comps = 0;
    for (uint32_t i = 0; i < blend_info->attachmentCount; i++) {
       const VkPipelineColorBlendAttachmentState *att =
          &blend_info->pAttachments[i];
@@ -2169,19 +2169,26 @@ tu6_emit_rb_mrt_controls(struct tu_cs *cs,
       uint32_t rb_mrt_blend_control = 0;
       if (format != VK_FORMAT_UNDEFINED) {
          const bool has_alpha = vk_format_has_alpha(format);
+         const uint32_t write_comps = util_bitcount(att->colorWriteMask);
 
          rb_mrt_control =
             tu6_rb_mrt_control(att, rb_mrt_control_rop, has_alpha);
          rb_mrt_blend_control = tu6_rb_mrt_blend_control(att, has_alpha);
 
-         if (att->blendEnable || rop_reads_dst)
+         total_comps += write_comps;
+
+         if (att->blendEnable || rop_reads_dst) {
             *blend_enable_mask |= 1 << i;
+            total_comps += write_comps;
+         }
       }
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
       tu_cs_emit(cs, rb_mrt_control);
       tu_cs_emit(cs, rb_mrt_blend_control);
    }
+
+   *drawcall_base_cost = total_comps / 4;
 }
 
 static void
@@ -3497,7 +3504,8 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    uint32_t blend_enable_mask;
    tu6_emit_rb_mrt_controls(&cs, blend_info,
                             builder->color_attachment_formats,
-                            &blend_enable_mask);
+                            &blend_enable_mask,
+                            &pipeline->drawcall_base_cost);
 
    tu6_emit_blend_control(&cs, blend_enable_mask,
                           builder->use_dual_src_blend, msaa_info);
@@ -3522,10 +3530,6 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
           */
          if (blendAttachment.blendEnable || blendAttachment.colorWriteMask != 0xf) {
             pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
-         }
-
-         if (blendAttachment.blendEnable) {
-            pipeline->drawcall_base_cost++;
          }
       }
    }
