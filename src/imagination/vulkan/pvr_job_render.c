@@ -30,6 +30,7 @@
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
 #include "pvr_csb.h"
+#include "pvr_csb_enum_helpers.h"
 #include "pvr_job_common.h"
 #include "pvr_job_context.h"
 #include "pvr_job_render.h"
@@ -1293,28 +1294,12 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
                                       struct pvr_render_job *job,
                                       struct pvr_winsys_fragment_state *state)
 {
+   const enum PVRX(CR_ISP_AA_MODE_TYPE)
+      isp_aa_mode = pvr_cr_isp_aa_mode_type(job->samples);
    const struct pvr_device_info *dev_info = &ctx->device->pdevice->dev_info;
-   enum PVRX(CR_ISP_AA_MODE_TYPE) isp_aa_mode;
    uint32_t isp_ctl;
 
    /* FIXME: what to do when job->run_frag is false? */
-
-   switch (job->samples) {
-   case 1:
-      isp_aa_mode = PVRX(CR_ISP_AA_MODE_TYPE_AA_NONE);
-      break;
-   case 2:
-      isp_aa_mode = PVRX(CR_ISP_AA_MODE_TYPE_AA_2X);
-      break;
-   case 3:
-      isp_aa_mode = PVRX(CR_ISP_AA_MODE_TYPE_AA_4X);
-      break;
-   case 8:
-      isp_aa_mode = PVRX(CR_ISP_AA_MODE_TYPE_AA_8X);
-      break;
-   default:
-      unreachable("Unsupported number of samples");
-   }
 
    /* FIXME: pass in the number of samples rather than isp_aa_mode? */
    pvr_setup_tiles_in_flight(dev_info,

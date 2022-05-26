@@ -33,6 +33,7 @@
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
 #include "pvr_csb.h"
+#include "pvr_csb_enum_helpers.h"
 #include "pvr_device_info.h"
 #include "pvr_end_of_tile.h"
 #include "pvr_formats.h"
@@ -3196,46 +3197,6 @@ static void pvr_setup_output_select(struct pvr_cmd_buffer *const cmd_buffer)
    }
 }
 
-/* clang-format off */
-static enum PVRX(TA_OBJTYPE)
-pvr_ppp_state_get_ispa_objtype_from_vk(const VkPrimitiveTopology topology)
-/* clang-format on */
-{
-   switch (topology) {
-   case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
-      return PVRX(TA_OBJTYPE_SPRITE_01UV);
-
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
-      return PVRX(TA_OBJTYPE_LINE);
-
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
-      return PVRX(TA_OBJTYPE_TRIANGLE);
-
-   default:
-      unreachable("Invalid topology.");
-      return 0;
-   }
-}
-
-static inline enum PVRX(TA_CMPMODE) pvr_cmpmode(VkCompareOp op)
-{
-   /* enum values are identical, so we can just cast the input directly. */
-   return (enum PVRX(TA_CMPMODE))op;
-}
-
-static inline enum PVRX(TA_ISPB_STENCILOP) pvr_stencilop(VkStencilOp op)
-{
-   /* enum values are identical, so we can just cast the input directly. */
-   return (enum PVRX(TA_ISPB_STENCILOP))op;
-}
-
 static void pvr_setup_isp_faces_and_control(
    struct pvr_cmd_buffer *const cmd_buffer,
    struct pvr_cmd_struct(TA_STATE_ISPA) *const ispa_out)
@@ -3262,8 +3223,7 @@ static void pvr_setup_isp_faces_and_control(
    const bool disable_all = raster_discard_enabled || !attachment;
 
    const VkPrimitiveTopology topology = gfx_pipeline->input_asm_state.topology;
-   const enum PVRX(TA_OBJTYPE)
-      obj_type = pvr_ppp_state_get_ispa_objtype_from_vk(topology);
+   const enum PVRX(TA_OBJTYPE) obj_type = pvr_ta_objtype(topology);
 
    const bool disable_stencil_write = disable_all;
    const bool disable_stencil_test =
@@ -3304,7 +3264,7 @@ static void pvr_setup_isp_faces_and_control(
       if (disable_depth_test)
          ispa.dcmpmode = PVRX(TA_CMPMODE_ALWAYS);
       else
-         ispa.dcmpmode = pvr_cmpmode(gfx_pipeline->depth_compare_op);
+         ispa.dcmpmode = pvr_ta_cmpmode(gfx_pipeline->depth_compare_op);
 
       /* FIXME: Can we just have this and remove the assignment above?
        * The user provides a depthTestEnable at vkCreateGraphicsPipelines()
@@ -3360,11 +3320,12 @@ static void pvr_setup_isp_faces_and_control(
             (!disable_stencil_write) * dynamic_state->write_mask.front;
          ispb.scmpmask = dynamic_state->compare_mask.front;
 
-         ispb.sop3 = pvr_stencilop(gfx_pipeline->stencil_front.pass_op);
-         ispb.sop2 = pvr_stencilop(gfx_pipeline->stencil_front.depth_fail_op);
-         ispb.sop1 = pvr_stencilop(gfx_pipeline->stencil_front.fail_op);
+         ispb.sop3 = pvr_ta_stencilop(gfx_pipeline->stencil_front.pass_op);
+         ispb.sop2 =
+            pvr_ta_stencilop(gfx_pipeline->stencil_front.depth_fail_op);
+         ispb.sop1 = pvr_ta_stencilop(gfx_pipeline->stencil_front.fail_op);
 
-         ispb.scmpmode = pvr_cmpmode(gfx_pipeline->stencil_front.compare_op);
+         ispb.scmpmode = pvr_ta_cmpmode(gfx_pipeline->stencil_front.compare_op);
       }
 
       pvr_csb_pack (&back_b, TA_STATE_ISPB, ispb) {
@@ -3372,11 +3333,11 @@ static void pvr_setup_isp_faces_and_control(
             (!disable_stencil_write) * dynamic_state->write_mask.back;
          ispb.scmpmask = dynamic_state->compare_mask.back;
 
-         ispb.sop3 = pvr_stencilop(gfx_pipeline->stencil_back.pass_op);
-         ispb.sop2 = pvr_stencilop(gfx_pipeline->stencil_back.depth_fail_op);
-         ispb.sop1 = pvr_stencilop(gfx_pipeline->stencil_back.fail_op);
+         ispb.sop3 = pvr_ta_stencilop(gfx_pipeline->stencil_back.pass_op);
+         ispb.sop2 = pvr_ta_stencilop(gfx_pipeline->stencil_back.depth_fail_op);
+         ispb.sop1 = pvr_ta_stencilop(gfx_pipeline->stencil_back.fail_op);
 
-         ispb.scmpmode = pvr_cmpmode(gfx_pipeline->stencil_back.compare_op);
+         ispb.scmpmode = pvr_ta_cmpmode(gfx_pipeline->stencil_back.compare_op);
       }
    }
 

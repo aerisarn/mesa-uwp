@@ -1298,24 +1298,6 @@ to_pvr_graphics_pipeline(struct pvr_pipeline *pipeline)
    return container_of(pipeline, struct pvr_graphics_pipeline, base);
 }
 
-/* FIXME: Place this in USC specific header? */
-/* clang-format off */
-static inline enum PVRX(PDSINST_DOUTU_SAMPLE_RATE)
-pvr_sample_rate_from_usc_msaa_mode(enum rogue_msaa_mode msaa_mode)
-/* clang-format on */
-{
-   switch (msaa_mode) {
-   case ROGUE_MSAA_MODE_PIXEL:
-      return PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE);
-   case ROGUE_MSAA_MODE_SELECTIVE:
-      return PVRX(PDSINST_DOUTU_SAMPLE_RATE_SELECTIVE);
-   case ROGUE_MSAA_MODE_FULL:
-      return PVRX(PDSINST_DOUTU_SAMPLE_RATE_FULL);
-   default:
-      unreachable("Undefined MSAA mode.");
-   }
-}
-
 VkResult pvr_pds_fragment_program_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *allocator,

@@ -35,6 +35,7 @@
 #include "nir/nir.h"
 #include "pvr_bo.h"
 #include "pvr_csb.h"
+#include "pvr_csb_enum_helpers.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
 #include "pvr_shader.h"
@@ -162,7 +163,7 @@ VkResult pvr_pds_fragment_program_create_and_upload(
    struct pvr_pds_upload *const pds_upload_out)
 {
    const enum PVRX(PDSINST_DOUTU_SAMPLE_RATE)
-      sample_rate = pvr_sample_rate_from_usc_msaa_mode(msaa_mode);
+      sample_rate = pvr_pdsinst_doutu_sample_rate_from_rogue(msaa_mode);
    struct pvr_pds_kickusc_program program = { 0 };
    uint32_t staging_buffer_size;
    uint32_t *staging_buffer;
