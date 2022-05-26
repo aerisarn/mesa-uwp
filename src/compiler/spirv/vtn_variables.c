@@ -459,6 +459,7 @@ vtn_pointer_dereference(struct vtn_builder *b,
          tail = nir_build_deref_array(&b->nb, tail, arr_index);
          type = type->array_element;
       }
+      tail->arr.in_bounds = deref_chain->in_bounds;
 
       access |= type->access;
    }
@@ -2463,6 +2464,8 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_type *ptr_type = vtn_get_type(b, w[1]);
 
       struct vtn_pointer *base = vtn_pointer(b, w[3]);
+
+      chain->in_bounds = (opcode == SpvOpInBoundsAccessChain || opcode == SpvOpInBoundsPtrAccessChain);
 
       /* Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/3406 */
       access |= base->access & ACCESS_NON_UNIFORM;
