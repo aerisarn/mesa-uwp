@@ -2102,8 +2102,10 @@ radv_CmdBuildAccelerationStructuresKHR(
                else
                   prim_consts.index_addr += ppBuildRangeInfos[i][j].primitiveOffset;
 
-               prim_consts.transform_addr = geom->geometry.triangles.transformData.deviceAddress +
-                                            ppBuildRangeInfos[i][j].transformOffset;
+               prim_consts.transform_addr = geom->geometry.triangles.transformData.deviceAddress;
+               if (prim_consts.transform_addr)
+                  prim_consts.transform_addr += ppBuildRangeInfos[i][j].transformOffset;
+
                prim_consts.vertex_stride = geom->geometry.triangles.vertexStride;
                prim_consts.vertex_format = geom->geometry.triangles.vertexFormat;
                prim_consts.index_format = geom->geometry.triangles.indexType;
