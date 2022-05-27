@@ -29,7 +29,6 @@ Here's a list of those requirements:
 
   * ``logicOp``
   * ``fillModeNonSolid``
-  * ``largePoints``
   * ``alphaToOne``
   * ``shaderClipDistance``
 
