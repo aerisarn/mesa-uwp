@@ -654,7 +654,7 @@ zink_context_invalidate_descriptor_state_lazy(struct zink_context *ctx, enum pip
       dd_lazy(ctx)->push_state_changed[shader == PIPE_SHADER_COMPUTE] = true;
    else {
       if (zink_screen(ctx->base.screen)->compact_descriptors && type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
-         type -= 2;
+         type -= ZINK_DESCRIPTOR_COMPACT;
       dd_lazy(ctx)->state_changed[shader == PIPE_SHADER_COMPUTE] |= BITFIELD_BIT(type);
    }
 }

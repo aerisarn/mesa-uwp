@@ -40,6 +40,8 @@ extern "C" {
 #define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
 #endif
 
+#define ZINK_DESCRIPTOR_COMPACT 2
+
 enum zink_descriptor_type {
    ZINK_DESCRIPTOR_TYPE_UBO,
    ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW,
