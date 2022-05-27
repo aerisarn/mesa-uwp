@@ -193,6 +193,7 @@ gl_nir_link_assign_xfb_resources(const struct gl_constants *consts,
    linked_xfb->ActiveBuffers = buffers;
 
    ralloc_free(xfb_info);
+   ralloc_free(varyings_info);
 }
 
 struct nir_xfb_info *
