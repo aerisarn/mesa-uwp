@@ -1348,7 +1348,7 @@ static int get_picture_storage(struct radeon_encoder *enc)
          oldest_idx = i;
       }
 
-   if (oldest_idx > 0)
+   if (oldest_idx >= 0)
       enc->dpb[oldest_idx].in_use = FALSE;
 
    return oldest_idx;
