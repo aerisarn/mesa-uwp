@@ -136,10 +136,16 @@ nir_is_arrayed_io(const nir_variable *var, gl_shader_stage stage)
          return var->data.per_primitive;
    }
 
-   if (var->data.mode == nir_var_shader_in)
+   if (var->data.mode == nir_var_shader_in) {
+      if (var->data.per_vertex) {
+         assert(stage == MESA_SHADER_FRAGMENT);
+         return true;
+      }
+
       return stage == MESA_SHADER_GEOMETRY ||
              stage == MESA_SHADER_TESS_CTRL ||
              stage == MESA_SHADER_TESS_EVAL;
+   }
 
    if (var->data.mode == nir_var_shader_out)
       return stage == MESA_SHADER_TESS_CTRL ||
@@ -254,7 +260,8 @@ emit_load(struct lower_io_state *state,
           nir->options->use_interpolated_input_intrinsics &&
           var->data.interpolation != INTERP_MODE_FLAT &&
           !var->data.per_primitive) {
-         if (var->data.interpolation == INTERP_MODE_EXPLICIT) {
+         if (var->data.interpolation == INTERP_MODE_EXPLICIT ||
+             var->data.per_vertex) {
             assert(array_index != NULL);
             op = nir_intrinsic_load_input_vertex;
          } else {

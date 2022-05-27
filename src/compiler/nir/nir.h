@@ -638,6 +638,12 @@ typedef struct nir_variable {
       unsigned per_primitive:1;
 
       /**
+       * Whether the variable is declared to indicate that a fragment shader
+       * input will not have interpolated values.
+       */
+      unsigned per_vertex:1;
+
+      /**
        * \brief Layout qualifier for gl_FragDepth. See nir_depth_layout.
        *
        * This is not equal to \c ir_depth_layout_none if and only if this
