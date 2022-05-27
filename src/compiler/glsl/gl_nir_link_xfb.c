@@ -74,7 +74,8 @@ gl_nir_link_assign_xfb_resources(const struct gl_constants *consts,
       struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
 
       if (sh && stage != MESA_SHADER_TESS_CTRL) {
-         xfb_info = nir_gather_xfb_info_with_varyings(sh->Program->nir, NULL, &varyings_info);
+         nir_gather_xfb_info_with_varyings(sh->Program->nir, NULL, &varyings_info);
+         xfb_info = sh->Program->nir->xfb_info;
          break;
       }
    }
@@ -192,7 +193,6 @@ gl_nir_link_assign_xfb_resources(const struct gl_constants *consts,
 
    linked_xfb->ActiveBuffers = buffers;
 
-   ralloc_free(xfb_info);
    ralloc_free(varyings_info);
 }
 
