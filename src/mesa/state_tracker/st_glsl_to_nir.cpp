@@ -526,8 +526,18 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
       nir_var_shader_in | nir_var_shader_out | nir_var_function_temp;
    nir_remove_dead_variables(nir, mask, NULL);
 
-   if (!st->has_hw_atomics && !screen->get_param(screen, PIPE_CAP_NIR_ATOMICS_AS_DEREF))
-      NIR_PASS_V(nir, nir_lower_atomics_to_ssbo);
+   if (!st->has_hw_atomics && !screen->get_param(screen, PIPE_CAP_NIR_ATOMICS_AS_DEREF)) {
+      unsigned align_offset_state = 0;
+      if (st->ctx->Const.ShaderStorageBufferOffsetAlignment > 4) {
+         struct gl_program_parameter_list *params = prog->Parameters;
+         for (unsigned i = 0; i < shader_program->data->NumAtomicBuffers; i++) {
+            gl_state_index16 state[STATE_LENGTH] = { STATE_ATOMIC_COUNTER_OFFSET, (short)shader_program->data->AtomicBuffers[i].Binding };
+            _mesa_add_state_reference(params, state);
+         }
+         align_offset_state = STATE_ATOMIC_COUNTER_OFFSET;
+      }
+      NIR_PASS_V(nir, nir_lower_atomics_to_ssbo, align_offset_state);
+   }
 
    st_set_prog_affected_state_flags(prog);
 

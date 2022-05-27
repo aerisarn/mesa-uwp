@@ -143,7 +143,7 @@ load_glsl(unsigned num_files, char *const *files, gl_shader_stage stage)
    nir_print_shader(nir, stdout);
    NIR_PASS_V(nir, gl_nir_lower_atomics, prog, true);
    NIR_PASS_V(nir, gl_nir_lower_buffers, prog);
-   NIR_PASS_V(nir, nir_lower_atomics_to_ssbo);
+   NIR_PASS_V(nir, nir_lower_atomics_to_ssbo, 0);
    nir_print_shader(nir, stdout);
 
    switch (stage) {
