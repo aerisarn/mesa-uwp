@@ -1515,6 +1515,17 @@ static bool si_lower_io_to_mem(const union si_shader_key *key,
    return false;
 }
 
+struct nir_shader *si_deserialize_shader(struct si_shader_selector *sel)
+{
+   struct pipe_screen *screen = &sel->screen->b;
+   const void *options = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR,
+                                                      pipe_shader_type_from_mesa(sel->stage));
+
+   struct blob_reader blob_reader;
+   blob_reader_init(&blob_reader, sel->nir_binary, sel->nir_size);
+   return nir_deserialize(NULL, options, &blob_reader);
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
                                      const union si_shader_key *key,
                                      bool *free_nir,
@@ -1526,14 +1537,8 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
    if (sel->nir) {
       nir = sel->nir;
    } else if (sel->nir_binary) {
-      struct pipe_screen *screen = &sel->screen->b;
-      const void *options = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR,
-                                                         pipe_shader_type_from_mesa(sel->stage));
-
-      struct blob_reader blob_reader;
-      blob_reader_init(&blob_reader, sel->nir_binary, sel->nir_size);
+      nir = si_deserialize_shader(sel);
       *free_nir = true;
-      nir = nir_deserialize(NULL, options, &blob_reader);
    } else {
       return NULL;
    }
