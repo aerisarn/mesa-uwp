@@ -32,7 +32,7 @@ lookup_blorp_shader(struct blorp_batch *batch,
    struct anv_device *device = blorp->driver_ctx;
 
    struct anv_shader_bin *bin =
-      anv_device_search_for_kernel(device, device->blorp_cache,
+      anv_device_search_for_kernel(device, device->internal_cache,
                                    key, key_size, NULL);
    if (!bin)
       return false;
@@ -65,7 +65,7 @@ upload_blorp_shader(struct blorp_batch *batch, uint32_t stage,
    };
 
    struct anv_shader_bin *bin =
-      anv_device_upload_kernel(device, device->blorp_cache, stage,
+      anv_device_upload_kernel(device, device->internal_cache, stage,
                                key, key_size, kernel, kernel_size,
                                prog_data, prog_data_size,
                                NULL, 0, NULL, &bind_map);
@@ -84,23 +84,9 @@ upload_blorp_shader(struct blorp_batch *batch, uint32_t stage,
    return true;
 }
 
-bool
+void
 anv_device_init_blorp(struct anv_device *device)
 {
-   /* BLORP needs its own pipeline cache because, unlike the rest of ANV, it
-    * won't work at all without the cache.  It depends on it for shaders to
-    * remain resident while it runs.  Therefore, we need a special cache just
-    * for BLORP that's forced to always be enabled.
-    */
-   struct vk_pipeline_cache_create_info pcc_info = {
-      .force_enable = true,
-   };
-   device->blorp_cache =
-      vk_pipeline_cache_create(&device->vk, &pcc_info, NULL);
-   if (device->blorp_cache == NULL)
-      return false;
-
-
    const struct blorp_config config = {
       .use_mesh_shading = device->physical->vk.supported_extensions.NV_mesh_shader,
    };
@@ -134,13 +120,11 @@ anv_device_init_blorp(struct anv_device *device)
    default:
       unreachable("Unknown hardware generation");
    }
-   return true;
 }
 
 void
 anv_device_finish_blorp(struct anv_device *device)
 {
-   vk_pipeline_cache_destroy(device->blorp_cache, NULL);
    blorp_finish(&device->blorp);
 }
 

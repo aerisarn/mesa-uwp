@@ -3462,14 +3462,26 @@ VkResult anv_CreateDevice(
       goto fail_trivial_batch_bo_and_scratch_pool;
    }
 
-   result = anv_device_init_rt_shaders(device);
-   if (result != VK_SUCCESS)
-      goto fail_default_pipeline_cache;
-
-   if (!anv_device_init_blorp(device)) {
+   /* Internal shaders need their own pipeline cache because, unlike the rest
+    * of ANV, it won't work at all without the cache. It depends on it for
+    * shaders to remain resident while it runs. Therefore, we need a special
+    * cache just for BLORP/RT that's forced to always be enabled.
+    */
+   pcc_info.force_enable = true;
+   device->internal_cache =
+      vk_pipeline_cache_create(&device->vk, &pcc_info, NULL);
+   if (device->internal_cache == NULL) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_rt_shaders;
+      goto fail_default_pipeline_cache;
    }
+
+   result = anv_device_init_rt_shaders(device);
+   if (result != VK_SUCCESS) {
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_internal_cache;
+   }
+
+   anv_device_init_blorp(device);
 
    anv_device_init_border_colors(device);
 
@@ -3481,8 +3493,8 @@ VkResult anv_CreateDevice(
 
    return VK_SUCCESS;
 
- fail_rt_shaders:
-   anv_device_finish_rt_shaders(device);
+ fail_internal_cache:
+   vk_pipeline_cache_destroy(device->internal_cache, NULL);
  fail_default_pipeline_cache:
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
  fail_trivial_batch_bo_and_scratch_pool:
@@ -3556,6 +3568,7 @@ void anv_DestroyDevice(
 
    anv_device_finish_rt_shaders(device);
 
+   vk_pipeline_cache_destroy(device->internal_cache, NULL);
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
 
 #ifdef HAVE_VALGRIND

@@ -1197,7 +1197,7 @@ struct anv_device {
     struct anv_state                            null_surface_state;
 
     struct vk_pipeline_cache *                  default_pipeline_cache;
-    struct vk_pipeline_cache *                  blorp_cache;
+    struct vk_pipeline_cache *                  internal_cache;
     struct blorp_context                        blorp;
 
     struct anv_state                            border_colors;
@@ -1318,7 +1318,7 @@ anv_mocs(const struct anv_device *device,
    return isl_mocs(&device->isl_dev, usage, bo && bo->is_external);
 }
 
-bool anv_device_init_blorp(struct anv_device *device);
+void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 
 enum anv_bo_alloc_flags {
