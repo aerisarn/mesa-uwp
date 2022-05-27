@@ -27,7 +27,6 @@
 
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
-#include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
@@ -2810,20 +2809,6 @@ get_vs_output_info(const struct radv_graphics_pipeline *pipeline)
 }
 
 static bool
-radv_nir_stage_uses_xfb(const nir_shader *nir)
-{
-   /* Mesh shaders don't support XFB. */
-   if (nir->info.stage == MESA_SHADER_MESH)
-      return false;
-
-   nir_xfb_info *xfb = nir_shader_get_xfb_info(nir, NULL);
-   bool uses_xfb = !!xfb;
-
-   ralloc_free(xfb);
-   return uses_xfb;
-}
-
-static bool
 radv_lower_viewport_to_zero(nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
@@ -3091,7 +3076,7 @@ radv_link_shaders(struct radv_pipeline *pipeline,
 
    if (!optimize_conservatively) {
       bool uses_xfb = last_vgt_api_stage != -1 &&
-                      radv_nir_stage_uses_xfb(stages[last_vgt_api_stage].nir);
+                      stages[last_vgt_api_stage].nir->xfb_info;
 
       for (unsigned i = 0; i < shader_count; ++i) {
          shader_info *info = &ordered_shaders[i]->info;
@@ -3559,7 +3544,7 @@ radv_fill_shader_info_ngg(struct radv_pipeline *pipeline,
       }
 
       bool uses_xfb = stages[last_xfb_stage].nir &&
-                      radv_nir_stage_uses_xfb(stages[last_xfb_stage].nir);
+                      stages[last_xfb_stage].nir->xfb_info;
 
       if (!device->physical_device->use_ngg_streamout && uses_xfb) {
          /* GFX11+ requires NGG. */

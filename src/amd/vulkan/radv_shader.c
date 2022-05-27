@@ -28,6 +28,7 @@
 #include "radv_shader.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
+#include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
 #include "util/memstream.h"
 #include "util/mesa-sha1.h"
@@ -958,6 +959,11 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       /* Optimize the lowered code before the linking optimizations. */
       radv_optimize_nir(nir, false, false);
    }
+
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       nir->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, nir_shader_gather_xfb_info);
 
    return nir;
 }

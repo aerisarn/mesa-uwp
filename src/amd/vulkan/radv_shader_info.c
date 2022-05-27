@@ -399,12 +399,12 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 static void
 gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
 {
-   nir_xfb_info *xfb = nir_shader_get_xfb_info(nir, NULL);
    struct radv_streamout_info *so = &info->so;
 
-   if (!xfb)
+   if (!nir->xfb_info)
       return;
 
+   const nir_xfb_info *xfb = nir->xfb_info;
    assert(xfb->output_count <= MAX_SO_OUTPUTS);
    so->num_outputs = xfb->output_count;
 
@@ -423,8 +423,6 @@ gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
    for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++) {
       so->strides[i] = xfb->buffers[i].stride / 4;
    }
-
-   ralloc_free(xfb);
 }
 
 static void
