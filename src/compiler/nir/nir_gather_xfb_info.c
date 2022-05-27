@@ -178,12 +178,6 @@ compare_xfb_output_offsets(const void *_a, const void *_b)
    return a->offset - b->offset;
 }
 
-nir_xfb_info *
-nir_shader_get_xfb_info(const nir_shader *shader, void *mem_ctx)
-{
-   return nir_gather_xfb_info_with_varyings(shader, mem_ctx, NULL);
-}
-
 void
 nir_shader_gather_xfb_info(nir_shader *shader)
 {
