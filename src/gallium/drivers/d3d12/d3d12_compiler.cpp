@@ -702,11 +702,13 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
     * and outputs. */
 
    if (!d3d12_compare_varying_info(&expect->required_varying_inputs,
-                                   &have->required_varying_inputs))
+                                   &have->required_varying_inputs) ||
+       expect->next_varying_inputs != have->next_varying_inputs)
       return false;
 
    if (!d3d12_compare_varying_info(&expect->required_varying_outputs,
-                                   &have->required_varying_outputs))
+                                   &have->required_varying_outputs) ||
+       expect->prev_varying_outputs != have->prev_varying_outputs)
       return false;
 
    if (expect->stage == PIPE_SHADER_GEOMETRY) {
