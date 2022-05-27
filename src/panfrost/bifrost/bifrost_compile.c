@@ -4748,6 +4748,76 @@ bi_pack_clauses(bi_context *ctx, struct util_dynarray *binary, unsigned offset)
         }
 }
 
+/*
+ * Build a bit mask of varyings (by location) that are flatshaded. This
+ * information is needed by lower_mediump_io, as we don't yet support 16-bit
+ * flat varyings.
+ *
+ * Also varyings that are used as texture coordinates should be kept at fp32 so
+ * the texture instruction may be promoted to VAR_TEX. In general this is a good
+ * idea, as fp16 texture coordinates are not supported by the hardware and are
+ * usually inappropriate. (There are both relevant CTS bugs here, even.)
+ *
+ * TODO: If we compacted the varyings with some fixup code in the vertex shader,
+ * we could implement 16-bit flat varyings. Consider if this case matters.
+ *
+ * TODO: The texture coordinate handling could be less heavyhanded.
+ */
+static bool
+bi_gather_texcoords(nir_builder *b, nir_instr *instr, void *data)
+{
+        uint64_t *mask = data;
+
+        if (instr->type != nir_instr_type_tex)
+                return false;
+
+        nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+        int coord_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+        if (coord_idx < 0)
+                return false;
+
+        nir_src src = tex->src[coord_idx].src;
+        assert(src.is_ssa);
+
+        nir_ssa_scalar x = nir_ssa_scalar_resolved(src.ssa, 0);
+        nir_ssa_scalar y = nir_ssa_scalar_resolved(src.ssa, 1);
+
+        if (x.def != y.def)
+                return false;
+
+        nir_instr *parent = x.def->parent_instr;
+
+        if (parent->type != nir_instr_type_intrinsic)
+                return false;
+
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(parent);
+
+        if (intr->intrinsic != nir_intrinsic_load_interpolated_input)
+                return false;
+
+        nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+        *mask |= BITFIELD64_BIT(sem.location);
+        return false;
+}
+
+static uint64_t
+bi_fp32_varying_mask(nir_shader *nir)
+{
+        uint64_t mask = 0;
+
+        assert(nir->info.stage == MESA_SHADER_FRAGMENT);
+
+        nir_foreach_shader_in_variable(var, nir) {
+                if (var->data.interpolation == INTERP_MODE_FLAT)
+                        mask |= BITFIELD64_BIT(var->data.location);
+        }
+
+        nir_shader_instructions_pass(nir, bi_gather_texcoords, nir_metadata_all, &mask);
+
+        return mask;
+}
+
 static void
 bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 {
@@ -4790,8 +4860,9 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS_V(nir, nir_opt_constant_folding);
 
         if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-                NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
-                                ~0, false);
+                NIR_PASS_V(nir, nir_lower_mediump_io,
+                           nir_var_shader_in | nir_var_shader_out,
+                           ~bi_fp32_varying_mask(nir), false);
         } else {
                 if (gpu_id >= 0x9000) {
                         NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
