@@ -2838,6 +2838,7 @@ emit_vote(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    default:
       unreachable("unknown vote intrinsic");
    }
+   spirv_builder_emit_cap(&ctx->builder, SpvCapabilityGroupNonUniformVote);
    SpvId result = spirv_builder_emit_vote(&ctx->builder, op, get_src(ctx, &intr->src[0]));
    store_dest_raw(ctx, &intr->dest, result);
 }
