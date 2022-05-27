@@ -165,6 +165,11 @@ vtn_mediump_downconvert(struct vtn_builder *b, enum glsl_base_type base_type, ni
    case GLSL_TYPE_INT:
    case GLSL_TYPE_UINT:
       return nir_i2imp(&b->nb, def);
+   /* Workaround for 3DMark Wild Life which has RelaxedPrecision on
+    * OpLogical* operations (which is forbidden by spec).
+    */
+   case GLSL_TYPE_BOOL:
+      return def;
    default:
       unreachable("bad relaxed precision input type");
    }
