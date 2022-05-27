@@ -941,9 +941,11 @@ vn_android_get_ahb_format_properties(
          : VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
 
    /* ANGLE expects VK_FORMAT_UNDEFINED with externalFormat resolved from
-    * AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED.
+    * AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED and any supported planar
+    * AHB formats (venus supports AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420).
     */
-   if (desc.format == AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED)
+   if (desc.format == AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED ||
+       desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420)
       format = VK_FORMAT_UNDEFINED;
 
    *out_props = (VkAndroidHardwareBufferFormatPropertiesANDROID) {
