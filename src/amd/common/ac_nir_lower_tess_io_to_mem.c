@@ -705,6 +705,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
                                uint64_t tes_patch_inputs_read,
                                unsigned num_reserved_tcs_outputs,
                                unsigned num_reserved_tcs_patch_outputs,
+                               unsigned wave_size,
                                bool pass_tessfactors_by_reg,
                                bool emit_tess_factor_write)
 {
@@ -717,7 +718,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
       .tes_patch_inputs_read = tes_patch_inputs_read,
       .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
       .tcs_num_reserved_patch_outputs = num_reserved_tcs_patch_outputs,
-      .tcs_out_patch_fits_subgroup = 32 % shader->info.tess.tcs_vertices_out == 0,
+      .tcs_out_patch_fits_subgroup = wave_size % shader->info.tess.tcs_vertices_out == 0,
       .tcs_pass_tessfactors_by_reg = pass_tessfactors_by_reg,
       .map_io = map,
    };
