@@ -661,10 +661,12 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 static void
 tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
 {
-   nir_xfb_info *xfb = nir_shader_get_xfb_info(nir, NULL);
+   nir_shader_gather_xfb_info(nir);
 
-   if (!xfb)
+   if (!nir->xfb_info)
       return;
+
+   nir_xfb_info *xfb = nir->xfb_info;
 
    uint8_t output_map[VARYING_SLOT_TESS_MAX];
    memset(output_map, 0, sizeof(output_map));
@@ -696,8 +698,6 @@ tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
       info->output[i].dst_offset = xfb->outputs[i].offset / 4;
       info->output[i].stream = xfb->buffer_to_stream[xfb->outputs[i].buffer];
    }
-
-   ralloc_free(xfb);
 }
 
 struct tu_shader *
