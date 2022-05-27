@@ -225,6 +225,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
             init_template_entry(shader, j, k, &entries[desc_set][entry_idx[desc_set]], &entry_idx[desc_set], screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY);
             num_bindings[desc_set]++;
             has_bindings |= BITFIELD_BIT(desc_set);
+            pg->dd->real_binding_usage |= BITFIELD_BIT(j);
          }
          num_type_sizes[desc_set] = screen->compact_descriptors ?
                                     descriptor_program_num_sizes_compact(sizes, desc_set) :
