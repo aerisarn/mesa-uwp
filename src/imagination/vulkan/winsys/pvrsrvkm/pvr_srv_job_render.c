@@ -295,8 +295,6 @@ static void pvr_srv_render_ctx_fw_static_state_init(
    struct rogue_fwif_ta_regs_cswitch *regs =
       &static_state->ctx_switch_geom_regs[0];
 
-   STATIC_ASSERT(ARRAY_SIZE(static_state->ctx_switch_geom_regs) == 1);
-
    memset(static_state, 0, sizeof(*static_state));
 
    regs->vdm_context_state_base_addr = ws_static_state->vdm_ctx_state_base_addr;

@@ -35,6 +35,8 @@
 #define ROGUE_FWIF_NUM_RTDATA_FREELISTS 2U
 #define ROGUE_NUM_GEOM_CORES 1U
 
+#define ROGUE_NUM_GEOM_CORES_SIZE 2U
+
 /**
  * Maximum number of UFOs in a CCB command.
  * The number is based on having 32 sync prims (as originally), plus 32 sync
@@ -63,6 +65,7 @@ struct rogue_fwif_dev_addr {
 struct rogue_fwif_dma_addr {
    uint64_t ALIGN_ATTR(8) dev_vaddr;
    struct rogue_fwif_dev_addr fw_addr;
+   uint32_t padding;
 } ALIGN_ATTR(8);
 
 /**
@@ -180,6 +183,16 @@ struct rogue_fwif_cccb_ctl {
 
    /** Offset wrapping mask, total capacity in bytes of the CCB-1. */
    uint32_t wrap_mask;
+
+   /* Only used if SUPPORT_AGP is present. */
+   uint32_t read_offset2;
+
+   /* Only used if SUPPORT_AGP4 is present. */
+   uint32_t read_offset3;
+   /* Only used if SUPPORT_AGP4 is present. */
+   uint32_t read_offset4;
+
+   uint32_t padding;
 } ALIGN_ATTR(8);
 
 #define ROGUE_FW_LOCAL_FREELIST 0U
@@ -242,7 +255,7 @@ struct rogue_fwif_cdm_regs_cswitch {
 struct rogue_fwif_static_rendercontext_state {
    /** Geom registers for ctx switch. */
    struct rogue_fwif_ta_regs_cswitch
-      ALIGN_ATTR(8) ctx_switch_geom_regs[ROGUE_NUM_GEOM_CORES];
+      ALIGN_ATTR(8) ctx_switch_geom_regs[ROGUE_NUM_GEOM_CORES_SIZE];
 };
 
 #define ROGUE_FWIF_STATIC_RENDERCONTEXT_SIZE \
