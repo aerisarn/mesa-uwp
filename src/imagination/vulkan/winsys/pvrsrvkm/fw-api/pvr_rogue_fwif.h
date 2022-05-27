@@ -340,13 +340,6 @@ struct rogue_fwif_cmd_3d {
    /** Stride IN BYTES for S-Buffer in case of RTAs. */
    uint32_t sls_stride;
 
-   /* Only used when SUPPORT_STRIP_RENDERING present. */
-   uint8_t ui8FrameStripBuffer;
-   /* Only used when SUPPORT_STRIP_RENDERING present. */
-   uint8_t ui8FrameStripIndex;
-   /* Only used when SUPPORT_STRIP_RENDERING present. */
-   uint8_t ui8FrameStripMode;
-
    /* Number of tiles to submit to GPU<N> before moving to GPU<N+1>. */
    uint32_t execute_count;
 
