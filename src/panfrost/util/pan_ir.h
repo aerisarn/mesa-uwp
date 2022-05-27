@@ -256,6 +256,12 @@ struct bifrost_shader_info {
         nir_alu_type blend_src1_type;
         bool wait_6, wait_7;
         struct bifrost_message_preload messages[2];
+
+        /* Whether any flat varyings are loaded. This may disable optimizations
+         * that change the provoking vertex, since that would load incorrect
+         * values for flat varyings.
+         */
+        bool uses_flat_shading;
 };
 
 struct midgard_shader_info {

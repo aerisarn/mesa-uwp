@@ -547,6 +547,9 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                  */
                 if (b->shader->arch >= 9)
                         src0 = bi_preload(b, 61);
+
+                /* Gather info as we go */
+                b->shader->info.bifrost->uses_flat_shading = true;
         }
 
         nir_src *offset = nir_get_io_offset_src(instr);

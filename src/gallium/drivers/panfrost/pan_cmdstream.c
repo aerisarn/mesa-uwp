@@ -3087,6 +3087,10 @@ panfrost_emit_primitive(struct panfrost_context *ctx,
 {
         UNUSED struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
+        bool lines = (info->mode == PIPE_PRIM_LINES ||
+                      info->mode == PIPE_PRIM_LINE_LOOP ||
+                      info->mode == PIPE_PRIM_LINE_STRIP);
+
         pan_pack(out, PRIMITIVE, cfg) {
                 cfg.draw_mode = pan_draw_mode(info->mode);
                 if (panfrost_writes_point_size(ctx))
@@ -3097,9 +3101,7 @@ panfrost_emit_primitive(struct panfrost_context *ctx,
                  * be set to true and the provoking vertex is selected with
                  * DRAW.flat_shading_vertex.
                  */
-                if (info->mode == PIPE_PRIM_LINES ||
-                    info->mode == PIPE_PRIM_LINE_LOOP ||
-                    info->mode == PIPE_PRIM_LINE_STRIP)
+                if (lines)
                         cfg.first_provoking_vertex = true;
                 else
                         cfg.first_provoking_vertex = rast->flatshade_first;
@@ -3113,7 +3115,10 @@ panfrost_emit_primitive(struct panfrost_context *ctx,
 
                 cfg.job_task_split = 6;
 #else
-                cfg.allow_rotating_primitives = false;
+                struct panfrost_shader_state *fs =
+                        panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+
+                cfg.allow_rotating_primitives = !(lines || fs->info.bifrost.uses_flat_shading);
                 cfg.primitive_restart = info->primitive_restart;
 
                 /* Non-fixed restart indices should have been lowered */
