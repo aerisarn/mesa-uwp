@@ -315,6 +315,32 @@ pack_blend_constant(enum pipe_format format, float cons)
         return unorm << (16 - chan_size);
 }
 
+/*
+ * Determine whether to set the respective overdraw alpha flag.
+ *
+ * The overdraw alpha=1 flag should be set when alpha=1 implies full overdraw,
+ * equivalently, all enabled render targets have alpha_one_store set. Likewise,
+ * overdraw alpha=0 should be set when alpha=0 implies no overdraw,
+ * equivalently, all enabled render targets have alpha_zero_nop set.
+ */
+static bool
+panfrost_overdraw_alpha(const struct panfrost_context *ctx, bool zero)
+{
+        const struct panfrost_blend_state *so = ctx->blend;
+
+        for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
+                const struct pan_blend_info info = so->info[i];
+
+                bool enabled = ctx->pipe_framebuffer.cbufs[i] && info.no_colour;
+                bool flag = zero ? info.alpha_zero_nop : info.alpha_one_store;
+
+                if (enabled && !flag)
+                        return false;
+        }
+
+        return true;
+}
+
 static void
 panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_shaders)
 {
@@ -468,6 +494,10 @@ pan_merge_empty_fs(struct mali_renderer_state_packed *rsd)
                 cfg.properties.allow_forward_pixel_to_kill = true;
                 cfg.properties.allow_forward_pixel_to_be_killed = true;
                 cfg.properties.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+
+                /* Alpha isn't written so these are vacuous */
+                cfg.multisample_misc.overdraw_alpha0 = true;
+                cfg.multisample_misc.overdraw_alpha1 = true;
 #else
                 cfg.shader.shader = 0x1;
                 cfg.properties.work_register_count = 1;
@@ -580,6 +610,9 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                  */
                 cfg.properties.point_sprite_coord_origin_max_y =
                         (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
+
+                cfg.multisample_misc.overdraw_alpha0 = panfrost_overdraw_alpha(ctx, 0);
+                cfg.multisample_misc.overdraw_alpha1 = panfrost_overdraw_alpha(ctx, 1);
 #endif
 
                 cfg.stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
@@ -3283,6 +3316,9 @@ panfrost_emit_draw(void *out,
                         cfg.blend_count = MAX2(batch->key.nr_cbufs, 1);
                         cfg.alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
+                        cfg.overdraw_alpha0 = panfrost_overdraw_alpha(ctx, 0);
+                        cfg.overdraw_alpha1 = panfrost_overdraw_alpha(ctx, 1);
+
                         panfrost_emit_shader(batch, &cfg.shader, PIPE_SHADER_FRAGMENT,
                                              batch->rsd[PIPE_SHADER_FRAGMENT],
                                              batch->tls.gpu);
@@ -3302,6 +3338,10 @@ panfrost_emit_draw(void *out,
 
                         /* No shader => no shader side effects */
                         cfg.allow_forward_pixel_to_be_killed = true;
+
+                        /* Alpha isn't written so these are vacuous */
+                        cfg.overdraw_alpha0 = true;
+                        cfg.overdraw_alpha1 = true;
                 }
 #else
                 cfg.position = pos;
