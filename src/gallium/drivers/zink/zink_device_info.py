@@ -302,6 +302,7 @@ struct zink_device_info {
 %endfor
 
    VkPhysicalDeviceFeatures2 feats;
+   VkPhysicalDeviceSubgroupProperties subgroup;
 %for version in versions:
    VkPhysicalDeviceVulkan${version.struct()}Features feats${version.struct()};
 %endfor
@@ -469,6 +470,12 @@ zink_get_physical_device_info(struct zink_screen *screen)
          info->deviceid_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
          info->deviceid_props.pNext = props.pNext;
          props.pNext = &info->deviceid_props;
+      }
+
+      if (screen->vk_version >= VK_MAKE_VERSION(1,1,0)) {
+         info->subgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+         info->subgroup.pNext = props.pNext;
+         props.pNext = &info->subgroup;
       }
 
       // note: setting up local VkPhysicalDeviceProperties2.
