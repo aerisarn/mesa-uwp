@@ -421,3 +421,20 @@ TEST_F(Optimizer, DoNotFuseMixedSizeResultType)
                       bi_fcmp_f32(b, bi_abs(x), bi_neg(y), BI_CMPF_LE, BI_RESULT_TYPE_M1),
                       BI_MUX_INT_ZERO));
 }
+
+TEST_F(Optimizer, VarTexCoord32)
+{
+   CASE({
+         bi_index ld = bi_ld_var_imm(b, bi_null(), BI_REGISTER_FORMAT_F32, BI_SAMPLE_CENTER, BI_UPDATE_STORE, BI_VECSIZE_V2, 0);
+
+         bi_index x = bi_temp(b->shader);
+         bi_index y = bi_temp(b->shader);
+         bi_instr *split = bi_split_i32_to(b, x, ld);
+         split->nr_dests = 2;
+         split->dest[1] = y;
+
+         bi_texs_2d_f32_to(b, reg, x, y, false, 0, 0);
+   }, {
+         bi_var_tex_f32_to(b, reg, false, BI_SAMPLE_CENTER, BI_UPDATE_STORE, 0, 0);
+   });
+}
