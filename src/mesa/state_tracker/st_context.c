@@ -446,6 +446,9 @@ st_init_driver_flags(struct st_context *st)
                                 ST_NEW_VS_STATE | ST_NEW_TCS_STATE |
                                 ST_NEW_TES_STATE | ST_NEW_GS_STATE |
                                 ST_NEW_FS_STATE | ST_NEW_CS_STATE;
+
+   if (!st->has_hw_atomics && st->ctx->Const.ShaderStorageBufferOffsetAlignment > 4)
+      f->NewAtomicBuffer |= ST_NEW_CONSTANTS;
 }
 
 static bool
