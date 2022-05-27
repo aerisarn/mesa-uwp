@@ -646,6 +646,10 @@ struct bi_scoreboard_state {
         /** Bitmap of registers read/written by a slot */
         uint64_t read[BI_NUM_SLOTS];
         uint64_t write[BI_NUM_SLOTS];
+
+        /* Nonregister dependencies present by a slot */
+        uint8_t varying : BI_NUM_SLOTS;
+        uint8_t memory : BI_NUM_SLOTS;
 };
 
 typedef struct bi_block {
