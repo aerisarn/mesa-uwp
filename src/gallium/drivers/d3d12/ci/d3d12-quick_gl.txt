@@ -197,17 +197,12 @@ spec/!opengl 1.4/copy-pixels samples=8: skip
 spec/!opengl 1.4/gl-1.4-rgba-mipmap-texture-with-rgb-visual: skip
 spec/!opengl 1.4/triangle-rasterization-overdraw: fail
 spec/!opengl 2.0/gl-2.0-two-sided-stencil: fail
-spec/!opengl 2.0/max-samplers: fail
-spec/!opengl 2.0/max-samplers border: fail
-spec/!opengl 3.0/bound-resource-limits: fail
-spec/!opengl 3.0/required-sized-texture-formats: fail
 spec/!opengl 3.0/sampler-cube-shadow: fail
 spec/!opengl 3.1/default-vao: fail
 spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.1/genned-names: fail
 spec/!opengl 3.1/gl-3.1-enable-vertex-array: fail
 spec/!opengl 3.1/gl-3.1-link-empty-prog-core: fail
-spec/!opengl 3.1/required-sized-texture-formats: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-last: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: fail
@@ -223,9 +218,7 @@ spec/!opengl 3.2/layered-rendering/gl-layer-render: fail
 spec/!opengl 3.2/layered-rendering/gl-layer-render-clipped: fail
 spec/!opengl 3.2/layered-rendering/gl-layer-render-storage: fail
 spec/!opengl 3.2/pointsprite-origin: crash
-spec/!opengl 3.3/required-sized-texture-formats: fail
 spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
-spec/!opengl 4.2/required-sized-texture-formats: fail
 spec/!opengl 4.3/get_glsl_version: skip
 spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
 spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
@@ -1408,8 +1401,6 @@ spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image3d/r
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagebuffer/rgba32f: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagecube/rgba32f: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagecubearray/rgba32f: fail
-spec/arb_shader_image_load_store/max-size/imagecube max size test/16384x16384x6x1: skip
-spec/arb_shader_image_load_store/max-size/imagecubearray max size test/16384x16384x6x1: skip
 spec/arb_shader_image_load_store/semantics/imageatomicmax/vertex shader/r32ui/image1d test: fail
 spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
@@ -2884,7 +2875,12 @@ spec/ext_framebuffer_multisample/no-color 8 depth-computed separate: skip
 spec/ext_framebuffer_multisample/no-color 8 stencil separate: skip
 spec/ext_framebuffer_multisample/point-smooth 32: skip
 spec/ext_framebuffer_multisample/polygon-smooth 32: skip
+spec/ext_framebuffer_multisample/polygon-stipple 16: crash
+spec/ext_framebuffer_multisample/polygon-stipple 2: crash
 spec/ext_framebuffer_multisample/polygon-stipple 32: skip
+spec/ext_framebuffer_multisample/polygon-stipple 4: crash
+spec/ext_framebuffer_multisample/polygon-stipple 6: crash
+spec/ext_framebuffer_multisample/polygon-stipple 8: crash
 spec/ext_framebuffer_multisample/sample-alpha-to-coverage 32 color: skip
 spec/ext_framebuffer_multisample/sample-alpha-to-coverage 32 depth: skip
 spec/ext_framebuffer_multisample/sample-alpha-to-one 16: fail
@@ -3104,9 +3100,7 @@ spec/ext_texture_compression_latc/texwrap formats: skip
 spec/ext_texture_compression_latc/texwrap formats bordercolor: skip
 spec/ext_texture_compression_latc/texwrap formats bordercolor-swizzled: skip
 spec/ext_texture_compression_rgtc/rgtc-api_gles2: skip
-spec/ext_texture_compression_s3tc/s3tc-errors: fail
 spec/ext_texture_compression_s3tc/s3tc-errors_gles2: skip
-spec/ext_texture_compression_s3tc/s3tc-targeted: fail
 spec/ext_texture_compression_s3tc/s3tc-teximage_gles2: skip
 spec/ext_texture_compression_s3tc/s3tc-texsubimage_gles2: skip
 spec/ext_texture_env_combine/texture-env-combine: fail
@@ -3530,10 +3524,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17836
-       fail:     2048
-      crash:       10
-       skip:     1452
+       pass:    17847
+       fail:     2039
+      crash:       15
+       skip:     1450
     timeout:        0
        warn:       10
  incomplete:        0
@@ -3542,4 +3536,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21365
+      total:    21370
