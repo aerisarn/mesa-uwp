@@ -1022,6 +1022,11 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_GEOMETRY ||
+       nir->info.stage == MESA_SHADER_TESS_EVAL)
+      nir_shader_gather_xfb_info(nir);
+
    if (nir->info.stage != MESA_SHADER_VERTEX)
       nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, nir->info.stage);
    else {
@@ -1121,7 +1126,7 @@ lvp_pipeline_compile(struct lvp_pipeline *pipeline,
       if (stage == MESA_SHADER_VERTEX ||
           stage == MESA_SHADER_GEOMETRY ||
           stage == MESA_SHADER_TESS_EVAL) {
-         nir_xfb_info *xfb_info = nir_shader_get_xfb_info(pipeline->pipeline_nir[stage], NULL);
+         nir_xfb_info *xfb_info = pipeline->pipeline_nir[stage]->xfb_info;
          if (xfb_info) {
             uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
             memset(output_mapping, 0, sizeof(output_mapping));
@@ -1147,8 +1152,6 @@ lvp_pipeline_compile(struct lvp_pipeline *pipeline,
                shstate.stream_output.output[i].start_component = ffs(xfb_info->outputs[i].component_mask) - 1;
                shstate.stream_output.output[i].stream = xfb_info->buffer_to_stream[xfb_info->outputs[i].buffer];
             }
-
-            ralloc_free(xfb_info);
          }
       }
 
