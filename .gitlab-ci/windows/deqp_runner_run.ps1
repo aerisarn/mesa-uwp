@@ -21,11 +21,11 @@ $includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw
 
 $env:DZN_DEBUG = "warp"
 $env:MESA_VK_IGNORE_CONFORMANCE_WARNING = "true"
-deqp-runner run --deqp $($deqp_module) --output $($results) --caselist $($caselist) --baseline $($baseline) $($includes) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 -- $($deqp_options)
+deqp-runner run --deqp $($deqp_module) --output $($results) --caselist $($caselist) --baseline $($baseline) $($includes) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 --fraction 3  -- $($deqp_options)
 $deqpstatus = $?
 
 $template = "See https://$($env:CI_PROJECT_ROOT_NAMESPACE).pages.freedesktop.org/-/$($env:CI_PROJECT_NAME)/-/jobs/$($env:CI_JOB_ID)/artifacts/results/{{testcase}}.xml"
-deqp-runner junit --testsuite dEQP --results "$($results)/failures.csv" --output "$($results)/junit.xml" --fraction 3 --limit 50 --template $template
+deqp-runner junit --testsuite dEQP --results "$($results)/failures.csv" --output "$($results)/junit.xml" --limit 50 --template $template
 
 if (!$deqpstatus) {
     Exit 1
