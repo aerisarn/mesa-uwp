@@ -1,5 +1,5 @@
-#ifndef NVK_DEVICE
-#define NVK_DEVICE 1
+#ifndef NVK_DEVICE_H
+#define NVK_DEVICE_H 1
 
 #include "nvk_private.h"
 

@@ -1,5 +1,5 @@
-#ifndef NVK_PRIVATE
-#define NVK_PRIVATE 1
+#ifndef NVK_PRIVATE_H
+#define NVK_PRIVATE_H 1
 
 #include "nvk_entrypoints.h"
 

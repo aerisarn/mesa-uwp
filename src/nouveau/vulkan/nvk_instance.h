@@ -1,5 +1,5 @@
-#ifndef NVK_INSTANCE
-#define NVK_INSTANCE 1
+#ifndef NVK_INSTANCE_H
+#define NVK_INSTANCE_H 1
 
 #include "nvk_private.h"
 

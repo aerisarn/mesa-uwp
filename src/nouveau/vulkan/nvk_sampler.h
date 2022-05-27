@@ -1,5 +1,5 @@
-#ifndef NVK_SAMPLER
-#define NVK_SAMPLER 1
+#ifndef NVK_SAMPLER_H
+#define NVK_SAMPLER_H 1
 
 #include "nvk_private.h"
 

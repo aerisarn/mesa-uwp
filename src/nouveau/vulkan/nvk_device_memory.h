@@ -1,5 +1,5 @@
-#ifndef NVK_MEMORY
-#define NVK_MEMORY 1
+#ifndef NVK_MEMORY_H
+#define NVK_MEMORY_H 1
 
 #include "nvk_private.h"
 

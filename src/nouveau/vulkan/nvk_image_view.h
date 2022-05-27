@@ -1,5 +1,5 @@
-#ifndef NVK_IMAGE_VIEW
-#define NVK_IMAGE_VIEW 1
+#ifndef NVK_IMAGE_VIEW_H
+#define NVK_IMAGE_VIEW_H 1
 
 #include "nvk_private.h"
 
