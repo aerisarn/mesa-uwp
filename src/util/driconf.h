@@ -505,6 +505,13 @@
                   "Force-enable reading back L8_SRGB textures")
 
 /**
+ * \brief venus specific configuration options
+ */
+#define DRI_CONF_VENUS_IMPLICIT_FENCING(def) \
+   DRI_CONF_OPT_B(venus_implicit_fencing, def, \
+                  "Assume the virtio-gpu kernel driver supports implicit fencing")
+
+/**
  * \brief RADV specific configuration options
  */
 
