@@ -277,7 +277,8 @@ translate_colormask(struct v3d_context *v3d, uint32_t colormask, int rt)
 
 static void
 emit_rt_blend(struct v3d_context *v3d, struct v3d_job *job,
-              struct pipe_blend_state *blend, int rt)
+              struct pipe_blend_state *blend, int rt, uint8_t rt_mask,
+              bool blend_dst_alpha_one)
 {
         struct pipe_rt_blend_state *rtblend = &blend->rt[rt];
 
@@ -289,10 +290,7 @@ emit_rt_blend(struct v3d_context *v3d, struct v3d_job *job,
 
         cl_emit(&job->bcl, BLEND_CFG, config) {
 #if V3D_VERSION >= 40
-                if (blend->independent_blend_enable)
-                        config.render_target_mask = 1 << rt;
-                else
-                        config.render_target_mask = (1 << V3D_MAX_DRAW_BUFFERS) - 1;
+                config.render_target_mask = rt_mask;
 #else
                 assert(rt == 0);
 #endif
@@ -300,18 +298,18 @@ emit_rt_blend(struct v3d_context *v3d, struct v3d_job *job,
                 config.color_blend_mode = rtblend->rgb_func;
                 config.color_blend_dst_factor =
                         v3d_factor(rtblend->rgb_dst_factor,
-                                   v3d->blend_dst_alpha_one);
+                                   blend_dst_alpha_one);
                 config.color_blend_src_factor =
                         v3d_factor(rtblend->rgb_src_factor,
-                                   v3d->blend_dst_alpha_one);
+                                   blend_dst_alpha_one);
 
                 config.alpha_blend_mode = rtblend->alpha_func;
                 config.alpha_blend_dst_factor =
                         v3d_factor(rtblend->alpha_dst_factor,
-                                   v3d->blend_dst_alpha_one);
+                                   blend_dst_alpha_one);
                 config.alpha_blend_src_factor =
                         v3d_factor(rtblend->alpha_src_factor,
-                                   v3d->blend_dst_alpha_one);
+                                   blend_dst_alpha_one);
         }
 }
 
@@ -627,9 +625,32 @@ v3dX(emit_state)(struct pipe_context *pctx)
 
                         if (blend->base.independent_blend_enable) {
                                 for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++)
-                                        emit_rt_blend(v3d, job, &blend->base, i);
+                                        emit_rt_blend(v3d, job, &blend->base, i,
+                                                      (1 << i),
+                                                      v3d->blend_dst_alpha_one & (1 << i));
+                        } else if (v3d->blend_dst_alpha_one &&
+                                   util_bitcount(v3d->blend_dst_alpha_one) < job->nr_cbufs) {
+                                /* Even if we don't have independent per-RT
+                                 * blending, we may have a combination of RT
+                                 * formats were some RTs have an alpha channel
+                                 * and others don't. Since this affects how
+                                 * blending is performed, we also need to emit
+                                 * independent blend configurations in this
+                                 * case: one for RTs with alpha and one for
+                                 * RTs without.
+                                 */
+                                emit_rt_blend(v3d, job, &blend->base, 0,
+                                              ((1 << V3D_MAX_DRAW_BUFFERS) - 1) &
+                                                   v3d->blend_dst_alpha_one,
+                                              true);
+                                emit_rt_blend(v3d, job, &blend->base, 0,
+                                              ((1 << V3D_MAX_DRAW_BUFFERS) - 1) &
+                                                   ~v3d->blend_dst_alpha_one,
+                                              false);
                         } else {
-                                emit_rt_blend(v3d, job, &blend->base, 0);
+                                emit_rt_blend(v3d, job, &blend->base, 0,
+                                              (1 << V3D_MAX_DRAW_BUFFERS) - 1,
+                                              v3d->blend_dst_alpha_one);
                         }
                 }
         }
