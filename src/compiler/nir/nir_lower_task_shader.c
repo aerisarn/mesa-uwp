@@ -298,7 +298,7 @@ lower_task_intrin(nir_builder *b,
    case nir_intrinsic_load_task_payload:
       if (s->payload_in_shared)
          return lower_task_payload_to_shared(b, intrin, s);
-      return NULL;
+      return false;
    case nir_intrinsic_launch_mesh_workgroups:
       return lower_task_launch_mesh_workgroups(b, intrin, s);
    default:
