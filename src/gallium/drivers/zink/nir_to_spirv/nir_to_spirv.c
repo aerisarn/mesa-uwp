@@ -2088,6 +2088,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 
    BUILTIN_UNOPF(nir_op_unpack_half_2x16, GLSLstd450UnpackHalf2x16)
    BUILTIN_UNOPF(nir_op_pack_64_2x32, GLSLstd450PackDouble2x32)
+   BUILTIN_UNOPF(nir_op_unpack_64_2x32, GLSLstd450UnpackDouble2x32)
 #undef BUILTIN_UNOP
 #undef BUILTIN_UNOPF
 
