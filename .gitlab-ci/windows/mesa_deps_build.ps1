@@ -137,8 +137,6 @@ if (!$buildstatus) {
   Exit 1
 }
 
-# See https://gitlab.freedesktop.org/mesa/mesa/-/issues/3855
-# Until that's resolved, we need the vulkan-runtime as a build dependency to be able to run any unit tests on GL
 Get-Date
 Write-Host "Downloading Vulkan-Runtime"
 Invoke-WebRequest -Uri 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-runtime.exe' -OutFile 'C:\vulkan-runtime.exe' | Out-Null
