@@ -67,7 +67,7 @@ struct _egl_global _eglGlobal =
    .ClientExtensionString =
 #endif
    "EGL_EXT_client_extensions"
-#ifndef DETECT_OS_WINDOWS
+#if !DETECT_OS_WINDOWS
    " EGL_EXT_device_base"
    " EGL_EXT_device_enumeration"
    " EGL_EXT_device_query"
@@ -83,7 +83,7 @@ struct _egl_global _eglGlobal =
    " "
 #endif
 
-#ifndef DETECT_OS_WINDOWS
+#if !DETECT_OS_WINDOWS
    "EGL_EXT_platform_device"
 #endif
 #ifdef HAVE_WAYLAND_PLATFORM
