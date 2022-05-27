@@ -21,7 +21,7 @@ Write-Host "Installing Chocolatey packages"
 For ($i = 0; $i -lt 5; $i++) {
   choco install -y python3 --params="/InstallDir:C:\python3"
   $python_install = $?
-  choco install --allow-empty-checksums -y cmake git git-lfs ninja pkgconfiglite winflexbison vulkan-sdk --installargs "ADD_CMAKE_TO_PATH=System"
+  choco install --allow-empty-checksums -y cmake git git-lfs ninja pkgconfiglite winflexbison --installargs "ADD_CMAKE_TO_PATH=System"
   $other_install = $?
   $choco_installed = $other_install -and $python_install
   if ($choco_installed) {
@@ -39,6 +39,14 @@ Update-SessionEnvironment
 # Python and CMake add themselves to the system environment path, which doesn't get refreshed
 # until we start a new shell
 $env:PATH = "C:\python3;C:\python3\scripts;C:\Program Files\CMake\bin;$env:PATH"
+
+Invoke-WebRequest -Uri 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe' -OutFile 'C:\vulkan_sdk.exe'
+C:\vulkan_sdk.exe --am --al -c in
+if (!$?) {
+    Write-Host "Failed to install Vulkan SDK"
+    Exit 1
+}
+Remove-Item C:\vulkan_sdk.exe -Force
 
 Start-Process -NoNewWindow -Wait git -ArgumentList 'config --global core.autocrlf false'
 
