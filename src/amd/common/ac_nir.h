@@ -125,6 +125,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       bool export_prim_id,
                       bool provoking_vtx_last,
                       bool use_edgeflags,
+                      bool has_prim_query,
                       uint32_t instance_rate_inputs);
 
 void
