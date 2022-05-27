@@ -361,7 +361,7 @@ debian/arm_test:
   tags:
     - windows
     - shell
-    - "1809"
+    - "2022"
     - mesa
   script:
     - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $MESA_IMAGE $MESA_UPSTREAM_IMAGE ${DOCKERFILE} ${MESA_BASE_IMAGE}

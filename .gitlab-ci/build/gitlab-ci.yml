@@ -37,7 +37,7 @@
   tags:
     - windows
     - docker
-    - "1809"
+    - "2022"
     - mesa
   cache:
     key: ${CI_JOB_NAME}

@@ -1,6 +1,6 @@
 # escape=`
 
-FROM mcr.microsoft.com/windows:1809
+FROM mcr.microsoft.com/windows/server:ltsc2022
 
 # Make sure any failure in PowerShell scripts is fatal
 SHELL ["powershell", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop';"]
