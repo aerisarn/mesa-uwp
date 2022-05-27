@@ -104,11 +104,7 @@ static void radeon_enc_session_init(struct radeon_encoder *enc)
       enc->enc_pic.session_init.aligned_picture_height - enc->base.height;
    enc->enc_pic.session_init.pre_encode_mode = RENCODE_PREENCODE_MODE_NONE;
    enc->enc_pic.session_init.pre_encode_chroma_enabled = false;
-
-   if (enc->enc_pic.not_referenced)
-      enc->enc_pic.session_init.display_remote = 1;
-   else
-      enc->enc_pic.session_init.display_remote = 0;
+   enc->enc_pic.session_init.display_remote = 0;
 
    RADEON_ENC_BEGIN(enc->cmd.session_init);
    RADEON_ENC_CS(enc->enc_pic.session_init.encode_standard);
