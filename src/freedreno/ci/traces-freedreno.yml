@@ -577,6 +577,42 @@ traces:
       #  checksum: 0
       #- device: freedreno-a630
       #  checksum: cd908b6ee9e79472716976854fbbcb21
+  #- path: blender/blender-demo-cube_diorama.trace
+  #  expectations:
+      # needs GL 4.5
+      #- device: freedreno-a530
+      # crash
+      #- device: freedreno-a630
+  #- path: blender/blender-demo-ellie_pose.trace
+  #  expectations:
+      # needs GL 4.5
+      #- device: freedreno-a530
+      # crash
+      #- device: freedreno-a630
+  - path: freedoom/freedoom-phase2-gl-high.trace
+    expectations:
+      # needs GL 4.6
+      #- device: freedreno-a530
+      - device: freedreno-a630
+        checksum: 2b96947d3eb3f623c4a387b2b7f80300
+  - path: unvanquished/unvanquished-lowest.trace
+    expectations:
+      # error: waffle_context_create failed
+      #- device: freedreno-a530
+      - device: freedreno-a630
+        checksum: ae37867b1a9a94d2be9ff6c7e2009813
+  - path: unvanquished/unvanquished-ultra.trace
+    expectations:
+      # error: waffle_context_create failed
+      #- device: freedreno-a530
+      - device: freedreno-a630
+        checksum: a71d1ad391162acef60cbb2804d0cf64
+  - path: warzone2100/warzone2100-default.trace
+    expectations:
+      # error: GLSL 1.50 is not supported.
+      #- device: freedreno-a530
+      - device: freedreno-a630
+        checksum: 85c2d8129d761db4d9332790f694431a
 #  Throws "Invalid state in _mesa_program_state_string" and
 #  GL_INVALID_OPERATION in glBindTexture(target mismatch), fails to produce
 #  a .png at all.  Renders fine on radeonsi.
