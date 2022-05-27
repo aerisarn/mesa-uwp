@@ -497,8 +497,21 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
                 bi_foreach_dest(ins, d) {
                         unsigned node = bi_get_node(ins->dest[d]);
 
-                        if (node < l->node_count && ins->no_spill)
+                        if (node >= l->node_count)
+                                continue;
+
+                        /* Don't allow spilling coverage mask writes because the
+                         * register preload logic assumes it will stay in R60.
+                         * This could be optimized.
+                         */
+                        if (ins->no_spill ||
+                            ins->op == BI_OPCODE_ATEST ||
+                            ins->op == BI_OPCODE_ZS_EMIT ||
+                            (ins->op == BI_OPCODE_MOV_I32 &&
+                             ins->src[0].type == BI_INDEX_REGISTER &&
+                             ins->src[0].value == 60)) {
                                 BITSET_SET(no_spill, node);
+                        }
                 }
         }
 
