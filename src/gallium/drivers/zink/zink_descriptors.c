@@ -1474,6 +1474,11 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
       for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
          if (pg->dd->real_binding_usage & BITFIELD_BIT(h))
             ctx->dd->changed[is_compute][h] = true;
+         ctx->dd->descriptor_states[is_compute].valid[h] = false;
+         if (!is_compute) {
+            for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
+               ctx->dd->gfx_descriptor_states[i].valid[h] = false;
+         }
       }
    }
    zink_context_update_descriptor_states(ctx, pg);
