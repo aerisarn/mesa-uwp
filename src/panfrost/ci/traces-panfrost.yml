@@ -269,3 +269,38 @@ traces:
         checksum: 03251159007917a90247d2aa2cf5f68b
       - device: gl-panfrost-t860
         checksum: 03251159007917a90247d2aa2cf5f68b
+  #- path: blender/blender-demo-cube_diorama.trace
+  #  expectations:
+      # needs GL 4.5
+      #- device: gl-panfrost-t760
+      #- device: gl-panfrost-t860
+  #- path: blender/blender-demo-ellie_pose.trace
+  #  expectations:
+      # needs GL 4.5
+      #- device: gl-panfrost-t760
+      #- device: gl-panfrost-t860
+  #- path: freedoom/freedoom-phase2-gl-high.trace
+  #  expectations:
+      # needs GL 4.6
+      #- device: gl-panfrost-t760
+      #- device: gl-panfrost-t860
+  #- path: unvanquished/unvanquished-lowest.trace
+  #  expectations:
+      # error: GLSL 4.60 is not supported
+      #- device: gl-panfrost-t760
+      #  checksum: 0
+      #- device: gl-panfrost-t860
+      #  checksum: 0
+  #- path: unvanquished/unvanquished-ultra.trace
+  #  expectations:
+      # error: GLSL 4.60 is not supported
+      #- device: gl-panfrost-t760
+      #  checksum: 0
+      #- device: gl-panfrost-t860
+      #  checksum: 0
+  - path: warzone2100/warzone2100-default.trace
+    expectations:
+      - device: gl-panfrost-t760
+        checksum: 4bc5eb01ffe1bf5ba4953ce17f09375f
+      - device: gl-panfrost-t860
+        checksum: e4e92aa7bda9d68a12770d94b3e98f5a
