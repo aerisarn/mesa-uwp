@@ -1074,12 +1074,8 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    /* Lower load_deref/store_deref of inputs and outputs.
     * This depends on st_nir_assign_varying_locations.
     */
-   if (nir->options->lower_io_variables) {
-      nir_xfb_info *xfb = shader_program ?
-         gl_to_nir_xfb_info(prog->sh.LinkedTransformFeedback, NULL) : NULL;
-      nir_lower_io_passes(nir, xfb);
-      ralloc_free(xfb);
-   }
+   if (nir->options->lower_io_variables)
+      nir_lower_io_passes(nir);
 
    /* Set num_uniforms in number of attribute slots (vec4s) */
    nir->num_uniforms = DIV_ROUND_UP(prog->Parameters->NumParameterValues, 4);

@@ -2944,13 +2944,13 @@ nir_lower_color_inputs(nir_shader *nir)
 }
 
 static bool
-nir_add_xfb_info(nir_shader *nir, nir_xfb_info *info)
+nir_add_xfb_info(nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
 
    for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++)
-      nir->info.xfb_stride[i] = info->buffers[i].stride;
+      nir->info.xfb_stride[i] = nir->xfb_info->buffers[i].stride;
 
    nir_foreach_block (block, impl) {
       nir_foreach_instr_safe (instr, block) {
@@ -2980,9 +2980,9 @@ nir_add_xfb_info(nir_shader *nir, nir_xfb_info *info)
          nir_io_xfb xfb[2];
          memset(xfb, 0, sizeof(xfb));
 
-         for (unsigned i = 0; i < info->output_count; i++) {
-            if (info->outputs[i].location == sem.location) {
-               nir_xfb_output_info *out = &info->outputs[i];
+         for (unsigned i = 0; i < nir->xfb_info->output_count; i++) {
+            nir_xfb_output_info *out = &nir->xfb_info->outputs[i];
+            if (out->location == sem.location) {
                unsigned xfb_mask = writemask & out->component_mask;
 
                /*fprintf(stdout, "output%u: buffer=%u, offset=%u, location=%u, "
@@ -3026,23 +3026,18 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 }
 
 void
-nir_lower_io_passes(nir_shader *nir, nir_xfb_info *xfb)
+nir_lower_io_passes(nir_shader *nir)
 {
    if (!nir->options->lower_io_variables)
       return;
-
-   /* Ignore transform feedback for stages that can't have it. */
-   if (nir->info.stage != MESA_SHADER_VERTEX &&
-       nir->info.stage != MESA_SHADER_TESS_EVAL &&
-       nir->info.stage != MESA_SHADER_GEOMETRY)
-      xfb = NULL;
 
    bool has_indirect_inputs =
       (nir->options->support_indirect_inputs >> nir->info.stage) & 0x1;
 
    /* Transform feedback requires that indirect outputs are lowered. */
    bool has_indirect_outputs =
-      (nir->options->support_indirect_outputs >> nir->info.stage) & 0x1 && !xfb;
+      (nir->options->support_indirect_outputs >> nir->info.stage) & 0x1 &&
+      nir->xfb_info == NULL;
 
    if (!has_indirect_inputs || !has_indirect_outputs) {
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
@@ -3075,8 +3070,8 @@ nir_lower_io_passes(nir_shader *nir, nir_xfb_info *xfb)
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp |
               nir_var_shader_in | nir_var_shader_out, NULL);
 
-   if (xfb)
-      NIR_PASS_V(nir, nir_add_xfb_info, xfb);
+   if (nir->xfb_info)
+      NIR_PASS_V(nir, nir_add_xfb_info);
 
    nir->info.io_lowered = true;
 }
