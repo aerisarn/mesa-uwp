@@ -6396,7 +6396,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_VAR" staging="w=vecsize" message="varying">
+  <ins name="+LD_VAR" staging="w=format" message="varying">
     <src start="0"/>
     <src start="3"/>
     <mod name="vecsize" start="8" size="2">
