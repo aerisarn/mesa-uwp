@@ -222,6 +222,7 @@ void
 nvk_physical_device_destroy(struct nvk_physical_device *device)
 {
    nouveau_ws_device_destroy(device->dev);
+   vk_physical_device_finish(&device->vk);
    vk_free(&device->instance->vk.alloc, device);
 }
 

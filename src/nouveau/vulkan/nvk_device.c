@@ -51,5 +51,6 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (!device)
       return;
 
+   vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 }
