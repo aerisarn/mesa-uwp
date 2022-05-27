@@ -1472,8 +1472,8 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 
    if (ctx->dd->pg[is_compute] != pg) {
       for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
-            bool has_usage = !!pg->dsl[h + 1];
-            ctx->dd->changed[is_compute][h] |= has_usage;
+         if (pg->dd->real_binding_usage & BITFIELD_BIT(h))
+            ctx->dd->changed[is_compute][h] = true;
       }
    }
    zink_context_update_descriptor_states(ctx, pg);
