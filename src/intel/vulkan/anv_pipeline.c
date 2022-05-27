@@ -850,6 +850,11 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
        gl_shader_stage_is_mesh(nir->info.stage))
       NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
 
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       nir->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, nir_shader_gather_xfb_info);
+
    stage->nir = nir;
 }
 
@@ -1770,12 +1775,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
       void *stage_ctx = ralloc_context(NULL);
 
-      nir_xfb_info *xfb_info = NULL;
-      if (s == MESA_SHADER_VERTEX ||
-          s == MESA_SHADER_TESS_EVAL ||
-          s == MESA_SHADER_GEOMETRY)
-         xfb_info = nir_shader_get_xfb_info(stages[s].nir, stage_ctx);
-
       switch (s) {
       case MESA_SHADER_VERTEX:
          anv_pipeline_compile_vs(compiler, stage_ctx, pipeline,
@@ -1826,7 +1825,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                   &stages[s].prog_data.base,
                                   brw_prog_data_size(s),
                                   stages[s].stats, stages[s].num_stats,
-                                  xfb_info, &stages[s].bind_map);
+                                  stages[s].nir->xfb_info,
+                                  &stages[s].bind_map);
       if (!bin) {
          ralloc_free(stage_ctx);
          result = vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);
