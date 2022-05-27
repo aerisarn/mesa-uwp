@@ -7,6 +7,8 @@
 
 #include "vulkan/runtime/vk_physical_device.h"
 
+#include "wsi_common.h"
+
 struct nvk_instance;
 
 struct nvk_physical_device {
@@ -16,6 +18,8 @@ struct nvk_physical_device {
 
    /* Link in nvk_instance::physical_devices */
    struct list_head link;
+
+   struct wsi_device wsi_device;
 
    // TODO: add mapable VRAM heap if possible
    VkMemoryHeap mem_heaps[2];
@@ -30,5 +34,12 @@ VK_DEFINE_HANDLE_CASTS(nvk_physical_device,
    VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 
 void nvk_physical_device_destroy(struct nvk_physical_device *);
+
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
+    defined(VK_USE_PLATFORM_XCB_KHR) || \
+    defined(VK_USE_PLATFORM_XLIB_KHR) || \
+    defined(VK_USE_PLATFORM_DISPLAY_KHR)
+#define NVK_USE_WSI_PLATFORM
+#endif
 
 #endif

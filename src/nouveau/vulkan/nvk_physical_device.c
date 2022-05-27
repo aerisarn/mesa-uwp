@@ -2,6 +2,7 @@
 
 #include "nvk_entrypoints.h"
 #include "nvk_instance.h"
+#include "nvk_wsi.h"
 
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/wsi/wsi_common.h"
@@ -119,6 +120,10 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
    struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
+#ifdef NVK_USE_WSI_PLATFORM
+      .KHR_swapchain = true,
+      .KHR_swapchain_mutable_format = true,
+#endif
       .KHR_variable_pointers = true,
    };
 }
@@ -180,6 +185,12 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->instance = instance;
    device->dev = ndev;
 
+   result = nvk_init_wsi(device);
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail_alloc;
+   }
+
    device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    device->mem_types[0].heapIndex = 0;
@@ -221,6 +232,7 @@ fail_fd:
 void
 nvk_physical_device_destroy(struct nvk_physical_device *device)
 {
+   nvk_finish_wsi(device);
    nouveau_ws_device_destroy(device->dev);
    vk_physical_device_finish(&device->vk);
    vk_free(&device->instance->vk.alloc, device);
