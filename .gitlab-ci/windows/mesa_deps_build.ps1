@@ -21,7 +21,7 @@ Write-Host "Installing Chocolatey packages"
 For ($i = 0; $i -lt 5; $i++) {
   choco install -y python3 --params="/InstallDir:C:\python3"
   $python_install = $?
-  choco install --allow-empty-checksums -y cmake git git-lfs ninja pkgconfiglite winflexbison --installargs "ADD_CMAKE_TO_PATH=System"
+  choco install --allow-empty-checksums --no-progress -y cmake git git-lfs ninja pkgconfiglite winflexbison --installargs "ADD_CMAKE_TO_PATH=System"
   $other_install = $?
   $choco_installed = $other_install -and $python_install
   if ($choco_installed) {
