@@ -38,7 +38,9 @@ struct gl_constants;
 struct gl_extensions;
 struct gl_linked_shader;
 struct gl_shader_program;
+struct gl_transform_feedback_info;
 struct xfb_decl;
+struct nir_xfb_info;
 
 struct gl_nir_linker_options {
    bool fill_parameters;
@@ -68,6 +70,9 @@ bool gl_nir_link_uniforms(const struct gl_constants *consts,
 bool gl_nir_link_varyings(const struct gl_constants *consts,
                           const struct gl_extensions *exts,
                           gl_api api, struct gl_shader_program *prog);
+
+struct nir_xfb_info *
+gl_to_nir_xfb_info(struct gl_transform_feedback_info *info, void *mem_ctx);
 
 nir_variable * gl_nir_lower_xfb_varying(nir_shader *shader,
                                         const char *old_var_name,

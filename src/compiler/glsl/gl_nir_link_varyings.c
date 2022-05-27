@@ -3190,6 +3190,17 @@ gl_nir_link_varyings(const struct gl_constants *consts,
                prog->last_vert_prog->sh.LinkedTransformFeedback->NumVarying > 0;
          }
       }
+
+      /* Assign NIR XFB info to the last stage before the fragment shader */
+      for (int stage = MESA_SHADER_FRAGMENT - 1; stage >= 0; stage--) {
+         struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+         if (sh && stage != MESA_SHADER_TESS_CTRL) {
+            sh->Program->nir->xfb_info =
+               gl_to_nir_xfb_info(sh->Program->sh.LinkedTransformFeedback,
+                                  sh->Program->nir);
+            break;
+         }
+      }
    }
 
    ralloc_free(mem_ctx);
