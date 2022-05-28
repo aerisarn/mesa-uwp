@@ -3483,7 +3483,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
          if (cmd_buffer->vertex_bindings[binding].size) {
             num_records = cmd_buffer->vertex_bindings[binding].size;
          } else {
-            num_records = buffer->size - offset;
+            num_records = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
          }
 
          if (pipeline->uses_dynamic_stride) {
@@ -3634,7 +3634,7 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
           * buffer.
           */
          if (cmd_buffer->device->physical_device->use_ngg_streamout)
-            size = buffer->size - sb[i].offset;
+            size = buffer->vk.size - sb[i].offset;
 
          uint32_t rsrc_word3 =
             S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
@@ -4841,7 +4841,8 @@ radv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDevice
    cmd_buffer->state.index_va += index_buffer->offset + offset;
 
    int index_size = radv_get_vgt_index_size(vk_to_index_type(indexType));
-   cmd_buffer->state.max_index_count = (index_buffer->size - offset) / index_size;
+   cmd_buffer->state.max_index_count =
+      (vk_buffer_range(&index_buffer->vk, offset, VK_WHOLE_SIZE)) / index_size;
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, index_buffer->bo);
 }
@@ -8938,7 +8939,7 @@ radv_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer, uint32_t 
       sb[idx].offset = pOffsets[i];
 
       if (!pSizes || pSizes[i] == VK_WHOLE_SIZE) {
-         sb[idx].size = sb[idx].buffer->size - sb[idx].offset;
+         sb[idx].size = sb[idx].buffer->vk.size - sb[idx].offset;
       } else {
          sb[idx].size = pSizes[i];
       }

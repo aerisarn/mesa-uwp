@@ -5073,7 +5073,8 @@ radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirem
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
 
-   radv_get_buffer_memory_requirements(device, buffer->size, buffer->flags, pMemoryRequirements);
+   radv_get_buffer_memory_requirements(device, buffer->vk.size, buffer->vk.create_flags,
+                                       pMemoryRequirements);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5321,26 +5322,28 @@ radv_buffer_init(struct radv_buffer *buffer, struct radv_device *device,
                  struct radeon_winsys_bo *bo, uint64_t size,
                  uint64_t offset)
 {
-   vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
+   VkBufferCreateInfo createInfo = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = size,
+   };
 
-   buffer->usage = 0;
-   buffer->flags = 0;
+   vk_buffer_init(&device->vk, &buffer->vk, &createInfo);
+
    buffer->bo = bo;
-   buffer->size = size;
    buffer->offset = offset;
 }
 
 void
 radv_buffer_finish(struct radv_buffer *buffer)
 {
-   vk_object_base_finish(&buffer->base);
+   vk_buffer_finish(&buffer->vk);
 }
 
 static void
 radv_destroy_buffer(struct radv_device *device, const VkAllocationCallbacks *pAllocator,
                     struct radv_buffer *buffer)
 {
-   if ((buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) && buffer->bo)
+   if ((buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) && buffer->bo)
       device->ws->buffer_destroy(device->ws, buffer->bo);
 
    radv_buffer_finish(buffer);
@@ -5361,10 +5364,9 @@ radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   radv_buffer_init(buffer, device, NULL, pCreateInfo->size, 0);
-
-   buffer->usage = pCreateInfo->usage;
-   buffer->flags = pCreateInfo->flags;
+   vk_buffer_init(&device->vk, &buffer->vk, pCreateInfo);
+   buffer->bo = NULL;
+   buffer->offset = 0;
 
    if (pCreateInfo->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) {
       enum radeon_bo_flag flags = RADEON_FLAG_VIRTUAL;
@@ -5377,9 +5379,9 @@ radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
       if (replay_info && replay_info->opaqueCaptureAddress)
          replay_address = replay_info->opaqueCaptureAddress;
 
-      VkResult result = device->ws->buffer_create(device->ws, align64(buffer->size, 4096), 4096, 0,
-                                                  flags, RADV_BO_PRIORITY_VIRTUAL,
-                                                  replay_address, &buffer->bo);
+      VkResult result =
+         device->ws->buffer_create(device->ws, align64(buffer->vk.size, 4096), 4096, 0, flags,
+                                   RADV_BO_PRIORITY_VIRTUAL, replay_address, &buffer->bo);
       if (result != VK_SUCCESS) {
          radv_destroy_buffer(device, pAllocator, buffer);
          return vk_error(device, result);

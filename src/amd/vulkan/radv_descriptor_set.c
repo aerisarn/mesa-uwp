@@ -1062,11 +1062,9 @@ write_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_
    }
 
    uint64_t va = radv_buffer_get_va(buffer->bo);
-   uint32_t range = buffer_info->range;
 
-   if (buffer_info->range == VK_WHOLE_SIZE)
-      range = buffer->size - buffer_info->offset;
-   assert(buffer->size > 0 && range > 0);
+   uint32_t range = vk_buffer_range(&buffer->vk, buffer_info->offset, buffer_info->range);
+   assert(buffer->vk.size > 0 && range > 0);
 
    /* robustBufferAccess is relaxed enough to allow this (in combination
     * with the alignment/size we return from vkGetBufferMemoryRequirements)
@@ -1128,11 +1126,9 @@ write_dynamic_buffer_descriptor(struct radv_device *device, struct radv_descript
    }
 
    va = radv_buffer_get_va(buffer->bo);
-   size = buffer_info->range;
 
-   if (buffer_info->range == VK_WHOLE_SIZE)
-      size = buffer->size - buffer_info->offset;
-   assert(buffer->size > 0 && size > 0);
+   size = vk_buffer_range(&buffer->vk, buffer_info->offset, buffer_info->range);
+   assert(buffer->vk.size > 0 && size > 0);
 
    /* robustBufferAccess is relaxed enough to allow this (in combination
     * with the alignment/size we return from vkGetBufferMemoryRequirements)

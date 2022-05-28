@@ -300,8 +300,7 @@ radv_CmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSi
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_buffer, dst_buffer, dstBuffer);
 
-   if (fillSize == VK_WHOLE_SIZE)
-      fillSize = (dst_buffer->size - dstOffset) & ~3ull;
+   fillSize = vk_buffer_range(&dst_buffer->vk, dstOffset, fillSize) & ~3ull;
 
    radv_fill_buffer(cmd_buffer, NULL, dst_buffer->bo,
                     radv_buffer_get_va(dst_buffer->bo) + dst_buffer->offset + dstOffset, fillSize,

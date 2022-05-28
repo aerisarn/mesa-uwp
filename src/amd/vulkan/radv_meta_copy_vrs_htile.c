@@ -278,7 +278,7 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           .pBufferInfo = &(VkDescriptorBufferInfo){.buffer = radv_buffer_to_handle(htile_buffer),
                                                    .offset = 0,
-                                                   .range = htile_buffer->size}}});
+                                                   .range = htile_buffer->vk.size}}});
 
    const unsigned constants[3] = {
       dst_image->planes[0].surface.meta_pitch, dst_image->planes[0].surface.meta_slice_size,

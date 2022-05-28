@@ -2498,8 +2498,7 @@ radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *device,
    vk_object_base_init(&device->vk, &view->base, VK_OBJECT_TYPE_BUFFER_VIEW);
 
    view->bo = buffer->bo;
-   view->range =
-      pCreateInfo->range == VK_WHOLE_SIZE ? buffer->size - pCreateInfo->offset : pCreateInfo->range;
+   view->range = vk_buffer_range(&buffer->vk, pCreateInfo->offset, pCreateInfo->range);
    view->vk_format = pCreateInfo->format;
 
    radv_make_buffer_descriptor(device, buffer, view->vk_format, pCreateInfo->offset, view->range,
