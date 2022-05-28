@@ -718,7 +718,6 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrinsic_op op)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   const struct si_shader_info *info = &ctx->shader->selector->info;
 
    switch (op) {
    case nir_intrinsic_load_first_vertex:
@@ -745,12 +744,6 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       };
       return ac_build_gather_values(&ctx->ac, chan, 3);
    }
-
-   case nir_intrinsic_load_tess_level_outer:
-      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs, 0, 4, true);
-
-   case nir_intrinsic_load_tess_level_inner:
-      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs + 1, 0, 4, true);
 
    case nir_intrinsic_load_tess_level_outer_default:
    case nir_intrinsic_load_tess_level_inner_default: {

@@ -440,8 +440,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
             break;
 
          case nir_intrinsic_load_barycentric_at_sample: /* This loads sample positions. */
-         case nir_intrinsic_load_tess_level_outer: /* TES input read from memory */
-         case nir_intrinsic_load_tess_level_inner: /* TES input read from memory */
             info->uses_vmem_load_other = true;
             break;
 
@@ -625,6 +623,11 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       info->tessfactors_are_def_in_all_invocs = are_tessfactors_def_in_all_invocs(nir);
    }
 
+   /* tess factors are loaded as input instead of system value */
+   info->reads_tess_factors = nir->info.patch_inputs_read &
+      (BITFIELD64_BIT(VARYING_SLOT_TESS_LEVEL_INNER) |
+       BITFIELD64_BIT(VARYING_SLOT_TESS_LEVEL_OUTER));
+
    info->uses_frontface = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
    info->uses_instanceid = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
    info->uses_base_vertex = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX);
@@ -639,8 +642,6 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
    info->uses_primid = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID) ||
                        nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID;
    info->reads_samplemask = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
-   info->reads_tess_factors = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_TESS_LEVEL_INNER) ||
-                              BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_TESS_LEVEL_OUTER);
    info->uses_linear_sample = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE);
    info->uses_linear_centroid = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID);
    info->uses_linear_center = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
@@ -684,12 +685,6 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       info->output_semantic[info->num_outputs] = VARYING_SLOT_PRIMITIVE_ID;
       info->output_type[info->num_outputs] = nir_type_uint32;
       info->output_usagemask[info->num_outputs] = 0x1;
-   }
-
-   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      /* This is a hack to simplify loading tess levels in TES. */
-      info->input[info->num_inputs].semantic = VARYING_SLOT_TESS_LEVEL_OUTER;
-      info->input[info->num_inputs + 1].semantic = VARYING_SLOT_TESS_LEVEL_INNER;
    }
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {

@@ -3611,8 +3611,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_base_vertex:
    case nir_intrinsic_load_first_vertex:
    case nir_intrinsic_load_workgroup_size:
-   case nir_intrinsic_load_tess_level_outer:
-   case nir_intrinsic_load_tess_level_inner:
    case nir_intrinsic_load_tess_level_outer_default:
    case nir_intrinsic_load_tess_level_inner_default:
    case nir_intrinsic_load_tess_rel_patch_id_amd:
