@@ -2367,12 +2367,9 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
    unsigned component = nir_intrinsic_component(instr);
    LLVMValueRef src = ac_to_float(&ctx->ac, get_src(ctx, instr->src[0]));
    nir_src offset = *nir_get_io_offset_src(instr);
-   LLVMValueRef indir_index = NULL;
 
-   if (nir_src_is_const(offset))
-      assert(nir_src_as_uint(offset) == 0);
-   else
-      indir_index = get_src(ctx, offset);
+   /* No indirect indexing is allowed here. */
+   assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
 
    switch (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src))) {
    case 16:
@@ -2387,19 +2384,6 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
    }
 
    writemask <<= component;
-
-   if (ctx->stage == MESA_SHADER_TESS_CTRL) {
-      nir_src *vertex_index_src = nir_get_io_arrayed_index_src(instr);
-      LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
-      unsigned location = nir_intrinsic_io_semantics(instr).location;
-
-      ctx->abi->store_tcs_outputs(ctx->abi, vertex_index, indir_index, src,
-                                  writemask, component, location, base);
-      return;
-   }
-
-   /* No indirect indexing is allowed after this point. */
-   assert(!indir_index);
 
    for (unsigned chan = 0; chan < 8; chan++) {
       if (!(writemask & (1 << chan)))

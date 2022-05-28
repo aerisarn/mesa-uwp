@@ -383,42 +383,18 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
+
+   assert(ctx->shader->key.ge.opt.same_patch_vertices && !param_index);
+
+   ubyte semantic = info->input[driver_location].semantic;
+   /* Load the TCS input from a VGPR. */
+   unsigned func_param = ctx->args.tcs_rel_ids.arg_index + 1 +
+      si_shader_io_get_unique_index(semantic, false) * 4;
+
    LLVMValueRef value[4];
-
-   if (load_input) {
-      assert(ctx->shader->key.ge.opt.same_patch_vertices && !param_index);
-
-      ubyte semantic = info->input[driver_location].semantic;
-      /* Load the TCS input from a VGPR. */
-      unsigned func_param = ctx->args.tcs_rel_ids.arg_index + 1 +
-         si_shader_io_get_unique_index(semantic, false) * 4;
-
-      for (unsigned i = component; i < component + num_components; i++) {
-         value[i] = LLVMGetParam(ctx->main_fn, func_param + i);
-         value[i] = LLVMBuildBitCast(ctx->ac.builder, value[i], type, "");
-      }
-   } else {
-      ubyte semantic = info->output_semantic[driver_location];
-
-      bool is_patch = vertex_index == NULL;
-      assert((semantic >= VARYING_SLOT_PATCH0 ||
-              semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
-              semantic == VARYING_SLOT_TESS_LEVEL_OUTER) == is_patch);
-
-      LLVMValueRef dw_addr, stride;
-      if (is_patch) {
-         stride = NULL;
-         dw_addr = get_tcs_out_current_patch_data_offset(ctx);
-      } else {
-         stride = get_tcs_out_vertex_dw_stride(ctx);
-         dw_addr = get_tcs_out_current_patch_offset(ctx);
-      }
-
-      dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr, vertex_index,
-                                                    param_index, semantic);
-
-      for (unsigned i = component; i < component + num_components; i++)
-         value[i] = lshs_lds_load(ctx, type, i, dw_addr);
+   for (unsigned i = component; i < component + num_components; i++) {
+      value[i] = LLVMGetParam(ctx->main_fn, func_param + i);
+      value[i] = LLVMBuildBitCast(ctx->ac.builder, value[i], type, "");
    }
 
    return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
@@ -453,96 +429,6 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
       value[i] = buffer_load(ctx, type, i, ctx->tess_offchip_ring, base, addr, true);
 
    return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
-}
-
-static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
-                                    LLVMValueRef vertex_index, LLVMValueRef param_index,
-                                    LLVMValueRef src, unsigned writemask,
-                                    unsigned component, unsigned location, unsigned driver_location)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   struct si_shader_info *info = &ctx->shader->selector->info;
-   LLVMValueRef dw_addr, stride;
-   LLVMValueRef buffer, base, addr;
-   LLVMValueRef values[8];
-   bool is_tess_factor = false, is_tess_inner = false;
-
-   ubyte semantic = info->output_semantic[driver_location];
-
-   const bool is_const = !param_index;
-   const bool is_patch = vertex_index == NULL;
-
-   /* Invalid SPIR-V can cause this. */
-   if ((semantic >= VARYING_SLOT_PATCH0 || semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
-        semantic == VARYING_SLOT_TESS_LEVEL_OUTER) != is_patch)
-      return;
-
-   if (!is_patch) {
-      stride = get_tcs_out_vertex_dw_stride(ctx);
-      dw_addr = get_tcs_out_current_patch_offset(ctx);
-      dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr, vertex_index, param_index,
-                                                    semantic);
-   } else {
-      dw_addr = get_tcs_out_current_patch_data_offset(ctx);
-      dw_addr = get_dw_address_from_generic_indices(ctx, NULL, dw_addr, vertex_index, param_index,
-                                                    semantic);
-
-      if (is_const) {
-         int semantic = info->output_semantic[driver_location];
-
-         /* Always write tess factors into LDS for the TCS epilog. */
-         if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
-             semantic == VARYING_SLOT_TESS_LEVEL_OUTER) {
-            is_tess_factor = true;
-            is_tess_inner = semantic == VARYING_SLOT_TESS_LEVEL_INNER;
-         }
-      }
-   }
-
-   buffer = ctx->tess_offchip_ring;
-
-   base = ac_get_arg(&ctx->ac, ctx->args.tess_offchip_offset);
-
-   addr =
-      get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index, param_index, semantic);
-
-   for (unsigned chan = component; chan < 4; chan++) {
-      if (!(writemask & (1 << chan)))
-         continue;
-      LLVMValueRef value = ac_llvm_extract_elem(&ctx->ac, src, chan - component);
-
-      /* Skip LDS stores if there is no LDS read of this output. */
-      if (info->output_readmask[driver_location] & (1 << chan) ||
-          /* The epilog reads LDS if invocation 0 doesn't define tess factors. */
-          (is_tess_factor &&
-           !ctx->shader->selector->info.tessfactors_are_def_in_all_invocs))
-         lshs_lds_store(ctx, chan, dw_addr, value);
-
-      value = ac_to_integer(&ctx->ac, value);
-      values[chan] = value;
-
-      if (writemask != 0xF && !is_tess_factor) {
-         LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr,
-                                             LLVMConstInt(ctx->ac.i32, 4 * chan, 0), "");
-         ac_build_buffer_store_dword(&ctx->ac, buffer, value, NULL, voffset, base, ac_glc);
-      }
-
-      /* Write tess factors into VGPRs for the epilog. */
-      if (is_tess_factor && ctx->shader->selector->info.tessfactors_are_def_in_all_invocs) {
-         if (!is_tess_inner) {
-            LLVMBuildStore(ctx->ac.builder, value, /* outer */
-                           ctx->invoc0_tess_factors[chan]);
-         } else if (chan < 2) {
-            LLVMBuildStore(ctx->ac.builder, value, /* inner */
-                           ctx->invoc0_tess_factors[4 + chan]);
-         }
-      }
-   }
-
-   if (writemask == 0xF && !is_tess_factor) {
-      LLVMValueRef value = ac_build_gather_values(&ctx->ac, values, 4);
-      ac_build_buffer_store_dword(&ctx->ac, buffer, value, NULL, addr, base, ac_glc);
-   }
 }
 
 static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader_part_key *key,
@@ -769,10 +655,25 @@ void si_llvm_tcs_build_end(struct si_shader_context *ctx)
    ret = LLVMBuildInsertValue(builder, ret, rel_patch_id, vgpr++, "");
    ret = LLVMBuildInsertValue(builder, ret, invocation_id, vgpr++, "");
 
-   if (ctx->shader->selector->info.tessfactors_are_def_in_all_invocs) {
+   struct si_shader_info *info = &ctx->shader->selector->info;
+   if (info->tessfactors_are_def_in_all_invocs) {
       vgpr++; /* skip the tess factor LDS offset */
+
+      /* get tess factor driver location */
+      int outer_loc = -1;
+      int inner_loc = -1;
+      for (int i = 0; i < info->num_outputs; i++) {
+         unsigned semantic = info->output_semantic[i];
+         if (semantic == VARYING_SLOT_TESS_LEVEL_OUTER)
+            outer_loc = i;
+         else if (semantic == VARYING_SLOT_TESS_LEVEL_INNER)
+            inner_loc = i;
+      }
+
       for (unsigned i = 0; i < 6; i++) {
-         LLVMValueRef value = LLVMBuildLoad(builder, ctx->invoc0_tess_factors[i], "");
+         int loc = i < 4 ? outer_loc : inner_loc;
+         LLVMValueRef value = loc < 0 ? LLVMGetUndef(ctx->ac.f32) :
+            LLVMBuildLoad(builder, ctx->abi.outputs[loc * 4 + i % 4], "");
          value = ac_to_float(&ctx->ac, value);
          ret = LLVMBuildInsertValue(builder, ret, value, vgpr++, "");
       }
@@ -920,7 +821,6 @@ void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_par
 void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx)
 {
    ctx->abi.load_tess_varyings = si_nir_load_tcs_varyings;
-   ctx->abi.store_tcs_outputs = si_nir_store_output_tcs;
 }
 
 void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)

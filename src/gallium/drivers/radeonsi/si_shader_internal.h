@@ -144,7 +144,6 @@ struct si_shader_context {
    LLVMValueRef gsvs_ring[4];
    LLVMValueRef tess_offchip_ring;
 
-   LLVMValueRef invoc0_tess_factors[6]; /* outer[4], inner[2] */
    LLVMValueRef gs_next_vertex[4];
    LLVMValueRef gs_curprim_verts[4];
    LLVMValueRef gs_generated_prims[4];

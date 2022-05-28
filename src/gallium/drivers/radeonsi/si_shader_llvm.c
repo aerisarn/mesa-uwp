@@ -834,11 +834,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    case MESA_SHADER_TESS_CTRL:
       si_llvm_init_tcs_callbacks(ctx);
       si_llvm_preload_tess_rings(ctx);
-
-      if (sel->info.tessfactors_are_def_in_all_invocs) {
-         for (unsigned i = 0; i < 6; i++)
-            ctx->invoc0_tess_factors[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
-      }
       break;
 
    case MESA_SHADER_TESS_EVAL:

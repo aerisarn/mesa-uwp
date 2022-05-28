@@ -1491,13 +1491,20 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 
 static unsigned si_map_io_driver_location(unsigned semantic)
 {
+   if ((semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX) ||
+       semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
+       semantic == VARYING_SLOT_TESS_LEVEL_OUTER)
+      return si_shader_io_get_unique_index_patch(semantic);
+
    return si_shader_io_get_unique_index(semantic, false);
 }
 
-static bool si_lower_io_to_mem(const union si_shader_key *key,
-                               nir_shader *nir,
+static bool si_lower_io_to_mem(struct si_shader *shader, nir_shader *nir,
                                uint64_t tcs_vgpr_only_inputs)
 {
+   struct si_shader_selector *sel = shader->selector;
+   const union si_shader_key *key = &shader->key;
+
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       if (key->ge.as_ls) {
          NIR_PASS_V(nir, ac_nir_lower_ls_outputs_to_mem, si_map_io_driver_location,
@@ -1507,6 +1514,17 @@ static bool si_lower_io_to_mem(const union si_shader_key *key,
    } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
       NIR_PASS_V(nir, ac_nir_lower_hs_inputs_to_mem, si_map_io_driver_location,
                  key->ge.opt.same_patch_vertices);
+      NIR_PASS_V(nir, ac_nir_lower_hs_outputs_to_mem, si_map_io_driver_location,
+                 sel->screen->info.gfx_level,
+                 false, /* does not matter as we disabled final tess factor write */
+                 ~0ULL, ~0ULL, /* no TES inputs filter */
+                 util_last_bit64(sel->info.outputs_written),
+                 util_last_bit64(sel->info.patch_outputs_written),
+                 shader->wave_size,
+                 /* ALL TCS inputs are passed by register. */
+                 key->ge.opt.same_patch_vertices &&
+                 !(sel->info.base.inputs_read & ~sel->info.tcs_vgpr_only_inputs),
+                 sel->info.tessfactors_are_def_in_all_invocs, false);
       return true;
    }
 
@@ -1633,7 +1651,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
     */
    progress2 |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.gfx_level);
 
-   bool opt_offsets = si_lower_io_to_mem(key, nir, tcs_vgpr_only_inputs);
+   bool opt_offsets = si_lower_io_to_mem(shader, nir, tcs_vgpr_only_inputs);
 
    if (progress2 || opt_offsets)
       si_nir_opts(sel->screen, nir, false);
