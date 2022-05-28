@@ -33,7 +33,7 @@ struct vk_buffer {
    struct vk_object_base base;
 
    /** VkBufferCreateInfo::flags */
-   VkImageCreateFlags create_flags;
+   VkBufferCreateFlags create_flags;
 
    /** VkBufferCreateInfo::size */
    VkDeviceSize size;
