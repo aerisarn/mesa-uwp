@@ -23,7 +23,7 @@
 #ifndef __NV50_IR_GRAPH_H__
 #define __NV50_IR_GRAPH_H__
 
-#include "codegen/nv50_ir_util.h"
+#include "nv50_ir_util.h"
 #include <vector>
 
 namespace nv50_ir {

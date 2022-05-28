@@ -20,7 +20,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir.h"
+#include "nv50_ir.h"
 
 namespace nv50_ir {
 

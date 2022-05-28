@@ -22,8 +22,8 @@
  * Authors: Ben Skeggs <bskeggs@redhat.com>
  */
 
-#include "codegen/nv50_ir_target_gm107.h"
-#include "codegen/nv50_ir_sched_gm107.h"
+#include "nv50_ir_target_gm107.h"
+#include "nv50_ir_sched_gm107.h"
 
 //#define GM107_DEBUG_SCHED_DATA
 

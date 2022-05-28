@@ -1,4 +1,4 @@
-#include "codegen/nv50_ir_lowering_nvc0.h"
+#include "nv50_ir_lowering_nvc0.h"
 
 namespace nv50_ir {
 

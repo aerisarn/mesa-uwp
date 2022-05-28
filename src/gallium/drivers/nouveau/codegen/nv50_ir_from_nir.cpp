@@ -27,11 +27,11 @@
 #include "util/u_debug.h"
 #include "util/u_prim.h"
 
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_from_common.h"
-#include "codegen/nv50_ir_lowering_helper.h"
-#include "codegen/nv50_ir_target.h"
-#include "codegen/nv50_ir_util.h"
+#include "nv50_ir.h"
+#include "nv50_ir_from_common.h"
+#include "nv50_ir_lowering_helper.h"
+#include "nv50_ir_target.h"
+#include "nv50_ir_util.h"
 #include "tgsi/tgsi_from_mesa.h"
 
 #if __cplusplus >= 201103L

@@ -27,7 +27,7 @@
 #include "nv50/nv50_context.h"
 #include "nv50/nv50_program.h"
 
-#include "codegen/nv50_ir_driver.h"
+#include "nv50_ir_driver.h"
 
 static inline unsigned
 bitcount4(const uint32_t val)

@@ -28,7 +28,7 @@
 #include "util/u_screen.h"
 #include "pipe/p_screen.h"
 
-#include "codegen/nv50_ir_driver.h"
+#include "nv50_ir_driver.h"
 
 #include "nv50/nv50_context.h"
 #include "nv50/nv50_screen.h"

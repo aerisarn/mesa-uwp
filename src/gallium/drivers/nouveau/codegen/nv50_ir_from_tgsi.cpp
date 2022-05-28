@@ -27,9 +27,9 @@
 
 #include <set>
 
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_from_common.h"
-#include "codegen/nv50_ir_util.h"
+#include "nv50_ir.h"
+#include "nv50_ir_from_common.h"
+#include "nv50_ir_util.h"
 
 namespace tgsi {
 

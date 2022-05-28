@@ -20,8 +20,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_target.h"
+#include "nv50_ir.h"
+#include "nv50_ir_target.h"
 
 namespace nv50_ir {
 
@@ -469,7 +469,7 @@ RelocEntry::apply(uint32_t *binary, const RelocInfo *info) const
 } // namespace nv50_ir
 
 
-#include "codegen/nv50_ir_driver.h"
+#include "nv50_ir_driver.h"
 
 extern "C" {
 

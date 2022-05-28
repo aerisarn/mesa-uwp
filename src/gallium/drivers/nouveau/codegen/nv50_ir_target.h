@@ -23,7 +23,7 @@
 #ifndef __NV50_IR_TARGET_H__
 #define __NV50_IR_TARGET_H__
 
-#include "codegen/nv50_ir.h"
+#include "nv50_ir.h"
 
 namespace nv50_ir {
 

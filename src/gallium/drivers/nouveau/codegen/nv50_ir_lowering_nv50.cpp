@@ -20,10 +20,10 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_build_util.h"
+#include "nv50_ir.h"
+#include "nv50_ir_build_util.h"
 
-#include "codegen/nv50_ir_target_nv50.h"
+#include "nv50_ir_target_nv50.h"
 
 #define NV50_SU_INFO_SIZE_X   0x00
 #define NV50_SU_INFO_SIZE_Y   0x04

@@ -21,7 +21,7 @@
  */
 #ifndef __NV50_IR_EMIT_GV100_H__
 #define __NV50_IR_EMIT_GV100_H__
-#include "codegen/nv50_ir_target_gv100.h"
+#include "nv50_ir_target_gv100.h"
 
 namespace nv50_ir {
 

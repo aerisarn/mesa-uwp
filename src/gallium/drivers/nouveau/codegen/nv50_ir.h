@@ -30,11 +30,11 @@
 #include <list>
 #include <vector>
 
-#include "codegen/unordered_set.h"
-#include "codegen/nv50_ir_util.h"
-#include "codegen/nv50_ir_graph.h"
+#include "unordered_set.h"
+#include "nv50_ir_util.h"
+#include "nv50_ir_graph.h"
 
-#include "codegen/nv50_ir_driver.h"
+#include "nv50_ir_driver.h"
 
 namespace nv50_ir {
 
@@ -1415,7 +1415,7 @@ protected:
 
 // =============================================================================
 
-#include "codegen/nv50_ir_inlines.h"
+#include "nv50_ir_inlines.h"
 
 } // namespace nv50_ir
 

@@ -19,11 +19,11 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_build_util.h"
+#include "nv50_ir.h"
+#include "nv50_ir_build_util.h"
 
-#include "codegen/nv50_ir_target_nvc0.h"
-#include "codegen/nv50_ir_lowering_gv100.h"
+#include "nv50_ir_target_nvc0.h"
+#include "nv50_ir_lowering_gv100.h"
 
 #include <limits>
 

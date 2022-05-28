@@ -20,7 +20,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir_target_nvc0.h"
+#include "nv50_ir_target_nvc0.h"
 
 // CodeEmitter for GK110 encoding of the Fermi/Kepler ISA.
 

@@ -21,8 +21,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir_target_gm107.h"
-#include "codegen/nv50_ir_lowering_gm107.h"
+#include "nv50_ir_target_gm107.h"
+#include "nv50_ir_lowering_gm107.h"
 
 namespace nv50_ir {
 

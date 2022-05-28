@@ -20,11 +20,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir_graph.h"
+#include "nv50_ir_graph.h"
 #include <limits>
 #include <list>
 #include <stack>
-#include "codegen/nv50_ir.h"
+#include "nv50_ir.h"
 
 namespace nv50_ir {
 

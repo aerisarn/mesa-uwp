@@ -20,8 +20,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_build_util.h"
+#include "nv50_ir.h"
+#include "nv50_ir_build_util.h"
 
 /* On nvc0, surface info is obtained via the surface binding points passed
  * to the SULD/SUST instructions.

@@ -25,8 +25,8 @@
 #ifndef __NV50_IR_LOWERING_HELPER__
 #define __NV50_IR_LOWERING_HELPER__
 
-#include "codegen/nv50_ir.h"
-#include "codegen/nv50_ir_build_util.h"
+#include "nv50_ir.h"
+#include "nv50_ir_build_util.h"
 
 namespace nv50_ir {
 

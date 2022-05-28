@@ -22,7 +22,7 @@
  * Authors: Karol Herbst <kherbst@redhat.com>
  */
 
-#include "codegen/nv50_ir_lowering_helper.h"
+#include "nv50_ir_lowering_helper.h"
 
 namespace nv50_ir {
 
