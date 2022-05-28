@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-subdir('codegen')
-
 files_libnouveau = files(
   'nouveau_buffer.c',
   'nouveau_buffer.h',
