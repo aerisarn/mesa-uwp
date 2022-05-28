@@ -27,6 +27,12 @@ struct nvk_descriptor_set {
    void *map;
 };
 
+struct nvk_descriptor_pool {
+   struct vk_object_base base;
+};
+
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_descriptor_pool, base, VkDescriptorPool,
+                               VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET)
 

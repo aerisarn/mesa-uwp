@@ -2,6 +2,7 @@
 
 #include "nvk_buffer.h"
 #include "nvk_descriptor_set_layout.h"
+#include "nvk_device.h"
 #include "nvk_image_view.h"
 #include "nvk_sampler.h"
 
@@ -162,4 +163,41 @@ VKAPI_ATTR void VKAPI_CALL nvk_UpdateDescriptorSets(
          break;
       }
    }
+}
+
+static void
+nvk_destroy_descriptor_pool(struct nvk_device *device, const VkAllocationCallbacks *pAllocator,
+                            struct nvk_descriptor_pool *pool)
+{
+   vk_object_base_finish(&pool->base);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_CreateDescriptorPool(VkDevice _device,
+                         const VkDescriptorPoolCreateInfo *pCreateInfo,
+                         const VkAllocationCallbacks *pAllocator,
+                         VkDescriptorPool *pDescriptorPool)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   struct nvk_descriptor_pool *pool;
+   uint64_t size = sizeof(struct nvk_descriptor_pool);
+
+   pool = vk_zalloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!pool)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_DESCRIPTOR_POOL);
+   *pDescriptorPool = nvk_descriptor_pool_to_handle(pool);
+   return VK_SUCCESS;
+}
+
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_DestroyDescriptorPool(VkDevice _device, VkDescriptorPool _pool,
+                          const VkAllocationCallbacks *pAllocator)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_descriptor_pool, pool, _pool);
+
+   nvk_destroy_descriptor_pool(device, pAllocator, pool);
 }
