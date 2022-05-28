@@ -435,13 +435,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
             if (!nir_src_is_const(intr->src[1]))
                info->uses_vmem_load_other = true;
             break;
-         case nir_intrinsic_load_constant:
-            info->uses_vmem_load_other = true;
-            break;
-
-         case nir_intrinsic_load_barycentric_at_sample: /* This loads sample positions. */
-            info->uses_vmem_load_other = true;
-            break;
 
          case nir_intrinsic_load_input:
          case nir_intrinsic_load_input_vertex:
@@ -449,6 +442,12 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
             if (nir->info.stage == MESA_SHADER_VERTEX ||
                 nir->info.stage == MESA_SHADER_TESS_EVAL)
                info->uses_vmem_load_other = true;
+            break;
+
+         case nir_intrinsic_load_constant:
+         case nir_intrinsic_load_barycentric_at_sample: /* This loads sample positions. */
+         case nir_intrinsic_load_buffer_amd:
+            info->uses_vmem_load_other = true;
             break;
 
          default:
