@@ -1,6 +1,7 @@
 #include "nvk_buffer.h"
 
 #include "nvk_device.h"
+#include "nvk_device_memory.h"
 #include "nvk_physical_device.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateBuffer(VkDevice _device,
@@ -54,4 +55,18 @@ VKAPI_ATTR void VKAPI_CALL nvk_GetBufferMemoryRequirements2(
          break;
       }
    }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
+                     const VkBindBufferMemoryInfo *pBindInfos)
+{
+   for (uint32_t i = 0; i < bindInfoCount; ++i) {
+      VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
+      VK_FROM_HANDLE(nvk_buffer, buffer, pBindInfos[i].buffer);
+
+      buffer->mem = mem;
+      buffer->offset = pBindInfos[i].memoryOffset;
+   }
+   return VK_SUCCESS;
 }
