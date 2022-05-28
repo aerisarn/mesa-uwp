@@ -3467,6 +3467,7 @@ nir_slot_is_varying(gl_varying_slot slot)
           slot == VARYING_SLOT_BFC1 ||
           slot == VARYING_SLOT_FOGC ||
           (slot >= VARYING_SLOT_TEX0 && slot <= VARYING_SLOT_TEX7) ||
+          slot == VARYING_SLOT_PNTC ||
           slot == VARYING_SLOT_CLIP_DIST0 ||
           slot == VARYING_SLOT_CLIP_DIST1 ||
           slot == VARYING_SLOT_CULL_DIST0 ||
