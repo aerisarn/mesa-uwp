@@ -3,6 +3,3 @@ dEQP-VK.glsl.builtin.precision_double.determinant.compute.mat3,Fail
 # Those cases crash in spirv to nir.
 dEQP-VK.ray_query.advanced.using_wrapper_function.comp.triangles,Crash
 dEQP-VK.ray_query.advanced.using_wrapper_function.comp.aabbs,Crash
-# CTS bug (https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3717)
-dEQP-VK.fragment_operations.transient_attachment_bit.color_load_store_op_test_local_bit,Fail
-dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_local_bit,Fail

@@ -17,6 +17,3 @@ dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_8.d32_sfloat_
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_8.d32_sfloat_s8_uint_separate_layouts.stencil_max,Fail
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_8.d32_sfloat_s8_uint_separate_layouts.stencil_min,Fail
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_16_64_6.samples_8.d32_sfloat_s8_uint_separate_layouts.stencil_zero,Fail
-# CTS bug (https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3717)
-dEQP-VK.fragment_operations.transient_attachment_bit.color_load_store_op_test_local_bit,Fail
-dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_local_bit,Fail

@@ -357,6 +357,3 @@ dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_linear,Fail
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/16325
 dEQP-VK.rasterization.interpolation_multisample_4_bit.lines_wide,Fail
 dEQP-VK.rasterization.interpolation_multisample_4_bit.non_strict_lines_wide,Fail
-# CTS bug (https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3717)
-dEQP-VK.fragment_operations.transient_attachment_bit.color_load_store_op_test_local_bit,Fail
-dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_local_bit,Fail
