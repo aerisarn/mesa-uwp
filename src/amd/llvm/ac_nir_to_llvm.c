@@ -3458,8 +3458,7 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    else
       indir_index = get_src(ctx, offset);
 
-   if (ctx->stage == MESA_SHADER_TESS_CTRL ||
-       (ctx->stage == MESA_SHADER_TESS_EVAL && !is_output)) {
+   if (ctx->stage == MESA_SHADER_TESS_CTRL) {
       LLVMValueRef result = ctx->abi->load_tess_varyings(ctx->abi, component_type,
                                                          vertex_index, indir_index,
                                                          base, component,

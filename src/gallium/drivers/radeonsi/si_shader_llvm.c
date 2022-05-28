@@ -830,7 +830,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       break;
 
    case MESA_SHADER_TESS_EVAL:
-      si_llvm_init_tes_callbacks(ctx, ngg_cull_shader);
       si_llvm_preload_tess_rings(ctx);
       break;
 

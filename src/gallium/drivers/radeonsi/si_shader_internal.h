@@ -249,7 +249,6 @@ void si_llvm_ls_build_end(struct si_shader_context *ctx);
 void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_tcs_build_end(struct si_shader_context *ctx);
 void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx);
-void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader);
 
 /* si_shader_llvm_ps.c */
 LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
