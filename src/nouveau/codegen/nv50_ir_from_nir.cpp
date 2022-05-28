@@ -1035,7 +1035,7 @@ bool Converter::assignSlots() {
       int slot = var->data.location;
       uint16_t slots = calcSlots(type, prog->getType(), nir->info, true, var);
       uint32_t vary = var->data.driver_location;
-      assert(vary + slots <= PIPE_MAX_SHADER_INPUTS);
+      assert(vary + slots <= NV50_CODEGEN_MAX_VARYINGS);
 
       switch(prog->getType()) {
       case Program::TYPE_FRAGMENT:
@@ -1091,7 +1091,7 @@ bool Converter::assignSlots() {
       uint16_t slots = calcSlots(type, prog->getType(), nir->info, false, var);
       uint32_t vary = var->data.driver_location;
 
-      assert(vary < PIPE_MAX_SHADER_OUTPUTS);
+      assert(vary < NV50_CODEGEN_MAX_VARYINGS);
 
       switch(prog->getType()) {
       case Program::TYPE_FRAGMENT:
@@ -1226,8 +1226,8 @@ Converter::getSlotAddress(nir_intrinsic_instr *insn, uint8_t idx, uint8_t slot)
    }
 
    assert(slot < 4);
-   assert(!input || idx < PIPE_MAX_SHADER_INPUTS);
-   assert(input || idx < PIPE_MAX_SHADER_OUTPUTS);
+   assert(!input || idx < NV50_CODEGEN_MAX_VARYINGS);
+   assert(input || idx < NV50_CODEGEN_MAX_VARYINGS);
 
    const nv50_ir_varying *vary = input ? info_out->in : info_out->out;
    return vary[idx].slot[slot] * 4;

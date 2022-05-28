@@ -23,13 +23,10 @@
 #ifndef __NV50_IR_DRIVER_H__
 #define __NV50_IR_DRIVER_H__
 
-#include "pipe/p_shader_tokens.h"
-
+#include "util/macros.h"
 #include "util/blob.h"
-#include "tgsi/tgsi_util.h"
-#include "tgsi/tgsi_parse.h"
-#include "tgsi/tgsi_scan.h"
 
+#define NV50_CODEGEN_MAX_VARYINGS 80
 struct nir_shader_compiler_options;
 
 /*
@@ -153,9 +150,9 @@ struct nv50_ir_prog_info_out
       void *fixupData;
    } bin;
 
-   struct nv50_ir_varying sv[PIPE_MAX_SHADER_INPUTS];
-   struct nv50_ir_varying in[PIPE_MAX_SHADER_INPUTS];
-   struct nv50_ir_varying out[PIPE_MAX_SHADER_OUTPUTS];
+   struct nv50_ir_varying sv[NV50_CODEGEN_MAX_VARYINGS];
+   struct nv50_ir_varying in[NV50_CODEGEN_MAX_VARYINGS];
+   struct nv50_ir_varying out[NV50_CODEGEN_MAX_VARYINGS];
    uint8_t numInputs;
    uint8_t numOutputs;
    uint8_t numPatchConstants; /* also included in numInputs/numOutputs */

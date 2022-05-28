@@ -79,5 +79,5 @@ libnouveau_codegen = static_library(
 
 idep_nouveau_codegen = declare_dependency(
   sources : [ 'nv50_ir_driver.h' ],
-  include_directories : [inc_gallium_aux, include_directories('.')],
+  include_directories : include_directories('.'),
 )
