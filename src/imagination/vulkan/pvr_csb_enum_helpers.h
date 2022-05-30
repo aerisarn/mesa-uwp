@@ -35,6 +35,7 @@
    CR
  ******************************************************************************/
 
+/* TODO: Use VkSampleCountFlagBits as param type? */
 /* clang-format off */
 static inline enum PVRX(CR_ISP_AA_MODE_TYPE)
 pvr_cr_isp_aa_mode_type(uint32_t samples)
@@ -45,7 +46,7 @@ pvr_cr_isp_aa_mode_type(uint32_t samples)
       return PVRX(CR_ISP_AA_MODE_TYPE_AA_NONE);
    case 2:
       return PVRX(CR_ISP_AA_MODE_TYPE_AA_2X);
-   case 3:
+   case 4:
       return PVRX(CR_ISP_AA_MODE_TYPE_AA_4X);
    case 8:
       return PVRX(CR_ISP_AA_MODE_TYPE_AA_8X);
