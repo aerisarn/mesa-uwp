@@ -385,13 +385,13 @@ pvr_winsys_helper_fill_static_memory(struct pvr_winsys *const ws,
    pds_ptr = ws->ops->buffer_map(pds_vma->bo);
    if (!pds_ptr) {
       result = VK_ERROR_MEMORY_MAP_FAILED;
-      goto error_pvr_srv_winsys_buffer_unmap_general;
+      goto err_pvr_srv_winsys_buffer_unmap_general;
    }
 
    usc_ptr = ws->ops->buffer_map(usc_vma->bo);
    if (!usc_ptr) {
       result = VK_ERROR_MEMORY_MAP_FAILED;
-      goto error_pvr_srv_winsys_buffer_unmap_pds;
+      goto err_pvr_srv_winsys_buffer_unmap_pds;
    }
 
    pvr_setup_static_vdm_sync(pds_ptr,
@@ -410,10 +410,10 @@ pvr_winsys_helper_fill_static_memory(struct pvr_winsys *const ws,
 
    return VK_SUCCESS;
 
-error_pvr_srv_winsys_buffer_unmap_pds:
+err_pvr_srv_winsys_buffer_unmap_pds:
    ws->ops->buffer_unmap(pds_vma->bo);
 
-error_pvr_srv_winsys_buffer_unmap_general:
+err_pvr_srv_winsys_buffer_unmap_general:
    ws->ops->buffer_unmap(general_vma->bo);
 
    return result;
