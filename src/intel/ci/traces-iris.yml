@@ -915,20 +915,20 @@ traces:
         checksum: dde3a4118bca61afdb5fcd94c30e61cd
       - device: gl-intel-cml
         checksum: dde3a4118bca61afdb5fcd94c30e61cd
-  - path: nheko/nheko-colors.trace
-    expectations:
-      - device: gl-intel-apl
-        checksum: 7a8b329f50653480eda50f53d715ad27
-      - device: gl-intel-glk
-        checksum: 7a8b329f50653480eda50f53d715ad27
-      - device: gl-intel-amly
-        checksum: 7a8b329f50653480eda50f53d715ad27
-      - device: gl-intel-kbl
-        checksum: 7a8b329f50653480eda50f53d715ad27
-      - device: gl-intel-whl
-        checksum: 7a8b329f50653480eda50f53d715ad27
-      - device: gl-intel-cml
-        checksum: 7a8b329f50653480eda50f53d715ad27
+  #- path: nheko/nheko-colors.trace
+  #  expectations:
+      #- device: gl-intel-apl
+      #  checksum: 7a8b329f50653480eda50f53d715ad27
+      #- device: gl-intel-glk
+      #  checksum: 7a8b329f50653480eda50f53d715ad27
+      #- device: gl-intel-amly
+      #  checksum: 7a8b329f50653480eda50f53d715ad27
+      #- device: gl-intel-kbl
+      #  checksum: 7a8b329f50653480eda50f53d715ad27
+      #- device: gl-intel-whl
+      #  checksum: 7a8b329f50653480eda50f53d715ad27
+      #- device: gl-intel-cml
+      #  checksum: 7a8b329f50653480eda50f53d715ad27
 
   - path: valve/counterstrike-source-v2.trace
     expectations:

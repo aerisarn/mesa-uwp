@@ -570,13 +570,13 @@ traces:
       # broken shadows
       #- device: freedreno-a630
       #  checksum: 0
-  - path: nheko/nheko-colors.trace
-    expectations:
+  #- path: nheko/nheko-colors.trace
+  #  expectations:
       # timeout
       #- device: freedreno-a530
       #  checksum: 0
-      - device: freedreno-a630
-        checksum: cd908b6ee9e79472716976854fbbcb21
+      #- device: freedreno-a630
+      #  checksum: cd908b6ee9e79472716976854fbbcb21
 #  Throws "Invalid state in _mesa_program_state_string" and
 #  GL_INVALID_OPERATION in glBindTexture(target mismatch), fails to produce
 #  a .png at all.  Renders fine on radeonsi.
