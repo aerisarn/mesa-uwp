@@ -549,6 +549,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
 #endif
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
+      .EXT_extended_dynamic_state3 = true,
       .EXT_external_memory_dma_buf = true,
       .EXT_external_memory_host = device->rad_info.has_userptr,
       .EXT_global_priority = true,
@@ -1859,6 +1860,42 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->graphicsPipelineLibrary = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *features =
+            (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)ext;
+         features->extendedDynamicState3TessellationDomainOrigin = true;
+         features->extendedDynamicState3PolygonMode = true;
+         features->extendedDynamicState3SampleMask = true;
+         features->extendedDynamicState3AlphaToCoverageEnable = pdevice->rad_info.gfx_level < GFX11;
+         features->extendedDynamicState3LogicOpEnable = true;
+         features->extendedDynamicState3LineStippleEnable = true;
+         features->extendedDynamicState3ColorBlendEnable = false; /* TODO: Zink */
+         features->extendedDynamicState3DepthClipEnable = true;
+         features->extendedDynamicState3ConservativeRasterizationMode = true;
+         features->extendedDynamicState3DepthClipNegativeOneToOne = true;
+         features->extendedDynamicState3ProvokingVertexMode = !pdevice->use_ngg; /* TODO: NGG */
+         features->extendedDynamicState3DepthClampEnable = true;
+         features->extendedDynamicState3ColorWriteMask = false; /* TODO: Zink */
+         features->extendedDynamicState3RasterizationSamples = false; /* TODO: Zink */
+         features->extendedDynamicState3ColorBlendEquation = false; /* TODO: Zink */
+         features->extendedDynamicState3SampleLocationsEnable = false; /* TODO: Zink */
+         features->extendedDynamicState3LineRasterizationMode = false; /* TODO: Zink */
+         features->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
+         features->extendedDynamicState3AlphaToOneEnable = false;
+         features->extendedDynamicState3RasterizationStream = false;
+         features->extendedDynamicState3ColorBlendAdvanced = false;
+         features->extendedDynamicState3ViewportWScalingEnable = false;
+         features->extendedDynamicState3ViewportSwizzle = false;
+         features->extendedDynamicState3CoverageToColorEnable = false;
+         features->extendedDynamicState3CoverageToColorLocation = false;
+         features->extendedDynamicState3CoverageModulationMode = false;
+         features->extendedDynamicState3CoverageModulationTableEnable = false;
+         features->extendedDynamicState3CoverageModulationTable = false;
+         features->extendedDynamicState3CoverageReductionMode = false;
+         features->extendedDynamicState3RepresentativeFragmentTestEnable = false;
+         features->extendedDynamicState3ShadingRateImageEnable = false;
+         break;
+      }
       default:
          break;
       }
@@ -2637,6 +2674,12 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->prefersCompactVertexOutput = true;
          properties->prefersCompactPrimitiveOutput = false;
 
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *properties =
+            (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)ext;
+         properties->dynamicPrimitiveTopologyUnrestricted = false;
          break;
       }
       default:
