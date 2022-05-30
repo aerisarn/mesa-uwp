@@ -8518,6 +8518,20 @@ radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer, struct radv_ima
 }
 
 static void
+radv_cp_dma_wait_for_stages(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 stage_mask)
+{
+   /* Make sure CP DMA is idle because the driver might have performed a DMA operation for copying a
+    * buffer (or a MSAA image using FMASK). Note that updating a buffer is considered a clear
+    * operation but it might also use a CP DMA copy in some rare situations. Other operations using
+    * a CP DMA clear are implicitly synchronized (see CP_DMA_SYNC).
+    */
+   if (stage_mask & (VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT |
+                     VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+                     VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
+      si_cp_dma_wait_for_idle(cmd_buffer);
+}
+
+static void
 radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfo *dep_info,
              enum rgp_barrier_reason reason)
 {
@@ -8601,16 +8615,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfo *dep_inf
          &dep_info->pImageMemoryBarriers[i].subresourceRange, sample_locs_info ? &sample_locations : NULL);
    }
 
-   /* Make sure CP DMA is idle because the driver might have performed a DMA operation for copying a
-    * buffer (or a MSAA image using FMASK). Note that updating a buffer is considered a clear
-    * operation but it might also use a CP DMA copy in some rare situations. Other operations using
-    * a CP DMA clear are implicitly synchronized (see CP_DMA_SYNC).
-    */
-   if (src_stage_mask &
-       (VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT |
-        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
-      si_cp_dma_wait_for_idle(cmd_buffer);
+   radv_cp_dma_wait_for_stages(cmd_buffer, src_stage_mask);
 
    cmd_buffer->state.flush_bits |= dst_flush_bits;
 
@@ -8668,11 +8673,7 @@ write_event(struct radv_cmd_buffer *cmd_buffer, struct radv_event *event,
    /* Flags that only require signaling post CS. */
    VkPipelineStageFlags2 post_cs_flags = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 
-   /* Make sure CP DMA is idle because the driver might have performed a
-    * DMA operation for copying or filling buffers/images.
-    */
-   if (stageMask & (VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
-      si_cp_dma_wait_for_idle(cmd_buffer);
+   radv_cp_dma_wait_for_stages(cmd_buffer, stageMask);
 
    if (!(stageMask & ~top_of_pipe_flags)) {
       /* Just need to sync the PFP engine. */
