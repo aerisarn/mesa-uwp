@@ -589,14 +589,13 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
    if (!job)
       return;
 
-   /* If a job is serialized it means it consumed a barrier. If the barrier
-    * had the BCL sync flag and the job actually required to apply it, then
-    * it would have done so and cleared it, but if the flag was not applied
-    * because the job's binning shaders didn't require it, we want to clear
-    * that state before we start a new job or record a new pipeline barrier
-    * (we always finish the current job before processing a pipeline barrier).
+   /* Always clear BCL state after a job has been finished if we don't have
+    * a pending graphics barrier that could consume it (BCL barriers only
+    * apply to graphics jobs). This can happen if the application recorded
+    * a barrier involving geometry stages but none of the draw calls in the
+    * job actually required a binning sync.
     */
-   if (job->serialize) {
+   if (!(cmd_buffer->state.barrier.active_mask & V3DV_BARRIER_GRAPHICS_BIT)) {
       cmd_buffer->state.barrier.bcl_barrier_buffer_access = 0;
       cmd_buffer->state.barrier.bcl_barrier_image_access = 0;
    }
