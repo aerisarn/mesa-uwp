@@ -107,8 +107,7 @@ ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
 void
 ac_nir_lower_gs_inputs_to_mem(nir_shader *shader,
                               ac_nir_map_io_driver_location map,
-                              enum amd_gfx_level gfx_level,
-                              unsigned num_reserved_es_outputs);
+                              enum amd_gfx_level gfx_level);
 
 bool
 ac_nir_lower_indirect_derefs(nir_shader *shader,

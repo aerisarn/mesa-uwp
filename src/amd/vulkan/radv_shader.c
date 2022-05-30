@@ -1139,8 +1139,7 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
       return true;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       NIR_PASS_V(nir, ac_nir_lower_gs_inputs_to_mem, NULL,
-                 device->physical_device->rad_info.gfx_level,
-                 info->gs.num_linked_inputs);
+                 device->physical_device->rad_info.gfx_level);
       return true;
    } else if (nir->info.stage == MESA_SHADER_TASK) {
       ac_nir_apply_first_task_to_task_shader(nir);
