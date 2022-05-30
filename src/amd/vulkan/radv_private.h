@@ -1920,7 +1920,7 @@ struct radv_rasterization_info {
 struct radv_discard_rectangle_info {
    VkDiscardRectangleModeEXT mode;
    VkRect2D rects[MAX_DISCARD_RECTANGLES];
-   uint32_t count;
+   uint8_t count;
 };
 
 struct radv_multisample_info {
