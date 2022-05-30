@@ -40,7 +40,7 @@ struct rogue_fwif_rf_regs {
 
 struct rogue_fwif_rf_cmd {
    /* THIS MUST BE THE LAST MEMBER OF THE CONTAINING STRUCTURE */
-   struct rogue_fwif_rf_regs ALIGN(8) regs;
+   struct rogue_fwif_rf_regs ALIGN_ATTR(8) regs;
 };
 
 #endif /* PVR_ROGUE_FWIF_RF_H */
