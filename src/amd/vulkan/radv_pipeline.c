@@ -1378,7 +1378,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
    if (!info->ds.stencil_test_enable &&
        !(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_TEST_ENABLE))
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
-                  RADV_DYNAMIC_STENCIL_REFERENCE);
+                  RADV_DYNAMIC_STENCIL_REFERENCE | RADV_DYNAMIC_STENCIL_OP);
 
    if (!vk_find_struct_const(pCreateInfo->pNext, PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT))
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
