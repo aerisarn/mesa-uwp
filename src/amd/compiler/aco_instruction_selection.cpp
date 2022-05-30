@@ -6798,6 +6798,8 @@ visit_load_global(isel_context* ctx, nir_intrinsic_instr* instr)
       params.byte_align_loads = ctx->options->gfx_level > GFX6 || byte_align_for_smem_mubuf;
       emit_load(ctx, bld, info, params);
    } else {
+      if (info.resource.id())
+         info.resource = bld.as_uniform(info.resource);
       info.offset = Operand(bld.as_uniform(info.offset));
       emit_load(ctx, bld, info, smem_load_params);
    }
