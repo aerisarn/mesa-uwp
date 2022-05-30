@@ -2943,8 +2943,8 @@ nir_lower_color_inputs(nir_shader *nir)
    return progress;
 }
 
-static bool
-nir_add_xfb_info(nir_shader *nir)
+bool
+nir_io_add_intrinsic_xfb_info(nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
@@ -3071,7 +3071,7 @@ nir_lower_io_passes(nir_shader *nir)
               nir_var_shader_in | nir_var_shader_out, NULL);
 
    if (nir->xfb_info)
-      NIR_PASS_V(nir, nir_add_xfb_info);
+      NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
 
    nir->info.io_lowered = true;
 }
