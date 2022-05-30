@@ -43,59 +43,6 @@ LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx)
                         si_unpack_param(ctx, ctx->args.merged_wave_info, 8, 8), "");
 }
 
-static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned input_index,
-                                          unsigned vtx_offset_param, LLVMTypeRef type,
-                                          unsigned swizzle)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   struct si_shader *shader = ctx->shader;
-   LLVMValueRef vtx_offset, soffset;
-   struct si_shader_info *info = &shader->selector->info;
-   unsigned param;
-   LLVMValueRef value;
-
-   param = si_shader_io_get_unique_index(info->input[input_index].semantic, false);
-
-   /* GFX9 has the ESGS ring in LDS. */
-   if (ctx->screen->info.gfx_level >= GFX9) {
-      unsigned offset = param * 4 + swizzle;
-
-      vtx_offset = LLVMBuildAdd(ctx->ac.builder, ctx->gs_vtx_offset[vtx_offset_param],
-                                LLVMConstInt(ctx->ac.i32, offset, false), "");
-
-      LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->esgs_ring, vtx_offset);
-      LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, ptr, "");
-      return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
-   }
-
-   /* GFX6: input load from the ESGS ring in memory. */
-   /* Get the vertex offset parameter on GFX6. */
-   vtx_offset = LLVMBuildMul(ctx->ac.builder, ctx->gs_vtx_offset[vtx_offset_param],
-                             LLVMConstInt(ctx->ac.i32, 4, 0), "");
-
-   soffset = LLVMConstInt(ctx->ac.i32, (param * 4 + swizzle) * 256, 0);
-
-   value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->ac.i32_0, vtx_offset, soffset,
-                                ctx->ac.f32, ac_glc, true, false);
-   return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
-}
-
-static LLVMValueRef si_nir_load_input_gs(struct ac_shader_abi *abi,
-                                         unsigned driver_location, unsigned component,
-                                         unsigned num_components, unsigned vertex_index,
-                                         LLVMTypeRef type)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-
-   LLVMValueRef value[4];
-   for (unsigned i = component; i < component + num_components; i++) {
-      value[i] = si_llvm_load_input_gs(&ctx->abi, driver_location,
-                                       vertex_index, type, i);
-   }
-
-   return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
-}
-
 /* Pass GS inputs from ES to GS on GFX9. */
 static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 {
@@ -591,7 +538,6 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
 
 void si_llvm_init_gs_callbacks(struct si_shader_context *ctx)
 {
-   ctx->abi.load_inputs = si_nir_load_input_gs;
    ctx->abi.emit_vertex = si_llvm_emit_vertex;
    ctx->abi.emit_primitive = si_llvm_emit_primitive;
 }

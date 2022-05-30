@@ -3473,13 +3473,6 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    /* No indirect indexing is allowed after this point. */
    assert(!indir_index);
 
-   if (ctx->stage == MESA_SHADER_GEOMETRY) {
-      assert(nir_src_is_const(*vertex_index_src));
-
-      return ctx->abi->load_inputs(ctx->abi, base, component, count,
-                                   nir_src_as_uint(*vertex_index_src), component_type);
-   }
-
    if (ctx->stage == MESA_SHADER_FRAGMENT && is_output &&
        nir_intrinsic_io_semantics(instr).fb_fetch_output)
       return ctx->abi->emit_fbfetch(ctx->abi);

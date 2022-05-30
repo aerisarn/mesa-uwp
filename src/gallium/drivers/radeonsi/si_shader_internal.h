@@ -136,9 +136,6 @@ struct si_shader_context {
 
    struct ac_llvm_compiler *compiler;
 
-   /* GS vertex offsets unpacked with the gfx6-9 tristrip_adj bug workaround. */
-   LLVMValueRef gs_vtx_offset[6];
-
    /* Preloaded descriptors. */
    LLVMValueRef esgs_ring;
    LLVMValueRef gsvs_ring[4];

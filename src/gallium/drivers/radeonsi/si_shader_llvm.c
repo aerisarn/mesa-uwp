@@ -1046,33 +1046,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       }
    }
 
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      /* Unpack GS vertex offsets. */
-      for (unsigned i = 0; i < 6; i++) {
-         if (ctx->screen->info.gfx_level >= GFX9) {
-            ctx->gs_vtx_offset[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
-         } else {
-            ctx->gs_vtx_offset[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
-         }
-      }
-
-      /* Apply the hw bug workaround for triangle strips with adjacency. */
-      if (ctx->screen->info.gfx_level <= GFX9 &&
-          ctx->shader->key.ge.mono.u.gs_tri_strip_adj_fix) {
-         LLVMValueRef prim_id = ac_get_arg(&ctx->ac, ctx->args.gs_prim_id);
-         /* Remap GS vertex offsets for every other primitive. */
-         LLVMValueRef rotate = LLVMBuildTrunc(ctx->ac.builder, prim_id, ctx->ac.i1, "");
-         LLVMValueRef fixed[6];
-
-         for (unsigned i = 0; i < 6; i++) {
-            fixed[i] = LLVMBuildSelect(ctx->ac.builder, rotate,
-                                       ctx->gs_vtx_offset[(i + 4) % 6],
-                                       ctx->gs_vtx_offset[i], "");
-         }
-         memcpy(ctx->gs_vtx_offset, fixed, sizeof(fixed));
-      }
-   }
-
    ctx->abi.clamp_shadow_reference = true;
    ctx->abi.robust_buffer_access = true;
    ctx->abi.convert_undef_to_zero = true;
