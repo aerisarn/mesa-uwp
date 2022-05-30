@@ -688,22 +688,27 @@ cmd_buffer_serialize_job_if_needed(struct v3dv_cmd_buffer *cmd_buffer,
       return;
 
    uint8_t bit = 0;
+   uint8_t *src_mask;
    if (job->type == V3DV_JOB_TYPE_GPU_CSD) {
       assert(!job->is_transfer);
       bit = V3DV_BARRIER_COMPUTE_BIT;
+      src_mask = &cmd_buffer->state.barrier.src_mask_compute;
    } else if (job->is_transfer) {
       assert(job->type == V3DV_JOB_TYPE_GPU_CL ||
              job->type == V3DV_JOB_TYPE_GPU_CL_SECONDARY ||
              job->type == V3DV_JOB_TYPE_GPU_TFU);
       bit = V3DV_BARRIER_TRANSFER_BIT;
+      src_mask = &cmd_buffer->state.barrier.src_mask_transfer;
    } else {
       assert(job->type == V3DV_JOB_TYPE_GPU_CL ||
              job->type == V3DV_JOB_TYPE_GPU_CL_SECONDARY);
       bit = V3DV_BARRIER_GRAPHICS_BIT;
+      src_mask = &cmd_buffer->state.barrier.src_mask_graphics;
    }
 
    if (barrier_mask & bit) {
       job->serialize = true;
+      *src_mask = 0;
       cmd_buffer->state.barrier.dst_mask &= ~bit;
    }
 }
@@ -2802,19 +2807,40 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
    if (job)
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
+   /* Track the source of the barrier */
+   uint8_t src_mask = 0;
+   if (srcStageMask & (VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+                       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+      src_mask |= V3DV_BARRIER_COMPUTE_BIT;
+   }
+
+   if (srcStageMask & (VK_PIPELINE_STAGE_TRANSFER_BIT |
+                       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+      src_mask |= V3DV_BARRIER_TRANSFER_BIT;
+   }
+
+   if (srcStageMask & (~(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+                         VK_PIPELINE_STAGE_TRANSFER_BIT))) {
+      src_mask |= V3DV_BARRIER_GRAPHICS_BIT;
+   }
+
+   /* Track consumer of the barrier */
    if (dstStageMask & (VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
                        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
       cmd_buffer->state.barrier.dst_mask |= V3DV_BARRIER_COMPUTE_BIT;
+      cmd_buffer->state.barrier.src_mask_compute |= src_mask;
    }
 
    if (dstStageMask & (VK_PIPELINE_STAGE_TRANSFER_BIT |
                        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
       cmd_buffer->state.barrier.dst_mask |= V3DV_BARRIER_TRANSFER_BIT;
+      cmd_buffer->state.barrier.src_mask_transfer |= src_mask;
    }
 
    if (dstStageMask & (~(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
                          VK_PIPELINE_STAGE_TRANSFER_BIT))) {
       cmd_buffer->state.barrier.dst_mask |= V3DV_BARRIER_GRAPHICS_BIT;
+      cmd_buffer->state.barrier.src_mask_graphics |= src_mask;
 
       if (dstStageMask & (VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
                           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |

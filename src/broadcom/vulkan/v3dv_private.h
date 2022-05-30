@@ -1201,6 +1201,13 @@ struct v3dv_barrier_state {
    /* Mask of V3DV_BARRIER_* indicating where we consume a barrier. */
    uint8_t dst_mask;
 
+   /* For each possible consumer of a barrier, a mask of V3DV_BARRIER_*
+    * indicating the sources of the dependency.
+    */
+   uint8_t src_mask_graphics;
+   uint8_t src_mask_transfer;
+   uint8_t src_mask_compute;
+
    /* For graphics barriers, access masks involved. Used to decide if we need
     * to execute a binning or render barrier.
     */
