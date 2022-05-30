@@ -1884,7 +1884,7 @@ struct radv_input_assembly_info {
 };
 
 struct radv_tessellation_info {
-   uint32_t patch_control_points;
+   uint8_t patch_control_points;
    VkTessellationDomainOrigin domain_origin;
 };
 
