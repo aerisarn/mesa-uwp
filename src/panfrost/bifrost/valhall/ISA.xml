@@ -735,9 +735,12 @@
   <enum name="Source format">
     <desc>
       In-memory format of varyings.
+
+      Note: src_flat32 is only valid with 32-bit varying instructions and
+      src_flat16 is only valid with 16-bit varying instructions.
     </desc>
     <value desc="Uninterpreted 32-bit values">src_flat32</value>
-    <reserved/>
+    <value desc="Uninterpreted 16-bit values">src_flat16</value>
     <value desc="Interpolated 32-bit floats">src_f32</value>
     <value desc="Interpolated 16-bit floats">src_f16</value>
   </enum>
