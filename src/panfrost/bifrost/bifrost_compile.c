@@ -552,6 +552,9 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 b->shader->info.bifrost->uses_flat_shading = true;
         }
 
+        enum bi_source_format source_format =
+                smooth ? BI_SOURCE_FORMAT_F32 : BI_SOURCE_FORMAT_FLAT32;
+
         nir_src *offset = nir_get_io_offset_src(instr);
         unsigned imm_index = 0;
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 20);
@@ -559,9 +562,9 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
         if (b->shader->malloc_idvs && immediate) {
                 /* Immediate index given in bytes. */
-                bi_ld_var_buf_imm_f32_to(b, dest, src0, regfmt, sample, update,
-                                         vecsize,
-                                         bi_varying_offset(b->shader, instr));
+                bi_ld_var_buf_imm_to(b, sz, dest, src0, regfmt,
+                                     sample, source_format, update, vecsize,
+                                     bi_varying_offset(b->shader, instr));
         } else if (immediate && smooth) {
                 I = bi_ld_var_imm_to(b, dest, src0, regfmt, sample, update,
                                      vecsize, imm_index);
@@ -582,8 +585,9 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                         if (vbase != 0)
                                 idx_bytes = bi_iadd_u32(b, idx, bi_imm_u32(vbase), false);
 
-                        bi_ld_var_buf_f32_to(b, dest, src0, idx_bytes, regfmt,
-                                             sample, update, vecsize);
+                        bi_ld_var_buf_to(b, sz, dest, src0, idx_bytes, regfmt,
+                                         sample, source_format, update,
+                                         vecsize);
                 } else if (smooth) {
                         if (base != 0)
                                 idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);

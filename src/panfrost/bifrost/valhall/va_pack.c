@@ -266,14 +266,14 @@ va_pack_combine(enum bi_swizzle swz)
 static enum va_source_format
 va_pack_source_format(const bi_instr *I)
 {
-   switch (I->register_format) {
-   case BI_REGISTER_FORMAT_AUTO:
-   case BI_REGISTER_FORMAT_S32:
-   case BI_REGISTER_FORMAT_U32: return VA_SOURCE_FORMAT_SRC_FLAT32;
-   case BI_REGISTER_FORMAT_F32: return VA_SOURCE_FORMAT_SRC_F32;
-   case BI_REGISTER_FORMAT_F16: return VA_SOURCE_FORMAT_SRC_F16;
-   default: unreachable("unhandled register format");
+   switch (I->source_format) {
+   case BI_SOURCE_FORMAT_FLAT32: return VA_SOURCE_FORMAT_SRC_FLAT32;
+   case BI_SOURCE_FORMAT_FLAT16: return VA_SOURCE_FORMAT_SRC_FLAT16;
+   case BI_SOURCE_FORMAT_F32: return VA_SOURCE_FORMAT_SRC_F32;
+   case BI_SOURCE_FORMAT_F16: return VA_SOURCE_FORMAT_SRC_F16;
    }
+
+   unreachable("unhandled source format");
 }
 
 static uint64_t

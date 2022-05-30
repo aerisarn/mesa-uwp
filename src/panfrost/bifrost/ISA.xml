@@ -8593,6 +8593,12 @@
       <opt>u32</opt>
       <opt>u16</opt>
     </mod>
+    <mod name="source_format" size="2">
+      <opt>flat32</opt>
+      <opt>flat16</opt>
+      <opt>f32</opt>
+      <opt>f16</opt>
+    </mod>
     <mod name="sample" size="3">
       <opt>center</opt>
       <opt>centroid</opt>
@@ -8622,6 +8628,12 @@
       <opt>f16</opt>
       <opt>u32</opt>
       <opt>u16</opt>
+    </mod>
+    <mod name="source_format" size="2">
+      <opt>flat32</opt>
+      <opt>flat16</opt>
+      <opt>f32</opt>
+      <opt>f16</opt>
     </mod>
     <mod name="sample" size="3">
       <opt>center</opt>
@@ -8653,6 +8665,12 @@
       <opt>u32</opt>
       <opt>u16</opt>
     </mod>
+    <mod name="source_format" size="2">
+      <opt>flat32</opt>
+      <opt>flat16</opt>
+      <opt>f32</opt>
+      <opt>f16</opt>
+    </mod>
     <mod name="sample" size="3">
       <opt>center</opt>
       <opt>centroid</opt>
@@ -8682,6 +8700,12 @@
       <opt>f16</opt>
       <opt>u32</opt>
       <opt>u16</opt>
+    </mod>
+    <mod name="source_format" size="2">
+      <opt>flat32</opt>
+      <opt>flat16</opt>
+      <opt>f32</opt>
+      <opt>f16</opt>
     </mod>
     <mod name="sample" size="3">
       <opt>center</opt>
