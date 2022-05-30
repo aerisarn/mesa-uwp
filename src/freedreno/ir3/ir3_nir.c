@@ -808,6 +808,10 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_SUBGROUP_ID_SHIFT + 1);
                break;
+            case nir_intrinsic_load_draw_id:
+               layout->num_driver_params =
+                  MAX2(layout->num_driver_params, IR3_DP_DRAWID + 1);
+               break;
             default:
                break;
             }
