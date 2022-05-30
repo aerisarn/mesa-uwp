@@ -5,6 +5,12 @@
 
 #include "vulkan/wsi/wsi_common.h"
 
+static VkResult
+nvk_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+{
+   return VK_SUCCESS;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    const VkDeviceCreateInfo *pCreateInfo,
@@ -32,12 +38,20 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
+   result = vk_queue_init(&device->queue, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
+   if (result != VK_SUCCESS)
+      goto fail_init;
+
+   device->queue.driver_submit = nvk_queue_submit;
+
    device->pdev = physical_device;
 
    *pDevice = nvk_device_to_handle(device);
 
    return VK_SUCCESS;
 
+ fail_init:
+   vk_device_finish(&device->vk);
 fail_alloc:
    vk_free(&device->vk.alloc, device);
    return result;
@@ -51,6 +65,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (!device)
       return;
 
+   vk_queue_finish(&device->queue);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 }
