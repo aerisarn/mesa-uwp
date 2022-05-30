@@ -124,6 +124,38 @@ lower_es_output_store(nir_builder *b,
    if (intrin->intrinsic != nir_intrinsic_store_output)
       return false;
 
+   /* The ARB_shader_viewport_layer_array spec contains the
+    * following issue:
+    *
+    *    2) What happens if gl_ViewportIndex or gl_Layer is
+    *    written in the vertex shader and a geometry shader is
+    *    present?
+    *
+    *    RESOLVED: The value written by the last vertex processing
+    *    stage is used. If the last vertex processing stage
+    *    (vertex, tessellation evaluation or geometry) does not
+    *    statically assign to gl_ViewportIndex or gl_Layer, index
+    *    or layer zero is assumed.
+    *
+    * Vulkan spec 15.7 Built-In Variables:
+    *
+    *   The last active pre-rasterization shader stage (in pipeline order)
+    *   controls the Layer that is used. Outputs in previous shader stages
+    *   are not used, even if the last stage fails to write the Layer.
+    *
+    *   The last active pre-rasterization shader stage (in pipeline order)
+    *   controls the ViewportIndex that is used. Outputs in previous shader
+    *   stages are not used, even if the last stage fails to write the
+    *   ViewportIndex.
+    *
+    * So writes to those outputs in ES are simply ignored.
+    */
+   unsigned semantic = nir_intrinsic_io_semantics(intrin).location;
+   if (semantic == VARYING_SLOT_LAYER || semantic == VARYING_SLOT_VIEWPORT) {
+      nir_instr_remove(instr);
+      return true;
+   }
+
    lower_esgs_io_state *st = (lower_esgs_io_state *) state;
    unsigned write_mask = nir_intrinsic_write_mask(intrin);
 
