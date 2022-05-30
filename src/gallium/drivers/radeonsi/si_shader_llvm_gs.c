@@ -137,57 +137,6 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 
 void si_llvm_es_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader *es = ctx->shader;
-   struct si_shader_info *info = &es->selector->info;
-   LLVMValueRef *addrs = ctx->abi.outputs;
-   LLVMValueRef lds_base = NULL;
-   unsigned chan;
-   int i;
-
-   if (ctx->screen->info.gfx_level >= GFX9 && info->num_outputs) {
-      unsigned itemsize_dw = es->selector->info.esgs_itemsize / 4;
-      LLVMValueRef vertex_idx = ac_get_thread_id(&ctx->ac);
-      LLVMValueRef wave_idx = si_unpack_param(ctx, ctx->args.merged_wave_info, 24, 4);
-      vertex_idx =
-         LLVMBuildOr(ctx->ac.builder, vertex_idx,
-                     LLVMBuildMul(ctx->ac.builder, wave_idx,
-                                  LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false), ""),
-                     "");
-      lds_base =
-         LLVMBuildMul(ctx->ac.builder, vertex_idx, LLVMConstInt(ctx->ac.i32, itemsize_dw, 0), "");
-   }
-
-   for (i = 0; i < info->num_outputs; i++) {
-      int param;
-
-      if (info->output_semantic[i] == VARYING_SLOT_VIEWPORT ||
-          info->output_semantic[i] == VARYING_SLOT_LAYER)
-         continue;
-
-      param = si_shader_io_get_unique_index(info->output_semantic[i], false);
-
-      for (chan = 0; chan < 4; chan++) {
-         if (!(info->output_usagemask[i] & (1 << chan)))
-            continue;
-
-         LLVMValueRef out_val = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
-         out_val = ac_to_integer(&ctx->ac, out_val);
-
-         /* GFX9 has the ESGS ring in LDS. */
-         if (ctx->screen->info.gfx_level >= GFX9) {
-            LLVMValueRef idx = LLVMConstInt(ctx->ac.i32, param * 4 + chan, false);
-            idx = LLVMBuildAdd(ctx->ac.builder, lds_base, idx, "");
-            ac_build_indexed_store(&ctx->ac, ctx->esgs_ring, idx, out_val);
-            continue;
-         }
-
-         ac_build_buffer_store_dword(&ctx->ac, ctx->esgs_ring, out_val, NULL,
-                                     LLVMConstInt(ctx->ac.i32, (4 * param + chan) * 4, 0),
-                                     ac_get_arg(&ctx->ac, ctx->args.es2gs_offset),
-                                     ac_glc | ac_slc | ac_swizzled);
-      }
-   }
-
    if (ctx->screen->info.gfx_level >= GFX9)
       si_set_es_return_value_for_gs(ctx);
 }
