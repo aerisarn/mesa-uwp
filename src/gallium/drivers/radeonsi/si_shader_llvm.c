@@ -790,6 +790,12 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_tess_rel_patch_id_amd:
       return si_get_rel_patch_id(ctx);
 
+   case nir_intrinsic_load_ring_esgs_amd:
+      return ctx->esgs_ring;
+
+   case nir_intrinsic_load_ring_es2gs_offset_amd:
+      return ac_get_arg(&ctx->ac, ctx->args.es2gs_offset);
+
    default:
       return NULL;
    }
