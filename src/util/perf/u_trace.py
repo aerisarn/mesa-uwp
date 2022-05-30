@@ -316,6 +316,7 @@ static const struct debug_control config_control[] = {
 %    for toggle_name in TRACEPOINTS_TOGGLES.keys():
    { "${toggle_name}", ${trace_toggle_name.upper()}_${toggle_name.upper()}, },
 %    endfor
+   { NULL, 0, },
 };
 uint64_t ${trace_toggle_name} = 0;
 
