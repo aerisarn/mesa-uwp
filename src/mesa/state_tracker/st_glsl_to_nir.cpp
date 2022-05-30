@@ -584,45 +584,6 @@ st_nir_vectorize_io(nir_shader *producer, nir_shader *consumer)
 }
 
 static void
-st_nir_link_shaders(nir_shader *producer, nir_shader *consumer)
-{
-   if (producer->options->lower_to_scalar) {
-      NIR_PASS_V(producer, nir_lower_io_to_scalar_early, nir_var_shader_out);
-      NIR_PASS_V(consumer, nir_lower_io_to_scalar_early, nir_var_shader_in);
-   }
-
-   nir_lower_io_arrays_to_elements(producer, consumer);
-
-   gl_nir_opts(producer);
-   gl_nir_opts(consumer);
-
-   if (nir_link_opt_varyings(producer, consumer))
-      gl_nir_opts(consumer);
-
-   NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
-   NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
-
-   if (nir_remove_unused_varyings(producer, consumer)) {
-      NIR_PASS_V(producer, nir_lower_global_vars_to_local);
-      NIR_PASS_V(consumer, nir_lower_global_vars_to_local);
-
-      gl_nir_opts(producer);
-      gl_nir_opts(consumer);
-
-      /* Optimizations can cause varyings to become unused.
-       * nir_compact_varyings() depends on all dead varyings being removed so
-       * we need to call nir_remove_dead_variables() again here.
-       */
-      NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out,
-                 NULL);
-      NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in,
-                 NULL);
-   }
-
-   nir_link_varying_precision(producer, consumer);
-}
-
-static void
 st_lower_patch_vertices_in(struct gl_shader_program *shader_prog)
 {
    struct gl_linked_shader *linked_tcs =
@@ -757,8 +718,8 @@ st_link_nir(struct gl_context *ctx,
        * stage.
        */
       for (int i = num_shaders - 2; i >= 0; i--) {
-         st_nir_link_shaders(linked_shader[i]->Program->nir,
-                             linked_shader[i + 1]->Program->nir);
+         gl_nir_link_opts(linked_shader[i]->Program->nir,
+                          linked_shader[i + 1]->Program->nir);
       }
 
       static const gl_nir_linker_options opts = {
@@ -777,8 +738,8 @@ st_link_nir(struct gl_context *ctx,
        * stage.
        */
       for (int i = num_shaders - 2; i >= 0; i--) {
-         st_nir_link_shaders(linked_shader[i]->Program->nir,
-                             linked_shader[i + 1]->Program->nir);
+         gl_nir_link_opts(linked_shader[i]->Program->nir,
+                          linked_shader[i + 1]->Program->nir);
       }
 
       /* Tidy up any left overs from the linking process for single shaders.
