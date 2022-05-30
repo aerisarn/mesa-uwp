@@ -1292,14 +1292,14 @@ build_leaf_shader(struct radv_device *dev)
       nir_push_if(&b, nir_ine_imm(&b, nir_channel(&b, pconst2, 2), 0));
       {
          nir_ssa_def *ptr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b0011)),
-                                     nir_u2u64(&b, nir_imul(&b, global_id, nir_imm_int(&b, 8))));
+                                     nir_u2u64(&b, nir_imul_imm(&b, global_id, 8)));
          nir_ssa_def *addr =
             nir_pack_64_2x32(&b, nir_build_load_global(&b, 2, 32, ptr, .align_mul = 8));
          nir_store_var(&b, instance_addr_var, addr, 1);
       }
       nir_push_else(&b, NULL);
       {
-         nir_ssa_def *addr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 3)),
+         nir_ssa_def *addr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b0011)),
                                       nir_u2u64(&b, nir_imul_imm(&b, global_id, 64)));
          nir_store_var(&b, instance_addr_var, addr, 1);
       }
@@ -2083,9 +2083,11 @@ radv_CmdBuildAccelerationStructuresKHR(
             const VkAccelerationStructureGeometryKHR *geom =
                pInfos[i].pGeometries ? &pInfos[i].pGeometries[j] : pInfos[i].ppGeometries[j];
 
-            if ((inst && geom->geometryType != VK_GEOMETRY_TYPE_INSTANCES_KHR) ||
-                (!inst && geom->geometryType == VK_GEOMETRY_TYPE_INSTANCES_KHR))
+            if (!inst == (geom->geometryType == VK_GEOMETRY_TYPE_INSTANCES_KHR))
                continue;
+
+            const VkAccelerationStructureBuildRangeInfoKHR *buildRangeInfo =
+               &ppBuildRangeInfos[i][j];
 
             prim_consts.geometry_type = geom->geometryType;
             prim_consts.geometry_id = j | (geom->flags << 28);
@@ -2094,17 +2096,17 @@ radv_CmdBuildAccelerationStructuresKHR(
             case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
                prim_consts.vertex_addr =
                   geom->geometry.triangles.vertexData.deviceAddress +
-                  ppBuildRangeInfos[i][j].firstVertex * geom->geometry.triangles.vertexStride;
+                  buildRangeInfo->firstVertex * geom->geometry.triangles.vertexStride;
                prim_consts.index_addr = geom->geometry.triangles.indexData.deviceAddress;
 
                if (geom->geometry.triangles.indexType == VK_INDEX_TYPE_NONE_KHR)
-                  prim_consts.vertex_addr += ppBuildRangeInfos[i][j].primitiveOffset;
+                  prim_consts.vertex_addr += buildRangeInfo->primitiveOffset;
                else
-                  prim_consts.index_addr += ppBuildRangeInfos[i][j].primitiveOffset;
+                  prim_consts.index_addr += buildRangeInfo->primitiveOffset;
 
                prim_consts.transform_addr = geom->geometry.triangles.transformData.deviceAddress;
                if (prim_consts.transform_addr)
-                  prim_consts.transform_addr += ppBuildRangeInfos[i][j].transformOffset;
+                  prim_consts.transform_addr += buildRangeInfo->transformOffset;
 
                prim_consts.vertex_stride = geom->geometry.triangles.vertexStride;
                prim_consts.vertex_format = geom->geometry.triangles.vertexFormat;
@@ -2113,16 +2115,16 @@ radv_CmdBuildAccelerationStructuresKHR(
                break;
             case VK_GEOMETRY_TYPE_AABBS_KHR:
                prim_consts.aabb_addr =
-                  geom->geometry.aabbs.data.deviceAddress + ppBuildRangeInfos[i][j].primitiveOffset;
+                  geom->geometry.aabbs.data.deviceAddress + buildRangeInfo->primitiveOffset;
                prim_consts.aabb_stride = geom->geometry.aabbs.stride;
                prim_size = 64;
                break;
             case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-               prim_consts.instance_data = geom->geometry.instances.data.deviceAddress +
-                                           ppBuildRangeInfos[i][j].primitiveOffset;
+               prim_consts.instance_data =
+                  geom->geometry.instances.data.deviceAddress + buildRangeInfo->primitiveOffset;
                prim_consts.array_of_pointers = geom->geometry.instances.arrayOfPointers ? 1 : 0;
                prim_size = 128;
-               bvh_states[i].instance_count += ppBuildRangeInfos[i][j].primitiveCount;
+               bvh_states[i].instance_count += buildRangeInfo->primitiveCount;
                break;
             default:
                unreachable("Unknown geometryType");
@@ -2131,10 +2133,9 @@ radv_CmdBuildAccelerationStructuresKHR(
             radv_CmdPushConstants(
                commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.leaf_p_layout,
                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(prim_consts), &prim_consts);
-            radv_unaligned_dispatch(cmd_buffer, ppBuildRangeInfos[i][j].primitiveCount, 1, 1);
-            prim_consts.dst_offset += prim_size * ppBuildRangeInfos[i][j].primitiveCount;
-            prim_consts.dst_scratch_offset +=
-               node_id_stride * ppBuildRangeInfos[i][j].primitiveCount;
+            radv_unaligned_dispatch(cmd_buffer, buildRangeInfo->primitiveCount, 1, 1);
+            prim_consts.dst_offset += prim_size * buildRangeInfo->primitiveCount;
+            prim_consts.dst_scratch_offset += node_id_stride * buildRangeInfo->primitiveCount;
          }
       }
       bvh_states[i].node_offset = prim_consts.dst_offset;
