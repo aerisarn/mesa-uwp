@@ -1197,6 +1197,17 @@ enum {
    V3DV_BARRIER_TRANSFER_BIT = (1 << 2),
 };
 
+struct v3dv_barrier_state {
+   /* Mask of V3DV_BARRIER_* indicating where we consume a barrier. */
+   uint8_t dst_mask;
+
+   /* For graphics barriers, access masks involved. Used to decide if we need
+    * to execute a binning or render barrier.
+    */
+   VkAccessFlags bcl_buffer_access;
+   VkAccessFlags bcl_image_access;
+};
+
 struct v3dv_cmd_buffer_state {
    struct v3dv_render_pass *pass;
    struct v3dv_framebuffer *framebuffer;
@@ -1261,12 +1272,7 @@ struct v3dv_cmd_buffer_state {
    bool is_transfer;
 
    /* Barrier state tracking */
-   struct {
-      uint8_t active_mask; /* Bitmask of V3DV_BARRIER_* */
-      /* Access flags relevant to decide about BCL barriers for CLs */
-      VkAccessFlags bcl_barrier_buffer_access;
-      VkAccessFlags bcl_barrier_image_access;
-   } barrier;
+   struct v3dv_barrier_state barrier;
 
    /* Secondary command buffer state */
    struct {
