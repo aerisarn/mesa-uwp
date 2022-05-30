@@ -54,8 +54,6 @@ struct gl_nir_linker_options {
 
 void gl_nir_opts(nir_shader *nir);
 
-void gl_nir_link_opts(nir_shader *producer, nir_shader *consumer);
-
 bool gl_nir_link_spirv(const struct gl_constants *consts,
                        struct gl_shader_program *prog,
                        const struct gl_nir_linker_options *options);

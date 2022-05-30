@@ -117,7 +117,7 @@ gl_nir_opts(nir_shader *nir)
    } while (progress);
 }
 
-void
+static void
 gl_nir_link_opts(nir_shader *producer, nir_shader *consumer)
 {
    if (producer->options->lower_to_scalar) {
@@ -756,6 +756,24 @@ gl_nir_link_spirv(const struct gl_constants *consts,
                   struct gl_shader_program *prog,
                   const struct gl_nir_linker_options *options)
 {
+   struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
+   unsigned num_shaders = 0;
+
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (prog->_LinkedShaders[i])
+         linked_shader[num_shaders++] = prog->_LinkedShaders[i];
+   }
+
+   /* Linking the stages in the opposite order (from fragment to vertex)
+    * ensures that inter-shader outputs written to in an earlier stage
+    * are eliminated if they are (transitively) not used in a later
+    * stage.
+    */
+   for (int i = num_shaders - 2; i >= 0; i--) {
+      gl_nir_link_opts(linked_shader[i]->Program->nir,
+                       linked_shader[i + 1]->Program->nir);
+   }
+
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = prog->_LinkedShaders[i];
       if (shader) {
@@ -918,6 +936,34 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       if (!validate_sampler_array_indexing(consts, prog))
          return false;
    }
+
+   if (prog->data->LinkStatus == LINKING_FAILURE)
+      return false;
+
+   struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
+   unsigned num_shaders = 0;
+
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (prog->_LinkedShaders[i])
+         linked_shader[num_shaders++] = prog->_LinkedShaders[i];
+   }
+
+   /* Linking the stages in the opposite order (from fragment to vertex)
+    * ensures that inter-shader outputs written to in an earlier stage
+    * are eliminated if they are (transitively) not used in a later
+    * stage.
+    */
+   for (int i = num_shaders - 2; i >= 0; i--) {
+      gl_nir_link_opts(linked_shader[i]->Program->nir,
+                       linked_shader[i + 1]->Program->nir);
+   }
+
+   /* Tidy up any left overs from the linking process for single shaders.
+    * For example varying arrays that get packed may have dead elements that
+    * can be now be eliminated now that array access has been lowered.
+    */
+   if (num_shaders == 1)
+      gl_nir_opts(linked_shader[0]->Program->nir);
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = prog->_LinkedShaders[i];

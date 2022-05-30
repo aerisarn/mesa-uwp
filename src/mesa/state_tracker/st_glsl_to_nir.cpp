@@ -712,16 +712,6 @@ st_link_nir(struct gl_context *ctx,
       gl_nir_opts(linked_shader[0]->Program->nir);
 
    if (shader_program->data->spirv) {
-      /* Linking the stages in the opposite order (from fragment to vertex)
-       * ensures that inter-shader outputs written to in an earlier stage
-       * are eliminated if they are (transitively) not used in a later
-       * stage.
-       */
-      for (int i = num_shaders - 2; i >= 0; i--) {
-         gl_nir_link_opts(linked_shader[i]->Program->nir,
-                          linked_shader[i + 1]->Program->nir);
-      }
-
       static const gl_nir_linker_options opts = {
          true /*fill_parameters */
       };
@@ -731,23 +721,6 @@ st_link_nir(struct gl_context *ctx,
       if (!gl_nir_link_glsl(&ctx->Const, &ctx->Extensions, ctx->API,
                             shader_program))
          return GL_FALSE;
-
-      /* Linking the stages in the opposite order (from fragment to vertex)
-       * ensures that inter-shader outputs written to in an earlier stage
-       * are eliminated if they are (transitively) not used in a later
-       * stage.
-       */
-      for (int i = num_shaders - 2; i >= 0; i--) {
-         gl_nir_link_opts(linked_shader[i]->Program->nir,
-                          linked_shader[i + 1]->Program->nir);
-      }
-
-      /* Tidy up any left overs from the linking process for single shaders.
-       * For example varying arrays that get packed may have dead elements that
-       * can be now be eliminated now that array access has been lowered.
-       */
-      if (num_shaders == 1)
-         gl_nir_opts(linked_shader[0]->Program->nir);
    }
 
    for (unsigned i = 0; i < num_shaders; i++) {
