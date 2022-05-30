@@ -275,7 +275,7 @@ LValue::isUniform() const
    return !insn->srcExists(1) && insn->getSrc(0)->isUniform();
 }
 
-Symbol::Symbol(Program *prog, DataFile f, ubyte fidx)
+Symbol::Symbol(Program *prog, DataFile f, uint8_t fidx)
 {
    baseSym = NULL;
 

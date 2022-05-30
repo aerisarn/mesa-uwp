@@ -52,9 +52,9 @@ struct nv50_ir_varying
    unsigned input    : 1; /* indicates direction of system values */
    unsigned oread    : 1; /* true if output is read from parallel TCP */
 
-   ubyte id; /* TGSI register index */
-   ubyte sn; /* TGSI semantic name */
-   ubyte si; /* TGSI semantic index */
+   uint8_t id; /* TGSI register index */
+   uint8_t sn; /* TGSI semantic name */
+   uint8_t si; /* TGSI semantic index */
 };
 
 #ifndef NDEBUG

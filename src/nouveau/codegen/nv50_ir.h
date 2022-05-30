@@ -790,7 +790,7 @@ public:
 class Symbol : public Value
 {
 public:
-   Symbol(Program *, DataFile file = FILE_MEMORY_CONST, ubyte fileIdx = 0);
+   Symbol(Program *, DataFile file = FILE_MEMORY_CONST, uint8_t fileIdx = 0);
    ~Symbol() { }
 
    virtual Symbol *clone(ClonePolicy<Function>&) const;
@@ -804,7 +804,7 @@ public:
    // print with indirect values
    int print(char *, size_t, Value *, Value *, DataType ty = TYPE_NONE) const;
 
-   inline void setFile(DataFile file, ubyte fileIndex = 0)
+   inline void setFile(DataFile file, uint8_t fileIndex = 0)
    {
       reg.file = file;
       reg.fileIndex = fileIndex;
