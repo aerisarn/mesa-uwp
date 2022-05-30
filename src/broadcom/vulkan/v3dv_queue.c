@@ -488,10 +488,24 @@ set_in_syncs(struct v3dv_queue *queue,
    if (queue->last_job_syncs.first[queue_sync])
       n_syncs = sync_info->wait_count;
 
-   /* If the serialize flag is set, this job waits for completion of all GPU
-    * jobs submitted in any queue V3DV_QUEUE_(CL/TFU/CSD) before running.
+   /* If the serialize flag is set the job needs to be serialized in the
+    * corresponding queues. Notice that we may implement transfer operations
+    * as both CL or TFU jobs.
+    *
+    * FIXME: maybe we could track more precisely if the source of a transfer
+    * barrier is a CL and/or a TFU job.
     */
-   *count = n_syncs + (job->serialize ? 3 : 0);
+   bool sync_csd  = job->serialize & V3DV_BARRIER_COMPUTE_BIT;
+   bool sync_tfu  = job->serialize & V3DV_BARRIER_TRANSFER_BIT;
+   bool sync_cl   = job->serialize & (V3DV_BARRIER_GRAPHICS_BIT |
+                                      V3DV_BARRIER_TRANSFER_BIT);
+   *count = n_syncs;
+   if (sync_cl)
+      (*count)++;
+   if (sync_tfu)
+      (*count)++;
+   if (sync_csd)
+      (*count)++;
 
    if (!*count)
       return NULL;
@@ -508,11 +522,16 @@ set_in_syncs(struct v3dv_queue *queue,
          vk_sync_as_drm_syncobj(sync_info->waits[i].sync)->syncobj;
    }
 
-   if (job->serialize) {
-      for (int i = 0; i < 3; i++)
-         syncs[n_syncs + i].handle = queue->last_job_syncs.syncs[i];
-   }
+   if (sync_cl)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CL];
 
+   if (sync_csd)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CSD];
+
+   if (sync_tfu)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_TFU];
+
+   assert(n_syncs == *count);
    return syncs;
 }
 
@@ -887,7 +906,7 @@ queue_create_noop_job(struct v3dv_queue *queue)
     * order requirements, which basically require that signal operations occur
     * in submission order.
     */
-   queue->noop_job->serialize = true;
+   queue->noop_job->serialize = V3DV_BARRIER_ALL;
 
    return VK_SUCCESS;
 }

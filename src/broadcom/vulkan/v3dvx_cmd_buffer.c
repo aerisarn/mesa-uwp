@@ -1578,7 +1578,8 @@ cmd_buffer_subpass_split_for_barrier(struct v3dv_cmd_buffer *cmd_buffer,
    if (!job)
       return NULL;
 
-   job->serialize = true;
+   /* FIXME: we can do better than all barriers */
+   job->serialize = V3DV_BARRIER_ALL;
    job->needs_bcl_sync = is_bcl_barrier;
    return job;
 }
@@ -1711,7 +1712,12 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
             v3dv_cmd_buffer_finish_job(primary);
             v3dv_job_clone_in_cmd_buffer(secondary_job, primary);
             if (pending_barrier.dst_mask) {
-               secondary_job->serialize = true;
+               /* FIXME: do the same we do for primaries and only choose the
+                * relevant src masks.
+                */
+               secondary_job->serialize = pending_barrier.src_mask_graphics |
+                                          pending_barrier.src_mask_transfer |
+                                          pending_barrier.src_mask_compute;
                if (pending_barrier.bcl_buffer_access ||
                    pending_barrier.bcl_image_access) {
                   secondary_job->needs_bcl_sync = true;

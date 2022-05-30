@@ -707,7 +707,7 @@ cmd_buffer_serialize_job_if_needed(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    if (barrier_mask & bit) {
-      job->serialize = true;
+      job->serialize = *src_mask;
       *src_mask = 0;
       cmd_buffer->state.barrier.dst_mask &= ~bit;
    }
@@ -1714,7 +1714,12 @@ cmd_buffer_execute_outside_pass(struct v3dv_cmd_buffer *primary,
             return;
 
          if (pending_barrier.dst_mask) {
-            job->serialize = true;
+            /* FIXME: do the same we do for primaries and only choose the
+             * relevant src masks.
+             */
+            job->serialize = pending_barrier.src_mask_graphics |
+                             pending_barrier.src_mask_transfer |
+                             pending_barrier.src_mask_compute;
             if (pending_barrier.bcl_buffer_access ||
                 pending_barrier.bcl_image_access) {
                job->needs_bcl_sync = true;

@@ -1094,8 +1094,10 @@ struct v3dv_job {
     */
    bool always_flush;
 
-   /* Whether we need to serialize this job in our command stream */
-   bool serialize;
+   /* A mask of V3DV_BARRIER_* indicating the source(s) of the barrier. We
+    * can use this to select the hw queues where we need to serialize the job.
+    */
+   uint8_t serialize;
 
    /* If this is a CL job, whether we should sync before binning */
    bool needs_bcl_sync;
@@ -1196,6 +1198,9 @@ enum {
    V3DV_BARRIER_COMPUTE_BIT  = (1 << 1),
    V3DV_BARRIER_TRANSFER_BIT = (1 << 2),
 };
+#define V3DV_BARRIER_ALL (V3DV_BARRIER_GRAPHICS_BIT | \
+                          V3DV_BARRIER_TRANSFER_BIT | \
+                          V3DV_BARRIER_COMPUTE_BIT);
 
 struct v3dv_barrier_state {
    /* Mask of V3DV_BARRIER_* indicating where we consume a barrier. */
