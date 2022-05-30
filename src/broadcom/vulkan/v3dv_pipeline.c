@@ -2882,6 +2882,7 @@ pipeline_set_ez_state(struct v3dv_pipeline *pipeline,
       break;
    default:
       pipeline->ez_state = V3D_EZ_DISABLED;
+      pipeline->incompatible_ez_test = true;
       break;
    }
 
@@ -2890,6 +2891,14 @@ pipeline_set_ez_state(struct v3dv_pipeline *pipeline,
        (!stencil_op_is_no_op(&ds_info->front) ||
         !stencil_op_is_no_op(&ds_info->back))) {
          pipeline->ez_state = V3D_EZ_DISABLED;
+   }
+
+   /* If the FS writes Z, then it may update against the chosen EZ direction */
+   struct v3dv_shader_variant *fs_variant =
+      pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
+   if (fs_variant && fs_variant->prog_data.fs->writes_z &&
+       !fs_variant->prog_data.fs->writes_z_from_fep) {
+      pipeline->ez_state = V3D_EZ_DISABLED;
    }
 }
 
@@ -3047,7 +3056,6 @@ pipeline_init(struct v3dv_pipeline *pipeline,
                                        rs_info, pv_info, ls_info,
                                        ms_info);
 
-   pipeline_set_ez_state(pipeline, ds_info);
    enable_depth_bias(pipeline, rs_info);
    pipeline_set_sample_mask(pipeline, ms_info);
    pipeline_set_sample_rate_shading(pipeline, ms_info);
@@ -3081,6 +3089,9 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    } else {
       pipeline->default_attribute_values = NULL;
    }
+
+   /* This must be done after the pipeline has been compiled */
+   pipeline_set_ez_state(pipeline, ds_info);
 
    return result;
 }

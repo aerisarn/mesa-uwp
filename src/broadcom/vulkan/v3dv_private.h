@@ -1913,6 +1913,11 @@ struct v3dv_pipeline {
 
    enum v3dv_ez_state ez_state;
 
+   /* If ez_state is V3D_EZ_DISABLED, if the reason for disabling is that the
+    * pipeline selects an incompatible depth test function.
+    */
+   bool incompatible_ez_test;
+
    bool msaa;
    bool sample_rate_shading;
    uint32_t sample_mask;

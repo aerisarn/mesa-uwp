@@ -1400,7 +1400,10 @@ v3dX(cmd_buffer_emit_varyings_state)(struct v3dv_cmd_buffer *cmd_buffer)
    }
 }
 
-static void
+/* Updates job early Z state tracking. Returns False if EZ must be disabled
+ * for the current draw call.
+ */
+static bool
 job_update_ez_state(struct v3dv_job *job,
                     struct v3dv_pipeline *pipeline,
                     struct v3dv_cmd_buffer *cmd_buffer)
@@ -1414,8 +1417,14 @@ job_update_ez_state(struct v3dv_job *job,
     */
    if (job->first_ez_state == V3D_EZ_DISABLED) {
       assert(job->ez_state == V3D_EZ_DISABLED);
-      return;
+      return false;
    }
+
+   /* If ez_state is V3D_EZ_DISABLED it means that we have already decided
+    * that EZ must be disabled for the remaining of the frame.
+    */
+   if (job->ez_state == V3D_EZ_DISABLED)
+      return false;
 
    /* This is part of the pre draw call handling, so we should be inside a
     * render pass.
@@ -1436,7 +1445,7 @@ job_update_ez_state(struct v3dv_job *job,
       if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED) {
          job->first_ez_state = V3D_EZ_DISABLED;
          job->ez_state = V3D_EZ_DISABLED;
-         return;
+         return false;
       }
 
       /* GFXH-1918: the early-z buffer may load incorrect depth values
@@ -1465,7 +1474,7 @@ job_update_ez_state(struct v3dv_job *job,
                        "without framebuffer info disables early-z tests.\n");
             job->first_ez_state = V3D_EZ_DISABLED;
             job->ez_state = V3D_EZ_DISABLED;
-            return;
+            return false;
          }
 
          if (((fb->width % 2) != 0 || (fb->height % 2) != 0)) {
@@ -1473,7 +1482,7 @@ job_update_ez_state(struct v3dv_job *job,
                        "or height disables early-Z tests.\n");
             job->first_ez_state = V3D_EZ_DISABLED;
             job->ez_state = V3D_EZ_DISABLED;
-            return;
+            return false;
          }
       }
    }
@@ -1481,16 +1490,8 @@ job_update_ez_state(struct v3dv_job *job,
    /* Otherwise, we can decide to selectively enable or disable EZ for draw
     * calls using the CFG_BITS packet based on the bound pipeline state.
     */
-
-   /* If the FS writes Z, then it may update against the chosen EZ direction */
-   struct v3dv_shader_variant *fs_variant =
-      pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
-   if (fs_variant->prog_data.fs->writes_z &&
-       !fs_variant->prog_data.fs->writes_z_from_fep) {
-      job->ez_state = V3D_EZ_DISABLED;
-      return;
-   }
-
+   bool disable_ez = false;
+   bool incompatible_test = false;
    switch (pipeline->ez_state) {
    case V3D_EZ_UNDECIDED:
       /* If the pipeline didn't pick a direction but didn't disable, then go
@@ -1504,24 +1505,35 @@ job_update_ez_state(struct v3dv_job *job,
       /* If the pipeline picked a direction, then it needs to match the current
        * direction if we've decided on one.
        */
-      if (job->ez_state == V3D_EZ_UNDECIDED)
+      if (job->ez_state == V3D_EZ_UNDECIDED) {
          job->ez_state = pipeline->ez_state;
-      else if (job->ez_state != pipeline->ez_state)
-         job->ez_state = V3D_EZ_DISABLED;
+      } else if (job->ez_state != pipeline->ez_state) {
+         disable_ez = true;
+         incompatible_test = true;
+      }
       break;
 
    case V3D_EZ_DISABLED:
-      /* If the pipeline disables EZ because of a bad Z func or stencil
-       * operation, then we can't do any more EZ in this frame.
-       */
-      job->ez_state = V3D_EZ_DISABLED;
+         disable_ez = true;
+         incompatible_test = pipeline->incompatible_ez_test;
       break;
    }
 
-   if (job->first_ez_state == V3D_EZ_UNDECIDED &&
-       job->ez_state != V3D_EZ_DISABLED) {
+   if (job->first_ez_state == V3D_EZ_UNDECIDED && !disable_ez) {
+      assert(job->ez_state != V3D_EZ_DISABLED);
       job->first_ez_state = job->ez_state;
    }
+
+   /* If we had to disable EZ because of an incompatible test direction and
+    * and the pipeline writes depth then we need to disable EZ for the rest of
+    * the frame.
+    */
+   if (incompatible_test && pipeline->z_updates_enable) {
+      assert(disable_ez);
+      job->ez_state = V3D_EZ_DISABLED;
+   }
+
+   return !disable_ez;
 }
 
 void
@@ -1533,13 +1545,13 @@ v3dX(cmd_buffer_emit_configuration_bits)(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
-   job_update_ez_state(job, pipeline, cmd_buffer);
+   bool enable_ez = job_update_ez_state(job, pipeline, cmd_buffer);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CFG_BITS));
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
-      config.early_z_enable = job->ez_state != V3D_EZ_DISABLED;
+      config.early_z_enable = enable_ez;
       config.early_z_updates_enable = config.early_z_enable &&
          pipeline->z_updates_enable;
    }
