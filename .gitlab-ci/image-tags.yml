@@ -8,11 +8,11 @@ variables:
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
    DEBIAN_X86_TEST_IMAGE_PATH: "debian/x86_test-gl"
-   DEBIAN_X86_TEST_GL_TAG: "2022-05-31-cts-1.3.2.0"
-   DEBIAN_X86_TEST_VK_TAG: "2022-05-31-cts-1.3.2.0"
+   DEBIAN_X86_TEST_GL_TAG: "2022-06-01-piglit-update"
+   DEBIAN_X86_TEST_VK_TAG: "2022-06-01-piglit-update"
 
    FEDORA_X86_BUILD_TAG: "2022-04-24-spirv-tools-5"
-   KERNEL_ROOTFS_TAG: "2022-05-31-cts-1.3.2.0"
+   KERNEL_ROOTFS_TAG: "2022-06-01-piglit-update"
 
    WINDOWS_X64_BUILD_PATH: "windows/x64_build"
    WINDOWS_X64_BUILD_TAG: "2022-27-05-server_2022"

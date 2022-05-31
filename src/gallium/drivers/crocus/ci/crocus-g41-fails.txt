@@ -103,11 +103,6 @@ spec@!opengl 1.1@max-texture-size,Crash
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 
 # Regression from i965
-# "Unexpected GL error: GL_INVALID_VALUE 0x501"
-spec@!opengl 2.0@max-samplers,Fail
-spec@!opengl 2.0@max-samplers border,Fail
-
-# Regression from i965
 # "data not copied"
 spec@arb_copy_buffer@targets,Fail
 

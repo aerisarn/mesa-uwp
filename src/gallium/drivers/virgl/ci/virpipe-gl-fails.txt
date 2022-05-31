@@ -248,11 +248,6 @@ spec@!opengl 1.5@depth-tex-compare,Fail
 spec@!opengl 1.5@draw-elements-user,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
 spec@!opengl 3.2@layered-rendering@clear-color-mismatched-layer-count,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-pattern_gles2,Fail

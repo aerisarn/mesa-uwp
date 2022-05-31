@@ -1039,11 +1039,6 @@ spec@!opengl 3.0@gl30basic,Fail
 spec@!opengl 3.0@minmax,Fail
 spec@!opengl 3.1@minmax,Fail
 spec@!opengl 3.1@vao-broken-attrib,Crash
-spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-first,Fail
-spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
 spec@!opengl 3.2@layered-rendering@clear-color-all-types 2d_multisample_array single_level,Fail
 spec@!opengl 3.2@minmax,Fail
 spec@!opengl 3.2@pointsprite-origin,Fail
