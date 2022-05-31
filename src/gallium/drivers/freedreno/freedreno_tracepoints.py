@@ -40,6 +40,10 @@ from u_trace import Tracepoint
 from u_trace import TracepointArg
 from u_trace import utrace_generate
 
+# List of the default tracepoints enabled. By default tracepoints are enabled,
+# set tp_default_enabled=False to disable them by default.
+fd_default_tps = []
+
 #
 # Tracepoint definitions:
 #
@@ -48,18 +52,29 @@ Header('util/u_dump.h')
 Header('freedreno_batch.h')
 
 
-def begin_end_tp(name, args=[], tp_struct=None, tp_print=None):
+def begin_end_tp(name, args=[], tp_struct=None, tp_print=None,
+                 tp_default_enabled=True):
+    global fd_default_tps
+    if tp_default_enabled:
+        fd_default_tps.append(name)
     Tracepoint('start_{0}'.format(name),
+               toggle_name=name,
                args=args,
                tp_struct=tp_struct,
                tp_perfetto='fd_start_{0}'.format(name),
                tp_print=tp_print)
     Tracepoint('end_{0}'.format(name),
+               toggle_name=name,
                tp_perfetto='fd_end_{0}'.format(name))
 
 
-def singular_tp(name, args=[], tp_struct=None, tp_print=None):
+def singular_tp(name, args=[], tp_struct=None, tp_print=None,
+                tp_default_enabled=True):
+    global fd_default_tps
+    if tp_default_enabled:
+        fd_default_tps.append(name)
     Tracepoint(name,
+               toggle_name=name,
                args=args,
                tp_struct=tp_struct,
                tp_print=tp_print)
@@ -133,4 +148,8 @@ begin_end_tp('blit',
 
 begin_end_tp('compute')
 
-utrace_generate(cpath=args.src, hpath=args.hdr, ctx_param='struct pipe_context *pctx')
+utrace_generate(cpath=args.src,
+                hpath=args.hdr,
+                ctx_param='struct pipe_context *pctx',
+                trace_toggle_name='fd_gpu_tracepoint',
+                trace_toggle_defaults=fd_default_tps)
