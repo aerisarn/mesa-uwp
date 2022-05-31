@@ -306,6 +306,54 @@ va_should_end(bi_block *block)
 }
 
 /*
+ * We should discard helper invocations as soon as helper invocations die after
+ * their last use. Either they die after an instruction using helper
+ * invocations, or they die along a control flow edge. The former is handled by
+ * discarding appropriately after instructions. The latter is handled by
+ * inserting a discard at the _start_ of some blocks:
+ *
+ * Lemma: If a non-critical edge discards helpers, it is the only edge that
+ * enters its destination.
+ *
+ * Proof: An edge discards helpers if helpers are live at the end of the source
+ * block and dead at the start of the destination block. By definition, helpers
+ * are live at the end of a block iff they are live at the start of some
+ * successor of a block. The source block therefore has a successor with helpers
+ * live at the start and a successor with helpers dead at the start. As the
+ * source block has at least two successors, the edge is NOT the only edge
+ * exiting its source. Hence it is the only edge entering the destination,
+ * otherwise the edge would be critical.
+ *
+ * By corrollary, we may handle discards on control flow edges by discarding at
+ * the start of blocks with a single predecessor.
+ *
+ * This routine tests if a block should discard helper invocations at its start.
+ */
+static bool
+va_discard_before_block(bi_block *block)
+{
+   /* Do not discard if the block requires helpers at the start */
+   if (block->pass_flags)
+      return false;
+
+   /* By the lemma, if we need to discard, there is a unique predecessor */
+   if (bi_num_predecessors(block) != 1)
+      return false;
+
+   bi_block *pred = *util_dynarray_element(&block->predecessors, bi_block *, 0);
+
+   /* Discard if helpers are live at the end of the predecessor, due to helpers
+    * live at the start of some (other) successor.
+    */
+   bi_foreach_successor(pred, succ) {
+      if (succ->pass_flags)
+         return true;
+   }
+
+   return false;
+}
+
+/*
  * Given a program with no flow control modifiers, insert NOPs signaling the
  * required flow control. Not much optimization happens here.
  */
@@ -314,10 +362,18 @@ va_insert_flow_control_nops(bi_context *ctx)
 {
    /* First do dataflow analysis for the scoreboard. This populates I->flow with
     * a bitmap of slots to wait on.
+    *
+    * Also do dataflow analysis for helper invocations in fragment shaders. This
+    * populates block->pass_flags with helper invocation information.
     */
    va_assign_scoreboard(ctx);
+   bi_analyze_helper_terminate(ctx);
 
    bi_foreach_block(ctx, block) {
+      /* Handle discards along control flow edges */
+      if (va_discard_before_block(block))
+         bi_flow(ctx, bi_before_block(block), VA_FLOW_DISCARD);
+
       bi_foreach_instr_in_block_safe(block, I) {
          switch (I->op) {
          /* Signal barriers immediately */
@@ -359,6 +415,18 @@ va_insert_flow_control_nops(bi_context *ctx)
          }
       }
 
+      /* Terminate helpers after the last use */
+      if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->inputs->is_blend &&
+          block->pass_flags && bi_block_terminates_helpers(block)) {
+
+         bi_foreach_instr_in_block_safe_rev(block, I) {
+            if (bi_instr_uses_helpers(I)) {
+               bi_flow(ctx, bi_after_instr(I), VA_FLOW_DISCARD);
+               break;
+            }
+         }
+      }
+
       /* End exeuction at the end of the block if needed, or reconverge if we
        * continue but we don't need to end execution.
        */
@@ -372,4 +440,14 @@ va_insert_flow_control_nops(bi_context *ctx)
             bi_flow(ctx, bi_after_block(block), VA_FLOW_RECONVERGE);
       }
    }
+
+   /* If helpers are not used anywhere, they are not used at the start, so we
+    * terminate at the start. Else, helpers are used somewhere in the shader and
+    * are terminated after last use.
+    */
+   bi_block *start = bi_start_block(&ctx->blocks);
+   bool frag = (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->inputs->is_blend);
+
+   if (frag && !start->pass_flags)
+      bi_flow(ctx, bi_before_block(start), VA_FLOW_DISCARD);
 }
