@@ -183,9 +183,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       typed_memcpy(state->dynamic.discard_rectangle.rectangles,
                    cmd_buffer->state.dynamic.discard_rectangle.rectangles,
                    MAX_DISCARD_RECTANGLES);
-   }
 
-   if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
       typed_memcpy(&state->dynamic.sample_location, &cmd_buffer->state.dynamic.sample_location, 1);
    }
 
@@ -314,6 +312,9 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
                    state->dynamic.discard_rectangle.rectangles,
                    MAX_DISCARD_RECTANGLES);
 
+      typed_memcpy(&cmd_buffer->state.dynamic.sample_location.locations,
+                   &state->dynamic.sample_location.locations, 1);
+
       cmd_buffer->state.dirty |=
          RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_DYNAMIC_SCISSOR |
          RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
@@ -328,14 +329,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
          RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE |
          RADV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
          RADV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS | RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
-         RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS | RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE;
-   }
-
-   if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
-      typed_memcpy(&cmd_buffer->state.dynamic.sample_location.locations,
-                   &state->dynamic.sample_location.locations, 1);
-
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
+         RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS | RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE |
+         RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
    }
 
    if (state->flags & RADV_META_SAVE_COMPUTE_PIPELINE) {
