@@ -264,12 +264,19 @@ mir_print_instruction(midgard_instruction *ins)
         bool is_alu = ins->type == TAG_ALU_4;
         unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
 
-        if (ins->src[0] == r_constant && is_alu)
-                mir_print_embedded_constant(ins, 0);
-        else
-                mir_print_src(ins, 0);
+        if (is_alu && alu_opcode_props[ins->op].props & QUIRK_FLIPPED_R24) {
+                /* Moves (indicated by QUIRK_FLIPPED_R24) are 1-src, with their
+                 * one source in the second slot
+                 */
+                assert(ins->src[0] == ~0);
+        } else {
+                if (ins->src[0] == r_constant && is_alu)
+                        mir_print_embedded_constant(ins, 0);
+                else
+                        mir_print_src(ins, 0);
 
-        printf(", ");
+                printf(", ");
+        }
 
         if (ins->has_inline_constant)
                 printf("#%d", ins->inline_constant);
