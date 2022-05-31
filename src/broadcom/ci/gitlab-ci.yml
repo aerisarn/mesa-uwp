@@ -105,6 +105,56 @@ v3d-rpi4-piglit:armhf:
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: all
 
+.v3d-rpi4-test:armhf:
+  extends:
+    - .baremetal-test-armhf
+    - .v3d-rules
+    - .use-debian/arm_test
+  variables:
+    HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
+    BM_BOOTFS: /boot/raspberrypi_armhf
+    BM_POE_TIMEOUT: 300
+    FLAKES_CHANNEL: "#videocore-ci"
+    GPU_VERSION: broadcom-rpi4
+    HWCI_KERNEL_MODULES: v3d,vc4
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  needs:
+    - debian/arm_test
+    - debian-armhf
+  tags:
+    - igalia-rpi4
+
+v3d-rpi4-traces:arm64:
+  extends:
+    - .piglit-traces-test
+    - .baremetal-test-arm64
+    - .use-debian/arm_test
+    - .v3d-rules
+    - .test-manual-mr
+  variables:
+    BM_BOOTFS: /boot/raspberrypi_arm64
+    BM_POE_TIMEOUT: 300
+    GPU_VERSION: broadcom-rpi4
+    HWCI_KERNEL_MODULES: v3d,vc4
+    HWCI_START_XORG: 1
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-traces.sh"
+    PIGLIT_PLATFORM: mixed_glx_egl
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-broadcom.yml"
+    PIGLIT_REPLAY_DEVICE_NAME: "broadcom-rpi4"
+    PIGLIT_RESULTS: "broadcom-rpi4-replay"
+  artifacts:
+    reports:
+      junit: results/junit.xml
+  script:
+    - ./install/bare-metal/poe-powered.sh
+  needs:
+    - debian/arm_test
+    - job: debian-arm64
+      artifacts: false
+  tags:
+    - igalia-rpi4
+
 v3dv-rpi4-vk:arm64:
   extends:
     - .baremetal-test-arm64
