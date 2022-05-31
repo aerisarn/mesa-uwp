@@ -1353,6 +1353,8 @@ struct radv_dynamic_state {
    uint32_t patch_control_points;
 
    uint32_t polygon_mode;
+
+   VkTessellationDomainOrigin tess_domain_origin;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -2045,6 +2047,7 @@ struct radv_graphics_pipeline {
    uint8_t next_vertex_stage : 8;
    uint32_t vb_desc_usage_mask;
    uint32_t vb_desc_alloc_size;
+   uint32_t vgt_tf_param;
 
    /* Last pre-PS API stage */
    gl_shader_stage last_vgt_api_stage;
@@ -3087,6 +3090,9 @@ si_translate_blend_logic_op(VkLogicOp op)
       unreachable("Unhandled logic op");
    }
 }
+
+uint32_t radv_get_tess_output_topology(const struct radv_graphics_pipeline *pipeline,
+                                       VkTessellationDomainOrigin domain_origin);
 
 ALWAYS_INLINE static bool
 radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)

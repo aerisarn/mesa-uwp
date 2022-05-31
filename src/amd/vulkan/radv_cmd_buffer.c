@@ -123,6 +123,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .color_write_enable = 0u,
    .patch_control_points = 0,
    .polygon_mode = 0,
+   .tess_domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT,
 };
 
 static void
@@ -257,6 +258,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(patch_control_points, RADV_DYNAMIC_PATCH_CONTROL_POINTS);
 
    RADV_CMP_COPY(polygon_mode, RADV_DYNAMIC_POLYGON_MODE);
+
+   RADV_CMP_COPY(tess_domain_origin, RADV_DYNAMIC_TESS_DOMAIN_ORIGIN);
 
 #undef RADV_CMP_COPY
 
@@ -1480,6 +1483,10 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->cb_target_mask != pipeline->cb_target_mask)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
+
+   if (!cmd_buffer->state.emitted_graphics_pipeline ||
+       cmd_buffer->state.emitted_graphics_pipeline->vgt_tf_param != pipeline->vgt_tf_param)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
@@ -3293,6 +3300,34 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
 }
 
 static void
+radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_shader *tes = radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL);
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned vgt_tf_param = pipeline->vgt_tf_param;
+   unsigned topology;
+
+   if (tes->info.tes.point_mode) {
+      topology = V_028B6C_OUTPUT_POINT;
+   } else if (tes->info.tes._primitive_mode == TESS_PRIMITIVE_ISOLINES) {
+      topology = V_028B6C_OUTPUT_LINE;
+   } else {
+      bool ccw = tes->info.tes.ccw;
+
+      if (d->tess_domain_origin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT) {
+         ccw = !ccw;
+      }
+
+      topology = ccw ? V_028B6C_OUTPUT_TRIANGLE_CCW : V_028B6C_OUTPUT_TRIANGLE_CW;
+   }
+
+   vgt_tf_param |= S_028B6C_TOPOLOGY(topology);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028B6C_VGT_TF_PARAM, vgt_tf_param);
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    uint64_t states =
@@ -3367,6 +3402,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS)
       radv_emit_patch_control_points(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN)
+      radv_emit_tess_domain_origin(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -5770,6 +5808,18 @@ radv_CmdSetPolygonModeEXT(VkCommandBuffer commandBuffer, VkPolygonMode polygonMo
    state->dynamic.polygon_mode = si_translate_fill(polygonMode);
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetTessellationDomainOriginEXT(VkCommandBuffer commandBuffer,
+                                       VkTessellationDomainOrigin domainOrigin)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.tess_domain_origin = domainOrigin;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
 }
 
 VKAPI_ATTR void VKAPI_CALL
