@@ -47,8 +47,10 @@ from u_trace import utrace_generate
 Header('util/u_dump.h')
 Header('freedreno_batch.h')
 
-Tracepoint('start_state_restore')
-Tracepoint('end_state_restore')
+Tracepoint('start_state_restore',
+    tp_perfetto='fd_start_state_restore')
+Tracepoint('end_state_restore',
+    tp_perfetto='fd_end_state_restore')
 
 Tracepoint('flush_batch',
     args=[TracepointArg(type='struct fd_batch *', var='batch',       c_format='%x'),
@@ -93,11 +95,15 @@ Tracepoint('start_binning_ib',
 Tracepoint('end_binning_ib',
     tp_perfetto='fd_end_binning_ib')
 
-Tracepoint('start_vsc_overflow_test')
-Tracepoint('end_vsc_overflow_test')
+Tracepoint('start_vsc_overflow_test',
+    tp_perfetto='fd_start_vsc_overflow_test')
+Tracepoint('end_vsc_overflow_test',
+    tp_perfetto='fd_end_vsc_overflow_test')
 
-Tracepoint('start_prologue')
-Tracepoint('end_prologue')
+Tracepoint('start_prologue',
+    tp_perfetto='fd_start_prologue')
+Tracepoint('end_prologue',
+    tp_perfetto='fd_end_prologue')
 
 # For GMEM pass, where this could either be a clear or resolve
 Tracepoint('start_clear_restore',
