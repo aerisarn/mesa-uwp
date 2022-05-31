@@ -879,22 +879,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    return blend;
 }
 
-static uint32_t
-si_translate_fill(VkPolygonMode func)
-{
-   switch (func) {
-   case VK_POLYGON_MODE_FILL:
-      return V_028814_X_DRAW_TRIANGLES;
-   case VK_POLYGON_MODE_LINE:
-      return V_028814_X_DRAW_LINES;
-   case VK_POLYGON_MODE_POINT:
-      return V_028814_X_DRAW_POINTS;
-   default:
-      assert(0);
-      return V_028814_X_DRAW_POINTS;
-   }
-}
-
 static unsigned
 radv_pipeline_color_samples(const struct vk_graphics_pipeline_state *state)
 {
@@ -1903,6 +1887,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->patch_control_points = state->ts->patch_control_points;
    }
 
+   if (states & RADV_DYNAMIC_POLYGON_MODE) {
+      dynamic->polygon_mode = si_translate_fill(state->rs->polygon_mode);
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -1913,16 +1901,7 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
    const struct radv_device *device = pipeline->base.device;
 
    pipeline->pa_su_sc_mode_cntl =
-      S_028814_POLY_MODE(state->rs->polygon_mode != VK_POLYGON_MODE_FILL) |
-      S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->rs->polygon_mode)) |
-      S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->rs->polygon_mode)) |
       S_028814_PROVOKING_VTX_LAST(state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT);
-
-   if (device->physical_device->rad_info.gfx_level >= GFX10) {
-      /* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */
-      pipeline->pa_su_sc_mode_cntl |=
-         S_028814_KEEP_TOGETHER_ENABLE(state->rs->polygon_mode != VK_POLYGON_MODE_FILL);
-   }
 
    pipeline->pa_cl_clip_cntl =
       S_028810_DX_CLIP_SPACE_DEF(!pipeline->negative_one_to_one) |

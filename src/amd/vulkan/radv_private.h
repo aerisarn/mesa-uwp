@@ -1351,6 +1351,8 @@ struct radv_dynamic_state {
    uint32_t color_write_enable;
 
    uint32_t patch_control_points;
+
+   uint32_t polygon_mode;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -3001,6 +3003,22 @@ radv_get_num_vertices_per_prim(const struct radv_pipeline_key *pipeline_key)
    } else {
       /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
       return si_conv_prim_to_gs_out(pipeline_key->vs.topology) + 1;
+   }
+}
+
+static inline uint32_t
+si_translate_fill(VkPolygonMode func)
+{
+   switch (func) {
+   case VK_POLYGON_MODE_FILL:
+      return V_028814_X_DRAW_TRIANGLES;
+   case VK_POLYGON_MODE_LINE:
+      return V_028814_X_DRAW_LINES;
+   case VK_POLYGON_MODE_POINT:
+      return V_028814_X_DRAW_POINTS;
+   default:
+      assert(0);
+      return V_028814_X_DRAW_POINTS;
    }
 }
 
