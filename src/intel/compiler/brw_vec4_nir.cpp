@@ -1897,7 +1897,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_fdiv:
-      unreachable("not reached: should be lowered by DIV_TO_MUL_RCP in the compiler");
+      unreachable("not reached: should be lowered by lower_fdiv in the compiler");
 
    case nir_op_fmod:
       unreachable("not reached: should be lowered by lower_fmod in the compiler");

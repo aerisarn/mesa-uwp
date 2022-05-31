@@ -35,7 +35,6 @@ struct gl_shader_program;
 
 /* Operations for lower_instructions() */
 #define SUB_TO_ADD_NEG     0x01
-#define FDIV_TO_MUL_RCP    0x02
 #define INT_DIV_TO_MUL_RCP 0x40
 #define LDEXP_TO_ARITH     0x80
 #define CARRY_TO_ARITH     0x100
@@ -49,8 +48,6 @@ struct gl_shader_program;
 #define FIND_LSB_TO_FLOAT_CAST    0x20000
 #define FIND_MSB_TO_FLOAT_CAST    0x40000
 #define IMUL_HIGH_TO_MUL          0x80000
-#define DDIV_TO_MUL_RCP           0x100000
-#define DIV_TO_MUL_RCP            (FDIV_TO_MUL_RCP | DDIV_TO_MUL_RCP)
 #define SQRT_TO_ABS_SQRT          0x200000
 
 /* Operations for lower_64bit_integer_instructions() */

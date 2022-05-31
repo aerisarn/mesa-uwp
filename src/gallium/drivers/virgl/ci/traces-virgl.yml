@@ -9,7 +9,7 @@ traces:
   - path: glmark2/jellyfish.trace
     expectations:
       - device: gl-virgl
-        checksum: 48a2ad1162bf92301cedbe53edf52a6b
+        checksum: 2112a9a5519f39483735509f2ccc61af
   - path: glxgears/glxgears-2.trace
     expectations:
       - device: gl-virgl
@@ -17,11 +17,11 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: gl-virgl
-        checksum: 6e498eb959f7da847eb6d2cbbfaea5d5
+        checksum: 57ddd36b117adc9216c65c10d914a37e
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-virgl
-        checksum: 33770ade1aed893528c597f63af892f2
+        checksum: 0d875bda7edc01698342b157c6f51500
   - path: gputest/triangle.trace
     expectations:
       - device: gl-virgl
@@ -33,19 +33,19 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-virgl
-        checksum: 5e8f945ba7316a70a5195c1c23d35809
+        checksum: 350e0cf64d124ba98d90106f61775eb4
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false.trace
     expectations:
       - device: gl-virgl
-        checksum: 0a44720bfe9cce13c52299a3125b2aae
+        checksum: f80431e56327354b4c88cc45c7e6633a
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=subdata:interleave=false.trace
     expectations:
       - device: gl-virgl
-        checksum: c109416afbc0db4ba466d5a453b8a6dc
+        checksum: 81e12bfa4ae3b7e63b01edbed71a5941
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=true.trace
     expectations:
       - device: gl-virgl
-        checksum: 1c0551f10a5dc9358f3fb9bb9f059883
+        checksum: 08e6d00fe3f4414ebfadc9e5f3c3bf0e
   - path: glmark2/bump:bump-render=height.trace
     expectations:
       - device: gl-virgl
@@ -174,11 +174,11 @@ traces:
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-virgl
-        checksum: 0c7aab484c251b0f90745ced620bed82
+        checksum: aef0b32ce99a3b25d35304ca08032833
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-virgl
-        checksum: 2915192067704d738cdc4c2eaa88a2b1
+        checksum: 817a36e53edccdf946061315596e9cdd
 # Times out
 # - path: gputest/tessmark.trace
 #   expectations:
@@ -203,15 +203,15 @@ traces:
   - path: humus/RaytracedShadows.trace
     expectations:
       - device: gl-virgl
-        checksum: 298e49b697e9141294ecbc6283729d86
+        checksum: df074a376fd3e7abc4dffdd191db8f4b
   - path: humus/VolumetricFogging2.trace
     expectations:
       - device: gl-virgl
-        checksum: 382891c83f2afe4fcbdd2bfd241c1339
+        checksum: 2eb71553403ad8e0171abc9dc25e5bc1
   - path: itoral-gl-terrain-demo/demo.trace
     expectations:
       - device: gl-virgl
-        checksum: fe6124227b7f8e4e96ffbbd48c713c42
+        checksum: 716d4fe36a6212b161285fed8a423ee8
   - path: neverball/neverball.trace
     expectations:
       - device: gl-virgl
@@ -219,7 +219,7 @@ traces:
   - path: pathfinder/canvas_moire.trace
     expectations:
       - device: gl-virgl
-        checksum: 2cb5be6a6f62e417f1a89c89180e5728
+        checksum: 25ba8f18274126670311bd3ffe058f74
   - path: pathfinder/canvas_text_v2.trace
     expectations:
       - device: gl-virgl
@@ -246,7 +246,7 @@ traces:
   - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
     expectations:
       - device: gl-virgl
-        checksum: b93f2d23cc42072eff674829094cbe74
+        checksum: 092e8ca38e58aaa83df2a9f0b7b8aee5
   - path: xonotic/xonotic-keybench-high.trace
     expectations:
       - device: gl-virgl
@@ -285,7 +285,7 @@ traces:
   - path: godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc
     expectations:
       - device: gl-virgl
-        checksum: fca1fa683ab56352bd96d0777835ae65
+        checksum: 232eb48d6689c0117e3cc1660af7f32d
   # ../src/mesa/main/arrayobj.c:800:_mesa_update_vao_derived_arrays: Assertion `attrib->_EffRelativeOffset < binding->Stride' failed.
   #- path: ror/ror-default.trace
   #  expectations:

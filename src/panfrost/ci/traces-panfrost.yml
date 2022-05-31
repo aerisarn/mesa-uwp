@@ -158,7 +158,7 @@ traces:
   - path: glmark2/refract.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 6557deca1a47a7a77723658ea579ac63
+        checksum: 427c2ec78338288526a98cedae291703
   - path: glmark2/shading:shading=blinn-phong-inf.trace
     expectations:
       - device: gl-panfrost-t860

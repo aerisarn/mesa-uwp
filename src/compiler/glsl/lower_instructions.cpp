@@ -31,7 +31,6 @@
  *
  * Currently supported transformations:
  * - SUB_TO_ADD_NEG
- * - DIV_TO_MUL_RCP
  * - INT_DIV_TO_MUL_RCP
  * - LDEXP_TO_ARITH
  * - CARRY_TO_ARITH
@@ -48,21 +47,10 @@
  * want to recognize add(op0, neg(op1)) or the other way around to
  * produce a subtract anyway.
  *
- * FDIV_TO_MUL_RCP, DDIV_TO_MUL_RCP, and INT_DIV_TO_MUL_RCP:
+ * INT_DIV_TO_MUL_RCP:
  * ---------------------------------------------------------
- * Breaks an ir_binop_div expression down to op0 * (rcp(op1)).
- *
- * Many GPUs don't have a divide instruction (945 and 965 included),
- * but they do have an RCP instruction to compute an approximate
- * reciprocal.  By breaking the operation down, constant reciprocals
- * can get constant folded.
- *
- * FDIV_TO_MUL_RCP lowers single-precision and half-precision
- * floating point division;
- * DDIV_TO_MUL_RCP only lowers double-precision floating point division.
- * DIV_TO_MUL_RCP is a convenience macro that sets both flags.
- * INT_DIV_TO_MUL_RCP handles the integer case, converting to and from floating
- * point so that RCP is possible.
+ * Breaks an ir_binop_div expression down to f2i(i2f(op0) * (rcp(i2f(op1))).
+ * Used for !NativeIntegers HW.
  *
  * LDEXP_TO_ARITH:
  * -------------
@@ -112,7 +100,6 @@ private:
    unsigned lower; /** Bitfield of which operations to lower */
 
    void sub_to_add_neg(ir_expression *);
-   void div_to_mul_rcp(ir_expression *);
    void int_div_to_mul_rcp(ir_expression *);
    void ldexp_to_arith(ir_expression *);
    void dldexp_to_arith(ir_expression *);
@@ -167,25 +154,6 @@ lower_instructions_visitor::sub_to_add_neg(ir_expression *ir)
    ir->init_num_operands();
    ir->operands[1] = new(ir) ir_expression(ir_unop_neg, ir->operands[1]->type,
 					   ir->operands[1], NULL);
-   this->progress = true;
-}
-
-void
-lower_instructions_visitor::div_to_mul_rcp(ir_expression *ir)
-{
-   assert(ir->operands[1]->type->is_float_16_32_64());
-
-   /* New expression for the 1.0 / op1 */
-   ir_rvalue *expr;
-   expr = new(ir) ir_expression(ir_unop_rcp,
-				ir->operands[1]->type,
-				ir->operands[1]);
-
-   /* op0 / op1 -> op0 * (1.0 / op1) */
-   ir->operation = ir_binop_mul;
-   ir->init_num_operands();
-   ir->operands[1] = expr;
-
    this->progress = true;
 }
 
@@ -1550,9 +1518,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_binop_div:
       if (ir->operands[1]->type->is_integer_32() && lowering(INT_DIV_TO_MUL_RCP))
 	 int_div_to_mul_rcp(ir);
-      else if ((ir->operands[1]->type->is_float_16_32() && lowering(FDIV_TO_MUL_RCP)) ||
-               (ir->operands[1]->type->is_double() && lowering(DDIV_TO_MUL_RCP)))
-	 div_to_mul_rcp(ir);
       break;
 
    case ir_binop_ldexp:
