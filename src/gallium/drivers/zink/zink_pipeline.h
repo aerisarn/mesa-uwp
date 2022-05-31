@@ -49,12 +49,12 @@ struct zink_pipeline_dynamic_state1 {
 struct zink_pipeline_dynamic_state2 {
    bool primitive_restart;
    bool rasterizer_discard;
+   uint32_t vertices_per_patch:5;
 };
 
 struct zink_gfx_pipeline_state {
    uint32_t rast_state : ZINK_RAST_HW_STATE_SIZE; //zink_rasterizer_hw_state
-   uint32_t vertices_per_patch:5;
-   uint32_t rast_samples:10; //4 extra bits
+   uint32_t rast_samples:15; //9 extra bits
    uint32_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
    VkSampleMask sample_mask;
 
@@ -84,6 +84,7 @@ struct zink_gfx_pipeline_state {
    bool uses_dynamic_stride;
    bool have_EXT_extended_dynamic_state;
    bool have_EXT_extended_dynamic_state2;
+   bool extendedDynamicState2PatchControlPoints;
    uint8_t has_points; //either gs outputs points or prim type is points
    struct {
       struct zink_shader_key key[5];

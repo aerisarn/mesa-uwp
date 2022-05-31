@@ -270,6 +270,9 @@ equals_gfx_pipeline_state(const void *a, const void *b)
    if (!sa->have_EXT_extended_dynamic_state2) {
       if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
          return false;
+   } else if (!sa->extendedDynamicState2PatchControlPoints) {
+      if (sa->dyn_state2.vertices_per_patch != sb->dyn_state2.vertices_per_patch)
+         return false;
    }
    return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&
           !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));

@@ -1930,8 +1930,11 @@ zink_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
 {
    struct zink_context *ctx = zink_context(pctx);
    if (zink_set_tcs_key_patches(ctx, patch_vertices)) {
-      ctx->gfx_pipeline_state.vertices_per_patch = patch_vertices ? patch_vertices - 1 : 0;
-      ctx->gfx_pipeline_state.dirty = true;
+      ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch = patch_vertices ? patch_vertices - 1 : 0;
+      if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, patch_vertices);
+      else
+         ctx->gfx_pipeline_state.dirty = true;
    }
 }
 
@@ -2456,6 +2459,8 @@ flush_batch(struct zink_context *ctx, bool sync)
          ctx->dd->bindless_bound = false;
       ctx->di.bindless_refs_dirty = true;
       ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
+      if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch + 1);
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
       reapply_color_write(ctx);
@@ -4177,6 +4182,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
    ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state2 = screen->info.have_EXT_extended_dynamic_state2;
+   ctx->gfx_pipeline_state.extendedDynamicState2PatchControlPoints = screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints;
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
    slab_create_child(&ctx->transfer_pool_unsync, &screen->transfer_pool);
@@ -4294,6 +4300,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    zink_select_draw_vbo(ctx);
    zink_select_launch_grid(ctx);
+
+   /* set on startup just to avoid validation errors if a draw comes through without
+    * a tess shader later
+    */
+   if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+      VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, 1);
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {
       return &ctx->base;
