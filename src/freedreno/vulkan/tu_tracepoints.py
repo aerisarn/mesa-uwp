@@ -44,6 +44,10 @@ from u_trace import TracepointArgStruct as ArgStruct
 from u_trace import utrace_generate
 from u_trace import utrace_generate_perfetto_utils
 
+# List of the default tracepoints enabled. By default tracepoints are enabled,
+# set tp_default_enabled=False to disable them by default.
+tu_default_tps = []
+
 #
 # Tracepoint definitions:
 #
@@ -55,10 +59,16 @@ Header('freedreno/vulkan/tu_private.h', scope=HeaderScope.SOURCE)
 ForwardDecl('struct tu_device')
 
 
-def begin_end_tp(name, args=[], tp_struct=None, tp_print=None):
+def begin_end_tp(name, args=[], tp_struct=None, tp_print=None,
+                 tp_default_enabled=True):
+    global tu_default_tps
+    if tp_default_enabled:
+        tu_default_tps.append(name)
     Tracepoint('start_{0}'.format(name),
+               toggle_name=name,
                tp_perfetto='tu_start_{0}'.format(name))
     Tracepoint('end_{0}'.format(name),
+               toggle_name=name,
                args=args,
                tp_struct=tp_struct,
                tp_perfetto='tu_end_{0}'.format(name),
@@ -120,5 +130,9 @@ begin_end_tp('compute',
           Arg(type='uint16_t', var='num_groups_y',   c_format='%u'),
           Arg(type='uint16_t', var='num_groups_z',   c_format='%u')])
 
-utrace_generate(cpath=args.utrace_src, hpath=args.utrace_hdr, ctx_param='struct tu_device *dev')
+utrace_generate(cpath=args.utrace_src,
+                hpath=args.utrace_hdr,
+                ctx_param='struct tu_device *dev',
+                trace_toggle_name='tu_gpu_tracepoint',
+                trace_toggle_defaults=tu_default_tps)
 utrace_generate_perfetto_utils(hpath=args.perfetto_hdr)

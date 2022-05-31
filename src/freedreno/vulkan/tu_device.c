@@ -27,6 +27,7 @@
 
 #include "tu_private.h"
 #include "tu_cs.h"
+#include "tu_tracepoints.h"
 #include "git_sha1.h"
 
 #include <fcntl.h>
@@ -1969,6 +1970,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->use_z24uint_s8uint =
       physical_device->info->a6xx.has_z24uint_s8uint &&
       !border_color_without_format;
+
+   tu_gpu_tracepoint_config_variable();
 
    device->submit_count = 0;
    u_trace_context_init(&device->trace_context, device,
