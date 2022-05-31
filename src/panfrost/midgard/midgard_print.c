@@ -278,9 +278,15 @@ mir_print_instruction(midgard_instruction *ins)
         else
                 mir_print_src(ins, 1);
 
-        for (unsigned c = 2; c <= 3; ++c) {
-                printf(", ");
-                mir_print_src(ins, c);
+        if (is_alu) {
+                /* ALU ops are all 2-src */
+                assert(ins->src[2] == ~0);
+                assert(ins->src[3] == ~0);
+        } else {
+                for (unsigned c = 2; c <= 3; ++c) {
+                        printf(", ");
+                        mir_print_src(ins, c);
+                }
         }
 
         if (ins->no_spill)
