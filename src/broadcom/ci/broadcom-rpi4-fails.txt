@@ -352,3 +352,7 @@ dEQP-VK.graphicsfuzz.cov-loop-condition-clamp-vec-of-ones,Crash
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth16,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
+
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3711
+dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_1.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_4.multi_draw_barriers,Fail

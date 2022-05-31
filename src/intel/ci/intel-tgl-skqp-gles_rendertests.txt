@@ -601,7 +601,7 @@ simpleaaclip_rect,-1
 simpleblurroundrect,-1
 simplerect,-1
 simpleshapes,-1
-simpleshapes_bw,0
+simpleshapes_bw,-1
 skbug_257,-1
 skbug_4868,-1
 skbug_5321,0

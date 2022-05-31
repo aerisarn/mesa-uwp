@@ -249,6 +249,7 @@ a630_vk_asan:
   variables:
     DEQP_SUITE: freedreno-a630-vk-asan
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
+    GPU_VERSION: freedreno-a630-asan
 
 a630_piglit:
   extends:
