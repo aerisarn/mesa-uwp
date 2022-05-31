@@ -104,9 +104,9 @@
       __builtin_types_compatible_p(__typeof__(a), __typeof__(b))
 #  define container_of(ptr, type, member) ({                            \
          uint8_t *__mptr = (uint8_t *)(ptr);                            \
-         STATIC_ASSERT(__same_type(*(ptr), ((type *)0)->member) ||      \
-                       __same_type(*(ptr), void) ||                     \
-                       !"pointer type mismatch in container_of()");     \
+         static_assert(__same_type(*(ptr), ((type *)0)->member) ||      \
+                       __same_type(*(ptr), void),                       \
+                       "pointer type mismatch in container_of()");      \
          ((type *)(__mptr - offsetof(type, member)));                   \
       })
 #endif
