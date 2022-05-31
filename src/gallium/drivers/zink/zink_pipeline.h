@@ -55,9 +55,9 @@ struct zink_gfx_pipeline_state {
    bool dirty;
 
    struct {
-      struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //non-dynamic state
       VkFrontFace front_face;
       unsigned num_viewports;
+      struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //non-dynamic state
    } dyn_state1;
 
    struct {
