@@ -1064,7 +1064,7 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
          bld8.MOV(off, quarter(offset_src, q));
          bld8.ADD(off, off, brw_imm_ud(base_in_dwords + c));
 
-         STATIC_ASSERT(util_is_power_of_two_nonzero(REG_SIZE) && REG_SIZE > 1);
+         STATIC_ASSERT(IS_POT(REG_SIZE) && REG_SIZE > 1);
 
          fs_reg comp = bld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
          bld8.AND(comp, off, brw_imm_ud(0x3));
