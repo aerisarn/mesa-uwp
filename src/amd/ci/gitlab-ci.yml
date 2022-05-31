@@ -103,6 +103,7 @@ deqp-polaris10-valve:
   variables:
     GPU_VERSION: radv-polaris10-aco
     FDO_CI_CONCURRENT: 16
+    B2C_TIMEOUT_BOOT_RETRIES: 4
     # (2022-01) tsc=unstable was added in response to this message in kmsg,
     #    TSC found unstable after boot, most likely due to broken BIOS. Use 'tsc=unstable'.
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g tsc=unstable'
