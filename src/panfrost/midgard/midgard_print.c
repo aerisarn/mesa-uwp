@@ -50,11 +50,13 @@ mir_print_index(int source)
 
                 /* TODO: Moving threshold */
                 if (reg > 16 && reg < 24)
-                        printf("u%d", 23 - reg);
+                        printf("U%d", 23 - reg);
                 else
-                        printf("r%d", reg);
+                        printf("R%d", reg);
+        } else if (source & PAN_IS_REG) {
+                printf("r%d", source >> 1);
         } else {
-                printf("%d", source);
+                printf("%d", source >> 1);
         }
 }
 
