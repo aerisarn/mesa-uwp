@@ -587,7 +587,7 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    if (rs_state->fill_back != rs_state->fill_front)
       debug_printf("BUG: vulkan doesn't support different front and back fill modes\n");
    state->hw_state.polygon_mode = rs_state->fill_front; // same values
-   state->hw_state.cull_mode = rs_state->cull_face; // same bits
+   state->cull_mode = rs_state->cull_face; // same bits
 
    state->front_face = rs_state->front_ccw ?
                        VK_FRONT_FACE_COUNTER_CLOCKWISE :
@@ -658,6 +658,10 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
 
       if (ctx->gfx_pipeline_state.dyn_state1.front_face != ctx->rast_state->front_face) {
          ctx->gfx_pipeline_state.dyn_state1.front_face = ctx->rast_state->front_face;
+         ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
+      }
+      if (ctx->gfx_pipeline_state.dyn_state1.cull_mode != ctx->rast_state->cull_mode) {
+         ctx->gfx_pipeline_state.dyn_state1.cull_mode = ctx->rast_state->cull_mode;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
       if (!ctx->primitives_generated_active)

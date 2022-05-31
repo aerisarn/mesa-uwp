@@ -173,7 +173,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.depthClampEnable = hw_rast_state->depth_clamp;
    rast_state.rasterizerDiscardEnable = state->dyn_state2.rasterizer_discard;
    rast_state.polygonMode = hw_rast_state->polygon_mode;
-   rast_state.cullMode = hw_rast_state->cull_mode;
+   rast_state.cullMode = state->dyn_state1.cull_mode;
    rast_state.frontFace = state->dyn_state1.front_face;
 
    rast_state.depthBiasEnable = VK_TRUE;
@@ -225,6 +225,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_CULL_MODE_EXT;
       if (state->sample_locations_enabled)
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT;
    } else {

@@ -69,7 +69,6 @@ struct zink_vertex_state {
 
 struct zink_rasterizer_hw_state {
    unsigned polygon_mode : 2; //VkPolygonMode
-   unsigned cull_mode : 2; //VkCullModeFlags
    unsigned line_mode : 2; //VkLineRasterizationModeEXT
    unsigned depth_clamp:1;
    unsigned pv_last:1;
@@ -77,7 +76,7 @@ struct zink_rasterizer_hw_state {
    unsigned force_persample_interp:1;
    unsigned clip_halfz:1;
 };
-#define ZINK_RAST_HW_STATE_SIZE 11
+#define ZINK_RAST_HW_STATE_SIZE 9
 
 
 struct zink_rasterizer_state {
@@ -86,6 +85,7 @@ struct zink_rasterizer_state {
    float offset_units, offset_clamp, offset_scale;
    float line_width;
    VkFrontFace front_face;
+   VkCullModeFlags cull_mode;
    struct zink_rasterizer_hw_state hw_state;
 };
 
