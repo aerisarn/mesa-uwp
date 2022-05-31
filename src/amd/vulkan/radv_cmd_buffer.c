@@ -124,6 +124,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .patch_control_points = 0,
    .polygon_mode = 0,
    .tess_domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT,
+   .logic_op_enable = 0u,
 };
 
 static void
@@ -260,6 +261,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(polygon_mode, RADV_DYNAMIC_POLYGON_MODE);
 
    RADV_CMP_COPY(tess_domain_origin, RADV_DYNAMIC_TESS_DOMAIN_ORIGIN);
+
+   RADV_CMP_COPY(logic_op_enable, RADV_DYNAMIC_LOGIC_OP_ENABLE);
 
 #undef RADV_CMP_COPY
 
@@ -1478,7 +1481,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
+                                 RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->cb_target_mask != pipeline->cb_target_mask)
@@ -1883,7 +1887,15 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
    unsigned cb_color_control = cmd_buffer->state.graphics_pipeline->cb_color_control;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   cb_color_control |= S_028808_ROP3(d->logic_op);
+   if (d->logic_op_enable) {
+      cb_color_control |= S_028808_ROP3(d->logic_op);
+   } else {
+      cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
+   }
+
+   if (cmd_buffer->device->physical_device->rad_info.has_rbplus) {
+      cb_color_control |= S_028808_DISABLE_DUAL_QUAD(d->logic_op_enable);
+   }
 
    radeon_set_context_reg(cmd_buffer->cs, R_028808_CB_COLOR_CONTROL, cb_color_control);
 }
@@ -3391,7 +3403,7 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE)
       radv_emit_rasterizer_discard_enable(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP)
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE))
       radv_emit_logic_op(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE)
@@ -5820,6 +5832,17 @@ radv_CmdSetTessellationDomainOriginEXT(VkCommandBuffer commandBuffer,
    state->dynamic.tess_domain_origin = domainOrigin;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetLogicOpEnableEXT(VkCommandBuffer commandBuffer, VkBool32 logicOpEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.logic_op_enable = logicOpEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

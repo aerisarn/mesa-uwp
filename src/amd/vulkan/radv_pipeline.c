@@ -993,7 +993,8 @@ radv_pipeline_out_of_order_rast(struct radv_graphics_pipeline *pipeline,
       return false;
 
    /* Be conservative if a logic operation is enabled with color buffers. */
-   if (colormask && state->cb && state->cb->logic_op_enable)
+   if (colormask &&
+       ((pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) || state->cb->logic_op_enable))
       return false;
 
    /* Be conservative if an extended dynamic depth/stencil state is
@@ -1870,7 +1871,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP) {
-      if (state->cb->logic_op_enable) {
+      if ((pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) || state->cb->logic_op_enable) {
          dynamic->logic_op = si_translate_blend_logic_op(state->cb->logic_op);
       } else {
          dynamic->logic_op = V_028808_ROP3_COPY;
@@ -1893,6 +1894,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_TESS_DOMAIN_ORIGIN) {
       dynamic->tess_domain_origin = state->ts->domain_origin;
+   }
+
+   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {
+      dynamic->logic_op_enable = state->cb->logic_op_enable;
    }
 
    pipeline->dynamic_state.mask = states;
