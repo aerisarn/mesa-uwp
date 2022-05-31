@@ -371,6 +371,9 @@ do {                       \
 /** Align a value to a power of two */
 #define ALIGN_POT(x, pot_align) (((x) + (pot_align) - 1) & ~((pot_align) - 1))
 
+/** Checks is a value is a power of two. Does not handle zero. */
+#define IS_POT(v) (((v) & ((v) - 1)) == 0)
+
 /**
  * Macro for declaring an explicit conversion operator.  Defaults to an
  * implicit conversion if C++11 is not supported.
