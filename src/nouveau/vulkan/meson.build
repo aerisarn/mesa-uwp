@@ -1,6 +1,8 @@
 nvk_files = files(
   'nvk_buffer.c',
   'nvk_buffer.h',
+  'nvk_cmd_buffer.c',
+  'nvk_cmd_buffer.h',
   'nvk_device.c',
   'nvk_device.h',
   'nvk_device_memory.c',

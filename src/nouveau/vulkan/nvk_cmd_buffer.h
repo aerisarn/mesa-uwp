@@ -1,0 +1,31 @@
+#ifndef NVK_CMD_BUFFER_H
+#define NVK_CMD_BUFFER_H 1
+
+#include "nvk_private.h"
+
+#include "vulkan/runtime/vk_command_buffer.h"
+#include "vulkan/runtime/vk_command_pool.h"
+
+#define NVK_CMD_BUF_SIZE 64*1024
+
+struct nvk_cmd_pool {
+   struct vk_command_pool vk;
+   struct list_head cmd_buffers;
+   struct list_head free_cmd_buffers;
+};
+
+struct nvk_cmd_buffer {
+   struct vk_command_buffer vk;
+
+   struct nvk_cmd_pool *pool;
+   struct list_head pool_link;
+
+   struct nouveau_ws_push *push;
+};
+
+VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
+                       VK_OBJECT_TYPE_COMMAND_BUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
+                               VK_OBJECT_TYPE_COMMAND_POOL)
+
+#endif

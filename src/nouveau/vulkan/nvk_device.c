@@ -1,15 +1,24 @@
 #include "nvk_device.h"
 
+#include "nvk_cmd_buffer.h"
 #include "nvk_instance.h"
 #include "nvk_physical_device.h"
 
 #include "nouveau_context.h"
+#include "nouveau_push.h"
 
 #include "vulkan/wsi/wsi_common.h"
 
 static VkResult
-nvk_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+nvk_queue_submit(struct vk_queue *queue, struct vk_queue_submit *submission)
 {
+   struct nvk_device *device = container_of(queue->base.device, struct nvk_device, vk);
+
+   for (unsigned i = 0; i < submission->command_buffer_count; i++) {
+      struct nvk_cmd_buffer *cmd = (struct nvk_cmd_buffer *)submission->command_buffers[i];
+      nouveau_ws_push_submit(cmd->push, device->pdev->dev, device->ctx);
+   }
+
    return VK_SUCCESS;
 }
 
