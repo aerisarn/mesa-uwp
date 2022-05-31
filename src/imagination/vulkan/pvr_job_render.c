@@ -1509,6 +1509,8 @@ static void pvr_render_job_ws_submit_info_init(
    struct pvr_render_job *job,
    const struct pvr_winsys_job_bo *bos,
    uint32_t bo_count,
+   struct vk_sync *barrier_geom,
+   struct vk_sync *barrier_frag,
    struct vk_sync **waits,
    uint32_t wait_count,
    uint32_t *stage_flags,
@@ -1527,6 +1529,9 @@ static void pvr_render_job_ws_submit_info_init(
    submit_info->bos = bos;
    submit_info->bo_count = bo_count;
 
+   submit_info->barrier_geom = barrier_geom;
+   submit_info->barrier_frag = barrier_frag;
+
    submit_info->waits = waits;
    submit_info->wait_count = wait_count;
    submit_info->stage_flags = stage_flags;
@@ -1544,6 +1549,8 @@ VkResult pvr_render_job_submit(struct pvr_render_ctx *ctx,
                                struct pvr_render_job *job,
                                const struct pvr_winsys_job_bo *bos,
                                uint32_t bo_count,
+                               struct vk_sync *barrier_geom,
+                               struct vk_sync *barrier_frag,
                                struct vk_sync **waits,
                                uint32_t wait_count,
                                uint32_t *stage_flags,
@@ -1559,6 +1566,8 @@ VkResult pvr_render_job_submit(struct pvr_render_ctx *ctx,
                                       job,
                                       bos,
                                       bo_count,
+                                      barrier_geom,
+                                      barrier_frag,
                                       waits,
                                       wait_count,
                                       stage_flags,
