@@ -47,10 +47,8 @@ typedef struct {
    /* I/O semantic -> real location used by lowering. */
    ac_nir_map_io_driver_location map_io;
 
-   /* Number of ES outputs for which memory should be reserved.
-    * When compacted, this should be the number of linked ES outputs.
-    */
-   unsigned num_reserved_es_outputs;
+   /* Stride of an ES invocation outputs in esgs ring, in bytes. */
+   unsigned esgs_itemsize;
 } lower_esgs_io_state;
 
 static nir_ssa_def *
@@ -171,9 +169,8 @@ lower_es_output_store(nir_builder *b,
                               write_mask, true, true);
    } else {
       /* GFX9+: ES is merged into GS, data is passed through LDS. */
-      unsigned esgs_itemsize = st->num_reserved_es_outputs * 16u;
       nir_ssa_def *vertex_idx = nir_build_load_local_invocation_index(b);
-      nir_ssa_def *off = nir_iadd(b, nir_imul_imm(b, vertex_idx, esgs_itemsize), io_off);
+      nir_ssa_def *off = nir_iadd(b, nir_imul_imm(b, vertex_idx, st->esgs_itemsize), io_off);
       nir_build_store_shared(b, intrin->src[0].ssa, off, .write_mask = write_mask,
                              .align_mul = 16u, .align_offset = (nir_intrinsic_component(intrin) * 4u) % 16u);
    }
@@ -267,11 +264,11 @@ void
 ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
                                ac_nir_map_io_driver_location map,
                                enum amd_gfx_level gfx_level,
-                               unsigned num_reserved_es_outputs)
+                               unsigned esgs_itemsize)
 {
    lower_esgs_io_state state = {
       .gfx_level = gfx_level,
-      .num_reserved_es_outputs = num_reserved_es_outputs,
+      .esgs_itemsize = esgs_itemsize,
       .map_io = map,
    };
 
