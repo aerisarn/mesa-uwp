@@ -31,7 +31,6 @@
  *
  * Currently supported transformations:
  * - SUB_TO_ADD_NEG
- * - INT_DIV_TO_MUL_RCP
  * - LDEXP_TO_ARITH
  * - CARRY_TO_ARITH
  * - BORROW_TO_ARITH
@@ -46,11 +45,6 @@
  * For backends with native subtract operations, they will probably
  * want to recognize add(op0, neg(op1)) or the other way around to
  * produce a subtract anyway.
- *
- * INT_DIV_TO_MUL_RCP:
- * ---------------------------------------------------------
- * Breaks an ir_binop_div expression down to f2i(i2f(op0) * (rcp(i2f(op1))).
- * Used for !NativeIntegers HW.
  *
  * LDEXP_TO_ARITH:
  * -------------
@@ -100,7 +94,6 @@ private:
    unsigned lower; /** Bitfield of which operations to lower */
 
    void sub_to_add_neg(ir_expression *);
-   void int_div_to_mul_rcp(ir_expression *);
    void ldexp_to_arith(ir_expression *);
    void dldexp_to_arith(ir_expression *);
    void dfrexp_sig_to_arith(ir_expression *);
@@ -154,57 +147,6 @@ lower_instructions_visitor::sub_to_add_neg(ir_expression *ir)
    ir->init_num_operands();
    ir->operands[1] = new(ir) ir_expression(ir_unop_neg, ir->operands[1]->type,
 					   ir->operands[1], NULL);
-   this->progress = true;
-}
-
-void
-lower_instructions_visitor::int_div_to_mul_rcp(ir_expression *ir)
-{
-   assert(ir->operands[1]->type->is_integer_32());
-
-   /* Be careful with integer division -- we need to do it as a
-    * float and re-truncate, since rcp(n > 1) of an integer would
-    * just be 0.
-    */
-   ir_rvalue *op0, *op1;
-   const struct glsl_type *vec_type;
-
-   vec_type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
-				      ir->operands[1]->type->vector_elements,
-				      ir->operands[1]->type->matrix_columns);
-
-   if (ir->operands[1]->type->base_type == GLSL_TYPE_INT)
-      op1 = new(ir) ir_expression(ir_unop_i2f, vec_type, ir->operands[1], NULL);
-   else
-      op1 = new(ir) ir_expression(ir_unop_u2f, vec_type, ir->operands[1], NULL);
-
-   op1 = new(ir) ir_expression(ir_unop_rcp, op1->type, op1, NULL);
-
-   vec_type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
-				      ir->operands[0]->type->vector_elements,
-				      ir->operands[0]->type->matrix_columns);
-
-   if (ir->operands[0]->type->base_type == GLSL_TYPE_INT)
-      op0 = new(ir) ir_expression(ir_unop_i2f, vec_type, ir->operands[0], NULL);
-   else
-      op0 = new(ir) ir_expression(ir_unop_u2f, vec_type, ir->operands[0], NULL);
-
-   vec_type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
-				      ir->type->vector_elements,
-				      ir->type->matrix_columns);
-
-   op0 = new(ir) ir_expression(ir_binop_mul, vec_type, op0, op1);
-
-   if (ir->operands[1]->type->base_type == GLSL_TYPE_INT) {
-      ir->operation = ir_unop_f2i;
-      ir->operands[0] = op0;
-   } else {
-      ir->operation = ir_unop_i2u;
-      ir->operands[0] = new(ir) ir_expression(ir_unop_f2i, op0);
-   }
-   ir->init_num_operands();
-   ir->operands[1] = NULL;
-
    this->progress = true;
 }
 
@@ -1513,11 +1455,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_binop_sub:
       if (lowering(SUB_TO_ADD_NEG))
 	 sub_to_add_neg(ir);
-      break;
-
-   case ir_binop_div:
-      if (ir->operands[1]->type->is_integer_32() && lowering(INT_DIV_TO_MUL_RCP))
-	 int_div_to_mul_rcp(ir);
       break;
 
    case ir_binop_ldexp:

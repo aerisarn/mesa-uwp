@@ -35,7 +35,6 @@ struct gl_shader_program;
 
 /* Operations for lower_instructions() */
 #define SUB_TO_ADD_NEG     0x01
-#define INT_DIV_TO_MUL_RCP 0x40
 #define LDEXP_TO_ARITH     0x80
 #define CARRY_TO_ARITH     0x100
 #define BORROW_TO_ARITH    0x200
