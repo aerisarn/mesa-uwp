@@ -703,7 +703,7 @@ zink_draw(struct pipe_context *pctx,
 
    bool rast_state_changed = ctx->rast_state_changed;
    if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE && (BATCH_CHANGED || rast_state_changed))
-      VKCTX(CmdSetFrontFaceEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.dyn_state1.front_face);
+      VKCTX(CmdSetFrontFaceEXT)(batch->state->cmdbuf, (VkFrontFace)ctx->gfx_pipeline_state.dyn_state1.front_face);
    if ((BATCH_CHANGED || rast_state_changed) &&
        screen->info.have_EXT_line_rasterization && rast_state->base.line_stipple_enable)
       VKCTX(CmdSetLineStippleEXT)(batch->state->cmdbuf, rast_state->base.line_stipple_factor, rast_state->base.line_stipple_pattern);
