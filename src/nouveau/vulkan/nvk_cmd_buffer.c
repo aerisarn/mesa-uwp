@@ -209,3 +209,7 @@ nvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    return VK_SUCCESS;
 }
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer, const VkDependencyInfo *pDependencyInfo) {
+}
