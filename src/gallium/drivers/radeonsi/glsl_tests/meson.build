@@ -19,11 +19,13 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-CFLAGS ?= -g -O2 -march=native -pipe
-CFLAGS += -std=gnu99 -fopenmp
-LDLIBS = -lepoxy -lgbm
+project('glsl_tests', 'c')
 
-amdgcn_glslc:
+dep_epoxy = dependency('epoxy')
+dep_gbm = dependency('gbm')
 
-clean:
-	rm -f amdgcn_glslc
+executable(
+  'amdgcn_glslc',
+  files('amdgcn_glslc.c'),
+  dependencies: [dep_epoxy, dep_gbm]
+)
