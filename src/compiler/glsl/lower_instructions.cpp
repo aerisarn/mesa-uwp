@@ -72,13 +72,6 @@
  * do have base 2 versions, so this pass converts exp and log to exp2
  * and log2 operations.
  *
- * Many GPUs don't have a MOD instruction (945 and 965 included), and
- * if we have to break it down like this anyway, it gives an
- * opportunity to do things like constant fold the (1.0 / op1) easily.
- *
- * Note: before we used to implement this as op1 * fract(op / op1) but this
- * implementation had significant precision errors.
- *
  * LDEXP_TO_ARITH:
  * -------------
  * Converts ir_binop_ldexp to arithmetic and bit operations for float sources.
