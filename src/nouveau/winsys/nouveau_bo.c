@@ -42,6 +42,7 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, 
    bo->map_handle = req.info.map_handle;
    bo->fd = pdev->fd;
    bo->flags = flags;
+   bo->refcnt = 1;
 
    return bo;
 }
@@ -49,6 +50,9 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, 
 void
 nouveau_ws_bo_destroy(struct nouveau_ws_bo *bo)
 {
+   if (--bo->refcnt)
+      return;
+
    drmCloseBufferHandle(bo->fd, bo->handle);
    FREE(bo);
 }

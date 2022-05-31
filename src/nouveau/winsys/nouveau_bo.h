@@ -25,10 +25,17 @@ struct nouveau_ws_bo {
    int fd;
    uint32_t handle;
    enum nouveau_ws_bo_flags flags;
+   _Atomic uint32_t refcnt;
 };
 
 struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *, uint64_t size, uint64_t align, enum nouveau_ws_bo_flags);
 void nouveau_ws_bo_destroy(struct nouveau_ws_bo *);
 void *nouveau_ws_bo_map(struct nouveau_ws_bo *, enum nouveau_ws_bo_map_flags);
+
+static inline void
+nouveau_ws_bo_ref(struct nouveau_ws_bo *bo)
+{
+   bo->refcnt++;
+}
 
 #endif
