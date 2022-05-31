@@ -395,6 +395,7 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
       if (USE_LDS_SYMBOLS) {
          /* Declare the ESGS ring as an explicit LDS symbol. */
          si_llvm_declare_esgs_ring(ctx);
+         ctx->ac.lds = ctx->esgs_ring;
       } else {
          ac_declare_lds_as_pointer(&ctx->ac);
          ctx->esgs_ring = ctx->ac.lds;
