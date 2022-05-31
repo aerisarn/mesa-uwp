@@ -245,6 +245,12 @@
 #define PKT3_SET_SH_REG_INDEX       0x9B
 #define PKT3_LOAD_CONTEXT_REG_INDEX 0x9F /* new for VI */
 
+#define PKT3_DISPATCH_TASK_STATE_INIT               0xA9 /* Tells the HW about the task control buffer */
+#define PKT3_DISPATCH_MESH_INDIRECT_MULTI           0x4C /* Indirect mesh shader only dispatch [GFX only] */
+#define PKT3_DISPATCH_TASKMESH_GFX                  0x4D /* Task+mesh shader dispatch [GFX side] */
+#define PKT3_DISPATCH_TASKMESH_DIRECT_ACE           0xAA /* Direct task+mesh shader dispatch [ACE side] */
+#define PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE   0xAD /* Indirect task+mesh shader dispatch [ACE side] */
+
 #define PKT_TYPE_S(x)         (((unsigned)(x)&0x3) << 30)
 #define PKT_TYPE_G(x)         (((x) >> 30) & 0x3)
 #define PKT_TYPE_C            0x3FFFFFFF
