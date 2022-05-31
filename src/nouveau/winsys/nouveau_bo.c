@@ -73,3 +73,15 @@ nouveau_ws_bo_map(struct nouveau_ws_bo *bo, enum nouveau_ws_bo_map_flags flags)
 
    return res;
 }
+
+bool
+nouveau_ws_bo_wait(struct nouveau_ws_bo *bo, enum nouveau_ws_bo_map_flags flags)
+{
+   struct drm_nouveau_gem_cpu_prep req = {};
+
+   req.handle = bo->handle;
+   if (flags & NOUVEAU_WS_BO_WR)
+      req.flags |= NOUVEAU_GEM_CPU_PREP_WRITE;
+
+   return !drmCommandWrite(bo->fd, DRM_NOUVEAU_GEM_CPU_PREP, &req, sizeof(req));
+}
