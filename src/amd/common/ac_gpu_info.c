@@ -1858,3 +1858,42 @@ void ac_get_hs_info(struct radeon_info *info,
    hs->tess_offchip_ring_offset = align(hs->tess_factor_ring_size, 64 * 1024);
    hs->tess_offchip_ring_size = hs->max_offchip_buffers * hs->tess_offchip_block_dw_size * 4;
 }
+
+static uint16_t get_task_num_entries(enum radeon_family fam)
+{
+   /* Number of task shader ring entries. Needs to be a power of two.
+    * Use a low number on smaller chips so we don't waste space,
+    * but keep it high on bigger chips so it doesn't inhibit parallelism.
+    *
+    * This number is compiled into task/mesh shaders as a constant.
+    * In order to ensure this works fine with the shader cache, we must
+    * base this decision on the chip family, not the number of CUs in
+    * the current GPU. (So, the cache remains consistent for all
+    * chips in the same family.)
+    */
+   switch (fam) {
+   case CHIP_VANGOGH:
+   case CHIP_NAVI24:
+   case CHIP_REMBRANDT:
+      return 256;
+   case CHIP_NAVI21:
+   case CHIP_NAVI22:
+   case CHIP_NAVI23:
+   default:
+      return 1024;
+   }
+}
+
+void ac_get_task_info(struct radeon_info *info,
+                      struct ac_task_info *task_info)
+{
+   const uint16_t num_entries = get_task_num_entries(info->family);
+   const uint32_t draw_ring_bytes = num_entries * AC_TASK_DRAW_ENTRY_BYTES;
+   const uint32_t payload_ring_bytes = num_entries * AC_TASK_PAYLOAD_ENTRY_BYTES;
+
+   /* Ensure that the addresses of each ring are 256 byte aligned. */
+   task_info->num_entries = num_entries;
+   task_info->draw_ring_offset = ALIGN(AC_TASK_CTRLBUF_BYTES, 256);
+   task_info->payload_ring_offset = ALIGN(task_info->draw_ring_offset + draw_ring_bytes, 256);
+   task_info->bo_size_bytes = task_info->payload_ring_offset + payload_ring_bytes;
+}

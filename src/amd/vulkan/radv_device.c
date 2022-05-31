@@ -834,24 +834,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       ac_get_gs_table_depth(device->rad_info.gfx_level, device->rad_info.family);
 
    ac_get_hs_info(&device->rad_info, &device->hs);
-
-   /* Number of task shader ring entries. Needs to be a power of two.
-    * Use a low number on smaller chips so we don't waste space,
-    * but keep it high on bigger chips so it doesn't inhibit parallelism.
-    */
-   switch (device->rad_info.family) {
-   case CHIP_VANGOGH:
-   case CHIP_NAVI24:
-   case CHIP_REMBRANDT:
-      device->task_num_entries = 256;
-      break;
-   case CHIP_NAVI21:
-   case CHIP_NAVI22:
-   case CHIP_NAVI23:
-   default:
-      device->task_num_entries = 1024;
-      break;
-   }
+   ac_get_task_info(&device->rad_info, &device->task_info);
 
    *device_out = device;
 

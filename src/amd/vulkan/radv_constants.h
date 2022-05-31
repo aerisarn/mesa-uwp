@@ -91,11 +91,6 @@
  */
 #define RADV_MAX_MEMORY_ALLOCATION_SIZE 0xFFFFFFFCull
 
-/* Size of each payload entry in the task payload ring.
- * Spec requires minimum 16K bytes.
- */
-#define RADV_TASK_PAYLOAD_ENTRY_BYTES 16384
-
 /* Number of invocations in each subgroup. */
 #define RADV_SUBGROUP_SIZE 64
 

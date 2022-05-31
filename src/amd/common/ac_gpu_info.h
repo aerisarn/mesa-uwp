@@ -274,6 +274,50 @@ struct ac_hs_info {
 void ac_get_hs_info(struct radeon_info *info,
                     struct ac_hs_info *hs);
 
+/* Task rings BO layout information.
+ * This BO is shared between GFX and ACE queues so that the ACE and GFX
+ * firmware can cooperate on task->mesh dispatches and is also used to
+ * store the task payload which is passed to mesh shaders.
+ *
+ * The driver only needs to create this BO once,
+ * and it will always be able to accomodate the maximum needed
+ * task payload size.
+ *
+ * The following memory layout is used:
+ * 1. Control buffer: 9 DWORDs, 256 byte aligned
+ *    Used by the firmware to maintain the current state.
+ * (padding)
+ * 2. Draw ring: 4 DWORDs per entry, 256 byte aligned
+ *    Task shaders store the mesh dispatch size here.
+ * (padding)
+ * 3. Payload ring: 16K bytes per entry, 256 byte aligned.
+ *    This is where task payload is stored by task shaders and
+ *    read by mesh shaders.
+ *
+ */
+struct ac_task_info {
+   uint32_t draw_ring_offset;
+   uint32_t payload_ring_offset;
+   uint32_t bo_size_bytes;
+   uint16_t num_entries;
+};
+
+/* Size of each payload entry in the task payload ring.
+ * Spec requires minimum 16K bytes.
+ */
+#define AC_TASK_PAYLOAD_ENTRY_BYTES 16384
+
+/* Size of each draw entry in the task draw ring.
+ * 4 DWORDs per entry.
+ */
+#define AC_TASK_DRAW_ENTRY_BYTES 16
+
+/* Size of the task control buffer. 9 DWORDs. */
+#define AC_TASK_CTRLBUF_BYTES 36
+
+void ac_get_task_info(struct radeon_info *info,
+                      struct ac_task_info *task_info);
+
 #ifdef __cplusplus
 }
 #endif
