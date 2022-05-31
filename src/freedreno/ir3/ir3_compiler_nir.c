@@ -3060,6 +3060,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
    nsrc0 = i;
 
+   type_t coord_pad_type = is_half(coord[0]) ? TYPE_U16 : TYPE_U32;
    /* scale up integer coords for TXF based on the LOD */
    if (ctx->compiler->unminify_coords && (opc == OPC_ISAML)) {
       assert(has_lod);
@@ -3072,9 +3073,11 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
        * height of 1, and patch up the y coord.
        */
       if (is_isam(opc)) {
-         src0[nsrc0++] = create_immed(b, 0);
+         src0[nsrc0++] = create_immed_typed(b, 0, coord_pad_type);
+      } else if (is_half(coord[0])) {
+         src0[nsrc0++] = create_immed_typed(b, _mesa_float_to_half(0.5), coord_pad_type);
       } else {
-         src0[nsrc0++] = create_immed(b, fui(0.5));
+         src0[nsrc0++] = create_immed_typed(b, fui(0.5), coord_pad_type);
       }
    }
 
@@ -3092,15 +3095,15 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
    /* pad to 4, then ddx/ddy: */
    if (tex->op == nir_texop_txd) {
       while (nsrc0 < 4)
-         src0[nsrc0++] = create_immed(b, fui(0.0));
+         src0[nsrc0++] = create_immed_typed(b, fui(0.0), coord_pad_type);
       for (i = 0; i < coords; i++)
          src0[nsrc0++] = ddx[i];
       if (coords < 2)
-         src0[nsrc0++] = create_immed(b, fui(0.0));
+         src0[nsrc0++] = create_immed_typed(b, fui(0.0), coord_pad_type);
       for (i = 0; i < coords; i++)
          src0[nsrc0++] = ddy[i];
       if (coords < 2)
-         src0[nsrc0++] = create_immed(b, fui(0.0));
+         src0[nsrc0++] = create_immed_typed(b, fui(0.0), coord_pad_type);
    }
 
    /* NOTE a3xx (and possibly a4xx?) might be different, using isaml
@@ -3138,7 +3141,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
          for (i = 0; i < off_coords; i++)
             src1[nsrc1++] = off[i];
          if (off_coords < 2)
-            src1[nsrc1++] = create_immed(b, fui(0.0));
+            src1[nsrc1++] = create_immed_typed(b, fui(0.0), coord_pad_type);
          flags |= IR3_INSTR_O;
       }
 
