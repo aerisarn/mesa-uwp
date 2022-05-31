@@ -46,6 +46,11 @@ struct zink_pipeline_dynamic_state1 {
    struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //must be last
 };
 
+struct zink_pipeline_dynamic_state2 {
+   bool primitive_restart;
+   bool rasterizer_discard;
+};
+
 struct zink_gfx_pipeline_state {
    uint32_t rast_state : ZINK_RAST_HW_STATE_SIZE; //zink_rasterizer_hw_state
    uint32_t vertices_per_patch:5;
@@ -63,10 +68,7 @@ struct zink_gfx_pipeline_state {
 
    struct zink_pipeline_dynamic_state1 dyn_state1;
 
-   struct {
-      bool primitive_restart;
-      bool rasterizer_discard;
-   } dyn_state2;
+   struct zink_pipeline_dynamic_state2 dyn_state2;
 
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];
    bool modules_changed;

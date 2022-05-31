@@ -268,7 +268,7 @@ equals_gfx_pipeline_state(const void *a, const void *b)
          return false;
    }
    if (!sa->have_EXT_extended_dynamic_state2) {
-      if (sa->dyn_state2.primitive_restart != sb->dyn_state2.primitive_restart)
+      if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
          return false;
    }
    return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&
