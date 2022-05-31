@@ -284,20 +284,6 @@ print_tex_reg(FILE *fp, unsigned reg, bool is_write)
 }
 
 
-static char *outmod_names_float[4] = {
-        "",
-        ".clamp_0_inf",
-        ".clamp_m1_1",
-        ".clamp_0_1"
-};
-
-static char *outmod_names_int[4] = {
-        ".ssat",
-        ".usat",
-        ".keeplo",
-        ".keephi"
-};
-
 static char *srcmod_names_int[4] = {
         ".sext",
         ".zext",
@@ -319,13 +305,6 @@ static char *index_format_names[4] = {
 };
 
 static void
-print_outmod(FILE *fp, unsigned outmod, bool is_int)
-{
-        fprintf(fp, "%s", is_int ? outmod_names_int[outmod] :
-                outmod_names_float[outmod]);
-}
-
-static void
 print_alu_outmod(FILE *fp, unsigned outmod, bool is_int, bool half)
 {
         if (is_int && !half) {
@@ -336,7 +315,7 @@ print_alu_outmod(FILE *fp, unsigned outmod, bool is_int, bool half)
         if (!is_int && half)
                 fprintf(fp, ".shrink");
 
-        print_outmod(fp, outmod, is_int);
+        mir_print_outmod(fp, outmod, is_int);
 }
 
 /* arg == 0 (dest), arg == 1 (src1), arg == 2 (src2) */
@@ -1771,7 +1750,7 @@ print_texture_word(disassemble_context *ctx, FILE *fp, uint32_t *word,
 
         /* Output modifiers are only valid for float texture operations */
         if (texture->sampler_type == MALI_SAMPLER_FLOAT)
-                print_outmod(fp, texture->outmod, false);
+                mir_print_outmod(fp, texture->outmod, false);
 
         fprintf(fp, ", ");
 

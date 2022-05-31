@@ -220,6 +220,11 @@ mir_print_instruction(midgard_instruction *ins)
                         printf("%s.", mir_get_unit(ins->unit));
 
                 printf("%s", name ? name : "??");
+
+                if (!(midgard_is_integer_out_op(ins->op) && ins->outmod == midgard_outmod_keeplo)) {
+                        mir_print_outmod(stdout, ins->outmod, midgard_is_integer_out_op(ins->op));
+                }
+
                 break;
         }
 
