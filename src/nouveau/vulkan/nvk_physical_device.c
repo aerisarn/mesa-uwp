@@ -1,5 +1,6 @@
 #include "nvk_physical_device.h"
 
+#include "nvk_bo_sync.h"
 #include "nvk_entrypoints.h"
 #include "nvk_instance.h"
 #include "nvk_wsi.h"
@@ -211,6 +212,12 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
       device->mem_heaps[0].size = ndev->gart_size;
       device->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
    }
+
+   unsigned st_idx = 0;
+   device->sync_types[st_idx++] = &nvk_bo_sync_type;
+   device->sync_types[st_idx++] = NULL;
+   assert(st_idx <= ARRAY_SIZE(device->sync_types));
+   device->vk.supported_sync_types = device->sync_types;
 
    *device_out = device;
 

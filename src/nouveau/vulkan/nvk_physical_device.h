@@ -26,6 +26,8 @@ struct nvk_physical_device {
    VkMemoryType mem_types[2];
    uint8_t mem_heap_cnt;
    uint8_t mem_type_cnt;
+
+   const struct vk_sync_type *sync_types[2];
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_physical_device,

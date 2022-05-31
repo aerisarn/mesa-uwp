@@ -1,5 +1,6 @@
 #include "nvk_device.h"
 
+#include "nvk_bo_sync.h"
 #include "nvk_cmd_buffer.h"
 #include "nvk_instance.h"
 #include "nvk_physical_device.h"
@@ -14,10 +15,26 @@ nvk_queue_submit(struct vk_queue *queue, struct vk_queue_submit *submission)
 {
    struct nvk_device *device = container_of(queue->base.device, struct nvk_device, vk);
 
+   pthread_mutex_lock(&device->mutex);
    for (unsigned i = 0; i < submission->command_buffer_count; i++) {
       struct nvk_cmd_buffer *cmd = (struct nvk_cmd_buffer *)submission->command_buffers[i];
+
+      for (uint32_t i = 0; i < submission->signal_count; i++) {
+         struct nvk_bo_sync *bo_sync = container_of(submission->signals[i].sync, struct nvk_bo_sync, sync);
+         nouveau_ws_push_ref(cmd->push, bo_sync->bo, NOUVEAU_WS_BO_RDWR);
+      }
+
       nouveau_ws_push_submit(cmd->push, device->pdev->dev, device->ctx);
    }
+
+   for (uint32_t i = 0; i < submission->signal_count; i++) {
+      struct nvk_bo_sync *bo_sync = container_of(submission->signals[i].sync, struct nvk_bo_sync, sync);
+      assert(bo_sync->state == NVK_BO_SYNC_STATE_RESET);
+      bo_sync->state = NVK_BO_SYNC_STATE_SUBMITTED;
+   }
+
+   pthread_cond_broadcast(&device->queue_submit);
+   pthread_mutex_unlock(&device->mutex);
 
    return VK_SUCCESS;
 }
@@ -62,6 +79,28 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_ctx;
 
+   if (pthread_mutex_init(&device->mutex, NULL) != 0) {
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_queue;
+   }
+
+   pthread_condattr_t condattr;
+   if (pthread_condattr_init(&condattr) != 0) {
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_mutex;
+   }
+   if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0) {
+      pthread_condattr_destroy(&condattr);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_mutex;
+   }
+   if (pthread_cond_init(&device->queue_submit, &condattr) != 0) {
+      pthread_condattr_destroy(&condattr);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_mutex;
+   }
+   pthread_condattr_destroy(&condattr);
+
    device->queue.driver_submit = nvk_queue_submit;
 
    device->pdev = physical_device;
@@ -70,6 +109,10 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    return VK_SUCCESS;
 
+fail_mutex:
+   pthread_mutex_destroy(&device->mutex);
+fail_queue:
+   vk_queue_finish(&device->queue);
 fail_ctx:
    nouveau_ws_context_destroy(device->ctx);
 fail_init:
@@ -87,6 +130,8 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (!device)
       return;
 
+   pthread_cond_destroy(&device->queue_submit);
+   pthread_mutex_destroy(&device->mutex);
    vk_queue_finish(&device->queue);
    vk_device_finish(&device->vk);
    nouveau_ws_context_destroy(device->ctx);

@@ -1,4 +1,6 @@
 nvk_files = files(
+  'nvk_bo_sync.c',
+  'nvk_bo_sync.h',
   'nvk_buffer.c',
   'nvk_buffer.h',
   'nvk_cmd_buffer.c',

@@ -16,6 +16,9 @@ struct nvk_device {
    struct nouveau_ws_context *ctx;
 
    struct vk_queue queue;
+
+   pthread_mutex_t mutex;
+   pthread_cond_t queue_submit;
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
