@@ -41,3 +41,22 @@ u_trace is controlled by environment variables:
 :envvar:`GPU_TRACE_INSTRUMENT`
    Meaningful only for Perfetto tracing. If set to ``1`` enables
    instrumentation of GPU commands before the tracing is enabled.
+
+:envvar:`*_GPU_TRACEPOINT`
+   tracepoints can be enabled or disabled using driver specific environment
+   variable. Most tracepoints are enabled by default. For instance
+   ``TU_GPU_TRACEPOINT=-blit,+render_pass`` will disable the
+   ``blit`` tracepoints and enable the ``render_pass`` tracepoints.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Driver
+     - Environment Variable
+     - Tracepoint Definitions
+   * - Freedreno
+     - :envvar:`FD_GPU_TRACEPOINT`
+     - ``src/gallium/drivers/freedreno/freedreno_tracepoints.py``
+   * - Turnip
+     - :envvar:`TU_GPU_TRACEPOINT`
+     - ``src/freedreno/vulkan/tu_tracepoints.py``
