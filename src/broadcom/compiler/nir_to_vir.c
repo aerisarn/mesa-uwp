@@ -3572,7 +3572,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 /* This is basically the batch index, which is the Local
                  * Invocation Index divided by the SIMD width).
                  */
-                STATIC_ASSERT(util_is_power_of_two_nonzero(V3D_CHANNELS));
+                STATIC_ASSERT(IS_POT(V3D_CHANNELS) && V3D_CHANNELS > 0);
                 const uint32_t divide_shift = ffs(V3D_CHANNELS) - 1;
                 struct qreg lii = emit_load_local_invocation_index(c);
                 ntq_store_dest(c, &instr->dest, 0,
