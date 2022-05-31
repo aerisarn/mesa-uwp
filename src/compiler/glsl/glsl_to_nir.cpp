@@ -1973,8 +1973,8 @@ nir_visitor::visit(ir_expression *ir)
    case ir_unop_rcp:  result = nir_frcp(&b, srcs[0]);  break;
    case ir_unop_rsq:  result = nir_frsq(&b, srcs[0]);  break;
    case ir_unop_sqrt: result = nir_fsqrt(&b, srcs[0]); break;
-   case ir_unop_exp:  unreachable("ir_unop_exp should have been lowered");
-   case ir_unop_log:  unreachable("ir_unop_log should have been lowered");
+   case ir_unop_exp:  result = nir_fexp2(&b, nir_fmul_imm(&b, srcs[0], M_LOG2E)); break;
+   case ir_unop_log:  result = nir_fmul_imm(&b, nir_flog2(&b, srcs[0]), 1.0 / M_LOG2E); break;
    case ir_unop_exp2: result = nir_fexp2(&b, srcs[0]); break;
    case ir_unop_log2: result = nir_flog2(&b, srcs[0]); break;
    case ir_unop_i2f:

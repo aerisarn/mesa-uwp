@@ -33,8 +33,6 @@
  * - SUB_TO_ADD_NEG
  * - DIV_TO_MUL_RCP
  * - INT_DIV_TO_MUL_RCP
- * - EXP_TO_EXP2
- * - LOG_TO_LOG2
  * - LDEXP_TO_ARITH
  * - CARRY_TO_ARITH
  * - BORROW_TO_ARITH
@@ -65,12 +63,6 @@
  * DIV_TO_MUL_RCP is a convenience macro that sets both flags.
  * INT_DIV_TO_MUL_RCP handles the integer case, converting to and from floating
  * point so that RCP is possible.
- *
- * EXP_TO_EXP2 and LOG_TO_LOG2:
- * ----------------------------
- * Many GPUs don't have a base e log or exponent instruction, but they
- * do have base 2 versions, so this pass converts exp and log to exp2
- * and log2 operations.
  *
  * LDEXP_TO_ARITH:
  * -------------
@@ -122,8 +114,6 @@ private:
    void sub_to_add_neg(ir_expression *);
    void div_to_mul_rcp(ir_expression *);
    void int_div_to_mul_rcp(ir_expression *);
-   void exp_to_exp2(ir_expression *);
-   void log_to_log2(ir_expression *);
    void ldexp_to_arith(ir_expression *);
    void dldexp_to_arith(ir_expression *);
    void dfrexp_sig_to_arith(ir_expression *);
@@ -247,29 +237,6 @@ lower_instructions_visitor::int_div_to_mul_rcp(ir_expression *ir)
    ir->init_num_operands();
    ir->operands[1] = NULL;
 
-   this->progress = true;
-}
-
-void
-lower_instructions_visitor::exp_to_exp2(ir_expression *ir)
-{
-   ir_constant *log2_e = _imm_fp(ir, ir->type, M_LOG2E);
-
-   ir->operation = ir_unop_exp2;
-   ir->init_num_operands();
-   ir->operands[0] = new(ir) ir_expression(ir_binop_mul, ir->operands[0]->type,
-					   ir->operands[0], log2_e);
-   this->progress = true;
-}
-
-void
-lower_instructions_visitor::log_to_log2(ir_expression *ir)
-{
-   ir->operation = ir_binop_mul;
-   ir->init_num_operands();
-   ir->operands[0] = new(ir) ir_expression(ir_unop_log2, ir->operands[0]->type,
-					   ir->operands[0], NULL);
-   ir->operands[1] = _imm_fp(ir, ir->operands[0]->type, 1.0 / M_LOG2E);
    this->progress = true;
 }
 
@@ -1411,25 +1378,6 @@ lower_instructions_visitor::_carry(operand a, operand b)
       return carry(a, b);
 }
 
-ir_constant *
-lower_instructions_visitor::_imm_fp(void *mem_ctx,
-                                    const glsl_type *type,
-                                    double f,
-                                    unsigned vector_elements)
-{
-   switch (type->base_type) {
-   case GLSL_TYPE_FLOAT:
-      return new(mem_ctx) ir_constant((float) f, vector_elements);
-   case GLSL_TYPE_DOUBLE:
-      return new(mem_ctx) ir_constant((double) f, vector_elements);
-   case GLSL_TYPE_FLOAT16:
-      return new(mem_ctx) ir_constant(float16_t(f), vector_elements);
-   default:
-      assert(!"unknown float type for immediate");
-      return NULL;
-   }
-}
-
 void
 lower_instructions_visitor::imul_high_to_mul(ir_expression *ir)
 {
@@ -1605,16 +1553,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
       else if ((ir->operands[1]->type->is_float_16_32() && lowering(FDIV_TO_MUL_RCP)) ||
                (ir->operands[1]->type->is_double() && lowering(DDIV_TO_MUL_RCP)))
 	 div_to_mul_rcp(ir);
-      break;
-
-   case ir_unop_exp:
-      if (lowering(EXP_TO_EXP2))
-	 exp_to_exp2(ir);
-      break;
-
-   case ir_unop_log:
-      if (lowering(LOG_TO_LOG2))
-	 log_to_log2(ir);
       break;
 
    case ir_binop_ldexp:
