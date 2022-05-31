@@ -1082,6 +1082,9 @@ struct v3dv_job {
     */
    bool decided_global_ez_enable;
 
+   /* If the job emitted any draw calls with Early Z/S enabled */
+   bool has_ez_draws;
+
    /* If this job has been configured to use early Z/S clear */
    bool early_zs_clear;
 

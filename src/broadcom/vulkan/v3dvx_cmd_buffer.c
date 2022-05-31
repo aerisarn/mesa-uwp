@@ -754,11 +754,8 @@ set_rcl_early_z_config(struct v3dv_job *job,
                        bool *early_z_disable,
                        uint32_t *early_z_test_and_update_direction)
 {
-   /* If this is true then we have not emitted any draw calls in this job
-    * and we don't get any benefits form early Z.
-    */
-   if (!job->decided_global_ez_enable) {
-      assert(job->draw_count == 0);
+   /* Disable if none of the draw calls in this job enabled EZ */
+   if (!job->has_ez_draws) {
       *early_z_disable = true;
       return;
    }
@@ -1532,6 +1529,9 @@ job_update_ez_state(struct v3dv_job *job,
       assert(disable_ez);
       job->ez_state = V3D_EZ_DISABLED;
    }
+
+   if (!disable_ez)
+      job->has_ez_draws = true;
 
    return !disable_ez;
 }
