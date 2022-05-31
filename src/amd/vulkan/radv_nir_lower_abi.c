@@ -79,7 +79,7 @@ lower_load_vs_input_from_prolog(nir_builder *b,
    const unsigned driver_location = base + base_offset - VERT_ATTRIB_GENERIC0;
    const unsigned component = nir_intrinsic_component(intrin);
    const unsigned bit_size = intrin->dest.ssa.bit_size;
-   const unsigned num_components = intrin->dest.ssa.num_components
+   const unsigned num_components = intrin->dest.ssa.num_components;
 
    /* 64-bit inputs: they occupy twice as many 32-bit components.
     * 16-bit inputs: they occupy a 32-bit component (not packed).
@@ -95,7 +95,7 @@ lower_load_vs_input_from_prolog(nir_builder *b,
       input_args[1] = ac_nir_load_arg(b, &s->args->ac, s->args->vs_inputs[driver_location + 1]);
    }
 
-   nir_ssa_def *extracted = nir_extract_bits(b, &input_arg, num_input_args, component * 32,
+   nir_ssa_def *extracted = nir_extract_bits(b, input_args, num_input_args, component * 32,
                                              num_components, arg_bit_size);
 
    if (bit_size < arg_bit_size) {
