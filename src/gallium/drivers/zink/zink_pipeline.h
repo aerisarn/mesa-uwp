@@ -42,7 +42,7 @@ struct zink_vertex_elements_state;
 struct zink_pipeline_dynamic_state1 {
    uint8_t front_face; //VkFrontFace:1
    uint16_t num_viewports;
-   struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state;
+   struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //must be last
 };
 
 struct zink_gfx_pipeline_state {

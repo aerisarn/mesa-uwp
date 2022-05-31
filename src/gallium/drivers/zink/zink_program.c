@@ -259,7 +259,7 @@ equals_gfx_pipeline_state(const void *a, const void *b)
       }
    }
    if (!sa->have_EXT_extended_dynamic_state) {
-      if (sa->dyn_state1.front_face != sb->dyn_state1.front_face)
+      if (memcmp(&sa->dyn_state1, &sb->dyn_state1, offsetof(struct zink_pipeline_dynamic_state1, depth_stencil_alpha_state)))
          return false;
       if (!!sa->dyn_state1.depth_stencil_alpha_state != !!sb->dyn_state1.depth_stencil_alpha_state ||
           (sa->dyn_state1.depth_stencil_alpha_state &&
