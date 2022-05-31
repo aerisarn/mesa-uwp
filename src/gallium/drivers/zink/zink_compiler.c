@@ -2203,6 +2203,10 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       subgroup_options.ballot_bit_size = 32;
       subgroup_options.ballot_components = 4;
       subgroup_options.lower_subgroup_masks = true;
+      if (!(screen->info.subgroup.supportedStages & mesa_to_vk_shader_stage(nir->info.stage))) {
+         subgroup_options.subgroup_size = 1;
+         subgroup_options.lower_vote_trivial = true;
+      }
       NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    }
 
