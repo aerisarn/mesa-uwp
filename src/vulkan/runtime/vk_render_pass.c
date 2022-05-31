@@ -820,6 +820,126 @@ vk_get_command_buffer_inheritance_rendering_info(
                                COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
 }
 
+const VkRenderingInfo *
+vk_get_command_buffer_inheritance_as_rendering_resume(
+   VkCommandBufferLevel level,
+   const VkCommandBufferBeginInfo *pBeginInfo,
+   void *stack_data)
+{
+   struct vk_gcbiarr_data *data = stack_data;
+
+   /* From the Vulkan 1.3.204 spec:
+    *
+    *    "VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT specifies that a
+    *    secondary command buffer is considered to be entirely inside a render
+    *    pass. If this is a primary command buffer, then this bit is ignored."
+    *
+    * Since we're only concerned with the continue case here, we can ignore
+    * any primary command buffers.
+    */
+   if (level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+      return NULL;
+
+   if (!(pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT))
+      return NULL;
+
+   const VkCommandBufferInheritanceInfo *inheritance =
+      pBeginInfo->pInheritanceInfo;
+
+   VK_FROM_HANDLE(vk_render_pass, pass, inheritance->renderPass);
+   if (pass == NULL)
+      return NULL;
+
+   assert(inheritance->subpass < pass->subpass_count);
+   const struct vk_subpass *subpass = &pass->subpasses[inheritance->subpass];
+
+   VK_FROM_HANDLE(vk_framebuffer, fb, inheritance->framebuffer);
+   if (fb == NULL || (fb->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR))
+      return NULL;
+
+   data->rendering = (VkRenderingInfo) {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .flags = VK_RENDERING_RESUMING_BIT,
+      .renderArea = {
+         .offset = { 0, 0 },
+         .extent = { fb->width, fb->height },
+      },
+      .layerCount = fb->layers,
+      .viewMask = pass->is_multiview ? subpass->view_mask : 0,
+   };
+
+   VkRenderingAttachmentInfo *attachments = data->attachments;
+
+   for (unsigned i = 0; i < subpass->color_count; i++) {
+      const struct vk_subpass_attachment *sp_att =
+         &subpass->color_attachments[i];
+      if (sp_att->attachment == VK_ATTACHMENT_UNUSED) {
+         attachments[i] = (VkRenderingAttachmentInfo) {
+            .imageView = VK_NULL_HANDLE,
+         };
+         continue;
+      }
+
+      assert(sp_att->attachment < pass->attachment_count);
+      attachments[i] = (VkRenderingAttachmentInfo) {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = fb->attachments[sp_att->attachment],
+         .imageLayout = sp_att->layout,
+         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      };
+   }
+   data->rendering.colorAttachmentCount = subpass->color_count;
+   data->rendering.pColorAttachments = attachments;
+   attachments += subpass->color_count;
+
+   if (subpass->depth_stencil_attachment) {
+      const struct vk_subpass_attachment *sp_att =
+         subpass->depth_stencil_attachment;
+      assert(sp_att->attachment < pass->attachment_count);
+
+      VK_FROM_HANDLE(vk_image_view, iview, fb->attachments[sp_att->attachment]);
+      if (iview->image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         *attachments = (VkRenderingAttachmentInfo) {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = vk_image_view_to_handle(iview),
+            .imageLayout = sp_att->layout,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+         };
+         data->rendering.pDepthAttachment = attachments++;
+      }
+
+      if (iview->image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         *attachments = (VkRenderingAttachmentInfo) {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = vk_image_view_to_handle(iview),
+            .imageLayout = sp_att->stencil_layout,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+         };
+         data->rendering.pStencilAttachment = attachments++;
+      }
+   }
+
+   if (subpass->fragment_shading_rate_attachment) {
+      const struct vk_subpass_attachment *sp_att =
+         subpass->fragment_shading_rate_attachment;
+      assert(sp_att->attachment < pass->attachment_count);
+
+      data->fsr_att = (VkRenderingFragmentShadingRateAttachmentInfoKHR) {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
+         .imageView = fb->attachments[sp_att->attachment],
+         .imageLayout = sp_att->layout,
+         .shadingRateAttachmentTexelSize =
+            subpass->fragment_shading_rate_attachment_texel_size,
+      };
+      __vk_append_struct(&data->rendering, &data->fsr_att);
+   }
+
+   return &data->rendering;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 vk_common_DestroyRenderPass(VkDevice _device,
                             VkRenderPass renderPass,
