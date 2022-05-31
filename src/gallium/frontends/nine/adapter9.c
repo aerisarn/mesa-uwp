@@ -38,8 +38,7 @@ static bool
 has_sm3(struct pipe_screen *hal)
 {
     return hal->get_param(hal, PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD) &&
-           hal->get_param(hal, PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES) &&
-           hal->get_param(hal, PIPE_CAP_VERTEX_SHADER_SATURATE);
+           hal->get_param(hal, PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES);
 }
 
 HRESULT

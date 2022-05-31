@@ -38,7 +38,6 @@
  * - LDEXP_TO_ARITH
  * - CARRY_TO_ARITH
  * - BORROW_TO_ARITH
- * - SAT_TO_CLAMP
  * - DOPS_TO_DFRAC
  *
  * SUB_TO_ADD_NEG:
@@ -97,10 +96,6 @@
  * ----------------
  * Converts ir_borrow into (x < y).
  *
- * SAT_TO_CLAMP:
- * -------------
- * Converts ir_unop_saturate into min(max(x, 0.0), 1.0)
- *
  * DOPS_TO_DFRAC:
  * --------------
  * Converts double trunc, ceil, floor, round to fract
@@ -142,7 +137,6 @@ private:
    void dfrexp_exp_to_arith(ir_expression *);
    void carry_to_arith(ir_expression *);
    void borrow_to_arith(ir_expression *);
-   void sat_to_clamp(ir_expression *);
    void double_dot_to_fma(ir_expression *);
    void double_lrp(ir_expression *);
    void dceil_to_dfrac(ir_expression *);
@@ -750,26 +744,6 @@ lower_instructions_visitor::borrow_to_arith(ir_expression *ir)
    ir->init_num_operands();
    ir->operands[0] = b2i(less(ir->operands[0], ir->operands[1]));
    ir->operands[1] = NULL;
-
-   this->progress = true;
-}
-
-void
-lower_instructions_visitor::sat_to_clamp(ir_expression *ir)
-{
-   /* Translates
-    *   ir_unop_saturate x
-    * into
-    *   ir_binop_min (ir_binop_max(x, 0.0), 1.0)
-    */
-
-   ir->operation = ir_binop_min;
-   ir->init_num_operands();
-
-   ir_constant *zero = _imm_fp(ir, ir->operands[0]->type, 0.0);
-   ir->operands[0] = new(ir) ir_expression(ir_binop_max, ir->operands[0]->type,
-                                           ir->operands[0], zero);
-   ir->operands[1] = _imm_fp(ir, ir->operands[0]->type, 1.0);
 
    this->progress = true;
 }
@@ -1675,11 +1649,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_binop_borrow:
       if (lowering(BORROW_TO_ARITH))
          borrow_to_arith(ir);
-      break;
-
-   case ir_unop_saturate:
-      if (lowering(SAT_TO_CLAMP))
-         sat_to_clamp(ir);
       break;
 
    case ir_unop_trunc:

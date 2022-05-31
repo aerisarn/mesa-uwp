@@ -685,12 +685,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    ctx->Const.NoClippingOnCopyTex = screen->get_param(screen,
                                                       PIPE_CAP_NO_CLIP_ON_COPY_TEX);
 
-   /* For vertex shaders, make sure not to emit saturate when SM 3.0
-    * is not supported
-    */
-   ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].EmitNoSat =
-      !screen->get_param(screen, PIPE_CAP_VERTEX_SHADER_SATURATE);
-
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].PositionAlwaysInvariant = options->vs_position_always_invariant;
 
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_TESS_EVAL].PositionAlwaysPrecise = options->vs_position_always_precise;

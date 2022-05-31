@@ -572,8 +572,6 @@ The integer capabilities:
   explicit LOD is supported in the fragment shader.
 * ``PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES``: True if the driver supports
   derivatives in fragment shaders.
-* ``PIPE_CAP_VERTEX_SHADER_SATURATE``: True if the driver supports saturate
-  modifiers in the vertex shader.
 * ``PIPE_CAP_TEXTURE_SHADOW_LOD``: True if the driver supports shadow sampler
   types with texture functions having interaction with LOD of texture lookup.
 * ``PIPE_CAP_SHADER_SAMPLES_IDENTICAL``: True if the driver supports a shader query to tell whether all samples of a multisampled surface are definitely identical.
