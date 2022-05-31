@@ -951,6 +951,8 @@ vtest_init_renderer_info(struct vtest *vtest)
                  sizeof(capset->vk_extension_mask1));
    memcpy(info->vk_extension_mask, capset->vk_extension_mask1,
           sizeof(capset->vk_extension_mask1));
+
+   info->allow_vk_wait_syncs = capset->allow_vk_wait_syncs;
 }
 
 static void

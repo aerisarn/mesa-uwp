@@ -1415,6 +1415,8 @@ virtgpu_init_renderer_info(struct virtgpu *gpu)
    memcpy(info->vk_extension_mask, capset->vk_extension_mask1,
           sizeof(capset->vk_extension_mask1));
 
+   info->allow_vk_wait_syncs = capset->allow_vk_wait_syncs;
+
    if (gpu->bo_blob_mem == VIRTGPU_BLOB_MEM_GUEST_VRAM)
       info->has_guest_vram = true;
 }

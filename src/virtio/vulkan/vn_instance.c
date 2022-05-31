@@ -293,6 +293,8 @@ vn_instance_init_renderer(struct vn_instance *instance)
              renderer_info->vk_mesa_venus_protocol_spec_version);
       vn_log(instance, "supports blob id 0: %d",
              renderer_info->supports_blob_id_0);
+      vn_log(instance, "allow_vk_wait_syncs: %d",
+             renderer_info->allow_vk_wait_syncs);
    }
 
    return VK_SUCCESS;
