@@ -1689,28 +1689,23 @@ genX(BeginCommandBuffer)(
        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
       struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
 
-      const VkCommandBufferInheritanceRenderingInfo *inheritance_info =
-         vk_get_command_buffer_inheritance_rendering_info(cmd_buffer->vk.level,
-                                                          pBeginInfo);
-
-      /* We can't get this information from the inheritance info */
-      gfx->render_area = (VkRect2D) { };
-      gfx->layer_count = 0;
-      gfx->samples = 0;
-      gfx->depth_att = (struct anv_attachment) { };
-      gfx->stencil_att = (struct anv_attachment) { };
-
-      if (inheritance_info == NULL) {
-         gfx->rendering_flags = 0;
-         gfx->view_mask = 0;
-         gfx->samples = 0;
-         result = anv_cmd_buffer_init_attachments(cmd_buffer, 0, 0);
-         if (result != VK_SUCCESS)
-            return result;
+      char gcbiar_data[VK_GCBIARR_DATA_SIZE(MAX_RTS)];
+      const VkRenderingInfo *resume_info =
+         vk_get_command_buffer_inheritance_as_rendering_resume(cmd_buffer->vk.level,
+                                                               pBeginInfo,
+                                                               gcbiar_data);
+      if (resume_info != NULL) {
+         genX(CmdBeginRendering)(commandBuffer, resume_info);
       } else {
+         const VkCommandBufferInheritanceRenderingInfo *inheritance_info =
+            vk_get_command_buffer_inheritance_rendering_info(cmd_buffer->vk.level,
+                                                             pBeginInfo);
+
          gfx->rendering_flags = inheritance_info->flags;
-         gfx->view_mask = inheritance_info->viewMask;
+         gfx->render_area = (VkRect2D) { };
+         gfx->layer_count = 0;
          gfx->samples = inheritance_info->rasterizationSamples;
+         gfx->view_mask = inheritance_info->viewMask;
 
          uint32_t color_att_valid = 0;
          uint32_t color_att_count = inheritance_info->colorAttachmentCount;
@@ -1733,59 +1728,9 @@ genX(BeginCommandBuffer)(
             inheritance_info->depthAttachmentFormat;
          gfx->stencil_att.vk_format =
             inheritance_info->stencilAttachmentFormat;
+
+         cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
       }
-
-      /* Try to figure out the depth buffer if we can */
-      if (pBeginInfo->pInheritanceInfo->renderPass != VK_NULL_HANDLE &&
-          pBeginInfo->pInheritanceInfo->framebuffer != VK_NULL_HANDLE) {
-         VK_FROM_HANDLE(vk_render_pass, pass,
-                        pBeginInfo->pInheritanceInfo->renderPass);
-         VK_FROM_HANDLE(vk_framebuffer, fb,
-                        pBeginInfo->pInheritanceInfo->framebuffer);
-         const struct vk_subpass *subpass =
-            &pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
-
-         if (!(fb->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR) &&
-             subpass->depth_stencil_attachment != NULL) {
-            const struct vk_subpass_attachment *att =
-               subpass->depth_stencil_attachment;
-
-            assert(att->attachment < fb->attachment_count);
-            ANV_FROM_HANDLE(anv_image_view, iview,
-                            fb->attachments[att->attachment]);
-
-            if (iview->vk.image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-               assert(gfx->depth_att.vk_format == iview->vk.format);
-               gfx->depth_att.iview = iview;
-               gfx->depth_att.layout = att->layout;
-               gfx->depth_att.aux_usage =
-                  anv_layout_to_aux_usage(&cmd_buffer->device->info,
-                                          iview->image,
-                                          VK_IMAGE_ASPECT_DEPTH_BIT,
-                                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                          att->layout);
-            }
-
-            if (iview->vk.image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-               assert(gfx->stencil_att.vk_format == iview->vk.format);
-               gfx->stencil_att.iview = iview;
-               gfx->stencil_att.layout = att->stencil_layout;
-               gfx->stencil_att.aux_usage =
-                  anv_layout_to_aux_usage(&cmd_buffer->device->info,
-                                          iview->image,
-                                          VK_IMAGE_ASPECT_STENCIL_BIT,
-                                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                          att->stencil_layout);
-            }
-         }
-      }
-
-      if (gfx->depth_att.iview != NULL) {
-         cmd_buffer->state.hiz_enabled =
-            isl_aux_usage_has_hiz(gfx->depth_att.aux_usage);
-      }
-
-      cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
    }
 
 #if GFX_VER >= 8
