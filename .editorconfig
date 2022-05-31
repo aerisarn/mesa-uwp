@@ -16,7 +16,7 @@ max_line_length = 78
 [{Makefile*,*.mk}]
 indent_style = tab
 
-[{*.py,SCons*}]
+[*.py]
 indent_style = space
 indent_size = 4
 
