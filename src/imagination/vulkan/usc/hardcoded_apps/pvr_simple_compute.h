@@ -23,13 +23,13 @@
 
 /* Auto-generated file - don't edit */
 
-#ifndef PVR_USC_COMPUTE_SHADER_H
-#define PVR_USC_COMPUTE_SHADER_H
+#ifndef PVR_SIMPLE_COMPUTE_H
+#define PVR_SIMPLE_COMPUTE_H
 
 #include <stdint.h>
 
 /* clang-format off */
-uint8_t pvr_usc_compute_shader[] = {
+static const uint8_t pvr_simple_compute_shader[] = {
    0x44, 0x12, 0xd3, 0x3f,
    0x00, 0x00, 0x00, 0x24,
    0x46, 0x40, 0xf9, 0xb0,
@@ -99,4 +99,4 @@ uint8_t pvr_usc_compute_shader[] = {
 };
 /* clang-format on */
 
-#endif /* PVR_USC_COMPUTE_SHADER_H */
+#endif /* PVR_SIMPLE_COMPUTE_H */

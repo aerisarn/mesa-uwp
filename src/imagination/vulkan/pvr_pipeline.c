@@ -36,10 +36,10 @@
 #include "pvr_bo.h"
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
+#include "pvr_hardcode.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
 #include "pvr_shader.h"
-#include "pvr_usc_compute_shader.h"
 #include "pvr_winsys.h"
 #include "rogue/rogue.h"
 #include "rogue/rogue_build_data.h"
@@ -51,37 +51,6 @@
 #include "vk_log.h"
 #include "vk_object.h"
 #include "vk_util.h"
-
-/* FIXME: Remove this when the compiler is hooked up. */
-/******************************************************************************
-   Hard coding
- ******************************************************************************/
-/* This section contains hard coding related structs. */
-
-struct pvr_explicit_constant_usage {
-   /* Hardware register number assigned to the explicit constant with the lower
-    * pre_assigned offset.
-    */
-   uint32_t start_offset;
-};
-
-static const struct {
-   uint32_t local_invocation_regs[2];
-
-   uint32_t work_group_regs[PVR_WORKGROUP_DIMENSIONS];
-
-   uint32_t barrier_reg;
-
-   uint32_t usc_temps;
-} pvr_pds_compute_program_params = {
-   .local_invocation_regs = { 0, 1 },
-
-   .work_group_regs = { 0, 1, 2 },
-
-   .barrier_reg = ROGUE_REG_UNUSED,
-
-   .usc_temps = 0,
-};
 
 /*****************************************************************************
    PDS functions
@@ -1043,42 +1012,58 @@ static VkResult pvr_compute_pipeline_compile(
    const VkAllocationCallbacks *const allocator,
    struct pvr_compute_pipeline *const compute_pipeline)
 {
-   /* FIXME: Remove this hard coding. */
-   const struct pvr_explicit_constant_usage explicit_const_usage = {
-      .start_offset = 0,
-   };
-   const struct rogue_ubo_data uniform_program_ubo_data = { 0 };
-
-   const uint32_t cache_line_size =
-      rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
    uint32_t work_group_input_regs[PVR_WORKGROUP_DIMENSIONS];
+   struct pvr_explicit_constant_usage explicit_const_usage;
    uint32_t local_input_regs[PVR_WORKGROUP_DIMENSIONS];
+   struct rogue_ubo_data ubo_data;
    uint32_t barrier_coefficient;
+   uint32_t usc_temps;
    VkResult result;
 
-   /* FIXME: Compile the shader. */
+   if (pvr_hard_code_shader_required()) {
+      struct pvr_hard_code_compute_build_info build_info;
 
-   /* FIXME: Remove this hard coding. */
-   compute_pipeline->state.shader.uses_atomic_ops = false;
-   compute_pipeline->state.shader.uses_barrier = false;
-   compute_pipeline->state.shader.uses_num_workgroups = false;
-   compute_pipeline->state.shader.const_shared_reg_count = 4;
-   compute_pipeline->state.shader.input_register_count = 8;
-   compute_pipeline->state.shader.work_size = 1 * 1 * 1;
-   compute_pipeline->state.shader.coefficient_register_count = 4;
+      result = pvr_hard_code_compute_pipeline(device,
+                                              &compute_pipeline->state.shader,
+                                              &build_info);
+      if (result != VK_SUCCESS)
+         return result;
 
-   result = pvr_gpu_upload_usc(device,
-                               pvr_usc_compute_shader,
-                               sizeof(pvr_usc_compute_shader),
-                               cache_line_size,
-                               &compute_pipeline->state.shader.bo);
-   if (result != VK_SUCCESS)
-      return result;
+      ubo_data = build_info.ubo_data;
+
+      /* We make sure that the compiler's unused reg value is compatible with
+       * the pds api.
+       */
+      STATIC_ASSERT(ROGUE_REG_UNUSED == PVR_PDS_COMPUTE_INPUT_REG_UNUSED);
+
+      barrier_coefficient = build_info.barrier_reg;
+
+      /* TODO: Maybe change the pds api to use pointers so we avoid the copy. */
+      local_input_regs[0] = build_info.local_invocation_regs[0];
+      local_input_regs[1] = build_info.local_invocation_regs[1];
+      /* This is not a mistake. We want to assign element 1 to 2. */
+      local_input_regs[2] = build_info.local_invocation_regs[1];
+
+      STATIC_ASSERT(
+         __same_type(work_group_input_regs, build_info.work_group_regs));
+      typed_memcpy(work_group_input_regs,
+                   build_info.work_group_regs,
+                   PVR_WORKGROUP_DIMENSIONS);
+
+      usc_temps = build_info.usc_temps;
+
+      explicit_const_usage = build_info.explicit_conts_usage;
+
+   } else {
+      /* FIXME: Compile and upload the shader. */
+      /* FIXME: Initialize the shader state and setup build info. */
+      abort();
+   };
 
    result = pvr_pds_uniform_program_create_and_upload(
       device,
       allocator,
-      &uniform_program_ubo_data,
+      &ubo_data,
       &explicit_const_usage,
       compute_pipeline->base.layout,
       PVR_STAGE_ALLOCATION_COMPUTE,
@@ -1087,35 +1072,13 @@ static VkResult pvr_compute_pipeline_compile(
    if (result != VK_SUCCESS)
       goto err_free_shader;
 
-   /* We make sure that the compiler's unused reg value is compatible with the
-    * pds api.
-    */
-   STATIC_ASSERT(ROGUE_REG_UNUSED == PVR_PDS_COMPUTE_INPUT_REG_UNUSED);
-
-   barrier_coefficient = pvr_pds_compute_program_params.barrier_reg;
-
-   /* TODO: Maybe change the pds api to use pointers so we avoid the copy. */
-   local_input_regs[0] =
-      pvr_pds_compute_program_params.local_invocation_regs[0];
-   local_input_regs[1] =
-      pvr_pds_compute_program_params.local_invocation_regs[1];
-   /* This is not a mistake. We want to assign element 1 to 2. */
-   local_input_regs[2] =
-      pvr_pds_compute_program_params.local_invocation_regs[1];
-
-   STATIC_ASSERT(__same_type(work_group_input_regs,
-                             pvr_pds_compute_program_params.work_group_regs));
-   typed_memcpy(work_group_input_regs,
-                pvr_pds_compute_program_params.work_group_regs,
-                PVR_WORKGROUP_DIMENSIONS);
-
    result = pvr_pds_compute_program_create_and_upload(
       device,
       allocator,
       local_input_regs,
       work_group_input_regs,
       barrier_coefficient,
-      pvr_pds_compute_program_params.usc_temps,
+      usc_temps,
       compute_pipeline->state.shader.bo->vma->dev_addr,
       &compute_pipeline->state.primary_program,
       &compute_pipeline->state.primary_program_info);
@@ -1137,7 +1100,7 @@ static VkResult pvr_compute_pipeline_compile(
          local_input_regs,
          work_group_input_regs,
          barrier_coefficient,
-         pvr_pds_compute_program_params.usc_temps,
+         usc_temps,
          compute_pipeline->state.shader.bo->vma->dev_addr,
          &compute_pipeline->state.primary_base_workgroup_variant_program);
       if (result != VK_SUCCESS)

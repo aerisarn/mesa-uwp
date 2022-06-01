@@ -43,6 +43,7 @@ pvr_files = files(
   'pvr_descriptor_set.c',
   'pvr_device.c',
   'pvr_formats.c',
+  'pvr_hardcode.c',
   'pvr_hw_pass.c',
   'pvr_image.c',
   'pvr_job_common.c',

@@ -1037,7 +1037,10 @@ struct pvr_compute_pipeline {
    struct pvr_pipeline base;
 
    struct {
-      struct {
+      /* TODO: Change this to be an anonymous struct once the shader hardcoding
+       * is removed.
+       */
+      struct pvr_compute_pipeline_shader_state {
          /* Pointer to a buffer object that contains the shader binary. */
          struct pvr_bo *bo;
 
