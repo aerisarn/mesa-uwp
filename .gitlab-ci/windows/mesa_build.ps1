@@ -32,6 +32,8 @@ Write-Output sourcedir:$sourcedir
 $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
 . "$MyPath\mesa_vs_init.ps1"
 
+$depsInstallPath="C:\mesa-deps"
+
 Push-Location $builddir
 
 meson `
@@ -40,8 +42,8 @@ meson `
 --buildtype=release `
 -Db_ndebug=false `
 -Db_vscrt=mt `
---cmake-prefix-path="C:\llvm-10" `
---pkg-config-path="C:\llvm-10\lib\pkgconfig;C:\llvm-10\share\pkgconfig;C:\spirv-tools\lib\pkgconfig" `
+--cmake-prefix-path="$depsInstallPath" `
+--pkg-config-path="$depsInstallPath\lib\pkgconfig;$depsInstallPath\share\pkgconfig" `
 --prefix="$installdir" `
 -Dllvm=enabled `
 -Dshared-llvm=disabled `

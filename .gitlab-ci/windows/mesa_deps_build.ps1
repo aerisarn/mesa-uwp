@@ -66,9 +66,11 @@ $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
 # downloads so must be done after Chocolatey use
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13;
 
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "deps" | Out-Null
+
 Get-Date
 Write-Host "Cloning LLVM release/12.x"
-git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project llvm-project
+git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project deps/llvm-project
 if (!$?) {
   Write-Host "Failed to clone LLVM repository"
   Exit 1
@@ -79,25 +81,28 @@ if (!$?) {
 # a tag matching LLVM 12.0.0
 Get-Date
 Write-Host "Cloning SPIRV-LLVM-Translator"
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/SPIRV-LLVM-Translator
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
 if (!$?) {
   Write-Host "Failed to clone SPIRV-LLVM-Translator repository"
   Exit 1
 }
-Push-Location llvm-project/llvm/projects/SPIRV-LLVM-Translator
+Push-Location deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
 git checkout 5b641633b3bcc3251a52260eee11db13a79d7258
 Pop-Location
 
+$depsInstallPath="C:\mesa-deps"
+
 Get-Date
 # slightly convoluted syntax but avoids the CWD being under the PS filesystem meta-path
-$llvm_build = New-Item -ItemType Directory -ErrorAction SilentlyContinue -Force -Path ".\llvm-project" -Name "build"
+$llvm_build = New-Item -ItemType Directory -ErrorAction SilentlyContinue -Force -Path ".\deps\llvm-project" -Name "build"
 Push-Location -Path $llvm_build.FullName
 Write-Host "Compiling LLVM and Clang"
 cmake ../llvm `
 -GNinja `
 -DCMAKE_BUILD_TYPE=Release `
 -DLLVM_USE_CRT_RELEASE=MT `
--DCMAKE_INSTALL_PREFIX="C:\llvm-10" `
+-DCMAKE_PREFIX_PATH="$depsInstallPath" `
+-DCMAKE_INSTALL_PREFIX="$depsInstallPath" `
 -DLLVM_ENABLE_PROJECTS="clang;lld" `
 -DLLVM_TARGETS_TO_BUILD="AMDGPU;X86" `
 -DLLVM_OPTIMIZED_TABLEGEN=TRUE `
@@ -122,7 +127,7 @@ if (!$buildstatus) {
 }
 
 Get-Date
-$libclc_build = New-Item -ItemType Directory -Path ".\llvm-project" -Name "build-libclc"
+$libclc_build = New-Item -ItemType Directory -Path ".\deps\llvm-project" -Name "build-libclc"
 Push-Location -Path $libclc_build.FullName
 Write-Host "Compiling libclc"
 # libclc can only be built with Ninja, because CMake's VS backend doesn't know how to compile new language types
@@ -132,7 +137,7 @@ cmake ../libclc `
 -DCMAKE_CXX_FLAGS="-m64" `
 -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
--DCMAKE_INSTALL_PREFIX="C:\llvm-10" `
+-DCMAKE_INSTALL_PREFIX="$depsInstallPath" `
 -DLIBCLC_TARGETS_TO_BUILD="spirv-mesa3d-;spirv64-mesa3d-" && `
 ninja -j32 install
 $buildstatus = $?
@@ -146,18 +151,18 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $llvm_build
 
 Get-Date
 Write-Host "Cloning SPIRV-Tools"
-git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Tools
+git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Tools deps/SPIRV-Tools
 if (!$?) {
   Write-Host "Failed to clone SPIRV-Tools repository"
   Exit 1
 }
-git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Headers SPIRV-Tools/external/SPIRV-Headers
+git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Headers deps/SPIRV-Tools/external/SPIRV-Headers
 if (!$?) {
   Write-Host "Failed to clone SPIRV-Headers repository"
   Exit 1
 }
 Write-Host "Building SPIRV-Tools"
-$spv_build = New-Item -ItemType Directory -Path ".\SPIRV-Tools" -Name "build"
+$spv_build = New-Item -ItemType Directory -Path ".\deps\SPIRV-Tools" -Name "build"
 Push-Location -Path $spv_build.FullName
 # SPIRV-Tools doesn't use multi-threaded MSVCRT, but we need it to
 cmake .. `
@@ -165,7 +170,7 @@ cmake .. `
 -DCMAKE_BUILD_TYPE=Release `
 -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
--DCMAKE_INSTALL_PREFIX="C:\spirv-tools" && `
+-DCMAKE_INSTALL_PREFIX="$depsInstallPath" && `
 ninja -j32 install
 $buildstatus = $?
 Pop-Location
@@ -174,6 +179,12 @@ if (!$buildstatus) {
   Write-Host "Failed to compile SPIRV-Tools"
   Exit 1
 }
+
+function Remove-Symlinks {
+  Get-ChildItem -Force -ErrorAction SilentlyContinue @Args | Where-Object { if($_.Attributes -match "ReparsePoint"){$_.Delete()} }
+}
+Remove-Symlinks -Path "deps" -Recurse
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path "deps" | Out-Null
 
 Get-Date
 Write-Host "Downloading Vulkan-Runtime"
