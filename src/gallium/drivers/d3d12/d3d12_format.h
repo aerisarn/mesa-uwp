@@ -24,12 +24,9 @@
 #ifndef D3D12_FORMATS_H
 #define D3D12_FORMATS_H
 
+#include "d3d12_common.h"
+
 #include <directx/dxgiformat.h>
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <wsl/winadapter.h>
-#endif
 #include <directx/dxgicommon.h>
 
 #include "pipe/p_format.h"
