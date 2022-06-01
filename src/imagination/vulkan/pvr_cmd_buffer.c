@@ -29,7 +29,6 @@
 #include <string.h>
 #include <vulkan/vulkan.h>
 
-#include "c11_compat.h"
 #include "hwdef/rogue_hw_defs.h"
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"

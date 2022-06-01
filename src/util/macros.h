@@ -26,9 +26,6 @@
 
 #include <stdio.h>
 #include <assert.h>
-
-#include "c11_compat.h"
-
 #include <stdint.h>
 
 /* Compute the size of an array */
