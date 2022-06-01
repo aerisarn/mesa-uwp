@@ -6,6 +6,11 @@
 
 typedef bool NvBool;
 
+typedef uint8_t NvV8;
+typedef uint16_t NvV16;
+typedef uint32_t NvV32;
+typedef uint64_t NvV64;
+
 typedef uint8_t NvU8;
 typedef uint16_t NvU16;
 typedef uint32_t NvU32;
