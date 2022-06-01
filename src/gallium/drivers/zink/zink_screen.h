@@ -113,6 +113,7 @@ struct zink_screen {
    simple_mtx_t dt_lock;
 
    bool device_lost;
+   int drm_fd;
 
    struct hash_table framebuffer_cache;
 
