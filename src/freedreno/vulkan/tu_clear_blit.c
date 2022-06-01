@@ -1125,6 +1125,17 @@ r3d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
+r3d_run_vis(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDX_OFFSET, 3);
+   tu_cs_emit(cs, CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(DI_PT_RECTLIST) |
+                  CP_DRAW_INDX_OFFSET_0_SOURCE_SELECT(DI_SRC_SEL_AUTO_INDEX) |
+                  CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY));
+   tu_cs_emit(cs, 1); /* instance count */
+   tu_cs_emit(cs, 2); /* vertex count */
+}
+
+static void
 r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    if (cmd->state.predication_active) {
@@ -2404,7 +2415,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
             rects[i].rect.offset.y + rects[i].rect.extent.height,
             z_clear_val, 1.0f,
          });
-         r3d_run(cmd, cs);
+         r3d_run_vis(cmd, cs);
       }
    }
 
@@ -2609,16 +2620,10 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
    /* vkCmdClearAttachments is supposed to respect the predicate if active.
     * The easiest way to do this is to always use the 3d path, which always
     * works even with GMEM because it's just a simple draw using the existing
-    * attachment state. However it seems that IGNORE_VISIBILITY draws must be
-    * skipped in the binning pass, since otherwise they produce binning data
-    * which isn't consumed and leads to the wrong binning data being read, so
-    * condition on GMEM | SYSMEM.
+    * attachment state.
     */
    if (cmd->state.predication_active) {
-      tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM |
-                             CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
       tu_clear_sysmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
-      tu_cond_exec_end(cs);
       return;
    }
 
