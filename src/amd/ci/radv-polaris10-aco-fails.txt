@@ -1,4 +1,12 @@
-dEQP-VK.glsl.builtin.precision_double.determinant.compute.mat3,Fail
+dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d32_sfloat_D_4_bit,Fail
+dEQP-VK.api.copy_and_blit.copy_commands2.depth_stencil_msaa_copy.array_to_array.d32_sfloat_D_8_bit,Fail
+dEQP-VK.api.copy_and_blit.core.depth_stencil_msaa_copy.array_to_array.d32_sfloat_D_4_bit,Fail
+dEQP-VK.api.copy_and_blit.dedicated_allocation.depth_stencil_msaa_copy.array_to_array.d32_sfloat_D_8_bit,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_1.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_1.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_2.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_4.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_8.multi_draw_barriers,Fail
 dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear,Fail
 dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_linear_integer_texel_coord,Fail
 dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest,Fail

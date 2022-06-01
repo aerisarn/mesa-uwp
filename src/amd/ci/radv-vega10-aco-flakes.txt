@@ -1,3 +1,4 @@
 dEQP-VK.dynamic_rendering.basic.*
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_float_zero_uv_width_fragment
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_fragment
+dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_fragment
