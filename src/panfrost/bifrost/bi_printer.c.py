@@ -180,6 +180,9 @@ bi_print_instr(const bi_instr *I, FILE *fp)
     if (I->table)
         fprintf(fp, ".table%u", I->table);
 
+    if (I->flow)
+        fprintf(fp, ".flow%u", I->flow);
+
     if (I->op == BI_OPCODE_COLLECT_I32) {
         for (unsigned i = 0; i < I->nr_srcs; ++i) {
             if (i > 0)
