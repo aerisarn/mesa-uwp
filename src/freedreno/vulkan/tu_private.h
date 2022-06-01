@@ -1201,8 +1201,6 @@ struct tu_cmd_state
    VkRect2D render_area;
 
    const struct tu_image_view **attachments;
-   /* Tracks whether attachment was cleared by vkCmdClearAttachments */
-   bool *attachment_cmd_clear;
    /* Track whether conditional predicate for COND_REG_EXEC is changed in draw_cs */
    bool draw_cs_writes_to_cond_pred;
 
@@ -1897,6 +1895,10 @@ struct tu_render_pass_attachment
    /* for D32S8 separate stencil: */
    bool load_stencil;
    bool store_stencil;
+
+   bool cond_load_allowed;
+   bool cond_store_allowed;
+
    int32_t gmem_offset_stencil;
 };
 

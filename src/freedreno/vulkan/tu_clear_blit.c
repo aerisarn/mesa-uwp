@@ -2312,8 +2312,6 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
             s_clear_val = attachments[i].clearValue.depthStencil.stencil & 0xff;
          }
       }
-
-      cmd->state.attachment_cmd_clear[a] = true;
    }
 
    /* We may not know the multisample count if there are no attachments, so
@@ -2587,8 +2585,6 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
                continue;
 
-         cmd->state.attachment_cmd_clear[a] = true;
-
          tu_emit_clear_gmem_attachment(cmd, cs, a, attachments[j].aspectMask,
                                        &attachments[j].clearValue);
       }
@@ -2627,6 +2623,29 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
       return;
    }
 
+   /* If we could skip tile load/stores based on any draws intersecting them at
+    * binning time, then emit the clear as a 3D draw so that it contributes to
+    * that visibility.
+   */
+   const struct tu_subpass *subpass = cmd->state.subpass;
+   for (uint32_t i = 0; i < attachmentCount; i++) {
+      uint32_t a;
+      if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+         uint32_t c = pAttachments[i].colorAttachment;
+         a = subpass->color_attachments[c].attachment;
+      } else {
+         a = subpass->depth_stencil_attachment.attachment;
+      }
+      if (a != VK_ATTACHMENT_UNUSED) {
+         const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
+         if (att->cond_load_allowed || att->cond_store_allowed) {
+            tu_clear_sysmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
+            return;
+         }
+      }
+   }
+
+   /* Otherwise, emit 2D blits for gmem rendering. */
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
    tu_clear_gmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
    tu_cond_exec_end(cs);
@@ -2905,10 +2924,7 @@ tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
     * To simplify conditions treat partially cleared separate DS as fully
     * cleared and don't emit cond_exec.
     */
-   bool cond_exec = cond_exec_allowed &&
-                    !attachment->clear_mask &&
-                    !cmd->state.attachment_cmd_clear[a] &&
-                    !attachment->will_be_resolved;
+   bool cond_exec = cond_exec_allowed && attachment->cond_load_allowed;
    if (cond_exec)
       tu_begin_load_store_cond_exec(cmd, cs, true);
 
@@ -3035,11 +3051,10 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (!dst->store && !dst->store_stencil)
       return;
 
-   bool was_cleared = src->clear_mask || cmd->state.attachment_cmd_clear[a];
    /* Unconditional store should happen only if attachment was cleared,
     * which could have happened either by load_op or via vkCmdClearAttachments.
     */
-   bool cond_exec = cond_exec_allowed && !was_cleared;
+   bool cond_exec = cond_exec_allowed && src->cond_store_allowed;
    if (cond_exec) {
       tu_begin_load_store_cond_exec(cmd, cs, false);
    }

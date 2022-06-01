@@ -1540,8 +1540,6 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_finish(&cmd_buffer->draw_epilogue_cs);
    tu_cs_finish(&cmd_buffer->sub_cs);
 
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachment_cmd_clear);
-
    u_trace_fini(&cmd_buffer->trace);
 
    tu_autotune_free_results(cmd_buffer->device, &cmd_buffer->renderpass_autotune_results);
@@ -1570,9 +1568,6 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_reset(&cmd_buffer->tile_store_cs);
    tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
    tu_cs_reset(&cmd_buffer->sub_cs);
-
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachment_cmd_clear);
-   cmd_buffer->state.attachment_cmd_clear = NULL;
 
    tu_autotune_free_results(cmd_buffer->device, &cmd_buffer->renderpass_autotune_results);
 
@@ -1743,14 +1738,6 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
          cmd_buffer->state.subpass =
             &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
-         /* vkCmdClearAttachments is allowed in a secondary cmdbuf and we have to
-          * track it as in primary cmdbuf.
-          */
-         cmd_buffer->state.attachment_cmd_clear =
-            vk_zalloc(&cmd_buffer->pool->vk.alloc,
-                      cmd_buffer->state.pass->attachment_count *
-                         sizeof(cmd_buffer->state.attachment_cmd_clear[0]),
-                      8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       } else {
          /* When executing in the middle of another command buffer, the CCU
           * state is unknown.
@@ -3277,10 +3264,6 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
          cmd->state.draw_cs_writes_to_cond_pred |=
             secondary->state.draw_cs_writes_to_cond_pred;
 
-         for (uint32_t i = 0; i < cmd->state.pass->attachment_count; i++) {
-            cmd->state.attachment_cmd_clear[i] |=
-               secondary->state.attachment_cmd_clear[i];
-         }
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
@@ -3473,16 +3456,6 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (!cmd->state.attachments) {
-      cmd->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      return;
-   }
-
-   cmd->state.attachment_cmd_clear =
-      vk_zalloc(&cmd->pool->vk.alloc, pass->attachment_count *
-               sizeof(cmd->state.attachment_cmd_clear[0]), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
-   if (!cmd->state.attachment_cmd_clear) {
       cmd->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
       return;
    }
@@ -4827,8 +4800,6 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
 
    vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachment_cmd_clear);
-   cmd_buffer->state.attachment_cmd_clear = NULL;
 
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;

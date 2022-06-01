@@ -863,6 +863,11 @@ tu_CreateRenderPass2(VkDevice _device,
          att->clear_mask = 0;
          att->load = false;
       }
+
+      att->cond_load_allowed =
+         (att->load || att->load_stencil) && !att->clear_mask && !att->will_be_resolved;
+      att->cond_store_allowed =
+         (att->store || att->store_stencil) && !att->clear_mask;
    }
 
    /* From the VK_KHR_multiview spec:
