@@ -230,6 +230,7 @@ get_device_extensions(const struct tu_physical_device *device,
 #endif
       .IMG_filter_cubic = device->info->a6xx.has_tex_filter_cubic,
       .VALVE_mutable_descriptor_type = true,
+      .EXT_image_2d_view_of_3d = true,
    };
 }
 
@@ -873,6 +874,13 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceImageViewMinLodFeaturesEXT *features =
             (VkPhysicalDeviceImageViewMinLodFeaturesEXT *)ext;
          features->minLod = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
+         VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *features =
+            (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *)ext;
+         features->image2DViewOf3D = true;
+         features->sampler2DViewOf3D = true;
          break;
       }
 
