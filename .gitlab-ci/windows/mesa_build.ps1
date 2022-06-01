@@ -26,12 +26,8 @@ Write-Output builddir:$builddir
 Write-Output installdir:$installdir
 Write-Output sourcedir:$sourcedir
 
-$vsInstallPath=& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -version 16.0  -property installationpath
-Write-Output "vswhere.exe installPath: $vsInstallPath"
-$vsInstallPath =  if ("$vsInstallPath" -eq "" ) { "C:\BuildTools" } else { "$vsInstallPath" }
-Write-Output "Final installPath: $vsInstallPath"
-Import-Module (Join-Path $vsInstallPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
-Enter-VsDevShell -VsInstallPath $vsInstallPath -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -no_logo -host_arch=amd64'
+$MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
+. "$MyPath\mesa_vs_init.ps1"
 
 Push-Location $builddir
 
