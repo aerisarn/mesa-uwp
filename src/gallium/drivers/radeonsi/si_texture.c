@@ -691,6 +691,8 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       if (resource->nr_samples > 1 || tex->is_depth)
          return false;
 
+      whandle->size = tex->buffer.bo_size;
+
       if (plane) {
          whandle->offset = ac_surface_get_plane_offset(sscreen->info.gfx_level,
                                                        &tex->surface, plane, 0);
