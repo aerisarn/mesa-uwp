@@ -1474,6 +1474,34 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *vi, uint32_t 
    return 0;
 }
 
+static VkResult
+radv_pipeline_import_graphics_info(struct radv_graphics_pipeline *pipeline,
+                                   struct vk_graphics_pipeline_state *state,
+                                   struct vk_graphics_pipeline_all_state *state_all,
+                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   struct radv_device *device = pipeline->base.device;
+
+   /* Mark all states declared dynamic at pipeline creation. */
+   if (pCreateInfo->pDynamicState) {
+      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+      for (uint32_t s = 0; s < count; s++) {
+         pipeline->dynamic_states |=
+            radv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
+      }
+   }
+
+   /* Mark all active stages at pipeline creation. */
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+      const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
+
+      pipeline->active_stages |= sinfo->stage;
+   }
+
+   return vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, state_all, NULL, 0,
+                                          NULL);
+}
+
 static void
 radv_pipeline_init_input_assembly_state(struct radv_graphics_pipeline *pipeline)
 {
@@ -6490,30 +6518,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
                             const struct radv_graphics_pipeline_create_info *extra)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
+   struct vk_graphics_pipeline_all_state state_all;
+   struct vk_graphics_pipeline_state state = {0};
    VkResult result;
 
    pipeline->last_vgt_api_stage = MESA_SHADER_NONE;
 
-   /* Mark all states declared dynamic at pipeline creation. */
-   if (pCreateInfo->pDynamicState) {
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t s = 0; s < count; s++) {
-         pipeline->dynamic_states |=
-            radv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
-      }
-   }
-
-   /* Mark all active stages at pipeline creation. */
-   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
-
-      pipeline->active_stages |= sinfo->stage;
-   }
-
-   struct vk_graphics_pipeline_all_state all;
-   struct vk_graphics_pipeline_state state = {0};
-   result = vk_graphics_pipeline_state_fill(&device->vk, &state, pCreateInfo, NULL, &all, NULL, 0,
-                                            NULL);
+   result = radv_pipeline_import_graphics_info(pipeline, &state, &state_all, pCreateInfo);
    if (result != VK_SUCCESS)
       return result;
 
