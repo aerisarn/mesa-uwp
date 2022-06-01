@@ -42,7 +42,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "c99_compat.h"
 #include "util/compiler.h"
 #include "util/macros.h"
 #include "util/format/u_format.h"
