@@ -1,10 +1,11 @@
 # Download new TLS certs from Windows Update
 Get-Date
 Write-Host "Updating TLS certificate store"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "_tlscerts" | Out-Null
 $certdir = (New-Item -ItemType Directory -Name "_tlscerts")
 certutil -syncwithWU "$certdir"
 Foreach ($file in (Get-ChildItem -Path "$certdir\*" -Include "*.crt")) {
-  Import-Certificate -FilePath $file -CertStoreLocation Cert:\LocalMachine\Root
+  Import-Certificate -FilePath $file -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 }
 Remove-Item -Recurse -Path $certdir
 
