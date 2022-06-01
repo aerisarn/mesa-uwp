@@ -298,3 +298,22 @@ traces:
   #  expectations:
       #- device: gl-virgl
       #  checksum: 9877fc41ce761c9ce15561b12ef77c27
+  #- path: blender/blender-demo-cube_diorama.trace
+  #  expectations:
+      #- device: gl-virgl
+  #- path: blender/blender-demo-ellie_pose.trace
+  #  expectations:
+      #- device: gl-virgl
+  #- path: freedoom/freedoom-phase2-gl-high.trace
+  #  expectations:
+      #- device: gl-virgl
+  #- path: unvanquished/unvanquished-lowest.trace
+  #  expectations:
+      #- device: gl-virgl
+  #- path: unvanquished/unvanquished-ultra.trace
+  #  expectations:
+      #- device: gl-virgl
+  - path: warzone2100/warzone2100-default.trace
+    expectations:
+      - device: gl-virgl
+        checksum: dacc6414458f9bc8f0c4db53d6c8ed45
