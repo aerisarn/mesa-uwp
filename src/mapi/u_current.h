@@ -1,7 +1,6 @@
 #ifndef _U_CURRENT_H_
 #define _U_CURRENT_H_
 
-#include "c99_compat.h"
 #include "util/macros.h"
 
 
