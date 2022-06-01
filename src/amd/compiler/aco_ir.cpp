@@ -446,6 +446,7 @@ instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op)
    case aco_opcode::v_div_fixup_f16:
    case aco_opcode::v_interp_p2_f16:
    case aco_opcode::v_fma_mixlo_f16:
+   case aco_opcode::v_fma_mixhi_f16:
    /* VOP2 */
    case aco_opcode::v_mac_f16:
    case aco_opcode::v_madak_f16:
