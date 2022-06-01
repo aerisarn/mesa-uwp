@@ -34,6 +34,8 @@
 #include "pipe/p_defines.h"
 #include "util/u_debug.h"
 
+#include "c99_compat.h"
+
 union pipe_color_union;
 struct pipe_screen;
 

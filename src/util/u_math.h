@@ -39,6 +39,7 @@
 #define U_MATH_H
 
 
+#include "c99_compat.h"
 #include "c99_math.h"
 #include <assert.h>
 #include <float.h>
