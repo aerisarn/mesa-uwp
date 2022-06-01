@@ -41,7 +41,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <assert.h>
-#include "c99_compat.h"
 
 #ifdef DEBUG
 #  define list_assert(cond, msg)  assert(cond && msg)

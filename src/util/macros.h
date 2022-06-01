@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "c99_compat.h"
 #include "c11_compat.h"
 
 #include <stdint.h>
