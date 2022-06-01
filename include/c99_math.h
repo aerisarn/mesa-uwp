@@ -35,7 +35,6 @@
 #define _C99_MATH_H_
 
 #include <math.h>
-#include "c99_compat.h"
 
 
 /* This is to ensure that we get M_PI, etc. definitions */
