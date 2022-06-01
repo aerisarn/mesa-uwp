@@ -898,13 +898,14 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->info.primitive_restart = ia->primitiveRestartEnable;
    }
 
-   if (pipeline->graphics_create_info.pTessellationState) {
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT)]) {
+   if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT)]) {
+      if (pipeline->graphics_create_info.pTessellationState) {
          const VkPipelineTessellationStateCreateInfo *ts = pipeline->graphics_create_info.pTessellationState;
          state->patch_vertices = ts->patchControlPoints;
+      } else {
+         state->patch_vertices = 0;
       }
-   } else
-      state->patch_vertices = 0;
+   }
 
    bool halfz_changed = false;
    if (!pipeline->negative_one_to_one != clip_halfz) {
