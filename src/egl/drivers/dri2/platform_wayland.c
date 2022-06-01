@@ -2579,6 +2579,10 @@ dri2_wl_swrast_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
       return _eglError(EGL_BAD_NATIVE_WINDOW, "dri2_swap_buffers");
 
    dri2_dpy->core->swapBuffers(dri2_surf->dri_drawable);
+   if (disp->Options.Zink) {
+      dri2_surf->current = dri2_surf->back;
+      dri2_surf->back = NULL;
+   }
    return EGL_TRUE;
 }
 
