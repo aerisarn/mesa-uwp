@@ -103,8 +103,12 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
       VKSCR(DestroyBuffer)(screen->dev, obj->storage_buffer, NULL);
    } else if (obj->dt) {
       zink_kopper_displaytarget_destroy(screen, obj->dt);
-   } else {
+   } else if (!obj->is_aux) {
       VKSCR(DestroyImage)(screen->dev, obj->image, NULL);
+   } else {
+#if defined(ZINK_USE_DMABUF) && !defined(_WIN32)
+      close(obj->handle);
+#endif
    }
 
    zink_descriptor_set_refs_clear(&obj->desc_set_refs, obj);
@@ -531,6 +535,17 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    VkMemoryRequirements reqs = {0};
    VkMemoryPropertyFlags flags;
+
+   /* figure out aux plane count */
+   if (whandle && whandle->plane >= util_format_get_num_planes(whandle->format))
+      obj->is_aux = true;
+   struct pipe_resource *pnext = templ->next;
+   for (obj->plane_count = 1; pnext; obj->plane_count++, pnext = pnext->next) {
+      struct zink_resource *next = zink_resource(pnext);
+      if (!next->obj->is_aux)
+         break;
+   }
+
    bool need_dedicated = false;
    bool shared = templ->bind & PIPE_BIND_SHARED;
 #if !defined(_WIN32)
@@ -624,6 +639,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       VkExternalMemoryImageCreateInfo emici;
       VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci;
       VkImageDrmFormatModifierListCreateInfoEXT idfmlci;
+      VkSubresourceLayout plane_layouts[4];
       VkSubresourceLayout plane_layout = {
          .offset = whandle ? whandle->offset : 0,
          .size = 0,
@@ -649,8 +665,18 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             idfmeci.pNext = ici.pNext;
             idfmeci.drmFormatModifier = mod;
 
-            idfmeci.drmFormatModifierPlaneCount = 1;
-            idfmeci.pPlaneLayouts = &plane_layout;
+            idfmeci.drmFormatModifierPlaneCount = obj->plane_count;
+            plane_layouts[0] = plane_layout;
+            pnext = templ->next;
+            for (unsigned i = 1; i < obj->plane_count; i++, pnext = pnext->next) {
+               struct zink_resource *next = zink_resource(pnext);
+               obj->plane_offsets[i] = plane_layouts[i].offset = next->obj->plane_offsets[i];
+               obj->plane_strides[i] = plane_layouts[i].rowPitch = next->obj->plane_strides[i];
+               plane_layouts[i].size = 0;
+               plane_layouts[i].arrayPitch = 0;
+               plane_layouts[i].depthPitch = 0;
+            }
+            idfmeci.pPlaneLayouts = plane_layouts;
 
             ici.pNext = &idfmeci;
          } else if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
@@ -672,6 +698,20 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
          obj->transfer_dst = true;
 
+#if defined(ZINK_USE_DMABUF) && !defined(_WIN32)
+      if (obj->is_aux) {
+         obj->modifier = mod;
+         obj->modifier_aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT << whandle->plane;
+         obj->plane_offsets[whandle->plane] = whandle->offset;
+         obj->plane_strides[whandle->plane] = whandle->stride;
+         obj->handle = os_dupfd_cloexec(whandle->handle);
+         if (obj->handle < 0) {
+            mesa_loge("ZINK: failed to dup dmabuf fd: %s\n", strerror(errno));
+            goto fail1;
+         }
+         return obj;
+      }
+#endif
       if (util_format_is_yuv(templ->format)) {
          VkFormatFeatureFlags feats = VK_FORMAT_FEATURE_FLAG_BITS_MAX_ENUM;
          switch (ici.tiling) {
@@ -727,6 +767,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             mesa_loge("ZINK: vkCreateSamplerYcbcrConversion failed");
             goto fail1;
          }
+      } else if (whandle) {
+         obj->plane_strides[whandle->plane] = whandle->stride;
       }
 
       VkResult result = VKSCR(CreateImage)(screen->dev, &ici, NULL, &obj->image);
@@ -947,13 +989,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          VkBindImagePlaneMemoryInfo planes[3];
          for (unsigned i = 0; i < num_planes; i++) {
             infos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
-            infos[i].pNext = &planes[i];
             infos[i].image = obj->image;
             infos[i].memory = zink_bo_get_mem(obj->bo);
             infos[i].memoryOffset = obj->plane_offsets[i];
-            planes[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO;
-            planes[i].pNext = NULL;
-            planes[i].planeAspect = plane_aspects[i];
+            if (templ->bind & ZINK_BIND_VIDEO) {
+               infos[i].pNext = &planes[i];
+               planes[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO;
+               planes[i].pNext = NULL;
+               planes[i].planeAspect = plane_aspects[i];
+            }
          }
          if (VKSCR(BindImageMemory2)(screen->dev, num_planes, infos) != VK_SUCCESS) {
             mesa_loge("ZINK: vkBindImageMemory2 failed");
