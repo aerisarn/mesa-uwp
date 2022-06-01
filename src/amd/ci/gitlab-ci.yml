@@ -123,10 +123,13 @@ deqp-vega10-valve:
 deqp-renoir-valve:
   extends:
     - .deqp-test-valve
+  timeout: 2h 10m
   variables:
     GPU_VERSION: radv-renoir-aco
     FDO_CI_CONCURRENT: 24
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
+    B2C_TIMEOUT_BOOT_MINUTES: 60
+    B2C_TIMEOUT_OVERALL_MINUTES: 120
   tags:
     - amdgpu:codename:RENOIR
 
@@ -161,7 +164,7 @@ deqp-vangogh-valve:
   variables:
     GPU_VERSION: radv-vangogh-aco
     FDO_CI_CONCURRENT: 8
-    B2C_TIMEOUT_BOOT_MINUTES: 65
+    B2C_TIMEOUT_BOOT_MINUTES: 85
     B2C_TIMEOUT_OVERALL_MINUTES: 120
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
   tags:
