@@ -1950,13 +1950,16 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewports, uint32_t num_vi
 
       min.x = MAX2(min.x, 0);
       min.y = MAX2(min.y, 0);
+      max.x = MAX2(max.x, 1);
+      max.y = MAX2(max.y, 1);
 
       assert(min.x < max.x);
       assert(min.y < max.y);
+
       tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(min.x) |
                      A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(min.y));
-      tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(max.x - 1) |
-                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(max.y - 1));
+      tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR_X(max.x - 1) |
+                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR_Y(max.y - 1));
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_Z_CLAMP(0), num_viewport * 2);
