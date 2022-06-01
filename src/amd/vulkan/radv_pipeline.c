@@ -1506,10 +1506,6 @@ radv_pipeline_init_vertex_input_info(struct radv_graphics_pipeline *pipeline,
    const VkPipelineVertexInputStateCreateInfo *vi = pCreateInfo->pVertexInputState;
    struct radv_vertex_input_info info = {0};
 
-   /* Vertex input interface structs have to be ignored if the pipeline includes a mesh shader. */
-   if (pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV)
-      return info;
-
    if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT)) {
       /* Vertex input */
       const VkPipelineVertexInputDivisorStateCreateInfoEXT *divisor_state =
