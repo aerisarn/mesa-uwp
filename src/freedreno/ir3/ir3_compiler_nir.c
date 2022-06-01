@@ -2025,14 +2025,6 @@ static void setup_input(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 static void setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 
 static void
-switch_to_late_z_if_fs(struct ir3_context *ctx)
-{
-   if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
-       !ctx->s->info.fs.early_fragment_tests)
-      ctx->so->no_earlyz = true;
-}
-
-static void
 emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
    const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
@@ -2148,7 +2140,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_store_global_ir3:
-      switch_to_late_z_if_fs(ctx);
       ctx->funcs->emit_intrinsic_store_global_ir3(ctx, intr);
       break;
    case nir_intrinsic_load_global_ir3:
@@ -2207,7 +2198,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       emit_intrinsic_load_ssbo(ctx, intr, dst);
       break;
    case nir_intrinsic_store_ssbo_ir3:
-      switch_to_late_z_if_fs(ctx);
       ctx->funcs->emit_intrinsic_store_ssbo(ctx, intr);
       break;
    case nir_intrinsic_get_ssbo_size:
@@ -2223,7 +2213,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_ssbo_atomic_xor_ir3:
    case nir_intrinsic_ssbo_atomic_exchange_ir3:
    case nir_intrinsic_ssbo_atomic_comp_swap_ir3:
-      switch_to_late_z_if_fs(ctx);
       dst[0] = ctx->funcs->emit_intrinsic_atomic_ssbo(ctx, intr);
       break;
    case nir_intrinsic_load_shared:
@@ -2256,7 +2245,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       break;
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_store:
-      switch_to_late_z_if_fs(ctx);
       ctx->funcs->emit_intrinsic_store_image(ctx, intr);
       break;
    case nir_intrinsic_image_size:
@@ -2283,7 +2271,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_bindless_image_atomic_exchange:
    case nir_intrinsic_image_atomic_comp_swap:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
-      switch_to_late_z_if_fs(ctx);
       dst[0] = ctx->funcs->emit_intrinsic_atomic_image(ctx, intr);
       break;
    case nir_intrinsic_scoped_barrier:
@@ -2629,7 +2616,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_global_atomic_xor_ir3:
    case nir_intrinsic_global_atomic_exchange_ir3:
    case nir_intrinsic_global_atomic_comp_swap_ir3: {
-      switch_to_late_z_if_fs(ctx);
       dst[0] = ctx->funcs->emit_intrinsic_atomic_global(ctx, intr);
       break;
    }
@@ -4983,6 +4969,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
    if (so->type == MESA_SHADER_FRAGMENT &&
        ctx->s->info.fs.needs_quad_helper_invocations)
       so->need_pixlod = true;
+
+   if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
+       !ctx->s->info.fs.early_fragment_tests)
+      ctx->so->no_earlyz |= ctx->s->info.writes_memory;
 
 out:
    if (ret) {
