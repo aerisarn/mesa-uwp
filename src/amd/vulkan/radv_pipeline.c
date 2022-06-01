@@ -97,10 +97,19 @@ radv_is_raster_enabled(const struct radv_graphics_pipeline *pipeline,
 }
 
 static bool
-radv_is_vrs_enabled(const struct radv_graphics_pipeline *pipeline,
-                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_is_static_vrs_enabled(const struct radv_graphics_pipeline *pipeline,
+                           const struct radv_graphics_pipeline_info *info)
 {
-   return vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
+   return info->fsr.size.width != 1 || info->fsr.size.height != 1 ||
+          info->fsr.combiner_ops[0] != VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR ||
+          info->fsr.combiner_ops[1] != VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+}
+
+static bool
+radv_is_vrs_enabled(const struct radv_graphics_pipeline *pipeline,
+                    const struct radv_graphics_pipeline_info *info)
+{
+   return radv_is_static_vrs_enabled(pipeline, info) ||
           (pipeline->dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
 }
 
@@ -1392,7 +1401,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
    if (!info->rs.stippled_line_enable)
       states &= ~RADV_DYNAMIC_LINE_STIPPLE;
 
-   if (!radv_is_vrs_enabled(pipeline, pCreateInfo))
+   if (!radv_is_vrs_enabled(pipeline, info))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
    if (!has_color_att || !radv_pipeline_is_blend_enabled(pipeline, &info->cb))
@@ -3417,7 +3426,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
 
    key.use_ngg = device->physical_device->use_ngg;
 
-   if ((radv_is_vrs_enabled(pipeline, pCreateInfo) || device->force_vrs_enabled) &&
+   if ((radv_is_vrs_enabled(pipeline, info) || device->force_vrs_enabled) &&
        (device->physical_device->rad_info.family == CHIP_NAVI21 ||
         device->physical_device->rad_info.family == CHIP_NAVI22 ||
         device->physical_device->rad_info.family == CHIP_VANGOGH))
@@ -6644,11 +6653,11 @@ radv_pipeline_emit_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
 static void
 gfx103_pipeline_emit_vgt_draw_payload_cntl(struct radeon_cmdbuf *ctx_cs,
                                            const struct radv_graphics_pipeline *pipeline,
-                                           const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                           const struct radv_graphics_pipeline_info *info)
 {
    const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
 
-   bool enable_vrs = radv_is_vrs_enabled(pipeline, pCreateInfo);
+   bool enable_vrs = radv_is_vrs_enabled(pipeline, info);
 
    /* Enables the second channel of the primitive export instruction.
     * This channel contains: VRS rate x, y, viewport and layer.
@@ -6682,12 +6691,12 @@ gfx103_pipeline_vrs_coarse_shading(const struct radv_graphics_pipeline *pipeline
 static void
 gfx103_pipeline_emit_vrs_state(struct radeon_cmdbuf *ctx_cs,
                                const struct radv_graphics_pipeline *pipeline,
-                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                               const struct radv_graphics_pipeline_info *info)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    uint32_t mode = V_028064_VRS_COMB_MODE_PASSTHRU;
    uint8_t rate_x = 0, rate_y = 0;
-   bool enable_vrs = radv_is_vrs_enabled(pipeline, pCreateInfo);
+   bool enable_vrs = radv_is_vrs_enabled(pipeline, info);
 
    if (!enable_vrs && gfx103_pipeline_vrs_coarse_shading(pipeline)) {
       /* When per-draw VRS is not enabled at all, try enabling VRS coarse shading 2x2 if the driver
@@ -6695,8 +6704,7 @@ gfx103_pipeline_emit_vrs_state(struct radeon_cmdbuf *ctx_cs,
        */
       mode = V_028064_VRS_COMB_MODE_OVERRIDE;
       rate_x = rate_y = 1;
-   } else if (!vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
-              pipeline->force_vrs_per_vertex &&
+   } else if (!radv_is_static_vrs_enabled(pipeline, info) && pipeline->force_vrs_per_vertex &&
               get_vs_output_info(pipeline)->writes_primitive_shading_rate) {
       /* Otherwise, if per-draw VRS is not enabled statically, try forcing per-vertex VRS if
        * requested by the user. Note that vkd3d-proton always has to declare VRS as dynamic because
@@ -6728,7 +6736,6 @@ gfx103_pipeline_emit_vrs_state(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
-                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
                        const struct radv_blend_state *blend,
                        const struct radv_depth_stencil_state *ds_state,
                        uint32_t vgt_gs_out_prim_type,
@@ -6768,8 +6775,8 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
       gfx10_pipeline_emit_ge_cntl(ctx_cs, pipeline);
 
    if (pdevice->rad_info.gfx_level >= GFX10_3) {
-      gfx103_pipeline_emit_vgt_draw_payload_cntl(ctx_cs, pipeline, pCreateInfo);
-      gfx103_pipeline_emit_vrs_state(ctx_cs, pipeline, pCreateInfo);
+      gfx103_pipeline_emit_vgt_draw_payload_cntl(ctx_cs, pipeline, info);
+      gfx103_pipeline_emit_vrs_state(ctx_cs, pipeline, info);
    }
 
    pipeline->base.ctx_cs_hash = _mesa_hash_data(ctx_cs->buf, ctx_cs->cdw * 4);
@@ -7082,7 +7089,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
                                &vgt_gs_out_prim_type);
    }
 
-   radv_pipeline_emit_pm4(pipeline, pCreateInfo, &blend, &ds_state, vgt_gs_out_prim_type, &info);
+   radv_pipeline_emit_pm4(pipeline, &blend, &ds_state, vgt_gs_out_prim_type, &info);
 
    return result;
 }
