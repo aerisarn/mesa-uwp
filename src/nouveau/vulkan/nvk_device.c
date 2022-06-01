@@ -3,6 +3,8 @@
 #include "nvk_instance.h"
 #include "nvk_physical_device.h"
 
+#include "nouveau_context.h"
+
 #include "vulkan/wsi/wsi_common.h"
 
 static VkResult
@@ -38,9 +40,18 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
+   int ret = nouveau_ws_context_create(physical_device->dev, &device->ctx);
+   if (ret) {
+      if (ret == -ENOSPC)
+         result = vk_error(device, VK_ERROR_TOO_MANY_OBJECTS);
+      else
+         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_init;
+   }
+
    result = vk_queue_init(&device->queue, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
    if (result != VK_SUCCESS)
-      goto fail_init;
+      goto fail_ctx;
 
    device->queue.driver_submit = nvk_queue_submit;
 
@@ -50,7 +61,9 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    return VK_SUCCESS;
 
- fail_init:
+fail_ctx:
+   nouveau_ws_context_destroy(device->ctx);
+fail_init:
    vk_device_finish(&device->vk);
 fail_alloc:
    vk_free(&device->vk.alloc, device);
@@ -67,5 +80,6 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    vk_queue_finish(&device->queue);
    vk_device_finish(&device->vk);
+   nouveau_ws_context_destroy(device->ctx);
    vk_free(&device->vk.alloc, device);
 }

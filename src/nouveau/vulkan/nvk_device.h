@@ -6,10 +6,14 @@
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/runtime/vk_queue.h"
 
+struct novueau_ws_context;
 struct nvk_physical_device;
+
 struct nvk_device {
    struct vk_device vk;
    struct nvk_physical_device *pdev;
+
+   struct nouveau_ws_context *ctx;
 
    struct vk_queue queue;
 };
