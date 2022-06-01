@@ -1296,6 +1296,9 @@ system_value("ring_es2gs_offset_amd", 1)
 system_value("ring_task_draw_amd", 4)
 # Address of the task shader payload ring (used for all other outputs)
 system_value("ring_task_payload_amd", 4)
+# Address of the mesh shader scratch ring (used for excess mesh shader outputs)
+system_value("ring_mesh_scratch_amd", 4)
+system_value("ring_mesh_scratch_offset_amd", 1)
 # Pointer into the draw and payload rings
 system_value("task_ring_entry_amd", 1)
 # Pointer into the draw and payload rings
