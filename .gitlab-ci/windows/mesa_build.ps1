@@ -35,14 +35,29 @@ Enter-VsDevShell -VsInstallPath $installPath -SkipAutomaticLocation -DevCmdArgum
 
 Push-Location $builddir
 
-meson --default-library=shared -Dzlib:default_library=static --buildtype=release -Db_ndebug=false `
--Db_vscrt=mt --cmake-prefix-path="C:\llvm-10" `
+meson `
+--default-library=shared `
+-Dzlib:default_library=static `
+--buildtype=release `
+-Db_ndebug=false `
+-Db_vscrt=mt `
+--cmake-prefix-path="C:\llvm-10" `
 --pkg-config-path="C:\llvm-10\lib\pkgconfig;C:\llvm-10\share\pkgconfig;C:\spirv-tools\lib\pkgconfig" `
 --prefix="$installdir" `
--Dllvm=enabled -Dshared-llvm=disabled `
-"-Dvulkan-drivers=swrast,amd,microsoft-experimental" "-Dgallium-drivers=swrast,d3d12,zink" `
--Dshared-glapi=enabled -Dgles2=enabled -Dmicrosoft-clc=enabled -Dstatic-libclc=all -Dspirv-to-dxil=true `
--Dbuild-tests=true -Dwerror=true -Dwarning_level=2 -Dzlib:warning_level=1 -Dlibelf:warning_level=1 `
+-Dllvm=enabled `
+-Dshared-llvm=disabled `
+-Dvulkan-drivers="swrast,amd,microsoft-experimental" `
+-Dgallium-drivers="swrast,d3d12,zink" `
+-Dshared-glapi=enabled `
+-Dgles2=enabled `
+-Dmicrosoft-clc=enabled `
+-Dstatic-libclc=all `
+-Dspirv-to-dxil=true `
+-Dbuild-tests=true `
+-Dwerror=true `
+-Dwarning_level=2 `
+-Dzlib:warning_level=1 `
+-Dlibelf:warning_level=1 `
 $sourcedir
 
 if ($?) {
