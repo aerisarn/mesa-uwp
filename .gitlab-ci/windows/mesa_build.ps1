@@ -1,3 +1,8 @@
+# Clear CI_COMMIT_MESSAGE and CI_COMMIT_DESCRIPTION for please meson
+# when the commit message is complicated
+$env:CI_COMMIT_MESSAGE=""
+$env:CI_COMMIT_DESCRIPTION=""
+
 # force the CA cert cache to be rebuilt, in case Meson tries to access anything
 Write-Host "Refreshing Windows TLS CA cache"
 (New-Object System.Net.WebClient).DownloadString("https://github.com") >$null
