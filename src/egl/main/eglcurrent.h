@@ -29,8 +29,6 @@
 #ifndef EGLCURRENT_INCLUDED
 #define EGLCURRENT_INCLUDED
 
-#include "c99_compat.h"
-
 #include "egltypedefs.h"
 
 
