@@ -102,7 +102,7 @@ struct zink_resource_object {
    uint64_t modifier;
    VkImageAspectFlags modifier_aspect;
    VkSamplerYcbcrConversionKHR sampler_conversion;
-   unsigned plane_sizes[3];
+   unsigned plane_offsets[3];
 
    bool host_visible;
    bool coherent;

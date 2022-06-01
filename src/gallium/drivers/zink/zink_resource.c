@@ -783,13 +783,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          plane.pNext = NULL;
          if (num_planes > 1)
             info2.pNext = &plane;
+         unsigned offset = 0;
          for (unsigned i = 0; i < num_planes; i++) {
             assert(i < ARRAY_SIZE(plane_aspects));
             plane.planeAspect = plane_aspects[i];
             VKSCR(GetImageMemoryRequirements2)(screen->dev, &info2, &req2);
             if (!i)
                reqs.alignment = req2.memoryRequirements.alignment;
-            obj->plane_sizes[i] = req2.memoryRequirements.size;
+            obj->plane_offsets[i] = offset;
+            offset += req2.memoryRequirements.size;
             reqs.size += req2.memoryRequirements.size;
             reqs.memoryTypeBits |= req2.memoryRequirements.memoryTypeBits;
             need_dedicated |= ded.prefersDedicatedAllocation || ded.requiresDedicatedAllocation;
@@ -943,17 +945,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (num_planes > 1) {
          VkBindImageMemoryInfo infos[3];
          VkBindImagePlaneMemoryInfo planes[3];
-         unsigned offset = 0;
          for (unsigned i = 0; i < num_planes; i++) {
             infos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
             infos[i].pNext = &planes[i];
             infos[i].image = obj->image;
             infos[i].memory = zink_bo_get_mem(obj->bo);
-            infos[i].memoryOffset = offset;
+            infos[i].memoryOffset = obj->plane_offsets[i];
             planes[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO;
             planes[i].pNext = NULL;
             planes[i].planeAspect = plane_aspects[i];
-            offset += obj->plane_sizes[i];
          }
          if (VKSCR(BindImageMemory2)(screen->dev, num_planes, infos) != VK_SUCCESS) {
             mesa_loge("ZINK: vkBindImageMemory2 failed");
