@@ -26,7 +26,7 @@
 
 #include <directx/dxgiformat.h>
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <wsl/winadapter.h>
 #endif
