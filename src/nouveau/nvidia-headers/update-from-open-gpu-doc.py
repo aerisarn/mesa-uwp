@@ -12,6 +12,7 @@ import sys
 dirs = {
   '/classes/compute/': 'classes/',
   '/classes/dma-copy/': 'classes/',
+  '/classes/host/': 'classes/',
   '/classes/memory-to-memory-format/': 'classes/',
   '/classes/twod/': 'classes/',
 }
