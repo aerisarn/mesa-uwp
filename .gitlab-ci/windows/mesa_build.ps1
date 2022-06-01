@@ -61,7 +61,7 @@ meson `
 $sourcedir
 
 if ($?) {
-  ninja install -j32
+  meson install --skip-subprojects
 }
 
 if ($?) {
