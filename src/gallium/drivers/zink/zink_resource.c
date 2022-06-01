@@ -624,6 +624,13 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       VkExternalMemoryImageCreateInfo emici;
       VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci;
       VkImageDrmFormatModifierListCreateInfoEXT idfmlci;
+      VkSubresourceLayout plane_layout = {
+         .offset = whandle ? whandle->offset : 0,
+         .size = 0,
+         .rowPitch = whandle ? whandle->stride : 0,
+         .arrayPitch = 0,
+         .depthPitch = 0,
+      };
       if (!success)
          goto fail1;
 
@@ -643,13 +650,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             idfmeci.drmFormatModifier = mod;
 
             idfmeci.drmFormatModifierPlaneCount = 1;
-            VkSubresourceLayout plane_layout = {
-               .offset = whandle->offset,
-               .size = 0,
-               .rowPitch = whandle->stride,
-               .arrayPitch = 0,
-               .depthPitch = 0,
-            };
             idfmeci.pPlaneLayouts = &plane_layout;
 
             ici.pNext = &idfmeci;
