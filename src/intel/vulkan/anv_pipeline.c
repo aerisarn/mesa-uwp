@@ -2366,6 +2366,19 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       }
    }
 
+   /* When binding a mesh pipeline into a command buffer, it should not affect the
+    * pre-rasterization bits of legacy graphics pipelines. So remove all the
+    * pre-rasterization flags from the non-dynamic bits from the mesh pipelines
+    * here so we don't copy any of that stuff when binding those into a command
+    * buffer.
+    */
+   if (pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV) {
+      states &= ~(ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
+                  ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE |
+                  ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
+   }
+
+
    pipeline->dynamic_state_mask = states;
 }
 
