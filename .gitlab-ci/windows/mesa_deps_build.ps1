@@ -87,7 +87,7 @@ Pop-Location
 
 Get-Date
 # slightly convoluted syntax but avoids the CWD being under the PS filesystem meta-path
-$llvm_build = New-Item -ItemType Directory -Path ".\llvm-project" -Name "build"
+$llvm_build = New-Item -ItemType Directory -ErrorAction SilentlyContinue -Force -Path ".\llvm-project" -Name "build"
 Push-Location -Path $llvm_build.FullName
 Write-Host "Compiling LLVM and Clang"
 cmd.exe /C 'C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=amd64 && cmake ../llvm -GNinja -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_CRT_RELEASE=MT -DCMAKE_INSTALL_PREFIX="C:\llvm-10" -DLLVM_ENABLE_PROJECTS="clang;lld" -DLLVM_TARGETS_TO_BUILD=AMDGPU;X86 -DLLVM_OPTIMIZED_TABLEGEN=TRUE -DLLVM_ENABLE_ASSERTIONS=TRUE -DLLVM_INCLUDE_UTILS=OFF -DLLVM_INCLUDE_RUNTIMES=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_GO_TESTS=OFF -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_BUILD_LLVM_C_DYLIB=OFF -DLLVM_ENABLE_DIA_SDK=OFF -DCLANG_BUILD_TOOLS=ON -DLLVM_SPIRV_INCLUDE_TESTS=OFF -Wno-dev && ninja -j32 install'
@@ -106,12 +106,12 @@ Write-Host "Compiling libclc"
 cmd.exe /C 'C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=amd64 && cmake ../libclc -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-m64" -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_INSTALL_PREFIX="C:\llvm-10" -DLIBCLC_TARGETS_TO_BUILD="spirv-mesa3d-;spirv64-mesa3d-" && ninja -j32 install'
 $buildstatus = $?
 Pop-Location
-Remove-Item -Recurse -Path $libclc_build
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $libclc_build
 if (!$buildstatus) {
   Write-Host "Failed to compile libclc"
   Exit 1
 }
-Remove-Item -Recurse -Path $llvm_build
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $llvm_build
 
 Get-Date
 Write-Host "Cloning SPIRV-Tools"
@@ -132,7 +132,7 @@ Push-Location -Path $spv_build.FullName
 cmd.exe /C 'C:\BuildTools\Common7\Tools\VsDevCmd.bat -host_arch=amd64 -arch=amd64 && cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_INSTALL_PREFIX="C:\spirv-tools" && ninja -j32 install'
 $buildstatus = $?
 Pop-Location
-Remove-Item -Recurse -Path $spv_build
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $spv_build
 if (!$buildstatus) {
   Write-Host "Failed to compile SPIRV-Tools"
   Exit 1
