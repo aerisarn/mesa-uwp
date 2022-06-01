@@ -41,6 +41,7 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, 
    bo->handle = req.info.handle;
    bo->map_handle = req.info.map_handle;
    bo->fd = pdev->fd;
+   bo->flags = flags;
 
    return bo;
 }

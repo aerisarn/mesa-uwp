@@ -24,6 +24,7 @@ struct nouveau_ws_bo {
    uint64_t map_handle;
    int fd;
    uint32_t handle;
+   enum nouveau_ws_bo_flags flags;
 };
 
 struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *, uint64_t size, uint64_t align, enum nouveau_ws_bo_flags);
