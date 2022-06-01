@@ -510,41 +510,20 @@ create_depthstencil_pipeline(struct radv_device *device, VkImageAspectFlags aspe
 }
 
 static bool
-depth_view_can_fast_clear(struct radv_cmd_buffer *cmd_buffer, const struct radv_image_view *iview,
-                          VkImageAspectFlags aspects, VkImageLayout layout,
-                          const VkClearRect *clear_rect, VkClearDepthStencilValue clear_value)
-{
-   if (!iview)
-      return false;
-
-   uint32_t queue_mask = radv_image_queue_family_mask(iview->image, cmd_buffer->qf,
-                                                      cmd_buffer->qf);
-   if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
-       clear_rect->rect.extent.width != iview->extent.width ||
-       clear_rect->rect.extent.height != iview->extent.height)
-      return false;
-   if (radv_image_is_tc_compat_htile(iview->image) &&
-       (((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && clear_value.depth != 0.0 &&
-         clear_value.depth != 1.0) ||
-        ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) && clear_value.stencil != 0)))
-      return false;
-   if (radv_htile_enabled(iview->image, iview->vk.base_mip_level) && iview->vk.base_mip_level == 0 &&
-       iview->vk.base_array_layer == 0 && iview->vk.layer_count == iview->image->info.array_size &&
-       radv_layout_is_htile_compressed(cmd_buffer->device, iview->image, layout,
-                                       queue_mask) &&
-       radv_image_extent_compare(iview->image, &iview->extent))
-      return true;
-   return false;
-}
+radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_image_view *iview,
+                          VkImageLayout image_layout,
+                          VkImageAspectFlags aspects, const VkClearRect *clear_rect,
+                          const VkClearDepthStencilValue clear_value, uint32_t view_mask);
 
 static VkPipeline
 pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_state *meta_state,
                            const struct radv_image_view *iview, int samples_log2,
                            VkImageAspectFlags aspects, VkImageLayout layout,
-                           const VkClearRect *clear_rect, VkClearDepthStencilValue clear_value)
+                           const VkClearRect *clear_rect, VkClearDepthStencilValue clear_value,
+                           uint32_t view_mask)
 {
-   bool fast = depth_view_can_fast_clear(cmd_buffer, iview, aspects, layout,
-                                         clear_rect, clear_value);
+   bool fast = radv_can_fast_clear_depth(cmd_buffer, iview, layout, aspects, clear_rect,
+                                         clear_value, view_mask);
    bool unrestricted = cmd_buffer->device->vk.enabled_extensions.EXT_depth_range_unrestricted;
    int index = fast ? DEPTH_CLEAR_FAST : DEPTH_CLEAR_SLOW;
    VkPipeline *pipeline;
@@ -630,7 +609,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
 
    VkPipeline pipeline =
       pick_depthstencil_pipeline(cmd_buffer, meta_state, iview, samples_log2, aspects,
-                                 ds_att->layout, clear_rect, clear_value);
+                                 ds_att->layout, clear_rect, clear_value, view_mask);
    if (!pipeline)
       return;
 
@@ -665,8 +644,8 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
 
    radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-   if (depth_view_can_fast_clear(cmd_buffer, iview, aspects, ds_att->layout,
-                                 clear_rect, clear_value))
+   if (radv_can_fast_clear_depth(cmd_buffer, iview, ds_att->layout, aspects, clear_rect,
+                                 clear_value, view_mask))
       radv_update_ds_clear_metadata(cmd_buffer, iview, clear_value, aspects);
 
    radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
