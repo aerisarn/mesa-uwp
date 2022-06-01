@@ -38,7 +38,6 @@
 #include <unistd.h>
 
 #include "device_select.h"
-#include "c99_compat.h"
 #include "hash_table.h"
 #include "vk_util.h"
 #include "c11/threads.h"
