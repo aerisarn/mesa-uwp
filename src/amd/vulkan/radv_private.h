@@ -1922,6 +1922,7 @@ struct radv_binning_state {
 
 enum radv_pipeline_type {
    RADV_PIPELINE_GRAPHICS,
+   RADV_PIPELINE_GRAPHICS_LIB,
    /* Compute pipeline (incl raytracing pipeline) */
    RADV_PIPELINE_COMPUTE,
    /* Pipeline library. This can't actually run and merely is a partial pipeline. */
@@ -2069,6 +2070,16 @@ struct radv_library_pipeline {
    } *hashes;
 };
 
+struct radv_graphics_lib_pipeline {
+   struct radv_graphics_pipeline base;
+
+   struct radv_pipeline_layout layout;
+
+   struct vk_graphics_pipeline_state graphics_state;
+
+   VkGraphicsPipelineLibraryFlagsEXT lib_flags;
+};
+
 #define RADV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)            \
    static inline struct radv_##pipe_type##_pipeline *                \
    radv_pipeline_to_##pipe_type(struct radv_pipeline *pipeline)      \
@@ -2078,6 +2089,7 @@ struct radv_library_pipeline {
    }
 
 RADV_DECL_PIPELINE_DOWNCAST(graphics, RADV_PIPELINE_GRAPHICS)
+RADV_DECL_PIPELINE_DOWNCAST(graphics_lib, RADV_PIPELINE_GRAPHICS_LIB)
 RADV_DECL_PIPELINE_DOWNCAST(compute, RADV_PIPELINE_COMPUTE)
 RADV_DECL_PIPELINE_DOWNCAST(library, RADV_PIPELINE_LIBRARY)
 
