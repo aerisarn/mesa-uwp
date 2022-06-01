@@ -4,11 +4,15 @@
 # exiting, since any console output may interfere with LAVA signals handling,
 # which based on the log console.
 cleanup() {
+  if [ "$BACKGROUND_PIDS" = "" ]; then
+    return 0
+  fi
+
   set +x
   echo "Killing all child processes"
   for pid in $BACKGROUND_PIDS
   do
-    kill "$pid"
+    kill "$pid" 2>/dev/null || true
   done
 
   # Sleep just a little to give enough time for subprocesses to be gracefully
@@ -18,6 +22,9 @@ cleanup() {
   do
     kill -9 "$pid" 2>/dev/null || true
   done
+
+  BACKGROUND_PIDS=
+  set -x
 }
 trap cleanup INT TERM EXIT
 
@@ -134,6 +141,11 @@ set -e
 mv -f ${CI_PROJECT_DIR}/results ./ 2>/dev/null || true
 
 [ ${EXIT_CODE} -ne 0 ] || rm -rf results/trace/"$PIGLIT_REPLAY_DEVICE_NAME"
+
+# Make sure that capture-devcoredump is done before we start trying to tar up
+# artifacts -- if it's writing while tar is reading, tar will throw an error and
+# kill the job.
+cleanup
 
 # upload artifacts
 if [ -n "$MINIO_RESULTS_UPLOAD" ]; then
