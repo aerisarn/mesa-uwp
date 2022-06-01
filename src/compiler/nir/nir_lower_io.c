@@ -2950,7 +2950,7 @@ nir_add_xfb_info(nir_shader *nir)
    bool progress = false;
 
    for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++)
-      nir->info.xfb_stride[i] = nir->xfb_info->buffers[i].stride;
+      nir->info.xfb_stride[i] = nir->xfb_info->buffers[i].stride / 4;
 
    nir_foreach_block (block, impl) {
       nir_foreach_instr_safe (instr, block) {
