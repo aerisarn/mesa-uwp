@@ -41,7 +41,7 @@ Update-SessionEnvironment
 # until we start a new shell
 $env:PATH = "C:\python3;C:\python3\scripts;C:\Program Files\CMake\bin;$env:PATH"
 
-Invoke-WebRequest -Uri 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan_sdk.exe' -OutFile 'C:\vulkan_sdk.exe'
+Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/VulkanSDK-$env:VULKAN_SDK_VERSION-Installer.exe" -OutFile 'C:\vulkan_sdk.exe'
 C:\vulkan_sdk.exe --am --al -c in
 if (!$?) {
     Write-Host "Failed to install Vulkan SDK"
@@ -115,12 +115,12 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $llvm_build
 
 Get-Date
 Write-Host "Cloning SPIRV-Tools"
-git clone https://github.com/KhronosGroup/SPIRV-Tools
+git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Tools
 if (!$?) {
   Write-Host "Failed to clone SPIRV-Tools repository"
   Exit 1
 }
-git clone https://github.com/KhronosGroup/SPIRV-Headers SPIRV-Tools/external/SPIRV-Headers
+git clone -b "sdk-$env:VULKAN_SDK_VERSION" --depth=1 https://github.com/KhronosGroup/SPIRV-Headers SPIRV-Tools/external/SPIRV-Headers
 if (!$?) {
   Write-Host "Failed to clone SPIRV-Headers repository"
   Exit 1
@@ -140,7 +140,7 @@ if (!$buildstatus) {
 
 Get-Date
 Write-Host "Downloading Vulkan-Runtime"
-Invoke-WebRequest -Uri 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-runtime.exe' -OutFile 'C:\vulkan-runtime.exe' | Out-Null
+Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/$env:VULKAN_SDK_VERSION/windows/VulkanRT-$env:VULKAN_SDK_VERSION-Installer.exe" -OutFile 'C:\vulkan-runtime.exe' | Out-Null
 Write-Host "Installing Vulkan-Runtime"
 Start-Process -NoNewWindow -Wait C:\vulkan-runtime.exe -ArgumentList '/S'
 if (!$?) {

@@ -13,5 +13,6 @@ SHELL ["pwsh", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPref
 COPY mesa_deps_vs2019.ps1 C:\
 RUN C:\mesa_deps_vs2019.ps1
 
+ENV VULKAN_SDK_VERSION='1.3.211.0'
 COPY mesa_deps_build.ps1 C:\
 RUN C:\mesa_deps_build.ps1
