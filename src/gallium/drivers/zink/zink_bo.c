@@ -34,6 +34,11 @@
 #include "zink_screen.h"
 #include "util/u_hash_table.h"
 
+#if !defined(__APPLE__) && !defined(_WIN32)
+#define ZINK_USE_DMABUF
+#include <xf86drm.h>
+#endif
+
 struct zink_bo;
 
 struct zink_sparse_backing_chunk {
@@ -120,9 +125,19 @@ bo_destroy(struct zink_screen *screen, struct pb_buffer *pbuf)
 {
    struct zink_bo *bo = zink_bo(pbuf);
 
-   simple_mtx_lock(&screen->pb.bo_export_table_lock);
-   _mesa_hash_table_remove_key(screen->pb.bo_export_table, bo);
-   simple_mtx_unlock(&screen->pb.bo_export_table_lock);
+#ifdef ZINK_USE_DMABUF
+   if (!bo->u.real.use_reusable_pool) {
+      simple_mtx_lock(&bo->u.real.export_lock);
+      list_for_each_entry_safe(struct bo_export, export, &bo->u.real.exports, link) {
+         struct drm_gem_close args = { .handle = export->gem_handle };
+         drmIoctl(export->drm_fd, DRM_IOCTL_GEM_CLOSE, &args);
+         list_del(&export->link);
+         free(export);
+      }
+      simple_mtx_unlock(&bo->u.real.export_lock);
+      simple_mtx_destroy(&bo->u.real.export_lock);
+   }
+#endif
 
    if (!bo->u.real.is_user_ptr && bo->u.real.cpu_ptr) {
       bo->u.real.map_count = 1;
@@ -282,6 +297,11 @@ demote:
    if (init_pb_cache) {
       bo->u.real.use_reusable_pool = true;
       pb_cache_init_entry(&screen->pb.bo_cache, bo->cache_entry, &bo->base, heap);
+   } else {
+#ifdef ZINK_USE_DMABUF
+      list_inithead(&bo->u.real.exports);
+      simple_mtx_init(&bo->u.real.export_lock, mtx_plain);
+#endif
    }
 
 
@@ -1065,6 +1085,40 @@ out:
    return ok;
 }
 
+bool
+zink_bo_get_kms_handle(struct zink_screen *screen, struct zink_bo *bo, int fd, uint32_t *handle)
+{
+#ifdef ZINK_USE_DMABUF
+   assert(bo->mem && !bo->u.real.use_reusable_pool);
+   simple_mtx_lock(&bo->u.real.export_lock);
+   list_for_each_entry(struct bo_export, export, &bo->u.real.exports, link) {
+      if (export->drm_fd == fd) {
+         simple_mtx_unlock(&bo->u.real.export_lock);
+         *handle = export->gem_handle;
+         return true;
+      }
+   }
+   struct bo_export *export = CALLOC_STRUCT(bo_export);
+   if (!export) {
+      simple_mtx_unlock(&bo->u.real.export_lock);
+      return false;
+   }
+   bool success = drmPrimeFDToHandle(screen->drm_fd, fd, handle) == 0;
+   if (success) {
+      list_addtail(&export->link, &bo->u.real.exports);
+      export->gem_handle = *handle;
+      export->drm_fd = screen->drm_fd;
+   } else {
+      mesa_loge("zink: failed drmPrimeFDToHandle %s", strerror(errno));
+      FREE(export);
+   }
+   simple_mtx_unlock(&bo->u.real.export_lock);
+   return success;
+#else
+   return false;
+#endif
+}
+
 static const struct pb_vtbl bo_slab_vtbl = {
    /* Cast to void* because one of the function parameters is a struct pointer instead of void*. */
    (void*)bo_slab_destroy
@@ -1214,8 +1268,6 @@ zink_bo_init(struct zink_screen *screen)
       min_slab_order = max_order + 1;
    }
    screen->pb.min_alloc_size = 1 << screen->pb.bo_slabs[0].min_order;
-   screen->pb.bo_export_table = util_hash_table_create_ptr_keys();
-   simple_mtx_init(&screen->pb.bo_export_table_lock, mtx_plain);
    return true;
 }
 
@@ -1227,6 +1279,4 @@ zink_bo_deinit(struct zink_screen *screen)
          pb_slabs_deinit(&screen->pb.bo_slabs[i]);
    }
    pb_cache_deinit(&screen->pb.bo_cache);
-   _mesa_hash_table_destroy(screen->pb.bo_export_table, NULL);
-   simple_mtx_destroy(&screen->pb.bo_export_table_lock);
 }

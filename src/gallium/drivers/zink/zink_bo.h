@@ -55,6 +55,15 @@ enum zink_alloc_flag {
    ZINK_ALLOC_NO_SUBALLOC = 1<<1,
 };
 
+struct bo_export {
+   /** File descriptor associated with a handle export. */
+   int drm_fd;
+
+   /** GEM handle in drm_fd */
+   uint32_t gem_handle;
+
+   struct list_head link;
+};
 
 struct zink_bo {
    struct pb_buffer base;
@@ -63,6 +72,8 @@ struct zink_bo {
       struct {
          void *cpu_ptr; /* for user_ptr and permanent maps */
          int map_count;
+         struct list_head exports;
+         simple_mtx_t export_lock;
 
          bool is_user_ptr;
          bool use_reusable_pool;
@@ -174,6 +185,9 @@ zink_bo_deinit(struct zink_screen *screen);
 
 struct pb_buffer *
 zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, enum zink_heap heap, enum zink_alloc_flag flags, const void *pNext);
+
+bool
+zink_bo_get_kms_handle(struct zink_screen *screen, struct zink_bo *bo, int fd, uint32_t *handle);
 
 static inline uint64_t
 zink_bo_get_offset(const struct zink_bo *bo)

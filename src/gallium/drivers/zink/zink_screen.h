@@ -128,8 +128,6 @@ struct zink_screen {
       struct pb_cache bo_cache;
       struct pb_slabs bo_slabs[NUM_SLAB_ALLOCATORS];
       unsigned min_alloc_size;
-      struct hash_table *bo_export_table;
-      simple_mtx_t bo_export_table_lock;
       uint32_t next_bo_unique_id;
    } pb;
    uint8_t heap_map[VK_MAX_MEMORY_TYPES];

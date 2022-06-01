@@ -1299,14 +1299,16 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
          break;
    }
 
-   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
       return false;
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD: {
 #ifdef ZINK_USE_DMABUF
       memset(&whandle, 0, sizeof(whandle));
       if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED)
          whandle.type = WINSYS_HANDLE_TYPE_SHARED;
+      if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS)
+         whandle.type = WINSYS_HANDLE_TYPE_KMS;
       else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD)
          whandle.type = WINSYS_HANDLE_TYPE_FD;
 
@@ -1342,7 +1344,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       struct zink_resource_object *obj = res->obj;
 
 #if !defined(_WIN32)
-      if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
+      if (whandle->type == WINSYS_HANDLE_TYPE_KMS && screen->drm_fd == -1) {
          whandle->handle = -1;
       } else {
          if (!res->obj->exportable) {
@@ -1368,6 +1370,15 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
             mesa_loge("ZINK: vkGetMemoryFdKHR failed");
             return false;
          }
+         if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
+            uint32_t h;
+            bool ret = zink_bo_get_kms_handle(screen, obj->bo, fd, &h);
+            close(fd);
+            if (!ret)
+               return false;
+            fd = h;
+         }
+
          whandle->handle = fd;
       }
 #else
