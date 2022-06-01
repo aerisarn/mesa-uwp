@@ -2318,6 +2318,7 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
 {
    struct dri2_egl_display *dri2_dpy =
       dri2_egl_display(dri2_surf->base.Resource.Display);
+   bool zink = dri2_surf->base.Resource.Display->Options.Zink;
 
    /* we need to do the following operations only once per frame */
    if (dri2_surf->back)
@@ -2327,7 +2328,8 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
        (dri2_surf->base.Width != dri2_surf->wl_win->width ||
         dri2_surf->base.Height != dri2_surf->wl_win->height)) {
 
-      dri2_wl_release_buffers(dri2_surf);
+      if (!zink)
+         dri2_wl_release_buffers(dri2_surf);
 
       dri2_surf->base.Width  = dri2_surf->wl_win->width;
       dri2_surf->base.Height = dri2_surf->wl_win->height;
@@ -2355,6 +2357,8 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
       for (int i = 0; i < ARRAY_SIZE(dri2_surf->color_buffers); i++) {
          if (!dri2_surf->color_buffers[i].locked) {
              dri2_surf->back = &dri2_surf->color_buffers[i];
+             if (zink)
+                continue;
              if (!dri2_wl_swrast_allocate_buffer(dri2_surf,
                                                  dri2_surf->format,
                                                  dri2_surf->base.Width,
@@ -2388,9 +2392,11 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
       if (!dri2_surf->color_buffers[i].locked &&
           dri2_surf->color_buffers[i].wl_buffer &&
           dri2_surf->color_buffers[i].age > BUFFER_TRIM_AGE_HYSTERESIS) {
-         wl_buffer_destroy(dri2_surf->color_buffers[i].wl_buffer);
-         munmap(dri2_surf->color_buffers[i].data,
-                dri2_surf->color_buffers[i].data_size);
+         if (!zink) {
+            wl_buffer_destroy(dri2_surf->color_buffers[i].wl_buffer);
+            munmap(dri2_surf->color_buffers[i].data,
+                   dri2_surf->color_buffers[i].data_size);
+         }
          dri2_surf->color_buffers[i].wl_buffer = NULL;
          dri2_surf->color_buffers[i].data = NULL;
          dri2_surf->color_buffers[i].age = 0;
