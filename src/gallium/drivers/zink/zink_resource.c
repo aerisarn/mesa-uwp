@@ -756,15 +756,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             goto fail1;
          }
          obj->modifier = modprops.drmFormatModifier;
-         unsigned num_planes = screen->base.get_dmabuf_modifier_planes(&screen->base, obj->modifier, templ->format);
+         unsigned num_dmabuf_planes = screen->base.get_dmabuf_modifier_planes(&screen->base, obj->modifier, templ->format);
          obj->modifier_aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
-         if (num_planes > 1)
+         if (num_dmabuf_planes > 1)
             obj->modifier_aspect |= VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT;
-         if (num_planes > 2)
+         if (num_dmabuf_planes > 2)
             obj->modifier_aspect |= VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT;
-         if (num_planes > 3)
+         if (num_dmabuf_planes > 3)
             obj->modifier_aspect |= VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT;
-         assert(num_planes <= 4);
+         assert(num_dmabuf_planes <= 4);
       }
 
       if (VKSCR(GetImageMemoryRequirements2)) {
