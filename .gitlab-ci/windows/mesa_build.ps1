@@ -26,12 +26,12 @@ Write-Output builddir:$builddir
 Write-Output installdir:$installdir
 Write-Output sourcedir:$sourcedir
 
-$installPath=& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -version 16.0  -property installationpath
-Write-Output "vswhere.exe installPath: $installPath"
-$installPath="C:\BuildTools"
-Write-Output "Final installPath: $installPath"
-Import-Module (Join-Path $installPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
-Enter-VsDevShell -VsInstallPath $installPath -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -no_logo -host_arch=amd64'
+$vsInstallPath=& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -version 16.0  -property installationpath
+Write-Output "vswhere.exe installPath: $vsInstallPath"
+$vsInstallPath =  if ("$vsInstallPath" -eq "" ) { "C:\BuildTools" } else { "$vsInstallPath" }
+Write-Output "Final installPath: $vsInstallPath"
+Import-Module (Join-Path $vsInstallPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
+Enter-VsDevShell -VsInstallPath $vsInstallPath -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -no_logo -host_arch=amd64'
 
 Push-Location $builddir
 
