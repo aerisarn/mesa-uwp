@@ -106,13 +106,14 @@
  * Converts double trunc, ceil, floor, round to fract
  */
 
-#include "c99_math.h"
 #include "program/prog_instruction.h" /* for swizzle */
 #include "compiler/glsl_types.h"
 #include "ir.h"
 #include "ir_builder.h"
 #include "ir_optimization.h"
 #include "util/half_float.h"
+
+#include <math.h>
 
 using namespace ir_builder;
 

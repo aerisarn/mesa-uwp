@@ -40,10 +40,10 @@
 
 
 #include "c99_compat.h"
-#include "c99_math.h"
 #include <assert.h>
 #include <float.h>
 #include <stdarg.h>
+#include <math.h>
 
 #include "bitscan.h"
 #include "u_endian.h" /* for UTIL_ARCH_BIG_ENDIAN */
