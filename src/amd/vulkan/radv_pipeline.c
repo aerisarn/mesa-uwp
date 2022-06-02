@@ -1354,7 +1354,8 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
                                    const struct radv_graphics_pipeline_info *info)
 {
    bool has_color_att = radv_pipeline_has_color_attachments(&info->ri);
-   bool raster_enabled = radv_is_raster_enabled(pipeline, pCreateInfo);
+   bool raster_enabled = !info->rs.discard_enable ||
+                         (pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
    uint64_t states = RADV_DYNAMIC_ALL;
 
    /* Disable dynamic states that are useless to mesh shading. */
