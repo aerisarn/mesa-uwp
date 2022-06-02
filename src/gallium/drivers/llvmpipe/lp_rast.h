@@ -222,7 +222,6 @@ union lp_rast_cmd_arg {
       uint64_t value;
       uint64_t mask;
    } clear_zstencil;
-   const struct lp_rast_state *state;
    struct lp_fence *fence;
    struct llvmpipe_query *query_obj;
 };

@@ -683,7 +683,7 @@ void
 lp_rast_set_state(struct lp_rasterizer_task *task,
                   const union lp_rast_cmd_arg arg)
 {
-   task->state = arg.state;
+   task->state = arg.set_state;
 }
 
 
