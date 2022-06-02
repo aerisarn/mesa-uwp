@@ -259,13 +259,13 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
          }
          case nir_instr_type_alu: {
             const nir_alu_instr *alu = nir_instr_as_alu(instr);
-            if (alu->op != nir_op_mov &&
-                alu->op != nir_op_vec2 &&
-                alu->op != nir_op_vec4 &&
-                alu->op != nir_op_fmul)
-               return false;
-
-            if (alu->op == nir_op_fmul) {
+            switch (alu->op) {
+            case nir_op_mov:
+            case nir_op_vec2:
+            case nir_op_vec4:
+               // these instructions are OK
+               break;
+            case nir_op_fmul: {
                unsigned num_src = nir_op_infos[alu->op].num_inputs;;
                for (unsigned s = 0; s < num_src; s++) {
                   /* If the MUL uses immediate values, the values must
@@ -285,6 +285,11 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
                      }
                   }
                }
+               break;
+            }
+            default:
+               // disallowed instruction
+               return false;
             }
             break;
          }
