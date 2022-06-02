@@ -4489,6 +4489,34 @@ radv_get_attachment_sample_locations(struct radv_cmd_buffer *cmd_buffer, uint32_
 }
 
 static void
+radv_handle_image_transition_separate(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
+                                      VkImageLayout src_layout, VkImageLayout dst_layout,
+                                      VkImageLayout src_stencil_layout,
+                                      VkImageLayout dst_stencil_layout,
+                                      uint32_t src_family_index, uint32_t dst_family_index,
+                                      const VkImageSubresourceRange *range,
+                                      struct radv_sample_locations_state *sample_locs)
+{
+   /* For separate layouts, perform depth and stencil transitions separately. */
+   if (range->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) &&
+       (src_layout != src_stencil_layout || dst_layout != dst_stencil_layout)) {
+      VkImageSubresourceRange aspect_range = *range;
+      /* Depth-only transitions. */
+      aspect_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      radv_handle_image_transition(cmd_buffer, image, src_layout, dst_layout,
+                                   src_family_index, dst_family_index, &aspect_range, sample_locs);
+
+      /* Stencil-only transitions. */
+      aspect_range.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+      radv_handle_image_transition(cmd_buffer, image, src_stencil_layout, dst_stencil_layout,
+                                   src_family_index, dst_family_index, &aspect_range, sample_locs);
+   } else {
+      radv_handle_image_transition(cmd_buffer, image, src_layout, dst_layout,
+                                   src_family_index, dst_family_index, range, sample_locs);
+   }
+}
+
+static void
 radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buffer,
                                      struct radv_subpass_attachment att, bool begin_subpass)
 {
@@ -4518,35 +4546,12 @@ radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buffer,
     */
    sample_locs = radv_get_attachment_sample_locations(cmd_buffer, idx, begin_subpass);
 
-   /* Determine if the subpass uses separate depth/stencil layouts. */
-   bool uses_separate_depth_stencil_layouts = false;
-   if ((cmd_buffer->state.attachments[idx].current_layout !=
-        cmd_buffer->state.attachments[idx].current_stencil_layout) ||
-       (att.layout != att.stencil_layout)) {
-      uses_separate_depth_stencil_layouts = true;
-   }
-
-   /* For separate layouts, perform depth and stencil transitions
-    * separately.
-    */
-   if (uses_separate_depth_stencil_layouts &&
-       (range.aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
-      /* Depth-only transitions. */
-      range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-      radv_handle_image_transition(cmd_buffer, view->image,
-                                   cmd_buffer->state.attachments[idx].current_layout,
-                                   att.layout, 0, 0, &range, sample_locs);
-
-      /* Stencil-only transitions. */
-      range.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-      radv_handle_image_transition(
-         cmd_buffer, view->image, cmd_buffer->state.attachments[idx].current_stencil_layout,
-         att.stencil_layout, 0, 0, &range, sample_locs);
-   } else {
-      radv_handle_image_transition(cmd_buffer, view->image,
-                                   cmd_buffer->state.attachments[idx].current_layout,
-                                   att.layout, 0, 0, &range, sample_locs);
-   }
+   radv_handle_image_transition_separate(cmd_buffer, view->image,
+                                         cmd_buffer->state.attachments[idx].current_layout,
+                                         att.layout,
+                                         cmd_buffer->state.attachments[idx].current_stencil_layout,
+                                         att.stencil_layout,
+                                         0, 0, &range, sample_locs);
 
    cmd_buffer->state.attachments[idx].current_layout = att.layout;
    cmd_buffer->state.attachments[idx].current_stencil_layout = att.stencil_layout;
