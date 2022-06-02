@@ -4497,14 +4497,18 @@ radv_handle_image_transition_separate(struct radv_cmd_buffer *cmd_buffer, struct
                                       const VkImageSubresourceRange *range,
                                       struct radv_sample_locations_state *sample_locs)
 {
-   /* For separate layouts, perform depth and stencil transitions separately. */
-   if (range->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) &&
+   /* If we have a stencil layout that's different from depth, we need to
+    * perform the stencil transition separately.
+    */
+   if ((range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) &&
        (src_layout != src_stencil_layout || dst_layout != dst_stencil_layout)) {
       VkImageSubresourceRange aspect_range = *range;
       /* Depth-only transitions. */
-      aspect_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-      radv_handle_image_transition(cmd_buffer, image, src_layout, dst_layout,
-                                   src_family_index, dst_family_index, &aspect_range, sample_locs);
+      if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         aspect_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+         radv_handle_image_transition(cmd_buffer, image, src_layout, dst_layout,
+                                      src_family_index, dst_family_index, &aspect_range, sample_locs);
+      }
 
       /* Stencil-only transitions. */
       aspect_range.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
