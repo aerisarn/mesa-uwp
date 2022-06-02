@@ -4845,6 +4845,13 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                                 NULL);
         }
 
+        if (nir->xfb_info != NULL && nir->info.has_transform_feedback_varyings) {
+                NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
+                           nir_var_shader_in | nir_var_shader_out);
+                NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
+                NIR_PASS_V(nir, bifrost_nir_lower_xfb);
+        }
+
         bi_optimize_nir(nir, gpu_id, is_blend);
 }
 
@@ -5156,6 +5163,7 @@ bi_compile_variant(nir_shader *nir,
         }
 
         if (idvs == BI_IDVS_POSITION &&
+            !nir->info.internal &&
             nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ)) {
                 /* Find the psiz write */
                 bi_instr *write = NULL;
