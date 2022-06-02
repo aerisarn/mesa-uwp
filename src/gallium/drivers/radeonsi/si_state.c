@@ -5586,6 +5586,11 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
       si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
 
+      if (sscreen->dpbb_allowed) {
+         si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+         si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
+      }
+
       if (has_clear_state) {
          si_pm4_cmd_add(pm4, PKT3(PKT3_CLEAR_STATE, 0, 0));
          si_pm4_cmd_add(pm4, 0);
