@@ -103,8 +103,12 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
           * idle when we leave the IB, otherwise another process
           * might overwrite it while our shaders are busy.
           */
-         if (sscreen->use_ngg_streamout)
-            wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+         if (sscreen->use_ngg_streamout) {
+            if (ctx->gfx_level >= GFX11)
+               wait_flags |= SI_CONTEXT_VS_PARTIAL_FLUSH;
+            else
+               wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+         }
       }
    }
 
