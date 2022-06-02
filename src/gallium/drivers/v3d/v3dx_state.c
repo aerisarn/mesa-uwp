@@ -1073,8 +1073,8 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
                 v3d_get_format_swizzle(&screen->devinfo, so->base.format);
         util_format_compose_swizzles(fmt_swizzle, view_swizzle, so->swizzle);
 
+        pipe_reference_init(&so->base.reference, 1);
         so->base.texture = prsc;
-        so->base.reference.count = 1;
         so->base.context = pctx;
 
         if (rsc->separate_stencil &&
