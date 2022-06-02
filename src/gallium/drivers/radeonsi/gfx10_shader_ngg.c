@@ -1864,8 +1864,7 @@ void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx)
                ctx->ac.i32_1,
                ngg_get_emulated_counters_buf(ctx),
                LLVMConstInt(ctx->ac.i32,
-                            (si_hw_query_dw_offset(PIPE_STAT_QUERY_GS_INVOCATIONS) +
-                                SI_QUERY_STATS_END_OFFSET_DW) * 4,
+                            si_query_pipestat_end_dw_offset(ctx->screen, PIPE_STAT_QUERY_GS_INVOCATIONS) * 4,
                             false),
                ctx->ac.i32_0,                            /* soffset */
                ctx->ac.i32_0,                            /* cachepolicy */
@@ -2195,8 +2194,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
                ctx->ac.i32_1,
                ngg_get_emulated_counters_buf(ctx),
                LLVMConstInt(ctx->ac.i32,
-                            (si_hw_query_dw_offset(PIPE_STAT_QUERY_GS_PRIMITIVES) +
-                                SI_QUERY_STATS_END_OFFSET_DW) * 4,
+                            si_query_pipestat_end_dw_offset(ctx->screen, PIPE_STAT_QUERY_GS_PRIMITIVES) * 4,
                             false),
                ctx->ac.i32_0,                            /* soffset */
                ctx->ac.i32_0,                            /* cachepolicy */
