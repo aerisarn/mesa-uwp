@@ -4721,7 +4721,7 @@ static int tgsi_op2_s(struct r600_shader_ctx *ctx, int swap, int trans_only)
 	unsigned op = ctx->inst_info->op;
 
 	if (op == ALU_OP2_MUL_IEEE &&
-	    ctx->info.properties[TGSI_PROPERTY_MUL_ZERO_WINS])
+	    ctx->info.properties[TGSI_PROPERTY_LEGACY_MATH_RULES])
 		op = ALU_OP2_MUL;
 
 	/* nir_to_tgsi lowers nir_op_isub to UADD + negate, since r600 doesn't support
@@ -7305,7 +7305,7 @@ static int tgsi_op3_dst(struct r600_shader_ctx *ctx, int dst)
 	unsigned op = ctx->inst_info->op;
 
 	if (op == ALU_OP3_MULADD_IEEE &&
-	    ctx->info.properties[TGSI_PROPERTY_MUL_ZERO_WINS])
+	    ctx->info.properties[TGSI_PROPERTY_LEGACY_MATH_RULES])
 		op = ALU_OP3_MULADD;
 
 	for (j = 0; j < inst->Instruction.NumSrcRegs; j++) {
@@ -7355,7 +7355,7 @@ static int tgsi_dp(struct r600_shader_ctx *ctx)
 	int i, j, r;
 	unsigned op = ctx->inst_info->op;
 	if (op == ALU_OP2_DOT4_IEEE &&
-	    ctx->info.properties[TGSI_PROPERTY_MUL_ZERO_WINS])
+	    ctx->info.properties[TGSI_PROPERTY_LEGACY_MATH_RULES])
 		op = ALU_OP2_DOT4;
 
 	for (i = 0; i < 4; i++) {

@@ -424,8 +424,8 @@ The integer capabilities:
   and a larger value would mean that multiple render targets are supported.
 * ``PIPE_CAP_FBFETCH_COHERENT``: Whether framebuffer fetches from the fragment
   shader can be guaranteed to be coherent with framebuffer writes.
-* ``PIPE_CAP_TGSI_MUL_ZERO_WINS``: Whether TGSI shaders support the
-  ``TGSI_PROPERTY_MUL_ZERO_WINS`` shader property.
+* ``PIPE_CAP_TGSI_LEGACY_MATH_RULES``: Whether TGSI shaders support the
+  ``TGSI_PROPERTY_LEGACY_MATH_RULES`` shader property.
 * ``PIPE_CAP_DOUBLES``: Whether double precision floating-point operations
   are supported.
 * ``PIPE_CAP_INT64``: Whether 64-bit integer operations are supported.

@@ -3666,9 +3666,9 @@ tx_ctor(struct shader_translator *tx, struct pipe_screen *screen, struct nine_sh
             ureg_property(tx->ureg, TGSI_PROPERTY_FS_COORD_PIXEL_CENTER, TGSI_FS_COORD_PIXEL_CENTER_INTEGER);
     }
 
-    tx->mul_zero_wins = GET_CAP(TGSI_MUL_ZERO_WINS);
+    tx->mul_zero_wins = GET_CAP(TGSI_LEGACY_MATH_RULES);
     if (tx->mul_zero_wins)
-       ureg_property(tx->ureg, TGSI_PROPERTY_MUL_ZERO_WINS, 1);
+       ureg_property(tx->ureg, TGSI_PROPERTY_LEGACY_MATH_RULES, 1);
 
     /* Add additional definition of constants */
     if (info->add_constants_defs.c_combination) {
@@ -3894,7 +3894,7 @@ nine_ureg_create_shader(struct ureg_program                  *ureg,
     enum pipe_shader_type shader_type = ((struct tgsi_processor *) &tgsi_tokens[1])->Processor;
 
     /* NIR doesn't have mul_zero_wins */
-    bool ttn_supported = !GET_CAP(TGSI_MUL_ZERO_WINS);
+    bool ttn_supported = !GET_CAP(TGSI_LEGACY_MATH_RULES);
     int preferred_ir = screen->get_shader_param(screen, shader_type, PIPE_SHADER_CAP_PREFERRED_IR);
     int supported_irs = screen->get_shader_param(screen, shader_type, PIPE_SHADER_CAP_SUPPORTED_IRS);
     bool prefer_nir = (preferred_ir == PIPE_SHADER_IR_NIR);

@@ -1233,7 +1233,7 @@ void Source::scanProperty(const struct tgsi_full_property *prop)
    case TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE:
       info_out->prop.fp.postDepthCoverage = prop->u[0].Data;
       break;
-   case TGSI_PROPERTY_MUL_ZERO_WINS:
+   case TGSI_PROPERTY_LEGACY_MATH_RULES:
       info->io.mul_zero_wins = prop->u[0].Data;
       break;
    case TGSI_PROPERTY_LAYER_VIEWPORT_RELATIVE:
