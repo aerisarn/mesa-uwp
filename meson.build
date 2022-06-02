@@ -1925,7 +1925,10 @@ if build_machine.system() == 'windows'
 
   prog_flex_cpp = prog_flex
   # Convince win_flex to use <inttypes.h> for C++ files
-  prog_flex_cpp += '-D__STDC_VERSION__=201112'
+  # Note that we are using a C99 version here rather than C11,
+  # because using a C11 version can cause the MSVC CRT headers to define
+  # static_assert to _Static_assert, which breaks other parts of the CRT
+  prog_flex_cpp += '-D__STDC_VERSION__=199901'
 
   prog_bison = find_program('win_bison', required : false)
   if not prog_bison.found()
