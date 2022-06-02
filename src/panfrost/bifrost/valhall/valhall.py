@@ -191,6 +191,7 @@ class Instruction:
         self.modifiers = modifiers
         self.staging = staging
         self.unit = unit
+        self.is_signed = len(name.split(".")) > 1 and ('s' in name.split(".")[1])
 
         # Message-passing instruction <===> not ALU instruction
         self.message = unit not in ["FMA", "CVT", "SFU"]

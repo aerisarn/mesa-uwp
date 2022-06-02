@@ -90,6 +90,7 @@ struct va_opcode_info {
    unsigned nr_staging_srcs : 2;
    unsigned nr_staging_dests : 2;
    bool has_dest : 1;
+   bool is_signed : 1;
    bool clamp : 1;
    bool round_mode : 1;
    bool condition : 1;

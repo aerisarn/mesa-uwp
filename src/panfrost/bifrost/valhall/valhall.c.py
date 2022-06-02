@@ -147,6 +147,7 @@ valhall_opcodes[BI_NUM_OPCODES] = {
         },
         .type_size = ${typesize(op.name)},
         .has_dest = ${ibool(len(op.dests) > 0)},
+        .is_signed = ${ibool(op.is_signed)},
         .unit = VA_UNIT_${op.unit},
         .nr_srcs = ${len(op.srcs)},
         .nr_staging_srcs = ${sum([sr.read for sr in op.staging])},
