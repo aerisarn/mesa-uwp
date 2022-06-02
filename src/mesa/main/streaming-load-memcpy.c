@@ -28,7 +28,10 @@
 
 #include "main/macros.h"
 #include "main/streaming-load-memcpy.h"
+#include "x86/common_x86_asm.h"
+#ifdef USE_SSE41
 #include <smmintrin.h>
+#endif
 
 /* Copies memory from src to dst, using SSE 4.1's MOVNTDQA to get streaming
  * read performance from uncached memory.
@@ -39,8 +42,9 @@ _mesa_streaming_load_memcpy(void *restrict dst, void *restrict src, size_t len)
    char *restrict d = dst;
    char *restrict s = src;
 
-   /* If dst and src are not co-aligned, fallback to memcpy(). */
-   if (((uintptr_t)d & 15) != ((uintptr_t)s & 15)) {
+#ifdef USE_SSE41
+   /* If dst and src are not co-aligned, or if SSE4.1 is not present, fallback to memcpy(). */
+   if (((uintptr_t)d & 15) != ((uintptr_t)s & 15) || !cpu_has_sse4_1) {
       memcpy(d, s, len);
       return;
    }
@@ -80,7 +84,7 @@ _mesa_streaming_load_memcpy(void *restrict dst, void *restrict src, size_t len)
       s += 64;
       len -= 64;
    }
-
+#endif
    /* memcpy() the tail. */
    if (len) {
       memcpy(d, s, len);
