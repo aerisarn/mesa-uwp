@@ -200,7 +200,7 @@ update_gfx_program(struct zink_context *ctx)
          ctx->dirty_shader_stages |= prog->stages_present;
       } else {
          ctx->dirty_shader_stages |= bits;
-         prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch + 1);
+         prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
       }
       zink_update_gfx_program(ctx, prog);

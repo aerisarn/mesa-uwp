@@ -1930,7 +1930,7 @@ zink_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
 {
    struct zink_context *ctx = zink_context(pctx);
    if (zink_set_tcs_key_patches(ctx, patch_vertices)) {
-      ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch = patch_vertices ? patch_vertices - 1 : 0;
+      ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch = patch_vertices;
       if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
          VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, patch_vertices);
       else
@@ -2460,7 +2460,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->di.bindless_refs_dirty = true;
       ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
       if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
-         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch + 1);
+         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
       reapply_color_write(ctx);
@@ -4093,6 +4093,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
    ctx->gfx_pipeline_state.dirty = true;
+   ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch = 1;
    ctx->gfx_pipeline_state.uses_dynamic_stride = screen->info.have_EXT_extended_dynamic_state ||
                                                  screen->info.have_EXT_vertex_input_dynamic_state;
    ctx->compute_pipeline_state.dirty = true;
@@ -4200,6 +4201,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base.last_vertex_stage = true;
    ctx->last_vertex_stage_dirty = true;
+   ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_CTRL].key.tcs.patch_vertices = 1;
    ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX].size = sizeof(struct zink_vs_key_base);
    ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_EVAL].size = sizeof(struct zink_vs_key_base);
    ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_CTRL].size = sizeof(struct zink_tcs_key);

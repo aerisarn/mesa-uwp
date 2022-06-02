@@ -49,7 +49,7 @@ struct zink_pipeline_dynamic_state1 {
 struct zink_pipeline_dynamic_state2 {
    bool primitive_restart;
    bool rasterizer_discard;
-   uint32_t vertices_per_patch:5;
+   uint16_t vertices_per_patch; //5 bits
 };
 
 struct zink_gfx_pipeline_state {
