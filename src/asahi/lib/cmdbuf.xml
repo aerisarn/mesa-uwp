@@ -358,13 +358,14 @@
   <struct name="Unknown 4a" size="20">
     <field name="Tag" size="32" start="0:0" type="hex" default="0x200004a"/>
     <field name="Unk 1" size="1" start="1:9" type="bool" default="true"/>
+    <!-- Or discards? -->
     <field name="Lines or points" size="1" start="1:26" type="bool"/>
     <field name="Reads tilebuffer" size="1" start="1:29" type="bool"/>
     <field name="Sample mask from shader" size="1" start="1:30" type="bool"/>
     <field name="Front" size="32" start="2:0" type="Unknown face"/>
     <field name="Back" size="32" start="3:0" type="Unknown face"/>
-    <!-- maybe sample mask -->
-    <field name="Unk 4" size="32" start="4:0" type="hex" default="0x1ffff"/>
+    <!-- Guess. Zeroed when sample mask written from the shader in all CF paths -->
+    <field name="Sample mask" size="17" start="4:0" type="hex" default="0x1ffff"/>
   </struct>
 
   <struct name="Cull" size="8">
@@ -434,7 +435,11 @@
     <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
     <field name="Unk 1" size="24" start="0:8" type="hex" default="0x90"/>
     <field name="Unk 2" size="8" start="1:0" type="hex" default="0x0d"/> <!-- TODO differs with stage -->
-    <field name="Unk 2b" size="8" start="1:8" type="uint" default="4"/> <!--- Seemingly texture count related? -->
+    <!--- Seemingly texture count related?,
+          or number of registers in the preshader? 8 with <4 in the preshader,
+          12 with more than that?
+          -->
+    <field name="Unk 2b" size="8" start="1:8" type="uint" default="4"/>
     <field name="Code" size="32" start="1:16" type="address"/>
     <field name="Unk 3" size="8" start="2:16" type="hex" default="0x8d"/>
     <field name="Register quadwords" size="5" start="2:24" type="uint"/> <!-- 0 for max -->
@@ -454,6 +459,8 @@
         discard_fragment) -->
     <field name="Early-z testing" size="1" start="24" type="bool"/>
     <field name="Unk 2" size="1" start="25" type="bool" default="true"/>
+    <field name="Unconditional discard 1" size="1" start="26" type="bool"/>
+    <field name="Unconditional discard 2" size="1" start="27" type="bool"/>
     <field name="Unk 3" size="4" start="28" type="hex" default="0xf"/>
   </struct>
 
@@ -461,10 +468,9 @@
     <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
     <field name="Unk 1" size="24" start="0:8" type="hex" default="0x2010bd"/>
     <field name="Unk 2" size="8" start="1:0" type="hex" default="0x0d"/>
-    <field name="Unk 1 8" size="1" start="1:8" type="bool" default="0"/>
+    <field name="Loads varyings" size="1" start="1:8" type="bool"/>
     <field name="Unk 1 9" size="1" start="1:9" type="bool" default="0"/>
-    <field name="Unk 1 10" size="1" start="1:10" type="bool" default="0"/>
-    <field name="Unk 1 11" size="1" start="1:10" type="bool" default="0"/>
+    <field name="Code size in 64 bytes" size="6" start="1:10" type="uint"/>
     <field name="Code" size="32" start="1:16" type="address"/>
     <field name="Unk 3" size="8" start="2:16" type="hex" default="0x28d"/>
     <field name="Register quadwords" size="5" start="2:24" type="uint"/> <!-- 0 for max -->

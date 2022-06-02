@@ -1238,8 +1238,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
          cfg.unk_3 = 0x8d;
          cfg.unk_1 = 0x2010bd;
          cfg.unk_2 = 0x0d;
-         cfg.unk_1_8 = 1;
-         cfg.unk_1_10 = writes_sample_mask;
+         cfg.loads_varyings = true;
          cfg.fragment_parameters.early_z_testing = !writes_sample_mask;
          cfg.unk_3b = 0x1;
          cfg.unk_4 = 0x800;
@@ -1290,7 +1289,6 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
       cfg.register_quadwords = 1;
       cfg.unk_3 = 0x8d;
       cfg.unk_2 = 0x0d;
-      cfg.unk_1_10 = true;
       cfg.fragment_parameters.unk_1 = 0x880100;
       cfg.fragment_parameters.early_z_testing = false;
       cfg.fragment_parameters.unk_2 = false;
@@ -1383,7 +1381,6 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.register_quadwords = 0;
       cfg.unk_3 = 0x8d;
       cfg.unk_2 = 0x0d;
-      cfg.unk_1_10 = 4;
       cfg.unk_4 = 0;
       cfg.fragment_parameters.unk_1 = 0x880100;
       cfg.fragment_parameters.early_z_testing = false;
