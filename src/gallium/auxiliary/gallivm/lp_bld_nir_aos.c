@@ -291,7 +291,7 @@ emit_tex(struct lp_build_nir_context *bld_base,
                                                      params->texture_index,
                                                      params->coords[0],
                                                      params->derivs ? params->derivs[0] : derivs,
-                                                     0);
+                                                     LP_BLD_TEX_MODIFIER_NONE);
 }
 
 
