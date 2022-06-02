@@ -78,10 +78,6 @@ else
     RUN_CMD_WRAPPER="xvfb-run --server-args=\"-noreset\" sh -c"
 fi
 
-if [ "$ZINK_USE_LAVAPIPE" ]; then
-    export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/lvp_icd.x86_64.json"
-fi
-
 # If the job is parallel at the  gitlab job level, will take the corresponding
 # fraction of the caselist.
 if [ -n "$CI_NODE_INDEX" ]; then
