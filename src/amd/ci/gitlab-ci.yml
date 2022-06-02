@@ -202,6 +202,14 @@ vkcts-navi21-valve:
   variables:
     GPU_VERSION: radv-navi21-aco
 
+vkcts-navi21-llvm-valve:
+  extends:
+    - .vkcts-test-valve
+    - .navi21-test-valve
+  variables:
+    GPU_VERSION: radv-navi21-llvm
+    RADV_DEBUG: llvm,checkir
+
 vkcts-vangogh-valve:
   extends:
     - .vkcts-test-valve
