@@ -3158,11 +3158,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    if (!sel)
       return NULL;
 
-   if (sscreen->info.gfx_level == GFX11 && state->stream_output.num_outputs) {
-      fprintf(stderr, "radeonsi: streamout unimplemented\n");
-      abort();
-   }
-
    sel->screen = sscreen;
    sel->compiler_ctx_state.debug = sctx->debug;
    sel->compiler_ctx_state.is_debug_context = sctx->is_debug;

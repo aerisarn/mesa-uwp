@@ -369,18 +369,79 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
          tmp = ac_build_quad_swizzle(&ctx->ac, tmp, swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
          tmp = LLVMBuildMul(builder, tmp, prim_stride_dw_vgpr, "");
 
-         LLVMValueRef args[] = {
+         LLVMValueRef args[8] = {
             LLVMBuildIntToPtr(builder, ngg_get_ordered_id(ctx), gdsptr, ""),
-            tmp,
-            ctx->ac.i32_0,                             // ordering
-            ctx->ac.i32_0,                             // scope
-            ctx->ac.i1false,                           // isVolatile
-            LLVMConstInt(ctx->ac.i32, 4 << 24, false), // OA index
-            ctx->ac.i1true,                            // wave release
-            ctx->ac.i1true,                            // wave done
+            ctx->ac.i32_0,                             /* value to add */
+            ctx->ac.i32_0,                             /* ordering */
+            ctx->ac.i32_0,                             /* scope */
+            ctx->ac.i1false,                           /* isVolatile */
+            LLVMConstInt(ctx->ac.i32, 1 << 24, false), /* OA index, bits 24+: lane count */
+            ctx->ac.i1true,                            /* wave release */
+            ctx->ac.i1true,                            /* wave done */
          };
-         tmp = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add", ctx->ac.i32, args,
-                                  ARRAY_SIZE(args), 0);
+
+         if (ctx->screen->info.gfx_level >= GFX11) {
+            /* Gfx11 GDS instructions only operate on the first active lane. All other lanes are
+             * ignored. So are their EXEC bits. This uses the mutex feature of ds_ordered_count
+             * to emulate a multi-dword atomic.
+             *
+             * This is the expected code:
+             *    ds_ordered_count release=0 done=0   // lock mutex
+             *    ds_add_rtn_u32 dwords_written0
+             *    ds_add_rtn_u32 dwords_written1
+             *    ds_add_rtn_u32 dwords_written2
+             *    ds_add_rtn_u32 dwords_written3
+             *    ds_ordered_count release=1 done=1   // unlock mutex
+             *
+             * TODO: Increment GDS_STRMOUT registers instead of GDS memory.
+             */
+            LLVMValueRef dwords_written[4] = {tmp, tmp, tmp, tmp};
+
+            /* Move all 4 VGPRs from other lanes to lane 0. */
+            for (unsigned i = 1; i < 4; i++) {
+               if (ctx->shader->selector->info.base.xfb_stride[i])
+                  dwords_written[i] = ac_build_quad_swizzle(&ctx->ac, tmp, i, i, i, i);
+            }
+
+            /* Set release=0 to start a GDS mutex. Set done=0 because it's not the last one. */
+            args[6] = args[7] = ctx->ac.i1false;
+            ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add", ctx->ac.i32,
+                               args, ARRAY_SIZE(args), 0);
+            ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
+
+            for (unsigned i = 0; i < 4; i++) {
+               if (ctx->shader->selector->info.base.xfb_stride[i]) {
+                  LLVMValueRef gds_ptr =
+                     ac_build_gep_ptr(&ctx->ac, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
+
+                  dwords_written[i] = LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpAdd,
+                                                         gds_ptr, dwords_written[i],
+                                                         LLVMAtomicOrderingMonotonic, false);
+               }
+            }
+
+            /* TODO: This might not be needed if GDS executes instructions in order. */
+            ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
+
+            /* Set release=1 to end a GDS mutex. Set done=1 because it's the last one. */
+            args[6] = args[7] = ctx->ac.i1true;
+            ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add", ctx->ac.i32,
+                               args, ARRAY_SIZE(args), 0);
+
+            tmp = dwords_written[0];
+            for (unsigned i = 1; i < 4; i++) {
+               if (ctx->shader->selector->info.base.xfb_stride[i]) {
+                  dwords_written[i] = ac_build_readlane(&ctx->ac, dwords_written[i], ctx->ac.i32_0);
+                  tmp = ac_build_writelane(&ctx->ac, tmp, dwords_written[i], LLVMConstInt(ctx->ac.i32, i, 0));
+               }
+            }
+         } else {
+            args[1] = tmp; /* value to add */
+            args[5] = LLVMConstInt(ctx->ac.i32, 4 << 24, false), /* bits 24+: lane count */
+
+            tmp = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add", ctx->ac.i32,
+                                     args, ARRAY_SIZE(args), 0);
+         }
 
          /* Keep offsets in a VGPR for quick retrieval via readlane by
           * the first wave for bounds checking, and also store in LDS
@@ -451,9 +512,28 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
          {
             tmp = LLVMBuildSub(builder, generated, emit, "");
             tmp = LLVMBuildMul(builder, tmp, prim_stride_dw_vgpr, "");
-            tmp2 = LLVMBuildGEP(builder, gdsbase, &tid, 1, "");
-            LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpSub, tmp2, tmp,
-                               LLVMAtomicOrderingMonotonic, false);
+
+            if (ctx->screen->info.gfx_level >= GFX11) {
+               /* Gfx11 GDS instructions only operate on the first active lane.
+                * This is an unrolled waterfall loop. We only get here when we overflow,
+                * so it doesn't have to be fast.
+                */
+               for (unsigned i = 0; i < 4; i++) {
+                  if (bufmask_for_stream[stream] & BITFIELD_BIT(i)) {
+                     LLVMValueRef index = LLVMConstInt(ctx->ac.i32, i, 0);
+
+                     ac_build_ifcc(&ctx->ac, LLVMBuildICmp(builder, LLVMIntEQ, tid, index, ""), 0);
+                     LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpSub,
+                                        LLVMBuildGEP(builder, gdsbase, &index, 1, ""),
+                                        tmp, LLVMAtomicOrderingMonotonic, false);
+                     ac_build_endif(&ctx->ac, 0);
+                  }
+               }
+            } else {
+               LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpSub,
+                                  LLVMBuildGEP(builder, gdsbase, &tid, 1, ""),
+                                  tmp, LLVMAtomicOrderingMonotonic, false);
+            }
          }
          ac_build_endif(&ctx->ac, 5222);
          ac_build_endif(&ctx->ac, 5221);
