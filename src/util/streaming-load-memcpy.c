@@ -27,7 +27,7 @@
  */
 
 #include "main/macros.h"
-#include "main/streaming-load-memcpy.h"
+#include "util/streaming-load-memcpy.h"
 #include "x86/common_x86_asm.h"
 #ifdef USE_SSE41
 #include <smmintrin.h>
@@ -37,7 +37,7 @@
  * read performance from uncached memory.
  */
 void
-_mesa_streaming_load_memcpy(void *restrict dst, void *restrict src, size_t len)
+util_streaming_load_memcpy(void *restrict dst, void *restrict src, size_t len)
 {
    char *restrict d = dst;
    char *restrict s = src;

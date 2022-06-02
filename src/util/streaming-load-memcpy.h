@@ -36,6 +36,6 @@
 #include <stdlib.h>
 
 void
-_mesa_streaming_load_memcpy(void *restrict dst, void *restrict src, size_t len);
+util_streaming_load_memcpy(void *restrict dst, void *restrict src, size_t len);
 
 #endif /* STREAMING_LOAD_MEMCPY_H */
