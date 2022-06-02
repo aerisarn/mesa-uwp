@@ -72,6 +72,8 @@ The integer capabilities:
   pixel-center fragment convention is supported.
 * ``PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER``: Whether the integer
   pixel-center fragment convention is supported.
+* ``PIPE_CAP_POINT_COORD_ORIGIN_UPPER_LEFT``: Whether point coordinates use the
+  upper-left origin convention. Otherwise the lower-left convention is used.
 * ``PIPE_CAP_DEPTH_CLIP_DISABLE``: Whether the driver is capable of disabling
   depth clipping (through pipe_rasterizer_state).
 * ``PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE``: Whether the driver is capable of
