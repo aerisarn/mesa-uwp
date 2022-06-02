@@ -3656,8 +3656,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                           texel_out);
    } else if (op_type == LP_SAMPLER_OP_FETCH) {
       lp_build_fetch_texel(&bld, texture_index, ms_index, newcoords,
-                           lod, offsets,
-                           texel_out);
+                           lod, offsets, texel_out);
    } else {
       LLVMValueRef lod_fpart = NULL, lod_positive = NULL;
       LLVMValueRef ilevel0 = NULL, ilevel1 = NULL, lod = NULL;
@@ -3708,8 +3707,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
       }
 
       lp_build_sample_common(&bld, op_is_lodq, texture_index, sampler_index,
-                             newcoords,
-                             derivs, lod_bias, explicit_lod,
+                             newcoords, derivs, lod_bias, explicit_lod,
                              &lod_positive, &lod, &lod_fpart,
                              &ilevel0, &ilevel1);
 
@@ -3743,9 +3741,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                                 offsets, lod_positive, lod_fpart,
                                 ilevel0, ilevel1,
                                 texel_out);
-         }
-
-         else {
+         } else {
             lp_build_sample_general(&bld, sampler_index,
                                     op_type == LP_SAMPLER_OP_GATHER,
                                     newcoords, offsets,
