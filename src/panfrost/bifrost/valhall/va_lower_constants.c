@@ -93,6 +93,18 @@ va_resolve_constant(bi_builder *b, uint32_t value, struct va_src_info info, bool
    if (!staging) {
       bi_index lut = va_lut_index_32(value);
       if (!bi_is_null(lut)) return lut;
+
+      /* ...or negated as a FP32 constant */
+      if (info.absneg && info.size == VA_SIZE_32) {
+         lut = bi_neg(va_lut_index_32(fui(-uif(value))));
+         if (!bi_is_null(lut)) return lut;
+      }
+
+      /* ...or negated as a FP16 constant */
+      if (info.absneg && info.size == VA_SIZE_16) {
+         lut = bi_neg(va_lut_index_32(value ^ 0x80008000));
+         if (!bi_is_null(lut)) return lut;
+      }
    }
 
    /* Try using a single half of a FP16 constant */
@@ -100,6 +112,12 @@ va_resolve_constant(bi_builder *b, uint32_t value, struct va_src_info info, bool
    if (!staging && info.swizzle && info.size == VA_SIZE_16 && replicated_halves) {
       bi_index lut = va_lut_index_16(value & 0xFFFF);
       if (!bi_is_null(lut)) return lut;
+
+      /* ...possibly negated */
+      if (info.absneg) {
+         lut = bi_neg(va_lut_index_16((value & 0xFFFF) ^ 0x8000));
+         if (!bi_is_null(lut)) return lut;
+      }
    }
 
    /* TODO: Distinguish sign extend from zero extend */
@@ -121,6 +139,11 @@ va_resolve_constant(bi_builder *b, uint32_t value, struct va_src_info info, bool
    if (!staging && info.swizzle && info.size == VA_SIZE_32) {
       bi_index lut = va_demote_constant_fp16(value);
       if (!bi_is_null(lut)) return lut;
+
+      if (info.absneg) {
+         bi_index lut = bi_neg(va_demote_constant_fp16(fui(-uif(value))));
+         if (!bi_is_null(lut)) return lut;
+      }
    }
 
    /* TODO: Optimize to uniform */
