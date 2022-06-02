@@ -481,8 +481,6 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
     */
    _mesa_ensure_and_associate_uniform_storage(st->ctx, shader_program, prog, 28);
 
-   st_set_prog_affected_state_flags(prog);
-
    /* None of the builtins being lowered here can be produced by SPIR-V.  See
     * _mesa_builtin_uniform_desc. Also drivers that support packed uniform
     * storage don't need to lower builtins.
@@ -530,6 +528,8 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 
    if (!st->has_hw_atomics && !screen->get_param(screen, PIPE_CAP_NIR_ATOMICS_AS_DEREF))
       NIR_PASS_V(nir, nir_lower_atomics_to_ssbo);
+
+   st_set_prog_affected_state_flags(prog);
 
    st_finalize_nir_before_variants(nir);
 
