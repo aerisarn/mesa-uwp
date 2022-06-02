@@ -1390,7 +1390,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
                   RADV_DYNAMIC_STENCIL_REFERENCE | RADV_DYNAMIC_STENCIL_OP);
 
-   if (!vk_find_struct_const(pCreateInfo->pNext, PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT))
+   if (!info->dr.count)
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
 
    if (!pCreateInfo->pMultisampleState ||
