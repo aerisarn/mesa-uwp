@@ -342,6 +342,13 @@ panfrost_delete_shader_state(
                 panfrost_bo_unreference(shader_state->bin.bo);
                 panfrost_bo_unreference(shader_state->state.bo);
                 panfrost_bo_unreference(shader_state->linkage.bo);
+
+                if (shader_state->xfb) {
+                        panfrost_bo_unreference(shader_state->xfb->bin.bo);
+                        panfrost_bo_unreference(shader_state->xfb->state.bo);
+                        panfrost_bo_unreference(shader_state->xfb->linkage.bo);
+                        free(shader_state->xfb);
+                }
         }
 
         simple_mtx_destroy(&cso->lock);

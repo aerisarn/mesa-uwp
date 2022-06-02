@@ -290,6 +290,9 @@ struct panfrost_shader_state {
 
         struct pan_shader_info info;
 
+        /* Attached transform feedback program, if one exists */
+        struct panfrost_shader_state *xfb;
+
         /* Linked varyings, for non-separable programs */
         struct pan_linkage linkage;
 
