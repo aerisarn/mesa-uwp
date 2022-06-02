@@ -25,6 +25,8 @@ nvk_queue_submit(struct vk_queue *queue, struct vk_queue_submit *submission)
       }
 
       nouveau_ws_push_submit(cmd->push, device->pdev->dev, device->ctx);
+      if (cmd->reset_on_submit)
+         nvk_reset_cmd_buffer(cmd);
    }
 
    for (uint32_t i = 0; i < submission->signal_count; i++) {

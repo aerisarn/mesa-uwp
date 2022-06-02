@@ -21,7 +21,10 @@ struct nvk_cmd_buffer {
    struct list_head pool_link;
 
    struct nouveau_ws_push *push;
+   bool reset_on_submit;
 };
+
+VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
 
 VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)

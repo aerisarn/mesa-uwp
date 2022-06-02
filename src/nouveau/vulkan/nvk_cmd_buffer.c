@@ -47,10 +47,13 @@ nvk_create_cmd_buffer(struct nvk_device *device, struct nvk_cmd_pool *pool,
    return VK_SUCCESS;
 }
 
-static VkResult
+VkResult
 nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
 {
    vk_command_buffer_reset(&cmd_buffer->vk);
+
+   nouveau_ws_push_reset(cmd_buffer->push);
+
    return VK_SUCCESS;
 }
 
@@ -207,6 +210,13 @@ nvk_ResetCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferResetFlags 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo)
 {
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+      cmd->reset_on_submit = true;
+   else
+      cmd->reset_on_submit = false;
+
    return VK_SUCCESS;
 }
 

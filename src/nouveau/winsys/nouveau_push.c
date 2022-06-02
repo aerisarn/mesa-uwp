@@ -130,3 +130,11 @@ nouveau_ws_push_ref(
 
    util_dynarray_append(&push->bos, struct nouveau_ws_push_bo, push_bo);
 }
+
+void nouveau_ws_push_reset(struct nouveau_ws_push *push)
+{
+   util_dynarray_clear(&push->bos);
+
+   nouveau_ws_push_ref(push, push->bo, NOUVEAU_WS_BO_RD);
+   push->map = push->orig_map;
+}

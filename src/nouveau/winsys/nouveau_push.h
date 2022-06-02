@@ -27,6 +27,7 @@ struct nouveau_ws_push *nouveau_ws_push_new(struct nouveau_ws_device *, uint64_t
 void nouveau_ws_push_destroy(struct nouveau_ws_push *);
 int nouveau_ws_push_submit(struct nouveau_ws_push *, struct nouveau_ws_device *, struct nouveau_ws_context *);
 void nouveau_ws_push_ref(struct nouveau_ws_push *, struct nouveau_ws_bo *, enum nouveau_ws_bo_map_flags);
+void nouveau_ws_push_reset(struct nouveau_ws_push *);
 
 #ifdef CONFIG_NOUVEAU_DEBUG_PUSH
 #define PUSH_PRINTF(p,f,a...) do {                              \
