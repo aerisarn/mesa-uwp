@@ -25,6 +25,7 @@
  */
 
 #include "compiler.h"
+#include "nodearray.h"
 #include "bi_builder.h"
 #include "util/u_memory.h"
 
@@ -32,16 +33,17 @@ struct lcra_state {
         unsigned node_count;
         uint64_t *affinity;
 
-        /* Linear constraints imposed. Nested array sized upfront, organized as
-         * linear[node_left][node_right]. That is, calculate indices as:
+        /* Linear constraints imposed. For each node there there is a
+         * 'nodearray' structure, which changes between a sparse and dense
+         * array depending on the number of elements.
          *
          * Each element is itself a bit field denoting whether (c_j - c_i) bias
          * is present or not, including negative biases.
          *
-         * Note for Bifrost, there are 4 components so the bias is in range
-         * [-3, 3] so encoded by 8-bit field. */
-
-        uint8_t *linear;
+         * We support up to 8 components so the bias is in range
+         * [-7, 7] encoded by a 16-bit field
+         */
+        nodearray *linear;
 
         /* Before solving, forced registers; after solving, solutions. */
         unsigned *solutions;
@@ -63,7 +65,7 @@ lcra_alloc_equations(unsigned node_count)
 
         l->node_count = node_count;
 
-        l->linear = calloc(sizeof(l->linear[0]), node_count * node_count);
+        l->linear = calloc(sizeof(l->linear[0]), node_count);
         l->solutions = calloc(sizeof(l->solutions[0]), node_count);
         l->affinity = calloc(sizeof(l->affinity[0]), node_count);
 
@@ -75,6 +77,9 @@ lcra_alloc_equations(unsigned node_count)
 static void
 lcra_free(struct lcra_state *l)
 {
+        for (unsigned i = 0; i < l->node_count; ++i)
+                nodearray_reset(&l->linear[i]);
+
         free(l->linear);
         free(l->affinity);
         free(l->solutions);
@@ -87,44 +92,65 @@ lcra_add_node_interference(struct lcra_state *l, unsigned i, unsigned cmask_i, u
         if (i == j)
                 return;
 
-        uint8_t constraint_fw = 0;
-        uint8_t constraint_bw = 0;
+        nodearray_value constraint_fw = 0;
+        nodearray_value constraint_bw = 0;
 
         /* The constraint bits are reversed from lcra.c so that register
          * allocation can be done in parallel for every possible solution,
          * with lower-order bits representing smaller registers. */
 
-        for (unsigned D = 0; D < 4; ++D) {
+        for (unsigned D = 0; D < 8; ++D) {
                 if (cmask_i & (cmask_j << D)) {
-                        constraint_fw |= (1 << (3 + D));
-                        constraint_bw |= (1 << (3 - D));
+                        constraint_fw |= (1 << (7 + D));
+                        constraint_bw |= (1 << (7 - D));
                 }
 
                 if (cmask_i & (cmask_j >> D)) {
-                        constraint_bw |= (1 << (3 + D));
-                        constraint_fw |= (1 << (3 - D));
+                        constraint_bw |= (1 << (7 + D));
+                        constraint_fw |= (1 << (7 - D));
                 }
         }
 
-        l->linear[j * l->node_count + i] |= constraint_fw;
-        l->linear[i * l->node_count + j] |= constraint_bw;
+        /* Use dense arrays after adding 256 elements */
+        nodearray_orr(&l->linear[j], i, constraint_fw, 256, l->node_count);
+        nodearray_orr(&l->linear[i], j, constraint_bw, 256, l->node_count);
 }
 
 static bool
 lcra_test_linear(struct lcra_state *l, unsigned *solutions, unsigned i)
 {
-        uint8_t *row = &l->linear[i * l->node_count];
         signed constant = solutions[i];
+
+        if (nodearray_is_sparse(&l->linear[i])) {
+                nodearray_sparse_foreach(&l->linear[i], elem) {
+                        unsigned j = nodearray_sparse_key(elem);
+                        nodearray_value constraint = nodearray_sparse_value(elem);
+
+                        if (solutions[j] == ~0) continue;
+
+                        signed lhs = constant - solutions[j];
+
+                        if (lhs < -7 || lhs > 7)
+                                continue;
+
+                        if (constraint & (1 << (lhs + 7)))
+                                return false;
+                }
+
+                return true;
+        }
+
+        nodearray_value *row = l->linear[i].dense;
 
         for (unsigned j = 0; j < l->node_count; ++j) {
                 if (solutions[j] == ~0) continue;
 
                 signed lhs = constant - solutions[j];
 
-                if (lhs < -3 || lhs > 3)
+                if (lhs < -7 || lhs > 7)
                         continue;
 
-                if (row[j] & (1 << (lhs + 3)))
+                if (row[j] & (1 << (lhs + 7)))
                         return false;
         }
 
@@ -166,10 +192,15 @@ static unsigned
 lcra_count_constraints(struct lcra_state *l, unsigned i)
 {
         unsigned count = 0;
-        uint8_t *constraints = &l->linear[i * l->node_count];
+        nodearray *constraints = &l->linear[i];
 
-        for (unsigned j = 0; j < l->node_count; ++j)
-                count += util_bitcount(constraints[j]);
+        if (nodearray_is_sparse(constraints)) {
+                nodearray_sparse_foreach(constraints, elem)
+                        count += util_bitcount(nodearray_sparse_value(elem));
+        } else {
+                nodearray_dense_foreach_64(constraints, elem)
+                        count += util_bitcount64(*elem);
+        }
 
         return count;
 }
@@ -522,18 +553,40 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
         unsigned best_benefit = 0.0;
         signed best_node = -1;
 
-        for (unsigned i = 0; i < l->node_count; ++i) {
-                if (BITSET_TEST(no_spill, i)) continue;
+        if (nodearray_is_sparse(&l->linear[l->spill_node])) {
+                nodearray_sparse_foreach(&l->linear[l->spill_node], elem) {
+                        unsigned i = nodearray_sparse_key(elem);
+                        unsigned constraint = nodearray_sparse_value(elem);
 
-                /* Only spill nodes that interfere with the node failing
-                 * register allocation. It's pointless to spill anything else */
-                if (!l->linear[(l->spill_node * l->node_count) + i]) continue;
+                        /* Only spill nodes that interfere with the node failing
+                         * register allocation. It's pointless to spill anything else */
+                        if (!constraint) continue;
 
-                unsigned benefit = lcra_count_constraints(l, i);
+                        if (BITSET_TEST(no_spill, i)) continue;
 
-                if (benefit > best_benefit) {
-                        best_benefit = benefit;
-                        best_node = i;
+                        unsigned benefit = lcra_count_constraints(l, i);
+
+                        if (benefit > best_benefit) {
+                                best_benefit = benefit;
+                                best_node = i;
+                        }
+                }
+        } else {
+                nodearray_value *row = l->linear[l->spill_node].dense;
+
+                for (unsigned i = 0; i < l->node_count; ++i) {
+                        /* Only spill nodes that interfere with the node failing
+                         * register allocation. It's pointless to spill anything else */
+                        if (!row[i]) continue;
+
+                        if (BITSET_TEST(no_spill, i)) continue;
+
+                        unsigned benefit = lcra_count_constraints(l, i);
+
+                        if (benefit > best_benefit) {
+                                best_benefit = benefit;
+                                best_node = i;
+                        }
                 }
         }
 
