@@ -1393,9 +1393,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
    if (!info->dr.count)
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
 
-   if (!pCreateInfo->pMultisampleState ||
-       !vk_find_struct_const(pCreateInfo->pMultisampleState->pNext,
-                             PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT))
+   if (!info->ms.sample_locs_enable)
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
    if (!info->rs.stippled_line_enable)
