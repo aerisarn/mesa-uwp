@@ -1598,3 +1598,6 @@ gmem-dEQP-VK.synchronization2.none_stage.legacy_transfer_dst_to_transfer_src,Fai
 gmem-dEQP-VK.synchronization2.none_stage.legacy_transfer_dst_to_general,Fail
 gmem-dEQP-VK.synchronization2.none_stage.legacy_general_to_transfer_src,Fail
 gmem-dEQP-VK.synchronization2.none_stage.legacy_general_to_general,Fail
+
+dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d24_unorm_s8_uint.compatibility_depth_zero_stencil_zero_testing_stencil,Fail
+dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_sfloat_s8_uint.compatibility_depth_zero_stencil_zero_testing_stencil,Fail

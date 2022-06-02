@@ -2085,7 +2085,8 @@ resolve_sysmem(struct tu_cmd_buffer *cmd,
                uint32_t layer_mask,
                uint32_t layers,
                const VkRect2D *rect,
-               bool separate_ds)
+               bool src_separate_ds,
+               bool dst_separate_ds)
 {
    const struct blit_ops *ops = &r2d_ops;
 
@@ -2097,18 +2098,26 @@ resolve_sysmem(struct tu_cmd_buffer *cmd,
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
 
    for_each_layer(i, layer_mask, layers) {
-      if (separate_ds) {
+      if (src_separate_ds) {
          if (format == VK_FORMAT_D32_SFLOAT) {
             r2d_src_depth(cmd, cs, src, i, VK_FILTER_NEAREST);
-            ops->dst_depth(cs, dst, i);
          } else {
             r2d_src_stencil(cmd, cs, src, i, VK_FILTER_NEAREST);
-            ops->dst_stencil(cs, dst, i);
          }
       } else {
          ops->src(cmd, cs, &src->view, i, VK_FILTER_NEAREST);
+      }
+
+      if (dst_separate_ds) {
+         if (format == VK_FORMAT_D32_SFLOAT) {
+            ops->dst_depth(cs, dst, i);
+         } else {
+            ops->dst_stencil(cs, dst, i);
+         }
+      } else {
          ops->dst(cs, &dst->view, i);
       }
+
       ops->run(cmd, cs);
    }
 
@@ -2126,16 +2135,24 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
                   uint32_t layers,
                   const VkRect2D *rect)
 {
-   assert(src->image->vk_format == dst->image->vk_format);
+   assert(src->image->vk_format == dst->image->vk_format ||
+          (vk_format_is_depth_or_stencil(src->image->vk_format) &&
+           vk_format_is_depth_or_stencil(dst->image->vk_format)));
 
-   if (dst->image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+   bool src_separate_ds = src->image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT;
+   bool dst_separate_ds = dst->image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT;
+
+   if (dst_separate_ds) {
       resolve_sysmem(cmd, cs, VK_FORMAT_D32_SFLOAT,
-                     src, dst, layer_mask, layers, rect, true);
+                     src, dst, layer_mask, layers, rect,
+                     src_separate_ds, dst_separate_ds);
       resolve_sysmem(cmd, cs, VK_FORMAT_S8_UINT,
-                     src, dst, layer_mask, layers, rect, true);
+                     src, dst, layer_mask, layers, rect,
+                     src_separate_ds, dst_separate_ds);
    } else {
       resolve_sysmem(cmd, cs, dst->image->vk_format,
-                     src, dst, layer_mask, layers, rect, false);
+                     src, dst, layer_mask, layers, rect,
+                     src_separate_ds, dst_separate_ds);
    }
 }
 
