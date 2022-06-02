@@ -1,3 +1,12 @@
+# The following are a guess, based on navi21
+dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_1.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.format_float.attachments_8_samples_8.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.format_integer.attachments_8_samples_8.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_1.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_2.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_4.multi_draw_barriers,Fail
+dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_8.multi_draw_barriers,Fail
+
 # Those cases crash in spirv to nir.
 dEQP-VK.ray_query.advanced.using_wrapper_function.comp.triangles,Crash
 dEQP-VK.ray_query.advanced.using_wrapper_function.comp.aabbs,Crash
