@@ -403,9 +403,11 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
          si_cp_wait_mem(sctx, &sctx->gfx_cs, va, 0x00000001, 0x00000001, 0);
       }
 
+      /* ssbo[2] is either tmp_buffer or resource */
+      assert(ssbo[2].buffer);
       si_launch_grid_internal_ssbos(sctx, &grid, sctx->sh_query_result_shader,
                                     SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_AFTER, SI_COHERENCY_SHADER,
-                                    3, ssbo, 0x6);
+                                    3, ssbo, (1 << 2) | (ssbo[1].buffer ? 1 << 1 : 0));
 
       if (qbuf == query->last)
          break;
