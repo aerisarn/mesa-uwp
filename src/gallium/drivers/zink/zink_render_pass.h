@@ -40,7 +40,7 @@ struct zink_rt_attrib {
      bool fbfetch;
   };
   union {
-     bool swapchain;
+     bool invalid;
      bool needs_write;
   };
   bool resolve;
