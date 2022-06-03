@@ -443,7 +443,8 @@ modes_may_alias(nir_variable_mode a, nir_variable_mode b)
 }
 
 ALWAYS_INLINE static nir_deref_compare_result
-compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path)
+compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
+                    unsigned *i)
 {
    /* Start off assuming they fully compare.  We ignore equality for now.  In
     * the end, we'll determine that by containment.
@@ -452,11 +453,12 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path)
                                      nir_derefs_a_contains_b_bit |
                                      nir_derefs_b_contains_a_bit;
 
-   nir_deref_instr **a_p = &a_path->path[1];
-   nir_deref_instr **b_p = &b_path->path[1];
-   while (*a_p != NULL && *a_p == *b_p) {
-      a_p++;
-      b_p++;
+   nir_deref_instr **a = a_path->path;
+   nir_deref_instr **b = b_path->path;
+
+   for (; a[*i] != NULL; (*i)++) {
+      if (a[*i] != b[*i])
+         break;
    }
 
    /* We're at either the tail or the divergence point between the two deref
@@ -470,47 +472,44 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path)
     * divergence point and it's matched in both chains and the two chains have
     * different constant indices.
     */
-   for (nir_deref_instr **t_p = a_p; *t_p; t_p++) {
-      if ((*t_p)->deref_type == nir_deref_type_cast ||
-          (*t_p)->deref_type == nir_deref_type_ptr_as_array)
+   for (unsigned j = *i; a[j] != NULL; j++) {
+      if (a[j]->deref_type == nir_deref_type_cast ||
+          a[j]->deref_type == nir_deref_type_ptr_as_array)
          return nir_derefs_may_alias_bit;
    }
-   for (nir_deref_instr **t_p = b_p; *t_p; t_p++) {
-      if ((*t_p)->deref_type == nir_deref_type_cast ||
-          (*t_p)->deref_type == nir_deref_type_ptr_as_array)
+   for (unsigned j = *i; b[j] != NULL; j++) {
+      if (b[j]->deref_type == nir_deref_type_cast ||
+          b[j]->deref_type == nir_deref_type_ptr_as_array)
          return nir_derefs_may_alias_bit;
    }
 
-   while (*a_p != NULL && *b_p != NULL) {
-      nir_deref_instr *a_tail = *(a_p++);
-      nir_deref_instr *b_tail = *(b_p++);
-
-      switch (a_tail->deref_type) {
+   for (; a[*i] != NULL && b[*i] != NULL; (*i)++) {
+      switch (a[*i]->deref_type) {
       case nir_deref_type_array:
       case nir_deref_type_array_wildcard: {
-         assert(b_tail->deref_type == nir_deref_type_array ||
-                b_tail->deref_type == nir_deref_type_array_wildcard);
+         assert(b[*i]->deref_type == nir_deref_type_array ||
+                b[*i]->deref_type == nir_deref_type_array_wildcard);
 
-         if (a_tail->deref_type == nir_deref_type_array_wildcard) {
-            if (b_tail->deref_type != nir_deref_type_array_wildcard)
+         if (a[*i]->deref_type == nir_deref_type_array_wildcard) {
+            if (b[*i]->deref_type != nir_deref_type_array_wildcard)
                result &= ~nir_derefs_b_contains_a_bit;
-         } else if (b_tail->deref_type == nir_deref_type_array_wildcard) {
-            if (a_tail->deref_type != nir_deref_type_array_wildcard)
+         } else if (b[*i]->deref_type == nir_deref_type_array_wildcard) {
+            if (a[*i]->deref_type != nir_deref_type_array_wildcard)
                result &= ~nir_derefs_a_contains_b_bit;
          } else {
-            assert(a_tail->deref_type == nir_deref_type_array &&
-                   b_tail->deref_type == nir_deref_type_array);
-            assert(a_tail->arr.index.is_ssa && b_tail->arr.index.is_ssa);
+            assert(a[*i]->deref_type == nir_deref_type_array &&
+                   b[*i]->deref_type == nir_deref_type_array);
+            assert(a[*i]->arr.index.is_ssa && b[*i]->arr.index.is_ssa);
 
-            if (nir_src_is_const(a_tail->arr.index) &&
-                nir_src_is_const(b_tail->arr.index)) {
+            if (nir_src_is_const(a[*i]->arr.index) &&
+                nir_src_is_const(b[*i]->arr.index)) {
                /* If they're both direct and have different offsets, they
                 * don't even alias much less anything else.
                 */
-               if (nir_src_as_uint(a_tail->arr.index) !=
-                   nir_src_as_uint(b_tail->arr.index))
+               if (nir_src_as_uint(a[*i]->arr.index) !=
+                   nir_src_as_uint(b[*i]->arr.index))
                   return nir_derefs_do_not_alias;
-            } else if (a_tail->arr.index.ssa == b_tail->arr.index.ssa) {
+            } else if (a[*i]->arr.index.ssa == b[*i]->arr.index.ssa) {
                /* They're the same indirect, continue on */
             } else {
                /* They're not the same index so we can't prove anything about
@@ -524,7 +523,7 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path)
 
       case nir_deref_type_struct: {
          /* If they're different struct members, they don't even alias */
-         if (a_tail->strct.index != b_tail->strct.index)
+         if (a[*i]->strct.index != b[*i]->strct.index)
             return nir_derefs_do_not_alias;
          break;
       }
@@ -534,10 +533,12 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path)
       }
    }
 
+   assert(a[*i] == NULL || b[*i] == NULL);
+
    /* If a is longer than b, then it can't contain b */
-   if (*a_p != NULL)
+   if (a[*i] != NULL)
       result &= ~nir_derefs_a_contains_b_bit;
-   if (*b_p != NULL)
+   if (b[*i] != NULL)
       result &= ~nir_derefs_b_contains_a_bit;
 
    /* If a contains b and b contains a they must be equal. */
@@ -604,7 +605,8 @@ nir_compare_deref_paths(nir_deref_path *a_path,
          return nir_derefs_may_alias_bit;
    }
 
-   return compare_deref_paths(a_path, b_path);
+   unsigned path_idx = 1;
+   return compare_deref_paths(a_path, b_path, &path_idx);
 }
 
 nir_deref_compare_result
