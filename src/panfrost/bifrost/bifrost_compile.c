@@ -2157,13 +2157,15 @@ bi_lower_fsincos_32(bi_builder *b, bi_index dst, bi_index s0, bool cos)
         bi_fadd_f32_to(b, dst, I->dest[0], cos ? cosx : sinx);
 }
 
-/* The XOR lane op is useful for derivative calculation, but was added in v7.
- * Add a safe helper that will do the appropriate lowering on v6 */
-
+/*
+ * The XOR lane op is useful for derivative calculations, but not all Bifrost
+ * implementations have it. Add a safe helper that uses the hardware
+ * functionality when available and lowers where unavailable.
+ */
 static bi_index
 bi_clper_xor(bi_builder *b, bi_index s0, bi_index s1)
 {
-        if (b->shader->arch >= 7) {
+        if (!(b->shader->quirks & BIFROST_LIMITED_CLPER)) {
                 return bi_clper_i32(b, s0, s1,
                                 BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_XOR,
                                 BI_SUBGROUP_SUBGROUP4);
