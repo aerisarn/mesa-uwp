@@ -120,21 +120,14 @@ struct panfrost_vertex_state {
 /* Statically assert that PIPE_* enums match the hardware enums.
  * (As long as they match, we don't need to translate them.)
  */
-UNUSED static void
-pan_pipe_asserts()
-{
-#define PIPE_ASSERT(x) STATIC_ASSERT((int)x)
-
-        /* Compare functions are natural in both Gallium and Mali */
-        PIPE_ASSERT(PIPE_FUNC_NEVER    == MALI_FUNC_NEVER);
-        PIPE_ASSERT(PIPE_FUNC_LESS     == MALI_FUNC_LESS);
-        PIPE_ASSERT(PIPE_FUNC_EQUAL    == MALI_FUNC_EQUAL);
-        PIPE_ASSERT(PIPE_FUNC_LEQUAL   == MALI_FUNC_LEQUAL);
-        PIPE_ASSERT(PIPE_FUNC_GREATER  == MALI_FUNC_GREATER);
-        PIPE_ASSERT(PIPE_FUNC_NOTEQUAL == MALI_FUNC_NOT_EQUAL);
-        PIPE_ASSERT(PIPE_FUNC_GEQUAL   == MALI_FUNC_GEQUAL);
-        PIPE_ASSERT(PIPE_FUNC_ALWAYS   == MALI_FUNC_ALWAYS);
-}
+static_assert((int)PIPE_FUNC_NEVER    == MALI_FUNC_NEVER,     "must match");
+static_assert((int)PIPE_FUNC_LESS     == MALI_FUNC_LESS,      "must match");
+static_assert((int)PIPE_FUNC_EQUAL    == MALI_FUNC_EQUAL,     "must match");
+static_assert((int)PIPE_FUNC_LEQUAL   == MALI_FUNC_LEQUAL,    "must match");
+static_assert((int)PIPE_FUNC_GREATER  == MALI_FUNC_GREATER,   "must match");
+static_assert((int)PIPE_FUNC_NOTEQUAL == MALI_FUNC_NOT_EQUAL, "must match");
+static_assert((int)PIPE_FUNC_GEQUAL   == MALI_FUNC_GEQUAL,    "must match");
+static_assert((int)PIPE_FUNC_ALWAYS   == MALI_FUNC_ALWAYS,    "must match");
 
 static inline enum mali_sample_pattern
 panfrost_sample_pattern(unsigned samples)
