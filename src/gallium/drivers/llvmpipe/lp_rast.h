@@ -188,11 +188,44 @@ struct lp_rast_clear_rb {
 };
 
 
-#define GET_A0(inputs) ((float (*)[4])((inputs)+1))
-#define GET_DADX(inputs) ((float (*)[4])((char *)((inputs) + 1) + (inputs)->stride))
-#define GET_DADY(inputs) ((float (*)[4])((char *)((inputs) + 1) + 2 * (inputs)->stride))
-#define GET_PLANES(tri) ((struct lp_rast_plane *)((char *)(&(tri)->inputs + 1) + 3 * (tri)->inputs.stride))
+/*
+ * Return the address (as float[][4]) of the FS input values which
+ * are immediately after the 'inputs' object.
+ */
+static inline float(*
+GET_A0(const struct lp_rast_shader_inputs *inputs))[4]
+{
+   return (float (*)[4]) (inputs + 1);
+}
 
+/*
+ * Return the address (as float[][4]) of the FS input partial derivatives
+ * (w.r.t. X) which are after the 'inputs' object.
+ */
+static inline float(*
+GET_DADX(const struct lp_rast_shader_inputs *inputs))[4]
+{
+   const uint8_t *p = (const uint8_t *) (inputs + 1);
+   return (float (*)[4]) (p + 1 * inputs->stride);
+}
+
+/*
+ * Return the address (as float[][4]) of the FS input partial derivatives
+ * (w.r.t. Y) which are after the 'inputs' object.
+ */
+static inline float(*
+GET_DADY(const struct lp_rast_shader_inputs *inputs))[4]
+{
+   const uint8_t *p = (const uint8_t *) (inputs + 1);
+   return (float (*)[4]) (p + 2 * inputs->stride);
+}
+
+static inline struct lp_rast_plane *
+GET_PLANES(const struct lp_rast_triangle *tri)
+{
+   const uint8_t *p = (const uint8_t *) (&tri->inputs + 1);
+   return (struct lp_rast_plane *) (p + 3 * tri->inputs.stride);
+}
 
 
 struct lp_rasterizer *
