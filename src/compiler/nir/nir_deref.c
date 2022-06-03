@@ -442,62 +442,9 @@ modes_may_alias(nir_variable_mode a, nir_variable_mode b)
    return a & b;
 }
 
-nir_deref_compare_result
-nir_compare_deref_paths(nir_deref_path *a_path,
-                        nir_deref_path *b_path)
+ALWAYS_INLINE static nir_deref_compare_result
+compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path)
 {
-   if (!modes_may_alias(b_path->path[0]->modes, a_path->path[0]->modes))
-      return nir_derefs_do_not_alias;
-
-   if (a_path->path[0]->deref_type != b_path->path[0]->deref_type)
-      return nir_derefs_may_alias_bit;
-
-   if (a_path->path[0]->deref_type == nir_deref_type_var) {
-      if (a_path->path[0]->var != b_path->path[0]->var) {
-         /* Shader and function temporaries aren't backed by memory so two
-          * distinct variables never alias.
-          */
-         static const nir_variable_mode temp_var_modes =
-            nir_var_shader_temp | nir_var_function_temp;
-         if (!(a_path->path[0]->modes & ~temp_var_modes) ||
-             !(b_path->path[0]->modes & ~temp_var_modes))
-            return nir_derefs_do_not_alias;
-
-         /* Per SPV_KHR_workgroup_memory_explicit_layout and GL_EXT_shared_memory_block,
-          * shared blocks alias each other.
-          */
-         if (a_path->path[0]->modes & nir_var_mem_shared &&
-             b_path->path[0]->modes & nir_var_mem_shared &&
-             (glsl_type_is_interface(a_path->path[0]->var->type) ||
-              glsl_type_is_interface(b_path->path[0]->var->type))) {
-            assert(glsl_type_is_interface(a_path->path[0]->var->type) &&
-                   glsl_type_is_interface(b_path->path[0]->var->type));
-            return nir_derefs_may_alias_bit;
-         }
-
-         /* If we can chase the deref all the way back to the variable and
-          * they're not the same variable and at least one is not declared
-          * coherent, we know they can't possibly alias.
-          */
-         return nir_derefs_do_not_alias;
-      }
-   } else {
-      assert(a_path->path[0]->deref_type == nir_deref_type_cast);
-      /* If they're not exactly the same cast, it's hard to compare them so we
-       * just assume they alias.  Comparing casts is tricky as there are lots
-       * of things such as mode, type, etc. to make sure work out; for now, we
-       * just assume nit_opt_deref will combine them and compare the deref
-       * instructions.
-       *
-       * TODO: At some point in the future, we could be clever and understand
-       * that a float[] and int[] have the same layout and aliasing structure
-       * but double[] and vec3[] do not and we could potentially be a bit
-       * smarter here.
-       */
-      if (a_path->path[0] != b_path->path[0])
-         return nir_derefs_may_alias_bit;
-   }
-
    /* Start off assuming they fully compare.  We ignore equality for now.  In
     * the end, we'll determine that by containment.
     */
@@ -594,10 +541,70 @@ nir_compare_deref_paths(nir_deref_path *a_path,
       result &= ~nir_derefs_b_contains_a_bit;
 
    /* If a contains b and b contains a they must be equal. */
-   if ((result & nir_derefs_a_contains_b_bit) && (result & nir_derefs_b_contains_a_bit))
+   if ((result & nir_derefs_a_contains_b_bit) &&
+       (result & nir_derefs_b_contains_a_bit))
       result |= nir_derefs_equal_bit;
 
    return result;
+}
+
+nir_deref_compare_result
+nir_compare_deref_paths(nir_deref_path *a_path,
+                        nir_deref_path *b_path)
+{
+   if (!modes_may_alias(b_path->path[0]->modes, a_path->path[0]->modes))
+      return nir_derefs_do_not_alias;
+
+   if (a_path->path[0]->deref_type != b_path->path[0]->deref_type)
+      return nir_derefs_may_alias_bit;
+
+   if (a_path->path[0]->deref_type == nir_deref_type_var) {
+      if (a_path->path[0]->var != b_path->path[0]->var) {
+         /* Shader and function temporaries aren't backed by memory so two
+          * distinct variables never alias.
+          */
+         static const nir_variable_mode temp_var_modes =
+            nir_var_shader_temp | nir_var_function_temp;
+         if (!(a_path->path[0]->modes & ~temp_var_modes) ||
+             !(b_path->path[0]->modes & ~temp_var_modes))
+            return nir_derefs_do_not_alias;
+
+         /* Per SPV_KHR_workgroup_memory_explicit_layout and GL_EXT_shared_memory_block,
+          * shared blocks alias each other.
+          */
+         if (a_path->path[0]->modes & nir_var_mem_shared &&
+             b_path->path[0]->modes & nir_var_mem_shared &&
+             (glsl_type_is_interface(a_path->path[0]->var->type) ||
+              glsl_type_is_interface(b_path->path[0]->var->type))) {
+            assert(glsl_type_is_interface(a_path->path[0]->var->type) &&
+                   glsl_type_is_interface(b_path->path[0]->var->type));
+            return nir_derefs_may_alias_bit;
+         }
+
+         /* If we can chase the deref all the way back to the variable and
+          * they're not the same variable and at least one is not declared
+          * coherent, we know they can't possibly alias.
+          */
+         return nir_derefs_do_not_alias;
+      }
+   } else {
+      assert(a_path->path[0]->deref_type == nir_deref_type_cast);
+      /* If they're not exactly the same cast, it's hard to compare them so we
+       * just assume they alias.  Comparing casts is tricky as there are lots
+       * of things such as mode, type, etc. to make sure work out; for now, we
+       * just assume nit_opt_deref will combine them and compare the deref
+       * instructions.
+       *
+       * TODO: At some point in the future, we could be clever and understand
+       * that a float[] and int[] have the same layout and aliasing structure
+       * but double[] and vec3[] do not and we could potentially be a bit
+       * smarter here.
+       */
+      if (a_path->path[0] != b_path->path[0])
+         return nir_derefs_may_alias_bit;
+   }
+
+   return compare_deref_paths(a_path, b_path);
 }
 
 nir_deref_compare_result
