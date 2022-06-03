@@ -2034,9 +2034,10 @@ begin_rendering(struct zink_context *ctx)
             /* dead swapchain */
             return 0;
          ctx->dynamic_fb.attachments[i].imageView = iv;
-         ctx->dynamic_fb.attachments[i].loadOp = !surf || (surf->is_swapchain && ctx->new_swapchain) ?
-                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE :
-                                                 VK_ATTACHMENT_LOAD_OP_LOAD;
+         if (!surf || (surf->is_swapchain && ctx->new_swapchain))
+            ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+         else
+            ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
          ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_R8G8B8A8_UNORM;
       }
 
