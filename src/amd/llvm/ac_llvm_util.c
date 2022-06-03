@@ -62,9 +62,7 @@ static void ac_init_llvm_target(void)
 #endif
    };
 
-#if LLVM_VERSION_MAJOR > 11
-   ac_reset_llvm_command_line_parser();
-#endif
+   ac_reset_llvm_all_options_occurences();
    LLVMParseCommandLineOptions(ARRAY_SIZE(argv), argv, NULL);
 }
 
