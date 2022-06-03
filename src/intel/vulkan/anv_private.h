@@ -2230,7 +2230,7 @@ enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP                    = 1 << 29, /* VK_DYNAMIC_STATE_LOGIC_OP_EXT */
    ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE    = 1 << 30, /* VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE */
 };
-typedef uint32_t anv_cmd_dirty_mask_t;
+typedef enum anv_cmd_dirty_bits anv_cmd_dirty_mask_t;
 
 #define ANV_CMD_DIRTY_DYNAMIC_ALL                       \
    (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |                    \
@@ -2728,9 +2728,9 @@ struct anv_dynamic_state {
 extern const struct anv_dynamic_state default_dynamic_state;
 
 void anv_dynamic_state_init(struct anv_dynamic_state *state);
-uint32_t anv_dynamic_state_copy(struct anv_dynamic_state *dest,
-                                const struct anv_dynamic_state *src,
-                                uint32_t copy_mask);
+anv_cmd_dirty_mask_t anv_dynamic_state_copy(struct anv_dynamic_state *dest,
+                                            const struct anv_dynamic_state *src,
+                                            anv_cmd_dirty_mask_t copy_mask);
 
 static inline struct intel_sample_position *
 anv_dynamic_state_get_sample_locations(struct anv_dynamic_state *state,

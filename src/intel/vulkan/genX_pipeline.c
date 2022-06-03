@@ -763,7 +763,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *ms_info,
               const VkPipelineRasterizationLineStateCreateInfoEXT *line_info,
               const VkPipelineRenderingCreateInfo *rendering_info,
-              const uint32_t dynamic_states,
+              const anv_cmd_dirty_mask_t dynamic_states,
               enum intel_urb_deref_block_size urb_deref_block_size)
 {
    struct GENX(3DSTATE_SF) sf = {
@@ -922,7 +922,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 static void
 emit_ms_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *info,
-              uint32_t dynamic_states)
+              const anv_cmd_dirty_mask_t dynamic_states)
 {
 #if GFX_VER >= 8
    /* On Gfx8+ 3DSTATE_MULTISAMPLE only holds the number of samples. */
@@ -1170,7 +1170,7 @@ static void
 emit_ds_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineDepthStencilStateCreateInfo *pCreateInfo,
               const VkPipelineRenderingCreateInfo *rendering_info,
-              const uint32_t dynamic_states)
+              const anv_cmd_dirty_mask_t dynamic_states)
 {
 #if GFX_VER == 7
 #  define depth_stencil_dw pipeline->gfx7.depth_stencil_state
@@ -1288,7 +1288,7 @@ static void
 emit_cb_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineColorBlendStateCreateInfo *info,
               const VkPipelineMultisampleStateCreateInfo *ms_info,
-              uint32_t dynamic_states)
+              const anv_cmd_dirty_mask_t dynamic_states)
 {
    struct anv_device *device = pipeline->base.device;
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
@@ -1448,7 +1448,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
                   const VkPipelineInputAssemblyStateCreateInfo *ia_info,
                   const VkPipelineViewportStateCreateInfo *vp_info,
                   const VkPipelineRasterizationStateCreateInfo *rs_info,
-                  const uint32_t dynamic_states)
+                  const anv_cmd_dirty_mask_t dynamic_states)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
    (void) wm_prog_data;
@@ -1564,7 +1564,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 static void
 emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
                        const VkPipelineRasterizationStateCreateInfo *rs_info,
-                       const uint32_t dynamic_states)
+                       const anv_cmd_dirty_mask_t dynamic_states)
 {
    const struct brw_vue_prog_data *prog_data =
       anv_pipeline_get_last_vue_prog_data(pipeline);
@@ -2170,7 +2170,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
                 const VkPipelineMultisampleStateCreateInfo *multisample,
                 const VkPipelineRasterizationLineStateCreateInfoEXT *line,
                 const VkRenderingSelfDependencyInfoMESA *rsd,
-                const uint32_t dynamic_states)
+                const anv_cmd_dirty_mask_t dynamic_states)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
@@ -2713,7 +2713,7 @@ genX(graphics_pipeline_create)(
       return result;
    }
 
-   uint32_t dynamic_states = pipeline->dynamic_states;
+   anv_cmd_dirty_mask_t dynamic_states = pipeline->dynamic_states;
 
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.
