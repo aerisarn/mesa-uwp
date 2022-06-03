@@ -76,26 +76,22 @@ nouveau_ws_push_submit(
       req_bo[i].handle = bo->handle;
 
       if (flags & NOUVEAU_WS_BO_RD) {
-         if (bo->flags & NOUVEAU_WS_BO_LOCAL) {
-            req_bo[i].valid_domains |= pdev->local_mem_domain;
-            req_bo[i].read_domains |= pdev->local_mem_domain;
-         }
-
          if (bo->flags & NOUVEAU_WS_BO_GART) {
             req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
             req_bo[i].read_domains |= NOUVEAU_GEM_DOMAIN_GART;
+         } else {
+            req_bo[i].valid_domains |= pdev->local_mem_domain;
+            req_bo[i].read_domains |= pdev->local_mem_domain;
          }
       }
 
       if (flags & NOUVEAU_WS_BO_WR) {
-         if (bo->flags & NOUVEAU_WS_BO_LOCAL) {
-            req_bo[i].valid_domains |= pdev->local_mem_domain;
-            req_bo[i].write_domains |= pdev->local_mem_domain;
-         }
-
          if (bo->flags & NOUVEAU_WS_BO_GART) {
             req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
             req_bo[i].write_domains |= NOUVEAU_GEM_DOMAIN_GART;
+         } else {
+            req_bo[i].valid_domains |= pdev->local_mem_domain;
+            req_bo[i].write_domains |= pdev->local_mem_domain;
          }
       }
 
