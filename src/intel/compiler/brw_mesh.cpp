@@ -90,22 +90,61 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
    *align = comp_size * (length == 3 ? 4 : length);
 }
 
+static bool
+brw_nir_lower_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_launch_mesh_workgroups)
+      return false;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   nir_ssa_def *local_invocation_index = nir_load_local_invocation_index(b);
+
+   /* Make sure that the mesh workgroup size is taken from the first invocation
+    * (nir_intrinsic_launch_mesh_workgroups requirement)
+    */
+   nir_ssa_def *cmp = nir_ieq(b, local_invocation_index, nir_imm_int(b, 0));
+   nir_if *if_stmt = nir_push_if(b, cmp);
+   {
+      /* TUE header contains 4 words:
+       *
+       * - Word 0 for Task Count.
+       *
+       * - Words 1-3 used for "Dispatch Dimensions" feature, to allow mapping a
+       *   3D dispatch into the 1D dispatch supported by HW.
+       */
+      nir_ssa_def *x = nir_channel(b, intrin->src[0].ssa, 0);
+      nir_ssa_def *y = nir_channel(b, intrin->src[0].ssa, 1);
+      nir_ssa_def *z = nir_channel(b, intrin->src[0].ssa, 2);
+      nir_ssa_def *task_count = nir_imul(b, x, nir_imul(b, y, z));
+      nir_ssa_def *tue_header = nir_vec4(b, task_count, x, y, z);
+      nir_store_task_payload(b, tue_header, nir_imm_int(b, 0));
+   }
+   nir_pop_if(b, if_stmt);
+
+   nir_instr_remove(instr);
+
+   return true;
+}
+
+static bool
+brw_nir_lower_launch_mesh_workgroups(nir_shader *nir)
+{
+   return nir_shader_instructions_pass(nir,
+                                       brw_nir_lower_launch_mesh_workgroups_instr,
+                                       nir_metadata_none,
+                                       NULL);
+}
+
 static void
 brw_nir_lower_tue_outputs(nir_shader *nir, brw_tue_map *map)
 {
    memset(map, 0, sizeof(*map));
-
-   /* TUE header contains 4 words:
-    *
-    * - Word 0 for Task Count.
-    *
-    * - Words 1-3 used for "Dispatch Dimensions" feature, to allow mapping a
-    *   3D dispatch into the 1D dispatch supported by HW.  Currently not used.
-    */
-   nir_foreach_shader_out_variable(var, nir) {
-      assert(var->data.location == VARYING_SLOT_TASK_COUNT);
-      var->data.driver_location = 0;
-   }
 
    NIR_PASS(_, nir, nir_lower_io, nir_var_shader_out,
             type_size_scalar_dwords, nir_lower_io_lower_64bit_to_32);
@@ -203,6 +242,15 @@ brw_compile_task(const struct brw_compiler *compiler,
    struct brw_task_prog_data *prog_data = params->prog_data;
    const bool debug_enabled = INTEL_DEBUG(DEBUG_TASK);
 
+   brw_nir_lower_tue_outputs(nir, &prog_data->map);
+
+   nir_lower_task_shader_options lower_ts_opt = {
+      .payload_to_shared_for_atomics = true,
+   };
+   NIR_PASS(_, nir, nir_lower_task_shader, lower_ts_opt);
+
+   NIR_PASS(_, nir, brw_nir_lower_launch_mesh_workgroups);
+
    prog_data->base.base.stage = MESA_SHADER_TASK;
    prog_data->base.base.total_shared = nir->info.shared_size;
    prog_data->base.base.total_scratch = 0;
@@ -213,8 +261,6 @@ brw_compile_task(const struct brw_compiler *compiler,
 
    prog_data->uses_drawid =
       BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
-
-   brw_nir_lower_tue_outputs(nir, &prog_data->map);
 
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info);
