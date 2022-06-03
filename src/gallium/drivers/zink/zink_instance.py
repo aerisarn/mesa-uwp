@@ -120,6 +120,7 @@ struct pipe_resource;
 impl_code = """
 #include "zink_instance.h"
 #include "zink_screen.h"
+#include "vk_enum_to_str.h"
 
 bool
 zink_create_instance(struct zink_screen *screen)
@@ -255,7 +256,7 @@ zink_create_instance(struct zink_screen *screen)
 
    VkResult err = vk_CreateInstance(&ici, NULL, &screen->instance);
    if (err != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateInstance failed");
+      mesa_loge("ZINK: vkCreateInstance failed (%s)", vk_Result_to_str(err));
       return false;
    }
 
