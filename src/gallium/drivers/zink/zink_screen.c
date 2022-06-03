@@ -2070,6 +2070,9 @@ init_driver_workarounds(struct zink_screen *screen)
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
       /* this completely breaks xfb somehow */
       screen->info.have_EXT_extended_dynamic_state2 = false;
+   /* #6602 */
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_TURNIP)
+      screen->info.have_EXT_primitives_generated_query = false;
 }
 
 static struct zink_screen *
