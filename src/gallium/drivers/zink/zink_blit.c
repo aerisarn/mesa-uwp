@@ -47,9 +47,6 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    if (src->format != zink_get_format(screen, info->src.format) ||
        dst->format != zink_get_format(screen, info->dst.format))
       return false;
-   if (info->dst.resource->target == PIPE_BUFFER)
-      util_range_add(info->dst.resource, &dst->valid_buffer_range,
-                     info->dst.box.x, info->dst.box.x + info->dst.box.width);
 
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
@@ -172,9 +169,6 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    zink_batch_reference_resource_rw(batch, dst, true);
 
    zink_resource_setup_transfer_layouts(ctx, src, dst);
-   if (info->dst.resource->target == PIPE_BUFFER)
-      util_range_add(info->dst.resource, &dst->valid_buffer_range,
-                     info->dst.box.x, info->dst.box.x + info->dst.box.width);
    VkImageBlit region = {0};
    region.srcSubresource.aspectMask = src->aspect;
    region.srcSubresource.mipLevel = info->src.level;
@@ -344,9 +338,6 @@ zink_blit(struct pipe_context *pctx,
     */
    apply_dst_clears(ctx, info, true);
 
-   if (info->dst.resource->target == PIPE_BUFFER)
-      util_range_add(info->dst.resource, &dst->valid_buffer_range,
-                     info->dst.box.x, info->dst.box.x + info->dst.box.width);
    /* this will draw a full-resource quad, so ignore existing data */
    if (util_blit_covers_whole_resource(info))
       pctx->invalidate_resource(pctx, info->dst.resource);
