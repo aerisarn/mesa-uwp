@@ -573,32 +573,43 @@ nir_compare_deref_paths(nir_deref_path *a_path,
       return nir_derefs_may_alias_bit;
 
    if (a_path->path[0]->deref_type == nir_deref_type_var) {
-      if (a_path->path[0]->var != b_path->path[0]->var) {
-         /* Shader and function temporaries aren't backed by memory so two
-          * distinct variables never alias.
-          */
-         static const nir_variable_mode temp_var_modes =
-            nir_var_shader_temp | nir_var_function_temp;
-         if (!(a_path->path[0]->modes & ~temp_var_modes) ||
-             !(b_path->path[0]->modes & ~temp_var_modes))
-            return nir_derefs_do_not_alias;
+      const nir_variable *a_var = a_path->path[0]->var;
+      const nir_variable *b_var = b_path->path[0]->var;
 
-         /* Per SPV_KHR_workgroup_memory_explicit_layout and GL_EXT_shared_memory_block,
-          * shared blocks alias each other.
+      /* If we got here, the two variables must have the same mode.  The
+       * only way modes_may_alias() can return true for two different modes
+       * is if one is global and the other ssbo.  However, Global variables
+       * only exist in OpenCL and SSBOs don't exist there.  No API allows
+       * both for variables.
+       */
+      assert(a_var->data.mode == b_var->data.mode);
+
+      switch (a_var->data.mode) {
+      case nir_var_mem_shared:
+         if (a_var == b_var)
+            break;
+
+         /* Per SPV_KHR_workgroup_memory_explicit_layout and
+          * GL_EXT_shared_memory_block, shared blocks alias each other.
+          * We will have either all blocks or all non-blocks.
           */
-         if (a_path->path[0]->modes & nir_var_mem_shared &&
-             b_path->path[0]->modes & nir_var_mem_shared &&
-             (glsl_type_is_interface(a_path->path[0]->var->type) ||
-              glsl_type_is_interface(b_path->path[0]->var->type))) {
-            assert(glsl_type_is_interface(a_path->path[0]->var->type) &&
-                   glsl_type_is_interface(b_path->path[0]->var->type));
+         if (glsl_type_is_interface(a_var->type) ||
+             glsl_type_is_interface(b_var->type)) {
+            assert(glsl_type_is_interface(a_var->type) &&
+                   glsl_type_is_interface(b_var->type));
             return nir_derefs_may_alias_bit;
          }
 
-         /* If we can chase the deref all the way back to the variable and
-          * they're not the same variable and at least one is not declared
-          * coherent, we know they can't possibly alias.
+         /* Otherwise, distinct shared vars don't alias */
+         return nir_derefs_do_not_alias;
+
+      default:
+         /* For any other variable types, if we can chase them back to the
+          * variable, and the variables are different, they don't alias.
           */
+         if (a_var == b_var)
+            break;
+
          return nir_derefs_do_not_alias;
       }
    } else {
