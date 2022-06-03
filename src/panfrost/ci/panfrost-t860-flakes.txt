@@ -1,2 +1,2 @@
 dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgba4_depth_component16
-dEQP-GLES3.functional.draw_buffers_indexed.random.max_required_draw_buffers.7
+dEQP-GLES3.functional.draw_buffers_indexed.random.*
