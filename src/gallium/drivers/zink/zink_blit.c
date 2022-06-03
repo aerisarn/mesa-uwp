@@ -347,6 +347,9 @@ zink_blit(struct pipe_context *pctx,
    if (info->dst.resource->target == PIPE_BUFFER)
       util_range_add(info->dst.resource, &dst->valid_buffer_range,
                      info->dst.box.x, info->dst.box.x + info->dst.box.width);
+   /* this will draw a full-resource quad, so ignore existing data */
+   if (util_blit_covers_whole_resource(info))
+      pctx->invalidate_resource(pctx, info->dst.resource);
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
 
    if (stencil_blit) {
