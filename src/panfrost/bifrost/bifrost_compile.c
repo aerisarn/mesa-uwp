@@ -2797,7 +2797,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         case nir_op_b2i8:
         case nir_op_b2i16:
         case nir_op_b2i32:
-                bi_lshift_and_to(b, sz, dst, s0, bi_imm_uintN(1, sz), bi_imm_u8(0));
+                bi_mux_to(b, sz, dst, bi_imm_u8(0), bi_imm_uintN(1, sz), s0, BI_MUX_INT_ZERO);
                 break;
 
         case nir_op_f2b16:
