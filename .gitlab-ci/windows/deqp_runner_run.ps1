@@ -18,7 +18,7 @@ $deqp_module = "C:\deqp\external\vulkancts\modules\vulkan\deqp-vk.exe"
 $caselist = "C:\deqp\mustpass\vk-master.txt"
 $baseline = ".\_install\warp-fails.txt"
 $flakes = ".\_install\warp-flakes.txt"
-$includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*")
+$includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.binding_model.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*")
 
 $env:DZN_DEBUG = "warp"
 $env:MESA_VK_IGNORE_CONFORMANCE_WARNING = "true"
