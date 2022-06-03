@@ -1429,8 +1429,12 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
       modifier_count = 1;
    }
    struct pipe_resource *pres = resource_create(pscreen, &templ2, whandle, usage, &modifier, modifier_count, NULL);
-   if (pres)
-      zink_resource(pres)->drm_format = whandle->format;
+   if (pres) {
+      struct zink_resource *res = zink_resource(pres);
+      res->drm_format = whandle->format;
+      if (pres->target != PIPE_BUFFER)
+         res->valid = true;
+   }
    return pres;
 #else
    return NULL;
@@ -1492,7 +1496,10 @@ zink_resource_from_memobj(struct pipe_screen *pscreen,
 {
    struct zink_memory_object *memobj = (struct zink_memory_object *)pmemobj;
 
-   return resource_create(pscreen, templ, &memobj->whandle, 0, NULL, 0, NULL);
+   struct pipe_resource *pres = resource_create(pscreen, templ, &memobj->whandle, 0, NULL, 0, NULL);
+   if (pres && pres->target != PIPE_BUFFER)
+      zink_resource(pres)->valid = true;
+   return pres;
 }
 
 static bool
@@ -1537,6 +1544,8 @@ zink_resource_invalidate(struct pipe_context *pctx, struct pipe_resource *pres)
 {
    if (pres->target == PIPE_BUFFER)
       invalidate_buffer(zink_context(pctx), zink_resource(pres));
+   else
+      zink_resource(pres)->valid = false;
 }
 
 static void
@@ -1925,6 +1934,8 @@ zink_image_map(struct pipe_context *pctx,
    }
    if (!ptr)
       goto fail;
+   if (usage & PIPE_MAP_WRITE)
+      res->valid = true;
 
    if (sizeof(void*) == 4)
       trans->base.b.usage |= ZINK_MAP_TEMPORARY;
