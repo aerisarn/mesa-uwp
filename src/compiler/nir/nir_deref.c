@@ -444,7 +444,7 @@ modes_may_alias(nir_variable_mode a, nir_variable_mode b)
 
 ALWAYS_INLINE static nir_deref_compare_result
 compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
-                    unsigned *i)
+                    unsigned *i, bool (*stop_fn)(const nir_deref_instr *))
 {
    /* Start off assuming they fully compare.  We ignore equality for now.  In
     * the end, we'll determine that by containment.
@@ -458,6 +458,9 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
 
    for (; a[*i] != NULL; (*i)++) {
       if (a[*i] != b[*i])
+         break;
+
+      if (stop_fn && stop_fn(a[*i]))
          break;
    }
 
@@ -473,17 +476,26 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
     * different constant indices.
     */
    for (unsigned j = *i; a[j] != NULL; j++) {
+      if (stop_fn && stop_fn(a[j]))
+         break;
+
       if (a[j]->deref_type == nir_deref_type_cast ||
           a[j]->deref_type == nir_deref_type_ptr_as_array)
          return nir_derefs_may_alias_bit;
    }
    for (unsigned j = *i; b[j] != NULL; j++) {
+      if (stop_fn && stop_fn(b[j]))
+         break;
+
       if (b[j]->deref_type == nir_deref_type_cast ||
           b[j]->deref_type == nir_deref_type_ptr_as_array)
          return nir_derefs_may_alias_bit;
    }
 
    for (; a[*i] != NULL && b[*i] != NULL; (*i)++) {
+      if (stop_fn && (stop_fn(a[*i]) || stop_fn(b[*i])))
+         break;
+
       switch (a[*i]->deref_type) {
       case nir_deref_type_array:
       case nir_deref_type_array_wildcard: {
@@ -533,9 +545,10 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
       }
    }
 
-   assert(a[*i] == NULL || b[*i] == NULL);
-
-   /* If a is longer than b, then it can't contain b */
+   /* If a is longer than b, then it can't contain b.  If neither a[i] nor
+    * b[i] are NULL then we aren't at the end of the chain and we know nothing
+    * about containment.
+    */
    if (a[*i] != NULL)
       result &= ~nir_derefs_a_contains_b_bit;
    if (b[*i] != NULL)
@@ -606,7 +619,7 @@ nir_compare_deref_paths(nir_deref_path *a_path,
    }
 
    unsigned path_idx = 1;
-   return compare_deref_paths(a_path, b_path, &path_idx);
+   return compare_deref_paths(a_path, b_path, &path_idx, NULL);
 }
 
 nir_deref_compare_result
