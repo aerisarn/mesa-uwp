@@ -3,8 +3,8 @@ Panfrost
 
 The Panfrost driver stack includes an OpenGL ES implementation for Arm Mali
 GPUs based on the Midgard and Bifrost microarchitectures. It is **conformant**
-on Mali G52 but **non-conformant** on other GPUs. The following hardware is
-currently supported:
+on Mali-G52 and Mali-G57 but **non-conformant** on other GPUs. The following
+hardware is currently supported:
 
 =========  ============ ============ =======
 Product    Architecture OpenGL ES    OpenGL
@@ -20,6 +20,7 @@ Mali G31   Bifrost (v7) 3.1          3.1
 Mali G51   Bifrost (v7) 3.1          3.1
 Mali G52   Bifrost (v7) 3.1          3.1
 Mali G76   Bifrost (v7) 3.1          3.1
+Mali G57   Valhall (v9) 3.1          3.1
 =========  ============ ============ =======
 
 Other Midgard and Bifrost chips (T604, T628, G71) are not yet supported.
@@ -88,6 +89,7 @@ Mali-T720  Midgard (v4) 720
 Mali-T860  Midgard (v5) 860
 Mali-G72   Bifrost (v6) 6221
 Mali-G52   Bifrost (v7) 7212
+Mali-G57   Valhall (v9) 9093
 =========  ============ =======
 
 Additional GPU IDs are enumerated in the ``panfrost_model_list`` list in
