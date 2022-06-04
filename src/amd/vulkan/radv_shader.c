@@ -820,6 +820,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
 
    static const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
+      .lower_txf_offset = true,
       .lower_tg4_offsets = true,
       .lower_txs_cube_array = true,
       .lower_to_fragment_fetch_amd = true,

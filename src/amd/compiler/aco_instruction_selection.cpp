@@ -9347,7 +9347,9 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       return;
    }
 
-   if (has_offset && instr->op != nir_texop_txf) {
+   if (has_offset) {
+      assert(instr->op != nir_texop_txf);
+
       aco_ptr<Instruction> tmp_instr;
       Temp acc, pack = Temp();
 
@@ -9453,14 +9455,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    }
 
    bool da = should_declare_array(ctx, instr->sampler_dim, instr->is_array);
-
-   if (has_offset && instr->op == nir_texop_txf) {
-      for (unsigned i = 0; i < std::min(offset.size(), instr->coord_components); i++) {
-         Temp off = emit_extract_vector(ctx, offset, i, v1);
-         coords[i] = bld.vadd32(bld.def(v1), coords[i], off);
-      }
-      has_offset = false;
-   }
 
    /* Build tex instruction */
    unsigned dmask = nir_ssa_def_components_read(&instr->dest.ssa) & 0xf;
