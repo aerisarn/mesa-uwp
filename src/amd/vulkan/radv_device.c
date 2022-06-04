@@ -3160,6 +3160,20 @@ radv_device_finish_notifier(struct radv_device *device)
 #endif
 }
 
+static void
+radv_device_finish_perf_counter_lock_cs(struct radv_device *device)
+{
+   if (!device->perf_counter_lock_cs)
+      return;
+
+   for (unsigned i = 0; i < 2 * PERF_CTR_MAX_PASSES; ++i) {
+      if (device->perf_counter_lock_cs[i])
+         device->ws->cs_destroy(device->perf_counter_lock_cs[i]);
+   }
+
+   free(device->perf_counter_lock_cs);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
@@ -3548,6 +3562,13 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
                                    RADV_BO_PRIORITY_UPLOAD_BUFFER, 0, &device->perf_counter_bo);
       if (result != VK_SUCCESS)
          goto fail_cache;
+
+      device->perf_counter_lock_cs =
+         calloc(sizeof(struct radeon_winsys_cs *), 2 * PERF_CTR_MAX_PASSES);
+      if (!device->perf_counter_lock_cs) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail_cache;
+      }
    }
 
    *pDevice = radv_device_to_handle(device);
@@ -3565,6 +3586,7 @@ fail:
    radv_trap_handler_finish(device);
    radv_finish_trace(device);
 
+   radv_device_finish_perf_counter_lock_cs(device);
    if (device->perf_counter_bo)
       device->ws->buffer_destroy(device->ws, device->perf_counter_bo);
    if (device->gfx_init)
@@ -3603,6 +3625,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (!device)
       return;
 
+   radv_device_finish_perf_counter_lock_cs(device);
    if (device->perf_counter_bo)
       device->ws->buffer_destroy(device->ws, device->perf_counter_bo);
 
@@ -4510,6 +4533,84 @@ fail:
    return vk_error(queue, result);
 }
 
+static struct radeon_cmdbuf *
+radv_create_perf_counter_lock_cs(struct radv_device *device, unsigned pass, bool unlock)
+{
+   struct radeon_cmdbuf **cs_ref = &device->perf_counter_lock_cs[pass * 2 + (unlock ? 1 : 0)];
+   struct radeon_cmdbuf *cs;
+
+   if (*cs_ref)
+      return *cs_ref;
+
+   cs = device->ws->cs_create(device->ws, AMD_IP_GFX);
+   if (!cs)
+      return NULL;
+
+   ASSERTED unsigned cdw = radeon_check_space(device->ws, cs, 21);
+
+   if (!unlock) {
+      uint64_t mutex_va = radv_buffer_get_va(device->perf_counter_bo) + PERF_CTR_BO_LOCK_OFFSET;
+      radeon_emit(cs, PKT3(PKT3_ATOMIC_MEM, 7, 0));
+      radeon_emit(cs, ATOMIC_OP(TC_OP_ATOMIC_CMPSWAP_32) | ATOMIC_COMMAND(ATOMIC_COMMAND_LOOP));
+      radeon_emit(cs, mutex_va);       /* addr lo */
+      radeon_emit(cs, mutex_va >> 32); /* addr hi */
+      radeon_emit(cs, 1);              /* data lo */
+      radeon_emit(cs, 0);              /* data hi */
+      radeon_emit(cs, 0);              /* compare data lo */
+      radeon_emit(cs, 0);              /* compare data hi */
+      radeon_emit(cs, 10);             /* loop interval */
+   }
+
+   uint64_t va = radv_buffer_get_va(device->perf_counter_bo) + PERF_CTR_BO_PASS_OFFSET;
+   uint64_t unset_va = va + (unlock ? 8 * pass : 0);
+   uint64_t set_va = va + (unlock ? 0 : 8 * pass);
+
+   radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+   radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                      COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM);
+   radeon_emit(cs, 0); /* immediate */
+   radeon_emit(cs, 0);
+   radeon_emit(cs, unset_va);
+   radeon_emit(cs, unset_va >> 32);
+
+   radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+   radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                      COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM);
+   radeon_emit(cs, 1); /* immediate */
+   radeon_emit(cs, 0);
+   radeon_emit(cs, set_va);
+   radeon_emit(cs, set_va >> 32);
+
+   if (unlock) {
+      uint64_t mutex_va = radv_buffer_get_va(device->perf_counter_bo) + PERF_CTR_BO_LOCK_OFFSET;
+
+      radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+      radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                         COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM);
+      radeon_emit(cs, 0); /* immediate */
+      radeon_emit(cs, 0);
+      radeon_emit(cs, mutex_va);
+      radeon_emit(cs, mutex_va >> 32);
+   }
+
+   assert(cs->cdw <= cdw);
+
+   VkResult result = device->ws->cs_finalize(cs);
+   if (result != VK_SUCCESS) {
+      device->ws->cs_destroy(cs);
+      return NULL;
+   }
+
+   /* All the casts are to avoid MSVC errors around pointer truncation in a non-taken
+    * alternative.
+    */
+   if (p_atomic_cmpxchg((uintptr_t*)cs_ref, 0, (uintptr_t)cs) != 0) {
+      device->ws->cs_destroy(cs);
+   }
+
+   return *cs_ref;
+}
+
 static VkResult
 radv_sparse_buffer_bind_memory(struct radv_device *device, const VkSparseBufferMemoryBindInfo *bind)
 {
@@ -4625,7 +4726,8 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 
 static VkResult
 radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device,
-                      struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count)
+                      struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count,
+                      bool *uses_perf_counters)
 {
    if (queue->qf == RADV_QUEUE_TRANSFER)
       return VK_SUCCESS;
@@ -4637,6 +4739,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
     * - Allocate the max size and reuse it, but don't free it until the queue is destroyed
     */
    struct radv_queue_ring_info needs = queue->ring_info;
+   *uses_perf_counters = false;
    for (uint32_t j = 0; j < cmd_buffer_count; j++) {
       struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
 
@@ -4655,6 +4758,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
       needs.gds |= cmd_buffer->gds_needed;
       needs.gds_oa |= cmd_buffer->gds_oa_needed;
       needs.sample_positions |= cmd_buffer->sample_positions_needed;
+      *uses_perf_counters |= cmd_buffer->state.uses_perf_counters;
    }
 
    /* Sanitize scratch size information. */
@@ -4767,17 +4871,21 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    bool can_patch = true;
    uint32_t advance;
    VkResult result;
+   bool uses_perf_counters = false;
+   unsigned cmd_buffer_count = submission->command_buffer_count;
 
    result = radv_update_preambles(&queue->state, queue->device, submission->command_buffers,
-                                  submission->command_buffer_count);
+                                  submission->command_buffer_count, &uses_perf_counters);
    if (result != VK_SUCCESS)
       return result;
 
    if (queue->device->trace_bo)
       simple_mtx_lock(&queue->device->trace_mtx);
 
-   struct radeon_cmdbuf **cs_array =
-      malloc(sizeof(struct radeon_cmdbuf *) * (submission->command_buffer_count));
+   if (uses_perf_counters)
+      cmd_buffer_count += 2;
+
+   struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cmd_buffer_count);
    if (!cs_array)
       goto fail;
 
@@ -4785,11 +4893,23 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       struct radv_cmd_buffer *cmd_buffer = (struct radv_cmd_buffer *)submission->command_buffers[j];
       assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-      cs_array[j] = cmd_buffer->cs;
+      cs_array[j + (uses_perf_counters ? 1 : 0)] = cmd_buffer->cs;
       if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
          can_patch = false;
 
       cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
+   }
+
+   if (uses_perf_counters) {
+      cs_array[0] =
+         radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, false);
+      cs_array[cmd_buffer_count - 1] =
+         radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, true);
+      can_patch = false;
+      if (!cs_array[0] || !cs_array[cmd_buffer_count - 1]) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail;
+      }
    }
 
    /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
@@ -4806,9 +4926,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       .continue_preamble_cs = queue->state.continue_preamble_cs,
    };
 
-   for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
-      advance = MIN2(max_cs_submission, submission->command_buffer_count - j);
-      bool last_submit = j + advance == submission->command_buffer_count;
+   for (uint32_t j = 0; j < cmd_buffer_count; j += advance) {
+      advance = MIN2(max_cs_submission, cmd_buffer_count - j);
+      bool last_submit = j + advance == cmd_buffer_count;
 
       if (queue->device->trace_bo)
          *queue->device->trace_id_ptr = 0;

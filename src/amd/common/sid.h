@@ -115,6 +115,11 @@
 #define PKT3_DISPATCH_DIRECT                0x15
 #define PKT3_DISPATCH_INDIRECT              0x16
 #define PKT3_ATOMIC_MEM                     0x1E
+#define ATOMIC_OP(x)                        ((unsigned)((x)&0x7f) << 0)
+#define TC_OP_ATOMIC_CMPSWAP_32             0x48
+#define ATOMIC_COMMAND(x)                   ((unsigned)((x)&0x3) << 8)
+#define ATOMIC_COMMAND_SINGLE_PASS          0x0
+#define ATOMIC_COMMAND_LOOP                 0x1
 #define PKT3_OCCLUSION_QUERY                0x1F /* new for CIK */
 #define PKT3_SET_PREDICATION                0x20
 #define PKT3_COND_EXEC                      0x22

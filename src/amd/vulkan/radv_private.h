@@ -918,6 +918,9 @@ struct radv_device {
     * - the pass to use for profiling. (as an array of bools)
     */
    struct radeon_winsys_bo *perf_counter_bo;
+
+   /* Interleaved lock/unlock commandbuffers for perfcounter passes. */
+   struct radeon_cmdbuf **perf_counter_lock_cs;
 };
 
 bool radv_device_acquire_performance_counters(struct radv_device *device);
@@ -1532,6 +1535,9 @@ struct radv_cmd_state {
 
    /* Whether to suspend streamout for internal driver operations. */
    bool suspend_streamout;
+
+   /* Whether this commandbuffer uses performance counters. */
+   bool uses_perf_counters;
 };
 
 struct radv_cmd_pool {
