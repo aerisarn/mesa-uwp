@@ -164,6 +164,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_IMAGE_ATOMIC_INC_WRAP:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER:
+   case PIPE_CAP_QUERY_SO_OVERFLOW:
       return 1;
 
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
@@ -183,9 +184,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
    case PIPE_CAP_CUBE_MAP_ARRAY:
       return sscreen->info.has_3d_cube_border_color_mipmap;
-
-   case PIPE_CAP_QUERY_SO_OVERFLOW:
-      return !sscreen->use_ngg_streamout;
 
    case PIPE_CAP_POST_DEPTH_COVERAGE:
       return sscreen->info.gfx_level >= GFX10;
