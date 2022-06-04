@@ -32,13 +32,13 @@
    bi_builder *A = bit_builder(mem_ctx); \
    bi_builder *B = bit_builder(mem_ctx); \
    { \
-      bi_builder *b = A; \
+      UNUSED bi_builder *b = A; \
       A->shader->stage = MESA_SHADER_ ## shader_stage; \
       test; \
    } \
    va_insert_flow_control_nops(A->shader); \
    { \
-      bi_builder *b = B; \
+      UNUSED bi_builder *b = B; \
       B->shader->stage = MESA_SHADER_ ## shader_stage; \
       expected; \
    } \
@@ -59,6 +59,10 @@ protected:
 
    void *mem_ctx;
 };
+
+TEST_F(InsertFlow, PreserveEmptyShader) {
+   CASE(FRAGMENT, {}, {});
+}
 
 TEST_F(InsertFlow, TilebufferWait7) {
    CASE(FRAGMENT, {

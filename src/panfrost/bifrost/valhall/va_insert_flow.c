@@ -354,12 +354,33 @@ va_discard_before_block(bi_block *block)
 }
 
 /*
+ * Test if a program is empty, in the sense of having zero instructions. Empty
+ * shaders get special handling.
+ */
+static bool
+bi_is_empty(bi_context *ctx)
+{
+   bi_foreach_instr_global(ctx, _)
+      return false;
+
+   return true;
+}
+
+/*
  * Given a program with no flow control modifiers, insert NOPs signaling the
  * required flow control. Not much optimization happens here.
  */
 void
 va_insert_flow_control_nops(bi_context *ctx)
 {
+   /* Special case: if a program is empty, leave it empty. In particular, do not
+    * insert NOP.end. There is special handling in the driver for skipping empty
+    * shaders for shader stage. The .end is not necessary and disrupts
+    * optimizations.
+    */
+   if (bi_is_empty(ctx))
+      return;
+
    /* First do dataflow analysis for the scoreboard. This populates I->flow with
     * a bitmap of slots to wait on.
     *
