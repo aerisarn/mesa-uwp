@@ -3682,7 +3682,9 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         unsigned min_index = 0, max_index = 0;
         mali_ptr indices = 0;
 
-        if (info->index_size) {
+        if (info->index_size && PAN_ARCH >= 9) {
+                indices = panfrost_get_index_buffer(batch, info, draw);
+        } else if (info->index_size) {
                 indices = panfrost_get_index_buffer_bounded(batch, info, draw,
                                                             &min_index,
                                                             &max_index);
