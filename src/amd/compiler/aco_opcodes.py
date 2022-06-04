@@ -1485,6 +1485,21 @@ IMAGE_SAMPLE = {
 for (code, name) in IMAGE_SAMPLE:
    opcode(name, code, code, code, Format.MIMG, InstrClass.VMem)
 
+IMAGE_SAMPLE_G16 = {
+   (0xa2, "image_sample_d_g16"),
+   (0xa3, "image_sample_d_cl_g16"),
+   (0xaa, "image_sample_c_d_g16"),
+   (0xab, "image_sample_c_d_cl_g16"),
+   (0xb2, "image_sample_d_o_g16"),
+   (0xb3, "image_sample_d_cl_o_g16"),
+   (0xba, "image_sample_c_d_o_g16"),
+   (0xbb, "image_sample_c_d_cl_o_g16"),
+}
+
+# (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, -1, -1, code, name)
+for (code, name) in IMAGE_SAMPLE_G16:
+   opcode(name, -1, -1, code, Format.MIMG, InstrClass.VMem)
+
 IMAGE_GATHER4 = {
    (0x40, "image_gather4"),
    (0x41, "image_gather4_cl"),
