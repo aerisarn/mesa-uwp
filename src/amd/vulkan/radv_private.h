@@ -2811,6 +2811,30 @@ struct radv_query_pool {
    bool uses_gds; /* For NGG GS on GFX10+ */
 };
 
+struct radv_perfcounter_impl;
+
+struct radv_pc_query_pool {
+   struct radv_query_pool b;
+
+   uint32_t *pc_regs;
+   unsigned num_pc_regs;
+
+   unsigned num_passes;
+
+   unsigned num_counters;
+   struct radv_perfcounter_impl *counters;
+};
+
+void radv_pc_deinit_query_pool(struct radv_pc_query_pool *pool);
+VkResult radv_pc_init_query_pool(struct radv_physical_device *pdevice,
+                                 const VkQueryPoolCreateInfo *pCreateInfo,
+                                 struct radv_pc_query_pool *pool);
+void radv_pc_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_pc_query_pool *pool,
+                         uint64_t va);
+void radv_pc_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_pc_query_pool *pool,
+                       uint64_t va);
+void radv_pc_get_results(const struct radv_pc_query_pool *pc_pool, const uint64_t *data, void *out);
+
 bool radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs);
 
 int radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
@@ -2874,6 +2898,7 @@ bool radv_is_instruction_timing_enabled(void);
 
 void radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs,
                                    bool inhibit);
+void radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, bool enable);
 
 bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                           struct radv_buffer *buffer, const VkBufferImageCopy2 *region);

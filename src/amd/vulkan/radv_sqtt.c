@@ -364,7 +364,7 @@ radv_emit_thread_trace_userdata(struct radv_cmd_buffer *cmd_buffer, const void *
    }
 }
 
-static void
+void
 radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, bool enable)
 {
    if (device->physical_device->rad_info.gfx_level >= GFX9) {

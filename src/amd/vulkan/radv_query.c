@@ -30,6 +30,7 @@
 
 #include "nir/nir_builder.h"
 #include "util/u_atomic.h"
+#include "vulkan/vulkan_core.h"
 #include "radv_acceleration_structure.h"
 #include "radv_cs.h"
 #include "radv_meta.h"
@@ -1066,6 +1067,9 @@ static void
 radv_destroy_query_pool(struct radv_device *device, const VkAllocationCallbacks *pAllocator,
                         struct radv_query_pool *pool)
 {
+   if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR)
+      radv_pc_deinit_query_pool((struct radv_pc_query_pool *)pool);
+
    if (pool->bo)
       device->ws->buffer_destroy(device->ws, pool->bo);
    vk_object_base_finish(&pool->base);
@@ -1077,8 +1081,13 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator, VkQueryPool *pQueryPool)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   struct radv_query_pool *pool =
-      vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   VkResult result;
+   size_t pool_struct_size = pCreateInfo->queryType == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR
+                                ? sizeof(struct radv_pc_query_pool)
+                                : sizeof(struct radv_query_pool);
+
+   struct radv_query_pool *pool = vk_alloc2(&device->vk.alloc, pAllocator, pool_struct_size, 8,
+                                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (!pool)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1126,6 +1135,16 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
          pool->stride += 8 * 4;
       }
       break;
+   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+      result = radv_pc_init_query_pool(device->physical_device, pCreateInfo,
+                                       (struct radv_pc_query_pool *)pool);
+
+      if (result != VK_SUCCESS) {
+         radv_destroy_query_pool(device, pAllocator, pool);
+         return vk_error(device, result);
+      }
+      break;
+   }
    default:
       unreachable("creating unhandled query type");
    }
@@ -1135,9 +1154,9 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
    if (pCreateInfo->queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS)
       pool->size += 4 * pCreateInfo->queryCount;
 
-   VkResult result = device->ws->buffer_create(device->ws, pool->size, 64, RADEON_DOMAIN_GTT,
-                                               RADEON_FLAG_NO_INTERPROCESS_SHARING,
-                                               RADV_BO_PRIORITY_QUERY_POOL, 0, &pool->bo);
+   result = device->ws->buffer_create(device->ws, pool->size, 64, RADEON_DOMAIN_GTT,
+                                      RADEON_FLAG_NO_INTERPROCESS_SHARING,
+                                      RADV_BO_PRIORITY_QUERY_POOL, 0, &pool->bo);
    if (result != VK_SUCCESS) {
       radv_destroy_query_pool(device, pAllocator, pool);
       return vk_error(device, result);
@@ -1391,6 +1410,23 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
                *(uint32_t *)dest = primitive_storage_needed;
             dest += 4;
          }
+         break;
+      }
+      case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+         struct radv_pc_query_pool *pc_pool = (struct radv_pc_query_pool *)pool;
+         const uint64_t *src64 = (const uint64_t *)src;
+         bool avail;
+         do {
+            avail = true;
+            for (unsigned i = 0; i < pc_pool->num_passes; ++i)
+               if (!p_atomic_read(src64 + pool->stride / 8 - i - 1))
+                  avail = false;
+         } while (!avail && (flags & VK_QUERY_RESULT_WAIT_BIT));
+
+         available = avail;
+
+         radv_pc_get_results(pc_pool, src64, dest);
+         dest += pc_pool->num_counters * sizeof(union VkPerformanceCounterResultKHR);
          break;
       }
       default:
@@ -1813,6 +1849,10 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       }
       break;
    }
+   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+      radv_pc_begin_query(cmd_buffer, (struct radv_pc_query_pool *)pool, va);
+      break;
+   }
    default:
       unreachable("beginning unhandled query type");
    }
@@ -1897,6 +1937,10 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
 
          cmd_buffer->state.active_pipeline_gds_queries--;
       }
+      break;
+   }
+   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+      radv_pc_end_query(cmd_buffer, (struct radv_pc_query_pool *)pool, va);
       break;
    }
    default:
