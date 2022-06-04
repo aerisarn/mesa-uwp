@@ -1078,8 +1078,11 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
    // TODO: also optimize the tex srcs. see radeonSI for reference */
    /* Skip if there are potentially conflicting rounding modes */
-   if (!nir_has_any_rounding_mode_enabled(nir->info.float_controls_execution_mode))
-      NIR_PASS_V(nir, nir_fold_16bit_sampler_conversions, 0, UINT32_MAX);
+   struct nir_fold_16bit_tex_image_options fold_16bit_options = {
+      .rounding_mode = nir_rounding_mode_undef,
+      .fold_tex_dest = true,
+   };
+   NIR_PASS_V(nir, nir_fold_16bit_tex_image, &fold_16bit_options);
 
    lvp_shader_optimize(nir);
 

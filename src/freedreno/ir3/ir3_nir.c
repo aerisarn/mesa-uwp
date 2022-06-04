@@ -771,20 +771,27 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
           * coordinates that had been upconverted to 32-bits just for the
           * sampler to just be 16-bit texture sources.
           */
-         OPT(s, nir_fold_16bit_sampler_conversions,
-            (1 << nir_tex_src_coord) |
-            (1 << nir_tex_src_lod) |
-            (1 << nir_tex_src_bias) |
-            (1 << nir_tex_src_comparator) |
-            (1 << nir_tex_src_min_lod) |
-            (1 << nir_tex_src_ms_index) |
-            (1 << nir_tex_src_ddx) |
-            (1 << nir_tex_src_ddy),
-            ~0);
+         struct nir_fold_tex_srcs_options fold_srcs_options = {
+            .sampler_dims = ~0,
+            .src_types = (1 << nir_tex_src_coord) |
+                         (1 << nir_tex_src_lod) |
+                         (1 << nir_tex_src_bias) |
+                         (1 << nir_tex_src_comparator) |
+                         (1 << nir_tex_src_min_lod) |
+                         (1 << nir_tex_src_ms_index) |
+                         (1 << nir_tex_src_ddx) |
+                         (1 << nir_tex_src_ddy),
+         };
+         struct nir_fold_16bit_tex_image_options fold_16bit_options = {
+            .rounding_mode = nir_rounding_mode_rtz,
+            .fold_tex_dest = true,
+            /* blob dumps have no half regs on pixel 2's ldib or stib, so only enable for a6xx+. */
+            .fold_image_load_store_data = so->compiler->gen >= 6,
+            .fold_srcs_options_count = 1,
+            .fold_srcs_options = &fold_srcs_options,
+         };
+         OPT(s, nir_fold_16bit_tex_image, &fold_16bit_options);
 
-         /* blob dumps have no half regs on pixel 2's ldib or stib, so only enable for a6xx+. */
-         if (so->compiler->gen >= 6)
-            OPT(s, nir_fold_16bit_image_load_store_conversions);
 
          /* Now that we stripped off the 16-bit conversions, legalize so that we
           * don't have a mix of 16- and 32-bit args that will need to be

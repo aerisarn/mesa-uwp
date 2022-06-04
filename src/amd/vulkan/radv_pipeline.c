@@ -4888,15 +4888,14 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          }
          if (((stages[i].nir->info.bit_sizes_int | stages[i].nir->info.bit_sizes_float) & 16) &&
              device->physical_device->rad_info.gfx_level >= GFX9) {
-            uint32_t sampler_dims = UINT32_MAX;
-            /* Skip because AMD doesn't support 16-bit types with these. */
-            sampler_dims &= ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE);
             // TODO: also optimize the tex srcs. see radeonSI for reference */
-            /* Skip if there are potentially conflicting rounding modes */
-            if (!nir_has_any_rounding_mode_enabled(stages[i].nir->info.float_controls_execution_mode))
-               NIR_PASS(_, stages[i].nir, nir_fold_16bit_sampler_conversions, 0, sampler_dims);
+            struct nir_fold_16bit_tex_image_options fold_16bit_options = {
+               .rounding_mode = nir_rounding_mode_rtne,
+               .fold_tex_dest = true,
+               .fold_image_load_store_data = true,
+            };
+            NIR_PASS(_, stages[i].nir, nir_fold_16bit_tex_image, &fold_16bit_options);
 
-            NIR_PASS(_, stages[i].nir, nir_fold_16bit_image_load_store_conversions);
             NIR_PASS(_, stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, device);
          }
 
