@@ -835,3 +835,92 @@ radv_pc_get_results(const struct radv_pc_query_pool *pc_pool, const uint64_t *da
       pc_result[i] = radv_pc_get_result(pc_pool->counters + i, data);
    }
 }
+
+VkResult
+radv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+   VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, uint32_t *pCounterCount,
+   VkPerformanceCounterKHR *pCounters, VkPerformanceCounterDescriptionKHR *pCounterDescriptions)
+{
+   RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
+
+   if (vk_queue_to_radv(pdevice, queueFamilyIndex) != RADV_QUEUE_GENERAL) {
+      *pCounterCount = 0;
+      return VK_SUCCESS;
+   }
+
+   if (!radv_init_perfcounter_descs(pdevice))
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   uint32_t counter_cnt = pdevice->num_perfcounters;
+   const struct radv_perfcounter_desc *descs = pdevice->perfcounters;
+
+   if (!pCounters && !pCounterDescriptions) {
+      *pCounterCount = counter_cnt;
+      return VK_SUCCESS;
+   }
+
+   VkResult result = counter_cnt > *pCounterCount ? VK_INCOMPLETE : VK_SUCCESS;
+   counter_cnt = MIN2(counter_cnt, *pCounterCount);
+   *pCounterCount = counter_cnt;
+
+   for (uint32_t i = 0; i < counter_cnt; ++i) {
+      if (pCounters) {
+         pCounters[i].sType = VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR;
+         pCounters[i].unit = descs[i].unit;
+         pCounters[i].scope = VK_PERFORMANCE_COUNTER_SCOPE_COMMAND_KHR;
+         pCounters[i].storage = VK_PERFORMANCE_COUNTER_STORAGE_FLOAT64_KHR;
+
+         memset(&pCounters[i].uuid, 0, sizeof(pCounters[i].uuid));
+         strcpy((char*)&pCounters[i].uuid, "RADV");
+
+         const uint32_t uuid = descs[i].uuid;
+         memcpy(&pCounters[i].uuid[12], &uuid, sizeof(uuid));
+      }
+
+      if (pCounterDescriptions) {
+         pCounterDescriptions[i].sType = VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR;
+         pCounterDescriptions[i].flags =
+            VK_PERFORMANCE_COUNTER_DESCRIPTION_CONCURRENTLY_IMPACTED_BIT_KHR;
+         strcpy(pCounterDescriptions[i].name, descs[i].name);
+         strcpy(pCounterDescriptions[i].category, descs[i].category);
+         strcpy(pCounterDescriptions[i].description, descs[i].description);
+      }
+   }
+   return result;
+}
+
+void
+radv_GetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR(
+   VkPhysicalDevice physicalDevice,
+   const VkQueryPoolPerformanceCreateInfoKHR *pPerformanceQueryCreateInfo, uint32_t *pNumPasses)
+{
+   RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
+
+   if (pPerformanceQueryCreateInfo->counterIndexCount == 0) {
+      *pNumPasses = 0;
+      return;
+   }
+
+   if (!radv_init_perfcounter_descs(pdevice)) {
+      /* Can't return an error, so log */
+      fprintf(stderr, "radv: Failed to init perf counters\n");
+      *pNumPasses = 1;
+      return;
+   }
+
+   assert(vk_queue_to_radv(pdevice, pPerformanceQueryCreateInfo->queueFamilyIndex) ==
+          RADV_QUEUE_GENERAL);
+
+   unsigned num_regs = 0;
+   uint32_t *regs = NULL;
+   VkResult result =
+      radv_get_counter_registers(pdevice, pPerformanceQueryCreateInfo->counterIndexCount,
+                                 pPerformanceQueryCreateInfo->pCounterIndices, &num_regs, &regs);
+   if (result != VK_SUCCESS) {
+      /* Can't return an error, so log */
+      fprintf(stderr, "radv: Failed to allocate memory for perf counters\n");
+   }
+
+   *pNumPasses = radv_get_num_counter_passes(pdevice, num_regs, regs);
+   free(regs);
+}
