@@ -5043,9 +5043,8 @@ radv_InvalidateMappedMemoryRanges(VkDevice _device, uint32_t memoryRangeCount,
 }
 
 static void
-radv_get_buffer_memory_requirements(struct radv_device *device,
-                                    VkDeviceSize size,
-                                    VkBufferCreateFlags flags,
+radv_get_buffer_memory_requirements(struct radv_device *device, VkDeviceSize size,
+                                    VkBufferCreateFlags flags, VkBufferCreateFlags usage,
                                     VkMemoryRequirements2 *pMemoryRequirements)
 {
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
@@ -5055,6 +5054,14 @@ radv_get_buffer_memory_requirements(struct radv_device *device,
       pMemoryRequirements->memoryRequirements.alignment = 4096;
    else
       pMemoryRequirements->memoryRequirements.alignment = 16;
+
+   /* Top level acceleration structures need the bottom 6 bits to store
+    * the root ids of instances. The hardware also needs bvh nodes to
+    * be 64 byte aligned.
+    */
+   if (usage & VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR)
+      pMemoryRequirements->memoryRequirements.alignment =
+         MAX2(pMemoryRequirements->memoryRequirements.alignment, 64);
 
    pMemoryRequirements->memoryRequirements.size =
       align64(size, pMemoryRequirements->memoryRequirements.alignment);
@@ -5082,7 +5089,7 @@ radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirem
    RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
 
    radv_get_buffer_memory_requirements(device, buffer->vk.size, buffer->vk.create_flags,
-                                       pMemoryRequirements);
+                                       buffer->vk.usage, pMemoryRequirements);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5093,7 +5100,7 @@ radv_GetDeviceBufferMemoryRequirements(VkDevice _device,
    RADV_FROM_HANDLE(radv_device, device, _device);
 
    radv_get_buffer_memory_requirements(device, pInfo->pCreateInfo->size, pInfo->pCreateInfo->flags,
-                                       pMemoryRequirements);
+                                       pInfo->pCreateInfo->usage, pMemoryRequirements);
 }
 
 VKAPI_ATTR void VKAPI_CALL
