@@ -260,6 +260,8 @@ enum radv_queue_family {
    RADV_QUEUE_IGNORED,
 };
 
+struct radv_perfcounter_desc;
+
 struct radv_physical_device {
    struct vk_physical_device vk;
 
@@ -336,6 +338,9 @@ struct radv_physical_device {
 
    /* Performance counters. */
    struct ac_perfcounters ac_perfcounters;
+
+   uint32_t num_perfcounters;
+   struct radv_perfcounter_desc *perfcounters;
 };
 
 struct radv_instance {

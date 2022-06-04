@@ -3569,6 +3569,11 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail_cache;
       }
+
+      if (!device->physical_device->ac_perfcounters.blocks) {
+         result = VK_ERROR_INITIALIZATION_FAILED;
+         goto fail_cache;
+      }
    }
 
    *pDevice = radv_device_to_handle(device);
