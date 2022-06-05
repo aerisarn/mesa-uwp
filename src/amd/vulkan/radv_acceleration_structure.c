@@ -100,16 +100,15 @@ radv_GetAccelerationStructureBuildSizesKHR(
    }
 
    uint64_t children = boxes + instances + triangles;
-   uint64_t internal_nodes = 0;
+   /* Initialize to 1 to have enought space for the root node. */
+   uint64_t internal_nodes = 1;
    while (children > 1) {
       children = DIV_ROUND_UP(children, 4);
       internal_nodes += children;
    }
 
-   /* The stray 128 is to ensure we have space for a header
-    * which we'd want to use for some metadata (like the
-    * total AABB of the BVH) */
-   uint64_t size = boxes * 128 + instances * 128 + triangles * 64 + internal_nodes * 128 + 192;
+   uint64_t size = boxes * 128 + instances * 128 + triangles * 64 + internal_nodes * 128 +
+                   ALIGN(sizeof(struct radv_accel_struct_header), 64);
 
    pSizeInfo->accelerationStructureSize = size;
 
