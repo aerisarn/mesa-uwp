@@ -730,8 +730,8 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
    uint32_t base_slice = radv_meta_get_iview_layer(image, subresource, &offset);
    uint32_t slice_count = image->vk.image_type == VK_IMAGE_TYPE_3D ? extent.depth : subresource->layerCount;
 
-   extent = radv_sanitize_image_extent(image->vk.image_type, extent);
-   offset = radv_sanitize_image_offset(image->vk.image_type, offset);
+   extent = vk_image_sanitize_extent(&image->vk, extent);
+   offset = vk_image_sanitize_offset(&image->vk, offset);
 
    VkFormat load_format = vk_format_get_blocksize(image->vk.format) == 16
                              ? VK_FORMAT_R32G32B32A32_UINT

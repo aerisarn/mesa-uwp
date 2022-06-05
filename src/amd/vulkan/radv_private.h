@@ -2663,36 +2663,6 @@ void radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *de
                            const VkBufferViewCreateInfo *pCreateInfo);
 void radv_buffer_view_finish(struct radv_buffer_view *view);
 
-static inline struct VkExtent3D
-radv_sanitize_image_extent(const VkImageType imageType, const struct VkExtent3D imageExtent)
-{
-   switch (imageType) {
-   case VK_IMAGE_TYPE_1D:
-      return (VkExtent3D){imageExtent.width, 1, 1};
-   case VK_IMAGE_TYPE_2D:
-      return (VkExtent3D){imageExtent.width, imageExtent.height, 1};
-   case VK_IMAGE_TYPE_3D:
-      return imageExtent;
-   default:
-      unreachable("invalid image type");
-   }
-}
-
-static inline struct VkOffset3D
-radv_sanitize_image_offset(const VkImageType imageType, const struct VkOffset3D imageOffset)
-{
-   switch (imageType) {
-   case VK_IMAGE_TYPE_1D:
-      return (VkOffset3D){imageOffset.x, 0, 0};
-   case VK_IMAGE_TYPE_2D:
-      return (VkOffset3D){imageOffset.x, imageOffset.y, 0};
-   case VK_IMAGE_TYPE_3D:
-      return imageOffset;
-   default:
-      unreachable("invalid image type");
-   }
-}
-
 static inline bool
 radv_image_extent_compare(const struct radv_image *image, const VkExtent3D *extent)
 {

@@ -402,9 +402,8 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
     *    height and depth. 1D images use only x and width. 2D images use x, y,
     *    width and height. 3D images use x, y, z, width, height and depth.
     */
-   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->vk.image_type, region->extent);
-   const struct VkOffset3D dstOffset =
-      radv_sanitize_image_offset(dst_image->vk.image_type, region->dstOffset);
+   const struct VkExtent3D extent = vk_image_sanitize_extent(&src_image->vk, region->extent);
+   const struct VkOffset3D dstOffset = vk_image_sanitize_offset(&dst_image->vk, region->dstOffset);
 
    uint32_t queue_mask = radv_image_queue_family_mask(dst_image, cmd_buffer->qf,
                                                       cmd_buffer->qf);

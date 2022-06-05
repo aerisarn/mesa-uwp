@@ -40,12 +40,12 @@ meta_region_extent_el(const struct radv_image *image, const VkImageType imageTyp
                       const struct VkExtent3D *extent)
 {
    const VkExtent3D block = meta_image_block_size(image);
-   return radv_sanitize_image_extent(imageType,
-                                     (VkExtent3D){
-                                        .width = DIV_ROUND_UP(extent->width, block.width),
-                                        .height = DIV_ROUND_UP(extent->height, block.height),
-                                        .depth = DIV_ROUND_UP(extent->depth, block.depth),
-                                     });
+   return vk_image_sanitize_extent(&image->vk,
+                                   (VkExtent3D){
+                                      .width = DIV_ROUND_UP(extent->width, block.width),
+                                      .height = DIV_ROUND_UP(extent->height, block.height),
+                                      .depth = DIV_ROUND_UP(extent->depth, block.depth),
+                                   });
 }
 
 /* Returns the user-provided VkBufferImageCopy::imageOffset in units of
@@ -56,12 +56,12 @@ static struct VkOffset3D
 meta_region_offset_el(const struct radv_image *image, const struct VkOffset3D *offset)
 {
    const VkExtent3D block = meta_image_block_size(image);
-   return radv_sanitize_image_offset(image->vk.image_type,
-                                     (VkOffset3D){
-                                        .x = offset->x / block.width,
-                                        .y = offset->y / block.height,
-                                        .z = offset->z / block.depth,
-                                     });
+   return vk_image_sanitize_offset(&image->vk,
+                                   (VkOffset3D){
+                                      .x = offset->x / block.width,
+                                      .y = offset->y / block.height,
+                                      .z = offset->z / block.depth,
+                                   });
 }
 
 static VkFormat
