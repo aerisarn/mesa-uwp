@@ -581,7 +581,7 @@ descriptor=[
   [ "MAX_FRAGMENT_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_FRAGMENT].MaxShaderStorageBlocks), extra_ARB_shader_storage_buffer_object_es31" ],
   [ "MAX_COMPUTE_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_COMPUTE].MaxShaderStorageBlocks), extra_ARB_shader_storage_buffer_object_es31" ],
   [ "MAX_COMBINED_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.MaxCombinedShaderStorageBlocks), extra_ARB_shader_storage_buffer_object_es31" ],
-  [ "MAX_SHADER_STORAGE_BLOCK_SIZE", "CONTEXT_INT(Const.MaxShaderStorageBlockSize), extra_ARB_shader_storage_buffer_object_es31" ],
+  [ "MAX_SHADER_STORAGE_BLOCK_SIZE", "CONTEXT_UINT(Const.MaxShaderStorageBlockSize), extra_ARB_shader_storage_buffer_object_es31" ],
   [ "MAX_SHADER_STORAGE_BUFFER_BINDINGS", "CONTEXT_INT(Const.MaxShaderStorageBufferBindings), extra_ARB_shader_storage_buffer_object_es31" ],
   [ "SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT", "CONTEXT_INT(Const.ShaderStorageBufferOffsetAlignment), extra_ARB_shader_storage_buffer_object_es31" ],
   [ "SHADER_STORAGE_BUFFER_BINDING", "LOC_CUSTOM, TYPE_INT, 0, extra_ARB_shader_storage_buffer_object_es31" ],
