@@ -393,7 +393,7 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                         return V3D_MAX_FS_INPUTS / 4;
         case PIPE_SHADER_CAP_MAX_TEMPS:
                 return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
-        case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+        case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
                 /* Note: Limited by the offset size in
                  * v3d_unit_data_create().
                  */

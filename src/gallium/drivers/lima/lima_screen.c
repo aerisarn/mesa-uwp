@@ -226,7 +226,7 @@ get_vertex_shader_param(struct lima_screen *screen,
 
    /* Mali-400 GP provides space for 304 vec4 uniforms, globals and
     * temporary variables. */
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       return 304 * 4 * sizeof(float);
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
@@ -264,7 +264,7 @@ get_fragment_shader_param(struct lima_screen *screen,
     * However, indirect access to an uniform only supports indices up
     * to 8192 (a 2048 vec4 array). To prevent indices bigger than that,
     * limit max const buffer size to 8192 for now. */
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       return 2048 * 4 * sizeof(float);
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:

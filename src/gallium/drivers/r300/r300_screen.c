@@ -284,7 +284,7 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
             return 10;
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
             return 4;
-        case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+        case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
             return (is_r500 ? 256 : 32) * sizeof(float[4]);
         case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
         case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
@@ -373,7 +373,7 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
             return 16;
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
             return 10;
-        case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+        case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
             return 256 * sizeof(float[4]);
         case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
             return 1;

@@ -420,7 +420,7 @@ virgl_get_shader_param(struct pipe_screen *screen,
          return vscreen->caps.caps.v1.glsl_level >= 130;
       case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
          return 32;
-      case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+      case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
          return 4096 * sizeof(float[4]);
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
          if (shader == PIPE_SHADER_FRAGMENT || shader == PIPE_SHADER_COMPUTE)

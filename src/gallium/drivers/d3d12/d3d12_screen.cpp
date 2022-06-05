@@ -423,7 +423,7 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
          return 16;
       return PIPE_MAX_SAMPLERS;
 
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       return 65536;
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:

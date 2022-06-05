@@ -339,7 +339,7 @@ i915_get_shader_param(struct pipe_screen *screen, enum pipe_shader_type shader,
          return 10;
       case PIPE_SHADER_CAP_MAX_OUTPUTS:
          return 1;
-      case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+      case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
          return 32 * sizeof(float[4]);
       case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
          return 1;

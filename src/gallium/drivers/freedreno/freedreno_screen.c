@@ -621,7 +621,7 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
       return is_a6xx(screen) ? 32 : 16;
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 64; /* Max native temporaries. */
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       /* NOTE: seems to be limit for a3xx is actually 512 but
        * split between VS and FS.  Use lower limit of 256 to
        * avoid getting into impossible situations:

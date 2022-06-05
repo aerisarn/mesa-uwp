@@ -113,7 +113,7 @@ gallivm_get_shader_param(enum pipe_shader_cap param)
       return 32;
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
       return 32;
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       return LP_MAX_TGSI_CONST_BUFFER_SIZE;
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
       return LP_MAX_TGSI_CONST_BUFFERS;

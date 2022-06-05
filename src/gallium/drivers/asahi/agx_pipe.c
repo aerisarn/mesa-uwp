@@ -932,7 +932,7 @@ agx_get_shader_param(struct pipe_screen* pscreen,
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
 
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       return 16 * 1024 * sizeof(float);
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:

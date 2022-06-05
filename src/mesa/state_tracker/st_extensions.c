@@ -157,7 +157,7 @@ void st_init_limits(struct pipe_screen *screen,
 
    c->MaxUniformBlockSize =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
-                               PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE);
+                               PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE);
    /* GL45-CTS.enhanced_layouts.ssb_member_invalid_offset_alignment fails if
     * this is larger than INT_MAX - 100. Use a nicely aligned limit.
     */
@@ -229,7 +229,7 @@ void st_init_limits(struct pipe_screen *screen,
 
       pc->MaxUniformComponents =
          screen->get_shader_param(screen, sh,
-                                  PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE) / 4;
+                                  PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE) / 4;
 
       /* reserve space in the default-uniform for lowered state */
       if (sh == PIPE_SHADER_VERTEX ||

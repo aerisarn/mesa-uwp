@@ -504,7 +504,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          return 10;
       case PIPE_SHADER_CAP_MAX_OUTPUTS:
          return svgascreen->max_color_buffers;
-      case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+      case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
          return 224 * sizeof(float[4]);
       case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
          return 1;
@@ -575,7 +575,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          return 16;
       case PIPE_SHADER_CAP_MAX_OUTPUTS:
          return 10;
-      case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+      case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
          return 256 * sizeof(float[4]);
       case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
          return 1;
@@ -690,7 +690,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       else
          return svgascreen->max_vs_outputs;
 
-   case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
+   case PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE:
       return VGPU10_MAX_CONSTANT_BUFFER_ELEMENT_COUNT * sizeof(float[4]);
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
       return svgascreen->max_const_buffers;
