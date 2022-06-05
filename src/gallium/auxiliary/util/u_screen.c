@@ -488,6 +488,10 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_CLAMP_SPARSE_TEXTURE_LOD:
       return 0;
 
+   case PIPE_CAP_MAX_CONSTANT_BUFFER_SIZE_UINT:
+      return pscreen->get_shader_param(pscreen, PIPE_SHADER_FRAGMENT,
+                                       PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE);
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

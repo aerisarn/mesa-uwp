@@ -156,12 +156,7 @@ void st_init_limits(struct pipe_screen *screen,
                         PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION);
 
    c->MaxUniformBlockSize =
-      screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
-                               PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE);
-   /* GL45-CTS.enhanced_layouts.ssb_member_invalid_offset_alignment fails if
-    * this is larger than INT_MAX - 100. Use a nicely aligned limit.
-    */
-   c->MaxUniformBlockSize = MIN2(c->MaxUniformBlockSize, INT_MAX - 127);
+      screen->get_param(screen, PIPE_CAP_MAX_CONSTANT_BUFFER_SIZE_UINT);
 
    if (c->MaxUniformBlockSize < 16384) {
       can_ubo = false;
