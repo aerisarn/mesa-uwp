@@ -995,7 +995,6 @@ struct si_context {
    struct util_debug_callback debug;
    struct ac_llvm_compiler compiler; /* only non-threaded compilation */
    struct si_shader_ctx_state fixed_func_tcs_shader;
-   /* Offset 0: EOP flush number; Offset 4: GDS prim restart counter */
    struct si_resource *wait_mem_scratch;
    struct si_resource *wait_mem_scratch_tmz;
    unsigned wait_mem_number;

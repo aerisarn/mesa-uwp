@@ -626,7 +626,7 @@ static struct si_resource *si_get_wait_mem_scratch_bo(struct si_context *ctx,
                                      PIPE_RESOURCE_FLAG_UNMAPPABLE |
                                      SI_RESOURCE_FLAG_DRIVER_INTERNAL |
                                      PIPE_RESOURCE_FLAG_ENCRYPTED,
-                                     PIPE_USAGE_DEFAULT, 8,
+                                     PIPE_USAGE_DEFAULT, 4,
                                      sscreen->info.tcc_cache_line_size);
          si_cp_write_data(ctx, ctx->wait_mem_scratch_tmz, 0, 4, V_370_MEM, V_370_ME,
                           &ctx->wait_mem_number);

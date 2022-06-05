@@ -697,7 +697,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       sctx->wait_mem_scratch =
            si_aligned_buffer_create(screen,
                                     PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
-                                    PIPE_USAGE_DEFAULT, 8,
+                                    PIPE_USAGE_DEFAULT, 4,
                                     sscreen->info.tcc_cache_line_size);
       if (!sctx->wait_mem_scratch) {
          fprintf(stderr, "radeonsi: can't create wait_mem_scratch\n");
