@@ -125,6 +125,38 @@ vk_image_subresource_level_count(const struct vk_image *image,
           image->mip_levels - range->baseMipLevel : range->levelCount;
 }
 
+static inline VkExtent3D
+vk_image_sanitize_extent(const struct vk_image *image,
+                         const VkExtent3D imageExtent)
+{
+   switch (image->image_type) {
+   case VK_IMAGE_TYPE_1D:
+      return (VkExtent3D) { imageExtent.width, 1, 1 };
+   case VK_IMAGE_TYPE_2D:
+      return (VkExtent3D) { imageExtent.width, imageExtent.height, 1 };
+   case VK_IMAGE_TYPE_3D:
+      return imageExtent;
+   default:
+      unreachable("invalid image type");
+   }
+}
+
+static inline VkOffset3D
+vk_image_sanitize_offset(const struct vk_image *image,
+                         const VkOffset3D imageOffset)
+{
+   switch (image->image_type) {
+   case VK_IMAGE_TYPE_1D:
+      return (VkOffset3D) { imageOffset.x, 0, 0 };
+   case VK_IMAGE_TYPE_2D:
+      return (VkOffset3D) { imageOffset.x, imageOffset.y, 0 };
+   case VK_IMAGE_TYPE_3D:
+      return imageOffset;
+   default:
+      unreachable("invalid image type");
+   }
+}
+
 struct vk_image_view {
    struct vk_object_base base;
 

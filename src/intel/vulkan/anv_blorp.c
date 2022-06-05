@@ -306,11 +306,11 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
            const VkImageCopy2 *region)
 {
    VkOffset3D srcOffset =
-      anv_sanitize_image_offset(src_image->vk.image_type, region->srcOffset);
+      vk_image_sanitize_offset(&src_image->vk, region->srcOffset);
    VkOffset3D dstOffset =
-      anv_sanitize_image_offset(dst_image->vk.image_type, region->dstOffset);
+      vk_image_sanitize_offset(&dst_image->vk, region->dstOffset);
    VkExtent3D extent =
-      anv_sanitize_image_extent(src_image->vk.image_type, region->extent);
+      vk_image_sanitize_extent(&src_image->vk, region->extent);
 
    const uint32_t dst_level = region->dstSubresource.mipLevel;
    unsigned dst_base_layer, layer_count;
@@ -490,11 +490,11 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
                                 image_layout, ISL_AUX_USAGE_NONE,
                                 &image.surf);
    image.offset =
-      anv_sanitize_image_offset(anv_image->vk.image_type, region->imageOffset);
+      vk_image_sanitize_offset(&anv_image->vk, region->imageOffset);
    image.level = region->imageSubresource.mipLevel;
 
    VkExtent3D extent =
-      anv_sanitize_image_extent(anv_image->vk.image_type, region->imageExtent);
+      vk_image_sanitize_extent(&anv_image->vk, region->imageExtent);
    if (anv_image->vk.image_type != VK_IMAGE_TYPE_3D) {
       image.offset.z = region->imageSubresource.baseArrayLayer;
       extent.depth =

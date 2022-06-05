@@ -4226,38 +4226,6 @@ enum isl_format
 anv_isl_format_for_descriptor_type(const struct anv_device *device,
                                    VkDescriptorType type);
 
-static inline VkExtent3D
-anv_sanitize_image_extent(const VkImageType imageType,
-                          const VkExtent3D imageExtent)
-{
-   switch (imageType) {
-   case VK_IMAGE_TYPE_1D:
-      return (VkExtent3D) { imageExtent.width, 1, 1 };
-   case VK_IMAGE_TYPE_2D:
-      return (VkExtent3D) { imageExtent.width, imageExtent.height, 1 };
-   case VK_IMAGE_TYPE_3D:
-      return imageExtent;
-   default:
-      unreachable("invalid image type");
-   }
-}
-
-static inline VkOffset3D
-anv_sanitize_image_offset(const VkImageType imageType,
-                          const VkOffset3D imageOffset)
-{
-   switch (imageType) {
-   case VK_IMAGE_TYPE_1D:
-      return (VkOffset3D) { imageOffset.x, 0, 0 };
-   case VK_IMAGE_TYPE_2D:
-      return (VkOffset3D) { imageOffset.x, imageOffset.y, 0 };
-   case VK_IMAGE_TYPE_3D:
-      return imageOffset;
-   default:
-      unreachable("invalid image type");
-   }
-}
-
 static inline uint32_t
 anv_rasterization_aa_mode(VkPolygonMode raster_mode,
                           VkLineRasterizationModeEXT line_mode)
