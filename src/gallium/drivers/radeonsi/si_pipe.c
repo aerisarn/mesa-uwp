@@ -781,9 +781,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (sctx->wait_mem_scratch)
       si_cp_write_data(sctx, sctx->wait_mem_scratch, 0, 4, V_370_MEM, V_370_ME,
                        &sctx->wait_mem_number);
-   if (sctx->wait_mem_scratch_tmz)
-      si_cp_write_data(sctx, sctx->wait_mem_scratch_tmz, 0, 4, V_370_MEM, V_370_ME,
-                       &sctx->wait_mem_number);
 
    if (sctx->gfx_level == GFX7) {
       /* Clear the NULL constant buffer, because loads should return zeros.

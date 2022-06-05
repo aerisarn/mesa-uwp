@@ -611,7 +611,8 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, uns
       sctx->context_roll = true;
 }
 
-static struct si_resource* si_get_wait_mem_scratch_bo(struct si_context *ctx, bool is_secure)
+static struct si_resource *si_get_wait_mem_scratch_bo(struct si_context *ctx,
+                                                      struct radeon_cmdbuf *cs, bool is_secure)
 {
    struct si_screen *sscreen = ctx->screen;
 
@@ -619,7 +620,7 @@ static struct si_resource* si_get_wait_mem_scratch_bo(struct si_context *ctx, bo
       return ctx->wait_mem_scratch;
    } else {
       assert(sscreen->info.has_tmz_support);
-      if (!ctx->wait_mem_scratch_tmz)
+      if (!ctx->wait_mem_scratch_tmz) {
          ctx->wait_mem_scratch_tmz =
             si_aligned_buffer_create(&sscreen->b,
                                      PIPE_RESOURCE_FLAG_UNMAPPABLE |
@@ -627,6 +628,9 @@ static struct si_resource* si_get_wait_mem_scratch_bo(struct si_context *ctx, bo
                                      PIPE_RESOURCE_FLAG_ENCRYPTED,
                                      PIPE_USAGE_DEFAULT, 8,
                                      sscreen->info.tcc_cache_line_size);
+         si_cp_write_data(ctx, ctx->wait_mem_scratch_tmz, 0, 4, V_370_MEM, V_370_ME,
+                          &ctx->wait_mem_number);
+      }
 
       return ctx->wait_mem_scratch_tmz;
    }
@@ -746,7 +750,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
 
    if (cb_db_event) {
       struct si_resource* wait_mem_scratch =
-        si_get_wait_mem_scratch_bo(ctx, ctx->ws->cs_is_secure(cs));
+        si_get_wait_mem_scratch_bo(ctx, cs, ctx->ws->cs_is_secure(cs));
       /* CB/DB flush and invalidate (or possibly just a wait for a
        * meta flush) via RELEASE_MEM.
        *
@@ -986,7 +990,7 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
 
       /* Do the flush (enqueue the event and wait for it). */
       struct si_resource* wait_mem_scratch =
-        si_get_wait_mem_scratch_bo(sctx, sctx->ws->cs_is_secure(cs));
+        si_get_wait_mem_scratch_bo(sctx, cs, sctx->ws->cs_is_secure(cs));
 
       va = wait_mem_scratch->gpu_address;
       sctx->wait_mem_number++;
