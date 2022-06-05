@@ -508,21 +508,8 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
    const struct isl_format_layout *linear_fmtl =
       isl_format_get_layout(linear_format);
 
-   const uint32_t buffer_row_length =
-      region->bufferRowLength ?
-      region->bufferRowLength : extent.width;
-
-   const uint32_t buffer_image_height =
-      region->bufferImageHeight ?
-      region->bufferImageHeight : extent.height;
-
-   const uint32_t buffer_row_pitch =
-      DIV_ROUND_UP(buffer_row_length, linear_fmtl->bw) *
-      (linear_fmtl->bpb / 8);
-
-   const uint32_t buffer_layer_stride =
-      DIV_ROUND_UP(buffer_image_height, linear_fmtl->bh) *
-      buffer_row_pitch;
+   const struct vk_image_buffer_layout buffer_layout =
+      vk_image_buffer_copy_layout(&anv_image->vk, region);
 
    /* Some formats have additional restrictions which may cause ISL to
     * fail to create a surface for us.  For example, YCbCr formats
@@ -543,8 +530,8 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
    get_blorp_surf_for_anv_buffer(cmd_buffer->device,
                                  anv_buffer, region->bufferOffset,
                                  buffer_extent.width, buffer_extent.height,
-                                 buffer_row_pitch, buffer_format, false,
-                                 &buffer.surf, &buffer_isl_surf);
+                                 buffer_layout.row_stride_B, buffer_format,
+                                 false, &buffer.surf, &buffer_isl_surf);
 
    bool dst_has_shadow = false;
    struct blorp_surf dst_shadow_surf;
@@ -583,7 +570,7 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
       }
 
       image.offset.z++;
-      buffer.surf.addr.offset += buffer_layer_stride;
+      buffer.surf.addr.offset += buffer_layout.image_stride_B;
    }
 }
 
