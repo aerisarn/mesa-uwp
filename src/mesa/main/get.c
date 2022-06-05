@@ -2042,22 +2042,31 @@ _mesa_GetIntegerv(GLenum pname, GLint *params)
       break;
 
    case TYPE_INT_4:
-   case TYPE_UINT_4:
       params[3] = ((GLint *) p)[3];
       FALLTHROUGH;
    case TYPE_INT_3:
-   case TYPE_UINT_3:
       params[2] = ((GLint *) p)[2];
       FALLTHROUGH;
    case TYPE_INT_2:
-   case TYPE_UINT_2:
    case TYPE_ENUM_2:
       params[1] = ((GLint *) p)[1];
       FALLTHROUGH;
    case TYPE_INT:
-   case TYPE_UINT:
    case TYPE_ENUM:
       params[0] = ((GLint *) p)[0];
+      break;
+
+   case TYPE_UINT_4:
+      params[3] = MIN2(((GLuint *) p)[3], INT_MAX);
+      FALLTHROUGH;
+   case TYPE_UINT_3:
+      params[2] = MIN2(((GLuint *) p)[2], INT_MAX);
+      FALLTHROUGH;
+   case TYPE_UINT_2:
+      params[1] = MIN2(((GLuint *) p)[1], INT_MAX);
+      FALLTHROUGH;
+   case TYPE_UINT:
+      params[0] = MIN2(((GLuint *) p)[0], INT_MAX);
       break;
 
    case TYPE_ENUM16:
@@ -3032,15 +3041,22 @@ _mesa_GetIntegeri_v( GLenum pname, GLuint index, GLint *params )
       break;
 
    case TYPE_INT:
-   case TYPE_UINT:
       params[0] = v.value_int;
       break;
+   case TYPE_UINT:
+      params[0] = MIN2(v.value_uint, INT_MAX);
+      break;
    case TYPE_INT_4:
-   case TYPE_UINT_4:
       params[0] = v.value_int_4[0];
       params[1] = v.value_int_4[1];
       params[2] = v.value_int_4[2];
       params[3] = v.value_int_4[3];
+      break;
+   case TYPE_UINT_4:
+      params[0] = MIN2((GLuint)v.value_int_4[0], INT_MAX);
+      params[1] = MIN2((GLuint)v.value_int_4[1], INT_MAX);
+      params[2] = MIN2((GLuint)v.value_int_4[2], INT_MAX);
+      params[3] = MIN2((GLuint)v.value_int_4[3], INT_MAX);
       break;
    case TYPE_INT64:
       params[0] = INT64_TO_INT(v.value_int64);
@@ -3068,7 +3084,7 @@ _mesa_GetInteger64i_v( GLenum pname, GLuint index, GLint64 *params )
       params[3] = v.value_int_4[3];
       break;
    case TYPE_UINT:
-      params[0] = (GLuint) v.value_int;
+      params[0] = v.value_uint;
       break;
    case TYPE_UINT_4:
       params[0] = (GLuint) v.value_int_4[0];
@@ -3385,22 +3401,31 @@ _mesa_GetFixedv(GLenum pname, GLfixed *params)
       break;
 
    case TYPE_INT_4:
-   case TYPE_UINT_4:
       params[3] = INT_TO_FIXED(((GLint *) p)[3]);
       FALLTHROUGH;
    case TYPE_INT_3:
-   case TYPE_UINT_3:
       params[2] = INT_TO_FIXED(((GLint *) p)[2]);
       FALLTHROUGH;
    case TYPE_INT_2:
-   case TYPE_UINT_2:
    case TYPE_ENUM_2:
       params[1] = INT_TO_FIXED(((GLint *) p)[1]);
       FALLTHROUGH;
    case TYPE_INT:
-   case TYPE_UINT:
    case TYPE_ENUM:
       params[0] = INT_TO_FIXED(((GLint *) p)[0]);
+      break;
+
+   case TYPE_UINT_4:
+      params[3] = INT_TO_FIXED(((GLuint *) p)[3]);
+      FALLTHROUGH;
+   case TYPE_UINT_3:
+      params[2] = INT_TO_FIXED(((GLuint *) p)[2]);
+      FALLTHROUGH;
+   case TYPE_UINT_2:
+      params[1] = INT_TO_FIXED(((GLuint *) p)[1]);
+      FALLTHROUGH;
+   case TYPE_UINT:
+      params[0] = INT_TO_FIXED(((GLuint *) p)[0]);
       break;
 
    case TYPE_ENUM16:
