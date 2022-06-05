@@ -234,11 +234,22 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 4096 * 1024;
 
    case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
-   case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT:
+   case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT: {
+      /* Return 1/4th of the heap size as the maximum because the max size is not practically
+       * allocatable. Also, this can only return UINT32_MAX at most.
+       */
+      unsigned max_size = MIN2((sscreen->info.max_heap_size_kb * 1024ull) / 4, UINT32_MAX);
+
       /* Allow max 512 MB to pass CTS with a 32-bit build. */
-      return MIN2(sscreen->info.max_alloc_size, 512 * 1024 * 1024);
+      if (sizeof(void*) == 4)
+         max_size = MIN2(max_size, 512 * 1024 * 1024);
+
+      return max_size;
+   }
+
    case PIPE_CAP_MAX_TEXTURE_MB:
-      return sscreen->info.max_alloc_size / (1024 * 1024);
+      /* Allow 1/4th of the heap size. */
+      return sscreen->info.max_heap_size_kb / 1024 / 4;
 
    case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
@@ -861,7 +872,7 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
           * 4 * MAX_MEM_ALLOC_SIZE.
           */
          *max_global_size =
-            MIN2(4 * max_mem_alloc_size, MAX2(sscreen->info.gart_size, sscreen->info.vram_size));
+            MIN2(4 * max_mem_alloc_size, sscreen->info.max_heap_size_kb * 1024ull);
       }
       return sizeof(uint64_t);
 
@@ -888,7 +899,10 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
       if (ret) {
          uint64_t *max_mem_alloc_size = ret;
 
-         *max_mem_alloc_size = sscreen->info.max_alloc_size;
+         /* Return 1/4 of the heap size as the maximum because the max size is not practically
+          * allocatable.
+          */
+         *max_mem_alloc_size = (sscreen->info.max_heap_size_kb / 4) * 1024ull;
       }
       return sizeof(uint64_t);
 

@@ -803,9 +803,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     * allocations can fail or cause buffer movement failures in the kernel.
     */
    if (info->has_dedicated_vram)
-      info->max_alloc_size = info->vram_size * 0.8;
+      info->max_heap_size_kb = info->vram_size_kb;
    else
-      info->max_alloc_size = info->gart_size * 0.7;
+      info->max_heap_size_kb = info->gart_size_kb;
 
    info->vram_type = amdinfo->vram_type;
    info->vram_bit_width = amdinfo->vram_bit_width;
@@ -1367,7 +1367,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_vis_size, 1024 * 1024));
    fprintf(f, "    vram_type = %i\n", info->vram_type);
    fprintf(f, "    vram_bit_width = %i\n", info->vram_bit_width);
-   fprintf(f, "    max_alloc_size = %i MB\n", (int)DIV_ROUND_UP(info->max_alloc_size, 1024 * 1024));
+   fprintf(f, "    max_heap_size_kb = %i MB\n", (int)DIV_ROUND_UP(info->max_heap_size_kb, 1024));
    fprintf(f, "    min_alloc_size = %u\n", info->min_alloc_size);
    fprintf(f, "    address32_hi = 0x%x\n", info->address32_hi);
    fprintf(f, "    has_dedicated_vram = %u\n", info->has_dedicated_vram);

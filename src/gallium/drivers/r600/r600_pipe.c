@@ -348,7 +348,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return 0;
 
 	case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
-		return MIN2(rscreen->b.info.max_alloc_size, INT_MAX);
+		return MIN2(rscreen->b.info.max_heap_size_kb * 1024ull / 4, INT_MAX);
 
         case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
                 return R600_MAP_BUFFER_ALIGNMENT;

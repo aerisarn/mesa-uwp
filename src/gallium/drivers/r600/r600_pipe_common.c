@@ -991,8 +991,7 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 			 * 4 * MAX_MEM_ALLOC_SIZE.
 			 */
 			*max_global_size = MIN2(4 * max_mem_alloc_size,
-						MAX2(rscreen->info.gart_size,
-						     rscreen->info.vram_size));
+						rscreen->info.max_heap_size_kb * 1024ull);
 		}
 		return sizeof(uint64_t);
 
@@ -1016,7 +1015,7 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 		if (ret) {
 			uint64_t *max_mem_alloc_size = ret;
 
-			*max_mem_alloc_size = rscreen->info.max_alloc_size;
+			*max_mem_alloc_size = (rscreen->info.max_heap_size_kb / 4) * 1024ull;
 		}
 		return sizeof(uint64_t);
 
@@ -1287,8 +1286,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		printf("gart_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.gart_size, 1024*1024));
 		printf("vram_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.vram_size, 1024*1024));
 		printf("vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.vram_vis_size, 1024*1024));
-		printf("max_alloc_size = %i MB\n",
-		       (int)DIV_ROUND_UP(rscreen->info.max_alloc_size, 1024*1024));
+		printf("max_heap_size = %i MB\n",
+		       (int)DIV_ROUND_UP(rscreen->info.max_heap_size_kb, 1024));
 		printf("min_alloc_size = %u\n", rscreen->info.min_alloc_size);
 		printf("has_dedicated_vram = %u\n", rscreen->info.has_dedicated_vram);
 		printf("r600_has_virtual_memory = %i\n", rscreen->info.r600_has_virtual_memory);

@@ -116,7 +116,7 @@ struct radeon_info {
    uint64_t vram_vis_size;
    uint32_t vram_bit_width;
    uint32_t vram_type;
-   uint64_t max_alloc_size;
+   uint32_t max_heap_size_kb;
    uint32_t min_alloc_size;
    uint32_t address32_hi;
    bool has_dedicated_vram;

@@ -375,14 +375,20 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    /* Radeon allocates all buffers contiguously, which makes large allocations
     * unlikely to succeed. */
    if (ws->info.has_dedicated_vram)
-      ws->info.max_alloc_size = ws->info.vram_size * 0.7;
+      ws->info.max_heap_size_kb = ws->info.vram_size_kb;
    else
-      ws->info.max_alloc_size = ws->info.gart_size * 0.7;
+      ws->info.max_heap_size_kb = ws->info.gart_size_kb;
 
+   /* Old kernel driver limitation for allocation sizes. We only use this to limit per-buffer
+    * allocation size.
+    */
    if (ws->info.drm_minor < 40)
-      ws->info.max_alloc_size = MIN2(ws->info.max_alloc_size, 256*1024*1024);
-   /* Both 32-bit and 64-bit address spaces only have 4GB. */
-   ws->info.max_alloc_size = MIN2(ws->info.max_alloc_size, 3ull*1024*1024*1024);
+      ws->info.max_heap_size_kb = MIN2(ws->info.max_heap_size_kb, 256 * 1024);
+
+   /* Both 32-bit and 64-bit address spaces only have 4GB.
+    * This is a limitation of the VM allocator in the winsys.
+    */
+   ws->info.max_heap_size_kb = MIN2(ws->info.max_heap_size_kb, 4 * 1024 * 1024); /* 4 GB */
 
    /* Get max clock frequency info and convert it to MHz */
    radeon_get_drm_value(ws->fd, RADEON_INFO_MAX_SCLK, NULL,
