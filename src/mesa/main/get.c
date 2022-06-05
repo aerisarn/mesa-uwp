@@ -2856,8 +2856,8 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_enum;
       if (index >= 3)
          goto invalid_value;
-      v->value_int = ctx->Const.MaxComputeWorkGroupCount[index];
-      return TYPE_INT;
+      v->value_uint = ctx->Const.MaxComputeWorkGroupCount[index];
+      return TYPE_UINT;
 
    case GL_MAX_COMPUTE_WORK_GROUP_SIZE:
       if (!_mesa_has_compute_shaders(ctx))
