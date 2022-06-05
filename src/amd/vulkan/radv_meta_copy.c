@@ -24,46 +24,6 @@
 #include "radv_meta.h"
 #include "vk_format.h"
 
-static VkExtent3D
-meta_image_block_size(const struct radv_image *image)
-{
-   const struct util_format_description *desc = vk_format_description(image->vk.format);
-   return (VkExtent3D){desc->block.width, desc->block.height, 1};
-}
-
-/* Returns the user-provided VkBufferImageCopy::imageExtent in units of
- * elements rather than texels. One element equals one texel or one block
- * if Image is uncompressed or compressed, respectively.
- */
-static struct VkExtent3D
-meta_region_extent_el(const struct radv_image *image, const VkImageType imageType,
-                      const struct VkExtent3D *extent)
-{
-   const VkExtent3D block = meta_image_block_size(image);
-   return vk_image_sanitize_extent(&image->vk,
-                                   (VkExtent3D){
-                                      .width = DIV_ROUND_UP(extent->width, block.width),
-                                      .height = DIV_ROUND_UP(extent->height, block.height),
-                                      .depth = DIV_ROUND_UP(extent->depth, block.depth),
-                                   });
-}
-
-/* Returns the user-provided VkBufferImageCopy::imageOffset in units of
- * elements rather than texels. One element equals one texel or one block
- * if Image is uncompressed or compressed, respectively.
- */
-static struct VkOffset3D
-meta_region_offset_el(const struct radv_image *image, const struct VkOffset3D *offset)
-{
-   const VkExtent3D block = meta_image_block_size(image);
-   return vk_image_sanitize_offset(&image->vk,
-                                   (VkOffset3D){
-                                      .x = offset->x / block.width,
-                                      .y = offset->y / block.height,
-                                      .z = offset->z / block.depth,
-                                   });
-}
-
 static VkFormat
 vk_format_for_size(int bs)
 {
@@ -161,15 +121,15 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
     * Also, convert the offsets and extent from units of texels to units of
     * blocks - which is the highest resolution accessible in this command.
     */
-   const VkOffset3D img_offset_el = meta_region_offset_el(image, &region->imageOffset);
+   const VkOffset3D img_offset_el = vk_image_offset_to_elements(&image->vk, region->imageOffset);
    const VkExtent3D bufferExtent = {
       .width = region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width,
       .height = region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height,
    };
-   const VkExtent3D buf_extent_el = meta_region_extent_el(image, image->vk.image_type, &bufferExtent);
+   const VkExtent3D buf_extent_el = vk_image_extent_to_elements(&image->vk, bufferExtent);
 
    /* Start creating blit rect */
-   const VkExtent3D img_extent_el = meta_region_extent_el(image, image->vk.image_type, &region->imageExtent);
+   const VkExtent3D img_extent_el = vk_image_extent_to_elements(&image->vk, region->imageExtent);
    struct radv_meta_blit2d_rect rect = {
       .width = img_extent_el.width,
       .height = img_extent_el.height,
@@ -316,15 +276,15 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
     * Also, convert the offsets and extent from units of texels to units of
     * blocks - which is the highest resolution accessible in this command.
     */
-   const VkOffset3D img_offset_el = meta_region_offset_el(image, &region->imageOffset);
+   const VkOffset3D img_offset_el = vk_image_offset_to_elements(&image->vk, region->imageOffset);
    const VkExtent3D bufferExtent = {
       .width = region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width,
       .height = region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height,
    };
-   const VkExtent3D buf_extent_el = meta_region_extent_el(image, image->vk.image_type, &bufferExtent);
+   const VkExtent3D buf_extent_el = vk_image_extent_to_elements(&image->vk, bufferExtent);
 
    /* Start creating blit rect */
-   const VkExtent3D img_extent_el = meta_region_extent_el(image, image->vk.image_type, &region->imageExtent);
+   const VkExtent3D img_extent_el = vk_image_extent_to_elements(&image->vk, region->imageExtent);
    struct radv_meta_blit2d_rect rect = {
       .width = img_extent_el.width,
       .height = img_extent_el.height,
@@ -530,8 +490,10 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
        * Also, convert the offsets and extent from units of texels to units of
        * blocks - which is the highest resolution accessible in this command.
        */
-      const VkOffset3D dst_offset_el = meta_region_offset_el(dst_image, &region->dstOffset);
-      const VkOffset3D src_offset_el = meta_region_offset_el(src_image, &region->srcOffset);
+      const VkOffset3D dst_offset_el =
+         vk_image_offset_to_elements(&dst_image->vk, region->dstOffset);
+      const VkOffset3D src_offset_el =
+         vk_image_offset_to_elements(&src_image->vk, region->srcOffset);
 
       /*
        * From Vulkan 1.0.68, "Copying Data Between Images":
@@ -542,8 +504,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
        * clamping depth when copying multiple layers of a 2D image to
        * a 3D image.
        */
-      const VkExtent3D img_extent_el =
-         meta_region_extent_el(src_image, dst_image->vk.image_type, &region->extent);
+      const VkExtent3D img_extent_el = vk_image_extent_to_elements(&src_image->vk, region->extent);
 
       /* Start creating blit rect */
       struct radv_meta_blit2d_rect rect = {

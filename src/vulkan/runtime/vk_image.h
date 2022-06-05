@@ -141,6 +141,9 @@ vk_image_sanitize_extent(const struct vk_image *image,
    }
 }
 
+VkExtent3D
+vk_image_extent_to_elements(const struct vk_image *image, VkExtent3D extent);
+
 static inline VkOffset3D
 vk_image_sanitize_offset(const struct vk_image *image,
                          const VkOffset3D imageOffset)
@@ -156,6 +159,9 @@ vk_image_sanitize_offset(const struct vk_image *image,
       unreachable("invalid image type");
    }
 }
+
+VkOffset3D
+vk_image_offset_to_elements(const struct vk_image *image, VkOffset3D offset);
 
 struct vk_image_buffer_layout {
    /**

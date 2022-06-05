@@ -250,6 +250,39 @@ vk_image_expand_aspect_mask(const struct vk_image *image,
    }
 }
 
+VkExtent3D
+vk_image_extent_to_elements(const struct vk_image *image, VkExtent3D extent)
+{
+   const struct util_format_description *fmt =
+      vk_format_description(image->format);
+
+   extent = vk_image_sanitize_extent(image, extent);
+   extent.width = DIV_ROUND_UP(extent.width, fmt->block.width);
+   extent.height = DIV_ROUND_UP(extent.height, fmt->block.height);
+   extent.depth = DIV_ROUND_UP(extent.depth, fmt->block.depth);
+
+   return extent;
+}
+
+VkOffset3D
+vk_image_offset_to_elements(const struct vk_image *image, VkOffset3D offset)
+{
+   const struct util_format_description *fmt =
+      vk_format_description(image->format);
+
+   offset = vk_image_sanitize_offset(image, offset);
+
+   assert(offset.x % fmt->block.width == 0);
+   assert(offset.y % fmt->block.height == 0);
+   assert(offset.z % fmt->block.depth == 0);
+
+   offset.x /= fmt->block.width;
+   offset.y /= fmt->block.height;
+   offset.z /= fmt->block.depth;
+
+   return offset;
+}
+
 struct vk_image_buffer_layout
 vk_image_buffer_copy_layout(const struct vk_image *image,
                             const VkBufferImageCopy2KHR* region)
