@@ -1353,7 +1353,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    bool window_space = gs_sel->stage == MESA_SHADER_VERTEX ?
                           gs_info->base.vs.window_space_position : 0;
    bool es_enable_prim_id = shader->key.ge.mono.u.vs_export_prim_id || es_info->uses_primid;
-   unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
+   unsigned gs_num_invocations = gs_sel->stage == MESA_SHADER_GEOMETRY ?
+                                    MAX2(gs_info->base.gs.invocations, 1) : 0;
    unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    bool break_wave_at_eoi = false;
    struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader);
