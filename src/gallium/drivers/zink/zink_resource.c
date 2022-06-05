@@ -1544,8 +1544,12 @@ zink_resource_invalidate(struct pipe_context *pctx, struct pipe_resource *pres)
 {
    if (pres->target == PIPE_BUFFER)
       invalidate_buffer(zink_context(pctx), zink_resource(pres));
-   else
-      zink_resource(pres)->valid = false;
+   else {
+      struct zink_resource *res = zink_resource(pres);
+      if (res->valid && res->fb_binds)
+         zink_context(pctx)->rp_changed = true;
+      res->valid = false;
+   }
 }
 
 static void
@@ -1934,8 +1938,11 @@ zink_image_map(struct pipe_context *pctx,
    }
    if (!ptr)
       goto fail;
-   if (usage & PIPE_MAP_WRITE)
+   if (usage & PIPE_MAP_WRITE) {
+      if (!res->valid && res->fb_binds)
+         ctx->rp_changed = true;
       res->valid = true;
+   }
 
    if (sizeof(void*) == 4)
       trans->base.b.usage |= ZINK_MAP_TEMPORARY;

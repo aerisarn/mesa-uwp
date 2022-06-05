@@ -502,8 +502,11 @@ zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *re
          res->obj->dt_has_data = true;
       }
    }
-   if (write && !res->obj->is_buffer)
+   if (write && !res->obj->is_buffer) {
+      if (!res->valid && res->fb_binds)
+         batch->state->ctx->rp_changed = true;
       res->valid = true;
+   }
    zink_resource_usage_set(res, batch->state, write);
    /* multiple array entries are fine */
    if (!res->obj->coherent && res->obj->persistent_maps)
