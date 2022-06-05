@@ -502,7 +502,7 @@ descriptor=[
 # Enums in OpenGL and ES 3.1
 { "apis": ["GL", "GL_CORE", "GLES31"], "params": [
 # GL_ARB_texture_buffer_object / GL_OES_texture_buffer
-  [ "MAX_TEXTURE_BUFFER_SIZE_ARB", "CONTEXT_INT(Const.MaxTextureBufferSize), extra_texture_buffer_object" ],
+  [ "MAX_TEXTURE_BUFFER_SIZE_ARB", "CONTEXT_UINT(Const.MaxTextureBufferSize), extra_texture_buffer_object" ],
   [ "TEXTURE_BINDING_BUFFER_ARB", "LOC_CUSTOM, TYPE_INT, 0, extra_texture_buffer_object" ],
   [ "TEXTURE_BUFFER_DATA_STORE_BINDING_ARB", "LOC_CUSTOM, TYPE_INT, TEXTURE_BUFFER_INDEX, extra_texture_buffer_object" ],
   [ "TEXTURE_BUFFER_FORMAT_ARB", "LOC_CUSTOM, TYPE_INT, 0, extra_texture_buffer_object" ],
