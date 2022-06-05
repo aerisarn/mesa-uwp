@@ -157,6 +157,38 @@ vk_image_sanitize_offset(const struct vk_image *image,
    }
 }
 
+struct vk_image_buffer_layout {
+   /**
+    * VkBufferImageCopy2KHR::bufferRowLength or
+    * VkBufferImageCopy2KHR::extent::width as needed.
+    */
+   uint32_t row_length;
+
+   /**
+    * VkBufferImageCopy2KHR::bufferImageHeight or
+    * VkBufferImageCopy2KHR::extent::height as needed.
+    */
+   uint32_t image_height;
+
+   /** Size of a single element (pixel or compressed block) in bytes */
+   uint32_t element_size_B;
+
+   /** Row stride in bytes */
+   uint32_t row_stride_B;
+
+   /** Image (or layer) stride in bytes
+    *
+    * For 1D or 2D array images, this is the stride in bytes between array
+    * slices.  For 3D images, this is the stride in bytes between fixed-Z
+    * slices.
+    */
+   uint64_t image_stride_B;
+};
+
+struct vk_image_buffer_layout
+vk_image_buffer_copy_layout(const struct vk_image *image,
+                            const VkBufferImageCopy2KHR* region);
+
 struct vk_image_view {
    struct vk_object_base base;
 
