@@ -562,6 +562,17 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
    return result;
 }
 
+static bool
+is_interface_struct_deref(const nir_deref_instr *deref)
+{
+   if (deref->deref_type == nir_deref_type_struct) {
+      assert(glsl_type_is_struct_or_ifc(nir_deref_instr_parent(deref)->type));
+      return true;
+   } else {
+      return false;
+   }
+}
+
 nir_deref_compare_result
 nir_compare_deref_paths(nir_deref_path *a_path,
                         nir_deref_path *b_path)
@@ -572,6 +583,7 @@ nir_compare_deref_paths(nir_deref_path *a_path,
    if (a_path->path[0]->deref_type != b_path->path[0]->deref_type)
       return nir_derefs_may_alias_bit;
 
+   unsigned path_idx = 1;
    if (a_path->path[0]->deref_type == nir_deref_type_var) {
       const nir_variable *a_var = a_path->path[0]->var;
       const nir_variable *b_var = b_path->path[0]->var;
@@ -585,6 +597,27 @@ nir_compare_deref_paths(nir_deref_path *a_path,
       assert(a_var->data.mode == b_var->data.mode);
 
       switch (a_var->data.mode) {
+      case nir_var_mem_ssbo: {
+         nir_deref_compare_result binding_compare;
+         if (a_var == b_var) {
+            binding_compare = compare_deref_paths(a_path, b_path, &path_idx,
+                                                  is_interface_struct_deref);
+         } else {
+            binding_compare = nir_derefs_do_not_alias;
+         }
+
+         if (binding_compare & nir_derefs_equal_bit)
+            break;
+
+         /* If the binding derefs can't alias and at least one is RESTRICT,
+          * then we know they can't alias.
+          */
+         if (!(binding_compare & nir_derefs_may_alias_bit))
+            return nir_derefs_do_not_alias;
+
+         return nir_derefs_may_alias_bit;
+      }
+
       case nir_var_mem_shared:
          if (a_var == b_var)
             break;
@@ -629,7 +662,6 @@ nir_compare_deref_paths(nir_deref_path *a_path,
          return nir_derefs_may_alias_bit;
    }
 
-   unsigned path_idx = 1;
    return compare_deref_paths(a_path, b_path, &path_idx, NULL);
 }
 

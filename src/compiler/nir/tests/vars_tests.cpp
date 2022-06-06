@@ -1327,6 +1327,234 @@ TEST_F(nir_copy_prop_vars_test, store_load_indirect_array_deref)
    EXPECT_EQ(first->src[1].ssa, second->src[1].ssa);
 }
 
+TEST_F(nir_copy_prop_vars_test, restrict_ssbo_bindings)
+{
+   glsl_struct_field field = glsl_struct_field();
+   field.type = glsl_int_type();
+   field.name = "x";
+   const glsl_type *ifc_type =
+      glsl_type::get_interface_instance(&field, 1,
+                                        GLSL_INTERFACE_PACKING_STD430,
+                                        false /* row_major */, "b");
+   nir_variable *ssbo0 = create_var(nir_var_mem_ssbo, ifc_type, "ssbo0");
+   nir_variable *ssbo1 = create_var(nir_var_mem_ssbo, ifc_type, "ssbo1");
+   ssbo0->data.access = ssbo1->data.access = ACCESS_RESTRICT;
+   nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
+   out->data.access = ACCESS_RESTRICT;
+
+   nir_deref_instr *ssbo0_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, ssbo0), 0);
+   nir_store_deref(b, ssbo0_x, nir_imm_int(b, 20), 1);
+
+   nir_deref_instr *ssbo1_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, ssbo1), 0);
+   nir_store_deref(b, ssbo1_x, nir_imm_int(b, 30), 1);
+
+   /* Load ssbo0.x and store it in out.x.  This load should be dropped */
+   nir_deref_instr *out_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, out), 0);
+   nir_store_deref(b, out_x, nir_load_deref(b, ssbo0_x), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 0);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   /* Store to b0.x propagated to out. */
+   nir_intrinsic_instr *first = get_intrinsic(nir_intrinsic_store_deref, 0);
+   nir_intrinsic_instr *third = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_TRUE(first->src[1].is_ssa);
+   ASSERT_TRUE(third->src[1].is_ssa);
+   EXPECT_EQ(first->src[1].ssa, third->src[1].ssa);
+}
+
+TEST_F(nir_copy_prop_vars_test, aliasing_ssbo_bindings)
+{
+   glsl_struct_field field = glsl_struct_field();
+   field.type = glsl_int_type();
+   field.name = "x";
+   const glsl_type *ifc_type =
+      glsl_type::get_interface_instance(&field, 1,
+                                        GLSL_INTERFACE_PACKING_STD430,
+                                        false /* row_major */, "b");
+   nir_variable *ssbo0 = create_var(nir_var_mem_ssbo, ifc_type, "ssbo0");
+   nir_variable *ssbo1 = create_var(nir_var_mem_ssbo, ifc_type, "ssbo1");
+   nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
+   out->data.access = ACCESS_RESTRICT;
+
+   nir_deref_instr *ssbo0_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, ssbo0), 0);
+   nir_store_deref(b, ssbo0_x, nir_imm_int(b, 20), 1);
+
+   nir_deref_instr *ssbo1_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, ssbo1), 0);
+   nir_store_deref(b, ssbo1_x, nir_imm_int(b, 30), 1);
+
+   /* Load ssbo0.x and store it in out.x.  This load should not be dropped */
+   nir_deref_instr *out_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, out), 0);
+   nir_store_deref(b, out_x, nir_load_deref(b, ssbo0_x), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_FALSE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+}
+
+TEST_F(nir_copy_prop_vars_test, ssbo_array_binding_indirect)
+{
+   glsl_struct_field field = glsl_struct_field();
+   field.type = glsl_int_type();
+   field.name = "x";
+   const glsl_type *ifc_type =
+      glsl_type::get_interface_instance(&field, 1,
+                                        GLSL_INTERFACE_PACKING_STD430,
+                                        false /* row_major */, "b");
+   const glsl_type *arr_ifc_type = glsl_type::get_array_instance(ifc_type, 2);
+   nir_variable *ssbo_arr = create_var(nir_var_mem_ssbo, arr_ifc_type,
+                                       "ssbo_arr");
+   ssbo_arr->data.access = ACCESS_RESTRICT;
+   nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
+   out->data.access = ACCESS_RESTRICT;
+
+   nir_ssa_def *i = nir_load_local_invocation_index(b);
+
+   nir_deref_instr *ssbo_0 =
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 0);
+   nir_deref_instr *ssbo_0_x = nir_build_deref_struct(b, ssbo_0, 0);
+   nir_store_deref(b, ssbo_0_x, nir_imm_int(b, 20), 1);
+
+   nir_deref_instr *ssbo_i =
+      nir_build_deref_array(b, nir_build_deref_var(b, ssbo_arr),
+                               nir_load_local_invocation_index(b));
+   nir_deref_instr *ssbo_i_x = nir_build_deref_struct(b, ssbo_i, 0);
+   nir_store_deref(b, ssbo_i_x, nir_imm_int(b, 30), 1);
+
+   /* Load ssbo_arr[0].x and store it in out.x.  This load should not be dropped */
+   nir_deref_instr *out_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, out), 0);
+   nir_store_deref(b, out_x, nir_load_deref(b, ssbo_0_x), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_FALSE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+}
+
+TEST_F(nir_copy_prop_vars_test, restrict_ssbo_array_binding)
+{
+   glsl_struct_field field = glsl_struct_field();
+   field.type = glsl_int_type();
+   field.name = "x";
+   const glsl_type *ifc_type =
+      glsl_type::get_interface_instance(&field, 1,
+                                        GLSL_INTERFACE_PACKING_STD430,
+                                        false /* row_major */, "b");
+   const glsl_type *arr_ifc_type = glsl_type::get_array_instance(ifc_type, 2);
+   nir_variable *ssbo_arr = create_var(nir_var_mem_ssbo, arr_ifc_type,
+                                       "ssbo_arr");
+   ssbo_arr->data.access = ACCESS_RESTRICT;
+   nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
+   out->data.access = ACCESS_RESTRICT;
+
+   nir_ssa_def *i = nir_load_local_invocation_index(b);
+
+   nir_deref_instr *ssbo_0 =
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 0);
+   nir_deref_instr *ssbo_0_x = nir_build_deref_struct(b, ssbo_0, 0);
+   nir_store_deref(b, ssbo_0_x, nir_imm_int(b, 20), 1);
+
+   nir_deref_instr *ssbo_1 =
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 1);
+   nir_deref_instr *ssbo_1_x = nir_build_deref_struct(b, ssbo_1, 0);
+   nir_store_deref(b, ssbo_1_x, nir_imm_int(b, 30), 1);
+
+   /* Load ssbo_arr[0].x and store it in out.x.  This load should be dropped */
+   nir_deref_instr *out_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, out), 0);
+   nir_store_deref(b, out_x, nir_load_deref(b, ssbo_0_x), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_TRUE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 0);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   /* Store to b0.x propagated to out. */
+   nir_intrinsic_instr *first = get_intrinsic(nir_intrinsic_store_deref, 0);
+   nir_intrinsic_instr *third = get_intrinsic(nir_intrinsic_store_deref, 2);
+   ASSERT_TRUE(first->src[1].is_ssa);
+   ASSERT_TRUE(third->src[1].is_ssa);
+   EXPECT_EQ(first->src[1].ssa, third->src[1].ssa);
+}
+
+TEST_F(nir_copy_prop_vars_test, aliasing_ssbo_array_binding)
+{
+   glsl_struct_field field = glsl_struct_field();
+   field.type = glsl_int_type();
+   field.name = "x";
+   const glsl_type *ifc_type =
+      glsl_type::get_interface_instance(&field, 1,
+                                        GLSL_INTERFACE_PACKING_STD430,
+                                        false /* row_major */, "b");
+   const glsl_type *arr_ifc_type = glsl_type::get_array_instance(ifc_type, 2);
+   nir_variable *ssbo_arr = create_var(nir_var_mem_ssbo, arr_ifc_type,
+                                       "ssbo_arr");
+   nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
+   out->data.access = ACCESS_RESTRICT;
+
+   nir_ssa_def *i = nir_load_local_invocation_index(b);
+
+   nir_deref_instr *ssbo_0 =
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 0);
+   nir_deref_instr *ssbo_0_x = nir_build_deref_struct(b, ssbo_0, 0);
+   nir_store_deref(b, ssbo_0_x, nir_imm_int(b, 20), 1);
+
+   nir_deref_instr *ssbo_1 =
+      nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 1);
+   nir_deref_instr *ssbo_1_x = nir_build_deref_struct(b, ssbo_1, 0);
+   nir_store_deref(b, ssbo_1_x, nir_imm_int(b, 30), 1);
+
+   /* Load ssbo_arr[0].x and store it in out.x.  This load should not be dropped */
+   nir_deref_instr *out_x =
+      nir_build_deref_struct(b, nir_build_deref_var(b, out), 0);
+   nir_store_deref(b, out_x, nir_load_deref(b, ssbo_0_x), 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+
+   bool progress = nir_opt_copy_prop_vars(b->shader);
+   EXPECT_FALSE(progress);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_deref), 1);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_deref), 3);
+}
+
 TEST_F(nir_dead_write_vars_test, no_dead_writes_in_block)
 {
    nir_variable **v = create_many_int(nir_var_mem_global, "v", 2);
