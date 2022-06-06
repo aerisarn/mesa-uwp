@@ -2213,17 +2213,12 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
          }
       }
 
-      unsigned buffer_row_len = util_format_get_stride(dst_format, copycmd->pRegions[i].bufferRowLength);
-      if (buffer_row_len == 0)
-         buffer_row_len = util_format_get_stride(dst_format, copycmd->pRegions[i].imageExtent.width);
-      unsigned buffer_image_height = copycmd->pRegions[i].bufferImageHeight;
-      if (buffer_image_height == 0)
-         buffer_image_height = copycmd->pRegions[i].imageExtent.height;
-
-      unsigned img_stride = util_format_get_2d_size(dst_format, buffer_row_len, buffer_image_height);
+      const struct vk_image_buffer_layout buffer_layout =
+         vk_image_buffer_copy_layout(&src_image->vk, &copycmd->pRegions[i]);
       if (src_format != dst_format) {
          copy_depth_box(dst_data, dst_format,
-                        buffer_row_len, img_stride,
+                        buffer_layout.row_stride_B,
+                        buffer_layout.image_stride_B,
                         0, 0, 0,
                         copycmd->pRegions[i].imageExtent.width,
                         copycmd->pRegions[i].imageExtent.height,
@@ -2231,7 +2226,8 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                         src_data, src_format, src_t->stride, src_t->layer_stride, 0, 0, 0);
       } else {
          util_copy_box((ubyte *)dst_data, src_format,
-                       buffer_row_len, img_stride,
+                       buffer_layout.row_stride_B,
+                       buffer_layout.image_stride_B,
                        0, 0, 0,
                        copycmd->pRegions[i].imageExtent.width,
                        copycmd->pRegions[i].imageExtent.height,
@@ -2293,14 +2289,8 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
          }
       }
 
-      unsigned buffer_row_len = util_format_get_stride(src_format, copycmd->pRegions[i].bufferRowLength);
-      if (buffer_row_len == 0)
-         buffer_row_len = util_format_get_stride(src_format, copycmd->pRegions[i].imageExtent.width);
-      unsigned buffer_image_height = copycmd->pRegions[i].bufferImageHeight;
-      if (buffer_image_height == 0)
-         buffer_image_height = copycmd->pRegions[i].imageExtent.height;
-
-      unsigned img_stride = util_format_get_2d_size(src_format, buffer_row_len, buffer_image_height);
+      const struct vk_image_buffer_layout buffer_layout =
+         vk_image_buffer_copy_layout(&dst_image->vk, &copycmd->pRegions[i]);
       if (src_format != dst_format) {
          copy_depth_box(dst_data, dst_format,
                         dst_t->stride, dst_t->layer_stride,
@@ -2309,7 +2299,9 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
                         copycmd->pRegions[i].imageExtent.height,
                         box.depth,
                         src_data, src_format,
-                        buffer_row_len, img_stride, 0, 0, 0);
+                        buffer_layout.row_stride_B,
+                        buffer_layout.image_stride_B,
+                        0, 0, 0);
       } else {
          util_copy_box(dst_data, dst_format,
                        dst_t->stride, dst_t->layer_stride,
@@ -2318,7 +2310,9 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
                        copycmd->pRegions[i].imageExtent.height,
                        box.depth,
                        src_data,
-                       buffer_row_len, img_stride, 0, 0, 0);
+                       buffer_layout.row_stride_B,
+                       buffer_layout.image_stride_B,
+                       0, 0, 0);
       }
       state->pctx->buffer_unmap(state->pctx, src_t);
       state->pctx->texture_unmap(state->pctx, dst_t);
