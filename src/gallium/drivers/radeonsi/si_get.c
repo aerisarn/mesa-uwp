@@ -869,7 +869,10 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
       if (ret) {
          uint64_t *max_local_size = ret;
          /* Value reported by the closed source driver. */
-         *max_local_size = 32768;
+         if (sscreen->info.gfx_level == GFX6)
+            *max_local_size = 32 * 1024;
+         else
+            *max_local_size = 64 * 1024;
       }
       return sizeof(uint64_t);
 
