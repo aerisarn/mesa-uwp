@@ -604,7 +604,7 @@ struct si_screen {
    /* Texture filter settings. */
    int force_aniso; /* -1 = disabled */
 
-   unsigned max_texture_buffer_size;
+   unsigned max_texel_buffer_elements;
 
    /* Auxiliary context. Mainly used to initialize resources.
     * It must be locked prior to using and flushed before unlocking. */

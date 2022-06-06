@@ -3916,7 +3916,7 @@ static void si_set_min_samples(struct pipe_context *ctx, unsigned min_samples)
  * @param state 256-bit descriptor; only the high 128 bits are filled in
  */
 void si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
-                               enum pipe_format format, unsigned offset, unsigned size,
+                               enum pipe_format format, unsigned offset, unsigned num_elements,
                                uint32_t *state)
 {
    const struct util_format_description *desc;
@@ -3926,7 +3926,7 @@ void si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf
    desc = util_format_description(format);
    stride = desc->block.bits / 8;
 
-   num_records = size / stride;
+   num_records = num_elements;
    num_records = MIN2(num_records, (buf->b.b.width0 - offset) / stride);
 
    /* The NUM_RECORDS field has a different meaning depending on the chip,
@@ -4567,11 +4567,11 @@ static struct pipe_sampler_view *si_create_sampler_view(struct pipe_context *ctx
 
    /* Buffer resource. */
    if (texture->target == PIPE_BUFFER) {
-      uint32_t size = si_clamp_texture_texel_count(sctx->screen->max_texture_buffer_size,
-                                                   state->format, state->u.buf.size);
+      uint32_t elements = si_clamp_texture_texel_count(sctx->screen->max_texel_buffer_elements,
+                                                       state->format, state->u.buf.size);
 
       si_make_buffer_descriptor(sctx->screen, si_resource(texture), state->format,
-                                state->u.buf.offset, size, view->state);
+                                state->u.buf.offset, elements, view->state);
       return &view->base;
    }
 

@@ -535,7 +535,7 @@ void si_init_state_functions(struct si_context *sctx);
 void si_init_screen_state_functions(struct si_screen *sscreen);
 void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing);
 void si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
-                               enum pipe_format format, unsigned offset, unsigned size,
+                               enum pipe_format format, unsigned offset, unsigned num_elements,
                                uint32_t *state);
 void si_set_sampler_depth_decompress_mask(struct si_context *sctx, struct si_texture *tex);
 void si_update_fb_dirtiness_after_rendering(struct si_context *sctx);
@@ -650,7 +650,7 @@ static inline unsigned si_get_image_slot(unsigned slot)
    return SI_NUM_IMAGE_SLOTS - 1 - slot;
 }
 
-static inline unsigned si_clamp_texture_texel_count(unsigned max_texture_buffer_size,
+static inline unsigned si_clamp_texture_texel_count(unsigned max_texel_buffer_elements,
                                                     enum pipe_format format,
                                                     uint32_t size)
 {
@@ -661,9 +661,7 @@ static inline unsigned si_clamp_texture_texel_count(unsigned max_texture_buffer_
     * So compute the number of texels, compare to GL_MAX_TEXTURE_BUFFER_SIZE and update it.
     */
    unsigned stride = util_format_get_blocksize(format);
-   unsigned num_texels = MIN2(max_texture_buffer_size,
-                               size / stride);
-   return num_texels * stride;
+   return MIN2(max_texel_buffer_elements, size / stride);
 }
 
 #ifdef __cplusplus
