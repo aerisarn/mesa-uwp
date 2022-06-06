@@ -1104,13 +1104,14 @@ static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *sh
               "Spilled VGPRs: %d\n"
               "Private memory VGPRs: %d\n"
               "Code Size: %d bytes\n"
-              "LDS: %d blocks\n"
+              "LDS: %d bytes\n"
               "Scratch: %d bytes per wave\n"
               "Max Waves: %d\n"
               "********************\n\n\n",
               conf->num_sgprs, conf->num_vgprs, conf->spilled_sgprs, conf->spilled_vgprs,
               shader->info.private_mem_vgprs, si_get_shader_binary_size(sscreen, shader),
-              conf->lds_size, conf->scratch_bytes_per_wave, shader->info.max_simd_waves);
+              conf->lds_size * get_lds_granularity(sscreen, shader->selector->stage),
+              conf->scratch_bytes_per_wave, shader->info.max_simd_waves);
    }
 }
 
