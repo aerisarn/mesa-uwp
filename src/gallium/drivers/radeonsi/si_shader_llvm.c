@@ -796,6 +796,13 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_ring_es2gs_offset_amd:
       return ac_get_arg(&ctx->ac, ctx->args.es2gs_offset);
 
+   case nir_intrinsic_load_clip_half_line_width_amd: {
+      LLVMValueRef ptr =
+         LLVMBuildPointerCast(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->small_prim_cull_info),
+                              LLVMPointerType(ctx->ac.v2f32, AC_ADDR_SPACE_CONST_32BIT), "");
+      return ac_build_load_to_sgpr(&ctx->ac, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
+   }
+
    default:
       return NULL;
    }
