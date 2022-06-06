@@ -166,6 +166,10 @@ lima_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    switch (alu->op) {
    case nir_op_frcp:
+   /* nir_op_idiv is lowered to frcp by lower_int_to_floats which
+    * will be run later, so lower idiv here
+    */
+   case nir_op_idiv:
    case nir_op_frsq:
    case nir_op_flog2:
    case nir_op_fexp2:
