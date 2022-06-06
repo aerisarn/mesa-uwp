@@ -851,7 +851,7 @@ st_link_nir(struct gl_context *ctx,
       char *msg = st_glsl_to_nir_post_opts(st, shader->Program, shader_program);
       if (msg) {
          linker_error(shader_program, msg);
-         break;
+         return false;
       }
 
       if (prev_info &&
