@@ -1865,6 +1865,25 @@ done:
          anv_shader_bin_unref(pipeline->base.device, fs);
          pipeline->shaders[MESA_SHADER_FRAGMENT] = NULL;
          pipeline->active_stages &= ~VK_SHADER_STAGE_FRAGMENT_BIT;
+
+         /* The per-SIMD size fragment shaders should be last in the
+          * executables array.  Remove all of them.
+          */
+         ASSERTED unsigned removed = 0;
+
+         util_dynarray_foreach_reverse(&pipeline->base.executables,
+                                       struct anv_pipeline_executable,
+                                       tail) {
+            /* There must be at least one fragment shader. */
+            assert(removed > 0 || tail->stage == MESA_SHADER_FRAGMENT);
+
+            if (tail->stage != MESA_SHADER_FRAGMENT)
+               break;
+
+            (void) util_dynarray_pop(&pipeline->base.executables,
+                                     struct anv_pipeline_executable);
+            removed++;
+         }
       }
    }
 
