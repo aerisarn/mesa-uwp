@@ -198,3 +198,17 @@ traces:
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 3a12c08087e16cfae4729f4e9d6c9387
+  # GL_INVALID_OPERATION, incompletely rendered image
+  #- path: blender/blender-demo-cube_diorama.trace
+  # missing background
+  # 16218: warning: error: Too many compute shader storage blocks (9/8)
+  #- path: blender/blender-demo-ellie_pose.trace
+  # error: waffle_context_create failed
+  #- path: freedoom/freedoom-phase2-gl-high.trace
+  # error: GLSL 4.60 is not supported
+  #- path: unvanquished/unvanquished-lowest.trace
+  #- path: unvanquished/unvanquished-ultra.trace
+  - path: warzone2100/warzone2100-default.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: a16057839ad9d00d7b43cb1b69618baf
