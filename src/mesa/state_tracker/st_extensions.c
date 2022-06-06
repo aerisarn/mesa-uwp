@@ -167,6 +167,11 @@ void st_init_limits(struct pipe_screen *screen,
       can_ubo = false;
    }
 
+   /* Round down to a multiple of 4 to make piglit happy. Bytes are not
+    * addressible by UBOs anyway.
+    */
+   c->MaxUniformBlockSize &= ~3;
+
    for (sh = 0; sh < PIPE_SHADER_TYPES; ++sh) {
       const gl_shader_stage stage = tgsi_processor_to_shader_stage(sh);
       struct gl_shader_compiler_options *options =
