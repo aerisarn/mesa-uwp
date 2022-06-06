@@ -21,18 +21,25 @@ struct nvk_buffer_address {
 
 struct nvk_descriptor_set {
    struct vk_object_base base;
-
    struct nvk_descriptor_set_layout *layout;
-
-   void *map;
+   uint32_t buffer_count;
+   uint32_t bo_offset;
+   struct nouveau_ws_bo *bo;
+   void *mapped_ptr;
 };
 
 struct nvk_descriptor_pool_entry {
+   uint32_t offset;
+   uint32_t size;
    struct nvk_descriptor_set *set;
 };
 
 struct nvk_descriptor_pool {
    struct vk_object_base base;
+   struct nouveau_ws_bo *bo;
+   uint8_t *mapped_ptr;
+   uint64_t current_offset;
+   uint64_t size;
    uint32_t entry_count;
    uint32_t max_entry_count;
    struct nvk_descriptor_pool_entry entries[0];

@@ -4,14 +4,23 @@
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_image_view.h"
+#include "nvk_physical_device.h"
 #include "nvk_sampler.h"
+#include "nouveau_bo.h"
+
+static inline uint32_t
+align_u32(uint32_t v, uint32_t a)
+{
+   assert(a != 0 && a == (a & -a));
+   return (v + a - 1) & ~(a - 1);
+}
 
 static void *desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
                            uint32_t elem) {
    const struct nvk_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding];
 
-   return (char *)set->map + binding_layout->offset +
+   return (char *)set->mapped_ptr + binding_layout->offset +
           elem * binding_layout->stride;
 }
 
@@ -180,6 +189,9 @@ nvk_destroy_descriptor_pool(struct nvk_device *device, const VkAllocationCallbac
    for (int i = 0; i < pool->entry_count; ++i) {
       nvk_descriptor_set_destroy(device, pool, pool->entries[i].set, false);
    }
+
+   nouveau_ws_bo_destroy(pool->bo);
+
    vk_object_base_finish(&pool->base);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
@@ -193,12 +205,50 @@ nvk_CreateDescriptorPool(VkDevice _device,
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_descriptor_pool *pool;
    uint64_t size = sizeof(struct nvk_descriptor_pool);
+   uint64_t bo_size = 0;
+
+   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+
+   for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
+      const VkMutableDescriptorTypeListVALVE *type_list = NULL;
+      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+         assert(mutable_info != NULL);
+         assert(i <= mutable_info->mutableDescriptorTypeListCount);
+         type_list = &mutable_info->pMutableDescriptorTypeLists[i];
+      }
+
+      uint32_t stride, align;
+      nvk_descriptor_stride_align_for_type(pCreateInfo->pPoolSizes[i].type,
+                                           type_list, &stride, &align);
+      bo_size += MAX2(stride, align) *
+                 pCreateInfo->pPoolSizes[i].descriptorCount;
+   }
+
+   uint64_t entries_size = sizeof(struct nvk_descriptor_pool_entry) * pCreateInfo->maxSets;
+   size += entries_size;
 
    pool = vk_zalloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pool)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_DESCRIPTOR_POOL);
 
+   if (bo_size) {
+      uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
+      pool->bo = nouveau_ws_bo_new(device->pdev->dev, bo_size, 0, flags);
+      if (!pool->bo) {
+         nvk_destroy_descriptor_pool(device, pAllocator, pool);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+      pool->mapped_ptr = nouveau_ws_bo_map(pool->bo, NOUVEAU_WS_BO_WR);
+      if (!pool->mapped_ptr) {
+         nvk_destroy_descriptor_pool(device, pAllocator, pool);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+   }
+
+   pool->size = bo_size;
    pool->max_entry_count = pCreateInfo->maxSets;
 
    *pDescriptorPool = nvk_descriptor_pool_to_handle(pool);
@@ -218,6 +268,21 @@ nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool 
 
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
+   set->layout = layout;
+   if (pool->entry_count == pool->max_entry_count) {
+      return VK_ERROR_OUT_OF_POOL_MEMORY;
+   }
+
+   if (pool->current_offset + layout->descriptor_buffer_size <= pool->size) {
+      set->bo = pool->bo;
+      set->mapped_ptr = (uint32_t *)(pool->mapped_ptr + pool->current_offset);
+      set->bo_offset = pool->current_offset;
+      pool->entries[pool->entry_count].offset = pool->current_offset;
+      pool->entries[pool->entry_count].size = layout->descriptor_buffer_size;
+      pool->entries[pool->entry_count].set = set;
+      pool->current_offset += layout->descriptor_buffer_size;
+   }
+   pool->entry_count++;
    *out_set = set;
    return VK_SUCCESS;
 }
