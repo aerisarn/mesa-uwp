@@ -1048,7 +1048,12 @@ tc_bind_sampler_states(struct pipe_context *_pipe,
    memcpy(p->slot, states, count * sizeof(states[0]));
 }
 
-
+static void
+tc_link_shader(struct pipe_context *_pipe, void **shaders)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   tc->pipe->link_shader(tc->pipe, shaders);
+}
 /********************************************************************
  * immediate states
  */
@@ -4416,6 +4421,7 @@ threaded_context_create(struct pipe_context *pipe,
    CTX_INIT(create_depth_stencil_alpha_state);
    CTX_INIT(bind_depth_stencil_alpha_state);
    CTX_INIT(delete_depth_stencil_alpha_state);
+   CTX_INIT(link_shader);
    CTX_INIT(create_fs_state);
    CTX_INIT(bind_fs_state);
    CTX_INIT(delete_fs_state);
