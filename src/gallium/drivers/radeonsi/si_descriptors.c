@@ -2096,6 +2096,7 @@ static void si_set_user_data_base(struct si_context *sctx, unsigned shader, uint
        * state, which can be done in VS, TES, and GS.
        */
       sctx->last_vs_state = ~0;
+      sctx->last_gs_state = ~0;
    }
 }
 

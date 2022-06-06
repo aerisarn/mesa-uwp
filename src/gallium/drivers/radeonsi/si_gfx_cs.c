@@ -516,6 +516,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       ctx->last_prim = -1;
       ctx->last_multi_vgt_param = -1;
       ctx->last_vs_state = ~0;
+      ctx->last_gs_state = ~0;
       ctx->last_ls = NULL;
       ctx->last_tcs = NULL;
       ctx->last_tes_sh_base = -1;
