@@ -5948,6 +5948,41 @@ visit_load_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    load_buffer(ctx, instr->num_components, size, dst, rsrc, offset, size, 0);
 }
 
+/* Packs multiple Temps of different sizes in to a vector of v1 Temps.
+ * The byte count of each input Temp must be a multiple of 2.
+ */
+static std::vector<Temp>
+emit_pack_v1(isel_context* ctx, const std::vector<Temp>& unpacked)
+{
+   Builder bld(ctx->program, ctx->block);
+   std::vector<Temp> packed;
+   Temp low = Temp();
+   for (Temp tmp : unpacked) {
+      assert(tmp.bytes() % 2 == 0);
+      unsigned byte_idx = 0;
+      while (byte_idx < tmp.bytes()) {
+         if (low != Temp()) {
+            Temp high = emit_extract_vector(ctx, tmp, byte_idx / 2, v2b);
+            Temp dword = bld.pseudo(aco_opcode::p_create_vector, bld.def(v1), low, high);
+            low = Temp();
+            packed.push_back(dword);
+            byte_idx += 2;
+         } else if (byte_idx % 4 == 0 && (byte_idx + 4) <= tmp.bytes()) {
+            packed.emplace_back(emit_extract_vector(ctx, tmp, byte_idx / 4, v1));
+            byte_idx += 4;
+         } else {
+            low = emit_extract_vector(ctx, tmp, byte_idx / 2, v2b);
+            byte_idx += 2;
+         }
+      }
+   }
+   if (low != Temp()) {
+      Temp dword = bld.pseudo(aco_opcode::p_create_vector, bld.def(v1), low, Operand(v2b));
+      packed.push_back(dword);
+   }
+   return packed;
+}
+
 static bool
 should_declare_array(isel_context* ctx, enum glsl_sampler_dim sampler_dim, bool is_array)
 {
@@ -9341,9 +9376,10 @@ prepare_cube_coords(isel_context* ctx, std::vector<Temp>& coords, Temp* ddx, Tem
       tc = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), Operand::c32(0x3fc00000u /*1.5*/), tc);
    }
 
-   if (is_array)
+   if (is_array) {
       id = bld.vop2(madmk, bld.def(v1), coords[3], id, Operand::c32(0x41000000u /*8.0*/));
-   coords.resize(3);
+      coords.erase(coords.begin() + 3);
+   }
    coords[0] = sc;
    coords[1] = tc;
    coords[2] = id;
@@ -9374,7 +9410,8 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
         has_offset = false, has_ddx = false, has_ddy = false, has_derivs = false,
         has_sample_index = false, has_clamped_lod = false;
    Temp resource, sampler, bias = Temp(), compare = Temp(), sample_index = Temp(), lod = Temp(),
-                           offset = Temp(), ddx = Temp(), ddy = Temp(), clamped_lod = Temp();
+                           offset = Temp(), ddx = Temp(), ddy = Temp(), clamped_lod = Temp(),
+                           coord = Temp();
    std::vector<Temp> coords;
    std::vector<Temp> derivs;
    nir_const_value* const_offset[4] = {NULL, NULL, NULL, NULL};
@@ -9396,15 +9433,25 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    bool tg4_integer_cube_workaround =
       tg4_integer_workarounds && instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
 
+   bool a16 = false, g16 = false;
+
+   int coord_idx = nir_tex_instr_src_index(instr, nir_tex_src_coord);
+   if (coord_idx > 0)
+      a16 = instr->src[coord_idx].src.ssa->bit_size == 16;
+
+   int ddx_idx = nir_tex_instr_src_index(instr, nir_tex_src_ddx);
+   if (ddx_idx > 0)
+      g16 = instr->src[ddx_idx].src.ssa->bit_size == 16;
+
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord: {
-         Temp coord = get_ssa_temp(ctx, instr->src[i].src.ssa);
-         for (unsigned j = 0; j < coord.size(); j++)
-            coords.emplace_back(emit_extract_vector(ctx, coord, j, v1));
+         assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
+         coord = get_ssa_temp(ctx, instr->src[i].src.ssa);
          break;
       }
       case nir_tex_src_bias:
+         assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
          bias = get_ssa_temp(ctx, instr->src[i].src.ssa);
          has_bias = true;
          break;
@@ -9412,35 +9459,42 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0) {
             level_zero = true;
          } else {
+            assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
             lod = get_ssa_temp(ctx, instr->src[i].src.ssa);
             has_lod = true;
          }
          break;
       }
       case nir_tex_src_min_lod:
+         assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
          clamped_lod = get_ssa_temp(ctx, instr->src[i].src.ssa);
          has_clamped_lod = true;
          break;
       case nir_tex_src_comparator:
          if (instr->is_shadow) {
+            assert(instr->src[i].src.ssa->bit_size == 32);
             compare = get_ssa_temp(ctx, instr->src[i].src.ssa);
             has_compare = true;
          }
          break;
       case nir_tex_src_offset:
+         assert(instr->src[i].src.ssa->bit_size == 32);
          offset = get_ssa_temp(ctx, instr->src[i].src.ssa);
          get_const_vec(instr->src[i].src.ssa, const_offset);
          has_offset = true;
          break;
       case nir_tex_src_ddx:
+         assert(instr->src[i].src.ssa->bit_size == (g16 ? 16 : 32));
          ddx = get_ssa_temp(ctx, instr->src[i].src.ssa);
          has_ddx = true;
          break;
       case nir_tex_src_ddy:
+         assert(instr->src[i].src.ssa->bit_size == (g16 ? 16 : 32));
          ddy = get_ssa_temp(ctx, instr->src[i].src.ssa);
          has_ddy = true;
          break;
       case nir_tex_src_ms_index:
+         assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
          sample_index = get_ssa_temp(ctx, instr->src[i].src.ssa);
          has_sample_index = true;
          break;
@@ -9525,32 +9579,61 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          offset = pack;
    }
 
+   unsigned wqm_coord_count = 0;
+   std::vector<Temp> unpacked_coord;
+   if (ctx->options->gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
+       instr->op != nir_texop_lod && instr->coord_components) {
+      RegClass rc = a16 ? v2b : v1;
+      for (unsigned i = 0; i < coord.bytes() / rc.bytes(); i++)
+         unpacked_coord.emplace_back(emit_extract_vector(ctx, coord, i, rc));
+
+      assert(unpacked_coord.size() > 0 && unpacked_coord.size() < 3);
+
+      Operand coord2d;
+      /* 0.5 for floating point coords, 0 for integer. */
+      if (a16)
+         coord2d = instr->op == nir_texop_txf ? Operand::c16(0) : Operand::c16(0x3800);
+      else
+         coord2d = instr->op == nir_texop_txf ? Operand::c32(0) : Operand::c32(0x3f000000);
+      unpacked_coord.insert(std::next(unpacked_coord.begin()), bld.copy(bld.def(rc), coord2d));
+      wqm_coord_count = a16 ? DIV_ROUND_UP(unpacked_coord.size(), 2) : unpacked_coord.size();
+   } else if (coord != Temp()) {
+      unpacked_coord.push_back(coord);
+      wqm_coord_count = DIV_ROUND_UP(coord.bytes(), 4);
+   }
+
+   if (has_sample_index)
+      unpacked_coord.push_back(sample_index);
+   if (has_lod)
+      unpacked_coord.push_back(lod);
+   if (has_clamped_lod)
+      unpacked_coord.push_back(clamped_lod);
+
+   coords = emit_pack_v1(ctx, unpacked_coord);
+
+   assert(instr->sampler_dim != GLSL_SAMPLER_DIM_CUBE || !a16);
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE && instr->coord_components)
       prepare_cube_coords(ctx, coords, &ddx, &ddy, instr->op == nir_texop_txd,
                           instr->is_array && instr->op != nir_texop_lod);
 
    /* pack derivatives */
    if (has_ddx || has_ddy) {
-      if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->gfx_level == GFX9) {
-         assert(has_ddx && has_ddy && ddx.size() == 1 && ddy.size() == 1);
-         Temp zero = bld.copy(bld.def(v1), Operand::zero());
-         derivs = {ddx, zero, ddy, zero};
-      } else {
-         for (unsigned i = 0; has_ddx && i < ddx.size(); i++)
-            derivs.emplace_back(emit_extract_vector(ctx, ddx, i, v1));
-         for (unsigned i = 0; has_ddy && i < ddy.size(); i++)
-            derivs.emplace_back(emit_extract_vector(ctx, ddy, i, v1));
+      RegClass rc = g16 ? v2b : v1;
+      assert(a16 == g16 || ctx->options->gfx_level >= GFX10);
+      std::array<Temp, 2> ddxddy = {ddx, ddy};
+      for (Temp tmp : ddxddy) {
+         if (tmp == Temp())
+            continue;
+         std::vector<Temp> unpacked = {tmp};
+         if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->gfx_level == GFX9) {
+            assert(has_ddx && has_ddy);
+            Temp zero = bld.copy(bld.def(rc), Operand::zero(rc.bytes()));
+            unpacked.push_back(zero);
+         }
+         for (Temp derv : emit_pack_v1(ctx, unpacked))
+            derivs.push_back(derv);
       }
       has_derivs = true;
-   }
-
-   if (ctx->options->gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
-       instr->op != nir_texop_lod && instr->coord_components) {
-      assert(coords.size() > 0 && coords.size() < 3);
-
-      coords.insert(std::next(coords.begin()),
-                    bld.copy(bld.def(v1), instr->op == nir_texop_txf ? Operand::c32(0)
-                                                                     : Operand::c32(0x3f000000)));
    }
 
    bool da = should_declare_array(ctx, instr->sampler_dim, instr->is_array);
@@ -9752,21 +9835,14 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       args.emplace_back(offset);
    }
    if (has_bias)
-      args.emplace_back(bias);
+      args.emplace_back(emit_pack_v1(ctx, {bias})[0]);
    if (has_compare)
       args.emplace_back(compare);
    if (has_derivs)
       args.insert(args.end(), derivs.begin(), derivs.end());
 
-   wqm_mask |= u_bit_consecutive(args.size(), coords.size());
+   wqm_mask |= u_bit_consecutive(args.size(), wqm_coord_count);
    args.insert(args.end(), coords.begin(), coords.end());
-
-   if (has_sample_index)
-      args.emplace_back(sample_index);
-   if (has_lod)
-      args.emplace_back(lod);
-   if (has_clamped_lod)
-      args.emplace_back(clamped_lod);
 
    if (instr->op == nir_texop_txf || instr->op == nir_texop_fragment_fetch_amd ||
        instr->op == nir_texop_fragment_mask_fetch_amd) {
@@ -9786,6 +9862,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       tex->da = da;
       tex->tfe = instr->is_sparse;
       tex->d16 = d16;
+      tex->a16 = a16;
 
       if (instr->op == nir_texop_fragment_mask_fetch_amd) {
          /* Use 0x76543210 if the image doesn't have FMASK. */
@@ -9811,26 +9888,34 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       return;
    }
 
+   bool separate_g16 = ctx->options->gfx_level >= GFX10 && g16;
+
    // TODO: would be better to do this by adding offsets, but needs the opcodes ordered.
    aco_opcode opcode = aco_opcode::image_sample;
    if (has_offset) { /* image_sample_*_o */
       if (has_clamped_lod) {
          if (has_compare) {
             opcode = aco_opcode::image_sample_c_cl_o;
-            if (has_derivs)
+            if (separate_g16)
+               opcode = aco_opcode::image_sample_c_d_cl_o_g16;
+            else if (has_derivs)
                opcode = aco_opcode::image_sample_c_d_cl_o;
             if (has_bias)
                opcode = aco_opcode::image_sample_c_b_cl_o;
          } else {
             opcode = aco_opcode::image_sample_cl_o;
-            if (has_derivs)
+            if (separate_g16)
+               opcode = aco_opcode::image_sample_d_cl_o_g16;
+            else if (has_derivs)
                opcode = aco_opcode::image_sample_d_cl_o;
             if (has_bias)
                opcode = aco_opcode::image_sample_b_cl_o;
          }
       } else if (has_compare) {
          opcode = aco_opcode::image_sample_c_o;
-         if (has_derivs)
+         if (separate_g16)
+            opcode = aco_opcode::image_sample_c_d_o_g16;
+         else if (has_derivs)
             opcode = aco_opcode::image_sample_c_d_o;
          if (has_bias)
             opcode = aco_opcode::image_sample_c_b_o;
@@ -9840,7 +9925,9 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
             opcode = aco_opcode::image_sample_c_l_o;
       } else {
          opcode = aco_opcode::image_sample_o;
-         if (has_derivs)
+         if (separate_g16)
+            opcode = aco_opcode::image_sample_d_o_g16;
+         else if (has_derivs)
             opcode = aco_opcode::image_sample_d_o;
          if (has_bias)
             opcode = aco_opcode::image_sample_b_o;
@@ -9852,13 +9939,17 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    } else if (has_clamped_lod) { /* image_sample_*_cl */
       if (has_compare) {
          opcode = aco_opcode::image_sample_c_cl;
-         if (has_derivs)
+         if (separate_g16)
+            opcode = aco_opcode::image_sample_c_d_cl_g16;
+         else if (has_derivs)
             opcode = aco_opcode::image_sample_c_d_cl;
          if (has_bias)
             opcode = aco_opcode::image_sample_c_b_cl;
       } else {
          opcode = aco_opcode::image_sample_cl;
-         if (has_derivs)
+         if (separate_g16)
+            opcode = aco_opcode::image_sample_d_cl_g16;
+         else if (has_derivs)
             opcode = aco_opcode::image_sample_d_cl;
          if (has_bias)
             opcode = aco_opcode::image_sample_b_cl;
@@ -9866,7 +9957,9 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    } else { /* no offset */
       if (has_compare) {
          opcode = aco_opcode::image_sample_c;
-         if (has_derivs)
+         if (separate_g16)
+            opcode = aco_opcode::image_sample_c_d_g16;
+         else if (has_derivs)
             opcode = aco_opcode::image_sample_c_d;
          if (has_bias)
             opcode = aco_opcode::image_sample_c_b;
@@ -9876,7 +9969,9 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
             opcode = aco_opcode::image_sample_c_l;
       } else {
          opcode = aco_opcode::image_sample;
-         if (has_derivs)
+         if (separate_g16)
+            opcode = aco_opcode::image_sample_d_g16;
+         else if (has_derivs)
             opcode = aco_opcode::image_sample_d;
          if (has_bias)
             opcode = aco_opcode::image_sample_b;
@@ -9933,6 +10028,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    tex->da = da;
    tex->tfe = instr->is_sparse;
    tex->d16 = d16;
+   tex->a16 = a16;
 
    if (tg4_integer_cube_workaround) {
       assert(tmp_dst.id() != dst.id());
