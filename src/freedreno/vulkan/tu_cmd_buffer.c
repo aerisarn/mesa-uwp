@@ -2334,14 +2334,13 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
       uint32_t mask = ~pipeline->dynamic_state_mask & BITFIELD_MASK(TU_DYNAMIC_STATE_COUNT);
 
-      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (9 + util_bitcount(mask)));
+      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (8 + util_bitcount(mask)));
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_CONFIG, pipeline->program.config_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI, pipeline->vi.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_RAST, pipeline->rast_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_BLEND, pipeline->blend_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order_state_sysmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order_state_gmem);
 
@@ -2430,7 +2429,47 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    UPDATE_REG(rb_stencil_cntl, RB_STENCIL_CNTL);
    UPDATE_REG(pc_raster_cntl, RASTERIZER_DISCARD);
    UPDATE_REG(vpc_unknown_9107, RASTERIZER_DISCARD);
+   UPDATE_REG(sp_blend_cntl, BLEND);
+   UPDATE_REG(rb_blend_cntl, BLEND);
+
+   for (unsigned i = 0; i < pipeline->num_rts; i++) {
+      if ((cmd->state.rb_mrt_control[i] & pipeline->rb_mrt_control_mask) !=
+          pipeline->rb_mrt_control[i]) {
+         cmd->state.rb_mrt_control[i] &= ~pipeline->rb_mrt_control_mask;
+         cmd->state.rb_mrt_control[i] |= pipeline->rb_mrt_control[i];
+         cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+      }
+
+      if (cmd->state.rb_mrt_blend_control[i] != pipeline->rb_mrt_blend_control[i]) {
+         cmd->state.rb_mrt_blend_control[i] = pipeline->rb_mrt_blend_control[i];
+         cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+      }
+   }
 #undef UPDATE_REG
+
+   if (cmd->state.pipeline_color_write_enable != pipeline->color_write_enable) {
+      cmd->state.pipeline_color_write_enable = pipeline->color_write_enable;
+      cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+   }
+   if (cmd->state.pipeline_blend_enable != pipeline->blend_enable) {
+      cmd->state.pipeline_blend_enable = pipeline->blend_enable;
+      cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+   }
+   if (cmd->state.logic_op_enabled != pipeline->logic_op_enabled) {
+      cmd->state.logic_op_enabled = pipeline->logic_op_enabled;
+      cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+   }
+   if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP)) &&
+       cmd->state.rop_reads_dst != pipeline->rop_reads_dst) {
+      cmd->state.rop_reads_dst = pipeline->rop_reads_dst;
+      cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+   }
+   if (cmd->state.dynamic_state[TU_DYNAMIC_STATE_BLEND].size != pipeline->num_rts * 3 + 4) {
+      cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+   }
+   if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND))) {
+      cmd->state.dirty &= ~TU_CMD_DIRTY_BLEND;
+   }
 
    if (pipeline->rb_depth_cntl_disable)
       cmd->state.dirty |= TU_CMD_DIRTY_RB_DEPTH_CNTL;
@@ -2793,7 +2832,12 @@ VKAPI_ATTR void VKAPI_CALL
 tu_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer,
                     VkLogicOp logicOp)
 {
-   tu_stub();
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.rb_mrt_control_rop =
+      tu6_rb_mrt_control_rop(logicOp, &cmd->state.rop_reads_dst);
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3770,6 +3814,11 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    gras_lrz_cntl.z_test_enable = z_read_enable;
    gras_lrz_cntl.z_bounds_enable = z_bounds_enable;
 
+   /* See comment in tu_pipeline about disabling LRZ write for blending. */
+   if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP)) &&
+       cmd->state.logic_op_enabled && cmd->state.rop_reads_dst)
+      gras_lrz_cntl.lrz_write = false;
+
    /* LRZ is disabled until it is cleared, which means that one "wrong"
     * depth test or shader could disable LRZ until depth buffer is cleared.
     */
@@ -3998,6 +4047,41 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, A6XX_RB_DEPTH_PLANE_CNTL_Z_MODE(zmode));
 }
 
+static void
+tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
+{
+   struct tu_pipeline *pipeline = cmd->state.pipeline;
+   uint32_t color_write_enable = cmd->state.pipeline_color_write_enable;
+
+   for (unsigned i = 0; i < pipeline->num_rts; i++) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
+      if (color_write_enable & BIT(i)) {
+         tu_cs_emit(cs, cmd->state.rb_mrt_control[i] |
+                        ((cmd->state.logic_op_enabled ?
+                          cmd->state.rb_mrt_control_rop : 0) &
+                         ~pipeline->rb_mrt_control_mask));
+         tu_cs_emit(cs, cmd->state.rb_mrt_blend_control[i]);
+      } else {
+         tu_cs_emit(cs, 0);
+         tu_cs_emit(cs, 0);
+      }
+   }
+
+   uint32_t blend_enable_mask =
+      (cmd->state.logic_op_enabled && cmd->state.rop_reads_dst) ?
+      color_write_enable : cmd->state.pipeline_blend_enable;
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_BLEND_CNTL, 1);
+   tu_cs_emit(cs, cmd->state.sp_blend_cntl |
+                  (A6XX_SP_BLEND_CNTL_ENABLE_BLEND(blend_enable_mask) &
+                   ~pipeline->sp_blend_cntl_mask));
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLEND_CNTL, 1);
+   tu_cs_emit(cs, cmd->state.rb_blend_cntl |
+                  (A6XX_RB_BLEND_CNTL_ENABLE_BLEND(blend_enable_mask) &
+                   ~pipeline->rb_blend_cntl_mask));
+}
+
 static VkResult
 tu6_draw_common(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
@@ -4043,7 +4127,9 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (!(cmd->state.dirty & ~TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD))
       return VK_SUCCESS;
 
-   bool dirty_lrz = cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL | TU_CMD_DIRTY_RB_STENCIL_CNTL);
+   bool dirty_lrz =
+      cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL |
+                          TU_CMD_DIRTY_RB_STENCIL_CNTL | TU_CMD_DIRTY_BLEND);
 
    struct tu_descriptor_state *descriptors_state =
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
@@ -4103,6 +4189,12 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
                         pipeline->z_negative_one_to_one);
    }
 
+   if (cmd->state.dirty & TU_CMD_DIRTY_BLEND) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_BLEND,
+                                             4 + 3 * cmd->state.pipeline->num_rts);
+      tu6_emit_blend(&cs, cmd);
+   }
+
    /* for the first draw in a renderpass, re-emit all the draw states
     *
     * and if a draw-state disabling path (CmdClearAttachments 3D fallback) was
@@ -4122,7 +4214,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI, pipeline->vi.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VI_BINNING, pipeline->vi.binning_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_RAST, pipeline->rast_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_BLEND, pipeline->blend_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order_state_sysmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order_state_gmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_SHADER_GEOM_CONST, cmd->state.shader_const[0]);
@@ -4143,7 +4234,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       /* emit draw states that were just updated
        * note we eventually don't want to have to emit anything here
        */
-      bool emit_binding_stride = false;
+      bool emit_binding_stride = false, emit_blend = false;
       uint32_t draw_state_count =
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 2 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
@@ -4154,6 +4245,12 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       if ((cmd->state.dirty & TU_CMD_DIRTY_VB_STRIDE) &&
           (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VB_STRIDE))) {
          emit_binding_stride = true;
+         draw_state_count += 1;
+      }
+
+      if ((cmd->state.dirty & TU_CMD_DIRTY_BLEND) &&
+          (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND))) {
+         emit_blend = true;
          draw_state_count += 1;
       }
 
@@ -4171,6 +4268,10 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       if (emit_binding_stride) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + TU_DYNAMIC_STATE_VB_STRIDE,
                                cmd->state.dynamic_state[TU_DYNAMIC_STATE_VB_STRIDE]);
+      }
+      if (emit_blend) {
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + TU_DYNAMIC_STATE_BLEND,
+                               cmd->state.dynamic_state[TU_DYNAMIC_STATE_BLEND]);
       }
       if (cmd->state.dirty & TU_CMD_DIRTY_VS_PARAMS)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);

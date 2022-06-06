@@ -695,10 +695,12 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_RB_STENCIL_CNTL,
    TU_DYNAMIC_STATE_VB_STRIDE,
    TU_DYNAMIC_STATE_RASTERIZER_DISCARD,
+   TU_DYNAMIC_STATE_BLEND,
    TU_DYNAMIC_STATE_COUNT,
    /* no associated draw state: */
    TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = TU_DYNAMIC_STATE_COUNT,
    TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
+   TU_DYNAMIC_STATE_LOGIC_OP,
    /* re-use the line width enum as it uses GRAS_SU_CNTL: */
    TU_DYNAMIC_STATE_GRAS_SU_CNTL = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
@@ -712,7 +714,6 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VI,
    TU_DRAW_STATE_VI_BINNING,
    TU_DRAW_STATE_RAST,
-   TU_DRAW_STATE_BLEND,
    TU_DRAW_STATE_SHADER_GEOM_CONST,
    TU_DRAW_STATE_FS_CONST,
    TU_DRAW_STATE_DESC_SETS,
@@ -925,8 +926,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_VS_PARAMS = BIT(9),
    TU_CMD_DIRTY_RASTERIZER_DISCARD = BIT(10),
    TU_CMD_DIRTY_VIEWPORTS = BIT(11),
+   TU_CMD_DIRTY_BLEND = BIT(12),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(12)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(13)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -1163,6 +1165,12 @@ struct tu_cmd_state
 
    uint32_t gras_su_cntl, rb_depth_cntl, rb_stencil_cntl;
    uint32_t pc_raster_cntl, vpc_unknown_9107;
+   uint32_t rb_mrt_control[MAX_RTS], rb_mrt_blend_control[MAX_RTS];
+   uint32_t rb_mrt_control_rop;
+   uint32_t rb_blend_cntl, sp_blend_cntl;
+   uint32_t pipeline_color_write_enable, pipeline_blend_enable;
+   bool logic_op_enabled;
+   bool rop_reads_dst;
    enum pc_di_primtype primtype;
    bool primitive_restart_enable;
 
@@ -1447,12 +1455,21 @@ struct tu_pipeline
    uint32_t vpc_unknown_9107, vpc_unknown_9107_mask;
    uint32_t stencil_wrmask;
 
+   unsigned num_rts;
+   uint32_t rb_mrt_control[MAX_RTS], rb_mrt_control_mask;
+   uint32_t rb_mrt_blend_control[MAX_RTS];
+   uint32_t sp_blend_cntl, sp_blend_cntl_mask;
+   uint32_t rb_blend_cntl, rb_blend_cntl_mask;
+   uint32_t color_write_enable, blend_enable;
+   bool logic_op_enabled, rop_reads_dst;
+   bool rasterizer_discard;
+
    bool rb_depth_cntl_disable;
 
    enum a5xx_line_mode line_mode;
 
    /* draw states for the pipeline */
-   struct tu_draw_state load_state, rast_state, blend_state;
+   struct tu_draw_state load_state, rast_state;
    struct tu_draw_state prim_order_state_sysmem, prim_order_state_gmem;
 
    /* for vertex buffers state */
@@ -1538,6 +1555,8 @@ void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples,
 void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 
 void tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1);
+
+uint32_t tu6_rb_mrt_control_rop(VkLogicOp op, bool *rop_reads_dst);
 
 void tu_disable_draw_states(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
 
