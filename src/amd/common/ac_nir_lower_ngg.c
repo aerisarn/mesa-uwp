@@ -844,14 +844,16 @@ compact_vertices_after_culling(nir_builder *b,
       nir_ssa_def *exporter_vtx_indices[3] = {0};
 
       /* Load the index of the ES threads that will export the current GS thread's vertices */
-      for (unsigned v = 0; v < 3; ++v) {
+      for (unsigned v = 0; v < nogs_state->num_vertices_per_primitives; ++v) {
          nir_ssa_def *vtx_addr = nir_load_var(b, gs_vtxaddr_vars[v]);
          nir_ssa_def *exporter_vtx_idx = nir_load_shared(b, 1, 8, vtx_addr, .base = lds_es_exporter_tid);
          exporter_vtx_indices[v] = nir_u2u32(b, exporter_vtx_idx);
          nir_store_var(b, nogs_state->gs_vtx_indices_vars[v], exporter_vtx_indices[v], 0x1);
       }
 
-      nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, 3, exporter_vtx_indices, NULL, nogs_state->use_edgeflags);
+      nir_ssa_def *prim_exp_arg =
+         emit_pack_ngg_prim_exp_arg(b, nogs_state->num_vertices_per_primitives,
+                                    exporter_vtx_indices, NULL, nogs_state->use_edgeflags);
       nir_store_var(b, prim_exp_arg_var, prim_exp_arg, 0x1u);
    }
    nir_pop_if(b, if_gs_accepted);
@@ -1123,7 +1125,7 @@ cull_primitive_accepted(nir_builder *b, void *state)
    nir_store_var(b, s->gs_accepted_var, nir_imm_true(b), 0x1u);
 
    /* Store the accepted state to LDS for ES threads */
-   for (unsigned vtx = 0; vtx < 3; ++vtx)
+   for (unsigned vtx = 0; vtx < s->num_vertices_per_primitives; ++vtx)
       nir_store_shared(b, nir_imm_intN_t(b, 1, 8), s->vtx_addr[vtx], .base = lds_es_vertex_accepted);
 }
 
@@ -1253,27 +1255,29 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       {
          /* Load vertex indices from input VGPRs */
          nir_ssa_def *vtx_idx[3] = {0};
-         for (unsigned vertex = 0; vertex < 3; ++vertex)
+         for (unsigned vertex = 0; vertex < nogs_state->num_vertices_per_primitives; ++vertex)
             vtx_idx[vertex] = nir_load_var(b, nogs_state->gs_vtx_indices_vars[vertex]);
 
          nir_ssa_def *pos[3][4] = {0};
 
          /* Load W positions of vertices first because the culling code will use these first */
-         for (unsigned vtx = 0; vtx < 3; ++vtx) {
+         for (unsigned vtx = 0; vtx < nogs_state->num_vertices_per_primitives; ++vtx) {
             nogs_state->vtx_addr[vtx] = pervertex_lds_addr(b, vtx_idx[vtx], pervertex_lds_bytes);
             pos[vtx][3] = nir_load_shared(b, 1, 32, nogs_state->vtx_addr[vtx], .base = lds_es_pos_w);
             nir_store_var(b, gs_vtxaddr_vars[vtx], nogs_state->vtx_addr[vtx], 0x1u);
          }
 
          /* Load the X/W, Y/W positions of vertices */
-         for (unsigned vtx = 0; vtx < 3; ++vtx) {
+         for (unsigned vtx = 0; vtx < nogs_state->num_vertices_per_primitives; ++vtx) {
             nir_ssa_def *xy = nir_load_shared(b, 2, 32, nogs_state->vtx_addr[vtx], .base = lds_es_pos_x);
             pos[vtx][0] = nir_channel(b, xy, 0);
             pos[vtx][1] = nir_channel(b, xy, 1);
          }
 
          /* See if the current primitive is accepted */
-         ac_nir_cull_triangle(b, nir_imm_bool(b, true), pos, cull_primitive_accepted, nogs_state);
+         ac_nir_cull_primitive(b, nir_imm_bool(b, true), pos,
+                               nogs_state->num_vertices_per_primitives,
+                               cull_primitive_accepted, nogs_state);
       }
       nir_pop_if(b, if_gs_thread);
 

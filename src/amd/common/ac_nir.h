@@ -162,11 +162,12 @@ ac_nir_lower_mesh_inputs_to_mem(nir_shader *shader,
                                 unsigned task_num_entries);
 
 nir_ssa_def *
-ac_nir_cull_triangle(nir_builder *b,
-                     nir_ssa_def *initially_accepted,
-                     nir_ssa_def *pos[3][4],
-                     ac_nir_cull_accepted accept_func,
-                     void *state);
+ac_nir_cull_primitive(nir_builder *b,
+                      nir_ssa_def *initially_accepted,
+                      nir_ssa_def *pos[3][4],
+                      unsigned num_vertices,
+                      ac_nir_cull_accepted accept_func,
+                      void *state);
 
 bool
 ac_nir_lower_global_access(nir_shader *shader);
