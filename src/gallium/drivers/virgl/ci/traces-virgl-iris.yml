@@ -293,7 +293,8 @@ traces:
   #  expectations:
       #- device: gl-virgl
       #  checksum: 0
-  - path: nheko/nheko-colors.trace
-    expectations:
-      - device: gl-virgl
-        checksum: 9877fc41ce761c9ce15561b12ef77c27
+  # temporarily disable until apitrace won't get fixed https://github.com/apitrace/apitrace/issues/800
+  #- path: nheko/nheko-colors.trace
+  #  expectations:
+      #- device: gl-virgl
+      #  checksum: 9877fc41ce761c9ce15561b12ef77c27
