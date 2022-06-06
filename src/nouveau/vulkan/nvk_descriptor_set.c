@@ -178,6 +178,17 @@ static void
 nvk_descriptor_set_destroy(struct nvk_device *device, struct nvk_descriptor_pool *pool,
                            struct nvk_descriptor_set *set, bool free_bo)
 {
+   if (free_bo) {
+      for (int i = 0; i < pool->entry_count; ++i) {
+         if (pool->entries[i].set == set) {
+            memmove(&pool->entries[i], &pool->entries[i + 1],
+                    sizeof(pool->entries[i]) * (pool->entry_count - i - 1));
+            --pool->entry_count;
+            break;
+         }
+      }
+   }
+
    vk_object_base_finish(&set->base);
    vk_free2(&device->vk.alloc, NULL, set);
 }
