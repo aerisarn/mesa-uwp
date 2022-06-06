@@ -366,6 +366,30 @@ vk_format_get_plane_format(VkFormat format, unsigned plane_id)
    }
 }
 
+VkFormat
+vk_format_get_aspect_format(VkFormat format, const VkImageAspectFlags aspect)
+{
+   assert(util_bitcount(aspect) == 1);
+   assert(aspect & vk_format_aspects(format));
+
+   switch (aspect) {
+   case VK_IMAGE_ASPECT_COLOR_BIT:
+      return format;
+   case VK_IMAGE_ASPECT_DEPTH_BIT:
+      return vk_format_depth_only(format);
+   case VK_IMAGE_ASPECT_STENCIL_BIT:
+      return vk_format_stencil_only(format);
+   case VK_IMAGE_ASPECT_PLANE_0_BIT:
+      return vk_format_get_plane_format(format, 0);
+   case VK_IMAGE_ASPECT_PLANE_1_BIT:
+      return vk_format_get_plane_format(format, 1);
+   case VK_IMAGE_ASPECT_PLANE_2_BIT:
+      return vk_format_get_plane_format(format, 2);
+   default:
+      unreachable("Cannot translate format aspect");
+   }
+}
+
 void
 vk_component_mapping_to_pipe_swizzle(VkComponentMapping mapping,
                                      unsigned char out_swizzle[4])

@@ -27,6 +27,7 @@
 
 #include <vulkan/vulkan_core.h>
 #include "util/format/u_format.h"
+#include "util/u_math.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -190,6 +191,9 @@ vk_format_get_plane_count(VkFormat format)
 
 VkFormat
 vk_format_get_plane_format(VkFormat format, unsigned plane_id);
+
+VkFormat
+vk_format_get_aspect_format(VkFormat format, const VkImageAspectFlags aspect);
 
 #ifdef __cplusplus
 }
