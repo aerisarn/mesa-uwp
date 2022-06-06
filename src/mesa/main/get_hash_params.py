@@ -446,7 +446,7 @@ descriptor=[
   [ "MAX_VERTEX_UNIFORM_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_VERTEX].MaxUniformBlocks), extra_ARB_uniform_buffer_object" ],
   [ "MAX_FRAGMENT_UNIFORM_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_FRAGMENT].MaxUniformBlocks), extra_ARB_uniform_buffer_object" ],
   [ "MAX_COMBINED_UNIFORM_BLOCKS", "CONTEXT_INT(Const.MaxCombinedUniformBlocks), extra_ARB_uniform_buffer_object" ],
-  [ "MAX_UNIFORM_BLOCK_SIZE", "CONTEXT_INT(Const.MaxUniformBlockSize), extra_ARB_uniform_buffer_object" ],
+  [ "MAX_UNIFORM_BLOCK_SIZE", "CONTEXT_UINT(Const.MaxUniformBlockSize), extra_ARB_uniform_buffer_object" ],
   [ "MAX_UNIFORM_BUFFER_BINDINGS", "CONTEXT_INT(Const.MaxUniformBufferBindings), extra_ARB_uniform_buffer_object" ],
   [ "MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS", "CONTEXT_INT64(Const.Program[MESA_SHADER_VERTEX].MaxCombinedUniformComponents), extra_ARB_uniform_buffer_object" ],
   [ "MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS", "CONTEXT_INT64(Const.Program[MESA_SHADER_FRAGMENT].MaxCombinedUniformComponents), extra_ARB_uniform_buffer_object" ],
