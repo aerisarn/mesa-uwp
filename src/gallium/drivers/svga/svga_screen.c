@@ -324,7 +324,7 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
       return svgascreen->ms_samples ? 1 : 0;
 
-   case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
       /* convert bytes to texels for the case of the largest texel
        * size: float[4].
        */

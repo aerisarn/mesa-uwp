@@ -347,7 +347,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_FAKE_SW_MSAA:
 		return 0;
 
-	case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+	case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
 		return MIN2(rscreen->b.info.max_alloc_size, INT_MAX);
 
         case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:

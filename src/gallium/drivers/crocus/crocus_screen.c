@@ -300,7 +300,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 16; // XXX: u_screen says 256 is the minimum value...
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return PIPE_TEXTURE_TRANSFER_BLIT;
-   case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
       return CROCUS_MAX_TEXTURE_BUFFER_SIZE;
    case PIPE_CAP_MAX_VIEWPORTS:
       return devinfo->ver >= 6 ? 16 : 1;

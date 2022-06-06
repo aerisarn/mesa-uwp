@@ -1470,8 +1470,7 @@ void st_init_extensions(struct pipe_screen *screen,
 
    if (extensions->ARB_texture_buffer_object) {
       consts->MaxTextureBufferSize =
-         _min(screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE),
-              (1u << 31) - 1);
+         screen->get_param(screen, PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT);
       consts->TextureBufferOffsetAlignment =
          screen->get_param(screen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
 

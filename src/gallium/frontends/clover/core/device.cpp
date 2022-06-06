@@ -227,7 +227,7 @@ device::max_images_write() const {
 
 size_t
 device::max_image_buffer_size() const {
-   return pipe->get_param(pipe, PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE);
+   return pipe->get_param(pipe, PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT);
 }
 
 cl_uint

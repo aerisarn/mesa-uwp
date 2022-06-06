@@ -218,7 +218,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return vscreen->caps.caps.v1.bset.texture_multisample;
    case PIPE_CAP_MAX_VIEWPORTS:
       return vscreen->caps.caps.v1.max_viewports;
-   case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
       return vscreen->caps.caps.v1.max_tbo_size;
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS:

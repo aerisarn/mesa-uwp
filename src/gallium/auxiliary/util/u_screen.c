@@ -167,7 +167,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
       return 0;
 
-   case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
       /* GL_EXT_texture_buffer minimum value. */
       return 65536;
 

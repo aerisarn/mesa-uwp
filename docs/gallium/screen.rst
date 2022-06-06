@@ -195,8 +195,9 @@ The integer capabilities:
   state should be swizzled manually according to the swizzle in the sampler
   view it is intended to be used with, or herein undefined results may occur
   for permutational swizzles.
-* ``PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE``: The maximum accessible size with
-  a buffer sampler view, in texels.
+* ``PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT``: The maximum accessible number of
+  elements within a sampler buffer view and image buffer view. This is unsigned
+  integer with the maximum of 4G - 1.
 * ``PIPE_CAP_MAX_VIEWPORTS``: The maximum number of viewports (and scissors
   since they are linked) a driver can support. Returning 0 is equivalent
   to returning 1 because every driver has to support at least a single

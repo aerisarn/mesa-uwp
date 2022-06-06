@@ -627,7 +627,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return mode;
    }
 
-   case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
       return MIN2(get_smallest_buffer_heap(screen),
                   screen->info.props.limits.maxTexelBufferElements);
 

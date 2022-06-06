@@ -291,7 +291,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen))
          return 64;
       return 0;
-   case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
       /* We could possibly emulate more by pretending 2d/rect textures and
        * splitting high bits of index into 2nd dimension..
        */
