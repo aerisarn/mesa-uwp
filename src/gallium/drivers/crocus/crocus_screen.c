@@ -294,7 +294,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return CROCUS_MAP_BUFFER_ALIGNMENT;
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
       return devinfo->ver >= 7 ? 4 : 0;
-   case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
+   case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT:
       return devinfo->ver >= 7 ? (1 << 27) : 0;
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return 16; // XXX: u_screen says 256 is the minimum value...

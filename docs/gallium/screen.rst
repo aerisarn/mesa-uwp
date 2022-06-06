@@ -520,8 +520,8 @@ The integer capabilities:
   ```set_sample_locations```.
 * ``PIPE_CAP_MAX_GS_INVOCATIONS``: Maximum supported value of
   TGSI_PROPERTY_GS_INVOCATIONS.
-* ``PIPE_CAP_MAX_SHADER_BUFFER_SIZE``: Maximum supported size for binding
-  with set_shader_buffers.
+* ``PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT``: Maximum supported size for binding
+  with set_shader_buffers. This is unsigned integer with the maximum of 4GB - 1.
 * ``PIPE_CAP_MAX_COMBINED_SHADER_BUFFERS``: Maximum total number of shader
   buffers. A value of 0 means the sum of all per-shader stage maximums (see
   ``PIPE_SHADER_CAP_MAX_SHADER_BUFFERS``).

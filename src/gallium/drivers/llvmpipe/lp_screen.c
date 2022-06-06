@@ -339,7 +339,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
    case PIPE_CAP_MAX_GS_INVOCATIONS:
       return 32;
-   case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
+   case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT:
       return LP_MAX_TGSI_SHADER_BUFFER_SIZE;
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE:
