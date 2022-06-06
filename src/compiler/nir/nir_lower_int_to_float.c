@@ -101,11 +101,20 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_iadd: alu->op = nir_op_fadd; break;
    case nir_op_isub: alu->op = nir_op_fsub; break;
    case nir_op_imul: alu->op = nir_op_fmul; break;
-   case nir_op_idiv:
-      rep = nir_ftrunc(b, nir_fdiv(b,
-                                   nir_ssa_for_alu_src(b, alu, 0),
-                                   nir_ssa_for_alu_src(b, alu, 1)));
+
+   case nir_op_idiv: {
+      nir_ssa_def *x = nir_ssa_for_alu_src(b, alu, 0);
+      nir_ssa_def *y = nir_ssa_for_alu_src(b, alu, 1);
+
+      /* Hand-lower fdiv, since lower_int_to_float is after nir_opt_algebraic. */
+      if (b->shader->options->lower_fdiv) {
+         rep = nir_ftrunc(b, nir_fmul(b, x, nir_frcp(b, y)));
+      } else {
+         rep = nir_ftrunc(b, nir_fdiv(b, x, y));
+      }
       break;
+   }
+
    case nir_op_iabs: alu->op = nir_op_fabs; break;
    case nir_op_ineg: alu->op = nir_op_fneg; break;
    case nir_op_imax: alu->op = nir_op_fmax; break;
