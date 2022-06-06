@@ -612,7 +612,9 @@ nir_compare_deref_paths(nir_deref_path *a_path,
          /* If the binding derefs can't alias and at least one is RESTRICT,
           * then we know they can't alias.
           */
-         if (!(binding_compare & nir_derefs_may_alias_bit))
+         if (!(binding_compare & nir_derefs_may_alias_bit) &&
+             ((a_var->data.access & ACCESS_RESTRICT) ||
+              (b_var->data.access & ACCESS_RESTRICT)))
             return nir_derefs_do_not_alias;
 
          return nir_derefs_may_alias_bit;
