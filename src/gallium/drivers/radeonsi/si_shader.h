@@ -271,15 +271,15 @@ enum
 /* These fields are only set in current_gs_state in si_context, and they are accessible
  * in the shader via vs_state_bits in legacy GS, the GS copy shader, and any NGG shader.
  */
-#define S_GS_STATE_OUTPRIM(x)                 (((unsigned)(x)&0x3) << 2)
-#define C_GS_STATE_OUTPRIM                    0xFFFFFFF3
-#define S_GS_STATE_PROVOKING_VTX_INDEX(x)     (((unsigned)(x)&0x3) << 4)
-#define C_GS_STATE_PROVOKING_VTX_INDEX        0xFFFFFFCF
-#define S_GS_STATE_STREAMOUT_QUERY_ENABLED(x) (((unsigned)(x)&0x1) << 6)
-#define C_GS_STATE_STREAMOUT_QUERY_ENABLED    0xFFFFFFBF
-#define S_GS_STATE_SMALL_PRIM_PRECISION(x)    (((unsigned)(x)&0xF) << 7)
-#define C_GS_STATE_SMALL_PRIM_PRECISION       0xFFFFF87F
 /* bit gap */
+#define S_GS_STATE_SMALL_PRIM_PRECISION(x)    (((unsigned)(x)&0xF) << 22)
+#define C_GS_STATE_SMALL_PRIM_PRECISION       0xFC3FFFFF
+#define S_GS_STATE_STREAMOUT_QUERY_ENABLED(x) (((unsigned)(x)&0x1) << 26)
+#define C_GS_STATE_STREAMOUT_QUERY_ENABLED    0xFBFFFFFF
+#define S_GS_STATE_PROVOKING_VTX_INDEX(x)     (((unsigned)(x)&0x3) << 27)
+#define C_GS_STATE_PROVOKING_VTX_INDEX        0xE7FFFFFF
+#define S_GS_STATE_OUTPRIM(x)                 (((unsigned)(x)&0x3) << 29)
+#define C_GS_STATE_OUTPRIM                    0x9FFFFFFF
 #define S_GS_STATE_PIPELINE_STATS_EMU(x)      (((unsigned)(x)&0x1) << 31)
 #define C_GS_STATE_PIPELINE_STATS_EMU         0x7FFFFFFF
 
