@@ -1554,7 +1554,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    }
 
    shader->ctx_reg.ngg.vgt_stages.u.ngg = 1;
-   shader->ctx_reg.ngg.vgt_stages.u.streamout = !!gs_sel->info.enabled_streamout_buffer_mask;
+   shader->ctx_reg.ngg.vgt_stages.u.streamout = si_shader_uses_streamout(shader);
    shader->ctx_reg.ngg.vgt_stages.u.ngg_passthrough = gfx10_is_ngg_passthrough(shader);
    shader->ctx_reg.ngg.vgt_stages.u.gs_wave32 = shader->wave_size == 32;
 }
@@ -1745,12 +1745,12 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    if (sscreen->info.gfx_level <= GFX9)
       rsrc1 |= S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8);
 
-   if (!sscreen->use_ngg_streamout) {
+   if (!sscreen->use_ngg_streamout && si_shader_uses_streamout(shader)) {
       rsrc2 |= S_00B12C_SO_BASE0_EN(!!shader->selector->info.base.xfb_stride[0]) |
                S_00B12C_SO_BASE1_EN(!!shader->selector->info.base.xfb_stride[1]) |
                S_00B12C_SO_BASE2_EN(!!shader->selector->info.base.xfb_stride[2]) |
                S_00B12C_SO_BASE3_EN(!!shader->selector->info.base.xfb_stride[3]) |
-               S_00B12C_SO_EN(!!info->enabled_streamout_buffer_mask);
+               S_00B12C_SO_EN(1);
    }
 
    si_pm4_set_reg(pm4, R_00B128_SPI_SHADER_PGM_RSRC1_VS, rsrc1);
@@ -2216,6 +2216,8 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
    key->ge.opt.kill_pointsize = vs->info.writes_psize &&
                                 sctx->current_rast_prim != PIPE_PRIM_POINTS &&
                                 !sctx->queued.named.rasterizer->polygon_mode_is_points;
+   key->ge.opt.remove_streamout = vs->info.enabled_streamout_buffer_mask &&
+                                  !sctx->streamout.enabled_mask;
 }
 
 static void si_clear_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
@@ -2223,6 +2225,7 @@ static void si_clear_vs_key_outputs(struct si_context *sctx, struct si_shader_se
 {
    key->ge.opt.kill_clip_distances = 0;
    key->ge.opt.kill_outputs = 0;
+   key->ge.opt.remove_streamout = 0;
    key->ge.opt.ngg_culling = 0;
    key->ge.mono.u.vs_export_prim_id = 0;
    key->ge.opt.kill_pointsize = 0;

@@ -1760,7 +1760,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    }
 
    struct pipe_stream_output_info so = {};
-   if (sel->info.enabled_streamout_buffer_mask)
+   if (si_shader_uses_streamout(shader))
       nir_gather_stream_output_info(nir, &so);
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
@@ -2501,7 +2501,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
    shader->uses_gs_state_outprim = sscreen->use_ngg &&
                                    /* Only used by streamout in vertex shaders. */
                                    sel->stage == MESA_SHADER_VERTEX &&
-                                   sel->info.enabled_streamout_buffer_mask;
+                                   si_shader_uses_streamout(shader);
 
    if (sel->stage == MESA_SHADER_VERTEX) {
       shader->uses_base_instance = sel->info.uses_base_instance ||

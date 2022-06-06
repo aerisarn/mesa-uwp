@@ -169,7 +169,11 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
    for (; i < sctx->streamout.num_targets; i++)
       si_so_target_reference(&sctx->streamout.targets[i], NULL);
 
-   sctx->streamout.enabled_mask = enabled_mask;
+   if (!!sctx->streamout.enabled_mask != !!enabled_mask) {
+      sctx->streamout.enabled_mask = enabled_mask;
+      sctx->do_update_shaders = true; /* to keep/remove streamout shader code as an optimization */
+   }
+
    sctx->streamout.num_targets = num_targets;
    sctx->streamout.append_bitmask = append_bitmask;
 

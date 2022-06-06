@@ -698,6 +698,7 @@ struct si_shader_key_ge {
       uint64_t kill_outputs; /* "get_unique_index" bits */
       unsigned kill_clip_distances : 8;
       unsigned kill_pointsize : 1;
+      unsigned remove_streamout : 1;
 
       /* For NGG VS and TES. */
       unsigned ngg_culling : 13; /* SI_NGG_CULL_* */
@@ -1043,6 +1044,13 @@ static inline bool gfx10_ngg_writes_user_edgeflags(struct si_shader *shader)
 {
    return gfx10_edgeflags_have_effect(shader) &&
           shader->selector->info.writes_edgeflag;
+}
+
+static inline bool si_shader_uses_streamout(struct si_shader *shader)
+{
+   return shader->selector->stage <= MESA_SHADER_GEOMETRY &&
+          shader->selector->info.enabled_streamout_buffer_mask &&
+          !shader->key.ge.opt.remove_streamout;
 }
 
 #ifdef __cplusplus
