@@ -16,6 +16,9 @@ struct nouveau_ws_device {
    uint64_t vram_size;
    uint64_t gart_size;
    bool is_integrated;
+
+   uint8_t gpc_count;
+   uint16_t mp_count;
 };
 
 /* don't use directly, gets removed once the new UAPI is here */
