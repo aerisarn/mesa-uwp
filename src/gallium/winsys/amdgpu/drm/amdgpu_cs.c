@@ -1628,14 +1628,26 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
       assert(num_chunks <= ARRAY_SIZE(chunks));
 
-      r = noop ? 0 : amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
-                                           num_chunks, chunks, &seq_no);
+      r = 0;
+
+      if (!noop) {
+         /* The kernel returns -ENOMEM with many parallel processes using GDS such as test suites
+          * quite often, but it eventually succeeds after enough attempts. This happens frequently
+          * with dEQP using NGG streamout.
+          */
+         do {
+            /* Wait 1 ms and try again. */
+            if (r == -ENOMEM)
+               os_time_sleep(1000);
+
+            r = amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
+                                      num_chunks, chunks, &seq_no);
+         } while (r == -ENOMEM);
+      }
    }
 
    if (r) {
-      if (r == -ENOMEM)
-         fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
-      else if (r == -ECANCELED)
+      if (r == -ECANCELED)
          fprintf(stderr, "amdgpu: The CS has been cancelled because the context is lost.\n");
       else
          fprintf(stderr, "amdgpu: The CS has been rejected, "
