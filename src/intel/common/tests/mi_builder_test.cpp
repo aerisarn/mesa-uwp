@@ -27,6 +27,7 @@
 
 #include <gtest/gtest.h>
 
+#include "c99_compat.h"
 #include "dev/intel_device_info.h"
 #include "drm-uapi/i915_drm.h"
 #include "genxml/gen_macros.h"
