@@ -803,6 +803,14 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       return ac_build_load_to_sgpr(&ctx->ac, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
    }
 
+   case nir_intrinsic_load_viewport_xy_scale_and_offset: {
+      bool prim_is_lines = ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES;
+      LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
+      LLVMValueRef terms =
+         ac_build_load_to_sgpr(&ctx->ac, ptr, prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
+      return LLVMBuildBitCast(ctx->ac.builder, terms, ctx->ac.v4f32, "");
+   }
+
    default:
       return NULL;
    }
