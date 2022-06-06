@@ -182,6 +182,15 @@ vk_format_get_blocksizebits(VkFormat format)
    return util_format_get_blocksizebits(vk_format_to_pipe_format(format));
 }
 
+static inline unsigned
+vk_format_get_plane_count(VkFormat format)
+{
+   return util_format_get_num_planes(vk_format_to_pipe_format(format));
+}
+
+VkFormat
+vk_format_get_plane_format(VkFormat format, unsigned plane_id);
+
 #ifdef __cplusplus
 }
 #endif
