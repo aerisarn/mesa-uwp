@@ -130,9 +130,6 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
     * start writing to the targets.
     */
    if (num_targets) {
-      if (sctx->screen->use_ngg_streamout)
-         si_allocate_gds(sctx);
-
       sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
                      SI_CONTEXT_PFP_SYNC_ME;
    }

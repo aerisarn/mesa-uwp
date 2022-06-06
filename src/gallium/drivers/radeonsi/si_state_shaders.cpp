@@ -3290,6 +3290,10 @@ static void si_update_streamout_state(struct si_context *sctx)
 
    sctx->streamout.enabled_stream_buffers_mask = shader_with_so->info.enabled_streamout_buffer_mask;
    sctx->streamout.stride_in_dw = shader_with_so->info.base.xfb_stride;
+
+   /* GDS must be allocated when any GDS instructions are used, otherwise it hangs. */
+   if (sctx->screen->use_ngg_streamout && shader_with_so->info.enabled_streamout_buffer_mask)
+      si_allocate_gds(sctx);
 }
 
 static void si_update_clip_regs(struct si_context *sctx, struct si_shader_selector *old_hw_vs,
