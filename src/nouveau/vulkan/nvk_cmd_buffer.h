@@ -40,6 +40,14 @@ struct nvk_compute_state {
    struct nvk_descriptor_state descriptors;
 };
 
+struct nvk_cmd_buffer_upload {
+   uint8_t *map;
+   unsigned offset;
+   uint64_t size;
+   struct nouveau_ws_bo *upload_bo;
+   struct list_head list;
+};
+
 struct nvk_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -53,6 +61,8 @@ struct nvk_cmd_buffer {
    struct nouveau_ws_push *push;
    bool reset_on_submit;
    VkResult record_result;
+
+   struct nvk_cmd_buffer_upload upload;
 
    uint64_t tls_space_needed;
 };
@@ -74,4 +84,7 @@ nvk_get_descriptors_state(struct nvk_cmd_buffer *cmd,
    }
 };
 
+bool
+nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd_buffer, unsigned size,
+                            uint64_t *addr, void **ptr);
 #endif
