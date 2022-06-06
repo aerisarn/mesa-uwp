@@ -1336,7 +1336,6 @@ pvr_vertex_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
    vertex_state->vertex_input_size = vs_data->num_vertex_input_regs;
    vertex_state->vertex_output_size =
       vs_data->num_vertex_outputs * ROGUE_REG_SIZE_BYTES;
-   vertex_state->output_selects = 0;
    vertex_state->user_clip_planes_mask = 0;
    vertex_state->entry_offset = 0;
 

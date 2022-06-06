@@ -1006,7 +1006,6 @@ struct pvr_vertex_shader_state {
    struct pvr_stage_allocation_uniform_state uniform_state;
    uint32_t vertex_input_size;
    uint32_t vertex_output_size;
-   uint32_t output_selects;
    uint32_t user_clip_planes_mask;
 };
 
