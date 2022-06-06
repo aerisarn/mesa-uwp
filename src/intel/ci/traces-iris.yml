@@ -986,3 +986,87 @@ traces:
         checksum: 3d419f45bc5ce210a7df583e92143089
       - device: gl-intel-cml
         checksum: 3d419f45bc5ce210a7df583e92143089
+  - path: blender/blender-demo-cube_diorama.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: 6a0e17d98eca33e80810b6158e998aa1
+      - device: gl-intel-glx
+        checksum: 6a0e17d98eca33e80810b6158e998aa1
+      - device: gl-intel-amly
+        checksum: 6a0e17d98eca33e80810b6158e998aa1
+      - device: gl-intel-kbl
+        checksum: 6a0e17d98eca33e80810b6158e998aa1
+      - device: gl-intel-whl
+        checksum: 6a0e17d98eca33e80810b6158e998aa1
+      - device: gl-intel-cml
+        checksum: 6a0e17d98eca33e80810b6158e998aa1
+  - path: blender/blender-demo-ellie_pose.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: f11aa01f5ef3a563567e2a85998c418e
+      - device: gl-intel-glx
+        checksum: f11aa01f5ef3a563567e2a85998c418e
+      - device: gl-intel-amly
+        checksum: f11aa01f5ef3a563567e2a85998c418e
+      - device: gl-intel-kbl
+        checksum: f11aa01f5ef3a563567e2a85998c418e
+      - device: gl-intel-whl
+        checksum: f11aa01f5ef3a563567e2a85998c418e
+      - device: gl-intel-cml
+        checksum: f11aa01f5ef3a563567e2a85998c418e
+  - path: freedoom/freedoom-phase2-gl-high.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: 13860db550196b58c07c7a5493d4cbb1
+      - device: gl-intel-glx
+        checksum: 13860db550196b58c07c7a5493d4cbb1
+      - device: gl-intel-amly
+        checksum: 13860db550196b58c07c7a5493d4cbb1
+      - device: gl-intel-kbl
+        checksum: 13860db550196b58c07c7a5493d4cbb1
+      - device: gl-intel-whl
+        checksum: 13860db550196b58c07c7a5493d4cbb1
+      - device: gl-intel-cml
+        checksum: 13860db550196b58c07c7a5493d4cbb1
+  - path: unvanquished/unvanquished-lowest.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: 884096b6dd40e2f500d0837501287fac
+      - device: gl-intel-glx
+        checksum: 884096b6dd40e2f500d0837501287fac
+      - device: gl-intel-amly
+        checksum: 884096b6dd40e2f500d0837501287fac
+      - device: gl-intel-kbl
+        checksum: 884096b6dd40e2f500d0837501287fac
+      - device: gl-intel-whl
+        checksum: 884096b6dd40e2f500d0837501287fac
+      - device: gl-intel-cml
+        checksum: 884096b6dd40e2f500d0837501287fac
+  - path: unvanquished/unvanquished-ultra.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: 1d26347f1fa65efc0159aaede416b6db
+      - device: gl-intel-glx
+        checksum: 1d26347f1fa65efc0159aaede416b6db
+      - device: gl-intel-amly
+        checksum: 1d26347f1fa65efc0159aaede416b6db
+      - device: gl-intel-kbl
+        checksum: 1d26347f1fa65efc0159aaede416b6db
+      - device: gl-intel-whl
+        checksum: 1d26347f1fa65efc0159aaede416b6db
+      - device: gl-intel-cml
+        checksum: 1d26347f1fa65efc0159aaede416b6db
+  - path: warzone2100/warzone2100-default.trace
+    expectations:
+      - device: gl-intel-apl
+        checksum: ceeba6125a74145fc7ab38157239f6f5
+      - device: gl-intel-glx
+        checksum: ceeba6125a74145fc7ab38157239f6f5
+      - device: gl-intel-amly
+        checksum: ceeba6125a74145fc7ab38157239f6f5
+      - device: gl-intel-kbl
+        checksum: ceeba6125a74145fc7ab38157239f6f5
+      - device: gl-intel-whl
+        checksum: ceeba6125a74145fc7ab38157239f6f5
+      - device: gl-intel-cml
+        checksum: ceeba6125a74145fc7ab38157239f6f5
