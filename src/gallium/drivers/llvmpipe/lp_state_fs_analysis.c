@@ -175,6 +175,98 @@ finished:
 
 
 /*
+ * Determine whether the given alu src comes directly from an input
+ * register.  If so, return true and the input register index and
+ * component.  Return false otherwise.
+ */
+static bool
+get_nir_input_info(const nir_alu_src *src,
+                   unsigned *input_index,
+                   int *input_component)
+{
+   if (!src->src.is_ssa) {
+      return false;
+   }
+
+   // The parent instr should be a nir_intrinsic_load_deref.
+   const nir_instr *parent = src->src.ssa[0].parent_instr;
+   if (!parent || parent->type != nir_instr_type_intrinsic) {
+      return false;
+   }
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(parent);
+   if (!intrin ||
+       intrin->intrinsic != nir_intrinsic_load_deref ||
+       !intrin->src[0].is_ssa) {
+      return false;
+   }
+
+   // The parent of the load should be a type_deref.
+   parent = intrin->src->ssa->parent_instr;
+   if (!parent || parent->type != nir_instr_type_deref) {
+      return false;
+   }
+
+   // The var being deref'd should be a shader input register.
+   nir_deref_instr *deref = nir_instr_as_deref(parent);
+   if (!deref || deref->deref_type != nir_deref_type_var ||
+       deref->modes != nir_var_shader_in) {
+      return false;
+   }
+
+   *input_index = deref->var->data.driver_location;
+   *input_component = src->swizzle[0];
+   assert(*input_component >= 0);
+   assert(*input_component <= 3);
+
+   return true;
+}
+
+
+/*
+ * Examine the texcoord argument to a texture instruction to determine
+ * if the texcoord comes directly from a fragment shader input.  If so
+ * return true and return the FS input register index for the coordinate
+ * and the (2-component) swizzle.  Return false otherwise.
+ */
+static bool
+get_texcoord_provenance(const nir_tex_src *texcoord,
+                        unsigned *coord_fs_input_index, // out
+                        int swizzle[4]) // out
+{
+   assert(texcoord->src_type == nir_tex_src_coord);
+
+   // The parent instr of the coord should be an nir_op_vec2 alu op
+   const nir_instr *parent = texcoord->src.ssa->parent_instr;
+   if (!parent || parent->type != nir_instr_type_alu) {
+      return false;
+   }
+   const nir_alu_instr *alu = nir_instr_as_alu(parent);
+   if (!alu || alu->op != nir_op_vec2) {
+      return false;
+   }
+
+   // Loop over nir_op_vec2 instruction arguments to find the
+   // input register index and component.
+   unsigned input_reg_indexes[2];
+   for (unsigned comp = 0; comp < 2; comp++) {
+      if (!get_nir_input_info(&alu->src[comp],
+                              &input_reg_indexes[comp], &swizzle[comp])) {
+         return false;
+      }
+   }
+
+   // Both texcoord components should come from the same input register.
+   if (input_reg_indexes[0] != input_reg_indexes[1]) {
+      return false;
+   }
+
+   *coord_fs_input_index = input_reg_indexes[0];
+
+   return true;
+}
+
+
+/*
  * Examine the NIR shader to determine if it's "linear".
  */
 static bool
@@ -208,24 +300,17 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
          case nir_instr_type_tex: {
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             struct lp_tgsi_texture_info *tex_info = &info->tex[info->num_texs];
+            int texcoord_swizzle[4] = {-1, -1, -1, -1};
+            unsigned coord_fs_input_index;
 
             for (unsigned i = 0; i < tex->num_srcs; i++) {
-               switch (tex->src[i].src_type) {
-               case nir_tex_src_coord: {
-                  nir_ssa_scalar scalar = nir_ssa_scalar_resolved(tex->src[i].src.ssa, 0);
-                  if (scalar.def->parent_instr->type != nir_instr_type_intrinsic)
+               if (tex->src[i].src_type == nir_tex_src_coord) {
+                  if (!get_texcoord_provenance(&tex->src[i],
+                                               &coord_fs_input_index,
+                                               texcoord_swizzle)) {
+                     //debug nir_print_shader((nir_shader *) shader, stdout);
                      return false;
-                  nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(scalar.def->parent_instr);
-                  if (intrin->intrinsic != nir_intrinsic_load_deref)
-                     return false;
-                  nir_deref_instr *deref = nir_instr_as_deref(intrin->src[0].ssa->parent_instr);
-                  nir_variable *var = nir_deref_instr_get_variable(deref);
-                  if (var->data.mode != nir_var_shader_in)
-                     return false;
-                  break;
-               }
-               default:
-                  continue;
+                  }
                }
             }
 
@@ -253,9 +338,14 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
 
             /* this is enforced in the scanner previously. */
             tex_info->coord[0].file = TGSI_FILE_INPUT;  // S
-            tex_info->coord[0].swizzle = 0;
             tex_info->coord[1].file = TGSI_FILE_INPUT;  // T
-            tex_info->coord[1].swizzle = 1;
+            assert(texcoord_swizzle[0] >= 0);
+            assert(texcoord_swizzle[1] >= 0);
+            tex_info->coord[0].swizzle = texcoord_swizzle[0]; // S
+            tex_info->coord[1].swizzle = texcoord_swizzle[1]; // T
+            tex_info->coord[0].u.index = coord_fs_input_index;
+            tex_info->coord[1].u.index = coord_fs_input_index;
+
             info->num_texs++;
             break;
          }
