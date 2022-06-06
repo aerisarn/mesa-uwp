@@ -24,6 +24,7 @@ libpowervr_common = static_library(
   [
     'pvr_debug.c',
     'pvr_device_info.c',
+    'pvr_util.c',
   ],
   include_directories : [
     inc_include,
