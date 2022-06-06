@@ -1,9 +1,9 @@
 /**************************************************************************
- * 
+ *
  * Copyright 2009 VMware, Inc.
  * Copyright 2007-2008 VMware, Inc.
  * All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -11,11 +11,11 @@
  * distribute, sub license, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice (including the
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
@@ -23,7 +23,7 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  **************************************************************************/
 
 /**
@@ -235,7 +235,7 @@ coeffs_init_simple(struct lp_build_interp_soa_context *bld,
        * would help.
        * Might want to investigate this again later.
        */
-      const unsigned interp = bld->interp[attrib];
+      const enum lp_interp interp = bld->interp[attrib];
       LLVMValueRef index = lp_build_const_int32(gallivm,
                                 attrib * TGSI_NUM_CHANNELS);
       LLVMValueRef dadxaos = setup_bld->zero;
@@ -314,8 +314,8 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
 
    for (attrib = start; attrib < end; attrib++) {
       const unsigned mask = bld->mask[attrib];
-      const unsigned interp = bld->interp[attrib];
-      const unsigned loc = bld->interp_loc[attrib];
+      const enum lp_interp interp = bld->interp[attrib];
+      const enum tgsi_interpolate_loc loc = bld->interp_loc[attrib];
       unsigned chan;
 
       for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
@@ -453,7 +453,7 @@ lp_build_interp_soa_indirect(struct lp_build_interp_soa_context *bld,
 {
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *coeff_bld = &bld->coeff_bld;
-   const unsigned interp = bld->interp[attrib];
+   const enum lp_interp interp = bld->interp[attrib];
    LLVMValueRef dadx = coeff_bld->zero;
    LLVMValueRef dady = coeff_bld->zero;
    LLVMValueRef a = coeff_bld->zero;
@@ -520,7 +520,7 @@ lp_build_interp_soa(struct lp_build_interp_soa_context *bld,
                     LLVMValueRef loop_iter,
                     LLVMValueRef mask_store,
                     unsigned attrib, unsigned chan,
-                    unsigned loc,
+                    enum tgsi_interpolate_loc loc,
                     LLVMValueRef indir_index,
                     LLVMValueRef offsets[2])
 {
@@ -577,7 +577,7 @@ lp_build_interp_soa(struct lp_build_interp_soa_context *bld,
                                              lp_elem_type(bld->coeff_bld.type),
                                              false,
                                              base_ptr,
-                                             y_val_idx, true);      
+                                             y_val_idx, true);
 
       if (bld->coverage_samples > 1) {
          pixoffx = LLVMBuildFAdd(builder, pixoffx, xoffset, "");
@@ -590,7 +590,8 @@ lp_build_interp_soa(struct lp_build_interp_soa_context *bld,
       /* if all samples are covered use pixel centers */
       if (bld->coverage_samples > 1) {
          calc_centroid_offsets(bld, gallivm, loop_iter, mask_store,
-			       pix_center_offset, &centroid_x_offset, &centroid_y_offset);
+                               pix_center_offset, &centroid_x_offset,
+                               &centroid_y_offset);
 
          pixoffx = LLVMBuildFAdd(builder, pixoffx, centroid_x_offset, "");
          pixoffy = LLVMBuildFAdd(builder, pixoffy, centroid_y_offset, "");
@@ -602,10 +603,10 @@ lp_build_interp_soa(struct lp_build_interp_soa_context *bld,
 
    if (indir_index)
      return lp_build_interp_soa_indirect(bld, gallivm, attrib, chan,
-					 indir_index, pixoffx, pixoffy);
+                                         indir_index, pixoffx, pixoffy);
 
 
-   const unsigned interp = bld->interp[attrib];
+   const enum lp_interp interp = bld->interp[attrib];
    LLVMValueRef dadx = coeff_bld->zero;
    LLVMValueRef dady = coeff_bld->zero;
    LLVMValueRef a = coeff_bld->zero;
