@@ -1634,7 +1634,8 @@ void st_init_extensions(struct pipe_screen *screen,
          consts->MaxComputeSharedMemorySize = max_local_size;
 
          for (i = 0; i < 3; i++) {
-            consts->MaxComputeWorkGroupCount[i] = grid_size[i];
+            /* There are tests that fail if we report more that INT_MAX - 1. */
+            consts->MaxComputeWorkGroupCount[i] = MIN2(grid_size[i], INT_MAX - 1);
             consts->MaxComputeWorkGroupSize[i] = block_size[i];
          }
 
