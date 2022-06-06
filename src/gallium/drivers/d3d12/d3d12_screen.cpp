@@ -229,7 +229,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_ACCELERATED:
-      return 1;
+      return screen->vendor_id != HW_VENDOR_MICROSOFT;
 
    case PIPE_CAP_VIDEO_MEMORY:
       return d3d12_get_video_mem(pscreen);
