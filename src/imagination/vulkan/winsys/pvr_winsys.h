@@ -29,6 +29,7 @@
 #define PVR_WINSYS_H
 
 #include <pthread.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <vulkan/vulkan.h>

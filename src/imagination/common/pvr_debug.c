@@ -32,6 +32,8 @@ uint32_t PVR_DEBUG = 0;
 static const struct debug_named_value debug_control[] = {
    { "cs", PVR_DEBUG_DUMP_CONTROL_STREAM,
      "Dump the contents of the control stream buffer on every job submit." },
+   { "bo_track", PVR_DEBUG_TRACK_BOS,
+     "Track all buffer objects with at least one reference." },
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */

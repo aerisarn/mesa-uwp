@@ -28,6 +28,8 @@
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 
+#include "pvr_types.h"
+#include "pvr_winsys.h"
 #include "util/list.h"
 #include "util/macros.h"
 
@@ -98,6 +100,14 @@ static ALWAYS_INLINE void *pvr_bo_cpu_map_unchanged(struct pvr_device *device,
    return pvr_bo_cpu_map(device, pvr_bo);
 }
 #endif /* defined(HAVE_VALGRIND) */
+
+struct pvr_bo_store;
+
+VkResult pvr_bo_store_create(struct pvr_device *device);
+void pvr_bo_store_destroy(struct pvr_device *device);
+struct pvr_bo *pvr_bo_store_lookup(struct pvr_device *device,
+                                   pvr_dev_addr_t addr);
+bool pvr_bo_store_dump(struct pvr_device *device);
 
 void pvr_bo_list_dump(struct pvr_dump_ctx *ctx,
                       const struct list_head *bo_list,

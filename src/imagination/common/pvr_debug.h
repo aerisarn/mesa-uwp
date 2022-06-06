@@ -35,6 +35,7 @@ extern uint32_t PVR_DEBUG;
 /* clang-format on */
 
 #define PVR_DEBUG_DUMP_CONTROL_STREAM BITFIELD_BIT(0)
+#define PVR_DEBUG_TRACK_BOS BITFIELD_BIT(1)
 
 void pvr_process_debug_variable(void);
 
