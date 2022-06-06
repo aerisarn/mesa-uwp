@@ -894,6 +894,7 @@ spec@glsl-1.10@execution@variable-indexing@fs-input-array-vec3-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-input-array-vec4-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
+spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
@@ -1106,6 +1107,7 @@ spec@glsl-1.20@execution@uniform-initializer@fs-mat4-from-const,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-set-by-other-stage,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
+spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
