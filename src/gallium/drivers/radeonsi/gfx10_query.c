@@ -129,7 +129,7 @@ success:;
    sbuf.buffer_offset = qbuf->head;
    sbuf.buffer_size = sizeof(struct gfx10_sh_query_buffer_mem);
    si_set_internal_shader_buffer(sctx, SI_GS_QUERY_BUF, &sbuf);
-   sctx->current_vs_state |= S_VS_STATE_STREAMOUT_QUERY_ENABLED(1);
+   sctx->current_gs_state |= S_GS_STATE_STREAMOUT_QUERY_ENABLED(1);
 
    si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_query);
    return true;
@@ -185,7 +185,7 @@ static bool gfx10_sh_query_end(struct si_context *sctx, struct si_query *rquery)
 
    if (sctx->num_active_shader_queries <= 0 || !si_is_atom_dirty(sctx, &sctx->atoms.s.shader_query)) {
       si_set_internal_shader_buffer(sctx, SI_GS_QUERY_BUF, NULL);
-      sctx->current_vs_state &= C_VS_STATE_STREAMOUT_QUERY_ENABLED;
+      sctx->current_gs_state &= C_GS_STATE_STREAMOUT_QUERY_ENABLED;
 
       /* If a query_begin is followed by a query_end without a draw
        * in-between, we need to clear the atom to ensure that the

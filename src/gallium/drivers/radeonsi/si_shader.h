@@ -251,25 +251,37 @@ enum
    SI_NUM_PARAMS = SI_PARAM_POS_FIXED_PT + 9, /* +8 for COLOR[0..1] */
 };
 
-/* Fields of driver-defined VS state SGPR. */
-#define S_VS_STATE_CLAMP_VERTEX_COLOR(x)      (((unsigned)(x)&0x1) << 0)
+/* These fields are only set in current_vs_state (except INDEXED) in si_context, and they are
+ * accessible in the shader via vs_state_bits in all VS, TES, and GS.
+ */
+#define S_VS_STATE_CLAMP_VERTEX_COLOR(x)      (((unsigned)(x)&0x1) << 0) /* Shared by VS and GS */
 #define C_VS_STATE_CLAMP_VERTEX_COLOR         0xFFFFFFFE
-#define S_VS_STATE_INDEXED(x)                 (((unsigned)(x)&0x1) << 1)
+#define S_VS_STATE_INDEXED(x)                 (((unsigned)(x)&0x1) << 1) /* Shared by VS and GS */
 #define C_VS_STATE_INDEXED                    0xFFFFFFFD
-#define S_VS_STATE_OUTPRIM(x)                 (((unsigned)(x)&0x3) << 2)
-#define C_VS_STATE_OUTPRIM                    0xFFFFFFF3
-#define S_VS_STATE_PROVOKING_VTX_INDEX(x)     (((unsigned)(x)&0x3) << 4)
-#define C_VS_STATE_PROVOKING_VTX_INDEX        0xFFFFFFCF
-#define S_VS_STATE_STREAMOUT_QUERY_ENABLED(x) (((unsigned)(x)&0x1) << 6)
-#define C_VS_STATE_STREAMOUT_QUERY_ENABLED    0xFFFFFFBF
-#define S_VS_STATE_SMALL_PRIM_PRECISION(x)    (((unsigned)(x)&0xF) << 7)
-#define C_VS_STATE_SMALL_PRIM_PRECISION       0xFFFFF87F
+
+/* These fields are only set in current_vs_state in si_context, and they are accessible
+ * in the shader via vs_state_bits in LS/HS.
+ */
+/* bit gap */
 #define S_VS_STATE_LS_OUT_PATCH_SIZE(x)       (((unsigned)(x)&0x1FFF) << 11)
 #define C_VS_STATE_LS_OUT_PATCH_SIZE          0xFF0007FF
 #define S_VS_STATE_LS_OUT_VERTEX_SIZE(x)      (((unsigned)(x)&0xFF) << 24)
 #define C_VS_STATE_LS_OUT_VERTEX_SIZE         0x00FFFFFF
-#define S_VS_STATE_GS_PIPELINE_STATS_EMU(x)   (((unsigned)(x)&0x1) << 31)
-#define C_VS_STATE_GS_PIPELINE_STATS_EMU      0x7FFFFFFF
+
+/* These fields are only set in current_gs_state in si_context, and they are accessible
+ * in the shader via vs_state_bits in legacy GS, the GS copy shader, and any NGG shader.
+ */
+#define S_GS_STATE_OUTPRIM(x)                 (((unsigned)(x)&0x3) << 2)
+#define C_GS_STATE_OUTPRIM                    0xFFFFFFF3
+#define S_GS_STATE_PROVOKING_VTX_INDEX(x)     (((unsigned)(x)&0x3) << 4)
+#define C_GS_STATE_PROVOKING_VTX_INDEX        0xFFFFFFCF
+#define S_GS_STATE_STREAMOUT_QUERY_ENABLED(x) (((unsigned)(x)&0x1) << 6)
+#define C_GS_STATE_STREAMOUT_QUERY_ENABLED    0xFFFFFFBF
+#define S_GS_STATE_SMALL_PRIM_PRECISION(x)    (((unsigned)(x)&0xF) << 7)
+#define C_GS_STATE_SMALL_PRIM_PRECISION       0xFFFFF87F
+/* bit gap */
+#define S_GS_STATE_PIPELINE_STATS_EMU(x)      (((unsigned)(x)&0x1) << 31)
+#define C_GS_STATE_PIPELINE_STATS_EMU         0x7FFFFFFF
 
 enum
 {
@@ -836,7 +848,7 @@ struct si_shader {
 
    /* SI_SGPR_VS_STATE_BITS */
    bool uses_vs_state_provoking_vertex;
-   bool uses_vs_state_outprim;
+   bool uses_gs_state_outprim;
 
    bool uses_base_instance;
 

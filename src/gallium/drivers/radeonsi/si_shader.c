@@ -2498,7 +2498,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
         /* Used to export PrimitiveID from the correct vertex. */
         shader->key.ge.mono.u.vs_export_prim_id));
 
-   shader->uses_vs_state_outprim = sscreen->use_ngg &&
+   shader->uses_gs_state_outprim = sscreen->use_ngg &&
                                    /* Only used by streamout in vertex shaders. */
                                    sel->stage == MESA_SHADER_VERTEX &&
                                    sel->info.enabled_streamout_buffer_mask;

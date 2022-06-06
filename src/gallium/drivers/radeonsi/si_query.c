@@ -862,7 +862,7 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
          sbuf.buffer_offset = query->buffer.results_end;
          sbuf.buffer_size = buffer->bo_size;
          si_set_internal_shader_buffer(sctx, SI_GS_QUERY_EMULATED_COUNTERS_BUF, &sbuf);
-         sctx->current_gs_state |= S_VS_STATE_GS_PIPELINE_STATS_EMU(1);
+         sctx->current_gs_state |= S_GS_STATE_PIPELINE_STATS_EMU(1);
 
          const uint32_t zero = 0;
          radeon_begin(cs);
@@ -976,7 +976,7 @@ static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw
 
          if (--sctx->num_pipeline_stat_emulated_queries == 0) {
             si_set_internal_shader_buffer(sctx, SI_GS_QUERY_BUF, NULL);
-            sctx->current_gs_state &= C_VS_STATE_GS_PIPELINE_STATS_EMU;
+            sctx->current_gs_state &= C_GS_STATE_PIPELINE_STATS_EMU;
          }
       } else {
          radeon_emit(PKT3(PKT3_EVENT_WRITE, 2, 0));

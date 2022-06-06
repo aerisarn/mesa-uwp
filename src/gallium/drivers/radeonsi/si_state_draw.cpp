@@ -1211,13 +1211,13 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       if (hw_vs->uses_vs_state_provoking_vertex) {
          unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
 
-         sctx->current_vs_state &= C_VS_STATE_PROVOKING_VTX_INDEX;
-         sctx->current_vs_state |= S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
+         sctx->current_gs_state &= C_GS_STATE_PROVOKING_VTX_INDEX;
+         sctx->current_gs_state |= S_GS_STATE_PROVOKING_VTX_INDEX(vtx_index);
       }
 
-      if (hw_vs->uses_vs_state_outprim) {
-         sctx->current_vs_state &= C_VS_STATE_OUTPRIM;
-         sctx->current_vs_state |= S_VS_STATE_OUTPRIM(gs_out_prim);
+      if (hw_vs->uses_gs_state_outprim) {
+         sctx->current_gs_state &= C_GS_STATE_OUTPRIM;
+         sctx->current_gs_state |= S_GS_STATE_OUTPRIM(gs_out_prim);
       }
    }
 }

@@ -141,8 +141,8 @@ static void si_emit_cull_state(struct si_context *sctx)
     *
     * So pass only the first 4 bits of the float exponent to the shader.
     */
-   sctx->current_vs_state &= C_VS_STATE_SMALL_PRIM_PRECISION;
-   sctx->current_vs_state |= S_VS_STATE_SMALL_PRIM_PRECISION(fui(info.small_prim_precision) >> 23);
+   sctx->current_gs_state &= C_GS_STATE_SMALL_PRIM_PRECISION;
+   sctx->current_gs_state |= S_GS_STATE_SMALL_PRIM_PRECISION(fui(info.small_prim_precision) >> 23);
 }
 
 static void si_set_scissor_states(struct pipe_context *pctx, unsigned start_slot,
