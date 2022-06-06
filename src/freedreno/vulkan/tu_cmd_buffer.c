@@ -1360,8 +1360,12 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
 static void
 tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                uint32_t pipe, uint32_t slot)
+                uint32_t tx, uint32_t ty, uint32_t pipe, uint32_t slot)
 {
+   tu6_emit_tile_select(cmd, &cmd->cs, tx, ty, pipe, slot);
+
+   trace_start_draw_ib_gmem(&cmd->trace, &cmd->cs);
+
    tu_cs_emit_call(cs, &cmd->draw_cs);
 
    if (use_hw_binning(cmd)) {
@@ -1385,6 +1389,8 @@ tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    }
 
    tu_cs_sanity_check(cs);
+
+   trace_end_draw_ib_gmem(&cmd->trace, &cmd->cs);
 }
 
 static void
@@ -1422,22 +1428,35 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
 
    tu6_tile_render_begin(cmd, &cmd->cs, autotune_result);
 
-   uint32_t pipe = 0;
+   /* Note: we reverse the order of walking the pipes and tiles on every
+    * other row, to improve texture cache locality compared to raster order.
+    */
    for (uint32_t py = 0; py < fb->pipe_count.height; py++) {
-      for (uint32_t px = 0; px < fb->pipe_count.width; px++, pipe++) {
+      uint32_t pipe_row = py * fb->pipe_count.width;
+      for (uint32_t pipe_row_i = 0; pipe_row_i < fb->pipe_count.width; pipe_row_i++) {
+         uint32_t px;
+         if (py & 1)
+            px = fb->pipe_count.width - 1 - pipe_row_i;
+         else
+            px = pipe_row_i;
+         uint32_t pipe = pipe_row + px;
          uint32_t tx1 = px * fb->pipe0.width;
          uint32_t ty1 = py * fb->pipe0.height;
          uint32_t tx2 = MIN2(tx1 + fb->pipe0.width, fb->tile_count.width);
          uint32_t ty2 = MIN2(ty1 + fb->pipe0.height, fb->tile_count.height);
-         uint32_t slot = 0;
+         uint32_t tile_row_stride = tx2 - tx1;
+         uint32_t slot_row = 0;
          for (uint32_t ty = ty1; ty < ty2; ty++) {
-            for (uint32_t tx = tx1; tx < tx2; tx++, slot++) {
-               tu6_emit_tile_select(cmd, &cmd->cs, tx, ty, pipe, slot);
-
-               trace_start_draw_ib_gmem(&cmd->trace, &cmd->cs);
-               tu6_render_tile(cmd, &cmd->cs, pipe, slot);
-               trace_end_draw_ib_gmem(&cmd->trace, &cmd->cs);
+            for (uint32_t tile_row_i = 0; tile_row_i < tile_row_stride; tile_row_i++) {
+               uint32_t tx;
+               if (ty & 1)
+                  tx = tile_row_stride - 1 - tile_row_i;
+               else
+                  tx = tile_row_i;
+               uint32_t slot = slot_row + tx;
+               tu6_render_tile(cmd, &cmd->cs, tx1 + tx, ty, pipe, slot);
             }
+            slot_row += tile_row_stride;
          }
       }
    }
