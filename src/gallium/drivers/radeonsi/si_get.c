@@ -252,6 +252,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return max_texels;
    }
 
+   case PIPE_CAP_MAX_CONSTANT_BUFFER_SIZE_UINT:
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT: {
       /* Return 1/4th of the heap size as the maximum because the max size is not practically
        * allocatable. Also, this can only return UINT32_MAX at most.
