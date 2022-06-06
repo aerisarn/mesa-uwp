@@ -730,6 +730,18 @@ TRACE_SHADER_STATE(tes)
 
 #undef TRACE_SHADER_STATE
 
+static void
+trace_context_link_shader(struct pipe_context *_pipe, void **shaders)
+{
+   struct trace_context *tr_ctx = trace_context(_pipe);
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+   trace_dump_call_begin("pipe_context", "link_shader");
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg_array(ptr, shaders, PIPE_SHADER_TYPES);
+   pipe->link_shader(pipe, shaders);
+   trace_dump_call_end();
+}
 
 static inline void *
 trace_context_create_compute_state(struct pipe_context *_pipe,
@@ -2334,6 +2346,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(create_compute_state);
    TR_CTX_INIT(bind_compute_state);
    TR_CTX_INIT(delete_compute_state);
+   TR_CTX_INIT(link_shader);
    TR_CTX_INIT(create_vertex_elements_state);
    TR_CTX_INIT(bind_vertex_elements_state);
    TR_CTX_INIT(delete_vertex_elements_state);
