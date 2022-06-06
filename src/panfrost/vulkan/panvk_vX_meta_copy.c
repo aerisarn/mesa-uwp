@@ -1152,14 +1152,13 @@ panvk_meta_copy_buf2img(struct panvk_cmd_buffer *cmdbuf,
    const struct panfrost_ubo_push *pushmap =
       &cmdbuf->device->physical_device->meta.copy.buf2img[fmtidx].pushmap;
 
-   unsigned buftexelsz = panvk_meta_copy_buf_texelsize(key.imgfmt, key.mask);
+   const struct vk_image_buffer_layout buflayout =
+      vk_image_buffer_copy_layout(&img->vk, region);
    struct panvk_meta_copy_buf2img_info info = {
       .buf.ptr = panvk_buffer_gpu_ptr(buf, region->bufferOffset),
-      .buf.stride.line = (region->bufferRowLength ? : region->imageExtent.width) * buftexelsz,
+      .buf.stride.line = buflayout.row_stride_B,
+      .buf.stride.surf = buflayout.image_stride_B,
    };
-
-   info.buf.stride.surf =
-      (region->bufferImageHeight ? : region->imageExtent.height) * info.buf.stride.line;
 
    mali_ptr pushconsts =
       panvk_meta_copy_emit_push_constants(pdev, pushmap, &cmdbuf->desc_pool.base,
