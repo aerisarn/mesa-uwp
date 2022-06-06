@@ -202,3 +202,36 @@ traces:
         checksum: 3f4bfa1516e50194e4e86978420852c4
       - device: crocus-hsw
         checksum: 7a8b329f50653480eda50f53d715ad27
+  - path: blender/blender-demo-cube_diorama.trace
+    expectations:
+      # needs GL 4.5
+      #- device: crocus-g41
+      - device: crocus-hsw
+        checksum: f8cc19569c0c5a43cc4f16414167d234
+  - path: blender/blender-demo-ellie_pose.trace
+    expectations:
+      # needs GL 4.5
+      #- device: crocus-g41
+      - device: crocus-hsw
+        checksum: c07530897dc5a6882cbf35737334336b
+  - path: freedoom/freedoom-phase2-gl-high.trace
+    expectations:
+      # needs GL 4.6
+      #- device: crocus-g41
+      - device: crocus-hsw
+        checksum: 997ec70d945fdbda8a98efe831000338
+  - path: unvanquished/unvanquished-lowest.trace
+    expectations:
+      #- device: crocus-g41
+      - device: crocus-hsw
+        checksum: 884096b6dd40e2f500d0837501287fac
+  - path: unvanquished/unvanquished-ultra.trace
+    expectations:
+      #- device: crocus-g41
+      - device: crocus-hsw
+        checksum: 99b3ec85e4b9335c3cffc49a63c0c62c
+  - path: warzone2100/warzone2100-default.trace
+    expectations:
+      #- device: crocus-g41
+      - device: crocus-hsw
+        checksum: 2548cf2f42ac7bbdf5d1b26fc2f1c5f5
