@@ -1,15 +1,9 @@
 #include "nvk_cmd_buffer.h"
 
-#include "nvk_buffer.h"
 #include "nvk_device.h"
-#include "nvk_device_memory.h"
 #include "nvk_physical_device.h"
 
-#include "nouveau_bo.h"
 #include "nouveau_push.h"
-
-#include "classes/cl90b5.h"
-#include "push906f.h"
 
 static void
 nvk_destroy_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
@@ -77,6 +71,7 @@ nvk_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateIn
 
    list_inithead(&pool->cmd_buffers);
    list_inithead(&pool->free_cmd_buffers);
+   pool->dev = device;
 
    *pCmdPool = nvk_cmd_pool_to_handle(pool);
    return VK_SUCCESS;
@@ -225,53 +220,6 @@ nvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    return VK_SUCCESS;
 }
-
-VKAPI_ATTR void VKAPI_CALL
-nvk_CmdCopyBuffer(VkCommandBuffer commandBuffer,
-                  VkBuffer srcBuffer, VkBuffer dstBuffer,
-                  uint32_t regionCount, const VkBufferCopy* pRegions)
-{
-   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   VK_FROM_HANDLE(nvk_buffer, src, srcBuffer);
-   VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   struct nouveau_ws_push *push = cmd->push;
-
-   nouveau_ws_push_ref(push, src->mem->bo, NOUVEAU_WS_BO_RD);
-   nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
-
-   for (unsigned r = 0; r < regionCount; r++) {
-      const VkBufferCopy *region = &pRegions[r];
-      VkDeviceSize dstoff = dst->mem->bo->offset + dst->offset + region->dstOffset;
-      VkDeviceSize srcoff = src->mem->bo->offset + src->offset + region->srcOffset;
-      VkDeviceSize size = region->size;
-
-      while (size) {
-         unsigned bytes = MIN2(size, 1 << 17);
-
-         PUSH_MTHD(push, NV90B5, OFFSET_IN_UPPER,
-                   NVVAL(NV90B5, OFFSET_IN_UPPER, UPPER, srcoff >> 32),
-                                 OFFSET_IN_LOWER, srcoff & 0xffffffff,
-
-                                 OFFSET_OUT_UPPER,
-                   NVVAL(NV90B5, OFFSET_OUT_UPPER, UPPER, dstoff >> 32),
-                                 OFFSET_OUT_LOWER, dstoff & 0xffffffff);
-
-         PUSH_MTHD(push, NV90B5, LINE_LENGTH_IN, bytes,
-                                 LINE_COUNT, 1);
-
-         PUSH_IMMD(push, NV90B5, LAUNCH_DMA,
-                   NVDEF(NV90B5, LAUNCH_DMA, DATA_TRANSFER_TYPE, NON_PIPELINED) |
-                   NVDEF(NV90B5, LAUNCH_DMA, FLUSH_ENABLE, TRUE) |
-                   NVDEF(NV90B5, LAUNCH_DMA, SRC_MEMORY_LAYOUT, PITCH) |
-                   NVDEF(NV90B5, LAUNCH_DMA, DST_MEMORY_LAYOUT, PITCH));
-
-         srcoff += bytes;
-         dstoff += bytes;
-         size -= bytes;
-      }
-   }
-}
-
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer, const VkDependencyInfo *pDependencyInfo) {

@@ -12,6 +12,8 @@ struct nvk_cmd_pool {
    struct vk_command_pool vk;
    struct list_head cmd_buffers;
    struct list_head free_cmd_buffers;
+
+   struct nvk_device *dev;
 };
 
 struct nvk_cmd_buffer {

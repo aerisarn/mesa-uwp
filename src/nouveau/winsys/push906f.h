@@ -17,6 +17,7 @@
 // DmaCopy
 #define PUSH906F_SUBC_NV90B5	4
 #define PUSH906F_SUBC_NVA0B5	4
+#define PUSH906F_SUBC_NVC1B5	4
 #endif
 
 #define PUSH_HDR(p,o,n,f,s,m,c) do {                                                \
