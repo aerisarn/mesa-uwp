@@ -233,7 +233,25 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE:
       return 4096 * 1024;
 
-   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
+   case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT: {
+      unsigned max_texels =
+         pscreen->get_param(pscreen, PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT);
+
+      /* FYI, BUF_RSRC_WORD2.NUM_RECORDS field limit is UINT32_MAX. */
+
+      /* Gfx8 and older use the size in bytes for bounds checking, and the max element size
+       * is 16B. Gfx9 and newer use the VGPR index for bounds checking.
+       */
+      if (sscreen->info.gfx_level <= GFX8)
+         max_texels = MIN2(max_texels, UINT32_MAX / 16);
+      else
+         /* Gallium has a limitation that it can only bind UINT32_MAX bytes, not texels.
+          * TODO: Remove this after the gallium interface is changed. */
+         max_texels = MIN2(max_texels, UINT32_MAX / 16);
+
+      return max_texels;
+   }
+
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT: {
       /* Return 1/4th of the heap size as the maximum because the max size is not practically
        * allocatable. Also, this can only return UINT32_MAX at most.
