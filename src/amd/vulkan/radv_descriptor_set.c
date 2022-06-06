@@ -33,6 +33,19 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
+static unsigned
+radv_descriptor_type_buffer_count(VkDescriptorType type)
+{
+   switch (type) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+      case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+         return 0;
+      default:
+         return 1;
+   }
+}
+
 static bool
 has_equal_immutable_samplers(const VkSampler *samplers, uint32_t count)
 {
@@ -196,7 +209,8 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
       const VkDescriptorSetLayoutBinding *binding = bindings + j;
       uint32_t b = binding->binding;
       uint32_t alignment = 0;
-      unsigned binding_buffer_count = 0;
+      unsigned binding_buffer_count =
+         radv_descriptor_type_buffer_count(binding->descriptorType);
       uint32_t descriptor_count = binding->descriptorCount;
       bool has_ycbcr_sampler = false;
 
@@ -226,7 +240,6 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
          if (binding->stageFlags & RADV_RT_STAGE_BITS)
             set_layout->dynamic_shader_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
          set_layout->binding[b].size = 0;
-         binding_buffer_count = 1;
          alignment = 1;
          break;
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -234,25 +247,21 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          set_layout->binding[b].size = 16;
-         binding_buffer_count = 1;
          alignment = 16;
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          set_layout->binding[b].size = 32;
-         binding_buffer_count = 1;
          alignment = 32;
          break;
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          /* main descriptor + fmask descriptor */
          set_layout->binding[b].size = 64;
-         binding_buffer_count = 1;
          alignment = 32;
          break;
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          /* main descriptor + fmask descriptor + sampler */
          set_layout->binding[b].size = 96;
-         binding_buffer_count = 1;
          alignment = 32;
          break;
       case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -265,7 +274,6 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
                                                      &mutable_size, &mutable_align);
          assert(mutable_size && mutable_align);
          set_layout->binding[b].size = mutable_size;
-         binding_buffer_count = 1;
          alignment = mutable_align;
          break;
       }
@@ -631,11 +639,8 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
    struct radv_descriptor_set *set;
    uint32_t buffer_count = layout->buffer_count;
    if (variable_count) {
-      unsigned stride = 1;
-      if (layout->binding[layout->binding_count - 1].type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-          layout->binding[layout->binding_count - 1].type ==
-             VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
-         stride = 0;
+      unsigned stride =
+         radv_descriptor_type_buffer_count(layout->binding[layout->binding_count - 1].type);
       buffer_count =
          layout->binding[layout->binding_count - 1].buffer_offset + *variable_count * stride;
    }
@@ -815,8 +820,8 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
    }
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
-      if (pCreateInfo->pPoolSizes[i].type != VK_DESCRIPTOR_TYPE_SAMPLER)
-         bo_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+      bo_count += radv_descriptor_type_buffer_count(pCreateInfo->pPoolSizes[i].type) *
+         pCreateInfo->pPoolSizes[i].descriptorCount;
 
       switch (pCreateInfo->pPoolSizes[i].type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
