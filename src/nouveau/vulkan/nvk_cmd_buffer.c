@@ -8,7 +8,7 @@
 #include "nouveau_bo.h"
 #include "nouveau_push.h"
 
-#include "classes/cla0b5.h"
+#include "classes/cl90b5.h"
 #include "push906f.h"
 
 static void
@@ -248,22 +248,22 @@ nvk_CmdCopyBuffer(VkCommandBuffer commandBuffer,
       while (size) {
          unsigned bytes = MIN2(size, 1 << 17);
 
-         PUSH_MTHD(push, NVA0B5, OFFSET_IN_UPPER,
-                   NVVAL(NVA0B5, OFFSET_IN_UPPER, UPPER, srcoff >> 32),
+         PUSH_MTHD(push, NV90B5, OFFSET_IN_UPPER,
+                   NVVAL(NV90B5, OFFSET_IN_UPPER, UPPER, srcoff >> 32),
                                  OFFSET_IN_LOWER, srcoff & 0xffffffff,
 
                                  OFFSET_OUT_UPPER,
-                   NVVAL(NVA0B5, OFFSET_OUT_UPPER, UPPER, dstoff >> 32),
+                   NVVAL(NV90B5, OFFSET_OUT_UPPER, UPPER, dstoff >> 32),
                                  OFFSET_OUT_LOWER, dstoff & 0xffffffff);
 
-         PUSH_MTHD(push, NVA0B5, LINE_LENGTH_IN, bytes,
+         PUSH_MTHD(push, NV90B5, LINE_LENGTH_IN, bytes,
                                  LINE_COUNT, 1);
 
-         PUSH_IMMD(push, NVA0B5, LAUNCH_DMA,
-                   NVDEF(NVA0B5, LAUNCH_DMA, DATA_TRANSFER_TYPE, NON_PIPELINED) |
-                   NVDEF(NVA0B5, LAUNCH_DMA, FLUSH_ENABLE, TRUE) |
-                   NVDEF(NVA0B5, LAUNCH_DMA, SRC_MEMORY_LAYOUT, PITCH) |
-                   NVDEF(NVA0B5, LAUNCH_DMA, DST_MEMORY_LAYOUT, PITCH));
+         PUSH_IMMD(push, NV90B5, LAUNCH_DMA,
+                   NVDEF(NV90B5, LAUNCH_DMA, DATA_TRANSFER_TYPE, NON_PIPELINED) |
+                   NVDEF(NV90B5, LAUNCH_DMA, FLUSH_ENABLE, TRUE) |
+                   NVDEF(NV90B5, LAUNCH_DMA, SRC_MEMORY_LAYOUT, PITCH) |
+                   NVDEF(NV90B5, LAUNCH_DMA, DST_MEMORY_LAYOUT, PITCH));
 
          srcoff += bytes;
          dstoff += bytes;
