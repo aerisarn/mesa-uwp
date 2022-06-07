@@ -231,6 +231,7 @@ void nouveau_ws_push_reset(struct nouveau_ws_push *);
 #define PUSH_NVIM(p,c,m,d) do {             \
 	struct nouveau_ws_push *__p = (p);        \
 	uint32_t __d = (d);                      \
+	assert(!(__d & ~0xffff) && "immediate value must be 16 bit"); \
 	PUSH_IMMD_HDR(__p, c, m, __d);      \
 	__p->map--;                         \
 	PUSH_PRINTF(__p, "%08x-> "#m, __d); \
