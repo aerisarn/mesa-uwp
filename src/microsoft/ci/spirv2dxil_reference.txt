@@ -370,24 +370,8 @@ Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition_PerVertexStructOu
 Assertion failed: glsl_get_components(type) == 4
 
 
-Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_OneAccessChain.spvasm:main|Vertex: Fail
-DXIL: Not all elements of output SV_Position were written
-Not all elements of SV_Position were written
-
-Validation failed.
-
-Failed to validate DXIL
-
-
-Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_TwoAccessChain.spvasm:main|Vertex: Fail
-DXIL: Not all elements of output SV_Position were written
-Not all elements of SV_Position were written
-
-Validation failed.
-
-Failed to validate DXIL
-
-
+Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_OneAccessChain.spvasm:main|Vertex: Pass
+Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_TwoAccessChain.spvasm:main|Vertex: Pass
 Test:SpvModuleScopeVarParserTest_BuiltinVertexIndex.spvasm:main|Vertex: Pass
 Test:SpvModuleScopeVarParserTest_ColMajorDecoration_Dropped.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_DescriptorGroupDecoration_Valid.spvasm:main|Fragment: Pass
