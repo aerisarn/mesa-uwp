@@ -194,9 +194,7 @@ const float rcp_values[] = {
    -1e+035, -100000,
    100000, 1e+035,
    5.88e-39f, // denormal
-#if (__STDC_VERSION__ >= 199901L)
    INFINITY, -INFINITY,
-#endif
 };
 
 
@@ -213,9 +211,7 @@ const float rsqrt_values[] = {
    1e-007, 4.0,
    100000, 1e+035,
    5.88e-39f, // denormal
-#if (__STDC_VERSION__ >= 199901L)
    INFINITY,
-#endif
 };
 
 
