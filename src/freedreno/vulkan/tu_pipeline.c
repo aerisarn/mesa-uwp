@@ -3557,25 +3557,29 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
 
    assert(cs.cur == cs.end); /* validate draw state size */
 
-   if (blend_enable_mask) {
-      for (int i = 0; i < blend_info->attachmentCount; i++) {
-         VkPipelineColorBlendAttachmentState blendAttachment = blend_info->pAttachments[i];
-         /* Disable LRZ writes when blend is enabled, since the
-          * resulting pixel value from the blend-draw
-          * depends on an earlier draw, which LRZ in the draw pass
-          * could early-reject if the previous blend-enabled draw wrote LRZ.
-          *
-          * From the PoV of LRZ, having masked color channels is
-          * the same as having blend enabled, in that the draw will
-          * care about the fragments from an earlier draw.
-          *
-          * TODO: We need to disable LRZ writes only for the binning pass.
-          * Therefore, we need to emit it in a separate draw state. We keep
-          * it disabled for sysmem path as well for the moment.
-          */
-         if (blendAttachment.blendEnable || blendAttachment.colorWriteMask != 0xf) {
-            pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
-         }
+   /* Disable LRZ writes when blend or logic op that reads the destination is
+    * enabled, since the resulting pixel value from the blend-draw depends on
+    * an earlier draw, which LRZ in the draw pass could early-reject if the
+    * previous blend-enabled draw wrote LRZ.
+    *
+    * TODO: We need to disable LRZ writes only for the binning pass.
+    * Therefore, we need to emit it in a separate draw state. We keep
+    * it disabled for sysmem path as well for the moment.
+    */
+   if (blend_enable_mask)
+      pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
+
+   for (int i = 0; i < blend_info->attachmentCount; i++) {
+      VkPipelineColorBlendAttachmentState blendAttachment = blend_info->pAttachments[i];
+      /* From the PoV of LRZ, having masked color channels is
+       * the same as having blend enabled, in that the draw will
+       * care about the fragments from an earlier draw.
+       */
+      VkFormat format = builder->color_attachment_formats[i];
+      unsigned mask = MASK(vk_format_get_nr_components(format));
+      if (format != VK_FORMAT_UNDEFINED &&
+          (blendAttachment.colorWriteMask & mask) != mask) {
+         pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
    }
 
