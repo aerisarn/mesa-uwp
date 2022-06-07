@@ -1614,8 +1614,6 @@ struct radv_cmd_buffer {
    bool gds_oa_needed; /* for GFX10 streamout */
    bool sample_positions_needed;
 
-   VkResult record_result;
-
    uint64_t gfx9_fence_va;
    uint32_t gfx9_fence_idx;
    uint64_t gfx9_eop_bug_va;

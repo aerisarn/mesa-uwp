@@ -625,7 +625,7 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image_
 
       ret = create_resolve_pipeline(device, samples_log2, radv_fs_key_format_exemplars[fs_key]);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return NULL;
       }
    }
@@ -761,7 +761,7 @@ emit_depth_stencil_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image
 
       ret = create_depth_stencil_resolve_pipeline(device, samples_log2, index, resolve_mode);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return;
       }
    }

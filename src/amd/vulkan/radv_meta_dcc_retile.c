@@ -199,7 +199,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
       VkResult ret =
          radv_device_init_meta_dcc_retile_state(cmd_buffer->device, &image->planes[0].surface);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return;
       }
    }

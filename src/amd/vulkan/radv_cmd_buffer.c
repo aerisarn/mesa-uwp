@@ -432,8 +432,6 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, cmd_buffer->upload.upload_bo);
    cmd_buffer->upload.offset = 0;
 
-   cmd_buffer->record_result = VK_SUCCESS;
-
    memset(cmd_buffer->vertex_binding_buffers, 0, sizeof(struct radv_buffer *) * cmd_buffer->used_vertex_bindings);
    cmd_buffer->used_vertex_bindings = 0;
 
@@ -447,7 +445,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
       uint32_t pred_value = 0;
       uint32_t pred_offset;
       if (!radv_cmd_buffer_upload_data(cmd_buffer, 4, &pred_value, &pred_offset))
-         cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
 
       cmd_buffer->mec_inv_pred_emitted = false;
       cmd_buffer->mec_inv_pred_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + pred_offset;
@@ -480,7 +478,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
    cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
 
-   return cmd_buffer->record_result;
+   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 }
 
 static bool
@@ -501,7 +499,7 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t m
                                 RADV_BO_PRIORITY_UPLOAD_BUFFER, 0, &bo);
 
    if (result != VK_SUCCESS) {
-      cmd_buffer->record_result = result;
+      vk_command_buffer_set_error(&cmd_buffer->vk, result);
       return false;
    }
 
@@ -510,7 +508,7 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t m
       upload = malloc(sizeof(*upload));
 
       if (!upload) {
-         cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
          device->ws->buffer_destroy(device->ws, bo);
          return false;
       }
@@ -525,7 +523,7 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t m
    cmd_buffer->upload.map = device->ws->buffer_map(cmd_buffer->upload.upload_bo);
 
    if (!cmd_buffer->upload.map) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return false;
    }
 
@@ -646,7 +644,7 @@ radv_ace_internal_sem_create(struct radv_cmd_buffer *cmd_buffer)
    uint64_t sem_init = 0;
    uint32_t va_off = 0;
    if (!radv_cmd_buffer_upload_data(cmd_buffer, sizeof(uint64_t), &sem_init, &va_off)) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return 0;
    }
 
@@ -702,9 +700,8 @@ radv_ace_internal_create(struct radv_cmd_buffer *cmd_buffer)
    struct radv_device *device = cmd_buffer->device;
    struct radeon_cmdbuf *ace_cs = device->ws->cs_create(device->ws, AMD_IP_COMPUTE);
 
-   if (!ace_cs) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
+   if (!ace_cs)
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    return ace_cs;
 }
@@ -2587,7 +2584,7 @@ radv_cmd_buffer_get_vrs_image(struct radv_cmd_buffer *cmd_buffer)
       /* The global VRS state is initialized on-demand to avoid wasting VRAM. */
       result = radv_device_init_vrs_state(device);
       if (result != VK_SUCCESS) {
-         cmd_buffer->record_result = result;
+         vk_command_buffer_set_error(&cmd_buffer->vk, result);
          return NULL;
       }
    }
@@ -3193,7 +3190,7 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
    struct radv_shader_part *prolog =
       lookup_vs_prolog(cmd_buffer, vs_shader, &nontrivial_divisors);
    if (!prolog) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
    emit_prolog_regs(cmd_buffer, vs_shader, prolog, pipeline_is_dirty);
@@ -4573,8 +4570,7 @@ radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
                sample_locs->postSubpassSampleLocationsCount * sizeof(state->subpass_sample_locs[0]),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (state->subpass_sample_locs == NULL) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      return cmd_buffer->record_result;
+      return vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    state->num_subpass_sample_locs = sample_locs->postSubpassSampleLocationsCount;
@@ -4618,8 +4614,7 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
       vk_alloc(&cmd_buffer->pool->vk.alloc, pass->attachment_count * sizeof(state->attachments[0]),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (state->attachments == NULL) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      return cmd_buffer->record_result;
+      return vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    for (uint32_t i = 0; i < pass->attachment_count; ++i) {
@@ -4841,7 +4836,7 @@ radv_inherit_dynamic_rendering(struct radv_cmd_buffer *cmd_buffer,
    result =
       radv_CreateRenderPass2(radv_device_to_handle(cmd_buffer->device), &rp_create_info, NULL, &rp);
    if (result != VK_SUCCESS) {
-      cmd_buffer->record_result = result;
+      vk_command_buffer_set_error(&cmd_buffer->vk, result);
       return;
    }
 
@@ -5151,7 +5146,7 @@ radv_init_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer, struct radv_de
 
       if (!set->header.mapped_ptr) {
          descriptors_state->push_set.capacity = 0;
-         cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
          return false;
       }
 
@@ -5322,7 +5317,7 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    cmd_buffer->status = RADV_CMD_BUFFER_STATUS_EXECUTABLE;
 
-   return cmd_buffer->record_result;
+   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 }
 
 static void
@@ -7051,7 +7046,7 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
       uint32_t workaround_cond_init = 0;
       uint32_t workaround_cond_off;
       if (!radv_cmd_buffer_upload_data(cmd_buffer, 4, &workaround_cond_init, &workaround_cond_off))
-         cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
 
       workaround_cond_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + workaround_cond_off;
 
@@ -8955,7 +8950,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
    result =
       radv_CreateRenderPass2(radv_device_to_handle(cmd_buffer->device), &rp_create_info, NULL, &rp);
    if (result != VK_SUCCESS) {
-      cmd_buffer->record_result = result;
+      vk_command_buffer_set_error(&cmd_buffer->vk, result);
       return;
    }
 
@@ -8985,7 +8980,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
       vk_common_CreateFramebuffer(radv_device_to_handle(cmd_buffer->device), &fb_create_info, NULL, &fb);
    if (result != VK_SUCCESS) {
       radv_DestroyRenderPass(radv_device_to_handle(cmd_buffer->device), rp, NULL);
-      cmd_buffer->record_result = result;
+      vk_command_buffer_set_error(&cmd_buffer->vk, result);
       return;
    }
 

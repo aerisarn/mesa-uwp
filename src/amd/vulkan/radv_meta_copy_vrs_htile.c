@@ -224,7 +224,7 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
       VkResult ret = radv_device_init_meta_copy_vrs_htile_state(cmd_buffer->device,
                                                                 &dst_image->planes[0].surface);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return;
       }
    }

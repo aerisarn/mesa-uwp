@@ -1157,7 +1157,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
    void *upload_data;
    unsigned upload_offset;
    if (!radv_cmd_buffer_upload_alloc(cmd_buffer, upload_size, &upload_offset, &upload_data)) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
 

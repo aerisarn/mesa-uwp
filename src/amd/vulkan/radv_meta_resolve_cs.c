@@ -512,7 +512,7 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image_
       ret = create_resolve_pipeline(device, samples, vk_format_is_int(src_iview->vk.format),
                                     vk_format_is_srgb(src_iview->vk.format), pipeline);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return NULL;
       }
    }
@@ -645,7 +645,7 @@ emit_depth_stencil_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image
 
       ret = create_depth_stencil_resolve_pipeline(device, samples, index, resolve_mode, pipeline);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return;
       }
    }

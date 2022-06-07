@@ -369,14 +369,14 @@ radv_get_depth_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image *i
       ret = create_pipeline(cmd_buffer->device, samples, state->depth_decomp[samples_log2].p_layout,
                             DEPTH_DECOMPRESS, &state->depth_decomp[samples_log2].decompress_pipeline);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return NULL;
       }
 
       ret = create_pipeline(cmd_buffer->device, samples, state->depth_decomp[samples_log2].p_layout,
                             DEPTH_RESUMMARIZE, &state->depth_decomp[samples_log2].resummarize_pipeline);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return NULL;
       }
    }

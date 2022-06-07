@@ -245,7 +245,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                VkResult ret = blit2d_init_color_pipeline(
                   device, src_type, radv_fs_key_format_exemplars[fs_key], log2_samples);
                if (ret != VK_SUCCESS) {
-                  cmd_buffer->record_result = ret;
+                  vk_command_buffer_set_error(&cmd_buffer->vk, ret);
                   goto fail_pipeline;
                }
             }
@@ -277,7 +277,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                 VK_NULL_HANDLE) {
                VkResult ret = blit2d_init_depth_only_pipeline(device, src_type, log2_samples);
                if (ret != VK_SUCCESS) {
-                  cmd_buffer->record_result = ret;
+                  vk_command_buffer_set_error(&cmd_buffer->vk, ret);
                   goto fail_pipeline;
                }
             }
@@ -311,7 +311,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                 VK_NULL_HANDLE) {
                VkResult ret = blit2d_init_stencil_only_pipeline(device, src_type, log2_samples);
                if (ret != VK_SUCCESS) {
-                  cmd_buffer->record_result = ret;
+                  vk_command_buffer_set_error(&cmd_buffer->vk, ret);
                   goto fail_pipeline;
                }
             }

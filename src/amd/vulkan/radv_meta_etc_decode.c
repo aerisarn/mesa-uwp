@@ -650,7 +650,7 @@ radv_get_etc_decode_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
       ret = create_decode_pipeline(device, pipeline);
       if (ret != VK_SUCCESS) {
-         cmd_buffer->record_result = ret;
+         vk_command_buffer_set_error(&cmd_buffer->vk, ret);
          return VK_NULL_HANDLE;
       }
    }
