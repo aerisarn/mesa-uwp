@@ -204,7 +204,7 @@ struct lp_bld_tgsi_system_values {
 struct lp_build_sampler_soa
 {
    void
-   (*destroy)( struct lp_build_sampler_soa *sampler );
+   (*destroy)(struct lp_build_sampler_soa *sampler);
 
    void
    (*emit_tex_sample)(const struct lp_build_sampler_soa *sampler,
@@ -212,22 +212,22 @@ struct lp_build_sampler_soa
                       const struct lp_sampler_params *params);
 
    void
-   (*emit_size_query)( const struct lp_build_sampler_soa *sampler,
-                       struct gallivm_state *gallivm,
-                       const struct lp_sampler_size_query_params *params);
+   (*emit_size_query)(const struct lp_build_sampler_soa *sampler,
+                      struct gallivm_state *gallivm,
+                      const struct lp_sampler_size_query_params *params);
 };
 
 
 struct lp_build_sampler_aos
 {
    LLVMValueRef
-   (*emit_fetch_texel)( const struct lp_build_sampler_aos *sampler,
-                        struct lp_build_context *bld,
-                        unsigned target, /* TGSI_TEXTURE_* */
-                        unsigned unit,
-                        LLVMValueRef coords,
-                        const struct lp_derivatives derivs,
-                        enum lp_build_tex_modifier modifier);
+   (*emit_fetch_texel)(const struct lp_build_sampler_aos *sampler,
+                       struct lp_build_context *bld,
+                       unsigned target, /* TGSI_TEXTURE_* */
+                       unsigned unit,
+                       LLVMValueRef coords,
+                       const struct lp_derivatives derivs,
+                       enum lp_build_tex_modifier modifier);
 };
 
 struct lp_img_params;
@@ -235,7 +235,7 @@ struct lp_img_params;
 struct lp_build_image_soa
 {
    void
-   (*destroy)( struct lp_build_image_soa *image );
+   (*destroy)(struct lp_build_image_soa *image);
 
    void
    (*emit_op)(const struct lp_build_image_soa *image,
@@ -243,9 +243,9 @@ struct lp_build_image_soa
               const struct lp_img_params *params);
 
    void
-   (*emit_size_query)( const struct lp_build_image_soa *sampler,
-                       struct gallivm_state *gallivm,
-                       const struct lp_sampler_size_query_params *params);
+   (*emit_size_query)(const struct lp_build_image_soa *sampler,
+                      struct gallivm_state *gallivm,
+                      const struct lp_sampler_size_query_params *params);
 };
 
 struct lp_build_fs_iface;
