@@ -48,7 +48,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
    bool ret = nir_to_dxil(nir, &opts, &dxil_blob);
    assert(ret);
 
-   char *err;
+   char *err = NULL;
    bool res = dxil_validate_module(instance->dxil_validator,
                                    dxil_blob.data,
                                    dxil_blob.size, &err);
@@ -70,12 +70,12 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
 
    if ((instance->debug_flags & DZN_DEBUG_DXIL) &&
        (instance->debug_flags & DZN_DEBUG_INTERNAL) &&
-       err) {
+       !res) {
       fprintf(stderr,
             "== VALIDATION ERROR =============================================\n"
             "%s\n"
             "== END ==========================================================\n",
-            err);
+            err ? err : "unknown");
       ralloc_free(err);
    }
    assert(res);
