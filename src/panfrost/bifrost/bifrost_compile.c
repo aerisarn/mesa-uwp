@@ -1099,6 +1099,32 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
                         kernel_input ? bi_zero() : bi_src_index(&instr->src[0]));
 }
 
+static void
+bi_emit_load_push_constant(bi_builder *b, nir_intrinsic_instr *instr)
+{
+        assert(b->shader->inputs->no_ubo_to_push && "can't mix push constant forms");
+
+        nir_src *offset = &instr->src[0];
+        assert(nir_src_is_const(*offset) && "no indirect push constants");
+        uint32_t base = nir_intrinsic_base(instr) + nir_src_as_uint(*offset);
+        assert((base & 3) == 0 && "unaligned push constants");
+
+        unsigned bits = nir_dest_bit_size(instr->dest) *
+                        nir_dest_num_components(instr->dest);
+
+        unsigned n = DIV_ROUND_UP(bits, 32);
+        assert(n <= 4);
+        bi_index channels[4] = { bi_null() };
+
+        for (unsigned i = 0; i < n; ++i) {
+                unsigned word = (base >> 2) + i;
+
+                channels[i] = bi_fau(BIR_FAU_UNIFORM | (word >> 1), word & 1);
+        }
+
+        bi_emit_collect_to(b, bi_dest_index(&instr->dest), channels, n);
+}
+
 static bi_index
 bi_addr_high(bi_builder *b, nir_src *src)
 {
@@ -1588,6 +1614,10 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_kernel_input:
                 bi_emit_load_ubo(b, instr);
+                break;
+
+        case nir_intrinsic_load_push_constant:
+                bi_emit_load_push_constant(b, instr);
                 break;
 
         case nir_intrinsic_load_global:
