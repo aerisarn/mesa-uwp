@@ -253,10 +253,8 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: 181424f3afd256108be63d8ea0669b6b
-  - path: valve/counterstrike-v2.trace
-    expectations:
-      - device: gl-virgl
-        checksum: 06324f3b7eb2355edf71d0cc3bdf7df3
+  # does look correct, but flakes and change checksum very often
+  #- path: valve/counterstrike-v2.trace
   - path: valve/counterstrike-source-v2.trace
     expectations:
       - device: gl-virgl
