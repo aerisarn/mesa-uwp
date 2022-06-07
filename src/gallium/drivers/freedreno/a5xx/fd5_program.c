@@ -381,7 +381,14 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
       ring,
       A5XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(s[VS].i->max_half_reg + 1) |
          A5XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(s[VS].i->max_reg + 1) |
-         0x6 | /* XXX seems to be always set? */
+         COND(s[VS].instrlen != 0, A5XX_SP_VS_CTRL_REG0_BUFFER) |
+         /* XXX: 0x2 is only unset in
+          * dEQP-GLES3.functional.ubo.single_nested_struct_array.single_buffer.packed_instance_array_vertex
+          * on a collection of blob traces.  That shader is 1091 instrs, 0
+          * half, 3 full, 108 constlen.  Other >1091 instr non-VS shaders don't
+          * unset it, so that's not the trick.
+          */
+         0x2 |
          A5XX_SP_VS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(s[VS].v)) |
          COND(s[VS].v->need_pixlod, A5XX_SP_VS_CTRL_REG0_PIXLODENABLE));
 
@@ -531,7 +538,8 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RING(
       ring,
       COND(s[FS].v->total_in > 0, A5XX_SP_FS_CTRL_REG0_VARYING) |
-         0x40006 | /* XXX set pretty much everywhere */
+         0x40002 | /* XXX set pretty much everywhere */
+         COND(s[FS].instrlen != 0, A5XX_SP_FS_CTRL_REG0_BUFFER) |
          A5XX_SP_FS_CTRL_REG0_THREADSIZE(fssz) |
          A5XX_SP_FS_CTRL_REG0_HALFREGFOOTPRINT(s[FS].i->max_half_reg + 1) |
          A5XX_SP_FS_CTRL_REG0_FULLREGFOOTPRINT(s[FS].i->max_reg + 1) |
