@@ -1933,6 +1933,9 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
          else
             image->queue_family_mask |=
                1u << vk_queue_to_radv(device->physical_device, pCreateInfo->pQueueFamilyIndices[i]);
+
+      /* This queue never really accesses the image. */
+      image->queue_family_mask &= ~(1u << RADV_QUEUE_SPARSE);
    }
 
    const VkExternalMemoryImageCreateInfo *external_info =
