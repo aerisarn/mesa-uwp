@@ -63,7 +63,7 @@ Get-Date
 Write-Host "Cloning spirv-samples"
 git clone --no-progress --single-branch --no-checkout https://github.com/dneto0/spirv-samples.git  C:\spirv-samples\
 Push-Location -Path C:\spirv-samples\
-git checkout 7ac0ad5a7fe0ec884faba1dc2916028d0268eeef
+git checkout 36372636df06a24c4e2de1551beee055db01b91d
 Pop-Location
 
 Get-Date
