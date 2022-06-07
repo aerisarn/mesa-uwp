@@ -67,8 +67,7 @@ panvk_meta_clear_color_attachment_shader(struct panfrost_device *pdev,
    shader_info->push.count = 4;
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -128,8 +127,7 @@ panvk_meta_clear_zs_attachment_shader(struct panfrost_device *pdev,
    shader_info->push.count = 2;
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -172,8 +170,7 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
       cfg.stencil_front.mask = 0xFF;
       cfg.stencil_back = cfg.stencil_front;
 
-#if PAN_ARCH >= 6
-      cfg.properties.allow_forward_pixel_to_be_killed = PAN_ARCH >= 7 || !zs;
+      cfg.properties.allow_forward_pixel_to_be_killed = true;
       cfg.properties.allow_forward_pixel_to_kill = !zs;
       if (zs) {
          cfg.properties.zs_update_operation =
@@ -186,12 +183,6 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
          cfg.properties.pixel_kill_operation =
             MALI_PIXEL_KILL_FORCE_EARLY;
       }
-#else
-      cfg.properties.shader_reads_tilebuffer = false;
-      cfg.properties.work_register_count = shader_info->work_reg_count;
-      cfg.properties.force_early_z = !zs;
-      cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
-#endif
    }
 
    void *bd = rsd_ptr.cpu + pan_size(RENDERER_STATE);
@@ -200,9 +191,7 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
    for (unsigned i = 0; i < rt; i++) {
       pan_pack(bd, BLEND, cfg) {
          cfg.enable = false;
-#if PAN_ARCH >= 6
          cfg.internal.mode = MALI_BLEND_MODE_OFF;
-#endif
       }
 
       bd += pan_size(BLEND);
@@ -212,9 +201,7 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
       /* We write the depth/stencil, disable blending on RT0. */
       pan_pack(bd, BLEND, cfg) {
          cfg.enable = false;
-#if PAN_ARCH >= 6
          cfg.internal.mode = MALI_BLEND_MODE_OFF;
-#endif
       }
    } else {
       pan_pack(bd, BLEND, cfg) {
@@ -226,7 +213,6 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
          cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
          cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
          cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-#if PAN_ARCH >= 6
          cfg.internal.mode = MALI_BLEND_MODE_OPAQUE;
          cfg.equation.color_mask = 0xf;
          cfg.internal.fixed_function.num_comps = 4;
@@ -234,10 +220,6 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
             panfrost_format_to_bifrost_blend(pdev, format, false);
          cfg.internal.fixed_function.conversion.register_format =
             shader_info->bifrost.blend[rt].format;
-#else
-         cfg.equation.color_mask =
-            (1 << util_format_get_nr_components(format)) - 1;
-#endif
       }
    }
 
@@ -292,12 +274,10 @@ panvk_meta_clear_attachment_emit_tiler_job(struct pan_pool *desc_pool,
    panfrost_pack_work_groups_compute(invoc, 1, 4,
                                      1, 1, 1, 1, true, false);
 
-#if PAN_ARCH >= 6
    pan_section_pack(job.cpu, TILER_JOB, PADDING, cfg);
    pan_section_pack(job.cpu, TILER_JOB, TILER, cfg) {
       cfg.address = tiler;
    }
-#endif
 
    panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
                     false, false, 0, 0, &job, false);
@@ -407,8 +387,8 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
    mali_ptr pushconsts =
       pan_pool_upload_aligned(&cmdbuf->desc_pool.base,
                               clear_value, sizeof(*clear_value), 16);
-   mali_ptr tsd = PAN_ARCH >= 6 ? batch->tls.gpu : batch->fb.desc.gpu;
-   mali_ptr tiler = PAN_ARCH >= 6 ? batch->tiler.descs.gpu : 0;
+   mali_ptr tsd = batch->tls.gpu;
+   mali_ptr tiler = batch->tiler.descs.gpu;
 
    struct panfrost_ptr job;
 

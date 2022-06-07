@@ -34,7 +34,6 @@ panvk_meta_copy_img_emit_texture(struct panfrost_device *pdev,
                                  struct pan_pool *desc_pool,
                                  const struct pan_image_view *view)
 {
-#if PAN_ARCH >= 6
    struct panfrost_ptr texture =
       pan_pool_alloc_desc(desc_pool, TEXTURE);
    size_t payload_size =
@@ -46,22 +45,6 @@ panvk_meta_copy_img_emit_texture(struct panfrost_device *pdev,
    GENX(panfrost_new_texture)(pdev, view, texture.cpu, &surfaces);
 
    return texture.gpu;
-#else
-   size_t sz = pan_size(TEXTURE) +
-               GENX(panfrost_estimate_texture_payload_size)(view);
-   struct panfrost_ptr texture =
-      pan_pool_alloc_aligned(desc_pool, sz, pan_alignment(TEXTURE));
-   struct panfrost_ptr surfaces = {
-      .cpu = texture.cpu + pan_size(TEXTURE),
-      .gpu = texture.gpu + pan_size(TEXTURE),
-   };
-
-   GENX(panfrost_new_texture)(pdev, view, texture.cpu, &surfaces);
-
-   return pan_pool_upload_aligned(desc_pool, &texture.gpu,
-                                  sizeof(mali_ptr),
-                                  sizeof(mali_ptr));
-#endif
 }
 
 static mali_ptr
@@ -72,9 +55,7 @@ panvk_meta_copy_img_emit_sampler(struct panfrost_device *pdev,
       pan_pool_alloc_desc(desc_pool, SAMPLER);
 
    pan_pack(sampler.cpu, SAMPLER, cfg) {
-#if PAN_ARCH >= 6
       cfg.seamless_cube_map = false;
-#endif
       cfg.normalized_coordinates = false;
       cfg.minify_nearest = true;
       cfg.magnify_nearest = true;
@@ -89,14 +70,10 @@ panvk_meta_copy_emit_varying(struct pan_pool *pool,
                              mali_ptr *varying_bufs,
                              mali_ptr *varyings)
 {
-   /* Bifrost needs an empty desc to mark end of prefetching */
-   bool padding_buffer = PAN_ARCH >= 6;
-
    struct panfrost_ptr varying =
       pan_pool_alloc_desc(pool, ATTRIBUTE);
    struct panfrost_ptr varying_buffer =
-      pan_pool_alloc_desc_array(pool, (padding_buffer ? 2 : 1),
-                                     ATTRIBUTE_BUFFER);
+      pan_pool_alloc_desc_array(pool, 2, ATTRIBUTE_BUFFER);
 
    pan_pack(varying_buffer.cpu, ATTRIBUTE_BUFFER, cfg) {
       cfg.pointer = coordinates;
@@ -104,14 +81,12 @@ panvk_meta_copy_emit_varying(struct pan_pool *pool,
       cfg.size = cfg.stride * 4;
    }
 
-   if (padding_buffer) {
-      pan_pack(varying_buffer.cpu + pan_size(ATTRIBUTE_BUFFER),
-               ATTRIBUTE_BUFFER, cfg);
-   }
+   /* Bifrost needs an empty desc to mark end of prefetching */
+   pan_pack(varying_buffer.cpu + pan_size(ATTRIBUTE_BUFFER),
+            ATTRIBUTE_BUFFER, cfg);
 
    pan_pack(varying.cpu, ATTRIBUTE, cfg) {
       cfg.buffer_index = 0;
-      cfg.offset_enable = PAN_ARCH <= 5;
       cfg.format = pool->dev->formats[PIPE_FORMAT_R32G32B32_FLOAT].hw;
    }
 
@@ -174,12 +149,10 @@ panvk_meta_copy_emit_tiler_job(struct pan_pool *desc_pool,
    panfrost_pack_work_groups_compute(invoc, 1, 4,
                                      1, 1, 1, 1, true, false);
 
-#if PAN_ARCH >= 6
    pan_section_pack(job.cpu, TILER_JOB, PADDING, cfg);
    pan_section_pack(job.cpu, TILER_JOB, TILER, cfg) {
       cfg.address = tiler;
    }
-#endif
 
    panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
                     false, false, 0, 0, &job, false);
@@ -219,7 +192,6 @@ panvk_meta_copy_emit_compute_job(struct pan_pool *desc_pool,
 }
 
 
-#if PAN_ARCH >= 6
 static uint32_t
 panvk_meta_copy_img_bifrost_raw_format(unsigned texelsize)
 {
@@ -231,7 +203,6 @@ panvk_meta_copy_img_bifrost_raw_format(unsigned texelsize)
    default: unreachable("Invalid texel size\n");
    }
 }
-#endif
 
 static mali_ptr
 panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
@@ -270,7 +241,6 @@ panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
       cfg.stencil_front.mask = 0xFF;
       cfg.stencil_back = cfg.stencil_front;
 
-#if PAN_ARCH >= 6
       cfg.properties.allow_forward_pixel_to_be_killed = true;
       cfg.properties.allow_forward_pixel_to_kill =
          !partialwrite && !readstb;
@@ -278,12 +248,6 @@ panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
          MALI_PIXEL_KILL_STRONG_EARLY;
       cfg.properties.pixel_kill_operation =
          MALI_PIXEL_KILL_FORCE_EARLY;
-#else
-      cfg.properties.shader_reads_tilebuffer = readstb;
-      cfg.properties.work_register_count = shader_info->work_reg_count;
-      cfg.properties.force_early_z = true;
-      cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
-#endif
    }
 
    pan_pack(rsd_ptr.cpu + pan_size(RENDERER_STATE), BLEND, cfg) {
@@ -295,7 +259,6 @@ panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
       cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
       cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
       cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-#if PAN_ARCH >= 6
       cfg.internal.mode =
          partialwrite ?
          MALI_BLEND_MODE_FIXED_FUNCTION :
@@ -317,9 +280,6 @@ panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
             MALI_REGISTER_FILE_FORMAT_U16 :
             MALI_REGISTER_FILE_FORMAT_U32;
       }
-#else
-      cfg.equation.color_mask = wrmask;
-#endif
    }
 
    return rsd_ptr.gpu;
@@ -489,7 +449,6 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
       .no_ubo_to_push = true,
    };
 
-#if PAN_ARCH >= 6
    pan_pack(&inputs.bifrost.rt_conv[0], INTERNAL_CONVERSION, cfg) {
       cfg.memory_format = (dstcompsz == 2 ? MALI_RG16UI : MALI_RG32UI) << 12;
       cfg.register_format = dstcompsz == 2 ?
@@ -497,7 +456,6 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
                             MALI_REGISTER_FILE_FORMAT_U32;
    }
    inputs.bifrost.static_rt_conv = true;
-#endif
 
    struct util_dynarray binary;
 
@@ -507,8 +465,7 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
    shader_info->fs.sample_shading = is_ms;
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -742,13 +699,8 @@ panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
 
       mali_ptr tsd, tiler;
 
-#if PAN_ARCH >= 6
       tsd = batch->tls.gpu;
       tiler = batch->tiler.descs.gpu;
-#else
-      tsd = batch->fb.desc.gpu;
-      tiler = 0;
-#endif
 
       struct panfrost_ptr job;
 
@@ -1032,7 +984,6 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
       .no_ubo_to_push = true,
    };
 
-#if PAN_ARCH >= 6
    pan_pack(&inputs.bifrost.rt_conv[0], INTERNAL_CONVERSION, cfg) {
       cfg.memory_format = (imgcompsz == 2 ? MALI_RG16UI : MALI_RG32UI) << 12;
       cfg.register_format = imgcompsz == 2 ?
@@ -1040,7 +991,6 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
                             MALI_REGISTER_FILE_FORMAT_U32;
    }
    inputs.bifrost.static_rt_conv = true;
-#endif
 
    struct util_dynarray binary;
 
@@ -1049,8 +999,7 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
    shader_info->push.count = DIV_ROUND_UP(sizeof(struct panvk_meta_copy_buf2img_info), 4);
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -1173,13 +1122,8 @@ panvk_meta_copy_buf2img(struct panvk_cmd_buffer *cmdbuf,
 
       mali_ptr tsd, tiler;
 
-#if PAN_ARCH >= 6
       tsd = batch->tls.gpu;
       tiler = batch->tiler.descs.gpu;
-#else
-      tsd = batch->fb.desc.gpu;
-      tiler = 0;
-#endif
 
       struct panfrost_ptr job;
 
@@ -1495,8 +1439,7 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
    shader_info->push.count = DIV_ROUND_UP(sizeof(struct panvk_meta_copy_img2buf_info), 4);
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -1724,8 +1667,7 @@ panvk_meta_copy_buf2buf_shader(struct panfrost_device *pdev,
    shader_info->push.count = DIV_ROUND_UP(sizeof(struct panvk_meta_copy_buf2buf_info), 4);
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);
@@ -1854,8 +1796,7 @@ panvk_meta_fill_buf_shader(struct panfrost_device *pdev,
    shader_info->push.count = DIV_ROUND_UP(sizeof(struct panvk_meta_fill_buf_info), 4);
 
    mali_ptr shader =
-      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
-                              PAN_ARCH >= 6 ? 128 : 64);
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size, 128);
 
    util_dynarray_fini(&binary);
    ralloc_free(b.shader);

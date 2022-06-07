@@ -285,9 +285,7 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
 
    if (layout->num_textures) {
       set->textures =
-         vk_zalloc(&device->vk.alloc,
-                   (PAN_ARCH >= 6 ? pan_size(TEXTURE) : sizeof(mali_ptr)) *
-                   layout->num_textures,
+         vk_zalloc(&device->vk.alloc, pan_size(TEXTURE) * layout->num_textures,
                    8, VK_OBJECT_TYPE_DESCRIPTOR_SET);
       if (!set->textures)
          goto err_free_set;
@@ -449,11 +447,7 @@ panvk_copy_sampler_desc(struct panvk_descriptor_set *dst_set,
           sizeof(struct mali_sampler_packed));
 }
 
-#if PAN_ARCH >= 6
 static struct mali_texture_packed *
-#else
-static mali_ptr *
-#endif
 panvk_tex_desc(struct panvk_descriptor_set *set,
                uint32_t binding, uint32_t elem)
 {
@@ -462,11 +456,7 @@ panvk_tex_desc(struct panvk_descriptor_set *set,
 
    unsigned tex_idx = binding_layout->tex_idx + elem;
 
-#if PAN_ARCH >= 6
    return &((struct mali_texture_packed *)set->textures)[tex_idx];
-#else
-   return &((mali_ptr *)set->textures)[tex_idx];
-#endif
 }
 
 static void
@@ -477,12 +467,8 @@ panvk_write_tex_desc(UNUSED struct panvk_device *dev,
 {
    VK_FROM_HANDLE(panvk_image_view, view, pImageInfo->imageView);
 
-#if PAN_ARCH >= 6
    memcpy(panvk_tex_desc(set, binding, elem),
           view->descs.tex, pan_size(TEXTURE));
-#else
-   *panvk_tex_desc(set, binding, elem) = view->bo->ptr.gpu;
-#endif
 
    panvk_fill_image_desc(panvk_desc_ubo_data(set, binding, elem), view);
 }
@@ -507,12 +493,8 @@ panvk_write_tex_buf_desc(UNUSED struct panvk_device *dev,
 {
    VK_FROM_HANDLE(panvk_buffer_view, view, bufferView);
 
-#if PAN_ARCH >= 6
    memcpy(panvk_tex_desc(set, binding, elem),
           view->descs.tex, pan_size(TEXTURE));
-#else
-   *panvk_tex_desc(set, binding, elem) = view->bo->ptr.gpu;
-#endif
 
    panvk_fill_bview_desc(panvk_desc_ubo_data(set, binding, elem), view);
 }

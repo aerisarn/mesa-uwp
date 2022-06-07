@@ -91,70 +91,6 @@ panvk_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
-#if PAN_ARCH <= 5
-struct panvk_lower_blend_type_conv {
-   nir_variable *var;
-   nir_alu_type newtype;
-   nir_alu_type oldtype;
-};
-
-static bool
-panvk_adjust_rt_type(nir_builder *b, nir_instr *instr, void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_store_deref &&
-       intr->intrinsic != nir_intrinsic_load_deref)
-      return false;
-
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   if (var->data.mode != nir_var_shader_out ||
-       (var->data.location != FRAG_RESULT_COLOR &&
-        var->data.location < FRAG_RESULT_DATA0))
-      return false;
-
-   /* Determine render target for per-RT blending */
-   unsigned rt =
-      (var->data.location == FRAG_RESULT_COLOR) ? 0 :
-      (var->data.location - FRAG_RESULT_DATA0);
-
-   const struct panvk_lower_blend_type_conv *typeconv = data;
-   nir_alu_type newtype = typeconv[rt].newtype;
-   nir_alu_type oldtype = typeconv[rt].oldtype;
-
-   /* No conversion */
-   if (newtype == nir_type_invalid || newtype == oldtype)
-      return false;
-
-
-   b->cursor = nir_before_instr(instr);
-
-   nir_deref_instr *deref = nir_build_deref_var(b, typeconv[rt].var);
-   nir_instr_rewrite_src(&intr->instr, &intr->src[0],
-                         nir_src_for_ssa(&deref->dest.ssa));
-
-   if (intr->intrinsic == nir_intrinsic_store_deref) {
-      nir_ssa_def *val = nir_ssa_for_src(b, intr->src[1], 4);
-      bool clamp = nir_alu_type_get_base_type(newtype) != nir_type_float;
-      val = nir_convert_with_rounding(b, val, oldtype, newtype,
-                                      nir_rounding_mode_undef, clamp);
-      nir_store_var(b, typeconv[rt].var, val, nir_intrinsic_write_mask(intr));
-   } else {
-      bool clamp = nir_alu_type_get_base_type(oldtype) != nir_type_float;
-      nir_ssa_def *val = nir_load_var(b, typeconv[rt].var);
-      val = nir_convert_with_rounding(b, val, newtype, oldtype,
-                                      nir_rounding_mode_undef, clamp);
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
-   }
-
-   nir_instr_remove(instr);
-
-   return true;
-}
-#endif
-
 static void
 panvk_lower_blend(struct panfrost_device *pdev,
                   nir_shader *nir,
@@ -167,9 +103,6 @@ panvk_lower_blend(struct panfrost_device *pdev,
       .logicop_func = blend_state->logicop_func,
    };
 
-#if PAN_ARCH <= 5
-   struct panvk_lower_blend_type_conv typeconv[8] = { 0 };
-#endif
    bool lower_blend = false;
 
    for (unsigned rt = 0; rt < blend_state->rt_count; rt++) {
@@ -221,47 +154,12 @@ panvk_lower_blend(struct panfrost_device *pdev,
       rt_state->equation.alpha_invert_dst_factor = false;
       lower_blend = true;
 
-#if PAN_ARCH >= 6
       inputs->bifrost.static_rt_conv = true;
       inputs->bifrost.rt_conv[rt] =
          GENX(pan_blend_get_internal_desc)(pdev, fmt, rt, 32, false) >> 32;
-#else
-      if (!panfrost_blendable_formats_v6[fmt].internal) {
-         nir_variable *outvar =
-            nir_find_variable_with_location(nir, nir_var_shader_out, FRAG_RESULT_DATA0 + rt);
-         if (!outvar && !rt)
-            outvar = nir_find_variable_with_location(nir, nir_var_shader_out, FRAG_RESULT_COLOR);
-
-         assert(outvar);
-
-         const struct util_format_description *format_desc =
-            util_format_description(fmt);
-
-         typeconv[rt].newtype = pan_unpacked_type_for_format(format_desc);
-         typeconv[rt].oldtype = nir_get_nir_type_for_glsl_type(outvar->type);
-         typeconv[rt].var =
-            nir_variable_create(nir, nir_var_shader_out,
-                                glsl_vector_type(nir_get_glsl_base_type_for_nir_type(typeconv[rt].newtype),
-                                                 glsl_get_vector_elements(outvar->type)),
-                                outvar->name);
-         typeconv[rt].var->data.location = outvar->data.location;
-         inputs->blend.nr_samples = rt_state->nr_samples;
-         inputs->rt_formats[rt] = rt_state->format;
-      }
-#endif
    }
 
    if (lower_blend) {
-#if PAN_ARCH <= 5
-      NIR_PASS_V(nir, nir_shader_instructions_pass,
-                 panvk_adjust_rt_type,
-                 nir_metadata_block_index |
-                 nir_metadata_dominance,
-                 &typeconv);
-      nir_remove_dead_derefs(nir);
-      nir_remove_dead_variables(nir, nir_var_shader_out, NULL);
-#endif
-
       NIR_PASS_V(nir, nir_lower_blend, &options);
 
       if (static_blend_constants) {
@@ -363,13 +261,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
 
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, true);
-
-   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
-      .frag_coord = PAN_ARCH <= 5,
-      .point_coord = PAN_ARCH <= 5,
-      .front_face = PAN_ARCH <= 5,
-   };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    struct panfrost_sysvals fixed_sysvals;
    panvk_init_sysvals(&fixed_sysvals, stage);

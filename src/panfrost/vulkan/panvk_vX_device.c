@@ -53,19 +53,10 @@ panvk_queue_submit_batch(struct panvk_queue *queue,
          memset((*job), 0, 4 * 4);
 
       /* Reset the tiler before re-issuing the batch */
-#if PAN_ARCH >= 6
       if (batch->tiler.descs.cpu) {
          memcpy(batch->tiler.descs.cpu, batch->tiler.templ,
                 pan_size(TILER_CONTEXT) + pan_size(TILER_HEAP));
       }
-#else
-      if (batch->fb.desc.cpu) {
-         void *tiler = pan_section_ptr(batch->fb.desc.cpu, FRAMEBUFFER, TILER);
-         memcpy(tiler, batch->tiler.templ, pan_size(TILER_CONTEXT));
-         /* All weights set to 0, nothing to do here */
-         pan_section_pack(batch->fb.desc.cpu, FRAMEBUFFER, TILER_WEIGHTS, w);
-      }
-#endif
    }
 
    if (batch->scoreboard.first_job) {

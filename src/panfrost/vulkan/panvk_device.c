@@ -917,7 +917,6 @@ panvk_queue_init(struct panvk_device *device,
    }
 
    switch (pdev->arch) {
-   case 5: queue->vk.driver_submit = panvk_v5_queue_submit; break;
    case 6: queue->vk.driver_submit = panvk_v6_queue_submit; break;
    case 7: queue->vk.driver_submit = panvk_v7_queue_submit; break;
    default: unreachable("Invalid arch");
@@ -971,9 +970,6 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
    struct vk_device_dispatch_table dispatch_table;
 
    switch (physical_device->pdev.arch) {
-   case 5:
-      dev_entrypoints = &panvk_v5_device_entrypoints;
-      break;
    case 6:
       dev_entrypoints = &panvk_v6_device_entrypoints;
       break;

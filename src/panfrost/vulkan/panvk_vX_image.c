@@ -124,19 +124,10 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
          GENX(panfrost_estimate_texture_payload_size)(&view->pview) +
          pan_size(TEXTURE);
 
-      unsigned surf_descs_offset = PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0;
-
       view->bo = panfrost_bo_create(pdev, bo_size, 0, "Texture descriptor");
 
-      struct panfrost_ptr surf_descs = {
-         .cpu = view->bo->ptr.cpu + surf_descs_offset,
-         .gpu = view->bo->ptr.gpu + surf_descs_offset,
-      };
-      void *tex_desc = PAN_ARCH >= 6 ?
-                       &view->descs.tex : view->bo->ptr.cpu;
-
       STATIC_ASSERT(sizeof(view->descs.tex) >= pan_size(TEXTURE));
-      GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
+      GENX(panfrost_new_texture)(pdev, &view->pview, &view->descs.tex, &view->bo->ptr);
    }
 
    if (view->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
@@ -206,23 +197,14 @@ panvk_per_arch(CreateBufferView)(VkDevice _device,
    assert(!(address & 63));
 
    if (buffer->vk.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) {
-      unsigned bo_size =
-         PAN_ARCH <= 5 ? (pan_size(SURFACE) + pan_size(TEXTURE)) :
-                         pan_size(SURFACE_WITH_STRIDE);
+      unsigned bo_size = pan_size(SURFACE_WITH_STRIDE);
       view->bo = panfrost_bo_create(pdev, bo_size, 0, "Texture descriptor");
 
-      void *surf = view->bo->ptr.cpu + (PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0);
-      void *tex = PAN_ARCH <= 5 ? view->bo->ptr.cpu : &view->descs.tex;
-
-#if PAN_ARCH <= 5
-      pan_pack(surf, SURFACE, cfg) {
-#else
-      pan_pack(surf, SURFACE_WITH_STRIDE, cfg) {
-#endif
+      pan_pack(&view->bo->ptr.cpu, SURFACE_WITH_STRIDE, cfg) {
          cfg.pointer = address;
       }
 
-      pan_pack(tex, TEXTURE, cfg) {
+      pan_pack(&view->descs.tex, TEXTURE, cfg) {
          cfg.dimension = MALI_TEXTURE_DIMENSION_1D;
          cfg.format = pdev->formats[view->fmt].hw;
          cfg.width = view->elems;
@@ -231,12 +213,8 @@ panvk_per_arch(CreateBufferView)(VkDevice _device,
          cfg.texel_ordering = MALI_TEXTURE_LAYOUT_LINEAR;
          cfg.levels = 1;
          cfg.array_size = 1;
-#if PAN_ARCH >= 6
          cfg.surfaces = view->bo->ptr.gpu;
          cfg.maximum_lod = cfg.minimum_lod = FIXED_16(0, false);
-#else
-         cfg.manual_stride = false;
-#endif
       }
    }
 

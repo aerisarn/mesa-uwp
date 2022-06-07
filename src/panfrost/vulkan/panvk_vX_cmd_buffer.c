@@ -65,63 +65,6 @@ panvk_cmd_prepare_fragment_job(struct panvk_cmd_buffer *cmdbuf)
    util_dynarray_append(&batch->jobs, void *, job_ptr.cpu);
 }
 
-#if PAN_ARCH == 5
-void
-panvk_per_arch(cmd_get_polygon_list)(struct panvk_cmd_buffer *cmdbuf,
-                                     unsigned width, unsigned height,
-                                     bool has_draws)
-{
-   struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
-   struct panvk_batch *batch = cmdbuf->state.batch;
-
-   if (batch->tiler.ctx.midgard.polygon_list)
-      return;
-
-   unsigned size =
-      panfrost_tiler_get_polygon_list_size(pdev, width, height, has_draws);
-   size = util_next_power_of_two(size);
-
-   /* Create the BO as invisible if we can. In the non-hierarchical tiler case,
-    * we need to write the polygon list manually because there's not WRITE_VALUE
-    * job in the chain. */
-   bool init_polygon_list = !has_draws && pdev->model->quirks.no_hierarchical_tiling;
-   batch->tiler.ctx.midgard.polygon_list =
-      panfrost_bo_create(pdev, size,
-                         panvk_debug_adjust_bo_flags(cmdbuf->device,
-                                               init_polygon_list ?
-                                               PAN_BO_INVISIBLE: 0),
-                         "Polygon list");
-
-
-   if (init_polygon_list) {
-      assert(batch->tiler.ctx.midgard.polygon_list->ptr.cpu);
-      uint32_t *polygon_list_body =
-         batch->tiler.ctx.midgard.polygon_list->ptr.cpu +
-         MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE;
-      polygon_list_body[0] = 0xa0000000;
-   }
-
-   batch->tiler.ctx.midgard.disable = !has_draws;
-}
-#endif
-
-#if PAN_ARCH <= 5
-static void
-panvk_copy_fb_desc(struct panvk_cmd_buffer *cmdbuf, void *src)
-{
-   const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
-   struct panvk_batch *batch = cmdbuf->state.batch;
-   uint32_t size = pan_size(FRAMEBUFFER);
-
-   if (fbinfo->zs.view.zs || fbinfo->zs.view.s)
-      size += pan_size(ZS_CRC_EXTENSION);
-
-   size += MAX2(fbinfo->rt_count, 1) * pan_size(RENDER_TARGET);
-
-   memcpy(batch->fb.desc.cpu, src, size);
-}
-#endif
-
 void
 panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 {
@@ -131,11 +74,6 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
       return;
 
    const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
-#if PAN_ARCH <= 5
-   uint32_t tmp_fbd[(pan_size(FRAMEBUFFER) +
-                     pan_size(ZS_CRC_EXTENSION) +
-                     (MAX_RTS * pan_size(RENDER_TARGET))) / 4];
-#endif
 
    assert(batch);
 
@@ -171,10 +109,8 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
       struct panfrost_ptr preload_jobs[2];
       unsigned num_preload_jobs =
          GENX(pan_preload_fb)(&cmdbuf->desc_pool.base, &batch->scoreboard,
-                              &cmdbuf->state.fb.info,
-                              PAN_ARCH >= 6 ? batch->tls.gpu : batch->fb.desc.gpu,
-                              PAN_ARCH >= 6 ? batch->tiler.descs.gpu : 0,
-                              preload_jobs);
+                              &cmdbuf->state.fb.info, batch->tls.gpu,
+                              batch->tiler.descs.gpu, preload_jobs);
       for (unsigned i = 0; i < num_preload_jobs; i++)
          util_dynarray_append(&batch->jobs, void *, preload_jobs[i].cpu);
    }
@@ -193,42 +129,13 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
          pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, batch->wls_total_size, 4096).gpu;
    }
 
-   if ((PAN_ARCH >= 6 || !batch->fb.desc.cpu) && batch->tls.cpu)
+   if (batch->tls.cpu)
       GENX(pan_emit_tls)(&batch->tlsinfo, batch->tls.cpu);
 
    if (batch->fb.desc.cpu) {
-#if PAN_ARCH == 5
-      panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
-                                           fbinfo->width,
-                                           fbinfo->height,
-                                           false);
-
-      mali_ptr polygon_list =
-         batch->tiler.ctx.midgard.polygon_list->ptr.gpu;
-      struct panfrost_ptr writeval_job =
-         panfrost_scoreboard_initialize_tiler(&cmdbuf->desc_pool.base,
-                                              &batch->scoreboard,
-                                              polygon_list);
-      if (writeval_job.cpu)
-         util_dynarray_append(&batch->jobs, void *, writeval_job.cpu);
-#endif
-
-#if PAN_ARCH <= 5
-      void *fbd = tmp_fbd;
-#else
-      void *fbd = batch->fb.desc.cpu;
-#endif
-
       batch->fb.desc.gpu |=
          GENX(pan_emit_fbd)(pdev, &cmdbuf->state.fb.info, &batch->tlsinfo,
-                            &batch->tiler.ctx, fbd);
-
-#if PAN_ARCH <= 5
-      panvk_copy_fb_desc(cmdbuf, tmp_fbd);
-      memcpy(batch->tiler.templ,
-             pan_section_ptr(fbd, FRAMEBUFFER, TILER),
-             pan_size(TILER_CONTEXT));
-#endif
+                            &batch->tiler.ctx, batch->fb.desc.cpu);
 
       panvk_cmd_prepare_fragment_job(cmdbuf);
    }
@@ -286,10 +193,8 @@ panvk_per_arch(cmd_alloc_fb_desc)(struct panvk_cmd_buffer *cmdbuf)
    /* Tag the pointer */
    batch->fb.desc.gpu |= tags;
 
-#if PAN_ARCH >= 6
    memset(&cmdbuf->state.fb.info.bifrost.pre_post.dcds, 0,
           sizeof(cmdbuf->state.fb.info.bifrost.pre_post.dcds));
-#endif
 }
 
 void
@@ -298,14 +203,7 @@ panvk_per_arch(cmd_alloc_tls_desc)(struct panvk_cmd_buffer *cmdbuf, bool gfx)
    struct panvk_batch *batch = cmdbuf->state.batch;
 
    assert(batch);
-   if (batch->tls.gpu)
-      return;
-
-   if (PAN_ARCH == 5 && gfx) {
-      panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
-      batch->tls = batch->fb.desc;
-      batch->tls.gpu &= ~63ULL;
-   } else {
+   if (!batch->tls.gpu) {
       batch->tls =
          pan_pool_alloc_desc(&cmdbuf->desc_pool.base, LOCAL_STORAGE);
    }
@@ -413,13 +311,10 @@ panvk_cmd_prepare_textures(struct panvk_cmd_buffer *cmdbuf,
    if (!num_textures || desc_state->textures)
       return;
 
-   unsigned tex_entry_size = PAN_ARCH >= 6 ?
-                             pan_size(TEXTURE) :
-                             sizeof(mali_ptr);
    struct panfrost_ptr textures =
       pan_pool_alloc_aligned(&cmdbuf->desc_pool.base,
-                             num_textures * tex_entry_size,
-                             tex_entry_size);
+                             num_textures * pan_size(TEXTURE),
+                             pan_size(TEXTURE));
 
    void *texture = textures.cpu;
 
@@ -429,10 +324,10 @@ panvk_cmd_prepare_textures(struct panvk_cmd_buffer *cmdbuf,
       memcpy(texture,
              desc_state->sets[i]->textures,
              desc_state->sets[i]->layout->num_textures *
-             tex_entry_size);
+             pan_size(TEXTURE));
 
       texture += desc_state->sets[i]->layout->num_textures *
-                 tex_entry_size;
+                 pan_size(TEXTURE);
    }
 
    desc_state->textures = textures.gpu;
@@ -458,9 +353,7 @@ panvk_cmd_prepare_samplers(struct panvk_cmd_buffer *cmdbuf,
 
    /* Prepare the dummy sampler */
    pan_pack(sampler, SAMPLER, cfg) {
-#if PAN_ARCH >= 6
       cfg.seamless_cube_map = false;
-#endif
       cfg.magnify_nearest = true;
       cfg.minify_nearest = true;
       cfg.normalized_coordinates = false;
@@ -535,7 +428,6 @@ panvk_draw_prepare_fs_rsd(struct panvk_cmd_buffer *cmdbuf,
    draw->fs_rsd = cmdbuf->state.fs_rsd;
 }
 
-#if PAN_ARCH >= 6
 void
 panvk_per_arch(cmd_get_tiler_context)(struct panvk_cmd_buffer *cmdbuf,
                                       unsigned width, unsigned height)
@@ -562,23 +454,15 @@ panvk_per_arch(cmd_get_tiler_context)(struct panvk_cmd_buffer *cmdbuf,
           pan_size(TILER_CONTEXT) + pan_size(TILER_HEAP));
    batch->tiler.ctx.bifrost = batch->tiler.descs.gpu;
 }
-#endif
 
 void
 panvk_per_arch(cmd_prepare_tiler_context)(struct panvk_cmd_buffer *cmdbuf)
 {
    const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
 
-#if PAN_ARCH == 5
-   panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
-                                        fbinfo->width,
-                                        fbinfo->height,
-                                        true);
-#else
    panvk_per_arch(cmd_get_tiler_context)(cmdbuf,
                                          fbinfo->width,
                                          fbinfo->height);
-#endif
 }
 
 static void
@@ -604,16 +488,14 @@ panvk_draw_prepare_varyings(struct panvk_cmd_buffer *cmdbuf,
    unsigned buf_count = panvk_varyings_buf_count(varyings);
    struct panfrost_ptr bufs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                buf_count + 1,
                                 ATTRIBUTE_BUFFER);
 
    panvk_per_arch(emit_varying_bufs)(varyings, bufs.cpu);
 
    /* We need an empty entry to stop prefetching on Bifrost */
-#if PAN_ARCH >= 6
    memset(bufs.cpu + (pan_size(ATTRIBUTE_BUFFER) * buf_count), 0,
           pan_size(ATTRIBUTE_BUFFER));
-#endif
 
    if (BITSET_TEST(varyings->active, VARYING_SLOT_POS)) {
       draw->position = varyings->buf[varyings->varying[VARYING_SLOT_POS].buf].address +
@@ -672,7 +554,6 @@ panvk_fill_non_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
          pan_pack(attribs + offset, ATTRIBUTE, cfg) {
             cfg.buffer_index = first_buf + (img_idx + i) * 2;
             cfg.format = desc_state->sets[s]->img_fmts[i];
-            cfg.offset_enable = PAN_ARCH <= 5;
          }
          offset += pan_size(ATTRIBUTE);
       }
@@ -693,7 +574,7 @@ panvk_prepare_non_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
    unsigned attrib_buf_count = (pipeline->layout->num_imgs * 2);
    struct panfrost_ptr bufs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                attrib_buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                attrib_buf_count + 1,
                                 ATTRIBUTE_BUFFER);
    struct panfrost_ptr attribs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base, attrib_count,
@@ -731,7 +612,7 @@ panvk_draw_prepare_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
    unsigned attrib_buf_count = pipeline->attribs.buf_count * 2;
    struct panfrost_ptr bufs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                attrib_buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                attrib_buf_count + 1,
                                 ATTRIBUTE_BUFFER);
    struct panfrost_ptr attribs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base, attrib_count,
@@ -755,10 +636,8 @@ panvk_draw_prepare_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
    }
 
    /* A NULL entry is needed to stop prefecting on Bifrost */
-#if PAN_ARCH >= 6
    memset(bufs.cpu + (pan_size(ATTRIBUTE_BUFFER) * attrib_buf_count), 0,
           pan_size(ATTRIBUTE_BUFFER));
-#endif
 
    desc_state->vs_attrib_bufs = bufs.gpu;
    desc_state->vs_attribs = attribs.gpu;
@@ -1199,10 +1078,6 @@ panvk_reset_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
    list_for_each_entry_safe(struct panvk_batch, batch, &cmdbuf->batches, node) {
       list_del(&batch->node);
       util_dynarray_fini(&batch->jobs);
-#if PAN_ARCH <= 5
-      panfrost_bo_unreference(batch->tiler.ctx.midgard.polygon_list);
-#endif
-
       util_dynarray_fini(&batch->event_ops);
 
       vk_free(&cmdbuf->pool->vk.alloc, batch);
@@ -1229,10 +1104,6 @@ panvk_destroy_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
    list_for_each_entry_safe(struct panvk_batch, batch, &cmdbuf->batches, node) {
       list_del(&batch->node);
       util_dynarray_fini(&batch->jobs);
-#if PAN_ARCH <= 5
-      panfrost_bo_unreference(batch->tiler.ctx.midgard.polygon_list);
-#endif
-
       util_dynarray_fini(&batch->event_ops);
 
       vk_free(&cmdbuf->pool->vk.alloc, batch);

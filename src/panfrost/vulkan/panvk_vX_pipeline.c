@@ -575,7 +575,7 @@ panvk_pipeline_builder_parse_color_blend(struct panvk_pipeline_builder *builder,
          panvk_per_arch(blend_needs_lowering)(pdev, &pipeline->blend.state, i) ?
          0 : pan_blend_constant_mask(out->equation);
       pipeline->blend.constant[i].index = ffs(constant_mask) - 1;
-      if (constant_mask && PAN_ARCH >= 6) {
+      if (constant_mask) {
          /* On Bifrost, the blend constant is expressed with a UNORM of the
           * size of the target format. The value is then shifted such that
           * used bits are in the MSB. Here we calculate the factor at pipeline
@@ -747,17 +747,10 @@ panvk_pipeline_update_varying_slot(struct panvk_varyings_info *varyings,
                                    const struct pan_shader_varying *varying,
                                    bool input)
 {
-   bool fs = stage == MESA_SHADER_FRAGMENT;
    gl_varying_slot loc = varying->location;
-   enum panvk_varying_buf_id buf_id =
-      panvk_varying_buf_id(fs, loc);
+   enum panvk_varying_buf_id buf_id = panvk_varying_buf_id(loc);
 
    varyings->stage[stage].loc[varyings->stage[stage].count++] = loc;
-
-   if (panvk_varying_is_builtin(stage, loc)) {
-      varyings->buf_mask |= 1 << buf_id;
-      return;
-   }
 
    assert(loc < ARRAY_SIZE(varyings->varying));
 
@@ -811,8 +804,7 @@ panvk_pipeline_builder_collect_varyings(struct panvk_pipeline_builder *builder,
       if (pipeline->varyings.varying[loc].format == PIPE_FORMAT_NONE)
          continue;
 
-      enum panvk_varying_buf_id buf_id =
-         panvk_varying_buf_id(false, loc);
+      enum panvk_varying_buf_id buf_id = panvk_varying_buf_id(loc);
       unsigned buf_idx = panvk_varying_buf_index(&pipeline->varyings, buf_id);
       unsigned varying_sz = panvk_varying_size(&pipeline->varyings, loc);
 

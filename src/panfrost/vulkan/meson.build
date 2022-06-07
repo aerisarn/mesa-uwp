@@ -28,7 +28,7 @@ panvk_entrypoints = custom_target(
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
     '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'panvk',
-    '--device-prefix', 'panvk_v5', '--device-prefix', 'panvk_v6', '--device-prefix', 'panvk_v7',
+    '--device-prefix', 'panvk_v6', '--device-prefix', 'panvk_v7',
   ],
   depend_files : vk_entrypoints_gen_depend_files,
 )
@@ -55,7 +55,7 @@ panvk_deps = []
 panvk_flags = []
 panvk_per_arch_libs = []
 
-foreach arch : ['5', '6', '7']
+foreach arch : ['6', '7']
   panvk_per_arch_libs += static_library(
     'panvk_v@0@'.format(arch),
     [
