@@ -4270,6 +4270,15 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       }
       break;
    }
+   case nir_intrinsic_load_packed_passthrough_primitive_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
+      break;
+   case nir_intrinsic_load_initial_edgeflags_amd:
+      if (ctx->stage == MESA_SHADER_VERTEX && !ctx->info->vs.blit_sgprs_amd)
+         result = ac_pack_edgeflags_for_export(&ctx->ac, ctx->args);
+      else
+         result = ctx->ac.i32_0;
+      break;
    case nir_intrinsic_has_input_vertex_amd: {
       LLVMValueRef num =
          ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 0, 8);
@@ -4282,6 +4291,12 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), num, "");
       break;
    }
+   case nir_intrinsic_load_workgroup_num_input_vertices_amd:
+      result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 12, 9);
+      break;
+   case nir_intrinsic_load_workgroup_num_input_primitives_amd:
+      result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 22, 9);
+      break;
    case nir_intrinsic_alloc_vertices_and_primitives_amd:
       /* The caller should only call this conditionally for wave 0, so pass NULL to disable
        * the wave 0 check inside this function.
