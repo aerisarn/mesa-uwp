@@ -76,7 +76,7 @@ typedef void (*lp_rast_cmd_func)(struct lp_rasterizer_task *,
 
 
 struct cmd_block {
-   uint8_t cmd[CMD_BLOCK_MAX];
+   uint8_t cmd[CMD_BLOCK_MAX];  // LP_RAST_OP_x
    union lp_rast_cmd_arg arg[CMD_BLOCK_MAX];
    unsigned count;
    struct cmd_block *next;
@@ -314,7 +314,7 @@ lp_scene_bin_reset(struct lp_scene *scene, unsigned x, unsigned y);
 static inline boolean
 lp_scene_bin_command(struct lp_scene *scene,
                      unsigned x, unsigned y,
-                     unsigned cmd,
+                     enum lp_rast_op cmd,
                      union lp_rast_cmd_arg arg)
 {
    struct cmd_bin *bin = lp_scene_get_bin(scene, x, y);
@@ -347,7 +347,7 @@ static inline boolean
 lp_scene_bin_cmd_with_state(struct lp_scene *scene,
                             unsigned x, unsigned y,
                             const struct lp_rast_state *state,
-                            unsigned cmd,
+                            enum lp_rast_op cmd,
                             union lp_rast_cmd_arg arg)
 {
    struct cmd_bin *bin = lp_scene_get_bin(scene, x, y);
@@ -371,7 +371,7 @@ lp_scene_bin_cmd_with_state(struct lp_scene *scene,
  */
 static inline boolean
 lp_scene_bin_everywhere(struct lp_scene *scene,
-                        unsigned cmd,
+                        enum lp_rast_op cmd,
                         const union lp_rast_cmd_arg arg)
 {
    for (unsigned i = 0; i < scene->tiles_x; i++) {

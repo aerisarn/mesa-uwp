@@ -359,52 +359,53 @@ lp_rast_arg_null( void )
  * These get put into bins by the setup code and are called when
  * the bins are executed.
  */
-#define LP_RAST_OP_CLEAR_COLOR       0x0
-#define LP_RAST_OP_CLEAR_ZSTENCIL    0x1
-#define LP_RAST_OP_TRIANGLE_1        0x2
-#define LP_RAST_OP_TRIANGLE_2        0x3
-#define LP_RAST_OP_TRIANGLE_3        0x4
-#define LP_RAST_OP_TRIANGLE_4        0x5
-#define LP_RAST_OP_TRIANGLE_5        0x6
-#define LP_RAST_OP_TRIANGLE_6        0x7
-#define LP_RAST_OP_TRIANGLE_7        0x8
-#define LP_RAST_OP_TRIANGLE_8        0x9
-#define LP_RAST_OP_TRIANGLE_3_4      0xa
-#define LP_RAST_OP_TRIANGLE_3_16     0xb
-#define LP_RAST_OP_TRIANGLE_4_16     0xc
-#define LP_RAST_OP_SHADE_TILE        0xd
-#define LP_RAST_OP_SHADE_TILE_OPAQUE 0xe
-#define LP_RAST_OP_BEGIN_QUERY       0xf
-#define LP_RAST_OP_END_QUERY         0x10
-#define LP_RAST_OP_SET_STATE         0x11
-#define LP_RAST_OP_TRIANGLE_32_1     0x12
-#define LP_RAST_OP_TRIANGLE_32_2     0x13
-#define LP_RAST_OP_TRIANGLE_32_3     0x14
-#define LP_RAST_OP_TRIANGLE_32_4     0x15
-#define LP_RAST_OP_TRIANGLE_32_5     0x16
-#define LP_RAST_OP_TRIANGLE_32_6     0x17
-#define LP_RAST_OP_TRIANGLE_32_7     0x18
-#define LP_RAST_OP_TRIANGLE_32_8     0x19
-#define LP_RAST_OP_TRIANGLE_32_3_4   0x1a
-#define LP_RAST_OP_TRIANGLE_32_3_16  0x1b
-#define LP_RAST_OP_TRIANGLE_32_4_16  0x1c
+enum lp_rast_op {
+  LP_RAST_OP_CLEAR_COLOR =       0x0,
+  LP_RAST_OP_CLEAR_ZSTENCIL =    0x1,
+  LP_RAST_OP_TRIANGLE_1 =        0x2,
+  LP_RAST_OP_TRIANGLE_2 =        0x3,
+  LP_RAST_OP_TRIANGLE_3 =        0x4,
+  LP_RAST_OP_TRIANGLE_4 =        0x5,
+  LP_RAST_OP_TRIANGLE_5 =        0x6,
+  LP_RAST_OP_TRIANGLE_6 =        0x7,
+  LP_RAST_OP_TRIANGLE_7 =        0x8,
+  LP_RAST_OP_TRIANGLE_8 =        0x9,
+  LP_RAST_OP_TRIANGLE_3_4 =      0xa,
+  LP_RAST_OP_TRIANGLE_3_16 =     0xb,
+  LP_RAST_OP_TRIANGLE_4_16 =     0xc,
+  LP_RAST_OP_SHADE_TILE =        0xd,
+  LP_RAST_OP_SHADE_TILE_OPAQUE = 0xe,
+  LP_RAST_OP_BEGIN_QUERY =       0xf,
+  LP_RAST_OP_END_QUERY =         0x10,
+  LP_RAST_OP_SET_STATE =         0x11,
+  LP_RAST_OP_TRIANGLE_32_1 =     0x12,
+  LP_RAST_OP_TRIANGLE_32_2 =     0x13,
+  LP_RAST_OP_TRIANGLE_32_3 =     0x14,
+  LP_RAST_OP_TRIANGLE_32_4 =     0x15,
+  LP_RAST_OP_TRIANGLE_32_5 =     0x16,
+  LP_RAST_OP_TRIANGLE_32_6 =     0x17,
+  LP_RAST_OP_TRIANGLE_32_7 =     0x18,
+  LP_RAST_OP_TRIANGLE_32_8 =     0x19,
+  LP_RAST_OP_TRIANGLE_32_3_4 =   0x1a,
+  LP_RAST_OP_TRIANGLE_32_3_16 =  0x1b,
+  LP_RAST_OP_TRIANGLE_32_4_16 =  0x1c,
+  LP_RAST_OP_MS_TRIANGLE_1 =     0x1d,
+  LP_RAST_OP_MS_TRIANGLE_2 =     0x1e,
+  LP_RAST_OP_MS_TRIANGLE_3 =     0x1f,
+  LP_RAST_OP_MS_TRIANGLE_4 =     0x20,
+  LP_RAST_OP_MS_TRIANGLE_5 =     0x21,
+  LP_RAST_OP_MS_TRIANGLE_6 =     0x22,
+  LP_RAST_OP_MS_TRIANGLE_7 =     0x23,
+  LP_RAST_OP_MS_TRIANGLE_8 =     0x24,
+  LP_RAST_OP_MS_TRIANGLE_3_4 =   0x25,
+  LP_RAST_OP_MS_TRIANGLE_3_16 =  0x26,
+  LP_RAST_OP_MS_TRIANGLE_4_16 =  0x27,
+  LP_RAST_OP_RECTANGLE =         0x28,  /* Keep at end */
+  LP_RAST_OP_BLIT =              0x29,  /* Keep at end */
+  LP_RAST_OP_MAX =               0x2a,
+  LP_RAST_OP_MASK =              0xff
+};
 
-#define LP_RAST_OP_MS_TRIANGLE_1     0x1d
-#define LP_RAST_OP_MS_TRIANGLE_2     0x1e
-#define LP_RAST_OP_MS_TRIANGLE_3     0x1f
-#define LP_RAST_OP_MS_TRIANGLE_4     0x20
-#define LP_RAST_OP_MS_TRIANGLE_5     0x21
-#define LP_RAST_OP_MS_TRIANGLE_6     0x22
-#define LP_RAST_OP_MS_TRIANGLE_7     0x23
-#define LP_RAST_OP_MS_TRIANGLE_8     0x24
-#define LP_RAST_OP_MS_TRIANGLE_3_4   0x25
-#define LP_RAST_OP_MS_TRIANGLE_3_16  0x26
-#define LP_RAST_OP_MS_TRIANGLE_4_16  0x27
-#define LP_RAST_OP_RECTANGLE         0x28  /* Keep at end */
-#define LP_RAST_OP_BLIT              0x29  /* Keep at end */
-
-#define LP_RAST_OP_MAX               0x2a
-#define LP_RAST_OP_MASK              0xff
 
 /* Returned by characterize_bin:
  */
