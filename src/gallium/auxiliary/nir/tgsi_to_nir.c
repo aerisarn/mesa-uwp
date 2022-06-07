@@ -2281,6 +2281,12 @@ ttn_read_pipe_caps(struct ttn_compile *c,
    c->cap_integers = screen->get_shader_param(screen, c->scan->processor, PIPE_SHADER_CAP_INTEGERS);
 }
 
+#define BITSET_SET32(bitset, u32_mask) do { \
+   STATIC_ASSERT(sizeof((bitset)[0]) >= sizeof(u32_mask)); \
+   BITSET_ZERO(bitset); \
+   (bitset)[0] = (u32_mask); \
+} while (0)
+
 /**
  * Initializes a TGSI-to-NIR compiler.
  */
@@ -2326,7 +2332,13 @@ ttn_compile_init(const void *tgsi_tokens,
    s->info.num_ssbos = util_last_bit(scan.shader_buffers_declared);
    s->info.num_ubos = util_last_bit(scan.const_buffers_declared >> 1);
    s->info.num_images = util_last_bit(scan.images_declared);
+   BITSET_SET32(s->info.images_used, scan.images_declared);
+   BITSET_SET32(s->info.image_buffers, scan.images_buffers);
+   BITSET_SET32(s->info.msaa_images, scan.msaa_images_declared);
    s->info.num_textures = util_last_bit(scan.samplers_declared);
+   BITSET_SET32(s->info.textures_used, scan.samplers_declared);
+   BITSET_ZERO(s->info.textures_used_by_txf); /* No scan information yet */
+   BITSET_SET32(s->info.samplers_used, scan.samplers_declared);
    s->info.internal = false;
 
    for (unsigned i = 0; i < TGSI_PROPERTY_COUNT; i++) {
