@@ -175,9 +175,9 @@ struct lp_fragment_shader_variant
    LLVMTypeRef jit_thread_data_ptr_type;
    LLVMTypeRef jit_linear_context_ptr_type;
 
-   LLVMValueRef function[2];
+   LLVMValueRef function[2]; // [RAST_WHOLE], [RAST_EDGE_TEST]
 
-   lp_jit_frag_func jit_function[2];
+   lp_jit_frag_func jit_function[2]; // [RAST_WHOLE], [RAST_EDGE_TEST]
 
    lp_jit_linear_func jit_linear;
    lp_jit_linear_func jit_linear_blit;
@@ -212,12 +212,8 @@ struct lp_fragment_shader
    struct pipe_reference reference;
    struct lp_tgsi_info info;
 
-   /*
-    * Analysis results
-    */
-
+   /* Analysis results */
    enum lp_fs_kind kind;
-
 
    struct lp_fs_variant_list_item variants;
 
