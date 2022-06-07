@@ -2109,6 +2109,24 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
 #endif
 
          pipe.CommandStreamerStallEnable = bits & ANV_PIPE_CS_STALL_BIT;
+#if GFX_VER == 8
+         /* From Broadwell PRM, volume 2a:
+          *    PIPE_CONTROL: Command Streamer Stall Enable:
+          *
+          *    "This bit must be always set when PIPE_CONTROL command is
+          *     programmed by GPGPU and MEDIA workloads, except for the cases
+          *     when only Read Only Cache Invalidation bits are set (State
+          *     Cache Invalidation Enable, Instruction cache Invalidation
+          *     Enable, Texture Cache Invalidation Enable, Constant Cache
+          *     Invalidation Enable). This is to WA FFDOP CG issue, this WA
+          *     need not implemented when FF_DOP_CG is disabled."
+          *
+          *    Since we do all the invalidation in the following PIPE_CONTROL,
+          *    if we got here, we need a stall.
+          */
+         pipe.CommandStreamerStallEnable |= current_pipeline == GPGPU;
+#endif
+
          pipe.StallAtPixelScoreboard = bits & ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 
          /* From Sandybridge PRM, volume 2, "1.7.3.1 Writing a Value to Memory":
