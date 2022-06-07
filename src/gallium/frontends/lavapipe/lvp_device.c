@@ -1645,7 +1645,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
          break;
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
          export_info = (VkExportMemoryAllocateInfo*)ext;
-         assert(export_info->handleTypes == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
+         assert(!export_info->handleTypes || export_info->handleTypes == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
          break;
       case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
          import_info = (VkImportMemoryFdInfoKHR*)ext;
@@ -1690,7 +1690,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
          close(import_info->fd);
          goto fail;
       }
-      if (export_info) {
+      if (export_info && export_info->handleTypes) {
          mem->backed_fd = import_info->fd;
       }
       else {
@@ -1698,7 +1698,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
       }
       mem->memory_type = LVP_DEVICE_MEMORY_TYPE_OPAQUE_FD;
    }
-   else if (export_info) {
+   else if (export_info && export_info->handleTypes) {
       mem->pmem = device->pscreen->allocate_memory_fd(device->pscreen, pAllocateInfo->allocationSize, &mem->backed_fd);
       if (!mem->pmem || mem->backed_fd < 0) {
          goto fail;
