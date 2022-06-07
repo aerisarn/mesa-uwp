@@ -9,8 +9,10 @@ struct nouveau_ws_device {
    uint16_t vendor_id;
    uint16_t device_id;
    uint32_t chipset;
+   /* first byte of class id */
+   uint8_t cls;
    /* maps to CUDAs Compute capability version */
-   uint8_t sm;
+   uint8_t cm;
    uint64_t vram_size;
    uint64_t gart_size;
    bool is_integrated;
