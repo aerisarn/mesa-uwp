@@ -2214,7 +2214,9 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
       unsigned find = res->bind_count[0] - res->image_bind_count[0];
       for (unsigned i = 0; find && i < PIPE_SHADER_COMPUTE; i++) {
          u_foreach_bit(slot, res->sampler_binds[i]) {
-            update_descriptor_state_sampler(ctx, i, slot, res);
+            /* only set layout, skip rest of update */
+            if (ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i][slot] == res)
+               ctx->di.textures[i][slot].imageLayout = zink_descriptor_util_image_layout_eval(ctx, res, false);
             find--;
             if (!find) break;
          }
