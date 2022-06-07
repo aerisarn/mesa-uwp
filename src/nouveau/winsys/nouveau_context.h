@@ -7,6 +7,8 @@ struct nouveau_ws_device;
 
 struct nouveau_ws_context {
    struct nouveau_object *channel;
+
+   struct nouveau_object *eng2d;
 };
 
 int nouveau_ws_context_create(struct nouveau_ws_device *, struct nouveau_ws_context **out);

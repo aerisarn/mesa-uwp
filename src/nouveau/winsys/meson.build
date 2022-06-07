@@ -19,6 +19,7 @@ libnouveau_ws = static_library(
   dependencies : [
     dep_libdrm,
     dep_libdrm_nouveau,
+    idep_nvidia_headers,
   ],
   gnu_symbol_visibility : 'hidden',
 )
