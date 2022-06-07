@@ -272,7 +272,7 @@ traces:
       - device: freedreno-a306
         checksum: c31e4b18d29e87751e4c30760ddfef18
       - device: freedreno-a530
-        checksum: 3272ac6018600da9cc61636416ed387e
+        checksum: a68a23264fb802d59c92b3a58753e6a4
       - device: freedreno-a630
         checksum: 2570e22fbb4ad1a68b45e4caf682d77d
   - path: glmark2/jellyfish.trace
