@@ -34,17 +34,11 @@
 #include "util/u_memory.h"
 #include "util/macros.h"
 
-struct indirect_dispatch_inputs {
-        mali_ptr job;
-        mali_ptr indirect_dim;
-        mali_ptr num_wg_sysval[3];
-} PACKED;
-
 #define get_input_field(b, name) \
         nir_load_push_constant(b, \
-               1, sizeof(((struct indirect_dispatch_inputs *)0)->name) * 8, \
+               1, sizeof(((struct pan_indirect_dispatch_info *)0)->name) * 8, \
                nir_imm_int(b, 0), \
-               .base = offsetof(struct indirect_dispatch_inputs, name))
+               .base = offsetof(struct pan_indirect_dispatch_info, name))
 
 static mali_ptr
 get_rsd(const struct panfrost_device *dev)
@@ -62,22 +56,13 @@ get_tls(const struct panfrost_device *dev)
 unsigned
 GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
                                  struct pan_scoreboard *scoreboard,
-                                 const struct pan_indirect_dispatch_info *dispatch_info)
+                                 const struct pan_indirect_dispatch_info *inputs)
 {
         struct panfrost_device *dev = pool->dev;
         struct panfrost_ptr job =
                 pan_pool_alloc_desc(pool, COMPUTE_JOB);
         void *invocation =
                 pan_section_ptr(job.cpu, COMPUTE_JOB, INVOCATION);
-        struct indirect_dispatch_inputs inputs = {
-                .job = dispatch_info->job,
-                .indirect_dim = dispatch_info->indirect_dim,
-                .num_wg_sysval = {
-                        dispatch_info->num_wg_sysval[0],
-                        dispatch_info->num_wg_sysval[1],
-                        dispatch_info->num_wg_sysval[2],
-                },
-        };
 
         panfrost_pack_work_groups_compute(invocation,
                                           1, 1, 1, 1, 1, 1,
@@ -92,7 +77,7 @@ GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
                 cfg.state = get_rsd(dev);
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.push_uniforms =
-                        pan_pool_upload_aligned(pool, &inputs, sizeof(inputs), 16);
+                        pan_pool_upload_aligned(pool, inputs, sizeof(*inputs), 16);
         }
 
         return panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_COMPUTE,
@@ -179,7 +164,7 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
         assert(!shader_info.sysvals.sysval_count);
 
         shader_info.push.count =
-                DIV_ROUND_UP(sizeof(struct indirect_dispatch_inputs), 4);
+                DIV_ROUND_UP(sizeof(struct pan_indirect_dispatch_info), 4);
 
         dev->indirect_dispatch.bin =
                 panfrost_bo_create(dev, binary.size, PAN_BO_EXECUTE,
