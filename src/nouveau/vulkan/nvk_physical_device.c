@@ -2,6 +2,7 @@
 
 #include "nvk_bo_sync.h"
 #include "nvk_entrypoints.h"
+#include "nvk_format.h"
 #include "nvk_instance.h"
 #include "nvk_wsi.h"
 
@@ -71,6 +72,9 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .deviceType = pdevice->dev->is_integrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
                                                 : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
       .limits = (VkPhysicalDeviceLimits) {
+         .maxImageArrayLayers = 2048,
+         .maxImageDimension1D = pdevice->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxImageDimension2D = pdevice->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
          .nonCoherentAtomSize = 64,
       },
 
@@ -388,6 +392,11 @@ nvk_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
    VkFormat vk_format,
    VkFormatProperties2 *pFormatProperties)
 {
+   pFormatProperties->formatProperties.linearTilingFeatures =
+      VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+   pFormatProperties->formatProperties.optimalTilingFeatures =
+      VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
    vk_foreach_struct(ext, pFormatProperties->pNext)
    {
       /* Use unsigned since some cases are not in the VkStructureType enum. */
@@ -404,5 +413,50 @@ nvk_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceImageFormatInfo2 *base_info,
    VkImageFormatProperties2 *base_props)
 {
+   if (base_info->usage & ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(nvk_formats); i++) {
+      struct nvk_format *format = &nvk_formats[i];
+
+      if (format->vk_format != base_info->format)
+         continue;
+
+      if (!format->supports_2d_blit)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+      if (base_info->type == VK_IMAGE_TYPE_1D)
+         base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 1, 1};
+      else if (base_info->type == VK_IMAGE_TYPE_2D)
+         base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 32768, 1};
+      else
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+      base_props->imageFormatProperties.maxMipLevels = 0;
+      base_props->imageFormatProperties.maxArrayLayers = 2048;
+      base_props->imageFormatProperties.sampleCounts = 0;
+      base_props->imageFormatProperties.maxResourceSize = 0xffffffff; // TODO proper value
+
+      vk_foreach_struct(s, base_props->pNext) {
+         switch (s->sType) {
+         default:
+            nvk_debug_ignored_stype(s->sType);
+            break;
+         }
+      }
+
+      vk_foreach_struct(ext, base_info->pNext)
+      {
+         /* Use unsigned since some cases are not in the VkStructureType enum. */
+         switch ((unsigned)ext->sType) {
+         default:
+            nvk_debug_ignored_stype(ext->sType);
+            break;
+         }
+      }
+
+      return VK_SUCCESS;
+   }
+
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }

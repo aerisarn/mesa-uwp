@@ -23,6 +23,7 @@ struct nvk_tile {
    bool is_tiled:1;
 };
 
+struct nvk_format;
 struct nvk_image {
    struct vk_image vk;
    struct nvk_device_memory *mem;
@@ -30,6 +31,7 @@ struct nvk_image {
 
    VkDeviceSize min_size;
 
+   struct nvk_format *format;
    uint32_t row_stride;
    uint32_t layer_stride;
    struct nvk_tile tile;

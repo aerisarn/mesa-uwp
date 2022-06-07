@@ -14,6 +14,8 @@ nvk_files = files(
   'nvk_device.h',
   'nvk_device_memory.c',
   'nvk_device_memory.h',
+  'nvk_format.c',
+  'nvk_format.h',
   'nvk_image.c',
   'nvk_image.h',
   'nvk_image_view.c',

@@ -4,6 +4,7 @@
 
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
+#include "nvk_format.h"
 #include "nvk_physical_device.h"
 
 /* calculates optimal tiling for a given CreateInfo
@@ -91,6 +92,16 @@ static VkResult nvk_image_init(struct nvk_device *device,
    VkExtent3D block = nvk_image_tile_to_blocks(tile);
 
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(nvk_formats); i++) {
+      struct nvk_format *format = &nvk_formats[i];
+
+      if (format->vk_format != pCreateInfo->format)
+         continue;
+
+      image->format = format;
+   }
+   assert(image->format);
 
    image->tile = tile;
    image->row_stride = align(image->vk.extent.width * block_size, block.width);
