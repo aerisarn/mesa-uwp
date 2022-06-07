@@ -38,26 +38,13 @@ struct indirect_dispatch_inputs {
         mali_ptr job;
         mali_ptr indirect_dim;
         mali_ptr num_wg_sysval[3];
-};
-
-static nir_ssa_def *
-get_input_data(nir_builder *b, unsigned offset, unsigned size)
-{
-        assert(!(offset & 0x3));
-        assert(size && !(size & 0x3));
-
-        return nir_load_ubo(b, 1, size,
-                            nir_imm_int(b, 0),
-                            nir_imm_int(b, offset),
-                            .align_mul = 4,
-                            .align_offset = 0,
-                            .range_base = 0,
-                            .range = ~0);
-}
+} PACKED;
 
 #define get_input_field(b, name) \
-        get_input_data(b, offsetof(struct indirect_dispatch_inputs, name), \
-                       sizeof(((struct indirect_dispatch_inputs *)0)->name) * 8)
+        nir_load_push_constant(b, \
+               1, sizeof(((struct indirect_dispatch_inputs *)0)->name) * 8, \
+               nir_imm_int(b, 0), \
+               .base = offsetof(struct indirect_dispatch_inputs, name))
 
 static mali_ptr
 get_rsd(const struct panfrost_device *dev)
@@ -70,44 +57,6 @@ get_tls(const struct panfrost_device *dev)
 {
         return dev->indirect_dispatch.descs->ptr.gpu +
                pan_size(RENDERER_STATE);
-}
-
-static mali_ptr
-get_ubos(struct pan_pool *pool,
-         const struct indirect_dispatch_inputs *inputs)
-{
-        struct panfrost_ptr inputs_buf =
-                pan_pool_alloc_aligned(pool, ALIGN_POT(sizeof(*inputs), 16), 16);
-
-        memcpy(inputs_buf.cpu, inputs, sizeof(*inputs));
-
-        struct panfrost_ptr ubos_buf =
-                pan_pool_alloc_desc(pool, UNIFORM_BUFFER);
-
-        pan_pack(ubos_buf.cpu, UNIFORM_BUFFER, cfg) {
-                cfg.entries = DIV_ROUND_UP(sizeof(*inputs), 16);
-                cfg.pointer = inputs_buf.gpu;
-        }
-
-        return ubos_buf.gpu;
-}
-
-static mali_ptr
-get_push_uniforms(struct pan_pool *pool,
-                  const struct indirect_dispatch_inputs *inputs)
-{
-        const struct panfrost_device *dev = pool->dev;
-        struct panfrost_ptr push_consts_buf =
-                pan_pool_alloc_aligned(pool,
-                                       ALIGN(dev->indirect_dispatch.push.count * 4, 16),
-                                       16);
-        uint32_t *out = push_consts_buf.cpu;
-        uint8_t *in = (uint8_t *)inputs;
-
-        for (unsigned i = 0; i < dev->indirect_dispatch.push.count; ++i)
-                memcpy(out + i, in +  dev->indirect_dispatch.push.words[i].offset, 4);
-
-        return push_consts_buf.gpu;
 }
 
 unsigned
@@ -142,8 +91,8 @@ GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
                 cfg.draw_descriptor_is_64b = true;
                 cfg.state = get_rsd(dev);
                 cfg.thread_storage = get_tls(pool->dev);
-                cfg.uniform_buffers = get_ubos(pool, &inputs);
-                cfg.push_uniforms = get_push_uniforms(pool, &inputs);
+                cfg.push_uniforms =
+                        pan_pool_upload_aligned(pool, &inputs, sizeof(inputs), 16);
         }
 
         return panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_COMPUTE,
@@ -157,10 +106,6 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
                 nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
                                                GENX(pan_shader_get_compiler_options)(),
                                                "%s", "indirect_dispatch");
-        nir_variable_create(b.shader, nir_var_mem_ubo,
-                            glsl_uint_type(), "inputs");
-        b.shader->info.num_ubos++;
-
         nir_ssa_def *zero = nir_imm_int(&b, 0);
         nir_ssa_def *one = nir_imm_int(&b, 1);
         nir_ssa_def *num_wg = nir_load_global(&b, get_input_field(&b, indirect_dim), 4, 3, 32);
@@ -219,6 +164,7 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .fixed_sysval_ubo = -1,
+                .no_ubo_to_push = true,
         };
         struct pan_shader_info shader_info;
         struct util_dynarray binary;
@@ -232,6 +178,9 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
         assert(!shader_info.wls_size);
         assert(!shader_info.sysvals.sysval_count);
 
+        shader_info.push.count =
+                DIV_ROUND_UP(sizeof(struct indirect_dispatch_inputs), 4);
+
         dev->indirect_dispatch.bin =
                 panfrost_bo_create(dev, binary.size, PAN_BO_EXECUTE,
                                 "Indirect dispatch shader");
@@ -239,7 +188,6 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
         memcpy(dev->indirect_dispatch.bin->ptr.cpu, binary.data, binary.size);
         util_dynarray_fini(&binary);
 
-        dev->indirect_dispatch.push = shader_info.push;
         dev->indirect_dispatch.descs =
                 panfrost_bo_create(dev,
                                    pan_size(RENDERER_STATE) +
