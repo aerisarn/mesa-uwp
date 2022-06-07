@@ -73,7 +73,6 @@ GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
         }
 
         pan_section_pack(job.cpu, COMPUTE_JOB, DRAW, cfg) {
-                cfg.draw_descriptor_is_64b = true;
                 cfg.state = get_rsd(dev);
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.push_uniforms =

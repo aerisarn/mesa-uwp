@@ -2917,7 +2917,6 @@ panfrost_draw_emit_vertex_section(struct panfrost_batch *batch,
                                   void *section)
 {
         pan_pack(section, DRAW, cfg) {
-                cfg.draw_descriptor_is_64b = true;
                 cfg.state = batch->rsd[PIPE_SHADER_VERTEX];
                 cfg.attributes = attribs;
                 cfg.attribute_buffers = attrib_bufs;
@@ -4147,7 +4146,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
         }
 
         pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
-                cfg.draw_descriptor_is_64b = true;
                 cfg.state = batch->rsd[PIPE_SHADER_COMPUTE];
                 cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_COMPUTE);
                 cfg.thread_storage = panfrost_emit_shared_memory(batch, info);

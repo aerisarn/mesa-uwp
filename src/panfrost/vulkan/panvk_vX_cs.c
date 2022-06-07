@@ -452,7 +452,6 @@ panvk_per_arch(emit_vertex_job)(const struct panvk_pipeline *pipeline,
    }
 
    pan_section_pack(job, COMPUTE_JOB, DRAW, cfg) {
-      cfg.draw_descriptor_is_64b = true;
       cfg.state = pipeline->rsds[MESA_SHADER_VERTEX];
       cfg.attributes = draw->stages[MESA_SHADER_VERTEX].attributes;
       cfg.attribute_buffers = draw->stages[MESA_SHADER_VERTEX].attribute_bufs;
