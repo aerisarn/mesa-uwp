@@ -1146,10 +1146,6 @@ create_indirect_draw_shader(struct panfrost_device *dev,
                                                 binary.data, binary.size,
                                                 PAN_ARCH >= 6 ? 128 : 64);
 
-#if PAN_ARCH <= 5
-                address |= shader_info.midgard.first_tag;
-#endif
-
                 util_dynarray_fini(&binary);
 
                 pan_pack(state, RENDERER_STATE, cfg) {

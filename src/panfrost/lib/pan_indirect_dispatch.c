@@ -181,10 +181,6 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
 
         mali_ptr address = dev->indirect_dispatch.bin->ptr.gpu;
 
-#if PAN_ARCH <= 5
-        address |= shader_info.midgard.first_tag;
-#endif
-
         void *rsd = dev->indirect_dispatch.descs->ptr.cpu;
         pan_pack(rsd, RENDERER_STATE, cfg) {
                 pan_shader_prepare_rsd(&shader_info, address, &cfg);
