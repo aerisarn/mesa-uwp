@@ -564,8 +564,6 @@ struct tu_cmd_buffer
    struct tu_subpass dynamic_subpass;
    struct tu_framebuffer dynamic_framebuffer;
 
-   VkResult record_result;
-
    struct tu_cs cs;
    struct tu_cs draw_cs;
    struct tu_cs tile_store_cs;

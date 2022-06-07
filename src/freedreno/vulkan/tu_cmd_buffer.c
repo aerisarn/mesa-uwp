@@ -1127,7 +1127,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
    VkResult result = tu_cs_alloc(&cmd->sub_cs, subpass->input_count * 2,
                                  A6XX_TEX_CONST_DWORDS, &texture);
    if (result != VK_SUCCESS) {
-      cmd->record_result = result;
+      vk_command_buffer_set_error(&cmd->vk, result);
       return (struct tu_draw_state) {};
    }
 
@@ -1659,8 +1659,6 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 {
    vk_command_buffer_reset(&cmd_buffer->vk);
 
-   cmd_buffer->record_result = VK_SUCCESS;
-
    tu_cs_reset(&cmd_buffer->cs);
    tu_cs_reset(&cmd_buffer->draw_cs);
    tu_cs_reset(&cmd_buffer->tile_store_cs);
@@ -1689,7 +1687,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
 
-   return cmd_buffer->record_result;
+   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -2179,7 +2177,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                                     layout->dynamic_offset_size / (4 * A6XX_TEX_CONST_DWORDS),
                                     A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
       if (result != VK_SUCCESS) {
-         cmd->record_result = result;
+         vk_command_buffer_set_error(&cmd->vk, result);
          return;
       }
 
@@ -2257,7 +2255,7 @@ tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
                                  DIV_ROUND_UP(layout->size, A6XX_TEX_CONST_DWORDS * 4),
                                  A6XX_TEX_CONST_DWORDS, &set_mem);
    if (result != VK_SUCCESS) {
-      cmd->record_result = result;
+      vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
@@ -2302,7 +2300,7 @@ tu_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
                                  DIV_ROUND_UP(layout->size, A6XX_TEX_CONST_DWORDS * 4),
                                  A6XX_TEX_CONST_DWORDS, &set_mem);
    if (result != VK_SUCCESS) {
-      cmd->record_result = result;
+      vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
@@ -2540,7 +2538,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
 
-   return cmd_buffer->record_result;
+   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3648,14 +3646,14 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
 
          result = tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
          if (result != VK_SUCCESS) {
-            cmd->record_result = result;
+            vk_command_buffer_set_error(&cmd->vk, result);
             break;
          }
 
          result = tu_cs_add_entries(&cmd->draw_epilogue_cs,
                &secondary->draw_epilogue_cs);
          if (result != VK_SUCCESS) {
-            cmd->record_result = result;
+            vk_command_buffer_set_error(&cmd->vk, result);
             break;
          }
 
@@ -3967,7 +3965,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (!cmd->state.attachments) {
-      cmd->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
 
@@ -4772,7 +4770,7 @@ tu6_emit_vs_params(struct tu_cmd_buffer *cmd,
    struct tu_cs cs;
    VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 3 + (offset ? 8 : 0), &cs);
    if (result != VK_SUCCESS) {
-      cmd->record_result = result;
+      vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 

@@ -909,7 +909,7 @@ r3d_src_common(struct tu_cmd_buffer *cmd,
                                  2, /* allocate space for a sampler too */
                                  A6XX_TEX_CONST_DWORDS, &texture);
    if (result != VK_SUCCESS) {
-      cmd->record_result = result;
+      vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
@@ -1991,7 +1991,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                                           staging_layout.size,
                                           &staging_bo);
       if (result != VK_SUCCESS) {
-         cmd->record_result = result;
+         vk_command_buffer_set_error(&cmd->vk, result);
          return;
       }
 
@@ -2156,7 +2156,7 @@ tu_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    struct tu_cs_memory tmp;
    VkResult result = tu_cs_alloc(&cmd->sub_cs, DIV_ROUND_UP(dataSize, 64), 64 / 4, &tmp);
    if (result != VK_SUCCESS) {
-      cmd->record_result = result;
+      vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
