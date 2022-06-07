@@ -70,7 +70,7 @@ struct fd_dev_info {
          bool supports_multiview_mask;
 
          /* info for setting RB_CCU_CNTL */
-         bool ccu_cntl_gmem_unk2;
+         bool concurrent_resolve;
          bool has_z24uint_s8uint;
 
          bool tess_use_shared;

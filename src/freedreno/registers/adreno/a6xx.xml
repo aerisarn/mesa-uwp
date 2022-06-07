@@ -2233,8 +2233,15 @@ to upconvert to 32b float internally?
 				then probably a component mask, I always see 0xf
 		</doc>
 		<bitfield name="CLEAR_MASK" low="4" high="7"/>
-		<bitfield name="UNK8" low="8" high="9"/>
-		<bitfield name="UNK12" low="12" high="15"/>
+		<!-- set when this is the last resolve on a650+ -->
+		<bitfield name="LAST" low="8" high="9"/>
+		<!--
+			a618 GLES: color render target number being resolved for RM6_RESOLVE, 0x8 for depth, 0x9 for separate stencil.
+			a618 VK: 0x8 for depth RM6_RESOLVE, 0x9 for separate stencil, 0 otherwise.
+
+			We believe this is related to concurrent resolves
+		 -->
+		<bitfield name="BUFFER_ID" low="12" high="15"/>
 	</reg32>
 	<!-- 0x88e4-0x88ef invalid -->
 	<!-- always 0x0 ? -->
@@ -2339,7 +2346,8 @@ to upconvert to 32b float internally?
 		<!-- GMEM offset of CCU depth cache -->
 		<bitfield name="DEPTH_OFFSET" low="12" high="20" shr="12" type="hex"/>
 		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
-		<bitfield name="UNK2" pos="2" type="boolean"/> <!-- sometimes set with GMEM? -->
+		<!-- concurrent resolves are apparently a 2-bit enum on a650+ -->
+		<bitfield name="CONCURRENT_RESOLVE" pos="2" type="boolean"/>
 		<!--TODO: valid mask 0xfffffc1f -->
 	</reg32>
 	<reg32 offset="0x8e08" name="RB_NC_MODE_CNTL">
