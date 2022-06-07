@@ -382,7 +382,7 @@ lp_rast_arg_null( void )
 #define LP_RAST_FLAGS_BLIT           (0x8)
 
 struct lp_bin_info {
-   unsigned type:8;
+   unsigned type:8;    // bitmask of LP_RAST_FLAGS_x
    unsigned count:24;
 };
 

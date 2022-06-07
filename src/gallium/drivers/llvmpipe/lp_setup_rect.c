@@ -206,7 +206,7 @@ partial(struct lp_setup_context *setup,
         const struct lp_rast_rectangle *rect,
         boolean opaque,
         unsigned ix, unsigned iy,
-        unsigned mask)
+        unsigned mask) // RECT_PLANE_x bits
 {
    if (mask == 0) {
       assert(rect->box.x0 <= ix * TILE_SIZE);
