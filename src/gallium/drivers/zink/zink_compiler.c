@@ -962,7 +962,8 @@ rewrite_bo_access(nir_shader *shader, struct zink_screen *screen)
 }
 
 struct bo_vars {
-   nir_variable *ubo[2][5];
+   nir_variable *uniforms[5];
+   nir_variable *ubo[5];
    nir_variable *ssbo[5];
    uint32_t first_ubo;
    uint32_t first_ssbo;
@@ -972,19 +973,26 @@ static nir_variable *
 get_bo_var(nir_shader *shader, struct bo_vars *bo, bool ssbo, nir_src *src, unsigned bit_size)
 {
    nir_variable *var, **ptr;
-   nir_variable **arr = (nir_variable**)bo->ubo;
    unsigned idx = ssbo || (nir_src_is_const(*src) && !nir_src_as_uint(*src)) ? 0 : 1;
 
    if (ssbo)
       ptr = &bo->ssbo[bit_size >> 4];
-   else
-      ptr = &arr[idx * 5 + (bit_size >> 4)];
+   else {
+      if (!idx) {
+         ptr = &bo->uniforms[bit_size >> 4];
+      } else
+         ptr = &bo->ubo[bit_size >> 4];
+   }
    var = *ptr;
    if (!var) {
       if (ssbo)
          var = bo->ssbo[32 >> 4];
-      else
-         var = arr[idx * 5 + (32 >> 4)];
+      else {
+         if (!idx)
+            var = bo->uniforms[32 >> 4];
+         else
+            var = bo->ubo[32 >> 4];
+      }
       var = nir_variable_clone(var, shader);
       *ptr = var;
       nir_shader_add_variable(shader, var);
@@ -1105,8 +1113,13 @@ remove_bo_access(nir_shader *shader, struct zink_shader *zs)
          assert(!bo.ssbo[32 >> 4]);
          bo.ssbo[32 >> 4] = var;
       } else {
-         assert(!bo.ubo[!!var->data.driver_location][32 >> 4]);
-         bo.ubo[!!var->data.driver_location][32 >> 4] = var;
+         if (var->data.driver_location) {
+            assert(!bo.ubo[32 >> 4]);
+            bo.ubo[32 >> 4] = var;
+         } else {
+            assert(!bo.uniforms[32 >> 4]);
+            bo.uniforms[32 >> 4] = var;
+         }
       }
    }
    return nir_shader_instructions_pass(shader, remove_bo_access_instr, nir_metadata_dominance, &bo);
