@@ -811,6 +811,45 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       return LLVMBuildBitCast(ctx->ac.builder, terms, ctx->ac.v4f32, "");
    }
 
+   case nir_intrinsic_load_cull_ccw_amd:
+      /* radeonsi embed cw/ccw info into front/back face enabled */
+      return ctx->ac.i1false;
+
+   case nir_intrinsic_load_cull_any_enabled_amd:
+      return ctx->shader->key.ge.opt.ngg_culling ? ctx->ac.i1true : ctx->ac.i1false;
+
+   case nir_intrinsic_load_cull_back_face_enabled_amd:
+      return ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_BACK_FACE ?
+         ctx->ac.i1true : ctx->ac.i1false;
+
+   case nir_intrinsic_load_cull_front_face_enabled_amd:
+      return ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE ?
+         ctx->ac.i1true : ctx->ac.i1false;
+
+   case nir_intrinsic_load_cull_small_prim_precision_amd: {
+      LLVMValueRef small_prim_precision =
+         ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES ?
+         GET_FIELD(ctx, GS_STATE_SMALL_PRIM_PRECISION_NO_AA) :
+         GET_FIELD(ctx, GS_STATE_SMALL_PRIM_PRECISION);
+
+      /* Extract the small prim precision. */
+      small_prim_precision =
+         LLVMBuildOr(ctx->ac.builder, small_prim_precision,
+                     LLVMConstInt(ctx->ac.i32, 0x70, 0), "");
+      small_prim_precision =
+         LLVMBuildShl(ctx->ac.builder, small_prim_precision,
+                      LLVMConstInt(ctx->ac.i32, 23, 0), "");
+
+      return LLVMBuildBitCast(ctx->ac.builder, small_prim_precision, ctx->ac.f32, "");
+   }
+
+   case nir_intrinsic_load_cull_small_primitives_enabled_amd:
+      if (ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES)
+         return ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT ?
+            ctx->ac.i1true : ctx->ac.i1false;
+      else
+         return ctx->ac.i1true;
+
    default:
       return NULL;
    }
