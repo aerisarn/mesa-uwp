@@ -61,7 +61,7 @@ struct shader_ref {
  * \param queue  the queue to put newly rendered/emptied scenes into
  */
 struct lp_scene *
-lp_scene_create( struct lp_setup_context *setup )
+lp_scene_create(struct lp_setup_context *setup)
 {
    struct lp_scene *scene = slab_alloc_st(&setup->scene_slab);
    if (!scene)
@@ -213,8 +213,6 @@ lp_scene_begin_rasterization(struct lp_scene *scene)
 }
 
 
-
-
 /**
  * Free all the temporary data in a scene.
  */
@@ -251,58 +249,53 @@ lp_scene_end_rasterization(struct lp_scene *scene )
 
    /* Decrement texture ref counts
     */
-   {
-      struct resource_ref *ref;
-      int i, j = 0;
-
-      for (ref = scene->resources; ref; ref = ref->next) {
-         for (i = 0; i < ref->count; i++) {
-            if (LP_DEBUG & DEBUG_SETUP)
-               debug_printf("resource %d: %p %dx%d sz %d\n",
-                            j,
-                            (void *) ref->resource[i],
-                            ref->resource[i]->width0,
-                            ref->resource[i]->height0,
-                            llvmpipe_resource_size(ref->resource[i]));
-            j++;
-            llvmpipe_resource_unmap(ref->resource[i], 0, 0);
-            pipe_resource_reference(&ref->resource[i], NULL);
+   int j = 0;
+   for (struct resource_ref *ref = scene->resources; ref; ref = ref->next) {
+      for (int i = 0; i < ref->count; i++) {
+         if (LP_DEBUG & DEBUG_SETUP)
+            debug_printf("resource %d: %p %dx%d sz %d\n",
+                         j,
+                         (void *) ref->resource[i],
+                         ref->resource[i]->width0,
+                         ref->resource[i]->height0,
+                         llvmpipe_resource_size(ref->resource[i]));
+         j++;
+         llvmpipe_resource_unmap(ref->resource[i], 0, 0);
+         pipe_resource_reference(&ref->resource[i], NULL);
          }
-      }
+   }
 
-      for (ref = scene->writeable_resources; ref; ref = ref->next) {
-         for (i = 0; i < ref->count; i++) {
-            if (LP_DEBUG & DEBUG_SETUP)
-               debug_printf("resource %d: %p %dx%d sz %d\n",
-                            j,
-                            (void *) ref->resource[i],
-                            ref->resource[i]->width0,
+   for (struct resource_ref *ref = scene->writeable_resources; ref;
+        ref = ref->next) {
+      for (int i = 0; i < ref->count; i++) {
+         if (LP_DEBUG & DEBUG_SETUP)
+            debug_printf("resource %d: %p %dx%d sz %d\n",
+                         j,
+                         (void *) ref->resource[i],
+                         ref->resource[i]->width0,
                             ref->resource[i]->height0,
-                            llvmpipe_resource_size(ref->resource[i]));
-            j++;
-            llvmpipe_resource_unmap(ref->resource[i], 0, 0);
-            pipe_resource_reference(&ref->resource[i], NULL);
-         }
+                         llvmpipe_resource_size(ref->resource[i]));
+         j++;
+         llvmpipe_resource_unmap(ref->resource[i], 0, 0);
+         pipe_resource_reference(&ref->resource[i], NULL);
       }
+   }
 
-      if (LP_DEBUG & DEBUG_SETUP)
-         debug_printf("scene %d resources, sz %d\n",
-                      j, scene->resource_reference_size);
+   if (LP_DEBUG & DEBUG_SETUP) {
+      debug_printf("scene %d resources, sz %d\n",
+                   j, scene->resource_reference_size);
    }
 
    /* Decrement shader variant ref counts
     */
-   {
-      struct shader_ref *ref;
-      int i, j = 0;
-
-      for (ref = scene->frag_shaders; ref; ref = ref->next) {
-         for (i = 0; i < ref->count; i++) {
-            if (LP_DEBUG & DEBUG_SETUP)
-               debug_printf("shader %d: %p\n", j, (void *) ref->variant[i]);
-            j++;
-            lp_fs_variant_reference(llvmpipe_context(scene->pipe), &ref->variant[i], NULL);
-         }
+   j = 0;
+   for (struct shader_ref *ref = scene->frag_shaders; ref; ref = ref->next) {
+      for (i = 0; i < ref->count; i++) {
+         if (LP_DEBUG & DEBUG_SETUP)
+            debug_printf("shader %d: %p\n", j, (void *) ref->variant[i]);
+         j++;
+         lp_fs_variant_reference(llvmpipe_context(scene->pipe),
+                                 &ref->variant[i], NULL);
       }
    }
 
@@ -473,13 +466,13 @@ lp_scene_add_resource_reference(struct lp_scene *scene,
 
 /**
  * Add a reference to a fragment shader variant
+ * Return FALSE if out of memory, TRUE otherwise.
  */
 boolean
 lp_scene_add_frag_shader_reference(struct lp_scene *scene,
                                    struct lp_fragment_shader_variant *variant)
 {
    struct shader_ref *ref, **last = &scene->frag_shaders;
-   int i;
 
    /* Look at existing resource blocks:
     */
@@ -488,7 +481,7 @@ lp_scene_add_frag_shader_reference(struct lp_scene *scene,
 
       /* Search for this resource:
        */
-      for (i = 0; i < ref->count; i++)
+      for (int i = 0; i < ref->count; i++)
          if (ref->variant[i] == variant)
             return TRUE;
 
