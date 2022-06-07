@@ -1393,74 +1393,89 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
                               struct pvr_graphics_pipeline *const gfx_pipeline)
 {
    /* FIXME: Remove this hard coding. */
-   const struct pvr_explicit_constant_usage explicit_const_usage = {
+   struct pvr_explicit_constant_usage vert_explicit_const_usage = {
       .start_offset = 16,
    };
+   struct pvr_explicit_constant_usage frag_explicit_const_usage = {
+      .start_offset = 0,
+   };
+   const bool requires_hard_coding = pvr_hard_code_shader_required();
+   static uint32_t hard_code_pipeline_n = 0;
 
    const VkPipelineVertexInputStateCreateInfo *const vertex_input_state =
       pCreateInfo->pVertexInputState;
-
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
    struct rogue_compiler *compiler = device->pdevice->compiler;
    struct rogue_build_ctx *ctx;
    VkResult result;
 
-   /* Compile the USC shaders. */
-
    /* Setup shared build context. */
    ctx = rogue_create_build_context(compiler);
    if (!ctx)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   /* NIR middle-end translation. */
-   for (gl_shader_stage stage = MESA_SHADER_FRAGMENT; stage > MESA_SHADER_NONE;
-        stage--) {
-      const VkPipelineShaderStageCreateInfo *create_info;
-      size_t stage_index = gfx_pipeline->stage_indices[stage];
+   if (requires_hard_coding) {
+      pvr_hard_code_graphics_shaders(hard_code_pipeline_n,
+                                     &ctx->binary[MESA_SHADER_VERTEX],
+                                     &ctx->binary[MESA_SHADER_FRAGMENT]);
+   } else {
+      /* NIR middle-end translation. */
+      for (gl_shader_stage stage = MESA_SHADER_FRAGMENT;
+           stage > MESA_SHADER_NONE;
+           stage--) {
+         const VkPipelineShaderStageCreateInfo *create_info;
+         size_t stage_index = gfx_pipeline->stage_indices[stage];
 
-      /* Skip unused/inactive stages. */
-      if (stage_index == ~0)
-         continue;
+         /* Skip unused/inactive stages. */
+         if (stage_index == ~0)
+            continue;
 
-      create_info = &pCreateInfo->pStages[stage_index];
+         create_info = &pCreateInfo->pStages[stage_index];
 
-      /* SPIR-V to NIR. */
-      ctx->nir[stage] = pvr_spirv_to_nir(ctx, stage, create_info);
-      if (!ctx->nir[stage]) {
-         ralloc_free(ctx);
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         /* SPIR-V to NIR. */
+         ctx->nir[stage] = pvr_spirv_to_nir(ctx, stage, create_info);
+         if (!ctx->nir[stage]) {
+            ralloc_free(ctx);
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         }
+      }
+
+      /* Pre-back-end analysis and optimization, driver data extraction. */
+      /* TODO: Analyze and cull unused I/O between stages. */
+      /* TODO: Allocate UBOs between stages;
+       * pipeline->layout->set_{count,layout}.
+       */
+
+      /* Back-end translation. */
+      for (gl_shader_stage stage = MESA_SHADER_FRAGMENT;
+           stage > MESA_SHADER_NONE;
+           stage--) {
+         if (!ctx->nir[stage])
+            continue;
+
+         ctx->rogue[stage] = pvr_nir_to_rogue(ctx, ctx->nir[stage]);
+         if (!ctx->rogue[stage]) {
+            ralloc_free(ctx);
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         }
+
+         ctx->binary[stage] = pvr_rogue_to_binary(ctx, ctx->rogue[stage]);
+         if (!ctx->binary[stage]) {
+            ralloc_free(ctx);
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         }
       }
    }
 
-   /* Pre-back-end analysis and optimization, driver data extraction. */
-   /* TODO: Analyze and cull unused I/O between stages. */
-   /* TODO: Allocate UBOs between stages;
-    * pipeline->layout->set_{count,layout}.
-    */
-
-   /* Back-end translation. */
-   for (gl_shader_stage stage = MESA_SHADER_FRAGMENT; stage > MESA_SHADER_NONE;
-        stage--) {
-      if (!ctx->nir[stage])
-         continue;
-
-      ctx->rogue[stage] = pvr_nir_to_rogue(ctx, ctx->nir[stage]);
-      if (!ctx->rogue[stage]) {
-         ralloc_free(ctx);
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
-
-      ctx->binary[stage] = pvr_rogue_to_binary(ctx, ctx->rogue[stage]);
-      if (!ctx->binary[stage]) {
-         ralloc_free(ctx);
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
+   if (requires_hard_coding) {
+      pvr_hard_code_graphics_vertex_state(hard_code_pipeline_n,
+                                          &gfx_pipeline->vertex_shader_state);
+   } else {
+      pvr_vertex_state_init(gfx_pipeline,
+                            &ctx->common_data[MESA_SHADER_VERTEX],
+                            &ctx->stage_data.vs);
    }
-
-   pvr_vertex_state_init(gfx_pipeline,
-                         &ctx->common_data[MESA_SHADER_VERTEX],
-                         &ctx->stage_data.vs);
 
    result = pvr_gpu_upload_usc(device,
                                ctx->binary[MESA_SHADER_VERTEX]->data,
@@ -1470,8 +1485,14 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    if (result != VK_SUCCESS)
       goto err_free_build_context;
 
-   pvr_fragment_state_init(gfx_pipeline,
-                           &ctx->common_data[MESA_SHADER_FRAGMENT]);
+   if (requires_hard_coding) {
+      pvr_hard_code_graphics_fragment_state(
+         hard_code_pipeline_n,
+         &gfx_pipeline->fragment_shader_state);
+   } else {
+      pvr_fragment_state_init(gfx_pipeline,
+                              &ctx->common_data[MESA_SHADER_FRAGMENT]);
+   }
 
    result = pvr_gpu_upload_usc(device,
                                ctx->binary[MESA_SHADER_FRAGMENT]->data,
@@ -1485,6 +1506,13 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
     * See PipelineCompileNoISPFeedbackFragmentStage. Unimplemented since in our
     * case the optimization doesn't happen.
     */
+
+   if (requires_hard_coding) {
+      pvr_hard_code_graphics_inject_build_info(hard_code_pipeline_n,
+                                               ctx,
+                                               &vert_explicit_const_usage,
+                                               &frag_explicit_const_usage);
+   }
 
    /* TODO: The programs we use are hard coded for now, but these should be
     * selected dynamically.
@@ -1525,7 +1553,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       device,
       allocator,
       &ctx->common_data[MESA_SHADER_VERTEX].ubo_data,
-      &explicit_const_usage,
+      &vert_explicit_const_usage,
       gfx_pipeline->base.layout,
       PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY,
       &gfx_pipeline->vertex_shader_state.uniform_state.pds_code,
@@ -1548,7 +1576,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       device,
       allocator,
       &ctx->common_data[MESA_SHADER_FRAGMENT].ubo_data,
-      &explicit_const_usage,
+      &frag_explicit_const_usage,
       gfx_pipeline->base.layout,
       PVR_STAGE_ALLOCATION_FRAGMENT,
       &gfx_pipeline->fragment_shader_state.uniform_state.pds_code,
@@ -1557,6 +1585,8 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       goto err_free_vertex_uniform_program;
 
    ralloc_free(ctx);
+
+   hard_code_pipeline_n++;
 
    return VK_SUCCESS;
 

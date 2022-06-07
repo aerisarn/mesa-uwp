@@ -39,6 +39,8 @@
 
 struct pvr_compute_pipeline_shader_state;
 struct pvr_device;
+struct pvr_fragment_shader_state;
+struct pvr_vertex_shader_state;
 
 struct pvr_explicit_constant_usage {
    /* Hardware register number assigned to the explicit constant with the lower
@@ -58,6 +60,16 @@ struct pvr_hard_code_compute_build_info {
    struct pvr_explicit_constant_usage explicit_conts_usage;
 };
 
+struct pvr_hard_code_graphics_build_info {
+   struct rogue_build_data stage_data;
+
+   struct rogue_common_build_data vert_common_data;
+   struct rogue_common_build_data frag_common_data;
+
+   struct pvr_explicit_constant_usage vert_explicit_conts_usage;
+   struct pvr_explicit_constant_usage frag_explicit_conts_usage;
+};
+
 /* Returns true if the shader for the currently running program requires hard
  * coded shaders.
  */
@@ -67,5 +79,30 @@ VkResult pvr_hard_code_compute_pipeline(
    struct pvr_device *const device,
    struct pvr_compute_pipeline_shader_state *const shader_state_out,
    struct pvr_hard_code_compute_build_info *const build_info_out);
+
+/* pipeline_n:
+ *    The pipeline number. Each pipeline created requires unique hard
+ *    coding so a pipeline number is necessary to identify which data to use.
+ *    This pipeline number to request data for the first pipeline to be created
+ *    is 0 and should be incremented for each subsequent pipeline.
+ */
+void pvr_hard_code_graphics_shaders(
+   uint32_t pipeline_n,
+   struct rogue_shader_binary **const vert_shader_out,
+   struct rogue_shader_binary **const frag_shader_out);
+
+void pvr_hard_code_graphics_vertex_state(
+   uint32_t pipeline_n,
+   struct pvr_vertex_shader_state *vert_state);
+
+void pvr_hard_code_graphics_fragment_state(
+   uint32_t pipelien_n,
+   struct pvr_fragment_shader_state *frag_state);
+
+void pvr_hard_code_graphics_inject_build_info(
+   uint32_t pipeline_n,
+   struct rogue_build_ctx *ctx,
+   struct pvr_explicit_constant_usage *const vert_common_data_out,
+   struct pvr_explicit_constant_usage *const frag_common_data_out);
 
 #endif /* PVR_HARDCODE_SHADERS_H */

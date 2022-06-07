@@ -42,6 +42,11 @@
  * This should eventually be deleted as the compiler becomes more capable.
  */
 
+enum pvr_hard_code_shader_type {
+   PVR_HARD_CODE_SHADER_TYPE_COMPUTE,
+   PVR_HARD_CODE_SHADER_TYPE_GRAPHICS,
+};
+
 /* Applications for which the compiler is capable of generating valid shaders.
  */
 static const char *const compilable_progs[] = {
@@ -50,6 +55,7 @@ static const char *const compilable_progs[] = {
 
 static const struct pvr_hard_coding_data {
    const char *const name;
+   enum pvr_hard_code_shader_type type;
 
    union {
       struct {
@@ -61,11 +67,26 @@ static const struct pvr_hard_coding_data {
 
          const struct pvr_hard_code_compute_build_info build_info;
       } compute;
+
+      struct {
+         struct rogue_shader_binary *const *const vert_shaders;
+         struct rogue_shader_binary *const *const frag_shaders;
+
+         const struct pvr_vertex_shader_state *const *const vert_shader_states;
+         const struct pvr_fragment_shader_state *const *const frag_shader_states;
+
+         const struct pvr_hard_code_graphics_build_info *const
+            *const build_infos;
+
+         uint32_t shader_count;
+      } graphics;
    };
 
 } hard_coding_table[] = {
    {
       .name = "simple-compute",
+      .type = PVR_HARD_CODE_SHADER_TYPE_COMPUTE,
+
       .compute = {
          .shader = pvr_simple_compute_shader,
          .shader_size = sizeof(pvr_simple_compute_shader),
@@ -132,6 +153,8 @@ VkResult pvr_hard_code_compute_pipeline(
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
    const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
 
+   assert(data->type == PVR_HARD_CODE_SHADER_TYPE_COMPUTE);
+
    mesa_logd("Hard coding compute pipeline for %s", data->name);
 
    *build_info_out = data->compute.build_info;
@@ -142,4 +165,81 @@ VkResult pvr_hard_code_compute_pipeline(
                              data->compute.shader_size,
                              cache_line_size,
                              &shader_state_out->bo);
+}
+
+void pvr_hard_code_graphics_shaders(
+   uint32_t pipeline_n,
+   struct rogue_shader_binary **const vert_shader_out,
+   struct rogue_shader_binary **const frag_shader_out)
+{
+   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+
+   assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
+   assert(pipeline_n < data->graphics.shader_count);
+
+   mesa_logd("Hard coding graphics pipeline for %s", data->name);
+
+   *vert_shader_out = data->graphics.vert_shaders[pipeline_n];
+   *frag_shader_out = data->graphics.frag_shaders[pipeline_n];
+}
+
+void pvr_hard_code_graphics_vertex_state(
+   uint32_t pipeline_n,
+   struct pvr_vertex_shader_state *const vert_state_out)
+{
+   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+
+   assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
+   assert(pipeline_n < data->graphics.shader_count);
+
+   *vert_state_out = *data->graphics.vert_shader_states[0];
+}
+
+void pvr_hard_code_graphics_fragment_state(
+   uint32_t pipeline_n,
+   struct pvr_fragment_shader_state *const frag_state_out)
+{
+   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+
+   assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
+   assert(pipeline_n < data->graphics.shader_count);
+
+   *frag_state_out = *data->graphics.frag_shader_states[0];
+}
+
+void pvr_hard_code_graphics_inject_build_info(
+   uint32_t pipeline_n,
+   struct rogue_build_ctx *ctx,
+   struct pvr_explicit_constant_usage *const vert_common_data_out,
+   struct pvr_explicit_constant_usage *const frag_common_data_out)
+{
+   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+
+   assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
+   assert(pipeline_n < data->graphics.shader_count);
+
+   ctx->stage_data = data->graphics.build_infos[pipeline_n]->stage_data;
+   ctx->common_data[MESA_SHADER_VERTEX] =
+      data->graphics.build_infos[pipeline_n]->vert_common_data;
+   ctx->common_data[MESA_SHADER_FRAGMENT] =
+      data->graphics.build_infos[pipeline_n]->frag_common_data;
+
+   assert(
+      ctx->common_data[MESA_SHADER_VERTEX].temps ==
+      data->graphics.vert_shader_states[pipeline_n]->stage_state.temps_count);
+   assert(
+      ctx->common_data[MESA_SHADER_FRAGMENT].temps ==
+      data->graphics.frag_shader_states[pipeline_n]->stage_state.temps_count);
+
+   assert(ctx->common_data[MESA_SHADER_VERTEX].coeffs ==
+          data->graphics.vert_shader_states[pipeline_n]
+             ->stage_state.coefficient_size);
+   assert(ctx->common_data[MESA_SHADER_FRAGMENT].coeffs ==
+          data->graphics.frag_shader_states[pipeline_n]
+             ->stage_state.coefficient_size);
+
+   *vert_common_data_out =
+      data->graphics.build_infos[pipeline_n]->vert_explicit_conts_usage;
+   *frag_common_data_out =
+      data->graphics.build_infos[pipeline_n]->frag_explicit_conts_usage;
 }
