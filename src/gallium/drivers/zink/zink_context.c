@@ -2212,7 +2212,7 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
    zink_resource_image_barrier(ctx, res, layout, access, pipeline);
    if (i == ctx->fb_state.nr_cbufs && res->bind_count[0] && res->bind_count[0] != res->image_bind_count[0]) {
       unsigned find = res->bind_count[0] - res->image_bind_count[0];
-      for (unsigned i = 0; i < PIPE_SHADER_COMPUTE; i++) {
+      for (unsigned i = 0; find && i < PIPE_SHADER_COMPUTE; i++) {
          u_foreach_bit(slot, res->sampler_binds[i]) {
             update_descriptor_state_sampler(ctx, i, slot, res);
             find--;
