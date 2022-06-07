@@ -226,6 +226,10 @@ vn_hal_open(const struct hw_module_t *mod,
 static uint32_t
 vn_android_ahb_format_from_vk_format(VkFormat format)
 {
+   /* Only non-external AHB compatible formats are expected at:
+    * - image format query
+    * - memory export allocation
+    */
    switch (format) {
    case VK_FORMAT_R8G8B8A8_UNORM:
       return AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
@@ -237,8 +241,6 @@ vn_android_ahb_format_from_vk_format(VkFormat format)
       return AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT;
    case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
       return AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM;
-   case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
-      return AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420;
    default:
       return 0;
    }
@@ -295,6 +297,7 @@ vn_android_drm_format_to_vk_format(uint32_t format)
    case DRM_FORMAT_ABGR2101010:
       return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
    case DRM_FORMAT_YVU420:
+      return VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM;
    case DRM_FORMAT_NV12:
       return VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
    default:
@@ -935,17 +938,18 @@ vn_android_get_ahb_format_properties(
     * Applications should treat these values as sensible defaults to use in the
     * absence of more reliable information obtained through some other means.
     */
+   const bool is_yuv = vn_android_drm_format_is_yuv(buf_props.drm_fourcc);
    const VkSamplerYcbcrModelConversion model =
-      vn_android_drm_format_is_yuv(buf_props.drm_fourcc)
-         ? VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601
-         : VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
+      is_yuv ? VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601
+             : VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
 
    /* ANGLE expects VK_FORMAT_UNDEFINED with externalFormat resolved from
     * AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED and any supported planar
-    * AHB formats (venus supports AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420).
+    * AHB formats. Venus supports below explicit ones:
+    * - AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420 (DRM_FORMAT_NV12)
+    * - AHARDWAREBUFFER_FORMAT_YV12 (DRM_FORMAT_YVU420)
     */
-   if (desc.format == AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED ||
-       desc.format == AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420)
+   if (desc.format == AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED || is_yuv)
       format = VK_FORMAT_UNDEFINED;
 
    *out_props = (VkAndroidHardwareBufferFormatPropertiesANDROID) {
