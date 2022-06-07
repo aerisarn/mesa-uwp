@@ -62,8 +62,8 @@
  * - http://cellperformance.beyond3d.com/articles/2006/05/demystifying-the-restrict-keyword.html
  */
 #ifndef restrict
-#  if (__STDC_VERSION__ >= 199901L) && !defined(__cplusplus)
-     /* C99 */
+#  ifndef __cplusplus
+     /* Use C99 restrict keyword */
 #  elif defined(__GNUC__)
 #    define restrict __restrict__
 #  elif defined(_MSC_VER)
