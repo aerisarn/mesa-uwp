@@ -128,9 +128,10 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       if (!zm) {
          return NULL;
       }
+      unsigned patch_vertices = state->shader_keys.key[PIPE_SHADER_TESS_CTRL ].key.tcs.patch_vertices;
       if (pstage == PIPE_SHADER_TESS_CTRL && zs->is_generated && zs->spirv) {
          assert(ctx); //TODO async
-         mod = zink_shader_tcs_compile(screen, zs, zink_get_tcs_key(ctx)->patch_vertices);
+         mod = zink_shader_tcs_compile(screen, zs, patch_vertices);
       } else {
          mod = zink_shader_compile(screen, zs, prog->nir[stage], key);
       }
@@ -156,7 +157,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       if (inline_size)
          memcpy(zm->key + key->size + nonseamless_size, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
       if (pstage == PIPE_SHADER_TESS_CTRL && zs->is_generated)
-         zm->hash = zink_get_tcs_key(ctx)->patch_vertices;
+         zm->hash = patch_vertices;
       else
          zm->hash = shader_module_hash(zm);
       zm->default_variant = !inline_size && list_is_empty(&prog->shader_cache[pstage][0][0]);
