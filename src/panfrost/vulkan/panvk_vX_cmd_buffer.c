@@ -905,10 +905,7 @@ VkResult
 panvk_per_arch(EndCommandBuffer)(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
-   VkResult ret =
-      cmdbuf->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ?
-      vk_command_buffer_get_record_result(&cmdbuf->vk) :
-      cmdbuf->record_result;
+   VkResult ret = vk_command_buffer_get_record_result(&cmdbuf->vk);
 
    panvk_per_arch(cmd_close_batch)(cmdbuf);
    cmdbuf->status = ret == VK_SUCCESS ?
@@ -1074,8 +1071,6 @@ panvk_reset_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
 {
    vk_command_buffer_reset(&cmdbuf->vk);
 
-   cmdbuf->record_result = VK_SUCCESS;
-
    list_for_each_entry_safe(struct panvk_batch, batch, &cmdbuf->batches, node) {
       list_del(&batch->node);
       util_dynarray_fini(&batch->jobs);
@@ -1092,7 +1087,7 @@ panvk_reset_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
       memset(&cmdbuf->bind_points[i].desc_state.sets, 0, sizeof(cmdbuf->bind_points[0].desc_state.sets));
 
-   return cmdbuf->record_result;
+   return vk_command_buffer_get_record_result(&cmdbuf->vk);
 }
 
 static void

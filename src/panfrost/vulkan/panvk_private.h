@@ -773,8 +773,6 @@ struct panvk_cmd_buffer {
    struct panvk_descriptor_set meta_push_descriptors;
 
    struct panvk_cmd_bind_point_state bind_points[MAX_BIND_POINTS];
-
-   VkResult record_result;
 };
 
 #define panvk_cmd_get_bind_point_state(cmdbuf, bindpoint) \
