@@ -43,24 +43,20 @@ panvk_meta_clear_color_attachment_shader(struct panfrost_device *pdev,
                                      "panvk_meta_clear_rt%d_attachment(base_type=%d)",
                                      rt, base_type);
 
-   b.shader->info.num_ubos = 1;
-
    const struct glsl_type *out_type = glsl_vector_type(base_type, 4);
    nir_variable *out =
       nir_variable_create(b.shader, nir_var_shader_out, out_type, "out");
    out->data.location = FRAG_RESULT_DATA0 + rt;
 
-   nir_ssa_def *clear_values = nir_load_ubo(&b, 4, 32, nir_imm_int(&b, 0),
-                                            nir_imm_int(&b, 0),
-                                            .align_mul = 4,
-                                            .align_offset = 0,
-                                            .range_base = 0,
-                                            .range = ~0);
+   nir_ssa_def *clear_values = nir_load_push_constant(&b, 4, 32,
+                                                      nir_imm_int(&b, 0),
+                                                     .range = ~0);
    nir_store_var(&b, out, clear_values, 0xff);
 
    struct panfrost_compile_inputs inputs = {
       .gpu_id = pdev->gpu_id,
       .is_blit = true,
+      .no_ubo_to_push = true,
    };
 
    struct util_dynarray binary;
@@ -68,8 +64,7 @@ panvk_meta_clear_color_attachment_shader(struct panfrost_device *pdev,
    util_dynarray_init(&binary, NULL);
    GENX(pan_shader_compile)(b.shader, &inputs, &binary, shader_info);
 
-   /* Make sure UBO words have been upgraded to push constants */
-   assert(shader_info->ubo_mask == 0);
+   shader_info->push.count = 4;
 
    mali_ptr shader =
       pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
@@ -93,8 +88,6 @@ panvk_meta_clear_zs_attachment_shader(struct panfrost_device *pdev,
                                      "panvk_meta_clear_%s%s_attachment()",
                                      clear_z ? "z" : "", clear_s ? "s" : "");
 
-   b.shader->info.num_ubos = 1;
-
    unsigned drv_loc = 0;
    nir_variable *z_out =
       clear_z ?
@@ -105,12 +98,9 @@ panvk_meta_clear_zs_attachment_shader(struct panfrost_device *pdev,
       nir_variable_create(b.shader, nir_var_shader_out, glsl_float_type(), "stencil") :
       NULL;
 
-   nir_ssa_def *clear_values = nir_load_ubo(&b, 2, 32, nir_imm_int(&b, 0),
-                                            nir_imm_int(&b, 0),
-                                            .align_mul = 4,
-                                            .align_offset = 0,
-                                            .range_base = 0,
-                                            .range = ~0);
+   nir_ssa_def *clear_values = nir_load_push_constant(&b, 2, 32,
+                                                      nir_imm_int(&b, 0),
+                                                     .range = ~0);
 
    if (z_out) {
       z_out->data.location = FRAG_RESULT_DEPTH;
@@ -127,6 +117,7 @@ panvk_meta_clear_zs_attachment_shader(struct panfrost_device *pdev,
    struct panfrost_compile_inputs inputs = {
       .gpu_id = pdev->gpu_id,
       .is_blit = true,
+      .no_ubo_to_push = true,
    };
 
    struct util_dynarray binary;
@@ -134,8 +125,7 @@ panvk_meta_clear_zs_attachment_shader(struct panfrost_device *pdev,
    util_dynarray_init(&binary, NULL);
    GENX(pan_shader_compile)(b.shader, &inputs, &binary, shader_info);
 
-   /* Make sure UBO words have been upgraded to push constants */
-   assert(shader_info->ubo_mask == 0);
+   shader_info->push.count = 2;
 
    mali_ptr shader =
       pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
@@ -252,27 +242,6 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
    }
 
    return rsd_ptr.gpu;
-}
-
-static mali_ptr
-panvk_meta_clear_attachment_emit_push_constants(struct panfrost_device *pdev,
-                                                const struct panfrost_ubo_push *pushmap,
-                                                struct pan_pool *pool,
-                                                const VkClearValue *clear_value)
-{
-   assert(pushmap->count <= (sizeof(*clear_value) / 4));
-
-   uint32_t *in = (uint32_t *)clear_value;
-   uint32_t pushvals[sizeof(*clear_value) / 4];
-
-   for (unsigned i = 0; i < pushmap->count; i++) {
-      assert(i < ARRAY_SIZE(pushvals));
-      assert(pushmap->words[i].ubo == 0);
-      assert(pushmap->words[i].offset < sizeof(*clear_value));
-      pushvals[i] = in[pushmap->words[i].offset / 4];
-   }
-
-   return pan_pool_upload_aligned(pool, pushvals, sizeof(pushvals), 16);
 }
 
 static void
@@ -436,9 +405,8 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
                                             shader);
 
    mali_ptr pushconsts =
-      panvk_meta_clear_attachment_emit_push_constants(pdev, &shader_info->push,
-                                                      &cmdbuf->desc_pool.base,
-                                                      clear_value);
+      pan_pool_upload_aligned(&cmdbuf->desc_pool.base,
+                              clear_value, sizeof(*clear_value), 16);
    mali_ptr tsd = PAN_ARCH >= 6 ? batch->tls.gpu : batch->fb.desc.gpu;
    mali_ptr tiler = PAN_ARCH >= 6 ? batch->tiler.descs.gpu : 0;
 
