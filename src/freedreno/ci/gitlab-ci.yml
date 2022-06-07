@@ -89,7 +89,6 @@ a306-traces:
 .a530-test:
   extends:
     - .freedreno-test
-    - .test-manual-mr
   variables:
     BM_KERNEL: /baremetal-files/Image.gz
     BM_KERNEL_EXTRA_ARGS: maxcpus=2
@@ -104,7 +103,7 @@ a530_gl:
     - .a530-test
   variables:
     DEQP_SUITE: freedreno-a530
-  parallel: 5
+  parallel: 6
 
 .a530_piglit:
   extends:
@@ -114,20 +113,13 @@ a530_gl:
     HWCI_START_XORG: 1
 
 # piglit_gl since it takes a bit under 20 minutes and has a lot of flakes, so
-# leave it as manual.
+# leave it as manual.  The shader_tests are in the main a530_gl suite.
 a530_piglit_gl:
   extends:
     - .a530_piglit
     - .test-manual-mr
   variables:
     PIGLIT_PROFILES: quick_gl
-
-a530_piglit_shader:
-  extends:
-    - .a530_piglit
-  parallel: 2
-  variables:
-    PIGLIT_PROFILES: quick_shader
 
 a530-traces:
   extends:

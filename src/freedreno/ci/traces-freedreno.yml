@@ -43,9 +43,9 @@ traces:
       # Skipped since it's slow even on a530.
       # - device: freedreno-a306
       #   checksum: 4b707f385256b380c936186db8c251cb
-      # 1 minute
+      # 1 minute.  Broken minimap rendering since around !14643
       - device: freedreno-a530
-        checksum: a71d62bb2c0fabeca41468628777b441
+        checksum: a00c5007c26daab3eccb778e68fb2730
       - device: freedreno-a630
         checksum: 339dce29ae08569652438116829510c7
   - path: xonotic/xonotic-keybench-high.trace
