@@ -413,6 +413,7 @@ u_uintN_max(unsigned bit_size)
 #ifndef __cplusplus
 #ifdef _MSC_VER
 #define alignof _Alignof
+#define alignas _Alignas
 #else
 #include <stdalign.h>
 #endif

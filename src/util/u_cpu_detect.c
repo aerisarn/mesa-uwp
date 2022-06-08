@@ -365,7 +365,7 @@ PIPE_ALIGN_STACK static inline boolean sse2_has_daz(void)
       uint32_t pad1[7];
       uint32_t mxcsr_mask;
       uint32_t pad2[128-8];
-   } PIPE_ALIGN_VAR(16) fxarea;
+   } alignas(16) fxarea;
 
    fxarea.mxcsr_mask = 0;
 #if defined(PIPE_CC_GCC)
