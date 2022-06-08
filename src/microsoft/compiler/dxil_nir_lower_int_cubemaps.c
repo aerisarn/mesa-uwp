@@ -41,8 +41,9 @@ type_needs_lowering(const struct glsl_type *type)
 
 static bool
 lower_int_cubmap_to_array_filter(const nir_instr *instr,
-                                 UNUSED const void *_options)
+                                 const void *options)
 {
+   bool lower_samplers = *(bool *)options;
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
       switch (intr->intrinsic) {
@@ -89,7 +90,7 @@ lower_int_cubmap_to_array_filter(const nir_instr *instr,
    } else if (instr->type == nir_instr_type_deref) {
       nir_deref_instr *deref = nir_instr_as_deref(instr);
       return type_needs_lowering(deref->type);
-   } else if (instr->type == nir_instr_type_tex) {
+   } else if (instr->type == nir_instr_type_tex && lower_samplers) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
 
       if (tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE)
@@ -546,9 +547,10 @@ lower_cube_image_deref(nir_builder *b, nir_deref_instr *deref)
 
 static nir_ssa_def *
 lower_int_cubmap_to_array_impl(nir_builder *b, nir_instr *instr,
-                               UNUSED void *_options)
+                               void *options)
 {
-   if (instr->type == nir_instr_type_tex)
+   bool lower_samplers = *(bool *)options;
+   if (instr->type == nir_instr_type_tex && lower_samplers)
       return lower_int_cubemap_to_array_tex(b, nir_instr_as_tex(instr));
    else if (instr->type == nir_instr_type_intrinsic)
       return lower_cube_image_intrinsic(b, nir_instr_as_intrinsic(instr));
@@ -558,13 +560,13 @@ lower_int_cubmap_to_array_impl(nir_builder *b, nir_instr *instr,
 }
 
 bool
-dxil_nir_lower_int_cubemaps(nir_shader *s)
+dxil_nir_lower_int_cubemaps(nir_shader *s, bool lower_samplers)
 {
    bool result =
          nir_shader_lower_instructions(s,
                                        lower_int_cubmap_to_array_filter,
                                        lower_int_cubmap_to_array_impl,
-                                       NULL);
+                                       &lower_samplers);
 
    if (result) {
       nir_foreach_variable_with_modes_safe(var, s, nir_var_uniform | nir_var_image) {

@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 bool
-dxil_nir_lower_int_cubemaps(nir_shader *s);
+dxil_nir_lower_int_cubemaps(nir_shader *s, bool lower_samplers);
 
 #ifdef __cplusplus
 }
