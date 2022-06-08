@@ -76,14 +76,3 @@ tu_wsi_finish(struct tu_physical_device *physical_device)
    wsi_device_finish(&physical_device->wsi_device,
                      &physical_device->instance->vk.alloc);
 }
-
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
-{
-   TU_FROM_HANDLE(tu_queue, queue, _queue);
-
-   return wsi_common_queue_present(
-      &queue->device->physical_device->wsi_device,
-      tu_device_to_handle(queue->device), _queue, queue->vk.queue_family_index,
-      pPresentInfo);
-}
