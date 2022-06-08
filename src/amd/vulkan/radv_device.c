@@ -5471,7 +5471,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
          can_patch = false;
 
-      cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
       use_ace |= radv_cmd_buffer_needs_ace(cmd_buffer);
    }
 

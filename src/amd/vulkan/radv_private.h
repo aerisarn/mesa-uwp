@@ -1635,14 +1635,6 @@ struct radv_cmd_buffer_upload {
    struct list_head list;
 };
 
-enum radv_cmd_buffer_status {
-   RADV_CMD_BUFFER_STATUS_INVALID,
-   RADV_CMD_BUFFER_STATUS_INITIAL,
-   RADV_CMD_BUFFER_STATUS_RECORDING,
-   RADV_CMD_BUFFER_STATUS_EXECUTABLE,
-   RADV_CMD_BUFFER_STATUS_PENDING,
-};
-
 struct radv_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -1650,7 +1642,6 @@ struct radv_cmd_buffer {
 
    struct util_dynarray cached_vertex_formats;
    VkCommandBufferUsageFlags usage_flags;
-   enum radv_cmd_buffer_status status;
    struct radeon_cmdbuf *cs;
    struct radv_cmd_state state;
    struct radv_buffer *vertex_binding_buffers[MAX_VBS];

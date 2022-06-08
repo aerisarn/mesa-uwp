@@ -420,8 +420,6 @@ radv_create_cmd_buffer(struct vk_command_pool *pool,
 
    list_inithead(&cmd_buffer->upload.list);
 
-   cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
-
    return VK_SUCCESS;
 }
 
@@ -481,8 +479,6 @@ radv_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    }
 
    radv_cmd_buffer_reset_rendering(cmd_buffer);
-
-   cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
 }
 
 const struct vk_command_buffer_ops radv_cmd_buffer_ops = {
@@ -5260,12 +5256,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    VkResult result = VK_SUCCESS;
 
-   if (cmd_buffer->status != RADV_CMD_BUFFER_STATUS_INITIAL) {
-      /* If the command buffer has already been resetted with
-       * vkResetCommandBuffer, no need to do it again.
-       */
-      radv_reset_cmd_buffer(&cmd_buffer->vk, 0);
-   }
+   vk_command_buffer_begin(&cmd_buffer->vk, pBeginInfo);
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
    cmd_buffer->state.last_primitive_reset_en = -1;
@@ -5365,8 +5356,6 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
       radv_cmd_buffer_trace_emit(cmd_buffer);
 
    radv_describe_begin_cmd_buffer(cmd_buffer);
-
-   cmd_buffer->status = RADV_CMD_BUFFER_STATUS_RECORDING;
 
    return result;
 }
@@ -5755,9 +5744,7 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
    if (result != VK_SUCCESS)
       return vk_error(cmd_buffer, result);
 
-   cmd_buffer->status = RADV_CMD_BUFFER_STATUS_EXECUTABLE;
-
-   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
+   return vk_command_buffer_end(&cmd_buffer->vk);
 }
 
 static void
