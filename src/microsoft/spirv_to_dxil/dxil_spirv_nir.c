@@ -665,7 +665,10 @@ dxil_spirv_nir_passes(nir_shader *nir,
    NIR_PASS_V(nir, dxil_nir_lower_bool_input);
    NIR_PASS_V(nir, dxil_nir_lower_ubo_array_one_to_static);
    NIR_PASS_V(nir, nir_opt_dce);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform, NULL);
+   NIR_PASS_V(nir, nir_remove_dead_derefs);
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_uniform | nir_var_shader_in | nir_var_shader_out,
+              NULL);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       dxil_sort_ps_outputs(nir);
