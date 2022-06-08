@@ -59,7 +59,7 @@ struct lp_build_context;
  */
 struct lp_build_format_cache
 {
-   PIPE_ALIGN_VAR(16) uint32_t cache_data[LP_BUILD_FORMAT_CACHE_SIZE][4][4];
+   alignas(16) uint32_t cache_data[LP_BUILD_FORMAT_CACHE_SIZE][4][4];
    uint64_t cache_tags[LP_BUILD_FORMAT_CACHE_SIZE];
 #if LP_BUILD_FORMAT_CACHE_DEBUG
    uint64_t cache_access_total;
