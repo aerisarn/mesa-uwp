@@ -33,11 +33,13 @@
 
 #include "util/macros.h"
 
+#include <limits.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <limits.h>
 
 
 #if defined(_WIN32) && !defined(__WIN32__)
@@ -52,10 +54,6 @@
 #pragma warning(disable: 4296)
 
 #endif /* _MSC_VER */
-
-
-#include <stdint.h>
-#include <stdbool.h>
 
 
 #ifdef __cplusplus
