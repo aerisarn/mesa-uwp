@@ -82,6 +82,13 @@ dzn_descriptor_type_depends_on_shader_usage(VkDescriptorType type)
           type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 }
 
+static inline bool
+dzn_desc_type_has_sampler(VkDescriptorType type)
+{
+   return type == VK_DESCRIPTOR_TYPE_SAMPLER ||
+          type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+}
+
 static uint32_t
 num_descs_for_type(VkDescriptorType type, bool static_sampler)
 {
@@ -101,9 +108,7 @@ num_descs_for_type(VkDescriptorType type, bool static_sampler)
       num_descs++;
 
    /* Don't count immutable samplers, they have their own descriptor. */
-   if (static_sampler &&
-       (type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-        type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
+   if (static_sampler && dzn_desc_type_has_sampler(type))
       num_descs--;
 
    return num_descs;
@@ -142,9 +147,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       D3D12_SHADER_VISIBILITY visibility =
          translate_desc_visibility(bindings[i].stageFlags);
       VkDescriptorType desc_type = bindings[i].descriptorType;
-      bool has_sampler =
-         desc_type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-         desc_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bool has_sampler = dzn_desc_type_has_sampler(desc_type);
 
       /* From the Vulkan 1.1.97 spec for VkDescriptorSetLayoutBinding:
        *
@@ -263,9 +266,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       VkDescriptorType desc_type = ordered_bindings[i].descriptorType;
       uint32_t binding = ordered_bindings[i].binding;
       uint32_t desc_count = ordered_bindings[i].descriptorCount;
-      bool has_sampler =
-         desc_type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-         desc_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bool has_sampler = dzn_desc_type_has_sampler(desc_type);
       bool has_immutable_samplers =
          has_sampler &&
          ordered_bindings[i].pImmutableSamplers != NULL;
@@ -1272,8 +1273,7 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
    if (layout->immutable_sampler_count) {
       for (uint32_t b = 0; b < layout->binding_count; b++) {
          bool has_samplers =
-            layout->bindings[b].type == VK_DESCRIPTOR_TYPE_SAMPLER ||
-            layout->bindings[b].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            dzn_desc_type_has_sampler(layout->bindings[b].type);
 
          if (!has_samplers || layout->bindings[b].immutable_sampler_idx == ~0)
             continue;
@@ -1953,8 +1953,7 @@ dzn_descriptor_update_template_create(struct dzn_device *device,
          memset(&entry->heap_offsets, ~0, sizeof(entry->heap_offsets));
 
          assert(dzn_descriptor_set_ptr_get_vk_type(set_layout, &ptr) == type);
-         if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-             type == VK_DESCRIPTOR_TYPE_SAMPLER) {
+         if (dzn_desc_type_has_sampler(type)) {
             entry->heap_offsets.sampler =
                dzn_descriptor_set_ptr_get_heap_offset(set_layout,
                                                       D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
