@@ -241,6 +241,9 @@ EXTENSIONS = [
         features=True,
         properties=True,
         conditions=["$feats.descriptorBindingPartiallyBound"]),
+    Extension("VK_EXT_depth_clip_enable",
+        alias="depth_clip_enable",
+        features=True),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))

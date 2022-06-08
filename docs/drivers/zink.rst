@@ -83,13 +83,18 @@ are required:
 OpenGL 3.2
 ^^^^^^^^^^
 
-For OpenGL 3.2 support, the following additional ``VkPhysicalDeviceFeatures``
-are required to be supported, although some of these might not actually get
-verified:
+For OpenGL 3.2 support, the following additional requirements must be
+supported, although some of these might not actually get verified:
 
-* ``depthClamp``
-* ``geometryShader``
-* ``shaderTessellationAndGeometryPointSize``
+* ``VkPhysicalDeviceFeatures``:
+
+  * ``depthClamp``
+  * ``geometryShader``
+  * ``shaderTessellationAndGeometryPointSize``
+
+* Device extensions:
+
+  * `VK_EXT_depth_clip_enable`_
 
 OpenGL 3.3
 ^^^^^^^^^^
@@ -311,3 +316,4 @@ questions, don't hesitate to visit `#zink on OFTC
 .. _VK_EXT_custom_border_color: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_custom_border_color.html
 .. _VK_EXT_provoking_vertex: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_provoking_vertex.html
 .. _VK_EXT_line_rasterization: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_line_rasterization.html
+.. _VK_EXT_depth_clip_enable: https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_EXT_depth_clip_enable.html
