@@ -668,6 +668,12 @@ dxil_spirv_nir_passes(nir_shader *nir,
 {
    glsl_type_singleton_init_or_ref();
 
+   NIR_PASS_V(nir, nir_lower_io_to_vector,
+              nir_var_shader_out |
+              (nir->info.stage != MESA_SHADER_VERTEX ? nir_var_shader_in : 0));
+   NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_shader_out);
+   NIR_PASS_V(nir, nir_remove_dead_derefs);
+
    const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
       .frag_coord = true,
       .point_coord = true,
