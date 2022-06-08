@@ -104,26 +104,10 @@ typedef unsigned char boolean;
 
 
 /* Macro for stack alignment. */
-#if defined(__GNUC__)
-
-#ifdef PIPE_ARCH_X86
+#if defined(__GNUC__) && defined(PIPE_ARCH_X86)
 #define PIPE_ALIGN_STACK __attribute__((force_align_arg_pointer))
 #else
 #define PIPE_ALIGN_STACK
-#endif
-
-#elif defined(_MSC_VER)
-
-#define PIPE_ALIGN_STACK
-
-#elif defined(SWIG)
-
-#define PIPE_ALIGN_STACK
-
-#else
-
-#error "Unsupported compiler"
-
 #endif
 
 /**
