@@ -276,6 +276,14 @@ dzn_physical_device_create(struct dzn_instance *instance,
    memset(pdev->driver_uuid, 0, VK_UUID_SIZE);
    memset(pdev->device_uuid, 0, VK_UUID_SIZE);
 
+   uint32_t num_sync_types = 0;
+   pdev->sync_types[num_sync_types++] = &dzn_sync_type;
+   pdev->sync_types[num_sync_types++] = &instance->sync_binary_type.sync;
+   pdev->sync_types[num_sync_types++] = &vk_sync_dummy_type;
+   pdev->sync_types[num_sync_types] = NULL;
+   assert(num_sync_types <= MAX_SYNC_TYPES);
+   pdev->vk.supported_sync_types = pdev->sync_types;
+
    /* TODO: something something queue families */
 
    result = dzn_wsi_init(pdev);
@@ -285,14 +293,6 @@ dzn_physical_device_create(struct dzn_instance *instance,
    }
 
    dzn_physical_device_get_extensions(pdev);
-
-   uint32_t num_sync_types = 0;
-   pdev->sync_types[num_sync_types++] = &dzn_sync_type;
-   pdev->sync_types[num_sync_types++] = &instance->sync_binary_type.sync;
-   pdev->sync_types[num_sync_types++] = &vk_sync_dummy_type;
-   pdev->sync_types[num_sync_types] = NULL;
-   assert(num_sync_types <= MAX_SYNC_TYPES);
-   pdev->vk.supported_sync_types = pdev->sync_types;
 
    return VK_SUCCESS;
 }
