@@ -765,7 +765,6 @@ tu_drm_device_init(struct tu_physical_device *device,
    device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
 
    result = tu_physical_device_init(device, instance);
-   device->vk.supported_sync_types = device->sync_types;
 
    if (result == VK_SUCCESS)
        return result;

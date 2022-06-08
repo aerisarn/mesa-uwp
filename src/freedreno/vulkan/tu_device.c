@@ -302,6 +302,8 @@ tu_physical_device_init(struct tu_physical_device *device,
    if (result != VK_SUCCESS)
       goto fail_free_name;
 
+   device->vk.supported_sync_types = device->sync_types;
+
 #if TU_HAS_SURFACE
    result = tu_wsi_init(device);
    if (result != VK_SUCCESS) {
