@@ -6183,12 +6183,22 @@ static fs_reg
 emit_a64_oword_block_header(const fs_builder &bld, const fs_reg &addr)
 {
    const fs_builder ubld = bld.exec_all().group(8, 0);
+
+   assert(type_sz(addr.type) == 8 && addr.stride == 0);
+
+   fs_reg expanded_addr = addr;
+   if (addr.file == UNIFORM) {
+      /* We can't do stride 1 with the UNIFORM file, it requires stride 0 */
+      expanded_addr = ubld.vgrf(BRW_REGISTER_TYPE_UQ);
+      expanded_addr.stride = 0;
+      ubld.MOV(expanded_addr, addr);
+   }
+
    fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
    ubld.MOV(header, brw_imm_ud(0));
 
    /* Use a 2-wide MOV to fill out the address */
-   assert(type_sz(addr.type) == 8 && addr.stride == 0);
-   fs_reg addr_vec2 = addr;
+   fs_reg addr_vec2 = expanded_addr;
    addr_vec2.type = BRW_REGISTER_TYPE_UD;
    addr_vec2.stride = 1;
    ubld.group(2, 0).MOV(header, addr_vec2);
