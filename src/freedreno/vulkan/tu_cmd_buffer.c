@@ -2855,6 +2855,22 @@ tu_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer,
    tu_stub();
 }
 
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmentCount,
+                             const VkBool32 *pColorWriteEnables)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   uint32_t color_write_enable = 0;
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      if (pColorWriteEnables[i])
+         color_write_enable |= BIT(i);
+   }
+
+   cmd->state.color_write_enable = color_write_enable;
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
 static void
 tu_flush_for_access(struct tu_cache_state *cache,
                     enum tu_cmd_access_mask src_mask,
@@ -3819,6 +3835,10 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
        cmd->state.logic_op_enabled && cmd->state.rop_reads_dst)
       gras_lrz_cntl.lrz_write = false;
 
+   if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
+        cmd->state.color_write_enable != MASK(cmd->state.pipeline->num_rts))
+      gras_lrz_cntl.lrz_write = false;
+
    /* LRZ is disabled until it is cleared, which means that one "wrong"
     * depth test or shader could disable LRZ until depth buffer is cleared.
     */
@@ -4053,6 +4073,10 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
    struct tu_pipeline *pipeline = cmd->state.pipeline;
    uint32_t color_write_enable = cmd->state.pipeline_color_write_enable;
 
+   if (pipeline->dynamic_state_mask &
+       BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE))
+      color_write_enable &= cmd->state.color_write_enable;
+
    for (unsigned i = 0; i < pipeline->num_rts; i++) {
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
       if (color_write_enable & BIT(i)) {
@@ -4069,7 +4093,8 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
 
    uint32_t blend_enable_mask =
       (cmd->state.logic_op_enabled && cmd->state.rop_reads_dst) ?
-      color_write_enable : cmd->state.pipeline_blend_enable;
+      color_write_enable : (cmd->state.pipeline_blend_enable &
+                            cmd->state.color_write_enable);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_BLEND_CNTL, 1);
    tu_cs_emit(cs, cmd->state.sp_blend_cntl |

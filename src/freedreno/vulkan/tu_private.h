@@ -701,6 +701,7 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = TU_DYNAMIC_STATE_COUNT,
    TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
    TU_DYNAMIC_STATE_LOGIC_OP,
+   TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE,
    /* re-use the line width enum as it uses GRAS_SU_CNTL: */
    TU_DYNAMIC_STATE_GRAS_SU_CNTL = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
@@ -1169,6 +1170,7 @@ struct tu_cmd_state
    uint32_t rb_mrt_control_rop;
    uint32_t rb_blend_cntl, sp_blend_cntl;
    uint32_t pipeline_color_write_enable, pipeline_blend_enable;
+   uint32_t color_write_enable;
    bool logic_op_enabled;
    bool rop_reads_dst;
    enum pc_di_primtype primtype;

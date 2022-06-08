@@ -2155,6 +2155,17 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
                          bool *rop_reads_dst,
                          uint32_t *color_bandwidth_per_sample)
 {
+   const VkPipelineColorWriteCreateInfoEXT *color_info =
+      vk_find_struct_const(blend_info->pNext,
+                           PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
+
+   /* The static state is ignored if it's dynamic. In that case assume
+    * everything is enabled and then the appropriate registers will be zero'd
+    * dynamically.
+    */
+   if (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE))
+      color_info = NULL;
+
    *rop_reads_dst = false;
    *color_bandwidth_per_sample = 0;
 
@@ -2174,7 +2185,8 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
 
       uint32_t rb_mrt_control = 0;
       uint32_t rb_mrt_blend_control = 0;
-      if (format != VK_FORMAT_UNDEFINED) {
+      if (format != VK_FORMAT_UNDEFINED &&
+          (!color_info || color_info->pColorWriteEnables[i])) {
          const bool has_alpha = vk_format_has_alpha(format);
 
          rb_mrt_control =
@@ -3149,6 +3161,17 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_BLEND);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_LOGIC_OP);
          break;
+      case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
+         pipeline->sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_BLEND);
+
+         /* Dynamic color write enable doesn't directly change any of the
+          * registers, but it causes us to make some of the registers 0, so we
+          * set this dynamic state instead of making the register dynamic.
+          */
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE);
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3615,7 +3638,8 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       VkFormat format = builder->color_attachment_formats[i];
       unsigned mask = MASK(vk_format_get_nr_components(format));
       if (format != VK_FORMAT_UNDEFINED &&
-          (blendAttachment.colorWriteMask & mask) != mask) {
+          ((blendAttachment.colorWriteMask & mask) != mask ||
+           !(pipeline->color_write_enable & BIT(i)))) {
          pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
    }
