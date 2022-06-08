@@ -687,14 +687,6 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
 }
 
 int
-tu_signal_syncs(struct tu_device *device,
-                struct vk_sync *sync1, struct vk_sync *sync2)
-{
-   tu_finishme("tu_signal_syncs");
-   return 0;
-}
-
-int
 tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync)
 {
    tu_finishme("tu_syncobj_to_fd");

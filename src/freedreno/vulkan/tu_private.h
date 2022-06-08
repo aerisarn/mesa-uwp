@@ -103,8 +103,6 @@ typedef uint32_t xcb_window_t;
 #include "vk_queue.h"
 #include "vk_object.h"
 #include "vk_sync.h"
-#include "vk_fence.h"
-#include "vk_semaphore.h"
 #include "vk_drm_syncobj.h"
 #include "vk_sync_timeline.h"
 
@@ -1990,9 +1988,6 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
 
 void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
-
-int
-tu_signal_syncs(struct tu_device *device, struct vk_sync *sync1, struct vk_sync *sync2);
 
 int
 tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync);

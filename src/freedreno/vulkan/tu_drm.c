@@ -1198,25 +1198,6 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    return VK_SUCCESS;
 }
 
-VkResult
-tu_signal_syncs(struct tu_device *device,
-                struct vk_sync *sync1, struct vk_sync *sync2)
-{
-   VkResult ret = VK_SUCCESS;
-
-   if (sync1) {
-      ret = vk_sync_signal(&device->vk, sync1, 0);
-
-      if (ret != VK_SUCCESS)
-         return ret;
-   }
-
-   if (sync2)
-      ret = vk_sync_signal(&device->vk, sync2, 0);
-
-   return ret;
-}
-
 int
 tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync)
 {
