@@ -2112,8 +2112,7 @@ opt_shader_and_create_symbol_table(const struct gl_constants *consts,
     *
     * Run it just once, since NIR will do the real optimization.
     */
-   do_common_optimization(shader->ir, false, false, options,
-                           consts->NativeIntegers);
+   do_common_optimization(shader->ir, false, options, consts->NativeIntegers);
 
    validate_ir_tree(shader->ir);
 
@@ -2360,7 +2359,6 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
  */
 bool
 do_common_optimization(exec_list *ir, bool linked,
-		       bool uniform_locations_assigned,
                        const struct gl_shader_compiler_options *options,
                        bool native_integers)
 {
@@ -2398,7 +2396,7 @@ do_common_optimization(exec_list *ir, bool linked,
       OPT(opt_flip_matrices, ir);
 
    if (linked)
-      OPT(do_dead_code, ir, uniform_locations_assigned);
+      OPT(do_dead_code, ir);
    else
       OPT(do_dead_code_unlinked, ir);
    OPT(do_dead_code_local, ir);

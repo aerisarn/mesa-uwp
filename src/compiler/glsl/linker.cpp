@@ -3566,8 +3566,7 @@ linker_optimisation_loop(const struct gl_constants *consts, exec_list *ir,
                          unsigned stage)
 {
    /* Run it just once, since NIR will do the real optimizaiton. */
-   do_common_optimization(ir, true, false,
-                           &consts->ShaderCompilerOptions[stage],
+   do_common_optimization(ir, true, &consts->ShaderCompilerOptions[stage],
                            consts->NativeIntegers);
 }
 

@@ -212,8 +212,7 @@ glsl_to_nir(const struct gl_constants *consts,
     * TODO: add missing glsl ir to nir support and remove this loop.
     */
    while (has_unsupported_function_param(sh->ir)) {
-      do_common_optimization(sh->ir, true, true, gl_options,
-                             consts->NativeIntegers);
+      do_common_optimization(sh->ir, true, gl_options, consts->NativeIntegers);
    }
 
    nir_shader *shader = nir_shader_create(NULL, stage, options,

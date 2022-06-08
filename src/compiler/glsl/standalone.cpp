@@ -546,7 +546,6 @@ standalone_compile_shader(const struct standalone_options *_options,
 
                progress = do_common_optimization(ir,
                                                  false,
-                                                 false,
                                                  compiler_options,
                                                  true)
                   && progress;
