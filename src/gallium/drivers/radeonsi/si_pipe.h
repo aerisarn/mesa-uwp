@@ -710,6 +710,11 @@ struct si_screen {
    struct util_vertex_state_cache vertex_state_cache;
 
    struct si_resource *attribute_ring;
+
+   /* NGG streamout. */
+   simple_mtx_t gds_mutex;
+   struct pb_buffer *gds;
+   struct pb_buffer *gds_oa;
 };
 
 struct si_sampler_view {
@@ -1019,10 +1024,6 @@ struct si_context {
    unsigned flags; /* flush flags */
    /* Current unaccounted memory usage. */
    uint32_t memory_usage_kb;
-
-   /* NGG streamout. */
-   struct pb_buffer *gds;
-   struct pb_buffer *gds_oa;
 
    /* Atoms (direct states). */
    union si_state_atoms atoms;

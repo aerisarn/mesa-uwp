@@ -211,10 +211,10 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
 
 static void si_add_gds_to_buffer_list(struct si_context *sctx)
 {
-   if (sctx->gds) {
-      sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->gds, RADEON_USAGE_READWRITE, 0);
-      if (sctx->gds_oa) {
-         sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->gds_oa, RADEON_USAGE_READWRITE, 0);
+   if (sctx->screen->gds) {
+      sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->screen->gds, RADEON_USAGE_READWRITE, 0);
+      if (sctx->screen->gds_oa) {
+         sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->screen->gds_oa, RADEON_USAGE_READWRITE, 0);
       }
    }
 }
@@ -223,7 +223,7 @@ void si_allocate_gds(struct si_context *sctx)
 {
    struct radeon_winsys *ws = sctx->ws;
 
-   if (sctx->gds)
+   if (sctx->screen->gds && sctx->screen->gds_oa)
       return;
 
    assert(sctx->screen->use_ngg_streamout);
@@ -231,10 +231,15 @@ void si_allocate_gds(struct si_context *sctx)
    /* 4 streamout GDS counters.
     * We need 256B (64 dw) of GDS, otherwise streamout hangs.
     */
-   sctx->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, RADEON_FLAG_DRIVER_INTERNAL);
-   sctx->gds_oa = ws->buffer_create(ws, 4, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
+   simple_mtx_lock(&sctx->screen->gds_mutex);
+   if (!sctx->screen->gds)
+      sctx->screen->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, RADEON_FLAG_DRIVER_INTERNAL);
+   if (!sctx->screen->gds_oa)
+      sctx->screen->gds_oa = ws->buffer_create(ws, 4, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
+   simple_mtx_unlock(&sctx->screen->gds_mutex);
 
-   assert(sctx->gds && sctx->gds_oa);
+   assert(sctx->screen->gds && sctx->screen->gds_oa);
+
    si_add_gds_to_buffer_list(sctx);
 }
 
