@@ -557,7 +557,6 @@ struct dzn_cmd_buffer_dsv_entry {
 
 struct dzn_cmd_buffer {
    struct vk_command_buffer vk;
-   VkResult error;
    struct dzn_cmd_buffer_state state;
 
    struct {
