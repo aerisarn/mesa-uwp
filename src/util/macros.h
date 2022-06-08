@@ -412,7 +412,7 @@ u_uintN_max(unsigned bit_size)
  * of it will make it aligned to align_size.
  * See https://en.cppreference.com/w/c/language/_Alignas for
  * details. We can use static_assert and alignof to check if
- * the alignment result of alignas(align_size) on struct or 
+ * the alignment result of alignas(align_size) on struct or
  * union is valid.
  * For example:
  *   static_assert(alignof(struct tgsi_exec_machine) == 16, "")
@@ -486,5 +486,13 @@ typedef int lock_cap_t;
 #define PRAGMA_DIAGNOSTIC_WARNING(X)
 #define PRAGMA_DIAGNOSTIC_IGNORED(X)
 #endif
+
+#define PASTE2(a, b) a ## b
+#define PASTE3(a, b, c) a ## b ## c
+#define PASTE4(a, b, c, d) a ## b ## c ## d
+
+#define CONCAT2(a, b) PASTE2(a, b)
+#define CONCAT3(a, b, c) PASTE3(a, b, c)
+#define CONCAT4(a, b, c, d) PASTE4(a, b, c, d)
 
 #endif /* UTIL_MACROS_H */
