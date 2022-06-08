@@ -23,9 +23,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#define PASTE2(name, elt_type) name ## elt_type
-#define CONCAT2(name, elt_type) PASTE2(name, elt_type)
-
 #ifdef ELT_TYPE
 
 /**
@@ -303,9 +300,6 @@ vsplit_segment_fan_linear(struct vsplit_frontend *vsplit, unsigned flags,
    CONCAT2(vsplit_segment_fan_, ELT_TYPE)(vsplit, flags, istart, icount, i0)
 
 #include "draw_split_tmp.h"
-
-#undef PASTE2
-#undef CONCAT2
 
 #undef ELT_TYPE
 #undef ADD_CACHE

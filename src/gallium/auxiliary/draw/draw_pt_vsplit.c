@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "util/macros.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 
