@@ -70,7 +70,7 @@ struct zink_vertex_state {
 struct zink_rasterizer_hw_state {
    unsigned polygon_mode : 2; //VkPolygonMode
    unsigned line_mode : 2; //VkLineRasterizationModeEXT
-   unsigned depth_clamp:1;
+   unsigned depth_clip:1;
    unsigned pv_last:1;
    unsigned line_stipple_enable:1;
    unsigned force_persample_interp:1;

@@ -578,7 +578,7 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->hw_state.line_stipple_enable = rs_state->line_stipple_enable;
 
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
-   state->hw_state.depth_clamp = rs_state->depth_clip_near == 0;
+   state->hw_state.depth_clip = rs_state->depth_clip_near;
    state->hw_state.force_persample_interp = rs_state->force_persample_interp;
    state->hw_state.pv_last = !rs_state->flatshade_first;
    state->hw_state.clip_halfz = rs_state->clip_halfz;

@@ -170,7 +170,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineRasterizationStateCreateInfo rast_state = {0};
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
-   rast_state.depthClampEnable = hw_rast_state->depth_clamp;
+   rast_state.depthClampEnable = true;
    rast_state.rasterizerDiscardEnable = state->dyn_state2.rasterizer_discard;
    rast_state.polygonMode = hw_rast_state->polygon_mode;
    rast_state.cullMode = state->dyn_state1.cull_mode;
@@ -181,6 +181,17 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.depthBiasClamp = 0.0;
    rast_state.depthBiasSlopeFactor = 0.0;
    rast_state.lineWidth = 1.0f;
+
+   VkPipelineRasterizationDepthClipStateCreateInfoEXT depth_clip_state = {0};
+   depth_clip_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
+   depth_clip_state.depthClipEnable = hw_rast_state->depth_clip;
+   if (screen->info.have_EXT_depth_clip_enable) {
+      depth_clip_state.pNext = rast_state.pNext;
+      rast_state.pNext = &depth_clip_state;
+   } else {
+      static bool warned = false;
+      warn_missing_feature(warned, "VK_EXT_depth_clip_enable");
+   }
 
    VkPipelineRasterizationProvokingVertexStateCreateInfoEXT pv_state;
    pv_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT;
