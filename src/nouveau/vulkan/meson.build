@@ -3,6 +3,7 @@ nvk_files = files(
   'nvk_bo_sync.h',
   'nvk_buffer.c',
   'nvk_buffer.h',
+  'nvk_cmd_blit.c',
   'nvk_cmd_buffer.c',
   'nvk_cmd_buffer.h',
   'nvk_cmd_copy.c',
