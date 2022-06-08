@@ -15,5 +15,7 @@ RUN C:\mesa_deps_vs2019.ps1
 COPY mesa_vs_init.ps1 C:\
 
 ENV VULKAN_SDK_VERSION='1.3.211.0'
+COPY mesa_deps_choco.ps1 C:\
+RUN C:\mesa_deps_choco.ps1
 COPY mesa_deps_build.ps1 C:\
 RUN C:\mesa_deps_build.ps1
