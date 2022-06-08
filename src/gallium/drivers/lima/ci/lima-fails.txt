@@ -125,7 +125,6 @@ spec@arb_texture_cube_map@cubemap,Fail
 spec@arb_texture_cube_map@cubemap npot,Fail
 spec@arb_texture_cube_map@cubemap-shader,Fail
 spec@arb_texture_rectangle@1-1-linear-texture,Fail
-spec@arb_texture_rectangle@copyteximage rect,Fail
 spec@arb_texture_rectangle@copyteximage rect samples=2,Fail
 spec@arb_texture_rectangle@copyteximage rect samples=4,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect-01,Fail
@@ -573,8 +572,6 @@ spec@!opengl 1.0@gl-1.0-scissor-bitmap,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
-spec@!opengl 1.1@copyteximage 1d,Fail
-spec@!opengl 1.1@copyteximage 2d,Fail
 spec@!opengl 1.1@gl-1.1-xor-copypixels,Fail
 spec@!opengl 1.1@gl-1.1-xor,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
