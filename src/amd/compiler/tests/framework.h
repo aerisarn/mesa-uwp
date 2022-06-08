@@ -30,6 +30,7 @@
 #include "amd_family.h"
 #include "aco_ir.h"
 #include "aco_builder.h"
+#include "util/macros.h"
 #include "vulkan/radv_shader.h"
 
 struct TestDef {
@@ -56,9 +57,6 @@ inline bool set_variant(amd_gfx_level cls, const char *rest="")
 
 void fail_test(const char *fmt, ...);
 void skip_test(const char *fmt, ...);
-
-#define PASTE2(a, b) a##b
-#define CONCAT2(a, b) PASTE2(a, b)
 
 #define _BEGIN_TEST(name, struct_name) static void struct_name(); static __attribute__((constructor)) void CONCAT2(add_test_, __COUNTER__)() {\
       tests[#name] = (TestDef){#name, ACO_TEST_BUILD_ROOT "/" __FILE__, &struct_name};\
