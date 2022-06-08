@@ -92,13 +92,6 @@ enum pvr_memlayout {
    PVR_MEMLAYOUT_3DTWIDDLED,
 };
 
-enum pvr_cmd_buffer_status {
-   PVR_CMD_BUFFER_STATUS_INVALID = 0, /* explicitly treat 0 as invalid */
-   PVR_CMD_BUFFER_STATUS_INITIAL,
-   PVR_CMD_BUFFER_STATUS_RECORDING,
-   PVR_CMD_BUFFER_STATUS_EXECUTABLE,
-};
-
 enum pvr_texture_state {
    PVR_TEXTURE_STATE_SAMPLE,
    PVR_TEXTURE_STATE_STORAGE,
@@ -1077,9 +1070,6 @@ struct pvr_cmd_buffer {
 
    struct pvr_device *device;
 
-   /* Buffer status, invalid/initial/recording/executable */
-   enum pvr_cmd_buffer_status status;
-
    /* Buffer usage flags */
    VkCommandBufferUsageFlags usage_flags;
 
@@ -1733,7 +1723,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_render_pass,
 #define PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer)         \
    do {                                                             \
       struct pvr_cmd_buffer *const _cmd_buffer = (cmd_buffer);      \
-      if (_cmd_buffer->status != PVR_CMD_BUFFER_STATUS_RECORDING) { \
+      if (_cmd_buffer->vk.state != MESA_VK_COMMAND_BUFFER_STATE_RECORDING) { \
          vk_errorf(_cmd_buffer,                                     \
                    VK_ERROR_OUT_OF_DEVICE_MEMORY,                   \
                    "Command buffer is not in recording state");     \

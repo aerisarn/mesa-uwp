@@ -166,7 +166,6 @@ static void pvr_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
 
    cmd_buffer->usage_flags = 0;
    cmd_buffer->state.status = VK_SUCCESS;
-   cmd_buffer->status = PVR_CMD_BUFFER_STATUS_INITIAL;
 }
 
 static void pvr_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
@@ -213,7 +212,6 @@ static VkResult pvr_cmd_buffer_create(struct pvr_device *device,
    util_dynarray_init(&cmd_buffer->deferred_csb_commands, NULL);
 
    cmd_buffer->state.status = VK_SUCCESS;
-   cmd_buffer->status = PVR_CMD_BUFFER_STATUS_INITIAL;
 
    list_inithead(&cmd_buffer->sub_cmds);
    list_inithead(&cmd_buffer->bo_list);
@@ -2660,8 +2658,7 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    struct pvr_cmd_buffer_state *state;
    VkResult result;
 
-   if (cmd_buffer->status != PVR_CMD_BUFFER_STATUS_INITIAL)
-      pvr_cmd_buffer_reset(&cmd_buffer->vk, 0);
+   vk_command_buffer_begin(&cmd_buffer->vk, pBeginInfo);
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
    state = &cmd_buffer->state;
@@ -2703,8 +2700,6 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    memset(state->barriers_needed,
           0xFF,
           sizeof(*state->barriers_needed) * ARRAY_SIZE(state->barriers_needed));
-
-   cmd_buffer->status = PVR_CMD_BUFFER_STATUS_RECORDING;
 
    return VK_SUCCESS;
 }
@@ -6507,7 +6502,7 @@ VkResult pvr_EndCommandBuffer(VkCommandBuffer commandBuffer)
     *
     * CommandBuffer must be in the recording state.
     */
-   assert(cmd_buffer->status == PVR_CMD_BUFFER_STATUS_RECORDING);
+   assert(cmd_buffer->vk.state == MESA_VK_COMMAND_BUFFER_STATE_RECORDING);
 
    if (state->status != VK_SUCCESS)
       return state->status;
@@ -6516,7 +6511,5 @@ VkResult pvr_EndCommandBuffer(VkCommandBuffer commandBuffer)
    if (result != VK_SUCCESS)
       return result;
 
-   cmd_buffer->status = PVR_CMD_BUFFER_STATUS_EXECUTABLE;
-
-   return VK_SUCCESS;
+   return vk_command_buffer_end(&cmd_buffer->vk);
 }
