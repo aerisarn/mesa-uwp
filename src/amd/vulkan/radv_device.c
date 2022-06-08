@@ -3146,6 +3146,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool vs_prologs = false;
    bool global_bo_list = false;
    bool image_2d_view_of_3d = false;
+   bool primitives_generated_query = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -3218,6 +3219,14 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
             image_2d_view_of_3d = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT: {
+         const VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT *features = (const void *)ext;
+         if (features->primitivesGeneratedQuery ||
+             features->primitivesGeneratedQueryWithRasterizerDiscard ||
+             features->primitivesGeneratedQueryWithNonZeroStreams)
+            primitives_generated_query = true;
+         break;
+      }
       default:
          break;
       }
@@ -3281,6 +3290,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->image_float32_atomics = image_float32_atomics;
 
    device->image_2d_view_of_3d = image_2d_view_of_3d;
+
+   device->primitives_generated_query = primitives_generated_query;
 
    radv_init_shader_arenas(device);
 

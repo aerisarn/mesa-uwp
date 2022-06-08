@@ -854,6 +854,9 @@ struct radv_device {
    /* Whether 2D views of 3D image is enabled. */
    bool image_2d_view_of_3d;
 
+   /* Whether primitives generated query features are enabled. */
+   bool primitives_generated_query;
+
    /* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
    int force_aniso;
 
