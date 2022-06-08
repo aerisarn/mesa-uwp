@@ -173,6 +173,9 @@ radv_physical_device_init_queue_table(struct radv_physical_device *pdevice)
          idx++;
       }
    }
+
+   pdevice->vk_queue_to_radv[idx++] = RADV_QUEUE_SPARSE;
+
    pdevice->num_queues = idx;
 }
 
@@ -2064,7 +2067,7 @@ static void
 radv_get_physical_device_queue_family_properties(struct radv_physical_device *pdevice, uint32_t *pCount,
                                                  VkQueueFamilyProperties **pQueueFamilyProperties)
 {
-   int num_queue_families = 1;
+   int num_queue_families = 2;
    int idx;
    if (pdevice->rad_info.ip[AMD_IP_COMPUTE].num_queues > 0 &&
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE))
@@ -2086,8 +2089,7 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    idx = 0;
    if (*pCount >= 1) {
       *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
-         .queueFlags =
-            VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT,
+         .queueFlags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
          .queueCount = 1,
          .timestampValidBits = 64,
          .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
@@ -2099,13 +2101,23 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE)) {
       if (*pCount > idx) {
          *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
-            .queueFlags = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT,
+            .queueFlags = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
             .queueCount = pdevice->rad_info.ip[AMD_IP_COMPUTE].num_queues,
             .timestampValidBits = 64,
             .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
          };
          idx++;
       }
+   }
+
+   if (*pCount > idx) {
+      *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
+         .queueFlags = VK_QUEUE_SPARSE_BINDING_BIT,
+         .queueCount = 1,
+         .timestampValidBits = 64,
+         .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
+      };
+      idx++;
    }
 
    if (pdevice->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE) {
@@ -2145,9 +2157,10 @@ radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, ui
       &pQueueFamilyProperties[0].queueFamilyProperties,
       &pQueueFamilyProperties[1].queueFamilyProperties,
       &pQueueFamilyProperties[2].queueFamilyProperties,
+      &pQueueFamilyProperties[3].queueFamilyProperties,
    };
    radv_get_physical_device_queue_family_properties(pdevice, pCount, properties);
-   assert(*pCount <= 3);
+   assert(*pCount <= 4);
 
    for (uint32_t i = 0; i < *pCount; i++) {
       vk_foreach_struct (ext, pQueueFamilyProperties[i].pNext) {

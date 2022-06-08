@@ -1683,16 +1683,50 @@ fail:
 }
 
 static VkResult
+radv_queue_sparse_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+{
+   struct radv_queue *queue = (struct radv_queue *)vqueue;
+   struct radv_device *device = queue->device;
+   VkResult result;
+
+   result = radv_queue_submit_bind_sparse_memory(device, submission);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   /* We do a CPU wait here, in part to avoid more winsys mechanisms. In the likely kernel explicit
+    * sync mechanism, we'd need to do a CPU wait anyway. Haven't seen this be a perf issue yet, but
+    * we have to make sure the queue always has its submission thread enabled. */
+   result = vk_sync_wait_many(&device->vk, submission->wait_count, submission->waits, 0, UINT64_MAX);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   /* Ignore all the commandbuffers. They're necessarily empty anyway. */
+
+   for (unsigned i = 0; i < submission->signal_count; ++i) {
+      result = vk_sync_signal(&device->vk, submission->signals[i].sync, submission->signals[i].signal_value);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
+fail:
+   if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
+      /* When something bad happened during the submission, such as
+       * an out of memory issue, it might be hard to recover from
+       * this inconsistent state. To avoid this sort of problem, we
+       * assume that we are in a really bad situation and return
+       * VK_ERROR_DEVICE_LOST to ensure the clients do not attempt
+       * to submit the same job again to this device.
+       */
+      result = vk_device_set_lost(&queue->device->vk, "vkQueueSubmit() failed");
+   }
+   return result;
+}
+
+static VkResult
 radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
 {
    struct radv_queue *queue = (struct radv_queue *)vqueue;
    VkResult result;
-
-   radv_rmv_log_submit(queue->device, radv_queue_ring(queue));
-
-   result = radv_queue_submit_bind_sparse_memory(queue->device, submission);
-   if (result != VK_SUCCESS)
-      goto fail;
 
    if (!submission->command_buffer_count && !submission->wait_count && !submission->signal_count)
       return VK_SUCCESS;
@@ -1703,7 +1737,6 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       result = radv_queue_submit_normal(queue, submission);
    }
 
-fail:
    if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
       /* When something bad happened during the submission, such as
        * an out of memory issue, it might be hard to recover from
@@ -1760,7 +1793,12 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
          goto fail;
    }
 
-   queue->vk.driver_submit = radv_queue_submit;
+   if (queue->state.qf == RADV_QUEUE_SPARSE) {
+      queue->vk.driver_submit = radv_queue_sparse_submit;
+      vk_queue_enable_submit_thread(&queue->vk);
+   } else {
+      queue->vk.driver_submit = radv_queue_submit;
+   }
    return VK_SUCCESS;
 fail:
    vk_queue_finish(&queue->vk);
