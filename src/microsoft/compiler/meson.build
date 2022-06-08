@@ -27,6 +27,7 @@ files_libdxil_compiler = files(
   'dxil_function.c',
   'dxil_module.c',
   'dxil_nir.c',
+  'dxil_nir_lower_int_cubemaps.c',
   'dxil_nir_lower_int_samplers.c',
   'dxil_signature.c',
   'dxil_nir_tess.c',

@@ -91,9 +91,6 @@ void
 d3d12_nir_invert_depth(nir_shader *s, unsigned viewport_mask);
 
 bool
-d3d12_lower_int_cubmap_to_array(nir_shader *s);
-
-bool
 nir_lower_packed_ubo_loads(struct nir_shader *nir);
 
 bool

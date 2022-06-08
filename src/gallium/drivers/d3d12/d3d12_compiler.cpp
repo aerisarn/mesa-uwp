@@ -28,6 +28,7 @@
 #include "d3d12_nir_passes.h"
 #include "nir_to_dxil.h"
 #include "dxil_nir.h"
+#include "dxil_nir_lower_int_cubemaps.h"
 
 #include "pipe/p_state.h"
 
@@ -1346,7 +1347,7 @@ d3d12_create_shader_impl(struct d3d12_context *ctx,
    /* Integer cube maps are not supported in DirectX because sampling is not supported
     * on integer textures and TextureLoad is not supported for cube maps, so we have to
     * lower integer cube maps to be handled like 2D textures arrays*/
-   NIR_PASS_V(nir, d3d12_lower_int_cubmap_to_array);
+   NIR_PASS_V(nir, dxil_nir_lower_int_cubemaps);
 
    /* Keep this initial shader as the blue print for possible variants */
    sel->initial = nir;

@@ -21,7 +21,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "d3d12_nir_passes.h"
+#include "dxil_nir_lower_int_cubemaps.h"
 
 #include "nir_builder.h"
 #include "nir_builtin_builder.h"
@@ -558,7 +558,7 @@ lower_int_cubmap_to_array_impl(nir_builder *b, nir_instr *instr,
 }
 
 bool
-d3d12_lower_int_cubmap_to_array(nir_shader *s)
+dxil_nir_lower_int_cubemaps(nir_shader *s)
 {
    bool result =
          nir_shader_lower_instructions(s,
