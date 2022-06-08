@@ -47,7 +47,7 @@
 
 
 struct nearest_sampler {
-   PIPE_ALIGN_VAR(16) uint32_t out[64];
+   alignas(16) uint32_t out[64];
 
    const struct lp_jit_texture *texture;
    float fsrc_x;                /* src_x0 */
@@ -64,7 +64,7 @@ struct nearest_sampler {
 
 
 struct linear_interp {
-   PIPE_ALIGN_VAR(16) uint32_t out[64];
+   alignas(16) uint32_t out[64];
    __m128i a0;
    __m128i dadx;
    __m128i dady;
@@ -88,7 +88,7 @@ struct color_blend {
  * in one place.
  */
 struct shader {
-   PIPE_ALIGN_VAR(16) uint32_t out0[64];
+   alignas(16) uint32_t out0[64];
    const uint32_t *src0;
    const uint32_t *src1;
    __m128i const0;

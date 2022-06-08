@@ -143,8 +143,8 @@ test_format_float(unsigned verbose, FILE *fp,
    struct gallivm_state *gallivm;
    LLVMValueRef fetch = NULL;
    fetch_ptr_t fetch_ptr;
-   PIPE_ALIGN_VAR(16) uint8_t packed[UTIL_FORMAT_MAX_PACKED_BYTES];
-   PIPE_ALIGN_VAR(16) float unpacked[4];
+   alignas(16) uint8_t packed[UTIL_FORMAT_MAX_PACKED_BYTES];
+   alignas(16) float unpacked[4];
    boolean first = TRUE;
    boolean success = TRUE;
    unsigned i, j, k, l;
@@ -244,7 +244,7 @@ test_format_unorm8(unsigned verbose, FILE *fp,
    struct gallivm_state *gallivm;
    LLVMValueRef fetch = NULL;
    fetch_ptr_t fetch_ptr;
-   PIPE_ALIGN_VAR(16) uint8_t packed[UTIL_FORMAT_MAX_PACKED_BYTES];
+   alignas(16) uint8_t packed[UTIL_FORMAT_MAX_PACKED_BYTES];
    uint8_t unpacked[4];
    boolean first = TRUE;
    boolean success = TRUE;

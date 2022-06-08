@@ -232,7 +232,7 @@ check_linear_interp_mask_a(struct lp_fragment_shader_variant *variant)
    struct lp_linear_sampler samp[LP_MAX_LINEAR_TEXTURES];
    struct lp_linear_interp interp[LP_MAX_LINEAR_INPUTS];
    uint8_t constants[LP_MAX_LINEAR_CONSTANTS][4];
-   PIPE_ALIGN_VAR(16) uint8_t color0[TILE_SIZE*4];
+   alignas(16) uint8_t color0[TILE_SIZE*4];
 
    int nr_inputs = info->base.file_max[TGSI_FILE_INPUT]+1;
    int nr_tex = info->num_texs;

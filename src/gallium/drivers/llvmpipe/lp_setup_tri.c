@@ -585,7 +585,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
       __m128i eo, p0, p1, p2;
       __m128i_union vshuf_mask;
       __m128i zero = vec_splats((unsigned char) 0);
-      PIPE_ALIGN_VAR(16) int32_t temp_vec[4];
+      alignas(16) int32_t temp_vec[4];
 
 #if UTIL_ARCH_LITTLE_ENDIAN
       vshuf_mask.i[0] = 0x07060504;
@@ -1155,7 +1155,7 @@ static void triangle_cw(struct lp_setup_context *setup,
                         const float (*v1)[4],
                         const float (*v2)[4])
 {
-   PIPE_ALIGN_VAR(16) struct fixed_position position;
+   alignas(16) struct fixed_position position;
    struct llvmpipe_context *lp_context = (struct llvmpipe_context *)setup->pipe;
 
    if (lp_context->active_statistics_queries) {
@@ -1181,7 +1181,7 @@ static void triangle_ccw(struct lp_setup_context *setup,
                          const float (*v1)[4],
                          const float (*v2)[4])
 {
-   PIPE_ALIGN_VAR(16) struct fixed_position position;
+   alignas(16) struct fixed_position position;
    struct llvmpipe_context *lp_context = (struct llvmpipe_context *)setup->pipe;
 
    if (lp_context->active_statistics_queries) {
@@ -1202,7 +1202,7 @@ static void triangle_both(struct lp_setup_context *setup,
                           const float (*v1)[4],
                           const float (*v2)[4])
 {
-   PIPE_ALIGN_VAR(16) struct fixed_position position;
+   alignas(16) struct fixed_position position;
    struct llvmpipe_context *lp_context = (struct llvmpipe_context *)setup->pipe;
 
    if (lp_context->active_statistics_queries) {
