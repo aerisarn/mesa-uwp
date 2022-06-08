@@ -260,3 +260,57 @@ radv-fossils:
     # Navi21 (GFX10_3)
     - export RADV_FORCE_FAMILY="NAVI21"
     - ./install/fossilize-runner.sh
+
+############### vkd3d-proton
+.vkd3d-test-valve:
+  extends:
+    - .b2c-test-radv-vk
+    # Keep all the vkd3d-proton jobs as manual trigger jobs for now, until we
+    # have enough resources to meet the throughput requirements for
+    # automatic pre-merge in the Mesa CI.
+    - .test-manual-mr
+  variables:
+    B2C_JOB_SUCCESS_REGEX: 'SUCCESS: No changes found!\r$'
+    B2C_TEST_SCRIPT: ./install/vkd3d-proton/run.sh
+
+vkd3d-polaris10-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .polaris10-test-valve
+  variables:
+    VKD3D_PROTON_RESULTS: radv-polaris10-vkd3d
+
+vkd3d-vega10-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .vega10-test-valve
+  variables:
+    VKD3D_PROTON_RESULTS: radv-vega10-vkd3d
+
+vkd3d-renoir-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .renoir-test-valve
+  variables:
+    VKD3D_PROTON_RESULTS: radv-renoir-vkd3d
+
+vkd3d-navi10-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .navi10-test-valve
+  variables:
+    VKD3D_PROTON_RESULTS: radv-navi10-vkd3d
+
+vkd3d-navi21-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .navi21-test-valve
+  variables:
+    VKD3D_PROTON_RESULTS: radv-navi21-vkd3d
+
+vkd3d-vangogh-valve:
+  extends:
+    - .vkd3d-test-valve
+    - .vangogh-test-valve
+  variables:
+    VKD3D_PROTON_RESULTS: radv-vangogh-vkd3d
