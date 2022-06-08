@@ -105,6 +105,9 @@ v3d_create_rasterizer_state(struct pipe_context *pctx,
         v3dx_pack(&so->depth_offset, DEPTH_OFFSET, depth) {
                 depth.depth_offset_factor = cso->offset_scale;
                 depth.depth_offset_units = cso->offset_units;
+#if V3D_VERSION >= 41
+                depth.limit = cso->offset_clamp;
+#endif
         }
 
         /* The HW treats polygon offset units based on a Z24 buffer, so we
@@ -113,6 +116,9 @@ v3d_create_rasterizer_state(struct pipe_context *pctx,
         v3dx_pack(&so->depth_offset_z16, DEPTH_OFFSET, depth) {
                 depth.depth_offset_factor = cso->offset_scale;
                 depth.depth_offset_units = cso->offset_units * 256.0;
+#if V3D_VERSION >= 41
+                depth.limit = cso->offset_clamp;
+#endif
         }
 
         return so;

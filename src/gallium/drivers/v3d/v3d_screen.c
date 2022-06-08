@@ -150,6 +150,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_INDEP_BLEND_FUNC:
                 return 1;
 
+        case PIPE_CAP_POLYGON_OFFSET_CLAMP:
+                return screen->devinfo.ver >= 41;
+
         case PIPE_CAP_TEXTURE_QUERY_LOD:
                 return screen->devinfo.ver >= 42;
                 break;
