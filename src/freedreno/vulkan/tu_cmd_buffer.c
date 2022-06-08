@@ -1753,8 +1753,6 @@ tu_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    cmd_buffer->state.last_prim_params.valid = false;
 
    cmd_buffer->vsc_initialized = false;
-
-   cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
 }
 
 const struct vk_command_buffer_ops tu_cmd_buffer_ops = {
@@ -1779,14 +1777,9 @@ tu_cache_init(struct tu_cache_state *cache)
  */
 VkResult
 tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
-                    VkCommandBufferUsageFlags usage_flags)
+                    const VkCommandBufferBeginInfo *pBeginInfo)
 {
-   if (cmd_buffer->status != TU_CMD_BUFFER_STATUS_INITIAL) {
-      /* If the command buffer has already been resetted with
-       * vkResetCommandBuffer, no need to do it again.
-       */
-      tu_reset_cmd_buffer(&cmd_buffer->vk, 0);
-   }
+   vk_command_buffer_begin(&cmd_buffer->vk, pBeginInfo);
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
    cmd_buffer->state.index_size = 0xff; /* dirty restart index */
@@ -1795,13 +1788,12 @@ tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
 
    tu_cache_init(&cmd_buffer->state.cache);
    tu_cache_init(&cmd_buffer->state.renderpass_cache);
-   cmd_buffer->usage_flags = usage_flags;
+   cmd_buffer->usage_flags = pBeginInfo->flags;
 
    tu_cs_begin(&cmd_buffer->cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
-   cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
    return VK_SUCCESS;
 }
 
@@ -1810,7 +1802,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                       const VkCommandBufferBeginInfo *pBeginInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   VkResult result = tu_cmd_buffer_begin(cmd_buffer, pBeginInfo->flags);
+   VkResult result = tu_cmd_buffer_begin(cmd_buffer, pBeginInfo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2537,9 +2529,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    tu_cs_end(&cmd_buffer->draw_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
-   cmd_buffer->status = TU_CMD_BUFFER_STATUS_EXECUTABLE;
-
-   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
+   return vk_command_buffer_end(&cmd_buffer->vk);
 }
 
 VKAPI_ATTR void VKAPI_CALL
