@@ -732,14 +732,6 @@ struct panvk_cmd_pool {
    struct panvk_bo_pool tls_bo_pool;
 };
 
-enum panvk_cmd_buffer_status {
-   PANVK_CMD_BUFFER_STATUS_INVALID,
-   PANVK_CMD_BUFFER_STATUS_INITIAL,
-   PANVK_CMD_BUFFER_STATUS_RECORDING,
-   PANVK_CMD_BUFFER_STATUS_EXECUTABLE,
-   PANVK_CMD_BUFFER_STATUS_PENDING,
-};
-
 struct panvk_cmd_bind_point_state {
    struct panvk_descriptor_state desc_state;
    const struct panvk_pipeline *pipeline;
@@ -756,7 +748,6 @@ struct panvk_cmd_buffer {
    struct list_head batches;
 
    VkCommandBufferUsageFlags usage_flags;
-   enum panvk_cmd_buffer_status status;
 
    struct panvk_cmd_state state;
 
