@@ -2896,14 +2896,18 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
             _mesa_hash_table_remove_key(&ctx->program_cache[prog->stages_present >> 2], prog->shaders);
             prog->base.removed = true;
          }
-         prog->shaders[pstage] = NULL;
-         if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated) {
-            /* automatically destroy generated tcs shaders when tes is destroyed */
-            zink_shader_free(ctx, shader->generated);
-            shader->generated = NULL;
-         }
+         if (shader->nir->info.stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)
+            prog->shaders[pstage] = NULL;
+         /* only remove generated tcs during parent tes destruction */
+         if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated)
+            prog->shaders[PIPE_SHADER_TESS_CTRL] = NULL;
          zink_gfx_program_reference(ctx, &prog, NULL);
       }
+   }
+   if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated) {
+      /* automatically destroy generated tcs shaders when tes is destroyed */
+      zink_shader_free(ctx, shader->generated);
+      shader->generated = NULL;
    }
    _mesa_set_destroy(shader->programs, NULL);
    ralloc_free(shader->nir);
