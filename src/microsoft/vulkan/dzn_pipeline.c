@@ -198,6 +198,8 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                                       const struct dzn_graphics_pipeline *pipeline,
                                       const struct dzn_pipeline_layout *layout,
                                       D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
+                                      D3D12_INPUT_ELEMENT_DESC *attribs,
+                                      D3D12_INPUT_ELEMENT_DESC *inputs,
                                       const VkGraphicsPipelineCreateInfo *info)
 {
    const VkPipelineViewportStateCreateInfo *vp_info =
@@ -315,6 +317,26 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                           stages[prev_stage].nir : NULL);
    } while (link_mask != 0);
 
+   if (stages[MESA_SHADER_VERTEX].nir) {
+      /* Now, declare one D3D12_INPUT_ELEMENT_DESC per VS input variable, so
+       * we can handle location overlaps properly.
+       */
+      unsigned drv_loc = 0;
+      nir_foreach_shader_in_variable(var, stages[MESA_SHADER_VERTEX].nir) {
+         assert(var->data.location >= VERT_ATTRIB_GENERIC0);
+         unsigned loc = var->data.location - VERT_ATTRIB_GENERIC0;
+         assert(drv_loc < D3D12_VS_INPUT_REGISTER_COUNT);
+         assert(loc < MAX_VERTEX_GENERIC_ATTRIBS);
+
+	 inputs[drv_loc] = attribs[loc];
+         inputs[drv_loc].SemanticIndex = drv_loc;
+         var->data.driver_location = drv_loc++;
+      }
+
+      out->InputLayout.pInputElementDescs = drv_loc ? inputs : NULL;
+      out->InputLayout.NumElements = drv_loc;
+   }
+
    /* Last step: translate NIR shaders into DXIL modules */
    u_foreach_bit(stage, active_stage_mask) {
       D3D12_SHADER_BYTECODE *slot =
@@ -347,11 +369,8 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
       (const VkPipelineVertexInputDivisorStateCreateInfoEXT *)
       vk_find_struct_const(in_vi, PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
 
-   if (!in_vi->vertexAttributeDescriptionCount) {
-      out->InputLayout.pInputElementDescs = NULL;
-      out->InputLayout.NumElements = 0;
+   if (!in_vi->vertexAttributeDescriptionCount)
       return VK_SUCCESS;
-   }
 
    D3D12_INPUT_CLASSIFICATION slot_class[MAX_VBS];
 
@@ -386,23 +405,18 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
       }
 
       /* nir_to_dxil() name all vertex inputs as TEXCOORDx */
-      inputs[i].SemanticName = "TEXCOORD";
-      inputs[i].SemanticIndex = attr->location;
-      inputs[i].Format = dzn_buffer_get_dxgi_format(attr->format);
-      inputs[i].InputSlot = attr->binding;
-      inputs[i].InputSlotClass = slot_class[attr->binding];
-      if (divisor) {
-         assert(inputs[i].InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA);
-         inputs[i].InstanceDataStepRate = divisor->divisor;
-      } else {
-         inputs[i].InstanceDataStepRate =
-            inputs[i].InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA ? 1 : 0;
-      }
-      inputs[i].AlignedByteOffset = attr->offset;
+      inputs[attr->location] = (D3D12_INPUT_ELEMENT_DESC) {
+         .SemanticName = "TEXCOORD",
+         .Format = dzn_buffer_get_dxgi_format(attr->format),
+         .InputSlot = attr->binding,
+         .InputSlotClass = slot_class[attr->binding],
+         .InstanceDataStepRate =
+            divisor ? divisor->divisor :
+            slot_class[attr->binding] == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA ? 1 : 0,
+         .AlignedByteOffset = attr->offset,
+      };
    }
 
-   out->InputLayout.pInputElementDescs = inputs;
-   out->InputLayout.NumElements = in_vi->vertexAttributeDescriptionCount;
    return VK_SUCCESS;
 }
 
@@ -930,7 +944,8 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    dzn_pipeline_init(&pipeline->base, device,
                      VK_PIPELINE_BIND_POINT_GRAPHICS,
                      layout);
-   D3D12_INPUT_ELEMENT_DESC inputs[MAX_VERTEX_GENERIC_ATTRIBS];
+   D3D12_INPUT_ELEMENT_DESC attribs[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
+   D3D12_INPUT_ELEMENT_DESC inputs[D3D12_VS_INPUT_REGISTER_COUNT] = { 0 };
    D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {
       .pRootSignature = pipeline->base.root.sig,
       .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
@@ -940,7 +955,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       pCreateInfo->pRasterizationState->rasterizerDiscardEnable ?
       NULL : pCreateInfo->pViewportState;
 
-   ret = dzn_graphics_pipeline_translate_vi(pipeline, pAllocator, &desc, pCreateInfo, inputs);
+   ret = dzn_graphics_pipeline_translate_vi(pipeline, pAllocator, &desc, pCreateInfo, attribs);
    if (ret != VK_SUCCESS)
       goto out;
 
@@ -1024,6 +1039,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    }
 
    ret = dzn_graphics_pipeline_compile_shaders(device, pipeline, layout, &desc,
+                                               attribs, inputs,
                                                pCreateInfo);
    if (ret != VK_SUCCESS)
       goto out;
