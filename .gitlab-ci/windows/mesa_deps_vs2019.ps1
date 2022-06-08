@@ -31,3 +31,4 @@ if (!$?) {
   Exit 1
 }
 Remove-Item C:\vs_buildtools.exe -Force
+Get-Date
