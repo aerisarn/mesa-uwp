@@ -1608,33 +1608,37 @@ zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *
 }
 
 static uint32_t
-calc_descriptor_state_hash_ubo(struct zink_context *ctx, enum pipe_shader_type shader, int idx, uint32_t hash, bool need_offset)
+calc_descriptor_state_hash_ubo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash, bool need_offset)
 {
-   struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][shader][idx];
-   struct zink_resource_object *obj = res ? res->obj : NULL;
-   hash = XXH32(&obj, sizeof(void*), hash);
-   void *hash_data = &ctx->di.ubos[shader][idx].range;
-   size_t data_size = sizeof(unsigned);
-   hash = XXH32(hash_data, data_size, hash);
-   if (need_offset)
-      hash = XXH32(&ctx->di.ubos[shader][idx].offset, sizeof(unsigned), hash);
+   for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_UBO][i].size; k++) {
+      struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][shader][idx + k];
+      struct zink_resource_object *obj = res ? res->obj : NULL;
+      hash = XXH32(&obj, sizeof(void*), hash);
+      void *hash_data = &ctx->di.ubos[shader][idx + k].range;
+      size_t data_size = sizeof(unsigned);
+      hash = XXH32(hash_data, data_size, hash);
+      if (need_offset)
+         hash = XXH32(&ctx->di.ubos[shader][idx + k].offset, sizeof(unsigned), hash);
+   }
    return hash;
 }
 
 static uint32_t
 calc_descriptor_state_hash_ssbo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
 {
-   struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_SSBO][shader][idx];
-   struct zink_resource_object *obj = res ? res->obj : NULL;
-   hash = XXH32(&obj, sizeof(void*), hash);
-   if (obj) {
-      struct pipe_shader_buffer *ssbo = &ctx->ssbos[shader][idx];
-      hash = XXH32(&ssbo->buffer_offset, sizeof(ssbo->buffer_offset), hash);
-      hash = XXH32(&ssbo->buffer_size, sizeof(ssbo->buffer_size), hash);
-      /* compacted sets need a way to differentiate between a buffer bound as a ubo vs ssbo */
-      if (zink_screen(ctx->base.screen)->compact_descriptors) {
-         uint32_t writable = ctx->writable_ssbos[shader] & BITFIELD_BIT(idx);
-         hash = XXH32(&writable, sizeof(writable), hash);
+   for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_SSBO][i].size; k++) {
+      struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_SSBO][shader][idx + k];
+      struct zink_resource_object *obj = res ? res->obj : NULL;
+      hash = XXH32(&obj, sizeof(void*), hash);
+      if (obj) {
+         struct pipe_shader_buffer *ssbo = &ctx->ssbos[shader][idx + k];
+         hash = XXH32(&ssbo->buffer_offset, sizeof(ssbo->buffer_offset), hash);
+         hash = XXH32(&ssbo->buffer_size, sizeof(ssbo->buffer_size), hash);
+         /* compacted sets need a way to differentiate between a buffer bound as a ubo vs ssbo */
+         if (zink_screen(ctx->base.screen)->compact_descriptors) {
+            uint32_t writable = ctx->writable_ssbos[shader] & BITFIELD_BIT(idx + k);
+            hash = XXH32(&writable, sizeof(writable), hash);
+         }
       }
    }
    return hash;
@@ -1688,7 +1692,7 @@ update_descriptor_stage_state(struct zink_context *ctx, enum pipe_shader_type sh
       int idx = zs->bindings[type][i].index;
       switch (type) {
       case ZINK_DESCRIPTOR_TYPE_UBO:
-         hash = calc_descriptor_state_hash_ubo(ctx, shader, idx, hash, true);
+         hash = calc_descriptor_state_hash_ubo(ctx, zs, shader, i, idx, hash, true);
          break;
       case ZINK_DESCRIPTOR_TYPE_SSBO:
          hash = calc_descriptor_state_hash_ssbo(ctx, zs, shader, i, idx, hash);
@@ -1760,12 +1764,12 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
                                            pg->dd->push_usage != ctx->dd->last_push_usage[pg->is_compute])) {
       uint32_t hash = 0;
       if (pg->is_compute) {
-          hash = calc_descriptor_state_hash_ubo(ctx, PIPE_SHADER_COMPUTE, 0, 0, false);
+          hash = calc_descriptor_state_hash_ubo(ctx, ctx->compute_stage, PIPE_SHADER_COMPUTE, 0, 0, 0, false);
       } else {
          bool first = true;
          u_foreach_bit(stage, pg->dd->push_usage) {
             if (!ctx->dd->gfx_push_valid[stage]) {
-               ctx->dd->gfx_push_state[stage] = calc_descriptor_state_hash_ubo(ctx, stage, 0, 0, false);
+               ctx->dd->gfx_push_state[stage] = calc_descriptor_state_hash_ubo(ctx, ctx->gfx_stages[stage], stage, 0, 0, 0, false);
                ctx->dd->gfx_push_valid[stage] = true;
             }
             if (first)
