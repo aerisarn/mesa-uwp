@@ -6388,12 +6388,10 @@ emit_memory_declarations(struct svga_shader_emitter_v10 *emit)
       emit_dword(emit, opcode0.value);
       emit_dword(emit, operand0.value);
 
-      /* In current state tracker, TGSI shader declares only one shared memory
-       * TODO: To fix TGSI shader in state tracker to get all shared memory
-       * declarations and then fix following indexing. For now, default index
-       * is 1 as per translated TGSI shader
+      /* Current state tracker only declares one shared memory for GLSL.
+       * Use index 0 for this shared memory.
        */
-      emit_dword(emit, 1);
+      emit_dword(emit, 0);
       emit_dword(emit, emit->key.cs.mem_size); /* byte Count */
       end_emit_instruction(emit);
    }
