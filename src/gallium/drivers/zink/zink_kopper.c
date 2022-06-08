@@ -575,6 +575,7 @@ zink_kopper_present(struct zink_screen *screen, struct zink_resource *res)
 struct kopper_present_info {
    VkPresentInfoKHR info;
    uint32_t image;
+   struct kopper_swapchain *swapchain;
    struct zink_resource *res;
    VkSemaphore sem;
    bool indefinite_acquire;
@@ -585,6 +586,7 @@ kopper_present(void *data, void *gdata, int thread_idx)
 {
    struct kopper_present_info *cpi = data;
    struct kopper_displaytarget *cdt = cpi->res->obj->dt;
+   struct kopper_swapchain *swapchain = cpi->swapchain;
    struct zink_screen *screen = gdata;
    VkResult error;
    cpi->info.pResults = &error;
@@ -592,10 +594,10 @@ kopper_present(void *data, void *gdata, int thread_idx)
    simple_mtx_lock(&screen->queue_lock);
    VkResult error2 = VKSCR(QueuePresentKHR)(screen->thread_queue, &cpi->info);
    simple_mtx_unlock(&screen->queue_lock);
-   cdt->swapchain->last_present = cpi->image;
+   swapchain->last_present = cpi->image;
    if (cpi->indefinite_acquire)
-      p_atomic_dec(&cdt->swapchain->num_acquires);
-   if (error2 == VK_SUBOPTIMAL_KHR)
+      p_atomic_dec(&swapchain->num_acquires);
+   if (error2 == VK_SUBOPTIMAL_KHR && cdt->swapchain == swapchain)
       cpi->res->obj->new_dt = true;
 
    /* it's illegal to destroy semaphores if they're in use by a cmdbuf.
@@ -608,28 +610,28 @@ kopper_present(void *data, void *gdata, int thread_idx)
     * normal cmdbuf submit/signal and then also exists here when it's needed for the present operation
     */
    struct util_dynarray *arr;
-   for (; screen->last_finished && cdt->swapchain->last_present_prune != screen->last_finished; cdt->swapchain->last_present_prune++) {
-      struct hash_entry *he = _mesa_hash_table_search(cdt->swapchain->presents,
-                                                      (void*)(uintptr_t)cdt->swapchain->last_present_prune);
+   for (; screen->last_finished && swapchain->last_present_prune != screen->last_finished; swapchain->last_present_prune++) {
+      struct hash_entry *he = _mesa_hash_table_search(swapchain->presents,
+                                                      (void*)(uintptr_t)swapchain->last_present_prune);
       if (he) {
          arr = he->data;
          while (util_dynarray_contains(arr, VkSemaphore))
             VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(arr, VkSemaphore), NULL);
          util_dynarray_fini(arr);
          free(arr);
-         _mesa_hash_table_remove(cdt->swapchain->presents, he);
+         _mesa_hash_table_remove(swapchain->presents, he);
       }
    }
    /* queue this wait semaphore for deletion on completion of the next batch */
    assert(screen->curr_batch > 0);
    uint32_t next = screen->curr_batch + 1;
-   struct hash_entry *he = _mesa_hash_table_search(cdt->swapchain->presents, (void*)(uintptr_t)next);
+   struct hash_entry *he = _mesa_hash_table_search(swapchain->presents, (void*)(uintptr_t)next);
    if (he)
       arr = he->data;
    else {
       arr = malloc(sizeof(struct util_dynarray));
       util_dynarray_init(arr, NULL);
-      _mesa_hash_table_insert(cdt->swapchain->presents, (void*)(uintptr_t)next, arr);
+      _mesa_hash_table_insert(swapchain->presents, (void*)(uintptr_t)next, arr);
    }
    util_dynarray_append(arr, VkSemaphore, cpi->sem);
    free(cpi);
@@ -645,6 +647,7 @@ zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
    struct kopper_present_info *cpi = malloc(sizeof(struct kopper_present_info));
    cpi->sem = res->obj->present;
    cpi->res = res;
+   cpi->swapchain = cdt->swapchain;
    cpi->indefinite_acquire = res->obj->indefinite_acquire;
    res->obj->last_dt_idx = cpi->image = res->obj->dt_idx;
    cpi->info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
