@@ -10157,13 +10157,17 @@ emit_uav_addr_offset(struct svga_shader_emitter_v10 *emit,
    struct tgsi_full_dst_register addr_dst;
    struct tgsi_full_src_register addr_src;
    struct tgsi_full_src_register two = make_immediate_reg_int(emit, 2);
+   struct tgsi_full_src_register zero = make_immediate_reg_int(emit, 0);
 
    addr_tmp = get_temp_index(emit);
    addr_dst = make_dst_temp_reg(addr_tmp);
    addr_src = make_src_temp_reg(addr_tmp);
 
    /* specified address offset */
-   emit_instruction_op1(emit, VGPU10_OPCODE_MOV, &addr_dst, addr_reg);
+   if (addr_reg)
+      emit_instruction_op1(emit, VGPU10_OPCODE_MOV, &addr_dst, addr_reg);
+   else
+      emit_instruction_op1(emit, VGPU10_OPCODE_MOV, &addr_dst, &zero);
 
    /* For HW atomic counter, we need to find the index to the
     * HW atomic buffer.
@@ -10220,7 +10224,6 @@ emit_uav_addr_offset(struct svga_shader_emitter_v10 *emit,
 
          struct tgsi_full_dst_register addr_dst_z =
             writemask_dst(&addr_dst, TGSI_WRITEMASK_Z);
-         struct tgsi_full_src_register zero = make_immediate_reg_int(emit, 0);
 
          /* For non-layered 3D texture image view, we have to make sure the z
           * component of the address offset is set to 0.
@@ -10625,13 +10628,17 @@ emit_atomic_instruction(struct svga_shader_emitter_v10 *emit,
    enum tgsi_file_type resourceType = inst->Src[0].Register.File;
    struct tgsi_full_src_register addr_src;
    VGPU10_OPCODE_TYPE opcode = emit->cur_atomic_opcode;
+   const struct tgsi_full_src_register *offset;
+
+   /* ntt does not specify offset for HWATOMIC. So just set offset to NULL. */
+   offset = resourceType == TGSI_FILE_HW_ATOMIC ? NULL : &inst->Src[1];
 
    /* Resolve the resource address */
    addr_src = emit_uav_addr_offset(emit, resourceType,
                                    inst->Src[0].Register.Index,
                                    inst->Src[0].Register.Indirect,
                                    inst->Src[0].Indirect.Index,
-                                   &inst->Src[1]);
+                                   offset);
 
    /* Emit the atomic operation */
    begin_emit_instruction(emit);
