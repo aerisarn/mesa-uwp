@@ -1885,27 +1885,12 @@ static LLVMValueRef ngg_gs_get_emit_primflag_ptr(struct si_shader_context *ctx,
    return LLVMBuildGEP2(ctx->ac.builder, vertexptr.pointee_type, vertexptr.value, gep_idx, 3, "");
 }
 
-void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LLVMValueRef *addrs)
+void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream,
+                              LLVMValueRef vertexidx, LLVMValueRef *addrs)
 {
    const struct si_shader_selector *sel = ctx->shader->selector;
    const struct si_shader_info *info = &sel->info;
    LLVMBuilderRef builder = ctx->ac.builder;
-   LLVMValueRef tmp;
-   const LLVMValueRef vertexidx = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_next_vertex[stream], "");
-
-   /* If this thread has already emitted the declared maximum number of
-    * vertices, skip the write: excessive vertex emissions are not
-    * supposed to have any effect.
-    */
-   const LLVMValueRef can_emit =
-      LLVMBuildICmp(builder, LLVMIntULT, vertexidx,
-                    LLVMConstInt(ctx->ac.i32, sel->info.base.gs.vertices_out, false), "");
-
-   tmp = LLVMBuildAdd(builder, vertexidx, ctx->ac.i32_1, "");
-   tmp = LLVMBuildSelect(builder, can_emit, tmp, vertexidx, "");
-   LLVMBuildStore(builder, tmp, ctx->gs_next_vertex[stream]);
-
-   ac_build_ifcc(&ctx->ac, can_emit, 9001);
 
    const struct ac_llvm_pointer vertexptr = ngg_gs_emit_vertex_ptr(ctx, gfx10_get_thread_id_in_tg(ctx), vertexidx);
    unsigned out_idx = 0;
@@ -1922,6 +1907,13 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
       }
    }
    assert(out_idx * 4 == info->gsvs_vertex_size);
+
+   /* Store the current number of emitted vertices to zero out remaining
+    * primitive flags in case the geometry shader doesn't emit the maximum
+    * number of vertices.
+    */
+   LLVMValueRef tmp = LLVMBuildAdd(builder, vertexidx, ctx->ac.i32_1, "");
+   LLVMBuildStore(builder, tmp, ctx->gs_next_vertex[stream]);
 
    /* Determine and store whether this vertex completed a primitive. */
    const LLVMValueRef curverts = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_curprim_verts[stream], "");
@@ -1955,8 +1947,6 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
    tmp = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_generated_prims[stream], "");
    tmp = LLVMBuildAdd(builder, tmp, LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i32, ""), "");
    LLVMBuildStore(builder, tmp, ctx->gs_generated_prims[stream]);
-
-   ac_build_endif(&ctx->ac, 9001);
 }
 
 void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx)

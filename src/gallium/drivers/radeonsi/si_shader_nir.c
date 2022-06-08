@@ -297,6 +297,9 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
        nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
 
+   if (nir->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
+
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
       if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_QUADS) {
          /* If we are shuffling local_invocation_id for quad derivatives, we

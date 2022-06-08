@@ -162,48 +162,23 @@ void si_llvm_gs_build_end(struct si_shader_context *ctx)
 }
 
 /* Emit one vertex from the geometry shader */
-static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVMValueRef *addrs)
+static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream,
+                                LLVMValueRef vertexidx, LLVMValueRef *addrs)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
    if (ctx->shader->key.ge.as_ngg) {
-      gfx10_ngg_gs_emit_vertex(ctx, stream, addrs);
+      gfx10_ngg_gs_emit_vertex(ctx, stream, vertexidx, addrs);
       return;
    }
 
    struct si_shader_info *info = &ctx->shader->selector->info;
    struct si_shader *shader = ctx->shader;
    LLVMValueRef soffset = ac_get_arg(&ctx->ac, ctx->args.gs2vs_offset);
-   LLVMValueRef gs_next_vertex;
-   LLVMValueRef can_emit;
-   unsigned chan, offset;
-   int i;
 
-   /* Write vertex attribute values to GSVS ring */
-   gs_next_vertex = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i32, ctx->gs_next_vertex[stream], "");
-
-   /* If this thread has already emitted the declared maximum number of
-    * vertices, skip the write: excessive vertex emissions are not
-    * supposed to have any effect.
-    *
-    * If the shader has no writes to memory, kill it instead. This skips
-    * further memory loads and may allow LLVM to skip to the end
-    * altogether.
-    */
-   can_emit =
-      LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, gs_next_vertex,
-                    LLVMConstInt(ctx->ac.i32, shader->selector->info.base.gs.vertices_out, 0), "");
-
-   bool use_kill = !info->base.writes_memory;
-   if (use_kill) {
-      ac_build_kill_if_false(&ctx->ac, can_emit);
-   } else {
-      ac_build_ifcc(&ctx->ac, can_emit, 6505);
-   }
-
-   offset = 0;
-   for (i = 0; i < info->num_outputs; i++) {
-      for (chan = 0; chan < 4; chan++) {
+   unsigned offset = 0;
+   for (unsigned i = 0; i < info->num_outputs; i++) {
+      for (unsigned chan = 0; chan < 4; chan++) {
          if (!(info->output_usagemask[i] & (1 << chan)) ||
              ((info->output_streams[i] >> (2 * chan)) & 3) != stream)
             continue;
@@ -213,7 +188,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
             LLVMConstInt(ctx->ac.i32, offset * shader->selector->info.base.gs.vertices_out, 0);
          offset++;
 
-         voffset = LLVMBuildAdd(ctx->ac.builder, voffset, gs_next_vertex, "");
+         voffset = LLVMBuildAdd(ctx->ac.builder, voffset, vertexidx, "");
          voffset = LLVMBuildMul(ctx->ac.builder, voffset, LLVMConstInt(ctx->ac.i32, 4, 0), "");
 
          out_val = ac_to_integer(&ctx->ac, out_val);
@@ -223,9 +198,6 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
       }
    }
 
-   gs_next_vertex = LLVMBuildAdd(ctx->ac.builder, gs_next_vertex, ctx->ac.i32_1, "");
-   LLVMBuildStore(ctx->ac.builder, gs_next_vertex, ctx->gs_next_vertex[stream]);
-
    /* Signal vertex emission if vertex data was written. */
    if (offset) {
       ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_EMIT | AC_SENDMSG_GS | (stream << 8),
@@ -234,9 +206,6 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
       ctx->gs_emitted_vertices = LLVMBuildAdd(ctx->ac.builder, ctx->gs_emitted_vertices,
                                               ctx->ac.i32_1, "vert");
    }
-
-   if (!use_kill)
-      ac_build_endif(&ctx->ac, 6505);
 }
 
 /* Cut one primitive from the geometry shader */
@@ -601,6 +570,6 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
 
 void si_llvm_init_gs_callbacks(struct si_shader_context *ctx)
 {
-   ctx->abi.emit_vertex = si_llvm_emit_vertex;
+   ctx->abi.emit_vertex_with_counter = si_llvm_emit_vertex;
    ctx->abi.emit_primitive = si_llvm_emit_primitive;
 }
