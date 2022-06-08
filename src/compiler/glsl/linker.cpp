@@ -3561,15 +3561,6 @@ link_varyings(const struct gl_constants *consts, struct gl_shader_program *prog,
    return true;
 }
 
-static void
-linker_optimisation_loop(const struct gl_constants *consts, exec_list *ir,
-                         unsigned stage)
-{
-   /* Run it just once, since NIR will do the real optimizaiton. */
-   do_common_optimization(ir, true, &consts->ShaderCompilerOptions[stage],
-                           consts->NativeIntegers);
-}
-
 void
 link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 {
@@ -3907,10 +3898,10 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
          }
       }
 
-      /* Call opts before lowering const arrays to uniforms so we can const
-       * propagate any elements accessed directly.
-       */
-      linker_optimisation_loop(consts, prog->_LinkedShaders[i]->ir, i);
+      /* Run it just once, since NIR will do the real optimizaiton. */
+      do_common_optimization(prog->_LinkedShaders[i]->ir, true,
+                             &consts->ShaderCompilerOptions[i],
+                             consts->NativeIntegers);
    }
 
    /* Check and validate stream emissions in geometry shaders */
