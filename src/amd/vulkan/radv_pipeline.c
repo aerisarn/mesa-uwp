@@ -3430,6 +3430,9 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (device->instance->disable_sinking_load_input_fs)
       key.disable_sinking_load_input_fs = true;
 
+   if (device->primitives_generated_query)
+      key.primitives_generated_query = true;
+
    return key;
 }
 
