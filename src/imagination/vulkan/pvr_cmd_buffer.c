@@ -2643,11 +2643,11 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
 static VkResult pvr_setup_descriptor_mappings(
    struct pvr_cmd_buffer *const cmd_buffer,
    enum pvr_stage_allocation stage,
-   const struct pvr_stage_allocation_uniform_state *uniform_state,
+   const struct pvr_stage_allocation_descriptor_state *descriptor_state,
    UNUSED const pvr_dev_addr_t *const num_worgroups_buff_addr,
-   uint32_t *const uniform_data_offset_out)
+   uint32_t *const descriptor_data_offset_out)
 {
-   const struct pvr_pds_info *const pds_info = &uniform_state->pds_info;
+   const struct pvr_pds_info *const pds_info = &descriptor_state->pds_info;
    const struct pvr_descriptor_state *desc_state;
    const uint8_t *entries;
    uint32_t *dword_buffer;
@@ -2695,7 +2695,7 @@ static VkResult pvr_setup_descriptor_mappings(
       /* TODO: See if instead of reusing the blend constant buffer type entry,
        * we can setup a new buffer type specifically for num_workgroups or other
        * built-in variables. The mappings are setup at pipeline creation when
-       * creating the uniform program.
+       * creating the descriptor program.
        */
       pvr_finishme("Handle blend constant reuse for compute.");
 
@@ -2833,7 +2833,7 @@ static VkResult pvr_setup_descriptor_mappings(
 
    pvr_bo_cpu_unmap(cmd_buffer->device, pvr_bo);
 
-   *uniform_data_offset_out =
+   *descriptor_data_offset_out =
       pvr_bo->vma->dev_addr.addr -
       cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
@@ -2876,18 +2876,18 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
     * allocation of the local/common store shared registers so we repurpose the
     * deallocation PDS program.
     */
-   if (pipeline->state.uniform.pds_info.code_size_in_dwords) {
+   if (pipeline->state.descriptor.pds_info.code_size_in_dwords) {
       uint32_t pds_data_size_in_dwords =
-         pipeline->state.uniform.pds_info.data_size_in_dwords;
+         pipeline->state.descriptor.pds_info.data_size_in_dwords;
 
-      info.pds_data_offset = state->pds_compute_uniform_data_offset;
+      info.pds_data_offset = state->pds_compute_descriptor_data_offset;
       info.pds_data_size =
          DIV_ROUND_UP(pds_data_size_in_dwords << 2U,
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE));
 
       /* Check that we have upload the code section. */
-      assert(pipeline->state.uniform.pds_code.code_size);
-      info.pds_code_offset = pipeline->state.uniform.pds_code.code_offset;
+      assert(pipeline->state.descriptor.pds_code.code_size);
+      info.pds_code_offset = pipeline->state.descriptor.pds_code.code_offset;
    } else {
       /* FIXME: There should be a deallocation pds program already uploaded
        * that we use at this point.
@@ -3061,24 +3061,24 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       if (result != VK_SUCCESS)
          return;
 
-      result =
-         pvr_setup_descriptor_mappings(cmd_buffer,
-                                       PVR_STAGE_ALLOCATION_COMPUTE,
-                                       &compute_pipeline->state.uniform,
-                                       &num_workgroups_bo->vma->dev_addr,
-                                       &state->pds_compute_uniform_data_offset);
+      result = pvr_setup_descriptor_mappings(
+         cmd_buffer,
+         PVR_STAGE_ALLOCATION_COMPUTE,
+         &compute_pipeline->state.descriptor,
+         &num_workgroups_bo->vma->dev_addr,
+         &state->pds_compute_descriptor_data_offset);
       if (result != VK_SUCCESS)
          return;
    } else if ((compute_pipeline->base.layout
                   ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
                state->dirty.compute_desc_dirty) ||
               state->dirty.compute_pipeline_binding || push_descriptors_dirty) {
-      result =
-         pvr_setup_descriptor_mappings(cmd_buffer,
-                                       PVR_STAGE_ALLOCATION_COMPUTE,
-                                       &compute_pipeline->state.uniform,
-                                       NULL,
-                                       &state->pds_compute_uniform_data_offset);
+      result = pvr_setup_descriptor_mappings(
+         cmd_buffer,
+         PVR_STAGE_ALLOCATION_COMPUTE,
+         &compute_pipeline->state.descriptor,
+         NULL,
+         &state->pds_compute_descriptor_data_offset);
       if (result != VK_SUCCESS)
          return;
    }
@@ -3145,16 +3145,17 @@ static uint32_t pvr_calc_shared_regs_count(
 static void
 pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
                          struct pvr_sub_cmd_gfx *const sub_cmd,
-                         const uint32_t pds_vertex_uniform_data_offset)
+                         const uint32_t pds_vertex_descriptor_data_offset)
 {
    const struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
-   const struct pvr_stage_allocation_uniform_state *const vertex_uniform_state =
-      &state->gfx_pipeline->vertex_shader_state.uniform_state;
+   const struct pvr_stage_allocation_descriptor_state
+      *const vertex_descriptor_state =
+         &state->gfx_pipeline->vertex_shader_state.descriptor_state;
    const struct pvr_pipeline_stage_state *const vertex_stage_state =
       &state->gfx_pipeline->vertex_shader_state.stage_state;
    struct pvr_csb *const csb = &sub_cmd->control_stream;
 
-   if (!vertex_uniform_state->pds_info.code_size_in_dwords)
+   if (!vertex_descriptor_state->pds_info.code_size_in_dwords)
       return;
 
    pvr_csb_emit (csb, VDMCTRL_PDS_STATE0, state0) {
@@ -3164,19 +3165,19 @@ pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
          DIV_ROUND_UP(vertex_stage_state->const_shared_reg_count << 2,
                       PVRX(VDMCTRL_PDS_STATE0_USC_COMMON_SIZE_UNIT_SIZE));
 
-      state0.pds_data_size =
-         DIV_ROUND_UP(vertex_uniform_state->pds_info.data_size_in_dwords << 2,
-                      PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE));
+      state0.pds_data_size = DIV_ROUND_UP(
+         vertex_descriptor_state->pds_info.data_size_in_dwords << 2,
+         PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE));
    }
 
    pvr_csb_emit (csb, VDMCTRL_PDS_STATE1, state1) {
-      state1.pds_data_addr = PVR_DEV_ADDR(pds_vertex_uniform_data_offset);
+      state1.pds_data_addr = PVR_DEV_ADDR(pds_vertex_descriptor_data_offset);
       state1.sd_type = PVRX(VDMCTRL_SD_TYPE_NONE);
    }
 
    pvr_csb_emit (csb, VDMCTRL_PDS_STATE2, state2) {
       state2.pds_code_addr =
-         PVR_DEV_ADDR(vertex_uniform_state->pds_code.code_offset);
+         PVR_DEV_ADDR(vertex_descriptor_state->pds_code.code_offset);
    }
 }
 
@@ -3636,8 +3637,8 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
                                   struct pvr_sub_cmd_gfx *const sub_cmd)
 {
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
-   const struct pvr_stage_allocation_uniform_state *uniform_shader_state =
-      &state->gfx_pipeline->fragment_shader_state.uniform_state;
+   const struct pvr_stage_allocation_descriptor_state *descriptor_shader_state =
+      &state->gfx_pipeline->fragment_shader_state.descriptor_state;
    const struct pvr_pds_upload *pds_coeff_program =
       &state->gfx_pipeline->fragment_shader_state.pds_coeff_program;
    const struct pvr_pipeline_stage_state *fragment_state =
@@ -3647,7 +3648,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
    struct pvr_ppp_state *const ppp_state = &state->ppp_state;
 
    const uint32_t pds_uniform_size =
-      DIV_ROUND_UP(uniform_shader_state->pds_info.data_size_in_dwords,
+      DIV_ROUND_UP(descriptor_shader_state->pds_info.data_size_in_dwords,
                    PVRX(TA_STATE_PDS_SIZEINFO1_PDS_UNIFORMSIZE_UNIT_SIZE));
 
    const uint32_t pds_varying_state_size =
@@ -3687,12 +3688,12 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
       shader_base.addr = PVR_DEV_ADDR(pds_upload->data_offset);
    }
 
-   if (uniform_shader_state->pds_code.pvr_bo) {
+   if (descriptor_shader_state->pds_code.pvr_bo) {
       pvr_csb_pack (&ppp_state->pds.texture_uniform_code_base,
                     TA_STATE_PDS_TEXUNICODEBASE,
                     tex_base) {
          tex_base.addr =
-            PVR_DEV_ADDR(uniform_shader_state->pds_code.code_offset);
+            PVR_DEV_ADDR(descriptor_shader_state->pds_code.code_offset);
       }
    } else {
       ppp_state->pds.texture_uniform_code_base = 0U;
@@ -3733,7 +3734,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
    pvr_csb_pack (&ppp_state->pds.uniform_state_data_base,
                  TA_STATE_PDS_UNIFORMDATABASE,
                  base) {
-      base.addr = PVR_DEV_ADDR(state->pds_fragment_uniform_data_offset);
+      base.addr = PVR_DEV_ADDR(state->pds_fragment_descriptor_data_offset);
    }
 
    emit_state->pds_fragment_stateptr0 = true;
@@ -4433,9 +4434,9 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_FRAGMENT,
-         &state->gfx_pipeline->fragment_shader_state.uniform_state,
+         &state->gfx_pipeline->fragment_shader_state.descriptor_state,
          NULL,
-         &state->pds_fragment_uniform_data_offset);
+         &state->pds_fragment_descriptor_data_offset);
       if (result != VK_SUCCESS) {
          mesa_loge("Could not setup fragment descriptor mappings.");
          return result;
@@ -4443,14 +4444,14 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    }
 
    if (state->dirty.vertex_descriptors) {
-      uint32_t pds_vertex_uniform_data_offset;
+      uint32_t pds_vertex_descriptor_data_offset;
 
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY,
-         &state->gfx_pipeline->vertex_shader_state.uniform_state,
+         &state->gfx_pipeline->vertex_shader_state.descriptor_state,
          NULL,
-         &pds_vertex_uniform_data_offset);
+         &pds_vertex_descriptor_data_offset);
       if (result != VK_SUCCESS) {
          mesa_loge("Could not setup vertex descriptor mappings.");
          return result;
@@ -4458,7 +4459,7 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
 
       pvr_emit_dirty_pds_state(cmd_buffer,
                                sub_cmd,
-                               pds_vertex_uniform_data_offset);
+                               pds_vertex_descriptor_data_offset);
    }
 
    pvr_emit_dirty_ppp_state(cmd_buffer, sub_cmd);

@@ -882,8 +882,8 @@ struct pvr_cmd_buffer_state {
    /* Address of data segment for vertex attrib upload program. */
    uint32_t pds_vertex_attrib_offset;
 
-   uint32_t pds_fragment_uniform_data_offset;
-   uint32_t pds_compute_uniform_data_offset;
+   uint32_t pds_fragment_descriptor_data_offset;
+   uint32_t pds_compute_descriptor_data_offset;
 };
 
 static_assert(
@@ -962,7 +962,7 @@ struct pvr_pipeline_cache {
    struct pvr_device *device;
 };
 
-struct pvr_stage_allocation_uniform_state {
+struct pvr_stage_allocation_descriptor_state {
    struct pvr_pds_upload pds_code;
    /* Since we upload the code segment separately from the data segment
     * pds_code->data_size might be 0 whilst
@@ -1017,7 +1017,7 @@ struct pvr_vertex_shader_state {
 
    struct pvr_pipeline_stage_state stage_state;
    /* FIXME: Move this into stage_state? */
-   struct pvr_stage_allocation_uniform_state uniform_state;
+   struct pvr_stage_allocation_descriptor_state descriptor_state;
    uint32_t vertex_input_size;
    uint32_t vertex_output_size;
    uint32_t user_clip_planes_mask;
@@ -1030,7 +1030,7 @@ struct pvr_fragment_shader_state {
 
    struct pvr_pipeline_stage_state stage_state;
    /* FIXME: Move this into stage_state? */
-   struct pvr_stage_allocation_uniform_state uniform_state;
+   struct pvr_stage_allocation_descriptor_state descriptor_state;
    uint32_t pass_type;
 
    struct pvr_pds_upload pds_coeff_program;
@@ -1072,7 +1072,7 @@ struct pvr_compute_pipeline {
          uint32_t base_workgroup : 1;
       } flags;
 
-      struct pvr_stage_allocation_uniform_state uniform;
+      struct pvr_stage_allocation_descriptor_state descriptor;
 
       struct pvr_pds_upload primary_program;
       struct pvr_pds_info primary_program_info;
