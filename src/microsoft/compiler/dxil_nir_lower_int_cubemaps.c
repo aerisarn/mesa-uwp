@@ -526,7 +526,7 @@ lower_int_cubemap_to_array_tex(nir_builder *b, nir_tex_instr *tex)
 }
 
 static nir_ssa_def *
-lower_cube_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
+lower_cube_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
 {
    if (intr->intrinsic == nir_intrinsic_image_size ||
       intr->intrinsic == nir_intrinsic_image_deref_size)
@@ -536,7 +536,7 @@ lower_cube_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static nir_ssa_def *
-lower_cube_deref(nir_builder *b, nir_deref_instr *deref)
+lower_cube_image_deref(nir_builder *b, nir_deref_instr *deref)
 {
    deref->type = make_2darray_from_cubemap_with_array(
       deref->type,
@@ -551,9 +551,9 @@ lower_int_cubmap_to_array_impl(nir_builder *b, nir_instr *instr,
    if (instr->type == nir_instr_type_tex)
       return lower_int_cubemap_to_array_tex(b, nir_instr_as_tex(instr));
    else if (instr->type == nir_instr_type_intrinsic)
-      return lower_cube_intrinsic(b, nir_instr_as_intrinsic(instr));
+      return lower_cube_image_intrinsic(b, nir_instr_as_intrinsic(instr));
    else if (instr->type == nir_instr_type_deref)
-      return lower_cube_deref(b, nir_instr_as_deref(instr));
+      return lower_cube_image_deref(b, nir_instr_as_deref(instr));
    return NULL;
 }
 
