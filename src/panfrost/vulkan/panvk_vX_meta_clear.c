@@ -416,6 +416,10 @@ panvk_meta_clear_zs_img(struct panvk_cmd_buffer *cmdbuf,
    *fbinfo = (struct pan_fb_info){
       .nr_samples = img->pimage.layout.nr_samples,
       .rt_count = 1,
+      .zs.clear_value.depth = value->depth,
+      .zs.clear_value.stencil = value->stencil,
+      .zs.clear.z = range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT,
+      .zs.clear.s = range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT
    };
 
    const struct util_format_description *fdesc =
@@ -423,22 +427,13 @@ panvk_meta_clear_zs_img(struct panvk_cmd_buffer *cmdbuf,
 
    if (util_format_has_depth(fdesc)) {
       fbinfo->zs.view.zs = &view;
-      fbinfo->zs.clear.z = range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT;
       if (util_format_has_stencil(fdesc)) {
-         fbinfo->zs.clear.s = range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT;
          fbinfo->zs.preload.z = !fbinfo->zs.clear.z && fbinfo->zs.clear.s;
          fbinfo->zs.preload.s = !fbinfo->zs.clear.s && fbinfo->zs.clear.z;
       }
    } else {
       fbinfo->zs.view.s = &view;
-      fbinfo->zs.clear.s = range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT;
    }
-
-   if (fbinfo->zs.clear.z)
-      fbinfo->zs.clear_value.depth = value->depth;
-
-   if (fbinfo->zs.clear.s)
-      fbinfo->zs.clear_value.stencil = value->stencil;
 
    unsigned level_count = vk_image_subresource_level_count(&img->vk, range);
    unsigned layer_count = vk_image_subresource_layer_count(&img->vk, range);
