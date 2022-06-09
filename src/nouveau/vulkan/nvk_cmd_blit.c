@@ -2,6 +2,7 @@
 
 #include "vulkan/util/vk_format.h"
 
+#include "nvk_buffer.h"
 #include "nvk_device_memory.h"
 #include "nvk_format.h"
 #include "nvk_image.h"
@@ -153,6 +154,87 @@ nvk_CmdBlitImage2(
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_X0_INT(push, src_start_x_fp >> 32);
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_Y0_FRAC(push, src_start_y_fp & 0xffffffff);
       P_NV902D_PIXELS_FROM_MEMORY_SRC_Y0_INT(push, src_start_y_fp >> 32);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdFillBuffer(
+   VkCommandBuffer commandBuffer,
+   VkBuffer dstBuffer,
+   VkDeviceSize dstOffset,
+   VkDeviceSize fillSize,
+   uint32_t data)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
+   struct nouveau_ws_push *push = cmd->push;
+   fillSize = vk_buffer_range(&dst->vk, dstOffset, fillSize);
+
+   VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
+   VkDeviceSize start = dstOffset / 4;
+   VkDeviceSize end = start + fillSize / 4;
+
+   /* can't go higher for whatever reason */
+   uint32_t pitch = 1 << 21;
+   uint32_t line = pitch / 4;
+
+   nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
+
+   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+
+   P_MTHD(push, NV902D, SET_DST_FORMAT);
+   P_NV902D_SET_DST_FORMAT(push, V_A8B8G8R8);
+   P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_PITCH);
+
+   P_MTHD(push, NV902D, SET_DST_PITCH);
+   P_NV902D_SET_DST_PITCH(push, pitch);
+
+   P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
+   P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
+   P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
+
+   P_MTHD(push, NV902D, RENDER_SOLID_PRIM_MODE);
+   P_NV902D_RENDER_SOLID_PRIM_MODE(push, V_LINES);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR_FORMAT(push, V_A8B8G8R8);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR(push, data);
+
+   /*
+    * In order to support CPU efficient fills, we'll draw up to three primitives:
+    *   1. rest of the first line
+    *   2. a rect filling up the space between the start and end
+    *   3. begining of last line
+    */
+
+   uint32_t y_0 = start / line;
+   uint32_t y_1 = end / line;
+
+   uint32_t x_0 = start % line;
+   uint32_t x_1 = end % line;
+
+   P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, x_0);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y_0);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, y_0 == y_1 ? x_1 : line);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y_0);
+
+   if (y_0 + 1 < y_1) {
+      P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+
+      P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y_0 + 1);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, line);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y_1);
+
+      P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_LINES);
+   }
+
+   if (y_0 < y_1) {
+      P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y_1);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, x_1);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y_1);
    }
 }
 
