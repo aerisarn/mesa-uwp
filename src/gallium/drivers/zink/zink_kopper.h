@@ -30,6 +30,7 @@
 #include "kopper_interface.h"
 
 struct kopper_swapchain {
+   struct kopper_swapchain *next;
    VkSwapchainKHR swapchain;
    VkImage *images;
    bool *inits;

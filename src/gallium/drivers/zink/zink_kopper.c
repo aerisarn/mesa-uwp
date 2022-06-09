@@ -143,6 +143,21 @@ destroy_swapchain(struct zink_screen *screen, struct kopper_swapchain *cswap)
    free(cswap);
 }
 
+static void
+prune_old_swapchains(struct zink_screen *screen, struct kopper_displaytarget *cdt, bool wait)
+{
+   while (cdt->old_swapchain) {
+      struct kopper_swapchain *cswap = cdt->old_swapchain;
+      if (cswap->async_presents) {
+         if (wait)
+            continue;
+         return;
+      }
+      cdt->old_swapchain = cswap->next;
+      destroy_swapchain(screen, cswap);
+   }
+}
+
 static struct hash_entry *
 find_dt_entry(struct zink_screen *screen, const struct kopper_displaytarget *cdt)
 {
@@ -182,7 +197,7 @@ zink_kopper_deinit_displaytarget(struct zink_screen *screen, struct kopper_displ
    _mesa_hash_table_remove(&screen->dts, he);
    simple_mtx_unlock(&screen->dt_lock);
    destroy_swapchain(screen, cdt->swapchain);
-   destroy_swapchain(screen, cdt->old_swapchain);
+   prune_old_swapchains(screen, cdt, true);
    VKSCR(DestroySurfaceKHR)(screen->instance, cdt->surface, NULL);
    cdt->swapchain = cdt->old_swapchain = NULL;
    cdt->surface = VK_NULL_HANDLE;
@@ -309,8 +324,11 @@ update_swapchain(struct zink_screen *screen, struct kopper_displaytarget *cdt, u
    struct kopper_swapchain *cswap = kopper_CreateSwapchain(screen, cdt, w, h, &error);
    if (!cswap)
       return error;
-   destroy_swapchain(screen, cdt->old_swapchain);
-   cdt->old_swapchain = cdt->swapchain;
+   prune_old_swapchains(screen, cdt, false);
+   struct kopper_swapchain **pswap = &cdt->old_swapchain;
+   while (*pswap)
+      *pswap = (*pswap)->next;
+   *pswap = cdt->swapchain;
    cdt->swapchain = cswap;
 
    return kopper_GetSwapchainImages(screen, cdt->swapchain);
