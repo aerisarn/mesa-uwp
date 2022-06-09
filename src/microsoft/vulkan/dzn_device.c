@@ -318,6 +318,7 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
 
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_ARCHITECTURE1, &pdev->architecture, sizeof(pdev->architecture));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS, &pdev->options, sizeof(pdev->options));
+   ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS2, &pdev->options2, sizeof(pdev->options2));
 
    pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
       .props = {
@@ -1029,6 +1030,14 @@ dzn_physical_device_supports_bc(struct dzn_physical_device *pdev)
    return dzn_physical_device_supports_compressed_format(pdev, formats, ARRAY_SIZE(formats));
 }
 
+static bool
+dzn_physical_device_supports_depth_bounds(struct dzn_physical_device *pdev)
+{
+   dzn_physical_device_get_d3d12_dev(pdev);
+
+   return pdev->options2.DepthBoundsTestSupported;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                                VkPhysicalDeviceFeatures2 *pFeatures)
@@ -1050,7 +1059,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .depthClamp = false,
       .depthBiasClamp = false,
       .fillModeNonSolid = false,
-      .depthBounds = false,
+      .depthBounds = dzn_physical_device_supports_depth_bounds(pdev),
       .wideLines = false,
       .largePoints = false,
       .alphaToOne = false,

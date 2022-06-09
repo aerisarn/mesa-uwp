@@ -190,6 +190,7 @@ struct dzn_physical_device {
    D3D_FEATURE_LEVEL feature_level;
    D3D12_FEATURE_DATA_ARCHITECTURE1 architecture;
    D3D12_FEATURE_DATA_D3D12_OPTIONS options;
+   D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2;
    VkPhysicalDeviceMemoryProperties memory;
    D3D12_HEAP_FLAGS heap_flags_for_mem_type[VK_MAX_MEMORY_TYPES];
    const struct vk_sync_type *sync_types[MAX_SYNC_TYPES + 1];
@@ -292,6 +293,7 @@ enum dzn_cmd_dirty {
    DZN_CMD_DIRTY_STENCIL_COMPARE_MASK = 1 << 4,
    DZN_CMD_DIRTY_STENCIL_WRITE_MASK = 1 << 5,
    DZN_CMD_DIRTY_BLEND_CONSTANTS = 1 << 6,
+   DZN_CMD_DIRTY_DEPTH_BOUNDS = 1 << 7,
 };
 
 #define MAX_VBS 16
@@ -474,6 +476,9 @@ struct dzn_cmd_buffer_state {
             uint32_t ref, compare_mask, write_mask;
          } front, back;
       } stencil_test;
+      struct {
+         float min, max;
+      } depth_bounds;
    } zsa;
    struct {
       float constants[4];
@@ -735,6 +740,11 @@ struct dzn_graphics_pipeline {
             bool uses_ref;
         } front, back;
       } stencil_test;
+      struct {
+         bool enable;
+         bool dynamic;
+         float min, max;
+      } depth_bounds;
    } zsa;
 
    struct {

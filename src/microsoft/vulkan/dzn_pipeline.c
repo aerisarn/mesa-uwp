@@ -792,7 +792,6 @@ dzn_graphics_pipeline_translate_zsa(struct dzn_graphics_pipeline *pipeline,
    if (!in_zsa)
       return;
 
-   /* TODO: depthBoundsTestEnable */
    d3d12_gfx_pipeline_state_stream_new_desc(out, DEPTH_STENCIL1, D3D12_DEPTH_STENCIL_DESC1, desc);
 
    desc->DepthEnable = in_zsa->depthTestEnable;
@@ -801,6 +800,10 @@ dzn_graphics_pipeline_translate_zsa(struct dzn_graphics_pipeline *pipeline,
       D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
    desc->DepthFunc =
       dzn_translate_compare_op(in_zsa->depthCompareOp);
+   pipeline->zsa.depth_bounds.enable = in_zsa->depthBoundsTestEnable;
+   pipeline->zsa.depth_bounds.min = in_zsa->minDepthBounds;
+   pipeline->zsa.depth_bounds.max = in_zsa->maxDepthBounds;
+   desc->DepthBoundsTestEnable = in_zsa->depthBoundsTestEnable;
    desc->StencilEnable = in_zsa->stencilTestEnable;
    if (in_zsa->stencilTestEnable) {
       desc->FrontFace.StencilFailOp =
@@ -1068,6 +1071,9 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
             break;
          case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
             pipeline->blend.dynamic_constants = true;
+            break;
+         case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
+            pipeline->zsa.depth_bounds.dynamic = true;
             break;
          default: unreachable("Unsupported dynamic state");
          }

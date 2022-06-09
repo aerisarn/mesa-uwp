@@ -2365,6 +2365,16 @@ dzn_cmd_buffer_update_blend_constants(struct dzn_cmd_buffer *cmdbuf)
                                                   cmdbuf->state.blend.constants);
 }
 
+static void
+dzn_cmd_buffer_update_depth_bounds(struct dzn_cmd_buffer *cmdbuf)
+{
+   if (cmdbuf->state.dirty & DZN_CMD_DIRTY_DEPTH_BOUNDS) {
+      ID3D12GraphicsCommandList1_OMSetDepthBounds(cmdbuf->cmdlist,
+                                                  cmdbuf->state.zsa.depth_bounds.min,
+                                                  cmdbuf->state.zsa.depth_bounds.max);
+   }
+}
+
 static VkResult
 dzn_cmd_buffer_triangle_fan_create_index(struct dzn_cmd_buffer *cmdbuf, uint32_t *vertex_count)
 {
@@ -2507,6 +2517,7 @@ dzn_cmd_buffer_prepare_draw(struct dzn_cmd_buffer *cmdbuf, bool indexed)
    dzn_cmd_buffer_update_push_constants(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
    dzn_cmd_buffer_update_zsa(cmdbuf);
    dzn_cmd_buffer_update_blend_constants(cmdbuf);
+   dzn_cmd_buffer_update_depth_bounds(cmdbuf);
 
    if (indexed)
       dzn_cmd_buffer_update_ibview(cmdbuf);
@@ -3597,6 +3608,12 @@ dzn_CmdBindPipeline(VkCommandBuffer commandBuffer,
          cmdbuf->state.dirty |= DZN_CMD_DIRTY_STENCIL_REF;
       }
 
+      if (gfx->zsa.depth_bounds.enable && !gfx->zsa.depth_bounds.dynamic) {
+         cmdbuf->state.zsa.depth_bounds.min = gfx->zsa.depth_bounds.min;
+         cmdbuf->state.zsa.depth_bounds.max = gfx->zsa.depth_bounds.max;
+         cmdbuf->state.dirty |= DZN_CMD_DIRTY_DEPTH_BOUNDS;
+      }
+
       if (!gfx->blend.dynamic_constants) {
          memcpy(cmdbuf->state.blend.constants, gfx->blend.constants,
                 sizeof(cmdbuf->state.blend.constants));
@@ -4342,7 +4359,9 @@ dzn_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   ID3D12GraphicsCommandList1_OMSetDepthBounds(cmdbuf->cmdlist, minDepthBounds, maxDepthBounds);
+   cmdbuf->state.zsa.depth_bounds.min = minDepthBounds;
+   cmdbuf->state.zsa.depth_bounds.max = maxDepthBounds;
+   cmdbuf->state.dirty |= DZN_CMD_DIRTY_DEPTH_BOUNDS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
