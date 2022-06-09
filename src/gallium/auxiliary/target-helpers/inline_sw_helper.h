@@ -69,7 +69,7 @@ sw_screen_create_named(struct sw_winsys *winsys, const char *driver)
 
 #if defined(GALLIUM_ASAHI)
    if (screen == NULL && strcmp(driver, "asahi") == 0)
-      screen = agx_screen_create(winsys);
+      screen = agx_screen_create(0, NULL, winsys);
 #endif
 
    return screen ? debug_screen_wrap(screen) : NULL;

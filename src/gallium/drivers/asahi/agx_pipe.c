@@ -1155,7 +1155,7 @@ static const struct u_transfer_vtbl transfer_vtbl = {
 };
 
 struct pipe_screen *
-agx_screen_create(struct sw_winsys *winsys)
+agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
 {
    struct agx_screen *agx_screen;
    struct pipe_screen *screen;
