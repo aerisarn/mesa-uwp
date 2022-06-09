@@ -1350,7 +1350,10 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
          if (!res->obj->exportable) {
             assert(!res->all_binds); //TODO handle if problematic
             assert(!zink_resource_usage_is_unflushed(res));
-            if (!add_resource_bind(screen->copy_context, res, ZINK_BIND_DMABUF | PIPE_BIND_SHARED))
+            unsigned bind = ZINK_BIND_DMABUF;
+            if (!(res->base.b.bind & PIPE_BIND_SHARED))
+               bind |= PIPE_BIND_SHARED;
+            if (!add_resource_bind(screen->copy_context, res, bind))
                return false;
             p_atomic_inc(&screen->image_rebind_counter);
             screen->copy_context->base.flush(&screen->copy_context->base, NULL, 0);
