@@ -634,6 +634,8 @@ kopper_present(void *data, void *gdata, int thread_idx)
       _mesa_hash_table_insert(swapchain->presents, (void*)(uintptr_t)next, arr);
    }
    util_dynarray_append(arr, VkSemaphore, cpi->sem);
+   if (thread_idx != -1)
+      p_atomic_dec(&swapchain->async_presents);
    free(cpi);
 }
 
@@ -660,10 +662,11 @@ zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
    cpi->info.pResults = NULL;
    res->obj->present = VK_NULL_HANDLE;
    if (util_queue_is_initialized(&screen->flush_queue)) {
+      p_atomic_inc(&cpi->swapchain->async_presents);
       util_queue_add_job(&screen->flush_queue, cpi, &cdt->present_fence,
                          kopper_present, NULL, 0);
    } else {
-      kopper_present(cpi, screen, 0);
+      kopper_present(cpi, screen, -1);
    }
    res->obj->acquire = VK_NULL_HANDLE;
    res->obj->indefinite_acquire = res->obj->acquired = false;

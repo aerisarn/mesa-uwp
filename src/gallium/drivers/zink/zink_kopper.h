@@ -41,6 +41,7 @@ struct kopper_swapchain {
    VkSwapchainCreateInfoKHR scci;
    unsigned num_acquires;
    unsigned max_acquires;
+   unsigned async_presents;
 };
 
 enum kopper_type {
