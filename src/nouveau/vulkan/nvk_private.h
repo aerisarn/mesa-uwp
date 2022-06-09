@@ -1,6 +1,8 @@
 #ifndef NVK_PRIVATE_H
 #define NVK_PRIVATE_H 1
 
+#include <assert.h>
+
 #include "nvk_entrypoints.h"
 
 #include "util/log.h"

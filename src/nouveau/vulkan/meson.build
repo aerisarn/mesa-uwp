@@ -79,6 +79,7 @@ libvulkan_nouveau = shared_library(
   'vulkan_nouveau',
   [
     nvk_entrypoints,
+    cl_generated,
     nvk_files,
   ],
   include_directories : [
