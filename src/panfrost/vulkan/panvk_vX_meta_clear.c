@@ -34,19 +34,18 @@
 static mali_ptr
 panvk_meta_clear_color_attachment_shader(struct panfrost_device *pdev,
                                          struct pan_pool *bin_pool,
-                                         unsigned rt,
                                          enum glsl_base_type base_type,
                                          struct pan_shader_info *shader_info)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                      GENX(pan_shader_get_compiler_options)(),
-                                     "panvk_meta_clear_rt%d_attachment(base_type=%d)",
-                                     rt, base_type);
+                                     "panvk_meta_clear_attachment(base_type=%d)",
+                                     base_type);
 
    const struct glsl_type *out_type = glsl_vector_type(base_type, 4);
    nir_variable *out =
       nir_variable_create(b.shader, nir_var_shader_out, out_type, "out");
-   out->data.location = FRAG_RESULT_DATA0 + rt;
+   out->data.location = FRAG_RESULT_DATA0;
 
    nir_ssa_def *clear_values = nir_load_push_constant(&b, 4, 32,
                                                       nir_imm_int(&b, 0),
@@ -187,40 +186,23 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
 
    void *bd = rsd_ptr.cpu + pan_size(RENDERER_STATE);
 
-   /* Disable all RTs except the one we're interested in. */
-   for (unsigned i = 0; i < rt; i++) {
-      pan_pack(bd, BLEND, cfg) {
-         cfg.enable = false;
-         cfg.internal.mode = MALI_BLEND_MODE_OFF;
-      }
-
-      bd += pan_size(BLEND);
-   }
-
-   if (zs) {
-      /* We write the depth/stencil, disable blending on RT0. */
-      pan_pack(bd, BLEND, cfg) {
-         cfg.enable = false;
-         cfg.internal.mode = MALI_BLEND_MODE_OFF;
-      }
-   } else {
-      pan_pack(bd, BLEND, cfg) {
-         cfg.round_to_fb_precision = true;
-         cfg.load_destination = false;
-         cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-         cfg.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-         cfg.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-         cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-         cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-         cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-         cfg.internal.mode = MALI_BLEND_MODE_OPAQUE;
-         cfg.equation.color_mask = 0xf;
-         cfg.internal.fixed_function.num_comps = 4;
-         cfg.internal.fixed_function.conversion.memory_format =
-            panfrost_format_to_bifrost_blend(pdev, format, false);
-         cfg.internal.fixed_function.conversion.register_format =
-            shader_info->bifrost.blend[rt].format;
-      }
+   pan_pack(bd, BLEND, cfg) {
+      cfg.round_to_fb_precision = true;
+      cfg.load_destination = false;
+      cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.internal.mode = MALI_BLEND_MODE_OPAQUE;
+      cfg.equation.color_mask = 0xf;
+      cfg.internal.fixed_function.num_comps = 4;
+      cfg.internal.fixed_function.rt = rt;
+      cfg.internal.fixed_function.conversion.memory_format =
+         panfrost_format_to_bifrost_blend(pdev, format, false);
+      cfg.internal.fixed_function.conversion.register_format =
+         shader_info->bifrost.blend[0].format;
    }
 
    return rsd_ptr.gpu;
@@ -355,8 +337,8 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
 
    switch (mask) {
    case VK_IMAGE_ASPECT_COLOR_BIT:
-      shader = meta->clear_attachment.color[rt][base_type].shader;
-      shader_info = &meta->clear_attachment.color[rt][base_type].shader_info;
+      shader = meta->clear_attachment.color[base_type].shader;
+      shader_info = &meta->clear_attachment.color[base_type].shader_info;
       break;
    case VK_IMAGE_ASPECT_DEPTH_BIT:
       shader = meta->clear_attachment.z.shader;
@@ -583,31 +565,26 @@ panvk_per_arch(CmdClearAttachments)(VkCommandBuffer commandBuffer,
 static void
 panvk_meta_clear_attachment_init(struct panvk_physical_device *dev)
 {
-   for (unsigned rt = 0; rt < MAX_RTS; rt++) {
-      dev->meta.clear_attachment.color[rt][GLSL_TYPE_UINT].shader =
-         panvk_meta_clear_color_attachment_shader(
-               &dev->pdev,
-               &dev->meta.bin_pool.base,
-               rt,
-               GLSL_TYPE_UINT,
-               &dev->meta.clear_attachment.color[rt][GLSL_TYPE_UINT].shader_info);
+   dev->meta.clear_attachment.color[GLSL_TYPE_UINT].shader =
+      panvk_meta_clear_color_attachment_shader(
+            &dev->pdev,
+            &dev->meta.bin_pool.base,
+            GLSL_TYPE_UINT,
+            &dev->meta.clear_attachment.color[GLSL_TYPE_UINT].shader_info);
 
-      dev->meta.clear_attachment.color[rt][GLSL_TYPE_INT].shader =
-         panvk_meta_clear_color_attachment_shader(
-               &dev->pdev,
-               &dev->meta.bin_pool.base,
-               rt,
-               GLSL_TYPE_INT,
-               &dev->meta.clear_attachment.color[rt][GLSL_TYPE_INT].shader_info);
+   dev->meta.clear_attachment.color[GLSL_TYPE_INT].shader =
+      panvk_meta_clear_color_attachment_shader(
+            &dev->pdev,
+            &dev->meta.bin_pool.base,
+            GLSL_TYPE_INT,
+            &dev->meta.clear_attachment.color[GLSL_TYPE_INT].shader_info);
 
-      dev->meta.clear_attachment.color[rt][GLSL_TYPE_FLOAT].shader =
-         panvk_meta_clear_color_attachment_shader(
-               &dev->pdev,
-               &dev->meta.bin_pool.base,
-               rt,
-               GLSL_TYPE_FLOAT,
-               &dev->meta.clear_attachment.color[rt][GLSL_TYPE_FLOAT].shader_info);
-   }
+   dev->meta.clear_attachment.color[GLSL_TYPE_FLOAT].shader =
+      panvk_meta_clear_color_attachment_shader(
+            &dev->pdev,
+            &dev->meta.bin_pool.base,
+            GLSL_TYPE_FLOAT,
+            &dev->meta.clear_attachment.color[GLSL_TYPE_FLOAT].shader_info);
 
    dev->meta.clear_attachment.z.shader =
          panvk_meta_clear_zs_attachment_shader(
