@@ -301,11 +301,11 @@ static mtx_t backtrace_mutex;
 static void
 initialize_backtrace_mutex()
 {
-   static bool first = true;
+   static bool initialized = false;
 
-   if (first) {
+   if (!initialized) {
       (void)mtx_init(&backtrace_mutex, mtx_plain);
-      first = false;
+      initialized = true;
    }
 }
 

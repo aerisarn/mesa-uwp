@@ -449,10 +449,10 @@ debug_get_flags_option(const char *name,
 static const char * \
 debug_get_option_ ## suffix (void) \
 { \
-   static bool first = true; \
+   static bool initialized = false; \
    static const char * value; \
-   if (first) { \
-      first = false; \
+   if (!initialized) { \
+      initialized = true; \
       value = debug_get_option(name, dfault); \
    } \
    return value; \
@@ -478,12 +478,12 @@ __check_suid(void)
 static FILE * \
 debug_get_option_ ## suffix (void) \
 { \
-   static bool first = true; \
+   static bool initialized = false; \
    static const char * value; \
    if (__check_suid()) \
       return NULL; \
-   if (first) { \
-      first = false; \
+   if (!initialized) { \
+      initialized = true; \
       value = debug_get_option(name, dfault); \
    } \
    if (!value) \
@@ -495,10 +495,10 @@ debug_get_option_ ## suffix (void) \
 static bool \
 debug_get_option_ ## sufix (void) \
 { \
-   static bool first = true; \
+   static bool initialized = false; \
    static bool value; \
-   if (first) { \
-      first = false; \
+   if (!initialized) { \
+      initialized = true; \
       value = debug_get_bool_option(name, dfault); \
    } \
    return value; \
@@ -508,10 +508,10 @@ debug_get_option_ ## sufix (void) \
 static long \
 debug_get_option_ ## sufix (void) \
 { \
-   static bool first = true; \
+   static bool initialized = false; \
    static long value; \
-   if (first) { \
-      first = false; \
+   if (!initialized) { \
+      initialized = true; \
       value = debug_get_num_option(name, dfault); \
    } \
    return value; \
@@ -521,10 +521,10 @@ debug_get_option_ ## sufix (void) \
 static unsigned long \
 debug_get_option_ ## sufix (void) \
 { \
-   static bool first = true; \
+   static bool initialized = false; \
    static unsigned long value; \
-   if (first) { \
-      first = false; \
+   if (!initialized) { \
+      initialized = true; \
       value = debug_get_flags_option(name, flags, dfault); \
    } \
    return value; \
