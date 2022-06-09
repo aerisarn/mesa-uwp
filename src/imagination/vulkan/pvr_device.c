@@ -819,6 +819,33 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    const uint32_t max_user_vertex_components =
       ((uvs_banks <= 8U) && (uvs_pba_entries == 160U)) ? 64U : 128U;
 
+   /* The workgroup invocations are limited by the case where we have a compute
+    * barrier - each slot has a fixed number of invocations, the whole workgroup
+    * may need to span multiple slots. As each slot will WAIT at the barrier
+    * until the last invocation completes, all have to be schedulable at the
+    * same time.
+    *
+    * Typically all Rogue cores have 16 slots. Some of the smallest cores are
+    * reduced to 14.
+    *
+    * The compute barrier slot exhaustion scenario can be tested with:
+    * dEQP-VK.memory_model.message_passing*u32.coherent.fence_fence
+    *    .atomicwrite*guard*comp
+    */
+
+   /* Default value based on the minimum value found in all existing cores. */
+   const uint32_t usc_slots =
+      PVR_GET_FEATURE_VALUE(&pdevice->dev_info, usc_slots, 14);
+
+   /* Default value based on the minimum value found in all existing cores. */
+   const uint32_t max_instances_per_pds_task =
+      PVR_GET_FEATURE_VALUE(&pdevice->dev_info,
+                            max_instances_per_pds_task,
+                            32U);
+
+   const uint32_t max_compute_work_group_invocations =
+      (usc_slots * max_instances_per_pds_task >= 512U) ? 512U : 384U;
+
    VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D = max_render_size,
       .maxImageDimension2D = max_render_size,
@@ -879,28 +906,33 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxTessellationEvaluationOutputComponents = 0,
 
       /* Geometry Shader Limits */
-      .maxGeometryShaderInvocations = 32U,
-      .maxGeometryInputComponents = max_user_vertex_components,
-      .maxGeometryOutputComponents = max_user_vertex_components,
-      .maxGeometryOutputVertices = 256U,
-      .maxGeometryTotalOutputComponents = 1024U,
+      .maxGeometryShaderInvocations = 0,
+      .maxGeometryInputComponents = 0,
+      .maxGeometryOutputComponents = 0,
+      .maxGeometryOutputVertices = 0,
+      .maxGeometryTotalOutputComponents = 0,
 
       /* Fragment Shader Limits */
       .maxFragmentInputComponents = max_user_vertex_components,
       .maxFragmentOutputAttachments = PVR_MAX_COLOR_ATTACHMENTS,
       .maxFragmentDualSrcAttachments = 0,
-      .maxFragmentCombinedOutputResources = 8U,
+      .maxFragmentCombinedOutputResources =
+         descriptor_limits->max_per_stage_storage_buffers +
+         descriptor_limits->max_per_stage_storage_images +
+         PVR_MAX_COLOR_ATTACHMENTS,
 
       /* Compute Shader Limits */
       .maxComputeSharedMemorySize = 16U * 1024U,
       .maxComputeWorkGroupCount = { 64U * 1024U, 64U * 1024U, 64U * 1024U },
-      .maxComputeWorkGroupInvocations = 512U,
-      .maxComputeWorkGroupSize = { 512U, 512U, 64U },
+      .maxComputeWorkGroupInvocations = max_compute_work_group_invocations,
+      .maxComputeWorkGroupSize = { max_compute_work_group_invocations,
+                                   max_compute_work_group_invocations,
+                                   64U },
 
       /* Rasterization Limits */
       .subPixelPrecisionBits = sub_pixel_precision,
       .subTexelPrecisionBits = 8U,
-      .mipmapPrecisionBits = 4U,
+      .mipmapPrecisionBits = 8U,
 
       .maxDrawIndexedIndexValue = UINT32_MAX,
       .maxDrawIndirectCount = 2U * 1024U * 1024U * 1024U,
@@ -921,8 +953,8 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
       .minTexelOffset = -8,
       .maxTexelOffset = 7U,
-      .minTexelGatherOffset = 0,
-      .maxTexelGatherOffset = 0,
+      .minTexelGatherOffset = -8,
+      .maxTexelGatherOffset = 7,
       .minInterpolationOffset = -0.5,
       .maxInterpolationOffset = 0.5,
       .subPixelInterpolationOffsetBits = 4U,
