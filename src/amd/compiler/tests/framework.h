@@ -57,17 +57,17 @@ inline bool set_variant(amd_gfx_level cls, const char *rest="")
 void fail_test(const char *fmt, ...);
 void skip_test(const char *fmt, ...);
 
-#define _PASTE(a, b) a##b
-#define PASTE(a, b) _PASTE(a, b)
+#define PASTE2(a, b) a##b
+#define CONCAT2(a, b) PASTE2(a, b)
 
-#define _BEGIN_TEST(name, struct_name) static void struct_name(); static __attribute__((constructor)) void PASTE(add_test_, __COUNTER__)() {\
+#define _BEGIN_TEST(name, struct_name) static void struct_name(); static __attribute__((constructor)) void CONCAT2(add_test_, __COUNTER__)() {\
       tests[#name] = (TestDef){#name, ACO_TEST_BUILD_ROOT "/" __FILE__, &struct_name};\
    }\
    static void struct_name() {\
 
-#define BEGIN_TEST(name) _BEGIN_TEST(name, PASTE(Test_, __COUNTER__))
-#define BEGIN_TEST_TODO(name) _BEGIN_TEST(name, PASTE(Test_, __COUNTER__))
-#define BEGIN_TEST_FAIL(name) _BEGIN_TEST(name, PASTE(Test_, __COUNTER__))
+#define BEGIN_TEST(name) _BEGIN_TEST(name, CONCAT2(Test_, __COUNTER__))
+#define BEGIN_TEST_TODO(name) _BEGIN_TEST(name, CONCAT2(Test_, __COUNTER__))
+#define BEGIN_TEST_FAIL(name) _BEGIN_TEST(name, CONCAT2(Test_, __COUNTER__))
 #define END_TEST \
    }
 
