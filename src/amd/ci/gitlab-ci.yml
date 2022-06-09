@@ -42,16 +42,16 @@ radv_stoney_vkcts:amd64:
     - .test-radv
     - .b2c-test
 
-############### dEQP tests ###############
+############### VKCTS tests ###############
 
-# A note on the variables to control fractional dEQP runs
+# A note on the variables to control fractional VKCTS runs
 #  parallel: N means to split the test list into chunks of 1/N lines, and
 #  DEQP_FRACTION: M means to run every Mth test from the resulting lines.
 #  So parallel: 2 and DEQP_FRACTION: 5 would imply running 1/10th of the suite.
-.deqp-test-valve:
+.vkcts-test-valve:
   extends:
     - .b2c-test-radv
-    # Keep all the dEQP jobs as manual trigger jobs for now, until we
+    # Keep all the VKCTS jobs as manual trigger jobs for now, until we
     # have enough resources to meet the throughput requirements for
     # automatic pre-merge in the Mesa CI.
     - .test-manual-mr
@@ -62,11 +62,11 @@ radv_stoney_vkcts:amd64:
     DEQP_VER: vk
     RADV_PERFTEST: nv_ms
 
-# dEQP never finishes on gfx7 due to all the GPU resets and hangs.
+# VKCTS never finishes on gfx7 due to all the GPU resets and hangs.
 # Hence, disable it for now.
-.deqp-kabini-valve:
+.vkcts-kabini-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   timeout: 6h 10m
   variables:
     # FIXME: Create this baseline for KABINI
@@ -79,9 +79,9 @@ radv_stoney_vkcts:amd64:
     - amdgpu:codename:KABINI
 
 # Disabled for now due to Igalia farm issues.
-.deqp-stoney-valve:
+.vkcts-stoney-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   parallel: 2
   # The thin clients can't manage a full run in less than an hour
   # currently.  Interpolation suggests four more thin clients (6
@@ -97,9 +97,9 @@ radv_stoney_vkcts:amd64:
   tags:
     - amdgpu:codename:STONEY
 
-deqp-polaris10-valve:
+vkcts-polaris10-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   variables:
     GPU_VERSION: radv-polaris10-aco
     FDO_CI_CONCURRENT: 16
@@ -110,9 +110,9 @@ deqp-polaris10-valve:
   tags:
     - amdgpu:codename:POLARIS10
 
-deqp-vega10-valve:
+vkcts-vega10-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   variables:
     GPU_VERSION: radv-vega10-aco
     FDO_CI_CONCURRENT: 16
@@ -120,9 +120,9 @@ deqp-vega10-valve:
   tags:
     - amdgpu:codename:VEGA10
 
-deqp-renoir-valve:
+vkcts-renoir-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   timeout: 2h 10m
   variables:
     GPU_VERSION: radv-renoir-aco
@@ -133,9 +133,9 @@ deqp-renoir-valve:
   tags:
     - amdgpu:codename:RENOIR
 
-deqp-navi10-valve:
+vkcts-navi10-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   variables:
     GPU_VERSION: radv-navi10-aco
     FDO_CI_CONCURRENT: 24
@@ -147,9 +147,9 @@ deqp-navi10-valve:
   tags:
     - amdgpu:codename:NAVI10
 
-deqp-navi21-valve:
+vkcts-navi21-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   variables:
     GPU_VERSION: radv-navi21-aco
     FDO_CI_CONCURRENT: 16
@@ -157,9 +157,9 @@ deqp-navi21-valve:
   tags:
     - amdgpu:codename:NAVI21
 
-deqp-vangogh-valve:
+vkcts-vangogh-valve:
   extends:
-    - .deqp-test-valve
+    - .vkcts-test-valve
   timeout: 2h 10m
   variables:
     GPU_VERSION: radv-vangogh-aco
