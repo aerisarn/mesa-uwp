@@ -357,6 +357,15 @@ VkResult anv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
    VK_OUTARRAY_MAKE_TYPED(VkPerformanceCounterDescriptionKHR, out_desc,
                           pCounterDescriptions, &desc_count);
 
+   /* We cannot support performance queries on anything other than RCS,
+    * because the MI_REPORT_PERF_COUNT command is not available on other
+    * engines.
+    */
+   struct anv_queue_family *queue_family =
+      &pdevice->queue.families[queueFamilyIndex];
+   if (queue_family->engine_class != I915_ENGINE_CLASS_RENDER)
+      return vk_outarray_status(&out);
+
    for (int c = 0; c < (perf ? perf->n_counters : 0); c++) {
       const struct intel_perf_query_counter *intel_counter = perf->counter_infos[c].counter;
 
