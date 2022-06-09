@@ -314,6 +314,8 @@ intel-tgl-skqp:
   extends:
     - .intel-tgl-test
     - .skqp-test
+    # Demoted to manual until #6565 can be resolved
+    - .test-manual-mr
   variables:
     # Possible skqp backends: gl, gles, unitTest and vk
     SKQP_BACKENDS: gl gles vk unitTest  # space separated values
