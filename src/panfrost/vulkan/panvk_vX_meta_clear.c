@@ -428,8 +428,8 @@ panvk_meta_clear_zs_img(struct panvk_cmd_buffer *cmdbuf,
    if (util_format_has_depth(fdesc)) {
       fbinfo->zs.view.zs = &view;
       if (util_format_has_stencil(fdesc)) {
-         fbinfo->zs.preload.z = !fbinfo->zs.clear.z && fbinfo->zs.clear.s;
-         fbinfo->zs.preload.s = !fbinfo->zs.clear.s && fbinfo->zs.clear.z;
+         fbinfo->zs.preload.z = !fbinfo->zs.clear.z;
+         fbinfo->zs.preload.s = !fbinfo->zs.clear.s;
       }
    } else {
       fbinfo->zs.view.s = &view;
