@@ -85,6 +85,7 @@ else
 fi
 
 if diff -q ".gitlab-ci/vkd3d-proton/$VKD3D_PROTON_RESULTS.txt.baseline" "$RESULTSFILE"; then
+    echo "SUCCESS: No changes found!"
     exit 0
 fi
 
