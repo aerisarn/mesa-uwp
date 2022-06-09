@@ -1510,9 +1510,6 @@ x11_manage_fifo_queues(void *state)
          goto fail;
 
       if (chain->has_acquire_queue) {
-        xcb_generic_event_t *event = NULL;
-        xcb_connection_t *conn = chain->conn;
-
          /* Assume this isn't a swapchain where we force 5 images, because those
           * don't end up with an acquire queue at the moment.
           */
@@ -1544,34 +1541,19 @@ x11_manage_fifo_queues(void *state)
                  * VUID-vkAcquireNextImageKHR-swapchain-01802 */
                 x11_driver_owned_images(chain) < forward_progress_guaranteed_acquired_images) {
 
-            event = xcb_poll_for_special_event(conn, chain->special_event);
-            if (event) {
-               result = x11_handle_dri3_present_event(chain, (void *)event);
-               /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
-               result = x11_swapchain_result(chain, result);
-               free(event);
-               if (result < 0)
-                  goto fail;
-
-               continue;
-            }
-
-            if (chain->status < 0 || xcb_connection_has_error(conn)) {
+            xcb_generic_event_t *event =
+               xcb_wait_for_special_event(chain->conn, chain->special_event);
+            if (!event) {
                result = VK_ERROR_SURFACE_LOST_KHR;
                goto fail;
             }
 
-            /* poke the window to see if it got destroyed from under us, and
-             * to flush any pending special events out of the server
-             */
-            xcb_get_geometry_reply_t *geometry =
-               xcb_get_geometry_reply(conn,
-                                      xcb_get_geometry(conn, chain->window),
-                                      NULL);
-            if (geometry == NULL) {
-               result = VK_ERROR_SURFACE_LOST_KHR;
+            result = x11_handle_dri3_present_event(chain, (void *)event);
+            /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
+            result = x11_swapchain_result(chain, result);
+            free(event);
+            if (result < 0)
                goto fail;
-            }
          }
       }
    }
