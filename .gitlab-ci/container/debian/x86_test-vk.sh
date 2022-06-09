@@ -37,6 +37,7 @@ STABLE_EPHEMERAL=" \
       pkg-config \
       python3-distutils \
       wget \
+      wine64-tools \
       xz-utils \
       "
 
