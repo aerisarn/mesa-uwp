@@ -470,7 +470,7 @@ static void si_vertex_color_clamping(struct si_shader_context *ctx,
       return;
 
    /* The state is in the first bit of the user SGPR. */
-   LLVMValueRef cond = ac_get_arg(&ctx->ac, ctx->vs_state_bits);
+   LLVMValueRef cond = GET_FIELD(ctx, VS_STATE_CLAMP_VERTEX_COLOR);
    cond = LLVMBuildTrunc(ctx->ac.builder, cond, ctx->ac.i1, "");
 
    ac_build_ifcc(&ctx->ac, cond, 6502);

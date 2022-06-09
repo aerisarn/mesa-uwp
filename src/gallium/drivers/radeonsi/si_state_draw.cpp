@@ -794,8 +794,6 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
       si_resource(sctx->tess_rings_tmz) : si_resource(sctx->tess_rings))->gpu_address;
    assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
-   unsigned tcs_in_layout = S_VS_STATE_LS_OUT_PATCH_SIZE(input_patch_size / 4) |
-                            S_VS_STATE_LS_OUT_VERTEX_SIZE(input_vertex_size / 4);
    unsigned tcs_out_layout = (output_patch_size / 4) | (num_tcs_input_cp << 13) | ring_va;
    unsigned tcs_out_offsets = (output_patch0_offset / 16) | ((perpatch_output_offset / 16) << 16);
    unsigned offchip_layout =
@@ -814,8 +812,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
    }
 
    /* Set SI_SGPR_VS_STATE_BITS. */
-   sctx->current_vs_state &= C_VS_STATE_LS_OUT_PATCH_SIZE & C_VS_STATE_LS_OUT_VERTEX_SIZE;
-   sctx->current_vs_state |= tcs_in_layout;
+   SET_FIELD(sctx->current_vs_state, VS_STATE_LS_OUT_PATCH_SIZE, input_patch_size / 4);
+   SET_FIELD(sctx->current_vs_state, VS_STATE_LS_OUT_VERTEX_SIZE, input_vertex_size / 4);
 
    /* We should be able to support in-shader LDS use with LLVM >= 9
     * by just adding the lds_sizes together, but it has never
@@ -861,7 +859,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
       radeon_emit(offchip_layout);
       radeon_emit(tcs_out_offsets);
       radeon_emit(tcs_out_layout);
-      radeon_emit(tcs_in_layout);
+      radeon_emit(sctx->current_vs_state);
    }
 
    /* Set userdata SGPRs for TES. */
@@ -1211,13 +1209,11 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       if (hw_vs->uses_vs_state_provoking_vertex) {
          unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
 
-         sctx->current_gs_state &= C_GS_STATE_PROVOKING_VTX_INDEX;
-         sctx->current_gs_state |= S_GS_STATE_PROVOKING_VTX_INDEX(vtx_index);
+         SET_FIELD(sctx->current_gs_state, GS_STATE_PROVOKING_VTX_INDEX, vtx_index);
       }
 
       if (hw_vs->uses_gs_state_outprim) {
-         sctx->current_gs_state &= C_GS_STATE_OUTPRIM;
-         sctx->current_gs_state |= S_GS_STATE_OUTPRIM(gs_out_prim);
+         SET_FIELD(sctx->current_gs_state, GS_STATE_OUTPRIM, gs_out_prim);
       }
    }
 }
@@ -1237,10 +1233,12 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
    unsigned gs_state = sctx->current_gs_state; /* only GS and NGG bits; VS bits will be copied here */
 
    if (sctx->shader.vs.cso->info.uses_base_vertex && index_size)
-      vs_state |= S_VS_STATE_INDEXED(1);
+      vs_state |= ENCODE_FIELD(VS_STATE_INDEXED, 1);
 
    /* Copy all state bits from vs_state to gs_state except the LS bits. */
-   gs_state |= vs_state & C_VS_STATE_LS_OUT_PATCH_SIZE & C_VS_STATE_LS_OUT_VERTEX_SIZE;
+   gs_state |= vs_state &
+               CLEAR_FIELD(VS_STATE_LS_OUT_PATCH_SIZE) &
+               CLEAR_FIELD(VS_STATE_LS_OUT_VERTEX_SIZE);
 
    if (vs_state != sctx->last_vs_state ||
        ((HAS_GS || NGG) && gs_state != sctx->last_gs_state)) {

@@ -106,7 +106,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
          *num_vertices = 3;
 
          /* Extract OUTPRIM field. */
-         LLVMValueRef num = si_unpack_param(ctx, ctx->vs_state_bits, 29, 2);
+         LLVMValueRef num = GET_FIELD(ctx, GS_STATE_OUTPRIM);
          return LLVMBuildAdd(ctx->ac.builder, num, ctx->ac.i32_1, "");
       }
    } else {
@@ -895,7 +895,7 @@ static void cull_primitive(struct si_shader_context *ctx,
       assert(!(shader->key.ge.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE));
    } else {
       /* Get the small prim filter precision. */
-      small_prim_precision = si_unpack_param(ctx, ctx->vs_state_bits, 22, 4);
+      small_prim_precision = GET_FIELD(ctx, GS_STATE_SMALL_PRIM_PRECISION);
       small_prim_precision =
          LLVMBuildOr(builder, small_prim_precision, LLVMConstInt(ctx->ac.i32, 0x70, 0), "");
       small_prim_precision =
@@ -1553,7 +1553,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
 
       ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
       /* Extract the PROVOKING_VTX_INDEX field. */
-      LLVMValueRef provoking_vtx_in_prim = si_unpack_param(ctx, ctx->vs_state_bits, 27, 2);
+      LLVMValueRef provoking_vtx_in_prim = GET_FIELD(ctx, GS_STATE_PROVOKING_VTX_INDEX);
 
       /* provoking_vtx_index = vtxindex[provoking_vtx_in_prim]; */
       LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);
@@ -1570,7 +1570,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
    if (ctx->screen->use_ngg_streamout && !info->base.vs.blit_sgprs_amd) {
       assert(!unterminated_es_if_block);
 
-      tmp = si_unpack_param(ctx, ctx->vs_state_bits, 26, 1);
+      tmp = GET_FIELD(ctx, GS_STATE_STREAMOUT_QUERY_ENABLED);
       tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
       ac_build_ifcc(&ctx->ac, tmp, 5029); /* if (STREAMOUT_QUERY_ENABLED) */
       tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
@@ -1857,7 +1857,7 @@ void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx)
       tmp = si_is_gs_thread(ctx);
       ac_build_ifcc(&ctx->ac, tmp, 15090);
          {
-            tmp = si_unpack_param(ctx, ctx->vs_state_bits, 31, 1);
+            tmp = GET_FIELD(ctx, GS_STATE_PIPELINE_STATS_EMU);
             tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
             ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (GS_PIPELINE_STATS_EMU) */
             LLVMValueRef args[] = {
@@ -1976,7 +1976,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
 
    /* Write shader query data. */
    if (ctx->screen->use_ngg_streamout) {
-      tmp = si_unpack_param(ctx, ctx->vs_state_bits, 26, 1);
+      tmp = GET_FIELD(ctx, GS_STATE_STREAMOUT_QUERY_ENABLED);
       tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
       ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (STREAMOUT_QUERY_ENABLED) */
       unsigned num_query_comps = ctx->so.num_outputs ? 8 : 4;
@@ -2177,7 +2177,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
          LLVMValueRef is_odd = LLVMBuildLShr(builder, flags, ctx->ac.i8_1, "");
          is_odd = LLVMBuildTrunc(builder, is_odd, ctx->ac.i1, "");
          LLVMValueRef flatshade_first = LLVMBuildICmp(
-            builder, LLVMIntEQ, si_unpack_param(ctx, ctx->vs_state_bits, 27, 2), ctx->ac.i32_0, "");
+            builder, LLVMIntEQ, GET_FIELD(ctx, GS_STATE_PROVOKING_VTX_INDEX), ctx->ac.i32_0, "");
 
          ac_build_triangle_strip_indices_to_triangle(&ctx->ac, is_odd, flatshade_first, prim.index);
       }
@@ -2185,7 +2185,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
       ac_build_export_prim(&ctx->ac, &prim);
 
       if (ctx->screen->info.gfx_level < GFX11) {
-         tmp = si_unpack_param(ctx, ctx->vs_state_bits, 31, 1);
+         tmp = GET_FIELD(ctx, GS_STATE_PIPELINE_STATS_EMU);
          tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
          ac_build_ifcc(&ctx->ac, tmp, 5229); /* if (GS_PIPELINE_STATS_EMU) */
          ac_build_ifcc(&ctx->ac, LLVMBuildNot(builder, prim.isnull, ""), 5237);

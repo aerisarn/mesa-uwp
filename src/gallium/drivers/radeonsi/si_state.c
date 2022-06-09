@@ -1170,8 +1170,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
         old_rs->line_width != rs->line_width))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.ngg_cull_state);
 
-   sctx->current_vs_state &= C_VS_STATE_CLAMP_VERTEX_COLOR;
-   sctx->current_vs_state |= S_VS_STATE_CLAMP_VERTEX_COLOR(rs->clamp_vertex_color);
+   SET_FIELD(sctx->current_vs_state, VS_STATE_CLAMP_VERTEX_COLOR, rs->clamp_vertex_color);
 
    si_pm4_bind_state(sctx, rasterizer, rs);
    si_update_poly_offset_state(sctx);

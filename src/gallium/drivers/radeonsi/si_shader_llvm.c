@@ -725,7 +725,7 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
        * (for direct draws) or the CP (for indirect draws) is the
        * first vertex ID, but GLSL expects 0 to be returned.
        */
-      LLVMValueRef indexed = si_unpack_param(ctx, ctx->vs_state_bits, 1, 1);
+      LLVMValueRef indexed = GET_FIELD(ctx, VS_STATE_INDEXED);
       indexed = LLVMBuildTrunc(ctx->ac.builder, indexed, ctx->ac.i1, "");
       return LLVMBuildSelect(ctx->ac.builder, indexed, ac_get_arg(&ctx->ac, ctx->args.base_vertex),
                              ctx->ac.i32_0, "");

@@ -64,7 +64,7 @@ static LLVMValueRef get_rel_patch_id(struct si_shader_context *ctx)
 
 static LLVMValueRef get_tcs_in_patch_stride(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->vs_state_bits, 11, 13);
+   return GET_FIELD(ctx, VS_STATE_LS_OUT_PATCH_SIZE);
 }
 
 static unsigned get_tcs_out_vertex_dw_stride_constant(struct si_shader_context *ctx)
@@ -163,7 +163,7 @@ LLVMValueRef si_get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
          stride = ctx->shader->key.ge.part.tcs.ls->info.lshs_vertex_stride / 4;
          return LLVMConstInt(ctx->ac.i32, stride, 0);
       }
-      return si_unpack_param(ctx, ctx->vs_state_bits, 24, 8);
+      return GET_FIELD(ctx, VS_STATE_LS_OUT_VERTEX_SIZE);
 
    default:
       assert(0);
