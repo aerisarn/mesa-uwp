@@ -333,7 +333,7 @@ d3d12_enable_gpu_validation(void)
    }
 }
 
-ID3D12Device1 *
+ID3D12Device2 *
 d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
 {
    typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IDXGIAdapter1 *, D3D_FEATURE_LEVEL, REFIID, void **);
@@ -364,9 +364,9 @@ d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
       return NULL;
    }
 
-   ID3D12Device1 *dev;
+   ID3D12Device2 *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 &IID_ID3D12Device1,
+                 &IID_ID3D12Device2,
                  (void **)&dev)))
       return dev;
 

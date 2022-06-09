@@ -1436,7 +1436,7 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_buffer, src_buffer, info->srcBuffer);
    VK_FROM_HANDLE(dzn_image, dst_image, info->dstImage);
 
-   ID3D12Device1 *dev = device->dev;
+   ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    const VkBufferImageCopy2 *region = &info->pRegions[r];
@@ -1511,7 +1511,7 @@ dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, src_image, info->srcImage);
    VK_FROM_HANDLE(dzn_buffer, dst_buffer, info->dstBuffer);
 
-   ID3D12Device1 *dev = device->dev;
+   ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    const VkBufferImageCopy2 *region = &info->pRegions[r];
@@ -1586,7 +1586,7 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
-   ID3D12Device1 *dev = device->dev;
+   ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    const VkImageCopy2 *region = &info->pRegions[r];
@@ -2046,7 +2046,7 @@ dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
-   ID3D12Device1 *dev = device->dev;
+   ID3D12Device2 *dev = device->dev;
    const VkImageResolve2 *region = &info->pRegions[r];
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
@@ -2969,7 +2969,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
    };
 
    if (requires_temp_res) {
-      ID3D12Device1 *dev = device->dev;
+      ID3D12Device2 *dev = device->dev;
       VkImageAspectFlags aspect = 0;
       uint64_t max_size = 0;
 
