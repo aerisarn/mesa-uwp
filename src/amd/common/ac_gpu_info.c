@@ -650,8 +650,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->vram_vis_size = vram_vis.heap_size;
    }
 
-   info->gart_size_kb = DIV_ROUND_UP(info->gart_size, 1024);
-   info->vram_size_kb = DIV_ROUND_UP(info->vram_size, 1024);
+   info->gart_size_kb = MIN2(DIV_ROUND_UP(info->gart_size, 1024), UINT32_MAX);
+   info->vram_size_kb = MIN2(DIV_ROUND_UP(info->vram_size, 1024), UINT32_MAX);
 
    if (info->drm_minor >= 41) {
       amdgpu_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_DECODE,
