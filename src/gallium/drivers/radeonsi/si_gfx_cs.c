@@ -228,14 +228,12 @@ void si_allocate_gds(struct si_context *sctx)
 
    assert(sctx->screen->use_ngg_streamout);
 
-   /* 4 streamout GDS counters.
-    * We need 256B (64 dw) of GDS, otherwise streamout hangs.
-    */
+   /* We need 256B (64 dw) of GDS, otherwise streamout hangs. */
    simple_mtx_lock(&sctx->screen->gds_mutex);
    if (!sctx->screen->gds)
       sctx->screen->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, RADEON_FLAG_DRIVER_INTERNAL);
    if (!sctx->screen->gds_oa)
-      sctx->screen->gds_oa = ws->buffer_create(ws, 4, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
+      sctx->screen->gds_oa = ws->buffer_create(ws, 1, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
    simple_mtx_unlock(&sctx->screen->gds_mutex);
 
    assert(sctx->screen->gds && sctx->screen->gds_oa);
