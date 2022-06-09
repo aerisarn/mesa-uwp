@@ -277,3 +277,24 @@ logically. These extra levels pad out layers of 3D images to the size of the
 first layer, simplifying layout calculations for both software and hardware.
 Although the padding is logically unnecessary, it wastes little space compared
 to the sizes of large mipmapped 3D textures.
+
+drm-shim (Linux only)
+---------------------
+
+Mesa includes a library that mocks out the DRM UABI used by the Asahi driver
+stack, allowing the Mesa driver to run on non-M1 Linux hardware. This can be
+useful for exercising the compiler. To build, use options:
+
+   -Dgallium-drivers=asahi -Dtools=drm-shim
+
+Then run an OpenGL workload with environment variable:
+
+   LD_PRELOAD=~/mesa/build/src/asahi/drm-shim/libasahi_noop_drm_shim.so
+
+For example to compile a shader with shaderdb and print some statistics along
+with the IR:
+
+   ~/shader-db$ AGX_MESA_DEBUG=shaders,shaderdb ASAHI_MESA_DEBUG=precompile LIBGL_DRIVERS_PATH=~/lib/dri/ LD_PRELOAD=~/mesa/build/src/asahi/drm-shim/libasahi_noop_drm_shim.so ./run shaders/glmark/1-12.shader_test
+
+The drm-shim implementation for Asahi is located in ``src/asahi/drm-shim``. The
+drm-shim implementation there should be updated as new UABI is added.
