@@ -525,19 +525,6 @@ panvk_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 }
 
 void
-panvk_CmdBeginRenderPass(VkCommandBuffer cmd,
-                         const VkRenderPassBeginInfo *info,
-                         VkSubpassContents contents)
-{
-   VkSubpassBeginInfo subpass_info = {
-      .sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
-      .contents = contents
-   };
-
-   return panvk_CmdBeginRenderPass2(cmd, info, &subpass_info);
-}
-
-void
 panvk_cmd_preload_fb_after_batch_split(struct panvk_cmd_buffer *cmdbuf)
 {
    for (unsigned i = 0; i < cmdbuf->state.fb.info.rt_count; i++) {
