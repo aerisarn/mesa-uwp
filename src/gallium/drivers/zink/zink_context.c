@@ -2051,6 +2051,11 @@ begin_rendering(struct zink_context *ctx)
          else
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
          ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_R8G8B8A8_UNORM;
+         /* use dummy fb size of 1024 if no surf exists */
+         unsigned width = surf ? surf->base.texture->width0 : 1024;
+         unsigned height = surf ? surf->base.texture->height0 : 1024;
+         ctx->dynamic_fb.info.renderArea.extent.width = MIN2(ctx->dynamic_fb.info.renderArea.extent.width, width);
+         ctx->dynamic_fb.info.renderArea.extent.height = MIN2(ctx->dynamic_fb.info.renderArea.extent.height, height);
       }
 
       /* unset depth and stencil info: reset below */
