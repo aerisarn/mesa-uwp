@@ -239,6 +239,57 @@ nvk_CmdFillBuffer(
 }
 
 VKAPI_ATTR void VKAPI_CALL
+nvk_CmdUpdateBuffer(
+   VkCommandBuffer commandBuffer,
+   VkBuffer dstBuffer,
+   VkDeviceSize dstOffset,
+   VkDeviceSize dataSize,
+   const void *pData)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
+   struct nouveau_ws_push *push = cmd->push;
+   uint32_t pitch = 65536;
+
+   assert(dataSize <= 65536);
+
+   VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
+
+   nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
+
+   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+
+   P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
+   P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
+   P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
+
+   P_MTHD(push, NV902D, SET_DST_FORMAT);
+   P_NV902D_SET_DST_FORMAT(push, V_A8B8G8R8);
+   P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_PITCH);
+
+   P_MTHD(push, NV902D, SET_DST_PITCH);
+   P_NV902D_SET_DST_PITCH(push, pitch);
+
+   P_IMMD(push, NV902D, SET_PIXELS_FROM_CPU_DATA_TYPE, V_COLOR);
+   P_IMMD(push, NV902D, SET_PIXELS_FROM_CPU_COLOR_FORMAT, V_A8B8G8R8);
+
+   P_MTHD(push, NV902D, SET_PIXELS_FROM_CPU_SRC_WIDTH);
+   P_NV902D_SET_PIXELS_FROM_CPU_SRC_WIDTH(push, dataSize / 4);
+   P_NV902D_SET_PIXELS_FROM_CPU_SRC_HEIGHT(push, 1);
+   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_FRAC(push, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_INT(push, 1);
+   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_FRAC(push, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_INT(push, 1);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_FRAC(push, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_INT(push, (dstOffset % pitch) / 4);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_FRAC(push, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_INT(push, (dstOffset / pitch) / 4);
+
+   P_0INC(push, NV902D, PIXELS_FROM_CPU_DATA);
+   P_INLINE_ARRAY(push, pData, dataSize / 4);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 nvk_CmdClearColorImage(
    VkCommandBuffer commandBuffer,
    VkImage _image,
