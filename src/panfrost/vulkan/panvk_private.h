@@ -151,7 +151,7 @@ struct panvk_meta {
       struct {
          mali_ptr shader;
          struct pan_shader_info shader_info;
-      } color[3], zs, z, s; /* 3 base types */
+      } color[3]; /* 3 base types */
    } clear_attachment;
 
    struct {
