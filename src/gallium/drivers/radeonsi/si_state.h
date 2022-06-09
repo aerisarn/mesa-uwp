@@ -583,7 +583,6 @@ void si_vs_key_update_inputs(struct si_context *sctx);
 void si_get_vs_key_inputs(struct si_context *sctx, union si_shader_key *key,
                           struct si_vs_prolog_bits *prolog_key);
 void si_update_ps_inputs_read_or_disabled(struct si_context *sctx);
-void si_update_ps_kill_enable(struct si_context *sctx);
 void si_update_vrs_flat_shading(struct si_context *sctx);
 unsigned si_get_input_prim(const struct si_shader_selector *gs, const union si_shader_key *key);
 bool si_update_ngg(struct si_context *sctx);

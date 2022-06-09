@@ -263,6 +263,14 @@ static bool si_update_shaders(struct si_context *sctx)
       return false;
    si_pm4_bind_state(sctx, ps, sctx->shader.ps.current);
 
+   unsigned db_shader_control = sctx->shader.ps.current->ctx_reg.ps.db_shader_control;
+   if (sctx->ps_db_shader_control != db_shader_control) {
+      sctx->ps_db_shader_control = db_shader_control;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
+      if (sctx->screen->dpbb_allowed)
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
+   }
+
    if (si_pm4_state_changed(sctx, ps) ||
        (!NGG && si_pm4_state_changed(sctx, vs)) ||
        (NGG && si_pm4_state_changed(sctx, gs))) {

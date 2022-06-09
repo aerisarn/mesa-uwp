@@ -837,55 +837,5 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
          else if (info->input[i].semantic == VARYING_SLOT_COL1)
             info->color_attr_index[1] = i;
       }
-
-      /* DB_SHADER_CONTROL */
-      info->db_shader_control = S_02880C_Z_EXPORT_ENABLE(info->writes_z) |
-                                S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(info->writes_stencil) |
-                                S_02880C_MASK_EXPORT_ENABLE(info->writes_samplemask) |
-                                S_02880C_KILL_ENABLE(info->base.fs.uses_discard);
-
-      switch (info->base.fs.depth_layout) {
-      case FRAG_DEPTH_LAYOUT_GREATER:
-         info->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_GREATER_THAN_Z);
-         break;
-      case FRAG_DEPTH_LAYOUT_LESS:
-         info->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_LESS_THAN_Z);
-         break;
-      default:;
-      }
-
-      /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
-       *
-       *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
-       * --|-----------|------------|------------|--------------------|-------------------|-------------
-       * 1a|   false   |   false    |   true     | EarlyZ_Then_ReZ    |         0         |     0
-       * 1b|   false   |   false    |   false    | EarlyZ_Then_LateZ  |         0         |     0
-       * 2 |   false   |   true     |   n/a      |       LateZ        |         1         |     0
-       * 3 |   true    |   false    |   n/a      | EarlyZ_Then_LateZ  |         0         |     0
-       * 4 |   true    |   true     |   n/a      | EarlyZ_Then_LateZ  |         0         |     1
-       *
-       * In cases 3 and 4, HW will force Z_ORDER to EarlyZ regardless of what's set in the register.
-       * In case 2, NOOP_CULL is a don't care field. In case 2, 3 and 4, ReZ doesn't make sense.
-       *
-       * Don't use ReZ without profiling !!!
-       *
-       * ReZ decreases performance by 15% in DiRT: Showdown on Ultra settings, which has pretty complex
-       * shaders.
-       */
-      if (info->base.fs.early_fragment_tests) {
-         /* Cases 3, 4. */
-         info->db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
-                                    S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
-                                    S_02880C_EXEC_ON_NOOP(info->base.writes_memory);
-      } else if (info->base.writes_memory) {
-         /* Case 2. */
-         info->db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
-      } else {
-         /* Case 1. */
-         info->db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
-      }
-
-      if (info->base.fs.post_depth_coverage)
-         info->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
    }
 }

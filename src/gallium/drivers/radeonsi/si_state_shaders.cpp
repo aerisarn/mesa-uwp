@@ -1866,6 +1866,62 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    assert(shader->key.ps.part.prolog.bc_optimize_for_linear ||
           !G_0286CC_LINEAR_CENTER_ENA(input_ena) || !G_0286CC_LINEAR_CENTROID_ENA(input_ena));
 
+   /* DB_SHADER_CONTROL */
+   unsigned db_shader_control =
+      S_02880C_Z_EXPORT_ENABLE(info->writes_z) |
+      S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(info->writes_stencil) |
+      S_02880C_MASK_EXPORT_ENABLE(info->writes_samplemask) |
+      /* Changes KILL_ENABLE should also update ps_modifies_zs. */
+      S_02880C_KILL_ENABLE(info->base.fs.uses_discard ||
+                           shader->key.ps.part.prolog.poly_stipple ||
+                           shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS);
+
+   switch (info->base.fs.depth_layout) {
+   case FRAG_DEPTH_LAYOUT_GREATER:
+      db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_GREATER_THAN_Z);
+      break;
+   case FRAG_DEPTH_LAYOUT_LESS:
+      db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_LESS_THAN_Z);
+      break;
+   default:;
+   }
+
+   /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
+    *
+    *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
+    * --|-----------|------------|------------|--------------------|-------------------|-------------
+    * 1a|   false   |   false    |   true     | EarlyZ_Then_ReZ    |         0         |     0
+    * 1b|   false   |   false    |   false    | EarlyZ_Then_LateZ  |         0         |     0
+    * 2 |   false   |   true     |   n/a      |       LateZ        |         1         |     0
+    * 3 |   true    |   false    |   n/a      | EarlyZ_Then_LateZ  |         0         |     0
+    * 4 |   true    |   true     |   n/a      | EarlyZ_Then_LateZ  |         0         |     1
+    *
+    * In cases 3 and 4, HW will force Z_ORDER to EarlyZ regardless of what's set in the register.
+    * In case 2, NOOP_CULL is a don't care field. In case 2, 3 and 4, ReZ doesn't make sense.
+    *
+    * Don't use ReZ without profiling !!!
+    *
+    * ReZ decreases performance by 15% in DiRT: Showdown on Ultra settings, which has pretty complex
+    * shaders.
+    */
+   if (info->base.fs.early_fragment_tests) {
+      /* Cases 3, 4. */
+      db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
+                           S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
+                           S_02880C_EXEC_ON_NOOP(info->base.writes_memory);
+   } else if (info->base.writes_memory) {
+      /* Case 2. */
+      db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
+   } else {
+      /* Case 1. */
+      db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
+   }
+
+   if (info->base.fs.post_depth_coverage)
+      db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
+
+   shader->ctx_reg.ps.db_shader_control = db_shader_control;
+
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
       return;
@@ -1925,9 +1981,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
    if (!spi_shader_col_format && !has_mrtz) {
       if (sscreen->info.gfx_level >= GFX10) {
-         if (info->base.fs.uses_discard ||
-             shader->key.ps.part.prolog.poly_stipple ||
-             shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS)
+         if (G_02880C_KILL_ENABLE(db_shader_control))
             spi_shader_col_format = V_028714_SPI_SHADER_32_R;
       } else {
          spi_shader_col_format = V_028714_SPI_SHADER_32_R;
@@ -3483,24 +3537,6 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    si_update_rasterized_prim(sctx);
 }
 
-void si_update_ps_kill_enable(struct si_context *sctx)
-{
-   if (!sctx->shader.ps.cso)
-      return;
-
-   /* Changes to KILL_ENABLE should also update si_shader_ps. */
-   unsigned db_shader_control = sctx->shader.ps.cso->info.db_shader_control |
-                                S_02880C_KILL_ENABLE(sctx->queued.named.rasterizer->poly_stipple_enable ||
-                                                     sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
-
-   if (sctx->ps_db_shader_control != db_shader_control) {
-      sctx->ps_db_shader_control = db_shader_control;
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
-      if (sctx->screen->dpbb_allowed)
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
-   }
-}
-
 void si_update_vrs_flat_shading(struct si_context *sctx)
 {
    if (sctx->gfx_level >= GFX10_3 && sctx->shader.ps.cso) {
@@ -3557,7 +3593,6 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    si_ps_key_update_sample_shading(sctx);
    si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
    si_update_ps_inputs_read_or_disabled(sctx);
-   si_update_ps_kill_enable(sctx);
    si_update_vrs_flat_shading(sctx);
 
    if (sctx->screen->dpbb_allowed) {

@@ -1211,9 +1211,6 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       sctx->do_update_shaders = true;
    }
 
-   if (old_rs->poly_stipple_enable != rs->poly_stipple_enable)
-      si_update_ps_kill_enable(sctx);
-
    if (old_rs->line_smooth != rs->line_smooth ||
        old_rs->poly_smooth != rs->poly_smooth ||
        old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
@@ -1431,7 +1428,6 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
    if (old_dsa->alpha_func != dsa->alpha_func) {
       si_ps_key_update_dsa(sctx);
       si_update_ps_inputs_read_or_disabled(sctx);
-      si_update_ps_kill_enable(sctx);
       sctx->do_update_shaders = true;
    }
 

@@ -381,8 +381,6 @@ struct si_shader_info {
    ubyte gs_input_verts_per_prim;
    unsigned max_gsvs_emit_size;
 
-   /* PS parameters */
-   unsigned db_shader_control;
    /* Set 0xf or 0x0 (4 bits) per each written output.
     * ANDed with spi_shader_col_format.
     */
@@ -916,6 +914,7 @@ struct si_shader {
          unsigned spi_shader_z_format;
          unsigned spi_shader_col_format;
          unsigned cb_shader_mask;
+         unsigned db_shader_control;
          unsigned num_interp;
       } ps;
    } ctx_reg;
