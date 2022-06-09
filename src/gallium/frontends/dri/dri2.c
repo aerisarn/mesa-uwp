@@ -2507,7 +2507,7 @@ release_pipe:
  * Returns the struct gl_config supported by this driver.
  */
 static const __DRIconfig **
-dri_kms_init_screen(__DRIscreen * sPriv)
+dri_swrast_kms_init_screen(__DRIscreen * sPriv)
 {
 #if defined(GALLIUM_SOFTPIPE)
    const __DRIconfig **configs;
@@ -2611,8 +2611,8 @@ static const struct __DRIDriverVtableExtensionRec galliumdrm_vtable = {
  * hook. The latter is used to explicitly initialise the kms_swrast driver
  * rather than selecting the approapriate driver as suggested by the loader.
  */
-const struct __DriverAPIRec dri_kms_driver_api = {
-   .InitScreen = dri_kms_init_screen,
+const struct __DriverAPIRec dri_swrast_kms_driver_api = {
+   .InitScreen = dri_swrast_kms_init_screen,
    .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = dri2_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
@@ -2631,17 +2631,17 @@ const __DRIextension *galliumdrm_driver_extensions[] = {
     NULL
 };
 
-static const struct __DRIDriverVtableExtensionRec dri_kms_vtable = {
+static const struct __DRIDriverVtableExtensionRec dri_swrast_kms_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
-   .vtable = &dri_kms_driver_api,
+   .vtable = &dri_swrast_kms_driver_api,
 };
 
-const __DRIextension *dri_kms_driver_extensions[] = {
+const __DRIextension *dri_swrast_kms_driver_extensions[] = {
     &driCoreExtension.base,
     &driImageDriverExtension.base,
-    &driDRI2Extension.base,
+    &swkmsDRI2Extension.base,
     &gallium_config_options.base,
-    &dri_kms_vtable.base,
+    &dri_swrast_kms_vtable.base,
     NULL
 };
 

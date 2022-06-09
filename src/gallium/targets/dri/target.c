@@ -25,7 +25,7 @@ const __DRIextension **__driDriverGetExtensions_kms_swrast(void);
 
 PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
 {
-   return dri_kms_driver_extensions;
+   return dri_swrast_kms_driver_extensions;
 }
 
 #endif

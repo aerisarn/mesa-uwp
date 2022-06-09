@@ -191,7 +191,7 @@ swkmsCreateNewScreen(int scrn, int fd,
 		     const __DRIconfig ***driver_configs, void *data)
 {
    return driCreateNewScreen2(scrn, fd, extensions,
-                              dri_kms_driver_extensions,
+                              dri_swrast_kms_driver_extensions,
                               driver_configs, data);
 }
 
