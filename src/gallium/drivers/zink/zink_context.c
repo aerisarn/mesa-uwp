@@ -309,6 +309,8 @@ zink_create_sampler_state(struct pipe_context *pctx,
    VkSamplerCreateInfo sci = {0};
    VkSamplerCustomBorderColorCreateInfoEXT cbci = {0};
    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+   if (screen->info.have_EXT_non_seamless_cube_map && !state->seamless_cube_map)
+      sci.flags |= VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT;
    sci.unnormalizedCoordinates = !state->normalized_coords;
    sci.magFilter = zink_filter(state->mag_img_filter);
    if (sci.unnormalizedCoordinates)
@@ -406,7 +408,8 @@ zink_create_sampler_state(struct pipe_context *pctx,
    util_dynarray_init(&sampler->desc_set_refs.refs, NULL);
    calc_descriptor_hash_sampler_state(sampler);
    sampler->custom_border_color = need_custom;
-   sampler->nonseamless = !state->seamless_cube_map;
+   if (!screen->info.have_EXT_non_seamless_cube_map)
+      sampler->nonseamless = !state->seamless_cube_map;
 
    return sampler;
 }
