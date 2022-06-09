@@ -140,7 +140,8 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
                     unsigned esgs_ring_lds_bytes,
                     unsigned gs_out_vtx_bytes,
                     unsigned gs_total_out_vtx_bytes,
-                    bool provoking_vtx_last);
+                    bool provoking_vtx_last,
+                    bool can_cull);
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
