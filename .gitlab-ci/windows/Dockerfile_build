@@ -2,8 +2,13 @@
 
 FROM mcr.microsoft.com/windows/server:ltsc2022
 
+# https://www.thomasmaurer.ch/2019/07/how-to-install-and-update-powershell-7/
+# Wrapping the following command in cmd.exe
+# iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
+RUN powershell -ExecutionPolicy RemoteSigned -Command "$ErrorActionPreference = 'Stop'; iex ""& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"""
+
 # Make sure any failure in PowerShell scripts is fatal
-SHELL ["powershell", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop';"]
+SHELL ["pwsh", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop';"]
 
 COPY mesa_deps_vs2019.ps1 C:\
 RUN C:\mesa_deps_vs2019.ps1
