@@ -55,6 +55,7 @@ static const struct debug_named_value agx_debug_options[] = {
 #ifndef NDEBUG
    {"dirty",     AGX_DBG_DIRTY,    "Disable dirty tracking"},
 #endif
+   {"precompile",AGX_DBG_PRECOMPILE,"Precompile shaders for shader-db"},
    DEBUG_NAMED_VALUE_END
 };
 

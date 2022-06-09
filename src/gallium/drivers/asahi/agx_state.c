@@ -913,28 +913,6 @@ static bool asahi_shader_key_equal(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct asahi_shader_key)) == 0;
 }
 
-static void *
-agx_create_shader_state(struct pipe_context *pctx,
-                        const struct pipe_shader_state *cso)
-{
-   struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
-
-   if (!so)
-      return NULL;
-
-   so->base = *cso;
-
-   if (cso->type == PIPE_SHADER_IR_NIR) {
-      so->nir = cso->ir.nir;
-   } else {
-      assert(cso->type == PIPE_SHADER_IR_TGSI);
-      so->nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
-   }
-
-   so->variants = _mesa_hash_table_create(NULL, asahi_shader_key_hash, asahi_shader_key_equal);
-   return so;
-}
-
 static unsigned
 agx_find_linked_slot(struct agx_varyings_vs *vs, struct agx_varyings_fs *fs,
                      gl_varying_slot slot, unsigned offset)
@@ -1052,30 +1030,18 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
 }
 
 /* Does not take ownership of key. Clones if necessary. */
-static bool
-agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
-                  enum pipe_shader_type stage, struct asahi_shader_key *key)
+static struct agx_compiled_shader *
+agx_compile_variant(struct agx_device *dev,
+                    struct agx_uncompiled_shader *so,
+                    struct asahi_shader_key *key)
 {
-   struct agx_uncompiled_shader *so = ctx->stage[stage].shader;
-   assert(so != NULL);
-
-   struct hash_entry *he = _mesa_hash_table_search(so->variants, key);
-
-   if (he) {
-      if ((*out) == he->data)
-         return false;
-
-      *out = he->data;
-      return true;
-   }
-
    struct agx_compiled_shader *compiled = CALLOC_STRUCT(agx_compiled_shader);
    struct util_dynarray binary;
    util_dynarray_init(&binary, NULL);
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
 
-   if (stage == PIPE_SHADER_FRAGMENT) {
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       nir_lower_blend_options opts = {
          .scalar_blend_const = true,
          .logicop_enable = key->blend.logicop_enable,
@@ -1107,7 +1073,6 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
    if (binary.size) {
-      struct agx_device *dev = agx_device(ctx->base.screen);
       compiled->bo = agx_bo_create(dev, binary.size, AGX_MEMORY_TYPE_SHADER);
       memcpy(compiled->bo->ptr.cpu, binary.data, binary.size);
    }
@@ -1121,8 +1086,87 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    struct asahi_shader_key *cloned_key = ralloc(so->variants, struct asahi_shader_key);
    memcpy(cloned_key, key, sizeof(struct asahi_shader_key));
 
-   he = _mesa_hash_table_insert(so->variants, cloned_key, compiled);
-   *out = he->data;
+   struct hash_entry *he = _mesa_hash_table_insert(so->variants, cloned_key, compiled);
+   return he->data;
+ 
+}
+
+static void *
+agx_create_shader_state(struct pipe_context *pctx,
+                        const struct pipe_shader_state *cso)
+{
+   struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
+   struct agx_device *dev = agx_device(pctx->screen);
+
+   if (!so)
+      return NULL;
+
+   so->base = *cso;
+
+   if (cso->type == PIPE_SHADER_IR_NIR) {
+      so->nir = cso->ir.nir;
+   } else {
+      assert(cso->type == PIPE_SHADER_IR_TGSI);
+      so->nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
+   }
+
+   so->variants = _mesa_hash_table_create(NULL, asahi_shader_key_hash, asahi_shader_key_equal);
+
+   /* For shader-db, precompile a shader with a default key. This could be
+    * improved but hopefully this is acceptable for now.
+    */
+   if (dev->debug & AGX_DBG_PRECOMPILE) {
+      struct asahi_shader_key key = { 0 };
+
+      switch (so->nir->info.stage) {
+      case MESA_SHADER_VERTEX:
+      {
+         key.base.vs.num_vbufs = AGX_MAX_VBUFS;
+         for (unsigned i = 0; i < AGX_MAX_VBUFS; ++i) {
+            key.base.vs.vbuf_strides[i] = 16;
+            key.base.vs.attributes[i] = (struct agx_attribute) {
+               .buf = i,
+               .nr_comps_minus_1 = 4 - 1,
+               .format = AGX_FORMAT_I32
+            };
+         }
+
+         break;
+      }
+      case MESA_SHADER_FRAGMENT:
+         key.nr_cbufs = 1;
+         key.base.fs.tib_formats[0] = AGX_FORMAT_U8NORM;
+         break;
+      default:
+         unreachable("Unknown shader stage in shader-db precompile");
+      }
+
+      agx_compile_variant(dev, so, &key);
+   }
+
+   return so;
+}
+
+/* Does not take ownership of key. Clones if necessary. */
+static bool
+agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
+                  enum pipe_shader_type stage, struct asahi_shader_key *key)
+{
+   struct agx_uncompiled_shader *so = ctx->stage[stage].shader;
+   assert(so != NULL);
+
+   struct hash_entry *he = _mesa_hash_table_search(so->variants, key);
+
+   if (he) {
+      if ((*out) == he->data)
+         return false;
+
+      *out = he->data;
+      return true;
+   }
+
+   struct agx_device *dev = agx_device(ctx->base.screen);
+   *out = agx_compile_variant(dev, so, key);
    return true;
 }
 
