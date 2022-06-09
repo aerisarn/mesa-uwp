@@ -113,6 +113,7 @@ for var in \
     VK_CPU \
     VK_DRIVER \
     VK_ICD_FILENAMES \
+    VKD3D_PROTON_RESULTS \
     ; do
   if [ -n "${!var+x}" ]; then
     echo "export $var=${!var@Q}"
