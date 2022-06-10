@@ -73,6 +73,12 @@ nvk_CmdBlitImage2(
       VkDeviceSize src_addr = nvk_image_base_address(src, region->srcSubresource.mipLevel);
       VkDeviceSize dst_addr = nvk_image_base_address(dst, region->dstSubresource.mipLevel);
 
+      /* we can't select the src layer, so we need to offset manually
+       * Also, this is completely safe as we don't tile over array layers contrary to the depth
+       * of a 3d image.
+       */
+      src_addr += region->srcSubresource.baseArrayLayer * src_level->layer_stride;
+
       uint32_t src_depth = src_level->extent.depth * src->vk.array_layers;
       uint32_t dst_depth = dst_level->extent.depth * dst->vk.array_layers;
 
@@ -122,8 +128,6 @@ nvk_CmdBlitImage2(
       P_NV902D_SET_SRC_PITCH(push, src_level->row_stride);
       P_NV902D_SET_SRC_WIDTH(push, src_level->extent.width);
       P_NV902D_SET_SRC_HEIGHT(push, src_level->extent.height);
-      P_NV902D_SET_SRC_OFFSET_UPPER(push, src_addr >> 32);
-      P_NV902D_SET_SRC_OFFSET_LOWER(push, src_addr & 0xffffffff);
 
       if (dst_level->tile.is_tiled) {
          P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
@@ -138,7 +142,8 @@ nvk_CmdBlitImage2(
 
       P_MTHD(push, NV902D, SET_DST_DEPTH);
       P_NV902D_SET_DST_DEPTH(push, dst_depth);
-      P_NV902D_SET_DST_LAYER(push, 0);
+
+      P_MTHD(push, NV902D, SET_DST_PITCH);
       P_NV902D_SET_DST_PITCH(push, dst_level->row_stride);
       P_NV902D_SET_DST_WIDTH(push, dst_level->extent.width);
       P_NV902D_SET_DST_HEIGHT(push, dst_level->extent.height);
@@ -157,7 +162,23 @@ nvk_CmdBlitImage2(
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_X0_FRAC(push, src_start_x_fp & 0xffffffff);
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_X0_INT(push, src_start_x_fp >> 32);
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_Y0_FRAC(push, src_start_y_fp & 0xffffffff);
-      P_NV902D_PIXELS_FROM_MEMORY_SRC_Y0_INT(push, src_start_y_fp >> 32);
+
+      /* we can select the dst but not the src layer... */
+      for (unsigned z = 0; z < region->srcSubresource.layerCount; z++) {
+         P_MTHD(push, NV902D, SET_SRC_OFFSET_UPPER);
+         P_NV902D_SET_SRC_OFFSET_UPPER(push, src_addr >> 32);
+         P_NV902D_SET_SRC_OFFSET_LOWER(push, src_addr & 0xffffffff);
+
+         P_MTHD(push, NV902D, SET_DST_LAYER);
+         P_NV902D_SET_DST_LAYER(push, z + region->dstSubresource.baseArrayLayer);
+
+         P_MTHD(push, NV902D, PIXELS_FROM_MEMORY_SRC_Y0_INT);
+         P_NV902D_PIXELS_FROM_MEMORY_SRC_Y0_INT(push, src_start_y_fp >> 32);
+
+         /* this works only if there is no tiling on z */
+         assert(!src_level->tile.z);
+         src_addr += src_level->layer_stride;
+      }
    }
 }
 
