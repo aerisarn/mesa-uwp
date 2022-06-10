@@ -2854,6 +2854,9 @@ void radv_emit_thread_trace_userdata(struct radv_cmd_buffer *cmd_buffer, const v
                                      uint32_t num_dwords);
 bool radv_is_instruction_timing_enabled(void);
 
+void radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs,
+                                   bool inhibit);
+
 bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                           struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
 

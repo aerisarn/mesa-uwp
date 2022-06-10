@@ -384,7 +384,7 @@ radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, 
    }
 }
 
-static void
+void
 radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs, bool inhibit)
 {
    if (device->physical_device->rad_info.gfx_level >= GFX11)
