@@ -940,6 +940,21 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    b->cursor = nir_before_instr(instr);
    switch (intr->intrinsic) {
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap: {
+      /* convert offset to uint[idx] */
+      nir_ssa_def *offset = nir_udiv_imm(b, intr->src[1].ssa, 4);
+      nir_instr_rewrite_src_ssa(instr, &intr->src[1], offset);
+      return true;
+   }
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_ubo: {
       /* ubo0 can have unaligned 64bit loads, particularly for bindless texture ids */
@@ -1094,6 +1109,79 @@ get_bo_var(nir_shader *shader, struct bo_vars *bo, bool ssbo, nir_src *src, unsi
    return var;
 }
 
+static void
+rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
+{
+   nir_intrinsic_op op;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_ssbo_atomic_add:
+      op = nir_intrinsic_deref_atomic_add;
+      break;
+   case nir_intrinsic_ssbo_atomic_umin:
+      op = nir_intrinsic_deref_atomic_umin;
+      break;
+   case nir_intrinsic_ssbo_atomic_imin:
+      op = nir_intrinsic_deref_atomic_imin;
+      break;
+   case nir_intrinsic_ssbo_atomic_umax:
+      op = nir_intrinsic_deref_atomic_umax;
+      break;
+   case nir_intrinsic_ssbo_atomic_imax:
+      op = nir_intrinsic_deref_atomic_imax;
+      break;
+   case nir_intrinsic_ssbo_atomic_and:
+      op = nir_intrinsic_deref_atomic_and;
+      break;
+   case nir_intrinsic_ssbo_atomic_or:
+      op = nir_intrinsic_deref_atomic_or;
+      break;
+   case nir_intrinsic_ssbo_atomic_xor:
+      op = nir_intrinsic_deref_atomic_xor;
+      break;
+   case nir_intrinsic_ssbo_atomic_exchange:
+      op = nir_intrinsic_deref_atomic_exchange;
+      break;
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+      op = nir_intrinsic_deref_atomic_comp_swap;
+      break;
+   default:
+      unreachable("unknown intrinsic");
+   }
+   /* atomic ops are always 32bit */
+   assert(nir_dest_bit_size(intr->dest) == 32);
+   nir_ssa_def *offset = intr->src[1].ssa;
+   nir_src *src = &intr->src[0];
+   nir_variable *var = get_bo_var(b->shader, bo, true, src, 32);
+   nir_deref_instr *deref_var = nir_build_deref_var(b, var);
+   nir_ssa_def *idx = src->ssa;
+   if (bo->first_ssbo)
+      idx = nir_iadd_imm(b, idx, -bo->first_ssbo);
+   nir_deref_instr *deref_array = nir_build_deref_array(b, deref_var, idx);
+   nir_deref_instr *deref_struct = nir_build_deref_struct(b, deref_array, 0);
+
+   /* generate new atomic deref ops for every component */
+   nir_ssa_def *result[4];
+   unsigned num_components = nir_dest_num_components(intr->dest);
+   for (unsigned i = 0; i < num_components; i++) {
+      nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, offset);
+      nir_intrinsic_instr *new_instr = nir_intrinsic_instr_create(b->shader, op);
+      nir_ssa_dest_init(&new_instr->instr, &new_instr->dest, 1, 32, "");
+      new_instr->src[0] = nir_src_for_ssa(&deref_arr->dest.ssa);
+      /* deref ops have no offset src, so copy the srcs after it */
+      for (unsigned i = 2; i < nir_intrinsic_infos[intr->intrinsic].num_srcs; i++)
+         nir_src_copy(&new_instr->src[i - 1], &intr->src[i]);
+      nir_builder_instr_insert(b, &new_instr->instr);
+
+      result[i] = &new_instr->dest.ssa;
+      offset = nir_iadd_imm(b, offset, 1);
+   }
+
+   nir_ssa_def *load = nir_vec(b, result, num_components);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
+   nir_instr_remove(instr);
+}
+
 static bool
 remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -1108,7 +1196,6 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_src *src;
    bool ssbo = true;
    switch (intr->intrinsic) {
-   /* TODO: these should all be rewritten to use deref intrinsics */
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_umin:
    case nir_intrinsic_ssbo_atomic_imin:
@@ -1119,7 +1206,7 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
-      nir_instr_rewrite_src_ssa(instr, &intr->src[0], nir_iadd_imm(b, intr->src[0].ssa, -bo->first_ssbo));
+      rewrite_atomic_ssbo_instr(b, instr, bo);
       return true;
    case nir_intrinsic_store_ssbo:
       src = &intr->src[1];
