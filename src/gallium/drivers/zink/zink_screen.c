@@ -1262,6 +1262,9 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->prev_sem)
       VKSCR(DestroySemaphore)(screen->dev, screen->prev_sem, NULL);
 
+   if (screen->fence)
+      VKSCR(DestroyFence)(screen->dev, screen->fence, NULL);
+
    if (screen->threaded)
       util_queue_destroy(&screen->flush_queue);
 
@@ -2064,6 +2067,21 @@ zink_get_sample_pixel_grid(struct pipe_screen *pscreen, unsigned sample_count,
 static void
 init_driver_workarounds(struct zink_screen *screen)
 {
+   /* enable implicit sync for all non-mesa drivers */
+   screen->driver_workarounds.implicit_sync = true;
+   switch (screen->info.driver_props.driverID) {
+   case VK_DRIVER_ID_MESA_RADV:
+   case VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA:
+   case VK_DRIVER_ID_MESA_LLVMPIPE:
+   case VK_DRIVER_ID_MESA_TURNIP:
+   case VK_DRIVER_ID_MESA_V3DV:
+   case VK_DRIVER_ID_MESA_PANVK:
+   case VK_DRIVER_ID_MESA_VENUS:
+      screen->driver_workarounds.implicit_sync = false;
+      break;
+   default:
+      break;
+   }
    screen->driver_workarounds.color_write_missing = !screen->info.have_EXT_color_write_enable;
    screen->driver_workarounds.depth_clip_control_missing = !screen->info.have_EXT_depth_clip_control;
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)

@@ -103,6 +103,7 @@ struct zink_screen {
    uint32_t last_finished; //this is racy but ultimately doesn't matter
    VkSemaphore sem;
    VkSemaphore prev_sem;
+   VkFence fence;
    struct util_queue flush_queue;
    struct zink_context *copy_context;
 
@@ -201,6 +202,7 @@ struct zink_screen {
    struct {
       bool color_write_missing;
       bool depth_clip_control_missing;
+      bool implicit_sync;
    } driver_workarounds;
 };
 

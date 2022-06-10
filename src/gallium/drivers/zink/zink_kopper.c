@@ -606,10 +606,39 @@ kopper_present(void *data, void *gdata, int thread_idx)
    struct kopper_displaytarget *cdt = cpi->res->obj->dt;
    struct kopper_swapchain *swapchain = cpi->swapchain;
    struct zink_screen *screen = gdata;
-   VkResult error;
+   VkResult error = VK_SUCCESS;
    cpi->info.pResults = &error;
 
    simple_mtx_lock(&screen->queue_lock);
+   if (screen->driver_workarounds.implicit_sync && cdt->type != KOPPER_WIN32) {
+      if (!screen->fence) {
+         VkFenceCreateInfo fci = {0};
+         fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+         VKSCR(CreateFence)(screen->dev, &fci, NULL, &screen->fence);
+      }
+      VKSCR(ResetFences)(screen->dev, 1, &screen->fence);
+      VkSubmitInfo si = {0};
+      si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+      si.waitSemaphoreCount = 1;
+      si.pWaitSemaphores = cpi->info.pWaitSemaphores;
+      VkPipelineStageFlags stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+      si.pWaitDstStageMask = &stages;
+
+      error = VKSCR(QueueSubmit)(screen->queue, 1, &si, screen->fence);
+      if (!zink_screen_handle_vkresult(screen, error)) {
+         simple_mtx_unlock(&screen->queue_lock);
+         VKSCR(DestroySemaphore)(screen->dev, cpi->sem, NULL);
+         goto out;
+      }
+      error = VKSCR(WaitForFences)(screen->dev, 1, &screen->fence, VK_TRUE, UINT64_MAX);
+      if (!zink_screen_handle_vkresult(screen, error)) {
+         simple_mtx_unlock(&screen->queue_lock);
+         VKSCR(DestroySemaphore)(screen->dev, cpi->sem, NULL);
+         goto out;
+      }
+      cpi->info.pWaitSemaphores = NULL;
+      cpi->info.waitSemaphoreCount = 0;
+   }
    VkResult error2 = VKSCR(QueuePresentKHR)(screen->thread_queue, &cpi->info);
    simple_mtx_unlock(&screen->queue_lock);
    swapchain->last_present = cpi->image;
@@ -652,6 +681,7 @@ kopper_present(void *data, void *gdata, int thread_idx)
       _mesa_hash_table_insert(swapchain->presents, (void*)(uintptr_t)next, arr);
    }
    util_dynarray_append(arr, VkSemaphore, cpi->sem);
+out:
    if (thread_idx != -1)
       p_atomic_dec(&swapchain->async_presents);
    free(cpi);
