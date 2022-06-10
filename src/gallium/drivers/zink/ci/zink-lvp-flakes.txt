@@ -21,3 +21,7 @@ spec@arb_fragment_program@no-newline
 # glx-destroycontext-1: ../../src/xcb_conn.c:215: write_vec: Assertion `!c->out.queue_len' failed.
 glx@glx-destroycontext-1
 
+# #6647
+spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec4-index-rd-after-barrier
+spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec4-index-wr
+spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec4-index-wr-before-barrier
