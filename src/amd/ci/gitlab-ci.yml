@@ -37,10 +37,15 @@ radv_stoney_vkcts:amd64:
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
-.b2c-test-radv:
+.b2c-test-radv-vk:
   extends:
     - .test-radv
-    - .b2c-test
+    - .b2c-test-vk
+
+.b2c-test-radv-gl:
+  extends:
+    - .test-radv
+    - .b2c-test-gl
 
 ############### VKCTS tests ###############
 
@@ -50,7 +55,7 @@ radv_stoney_vkcts:amd64:
 #  So parallel: 2 and DEQP_FRACTION: 5 would imply running 1/10th of the suite.
 .vkcts-test-valve:
   extends:
-    - .b2c-test-radv
+    - .b2c-test-radv-vk
     # Keep all the VKCTS jobs as manual trigger jobs for now, until we
     # have enough resources to meet the throughput requirements for
     # automatic pre-merge in the Mesa CI.

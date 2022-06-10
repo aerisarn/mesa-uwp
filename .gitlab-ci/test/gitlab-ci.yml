@@ -185,8 +185,6 @@
   # depend on more than one image per job. So, the job container is
   # built as part of the CI in the boot2container project.
   image: registry.freedesktop.org/mupuf/valve-infra/mesa-trigger:2022-03-03.2
-  extends:
-    - .use-debian/x86_test-vk
   timeout: 1h 40m
   variables:
     # No need by default to pull the whole repo
@@ -308,9 +306,6 @@
       # Gitlab coordinator for status presentation. results/junit.xml
       # will be parsed by the UI for more detailed explanations of
       # test execution.
-  needs:
-    - debian/x86_test-vk
-    - debian-testing
   artifacts:
     when: always
     name: "mesa_${CI_JOB_NAME}"
@@ -318,3 +313,19 @@
       - ${JOB_FOLDER}/results
     reports:
       junit: ${JOB_FOLDER}/results/junit.xml
+
+.b2c-test-vk:
+  extends:
+    - .use-debian/x86_test-vk
+    - .b2c-test
+  needs:
+    - debian/x86_test-vk
+    - debian-testing
+
+.b2c-test-gl:
+  extends:
+    - .use-debian/x86_test-gl
+    - .b2c-test
+  needs:
+    - debian/x86_test-gl
+    - debian-testing
