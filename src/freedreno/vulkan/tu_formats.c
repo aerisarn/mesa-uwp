@@ -120,14 +120,6 @@ tu6_format_texture_unchecked(enum pipe_format format, enum a6xx_tile_mode tile_m
       .swap = fd6_texture_swap(format, tile_mode),
    };
 
-   /* No texturing support for NPOT textures yet.  See
-    * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/5536
-    */
-   if (util_format_is_plain(format) &&
-       !util_is_power_of_two_nonzero(util_format_get_blocksize(format))) {
-      fmt.fmt = FMT6_NONE;
-   }
-
    switch (format) {
    case PIPE_FORMAT_Z24X8_UNORM:
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:
@@ -172,25 +164,34 @@ tu_physical_device_get_format_properties(
    bool supported_vtx = tu6_format_vtx_supported(vk_format);
    bool supported_color = tu6_format_color_supported(format);
    bool supported_tex = tu6_format_texture_supported(format);
+   bool is_npot = !util_is_power_of_two_or_zero(desc->block.bits);
 
    if (format == PIPE_FORMAT_NONE ||
        !(supported_vtx || supported_color || supported_tex)) {
       goto end;
    }
 
-   buffer |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+   /* We don't support BufferToImage/ImageToBuffer for npot formats */
+   if (!is_npot)
+      buffer |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+
    if (supported_vtx)
       buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
 
-   if (supported_tex) {
+   if (supported_tex)
+      buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+
+   /* Don't support anything but texel buffers for non-power-of-two formats
+    * with 3 components. We'd need several workarounds for copying and
+    * clearing them because they're not renderable.
+    */
+   if (supported_tex && !is_npot) {
       optimal |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT |
                  VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT |
                  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
-
-      buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
 
       /* no blit src bit for YUYV/NV12/I420 formats */
       if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED &&
