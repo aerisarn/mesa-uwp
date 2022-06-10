@@ -1713,7 +1713,7 @@ tu6_emit_program(struct tu_cs *cs,
       stage++;
    }
 
-   for (; stage < ARRAY_SIZE(builder->shaders->variants); stage++) {
+   for (; stage < ARRAY_SIZE(builder->shader_iova); stage++) {
       const struct ir3_shader_variant *xs = builder->shaders->variants[stage];
 
       if (stage == MESA_SHADER_FRAGMENT && binning_pass)
