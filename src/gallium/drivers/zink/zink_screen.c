@@ -1371,14 +1371,22 @@ update_queue_props(struct zink_screen *screen)
    VkQueueFamilyProperties *props = malloc(sizeof(*props) * num_queues);
    VKSCR(GetPhysicalDeviceQueueFamilyProperties)(screen->pdev, &num_queues, props);
 
+   bool found_gfx = false;
+   uint32_t sparse_only = UINT32_MAX;
+   screen->sparse_queue = UINT32_MAX;
    for (uint32_t i = 0; i < num_queues; i++) {
-      if (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+      if (!found_gfx && (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
          screen->gfx_queue = i;
          screen->max_queues = props[i].queueCount;
          screen->timestamp_valid_bits = props[i].timestampValidBits;
-         break;
-      }
+         found_gfx = true;
+         if (props[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
+            screen->sparse_queue = i;
+      } else if (props[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
+         sparse_only = i;
    }
+   if (screen->sparse_queue == UINT32_MAX)
+      screen->sparse_queue = sparse_only;
    free(props);
 }
 
@@ -1387,6 +1395,12 @@ init_queue(struct zink_screen *screen)
 {
    simple_mtx_init(&screen->queue_lock, mtx_plain);
    VKSCR(GetDeviceQueue)(screen->dev, screen->gfx_queue, 0, &screen->queue);
+   if (screen->sparse_queue != UINT32_MAX) {
+      if (screen->sparse_queue != screen->gfx_queue)
+         VKSCR(GetDeviceQueue)(screen->dev, screen->sparse_queue, 0, &screen->queue_sparse);
+      else
+         screen->queue_sparse = screen->queue;
+   }
 }
 
 static void

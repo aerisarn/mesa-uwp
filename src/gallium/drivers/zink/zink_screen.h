@@ -156,10 +156,12 @@ struct zink_screen {
    bool faked_e5sparse; //drivers may not expose R9G9B9E5 but cts requires it
 
    uint32_t gfx_queue;
+   uint32_t sparse_queue;
    uint32_t max_queues;
    uint32_t timestamp_valid_bits;
    VkDevice dev;
    VkQueue queue; //gfx+compute
+   VkQueue queue_sparse;
    simple_mtx_t queue_lock;
    VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 
