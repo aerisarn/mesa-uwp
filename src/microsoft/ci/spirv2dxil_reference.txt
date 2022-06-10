@@ -646,9 +646,9 @@ Compilation failed
 Test:SpvParserCFGTest_EmitBody_IfSelection_TrueBranch_LoopBreak.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_Kill_InsideIf.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_Kill_InsideLoop.spvasm:main|Fragment: Fail
-DXIL: Loop must have break
-
+DXIL: Function: main: error: Loop must have break. Use /Zi for source location.
 Validation failed.
+
 
 Failed to validate DXIL
 

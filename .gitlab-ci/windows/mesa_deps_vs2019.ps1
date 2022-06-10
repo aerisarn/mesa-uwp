@@ -28,7 +28,7 @@ Start-Process -NoNewWindow -Wait -FilePath C:\vs_buildtools.exe `
 "--add", "Microsoft.VisualStudio.Component.VC.ATLMFC", `
 "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", `
 "--add", "Microsoft.VisualStudio.Component.Graphics.Tools", `
-"--add", "Microsoft.VisualStudio.Component.Windows10SDK.19041"
+"--add", "Microsoft.VisualStudio.Component.Windows10SDK.20348"
 
 if (!$?) {
   Write-Host "Failed to install Visual Studio tools"

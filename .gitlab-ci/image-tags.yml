@@ -15,10 +15,10 @@ variables:
    KERNEL_ROOTFS_TAG: "2022-06-09-piglit-update"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
-   WINDOWS_X64_VS_TAG: "2022-06-10-vs"
+   WINDOWS_X64_VS_TAG: "2022-06-15-vs-winsdk"
 
    WINDOWS_X64_BUILD_PATH: "windows/x64_build"
-   WINDOWS_X64_BUILD_TAG: "2022-06-10-vs"
+   WINDOWS_X64_BUILD_TAG: "2022-06-15-vs-winsdk"
 
    WINDOWS_X64_TEST_PATH: "windows/x64_test"
-   WINDOWS_X64_TEST_TAG: "2022-06-10-vs"
+   WINDOWS_X64_TEST_TAG: "2022-06-15-vs-winsdk"
