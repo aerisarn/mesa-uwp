@@ -716,6 +716,57 @@ general_restrictions_based_on_operand_types(const struct intel_device_info *devi
       }
    }
 
+   enum brw_reg_type dst_type;
+
+   if (num_sources == 3) {
+      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1)
+         dst_type = brw_inst_3src_a1_dst_type(devinfo, inst);
+      else
+         dst_type = brw_inst_3src_a16_dst_type(devinfo, inst);
+   } else {
+      dst_type = inst_dst_type(devinfo, inst);
+   }
+
+   ERROR_IF(dst_type == BRW_REGISTER_TYPE_DF &&
+            !devinfo->has_64bit_float,
+            "64-bit float destination, but platform does not support it");
+
+   ERROR_IF((dst_type == BRW_REGISTER_TYPE_Q ||
+             dst_type == BRW_REGISTER_TYPE_UQ) &&
+            !devinfo->has_64bit_int,
+            "64-bit int destination, but platform does not support it");
+
+   for (unsigned s = 0; s < num_sources; s++) {
+      enum brw_reg_type src_type;
+      if (num_sources == 3) {
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            switch (s) {
+            case 0: src_type = brw_inst_3src_a1_src0_type(devinfo, inst); break;
+            case 1: src_type = brw_inst_3src_a1_src1_type(devinfo, inst); break;
+            case 2: src_type = brw_inst_3src_a1_src2_type(devinfo, inst); break;
+            default: unreachable("invalid src");
+            }
+         } else {
+            src_type = brw_inst_3src_a16_src_type(devinfo, inst);
+         }
+      } else {
+         switch (s) {
+         case 0: src_type = brw_inst_src0_type(devinfo, inst); break;
+         case 1: src_type = brw_inst_src1_type(devinfo, inst); break;
+         default: unreachable("invalid src");
+         }
+      }
+
+      ERROR_IF(src_type == BRW_REGISTER_TYPE_DF &&
+               !devinfo->has_64bit_float,
+               "64-bit float source, but platform does not support it");
+
+      ERROR_IF((src_type == BRW_REGISTER_TYPE_Q ||
+                src_type == BRW_REGISTER_TYPE_UQ) &&
+               !devinfo->has_64bit_int,
+               "64-bit int source, but platform does not support it");
+   }
+
    if (num_sources == 3)
       return error_msg;
 
@@ -741,7 +792,6 @@ general_restrictions_based_on_operand_types(const struct intel_device_info *devi
     */
 
    unsigned dst_stride = STRIDE(brw_inst_dst_hstride(devinfo, inst));
-   enum brw_reg_type dst_type = inst_dst_type(devinfo, inst);
    bool dst_type_is_byte =
       inst_dst_type(devinfo, inst) == BRW_REGISTER_TYPE_B ||
       inst_dst_type(devinfo, inst) == BRW_REGISTER_TYPE_UB;
