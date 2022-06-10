@@ -85,7 +85,8 @@ fd6_screen_is_format_supported(struct pipe_screen *pscreen,
 
    if ((usage & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE)) &&
        has_tex &&
-       (target == PIPE_BUFFER || util_format_get_blocksize(format) != 12)) {
+       (target == PIPE_BUFFER ||
+        util_is_power_of_two_or_zero(util_format_get_blocksize(format)))) {
       retval |= usage & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE);
    }
 

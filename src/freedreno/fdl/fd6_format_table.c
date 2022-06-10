@@ -136,10 +136,10 @@ static const struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    _TC(A4B4G4R4_UNORM, 4_4_4_4_UNORM,           XYZW),
 
    /* 24-bit */
-   V__(R8G8B8_UNORM,   8_8_8_UNORM,             WZYX),
-   V__(R8G8B8_SNORM,   8_8_8_SNORM,             WZYX),
-   V__(R8G8B8_UINT,    8_8_8_UINT,              WZYX),
-   V__(R8G8B8_SINT,    8_8_8_SINT,              WZYX),
+   VT_(R8G8B8_UNORM,   8_8_8_UNORM,             WZYX),
+   VT_(R8G8B8_SNORM,   8_8_8_SNORM,             WZYX),
+   VT_(R8G8B8_UINT,    8_8_8_UINT,              WZYX),
+   VT_(R8G8B8_SINT,    8_8_8_SINT,              WZYX),
    V__(R8G8B8_USCALED, 8_8_8_UINT,              WZYX),
    V__(R8G8B8_SSCALED, 8_8_8_SINT,              WZYX),
 
@@ -235,13 +235,13 @@ static const struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    _TC(Z24_UNORM_S8_UINT_AS_R8G8B8A8, Z24_UNORM_S8_UINT_AS_R8G8B8A8, WZYX),
 
    /* 48-bit */
-   V__(R16G16B16_UNORM,   16_16_16_UNORM,       WZYX),
-   V__(R16G16B16_SNORM,   16_16_16_SNORM,       WZYX),
-   V__(R16G16B16_UINT,    16_16_16_UINT,        WZYX),
-   V__(R16G16B16_SINT,    16_16_16_SINT,        WZYX),
+   VT_(R16G16B16_UNORM,   16_16_16_UNORM,       WZYX),
+   VT_(R16G16B16_SNORM,   16_16_16_SNORM,       WZYX),
+   VT_(R16G16B16_UINT,    16_16_16_UINT,        WZYX),
+   VT_(R16G16B16_SINT,    16_16_16_SINT,        WZYX),
    V__(R16G16B16_USCALED, 16_16_16_UINT,        WZYX),
    V__(R16G16B16_SSCALED, 16_16_16_SINT,        WZYX),
-   V__(R16G16B16_FLOAT,   16_16_16_FLOAT,       WZYX),
+   VT_(R16G16B16_FLOAT,   16_16_16_FLOAT,       WZYX),
 
    /* 64-bit */
    VTC(R16G16B16A16_UNORM,   16_16_16_16_UNORM, WZYX),
