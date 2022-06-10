@@ -523,6 +523,12 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    zink_batch_resource_usage_set(batch, res, write);
 }
 
+void
+zink_batch_add_wait_semaphore(struct zink_batch *batch, VkSemaphore sem)
+{
+   util_dynarray_append(&batch->state->acquires, VkSemaphore, sem);
+}
+
 bool
 batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr)
 {

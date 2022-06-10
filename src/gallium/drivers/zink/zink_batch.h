@@ -180,6 +180,9 @@ void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 
 void
+zink_batch_add_wait_semaphore(struct zink_batch *batch, VkSemaphore sem);
+
+void
 zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write);
 
 void
