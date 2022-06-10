@@ -125,6 +125,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
    struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
+      .KHR_copy_commands2 = true,
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
