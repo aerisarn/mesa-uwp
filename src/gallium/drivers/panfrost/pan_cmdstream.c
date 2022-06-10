@@ -3325,7 +3325,7 @@ panfrost_emit_draw(void *out,
                         cfg.zs_update_operation = kill.zs_update;
 
                         cfg.allow_forward_pixel_to_kill = pan_allow_forward_pixel_to_kill(ctx, fs);
-                        cfg.allow_forward_pixel_to_be_killed = !fs->info.fs.sidefx;
+                        cfg.allow_forward_pixel_to_be_killed = !fs->info.writes_global;
 
                         /* Mask of render targets that may be written. A render
                          * target may be written if the fragment shader writes

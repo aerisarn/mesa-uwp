@@ -238,7 +238,7 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                         info->fs.writes_coverage || info->fs.can_discard;
 
                 rsd->properties.allow_forward_pixel_to_be_killed =
-                        !info->fs.sidefx;
+                        !info->writes_global;
 
 #if PAN_ARCH >= 7
                 rsd->properties.shader_wait_dependency_6 = info->bifrost.wait_6;
