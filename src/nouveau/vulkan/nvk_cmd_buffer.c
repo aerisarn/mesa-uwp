@@ -1,5 +1,6 @@
 #include "nvk_cmd_buffer.h"
 
+#include "nvk_descriptor_set.h"
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
 
@@ -49,6 +50,7 @@ nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    nouveau_ws_push_reset(cmd_buffer->push);
+   memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
 
    return VK_SUCCESS;
 }
@@ -241,3 +243,31 @@ VKAPI_ATTR void VKAPI_CALL
 nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
                         const VkDependencyInfo *pDependencyInfo)
 { }
+
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
+                          VkPipelineBindPoint pipelineBindPoint,
+                          VkPipelineLayout _layout,
+                          uint32_t firstSet,
+                          uint32_t descriptorSetCount,
+                          const VkDescriptorSet *pDescriptorSets,
+                          uint32_t dynamicOffsetCount,
+                          const uint32_t *pDynamicOffsets)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_descriptor_state *desc =
+      nvk_get_descriptors_state(cmd, pipelineBindPoint);
+
+   for (unsigned i = 0; i < descriptorSetCount; ++i) {
+      unsigned set_idx = i + firstSet;
+      VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
+
+      if (desc->sets[set_idx] != set) {
+         desc->sets[set_idx] = set;
+         desc->sets_dirty |= BITFIELD_BIT(set_idx);
+      }
+
+      /* TODO: Dynamic buffers */
+   }
+}
