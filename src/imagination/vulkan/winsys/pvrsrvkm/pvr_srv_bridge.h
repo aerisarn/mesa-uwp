@@ -134,7 +134,7 @@
    (((uint32_t)((uint32_t)(PVR_SRV_VERSION_MAJ)&0xFFFFU) << 16U) | \
     (((PVR_SRV_VERSION_MIN)&0xFFFFU) << 0U))
 
-#define PVR_SRV_VERSION_BUILD 6210866
+#define PVR_SRV_VERSION_BUILD 6256262
 
 /*! This flags gets set if the client is 64 Bit compatible. */
 #define PVR_SRV_FLAGS_CLIENT_64BIT_COMPAT BITFIELD_BIT(5U)
