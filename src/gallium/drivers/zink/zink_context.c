@@ -628,6 +628,8 @@ zink_bind_sampler_states(struct pipe_context *pctx,
       ctx->di.textures[shader][start_slot + i].sampler = state ? state->sampler : VK_NULL_HANDLE;
       if (state) {
          zink_batch_usage_set(&state->batch_uses, ctx->batch.state);
+         if (screen->info.have_EXT_non_seamless_cube_map)
+            continue;
          const uint32_t bit = BITFIELD_BIT(start_slot + i);
          if (state->emulate_nonseamless)
             ctx->di.emulate_nonseamless[shader] |= bit;
@@ -643,7 +645,8 @@ zink_bind_sampler_states(struct pipe_context *pctx,
       }
    }
    ctx->di.num_samplers[shader] = start_slot + num_samplers;
-   update_nonseamless_shader_key(ctx, shader);
+   if (!screen->info.have_EXT_non_seamless_cube_map)
+      update_nonseamless_shader_key(ctx, shader);
 }
 
 static void
@@ -863,7 +866,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       assert(ivci.format);
 
       sampler_view->image_view = (struct zink_surface*)zink_get_surface(ctx, pres, &templ, &ivci);
-      if (viewtype_is_cube(&sampler_view->image_view->ivci)) {
+      if (!screen->info.have_EXT_non_seamless_cube_map && viewtype_is_cube(&sampler_view->image_view->ivci)) {
          ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
          sampler_view->cube_array = (struct zink_surface*)zink_get_surface(ctx, pres, &templ, &ivci);
       }
@@ -1602,7 +1605,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 update = true;
              if (shader_type == PIPE_SHADER_COMPUTE)
                 flush_pending_clears(ctx, res);
-             if (viewtype_is_cube(&b->image_view->ivci)) {
+             if (b->cube_array) {
                 ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
                 zink_batch_usage_set(&b->cube_array->batch_uses, ctx->batch.state);
              }
@@ -1635,8 +1638,10 @@ zink_set_sampler_views(struct pipe_context *pctx,
    }
    ctx->di.num_sampler_views[shader_type] = start_slot + num_views;
    if (update) {
-      zink_screen(pctx->screen)->context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, num_views);
-      update_nonseamless_shader_key(ctx, shader_type);
+      struct zink_screen *screen = zink_screen(pctx->screen);
+      screen->context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, num_views);
+      if (!screen->info.have_EXT_non_seamless_cube_map)
+         update_nonseamless_shader_key(ctx, shader_type);
    }
 }
 
