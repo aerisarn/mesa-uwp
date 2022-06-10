@@ -504,6 +504,9 @@ estimate_drawcall_bandwidth(const struct tu_cmd_buffer *cmd,
 {
    const struct tu_cmd_state *state = &cmd->state;
 
+   if (!state->drawcall_count)
+      return 0;
+
    /* sample count times drawcall_bandwidth_per_sample */
    return (uint64_t)avg_renderpass_sample_count *
       state->drawcall_bandwidth_per_sample_sum / state->drawcall_count;
