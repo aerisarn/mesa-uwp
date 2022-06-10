@@ -3832,18 +3832,19 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
          pm4->ndw = *gs_ring_state_dw_offset;
       }
 
+      /* Unallocated rings are written to reserve the space in the pm4
+       * (to be able to overwrite them later). */
       if (sctx->gfx_level >= GFX7) {
-         if (sctx->esgs_ring) {
-            assert(sctx->gfx_level <= GFX8);
-            si_pm4_set_reg(pm4, R_030900_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
-         }
-         if (sctx->gsvs_ring)
-            si_pm4_set_reg(pm4, R_030904_VGT_GSVS_RING_SIZE, sctx->gsvs_ring->width0 / 256);
+         if (sctx->gfx_level <= GFX8)
+            si_pm4_set_reg(pm4, R_030900_VGT_ESGS_RING_SIZE,
+                           sctx->esgs_ring ? sctx->esgs_ring->width0 / 256 : 0);
+         si_pm4_set_reg(pm4, R_030904_VGT_GSVS_RING_SIZE,
+                        sctx->gsvs_ring ? sctx->gsvs_ring->width0 / 256 : 0);
       } else {
-         if (sctx->esgs_ring)
-            si_pm4_set_reg(pm4, R_0088C8_VGT_ESGS_RING_SIZE, sctx->esgs_ring->width0 / 256);
-         if (sctx->gsvs_ring)
-            si_pm4_set_reg(pm4, R_0088CC_VGT_GSVS_RING_SIZE, sctx->gsvs_ring->width0 / 256);
+         si_pm4_set_reg(pm4, R_0088C8_VGT_ESGS_RING_SIZE,
+                        sctx->esgs_ring ? sctx->esgs_ring->width0 / 256 : 0);
+         si_pm4_set_reg(pm4, R_0088CC_VGT_GSVS_RING_SIZE,
+                        sctx->gsvs_ring ? sctx->gsvs_ring->width0 / 256 : 0);
       }
 
       if (old_ndw) {
