@@ -448,7 +448,7 @@ struct dzn_rendering_attachment {
 };
 
 struct dzn_graphics_pipeline_variant_key {
-   uint32_t dummy;
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE ib_strip_cut;
 };
 
 struct dzn_graphics_pipeline_variant {
@@ -793,7 +793,7 @@ struct dzn_graphics_pipeline {
       uintptr_t stream_buf[MAX_GFX_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
       D3D12_PIPELINE_STATE_STREAM_DESC stream_desc;
       struct {
-         uint32_t dummy;
+         uint32_t ib_strip_cut;
       } desc_offsets;
       D3D12_INPUT_ELEMENT_DESC inputs[D3D12_VS_INPUT_REGISTER_COUNT];
       struct {

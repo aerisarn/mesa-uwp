@@ -576,8 +576,9 @@ to_prim_topology(VkPrimitiveTopology in, unsigned patch_control_points)
    }
 }
 
-static void
-dzn_graphics_pipeline_translate_ia(struct dzn_graphics_pipeline *pipeline,
+static VkResult
+dzn_graphics_pipeline_translate_ia(struct dzn_device *device,
+                                   struct dzn_graphics_pipeline *pipeline,
                                    D3D12_PIPELINE_STATE_STREAM_DESC *out,
                                    const VkGraphicsPipelineCreateInfo *in)
 {
@@ -593,6 +594,7 @@ dzn_graphics_pipeline_translate_ia(struct dzn_graphics_pipeline *pipeline,
    }
    const VkPipelineTessellationStateCreateInfo *in_tes =
       has_tes ? in->pTessellationState : NULL;
+   VkResult ret = VK_SUCCESS;
 
    d3d12_gfx_pipeline_state_stream_new_desc(out, PRIMITIVE_TOPOLOGY, D3D12_PRIMITIVE_TOPOLOGY_TYPE, prim_top_type);
    *prim_top_type = to_prim_topology_type(in_ia->topology);
@@ -600,12 +602,15 @@ dzn_graphics_pipeline_translate_ia(struct dzn_graphics_pipeline *pipeline,
    pipeline->ia.topology =
       to_prim_topology(in_ia->topology, in_tes ? in_tes->patchControlPoints : 0);
 
-   /* FIXME: does that work for u16 index buffers? */
-   d3d12_gfx_pipeline_state_stream_new_desc(out, IB_STRIP_CUT_VALUE, D3D12_INDEX_BUFFER_STRIP_CUT_VALUE, ib_strip_cut);
-   if (in_ia->primitiveRestartEnable)
-      *ib_strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF;
-   else
+   if (in_ia->primitiveRestartEnable) {
+      d3d12_gfx_pipeline_state_stream_new_desc(out, IB_STRIP_CUT_VALUE, D3D12_INDEX_BUFFER_STRIP_CUT_VALUE, ib_strip_cut);
+      pipeline->templates.desc_offsets.ib_strip_cut =
+         (uintptr_t)ib_strip_cut - (uintptr_t)out->pPipelineStateSubobjectStream;
       *ib_strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+      ret = dzn_graphics_pipeline_prepare_for_variants(device, pipeline);
+   }
+
+   return ret;
 }
 
 static D3D12_FILL_MODE
@@ -1155,7 +1160,10 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       }
    }
 
-   dzn_graphics_pipeline_translate_ia(pipeline, stream_desc, pCreateInfo);
+   ret = dzn_graphics_pipeline_translate_ia(device, pipeline, stream_desc, pCreateInfo);
+   if (ret)
+      goto out;
+
    dzn_graphics_pipeline_translate_rast(pipeline, stream_desc, pCreateInfo);
    dzn_graphics_pipeline_translate_ms(pipeline, stream_desc, pCreateInfo);
    dzn_graphics_pipeline_translate_zsa(pipeline, stream_desc, pCreateInfo);
@@ -1254,6 +1262,10 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
       return pipeline->base.state;
 
    struct dzn_graphics_pipeline_variant_key masked_key = { 0 };
+
+   if (dzn_graphics_pipeline_get_desc_template(pipeline, ib_strip_cut))
+      masked_key.ib_strip_cut = key->ib_strip_cut;
+
    struct dzn_device *device =
       container_of(pipeline->base.base.device, struct dzn_device, vk);
    struct hash_entry *he =
@@ -1272,6 +1284,11 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
       };
 
       memcpy(stream_buf, pipeline->templates.stream_buf, stream_desc.SizeInBytes);
+
+      D3D12_INDEX_BUFFER_STRIP_CUT_VALUE *ib_strip_cut =
+         dzn_graphics_pipeline_get_desc(pipeline, stream_buf, ib_strip_cut);
+      if (ib_strip_cut)
+         *ib_strip_cut = masked_key.ib_strip_cut;
 
       HRESULT hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
                                                        &IID_ID3D12PipelineState,

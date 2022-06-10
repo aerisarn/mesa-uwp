@@ -2538,6 +2538,9 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
 static void
 dzn_cmd_buffer_prepare_draw(struct dzn_cmd_buffer *cmdbuf, bool indexed)
 {
+   if (indexed)
+      dzn_cmd_buffer_update_ibview(cmdbuf);
+
    dzn_cmd_buffer_update_pipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
    dzn_cmd_buffer_update_heaps(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
    dzn_cmd_buffer_update_sysvals(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -2548,9 +2551,6 @@ dzn_cmd_buffer_prepare_draw(struct dzn_cmd_buffer *cmdbuf, bool indexed)
    dzn_cmd_buffer_update_zsa(cmdbuf);
    dzn_cmd_buffer_update_blend_constants(cmdbuf);
    dzn_cmd_buffer_update_depth_bounds(cmdbuf);
-
-   if (indexed)
-      dzn_cmd_buffer_update_ibview(cmdbuf);
 
    /* Reset the dirty states */
    cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty = 0;
@@ -3963,14 +3963,22 @@ dzn_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    switch (indexType) {
    case VK_INDEX_TYPE_UINT16:
       cmdbuf->state.ib.view.Format = DXGI_FORMAT_R16_UINT;
+      cmdbuf->state.pipeline_variant.ib_strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF;
       break;
    case VK_INDEX_TYPE_UINT32:
       cmdbuf->state.ib.view.Format = DXGI_FORMAT_R32_UINT;
+      cmdbuf->state.pipeline_variant.ib_strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF;
       break;
    default: unreachable("Invalid index type");
    }
 
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
+
+   const struct dzn_graphics_pipeline *pipeline =
+      (const struct dzn_graphics_pipeline *)cmdbuf->state.pipeline;
+
+   if (pipeline && dzn_graphics_pipeline_get_desc_template(pipeline, ib_strip_cut))
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
