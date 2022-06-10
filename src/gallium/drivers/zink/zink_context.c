@@ -369,6 +369,10 @@ zink_create_sampler_state(struct pipe_context *pctx,
 
    sci.borderColor = get_border_color(&state->border_color, is_integer, need_custom);
    if (sci.borderColor > VK_BORDER_COLOR_INT_OPAQUE_WHITE && need_custom) {
+      if (!screen->info.border_color_feats.customBorderColorWithoutFormat) {
+         static bool warned = false;
+         warn_missing_feature(warned, "customBorderColorWithoutFormat");
+      }
       if (screen->info.have_EXT_custom_border_color &&
           screen->info.border_color_feats.customBorderColorWithoutFormat) {
          cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
