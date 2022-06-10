@@ -24,6 +24,7 @@
 #include "spirv_to_dxil.h"
 #include "nir_to_dxil.h"
 #include "dxil_nir.h"
+#include "dxil_nir_lower_int_cubemaps.h"
 #include "shader_enums.h"
 #include "spirv/nir_spirv.h"
 #include "util/blob.h"
@@ -668,6 +669,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
 {
    glsl_type_singleton_init_or_ref();
 
+   NIR_PASS_V(nir, dxil_nir_lower_int_cubemaps, false);
    NIR_PASS_V(nir, nir_lower_io_to_vector,
               nir_var_shader_out |
               (nir->info.stage != MESA_SHADER_VERTEX ? nir_var_shader_in : 0));
