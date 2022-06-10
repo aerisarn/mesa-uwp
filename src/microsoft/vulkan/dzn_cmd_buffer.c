@@ -2135,18 +2135,24 @@ dzn_cmd_buffer_update_pipeline(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint
    if (!pipeline)
       return;
 
+   ID3D12PipelineState *old_pipeline_state =
+      cmdbuf->state.pipeline ? cmdbuf->state.pipeline->state : NULL;
+
    if (cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_PIPELINE) {
       if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-         const struct dzn_graphics_pipeline *gfx =
-            (const struct dzn_graphics_pipeline *)pipeline;
+         struct dzn_graphics_pipeline *gfx =
+            (struct dzn_graphics_pipeline *)pipeline;
          ID3D12GraphicsCommandList1_SetGraphicsRootSignature(cmdbuf->cmdlist, pipeline->root.sig);
          ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, gfx->ia.topology);
+         dzn_graphics_pipeline_get_state(gfx, &cmdbuf->state.pipeline_variant);
       } else {
          ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, pipeline->root.sig);
       }
    }
 
-   if (cmdbuf->state.pipeline != pipeline) {
+   ID3D12PipelineState *new_pipeline_state = pipeline->state;
+
+   if (old_pipeline_state != new_pipeline_state) {
       ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, pipeline->state);
       cmdbuf->state.pipeline = pipeline;
    }

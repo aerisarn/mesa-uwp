@@ -447,11 +447,21 @@ struct dzn_rendering_attachment {
    VkAttachmentStoreOp store_op;
 };
 
+struct dzn_graphics_pipeline_variant_key {
+   uint32_t dummy;
+};
+
+struct dzn_graphics_pipeline_variant {
+   struct dzn_graphics_pipeline_variant_key key;
+   ID3D12PipelineState *state;
+};
+
 #define MAX_RTS D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT
 
 struct dzn_cmd_buffer_state {
    const struct dzn_pipeline *pipeline;
    struct dzn_descriptor_heap *heaps[NUM_POOL_TYPES];
+   struct dzn_graphics_pipeline_variant_key pipeline_variant;
    struct {
       VkRenderingFlags flags;
       D3D12_RECT area;
@@ -673,6 +683,32 @@ enum dzn_register_space {
    DZN_REGISTER_SPACE_PUSH_CONSTANT,
 };
 
+#define D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(__type) \
+   ALIGN_POT(ALIGN_POT(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE), alignof(__type)) + sizeof(__type), alignof(void *))
+
+#define MAX_GFX_PIPELINE_STATE_STREAM_SIZE \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(ID3D12RootSignature *) + \
+   (D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_SHADER_BYTECODE) * 5) + /* VS, PS, DS, HS, GS */ \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_STREAM_OUTPUT_DESC) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_BLEND_DESC) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(UINT) + /* SampleMask */ \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_RASTERIZER_DESC) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_INPUT_LAYOUT_DESC) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_PRIMITIVE_TOPOLOGY_TYPE) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(struct D3D12_RT_FORMAT_ARRAY) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(DXGI_FORMAT) + /* DS format */ \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(DXGI_SAMPLE_DESC) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_NODE_MASK) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_CACHED_PIPELINE_STATE) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_PIPELINE_STATE_FLAGS) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_DEPTH_STENCIL_DESC1) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_VIEW_INSTANCING_DESC)
+
+#define MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(ID3D12RootSignature *) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_SHADER_BYTECODE)
+
 struct dzn_pipeline {
    struct vk_object_base base;
    VkPipelineBindPoint type;
@@ -753,8 +789,34 @@ struct dzn_graphics_pipeline {
       float constants[4];
    } blend;
 
+   struct {
+      uintptr_t stream_buf[MAX_GFX_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
+      D3D12_PIPELINE_STATE_STREAM_DESC stream_desc;
+      struct {
+         uint32_t dummy;
+      } desc_offsets;
+      D3D12_INPUT_ELEMENT_DESC inputs[D3D12_VS_INPUT_REGISTER_COUNT];
+      struct {
+         D3D12_SHADER_BYTECODE *bc;
+         nir_shader *nir;
+      } shaders[MESA_VULKAN_SHADER_STAGES];
+   } templates;
+
+   struct hash_table *variants;
+
    ID3D12CommandSignature *indirect_cmd_sigs[DZN_NUM_INDIRECT_DRAW_CMD_SIGS];
 };
+
+#define dzn_graphics_pipeline_get_desc(pipeline, streambuf, name) \
+   (void *)(pipeline->templates.desc_offsets.name == 0 ? NULL : \
+            (uint8_t *)streambuf + pipeline->templates.desc_offsets.name)
+
+#define dzn_graphics_pipeline_get_desc_template(pipeline, name) \
+   (const void *)dzn_graphics_pipeline_get_desc(pipeline, pipeline->templates.stream_buf, name)
+
+ID3D12PipelineState *
+dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
+                                const struct dzn_graphics_pipeline_variant_key *key);
 
 ID3D12CommandSignature *
 dzn_graphics_pipeline_get_indirect_cmd_sig(struct dzn_graphics_pipeline *pipeline,

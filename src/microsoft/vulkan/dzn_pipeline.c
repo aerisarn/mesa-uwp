@@ -38,32 +38,6 @@
 
 #include "util/u_debug.h"
 
-#define D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(__type) \
-   ALIGN_POT(ALIGN_POT(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE), alignof(__type)) + sizeof(__type), alignof(void *))
-
-#define MAX_GFX_PIPELINE_STATE_STREAM_SIZE \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(ID3D12RootSignature *) + \
-   (D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_SHADER_BYTECODE) * 5) + /* VS, PS, DS, HS, GS */ \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_STREAM_OUTPUT_DESC) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_BLEND_DESC) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(UINT) + /* SampleMask */ \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_RASTERIZER_DESC) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_INPUT_LAYOUT_DESC) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_PRIMITIVE_TOPOLOGY_TYPE) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(struct D3D12_RT_FORMAT_ARRAY) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(DXGI_FORMAT) + /* DS format */ \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(DXGI_SAMPLE_DESC) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_NODE_MASK) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_CACHED_PIPELINE_STATE) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_PIPELINE_STATE_FLAGS) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_DEPTH_STENCIL_DESC1) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_VIEW_INSTANCING_DESC)
-
-#define MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(ID3D12RootSignature *) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_SHADER_BYTECODE)
-
 #define d3d12_pipeline_state_stream_new_desc(__stream, __pipetype, __id, __type, __desc) \
    __type *__desc; \
    do { \
@@ -85,6 +59,35 @@
 
 #define d3d12_compute_pipeline_state_stream_new_desc(__stream, __id, __type, __desc) \
    d3d12_pipeline_state_stream_new_desc(__stream, COMPUTE, __id, __type, __desc)
+
+static bool
+gfx_pipeline_variant_key_equal(const void *a, const void *b)
+{
+   return !memcmp(a, b, sizeof(struct dzn_graphics_pipeline_variant_key));
+}
+
+static uint32_t
+gfx_pipeline_variant_key_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct dzn_graphics_pipeline_variant_key));
+}
+
+static VkResult
+dzn_graphics_pipeline_prepare_for_variants(struct dzn_device *device,
+                                           struct dzn_graphics_pipeline *pipeline)
+{
+   if (pipeline->variants)
+      return VK_SUCCESS;
+
+   pipeline->variants =
+      _mesa_hash_table_create(NULL,
+                              gfx_pipeline_variant_key_hash,
+                              gfx_pipeline_variant_key_equal);
+   if (!pipeline->variants)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   return VK_SUCCESS;
+}
 
 static dxil_spirv_shader_stage
 to_dxil_shader_stage(VkShaderStageFlagBits in)
@@ -271,13 +274,11 @@ dzn_pipeline_get_gfx_shader_slot(D3D12_PIPELINE_STATE_STREAM_DESC *stream,
 
 static VkResult
 dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
-                                      const struct dzn_graphics_pipeline *pipeline,
+                                      struct dzn_graphics_pipeline *pipeline,
                                       const struct dzn_pipeline_layout *layout,
                                       D3D12_PIPELINE_STATE_STREAM_DESC *out,
                                       D3D12_INPUT_ELEMENT_DESC *attribs,
-                                      D3D12_INPUT_ELEMENT_DESC *inputs,
                                       enum pipe_format *vi_conversions,
-                                      D3D12_SHADER_BYTECODE **shaders,
                                       const VkGraphicsPipelineCreateInfo *info)
 {
    const VkPipelineViewportStateCreateInfo *vp_info =
@@ -289,7 +290,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
    } stages[MESA_VULKAN_SHADER_STAGES] = { 0 };
    gl_shader_stage yz_flip_stage = MESA_SHADER_NONE;
    uint32_t active_stage_mask = 0;
-   VkResult ret = VK_SUCCESS;
+   VkResult ret;
 
    /* First step: collect stage info in a table indexed by gl_shader_stage
     * so we can iterate over stages in pipeline order or reverse pipeline
@@ -378,7 +379,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                                         vi_conversions,
                                         &nir_opts, &stages[stage].nir);
       if (ret != VK_SUCCESS)
-         goto out;
+         return ret;
    }
 
    /* Third step: link those NIR shaders. We iterate in reverse order
@@ -407,14 +408,14 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          assert(drv_loc < D3D12_VS_INPUT_REGISTER_COUNT);
          assert(loc < MAX_VERTEX_GENERIC_ATTRIBS);
 
-	 inputs[drv_loc] = attribs[loc];
-         inputs[drv_loc].SemanticIndex = drv_loc;
+         pipeline->templates.inputs[drv_loc] = attribs[loc];
+         pipeline->templates.inputs[drv_loc].SemanticIndex = drv_loc;
          var->data.driver_location = drv_loc++;
       }
 
       if (drv_loc > 0) {
          d3d12_gfx_pipeline_state_stream_new_desc(out, INPUT_LAYOUT, D3D12_INPUT_LAYOUT_DESC, desc);
-         desc->pInputElementDescs = inputs;
+         desc->pInputElementDescs = pipeline->templates.inputs;
          desc->NumElements = drv_loc;
       }
    }
@@ -426,16 +427,13 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
       ret = dzn_pipeline_compile_shader(device, stages[stage].nir, slot);
       if (ret != VK_SUCCESS)
-         goto out;
+         return ret;
 
-      shaders[stage] = slot;
+      pipeline->templates.shaders[stage].bc = slot;
+      pipeline->templates.shaders[stage].nir = stages[stage].nir;
    }
 
-out:
-   u_foreach_bit(stage, active_stage_mask)
-      ralloc_free(stages[stage].nir);
-
-   return ret;
+   return VK_SUCCESS;
 }
 
 VkFormat
@@ -1037,12 +1035,46 @@ dzn_pipeline_finish(struct dzn_pipeline *pipeline)
    vk_object_base_finish(&pipeline->base);
 }
 
+static void dzn_graphics_pipeline_delete_variant(struct hash_entry *he)
+{
+   struct dzn_graphics_pipeline_variant *variant = he->data;
+
+   if (variant->state)
+      ID3D12PipelineState_Release(variant->state);
+}
+
+static void
+dzn_graphics_pipeline_cleanup_nir_shaders(struct dzn_graphics_pipeline *pipeline)
+{
+   for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->templates.shaders); i++) {
+      ralloc_free(pipeline->templates.shaders[i].nir);
+      pipeline->templates.shaders[i].nir = NULL;
+   }
+}
+
+static void
+dzn_graphics_pipeline_cleanup_dxil_shaders(struct dzn_graphics_pipeline *pipeline)
+{
+   for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->templates.shaders); i++) {
+      if (pipeline->templates.shaders[i].bc) {
+         free((void *)pipeline->templates.shaders[i].bc->pShaderBytecode);
+         pipeline->templates.shaders[i].bc = NULL;
+      }
+   }
+}
+
 static void
 dzn_graphics_pipeline_destroy(struct dzn_graphics_pipeline *pipeline,
                               const VkAllocationCallbacks *alloc)
 {
    if (!pipeline)
       return;
+
+   _mesa_hash_table_destroy(pipeline->variants,
+                            dzn_graphics_pipeline_delete_variant);
+
+   dzn_graphics_pipeline_cleanup_nir_shaders(pipeline);
+   dzn_graphics_pipeline_cleanup_dxil_shaders(pipeline);
 
    for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->indirect_cmd_sigs); i++) {
       if (pipeline->indirect_cmd_sigs[i])
@@ -1076,18 +1108,14 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    if (!pipeline)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   uintptr_t state_buf[MAX_GFX_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
-   D3D12_PIPELINE_STATE_STREAM_DESC stream_desc = {
-      .pPipelineStateSubobjectStream = state_buf,
-   };
+   D3D12_PIPELINE_STATE_STREAM_DESC *stream_desc = &pipeline->templates.stream_desc;
+   stream_desc->pPipelineStateSubobjectStream = pipeline->templates.stream_buf;
 
    dzn_pipeline_init(&pipeline->base, device,
                      VK_PIPELINE_BIND_POINT_GRAPHICS,
                      layout);
    D3D12_INPUT_ELEMENT_DESC attribs[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
-   D3D12_INPUT_ELEMENT_DESC inputs[D3D12_VS_INPUT_REGISTER_COUNT] = { 0 };
    enum pipe_format vi_conversions[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
-   D3D12_SHADER_BYTECODE *shaders[MESA_VULKAN_SHADER_STAGES] = { 0 };
 
    const VkPipelineViewportStateCreateInfo *vp_info =
       pCreateInfo->pRasterizationState->rasterizerDiscardEnable ?
@@ -1127,11 +1155,11 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       }
    }
 
-   dzn_graphics_pipeline_translate_ia(pipeline, &stream_desc, pCreateInfo);
-   dzn_graphics_pipeline_translate_rast(pipeline, &stream_desc, pCreateInfo);
-   dzn_graphics_pipeline_translate_ms(pipeline, &stream_desc, pCreateInfo);
-   dzn_graphics_pipeline_translate_zsa(pipeline, &stream_desc, pCreateInfo);
-   dzn_graphics_pipeline_translate_blend(pipeline, &stream_desc, pCreateInfo);
+   dzn_graphics_pipeline_translate_ia(pipeline, stream_desc, pCreateInfo);
+   dzn_graphics_pipeline_translate_rast(pipeline, stream_desc, pCreateInfo);
+   dzn_graphics_pipeline_translate_ms(pipeline, stream_desc, pCreateInfo);
+   dzn_graphics_pipeline_translate_zsa(pipeline, stream_desc, pCreateInfo);
+   dzn_graphics_pipeline_translate_blend(pipeline, stream_desc, pCreateInfo);
 
    if (pass) {
       const struct vk_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
@@ -1165,7 +1193,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    }
 
    if (color_count > 0) {
-      d3d12_gfx_pipeline_state_stream_new_desc(&stream_desc, RENDER_TARGET_FORMATS, struct D3D12_RT_FORMAT_ARRAY, rts);
+      d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, RENDER_TARGET_FORMATS, struct D3D12_RT_FORMAT_ARRAY, rts);
       rts->NumRenderTargets = color_count;
       for (uint32_t i = 0; i < color_count; i++) {
          rts->RTFormats[i] =
@@ -1176,7 +1204,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    }
 
    if (zs_fmt != VK_FORMAT_UNDEFINED) {
-      d3d12_gfx_pipeline_state_stream_new_desc(&stream_desc, DEPTH_STENCIL_FORMAT, DXGI_FORMAT, ds_fmt);
+      d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, DEPTH_STENCIL_FORMAT, DXGI_FORMAT, ds_fmt);
       *ds_fmt =
          dzn_image_get_dxgi_format(zs_fmt,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1185,37 +1213,84 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    }
 
    ret = dzn_graphics_pipeline_compile_shaders(device, pipeline, layout,
-                                               &stream_desc,
-                                               attribs, inputs, vi_conversions,
-                                               shaders, pCreateInfo);
+                                               stream_desc,
+                                               attribs, vi_conversions,
+                                               pCreateInfo);
    if (ret != VK_SUCCESS)
       goto out;
 
-   d3d12_gfx_pipeline_state_stream_new_desc(&stream_desc, ROOT_SIGNATURE, ID3D12RootSignature*, root_sig);
+   d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, ROOT_SIGNATURE, ID3D12RootSignature*, root_sig);
    *root_sig = pipeline->base.root.sig;
 
-   hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
-                                            &IID_ID3D12PipelineState,
-                                            (void **)&pipeline->base.state);
-   if (FAILED(hres)) {
-      ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto out;
+   if (!pipeline->variants) {
+      hres = ID3D12Device2_CreatePipelineState(device->dev, stream_desc,
+                                               &IID_ID3D12PipelineState,
+                                               (void **)&pipeline->base.state);
+      if (FAILED(hres)) {
+         ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         goto out;
+      }
+
+      dzn_graphics_pipeline_cleanup_dxil_shaders(pipeline);
    }
 
+   dzn_graphics_pipeline_cleanup_nir_shaders(pipeline);
    ret = VK_SUCCESS;
 
 out:
-   for (uint32_t i = 0; i < ARRAY_SIZE(shaders); i++) {
-      if (shaders[i])
-         free((void *)shaders[i]->pShaderBytecode);
-   }
-
    if (ret != VK_SUCCESS)
       dzn_graphics_pipeline_destroy(pipeline, pAllocator);
    else
       *out = dzn_graphics_pipeline_to_handle(pipeline);
 
    return ret;
+}
+
+ID3D12PipelineState *
+dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
+                                const struct dzn_graphics_pipeline_variant_key *key)
+{
+   if (!pipeline->variants)
+      return pipeline->base.state;
+
+   struct dzn_graphics_pipeline_variant_key masked_key = { 0 };
+   struct dzn_device *device =
+      container_of(pipeline->base.base.device, struct dzn_device, vk);
+   struct hash_entry *he =
+      _mesa_hash_table_search(pipeline->variants, &masked_key);
+
+   struct dzn_graphics_pipeline_variant *variant;
+
+   if (!he) {
+      variant = rzalloc(pipeline->variants, struct dzn_graphics_pipeline_variant);
+      variant->key = masked_key;
+
+      uintptr_t stream_buf[MAX_GFX_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
+      D3D12_PIPELINE_STATE_STREAM_DESC stream_desc = {
+         .SizeInBytes = pipeline->templates.stream_desc.SizeInBytes,
+         .pPipelineStateSubobjectStream = stream_buf,
+      };
+
+      memcpy(stream_buf, pipeline->templates.stream_buf, stream_desc.SizeInBytes);
+
+      HRESULT hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
+                                                       &IID_ID3D12PipelineState,
+                                                       &variant->state);
+      assert(!FAILED(hres));
+      he = _mesa_hash_table_insert(pipeline->variants, &variant->key, variant);
+      assert(he);
+   } else {
+      variant = he->data;
+   }
+
+   if (variant->state)
+      ID3D12PipelineState_AddRef(variant->state);
+
+   if (pipeline->base.state)
+      ID3D12PipelineState_Release(pipeline->base.state);
+
+   pipeline->base.state = variant->state;
+   return variant->state;
 }
 
 #define DZN_INDIRECT_CMD_SIG_MAX_ARGS 4
