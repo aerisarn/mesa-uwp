@@ -12,9 +12,8 @@
 #include "nouveau_push.h"
 
 #include "nvtypes.h"
-#include "classes/cl90b5.h"
-#include "classes/clc1b5.h"
-#include "push906f.h"
+#include "nvk_cl90b5.h"
+#include "nvk_clc1b5.h"
 
 static void
 nouveau_copy_linear(struct nouveau_ws_push *push,
@@ -23,22 +22,23 @@ nouveau_copy_linear(struct nouveau_ws_push *push,
    while (size) {
       unsigned bytes = MIN2(size, 1 << 17);
 
-      PUSH_MTHD(push, NV90B5, OFFSET_IN_UPPER,
-                NVVAL(NV90B5, OFFSET_IN_UPPER, UPPER, src_addr >> 32),
-                              OFFSET_IN_LOWER, src_addr & 0xffffffff,
+      P_MTHD(push, NV90B5, OFFSET_IN_UPPER);
+      P_NV90B5_OFFSET_IN_UPPER(push, src_addr >> 32);
+      P_NV90B5_OFFSET_IN_LOWER(push, src_addr & 0xffffffff);
+      P_NV90B5_OFFSET_OUT_UPPER(push, dst_addr >> 32);
+      P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xffffffff);
 
-                              OFFSET_OUT_UPPER,
-                NVVAL(NV90B5, OFFSET_OUT_UPPER, UPPER, dst_addr >> 32),
-                              OFFSET_OUT_LOWER, dst_addr & 0xffffffff);
+      P_MTHD(push, NV90B5, LINE_LENGTH_IN);
+      P_NV90B5_LINE_LENGTH_IN(push, bytes);
+      P_NV90B5_LINE_COUNT(push, 1);
 
-      PUSH_MTHD(push, NV90B5, LINE_LENGTH_IN, bytes,
-                              LINE_COUNT, 1);
-      PUSH_IMMD(push, NV90B5, LAUNCH_DMA,
-                NVDEF(NV90B5, LAUNCH_DMA, DATA_TRANSFER_TYPE, NON_PIPELINED) |
-                NVDEF(NV90B5, LAUNCH_DMA, MULTI_LINE_ENABLE, FALSE) |
-                NVDEF(NV90B5, LAUNCH_DMA, FLUSH_ENABLE, TRUE) |
-                NVDEF(NV90B5, LAUNCH_DMA, SRC_MEMORY_LAYOUT, PITCH) |
-                NVDEF(NV90B5, LAUNCH_DMA, DST_MEMORY_LAYOUT, PITCH));
+      P_IMMD(push, NV90B5, LAUNCH_DMA, {
+             .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
+             .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
+             .flush_enable = FLUSH_ENABLE_TRUE,
+             .src_memory_layout = SRC_MEMORY_LAYOUT_PITCH,
+             .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
+      });
 
       src_addr += bytes;
       dst_addr += bytes;
@@ -119,84 +119,88 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
    struct nouveau_ws_push *push = cmd->push;
 
    for (unsigned z = 0; z < copy->extent.depth; z++) {
-      PUSH_MTHD(push, NV90B5, OFFSET_IN_UPPER,
-                NVVAL(NV90B5, OFFSET_IN_UPPER, UPPER, src_addr >> 32),
-                              OFFSET_IN_LOWER, src_addr & 0xffffffff,
+      P_MTHD(push, NV90B5, OFFSET_IN_UPPER);
+      P_NV90B5_OFFSET_IN_UPPER(push, src_addr >> 32);
+      P_NV90B5_OFFSET_IN_LOWER(push, src_addr & 0xffffffff);
+      P_NV90B5_OFFSET_OUT_UPPER(push, dst_addr >> 32);
+      P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xfffffff);
+      P_NV90B5_PITCH_IN(push, copy->src.row_stride);
+      P_NV90B5_PITCH_OUT(push, copy->dst.row_stride);
+      P_NV90B5_LINE_LENGTH_IN(push, copy->extent.width * copy->bpp);
+      P_NV90B5_LINE_COUNT(push, copy->extent.height);
 
-                              OFFSET_OUT_UPPER,
-                NVVAL(NV90B5, OFFSET_OUT_UPPER, UPPER, dst_addr >> 32),
-                              OFFSET_OUT_LOWER, dst_addr & 0xffffffff,
-                              PITCH_IN, copy->src.row_stride,
-                              PITCH_OUT, copy->dst.row_stride,
-                              LINE_LENGTH_IN, copy->extent.width * copy->bpp,
-                              LINE_COUNT, copy->extent.height);
-
-      uint32_t pitch_cmd = 0;
+      uint32_t src_layout = 0, dst_layout = 0;
       if (copy->src.tile.is_tiled) {
          assert(copy->src.tile.is_fermi);
-         PUSH_MTHD(push, NV90B5, SET_SRC_BLOCK_SIZE,
-                   NVVAL(NV90B5, SET_SRC_BLOCK_SIZE, WIDTH, copy->src.tile.x) |
-                   NVVAL(NV90B5, SET_SRC_BLOCK_SIZE, HEIGHT, copy->src.tile.y) |
-                   NVVAL(NV90B5, SET_SRC_BLOCK_SIZE, DEPTH, copy->src.tile.z) |
-                   NVDEF(NV90B5, SET_SRC_BLOCK_SIZE, GOB_HEIGHT, GOB_HEIGHT_FERMI_8),
-
-                                 SET_SRC_WIDTH, copy->src.extent.width * copy->bpp,
-                                 SET_SRC_HEIGHT, copy->src.extent.height,
-                                 SET_SRC_DEPTH, copy->src.extent.depth,
-                                 SET_SRC_LAYER, z + copy->src.offset.z);
+         P_MTHD(push, NV90B5, SET_SRC_BLOCK_SIZE);
+         P_NV90B5_SET_SRC_BLOCK_SIZE(push, {
+            .width = copy->src.tile.x,
+            .height = copy->src.tile.y,
+            .depth = copy->src.tile.z,
+            .gob_height = GOB_HEIGHT_GOB_HEIGHT_FERMI_8,
+         });
+         P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent.width * copy->bpp);
+         P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent.height);
+         P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent.depth);
+         P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset.z);
 
          if (cmd->pool->dev->pdev->dev->cls >= 0xc1) {
-            PUSH_MTHD(push, NVC1B5, SRC_ORIGIN_X,
-                      NVVAL(NVC1B5, SRC_ORIGIN_X, VALUE, copy->src.offset.x * copy->bpp),
-                                    SRC_ORIGIN_Y,
-                      NVVAL(NVC1B5, SRC_ORIGIN_Y, VALUE, copy->src.offset.y));
+            P_MTHD(push, NVC1B5, SRC_ORIGIN_X);
+            P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset.x * copy->bpp);
+            P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset.y);
          } else {
-            PUSH_MTHD(push, NV90B5, SET_SRC_ORIGIN,
-                      NVVAL(NV90B5, SET_SRC_ORIGIN, X, copy->src.offset.x * copy->bpp) |
-                      NVVAL(NV90B5, SET_SRC_ORIGIN, Y, copy->src.offset.y));
+            P_MTHD(push, NV90B5, SET_SRC_ORIGIN);
+            P_NV90B5_SET_SRC_ORIGIN(push, {
+               .x = copy->src.offset.x * copy->bpp,
+               .y = copy->src.offset.y
+            });
          }
 
-         pitch_cmd |= NVDEF(NV90B5, LAUNCH_DMA, SRC_MEMORY_LAYOUT, BLOCKLINEAR);
+         src_layout = NV90B5_LAUNCH_DMA_SRC_MEMORY_LAYOUT_BLOCKLINEAR;
       } else {
          src_addr += copy->src.layer_stride;
-         pitch_cmd |= NVDEF(NV90B5, LAUNCH_DMA, SRC_MEMORY_LAYOUT, PITCH);
+         src_layout = NV90B5_LAUNCH_DMA_SRC_MEMORY_LAYOUT_PITCH;
       }
 
       if (copy->dst.tile.is_tiled) {
          assert(copy->dst.tile.is_fermi);
-         PUSH_MTHD(push, NV90B5, SET_DST_BLOCK_SIZE,
-                   NVVAL(NV90B5, SET_DST_BLOCK_SIZE, WIDTH, copy->dst.tile.x) |
-                   NVVAL(NV90B5, SET_DST_BLOCK_SIZE, HEIGHT, copy->dst.tile.y) |
-                   NVVAL(NV90B5, SET_DST_BLOCK_SIZE, DEPTH, copy->dst.tile.z) |
-                   NVDEF(NV90B5, SET_DST_BLOCK_SIZE, GOB_HEIGHT, GOB_HEIGHT_FERMI_8),
-
-                                 SET_DST_WIDTH, copy->dst.extent.width * copy->bpp,
-                                 SET_DST_HEIGHT, copy->dst.extent.height,
-                                 SET_DST_DEPTH, copy->dst.extent.depth,
-                                 SET_DST_LAYER, z + copy->dst.offset.z);
+         P_MTHD(push, NV90B5, SET_DST_BLOCK_SIZE);
+         P_NV90B5_SET_DST_BLOCK_SIZE(push, {
+            .width = copy->dst.tile.x,
+            .height = copy->dst.tile.y,
+            .depth = copy->dst.tile.z,
+            .gob_height = GOB_HEIGHT_GOB_HEIGHT_FERMI_8,
+         });
+         P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent.width * copy->bpp);
+         P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent.height);
+         P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent.depth);
+         P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset.z);
 
          if (cmd->pool->dev->pdev->dev->cls >= 0xc1) {
-            PUSH_MTHD(push, NVC1B5, DST_ORIGIN_X,
-                      NVVAL(NVC1B5, DST_ORIGIN_X, VALUE, copy->dst.offset.x * copy->bpp),
-                                    DST_ORIGIN_Y,
-                      NVVAL(NVC1B5, DST_ORIGIN_Y, VALUE, copy->dst.offset.y));
+            P_MTHD(push, NVC1B5, DST_ORIGIN_X);
+            P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset.x * copy->bpp);
+            P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset.y);
          } else {
-            PUSH_MTHD(push, NV90B5, SET_DST_ORIGIN,
-                      NVVAL(NV90B5, SET_DST_ORIGIN, X, copy->dst.offset.x * copy->bpp) |
-                      NVVAL(NV90B5, SET_DST_ORIGIN, Y, copy->dst.offset.y));
+            P_MTHD(push, NV90B5, SET_DST_ORIGIN);
+            P_NV90B5_SET_DST_ORIGIN(push, {
+               .x = copy->dst.offset.x * copy->bpp,
+               .y = copy->dst.offset.y
+            });
          }
 
-         pitch_cmd |= NVDEF(NV90B5, LAUNCH_DMA, DST_MEMORY_LAYOUT, BLOCKLINEAR);
+         dst_layout = NV90B5_LAUNCH_DMA_DST_MEMORY_LAYOUT_BLOCKLINEAR;
       } else {
          dst_addr += copy->dst.layer_stride;
-         pitch_cmd |= NVDEF(NV90B5, LAUNCH_DMA, DST_MEMORY_LAYOUT, PITCH);
+         dst_layout = NV90B5_LAUNCH_DMA_DST_MEMORY_LAYOUT_PITCH;
       }
 
-      PUSH_IMMD(push, NV90B5, LAUNCH_DMA,
-                NVDEF(NV90B5, LAUNCH_DMA, DATA_TRANSFER_TYPE, NON_PIPELINED) |
-                NVDEF(NV90B5, LAUNCH_DMA, MULTI_LINE_ENABLE, TRUE) |
-                NVDEF(NV90B5, LAUNCH_DMA, FLUSH_ENABLE, TRUE) |
-                pitch_cmd);
+      P_IMMD(push, NV90B5, LAUNCH_DMA, {
+         .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
+         .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
+         .flush_enable = FLUSH_ENABLE_TRUE,
+         .src_memory_layout = src_layout,
+         .dst_memory_layout = dst_layout
+      });
    }
 }
 

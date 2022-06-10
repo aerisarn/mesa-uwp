@@ -330,6 +330,7 @@ void nouveau_ws_push_reset(struct nouveau_ws_push *);
 #define SUBC_NV902D 3
 
 #define SUBC_NV90B5 4
+#define SUBC_NVC1B5 4
 
 static inline uint32_t
 NVC0_FIFO_PKHDR_SQ(int subc, int mthd, unsigned size)
