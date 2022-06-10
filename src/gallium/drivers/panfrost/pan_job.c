@@ -72,9 +72,7 @@ panfrost_batch_init(struct panfrost_context *ctx,
 
         batch->seqnum = ++ctx->batches.seqnum;
 
-        batch->first_bo = INT32_MAX;
-        batch->last_bo = INT32_MIN;
-        util_sparse_array_init(&batch->bos, sizeof(uint32_t), 64);
+        util_dynarray_init(&batch->bos, NULL);
 
         batch->minx = batch->miny = ~0;
         batch->maxx = batch->maxy = 0;
@@ -113,10 +111,11 @@ panfrost_batch_cleanup(struct panfrost_context *ctx, struct panfrost_batch *batc
 
         unsigned batch_idx = panfrost_batch_idx(batch);
 
-        for (int i = batch->first_bo; i <= batch->last_bo; i++) {
-                uint32_t *flags = util_sparse_array_get(&batch->bos, i);
+        pan_bo_access *flags = util_dynarray_begin(&batch->bos);
+        unsigned end_bo = util_dynarray_num_elements(&batch->bos, pan_bo_access);
 
-                if (!*flags)
+        for (int i = 0; i < end_bo; ++i) {
+                if (!flags[i])
                         continue;
 
                 struct panfrost_bo *bo = pan_lookup_bo(dev, i);
@@ -142,7 +141,7 @@ panfrost_batch_cleanup(struct panfrost_context *ctx, struct panfrost_batch *batc
 
         util_unreference_framebuffer_state(&batch->key);
 
-        util_sparse_array_finish(&batch->bos);
+        util_dynarray_fini(&batch->bos);
 
         memset(batch, 0, sizeof(*batch));
         BITSET_CLEAR(ctx->batches.active, batch_idx);
@@ -275,6 +274,21 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
         }
 }
 
+static pan_bo_access *
+panfrost_batch_get_bo_access(struct panfrost_batch *batch, unsigned handle)
+{
+        unsigned size = util_dynarray_num_elements(&batch->bos, pan_bo_access);
+
+        if (handle >= size) {
+                unsigned grow = handle + 1 - size;
+
+                memset(util_dynarray_grow(&batch->bos, pan_bo_access, grow),
+                       0, grow * sizeof(pan_bo_access));
+        }
+
+        return util_dynarray_element(&batch->bos, pan_bo_access, handle);
+}
+
 static void
 panfrost_batch_add_bo_old(struct panfrost_batch *batch,
                 struct panfrost_bo *bo, uint32_t flags)
@@ -282,13 +296,12 @@ panfrost_batch_add_bo_old(struct panfrost_batch *batch,
         if (!bo)
                 return;
 
-        uint32_t *entry = util_sparse_array_get(&batch->bos, bo->gem_handle);
-        uint32_t old_flags = *entry;
+        pan_bo_access *entry =
+                panfrost_batch_get_bo_access(batch, bo->gem_handle);
+        pan_bo_access old_flags = *entry;
 
         if (!old_flags) {
                 batch->num_bos++;
-                batch->first_bo = MIN2(batch->first_bo, bo->gem_handle);
-                batch->last_bo = MAX2(batch->last_bo, bo->gem_handle);
                 panfrost_bo_reference(bo);
         }
 
@@ -590,10 +603,11 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                             sizeof(*bo_handles));
         assert(bo_handles);
 
-        for (int i = batch->first_bo; i <= batch->last_bo; i++) {
-                uint32_t *flags = util_sparse_array_get(&batch->bos, i);
+        pan_bo_access *flags = util_dynarray_begin(&batch->bos);
+        unsigned end_bo = util_dynarray_num_elements(&batch->bos, pan_bo_access);
 
-                if (!*flags)
+        for (int i = 0; i < end_bo; ++i) {
+                if (!flags[i])
                         continue;
 
                 assert(submit.bo_handle_count < batch->num_bos);
@@ -608,7 +622,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                  */
                 struct panfrost_bo *bo = pan_lookup_bo(dev, i);
 
-                bo->gpu_access |= *flags & (PAN_BO_ACCESS_RW);
+                bo->gpu_access |= flags[i] & (PAN_BO_ACCESS_RW);
         }
 
         panfrost_pool_get_bo_handles(&batch->pool, bo_handles + submit.bo_handle_count);

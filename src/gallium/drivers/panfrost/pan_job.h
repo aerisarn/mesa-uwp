@@ -126,9 +126,8 @@ struct panfrost_batch {
         bool scissor_culls_everything;
 
         /* BOs referenced not in the pool */
-        int first_bo, last_bo;
         unsigned num_bos;
-        struct util_sparse_array bos;
+        struct util_dynarray bos;
 
         /* Pool owned by this batch (released when the batch is released) used for temporary descriptors */
         struct panfrost_pool pool;
