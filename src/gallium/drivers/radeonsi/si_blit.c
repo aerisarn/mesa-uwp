@@ -1355,8 +1355,10 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
    /* If graphics is disabled, we can't decompress DCC, but it shouldn't
     * be compressed either. The caller should simply discard it.
     */
-   if (!tex->surface.meta_offset || !sctx->has_graphics)
+   if (!tex->surface.meta_offset || !sctx->has_graphics || sctx->in_dcc_decompress)
       return;
+
+   sctx->in_dcc_decompress = true;
 
    if (sctx->gfx_level == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2) {
       si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
@@ -1399,6 +1401,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
        */
       sctx->flags |= SI_CONTEXT_WB_L2 | SI_CONTEXT_INV_L2_METADATA;
    }
+   sctx->in_dcc_decompress = false;
 }
 
 void si_init_blit_functions(struct si_context *sctx)

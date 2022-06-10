@@ -1003,6 +1003,7 @@ struct si_context {
 
    bool blitter_running;
    bool in_update_ps_colorbuf0_slot;
+   bool in_dcc_decompress;
    bool is_noop:1;
    bool has_graphics:1;
    bool gfx_flush_in_progress : 1;
