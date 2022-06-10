@@ -1026,7 +1026,7 @@ static bool resolve_formats_compatible(enum pipe_format src, enum pipe_format ds
    return *need_rgb_to_bgr;
 }
 
-static bool si_msaa_resolve_blit_via_CB(struct pipe_context *ctx, const struct pipe_blit_info *info)
+bool si_msaa_resolve_blit_via_CB(struct pipe_context *ctx, const struct pipe_blit_info *info)
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
@@ -1042,6 +1042,10 @@ static bool si_msaa_resolve_blit_via_CB(struct pipe_context *ctx, const struct p
    enum pipe_format format = info->src.format;
    struct pipe_resource *tmp, templ;
    struct pipe_blit_info blit;
+
+   /* Gfx11 doesn't have CB_RESOLVE. */
+   if (sctx->gfx_level >= GFX11)
+      return false;
 
    /* Check basic requirements for hw resolve. */
    if (!(info->src.resource->nr_samples > 1 && info->dst.resource->nr_samples <= 1 &&
@@ -1214,6 +1218,13 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                               info->src.resource, info->src.level, &info->src.box);
       return;
    }
+
+   si_gfx_blit(ctx, info);
+}
+
+void si_gfx_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
+{
+   struct si_context *sctx = (struct si_context *)ctx;
 
    assert(util_blitter_is_blit_supported(sctx->blitter, info));
 

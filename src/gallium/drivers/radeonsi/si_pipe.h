@@ -1336,6 +1336,8 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
                              const struct pipe_box *src_box);
 void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex);
 void si_flush_implicit_resources(struct si_context *sctx);
+bool si_msaa_resolve_blit_via_CB(struct pipe_context *ctx, const struct pipe_blit_info *info);
+void si_gfx_blit(struct pipe_context *ctx, const struct pipe_blit_info *info);
 
 /* si_nir_optim.c */
 bool si_nir_is_output_const_if_tex_is_const(nir_shader *shader, float *in, float *out, int *texunit);
