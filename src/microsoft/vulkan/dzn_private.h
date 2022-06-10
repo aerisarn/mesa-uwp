@@ -458,6 +458,16 @@ struct dzn_rendering_attachment {
 
 struct dzn_graphics_pipeline_variant_key {
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE ib_strip_cut;
+   struct {
+      int constant_factor;
+      float slope_factor;
+      float clamp;
+   } depth_bias;
+   struct {
+      struct {
+         uint32_t ref, compare_mask, write_mask;
+      } front, back;
+   } stencil_test;
 };
 
 struct dzn_graphics_pipeline_variant {
@@ -791,6 +801,7 @@ struct dzn_graphics_pipeline {
          bool dynamic;
          float min, max;
       } depth_bounds;
+      bool dynamic_depth_bias;
    } zsa;
 
    struct {
@@ -803,6 +814,8 @@ struct dzn_graphics_pipeline {
       D3D12_PIPELINE_STATE_STREAM_DESC stream_desc;
       struct {
          uint32_t ib_strip_cut;
+         uint32_t rast;
+         uint32_t ds;
       } desc_offsets;
       D3D12_INPUT_ELEMENT_DESC inputs[D3D12_VS_INPUT_REGISTER_COUNT];
       struct {

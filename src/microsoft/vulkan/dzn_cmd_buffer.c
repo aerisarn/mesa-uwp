@@ -4462,7 +4462,12 @@ dzn_CmdSetDepthBias(VkCommandBuffer commandBuffer,
                     float depthBiasClamp,
                     float depthBiasSlopeFactor)
 {
-   dzn_stub();
+   VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
+
+   cmdbuf->state.pipeline_variant.depth_bias.constant_factor = depthBiasConstantFactor;
+   cmdbuf->state.pipeline_variant.depth_bias.clamp = depthBiasClamp;
+   cmdbuf->state.pipeline_variant.depth_bias.slope_factor = depthBiasSlopeFactor;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4482,10 +4487,15 @@ dzn_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
                       float maxDepthBounds)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
-   cmdbuf->state.zsa.depth_bounds.min = minDepthBounds;
-   cmdbuf->state.zsa.depth_bounds.max = maxDepthBounds;
-   cmdbuf->state.dirty |= DZN_CMD_DIRTY_DEPTH_BOUNDS;
+   if (pdev->options2.DepthBoundsTestSupported) {
+      cmdbuf->state.zsa.depth_bounds.min = minDepthBounds;
+      cmdbuf->state.zsa.depth_bounds.max = maxDepthBounds;
+      cmdbuf->state.dirty |= DZN_CMD_DIRTY_DEPTH_BOUNDS;
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4495,13 +4505,18 @@ dzn_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
       cmdbuf->state.zsa.stencil_test.front.compare_mask = compareMask;
+      cmdbuf->state.pipeline_variant.stencil_test.front.compare_mask = compareMask;
+   }
 
-   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
       cmdbuf->state.zsa.stencil_test.back.compare_mask = compareMask;
+      cmdbuf->state.pipeline_variant.stencil_test.back.compare_mask = compareMask;
+   }
 
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_STENCIL_COMPARE_MASK;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4511,13 +4526,18 @@ dzn_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
       cmdbuf->state.zsa.stencil_test.front.write_mask = writeMask;
+      cmdbuf->state.pipeline_variant.stencil_test.front.write_mask = writeMask;
+   }
 
-   if (faceMask & VK_STENCIL_FACE_BACK_BIT)
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
       cmdbuf->state.zsa.stencil_test.back.write_mask = writeMask;
+      cmdbuf->state.pipeline_variant.stencil_test.back.write_mask = writeMask;
+   }
 
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_STENCIL_WRITE_MASK;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
