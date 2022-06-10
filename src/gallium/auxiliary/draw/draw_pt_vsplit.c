@@ -40,7 +40,7 @@ struct vsplit_frontend {
    struct draw_pt_front_end base;
    struct draw_context *draw;
 
-   unsigned prim;
+   enum pipe_prim_type prim;
 
    struct draw_pt_middle_end *middle;
 
@@ -198,7 +198,7 @@ vsplit_add_cache_uint(struct vsplit_frontend *vsplit, const uint *elts,
 
 
 static void vsplit_prepare(struct draw_pt_front_end *frontend,
-                           unsigned in_prim,
+                           enum pipe_prim_type in_prim,
                            struct draw_pt_middle_end *middle,
                            unsigned opt)
 {

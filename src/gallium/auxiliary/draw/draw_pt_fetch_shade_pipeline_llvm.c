@@ -53,7 +53,7 @@ struct llvm_middle_end {
 
    unsigned vertex_data_offset;
    unsigned vertex_size;
-   unsigned input_prim;
+   enum pipe_prim_type input_prim;
    unsigned opt;
 
    struct draw_llvm *llvm;
@@ -279,7 +279,7 @@ llvm_middle_end_prepare_tes(struct llvm_middle_end *fpme)
  */
 static void
 llvm_middle_end_prepare( struct draw_pt_middle_end *middle,
-                         unsigned in_prim,
+                         enum pipe_prim_type in_prim,
                          unsigned opt,
                          unsigned *max_vertices )
 {
@@ -290,7 +290,8 @@ llvm_middle_end_prepare( struct draw_pt_middle_end *middle,
    struct draw_geometry_shader *gs = draw->gs.geometry_shader;
    struct draw_tess_ctrl_shader *tcs = draw->tcs.tess_ctrl_shader;
    struct draw_tess_eval_shader *tes = draw->tes.tess_eval_shader;
-   const unsigned out_prim = gs ? gs->output_primitive : tes ? get_tes_output_prim(tes) :
+   const enum pipe_prim_type out_prim =
+      gs ? gs->output_primitive : tes ? get_tes_output_prim(tes) :
       u_assembled_prim(in_prim);
    unsigned point_clip = draw->rasterizer->fill_front == PIPE_POLYGON_MODE_POINT ||
                          out_prim == PIPE_PRIM_POINTS;
@@ -779,8 +780,8 @@ out:
 }
 
 
-static inline unsigned
-prim_type(unsigned prim, unsigned flags)
+static inline enum pipe_prim_type
+prim_type(enum pipe_prim_type prim, unsigned flags)
 {
    if (flags & DRAW_LINE_LOOP_AS_STRIP)
       return PIPE_PRIM_LINE_STRIP;

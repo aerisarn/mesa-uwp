@@ -35,7 +35,8 @@
 #include "draw/draw_pt.h"
 #include "util/u_debug.h"
 
-void draw_pt_split_prim(unsigned prim, unsigned *first, unsigned *incr)
+void
+draw_pt_split_prim(enum pipe_prim_type prim, unsigned *first, unsigned *incr)
 {
    switch (prim) {
    case PIPE_PRIM_POINTS:

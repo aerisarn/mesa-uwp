@@ -359,7 +359,7 @@ void draw_collect_primitives_generated(struct draw_context *draw,
  */
 boolean draw_need_pipeline(const struct draw_context *draw,
                            const struct pipe_rasterizer_state *rasterizer,
-                           unsigned prim );
+                           enum pipe_prim_type prim );
 
 int
 draw_get_shader_param(enum pipe_shader_type shader, enum pipe_shader_cap param);

@@ -68,7 +68,7 @@ fetch_pipeline_middle_end(struct draw_pt_middle_end *middle)
  */
 static void
 fetch_pipeline_prepare(struct draw_pt_middle_end *middle,
-                       unsigned prim,
+                       enum pipe_prim_type prim,
                        unsigned opt,
                        unsigned *max_vertices)
 {

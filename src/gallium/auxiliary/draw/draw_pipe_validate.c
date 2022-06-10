@@ -49,7 +49,7 @@
 boolean
 draw_need_pipeline(const struct draw_context *draw,
                    const struct pipe_rasterizer_state *rasterizer,
-                   unsigned int prim )
+                   enum pipe_prim_type prim )
 {
    unsigned reduced_prim = u_reduced_prim(prim);
 

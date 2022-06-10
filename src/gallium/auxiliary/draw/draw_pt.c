@@ -55,7 +55,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(draw_no_fse, "DRAW_NO_FSE", FALSE)
  */
 static boolean
 draw_pt_arrays(struct draw_context *draw,
-               unsigned prim,
+               enum pipe_prim_type prim,
                bool index_bias_varies,
                const struct pipe_draw_start_count_bias *draw_info,
                unsigned num_draws)
@@ -63,8 +63,7 @@ draw_pt_arrays(struct draw_context *draw,
    struct draw_pt_front_end *frontend = NULL;
    struct draw_pt_middle_end *middle = NULL;
    unsigned opt = PT_SHADE;
-
-   unsigned out_prim = prim;
+   enum pipe_prim_type out_prim = prim;
 
    if (draw->gs.geometry_shader)
       out_prim = draw->gs.geometry_shader->output_primitive;
@@ -234,7 +233,8 @@ void draw_pt_destroy( struct draw_context *draw )
  * Debug- print the first 'count' vertices.
  */
 static void
-draw_print_arrays(struct draw_context *draw, uint prim, int start, uint count, int index_bias)
+draw_print_arrays(struct draw_context *draw, enum pipe_prim_type prim,
+                  int start, uint count, int index_bias)
 {
    uint i;
 
@@ -404,7 +404,7 @@ draw_pt_arrays_restart(struct draw_context *draw,
                        const struct pipe_draw_start_count_bias *draw_info,
                        unsigned num_draws)
 {
-   const unsigned prim = info->mode;
+   const enum pipe_prim_type prim = info->mode;
 
    assert(info->primitive_restart);
 
