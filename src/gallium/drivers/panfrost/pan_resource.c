@@ -619,8 +619,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
 
         util_range_init(&so->valid_buffer_range);
 
-        if (template->bind & (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT |
-                              PIPE_BIND_SHARED)) {
+        if (template->bind & PAN_BIND_SHARED_MASK) {
                 /* For compatibility with older consumers that may not be
                  * modifiers aware, treat INVALID as LINEAR for shared
                  * resources.
@@ -814,7 +813,7 @@ pan_alloc_staging(struct panfrost_context *ctx, struct panfrost_resource *rsc,
         }
         tmpl.last_level = 0;
         tmpl.bind |= PIPE_BIND_LINEAR;
-        tmpl.bind &= ~(PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
+        tmpl.bind &= ~PAN_BIND_SHARED_MASK;
 
         struct pipe_resource *pstaging =
                 pctx->screen->resource_create(pctx->screen, &tmpl);

@@ -762,9 +762,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
 
                 /* Shared depth/stencil resources are not supported, and would
                  * break this optimisation. */
-                assert(!(z_rsrc->base.bind & (PIPE_BIND_SHARED |
-                                              PIPE_BIND_SCANOUT |
-                                              PIPE_BIND_DISPLAY_TARGET)));
+                assert(!(z_rsrc->base.bind & PAN_BIND_SHARED_MASK));
 
                 if (batch->clear & PIPE_CLEAR_STENCIL) {
                         z_rsrc->stencil_value = batch->clear_stencil;
