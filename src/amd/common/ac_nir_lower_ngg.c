@@ -63,6 +63,7 @@ typedef struct
    bool use_edgeflags;
    bool has_prim_query;
    bool streamout_enabled;
+   bool has_user_edgeflags;
    unsigned wave_size;
    unsigned max_num_waves;
    unsigned num_vertices_per_primitives;
@@ -452,6 +453,34 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
    {
       if (!arg)
          arg = emit_ngg_nogs_prim_exp_arg(b, st);
+
+      /* pack user edge flag info into arg */
+      if (st->has_user_edgeflags) {
+         /* Workgroup barrier: wait for ES threads store user edge flags to LDS */
+         nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
+                            .memory_scope = NIR_SCOPE_WORKGROUP,
+                            .memory_semantics = NIR_MEMORY_ACQ_REL,
+                            .memory_modes = nir_var_mem_shared);
+
+         unsigned edge_flag_bits = (1u << 9) | (1u << 19) | (1u << 29);
+         nir_ssa_def *mask = nir_imm_intN_t(b, ~edge_flag_bits, 32);
+
+         unsigned edge_flag_offset = 0;
+         if (st->streamout_enabled) {
+            unsigned packed_location =
+               util_bitcount64(b->shader->info.outputs_written &
+                               BITFIELD64_MASK(VARYING_SLOT_EDGE));
+            edge_flag_offset = packed_location * 16;
+         }
+
+         for (int i = 0; i < st->num_vertices_per_primitives; i++) {
+            nir_ssa_def *vtx_idx = nir_load_var(b, st->gs_vtx_indices_vars[i]);
+            nir_ssa_def *addr = pervertex_lds_addr(b, vtx_idx, st->pervertex_lds_bytes);
+            nir_ssa_def *edge = nir_load_shared(b, 1, 32, addr, .base = edge_flag_offset);
+            mask = nir_ior(b, mask, nir_ishl_imm(b, edge, 9 + i * 10));
+         }
+         arg = nir_iand(b, arg, mask);
+      }
 
       if (st->has_prim_query) {
          nir_if *if_shader_query = nir_push_if(b, nir_load_prim_gen_query_enabled_amd(b));
@@ -1521,23 +1550,42 @@ do_ngg_nogs_store_output_to_lds(nir_builder *b, nir_instr *instr, void *state)
    if (intrin->intrinsic != nir_intrinsic_store_output)
       return false;
 
-   unsigned component = nir_intrinsic_component(intrin);
-   unsigned write_mask = nir_instr_xfb_write_mask(intrin) >> component;
-   if (!write_mask)
-      return false;
-
    b->cursor = nir_before_instr(instr);
 
-   unsigned base_offset = nir_src_as_uint(intrin->src[1]);
-   unsigned location = nir_intrinsic_io_semantics(intrin).location + base_offset;
-   unsigned packed_location =
-      util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(location));
-   unsigned offset = packed_location * 16 + component * 4;
+   unsigned component = nir_intrinsic_component(intrin);
+   unsigned write_mask = nir_intrinsic_write_mask(intrin);
+   nir_ssa_def *store_val = intrin->src[0].ssa;
+
+   if (nir_intrinsic_io_semantics(intrin).location == VARYING_SLOT_EDGE) {
+      if (st->has_user_edgeflags) {
+         /* clamp user edge flag to 1 for latter bit operations */
+         store_val = nir_umin(b, store_val, nir_imm_int(b, 1));
+         /* remove instr after cursor point to the new node */
+         nir_instr_remove(instr);
+      } else {
+         /* remove the edge flag output anyway as it should not be passed to next stage */
+         nir_instr_remove(instr);
+         return true;
+      }
+   } else {
+      write_mask = nir_instr_xfb_write_mask(intrin) >> component;
+      if (!(write_mask && st->streamout_enabled))
+         return false;
+   }
+
+   /* user edge flag is stored at the beginning of a vertex if streamout is not enabled */
+   unsigned offset = 0;
+   if (st->streamout_enabled) {
+      unsigned base_offset = nir_src_as_uint(intrin->src[1]);
+      unsigned location = nir_intrinsic_io_semantics(intrin).location + base_offset;
+      unsigned packed_location =
+         util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(location));
+      offset = packed_location * 16 + component * 4;
+   }
 
    nir_ssa_def *tid = nir_load_local_invocation_index(b);
    nir_ssa_def *addr = pervertex_lds_addr(b, tid, st->pervertex_lds_bytes);
 
-   nir_ssa_def *store_val = intrin->src[0].ssa;
    nir_store_shared(b, store_val, addr, .base = offset, .write_mask = write_mask);
 
    return true;
@@ -1821,11 +1869,16 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    nir_variable *gs_accepted_var = can_cull ? nir_local_variable_create(impl, glsl_bool_type(), "gs_accepted") : NULL;
 
    bool streamout_enabled = shader->xfb_info && !disable_streamout;
+   bool has_user_edgeflags = use_edgeflags && (shader->info.outputs_written & VARYING_BIT_EDGE);
    /* streamout need to be done before either prim or vertex export. Because when no
     * param export, rasterization can start right after prim and vertex export,
     * which left streamout buffer writes un-finished.
+    *
+    * Always use late prim export when user edge flags are enabled.
+    * This is because edge flags are written by ES threads but they
+    * are exported by GS threads as part of th primitive export.
     */
-   if (streamout_enabled)
+   if (streamout_enabled || has_user_edgeflags)
       early_prim_export = false;
 
    lower_ngg_nogs_state state = {
@@ -1846,6 +1899,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .instance_rate_inputs = instance_rate_inputs,
       .clipdist_enable_mask = clipdist_enable_mask,
       .user_clip_plane_enable_mask = user_clip_plane_enable_mask,
+      .has_user_edgeflags = has_user_edgeflags,
    };
 
    const bool need_prim_id_store_shared =
@@ -1902,7 +1956,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
          emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, state.prim_exp_arg_var));
 
       /* Wait for culling to finish using LDS. */
-      if (need_prim_id_store_shared) {
+      if (need_prim_id_store_shared || has_user_edgeflags) {
          nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
                                .memory_scope = NIR_SCOPE_WORKGROUP,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
@@ -1916,14 +1970,20 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
        * TODO: only alloc space for outputs that really need streamout.
        */
       state.pervertex_lds_bytes = (shader->num_outputs * 4 + 1) * 4;
-   } else if (need_prim_id_store_shared)
-      state.pervertex_lds_bytes = 4;
+   } else if (need_prim_id_store_shared || state.has_user_edgeflags) {
+      if (need_prim_id_store_shared)
+         state.pervertex_lds_bytes += 4;
+      if (state.has_user_edgeflags)
+         state.pervertex_lds_bytes += 4;
 
-   if (need_prim_id_store_shared) {
-      /* We need LDS space when VS needs to export the primitive ID. */
+      /* pad to odd dwords to avoid LDS bank conflict */
+      state.pervertex_lds_bytes |= 4;
+
       state.total_lds_bytes = MAX2(state.total_lds_bytes,
                                    state.pervertex_lds_bytes * max_num_es_vertices);
+   }
 
+   if (need_prim_id_store_shared) {
       emit_ngg_nogs_prim_id_store_shared(b, &state);
 
       /* Wait for GS threads to store primitive ID in LDS. */
@@ -1956,7 +2016,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    }
 
    /* streamout may be disabled by ngg_nogs_build_streamout() */
-   if (state.streamout_enabled) {
+   if (state.streamout_enabled || has_user_edgeflags) {
       ngg_nogs_store_all_outputs_to_lds(shader, &state);
       b->cursor = nir_after_cf_list(&impl->body);
    }
