@@ -409,7 +409,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
    calc_descriptor_hash_sampler_state(sampler);
    sampler->custom_border_color = need_custom;
    if (!screen->info.have_EXT_non_seamless_cube_map)
-      sampler->nonseamless = !state->seamless_cube_map;
+      sampler->emulate_nonseamless = !state->seamless_cube_map;
 
    return sampler;
 }
@@ -439,7 +439,7 @@ get_imageview_for_binding(struct zink_context *ctx, enum pipe_shader_type stage,
       if (!sampler_view->base.texture)
          return NULL;
       /* if this is a non-seamless cube sampler, return the cube array view */
-      return (ctx->di.nonseamless[stage] & ctx->di.cubes[stage] & BITFIELD_BIT(idx)) ?
+      return (ctx->di.emulate_nonseamless[stage] & ctx->di.cubes[stage] & BITFIELD_BIT(idx)) ?
              sampler_view->cube_array :
              sampler_view->image_view;
    }
@@ -600,7 +600,7 @@ update_nonseamless_shader_key(struct zink_context *ctx, enum pipe_shader_type ps
    else
       mask = &ctx->gfx_pipeline_state.shader_keys.key[pstage].base.nonseamless_cube_mask;
 
-   const uint32_t new_mask = ctx->di.nonseamless[pstage] & ctx->di.cubes[pstage];
+   const uint32_t new_mask = ctx->di.emulate_nonseamless[pstage] & ctx->di.cubes[pstage];
    if (new_mask != *mask)
       ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
    *mask = new_mask;
@@ -616,22 +616,22 @@ zink_bind_sampler_states(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    uint32_t mask = BITFIELD_RANGE(start_slot, num_samplers);
-   ctx->di.nonseamless[shader] &= ~mask;
+   ctx->di.emulate_nonseamless[shader] &= ~mask;
    for (unsigned i = 0; i < num_samplers; ++i) {
       struct zink_sampler_state *state = samplers[i];
       if (ctx->sampler_states[shader][start_slot + i] != state)
          zink_screen(pctx->screen)->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, 1);
       bool was_nonseamless = false;
       if (ctx->sampler_states[shader][start_slot + i])
-         was_nonseamless = ctx->sampler_states[shader][start_slot + i]->nonseamless;
+         was_nonseamless = ctx->sampler_states[shader][start_slot + i]->emulate_nonseamless;
       ctx->sampler_states[shader][start_slot + i] = state;
       ctx->di.textures[shader][start_slot + i].sampler = state ? state->sampler : VK_NULL_HANDLE;
       if (state) {
          zink_batch_usage_set(&state->batch_uses, ctx->batch.state);
          const uint32_t bit = BITFIELD_BIT(start_slot + i);
-         if (state->nonseamless)
-            ctx->di.nonseamless[shader] |= bit;
-         if (state->nonseamless != was_nonseamless && (ctx->di.cubes[shader] & bit)) {
+         if (state->emulate_nonseamless)
+            ctx->di.emulate_nonseamless[shader] |= bit;
+         if (state->emulate_nonseamless != was_nonseamless && (ctx->di.cubes[shader] & bit)) {
             struct zink_surface *surface = get_imageview_for_binding(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
             if (surface && ctx->di.image_surfaces[shader][start_slot + i].surface != surface) {
                ctx->di.images[shader][start_slot + i].imageView = surface->image_view;

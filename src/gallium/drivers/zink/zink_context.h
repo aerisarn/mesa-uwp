@@ -80,7 +80,7 @@ struct zink_sampler_state {
    struct zink_descriptor_refs desc_set_refs;
    struct zink_batch_usage *batch_uses;
    bool custom_border_color;
-   bool nonseamless;
+   bool emulate_nonseamless;
 };
 
 struct zink_buffer_view {
@@ -333,7 +333,7 @@ struct zink_context {
 
       VkDescriptorImageInfo textures[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       VkBufferView tbos[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-      uint32_t nonseamless[PIPE_SHADER_TYPES];
+      uint32_t emulate_nonseamless[PIPE_SHADER_TYPES];
       uint32_t cubes[PIPE_SHADER_TYPES];
       uint8_t num_samplers[PIPE_SHADER_TYPES];
       uint8_t num_sampler_views[PIPE_SHADER_TYPES];
