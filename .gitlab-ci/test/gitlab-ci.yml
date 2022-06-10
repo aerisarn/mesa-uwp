@@ -214,7 +214,8 @@
     # we rename the MESA_IMAGE variable into IMAGE_UNDER_TEST.
     IMAGE_UNDER_TEST: "$MESA_IMAGE"
 
-    INSTALL_TARBALL: "./artifacts/install.tar"
+    INSTALL_TARBALL_NAME: "install.tar"
+    INSTALL_TARBALL: "./artifacts/${INSTALL_TARBALL_NAME}"
     CI_VALVE_ARTIFACTS: "./artifacts/valve"
     CI_COMMON_SCRIPTS: "./artifacts/ci-common"
     GENERATE_ENV_SCRIPT: "${CI_COMMON_SCRIPTS}/generate-env.sh"
@@ -246,7 +247,7 @@
       [ -d "$CI_COMMON_SCRIPTS" ] || exit 1
 
 
-      B2C_TEST_SCRIPT="bash -c 'source ./set-job-env-vars.sh ; ${B2C_TEST_SCRIPT}'"
+      B2C_TEST_SCRIPT="bash -c 'source ./set-job-env-vars.sh; tar xf ${INSTALL_TARBALL_NAME}; ${B2C_TEST_SCRIPT}'"
 
       # The Valve CI gateway receives jobs in a YAML format. Create a
       # job description from the CI environment.
@@ -289,9 +290,8 @@
       echo "export CI_JOB_JWT=${CI_JOB_JWT}" >> ${JOB_FOLDER}/set-job-env-vars.sh
       set -x
 
-      # Extract the Mesa distribution into the location expected by
-      # the Mesa CI deqp-runner scripts.
-      tar x -C ${JOB_FOLDER} -f $INSTALL_TARBALL
+      # Copy the mesa install tarball to the job folder, for later extraction
+      mv "${INSTALL_TARBALL}" "${JOB_FOLDER}"
 
   script: |
       slugify () {
