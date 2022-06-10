@@ -1,4 +1,5 @@
 nvk_files = files(
+  '../../gallium/auxiliary/tgsi/tgsi_from_mesa.c',
   'nvk_bo_sync.c',
   'nvk_bo_sync.h',
   'nvk_buffer.c',
@@ -84,10 +85,12 @@ libvulkan_nouveau = shared_library(
   ],
   include_directories : [
     inc_gallium,
+    inc_gallium_aux,
     inc_include,
     inc_src,
   ],
-  dependencies : nvk_deps,
+  link_with : [libnouveau_codegen],
+  dependencies : [nvk_deps, idep_nouveau_codegen],
   gnu_symbol_visibility : 'hidden',
   install : true,
 )
