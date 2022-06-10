@@ -23,61 +23,15 @@ nvk_CmdBlitImage2(
    VK_FROM_HANDLE(nvk_image, dst, pBlitImageInfo->dstImage);
    struct nouveau_ws_push *push = cmd->push;
 
-   uint32_t src_depth = src->vk.extent.depth * src->vk.array_layers;
-   uint32_t dst_depth = dst->vk.extent.depth * dst->vk.array_layers;
-
    nouveau_ws_push_ref(push, src->mem->bo, NOUVEAU_WS_BO_RD);
    nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
-
-   VkDeviceSize src_addr = src->mem->bo->offset + src->offset;
-   VkDeviceSize dst_addr = dst->mem->bo->offset + dst->offset;
 
    P_IMMD(push, NV902D, SET_CLIP_ENABLE, V_FALSE);
    P_IMMD(push, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
    P_IMMD(push, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);
 
    P_IMMD(push, NV902D, SET_SRC_FORMAT, src->format->hw_format);
-   if (src->tile.is_tiled) {
-      P_MTHD(push, NV902D, SET_SRC_MEMORY_LAYOUT);
-      P_NV902D_SET_SRC_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
-      P_NV902D_SET_SRC_BLOCK_SIZE(push, {
-         .height = src->tile.y,
-         .depth = src->tile.z,
-      });
-   } else {
-      P_IMMD(push, NV902D, SET_SRC_MEMORY_LAYOUT, V_PITCH);
-   }
-
-   P_MTHD(push, NV902D, SET_SRC_DEPTH);
-   P_NV902D_SET_SRC_DEPTH(push, src_depth);
-
-   P_MTHD(push, NV902D, SET_SRC_PITCH);
-   P_NV902D_SET_SRC_PITCH(push, src->row_stride);
-   P_NV902D_SET_SRC_WIDTH(push, src->vk.extent.width);
-   P_NV902D_SET_SRC_HEIGHT(push, src->vk.extent.height);
-   P_NV902D_SET_SRC_OFFSET_UPPER(push, src_addr >> 32);
-   P_NV902D_SET_SRC_OFFSET_LOWER(push, src_addr & 0xffffffff);
-
    P_IMMD(push, NV902D, SET_DST_FORMAT, dst->format->hw_format);
-   if (dst->tile.is_tiled) {
-      P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
-      P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
-      P_NV902D_SET_DST_BLOCK_SIZE(push, {
-         .height = dst->tile.y,
-         .depth = dst->tile.z,
-      });
-   } else {
-      P_IMMD(push, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
-   }
-
-   P_MTHD(push, NV902D, SET_DST_DEPTH);
-   P_NV902D_SET_DST_DEPTH(push, dst_depth);
-   P_NV902D_SET_DST_LAYER(push, 0);
-   P_NV902D_SET_DST_PITCH(push, dst->row_stride);
-   P_NV902D_SET_DST_WIDTH(push, dst->vk.extent.width);
-   P_NV902D_SET_DST_HEIGHT(push, dst->vk.extent.height);
-   P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
-   P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
 
    if (pBlitImageInfo->filter == VK_FILTER_NEAREST) {
       P_IMMD(push, NV902D, SET_PIXELS_FROM_MEMORY_SAMPLE_MODE, {
@@ -113,6 +67,15 @@ nvk_CmdBlitImage2(
    for (unsigned r = 0; r < pBlitImageInfo->regionCount; r++) {
       const VkImageBlit2 *region = &pBlitImageInfo->pRegions[r];
 
+      struct nvk_image_level *src_level = &src->level[region->srcSubresource.mipLevel];
+      struct nvk_image_level *dst_level = &dst->level[region->dstSubresource.mipLevel];
+
+      VkDeviceSize src_addr = nvk_image_base_address(src, region->srcSubresource.mipLevel);
+      VkDeviceSize dst_addr = nvk_image_base_address(dst, region->dstSubresource.mipLevel);
+
+      uint32_t src_depth = src_level->extent.depth * src->vk.array_layers;
+      uint32_t dst_depth = dst_level->extent.depth * dst->vk.array_layers;
+
       unsigned x_i = region->dstOffsets[0].x < region->dstOffsets[1].x ? 0 : 1;
       unsigned y_i = region->dstOffsets[0].y < region->dstOffsets[1].y ? 0 : 1;
 
@@ -140,6 +103,47 @@ nvk_CmdBlitImage2(
        */
       src_start_x_fp += scaling_x_fp / 2;
       src_start_y_fp += scaling_y_fp / 2;
+
+      if (src_level->tile.is_tiled) {
+         P_MTHD(push, NV902D, SET_SRC_MEMORY_LAYOUT);
+         P_NV902D_SET_SRC_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
+         P_NV902D_SET_SRC_BLOCK_SIZE(push, {
+            .height = src_level->tile.y,
+            .depth = src_level->tile.z,
+         });
+      } else {
+         P_IMMD(push, NV902D, SET_SRC_MEMORY_LAYOUT, V_PITCH);
+      }
+
+      P_MTHD(push, NV902D, SET_SRC_DEPTH);
+      P_NV902D_SET_SRC_DEPTH(push, src_depth);
+
+      P_MTHD(push, NV902D, SET_SRC_PITCH);
+      P_NV902D_SET_SRC_PITCH(push, src_level->row_stride);
+      P_NV902D_SET_SRC_WIDTH(push, src_level->extent.width);
+      P_NV902D_SET_SRC_HEIGHT(push, src_level->extent.height);
+      P_NV902D_SET_SRC_OFFSET_UPPER(push, src_addr >> 32);
+      P_NV902D_SET_SRC_OFFSET_LOWER(push, src_addr & 0xffffffff);
+
+      if (dst_level->tile.is_tiled) {
+         P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
+         P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
+         P_NV902D_SET_DST_BLOCK_SIZE(push, {
+            .height = dst_level->tile.y,
+            .depth = dst_level->tile.z,
+         });
+      } else {
+         P_IMMD(push, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
+      }
+
+      P_MTHD(push, NV902D, SET_DST_DEPTH);
+      P_NV902D_SET_DST_DEPTH(push, dst_depth);
+      P_NV902D_SET_DST_LAYER(push, 0);
+      P_NV902D_SET_DST_PITCH(push, dst_level->row_stride);
+      P_NV902D_SET_DST_WIDTH(push, dst_level->extent.width);
+      P_NV902D_SET_DST_HEIGHT(push, dst_level->extent.height);
+      P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
+      P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
 
       P_MTHD(push, NV902D, SET_PIXELS_FROM_MEMORY_DST_X0);
       P_NV902D_SET_PIXELS_FROM_MEMORY_DST_X0(push, dst_start_x);

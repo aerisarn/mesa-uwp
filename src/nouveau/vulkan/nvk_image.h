@@ -8,6 +8,8 @@
 #include "nouveau_push.h"
 #include "vulkan/runtime/vk_image.h"
 
+#define NVK_MAX_MIP_LEVELS 7
+
 /* x can either be 0x0 or 0xe
  *   0x0: 64 blocks
  *   0xe: 16 blocks (not quite sure how that's even used, so we don't use it)
@@ -27,6 +29,16 @@ struct nvk_tile {
 };
 
 struct nvk_format;
+
+struct nvk_image_level {
+   VkDeviceSize offset;
+   VkExtent3D extent;
+
+   uint32_t row_stride;
+   uint32_t layer_stride;
+   struct nvk_tile tile;
+};
+
 struct nvk_image {
    struct vk_image vk;
    struct nvk_device_memory *mem;
@@ -35,9 +47,7 @@ struct nvk_image {
    VkDeviceSize min_size;
 
    struct nvk_format *format;
-   uint32_t row_stride;
-   uint32_t layer_stride;
-   struct nvk_tile tile;
+   struct nvk_image_level level[NVK_MAX_MIP_LEVELS];
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
@@ -51,9 +61,9 @@ nvk_push_image_ref(struct nouveau_ws_push *push,
 }
 
 static inline uint64_t
-nvk_image_base_address(struct nvk_image *image)
+nvk_image_base_address(struct nvk_image *image, uint32_t level)
 {
-   return image->mem->bo->offset + image->offset;
+   return image->mem->bo->offset + image->offset + image->level[level].offset;
 }
 
 #endif

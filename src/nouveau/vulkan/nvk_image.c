@@ -12,11 +12,15 @@
  * This ends being quite wasteful, but it's a more or less plain copy of what gallium does
  */
 static struct nvk_tile
-nvk_image_tile_from_create_info(const VkImageCreateInfo *pCreateInfo, uint64_t modifier)
+nvk_image_tile_from_create_info(
+   VkExtent3D extent,
+   const VkImageCreateInfo *pCreateInfo,
+   uint64_t modifier)
 {
+   VkImageTiling tiling = pCreateInfo->tiling;
    struct nvk_tile tile = {};
 
-   switch (pCreateInfo->tiling) {
+   switch (tiling) {
    case VK_IMAGE_TILING_LINEAR:
       tile.is_tiled = false;
       return tile;
@@ -35,8 +39,8 @@ nvk_image_tile_from_create_info(const VkImageCreateInfo *pCreateInfo, uint64_t m
       break;
    }
 
-   uint32_t height = pCreateInfo->extent.height;
-   uint32_t depth = pCreateInfo->extent.depth;
+   uint32_t height = extent.height;
+   uint32_t depth = extent.depth;
 
    // fermi is the baseline anyway (for now)
    tile.is_fermi = true;
@@ -88,8 +92,6 @@ static VkResult nvk_image_init(struct nvk_device *device,
    const VkImageCreateInfo *pCreateInfo)
 {
    uint64_t block_size = vk_format_get_blocksizebits(pCreateInfo->format) / 8;
-   struct nvk_tile tile = nvk_image_tile_from_create_info(pCreateInfo, 0);
-   VkExtent3D block = nvk_image_tile_to_blocks(tile);
 
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
@@ -103,10 +105,30 @@ static VkResult nvk_image_init(struct nvk_device *device,
    }
    assert(image->format);
 
-   image->tile = tile;
-   image->row_stride = align(image->vk.extent.width * block_size, block.width);
-   image->layer_stride = align(image->vk.extent.height, block.height) * image->row_stride;
-   image->min_size = image->vk.array_layers * image->vk.extent.depth * image->layer_stride;
+   for (uint32_t l = 0; l < pCreateInfo->mipLevels; l++) {
+      struct nvk_image_level *level = &image->level[l];
+      VkExtent3D extent = vk_image_mip_level_extent(&image->vk, l);
+      struct nvk_tile tile = nvk_image_tile_from_create_info(
+         extent,
+         pCreateInfo,
+         0
+      );
+      VkExtent3D block = nvk_image_tile_to_blocks(tile);
+
+      /* need to apply a minimum alignment */
+      image->min_size = align(image->min_size, 0x80);
+      level->offset = image->min_size;
+      level->tile = tile;
+      level->extent = extent;
+      level->row_stride = align(extent.width * block_size, block.width);
+
+      /* for untiled images we need to align the row_stride to 0x80 */
+      if (!tile.is_tiled)
+         level->row_stride = align(level->row_stride, 0x80);
+
+      level->layer_stride = level->row_stride * align(extent.height, block.height);
+      image->min_size += level->layer_stride * align(extent.depth * image->vk.array_layers, block.depth);
+   }
 
    return VK_SUCCESS;
 }

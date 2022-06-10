@@ -81,13 +81,15 @@ nouveau_copy_rect_image(
    VkOffset3D offset,
    const VkImageSubresourceLayers *sub_res)
 {
+   struct nvk_image_level *level = &img->level[sub_res->mipLevel];
+
    struct nouveau_copy_buffer buf = {
-      .base_addr = nvk_image_base_address(img),
+      .base_addr = nvk_image_base_address(img, sub_res->mipLevel),
       .offset = vk_image_sanitize_offset(&img->vk, offset),
-      .extent = img->vk.extent,
-      .row_stride = img->row_stride,
-      .layer_stride = img->layer_stride,
-      .tile = img->tile,
+      .extent = level->extent,
+      .row_stride = level->row_stride,
+      .layer_stride = level->layer_stride,
+      .tile = level->tile,
    };
 
    buf.extent.depth *= img->vk.array_layers;
