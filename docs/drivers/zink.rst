@@ -38,7 +38,7 @@ Here's a list of those requirements:
   * `VK_KHR_create_renderpass2`_
   * `VK_KHR_imageless_framebuffer`_
   * `VK_KHR_timeline_semaphore`_
-  * `VK_EXT_custom_border_color`_
+  * `VK_EXT_custom_border_color`_ with ``customBorderColorWithoutFormat``
   * `VK_EXT_provoking_vertex`_
   * `VK_EXT_line_rasterization`_, with the following ``VkPhysicalDeviceLineRasterizationFeaturesEXT``:
 
