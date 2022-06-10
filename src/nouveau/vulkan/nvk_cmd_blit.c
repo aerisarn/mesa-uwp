@@ -31,18 +31,11 @@ nvk_CmdBlitImage2(
    VkDeviceSize src_addr = src->mem->bo->offset + src->offset;
    VkDeviceSize dst_addr = dst->mem->bo->offset + dst->offset;
 
-   P_MTHD(push, NV902D, SET_OPERATION);
-   P_NV902D_SET_OPERATION(push, V_SRCCOPY);
-   P_MTHD(push, NV902D, SET_CLIP_ENABLE);
-   P_NV902D_SET_CLIP_ENABLE(push, V_FALSE);
-   P_MTHD(push, NV902D, SET_COLOR_KEY_ENABLE);
-   P_NV902D_SET_COLOR_KEY_ENABLE(push, V_FALSE);
-   P_MTHD(push, NV902D, SET_RENDER_ENABLE_C);
-   P_NV902D_SET_RENDER_ENABLE_C(push, MODE_TRUE);
+   P_IMMD(push, NV902D, SET_CLIP_ENABLE, V_FALSE);
+   P_IMMD(push, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
+   P_IMMD(push, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);
 
-   P_MTHD(push, NV902D, SET_SRC_FORMAT);
-   P_NV902D_SET_SRC_FORMAT(push, src->format->hw_format);
-
+   P_IMMD(push, NV902D, SET_SRC_FORMAT, src->format->hw_format);
    if (src->tile.is_tiled) {
       P_MTHD(push, NV902D, SET_SRC_MEMORY_LAYOUT);
       P_NV902D_SET_SRC_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
@@ -51,11 +44,11 @@ nvk_CmdBlitImage2(
          .depth = src->tile.z,
       });
    } else {
-      P_MTHD(push, NV902D, SET_SRC_MEMORY_LAYOUT);
-      P_NV902D_SET_SRC_MEMORY_LAYOUT(push, V_PITCH);
+      P_IMMD(push, NV902D, SET_SRC_MEMORY_LAYOUT, V_PITCH);
    }
 
-   P_IMMD(push, NV902D, SET_SRC_DEPTH, src_depth);
+   P_MTHD(push, NV902D, SET_SRC_DEPTH);
+   P_NV902D_SET_SRC_DEPTH(push, src_depth);
 
    P_MTHD(push, NV902D, SET_SRC_PITCH);
    P_NV902D_SET_SRC_PITCH(push, src->row_stride);
@@ -64,9 +57,7 @@ nvk_CmdBlitImage2(
    P_NV902D_SET_SRC_OFFSET_UPPER(push, src_addr >> 32);
    P_NV902D_SET_SRC_OFFSET_LOWER(push, src_addr & 0xffffffff);
 
-   P_MTHD(push, NV902D, SET_DST_FORMAT);
-   P_NV902D_SET_DST_FORMAT(push, dst->format->hw_format);
-
+   P_IMMD(push, NV902D, SET_DST_FORMAT, dst->format->hw_format);
    if (dst->tile.is_tiled) {
       P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
       P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
@@ -78,23 +69,22 @@ nvk_CmdBlitImage2(
       P_IMMD(push, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
    }
 
-   P_IMMD(push, NV902D, SET_DST_DEPTH, dst_depth);
-
-   P_MTHD(push, NV902D, SET_DST_PITCH);
+   P_MTHD(push, NV902D, SET_DST_DEPTH);
+   P_NV902D_SET_DST_DEPTH(push, dst_depth);
+   P_NV902D_SET_DST_LAYER(push, 0);
    P_NV902D_SET_DST_PITCH(push, dst->row_stride);
    P_NV902D_SET_DST_WIDTH(push, dst->vk.extent.width);
    P_NV902D_SET_DST_HEIGHT(push, dst->vk.extent.height);
    P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
    P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
 
-   P_MTHD(push, NV902D, SET_PIXELS_FROM_MEMORY_SAMPLE_MODE);
    if (pBlitImageInfo->filter == VK_FILTER_NEAREST) {
-      P_NV902D_SET_PIXELS_FROM_MEMORY_SAMPLE_MODE(push, {
+      P_IMMD(push, NV902D, SET_PIXELS_FROM_MEMORY_SAMPLE_MODE, {
          .origin = ORIGIN_CORNER,
          .filter = FILTER_POINT,
       });
    } else {
-      P_NV902D_SET_PIXELS_FROM_MEMORY_SAMPLE_MODE(push, {
+      P_IMMD(push, NV902D, SET_PIXELS_FROM_MEMORY_SAMPLE_MODE, {
          .origin = ORIGIN_CORNER,
          .filter = FILTER_BILINEAR,
       });
@@ -109,17 +99,14 @@ nvk_CmdBlitImage2(
    if (vk_format_get_nr_components(src->format->vk_format) == 1 &&
        src->format->hw_format != dst->format->hw_format) {
       uint8_t mask = vk_format_is_snorm(dst->format->vk_format) ? 0x7f : 0xff;
-      P_MTHD(push, NV902D, SET_BETA1);
-      P_NV902D_SET_BETA1(push, 0xff);
       P_MTHD(push, NV902D, SET_BETA4);
       P_NV902D_SET_BETA4(push, {
          .r = mask,
          .a = mask,
       });
-      P_NV902D_SET_OPERATION(push, V_SRCCOPY_PREMULT);
+      P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY_PREMULT);
    } else {
-      P_MTHD(push, NV902D, SET_OPERATION);
-      P_NV902D_SET_OPERATION(push, V_SRCCOPY);
+      P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
    }
 
    for (unsigned r = 0; r < pBlitImageInfo->regionCount; r++) {
@@ -162,8 +149,6 @@ nvk_CmdBlitImage2(
       P_NV902D_SET_PIXELS_FROM_MEMORY_DU_DX_INT(push, scaling_x_fp >> 32);
       P_NV902D_SET_PIXELS_FROM_MEMORY_DV_DY_FRAC(push, scaling_y_fp & 0xffffffff);
       P_NV902D_SET_PIXELS_FROM_MEMORY_DV_DY_INT(push, scaling_y_fp >> 32);
-
-      P_MTHD(push, NV902D, SET_PIXELS_FROM_MEMORY_SRC_X0_FRAC);
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_X0_FRAC(push, src_start_x_fp & 0xffffffff);
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_X0_INT(push, src_start_x_fp >> 32);
       P_NV902D_SET_PIXELS_FROM_MEMORY_SRC_Y0_FRAC(push, src_start_y_fp & 0xffffffff);
