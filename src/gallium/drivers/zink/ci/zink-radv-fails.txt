@@ -6,6 +6,19 @@ KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
 # amd issue #6305
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 
+# RADV regression #6597
+dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_clear,Fail
+dEQP-GLES31.functional.stencil_texturing.render.depth32f_stencil8_clear,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_index_array_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_index_array_as_vertex_texture_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_fragment_texture.buffersubdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_index_array_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_index_array_as_vertex_texture_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_vertex_texture_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_vertex_texture_as_fragment_texture.buffersubdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_texture_as_fragment_texture.bufferdata,Fail
+dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_texture_as_fragment_texture.buffersubdata,Fail
 
 
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
