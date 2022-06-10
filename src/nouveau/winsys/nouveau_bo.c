@@ -3,6 +3,7 @@
 #include <nouveau_drm.h>
 #include <xf86drm.h>
 
+#include <fcntl.h>
 #include <stddef.h>
 #include <sys/mman.h>
 
@@ -120,4 +121,10 @@ nouveau_ws_bo_wait(struct nouveau_ws_bo *bo, enum nouveau_ws_bo_map_flags flags)
       req.flags |= NOUVEAU_GEM_CPU_PREP_WRITE;
 
    return !drmCommandWrite(bo->fd, DRM_NOUVEAU_GEM_CPU_PREP, &req, sizeof(req));
+}
+
+int
+nouveau_ws_bo_dma_buf(struct nouveau_ws_bo *bo, int *fd)
+{
+   return drmPrimeHandleToFD(bo->fd, bo->handle, DRM_CLOEXEC, fd);
 }

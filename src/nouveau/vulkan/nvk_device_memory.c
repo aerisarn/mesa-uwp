@@ -283,3 +283,22 @@ nvk_GetDeviceMemoryCommitment(VkDevice device,
 
    *pCommittedMemoryInBytes = mem->bo->size;
 }
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_GetMemoryFdKHR(VkDevice _device,
+                   const VkMemoryGetFdInfoKHR *pGetFdInfo,
+                   int *pFD)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device_memory, memory, pGetFdInfo->memory);
+
+   switch (pGetFdInfo->handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      if (nouveau_ws_bo_dma_buf(memory->bo, pFD))
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return VK_SUCCESS;
+   default:
+      assert(!"unsupported handle type");
+      return vk_error(device, VK_ERROR_FEATURE_NOT_PRESENT);
+   }
+}
