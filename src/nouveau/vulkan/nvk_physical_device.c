@@ -8,6 +8,7 @@
 #include "nvk_wsi.h"
 
 #include "vulkan/runtime/vk_device.h"
+#include "vulkan/util/vk_enum_defines.h"
 #include "vulkan/wsi/wsi_common.h"
 
 VKAPI_ATTR void VKAPI_CALL
@@ -389,16 +390,40 @@ nvk_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
    }
 }
 
+static void
+nvk_physical_device_get_format_properties(struct nvk_physical_device *physical_device,
+                                          VkFormat format, VkFormatProperties3 *out_properties)
+{
+   VkFormatFeatureFlags2 linear = 0, tiled = 0, buffer = 0;
+
+   linear = VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+   tiled = VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+   if (format == VK_FORMAT_B8G8R8A8_UNORM) {
+      buffer |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
+                VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
+   }
+
+   out_properties->linearTilingFeatures = linear;
+   out_properties->optimalTilingFeatures = tiled;
+   out_properties->bufferFeatures = buffer;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
-   VkFormat vk_format,
+   VkFormat format,
    VkFormatProperties2 *pFormatProperties)
 {
-   pFormatProperties->formatProperties.linearTilingFeatures =
-      VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-   pFormatProperties->formatProperties.optimalTilingFeatures =
-      VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+   VK_FROM_HANDLE(nvk_physical_device, physical_device, physicalDevice);
+   VkFormatProperties3 format_props;
 
+   nvk_physical_device_get_format_properties(physical_device, format, &format_props);
+   pFormatProperties->formatProperties.linearTilingFeatures =
+      vk_format_features2_to_features(format_props.linearTilingFeatures);
+   pFormatProperties->formatProperties.optimalTilingFeatures =
+      vk_format_features2_to_features(format_props.optimalTilingFeatures);
+   pFormatProperties->formatProperties.bufferFeatures =
+      vk_format_features2_to_features(format_props.bufferFeatures);
    vk_foreach_struct(ext, pFormatProperties->pNext)
    {
       /* Use unsigned since some cases are not in the VkStructureType enum. */
