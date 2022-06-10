@@ -126,7 +126,8 @@ class Format(Enum):
                  ('bool', 'slc', 'false'),
                  ('bool', 'tfe', 'false'),
                  ('bool', 'lwe', 'false'),
-                 ('bool', 'r128_a16', 'false', 'r128'),
+                 ('bool', 'r128', 'false'),
+                 ('bool', 'a16', 'false'),
                  ('bool', 'd16', 'false')]
          return [('unsigned', 'attribute', None),
                  ('unsigned', 'component', None)]
