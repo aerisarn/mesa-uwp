@@ -175,6 +175,63 @@ vkcts-vangogh-valve:
   tags:
     - amdgpu:codename:VANGOGH
 
+############### gles/GLCTS
+.glcts-test-valve:
+  extends:
+    - .b2c-test-radv-gl
+    # Keep all the GLCTS jobs as manual trigger jobs for now, until we
+    # have enough resources to meet the throughput requirements for
+    # automatic pre-merge in the Mesa CI.
+    - .test-manual-mr
+  variables:
+    B2C_JOB_SUCCESS_REGEX: '^\+ DEQP_EXITCODE=0\r$'
+    B2C_TEST_SCRIPT: ./install/deqp-runner.sh
+    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache"
+    DEQP_VER: gl46
+    MESA_LOADER_DRIVER_OVERRIDE: zink
+
+glcts-navi10-valve:
+  extends:
+    - .glcts-test-valve
+  variables:
+    GPU_VERSION: zink-radv
+    FDO_CI_CONCURRENT: 24
+    # (2022-01) noapic is set because the serial adapter on this
+    # machine is using non-MSI IRQs and is generating a lot of
+    # IRQs. This tends to confuse the interrupt controller and breaks
+    # MSI IRQs leading to GPU hangs on amdgpu.
+    B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g noapic'
+  tags:
+    - amdgpu:codename:NAVI10
+
+.gles-test-valve:
+  extends:
+    - .b2c-test-radv-gl
+    # Keep all the GLCTS jobs as manual trigger jobs for now, until we
+    # have enough resources to meet the throughput requirements for
+    # automatic pre-merge in the Mesa CI.
+    - .test-manual-mr
+  variables:
+    B2C_JOB_SUCCESS_REGEX: '^\+ DEQP_EXITCODE=0\r$'
+    B2C_TEST_SCRIPT: ./install/deqp-runner.sh
+    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache"
+    DEQP_SUITE: zink-radv
+    MESA_LOADER_DRIVER_OVERRIDE: zink
+
+gles-navi10-valve:
+  extends:
+    - .gles-test-valve
+  variables:
+    GPU_VERSION: zink-radv
+    FDO_CI_CONCURRENT: 24
+    # (2022-01) noapic is set because the serial adapter on this
+    # machine is using non-MSI IRQs and is generating a lot of
+    # IRQs. This tends to confuse the interrupt controller and breaks
+    # MSI IRQs leading to GPU hangs on amdgpu.
+    B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g noapic'
+  tags:
+    - amdgpu:codename:NAVI10
+
 ############### Fossilize
 radv-fossils:
   extends:
