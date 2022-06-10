@@ -105,6 +105,7 @@ struct zink_batch_state {
    VkSemaphore present;
    struct zink_resource *swapchain;
    struct util_dynarray acquires;
+   struct util_dynarray acquire_flags;
    struct util_dynarray dead_swapchains;
 
    struct util_queue_fence flush_completed;

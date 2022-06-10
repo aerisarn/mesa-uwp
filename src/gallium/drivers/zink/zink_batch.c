@@ -177,6 +177,7 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->bindless_releases[0]);
    util_dynarray_fini(&bs->bindless_releases[1]);
    util_dynarray_fini(&bs->acquires);
+   util_dynarray_fini(&bs->acquire_flags);
    util_dynarray_fini(&bs->dead_swapchains);
    _mesa_set_destroy(bs->surfaces, NULL);
    _mesa_set_destroy(bs->bufferviews, NULL);
@@ -228,6 +229,7 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->persistent_resources, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
    util_dynarray_init(&bs->acquires, NULL);
+   util_dynarray_init(&bs->acquire_flags, NULL);
    util_dynarray_init(&bs->dead_swapchains, NULL);
    util_dynarray_init(&bs->bindless_releases[0], NULL);
    util_dynarray_init(&bs->bindless_releases[1], NULL);
@@ -354,11 +356,12 @@ submit_queue(void *data, void *gdata, int thread_index)
    si[0].sType = si[1].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si[0].waitSemaphoreCount = util_dynarray_num_elements(&bs->acquires, VkSemaphore);
    si[0].pWaitSemaphores = bs->acquires.data;
-   VkPipelineStageFlags mask[32]; //can't imagine having more dumbass than this
-   assert(util_dynarray_num_elements(&bs->acquires, VkSemaphore) < ARRAY_SIZE(mask));
-   for (unsigned i = 0; i < ARRAY_SIZE(mask); i++)
-      mask[i] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-   si[0].pWaitDstStageMask = mask;
+   while (util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags) < si[0].waitSemaphoreCount) {
+      VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      util_dynarray_append(&bs->acquire_flags, VkPipelineStageFlags, mask);
+   }
+   assert(util_dynarray_num_elements(&bs->acquires, VkSemaphore) <= util_dynarray_num_elements(&bs->acquire_flags, VkPipelineStageFlags));
+   si[0].pWaitDstStageMask = bs->acquire_flags.data;
 
    if (si[0].waitSemaphoreCount == 0)
      num_si--;
