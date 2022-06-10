@@ -694,7 +694,7 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
         unsigned tile_size;
         unsigned internal_cbuf_size = pan_internal_cbuf_size(fb, &tile_size);
         int crc_rt = GENX(pan_select_crc_rt)(fb);
-        bool has_zs_crc_ext = pan_fbd_has_zs_crc_ext(fb);
+        bool has_zs_crc_ext = (fb->zs.view.zs || fb->zs.view.s || crc_rt >= 0);
 
         pan_section_pack(fbd, FRAMEBUFFER, PARAMETERS, cfg) {
 #if PAN_ARCH >= 6
