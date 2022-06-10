@@ -22,6 +22,9 @@ Remove-Item -Recurse -Force $installdir
 New-Item -ItemType Directory -Path $builddir
 New-Item -ItemType Directory -Path $installdir
 
+Write-Output "*" > $builddir\.gitignore
+Write-Output "*" > $installdir\.gitignore
+
 Write-Output builddir:$builddir
 Write-Output installdir:$installdir
 Write-Output sourcedir:$sourcedir
