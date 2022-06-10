@@ -106,7 +106,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    }
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
-      if (screen->is_cpu || prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS)
+      if (zs->can_inline && (screen->is_cpu || prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS))
          inline_size = zs->nir->info.num_inlinable_uniforms;
       else
          key->inline_uniforms = false;

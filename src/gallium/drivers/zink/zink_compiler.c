@@ -2010,6 +2010,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       /* This must be done again. */
       NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
                                                        nir_var_shader_out);
+
+      nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+      if (impl->ssa_alloc > ZINK_ALWAYS_INLINE_LIMIT)
+         zs->can_inline = false;
    } else if (need_optimize)
       optimize_nir(nir);
    prune_io(nir);
@@ -2834,6 +2838,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
       }
    }
+
+   ret->can_inline = true;
 
    return ret;
 }
