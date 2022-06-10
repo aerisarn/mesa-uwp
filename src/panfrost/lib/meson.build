@@ -132,10 +132,11 @@ if with_tests
   )
 
   test(
-    'panfrost_layout',
+    'panfrost_tests',
     executable(
-      'panfrost_layout',
+      'panfrost_tests',
       files(
+        'tests/test-earlyzs.cpp',
         'tests/test-layout.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
