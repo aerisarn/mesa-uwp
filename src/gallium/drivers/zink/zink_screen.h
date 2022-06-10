@@ -160,7 +160,6 @@ struct zink_screen {
    uint32_t timestamp_valid_bits;
    VkDevice dev;
    VkQueue queue; //gfx+compute
-   VkQueue thread_queue; //gfx+compute
    simple_mtx_t queue_lock;
    VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 

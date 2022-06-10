@@ -239,7 +239,6 @@ create_batch_state(struct zink_context *ctx)
       goto fail;
 
    util_queue_fence_init(&bs->flush_completed);
-   bs->queue = screen->threaded ? screen->thread_queue : screen->queue;
 
    return bs;
 fail:
@@ -414,7 +413,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    }
 
    simple_mtx_lock(&screen->queue_lock);
-   if (VKSCR(QueueSubmit)(bs->queue, num_si, num_si == 2 ? si : &si[1], VK_NULL_HANDLE) != VK_SUCCESS) {
+   if (VKSCR(QueueSubmit)(screen->queue, num_si, num_si == 2 ? si : &si[1], VK_NULL_HANDLE) != VK_SUCCESS) {
       mesa_loge("ZINK: vkQueueSubmit failed");
       bs->is_device_lost = true;
    }

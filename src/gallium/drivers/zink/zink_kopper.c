@@ -640,7 +640,7 @@ kopper_present(void *data, void *gdata, int thread_idx)
       cpi->info.pWaitSemaphores = NULL;
       cpi->info.waitSemaphoreCount = 0;
    }
-   VkResult error2 = VKSCR(QueuePresentKHR)(screen->thread_queue, &cpi->info);
+   VkResult error2 = VKSCR(QueuePresentKHR)(screen->queue, &cpi->info);
    simple_mtx_unlock(&screen->queue_lock);
    swapchain->last_present = cpi->image;
    if (cpi->indefinite_acquire)
@@ -784,7 +784,7 @@ zink_kopper_present_readback(struct zink_context *ctx, struct zink_resource *res
    si.waitSemaphoreCount = !!acquire;
    si.pWaitSemaphores = &acquire;
    si.pSignalSemaphores = &present;
-   VkResult error = VKSCR(QueueSubmit)(screen->thread_queue, 1, &si, VK_NULL_HANDLE);
+   VkResult error = VKSCR(QueueSubmit)(screen->queue, 1, &si, VK_NULL_HANDLE);
    if (!zink_screen_handle_vkresult(screen, error))
       return false;
 

@@ -737,9 +737,7 @@ buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, stru
    sparse_bind[0].pBinds = &mem_bind;
    sparse_bind[1].pBinds = &mem_bind;
 
-   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
-
-   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, &sparse, VK_NULL_HANDLE);
+   VkResult ret = VKSCR(QueueBindSparse)(screen->queue, 1, &sparse, VK_NULL_HANDLE);
    return zink_screen_handle_vkresult(screen, ret);
 }
 
@@ -866,9 +864,7 @@ texture_commit_single(struct zink_screen *screen, struct zink_resource *res, VkS
    sparse_ibind.pBinds = ibind;
    sparse.pImageBinds = &sparse_ibind;
 
-   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
-
-   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, &sparse, VK_NULL_HANDLE);
+   VkResult ret = VKSCR(QueueBindSparse)(screen->queue, 1, &sparse, VK_NULL_HANDLE);
    return zink_screen_handle_vkresult(screen, ret);
 }
 
@@ -892,9 +888,7 @@ texture_commit_miptail(struct zink_screen *screen, struct zink_resource *res, st
    mem_bind.flags = 0;
    sparse_bind.pBinds = &mem_bind;
 
-   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
-
-   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, &sparse, VK_NULL_HANDLE);
+   VkResult ret = VKSCR(QueueBindSparse)(screen->queue, 1, &sparse, VK_NULL_HANDLE);
    return zink_screen_handle_vkresult(screen, ret);
 }
 

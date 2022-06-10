@@ -1387,10 +1387,6 @@ init_queue(struct zink_screen *screen)
 {
    simple_mtx_init(&screen->queue_lock, mtx_plain);
    VKSCR(GetDeviceQueue)(screen->dev, screen->gfx_queue, 0, &screen->queue);
-   if (screen->threaded && screen->max_queues > 1)
-      VKSCR(GetDeviceQueue)(screen->dev, screen->gfx_queue, 1, &screen->thread_queue);
-   else
-      screen->thread_queue = screen->queue;
 }
 
 static void
