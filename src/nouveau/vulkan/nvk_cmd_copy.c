@@ -205,19 +205,19 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdCopyBuffer(VkCommandBuffer commandBuffer,
-                  VkBuffer srcBuffer, VkBuffer dstBuffer,
-                  uint32_t regionCount, const VkBufferCopy* pRegions)
+nvk_CmdCopyBuffer2(
+   VkCommandBuffer commandBuffer,
+   const VkCopyBufferInfo2 *pCopyBufferInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   VK_FROM_HANDLE(nvk_buffer, src, srcBuffer);
-   VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
+   VK_FROM_HANDLE(nvk_buffer, src, pCopyBufferInfo->srcBuffer);
+   VK_FROM_HANDLE(nvk_buffer, dst, pCopyBufferInfo->dstBuffer);
 
    nvk_push_buffer_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
    nvk_push_buffer_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
 
-   for (unsigned r = 0; r < regionCount; r++) {
-      const VkBufferCopy *region = &pRegions[r];
+   for (unsigned r = 0; r < pCopyBufferInfo->regionCount; r++) {
+      const VkBufferCopy2 *region = &pCopyBufferInfo->pRegions[r];
 
       nouveau_copy_linear(cmd->push,
                           nvk_buffer_address(src, region->srcOffset),
