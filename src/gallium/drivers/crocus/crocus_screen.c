@@ -392,6 +392,9 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PCI_FUNCTION:
       return 0;
 
+   case PIPE_CAP_HARDWARE_GL_SELECT:
+      return 0;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
