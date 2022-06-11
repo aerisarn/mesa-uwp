@@ -823,7 +823,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->uvd_fw_version = info->ip[AMD_IP_UVD].num_queues ? uvd_version : 0;
    info->vce_fw_version = info->ip[AMD_IP_VCE].num_queues ? vce_version : 0;
    info->has_video_hw.uvd_decode = info->ip[AMD_IP_UVD].num_queues != 0;
-   info->has_video_hw.vcn_decode = info->ip[AMD_IP_VCN_DEC].num_queues != 0;
+
+   /* unified ring */
+   info->has_video_hw.vcn_decode
+                  = info->family >= CHIP_GFX1100
+                    ? info->ip[AMD_IP_VCN_UNIFIED].num_queues != 0
+                    : info->ip[AMD_IP_VCN_DEC].num_queues != 0;
    info->has_video_hw.jpeg_decode = info->ip[AMD_IP_VCN_JPEG].num_queues != 0;
    info->has_video_hw.vce_encode = info->ip[AMD_IP_VCE].num_queues != 0;
    info->has_video_hw.uvd_encode = info->ip[AMD_IP_UVD_ENC].num_queues != 0;
@@ -1334,6 +1339,9 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
       }
    }
 
+   if (info->family >= CHIP_GFX1100)
+      ip_string[AMD_IP_VCN_UNIFIED] = "VCN_UNIFIED";
+
    fprintf(f, "    has_graphics = %i\n", info->has_graphics);
    fprintf(f, "    has_clear_state = %u\n", info->has_clear_state);
    fprintf(f, "    has_distributed_tess = %u\n", info->has_distributed_tess);
@@ -1397,11 +1405,17 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
 
    fprintf(f, "Multimedia info:\n");
    fprintf(f, "    uvd_decode = %u\n", info->has_video_hw.uvd_decode);
-   fprintf(f, "    vcn_decode = %u\n", info->has_video_hw.vcn_decode);
    fprintf(f, "    jpeg_decode = %u\n", info->has_video_hw.jpeg_decode);
    fprintf(f, "    vce_encode = %u\n", info->has_video_hw.vce_encode);
    fprintf(f, "    uvd_encode = %u\n", info->has_video_hw.uvd_encode);
-   fprintf(f, "    vcn_encode = %u\n", info->has_video_hw.vcn_encode);
+
+   if (info->family >= CHIP_GFX1100)
+      fprintf(f, "    vcn_unified = %u\n", info->has_video_hw.vcn_decode);
+   else {
+      fprintf(f, "    vcn_decode = %u\n", info->has_video_hw.vcn_decode);
+      fprintf(f, "    vcn_encode = %u\n", info->has_video_hw.vcn_encode);
+   }
+
    fprintf(f, "    uvd_fw_version = %u\n", info->uvd_fw_version);
    fprintf(f, "    vce_fw_version = %u\n", info->vce_fw_version);
    fprintf(f, "    vce_harvest_config = %i\n", info->vce_harvest_config);

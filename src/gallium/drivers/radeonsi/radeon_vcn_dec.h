@@ -28,7 +28,7 @@
 #ifndef _RADEON_VCN_DEC_H
 #define _RADEON_VCN_DEC_H
 
-#include "radeon_video.h"
+#include "radeon_vcn.h"
 #include "util/list.h"
 
 #include "ac_vcn_dec.h"
@@ -64,6 +64,7 @@ struct radeon_decoder {
    void *bs_ptr;
    rvcn_decode_buffer_t *decode_buffer;
    bool vcn_dec_sw_ring;
+   struct rvcn_sq_var sq;
 
    struct rvid_buffer msg_fb_it_probs_buffers[NUM_BUFFERS];
    struct rvid_buffer bs_buffers[NUM_BUFFERS];

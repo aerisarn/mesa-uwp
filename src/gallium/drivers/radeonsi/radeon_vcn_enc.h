@@ -28,7 +28,7 @@
 #ifndef _RADEON_VCN_ENC_H
 #define _RADEON_VCN_ENC_H
 
-#include "radeon_video.h"
+#include "radeon_vcn.h"
 
 #define RENCODE_IB_OP_INITIALIZE                                                    0x01000001
 #define RENCODE_IB_OP_CLOSE_SESSION                                                 0x01000002
@@ -628,6 +628,7 @@ struct radeon_encoder {
    unsigned bits_size;
    uint32_t total_task_size;
    uint32_t *p_task_size;
+   struct rvcn_sq_var sq;
 
    bool emulation_prevention;
    bool need_feedback;
