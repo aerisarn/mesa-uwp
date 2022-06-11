@@ -1643,8 +1643,22 @@ query_regions(struct intel_device_info *devinfo, int fd, bool update)
             assert((devinfo->mem.vram.mappable.size +
                     devinfo->mem.vram.unmappable.size) == mem->probed_size);
          }
-         if (mem->unallocated_size != -1)
-            devinfo->mem.vram.mappable.free = mem->unallocated_size;
+         if (mem->unallocated_cpu_visible_size > 0) {
+            if (mem->unallocated_size != -1) {
+               devinfo->mem.vram.mappable.free = mem->unallocated_cpu_visible_size;
+               devinfo->mem.vram.unmappable.free =
+                  mem->unallocated_size - mem->unallocated_cpu_visible_size;
+            }
+         } else {
+            /* We are running on an older kernel without support for the
+             * small-bar uapi. These kernels only support systems where the
+             * entire vram is mappable.
+             */
+            if (mem->unallocated_size != -1) {
+               devinfo->mem.vram.mappable.free = mem->unallocated_size;
+               devinfo->mem.vram.unmappable.free = 0;
+            }
+         }
          break;
       default:
          break;
