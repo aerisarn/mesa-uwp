@@ -68,7 +68,7 @@ wsi_dma_buf_export_sync_file(int dma_buf_fd, int *sync_file_fd)
    };
    int ret = drmIoctl(dma_buf_fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE_WSI, &export);
    if (ret) {
-      if (errno == ENOTTY) {
+      if (errno == ENOTTY || errno == EBADF) {
          no_dma_buf_sync_file = true;
          return VK_ERROR_FEATURE_NOT_PRESENT;
       } else {
@@ -95,7 +95,7 @@ wsi_dma_buf_import_sync_file(int dma_buf_fd, int sync_file_fd)
    };
    int ret = drmIoctl(dma_buf_fd, DMA_BUF_IOCTL_IMPORT_SYNC_FILE_WSI, &import);
    if (ret) {
-      if (errno == ENOTTY) {
+      if (errno == ENOTTY || errno == EBADF) {
          no_dma_buf_sync_file = true;
          return VK_ERROR_FEATURE_NOT_PRESENT;
       } else {
