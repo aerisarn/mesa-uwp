@@ -595,6 +595,10 @@ struct radeon_encoder {
    void (*input_format)(struct radeon_encoder *enc);
    void (*output_format)(struct radeon_encoder *enc);
    void (*efc_params)(struct radeon_encoder *enc);
+   /* mq is used for preversing multiple queue ibs */
+   void (*mq_begin)(struct radeon_encoder *enc);
+   void (*mq_encode)(struct radeon_encoder *enc);
+   void (*mq_destroy)(struct radeon_encoder *enc);
 
    unsigned stream_handle;
 

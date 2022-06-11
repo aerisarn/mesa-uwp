@@ -32,11 +32,31 @@
 #include "util/u_video.h"
 
 #include "si_pipe.h"
-#include "radeon_video.h"
 #include "radeon_vcn_enc.h"
 
 #define RENCODE_FW_INTERFACE_MAJOR_VERSION   1
 #define RENCODE_FW_INTERFACE_MINOR_VERSION   0
+
+static void radeon_enc_sq_begin(struct radeon_encoder *enc)
+{
+   rvcn_sq_header(&enc->cs, &enc->sq, true);
+   enc->mq_begin(enc);
+   rvcn_sq_tail(&enc->cs, &enc->sq);
+}
+
+static void radeon_enc_sq_encode(struct radeon_encoder *enc)
+{
+   rvcn_sq_header(&enc->cs, &enc->sq, true);
+   enc->mq_encode(enc);
+   rvcn_sq_tail(&enc->cs, &enc->sq);
+}
+
+static void radeon_enc_sq_destroy(struct radeon_encoder *enc)
+{
+   rvcn_sq_header(&enc->cs, &enc->sq, true);
+   enc->mq_destroy(enc);
+   rvcn_sq_tail(&enc->cs, &enc->sq);
+}
 
 static void radeon_enc_session_init(struct radeon_encoder *enc)
 {
@@ -129,6 +149,12 @@ void radeon_enc_4_0_init(struct radeon_encoder *enc)
 
    enc->session_init = radeon_enc_session_init;
    enc->ctx = radeon_enc_ctx;
+   enc->mq_begin = enc->begin;
+   enc->mq_encode = enc->encode;
+   enc->mq_destroy = enc->destroy;
+   enc->begin = radeon_enc_sq_begin;
+   enc->encode = radeon_enc_sq_encode;
+   enc->destroy = radeon_enc_sq_destroy;
 
    enc->enc_pic.session_info.interface_version =
       ((RENCODE_FW_INTERFACE_MAJOR_VERSION << RENCODE_IF_MAJOR_VERSION_SHIFT) |

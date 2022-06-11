@@ -28,7 +28,6 @@
 #include "radeon_vcn_dec.h"
 
 #include "pipe/p_video_codec.h"
-#include "radeon_video.h"
 #include "radeonsi/si_pipe.h"
 #include "util/u_memory.h"
 #include "util/u_video.h"
@@ -385,7 +384,7 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radeon_decoder *dec,
    result.curr_poc = pic->CurrPicOrderCntVal;
 
    for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++) {
-      for (j = 0; 
+      for (j = 0;
            (pic->ref[j] != NULL) && (j < ARRAY_SIZE(dec->render_pic_list));
            j++) {
          if (dec->render_pic_list[i] == pic->ref[j])
@@ -2124,9 +2123,18 @@ static void rvcn_dec_message_feedback(struct radeon_decoder *dec)
    header->num_buffers = 0;
 }
 
+static void rvcn_dec_sq_tail(struct radeon_decoder *dec)
+{
+   if (dec->vcn_dec_sw_ring == false)
+      return;
+
+   rvcn_sq_tail(&dec->cs, &dec->sq);
+}
 /* flush IB to the hardware */
 static int flush(struct radeon_decoder *dec, unsigned flags)
 {
+   rvcn_dec_sq_tail(dec);
+
    return dec->ws->cs_flush(&dec->cs, flags, NULL);
 }
 
@@ -2155,6 +2163,7 @@ static void send_cmd(struct radeon_decoder *dec, unsigned cmd, struct pb_buffer 
    }
 
    if (!dec->cs.current.cdw) {
+      rvcn_sq_header(&dec->cs, &dec->sq, false);
       rvcn_decode_ib_package_t *ib_header =
          (rvcn_decode_ib_package_t *)&(dec->cs.current.buf[dec->cs.current.cdw]);
 
@@ -2770,8 +2779,13 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    dec->ws = ws;
 
    if (u_reduce_video_profile(templ->profile) != PIPE_VIDEO_FORMAT_JPEG &&
-       sctx->gfx_level >= GFX11)
+       sctx->gfx_level >= GFX11) {
       dec->vcn_dec_sw_ring = true;
+      ring = AMD_IP_VCN_UNIFIED;
+   }
+
+   dec->sq.ib_total_size_in_dw = NULL;
+   dec->sq.ib_checksum = NULL;
 
    if (!ws->cs_create(&dec->cs, sctx->ctx, ring, NULL, NULL, false)) {
       RVID_ERR("Can't get command submission context.\n");
