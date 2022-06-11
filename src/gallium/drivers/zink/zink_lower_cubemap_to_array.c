@@ -391,7 +391,9 @@ rewrite_cube_var_type(nir_builder *b, nir_tex_instr *tex)
    nir_foreach_variable_with_modes(var, b->shader, nir_var_uniform) {
       if (!glsl_type_is_sampler(glsl_without_array(var->type)))
          continue;
-      if (var->data.driver_location == index) {
+      unsigned size = glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
+      if (var->data.driver_location == index ||
+          (var->data.driver_location < index && var->data.driver_location + size > index)) {
          sampler = var;
          break;
       }
