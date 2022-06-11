@@ -176,7 +176,7 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *
    }
 
    nir_ssa_dest_init(&array_tex->instr, &array_tex->dest,
-                     nir_tex_instr_dest_size(array_tex), 32, NULL);
+                     nir_tex_instr_dest_size(array_tex), nir_dest_bit_size(tex->dest), NULL);
    nir_builder_instr_insert(b, &array_tex->instr);
    return &array_tex->dest.ssa;
 }
