@@ -1682,6 +1682,15 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
          assert(intr->num_components == 1); /* only scalar stores expected */
          nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
+         /* primitive id output is added by ngg lowering, so we don't have its
+          * output info pre-build in si_shader_info. It's handled at last of
+          * this function.
+          */
+         if ((nir->info.stage == MESA_SHADER_VERTEX ||
+              nir->info.stage == MESA_SHADER_TESS_EVAL) &&
+             sem.location == VARYING_SLOT_PRIMITIVE_ID)
+            continue;
+
          /* Assign the param index if it's unassigned. */
          if (nir_slot_is_varying(sem.location) && !sem.no_varying &&
              (sem.gs_streams & 0x3) == 0 &&

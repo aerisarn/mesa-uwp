@@ -965,6 +965,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
    ctx->abi.load_user_clip_plane = si_llvm_load_user_clip_plane;
    ctx->abi.load_streamout_buffer = si_llvm_load_streamout_buffer;
+   ctx->abi.export_vertex = gfx10_ngg_export_vertex;
    ctx->abi.atomic_add_prim_count = gfx10_ngg_atomic_add_prim_count;
 
    si_llvm_init_resource_callbacks(ctx);
@@ -1217,7 +1218,13 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
                                 info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
    ctx->abi.use_waterfall_for_divergent_tex_samplers = true;
 
-   for (unsigned i = 0; i < info->num_outputs; i++) {
+   unsigned num_outputs = info->num_outputs;
+   /* need extra output to hold primitive id added by nir ngg lower */
+   if (ctx->stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg &&
+       ctx->shader->key.ge.mono.u.vs_export_prim_id)
+      num_outputs++;
+
+   for (unsigned i = 0; i < num_outputs; i++) {
       LLVMTypeRef type = ctx->ac.f32;
 
       /* Only FS uses unpacked f16. Other stages pack 16-bit outputs into low and high bits of f32. */

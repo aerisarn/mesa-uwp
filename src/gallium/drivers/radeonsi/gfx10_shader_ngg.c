@@ -1753,6 +1753,35 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
    ac_build_endif(&ctx->ac, 6002);
 }
 
+void gfx10_ngg_export_vertex(struct ac_shader_abi *abi)
+{
+   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+   struct si_shader_info *info = &ctx->shader->selector->info;
+   struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
+   LLVMValueRef *addrs = ctx->abi.outputs;
+
+   unsigned num_outputs = info->num_outputs;
+   /* if needed, nir ngg lower will append primitive id export at last */
+   if (ctx->shader->key.ge.mono.u.vs_export_prim_id)
+      num_outputs++;
+
+   for (unsigned i = 0; i < num_outputs; i++) {
+      if (i < info->num_outputs) {
+         outputs[i].semantic = info->output_semantic[i];
+         outputs[i].vertex_streams = info->output_streams[i];
+      } else {
+         outputs[i].semantic = VARYING_SLOT_PRIMITIVE_ID;
+         outputs[i].vertex_streams = 0;
+      }
+
+      for (unsigned j = 0; j < 4; j++)
+         outputs[i].values[j] =
+            LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
+   }
+
+   si_llvm_build_vs_exports(ctx, NULL, outputs, num_outputs);
+}
+
 void gfx10_ngg_atomic_add_prim_count(struct ac_shader_abi *abi, unsigned stream,
                                      LLVMValueRef prim_count, enum ac_prim_count count_type)
 {
