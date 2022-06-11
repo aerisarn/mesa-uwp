@@ -175,7 +175,7 @@ nvk_CmdFillBuffer(
    VkDeviceSize end = start + fillSize / 4;
 
    /* can't go higher for whatever reason */
-   uint32_t pitch = 1 << 21;
+   uint32_t pitch = 1 << 19;
    uint32_t line = pitch / 4;
 
    nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
