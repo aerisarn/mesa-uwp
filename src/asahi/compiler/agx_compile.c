@@ -1206,7 +1206,8 @@ emit_if(agx_context *ctx, nir_if *nif)
 static void
 emit_loop(agx_context *ctx, nir_loop *nloop)
 {
-   /* We only track nesting within the innermost loop, so reset */
+   /* We only track nesting within the innermost loop, so push and reset */
+   unsigned pushed_nesting = ctx->loop_nesting;
    ctx->loop_nesting = 0;
 
    agx_block *popped_break = ctx->break_block;
@@ -1246,6 +1247,9 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
 
    /* All nested control flow must have finished */
    assert(ctx->loop_nesting == 0);
+
+   /* Restore loop nesting (we might be inside an if inside an outer loop) */
+   ctx->loop_nesting = pushed_nesting;
 }
 
 /* Before the first control flow structure, the nesting counter (r0l) needs to
