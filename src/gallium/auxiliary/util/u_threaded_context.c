@@ -3233,9 +3233,6 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
    unsigned index_size = info->index_size;
    bool has_user_indices = info->has_user_indices;
 
-   if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
-      tc_add_all_gfx_bindings_to_buffer_list(tc);
-
    if (unlikely(indirect)) {
       assert(!has_user_indices);
       assert(num_draws == 1);
@@ -3269,6 +3266,10 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
 
       memcpy(&p->indirect, indirect, sizeof(*indirect));
       p->draw.start = draws[0].start;
+
+      /* This must be after tc_add_call, which can flush the batch. */
+      if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+         tc_add_all_gfx_bindings_to_buffer_list(tc);
       return;
    }
 
@@ -3323,6 +3324,10 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          p->info.max_index = draws[0].count;
          p->index_bias = draws[0].index_bias;
       }
+
+      /* This must be after tc_add_call, which can flush the batch. */
+      if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+         tc_add_all_gfx_bindings_to_buffer_list(tc);
       return;
    }
 
@@ -3435,6 +3440,10 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          total_offset += dr;
       }
    }
+
+   /* This must be after tc_add_*call, which can flush the batch. */
+   if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+      tc_add_all_gfx_bindings_to_buffer_list(tc);
 }
 
 struct tc_draw_vstate_single {
@@ -3533,9 +3542,6 @@ tc_draw_vertex_state(struct pipe_context *_pipe,
 {
    struct threaded_context *tc = threaded_context(_pipe);
 
-   if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
-      tc_add_all_gfx_bindings_to_buffer_list(tc);
-
    if (num_draws == 1) {
       /* Single draw. */
       struct tc_draw_vstate_single *p =
@@ -3554,6 +3560,11 @@ tc_draw_vertex_state(struct pipe_context *_pipe,
          tc_set_vertex_state_reference(&p->state, state);
       else
          p->state = state;
+
+
+      /* This must be after tc_add_*call, which can flush the batch. */
+      if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+         tc_add_all_gfx_bindings_to_buffer_list(tc);
       return;
    }
 
@@ -3595,6 +3606,11 @@ tc_draw_vertex_state(struct pipe_context *_pipe,
 
       total_offset += dr;
    }
+
+
+   /* This must be after tc_add_*call, which can flush the batch. */
+   if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+      tc_add_all_gfx_bindings_to_buffer_list(tc);
 }
 
 struct tc_launch_grid_call {
@@ -3621,14 +3637,15 @@ tc_launch_grid(struct pipe_context *_pipe,
                                                tc_launch_grid_call);
    assert(info->input == NULL);
 
-   if (unlikely(tc->add_all_compute_bindings_to_buffer_list))
-      tc_add_all_compute_bindings_to_buffer_list(tc);
-
    tc_set_resource_reference(&p->info.indirect, info->indirect);
    memcpy(&p->info, info, sizeof(*info));
 
    if (info->indirect)
       tc_add_to_buffer_list(&tc->buffer_lists[tc->next_buf_list], info->indirect);
+
+   /* This must be after tc_add_*call, which can flush the batch. */
+   if (unlikely(tc->add_all_compute_bindings_to_buffer_list))
+      tc_add_all_compute_bindings_to_buffer_list(tc);
 }
 
 static uint16_t
