@@ -153,12 +153,15 @@ static inline void
 nvk_push_val(struct nouveau_ws_push *push, uint32_t idx, uint32_t val)
 {
    UNUSED uint32_t last_hdr_val = *push->last_size;
+   UNUSED bool is_0inc = (last_hdr_val & 0xe0000000) == 0x60000000;
    UNUSED bool is_1inc = (last_hdr_val & 0xe0000000) == 0xa0000000;
    UNUSED bool is_immd = (last_hdr_val & 0xe0000000) == 0x80000000;
    UNUSED uint16_t last_method = (last_hdr_val & 0x1fff) << 2;
 
    uint16_t distance = push->map - push->last_size - 1;
-   if (is_1inc)
+   if (is_0inc)
+      distance = 0;
+   else if (is_1inc)
       distance = MIN2(1, distance);
    last_method += distance * 4;
 
