@@ -1629,7 +1629,8 @@ query_regions(struct intel_device_info *devinfo, int fd, bool update)
          } else {
             assert(devinfo->mem.vram.mem_class == mem->region.memory_class);
             assert(devinfo->mem.vram.mem_instance == mem->region.memory_instance);
-            assert(devinfo->mem.vram.mappable.size == mem->probed_size);
+            assert((devinfo->mem.vram.mappable.size +
+                    devinfo->mem.vram.unmappable.size) == mem->probed_size);
          }
          if (mem->unallocated_size != -1)
             devinfo->mem.vram.mappable.free = mem->unallocated_size;

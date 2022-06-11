@@ -400,7 +400,7 @@ struct intel_device_info
          struct {
             uint64_t size;
             uint64_t free;
-         } mappable;
+         } mappable, unmappable;
       } sram, vram;
    } mem;
    /** @} */
