@@ -207,6 +207,8 @@ nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegin
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
+   nvk_reset_cmd_buffer(cmd);
+
    if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
       cmd->reset_on_submit = true;
    else
