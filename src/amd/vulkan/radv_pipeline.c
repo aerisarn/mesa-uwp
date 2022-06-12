@@ -6513,6 +6513,9 @@ radv_pipeline_emit_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
    } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH)) {
       assert(!radv_pipeline_has_ngg_passthrough(pipeline));
       stages |= S_028B54_GS_EN(1) | S_028B54_GS_FAST_LAUNCH(1);
+
+      if (pipeline->base.shaders[MESA_SHADER_MESH]->info.ms.needs_ms_scratch_ring)
+         stages |= S_028B54_NGG_WAVE_ID_EN(1);
    } else if (radv_pipeline_has_ngg(pipeline)) {
       stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL);
    }
