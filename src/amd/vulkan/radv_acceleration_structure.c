@@ -1257,6 +1257,63 @@ create_build_pipeline(struct radv_device *device, nir_shader *shader, unsigned p
    return VK_SUCCESS;
 }
 
+static VkResult
+create_build_pipeline_spv(struct radv_device *device, const uint32_t *spv, uint32_t spv_size,
+                          unsigned push_constant_size, VkPipeline *pipeline,
+                          VkPipelineLayout *layout)
+{
+   const VkPipelineLayoutCreateInfo pl_create_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 0,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange){VK_SHADER_STAGE_COMPUTE_BIT, 0, push_constant_size},
+   };
+
+   VkShaderModuleCreateInfo module_info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .pNext = NULL,
+      .flags = 0,
+      .codeSize = spv_size,
+      .pCode = spv,
+   };
+
+   VkShaderModule module;
+   VkResult result = device->vk.dispatch_table.CreateShaderModule(
+      radv_device_to_handle(device), &module_info, &device->meta_state.alloc, &module);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = radv_CreatePipelineLayout(radv_device_to_handle(device), &pl_create_info,
+                                      &device->meta_state.alloc, layout);
+   if (result != VK_SUCCESS)
+      goto cleanup;
+
+   VkPipelineShaderStageCreateInfo shader_stage = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+      .module = module,
+      .pName = "main",
+      .pSpecializationInfo = NULL,
+   };
+
+   VkComputePipelineCreateInfo pipeline_info = {
+      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+      .stage = shader_stage,
+      .flags = 0,
+      .layout = *layout,
+   };
+
+   result = radv_CreateComputePipelines(radv_device_to_handle(device),
+                                        radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+                                        &pipeline_info, &device->meta_state.alloc, pipeline);
+
+cleanup:
+   device->vk.dispatch_table.DestroyShaderModule(radv_device_to_handle(device), module,
+                                                 &device->meta_state.alloc);
+   return result;
+}
+
 static void
 radix_sort_fill_buffer(VkCommandBuffer commandBuffer,
                        radix_sort_vk_buffer_info_t const *buffer_info, VkDeviceSize offset,
