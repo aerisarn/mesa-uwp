@@ -71,6 +71,8 @@
     <value name="Null" value="1"/>
     <!-- Morton order with 64x64 tiles -->
     <value name="Tiled 64x64" value="2"/>
+    <!-- With a metadata buffer -->
+    <value name="Compressed" value="3"/>
   </enum>
 
   <enum name="Channels">
@@ -190,6 +192,9 @@
       <value name="Tiled" value="0x100000"/>
       <value name="Tiled, mipmapped" value="0x100009"/>
     </field>
+
+    <!-- If layout is compressed -->
+    <field name="Acceleration buffer" size="64" start="128" type="address"/>
   </struct>
 
   <enum name="Texture dimension">
