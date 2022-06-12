@@ -1496,9 +1496,11 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
    struct agx_rasterizer_packed out;
 
    agx_pack(&out, RASTERIZER, cfg) {
-      bool back_stencil = ctx->zs->base.stencil[1].enabled;
+      cfg.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
+      cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
+
       cfg.front.stencil_reference = ctx->stencil_ref.ref_value[0];
-      cfg.back.stencil_reference = back_stencil ?
+      cfg.back.stencil_reference = cfg.two_sided_stencil ?
          ctx->stencil_ref.ref_value[1] :
          cfg.front.stencil_reference;
 
