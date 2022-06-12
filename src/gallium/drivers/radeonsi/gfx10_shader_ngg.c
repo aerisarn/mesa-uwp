@@ -119,6 +119,37 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
    }
 }
 
+unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader)
+{
+   const struct si_shader_info *info = &shader->selector->info;
+
+   if (shader->selector->stage == MESA_SHADER_GEOMETRY)
+      return u_vertices_per_prim(info->base.gs.output_primitive);
+   else if (shader->selector->stage == MESA_SHADER_VERTEX) {
+      if (info->base.vs.blit_sgprs_amd) {
+         /* Blits always use axis-aligned rectangles with 3 vertices. */
+         return 3;
+      } else if (shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES)
+         return 2;
+      else {
+         /* We always build up all three indices for the prim export
+          * independent of the primitive type. The additional garbage
+          * data shouldn't hurt. This is used by exports and streamout.
+          */
+         return 3;
+      }
+   } else {
+      assert(shader->selector->stage == MESA_SHADER_TESS_EVAL);
+
+      if (info->base.tess.point_mode)
+         return 1;
+      else if (info->base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
+         return 2;
+      else
+         return 3;
+   }
+}
+
 bool gfx10_ngg_export_prim_early(struct si_shader *shader)
 {
    struct si_shader_selector *sel = shader->selector;
@@ -2398,11 +2429,17 @@ static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader)
 {
    const struct si_shader_selector *sel = shader->selector;
+   bool uses_streamout = si_shader_uses_streamout(shader);
 
-   if (sel->stage == MESA_SHADER_GEOMETRY && si_shader_uses_streamout(shader))
-      return 44;
-
-   return 8;
+   if (sel->stage == MESA_SHADER_GEOMETRY) {
+      return uses_streamout ? 44 : 8;
+   } else {
+      return ac_ngg_get_scratch_lds_size(sel->stage,
+                                         si_get_max_workgroup_size(shader),
+                                         shader->wave_size,
+                                         uses_streamout,
+                                         shader->key.ge.opt.ngg_culling) / 4;
+   }
 }
 
 /**
@@ -2469,8 +2506,25 @@ retry_select_mode:
       }
    } else {
       /* VS and TES. */
-      /* LDS size for passing data from ES to GS. */
-      esvert_lds_size = ngg_nogs_vertex_size(shader);
+
+      bool uses_instance_id = gs_sel->info.uses_instanceid;
+      bool uses_primitive_id = gs_sel->info.uses_primid;
+      if (gs_stage == MESA_SHADER_VERTEX) {
+         uses_instance_id |=
+            shader->key.ge.part.vs.prolog.instance_divisor_is_one ||
+            shader->key.ge.part.vs.prolog.instance_divisor_is_fetched;
+      } else {
+         uses_primitive_id |= shader->key.ge.mono.u.vs_export_prim_id;
+      }
+
+      esvert_lds_size = ac_ngg_nogs_get_pervertex_lds_size(
+         gs_stage, gs_sel->info.num_outputs,
+         si_shader_uses_streamout(shader),
+         shader->key.ge.mono.u.vs_export_prim_id,
+         gfx10_ngg_writes_user_edgeflags(shader),
+         shader->key.ge.opt.ngg_culling,
+         uses_instance_id,
+         uses_primitive_id) / 4;
    }
 
    unsigned max_gsprims = max_gsprims_base;

@@ -462,7 +462,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    builder = ctx.ac.builder;
 
    /* Build the main function. */
-   si_llvm_create_main_func(&ctx, false);
+   si_llvm_create_main_func(&ctx);
 
    ctx.gsvs_ring[0] =
       ac_build_load_to_sgpr(&ctx.ac,

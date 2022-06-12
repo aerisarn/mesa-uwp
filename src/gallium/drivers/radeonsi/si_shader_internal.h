@@ -161,13 +161,12 @@ bool si_is_multi_part_shader(struct si_shader *shader);
 bool si_is_merged_shader(struct si_shader *shader);
 void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, unsigned registers,
                         enum ac_arg_type type, struct ac_arg *arg, unsigned idx);
-void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader);
+void si_init_shader_args(struct si_shader_context *ctx);
 unsigned si_get_max_workgroup_size(const struct si_shader *shader);
 bool si_vs_needs_prolog(const struct si_shader_selector *sel,
-                        const struct si_vs_prolog_bits *prolog_key,
-                        const union si_shader_key *key, bool ngg_cull_shader, bool is_gs);
+                        const struct si_vs_prolog_bits *prolog_key);
 void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_sgprs,
-                          bool ngg_cull_shader, const struct si_vs_prolog_bits *prolog_key,
+                          const struct si_vs_prolog_bits *prolog_key,
                           struct si_shader *shader_out, union si_shader_part_key *key);
 struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
                                      uint64_t tcs_vgpr_only_inputs);
@@ -180,6 +179,7 @@ void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
 
 /* gfx10_shader_ngg.c */
 LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx);
+unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
 bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx);
 void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef user_edgeflags[3],
@@ -205,7 +205,7 @@ void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscre
                           struct ac_llvm_compiler *compiler, unsigned wave_size);
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTypeRef *return_types,
                          unsigned num_return_elems, unsigned max_workgroup_size);
-void si_llvm_create_main_func(struct si_shader_context *ctx, bool ngg_cull_shader);
+void si_llvm_create_main_func(struct si_shader_context *ctx);
 void si_llvm_optimize_module(struct si_shader_context *ctx);
 void si_llvm_dispose(struct si_shader_context *ctx);
 LLVMValueRef si_buffer_load_const(struct si_shader_context *ctx, LLVMValueRef resource,
@@ -228,7 +228,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_poi
                                enum ac_arg_type *main_arg_types,
                                bool same_thread_count);
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
-                           struct nir_shader *nir, bool free_nir, bool ngg_cull_shader);
+                           struct nir_shader *nir, bool free_nir);
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                             struct si_shader *shader, const struct pipe_stream_output_info *so,
                             struct util_debug_callback *debug, struct nir_shader *nir,
@@ -278,6 +278,6 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
                               struct si_shader_output_values *outputs, unsigned noutput);
 void si_llvm_vs_build_end(struct si_shader_context *ctx);
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
-void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader);
+void si_llvm_init_vs_callbacks(struct si_shader_context *ctx);
 
 #endif

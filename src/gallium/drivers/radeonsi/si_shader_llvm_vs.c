@@ -698,7 +698,9 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
       ac_build_export(&ctx->ac, &pos_args[i]);
    }
 
-   if (!shader->info.nr_param_exports)
+   if (!shader->info.nr_param_exports ||
+       /* GFX11 VS/TES param export is handled in nir */
+       (ctx->screen->info.gfx_level >= GFX11 && ctx->stage != MESA_SHADER_GEOMETRY))
       return;
 
    /* Build parameter exports. Use 2 loops to export params in ascending order.
@@ -895,18 +897,6 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
       }
    }
 
-   /* The culling code stored the LDS addresses of the VGPRs into those VGPRs. Load them. */
-   if (key->vs_prolog.load_vgprs_after_culling) {
-      for (i = 5; i <= 8; i++) {
-         bool is_tes_rel_patch_id = i == 7;
-         LLVMTypeRef t = is_tes_rel_patch_id ? ctx->ac.i8 : ctx->ac.i32;
-         input_vgprs[i] = LLVMBuildIntToPtr(ctx->ac.builder, input_vgprs[i], LLVMPointerType(t, AC_ADDR_SPACE_LDS), "");
-         input_vgprs[i] = LLVMBuildLoad2(ctx->ac.builder, t, input_vgprs[i], "");
-         if (is_tes_rel_patch_id)
-            input_vgprs[i] = LLVMBuildZExt(ctx->ac.builder, input_vgprs[i], ctx->ac.i32, "");
-      }
-   }
-
    unsigned vertex_id_vgpr = first_vs_vgpr;
    unsigned instance_id_vgpr = ctx->screen->info.gfx_level >= GFX10
                                   ? first_vs_vgpr + 3
@@ -960,7 +950,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    si_llvm_build_ret(ctx, ret);
 }
 
-void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)
+void si_llvm_init_vs_callbacks(struct si_shader_context *ctx)
 {
    ctx->abi.load_inputs = si_load_vs_input;
 }
