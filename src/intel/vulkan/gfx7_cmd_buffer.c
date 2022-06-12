@@ -33,54 +33,6 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-#if GFX_VERx10 == 70
-#endif
-
-static uint32_t vk_to_intel_index_type(VkIndexType type)
-{
-   switch (type) {
-   case VK_INDEX_TYPE_UINT8_EXT:
-      return INDEX_BYTE;
-   case VK_INDEX_TYPE_UINT16:
-      return INDEX_WORD;
-   case VK_INDEX_TYPE_UINT32:
-      return INDEX_DWORD;
-   default:
-      unreachable("invalid index type");
-   }
-}
-
-static uint32_t restart_index_for_type(VkIndexType type)
-{
-   switch (type) {
-   case VK_INDEX_TYPE_UINT8_EXT:
-      return UINT8_MAX;
-   case VK_INDEX_TYPE_UINT16:
-      return UINT16_MAX;
-   case VK_INDEX_TYPE_UINT32:
-      return UINT32_MAX;
-   default:
-      unreachable("invalid index type");
-   }
-}
-
-void genX(CmdBindIndexBuffer)(
-    VkCommandBuffer                             commandBuffer,
-    VkBuffer                                    _buffer,
-    VkDeviceSize                                offset,
-    VkIndexType                                 indexType)
-{
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
-
-   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
-   if (GFX_VERx10 == 75)
-      cmd_buffer->state.restart_index = restart_index_for_type(indexType);
-   cmd_buffer->state.gfx.gfx7.index_buffer = buffer;
-   cmd_buffer->state.gfx.gfx7.index_type = vk_to_intel_index_type(indexType);
-   cmd_buffer->state.gfx.gfx7.index_offset = offset;
-}
-
 static uint32_t
 get_depth_format(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -244,12 +196,12 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.gfx7.index_buffer &&
+   if (cmd_buffer->state.gfx.index_buffer &&
        cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_INDEX_BUFFER |
                                       ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
-      struct anv_buffer *buffer = cmd_buffer->state.gfx.gfx7.index_buffer;
-      uint32_t offset = cmd_buffer->state.gfx.gfx7.index_offset;
+      struct anv_buffer *buffer = cmd_buffer->state.gfx.index_buffer;
+      uint32_t offset = cmd_buffer->state.gfx.index_offset;
 
 #if GFX_VERx10 == 75
       anv_batch_emit(&cmd_buffer->batch, GFX75_3DSTATE_VF, vf) {
@@ -262,7 +214,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #if GFX_VERx10 != 75
          ib.CutIndexEnable        = d->primitive_restart_enable;
 #endif
-         ib.IndexFormat           = cmd_buffer->state.gfx.gfx7.index_type;
+         ib.IndexFormat           = cmd_buffer->state.gfx.index_type;
          ib.MOCS                  = anv_mocs(cmd_buffer->device,
                                              buffer->address.bo,
                                              ISL_SURF_USAGE_INDEX_BUFFER_BIT);

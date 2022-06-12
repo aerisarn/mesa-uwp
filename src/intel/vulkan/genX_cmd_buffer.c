@@ -7425,6 +7425,51 @@ void genX(CmdWaitEvents2)(
    cmd_buffer_barrier(cmd_buffer, pDependencyInfos, "wait event");
 }
 
+static uint32_t vk_to_intel_index_type(VkIndexType type)
+{
+   switch (type) {
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return INDEX_BYTE;
+   case VK_INDEX_TYPE_UINT16:
+      return INDEX_WORD;
+   case VK_INDEX_TYPE_UINT32:
+      return INDEX_DWORD;
+   default:
+      unreachable("invalid index type");
+   }
+}
+
+static uint32_t restart_index_for_type(VkIndexType type)
+{
+   switch (type) {
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return UINT8_MAX;
+   case VK_INDEX_TYPE_UINT16:
+      return UINT16_MAX;
+   case VK_INDEX_TYPE_UINT32:
+      return UINT32_MAX;
+   default:
+      unreachable("invalid index type");
+   }
+}
+
+void genX(CmdBindIndexBuffer)(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    _buffer,
+    VkDeviceSize                                offset,
+    VkIndexType                                 indexType)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
+
+   cmd_buffer->state.restart_index = restart_index_for_type(indexType);
+   cmd_buffer->state.gfx.index_buffer = buffer;
+   cmd_buffer->state.gfx.index_type = vk_to_intel_index_type(indexType);
+   cmd_buffer->state.gfx.index_offset = offset;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
+}
+
 VkResult genX(CmdSetPerformanceOverrideINTEL)(
     VkCommandBuffer                             commandBuffer,
     const VkPerformanceOverrideInfoINTEL*       pOverrideInfo)

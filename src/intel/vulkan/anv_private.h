@@ -2888,11 +2888,9 @@ struct anv_cmd_graphics_state {
 
    uint32_t primitive_topology;
 
-   struct {
-      struct anv_buffer *index_buffer;
-      uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */
-      uint32_t index_offset;
-   } gfx7;
+   struct anv_buffer *index_buffer;
+   uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */
+   uint32_t index_offset;
 };
 
 enum anv_depth_reg_mode {

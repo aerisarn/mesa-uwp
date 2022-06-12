@@ -592,6 +592,23 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_INDEX_BUFFER) {
+      struct anv_buffer *buffer = cmd_buffer->state.gfx.index_buffer;
+      uint32_t offset = cmd_buffer->state.gfx.index_offset;
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
+         ib.IndexFormat           = cmd_buffer->state.gfx.index_type;
+         ib.MOCS                  = anv_mocs(cmd_buffer->device,
+                                             buffer->address.bo,
+                                             ISL_SURF_USAGE_INDEX_BUFFER_BIT);
+#if GFX_VER >= 12
+         ib.L3BypassDisable       = true;
+#endif
+         ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
+         ib.BufferSize            = vk_buffer_range(&buffer->vk, offset,
+                                                    VK_WHOLE_SIZE);
+      }
+   }
+
 #if GFX_VERx10 >= 125
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
@@ -711,59 +728,4 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    cmd_buffer->state.gfx.dirty = 0;
-}
-
-static uint32_t vk_to_intel_index_type(VkIndexType type)
-{
-   switch (type) {
-   case VK_INDEX_TYPE_UINT8_EXT:
-      return INDEX_BYTE;
-   case VK_INDEX_TYPE_UINT16:
-      return INDEX_WORD;
-   case VK_INDEX_TYPE_UINT32:
-      return INDEX_DWORD;
-   default:
-      unreachable("invalid index type");
-   }
-}
-
-static uint32_t restart_index_for_type(VkIndexType type)
-{
-   switch (type) {
-   case VK_INDEX_TYPE_UINT8_EXT:
-      return UINT8_MAX;
-   case VK_INDEX_TYPE_UINT16:
-      return UINT16_MAX;
-   case VK_INDEX_TYPE_UINT32:
-      return UINT32_MAX;
-   default:
-      unreachable("invalid index type");
-   }
-}
-
-void genX(CmdBindIndexBuffer)(
-    VkCommandBuffer                             commandBuffer,
-    VkBuffer                                    _buffer,
-    VkDeviceSize                                offset,
-    VkIndexType                                 indexType)
-{
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
-
-   cmd_buffer->state.restart_index = restart_index_for_type(indexType);
-
-   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-      ib.IndexFormat           = vk_to_intel_index_type(indexType);
-      ib.MOCS                  = anv_mocs(cmd_buffer->device,
-                                          buffer->address.bo,
-                                          ISL_SURF_USAGE_INDEX_BUFFER_BIT);
-#if GFX_VER >= 12
-      ib.L3BypassDisable       = true;
-#endif
-      ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
-      ib.BufferSize            = vk_buffer_range(&buffer->vk, offset,
-                                                 VK_WHOLE_SIZE);
-   }
-
-   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
 }
