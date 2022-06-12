@@ -283,10 +283,15 @@ emit_system_values_block(nir_to_brw_state &ntb, nir_block *block)
 
             for (unsigned i = 0; i < DIV_ROUND_UP(s.dispatch_width, 16); i++) {
                const fs_builder hbld = abld.group(MIN2(16, s.dispatch_width), i);
+               /* According to the "PS Thread Payload for Normal
+                * Dispatch" pages on the BSpec, the dispatch mask is
+                * stored in R0.15/R1.15 on gfx20+ and in R1.7/R2.7 on
+                * gfx6+.
+                */
+               const struct brw_reg reg = s.devinfo->ver >= 20 ?
+                  xe2_vec1_grf(i, 15) : brw_vec1_grf(i + 1, 7);
                hbld.SHR(offset(shifted, hbld, i),
-                        stride(retype(brw_vec1_grf(1 + i, 7),
-                                      BRW_REGISTER_TYPE_UB),
-                               1, 8, 0),
+                        stride(retype(reg, BRW_REGISTER_TYPE_UB), 1, 8, 0),
                         brw_imm_v(0x76543210));
             }
 

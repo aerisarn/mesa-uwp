@@ -4462,6 +4462,7 @@ brw_sample_mask_reg(const fs_builder &bld)
       return brw_flag_subreg(sample_mask_flag_subreg(s) + bld.group() / 16);
    } else {
       assert(s.devinfo->ver >= 6 && bld.dispatch_width() <= 16);
+      assert(s.devinfo->ver < 20);
       return retype(brw_vec1_grf((bld.group() >= 16 ? 2 : 1), 7),
                     BRW_REGISTER_TYPE_UW);
    }
@@ -7020,8 +7021,14 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       if (wm_prog_data->uses_kill) {
          const unsigned lower_width = MIN2(dispatch_width, 16);
          for (unsigned i = 0; i < dispatch_width / lower_width; i++) {
+            /* According to the "PS Thread Payload for Normal
+             * Dispatch" pages on the BSpec, the dispatch mask is
+             * stored in R0.15/R1.15 on gfx20+ and in R1.7/R2.7 on
+             * gfx6+.
+             */
             const fs_reg dispatch_mask =
-               devinfo->ver >= 6 ? brw_vec1_grf((i ? 2 : 1), 7) :
+               devinfo->ver >= 20 ? xe2_vec1_grf(i, 15) :
+               devinfo->ver >= 6 ? brw_vec1_grf(i + 1, 7) :
                brw_vec1_grf(0, 0);
             bld.exec_all().group(1, 0)
                .MOV(brw_sample_mask_reg(bld.group(lower_width, i)),
