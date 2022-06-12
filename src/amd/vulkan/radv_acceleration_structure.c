@@ -29,6 +29,10 @@
 
 #include "radix_sort/radv_radix_sort.h"
 
+static const uint32_t morton_spv[] = {
+#include "bvh/morton.comp.spv.h"
+};
+
 /* Min and max bounds of the bvh used to compute morton codes */
 #define SCRATCH_TOTAL_BOUNDS_SIZE (6 * sizeof(float))
 
@@ -383,8 +387,9 @@ struct build_primitive_constants {
 };
 
 struct morton_constants {
-   uint64_t node_addr;
-   uint64_t scratch_addr;
+   uint64_t bvh_addr;
+   uint64_t bounds_addr;
+   uint64_t ids_addr;
 };
 
 struct build_internal_constants {
@@ -436,16 +441,6 @@ atomic_fminmax(struct radv_device *dev, nir_builder *b, nir_ssa_def *addr, bool 
       nir_global_atomic_imax(b, 32, addr, val);
    else
       nir_global_atomic_imin(b, 32, addr, val);
-}
-
-static nir_ssa_def *
-read_fminmax_atomic(struct radv_device *dev, nir_builder *b, unsigned channels, nir_ssa_def *addr)
-{
-   nir_ssa_def *val = nir_build_load_global(b, channels, 32, addr,
-                                            .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
-
-   return nir_bcsel(b, nir_ilt(b, val, nir_imm_int(b, 0)),
-                    nir_isub(b, nir_imm_int(b, -2147483648), val), val);
 }
 
 static nir_shader *
@@ -788,88 +783,6 @@ determine_bounds(nir_builder *b, nir_ssa_def *node_addr, nir_ssa_def *node_id,
    nir_pop_if(b, NULL);
    nir_pop_if(b, NULL);
    nir_pop_if(b, NULL);
-}
-
-/* https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/ */
-static nir_ssa_def *
-build_morton_component(nir_builder *b, nir_ssa_def *x)
-{
-   x = nir_iand_imm(b, nir_imul_imm(b, x, 0x00000101u), 0x0F00F00Fu);
-   x = nir_iand_imm(b, nir_imul_imm(b, x, 0x00000011u), 0xC30C30C3u);
-   x = nir_iand_imm(b, nir_imul_imm(b, x, 0x00000005u), 0x49249249u);
-   return x;
-}
-
-static nir_shader *
-build_morton_shader(struct radv_device *dev)
-{
-   const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
-
-   nir_builder b = create_accel_build_shader(dev, "accel_build_morton_shader");
-
-   /*
-    * push constants:
-    *   i32 x 2: node address
-    *   i32 x 2: scratch address
-    */
-   nir_ssa_def *pconst0 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
-
-   nir_ssa_def *node_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0b0011));
-   nir_ssa_def *scratch_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0b1100));
-
-   nir_ssa_def *global_id =
-      nir_iadd(&b,
-               nir_imul_imm(&b, nir_channel(&b, nir_load_workgroup_id(&b, 32), 0),
-                            b.shader->info.workgroup_size[0]),
-               nir_load_local_invocation_index(&b));
-
-   nir_ssa_def *node_id_addr =
-      nir_iadd(&b, nir_iadd_imm(&b, scratch_addr, SCRATCH_TOTAL_BOUNDS_SIZE),
-               nir_u2u64(&b, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE)));
-   nir_ssa_def *node_id =
-      nir_build_load_global(&b, 1, 32, node_id_addr, .align_mul = 4, .align_offset = 0);
-
-   nir_variable *node_bounds[2] = {
-      nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "min_bound"),
-      nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "max_bound"),
-   };
-
-   determine_bounds(&b, node_addr, node_id, node_bounds);
-
-   nir_ssa_def *node_min = nir_load_var(&b, node_bounds[0]);
-   nir_ssa_def *node_max = nir_load_var(&b, node_bounds[1]);
-   nir_ssa_def *node_pos =
-      nir_fmul(&b, nir_fadd(&b, node_min, node_max), nir_imm_vec3(&b, 0.5, 0.5, 0.5));
-
-   nir_ssa_def *bvh_min = read_fminmax_atomic(dev, &b, 3, scratch_addr);
-   nir_ssa_def *bvh_max = read_fminmax_atomic(dev, &b, 3, nir_iadd_imm(&b, scratch_addr, 12));
-   nir_ssa_def *bvh_size = nir_fsub(&b, bvh_max, bvh_min);
-
-   nir_ssa_def *normalized_node_pos = nir_fdiv(&b, nir_fsub(&b, node_pos, bvh_min), bvh_size);
-
-   nir_ssa_def *x_int =
-      nir_f2u32(&b, nir_fmul_imm(&b, nir_channel(&b, normalized_node_pos, 0), 255.0));
-   nir_ssa_def *x_morton = build_morton_component(&b, x_int);
-
-   nir_ssa_def *y_int =
-      nir_f2u32(&b, nir_fmul_imm(&b, nir_channel(&b, normalized_node_pos, 1), 255.0));
-   nir_ssa_def *y_morton = build_morton_component(&b, y_int);
-
-   nir_ssa_def *z_int =
-      nir_f2u32(&b, nir_fmul_imm(&b, nir_channel(&b, normalized_node_pos, 2), 255.0));
-   nir_ssa_def *z_morton = build_morton_component(&b, z_int);
-
-   nir_ssa_def *morton_code = nir_iadd(
-      &b, nir_iadd(&b, nir_ishl_imm(&b, x_morton, 2), nir_ishl_imm(&b, y_morton, 1)), z_morton);
-   nir_ssa_def *key = nir_ishl_imm(&b, morton_code, 8);
-
-   nir_ssa_def *dst_addr =
-      nir_iadd(&b, nir_iadd_imm(&b, scratch_addr, SCRATCH_TOTAL_BOUNDS_SIZE),
-               nir_u2u64(&b, nir_iadd_imm(&b, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE), 4)));
-   nir_build_store_global(&b, key, dst_addr, .align_mul = 4);
-
-   return b.shader;
 }
 
 static nir_shader *
@@ -1354,11 +1267,10 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   nir_shader *morton_cs = build_morton_shader(device);
-
-   result = create_build_pipeline(device, morton_cs, sizeof(struct morton_constants),
-                                  &device->meta_state.accel_struct_build.morton_pipeline,
-                                  &device->meta_state.accel_struct_build.morton_p_layout);
+   result = create_build_pipeline_spv(device, morton_spv, sizeof(morton_spv),
+                                      sizeof(struct morton_constants),
+                                      &device->meta_state.accel_struct_build.morton_pipeline,
+                                      &device->meta_state.accel_struct_build.morton_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1507,8 +1419,9 @@ radv_CmdBuildAccelerationStructuresKHR(
                        pInfos[i].dstAccelerationStructure);
 
       const struct morton_constants consts = {
-         .node_addr = radv_accel_struct_get_va(accel_struct),
-         .scratch_addr = pInfos[i].scratchData.deviceAddress,
+         .bvh_addr = radv_accel_struct_get_va(accel_struct),
+         .bounds_addr = pInfos[i].scratchData.deviceAddress,
+         .ids_addr = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
       };
 
       radv_CmdPushConstants(commandBuffer,
