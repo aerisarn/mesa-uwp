@@ -137,7 +137,7 @@ struct fs_thread_payload : public thread_payload {
    uint8_t dest_depth_reg[2];
    uint8_t sample_pos_reg[2];
    uint8_t sample_mask_in_reg[2];
-   uint8_t depth_w_coef_reg[2];
+   uint8_t depth_w_coef_reg;
    uint8_t barycentric_coord_reg[BRW_BARYCENTRIC_MODE_COUNT][2];
 };
 

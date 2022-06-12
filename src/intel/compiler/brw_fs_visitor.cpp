@@ -435,7 +435,7 @@ fs_visitor::emit_interpolation_setup_gfx6()
        * pixels locations, here we recompute the Z value with 2 coefficients
        * in X & Y axis.
        */
-      fs_reg coef_payload = fetch_payload_reg(abld, fs_payload().depth_w_coef_reg, BRW_REGISTER_TYPE_F);
+      fs_reg coef_payload = brw_vec8_grf(fs_payload().depth_w_coef_reg, 0);
       const fs_reg x_start = brw_vec1_grf(coef_payload.nr, 2);
       const fs_reg y_start = brw_vec1_grf(coef_payload.nr, 6);
       const fs_reg z_cx    = brw_vec1_grf(coef_payload.nr, 1);

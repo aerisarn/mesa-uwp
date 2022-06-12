@@ -210,12 +210,13 @@ setup_fs_payload_gfx6(fs_thread_payload &payload,
          payload.sample_mask_in_reg[j] = payload.num_regs;
          payload.num_regs += payload_width / 8;
       }
+   }
 
-      /* R66: Source Depth and/or W Attribute Vertex Deltas */
-      if (prog_data->uses_depth_w_coefficients) {
-         payload.depth_w_coef_reg[j] = payload.num_regs;
-         payload.num_regs++;
-      }
+   /* R66: Source Depth and/or W Attribute Vertex Deltas */
+   if (prog_data->uses_depth_w_coefficients) {
+      assert(v.max_polygons == 1);
+      payload.depth_w_coef_reg = payload.num_regs;
+      payload.num_regs++;
    }
 
    if (v.nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
