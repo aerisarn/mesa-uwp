@@ -235,7 +235,8 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
       return shader->selector->screen->info.gfx_level >= GFX7 ? 128 : 0;
 
    case MESA_SHADER_GEOMETRY:
-      return shader->selector->screen->info.gfx_level >= GFX9 ? 128 : 0;
+      /* ngg_subgroup_size is only the input size. GS can always generate up to 256 vertices. */
+      return shader->selector->screen->info.gfx_level >= GFX9 ? 256 : 0;
 
    case MESA_SHADER_COMPUTE:
       break; /* see below */
@@ -1667,6 +1668,14 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       options.user_clip_plane_enable_mask = clip_plane_enable;
 
       NIR_PASS_V(nir, ac_nir_lower_ngg_nogs, &options);
+   } else {
+      assert(nir->info.stage == MESA_SHADER_GEOMETRY);
+
+      options.gs_out_vtx_bytes = sel->info.gsvs_vertex_size;
+      options.has_gen_prim_query = options.has_xfb_prim_query =
+         sel->screen->use_ngg_streamout;
+
+      NIR_PASS_V(nir, ac_nir_lower_ngg_gs, &options);
    }
 
    /* may generate some subgroup op like ballot */
@@ -1908,7 +1917,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
       si_assign_param_offsets(nir, shader);
 
    /* Only lower last VGT NGG shader stage. */
-   if (sel->stage < MESA_SHADER_GEOMETRY && key->ge.as_ngg && !key->ge.as_es) {
+   if (sel->stage <= MESA_SHADER_GEOMETRY && key->ge.as_ngg && !key->ge.as_es) {
       si_lower_ngg(shader, nir);
       opt_offsets = true;
    }
@@ -1960,7 +1969,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    struct nir_shader *nir = si_get_nir_shader(shader, &free_nir, 0);
 
    struct pipe_stream_output_info so = {};
-   if (si_shader_uses_streamout(shader))
+   /* NGG streamout has been lowered to buffer store in nir. */
+   if (!sscreen->use_ngg_streamout && si_shader_uses_streamout(shader))
       nir_gather_stream_output_info(nir, &so);
 
    /* Dump NIR before doing NIR->LLVM conversion in case the

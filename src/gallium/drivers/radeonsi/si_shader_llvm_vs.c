@@ -699,8 +699,8 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
    }
 
    if (!shader->info.nr_param_exports ||
-       /* GFX11 VS/TES param export is handled in nir */
-       (ctx->screen->info.gfx_level >= GFX11 && ctx->stage != MESA_SHADER_GEOMETRY))
+       /* GFX11 param export is handled in nir */
+       ctx->screen->info.gfx_level >= GFX11)
       return;
 
    /* Build parameter exports. Use 2 loops to export params in ascending order.

@@ -2011,21 +2011,8 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream,
 
 void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx)
 {
-   /* Zero out the part of LDS scratch that is used to accumulate the
-    * per-stream generated primitive count.
-    */
    LLVMBuilderRef builder = ctx->ac.builder;
-   struct ac_llvm_pointer scratchptr = ctx->gs_ngg_scratch;
-   LLVMValueRef tid = gfx10_get_thread_id_in_tg(ctx);
    LLVMValueRef tmp;
-
-   tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->ac.i32, 4, false), "");
-   ac_build_ifcc(&ctx->ac, tmp, 5090);
-   {
-      LLVMValueRef ptr = ac_build_gep0(&ctx->ac, scratchptr, tid);
-      LLVMBuildStore(builder, ctx->ac.i32_0, ptr);
-   }
-   ac_build_endif(&ctx->ac, 5090);
 
    if (ctx->screen->info.gfx_level < GFX11) {
       tmp = si_is_gs_thread(ctx);
@@ -2049,9 +2036,6 @@ void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx)
          }
       ac_build_endif(&ctx->ac, 15090);
    }
-
-   ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
-   ac_build_s_barrier(&ctx->ac, ctx->stage);
 }
 
 void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
@@ -2429,17 +2413,12 @@ static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader)
 {
    const struct si_shader_selector *sel = shader->selector;
-   bool uses_streamout = si_shader_uses_streamout(shader);
 
-   if (sel->stage == MESA_SHADER_GEOMETRY) {
-      return uses_streamout ? 44 : 8;
-   } else {
-      return ac_ngg_get_scratch_lds_size(sel->stage,
-                                         si_get_max_workgroup_size(shader),
-                                         shader->wave_size,
-                                         uses_streamout,
-                                         shader->key.ge.opt.ngg_culling) / 4;
-   }
+   return ac_ngg_get_scratch_lds_size(sel->stage,
+                                      si_get_max_workgroup_size(shader),
+                                      shader->wave_size,
+                                      si_shader_uses_streamout(shader),
+                                      shader->key.ge.opt.ngg_culling) / 4;
 }
 
 /**

@@ -1007,32 +1007,22 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    case MESA_SHADER_GEOMETRY:
       si_llvm_init_gs_callbacks(ctx);
 
-      if (!ctx->shader->key.ge.as_ngg)
-         si_preload_gs_rings(ctx);
-
-      for (unsigned i = 0; i < 4; i++)
-         ctx->gs_next_vertex[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
-
-      if (shader->key.ge.as_ngg) {
-         for (unsigned i = 0; i < 4; ++i) {
-            ctx->gs_curprim_verts[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
-            ctx->gs_generated_prims[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
-         }
-
-         assert(!ctx->gs_ngg_scratch.value);
+      if (ctx->shader->key.ge.as_ngg) {
          LLVMTypeRef ai32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
          ctx->gs_ngg_scratch = (struct ac_llvm_pointer) {
             .value = LLVMAddGlobalInAddressSpace(ctx->ac.module, ai32, "ngg_scratch", AC_ADDR_SPACE_LDS),
             .pointee_type = ai32
          };
          LLVMSetInitializer(ctx->gs_ngg_scratch.value, LLVMGetUndef(ai32));
-         LLVMSetAlignment(ctx->gs_ngg_scratch.value, 4);
+         LLVMSetAlignment(ctx->gs_ngg_scratch.value, 8);
 
          ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(
             ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
          LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
          LLVMSetAlignment(ctx->gs_ngg_emit, 4);
       } else {
+         si_preload_gs_rings(ctx);
+
          ctx->gs_emitted_vertices = LLVMConstInt(ctx->ac.i32, 0, false);
       }
       break;
@@ -1144,17 +1134,17 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
           shader->key.ge.as_ngg && !shader->key.ge.as_es && !shader->key.ge.opt.ngg_culling)
          ac_build_s_barrier(&ctx->ac, ctx->stage);
 
-      /* NGG GS: Initialize LDS and insert s_barrier, which must not be inside the if statement. */
+      /* NGG GS: handle GS_STATE_PIPELINE_STATS_EMU */
       if (ctx->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)
          gfx10_ngg_gs_emit_begin(ctx);
 
       LLVMValueRef thread_enabled = NULL;
 
-      if (ctx->stage == MESA_SHADER_GEOMETRY ||
+      if ((ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) ||
           (ctx->stage == MESA_SHADER_TESS_CTRL && !shader->is_monolithic)) {
          /* Wrap both shaders in an if statement according to the number of enabled threads
           * there. For monolithic TCS, the if statement is inserted by the wrapper function,
-          * not here.
+          * not here. For NGG GS, the if statement is inserted by nir lowering.
           */
          thread_enabled = si_is_gs_thread(ctx); /* 2nd shader: thread enabled bool */
       } else if ((shader->key.ge.as_ls || shader->key.ge.as_es) && !shader->is_monolithic) {
@@ -1200,8 +1190,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
                 ctx->ac.wave_size % sel->info.base.tess.tcs_vertices_out != 0)
                ac_build_s_barrier(&ctx->ac, ctx->stage);
          }
-      } else if (ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
-         /* gfx10_ngg_gs_emit_begin inserts the barrier for NGG. */
+      } else if (ctx->stage == MESA_SHADER_GEOMETRY) {
          ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
          ac_build_s_barrier(&ctx->ac, ctx->stage);
       }
@@ -1260,9 +1249,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       break;
 
    case MESA_SHADER_GEOMETRY:
-      if (ctx->shader->key.ge.as_ngg)
-         gfx10_ngg_gs_build_end(ctx);
-      else
+      if (!ctx->shader->key.ge.as_ngg)
          si_llvm_gs_build_end(ctx);
       break;
 
