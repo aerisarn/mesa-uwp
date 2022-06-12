@@ -34,6 +34,7 @@
 #include "asahi/lib/agx_device.h"
 #include "asahi/lib/pool.h"
 #include "asahi/compiler/agx_compile.h"
+#include "asahi/layout/layout.h"
 #include "compiler/nir/nir_lower_blend.h"
 #include "util/hash_table.h"
 #include "util/bitset.h"
@@ -248,14 +249,7 @@ struct agx_resource {
 
    BITSET_DECLARE(data_valid, PIPE_MAX_TEXTURE_LEVELS);
 
-   struct {
-      unsigned offset;
-      unsigned line_stride;
-      unsigned size;
-   } slices[PIPE_MAX_TEXTURE_LEVELS];
-
-   /* Bytes from one miptree to the next */
-   unsigned array_stride;
+   struct ail_layout layout;
 
    /* Metal does not support packed depth/stencil formats; presumably AGX does
     * not either. Instead, we create separate depth and stencil resources,
@@ -274,26 +268,18 @@ agx_resource(struct pipe_resource *pctx)
    return (struct agx_resource *) pctx;
 }
 
-/*
- * Within a resource containing multiple layers and multiple mip levels,
- * returns the offset from the start of the backing BO of a given level/slice.
- */
-static inline uint32_t
-agx_texture_offset(struct agx_resource *rsrc, unsigned level, unsigned z)
-{
-   return rsrc->slices[level].offset + (z * rsrc->array_stride);
-}
-
 static inline void *
 agx_map_texture_cpu(struct agx_resource *rsrc, unsigned level, unsigned z)
 {
-   return ((uint8_t *) rsrc->bo->ptr.cpu) + agx_texture_offset(rsrc, level, z);
+   return ((uint8_t *) rsrc->bo->ptr.cpu) +
+          ail_get_layer_level_B(&rsrc->layout, z, level);
 }
 
 static inline uint64_t
 agx_map_texture_gpu(struct agx_resource *rsrc, unsigned level, unsigned z)
 {
-   return rsrc->bo->ptr.gpu + (uint64_t) agx_texture_offset(rsrc, level, z);
+   return rsrc->bo->ptr.gpu +
+          (uint64_t) ail_get_layer_level_B(&rsrc->layout, z, level);
 }
 
 struct agx_transfer {

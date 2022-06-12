@@ -483,9 +483,12 @@ agx_create_sampler_view(struct pipe_context *pctx,
       else
          cfg.depth = state->u.tex.last_layer - state->u.tex.first_layer + 1;
 
-      cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
-         (rsrc->slices[level].line_stride - 16) :
-         AGX_RT_STRIDE_TILED;
+      if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
+         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
+      } else {
+         assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER);
+         cfg.stride = AGX_RT_STRIDE_TILED;
+      }
    }
 
    /* Initialize base object */
@@ -760,10 +763,12 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          if (tex->mipmapped)
             cfg.unk_55 = 0x8;
 
-         cfg.stride = (tex->modifier == DRM_FORMAT_MOD_LINEAR) ?
-            (tex->slices[level].line_stride - 4) :
-            tex->mipmapped ? AGX_RT_STRIDE_TILED_MIPMAPPED :
-            AGX_RT_STRIDE_TILED;
+         if (tex->modifier == DRM_FORMAT_MOD_LINEAR) {
+            cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
+         } else {
+            cfg.stride = tex->mipmapped ? AGX_RT_STRIDE_TILED_MIPMAPPED :
+                         AGX_RT_STRIDE_TILED;
+         }
       };
    }
 }
@@ -1353,7 +1358,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.address = agx_map_texture_gpu(rsrc, level, layer);
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
-         (rsrc->slices[level].line_stride - 16) :
+         (ail_get_linear_stride_B(&rsrc->layout, level) - 16) :
          AGX_RT_STRIDE_TILED;
    }
 

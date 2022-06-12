@@ -167,35 +167,15 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->mipmapped = (templ->last_level > 0);
    nresource->internal_format = nresource->base.format;
 
-   unsigned offset = 0;
-   unsigned blocksize = util_format_get_blocksize(templ->format);
-
-   for (unsigned l = 0; l <= templ->last_level; ++l) {
-      unsigned width = u_minify(templ->width0, l);
-      unsigned height = u_minify(templ->height0, l);
-
-      if (nresource->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-         unsigned tile = agx_select_tile_size(templ->width0, templ->height0, l, blocksize);
-
-         width = ALIGN_POT(width, tile);
-         height = ALIGN_POT(height, tile);
-      }
-
-      /* Align stride to presumed cache line */
-      nresource->slices[l].line_stride = util_format_get_stride(templ->format, width);
-      if (nresource->modifier == DRM_FORMAT_MOD_LINEAR) {
-         nresource->slices[l].line_stride = ALIGN_POT(nresource->slices[l].line_stride, 64);
-      }
-
-      nresource->slices[l].offset = offset;
-      nresource->slices[l].size = ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
-
-      offset += nresource->slices[l].size;
-   }
-
-   /* Arrays and cubemaps have the entire miptree duplicated and page aligned (16K) */
-   nresource->array_stride = ALIGN_POT(offset, 0x4000);
-   unsigned size = nresource->array_stride * templ->array_size * templ->depth0;
+   nresource->layout = (struct ail_layout) {
+      .tiling = (nresource->modifier == DRM_FORMAT_MOD_LINEAR) ?
+                AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
+      .format = templ->format,
+      .width_px = templ->width0,
+      .height_px = templ->height0,
+      .depth_px = templ->depth0 * templ->array_size,
+      .levels = templ->last_level + 1
+   };
 
    pipe_reference_init(&nresource->base.reference, 1);
 
@@ -204,26 +184,25 @@ agx_resource_create(struct pipe_screen *screen,
    if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
                       PIPE_BIND_SCANOUT |
                       PIPE_BIND_SHARED)) {
-      unsigned width0 = templ->width0, height0 = templ->height0;
+      unsigned width = templ->width0;
+      unsigned height = templ->height0;
 
-      if (nresource->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-         width0 = ALIGN_POT(width0, 64);
-         height0 = ALIGN_POT(height0, 64);
+      if (nresource->layout.tiling == AIL_TILING_TWIDDLED) {
+         width = ALIGN_POT(width, 64);
+         height = ALIGN_POT(height, 64);
       }
 
       nresource->dt = winsys->displaytarget_create(winsys,
                       templ->bind,
                       templ->format,
-                      width0,
-                      height0,
+                      width,
+                      height,
                       64,
                       NULL /*map_front_private*/,
                       &nresource->dt_stride);
 
-      nresource->slices[0].line_stride = nresource->dt_stride;
-      assert((nresource->dt_stride & 0xF) == 0);
-
-      offset = nresource->slices[0].line_stride * ALIGN_POT(templ->height0, 64);
+      if (nresource->layout.tiling == AIL_TILING_LINEAR)
+         nresource->layout.linear_stride_B = nresource->dt_stride;
 
       if (nresource->dt == NULL) {
          FREE(nresource);
@@ -231,7 +210,8 @@ agx_resource_create(struct pipe_screen *screen,
       }
    }
 
-   nresource->bo = agx_bo_create(dev, size, AGX_MEMORY_TYPE_FRAMEBUFFER);
+   ail_make_miptree(&nresource->layout);
+   nresource->bo = agx_bo_create(dev, nresource->layout.size_B, AGX_MEMORY_TYPE_FRAMEBUFFER);
 
    if (!nresource->bo) {
       FREE(nresource);
@@ -322,17 +302,18 @@ agx_transfer_map(struct pipe_context *pctx,
    } else {
       assert (rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
 
-      transfer->base.stride = rsrc->slices[level].line_stride;
-      transfer->base.layer_stride = rsrc->array_stride;
+      transfer->base.stride = ail_get_linear_stride_B(&rsrc->layout, level);
+      transfer->base.layer_stride = rsrc->layout.layer_stride_B;
 
       /* Be conservative for direct writes */
 
       if ((usage & PIPE_MAP_WRITE) && (usage & PIPE_MAP_DIRECTLY))
          BITSET_SET(rsrc->data_valid, level);
 
-      return (uint8_t *) agx_map_texture_cpu(rsrc, level, box->z)
-             + transfer->base.box.y * rsrc->slices[level].line_stride
-             + transfer->base.box.x * blocksize;
+      uint32_t offset = ail_get_linear_pixel_B(&rsrc->layout, level, box->x,
+                                               box->y, box->z);
+
+      return ((uint8_t *) rsrc->bo->ptr.cpu) + offset;
    }
 }
 

@@ -1,5 +1,4 @@
-# Copyright © 2018 Rob Clark
-# Copyright © 2019 Collabora
+# Copyright © 2022 Alyssa Rosenzweig
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,38 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_asahi = include_directories([
-   '.', 'layout', 'lib', 'compiler'
-])
-
-subdir('layout')
-subdir('lib')
-subdir('compiler')
-
-files_agx = files(
-  'compiler/cmdline.c',
+libasahi_layout_files = files(
+  'layout.c',
 )
 
-agx_compiler = executable(
-  'agx_compiler',
-  [files_agx],
-  include_directories : [
-    inc_include,
-    inc_src,
-    inc_gallium,
-    inc_gallium_aux,
-    inc_mapi,
-    inc_mesa,
- ],
-  dependencies : [
-    idep_nir,
-    idep_mesautil,
-    idep_agx_pack,
-    dep_libdrm,
-  ],
-  link_with : [
-    libglsl_standalone,
-    libasahi_compiler,
-  ],
-  build_by_default : with_tools.contains('asahi')
+libasahi_layout = static_library(
+  'asahi_layout',
+  [libasahi_layout_files],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_asahi],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  build_by_default : false,
 )

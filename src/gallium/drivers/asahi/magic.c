@@ -54,7 +54,7 @@ static size_t
 asahi_size_resource(struct pipe_resource *prsrc, unsigned level)
 {
    struct agx_resource *rsrc = agx_resource(prsrc);
-   size_t size = rsrc->slices[level].size;
+   size_t size = rsrc->layout.size_B;
 
    if (rsrc->separate_stencil)
       size += asahi_size_resource(&rsrc->separate_stencil->base, level);
@@ -118,7 +118,7 @@ asahi_pack_iogpu_attachment(void *out, struct agx_resource *rsrc,
    agx_pack(out, IOGPU_ATTACHMENT, cfg) {
       cfg.type = asahi_classify_attachment(rsrc->base.format);
       cfg.address = agx_map_surface_resource(surf, rsrc);
-      cfg.size = rsrc->slices[surf->u.tex.level].size;
+      cfg.size = rsrc->layout.size_B;
       cfg.percent = (100 * cfg.size) / total_size;
    }
 }
