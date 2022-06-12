@@ -190,6 +190,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_sampler_filter_minmax = true,
       .EXT_transform_feedback = true,
       .EXT_4444_formats = true,
+      .EXT_border_color_swizzle = true,
       .EXT_conditional_rendering = true,
       .EXT_custom_border_color = true,
       .EXT_depth_clip_control = true,
@@ -756,6 +757,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDevice4444FormatsFeaturesEXT *features = (void *)ext;
          features->formatA4R4G4B4 = true;
          features->formatA4B4G4R4 = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: {
+         VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *features = (void *)ext;
+         features->borderColorSwizzle = true;
+         features->borderColorSwizzleFromImage = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {

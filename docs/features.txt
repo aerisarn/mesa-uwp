@@ -529,7 +529,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_win32_surface                                  DONE (lvp)
   VK_KHR_xcb_surface                                    DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_xlib_surface                                   DONE (anv, lvp, radv, tu, v3dv, vn)
-  VK_EXT_border_color_swizzle                           DONE (anv, lvp)
+  VK_EXT_border_color_swizzle                           DONE (anv, lvp, tu)
   VK_EXT_buffer_device_address                          DONE (radv)
   VK_EXT_calibrated_timestamps                          DONE (anv, lvp, radv)
   VK_EXT_color_write_enable                             DONE (anv, lvp, radv, tu, v3dv)
