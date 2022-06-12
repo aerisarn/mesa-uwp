@@ -1429,8 +1429,6 @@ TEST_F(nir_copy_prop_vars_test, ssbo_array_binding_indirect)
    nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
    out->data.access = ACCESS_RESTRICT;
 
-   nir_ssa_def *i = nir_load_local_invocation_index(b);
-
    nir_deref_instr *ssbo_0 =
       nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 0);
    nir_deref_instr *ssbo_0_x = nir_build_deref_struct(b, ssbo_0, 0);
@@ -1474,8 +1472,6 @@ TEST_F(nir_copy_prop_vars_test, restrict_ssbo_array_binding)
    ssbo_arr->data.access = ACCESS_RESTRICT;
    nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
    out->data.access = ACCESS_RESTRICT;
-
-   nir_ssa_def *i = nir_load_local_invocation_index(b);
 
    nir_deref_instr *ssbo_0 =
       nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 0);
@@ -1525,8 +1521,6 @@ TEST_F(nir_copy_prop_vars_test, aliasing_ssbo_array_binding)
                                        "ssbo_arr");
    nir_variable *out = create_var(nir_var_mem_ssbo, ifc_type, "out");
    out->data.access = ACCESS_RESTRICT;
-
-   nir_ssa_def *i = nir_load_local_invocation_index(b);
 
    nir_deref_instr *ssbo_0 =
       nir_build_deref_array_imm(b, nir_build_deref_var(b, ssbo_arr), 0);
