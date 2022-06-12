@@ -347,7 +347,15 @@ fs_visitor::emit_interpolation_setup_gfx6()
 
    for (unsigned i = 0; i < DIV_ROUND_UP(dispatch_width, 16); i++) {
       const fs_builder hbld = abld.group(MIN2(16, dispatch_width), i);
-      struct brw_reg gi_uw = retype(brw_vec1_grf(1 + i, 0), BRW_REGISTER_TYPE_UW);
+      /* According to the "PS Thread Payload for Normal Dispatch"
+       * pages on the BSpec, subspan X/Y coordinates are stored in
+       * R1.2-R1.5/R2.2-R2.5 on gfx6+, and on R0.10-R0.13/R1.10-R1.13
+       * on gfx20+.  gi_reg is the 32B section of the GRF that
+       * contains the subspan coordinates.
+       */
+      const struct brw_reg gi_reg = devinfo->ver >= 20 ? xe2_vec1_grf(i, 8) :
+                                    brw_vec1_grf(i + 1, 0);
+      const struct brw_reg gi_uw = retype(gi_reg, BRW_REGISTER_TYPE_UW);
 
       if (devinfo->verx10 >= 125) {
          const fs_builder dbld =
