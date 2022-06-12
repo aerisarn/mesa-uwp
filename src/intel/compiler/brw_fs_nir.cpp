@@ -3769,9 +3769,14 @@ emit_sampleid_setup(nir_to_brw_state &ntb)
 
       for (unsigned i = 0; i < DIV_ROUND_UP(s.dispatch_width, 16); i++) {
          const fs_builder hbld = abld.group(MIN2(16, s.dispatch_width), i);
+         /* According to the "PS Thread Payload for Normal Dispatch"
+          * pages on the BSpec, the sample ids are stored in R0.8/R1.8
+          * on gfx20+ and in R1.0/R2.0 on gfx8+.
+          */
+         const struct brw_reg id_reg = devinfo->ver >= 20 ? xe2_vec1_grf(i, 8) :
+                                       brw_vec1_grf(i + 1, 0);
          hbld.SHR(offset(tmp, hbld, i),
-                  stride(retype(brw_vec1_grf(1 + i, 0), BRW_REGISTER_TYPE_UB),
-                         1, 8, 0),
+                  stride(retype(id_reg, BRW_REGISTER_TYPE_UB), 1, 8, 0),
                   brw_imm_v(0x44440000));
       }
 
