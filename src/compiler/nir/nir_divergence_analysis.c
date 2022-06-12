@@ -189,6 +189,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_num_vertices_per_primitive_amd:
    case nir_intrinsic_load_streamout_buffer_amd:
    case nir_intrinsic_load_ordered_id_amd:
+   case nir_intrinsic_load_provoking_vtx_in_prim_amd:
       is_divergent = false;
       break;
 

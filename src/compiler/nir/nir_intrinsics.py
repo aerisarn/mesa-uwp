@@ -1447,6 +1447,9 @@ system_value("ordered_id_amd", 1)
 # WRITE_MASK = mask for counter channel to update
 intrinsic("ordered_xfb_counter_add_amd", dest_comp=0, src_comp=[1, 0], indices=[WRITE_MASK], bit_sizes=[32])
 
+# Provoking vertex index in a primitive
+system_value("provoking_vtx_in_prim_amd", 1)
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel

@@ -3616,6 +3616,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_cull_front_face_enabled_amd:
    case nir_intrinsic_load_cull_small_prim_precision_amd:
    case nir_intrinsic_load_cull_small_primitives_enabled_amd:
+   case nir_intrinsic_load_provoking_vtx_in_prim_amd:
       result = ctx->abi->intrinsic_load(ctx->abi, instr->intrinsic);
       break;
    case nir_intrinsic_load_user_clip_plane:
