@@ -544,6 +544,7 @@ struct dzn_cmd_buffer {
    } rtvs, dsvs;
 
    struct dzn_descriptor_heap_pool cbv_srv_uav_pool, sampler_pool;
+   D3D12_CPU_DESCRIPTOR_HANDLE null_rtv;
 
    struct list_head internal_bufs;
 

@@ -231,6 +231,7 @@ dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
    hash_table_foreach(cmdbuf->rtvs.ht, he)
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
    _mesa_hash_table_clear(cmdbuf->rtvs.ht, NULL);
+   cmdbuf->null_rtv.ptr = 0;
    dzn_descriptor_heap_pool_reset(&cmdbuf->rtvs.pool);
    hash_table_foreach(cmdbuf->dsvs.ht, he)
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
@@ -826,6 +827,29 @@ dzn_cmd_buffer_get_rtv(struct dzn_cmd_buffer *cmdbuf,
    }
 
    return rtve->handle;
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE
+dzn_cmd_buffer_get_null_rtv(struct dzn_cmd_buffer *cmdbuf)
+{
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+
+   if (!cmdbuf->null_rtv.ptr) {
+      struct dzn_descriptor_heap *heap;
+      uint32_t slot;
+      dzn_descriptor_heap_pool_alloc_slots(&cmdbuf->rtvs.pool, device, 1, &heap, &slot);
+      cmdbuf->null_rtv = dzn_descriptor_heap_get_cpu_handle(heap, slot);
+
+      D3D12_RENDER_TARGET_VIEW_DESC desc = { 0 };
+      desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+      desc.Texture2D.MipSlice = 0;
+      desc.Texture2D.PlaneSlice = 0;
+
+      ID3D12Device1_CreateRenderTargetView(device->dev, NULL, &desc, cmdbuf->null_rtv);
+   }
+
+   return cmdbuf->null_rtv;
 }
 
 static VkResult
@@ -3450,8 +3474,10 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
          att->resolveImageLayout;
       cmdbuf->state.render.attachments.colors[i].store_op = att->storeOp;
 
-      if (!iview)
+      if (!iview) {
+         rt_handles[i] = dzn_cmd_buffer_get_null_rtv(cmdbuf);
          continue;
+      }
 
       struct dzn_image *img = container_of(iview->vk.image, struct dzn_image, vk);
       rt_handles[i] = dzn_cmd_buffer_get_rtv(cmdbuf, img, &iview->rtv_desc);
