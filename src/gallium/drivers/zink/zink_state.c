@@ -582,7 +582,6 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
 
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
    state->hw_state.depth_clip = rs_state->depth_clip_near;
-   state->hw_state.force_persample_interp = rs_state->force_persample_interp;
    state->hw_state.pv_last = !rs_state->flatshade_first;
    state->hw_state.clip_halfz = rs_state->clip_halfz;
 
@@ -635,7 +634,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    bool point_quad_rasterization = ctx->rast_state ? ctx->rast_state->base.point_quad_rasterization : false;
    bool scissor = ctx->rast_state ? ctx->rast_state->base.scissor : false;
    bool pv_last = ctx->rast_state ? ctx->rast_state->hw_state.pv_last : false;
-   bool force_persample_interp = ctx->rast_state ? ctx->rast_state->hw_state.force_persample_interp : false;
+   bool force_persample_interp = ctx->gfx_pipeline_state.force_persample_interp;
    bool clip_halfz = ctx->rast_state ? ctx->rast_state->hw_state.clip_halfz : false;
    bool rasterizer_discard = ctx->rast_state ? ctx->rast_state->base.rasterizer_discard : false;
    bool half_pixel_center = ctx->rast_state ? ctx->rast_state->base.half_pixel_center : true;
@@ -647,11 +646,9 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
           /* without this prop, change in pv mode requires new rp */
           !screen->info.pv_props.provokingVertexModePerPipeline)
          zink_batch_no_rp(ctx);
-      uint32_t rast_bits = 0;
-      memcpy(&rast_bits, &ctx->rast_state->hw_state, sizeof(struct zink_rasterizer_hw_state));
-      ctx->gfx_pipeline_state.rast_state = rast_bits & BITFIELD_MASK(ZINK_RAST_HW_STATE_SIZE);
+      memcpy(&ctx->gfx_pipeline_state.dyn_state3, &ctx->rast_state->hw_state, sizeof(struct zink_rasterizer_hw_state));
 
-      ctx->gfx_pipeline_state.dirty = true;
+      ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state3;
       ctx->rast_state_changed = true;
 
       if (clip_halfz != ctx->rast_state->base.clip_halfz) {
@@ -680,8 +677,10 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       if (ctx->rast_state->base.scissor != scissor)
          ctx->scissor_changed = true;
 
-      if (ctx->rast_state->base.force_persample_interp != force_persample_interp)
+      if (ctx->rast_state->base.force_persample_interp != force_persample_interp) {
          zink_set_fs_key(ctx)->force_persample_interp = ctx->rast_state->base.force_persample_interp;
+         ctx->gfx_pipeline_state.dirty = true;
+      }
       ctx->gfx_pipeline_state.force_persample_interp = ctx->rast_state->base.force_persample_interp;
 
       if (ctx->rast_state->base.half_pixel_center != half_pixel_center)

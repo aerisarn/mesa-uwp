@@ -453,7 +453,7 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
 static uint32_t
 hash_pipeline_lib(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(struct zink_rasterizer_hw_state));
+   return 1;
 }
 
 static bool
@@ -465,7 +465,7 @@ equals_pipeline_lib(const void *a, const void *b)
 static bool
 equals_pipeline_lib_optimal(const void *a, const void *b)
 {
-   return !memcmp(a, b, sizeof(uint32_t) * 2);
+   return !memcmp(a, b, sizeof(uint32_t));
 }
 
 uint32_t
@@ -507,10 +507,7 @@ uint32_t
 hash_gfx_output(const void *key)
 {
    const uint8_t *data = key;
-   const struct zink_gfx_output_key *okey = key;
-   /* manually add in force_persample_interp */
-   return okey->force_persample_interp ^
-          _mesa_hash_data(data + sizeof(uint16_t), offsetof(struct zink_gfx_output_key, pipeline) - sizeof(uint16_t));
+   return _mesa_hash_data(data, offsetof(struct zink_gfx_output_key, pipeline));
 }
 
 static bool
@@ -518,7 +515,7 @@ equals_gfx_output(const void *a, const void *b)
 {
    const uint8_t *da = a;
    const uint8_t *db = b;
-   return !memcmp(da + sizeof(uint16_t), db + sizeof(uint16_t), offsetof(struct zink_gfx_output_key, pipeline) - sizeof(uint16_t));
+   return !memcmp(da, db, offsetof(struct zink_gfx_output_key, pipeline));
 }
 
 ALWAYS_INLINE static void
@@ -882,12 +879,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   for (unsigned i = 0; i < ARRAY_SIZE(prog->libs); i++) {
-      if (screen->optimal_keys)
-         _mesa_set_init(&prog->libs[i], prog, hash_pipeline_lib, equals_pipeline_lib_optimal);
-      else
-         _mesa_set_init(&prog->libs[i], prog, hash_pipeline_lib, equals_pipeline_lib);
-   }
+   _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, screen->optimal_keys ? equals_pipeline_lib_optimal : equals_pipeline_lib);
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
@@ -1145,11 +1137,9 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       ralloc_free(prog->nir[i]);
    }
 
-   for (unsigned i = 0; i < ARRAY_SIZE(prog->libs); i++) {
-      set_foreach_remove(&prog->libs[i], he) {
-         struct zink_gfx_library_key *gkey = (void*)he->key;
-         VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
-      }
+   set_foreach_remove(&prog->libs, he) {
+      struct zink_gfx_library_key *gkey = (void*)he->key;
+      VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
    }
 
    unsigned max_idx = ARRAY_SIZE(prog->pipelines[0]);
@@ -1526,14 +1516,12 @@ zink_create_cached_shader_state(struct pipe_context *pctx, const struct pipe_sha
 }
 
 void
-zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state, enum pipe_prim_type mode)
+zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
    struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
-   gkey->hw_rast_state = state->rast_state;
    memcpy(gkey->modules, state->modules, sizeof(gkey->modules));
-   bool line = u_reduced_prim(mode) == PIPE_PRIM_LINES;
-   gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog, (struct zink_rasterizer_hw_state*)state, line);
-   _mesa_set_add(&prog->libs[get_primtype_idx(mode)], gkey);
+   gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog);
+   _mesa_set_add(&prog->libs, gkey);
 }
 
 void
@@ -1575,9 +1563,6 @@ zink_program_init(struct zink_context *ctx)
                  offsetof(struct zink_gfx_input_key, vertex_strides) - offsetof(struct zink_gfx_input_key, input));
    STATIC_ASSERT(offsetof(struct zink_gfx_pipeline_state, element_state) - offsetof(struct zink_gfx_pipeline_state, input) ==
                  offsetof(struct zink_gfx_input_key, element_state) - offsetof(struct zink_gfx_input_key, input));
-
-   STATIC_ASSERT(offsetof(struct zink_gfx_pipeline_state, modules) - offsetof(struct zink_gfx_pipeline_state, gkey) ==
-                 offsetof(struct zink_gfx_library_key, modules) - offsetof(struct zink_gfx_library_key, hw_rast_state));
 
    STATIC_ASSERT(sizeof(union zink_shader_key_optimal) == sizeof(uint32_t));
 }

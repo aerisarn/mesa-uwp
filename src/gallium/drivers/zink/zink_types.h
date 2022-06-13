@@ -97,6 +97,8 @@ typedef enum {
    ZINK_NO_DYNAMIC_STATE,
    ZINK_DYNAMIC_STATE,
    ZINK_DYNAMIC_STATE2,
+   ZINK_DYNAMIC_VERTEX_INPUT2,
+   ZINK_DYNAMIC_STATE3,
    ZINK_DYNAMIC_VERTEX_INPUT,
 } zink_dynamic_state;
 
@@ -105,6 +107,10 @@ typedef enum {
    ZINK_PIPELINE_DYNAMIC_STATE,
    ZINK_PIPELINE_DYNAMIC_STATE2,
    ZINK_PIPELINE_DYNAMIC_STATE2_PCP,
+   ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT2,
+   ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT2_PCP,
+   ZINK_PIPELINE_DYNAMIC_STATE3,
+   ZINK_PIPELINE_DYNAMIC_STATE3_PCP,
    ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT,
    ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP,
 } zink_pipeline_dynamic_state;
@@ -251,11 +257,8 @@ struct zink_rasterizer_hw_state {
    unsigned depth_clip:1;
    unsigned pv_last:1;
    unsigned line_stipple_enable:1;
-   unsigned force_persample_interp:1;
    unsigned clip_halfz:1;
 };
-#define ZINK_RAST_HW_STATE_SIZE 9
-
 
 struct zink_rasterizer_state {
    struct pipe_rasterizer_state base;
@@ -641,12 +644,19 @@ struct zink_pipeline_dynamic_state2 {
    uint16_t vertices_per_patch; //5 bits
 };
 
+struct zink_pipeline_dynamic_state3 {
+   unsigned polygon_mode : 2; //VkPolygonMode
+   unsigned line_mode : 2; //VkLineRasterizationModeEXT
+   unsigned depth_clamp:1;
+   unsigned pv_last:1;
+   unsigned line_stipple_enable:1;
+   unsigned clip_halfz:1;
+};
+
 struct zink_gfx_pipeline_state {
-   uint32_t rast_state : ZINK_RAST_HW_STATE_SIZE; //zink_rasterizer_hw_state
-   uint32_t _pad1 : 6;
-   uint32_t force_persample_interp:1; //duplicated for gpl hashing
-   /* order matches zink_gfx_output_key: uint16_t offset */
-   uint32_t rast_samples:8; // 2 extra bits (can be used for new members)
+   /* order matches zink_gfx_output_key */
+   unsigned force_persample_interp:1;
+   uint32_t rast_samples:23; //17 extra bits
    uint32_t min_samples:6;
    uint32_t feedback_loop : 1;
    uint32_t feedback_loop_zs : 1;
@@ -662,9 +672,8 @@ struct zink_gfx_pipeline_state {
    struct zink_pipeline_dynamic_state1 dyn_state1;
 
    struct zink_pipeline_dynamic_state2 dyn_state2;
+   struct zink_pipeline_dynamic_state3 dyn_state3;
 
-   uint32_t _pad;
-   uint32_t gkey; //for pipeline library lookups
    union {
       VkShaderModule modules[MESA_SHADER_STAGES - 1];
       uint32_t optimal_key;
@@ -776,7 +785,6 @@ struct zink_program {
 typedef bool (*equals_gfx_pipeline_state_func)(const void *a, const void *b);
 
 struct zink_gfx_library_key {
-   uint32_t hw_rast_state;
    union {
       VkShaderModule modules[ZINK_GFX_SHADER_COUNT];
       uint32_t optimal_key; //equals_pipeline_lib_optimal
@@ -799,14 +807,15 @@ struct zink_gfx_input_key {
 };
 
 struct zink_gfx_output_key {
-   uint32_t _pad:15;
-   uint32_t force_persample_interp:1;
-   uint32_t rast_samples:8; // 2 extra bits (can be used for new members)
+   /* order matches zink_gfx_output_key */
+   unsigned force_persample_interp:1;
+   uint32_t rast_samples:23; //17 extra bits
    uint32_t min_samples:6;
    uint32_t feedback_loop : 1;
    uint32_t feedback_loop_zs : 1;
    VkSampleMask sample_mask;
 
+   /* TODO: compress these */
    unsigned rp_state;
    uint32_t blend_id;
    VkPipeline pipeline;
@@ -838,7 +847,7 @@ struct zink_gfx_program {
    uint32_t last_finalized_hash[2][4]; //[dynamic, renderpass][primtype idx]
    VkPipeline last_pipeline[2][4]; //[dynamic, renderpass][primtype idx]
 
-   struct set libs[4]; //zink_gfx_library_key[primtype] -> VkPipeline
+   struct set libs; //zink_gfx_library_key -> VkPipeline
 };
 
 struct zink_compute_program {

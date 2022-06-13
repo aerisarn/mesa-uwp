@@ -2239,18 +2239,28 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
+   if (screen->info.line_rast_feats.stippledRectangularLines &&
+       screen->info.line_rast_feats.stippledBresenhamLines &&
+       screen->info.line_rast_feats.stippledSmoothLines &&
+       !screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
+      screen->info.have_EXT_extended_dynamic_state3 = false;
+   if (!screen->info.dynamic_state3_feats.extendedDynamicState3PolygonMode ||
+       !screen->info.dynamic_state3_feats.extendedDynamicState3DepthClampEnable ||
+       !screen->info.dynamic_state3_feats.extendedDynamicState3DepthClipEnable ||
+       !screen->info.dynamic_state3_feats.extendedDynamicState3ProvokingVertexMode ||
+       !screen->info.dynamic_state3_feats.extendedDynamicState3LineRasterizationMode)
+      screen->info.have_EXT_extended_dynamic_state3 = false;
    if (screen->info.have_EXT_graphics_pipeline_library)
       screen->info.have_EXT_graphics_pipeline_library = screen->info.have_EXT_extended_dynamic_state &&
                                                         screen->info.have_EXT_extended_dynamic_state2 &&
                                                         ((zink_debug & ZINK_DEBUG_GPL) ||
                                                          screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) &&
+                                                        screen->info.have_EXT_extended_dynamic_state3 &&
                                                         screen->info.have_KHR_dynamic_rendering &&
                                                         screen->info.have_EXT_non_seamless_cube_map &&
-                                                        (screen->info.gpl_props.graphicsPipelineLibraryFastLinking ||
-                                                         screen->is_cpu ||
-                                                         (zink_debug & ZINK_DEBUG_GPL));
-   if (!(zink_debug & ZINK_DEBUG_GPL))
-      screen->info.have_EXT_graphics_pipeline_library = false;
+                                                        (!(zink_debug & ZINK_DEBUG_GPL) ||
+                                                         screen->info.gpl_props.graphicsPipelineLibraryFastLinking ||
+                                                         screen->is_cpu);
    screen->driver_workarounds.broken_l4a4 = screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
    screen->driver_workarounds.depth_clip_control_missing = !screen->info.have_EXT_depth_clip_control;
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
@@ -2570,6 +2580,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       mesa_loge("zink: failed to create copy context");
       goto fail;
    }
+   /* temporarily disabled */
+   screen->info.have_EXT_graphics_pipeline_library = false;
 
    if (!(zink_debug & ZINK_DEBUG_GPL))
       screen->optimal_keys = !screen->need_decompose_attrs && screen->info.have_EXT_non_seamless_cube_map && !screen->driconf.inline_uniforms;

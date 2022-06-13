@@ -125,18 +125,20 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
          buffers[i] = res->obj->buffer;
          buffer_offsets[i] = vb->buffer_offset;
          buffer_strides[i] = vb->stride;
-         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
+         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
             elems->hw_state.dynbindings[i].stride = vb->stride;
       } else {
          buffers[i] = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
          buffer_offsets[i] = 0;
          buffer_strides[i] = 0;
-         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
+         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
             elems->hw_state.dynbindings[i].stride = 0;
       }
    }
 
-   if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT) {
+   if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE &&
+       DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT2 &&
+       DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT) {
       if (elems->hw_state.num_bindings)
          VKCTX(CmdBindVertexBuffers2EXT)(batch->state->cmdbuf, 0,
                                              elems->hw_state.num_bindings,
@@ -146,7 +148,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
                              elems->hw_state.num_bindings,
                              buffers, buffer_offsets);
 
-   if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
+   if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
       VKCTX(CmdSetVertexInputEXT)(batch->state->cmdbuf,
                                       elems->hw_state.num_bindings, elems->hw_state.dynbindings,
                                       elems->hw_state.num_attribs, elems->hw_state.dynattribs);
@@ -631,10 +633,22 @@ zink_draw(struct pipe_context *pctx,
       VKCTX(CmdSetCullModeEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.dyn_state1.cull_mode);
    }
    if ((BATCH_CHANGED || rast_state_changed) &&
-       screen->info.have_EXT_line_rasterization && rast_state->base.line_stipple_enable)
+       (DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3 || (screen->info.have_EXT_line_rasterization && rast_state->base.line_stipple_enable)))
       VKCTX(CmdSetLineStippleEXT)(batch->state->cmdbuf, rast_state->base.line_stipple_factor, rast_state->base.line_stipple_pattern);
 
-   if (BATCH_CHANGED || ctx->rast_state_changed) {
+   if ((BATCH_CHANGED || rast_state_changed) && DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3) {
+      VKCTX(CmdSetDepthClipEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clip);
+      VKCTX(CmdSetDepthClampEnableEXT)(batch->state->cmdbuf, !rast_state->hw_state.depth_clip);
+      VKCTX(CmdSetPolygonModeEXT)(batch->state->cmdbuf, (VkPolygonMode)rast_state->hw_state.polygon_mode);
+      VKCTX(CmdSetDepthClipNegativeOneToOneEXT)(batch->state->cmdbuf, !rast_state->hw_state.clip_halfz);
+      VKCTX(CmdSetProvokingVertexModeEXT)(batch->state->cmdbuf, rast_state->hw_state.pv_last ?
+                                                                VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT :
+                                                                VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT);
+      VKCTX(CmdSetLineRasterizationModeEXT)(batch->state->cmdbuf, (VkLineRasterizationModeEXT)rast_state->hw_state.line_mode);
+      VKCTX(CmdSetLineStippleEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.line_stipple_enable);
+   }
+
+   if (BATCH_CHANGED || rast_state_changed) {
       enum pipe_prim_type reduced_prim = ctx->last_vertex_stage->reduced_prim;
       if (reduced_prim == PIPE_PRIM_MAX)
          reduced_prim = u_reduced_prim(mode);
@@ -958,7 +972,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state DYNAMIC_STATE, bool BATCH_CHANGED>
 static void
-init_batch_changed_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][4][2], pipe_draw_vertex_state_func draw_state_array[2][4][2])
+init_batch_changed_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][6][2], pipe_draw_vertex_state_func draw_state_array[2][6][2])
 {
    draw_vbo_array[HAS_MULTIDRAW][DYNAMIC_STATE][BATCH_CHANGED] = zink_draw_vbo<HAS_MULTIDRAW, DYNAMIC_STATE, BATCH_CHANGED>;
    draw_state_array[HAS_MULTIDRAW][DYNAMIC_STATE][BATCH_CHANGED] = zink_draw_vertex_state<HAS_MULTIDRAW, DYNAMIC_STATE, BATCH_CHANGED>;
@@ -966,7 +980,7 @@ init_batch_changed_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_v
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state DYNAMIC_STATE>
 static void
-init_dynamic_state_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][4][2], pipe_draw_vertex_state_func draw_state_array[2][4][2])
+init_dynamic_state_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][6][2], pipe_draw_vertex_state_func draw_state_array[2][6][2])
 {
    init_batch_changed_functions<HAS_MULTIDRAW, DYNAMIC_STATE, false>(ctx, draw_vbo_array, draw_state_array);
    init_batch_changed_functions<HAS_MULTIDRAW, DYNAMIC_STATE, true>(ctx, draw_vbo_array, draw_state_array);
@@ -974,16 +988,18 @@ init_dynamic_state_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_v
 
 template <zink_multidraw HAS_MULTIDRAW>
 static void
-init_multidraw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][4][2], pipe_draw_vertex_state_func draw_state_array[2][4][2])
+init_multidraw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][6][2], pipe_draw_vertex_state_func draw_state_array[2][6][2])
 {
    init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_NO_DYNAMIC_STATE>(ctx, draw_vbo_array, draw_state_array);
    init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE>(ctx, draw_vbo_array, draw_state_array);
    init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE2>(ctx, draw_vbo_array, draw_state_array);
+   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_VERTEX_INPUT2>(ctx, draw_vbo_array, draw_state_array);
+   init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_STATE3>(ctx, draw_vbo_array, draw_state_array);
    init_dynamic_state_functions<HAS_MULTIDRAW, ZINK_DYNAMIC_VERTEX_INPUT>(ctx, draw_vbo_array, draw_state_array);
 }
 
 static void
-init_all_draw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][4][2], pipe_draw_vertex_state_func draw_state_array[2][4][2])
+init_all_draw_functions(struct zink_context *ctx, pipe_draw_vbo_func draw_vbo_array[2][6][2], pipe_draw_vertex_state_func draw_state_array[2][6][2])
 {
    init_multidraw_functions<ZINK_NO_MULTIDRAW>(ctx, draw_vbo_array, draw_state_array);
    init_multidraw_functions<ZINK_MULTIDRAW>(ctx, draw_vbo_array, draw_state_array);
@@ -1099,17 +1115,24 @@ extern "C"
 void
 zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen)
 {
-   pipe_draw_vbo_func draw_vbo_array[2][4] //multidraw, zink_dynamic_state
+   pipe_draw_vbo_func draw_vbo_array[2][6] //multidraw, zink_dynamic_state
                                     [2];   //batch changed
-   pipe_draw_vertex_state_func draw_state_array[2][4] //multidraw, zink_dynamic_state
+   pipe_draw_vertex_state_func draw_state_array[2][6] //multidraw, zink_dynamic_state
                                                [2];   //batch changed
    zink_dynamic_state dynamic;
    if (screen->info.have_EXT_extended_dynamic_state) {
       if (screen->info.have_EXT_extended_dynamic_state2) {
-         if (screen->info.have_EXT_vertex_input_dynamic_state)
-            dynamic = ZINK_DYNAMIC_VERTEX_INPUT;
-         else
-            dynamic = ZINK_DYNAMIC_STATE2;
+         if (screen->info.have_EXT_extended_dynamic_state3) {
+            if (screen->info.have_EXT_vertex_input_dynamic_state)
+               dynamic = ZINK_DYNAMIC_VERTEX_INPUT;
+            else
+               dynamic = ZINK_DYNAMIC_STATE3;
+         } else {
+            if (screen->info.have_EXT_vertex_input_dynamic_state)
+               dynamic = ZINK_DYNAMIC_VERTEX_INPUT2;
+            else
+               dynamic = ZINK_DYNAMIC_STATE2;
+         }
       } else {
          dynamic = ZINK_DYNAMIC_STATE;
       }

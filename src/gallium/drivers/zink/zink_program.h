@@ -125,7 +125,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx);
 
 
 void
-zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state, enum pipe_prim_type mode);
+zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state);
 uint32_t hash_gfx_output(const void *key);
 uint32_t hash_gfx_input(const void *key);
 uint32_t hash_gfx_input_dynamic(const void *key);

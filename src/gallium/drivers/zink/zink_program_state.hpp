@@ -37,6 +37,8 @@ hash_gfx_pipeline_state(const void *key)
    const struct zink_gfx_pipeline_state *state = (const struct zink_gfx_pipeline_state *)key;
    uint32_t hash = _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
    if (DYNAMIC_STATE < ZINK_DYNAMIC_STATE2)
+      hash = XXH32(&state->dyn_state3, sizeof(state->dyn_state3), hash);
+   if (DYNAMIC_STATE < ZINK_DYNAMIC_STATE3)
       hash = XXH32(&state->dyn_state2, sizeof(state->dyn_state2), hash);
    if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE)
       return hash;
@@ -99,7 +101,6 @@ find_or_create_output(struct zink_context *ctx)
    if (!he) {
       struct zink_gfx_output_key *okey = rzalloc(ctx, struct zink_gfx_output_key);
       memcpy(okey, &ctx->gfx_pipeline_state, offsetof(struct zink_gfx_output_key, pipeline));
-      okey->_pad = 0;
       okey->pipeline = zink_create_gfx_pipeline_output(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state);
       he = _mesa_set_add_pre_hashed(&ctx->gfx_outputs, hash, okey);
    }
@@ -140,10 +141,12 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    bool uses_dynamic_stride = state->uses_dynamic_stride;
 
    VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
-   const unsigned idx = get_pipeline_idx<DYNAMIC_STATE >= ZINK_DYNAMIC_STATE>(mode, vkmode);
+   const unsigned idx = screen->info.dynamic_state3_props.dynamicPrimitiveTopologyUnrestricted ?
+                        0 :
+                        get_pipeline_idx<DYNAMIC_STATE >= ZINK_DYNAMIC_STATE>(mode, vkmode);
    assert(idx <= ARRAY_SIZE(prog->pipelines[0]));
    if (!state->dirty && !state->modules_changed &&
-       (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || !ctx->vertex_state_changed) &&
+       ((DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2) && !ctx->vertex_state_changed) &&
        idx == state->idx)
       return state->pipeline;
 
@@ -161,7 +164,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       assert(opt->val == state->shader_keys_optimal.key.val);
       assert(state->optimal_key == state->shader_keys_optimal.key.val);
    }
-   if (DYNAMIC_STATE < ZINK_DYNAMIC_VERTEX_INPUT && ctx->vertex_state_changed) {
+   if (DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT2 && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT && ctx->vertex_state_changed) {
       if (state->pipeline)
          state->final_hash ^= state->vertex_hash;
       if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE)
@@ -189,7 +192,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    ctx->vertex_state_changed = false;
 
    const int rp_idx = state->render_pass ? 1 : 0;
-   if (DYNAMIC_STATE >= ZINK_DYNAMIC_VERTEX_INPUT) {
+   if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2) {
       if (prog->last_finalized_hash[rp_idx][idx] == state->final_hash && !prog->inline_variants && likely(prog->last_pipeline[rp_idx][idx])) {
          state->pipeline = prog->last_pipeline[rp_idx][idx];
          return state->pipeline;
@@ -208,18 +211,15 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
           !zink_get_fs_key(ctx)->fbfetch_ms &&
           !ctx->gfx_pipeline_state.force_persample_interp &&
           !ctx->gfx_pipeline_state.min_samples) {
-         ctx->gfx_pipeline_state.gkey = ctx->gfx_pipeline_state.rast_state;
-         struct set_entry *he = NULL;
-         /* TODO: this will eventually be pre-populated by async shader compile */
-         //struct set_entry *he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
+         struct set_entry *he = _mesa_set_search(&prog->libs, ctx->gfx_pipeline_state.modules);
          if (!he && (zink_debug & ZINK_DEBUG_GPL)) {
-            zink_create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state, mode);
-            he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
+            zink_create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state);
+            he = _mesa_set_search(&prog->libs, ctx->gfx_pipeline_state.modules);
             assert(he);
          }
          if (he) {
             struct zink_gfx_library_key *gkey = (struct zink_gfx_library_key *)he->key;
-            struct zink_gfx_input_key *ikey = DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT ?
+            struct zink_gfx_input_key *ikey = DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 ?
                                               find_or_create_input_dynamic(ctx, vkmode) :
                                               find_or_create_input(ctx, vkmode);
             struct zink_gfx_output_key *okey = find_or_create_output(ctx);
@@ -288,10 +288,16 @@ equals_gfx_pipeline_state(const void *a, const void *b)
                   sizeof(struct zink_depth_stencil_alpha_hw_state))))
          return false;
    }
-   if (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_STATE2) {
-      if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
+   if (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_STATE3) {
+      if (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_STATE2) {
+         if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
+            return false;
+      }
+      if (memcmp(&sa->dyn_state3, &sb->dyn_state3, sizeof(sa->dyn_state3)))
          return false;
    } else if (DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_STATE2_PCP &&
+              DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT2_PCP &&
+              DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_STATE3_PCP &&
               DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP &&
               (STAGE_MASK & BITFIELD_BIT(MESA_SHADER_TESS_EVAL)) &&
               !(STAGE_MASK & BITFIELD_BIT(MESA_SHADER_TESS_CTRL))) {
@@ -375,11 +381,24 @@ zink_get_gfx_pipeline_eq_func(struct zink_screen *screen, struct zink_gfx_progra
 {
    if (screen->info.have_EXT_extended_dynamic_state) {
       if (screen->info.have_EXT_extended_dynamic_state2) {
+         if (screen->info.have_EXT_extended_dynamic_state3) {
+            if (screen->info.have_EXT_vertex_input_dynamic_state) {
+               if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+                  return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP>(prog, screen->optimal_keys);
+               else
+                  return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT>(prog, screen->optimal_keys);
+            } else {
+               if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+                  return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_STATE3_PCP>(prog, screen->optimal_keys);
+               else
+                  return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_STATE3>(prog, screen->optimal_keys);
+            }
+         }
          if (screen->info.have_EXT_vertex_input_dynamic_state) {
             if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
-               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP>(prog, screen->optimal_keys);
+               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT2_PCP>(prog, screen->optimal_keys);
             else
-               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT>(prog, screen->optimal_keys);
+               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT2>(prog, screen->optimal_keys);
          } else {
             if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
                return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_STATE2_PCP>(prog, screen->optimal_keys);
