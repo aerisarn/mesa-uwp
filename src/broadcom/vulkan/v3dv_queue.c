@@ -911,6 +911,21 @@ queue_create_noop_job(struct v3dv_queue *queue)
    return VK_SUCCESS;
 }
 
+static VkResult
+queue_submit_noop_job(struct v3dv_queue *queue,
+                      struct v3dv_submit_sync_info *sync_info,
+                      bool signal_syncs)
+{
+   if (!queue->noop_job) {
+      VkResult result = queue_create_noop_job(queue);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   assert(queue->noop_job);
+   return queue_handle_job(queue, queue->noop_job, sync_info, signal_syncs);
+}
+
 VkResult
 v3dv_queue_driver_submit(struct vk_queue *vk_queue,
                          struct vk_queue_submit *submit)
@@ -942,6 +957,17 @@ v3dv_queue_driver_submit(struct vk_queue *vk_queue,
          if (result != VK_SUCCESS)
             return result;
       }
+
+      /* If the command buffer ends with a barrier we need to consume it now.
+       *
+       * FIXME: this will drain all hw queues. Instead, we could use the pending
+       * barrier state to limit the queues we serialize against.
+       */
+      if (cmd_buffer->state.barrier.dst_mask) {
+         result = queue_submit_noop_job(queue, &sync_info, false);
+         if (result != VK_SUCCESS)
+            return result;
+      }
    }
 
    /* Finish by submitting a no-op job that synchronizes across all queues.
@@ -950,12 +976,7 @@ v3dv_queue_driver_submit(struct vk_queue *vk_queue,
     * requirements.
     */
    if (submit->signal_count > 0) {
-      if (!queue->noop_job) {
-         result = queue_create_noop_job(queue);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-      result = queue_handle_job(queue, queue->noop_job, &sync_info, true);
+      result = queue_submit_noop_job(queue, &sync_info, true);
       if (result != VK_SUCCESS)
          return result;
    }
