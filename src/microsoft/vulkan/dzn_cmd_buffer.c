@@ -3260,7 +3260,7 @@ dzn_CmdClearAttachments(VkCommandBuffer commandBuffer,
 
          if (cmdbuf->state.render.attachments.stencil.iview &&
              (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            assert(view || view == cmdbuf->state.render.attachments.depth.iview);
+            assert(!view || view == cmdbuf->state.render.attachments.depth.iview);
             view = cmdbuf->state.render.attachments.stencil.iview;
          }
       }
