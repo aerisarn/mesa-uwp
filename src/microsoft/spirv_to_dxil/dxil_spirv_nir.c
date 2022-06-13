@@ -28,6 +28,7 @@
 #include "shader_enums.h"
 #include "spirv/nir_spirv.h"
 #include "util/blob.h"
+#include "dxil_spirv_nir.h"
 
 #include "git_sha1.h"
 #include "vulkan/vulkan.h"
