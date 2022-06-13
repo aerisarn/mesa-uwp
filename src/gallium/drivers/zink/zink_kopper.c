@@ -516,7 +516,7 @@ kill_swapchain(struct zink_context *ctx, struct zink_resource *res)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* dead swapchain */
-   fprintf(stderr, "KILL %p\n", res);
+   mesa_loge("zink: swapchain killed %p\n", res);
    zink_batch_reference_resource(&ctx->batch, res);
    struct pipe_resource *pres = screen->base.resource_create(&screen->base, &res->base.b);
    zink_resource_object_reference(screen, &res->obj, zink_resource(pres)->obj);
