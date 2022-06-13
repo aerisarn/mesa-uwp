@@ -1579,6 +1579,23 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    VkPhysicalDeviceVulkan12Properties core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+      .denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
+      .roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
+      .shaderSignedZeroInfNanPreserveFloat16 = false,
+      .shaderSignedZeroInfNanPreserveFloat32 = false,
+      .shaderSignedZeroInfNanPreserveFloat64 = false,
+      .shaderDenormPreserveFloat16 = true,
+      .shaderDenormPreserveFloat32 = false,
+      .shaderDenormPreserveFloat64 = true,
+      .shaderDenormFlushToZeroFloat16 = false,
+      .shaderDenormFlushToZeroFloat32 = true,
+      .shaderDenormFlushToZeroFloat64 = false,
+      .shaderRoundingModeRTEFloat16 = true,
+      .shaderRoundingModeRTEFloat32 = true,
+      .shaderRoundingModeRTEFloat64 = true,
+      .shaderRoundingModeRTZFloat16 = false,
+      .shaderRoundingModeRTZFloat32 = false,
+      .shaderRoundingModeRTZFloat64 = false,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "Dozen");
