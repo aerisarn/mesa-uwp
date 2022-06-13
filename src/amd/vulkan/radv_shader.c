@@ -761,8 +761,10 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       NIR_PASS(_, nir, nir_lower_returns);
       bool progress = false;
       NIR_PASS(progress, nir, nir_inline_functions);
-      if (progress)
+      if (progress) {
+         NIR_PASS(_, nir, nir_opt_copy_prop_vars);
          NIR_PASS(_, nir, nir_copy_prop);
+      }
       NIR_PASS(_, nir, nir_opt_deref);
 
       /* Pick off the single entrypoint that we want */
