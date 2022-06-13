@@ -46,12 +46,6 @@
 /* TODO: Investigate where this limit comes from. */
 #define PVR_MAX_TRANSFER_SIZE_IN_TEXELS 2048U
 
-void pvr_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
-                          const VkBlitImageInfo2 *pBlitImageInfo)
-{
-   assert(!"Unimplemented");
-}
-
 void pvr_CmdCopyImageToBuffer2KHR(
    VkCommandBuffer commandBuffer,
    const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
@@ -179,6 +173,196 @@ static void pvr_setup_transfer_surface(struct pvr_device *device,
    rect->offset.y = offset->y;
    rect->extent.width = extent->width;
    rect->extent.height = extent->height;
+}
+
+void pvr_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
+                          const VkBlitImageInfo2KHR *pBlitImageInfo)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   PVR_FROM_HANDLE(pvr_image, src, pBlitImageInfo->srcImage);
+   PVR_FROM_HANDLE(pvr_image, dst, pBlitImageInfo->dstImage);
+   struct pvr_device *device = cmd_buffer->device;
+   enum pvr_filter filter = PVR_FILTER_DONTCARE;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   if (pBlitImageInfo->filter == VK_FILTER_LINEAR)
+      filter = PVR_FILTER_LINEAR;
+
+   for (uint32_t i = 0U; i < pBlitImageInfo->regionCount; i++) {
+      const VkImageBlit2 *region = &pBlitImageInfo->pRegions[i];
+
+      assert(region->srcSubresource.layerCount ==
+             region->dstSubresource.layerCount);
+      const bool inverted_dst_z =
+         (region->dstOffsets[1].z < region->dstOffsets[0].z);
+      const bool inverted_src_z =
+         (region->srcOffsets[1].z < region->srcOffsets[0].z);
+      const uint32_t min_src_z = inverted_src_z ? region->srcOffsets[1].z
+                                                : region->srcOffsets[0].z;
+      const uint32_t max_src_z = inverted_src_z ? region->srcOffsets[0].z
+                                                : region->srcOffsets[1].z;
+      const uint32_t min_dst_z = inverted_dst_z ? region->dstOffsets[1].z
+                                                : region->dstOffsets[0].z;
+      const uint32_t max_dst_z = inverted_dst_z ? region->dstOffsets[0].z
+                                                : region->dstOffsets[1].z;
+
+      const uint32_t src_width =
+         region->srcOffsets[1].x - region->srcOffsets[0].x;
+      const uint32_t src_height =
+         region->srcOffsets[1].y - region->srcOffsets[0].y;
+      const uint32_t dst_width =
+         region->dstOffsets[1].x - region->dstOffsets[0].x;
+      const uint32_t dst_height =
+         region->dstOffsets[1].y - region->dstOffsets[0].y;
+
+      float initial_depth_offset;
+      VkExtent3D src_extent;
+      VkExtent3D dst_extent;
+      float z_slice_stride;
+
+      /* If any of the extent regions is zero, then reject the blit and
+       * continue.
+       */
+      if (!src_width || !src_height || !dst_width || !dst_height ||
+          !(max_dst_z - min_dst_z) || !(max_src_z - min_src_z)) {
+         mesa_loge("BlitImage: Region %i has an area of zero", i);
+         continue;
+      }
+
+      src_extent = (VkExtent3D){
+         .width = src_width,
+         .height = src_height,
+         .depth = 0U,
+      };
+
+      dst_extent = (VkExtent3D){
+         .width = dst_width,
+         .height = dst_height,
+         .depth = 0U,
+      };
+
+      /* The z_position of a transfer surface is intended to be in the range
+       * of 0.0f <= z_position <= depth. It will be used as a texture coordinate
+       * in the source surface for cases where linear filtering is enabled, so
+       * the fractional part will need to represent the exact midpoint of a z
+       * slice range in the source texture, as it maps to each destination
+       * slice.
+       *
+       * For destination surfaces, the fractional part is discarded, so
+       * we can safely pass the slice index.
+       */
+
+      /* Calculate the ratio of z slices in our source region to that of our
+       * destination region, to get the number of z slices in our source region
+       * to iterate over for each destination slice.
+       *
+       * If our destination region is inverted, we iterate backwards.
+       */
+      z_slice_stride =
+         (inverted_dst_z ? -1.0f : 1.0f) *
+         ((float)(max_src_z - min_src_z) / (float)(max_dst_z - min_dst_z));
+
+      /* Offset the initial depth offset by half of the z slice stride, into the
+       * blit region's z range.
+       */
+      initial_depth_offset =
+         (inverted_dst_z ? max_src_z : min_src_z) + (0.5f * z_slice_stride);
+
+      for (uint32_t j = 0U; j < region->srcSubresource.layerCount; j++) {
+         struct pvr_transfer_cmd_surface src_surface = { 0 };
+         struct pvr_transfer_cmd_surface dst_surface = { 0 };
+         VkRect2D src_rect;
+         VkRect2D dst_rect;
+
+         /* Get the subresource info for the src and dst images, this is
+          * required when incrementing the address of the depth slice used by
+          * the transfer surface.
+          */
+         VkSubresourceLayout src_info, dst_info;
+         const VkImageSubresource src_sub_resource = {
+            .aspectMask = region->srcSubresource.aspectMask,
+            .mipLevel = region->srcSubresource.mipLevel,
+            .arrayLayer = region->srcSubresource.baseArrayLayer + j,
+         };
+         const VkImageSubresource dst_sub_resource = {
+            .aspectMask = region->dstSubresource.aspectMask,
+            .mipLevel = region->dstSubresource.mipLevel,
+            .arrayLayer = region->dstSubresource.baseArrayLayer + j,
+         };
+
+         pvr_get_image_subresource_layout(src, &src_sub_resource, &src_info);
+         pvr_get_image_subresource_layout(dst, &dst_sub_resource, &dst_info);
+
+         /* Setup the transfer surfaces once per image layer, which saves us
+          * from repeating subresource queries by manually incrementing the
+          * depth slices.
+          */
+         pvr_setup_transfer_surface(device,
+                                    &src_surface,
+                                    &src_rect,
+                                    src,
+                                    region->srcSubresource.baseArrayLayer + j,
+                                    region->srcSubresource.mipLevel,
+                                    &region->srcOffsets[0],
+                                    &src_extent,
+                                    initial_depth_offset,
+                                    src->vk.format,
+                                    region->srcSubresource.aspectMask);
+
+         pvr_setup_transfer_surface(device,
+                                    &dst_surface,
+                                    &dst_rect,
+                                    dst,
+                                    region->dstSubresource.baseArrayLayer + j,
+                                    region->dstSubresource.mipLevel,
+                                    &region->dstOffsets[0],
+                                    &dst_extent,
+                                    min_dst_z,
+                                    dst->vk.format,
+                                    region->dstSubresource.aspectMask);
+
+         for (uint32_t dst_z = min_dst_z; dst_z < max_dst_z; dst_z++) {
+            struct pvr_transfer_cmd *transfer_cmd;
+            VkResult result;
+
+            /* TODO: See if we can allocate all the transfer cmds in one go. */
+            transfer_cmd = pvr_transfer_cmd_alloc(cmd_buffer);
+            if (!transfer_cmd)
+               return;
+
+            transfer_cmd->mappings[0].src_rect = src_rect;
+            transfer_cmd->mappings[0].dst_rect = dst_rect;
+            transfer_cmd->mapping_count++;
+
+            transfer_cmd->src = src_surface;
+            transfer_cmd->src_present = true;
+
+            transfer_cmd->dst = dst_surface;
+            transfer_cmd->scissor = dst_rect;
+
+            transfer_cmd->filter = filter;
+
+            result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
+            if (result != VK_SUCCESS) {
+               vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
+               return;
+            }
+
+            if (src_surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED) {
+               src_surface.z_position += z_slice_stride;
+            } else {
+               src_surface.dev_addr.addr +=
+                  src_info.depthPitch * ((uint32_t)z_slice_stride);
+            }
+
+            if (dst_surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
+               dst_surface.z_position += 1.0f;
+            else
+               dst_surface.dev_addr.addr += dst_info.depthPitch;
+         }
+      }
+   }
 }
 
 static VkFormat pvr_get_copy_format(VkFormat format)
