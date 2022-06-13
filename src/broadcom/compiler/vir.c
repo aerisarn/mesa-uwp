@@ -930,7 +930,7 @@ v3d_nir_lower_vs_early(struct v3d_compile *c)
         NIR_PASS(_, c->s, nir_remove_unused_io_vars,
                  nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
         NIR_PASS(_, c->s, nir_lower_global_vars_to_local);
-        v3d_optimize_nir(c, c->s);
+        v3d_optimize_nir(c, c->s, false);
         NIR_PASS(_, c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
         /* This must go before nir_lower_io */
@@ -964,7 +964,7 @@ v3d_nir_lower_gs_early(struct v3d_compile *c)
         NIR_PASS(_, c->s, nir_remove_unused_io_vars,
                  nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
         NIR_PASS(_, c->s, nir_lower_global_vars_to_local);
-        v3d_optimize_nir(c, c->s);
+        v3d_optimize_nir(c, c->s, false);
         NIR_PASS(_, c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
         /* This must go before nir_lower_io */
@@ -1607,7 +1607,7 @@ v3d_attempt_compile(struct v3d_compile *c)
 
         NIR_PASS(_, c->s, v3d_nir_lower_subgroup_intrinsics, c);
 
-        v3d_optimize_nir(c, c->s);
+        v3d_optimize_nir(c, c->s, false);
 
         /* Do late algebraic optimization to turn add(a, neg(b)) back into
          * subs, then the mandatory cleanup after algebraic.  Note that it may

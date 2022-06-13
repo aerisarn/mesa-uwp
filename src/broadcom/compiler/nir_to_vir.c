@@ -2126,7 +2126,7 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 }
 
 void
-v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
+v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s, bool allow_copies)
 {
         bool progress;
         unsigned lower_flrp =
@@ -2137,7 +2137,29 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
         do {
                 progress = false;
 
+                NIR_PASS(progress, s, nir_split_array_vars, nir_var_function_temp);
+                NIR_PASS(progress, s, nir_shrink_vec_array_vars, nir_var_function_temp);
+                NIR_PASS(progress, s, nir_opt_deref);
+
                 NIR_PASS(progress, s, nir_lower_vars_to_ssa);
+                if (allow_copies) {
+                        /* Only run this pass if nir_lower_var_copies was not called
+                         * yet. That would lower away any copy_deref instructions and we
+                         * don't want to introduce any more.
+                         */
+                        NIR_PASS(progress, s, nir_opt_find_array_copies);
+                }
+
+                NIR_PASS(progress, s, nir_opt_copy_prop_vars);
+                NIR_PASS(progress, s, nir_opt_dead_write_vars);
+                NIR_PASS(progress, s, nir_opt_combine_stores, nir_var_all);
+
+                NIR_PASS(progress, s, nir_remove_dead_variables,
+                         (nir_variable_mode)(nir_var_function_temp |
+                                             nir_var_shader_temp |
+                                             nir_var_mem_shared),
+                         NULL);
+
                 NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL, NULL);
                 NIR_PASS(progress, s, nir_lower_phis_to_scalar, false);
                 NIR_PASS(progress, s, nir_copy_prop);
@@ -2145,9 +2167,26 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                 NIR_PASS(progress, s, nir_opt_dce);
                 NIR_PASS(progress, s, nir_opt_dead_cf);
                 NIR_PASS(progress, s, nir_opt_cse);
+                NIR_PASS(progress, s, nir_opt_peephole_select, 0, false, false);
                 NIR_PASS(progress, s, nir_opt_peephole_select, 8, true, true);
                 NIR_PASS(progress, s, nir_opt_algebraic);
                 NIR_PASS(progress, s, nir_opt_constant_folding);
+
+                NIR_PASS(progress, s, nir_opt_intrinsics);
+                NIR_PASS(progress, s, nir_opt_idiv_const, 32);
+                NIR_PASS(progress, s, nir_lower_alu);
+
+                if (nir_opt_trivial_continues(s)) {
+                   progress = true;
+                   NIR_PASS(progress, s, nir_copy_prop);
+                   NIR_PASS(progress, s, nir_opt_dce);
+                }
+
+                NIR_PASS(progress, s, nir_opt_conditional_discard);
+
+                NIR_PASS(progress, s, nir_opt_remove_phis);
+                NIR_PASS(progress, s, nir_opt_if, false);
+                NIR_PASS(progress, s, nir_opt_undef);
 
                 /* Note that vectorization may undo the load/store scalarization
                  * pass we run for non 32-bit TMU general load/store by
