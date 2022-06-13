@@ -6,6 +6,8 @@
 
 #include "nouveau_push.h"
 
+#include "nvk_cla0c0.h"
+
 static void
 nvk_destroy_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
 {
@@ -217,6 +219,30 @@ nvk_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    return nvk_reset_cmd_buffer(cmd_buffer);
 }
 
+static uint64_t
+calc_tls_size(struct nvk_device *device,
+              uint32_t lpos, uint32_t lneg, uint32_t cstack)
+{
+   uint64_t size = (lpos + lneg) * 32 + cstack;
+
+   assert (size < (1 << 20));
+
+   size *= 64; /* max warps */
+   size  = align(size, 0x8000);
+   size *= device->pdev->dev->mp_count;
+
+   size = align(size, 1 << 17);
+   return size;
+}
+
+static void
+nve4_begin_compute(struct nvk_cmd_buffer *cmd)
+{
+   struct nvk_device *dev = (struct nvk_device *)cmd->vk.base.device;
+
+   cmd->tls_space_needed = calc_tls_size(dev, 128 * 16, 0, 0x200);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                        const VkCommandBufferBeginInfo *pBeginInfo)
@@ -229,6 +255,13 @@ nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       cmd->reset_on_submit = true;
    else
       cmd->reset_on_submit = false;
+
+   struct nvk_device *dev = (struct nvk_device *)cmd->vk.base.device;
+   struct nvk_physical_device *pdev = dev->pdev;
+
+   /* this could be made optional for non-compute cmdbuffers */
+   if (pdev->dev->cls >= 0xa0)
+      nve4_begin_compute(cmd);
 
    return VK_SUCCESS;
 }

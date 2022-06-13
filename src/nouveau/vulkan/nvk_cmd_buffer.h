@@ -52,6 +52,8 @@ struct nvk_cmd_buffer {
 
    struct nouveau_ws_push *push;
    bool reset_on_submit;
+
+   uint64_t tls_space_needed;
 };
 
 VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
