@@ -126,7 +126,6 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
    nir_ssa_def *format_deref_dest = NULL, *order_deref_dest = NULL;
 
    nir_variable *in_var = nir_deref_instr_get_variable(context->deref);
-   enum gl_access_qualifier access = in_var->data.access;
 
    context->metadata_index = 0;
    while (context->metadata->args[context->metadata_index].image.buf_ids[0] != in_var->data.binding)
@@ -402,7 +401,6 @@ add_kernel_inputs_var(struct clc_dxil_object *dxil, nir_shader *nir,
    if (!dxil->kernel->num_args)
       return NULL;
 
-   struct clc_dxil_metadata *metadata = &dxil->metadata;
    unsigned size = 0;
 
    nir_foreach_variable_with_modes(var, nir, nir_var_uniform)
@@ -427,7 +425,6 @@ static nir_variable *
 add_work_properties_var(struct clc_dxil_object *dxil,
                            struct nir_shader *nir, unsigned *cbv_id)
 {
-   struct clc_dxil_metadata *metadata = &dxil->metadata;
    const struct glsl_type *array_type =
       glsl_array_type(glsl_uint_type(),
          sizeof(struct clc_work_properties_data) / sizeof(unsigned),
@@ -509,8 +506,6 @@ static void
 copy_const_initializer(const nir_constant *constant, const struct glsl_type *type,
                        uint8_t *data)
 {
-   unsigned size = glsl_get_cl_size(type);
-
    if (glsl_type_is_array(type)) {
       const struct glsl_type *elm_type = glsl_get_array_element(type);
       unsigned step_size = glsl_get_explicit_stride(type);
@@ -699,8 +694,6 @@ wrap_from_cl_addressing(unsigned addressing_mode)
 
 static bool shader_has_double(nir_shader *nir)
 {
-   bool progress = false;
-
    foreach_list_typed(nir_function, func, node, &nir->functions) {
       if (!func->is_entrypoint)
          continue;
