@@ -172,6 +172,7 @@ public:
    bool opt_drop_redundant_mov_to_flags();
    bool opt_register_renaming();
    bool opt_bank_conflicts();
+   bool opt_split_sends();
    bool register_coalesce();
    bool compute_to_mrf();
    bool eliminate_find_live_channel();

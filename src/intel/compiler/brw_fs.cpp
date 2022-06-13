@@ -2888,6 +2888,98 @@ fs_visitor::opt_zero_samples()
    return progress;
 }
 
+/**
+ * Opportunistically split SEND message payloads.
+ *
+ * Gfx9+ supports "split" SEND messages, which take two payloads that are
+ * implicitly concatenated.  If we find a SEND message with a single payload,
+ * we can split that payload in two.  This results in smaller contiguous
+ * register blocks for us to allocate.  But it can help beyond that, too.
+ *
+ * We try and split a LOAD_PAYLOAD between sources which change registers.
+ * For example, a sampler message often contains a x/y/z coordinate that may
+ * already be in a contiguous VGRF, combined with an LOD, shadow comparitor,
+ * or array index, which comes from elsewhere.  In this case, the first few
+ * sources will be different offsets of the same VGRF, then a later source
+ * will be a different VGRF.  So we split there, possibly eliminating the
+ * payload concatenation altogether.
+ */
+bool
+fs_visitor::opt_split_sends()
+{
+   if (devinfo->ver < 9)
+      return false;
+
+   bool progress = false;
+
+   const fs_live_variables &live = live_analysis.require();
+
+   int next_ip = 0;
+
+   foreach_block_and_inst_safe(block, fs_inst, send, cfg) {
+      int ip = next_ip;
+      next_ip++;
+
+      if (send->opcode != SHADER_OPCODE_SEND ||
+          send->mlen == 1 || send->ex_mlen > 0)
+         continue;
+
+      /* Don't split payloads which are also read later. */
+      assert(send->src[2].file == VGRF);
+      if (live.vgrf_end[send->src[2].nr] > ip)
+         continue;
+
+      fs_inst *lp = (fs_inst *) send->prev;
+
+      if (lp->is_head_sentinel() || lp->opcode != SHADER_OPCODE_LOAD_PAYLOAD)
+         continue;
+
+      if (lp->dst.file != send->src[2].file || lp->dst.nr != send->src[2].nr)
+         continue;
+
+      /* Split either after the header (if present), or when consecutive
+       * sources switch from one VGRF to a different one.
+       */
+      unsigned i = lp->header_size;
+      if (lp->header_size == 0) {
+         for (i = 1; i < lp->sources; i++) {
+            if (lp->src[i].file == BAD_FILE)
+               continue;
+
+            if (lp->src[0].file != lp->src[i].file ||
+                lp->src[0].nr != lp->src[i].nr)
+               break;
+         }
+      }
+
+      if (i != lp->sources) {
+         const fs_builder ibld(this, block, lp);
+         fs_inst *lp2 =
+            ibld.LOAD_PAYLOAD(lp->dst, &lp->src[i], lp->sources - i, 0);
+
+         lp->resize_sources(i);
+         lp->size_written -= lp2->size_written;
+
+         lp->dst = fs_reg(VGRF, alloc.allocate(lp->size_written / REG_SIZE), lp->dst.type);
+         lp2->dst = fs_reg(VGRF, alloc.allocate(lp2->size_written / REG_SIZE), lp2->dst.type);
+
+         send->resize_sources(4);
+         send->src[2] = lp->dst;
+         send->src[3] = lp2->dst;
+         send->ex_mlen = lp2->size_written / REG_SIZE;
+         send->mlen -= send->ex_mlen;
+
+         progress = true;
+      }
+   }
+
+   if (progress)
+      invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
+
+   return progress;
+}
+
+
 bool
 fs_visitor::opt_register_renaming()
 {
@@ -8583,6 +8675,8 @@ fs_visitor::optimize()
    OPT(lower_logical_sends);
 
    /* After logical SEND lowering. */
+   OPT(opt_copy_propagation);
+   OPT(opt_split_sends);
    OPT(fixup_nomask_control_flow);
 
    if (progress) {
