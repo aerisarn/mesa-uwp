@@ -970,6 +970,9 @@ struct pvr_stage_allocation_descriptor_state {
     * referring to the code upload.
     */
    struct pvr_pds_info pds_info;
+
+   /* Already setup compile time static consts. */
+   struct pvr_bo *static_consts;
 };
 
 struct pvr_pds_attrib_program {

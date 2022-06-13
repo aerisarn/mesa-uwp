@@ -2826,6 +2826,29 @@ static VkResult pvr_setup_descriptor_mappings(
          break;
       }
 
+      case PVR_PDS_CONST_MAP_ENTRY_TYPE_SPECIAL_BUFFER: {
+         const struct pvr_const_map_entry_special_buffer *special_buff_entry =
+            (struct pvr_const_map_entry_special_buffer *)entries;
+
+         switch (special_buff_entry->buffer_type) {
+         case PVR_BUFFER_TYPES_COMPILE_TIME: {
+            uint64_t addr = descriptor_state->static_consts->vma->dev_addr.addr;
+
+            PVR_WRITE(qword_buffer,
+                      addr,
+                      special_buff_entry->const_offset,
+                      pds_info->data_size_in_dwords);
+            break;
+         }
+
+         default:
+            unreachable("Unsupported special buffer type.");
+         }
+
+         entries += sizeof(*special_buff_entry);
+         break;
+      }
+
       default:
          unreachable("Unsupported map entry type.");
       }
