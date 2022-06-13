@@ -153,6 +153,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_depth_range_unrestricted          = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
+   .EXT_extended_dynamic_state3           = true,
    .EXT_external_memory_host              = true,
    .EXT_graphics_pipeline_library         = true,
    .EXT_host_query_reset                  = true,
@@ -948,6 +949,41 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->extendedDynamicState2PatchControlPoints = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *features = (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)ext;
+         features->extendedDynamicState3PolygonMode = VK_TRUE;
+         features->extendedDynamicState3TessellationDomainOrigin = VK_TRUE;
+         features->extendedDynamicState3DepthClampEnable = VK_TRUE;
+         features->extendedDynamicState3DepthClipEnable = VK_TRUE;
+         features->extendedDynamicState3LogicOpEnable = VK_TRUE;
+         features->extendedDynamicState3SampleMask = VK_TRUE;
+         features->extendedDynamicState3RasterizationSamples = VK_TRUE;
+         features->extendedDynamicState3AlphaToCoverageEnable = VK_TRUE;
+         features->extendedDynamicState3AlphaToOneEnable = VK_TRUE;
+         features->extendedDynamicState3DepthClipNegativeOneToOne = VK_TRUE;
+         features->extendedDynamicState3RasterizationStream = VK_FALSE;
+         features->extendedDynamicState3ConservativeRasterizationMode = VK_FALSE;
+         features->extendedDynamicState3ExtraPrimitiveOverestimationSize = VK_FALSE;
+         features->extendedDynamicState3LineRasterizationMode = VK_TRUE;
+         features->extendedDynamicState3LineStippleEnable = VK_TRUE;
+         features->extendedDynamicState3ProvokingVertexMode = VK_TRUE;
+         features->extendedDynamicState3SampleLocationsEnable = VK_FALSE;
+         features->extendedDynamicState3ColorBlendEnable = VK_TRUE;
+         features->extendedDynamicState3ColorBlendEquation = VK_TRUE;
+         features->extendedDynamicState3ColorWriteMask = VK_TRUE;
+         features->extendedDynamicState3ViewportWScalingEnable = VK_FALSE;
+         features->extendedDynamicState3ViewportSwizzle = VK_FALSE;
+         features->extendedDynamicState3ShadingRateImageEnable = VK_FALSE;
+         features->extendedDynamicState3CoverageToColorEnable = VK_FALSE;
+         features->extendedDynamicState3CoverageToColorLocation = VK_FALSE;
+         features->extendedDynamicState3CoverageModulationMode = VK_FALSE;
+         features->extendedDynamicState3CoverageModulationTableEnable = VK_FALSE;
+         features->extendedDynamicState3CoverageModulationTable = VK_FALSE;
+         features->extendedDynamicState3CoverageReductionMode = VK_FALSE;
+         features->extendedDynamicState3RepresentativeFragmentTestEnable = VK_FALSE;
+         features->extendedDynamicState3ColorBlendAdvanced = VK_FALSE;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: {
          VkPhysicalDeviceImageRobustnessFeatures *features = (VkPhysicalDeviceImageRobustnessFeatures *)ext;
          features->robustImageAccess = true;
@@ -1256,6 +1292,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceMaintenance4Properties *properties =
             (VkPhysicalDeviceMaintenance4Properties *)ext;
          properties->maxBufferSize = UINT32_MAX;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *properties =
+            (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)ext;
+         properties->dynamicPrimitiveTopologyUnrestricted = VK_TRUE;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {

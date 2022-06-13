@@ -37,6 +37,8 @@
 
 #define SPIR_V_MAGIC_NUMBER 0x07230203
 
+#define MAX_DYNAMIC_STATES 72
+
 #define LVP_PIPELINE_DUP(dst, src, type, count) do {             \
       type *temp = ralloc_array(mem_ctx, type, count);           \
       if (!temp) return VK_ERROR_OUT_OF_HOST_MEMORY;             \
@@ -828,8 +830,13 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    if (pCreateInfo->stageCount && pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]) {
       nir_lower_patch_vertices(pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL], pipeline->pipeline_nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out, NULL);
       merge_tess_info(&pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info, &pipeline->pipeline_nir[MESA_SHADER_TESS_CTRL]->info);
-      if (pipeline->graphics_state.ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
+      if (BITSET_TEST(pipeline->graphics_state.dynamic,
+                      MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
+         pipeline->tess_ccw = nir_shader_clone(pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL], pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]);
+         pipeline->tess_ccw->info.tess.ccw = !pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw;
+      } else if (pipeline->graphics_state.ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT) {
          pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw = !pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL]->info.tess.ccw;
+      }
    }
    if (libstate) {
        for (unsigned i = 0; i < libstate->libraryCount; i++) {
@@ -843,6 +850,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                 if (p->pipeline_nir[j])
                    pipeline->pipeline_nir[j] = nir_shader_clone(pipeline->mem_ctx, p->pipeline_nir[j]);
              }
+             if (p->tess_ccw)
+                pipeline->tess_ccw = nir_shader_clone(pipeline->mem_ctx, p->tess_ccw);
           }
        }
    } else if (pipeline->stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
@@ -867,9 +876,13 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          gl_shader_stage stage = i;
          assert(stage == pipeline->pipeline_nir[i]->info.stage);
          enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
-         if (!pipeline->inlines[stage].can_inline)
+         if (!pipeline->inlines[stage].can_inline) {
             pipeline->shader_cso[pstage] = lvp_pipeline_compile(pipeline,
                                                                 nir_shader_clone(NULL, pipeline->pipeline_nir[stage]));
+            if (pipeline->tess_ccw)
+               pipeline->tess_ccw_cso = lvp_pipeline_compile(pipeline,
+                                                             nir_shader_clone(NULL, pipeline->tess_ccw));
+         }
          if (stage == MESA_SHADER_FRAGMENT)
             has_fragment_shader = true;
       }

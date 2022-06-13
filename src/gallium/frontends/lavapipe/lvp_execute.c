@@ -177,12 +177,19 @@ struct rendering_state {
 
    uint32_t sample_mask;
    unsigned min_samples;
+   float min_sample_shading;
+   bool force_min_sample;
+   bool sample_shading;
+   bool depth_clamp_sets_clip;
 
    uint32_t num_so_targets;
    struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_BUFFERS];
    uint32_t so_offsets[PIPE_MAX_SO_BUFFERS];
 
    struct lvp_pipeline *pipeline[2];
+
+   bool tess_ccw;
+   void *tess_states[2];
 };
 
 ALWAYS_INLINE static void
@@ -273,7 +280,10 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
       return;
    struct lvp_pipeline *pipeline = state->pipeline[is_compute];
    /* these buffers have already been flushed in llvmpipe, so they're safe to read */
-   nir_shader *nir = nir_shader_clone(pipeline->pipeline_nir[stage], pipeline->pipeline_nir[stage]);
+   nir_shader *base_nir = pipeline->pipeline_nir[stage];
+   if (stage == PIPE_SHADER_TESS_EVAL && state->tess_ccw)
+      base_nir = pipeline->tess_ccw;
+   nir_shader *nir = nir_shader_clone(pipeline->pipeline_nir[stage], base_nir);
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    unsigned ssa_alloc = impl->ssa_alloc;
    unsigned count = pipeline->inlines[stage].count[0];
@@ -604,12 +614,33 @@ get_viewport_xform(struct rendering_state *state,
    memcpy(&state->depth[idx].min, &viewport->minDepth, sizeof(float) * 2);
 }
 
+static void
+update_samples(struct rendering_state *state, VkSampleCountFlags samples)
+{
+   state->rs_dirty |= state->rs_state.multisample != (samples > 1);
+   state->rs_state.multisample = samples > 1;
+   state->min_samples = 1;
+   if (state->sample_shading) {
+      state->min_samples = ceil(samples * state->min_sample_shading);
+      if (state->min_samples > 1)
+         state->min_samples = samples;
+      if (state->min_samples < 1)
+         state->min_samples = 1;
+   }
+   if (state->force_min_sample)
+      state->min_samples = samples;
+   state->min_samples_dirty = true;
+   if (samples != state->framebuffer.samples) {
+      state->framebuffer.samples = samples;
+      state->pctx->set_framebuffer_state(state->pctx, &state->framebuffer);
+   }
+}
+
 static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
                                      struct rendering_state *state)
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
-   unsigned fb_samples = 0;
 
    for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
       state->iv_dirty[sh] |= state->num_shader_images[sh] &&
@@ -642,6 +673,8 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->pctx->bind_tcs_state(state->pctx, NULL);
    if (state->pctx->bind_tes_state)
       state->pctx->bind_tes_state(state->pctx, NULL);
+   state->tess_states[0] = NULL;
+   state->tess_states[1] = NULL;
    state->gs_output_lines = GS_OUTPUT_NONE;
    {
       u_foreach_bit(b, pipeline->graphics_state.shader_stages) {
@@ -674,8 +707,17 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
             break;
          case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
             state->inlines_dirty[PIPE_SHADER_TESS_EVAL] = pipeline->inlines[MESA_SHADER_TESS_EVAL].can_inline;
-            if (!pipeline->inlines[MESA_SHADER_TESS_EVAL].can_inline)
-               state->pctx->bind_tes_state(state->pctx, pipeline->shader_cso[PIPE_SHADER_TESS_EVAL]);
+            if (!pipeline->inlines[MESA_SHADER_TESS_EVAL].can_inline) {
+               if (BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
+                  state->tess_states[0] = pipeline->shader_cso[PIPE_SHADER_TESS_EVAL];
+                  state->tess_states[1] = pipeline->tess_ccw_cso;
+                  state->pctx->bind_tes_state(state->pctx, state->tess_states[state->tess_ccw]);
+               } else {
+                  state->pctx->bind_tes_state(state->pctx, pipeline->shader_cso[PIPE_SHADER_TESS_EVAL]);
+               }
+            }
+            if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN))
+               state->tess_ccw = false;
             has_stage[PIPE_SHADER_TESS_EVAL] = true;
             break;
          default:
@@ -697,24 +739,40 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 
    /* rasterization state */
    if (ps->rs) {
-      state->rs_state.depth_clamp = ps->rs->depth_clamp_enable;
-      state->rs_state.depth_clip_near = ps->rs->depth_clip_enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE))
+         state->rs_state.depth_clamp = ps->rs->depth_clamp_enable;
+      if (BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE)) {
+         state->depth_clamp_sets_clip = false;
+      } else {
+         if (!ps->rs->depth_clip_present)
+            state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !state->rs_state.depth_clamp;
+         else
+            state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = ps->rs->depth_clip_enable;
+         state->depth_clamp_sets_clip = !ps->rs->depth_clip_present;
+      }
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
          state->rs_state.rasterizer_discard = ps->rs->rasterizer_discard_enable;
 
-      state->rs_state.line_smooth = pipeline->line_smooth;
-      state->rs_state.line_stipple_enable = ps->rs->line.stipple.enable;
-      state->rs_state.fill_front = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
-      state->rs_state.fill_back = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_MODE)) {
+         state->rs_state.line_smooth = pipeline->line_smooth;
+         state->rs_state.line_rectangular = pipeline->line_rectangular;
+      }
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE))
+         state->rs_state.line_stipple_enable = ps->rs->line.stipple.enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_POLYGON_MODE)) {
+         state->rs_state.fill_front = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
+         state->rs_state.fill_back = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
+      }
       state->rs_state.point_size_per_vertex = true;
-      state->rs_state.flatshade_first =
-         ps->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX)) {
+         state->rs_state.flatshade_first =
+            ps->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT;
+      }
       state->rs_state.point_quad_rasterization = true;
       state->rs_state.half_pixel_center = true;
       state->rs_state.scissor = true;
       state->rs_state.no_ms_sample_mask_out = true;
-      state->rs_state.line_rectangular = pipeline->line_rectangular;
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_WIDTH))
          state->rs_state.line_width = ps->rs->line.width;
@@ -793,11 +851,10 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    }
 
    if (ps->cb) {
-      state->blend_state.logicop_enable = ps->cb->logic_op_enable;
-      if (ps->cb->logic_op_enable) {
-         if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP))
-            state->blend_state.logicop_func = vk_conv_logic_op(ps->cb->logic_op);
-      }
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
+         state->blend_state.logicop_enable = ps->cb->logic_op_enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP))
+         state->blend_state.logicop_func = vk_conv_logic_op(ps->cb->logic_op);
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES))
          state->color_write_disables = ~ps->cb->color_write_enables;
@@ -806,22 +863,25 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 
       for (unsigned i = 0; i < ps->cb->attachment_count; i++) {
          const struct vk_color_blend_attachment_state *att = &ps->cb->attachments[i];
-         state->blend_state.rt[i].colormask = att->write_mask;
-         state->blend_state.rt[i].blend_enable = att->blend_enable;
-         if (att->blend_enable) {
-            state->blend_state.rt[i].rgb_func = vk_conv_blend_func(att->color_blend_op);
-            state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(att->src_color_blend_factor);
-            state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(att->dst_color_blend_factor);
-            state->blend_state.rt[i].alpha_func = vk_conv_blend_func(att->alpha_blend_op);
-            state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(att->src_alpha_blend_factor);
-            state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(att->dst_alpha_blend_factor);
-         } else {
+         if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_WRITE_MASKS))
+            state->blend_state.rt[i].colormask = att->write_mask;
+         if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_BLEND_ENABLES))
+            state->blend_state.rt[i].blend_enable = att->blend_enable;
+
+         if (!att->blend_enable) {
             state->blend_state.rt[i].rgb_func = 0;
             state->blend_state.rt[i].rgb_src_factor = 0;
             state->blend_state.rt[i].rgb_dst_factor = 0;
             state->blend_state.rt[i].alpha_func = 0;
             state->blend_state.rt[i].alpha_src_factor = 0;
             state->blend_state.rt[i].alpha_dst_factor = 0;
+         } else if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS)) {
+            state->blend_state.rt[i].rgb_func = vk_conv_blend_func(att->color_blend_op);
+            state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(att->src_color_blend_factor);
+            state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(att->dst_color_blend_factor);
+            state->blend_state.rt[i].alpha_func = vk_conv_blend_func(att->alpha_blend_op);
+            state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(att->src_alpha_blend_factor);
+            state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(att->dst_alpha_blend_factor);
          }
 
          /* At least llvmpipe applies the blend factor prior to the blend function,
@@ -850,37 +910,40 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->blend_dirty = true;
    }
 
-   state->disable_multisample = pipeline->disable_multisample;
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_MODE))
+      state->disable_multisample = pipeline->disable_multisample;
    if (ps->ms) {
-      state->rs_state.multisample = ps->ms->rasterization_samples > 1;
-      state->sample_mask = ps->ms->sample_mask;
-      state->blend_state.alpha_to_coverage = ps->ms->alpha_to_coverage_enable;
-      state->blend_state.alpha_to_one = ps->ms->alpha_to_one_enable;
-      state->blend_dirty = true;
-      state->rs_dirty = true;
-      state->min_samples = 1;
-      state->sample_mask_dirty = true;
-      fb_samples = ps->ms->rasterization_samples;
-      if (ps->ms->sample_shading_enable) {
-         state->min_samples = ceil(ps->ms->rasterization_samples *
-                                   ps->ms->min_sample_shading);
-         if (state->min_samples > 1)
-            state->min_samples = ps->ms->rasterization_samples;
-         if (state->min_samples < 1)
-            state->min_samples = 1;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_MASK)) {
+         state->sample_mask = ps->ms->sample_mask;
+         state->sample_mask_dirty = true;
       }
-      if (pipeline->force_min_sample)
-         state->min_samples = ps->ms->rasterization_samples;
-      state->min_samples_dirty = true;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE))
+         state->blend_state.alpha_to_coverage = ps->ms->alpha_to_coverage_enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE))
+         state->blend_state.alpha_to_one = ps->ms->alpha_to_one_enable;
+      state->force_min_sample = pipeline->force_min_sample;
+      state->sample_shading = ps->ms->sample_shading_enable;
+      state->min_sample_shading = ps->ms->min_sample_shading;
+      state->blend_dirty = true;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES))
+         update_samples(state, ps->ms->rasterization_samples);
    } else {
-      state->rs_state.multisample = false;
-      state->sample_mask_dirty = state->sample_mask != 0xffffffff;
-      state->sample_mask = 0xffffffff;
-      state->min_samples_dirty = state->min_samples;
-      state->min_samples = 0;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_MASK) &&
+          !BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE))
+         state->rs_state.multisample = false;
+      state->sample_shading = false;
+      state->force_min_sample = false;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_MASK)) {
+         state->sample_mask_dirty = state->sample_mask != 0xffffffff;
+         state->sample_mask = 0xffffffff;
+         state->min_samples_dirty = state->min_samples;
+         state->min_samples = 0;
+      }
       state->blend_dirty |= state->blend_state.alpha_to_coverage || state->blend_state.alpha_to_one;
-      state->blend_state.alpha_to_coverage = false;
-      state->blend_state.alpha_to_one = false;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE))
+         state->blend_state.alpha_to_coverage = false;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE))
+         state->blend_state.alpha_to_one = false;
       state->rs_dirty = true;
    }
 
@@ -955,18 +1018,14 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->scissor_dirty = true;
       }
 
-      if (state->rs_state.clip_halfz != !ps->vp->depth_clip_negative_one_to_one) {
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) &&
+          state->rs_state.clip_halfz != !ps->vp->depth_clip_negative_one_to_one) {
          state->rs_state.clip_halfz = !ps->vp->depth_clip_negative_one_to_one;
          state->rs_dirty = true;
          for (uint32_t i = 0; i < state->num_viewports; i++)
             set_viewport_depth_xform(state, i);
          state->vp_dirty = true;
       }
-   }
-
-   if (fb_samples != state->framebuffer.samples) {
-      state->framebuffer.samples = fb_samples;
-      state->pctx->set_framebuffer_state(state->pctx, &state->framebuffer);
    }
 }
 
@@ -3536,7 +3595,6 @@ static void handle_set_primitive_topology(struct vk_cmd_queue_entry *cmd,
    state->rs_dirty = true;
 }
 
-
 static void handle_set_depth_test_enable(struct vk_cmd_queue_entry *cmd,
                                          struct rendering_state *state)
 {
@@ -3652,6 +3710,176 @@ static void handle_set_color_write_enable(struct vk_cmd_queue_entry *cmd,
    state->color_write_disables = disable_mask;
 }
 
+static void handle_set_polygon_mode(struct vk_cmd_queue_entry *cmd,
+                                    struct rendering_state *state)
+{
+   unsigned polygon_mode = vk_polygon_mode_to_pipe(cmd->u.set_polygon_mode_ext.polygon_mode);
+   if (state->rs_state.fill_front != polygon_mode)
+      state->rs_dirty = true;
+   state->rs_state.fill_front = polygon_mode;
+   if (state->rs_state.fill_back != polygon_mode)
+      state->rs_dirty = true;
+   state->rs_state.fill_back = polygon_mode;
+}
+
+static void handle_set_tessellation_domain_origin(struct vk_cmd_queue_entry *cmd,
+                                                  struct rendering_state *state)
+{
+   bool tess_ccw = cmd->u.set_tessellation_domain_origin_ext.domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
+   if (tess_ccw == state->tess_ccw)
+      return;
+   state->tess_ccw = tess_ccw;
+   if (state->tess_states[state->tess_ccw])
+      state->pctx->bind_tes_state(state->pctx, state->tess_states[state->tess_ccw]);
+}
+
+static void handle_set_depth_clamp_enable(struct vk_cmd_queue_entry *cmd,
+                                          struct rendering_state *state)
+{
+   state->rs_dirty |= state->rs_state.depth_clamp != cmd->u.set_depth_clamp_enable_ext.depth_clamp_enable;
+   state->rs_state.depth_clamp = !!cmd->u.set_depth_clamp_enable_ext.depth_clamp_enable;
+   if (state->depth_clamp_sets_clip)
+      state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !state->rs_state.depth_clamp;
+}
+
+static void handle_set_depth_clip_enable(struct vk_cmd_queue_entry *cmd,
+                                         struct rendering_state *state)
+{
+   state->rs_dirty |= state->rs_state.depth_clip_far != !!cmd->u.set_depth_clip_enable_ext.depth_clip_enable;
+   state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !!cmd->u.set_depth_clip_enable_ext.depth_clip_enable;
+}
+
+static void handle_set_logic_op_enable(struct vk_cmd_queue_entry *cmd,
+                                         struct rendering_state *state)
+{
+   state->blend_dirty |= state->blend_state.logicop_enable != !!cmd->u.set_logic_op_enable_ext.logic_op_enable;
+   state->blend_state.logicop_enable = !!cmd->u.set_logic_op_enable_ext.logic_op_enable;
+}
+
+static void handle_set_sample_mask(struct vk_cmd_queue_entry *cmd,
+                                   struct rendering_state *state)
+{
+   unsigned mask = cmd->u.set_sample_mask_ext.sample_mask ? cmd->u.set_sample_mask_ext.sample_mask[0] : 0xffffffff;
+   state->sample_mask_dirty |= state->sample_mask != mask;
+   state->sample_mask = mask;
+}
+
+static void handle_set_samples(struct vk_cmd_queue_entry *cmd,
+                               struct rendering_state *state)
+{
+   update_samples(state, cmd->u.set_rasterization_samples_ext.rasterization_samples);
+}
+
+static void handle_set_alpha_to_coverage(struct vk_cmd_queue_entry *cmd,
+                                         struct rendering_state *state)
+{
+   state->blend_dirty |=
+      state->blend_state.alpha_to_coverage != !!cmd->u.set_alpha_to_coverage_enable_ext.alpha_to_coverage_enable;
+   state->blend_state.alpha_to_coverage = !!cmd->u.set_alpha_to_coverage_enable_ext.alpha_to_coverage_enable;
+}
+
+static void handle_set_alpha_to_one(struct vk_cmd_queue_entry *cmd,
+                                         struct rendering_state *state)
+{
+   state->blend_dirty |=
+      state->blend_state.alpha_to_one != !!cmd->u.set_alpha_to_one_enable_ext.alpha_to_one_enable;
+   state->blend_state.alpha_to_one = !!cmd->u.set_alpha_to_one_enable_ext.alpha_to_one_enable;
+   if (state->blend_state.alpha_to_one)
+      state->rs_state.multisample = true;
+}
+
+static void handle_set_halfz(struct vk_cmd_queue_entry *cmd,
+                             struct rendering_state *state)
+{
+   if (state->rs_state.clip_halfz == !cmd->u.set_depth_clip_negative_one_to_one_ext.negative_one_to_one)
+      return;
+   state->rs_dirty = true;
+   state->rs_state.clip_halfz = !cmd->u.set_depth_clip_negative_one_to_one_ext.negative_one_to_one;
+   /* handle dynamic state: convert from one transform to the other */
+   for (unsigned i = 0; i < state->num_viewports; i++)
+      set_viewport_depth_xform(state, i);
+   state->vp_dirty = true;
+}
+
+static void handle_set_line_rasterization_mode(struct vk_cmd_queue_entry *cmd,
+                                               struct rendering_state *state)
+{
+   VkLineRasterizationModeEXT lineRasterizationMode = cmd->u.set_line_rasterization_mode_ext.line_rasterization_mode;
+   /* not even going to bother trying dirty tracking on this */
+   state->rs_dirty = true;
+   state->rs_state.line_smooth = lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+   state->rs_state.line_rectangular = lineRasterizationMode != VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;;
+   state->disable_multisample = lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT ||
+                                lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+}
+
+static void handle_set_line_stipple_enable(struct vk_cmd_queue_entry *cmd,
+                                           struct rendering_state *state)
+{
+   state->rs_dirty |= state->rs_state.line_stipple_enable != !!cmd->u.set_line_stipple_enable_ext.stippled_line_enable;
+   state->rs_state.line_stipple_enable = cmd->u.set_line_stipple_enable_ext.stippled_line_enable;
+}
+
+static void handle_set_provoking_vertex_mode(struct vk_cmd_queue_entry *cmd,
+                                             struct rendering_state *state)
+{
+   bool flatshade_first = cmd->u.set_provoking_vertex_mode_ext.provoking_vertex_mode != VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
+   state->rs_dirty |= state->rs_state.flatshade_first != flatshade_first;
+   state->rs_state.flatshade_first = flatshade_first;
+}
+
+static void handle_set_color_blend_enable(struct vk_cmd_queue_entry *cmd,
+                                          struct rendering_state *state)
+{
+   for (unsigned i = 0; i < cmd->u.set_color_blend_enable_ext.attachment_count; i++) {
+      if (state->blend_state.rt[cmd->u.set_color_blend_enable_ext.first_attachment + i].blend_enable != !!cmd->u.set_color_blend_enable_ext.color_blend_enables[i]) {
+         state->blend_dirty = true;
+      }
+      state->blend_state.rt[cmd->u.set_color_blend_enable_ext.first_attachment + i].blend_enable = !!cmd->u.set_color_blend_enable_ext.color_blend_enables[i];
+   }
+}
+
+static void handle_set_color_write_mask(struct vk_cmd_queue_entry *cmd,
+                                        struct rendering_state *state)
+{
+   for (unsigned i = 0; i < cmd->u.set_color_write_mask_ext.attachment_count; i++) {
+      if (state->blend_state.rt[cmd->u.set_color_write_mask_ext.first_attachment + i].colormask != cmd->u.set_color_write_mask_ext.color_write_masks[i])
+         state->blend_dirty = true;
+      state->blend_state.rt[cmd->u.set_color_write_mask_ext.first_attachment + i].colormask = cmd->u.set_color_write_mask_ext.color_write_masks[i];
+   }
+}
+
+static void handle_set_color_blend_equation(struct vk_cmd_queue_entry *cmd,
+                                            struct rendering_state *state)
+{
+   const VkColorBlendEquationEXT *cb = cmd->u.set_color_blend_equation_ext.color_blend_equations;
+   state->blend_dirty = true;
+   for (unsigned i = 0; i < cmd->u.set_color_blend_equation_ext.attachment_count; i++) {
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_func = vk_conv_blend_func(cb[i].colorBlendOp);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_src_factor = vk_conv_blend_factor(cb[i].srcColorBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_dst_factor = vk_conv_blend_factor(cb[i].dstColorBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_func = vk_conv_blend_func(cb[i].alphaBlendOp);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_src_factor = vk_conv_blend_factor(cb[i].srcAlphaBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_dst_factor = vk_conv_blend_factor(cb[i].dstAlphaBlendFactor);
+
+      /* At least llvmpipe applies the blend factor prior to the blend function,
+       * regardless of what function is used. (like i965 hardware).
+       * It means for MIN/MAX the blend factor has to be stomped to ONE.
+       */
+      if (cb[i].colorBlendOp == VK_BLEND_OP_MIN ||
+          cb[i].colorBlendOp == VK_BLEND_OP_MAX) {
+         state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_src_factor = PIPE_BLENDFACTOR_ONE;
+         state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_dst_factor = PIPE_BLENDFACTOR_ONE;
+      }
+
+      if (cb[i].alphaBlendOp == VK_BLEND_OP_MIN ||
+          cb[i].alphaBlendOp == VK_BLEND_OP_MAX) {
+         state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_src_factor = PIPE_BLENDFACTOR_ONE;
+         state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_dst_factor = PIPE_BLENDFACTOR_ONE;
+      }
+   }
+}
+
 void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
 {
    struct vk_device_dispatch_table cmd_enqueue_dispatch;
@@ -3741,6 +3969,23 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetEvent2)
    ENQUEUE_CMD(CmdWaitEvents2)
    ENQUEUE_CMD(CmdWriteTimestamp2)
+
+   ENQUEUE_CMD(CmdSetPolygonModeEXT)
+   ENQUEUE_CMD(CmdSetTessellationDomainOriginEXT)
+   ENQUEUE_CMD(CmdSetDepthClampEnableEXT)
+   ENQUEUE_CMD(CmdSetDepthClipEnableEXT)
+   ENQUEUE_CMD(CmdSetLogicOpEnableEXT)
+   ENQUEUE_CMD(CmdSetSampleMaskEXT)
+   ENQUEUE_CMD(CmdSetRasterizationSamplesEXT)
+   ENQUEUE_CMD(CmdSetAlphaToCoverageEnableEXT)
+   ENQUEUE_CMD(CmdSetAlphaToOneEnableEXT)
+   ENQUEUE_CMD(CmdSetDepthClipNegativeOneToOneEXT)
+   ENQUEUE_CMD(CmdSetLineRasterizationModeEXT)
+   ENQUEUE_CMD(CmdSetLineStippleEnableEXT)
+   ENQUEUE_CMD(CmdSetProvokingVertexModeEXT)
+   ENQUEUE_CMD(CmdSetColorBlendEnableEXT)
+   ENQUEUE_CMD(CmdSetColorBlendEquationEXT)
+   ENQUEUE_CMD(CmdSetColorWriteMaskEXT)
 
 #undef ENQUEUE_CMD
 }
@@ -4006,6 +4251,56 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case VK_CMD_WRITE_TIMESTAMP2:
          handle_write_timestamp2(cmd, state);
          break;
+
+      case VK_CMD_SET_POLYGON_MODE_EXT:
+         handle_set_polygon_mode(cmd, state);
+         break;
+      case VK_CMD_SET_TESSELLATION_DOMAIN_ORIGIN_EXT:
+         handle_set_tessellation_domain_origin(cmd, state);
+         break;
+      case VK_CMD_SET_DEPTH_CLAMP_ENABLE_EXT:
+         handle_set_depth_clamp_enable(cmd, state);
+         break;
+      case VK_CMD_SET_DEPTH_CLIP_ENABLE_EXT:
+         handle_set_depth_clip_enable(cmd, state);
+         break;
+      case VK_CMD_SET_LOGIC_OP_ENABLE_EXT:
+         handle_set_logic_op_enable(cmd, state);
+         break;
+      case VK_CMD_SET_SAMPLE_MASK_EXT:
+         handle_set_sample_mask(cmd, state);
+         break;
+      case VK_CMD_SET_RASTERIZATION_SAMPLES_EXT:
+         handle_set_samples(cmd, state);
+         break;
+      case VK_CMD_SET_ALPHA_TO_COVERAGE_ENABLE_EXT:
+         handle_set_alpha_to_coverage(cmd, state);
+         break;
+      case VK_CMD_SET_ALPHA_TO_ONE_ENABLE_EXT:
+         handle_set_alpha_to_one(cmd, state);
+         break;
+      case VK_CMD_SET_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE_EXT:
+         handle_set_halfz(cmd, state);
+         break;
+      case VK_CMD_SET_LINE_RASTERIZATION_MODE_EXT:
+         handle_set_line_rasterization_mode(cmd, state);
+         break;
+      case VK_CMD_SET_LINE_STIPPLE_ENABLE_EXT:
+         handle_set_line_stipple_enable(cmd, state);
+         break;
+      case VK_CMD_SET_PROVOKING_VERTEX_MODE_EXT:
+         handle_set_provoking_vertex_mode(cmd, state);
+         break;
+      case VK_CMD_SET_COLOR_BLEND_ENABLE_EXT:
+         handle_set_color_blend_enable(cmd, state);
+         break;
+      case VK_CMD_SET_COLOR_WRITE_MASK_EXT:
+         handle_set_color_write_mask(cmd, state);
+         break;
+      case VK_CMD_SET_COLOR_BLEND_EQUATION_EXT:
+         handle_set_color_blend_equation(cmd, state);
+         break;
+
       default:
          fprintf(stderr, "Unsupported command %s\n", vk_cmd_queue_type_names[cmd->type]);
          unreachable("Unsupported command");
@@ -4031,6 +4326,9 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->vp_dirty = true;
    state->rs_state.point_tri_clip = true;
    state->rs_state.unclamped_fragment_depth_values = device->vk.enabled_extensions.EXT_depth_range_unrestricted;
+   state->sample_mask_dirty = true;
+   state->min_samples_dirty = true;
+   state->sample_mask = UINT32_MAX;
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
       for (unsigned i = 0; i < ARRAY_SIZE(state->cso_ss_ptr[s]); i++)
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
