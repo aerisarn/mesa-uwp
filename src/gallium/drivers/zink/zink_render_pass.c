@@ -50,6 +50,7 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    pstate->num_attachments = state->num_cbufs;
    pstate->num_cresolves = state->num_cresolves;
    pstate->num_zsresolves = state->num_zsresolves;
+   pstate->fbfetch = 0;
    for (int i = 0; i < state->num_cbufs; i++) {
       struct zink_rt_attrib *rt = state->rts + i;
       attachments[i].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
@@ -155,12 +156,9 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       }
       pstate->num_attachments++;
    }
-   if (dep_access & VK_ACCESS_COLOR_ATTACHMENT_READ_BIT)
-      pstate->color_read = true;
-   if (dep_access & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
-      pstate->depth_read = true;
-   if (dep_access & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-      pstate->depth_write = true;
+   pstate->color_read = (dep_access & VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) > 0;
+   pstate->depth_read = (dep_access & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) > 0;
+   pstate->depth_write = (dep_access & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) > 0;
 
    if (!screen->info.have_KHR_synchronization2)
       dep_pipeline = MAX2(dep_pipeline, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
