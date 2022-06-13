@@ -1626,6 +1626,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
       .independentResolveNone = false,
       .independentResolve = false,
+      .filterMinmaxSingleComponentFormats = false,
+      .filterMinmaxImageComponentMapping = false,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "Dozen");
