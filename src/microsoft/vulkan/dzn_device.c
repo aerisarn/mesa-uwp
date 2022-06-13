@@ -96,6 +96,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_depth_stencil_resolve             = true,
       .KHR_descriptor_update_template        = true,
       .KHR_draw_indirect_count               = true,
+      .KHR_driver_properties                 = true,
       .KHR_dynamic_rendering                 = true,
       .KHR_shader_draw_parameters            = true,
 #ifdef DZN_USE_WSI_PLATFORM
