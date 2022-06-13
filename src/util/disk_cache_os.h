@@ -33,6 +33,7 @@
 #else
 
 #include "util/fossilize_db.h"
+#include "util/mesa_cache_db.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,6 +57,10 @@ struct disk_cache {
    struct util_queue cache_queue;
 
    struct foz_db foz_db;
+
+   struct mesa_cache_db cache_db;
+
+   bool use_cache_db;
 
    /* Seed for rand, which is used to pick a random directory */
    uint64_t seed_xorshift128plus[2];
@@ -144,6 +149,16 @@ disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
 
 void
 disk_cache_destroy_mmap(struct disk_cache *cache);
+
+void *
+disk_cache_db_load_item(struct disk_cache *cache, const cache_key key,
+                        size_t *size);
+
+bool
+disk_cache_db_write_item_to_disk(struct disk_cache_put_job *dc_job);
+
+bool
+disk_cache_db_load_cache_index(void *mem_ctx, struct disk_cache *cache);
 
 #ifdef __cplusplus
 }

@@ -831,6 +831,8 @@ disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
    char *cache_dir_name = CACHE_DIR_NAME;
    if (env_var_as_boolean("MESA_DISK_CACHE_SINGLE_FILE", false))
       cache_dir_name = CACHE_DIR_NAME_SF;
+   else if (env_var_as_boolean("MESA_DISK_CACHE_DATABASE", false))
+      cache_dir_name = CACHE_DIR_NAME_DB;
 
    char *path = getenv("MESA_SHADER_CACHE_DIR");
 
@@ -1041,6 +1043,45 @@ void
 disk_cache_destroy_mmap(struct disk_cache *cache)
 {
    munmap(cache->index_mmap, cache->index_mmap_size);
+}
+
+void *
+disk_cache_db_load_item(struct disk_cache *cache, const cache_key key,
+                        size_t *size)
+{
+   size_t cache_tem_size = 0;
+   void *cache_item = mesa_cache_db_read_entry(&cache->cache_db, key,
+                                               &cache_tem_size);
+   if (!cache_item)
+      return NULL;
+
+   uint8_t *uncompressed_data =
+       parse_and_validate_cache_item(cache, cache_item, cache_tem_size, size);
+   free(cache_item);
+
+   return uncompressed_data;
+}
+
+bool
+disk_cache_db_write_item_to_disk(struct disk_cache_put_job *dc_job)
+{
+   struct blob cache_blob;
+   blob_init(&cache_blob);
+
+   if (!create_cache_item_header_and_blob(dc_job, &cache_blob))
+      return false;
+
+   bool r = mesa_cache_db_entry_write(&dc_job->cache->cache_db, dc_job->key,
+                                      cache_blob.data, cache_blob.size);
+
+   blob_finish(&cache_blob);
+   return r;
+}
+
+bool
+disk_cache_db_load_cache_index(void *mem_ctx, struct disk_cache *cache)
+{
+   return mesa_cache_db_open(&cache->cache_db, cache->path);
 }
 #endif
 

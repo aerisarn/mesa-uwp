@@ -39,6 +39,7 @@
 
 #include "util/mesa-sha1.h"
 #include "util/disk_cache.h"
+#include "util/disk_cache_os.h"
 #include "util/ralloc.h"
 
 #ifdef ENABLE_SHADER_CACHE
@@ -520,6 +521,136 @@ test_put_and_get_between_instances(const char *driver_id)
    disk_cache_destroy(cache1);
    disk_cache_destroy(cache2);
 }
+
+static void
+test_put_and_get_between_instances_with_eviction(const char *driver_id)
+{
+   cache_key small_key[8], small_key2, big_key[2];
+   struct disk_cache *cache[2];
+   unsigned int i, n, k;
+   uint8_t *small;
+   uint8_t *big;
+   char *result;
+   size_t size;
+
+#ifdef SHADER_CACHE_DISABLE_BY_DEFAULT
+   setenv("MESA_SHADER_CACHE_DISABLE", "false", 1);
+#endif /* SHADER_CACHE_DISABLE_BY_DEFAULT */
+
+   setenv("MESA_SHADER_CACHE_MAX_SIZE", "2K", 1);
+
+   cache[0] = disk_cache_create("test_between_instances_with_eviction", driver_id, 0);
+   cache[1] = disk_cache_create("test_between_instances_with_eviction", driver_id, 0);
+
+   uint8_t two_KB[2048] = { 0 };
+   cache_key two_KB_key = { 'T', 'W', 'O', 'K', 'B' };
+
+   /* Flush the database by adding the dummy 2KB entry */
+   disk_cache_put(cache[0], two_KB_key, two_KB, sizeof(two_KB), NULL);
+   disk_cache_wait_for_idle(cache[0]);
+
+   int size_big = 1000;
+   size_big -= sizeof(struct cache_entry_file_data);
+   size_big -= mesa_cache_db_file_entry_size();
+   size_big -= cache[0]->driver_keys_blob_size;
+   size_big -= 4 + 8; /* cache_item_metadata size + room for alignment */
+
+   for (i = 0; i < ARRAY_SIZE(big_key); i++) {
+      big = (uint8_t *) malloc(size_big);
+      memset(big, i, size_big);
+
+      disk_cache_compute_key(cache[0], big, size_big, big_key[i]);
+      disk_cache_put(cache[0], big_key[i], big, size_big, NULL);
+      disk_cache_wait_for_idle(cache[0]);
+
+      result = (char *) disk_cache_get(cache[0], big_key[i], &size);
+      EXPECT_NE(result, nullptr) << "disk_cache_get with existent item (pointer)";
+      EXPECT_EQ(size, size_big) << "disk_cache_get with existent item (size)";
+      free(result);
+
+      free(big);
+   }
+
+   int size_small = 256;
+   size_small -= sizeof(struct cache_entry_file_data);
+   size_small -= mesa_cache_db_file_entry_size();
+   size_small -= cache[1]->driver_keys_blob_size;
+   size_small -= 4 + 8; /* cache_item_metadata size + room for alignment */
+
+   for (i = 0; i < ARRAY_SIZE(small_key); i++) {
+      small = (uint8_t *) malloc(size_small);
+      memset(small, i, size_small);
+
+      disk_cache_compute_key(cache[1], small, size_small, small_key[i]);
+      disk_cache_put(cache[1], small_key[i], small, size_small, NULL);
+      disk_cache_wait_for_idle(cache[1]);
+
+      /*
+       * At first we added two 1000KB entries to cache[0]. Now, when first
+       * 256KB entry is added, the two 1000KB entries are evicted because
+       * at minimum cache_max_size/2 is evicted on overflow.
+       *
+       * All four 256KB entries stay in the cache.
+       */
+      for (k = 0; k < ARRAY_SIZE(cache); k++) {
+         for (n = 0; n <= i; n++) {
+            result = (char *) disk_cache_get(cache[k], big_key[0], &size);
+            EXPECT_EQ(result, nullptr) << "disk_cache_get with non-existent item (pointer)";
+            EXPECT_EQ(size, 0) << "disk_cache_get with non-existent item (size)";
+            free(result);
+
+            result = (char *) disk_cache_get(cache[k], big_key[1], &size);
+            EXPECT_EQ(result, nullptr) << "disk_cache_get with non-existent item (pointer)";
+            EXPECT_EQ(size, 0) << "disk_cache_get with non-existent item (size)";
+            free(result);
+
+            result = (char *) disk_cache_get(cache[k], small_key[n], &size);
+            EXPECT_NE(result, nullptr) << "disk_cache_get of existing item (pointer)";
+            EXPECT_EQ(size, size_small) << "disk_cache_get of existing item (size)";
+            free(result);
+
+            result = (char *) disk_cache_get(cache[k], small_key[n], &size);
+            EXPECT_NE(result, nullptr) << "disk_cache_get of existing item (pointer)";
+            EXPECT_EQ(size, size_small) << "disk_cache_get of existing item (size)";
+            free(result);
+         }
+      }
+
+      free(small);
+   }
+
+   small = (uint8_t *) malloc(size_small);
+   memset(small, i, size_small);
+
+   /* Add another 256KB entry. This will evict first five 256KB entries
+    * of eight that we added previously. */
+   disk_cache_compute_key(cache[0], small, size_small, small_key2);
+   disk_cache_put(cache[0], small_key2, small, size_small, NULL);
+   disk_cache_wait_for_idle(cache[0]);
+
+   free(small);
+
+   for (k = 0; k < ARRAY_SIZE(cache); k++) {
+      result = (char *) disk_cache_get(cache[k], small_key2, &size);
+      EXPECT_NE(result, nullptr) << "disk_cache_get of existing item (pointer)";
+      EXPECT_EQ(size, size_small) << "disk_cache_get of existing item (size)";
+      free(result);
+   }
+
+   for (i = 0, k = 0; k < ARRAY_SIZE(cache); k++) {
+      for (n = 0; n < ARRAY_SIZE(small_key); n++) {
+         result = (char *) disk_cache_get(cache[k], small_key[n], &size);
+         if (!result)
+            i++;
+         free(result);
+      }
+   }
+
+   EXPECT_EQ(i, 10) << "2x disk_cache_get with 5 non-existent 256KB items";
+
+   disk_cache_destroy(cache[0]);
+   disk_cache_destroy(cache[1]);
+}
 #endif /* ENABLE_SHADER_CACHE */
 
 class Cache : public ::testing::Test {
@@ -602,5 +733,43 @@ run_tests:
       compress = false;
       goto run_tests;
    }
+#endif
+}
+
+TEST_F(Cache, Database)
+{
+   const char *driver_id = "make_check_uncompressed";
+
+#ifndef ENABLE_SHADER_CACHE
+   GTEST_SKIP() << "ENABLE_SHADER_CACHE not defined.";
+#else
+   setenv("MESA_DISK_CACHE_DATABASE", "true", 1);
+
+   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME_DB, driver_id);
+
+   /* We skip testing cache size limit as the single file cache compresses
+    * data much better than the multi-file cache, which results in the
+    * failing tests of the cache eviction function. We we will test the
+    * eviction separately with the disabled compression.
+    */
+   test_put_and_get(false, driver_id);
+
+   int err = rmrf_local(CACHE_TEST_TMP);
+   EXPECT_EQ(err, 0) << "Removing " CACHE_TEST_TMP " again";
+
+   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME_DB, driver_id);
+
+   test_put_and_get(true, driver_id);
+
+   test_put_key_and_get_key(driver_id);
+
+   test_put_and_get_between_instances(driver_id);
+
+   test_put_and_get_between_instances_with_eviction(driver_id);
+
+   setenv("MESA_DISK_CACHE_DATABASE", "false", 1);
+
+   err = rmrf_local(CACHE_TEST_TMP);
+   EXPECT_EQ(err, 0) << "Removing " CACHE_TEST_TMP " again";
 #endif
 }
