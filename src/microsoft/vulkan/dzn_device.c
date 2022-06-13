@@ -1579,6 +1579,13 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    VkPhysicalDeviceVulkan12Properties core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+      .driverID = VK_DRIVER_ID_MESA_DOZEN,
+      .conformanceVersion = (VkConformanceVersion){
+         .major = 0,
+         .minor = 0,
+         .subminor = 0,
+         .patch = 0,
+      },
       .denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
       .roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL,
       .shaderSignedZeroInfNanPreserveFloat16 = false,
@@ -1602,6 +1609,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .shaderStorageImageArrayNonUniformIndexingNative = true,
       .shaderInputAttachmentArrayNonUniformIndexingNative = true,
       .robustBufferAccessUpdateAfterBind = true,
+      .quadDivergentImplicitLod = false,
       .maxPerStageDescriptorUpdateAfterBindSamplers = 0,
       .maxPerStageDescriptorUpdateAfterBindUniformBuffers = 0,
       .maxPerStageDescriptorUpdateAfterBindStorageBuffers = 0,
@@ -1628,6 +1636,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .independentResolve = false,
       .filterMinmaxSingleComponentFormats = false,
       .filterMinmaxImageComponentMapping = false,
+      .maxTimelineSemaphoreValueDifference = UINT64_MAX,
+      .framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "Dozen");
