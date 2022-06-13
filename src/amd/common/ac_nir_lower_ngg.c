@@ -504,6 +504,31 @@ emit_store_ngg_nogs_es_primitive_id(nir_builder *b)
                     .src_type = nir_type_uint32, .io_semantics = io_sem);
 }
 
+static void
+store_var_components(nir_builder *b, nir_variable *var, nir_ssa_def *value,
+                     unsigned component, unsigned writemask)
+{
+   /* component store */
+   if (value->num_components != 4) {
+      nir_ssa_def *undef = nir_ssa_undef(b, 1, value->bit_size);
+
+      /* add undef component before and after value to form a vec4 */
+      nir_ssa_def *comp[4];
+      for (int i = 0; i < 4; i++) {
+         comp[i] = (i >= component && i < component + value->num_components) ?
+            nir_channel(b, value, i - component) : undef;
+      }
+
+      value = nir_vec(b, comp, 4);
+      writemask <<= component;
+   } else {
+      /* if num_component==4, there should be no component offset */
+      assert(component == 0);
+   }
+
+   nir_store_var(b, var, value, writemask);
+}
+
 static bool
 remove_culling_shader_output(nir_builder *b, nir_instr *instr, void *state)
 {
@@ -524,13 +549,21 @@ remove_culling_shader_output(nir_builder *b, nir_instr *instr, void *state)
 
    b->cursor = nir_before_instr(instr);
 
+   /* no indirect output */
+   assert(nir_src_is_const(intrin->src[1]) && nir_src_as_uint(intrin->src[1]) == 0);
+
+   unsigned writemask = nir_intrinsic_write_mask(intrin);
+   unsigned component = nir_intrinsic_component(intrin);
+   nir_ssa_def *store_val = intrin->src[0].ssa;
+
    /* Position output - store the value to a variable, remove output store */
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
-   if (io_sem.location == VARYING_SLOT_POS) {
-      /* TODO: check if it's indirect, etc? */
-      unsigned writemask = nir_intrinsic_write_mask(intrin);
-      nir_ssa_def *store_val = intrin->src[0].ssa;
-      nir_store_var(b, s->pre_cull_position_value_var, store_val, writemask);
+   switch (io_sem.location) {
+   case VARYING_SLOT_POS:
+      store_var_components(b, s->pre_cull_position_value_var, store_val, component, writemask);
+      break;
+   default:
+      break;
    }
 
    /* Remove all output stores */
