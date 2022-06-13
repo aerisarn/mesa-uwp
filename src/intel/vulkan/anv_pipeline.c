@@ -152,15 +152,15 @@ anv_shader_compile_to_nir(struct anv_device *device,
    const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
       .point_coord = true,
    };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+   NIR_PASS(_, nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    const nir_opt_access_options opt_access_options = {
       .is_vulkan = true,
       .infer_non_readable = true,
    };
-   NIR_PASS_V(nir, nir_opt_access, &opt_access_options);
+   NIR_PASS(_, nir, nir_opt_access, &opt_access_options);
 
-   NIR_PASS_V(nir, nir_lower_frexp);
+   NIR_PASS(_, nir, nir_lower_frexp);
 
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
@@ -761,74 +761,74 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    nir_shader *nir = stage->nir;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_wpos_center);
-      NIR_PASS_V(nir, nir_lower_input_attachments,
-                 &(nir_input_attachment_options) {
-                     .use_fragcoord_sysval = true,
-                     .use_layer_id_sysval = true,
-                 });
+      NIR_PASS(_, nir, nir_lower_wpos_center);
+      NIR_PASS(_, nir, nir_lower_input_attachments,
+               &(nir_input_attachment_options) {
+                   .use_fragcoord_sysval = true,
+                   .use_layer_id_sysval = true,
+               });
    }
 
-   NIR_PASS_V(nir, anv_nir_lower_ycbcr_textures, layout);
+   NIR_PASS(_, nir, anv_nir_lower_ycbcr_textures, layout);
 
    if (pipeline->type == ANV_PIPELINE_GRAPHICS) {
-      NIR_PASS_V(nir, anv_nir_lower_multiview,
-                 anv_pipeline_to_graphics(pipeline));
+      NIR_PASS(_, nir, anv_nir_lower_multiview,
+               anv_pipeline_to_graphics(pipeline));
    }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   NIR_PASS_V(nir, brw_nir_lower_storage_image, compiler->devinfo);
+   NIR_PASS(_, nir, brw_nir_lower_storage_image, compiler->devinfo);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
-              nir_address_format_64bit_global);
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_push_const,
-              nir_address_format_32bit_offset);
+   NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
+            nir_address_format_64bit_global);
+   NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
+            nir_address_format_32bit_offset);
 
-   NIR_PASS_V(nir, brw_nir_lower_ray_queries, &pdevice->info);
+   NIR_PASS(_, nir, brw_nir_lower_ray_queries, &pdevice->info);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    anv_nir_apply_pipeline_layout(pdevice,
                                  pipeline->device->robust_buffer_access,
                                  layout, nir, &stage->bind_map);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
-              anv_nir_ubo_addr_format(pdevice,
-                 pipeline->device->robust_buffer_access));
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
-              anv_nir_ssbo_addr_format(pdevice,
-                 pipeline->device->robust_buffer_access));
+   NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
+            anv_nir_ubo_addr_format(pdevice,
+               pipeline->device->robust_buffer_access));
+   NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
+            anv_nir_ssbo_addr_format(pdevice,
+               pipeline->device->robust_buffer_access));
 
    /* First run copy-prop to get rid of all of the vec() that address
     * calculations often create and then constant-fold so that, when we
     * get to anv_nir_lower_ubo_loads, we can detect constant offsets.
     */
-   NIR_PASS_V(nir, nir_copy_prop);
-   NIR_PASS_V(nir, nir_opt_constant_folding);
+   NIR_PASS(_, nir, nir_copy_prop);
+   NIR_PASS(_, nir, nir_opt_constant_folding);
 
-   NIR_PASS_V(nir, anv_nir_lower_ubo_loads);
+   NIR_PASS(_, nir, anv_nir_lower_ubo_loads);
 
    /* We don't support non-uniform UBOs and non-uniform SSBO access is
     * handled naturally by falling back to A64 messages.
     */
-   NIR_PASS_V(nir, nir_lower_non_uniform_access,
-              &(nir_lower_non_uniform_access_options) {
-                  .types = nir_lower_non_uniform_texture_access |
-                           nir_lower_non_uniform_image_access,
-                  .callback = NULL,
-              });
+   NIR_PASS(_, nir, nir_lower_non_uniform_access,
+            &(nir_lower_non_uniform_access_options) {
+                .types = nir_lower_non_uniform_texture_access |
+                         nir_lower_non_uniform_image_access,
+                .callback = NULL,
+            });
 
    anv_nir_compute_push_layout(pdevice, pipeline->device->robust_buffer_access,
                                nir, prog_data, &stage->bind_map, mem_ctx);
 
    if (gl_shader_stage_uses_workgroup(nir->info.stage)) {
       if (!nir->info.shared_memory_explicit_layout) {
-         NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
-                    nir_var_mem_shared, shared_type_info);
+         NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
+                  nir_var_mem_shared, shared_type_info);
       }
 
-      NIR_PASS_V(nir, nir_lower_explicit_io,
-                 nir_var_mem_shared, nir_address_format_32bit_offset);
+      NIR_PASS(_, nir, nir_lower_explicit_io,
+               nir_var_mem_shared, nir_address_format_32bit_offset);
 
       if (nir->info.zero_initialize_shared_memory &&
           nir->info.shared_size > 0) {
@@ -841,14 +841,14 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
          assert(shared_size <=
                 intel_calculate_slm_size(compiler->devinfo->ver, nir->info.shared_size));
 
-         NIR_PASS_V(nir, nir_zero_initialize_shared_memory,
-                    shared_size, chunk_size);
+         NIR_PASS(_, nir, nir_zero_initialize_shared_memory,
+                  shared_size, chunk_size);
       }
    }
 
    if (gl_shader_stage_is_compute(nir->info.stage) ||
        gl_shader_stage_is_mesh(nir->info.stage))
-      NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
+      NIR_PASS(_, nir, brw_nir_lower_cs_intrinsics);
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL ||
@@ -2001,7 +2001,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          return vk_error(pipeline, VK_ERROR_UNKNOWN);
       }
 
-      NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id);
+      NIR_PASS(_, stage.nir, anv_nir_add_base_work_group_id);
 
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout);
 
@@ -2626,16 +2626,16 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    nir_shader **resume_shaders = NULL;
    uint32_t num_resume_shaders = 0;
    if (nir->info.stage != MESA_SHADER_COMPUTE) {
-      NIR_PASS_V(nir, nir_lower_shader_calls,
-                 nir_address_format_64bit_global,
-                 BRW_BTD_STACK_ALIGN,
-                 &resume_shaders, &num_resume_shaders, mem_ctx);
-      NIR_PASS_V(nir, brw_nir_lower_shader_calls);
+      NIR_PASS(_, nir, nir_lower_shader_calls,
+               nir_address_format_64bit_global,
+               BRW_BTD_STACK_ALIGN,
+               &resume_shaders, &num_resume_shaders, mem_ctx);
+      NIR_PASS(_, nir, brw_nir_lower_shader_calls);
       NIR_PASS_V(nir, brw_nir_lower_rt_intrinsics, devinfo);
    }
 
    for (unsigned i = 0; i < num_resume_shaders; i++) {
-      NIR_PASS_V(resume_shaders[i], brw_nir_lower_shader_calls);
+      NIR_PASS(_,resume_shaders[i], brw_nir_lower_shader_calls);
       NIR_PASS_V(resume_shaders[i], brw_nir_lower_rt_intrinsics, devinfo);
    }
 
