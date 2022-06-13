@@ -479,9 +479,6 @@ static bool
 fix_sample_mask_type(struct nir_builder *builder, nir_instr *instr,
                      void *cb_data)
 {
-   struct dxil_spirv_runtime_conf *conf =
-      (struct dxil_spirv_runtime_conf *)cb_data;
-
    if (instr->type != nir_instr_type_deref)
       return false;
 
