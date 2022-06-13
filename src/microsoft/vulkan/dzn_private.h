@@ -84,6 +84,8 @@ enum dzn_index_type {
    DZN_NO_INDEX,
    DZN_INDEX_2B,
    DZN_INDEX_4B,
+   DZN_INDEX_2B_WITH_PRIM_RESTART,
+   DZN_INDEX_4B_WITH_PRIM_RESTART,
    DZN_NUM_INDEX_TYPE,
 };
 
@@ -99,12 +101,14 @@ dzn_index_type_from_size(uint8_t index_size)
 }
 
 static inline enum dzn_index_type
-dzn_index_type_from_dxgi_format(DXGI_FORMAT format)
+dzn_index_type_from_dxgi_format(DXGI_FORMAT format, bool prim_restart)
 {
    switch (format) {
    case DXGI_FORMAT_UNKNOWN: return DZN_NO_INDEX;
-   case DXGI_FORMAT_R16_UINT: return DZN_INDEX_2B;
-   case DXGI_FORMAT_R32_UINT: return DZN_INDEX_4B;
+   case DXGI_FORMAT_R16_UINT:
+      return prim_restart ? DZN_INDEX_2B_WITH_PRIM_RESTART : DZN_INDEX_2B;
+   case DXGI_FORMAT_R32_UINT:
+      return prim_restart ? DZN_INDEX_4B_WITH_PRIM_RESTART : DZN_INDEX_4B;
    default: unreachable("Invalid index format");
    }
 }
@@ -113,9 +117,14 @@ static inline uint8_t
 dzn_index_size(enum dzn_index_type type)
 {
    switch (type) {
-   case DZN_NO_INDEX: return 0;
-   case DZN_INDEX_2B: return 2;
-   case DZN_INDEX_4B: return 4;
+   case DZN_NO_INDEX:
+      return 0;
+   case DZN_INDEX_2B_WITH_PRIM_RESTART:
+   case DZN_INDEX_2B:
+      return 2;
+   case DZN_INDEX_4B_WITH_PRIM_RESTART:
+   case DZN_INDEX_4B:
+      return 4;
    default: unreachable("Invalid index type");
    }
 }

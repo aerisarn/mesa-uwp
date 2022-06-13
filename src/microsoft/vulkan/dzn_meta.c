@@ -116,12 +116,19 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
    bool triangle_fan = type == DZN_INDIRECT_DRAW_TRIANGLE_FAN ||
                        type == DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN ||
                        type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN ||
-                       type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
+                       type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN_PRIM_RESTART ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN_PRIM_RESTART;
    bool indirect_count = type == DZN_INDIRECT_DRAW_COUNT ||
                          type == DZN_INDIRECT_INDEXED_DRAW_COUNT ||
                          type == DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN ||
-                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
+                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN ||
+                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN_PRIM_RESTART;
+   bool prim_restart = type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN_PRIM_RESTART ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN_PRIM_RESTART;
    uint32_t shader_params_size =
+      triangle_fan && prim_restart ?
+      sizeof(struct dzn_indirect_draw_triangle_fan_prim_restart_rewrite_params) :
       triangle_fan ?
       sizeof(struct dzn_indirect_draw_triangle_fan_rewrite_params) :
       sizeof(struct dzn_indirect_draw_rewrite_params);
@@ -226,7 +233,7 @@ out:
    return ret;
 }
 
-#define DZN_META_TRIANGLE_FAN_REWRITE_IDX_MAX_PARAM_COUNT 3
+#define DZN_META_TRIANGLE_FAN_REWRITE_IDX_MAX_PARAM_COUNT 4
 
 static void
 dzn_meta_triangle_fan_rewrite_index_finish(struct dzn_device *device,
@@ -256,8 +263,14 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
    glsl_type_singleton_init_or_ref();
 
    uint8_t old_index_size = dzn_index_size(old_index_type);
+   bool prim_restart =
+      old_index_type == DZN_INDEX_2B_WITH_PRIM_RESTART ||
+      old_index_type == DZN_INDEX_4B_WITH_PRIM_RESTART;
 
-   nir_shader *nir = dzn_nir_triangle_fan_rewrite_index_shader(old_index_size);
+   nir_shader *nir =
+      prim_restart ?
+      dzn_nir_triangle_fan_prim_restart_rewrite_index_shader(old_index_size) :
+      dzn_nir_triangle_fan_rewrite_index_shader(old_index_size);
 
    uint32_t root_param_count = 0;
    D3D12_ROOT_PARAMETER1 root_params[DZN_META_TRIANGLE_FAN_REWRITE_IDX_MAX_PARAM_COUNT];
@@ -272,12 +285,17 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
    };
 
+   uint32_t params_size =
+      prim_restart ?
+      sizeof(struct dzn_triangle_fan_prim_restart_rewrite_index_params) :
+      sizeof(struct dzn_triangle_fan_rewrite_index_params);
+
    root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
       .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
       .Constants = {
          .ShaderRegister = 0,
          .RegisterSpace = 0,
-         .Num32BitValues = sizeof(struct dzn_triangle_fan_rewrite_index_params) / 4,
+         .Num32BitValues = params_size / 4,
       },
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
    };
@@ -287,6 +305,18 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
          .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
          .Descriptor = {
             .ShaderRegister = 2,
+            .RegisterSpace = 0,
+            .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE,
+         },
+         .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+      };
+   }
+
+   if (prim_restart) {
+      root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
+         .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
+         .Descriptor = {
+            .ShaderRegister = 3,
             .RegisterSpace = 0,
             .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE,
          },
@@ -309,29 +339,48 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
       .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
    };
 
-   D3D12_INDIRECT_ARGUMENT_DESC cmd_args[] = {
-      {
-         .Type = D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW,
-         .UnorderedAccessView = {
-            .RootParameterIndex = 0,
-         },
-      },
-      {
-         .Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT,
-         .Constant = {
-            .RootParameterIndex = 1,
-            .DestOffsetIn32BitValues = 0,
-            .Num32BitValuesToSet = sizeof(struct dzn_triangle_fan_rewrite_index_params) / 4,
-         },
-      },
-      {
-         .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH,
+   uint32_t cmd_arg_count = 0;
+   D3D12_INDIRECT_ARGUMENT_DESC cmd_args[4];
+
+   cmd_args[cmd_arg_count++] = (D3D12_INDIRECT_ARGUMENT_DESC) {
+      .Type = D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW,
+      .UnorderedAccessView = {
+         .RootParameterIndex = 0,
       },
    };
 
+   cmd_args[cmd_arg_count++] = (D3D12_INDIRECT_ARGUMENT_DESC) {
+      .Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT,
+      .Constant = {
+         .RootParameterIndex = 1,
+         .DestOffsetIn32BitValues = 0,
+         .Num32BitValuesToSet = params_size / 4,
+      },
+   };
+
+   if (prim_restart) {
+      cmd_args[cmd_arg_count++] = (D3D12_INDIRECT_ARGUMENT_DESC) {
+         .Type = D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW,
+         .UnorderedAccessView = {
+            .RootParameterIndex = 3,
+         },
+      };
+   }
+
+   cmd_args[cmd_arg_count++] = (D3D12_INDIRECT_ARGUMENT_DESC) {
+      .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH,
+   };
+
+   assert(cmd_arg_count <= ARRAY_SIZE(cmd_args));
+
+   uint32_t exec_params_size =
+      prim_restart ?
+      sizeof(struct dzn_indirect_triangle_fan_prim_restart_rewrite_index_exec_params) :
+      sizeof(struct dzn_indirect_triangle_fan_rewrite_index_exec_params);
+
    D3D12_COMMAND_SIGNATURE_DESC cmd_sig_desc = {
-      .ByteStride = sizeof(struct dzn_indirect_triangle_fan_rewrite_index_exec_params),
-      .NumArgumentDescs = ARRAY_SIZE(cmd_args),
+      .ByteStride = exec_params_size,
+      .NumArgumentDescs = cmd_arg_count,
       .pArgumentDescs = cmd_args,
    };
 
