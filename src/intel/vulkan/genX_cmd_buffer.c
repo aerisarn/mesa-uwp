@@ -1548,13 +1548,12 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
 static MUST_CHECK VkResult
 anv_cmd_buffer_init_attachments(struct anv_cmd_buffer *cmd_buffer,
-                                uint32_t color_att_count,
-                                uint32_t color_att_valid)
+                                uint32_t color_att_count)
 {
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
 
    /* Reserve one for the NULL state. */
-   unsigned num_states = 1 + util_bitcount(color_att_valid);
+   unsigned num_states = 1 + color_att_count;
    const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
    const uint32_t ss_stride = align_u32(isl_dev->ss.size, isl_dev->ss.align);
    gfx->att_states =
@@ -1574,17 +1573,11 @@ anv_cmd_buffer_init_attachments(struct anv_cmd_buffer *cmd_buffer,
 
    gfx->color_att_count = color_att_count;
    for (uint32_t i = 0; i < color_att_count; i++) {
-      if (color_att_valid & BITFIELD_BIT(i)) {
-         gfx->color_att[i] = (struct anv_attachment) {
-            .surface_state.state = next_state,
-         };
-         next_state.offset += ss_stride;
-         next_state.map += ss_stride;
-      } else {
-         gfx->color_att[i] = (struct anv_attachment) {
-            .surface_state.state = gfx->null_surface_state,
-         };
-      }
+      gfx->color_att[i] = (struct anv_attachment) {
+         .surface_state.state = next_state,
+      };
+      next_state.offset += ss_stride;
+      next_state.map += ss_stride;
    }
    gfx->depth_att = (struct anv_attachment) { };
    gfx->stencil_att = (struct anv_attachment) { };
@@ -1707,16 +1700,8 @@ genX(BeginCommandBuffer)(
          gfx->samples = inheritance_info->rasterizationSamples;
          gfx->view_mask = inheritance_info->viewMask;
 
-         uint32_t color_att_valid = 0;
          uint32_t color_att_count = inheritance_info->colorAttachmentCount;
-         for (uint32_t i = 0; i < color_att_count; i++) {
-            VkFormat format = inheritance_info->pColorAttachmentFormats[i];
-            if (format != VK_FORMAT_UNDEFINED)
-               color_att_valid |= BITFIELD_BIT(i);
-         }
-         result = anv_cmd_buffer_init_attachments(cmd_buffer,
-                                                  color_att_count,
-                                                  color_att_valid);
+         result = anv_cmd_buffer_init_attachments(cmd_buffer, color_att_count);
          if (result != VK_SUCCESS)
             return result;
 
@@ -6476,23 +6461,15 @@ void genX(CmdBeginRendering)(
       .d = layers,
    };
 
-   /* Reserve one for the NULL state. */
-   uint32_t color_att_valid = 0;
-   uint32_t color_att_count = pRenderingInfo->colorAttachmentCount;
-   for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
-      if (pRenderingInfo->pColorAttachments[i].imageView != VK_NULL_HANDLE)
-         color_att_valid |= BITFIELD_BIT(i);
-   }
-   result = anv_cmd_buffer_init_attachments(cmd_buffer,
-                                            color_att_count,
-                                            color_att_valid);
+   const uint32_t color_att_count = pRenderingInfo->colorAttachmentCount;
+   result = anv_cmd_buffer_init_attachments(cmd_buffer, color_att_count);
    if (result != VK_SUCCESS)
       return;
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
    for (uint32_t i = 0; i < gfx->color_att_count; i++) {
-      if (!(color_att_valid & BITFIELD_BIT(i)))
+      if (pRenderingInfo->pColorAttachments[i].imageView == VK_NULL_HANDLE)
          continue;
 
       const VkRenderingAttachmentInfo *att =
@@ -6898,6 +6875,15 @@ void genX(CmdBeginRendering)(
    isl_null_fill_state(&cmd_buffer->device->isl_dev,
                        gfx->null_surface_state.map,
                        .size = fb_size);
+
+   for (uint32_t i = 0; i < gfx->color_att_count; i++) {
+      if (pRenderingInfo->pColorAttachments[i].imageView != VK_NULL_HANDLE)
+         continue;
+
+      isl_null_fill_state(&cmd_buffer->device->isl_dev,
+                          gfx->color_att[i].surface_state.state.map,
+                          .size = fb_size);
+   }
 
    /****** We can now start emitting code to begin the render pass ******/
 
