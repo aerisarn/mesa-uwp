@@ -2164,12 +2164,22 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                         .robust_modes = 0,
                 };
                 bool vectorize_progress = false;
-                NIR_PASS(vectorize_progress, s, nir_opt_load_store_vectorize,
-                         &vectorize_opts);
-                if (vectorize_progress) {
-                        NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL, NULL);
-                        NIR_PASS(progress, s, nir_lower_pack);
-                        progress = true;
+
+
+                /* This requires that we have called
+                 * nir_lower_vars_to_explicit_types / nir_lower_explicit_io
+                 * first, which we may not have done yet if we call here too
+                 * early durign NIR pre-processing. We can detect this because
+                 * in that case we won't have a compile object
+                 */
+                if (c) {
+                        NIR_PASS(vectorize_progress, s, nir_opt_load_store_vectorize,
+                                 &vectorize_opts);
+                        if (vectorize_progress) {
+                                NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL, NULL);
+                                NIR_PASS(progress, s, nir_lower_pack);
+                                progress = true;
+                        }
                 }
 
                 if (lower_flrp != 0) {
