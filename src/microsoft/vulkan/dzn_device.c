@@ -1596,6 +1596,11 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .shaderRoundingModeRTZFloat16 = false,
       .shaderRoundingModeRTZFloat32 = false,
       .shaderRoundingModeRTZFloat64 = false,
+      .shaderUniformBufferArrayNonUniformIndexingNative = true,
+      .shaderSampledImageArrayNonUniformIndexingNative = true,
+      .shaderStorageBufferArrayNonUniformIndexingNative = true,
+      .shaderStorageImageArrayNonUniformIndexingNative = true,
+      .shaderInputAttachmentArrayNonUniformIndexingNative = true,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "Dozen");
