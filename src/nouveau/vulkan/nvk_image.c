@@ -60,6 +60,9 @@ nvk_image_tile_from_create_info(
    if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D)
       tile.y = MIN2(tile.y, 2);
 
+   if (pCreateInfo->flags & VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT)
+      return tile;
+
         if (depth >= 32) tile.z = 5;
    else if (depth >= 16) tile.z = 4;
    else if (depth >=  8) tile.z = 3;
