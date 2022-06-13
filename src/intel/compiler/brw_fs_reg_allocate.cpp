@@ -614,8 +614,7 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
    if (inst->eot) {
       const int vgrf = inst->opcode == SHADER_OPCODE_SEND ?
                        inst->src[2].nr : inst->src[0].nr;
-      int size = fs->alloc.sizes[vgrf];
-      int reg = BRW_MAX_GRF - size;
+      int reg = BRW_MAX_GRF - fs->alloc.sizes[vgrf];
 
       if (first_mrf_hack_node >= 0) {
          /* If something happened to spill, we want to push the EOT send
@@ -631,6 +630,12 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
       }
 
       ra_set_node_reg(g, first_vgrf_node + vgrf, reg);
+
+      if (inst->ex_mlen > 0) {
+         const int vgrf = inst->src[3].nr;
+         reg -= fs->alloc.sizes[vgrf];
+         ra_set_node_reg(g, first_vgrf_node + vgrf, reg);
+      }
    }
 }
 
