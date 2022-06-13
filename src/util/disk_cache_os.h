@@ -75,6 +75,9 @@ struct disk_cache {
 
    disk_cache_put_cb blob_put_cb;
    disk_cache_get_cb blob_get_cb;
+
+   /* Don't compress cached data. This is for testing purposes only. */
+   bool compression_disabled;
 };
 
 struct disk_cache_put_job {

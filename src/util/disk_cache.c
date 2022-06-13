@@ -111,6 +111,13 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    if (cache->path == NULL)
       goto path_fail;
 
+   /* Cache tests that want to have a disabled cache compression are using
+    * the "make_check_uncompressed" for the driver_id name.  Hence here we
+    * disable disk cache compression when mesa's build tests require it.
+    */
+   if (strcmp(driver_id, "make_check_uncompressed") == 0)
+      cache->compression_disabled = true;
+
    if (env_var_as_boolean("MESA_DISK_CACHE_SINGLE_FILE", false)) {
       if (!disk_cache_load_cache_index(local, cache))
          goto path_fail;

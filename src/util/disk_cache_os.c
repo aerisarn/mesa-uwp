@@ -550,9 +550,19 @@ parse_and_validate_cache_item(struct disk_cache *cache, void *cache_item,
 
    /* Uncompress the cache data */
    uncompressed_data = malloc(cf_data->uncompressed_size);
-   if (!util_compress_inflate(data, cache_data_size, uncompressed_data,
-                              cf_data->uncompressed_size))
+   if (!uncompressed_data)
       goto fail;
+
+   if (cache->compression_disabled) {
+      if (cf_data->uncompressed_size != cache_data_size)
+         goto fail;
+
+      memcpy(uncompressed_data, data, cache_data_size);
+   } else {
+      if (!util_compress_inflate(data, cache_data_size, uncompressed_data,
+                                 cf_data->uncompressed_size))
+         goto fail;
+   }
 
    if (size)
       *size = cf_data->uncompressed_size;
@@ -638,15 +648,21 @@ create_cache_item_header_and_blob(struct disk_cache_put_job *dc_job,
 
    /* Compress the cache item data */
    size_t max_buf = util_compress_max_compressed_len(dc_job->size);
+   size_t compressed_size;
    void *compressed_data = malloc(max_buf);
    if (compressed_data == NULL)
       return false;
 
-   size_t compressed_size =
-      util_compress_deflate(dc_job->data, dc_job->size,
-                            compressed_data, max_buf);
-   if (compressed_size == 0)
-      goto fail;
+   if (dc_job->cache->compression_disabled) {
+      compressed_size = dc_job->size;
+      compressed_data = dc_job->data;
+   } else {
+      compressed_size =
+         util_compress_deflate(dc_job->data, dc_job->size,
+                              compressed_data, max_buf);
+      if (compressed_size == 0)
+         goto fail;
+   }
 
    /* Copy the driver_keys_blob, this can be used find information about the
     * mesa version that produced the entry or deal with hash collisions,
@@ -688,11 +704,15 @@ create_cache_item_header_and_blob(struct disk_cache_put_job *dc_job,
    if (!blob_write_bytes(cache_blob, compressed_data, compressed_size))
       goto fail;
 
-   free(compressed_data);
+   if (!dc_job->cache->compression_disabled)
+      free(compressed_data);
+
    return true;
 
  fail:
-   free(compressed_data);
+   if (!dc_job->cache->compression_disabled)
+      free(compressed_data);
+
    return false;
 }
 
