@@ -42,6 +42,8 @@
 
 #include "dxil_validator.h"
 
+#include "git_sha1.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1575,9 +1577,12 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    STATIC_ASSERT(sizeof(pdevice->desc.adapter_luid) == sizeof(core_1_1.deviceLUID));
 
-   const VkPhysicalDeviceVulkan12Properties core_1_2 = {
+   VkPhysicalDeviceVulkan12Properties core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
    };
+
+   snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "Dozen");
+   snprintf(core_1_2.driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
    const VkPhysicalDeviceVulkan13Properties core_1_3 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
