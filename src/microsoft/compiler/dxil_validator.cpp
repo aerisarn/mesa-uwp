@@ -24,7 +24,9 @@ struct dxil_validator {
    IDxcCompiler *dxc_compiler;
 };
 
-extern "C" extern IMAGE_DOS_HEADER __ImageBase;
+extern "C" {
+extern IMAGE_DOS_HEADER __ImageBase;
+}
 
 static HMODULE
 load_dxil_mod()
