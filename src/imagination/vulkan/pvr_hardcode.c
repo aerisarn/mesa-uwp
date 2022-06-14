@@ -121,6 +121,9 @@ static const struct pvr_hard_coding_data {
 
          .build_info = {
             .ubo_data = { 0 },
+            .compile_time_consts_data = {
+               .static_consts = { 0 },
+            },
 
             .local_invocation_regs = { 0, 1 },
             .work_group_regs = { 0, 1, 2 },

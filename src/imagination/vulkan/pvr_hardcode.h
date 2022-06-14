@@ -53,6 +53,7 @@ struct pvr_explicit_constant_usage {
 
 struct pvr_hard_code_compute_build_info {
    struct rogue_ubo_data ubo_data;
+   struct rogue_compile_time_consts_data compile_time_consts_data;
 
    uint32_t local_invocation_regs[2];
    uint32_t work_group_regs[3];

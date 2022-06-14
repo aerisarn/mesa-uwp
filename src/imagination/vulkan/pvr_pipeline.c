@@ -1085,6 +1085,7 @@ static VkResult pvr_compute_pipeline_compile(
          return result;
 
       ubo_data = build_info.ubo_data;
+      compile_time_consts_data = build_info.compile_time_consts_data;
 
       /* We make sure that the compiler's unused reg value is compatible with
        * the pds api.
