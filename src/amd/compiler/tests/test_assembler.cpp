@@ -279,8 +279,8 @@ BEGIN_TEST(assembler.smem_offset)
       //~gfx10! s_load_dword s7, s[6:7], 0x42 ; f40001c3 fa000042
       bld.smem(aco_opcode::s_load_dword, dst, sbase, Operand::c32(0x42));
       if (i >= GFX9) {
-         //~gfx9! s_load_dword s7, s[6:7], 0x42, s5 ; c00241c3 0a000042
-         //~gfx10! s_load_dword s7, s[6:7], s5, 0x42 ; f40001c3 0a000042
+         //~gfx9! s_load_dword s7, s[6:7], s5 offset:0x42 ; c00241c3 0a000042
+         //~gfx10! s_load_dword s7, s[6:7], s5 offset:0x42 ; f40001c3 0a000042
          bld.smem(aco_opcode::s_load_dword, dst, sbase, Operand::c32(0x42), offset);
       }
 
