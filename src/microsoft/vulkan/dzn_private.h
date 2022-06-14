@@ -760,6 +760,8 @@ ID3D12CommandSignature *
 dzn_graphics_pipeline_get_indirect_cmd_sig(struct dzn_graphics_pipeline *pipeline,
                                            enum dzn_indirect_draw_cmd_sig_type cmd_sig_type);
 
+VkFormat dzn_graphics_pipeline_patch_vi_format(VkFormat format);
+
 struct dzn_compute_pipeline {
    struct dzn_pipeline base;
    struct {
