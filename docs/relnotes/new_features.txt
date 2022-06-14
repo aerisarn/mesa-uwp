@@ -7,4 +7,4 @@ vertexAttributeInstanceRateZeroDivisor support for lavapipe
 panfrost Valhall support (conformant OpenGL ES 3.1 on Mali-G57)
 VK_EXT_primitives_generated_query on RADV
 VK_EXT_non_seamless_cube_map on RADV, ANV
-VK_EXT_border_color_swizzle on lavapipe, ANV, turnip
+VK_EXT_border_color_swizzle on lavapipe, ANV, turnip, RADV
