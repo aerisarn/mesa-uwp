@@ -314,11 +314,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
 void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *tex,
                                    bool *ctx_flushed)
 {
-   struct si_screen *sscreen = sctx->screen;
    struct pipe_context *ctx = &sctx->b;
-
-   if (ctx == sscreen->aux_context)
-      simple_mtx_lock(&sscreen->aux_context_lock);
 
    unsigned n = sctx->num_decompress_calls;
    ctx->flush_resource(ctx, &tex->buffer.b.b);
@@ -332,9 +328,6 @@ void si_eliminate_fast_color_clear(struct si_context *sctx, struct si_texture *t
    }
    if (ctx_flushed)
       *ctx_flushed = flushed;
-
-   if (ctx == sscreen->aux_context)
-      simple_mtx_unlock(&sscreen->aux_context_lock);
 }
 
 void si_texture_discard_cmask(struct si_screen *sscreen, struct si_texture *tex)
@@ -414,15 +407,9 @@ bool si_texture_disable_dcc(struct si_context *sctx, struct si_texture *tex)
    if (!si_can_disable_dcc(tex))
       return false;
 
-   if (&sctx->b == sscreen->aux_context)
-      simple_mtx_lock(&sscreen->aux_context_lock);
-
    /* Decompress DCC. */
    si_decompress_dcc(sctx, tex);
    sctx->b.flush(&sctx->b, NULL, 0);
-
-   if (&sctx->b == sscreen->aux_context)
-      simple_mtx_unlock(&sscreen->aux_context_lock);
 
    return si_texture_discard_dcc(sscreen, tex);
 }
@@ -671,7 +658,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
    bool flush = false;
 
    ctx = threaded_context_unwrap_sync(ctx);
-   sctx = (struct si_context *)(ctx ? ctx : sscreen->aux_context);
+   sctx = ctx ? (struct si_context *)ctx : si_get_aux_context(sscreen);
 
    if (resource->target != PIPE_BUFFER) {
       unsigned plane = whandle->plane;
@@ -688,12 +675,17 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       /* This is not supported now, but it might be required for OpenCL
        * interop in the future.
        */
-      if (resource->nr_samples > 1 || tex->is_depth)
+      if (resource->nr_samples > 1 || tex->is_depth) {
+         if (!ctx)
+            si_put_aux_context_flush(sscreen);
          return false;
+      }
 
       whandle->size = tex->buffer.bo_size;
 
       if (plane) {
+         if (!ctx)
+            si_put_aux_context_flush(sscreen);
          whandle->offset = ac_surface_get_plane_offset(sscreen->info.gfx_level,
                                                        &tex->surface, plane, 0);
          whandle->stride = ac_surface_get_plane_stride(sscreen->info.gfx_level,
@@ -737,8 +729,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
          bool flushed;
          si_eliminate_fast_color_clear(sctx, tex, &flushed);
          /* eliminate_fast_color_clear sometimes flushes the context */
-         if (flushed)
-            flush = false;
+         flush = !flushed;
 
          /* Disable CMASK if flush_resource isn't going
           * to be called.
@@ -774,8 +765,11 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
          templ.bind |= PIPE_BIND_SHARED;
 
          struct pipe_resource *newb = screen->resource_create(screen, &templ);
-         if (!newb)
+         if (!newb) {
+            if (!ctx)
+               si_put_aux_context_flush(sscreen);
             return false;
+         }
 
          /* Copy the old buffer contents to the new one. */
          struct pipe_box box;
@@ -808,8 +802,10 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       res->external_usage = usage;
    }
 
-   if (flush)
+   if (flush && ctx)
       sctx->b.flush(&sctx->b, NULL, 0);
+   if (!ctx)
+      si_put_aux_context_flush(sscreen);
 
    whandle->stride = stride;
    whandle->offset = offset + slice_size * whandle->layer;
@@ -1133,11 +1129,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
    /* Execute the clears. */
    if (num_clears) {
-      simple_mtx_lock(&sscreen->aux_context_lock);
-      si_execute_clears((struct si_context *)sscreen->aux_context,
-                        clears, num_clears, 0);
-      sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
-      simple_mtx_unlock(&sscreen->aux_context_lock);
+      si_execute_clears(si_get_aux_context(sscreen), clears, num_clears, 0);
+      si_put_aux_context_flush(sscreen);
    }
 
    /* Initialize the CMASK base register value. */

@@ -606,10 +606,9 @@ struct si_screen {
 
    unsigned max_texel_buffer_elements;
 
-   /* Auxiliary context. Mainly used to initialize resources.
-    * It must be locked prior to using and flushed before unlocking. */
-   struct pipe_context *aux_context;
-   simple_mtx_t aux_context_lock;
+   /* Auxiliary context. Mainly used to initialize resources. */
+   void *aux_context;
+   mtx_t aux_context_lock;
 
    /* Async compute context for DRI_PRIME copies. */
    struct pipe_context *async_compute_context;
