@@ -55,6 +55,42 @@ nouveau_ws_push_destroy(struct nouveau_ws_push *push)
    nouveau_ws_bo_destroy(push->bo);
 }
 
+static void
+nouveau_ws_push_valid(struct nouveau_ws_push *push) {
+   uint32_t *cur = push->orig_map;
+
+   /* submitting empty push buffers is probably a bug */
+   assert(push->map != push->orig_map);
+
+   /* make sure we don't overrun the bo */
+   assert(push->map <= push->end);
+
+   /* parse all the headers to see if we get to push->map */
+   while (cur < push->map) {
+      uint32_t hdr = *cur;
+      uint32_t mthd = hdr >> 29;
+
+      switch (mthd) {
+      /* immd */
+      case 4:
+         break;
+      case 1:
+      case 3:
+      case 5: {
+         uint32_t count = (hdr >> 16) & 0x1fff;
+         assert(count);
+         cur += count;
+         break;
+      }
+      default:
+         assert(!"unknown method found");
+      }
+
+      cur++;
+      assert(cur <= push->map);
+   }
+}
+
 int
 nouveau_ws_push_submit(
    struct nouveau_ws_push *push,
@@ -67,6 +103,12 @@ nouveau_ws_push_submit(
    struct drm_nouveau_gem_pushbuf_bo req_bo[NOUVEAU_GEM_MAX_BUFFERS] = {};
    struct drm_nouveau_gem_pushbuf req = {};
    struct drm_nouveau_gem_pushbuf_push req_push = {};
+
+   if (push->map == push->orig_map)
+      return 0;
+
+   /* make sure we don't submit nonsense */
+   nouveau_ws_push_valid(push);
 
    int i = 0;
    util_dynarray_foreach(&push->bos, struct nouveau_ws_push_bo, push_bo) {

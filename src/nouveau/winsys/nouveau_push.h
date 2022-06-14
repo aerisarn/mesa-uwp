@@ -47,8 +47,26 @@ NVC0_FIFO_PKHDR_SQ(int subc, int mthd, unsigned size)
 }
 
 static inline void
+__push_verify(struct nouveau_ws_push *push)
+{
+   if (!push->last_size)
+      return;
+
+   /* make sure we don't add a new method if the last one wasn't used */
+   uint32_t last_hdr = *push->last_size;
+
+   /* check for immd */
+   if (last_hdr >> 29 == 4)
+      return;
+
+   UNUSED uint32_t last_count = (last_hdr & 0x1fff0000);
+   assert(last_count);
+}
+
+static inline void
 __push_mthd(struct nouveau_ws_push *push, int subc, uint32_t mthd)
 {
+   __push_verify(push);
    push->last_size = push->map;
    *push->map = NVC0_FIFO_PKHDR_SQ(subc, mthd, 0);
    push->map++;
@@ -66,6 +84,7 @@ NVC0_FIFO_PKHDR_IL(int subc, int mthd, uint16_t data)
 static inline void
 __push_immd(struct nouveau_ws_push *push, int subc, uint32_t mthd, uint32_t val)
 {
+   __push_verify(push);
    push->last_size = push->map;
    *push->map = NVC0_FIFO_PKHDR_IL(subc, mthd, val);
    push->map++;
@@ -86,6 +105,7 @@ NVC0_FIFO_PKHDR_1I(int subc, int mthd, unsigned size)
 static inline void
 __push_1inc(struct nouveau_ws_push *push, int subc, uint32_t mthd)
 {
+   __push_verify(push);
    push->last_size = push->map;
    *push->map = NVC0_FIFO_PKHDR_1I(subc, mthd, 0);
    push->map++;
@@ -102,6 +122,7 @@ NVC0_FIFO_PKHDR_0I(int subc, int mthd, unsigned size)
 static inline void
 __push_0inc(struct nouveau_ws_push *push, int subc, uint32_t mthd)
 {
+   __push_verify(push);
    push->last_size = push->map;
    *push->map = NVC0_FIFO_PKHDR_0I(subc, mthd, 0);
    push->map++;
@@ -173,6 +194,7 @@ nvk_push_val(struct nouveau_ws_push *push, uint32_t idx, uint32_t val)
    assert(last_hdr_val);
    assert(!is_immd);
    assert(last_method == idx);
+   assert(push->map < push->end);
 
    P_INLINE_DATA(push, val);
 }
