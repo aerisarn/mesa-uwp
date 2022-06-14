@@ -1024,7 +1024,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       assert(screen->info.props.limits.maxUniformBufferRange >= 16384);
       /* but Gallium can't handle values that are too big */
       return MIN3(get_smallest_buffer_heap(screen),
-                  screen->info.props.limits.maxUniformBufferRange, 1 << 31);
+                  screen->info.props.limits.maxUniformBufferRange, BITFIELD_BIT(31));
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
       return  MIN2(screen->info.props.limits.maxPerStageDescriptorUniformBuffers,
