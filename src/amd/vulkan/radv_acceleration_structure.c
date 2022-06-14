@@ -33,6 +33,10 @@ static const uint32_t morton_spv[] = {
 #include "bvh/morton.comp.spv.h"
 };
 
+static const uint32_t internal_spv[] = {
+#include "bvh/internal.comp.spv.h"
+};
+
 /* Min and max bounds of the bvh used to compute morton codes */
 #define SCRATCH_TOTAL_BOUNDS_SIZE (6 * sizeof(float))
 
@@ -392,13 +396,12 @@ struct morton_constants {
    uint64_t ids_addr;
 };
 
-struct build_internal_constants {
-   uint64_t node_dst_addr;
-   uint64_t scratch_addr;
+struct internal_constants {
+   uint64_t bvh_addr;
+   uint64_t src_ids_addr;
+   uint64_t dst_ids_addr;
    uint32_t dst_offset;
-   uint32_t dst_scratch_offset;
-   uint32_t src_scratch_offset;
-   uint32_t fill_header;
+   uint32_t fill_count;
 };
 
 /* This inverts a 3x3 matrix using cofactors, as in e.g.
@@ -722,157 +725,6 @@ build_leaf_shader(struct radv_device *dev)
    atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 20), true,
                   nir_channel(&b, max_reduced, 2));
 
-   return b.shader;
-}
-
-static void
-determine_bounds(nir_builder *b, nir_ssa_def *node_addr, nir_ssa_def *node_id,
-                 nir_variable *bounds_vars[2])
-{
-   nir_ssa_def *node_type = nir_iand_imm(b, node_id, 7);
-   node_addr =
-      nir_iadd(b, node_addr, nir_u2u64(b, nir_ishl_imm(b, nir_iand_imm(b, node_id, ~7u), 3)));
-
-   nir_push_if(b, nir_ieq_imm(b, node_type, radv_bvh_node_triangle));
-   {
-      nir_ssa_def *positions[3];
-      for (unsigned i = 0; i < 3; ++i)
-         positions[i] = nir_build_load_global(b, 3, 32, nir_iadd_imm(b, node_addr, i * 12));
-      nir_ssa_def *bounds[] = {positions[0], positions[0]};
-      for (unsigned i = 1; i < 3; ++i) {
-         bounds[0] = nir_fmin(b, bounds[0], positions[i]);
-         bounds[1] = nir_fmax(b, bounds[1], positions[i]);
-      }
-      nir_store_var(b, bounds_vars[0], bounds[0], 7);
-      nir_store_var(b, bounds_vars[1], bounds[1], 7);
-   }
-   nir_push_else(b, NULL);
-   nir_push_if(b, nir_ieq_imm(b, node_type, radv_bvh_node_internal));
-   {
-      nir_ssa_def *input_bounds[4][2];
-      for (unsigned i = 0; i < 4; ++i)
-         for (unsigned j = 0; j < 2; ++j)
-            input_bounds[i][j] =
-               nir_build_load_global(b, 3, 32, nir_iadd_imm(b, node_addr, 16 + i * 24 + j * 12));
-      nir_ssa_def *bounds[] = {input_bounds[0][0], input_bounds[0][1]};
-      for (unsigned i = 1; i < 4; ++i) {
-         bounds[0] = nir_fmin(b, bounds[0], input_bounds[i][0]);
-         bounds[1] = nir_fmax(b, bounds[1], input_bounds[i][1]);
-      }
-
-      nir_store_var(b, bounds_vars[0], bounds[0], 7);
-      nir_store_var(b, bounds_vars[1], bounds[1], 7);
-   }
-   nir_push_else(b, NULL);
-   nir_push_if(b, nir_ieq_imm(b, node_type, radv_bvh_node_instance));
-   { /* Instances */
-      nir_ssa_def *bounds[2];
-      for (unsigned i = 0; i < 2; ++i)
-         bounds[i] = nir_build_load_global(b, 3, 32, nir_iadd_imm(b, node_addr, 64 + i * 12));
-      nir_store_var(b, bounds_vars[0], bounds[0], 7);
-      nir_store_var(b, bounds_vars[1], bounds[1], 7);
-   }
-   nir_push_else(b, NULL);
-   { /* AABBs */
-      nir_ssa_def *bounds[2];
-      for (unsigned i = 0; i < 2; ++i)
-         bounds[i] = nir_build_load_global(b, 3, 32, nir_iadd_imm(b, node_addr, i * 12));
-      nir_store_var(b, bounds_vars[0], bounds[0], 7);
-      nir_store_var(b, bounds_vars[1], bounds[1], 7);
-   }
-   nir_pop_if(b, NULL);
-   nir_pop_if(b, NULL);
-   nir_pop_if(b, NULL);
-}
-
-static nir_shader *
-build_internal_shader(struct radv_device *dev)
-{
-   const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
-   nir_builder b = create_accel_build_shader(dev, "accel_build_internal_shader");
-
-   /*
-    * push constants:
-    *   i32 x 2: node dst address
-    *   i32 x 2: scratch address
-    *   i32: dst offset
-    *   i32: dst scratch offset
-    *   i32: src scratch offset
-    *   i32: src_node_count | (fill_header << 31)
-    */
-   nir_ssa_def *pconst0 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
-   nir_ssa_def *pconst1 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 16, .range = 16);
-
-   nir_ssa_def *node_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0b0011));
-   nir_ssa_def *scratch_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0b1100));
-   nir_ssa_def *node_dst_offset = nir_channel(&b, pconst1, 0);
-   nir_ssa_def *dst_scratch_offset = nir_channel(&b, pconst1, 1);
-   nir_ssa_def *src_scratch_offset = nir_channel(&b, pconst1, 2);
-   nir_ssa_def *src_node_count = nir_iand_imm(&b, nir_channel(&b, pconst1, 3), 0x7FFFFFFFU);
-   nir_ssa_def *fill_header =
-      nir_ine_imm(&b, nir_iand_imm(&b, nir_channel(&b, pconst1, 3), 0x80000000U), 0);
-
-   nir_ssa_def *global_id =
-      nir_iadd(&b,
-               nir_imul_imm(&b, nir_channels(&b, nir_load_workgroup_id(&b, 32), 1),
-                            b.shader->info.workgroup_size[0]),
-               nir_channels(&b, nir_load_local_invocation_id(&b), 1));
-   nir_ssa_def *src_idx = nir_imul_imm(&b, global_id, 4);
-   nir_ssa_def *src_count = nir_umin(&b, nir_imm_int(&b, 4), nir_isub(&b, src_node_count, src_idx));
-
-   nir_ssa_def *node_offset = nir_iadd(&b, node_dst_offset, nir_ishl_imm(&b, global_id, 7));
-   nir_ssa_def *node_dst_addr = nir_iadd(&b, node_addr, nir_u2u64(&b, node_offset));
-
-   nir_ssa_def *src_base_addr = nir_iadd(
-      &b, scratch_addr,
-      nir_u2u64(&b, nir_iadd(&b, src_scratch_offset, nir_imul_imm(&b, src_idx, KEY_ID_PAIR_SIZE))));
-
-   nir_ssa_def *src_nodes[4];
-   for (uint32_t i = 0; i < 4; i++) {
-      src_nodes[i] =
-         nir_build_load_global(&b, 1, 32, nir_iadd_imm(&b, src_base_addr, i * KEY_ID_PAIR_SIZE));
-      nir_build_store_global(&b, src_nodes[i], nir_iadd_imm(&b, node_dst_addr, i * 4));
-   }
-
-   nir_ssa_def *total_bounds[2] = {
-      nir_channels(&b, nir_imm_vec4(&b, NAN, NAN, NAN, NAN), 7),
-      nir_channels(&b, nir_imm_vec4(&b, NAN, NAN, NAN, NAN), 7),
-   };
-
-   for (unsigned i = 0; i < 4; ++i) {
-      nir_variable *bounds[2] = {
-         nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "min_bound"),
-         nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "max_bound"),
-      };
-      nir_store_var(&b, bounds[0], nir_channels(&b, nir_imm_vec4(&b, NAN, NAN, NAN, NAN), 7), 7);
-      nir_store_var(&b, bounds[1], nir_channels(&b, nir_imm_vec4(&b, NAN, NAN, NAN, NAN), 7), 7);
-
-      nir_push_if(&b, nir_ilt(&b, nir_imm_int(&b, i), src_count));
-      determine_bounds(&b, node_addr, src_nodes[i], bounds);
-      nir_pop_if(&b, NULL);
-      nir_build_store_global(&b, nir_load_var(&b, bounds[0]),
-                             nir_iadd_imm(&b, node_dst_addr, 16 + 24 * i));
-      nir_build_store_global(&b, nir_load_var(&b, bounds[1]),
-                             nir_iadd_imm(&b, node_dst_addr, 28 + 24 * i));
-      total_bounds[0] = nir_fmin(&b, total_bounds[0], nir_load_var(&b, bounds[0]));
-      total_bounds[1] = nir_fmax(&b, total_bounds[1], nir_load_var(&b, bounds[1]));
-   }
-
-   nir_ssa_def *node_id =
-      nir_iadd_imm(&b, nir_ushr_imm(&b, node_offset, 3), radv_bvh_node_internal);
-   nir_ssa_def *dst_scratch_addr = nir_iadd(
-      &b, scratch_addr,
-      nir_u2u64(&b,
-                nir_iadd(&b, dst_scratch_offset, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE))));
-   nir_build_store_global(&b, node_id, dst_scratch_addr);
-
-   nir_push_if(&b, fill_header);
-   nir_build_store_global(&b, node_id, node_addr);
-   nir_build_store_global(&b, total_bounds[0], nir_iadd_imm(&b, node_addr, 8));
-   nir_build_store_global(&b, total_bounds[1], nir_iadd_imm(&b, node_addr, 20));
-   nir_pop_if(&b, NULL);
    return b.shader;
 }
 
@@ -1245,7 +1097,6 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
 {
    VkResult result;
    nir_shader *leaf_cs = build_leaf_shader(device);
-   nir_shader *internal_cs = build_internal_shader(device);
    nir_shader *copy_cs = build_copy_shader(device);
 
    result = create_build_pipeline(device, leaf_cs, sizeof(struct build_primitive_constants),
@@ -1254,9 +1105,10 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   result = create_build_pipeline(device, internal_cs, sizeof(struct build_internal_constants),
-                                  &device->meta_state.accel_struct_build.internal_pipeline,
-                                  &device->meta_state.accel_struct_build.internal_p_layout);
+   result = create_build_pipeline_spv(device, internal_spv, sizeof(internal_spv),
+                                      sizeof(struct internal_constants),
+                                      &device->meta_state.accel_struct_build.internal_pipeline,
+                                      &device->meta_state.accel_struct_build.internal_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1503,13 +1355,12 @@ radv_CmdBuildAccelerationStructuresKHR(
          if (final_iter)
             dst_node_offset = ALIGN(sizeof(struct radv_accel_struct_header), 64);
 
-         const struct build_internal_constants consts = {
-            .node_dst_addr = radv_accel_struct_get_va(accel_struct),
-            .scratch_addr = pInfos[i].scratchData.deviceAddress,
+         const struct internal_constants consts = {
+            .bvh_addr = radv_accel_struct_get_va(accel_struct),
+            .src_ids_addr = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
+            .dst_ids_addr = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
             .dst_offset = dst_node_offset,
-            .dst_scratch_offset = dst_scratch_offset,
-            .src_scratch_offset = src_scratch_offset,
-            .fill_header = bvh_states[i].node_count | (final_iter ? 0x80000000U : 0),
+            .fill_count = bvh_states[i].node_count | (final_iter ? 0x80000000U : 0),
          };
 
          radv_CmdPushConstants(commandBuffer,
