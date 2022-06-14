@@ -1168,6 +1168,9 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
             if (ret)
                goto out;
             break;
+         case VK_DYNAMIC_STATE_LINE_WIDTH:
+            /* Nothing to do since we just support lineWidth = 1. */
+            break;
          default: unreachable("Unsupported dynamic state");
          }
       }
