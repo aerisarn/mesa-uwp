@@ -61,9 +61,9 @@
  * XXX maybe move this into gallium util code.
  */
 boolean
-lp_sampler_wrap_mode_uses_border_color(unsigned mode,
-                                       unsigned min_img_filter,
-                                       unsigned mag_img_filter)
+lp_sampler_wrap_mode_uses_border_color(enum pipe_tex_wrap mode,
+                                       enum pipe_tex_filter min_img_filter,
+                                       enum pipe_tex_filter mag_img_filter)
 {
    switch (mode) {
    case PIPE_TEX_WRAP_REPEAT:
@@ -837,7 +837,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
                       const struct lp_derivatives *derivs,
                       LLVMValueRef lod_bias, /* optional */
                       LLVMValueRef explicit_lod, /* optional */
-                      unsigned mip_filter,
+                      enum pipe_tex_mipfilter mip_filter,
                       LLVMValueRef max_aniso,
                       LLVMValueRef *out_lod,
                       LLVMValueRef *out_lod_ipart,
