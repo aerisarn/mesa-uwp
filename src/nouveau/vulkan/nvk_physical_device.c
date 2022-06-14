@@ -5,11 +5,26 @@
 #include "nvk_format.h"
 #include "nvk_image.h"
 #include "nvk_instance.h"
+#include "nvk_shader.h"
 #include "nvk_wsi.h"
 
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/util/vk_enum_defines.h"
 #include "vulkan/wsi/wsi_common.h"
+
+#include "vulkan/util/vk_enum_defines.h"
+
+#include "cl90c0.h"
+#include "cl91c0.h"
+#include "cla0c0.h"
+#include "cla1c0.h"
+#include "clb0c0.h"
+#include "clb1c0.h"
+#include "clc0c0.h"
+#include "clc1c0.h"
+#include "clc3c0.h"
+#include "clc5c0.h"
+
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,

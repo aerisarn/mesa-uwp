@@ -3,6 +3,8 @@
 
 #include "nvk_private.h"
 
+#include "nouveau_push.h"
+
 #include "vulkan/runtime/vk_command_buffer.h"
 #include "vulkan/runtime/vk_command_pool.h"
 
@@ -21,6 +23,14 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
 
 /** Root descriptor table.  This gets pushed to the GPU directly */
 struct nvk_root_descriptor_table {
+   union {
+      struct {
+         uint32_t block_size[3];
+         uint32_t grid_size[3];
+         uint32_t _pad[2];
+      } cs;
+   };
+
    /* Client push constants */
    uint8_t push[128];
 
@@ -37,6 +47,7 @@ struct nvk_descriptor_state {
 };
 
 struct nvk_compute_state {
+   struct nvk_compute_pipeline *pipeline;
    struct nvk_descriptor_state descriptors;
 };
 
@@ -68,6 +79,9 @@ struct nvk_cmd_buffer {
 };
 
 VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
+void nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
+                                  const VkCommandBufferBeginInfo *pBeginInfo);
+
 
 VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
@@ -87,4 +101,5 @@ nvk_get_descriptors_state(struct nvk_cmd_buffer *cmd,
 bool
 nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd_buffer, unsigned size,
                             uint64_t *addr, void **ptr);
+
 #endif
