@@ -19,7 +19,7 @@ $caselist = "C:\deqp\mustpass\vk-master.txt"
 $baseline = ".\_install\warp-fails.txt"
 $flakes = ".\_install\warp-flakes.txt"
 $skips = ".\_install\warp-skips.txt"
-$includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.binding_model.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*", "-t", "dEQP-VK.pipeline.vertex_input.*")
+$includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.binding_model.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*", "-t", "dEQP-VK.pipeline.vertex_input.*", "-t", "dEQP-VK.dynamic_state.*")
 
 $env:DZN_DEBUG = "warp"
 $env:MESA_VK_IGNORE_CONFORMANCE_WARNING = "true"

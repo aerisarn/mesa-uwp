@@ -1,0 +1,5 @@
+# We don't support independent front/back stencil tests yet, and the check
+# is currently done at pipeline creation time, thus causing a crash any time
+# both the front/back stencil test are active (i.e. not always or never) and
+# any of the compare mask, reference value or write mask is dynamic.
+dEQP-VK.dynamic_state.ds_state.stencil_params*
