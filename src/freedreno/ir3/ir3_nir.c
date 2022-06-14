@@ -37,10 +37,17 @@ ir3_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
                              nir_intrinsic_instr *low,
                              nir_intrinsic_instr *high, void *data)
 {
+   unsigned byte_size = bit_size / 8;
+
+   if (low->intrinsic != nir_intrinsic_load_ubo) {
+      return bit_size <= 32 && align_mul >= byte_size &&
+         align_offset % byte_size == 0 &&
+         num_components <= 4;
+   }
+
    assert(bit_size >= 8);
    if (bit_size != 32)
       return false;
-   unsigned byte_size = bit_size / 8;
 
    int size = num_components * byte_size;
 
