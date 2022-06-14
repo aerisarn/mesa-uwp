@@ -121,8 +121,7 @@ supported:
 
   * `VK_KHR_maintenance2`_
 
-* Formats requiring ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT`` and
-  ``VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT``:
+* Formats requiring ``VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT``:
 
       * ``VK_FORMAT_R32G32B32_SFLOAT``
       * ``VK_FORMAT_R32G32B32_SINT``
