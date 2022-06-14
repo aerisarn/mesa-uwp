@@ -1847,46 +1847,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
 done:
 
-   if (pipeline->shaders[MESA_SHADER_FRAGMENT] != NULL) {
-      struct anv_shader_bin *fs = pipeline->shaders[MESA_SHADER_FRAGMENT];
-      const struct brw_wm_prog_data *wm_prog_data =
-         brw_wm_prog_data_const(fs->prog_data);
-
-      if (wm_prog_data->color_outputs_written == 0 &&
-          !wm_prog_data->has_side_effects &&
-          !wm_prog_data->uses_omask &&
-          !wm_prog_data->uses_kill &&
-          wm_prog_data->computed_depth_mode == BRW_PSCDEPTH_OFF &&
-          !wm_prog_data->computed_stencil &&
-          fs->xfb_info == NULL) {
-         /* This can happen if we decided to implicitly disable the fragment
-          * shader.  See anv_pipeline_compile_fs().
-          */
-         anv_shader_bin_unref(pipeline->base.device, fs);
-         pipeline->shaders[MESA_SHADER_FRAGMENT] = NULL;
-         pipeline->active_stages &= ~VK_SHADER_STAGE_FRAGMENT_BIT;
-
-         /* The per-SIMD size fragment shaders should be last in the
-          * executables array.  Remove all of them.
-          */
-         ASSERTED unsigned removed = 0;
-
-         util_dynarray_foreach_reverse(&pipeline->base.executables,
-                                       struct anv_pipeline_executable,
-                                       tail) {
-            /* There must be at least one fragment shader. */
-            assert(removed > 0 || tail->stage == MESA_SHADER_FRAGMENT);
-
-            if (tail->stage != MESA_SHADER_FRAGMENT)
-               break;
-
-            (void) util_dynarray_pop(&pipeline->base.executables,
-                                     struct anv_pipeline_executable);
-            removed++;
-         }
-      }
-   }
-
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
    const VkPipelineCreationFeedbackCreateInfo *create_feedback =
