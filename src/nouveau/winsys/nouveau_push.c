@@ -1,5 +1,6 @@
 #include "nouveau_push.h"
 
+#include <errno.h>
 #include <nouveau_drm.h>
 #include <nouveau/nouveau.h>
 #include <sys/mman.h>
@@ -150,7 +151,12 @@ nouveau_ws_push_submit(
    req.nr_push = 1;
    req.push = (uintptr_t)&req_push;
 
-   return drmCommandWriteRead(pdev->fd, DRM_NOUVEAU_GEM_PUSHBUF, &req, sizeof(req));
+   int ret = drmCommandWriteRead(pdev->fd, DRM_NOUVEAU_GEM_PUSHBUF, &req, sizeof(req));
+
+   /* TODO: later we want to report that the channel is gone, but for now just assert */
+   assert(ret != -ENODEV);
+
+   return ret;
 }
 
 void
