@@ -361,11 +361,11 @@ static inline uint64_t xgetbv(void)
 #if defined(PIPE_ARCH_X86)
 PIPE_ALIGN_STACK static inline boolean sse2_has_daz(void)
 {
-   struct {
+   alignas(16) struct {
       uint32_t pad1[7];
       uint32_t mxcsr_mask;
       uint32_t pad2[128-8];
-   } alignas(16) fxarea;
+   } fxarea;
 
    fxarea.mxcsr_mask = 0;
 #if defined(PIPE_CC_GCC)
