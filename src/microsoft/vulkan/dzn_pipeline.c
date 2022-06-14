@@ -422,6 +422,17 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
    /* Last step: translate NIR shaders into DXIL modules */
    u_foreach_bit(stage, active_stage_mask) {
+      if (stage == MESA_SHADER_FRAGMENT) {
+         gl_shader_stage prev_stage =
+            util_last_bit(active_stage_mask & BITFIELD_MASK(MESA_SHADER_FRAGMENT)) - 1;
+         /* Disable rasterization if the last geometry stage doesn't
+	  * write the position.
+	  */
+	 if (prev_stage == MESA_SHADER_NONE ||
+             !(stages[prev_stage].nir->info.outputs_written & VARYING_BIT_POS))
+            continue;
+      }
+
       D3D12_SHADER_BYTECODE *slot =
          dzn_pipeline_get_gfx_shader_slot(out, stage);
 
