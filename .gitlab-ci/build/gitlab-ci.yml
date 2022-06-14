@@ -413,7 +413,7 @@ windows-vs2019:
     - .windows-build-rules
   stage: build-misc
   script:
-    - . .\.gitlab-ci\windows\mesa_build.ps1
+    - pwsh -ExecutionPolicy RemoteSigned .\.gitlab-ci\windows\mesa_build.ps1
   artifacts:
     paths:
       - _build/meson-logs/*.txt
