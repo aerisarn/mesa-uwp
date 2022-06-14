@@ -5440,7 +5440,8 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       }
    } else if (ctx->shader->info.stage == MESA_SHADER_VERTEX ||
               ctx->shader->info.stage == MESA_SHADER_TESS_EVAL) {
-      if (ctx->shader->info.outputs_written & VARYING_BIT_VIEWPORT)
+      if (ctx->shader->info.outputs_written &
+          (VARYING_BIT_VIEWPORT | VARYING_BIT_LAYER))
          ctx->mod.feats.array_layer_from_vs_or_ds = true;
    }
 
@@ -5880,6 +5881,7 @@ nir_var_to_dxil_sysvalue_type(nir_variable *var, uint64_t other_stage_mask)
    case VARYING_SLOT_TESS_LEVEL_INNER:
    case VARYING_SLOT_TESS_LEVEL_OUTER:
    case VARYING_SLOT_VIEWPORT:
+   case VARYING_SLOT_LAYER:
       if (!((1ull << var->data.location) & other_stage_mask))
          return DXIL_SYSVALUE;
       FALLTHROUGH;

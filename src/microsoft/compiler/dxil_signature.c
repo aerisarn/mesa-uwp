@@ -104,6 +104,8 @@ in_sysvalue_name(nir_variable *var)
       return "POS";
    case VARYING_SLOT_FACE:
       return "FACE";
+   case VARYING_SLOT_LAYER:
+      return "RTINDEX";
    default:
       return "NONE";
    }
@@ -324,6 +326,12 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
       assert(glsl_get_components(var->type) == 1);
       snprintf(info->name, 64, "%s", "SV_ViewportArrayIndex");
       info->kind = DXIL_SEM_VIEWPORT_ARRAY_INDEX;
+      break;
+
+   case VARYING_SLOT_LAYER:
+      assert(glsl_get_components(var->type) == 1);
+      snprintf(info->name, 64, "%s", "SV_RenderTargetArrayIndex");
+      info->kind = DXIL_SEM_RENDERTARGET_ARRAY_INDEX;
       break;
 
    default: {

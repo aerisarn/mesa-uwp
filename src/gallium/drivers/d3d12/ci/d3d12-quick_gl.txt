@@ -212,10 +212,6 @@ spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-last: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-last: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-cube-map: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-render: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-render-clipped: fail
-spec/!opengl 3.2/layered-rendering/gl-layer-render-storage: fail
 spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
 spec/!opengl 4.3/get_glsl_version: skip
 spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
@@ -3521,8 +3517,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17849
-       fail:     2039
+       pass:    17853
+       fail:     2035
       crash:       12
        skip:     1450
     timeout:        0
