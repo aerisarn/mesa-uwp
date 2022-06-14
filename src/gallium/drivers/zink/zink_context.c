@@ -377,6 +377,10 @@ zink_create_sampler_state(struct pipe_context *pctx,
       }
       if (screen->info.have_EXT_custom_border_color &&
           screen->info.border_color_feats.customBorderColorWithoutFormat) {
+         if (!screen->info.have_EXT_border_color_swizzle) {
+            static bool warned = false;
+            warn_missing_feature(warned, "VK_EXT_border_color_swizzle");
+         }
          cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
          cbci.format = VK_FORMAT_UNDEFINED;
          /* these are identical unions */
