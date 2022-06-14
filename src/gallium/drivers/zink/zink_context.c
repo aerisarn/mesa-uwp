@@ -2879,6 +2879,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
 {
    struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
    unsigned samples = state->nr_cbufs || state->zsbuf ? 0 : state->samples;
    unsigned w = ctx->fb_state.width;
    unsigned h = ctx->fb_state.height;
@@ -2932,6 +2933,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    /* renderpass changes if the number or types of attachments change */
    ctx->rp_changed |= ctx->fb_state.nr_cbufs != state->nr_cbufs;
    ctx->rp_changed |= !!ctx->fb_state.zsbuf != !!state->zsbuf;
+   if (ctx->fb_state.nr_cbufs != state->nr_cbufs)
+      ctx->blend_state_changed |= screen->have_full_ds3;
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
    zink_update_fbfetch(ctx);
@@ -3030,7 +3033,10 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       zink_update_fs_key_samples(ctx);
    if (ctx->gfx_pipeline_state.rast_samples != rast_samples) {
       ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
-      ctx->gfx_pipeline_state.dirty = true;
+      if (screen->have_full_ds3)
+         ctx->sample_mask_changed = true;
+      else
+         ctx->gfx_pipeline_state.dirty = true;
    }
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
 
@@ -3054,7 +3060,10 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 {
    struct zink_context *ctx = zink_context(pctx);
    ctx->gfx_pipeline_state.sample_mask = sample_mask;
-   ctx->gfx_pipeline_state.dirty = true;
+   if (zink_screen(pctx->screen)->have_full_ds3)
+      ctx->sample_mask_changed = true;
+   else
+      ctx->gfx_pipeline_state.dirty = true;
 }
 
 static void
@@ -4631,6 +4640,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                                  screen->info.have_EXT_vertex_input_dynamic_state;
    ctx->compute_pipeline_state.dirty = true;
    ctx->fb_changed = ctx->rp_changed = true;
+   ctx->sample_mask_changed = true;
    ctx->gfx_pipeline_state.gfx_prim_mode = PIPE_PRIM_MAX;
 
    zink_init_draw_functions(ctx, screen);

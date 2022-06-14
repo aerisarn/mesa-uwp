@@ -274,6 +274,12 @@ struct zink_blend_state {
    uint32_t hash;
    VkPipelineColorBlendAttachmentState attachments[PIPE_MAX_COLOR_BUFS];
 
+   struct {
+      VkBool32 enables[PIPE_MAX_COLOR_BUFS];
+      VkColorBlendEquationEXT eq[PIPE_MAX_COLOR_BUFS];
+      VkColorComponentFlags wrmask[PIPE_MAX_COLOR_BUFS];
+   } ds3;
+
    VkBool32 logicop_enable;
    VkLogicOp logicop_func;
 
@@ -1134,6 +1140,7 @@ struct zink_screen {
    struct nir_shader_compiler_options nir_options;
 
    bool optimal_keys;
+   bool have_full_ds3;
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
    bool have_D32_SFLOAT_S8_UINT;
@@ -1573,6 +1580,7 @@ struct zink_context {
    bool primitive_restart;
    bool vertex_state_changed : 1;
    bool blend_state_changed : 1;
+   bool sample_mask_changed : 1;
    bool rast_state_changed : 1;
    bool dsa_state_changed : 1;
    bool stencil_ref_changed : 1;

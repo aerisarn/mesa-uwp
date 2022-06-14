@@ -56,6 +56,7 @@ zink_cache_vertex_state_destroy(struct pipe_screen *pscreen, struct pipe_vertex_
 const struct zink_vertex_elements_hw_state *
 zink_vertex_state_mask(struct pipe_vertex_state *vstate, uint32_t partial_velem_mask, bool have_EXT_vertex_input_dynamic_state);
 
+
 #ifdef __cplusplus
 }
 #endif

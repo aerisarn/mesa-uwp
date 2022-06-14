@@ -647,6 +647,23 @@ zink_draw(struct pipe_context *pctx,
       VKCTX(CmdSetLineRasterizationModeEXT)(batch->state->cmdbuf, (VkLineRasterizationModeEXT)rast_state->hw_state.line_mode);
       VKCTX(CmdSetLineStippleEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.line_stipple_enable);
    }
+   if ((BATCH_CHANGED || ctx->sample_mask_changed) && screen->have_full_ds3) {
+      VKCTX(CmdSetRasterizationSamplesEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(ctx->gfx_pipeline_state.rast_samples + 1));
+      VKCTX(CmdSetSampleMaskEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(ctx->gfx_pipeline_state.rast_samples + 1), &ctx->gfx_pipeline_state.sample_mask);
+      ctx->sample_mask_changed = false;
+   }
+   if ((BATCH_CHANGED || ctx->blend_state_changed) && screen->have_full_ds3) {
+      if (ctx->gfx_pipeline_state.blend_state) {
+         VKCTX(CmdSetAlphaToCoverageEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->alpha_to_coverage);
+         if (screen->info.feats.features.alphaToOne)
+            VKCTX(CmdSetAlphaToOneEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->alpha_to_one);
+         VKCTX(CmdSetColorBlendEnableEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.enables);
+         VKCTX(CmdSetColorWriteMaskEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.wrmask);
+         VKCTX(CmdSetColorBlendEquationEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.eq);
+         VKCTX(CmdSetLogicOpEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_enable);
+         VKCTX(CmdSetLogicOpEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_func);
+      }
+   }
 
    if (BATCH_CHANGED || rast_state_changed) {
       enum pipe_prim_type reduced_prim = ctx->last_vertex_stage->reduced_prim;

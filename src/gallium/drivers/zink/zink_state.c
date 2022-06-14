@@ -406,6 +406,15 @@ zink_create_blend_state(struct pipe_context *pctx,
          att.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
 
       cso->attachments[i] = att;
+
+      cso->ds3.enables[i] = att.blendEnable;
+      cso->ds3.eq[i].alphaBlendOp = att.alphaBlendOp;
+      cso->ds3.eq[i].dstAlphaBlendFactor = att.dstAlphaBlendFactor;
+      cso->ds3.eq[i].srcAlphaBlendFactor = att.srcAlphaBlendFactor;
+      cso->ds3.eq[i].colorBlendOp = att.colorBlendOp;
+      cso->ds3.eq[i].dstColorBlendFactor = att.dstColorBlendFactor;
+      cso->ds3.eq[i].srcColorBlendFactor = att.srcColorBlendFactor;
+      cso->ds3.wrmask[i] = att.colorWriteMask;
    }
    cso->dual_src_blend = util_blend_state_is_dual(blend_state, 0);
 
@@ -422,7 +431,7 @@ zink_bind_blend_state(struct pipe_context *pctx, void *cso)
    if (state->blend_state != cso) {
       state->blend_state = cso;
       state->blend_id = blend ? blend->hash : 0;
-      state->dirty = true;
+      state->dirty |= !zink_screen(pctx->screen)->have_full_ds3;
       bool force_dual_color_blend = zink_screen(pctx->screen)->driconf.dual_color_blend_by_location &&
                                     blend && blend->dual_src_blend && state->blend_state->attachments[0].blendEnable;
       if (force_dual_color_blend != zink_get_fs_key(ctx)->force_dual_color_blend)

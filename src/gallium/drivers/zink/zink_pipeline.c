@@ -35,16 +35,6 @@
 #include "util/u_debug.h"
 #include "util/u_prim.h"
 
-static VkBlendFactor
-clamp_void_blend_factor(VkBlendFactor f)
-{
-   if (f == VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA)
-      return VK_BLEND_FACTOR_ZERO;
-   if (f == VK_BLEND_FACTOR_DST_ALPHA)
-      return VK_BLEND_FACTOR_ONE;
-   return f;
-}
-
 VkPipeline
 zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
@@ -210,7 +200,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    depth_stencil_state.back = state->dyn_state1.depth_stencil_alpha_state->stencil_back;
    depth_stencil_state.depthWriteEnable = state->dyn_state1.depth_stencil_alpha_state->depth_write;
 
-   VkDynamicState dynamicStateEnables[64] = {
+   VkDynamicState dynamicStateEnables[80] = {
       VK_DYNAMIC_STATE_LINE_WIDTH,
       VK_DYNAMIC_STATE_DEPTH_BIAS,
       VK_DYNAMIC_STATE_BLEND_CONSTANTS,
@@ -257,6 +247,20 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_ENABLE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
+      if (screen->have_full_ds3) {
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
+         if (state->blend_state) {
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LOGIC_OP_EXT;
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT;
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+            if (screen->info.feats.features.alphaToOne)
+               dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_ALPHA_TO_ONE_ENABLE_EXT;
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT;
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT;
+         }
+      }
    }
    if (screen->info.have_EXT_color_write_enable)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT;
@@ -454,32 +458,12 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
 
    VkPipelineColorBlendStateCreateInfo blend_state = {0};
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-   if (state->blend_state) {
-      unsigned num_attachments = state->rendering_info.colorAttachmentCount;
-      blend_state.pAttachments = state->blend_state->attachments;
-      blend_state.attachmentCount = num_attachments;
-      blend_state.logicOpEnable = state->blend_state->logicop_enable;
+   blend_state.attachmentCount = state->rendering_info.colorAttachmentCount;
+   if (state->blend_state)
       blend_state.logicOp = state->blend_state->logicop_func;
-   }
 
    VkPipelineMultisampleStateCreateInfo ms_state = {0};
    ms_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-   ms_state.rasterizationSamples = state->rast_samples + 1;
-   if (state->blend_state) {
-      ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
-      if (state->blend_state->alpha_to_one && !screen->info.feats.features.alphaToOne) {
-         static bool warned = false;
-         warn_missing_feature(warned, "alphaToOne");
-      }
-      ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
-   }
-   /* "If pSampleMask is NULL, it is treated as if the mask has all bits set to 1."
-    * - Chapter 27. Rasterization
-    * 
-    * thus it never makes sense to leave this as NULL since gallium will provide correct
-    * data here as long as sample_mask is initialized on context creation
-    */
-   ms_state.pSampleMask = &state->sample_mask;
    if (state->force_persample_interp) {
       ms_state.sampleShadingEnable = VK_TRUE;
       ms_state.minSampleShading = 1.0;
@@ -498,6 +482,48 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    }
    if (screen->info.have_EXT_color_write_enable)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT;
+
+   if (screen->have_full_ds3) {
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
+      if (state->blend_state) {
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LOGIC_OP_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+         if (screen->info.feats.features.alphaToOne)
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_ALPHA_TO_ONE_ENABLE_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT;
+      }
+   } else {
+      if (state->blend_state) {
+         unsigned num_attachments = state->render_pass ?
+                                    state->render_pass->state.num_rts :
+                                    state->rendering_info.colorAttachmentCount;
+         if (state->render_pass && state->render_pass->state.have_zsbuf)
+            num_attachments--;
+         blend_state.pAttachments = state->blend_state->attachments;
+         blend_state.attachmentCount = num_attachments;
+         blend_state.logicOpEnable = state->blend_state->logicop_enable;
+         blend_state.logicOp = state->blend_state->logicop_func;
+
+         ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
+         if (state->blend_state->alpha_to_one && !screen->info.feats.features.alphaToOne) {
+            static bool warned = false;
+            warn_missing_feature(warned, "alphaToOne");
+         }
+         ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
+      }
+      ms_state.rasterizationSamples = state->rast_samples + 1;
+      /* "If pSampleMask is NULL, it is treated as if the mask has all bits set to 1."
+       * - Chapter 27. Rasterization
+       * 
+       * thus it never makes sense to leave this as NULL since gallium will provide correct
+       * data here as long as sample_mask is initialized on context creation
+       */
+      ms_state.pSampleMask = &state->sample_mask;
+   }
    assert(state_count < ARRAY_SIZE(dynamicStateEnables));
 
    VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {0};

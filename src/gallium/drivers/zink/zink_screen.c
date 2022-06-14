@@ -2250,6 +2250,15 @@ init_driver_workarounds(struct zink_screen *screen)
        !screen->info.dynamic_state3_feats.extendedDynamicState3ProvokingVertexMode ||
        !screen->info.dynamic_state3_feats.extendedDynamicState3LineRasterizationMode)
       screen->info.have_EXT_extended_dynamic_state3 = false;
+   else if (screen->info.dynamic_state3_feats.extendedDynamicState3SampleMask &&
+            screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToCoverageEnable &&
+            (!screen->info.feats.features.alphaToOne || screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToOneEnable) &&
+            screen->info.dynamic_state3_feats.extendedDynamicState3ColorBlendEnable &&
+            screen->info.dynamic_state3_feats.extendedDynamicState3RasterizationSamples &&
+            screen->info.dynamic_state3_feats.extendedDynamicState3ColorWriteMask &&
+            screen->info.dynamic_state3_feats.extendedDynamicState3LogicOpEnable &&
+            screen->info.dynamic_state2_feats.extendedDynamicState2LogicOp)
+      screen->have_full_ds3 = true;
    if (screen->info.have_EXT_graphics_pipeline_library)
       screen->info.have_EXT_graphics_pipeline_library = screen->info.have_EXT_extended_dynamic_state &&
                                                         screen->info.have_EXT_extended_dynamic_state2 &&
