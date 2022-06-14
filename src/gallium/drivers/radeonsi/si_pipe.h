@@ -630,6 +630,7 @@ struct si_screen {
    /* GPU load thread. */
    simple_mtx_t gpu_load_mutex;
    thrd_t gpu_load_thread;
+   bool gpu_load_thread_created;
    union si_mmio_counters mmio_counters;
    volatile unsigned gpu_load_stop_thread; /* bool */
 

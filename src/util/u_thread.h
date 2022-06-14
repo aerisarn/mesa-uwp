@@ -101,26 +101,22 @@ util_get_current_cpu(void)
 #endif
 }
 
-static inline thrd_t u_thread_create(int (*routine)(void *), void *param)
+static inline int u_thread_create(thrd_t *thrd, int (*routine)(void *), void *param)
 {
-   thrd_t thread;
+   int ret = thrd_error;
 #ifdef HAVE_PTHREAD
    sigset_t saved_set, new_set;
-   int ret;
 
    sigfillset(&new_set);
    sigdelset(&new_set, SIGSYS);
    pthread_sigmask(SIG_BLOCK, &new_set, &saved_set);
-   ret = thrd_create( &thread, routine, param );
+   ret = thrd_create(thrd, routine, param);
    pthread_sigmask(SIG_SETMASK, &saved_set, NULL);
 #else
-   int ret;
-   ret = thrd_create( &thread, routine, param );
+   ret = thrd_create(thrd, routine, param);
 #endif
-   if (ret)
-      return 0;
 
-   return thread;
+   return ret;
 }
 
 static inline void u_thread_setname( const char *name )

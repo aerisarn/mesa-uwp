@@ -1238,9 +1238,8 @@ create_rast_threads(struct lp_rasterizer *rast)
    for (unsigned i = 0; i < rast->num_threads; i++) {
       pipe_semaphore_init(&rast->tasks[i].work_ready, 0);
       pipe_semaphore_init(&rast->tasks[i].work_done, 0);
-      rast->threads[i] = u_thread_create(thread_function,
-                                            (void *) &rast->tasks[i]);
-      if (!rast->threads[i]) {
+      if (thrd_success != u_thread_create(rast->threads + i, thread_function,
+                                            (void *) &rast->tasks[i])) {
          rast->num_threads = i; /* previous thread is max */
          break;
       }

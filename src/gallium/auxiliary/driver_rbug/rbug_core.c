@@ -841,7 +841,10 @@ rbug_start(struct rbug_screen *rb_screen)
 
    tr_rbug->rb_screen = rb_screen;
    tr_rbug->running = true;
-   tr_rbug->thread = u_thread_create(rbug_thread, tr_rbug);
+   if (thrd_success != u_thread_create(&tr_rbug->thread, rbug_thread, tr_rbug)) {
+      FREE(tr_rbug);
+      return NULL;
+   }
 
    return tr_rbug;
 }

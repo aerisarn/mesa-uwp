@@ -337,9 +337,7 @@ util_queue_create_thread(struct util_queue *queue, unsigned index)
    input->queue = queue;
    input->thread_index = index;
 
-   queue->threads[index] = u_thread_create(util_queue_thread_func, input);
-
-   if (!queue->threads[index]) {
+   if (thrd_success != u_thread_create(queue->threads + index, util_queue_thread_func, input)) {
       free(input);
       return false;
    }
