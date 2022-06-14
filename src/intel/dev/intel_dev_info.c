@@ -51,7 +51,8 @@ error(char *fmt, ...)
 static void
 print_regions_info(const struct intel_device_info *devinfo)
 {
-   if (devinfo->mem.sram.mappable.size > 0) {
+   if (devinfo->mem.sram.mappable.size > 0 ||
+       devinfo->mem.sram.unmappable.size > 0) {
       fprintf(stdout, "   sram:\n");
       if (devinfo->mem.use_class_instance) {
          fprintf(stdout, "      class: %d; instance: %d\n",
@@ -61,9 +62,16 @@ print_regions_info(const struct intel_device_info *devinfo)
               devinfo->mem.sram.mappable.size);
       fprintf(stdout, "free: %" PRId64 "\n",
               devinfo->mem.sram.mappable.free);
+      if (devinfo->mem.sram.unmappable.size > 0) {
+         fprintf(stdout, "      unmappable: %" PRId64 "; ",
+                 devinfo->mem.sram.unmappable.size);
+         fprintf(stdout, "free: %" PRId64 "\n",
+                 devinfo->mem.sram.unmappable.free);
+      }
    }
 
-   if (devinfo->mem.vram.mappable.size > 0) {
+   if (devinfo->mem.vram.mappable.size > 0 ||
+       devinfo->mem.vram.unmappable.size > 0) {
       fprintf(stdout, "   vram:\n");
       if (devinfo->mem.use_class_instance) {
          fprintf(stdout, "      class: %d; instance: %d\n",
@@ -73,6 +81,12 @@ print_regions_info(const struct intel_device_info *devinfo)
               devinfo->mem.vram.mappable.size);
       fprintf(stdout, "free: %" PRId64 "\n",
               devinfo->mem.vram.mappable.free);
+      if (devinfo->mem.vram.unmappable.size > 0) {
+         fprintf(stdout, "      unmappable: %" PRId64 "; ",
+                 devinfo->mem.vram.unmappable.size);
+         fprintf(stdout, "free: %" PRId64 "\n",
+                 devinfo->mem.vram.unmappable.free);
+      }
    }
 }
 
