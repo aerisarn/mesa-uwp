@@ -531,11 +531,13 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
-      /* This is also broken on the other AMD drivers for old HW, but
-       * there's no obvious way to test for that.
+      /* assume that if drivers don't implement this extension they either:
+       * - don't support custom border colors
+       * - handle things correctly
+       * - hate border color accuracy
        */
-      if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV ||
-          screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
+      if (screen->info.have_EXT_border_color_swizzle &&
+          !screen->info.border_swizzle_feats.borderColorSwizzleFromImage)
          return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50;
       return 0;
 
