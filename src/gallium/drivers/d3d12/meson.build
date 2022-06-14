@@ -35,7 +35,6 @@ files_libd3d12 = files(
   'd3d12_gs_variant.cpp',
   'd3d12_lower_image_casts.c',
   'd3d12_lower_point_sprite.c',
-  'd3d12_nir_lower_vs_vertex_conversion.c',
   'd3d12_nir_passes.c',
   'd3d12_pipeline_state.cpp',
   'd3d12_query.cpp',

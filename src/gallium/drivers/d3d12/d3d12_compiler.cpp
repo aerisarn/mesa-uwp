@@ -113,7 +113,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
                  screen->base.get_paramf(&screen->base, PIPE_CAPF_MAX_TEXTURE_LOD_BIAS));
 
    if (key->vs.needs_format_emulation)
-      d3d12_nir_lower_vs_vertex_conversion(nir, key->vs.format_conversion);
+      dxil_nir_lower_vs_vertex_conversion(nir, key->vs.format_conversion);
 
    uint32_t num_ubos_before_lower_to_ubo = nir->info.num_ubos;
    uint32_t num_uniforms_before_lower_to_ubo = nir->num_uniforms;

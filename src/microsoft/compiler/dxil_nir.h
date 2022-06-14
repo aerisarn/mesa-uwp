@@ -53,6 +53,7 @@ bool dxil_nir_lower_system_values(nir_shader *shader);
 bool dxil_nir_split_typed_samplers(nir_shader *shader);
 bool dxil_nir_lower_bool_input(struct nir_shader *s);
 bool dxil_nir_lower_sysval_to_load_input(nir_shader *s, nir_variable **sysval_vars);
+bool dxil_nir_lower_vs_vertex_conversion(nir_shader *s, enum pipe_format target_formats[]);
 
 nir_ssa_def *
 build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,

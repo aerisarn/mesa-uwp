@@ -21,7 +21,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "d3d12_nir_passes.h"
+#include "dxil_nir.h"
 
 #include "nir_builder.h"
 #include "nir_builtin_builder.h"
@@ -147,8 +147,8 @@ lower_vs_vertex_conversion_impl(nir_builder *b, nir_instr *instr, void *options)
  * or PIPE_FORMAT_NONE if no conversion is needed
  */
 bool
-d3d12_nir_lower_vs_vertex_conversion(nir_shader *s,
-                                     enum pipe_format target_formats[])
+dxil_nir_lower_vs_vertex_conversion(nir_shader *s,
+                                    enum pipe_format target_formats[])
 {
    assert(s->info.stage == MESA_SHADER_VERTEX);
 
