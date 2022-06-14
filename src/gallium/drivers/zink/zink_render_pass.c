@@ -328,9 +328,11 @@ zink_init_zs_attachment(struct zink_context *ctx, struct zink_rt_attrib *rt)
                                     ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir->info.outputs_written : 0;
    bool needs_write_z = (ctx->dsa_state && ctx->dsa_state->hw_state.depth_write) ||
                        outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
-   needs_write_z |= transient || rt->clear_color;
+   needs_write_z |= transient || rt->clear_color ||
+                    (zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) && (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH));
 
-   bool needs_write_s = rt->clear_stencil || outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+   bool needs_write_s = rt->clear_stencil || (outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) ||
+                        (zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) && (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL));
    if (!needs_write_z && (!ctx->dsa_state || !ctx->dsa_state->base.depth_enabled))
       /* depth sample, stencil write */
       rt->mixed_zs = needs_write_s && zsbuf->bind_count[0];
