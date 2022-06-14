@@ -693,10 +693,6 @@ struct dzn_descriptor_update_template {
    const struct dzn_descriptor_update_template_entry *entries;
 };
 
-struct dzn_pipeline_cache {
-   struct vk_object_base base;
-};
-
 enum dzn_register_space {
    DZN_REGISTER_SPACE_SYSVALS = MAX_SETS,
    DZN_REGISTER_SPACE_PUSH_CONSTANT,
@@ -1101,7 +1097,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_image_view, vk.base, VkImageView, VK_OBJECT_T
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_pipeline, base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_graphics_pipeline, base.base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_compute_pipeline, base.base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_pipeline_cache, base, VkPipelineCache, VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_query_pool, base, VkQueryPool, VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)

@@ -37,7 +37,6 @@ libdzn_files = files(
   'dzn_image.c',
   'dzn_meta.c',
   'dzn_nir.c',
-  'dzn_pipeline_cache.c',
   'dzn_pipeline.c',
   'dzn_query.c',
   'dzn_sync.c',
