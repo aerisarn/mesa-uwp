@@ -18,11 +18,12 @@ $deqp_module = "C:\deqp\external\vulkancts\modules\vulkan\deqp-vk.exe"
 $caselist = "C:\deqp\mustpass\vk-master.txt"
 $baseline = ".\_install\warp-fails.txt"
 $flakes = ".\_install\warp-flakes.txt"
+$skips = ".\_install\warp-skips.txt"
 $includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.binding_model.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*", "-t", "dEQP-VK.pipeline.vertex_input.*")
 
 $env:DZN_DEBUG = "warp"
 $env:MESA_VK_IGNORE_CONFORMANCE_WARNING = "true"
-deqp-runner run --deqp $($deqp_module) --output $($results) --caselist $($caselist) --baseline $($baseline) --flakes $($flakes) $($includes) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 --fraction 3  -- $($deqp_options)
+deqp-runner run --deqp $($deqp_module) --output $($results) --caselist $($caselist) --baseline $($baseline) --flakes $($flakes) --skips $($skips) $($includes) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 --fraction 3  -- $($deqp_options)
 $deqpstatus = $?
 
 $template = "See https://$($env:CI_PROJECT_ROOT_NAMESPACE).pages.freedesktop.org/-/$($env:CI_PROJECT_NAME)/-/jobs/$($env:CI_JOB_ID)/artifacts/results/{{testcase}}.xml"
