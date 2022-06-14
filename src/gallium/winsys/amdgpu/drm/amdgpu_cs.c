@@ -1027,9 +1027,16 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    return true;
 }
 
-static bool amdgpu_cs_set_preamble(struct radeon_cmdbuf *rcs, const uint32_t *preamble_ib,
-                                   unsigned preamble_num_dw, bool preamble_changed,
-                                   bool enable_preemption)
+static void amdgpu_cs_set_preamble(struct radeon_cmdbuf *cs, const uint32_t *preamble_ib,
+                                   unsigned preamble_num_dw, bool preamble_changed)
+{
+   /* TODO: implement this properly */
+   radeon_emit_array(cs, preamble_ib, preamble_num_dw);
+}
+
+static bool
+amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_ib,
+                           unsigned preamble_num_dw)
 {
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
    struct amdgpu_winsys *ws = cs->ws;
@@ -1037,23 +1044,6 @@ static bool amdgpu_cs_set_preamble(struct radeon_cmdbuf *rcs, const uint32_t *pr
    unsigned size = align(preamble_num_dw * 4, ws->info.ib_alignment);
    struct pb_buffer *preamble_bo;
    uint32_t *map;
-
-   assert(preamble_ib);
-   /* The preamble can be set only once for preemption. */
-   assert(!enable_preemption || !cs->preamble_ib_bo);
-
-   /* The preamble IB causes GPU hangs on Stoney. To be safe, don't use the preamble IB on
-    * chips older than gfx10, and instead paste the preamble into the main command buffer.
-    */
-   if (ws->info.gfx_level < GFX10) {
-      radeon_emit_array(rcs, preamble_ib, preamble_num_dw);
-      return true;
-   }
-
-   if (!preamble_changed && !enable_preemption) {
-      assert(cs->preamble_ib_bo); /* we shouldn't get no-change calls with no preamble */
-      return true;
-   }
 
    /* Create the preamble IB buffer. */
    preamble_bo = amdgpu_bo_create(ws, size, ws->info.ib_alignment,
@@ -1080,20 +1070,15 @@ static bool amdgpu_cs_set_preamble(struct radeon_cmdbuf *rcs, const uint32_t *pr
       map[preamble_num_dw++] = PKT3_NOP_PAD;
    amdgpu_bo_unmap(&ws->dummy_ws.base, preamble_bo);
 
-   /* Wait until the CS job finishes, so that we don't mess up IB_PREAMBLE while the IB is being
-    * submitted.
-    */
-   amdgpu_cs_sync_flush(rcs);
-
    for (unsigned i = 0; i < 2; i++) {
       csc[i]->ib[IB_PREAMBLE].va_start = amdgpu_winsys_bo(preamble_bo)->va;
       csc[i]->ib[IB_PREAMBLE].ib_bytes = preamble_num_dw * 4;
 
-      if (enable_preemption)
-         csc[i]->ib[IB_MAIN].flags |= AMDGPU_IB_FLAG_PREEMPT;
+      csc[i]->ib[IB_MAIN].flags |= AMDGPU_IB_FLAG_PREEMPT;
    }
 
-   radeon_bo_reference(&ws->dummy_ws.base, &cs->preamble_ib_bo, preamble_bo);
+   assert(!cs->preamble_ib_bo);
+   cs->preamble_ib_bo = preamble_bo;
 
    amdgpu_cs_add_buffer(rcs, cs->preamble_ib_bo,
                         RADEON_USAGE_READ | RADEON_PRIO_IB, 0);
@@ -1868,6 +1853,7 @@ void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws)
    ws->base.ctx_query_reset_status = amdgpu_ctx_query_reset_status;
    ws->base.cs_create = amdgpu_cs_create;
    ws->base.cs_set_preamble = amdgpu_cs_set_preamble;
+   ws->base.cs_setup_preemption = amdgpu_cs_setup_preemption;
    ws->base.cs_destroy = amdgpu_cs_destroy;
    ws->base.cs_add_buffer = amdgpu_cs_add_buffer;
    ws->base.cs_validate = amdgpu_cs_validate;
