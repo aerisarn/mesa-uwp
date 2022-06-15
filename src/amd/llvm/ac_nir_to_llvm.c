@@ -4228,8 +4228,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ctx->instance_id_replaced = get_src(ctx, instr->src[1]);
       break;
    case nir_intrinsic_overwrite_tes_arguments_amd:
-      ctx->tes_u_replaced = get_src(ctx, instr->src[0]);
-      ctx->tes_v_replaced = get_src(ctx, instr->src[1]);
+      ctx->tes_u_replaced = ac_to_float(&ctx->ac, get_src(ctx, instr->src[0]));
+      ctx->tes_v_replaced = ac_to_float(&ctx->ac, get_src(ctx, instr->src[1]));
       ctx->tes_rel_patch_id_replaced = get_src(ctx, instr->src[2]);
       ctx->tes_patch_id_replaced = get_src(ctx, instr->src[3]);
       break;
