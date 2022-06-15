@@ -1787,75 +1787,77 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    smci.pCode = spirv->words;
 
 #ifndef NDEBUG
-   static const struct spirv_to_nir_options spirv_options = {
-      .environment = NIR_SPIRV_VULKAN,
-      .caps = {
-         .float64 = true,
-         .int16 = true,
-         .int64 = true,
-         .tessellation = true,
-         .float_controls = true,
-         .image_ms_array = true,
-         .image_read_without_format = true,
-         .image_write_without_format = true,
-         .storage_image_ms = true,
-         .geometry_streams = true,
-         .storage_8bit = true,
-         .storage_16bit = true,
-         .variable_pointers = true,
-         .stencil_export = true,
-         .post_depth_coverage = true,
-         .transform_feedback = true,
-         .device_group = true,
-         .draw_parameters = true,
-         .shader_viewport_index_layer = true,
-         .multiview = true,
-         .physical_storage_buffer_address = true,
-         .int64_atomics = true,
-         .subgroup_arithmetic = true,
-         .subgroup_basic = true,
-         .subgroup_ballot = true,
-         .subgroup_quad = true,
-         .subgroup_shuffle = true,
-         .subgroup_vote = true,
-         .vk_memory_model = true,
-         .vk_memory_model_device_scope = true,
-         .int8 = true,
-         .float16 = true,
-         .demote_to_helper_invocation = true,
-         .sparse_residency = true,
-         .min_lod = true,
-      },
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_32bit_index_offset,
-      .phys_ssbo_addr_format = nir_address_format_64bit_global,
-      .push_const_addr_format = nir_address_format_logical,
-      .shared_addr_format = nir_address_format_32bit_offset,
-   };
-   uint32_t num_spec_entries = 0;
-   struct nir_spirv_specialization *spec_entries = NULL;
-   VkSpecializationInfo sinfo = {0};
-   VkSpecializationMapEntry me[3];
-   uint32_t size[3] = {1,1,1};
-   if (!zs->nir->info.workgroup_size[0]) {
-      sinfo.mapEntryCount = 3;
-      sinfo.pMapEntries = &me[0];
-      sinfo.dataSize = sizeof(uint32_t) * 3;
-      sinfo.pData = size;
-      uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
-      for (int i = 0; i < 3; i++) {
-         me[i].size = sizeof(uint32_t);
-         me[i].constantID = ids[i];
-         me[i].offset = i * sizeof(uint32_t);
+   if (zink_debug & ZINK_DEBUG_VALIDATION) {
+      static const struct spirv_to_nir_options spirv_options = {
+         .environment = NIR_SPIRV_VULKAN,
+         .caps = {
+            .float64 = true,
+            .int16 = true,
+            .int64 = true,
+            .tessellation = true,
+            .float_controls = true,
+            .image_ms_array = true,
+            .image_read_without_format = true,
+            .image_write_without_format = true,
+            .storage_image_ms = true,
+            .geometry_streams = true,
+            .storage_8bit = true,
+            .storage_16bit = true,
+            .variable_pointers = true,
+            .stencil_export = true,
+            .post_depth_coverage = true,
+            .transform_feedback = true,
+            .device_group = true,
+            .draw_parameters = true,
+            .shader_viewport_index_layer = true,
+            .multiview = true,
+            .physical_storage_buffer_address = true,
+            .int64_atomics = true,
+            .subgroup_arithmetic = true,
+            .subgroup_basic = true,
+            .subgroup_ballot = true,
+            .subgroup_quad = true,
+            .subgroup_shuffle = true,
+            .subgroup_vote = true,
+            .vk_memory_model = true,
+            .vk_memory_model_device_scope = true,
+            .int8 = true,
+            .float16 = true,
+            .demote_to_helper_invocation = true,
+            .sparse_residency = true,
+            .min_lod = true,
+         },
+         .ubo_addr_format = nir_address_format_32bit_index_offset,
+         .ssbo_addr_format = nir_address_format_32bit_index_offset,
+         .phys_ssbo_addr_format = nir_address_format_64bit_global,
+         .push_const_addr_format = nir_address_format_logical,
+         .shared_addr_format = nir_address_format_32bit_offset,
+      };
+      uint32_t num_spec_entries = 0;
+      struct nir_spirv_specialization *spec_entries = NULL;
+      VkSpecializationInfo sinfo = {0};
+      VkSpecializationMapEntry me[3];
+      uint32_t size[3] = {1,1,1};
+      if (!zs->nir->info.workgroup_size[0]) {
+         sinfo.mapEntryCount = 3;
+         sinfo.pMapEntries = &me[0];
+         sinfo.dataSize = sizeof(uint32_t) * 3;
+         sinfo.pData = size;
+         uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
+         for (int i = 0; i < 3; i++) {
+            me[i].size = sizeof(uint32_t);
+            me[i].constantID = ids[i];
+            me[i].offset = i * sizeof(uint32_t);
+         }
+         spec_entries = vk_spec_info_to_nir_spirv(&sinfo, &num_spec_entries);
       }
-      spec_entries = vk_spec_info_to_nir_spirv(&sinfo, &num_spec_entries);
+      nir_shader *nir = spirv_to_nir(spirv->words, spirv->num_words,
+                         spec_entries, num_spec_entries,
+                         zs->nir->info.stage, "main", &spirv_options, &screen->nir_options);
+      assert(nir);
+      ralloc_free(nir);
+      free(spec_entries);
    }
-   nir_shader *nir = spirv_to_nir(spirv->words, spirv->num_words,
-                      spec_entries, num_spec_entries,
-                      zs->nir->info.stage, "main", &spirv_options, &screen->nir_options);
-   assert(nir);
-   ralloc_free(nir);
-   free(spec_entries);
 #endif
 
    VkResult ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &mod);
