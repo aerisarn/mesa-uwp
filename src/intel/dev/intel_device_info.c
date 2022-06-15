@@ -1592,7 +1592,7 @@ query_topology(struct intel_device_info *devinfo, int fd)
  * and/or device local memory.
  */
 static bool
-query_regions(struct intel_device_info *devinfo, int fd)
+query_regions(struct intel_device_info *devinfo, int fd, bool update)
 {
    struct drm_i915_query_memory_regions *meminfo =
       intel_i915_query_alloc(fd, DRM_I915_QUERY_MEMORY_REGIONS, NULL);
@@ -1603,16 +1603,28 @@ query_regions(struct intel_device_info *devinfo, int fd)
       const struct drm_i915_memory_region_info *mem = &meminfo->regions[i];
       switch (mem->region.memory_class) {
       case I915_MEMORY_CLASS_SYSTEM:
-         devinfo->mem.sram.mem_class = mem->region.memory_class;
-         devinfo->mem.sram.mem_instance = mem->region.memory_instance;
-         devinfo->mem.sram.mappable.size = mem->probed_size;
+         if (!update) {
+            devinfo->mem.sram.mem_class = mem->region.memory_class;
+            devinfo->mem.sram.mem_instance = mem->region.memory_instance;
+            devinfo->mem.sram.mappable.size = mem->probed_size;
+         } else {
+            assert(devinfo->mem.sram.mem_class == mem->region.memory_class);
+            assert(devinfo->mem.sram.mem_instance == mem->region.memory_instance);
+            assert(devinfo->mem.sram.mappable.size == mem->probed_size);
+         }
          if (mem->unallocated_size != -1)
             devinfo->mem.sram.mappable.free = mem->unallocated_size;
          break;
       case I915_MEMORY_CLASS_DEVICE:
-         devinfo->mem.vram.mem_class = mem->region.memory_class;
-         devinfo->mem.vram.mem_instance = mem->region.memory_instance;
-         devinfo->mem.vram.mappable.size = mem->probed_size;
+         if (!update) {
+            devinfo->mem.vram.mem_class = mem->region.memory_class;
+            devinfo->mem.vram.mem_instance = mem->region.memory_instance;
+            devinfo->mem.vram.mappable.size = mem->probed_size;
+         } else {
+            assert(devinfo->mem.vram.mem_class == mem->region.memory_class);
+            assert(devinfo->mem.vram.mem_instance == mem->region.memory_instance);
+            assert(devinfo->mem.vram.mappable.size == mem->probed_size);
+         }
          if (mem->unallocated_size != -1)
             devinfo->mem.vram.mappable.free = mem->unallocated_size;
          break;
@@ -1970,7 +1982,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       getparam_topology(devinfo, fd);
    }
 
-   query_regions(devinfo, fd);
+   query_regions(devinfo, fd, false);
 
    /* region info is required for lmem support */
    if (devinfo->has_local_mem && !devinfo->mem.use_class_instance) {
@@ -2005,4 +2017,9 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    init_max_scratch_ids(devinfo);
 
    return true;
+}
+
+bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int fd)
+{
+   return query_regions(devinfo, fd, true);
 }

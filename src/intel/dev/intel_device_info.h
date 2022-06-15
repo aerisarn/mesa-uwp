@@ -494,6 +494,12 @@ bool intel_get_device_info_from_fd(int fh, struct intel_device_info *devinfo);
 bool intel_get_device_info_from_pci_id(int pci_id,
                                        struct intel_device_info *devinfo);
 
+/* Only updates intel_device_info::regions::...::free fields. The
+ * class/instance/size should remain the same over time.
+ */
+bool intel_device_info_update_memory_info(struct intel_device_info *devinfo,
+                                          int fd);
+
 #ifdef __cplusplus
 }
 #endif
