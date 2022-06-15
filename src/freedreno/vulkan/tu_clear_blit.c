@@ -3011,6 +3011,17 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
               uint32_t gmem_offset,
               uint32_t cpp)
 {
+   /* RB_BIN_CONTROL/GRAS_BIN_CONTROL are normally only set once and they
+    * aren't set until we know whether we're HW binning or not, and we want to
+    * avoid a dependence on that here to be able to store attachments before
+    * the end of the renderpass in the future. Use the scratch space to
+    * save/restore them dynamically.
+    */
+   tu_cs_emit_pkt7(cs, CP_REG_TO_SCRATCH, 1);
+   tu_cs_emit(cs, CP_REG_TO_SCRATCH_0_REG(REG_A6XX_RB_BIN_CONTROL) |
+                  CP_REG_TO_SCRATCH_0_SCRATCH(0) |
+                  CP_REG_TO_SCRATCH_0_CNT(1 - 1));
+
    r3d_setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false,
              iview->view.ubwc_enabled, dst_samples);
 
@@ -3042,6 +3053,17 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
     * writes to depth images as a color RT, so there's no need to flush depth.
     */
    tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+
+   /* Restore RB_BIN_CONTROL/GRAS_BIN_CONTROL saved above. */
+   tu_cs_emit_pkt7(cs, CP_SCRATCH_TO_REG, 1);
+   tu_cs_emit(cs, CP_SCRATCH_TO_REG_0_REG(REG_A6XX_RB_BIN_CONTROL) |
+                  CP_SCRATCH_TO_REG_0_SCRATCH(0) |
+                  CP_SCRATCH_TO_REG_0_CNT(1 - 1));
+
+   tu_cs_emit_pkt7(cs, CP_SCRATCH_TO_REG, 1);
+   tu_cs_emit(cs, CP_SCRATCH_TO_REG_0_REG(REG_A6XX_GRAS_BIN_CONTROL) |
+                  CP_SCRATCH_TO_REG_0_SCRATCH(0) |
+                  CP_SCRATCH_TO_REG_0_CNT(1 - 1));
 }
 
 void
