@@ -27,7 +27,9 @@
 #include <string.h>
 #include <vulkan/vulkan_core.h>
 
+#include "compiler/shader_enums.h"
 #include "hwdef/rogue_hw_utils.h"
+#include "pvr_device_info.h"
 #include "pvr_hardcode.h"
 #include "pvr_private.h"
 #include "rogue/rogue.h"
@@ -42,19 +44,30 @@
  * This should eventually be deleted as the compiler becomes more capable.
  */
 
+#define PVR_AXE_1_16M_BVNC PVR_BVNC_PACK(33, 15, 11, 3)
+#define PVR_GX6250_BVNC PVR_BVNC_PACK(4, 40, 2, 51)
+
 enum pvr_hard_code_shader_type {
    PVR_HARD_CODE_SHADER_TYPE_COMPUTE,
    PVR_HARD_CODE_SHADER_TYPE_GRAPHICS,
 };
 
-/* Applications for which the compiler is capable of generating valid shaders.
+/* Table indicating which demo and for which device the compiler is capable of
+ * generating valid shaders.
  */
-static const char *const compilable_progs[] = {
-   "triangle",
+static struct {
+   const char *const name;
+   uint64_t bvncs[3];
+} compatiblity_table[] = {
+   {
+      .name = "triangle",
+      .bvncs = { PVR_GX6250_BVNC, },
+   },
 };
 
 static const struct pvr_hard_coding_data {
    const char *const name;
+   uint64_t bvnc;
    enum pvr_hard_code_shader_type type;
 
    union {
@@ -69,6 +82,9 @@ static const struct pvr_hard_coding_data {
       } compute;
 
       struct {
+         /* Mask of MESA_SHADER_* (gl_shader_stage). */
+         uint32_t flags;
+
          struct rogue_shader_binary *const *const vert_shaders;
          struct rogue_shader_binary *const *const frag_shaders;
 
@@ -85,6 +101,7 @@ static const struct pvr_hard_coding_data {
 } hard_coding_table[] = {
    {
       .name = "simple-compute",
+      .bvnc = PVR_GX6250_BVNC,
       .type = PVR_HARD_CODE_SHADER_TYPE_COMPUTE,
 
       .compute = {
@@ -118,23 +135,42 @@ static const struct pvr_hard_coding_data {
    },
 };
 
-bool pvr_hard_code_shader_required(void)
+static inline uint64_t
+pvr_device_get_bvnc(const struct pvr_device_info *const dev_info)
+{
+   const struct pvr_device_ident *const ident = &dev_info->ident;
+
+   return PVR_BVNC_PACK(ident->b, ident->v, ident->n, ident->c);
+}
+
+bool pvr_hard_code_shader_required(const struct pvr_device_info *const dev_info)
 {
    const char *const program = util_get_process_name();
+   const uint64_t bvnc = pvr_device_get_bvnc(dev_info);
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(compilable_progs); i++) {
-      if (strcmp(program, compilable_progs[i]) == 0)
-         return false;
+   for (uint32_t i = 0; i < ARRAY_SIZE(compatiblity_table); i++) {
+      for (uint32_t j = 0; j < ARRAY_SIZE(compatiblity_table[0].bvncs); j++) {
+         if (bvnc != compatiblity_table[i].bvncs[j])
+            continue;
+
+         if (strcmp(program, compatiblity_table[i].name) == 0)
+            return false;
+      }
    }
 
    return true;
 }
 
-static const struct pvr_hard_coding_data *pvr_get_hard_coding_data()
+static const struct pvr_hard_coding_data *
+pvr_get_hard_coding_data(const struct pvr_device_info *const dev_info)
 {
    const char *const program = util_get_process_name();
+   const uint64_t bvnc = pvr_device_get_bvnc(dev_info);
 
    for (uint32_t i = 0; i < ARRAY_SIZE(hard_coding_table); i++) {
+      if (bvnc != hard_coding_table[i].bvnc)
+         continue;
+
       if (strcmp(program, hard_coding_table[i].name) == 0)
          return &hard_coding_table[i];
    }
@@ -151,7 +187,8 @@ VkResult pvr_hard_code_compute_pipeline(
 {
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
-   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+   const struct pvr_hard_coding_data *const data =
+      pvr_get_hard_coding_data(&device->pdevice->dev_info);
 
    assert(data->type == PVR_HARD_CODE_SHADER_TYPE_COMPUTE);
 
@@ -167,79 +204,128 @@ VkResult pvr_hard_code_compute_pipeline(
                              &shader_state_out->bo);
 }
 
-void pvr_hard_code_graphics_shaders(
-   uint32_t pipeline_n,
-   struct rogue_shader_binary **const vert_shader_out,
-   struct rogue_shader_binary **const frag_shader_out)
+uint32_t
+pvr_hard_code_graphics_get_flags(const struct pvr_device_info *const dev_info)
 {
-   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+   const struct pvr_hard_coding_data *const data =
+      pvr_get_hard_coding_data(dev_info);
+
+   assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
+
+   return data->graphics.flags;
+}
+
+void pvr_hard_code_graphics_shader(const struct pvr_device_info *const dev_info,
+                                   uint32_t pipeline_n,
+                                   gl_shader_stage stage,
+                                   struct rogue_shader_binary **const shader_out)
+{
+   const struct pvr_hard_coding_data *const data =
+      pvr_get_hard_coding_data(dev_info);
 
    assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
    assert(pipeline_n < data->graphics.shader_count);
+   assert(data->graphics.flags & BITFIELD_BIT(stage));
 
-   mesa_logd("Hard coding graphics pipeline for %s", data->name);
+   mesa_logd("Hard coding %s stage shader for \"%s\" demo.",
+             _mesa_shader_stage_to_string(stage),
+             data->name);
 
-   *vert_shader_out = data->graphics.vert_shaders[pipeline_n];
-   *frag_shader_out = data->graphics.frag_shaders[pipeline_n];
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      *shader_out = data->graphics.vert_shaders[pipeline_n];
+      break;
+
+   case MESA_SHADER_FRAGMENT:
+      *shader_out = data->graphics.frag_shaders[pipeline_n];
+      break;
+
+   default:
+      unreachable("Unsupported stage.");
+   }
 }
 
 void pvr_hard_code_graphics_vertex_state(
+   const struct pvr_device_info *const dev_info,
    uint32_t pipeline_n,
    struct pvr_vertex_shader_state *const vert_state_out)
 {
-   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+   const struct pvr_hard_coding_data *const data =
+      pvr_get_hard_coding_data(dev_info);
 
    assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
    assert(pipeline_n < data->graphics.shader_count);
+   assert(data->graphics.flags & BITFIELD_BIT(MESA_SHADER_VERTEX));
 
    *vert_state_out = *data->graphics.vert_shader_states[0];
 }
 
 void pvr_hard_code_graphics_fragment_state(
+   const struct pvr_device_info *const dev_info,
    uint32_t pipeline_n,
    struct pvr_fragment_shader_state *const frag_state_out)
 {
-   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+   const struct pvr_hard_coding_data *const data =
+      pvr_get_hard_coding_data(dev_info);
 
    assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
    assert(pipeline_n < data->graphics.shader_count);
+   assert(data->graphics.flags & BITFIELD_BIT(MESA_SHADER_FRAGMENT));
 
    *frag_state_out = *data->graphics.frag_shader_states[0];
 }
 
-void pvr_hard_code_graphics_inject_build_info(
+void pvr_hard_code_graphics_get_build_info(
+   const struct pvr_device_info *const dev_info,
    uint32_t pipeline_n,
-   struct rogue_build_ctx *ctx,
-   struct pvr_explicit_constant_usage *const vert_common_data_out,
-   struct pvr_explicit_constant_usage *const frag_common_data_out)
+   gl_shader_stage stage,
+   struct rogue_common_build_data *const common_build_data,
+   struct rogue_build_data *const build_data,
+   struct pvr_explicit_constant_usage *const explicit_const_usage)
 {
-   const struct pvr_hard_coding_data *const data = pvr_get_hard_coding_data();
+   const struct pvr_hard_coding_data *const data =
+      pvr_get_hard_coding_data(dev_info);
 
    assert(data->type == PVR_HARD_CODE_SHADER_TYPE_GRAPHICS);
    assert(pipeline_n < data->graphics.shader_count);
+   assert(data->graphics.flags & BITFIELD_BIT(stage));
 
-   ctx->stage_data = data->graphics.build_infos[pipeline_n]->stage_data;
-   ctx->common_data[MESA_SHADER_VERTEX] =
-      data->graphics.build_infos[pipeline_n]->vert_common_data;
-   ctx->common_data[MESA_SHADER_FRAGMENT] =
-      data->graphics.build_infos[pipeline_n]->frag_common_data;
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      assert(
+         data->graphics.build_infos[pipeline_n]->vert_common_data.temps ==
+         data->graphics.vert_shader_states[pipeline_n]->stage_state.temps_count);
 
-   assert(
-      ctx->common_data[MESA_SHADER_VERTEX].temps ==
-      data->graphics.vert_shader_states[pipeline_n]->stage_state.temps_count);
-   assert(
-      ctx->common_data[MESA_SHADER_FRAGMENT].temps ==
-      data->graphics.frag_shader_states[pipeline_n]->stage_state.temps_count);
+      assert(data->graphics.build_infos[pipeline_n]->vert_common_data.coeffs ==
+             data->graphics.vert_shader_states[pipeline_n]
+                ->stage_state.coefficient_size);
 
-   assert(ctx->common_data[MESA_SHADER_VERTEX].coeffs ==
-          data->graphics.vert_shader_states[pipeline_n]
-             ->stage_state.coefficient_size);
-   assert(ctx->common_data[MESA_SHADER_FRAGMENT].coeffs ==
-          data->graphics.frag_shader_states[pipeline_n]
-             ->stage_state.coefficient_size);
+      build_data->vs = data->graphics.build_infos[pipeline_n]->stage_data.vs;
+      *common_build_data =
+         data->graphics.build_infos[pipeline_n]->vert_common_data;
+      *explicit_const_usage =
+         data->graphics.build_infos[pipeline_n]->vert_explicit_conts_usage;
 
-   *vert_common_data_out =
-      data->graphics.build_infos[pipeline_n]->vert_explicit_conts_usage;
-   *frag_common_data_out =
-      data->graphics.build_infos[pipeline_n]->frag_explicit_conts_usage;
+      break;
+
+   case MESA_SHADER_FRAGMENT:
+      assert(
+         data->graphics.build_infos[pipeline_n]->frag_common_data.temps ==
+         data->graphics.frag_shader_states[pipeline_n]->stage_state.temps_count);
+
+      assert(data->graphics.build_infos[pipeline_n]->frag_common_data.coeffs ==
+             data->graphics.frag_shader_states[pipeline_n]
+                ->stage_state.coefficient_size);
+
+      build_data->fs = data->graphics.build_infos[pipeline_n]->stage_data.fs;
+      *common_build_data =
+         data->graphics.build_infos[pipeline_n]->frag_common_data;
+      *explicit_const_usage =
+         data->graphics.build_infos[pipeline_n]->frag_explicit_conts_usage;
+
+      break;
+
+   default:
+      unreachable("Unsupported stage.");
+   }
 }

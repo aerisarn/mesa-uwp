@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 
+#include "compiler/shader_enums.h"
 #include "rogue/rogue_build_data.h"
 
 /**
@@ -40,6 +41,7 @@
 struct pvr_compute_pipeline_shader_state;
 struct pvr_device;
 struct pvr_fragment_shader_state;
+struct pvr_hard_coding_data;
 struct pvr_vertex_shader_state;
 
 struct pvr_explicit_constant_usage {
@@ -73,12 +75,18 @@ struct pvr_hard_code_graphics_build_info {
 /* Returns true if the shader for the currently running program requires hard
  * coded shaders.
  */
-bool pvr_hard_code_shader_required(void);
+bool pvr_hard_code_shader_required(const struct pvr_device_info *const dev_info);
 
 VkResult pvr_hard_code_compute_pipeline(
    struct pvr_device *const device,
    struct pvr_compute_pipeline_shader_state *const shader_state_out,
    struct pvr_hard_code_compute_build_info *const build_info_out);
+
+/* Returns a mask of MESA_SHADER_* (gl_shader_stage) indicating which stage
+ * needs to be hard coded.
+ */
+uint32_t
+pvr_hard_code_graphics_get_flags(const struct pvr_device_info *const dev_info);
 
 /* pipeline_n:
  *    The pipeline number. Each pipeline created requires unique hard
@@ -86,23 +94,28 @@ VkResult pvr_hard_code_compute_pipeline(
  *    This pipeline number to request data for the first pipeline to be created
  *    is 0 and should be incremented for each subsequent pipeline.
  */
-void pvr_hard_code_graphics_shaders(
+void pvr_hard_code_graphics_shader(
+   const struct pvr_device_info *const dev_info,
    uint32_t pipeline_n,
-   struct rogue_shader_binary **const vert_shader_out,
-   struct rogue_shader_binary **const frag_shader_out);
+   gl_shader_stage stage,
+   struct rogue_shader_binary **const shader_out);
 
 void pvr_hard_code_graphics_vertex_state(
+   const struct pvr_device_info *const dev_info,
    uint32_t pipeline_n,
-   struct pvr_vertex_shader_state *vert_state);
+   struct pvr_vertex_shader_state *const vert_state_out);
 
 void pvr_hard_code_graphics_fragment_state(
-   uint32_t pipelien_n,
-   struct pvr_fragment_shader_state *frag_state);
-
-void pvr_hard_code_graphics_inject_build_info(
+   const struct pvr_device_info *const dev_info,
    uint32_t pipeline_n,
-   struct rogue_build_ctx *ctx,
-   struct pvr_explicit_constant_usage *const vert_common_data_out,
-   struct pvr_explicit_constant_usage *const frag_common_data_out);
+   struct pvr_fragment_shader_state *const frag_state_out);
+
+void pvr_hard_code_graphics_get_build_info(
+   const struct pvr_device_info *const dev_info,
+   uint32_t pipeline_n,
+   gl_shader_stage stage,
+   struct rogue_common_build_data *const common_build_data,
+   struct rogue_build_data *const build_data,
+   struct pvr_explicit_constant_usage *const explicit_const_usage);
 
 #endif /* PVR_HARDCODE_SHADERS_H */
