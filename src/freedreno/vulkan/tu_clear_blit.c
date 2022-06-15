@@ -945,9 +945,15 @@ r3d_src_gmem(struct tu_cmd_buffer *cmd,
    uint32_t desc[A6XX_TEX_CONST_DWORDS];
    memcpy(desc, iview->view.descriptor, sizeof(desc));
 
-   /* patch the format so that depth/stencil get the right format */
-   desc[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
-   desc[0] |= A6XX_TEX_CONST_0_FMT(tu6_format_texture(format, TILE6_2).fmt);
+   /* patch the format so that depth/stencil get the right format and swizzle */
+   desc[0] &= ~(A6XX_TEX_CONST_0_FMT__MASK |
+                A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
+                A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK);
+   desc[0] |= A6XX_TEX_CONST_0_FMT(tu6_format_texture(format, TILE6_2).fmt) |
+               A6XX_TEX_CONST_0_SWIZ_X(A6XX_TEX_X) |
+               A6XX_TEX_CONST_0_SWIZ_Y(A6XX_TEX_Y) |
+               A6XX_TEX_CONST_0_SWIZ_Z(A6XX_TEX_Z) |
+               A6XX_TEX_CONST_0_SWIZ_W(A6XX_TEX_W);
 
    /* patched for gmem */
    desc[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
