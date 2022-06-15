@@ -23,6 +23,9 @@ nvk_CmdBlitImage2(
    VK_FROM_HANDLE(nvk_image, dst, pBlitImageInfo->dstImage);
    struct nouveau_ws_push *push = cmd->push;
 
+   assert(src->format->supports_2d_blit);
+   assert(dst->format->supports_2d_blit);
+
    nouveau_ws_push_ref(push, src->mem->bo, NOUVEAU_WS_BO_RD);
    nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
 
