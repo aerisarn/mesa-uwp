@@ -74,6 +74,7 @@ void dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func);
 bool dxil_nir_fixup_tess_level_for_domain(nir_shader *nir);
 bool dxil_nir_set_tcs_patches_in(nir_shader *nir, unsigned num_control_points);
 bool dxil_nir_lower_ubo_array_one_to_static(nir_shader *s);
+bool dxil_nir_fix_io_uint_type(nir_shader *s, uint64_t in_mask, uint64_t out_mask);
 
 #ifdef __cplusplus
 }

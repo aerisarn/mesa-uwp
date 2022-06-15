@@ -476,41 +476,6 @@ dxil_spirv_nir_discard_point_size_var(nir_shader *shader)
 }
 
 static bool
-fix_sample_mask_type(struct nir_builder *builder, nir_instr *instr,
-                     void *cb_data)
-{
-   if (instr->type != nir_instr_type_deref)
-      return false;
-
-   nir_deref_instr *deref = nir_instr_as_deref(instr);
-   nir_variable *var =
-      deref->deref_type == nir_deref_type_var ? deref->var : NULL;
-
-   if (!var || var->data.mode != nir_var_shader_out ||
-       var->data.location != FRAG_RESULT_SAMPLE_MASK ||
-       deref->type == glsl_uint_type())
-      return false;
-
-   assert(glsl_without_array(deref->type) == glsl_int_type());
-   deref->type = glsl_uint_type();
-   return true;
-}
-
-static bool
-dxil_spirv_nir_fix_sample_mask_type(nir_shader *shader)
-{
-   nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
-      if (var->data.location == FRAG_RESULT_SAMPLE_MASK &&
-          var->type != glsl_uint_type()) {
-         var->type = glsl_uint_type();
-      }
-   }
-
-   return nir_shader_instructions_pass(shader, fix_sample_mask_type,
-                                       nir_metadata_all, NULL);
-}
-
-static bool
 kill_undefined_varyings(struct nir_builder *b,
                         nir_instr *instr,
                         void *data)
@@ -813,7 +778,6 @@ dxil_spirv_nir_passes(nir_shader *nir,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
-   NIR_PASS_V(nir, dxil_spirv_nir_fix_sample_mask_type);
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);

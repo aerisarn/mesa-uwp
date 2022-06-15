@@ -680,60 +680,6 @@ d3d12_add_missing_dual_src_target(struct nir_shader *s,
 }
 
 static bool
-fix_io_uint_type(struct nir_shader *s, nir_variable_mode modes, int slot)
-{
-   nir_variable *fixed_var = NULL;
-   nir_foreach_variable_with_modes(var, s, modes) {
-      if (var->data.location == slot) {
-         var->type = glsl_uint_type();
-         fixed_var = var;
-         break;
-      }
-   }
-
-   assert(fixed_var);
-
-   nir_foreach_function(function, s) {
-      if (function->impl) {
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type == nir_instr_type_deref) {
-                  nir_deref_instr *deref = nir_instr_as_deref(instr);
-                  if (deref->var == fixed_var)
-                     deref->type = fixed_var->type;
-               }
-            }
-         }
-      }
-   }
-   return true;
-}
-
-bool
-d3d12_fix_io_uint_type(struct nir_shader *s, uint64_t in_mask, uint64_t out_mask)
-{
-   if (!(s->info.outputs_written & out_mask) &&
-       !(s->info.inputs_read & in_mask))
-      return false;
-
-   bool progress = false;
-
-   while (in_mask) {
-      int slot = u_bit_scan64(&in_mask);
-      progress |= (s->info.inputs_read & (1ull << slot)) &&
-                  fix_io_uint_type(s, nir_var_shader_in, slot);
-   }
-
-   while (out_mask) {
-      int slot = u_bit_scan64(&out_mask);
-      progress |= (s->info.outputs_written & (1ull << slot)) &&
-                  fix_io_uint_type(s, nir_var_shader_out, slot);
-   }
-
-   return progress;
-}
-
-static bool
 lower_load_ubo_packed_filter(const nir_instr *instr,
                              UNUSED const void *_options) {
    if (instr->type != nir_instr_type_intrinsic)

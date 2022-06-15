@@ -5727,6 +5727,18 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    ctx->mod.major_version = 6;
    ctx->mod.minor_version = 1;
 
+   if (s->info.stage <= MESA_SHADER_FRAGMENT) {
+      uint64_t in_mask =
+         s->info.stage == MESA_SHADER_VERTEX ?
+         0 : (VARYING_BIT_PRIMITIVE_ID | VARYING_BIT_VIEWPORT);
+      uint64_t out_mask =
+         s->info.stage == MESA_SHADER_FRAGMENT ?
+         ((1ull << FRAG_RESULT_STENCIL) | (1ull << FRAG_RESULT_SAMPLE_MASK)) :
+         (VARYING_BIT_PRIMITIVE_ID | VARYING_BIT_VIEWPORT);
+
+      NIR_PASS_V(s, dxil_nir_fix_io_uint_type, in_mask, out_mask);
+   }
+
    NIR_PASS_V(s, dxil_nir_lower_fquantize2f16);
    NIR_PASS_V(s, nir_lower_frexp);
    NIR_PASS_V(s, nir_lower_flrp, 16 | 32 | 64, true);

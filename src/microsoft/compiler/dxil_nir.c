@@ -1968,3 +1968,64 @@ dxil_nir_lower_fquantize2f16(nir_shader *s)
 {
    return nir_shader_lower_instructions(s, is_fquantize2f16, lower_fquantize2f16, NULL);
 }
+
+static bool
+fix_io_uint_deref_types(struct nir_builder *builder, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_deref)
+      return false;
+
+   nir_deref_instr *deref = nir_instr_as_deref(instr);
+   nir_variable *var =
+      deref->deref_type == nir_deref_type_var ? deref->var : NULL;
+
+   if (var == data) {
+      deref->type = var->type;
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+fix_io_uint_type(nir_shader *s, nir_variable_mode modes, int slot)
+{
+   nir_variable *fixed_var = NULL;
+   nir_foreach_variable_with_modes(var, s, modes) {
+      if (var->data.location == slot) {
+         assert(var->type = glsl_int_type());
+         var->type = glsl_uint_type();
+         fixed_var = var;
+         break;
+      }
+   }
+
+   assert(fixed_var);
+
+   return nir_shader_instructions_pass(s, fix_io_uint_deref_types,
+                                       nir_metadata_all, fixed_var);
+}
+
+bool
+dxil_nir_fix_io_uint_type(nir_shader *s, uint64_t in_mask, uint64_t out_mask)
+{
+   if (!(s->info.outputs_written & out_mask) &&
+       !(s->info.inputs_read & in_mask))
+      return false;
+
+   bool progress = false;
+
+   while (in_mask) {
+      int slot = u_bit_scan64(&in_mask);
+      progress |= (s->info.inputs_read & (1ull << slot)) &&
+                  fix_io_uint_type(s, nir_var_shader_in, slot);
+   }
+
+   while (out_mask) {
+      int slot = u_bit_scan64(&out_mask);
+      progress |= (s->info.outputs_written & (1ull << slot)) &&
+                  fix_io_uint_type(s, nir_var_shader_out, slot);
+   }
+
+   return progress;
+}
