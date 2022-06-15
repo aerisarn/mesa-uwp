@@ -2470,14 +2470,11 @@ static void
 tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *variant,
                      char *nir_from_spirv)
 {
-   ralloc_steal(pipeline->executables_mem_ctx, variant->disasm_info.nir);
-   ralloc_steal(pipeline->executables_mem_ctx, variant->disasm_info.disasm);
-
    struct tu_pipeline_executable exe = {
       .stage = variant->type,
       .nir_from_spirv = nir_from_spirv,
-      .nir_final = variant->disasm_info.nir,
-      .disasm = variant->disasm_info.disasm,
+      .nir_final = ralloc_strdup(pipeline->executables_mem_ctx, variant->disasm_info.nir),
+      .disasm = ralloc_strdup(pipeline->executables_mem_ctx, variant->disasm_info.disasm),
       .stats = variant->info,
       .is_binning = variant->binning_pass,
    };
