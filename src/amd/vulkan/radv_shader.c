@@ -1395,9 +1395,11 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
       ngg_stage->info.ngg_info.esgs_ring_size = nir->info.shared_size;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       assert(info->is_ngg);
-      NIR_PASS_V(nir, ac_nir_lower_ngg_gs, info->wave_size, info->workgroup_size,
+      NIR_PASS_V(nir, ac_nir_lower_ngg_gs,
+                 device->physical_device->rad_info.gfx_level,
+                 info->wave_size, info->workgroup_size,
                  info->ngg_info.esgs_ring_size, info->gs.gsvs_vertex_size,
-                 info->ngg_info.ngg_emit_size * 4u, false, true);
+                 info->ngg_info.ngg_emit_size * 4u, true, false, true);
    } else if (nir->info.stage == MESA_SHADER_MESH) {
       bool scratch_ring = false;
       NIR_PASS_V(nir, ac_nir_lower_ngg_ms, &scratch_ring, info->wave_size, pl_key->has_multiview_view_index);

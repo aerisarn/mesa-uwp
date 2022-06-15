@@ -101,6 +101,7 @@ typedef struct
 typedef struct
 {
    nir_function_impl *impl;
+   enum amd_gfx_level gfx_level;
    nir_variable *output_vars[VARYING_SLOT_MAX][4];
    nir_variable *current_clear_primflag_idx_var;
    int const_out_vtxcnt[4];
@@ -112,6 +113,7 @@ typedef struct
    unsigned lds_addr_gs_scratch;
    unsigned lds_bytes_per_gs_out_vertex;
    unsigned lds_offs_primflags;
+   bool has_xfb_query;
    bool found_out_vtxcnt[4];
    bool output_compile_time_known;
    bool can_cull;
@@ -2083,9 +2085,28 @@ ngg_gs_clear_primflags(nir_builder *b, nir_ssa_def *num_vertices, unsigned strea
 static void
 ngg_gs_shader_query(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg_gs_state *s)
 {
-   nir_ssa_def *pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
-   nir_ssa_def *prim_gen_query_enabled = nir_load_prim_gen_query_enabled_amd(b);
-   nir_ssa_def *shader_query_enabled = nir_ior(b, pipeline_query_enabled, prim_gen_query_enabled);
+   bool has_xfb_query = s->has_xfb_query;
+   bool has_pipeline_stats_query = s->gfx_level < GFX11;
+
+   nir_ssa_def *pipeline_query_enabled = NULL;
+   nir_ssa_def *prim_gen_query_enabled = NULL;
+   nir_ssa_def *shader_query_enabled = NULL;
+   if (has_xfb_query) {
+      prim_gen_query_enabled = nir_load_prim_gen_query_enabled_amd(b);
+      if (has_pipeline_stats_query) {
+         pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
+         shader_query_enabled = nir_ior(b, pipeline_query_enabled, prim_gen_query_enabled);
+      } else {
+         shader_query_enabled = prim_gen_query_enabled;
+      }
+   } else if (has_pipeline_stats_query) {
+      pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
+      shader_query_enabled = pipeline_query_enabled;
+   } else {
+      /* has no query */
+      return;
+   }
+
    nir_if *if_shader_query = nir_push_if(b, shader_query_enabled);
    nir_ssa_def *num_prims_in_wave = NULL;
 
@@ -2110,20 +2131,24 @@ ngg_gs_shader_query(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg_gs_st
    /* Store the query result to query result using an atomic add. */
    nir_if *if_first_lane = nir_push_if(b, nir_elect(b, 1));
    {
-      nir_if *if_pipeline_query = nir_push_if(b, pipeline_query_enabled);
-      {
-         /* Add all streams' number to the same counter. */
-         nir_atomic_add_gs_emit_prim_count_amd(b, num_prims_in_wave);
+      if (has_pipeline_stats_query) {
+         nir_if *if_pipeline_query = nir_push_if(b, pipeline_query_enabled);
+         {
+            /* Add all streams' number to the same counter. */
+            nir_atomic_add_gs_emit_prim_count_amd(b, num_prims_in_wave);
+         }
+         nir_pop_if(b, if_pipeline_query);
       }
-      nir_pop_if(b, if_pipeline_query);
 
-      nir_if *if_prim_gen_query = nir_push_if(b, prim_gen_query_enabled);
-      {
-         /* Add to the counter for this stream. */
-         nir_atomic_add_gen_prim_count_amd(
-            b, num_prims_in_wave, .stream_id = nir_intrinsic_stream_id(intrin));
+      if (has_xfb_query) {
+         nir_if *if_prim_gen_query = nir_push_if(b, prim_gen_query_enabled);
+         {
+            /* Add to the counter for this stream. */
+            nir_atomic_add_gen_prim_count_amd(
+               b, num_prims_in_wave, .stream_id = nir_intrinsic_stream_id(intrin));
+         }
+         nir_pop_if(b, if_prim_gen_query);
       }
-      nir_pop_if(b, if_prim_gen_query);
    }
    nir_pop_if(b, if_first_lane);
 
@@ -2781,11 +2806,13 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
 
 void
 ac_nir_lower_ngg_gs(nir_shader *shader,
+                    enum amd_gfx_level gfx_level,
                     unsigned wave_size,
                     unsigned max_workgroup_size,
                     unsigned esgs_ring_lds_bytes,
                     unsigned gs_out_vtx_bytes,
                     unsigned gs_total_out_vtx_bytes,
+                    bool has_xfb_query,
                     bool can_cull,
                     bool disable_streamout)
 {
@@ -2794,6 +2821,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
 
    lower_ngg_gs_state state = {
       .impl = impl,
+      .gfx_level = gfx_level,
       .max_num_waves = DIV_ROUND_UP(max_workgroup_size, wave_size),
       .wave_size = wave_size,
       .lds_addr_gs_out_vtx = esgs_ring_lds_bytes,
@@ -2802,6 +2830,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
       .lds_bytes_per_gs_out_vertex = gs_out_vtx_bytes + 4u,
       .can_cull = can_cull,
       .streamout_enabled = shader->xfb_info && !disable_streamout,
+      .has_xfb_query = has_xfb_query,
    };
 
    unsigned lds_scratch_bytes = ALIGN(state.max_num_waves, 4u);

@@ -137,11 +137,13 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
 
 void
 ac_nir_lower_ngg_gs(nir_shader *shader,
+                    enum amd_gfx_level gfx_level,
                     unsigned wave_size,
                     unsigned max_workgroup_size,
                     unsigned esgs_ring_lds_bytes,
                     unsigned gs_out_vtx_bytes,
                     unsigned gs_total_out_vtx_bytes,
+                    bool has_xfb_query,
                     bool can_cull,
                     bool disable_streamout);
 
