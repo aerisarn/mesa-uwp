@@ -1899,7 +1899,13 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       return true;
    }
 
-   intel_get_and_process_hwconfig_table(fd, devinfo);
+   if (intel_get_and_process_hwconfig_table(fd, devinfo)) {
+      /* After applying hwconfig values, some items need to be recalculated. */
+      devinfo->max_cs_threads =
+         devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
+
+      update_cs_workgroup_threads(devinfo);
+   }
 
    int timestamp_frequency;
    if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
