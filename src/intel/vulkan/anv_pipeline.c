@@ -308,7 +308,7 @@ populate_sampler_prog_key(const struct intel_device_info *devinfo,
       key->msaa_16 = ~0;
 
    /* XXX: Handle texture swizzle on HSW- */
-   for (int i = 0; i < MAX_SAMPLERS; i++) {
+   for (int i = 0; i < BRW_MAX_SAMPLERS; i++) {
       /* Assume color sampler, no swizzling. (Works for BDW+) */
       key->swizzles[i] = SWIZZLE_XYZW;
    }

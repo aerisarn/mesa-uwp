@@ -50,12 +50,12 @@
 #define KEY_INIT(prefix)                                                   \
    .prefix.program_string_id = ish->program_id,                            \
    .prefix.limit_trig_input_range = screen->driconf.limit_trig_input_range
-#define BRW_KEY_INIT(gen, prog_id, limit_trig_input)     \
-   .base.program_string_id = prog_id,                    \
-   .base.limit_trig_input_range = limit_trig_input,      \
-   .base.subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM, \
-   .base.tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688,   \
-   .base.tex.compressed_multisample_layout_mask = ~0,    \
+#define BRW_KEY_INIT(gen, prog_id, limit_trig_input)       \
+   .base.program_string_id = prog_id,                      \
+   .base.limit_trig_input_range = limit_trig_input,        \
+   .base.subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM,   \
+   .base.tex.swizzles[0 ... BRW_MAX_SAMPLERS - 1] = 0x688, \
+   .base.tex.compressed_multisample_layout_mask = ~0,      \
    .base.tex.msaa_16 = (gen >= 9 ? ~0 : 0)
 
 struct iris_threaded_compile_job {
