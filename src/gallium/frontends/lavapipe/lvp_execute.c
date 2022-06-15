@@ -127,7 +127,7 @@ struct rendering_state {
    struct pipe_vertex_buffer vb[PIPE_MAX_ATTRIBS];
    struct cso_velems_state velem;
 
-   struct pipe_sampler_view *sv[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+   struct pipe_sampler_view *sv[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
    int num_sampler_views[PIPE_SHADER_TYPES];
    struct pipe_sampler_state ss[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    /* cso_context api is stupid */
@@ -1129,6 +1129,7 @@ static void fill_sampler_view_stage(struct rendering_state *state,
          fix_depth_swizzle_a(templ.swizzle_a);
       }
 
+      assert(sv_idx < ARRAY_SIZE(state->sv[p_stage]));
       if (state->sv[p_stage][sv_idx])
          pipe_sampler_view_reference(&state->sv[p_stage][sv_idx], NULL);
       state->sv[p_stage][sv_idx] = state->pctx->create_sampler_view(state->pctx, iv->image->bo, &templ);
@@ -1155,6 +1156,7 @@ static void fill_sampler_buffer_view_stage(struct rendering_state *state,
    sv_idx += dyn_info->stage[stage].sampler_view_count;
    struct lvp_buffer_view *bv = descriptor->buffer_view;
 
+   assert(sv_idx < ARRAY_SIZE(state->sv[p_stage]));
    if (state->sv[p_stage][sv_idx])
       pipe_sampler_view_reference(&state->sv[p_stage][sv_idx], NULL);
 
@@ -4021,7 +4023,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->vp_dirty = true;
    state->rs_state.point_tri_clip = true;
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
-      for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++)
+      for (unsigned i = 0; i < ARRAY_SIZE(state->cso_ss_ptr[s]); i++)
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
    }
    /* create a gallium context */
@@ -4030,20 +4032,21 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->start_vb = -1;
    state->num_vb = 0;
    cso_unbind_context(queue->cso);
-   for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(state->so_targets); i++) {
       if (state->so_targets[i]) {
          state->pctx->stream_output_target_destroy(state->pctx, state->so_targets[i]);
       }
    }
 
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
-      for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++) {
+      for (unsigned i = 0; i < ARRAY_SIZE(state->sv[s]); i++) {
          if (state->sv[s][i])
             pipe_sampler_view_reference(&state->sv[s][i], NULL);
       }
    }
 
-   for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++) {
+   for (unsigned i = 0;
+        i < ARRAY_SIZE(state->cso_ss_ptr[PIPE_SHADER_COMPUTE]); i++) {
       if (state->cso_ss_ptr[PIPE_SHADER_COMPUTE][i])
          state->pctx->delete_sampler_state(state->pctx, state->ss_cso[PIPE_SHADER_COMPUTE][i]);
    }
