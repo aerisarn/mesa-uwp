@@ -3101,9 +3101,17 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
 
         mali_ptr heap = t.gpu;
 
+        /* We emit this descriptor after the first draw. The provoking vertex
+         * for the batch should have already been set (on Valhall, where it is a
+         * property of the batch).
+         */
+        if (PAN_ARCH >= 9)
+                assert(pan_tristate_is_defined(batch->first_provoking_vertex));
+
         t = pan_pool_alloc_desc(&batch->pool.base, TILER_CONTEXT);
         GENX(pan_emit_tiler_ctx)(dev, batch->key.width, batch->key.height,
                                  util_framebuffer_get_num_samples(&batch->key),
+                                 pan_tristate_get(batch->first_provoking_vertex),
                                  heap, t.cpu);
 
         batch->tiler_ctx.bifrost = t.gpu;
@@ -3975,8 +3983,10 @@ panfrost_compatible_batch_state(struct panfrost_batch *batch)
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
         bool coord = (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
+        bool first = rast->flatshade_first;
 
-        return pan_tristate_set(&batch->sprite_coord_origin, coord);
+        return pan_tristate_set(&batch->sprite_coord_origin, coord) &&
+               pan_tristate_set(&batch->first_provoking_vertex, first);
 }
 
 static void

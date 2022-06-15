@@ -448,6 +448,7 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
         fb->nr_samples = util_framebuffer_get_num_samples(&batch->key);
         fb->rt_count = batch->key.nr_cbufs;
         fb->sprite_coord_origin = pan_tristate_get(batch->sprite_coord_origin);
+        fb->first_provoking_vertex = pan_tristate_get(batch->first_provoking_vertex);
 
         static const unsigned char id_swz[] = {
                 PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W,

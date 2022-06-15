@@ -764,6 +764,7 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 
 #if PAN_ARCH >= 9
                 cfg.point_sprite_coord_origin_max_y = fb->sprite_coord_origin;
+                cfg.first_provoking_vertex = fb->first_provoking_vertex;
 #endif
         }
 
@@ -937,6 +938,7 @@ void
 GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev,
                          unsigned fb_width, unsigned fb_height,
                          unsigned nr_samples,
+                         bool first_provoking_vertex,
                          mali_ptr heap,
                          void *out)
 {
@@ -959,6 +961,9 @@ GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev,
                 tiler.fb_height = fb_height;
                 tiler.heap = heap;
                 tiler.sample_pattern = pan_sample_pattern(nr_samples);
+#if PAN_ARCH >= 9
+                tiler.first_provoking_vertex = first_provoking_vertex;
+#endif
         }
 }
 #endif

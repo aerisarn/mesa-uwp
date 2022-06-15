@@ -200,6 +200,7 @@ struct panfrost_batch {
          * per draw.
          */
         struct pan_tristate sprite_coord_origin;
+        struct pan_tristate first_provoking_vertex;
 
         /* Referenced resources */
         struct set *resources;
