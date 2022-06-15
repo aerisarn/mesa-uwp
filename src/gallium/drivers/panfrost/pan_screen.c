@@ -325,6 +325,14 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                         modes |= BITFIELD_BIT(PIPE_PRIM_POLYGON);
                 }
 
+                if (dev->arch >= 9) {
+                        /* Although Valhall is supposed to support quads, they
+                         * don't seem to work correctly. Disable to fix
+                         * arb-provoking-vertex-render.
+                         */
+                        modes &= ~BITFIELD_BIT(PIPE_PRIM_QUADS);
+                }
+
                 return modes;
         }
 
