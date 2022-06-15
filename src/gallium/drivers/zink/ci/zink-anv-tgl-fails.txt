@@ -1,5 +1,3 @@
-KHR-GL46.geometry_shader.layered_rendering_boundary_condition.layered_rendering_boundary_condition_various_textures,Crash
-
 # 6205
 KHR-GL46.geometry_shader.primitive_queries.primitive_queries_lines,Fail
 KHR-GL46.geometry_shader.primitive_queries.primitive_queries_points,Fail
