@@ -4085,7 +4085,7 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
                          const struct lp_static_sampler_state *static_sampler_state,
                          struct lp_sampler_dynamic_state *dynamic_state,
                          const struct lp_sampler_params *params,
-                         int texture_index, int sampler_index,
+                         unsigned texture_index, unsigned sampler_index,
                          LLVMValueRef *tex_ret)
 {
    LLVMBuilderRef builder = gallivm->builder;
