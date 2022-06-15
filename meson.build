@@ -1782,10 +1782,10 @@ if with_llvm
     error('Lavapipe requires LLVM draw support.')
   endif
 
-  if cc.get_argument_syntax() != 'msvc'
+  if host_machine.system() != 'windows'
     # LLVM can be built without rtti, turning off rtti changes the ABI of C++
     # programs, so we need to build all C++ code in mesa without rtti as well to
-    # ensure that linking works. Note that MSVC does handle mismatching RTTI
+    # ensure that linking works. Note that Win32 compilers does handle mismatching RTTI
     # without issues, so only apply this for other compilers.
     if dep_llvm.type_name() == 'internal'
       _llvm_rtti = subproject('llvm').get_variable('has_rtti', true)
@@ -1800,7 +1800,9 @@ if with_llvm
         error('LLVM was built without RTTI, so Mesa must also disable RTTI. Use an LLVM built with LLVM_ENABLE_RTTI or add cpp_rtti=false.')
       endif
     endif
-  else
+  endif
+
+  if cc.get_argument_syntax() == 'msvc'
     # Suppress "/DELAYLOAD:ole32.dll/shell32.dll ignored" warnings that LLVM adds
     add_project_link_arguments(
       '/ignore:4199',
