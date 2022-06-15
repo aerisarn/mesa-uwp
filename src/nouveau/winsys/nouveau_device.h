@@ -5,6 +5,18 @@
 
 #include <stddef.h>
 
+enum nvk_debug {
+   /* dumps all push buffers after submission */
+   NVK_DEBUG_PUSH_DUMP = 1ull << 0,
+
+   /* push buffer submissions wait on completion
+    *
+    * This is useful to find the submission killing the GPU context. For easier debugging it also
+    * dumps the buffer leading to that.
+    */
+   NVK_DEBUG_PUSH_SYNC = 1ull << 1,
+};
+
 struct nouveau_ws_device {
    uint16_t vendor_id;
    uint16_t device_id;
@@ -19,6 +31,8 @@ struct nouveau_ws_device {
 
    uint8_t gpc_count;
    uint16_t mp_count;
+
+   enum nvk_debug debug_flags;
 };
 
 /* don't use directly, gets removed once the new UAPI is here */

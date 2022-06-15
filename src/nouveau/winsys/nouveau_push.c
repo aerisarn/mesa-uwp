@@ -9,6 +9,15 @@
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
 
+#include "nvtypes.h"
+#include "nvk_cl902d.h"
+#include "nvk_cl90b5.h"
+#include "nvk_cla0b5.h"
+#include "nvk_clc1b5.h"
+#include "nvk_cla0c0.h"
+#include "nvk_clc0c0.h"
+#include "nvk_clc3c0.h"
+
 struct nouveau_ws_push*
 nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
 {
@@ -92,6 +101,115 @@ nouveau_ws_push_valid(struct nouveau_ws_push *push) {
    }
 }
 
+static void
+nouveau_ws_push_dump(struct nouveau_ws_push *push, uint8_t cls)
+{
+   uint32_t *cur = push->orig_map;
+
+   while (cur < push->map) {
+      uint32_t hdr = *cur;
+      uint32_t type = hdr >> 29;
+      uint32_t inc;
+      uint32_t count = (hdr >> 16) & 0x1fff;
+      uint32_t subchan = (hdr >> 13) & 0x7;
+      uint32_t mthd = (hdr & 0xfff) << 2;
+      uint32_t value = 0;
+      bool is_immd = false;
+
+      printf("[0x%08lx] HDR %x subch %i", cur - push->orig_map, hdr, subchan);
+      cur++;
+
+      switch (type) {
+      case 4:
+         printf(" IMMD\n");
+         inc = 0;
+         is_immd = true;
+         value = count;
+         count = 1;
+         break;
+      case 1:
+         printf(" NINC\n");
+         inc = count;
+         break;
+      case 3:
+         printf(" 0INC\n");
+         inc = 0;
+         break;
+      case 5:
+         printf(" 1INC\n");
+         inc = 1;
+         break;
+      }
+
+      while (count--) {
+         const char *mthd_name = "";
+         switch (subchan) {
+         case 1:
+            if (cls >= 0xc3)
+               mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
+            else if (cls >= 0xc0)
+               mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
+            else
+               mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
+            break;
+         case 3:
+            mthd_name = P_PARSE_NV902D_MTHD(mthd);
+            break;
+         case 4:
+            if (cls >= 0xc1)
+               mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
+            else if (cls >= 0xa0)
+               mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
+            else
+               mthd_name = P_PARSE_NV90B5_MTHD(mthd);
+            break;
+         default:
+            mthd_name = "";
+            break;
+         }
+
+         if (!is_immd)
+            value = *cur;
+
+         printf("\tmthd %04x %s\n", mthd, mthd_name);
+         switch (subchan) {
+         case 1:
+            if (cls >= 0xc3)
+               P_DUMP_NVC3C0_MTHD_DATA(mthd, value, "\t\t");
+            else if (cls >= 0xc0)
+               P_DUMP_NVC0C0_MTHD_DATA(mthd, value, "\t\t");
+            else
+               P_DUMP_NVA0C0_MTHD_DATA(mthd, value, "\t\t");
+            break;
+         case 3:
+            P_DUMP_NV902D_MTHD_DATA(mthd, value, "\t\t");
+            break;
+         case 4:
+            if (cls >= 0xc1)
+               P_DUMP_NVC1B5_MTHD_DATA(mthd, value, "\t\t");
+            else if (cls >= 0xa0)
+               P_DUMP_NVA0B5_MTHD_DATA(mthd, value, "\t\t");
+            else
+               P_DUMP_NV90B5_MTHD_DATA(mthd, value, "\t\t");
+            break;
+         default:
+            mthd_name = "";
+            break;
+         }
+
+         if (!is_immd)
+            cur++;
+
+         if (inc) {
+            inc--;
+            mthd += 4;
+         }
+      }
+
+      printf("\n");
+   }
+}
+
 int
 nouveau_ws_push_submit(
    struct nouveau_ws_push *push,
@@ -151,7 +269,15 @@ nouveau_ws_push_submit(
    req.nr_push = 1;
    req.push = (uintptr_t)&req_push;
 
+   if (dev->debug_flags & NVK_DEBUG_PUSH_SYNC)
+      req.vram_available |= NOUVEAU_GEM_PUSHBUF_SYNC;
+
    int ret = drmCommandWriteRead(pdev->fd, DRM_NOUVEAU_GEM_PUSHBUF, &req, sizeof(req));
+
+   if ((ret && (dev->debug_flags & NVK_DEBUG_PUSH_SYNC)) || dev->debug_flags & NVK_DEBUG_PUSH_DUMP) {
+      printf("DRM_NOUVEAU_GEM_PUSHBUF returned %i, dumping pushbuffer\n", ret);
+      nouveau_ws_push_dump(push, dev->cls);
+   }
 
    /* TODO: later we want to report that the channel is gone, but for now just assert */
    assert(ret != -ENODEV);

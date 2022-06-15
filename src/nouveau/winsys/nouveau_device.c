@@ -6,6 +6,7 @@
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
 
+#include "util/u_debug.h"
 #include "util/os_file.h"
 #include "util/os_misc.h"
 
@@ -113,6 +114,17 @@ sm_for_cls(uint8_t cls, uint16_t chipset)
    }
 }
 
+static void
+nouveau_ws_device_set_dbg_flags(struct nouveau_ws_device *dev)
+{
+   const struct debug_control flags[] = {
+      { "push_dump", NVK_DEBUG_PUSH_DUMP },
+      { "push_sync", NVK_DEBUG_PUSH_SYNC },
+   };
+
+   dev->debug_flags = parse_debug_string(getenv("NVK_DEBUG"), flags);
+}
+
 struct nouveau_ws_device *
 nouveau_ws_device_new(int fd)
 {
@@ -161,6 +173,8 @@ nouveau_ws_device_new(int fd)
       goto out_dev;
    device->base.gpc_count = value & 0x000000ff;
    device->base.mp_count = value >> 8;
+
+   nouveau_ws_device_set_dbg_flags(&device->base);
 
    return &device->base;
 
