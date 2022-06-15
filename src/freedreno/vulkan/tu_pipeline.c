@@ -663,14 +663,28 @@ tu6_emit_xs(struct tu_cs *cs,
 }
 
 static void
+tu6_emit_shared_consts_enable(struct tu_cs *cs, bool enable)
+{
+   /* Enable/disable shared constants */
+   tu_cs_emit_regs(cs, A6XX_HLSQ_SHARED_CONSTS(.enable = enable));
+   tu_cs_emit_regs(cs, A6XX_SP_MODE_CONTROL(.constant_demotion_enable = true,
+                                            .isammode = ISAMMODE_GL,
+                                            .shared_consts_enable = enable));
+}
+
+static void
 tu6_emit_cs_config(struct tu_cs *cs,
                    const struct ir3_shader_variant *v,
                    const struct tu_pvtmem_config *pvtmem,
                    uint64_t binary_iova)
 {
+   bool shared_consts_enable = ir3_const_state(v)->shared_consts_enable;
+   tu6_emit_shared_consts_enable(cs, shared_consts_enable);
+
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
          .cs_state = true,
-         .cs_ibo = true));
+         .cs_ibo = true,
+         .cs_shared_const = shared_consts_enable));
 
    tu6_emit_xs_config(cs, MESA_SHADER_COMPUTE, v);
    tu6_emit_xs(cs, MESA_SHADER_COMPUTE, v, pvtmem, binary_iova);
@@ -1678,13 +1692,17 @@ tu6_emit_program_config(struct tu_cs *cs,
 
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
+   bool shared_consts_enable = builder->layout->push_constant_size > 0;
+   tu6_emit_shared_consts_enable(cs, shared_consts_enable);
+
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
          .vs_state = true,
          .hs_state = true,
          .ds_state = true,
          .gs_state = true,
          .fs_state = true,
-         .gfx_ibo = true));
+         .gfx_ibo = true,
+         .gfx_shared_const = shared_consts_enable));
    for (; stage < ARRAY_SIZE(builder->shader_iova); stage++) {
       tu6_emit_xs_config(cs, stage, builder->shaders->variants[stage]);
    }
@@ -2793,6 +2811,13 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       stage_infos[stage] = &builder->create_info->pStages[i];
    }
 
+   if (builder->layout->push_constant_size > 0) {
+      pipeline->shared_consts = (struct tu_push_constant_range) {
+         .lo = 0,
+         .dwords = builder->layout->push_constant_size / 4,
+      };
+   }
+
    struct tu_shader_key keys[ARRAY_SIZE(stage_infos)] = { };
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < ARRAY_SIZE(keys); stage++) {
@@ -2952,7 +2977,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
         stage < ARRAY_SIZE(shaders); stage++) {
       if (!shaders[stage])
          continue;
-      
+
       int64_t stage_start = os_time_get_nano();
 
       compiled_shaders->variants[stage] =
@@ -2965,6 +2990,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
       stage_feedbacks[stage].duration += os_time_get_nano() - stage_start;
    }
+   compiled_shaders->shared_consts = pipeline->shared_consts;
 
    uint32_t safe_constlens = ir3_trim_constlen(compiled_shaders->variants, compiler);
 
@@ -4038,6 +4064,13 @@ tu_compute_pipeline_create(VkDevice device,
          VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
    }
 
+   if (layout->push_constant_size > 0) {
+      pipeline->shared_consts = (struct tu_push_constant_range) {
+         .lo = 0,
+         .dwords = layout->push_constant_size / 4,
+      };
+   }
+
    char *nir_initial_disasm = NULL;
 
    if (!compiled) {
@@ -4071,6 +4104,7 @@ tu_compute_pipeline_create(VkDevice device,
 
       compiled->active_desc_sets = shader->active_desc_sets;
       compiled->push_consts[MESA_SHADER_COMPUTE] = shader->push_consts;
+      compiled->shared_consts = pipeline->shared_consts;
 
       struct ir3_shader_variant *v =
          ir3_shader_create_variant(shader->ir3_shader, &ir3_key, executable_info);

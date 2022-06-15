@@ -138,18 +138,21 @@ tu_spirv_to_nir(struct tu_device *dev,
 }
 
 static void
-lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
+lower_load_push_constant(struct tu_device *dev,
+                         nir_builder *b,
+                         nir_intrinsic_instr *instr,
                          struct tu_shader *shader)
 {
    uint32_t base = nir_intrinsic_base(instr);
    assert(base % 4 == 0);
-   assert(base >= shader->push_consts.lo * 16);
-   base -= shader->push_consts.lo * 16;
+   assert(base >= shader->push_consts.lo * 4);
+   base -= shader->push_consts.lo * 4;
 
    nir_ssa_def *load =
-      nir_load_uniform(b, instr->num_components, instr->dest.ssa.bit_size,
-                       nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)),
-                       .base = base / 4);
+      nir_load_uniform(b, instr->num_components,
+            instr->dest.ssa.bit_size,
+            nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)),
+            .base = base + dev->compiler->shared_consts_base_offset * 4);
 
    nir_ssa_def_rewrite_uses(&instr->dest.ssa, load);
 
@@ -398,7 +401,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_push_constant:
-      lower_load_push_constant(b, instr, shader);
+      lower_load_push_constant(dev, b, instr, shader);
       return true;
 
    case nir_intrinsic_load_vulkan_descriptor:
@@ -610,17 +613,21 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
 
    if (min >= max) {
       tu_shader->push_consts.lo = 0;
-      tu_shader->push_consts.count = 0;
+      tu_shader->push_consts.dwords = 0;
       return;
    }
 
-   /* CP_LOAD_STATE OFFSET and NUM_UNIT are in units of vec4 (4 dwords),
-    * however there's an alignment requirement of 4 on OFFSET. Expand the
-    * range and change units accordingly.
+   /* CP_LOAD_STATE OFFSET and NUM_UNIT for SHARED_CONSTS are in units of
+    * dwords while loading regular consts is in units of vec4's.
+    * So we unify the unit here as dwords for tu_push_constant_range, then
+    * we should consider correct unit when emitting.
+    *
+    * Note there's an alignment requirement of 16 dwords on OFFSET. Expand
+    * the range and change units accordingly.
     */
-   tu_shader->push_consts.lo = (min / 16) / 4 * 4;
-   tu_shader->push_consts.count =
-      align(max, 16) / 16 - tu_shader->push_consts.lo;
+   tu_shader->push_consts.lo = (min / 4) / 4 * 4;
+   tu_shader->push_consts.dwords =
+      align(max, 16) / 4 - tu_shader->push_consts.lo;
 }
 
 static bool
@@ -822,7 +829,8 @@ tu_shader_create(struct tu_device *dev,
 
    shader->ir3_shader =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
-                           .reserved_user_consts = align(shader->push_consts.count, 4),
+                           .reserved_user_consts = 0,
+                           .shared_consts_enable = layout->push_constant_size > 0,
                            .api_wavesize = key->api_wavesize,
                            .real_wavesize = key->real_wavesize,
                           }, &so_info);

@@ -720,8 +720,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VI,
    TU_DRAW_STATE_VI_BINNING,
    TU_DRAW_STATE_RAST,
-   TU_DRAW_STATE_SHADER_GEOM_CONST,
-   TU_DRAW_STATE_FS_CONST,
+   TU_DRAW_STATE_CONST,
    TU_DRAW_STATE_DESC_SETS,
    TU_DRAW_STATE_DESC_SETS_LOAD,
    TU_DRAW_STATE_VS_PARAMS,
@@ -1189,7 +1188,7 @@ struct tu_cmd_state
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
    struct tu_draw_state vertex_buffers;
-   struct tu_draw_state shader_const[2];
+   struct tu_draw_state shader_const;
    struct tu_draw_state desc_sets;
 
    struct tu_draw_state vs_params;
@@ -1377,7 +1376,7 @@ struct tu_event
 struct tu_push_constant_range
 {
    uint32_t lo;
-   uint32_t count;
+   uint32_t dwords;
 };
 
 struct tu_shader
@@ -1399,6 +1398,7 @@ struct tu_compiled_shaders
 {
    struct vk_pipeline_cache_object base;
 
+   struct tu_push_constant_range shared_consts;
    struct tu_push_constant_range push_consts[MESA_SHADER_STAGES];
    uint8_t active_desc_sets;
    bool multi_pos_output;
@@ -1497,6 +1497,8 @@ struct tu_pipeline
 
    /* for vertex buffers state */
    uint32_t num_vbs;
+
+   struct tu_push_constant_range shared_consts;
 
    struct
    {
