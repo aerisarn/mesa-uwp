@@ -4388,7 +4388,8 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
       export_dummy_prim = true;
    }
 
-   ac_build_ifcc(ctx, LLVMBuildICmp(builder, LLVMIntEQ, wave_id, ctx->i32_0, ""), 5020);
+   if (wave_id)
+      ac_build_ifcc(ctx, LLVMBuildICmp(builder, LLVMIntEQ, wave_id, ctx->i32_0, ""), 5020);
 
    tmp = LLVMBuildShl(builder, prim_cnt, LLVMConstInt(ctx->i32, 12, false), "");
    tmp = LLVMBuildOr(builder, tmp, vtx_cnt, "");
@@ -4413,7 +4414,8 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
       ac_build_endif(ctx, 5021);
    }
 
-   ac_build_endif(ctx, 5020);
+   if (wave_id)
+      ac_build_endif(ctx, 5020);
 }
 
 
