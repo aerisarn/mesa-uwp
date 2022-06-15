@@ -114,7 +114,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_VIEWPORT_SIZE (1 << 14)
 #define MAX_SCISSORS 16
 #define MAX_DISCARD_RECTANGLES 4
-#define MAX_PUSH_CONSTANTS_SIZE 128
+#define MAX_PUSH_CONSTANTS_SIZE 256
 #define MAX_PUSH_DESCRIPTORS 32
 #define MAX_DYNAMIC_UNIFORM_BUFFERS 16
 #define MAX_DYNAMIC_STORAGE_BUFFERS 8
@@ -1429,6 +1429,15 @@ void
 tu_shader_destroy(struct tu_device *dev,
                   struct tu_shader *shader,
                   const VkAllocationCallbacks *alloc);
+
+static bool inline
+tu6_shared_constants_enable(const struct tu_pipeline_layout *layout,
+                            const struct ir3_compiler *compiler)
+{
+   return layout->push_constant_size > 0 &&
+          layout->push_constant_size <= (compiler->shared_consts_size * 16);
+}
+
 
 struct tu_program_descriptor_linkage
 {

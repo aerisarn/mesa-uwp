@@ -141,18 +141,22 @@ static void
 lower_load_push_constant(struct tu_device *dev,
                          nir_builder *b,
                          nir_intrinsic_instr *instr,
-                         struct tu_shader *shader)
+                         struct tu_shader *shader,
+                         const struct tu_pipeline_layout *layout)
 {
    uint32_t base = nir_intrinsic_base(instr);
    assert(base % 4 == 0);
    assert(base >= shader->push_consts.lo * 4);
    base -= shader->push_consts.lo * 4;
 
+   if (tu6_shared_constants_enable(layout, dev->compiler))
+      base += dev->compiler->shared_consts_base_offset * 4;
+
    nir_ssa_def *load =
       nir_load_uniform(b, instr->num_components,
             instr->dest.ssa.bit_size,
             nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)),
-            .base = base + dev->compiler->shared_consts_base_offset * 4);
+            .base = base);
 
    nir_ssa_def_rewrite_uses(&instr->dest.ssa, load);
 
@@ -401,7 +405,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_push_constant:
-      lower_load_push_constant(dev, b, instr, shader);
+      lower_load_push_constant(dev, b, instr, shader, layout);
       return true;
 
    case nir_intrinsic_load_vulkan_descriptor:
@@ -827,10 +831,13 @@ tu_shader_create(struct tu_device *dev,
 
    ir3_finalize_nir(dev->compiler, nir);
 
+   uint32_t reserved_consts_vec4 = align(shader->push_consts.dwords, 16) / 4;
+   bool shared_consts_enable = tu6_shared_constants_enable(layout, dev->compiler);
+
    shader->ir3_shader =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
-                           .reserved_user_consts = 0,
-                           .shared_consts_enable = layout->push_constant_size > 0,
+                           .reserved_user_consts = reserved_consts_vec4,
+                           .shared_consts_enable = shared_consts_enable,
                            .api_wavesize = key->api_wavesize,
                            .real_wavesize = key->real_wavesize,
                           }, &so_info);

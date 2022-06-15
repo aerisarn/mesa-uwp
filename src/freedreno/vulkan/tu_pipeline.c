@@ -1692,7 +1692,8 @@ tu6_emit_program_config(struct tu_cs *cs,
 
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
-   bool shared_consts_enable = builder->layout->push_constant_size > 0;
+   bool shared_consts_enable = tu6_shared_constants_enable(builder->layout,
+         builder->device->compiler);
    tu6_emit_shared_consts_enable(cs, shared_consts_enable);
 
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
@@ -2811,7 +2812,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       stage_infos[stage] = &builder->create_info->pStages[i];
    }
 
-   if (builder->layout->push_constant_size > 0) {
+   if (tu6_shared_constants_enable(builder->layout, builder->device->compiler)) {
       pipeline->shared_consts = (struct tu_push_constant_range) {
          .lo = 0,
          .dwords = builder->layout->push_constant_size / 4,
@@ -4064,7 +4065,7 @@ tu_compute_pipeline_create(VkDevice device,
          VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
    }
 
-   if (layout->push_constant_size > 0) {
+   if (tu6_shared_constants_enable(layout, dev->compiler)) {
       pipeline->shared_consts = (struct tu_push_constant_range) {
          .lo = 0,
          .dwords = layout->push_constant_size / 4,
