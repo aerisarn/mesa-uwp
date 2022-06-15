@@ -37,6 +37,7 @@
 #include "util/debug.h"
 #include "util/log.h"
 #include "util/macros.h"
+#include "util/os_misc.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -1638,6 +1639,26 @@ query_regions(struct intel_device_info *devinfo, int fd, bool update)
    return true;
 }
 
+static bool
+compute_system_memory(struct intel_device_info *devinfo, bool update)
+{
+   uint64_t total_phys;
+   if (!os_get_total_physical_memory(&total_phys))
+      return false;
+
+   uint64_t available = 0;
+   os_get_available_system_memory(&available);
+
+   if (!update)
+      devinfo->mem.sram.mappable.size = total_phys;
+   else
+      assert(devinfo->mem.sram.mappable.size == total_phys);
+
+   devinfo->mem.sram.mappable.free = available;
+
+   return true;
+}
+
 static int
 intel_get_aperture_size(int fd, uint64_t *size)
 {
@@ -1982,7 +2003,11 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       getparam_topology(devinfo, fd);
    }
 
-   query_regions(devinfo, fd, false);
+   /* If the memory region uAPI query is not available, try to generate some
+    * numbers out of os_* utils for sram only.
+    */
+   if (!query_regions(devinfo, fd, false))
+      compute_system_memory(devinfo, false);
 
    /* region info is required for lmem support */
    if (devinfo->has_local_mem && !devinfo->mem.use_class_instance) {
@@ -2021,5 +2046,5 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 
 bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int fd)
 {
-   return query_regions(devinfo, fd, true);
+   return query_regions(devinfo, fd, true) || compute_system_memory(devinfo, true);
 }
