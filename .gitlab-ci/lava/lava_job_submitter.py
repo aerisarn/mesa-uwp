@@ -375,10 +375,12 @@ def fix_lava_color_log(line):
     """This function is a temporary solution for the color escape codes mangling
     problem. There is some problem in message passing between the LAVA
     dispatcher and the device under test (DUT). Here \x1b character is missing
-    before `[:digit::digit:?m` ANSI TTY color codes. When this problem is fixed
-    on the LAVA side, one should remove this function.
+    before `[:digit::digit:?:digit:?m` ANSI TTY color codes, or the more
+    complicated ones with number values for text format before background and
+    foreground colors.
+    When this problem is fixed on the LAVA side, one should remove this function.
     """
-    line["msg"] = re.sub(r"(\[\d{1,2}m)", "\x1b" + r"\1", line["msg"])
+    line["msg"] = re.sub(r"(\[(\d+;){0,2}\d{1,3}m)", "\x1b" + r"\1", line["msg"])
 
 
 def fix_lava_gitlab_section_log(line):
