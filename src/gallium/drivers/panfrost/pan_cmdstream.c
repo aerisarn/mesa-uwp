@@ -4009,8 +4009,12 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         if (unlikely(batch->scoreboard.job_index > 10000))
                 batch = panfrost_get_fresh_batch_for_fbo(ctx, "Too many draws");
 
-        if (unlikely(!panfrost_compatible_batch_state(batch)))
+        if (unlikely(!panfrost_compatible_batch_state(batch))) {
                 batch = panfrost_get_fresh_batch_for_fbo(ctx, "State change");
+
+                ASSERTED bool succ = panfrost_compatible_batch_state(batch);
+                assert(succ && "must be able to set state for a fresh batch");
+        }
 
         /* panfrost_batch_skip_rasterization reads
          * batch->scissor_culls_everything, which is set by
