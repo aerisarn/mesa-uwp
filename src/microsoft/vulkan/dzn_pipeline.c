@@ -1377,7 +1377,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
 
       HRESULT hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
                                                        &IID_ID3D12PipelineState,
-                                                       &variant->state);
+                                                       (void**)(&variant->state));
       assert(!FAILED(hres));
       he = _mesa_hash_table_insert(pipeline->variants, &variant->key, variant);
       assert(he);
