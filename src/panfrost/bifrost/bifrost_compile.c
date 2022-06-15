@@ -5099,6 +5099,7 @@ bi_compile_variant_nir(nir_shader *nir,
                 va_assign_slots(ctx);
                 va_insert_flow_control_nops(ctx);
                 va_merge_flow(ctx);
+                va_mark_last(ctx);
         } else {
                 bi_schedule(ctx);
                 bi_assign_scoreboard(ctx);
