@@ -1667,6 +1667,25 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
          }
          break;
 
+      case nir_op_fcsel_gt:
+         /* If CMP isn't supported, then the flags that enable NIR to generate
+          * these opcodes should also not be set.
+          */
+         assert(!c->options->lower_cmp);
+
+         ntt_CMP(c, dst, ureg_negate(src[0]), src[1], src[2]);
+         break;
+
+      case nir_op_fcsel_ge:
+         /* If CMP isn't supported, then the flags that enable NIR to generate
+          * these opcodes should also not be set.
+          */
+         assert(!c->options->lower_cmp);
+
+         /* Implement this as if !(src0 < 0.0) was identical to src0 >= 0.0. */
+         ntt_CMP(c, dst, src[0], src[2], src[1]);
+         break;
+
          /* It would be nice if we could get this left as scalar in NIR, since
           * the TGSI op is scalar.
           */
