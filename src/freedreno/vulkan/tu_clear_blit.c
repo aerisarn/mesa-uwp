@@ -3031,6 +3031,9 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
    /* sync GMEM writes with CACHE. */
    tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
+   /* Wait for CACHE_INVALIDATE to land */
+   tu_cs_emit_wfi(cs);
+
    r3d_run(cmd, cs);
 
    /* Draws write to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
