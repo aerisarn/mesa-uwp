@@ -188,7 +188,7 @@ zink_get_framebuffer(struct zink_context *ctx)
    state.num_attachments += num_resolves;
    state.width = MAX2(ctx->fb_state.width, 1);
    state.height = MAX2(ctx->fb_state.height, 1);
-   state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1) - 1;
+   state.layers = MAX2(zink_framebuffer_get_num_layers(&ctx->fb_state), 1) - 1;
    state.samples = ctx->fb_state.samples - 1;
 
    struct zink_framebuffer *fb;
