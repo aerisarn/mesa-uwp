@@ -79,6 +79,16 @@ pan_tristate_get(struct pan_tristate state)
         return (state.v == PAN_TRISTATE_TRUE);
 }
 
+/*
+ * Check whether a tristate has a defined value (not PAN_TRISTATE_DONTCARE). If
+ * true, pan_tristate_get will return a defined value.
+ */
+static inline bool
+pan_tristate_is_defined(struct pan_tristate state)
+{
+        return (state.v != PAN_TRISTATE_DONTCARE);
+}
+
 /* A panfrost_batch corresponds to a bound FBO we're rendering to,
  * collecting over multiple draws. */
 
