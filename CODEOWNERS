@@ -29,7 +29,7 @@ meson.build @dbaker @eric
 
 # Compatibility headers
 /include/c99* @evelikov
-/include/c11* @eric
+/src/c11/ @eric @lygstate
 
 # Documentation
 /docs/ @eric @evelikov
