@@ -382,7 +382,16 @@ class TraceDumper(SimpleTraceDumper):
         for call in self.call_stack:
             call.visit(self.pretty_printer)
             self.formatter.newline()
-        
+
+
+class ParseOptions(ModelOptions):
+
+    def __init__(self, args=None):
+        # Initialize options local to this module
+        self.plain = False
+
+        ModelOptions.__init__(self, args)
+
 
 class Main:
     '''Common main class for all retrace command line utilities.''' 
@@ -393,6 +402,7 @@ class Main:
     def main(self):
         optparser = self.get_optparser()
         args = optparser.parse_args()
+        options = self.make_options(args)
 
         for fname in args.filename:
             try:
@@ -408,7 +418,10 @@ class Main:
                 print("ERROR: {}".format(str(e)))
                 sys.exit(1)
 
-            self.process_arg(stream, args)
+            self.process_arg(stream, options)
+
+    def make_options(self, args):
+        return ParseOptions(args)
 
     def get_optparser(self):
         optparser = argparse.ArgumentParser(

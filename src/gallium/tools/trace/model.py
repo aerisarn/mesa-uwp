@@ -37,6 +37,25 @@ from io import StringIO
 import format
 
 
+class ModelOptions:
+
+    def __init__(self, args=None):
+        # Initialize the options we need to exist,
+        # with some reasonable defaults
+        self.plain = False
+        self.suppress_variants = False
+        self.named_ptrs = False
+        self.method_only = False
+
+        # If args is specified, we assume it is the result object
+        # from ArgumentParser.parse_args(). Copy the attribute values
+        # we have from it, if they exist.
+        if args is not None:
+            for var in self.__dict__:
+                if var in args.__dict__:
+                    self.__dict__[var] = args.__dict__[var]
+
+
 class Node:
     
     def visit(self, visitor):
@@ -238,7 +257,7 @@ class PrettyPrinter:
         self.formatter.text('}')
     
     def visit_pointer(self, node):
-        if "named_ptrs" in self.options and self.options.named_ptrs:
+        if self.options.named_ptrs:
             self.formatter.address(node.ptr_list[node.address])
         else:
             self.formatter.address(node.address)

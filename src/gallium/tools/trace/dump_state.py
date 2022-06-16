@@ -789,6 +789,18 @@ class Interpreter(parser.SimpleTraceDumper):
         return self.options.verbosity >= level
     
 
+class DumpStateOptions(parser.ParseOptions):
+
+    def __init__(self, args=None):
+
+        # These will get initialized in ModelOptions.__init__()
+        self.verbosity = None
+        self.call = None
+        self.draw = None
+
+        parser.ParseOptions.__init__(self, args)
+
+
 class Main(parser.Main):
 
     def get_optparser(self):
@@ -803,6 +815,9 @@ class Main(parser.Main):
         optparser.add_argument("-c", "--call", action="store", type=int, dest="call", default=0xffffffff, help="dump on this call")
         optparser.add_argument("-d", "--draw", action="store", type=int, dest="draw", default=0xffffffff, help="dump on this draw")
         return optparser
+
+    def make_options(self, args):
+        return DumpStateOptions(args)
 
     def process_arg(self, stream, options):
         formatter = format.Formatter(sys.stderr)
