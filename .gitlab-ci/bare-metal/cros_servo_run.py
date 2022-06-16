@@ -32,51 +32,16 @@ import threading
 
 class CrosServoRun:
     def __init__(self, cpu, ec):
-        # Merged FIFO for the two serial buffers, fed by threads.
-        self.serial_queue = queue.Queue()
-        self.sentinel = object()
-        self.threads_done = 0
-
-        self.ec_ser = SerialBuffer(
-            ec, "results/serial-ec.txt", "R SERIAL-EC> ")
         self.cpu_ser = SerialBuffer(
             cpu, "results/serial.txt", "R SERIAL-CPU> ")
-
-        self.iter_feed_ec = threading.Thread(
-            target=self.iter_feed_queue, daemon=True, args=(self.ec_ser.lines(),))
-        self.iter_feed_ec.start()
-
-        self.iter_feed_cpu = threading.Thread(
-            target=self.iter_feed_queue, daemon=True, args=(self.cpu_ser.lines(),))
-        self.iter_feed_cpu.start()
+        # Merge the EC serial into the cpu_ser's line stream so that we can
+        # effectively poll on both at the same time and not have to worry about
+        self.ec_ser = SerialBuffer(
+            ec, "results/serial-ec.txt", "R SERIAL-EC> ", line_queue=self.cpu_ser.line_queue)
 
     def close(self):
         self.ec_ser.close()
         self.cpu_ser.close()
-        self.iter_feed_ec.join()
-        self.iter_feed_cpu.join()
-
-    # Feed lines from our serial queues into the merged queue, marking when our
-    # input is done.
-    def iter_feed_queue(self, it):
-        for i in it:
-            self.serial_queue.put(i)
-        self.serial_queue.put(self.sentinel)
-
-    # Return the next line from the queue, counting how many threads have
-    # terminated and joining when done
-    def get_serial_queue_line(self):
-        line = self.serial_queue.get()
-        if line == self.sentinel:
-            self.threads_done = self.threads_done + 1
-            if self.threads_done == 2:
-                self.iter_feed_cpu.join()
-                self.iter_feed_ec.join()
-        return line
-
-    # Returns an iterator for getting the next line.
-    def serial_queue_lines(self):
-        return iter(self.get_serial_queue_line, self.sentinel)
 
     def ec_write(self, s):
         print("W SERIAL-EC> %s" % s)
@@ -96,12 +61,14 @@ class CrosServoRun:
         self.ec_write("\n")
         self.ec_write("reboot\n")
 
+        bootloader_done = False
         # This is emitted right when the bootloader pauses to check for input.
         # Emit a ^N character to request network boot, because we don't have a
         # direct-to-netboot firmware on cheza.
-        for line in self.serial_queue_lines():
+        for line in self.cpu_ser.lines(timeout=120, phase="bootloader"):
             if re.search("load_archive: loading locale_en.bin", line):
                 self.cpu_write("\016")
+                bootloader_done = True
                 break
 
             # The Cheza boards have issues with failing to bring up power to
@@ -112,8 +79,12 @@ class CrosServoRun:
                     "Detected intermittent poweron failure, restarting run...")
                 return 2
 
+        if not bootloader_done:
+            print("Failed to make it through bootloader, restarting run...")
+            return 2
+
         tftp_failures = 0
-        for line in self.serial_queue_lines():
+        for line in self.cpu_ser.lines(timeout=120 * 60, phase="test"):
             if re.search("---. end Kernel panic", line):
                 return 1
 

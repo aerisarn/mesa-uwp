@@ -30,7 +30,7 @@ import time
 
 
 class SerialBuffer:
-    def __init__(self, dev, filename, prefix, timeout=None):
+    def __init__(self, dev, filename, prefix, timeout=None, line_queue=None):
         self.filename = filename
         self.dev = dev
 
@@ -42,7 +42,13 @@ class SerialBuffer:
             self.serial = None
 
         self.byte_queue = queue.Queue()
-        self.line_queue = queue.Queue()
+        # allow multiple SerialBuffers to share a line queue so you can merge
+        # servo's CPU and EC streams into one thing to watch the boot/test
+        # progress on.
+        if line_queue:
+            self.line_queue = line_queue
+        else:
+            self.line_queue = queue.Queue()
         self.prefix = prefix
         self.timeout = timeout
         self.sentinel = object()
