@@ -1,0 +1,10 @@
+test_depth_stencil_sampling:571:Test 0: Test failed: Got 1.00000000e+00, expected 0.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:581:Test 0: Test failed: Got 1.00000000e+00, expected 0.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:586:Test 0: Test failed: Got 1.00000000e+00, expected 0.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:598:Test 0: Test failed: Got 0.00000000e+00, expected 1.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:603:Test 0: Test failed: Got 0.00000000e+00, expected 2.00000003e-01 at (0, 0).
+test_depth_stencil_sampling:571:Test 2: Test failed: Got 1.00000000e+00, expected 0.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:581:Test 2: Test failed: Got 1.00000000e+00, expected 0.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:586:Test 2: Test failed: Got 1.00000000e+00, expected 0.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:598:Test 2: Test failed: Got 0.00000000e+00, expected 1.00000000e+00 at (0, 0).
+test_depth_stencil_sampling:603:Test 2: Test failed: Got 0.00000000e+00, expected 2.00000003e-01 at (0, 0).
