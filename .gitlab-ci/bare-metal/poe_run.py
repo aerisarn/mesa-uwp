@@ -50,7 +50,7 @@ class PoERun:
             return 1
 
         boot_detected = False
-        for line in self.ser.lines():
+        for line in self.ser.lines(timeout=5 * 60, phase="bootloader"):
             if re.search("Booting Linux", line):
                 boot_detected = True
                 break
@@ -60,7 +60,7 @@ class PoERun:
                 "Something wrong; couldn't detect the boot start up sequence")
             return 2
 
-        for line in self.ser.lines():
+        for line in self.ser.lines(timeout=20 * 60, phase="test"):
             if re.search("---. end Kernel panic", line):
                 return 1
 

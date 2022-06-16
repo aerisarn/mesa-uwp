@@ -56,7 +56,7 @@ class FastbootRun:
             return 1
 
         fastboot_ready = False
-        for line in self.ser.lines():
+        for line in self.ser.lines(timeout=2 * 60, phase="bootloader"):
             if re.search("fastboot: processing commands", line) or \
                     re.search("Listening for fastboot command on", line):
                 fastboot_ready = True
@@ -76,7 +76,7 @@ class FastbootRun:
             return 1
 
         print_more_lines = -1
-        for line in self.ser.lines():
+        for line in self.ser.lines(timeout=20 * 60, phase="test"):
             if print_more_lines == 0:
                 return 2
             if print_more_lines > 0:

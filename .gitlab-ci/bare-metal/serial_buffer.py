@@ -131,14 +131,30 @@ class SerialBuffer:
                     self.line_queue.put(line)
                     line = bytearray()
 
-    def get_line(self):
-        line = self.line_queue.get()
-        if line == self.sentinel:
-            self.lines_thread.join()
-        return line
+    def lines(self, timeout=None, phase=None):
+        start_time = time.monotonic()
+        while True:
+            read_timeout = None
+            if timeout:
+                read_timeout = timeout - (time.monotonic() - start_time)
+                if read_timeout <= 0:
+                    print("read timeout waiting for serial during {}".format(phase))
+                    self.close()
+                    break
 
-    def lines(self):
-        return iter(self.get_line, self.sentinel)
+            try:
+                line = self.line_queue.get(timeout=read_timeout)
+            except queue.Empty:
+                print("read timeout waiting for serial during {}".format(phase))
+                self.close()
+                break
+
+            if line == self.sentinel:
+                print("End of serial output")
+                self.lines_thread.join()
+                break
+
+            yield line
 
 
 def main():
