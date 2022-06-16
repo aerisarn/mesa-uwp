@@ -4835,9 +4835,19 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         /* Get rid of any global vars before we lower to scratch. */
         NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 
+        /* Valhall introduces packed thread local storage, which improves cache
+         * locality of TLS access. However, access to packed TLS cannot
+         * straddle 16-byte boundaries. As such, when packed TLS is in use
+         * (currently unconditional for Valhall), we force vec4 alignment for
+         * scratch access.
+         */
+        bool packed_tls = (gpu_id >= 0x9000);
+
         /* Lower large arrays to scratch and small arrays to bcsel (TODO: tune
          * threshold, but not until addresses / csel is optimized better) */
         NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 16,
+                        packed_tls ?
+                        glsl_get_vec4_size_align_bytes :
                         glsl_get_natural_size_align_bytes);
         NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
 
