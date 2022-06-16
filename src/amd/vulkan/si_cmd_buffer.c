@@ -1515,9 +1515,8 @@ si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer, bool draw_visi
 
 /* The max number of bytes that can be copied per packet. */
 static inline unsigned
-cp_dma_max_byte_count(struct radv_cmd_buffer *cmd_buffer)
+cp_dma_max_byte_count(enum amd_gfx_level gfx_level)
 {
-   enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    unsigned max = gfx_level >= GFX11 ? 32767 :
                   gfx_level >= GFX9 ? S_415_BYTE_COUNT_GFX9(~0u) : S_415_BYTE_COUNT_GFX6(~0u);
 
@@ -1530,16 +1529,15 @@ cp_dma_max_byte_count(struct radv_cmd_buffer *cmd_buffer)
  * clear value.
  */
 static void
-si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src_va, unsigned size,
-               unsigned flags)
+si_cs_emit_cp_dma(struct radv_device *device, struct radeon_cmdbuf *cs, bool predicating,
+                  uint64_t dst_va, uint64_t src_va, unsigned size, unsigned flags)
 {
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t header = 0, command = 0;
 
-   assert(size <= cp_dma_max_byte_count(cmd_buffer));
+   assert(size <= cp_dma_max_byte_count(device->physical_device->rad_info.gfx_level));
 
-   radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 9);
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9)
+   radeon_check_space(device->ws, cs, 9);
+   if (device->physical_device->rad_info.gfx_level >= GFX9)
       command |= S_415_BYTE_COUNT_GFX9(size);
    else
       command |= S_415_BYTE_COUNT_GFX6(size);
@@ -1548,7 +1546,7 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
    if (flags & CP_DMA_SYNC)
       header |= S_411_CP_SYNC(1);
    else {
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9)
+      if (device->physical_device->rad_info.gfx_level >= GFX9)
          command |= S_415_DISABLE_WR_CONFIRM_GFX9(1);
       else
          command |= S_415_DISABLE_WR_CONFIRM_GFX6(1);
@@ -1558,7 +1556,7 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
       command |= S_415_RAW_WAIT(1);
 
    /* Src and dst flags. */
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9 && !(flags & CP_DMA_CLEAR) &&
+   if (device->physical_device->rad_info.gfx_level >= GFX9 && !(flags & CP_DMA_CLEAR) &&
        src_va == dst_va)
       header |= S_411_DST_SEL(V_411_NOWHERE); /* prefetch only */
    else if (flags & CP_DMA_USE_L2)
@@ -1569,8 +1567,8 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
    else if (flags & CP_DMA_USE_L2)
       header |= S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2);
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
-      radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, cmd_buffer->state.predicating));
+   if (device->physical_device->rad_info.gfx_level >= GFX7) {
+      radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, predicating));
       radeon_emit(cs, header);
       radeon_emit(cs, src_va);       /* SRC_ADDR_LO [31:0] */
       radeon_emit(cs, src_va >> 32); /* SRC_ADDR_HI [31:0] */
@@ -1580,13 +1578,24 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
    } else {
       assert(!(flags & CP_DMA_USE_L2));
       header |= S_411_SRC_ADDR_HI(src_va >> 32);
-      radeon_emit(cs, PKT3(PKT3_CP_DMA, 4, cmd_buffer->state.predicating));
+      radeon_emit(cs, PKT3(PKT3_CP_DMA, 4, predicating));
       radeon_emit(cs, src_va);                  /* SRC_ADDR_LO [31:0] */
       radeon_emit(cs, header);                  /* SRC_ADDR_HI [15:0] + flags. */
       radeon_emit(cs, dst_va);                  /* DST_ADDR_LO [31:0] */
       radeon_emit(cs, (dst_va >> 32) & 0xffff); /* DST_ADDR_HI [15:0] */
       radeon_emit(cs, command);
    }
+}
+
+static void
+si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src_va, unsigned size,
+               unsigned flags)
+{
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   struct radv_device *device = cmd_buffer->device;
+   bool predicating = cmd_buffer->state.predicating;
+
+   si_cs_emit_cp_dma(device, cs, predicating, dst_va, src_va, size, flags);
 
    /* CP DMA is executed in ME, but index buffers are read by PFP.
     * This ensures that ME (CP DMA) is idle before PFP starts fetching
@@ -1608,23 +1617,25 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
 }
 
 void
-si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size)
+si_cs_cp_dma_prefetch(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t va,
+                      unsigned size, bool predicating)
 {
-   uint64_t aligned_va, aligned_size;
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   struct radeon_winsys *ws = device->ws;
+   enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    uint32_t header = 0, command = 0;
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11)
+   if (gfx_level >= GFX11)
       size = MIN2(size, 32768 - SI_CPDMA_ALIGNMENT);
 
-   assert(size <= cp_dma_max_byte_count(cmd_buffer));
+   assert(size <= cp_dma_max_byte_count(gfx_level));
 
-   radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 9);
+   radeon_check_space(ws, cs, 9);
 
-   aligned_va = va & ~(SI_CPDMA_ALIGNMENT - 1);
-   aligned_size = ((va + size + SI_CPDMA_ALIGNMENT - 1) & ~(SI_CPDMA_ALIGNMENT - 1)) - aligned_va;
+   uint64_t aligned_va = va & ~(SI_CPDMA_ALIGNMENT - 1);
+   uint64_t aligned_size =
+      ((va + size + SI_CPDMA_ALIGNMENT - 1) & ~(SI_CPDMA_ALIGNMENT - 1)) - aligned_va;
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
+   if (gfx_level >= GFX9) {
       command |= S_415_BYTE_COUNT_GFX9(aligned_size) |
                  S_415_DISABLE_WR_CONFIRM_GFX9(1);
       header |= S_411_DST_SEL(V_411_NOWHERE);
@@ -1636,13 +1647,20 @@ si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned siz
 
    header |= S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2);
 
-   radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, cmd_buffer->state.predicating));
+   radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, predicating));
    radeon_emit(cs, header);
    radeon_emit(cs, aligned_va);       /* SRC_ADDR_LO [31:0] */
    radeon_emit(cs, aligned_va >> 32); /* SRC_ADDR_HI [31:0] */
    radeon_emit(cs, aligned_va);       /* DST_ADDR_LO [31:0] */
    radeon_emit(cs, aligned_va >> 32); /* DST_ADDR_HI [31:0] */
    radeon_emit(cs, command);
+}
+
+void
+si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size)
+{
+   si_cs_cp_dma_prefetch(cmd_buffer->device, cmd_buffer->cs, va, size,
+                         cmd_buffer->state.predicating);
 
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_cmd_buffer_trace_emit(cmd_buffer);
@@ -1693,6 +1711,7 @@ void
 si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer, uint64_t src_va, uint64_t dest_va,
                       uint64_t size)
 {
+   enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    uint64_t main_src_va, main_dest_va;
    uint64_t skipped_size = 0, realign_size = 0;
 
@@ -1724,7 +1743,7 @@ si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer, uint64_t src_va, uint6
 
    while (size) {
       unsigned dma_flags = 0;
-      unsigned byte_count = MIN2(size, cp_dma_max_byte_count(cmd_buffer));
+      unsigned byte_count = MIN2(size, cp_dma_max_byte_count(gfx_level));
 
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
          /* DMA operations via L2 are coherent and faster.
@@ -1767,17 +1786,18 @@ void
 si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
                        unsigned value)
 {
-
    if (!size)
       return;
 
    assert(va % 4 == 0 && size % 4 == 0);
 
+   enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
+
    /* Assume that we are not going to sync after the last DMA operation. */
    cmd_buffer->state.dma_is_busy = true;
 
    while (size) {
-      unsigned byte_count = MIN2(size, cp_dma_max_byte_count(cmd_buffer));
+      unsigned byte_count = MIN2(size, cp_dma_max_byte_count(gfx_level));
       unsigned dma_flags = CP_DMA_CLEAR;
 
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {

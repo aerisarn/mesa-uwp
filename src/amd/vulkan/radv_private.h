@@ -1684,6 +1684,8 @@ void si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer, bool draw
                                    unsigned pred_op, uint64_t va);
 void si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer, uint64_t src_va, uint64_t dest_va,
                            uint64_t size);
+void si_cs_cp_dma_prefetch(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t va,
+                           unsigned size, bool predicating);
 void si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size);
 void si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
                             unsigned value);
