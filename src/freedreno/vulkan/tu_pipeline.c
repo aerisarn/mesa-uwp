@@ -1804,6 +1804,8 @@ tu6_emit_program(struct tu_cs *cs,
    }
 }
 
+#define TU6_EMIT_VERTEX_INPUT_MAX_DWORDS (MAX_VERTEX_ATTRIBS * 5 + 4)
+
 static void
 tu6_emit_vertex_input(struct tu_pipeline *pipeline,
                       struct tu_cs *cs,
@@ -2327,6 +2329,8 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
 
    /* graphics case: */
    if (builder) {
+      size += 2 * TU6_EMIT_VERTEX_INPUT_MAX_DWORDS;
+
       for (uint32_t i = 0; i < ARRAY_SIZE(builder->shaders->variants); i++) {
          if (builder->shaders->variants[i]) {
             size += builder->shaders->variants[i]->info.size / 4;
@@ -3250,13 +3254,13 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
 
    struct tu_cs vi_cs;
    tu_cs_begin_sub_stream(&pipeline->cs,
-                          MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
+                          TU6_EMIT_VERTEX_INPUT_MAX_DWORDS, &vi_cs);
    tu6_emit_vertex_input(pipeline, &vi_cs, vs, vi_info);
    pipeline->vi.state = tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
 
    if (bs) {
       tu_cs_begin_sub_stream(&pipeline->cs,
-                             MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
+                             TU6_EMIT_VERTEX_INPUT_MAX_DWORDS, &vi_cs);
       tu6_emit_vertex_input(pipeline, &vi_cs, bs, vi_info);
       pipeline->vi.binning_state =
          tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
