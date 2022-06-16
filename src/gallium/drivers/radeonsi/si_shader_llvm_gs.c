@@ -167,10 +167,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream,
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
-   if (ctx->shader->key.ge.as_ngg) {
-      gfx10_ngg_gs_emit_vertex(ctx, stream, vertexidx, addrs);
-      return;
-   }
+   assert(!ctx->shader->key.ge.as_ngg);
 
    struct si_shader_info *info = &ctx->shader->selector->info;
    struct si_shader *shader = ctx->shader;
@@ -213,10 +210,7 @@ static void si_llvm_emit_primitive(struct ac_shader_abi *abi, unsigned stream)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
-   if (ctx->shader->key.ge.as_ngg) {
-      LLVMBuildStore(ctx->ac.builder, ctx->ac.i32_0, ctx->gs_curprim_verts[stream]);
-      return;
-   }
+   assert(!ctx->shader->key.ge.as_ngg);
 
    /* Signal primitive cut */
    ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_CUT | AC_SENDMSG_GS | (stream << 8),

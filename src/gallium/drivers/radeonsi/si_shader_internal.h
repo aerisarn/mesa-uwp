@@ -141,9 +141,6 @@ struct si_shader_context {
    LLVMValueRef tess_offchip_ring;
    LLVMValueRef instance_divisor_constbuf;
 
-   LLVMValueRef gs_next_vertex[4];
-   LLVMValueRef gs_curprim_verts[4];
-   LLVMValueRef gs_generated_prims[4];
    LLVMValueRef gs_ngg_emit;
    struct ac_llvm_pointer gs_ngg_scratch;
    LLVMValueRef return_value;
@@ -181,18 +178,10 @@ void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
 LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
 bool gfx10_ngg_export_prim_early(struct si_shader *shader);
-void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx);
-void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef user_edgeflags[3],
-                                 LLVMValueRef prim_passthrough);
-void gfx10_ngg_culling_build_end(struct si_shader_context *ctx);
-void gfx10_ngg_build_end(struct si_shader_context *ctx);
 void gfx10_ngg_export_vertex(struct ac_shader_abi *abi);
 void gfx10_ngg_atomic_add_prim_count(struct ac_shader_abi *abi, unsigned stream,
                                      LLVMValueRef prim_count, enum ac_prim_count count_type);
-void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream,
-                              LLVMValueRef vertexidx, LLVMValueRef *addrs);
 void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx);
-void gfx10_ngg_gs_build_end(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader);
 bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
 
