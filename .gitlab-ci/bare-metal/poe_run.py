@@ -28,11 +28,13 @@ from serial_buffer import SerialBuffer
 import sys
 import threading
 
+
 class PoERun:
     def __init__(self, args):
         self.powerup = args.powerup
         self.powerdown = args.powerdown
-        self.ser = SerialBuffer(args.dev, "results/serial-output.txt", "", args.timeout)
+        self.ser = SerialBuffer(
+            args.dev, "results/serial-output.txt", "", args.timeout)
 
     def print_error(self, message):
         RED = '\033[0;31m'
@@ -54,7 +56,8 @@ class PoERun:
                 break
 
         if not boot_detected:
-            self.print_error("Something wrong; couldn't detect the boot start up sequence")
+            self.print_error(
+                "Something wrong; couldn't detect the boot start up sequence")
             return 2
 
         for line in self.ser.lines():
@@ -77,14 +80,19 @@ class PoERun:
                 else:
                     return 1
 
-        self.print_error("Reached the end of the CPU serial log without finding a result")
+        self.print_error(
+            "Reached the end of the CPU serial log without finding a result")
         return 2
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dev', type=str, help='Serial device to monitor', required=True)
-    parser.add_argument('--powerup', type=str, help='shell command for rebooting', required=True)
-    parser.add_argument('--powerdown', type=str, help='shell command for powering off', required=True)
+    parser.add_argument('--dev', type=str,
+                        help='Serial device to monitor', required=True)
+    parser.add_argument('--powerup', type=str,
+                        help='shell command for rebooting', required=True)
+    parser.add_argument('--powerdown', type=str,
+                        help='shell command for powering off', required=True)
     parser.add_argument('--timeout', type=int, default=60,
                         help='time in seconds to wait for activity', required=False)
     args = parser.parse_args()
@@ -95,6 +103,7 @@ def main():
     poe.logged_system(args.powerdown)
 
     sys.exit(retval)
+
 
 if __name__ == '__main__':
     main()

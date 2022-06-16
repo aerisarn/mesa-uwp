@@ -108,7 +108,8 @@ class CrosServoRun:
             # the system sometimes, possibly dependent on ambient temperature
             # in the farm.
             if re.search("POWER_GOOD not seen in time", line):
-                self.print_error("Detected intermittent poweron failure, restarting run...")
+                self.print_error(
+                    "Detected intermittent poweron failure, restarting run...")
                 return 2
 
         tftp_failures = 0
@@ -123,13 +124,15 @@ class CrosServoRun:
             if re.search("R8152: Bulk read error 0xffffffbf", line):
                 tftp_failures += 1
                 if tftp_failures >= 100:
-                    self.print_error("Detected intermittent tftp failure, restarting run...")
+                    self.print_error(
+                        "Detected intermittent tftp failure, restarting run...")
                     return 2
 
             # There are very infrequent bus errors during power management transitions
             # on cheza, which we don't expect to be the case on future boards.
             if re.search("Kernel panic - not syncing: Asynchronous SError Interrupt", line):
-                self.print_error("Detected cheza power management bus error, restarting run...")
+                self.print_error(
+                    "Detected cheza power management bus error, restarting run...")
                 return 2
 
             # If the network device dies, it's probably not graphics's fault, just try again.
@@ -148,7 +151,8 @@ class CrosServoRun:
             # Given that it seems to trigger randomly near a GPU fault and then
             # break many tests after that, just restart the whole run.
             if re.search("a6xx_hfi_send_msg.*Unexpected message id .* on the response queue", line):
-                self.print_error("Detected cheza power management bus error, restarting run...")
+                self.print_error(
+                    "Detected cheza power management bus error, restarting run...")
                 return 2
 
             if re.search("coreboot.*bootblock starting", line):
@@ -167,7 +171,8 @@ class CrosServoRun:
                 else:
                     return 1
 
-        self.print_error("Reached the end of the CPU serial log without finding a result")
+        self.print_error(
+            "Reached the end of the CPU serial log without finding a result")
         return 1
 
 

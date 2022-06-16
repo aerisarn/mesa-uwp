@@ -28,8 +28,9 @@ import serial
 import threading
 import time
 
+
 class SerialBuffer:
-    def __init__(self, dev, filename, prefix, timeout = None):
+    def __init__(self, dev, filename, prefix, timeout=None):
         self.filename = filename
         self.dev = dev
 
