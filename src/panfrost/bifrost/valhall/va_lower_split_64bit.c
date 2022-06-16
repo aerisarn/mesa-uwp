@@ -34,16 +34,6 @@
 static void
 lower_split_src(bi_context *ctx, bi_instr *I, unsigned s)
 {
-   /* Fix up for mismatch between IR and Valhall BLEND */
-   if (I->op == BI_OPCODE_BLEND) {
-      /* Only the blend descriptor needs lowering */
-      if (s != 1)
-         return;
-
-      /* But it is in a different place! */
-      s = 2;
-   }
-
    /* Skip sources that are already split properly */
    bi_index offset_fau = I->src[s];
    offset_fau.offset++;

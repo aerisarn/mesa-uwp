@@ -112,12 +112,17 @@ valhall_opcodes[BI_NUM_OPCODES];
 /* Bifrost specifies the source of bitwise operations as (A, B, shift), but
  * Valhall specifies (A, shift, B). We follow Bifrost conventions in the
  * compiler, so normalize.
+ *
+ * Bifrost specifies BLEND as staging + (coverage, blend descriptor), but
+ * Valhall specifies staging + (blend descriptor, coverage). Given we put
+ * staging sources first, this works out to the same swap as bitwise ops.
  */
 
 static inline bool
 va_swap_12(enum bi_opcode op)
 {
    switch (op) {
+   case BI_OPCODE_BLEND:
    case BI_OPCODE_LSHIFT_AND_I32:
    case BI_OPCODE_LSHIFT_AND_V2I16:
    case BI_OPCODE_LSHIFT_AND_V4I8:
