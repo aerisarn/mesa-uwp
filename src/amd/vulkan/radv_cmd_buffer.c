@@ -2626,7 +2626,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
        * VRS and occlusion queries if depth and stencil are not bound.
        */
       if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX11)
-         num_samples = subpass ? util_logbase2(subpass->max_sample_count) : 0;
+         num_samples = util_logbase2(subpass->max_sample_count);
 
       if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9)
          radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
