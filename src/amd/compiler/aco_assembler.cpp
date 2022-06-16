@@ -54,8 +54,10 @@ struct asm_context {
          opcode = &instr_info.opcode_gfx7[0];
       else if (gfx_level <= GFX9)
          opcode = &instr_info.opcode_gfx9[0];
-      else if (gfx_level >= GFX10)
+      else if (gfx_level <= GFX10_3)
          opcode = &instr_info.opcode_gfx10[0];
+      else if (gfx_level >= GFX11)
+         opcode = &instr_info.opcode_gfx11[0];
    }
 
    int subvector_begin_pos = -1;

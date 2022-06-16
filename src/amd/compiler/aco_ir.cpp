@@ -438,6 +438,8 @@ can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx)
    case aco_opcode::v_cvt_pknorm_u16_f16: return idx != -1;
    case aco_opcode::v_mad_u32_u16:
    case aco_opcode::v_mad_i32_i16: return idx >= 0 && idx < 2;
+   case aco_opcode::v_dot2_f16_f16:
+   case aco_opcode::v_dot2_bf16_bf16: return idx == -1 || idx == 2;
    default: return false;
    }
 }
