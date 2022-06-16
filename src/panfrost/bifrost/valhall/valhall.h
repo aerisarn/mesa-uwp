@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+#define VA_NUM_GENERAL_SLOTS 3
+
 extern const uint32_t valhall_immediates[32];
 
 enum va_size {

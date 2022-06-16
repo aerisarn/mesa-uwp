@@ -54,7 +54,6 @@
  * be a performance penalty.
  */
 
-#define BI_NUM_GENERAL_SLOTS 3
 #define BI_NUM_REGISTERS 64
 
 /*
@@ -429,7 +428,7 @@ va_insert_flow_control_nops(bi_context *ctx)
              * waits on general slots. The dataflow analysis should be ignoring
              * the special slots #6 and #7, which are handled separately.
              */
-            assert((I->flow & ~BITFIELD_MASK(BI_NUM_GENERAL_SLOTS)) == 0);
+            assert((I->flow & ~BITFIELD_MASK(VA_NUM_GENERAL_SLOTS)) == 0);
 
             bi_flow(ctx, bi_before_instr(I), I->flow);
             I->flow = 0;
