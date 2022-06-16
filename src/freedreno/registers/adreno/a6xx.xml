@@ -3853,6 +3853,11 @@ to upconvert to 32b float internally?
 		<bitfield name="CHROMA_MIDPOINT_Y" pos="18" type="boolean"/>
 		<bitfield name="SAMPLES" low="20" high="21" type="a3xx_msaa_samples"/>
 		<bitfield name="FMT" low="22" high="29" type="a6xx_format"/>
+		<!--
+			Why is the swap needed in addition to SWIZ_*? The swap
+			is performed before border color replacement, while the
+			swizzle is applied after after it.
+		-->
 		<bitfield name="SWAP" low="30" high="31" type="a3xx_color_swap"/>
 	</reg32>
 	<reg32 offset="1" name="1">
