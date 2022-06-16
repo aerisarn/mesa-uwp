@@ -724,17 +724,7 @@ va_pack_instr(const bi_instr *I)
    {
       /* Source 0 - Blend descriptor (64-bit) */
       hex |= ((uint64_t) va_pack_src(I->src[2])) << 0;
-
-      /* Vaidate that it is a 64-bit register pair */
-      assert(I->src[3].type == I->src[2].type);
-
-      if (I->src[2].type == BI_INDEX_REGISTER) {
-         assert(I->src[3].value & 1);
-         assert(I->src[3].value == I->src[2].value + 1);
-      } else {
-         assert(I->src[3].offset & 1);
-         assert(I->src[3].offset == I->src[2].offset + 1);
-      }
+      va_validate_register_pair(I, 2);
 
       /* Target */
       assert((I->branch_offset & 0x7) == 0);
