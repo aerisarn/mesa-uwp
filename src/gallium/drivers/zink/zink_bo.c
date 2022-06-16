@@ -310,7 +310,7 @@ demote:
    bo->base.alignment_log2 = util_logbase2(alignment);
    bo->base.size = mai.allocationSize;
    bo->base.vtbl = &bo_vtbl;
-   bo->base.placement = vk_domain_from_heap(heap);
+   bo->base.placement = screen->heap_flags[heap];
    bo->base.usage = flags;
    bo->unique_id = p_atomic_inc_return(&screen->pb.next_bo_unique_id);
 

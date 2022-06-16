@@ -2312,6 +2312,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
          else
             screen->heap_map[i] = screen->heap_map[ZINK_HEAP_DEVICE_LOCAL];
       }
+      screen->heap_flags[i] = screen->info.mem_props.memoryTypes[screen->heap_map[i]].propertyFlags;
    }
    {
       unsigned vis_vram = screen->heap_map[ZINK_HEAP_DEVICE_LOCAL_VISIBLE];
