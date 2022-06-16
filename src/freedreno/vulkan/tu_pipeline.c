@@ -1808,19 +1808,23 @@ tu6_emit_program(struct tu_cs *cs,
 
 static void
 tu6_emit_vertex_input(struct tu_pipeline *pipeline,
-                      struct tu_cs *cs,
+                      struct tu_draw_state *vi_state,
                       const struct ir3_shader_variant *vs,
                       const VkPipelineVertexInputStateCreateInfo *info)
 {
    uint32_t binding_instanced = 0; /* bitmask of instanced bindings */
    uint32_t step_rate[MAX_VBS];
 
+   struct tu_cs cs;
+   tu_cs_begin_sub_stream(&pipeline->cs,
+                          TU6_EMIT_VERTEX_INPUT_MAX_DWORDS, &cs);
+
    for (uint32_t i = 0; i < info->vertexBindingDescriptionCount; i++) {
       const VkVertexInputBindingDescription *binding =
          &info->pVertexBindingDescriptions[i];
 
       if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VB_STRIDE))) {
-         tu_cs_emit_regs(cs,
+         tu_cs_emit_regs(&cs,
                         A6XX_VFD_FETCH_STRIDE(binding->binding, binding->stride));
       }
 
@@ -1856,7 +1860,7 @@ tu6_emit_vertex_input(struct tu_pipeline *pipeline,
    }
 
    if (used_attrs_count)
-      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DECODE_INSTR(0), used_attrs_count * 2);
+      tu_cs_emit_pkt4(&cs, REG_A6XX_VFD_DECODE_INSTR(0), used_attrs_count * 2);
 
    for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
       const VkVertexInputAttributeDescription *attr =
@@ -1866,7 +1870,7 @@ tu6_emit_vertex_input(struct tu_pipeline *pipeline,
          continue;
 
       const struct tu_native_format format = tu6_format_vtx(attr->format);
-      tu_cs_emit(cs, A6XX_VFD_DECODE_INSTR(0,
+      tu_cs_emit(&cs, A6XX_VFD_DECODE_INSTR(0,
                        .idx = attr->binding,
                        .offset = attr->offset,
                        .instanced = binding_instanced & (1 << attr->binding),
@@ -1874,26 +1878,28 @@ tu6_emit_vertex_input(struct tu_pipeline *pipeline,
                        .swap = format.swap,
                        .unk30 = 1,
                        ._float = !vk_format_is_int(attr->format)).value);
-      tu_cs_emit(cs, A6XX_VFD_DECODE_STEP_RATE(0, step_rate[attr->binding]).value);
+      tu_cs_emit(&cs, A6XX_VFD_DECODE_STEP_RATE(0, step_rate[attr->binding]).value);
    }
 
    if (used_attrs_count)
-      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DEST_CNTL_INSTR(0), used_attrs_count);
+      tu_cs_emit_pkt4(&cs, REG_A6XX_VFD_DEST_CNTL_INSTR(0), used_attrs_count);
 
    for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
       int32_t input_idx = input_for_attr[attr_idx];
       if (input_idx == -1)
          continue;
 
-      tu_cs_emit(cs, A6XX_VFD_DEST_CNTL_INSTR(0,
+      tu_cs_emit(&cs, A6XX_VFD_DEST_CNTL_INSTR(0,
                        .writemask = vs->inputs[input_idx].compmask,
                        .regid = vs->inputs[input_idx].regid).value);
    }
 
-   tu_cs_emit_regs(cs,
+   tu_cs_emit_regs(&cs,
                    A6XX_VFD_CONTROL_0(
                      .fetch_cnt = used_attrs_count, /* decode_cnt for binning pass ? */
                      .decode_cnt = used_attrs_count));
+
+   *vi_state = tu_cs_end_draw_state(&pipeline->cs, &cs);
 }
 
 void
@@ -3252,19 +3258,9 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
          MAX2(pipeline->num_vbs, vi_info->pVertexBindingDescriptions[i].binding + 1);
    }
 
-   struct tu_cs vi_cs;
-   tu_cs_begin_sub_stream(&pipeline->cs,
-                          TU6_EMIT_VERTEX_INPUT_MAX_DWORDS, &vi_cs);
-   tu6_emit_vertex_input(pipeline, &vi_cs, vs, vi_info);
-   pipeline->vi.state = tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
-
-   if (bs) {
-      tu_cs_begin_sub_stream(&pipeline->cs,
-                             TU6_EMIT_VERTEX_INPUT_MAX_DWORDS, &vi_cs);
-      tu6_emit_vertex_input(pipeline, &vi_cs, bs, vi_info);
-      pipeline->vi.binning_state =
-         tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
-   }
+   tu6_emit_vertex_input(pipeline, &pipeline->vi.state, vs, vi_info);
+   if (bs)
+      tu6_emit_vertex_input(pipeline, &pipeline->vi.binning_state, bs, vi_info);
 }
 
 static void
