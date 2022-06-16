@@ -1,5 +1,5 @@
 # needs block splitting
-KHR-Single-GL46.enhanced_layouts.xfb_struct_explicit_location
+KHR-Single-GL46.enhanced_layouts.xfb_struct_explicit_location,Crash
 
 GTF-GL46.gtf21.GL3Tests.texture_lod_bias.texture_lod_bias_all,Fail
 GTF-GL46.gtf30.GL3Tests.framebuffer_blit.framebuffer_blit_functionality_multisampled_to_singlesampled_blit,Fail
@@ -52,8 +52,6 @@ KHR-GL46.packed_pixels.pbo_rectangle.rgba8_snorm,Fail
 KHR-GL46.packed_pixels.pbo_rectangle.srgb8,Fail
 KHR-GL46.packed_pixels.pbo_rectangle.srgb8_alpha8,Fail
 KHR-GL46.shader_image_load_store.multiple-uniforms,Fail
-KHR-GL46.tessellation_shader.vertex.vertex_ordering,Fail
-KHR-GL46.texture_cube_map_array.color_depth_attachments,Fail
 KHR-GL46.texture_cube_map_array.image_op_geometry_sh,Fail
 KHR-GL46.texture_view.view_classes,Fail
 KHR-GL46.vertex_attrib_64bit.vao,Fail
@@ -62,6 +60,7 @@ KHR-Single-GL46.arrays_of_arrays_gl.SubroutineFunctionCalls2,Crash
 KHR-Single-GL46.enhanced_layouts.xfb_capture_inactive_output_block_member,Fail
 KHR-Single-GL46.enhanced_layouts.xfb_capture_struct,Fail
 KHR-Single-GL46.enhanced_layouts.xfb_vertex_streams,Fail
+dEQP-GLES3.functional.occlusion_query.depth_clear_stencil_clear,Fail
 dEQP-GLES3.functional.occlusion_query.scissor_depth_clear_stencil_clear,Fail
 dEQP-GLES3.functional.occlusion_query.scissor_stencil_clear,Fail
 dEQP-GLES3.functional.occlusion_query.stencil_clear,Fail
@@ -125,8 +124,6 @@ dEQP-GLES31.functional.blend_equation_advanced.srgb.multiply,Fail
 dEQP-GLES31.functional.blend_equation_advanced.srgb.overlay,Fail
 dEQP-GLES31.functional.blend_equation_advanced.srgb.screen,Fail
 dEQP-GLES31.functional.blend_equation_advanced.srgb.softlight,Fail
-dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_clear,Fail
-dEQP-GLES31.functional.stencil_texturing.render.depth32f_stencil8_clear,Fail
 dEQP-GLES31.functional.tessellation_geometry_interaction.render.passthrough.passthrough_tessellation_geometry_shade_lines_no_change,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth24_stencil8_sample_stencil.nearest_size_npot,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth24_stencil8_sample_stencil.nearest_size_pot,Fail

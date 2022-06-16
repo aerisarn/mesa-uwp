@@ -1,3 +1,6 @@
+# #6603
+GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_states
+
 GTF-GL46.gtf32.GL3Tests.packed_pixels.packed_pixels_pixelstore
 KHR-Single-GL46.arrays_of_arrays_gl.ConstructorsAndUnsizedDeclConstructorSizing1
 dEQP-GLES2.functional.shaders.indexing.matrix_subscript.mat4_dynamic_write_dynamic_read_vertex
