@@ -1972,10 +1972,11 @@ zink_transfer_flush_region(struct pipe_context *pctx,
       struct zink_screen *screen = zink_screen(pctx->screen);
       struct zink_resource *m = trans->staging_res ? zink_resource(trans->staging_res) :
                                                      res;
-      ASSERTED VkDeviceSize size, src_offset;
+      ASSERTED VkDeviceSize size, src_offset, dst_offset = 0;
       if (m->obj->is_buffer) {
          size = box->width;
-         src_offset = trans->offset;
+         src_offset = box->x + (trans->staging_res ? trans->offset : ptrans->box.x);
+         dst_offset = box->x + ptrans->box.x;
       } else {
          size = (VkDeviceSize)box->width * box->height * util_format_get_blocksize(m->base.b.format);
          src_offset = trans->offset +
@@ -1994,7 +1995,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (ptrans->resource->target == PIPE_BUFFER)
-            zink_copy_buffer(ctx, res, staging_res, box->x, src_offset, box->width);
+            zink_copy_buffer(ctx, res, staging_res, dst_offset, src_offset, size);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }
