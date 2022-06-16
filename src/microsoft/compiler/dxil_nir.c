@@ -1993,7 +1993,10 @@ fix_io_uint_type(nir_shader *s, nir_variable_mode modes, int slot)
    nir_variable *fixed_var = NULL;
    nir_foreach_variable_with_modes(var, s, modes) {
       if (var->data.location == slot) {
-         assert(var->type = glsl_int_type());
+         if (var->type == glsl_uint_type())
+            return false;
+
+         assert(var->type == glsl_int_type());
          var->type = glsl_uint_type();
          fixed_var = var;
          break;
