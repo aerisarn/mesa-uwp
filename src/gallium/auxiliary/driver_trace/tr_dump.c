@@ -56,6 +56,7 @@
 #include "util/u_string.h"
 #include "util/u_math.h"
 #include "util/format/u_format.h"
+#include "compiler/nir/nir.h"
 
 #include "tr_dump.h"
 #include "tr_screen.h"
@@ -645,5 +646,19 @@ void trace_dump_transfer_ptr(struct pipe_transfer *_transfer)
       trace_dump_ptr(tr_tran->transfer);
    } else {
       trace_dump_null();
+   }
+}
+
+void trace_dump_nir(void *nir)
+{
+   if (!dumping)
+      return;
+
+   // NIR doesn't have a print to string function.  Use CDATA and hope for the
+   // best.
+   if (stream) {
+      fputs("<string><![CDATA[", stream);
+      nir_print_shader(nir, stream);
+      fputs("]]></string>", stream);
    }
 }

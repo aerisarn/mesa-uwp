@@ -276,11 +276,21 @@ void trace_dump_shader_state(const struct pipe_shader_state *state)
 
    trace_dump_struct_begin("pipe_shader_state");
 
+   trace_dump_member(uint, state, type);
+
    trace_dump_member_begin("tokens");
    if (state->tokens) {
       static char str[64 * 1024];
       tgsi_dump_str(state->tokens, 0, str, sizeof(str));
       trace_dump_string(str);
+   } else {
+      trace_dump_null();
+   }
+   trace_dump_member_end();
+
+   trace_dump_member_begin("ir");
+   if (state->type == PIPE_SHADER_IR_NIR) {
+      trace_dump_nir(state->ir.nir);
    } else {
       trace_dump_null();
    }
