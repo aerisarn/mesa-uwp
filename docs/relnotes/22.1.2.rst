@@ -19,7 +19,7 @@ SHA256 checksum
 
 ::
 
-    TBD.
+   0971226b4a6a3d10cfc255736b33e4017e18c14c9db1e53863ac1f8ae0deb9ea  mesa-22.1.2.tar.xz
 
 
 New features
