@@ -542,7 +542,7 @@ typedef struct {
 } bi_instr;
 
 static inline bool
-bi_is_staging_src(bi_instr *I, unsigned s)
+bi_is_staging_src(const bi_instr *I, unsigned s)
 {
         return (s == 0 || s == 4) && bi_opcode_props[I->op].sr_read;
 }
