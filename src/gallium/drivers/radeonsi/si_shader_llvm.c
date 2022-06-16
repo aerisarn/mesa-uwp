@@ -911,6 +911,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
    ctx->abi.load_user_clip_plane = si_llvm_load_user_clip_plane;
    ctx->abi.load_streamout_buffer = si_llvm_load_streamout_buffer;
+   ctx->abi.atomic_add_prim_count = gfx10_ngg_atomic_add_prim_count;
 
    si_llvm_init_resource_callbacks(ctx);
    si_llvm_create_main_func(ctx, ngg_cull_shader);
