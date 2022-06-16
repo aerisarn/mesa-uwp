@@ -612,6 +612,7 @@ hw_select_create_gs(struct st_context *st, union state_key state)
 
    nir_shader *nir = b.shader;
    nir->info.inputs_read = VARYING_BIT_POS;
+   nir->num_uniforms = DIV_ROUND_UP(sizeof(struct geometry_constant), (4 * sizeof(float)));
    nir->info.num_ssbos = 1;
    nir->info.gs.output_primitive = SHADER_PRIM_POINTS;
    nir->info.gs.vertices_out = 1;
