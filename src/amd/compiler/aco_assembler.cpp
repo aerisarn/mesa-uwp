@@ -72,6 +72,24 @@ get_mimg_nsa_dwords(const Instruction* instr)
    return 0;
 }
 
+uint32_t
+reg(asm_context& ctx, PhysReg reg)
+{
+   return reg.reg();
+}
+
+ALWAYS_INLINE uint32_t
+reg(asm_context& ctx, Operand op, unsigned width = 32)
+{
+   return reg(ctx, op.physReg()) & BITFIELD_MASK(width);
+}
+
+ALWAYS_INLINE uint32_t
+reg(asm_context& ctx, Definition def, unsigned width = 32)
+{
+   return reg(ctx, def.physReg()) & BITFIELD_MASK(width);
+}
+
 void
 emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* instr)
 {
@@ -113,9 +131,9 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
    case Format::SOP2: {
       uint32_t encoding = (0b10 << 30);
       encoding |= opcode << 23;
-      encoding |= !instr->definitions.empty() ? instr->definitions[0].physReg() << 16 : 0;
-      encoding |= instr->operands.size() >= 2 ? instr->operands[1].physReg() << 8 : 0;
-      encoding |= !instr->operands.empty() ? instr->operands[0].physReg() : 0;
+      encoding |= !instr->definitions.empty() ? reg(ctx, instr->definitions[0]) << 16 : 0;
+      encoding |= instr->operands.size() >= 2 ? reg(ctx, instr->operands[1]) << 8 : 0;
+      encoding |= !instr->operands.empty() ? reg(ctx, instr->operands[0]) : 0;
       out.push_back(encoding);
       break;
    }
@@ -139,9 +157,9 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       uint32_t encoding = (0b1011 << 28);
       encoding |= opcode << 23;
       encoding |= !instr->definitions.empty() && !(instr->definitions[0].physReg() == scc)
-                     ? instr->definitions[0].physReg() << 16
+                     ? reg(ctx, instr->definitions[0]) << 16
                   : !instr->operands.empty() && instr->operands[0].physReg() <= 127
-                     ? instr->operands[0].physReg() << 16
+                     ? reg(ctx, instr->operands[0]) << 16
                      : 0;
       encoding |= sopk.imm;
       out.push_back(encoding);
@@ -149,17 +167,17 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
    }
    case Format::SOP1: {
       uint32_t encoding = (0b101111101 << 23);
-      encoding |= !instr->definitions.empty() ? instr->definitions[0].physReg() << 16 : 0;
+      encoding |= !instr->definitions.empty() ? reg(ctx, instr->definitions[0]) << 16 : 0;
       encoding |= opcode << 8;
-      encoding |= !instr->operands.empty() ? instr->operands[0].physReg() : 0;
+      encoding |= !instr->operands.empty() ? reg(ctx, instr->operands[0]) : 0;
       out.push_back(encoding);
       break;
    }
    case Format::SOPC: {
       uint32_t encoding = (0b101111110 << 23);
       encoding |= opcode << 16;
-      encoding |= instr->operands.size() == 2 ? instr->operands[1].physReg() << 8 : 0;
-      encoding |= !instr->operands.empty() ? instr->operands[0].physReg() : 0;
+      encoding |= instr->operands.size() == 2 ? reg(ctx, instr->operands[1]) << 8 : 0;
+      encoding |= !instr->operands.empty() ? reg(ctx, instr->operands[0]) : 0;
       out.push_back(encoding);
       break;
    }
@@ -184,11 +202,11 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       if (ctx.gfx_level <= GFX7) {
          encoding = (0b11000 << 27);
          encoding |= opcode << 22;
-         encoding |= instr->definitions.size() ? instr->definitions[0].physReg() << 15 : 0;
-         encoding |= instr->operands.size() ? (instr->operands[0].physReg() >> 1) << 9 : 0;
+         encoding |= instr->definitions.size() ? reg(ctx, instr->definitions[0]) << 15 : 0;
+         encoding |= instr->operands.size() ? (reg(ctx, instr->operands[0]) >> 1) << 9 : 0;
          if (instr->operands.size() >= 2) {
             if (!instr->operands[1].isConstant()) {
-               encoding |= instr->operands[1].physReg().reg();
+               encoding |= reg(ctx, instr->operands[1]);
             } else if (instr->operands[1].constantValue() >= 1024) {
                encoding |= 255; /* SQ_SRC_LITERAL */
             } else {
@@ -226,32 +244,33 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       }
 
       if (is_load || instr->operands.size() >= 3) { /* SDATA */
-         encoding |= (is_load ? instr->definitions[0].physReg() : instr->operands[2].physReg())
+         encoding |= (is_load ? reg(ctx, instr->definitions[0]) : reg(ctx, instr->operands[2]))
                      << 6;
       }
       if (instr->operands.size() >= 1) { /* SBASE */
-         encoding |= instr->operands[0].physReg() >> 1;
+         encoding |= reg(ctx, instr->operands[0]) >> 1;
       }
 
       out.push_back(encoding);
       encoding = 0;
 
       int32_t offset = 0;
-      uint32_t soffset = ctx.gfx_level >= GFX10
-                            ? sgpr_null /* On GFX10 this is disabled by specifying SGPR_NULL */
-                            : 0; /* On GFX9, it is disabled by the SOE bit (and it's not present on
-                                    GFX8 and below) */
+      uint32_t soffset =
+         ctx.gfx_level >= GFX10
+            ? reg(ctx, sgpr_null) /* On GFX10 this is disabled by specifying SGPR_NULL */
+            : 0;                  /* On GFX9, it is disabled by the SOE bit (and it's not present on
+                                     GFX8 and below) */
       if (instr->operands.size() >= 2) {
          const Operand& op_off1 = instr->operands[1];
          if (ctx.gfx_level <= GFX9) {
-            offset = op_off1.isConstant() ? op_off1.constantValue() : op_off1.physReg();
+            offset = op_off1.isConstant() ? op_off1.constantValue() : reg(ctx, op_off1);
          } else {
             /* GFX10 only supports constants in OFFSET, so put the operand in SOFFSET if it's an
              * SGPR */
             if (op_off1.isConstant()) {
                offset = op_off1.constantValue();
             } else {
-               soffset = op_off1.physReg();
+               soffset = reg(ctx, op_off1);
                assert(!soe); /* There is no place to put the other SGPR offset, if any */
             }
          }
@@ -261,7 +280,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
             assert(ctx.gfx_level >= GFX9); /* GFX8 and below don't support specifying a constant
                                                and an SGPR at the same time */
             assert(!op_off2.isConstant());
-            soffset = op_off2.physReg();
+            soffset = reg(ctx, op_off2);
          }
       }
       encoding |= offset;
@@ -273,27 +292,27 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
    case Format::VOP2: {
       uint32_t encoding = 0;
       encoding |= opcode << 25;
-      encoding |= (0xFF & instr->definitions[0].physReg()) << 17;
-      encoding |= (0xFF & instr->operands[1].physReg()) << 9;
-      encoding |= instr->operands[0].physReg();
+      encoding |= reg(ctx, instr->definitions[0], 8) << 17;
+      encoding |= reg(ctx, instr->operands[1], 8) << 9;
+      encoding |= reg(ctx, instr->operands[0]);
       out.push_back(encoding);
       break;
    }
    case Format::VOP1: {
       uint32_t encoding = (0b0111111 << 25);
       if (!instr->definitions.empty())
-         encoding |= (0xFF & instr->definitions[0].physReg()) << 17;
+         encoding |= reg(ctx, instr->definitions[0], 8) << 17;
       encoding |= opcode << 9;
       if (!instr->operands.empty())
-         encoding |= instr->operands[0].physReg();
+         encoding |= reg(ctx, instr->operands[0]);
       out.push_back(encoding);
       break;
    }
    case Format::VOPC: {
       uint32_t encoding = (0b0111110 << 25);
       encoding |= opcode << 17;
-      encoding |= (0xFF & instr->operands[1].physReg()) << 9;
-      encoding |= instr->operands[0].physReg();
+      encoding |= reg(ctx, instr->operands[1], 8) << 9;
+      encoding |= reg(ctx, instr->operands[0]);
       out.push_back(encoding);
       break;
    }
@@ -314,17 +333,17 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          }
 
          encoding |= opcode << 16;
-         encoding |= (0xFF & instr->definitions[0].physReg());
+         encoding |= reg(ctx, instr->definitions[0], 8);
          out.push_back(encoding);
 
          encoding = 0;
          encoding |= interp.attribute;
          encoding |= interp.component << 6;
-         encoding |= instr->operands[0].physReg() << 9;
+         encoding |= reg(ctx, instr->operands[0]) << 9;
          if (instr->opcode == aco_opcode::v_interp_p2_f16 ||
              instr->opcode == aco_opcode::v_interp_p2_legacy_f16 ||
              instr->opcode == aco_opcode::v_interp_p1lv_f16) {
-            encoding |= instr->operands[2].physReg() << 18;
+            encoding |= reg(ctx, instr->operands[2]) << 18;
          }
          out.push_back(encoding);
       } else {
@@ -335,14 +354,14 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          }
 
          assert(encoding);
-         encoding |= (0xFF & instr->definitions[0].physReg()) << 18;
+         encoding |= reg(ctx, instr->definitions[0], 8) << 18;
          encoding |= opcode << 16;
          encoding |= interp.attribute << 10;
          encoding |= interp.component << 8;
          if (instr->opcode == aco_opcode::v_interp_mov_f32)
             encoding |= (0x3 & instr->operands[0].constantValue());
          else
-            encoding |= (0xFF & instr->operands[0].physReg());
+            encoding |= reg(ctx, instr->operands[0], 8);
          out.push_back(encoding);
       }
       break;
@@ -361,17 +380,13 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       encoding |= (0xFFFF & ds.offset0);
       out.push_back(encoding);
       encoding = 0;
-      unsigned reg = !instr->definitions.empty() ? instr->definitions[0].physReg() : 0;
-      encoding |= (0xFF & reg) << 24;
-      reg = instr->operands.size() >= 3 && !(instr->operands[2].physReg() == m0)
-               ? instr->operands[2].physReg()
-               : 0;
-      encoding |= (0xFF & reg) << 16;
-      reg = instr->operands.size() >= 2 && !(instr->operands[1].physReg() == m0)
-               ? instr->operands[1].physReg()
-               : 0;
-      encoding |= (0xFF & reg) << 8;
-      encoding |= (0xFF & instr->operands[0].physReg());
+      if (!instr->definitions.empty())
+         encoding |= reg(ctx, instr->definitions[0], 8) << 24;
+      if (instr->operands.size() >= 3 && instr->operands[2].physReg() != m0)
+         encoding |= reg(ctx, instr->operands[2], 8) << 16;
+      if (instr->operands.size() >= 2 && instr->operands[1].physReg() != m0)
+         encoding |= reg(ctx, instr->operands[1], 8) << 8;
+      encoding |= reg(ctx, instr->operands[0], 8);
       out.push_back(encoding);
       break;
    }
@@ -398,13 +413,14 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       if (ctx.gfx_level <= GFX7 || ctx.gfx_level >= GFX10) {
          encoding |= (mubuf.slc ? 1 : 0) << 22;
       }
-      encoding |= instr->operands[2].physReg() << 24;
+      encoding |= reg(ctx, instr->operands[2]) << 24;
       encoding |= (mubuf.tfe ? 1 : 0) << 23;
-      encoding |= (instr->operands[0].physReg() >> 2) << 16;
-      unsigned reg = instr->operands.size() > 3 ? instr->operands[3].physReg()
-                                                : instr->definitions[0].physReg();
-      encoding |= (0xFF & reg) << 8;
-      encoding |= (0xFF & instr->operands[1].physReg());
+      encoding |= (reg(ctx, instr->operands[0]) >> 2) << 16;
+      if (instr->operands.size() > 3)
+         encoding |= reg(ctx, instr->operands[3], 8) << 8;
+      else
+         encoding |= reg(ctx, instr->definitions[0], 8) << 8;
+      encoding |= reg(ctx, instr->operands[1], 8);
       out.push_back(encoding);
       break;
    }
@@ -431,14 +447,15 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       out.push_back(encoding);
       encoding = 0;
 
-      encoding |= instr->operands[2].physReg() << 24;
+      encoding |= reg(ctx, instr->operands[2]) << 24;
       encoding |= (mtbuf.tfe ? 1 : 0) << 23;
       encoding |= (mtbuf.slc ? 1 : 0) << 22;
-      encoding |= (instr->operands[0].physReg() >> 2) << 16;
-      unsigned reg = instr->operands.size() > 3 ? instr->operands[3].physReg()
-                                                : instr->definitions[0].physReg();
-      encoding |= (0xFF & reg) << 8;
-      encoding |= (0xFF & instr->operands[1].physReg());
+      encoding |= (reg(ctx, instr->operands[0]) >> 2) << 16;
+      if (instr->operands.size() > 3)
+         encoding |= reg(ctx, instr->operands[3], 8) << 8;
+      else
+         encoding |= reg(ctx, instr->definitions[0], 8) << 8;
+      encoding |= reg(ctx, instr->operands[1], 8);
 
       if (ctx.gfx_level >= GFX10) {
          encoding |= (((opcode & 0x08) >> 3) << 21); /* MSB of 4-bit OPCODE */
@@ -474,15 +491,15 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       }
       encoding |= (0xF & mimg.dmask) << 8;
       out.push_back(encoding);
-      encoding = (0xFF & instr->operands[3].physReg()); /* VADDR */
+      encoding = reg(ctx, instr->operands[3], 8); /* VADDR */
       if (!instr->definitions.empty()) {
-         encoding |= (0xFF & instr->definitions[0].physReg()) << 8; /* VDATA */
+         encoding |= reg(ctx, instr->definitions[0], 8) << 8; /* VDATA */
       } else if (!instr->operands[2].isUndefined()) {
-         encoding |= (0xFF & instr->operands[2].physReg()) << 8; /* VDATA */
+         encoding |= reg(ctx, instr->operands[2], 8) << 8; /* VDATA */
       }
-      encoding |= (0x1F & (instr->operands[0].physReg() >> 2)) << 16; /* T# (resource) */
+      encoding |= (0x1F & (reg(ctx, instr->operands[0]) >> 2)) << 16; /* T# (resource) */
       if (!instr->operands[1].isUndefined())
-         encoding |= (0x1F & (instr->operands[1].physReg() >> 2)) << 21; /* sampler */
+         encoding |= (0x1F & (reg(ctx, instr->operands[1]) >> 2)) << 21; /* sampler */
 
       assert(!mimg.d16 || ctx.gfx_level >= GFX9);
       encoding |= mimg.d16 ? 1 << 31 : 0;
@@ -497,7 +514,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          out.resize(out.size() + nsa_dwords);
          std::vector<uint32_t>::iterator nsa = std::prev(out.end(), nsa_dwords);
          for (unsigned i = 0; i < instr->operands.size() - 4u; i++)
-            nsa[i / 4] |= (0xFF & instr->operands[4 + i].physReg().reg()) << (i % 4 * 8);
+            nsa[i / 4] |= reg(ctx, instr->operands[4 + i], 8) << (i % 4 * 8);
       }
       break;
    }
@@ -536,15 +553,15 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          assert(!flat.dlc);
       }
       out.push_back(encoding);
-      encoding = (0xFF & instr->operands[0].physReg());
+      encoding = reg(ctx, instr->operands[0], 8);
       if (!instr->definitions.empty())
-         encoding |= (0xFF & instr->definitions[0].physReg()) << 24;
+         encoding |= reg(ctx, instr->definitions[0], 8) << 24;
       if (instr->operands.size() >= 3)
-         encoding |= (0xFF & instr->operands[2].physReg()) << 8;
+         encoding |= reg(ctx, instr->operands[2], 8) << 8;
       if (!instr->operands[1].isUndefined()) {
          assert(ctx.gfx_level >= GFX10 || instr->operands[1].physReg() != 0x7F);
          assert(instr->format != Format::FLAT);
-         encoding |= instr->operands[1].physReg() << 16;
+         encoding |= reg(ctx, instr->operands[1], 8) << 16;
       } else if (instr->format != Format::FLAT ||
                  ctx.gfx_level >= GFX10) { /* SADDR is actually used with FLAT on GFX10 */
          /* For GFX10.3 scratch, 0x7F disables both ADDR and SADDR, unlike sgpr_null, which only
@@ -554,7 +571,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
              (instr->format == Format::SCRATCH && instr->operands[0].isUndefined()))
             encoding |= 0x7F << 16;
          else
-            encoding |= sgpr_null << 16;
+            encoding |= reg(ctx, sgpr_null) << 16;
       }
       encoding |= flat.nv ? 1 << 23 : 0;
       out.push_back(encoding);
@@ -575,10 +592,10 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       encoding |= exp.dest << 4;
       encoding |= exp.enabled_mask;
       out.push_back(encoding);
-      encoding = 0xFF & exp.operands[0].physReg();
-      encoding |= (0xFF & exp.operands[1].physReg()) << 8;
-      encoding |= (0xFF & exp.operands[2].physReg()) << 16;
-      encoding |= (0xFF & exp.operands[3].physReg()) << 24;
+      encoding = reg(ctx, exp.operands[0], 8);
+      encoding |= reg(ctx, exp.operands[1], 8) << 8;
+      encoding |= reg(ctx, exp.operands[2], 8) << 16;
+      encoding |= reg(ctx, exp.operands[3], 8) << 24;
       out.push_back(encoding);
       break;
    }
@@ -629,19 +646,19 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          if (instr->definitions.size() == 2 && instr->isVOPC())
             assert(ctx.gfx_level <= GFX9 && instr->definitions[1].physReg() == exec);
          else if (instr->definitions.size() == 2)
-            encoding |= instr->definitions[1].physReg() << 8;
-         encoding |= (0xFF & instr->definitions[0].physReg());
+            encoding |= reg(ctx, instr->definitions[1]) << 8;
+         encoding |= reg(ctx, instr->definitions[0], 8);
          out.push_back(encoding);
          encoding = 0;
          if (instr->opcode == aco_opcode::v_interp_mov_f32) {
             encoding = 0x3 & instr->operands[0].constantValue();
          } else if (instr->opcode == aco_opcode::v_writelane_b32_e64) {
-            encoding |= instr->operands[0].physReg() << 0;
-            encoding |= instr->operands[1].physReg() << 9;
+            encoding |= reg(ctx, instr->operands[0]) << 0;
+            encoding |= reg(ctx, instr->operands[1]) << 9;
             /* Encoding src2 works fine with hardware but breaks some disassemblers. */
          } else {
             for (unsigned i = 0; i < instr->operands.size(); i++)
-               encoding |= instr->operands[i].physReg() << (i * 9);
+               encoding |= reg(ctx, instr->operands[i]) << (i * 9);
          }
          encoding |= vop3.omod << 27;
          for (unsigned i = 0; i < 3; i++)
@@ -666,11 +683,11 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding |= ((vop3.opsel_hi & 0x4) ? 1 : 0) << 14;
          for (unsigned i = 0; i < 3; i++)
             encoding |= vop3.neg_hi[i] << (8 + i);
-         encoding |= (0xFF & instr->definitions[0].physReg());
+         encoding |= reg(ctx, instr->definitions[0], 8);
          out.push_back(encoding);
          encoding = 0;
          for (unsigned i = 0; i < instr->operands.size(); i++)
-            encoding |= instr->operands[i].physReg() << (i * 9);
+            encoding |= reg(ctx, instr->operands[i]) << (i * 9);
          encoding |= (vop3.opsel_hi & 0x3) << 27;
          for (unsigned i = 0; i < 3; i++)
             encoding |= vop3.neg_lo[i] << (29 + i);
@@ -695,7 +712,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
             encoding |= 1 << 18; /* set Fetch Inactive to match GFX9 behaviour */
          encoding |= dpp.bound_ctrl << 19;
          encoding |= dpp.dpp_ctrl << 8;
-         encoding |= (0xFF) & dpp_op.physReg();
+         encoding |= reg(ctx, dpp_op, 8);
          out.push_back(encoding);
          return;
       } else if (instr->isDPP8()) {
@@ -707,7 +724,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          instr->operands[0] = Operand(PhysReg{234}, v1);
          instr->format = (Format)((uint16_t)instr->format & ~(uint16_t)Format::DPP8);
          emit_instruction(ctx, out, instr);
-         uint32_t encoding = (0xFF) & dpp_op.physReg();
+         uint32_t encoding = reg(ctx, dpp_op, 8);
          for (unsigned i = 0; i < 8; ++i)
             encoding |= dpp.lane_sel[i] << (8 + i * 3);
          out.push_back(encoding);
@@ -727,7 +744,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          if (instr->isVOPC()) {
             if (instr->definitions[0].physReg() !=
                 (ctx.gfx_level >= GFX10 && is_cmpx(instr->opcode) ? exec : vcc)) {
-               encoding |= instr->definitions[0].physReg() << 8;
+               encoding |= reg(ctx, instr->definitions[0]) << 8;
                encoding |= 1 << 15;
             }
             encoding |= (sdwa.clamp ? 1 : 0) << 13;
@@ -753,7 +770,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
             encoding |= sdwa.neg[1] << 28;
          }
 
-         encoding |= 0xFF & sdwa_op.physReg();
+         encoding |= reg(ctx, sdwa_op, 8);
          encoding |= (sdwa_op.physReg() < 256) << 23;
          if (instr->operands.size() >= 2)
             encoding |= (instr->operands[1].physReg() < 256) << 31;
