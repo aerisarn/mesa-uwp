@@ -1263,7 +1263,13 @@ bool AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
    case nir_op_flt: return emit_alu_op2(*alu, op2_setgt_dx10, shader, op2_opt_reverse);
    case nir_op_fmax: return emit_alu_op2(*alu, op2_max_dx10, shader);
    case nir_op_fmin: return emit_alu_op2(*alu, op2_min_dx10, shader);
-   case nir_op_fmul: return emit_alu_op2(*alu, op2_mul_ieee, shader);
+
+   case nir_op_fmul:
+      if (!shader.has_flag(Shader::sh_legacy_math_rules))
+         return emit_alu_op2(*alu, op2_mul_ieee, shader);
+      FALLTHROUGH;
+   case nir_op_fmulz: return emit_alu_op2(*alu, op2_mul, shader);
+
    case nir_op_fneg: return emit_alu_op1(*alu, op1_mov, shader, {1 << alu_src0_neg});
    case nir_op_fneu32: return emit_alu_op2(*alu, op2_setne_dx10, shader);
    case nir_op_fneu: return emit_alu_op2(*alu, op2_setne_dx10, shader);
@@ -1319,8 +1325,12 @@ bool AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
    case nir_op_unpack_half_2x16_split_x: return emit_unpack_32_2x16_split_x(*alu, shader);
    case nir_op_unpack_half_2x16_split_y: return emit_unpack_32_2x16_split_y(*alu, shader);
 
+   case nir_op_ffma:
+      if (!shader.has_flag(Shader::sh_legacy_math_rules))
+         return emit_alu_op3(*alu, op3_muladd_ieee, shader);
+      FALLTHROUGH;
+   case nir_op_ffmaz: return emit_alu_op3(*alu, op3_muladd, shader);
 
-   case nir_op_ffma: return emit_alu_op3(*alu, op3_muladd_ieee, shader);
    case nir_op_mov: return emit_alu_op1(*alu, op1_mov, shader);
    case nir_op_f2i32: return emit_alu_op1(*alu, op1_flt_to_int, shader);
    case nir_op_vec2: return emit_create_vec(*alu, 2, shader);
@@ -2034,7 +2044,9 @@ static bool emit_dot(const nir_alu_instr& alu, int n, Shader& shader)
       srcs[2 * i + 1] = value_factory.zero();
    }
 
-   AluInstr *ir = new AluInstr(op2_dot4_ieee, dest, srcs,  AluInstr::last_write, 4);
+   auto op = unlikely(shader.has_flag(Shader::sh_legacy_math_rules)) ?
+                op2_dot4 : op2_dot4_ieee;
+   AluInstr *ir = new AluInstr(op, dest, srcs,  AluInstr::last_write, 4);
 
    if (src0.negate) ir->set_alu_flag(alu_src0_neg);
    if (src0.abs) ir->set_alu_flag(alu_src0_abs);

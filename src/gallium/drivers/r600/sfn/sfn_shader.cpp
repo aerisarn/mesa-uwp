@@ -430,6 +430,9 @@ bool Shader::process(nir_shader *nir)
 {
    m_ssbo_image_offset = nir->info.num_images;
 
+   if (nir->info.use_legacy_math_rules)
+      set_flag(sh_legacy_math_rules);
+
    nir_foreach_uniform_variable(var, nir)
          scan_uniforms(var);
 

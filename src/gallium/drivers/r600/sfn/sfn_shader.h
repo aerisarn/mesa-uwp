@@ -199,6 +199,7 @@ public:
       sh_txs_cube_array_comp,
       sh_indirect_atomic,
       sh_mem_barrier,
+      sh_legacy_math_rules,
       sh_flags_count
    };
 

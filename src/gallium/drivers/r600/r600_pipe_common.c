@@ -1367,7 +1367,6 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 	rscreen->nir_options = nir_options;
 
-
 	if (rscreen->info.family < CHIP_CEDAR)
 		rscreen->nir_options.force_indirect_unrolling_sampler = true;
 
@@ -1411,7 +1410,9 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 		/* TGSI's ifind is reversed from ours, keep it the TGSI way. */
 		rscreen->nir_options.lower_find_msb_to_reverse = false;
-	}
+	} else {
+      rscreen->nir_options.has_fmulz = true;
+   }
 
 	rscreen->nir_options_fs = rscreen->nir_options;
 	rscreen->nir_options_fs.lower_all_io_to_temps = true;
