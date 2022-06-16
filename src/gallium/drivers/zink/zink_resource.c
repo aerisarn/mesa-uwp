@@ -1973,17 +1973,17 @@ zink_transfer_flush_region(struct pipe_context *pctx,
       struct zink_screen *screen = zink_screen(pctx->screen);
       struct zink_resource *m = trans->staging_res ? zink_resource(trans->staging_res) :
                                                      res;
-      ASSERTED VkDeviceSize size, offset;
+      ASSERTED VkDeviceSize size, src_offset;
       if (m->obj->is_buffer) {
          size = box->width;
-         offset = trans->offset;
+         src_offset = trans->offset;
       } else {
          size = (VkDeviceSize)box->width * box->height * util_format_get_blocksize(m->base.b.format);
-         offset = trans->offset +
+         src_offset = trans->offset +
                   box->z * trans->depthPitch +
                   util_format_get_2d_size(m->base.b.format, trans->base.b.stride, box->y) +
                   util_format_get_stride(m->base.b.format, box->x);
-         assert(offset + size <= res->obj->size);
+         assert(src_offset + size <= res->obj->size);
       }
       if (!m->obj->coherent) {
          VkMappedMemoryRange range = zink_resource_init_mem_range(screen, m->obj, m->obj->offset, m->obj->size);
@@ -1995,7 +1995,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (ptrans->resource->target == PIPE_BUFFER)
-            zink_copy_buffer(ctx, res, staging_res, box->x, offset, box->width);
+            zink_copy_buffer(ctx, res, staging_res, box->x, src_offset, box->width);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }
