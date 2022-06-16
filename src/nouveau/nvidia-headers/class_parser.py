@@ -147,5 +147,51 @@ for mthd in mthddict:
     print("\tnvk_push_val(push, " + nvcl + "_" + mthd + ("(idx), " if mthddict[mthd].is_array else ",") + " nvk_p_ret);\\");
     print("\t} while(0)")
 
+print("static inline const char* P_PARSE_" + nvcl + "_MTHD(uint16_t idx) {")
+print("\tswitch (idx) {")
+for mthd in mthddict:
+    if mthddict[mthd].is_array:
+        continue
+    print("\tcase " + nvcl + "_" + mthd + ":")
+    print("\t\treturn \"" + nvcl + "_" + mthd + "\";")
+print("\tdefault:")
+print("\t\treturn \"unkown method\";")
+print("\t};")
+print("}")
+
+print("static inline void P_DUMP_" + nvcl + "_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix) {")
+print("\tuint32_t parsed;")
+print("\tswitch (idx) {")
+for mthd in mthddict:
+    if mthddict[mthd].is_array:
+        continue
+    print("\tcase " + nvcl + "_" + mthd + ":")
+    for field_name in mthddict[mthd].field_name_start:
+        field_width = int(mthddict[mthd].field_name_end[field_name]) - int(mthddict[mthd].field_name_start[field_name]) + 1
+        if (field_width == 32):
+            print("\t\tparsed = data;")
+        else:
+            print("\t\tparsed = (data >> " + mthddict[mthd].field_name_start[field_name] + ") & ((1 << " + str(field_width) + ") - 1);")
+        print("\t\tprintf(\"%s." + field_name + " = \", prefix);")
+        if len(mthddict[mthd].field_defs[field_name]):
+            print("\t\tswitch (parsed) {")
+            for d in mthddict[mthd].field_defs[field_name]:
+                print("\t\tcase " + nvcl + "_" + mthd + "_" + field_name + "_" + d + ":")
+                print("\t\t\tprintf(\"" + d + "\\n\");")
+                print("\t\t\tbreak;")
+            print("\t\tdefault:")
+            print("\t\t\tprintf(\"0x%x\\n\", parsed);")
+            print("\t\t\tbreak;")
+            print("\t\t}")
+        else:
+            print("\t\tprintf(\"0x%x\\n\", parsed);")
+    print("\t\tbreak;")
+
+print("\tdefault:")
+print("\t\tprintf(\"%s.VALUE = 0x%x\\n\", prefix, data);")
+print("\t\tbreak;")
+print("\t};")
+print("}")
+
 fout.close()
 f.close()
