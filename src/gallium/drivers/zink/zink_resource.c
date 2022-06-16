@@ -957,9 +957,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    if (templ->usage == PIPE_USAGE_STAGING && obj->is_buffer)
       alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
    obj->alignment = alignment;
+retry:
    obj->bo = zink_bo(zink_bo_create(screen, reqs.size, alignment, heap, mai.pNext ? ZINK_ALLOC_NO_SUBALLOC : 0, mai.pNext));
-   if (!obj->bo)
-     goto fail2;
+   if (!obj->bo) {
+      if (heap == ZINK_HEAP_DEVICE_LOCAL_VISIBLE) {
+         heap = ZINK_HEAP_DEVICE_LOCAL;
+         goto retry;
+      }
+      goto fail2;
+   }
    if (aflags == ZINK_ALLOC_SPARSE) {
       obj->size = templ->width0;
    } else {
