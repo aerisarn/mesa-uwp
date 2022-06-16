@@ -96,14 +96,15 @@ dump_fb_state(struct trace_context *tr_ctx,
               bool deep)
 {
    struct pipe_context *pipe = tr_ctx->pipe;
+   struct pipe_framebuffer_state *state = &tr_ctx->unwrapped_state;
 
    trace_dump_call_begin("pipe_context", method);
 
    trace_dump_arg(ptr, pipe);
    if (deep)
-      trace_dump_arg(framebuffer_state_deep, &tr_ctx->unwrapped_state);
+      trace_dump_arg(framebuffer_state_deep, state);
    else
-      trace_dump_arg(framebuffer_state, &tr_ctx->unwrapped_state);
+      trace_dump_arg(framebuffer_state, state);
    trace_dump_call_end();
 
    tr_ctx->seen_fb_state = true;
