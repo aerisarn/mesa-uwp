@@ -7140,11 +7140,10 @@ radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
    return result;
 }
 
-static void
-radv_pipeline_emit_hw_cs(struct radeon_cmdbuf *cs, const struct radv_compute_pipeline *pipeline)
+void
+radv_pipeline_emit_hw_cs(const struct radv_physical_device *pdevice, struct radeon_cmdbuf *cs,
+                         const struct radv_shader *shader)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   struct radv_shader *shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    uint64_t va = radv_shader_get_va(shader);
 
    radeon_set_sh_reg(cs, R_00B830_COMPUTE_PGM_LO, va >> 8);
@@ -7157,12 +7156,10 @@ radv_pipeline_emit_hw_cs(struct radeon_cmdbuf *cs, const struct radv_compute_pip
    }
 }
 
-static void
-radv_pipeline_emit_compute_state(struct radeon_cmdbuf *cs,
-                                 const struct radv_compute_pipeline *pipeline)
+void
+radv_pipeline_emit_compute_state(const struct radv_physical_device *pdevice,
+                                 struct radeon_cmdbuf *cs, const struct radv_shader *shader)
 {
-   struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   struct radv_shader *shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    unsigned threads_per_threadgroup;
    unsigned threadgroups_per_cu = 1;
    unsigned waves_per_threadgroup;
@@ -7190,14 +7187,15 @@ radv_pipeline_emit_compute_state(struct radeon_cmdbuf *cs,
 static void
 radv_compute_generate_pm4(struct radv_compute_pipeline *pipeline)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   struct radv_shader *shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    struct radeon_cmdbuf *cs = &pipeline->base.cs;
 
    cs->max_dw = pdevice->rad_info.gfx_level >= GFX10 ? 19 : 16;
    cs->buf = malloc(cs->max_dw * 4);
 
-   radv_pipeline_emit_hw_cs(cs, pipeline);
-   radv_pipeline_emit_compute_state(cs, pipeline);
+   radv_pipeline_emit_hw_cs(pdevice, cs, shader);
+   radv_pipeline_emit_compute_state(pdevice, cs, shader);
 
    assert(pipeline->base.cs.cdw <= pipeline->base.cs.max_dw);
 }

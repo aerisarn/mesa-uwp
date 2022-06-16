@@ -1755,8 +1755,9 @@ void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,
    }
 }
 
-unsigned ac_get_compute_resource_limits(struct radeon_info *info, unsigned waves_per_threadgroup,
-                                        unsigned max_waves_per_sh, unsigned threadgroups_per_cu)
+unsigned
+ac_get_compute_resource_limits(const struct radeon_info *info, unsigned waves_per_threadgroup,
+                               unsigned max_waves_per_sh, unsigned threadgroups_per_cu)
 {
    unsigned compute_resource_limits = S_00B854_SIMD_DEST_CNTL(waves_per_threadgroup % 4 == 0);
 

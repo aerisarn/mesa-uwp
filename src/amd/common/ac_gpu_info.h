@@ -259,8 +259,9 @@ void ac_get_raster_config(struct radeon_info *info, uint32_t *raster_config_p,
                           uint32_t *raster_config_1_p, uint32_t *se_tile_repeat_p);
 void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,
                               unsigned *cik_raster_config_1_p, unsigned *raster_config_se);
-unsigned ac_get_compute_resource_limits(struct radeon_info *info, unsigned waves_per_threadgroup,
-                                        unsigned max_waves_per_sh, unsigned threadgroups_per_cu);
+unsigned ac_get_compute_resource_limits(const struct radeon_info *info,
+                                        unsigned waves_per_threadgroup, unsigned max_waves_per_sh,
+                                        unsigned threadgroups_per_cu);
 
 struct ac_hs_info {
    uint32_t tess_offchip_block_dw_size;

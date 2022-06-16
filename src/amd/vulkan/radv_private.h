@@ -2260,6 +2260,12 @@ struct radv_userdata_info *radv_lookup_user_sgpr(struct radv_pipeline *pipeline,
 
 struct radv_shader *radv_get_shader(const struct radv_pipeline *pipeline, gl_shader_stage stage);
 
+void radv_pipeline_emit_hw_cs(const struct radv_physical_device *pdevice, struct radeon_cmdbuf *cs,
+                              const struct radv_shader *shader);
+
+void radv_pipeline_emit_compute_state(const struct radv_physical_device *pdevice,
+                                      struct radeon_cmdbuf *cs, const struct radv_shader *shader);
+
 struct radv_graphics_pipeline_create_info {
    bool use_rectlist;
    bool db_depth_clear;
