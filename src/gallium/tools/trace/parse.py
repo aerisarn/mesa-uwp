@@ -72,7 +72,7 @@ class XmlTokenizer:
         self.skip_ws = skip_ws
         
         self.character_pos = 0, 0
-        self.character_data = ''
+        self.character_data = []
         
         self.parser = xpat.ParserCreate()
         self.parser.StartElementHandler  = self.handle_element_start
@@ -94,15 +94,16 @@ class XmlTokenizer:
     def handle_character_data(self, data):
         if not self.character_data:
             self.character_pos = self.pos()
-        self.character_data += data
+        self.character_data.append(data)
     
     def finish_character_data(self):
         if self.character_data:
-            if not self.skip_ws or not self.character_data.isspace(): 
+            character_data = ''.join(self.character_data)
+            if not self.skip_ws or not character_data.isspace(): 
                 line, column = self.character_pos
-                token = XmlToken(CHARACTER_DATA, self.character_data, None, line, column)
+                token = XmlToken(CHARACTER_DATA, character_data, None, line, column)
                 self.tokens.append(token)
-            self.character_data = ''
+            self.character_data = []
     
     def next(self):
         size = 16*1024
