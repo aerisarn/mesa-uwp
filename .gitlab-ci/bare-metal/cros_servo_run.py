@@ -71,6 +71,12 @@ class CrosServoRun:
                 bootloader_done = True
                 break
 
+            # If the board has a netboot firmware and we made it to booting the
+            # kernel, proceed to processing of the test run.
+            if re.search("Booting Linux", line):
+                bootloader_done = True
+                break
+
             # The Cheza boards have issues with failing to bring up power to
             # the system sometimes, possibly dependent on ambient temperature
             # in the farm.
