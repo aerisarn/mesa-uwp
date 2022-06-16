@@ -414,6 +414,18 @@ blorp_exec_on_compute(struct blorp_batch *batch,
    cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
 }
 
+static void
+blorp_exec_on_blitter(struct blorp_batch *batch,
+                      const struct blorp_params *params)
+{
+   assert(batch->flags & BLORP_BATCH_USE_BLITTER);
+
+   struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
+   assert(cmd_buffer->queue_family->queueFlags == VK_QUEUE_TRANSFER_BIT);
+
+   blorp_exec(batch, params);
+}
+
 void
 genX(blorp_exec)(struct blorp_batch *batch,
                  const struct blorp_params *params)
@@ -430,7 +442,9 @@ genX(blorp_exec)(struct blorp_batch *batch,
       genX(cmd_buffer_config_l3)(cmd_buffer, cfg);
    }
 
-   if (batch->flags & BLORP_BATCH_USE_COMPUTE)
+   if (batch->flags & BLORP_BATCH_USE_BLITTER)
+      blorp_exec_on_blitter(batch, params);
+   else if (batch->flags & BLORP_BATCH_USE_COMPUTE)
       blorp_exec_on_compute(batch, params);
    else
       blorp_exec_on_render(batch, params);

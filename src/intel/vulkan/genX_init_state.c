@@ -711,6 +711,13 @@ genX(init_device_state)(struct anv_device *device)
       case INTEL_ENGINE_CLASS_VIDEO:
          res = VK_SUCCESS;
          break;
+      case INTEL_ENGINE_CLASS_COPY:
+         /**
+          * Execute RCS init batch by default on the companion RCS command buffer in
+          * order to support MSAA copy/clear operations on copy queue.
+          */
+         res = init_render_queue_state(queue, true /* is_companion_rcs_batch */);
+         break;
       default:
          res = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
          break;

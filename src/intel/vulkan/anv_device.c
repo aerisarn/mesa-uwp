@@ -1145,6 +1145,12 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
       enum intel_engine_class compute_class =
          c_count < 1 ? INTEL_ENGINE_CLASS_RENDER : INTEL_ENGINE_CLASS_COMPUTE;
 
+      int blit_count = 0;
+      if (debug_get_bool_option("INTEL_COPY_CLASS", false)) {
+         blit_count = intel_engines_count(pdevice->engine_info,
+                                          INTEL_ENGINE_CLASS_COPY);
+      }
+
       anv_override_engine_counts(&gc_count, &g_count, &c_count, &v_count);
 
       if (gc_count > 0) {
@@ -1190,6 +1196,13 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
             .queueFlags = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
             .queueCount = pdevice->info.ver == 9 ? MIN2(1, v_count) : v_count,
             .engine_class = INTEL_ENGINE_CLASS_VIDEO,
+         };
+      }
+      if (blit_count > 0) {
+         pdevice->queue.families[family_count++] = (struct anv_queue_family) {
+            .queueFlags = VK_QUEUE_TRANSFER_BIT,
+            .queueCount = blit_count,
+            .engine_class = INTEL_ENGINE_CLASS_COPY,
          };
       }
 

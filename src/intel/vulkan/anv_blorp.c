@@ -112,9 +112,16 @@ static void
 anv_blorp_batch_init(struct anv_cmd_buffer *cmd_buffer,
                      struct blorp_batch *batch, enum blorp_batch_flags flags)
 {
-   if (!(cmd_buffer->queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-      assert(cmd_buffer->queue_family->queueFlags & VK_QUEUE_COMPUTE_BIT);
+   VkQueueFlags queue_flags = cmd_buffer->queue_family->queueFlags;
+
+   if (queue_flags & VK_QUEUE_GRAPHICS_BIT) {
+      /* blorp runs on render engine by default */
+   } else if (queue_flags & VK_QUEUE_COMPUTE_BIT) {
       flags |= BLORP_BATCH_USE_COMPUTE;
+   } else if (queue_flags & VK_QUEUE_TRANSFER_BIT) {
+      flags |= BLORP_BATCH_USE_BLITTER;
+   } else {
+      unreachable("unknown queue family");
    }
 
    blorp_batch_init(&cmd_buffer->device->blorp, batch, cmd_buffer, flags);
