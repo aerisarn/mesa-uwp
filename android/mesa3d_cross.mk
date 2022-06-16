@@ -203,10 +203,8 @@ define m-c-flags
 endef
 
 define filter-c-flags
-  $(subst -std=gnu++17,, \
-  $(subst -fno-rtti,, \
-  $(patsubst  -W%,, \
-    $1)))
+  $(filter-out -std=gnu++17 -std=gnu99 -fno-rtti, \
+    $(patsubst  -W%,, $1))
 endef
 
 define m-c-abs-includes
