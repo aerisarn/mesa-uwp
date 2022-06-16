@@ -431,7 +431,9 @@ tu_xs_get_additional_cs_size_dwords(const struct ir3_shader_variant *xs)
    size += 4 * const_state->ubo_state.num_enabled;
 
    /* Variable number of dwords for the primitive map */
-   size += DIV_ROUND_UP(xs->input_size, 4);
+   size += xs->input_size;
+
+   size += xs->constant_data_size / 4;
 
    return size;
 }
