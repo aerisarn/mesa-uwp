@@ -2867,7 +2867,7 @@ radv_device_init_vs_prologs(struct radv_device *device)
 
             key.num_attributes = num_attributes;
 
-            struct radv_shader_prolog *prolog = radv_create_vs_prolog(device, &key);
+            struct radv_shader_part *prolog = radv_create_vs_prolog(device, &key);
             if (!prolog)
                return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
@@ -2889,16 +2889,16 @@ radv_device_finish_vs_prologs(struct radv_device *device)
       hash_table_foreach(device->vs_prologs, entry)
       {
          free((void *)entry->key);
-         radv_prolog_destroy(device, entry->data);
+         radv_shader_part_destroy(device, entry->data);
       }
       _mesa_hash_table_destroy(device->vs_prologs, NULL);
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(device->simple_vs_prologs); i++)
-      radv_prolog_destroy(device, device->simple_vs_prologs[i]);
+      radv_shader_part_destroy(device, device->simple_vs_prologs[i]);
 
    for (unsigned i = 0; i < ARRAY_SIZE(device->instance_rate_vs_prologs); i++)
-      radv_prolog_destroy(device, device->instance_rate_vs_prologs[i]);
+      radv_shader_part_destroy(device, device->instance_rate_vs_prologs[i]);
 }
 
 VkResult

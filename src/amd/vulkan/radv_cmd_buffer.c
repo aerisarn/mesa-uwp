@@ -745,7 +745,7 @@ radv_save_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, uint64_t vb_ptr
 }
 
 static void
-radv_save_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader_prolog *prolog)
+radv_save_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader_part *prolog)
 {
    struct radv_device *device = cmd_buffer->device;
    uint32_t data[2];
@@ -2811,7 +2811,7 @@ radv_cmp_vs_prolog(const void *a_, const void *b_)
    return memcmp(a, b, header.key_size) == 0;
 }
 
-static struct radv_shader_prolog *
+static struct radv_shader_part *
 lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shader,
                  uint32_t *nontrivial_divisors)
 {
@@ -2832,7 +2832,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
    const uint32_t misaligned_mask = chip == GFX6 || chip >= GFX10 ? cmd_buffer->state.vbo_misaligned_mask : 0;
 
    /* try to use a pre-compiled prolog first */
-   struct radv_shader_prolog *prolog = NULL;
+   struct radv_shader_part *prolog = NULL;
    if (pipeline->can_use_simple_input &&
        (!vs_shader->info.vs.as_ls || !instance_rate_inputs) &&
        !misaligned_mask && !state->alpha_adjust_lo && !state->alpha_adjust_hi) {
@@ -2933,7 +2933,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
       prolog = radv_create_vs_prolog(device, &key);
       uint32_t *key2 = malloc(key_size * 4);
       if (!prolog || !key2) {
-         radv_prolog_destroy(device, prolog);
+         radv_shader_part_destroy(device, prolog);
          free(key2);
          u_rwlock_wrunlock(&device->vs_prologs_lock);
          return NULL;
@@ -2950,7 +2950,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
 
 static void
 emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shader,
-                 struct radv_shader_prolog *prolog, bool pipeline_is_dirty)
+                 struct radv_shader_part *prolog, bool pipeline_is_dirty)
 {
    /* no need to re-emit anything in this case */
    if (cmd_buffer->state.emitted_vs_prolog == prolog && !pipeline_is_dirty)
@@ -3059,7 +3059,7 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
       return;
 
    uint32_t nontrivial_divisors;
-   struct radv_shader_prolog *prolog =
+   struct radv_shader_part *prolog =
       lookup_vs_prolog(cmd_buffer, vs_shader, &nontrivial_divisors);
    if (!prolog) {
       cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;

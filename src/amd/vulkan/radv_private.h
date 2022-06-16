@@ -899,8 +899,8 @@ struct radv_device {
    /* Prime blit sdma queue */
    struct radv_queue *private_sdma_queue;
 
-   struct radv_shader_prolog *simple_vs_prologs[MAX_VERTEX_ATTRIBS];
-   struct radv_shader_prolog *instance_rate_vs_prologs[816];
+   struct radv_shader_part *simple_vs_prologs[MAX_VERTEX_ATTRIBS];
+   struct radv_shader_part *instance_rate_vs_prologs[816];
 
    simple_mtx_t trace_mtx;
 
@@ -1505,7 +1505,7 @@ struct radv_cmd_state {
 
    uint32_t rt_stack_size;
 
-   struct radv_shader_prolog *emitted_vs_prolog;
+   struct radv_shader_part *emitted_vs_prolog;
    uint32_t *emitted_vs_prolog_key;
    uint32_t emitted_vs_prolog_key_hash;
    uint32_t vbo_misaligned_mask;

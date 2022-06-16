@@ -293,7 +293,7 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
                       const struct aco_shader_info* info,
                       const struct aco_vs_prolog_key* key,
                       const struct radv_shader_args* args,
-                      struct radv_prolog_binary** binary)
+                      struct radv_shader_part_binary** binary)
 {
    aco::init();
 
@@ -318,7 +318,7 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
    unsigned exec_size = aco::emit_program(program.get(), code);
 
    /* copy into binary */
-   size_t size = code.size() * sizeof(uint32_t) + sizeof(radv_prolog_binary);
+   size_t size = code.size() * sizeof(uint32_t) + sizeof(radv_shader_part_binary);
 
    bool get_disasm = options->dump_shader || options->record_ir;
 
@@ -328,19 +328,18 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
       size += disasm.size();
    }
 
-   radv_prolog_binary* prolog_binary = (radv_prolog_binary*)calloc(size, 1);
+   radv_shader_part_binary* bin = (radv_shader_part_binary*)calloc(size, 1);
 
-   prolog_binary->num_sgprs = config.num_sgprs;
-   prolog_binary->num_vgprs = config.num_vgprs;
-   prolog_binary->num_preserved_sgprs = num_preserved_sgprs;
-   prolog_binary->code_size = code.size() * sizeof(uint32_t);
-   memcpy(prolog_binary->data, code.data(), prolog_binary->code_size);
+   bin->num_sgprs = config.num_sgprs;
+   bin->num_vgprs = config.num_vgprs;
+   bin->num_preserved_sgprs = num_preserved_sgprs;
+   bin->code_size = code.size() * sizeof(uint32_t);
+   memcpy(bin->data, code.data(), bin->code_size);
 
    if (get_disasm) {
-      disasm.copy((char*)prolog_binary->data + prolog_binary->code_size,
-                  disasm.size());
-      prolog_binary->disasm_size = disasm.size();
+      disasm.copy((char*)bin->data + bin->code_size, disasm.size());
+      bin->disasm_size = disasm.size();
    }
 
-   *binary = prolog_binary;
+   *binary = bin;
 }

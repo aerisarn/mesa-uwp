@@ -2220,22 +2220,22 @@ radv_trap_handler_shader_destroy(struct radv_device *device, struct radv_trap_ha
    free(trap);
 }
 
-static struct radv_shader_prolog *
-upload_vs_prolog(struct radv_device *device, struct radv_prolog_binary *bin, unsigned wave_size)
+static struct radv_shader_part *
+upload_shader_part(struct radv_device *device, struct radv_shader_part_binary *bin, unsigned wave_size)
 {
    uint32_t code_size = radv_get_shader_binary_size(bin->code_size);
-   struct radv_shader_prolog *prolog = malloc(sizeof(struct radv_shader_prolog));
-   if (!prolog)
+   struct radv_shader_part *shader_part = malloc(sizeof(struct radv_shader_part));
+   if (!shader_part)
       return NULL;
 
-   prolog->alloc = radv_alloc_shader_memory(device, code_size, NULL);
-   if (!prolog->alloc) {
-      free(prolog);
+   shader_part->alloc = radv_alloc_shader_memory(device, code_size, NULL);
+   if (!shader_part->alloc) {
+      free(shader_part);
       return NULL;
    }
 
-   prolog->bo = prolog->alloc->arena->bo;
-   char *dest_ptr = prolog->alloc->arena->ptr + prolog->alloc->offset;
+   shader_part->bo = shader_part->alloc->arena->bo;
+   char *dest_ptr = shader_part->alloc->arena->ptr + shader_part->alloc->offset;
 
    memcpy(dest_ptr, bin->data, bin->code_size);
 
@@ -2244,15 +2244,15 @@ upload_vs_prolog(struct radv_device *device, struct radv_prolog_binary *bin, uns
    for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
       ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
-   prolog->rsrc1 = S_00B848_VGPRS((bin->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
+   shader_part->rsrc1 = S_00B848_VGPRS((bin->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
                    S_00B228_SGPRS((bin->num_sgprs - 1) / 8);
-   prolog->num_preserved_sgprs = bin->num_preserved_sgprs;
-   prolog->disasm_string = NULL;
+   shader_part->num_preserved_sgprs = bin->num_preserved_sgprs;
+   shader_part->disasm_string = NULL;
 
-   return prolog;
+   return shader_part;
 }
 
-struct radv_shader_prolog *
+struct radv_shader_part *
 radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_key *key)
 {
    struct radv_shader_args args = {0};
@@ -2289,7 +2289,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
       ac_init_llvm_once();
 #endif
 
-   struct radv_prolog_binary *binary = NULL;
+   struct radv_shader_part_binary *binary = NULL;
    struct aco_shader_info ac_info;
    struct aco_vs_prolog_key ac_key;
    struct aco_compiler_options ac_opts;
@@ -2297,7 +2297,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    radv_aco_convert_opts(&ac_opts, &options);
    radv_aco_convert_vs_prolog_key(&ac_key, key);
    aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_key, &args, &binary);
-   struct radv_shader_prolog *prolog = upload_vs_prolog(device, binary, info.wave_size);
+   struct radv_shader_part *prolog = upload_shader_part(device, binary, info.wave_size);
    if (prolog) {
       prolog->nontrivial_divisors = key->state->nontrivial_divisors;
       prolog->disasm_string =
@@ -2329,14 +2329,14 @@ radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 }
 
 void
-radv_prolog_destroy(struct radv_device *device, struct radv_shader_prolog *prolog)
+radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part)
 {
-   if (!prolog)
+   if (!shader_part)
       return;
 
-   radv_free_shader_memory(device, prolog->alloc);
-   free(prolog->disasm_string);
-   free(prolog);
+   radv_free_shader_memory(device, shader_part->alloc);
+   free(shader_part->disasm_string);
+   free(shader_part);
 }
 
 uint64_t

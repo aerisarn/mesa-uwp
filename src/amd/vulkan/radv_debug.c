@@ -488,17 +488,17 @@ radv_dump_vertex_descriptors(struct radv_graphics_pipeline *pipeline, FILE *f)
    }
 }
 
-static struct radv_shader_prolog *
+static struct radv_shader_part *
 radv_get_saved_vs_prolog(struct radv_device *device)
 {
    uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
-   return *(struct radv_shader_prolog **)(ptr + 4);
+   return *(struct radv_shader_part **)(ptr + 4);
 }
 
 static void
 radv_dump_vs_prolog(struct radv_pipeline *pipeline, FILE *f)
 {
-   struct radv_shader_prolog *vs_prolog = radv_get_saved_vs_prolog(pipeline->device);
+   struct radv_shader_part *vs_prolog = radv_get_saved_vs_prolog(pipeline->device);
    struct radv_shader *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
 
    if (!vs_prolog || !vs_shader || !vs_shader->info.vs.has_prolog)

@@ -441,7 +441,7 @@ struct radv_shader_binary_rtld {
    uint8_t data[0];
 };
 
-struct radv_prolog_binary {
+struct radv_shader_part_binary {
    uint8_t num_sgprs;
    uint8_t num_vgprs;
    uint8_t num_preserved_sgprs;
@@ -497,7 +497,7 @@ struct radv_trap_handler_shader {
    union radv_shader_arena_block *alloc;
 };
 
-struct radv_shader_prolog {
+struct radv_shader_part {
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
    uint32_t rsrc1;
@@ -578,12 +578,12 @@ uint64_t radv_trap_handler_shader_get_va(const struct radv_trap_handler_shader *
 void radv_trap_handler_shader_destroy(struct radv_device *device,
                                       struct radv_trap_handler_shader *trap);
 
-struct radv_shader_prolog *radv_create_vs_prolog(struct radv_device *device,
-                                                 const struct radv_vs_prolog_key *key);
+struct radv_shader_part *radv_create_vs_prolog(struct radv_device *device,
+                                               const struct radv_vs_prolog_key *key);
 
 void radv_shader_destroy(struct radv_device *device, struct radv_shader *shader);
 
-void radv_prolog_destroy(struct radv_device *device, struct radv_shader_prolog *prolog);
+void radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part);
 
 uint64_t radv_shader_get_va(const struct radv_shader *shader);
 struct radv_shader *radv_find_shader(struct radv_device *device, uint64_t pc);
