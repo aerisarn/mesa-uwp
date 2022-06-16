@@ -6,7 +6,6 @@
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /baremetal-files/jetson-nano/
-    BM_POE_TIMEOUT: 300
     BM_CMDLINE: "console=ttyS0,115200n8 rw nfsrootdebug init=/init"
     FLAKES_CHANNEL: "#nouveau-ci"
     GPU_VERSION: nouveau-gm20b

@@ -31,13 +31,14 @@ import threading
 
 
 class CrosServoRun:
-    def __init__(self, cpu, ec):
+    def __init__(self, cpu, ec, test_timeout):
         self.cpu_ser = SerialBuffer(
             cpu, "results/serial.txt", "R SERIAL-CPU> ")
         # Merge the EC serial into the cpu_ser's line stream so that we can
         # effectively poll on both at the same time and not have to worry about
         self.ec_ser = SerialBuffer(
             ec, "results/serial-ec.txt", "R SERIAL-EC> ", line_queue=self.cpu_ser.line_queue)
+        self.test_timeout = test_timeout
 
     def close(self):
         self.ec_ser.close()
@@ -90,7 +91,7 @@ class CrosServoRun:
             return 2
 
         tftp_failures = 0
-        for line in self.cpu_ser.lines(timeout=120 * 60, phase="test"):
+        for line in self.cpu_ser.lines(timeout=self.test_timeout, phase="test"):
             if re.search("---. end Kernel panic", line):
                 return 1
 
@@ -150,7 +151,7 @@ class CrosServoRun:
 
         self.print_error(
             "Reached the end of the CPU serial log without finding a result")
-        return 1
+        return 2
 
 
 def main():
@@ -159,9 +160,11 @@ def main():
                         help='CPU Serial device', required=True)
     parser.add_argument(
         '--ec', type=str, help='EC Serial device', required=True)
+    parser.add_argument(
+        '--test-timeout', type=int, help='Test phase timeout (minutes)', required=True)
     args = parser.parse_args()
 
-    servo = CrosServoRun(args.cpu, args.ec)
+    servo = CrosServoRun(args.cpu, args.ec, args.test_timeout * 60)
 
     while True:
         retval = servo.run()

@@ -30,14 +30,13 @@ import threading
 
 
 class FastbootRun:
-    def __init__(self, args):
+    def __init__(self, args, test_timeout):
         self.powerup = args.powerup
-        # We would like something like a 1 minute timeout, but the piglit traces
-        # jobs stall out for long periods of time.
         self.ser = SerialBuffer(
-            args.dev, "results/serial-output.txt", "R SERIAL> ", timeout=600)
+            args.dev, "results/serial-output.txt", "R SERIAL> ")
         self.fastboot = "fastboot boot -s {ser} artifacts/fastboot.img".format(
             ser=args.fbserial)
+        self.test_timeout = test_timeout
 
     def close(self):
         self.ser.close()
@@ -76,7 +75,7 @@ class FastbootRun:
             return 1
 
         print_more_lines = -1
-        for line in self.ser.lines(timeout=20 * 60, phase="test"):
+        for line in self.ser.lines(timeout=self.test_timeout, phase="test"):
             if print_more_lines == 0:
                 return 2
             if print_more_lines > 0:
@@ -138,9 +137,11 @@ def main():
                         help='shell command for powering off', required=True)
     parser.add_argument('--fbserial', type=str,
                         help='fastboot serial number of the board', required=True)
+    parser.add_argument('--test-timeout', type=int,
+                        help='Test phase timeout (minutes)', required=True)
     args = parser.parse_args()
 
-    fastboot = FastbootRun(args)
+    fastboot = FastbootRun(args, args.test_timeout * 60)
 
     while True:
         retval = fastboot.run()
@@ -148,7 +149,7 @@ def main():
         if retval != 2:
             break
 
-        fastboot = FastbootRun(args)
+        fastboot = FastbootRun(args, args.test_timeout * 60)
 
     fastboot.logged_system(args.powerdown)
 

@@ -40,7 +40,6 @@ vc4-rpi3-egl:armhf:
     - .piglit-test
     - .vc4-rpi3-test:armhf
   variables:
-    BM_POE_TIMEOUT: 180
     HWCI_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl
 
@@ -68,7 +67,6 @@ vc4-rpi3-piglit-quick_shader:armhf:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
-    BM_POE_TIMEOUT: 300
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
@@ -113,7 +111,6 @@ v3d-rpi4-piglit:armhf:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
-    BM_POE_TIMEOUT: 300
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
@@ -134,7 +131,6 @@ v3d-rpi4-traces:arm64:
     - .test-manual-mr
   variables:
     BM_BOOTFS: /boot/raspberrypi_arm64
-    BM_POE_TIMEOUT: 300
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
     HWCI_START_XORG: 1
@@ -164,7 +160,6 @@ v3dv-rpi4-vk:arm64:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_arm64
-    BM_POE_TIMEOUT: 300
     DEQP_EXPECTED_RENDERER: "V3D.4.2"
     DEQP_FRACTION: 10
     DEQP_VER: vk
