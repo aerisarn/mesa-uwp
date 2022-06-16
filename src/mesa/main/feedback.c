@@ -30,6 +30,7 @@
 
 
 #include "glheader.h"
+#include "c99_alloca.h"
 #include "context.h"
 #include "enums.h"
 #include "feedback.h"
