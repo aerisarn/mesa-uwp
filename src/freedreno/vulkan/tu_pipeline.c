@@ -2212,7 +2212,7 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
          if (att->blendEnable)
             pipeline->blend_enable |= BIT(i);
 
-         if (att->blendEnable || rop_reads_dst) {
+         if (att->blendEnable || *rop_reads_dst) {
             total_bpp += write_bpp;
          }
       }
