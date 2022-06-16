@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include "bi_opcodes.h"
+#include "valhall_enums.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -146,6 +147,12 @@ va_src_info(enum bi_opcode op, unsigned src)
 {
    unsigned idx = (va_swap_12(op) && (src == 1 || src == 2)) ? (3 - src) : src;
    return valhall_opcodes[op].srcs[idx];
+}
+
+static inline bool
+va_flow_is_wait_or_none(enum va_flow flow)
+{
+   return (flow <= VA_FLOW_WAIT);
 }
 
 #ifdef __cplusplus
