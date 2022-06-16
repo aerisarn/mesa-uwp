@@ -1133,7 +1133,7 @@ void bi_compute_liveness(bi_context *ctx);
 void bi_liveness_ins_update(uint8_t *live, bi_instr *ins, unsigned max);
 
 void bi_postra_liveness(bi_context *ctx);
-uint64_t bi_postra_liveness_ins(uint64_t live, bi_instr *ins);
+uint64_t MUST_CHECK bi_postra_liveness_ins(uint64_t live, bi_instr *ins);
 
 /* Layout */
 
