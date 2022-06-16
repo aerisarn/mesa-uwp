@@ -28,7 +28,16 @@
 
 #include <gtest/gtest.h>
 
-#define CASE(shader_stage, test, expected) do { \
+static void
+strip_nops(bi_context *ctx)
+{
+   bi_foreach_instr_global_safe(ctx, I) {
+      if (I->op == BI_OPCODE_NOP)
+         bi_remove_instruction(I);
+   }
+}
+
+#define CASE(shader_stage, test) do { \
    bi_builder *A = bit_builder(mem_ctx); \
    bi_builder *B = bit_builder(mem_ctx); \
    { \
@@ -36,11 +45,12 @@
       A->shader->stage = MESA_SHADER_ ## shader_stage; \
       test; \
    } \
+   strip_nops(A->shader); \
    va_insert_flow_control_nops(A->shader); \
    { \
       UNUSED bi_builder *b = B; \
       B->shader->stage = MESA_SHADER_ ## shader_stage; \
-      expected; \
+      test; \
    } \
    ASSERT_SHADER_EQUAL(A->shader, B->shader); \
 } while(0)
@@ -61,17 +71,11 @@ protected:
 };
 
 TEST_F(InsertFlow, PreserveEmptyShader) {
-   CASE(FRAGMENT, {}, {});
+   CASE(FRAGMENT, {});
 }
 
 TEST_F(InsertFlow, TilebufferWait7) {
    CASE(FRAGMENT, {
-        bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-        bi_blend_to(b, bi_register(0), bi_register(4), bi_register(5),
-                    bi_register(6), bi_register(7), bi_register(8),
-                    BI_REGISTER_FORMAT_AUTO, 4, 4);
-   },
-   {
         flow(DISCARD);
         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
         flow(WAIT);
@@ -82,11 +86,6 @@ TEST_F(InsertFlow, TilebufferWait7) {
    });
 
    CASE(FRAGMENT, {
-        bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-        bi_st_tile(b, bi_register(0), bi_register(4), bi_register(5),
-                    bi_register(6), BI_REGISTER_FORMAT_AUTO, BI_VECSIZE_V4);
-   },
-   {
         flow(DISCARD);
         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
         flow(WAIT);
@@ -96,11 +95,6 @@ TEST_F(InsertFlow, TilebufferWait7) {
    });
 
    CASE(FRAGMENT, {
-        bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-        bi_ld_tile_to(b, bi_register(0), bi_register(4), bi_register(5),
-                    bi_register(6), BI_REGISTER_FORMAT_AUTO, BI_VECSIZE_V4);
-   },
-   {
         flow(DISCARD);
         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
         flow(WAIT);
@@ -112,10 +106,6 @@ TEST_F(InsertFlow, TilebufferWait7) {
 
 TEST_F(InsertFlow, AtestWait6) {
    CASE(FRAGMENT, {
-        bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-        bi_atest_to(b, bi_register(0), bi_register(4), bi_register(5));
-   },
-   {
         flow(DISCARD);
         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
         flow(WAIT0126);
@@ -126,11 +116,6 @@ TEST_F(InsertFlow, AtestWait6) {
 
 TEST_F(InsertFlow, ZSEmitWait6) {
    CASE(FRAGMENT, {
-        bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-        bi_zs_emit_to(b, bi_register(0), bi_register(4), bi_register(5),
-                      bi_register(6), true, true);
-   },
-   {
         flow(DISCARD);
         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
         flow(WAIT0126);
@@ -145,12 +130,6 @@ TEST_F(InsertFlow, LoadThenUnrelatedThenUse) {
          bi_ld_attr_imm_to(b, bi_register(16), bi_register(60), bi_register(61),
                            BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4, 1);
          bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(19));
-   },
-   {
-         bi_ld_attr_imm_to(b, bi_register(16), bi_register(60), bi_register(61),
-                           BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4, 1);
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
          flow(WAIT0);
          bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(19));
          flow(END);
@@ -159,12 +138,6 @@ TEST_F(InsertFlow, LoadThenUnrelatedThenUse) {
 
 TEST_F(InsertFlow, SingleLdVar) {
    CASE(FRAGMENT, {
-         bi_ld_var_buf_imm_f16_to(b, bi_register(2), bi_register(61),
-                                 BI_REGISTER_FORMAT_F16, BI_SAMPLE_CENTER,
-                                 BI_SOURCE_FORMAT_F16,
-                                 BI_UPDATE_RETRIEVE, BI_VECSIZE_V4, 0);
-   },
-   {
          flow(DISCARD);
          bi_ld_var_buf_imm_f16_to(b, bi_register(2), bi_register(61),
                                  BI_REGISTER_FORMAT_F16, BI_SAMPLE_CENTER,
@@ -177,22 +150,6 @@ TEST_F(InsertFlow, SingleLdVar) {
 
 TEST_F(InsertFlow, SerializeLdVars) {
    CASE(FRAGMENT, {
-         bi_ld_var_buf_imm_f16_to(b, bi_register(16), bi_register(61),
-                                 BI_REGISTER_FORMAT_F16, BI_SAMPLE_CENTER,
-                                 BI_SOURCE_FORMAT_F16,
-                                 BI_UPDATE_STORE, BI_VECSIZE_V4, 0);
-
-         bi_ld_var_buf_imm_f16_to(b, bi_register(2), bi_register(61),
-                                 BI_REGISTER_FORMAT_F16, BI_SAMPLE_CENTER,
-                                 BI_SOURCE_FORMAT_F16,
-                                 BI_UPDATE_RETRIEVE, BI_VECSIZE_V4, 0);
-
-         bi_ld_var_buf_imm_f16_to(b, bi_register(8), bi_register(61),
-                                 BI_REGISTER_FORMAT_F16, BI_SAMPLE_CENTER,
-                                 BI_SOURCE_FORMAT_F16,
-                                 BI_UPDATE_STORE, BI_VECSIZE_V4, 1);
-   },
-   {
          flow(DISCARD);
          bi_ld_var_buf_imm_f16_to(b, bi_register(16), bi_register(61),
                                  BI_REGISTER_FORMAT_F16, BI_SAMPLE_CENTER,
@@ -218,13 +175,6 @@ TEST_F(InsertFlow, Clper) {
          bi_clper_i32_to(b, bi_register(0), bi_register(4), bi_register(8),
                          BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
                          BI_SUBGROUP_SUBGROUP4);
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-   },
-   {
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-         bi_clper_i32_to(b, bi_register(0), bi_register(4), bi_register(8),
-                         BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
-                         BI_SUBGROUP_SUBGROUP4);
          flow(DISCARD);
          bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
          flow(END);
@@ -233,14 +183,6 @@ TEST_F(InsertFlow, Clper) {
 
 TEST_F(InsertFlow, TextureImplicit) {
    CASE(FRAGMENT, {
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-         bi_tex_single_to(b, bi_register(0), bi_register(4), bi_register(8),
-                          bi_register(12), false, BI_DIMENSION_2D,
-                          BI_REGISTER_FORMAT_F32, false, false,
-                          BI_VA_LOD_MODE_COMPUTED_LOD, BI_WRITE_MASK_RGBA, 4);
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-   },
-   {
          bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
          bi_tex_single_to(b, bi_register(0), bi_register(4), bi_register(8),
                           bi_register(12), false, BI_DIMENSION_2D,
@@ -255,14 +197,6 @@ TEST_F(InsertFlow, TextureImplicit) {
 
 TEST_F(InsertFlow, TextureExplicit) {
    CASE(FRAGMENT, {
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-         bi_tex_single_to(b, bi_register(0), bi_register(4), bi_register(8),
-                          bi_register(12), false, BI_DIMENSION_2D,
-                          BI_REGISTER_FORMAT_F32, false, false,
-                          BI_VA_LOD_MODE_ZERO_LOD, BI_WRITE_MASK_RGBA, 4);
-         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-   },
-   {
          flow(DISCARD);
          bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
          bi_tex_single_to(b, bi_register(0), bi_register(4), bi_register(8),
@@ -275,56 +209,42 @@ TEST_F(InsertFlow, TextureExplicit) {
    });
 }
 
-static bi_context *
-build_diamond_cfg(void *mem_ctx, bool with_flow)
-{
-   bi_builder *b = bit_builder(mem_ctx);
-   bi_context *ctx = b->shader;
-   ctx->stage = MESA_SHADER_FRAGMENT;
-
-   /*      A
-    *     / \
-    *    B   C
-    *     \ /
-    *      D
-    */
-
-   bi_block *A = bi_start_block(&ctx->blocks);
-   bi_block *B = bit_block(ctx);
-   bi_block *C = bit_block(ctx);
-   bi_block *D = bit_block(ctx);
-
-   bi_block_add_successor(A, B);
-   bi_block_add_successor(A, C);
-
-   bi_block_add_successor(B, D);
-   bi_block_add_successor(C, D);
-
-   /* B uses helper invocations, no other block does.
-    *
-    * That means B and C need to discard helpers.
-    */
-   b->cursor = bi_after_block(B);
-   bi_clper_i32_to(b, bi_register(0), bi_register(4), bi_register(8),
-                   BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
-                   BI_SUBGROUP_SUBGROUP4);
-   if (with_flow) flow(DISCARD);
-   if (with_flow) flow(RECONVERGE);
-
-   b->cursor = bi_after_block(C);
-   if (with_flow) flow(DISCARD);
-   bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
-   if (with_flow) flow(RECONVERGE);
-
-   b->cursor = bi_after_block(D);
-   if (with_flow) flow(END);
-
-   return ctx;
-}
-
+/*      A
+ *     / \
+ *    B   C
+ *     \ /
+ *      D
+ */
 TEST_F(InsertFlow, DiamondCFG) {
-   bi_context *A = build_diamond_cfg(mem_ctx, false);
-   va_insert_flow_control_nops(A);
+   CASE(FRAGMENT, {
+         bi_block *A = bi_start_block(&b->shader->blocks);
+         bi_block *B = bit_block(b->shader);
+         bi_block *C = bit_block(b->shader);
+         bi_block *D = bit_block(b->shader);
 
-   ASSERT_SHADER_EQUAL(A, build_diamond_cfg(mem_ctx, true));
+         bi_block_add_successor(A, B);
+         bi_block_add_successor(A, C);
+
+         bi_block_add_successor(B, D);
+         bi_block_add_successor(C, D);
+
+         /* B uses helper invocations, no other block does.
+          *
+          * That means B and C need to discard helpers.
+          */
+         b->cursor = bi_after_block(B);
+         bi_clper_i32_to(b, bi_register(0), bi_register(4), bi_register(8),
+               BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_NONE,
+               BI_SUBGROUP_SUBGROUP4);
+         flow(DISCARD);
+         flow(RECONVERGE);
+
+         b->cursor = bi_after_block(C);
+         flow(DISCARD);
+         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
+         flow(RECONVERGE);
+
+         b->cursor = bi_after_block(D);
+         flow(END);
+   });
 }
