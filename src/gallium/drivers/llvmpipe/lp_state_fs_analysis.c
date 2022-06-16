@@ -301,7 +301,7 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             struct lp_tgsi_texture_info *tex_info = &info->tex[info->num_texs];
             int texcoord_swizzle[4] = {-1, -1, -1, -1};
-            unsigned coord_fs_input_index;
+            unsigned coord_fs_input_index = 0;
 
             for (unsigned i = 0; i < tex->num_srcs; i++) {
                if (tex->src[i].src_type == nir_tex_src_coord) {
