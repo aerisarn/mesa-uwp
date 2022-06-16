@@ -3631,6 +3631,9 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_cull_small_prim_precision_amd:
    case nir_intrinsic_load_cull_small_primitives_enabled_amd:
    case nir_intrinsic_load_provoking_vtx_in_prim_amd:
+   case nir_intrinsic_load_pipeline_stat_query_enabled_amd:
+   case nir_intrinsic_load_prim_gen_query_enabled_amd:
+   case nir_intrinsic_load_prim_xfb_query_enabled_amd:
       result = ctx->abi->intrinsic_load(ctx->abi, instr->intrinsic);
       break;
    case nir_intrinsic_load_user_clip_plane:

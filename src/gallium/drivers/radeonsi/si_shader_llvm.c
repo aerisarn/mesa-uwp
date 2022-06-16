@@ -868,6 +868,17 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       else
          return ctx->ac.i1true;
 
+   case nir_intrinsic_load_pipeline_stat_query_enabled_amd: {
+      LLVMValueRef enabled = GET_FIELD(ctx, GS_STATE_PIPELINE_STATS_EMU);
+      return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
+   }
+
+   case nir_intrinsic_load_prim_gen_query_enabled_amd:
+   case nir_intrinsic_load_prim_xfb_query_enabled_amd: {
+      LLVMValueRef enabled = GET_FIELD(ctx, GS_STATE_STREAMOUT_QUERY_ENABLED);
+      return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
+   }
+
    default:
       return NULL;
    }
