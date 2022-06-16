@@ -2347,7 +2347,8 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
          }
       }
 
-      size += builder->additional_cs_reserve_size;
+      /* The additional size is used twice, once per tu6_emit_program() call. */
+      size += builder->additional_cs_reserve_size * 2;
    } else {
       size += compute->info.size / 4;
 
