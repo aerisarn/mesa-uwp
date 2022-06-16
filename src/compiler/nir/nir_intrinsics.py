@@ -1457,6 +1457,16 @@ intrinsic("ordered_xfb_counter_add_amd", dest_comp=0, src_comp=[1, 0], indices=[
 # Provoking vertex index in a primitive
 system_value("provoking_vtx_in_prim_amd", 1)
 
+# Atomically add current wave's primitive count to query result
+#   * GS emitted primitive is primitive emitted by any GS stream
+#   * generated primitive is primitive that has been produced for that stream by VS/TES/GS
+#   * streamout primitve is primitve that has been written to xfb buffer, may be different
+#     than generated primitive when xfb buffer is too small to hold more primitives
+# src[] = { primitive_count }.
+intrinsic("atomic_add_gs_emit_prim_count_amd", [1])
+intrinsic("atomic_add_gen_prim_count_amd", [1], indices=[STREAM_ID])
+intrinsic("atomic_add_xfb_prim_count_amd", [1], indices=[STREAM_ID])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel

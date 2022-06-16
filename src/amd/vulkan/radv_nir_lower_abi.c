@@ -78,11 +78,14 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    b->cursor = nir_before_instr(instr);
 
    nir_ssa_def *replacement = NULL;
+   bool progress = true;
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_ring_tess_factors_amd:
-      if (s->use_llvm)
+      if (s->use_llvm) {
+         progress = false;
          break;
+      }
 
       replacement = load_ring(b, RING_HS_TESS_FACTOR, s);
       break;
@@ -90,8 +93,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.tcs_factor_offset);
       break;
    case nir_intrinsic_load_ring_tess_offchip_amd:
-      if (s->use_llvm)
+      if (s->use_llvm) {
+         progress = false;
          break;
+      }
 
       replacement = load_ring(b, RING_HS_TESS_OFFCHIP, s);
       break;
@@ -111,8 +116,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       }
       break;
    case nir_intrinsic_load_ring_esgs_amd:
-      if (s->use_llvm)
+      if (s->use_llvm) {
+         progress = false;
          break;
+      }
 
       replacement = load_ring(b, stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS : RING_ESGS_VS, s);
       break;
@@ -322,14 +329,34 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = nir_imm_int(b, provoking_vertex);
       break;
    }
+
+   /* GDS counters:
+    *   offset 0         - pipeline statistics counter for all streams
+    *   offset 4|8|12|16 - generated primitive counter for stream 0|1|2|3
+    */
+   case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
+      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, 0), nir_imm_int(b, 0x100));
+      break;
+   case nir_intrinsic_atomic_add_gen_prim_count_amd:
+      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa,
+                             nir_imm_int(b, 4 + nir_intrinsic_stream_id(intrin) * 4),
+                             nir_imm_int(b, 0x100));
+      break;
+   case nir_intrinsic_atomic_add_xfb_prim_count_amd:
+      /* No-op for RADV. */
+      break;
+
    default:
+      progress = false;
       break;
    }
 
-   if (!replacement)
+   if (!progress)
       return false;
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, replacement);
+   if (replacement)
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, replacement);
+
    nir_instr_remove(instr);
    nir_instr_free(instr);
 

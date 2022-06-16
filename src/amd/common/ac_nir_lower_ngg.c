@@ -456,11 +456,11 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
          {
             /* Number of active GS threads. Each has 1 output primitive. */
             nir_ssa_def *num_gs_threads = nir_bit_count(b, nir_ballot(b, 1, st->wave_size, nir_imm_bool(b, true)));
-            /* Activate only 1 lane and add the number of primitives to GDS. */
+            /* Activate only 1 lane and add the number of primitives to query result. */
             nir_if *if_elected = nir_push_if(b, nir_elect(b, 1));
             {
                /* Add to stream 0 primitive generated counter. */
-               nir_gds_atomic_add_amd(b, 32, num_gs_threads, nir_imm_int(b, 4), nir_imm_int(b, 0x100));
+               nir_atomic_add_gen_prim_count_amd(b, num_gs_threads, .stream_id = 0);
             }
             nir_pop_if(b, if_elected);
          }
@@ -2107,28 +2107,21 @@ ngg_gs_shader_query(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg_gs_st
       num_prims_in_wave = nir_reduce(b, prm_cnt, .reduction_op = nir_op_iadd);
    }
 
-   /* Store the query result to GDS using an atomic add. */
+   /* Store the query result to query result using an atomic add. */
    nir_if *if_first_lane = nir_push_if(b, nir_elect(b, 1));
    {
-      /* GDS counters:
-       *   offset 0         - pipeline statistics counter for all streams
-       *   offset 4|8|12|16 - generated primitive counter for stream 0|1|2|3
-       */
-
       nir_if *if_pipeline_query = nir_push_if(b, pipeline_query_enabled);
       {
          /* Add all streams' number to the same counter. */
-         nir_gds_atomic_add_amd(b, 32, num_prims_in_wave, nir_imm_int(b, 0),
-                                nir_imm_int(b, 0x100));
+         nir_atomic_add_gs_emit_prim_count_amd(b, num_prims_in_wave);
       }
       nir_pop_if(b, if_pipeline_query);
 
       nir_if *if_prim_gen_query = nir_push_if(b, prim_gen_query_enabled);
       {
          /* Add to the counter for this stream. */
-         nir_gds_atomic_add_amd(b, 32, num_prims_in_wave,
-                                nir_imm_int(b, 4 + nir_intrinsic_stream_id(intrin) * 4),
-                                nir_imm_int(b, 0x100));
+         nir_atomic_add_gen_prim_count_amd(
+            b, num_prims_in_wave, .stream_id = nir_intrinsic_stream_id(intrin));
       }
       nir_pop_if(b, if_prim_gen_query);
    }
