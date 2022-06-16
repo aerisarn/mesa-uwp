@@ -294,25 +294,9 @@ sanity:
     reports:
       junit: check-*.xml
 
-# Rules for tests that should not be present in MRs or the main
-# project's pipeline (don't block marge or report red on
-# mesa/mesa main) but should be present on pipelines in personal
-# branches (so you can opt in to running the flaky test when you want
-# to).
-.test-manual:
-  rules:
-    - *ignore_scheduled_pipelines
-    - if: *is-forked-branch
-      changes:
-        *all_paths
-      when: manual
-    - when: never
-  variables:
-    GIT_STRATEGY: none
-    JOB_TIMEOUT: 80
-
-# The above .test-manual rules doesn't allow the jobs to be available for MRs
-# but we should have an option to have manual jobs in MRs as well.
+# Rules for tests that should not block merging, but should be available to
+# optionally run with the "play" button in the UI in pre-merge non-marge
+# pipelines.
 .test-manual-mr:
   rules:
     - *ignore_scheduled_pipelines
