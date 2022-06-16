@@ -2009,7 +2009,10 @@ transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
    struct zink_transfer *trans = (struct zink_transfer *)ptrans;
 
    if (!(trans->base.b.usage & (PIPE_MAP_FLUSH_EXPLICIT | PIPE_MAP_COHERENT))) {
-      zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
+      /* flush_region is relative to the mapped region: use only the extents */
+      struct pipe_box box = ptrans->box;
+      box.x = box.y = box.z = 0;
+      zink_transfer_flush_region(pctx, ptrans, &box);
    }
 
    if ((trans->base.b.usage & PIPE_MAP_PERSISTENT) && !(trans->base.b.usage & PIPE_MAP_COHERENT))
