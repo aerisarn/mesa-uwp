@@ -1634,6 +1634,9 @@ struct radv_cmd_buffer {
    uint32_t gfx9_fence_idx;
    uint64_t gfx9_eop_bug_va;
 
+   uint64_t mec_inv_pred_va;  /* For inverted predication when using MEC. */
+   bool mec_inv_pred_emitted; /* To ensure we don't have to repeat inverting the VA. */
+
    /**
     * Whether a query pool has been resetted and we have to flush caches.
     */
