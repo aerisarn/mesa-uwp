@@ -2202,7 +2202,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
       dbox.x = copycmd->pRegions[i].bufferOffset;
       dbox.y = 0;
       dbox.z = 0;
-      dbox.width = lvp_buffer_from_handle(copycmd->dstBuffer)->bo->width0;
+      dbox.width = lvp_buffer_from_handle(copycmd->dstBuffer)->bo->width0 - copycmd->pRegions[i].bufferOffset;
       dbox.height = 1;
       dbox.depth = 1;
       dst_data = state->pctx->buffer_map(state->pctx,
