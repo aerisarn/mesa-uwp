@@ -1716,6 +1716,7 @@ zink_buffer_map(struct pipe_context *pctx,
       }
    }
 
+   unsigned map_offset = box->x;
    if (usage & PIPE_MAP_DISCARD_RANGE &&
         (!res->obj->host_visible ||
         !(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT)))) {
@@ -1767,8 +1768,7 @@ zink_buffer_map(struct pipe_context *pctx,
          zink_copy_buffer(ctx, staging_res, res, trans->offset, box->x, box->width);
          res = staging_res;
          usage &= ~PIPE_MAP_UNSYNCHRONIZED;
-         ptr = map_resource(screen, res);
-         ptr = ((uint8_t *)ptr) + trans->offset;
+         map_offset = trans->offset;
       }
    } else if ((usage & PIPE_MAP_UNSYNCHRONIZED) && !res->obj->host_visible) {
       trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
@@ -1777,8 +1777,7 @@ zink_buffer_map(struct pipe_context *pctx,
          goto fail;
       struct zink_resource *staging_res = zink_resource(trans->staging_res);
       res = staging_res;
-      ptr = map_resource(screen, res);
-      ptr = ((uint8_t *)ptr) + trans->offset;
+      map_offset = trans->offset;
    }
 
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
@@ -1800,7 +1799,7 @@ zink_buffer_map(struct pipe_context *pctx,
       ptr = map_resource(screen, res);
       if (!ptr)
          goto fail;
-      ptr = ((uint8_t *)ptr) + box->x;
+      ptr = ((uint8_t *)ptr) + map_offset;
    }
 
    if (!res->obj->coherent
