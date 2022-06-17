@@ -1018,6 +1018,7 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
    if (!ctx->vertex_buffers[slot].buffer.resource)
       return;
    struct zink_resource *res = zink_resource(ctx->vertex_buffers[slot].buffer.resource);
+   res->vbo_bind_count--;
    res->vbo_bind_mask &= ~BITFIELD_BIT(slot);
    update_res_bind_count(ctx, res, false, true);
 }
@@ -1054,6 +1055,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
          if (vb->buffer.resource) {
             struct zink_resource *res = zink_resource(vb->buffer.resource);
             res->vbo_bind_mask |= BITFIELD_BIT(start_slot + i);
+            res->vbo_bind_count++;
             update_res_bind_count(ctx, res, false, false);
             ctx_vb->stride = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
