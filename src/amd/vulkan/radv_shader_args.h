@@ -62,6 +62,9 @@ struct radv_shader_args {
    struct ac_arg prolog_inputs;
    struct ac_arg vs_inputs[MAX_VERTEX_ATTRIBS];
 
+   /* PS epilogs */
+   struct ac_arg ps_epilog_inputs[MAX_RTS];
+
    struct radv_userdata_locations user_sgprs_locs;
    unsigned num_user_sgprs;
 
@@ -85,5 +88,8 @@ void radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pi
                               const struct radv_shader_info *info, gl_shader_stage stage,
                               bool has_previous_stage, gl_shader_stage previous_stage,
                               struct radv_shader_args *args);
+
+void radv_declare_ps_epilog_args(enum amd_gfx_level gfx_level, const struct radv_ps_epilog_key *key,
+                                 struct radv_shader_args *args);
 
 #endif

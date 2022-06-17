@@ -892,3 +892,25 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
 
    args->num_user_sgprs = user_sgpr_idx;
 }
+
+void
+radv_declare_ps_epilog_args(enum amd_gfx_level gfx_level, const struct radv_ps_epilog_key *key,
+                            struct radv_shader_args *args)
+{
+   unsigned num_inputs = 0;
+
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ring_offsets);
+   if (gfx_level < GFX11)
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+
+   /* Declare VGPR arguments for color exports. */
+   for (unsigned i = 0; i < MAX_RTS; i++) {
+      unsigned col_format = (key->spi_shader_col_format >> (i * 4)) & 0xf;
+
+      if (col_format == V_028714_SPI_SHADER_ZERO)
+         continue;
+
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 4, AC_ARG_FLOAT, &args->ps_epilog_inputs[num_inputs]);
+      num_inputs++;
+   }
+}
