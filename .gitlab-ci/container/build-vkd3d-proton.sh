@@ -2,8 +2,7 @@
 
 set -ex
 
-VKD3D_PROTON_VERSION="2.6"
-VKD3D_PROTON_COMMIT="3e5aab6fb3e18f81a71b339be4cb5cdf55140980"
+VKD3D_PROTON_COMMIT="39d07dea2cef34bfb3ed39741f026bc637e3eec4"
 
 VKD3D_PROTON_DST_DIR="/vkd3d-proton-tests"
 VKD3D_PROTON_SRC_DIR="/vkd3d-proton-src"
@@ -27,7 +26,7 @@ function build_arch {
   install -D -m755 -t "${VKD3D_PROTON_DST_DIR}/x${arch}/bin" "$VKD3D_PROTON_BUILD_DIR/build.${arch}/tests/d3d12"
 }
 
-git clone https://github.com/HansKristian-Work/vkd3d-proton.git --single-branch -b "v$VKD3D_PROTON_VERSION" --no-checkout "$VKD3D_PROTON_SRC_DIR"
+git clone https://github.com/HansKristian-Work/vkd3d-proton.git --single-branch -b master --no-checkout "$VKD3D_PROTON_SRC_DIR"
 pushd "$VKD3D_PROTON_SRC_DIR"
 git checkout "$VKD3D_PROTON_COMMIT"
 git submodule update --init --recursive
