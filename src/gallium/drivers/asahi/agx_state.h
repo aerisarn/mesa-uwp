@@ -324,6 +324,10 @@ agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 }
 
 /* Blit shaders */
+void
+agx_blitter_save(struct agx_context *ctx, struct blitter_context *blitter,
+                 bool render_cond);
+
 void agx_blit(struct pipe_context *pipe,
               const struct pipe_blit_info *info);
 

@@ -82,7 +82,7 @@ agx_build_reload_shader(struct agx_device *dev)
    }
 }
 
-static void
+void
 agx_blitter_save(struct agx_context *ctx, struct blitter_context *blitter,
                  bool render_cond)
 {
