@@ -80,6 +80,8 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
       case GFX8: program->family = CHIP_POLARIS10; break;
       case GFX9: program->family = CHIP_VEGA10; break;
       case GFX10: program->family = CHIP_NAVI10; break;
+      case GFX10_3: program->family = CHIP_NAVI21; break;
+      case GFX11: program->family = CHIP_GFX1100; break;
       default: program->family = CHIP_UNKNOWN; break;
       }
    } else {

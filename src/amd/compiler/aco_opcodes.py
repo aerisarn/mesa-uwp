@@ -126,7 +126,7 @@ class Format(Enum):
       elif self == Format.MIMG:
          return [('unsigned', 'dmask', '0xF'),
                  ('bool', 'da', 'false'),
-                 ('bool', 'unrm', 'true'),
+                 ('bool', 'unrm', 'false'),
                  ('bool', 'disable_wqm', 'false'),
                  ('bool', 'glc', 'false'),
                  ('bool', 'dlc', 'false'),
