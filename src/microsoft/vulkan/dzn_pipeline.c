@@ -38,7 +38,7 @@
 
 #include "util/u_debug.h"
 
-#define d3d12_pipeline_state_stream_new_desc(__stream, __pipetype, __id, __type, __desc) \
+#define d3d12_pipeline_state_stream_new_desc(__stream, __maxstreamsz, __id, __type, __desc) \
    __type *__desc; \
    do { \
       struct { \
@@ -48,17 +48,17 @@
       (__stream)->SizeInBytes = ALIGN_POT((__stream)->SizeInBytes, alignof(void *)); \
       __wrapper = (void *)((uint8_t *)(__stream)->pPipelineStateSubobjectStream + (__stream)->SizeInBytes); \
       (__stream)->SizeInBytes += sizeof(*__wrapper); \
-      assert((__stream)->SizeInBytes <= MAX_ ## __pipetype ## _PIPELINE_STATE_STREAM_SIZE); \
+      assert((__stream)->SizeInBytes <= __maxstreamsz); \
       __wrapper->type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ ## __id; \
       __desc = &__wrapper->desc; \
       memset(__desc, 0, sizeof(*__desc)); \
    } while (0)
 
 #define d3d12_gfx_pipeline_state_stream_new_desc(__stream, __id, __type, __desc) \
-   d3d12_pipeline_state_stream_new_desc(__stream, GFX, __id, __type, __desc)
+   d3d12_pipeline_state_stream_new_desc(__stream, MAX_GFX_PIPELINE_STATE_STREAM_SIZE, __id, __type, __desc)
 
 #define d3d12_compute_pipeline_state_stream_new_desc(__stream, __id, __type, __desc) \
-   d3d12_pipeline_state_stream_new_desc(__stream, COMPUTE, __id, __type, __desc)
+   d3d12_pipeline_state_stream_new_desc(__stream, MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE, __id, __type, __desc)
 
 static bool
 gfx_pipeline_variant_key_equal(const void *a, const void *b)
