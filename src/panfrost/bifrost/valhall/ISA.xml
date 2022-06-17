@@ -1763,18 +1763,19 @@
     <src absneg="true">B</src>
   </group>
 
-  <group name="FRSCALE" title="Floating-point rescaling" dests="1" opcode2="6" unit="FMA">
-    <ins name="FRSCALE.f32" opcode="0xA4"/>
-    <ins name="FRSCALE.v2f16" opcode="0xA5"/>
+  <group name="LDEXP" title="Floating-point rescaling" dests="1" opcode2="6" unit="FMA">
+    <ins name="LDEXP.f32" opcode="0xA4"/>
+    <ins name="LDEXP.v2f16" opcode="0xA5"/>
     <desc>
       Computes $A \cdot 2^B$ by adding B to the exponent of A. Used to calculate
       various special functions, particularly base-2 exponents. Special case
       handling differs from an actual floating-point multiply, so this should
       not be used outside fixed instruction sequences.
     </desc>
-    <clamp/>
     <src absneg="true" swizzle="true">A</src>
-    <src absneg="true" swizzle="true">B</src>
+    <src/>
+    <roundmode/> <!-- Also has rtna -->
+    <!-- Also has infinity handling for arctan -->
   </group>
 
   <ins name="FEXP.f32" title="Floating-point exponent" dests="1" opcode="0xA4" opcode2="8" unit="SFU">
@@ -2648,7 +2649,7 @@
       special transcendental function sequences. It should not be used for
       general code as its special case handling differs from two back-to-back
       `FMA.f32` operations. Equivalent to `FMA.f32` back-to-back with
-      `RSCALE.f32`
+      `LDEXP.f32`
     </desc>
     <clamp/>
     <src absneg="true">A</src>
@@ -2664,7 +2665,7 @@
       ordinary multiply would return NaN. Used in special transcendental
       function sequences. It should not be used for general code as its special
       case handling differs from two back-to-back `FMA.f32` operations.
-      Equivalent to `FMA.f32` back-to-back with `RSCALE.f32`
+      Equivalent to `FMA.f32` back-to-back with `LDEXP.f32`
     </desc>
     <clamp/>
     <src absneg="true">A</src>
@@ -2680,7 +2681,7 @@
       ordinary multiply would return NaN. Used in special transcendental
       function sequences. It should not be used for general code as its special
       case handling differs from two back-to-back `FMA.f32` operations.
-      Equivalent to `FMA.f32` back-to-back with `RSCALE.f32`
+      Equivalent to `FMA.f32` back-to-back with `LDEXP.f32`
     </desc>
     <clamp/>
     <src absneg="true">A</src>
@@ -2695,7 +2696,7 @@
       interpreted as a 16-bit value. Used in special transcendental function
       sequences. It should not be used for general code as its special case
       handling differs from two back-to-back `FMA.f32` operations.  Equivalent
-      to `FMA.f32` back-to-back with `RSCALE.f32`
+      to `FMA.f32` back-to-back with `LDEXP.f32`
     </desc>
     <clamp/>
     <src absneg="true">A</src>
