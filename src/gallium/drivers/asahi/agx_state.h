@@ -333,4 +333,12 @@ void agx_blit(struct pipe_context *pipe,
 
 void agx_internal_shaders(struct agx_device *dev);
 
+/* Batch logic */
+static void
+agx_flush_all(struct agx_context *ctx, const char *reason)
+{
+   //printf("Flushing due to: %s\n", reason);
+   ctx->base.flush(&ctx->base, NULL, 0);
+}
+
 #endif

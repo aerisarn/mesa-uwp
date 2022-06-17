@@ -265,9 +265,9 @@ agx_transfer_map(struct pipe_context *pctx,
       return NULL;
 
    if (ctx->batch->cbufs[0] && resource == ctx->batch->cbufs[0]->texture)
-      pctx->flush(pctx, NULL, 0);
+      agx_flush_all(ctx, "Transfer to colour buffer");
    if (ctx->batch->zsbuf && resource == ctx->batch->zsbuf->texture)
-      pctx->flush(pctx, NULL, 0);
+      agx_flush_all(ctx, "Transfer to depth buffer");
 
    struct agx_transfer *transfer = CALLOC_STRUCT(agx_transfer);
    transfer->base.level = level;
