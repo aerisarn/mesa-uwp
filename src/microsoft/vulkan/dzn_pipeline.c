@@ -474,7 +474,6 @@ dzn_graphics_pipeline_patch_vi_format(VkFormat format)
 
 static VkResult
 dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
-                                   const VkAllocationCallbacks *alloc,
                                    const VkGraphicsPipelineCreateInfo *in,
                                    D3D12_INPUT_ELEMENT_DESC *inputs,
                                    enum pipe_format *vi_conversions)
@@ -1155,7 +1154,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       pCreateInfo->pRasterizationState->rasterizerDiscardEnable ?
       NULL : pCreateInfo->pViewportState;
 
-   ret = dzn_graphics_pipeline_translate_vi(pipeline, pAllocator, pCreateInfo,
+   ret = dzn_graphics_pipeline_translate_vi(pipeline, pCreateInfo,
                                             attribs, vi_conversions);
    if (ret != VK_SUCCESS)
       goto out;
