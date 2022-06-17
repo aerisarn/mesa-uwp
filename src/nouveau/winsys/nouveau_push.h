@@ -30,6 +30,9 @@ void nouveau_ws_push_destroy(struct nouveau_ws_push *);
 int nouveau_ws_push_submit(struct nouveau_ws_push *, struct nouveau_ws_device *, struct nouveau_ws_context *);
 void nouveau_ws_push_ref(struct nouveau_ws_push *, struct nouveau_ws_bo *, enum nouveau_ws_bo_map_flags);
 void nouveau_ws_push_reset(struct nouveau_ws_push *);
+unsigned nouveau_ws_push_num_refs(const struct nouveau_ws_push *push);
+void nouveau_ws_push_reset_refs(struct nouveau_ws_push *push,
+                                unsigned num_refs);
 
 #define SUBC_NVA0C0 1
 #define SUBC_NVC0C0 1

@@ -312,3 +312,15 @@ void nouveau_ws_push_reset(struct nouveau_ws_push *push)
    nouveau_ws_push_ref(push, push->bo, NOUVEAU_WS_BO_RD);
    push->map = push->orig_map;
 }
+
+unsigned nouveau_ws_push_num_refs(const struct nouveau_ws_push *push)
+{
+   return util_dynarray_num_elements(&push->bos, struct nouveau_ws_push_bo);
+}
+
+void nouveau_ws_push_reset_refs(struct nouveau_ws_push *push,
+                                unsigned num_refs)
+{
+   assert(num_refs <= nouveau_ws_push_num_refs(push));
+   util_dynarray_resize(&push->bos, struct nouveau_ws_push_bo, num_refs);
+}
