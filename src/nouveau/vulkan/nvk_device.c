@@ -10,6 +10,7 @@
 
 #include "vulkan/wsi/wsi_common.h"
 
+#include "nvk_cl90b5.h"
 #include "nvk_cla0c0.h"
 #include "cla1c0.h"
 #include "nvk_clc3c0.h"
@@ -114,6 +115,12 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
    struct nvk_queue *queue = container_of(vkqueue, struct nvk_queue, vk);
    VkResult result;
 
+   if (!queue->empty_push) {
+      queue->empty_push = nouveau_ws_push_new(device->pdev->dev, 4096);
+
+      P_MTHD(queue->empty_push, NV90B5, NOP);
+      P_NV90B5_NOP(queue->empty_push, 0);
+   }
    result = nvk_update_preambles(&queue->state, device, submission->command_buffers,
                                  submission->command_buffer_count);
    if (result != VK_SUCCESS)
@@ -121,8 +128,19 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
 
    pthread_mutex_lock(&device->mutex);
 
-   if (queue->state.push)
+   if (queue->state.push) {
       nouveau_ws_push_submit(queue->state.push, device->pdev->dev, device->ctx);
+   }
+
+   if (submission->command_buffer_count == 0) {
+      unsigned real_refs = nouveau_ws_push_num_refs(queue->empty_push);
+      for (uint32_t i = 0; i < submission->signal_count; i++) {
+         struct nvk_bo_sync *bo_sync = container_of(submission->signals[i].sync, struct nvk_bo_sync, sync);
+         nouveau_ws_push_ref(queue->empty_push, bo_sync->bo, NOUVEAU_WS_BO_RDWR);
+      }
+      nouveau_ws_push_submit(queue->empty_push, device->pdev->dev, device->ctx);
+      nouveau_ws_push_reset_refs(queue->empty_push, real_refs);
+   }
    for (unsigned i = 0; i < submission->command_buffer_count; i++) {
       struct nvk_cmd_buffer *cmd = (struct nvk_cmd_buffer *)submission->command_buffers[i];
 
@@ -256,6 +274,8 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (device->queue.state.push)
       nouveau_ws_push_destroy(device->queue.state.push);
+   if (device->queue.empty_push)
+      nouveau_ws_push_destroy(device->queue.empty_push);
    if (device->queue.state.tls_bo)
       nouveau_ws_bo_destroy(device->queue.state.tls_bo);
    pthread_cond_destroy(&device->queue_submit);

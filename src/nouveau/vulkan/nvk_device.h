@@ -25,6 +25,8 @@ struct nvk_queue {
    struct vk_queue vk;
 
    struct nvk_queue_state state;
+
+   struct nouveau_ws_push *empty_push;
 };
 
 struct nvk_device {
