@@ -51,33 +51,3 @@ fd6_pipe2swiz(unsigned swiz)
    }
 }
 
-void
-fd6_tex_swiz(enum pipe_format format, unsigned char *swiz, unsigned swizzle_r,
-             unsigned swizzle_g, unsigned swizzle_b, unsigned swizzle_a)
-{
-   const struct util_format_description *desc = util_format_description(format);
-   const unsigned char uswiz[4] = {swizzle_r, swizzle_g, swizzle_b, swizzle_a};
-
-   /* Gallium expects stencil sampler to return (s,s,s,s), so massage
-    * the swizzle to do so.
-    */
-   if (format == PIPE_FORMAT_X24S8_UINT) {
-      const unsigned char stencil_swiz[4] = {PIPE_SWIZZLE_W, PIPE_SWIZZLE_W,
-                                             PIPE_SWIZZLE_W, PIPE_SWIZZLE_W};
-      util_format_compose_swizzles(stencil_swiz, uswiz, swiz);
-   } else if (format == PIPE_FORMAT_R8G8_R8B8_UNORM || format == PIPE_FORMAT_G8R8_B8R8_UNORM) {
-      unsigned char fswiz[4] = {PIPE_SWIZZLE_Z, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_1};
-      util_format_compose_swizzles(fswiz, uswiz, swiz);
-   } else if (fd6_texture_swap(format, TILE6_LINEAR) != WZYX || format == PIPE_FORMAT_A1R5G5B5_UNORM) {
-      /* Formats with a non-pass-through swap are permutations of RGBA
-       * formats. We program the permutation using the swap and don't
-       * need to compose the format swizzle with the user swizzle.
-       */
-      memcpy(swiz, uswiz, sizeof(uswiz));
-   } else {
-      /* Otherwise, it's an unswapped RGBA format or a format like L8 where
-       * we need the XXX1 swizzle from the gallium format description.
-       */
-      util_format_compose_swizzles(desc->swizzle, uswiz, swiz);
-   }
-}

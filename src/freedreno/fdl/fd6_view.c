@@ -54,12 +54,16 @@ fdl6_tex_type(enum fdl_view_type type, bool storage)
       A6XX_TEX_2D : (enum a6xx_tex_type) type;
 }
 
-static uint32_t
-fdl6_texswiz(const struct fdl_view_args *args, bool has_z24uint_s8uint)
+void
+fdl6_format_swiz(enum pipe_format format, bool has_z24uint_s8uint,
+                 unsigned char *format_swiz)
 {
-   unsigned char format_swiz[4] =
-      { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W };
-   switch (args->format) {
+   format_swiz[0] = PIPE_SWIZZLE_X;
+   format_swiz[1] = PIPE_SWIZZLE_Y;
+   format_swiz[2] = PIPE_SWIZZLE_Z;
+   format_swiz[3] = PIPE_SWIZZLE_W;
+
+   switch (format) {
    case PIPE_FORMAT_R8G8_R8B8_UNORM:
    case PIPE_FORMAT_G8R8_B8R8_UNORM:
    case PIPE_FORMAT_G8_B8R8_420_UNORM:
@@ -92,32 +96,39 @@ fdl6_texswiz(const struct fdl_view_args *args, bool has_z24uint_s8uint)
 
    default:
       /* Our I, L, A, and LA formats use R or RG HW formats. */
-      if (util_format_is_alpha(args->format)) {
+      if (util_format_is_alpha(format)) {
          format_swiz[0] = PIPE_SWIZZLE_0;
          format_swiz[1] = PIPE_SWIZZLE_0;
          format_swiz[2] = PIPE_SWIZZLE_0;
          format_swiz[3] = PIPE_SWIZZLE_X;
-      } else if (util_format_is_luminance(args->format)) {
+      } else if (util_format_is_luminance(format)) {
          format_swiz[0] = PIPE_SWIZZLE_X;
          format_swiz[1] = PIPE_SWIZZLE_X;
          format_swiz[2] = PIPE_SWIZZLE_X;
          format_swiz[3] = PIPE_SWIZZLE_1;
-      } else if (util_format_is_intensity(args->format)) {
+      } else if (util_format_is_intensity(format)) {
          format_swiz[0] = PIPE_SWIZZLE_X;
          format_swiz[1] = PIPE_SWIZZLE_X;
          format_swiz[2] = PIPE_SWIZZLE_X;
          format_swiz[3] = PIPE_SWIZZLE_X;
-      } else if (util_format_is_luminance_alpha(args->format)) {
+      } else if (util_format_is_luminance_alpha(format)) {
          format_swiz[0] = PIPE_SWIZZLE_X;
          format_swiz[1] = PIPE_SWIZZLE_X;
          format_swiz[2] = PIPE_SWIZZLE_X;
          format_swiz[3] = PIPE_SWIZZLE_Y;
-      } else if (!util_format_has_alpha(args->format)) {
+      } else if (!util_format_has_alpha(format)) {
          /* for rgbx, force A to 1.  Harmless for R/RG, where we already get 1. */
          format_swiz[3] = PIPE_SWIZZLE_1;
       }
       break;
    }
+}
+
+static uint32_t
+fdl6_texswiz(const struct fdl_view_args *args, bool has_z24uint_s8uint)
+{
+   unsigned char format_swiz[4];
+   fdl6_format_swiz(args->format, has_z24uint_s8uint, format_swiz);
 
    unsigned char swiz[4];
    util_format_compose_swizzles(format_swiz, args->swiz, swiz);

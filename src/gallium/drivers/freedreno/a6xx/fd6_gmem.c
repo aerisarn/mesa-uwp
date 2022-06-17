@@ -270,7 +270,7 @@ patch_fb_read_gmem(struct fd_batch *batch)
    enum pipe_format format = psurf->format;
 
    uint8_t swiz[4];
-   fd6_tex_swiz(psurf->format, swiz, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+   fdl6_format_swiz(psurf->format, false, swiz);
 
    /* always TILE6_2 mode in GMEM, which also means no swap: */
    uint32_t texconst0 = A6XX_TEX_CONST_0_FMT(fd6_texture_format(format, rsc->layout.tile_mode)) |

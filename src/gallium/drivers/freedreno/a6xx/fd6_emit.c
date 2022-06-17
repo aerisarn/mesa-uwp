@@ -120,8 +120,7 @@ setup_border_colors(struct fd_texture_stateobj *tex,
 
       unsigned char swiz[4];
 
-      fd6_tex_swiz(format, swiz, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
-                   PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+      fdl6_format_swiz(format, false, swiz);
 
       for (j = 0; j < 4; j++) {
          int c = swiz[j];
