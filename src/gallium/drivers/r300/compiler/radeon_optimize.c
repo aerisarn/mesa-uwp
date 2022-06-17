@@ -917,7 +917,7 @@ static unsigned int merge_negates(struct rc_src_register src1, struct rc_src_reg
 	return clean_negate(src1) | clean_negate(src2);
 }
 
-static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
+static void merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 {
 	unsigned int orig_dst_reg = inst->U.I.DstReg.Index;
 	unsigned int orig_dst_file = inst->U.I.DstReg.File;
@@ -933,13 +933,13 @@ static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 		 * control flow.
 		 */
 		if (opcode->IsFlowControl)
-			return 0;
+			return;
 
 		/* Stop when the original destination is overwritten */
 		if (orig_dst_reg == cur->U.I.DstReg.Index &&
 			orig_dst_file == cur->U.I.DstReg.File &&
 			(orig_dst_wmask & cur->U.I.DstReg.WriteMask) != 0)
-			return 0;
+			return;
 
 		/* Stop the search when the original instruction destination
 		 * is used as a source for anything.
@@ -947,7 +947,7 @@ static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 		for (unsigned i = 0; i < opcode->NumSrcRegs; i++) {
 			if (cur->U.I.SrcReg[i].File == orig_dst_file &&
 				cur->U.I.SrcReg[i].Index == orig_dst_reg)
-				return 0;
+				return;
 		}
 
 		if (cur->U.I.Opcode == RC_OPCODE_MOV &&
@@ -971,18 +971,17 @@ static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 								inst->U.I.SrcReg[0].Swizzle);
 				src.Negate = merge_negates(inst->U.I.SrcReg[0], cur->U.I.SrcReg[0]);
 				if (!c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src))
-					return 0;
+					return;
 				cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
 				cur->U.I.SrcReg[0] = src;
 
 				/* finally delete the original mov */
 				rc_remove_instruction(inst);
 
-				return 1;
+				return;
 			}
 		}
 	}
-	return 0;
 }
 
 void rc_optimize(struct radeon_compiler * c, void *user)
@@ -991,20 +990,38 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 	while(inst != &c->Program.Instructions) {
 		struct rc_instruction * cur = inst;
 		inst = inst->Next;
-
 		constant_folding(c, cur);
+	}
 
-		if(peephole(c, cur))
-			continue;
-
+	/* Copy propagate simple movs away. */
+	inst = c->Program.Instructions.Next;
+	while(inst != &c->Program.Instructions) {
+		struct rc_instruction * cur = inst;
+		inst = inst->Next;
 		if (cur->U.I.Opcode == RC_OPCODE_MOV) {
-			if (c->is_r500) {
-				if (merge_movs(c, cur))
-					continue;
-			}
 			copy_propagate(c, cur);
-			/* cur may no longer be part of the program */
 		}
+	}
+
+	/* Merge MOVs to same source in different channels using the constant
+	 * swizzles.
+	 */
+	if (c->is_r500) {
+		inst = c->Program.Instructions.Next;
+		while(inst != &c->Program.Instructions) {
+			struct rc_instruction * cur = inst;
+			inst = inst->Next;
+			if (cur->U.I.Opcode == RC_OPCODE_MOV)
+				merge_movs(c, cur);
+		}
+	}
+
+	/* Presubtract operations. */
+	inst = c->Program.Instructions.Next;
+	while(inst != &c->Program.Instructions) {
+		struct rc_instruction * cur = inst;
+		inst = inst->Next;
+		peephole(c, cur);
 	}
 
 	if (!c->has_omod) {
