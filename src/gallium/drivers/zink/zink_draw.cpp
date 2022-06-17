@@ -335,7 +335,8 @@ find_pipeline_bits(uint32_t *mask)
 }
 
 static void
-update_barriers(struct zink_context *ctx, bool is_compute)
+update_barriers(struct zink_context *ctx, bool is_compute,
+                struct pipe_resource *index, struct pipe_resource *indirect, struct pipe_resource *indirect_draw_count)
 {
    if (!ctx->need_barriers[is_compute]->entries)
       return;
@@ -347,25 +348,37 @@ update_barriers(struct zink_context *ctx, bool is_compute)
       bool is_buffer = res->obj->is_buffer;
       VkPipelineStageFlags pipeline = 0;
       VkAccessFlags access = 0;
+
+      if (res == zink_resource(index)) {
+         access |= VK_ACCESS_INDEX_READ_BIT;
+         pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      } else if (res == zink_resource(indirect) || res == zink_resource(indirect_draw_count)) {
+         access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+         pipeline |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      }
       if (res->bind_count[is_compute]) {
          if (res->write_bind_count[is_compute])
             access |= VK_ACCESS_SHADER_WRITE_BIT;
          if (is_buffer) {
+            unsigned bind_count = res->bind_count[is_compute];
             if (res->ubo_bind_count[is_compute])
                access |= VK_ACCESS_UNIFORM_READ_BIT;
+            bind_count -= res->ubo_bind_count[is_compute];
             if (!is_compute && res->vbo_bind_mask) {
                access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
                if (res->write_bind_count[is_compute])
                   pipeline |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+               bind_count -= res->vbo_bind_count;
             }
-            if (res->write_bind_count[is_compute])
+            if (bind_count)
                access |= VK_ACCESS_SHADER_READ_BIT;
-            /* TODO: there are no other write-only buffer descriptors without deeper shader analysis */
-            if (pipeline != VK_PIPELINE_STAGE_VERTEX_INPUT_BIT &&
-                (res->image_bind_count[is_compute] != res->bind_count[is_compute] ||
-                 res->write_bind_count[is_compute] != res->image_bind_count[is_compute]))
-               access |= VK_ACCESS_SHADER_READ_BIT;
+            if (!res->write_bind_count[is_compute]) {
+               pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
+
+               if (res->ubo_bind_count[0])
+                  pipeline |= find_pipeline_bits(res->ubo_bind_mask);
+            }
          } else {
             if (res->bind_count[is_compute] != res->write_bind_count[is_compute])
                access |= VK_ACCESS_SHADER_READ_BIT;
@@ -374,17 +387,16 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          }
          if (is_compute)
             pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-         else if (!pipeline) {
-            if (is_buffer) {
-               pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
-
-               if (res->ubo_bind_count[0])
-                  pipeline |= find_pipeline_bits(res->ubo_bind_mask);
+         else {
+            VkPipelineStageFlags gfx_stages = pipeline & ~(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+            /* images always need gfx stages, and buffers need gfx stages if non-vbo binds exist */
+            bool needs_stages = !is_buffer || (res->bind_count[0] - res->vbo_bind_count > 0);
+            if (!gfx_stages && needs_stages) {
+               gfx_stages = find_pipeline_bits(res->sampler_binds);
+               if (!gfx_stages) //must be a shader image
+                  gfx_stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+               pipeline |= gfx_stages;
             }
-            if (!pipeline)
-               pipeline |= find_pipeline_bits(res->sampler_binds);
-            if (!pipeline) //must be a shader image
-               pipeline = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
          }
          if (res->base.b.target == PIPE_BUFFER)
             zink_resource_buffer_barrier(ctx, res, access, pipeline);
@@ -534,7 +546,10 @@ zink_draw(struct pipe_context *pctx,
       }
    }
 
-   update_barriers(ctx, false);
+   barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
+   /* this may re-emit draw buffer barriers, but such synchronization is harmless */
+   update_barriers(ctx, false, index_buffer, dindirect ? dindirect->buffer : NULL, dindirect ? dindirect->indirect_draw_count : NULL);
+
    /* ensure synchronization between doing streamout with counter buffer
     * and using counter buffer for indirect draw
     */
@@ -542,8 +557,6 @@ zink_draw(struct pipe_context *pctx,
       zink_resource_buffer_barrier(ctx, zink_resource(so_target->counter_buffer),
                                    VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
                                    VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-
-   barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
    zink_query_update_gs_states(ctx, dinfo->was_line_loop);
 
@@ -947,7 +960,18 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    if (ctx->render_condition_active)
       zink_start_conditional_render(ctx);
 
-   update_barriers(ctx, true);
+   if (info->indirect) {
+      /*
+         VK_ACCESS_INDIRECT_COMMAND_READ_BIT specifies read access to indirect command data read as
+         part of an indirect build, trace, drawing or dispatching command. Such access occurs in the
+         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT pipeline stage.
+
+         - Chapter 7. Synchronization and Cache Control
+       */
+      check_buffer_barrier(ctx, info->indirect, VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+   }
+
+   update_barriers(ctx, true, NULL, info->indirect, NULL);
    if (ctx->memory_barrier)
       zink_flush_memory_barrier(ctx, true);
 
@@ -1000,14 +1024,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    batch->work_count++;
    zink_batch_no_rp(ctx);
    if (info->indirect) {
-      /*
-         VK_ACCESS_INDIRECT_COMMAND_READ_BIT specifies read access to indirect command data read as
-         part of an indirect build, trace, drawing or dispatching command. Such access occurs in the
-         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT pipeline stage.
-
-         - Chapter 7. Synchronization and Cache Control
-       */
-      check_buffer_barrier(ctx, info->indirect, VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
       VKCTX(CmdDispatchIndirect)(batch->state->cmdbuf, zink_resource(info->indirect)->obj->buffer, info->indirect_offset);
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
    } else
