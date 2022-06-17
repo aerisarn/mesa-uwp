@@ -73,10 +73,10 @@ bdw_query_alloc(struct intel_perf_config *perf, int ncounters)
 }
 
 struct intel_perf_query_counter_data {
-   uint16_t name_idx;
-   uint16_t desc_idx;
-   uint16_t symbol_name_idx;
-   uint16_t category_idx;
+   uint32_t name_idx;
+   uint32_t desc_idx;
+   uint32_t symbol_name_idx;
+   uint32_t category_idx;
    enum intel_perf_counter_type type;
    enum intel_perf_counter_data_type data_type;
    enum intel_perf_counter_units units;
