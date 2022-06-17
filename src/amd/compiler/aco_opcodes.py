@@ -58,17 +58,18 @@ class Format(Enum):
    SOPC = 5
    SMEM = 6
    DS = 8
-   MTBUF = 9
-   MUBUF = 10
-   MIMG = 11
-   EXP = 12
-   FLAT = 13
-   GLOBAL = 14
-   SCRATCH = 15
-   PSEUDO_BRANCH = 16
-   PSEUDO_BARRIER = 17
-   PSEUDO_REDUCTION = 18
-   VOP3P = 19
+   LDSDIR = 9
+   MTBUF = 10
+   MUBUF = 11
+   MIMG = 12
+   EXP = 13
+   FLAT = 14
+   GLOBAL = 15
+   SCRATCH = 16
+   PSEUDO_BRANCH = 17
+   PSEUDO_BARRIER = 18
+   PSEUDO_REDUCTION = 19
+   VOP3P = 20
    VOP1 = 1 << 8
    VOP2 = 1 << 9
    VOPC = 1 << 10
@@ -93,6 +94,11 @@ class Format(Enum):
          return [('uint16_t', 'offset0', '0'),
                  ('uint8_t', 'offset1', '0'),
                  ('bool', 'gds', 'false')]
+      elif self == Format.LDSDIR:
+         return [('uint8_t', 'attr', 0),
+                 ('uint8_t', 'attr_chan', 0),
+                 ('memory_sync_info', 'sync', 'memory_sync_info()'),
+                 ('uint8_t', 'wait_vdst', 0)]
       elif self == Format.MTBUF:
          return [('unsigned', 'dfmt', None),
                  ('unsigned', 'nfmt', None),
@@ -1320,6 +1326,15 @@ DS = {
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, gfx11, name) in DS:
     opcode(name, gfx7, gfx9, gfx10, gfx11, Format.DS, InstrClass.DS)
+
+
+# LDSDIR instructions:
+LDSDIR = {
+   (0x00, "lds_param_load"),
+   (0x01, "lds_direct_load"),
+}
+for (code, name) in LDSDIR:
+    opcode(name, -1, -1, -1, code, Format.LDSDIR, InstrClass.DS)
 
 # MUBUF instructions:
 MUBUF = {

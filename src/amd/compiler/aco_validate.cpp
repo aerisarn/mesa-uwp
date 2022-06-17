@@ -694,6 +694,15 @@ validate_ir(Program* program)
                      "FLAT/GLOBAL/SCRATCH data must be vgpr", instr.get());
             break;
          }
+         case Format::LDSDIR: {
+            check(instr->definitions.size() == 1 && instr->definitions[0].regClass() == v1, "LDSDIR must have an v1 definition", instr.get());
+            check(instr->operands.size() == 1, "LDSDIR must have an operand", instr.get());
+            if (!instr->operands.empty()) {
+               check(instr->operands[0].regClass() == s1, "LDSDIR must have an s1 operand", instr.get());
+               check(instr->operands[0].isFixed() && instr->operands[0].physReg() == m0, "LDSDIR must have an operand fixed to m0", instr.get());
+            }
+            break;
+         }
          default: break;
          }
       }

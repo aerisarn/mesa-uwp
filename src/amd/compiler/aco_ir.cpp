@@ -195,6 +195,7 @@ get_sync_info(const Instruction* instr)
    case Format::GLOBAL:
    case Format::SCRATCH: return instr->flatlike().sync;
    case Format::DS: return instr->ds().sync;
+   case Format::LDSDIR: return instr->ldsdir().sync;
    default: return memory_sync_info();
    }
 }

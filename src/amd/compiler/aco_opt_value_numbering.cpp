@@ -249,6 +249,12 @@ struct InstrPred {
          return aD.sync == bD.sync && aD.pass_flags == bD.pass_flags && aD.gds == bD.gds &&
                 aD.offset0 == bD.offset0 && aD.offset1 == bD.offset1;
       }
+      case Format::LDSDIR: {
+         LDSDIR_instruction& aD = a->ldsdir();
+         LDSDIR_instruction& bD = b->ldsdir();
+         return aD.sync == bD.sync && aD.attr == bD.attr && aD.attr_chan == bD.attr_chan &&
+                aD.wait_vdst == bD.wait_vdst;
+      }
       case Format::MTBUF: {
          MTBUF_instruction& aM = a->mtbuf();
          MTBUF_instruction& bM = b->mtbuf();

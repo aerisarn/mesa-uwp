@@ -398,6 +398,17 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       out.push_back(encoding);
       break;
    }
+   case Format::LDSDIR: {
+      LDSDIR_instruction& dir = instr->ldsdir();
+      uint32_t encoding = (0b11001110 << 24);
+      encoding |= opcode << 20;
+      encoding |= (uint32_t)dir.wait_vdst << 16;
+      encoding |= (uint32_t)dir.attr << 10;
+      encoding |= (uint32_t)dir.attr_chan << 8;
+      encoding |= reg(ctx, instr->definitions[0], 8);
+      out.push_back(encoding);
+      break;
+   }
    case Format::MUBUF: {
       MUBUF_instruction& mubuf = instr->mubuf();
       uint32_t encoding = (0b111000 << 26);

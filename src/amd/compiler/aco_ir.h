@@ -77,24 +77,25 @@ enum class Format : std::uint16_t {
    SMEM = 6,
    /* LDS/GDS Format */
    DS = 8,
+   LDSDIR = 9,
    /* Vector Memory Buffer Formats */
-   MTBUF = 9,
-   MUBUF = 10,
+   MTBUF = 10,
+   MUBUF = 11,
    /* Vector Memory Image Format */
-   MIMG = 11,
+   MIMG = 12,
    /* Export Format */
-   EXP = 12,
+   EXP = 13,
    /* Flat Formats */
-   FLAT = 13,
-   GLOBAL = 14,
-   SCRATCH = 15,
+   FLAT = 14,
+   GLOBAL = 15,
+   SCRATCH = 16,
 
-   PSEUDO_BRANCH = 16,
-   PSEUDO_BARRIER = 17,
-   PSEUDO_REDUCTION = 18,
+   PSEUDO_BRANCH = 17,
+   PSEUDO_BARRIER = 18,
+   PSEUDO_REDUCTION = 19,
 
    /* Vector ALU Formats */
-   VOP3P = 19,
+   VOP3P = 20,
    VOP1 = 1 << 8,
    VOP2 = 1 << 9,
    VOPC = 1 << 10,
@@ -999,6 +1000,7 @@ struct SOPP_instruction;
 struct SOPC_instruction;
 struct SMEM_instruction;
 struct DS_instruction;
+struct LDSDIR_instruction;
 struct MTBUF_instruction;
 struct MUBUF_instruction;
 struct MIMG_instruction;
@@ -1124,6 +1126,17 @@ struct Instruction {
       return *(DS_instruction*)this;
    }
    constexpr bool isDS() const noexcept { return format == Format::DS; }
+   LDSDIR_instruction& ldsdir() noexcept
+   {
+      assert(isLDSDIR());
+      return *(LDSDIR_instruction*)this;
+   }
+   const LDSDIR_instruction& ldsdir() const noexcept
+   {
+      assert(isLDSDIR());
+      return *(LDSDIR_instruction*)this;
+   }
+   constexpr bool isLDSDIR() const noexcept { return format == Format::LDSDIR; }
    MTBUF_instruction& mtbuf() noexcept
    {
       assert(isMTBUF());
@@ -1549,6 +1562,20 @@ struct DS_instruction : public Instruction {
    uint8_t padding;
 };
 static_assert(sizeof(DS_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+
+/**
+ * LDS Direct instructions
+ * Operand(0): M0
+ * Definition(0): VDST - Destination VGPR
+ */
+struct LDSDIR_instruction : public Instruction {
+   memory_sync_info sync;
+   uint8_t attr : 6;
+   uint8_t attr_chan : 2;
+   uint32_t wait_vdst : 4;
+   uint32_t padding : 28;
+};
+static_assert(sizeof(LDSDIR_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
 /**
  * Vector Memory Untyped-buffer Instructions

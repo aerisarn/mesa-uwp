@@ -2424,7 +2424,7 @@ lower_to_hw_instr(Program* program)
                         }
                      }
                   } else if (inst->isVMEM() || inst->isFlatLike() || inst->isDS() ||
-                             inst->isEXP()) {
+                             inst->isEXP() || inst->isLDSDIR()) {
                      // TODO: GFX6-9 can use vskip
                      can_remove = false;
                   } else if (inst->isSMEM()) {

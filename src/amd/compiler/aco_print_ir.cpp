@@ -363,6 +363,15 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       print_sync(ds.sync, output);
       break;
    }
+   case Format::LDSDIR: {
+      const LDSDIR_instruction& ldsdir = instr->ldsdir();
+      if (instr->opcode == aco_opcode::lds_param_load)
+         fprintf(output, " attr%u.%c", ldsdir.attr, "xyzw"[ldsdir.attr_chan]);
+      if (ldsdir.wait_vdst != 15)
+         fprintf(output, " wait_vdst:%u", ldsdir.wait_vdst);
+      print_sync(ldsdir.sync, output);
+      break;
+   }
    case Format::MUBUF: {
       const MUBUF_instruction& mubuf = instr->mubuf();
       if (mubuf.offset)
