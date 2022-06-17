@@ -8817,6 +8817,24 @@
     </mod>
   </ins>
 
+  <ins name="*MKVEC.v2i8" pseudo="true">
+    <src start="0"/>
+    <src start="3"/>
+    <src start="6"/>
+    <mod name="lane0" start="12" size="2" default="b0">
+      <opt>b0</opt>
+      <opt>b1</opt>
+      <opt>b2</opt>
+      <opt>b3</opt>
+    </mod>
+    <mod name="lane1" start="13" size="2" default="b0">
+      <opt>b0</opt>
+      <opt>b1</opt>
+      <opt>b2</opt>
+      <opt>b3</opt>
+    </mod>
+  </ins>
+
   <ins name="+COLLECT.i32" pseudo="true"/>
 
   <ins name="+SPLIT.i32" pseudo="true">
