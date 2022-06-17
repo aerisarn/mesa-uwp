@@ -48,7 +48,7 @@
       (__stream)->SizeInBytes = ALIGN_POT((__stream)->SizeInBytes, alignof(void *)); \
       __wrapper = (void *)((uint8_t *)(__stream)->pPipelineStateSubobjectStream + (__stream)->SizeInBytes); \
       (__stream)->SizeInBytes += sizeof(*__wrapper); \
-      assert((__stream)->SizeInBytes < MAX_ ## __pipetype ## _PIPELINE_STATE_STREAM_SIZE); \
+      assert((__stream)->SizeInBytes <= MAX_ ## __pipetype ## _PIPELINE_STATE_STREAM_SIZE); \
       __wrapper->type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ ## __id; \
       __desc = &__wrapper->desc; \
       memset(__desc, 0, sizeof(*__desc)); \
