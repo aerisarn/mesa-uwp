@@ -1706,6 +1706,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    /* TODO: masks */
    ctx->batch->draw |= ~0;
+   ctx->batch->load |= ~0;
 
    /* TODO: Dirty track */
    agx_update_vs(ctx);

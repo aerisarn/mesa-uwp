@@ -362,20 +362,33 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
 {
    struct agx_context *ctx = agx_context(pctx);
 
-   /* TODO: support partial clears */
-   if (ctx->batch->clear | ctx->batch->draw)
-      pctx->flush(pctx, NULL, 0);
+   unsigned fastclear = buffers & ~(ctx->batch->draw | ctx->batch->load);
+   unsigned slowclear = buffers & ~fastclear;
 
-   ctx->batch->clear |= buffers;
+   assert(scissor_state == NULL && "we don't support PIPE_CAP_CLEAR_SCISSORED");
 
-   if (buffers & PIPE_CLEAR_COLOR0)
+   /* Fast clears configure the batch */
+   if (fastclear & PIPE_CLEAR_COLOR0)
       memcpy(ctx->batch->clear_color, color->f, sizeof(color->f));
 
-   if (buffers & PIPE_CLEAR_DEPTH)
+   if (fastclear & PIPE_CLEAR_DEPTH)
       ctx->batch->clear_depth = depth;
 
-   if (buffers & PIPE_CLEAR_STENCIL)
+   if (fastclear & PIPE_CLEAR_STENCIL)
       ctx->batch->clear_stencil = stencil;
+
+   /* Slow clears draw a fullscreen rectangle */
+   if (slowclear) {
+      agx_blitter_save(ctx, ctx->blitter, false /* render cond */);
+      util_blitter_clear(ctx->blitter, ctx->framebuffer.width,
+            ctx->framebuffer.height,
+            util_framebuffer_get_num_layers(&ctx->framebuffer),
+            slowclear, color, depth, stencil,
+            util_framebuffer_get_num_samples(&ctx->framebuffer) > 1);
+   }
+
+   ctx->batch->clear |= fastclear;
+   assert((ctx->batch->draw & slowclear) == slowclear);
 }
 
 
@@ -554,6 +567,7 @@ agx_flush(struct pipe_context *pctx,
    agx_pool_init(&ctx->batch->pipeline_pool, dev, AGX_MEMORY_TYPE_CMDBUF_32, true);
    ctx->batch->clear = 0;
    ctx->batch->draw = 0;
+   ctx->batch->load = 0;
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
    ctx->batch->scissor.count = 0;
    ctx->dirty = ~0;

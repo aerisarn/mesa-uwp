@@ -98,7 +98,7 @@ struct agx_batch {
    struct pipe_surface *zsbuf;
 
    /* PIPE_CLEAR_* bitmask */
-   uint32_t clear, draw;
+   uint32_t clear, draw, load;
 
    float clear_color[4];
    double clear_depth;
