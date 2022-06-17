@@ -3198,11 +3198,16 @@ bi_emit_valhall_offsets(bi_builder *b, nir_tex_instr *instr)
                 /* No multisample index with 3D */
                 assert((nr <= 2) || (ms_idx < 0));
 
-                dest = bi_mkvec_v4i8(b,
+                /* Zero extend the Z byte so we can use it with MKVEC.v2i8 */
+                bi_index z = (nr > 2) ?
+                             bi_mkvec_v2i8(b, bi_byte(bi_extract(b, idx, 2), 0),
+                                              bi_imm_u8(0), bi_zero()) :
+                             bi_zero();
+
+                dest = bi_mkvec_v2i8(b,
                                 (nr > 0) ? bi_byte(bi_extract(b, idx, 0), 0) : bi_imm_u8(0),
                                 (nr > 1) ? bi_byte(bi_extract(b, idx, 1), 0) : bi_imm_u8(0),
-                                (nr > 2) ? bi_byte(bi_extract(b, idx, 2), 0) : bi_imm_u8(0),
-                                bi_imm_u8(0));
+                                z);
         }
 
         /* Component 2: multisample index */

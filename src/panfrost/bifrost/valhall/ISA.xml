@@ -2110,15 +2110,15 @@
     <src>Cube face index</src>
   </ins>
 
-  <ins name="MKVEC.v4i8" title="Make 8-bit vector" dests="1" opcode="0xBD" unit="CVT">
+  <ins name="MKVEC.v2i8" title="Make 8-bit vector" dests="1" opcode="0xBD" unit="CVT">
     <desc>
       Calculates $A | (B \ll 8) | (CD \ll 16)$ for 8-bit A and B and 16-bit CD.
 
       To implement `(uchar4) (A, B, C, D)` in full generality, use the sequence
-      `MKVEC.v4i8 CD, C, D, #0; MKVEC.v4i8 out, A, B, CD`
+      `MKVEC.v2i8 CD, C, D, #0; MKVEC.v2i8 out, A, B, CD`
 
-      `MKVEC.v4i8` also allows zero extending arbitrary 8-bit lanes. For
-      example, to extend `r0.b3` to `r1`, use `MKVEC.v4i8 r1, r0.b3, 0x0.b0, 0x0`.
+      `MKVEC.v2i8` also allows zero extending arbitrary 8-bit lanes. For
+      example, to extend `r0.b3` to `r1`, use `MKVEC.v2i8 r1, r0.b3, 0x0.b0, 0x0`.
     </desc>
     <src lane="true">A</src>
     <src lane="true">B</src>

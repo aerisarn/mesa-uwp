@@ -152,10 +152,10 @@ c0 77 05 04 00 c2 a1 00    MKVEC.v2i16 r2, 0x0.h00, ^r55.h10
 77 00 04 10 00 c2 90 00    S16_TO_S32 r2, ^r55.h10
 c0 77 01 08 00 c2 a8 00    ISUB.s32 r2, 0x0, ^r55.h0
 c0 77 01 0c 00 c2 a8 00    ISUB.s32 r2, 0x0, ^r55.h1
-00 c0 c0 00 c0 c7 bd 00    MKVEC.v4i8 r7, r0.b3, 0x0.b0, 0x0
-00 c0 c0 00 80 c6 bd 00    MKVEC.v4i8 r6, r0.b2, 0x0.b0, 0x0
-00 c0 c0 00 00 c4 bd 00    MKVEC.v4i8 r4, r0.b0, 0x0.b0, 0x0
-40 c0 c0 00 40 c5 bd 00    MKVEC.v4i8 r5, ^r0.b1, 0x0.b0, 0x0
+00 c0 c0 00 c0 c7 bd 00    MKVEC.v2i8 r7, r0.b3, 0x0.b0, 0x0
+00 c0 c0 00 80 c6 bd 00    MKVEC.v2i8 r6, r0.b2, 0x0.b0, 0x0
+00 c0 c0 00 00 c4 bd 00    MKVEC.v2i8 r4, r0.b0, 0x0.b0, 0x0
+40 c0 c0 00 40 c5 bd 00    MKVEC.v2i8 r5, ^r0.b1, 0x0.b0, 0x0
 00 00 11 30 00 c7 90 00    U8_TO_F32 r7, r0.b3
 00 00 11 20 00 c6 90 00    U8_TO_F32 r6, r0.b2
 00 00 11 00 00 c4 90 00    U8_TO_F32 r4, r0.b0
