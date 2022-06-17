@@ -26,4 +26,23 @@
 
 #include "bvh/bvh.h"
 
+#include "radv_private.h"
+
+struct radv_acceleration_structure {
+   struct vk_object_base base;
+
+   struct radeon_winsys_bo *bo;
+   uint64_t mem_offset;
+   uint64_t size;
+};
+
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_acceleration_structure, base, VkAccelerationStructureKHR,
+                               VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR)
+
+static inline uint64_t
+radv_accel_struct_get_va(const struct radv_acceleration_structure *accel)
+{
+   return radv_buffer_get_va(accel->bo) + accel->mem_offset;
+}
+
 #endif
