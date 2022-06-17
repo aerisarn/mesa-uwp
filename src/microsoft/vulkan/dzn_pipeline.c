@@ -395,7 +395,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       dxil_spirv_nir_link(stages[stage].nir,
                           prev_stage != MESA_SHADER_NONE ?
                           stages[prev_stage].nir : NULL);
-   } while (link_mask != 0);
+   }
 
    if (stages[MESA_SHADER_VERTEX].nir) {
       /* Now, declare one D3D12_INPUT_ELEMENT_DESC per VS input variable, so
