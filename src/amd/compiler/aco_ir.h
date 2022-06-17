@@ -1659,7 +1659,8 @@ struct Export_instruction : public Instruction {
    bool compressed : 1;
    bool done : 1;
    bool valid_mask : 1;
-   uint8_t padding0 : 5;
+   bool row_en : 1;
+   uint8_t padding0 : 4;
    uint8_t padding1;
 };
 static_assert(sizeof(Export_instruction) == sizeof(Instruction) + 4, "Unexpected padding");

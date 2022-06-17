@@ -77,6 +77,12 @@ get_mimg_nsa_dwords(const Instruction* instr)
 uint32_t
 reg(asm_context& ctx, PhysReg reg)
 {
+   if (ctx.gfx_level >= GFX11) {
+      if (reg == m0)
+         return sgpr_null.reg();
+      else if (reg == sgpr_null)
+         return m0.reg();
+   }
    return reg.reg();
 }
 
@@ -231,11 +237,11 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       } else {
          encoding = (0b111101 << 26);
          assert(!smem.nv); /* Non-volatile is not supported on GFX10 */
-         encoding |= smem.dlc ? 1 << 14 : 0;
+         encoding |= smem.dlc ? 1 << (ctx.gfx_level >= GFX11 ? 13 : 14) : 0;
       }
 
       encoding |= opcode << 18;
-      encoding |= smem.glc ? 1 << 16 : 0;
+      encoding |= smem.glc ? 1 << (ctx.gfx_level >= GFX11 ? 14 : 16) : 0;
 
       if (ctx.gfx_level <= GFX9) {
          if (instr->operands.size() >= 2)
@@ -395,28 +401,42 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
    case Format::MUBUF: {
       MUBUF_instruction& mubuf = instr->mubuf();
       uint32_t encoding = (0b111000 << 26);
+      if (ctx.gfx_level >= GFX11 && mubuf.lds) /* GFX11 has separate opcodes for LDS loads */
+         opcode = opcode == 0 ? 0x32 : (opcode + 0x1d);
+      else
+         encoding |= (mubuf.lds ? 1 : 0) << 16;
       encoding |= opcode << 18;
-      encoding |= (mubuf.lds ? 1 : 0) << 16;
       encoding |= (mubuf.glc ? 1 : 0) << 14;
-      encoding |= (mubuf.idxen ? 1 : 0) << 13;
+      if (ctx.gfx_level <= GFX10_3)
+         encoding |= (mubuf.idxen ? 1 : 0) << 13;
       assert(!mubuf.addr64 || ctx.gfx_level <= GFX7);
       if (ctx.gfx_level == GFX6 || ctx.gfx_level == GFX7)
          encoding |= (mubuf.addr64 ? 1 : 0) << 15;
-      encoding |= (mubuf.offen ? 1 : 0) << 12;
+      if (ctx.gfx_level <= GFX10_3)
+         encoding |= (mubuf.offen ? 1 : 0) << 12;
       if (ctx.gfx_level == GFX8 || ctx.gfx_level == GFX9) {
          assert(!mubuf.dlc); /* Device-level coherent is not supported on GFX9 and lower */
          encoding |= (mubuf.slc ? 1 : 0) << 17;
+      } else if (ctx.gfx_level >= GFX11) {
+         encoding |= (mubuf.slc ? 1 : 0) << 12;
+         encoding |= (mubuf.dlc ? 1 : 0) << 13;
       } else if (ctx.gfx_level >= GFX10) {
          encoding |= (mubuf.dlc ? 1 : 0) << 15;
       }
       encoding |= 0x0FFF & mubuf.offset;
       out.push_back(encoding);
       encoding = 0;
-      if (ctx.gfx_level <= GFX7 || ctx.gfx_level >= GFX10) {
+      if (ctx.gfx_level <= GFX7 || (ctx.gfx_level >= GFX10 && ctx.gfx_level <= GFX10_3)) {
          encoding |= (mubuf.slc ? 1 : 0) << 22;
       }
       encoding |= reg(ctx, instr->operands[2]) << 24;
-      encoding |= (mubuf.tfe ? 1 : 0) << 23;
+      if (ctx.gfx_level >= GFX11) {
+         encoding |= (mubuf.tfe ? 1 : 0) << 21;
+         encoding |= (mubuf.offen ? 1 : 0) << 22;
+         encoding |= (mubuf.idxen ? 1 : 0) << 23;
+      } else {
+         encoding |= (mubuf.tfe ? 1 : 0) << 23;
+      }
       encoding |= (reg(ctx, instr->operands[0]) >> 2) << 16;
       if (instr->operands.size() > 3 && !mubuf.lds)
          encoding |= reg(ctx, instr->operands[3], 8) << 8;
@@ -433,14 +453,22 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       uint32_t encoding = (0b111010 << 26);
       assert(img_format <= 0x7F);
       assert(!mtbuf.dlc || ctx.gfx_level >= GFX10);
-      encoding |= (mtbuf.dlc ? 1 : 0) << 15; /* DLC bit replaces one bit of the OPCODE on GFX10 */
+      if (ctx.gfx_level >= GFX11) {
+         encoding |= (mtbuf.slc ? 1 : 0) << 12;
+         encoding |= (mtbuf.dlc ? 1 : 0) << 13;
+      } else {
+         /* DLC bit replaces one bit of the OPCODE on GFX10 */
+         encoding |= (mtbuf.dlc ? 1 : 0) << 15;
+      }
+      if (ctx.gfx_level <= GFX10_3) {
+         encoding |= (mtbuf.idxen ? 1 : 0) << 13;
+         encoding |= (mtbuf.offen ? 1 : 0) << 12;
+      }
       encoding |= (mtbuf.glc ? 1 : 0) << 14;
-      encoding |= (mtbuf.idxen ? 1 : 0) << 13;
-      encoding |= (mtbuf.offen ? 1 : 0) << 12;
       encoding |= 0x0FFF & mtbuf.offset;
       encoding |= (img_format << 19); /* Handles both the GFX10 FORMAT and the old NFMT+DFMT */
 
-      if (ctx.gfx_level == GFX8 || ctx.gfx_level == GFX9) {
+      if (ctx.gfx_level == GFX8 || ctx.gfx_level == GFX9 || ctx.gfx_level >= GFX11) {
          encoding |= opcode << 15;
       } else {
          encoding |= (opcode & 0x07) << 16; /* 3 LSBs of 4-bit OPCODE */
@@ -450,8 +478,14 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       encoding = 0;
 
       encoding |= reg(ctx, instr->operands[2]) << 24;
-      encoding |= (mtbuf.tfe ? 1 : 0) << 23;
-      encoding |= (mtbuf.slc ? 1 : 0) << 22;
+      if (ctx.gfx_level >= GFX11) {
+         encoding |= (mtbuf.tfe ? 1 : 0) << 21;
+         encoding |= (mtbuf.offen ? 1 : 0) << 22;
+         encoding |= (mtbuf.idxen ? 1 : 0) << 23;
+      } else {
+         encoding |= (mtbuf.tfe ? 1 : 0) << 23;
+         encoding |= (mtbuf.slc ? 1 : 0) << 22;
+      }
       encoding |= (reg(ctx, instr->operands[0]) >> 2) << 16;
       if (instr->operands.size() > 3)
          encoding |= reg(ctx, instr->operands[3], 8) << 8;
@@ -472,27 +506,44 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
 
       MIMG_instruction& mimg = instr->mimg();
       uint32_t encoding = (0b111100 << 26);
-      encoding |= mimg.slc ? 1 << 25 : 0;
-      encoding |= (opcode & 0x7f) << 18;
-      encoding |= (opcode >> 7) & 1;
-      encoding |= mimg.lwe ? 1 << 17 : 0;
-      encoding |= mimg.tfe ? 1 << 16 : 0;
-      encoding |= mimg.glc ? 1 << 13 : 0;
-      encoding |= mimg.unrm ? 1 << 12 : 0;
-      if (ctx.gfx_level <= GFX9) {
-         assert(!mimg.dlc); /* Device-level coherent is not supported on GFX9 and lower */
-         assert(!mimg.r128);
-         encoding |= mimg.a16 ? 1 << 15 : 0;
-         encoding |= mimg.da ? 1 << 14 : 0;
+      if (ctx.gfx_level >= GFX11) { /* GFX11: rearranges most fields */
+         assert(nsa_dwords <= 1);
+         encoding |= nsa_dwords;
+         encoding |= mimg.dim << 2;
+         encoding |= mimg.unrm ? 1 << 7 : 0;
+         encoding |= (0xF & mimg.dmask) << 8;
+         encoding |= mimg.slc ? 1 << 12 : 0;
+         encoding |= mimg.dlc ? 1 << 13 : 0;
+         encoding |= mimg.glc ? 1 << 14 : 0;
+         encoding |= mimg.r128 ? 1 << 15 : 0;
+         encoding |= mimg.a16 ? 1 << 16 : 0;
+         encoding |= mimg.d16 ? 1 << 17 : 0;
+         encoding |= (opcode & 0xFF) << 18;
       } else {
-         encoding |= mimg.r128 ? 1 << 15
-                               : 0; /* GFX10: A16 moved to 2nd word, R128 replaces it in 1st word */
-         encoding |= nsa_dwords << 1;
-         encoding |= mimg.dim << 3; /* GFX10: dimensionality instead of declare array */
-         encoding |= mimg.dlc ? 1 << 7 : 0;
+         encoding |= mimg.slc ? 1 << 25 : 0;
+         encoding |= (opcode & 0x7f) << 18;
+         encoding |= (opcode >> 7) & 1;
+         encoding |= mimg.lwe ? 1 << 17 : 0;
+         encoding |= mimg.tfe ? 1 << 16 : 0;
+         encoding |= mimg.glc ? 1 << 13 : 0;
+         encoding |= mimg.unrm ? 1 << 12 : 0;
+         if (ctx.gfx_level <= GFX9) {
+            assert(!mimg.dlc); /* Device-level coherent is not supported on GFX9 and lower */
+            assert(!mimg.r128);
+            encoding |= mimg.a16 ? 1 << 15 : 0;
+            encoding |= mimg.da ? 1 << 14 : 0;
+         } else {
+            encoding |= mimg.r128
+                           ? 1 << 15
+                           : 0; /* GFX10: A16 moved to 2nd word, R128 replaces it in 1st word */
+            encoding |= nsa_dwords << 1;
+            encoding |= mimg.dim << 3; /* GFX10: dimensionality instead of declare array */
+            encoding |= mimg.dlc ? 1 << 7 : 0;
+         }
+         encoding |= (0xF & mimg.dmask) << 8;
       }
-      encoding |= (0xF & mimg.dmask) << 8;
       out.push_back(encoding);
+
       encoding = reg(ctx, instr->operands[3], 8); /* VADDR */
       if (!instr->definitions.empty()) {
          encoding |= reg(ctx, instr->definitions[0], 8) << 8; /* VDATA */
@@ -500,14 +551,23 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding |= reg(ctx, instr->operands[2], 8) << 8; /* VDATA */
       }
       encoding |= (0x1F & (reg(ctx, instr->operands[0]) >> 2)) << 16; /* T# (resource) */
-      if (!instr->operands[1].isUndefined())
-         encoding |= (0x1F & (reg(ctx, instr->operands[1]) >> 2)) << 21; /* sampler */
 
       assert(!mimg.d16 || ctx.gfx_level >= GFX9);
-      encoding |= mimg.d16 ? 1 << 31 : 0;
-      if (ctx.gfx_level >= GFX10) {
-         /* GFX10: A16 still exists, but is in a different place */
-         encoding |= mimg.a16 ? 1 << 30 : 0;
+      if (ctx.gfx_level >= GFX11) {
+         if (!instr->operands[1].isUndefined())
+            encoding |= (0x1F & (reg(ctx, instr->operands[1]) >> 2)) << 26; /* sampler */
+
+         encoding |= mimg.tfe ? 1 << 21 : 0;
+         encoding |= mimg.lwe ? 1 << 22 : 0;
+      } else {
+         if (!instr->operands[1].isUndefined())
+            encoding |= (0x1F & (reg(ctx, instr->operands[1]) >> 2)) << 21; /* sampler */
+
+         encoding |= mimg.d16 ? 1 << 31 : 0;
+         if (ctx.gfx_level >= GFX10) {
+            /* GFX10: A16 still exists, but is in a different place */
+            encoding |= mimg.a16 ? 1 << 30 : 0;
+         }
       }
 
       out.push_back(encoding);
@@ -542,15 +602,15 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding |= flat.offset & 0xfff;
       }
       if (instr->isScratch())
-         encoding |= 1 << 14;
+         encoding |= 1 << (ctx.gfx_level >= GFX11 ? 16 : 14);
       else if (instr->isGlobal())
-         encoding |= 2 << 14;
+         encoding |= 2 << (ctx.gfx_level >= GFX11 ? 16 : 14);
       encoding |= flat.lds ? 1 << 13 : 0;
-      encoding |= flat.glc ? 1 << 16 : 0;
-      encoding |= flat.slc ? 1 << 17 : 0;
+      encoding |= flat.glc ? 1 << (ctx.gfx_level >= GFX11 ? 14 : 16) : 0;
+      encoding |= flat.slc ? 1 << (ctx.gfx_level >= GFX11 ? 15 : 17) : 0;
       if (ctx.gfx_level >= GFX10) {
          assert(!flat.nv);
-         encoding |= flat.dlc ? 1 << 12 : 0;
+         encoding |= flat.dlc ? 1 << (ctx.gfx_level >= GFX11 ? 13 : 12) : 0;
       } else {
          assert(!flat.dlc);
       }
@@ -575,7 +635,10 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          else
             encoding |= reg(ctx, sgpr_null) << 16;
       }
-      encoding |= flat.nv ? 1 << 23 : 0;
+      if (ctx.gfx_level >= GFX11 && instr->isScratch())
+         encoding |= !instr->operands[0].isUndefined() ? 1 << 23 : 0;
+      else
+         encoding |= flat.nv ? 1 << 23 : 0;
       out.push_back(encoding);
       break;
    }
@@ -588,9 +651,13 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding = (0b111110 << 26);
       }
 
-      encoding |= exp.valid_mask ? 0b1 << 12 : 0;
+      if (ctx.gfx_level >= GFX11) {
+         encoding |= exp.row_en ? 0b1 << 13 : 0;
+      } else {
+         encoding |= exp.valid_mask ? 0b1 << 12 : 0;
+         encoding |= exp.compressed ? 0b1 << 10 : 0;
+      }
       encoding |= exp.done ? 0b1 << 11 : 0;
-      encoding |= exp.compressed ? 0b1 << 10 : 0;
       encoding |= exp.dest << 4;
       encoding |= exp.enabled_mask;
       out.push_back(encoding);
@@ -607,6 +674,9 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          unreachable("Pseudo instructions should be lowered before assembly.");
       break;
    default:
+      /* TODO: VOP3/VOP3P can use DPP8/16 on GFX11 (encoding of src0 and DPP8/16 word seems same
+       * except abs/neg is ignored). src2 cannot be literal and src0/src1 must be VGPR.
+       */
       if (instr->isVOP3()) {
          VOP3_instruction& vop3 = instr->vop3();
 
