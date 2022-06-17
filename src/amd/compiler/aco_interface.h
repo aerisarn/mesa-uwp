@@ -37,6 +37,7 @@ extern "C" {
 struct ac_shader_config;
 struct aco_shader_info;
 struct aco_vs_prolog_key;
+struct aco_ps_epilog_key;
 
 struct aco_compiler_statistic_info {
    char name[32];

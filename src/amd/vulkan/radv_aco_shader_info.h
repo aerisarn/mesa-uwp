@@ -124,6 +124,16 @@ radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_key *aco_info,
 }
 
 static inline void
+radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_key *aco_info,
+			       const struct radv_ps_epilog_key *radv)
+{
+   ASSIGN_FIELD(spi_shader_col_format);
+   ASSIGN_FIELD(color_is_int8);
+   ASSIGN_FIELD(color_is_int10);
+   ASSIGN_FIELD(enable_mrt_output_nan_fixup);
+}
+
+static inline void
 radv_aco_convert_pipe_key(struct aco_stage_input *aco_info,
                           const struct radv_pipeline_key *radv)
 {

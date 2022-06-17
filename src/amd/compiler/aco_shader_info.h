@@ -60,6 +60,15 @@ struct aco_vs_prolog_key {
    gl_shader_stage next_stage;
 };
 
+struct aco_ps_epilog_key {
+   uint32_t spi_shader_col_format;
+
+   /* Bitmasks, each bit represents one of the 8 MRTs. */
+   uint8_t color_is_int8;
+   uint8_t color_is_int10;
+   uint8_t enable_mrt_output_nan_fixup;
+};
+
 struct aco_vp_output_info {
    uint8_t vs_output_param_offset[VARYING_SLOT_MAX];
    uint8_t clip_dist_mask;
