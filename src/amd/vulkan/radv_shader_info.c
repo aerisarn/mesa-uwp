@@ -479,6 +479,12 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->vs.use_per_attribute_vb_descs = device->robust_buffer_access || info->vs.dynamic_inputs;
    }
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      if (pipeline_key->ps.has_epilog) {
+         info->ps.has_epilog = true;
+      }
+   }
+
    /* We have to ensure consistent input register assignments between the main shader and the
     * prolog. */
    info->vs.needs_instance_id |= info->vs.has_prolog;

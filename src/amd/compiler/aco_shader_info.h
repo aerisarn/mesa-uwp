@@ -126,6 +126,7 @@ struct aco_shader_info {
       bool writes_z;
       bool writes_stencil;
       bool writes_sample_mask;
+      bool has_epilog;
       uint32_t num_interp;
       unsigned spi_ps_input;
    } ps;

@@ -95,6 +95,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(ps.writes_z);
    ASSIGN_FIELD(ps.writes_stencil);
    ASSIGN_FIELD(ps.writes_sample_mask);
+   ASSIGN_FIELD(ps.has_epilog);
    ASSIGN_FIELD(ps.num_interp);
    ASSIGN_FIELD(ps.spi_ps_input);
    ASSIGN_FIELD(cs.subgroup_size);

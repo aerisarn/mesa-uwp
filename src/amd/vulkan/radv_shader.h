@@ -104,6 +104,8 @@ struct radv_pipeline_key {
 
       /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
       bool alpha_to_coverage_via_mrtz;
+
+      bool has_epilog;
    } ps;
 
    struct {
@@ -337,6 +339,7 @@ struct radv_shader_info {
       uint8_t reads_sample_pos_mask;
       uint8_t depth_layout;
       bool allow_flat_shading;
+      bool has_epilog;
       unsigned spi_ps_input;
    } ps;
    struct {

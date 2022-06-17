@@ -3374,6 +3374,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (device->primitives_generated_query)
       key.primitives_generated_query = true;
 
+   key.ps.has_epilog = false; /* TODO: hook up PS epilogs */
+
    return key;
 }
 
