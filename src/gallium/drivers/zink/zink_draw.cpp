@@ -484,7 +484,6 @@ zink_draw(struct pipe_context *pctx,
 
    if (ctx->memory_barrier)
       zink_flush_memory_barrier(ctx, false);
-   update_barriers(ctx, false);
 
    if (unlikely(ctx->buffer_rebind_counter < screen->buffer_rebind_counter)) {
       ctx->buffer_rebind_counter = screen->buffer_rebind_counter;
@@ -535,6 +534,7 @@ zink_draw(struct pipe_context *pctx,
       }
    }
 
+   update_barriers(ctx, false);
    /* ensure synchronization between doing streamout with counter buffer
     * and using counter buffer for indirect draw
     */
