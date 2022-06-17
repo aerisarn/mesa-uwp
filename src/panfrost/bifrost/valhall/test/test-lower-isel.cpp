@@ -125,6 +125,14 @@ TEST_F(LowerIsel, MuxInt8) {
    NEGCASE(bi_mux_v4i8(b, x, y, z, BI_MUX_FP_ZERO));
 }
 
+TEST_F(LowerIsel, FaddRscale) {
+   CASE(bi_fadd_rscale_f32_to(b, reg, x, y, z, BI_SPECIAL_NONE),
+        bi_fma_rscale_f32_to(b, reg, x, bi_imm_f32(1.0), y, z, BI_SPECIAL_NONE));
+
+   CASE(bi_fadd_rscale_f32_to(b, reg, x, y, z, BI_SPECIAL_N),
+        bi_fma_rscale_f32_to(b, reg, x, bi_imm_f32(1.0), y, z, BI_SPECIAL_N));
+}
+
 TEST_F(LowerIsel, Smoke) {
    NEGCASE(bi_fadd_f32_to(b, reg, reg, reg));
    NEGCASE(bi_csel_s32_to(b, reg, reg, reg, reg, reg, BI_CMPF_LT));
