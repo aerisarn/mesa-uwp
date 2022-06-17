@@ -1541,14 +1541,6 @@ v3d_draw_clear(struct v3d_context *v3d,
                const union pipe_color_union *color,
                double depth, unsigned stencil)
 {
-        static const union pipe_color_union dummy_color = {};
-
-        /* The blitter util dereferences the color regardless, even though the
-         * gallium clear API may not pass one in when only Z/S are cleared.
-         */
-        if (!color)
-                color = &dummy_color;
-
         v3d_blitter_save(v3d, false);
         util_blitter_clear(v3d->blitter,
                            v3d->framebuffer.width,
