@@ -416,9 +416,9 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       encoding |= reg(ctx, instr->operands[2]) << 24;
       encoding |= (mubuf.tfe ? 1 : 0) << 23;
       encoding |= (reg(ctx, instr->operands[0]) >> 2) << 16;
-      if (instr->operands.size() > 3)
+      if (instr->operands.size() > 3 && !mubuf.lds)
          encoding |= reg(ctx, instr->operands[3], 8) << 8;
-      else
+      else if (!mubuf.lds)
          encoding |= reg(ctx, instr->definitions[0], 8) << 8;
       encoding |= reg(ctx, instr->operands[1], 8);
       out.push_back(encoding);
