@@ -1556,8 +1556,8 @@ dzn_compute_pipeline_create(struct dzn_device *device,
       .pPipelineStateSubobjectStream = state_buf,
    };
 
-   d3d12_gfx_pipeline_state_stream_new_desc(&stream_desc, CS, D3D12_SHADER_BYTECODE, shader);
-   d3d12_gfx_pipeline_state_stream_new_desc(&stream_desc, ROOT_SIGNATURE, ID3D12RootSignature *, root_sig);
+   d3d12_compute_pipeline_state_stream_new_desc(&stream_desc, CS, D3D12_SHADER_BYTECODE, shader);
+   d3d12_compute_pipeline_state_stream_new_desc(&stream_desc, ROOT_SIGNATURE, ID3D12RootSignature *, root_sig);
    *root_sig = pipeline->base.root.sig;
 
    nir_shader *nir = NULL;
