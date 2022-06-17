@@ -93,12 +93,16 @@ radv_amdgpu_winsys_rebuild_bo_list(struct radv_amdgpu_winsys_bo *bo)
 
    qsort(bo->bos, temp_bo_count, sizeof(struct radv_amdgpu_winsys_bo *), &bo_comparator);
 
-   uint32_t final_bo_count = 1;
-   for (uint32_t i = 1; i < temp_bo_count; ++i)
-      if (bo->bos[i] != bo->bos[i - 1])
-         bo->bos[final_bo_count++] = bo->bos[i];
+   if (!temp_bo_count) {
+      bo->bo_count = 0;
+   } else {
+      uint32_t final_bo_count = 1;
+      for (uint32_t i = 1; i < temp_bo_count; ++i)
+         if (bo->bos[i] != bo->bos[i - 1])
+            bo->bos[final_bo_count++] = bo->bos[i];
 
-   bo->bo_count = final_bo_count;
+      bo->bo_count = final_bo_count;
+   }
 
    return VK_SUCCESS;
 }
