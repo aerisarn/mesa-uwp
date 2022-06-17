@@ -1280,7 +1280,9 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
          export_prim_id = info->tes.outinfo.export_prim_id;
       }
 
-      NIR_PASS_V(nir, ac_nir_lower_ngg_nogs, max_vtx_in, num_vertices_per_prim,
+      NIR_PASS_V(nir, ac_nir_lower_ngg_nogs,
+                 device->physical_device->rad_info.family,
+                 max_vtx_in, num_vertices_per_prim,
                  info->workgroup_size, info->wave_size, info->has_ngg_culling,
                  info->has_ngg_early_prim_export, info->is_ngg_passthrough, export_prim_id,
                  pl_key->vs.provoking_vtx_last, false, pl_key->primitives_generated_query,

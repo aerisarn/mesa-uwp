@@ -1359,6 +1359,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
 void
 ac_nir_lower_ngg_nogs(nir_shader *shader,
+                      enum radeon_family family,
                       unsigned max_num_es_vertices,
                       unsigned num_vertices_per_primitives,
                       unsigned max_workgroup_size,
@@ -1422,14 +1423,17 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    ngg_nogs_init_vertex_indices_vars(b, impl, &state);
 
    if (!can_cull) {
-      /* Allocate export space on wave 0 - confirm to the HW that we want to use all possible space */
-      nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
-      {
-         nir_ssa_def *vtx_cnt = nir_load_workgroup_num_input_vertices_amd(b);
-         nir_ssa_def *prim_cnt = nir_load_workgroup_num_input_primitives_amd(b);
-         nir_alloc_vertices_and_primitives_amd(b, vtx_cnt, prim_cnt);
+      /* Newer chips can use PRIMGEN_PASSTHRU_NO_MSG to skip gs_alloc_req for NGG passthrough. */
+      if (!(passthrough && family >= CHIP_NAVI23)) {
+         /* Allocate export space on wave 0 - confirm to the HW that we want to use all possible space */
+         nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
+         {
+            nir_ssa_def *vtx_cnt = nir_load_workgroup_num_input_vertices_amd(b);
+            nir_ssa_def *prim_cnt = nir_load_workgroup_num_input_primitives_amd(b);
+            nir_alloc_vertices_and_primitives_amd(b, vtx_cnt, prim_cnt);
+         }
+         nir_pop_if(b, if_wave_0);
       }
-      nir_pop_if(b, if_wave_0);
 
       /* Take care of early primitive export, otherwise just pack the primitive export argument */
       if (state.early_prim_export)

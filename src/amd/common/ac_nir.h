@@ -115,6 +115,7 @@ ac_nir_lower_indirect_derefs(nir_shader *shader,
 
 void
 ac_nir_lower_ngg_nogs(nir_shader *shader,
+                      enum radeon_family family,
                       unsigned max_num_es_vertices,
                       unsigned num_vertices_per_primitive,
                       unsigned max_workgroup_size,

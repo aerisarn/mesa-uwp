@@ -1278,8 +1278,10 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
    /* TODO: primitive culling */
 
-   ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx), ngg_get_vtx_cnt(ctx),
-                                 ngg_get_prim_cnt(ctx));
+   /* Newer chips can use PRIMGEN_PASSTHRU_NO_MSG to skip gs_alloc_req for NGG passthrough. */
+   if (!(ctx->shader_info->is_ngg_passthrough && ctx->ac.family >= CHIP_NAVI23))
+      ac_build_sendmsg_gs_alloc_req(&ctx->ac, get_wave_id_in_tg(ctx), ngg_get_vtx_cnt(ctx),
+                                    ngg_get_prim_cnt(ctx));
 
    /* TODO: streamout queries */
    /* Export primitive data to the index buffer.
