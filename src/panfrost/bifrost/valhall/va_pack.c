@@ -453,8 +453,10 @@ va_pack_alu(const bi_instr *I)
          unsigned offs = (i == 1) ? 26 : 36;
          hex |= (uint64_t) va_pack_widen(src.swizzle, src_info.size) << offs;
       } else if (src_info.lane) {
-         unsigned offs = 28;
-         assert(i == 0 && "todo: MKVEC");
+         unsigned offs = (I->op == BI_OPCODE_MKVEC_V2I8) ?
+                         ((i == 0) ? 38 : 36) :
+                         28;
+
          if (src_info.size == VA_SIZE_16) {
             hex |= (src.swizzle == BI_SWIZZLE_H11 ? 1 : 0) << offs;
          } else if (I->op == BI_OPCODE_BRANCHZ_I16) {
