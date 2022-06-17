@@ -63,11 +63,35 @@ fdl6_format_swiz(enum pipe_format format, bool has_z24uint_s8uint,
    format_swiz[2] = PIPE_SWIZZLE_Z;
    format_swiz[3] = PIPE_SWIZZLE_W;
 
+   /* Note: Using the swizzle here to do anything other than replace with a
+    * constant or replicate a component breaks border colors, because border
+    * color replacement will happen before this swizzle is applied but it's
+    * supposed to happen after any "hidden" swizzles that are applied by the
+    * driver as part of implementing the API format. There are a few
+    * exceptions, called out below.
+    */
    switch (format) {
    case PIPE_FORMAT_R8G8_R8B8_UNORM:
    case PIPE_FORMAT_G8R8_B8R8_UNORM:
    case PIPE_FORMAT_G8_B8R8_420_UNORM:
    case PIPE_FORMAT_G8_B8_R8_420_UNORM:
+      /* These formats are currently only used for Vulkan, and border colors
+       * aren't allowed on these formats in Vulkan because, from the
+       * description of VkImageViewCreateInfo:
+       *
+       *    If the image has a multi-planar format and
+       *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_COLOR_BIT, ... then
+       *    ... the sampler to be used with the image view must enable sampler
+       *    ycbcr conversion.
+       *
+       * combined with this VU on VkSamplerCreateInfo:
+       *
+       *    If sampler ycbcr conversion is enabled, addressModeU,
+       *    addressModeV, and addressModeW must be
+       *    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, ...
+       *
+       * This makes the swizzle safe.
+       */
       format_swiz[0] = PIPE_SWIZZLE_Z;
       format_swiz[1] = PIPE_SWIZZLE_X;
       format_swiz[2] = PIPE_SWIZZLE_Y;
@@ -95,7 +119,10 @@ fdl6_format_swiz(enum pipe_format format, bool has_z24uint_s8uint,
       break;
 
    default:
-      /* Our I, L, A, and LA formats use R or RG HW formats. */
+      /* Our I, L, A, and LA formats use R or RG HW formats. These aren't
+       * supported in Vulkan, and freedreno uses a hack to get the border
+       * colors correct by undoing these swizzles.
+       */
       if (util_format_is_alpha(format)) {
          format_swiz[0] = PIPE_SWIZZLE_0;
          format_swiz[1] = PIPE_SWIZZLE_0;
