@@ -70,6 +70,7 @@ class Format(Enum):
    PSEUDO_BARRIER = 18
    PSEUDO_REDUCTION = 19
    VOP3P = 20
+   VINTERP_INREG = 21
    VOP1 = 1 << 8
    VOP2 = 1 << 9
    VOPC = 1 << 10
@@ -163,6 +164,9 @@ class Format(Enum):
       elif self == Format.VOP3P:
          return [('uint8_t', 'opsel_lo', None),
                  ('uint8_t', 'opsel_hi', None)]
+      elif self == Format.VINTERP_INREG:
+         return [('unsigned', 'wait_exp', 7),
+                 ('uint8_t', 'opsel', 0)]
       elif self in [Format.FLAT, Format.GLOBAL, Format.SCRATCH]:
          return [('int16_t', 'offset', 0),
                  ('memory_sync_info', 'sync', 'memory_sync_info()'),
@@ -999,7 +1003,7 @@ opcode("v_dot2_f32_f16", -1, 0x23, 0x13, 0x13, Format.VOP3P, InstrClass.Valu32)
 opcode("v_dot2_f32_bf16", -1, -1, -1, 0x1a, Format.VOP3P, InstrClass.Valu32)
 
 
-# VINTERP instructions:
+# VINTRP (GFX6 - GFX10.3) instructions:
 VINTRP = {
    (0x00, "v_interp_p1_f32"),
    (0x01, "v_interp_p2_f32"),
@@ -1008,6 +1012,20 @@ VINTRP = {
 # (gfx6, gfx7, gfx8, gfx9, gfx10, gfx11, name) = (code, code, code, code, code, code, name)
 for (code, name) in VINTRP:
    opcode(name, code, code, code, -1, Format.VINTRP, InstrClass.Valu32)
+
+
+# VINTERP (GFX11+) instructions:
+VINTERP = {
+   (0x00, "v_interp_p10_f32_inreg"),
+   (0x01, "v_interp_p2_f32_inreg"),
+   (0x02, "v_interp_p10_f16_f32_inreg"),
+   (0x03, "v_interp_p2_f16_f32_inreg"),
+   (0x04, "v_interp_p10_rtz_f16_f32_inreg"),
+   (0x05, "v_interp_p2_rtz_f16_f32_inreg"),
+}
+for (code, name) in VINTERP:
+   opcode(name, -1, -1, -1, code, Format.VINTERP_INREG, InstrClass.Valu32)
+
 
 # VOP3 instructions: 3 inputs, 1 output
 # VOP3b instructions: have a unique scalar output, e.g. VOP2 with vcc out

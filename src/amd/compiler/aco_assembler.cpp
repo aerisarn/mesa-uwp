@@ -374,6 +374,24 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       }
       break;
    }
+   case Format::VINTERP_INREG: {
+      VINTERP_inreg_instruction& interp = instr->vinterp_inreg();
+      uint32_t encoding = (0b11001101 << 24);
+      encoding |= reg(ctx, instr->definitions[0], 8);
+      encoding |= (uint32_t)interp.wait_exp << 8;
+      encoding |= (uint32_t)interp.opsel << 11;
+      encoding |= (uint32_t)interp.clamp << 15;
+      encoding |= opcode << 16;
+      out.push_back(encoding);
+
+      encoding = 0;
+      for (unsigned i = 0; i < instr->operands.size(); i++)
+         encoding |= reg(ctx, instr->operands[i]) << (i * 9);
+      for (unsigned i = 0; i < 3; i++)
+         encoding |= interp.neg[i] << (29 + i);
+      out.push_back(encoding);
+      break;
+   }
    case Format::DS: {
       DS_instruction& ds = instr->ds();
       uint32_t encoding = (0b110110 << 26);

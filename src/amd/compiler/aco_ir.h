@@ -96,6 +96,7 @@ enum class Format : std::uint16_t {
 
    /* Vector ALU Formats */
    VOP3P = 20,
+   VINTERP_INREG = 21,
    VOP1 = 1 << 8,
    VOP2 = 1 << 9,
    VOPC = 1 << 10,
@@ -1010,6 +1011,7 @@ struct Pseudo_branch_instruction;
 struct Pseudo_barrier_instruction;
 struct Pseudo_reduction_instruction;
 struct VOP3P_instruction;
+struct VINTERP_inreg_instruction;
 struct VOP1_instruction;
 struct VOP2_instruction;
 struct VOPC_instruction;
@@ -1258,6 +1260,17 @@ struct Instruction {
       return *(VOP3P_instruction*)this;
    }
    constexpr bool isVOP3P() const noexcept { return format == Format::VOP3P; }
+   VINTERP_inreg_instruction& vinterp_inreg() noexcept
+   {
+      assert(isVINTERP_INREG());
+      return *(VINTERP_inreg_instruction*)this;
+   }
+   const VINTERP_inreg_instruction& vinterp_inreg() const noexcept
+   {
+      assert(isVINTERP_INREG());
+      return *(VINTERP_inreg_instruction*)this;
+   }
+   constexpr bool isVINTERP_INREG() const noexcept { return format == Format::VINTERP_INREG; }
    VOP1_instruction& vop1() noexcept
    {
       assert(isVOP1());
@@ -1445,6 +1458,14 @@ struct VOP3P_instruction : public Instruction {
    uint8_t padding1;
 };
 static_assert(sizeof(VOP3P_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+
+struct VINTERP_inreg_instruction : public Instruction {
+   uint8_t wait_exp : 3;
+   bool clamp : 1;
+   uint8_t opsel : 4;
+   bool neg[3];
+};
+static_assert(sizeof(VINTERP_inreg_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
 /**
  * Data Parallel Primitives Format:

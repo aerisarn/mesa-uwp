@@ -503,7 +503,7 @@ get_subdword_operand_stride(amd_gfx_level gfx_level, const aco_ptr<Instruction>&
    }
 
    assert(rc.bytes() <= 2);
-   if (instr->isVALU()) {
+   if (instr->isVALU() || instr->isVINTERP_INREG()) {
       if (can_use_SDWA(gfx_level, instr, false))
          return rc.bytes();
       if (can_use_opsel(gfx_level, instr->opcode, idx))
@@ -538,11 +538,16 @@ add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, uns
       return;
 
    assert(rc.bytes() <= 2);
-   if (instr->isVALU()) {
+   if (instr->isVALU() || instr->isVINTERP_INREG()) {
       /* check if we can use opsel */
       if (instr->format == Format::VOP3) {
          assert(byte == 2);
          instr->vop3().opsel |= 1 << idx;
+         return;
+      }
+      if (instr->isVINTERP_INREG()) {
+         assert(byte == 2);
+         instr->vinterp_inreg().opsel |= 1 << idx;
          return;
       }
       if (instr->isVOP3P()) {
@@ -608,7 +613,7 @@ get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr
          return std::make_pair(4, rc.size() * 4u);
    }
 
-   if (instr->isVALU() || instr->isVINTRP()) {
+   if (instr->isVALU() || instr->isVINTRP() || instr->isVINTERP_INREG()) {
       assert(rc.bytes() <= 2);
 
       if (can_use_SDWA(gfx_level, instr, false))
@@ -676,7 +681,7 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
    if (instr->isPseudo())
       return;
 
-   if (instr->isVALU()) {
+   if (instr->isVALU() || instr->isVINTERP_INREG()) {
       amd_gfx_level gfx_level = program->gfx_level;
       assert(instr->definitions[0].bytes() <= 2);
 
@@ -688,6 +693,11 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
          assert(reg.byte() == 2);
          assert(can_use_opsel(gfx_level, instr->opcode, -1));
          instr->vop3().opsel |= (1 << 3); /* dst in high half */
+         return;
+      } else if (instr->isVINTERP_INREG()) {
+         assert(reg.byte() == 2);
+         assert(can_use_opsel(gfx_level, instr->opcode, -1));
+         instr->vinterp_inreg().opsel |= (1 << 3); /* dst in high half */
          return;
       }
 

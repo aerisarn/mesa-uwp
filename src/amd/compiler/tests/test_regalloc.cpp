@@ -379,3 +379,28 @@ BEGIN_TEST(regalloc.branch_def_phis_at_branch_block)
 
    finish_ra_test(ra_test_policy());
 END_TEST
+
+BEGIN_TEST(regalloc.vinterp_fp16)
+   //>> v1: %in0:v[0], v1: %in1:v[1], v1: %in2:v[2] = p_startpgm
+   if (!setup_cs("v1 v1 v1", GFX11))
+      return;
+
+   //! v2b: %lo:v[3][0:16], v2b: %hi:v[3][16:32] = p_split_vector %in0:v[0]
+   Temp lo = bld.tmp(v2b);
+   Temp hi = bld.tmp(v2b);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), inputs[0]);
+
+   //! v1: %tmp0:v[1] = v_interp_p10_f16_f32_inreg %lo:v[3][0:16], %in1:v[1], hi(%hi:v[3][16:32])
+   //! p_unit_test %tmp0:v[1]
+   Temp tmp0 = bld.vinterp_inreg(aco_opcode::v_interp_p10_f16_f32_inreg, bld.def(v1), lo, inputs[1], hi);
+   bld.pseudo(aco_opcode::p_unit_test, tmp0);
+
+   //! v2b: %tmp1:v[0][16:32] = v_interp_p2_f16_f32_inreg %in0:v[0], %in2:v[2], %tmp0:v[1] opsel_hi
+   //! v1: %tmp2:v[0] = p_create_vector 0, %tmp1:v[0][16:32]
+   //! p_unit_test %tmp2:v[0]
+   Temp tmp1 = bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, bld.def(v2b), inputs[0], inputs[2], tmp0);
+   Temp tmp2 = bld.pseudo(aco_opcode::p_create_vector, bld.def(v1), Operand::zero(2), tmp1);
+   bld.pseudo(aco_opcode::p_unit_test, tmp2);
+
+   finish_ra_test(ra_test_policy());
+END_TEST

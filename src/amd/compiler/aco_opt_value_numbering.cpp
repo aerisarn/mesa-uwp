@@ -99,6 +99,7 @@ struct InstrHash {
       switch (instr->format) {
       case Format::SMEM: return hash_murmur_32<SMEM_instruction>(instr);
       case Format::VINTRP: return hash_murmur_32<VINTRP_instruction>(instr);
+      case Format::VINTERP_INREG: return hash_murmur_32<VINTERP_inreg_instruction>(instr);
       case Format::DS: return hash_murmur_32<DS_instruction>(instr);
       case Format::SOPP: return hash_murmur_32<SOPP_instruction>(instr);
       case Format::SOPK: return hash_murmur_32<SOPK_instruction>(instr);
@@ -234,6 +235,12 @@ struct InstrPred {
          }
          return a3P.opsel_lo == b3P.opsel_lo && a3P.opsel_hi == b3P.opsel_hi &&
                 a3P.clamp == b3P.clamp;
+      }
+      case Format::VINTERP_INREG: {
+         VINTERP_inreg_instruction& aI = a->vinterp_inreg();
+         VINTERP_inreg_instruction& bI = b->vinterp_inreg();
+         return aI.wait_exp == bI.wait_exp && aI.clamp == bI.clamp && aI.opsel == bI.opsel &&
+                aI.neg[0] == bI.neg[0] && aI.neg[1] == bI.neg[1] && aI.neg[2] == bI.neg[2];
       }
       case Format::PSEUDO_REDUCTION: {
          Pseudo_reduction_instruction& aR = a->reduction();

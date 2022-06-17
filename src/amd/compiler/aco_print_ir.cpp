@@ -347,6 +347,12 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       print_sync(smem.sync, output);
       break;
    }
+   case Format::VINTERP_INREG: {
+      const VINTERP_inreg_instruction& vinterp = instr->vinterp_inreg();
+      if (vinterp.wait_exp != 7)
+         fprintf(output, " wait_exp:%u", vinterp.wait_exp);
+      break;
+   }
    case Format::VINTRP: {
       const VINTRP_instruction& vintrp = instr->vintrp();
       fprintf(output, " attr%d.%c", vintrp.attribute, "xyzw"[vintrp.component]);
@@ -655,6 +661,12 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
          default: break;
          }
       }
+   } else if (instr->isVINTERP_INREG()) {
+      const VINTERP_inreg_instruction& vinterp = instr->vinterp_inreg();
+      if (vinterp.clamp)
+         fprintf(output, " clamp");
+      if (vinterp.opsel & (1 << 3))
+         fprintf(output, " opsel_hi");
    }
 }
 
@@ -713,6 +725,12 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
             neg[i] = vop3p.neg_lo[i];
             f2f32[i] = vop3p.opsel_hi & (1 << i);
             opsel[i] = f2f32[i] && (vop3p.opsel_lo & (1 << i));
+         }
+      } else if (instr->isVINTERP_INREG()) {
+         const VINTERP_inreg_instruction& vinterp = instr->vinterp_inreg();
+         for (unsigned i = 0; i < MIN2(num_operands, 3); ++i) {
+            neg[i] = vinterp.neg[i];
+            opsel[i] = vinterp.opsel & (1 << i);
          }
       }
       for (unsigned i = 0; i < num_operands; ++i) {
