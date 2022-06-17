@@ -4848,9 +4848,8 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
          */
         bool packed_tls = (gpu_id >= 0x9000);
 
-        /* Lower large arrays to scratch and small arrays to bcsel (TODO: tune
-         * threshold, but not until addresses / csel is optimized better) */
-        NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 16,
+        /* Lower large arrays to scratch and small arrays to bcsel */
+        NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 256,
                         packed_tls ?
                         glsl_get_vec4_size_align_bytes :
                         glsl_get_natural_size_align_bytes);
