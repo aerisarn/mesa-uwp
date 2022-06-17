@@ -253,9 +253,7 @@ static void
 agx_bind_zsa_state(struct pipe_context *pctx, void *cso)
 {
    struct agx_context *ctx = agx_context(pctx);
-
-   if (cso)
-      memcpy(&ctx->zs, cso, sizeof(ctx->zs));
+   ctx->zs = cso;
 }
 
 static void *
@@ -1498,7 +1496,7 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
    struct agx_rasterizer_packed out;
 
    agx_pack(&out, RASTERIZER, cfg) {
-      bool back_stencil = ctx->zs.base.stencil[1].enabled;
+      bool back_stencil = ctx->zs->base.stencil[1].enabled;
       cfg.front.stencil_reference = ctx->stencil_ref.ref_value[0];
       cfg.back.stencil_reference = back_stencil ?
          ctx->stencil_ref.ref_value[1] :
@@ -1518,12 +1516,12 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
    };
 
    /* Words 2-3: front */
-   out.opaque[2] |= ctx->zs.front.opaque[0];
-   out.opaque[3] |= ctx->zs.front.opaque[1];
+   out.opaque[2] |= ctx->zs->front.opaque[0];
+   out.opaque[3] |= ctx->zs->front.opaque[1];
 
    /* Words 4-5: back */
-   out.opaque[4] |= ctx->zs.back.opaque[0];
-   out.opaque[5] |= ctx->zs.back.opaque[1];
+   out.opaque[4] |= ctx->zs->back.opaque[0];
+   out.opaque[5] |= ctx->zs->back.opaque[1];
 
    return agx_pool_upload_aligned(pool, &out, sizeof(out), 64);
 }

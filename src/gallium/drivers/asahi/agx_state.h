@@ -156,7 +156,7 @@ struct agx_context {
    struct agx_stage stage[PIPE_SHADER_TYPES];
    struct agx_attribute *attributes;
    struct agx_rasterizer *rast;
-   struct agx_zsa zs;
+   struct agx_zsa *zs;
    struct agx_blend *blend;
    struct pipe_blend_color blend_color;
    struct pipe_viewport_state viewport;
