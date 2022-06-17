@@ -1038,7 +1038,8 @@ static void
 dzn_pipeline_init(struct dzn_pipeline *pipeline,
                   struct dzn_device *device,
                   VkPipelineBindPoint type,
-                  struct dzn_pipeline_layout *layout)
+                  struct dzn_pipeline_layout *layout,
+                  D3D12_PIPELINE_STATE_STREAM_DESC *stream_desc)
 {
    pipeline->type = type;
    pipeline->root.sets_param_count = layout->root.sets_param_count;
@@ -1055,6 +1056,15 @@ dzn_pipeline_init(struct dzn_pipeline *pipeline,
    STATIC_ASSERT(sizeof(layout->sets) == sizeof(pipeline->sets));
    memcpy(pipeline->sets, layout->sets, sizeof(pipeline->sets));
    vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
+
+   uint32_t max_streamsz =
+      type == VK_PIPELINE_BIND_POINT_GRAPHICS ?
+      MAX_GFX_PIPELINE_STATE_STREAM_SIZE :
+      MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE;
+
+   d3d12_pipeline_state_stream_new_desc(stream_desc, max_streamsz, ROOT_SIGNATURE,
+                                        ID3D12RootSignature *, root_sig);
+   *root_sig = pipeline->root.sig;
 }
 
 static void
@@ -1146,7 +1156,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
 
    dzn_pipeline_init(&pipeline->base, device,
                      VK_PIPELINE_BIND_POINT_GRAPHICS,
-                     layout);
+                     layout, stream_desc);
    D3D12_INPUT_ELEMENT_DESC attribs[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
    enum pipe_format vi_conversions[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
 
@@ -1263,9 +1273,6 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                                                pCreateInfo);
    if (ret != VK_SUCCESS)
       goto out;
-
-   d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, ROOT_SIGNATURE, ID3D12RootSignature*, root_sig);
-   *root_sig = pipeline->base.root.sig;
 
    if (!pipeline->variants) {
       hres = ID3D12Device2_CreatePipelineState(device->dev, stream_desc,
@@ -1546,18 +1553,16 @@ dzn_compute_pipeline_create(struct dzn_device *device,
    if (!pipeline)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   dzn_pipeline_init(&pipeline->base, device,
-                     VK_PIPELINE_BIND_POINT_COMPUTE,
-                     layout);
-
    uintptr_t state_buf[MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
    D3D12_PIPELINE_STATE_STREAM_DESC stream_desc = {
       .pPipelineStateSubobjectStream = state_buf,
    };
 
+   dzn_pipeline_init(&pipeline->base, device,
+                     VK_PIPELINE_BIND_POINT_COMPUTE,
+                     layout, &stream_desc);
+
    d3d12_compute_pipeline_state_stream_new_desc(&stream_desc, CS, D3D12_SHADER_BYTECODE, shader);
-   d3d12_compute_pipeline_state_stream_new_desc(&stream_desc, ROOT_SIGNATURE, ID3D12RootSignature *, root_sig);
-   *root_sig = pipeline->base.root.sig;
 
    nir_shader *nir = NULL;
    VkResult ret =
