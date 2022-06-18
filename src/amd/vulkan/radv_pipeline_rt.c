@@ -152,6 +152,12 @@ fail:
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
+enum rt_ahit_status {
+   rt_ahit_status_accept,
+   rt_ahit_status_ignore,
+   rt_ahit_status_terminate,
+};
+
 /*
  * Global variables for an RT pipeline
  */
@@ -657,7 +663,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_ignore_ray_intersection: {
                b_shader.cursor = nir_instr_remove(instr);
-               nir_store_var(&b_shader, vars->ahit_status, nir_imm_int(&b_shader, 1), 1);
+               nir_store_var(&b_shader, vars->ahit_status,
+                             nir_imm_int(&b_shader, rt_ahit_status_ignore), 1);
 
                /* The if is a workaround to avoid having to fix up control flow manually */
                nir_push_if(&b_shader, nir_imm_true(&b_shader));
@@ -667,7 +674,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_terminate_ray: {
                b_shader.cursor = nir_instr_remove(instr);
-               nir_store_var(&b_shader, vars->ahit_status, nir_imm_int(&b_shader, 2), 1);
+               nir_store_var(&b_shader, vars->ahit_status,
+                             nir_imm_int(&b_shader, rt_ahit_status_terminate), 1);
 
                /* The if is a workaround to avoid having to fix up control flow manually */
                nir_push_if(&b_shader, nir_imm_true(&b_shader));
@@ -684,7 +692,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                      nir_fge(&b_shader, nir_load_var(&b_shader, vars->tmax), intr->src[0].ssa),
                      nir_fge(&b_shader, intr->src[0].ssa, nir_load_var(&b_shader, vars->tmin))));
                {
-                  nir_store_var(&b_shader, vars->ahit_status, nir_imm_int(&b_shader, 0), 1);
+                  nir_store_var(&b_shader, vars->ahit_status,
+                                nir_imm_int(&b_shader, rt_ahit_status_accept), 1);
                   nir_store_var(&b_shader, vars->tmax, intr->src[0].ssa, 1);
                   nir_store_var(&b_shader, vars->hit_kind, intr->src[1].ssa, 1);
                }
@@ -1188,7 +1197,7 @@ insert_traversal_triangle_case(struct radv_device *device,
             b, ij, nir_iadd_imm(b, nir_load_var(b, vars->stack_ptr), RADV_HIT_ATTRIB_OFFSET),
             .align_mul = 16);
 
-         nir_store_var(b, vars->ahit_status, nir_imm_int(b, 0), 1);
+         nir_store_var(b, vars->ahit_status, nir_imm_int(b, rt_ahit_status_accept), 1);
 
          nir_push_if(b, nir_inot(b, is_opaque));
          {
@@ -1208,7 +1217,8 @@ insert_traversal_triangle_case(struct radv_device *device,
 
             visit_any_hit_shaders(device, pCreateInfo, b, &inner_vars);
 
-            nir_push_if(b, nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), 1));
+            nir_push_if(b,
+                        nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), rt_ahit_status_ignore));
             {
                nir_jump(b, nir_jump_continue);
             }
@@ -1239,7 +1249,8 @@ insert_traversal_triangle_case(struct radv_device *device,
          nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
             b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
             0);
-         nir_ssa_def *ray_terminated = nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), 2);
+         nir_ssa_def *ray_terminated =
+            nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), rt_ahit_status_terminate);
          nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
          {
             nir_jump(b, nir_jump_break);
@@ -1299,7 +1310,7 @@ insert_traversal_aabb_case(struct radv_device *device,
 
       load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, 4);
 
-      nir_store_var(b, vars->ahit_status, nir_imm_int(b, 1), 1);
+      nir_store_var(b, vars->ahit_status, nir_imm_int(b, rt_ahit_status_ignore), 1);
 
       nir_push_if(b, nir_ine_imm(b, nir_load_var(b, inner_vars.idx), 0));
       for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
@@ -1361,14 +1372,14 @@ insert_traversal_aabb_case(struct radv_device *device,
          nir_push_if(b, nir_iand(b, nir_fge(b, nir_load_var(b, vars->tmax), t_min),
                                  nir_fge(b, t_max, nir_load_var(b, vars->tmin))));
          {
-            nir_store_var(b, vars->ahit_status, nir_imm_int(b, 0), 1);
+            nir_store_var(b, vars->ahit_status, nir_imm_int(b, rt_ahit_status_accept), 1);
             nir_store_var(b, vars->tmax, nir_fmax(b, t_min, nir_load_var(b, vars->tmin)), 1);
          }
          nir_pop_if(b, NULL);
       }
       nir_pop_if(b, NULL);
 
-      nir_push_if(b, nir_ine_imm(b, nir_load_var(b, vars->ahit_status), 1));
+      nir_push_if(b, nir_ine_imm(b, nir_load_var(b, vars->ahit_status), rt_ahit_status_ignore));
       {
          nir_store_var(b, vars->primitive_id, primitive_id, 1);
          nir_store_var(b, vars->geometry_id_and_flags, geometry_id_and_flags, 1);
@@ -1392,7 +1403,8 @@ insert_traversal_aabb_case(struct radv_device *device,
          nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
             b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
             0);
-         nir_ssa_def *ray_terminated = nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), 2);
+         nir_ssa_def *ray_terminated =
+            nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), rt_ahit_status_terminate);
          nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
          {
             nir_jump(b, nir_jump_break);
