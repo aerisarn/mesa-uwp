@@ -1160,8 +1160,8 @@ insert_traversal_triangle_case(struct radv_device *device,
                      0)));
 
    nir_push_if(b, nir_iand(b,
-                           nir_iand(b, nir_fge(b, nir_load_var(b, vars->tmax), dist),
-                                    nir_fge(b, dist, nir_load_var(b, vars->tmin))),
+                           nir_iand(b, nir_flt(b, dist, nir_load_var(b, vars->tmax)),
+                                    nir_flt(b, nir_load_var(b, vars->tmin), dist)),
                            not_cull));
    {
 
