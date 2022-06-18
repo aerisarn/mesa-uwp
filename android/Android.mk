@@ -98,6 +98,8 @@ LOCAL_SHARED_LIBRARIES += \
 MESON_GEN_PKGCONFIGS += android.hardware.graphics.mapper:4.0
 endif
 
+__MY_SHARED_LIBRARIES := $(LOCAL_SHARED_LIBRARIES)
+
 ifeq ($(TARGET_IS_64_BIT),true)
 LOCAL_MULTILIB := 64
 else
@@ -112,7 +114,13 @@ endif
 
 #-------------------------------------------------------------------------------
 
+# $1: name
+# $2: symlink suffix
+# $3: subdir
+# $4: source prebuilt
+# $5: export headers
 define mesa3d-lib
+include $(CLEAR_VARS)
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 LOCAL_MODULE := $1
 LOCAL_VENDOR_MODULE := true
@@ -127,13 +135,10 @@ endif
 LOCAL_CHECK_ELF_FILES := false
 LOCAL_MODULE_SUFFIX := .so
 LOCAL_MODULE_SYMLINKS := $1$2
-include $(BUILD_PREBUILT)
-include $(CLEAR_VARS)
-endef
-
-__MY_SHARED_LIBRARIES := $(LOCAL_SHARED_LIBRARIES)
-include $(CLEAR_VARS)
 LOCAL_SHARED_LIBRARIES := $(__MY_SHARED_LIBRARIES)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $5
+include $(BUILD_PREBUILT)
+endef
 
 # Module 'libgallium_dri', produces '/vendor/lib{64}/dri/libgallium_dri.so'
 # This module also trigger DRI symlinks creation process
@@ -153,10 +158,8 @@ $(foreach driver,$(BOARD_MESA3D_VULKAN_DRIVERS), \
     $(eval $(call mesa3d-lib,vulkan.$(MESA_VK_LIB_SUFFIX_$(driver)),.so.0,hw,MESA3D_VULKAN_$(driver)_BIN)))
 
 ifneq ($(filter true, $(BOARD_MESA3D_BUILD_LIBGBM)),)
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(MESA3D_TOP)/src/gbm/main
-
 # Modules 'libgbm', produces '/vendor/lib{64}/libgbm.so'
-$(eval $(call mesa3d-lib,libgbm,.so.1,,MESA3D_LIBGBM_BIN))
+$(eval $(call mesa3d-lib,libgbm,.so.1,,MESA3D_LIBGBM_BIN,$(MESA3D_TOP)/src/gbm/main))
 endif
 
 #-------------------------------------------------------------------------------
