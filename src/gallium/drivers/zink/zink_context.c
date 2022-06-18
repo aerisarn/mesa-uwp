@@ -1378,6 +1378,7 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
       return;
 
    struct zink_resource *res = zink_resource(image_view->base.resource);
+   res->image_binds[stage] &= ~BITFIELD_BIT(slot);
    unbind_shader_image_counts(ctx, res, is_compute, image_view->base.access & PIPE_IMAGE_ACCESS_WRITE);
 
    if (image_view->base.resource->target == PIPE_BUFFER) {
@@ -1512,6 +1513,7 @@ zink_set_shader_images(struct pipe_context *pctx,
                                        zink_resource_access_is_write(access));
          update = true;
          update_descriptor_state_image(ctx, p_stage, start_slot + i, res);
+         res->image_binds[p_stage] |= BITFIELD_BIT(start_slot + i);
       } else if (image_view->base.resource) {
          update = true;
 
