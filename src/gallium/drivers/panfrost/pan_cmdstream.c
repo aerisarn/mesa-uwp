@@ -3345,8 +3345,12 @@ panfrost_emit_draw(void *out,
                          */
                         cfg.evaluate_per_sample |= fs->info.fs.sample_shading;
 
+                        /* Unlike Bifrost, alpha-to-coverage must be included in
+                         * this identically-named flag. Confusing, isn't it?
+                         */
                         cfg.shader_modifies_coverage = fs->info.fs.writes_coverage ||
-                                                       fs->info.fs.can_discard;
+                                                       fs->info.fs.can_discard ||
+                                                       ctx->blend->base.alpha_to_coverage;
 
                         /* Blend descriptors are only accessed by a BLEND
                          * instruction on Valhall. It follows that if the
