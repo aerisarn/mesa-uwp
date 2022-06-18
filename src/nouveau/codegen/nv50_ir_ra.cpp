@@ -26,21 +26,9 @@
 #include <algorithm>
 #include <stack>
 #include <limits>
-#if __cplusplus >= 201103L
 #include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
 
 namespace nv50_ir {
-
-#if __cplusplus >= 201103L
-using std::hash;
-using std::unordered_map;
-#else
-using std::tr1::hash;
-using std::tr1::unordered_map;
-#endif
 
 #define MAX_REGISTER_FILE_SIZE 256
 
@@ -410,12 +398,12 @@ RegAlloc::PhiMovesPass::needNewElseBlock(BasicBlock *b, BasicBlock *p)
 
 struct PhiMapHash {
    size_t operator()(const std::pair<Instruction *, BasicBlock *>& val) const {
-      return hash<Instruction*>()(val.first) * 31 +
-         hash<BasicBlock*>()(val.second);
+      return std::hash<Instruction*>()(val.first) * 31 +
+         std::hash<BasicBlock*>()(val.second);
    }
 };
 
-typedef unordered_map<
+typedef std::unordered_map<
    std::pair<Instruction *, BasicBlock *>, Value *, PhiMapHash> PhiMap;
 
 // Critical edges need to be split up so that work can be inserted along
@@ -1837,7 +1825,7 @@ SpillCodeInserter::run(const std::list<ValuePair>& lst)
       // Keep track of which instructions to delete later. Deleting them
       // inside the loop is unsafe since a single instruction may have
       // multiple destinations that all need to be spilled (like OP_SPLIT).
-      unordered_set<Instruction *> to_del;
+      std::unordered_set<Instruction *> to_del;
 
       std::list<ValueDef *> &defs = mergedDefs(lval);
       for (Value::DefIterator d = defs.begin(); d != defs.end();
@@ -1887,7 +1875,7 @@ SpillCodeInserter::run(const std::list<ValuePair>& lst)
          }
       }
 
-      for (unordered_set<Instruction *>::const_iterator it = to_del.begin();
+      for (std::unordered_set<Instruction *>::const_iterator it = to_del.begin();
            it != to_del.end(); ++it) {
          mergedDefs.removeDefsOfInstruction(*it);
          delete_Instruction(func->getProgram(), *it);

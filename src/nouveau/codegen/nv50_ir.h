@@ -28,9 +28,9 @@
 #include <stdint.h>
 #include <deque>
 #include <list>
+#include <unordered_set>
 #include <vector>
 
-#include "unordered_set.h"
 #include "nv50_ir_util.h"
 #include "nv50_ir_graph.h"
 
@@ -751,10 +751,10 @@ public:
 
    static inline Value *get(Iterator&);
 
-   unordered_set<ValueRef *> uses;
+   std::unordered_set<ValueRef *> uses;
    std::list<ValueDef *> defs;
-   typedef unordered_set<ValueRef *>::iterator UseIterator;
-   typedef unordered_set<ValueRef *>::const_iterator UseCIterator;
+   typedef std::unordered_set<ValueRef *>::iterator UseIterator;
+   typedef std::unordered_set<ValueRef *>::const_iterator UseCIterator;
    typedef std::list<ValueDef *>::iterator DefIterator;
    typedef std::list<ValueDef *>::const_iterator DefCIterator;
 

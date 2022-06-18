@@ -437,7 +437,7 @@ NVC0LegalizePostRA::findFirstUses(
    int minGPR = texi->def(0).rep()->reg.data.id;
    int maxGPR = minGPR + texi->def(0).rep()->reg.size / 4 - 1;
 
-   unordered_set<const BasicBlock *> visited;
+   std::unordered_set<const BasicBlock *> visited;
    findFirstUsesBB(minGPR, maxGPR, texi->next, texi, uses, visited);
 }
 
@@ -445,7 +445,7 @@ void
 NVC0LegalizePostRA::findFirstUsesBB(
    int minGPR, int maxGPR, Instruction *start,
    const Instruction *texi, std::list<TexUse> &uses,
-   unordered_set<const BasicBlock *> &visited)
+   std::unordered_set<const BasicBlock *> &visited)
 {
    const BasicBlock *bb = start->bb;
 

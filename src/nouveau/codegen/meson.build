@@ -47,7 +47,6 @@ files_libnouveau_codegen = files(
   'nv50_ir_target_nv50.h',
   'nv50_ir_util.cpp',
   'nv50_ir_util.h',
-  'unordered_set.h',
   'nv50_ir_emit_gv100.cpp',
   'nv50_ir_emit_gv100.h',
   'nv50_ir_emit_gk110.cpp',

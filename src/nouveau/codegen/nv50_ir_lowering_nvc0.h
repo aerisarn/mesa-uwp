@@ -109,7 +109,7 @@ private:
    void findFirstUses(Instruction *texi, std::list<TexUse> &uses);
    void findFirstUsesBB(int minGPR, int maxGPR, Instruction *start,
                         const Instruction *texi, std::list<TexUse> &uses,
-                        unordered_set<const BasicBlock *> &visited);
+                        std::unordered_set<const BasicBlock *> &visited);
    void addTexUse(std::list<TexUse>&, Instruction *, const Instruction *);
    const Instruction *recurseDef(const Instruction *);
 
