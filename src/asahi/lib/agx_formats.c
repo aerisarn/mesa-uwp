@@ -43,6 +43,10 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(A8R8G8B8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
    AGX_FMT(A8B8G8R8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
    AGX_FMT(B8G8R8A8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
+   AGX_FMT(R8G8B8X8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
+   AGX_FMT(X8R8G8B8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
+   AGX_FMT(X8B8G8R8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
+   AGX_FMT(B8G8R8X8_UNORM,          R8G8B8A8,      UNORM,  T, U8NORM),
 
    AGX_FMT(R16_UNORM,               R16,           UNORM,  T, U16NORM),
    AGX_FMT(R16G16_UNORM,            R16G16,        UNORM,  T, U16NORM),
@@ -54,6 +58,10 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(A8R8G8B8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
    AGX_FMT(A8B8G8R8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
    AGX_FMT(B8G8R8A8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
+   AGX_FMT(R8G8B8X8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
+   AGX_FMT(X8R8G8B8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
+   AGX_FMT(X8B8G8R8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
+   AGX_FMT(B8G8R8X8_SRGB,           R8G8B8A8,      UNORM,  T, SRGBA8),
 
    AGX_FMT(R8_SNORM,                R8,            SNORM,  T, S8NORM),
    AGX_FMT(R8G8_SNORM,              R8G8,          SNORM,  T, S8NORM),
@@ -61,6 +69,10 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(A8R8G8B8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
    AGX_FMT(A8B8G8R8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
    AGX_FMT(B8G8R8A8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
+   AGX_FMT(R8G8B8X8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
+   AGX_FMT(X8R8G8B8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
+   AGX_FMT(X8B8G8R8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
+   AGX_FMT(B8G8R8X8_SNORM,          R8G8B8A8,      SNORM,  T, S8NORM),
 
    AGX_FMT(R16_FLOAT,               R16,           FLOAT,  T, F16),
    AGX_FMT(R16G16_FLOAT,            R16G16,        FLOAT,  T, F16),
