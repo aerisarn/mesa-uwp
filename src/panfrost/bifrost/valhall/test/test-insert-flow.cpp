@@ -104,12 +104,13 @@ TEST_F(InsertFlow, TilebufferWait7) {
    });
 }
 
-TEST_F(InsertFlow, AtestWait6) {
+TEST_F(InsertFlow, AtestWait6AndWait0After) {
    CASE(FRAGMENT, {
         flow(DISCARD);
         bi_fadd_f32_to(b, bi_register(0), bi_register(0), bi_register(0));
         flow(WAIT0126);
         bi_atest_to(b, bi_register(0), bi_register(4), bi_register(5));
+        flow(WAIT0);
         flow(END);
    });
 }
