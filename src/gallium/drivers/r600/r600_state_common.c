@@ -1014,7 +1014,7 @@ static void *r600_create_shader_state(struct pipe_context *ctx,
 	else if (state->type == PIPE_SHADER_IR_NIR) {
 		sel = r600_create_shader_state_tokens(ctx, state->ir.nir, state->type, pipe_shader_type);
 	} else
-		assert(0 && "Unknown shader type\n");
+		unreachable("Unknown shader type");
 	
 	sel->so = state->stream_output;
 
