@@ -32,15 +32,16 @@ MY_PATH := $(call my-dir)
 
 AOSP_ABSOLUTE_PATH := $(realpath .)
 
-m_dummy_$(LOCAL_MULTILIB) := $(TARGET_OUT_INTERMEDIATES)/MESON_DUMMY_$(LOCAL_MULTILIB)/dummy.c
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+LOCAL_MODULE := meson.dummy.$(LOCAL_MULTILIB)
 
-$(m_dummy_$(LOCAL_MULTILIB)):
+m_dummy := $(local-generated-sources-dir)/dummy.c
+$(m_dummy):
 	mkdir -p $(dir $@)
 	touch $@
 
-LOCAL_SRC_FILES := $(call relative_top_path,$(MY_PATH))$(m_dummy_$(LOCAL_MULTILIB))
+LOCAL_GENERATED_SOURCES := $(m_dummy)
 LOCAL_VENDOR_MODULE := true
-LOCAL_MODULE := meson.dummy.$(LOCAL_MULTILIB)
 
 # Prepare intermediate variables by AOSP make/core internals
 include $(BUILD_SHARED_LIBRARY)
