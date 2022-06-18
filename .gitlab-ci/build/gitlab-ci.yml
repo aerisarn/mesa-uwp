@@ -214,7 +214,6 @@ fedora-release:
     BUILDTYPE: "release"
     C_ARGS: >
       -Wno-error=array-bounds
-      -Wno-error=maybe-uninitialized
       -Wno-error=stringop-overread
       -Wno-error=uninitialized
     CPP_ARGS: >
