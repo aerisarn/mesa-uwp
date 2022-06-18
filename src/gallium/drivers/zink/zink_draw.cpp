@@ -367,16 +367,14 @@ update_barriers(struct zink_context *ctx, bool is_compute,
             if (!is_compute && res->vbo_bind_mask) {
                access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-               if (res->write_bind_count[is_compute])
-                  pipeline |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
                bind_count -= res->vbo_bind_count;
             }
             if (bind_count)
                access |= VK_ACCESS_SHADER_READ_BIT;
-            if (!res->write_bind_count[is_compute]) {
+            if (!is_compute) {
                pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
 
-               if (res->ubo_bind_count[0])
+               if (res->ubo_bind_count[0] && (pipeline & GFX_SHADER_BITS) != GFX_SHADER_BITS)
                   pipeline |= find_pipeline_bits(res->ubo_bind_mask);
             }
          } else {
@@ -391,10 +389,10 @@ update_barriers(struct zink_context *ctx, bool is_compute,
             VkPipelineStageFlags gfx_stages = pipeline & ~(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
             /* images always need gfx stages, and buffers need gfx stages if non-vbo binds exist */
             bool needs_stages = !is_buffer || (res->bind_count[0] - res->vbo_bind_count > 0);
-            if (!gfx_stages && needs_stages) {
-               gfx_stages = find_pipeline_bits(res->sampler_binds);
-               if (!gfx_stages) //must be a shader image
-                  gfx_stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            if (gfx_stages != GFX_SHADER_BITS && needs_stages) {
+               gfx_stages |= find_pipeline_bits(res->sampler_binds);
+               if (gfx_stages != GFX_SHADER_BITS) //must be a shader image
+                  gfx_stages |= find_pipeline_bits(res->image_binds);
                pipeline |= gfx_stages;
             }
          }
