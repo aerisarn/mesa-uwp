@@ -323,15 +323,29 @@ draw(struct zink_context *ctx,
    }
 }
 
+/*
+   If a synchronization command includes a source stage mask, its first synchronization scope only
+   includes execution of the pipeline stages specified in that mask, and its first access scope only
+   includes memory accesses performed by pipeline stages specified in that mask.
+
+   If a synchronization command includes a destination stage mask, its second synchronization scope
+   only includes execution of the pipeline stages specified in that mask, and its second access scope
+   only includes memory access performed by pipeline stages specified in that mask.
+
+   - Chapter 7. Synchronization and Cache Control
+
+ * thus, all stages must be added to ensure accurate synchronization
+ */
 ALWAYS_INLINE static VkPipelineStageFlags
 find_pipeline_bits(uint32_t *mask)
 {
+   VkPipelineStageFlags pipeline = 0;
    for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
       if (mask[i]) {
-         return zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)i);
+         pipeline |= zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)i);
       }
    }
-   return 0;
+   return pipeline;
 }
 
 static void
