@@ -427,17 +427,16 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
       agx_unpack(agxdecode_dump_stream, map, BIND_FRAGMENT_PIPELINE, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
 
-      /* TODO: parse */
-      if (cmd.varyings) {
-         uint8_t *map = agxdecode_fetch_gpu_mem(cmd.varyings, 128);
+      if (cmd.cf_bindings) {
+         uint8_t *map = agxdecode_fetch_gpu_mem(cmd.cf_bindings, 128);
          hexdump(agxdecode_dump_stream, map, 128, false);
 
-         DUMP_CL(VARYING_HEADER, map, "Varying header:");
-         map += AGX_VARYING_HEADER_LENGTH;
+         DUMP_CL(CF_BINDING_HEADER, map, "Coefficient binding header:");
+         map += AGX_CF_BINDING_HEADER_LENGTH;
 
-         for (unsigned i = 0; i < cmd.input_count; ++i) {
-            DUMP_CL(VARYING, map, "Varying:");
-            map += AGX_VARYING_LENGTH;
+         for (unsigned i = 0; i < cmd.cf_binding_count; ++i) {
+            DUMP_CL(CF_BINDING, map, "Coefficient binding:");
+            map += AGX_CF_BINDING_LENGTH;
          }
       }
 

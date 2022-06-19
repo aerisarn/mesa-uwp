@@ -137,25 +137,25 @@
     <value name="XR" value="5"/>
   </enum>
 
-  <struct name="Varying header" size="4">
-    <field name="Triangle slots" size="8" start="0:0" type="uint"/>
-    <field name="Point slots" size="8" start="0:8" type="uint"/>
+  <struct name="CF binding header" size="4">
+    <field name="Number of 32-bit slots" size="8" start="0:0" type="uint"/>
+    <field name="Number of coefficient registers" size="8" start="0:8" type="uint"/>
   </struct>
 
-  <enum name="Varying Type">
-    <value name="Flat (first)" value="0"/>
-    <value name="Flat (last)" value="2"/>
-    <value name="Fragcoord W" value="3"/>
-    <value name="Smooth" value="7"/>
-    <value name="Fragcoord Z" value="11"/>
-    <value name="Point coordinates" value="19"/>
+  <enum name="Shade model">
+    <value name="Flat vertex 0" value="0"/>
+    <value name="Flat vertex 2" value="2"/>
+    <value name="Gouraud" value="3"/>
   </enum>
 
-  <struct name="Varying" size="4">
+  <struct name="CF binding" size="4">
     <field name="Components" size="2" start="0" type="uint" modifier="minus(1)"/>
-    <field name="Type" size="6" start="2" type="Varying Type" default="Smooth"/>
-    <field name="Triangle slot" size="8" start="8" type="uint"/>
-    <field name="Point slot" size="8" start="16" type="uint"/>
+    <field name="Shade model" size="2" start="2" type="Shade model"/>
+    <field name="Perspective" size="1" start="4" type="bool"/>
+    <field name="Fragcoord Z" size="1" start="5" type="bool"/>
+    <field name="Point sprite" size="1" start="6" type="bool"/>
+    <field name="Base slot" size="8" start="8" type="uint"/>
+    <field name="Base coefficient register" size="8" start="16" type="uint"/>
   </struct>
 
   <struct name="Format" size="2">
@@ -472,7 +472,6 @@
     <!-- When more than 48 textures bound, switches to 0x8, unk1 switches to
     0x6, and some funny sort of bindless access(?) is used in the shader -->
     <field name="Unk 2" size="4" start="1:12" type="hex" default="0x1"/>
-    <field name="Input count" size="8" start="1:16" type="uint" default="0"/>
     <field name="Padding 1" size="8" start="1:24" type="hex" default="0x0"/>
     <field name="Pipeline" size="32" start="2:0" type="address"/>
     <field name="Output count 1" size="8" start="3:0" type="uint" default="0"/>
@@ -491,10 +490,10 @@
     <!-- When more than 48 textures bound, switches to 0x8, unk1 switches to
     0x6, and some funny sort of bindless access(?) is used in the shader -->
     <field name="Unk 2" size="4" start="1:12" type="hex" default="0x1"/>
-    <field name="Input count" size="8" start="1:16" type="uint" default="0"/>
+    <field name="CF binding count" size="8" start="1:16" type="uint" default="0"/>
     <field name="Padding 1" size="8" start="1:24" type="hex" default="0x0"/>
     <field name="Pipeline" size="32" start="2:0" type="address"/>
-    <field name="Varyings" size="32" start="3:0" type="address"/>
+    <field name="CF bindings" size="32" start="3:0" type="address"/>
     <field name="Padding 2" size="16" start="3:16" type="hex" default="0x0"/>
     <field name="More than 4 textures" start="4:0" size="1" type="bool"/>
   </struct>

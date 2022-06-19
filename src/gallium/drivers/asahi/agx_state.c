@@ -943,15 +943,17 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
    struct agx_varyings *varyings = &compiled->info.varyings;
-   unsigned packed_varying_sz = (AGX_VARYING_HEADER_LENGTH + varyings->nr_descs * AGX_VARYING_LENGTH);
+   unsigned packed_varying_sz = (AGX_CF_BINDING_HEADER_LENGTH +
+         varyings->nr_descs * AGX_CF_BINDING_LENGTH);
    uint8_t *packed_varyings = alloca(packed_varying_sz);
 
-   agx_pack(packed_varyings, VARYING_HEADER, cfg) {
-      cfg.triangle_slots = cfg.point_slots = varyings->nr_slots;
+   agx_pack(packed_varyings, CF_BINDING_HEADER, cfg) {
+      cfg.number_of_32_bit_slots = varyings->nr_slots;
+      cfg.number_of_coefficient_registers = varyings->nr_slots;
    }
 
-   memcpy(packed_varyings + AGX_VARYING_HEADER_LENGTH, varyings->packed,
-         varyings->nr_descs * AGX_VARYING_LENGTH);
+   memcpy(packed_varyings + AGX_CF_BINDING_HEADER_LENGTH,
+         varyings->packed, varyings->nr_descs * AGX_CF_BINDING_LENGTH);
 
    if (binary.size) {
       struct agx_device *dev = agx_device(ctx->base.screen);
@@ -1366,9 +1368,9 @@ demo_launch_fragment(struct agx_context *ctx, struct agx_pool *pool, uint32_t pi
       cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
       cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
       cfg.more_than_4_textures = tex_count >= 4;
-      cfg.input_count = input_count;
+      cfg.cf_binding_count = input_count;
       cfg.pipeline = pipeline;
-      cfg.varyings = varyings;
+      cfg.cf_bindings = varyings;
    };
 
    return t.gpu;

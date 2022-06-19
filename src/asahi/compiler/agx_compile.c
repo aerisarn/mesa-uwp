@@ -1538,22 +1538,28 @@ static void
 agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
                       unsigned *remap)
 {
-   struct agx_varying_packed *packed = varyings->packed;
+   struct agx_cf_binding_packed *packed = varyings->packed;
    unsigned base = 0;
 
-   agx_pack(packed, VARYING, cfg) {
-      cfg.type = AGX_VARYING_TYPE_FRAGCOORD_W;
+   agx_pack(packed, CF_BINDING, cfg) {
+      /* W component */
+      cfg.shade_model = AGX_SHADE_MODEL_GOURAUD;
       cfg.components = 1;
-      cfg.triangle_slot = cfg.point_slot = base;
+      cfg.base_slot = base;
+      cfg.base_coefficient_register = base;
    }
 
    base++;
    packed++;
 
-   agx_pack(packed, VARYING, cfg) {
-      cfg.type = AGX_VARYING_TYPE_FRAGCOORD_Z;
+   agx_pack(packed, CF_BINDING, cfg) {
+      /* Z component */
+      cfg.shade_model = AGX_SHADE_MODEL_GOURAUD;
+      cfg.perspective = true;
+      cfg.fragcoord_z = true;
       cfg.components = 1;
-      cfg.triangle_slot = cfg.point_slot = base;
+      cfg.base_slot = base;
+      cfg.base_coefficient_register = base;
    }
 
    base++;
@@ -1585,15 +1591,18 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
      remap[var->data.driver_location] = base;
 
      for (int c = 0; c < sz; ++c) {
-        agx_pack(packed, VARYING, cfg) {
-           cfg.type = (var->data.location == VARYING_SLOT_PNTC) ?
-              AGX_VARYING_TYPE_POINT_COORDINATES :
+        agx_pack(packed, CF_BINDING, cfg) {
+           cfg.shade_model = 
               (var->data.interpolation == INTERP_MODE_FLAT) ?
-                 AGX_VARYING_TYPE_FLAT_LAST :
-                 AGX_VARYING_TYPE_SMOOTH;
+              AGX_SHADE_MODEL_FLAT_VERTEX_2 :
+              AGX_SHADE_MODEL_GOURAUD;
+
+           cfg.perspective = (var->data.interpolation != INTERP_MODE_FLAT);
+           cfg.point_sprite = (var->data.location == VARYING_SLOT_PNTC);
 
            cfg.components = channels;
-           cfg.triangle_slot = cfg.point_slot = base;
+           cfg.base_slot = base;
+           cfg.base_coefficient_register = base;
         }
 
         base += channels;

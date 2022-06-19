@@ -86,7 +86,7 @@ struct agx_push {
 
 struct agx_varyings {
    unsigned nr_descs, nr_slots;
-   struct agx_varying_packed packed[AGX_MAX_VARYINGS];
+   struct agx_cf_binding_packed packed[AGX_MAX_VARYINGS];
 };
 
 struct agx_shader_info {
