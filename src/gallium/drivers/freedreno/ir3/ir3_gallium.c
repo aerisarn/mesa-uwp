@@ -558,6 +558,9 @@ ir3_screen_init(struct pipe_screen *pscreen)
     */
    unsigned num_threads = sysconf(_SC_NPROCESSORS_ONLN) - 1;
 
+   /* Create at least one thread - even on single core CPU systems. */
+   num_threads = MAX2(1, num_threads);
+
    util_queue_init(&screen->compile_queue, "ir3q", 64, num_threads,
                    UTIL_QUEUE_INIT_RESIZE_IF_FULL |
                       UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY, NULL);
