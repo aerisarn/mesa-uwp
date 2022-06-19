@@ -427,6 +427,9 @@ struct lp_build_fs_llvm_iface {
    LLVMValueRef color_ptr_ptr;
    LLVMValueRef color_stride_ptr;
    LLVMValueRef color_sample_stride_ptr;
+   LLVMValueRef zs_base_ptr;
+   LLVMValueRef zs_stride;
+   LLVMValueRef zs_sample_stride;
    const struct lp_fragment_shader_variant_key *key;
 };
 
@@ -452,6 +455,29 @@ fs_interp(const struct lp_build_fs_iface *iface,
                               attrib, chan, loc, attrib_indir, offsets);
 }
 
+/* Convert depth-stencil format to a single component one, returning
+ * PIPE_FORMAT_NONE if it doesn't contain the required component. */
+static enum pipe_format
+select_zs_component_format(enum pipe_format format,
+                           bool fetch_stencil)
+{
+   const struct util_format_description* desc = util_format_description(format);
+   if (fetch_stencil && !util_format_has_stencil(desc))
+      return PIPE_FORMAT_NONE;
+   if (!fetch_stencil && !util_format_has_depth(desc))
+      return PIPE_FORMAT_NONE;
+
+   switch (format) {
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      return fetch_stencil ? PIPE_FORMAT_X24S8_UINT : PIPE_FORMAT_Z24X8_UNORM;
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      return fetch_stencil ? PIPE_FORMAT_S8X24_UINT : PIPE_FORMAT_X8Z24_UNORM;
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      return fetch_stencil ? PIPE_FORMAT_X32_S8X24_UINT : format;
+   default:
+      return format;
+   }
+}
 
 static void
 fs_fb_fetch(const struct lp_build_fs_iface *iface,
@@ -459,19 +485,33 @@ fs_fb_fetch(const struct lp_build_fs_iface *iface,
             int location,
             LLVMValueRef result[4])
 {
-   assert(location >= FRAG_RESULT_DATA0 && location <= FRAG_RESULT_DATA7);
-   const int cbuf = location - FRAG_RESULT_DATA0;
-
    struct lp_build_fs_llvm_iface *fs_iface = (struct lp_build_fs_llvm_iface *)iface;
    struct gallivm_state *gallivm = bld->gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    const struct lp_fragment_shader_variant_key *key = fs_iface->key;
-   LLVMValueRef index = lp_build_const_int32(gallivm, cbuf);
-   LLVMValueRef color_ptr = LLVMBuildLoad(builder, LLVMBuildGEP(builder, fs_iface->color_ptr_ptr, &index, 1, ""), "");
-   LLVMValueRef stride = LLVMBuildLoad(builder, LLVMBuildGEP(builder, fs_iface->color_stride_ptr, &index, 1, ""), "");
 
-   enum pipe_format cbuf_format = key->cbuf_format[cbuf];
-   const struct util_format_description* out_format_desc = util_format_description(cbuf_format);
+   LLVMValueRef buf_ptr;
+   LLVMValueRef stride;
+   enum pipe_format buf_format;
+
+   const bool fetch_stencil = location == FRAG_RESULT_STENCIL;
+   const bool fetch_zs = fetch_stencil || location == FRAG_RESULT_DEPTH;
+   if (fetch_zs) {
+      buf_ptr = fs_iface->zs_base_ptr;
+      stride = fs_iface->zs_stride;
+      buf_format = select_zs_component_format(key->zsbuf_format, fetch_stencil);
+   }
+   else {
+      assert(location >= FRAG_RESULT_DATA0 && location <= FRAG_RESULT_DATA7);
+      const int cbuf = location - FRAG_RESULT_DATA0;
+      LLVMValueRef index = lp_build_const_int32(gallivm, cbuf);
+
+      buf_ptr = LLVMBuildLoad(builder, LLVMBuildGEP(builder, fs_iface->color_ptr_ptr, &index, 1, ""), "");
+      stride = LLVMBuildLoad(builder, LLVMBuildGEP(builder, fs_iface->color_stride_ptr, &index, 1, ""), "");
+      buf_format = key->cbuf_format[cbuf];
+   }
+
+   const struct util_format_description* out_format_desc = util_format_description(buf_format);
    if (out_format_desc->format == PIPE_FORMAT_NONE) {
       result[0] = result[1] = result[2] = result[3] = bld->undef;
       return;
@@ -482,11 +522,20 @@ fs_fb_fetch(const struct lp_build_fs_iface *iface,
    unsigned block_width = block_size / block_height;
 
    if (key->multisample) {
-      LLVMValueRef sample_stride = LLVMBuildLoad(builder,
-                                                 LLVMBuildGEP(builder, fs_iface->color_sample_stride_ptr,
-                                                              &index, 1, ""), "");
+      LLVMValueRef sample_stride;
+
+      if (fetch_zs) {
+         sample_stride = fs_iface->zs_sample_stride;
+      }
+      else {
+         LLVMValueRef index = lp_build_const_int32(gallivm, location - FRAG_RESULT_DATA0);
+         sample_stride = LLVMBuildLoad(builder,
+                                       LLVMBuildGEP(builder, fs_iface->color_sample_stride_ptr,
+                                                    &index, 1, ""), "");
+      }
+
       LLVMValueRef sample_offset = LLVMBuildMul(builder, sample_stride, fs_iface->sample_id, "");
-      color_ptr = LLVMBuildGEP(builder, color_ptr, &sample_offset, 1, "");
+      buf_ptr = LLVMBuildGEP(builder, buf_ptr, &sample_offset, 1, "");
    }
 
    /* fragment shader executes on 4x4 blocks. depending on vector width it can
@@ -544,10 +593,12 @@ fs_fb_fetch(const struct lp_build_fs_iface *iface,
       else if (out_format_desc->channel[0].type == UTIL_FORMAT_TYPE_UNSIGNED) {
          texel_type = lp_type_uint_vec(bld->type.width, bld->type.width * bld->type.length);
       }
+   } else if (fetch_stencil) {
+      texel_type = lp_type_uint_vec(bld->type.width, bld->type.width * bld->type.length);
    }
 
    lp_build_fetch_rgba_soa(gallivm, out_format_desc, texel_type,
-                           true, color_ptr, offset,
+                           true, buf_ptr, offset,
                            NULL, NULL, NULL, result);
 }
 
@@ -955,6 +1006,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
      .color_ptr_ptr = color_ptr_ptr,
      .color_stride_ptr = color_stride_ptr,
      .color_sample_stride_ptr = color_sample_stride_ptr,
+     .zs_base_ptr = depth_base_ptr,
+     .zs_stride = depth_stride,
+     .zs_sample_stride = depth_sample_stride,
      .key = key,
    };
 
