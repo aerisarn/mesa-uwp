@@ -625,6 +625,9 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
                            struct radv_descriptor_set_layout *layout, const uint32_t *variable_count,
                            struct radv_descriptor_set **out_set)
 {
+   if (pool->entry_count == pool->max_entry_count)
+      return VK_ERROR_OUT_OF_POOL_MEMORY;
+
    struct radv_descriptor_set *set;
    uint32_t buffer_count = layout->buffer_count;
    if (variable_count) {
@@ -677,14 +680,6 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
    }
    layout_size = align_u32(layout_size, 32);
    set->header.size = layout_size;
-
-   if (pool->entry_count == pool->max_entry_count) {
-      if (!pool->host_memory_base) {
-         vk_free2(&device->vk.alloc, NULL, set);
-      }
-
-      return VK_ERROR_OUT_OF_POOL_MEMORY;
-   }
 
    /* try to allocate linearly first, so that we don't spend
     * time looking for gaps if the app only allocates &
