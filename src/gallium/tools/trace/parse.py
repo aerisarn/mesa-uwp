@@ -218,8 +218,8 @@ class TraceParser(XmlParser):
         self.element_start('trace')
         while self.token.type not in (ELEMENT_END, EOF):
             call = self.parse_call()
-            if not self.options.ignore_junk or not trace_call_ignore(call):
-                self.handle_call(call)
+            call.is_junk = trace_call_ignore(call)
+            self.handle_call(call)
         if self.token.type != EOF:
             self.element_end('trace')
 
@@ -381,6 +381,9 @@ class SimpleTraceDumper(TraceParser):
         self.pretty_printer = PrettyPrinter(self.formatter, options)
 
     def handle_call(self, call):
+        if self.options.ignore_junk and call.is_junk:
+            return
+
         call.visit(self.pretty_printer)
 
 
@@ -391,6 +394,9 @@ class TraceDumper(SimpleTraceDumper):
         self.call_stack = []
 
     def handle_call(self, call):
+        if self.options.ignore_junk and call.is_junk:
+            return
+
         if self.options.named_ptrs:
             self.call_stack.append(call)
         else:

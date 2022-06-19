@@ -319,7 +319,7 @@ if __name__ == "__main__":
 
     ### Perform diffing
     pkk_info("Matching trace sequences ...")
-    sequence = difflib.SequenceMatcher(None, stack1, stack2, autojunk=False)
+    sequence = difflib.SequenceMatcher(lambda x : x.is_junk, stack1, stack2, autojunk=False)
 
     pkk_info("Sequencing diff ...")
     opcodes = sequence.get_opcodes()
@@ -378,18 +378,24 @@ if __name__ == "__main__":
         while True:
             # Get line data
             if ncall1 < end1:
-                printer.entry_start(show_args)
-                stack1[ncall1].visit(printer)
-                data1 = printer.entry_get()
+                if not options.ignore_junk or not stack1[ncall1].is_junk:
+                    printer.entry_start(show_args)
+                    stack1[ncall1].visit(printer)
+                    data1 = printer.entry_get()
+                else:
+                    data1 = []
                 ncall1 += 1
             else:
                 data1 = []
                 last1 = True
 
             if ncall2 < end2:
-                printer.entry_start(show_args)
-                stack2[ncall2].visit(printer)
-                data2 = printer.entry_get()
+                if not options.ignore_junk or not stack2[ncall2].is_junk:
+                    printer.entry_start(show_args)
+                    stack2[ncall2].visit(printer)
+                    data2 = printer.entry_get()
+                else:
+                    data2 = []
                 ncall2 += 1
             else:
                 data2 = []
