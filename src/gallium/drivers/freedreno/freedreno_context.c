@@ -405,6 +405,9 @@ fd_set_debug_callback(struct pipe_context *pctx,
                       const struct util_debug_callback *cb)
 {
    struct fd_context *ctx = fd_context(pctx);
+   struct fd_screen *screen = ctx->screen;
+
+   util_queue_finish(&screen->compile_queue);
 
    if (cb)
       ctx->debug = *cb;
