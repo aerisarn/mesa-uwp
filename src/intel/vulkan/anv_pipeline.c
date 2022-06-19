@@ -2292,7 +2292,7 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       default: unreachable("invalid sample count");
       }
 
-      if (sl_info) {
+      if (sl_info && sl_info->sampleLocationsEnable) {
          const VkSampleLocationEXT *positions =
             sl_info->sampleLocationsInfo.pSampleLocations;
          for (uint32_t i = 0; i < samples; i++) {
