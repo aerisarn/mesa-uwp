@@ -43,10 +43,14 @@ class method(object):
 
 state = 0
 mthddict = {}
+curmthd = {}
 for line in f:
 
     if line.strip() == "":
         state = 0
+        if (curmthd):
+            if not len(curmthd.field_name_start):
+                del mthddict[curmthd.name]
         curmthd = {}
         continue
 
@@ -56,6 +60,9 @@ for line in f:
             continue
 
         if not list[1].startswith(nvcl):
+            continue
+
+        if list[1].endswith("TYPEDEF"):
             continue
 
         if state == 2:
@@ -81,11 +88,19 @@ for line in f:
                     curfield = field
                     state = 2
             else:
+                if not len(curmthd.field_name_start):
+                    del mthddict[curmthd.name]
+                    curmthd = {}
                 state = 0
 
         if state == 0:
+            if (curmthd):
+                if not len(curmthd.field_name_start):
+                    del mthddict[curmthd.name]
             teststr = nvcl + "_"
             is_array = 0
+            if (':' in list[2]):
+                continue
             name = list[1].removeprefix(teststr)
             if name.endswith("(i)"):
                 is_array = 1
