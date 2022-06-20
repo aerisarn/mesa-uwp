@@ -569,7 +569,7 @@ zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res
 {
    assert(res->obj->dt);
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
-   if (zink_kopper_acquired(res->obj->dt, res->obj->dt_idx))
+   if (cdt->swapchain->dt_has_data)
       return VK_NULL_HANDLE;
    assert(res->obj->acquire);
    cdt->swapchain->images[res->obj->dt_idx].acquired = true;
