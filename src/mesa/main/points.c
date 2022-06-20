@@ -39,7 +39,7 @@
 static void
 update_point_size_set(struct gl_context *ctx)
 {
-   ctx->PointSizeIsSet = ctx->Point.Size == 1.0;
+   ctx->PointSizeIsSet = ctx->Point.Size == 1.0 || ctx->Point._Attenuated;
 }
 
 /**
@@ -128,6 +128,7 @@ _mesa_PointParameterfv( GLenum pname, const GLfloat *params)
          ctx->Point._Attenuated = (ctx->Point.Params[0] != 1.0F ||
                                    ctx->Point.Params[1] != 0.0F ||
                                    ctx->Point.Params[2] != 0.0F);
+         update_point_size_set(ctx);
          break;
       case GL_POINT_SIZE_MIN_EXT:
          if (params[0] < 0.0F) {
