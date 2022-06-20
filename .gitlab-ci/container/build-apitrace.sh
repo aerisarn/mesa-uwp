@@ -2,7 +2,7 @@
 
 set -ex
 
-APITRACE_VERSION="170424754bb46002ba706e16ee5404b61988d74a"
+APITRACE_VERSION="790380e05854d5c9d315555444ffcc7acb8f4037"
 
 git clone https://github.com/apitrace/apitrace.git --single-branch --no-checkout /apitrace
 pushd /apitrace
