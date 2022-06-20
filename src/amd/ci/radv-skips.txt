@@ -50,3 +50,11 @@ dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_
 
 # CTS bug (Missing barriers, issue pending)
 dEQP-VK.image.sample_texture.*_compressed_format*
+
+# LLVM (soft hangs)
+dEQP-VK.graphicsfuzz.while-inside-switch
+
+# LLVM (timeouts)
+dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
+dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
+dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.uniform_32struct_to_16struct.uniform_buffer_block_geom
