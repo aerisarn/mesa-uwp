@@ -837,6 +837,8 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
 	  __glXEnableDirectExtension(&psc->base,
 				     "GLX_ARB_context_flush_control");
       }
+      if (strcmp(extensions[i]->name, __DRI2_FLUSH) == 0)
+         psc->f = (__DRI2flushExtension *) extensions[i];
    }
 
    if (psc->kopper) {
