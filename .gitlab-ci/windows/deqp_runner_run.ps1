@@ -13,17 +13,12 @@ New-Item -Path $hkey_path -force
 New-ItemProperty -Path $hkey_path -Name $hkey_name -Value 0 -PropertyType DWORD
 
 $results = New-Item -ItemType Directory results
-$deqp_options = @("--deqp-surface-width", 256, "--deqp-surface-height", 256, "--deqp-surface-type", "pbuffer", "--deqp-gl-config-name", "rgba8888d24s8ms0", "--deqp-visibility", "hidden")
-$deqp_module = "C:\deqp\external\vulkancts\modules\vulkan\deqp-vk.exe"
-$caselist = "C:\deqp\mustpass\vk-master.txt"
 $baseline = ".\_install\warp-fails.txt"
-$flakes = ".\_install\warp-flakes.txt"
-$skips = ".\_install\warp-skips.txt"
-$includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.binding_model.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*", "-t", "dEQP-VK.pipeline.vertex_input.*", "-t", "dEQP-VK.dynamic_state.*", "-t", "dEQP-VK.geometry.*")
+$suite = ".\_install\deqp-dozen.toml"
 
 $env:DZN_DEBUG = "warp"
 $env:MESA_VK_IGNORE_CONFORMANCE_WARNING = "true"
-deqp-runner run --deqp $($deqp_module) --output $($results) --caselist $($caselist) --baseline $($baseline) --flakes $($flakes) --skips $($skips) $($includes) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 --fraction 3  -- $($deqp_options)
+deqp-runner suite --suite $($suite) --output $($results) --baseline $($baseline) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 --fraction 3
 $deqpstatus = $?
 
 $template = "See https://$($env:CI_PROJECT_ROOT_NAMESPACE).pages.freedesktop.org/-/$($env:CI_PROJECT_NAME)/-/jobs/$($env:CI_JOB_ID)/artifacts/results/{{testcase}}.xml"
