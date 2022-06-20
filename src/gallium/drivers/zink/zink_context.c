@@ -1487,12 +1487,12 @@ zink_set_shader_images(struct pipe_context *pctx,
          if (images[i].access & PIPE_IMAGE_ACCESS_READ) {
             access |= VK_ACCESS_SHADER_READ_BIT;
          }
-         res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          if (images[i].resource->target == PIPE_BUFFER) {
             struct zink_buffer_view *bv = create_image_bufferview(ctx, &images[i]);
             assert(bv);
             if (image_view->buffer_view != bv) {
                update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
+               res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
                unbind_shader_image(ctx, p_stage, start_slot + i);
             }
             image_view->buffer_view = bv;
@@ -1503,6 +1503,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             struct zink_surface *surface = create_image_surface(ctx, &images[i], p_stage == PIPE_SHADER_COMPUTE);
             assert(surface);
             if (image_view->surface != surface) {
+               res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
                update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
                unbind_shader_image(ctx, p_stage, start_slot + i);
             }
