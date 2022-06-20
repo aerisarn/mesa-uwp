@@ -979,8 +979,10 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 			continue;
 
 		if (cur->U.I.Opcode == RC_OPCODE_MOV) {
-			if (merge_movs(c,cur))
-				continue;
+			if (c->is_r500) {
+				if (merge_movs(c, cur))
+					continue;
+			}
 			copy_propagate(c, cur);
 			/* cur may no longer be part of the program */
 		}
