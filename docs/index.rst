@@ -75,6 +75,7 @@ Linux, FreeBSD, and other operating systems.
    gpu-perf-tracing
    extensions
    application-issues
+   gallium-nine
    viewperf
    xlibdriver
 
