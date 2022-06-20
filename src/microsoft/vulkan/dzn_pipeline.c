@@ -426,9 +426,9 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          gl_shader_stage prev_stage =
             util_last_bit(active_stage_mask & BITFIELD_MASK(MESA_SHADER_FRAGMENT)) - 1;
          /* Disable rasterization if the last geometry stage doesn't
-	  * write the position.
-	  */
-	 if (prev_stage == MESA_SHADER_NONE ||
+          * write the position.
+          */
+         if (prev_stage == MESA_SHADER_NONE ||
              !(stages[prev_stage].nir->info.outputs_written & VARYING_BIT_POS))
             continue;
       }
@@ -1226,7 +1226,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
          const struct vk_render_pass_attachment *attachment =
             &pass->attachments[subpass->depth_stencil_attachment->attachment];
 
-	 zs_fmt = attachment->format;
+         zs_fmt = attachment->format;
       }
    } else if (ri) {
       color_count = ri->colorAttachmentCount;
@@ -1374,7 +1374,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
                 ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
                 ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
                assert(masked_key.stencil_test.front.compare_mask == masked_key.stencil_test.back.compare_mask);
-	 }
+         }
 
          if (pipeline->zsa.stencil_test.dynamic_write_mask) {
             assert(!masked_key.stencil_test.front.write_mask ||

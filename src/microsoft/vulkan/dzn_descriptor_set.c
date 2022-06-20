@@ -1973,7 +1973,7 @@ dzn_descriptor_update_template_create(struct dzn_device *device,
 
          entry->type = type;
          entry->desc_count = MIN2(desc_count - d, ndescs);
-	 entry->user_data.stride = user_data_stride;
+         entry->user_data.stride = user_data_stride;
          entry->user_data.offset = user_data_offset;
          memset(&entry->heap_offsets, ~0, sizeof(entry->heap_offsets));
 

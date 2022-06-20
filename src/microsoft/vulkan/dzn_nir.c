@@ -233,9 +233,9 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
       if (prim_restart) {
          triangle_fan_exec_vals[triangle_fan_exec_param_count++] = nir_channel(&b, draw_info1, 2);
          triangle_fan_exec_vals[triangle_fan_exec_param_count++] = nir_channel(&b, draw_info1, 0);
-	 uint32_t index_count_offset =
+         uint32_t index_count_offset =
             offsetof(struct dzn_indirect_triangle_fan_draw_exec_params, indexed_draw.index_count);
-	 nir_ssa_def *exec_buf_start =
+         nir_ssa_def *exec_buf_start =
             nir_load_ubo(&b, 2, 32,
                          params_desc, nir_imm_int(&b, 16),
                          .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
@@ -243,7 +243,7 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
             nir_iadd(&b, nir_imm_int(&b, index_count_offset),
                      nir_iadd(&b, nir_channel(&b, exec_buf_start, 0),
                               nir_imul(&b, exec_stride, index)));
-	 addr_lo_overflow = nir_ult(&b, exec_buf_start_lo, nir_channel(&b, exec_buf_start, 0));
+         addr_lo_overflow = nir_ult(&b, exec_buf_start_lo, nir_channel(&b, exec_buf_start, 0));
          nir_ssa_def *exec_buf_start_hi =
             nir_iadd(&b, nir_channel(&b, exec_buf_start, 0),
                      nir_bcsel(&b, addr_lo_overflow, nir_imm_int(&b, 1), nir_imm_int(&b, 0)));

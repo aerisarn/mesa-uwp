@@ -2175,7 +2175,7 @@ dzn_device_memory_create(struct dzn_device *device,
          buffer = dzn_buffer_from_handle(dedicated->buffer);
          image = dzn_image_from_handle(dedicated->image);
          assert(!buffer || !image);
-	 break;
+         break;
       }
       default:
          dzn_debug_ignored_stype(ext->sType);
