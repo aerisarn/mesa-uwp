@@ -33,7 +33,3 @@ traces:
 #    expectations:
 #      - device: freedreno-a630
 #        checksum: 59da6ef5c9509616d595d1613fdac42e
-  - path: portal2/Portal2-trim--f1020-v20201203-v2.trace
-    expectations:
-      - device: freedreno-a630
-        checksum: 636cddddf4f416585aa4d5dca795a182
