@@ -402,6 +402,25 @@ def fix_lava_gitlab_section_log(line):
         line["msg"] = f"\x1b[0K{marker}:{timestamp}:{id_collapsible}\r\x1b[0K{header}"
 
 
+def filter_debug_messages(line: dict[str, str]) -> bool:
+    """Filter some LAVA debug messages that does not add much information to the
+    developer and may clutter the trace log."""
+    if line["lvl"] != "debug":
+        return False
+    # line["msg"] can be a list[str] when there is a kernel dump
+    if not isinstance(line["msg"], str):
+        return False
+
+    if re.match(
+        # Sometimes LAVA dumps this messages lots of times when the LAVA job is
+        # reaching the end.
+        r"^Listened to connection for namespace",
+        line["msg"],
+    ):
+        return True
+    return False
+
+
 def parse_lava_lines(new_lines) -> list[str]:
     parsed_lines: list[str] = []
     for line in new_lines:
@@ -413,6 +432,8 @@ def parse_lava_lines(new_lines) -> list[str]:
         elif line["lvl"] in ["warning", "error"]:
             prefix = CONSOLE_LOG_COLOR_RED
             suffix = CONSOLE_LOG_COLOR_RESET
+        elif filter_debug_messages(line):
+            continue
         elif line["lvl"] == "input":
             prefix = "$ "
             suffix = ""
