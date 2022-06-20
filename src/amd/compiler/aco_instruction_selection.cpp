@@ -5263,9 +5263,37 @@ visit_store_output(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
+emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Temp src, Temp dst,
+                        Temp prim_mask)
+{
+   Temp coord1 = emit_extract_vector(ctx, src, 0, v1);
+   Temp coord2 = emit_extract_vector(ctx, src, 1, v1);
+
+   Builder bld(ctx->program, ctx->block);
+
+   //TODO: this doesn't work in quad-divergent control flow
+
+   Temp p = bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
+
+   if (dst.regClass() == v2b) {
+      Temp p10 =
+         bld.vinterp_inreg(aco_opcode::v_interp_p10_f16_f32_inreg, bld.def(v1), p, coord1, p);
+      bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, Definition(dst), p, coord2, p10);
+   } else {
+      Temp p10 = bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, bld.def(v1), p, coord1, p);
+      bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, Definition(dst), p, coord2, p10);
+   }
+}
+
+void
 emit_interp_instr(isel_context* ctx, unsigned idx, unsigned component, Temp src, Temp dst,
                   Temp prim_mask)
 {
+   if (ctx->options->gfx_level >= GFX11) {
+      emit_interp_instr_gfx11(ctx, idx, component, src, dst, prim_mask);
+      return;
+   }
+
    Temp coord1 = emit_extract_vector(ctx, src, 0, v1);
    Temp coord2 = emit_extract_vector(ctx, src, 1, v1);
 
@@ -5301,6 +5329,22 @@ emit_interp_instr(isel_context* ctx, unsigned idx, unsigned component, Temp src,
 
       bld.vintrp(aco_opcode::v_interp_p2_f32, Definition(dst), coord2, bld.m0(prim_mask), interp_p1,
                  idx, component);
+   }
+}
+
+void
+emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsigned vertex_id,
+                      Temp dst, Temp prim_mask)
+{
+   Builder bld(ctx->program, ctx->block);
+   if (ctx->options->gfx_level >= GFX11) {
+      //TODO: this doesn't work in quad-divergent control flow and ignores vertex_id
+      Temp p = bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
+      uint16_t dpp_ctrl = dpp_quad_perm(0, 0, 0, 0);
+      bld.vop1_dpp(aco_opcode::v_mov_b32, Definition(dst), p, dpp_ctrl);
+   } else {
+      bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
+                 bld.m0(prim_mask), idx, component);
    }
 }
 
@@ -5720,8 +5764,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (instr->dest.ssa.num_components == 1 &&
           instr->dest.ssa.bit_size != 64) {
-         bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
-                    bld.m0(prim_mask), idx, component);
+         emit_interp_mov_instr(ctx, idx, component, vertex_id, dst, prim_mask);
       } else {
          unsigned num_components = instr->dest.ssa.num_components;
          if (instr->dest.ssa.bit_size == 64)
@@ -5731,9 +5774,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          for (unsigned i = 0; i < num_components; i++) {
             unsigned chan_component = (component + i) % 4;
             unsigned chan_idx = idx + (component + i) / 4;
-            vec->operands[i] = bld.vintrp(
-               aco_opcode::v_interp_mov_f32, bld.def(instr->dest.ssa.bit_size == 16 ? v2b : v1),
-               Operand::c32(vertex_id), bld.m0(prim_mask), chan_idx, chan_component);
+            vec->operands[i] = Operand(bld.tmp(instr->dest.ssa.bit_size == 16 ? v2b : v1));
+            emit_interp_mov_instr(ctx, chan_idx, chan_component, vertex_id, vec->operands[i].getTemp(), prim_mask);
          }
          vec->definitions[0] = Definition(dst);
          bld.insert(std::move(vec));
