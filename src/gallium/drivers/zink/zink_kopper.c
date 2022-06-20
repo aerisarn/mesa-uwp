@@ -507,6 +507,7 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
       res->obj->indefinite_acquire = true;
       p_atomic_inc(&cdt->swapchain->num_acquires);
    }
+   cdt->swapchain->dt_has_data = false;
    res->obj->dt_has_data = false;
    return VK_SUCCESS;
 }
@@ -573,6 +574,7 @@ zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res
    res->obj->acquired = true;
    /* this is now owned by the batch */
    cdt->swapchain->acquires[res->obj->dt_idx] = VK_NULL_HANDLE;
+   cdt->swapchain->dt_has_data = true;
    return res->obj->acquire;
 }
 

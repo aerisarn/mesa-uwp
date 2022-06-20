@@ -43,6 +43,7 @@ struct kopper_swapchain {
    unsigned num_acquires;
    unsigned max_acquires;
    unsigned async_presents;
+   bool dt_has_data;
 };
 
 enum kopper_type {
