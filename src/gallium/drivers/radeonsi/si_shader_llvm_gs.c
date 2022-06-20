@@ -182,7 +182,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
    int i;
 
    /* Write vertex attribute values to GSVS ring */
-   gs_next_vertex = LLVMBuildLoad(ctx->ac.builder, ctx->gs_next_vertex[stream], "");
+   gs_next_vertex = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i32, ctx->gs_next_vertex[stream], "");
 
    /* If this thread has already emitted the declared maximum number of
     * vertices, skip the write: excessive vertex emissions are not

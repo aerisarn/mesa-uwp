@@ -173,7 +173,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
                unsigned shift = 9 + i * 10;
                LLVMValueRef edge;
 
-               edge = LLVMBuildLoad(builder, user_edgeflags[i], "");
+               edge = LLVMBuildLoad2(builder, ctx->ac.i1, user_edgeflags[i], "");
                edge = LLVMBuildZExt(builder, edge, ctx->ac.i32, "");
                edge = LLVMBuildShl(builder, edge, LLVMConstInt(ctx->ac.i32, shift, 0), "");
                edgeflags = LLVMBuildOr(builder, edgeflags, edge, "");
@@ -209,7 +209,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
          for (unsigned i = 0; i < prim.num_vertices; ++i) {
             LLVMValueRef edge;
 
-            edge = LLVMBuildLoad(ctx->ac.builder, user_edgeflags[i], "");
+            edge = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, user_edgeflags[i], "");
             edge = LLVMBuildZExt(ctx->ac.builder, edge, ctx->ac.i32, "");
             edge = LLVMBuildShl(ctx->ac.builder, edge, LLVMConstInt(ctx->ac.i32, 9 + i*10, 0), "");
             edgeflags = LLVMBuildOr(ctx->ac.builder, edgeflags, edge, "");
@@ -343,7 +343,7 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
       {
          if (isgs) {
             tmp = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tid);
-            tmp = LLVMBuildLoad(builder, tmp, "");
+            tmp = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
          } else {
             tmp = ac_build_writelane(&ctx->ac, ctx->ac.i32_0, ngg_get_prim_cnt(ctx), ctx->ac.i32_0);
          }
@@ -466,7 +466,7 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
          LLVMValueRef bufsize_dw = LLVMBuildLShr(
             builder, LLVMBuildExtractElement(builder, so_buffer[buffer], i32_2, ""), i32_2, "");
 
-         tmp = LLVMBuildLoad(builder, offsets_vgpr, "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i32, offsets_vgpr, "");
          LLVMValueRef offset_dw =
             ac_build_readlane(&ctx->ac, tmp, LLVMConstInt(ctx->ac.i32, buffer, false));
 
@@ -489,7 +489,7 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
          if (!info->num_stream_output_components[stream])
             continue;
 
-         tmp = LLVMBuildLoad(builder, generated_by_stream_vgpr, "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i32, generated_by_stream_vgpr, "");
          LLVMValueRef generated =
             ac_build_readlane(&ctx->ac, tmp, LLVMConstInt(ctx->ac.i32, stream, false));
 
@@ -588,7 +588,7 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
       LLVMValueRef scratch_vgpr;
 
       tmp = ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, ac_get_thread_id(&ctx->ac));
-      scratch_vgpr = LLVMBuildLoad(builder, tmp, "");
+      scratch_vgpr = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
 
       for (unsigned buffer = 0; buffer < 4; ++buffer) {
          if (stream_for_buffer[buffer] >= 0) {
@@ -771,7 +771,7 @@ static void load_vertex_counts(struct si_shader_context *ctx, LLVMValueRef lds,
     */
    ac_build_ifcc(&ctx->ac, LLVMBuildICmp(builder, LLVMIntULT, tid,
                                          LLVMConstInt(ctx->ac.i32, num_i8vec4, 0), ""), 17771);
-   LLVMBuildStore(builder, LLVMBuildLoad(builder, ac_build_gep0(&ctx->ac, lds, tid), ""), i8vec4_lane);
+   LLVMBuildStore(builder, LLVMBuildLoad2(builder, ctx->ac.i32, ac_build_gep0(&ctx->ac, lds, tid), ""), i8vec4_lane);
    ac_build_endif(&ctx->ac, 17771);
 
    /* Compute the number of ES waves. */
@@ -815,7 +815,7 @@ static void load_vertex_counts(struct si_shader_context *ctx, LLVMValueRef lds,
    for (unsigned i = 0; i < num_i8vec4; i++) {
       LLVMValueRef i8vec4;
 
-      i8vec4 = ac_build_readlane_no_opt_barrier(&ctx->ac, LLVMBuildLoad(builder, i8vec4_lane, ""),
+      i8vec4 = ac_build_readlane_no_opt_barrier(&ctx->ac, LLVMBuildLoad2(builder, ctx->ac.i32, i8vec4_lane, ""),
                                                 LLVMConstInt(ctx->ac.i32, i, 0));
       /* Inactive waves have uninitialized vertex counts. Set them to 0 using this. */
       i8vec4 = LLVMBuildAnd(builder, i8vec4,
@@ -1207,7 +1207,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
              * by clip distances.
              */
             LLVMValueRef addr = si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte3_clipdist_neg_mask);
-            LLVMValueRef mask = LLVMBuildLoad(builder, addr, "");
+            LLVMValueRef mask = LLVMBuildLoad2(builder, ctx->ac.i8, addr, "");
             if (!clipdist_neg_mask)
                clipdist_neg_mask = mask;
             else
@@ -1226,7 +1226,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
    ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
    ac_build_s_barrier(&ctx->ac, ctx->stage);
 
-   gs_accepted = LLVMBuildLoad(builder, gs_accepted, "");
+   gs_accepted = LLVMBuildLoad2(builder, ctx->ac.i32, gs_accepted, "");
 
    LLVMValueRef vertex_accepted = ac_build_alloca(&ctx->ac, ctx->ac.i1, "");
    LLVMValueRef vertex_mask = ac_build_alloca(&ctx->ac, ctx->ac.iN_wavemask, "");
@@ -1235,7 +1235,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
    ac_build_ifcc(&ctx->ac, si_is_es_thread(ctx), 16007);
    {
       LLVMValueRef accepted =
-         LLVMBuildLoad(builder, si_build_gep_i8(ctx, es_vtxptr, lds_byte0_accept_flag), "");
+         LLVMBuildLoad2(builder, ctx->ac.i8, si_build_gep_i8(ctx, es_vtxptr, lds_byte0_accept_flag), "");
       accepted = LLVMBuildICmp(builder, LLVMIntNE, accepted, ctx->ac.i8_0, "");
       LLVMValueRef mask = ac_get_i1_sgpr_mask(&ctx->ac, accepted);
 
@@ -1245,7 +1245,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
    ac_build_endif(&ctx->ac, 16007);
 
    /* Store the per-wave vertex count to LDS. Non-ES waves store 0. */
-   vertex_mask = LLVMBuildLoad(builder, vertex_mask, "");
+   vertex_mask = LLVMBuildLoad2(builder, ctx->ac.iN_wavemask, vertex_mask, "");
    ac_build_ifcc(&ctx->ac, LLVMBuildICmp(builder, LLVMIntEQ, tid, ctx->ac.i32_0, ""), 16008);
    {
       LLVMValueRef vertex_count = ac_build_bit_count(&ctx->ac, vertex_mask);
@@ -1274,7 +1274,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
     * of the new thread ID. It will be used to load input VGPRs by compacted
     * threads.
     */
-   vertex_accepted = LLVMBuildLoad(builder, vertex_accepted, "");
+   vertex_accepted = LLVMBuildLoad2(builder, ctx->ac.i1, vertex_accepted, "");
    ac_build_ifcc(&ctx->ac, vertex_accepted, 16009);
    {
       /* Add the number of bits set in vertex_mask up to the current thread ID - 1
@@ -1383,8 +1383,8 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
          prim.edgeflags = ctx->ac.i32_0;
 
       for (unsigned vtx = 0; vtx < num_vertices; vtx++) {
-         prim.index[vtx] = LLVMBuildLoad(
-            builder, si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte1_new_thread_id), "");
+         prim.index[vtx] = LLVMBuildLoad2(
+            builder, ctx->ac.i8, si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte1_new_thread_id), "");
          prim.index[vtx] = LLVMBuildZExt(builder, prim.index[vtx], ctx->ac.i32, "");
       }
 
@@ -1394,7 +1394,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
    ac_build_endif(&ctx->ac, 16011);
 
    if (gfx10_ngg_export_prim_early(shader))
-      gfx10_ngg_build_export_prim(ctx, NULL, LLVMBuildLoad(builder, new_vgpr0, ""));
+      gfx10_ngg_build_export_prim(ctx, NULL, LLVMBuildLoad2(builder, ctx->ac.i32, new_vgpr0, ""));
 
    /* Prepare LDS addresses of the new ES input VGPRs. */
    LLVMValueRef input_vgpr_addresses[4] = {
@@ -1457,7 +1457,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
       vgpr = 8 + GFX9_GS_NUM_USER_SGPR;
    }
 
-   val = LLVMBuildLoad(builder, new_vgpr0, "");
+   val = LLVMBuildLoad2(builder, ctx->ac.i32, new_vgpr0, "");
    ret = LLVMBuildInsertValue(builder, ret, ac_to_float(&ctx->ac, val), vgpr++, "");
    vgpr++; /* gs_vtx_offset[1] = offsets of vertices 2-3  */
 
@@ -1609,7 +1609,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
          tmp = ngg_nogs_vertex_ptr(ctx, vtxindex[i]);
          tmp2 = LLVMConstInt(ctx->ac.i32, ngg_nogs_vertex_size(ctx->shader) - 1, 0);
          tmp = ac_build_gep0(&ctx->ac, tmp, tmp2);
-         tmp = LLVMBuildLoad(builder, tmp, "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
          tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 
          user_edgeflags[i] = ac_build_alloca_init(&ctx->ac, tmp, "");
@@ -1705,7 +1705,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
             for (unsigned j = 0; j < 4; j++) {
                tmp = LLVMConstInt(ctx->ac.i32, lds_pos_x + j, 0);
                tmp = ac_build_gep0(&ctx->ac, vertex_ptr, tmp);
-               tmp = LLVMBuildLoad(builder, tmp, "");
+               tmp = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
                outputs[i].values[j] = ac_to_float(&ctx->ac, tmp);
             }
          } else {
@@ -1726,7 +1726,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
 
             tmp = ngg_nogs_vertex_ptr(ctx, gfx10_get_thread_id_in_tg(ctx));
             tmp = ac_build_gep0(&ctx->ac, tmp, ctx->ac.i32_0);
-            outputs[i].values[0] = LLVMBuildLoad(builder, tmp, "");
+            outputs[i].values[0] = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
          } else {
             assert(ctx->stage == MESA_SHADER_TESS_EVAL);
             outputs[i].values[0] = si_get_primitive_id(ctx, 0);
@@ -1846,7 +1846,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
    const struct si_shader_info *info = &sel->info;
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef tmp;
-   const LLVMValueRef vertexidx = LLVMBuildLoad(builder, ctx->gs_next_vertex[stream], "");
+   const LLVMValueRef vertexidx = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_next_vertex[stream], "");
 
    /* If this thread has already emitted the declared maximum number of
     * vertices, skip the write: excessive vertex emissions are not
@@ -1878,7 +1878,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
    assert(out_idx * 4 == info->gsvs_vertex_size);
 
    /* Determine and store whether this vertex completed a primitive. */
-   const LLVMValueRef curverts = LLVMBuildLoad(builder, ctx->gs_curprim_verts[stream], "");
+   const LLVMValueRef curverts = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_curprim_verts[stream], "");
 
    tmp = LLVMConstInt(ctx->ac.i32, u_vertices_per_prim(sel->info.base.gs.output_primitive) - 1, false);
    const LLVMValueRef iscompleteprim = LLVMBuildICmp(builder, LLVMIntUGE, curverts, tmp, "");
@@ -1906,7 +1906,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
       LLVMBuildShl(builder, LLVMBuildZExt(builder, is_odd, ctx->ac.i8, ""), ctx->ac.i8_1, ""), "");
    LLVMBuildStore(builder, tmp, ngg_gs_get_emit_primflag_ptr(ctx, vertexptr, stream));
 
-   tmp = LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
+   tmp = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_generated_prims[stream], "");
    tmp = LLVMBuildAdd(builder, tmp, LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i32, ""), "");
    LLVMBuildStore(builder, tmp, ctx->gs_generated_prims[stream]);
 
@@ -1982,7 +1982,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
 
       ac_build_bgnloop(&ctx->ac, 5100);
 
-      const LLVMValueRef vertexidx = LLVMBuildLoad(builder, ctx->gs_next_vertex[stream], "");
+      const LLVMValueRef vertexidx = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_next_vertex[stream], "");
       tmp = LLVMBuildICmp(builder, LLVMIntUGE, vertexidx,
                           LLVMConstInt(ctx->ac.i32, sel->info.base.gs.vertices_out, false), "");
       ac_build_ifcc(&ctx->ac, tmp, 5101);
@@ -2003,7 +2003,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
       if (!info->num_stream_output_components[stream])
          continue;
 
-      LLVMValueRef numprims = LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
+      LLVMValueRef numprims = LLVMBuildLoad2(builder, ctx->ac.i32, ctx->gs_generated_prims[stream], "");
       numprims = ac_build_reduce(&ctx->ac, numprims, nir_op_iadd, ctx->ac.wave_size);
 
       tmp = LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(&ctx->ac), ctx->ac.i32_0, "");
@@ -2036,7 +2036,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
          if (!info->num_stream_output_components[stream])
             continue;
 
-         tmp = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, vertexptr, stream), "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i8, ngg_gs_get_emit_primflag_ptr(ctx, vertexptr, stream), "");
          tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
          tmp2 = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
          nggso.prim_enable[stream] = LLVMBuildAnd(builder, tmp, tmp2, "");
@@ -2073,7 +2073,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
             offset = LLVMBuildAdd(builder, offset, tmp, "");
          }
 
-         tmp = LLVMBuildLoad(builder, ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tid), "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i32, ac_build_gep0(&ctx->ac, ctx->gs_ngg_scratch, tid), "");
          LLVMValueRef args[] = {
             tmp,           ngg_get_query_buf(ctx),
             offset,        LLVMConstInt(ctx->ac.i32, 16, false), /* soffset */
@@ -2091,7 +2091,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
       assert(info->num_stream_output_components[0]);
 
       LLVMValueRef gs_vtxptr = ngg_gs_vertex_ptr(ctx, tid);
-      LLVMValueRef live = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, gs_vtxptr, 0), "");
+      LLVMValueRef live = LLVMBuildLoad2(builder, ctx->ac.i8, ngg_gs_get_emit_primflag_ptr(ctx, gs_vtxptr, 0), "");
       live = LLVMBuildTrunc(builder, live, ctx->ac.i1, "");
       LLVMValueRef is_emit = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
       LLVMValueRef prim_enable = LLVMBuildAnd(builder, live, is_emit, "");
@@ -2150,7 +2150,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
 
          cull_primitive(ctx, pos, clipdist_accepted, accepted, NULL);
 
-         accepted = LLVMBuildLoad(builder, accepted, "");
+         accepted = LLVMBuildLoad2(builder, ctx->ac.i32, accepted, "");
          LLVMValueRef rejected = LLVMBuildNot(builder, LLVMBuildTrunc(builder, accepted, ctx->ac.i1, ""), "");
 
          ac_build_ifcc(&ctx->ac, rejected, 0);
@@ -2180,10 +2180,10 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
 
          /* Load primitive liveness */
          tmp = ngg_gs_vertex_ptr(ctx, primidx);
-         tmp = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i8, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
          const LLVMValueRef primlive = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
 
-         tmp = LLVMBuildLoad(builder, vertliveptr, "");
+         tmp = LLVMBuildLoad2(builder, ctx->ac.i1, vertliveptr, "");
          tmp = LLVMBuildOr(builder, tmp, primlive, ""), LLVMBuildStore(builder, tmp, vertliveptr);
 
          if (i > 0)
@@ -2193,7 +2193,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
    ac_build_endif(&ctx->ac, 5120);
 
    /* Inclusive scan addition across the current wave. */
-   LLVMValueRef vertlive = LLVMBuildLoad(builder, vertliveptr, "");
+   LLVMValueRef vertlive = LLVMBuildLoad2(builder, ctx->ac.i1, vertliveptr, "");
    struct ac_wg_scan vertlive_scan = {};
    vertlive_scan.stage = ctx->stage;
    vertlive_scan.op = nir_op_iadd;
@@ -2241,7 +2241,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
       prim.num_vertices = verts_per_prim;
 
       tmp = ngg_gs_vertex_ptr(ctx, tid);
-      flags = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
+      flags = LLVMBuildLoad2(builder, ctx->ac.i8, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
       prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->ac.i1, ""), "");
       prim.edgeflags = ctx->ac.i32_0;
 
@@ -2294,7 +2294,7 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
       struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
 
       tmp = ngg_gs_vertex_ptr(ctx, tid);
-      tmp = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 1), "");
+      tmp = LLVMBuildLoad2(builder, ctx->ac.i8, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 1), "");
       tmp = LLVMBuildZExt(builder, tmp, ctx->ac.i32, "");
       const LLVMValueRef vertexptr = ngg_gs_vertex_ptr(ctx, tmp);
 
