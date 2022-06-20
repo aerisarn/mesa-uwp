@@ -450,7 +450,7 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
 {
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
    if (res->obj->acquire)
-      return true;
+      return VK_SUCCESS;
    res->obj->acquire = VK_NULL_HANDLE;
    VkSemaphore acquire = VK_NULL_HANDLE;
 
