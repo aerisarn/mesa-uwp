@@ -3430,8 +3430,8 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
          ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(barriers), barriers);
 
          ID3D12GraphicsCommandList1_ResolveSubresource(cmdbuf->cmdlist,
-                                                       dst_img->res, src_subres,
-                                                       src_img->res, dst_subres,
+                                                       dst_img->res, dst_subres,
+                                                       src_img->res, src_subres,
                                                        dst->srv_desc.Format);
          DZN_SWAP(D3D12_RESOURCE_STATES,
                   barriers[0].Transition.StateBefore,
