@@ -1077,7 +1077,7 @@ _mesa_initialize_context(struct gl_context *ctx,
       break;
    }
    ctx->VertexProgram.PointSizeEnabled = ctx->API == API_OPENGLES2;
-   ctx->PointSizeIsOne = GL_TRUE;
+   ctx->PointSizeIsSet = GL_TRUE;
 
    ctx->FirstTimeCurrent = GL_TRUE;
 

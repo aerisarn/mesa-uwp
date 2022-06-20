@@ -3569,7 +3569,7 @@ struct gl_context
    GLuint TextureStateTimestamp; /**< detect changes to shared state */
 
    GLboolean LastVertexStageDirty; /**< the last vertex stage has changed */
-   GLboolean PointSizeIsOne; /**< the glPointSize value is 1.0 */
+   GLboolean PointSizeIsSet; /**< the glPointSize value in the shader is set */
 
    /** \name For debugging/development only */
    /*@{*/

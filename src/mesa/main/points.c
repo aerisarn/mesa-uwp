@@ -37,9 +37,9 @@
 
 
 static void
-is_point_size_one(struct gl_context *ctx)
+update_point_size_set(struct gl_context *ctx)
 {
-   ctx->PointSizeIsOne = ctx->Point.Size == 1.0;
+   ctx->PointSizeIsSet = ctx->Point.Size == 1.0;
 }
 
 /**
@@ -60,7 +60,7 @@ point_size(struct gl_context *ctx, GLfloat size, bool no_error)
 
    FLUSH_VERTICES(ctx, _NEW_POINT, GL_POINT_BIT);
    ctx->Point.Size = size;
-   is_point_size_one(ctx);
+   update_point_size_set(ctx);
 }
 
 
