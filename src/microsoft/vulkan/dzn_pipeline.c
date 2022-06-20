@@ -35,6 +35,7 @@
 #include "vk_alloc.h"
 #include "vk_util.h"
 #include "vk_format.h"
+#include "vk_pipeline.h"
 
 #include "util/u_debug.h"
 
@@ -296,33 +297,16 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
     * order.
     */
    for (uint32_t i = 0; i < info->stageCount; i++) {
-      gl_shader_stage stage;
+      gl_shader_stage stage =
+         vk_to_mesa_shader_stage(info->pStages[i].stage);
 
-      switch (info->pStages[i].stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:
-         stage = MESA_SHADER_VERTEX;
-         if (yz_flip_stage < stage)
-            yz_flip_stage = stage;
-         break;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-         stage = MESA_SHADER_TESS_CTRL;
-         break;
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-         stage = MESA_SHADER_TESS_EVAL;
-         if (yz_flip_stage < stage)
-            yz_flip_stage = stage;
-         break;
-      case VK_SHADER_STAGE_GEOMETRY_BIT:
-         stage = MESA_SHADER_GEOMETRY;
-         if (yz_flip_stage < stage)
-            yz_flip_stage = stage;
-         break;
-      case VK_SHADER_STAGE_FRAGMENT_BIT:
-         stage = MESA_SHADER_FRAGMENT;
-         break;
-      default:
-         unreachable("Unsupported stage");
-      }
+      assert(stage <= MESA_SHADER_FRAGMENT);
+
+      if ((stage == MESA_SHADER_VERTEX ||
+           stage == MESA_SHADER_TESS_EVAL ||
+           stage == MESA_SHADER_GEOMETRY) &&
+          yz_flip_stage < stage)
+         yz_flip_stage = stage;
 
       if (stage == MESA_SHADER_FRAGMENT &&
           info->pRasterizationState &&
