@@ -261,9 +261,6 @@ spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec4-u64
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
 spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
-spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combinations,Fail
-spec@arb_point_parameters@arb_point_parameters-point-attenuation@Antialiased combinations,Fail
-spec@arb_point_parameters@arb_point_parameters-point-attenuation,Fail
 spec@arb_point_sprite@arb_point_sprite-checkerboard,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
