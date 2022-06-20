@@ -26,12 +26,14 @@
 ##########################################################################
 
 from parse import *
+import os
 import sys
 import re
 import signal
 import functools
 import argparse
 import difflib
+import subprocess
 
 assert sys.version_info >= (3, 6), 'Python >= 3.6 required'
 
@@ -54,6 +56,8 @@ PKK_ANSI_ITALIC    = '3m'
 ###
 def pkk_fatal(msg):
     print(f"ERROR: {msg}", file=sys.stderr)
+    if outpipe is not None:
+        outpipe.terminate()
     sys.exit(1)
 
 
@@ -61,8 +65,17 @@ def pkk_info(msg):
     print(msg, file=sys.stderr)
 
 
+def pkk_output(outpipe, msg):
+    if outpipe is not None:
+        print(msg, file=outpipe.stdin)
+    else:
+        print(msg)
+
+
 def pkk_signal_handler(signal, frame):
     print("\nQuitting due to SIGINT / Ctrl+C!")
+    if outpipe is not None:
+        outpipe.terminate()
     sys.exit(1)
 
 
@@ -259,6 +272,16 @@ def pkk_format_line(line, indent, width):
 ### Main program starts
 ###
 if __name__ == "__main__":
+    ### Check if output is a terminal
+    outpipe = None
+    redirect = False
+
+    try:
+        defwidth = os.get_terminal_size().columns
+        redirect = True
+    except OSError:
+        defwidth = 80
+
     signal.signal(signal.SIGINT, pkk_signal_handler)
 
     ### Parse arguments
@@ -307,7 +330,7 @@ if __name__ == "__main__":
 
     optparser.add_argument("-w", "--width",
         dest="output_width",
-        type=functools.partial(pkk_arg_range, vmin=16, vmax=512), default=80,
+        type=functools.partial(pkk_arg_range, vmin=16, vmax=512), default=defwidth,
         metavar="N",
         help="output width (default: %(default)s)")
 
@@ -327,115 +350,126 @@ if __name__ == "__main__":
         print("The files are identical.")
         sys.exit(0)
 
-    ### Output results
-    pkk_info("Outputting diff ...")
-    colwidth = int((options.output_width - 3) / 2)
-    colfmt   = "{}{:"+ str(colwidth) +"s}{} {}{}{} {}{:"+ str(colwidth) +"s}{}"
+    ### Redirect output to 'less' if stdout is a tty
+    try:
+        if redirect:
+            outpipe = subprocess.Popen(["less", "-S", "-R"], stdin=subprocess.PIPE, encoding="utf8")
 
-    printer = PKKPrettyPrinter(options)
+        ### Output results
+        pkk_info("Outputting diff ...")
+        colwidth = int((options.output_width - 3) / 2)
+        colfmt   = "{}{:"+ str(colwidth) +"s}{} {}{}{} {}{:"+ str(colwidth) +"s}{}"
 
-    prevtag = ""
-    for tag, start1, end1, start2, end2 in opcodes:
-        if tag == "equal":
-            show_args = False
-            if options.suppress_common:
-                if tag != prevtag:
-                    print("[...]")
-                continue
+        printer = PKKPrettyPrinter(options)
 
-            sep = "|"
-            ansi1 = ansi2 = ansiend = ""
-            show_args = False
-        elif tag == "insert":
-            sep = "+"
-            ansi1 = ""
-            ansi2 = PKK_ANSI_ESC + PKK_ANSI_GREEN
-            show_args = True
-        elif tag == "delete":
-            sep = "-"
-            ansi1 = PKK_ANSI_ESC + PKK_ANSI_RED
-            ansi2 = ""
-            show_args = True
-        elif tag == "replace":
-            sep = ">"
-            ansi1 = ansi2 = PKK_ANSI_ESC + PKK_ANSI_BOLD
-            show_args = True
-        else:
-            pkk_fatal(f"Internal error, unsupported difflib.SequenceMatcher operation '{tag}'.")
+        prevtag = ""
+        for tag, start1, end1, start2, end2 in opcodes:
+            if tag == "equal":
+                show_args = False
+                if options.suppress_common:
+                    if tag != prevtag:
+                        pkk_output(outpipe, "[...]")
+                    continue
 
-        # No ANSI, please
-        if options.plain:
-            ansi1 = ansisep = ansi2 = ansiend = ""
-        else:
-            ansisep = PKK_ANSI_ESC + PKK_ANSI_PURPLE
-            ansiend = PKK_ANSI_ESC + PKK_ANSI_NORMAL
+                sep = "|"
+                ansi1 = ansi2 = ansiend = ""
+                show_args = False
+            elif tag == "insert":
+                sep = "+"
+                ansi1 = ""
+                ansi2 = PKK_ANSI_ESC + PKK_ANSI_GREEN
+                show_args = True
+            elif tag == "delete":
+                sep = "-"
+                ansi1 = PKK_ANSI_ESC + PKK_ANSI_RED
+                ansi2 = ""
+                show_args = True
+            elif tag == "replace":
+                sep = ">"
+                ansi1 = ansi2 = PKK_ANSI_ESC + PKK_ANSI_BOLD
+                show_args = True
+            else:
+                pkk_fatal(f"Internal error, unsupported difflib.SequenceMatcher operation '{tag}'.")
+
+            # No ANSI, please
+            if options.plain:
+                ansi1 = ansisep = ansi2 = ansiend = ""
+            else:
+                ansisep = PKK_ANSI_ESC + PKK_ANSI_PURPLE
+                ansiend = PKK_ANSI_ESC + PKK_ANSI_NORMAL
 
 
-        # Print out the block
-        ncall1 = start1
-        ncall2 = start2
-        last1 = last2 = False
-        while True:
-            # Get line data
-            if ncall1 < end1:
-                if not options.ignore_junk or not stack1[ncall1].is_junk:
-                    printer.entry_start(show_args)
-                    stack1[ncall1].visit(printer)
-                    data1 = printer.entry_get()
+            # Print out the block
+            ncall1 = start1
+            ncall2 = start2
+            last1 = last2 = False
+            while True:
+                # Get line data
+                if ncall1 < end1:
+                    if not options.ignore_junk or not stack1[ncall1].is_junk:
+                        printer.entry_start(show_args)
+                        stack1[ncall1].visit(printer)
+                        data1 = printer.entry_get()
+                    else:
+                        data1 = []
+                    ncall1 += 1
                 else:
                     data1 = []
-                ncall1 += 1
-            else:
-                data1 = []
-                last1 = True
+                    last1 = True
 
-            if ncall2 < end2:
-                if not options.ignore_junk or not stack2[ncall2].is_junk:
-                    printer.entry_start(show_args)
-                    stack2[ncall2].visit(printer)
-                    data2 = printer.entry_get()
+                if ncall2 < end2:
+                    if not options.ignore_junk or not stack2[ncall2].is_junk:
+                        printer.entry_start(show_args)
+                        stack2[ncall2].visit(printer)
+                        data2 = printer.entry_get()
+                    else:
+                        data2 = []
+                    ncall2 += 1
                 else:
                     data2 = []
-                ncall2 += 1
-            else:
-                data2 = []
-                last2 = True
+                    last2 = True
 
-            # Check if we are at last call of both
-            if last1 and last2:
-                break
+                # Check if we are at last call of both
+                if last1 and last2:
+                    break
 
-            nline = 0
-            while nline < len(data1) or nline < len(data2):
-                # Determine line start indentation
-                if nline > 0:
-                    if options.suppress_variants:
-                        indent = " "*8
+                nline = 0
+                while nline < len(data1) or nline < len(data2):
+                    # Determine line start indentation
+                    if nline > 0:
+                        if options.suppress_variants:
+                            indent = " "*8
+                        else:
+                            indent = " "*12
                     else:
-                        indent = " "*12
-                else:
-                    indent = ""
+                        indent = ""
 
-                line1 = pkk_get_line(data1, nline)
-                line2 = pkk_get_line(data2, nline)
+                    line1 = pkk_get_line(data1, nline)
+                    line2 = pkk_get_line(data2, nline)
 
-                # Highlight differing lines if not plain
-                if not options.plain and line1 != line2:
-                    if tag == "insert" or tag == "delete":
-                        ansi1 = ansi1 + PKK_ANSI_ESC + PKK_ANSI_BOLD
-                    elif tag == "replace":
-                        ansi1 = ansi2 = ansi1 + PKK_ANSI_ESC + PKK_ANSI_YELLOW
+                    # Highlight differing lines if not plain
+                    if not options.plain and line1 != line2:
+                        if tag == "insert" or tag == "delete":
+                            ansi1 = ansi1 + PKK_ANSI_ESC + PKK_ANSI_BOLD
+                        elif tag == "replace":
+                            ansi1 = ansi2 = ansi1 + PKK_ANSI_ESC + PKK_ANSI_YELLOW
 
-                # Output line
-                print(colfmt.format(
-                    ansi1, pkk_format_line(line1, indent, colwidth), ansiend,
-                    ansisep, sep, ansiend,
-                    ansi2, pkk_format_line(line2, indent, colwidth), ansiend).
-                    rstrip())
+                    # Output line
+                    pkk_output(outpipe, colfmt.format(
+                        ansi1, pkk_format_line(line1, indent, colwidth), ansiend,
+                        ansisep, sep, ansiend,
+                        ansi2, pkk_format_line(line2, indent, colwidth), ansiend).
+                        rstrip())
 
-                nline += 1
+                    nline += 1
 
-        if tag == "equal" and options.suppress_common:
-            print("[...]")
+            if tag == "equal" and options.suppress_common:
+                pkk_output(outpipe, "[...]")
 
-        prevtag = tag
+            prevtag = tag
+
+    except Exception as e:
+        pkk_fatal(str(e))
+
+    if outpipe is not None:
+        outpipe.communicate()
