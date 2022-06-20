@@ -1227,6 +1227,8 @@ st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog)
    assert(nir->info.stage == MESA_SHADER_VERTEX ||
           nir->info.stage == MESA_SHADER_TESS_EVAL ||
           nir->info.stage == MESA_SHADER_GEOMETRY);
+   if (nir->info.outputs_written & VARYING_BIT_PSIZ)
+      return false;
    unsigned max_components = nir->info.stage == MESA_SHADER_GEOMETRY ?
                              st->ctx->Const.MaxGeometryTotalOutputComponents :
                              st->ctx->Const.Program[nir->info.stage].MaxOutputComponents;
