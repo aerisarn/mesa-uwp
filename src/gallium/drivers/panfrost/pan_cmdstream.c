@@ -3966,7 +3966,8 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
 #endif
 
 static bool
-panfrost_compatible_batch_state(struct panfrost_batch *batch)
+panfrost_compatible_batch_state(struct panfrost_batch *batch,
+                                bool points)
 {
         /* Only applies on Valhall */
         if (PAN_ARCH < 9)
@@ -3978,8 +3979,13 @@ panfrost_compatible_batch_state(struct panfrost_batch *batch)
         bool coord = (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
         bool first = rast->flatshade_first;
 
-        return pan_tristate_set(&batch->sprite_coord_origin, coord) &&
-               pan_tristate_set(&batch->first_provoking_vertex, first);
+        /* gl_PointCoord orientation only matters when drawing points, but
+         * provoking vertex doesn't matter for points.
+         */
+        if (points)
+                return pan_tristate_set(&batch->sprite_coord_origin, coord);
+        else
+                return pan_tristate_set(&batch->first_provoking_vertex, first);
 }
 
 static void
@@ -4012,10 +4018,12 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         if (unlikely(batch->scoreboard.job_index > 10000))
                 batch = panfrost_get_fresh_batch_for_fbo(ctx, "Too many draws");
 
-        if (unlikely(!panfrost_compatible_batch_state(batch))) {
+        bool points = (info->mode == PIPE_PRIM_POINTS);
+
+        if (unlikely(!panfrost_compatible_batch_state(batch, points))) {
                 batch = panfrost_get_fresh_batch_for_fbo(ctx, "State change");
 
-                ASSERTED bool succ = panfrost_compatible_batch_state(batch);
+                ASSERTED bool succ = panfrost_compatible_batch_state(batch, points);
                 assert(succ && "must be able to set state for a fresh batch");
         }
 
