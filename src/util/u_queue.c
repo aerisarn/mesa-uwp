@@ -55,7 +55,10 @@ util_queue_kill_threads(struct util_queue *queue, unsigned keep_num_threads,
  */
 
 static once_flag atexit_once_flag = ONCE_FLAG_INIT;
-static struct list_head queue_list;
+static struct list_head queue_list = {
+   .next = &queue_list,
+   .prev = &queue_list,
+};
 static mtx_t exit_mutex = _MTX_INITIALIZER_NP;
 
 static void
@@ -74,7 +77,6 @@ atexit_handler(void)
 static void
 global_init(void)
 {
-   list_inithead(&queue_list);
    atexit(atexit_handler);
 }
 
