@@ -3,6 +3,7 @@
     - .baremetal-test-arm64
     - .freedreno-rules
   variables:
+    VK_DRIVER: freedreno
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 $BM_KERNEL_EXTRA_ARGS root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
@@ -16,7 +17,6 @@
     - .baremetal-deqp-test
   variables:
     DEQP_VER: vk
-    VK_DRIVER: freedreno
     # Increase the hangcheck timer for our spilling tests which bump up against
     # the .5s default.
     FREEDRENO_HANGCHECK_MS: 2000

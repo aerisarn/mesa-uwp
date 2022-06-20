@@ -248,6 +248,47 @@ spec@egl_chromium_sync_control@conformance,Fail
 spec@egl_ext_protected_content@conformance,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
+
+# D32S8 skips (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT), others fail.
+# The test is importing a z buffer from tu, and rendering a blue fullscreen quad
+# in gl that zfails to leave the green clear color in the middle.
+#
+# TU sysmem mode gets green on the bottom half-ish with some noise at the boundary.
+# TU gmem mode gets fullscreen green.
+spec@ext_external_objects@vk-depth-display,Fail
+spec@ext_external_objects@vk-depth-display@D16,Fail
+spec@ext_external_objects@vk-depth-display@D24S8,Fail
+
+# "Failed to submit queue." from the test some of the time.  No validation failures.
+# When it doesn't fail with that message, gets a set of corrupted colors (supposed
+# to be vertical stripes).
+spec@ext_external_objects@vk-image-display,Fail
+spec@ext_external_objects@vk-image-display-muliple-textures,Fail
+spec@ext_external_objects@vk-image-display-overwrite,Fail
+
+# Linear cases seem to do fine, optimal tiling fails.
+spec@ext_external_objects@vk-image-overwrite,Fail
+spec@ext_external_objects@vk-image-overwrite@RGB 10 A2 UINT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGB 10 A2 UNORM optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGB 5 A1 UNORM optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 16 INT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 16 SFLOAT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 16 UINT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 32 INT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 32 UINT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 4 UNORM optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 8 INT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 8 SRGB optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 8 UINT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+spec@ext_external_objects@vk-image-overwrite@RGBA 8 UNORM optimal: Failed to initialize OpenGL FBO/RBO,Fail
+
+spec@ext_external_objects@vk-semaphores,Fail
+spec@ext_external_objects@vk-semaphores-2,Fail
+
+# D32S8 skips (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT), D24S8 fails.
+spec@ext_external_objects@vk-stencil-display,Fail
+spec@ext_external_objects@vk-stencil-display@D24S8,Fail
+
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 
 spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 2,Fail
