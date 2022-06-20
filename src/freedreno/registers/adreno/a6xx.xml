@@ -2166,7 +2166,7 @@ to upconvert to 32b float internally?
 	<!-- 0x888a-0x888f invalid -->
 	<reg32 offset="0x8890" name="RB_WINDOW_OFFSET" type="a6xx_reg_xy"/>
 	<reg32 offset="0x8891" name="RB_SAMPLE_COUNT_CONTROL">
-		<bitfield name="UNK0" pos="0" type="boolean"/>
+		<bitfield name="DISABLE" pos="0" type="boolean"/>
 		<bitfield name="COPY" pos="1" type="boolean"/>
 	</reg32>
 	<!-- 0x8892-0x8897 invalid -->

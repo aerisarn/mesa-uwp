@@ -1113,6 +1113,9 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_SC_CNTL,
                         A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2));
 
+   /* Disable sample counting in order to not affect occlusion query. */
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = true));
+
    if (cmd->state.predication_active) {
       tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_LOCAL, 1);
       tu_cs_emit(cs, 0);
@@ -1148,6 +1151,9 @@ r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_LOCAL, 1);
       tu_cs_emit(cs, 1);
    }
+
+   /* Re-enable sample counting. */
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = false));
 }
 
 /* blit ops - common interface for 2d/shader paths */
@@ -2351,6 +2357,9 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
 
    r3d_common(cmd, cs, false, clear_rts, false, cmd->state.subpass->samples);
 
+   /* Disable sample counting in order to not affect occlusion query. */
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = true));
+
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = clear_components));
    tu_cs_emit_regs(cs,
@@ -2422,6 +2431,9 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
          r3d_run_vis(cmd, cs);
       }
    }
+
+   /* Re-enable sample counting. */
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = false));
 
    trace_end_sysmem_clear_all(&cmd->trace,
                               cs, mrt_count, rect_count);
@@ -3046,6 +3058,8 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit_wfi(cs);
 
    r3d_run(cmd, cs);
+
+   r3d_teardown(cmd, cs);
 
    /* Draws write to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
     * sysmem, and we generally assume that GMEM renderpasses leave their

@@ -60,10 +60,6 @@ KHR-Single-GL46.arrays_of_arrays_gl.SubroutineFunctionCalls2,Crash
 KHR-Single-GL46.enhanced_layouts.xfb_capture_inactive_output_block_member,Fail
 KHR-Single-GL46.enhanced_layouts.xfb_capture_struct,Fail
 KHR-Single-GL46.enhanced_layouts.xfb_vertex_streams,Fail
-dEQP-GLES3.functional.occlusion_query.depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.stencil_clear,Fail
 dEQP-GLES31.functional.blend_equation_advanced.barrier.colorburn,Fail
 dEQP-GLES31.functional.blend_equation_advanced.barrier.colordodge,Fail
 dEQP-GLES31.functional.blend_equation_advanced.barrier.darken,Fail
