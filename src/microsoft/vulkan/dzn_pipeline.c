@@ -286,7 +286,6 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       NULL : info->pViewportState;
    struct {
       const VkPipelineShaderStageCreateInfo *info;
-      nir_shader *nir;
    } stages[MESA_VULKAN_SHADER_STAGES] = { 0 };
    gl_shader_stage yz_flip_stage = MESA_SHADER_NONE;
    uint32_t active_stage_mask = 0;
@@ -377,7 +376,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                                         yz_flip_mode, y_flip_mask, z_flip_mask,
                                         force_sample_rate_shading,
                                         vi_conversions,
-                                        &nir_opts, &stages[stage].nir);
+                                        &nir_opts, &pipeline->templates.shaders[stage].nir);
       if (ret != VK_SUCCESS)
          return ret;
    }
@@ -391,18 +390,18 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       link_mask &= ~BITFIELD_BIT(stage);
       gl_shader_stage prev_stage = util_last_bit(link_mask) - 1;
 
-      assert(stages[stage].nir);
-      dxil_spirv_nir_link(stages[stage].nir,
+      assert(pipeline->templates.shaders[stage].nir);
+      dxil_spirv_nir_link(pipeline->templates.shaders[stage].nir,
                           prev_stage != MESA_SHADER_NONE ?
-                          stages[prev_stage].nir : NULL);
+                          pipeline->templates.shaders[prev_stage].nir : NULL);
    }
 
-   if (stages[MESA_SHADER_VERTEX].nir) {
+   if (pipeline->templates.shaders[MESA_SHADER_VERTEX].nir) {
       /* Now, declare one D3D12_INPUT_ELEMENT_DESC per VS input variable, so
        * we can handle location overlaps properly.
        */
       unsigned drv_loc = 0;
-      nir_foreach_shader_in_variable(var, stages[MESA_SHADER_VERTEX].nir) {
+      nir_foreach_shader_in_variable(var, pipeline->templates.shaders[MESA_SHADER_VERTEX].nir) {
          assert(var->data.location >= VERT_ATTRIB_GENERIC0);
          unsigned loc = var->data.location - VERT_ATTRIB_GENERIC0;
          assert(drv_loc < D3D12_VS_INPUT_REGISTER_COUNT);
@@ -429,19 +428,18 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
           * write the position.
           */
          if (prev_stage == MESA_SHADER_NONE ||
-             !(stages[prev_stage].nir->info.outputs_written & VARYING_BIT_POS))
+             !(pipeline->templates.shaders[prev_stage].nir->info.outputs_written & VARYING_BIT_POS))
             continue;
       }
 
       D3D12_SHADER_BYTECODE *slot =
          dzn_pipeline_get_gfx_shader_slot(out, stage);
 
-      ret = dzn_pipeline_compile_shader(device, stages[stage].nir, slot);
+      ret = dzn_pipeline_compile_shader(device, pipeline->templates.shaders[stage].nir, slot);
       if (ret != VK_SUCCESS)
          return ret;
 
       pipeline->templates.shaders[stage].bc = slot;
-      pipeline->templates.shaders[stage].nir = stages[stage].nir;
    }
 
    return VK_SUCCESS;
