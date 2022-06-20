@@ -323,31 +323,6 @@ draw(struct zink_context *ctx,
    }
 }
 
-/*
-   If a synchronization command includes a source stage mask, its first synchronization scope only
-   includes execution of the pipeline stages specified in that mask, and its first access scope only
-   includes memory accesses performed by pipeline stages specified in that mask.
-
-   If a synchronization command includes a destination stage mask, its second synchronization scope
-   only includes execution of the pipeline stages specified in that mask, and its second access scope
-   only includes memory access performed by pipeline stages specified in that mask.
-
-   - Chapter 7. Synchronization and Cache Control
-
- * thus, all stages must be added to ensure accurate synchronization
- */
-ALWAYS_INLINE static VkPipelineStageFlags
-find_pipeline_bits(uint32_t *mask)
-{
-   VkPipelineStageFlags pipeline = 0;
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-      if (mask[i]) {
-         pipeline |= zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)i);
-      }
-   }
-   return pipeline;
-}
-
 static void
 update_barriers(struct zink_context *ctx, bool is_compute,
                 struct pipe_resource *index, struct pipe_resource *indirect, struct pipe_resource *indirect_draw_count)
@@ -359,63 +334,14 @@ update_barriers(struct zink_context *ctx, bool is_compute,
    ctx->need_barriers[is_compute] = &ctx->update_barriers[is_compute][ctx->barrier_set_idx[is_compute]];
    set_foreach(need_barriers, he) {
       struct zink_resource *res = (struct zink_resource *)he->key;
-      bool is_buffer = res->obj->is_buffer;
-      VkPipelineStageFlags pipeline = 0;
-      VkAccessFlags access = 0;
-
-      if (res == zink_resource(index)) {
-         access |= VK_ACCESS_INDEX_READ_BIT;
-         pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-      } else if (res == zink_resource(indirect) || res == zink_resource(indirect_draw_count)) {
-         access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-         pipeline |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-      }
       if (res->bind_count[is_compute]) {
-         if (res->write_bind_count[is_compute])
-            access |= VK_ACCESS_SHADER_WRITE_BIT;
-         if (is_buffer) {
-            unsigned bind_count = res->bind_count[is_compute];
-            if (res->ubo_bind_count[is_compute])
-               access |= VK_ACCESS_UNIFORM_READ_BIT;
-            bind_count -= res->ubo_bind_count[is_compute];
-            if (!is_compute && res->vbo_bind_mask) {
-               access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-               pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-               bind_count -= res->vbo_bind_count;
-            }
-            if (bind_count)
-               access |= VK_ACCESS_SHADER_READ_BIT;
-            if (!is_compute) {
-               pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
-
-               if (res->ubo_bind_count[0] && (pipeline & GFX_SHADER_BITS) != GFX_SHADER_BITS)
-                  pipeline |= find_pipeline_bits(res->ubo_bind_mask);
-            }
-         } else {
-            if (res->bind_count[is_compute] != res->write_bind_count[is_compute])
-               access |= VK_ACCESS_SHADER_READ_BIT;
-            if (res->write_bind_count[is_compute])
-               access |= VK_ACCESS_SHADER_WRITE_BIT;
-         }
-         if (is_compute)
-            pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-         else {
-            VkPipelineStageFlags gfx_stages = pipeline & ~(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-            /* images always need gfx stages, and buffers need gfx stages if non-vbo binds exist */
-            bool needs_stages = !is_buffer || (res->bind_count[0] - res->vbo_bind_count > 0);
-            if (gfx_stages != GFX_SHADER_BITS && needs_stages) {
-               gfx_stages |= find_pipeline_bits(res->sampler_binds);
-               if (gfx_stages != GFX_SHADER_BITS) //must be a shader image
-                  gfx_stages |= find_pipeline_bits(res->image_binds);
-               pipeline |= gfx_stages;
-            }
-         }
+         VkPipelineStageFlagBits pipeline = is_compute ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : res->gfx_barrier;
          if (res->base.b.target == PIPE_BUFFER)
-            zink_resource_buffer_barrier(ctx, res, access, pipeline);
+            zink_resource_buffer_barrier(ctx, res, res->barrier_access[is_compute], pipeline);
          else {
             VkImageLayout layout = zink_descriptor_util_image_layout_eval(ctx, res, is_compute);
             if (layout != res->layout)
-               zink_resource_image_barrier(ctx, res, layout, access, pipeline);
+               zink_resource_image_barrier(ctx, res, layout, res->barrier_access[is_compute], pipeline);
          }
          /* always barrier on draw if this resource has either multiple image write binds or
           * image write binds and image read binds
