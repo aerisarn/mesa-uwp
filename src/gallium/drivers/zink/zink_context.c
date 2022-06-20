@@ -1251,6 +1251,7 @@ unbind_ssbo(struct zink_context *ctx, struct zink_resource *res, enum pipe_shade
    if (!res)
       return;
    res->ssbo_bind_mask[pstage] &= ~BITFIELD_BIT(slot);
+   res->ssbo_bind_count[pstage == PIPE_SHADER_COMPUTE]--;
    update_res_bind_count(ctx, res, pstage == PIPE_SHADER_COMPUTE, true);
    if (writable)
       res->write_bind_count[pstage == PIPE_SHADER_COMPUTE]--;
@@ -1281,6 +1282,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          if (new_res != res) {
             unbind_ssbo(ctx, res, p_stage, i, was_writable);
             new_res->ssbo_bind_mask[p_stage] |= BITFIELD_BIT(i);
+            new_res->ssbo_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
             update_res_bind_count(ctx, new_res, p_stage == PIPE_SHADER_COMPUTE, false);
          }
          VkAccessFlags access = VK_ACCESS_SHADER_READ_BIT;
