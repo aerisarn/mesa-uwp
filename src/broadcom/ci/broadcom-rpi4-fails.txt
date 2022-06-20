@@ -346,8 +346,6 @@ spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RGBA8I,Fail
 
 dEQP-VK.draw.renderpass.inverted_depth_ranges.nodepthclamp_deltazero,Fail
 
-# Works if using V3D_DEBUG=noloopunroll
-dEQP-VK.graphicsfuzz.cov-loop-condition-clamp-vec-of-ones,Crash
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth16,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
