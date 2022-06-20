@@ -774,47 +774,40 @@ lower_rt_derefs(nir_shader *shader)
 
    nir_foreach_block (block, impl) {
       nir_foreach_instr_safe (instr, block) {
-         switch (instr->type) {
-         case nir_instr_type_deref: {
-            if (instr->type != nir_instr_type_deref)
-               continue;
+         if (instr->type != nir_instr_type_deref)
+            continue;
 
-            nir_deref_instr *deref = nir_instr_as_deref(instr);
-            if (nir_deref_mode_is(deref, nir_var_shader_call_data)) {
-               deref->modes = nir_var_function_temp;
-               if (deref->deref_type == nir_deref_type_var) {
-                  b.cursor = nir_before_instr(&deref->instr);
-                  nir_deref_instr *cast = nir_build_deref_cast(
-                     &b, arg_offset, nir_var_function_temp, deref->var->type, 0);
-                  nir_ssa_def_rewrite_uses(&deref->dest.ssa, &cast->dest.ssa);
-                  nir_instr_remove(&deref->instr);
-               }
-               progress = true;
-            } else if (nir_deref_mode_is(deref, nir_var_ray_hit_attrib)) {
-               deref->modes = nir_var_function_temp;
-               if (deref->deref_type == nir_deref_type_var) {
-                  b.cursor = nir_before_instr(&deref->instr);
-                  nir_deref_instr *cast =
-                     nir_build_deref_cast(&b, nir_imm_int(&b, RADV_HIT_ATTRIB_OFFSET),
-                                          nir_var_function_temp, deref->type, 0);
-                  nir_ssa_def_rewrite_uses(&deref->dest.ssa, &cast->dest.ssa);
-                  nir_instr_remove(&deref->instr);
-               }
-               progress = true;
-            }
-            break;
+         nir_deref_instr *deref = nir_instr_as_deref(instr);
+         b.cursor = nir_before_instr(&deref->instr);
+
+         nir_deref_instr *replacement = NULL;
+         if (nir_deref_mode_is(deref, nir_var_shader_call_data)) {
+            deref->modes = nir_var_function_temp;
+            progress = true;
+
+            if (deref->deref_type == nir_deref_type_var)
+               replacement =
+                  nir_build_deref_cast(&b, arg_offset, nir_var_function_temp, deref->var->type, 0);
+         } else if (nir_deref_mode_is(deref, nir_var_ray_hit_attrib)) {
+            deref->modes = nir_var_function_temp;
+            progress = true;
+
+            if (deref->deref_type == nir_deref_type_var)
+               replacement = nir_build_deref_cast(&b, nir_imm_int(&b, RADV_HIT_ATTRIB_OFFSET),
+                                                  nir_var_function_temp, deref->type, 0);
          }
-         default:
-            break;
+
+         if (replacement != NULL) {
+            nir_ssa_def_rewrite_uses(&deref->dest.ssa, &replacement->dest.ssa);
+            nir_instr_remove(&deref->instr);
          }
       }
    }
 
-   if (progress) {
+   if (progress)
       nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
-   } else {
+   else
       nir_metadata_preserve(impl, nir_metadata_all);
-   }
 
    return progress;
 }
