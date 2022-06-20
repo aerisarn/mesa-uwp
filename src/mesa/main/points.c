@@ -39,7 +39,8 @@
 static void
 update_point_size_set(struct gl_context *ctx)
 {
-   ctx->PointSizeIsSet = ctx->Point.Size == 1.0 || ctx->Point._Attenuated;
+   float size = CLAMP(ctx->Point.Size, ctx->Point.MinSize, ctx->Point.MaxSize);
+   ctx->PointSizeIsSet = (size == 1.0 && ctx->Point.Size == 1.0) || ctx->Point._Attenuated;
 }
 
 /**
