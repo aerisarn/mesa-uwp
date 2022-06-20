@@ -135,16 +135,16 @@ radv_stoney_vkcts:amd64:
 
 # VKCTS never finishes on gfx7 due to all the GPU resets and hangs.
 # Hence, disable it for now.
-.vkcts-kabini-valve:
+vkcts-kabini-valve:
   extends:
     - .vkcts-test-valve
     - .kabini-test-valve
-  timeout: 6h 10m
+    - .test-manual-mr  # Make sure this job is *always* run manually
+  timeout: 12h
   variables:
-    # FIXME: Create this baseline for KABINI
     GPU_VERSION: radv-kabini-aco
-    B2C_TIMEOUT_BOOT_MINUTES: 360
-    B2C_TIMEOUT_OVERALL_MINUTES: 360
+    B2C_TIMEOUT_BOOT_MINUTES: 710
+    B2C_TIMEOUT_OVERALL_MINUTES: 710
     B2C_TIMEOUT_BOOT_RETRIES: 0
 
 # Disabled for now due to Igalia farm issues.
