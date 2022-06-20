@@ -152,6 +152,9 @@ struct zink_resource {
       uint32_t all_binds;
    };
 
+   VkPipelineStageFlagBits gfx_barrier;
+   VkAccessFlagBits barrier_access[2]; //gfx, compute
+
    union {
       struct {
          struct hash_table bufferview_cache;
