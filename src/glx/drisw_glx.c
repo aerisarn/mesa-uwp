@@ -439,12 +439,18 @@ drisw_bind_context(struct glx_context *context, struct glx_context *old,
 
    driReleaseDrawables(&pcp->base);
 
-   if ((*psc->core->bindContext) (pcp->driContext,
+   if (!(*psc->core->bindContext) (pcp->driContext,
                                   pdraw ? pdraw->driDrawable : NULL,
                                   pread ? pread->driDrawable : NULL))
-      return Success;
+      return GLXBadContext;
+   if (psc->f) {
+      if (pdraw)
+         psc->f->invalidate(pdraw->driDrawable);
+      if (pread && (!pdraw || pread->driDrawable != pdraw->driDrawable))
+         psc->f->invalidate(pread->driDrawable);
+   }
 
-   return GLXBadContext;
+   return Success;
 }
 
 static void
