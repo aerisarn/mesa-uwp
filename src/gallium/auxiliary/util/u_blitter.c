@@ -70,7 +70,7 @@ struct blitter_context_priv
    void *vs; /**< Vertex shader which passes {pos, generic} to the output.*/
    void *vs_nogeneric;
    void *vs_pos_only[4]; /**< Vertex shader which passes pos to the output
-                              for clear_buffer/copy_buffer.*/
+                              for clear_buffer.*/
    void *vs_layered; /**< Vertex shader which sets LAYER = INSTANCEID. */
 
    /* Fragment shaders. */
@@ -2567,74 +2567,6 @@ void util_blitter_custom_depth_stencil(struct blitter_context *blitter,
    util_blitter_restore_fb_state(blitter);
    util_blitter_restore_render_cond(blitter);
    util_blitter_unset_running_flag(blitter);
-}
-
-void util_blitter_copy_buffer(struct blitter_context *blitter,
-                              struct pipe_resource *dst,
-                              unsigned dstx,
-                              struct pipe_resource *src,
-                              unsigned srcx,
-                              unsigned size)
-{
-   struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;
-   struct pipe_context *pipe = ctx->base.pipe;
-   struct pipe_vertex_buffer vb;
-   struct pipe_stream_output_target *so_target;
-   unsigned offsets[PIPE_MAX_SO_BUFFERS] = {0};
-
-   if (srcx >= src->width0 ||
-       dstx >= dst->width0) {
-      return;
-   }
-   if (srcx + size > src->width0) {
-      size = src->width0 - srcx;
-   }
-   if (dstx + size > dst->width0) {
-      size = dst->width0 - dstx;
-   }
-
-   /* Drivers not capable of Stream Out should not call this function
-    * in the first place. */
-   assert(ctx->has_stream_out);
-
-   /* Some alignment is required. */
-   if (srcx % 4 != 0 || dstx % 4 != 0 || size % 4 != 0 ||
-       !ctx->has_stream_out) {
-      struct pipe_box box;
-      u_box_1d(srcx, size, &box);
-      util_resource_copy_region(pipe, dst, 0, dstx, 0, 0, src, 0, &box);
-      return;
-   }
-
-   util_blitter_set_running_flag(blitter);
-   blitter_check_saved_vertex_states(ctx);
-   blitter_disable_render_cond(ctx);
-
-   vb.is_user_buffer = false;
-   vb.buffer.resource = src;
-   vb.buffer_offset = srcx;
-   vb.stride = 4;
-
-   pipe->set_vertex_buffers(pipe, ctx->base.vb_slot, 1, 0, false, &vb);
-   pipe->bind_vertex_elements_state(pipe, ctx->velem_state_readbuf[0]);
-   bind_vs_pos_only(ctx, 1);
-   if (ctx->has_geometry_shader)
-      pipe->bind_gs_state(pipe, NULL);
-   if (ctx->has_tessellation) {
-      pipe->bind_tcs_state(pipe, NULL);
-      pipe->bind_tes_state(pipe, NULL);
-   }
-   pipe->bind_rasterizer_state(pipe, ctx->rs_discard_state);
-
-   so_target = pipe->create_stream_output_target(pipe, dst, dstx, size);
-   pipe->set_stream_output_targets(pipe, 1, &so_target, offsets);
-
-   util_draw_arrays(pipe, PIPE_PRIM_POINTS, 0, size / 4);
-
-   util_blitter_restore_vertex_states(blitter);
-   util_blitter_restore_render_cond(blitter);
-   util_blitter_unset_running_flag(blitter);
-   pipe_so_target_reference(&so_target, NULL);
 }
 
 void util_blitter_clear_buffer(struct blitter_context *blitter,
