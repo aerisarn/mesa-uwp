@@ -138,21 +138,37 @@
     reports:
       junit: results/junit.xml
 
+# ARM testing of bare-metal boards attached to an x86 gitlab-runner system
 .baremetal-test-armhf:
   extends:
     - .baremetal-test
+    - .use-debian/arm_test
   variables:
     BM_ROOTFS: /rootfs-armhf
     MINIO_ARTIFACT_NAME: mesa-armhf
+  needs:
+    - debian/arm_test
+    - job: debian-armhf
+      artifacts: false
 
+# ARM64 testing of bare-metal boards attached to an x86 gitlab-runner system
 .baremetal-test-arm64:
   extends:
     - .baremetal-test
+    - .use-debian/arm_test
   variables:
     BM_ROOTFS: /rootfs-arm64
     MINIO_ARTIFACT_NAME: mesa-arm64
+  needs:
+    - debian/arm_test
+    - job: debian-arm64
+      artifacts: false
 
+# ARM64 testing of bare-metal boards attached to an x86 gitlab-runner system, using an asan mesa build
 .baremetal-arm64-asan-test:
+  extends:
+    - .baremetal-test
+    - .use-debian/arm_test
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.6:/install/lib/libdlclose-skip.so"
     MINIO_ARTIFACT_NAME: mesa-arm64-asan

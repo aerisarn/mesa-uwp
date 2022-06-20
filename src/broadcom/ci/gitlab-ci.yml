@@ -2,7 +2,6 @@
   extends:
     - .baremetal-test-armhf
     - .vc4-rules
-    - .use-debian/arm_test
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
     GPU_VERSION: broadcom-rpi3
@@ -10,10 +9,6 @@
     FLAKES_CHANNEL: "#videocore-ci"
   script:
     - ./install/bare-metal/poe-powered.sh
-  needs:
-    - job: debian/arm_test
-      artifacts: false
-    - debian-armhf
   tags:
     - igalia-rpi3
 
@@ -54,7 +49,6 @@ vc4-rpi3-piglit-quick_gl:armhf:
   extends:
     - .baremetal-test-armhf
     - .v3d-rules
-    - .use-debian/arm_test
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
@@ -98,7 +92,6 @@ v3d-rpi4-piglit:armhf:
   extends:
     - .baremetal-test-armhf
     - .v3d-rules
-    - .use-debian/arm_test
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
@@ -117,7 +110,6 @@ v3d-rpi4-traces:arm64:
   extends:
     - .piglit-traces-test
     - .baremetal-test-arm64
-    - .use-debian/arm_test
     - .v3d-rules
     - .test-manual-mr
   variables:
@@ -135,17 +127,12 @@ v3d-rpi4-traces:arm64:
       junit: results/junit.xml
   script:
     - ./install/bare-metal/poe-powered.sh
-  needs:
-    - debian/arm_test
-    - job: debian-arm64
-      artifacts: false
   tags:
     - igalia-rpi4
 
 v3dv-rpi4-vk:arm64:
   extends:
     - .baremetal-test-arm64
-    - .use-debian/arm_test
     - .v3dv-rules
   parallel: 8
   variables:
@@ -160,9 +147,5 @@ v3dv-rpi4-vk:arm64:
     VK_DRIVER: broadcom
   script:
     - ./install/bare-metal/poe-powered.sh
-  needs:
-    - debian/arm_test
-    - job: debian-arm64
-      artifacts: false
   tags:
     - igalia-rpi4

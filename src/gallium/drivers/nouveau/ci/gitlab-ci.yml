@@ -1,7 +1,6 @@
 .gm20b-test:
   extends:
     - .baremetal-test-arm64
-    - .use-debian/arm_test
     - .nouveau-rules
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
@@ -14,10 +13,6 @@
     HWCI_KERNEL_MODULES: tegra-drm,nouveau
   script:
     - ./install/bare-metal/poe-powered.sh
-  needs:
-    - debian/arm_test
-    - job: debian-arm64
-      artifacts: false
   tags:
     - google-nouveau-jetson-nano
 

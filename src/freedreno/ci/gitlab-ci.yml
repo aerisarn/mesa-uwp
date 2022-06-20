@@ -1,7 +1,6 @@
 .freedreno-test:
   extends:
     - .baremetal-test-arm64
-    - .use-debian/arm_test
     - .freedreno-rules
   variables:
     FLAKES_CHANNEL: "#freedreno-ci"
@@ -9,10 +8,6 @@
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 $BM_KERNEL_EXTRA_ARGS root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
   script:
     - ./install/bare-metal/fastboot.sh
-  needs:
-    - debian/arm_test
-    - job: debian-arm64
-      artifacts: false
   tags:
     - google-freedreno-db410c
 
