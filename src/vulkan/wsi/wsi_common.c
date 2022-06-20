@@ -247,24 +247,25 @@ wsi_device_setup_syncobj_fd(struct wsi_device *wsi_device,
 VkResult
 wsi_swapchain_init(const struct wsi_device *wsi,
                    struct wsi_swapchain *chain,
-                   VkDevice device,
+                   VkDevice _device,
                    const VkSwapchainCreateInfoKHR *pCreateInfo,
                    const VkAllocationCallbacks *pAllocator,
                    bool use_buffer_blit)
 {
+   VK_FROM_HANDLE(vk_device, device, _device);
    VkResult result;
 
    memset(chain, 0, sizeof(*chain));
 
-   vk_object_base_init(NULL, &chain->base, VK_OBJECT_TYPE_SWAPCHAIN_KHR);
+   vk_object_base_init(device, &chain->base, VK_OBJECT_TYPE_SWAPCHAIN_KHR);
 
    chain->wsi = wsi;
-   chain->device = device;
+   chain->device = _device;
    chain->alloc = *pAllocator;
    chain->use_buffer_blit = use_buffer_blit;
    chain->buffer_blit_queue = VK_NULL_HANDLE;
    if (use_buffer_blit && wsi->get_buffer_blit_queue)
-      chain->buffer_blit_queue = wsi->get_buffer_blit_queue(device);
+      chain->buffer_blit_queue = wsi->get_buffer_blit_queue(_device);
 
    int cmd_pools_count = chain->buffer_blit_queue != VK_NULL_HANDLE ? 1 : wsi->queue_family_count;
 
@@ -287,7 +288,7 @@ wsi_swapchain_init(const struct wsi_device *wsi,
          .flags = 0,
          .queueFamilyIndex = queue_family_index,
       };
-      result = wsi->CreateCommandPool(device, &cmd_pool_info, &chain->alloc,
+      result = wsi->CreateCommandPool(_device, &cmd_pool_info, &chain->alloc,
                                       &chain->cmd_pools[i]);
       if (result != VK_SUCCESS)
          goto fail;
