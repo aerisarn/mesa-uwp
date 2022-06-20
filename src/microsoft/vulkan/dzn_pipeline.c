@@ -322,43 +322,41 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       active_stage_mask |= BITFIELD_BIT(stage);
    }
 
+   enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
+   uint16_t y_flip_mask = 0, z_flip_mask = 0;
+
+   if (pipeline->vp.dynamic) {
+      yz_flip_mode = DXIL_SPIRV_YZ_FLIP_CONDITIONAL;
+   } else if (vp_info) {
+      for (uint32_t i = 0; vp_info->pViewports && i < vp_info->viewportCount; i++) {
+         if (vp_info->pViewports[i].height > 0)
+            y_flip_mask |= BITFIELD_BIT(i);
+
+         if (vp_info->pViewports[i].minDepth > vp_info->pViewports[i].maxDepth)
+            z_flip_mask |= BITFIELD_BIT(i);
+      }
+
+      if (y_flip_mask && z_flip_mask)
+         yz_flip_mode = DXIL_SPIRV_YZ_FLIP_UNCONDITIONAL;
+      else if (z_flip_mask)
+         yz_flip_mode = DXIL_SPIRV_Z_FLIP_UNCONDITIONAL;
+      else if (y_flip_mask)
+         yz_flip_mode = DXIL_SPIRV_Y_FLIP_UNCONDITIONAL;
+   }
+
+   bool force_sample_rate_shading =
+      info->pMultisampleState &&
+      info->pMultisampleState->sampleShadingEnable;
+
    /* Second step: get NIR shaders for all stages. */
    nir_shader_compiler_options nir_opts = *dxil_get_nir_compiler_options();
    nir_opts.lower_base_vertex = true;
    u_foreach_bit(stage, active_stage_mask) {
-      enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
-      uint16_t y_flip_mask = 0, z_flip_mask = 0;
-
-      if (stage == yz_flip_stage) {
-         if (pipeline->vp.dynamic) {
-            yz_flip_mode = DXIL_SPIRV_YZ_FLIP_CONDITIONAL;
-         } else if (vp_info) {
-            for (uint32_t i = 0; vp_info->pViewports && i < vp_info->viewportCount; i++) {
-               if (vp_info->pViewports[i].height > 0)
-                  y_flip_mask |= BITFIELD_BIT(i);
-
-               if (vp_info->pViewports[i].minDepth > vp_info->pViewports[i].maxDepth)
-                  z_flip_mask |= BITFIELD_BIT(i);
-            }
-
-            if (y_flip_mask && z_flip_mask)
-               yz_flip_mode = DXIL_SPIRV_YZ_FLIP_UNCONDITIONAL;
-            else if (z_flip_mask)
-               yz_flip_mode = DXIL_SPIRV_Z_FLIP_UNCONDITIONAL;
-            else if (y_flip_mask)
-               yz_flip_mode = DXIL_SPIRV_Y_FLIP_UNCONDITIONAL;
-         }
-      }
-
-      bool force_sample_rate_shading =
-         stages[stage].info->stage == VK_SHADER_STAGE_FRAGMENT_BIT &&
-         info->pMultisampleState &&
-         info->pMultisampleState->sampleShadingEnable;
-
       ret = dzn_pipeline_get_nir_shader(device, layout,
                                         stages[stage].info, stage,
-                                        yz_flip_mode, y_flip_mask, z_flip_mask,
-                                        force_sample_rate_shading,
+                                        stage == yz_flip_stage ? yz_flip_mode : DXIL_SPIRV_YZ_FLIP_NONE,
+                                        y_flip_mask, z_flip_mask,
+                                        stage == MESA_SHADER_FRAGMENT ? force_sample_rate_shading : false,
                                         vi_conversions,
                                         &nir_opts, &pipeline->templates.shaders[stage].nir);
       if (ret != VK_SUCCESS)
