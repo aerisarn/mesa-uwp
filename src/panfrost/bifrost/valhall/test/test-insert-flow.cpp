@@ -248,3 +248,16 @@ TEST_F(InsertFlow, DiamondCFG) {
          flow(END);
    });
 }
+
+TEST_F(InsertFlow, BarrierBug) {
+   CASE(KERNEL, {
+         bi_instr *I = bi_store_i32(b, bi_register(0), bi_register(2), bi_register(4), BI_SEG_NONE, 0);
+         I->slot = 2;
+
+         bi_fadd_f32_to(b, bi_register(10), bi_register(10), bi_register(10));
+         flow(WAIT2);
+         bi_barrier(b);
+         flow(WAIT);
+         flow(END);
+   });
+}
