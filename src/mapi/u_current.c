@@ -90,7 +90,7 @@ extern void (*__glapi_noop_table[])(void);
  * thread, perhaps running on a different processor, is clearing it.  Because
  * of that, \c ThreadSafe, which can only ever be changed to \c GL_TRUE, is
  * used to determine whether or not the application is multithreaded.
- * 
+ *
  * In the TLS case, the variables \c _glapi_Dispatch and \c _glapi_Context are
  * hardcoded to \c NULL.  Instead the TLS variables \c _glapi_tls_Dispatch and
  * \c _glapi_tls_Context are used.  Having \c _glapi_Dispatch and
