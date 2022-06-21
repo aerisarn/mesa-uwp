@@ -28,7 +28,6 @@ vc4-rpi3:armhf:
 vc4-rpi3-egl:armhf:
   extends:
     - .vc4-rpi3-test:armhf
-    - .test-manual-mr
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     HWCI_START_XORG: 1
