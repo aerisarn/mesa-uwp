@@ -27,6 +27,22 @@
 #include "vk_descriptors.h"
 #include "vk_util.h"
 
+#include "util/mesa-sha1.h"
+
+static uint32_t
+translate_desc_stages(VkShaderStageFlags in)
+{
+   if (in == VK_SHADER_STAGE_ALL)
+      in = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
+
+   uint32_t out = 0;
+
+   u_foreach_bit(s, in)
+      out |= BITFIELD_BIT(vk_to_mesa_shader_stage(BITFIELD_BIT(s)));
+
+   return out;
+}
+
 static D3D12_SHADER_VISIBILITY
 translate_desc_visibility(VkShaderStageFlags in)
 {
@@ -276,6 +292,9 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       D3D12_SHADER_VISIBILITY visibility =
          translate_desc_visibility(ordered_bindings[i].stageFlags);
       binfos[binding].type = desc_type;
+      binfos[binding].stages =
+         translate_desc_stages(ordered_bindings[i].stageFlags);
+      set_layout->stages |= binfos[binding].stages;
       binfos[binding].visibility = visibility;
       binfos[binding].base_shader_register = base_register;
       assert(base_register + desc_count >= base_register);
@@ -508,6 +527,44 @@ dzn_pipeline_layout_destroy(struct dzn_pipeline_layout *layout)
 // Maximum number of DWORDS (32-bit words) that can be used for a root signature
 #define MAX_ROOT_DWORDS 64
 
+static void
+dzn_pipeline_layout_hash_stages(struct dzn_pipeline_layout *layout,
+                                const VkPipelineLayoutCreateInfo *info)
+{
+   uint32_t stages = 0;
+   for (uint32_t stage = 0; stage < ARRAY_SIZE(layout->stages); stage++) {
+      for (uint32_t set = 0; set < info->setLayoutCount; set++) {
+         VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, info->pSetLayouts[set]);
+
+         stages |= set_layout->stages;
+      }
+   }
+
+   for (uint32_t stage = 0; stage < ARRAY_SIZE(layout->stages); stage++) {
+      if (!(stages & BITFIELD_BIT(stage)))
+         continue;
+
+      struct mesa_sha1 ctx;
+
+      _mesa_sha1_init(&ctx);
+      for (uint32_t set = 0; set < info->setLayoutCount; set++) {
+         VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, info->pSetLayouts[set]);
+         if (!(BITFIELD_BIT(stage) & set_layout->stages))
+            continue;
+
+         for (uint32_t b = 0; b < set_layout->binding_count; b++) {
+            if (!(BITFIELD_BIT(stage) & set_layout->bindings[b].stages))
+               continue;
+
+            _mesa_sha1_update(&ctx, &b, sizeof(b));
+            _mesa_sha1_update(&ctx, &set_layout->bindings[b].base_shader_register,
+                              sizeof(set_layout->bindings[b].base_shader_register));
+         }
+      }
+      _mesa_sha1_final(&ctx, layout->stages[stage].hash);
+   }
+}
+
 static VkResult
 dzn_pipeline_layout_create(struct dzn_device *device,
                            const VkPipelineLayoutCreateInfo *pCreateInfo,
@@ -717,6 +774,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
+   dzn_pipeline_layout_hash_stages(layout, pCreateInfo);
    *out = dzn_pipeline_layout_to_handle(layout);
    return VK_SUCCESS;
 }

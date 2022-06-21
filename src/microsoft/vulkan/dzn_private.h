@@ -599,6 +599,7 @@ struct dzn_descriptor_pool {
 
 struct dzn_descriptor_set_layout_binding {
    VkDescriptorType type;
+   uint32_t stages;
    D3D12_SHADER_VISIBILITY visibility;
    uint32_t base_shader_register;
    uint32_t range_idx[NUM_POOL_TYPES];
@@ -626,6 +627,7 @@ struct dzn_descriptor_set_layout {
       uint32_t desc_count;
       uint32_t range_offset;
    } dynamic_buffers;
+   uint32_t stages;
    uint32_t binding_count;
    const struct dzn_descriptor_set_layout_binding *bindings;
 };
@@ -664,6 +666,9 @@ struct dzn_pipeline_layout {
       D3D12_DESCRIPTOR_HEAP_TYPE type[MAX_SHADER_VISIBILITIES];
       ID3D12RootSignature *sig;
    } root;
+   struct {
+      uint8_t hash[SHA1_DIGEST_LENGTH];
+   } stages[MESA_VULKAN_SHADER_STAGES];
 };
 
 struct dzn_pipeline_layout *
