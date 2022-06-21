@@ -1430,9 +1430,9 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       pctx = threaded_context_unwrap_sync(pctx);
    pctx = trace_get_possibly_threaded_context(pctx);
    ctx = zink_context(pctx);
-   if (ctx->batch.swapchain) {
+   if (ctx->batch.swapchain || ctx->needs_present) {
       ctx->batch.has_work = true;
-      pctx->flush(pctx, NULL, 0);
+      pctx->flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
       if (ctx->last_fence && screen->threaded) {
          struct zink_batch_state *bs = zink_batch_state(ctx->last_fence);
          util_queue_fence_wait(&bs->flush_completed);
