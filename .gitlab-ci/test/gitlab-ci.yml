@@ -120,7 +120,6 @@
     - .test
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
-  stage: test
   before_script:
     - !reference [default, before_script]
     # Use this instead of gitlab's artifacts download because it hits packet.net
