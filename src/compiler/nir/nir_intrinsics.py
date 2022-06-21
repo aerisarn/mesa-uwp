@@ -1397,6 +1397,9 @@ system_value("task_ring_entry_amd", 1)
 system_value("ring_attr_amd", 4)
 system_value("ring_attr_offset_amd", 1)
 
+# Load provoking vertex info
+system_value("provoking_vtx_amd", 1)
+
 # Number of patches processed by each TCS workgroup
 system_value("tcs_num_patches_amd", 1)
 # Relative tessellation patch ID within the current workgroup
