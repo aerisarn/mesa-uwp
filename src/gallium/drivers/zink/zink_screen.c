@@ -2090,6 +2090,8 @@ init_driver_workarounds(struct zink_screen *screen)
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_TURNIP) {
       /* #6602 */
       screen->info.have_EXT_primitives_generated_query = false;
+      /* performance */
+      screen->info.border_color_feats.customBorderColorWithoutFormat = VK_FALSE;
    }
 }
 
