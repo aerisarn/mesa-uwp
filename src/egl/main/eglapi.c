@@ -267,22 +267,17 @@ static EGLBoolean
 _eglSetFuncName(const char *funcName, _EGLDisplay *disp, EGLenum objectType, _EGLResource *object)
 {
    _EGLThreadInfo *thr = _eglGetCurrentThread();
-   if (!_eglIsCurrentThreadDummy()) {
-      thr->CurrentFuncName = funcName;
-      thr->CurrentObjectLabel = NULL;
+   thr->CurrentFuncName = funcName;
+   thr->CurrentObjectLabel = NULL;
 
-      if (objectType == EGL_OBJECT_THREAD_KHR)
-         thr->CurrentObjectLabel = thr->Label;
-      else if (objectType == EGL_OBJECT_DISPLAY_KHR && disp)
-         thr->CurrentObjectLabel = disp->Label;
-      else if (object)
-         thr->CurrentObjectLabel = object->Label;
+   if (objectType == EGL_OBJECT_THREAD_KHR)
+      thr->CurrentObjectLabel = thr->Label;
+   else if (objectType == EGL_OBJECT_DISPLAY_KHR && disp)
+      thr->CurrentObjectLabel = disp->Label;
+   else if (object)
+      thr->CurrentObjectLabel = object->Label;
 
-      return EGL_TRUE;
-   }
-
-   _eglDebugReport(EGL_BAD_ALLOC, funcName, EGL_DEBUG_MSG_CRITICAL_KHR, NULL);
-   return EGL_FALSE;
+   return EGL_TRUE;
 }
 
 #define _EGL_FUNC_START(disp, objectType, object, ret) \
@@ -1645,8 +1640,7 @@ eglGetError(void)
 {
    _EGLThreadInfo *t = _eglGetCurrentThread();
    EGLint e = t->LastError;
-   if (!_eglIsCurrentThreadDummy())
-      t->LastError = EGL_SUCCESS;
+   t->LastError = EGL_SUCCESS;
    return e;
 }
 
@@ -1674,8 +1668,6 @@ eglBindAPI(EGLenum api)
    _EGL_FUNC_START(NULL, EGL_OBJECT_THREAD_KHR, NULL, EGL_FALSE);
 
    t = _eglGetCurrentThread();
-   if (_eglIsCurrentThreadDummy())
-      RETURN_EGL_ERROR(NULL, EGL_BAD_ALLOC, EGL_FALSE);
 
    if (!_eglIsApiValid(api))
       RETURN_EGL_ERROR(NULL, EGL_BAD_PARAMETER, EGL_FALSE);
@@ -1723,19 +1715,17 @@ EGLBoolean EGLAPIENTRY
 eglReleaseThread(void)
 {
    /* unbind current contexts */
-   if (!_eglIsCurrentThreadDummy()) {
-      _EGLThreadInfo *t = _eglGetCurrentThread();
-      _EGLContext *ctx = t->CurrentContext;
+   _EGLThreadInfo *t = _eglGetCurrentThread();
+   _EGLContext *ctx = t->CurrentContext;
 
-      _EGL_FUNC_START(NULL, EGL_OBJECT_THREAD_KHR, NULL, EGL_FALSE);
+   _EGL_FUNC_START(NULL, EGL_OBJECT_THREAD_KHR, NULL, EGL_FALSE);
 
-      if (ctx) {
-         _EGLDisplay *disp = ctx->Resource.Display;
+   if (ctx) {
+      _EGLDisplay *disp = ctx->Resource.Display;
 
-         mtx_lock(&disp->Mutex);
-         (void) disp->Driver->MakeCurrent(disp, NULL, NULL, NULL);
-         mtx_unlock(&disp->Mutex);
-      }
+      mtx_lock(&disp->Mutex);
+      (void) disp->Driver->MakeCurrent(disp, NULL, NULL, NULL);
+      mtx_unlock(&disp->Mutex);
    }
 
    _eglDestroyCurrentThread();
@@ -2434,12 +2424,8 @@ eglLabelObjectKHR(EGLDisplay dpy, EGLenum objectType, EGLObjectKHR object,
    if (objectType == EGL_OBJECT_THREAD_KHR) {
       _EGLThreadInfo *t = _eglGetCurrentThread();
 
-      if (!_eglIsCurrentThreadDummy()) {
-         t->Label = label;
-         return EGL_SUCCESS;
-      }
-
-      RETURN_EGL_ERROR(NULL, EGL_BAD_ALLOC, EGL_BAD_ALLOC);
+     t->Label = label;
+     return EGL_SUCCESS;
    }
 
    disp = _eglLockDisplay(dpy);
