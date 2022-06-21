@@ -135,7 +135,7 @@ dri2_bind_context(struct glx_context *context, struct glx_context *old,
    pdraw = (struct dri2_drawable *) driFetchDrawable(context, draw);
    pread = (struct dri2_drawable *) driFetchDrawable(context, read);
 
-   driReleaseDrawables(&pcp->base);
+   driReleaseDrawables(old);
 
    if (pdraw)
       dri_draw = pdraw->driDrawable;
