@@ -482,7 +482,6 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
          if (ret != VK_SUCCESS)
             return ret;
       }
-      ASSERTED unsigned prev = res->obj->dt_idx;
       ret = VKSCR(AcquireNextImageKHR)(screen->dev, cdt->swapchain->swapchain, timeout, acquire, VK_NULL_HANDLE, &res->obj->dt_idx);
       if (ret != VK_SUCCESS && ret != VK_SUBOPTIMAL_KHR) {
          if (ret == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -492,7 +491,6 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
          VKSCR(DestroySemaphore)(screen->dev, acquire, NULL);
          return ret;
       }
-      assert(prev != res->obj->dt_idx);
       break;
    }
 
