@@ -1706,6 +1706,11 @@ anv_device_alloc_bo(struct anv_device *device,
          regions[nregions++] = device->physical->sys.region;
       }
 
+      /* TODO: Add I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS to flags for
+       * after small BAR uapi is stabilized.
+       */
+      assert(intel_vram_all_mappable(&device->info));
+
       gem_handle = anv_gem_create_regions(device, size + ccs_size,
                                           nregions, regions);
    } else {
