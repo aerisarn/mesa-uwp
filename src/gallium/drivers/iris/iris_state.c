@@ -8318,6 +8318,150 @@ iris_upload_render_state(struct iris_context *ice,
 }
 
 static void
+iris_upload_indirect_render_state(struct iris_context *ice,
+                                  const struct pipe_draw_info *draw,
+                                  const struct pipe_draw_indirect_info *indirect,
+                                  const struct pipe_draw_start_count_bias *sc)
+{
+#if GFX_VERx10 >= 125
+   assert(indirect);
+
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   UNUSED struct iris_screen *screen = batch->screen;
+   UNUSED const struct intel_device_info *devinfo = screen->devinfo;
+   const bool use_predicate =
+      ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
+
+   trace_intel_begin_draw(&batch->trace);
+
+   if (ice->state.dirty & IRIS_DIRTY_VERTEX_BUFFER_FLUSHES)
+      flush_vbos(ice, batch);
+
+   iris_batch_sync_region_start(batch);
+
+   /* Always pin the binder.  If we're emitting new binding table pointers,
+    * we need it.  If not, we're probably inheriting old tables via the
+    * context, and need it anyway.  Since true zero-bindings cases are
+    * practically non-existent, just pin it and avoid last_res tracking.
+    */
+   iris_use_pinned_bo(batch, ice->state.binder.bo, false,
+                      IRIS_DOMAIN_NONE);
+
+   if (!batch->contains_draw) {
+      /* Re-emit constants when starting a new batch buffer in order to
+       * work around push constant corruption on context switch.
+       *
+       * XXX - Provide hardware spec quotation when available.
+       */
+      ice->state.stage_dirty |= (IRIS_STAGE_DIRTY_CONSTANTS_VS  |
+                                 IRIS_STAGE_DIRTY_CONSTANTS_TCS |
+                                 IRIS_STAGE_DIRTY_CONSTANTS_TES |
+                                 IRIS_STAGE_DIRTY_CONSTANTS_GS  |
+                                 IRIS_STAGE_DIRTY_CONSTANTS_FS);
+      batch->contains_draw = true;
+   }
+
+   if (!batch->contains_draw_with_next_seqno) {
+      iris_restore_render_saved_bos(ice, batch, draw);
+      batch->contains_draw_with_next_seqno = true;
+   }
+
+   /* Wa_1306463417 - Send HS state for every primitive on gfx11.
+    * Wa_16011107343 (same for gfx12)
+    * We implement this by setting TCS dirty on each draw.
+    */
+   if ((INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343) &&
+       ice->shaders.prog[MESA_SHADER_TESS_CTRL]) {
+      ice->state.stage_dirty |= IRIS_STAGE_DIRTY_TCS;
+   }
+
+   iris_upload_dirty_render_state(ice, batch, draw);
+
+   if (draw->index_size > 0) {
+      unsigned offset;
+
+      if (draw->has_user_indices) {
+         unsigned start_offset = draw->index_size * sc->start;
+
+         u_upload_data(ice->ctx.const_uploader, start_offset,
+                       sc->count * draw->index_size, 4,
+                       (char*)draw->index.user + start_offset,
+                       &offset, &ice->state.last_res.index_buffer);
+         offset -= start_offset;
+      } else {
+         struct iris_resource *res = (void *) draw->index.resource;
+         res->bind_history |= PIPE_BIND_INDEX_BUFFER;
+
+         pipe_resource_reference(&ice->state.last_res.index_buffer,
+                                 draw->index.resource);
+         offset = 0;
+
+         iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_VF_READ);
+      }
+
+      struct iris_genx_state *genx = ice->state.genx;
+      struct iris_bo *bo = iris_resource_bo(ice->state.last_res.index_buffer);
+
+      uint32_t ib_packet[GENX(3DSTATE_INDEX_BUFFER_length)];
+      iris_pack_command(GENX(3DSTATE_INDEX_BUFFER), ib_packet, ib) {
+         ib.IndexFormat = draw->index_size >> 1;
+         ib.MOCS = iris_mocs(bo, &batch->screen->isl_dev,
+                             ISL_SURF_USAGE_INDEX_BUFFER_BIT);
+         ib.BufferSize = bo->size - offset;
+         ib.BufferStartingAddress = ro_bo(NULL, bo->address + offset);
+         ib.L3BypassDisable       = true;
+      }
+
+      if (memcmp(genx->last_index_buffer, ib_packet, sizeof(ib_packet)) != 0) {
+          memcpy(genx->last_index_buffer, ib_packet, sizeof(ib_packet));
+         iris_batch_emit(batch, ib_packet, sizeof(ib_packet));
+         iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_VF_READ);
+      }
+
+   }
+
+   iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
+
+   genX(maybe_emit_breakpoint)(batch, true);
+
+   iris_emit_cmd(batch, GENX(EXECUTE_INDIRECT_DRAW), ind) {
+      ind.ArgumentFormat             =
+         draw->index_size > 0 ? DRAWINDEXED : DRAW;
+      ind.PredicateEnable            = use_predicate;
+      ind.TBIMREnabled               = ice->state.use_tbimr;
+      ind.MaxCount                   = indirect->draw_count;
+
+      if (indirect->buffer) {
+         struct iris_bo *bo = iris_resource_bo(indirect->buffer);
+         ind.ArgumentBufferStartAddress = ro_bo(bo, indirect->offset);
+         ind.MOCS = iris_mocs(bo, &screen->isl_dev, 0);
+         } else {
+         ind.MOCS = iris_mocs(NULL, &screen->isl_dev, 0);
+      }
+
+      if (indirect->indirect_draw_count) {
+         struct iris_bo *draw_count_bo      =
+            iris_resource_bo(indirect->indirect_draw_count);
+         ind.CountBufferIndirectEnable      = true;
+         ind.CountBufferAddress             =
+            ro_bo(draw_count_bo, indirect->indirect_draw_count_offset);
+      }
+   }
+
+   genX(emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
+   genX(maybe_emit_breakpoint)(batch, false);
+
+   iris_batch_sync_region_end(batch);
+
+   uint32_t count = (sc) ? sc->count : 0;
+   count *= draw->instance_count ? draw->instance_count : 1;
+   trace_intel_end_draw(&batch->trace, count);
+#else
+   unreachable("Unsupported path");
+#endif /* GFX_VERx10 >= 125 */
+}
+
+static void
 iris_load_indirect_location(struct iris_context *ice,
                             struct iris_batch *batch,
                             const struct pipe_grid_info *grid)
@@ -9728,6 +9872,7 @@ genX(init_screen_state)(struct iris_screen *screen)
    screen->vtbl.init_render_context = iris_init_render_context;
    screen->vtbl.init_compute_context = iris_init_compute_context;
    screen->vtbl.upload_render_state = iris_upload_render_state;
+   screen->vtbl.upload_indirect_render_state = iris_upload_indirect_render_state;
    screen->vtbl.update_binder_address = iris_update_binder_address;
    screen->vtbl.upload_compute_state = iris_upload_compute_state;
    screen->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;

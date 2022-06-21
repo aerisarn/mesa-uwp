@@ -69,6 +69,10 @@ struct iris_vtable {
                                unsigned drawid_offset,
                                const struct pipe_draw_indirect_info *indirect,
                                const struct pipe_draw_start_count_bias *sc);
+   void (*upload_indirect_render_state)(struct iris_context *ice,
+                                        const struct pipe_draw_info *draw,
+                                        const struct pipe_draw_indirect_info *indirect,
+                                        const struct pipe_draw_start_count_bias *sc);
    void (*update_binder_address)(struct iris_batch *batch,
                                  struct iris_binder *binder);
    void (*upload_compute_state)(struct iris_context *ice,

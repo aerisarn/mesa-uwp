@@ -1152,6 +1152,30 @@ int iris_get_driver_query_group_info(struct pipe_screen *pscreen,
 void gfx9_toggle_preemption(struct iris_context *ice,
                             struct iris_batch *batch,
                             const struct pipe_draw_info *draw);
+static const bool
+iris_execute_indirect_draw_supported(const struct iris_context *ice,
+                                     const struct pipe_draw_indirect_info *indirect,
+                                     const struct pipe_draw_info *draw)
+{
+   const struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_vs_prog_data *vs_prog_data = (void *)
+      ice->shaders.prog[MESA_SHADER_VERTEX]->prog_data;
+   const bool is_multiview = draw->view_mask != 0;
+   const size_t struct_size = draw->index_size ?
+      sizeof(uint32_t) * 5 :
+      sizeof(uint32_t) * 4;
+   const bool aligned_stride =
+      indirect && (indirect->stride == 0 || indirect->stride == struct_size);
+
+   return (screen->devinfo->has_indirect_unroll &&
+           aligned_stride &&
+           (indirect &&
+           !indirect->count_from_stream_output) &&
+           !is_multiview &&
+           !(vs_prog_data->uses_firstvertex ||
+             vs_prog_data->uses_baseinstance ||
+             vs_prog_data->uses_drawid));
+}
 
 #ifdef genX
 #  include "iris_genx_protos.h"
