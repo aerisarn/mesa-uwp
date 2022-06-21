@@ -865,7 +865,7 @@ wsi_signal_semaphore_for_image(struct vk_device *device,
 
    vk_semaphore_reset_temporary(device, semaphore);
 
-#ifndef _WIN32
+#ifdef HAVE_LIBDRM
    VkResult result = wsi_create_sync_for_dma_buf_wait(chain, image,
                                                       VK_SYNC_FEATURE_GPU_WAIT,
                                                       &semaphore->temporary);
@@ -897,7 +897,7 @@ wsi_signal_fence_for_image(struct vk_device *device,
 
    vk_fence_reset_temporary(device, fence);
 
-#ifndef _WIN32
+#ifdef HAVE_LIBDRM
    VkResult result = wsi_create_sync_for_dma_buf_wait(chain, image,
                                                       VK_SYNC_FEATURE_CPU_WAIT,
                                                       &fence->temporary);
@@ -1075,7 +1075,7 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       VkFence fence = swapchain->fences[image_index];
 
       bool has_signal_dma_buf = false;
-#ifndef _WIN32
+#ifdef HAVE_LIBDRM
       result = wsi_prepare_signal_dma_buf_from_semaphore(swapchain, image);
       if (result == VK_SUCCESS) {
          assert(submit_info.signalSemaphoreCount == 0);
@@ -1108,7 +1108,7 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       if (result != VK_SUCCESS)
          goto fail_present;
 
-#ifndef _WIN32
+#ifdef HAVE_LIBDRM
       if (has_signal_dma_buf) {
          result = wsi_signal_dma_buf_from_semaphore(swapchain, image);
          if (result != VK_SUCCESS)

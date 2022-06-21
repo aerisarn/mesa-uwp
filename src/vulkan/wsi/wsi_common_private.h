@@ -197,6 +197,7 @@ void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image);
 
+#ifdef HAVE_LIBDRM
 VkResult
 wsi_prepare_signal_dma_buf_from_semaphore(struct wsi_swapchain *chain,
                                           const struct wsi_image *image);
@@ -208,6 +209,7 @@ wsi_create_sync_for_dma_buf_wait(const struct wsi_swapchain *chain,
                                  const struct wsi_image *image,
                                  enum vk_sync_features sync_features,
                                  struct vk_sync **sync_out);
+#endif
 
 struct wsi_interface {
    VkResult (*get_support)(VkIcdSurfaceBase *surface,
