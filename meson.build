@@ -504,7 +504,6 @@ foreach platform : _platforms
   pre_args += '-DHAVE_@0@_PLATFORM'.format(platform.to_upper())
 endforeach
 
-use_elf_tls = true
 pre_args += '-DUSE_ELF_TLS'
 
 if with_platform_android and get_option('platform-sdk-version') >= 29
