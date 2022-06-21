@@ -504,8 +504,6 @@ foreach platform : _platforms
   pre_args += '-DHAVE_@0@_PLATFORM'.format(platform.to_upper())
 endforeach
 
-pre_args += '-DUSE_ELF_TLS'
-
 if with_platform_android and get_option('platform-sdk-version') >= 29
   # By default the NDK compiler, at least, emits emutls references instead of
   # ELF TLS, even when building targeting newer API levels.  Make it actually do
