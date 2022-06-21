@@ -944,7 +944,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
          fs_inst *inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                                    srcs, ARRAY_SIZE(srcs));
 
-         /* For ICL WA 1805992985 one needs additional write in the end. */
+         /* For ICL Wa_1805992985 one needs additional write in the end. */
          if (devinfo->ver == 11 && stage == MESA_SHADER_TESS_EVAL)
             inst->eot = false;
          else
@@ -992,9 +992,9 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       inst->mlen = 2;
       inst->offset = 1;
       return;
-   } 
- 
-   /* ICL WA 1805992985:
+   }
+
+   /* ICL Wa_1805992985:
     *
     * ICLLP GPU hangs on one of tessellation vkcts tests with DS not done. The
     * send cycle, which is a urb write with an eot must be 4 phases long and
