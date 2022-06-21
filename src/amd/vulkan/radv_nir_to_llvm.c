@@ -1797,7 +1797,7 @@ handle_fs_outputs_post(struct radv_shader_context *ctx)
    if (depth || stencil || samplemask)
       radv_export_mrt_z(ctx, depth, stencil, samplemask);
    else if (!index)
-      ac_build_export_null(&ctx->ac, ctx->shader_info->ps.can_discard);
+      ac_build_export_null(&ctx->ac, true);
 }
 
 static void
