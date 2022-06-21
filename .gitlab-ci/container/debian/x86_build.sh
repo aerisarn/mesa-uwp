@@ -23,6 +23,7 @@ apt-get install -y --no-remove \
       clang \
       libasan6 \
       libarchive-dev \
+      libclang-cpp13-dev \
       libclang-cpp11-dev \
       libgbm-dev \
       libglvnd-dev \
@@ -38,6 +39,7 @@ apt-get install -y --no-remove \
       libxcb-xfixes0-dev \
       libxcb1-dev \
       libxml2-dev \
+      llvm-13-dev \
       llvm-11-dev \
       llvm-9-dev \
       ocl-icd-opencl-dev \

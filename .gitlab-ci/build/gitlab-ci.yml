@@ -84,6 +84,7 @@ debian-testing:
       -D spirv-to-dxil=true
       -D valgrind=false
     MINIO_ARTIFACT_NAME: mesa-amd64
+    LLVM_VERSION: "13"
   script:
     - .gitlab-ci/lava/lava-pytest.sh
     - .gitlab-ci/meson/build.sh

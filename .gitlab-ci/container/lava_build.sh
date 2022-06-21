@@ -214,7 +214,9 @@ fi
 set -e
 
 cp .gitlab-ci/container/create-rootfs.sh /lava-files/rootfs-${DEBIAN_ARCH}/.
+cp .gitlab-ci/container/debian/llvm-snapshot.gpg.key /lava-files/rootfs-${DEBIAN_ARCH}/.
 chroot /lava-files/rootfs-${DEBIAN_ARCH} sh /create-rootfs.sh
+rm /lava-files/rootfs-${DEBIAN_ARCH}/llvm-snapshot.gpg.key
 rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
 
 

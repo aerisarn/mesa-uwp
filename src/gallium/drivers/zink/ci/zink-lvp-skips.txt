@@ -36,3 +36,6 @@ KHR-GL46.texture_swizzle.functional
 
 # Kopper regression
 glx@glx-tfp
+
+# These tests started hitting timeouts when we upgraded LLVM from v11 to 13
+spec@arb_texture_rg@fbo-blending-formats

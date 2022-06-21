@@ -1,21 +1,21 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2022-06-27-libvulkan"
+   DEBIAN_BASE_TAG: "2022-07-01-bb-llvm13"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-06-16-Debian-MinGW"
+   DEBIAN_BUILD_TAG: "2022-07-01-db-llvm13"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
-   DEBIAN_BUILD_MINGW_TAG: "2022-06-16-Debian-MinGW"
+   DEBIAN_BUILD_MINGW_TAG: "2022-07-01-dmgw-llvm13"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
    DEBIAN_X86_TEST_IMAGE_PATH: "debian/x86_test-gl"
-   DEBIAN_X86_TEST_GL_TAG: "2022-06-21-apitrace-linux"
-   DEBIAN_X86_TEST_VK_TAG: "2022-06-22-dxvk-1.10.1"
+   DEBIAN_X86_TEST_GL_TAG: "2022-07-01-gl-llvm13"
+   DEBIAN_X86_TEST_VK_TAG: "2022-07-01-vk-llvm13"
 
    FEDORA_X86_BUILD_TAG: "2022-04-24-spirv-tools-5"
-   KERNEL_ROOTFS_TAG: "2022-06-21-apitrace-linux"
+   KERNEL_ROOTFS_TAG: "2022-07-01-krfs-llvm13"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-06-15-vs-winsdk"
