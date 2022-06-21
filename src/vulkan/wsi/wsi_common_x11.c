@@ -1291,21 +1291,46 @@ x11_present_to_x11_sw(struct x11_swapchain *chain, uint32_t image_index,
 
    xcb_void_cookie_t cookie;
    void *myptr;
+   size_t hdr_len = sizeof(xcb_put_image_request_t);
+   int stride_b = image->base.row_pitches[0];
+   size_t size = (hdr_len + stride_b * chain->extent.height) >> 2;
+   uint64_t max_req_len = xcb_get_maximum_request_length(chain->conn);
+
    chain->base.wsi->MapMemory(chain->base.device,
                               image->base.memory,
                               0, 0, 0, &myptr);
 
-   cookie = xcb_put_image(chain->conn, XCB_IMAGE_FORMAT_Z_PIXMAP,
-                          chain->window,
-                          chain->gc,
-			  image->base.row_pitches[0] / 4,
-                          chain->extent.height,
-                          0,0,0,24,
-                          image->base.row_pitches[0] * chain->extent.height,
-                          myptr);
+   if (size < max_req_len) {
+      cookie = xcb_put_image(chain->conn, XCB_IMAGE_FORMAT_Z_PIXMAP,
+                             chain->window,
+                             chain->gc,
+                             image->base.row_pitches[0] / 4,
+                             chain->extent.height,
+                             0,0,0,24,
+                             image->base.row_pitches[0] * chain->extent.height,
+                             myptr);
+      xcb_discard_reply(chain->conn, cookie.sequence);
+   } else {
+      int num_lines = ((max_req_len << 2) - hdr_len) / stride_b;
+      int y_start = 0;
+      int y_todo = chain->extent.height;
+      while (y_todo) {
+         int this_lines = MIN2(num_lines, y_todo);
+         cookie = xcb_put_image(chain->conn, XCB_IMAGE_FORMAT_Z_PIXMAP,
+                                chain->window,
+                                chain->gc,
+                                image->base.row_pitches[0] / 4,
+                                this_lines,
+                                0,y_start,0,24,
+                                this_lines * stride_b,
+                                (const uint8_t *)myptr + (y_start * stride_b));
+         xcb_discard_reply(chain->conn, cookie.sequence);
+         y_start += this_lines;
+         y_todo -= this_lines;
+      }
+   }
 
    chain->base.wsi->UnmapMemory(chain->base.device, image->base.memory);
-   xcb_discard_reply(chain->conn, cookie.sequence);
    xcb_flush(chain->conn);
    return x11_swapchain_result(chain, VK_SUCCESS);
 }
