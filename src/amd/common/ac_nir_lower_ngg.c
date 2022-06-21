@@ -71,11 +71,11 @@ typedef struct
 
 typedef struct
 {
-   /* bitsize of this component (max 32), or 0 if it's never written at all */
-   uint8_t bit_size : 6;
+   /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
+   uint8_t components_mask : 4;
    /* output stream index  */
    uint8_t stream : 2;
-} gs_output_component_info;
+} gs_output_info;
 
 typedef struct
 {
@@ -93,7 +93,7 @@ typedef struct
    bool found_out_vtxcnt[4];
    bool output_compile_time_known;
    bool provoking_vertex_last;
-   gs_output_component_info output_component_info[VARYING_SLOT_MAX][4];
+   gs_output_info output_info[VARYING_SLOT_MAX];
 } lower_ngg_gs_state;
 
 /* LDS layout of Mesh Shader workgroup info. */
@@ -1637,15 +1637,17 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       if (num_consumed_components > 1)
          element = nir_extract_bits(b, &element, 1, 0, num_consumed_components, 32);
 
+      /* Save output usage info. */
+      gs_output_info *info = &s->output_info[io_sem.location];
+      /* The same output should always belong to the same stream. */
+      assert(!info->components_mask || info->stream == stream);
+      info->stream = stream;
+      info->components_mask |= BITFIELD_BIT(component_offset + comp * num_consumed_components);
+
       for (unsigned c = 0; c < num_consumed_components; ++c) {
          unsigned component_index =  (comp * num_consumed_components) + c + component_offset;
          unsigned base_index = base + base_offset + component_index / 4;
          component_index %= 4;
-
-         /* Save output usage info */
-         gs_output_component_info *info = &s->output_component_info[base_index][component_index];
-         info->bit_size = MAX2(info->bit_size, MIN2(store_val->bit_size, 32));
-         info->stream = stream;
 
          /* Store the current component element */
          nir_ssa_def *component_element = element;
@@ -1679,21 +1681,26 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
 
    for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
+      gs_output_info *info = &s->output_info[slot];
+      if (info->stream != stream || !info->components_mask)
+         continue;
 
-      for (unsigned comp = 0; comp < 4; ++comp) {
-         gs_output_component_info *info = &s->output_component_info[slot][comp];
-         if (info->stream != stream || !info->bit_size)
-            continue;
+      unsigned mask = info->components_mask;
+      while (mask) {
+         int start, count;
+         u_bit_scan_consecutive_range(&mask, &start, &count);
+         nir_ssa_def *values[4] = {0};
+         for (int c = start; c < start + count; ++c) {
+            /* Load output from variable. */
+            values[c - start] = nir_load_var(b, s->output_vars[slot][c]);
+            /* Clear the variable (it is undefined after emit_vertex) */
+            nir_store_var(b, s->output_vars[slot][c], nir_ssa_undef(b, 1, 32), 0x1);
+         }
 
-         /* Store the output to LDS */
-         nir_ssa_def *out_val = nir_load_var(b, s->output_vars[slot][comp]);
-         if (info->bit_size != 32)
-            out_val = nir_u2u(b, out_val, info->bit_size);
-
-         nir_store_shared(b, out_val, gs_emit_vtx_addr, .base = packed_location * 16 + comp * 4);
-
-         /* Clear the variable that holds the output */
-         nir_store_var(b, s->output_vars[slot][comp], nir_ssa_undef(b, 1, 32), 0x1u);
+         nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
+         nir_store_shared(b, store_val, gs_emit_vtx_addr,
+                          .base = packed_location * 16 + start * 4,
+                          .align_mul = 4);
       }
    }
 
@@ -1834,16 +1841,24 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
       if (!(b->shader->info.outputs_written & BITFIELD64_BIT(slot)))
          continue;
 
+      gs_output_info *info = &s->output_info[slot];
+      if (!info->components_mask || info->stream != 0)
+         continue;
+
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
       nir_io_semantics io_sem = { .location = slot, .num_slots = 1 };
 
-      for (unsigned comp = 0; comp < 4; ++comp) {
-         gs_output_component_info *info = &s->output_component_info[slot][comp];
-         if (info->stream != 0 || info->bit_size == 0)
-            continue;
+      unsigned mask = info->components_mask;
+      while (mask) {
+         int start, count;
+         u_bit_scan_consecutive_range(&mask, &start, &count);
+         nir_ssa_def *load =
+            nir_load_shared(b, count, 32, exported_out_vtx_lds_addr,
+                            .base = packed_location * 16 + start * 4,
+                            .align_mul = 4);
 
-         nir_ssa_def *load = nir_load_shared(b, 1, info->bit_size, exported_out_vtx_lds_addr, .base = packed_location * 16u + comp * 4u, .align_mul = 4u);
-         nir_store_output(b, load, nir_imm_int(b, 0), .base = slot, .component = comp, .io_semantics = io_sem);
+         nir_store_output(b, load, nir_imm_int(b, 0), .base = slot, .io_semantics = io_sem,
+                          .component = start, .write_mask = BITFIELD_MASK(count));
       }
    }
 
