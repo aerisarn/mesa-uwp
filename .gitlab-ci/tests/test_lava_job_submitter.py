@@ -421,6 +421,7 @@ GITLAB_SECTION_MANGLED_SCENARIOS = {
     ),
 }
 
+
 @pytest.mark.parametrize(
     "message, fixed_message",
     GITLAB_SECTION_MANGLED_SCENARIOS.values(),
@@ -464,3 +465,51 @@ LAVA_DEBUG_SPAM_MESSAGES = {
 )
 def test_filter_debug_messages(message, expectation):
     assert filter_debug_messages(message) == expectation
+
+
+LAVA_RESULT_LOG_SCENARIOS = {
+    # the submitter should accept xtrace logs
+    "Bash xtrace echo with kmsg interleaving": (
+        create_lava_yaml_msg(
+            msg="echo hwci: mesa: pass[  737.673352] <LAVA_SIGNAL_ENDTC mesa-ci>",
+            lvl="target",
+        ),
+        "pass",
+    ),
+    # the submitter should accept xtrace logs
+    "kmsg result print": (
+        create_lava_yaml_msg(
+            msg="[  737.673352] hwci: mesa: pass",
+            lvl="target",
+        ),
+        "pass",
+    ),
+    # if the job result echo has a very bad luck, it still can be interleaved
+    # with kmsg
+    "echo output with kmsg interleaving": (
+        create_lava_yaml_msg(
+            msg="hwci: mesa: pass[  737.673352] <LAVA_SIGNAL_ENDTC mesa-ci>",
+            lvl="target",
+        ),
+        "pass",
+    ),
+    "fail case": (
+        create_lava_yaml_msg(
+            msg="hwci: mesa: fail",
+            lvl="target",
+        ),
+        "fail",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "message, expectation",
+    LAVA_RESULT_LOG_SCENARIOS.values(),
+    ids=LAVA_RESULT_LOG_SCENARIOS.keys(),
+)
+def test_filter_debug_messages(message, expectation, mock_proxy):
+    job = LAVAJob(mock_proxy(), "")
+    job.parse_job_result_from_log([message])
+
+    assert job.status == expectation

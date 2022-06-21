@@ -157,5 +157,9 @@ fi
 # We still need to echo the hwci: mesa message, as some scripts rely on it, such
 # as the python ones inside the bare-metal folder
 [ ${EXIT_CODE} -eq 0 ] && RESULT=pass
+
+set +x
 echo "hwci: mesa: $RESULT"
+# Sleep a bit to avoid kernel dump message interleave from LAVA ENDTC signal
+sleep 1
 exit $EXIT_CODE

@@ -313,7 +313,7 @@ class LAVAJob:
         """
         log_lines = [l["msg"] for l in lava_lines if l["lvl"] == "target"]
         for line in log_lines:
-            if result := re.search(r"hwci: mesa: (\S*)", line):
+            if result := re.search(r"hwci: mesa: (pass|fail)", line):
                 self.is_finished = True
                 self.status = result.group(1)
                 color = LAVAJob.color_status_map.get(self.status, CONSOLE_LOG_COLOR_RED)
