@@ -1422,7 +1422,7 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
 
    /* if the surface has never been acquired, there's nothing to present,
     * so this is a no-op */
-   if (!zink_kopper_acquired(res->obj->dt, res->obj->dt_idx) && res->obj->last_dt_idx == UINT32_MAX)
+   if (!zink_is_swapchain(res) || (!zink_kopper_acquired(res->obj->dt, res->obj->dt_idx) && res->obj->last_dt_idx == UINT32_MAX))
       return;
 
    /* need to get the actual zink_context, not the threaded context */
