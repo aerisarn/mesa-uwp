@@ -11554,7 +11554,8 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
          if (!ngg_gs && !tcs_skip_barrier) {
             sync_scope scope =
                ctx.stage == vertex_tess_control_hs &&
-                     program->wave_size % ctx.options->key.tcs.tess_input_vertices == 0
+                     program->wave_size % ctx.options->key.tcs.tess_input_vertices == 0 &&
+                     ctx.options->key.tcs.tess_input_vertices == nir->info.tess.tcs_vertices_out
                   ? scope_subgroup
                   : scope_workgroup;
             bld.barrier(aco_opcode::p_barrier,
