@@ -21,6 +21,7 @@ variables:
   COLLABORA_FARM: "offline"
   MICROSOFT_FARM: "online"
   LIMA_FARM: "online"
+  IGALIA_FARM: "online"
 
 default:
   before_script:

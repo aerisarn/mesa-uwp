@@ -139,6 +139,11 @@
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
 
+.igalia-farm-rules:
+  rules:
+    - if: '$IGALIA_FARM == "offline"'
+      when: never
+
 # Skips freedreno jobs if either of the farms we use are offline.
 .freedreno-farm-rules:
   rules:
@@ -279,6 +284,7 @@
 .vc4-rules:
   stage: broadcom
   rules:
+    - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:
       - src/broadcom/**/*
@@ -290,6 +296,7 @@
 .v3d-rules:
   stage: broadcom
   rules:
+    - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:
       - src/broadcom/**/*
@@ -301,6 +308,7 @@
 .v3dv-rules:
   stage: broadcom
   rules:
+    - !reference [.igalia-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
       - src/broadcom/**/*
