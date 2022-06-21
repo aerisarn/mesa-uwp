@@ -450,7 +450,16 @@ static VkResult
 kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t timeout)
 {
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
-   if (res->obj->acquire)
+
+   /* if:
+    * - we don't need a new image
+    * - we have a swapchain image
+    * - that image is either acquired or acquiring
+    *
+    * then this is a no-op
+    */
+   if (!res->obj->new_dt && res->obj->dt_idx != UINT32_MAX &&
+       (cdt->swapchain->images[res->obj->dt_idx].acquire || cdt->swapchain->images[res->obj->dt_idx].acquired))
       return VK_SUCCESS;
    res->obj->acquire = VK_NULL_HANDLE;
    VkSemaphore acquire = VK_NULL_HANDLE;
