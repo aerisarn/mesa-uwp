@@ -31,6 +31,7 @@
 
 struct kopper_swapchain_image {
    bool init;
+   bool acquired;
    VkImage image;
    VkSemaphore acquire;
 };
@@ -95,6 +96,12 @@ static inline bool
 zink_kopper_last_present_eq(const struct kopper_displaytarget *cdt, uint32_t idx)
 {
    return cdt->swapchain->last_present == idx;
+}
+
+static inline bool
+zink_kopper_acquired(const struct kopper_displaytarget *cdt, uint32_t idx)
+{
+   return idx != UINT32_MAX && cdt->swapchain->images[idx].acquired;
 }
 
 struct kopper_displaytarget *

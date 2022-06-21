@@ -498,7 +498,7 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
 
    cdt->swapchain->images[res->obj->dt_idx].acquire = res->obj->acquire = acquire;
    res->obj->image = cdt->swapchain->images[res->obj->dt_idx].image;
-   res->obj->acquired = false;
+   cdt->swapchain->images[res->obj->dt_idx].acquired = false;
    if (!cdt->swapchain->images[res->obj->dt_idx].init) {
       /* swapchain images are initially in the UNDEFINED layout */
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -569,10 +569,10 @@ zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res
 {
    assert(res->obj->dt);
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
-   if (res->obj->acquired)
+   if (zink_kopper_acquired(res->obj->dt, res->obj->dt_idx))
       return VK_NULL_HANDLE;
    assert(res->obj->acquire);
-   res->obj->acquired = true;
+   cdt->swapchain->images[res->obj->dt_idx].acquired = true;
    /* this is now owned by the batch */
    cdt->swapchain->images[res->obj->dt_idx].acquire = VK_NULL_HANDLE;
    cdt->swapchain->dt_has_data = true;
@@ -589,7 +589,7 @@ zink_kopper_present(struct zink_screen *screen, struct zink_resource *res)
       NULL,
       0
    };
-   assert(res->obj->acquired);
+   assert(zink_kopper_acquired(res->obj->dt, res->obj->dt_idx));
    VkResult ret = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &res->obj->present);
    return zink_screen_handle_vkresult(screen, ret) ? res->obj->present : VK_NULL_HANDLE;
 }
@@ -698,7 +698,7 @@ zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
 {
    assert(res->obj->dt);
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
-   assert(res->obj->acquired);
+   assert(zink_kopper_acquired(res->obj->dt, res->obj->dt_idx));
    assert(res->obj->present);
    struct kopper_present_info *cpi = malloc(sizeof(struct kopper_present_info));
    cpi->sem = res->obj->present;
@@ -723,7 +723,8 @@ zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
       kopper_present(cpi, screen, -1);
    }
    res->obj->acquire = VK_NULL_HANDLE;
-   res->obj->indefinite_acquire = res->obj->acquired = false;
+   res->obj->indefinite_acquire = false;
+   cdt->swapchain->images[res->obj->dt_idx].acquired = false;
    res->obj->dt_idx = UINT32_MAX;
 }
 
