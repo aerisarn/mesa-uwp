@@ -152,8 +152,6 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
          .register_space = DZN_REGISTER_SPACE_PUSH_CONSTANT,
          .base_shader_register = 0,
       },
-      .descriptor_set_count = layout->set_count,
-      .descriptor_sets = layout->binding_translation,
       .zero_based_vertex_instance_id = false,
       .yz_flip = {
          .mode = yz_flip_mode,
@@ -179,6 +177,59 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
    }
 
    return VK_SUCCESS;
+}
+
+static bool
+adjust_resource_index_binding(struct nir_builder *builder, nir_instr *instr,
+                              void *cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_vulkan_resource_index)
+      return false;
+
+   const struct dzn_pipeline_layout *layout = cb_data;
+   unsigned set = nir_intrinsic_desc_set(intrin);
+   unsigned binding = nir_intrinsic_binding(intrin);
+
+   if (set >= layout->set_count ||
+       binding >= layout->binding_translation[set].binding_count)
+      return false;
+
+   binding = layout->binding_translation[set].base_reg[binding];
+   nir_intrinsic_set_binding(intrin, binding);
+
+   return true;
+}
+
+static bool
+adjust_var_bindings(nir_shader *shader,
+                    const struct dzn_pipeline_layout *layout)
+{
+   uint32_t modes = nir_var_image | nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo;
+
+   nir_foreach_variable_with_modes(var, shader, modes) {
+      if (var->data.mode == nir_var_uniform) {
+         const struct glsl_type *type = glsl_without_array(var->type);
+
+         if (!glsl_type_is_sampler(type) && !glsl_type_is_texture(type))
+            continue;
+      }
+
+      unsigned s = var->data.descriptor_set, b = var->data.binding;
+
+      if (s >= layout->set_count)
+         continue;
+
+      assert(b < layout->binding_translation[s].binding_count);
+      var->data.binding = layout->binding_translation[s].base_reg[b];
+   }
+
+   return nir_shader_instructions_pass(shader, adjust_resource_index_binding,
+                                       nir_metadata_all, (void *)layout);
 }
 
 static VkResult
@@ -376,6 +427,10 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       dxil_spirv_nir_link(pipeline->templates.shaders[stage].nir,
                           prev_stage != MESA_SHADER_NONE ?
                           pipeline->templates.shaders[prev_stage].nir : NULL);
+   }
+
+   u_foreach_bit(stage, active_stage_mask) {
+      NIR_PASS_V(pipeline->templates.shaders[stage].nir, adjust_var_bindings, layout);
    }
 
    if (pipeline->templates.shaders[MESA_SHADER_VERTEX].nir) {
@@ -1553,6 +1608,8 @@ dzn_compute_pipeline_create(struct dzn_device *device,
                                   dxil_get_nir_compiler_options(), &nir);
    if (ret != VK_SUCCESS)
       goto out;
+
+   NIR_PASS_V(nir, adjust_var_bindings, layout);
 
    ret = dzn_pipeline_compile_shader(device, nir, shader);
    if (ret != VK_SUCCESS)

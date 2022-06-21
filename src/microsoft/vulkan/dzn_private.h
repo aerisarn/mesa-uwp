@@ -650,7 +650,10 @@ struct dzn_pipeline_layout {
       uint32_t dynamic_buffer_count;
       uint32_t range_desc_count[NUM_POOL_TYPES];
    } sets[MAX_SETS];
-   struct dxil_spirv_vulkan_descriptor_set binding_translation[MAX_SETS];
+   struct {
+      uint32_t binding_count;
+      uint32_t *base_reg;
+   } binding_translation[MAX_SETS];
    uint32_t set_count;
    uint32_t desc_count[NUM_POOL_TYPES];
    struct {
