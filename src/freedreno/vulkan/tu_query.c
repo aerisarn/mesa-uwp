@@ -425,6 +425,35 @@ statistics_index(uint32_t *statistics)
    }
 }
 
+static bool
+is_pipeline_query_with_vertex_stage(struct tu_query_pool *pool)
+{
+   return pool->pipeline_statistics &
+          (VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT |
+           VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT);
+}
+
+static bool
+is_pipeline_query_with_fragment_stage(struct tu_query_pool *pool)
+{
+   return pool->pipeline_statistics &
+          VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT;
+}
+
+static bool
+is_pipeline_query_with_compute_stage(struct tu_query_pool *pool)
+{
+   return pool->pipeline_statistics &
+          VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+}
+
 /* Wait on the the availability status of a query up until a timeout. */
 static VkResult
 wait_for_available(struct tu_device *device, struct tu_query_pool *pool,
@@ -842,9 +871,17 @@ emit_begin_stat_query(struct tu_cmd_buffer *cmdbuf,
    struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
    uint64_t begin_iova = pipeline_stat_query_iova(pool, query, begin);
 
-   tu6_emit_event_write(cmdbuf, cs, START_PRIMITIVE_CTRS);
-   tu6_emit_event_write(cmdbuf, cs, RST_PIX_CNT);
-   tu6_emit_event_write(cmdbuf, cs, TILE_FLUSH);
+   if (is_pipeline_query_with_vertex_stage(pool)) {
+      tu6_emit_event_write(cmdbuf, cs, START_PRIMITIVE_CTRS);
+   }
+
+   if (is_pipeline_query_with_fragment_stage(pool)) {
+      tu6_emit_event_write(cmdbuf, cs, START_FRAGMENT_CTRS);
+   }
+
+   if (is_pipeline_query_with_compute_stage(pool)) {
+      tu6_emit_event_write(cmdbuf, cs, START_COMPUTE_CTRS);
+   }
 
    tu_cs_emit_wfi(cs);
 
@@ -972,8 +1009,6 @@ emit_begin_prim_generated_query(struct tu_cmd_buffer *cmdbuf,
    }
 
    tu6_emit_event_write(cmdbuf, cs, START_PRIMITIVE_CTRS);
-   tu6_emit_event_write(cmdbuf, cs, RST_PIX_CNT);
-   tu6_emit_event_write(cmdbuf, cs, TILE_FLUSH);
 
    tu_cs_emit_wfi(cs);
 
@@ -1129,9 +1164,17 @@ emit_end_stat_query(struct tu_cmd_buffer *cmdbuf,
    uint64_t stat_start_iova;
    uint64_t stat_stop_iova;
 
-   tu6_emit_event_write(cmdbuf, cs, STOP_PRIMITIVE_CTRS);
-   tu6_emit_event_write(cmdbuf, cs, RST_VTX_CNT);
-   tu6_emit_event_write(cmdbuf, cs, STAT_EVENT);
+   if (is_pipeline_query_with_vertex_stage(pool)) {
+      tu6_emit_event_write(cmdbuf, cs, STOP_PRIMITIVE_CTRS);
+   }
+
+   if (is_pipeline_query_with_fragment_stage(pool)) {
+      tu6_emit_event_write(cmdbuf, cs, STOP_FRAGMENT_CTRS);
+   }
+
+   if (is_pipeline_query_with_compute_stage(pool)) {
+      tu6_emit_event_write(cmdbuf, cs, STOP_COMPUTE_CTRS);
+   }
 
    tu_cs_emit_wfi(cs);
 
@@ -1313,8 +1356,6 @@ emit_end_prim_generated_query(struct tu_cmd_buffer *cmdbuf,
    uint64_t available_iova = query_available_iova(pool, query);
 
    tu6_emit_event_write(cmdbuf, cs, STOP_PRIMITIVE_CTRS);
-   tu6_emit_event_write(cmdbuf, cs, RST_VTX_CNT);
-   tu6_emit_event_write(cmdbuf, cs, STAT_EVENT);
 
    tu_cs_emit_wfi(cs);
 
