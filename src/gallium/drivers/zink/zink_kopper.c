@@ -735,18 +735,11 @@ zink_kopper_acquire_readback(struct zink_context *ctx, struct zink_resource *res
    const struct kopper_swapchain *cswap = cdt->swapchain;
    uint32_t last_dt_idx = res->obj->last_dt_idx;
    VkResult ret = VK_SUCCESS;
-   if (!res->obj->acquire) {
-      ret = kopper_acquire(screen, res, UINT64_MAX);
-      if (is_swapchain_kill(ret)) {
-         kill_swapchain(ctx, res);
-         return false;
-      }
-   }
    /* if this hasn't been presented or if it has data, use this as the readback target */
    if (res->obj->last_dt_idx == UINT32_MAX || res->obj->dt_has_data)
       return false;
    while (res->obj->dt_idx != last_dt_idx) {
-      if (!zink_kopper_present_readback(ctx, res))
+      if (res->obj->dt_idx != UINT32_MAX && !zink_kopper_present_readback(ctx, res))
          break;
       do {
          ret = kopper_acquire(screen, res, 0);
