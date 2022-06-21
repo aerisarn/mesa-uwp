@@ -965,6 +965,12 @@ emit_begin_prim_generated_query(struct tu_cmd_buffer *cmdbuf,
    struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
    uint64_t begin_iova = primitives_generated_query_iova(pool, query, begin);
 
+   if (cmdbuf->state.pass) {
+      cmdbuf->state.has_prim_generated_query_in_rp = true;
+   } else {
+      cmdbuf->state.prim_generated_query_running_before_rp = true;
+   }
+
    tu6_emit_event_write(cmdbuf, cs, START_PRIMITIVE_CTRS);
    tu6_emit_event_write(cmdbuf, cs, RST_PIX_CNT);
    tu6_emit_event_write(cmdbuf, cs, TILE_FLUSH);
@@ -1296,6 +1302,10 @@ emit_end_prim_generated_query(struct tu_cmd_buffer *cmdbuf,
                               uint32_t query)
 {
    struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
+
+   if (!cmdbuf->state.pass) {
+      cmdbuf->state.prim_generated_query_running_before_rp = false;
+   }
 
    uint64_t begin_iova = primitives_generated_query_iova(pool, query, begin);
    uint64_t end_iova = primitives_generated_query_iova(pool, query, end);

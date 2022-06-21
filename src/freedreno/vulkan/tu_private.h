@@ -1250,6 +1250,9 @@ struct tu_cmd_state
     */
    uint32_t drawcall_bandwidth_per_sample_sum;
 
+   bool prim_generated_query_running_before_rp;
+   bool has_prim_generated_query_in_rp;
+
    struct tu_lrz_state lrz;
 
    struct tu_draw_state lrz_and_depth_plane_state;
