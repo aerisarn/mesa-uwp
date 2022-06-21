@@ -4959,6 +4959,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    cmd_buffer->state.attachments = NULL;
    cmd_buffer->state.has_tess = false;
    cmd_buffer->state.has_subpass_predication = false;
+   cmd_buffer->state.xfb_used = false;
    cmd_buffer->state.disable_gmem = false;
    cmd_buffer->state.drawcall_count = 0;
    cmd_buffer->state.drawcall_bandwidth_per_sample_sum = 0;
