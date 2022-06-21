@@ -1431,6 +1431,7 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
    pctx = trace_get_possibly_threaded_context(pctx);
    ctx = zink_context(pctx);
    if (ctx->batch.swapchain) {
+      ctx->batch.has_work = true;
       pctx->flush(pctx, NULL, 0);
       if (ctx->last_fence && screen->threaded) {
          struct zink_batch_state *bs = zink_batch_state(ctx->last_fence);
