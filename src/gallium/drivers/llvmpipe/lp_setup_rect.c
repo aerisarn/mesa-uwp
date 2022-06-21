@@ -70,10 +70,7 @@ lp_setup_alloc_rectangle(struct lp_scene *scene, unsigned nr_inputs)
 {
    unsigned input_array_sz = NUM_CHANNELS * (nr_inputs + 1) * sizeof(float);
    struct lp_rast_rectangle *rect;
-   unsigned bytes;
-
-   bytes = sizeof(*rect) + (3 * input_array_sz);
-
+   unsigned bytes = sizeof(*rect) + (3 * input_array_sz);
    rect = lp_scene_alloc_aligned(scene, bytes, 16);
    if (rect == NULL)
       return NULL;
@@ -102,18 +99,20 @@ lp_setup_whole_tile(struct lp_setup_context *setup,
    /* if variant is opaque and scissor doesn't effect the tile */
    if (opaque) {
       /* Several things prevent this optimization from working:
-       * - For layered rendering we can't determine if this covers the same layer
-       * as previous rendering (or in case of clears those actually always cover
-       * all layers so optimization is impossible). Need to use fb_max_layer and
-       * not setup->layer_slot to determine this since even if there's currently
-       * no slot assigned previous rendering could have used one.
+       * - For layered rendering we can't determine if this covers the same
+       * layer as previous rendering (or in case of clears those actually
+       * always cover all layers so optimization is impossible). Need to use
+       * fb_max_layer and not setup->layer_slot to determine this since even
+       * if there's currently no slot assigned previous rendering could have
+       * used one.
        * - If there were any Begin/End query commands in the scene then those
        * would get removed which would be very wrong. Furthermore, if queries
        * were just active we also can't do the optimization since to get
        * accurate query results we unfortunately need to execute the rendering
        * commands.
        */
-      if (!scene->fb.zsbuf && scene->fb_max_layer == 0 && !scene->had_queries) {
+      if (!scene->fb.zsbuf && scene->fb_max_layer == 0 &&
+          !scene->had_queries) {
          /*
           * All previous rendering will be overwritten so reset the bin.
           */
@@ -156,14 +155,13 @@ lp_setup_is_blit(const struct lp_setup_context *setup,
        */
       const struct lp_jit_texture *texture =
          &setup->fs.current.jit_context.textures[0];
-      float dsdx, dsdy, dtdx, dtdy;
 
       /* XXX: dadx vs dady confusion below?
        */
-      dsdx = GET_DADX(inputs)[1][0]*texture->width;
-      dsdy = GET_DADX(inputs)[1][1]*texture->width;
-      dtdx = GET_DADY(inputs)[1][0]*texture->height;
-      dtdy = GET_DADY(inputs)[1][1]*texture->height;
+      const float dsdx = GET_DADX(inputs)[1][0] * texture->width;
+      const float dsdy = GET_DADX(inputs)[1][1] * texture->width;
+      const float dtdx = GET_DADY(inputs)[1][0] * texture->height;
+      const float dtdy = GET_DADY(inputs)[1][1] * texture->height;
 
       /*
        * We don't need to check s0/t0 tolerances
@@ -252,12 +250,6 @@ try_rect_cw(struct lp_setup_context *setup,
       setup->fs.current.variant;
    const struct lp_setup_variant_key *key = &setup->setup.variant->key;
    struct lp_scene *scene = setup->scene;
-   struct lp_rast_rectangle *rect;
-   boolean cw;
-   struct u_rect bbox;
-   unsigned viewport_index = 0;
-   unsigned layer = 0;
-   const float (*pv)[4];
 
    /* x/y positions in fixed point */
    int x0 = subpixel_snap(v0[0][0] - setup->pixel_offset);
@@ -271,28 +263,33 @@ try_rect_cw(struct lp_setup_context *setup,
 
    /* Cull clockwise rects without overflowing.
     */
-   cw = (x2 < x1) ^ (y0 < y2);
+   const boolean cw = (x2 < x1) ^ (y0 < y2);
    if (cw) {
       LP_COUNT(nr_culled_rects);
       return TRUE;
    }
 
+   const float (*pv)[4];
    if (setup->flatshade_first) {
       pv = v0;
    } else {
       pv = v2;
    }
 
+   unsigned viewport_index = 0;
    if (setup->viewport_index_slot > 0) {
       unsigned *udata = (unsigned*)pv[setup->viewport_index_slot];
       viewport_index = lp_clamp_viewport_idx(*udata);
    }
+
+   unsigned layer = 0;
    if (setup->layer_slot > 0) {
       layer = *(unsigned*)pv[setup->layer_slot];
       layer = MIN2(layer, scene->fb_max_layer);
    }
 
    /* Bounding rectangle (in pixels) */
+   struct u_rect bbox;
    {
       /* Yes this is necessary to accurately calculate bounding boxes
        * with the two fill-conventions we support.  GL (normally) ends
@@ -320,7 +317,8 @@ try_rect_cw(struct lp_setup_context *setup,
 
    u_rect_find_intersection(&setup->draw_regions[viewport_index], &bbox);
 
-   rect = lp_setup_alloc_rectangle(scene, key->num_inputs);
+   struct lp_rast_rectangle *rect =
+      lp_setup_alloc_rectangle(scene, key->num_inputs);
    if (!rect)
       return FALSE;
 
@@ -364,7 +362,6 @@ lp_setup_bin_rectangle(struct lp_setup_context *setup,
                        boolean opaque)
 {
    struct lp_scene *scene = setup->scene;
-   unsigned ix0, iy0, ix1, iy1;
    unsigned left_mask = 0;
    unsigned right_mask = 0;
    unsigned top_mask = 0;
@@ -377,10 +374,10 @@ lp_setup_bin_rectangle(struct lp_setup_context *setup,
 
    /* Convert to inclusive tile coordinates:
     */
-   ix0 = rect->box.x0 / TILE_SIZE;
-   iy0 = rect->box.y0 / TILE_SIZE;
-   ix1 = rect->box.x1 / TILE_SIZE;
-   iy1 = rect->box.y1 / TILE_SIZE;
+   const unsigned ix0 = rect->box.x0 / TILE_SIZE;
+   const unsigned iy0 = rect->box.y0 / TILE_SIZE;
+   const unsigned ix1 = rect->box.x1 / TILE_SIZE;
+   const unsigned iy1 = rect->box.y1 / TILE_SIZE;
 
    /*
     * Clamp to framebuffer size
