@@ -373,7 +373,8 @@ zink_create_sampler_state(struct pipe_context *pctx,
 
    sci.borderColor = get_border_color(&state->border_color, is_integer, need_custom);
    if (sci.borderColor > VK_BORDER_COLOR_INT_OPAQUE_WHITE && need_custom) {
-      if (!screen->info.border_color_feats.customBorderColorWithoutFormat) {
+      if (!screen->info.border_color_feats.customBorderColorWithoutFormat &&
+          screen->info.driver_props.driverID != VK_DRIVER_ID_MESA_TURNIP) {
          static bool warned = false;
          warn_missing_feature(warned, "customBorderColorWithoutFormat");
       }
