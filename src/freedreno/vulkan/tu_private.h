@@ -614,6 +614,8 @@ struct tu_device
    #ifdef HAVE_PERFETTO
    struct tu_perfetto_state perfetto;
    #endif
+
+   bool use_z24uint_s8uint;
 };
 
 void tu_init_clear_blit_shaders(struct tu_device *dev);
@@ -1851,7 +1853,8 @@ tiling_possible(VkFormat format);
 
 bool
 ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, VkImageUsageFlags stencil_usage,
-              const struct fd_dev_info *info, VkSampleCountFlagBits samples);
+              const struct fd_dev_info *info, VkSampleCountFlagBits samples,
+              bool use_z24uint_s8uint);
 
 struct tu_buffer_view
 {

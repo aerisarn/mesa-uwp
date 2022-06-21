@@ -286,7 +286,7 @@ tiling_possible(VkFormat format)
 bool
 ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
               VkImageUsageFlags stencil_usage, const struct fd_dev_info *info,
-              VkSampleCountFlagBits samples)
+              VkSampleCountFlagBits samples, bool use_z24uint_s8uint)
 {
    /* no UBWC with compressed formats, E5B9G9R9, S8_UINT
     * (S8_UINT because separate stencil doesn't have UBWC-enable bit)
@@ -336,10 +336,13 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
     *
     * It must be sampled as FMT6_8_8_8_8_UINT, which is not UBWC-compatible
     *
+    * If we wish to get the border colors correct without knowing the format
+    * when creating the sampler, we also have to use the A630 workaround.
+    *
     * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
     * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
     */
-   if (!info->a6xx.has_z24uint_s8uint &&
+   if (!use_z24uint_s8uint &&
        format == VK_FORMAT_D24_UNORM_S8_UINT &&
        (stencil_usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)))
       return false;
@@ -452,7 +455,8 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
 
    if (!ubwc_possible(image->vk_format, pCreateInfo->imageType, pCreateInfo->usage,
                       stencil_usage_info ? stencil_usage_info->stencilUsage : pCreateInfo->usage,
-                      device->physical_device->info, pCreateInfo->samples))
+                      device->physical_device->info, pCreateInfo->samples,
+                      device->use_z24uint_s8uint))
       ubwc_enabled = false;
 
    /* expect UBWC enabled if we asked for it */
@@ -827,7 +831,7 @@ tu_CreateImageView(VkDevice _device,
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   tu_image_view_init(view, pCreateInfo, device->physical_device->info->a6xx.has_z24uint_s8uint);
+   tu_image_view_init(view, pCreateInfo, device->use_z24uint_s8uint);
 
    *pView = tu_image_view_to_handle(view);
 

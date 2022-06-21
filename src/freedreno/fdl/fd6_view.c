@@ -110,8 +110,10 @@ fdl6_format_swiz(enum pipe_format format, bool has_z24uint_s8uint,
          format_swiz[2] = PIPE_SWIZZLE_0;
          format_swiz[3] = PIPE_SWIZZLE_1;
       } else {
-         /* using FMT6_Z24_UINT_S8_UINT, which is (d, s, 0, 1), so need to
-          * swizzle away the d.
+         /* Using FMT6_Z24_UINT_S8_UINT, which is (d, s, 0, 1), so need to
+          * swizzle away the d. We don't use this if
+          * customBorderColorWithoutFormat is enabled, so we can fix up the
+          * border color, and there's a workaround in freedreno.
           */
          format_swiz[0] = PIPE_SWIZZLE_Y;
          format_swiz[1] = PIPE_SWIZZLE_0;

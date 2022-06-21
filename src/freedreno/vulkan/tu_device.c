@@ -1734,12 +1734,15 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    bool custom_border_colors = false;
    bool perf_query_pools = false;
    bool robust_buffer_access2 = false;
+   bool border_color_without_format = false;
 
    vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
          const VkPhysicalDeviceCustomBorderColorFeaturesEXT *border_color_features = (const void *)ext;
          custom_border_colors = border_color_features->customBorderColors;
+         border_color_without_format =
+            border_color_features->customBorderColorWithoutFormat;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
@@ -1961,6 +1964,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       mtx_init(&device->scratch_bos[i].construct_mtx, mtx_plain);
 
    mtx_init(&device->mutex, mtx_plain);
+
+   device->use_z24uint_s8uint =
+      physical_device->info->a6xx.has_z24uint_s8uint &&
+      !border_color_without_format;
 
    device->submit_count = 0;
    u_trace_context_init(&device->trace_context, device,
@@ -2638,8 +2645,22 @@ tu_init_sampler(struct tu_device *device,
       assert(border_color < TU_BORDER_COLOR_COUNT);
       BITSET_CLEAR(device->custom_border_color, border_color);
       mtx_unlock(&device->mutex);
+
+      VkClearColorValue color = custom_border_color->customBorderColor;
+      if (custom_border_color->format == VK_FORMAT_D24_UNORM_S8_UINT &&
+          pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT &&
+          device->use_z24uint_s8uint) {
+         /* When sampling stencil using the special Z24UINT_S8UINT format, the
+          * border color is in the second component. Note: if
+          * customBorderColorWithoutFormat is enabled, we may miss doing this
+          * here if the format isn't specified, which is why we don't use that
+          * format.
+          */
+         color.uint32[1] = color.uint32[0];
+      }
+
       tu6_pack_border_color(device->global_bo->map + gb_offset(bcolor[border_color]),
-                            &custom_border_color->customBorderColor,
+                            &color,
                             pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
       border_color += TU_BORDER_COLOR_BUILTIN;
    }
