@@ -36,6 +36,7 @@
 #include "vk_util.h"
 #include "vk_format.h"
 #include "vk_pipeline.h"
+#include "vk_pipeline_cache.h"
 
 #include "util/u_debug.h"
 
@@ -71,6 +72,88 @@ static uint32_t
 gfx_pipeline_variant_key_hash(const void *key)
 {
    return _mesa_hash_data(key, sizeof(struct dzn_graphics_pipeline_variant_key));
+}
+
+struct dzn_cached_blob {
+   struct vk_pipeline_cache_object base;
+   uint8_t hash[SHA1_DIGEST_LENGTH];
+   const void *data;
+   size_t size;
+};
+
+static bool
+dzn_cached_blob_serialize(struct vk_pipeline_cache_object *object,
+                          struct blob *blob)
+{
+   struct dzn_cached_blob *cached_blob =
+      container_of(object, struct dzn_cached_blob, base);
+
+   blob_write_bytes(blob, cached_blob->data, cached_blob->size);
+   return true;
+}
+
+static void
+dzn_cached_blob_destroy(struct vk_pipeline_cache_object *object)
+{
+   struct dzn_cached_blob *shader =
+      container_of(object, struct dzn_cached_blob, base);
+
+   vk_free(&shader->base.device->alloc, shader);
+}
+
+static struct vk_pipeline_cache_object *
+dzn_cached_blob_create(struct vk_device *device,
+                       const void *hash,
+                       const void *data,
+                       size_t data_size);
+
+static struct vk_pipeline_cache_object *
+dzn_cached_blob_deserialize(struct vk_device *device,
+                                   const void *key_data,
+                                   size_t key_size,
+                                   struct blob_reader *blob)
+{
+   size_t data_size = blob->end - blob->current;
+   assert(key_size == SHA1_DIGEST_LENGTH);
+
+   return dzn_cached_blob_create(device, key_data,
+                                 blob_read_bytes(blob, data_size),
+                                 data_size);
+}
+
+const struct vk_pipeline_cache_object_ops dzn_cached_blob_ops = {
+   .serialize = dzn_cached_blob_serialize,
+   .deserialize = dzn_cached_blob_deserialize,
+   .destroy = dzn_cached_blob_destroy,
+};
+
+
+static struct vk_pipeline_cache_object *
+dzn_cached_blob_create(struct vk_device *device,
+                       const void *hash,
+                       const void *data,
+                       size_t data_size)
+{
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_cached_blob, blob, 1);
+   VK_MULTIALLOC_DECL(&ma, uint8_t, copy, data_size);
+
+   if (!vk_multialloc_alloc(&ma, &device->alloc,
+                            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
+      return NULL;
+
+   memcpy(blob->hash, hash, sizeof(blob->hash));
+
+   vk_pipeline_cache_object_init(device, &blob->base,
+                                 &dzn_cached_blob_ops,
+                                 blob->hash, sizeof(blob->hash));
+
+   if (data)
+      memcpy(copy, data, data_size);
+   blob->data = copy;
+   blob->size = data_size;
+
+   return &blob->base;
 }
 
 static VkResult

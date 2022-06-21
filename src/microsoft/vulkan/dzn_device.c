@@ -281,6 +281,11 @@ dzn_physical_device_init_uuids(struct dzn_physical_device *pdev)
    memcpy(pdev->device_uuid, sha1, VK_UUID_SIZE);
 }
 
+const struct vk_pipeline_cache_object_ops *const dzn_pipeline_cache_import_ops[] = {
+   &dzn_cached_blob_ops,
+   NULL,
+};
+
 static VkResult
 dzn_physical_device_create(struct dzn_instance *instance,
                            IDXGIAdapter1 *adapter,
@@ -325,6 +330,8 @@ dzn_physical_device_create(struct dzn_instance *instance,
    pdev->sync_types[num_sync_types] = NULL;
    assert(num_sync_types <= MAX_SYNC_TYPES);
    pdev->vk.supported_sync_types = pdev->sync_types;
+
+   pdev->vk.pipeline_cache_import_ops = dzn_pipeline_cache_import_ops;
 
    /* TODO: something something queue families */
 

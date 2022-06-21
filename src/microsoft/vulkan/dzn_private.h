@@ -756,6 +756,8 @@ struct dzn_pipeline {
    ID3D12PipelineState *state;
 };
 
+extern const struct vk_pipeline_cache_object_ops dzn_cached_blob_ops;
+
 enum dzn_indirect_draw_cmd_sig_type {
    DZN_INDIRECT_DRAW_CMD_SIG,
    DZN_INDIRECT_INDEXED_DRAW_CMD_SIG,
