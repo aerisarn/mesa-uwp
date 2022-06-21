@@ -93,8 +93,10 @@ st_convert_sampler(const struct st_context *st,
    if (msamp->Attrib.IsBorderColorNonZero &&
        /* This is true if wrap modes are using the border color: */
        (sampler->wrap_s | sampler->wrap_t | sampler->wrap_r) & 0x1) {
-      const GLboolean is_integer = texobj->_IsIntegerFormat;
       GLenum texBaseFormat = _mesa_base_tex_image(texobj)->_BaseFormat;
+      const GLboolean is_integer =
+         texobj->_IsIntegerFormat || texobj->StencilSampling ||
+         texBaseFormat == GL_STENCIL_INDEX;
 
       if (texobj->StencilSampling)
          texBaseFormat = GL_STENCIL_INDEX;
