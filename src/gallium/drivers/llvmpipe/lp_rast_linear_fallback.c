@@ -57,28 +57,28 @@
 
 #define STAMP_SIZE 4
 
-static unsigned left_mask_tab[STAMP_SIZE] = {
+static const unsigned left_mask_tab[STAMP_SIZE] = {
    COLUMN0 | COLUMN1 | COLUMN2 | COLUMN3,
    COLUMN1 | COLUMN2 | COLUMN3,
    COLUMN2 | COLUMN3,
    COLUMN3,
 };
 
-static unsigned right_mask_tab[STAMP_SIZE] = {
+static const unsigned right_mask_tab[STAMP_SIZE] = {
    COLUMN0,
    COLUMN0 | COLUMN1,
    COLUMN0 | COLUMN1 | COLUMN2,
    COLUMN0 | COLUMN1 | COLUMN2 | COLUMN3,
 };
 
-static unsigned top_mask_tab[STAMP_SIZE] = {
+static const unsigned top_mask_tab[STAMP_SIZE] = {
    ROW0 | ROW1 | ROW2 | ROW3,
    ROW1 | ROW2 | ROW3,
    ROW2 | ROW3,
    ROW3,
 };
 
-static unsigned bottom_mask_tab[STAMP_SIZE] = {
+static const unsigned bottom_mask_tab[STAMP_SIZE] = {
    ROW0,
    ROW0 | ROW1,
    ROW0 | ROW1 | ROW2,
