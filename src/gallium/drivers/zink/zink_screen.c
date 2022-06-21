@@ -2178,6 +2178,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
    }
 
+   init_driver_workarounds(screen);
+
    screen->dev = zink_create_logical_device(screen);
    if (!screen->dev)
       goto fail;
@@ -2342,7 +2344,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.vertex_state_destroy = zink_cache_vertex_state_destroy;
    glsl_type_singleton_init_or_ref();
 
-   init_driver_workarounds(screen);
    screen->copy_context = zink_context(screen->base.context_create(&screen->base, NULL, ZINK_CONTEXT_COPY_ONLY));
    if (!screen->copy_context) {
       mesa_loge("zink: failed to create copy context");
