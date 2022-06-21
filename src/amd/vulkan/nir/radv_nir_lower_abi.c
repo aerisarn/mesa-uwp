@@ -475,6 +475,9 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_initial_edgeflags_amd:
       replacement = nir_imm_int(b, 0);
       break;
+   case nir_intrinsic_load_provoking_vtx_amd:
+      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.load_provoking_vtx);
+      break;
    default:
       progress = false;
       break;
