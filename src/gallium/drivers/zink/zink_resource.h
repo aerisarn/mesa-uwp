@@ -88,7 +88,6 @@ struct zink_resource_object {
    void *dt;
    uint32_t dt_idx;
    uint32_t last_dt_idx;
-   VkSemaphore acquire;
    VkSemaphore present;
    bool new_dt;
    bool dt_has_data;
