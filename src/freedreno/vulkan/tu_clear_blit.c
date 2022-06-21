@@ -1116,6 +1116,10 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    /* Disable sample counting in order to not affect occlusion query. */
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = true));
 
+   if (cmd->state.prim_generated_query_running_before_rp) {
+      tu6_emit_event_write(cmd, cs, STOP_PRIMITIVE_CTRS);
+   }
+
    if (cmd->state.predication_active) {
       tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_LOCAL, 1);
       tu_cs_emit(cs, 0);
@@ -1154,6 +1158,10 @@ r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    /* Re-enable sample counting. */
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = false));
+
+   if (cmd->state.prim_generated_query_running_before_rp) {
+      tu6_emit_event_write(cmd, cs, START_PRIMITIVE_CTRS);
+   }
 }
 
 /* blit ops - common interface for 2d/shader paths */
@@ -2360,6 +2368,10 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    /* Disable sample counting in order to not affect occlusion query. */
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = true));
 
+   if (cmd->state.prim_generated_query_running_before_rp) {
+      tu6_emit_event_write(cmd, cs, STOP_PRIMITIVE_CTRS);
+   }
+
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = clear_components));
    tu_cs_emit_regs(cs,
@@ -2434,6 +2446,10 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
 
    /* Re-enable sample counting. */
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = false));
+
+   if (cmd->state.prim_generated_query_running_before_rp) {
+      tu6_emit_event_write(cmd, cs, START_PRIMITIVE_CTRS);
+   }
 
    trace_end_sysmem_clear_all(&cmd->trace,
                               cs, mrt_count, rect_count);
