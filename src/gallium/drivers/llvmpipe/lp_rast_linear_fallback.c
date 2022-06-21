@@ -94,17 +94,11 @@ shade_quads(struct lp_rasterizer_task *task,
             unsigned mask)
 {
    const struct lp_rast_state *state = task->state;
-   struct lp_fragment_shader_variant *variant = state->variant;
+   const struct lp_fragment_shader_variant *variant = state->variant;
    const struct lp_scene *scene = task->scene;
-   uint8_t *color = scene->cbufs[0].map;
-   unsigned stride = scene->cbufs[0].stride;
-   uint8_t *cbufs[1];
-   unsigned strides[1];
-
-   color += x * 4;
-   color += y * stride;
-   cbufs[0] = color;
-   strides[0] = stride;
+   const unsigned stride = scene->cbufs[0].stride;
+   uint8_t *cbufs[1] = { scene->cbufs[0].map + y * stride + x * 4 };
+   unsigned strides[1] = { stride };
 
    assert(!variant->key.depth.enabled);
 
