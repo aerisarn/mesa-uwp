@@ -1566,7 +1566,7 @@ radv_update_descriptor_set_with_template_impl(struct radv_device *device,
                device, cmd_buffer, templ->entry[i].sampler_offset, pDst, buffer_list,
                templ->entry[i].descriptor_type, (struct VkDescriptorImageInfo *)pSrc,
                templ->entry[i].has_sampler);
-            if (templ->entry[i].immutable_samplers) {
+            if (cmd_buffer && templ->entry[i].immutable_samplers) {
                memcpy((char *)pDst + templ->entry[i].sampler_offset,
                       templ->entry[i].immutable_samplers + 4 * j, 16);
             }
@@ -1574,7 +1574,7 @@ radv_update_descriptor_set_with_template_impl(struct radv_device *device,
          case VK_DESCRIPTOR_TYPE_SAMPLER:
             if (templ->entry[i].has_sampler)
                write_sampler_descriptor(device, pDst, (struct VkDescriptorImageInfo *)pSrc);
-            else if (templ->entry[i].immutable_samplers)
+            else if (cmd_buffer && templ->entry[i].immutable_samplers)
                memcpy(pDst, templ->entry[i].immutable_samplers + 4 * j, 16);
             break;
          case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
