@@ -269,6 +269,15 @@ tu_physical_device_get_format_properties(
       buffer = 0;
    }
 
+   /* We don't support writing into VK__FORMAT_*_PACK16 images/buffers  */
+   if (desc->nr_channels > 2 && desc->block.bits == 16) {
+      buffer &= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+      linear &= ~(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
+                  VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT);
+      optimal &= ~(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
+                   VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT);
+   }
+
    /* All our depth formats support shadow comparisons. */
    if (vk_format_has_depth(vk_format) && (optimal & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
       optimal |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
