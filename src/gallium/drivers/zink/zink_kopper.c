@@ -125,12 +125,10 @@ destroy_swapchain(struct zink_screen *screen, struct kopper_swapchain *cswap)
 {
    if (!cswap)
       return;
-   free(cswap->images);
-   free(cswap->inits);
    for (unsigned i = 0; i < cswap->num_images; i++) {
-      VKSCR(DestroySemaphore)(screen->dev, cswap->acquires[i], NULL);
+      VKSCR(DestroySemaphore)(screen->dev, cswap->images[i].acquire, NULL);
    }
-   free(cswap->acquires);
+   free(cswap->images);
    hash_table_foreach(cswap->presents, he) {
       struct util_dynarray *arr = he->data;
       while (util_dynarray_contains(arr, VkSemaphore))
@@ -298,12 +296,15 @@ kopper_GetSwapchainImages(struct zink_screen *screen, struct kopper_swapchain *c
    zink_screen_handle_vkresult(screen, error);
    if (error != VK_SUCCESS)
       return error;
-   cswap->images = malloc(sizeof(VkImage) * cswap->num_images);
-   cswap->acquires = calloc(cswap->num_images, sizeof(VkSemaphore));
-   cswap->inits = calloc(cswap->num_images, sizeof(bool));
+   cswap->images = calloc(cswap->num_images, sizeof(struct kopper_swapchain_image));
    cswap->presents = _mesa_hash_table_create_u32_keys(NULL);
-   error = VKSCR(GetSwapchainImagesKHR)(screen->dev, cswap->swapchain, &cswap->num_images, cswap->images);
-   zink_screen_handle_vkresult(screen, error);
+   VkImage images[32];
+   error = VKSCR(GetSwapchainImagesKHR)(screen->dev, cswap->swapchain, &cswap->num_images, images);
+   assert(cswap->num_images <= ARRAY_SIZE(images));
+   if (zink_screen_handle_vkresult(screen, error)) {
+      for (unsigned i = 0; i < cswap->num_images; i++)
+         cswap->images[i].image = images[i];
+   }
    return error;
 }
 
@@ -495,13 +496,13 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
       break;
    }
 
-   cdt->swapchain->acquires[res->obj->dt_idx] = res->obj->acquire = acquire;
-   res->obj->image = cdt->swapchain->images[res->obj->dt_idx];
+   cdt->swapchain->images[res->obj->dt_idx].acquire = res->obj->acquire = acquire;
+   res->obj->image = cdt->swapchain->images[res->obj->dt_idx].image;
    res->obj->acquired = false;
-   if (!cdt->swapchain->inits[res->obj->dt_idx]) {
+   if (!cdt->swapchain->images[res->obj->dt_idx].init) {
       /* swapchain images are initially in the UNDEFINED layout */
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
-      cdt->swapchain->inits[res->obj->dt_idx] = true;
+      cdt->swapchain->images[res->obj->dt_idx].init = true;
    }
    if (timeout == UINT64_MAX) {
       res->obj->indefinite_acquire = true;
@@ -573,7 +574,7 @@ zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res
    assert(res->obj->acquire);
    res->obj->acquired = true;
    /* this is now owned by the batch */
-   cdt->swapchain->acquires[res->obj->dt_idx] = VK_NULL_HANDLE;
+   cdt->swapchain->images[res->obj->dt_idx].acquire = VK_NULL_HANDLE;
    cdt->swapchain->dt_has_data = true;
    return res->obj->acquire;
 }

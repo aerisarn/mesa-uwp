@@ -29,14 +29,18 @@
 
 #include "kopper_interface.h"
 
+struct kopper_swapchain_image {
+   bool init;
+   VkImage image;
+   VkSemaphore acquire;
+};
+
 struct kopper_swapchain {
    struct kopper_swapchain *next;
    VkSwapchainKHR swapchain;
-   VkImage *images;
-   bool *inits;
+
    unsigned last_present;
    unsigned num_images;
-   VkSemaphore *acquires;
    uint32_t last_present_prune;
    struct hash_table *presents;
    VkSwapchainCreateInfoKHR scci;
@@ -44,6 +48,7 @@ struct kopper_swapchain {
    unsigned max_acquires;
    unsigned async_presents;
    bool dt_has_data;
+   struct kopper_swapchain_image *images;
 };
 
 enum kopper_type {

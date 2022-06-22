@@ -441,7 +441,7 @@ zink_surface_swapchain_update(struct zink_context *ctx, struct zink_surface *sur
       init_surface_info(surface, res, &surface->ivci);
    }
    if (!surface->swapchain[res->obj->dt_idx]) {
-      assert(res->obj->image && cdt->swapchain->images[res->obj->dt_idx] == res->obj->image);
+      assert(res->obj->image && cdt->swapchain->images[res->obj->dt_idx].image == res->obj->image);
       surface->ivci.image = res->obj->image;
       assert(surface->ivci.image);
       VKSCR(CreateImageView)(screen->dev, &surface->ivci, NULL, &surface->swapchain[res->obj->dt_idx]);
