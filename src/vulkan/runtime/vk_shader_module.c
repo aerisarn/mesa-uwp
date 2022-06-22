@@ -28,6 +28,8 @@
 #include "vk_device.h"
 #include "vk_log.h"
 #include "vk_nir.h"
+#include "vk_pipeline.h"
+#include "vk_util.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_CreateShaderModule(VkDevice _device,
@@ -100,36 +102,16 @@ vk_shader_module_to_nir(struct vk_device *device,
                         const nir_shader_compiler_options *nir_options,
                         void *mem_ctx, nir_shader **nir_out)
 {
-   if (mod->nir != NULL) {
-      assert(mod->nir->info.stage == stage);
-      assert(exec_list_length(&mod->nir->functions) == 1);
-      ASSERTED const char *nir_name =
-         nir_shader_get_entrypoint(mod->nir)->function->name;
-      assert(strcmp(nir_name, entrypoint_name) == 0);
-
-      nir_validate_shader(mod->nir, "internal shader");
-
-      nir_shader *clone = nir_shader_clone(mem_ctx, mod->nir);
-      if (clone == NULL)
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      assert(clone->options == NULL || clone->options == nir_options);
-      clone->options = nir_options;
-
-      *nir_out = clone;
-      return VK_SUCCESS;
-   } else {
-      nir_shader *nir = vk_spirv_to_nir(device,
-                                        (uint32_t *)mod->data, mod->size,
-                                        stage, entrypoint_name, spec_info,
-                                        spirv_options, nir_options,
-                                        mem_ctx);
-      if (nir == NULL)
-         return vk_errorf(device, VK_ERROR_UNKNOWN, "spirv_to_nir failed");
-
-      *nir_out = nir;
-      return VK_SUCCESS;
-   }
+   const VkPipelineShaderStageCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = mesa_to_vk_shader_stage(stage),
+      .module = vk_shader_module_to_handle((struct vk_shader_module *)mod),
+      .pName = entrypoint_name,
+      .pSpecializationInfo = spec_info,
+   };
+   return vk_pipeline_shader_stage_to_nir(device, &info,
+                                          spirv_options, nir_options,
+                                          mem_ctx, nir_out);
 }
 
 struct vk_shader_module *

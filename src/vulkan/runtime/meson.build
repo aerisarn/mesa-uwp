@@ -56,6 +56,8 @@ vulkan_runtime_files = files(
   'vk_nir.h',
   'vk_object.c',
   'vk_object.h',
+  'vk_pipeline.c',
+  'vk_pipeline.h',
   'vk_pipeline_cache.c',
   'vk_pipeline_cache.h',
   'vk_physical_device.c',
