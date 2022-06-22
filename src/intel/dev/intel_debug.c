@@ -115,6 +115,7 @@ static const struct debug_control simd_control[] = {
    { "fs8",    DEBUG_FS_SIMD8 },
    { "fs16",   DEBUG_FS_SIMD16 },
    { "fs32",   DEBUG_FS_SIMD32 },
+   { "fs2x8",  DEBUG_FS_SIMD2X8 },
    { "cs8",    DEBUG_CS_SIMD8 },
    { "cs16",   DEBUG_CS_SIMD16 },
    { "cs32",   DEBUG_CS_SIMD32 },
@@ -155,7 +156,8 @@ intel_debug_flag_for_shader_stage(gl_shader_stage stage)
    return flags[stage];
 }
 
-#define DEBUG_FS_SIMD  (DEBUG_FS_SIMD8  | DEBUG_FS_SIMD16  | DEBUG_FS_SIMD32)
+#define DEBUG_FS_SIMD  (DEBUG_FS_SIMD8  | DEBUG_FS_SIMD16  | \
+                        DEBUG_FS_SIMD32)
 #define DEBUG_CS_SIMD  (DEBUG_CS_SIMD8  | DEBUG_CS_SIMD16  | DEBUG_CS_SIMD32)
 #define DEBUG_TS_SIMD  (DEBUG_TS_SIMD8  | DEBUG_TS_SIMD16  | DEBUG_TS_SIMD32)
 #define DEBUG_MS_SIMD  (DEBUG_MS_SIMD8  | DEBUG_MS_SIMD16  | DEBUG_MS_SIMD32)
