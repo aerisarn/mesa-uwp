@@ -562,10 +562,16 @@ fs_reg::is_contiguous() const
 unsigned
 fs_reg::component_size(unsigned width) const
 {
-   const unsigned stride = ((file != ARF && file != FIXED_GRF) ? this->stride :
-                            hstride == 0 ? 0 :
-                            1 << (hstride - 1));
-   return MAX2(width * stride, 1) * type_sz(type);
+   if (file == ARF || file == FIXED_GRF) {
+      const unsigned w = MIN2(width, 1u << this->width);
+      const unsigned h = width >> this->width;
+      const unsigned vs = vstride ? 1 << (vstride - 1) : 0;
+      const unsigned hs = hstride ? 1 << (hstride - 1) : 0;
+      assert(w > 0);
+      return ((MAX2(1, h) - 1) * vs + (w - 1) * hs + 1) * type_sz(type);
+   } else {
+      return MAX2(width * stride, 1) * type_sz(type);
+   }
 }
 
 void
