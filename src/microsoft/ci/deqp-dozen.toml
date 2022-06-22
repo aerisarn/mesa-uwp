@@ -19,6 +19,7 @@ include = [
     "dEQP-VK.geometry.*",
     "dEQP-VK.info.*",
     "dEQP-VK.memory.*",
+    "dEQP-VK.pipeline*cache.*",
     "dEQP-VK.pipeline.vertex_input.*",
     "dEQP-VK.query_pool.*",
 ]
