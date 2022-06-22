@@ -739,19 +739,19 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
    }
 
    if (!(device->instance->debug_flags & RADV_DEBUG_NO_UMR)) {
-      /* Dump UMR ring. */
-      snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
-      f = fopen(dump_path, "w+");
-      if (f) {
-         radv_dump_umr_ring(queue, f);
-         fclose(f);
-      }
-
       /* Dump UMR waves. */
       snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_waves.log");
       f = fopen(dump_path, "w+");
       if (f) {
          radv_dump_umr_waves(queue, f);
+         fclose(f);
+      }
+
+      /* Dump UMR ring. */
+      snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
+      f = fopen(dump_path, "w+");
+      if (f) {
+         radv_dump_umr_ring(queue, f);
          fclose(f);
       }
    }
