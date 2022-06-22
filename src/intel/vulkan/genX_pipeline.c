@@ -1577,6 +1577,18 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       const bool persample =
          brw_wm_prog_data_is_persample(wm_prog_data, pipeline->fs_msaa_flags);
 
+#if GFX_VER == 12
+      assert(wm_prog_data->dispatch_multi == 0 ||
+             (wm_prog_data->dispatch_multi == 16 && wm_prog_data->max_polygons == 2));
+      ps.DualSIMD8DispatchEnable = wm_prog_data->dispatch_multi;
+      /* XXX - No major improvement observed from enabling
+       *       overlapping subspans, but it could be helpful
+       *       in theory when the requirements listed on the
+       *       BSpec page for 3DSTATE_PS_BODY are met.
+       */
+      ps.OverlappingSubspansEnable = false;
+#endif
+
       ps.KernelStartPointer0 = fs_bin->kernel.offset +
                                brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
       ps.KernelStartPointer1 = fs_bin->kernel.offset +

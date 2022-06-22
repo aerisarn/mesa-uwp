@@ -1520,7 +1520,7 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
       .prog_data = &fs_stage->prog_data.wm,
 
       .allow_spilling = true,
-      .max_polygons = 1,
+      .max_polygons = UCHAR_MAX,
    };
 
    if (prev_stage && prev_stage->stage == MESA_SHADER_MESH) {
@@ -1530,9 +1530,11 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
 
    fs_stage->code = brw_compile_fs(compiler, &params);
 
-   fs_stage->num_stats = (uint32_t)fs_stage->prog_data.wm.dispatch_8 +
+   fs_stage->num_stats = (uint32_t)!!fs_stage->prog_data.wm.dispatch_multi +
+                         (uint32_t)fs_stage->prog_data.wm.dispatch_8 +
                          (uint32_t)fs_stage->prog_data.wm.dispatch_16 +
                          (uint32_t)fs_stage->prog_data.wm.dispatch_32;
+   assert(fs_stage->num_stats <= ARRAY_SIZE(fs_stage->stats));
 }
 
 static void
@@ -1641,7 +1643,8 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
          (const struct brw_wm_prog_data *)bin->prog_data;
       struct brw_compile_stats *stats = bin->stats;
 
-      if (wm_prog_data->dispatch_8) {
+      if (wm_prog_data->dispatch_8 ||
+          wm_prog_data->dispatch_multi) {
          anv_pipeline_add_executable(pipeline, stage, stats++, 0);
       }
 
