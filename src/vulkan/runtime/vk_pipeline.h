@@ -42,6 +42,21 @@ vk_pipeline_shader_stage_to_nir(struct vk_device *device,
                                 const struct nir_shader_compiler_options *nir_options,
                                 void *mem_ctx, struct nir_shader **nir_out);
 
+/** Hash VkPipelineShaderStageCreateInfo info
+ *
+ * Returns the hash of a VkPipelineShaderStageCreateInfo:
+ *    SHA1(info->module->sha1,
+ *         info->pName,
+ *         vk_stage_to_mesa_stage(info->stage),
+ *         info->pSpecializationInfo)
+ *
+ * Can only be used if VkPipelineShaderStageCreateInfo::module is a
+ * vk_shader_module object.
+ */
+void
+vk_pipeline_hash_shader_stage(const VkPipelineShaderStageCreateInfo *info,
+                              unsigned char *stage_sha1);
+
 #ifdef __cplusplus
 }
 #endif
