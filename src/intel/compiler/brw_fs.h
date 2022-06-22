@@ -330,7 +330,8 @@ public:
    void emit_urb_fence();
    void emit_cs_terminate();
 
-   fs_reg interp_reg(int location, int channel);
+   fs_reg interp_reg(const brw::fs_builder &bld, unsigned location,
+                     unsigned channel, unsigned comp);
    fs_reg per_primitive_reg(int location, unsigned comp);
 
    virtual void dump_instruction_to_file(const backend_instruction *inst, FILE *file) const;

@@ -45,7 +45,8 @@ using namespace brw;
  * generate_code() time.
  */
 fs_reg
-fs_visitor::interp_reg(int location, int channel)
+fs_visitor::interp_reg(const fs_builder &bld, unsigned location,
+                       unsigned channel, unsigned comp)
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    assert(BITFIELD64_BIT(location) & ~nir->info.per_primitive_inputs);
@@ -63,7 +64,7 @@ fs_visitor::interp_reg(int location, int channel)
    const unsigned per_vertex_start = prog_data->num_per_primitive_inputs;
    const unsigned regnr = per_vertex_start + (nr * 4) + channel;
 
-   return fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F);
+   return component(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F), comp);
 }
 
 /* The register location here is relative to the start of the URB
@@ -143,7 +144,7 @@ fs_visitor::emit_interpolation_setup_gfx4()
     */
    this->wpos_w = vgrf(glsl_float_type());
    abld.emit(FS_OPCODE_LINTERP, wpos_w, delta_xy,
-             component(interp_reg(VARYING_SLOT_POS, 3), 0));
+             interp_reg(abld, VARYING_SLOT_POS, 3, 0));
    /* Compute the pixel 1/W value from wpos.w. */
    this->pixel_w = vgrf(glsl_float_type());
    abld.emit(SHADER_OPCODE_RCP, this->pixel_w, wpos_w);

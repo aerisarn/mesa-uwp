@@ -3534,7 +3534,7 @@ emit_fragcoord_interpolation(nir_to_brw_state &ntb, fs_reg wpos)
    } else {
       bld.emit(FS_OPCODE_LINTERP, wpos,
                s.delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL],
-               component(s.interp_reg(VARYING_SLOT_POS, 2), 0));
+               s.interp_reg(bld, VARYING_SLOT_POS, 2, 0));
    }
    wpos = offset(wpos, bld, 1);
 
@@ -4113,7 +4113,7 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
       } else {
          for (unsigned int i = 0; i < num_components; i++) {
             bld.MOV(offset(dest, bld, i),
-                    retype(component(s.interp_reg(base, comp + i), 3), dest.type));
+                    retype(s.interp_reg(bld, base, comp + i, 3), dest.type));
          }
       }
       break;
@@ -4122,12 +4122,12 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
    case nir_intrinsic_load_fs_input_interp_deltas: {
       assert(s.stage == MESA_SHADER_FRAGMENT);
       assert(nir_src_as_uint(instr->src[0]) == 0);
-      fs_reg interp = s.interp_reg(nir_intrinsic_base(instr),
-                                    nir_intrinsic_component(instr));
+      const unsigned base = nir_intrinsic_base(instr);
+      const unsigned comp = nir_intrinsic_component(instr);
       dest.type = BRW_REGISTER_TYPE_F;
-      bld.MOV(offset(dest, bld, 0), component(interp, 3));
-      bld.MOV(offset(dest, bld, 1), component(interp, 1));
-      bld.MOV(offset(dest, bld, 2), component(interp, 0));
+      bld.MOV(offset(dest, bld, 0), s.interp_reg(bld, base, comp, 3));
+      bld.MOV(offset(dest, bld, 1), s.interp_reg(bld, base, comp, 1));
+      bld.MOV(offset(dest, bld, 2), s.interp_reg(bld, base, comp, 0));
       break;
    }
 
@@ -4236,8 +4236,8 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
 
       for (unsigned int i = 0; i < instr->num_components; i++) {
          fs_reg interp =
-            component(s.interp_reg(nir_intrinsic_base(instr),
-                                    nir_intrinsic_component(instr) + i), 0);
+            s.interp_reg(bld, nir_intrinsic_base(instr),
+                         nir_intrinsic_component(instr) + i, 0);
          interp.type = BRW_REGISTER_TYPE_F;
          dest.type = BRW_REGISTER_TYPE_F;
 
