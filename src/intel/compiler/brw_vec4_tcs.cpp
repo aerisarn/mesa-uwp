@@ -388,7 +388,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       brw_nir_lower_patch_vertices_in(nir, key->input_vertices);
 
    brw_postprocess_nir(nir, compiler, debug_enabled,
-                       key->base.robust_buffer_access);
+                       key->base.robust_flags);
 
    bool has_primitive_id =
       BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);

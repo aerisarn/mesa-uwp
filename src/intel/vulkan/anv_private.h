@@ -3458,6 +3458,10 @@ struct anv_graphics_base_pipeline {
     */
    uint32_t                                     feedback_index[ANV_GRAPHICS_SHADER_STAGE_COUNT];
 
+   /* Robustness flags used shaders
+    */
+   enum brw_robustness_flags                    robust_flags[ANV_GRAPHICS_SHADER_STAGE_COUNT];
+
    /* True if at the time the fragment shader was compiled, it didn't have all
     * the information to avoid BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC.
     */

@@ -237,10 +237,17 @@ struct brw_sampler_prog_key_data {
    enum gfx6_gather_sampler_wa gfx6_gather_wa[BRW_MAX_SAMPLERS];
 };
 
+enum brw_robustness_flags {
+   BRW_ROBUSTNESS_UBO  = BITFIELD_BIT(0),
+   BRW_ROBUSTNESS_SSBO = BITFIELD_BIT(1),
+};
+
 struct brw_base_prog_key {
    unsigned program_string_id;
 
-   bool robust_buffer_access;
+   enum brw_robustness_flags robust_flags:2;
+
+   unsigned padding:22;
 
    /**
     * Apply workarounds for SIN and COS input range problems.
@@ -248,7 +255,6 @@ struct brw_base_prog_key {
     * avoid precision issues.
     */
    bool limit_trig_input_range;
-   unsigned padding:16;
 
    struct brw_sampler_prog_key_data tex;
 };

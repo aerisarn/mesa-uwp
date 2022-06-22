@@ -134,6 +134,7 @@ anv_nir_lower_set_vtx_and_prim_count(nir_shader *nir)
 static nir_shader *
 anv_shader_stage_to_nir(struct anv_device *device,
                         const VkPipelineShaderStageCreateInfo *stage_info,
+                        enum brw_robustness_flags robust_flags,
                         void *mem_ctx)
 {
    const struct anv_physical_device *pdevice = device->physical;
@@ -205,10 +206,8 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .workgroup_memory_explicit_layout = true,
          .fragment_shading_rate = pdevice->info.ver >= 11,
       },
-      .ubo_addr_format =
-         anv_nir_ubo_addr_format(pdevice, device->robust_buffer_access),
-      .ssbo_addr_format =
-          anv_nir_ssbo_addr_format(pdevice, device->robust_buffer_access),
+      .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_flags),
+      .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_flags),
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
       .push_const_addr_format = nir_address_format_logical,
 
@@ -378,57 +377,116 @@ void anv_DestroyPipeline(
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
 
-static void
-populate_base_prog_key(const struct anv_device *device,
-                       bool robust_buffer_acccess,
-                       struct brw_base_prog_key *key)
+struct anv_pipeline_stage {
+   gl_shader_stage stage;
+
+   struct vk_pipeline_robustness_state rstate;
+
+   const VkPipelineShaderStageCreateInfo *info;
+
+   unsigned char shader_sha1[20];
+   uint32_t      source_hash;
+
+   union brw_any_prog_key key;
+
+   struct {
+      gl_shader_stage stage;
+      unsigned char sha1[20];
+   } cache_key;
+
+   nir_shader *nir;
+
+   struct {
+      nir_shader *nir;
+      struct anv_shader_bin *bin;
+   } imported;
+
+   struct anv_push_descriptor_info push_desc_info;
+
+   enum gl_subgroup_size subgroup_size_type;
+
+   enum brw_robustness_flags robust_flags;
+
+   struct anv_pipeline_binding surface_to_descriptor[256];
+   struct anv_pipeline_binding sampler_to_descriptor[256];
+   struct anv_pipeline_bind_map bind_map;
+
+   bool uses_bt_for_push_descs;
+
+   enum anv_dynamic_push_bits dynamic_push_values;
+
+   union brw_any_prog_data prog_data;
+
+   uint32_t num_stats;
+   struct brw_compile_stats stats[3];
+   char *disasm[3];
+
+   VkPipelineCreationFeedback feedback;
+   uint32_t feedback_idx;
+
+   const unsigned *code;
+
+   struct anv_shader_bin *bin;
+};
+
+static enum brw_robustness_flags
+anv_get_robust_flags(const struct vk_pipeline_robustness_state *rstate)
 {
-   key->robust_buffer_access = robust_buffer_acccess;
-   key->limit_trig_input_range =
+   return
+      ((rstate->storage_buffers !=
+        VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT) ?
+       BRW_ROBUSTNESS_SSBO : 0) |
+      ((rstate->uniform_buffers !=
+        VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT) ?
+       BRW_ROBUSTNESS_UBO : 0);
+}
+
+static void
+populate_base_prog_key(struct anv_pipeline_stage *stage,
+                       const struct anv_device *device)
+{
+   stage->key.base.robust_flags = anv_get_robust_flags(&stage->rstate);
+   stage->key.base.limit_trig_input_range =
       device->physical->instance->limit_trig_input_range;
 }
 
 static void
-populate_vs_prog_key(const struct anv_device *device,
-                     bool robust_buffer_acccess,
-                     struct brw_vs_prog_key *key)
+populate_vs_prog_key(struct anv_pipeline_stage *stage,
+                     const struct anv_device *device)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(stage, device);
 }
 
 static void
-populate_tcs_prog_key(const struct anv_device *device,
-                      bool robust_buffer_acccess,
-                      unsigned input_vertices,
-                      struct brw_tcs_prog_key *key)
+populate_tcs_prog_key(struct anv_pipeline_stage *stage,
+                      const struct anv_device *device,
+                      unsigned input_vertices)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(stage, device);
 
-   key->input_vertices = input_vertices;
+   stage->key.tcs.input_vertices = input_vertices;
 }
 
 static void
-populate_tes_prog_key(const struct anv_device *device,
-                      bool robust_buffer_acccess,
-                      struct brw_tes_prog_key *key)
+populate_tes_prog_key(struct anv_pipeline_stage *stage,
+                      const struct anv_device *device)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(stage, device);
 }
 
 static void
-populate_gs_prog_key(const struct anv_device *device,
-                     bool robust_buffer_acccess,
-                     struct brw_gs_prog_key *key)
+populate_gs_prog_key(struct anv_pipeline_stage *stage,
+                     const struct anv_device *device)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(stage, device);
 }
 
 static bool
@@ -485,23 +543,21 @@ pipeline_has_coarse_pixel(const BITSET_WORD *dynamic,
 }
 
 static void
-populate_task_prog_key(const struct anv_device *device,
-                       bool robust_buffer_access,
-                       struct brw_task_prog_key *key)
+populate_task_prog_key(struct anv_pipeline_stage *stage,
+                       const struct anv_device *device)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_access, &key->base);
+   populate_base_prog_key(stage, device);
 }
 
 static void
-populate_mesh_prog_key(const struct anv_device *device,
-                       bool robust_buffer_access,
-                       struct brw_mesh_prog_key *key)
+populate_mesh_prog_key(struct anv_pipeline_stage *stage,
+                       const struct anv_device *device)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_access, &key->base);
+   populate_base_prog_key(stage, device);
 }
 
 static uint32_t
@@ -520,19 +576,20 @@ rp_color_mask(const struct vk_render_pass_state *rp)
 }
 
 static void
-populate_wm_prog_key(const struct anv_graphics_base_pipeline *pipeline,
-                     bool robust_buffer_acccess,
+populate_wm_prog_key(struct anv_pipeline_stage *stage,
+                     const struct anv_graphics_base_pipeline *pipeline,
                      const BITSET_WORD *dynamic,
                      const struct vk_multisample_state *ms,
                      const struct vk_fragment_shading_rate_state *fsr,
-                     const struct vk_render_pass_state *rp,
-                     struct brw_wm_prog_key *key)
+                     const struct vk_render_pass_state *rp)
 {
    const struct anv_device *device = pipeline->base.device;
 
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(stage, device);
+
+   struct brw_wm_prog_key *key = &stage->key.wm;
 
    /* We set this to 0 here and set to the actual value before we call
     * brw_compile_fs.
@@ -607,75 +664,26 @@ wm_prog_data_dynamic(const struct brw_wm_prog_data *prog_data)
 }
 
 static void
-populate_cs_prog_key(const struct anv_device *device,
-                     bool robust_buffer_acccess,
-                     struct brw_cs_prog_key *key)
+populate_cs_prog_key(struct anv_pipeline_stage *stage,
+                     const struct anv_device *device)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(stage, device);
 }
 
 static void
-populate_bs_prog_key(const struct anv_device *device,
-                     bool robust_buffer_access,
-                     uint32_t ray_flags,
-                     struct brw_bs_prog_key *key)
+populate_bs_prog_key(struct anv_pipeline_stage *stage,
+                     const struct anv_device *device,
+                     uint32_t ray_flags)
 {
-   memset(key, 0, sizeof(*key));
+   memset(&stage->key, 0, sizeof(stage->key));
 
-   populate_base_prog_key(device, robust_buffer_access, &key->base);
+   populate_base_prog_key(stage, device);
 
-   key->pipeline_ray_flags = ray_flags;
+   stage->key.bs.pipeline_ray_flags = ray_flags;
+   stage->key.bs.pipeline_ray_flags = ray_flags;
 }
-
-struct anv_pipeline_stage {
-   gl_shader_stage stage;
-
-   const VkPipelineShaderStageCreateInfo *info;
-
-   unsigned char shader_sha1[20];
-   uint32_t      source_hash;
-
-   union brw_any_prog_key key;
-
-   struct {
-      gl_shader_stage stage;
-      unsigned char sha1[20];
-   } cache_key;
-
-   nir_shader *nir;
-
-   struct {
-      nir_shader *nir;
-      struct anv_shader_bin *bin;
-   } imported;
-
-   struct anv_push_descriptor_info push_desc_info;
-
-   enum gl_subgroup_size subgroup_size_type;
-
-   struct anv_pipeline_binding surface_to_descriptor[256];
-   struct anv_pipeline_binding sampler_to_descriptor[256];
-   struct anv_pipeline_bind_map bind_map;
-
-   bool uses_bt_for_push_descs;
-
-   enum anv_dynamic_push_bits dynamic_push_values;
-
-   union brw_any_prog_data prog_data;
-
-   uint32_t num_stats;
-   struct brw_compile_stats stats[3];
-   char *disasm[3];
-
-   VkPipelineCreationFeedback feedback;
-   uint32_t feedback_idx;
-
-   const unsigned *code;
-
-   struct anv_shader_bin *bin;
-};
 
 static void
 anv_stage_write_shader_hash(struct anv_pipeline_stage *stage,
@@ -827,7 +835,8 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
       return nir;
    }
 
-   nir = anv_shader_stage_to_nir(pipeline->device, stage->info, mem_ctx);
+   nir = anv_shader_stage_to_nir(pipeline->device, stage->info,
+                                 stage->key.base.robust_flags, mem_ctx);
    if (nir) {
       anv_device_upload_nir(pipeline->device, cache, nir, stage->shader_sha1);
       return nir;
@@ -980,14 +989,14 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    NIR_PASS_V(nir, anv_nir_apply_pipeline_layout,
-              pdevice, pipeline->device->robust_buffer_access,
+              pdevice, stage->key.base.robust_flags,
               layout->independent_sets,
               layout, &stage->bind_map, &push_map, mem_ctx);
 
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
-            anv_nir_ubo_addr_format(pdevice, pipeline->device->robust_buffer_access));
+            anv_nir_ubo_addr_format(pdevice, stage->key.base.robust_flags));
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
-            anv_nir_ssbo_addr_format(pdevice, pipeline->device->robust_buffer_access));
+            anv_nir_ssbo_addr_format(pdevice, stage->key.base.robust_flags));
 
    /* First run copy-prop to get rid of all of the vec() that address
     * calculations often create and then constant-fold so that, when we
@@ -1044,7 +1053,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    stage->dynamic_push_values = anv_nir_compute_dynamic_push_bits(nir);
 
    NIR_PASS_V(nir, anv_nir_compute_push_layout,
-              pdevice, pipeline->device->robust_buffer_access,
+              pdevice, stage->key.base.robust_flags,
               anv_graphics_pipeline_stage_fragment_dynamic(stage),
               prog_data, &stage->bind_map, &push_map, mem_ctx);
 
@@ -1660,6 +1669,13 @@ anv_graphics_pipeline_skip_shader_compile(struct anv_graphics_base_pipeline *pip
    return stages[stage].info == NULL;
 }
 
+static enum brw_robustness_flags
+anv_device_get_robust_flags(const struct anv_device *device)
+{
+   return device->robust_buffer_access ?
+          (BRW_ROBUSTNESS_UBO | BRW_ROBUSTNESS_SSBO) : 0;
+}
+
 static void
 anv_graphics_pipeline_init_keys(struct anv_graphics_base_pipeline *pipeline,
                                 const struct vk_graphics_pipeline_state *state,
@@ -1674,27 +1690,20 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_base_pipeline *pipeline,
       const struct anv_device *device = pipeline->base.device;
       switch (stages[s].stage) {
       case MESA_SHADER_VERTEX:
-         populate_vs_prog_key(device,
-                              pipeline->base.device->robust_buffer_access,
-                              &stages[s].key.vs);
+         populate_vs_prog_key(&stages[s], device);
          break;
       case MESA_SHADER_TESS_CTRL:
-         populate_tcs_prog_key(device,
-                               pipeline->base.device->robust_buffer_access,
+         populate_tcs_prog_key(&stages[s],
+                               device,
                                BITSET_TEST(state->dynamic,
                                            MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS) ?
-                               0 : state->ts->patch_control_points,
-                               &stages[s].key.tcs);
+                               0 : state->ts->patch_control_points);
          break;
       case MESA_SHADER_TESS_EVAL:
-         populate_tes_prog_key(device,
-                               pipeline->base.device->robust_buffer_access,
-                               &stages[s].key.tes);
+         populate_tes_prog_key(&stages[s], device);
          break;
       case MESA_SHADER_GEOMETRY:
-         populate_gs_prog_key(device,
-                              pipeline->base.device->robust_buffer_access,
-                              &stages[s].key.gs);
+         populate_gs_prog_key(&stages[s], device);
          break;
       case MESA_SHADER_FRAGMENT: {
          /* Assume rasterization enabled in any of the following case :
@@ -1709,25 +1718,20 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_base_pipeline *pipeline,
             state->rs == NULL ||
             !state->rs->rasterizer_discard_enable ||
             BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE);
-         populate_wm_prog_key(pipeline,
-                              pipeline->base.device->robust_buffer_access,
+         populate_wm_prog_key(&stages[s],
+                              pipeline,
                               state->dynamic,
                               raster_enabled ? state->ms : NULL,
-                              state->fsr, state->rp,
-                              &stages[s].key.wm);
+                              state->fsr, state->rp);
          break;
       }
 
       case MESA_SHADER_TASK:
-         populate_task_prog_key(device,
-                                pipeline->base.device->robust_buffer_access,
-                                &stages[s].key.task);
+         populate_task_prog_key(&stages[s], device);
          break;
 
       case MESA_SHADER_MESH:
-         populate_mesh_prog_key(device,
-                                pipeline->base.device->robust_buffer_access,
-                                &stages[s].key.mesh);
+         populate_mesh_prog_key(&stages[s], device);
          break;
 
       default:
@@ -2081,6 +2085,8 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
       stages[stage].feedback_idx = shader_count++;
 
       anv_stage_write_shader_hash(&stages[stage], stages[stage].info);
+
+      stages[stage].robust_flags = anv_device_get_robust_flags(device);
    }
 
    /* Prepare shader keys for all shaders in pipeline->base.active_stages
@@ -2455,6 +2461,7 @@ done:
 
       struct anv_pipeline_stage *stage = &stages[s];
       pipeline->feedback_index[s] = stage->feedback_idx;
+      pipeline->robust_flags[s] = stage->robust_flags;
    }
 
    pipeline_feedback->duration = os_time_get_nano() - pipeline_start;
@@ -2508,7 +2515,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
    struct anv_shader_bin *bin = NULL;
 
-   populate_cs_prog_key(device, device->robust_buffer_access, &stage.key.cs);
+   populate_cs_prog_key(&stage, device);
 
    const bool skip_cache_lookup =
       (pipeline->base.flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR);
@@ -2913,6 +2920,7 @@ anv_graphics_pipeline_import_lib(struct anv_graphics_base_pipeline *pipeline,
 
       stages[s].stage = s;
       stages[s].feedback_idx = shader_count + lib->base.feedback_index[s];
+      stages[s].robust_flags = lib->base.robust_flags[s];
 
       /* Always import the shader sha1, this will be used for cache lookup. */
       memcpy(stages[s].shader_sha1, lib->retained_shaders[s].shader_sha1,
@@ -3437,12 +3445,11 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 
       pipeline->base.active_stages |= sinfo->stage;
 
-      populate_bs_prog_key(pipeline->base.device,
-                           pipeline->base.device->robust_buffer_access,
-                           ray_flags,
-                           &stages[i].key.bs);
-
       anv_stage_write_shader_hash(&stages[i], sinfo);
+
+      populate_bs_prog_key(&stages[i],
+                           pipeline->base.device,
+                           ray_flags);
 
       if (stages[i].stage != MESA_SHADER_INTERSECTION) {
          anv_pipeline_hash_ray_tracing_shader(pipeline, &stages[i],

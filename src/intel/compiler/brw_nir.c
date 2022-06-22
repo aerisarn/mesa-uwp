@@ -1458,7 +1458,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
 static void
 brw_vectorize_lower_mem_access(nir_shader *nir,
                                const struct brw_compiler *compiler,
-                               bool robust_buffer_access)
+                               enum brw_robustness_flags robust_flags)
 {
    bool progress = false;
    const bool is_scalar = compiler->scalar_stage[nir->info.stage];
@@ -1472,10 +1472,10 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
          .robust_modes = (nir_variable_mode)0,
       };
 
-      if (robust_buffer_access) {
-         options.robust_modes = nir_var_mem_ubo | nir_var_mem_ssbo |
-                                nir_var_mem_global;
-      }
+      if (robust_flags & BRW_ROBUSTNESS_UBO)
+         options.robust_modes |= nir_var_mem_ubo | nir_var_mem_global;
+      if (robust_flags & BRW_ROBUSTNESS_SSBO)
+         options.robust_modes |= nir_var_mem_ssbo | nir_var_mem_global;
 
       OPT(nir_opt_load_store_vectorize, &options);
 
@@ -1550,7 +1550,7 @@ nir_shader_has_local_variables(const nir_shader *nir)
 void
 brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
                     bool debug_enabled,
-                    bool robust_buffer_access)
+                    enum brw_robustness_flags robust_flags)
 {
    const struct intel_device_info *devinfo = compiler->devinfo;
    const bool is_scalar = compiler->scalar_stage[nir->info.stage];
@@ -1590,7 +1590,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       brw_nir_optimize(nir, compiler);
    }
 
-   brw_vectorize_lower_mem_access(nir, compiler, robust_buffer_access);
+   brw_vectorize_lower_mem_access(nir, compiler, robust_flags);
 
    if (OPT(nir_lower_int64))
       brw_nir_optimize(nir, compiler);

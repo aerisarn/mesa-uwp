@@ -216,7 +216,7 @@ bool brw_nir_cleanup_resource_intel(nir_shader *shader);
 void brw_postprocess_nir(nir_shader *nir,
                          const struct brw_compiler *compiler,
                          bool debug_enabled,
-                         bool robust_buffer_access);
+                         enum brw_robustness_flags robust_flags);
 
 bool brw_nir_clamp_image_1d_2d_array_sizes(nir_shader *shader);
 

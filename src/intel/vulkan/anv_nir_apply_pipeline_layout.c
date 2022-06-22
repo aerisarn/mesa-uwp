@@ -1843,7 +1843,7 @@ add_push_entry(struct anv_pipeline_push_map *push_map,
 void
 anv_nir_apply_pipeline_layout(nir_shader *shader,
                               const struct anv_physical_device *pdevice,
-                              bool robust_buffer_access,
+                              enum brw_robustness_flags robust_flags,
                               bool independent_sets,
                               const struct anv_pipeline_sets_layout *layout,
                               struct anv_pipeline_bind_map *map,
@@ -1867,8 +1867,8 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
       .desc_addr_format = bindless_stage ?
                           nir_address_format_64bit_global_32bit_offset :
                           nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
-      .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_buffer_access),
+      .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_flags),
+      .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_flags),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
       .has_independent_sets = independent_sets,
    };

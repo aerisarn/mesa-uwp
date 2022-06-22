@@ -7732,7 +7732,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    NIR_PASS(_, nir, brw_nir_move_interpolation_to_top);
    brw_postprocess_nir(nir, compiler, debug_enabled,
-                       key->base.robust_buffer_access);
+                       key->base.robust_flags);
 
    brw_nir_populate_wm_prog_data(nir, compiler->devinfo, key, prog_data,
                                  params->mue_map);
@@ -8094,7 +8094,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
       NIR_PASS(_, shader, nir_opt_dce);
 
       brw_postprocess_nir(shader, compiler, debug_enabled,
-                          key->base.robust_buffer_access);
+                          key->base.robust_flags);
 
       v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
                                              &key->base,
@@ -8217,7 +8217,7 @@ compile_single_bs(const struct brw_compiler *compiler,
    const unsigned max_dispatch_width = 16;
    brw_nir_apply_key(shader, compiler, &key->base, max_dispatch_width);
    brw_postprocess_nir(shader, compiler, debug_enabled,
-                       key->base.robust_buffer_access);
+                       key->base.robust_flags);
 
    brw_simd_selection_state simd_state{
       .mem_ctx = params->base.mem_ctx,

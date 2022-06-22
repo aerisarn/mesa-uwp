@@ -1234,7 +1234,7 @@ compare_binding_infos(const void *_a, const void *_b)
 void
 anv_nir_apply_pipeline_layout(nir_shader *shader,
                               const struct anv_physical_device *pdevice,
-                              bool robust_buffer_access,
+                              enum brw_robustness_flags robust_flags,
                               const struct anv_pipeline_layout *layout,
                               struct anv_pipeline_bind_map *map)
 {
@@ -1243,8 +1243,8 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
    struct apply_pipeline_layout_state state = {
       .pdevice = pdevice,
       .layout = layout,
-      .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
-      .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_buffer_access),
+      .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_flags),
+      .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_flags),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
    };
 

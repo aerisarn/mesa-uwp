@@ -328,7 +328,7 @@ brw_compile_task(const struct brw_compiler *compiler,
       NIR_PASS(_, shader, brw_nir_lower_simd, dispatch_width);
 
       brw_postprocess_nir(shader, compiler, debug_enabled,
-                          key->base.robust_buffer_access);
+                          key->base.robust_flags);
 
       v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
                                              &key->base,
@@ -1488,7 +1488,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
       NIR_PASS(_, shader, brw_nir_lower_simd, dispatch_width);
 
       brw_postprocess_nir(shader, compiler, debug_enabled,
-                          key->base.robust_buffer_access);
+                          key->base.robust_flags);
 
       v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
                                              &key->base,
