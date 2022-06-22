@@ -663,7 +663,7 @@ radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
    if (ring != AMD_IP_GFX)
       return;
 
-   sprintf(cmd, "umr -O bits,halt_waves -wa %s 2>&1",
+   sprintf(cmd, "umr -O bits,halt_waves -go 0 -wa %s -go 1 2>&1",
            device->physical_device->rad_info.gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
 
    fprintf(f, "\nUMR GFX waves:\n\n");
