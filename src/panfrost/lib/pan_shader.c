@@ -314,11 +314,10 @@ GENX(pan_shader_compile)(nir_shader *s,
                                  &info->varyings.input_count);
 #endif
                 break;
-        case MESA_SHADER_COMPUTE:
+        default:
+                /* Everything else treated as compute */
                 info->wls_size = s->info.shared_size;
                 break;
-        default:
-                unreachable("Unknown shader state");
         }
 
         info->outputs_written = s->info.outputs_written;
