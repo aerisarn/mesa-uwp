@@ -36,6 +36,7 @@
 #include "util/u_prim.h"
 #include "util/os_time.h"
 
+#include "vk_pipeline.h"
 #include "vulkan/util/vk_format.h"
 
 static VkResult
@@ -60,31 +61,15 @@ v3dv_print_v3d_key(struct v3d_key *key,
 }
 
 static void
-pipeline_compute_sha1_from_nir(nir_shader *nir,
-                               unsigned char sha1[20])
+pipeline_compute_sha1_from_nir(struct v3dv_pipeline_stage *p_stage)
 {
-   assert(nir);
-   struct blob blob;
-   blob_init(&blob);
+   VkPipelineShaderStageCreateInfo info = {
+      .module = vk_shader_module_handle_from_nir(p_stage->nir),
+      .pName = p_stage->entrypoint,
+      .stage = mesa_to_vk_shader_stage(p_stage->nir->info.stage),
+   };
 
-   nir_serialize(&blob, nir, false);
-   if (!blob.out_of_memory)
-      _mesa_sha1_compute(blob.data, blob.size, sha1);
-
-   blob_finish(&blob);
-}
-
-void
-v3dv_shader_module_internal_init(struct v3dv_device *device,
-                                 struct vk_shader_module *module,
-                                 nir_shader *nir)
-{
-   vk_object_base_init(&device->vk, &module->base,
-                       VK_OBJECT_TYPE_SHADER_MODULE);
-   module->nir = nir;
-   module->size = 0;
-
-   pipeline_compute_sha1_from_nir(nir, module->sha1);
+   vk_pipeline_hash_shader_stage(&info, p_stage->shader_sha1);
 }
 
 void
@@ -1889,30 +1874,6 @@ pipeline_stage_get_nir(struct v3dv_pipeline_stage *p_stage,
    return NULL;
 }
 
-static void
-pipeline_hash_shader(const struct vk_shader_module *module,
-                     const char *entrypoint,
-                     gl_shader_stage stage,
-                     const VkSpecializationInfo *spec_info,
-                     unsigned char *sha1_out)
-{
-   struct mesa_sha1 ctx;
-   _mesa_sha1_init(&ctx);
-
-   _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
-   _mesa_sha1_update(&ctx, entrypoint, strlen(entrypoint));
-   _mesa_sha1_update(&ctx, &stage, sizeof(stage));
-   if (spec_info) {
-      _mesa_sha1_update(&ctx, spec_info->pMapEntries,
-                        spec_info->mapEntryCount *
-                        sizeof(*spec_info->pMapEntries));
-      _mesa_sha1_update(&ctx, spec_info->pData,
-                        spec_info->dataSize);
-   }
-
-   _mesa_sha1_final(&ctx, sha1_out);
-}
-
 static VkResult
 pipeline_compile_vertex_shader(struct v3dv_pipeline *pipeline,
                                const VkAllocationCallbacks *pAllocator,
@@ -2364,7 +2325,7 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
    p_stage->entrypoint = "main";
    p_stage->module = 0;
    p_stage->nir = nir;
-   pipeline_compute_sha1_from_nir(p_stage->nir, p_stage->shader_sha1);
+   pipeline_compute_sha1_from_nir(p_stage);
    p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
 
    pipeline->has_gs = true;
@@ -2433,11 +2394,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->module = vk_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
 
-      pipeline_hash_shader(p_stage->module,
-                           p_stage->entrypoint,
-                           stage,
-                           p_stage->spec_info,
-                           p_stage->shader_sha1);
+      vk_pipeline_hash_shader_stage(&pCreateInfo->pStages[i], p_stage->shader_sha1);
 
       pipeline->active_stages |= sinfo->stage;
 
@@ -2491,7 +2448,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->entrypoint = "main";
       p_stage->module = 0;
       p_stage->nir = b.shader;
-      pipeline_compute_sha1_from_nir(p_stage->nir, p_stage->shader_sha1);
+      pipeline_compute_sha1_from_nir(p_stage);
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
 
@@ -3214,11 +3171,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->spec_info = sinfo->pSpecializationInfo;
    p_stage->feedback = (VkPipelineCreationFeedbackEXT) { 0 };
 
-   pipeline_hash_shader(p_stage->module,
-                        p_stage->entrypoint,
-                        stage,
-                        p_stage->spec_info,
-                        p_stage->shader_sha1);
+   vk_pipeline_hash_shader_stage(&info->stage, p_stage->shader_sha1);
 
    p_stage->nir = NULL;
 

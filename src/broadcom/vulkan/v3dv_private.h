@@ -2217,10 +2217,6 @@ struct v3dv_bo *
 v3dv_pipeline_create_default_attribute_values(struct v3dv_device *device,
                                               struct v3dv_pipeline *pipeline);
 
-void v3dv_shader_module_internal_init(struct v3dv_device *device,
-                                      struct vk_shader_module *module,
-                                      nir_shader *nir);
-
 #define V3DV_FROM_HANDLE(__v3dv_type, __name, __handle)			\
    VK_FROM_HANDLE(__v3dv_type, __name, __handle)
 
