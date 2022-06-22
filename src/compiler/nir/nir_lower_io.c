@@ -72,10 +72,15 @@ ssbo_atomic_for_deref(nir_intrinsic_op deref_op)
 }
 
 static nir_intrinsic_op
-global_atomic_for_deref(nir_intrinsic_op deref_op)
+global_atomic_for_deref(nir_address_format addr_format,
+                        nir_intrinsic_op deref_op)
 {
    switch (deref_op) {
-#define OP(O) case nir_intrinsic_deref_##O: return nir_intrinsic_global_##O;
+#define OP(O) case nir_intrinsic_deref_##O:              \
+   if (addr_format != nir_address_format_2x32bit_global) \
+      return nir_intrinsic_global_##O;                   \
+   else                                                  \
+      return nir_intrinsic_global_##O##_2x32;
    OP(atomic_exchange)
    OP(atomic_comp_swap)
    OP(atomic_add)
@@ -833,6 +838,16 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 1);
       return nir_iadd(b, addr, offset);
 
+   case nir_address_format_2x32bit_global: {
+      assert(addr->num_components == 2);
+      nir_ssa_def *lo = nir_channel(b, addr, 0);
+      nir_ssa_def *hi = nir_channel(b, addr, 1);
+      nir_ssa_def *res_lo = nir_iadd(b, lo, offset);
+      nir_ssa_def *carry = nir_b2i32(b, nir_ult(b, res_lo, lo));
+      nir_ssa_def *res_hi = nir_iadd(b, hi, carry);
+      return nir_vec2(b, res_lo, res_hi);
+   }
+
    case nir_address_format_32bit_offset_as_64bit:
       assert(addr->num_components == 1);
       assert(offset->bit_size == 32);
@@ -919,6 +934,7 @@ build_addr_for_var(nir_builder *b, nir_variable *var,
    const unsigned bit_size = nir_address_format_bit_size(addr_format);
 
    switch (addr_format) {
+   case nir_address_format_2x32bit_global:
    case nir_address_format_32bit_global:
    case nir_address_format_64bit_global: {
       nir_ssa_def *base_addr;
@@ -1021,6 +1037,7 @@ nir_address_format_bit_size(nir_address_format addr_format)
 {
    switch (addr_format) {
    case nir_address_format_32bit_global:              return 32;
+   case nir_address_format_2x32bit_global:            return 32;
    case nir_address_format_64bit_global:              return 64;
    case nir_address_format_64bit_global_32bit_offset: return 32;
    case nir_address_format_64bit_bounded_global:      return 32;
@@ -1040,6 +1057,7 @@ nir_address_format_num_components(nir_address_format addr_format)
 {
    switch (addr_format) {
    case nir_address_format_32bit_global:              return 1;
+   case nir_address_format_2x32bit_global:            return 2;
    case nir_address_format_64bit_global:              return 1;
    case nir_address_format_64bit_global_32bit_offset: return 4;
    case nir_address_format_64bit_bounded_global:      return 4;
@@ -1103,6 +1121,7 @@ addr_format_is_global(nir_address_format addr_format,
       return mode == nir_var_mem_global;
 
    return addr_format == nir_address_format_32bit_global ||
+          addr_format == nir_address_format_2x32bit_global ||
           addr_format == nir_address_format_64bit_global ||
           addr_format == nir_address_format_64bit_global_32bit_offset ||
           addr_format == nir_address_format_64bit_bounded_global;
@@ -1128,6 +1147,10 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_64bit_global:
    case nir_address_format_62bit_generic:
       assert(addr->num_components == 1);
+      return addr;
+
+   case nir_address_format_2x32bit_global:
+      assert(addr->num_components == 2);
       return addr;
 
    case nir_address_format_64bit_global_32bit_offset:
@@ -1285,6 +1308,24 @@ canonicalize_generic_modes(nir_variable_mode modes)
    return modes;
 }
 
+static nir_intrinsic_op
+get_store_global_op_from_addr_format(nir_address_format addr_format)
+{
+   if (addr_format != nir_address_format_2x32bit_global)
+      return nir_intrinsic_store_global;
+   else
+      return nir_intrinsic_store_global_2x32;
+}
+
+static nir_intrinsic_op
+get_load_global_op_from_addr_format(nir_address_format addr_format)
+{
+   if (addr_format != nir_address_format_2x32bit_global)
+      return nir_intrinsic_load_global;
+   else
+      return nir_intrinsic_load_global_2x32;
+}
+
 static nir_ssa_def *
 build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
                        nir_ssa_def *addr, nir_address_format addr_format,
@@ -1363,7 +1404,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
          break;
       case nir_var_mem_global:
          assert(addr_format_is_global(addr_format, mode));
-         op = nir_intrinsic_load_global;
+         op = get_load_global_op_from_addr_format(addr_format);
          break;
       case nir_var_uniform:
          assert(addr_format_is_offset(addr_format, mode));
@@ -1384,7 +1425,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
             op = nir_intrinsic_load_scratch;
          } else {
             assert(addr_format_is_global(addr_format, mode));
-            op = nir_intrinsic_load_global;
+            op = get_load_global_op_from_addr_format(addr_format);
          }
          break;
       case nir_var_mem_push_const:
@@ -1396,7 +1437,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
             op = nir_intrinsic_load_constant;
          } else {
             assert(addr_format_is_global(addr_format, mode));
-            op = nir_intrinsic_load_global_constant;
+            op = get_load_global_op_from_addr_format(addr_format);
          }
          break;
       default:
@@ -1588,13 +1629,13 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
       switch (mode) {
       case nir_var_mem_ssbo:
          if (addr_format_is_global(addr_format, mode))
-            op = nir_intrinsic_store_global;
+            op = get_store_global_op_from_addr_format(addr_format);
          else
             op = nir_intrinsic_store_ssbo;
          break;
       case nir_var_mem_global:
          assert(addr_format_is_global(addr_format, mode));
-         op = nir_intrinsic_store_global;
+         op = get_store_global_op_from_addr_format(addr_format);
          break;
       case nir_var_mem_shared:
          assert(addr_format_is_offset(addr_format, mode));
@@ -1610,7 +1651,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
             op = nir_intrinsic_store_scratch;
          } else {
             assert(addr_format_is_global(addr_format, mode));
-            op = nir_intrinsic_store_global;
+            op = get_store_global_op_from_addr_format(addr_format);
          }
          break;
       default:
@@ -1747,13 +1788,13 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
    switch (mode) {
    case nir_var_mem_ssbo:
       if (addr_format_is_global(addr_format, mode))
-         op = global_atomic_for_deref(intrin->intrinsic);
+         op = global_atomic_for_deref(addr_format, intrin->intrinsic);
       else
          op = ssbo_atomic_for_deref(intrin->intrinsic);
       break;
    case nir_var_mem_global:
       assert(addr_format_is_global(addr_format, mode));
-      op = global_atomic_for_deref(intrin->intrinsic);
+      op = global_atomic_for_deref(addr_format, intrin->intrinsic);
       break;
    case nir_var_mem_shared:
       assert(addr_format_is_offset(addr_format, mode));
@@ -2580,6 +2621,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_uniform:
    case nir_intrinsic_load_kernel_input:
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_2x32:
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_scratch:
    case nir_intrinsic_load_fs_input_interp_deltas:
@@ -2637,6 +2679,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_store_shared:
    case nir_intrinsic_store_task_payload:
    case nir_intrinsic_store_global:
+   case nir_intrinsic_store_global_2x32:
    case nir_intrinsic_store_scratch:
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
@@ -2690,6 +2733,7 @@ nir_address_format_null_value(nir_address_format addr_format)
 {
    const static nir_const_value null_values[][NIR_MAX_VEC_COMPONENTS] = {
       [nir_address_format_32bit_global] = {{0}},
+      [nir_address_format_2x32bit_global] = {{0}},
       [nir_address_format_64bit_global] = {{0}},
       [nir_address_format_64bit_global_32bit_offset] = {{0}},
       [nir_address_format_64bit_bounded_global] = {{0}},
@@ -2712,6 +2756,7 @@ nir_build_addr_ieq(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
 {
    switch (addr_format) {
    case nir_address_format_32bit_global:
+   case nir_address_format_2x32bit_global:
    case nir_address_format_64bit_global:
    case nir_address_format_64bit_bounded_global:
    case nir_address_format_32bit_index_offset:
@@ -2752,6 +2797,10 @@ nir_build_addr_isub(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
       assert(addr0->num_components == 1);
       assert(addr1->num_components == 1);
       return nir_isub(b, addr0, addr1);
+
+   case nir_address_format_2x32bit_global:
+      return nir_isub(b, addr_to_global(b, addr0, addr_format),
+                         addr_to_global(b, addr1, addr_format));
 
    case nir_address_format_32bit_offset_as_64bit:
       assert(addr0->num_components == 1);

@@ -723,6 +723,9 @@ intrinsic("load_vulkan_descriptor", src_comp=[-1], dest_comp=0,
 #    in shared_atomic_add, etc).
 # 2: For CompSwap only: the second data parameter.
 #
+# The 2x32 global variants use a vec2 for the memory address where component X
+# has the low 32-bit and component Y has the high 32-bit.
+#
 # IR3 global operations take 32b vec2 as memory address. IR3 doesn't support
 # float atomics.
 
@@ -732,6 +735,7 @@ def memory_atomic_data1(name):
     intrinsic("shared_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE])
     intrinsic("task_payload_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE])
     intrinsic("global_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[])
+    intrinsic("global_atomic_" + name + "_2x32",  src_comp=[2, 1], dest_comp=1, indices=[])
     intrinsic("global_atomic_" + name + "_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
     if not name.startswith('f'):
         intrinsic("global_atomic_" + name + "_ir3",  src_comp=[2, 1], dest_comp=1, indices=[BASE])
@@ -742,6 +746,7 @@ def memory_atomic_data2(name):
     intrinsic("shared_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
     intrinsic("task_payload_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
     intrinsic("global_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[])
+    intrinsic("global_atomic_" + name + "_2x32",  src_comp=[2, 1, 1], dest_comp=1, indices=[])
     intrinsic("global_atomic_" + name + "_amd",  src_comp=[1, 1, 1, 1], dest_comp=1, indices=[BASE])
     if not name.startswith('f'):
         intrinsic("global_atomic_" + name + "_ir3",  src_comp=[2, 1, 1], dest_comp=1, indices=[BASE])
@@ -1020,6 +1025,8 @@ load("constant", [1], [BASE, RANGE, ALIGN_MUL, ALIGN_OFFSET],
 # src[] = { address }.
 load("global", [1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 # src[] = { address }.
+load("global_2x32", [2], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
+# src[] = { address }.
 load("global_constant", [1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET],
      [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { base_address, offset }.
@@ -1055,6 +1062,8 @@ store("shared", [1], [BASE, WRITE_MASK, ALIGN_MUL, ALIGN_OFFSET])
 store("task_payload", [1], [BASE, WRITE_MASK, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, address }.
 store("global", [1], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+# src[] = { value, address }.
+store("global_2x32", [2], [WRITE_MASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.
 store("scratch", [1], [ALIGN_MUL, ALIGN_OFFSET, WRITE_MASK])
 

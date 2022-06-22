@@ -351,6 +351,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_shared2_amd:
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_2x32:
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_global_amd:
    case nir_intrinsic_load_uniform:
@@ -558,6 +559,20 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_global_atomic_fmin_amd:
    case nir_intrinsic_global_atomic_fmax_amd:
    case nir_intrinsic_global_atomic_fcomp_swap_amd:
+   case nir_intrinsic_global_atomic_add_2x32:
+   case nir_intrinsic_global_atomic_imin_2x32:
+   case nir_intrinsic_global_atomic_umin_2x32:
+   case nir_intrinsic_global_atomic_imax_2x32:
+   case nir_intrinsic_global_atomic_umax_2x32:
+   case nir_intrinsic_global_atomic_and_2x32:
+   case nir_intrinsic_global_atomic_or_2x32:
+   case nir_intrinsic_global_atomic_xor_2x32:
+   case nir_intrinsic_global_atomic_exchange_2x32:
+   case nir_intrinsic_global_atomic_comp_swap_2x32:
+   case nir_intrinsic_global_atomic_fadd_2x32:
+   case nir_intrinsic_global_atomic_fmin_2x32:
+   case nir_intrinsic_global_atomic_fmax_2x32:
+   case nir_intrinsic_global_atomic_fcomp_swap_2x32:
    case nir_intrinsic_atomic_counter_add:
    case nir_intrinsic_atomic_counter_min:
    case nir_intrinsic_atomic_counter_max:

@@ -4661,6 +4661,12 @@ typedef enum {
    nir_address_format_64bit_global,
 
    /**
+    * An address format which is a 64-bit global GPU address encoded as a
+    * 2x32-bit vector.
+    */
+   nir_address_format_2x32bit_global,
+
+   /**
     * An address format which is a 64-bit global base address and a 32-bit
     * offset.
     *
