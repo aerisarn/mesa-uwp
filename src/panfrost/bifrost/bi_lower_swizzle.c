@@ -31,12 +31,8 @@
  */
 
 static void
-bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
+lower_swizzle(bi_context *ctx, bi_instr *ins, unsigned src)
 {
-        /* Identity is ok */
-        if (ins->src[src].swizzle == BI_SWIZZLE_H01)
-                return;
-
         /* TODO: Use the opcode table and be a lot more methodical about this... */
         switch (ins->op) {
         /* Some instructions used with 16-bit data never have swizzles */
@@ -91,6 +87,18 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
                 else
                         break;
 
+        /* No swizzles supported */
+        case BI_OPCODE_HADD_V4U8:
+        case BI_OPCODE_HADD_V4S8:
+        case BI_OPCODE_CLZ_V4U8:
+        case BI_OPCODE_IDP_V4I8:
+        case BI_OPCODE_IABS_V4S8:
+        case BI_OPCODE_ICMP_V4I8:
+        case BI_OPCODE_ICMP_V4U8:
+        case BI_OPCODE_MUX_V4I8:
+        case BI_OPCODE_IADD_IMM_V4I8:
+                break;
+
         /* We don't want to deal with reswizzling logic in modifier prop. Move
          * the swizzle outside, it's easier for clamp propagation. */
         case BI_OPCODE_FCLAMP_V2F16:
@@ -132,7 +140,12 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
 
         /* Lower it away */
         bi_builder b = bi_init_builder(ctx, bi_before_instr(ins));
-        bi_replace_src(ins, src, bi_swz_v2i16(&b, ins->src[src]));
+
+        bool is_8 = (bi_opcode_props[ins->op].size == BI_SIZE_8);
+        bi_index orig = ins->src[src];
+        bi_index swz = is_8 ? bi_swz_v4i8(&b, orig) : bi_swz_v2i16(&b, orig);
+
+        bi_replace_src(ins, src, swz);
         ins->src[src].swizzle = BI_SWIZZLE_H01;
 }
 
@@ -241,8 +254,10 @@ bi_lower_swizzle(bi_context *ctx)
 {
         bi_foreach_instr_global_safe(ctx, ins) {
                 bi_foreach_src(ins, s) {
-                        if (!bi_is_null(ins->src[s]))
-                                bi_lower_swizzle_16(ctx, ins, s);
+                        if (bi_is_null(ins->src[s])) continue;
+                        if (ins->src[s].swizzle == BI_SWIZZLE_H01) continue;
+
+                        lower_swizzle(ctx, ins, s);
                 }
         }
 
