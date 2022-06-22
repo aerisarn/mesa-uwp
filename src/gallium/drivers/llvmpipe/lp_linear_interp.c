@@ -141,7 +141,7 @@ lp_linear_init_interp(struct lp_linear_interp *interp,
    memset(dsdx_fp, 0, sizeof(dsdx_fp));
    memset(dsdy_fp, 0, sizeof(dsdy_fp));
 
-   if (perspective) {
+   if (perspective && oow != 1.0f) {
       for (unsigned j = 0; j < 4; j++) {
          if (usage_mask & (1<<j)) {
             s0[j]   =   a0[j] * oow;
