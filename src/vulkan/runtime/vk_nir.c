@@ -66,7 +66,7 @@ spirv_nir_debug(void *private_data,
 
 nir_shader *
 vk_spirv_to_nir(struct vk_device *device,
-                uint32_t *spirv_data, size_t spirv_size_B,
+                const uint32_t *spirv_data, size_t spirv_size_B,
                 gl_shader_stage stage, const char *entrypoint_name,
                 const VkSpecializationInfo *spec_info,
                 const struct spirv_to_nir_options *spirv_options,
