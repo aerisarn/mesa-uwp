@@ -89,7 +89,7 @@ struct linear_sampler
 static LLVMValueRef
 emit_fetch_texel_linear(const struct lp_build_sampler_aos *base,
                         struct lp_build_context *bld,
-                        unsigned target, /* TGSI_TEXTURE_* */
+                        enum tgsi_texture_type target,
                         unsigned unit,
                         LLVMValueRef coords,
                         const struct lp_derivatives derivs,

@@ -3740,7 +3740,7 @@ generate_variant(struct llvmpipe_context *lp,
       assert(samp0);
 
       const enum pipe_format texture_format = samp0->texture_state.format;
-      const unsigned target = samp0->texture_state.target;
+      const enum pipe_texture_target target = samp0->texture_state.target;
       const unsigned min_img_filter = samp0->sampler_state.min_img_filter;
       const unsigned mag_img_filter = samp0->sampler_state.mag_img_filter;
 
