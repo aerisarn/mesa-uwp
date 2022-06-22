@@ -7604,8 +7604,9 @@ brw_compile_fs(const struct brw_compiler *compiler,
    brw_nir_populate_wm_prog_data(nir, compiler->devinfo, key, prog_data,
                                  params->mue_map);
 
-   std::unique_ptr<fs_visitor> v8, v16, v32;
-   cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
+   std::unique_ptr<fs_visitor> v8, v16, v32, vmulti;
+   cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL,
+      *multi_cfg = NULL;
    float throughput = 0;
    bool has_spilled = false;
 
@@ -7713,6 +7714,31 @@ brw_compile_fs(const struct brw_compiler *compiler,
       }
    }
 
+   if (devinfo->ver >= 12 && !has_spilled &&
+       v8 && v8->max_dispatch_width >= 16 &&
+       params->max_polygons >= 2 && !key->coarse_pixel &&
+       2 * prog_data->num_varying_inputs <= MAX_VARYING &&
+       INTEL_SIMD(FS, 2X8)) {
+      /* Try a dual-SIMD8 compile */
+      vmulti = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                            prog_data, nir, 16, 2,
+                                            params->base.stats != NULL,
+                                            debug_enabled);
+      if (v8)
+         vmulti->import_uniforms(v8.get());
+      if (!vmulti->run_fs(allow_spilling, params->use_rep_send)) {
+         brw_shader_perf_log(compiler, params->base.log_data,
+                             "Dual-SIMD8 shader failed to compile: %s\n",
+                             vmulti->fail_msg);
+      } else {
+         multi_cfg = vmulti->cfg;
+         prog_data->base.dispatch_grf_start_reg = vmulti->payload().num_regs;
+         prog_data->reg_blocks_8 = brw_register_blocks(vmulti->grf_used);
+         has_spilled = vmulti->spilled_any_registers;
+         allow_spilling = false;
+      }
+   }
+
    /* When the caller requests a repclear shader, they want SIMD16-only */
    if (params->use_rep_send)
       simd8_cfg = NULL;
@@ -7761,7 +7787,16 @@ brw_compile_fs(const struct brw_compiler *compiler,
    struct brw_compile_stats *stats = params->base.stats;
    uint32_t max_dispatch_width = 0;
 
-   if (simd8_cfg) {
+   if (multi_cfg) {
+      prog_data->dispatch_multi = vmulti->dispatch_width;
+      prog_data->max_polygons = vmulti->max_polygons;
+      g.generate_code(multi_cfg, vmulti->dispatch_width, vmulti->shader_stats,
+                      vmulti->performance_analysis.require(),
+                      stats, vmulti->max_polygons);
+      stats = stats ? stats + 1 : NULL;
+      max_dispatch_width = vmulti->dispatch_width;
+
+   } else if (simd8_cfg) {
       prog_data->dispatch_8 = true;
       g.generate_code(simd8_cfg, 8, v8->shader_stats,
                       v8->performance_analysis.require(), stats, 1);
