@@ -937,9 +937,8 @@ create_dri_image_from_dmabuf_feedback(struct dri2_egl_surface *dri2_surf,
       /* Ignore tranches that do not contain dri2_surf->format */
       if (!BITSET_TEST(tranche->formats.formats_bitmap, visual_idx))
          continue;
-      modifiers = util_dynarray_begin(&tranche->formats.modifiers[visual_idx]);
-      num_modifiers = util_dynarray_num_elements(&tranche->formats.modifiers[visual_idx],
-                                                 uint64_t);
+      modifiers = u_vector_tail(&tranche->formats.modifiers[visual_idx]);
+      num_modifiers = u_vector_length(&tranche->formats.modifiers[visual_idx]);
 
       /* For the purposes of this function, an INVALID modifier on
        * its own means the modifiers aren't supported. */
