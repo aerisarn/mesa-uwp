@@ -588,6 +588,7 @@ create_pipeline(struct v3dv_device *device,
                                    pipeline);
 
    ralloc_free(vs_nir);
+   ralloc_free(gs_nir);
    ralloc_free(fs_nir);
 
    return result;
