@@ -7177,6 +7177,18 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                                            wm_prog_data, util_framebuffer_get_num_samples(cso_fb),
                                            0 /* msaa_flags */);
 
+#if GFX_VER == 12
+               assert(wm_prog_data->dispatch_multi == 0 ||
+                      (wm_prog_data->dispatch_multi == 16 && wm_prog_data->max_polygons == 2));
+               ps.DualSIMD8DispatchEnable = wm_prog_data->dispatch_multi;
+               /* XXX - No major improvement observed from enabling
+                *       overlapping subspans, but it could be helpful
+                *       in theory when the requirements listed on the
+                *       BSpec page for 3DSTATE_PS_BODY are met.
+                */
+               ps.OverlappingSubspansEnable = false;
+#endif
+
                ps.DispatchGRFStartRegisterForConstantSetupData0 =
                   brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
                ps.DispatchGRFStartRegisterForConstantSetupData1 =
