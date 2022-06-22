@@ -188,3 +188,16 @@ TEST_F(LowerConstants, HandleTrickyNegativesFP16)
    CASE(bi_fadd_v2f16_to(b, bi_register(0), bi_register(0), bi_imm_f16(57216.0)),
         bi_fadd_v2f16_to(b, bi_register(0), bi_register(0), bi_neg(bi_half(va_lut(3), 1))));
 }
+
+TEST_F(LowerConstants, MaintainMkvecRestrictedSwizzles)
+{
+   CASE(bi_mkvec_v2i8_to(b, bi_register(0), bi_register(0),
+                         bi_imm_u8(0), bi_imm_u32(0)),
+        bi_mkvec_v2i8_to(b, bi_register(0), bi_register(0),
+                         bi_byte(va_lut(0), 0), va_lut(0)));
+
+   CASE(bi_mkvec_v2i8_to(b, bi_register(0), bi_register(0),
+                         bi_imm_u8(14), bi_imm_u32(0)),
+        bi_mkvec_v2i8_to(b, bi_register(0), bi_register(0),
+                         bi_byte(va_lut(11), 2), va_lut(0)));
+}
