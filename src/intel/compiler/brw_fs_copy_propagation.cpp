@@ -925,7 +925,6 @@ try_copy_propagate(const brw_compiler *compiler, fs_inst *inst,
           * type.  If we got here, then we can just change the source and
           * destination types of the instruction and keep going.
           */
-         assert(inst->can_change_types());
          for (int i = 0; i < inst->sources; i++) {
             inst->src[i].type = entry->dst.type;
          }

@@ -488,12 +488,12 @@ bool
 fs_inst::can_change_types() const
 {
    return dst.type == src[0].type &&
-          !src[0].abs && !src[0].negate && !saturate &&
+          !src[0].abs && !src[0].negate && !saturate && src[0].file != ATTR &&
           (opcode == BRW_OPCODE_MOV ||
            (opcode == BRW_OPCODE_SEL &&
             dst.type == src[1].type &&
             predicate != BRW_PREDICATE_NONE &&
-            !src[1].abs && !src[1].negate));
+            !src[1].abs && !src[1].negate && src[1].file != ATTR));
 }
 
 void
