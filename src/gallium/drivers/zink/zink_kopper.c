@@ -512,8 +512,7 @@ kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t t
       res->obj->indefinite_acquire = true;
       p_atomic_inc(&cdt->swapchain->num_acquires);
    }
-   cdt->swapchain->dt_has_data = false;
-   res->obj->dt_has_data = false;
+   cdt->swapchain->images[res->obj->dt_idx].dt_has_data = false;
    return VK_SUCCESS;
 }
 
@@ -573,7 +572,8 @@ zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res
 {
    assert(res->obj->dt);
    struct kopper_displaytarget *cdt = res->obj->dt;
-   if (cdt->swapchain->dt_has_data)
+   assert(res->obj->dt_idx != UINT32_MAX);
+   if (cdt->swapchain->images[res->obj->dt_idx].dt_has_data)
       return VK_NULL_HANDLE;
    assert(res->obj->dt_idx != UINT32_MAX);
    assert(cdt->swapchain->images[res->obj->dt_idx].acquire);
@@ -581,7 +581,7 @@ zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res
    /* this is now owned by the batch */
    VkSemaphore acquire = cdt->swapchain->images[res->obj->dt_idx].acquire;
    cdt->swapchain->images[res->obj->dt_idx].acquire = VK_NULL_HANDLE;
-   cdt->swapchain->dt_has_data = true;
+   cdt->swapchain->images[res->obj->dt_idx].dt_has_data = true;
    return acquire;
 }
 
@@ -743,7 +743,8 @@ zink_kopper_acquire_readback(struct zink_context *ctx, struct zink_resource *res
    uint32_t last_dt_idx = res->obj->last_dt_idx;
    VkResult ret = VK_SUCCESS;
    /* if this hasn't been presented or if it has data, use this as the readback target */
-   if (res->obj->last_dt_idx == UINT32_MAX || res->obj->dt_has_data)
+   if (res->obj->last_dt_idx == UINT32_MAX ||
+       (zink_kopper_acquired(cdt, res->obj->dt_idx) && cdt->swapchain->images[res->obj->dt_idx].dt_has_data))
       return false;
    while (res->obj->dt_idx != last_dt_idx) {
       if (res->obj->dt_idx != UINT32_MAX && !zink_kopper_present_readback(ctx, res))

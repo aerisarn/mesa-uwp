@@ -493,10 +493,8 @@ zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *re
 {
    if (res->obj->dt) {
       VkSemaphore acquire = zink_kopper_acquire_submit(zink_screen(batch->state->ctx->base.screen), res);
-      if (acquire) {
+      if (acquire)
          util_dynarray_append(&batch->state->acquires, VkSemaphore, acquire);
-         res->obj->dt_has_data = true;
-      }
    }
    if (write && !res->obj->is_buffer) {
       if (!res->valid && res->fb_binds)

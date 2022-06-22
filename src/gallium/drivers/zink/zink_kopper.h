@@ -32,6 +32,7 @@
 struct kopper_swapchain_image {
    bool init;
    bool acquired;
+   bool dt_has_data;
    VkImage image;
    VkSemaphore acquire;
 };
@@ -48,7 +49,6 @@ struct kopper_swapchain {
    unsigned num_acquires;
    unsigned max_acquires;
    unsigned async_presents;
-   bool dt_has_data;
    struct kopper_swapchain_image *images;
 };
 

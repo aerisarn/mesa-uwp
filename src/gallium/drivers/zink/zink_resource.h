@@ -90,7 +90,6 @@ struct zink_resource_object {
    uint32_t last_dt_idx;
    VkSemaphore present;
    bool new_dt;
-   bool dt_has_data;
    bool indefinite_acquire;
    // }
 
