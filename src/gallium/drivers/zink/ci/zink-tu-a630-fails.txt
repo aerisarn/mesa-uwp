@@ -85,7 +85,6 @@ dEQP-GLES31.functional.blend_equation_advanced.srgb.multiply,Fail
 dEQP-GLES31.functional.blend_equation_advanced.srgb.overlay,Fail
 dEQP-GLES31.functional.blend_equation_advanced.srgb.screen,Fail
 dEQP-GLES31.functional.blend_equation_advanced.srgb.softlight,Fail
-dEQP-GLES31.functional.tessellation_geometry_interaction.render.passthrough.passthrough_tessellation_geometry_shade_lines_no_change,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth24_stencil8_sample_stencil.nearest_size_npot,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth24_stencil8_sample_stencil.nearest_size_pot,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth32f_stencil8_sample_stencil.nearest_size_npot,Fail
