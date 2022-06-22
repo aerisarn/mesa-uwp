@@ -36,7 +36,11 @@ STABLE_EPHEMERAL=" \
       p7zip \
       patch \
       pkg-config \
+      python3-dev \
       python3-distutils \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
       software-properties-common \
       wget \
       wine64-tools \
@@ -46,6 +50,7 @@ STABLE_EPHEMERAL=" \
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       libxcb-shm0 \
+      pciutils \
       python3-lxml \
       python3-simplejson \
       xinit \
@@ -59,6 +64,10 @@ dpkg --add-architecture i386
 apt-key add .gitlab-ci/container/debian/winehq.gpg.key
 apt-add-repository https://dl.winehq.org/wine-builds/debian/
 apt update -qyy
+
+# Needed for Valve's tracing jobs to collect information about the graphics
+# hardware on the test devices.
+pip3 install gfxinfo-mupuf==0.0.9
 
 apt install -y --no-remove --install-recommends winehq-stable
 
