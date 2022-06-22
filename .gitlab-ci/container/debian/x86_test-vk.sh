@@ -158,6 +158,10 @@ PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/container/build-piglit.sh
 
 . .gitlab-ci/container/build-deqp.sh
 
+############### Build apitrace
+
+. .gitlab-ci/container/build-apitrace.sh
+
 ############### Build gfxreconstruct
 
 . .gitlab-ci/container/build-gfxreconstruct.sh

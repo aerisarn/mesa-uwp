@@ -9,7 +9,7 @@ pushd /apitrace
 git checkout "$APITRACE_VERSION"
 git submodule update --init --depth 1 --recursive
 cmake -S . -B _build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_GUI=False -DENABLE_WAFFLE=on $EXTRA_CMAKE_ARGS
-ninja -C _build
+cmake --build _build --parallel --target apitrace eglretrace
 mkdir build
 cp _build/apitrace build
 cp _build/eglretrace build
