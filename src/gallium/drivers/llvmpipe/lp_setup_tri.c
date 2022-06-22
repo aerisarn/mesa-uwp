@@ -457,9 +457,9 @@ do_triangle_ccw(struct lp_setup_context *setup,
 
    if (0)
       lp_dump_setup_coef(&setup->setup.variant->key,
-                         (const float (*)[4])GET_A0(&tri->inputs),
-                         (const float (*)[4])GET_DADX(&tri->inputs),
-                         (const float (*)[4])GET_DADY(&tri->inputs));
+                         GET_A0(&tri->inputs),
+                         GET_DADX(&tri->inputs),
+                         GET_DADY(&tri->inputs));
 
    struct lp_rast_plane *plane = GET_PLANES(tri);
 
