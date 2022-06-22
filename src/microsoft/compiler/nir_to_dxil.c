@@ -4182,8 +4182,10 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_scratch_dxil:
       return emit_load_scratch(ctx, intr);
    case nir_intrinsic_discard_if:
+   case nir_intrinsic_demote_if:
       return emit_discard_if(ctx, intr);
    case nir_intrinsic_discard:
+   case nir_intrinsic_demote:
       return emit_discard(ctx);
    case nir_intrinsic_emit_vertex:
       return emit_emit_vertex(ctx, intr);

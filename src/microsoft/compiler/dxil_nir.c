@@ -2032,3 +2032,44 @@ dxil_nir_fix_io_uint_type(nir_shader *s, uint64_t in_mask, uint64_t out_mask)
 
    return progress;
 }
+
+static bool
+lower_kill(struct nir_builder *builder, nir_instr *instr, void *_cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+   if (intr->intrinsic != nir_intrinsic_discard &&
+       intr->intrinsic != nir_intrinsic_terminate &&
+       intr->intrinsic != nir_intrinsic_discard_if &&
+       intr->intrinsic != nir_intrinsic_terminate_if)
+      return false;
+
+   builder->cursor = nir_instr_remove(instr);
+   if (intr->intrinsic == nir_intrinsic_discard ||
+       intr->intrinsic == nir_intrinsic_terminate) {
+      nir_demote(builder);
+   } else {
+      assert(intr->src[0].is_ssa);
+      nir_demote_if(builder, intr->src[0].ssa);
+   }
+
+   nir_jump(builder, nir_jump_return);
+
+   return true;
+}
+
+bool
+dxil_nir_lower_discard_and_terminate(nir_shader *s)
+{
+   if (s->info.stage != MESA_SHADER_FRAGMENT)
+      return false;
+
+   // This pass only works if all functions have been inlined
+   assert(exec_list_length(&s->functions) == 1);
+
+   return nir_shader_instructions_pass(s, lower_kill, nir_metadata_none,
+                                       NULL);
+}

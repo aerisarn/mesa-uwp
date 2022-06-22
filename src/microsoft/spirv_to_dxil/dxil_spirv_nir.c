@@ -681,6 +681,10 @@ dxil_spirv_nir_passes(nir_shader *nir,
                      .use_fragcoord_sysval = false,
                      .use_layer_id_sysval = true,
                  });
+
+      NIR_PASS_V(nir, dxil_nir_lower_discard_and_terminate);
+      NIR_PASS_V(nir, nir_lower_returns);
+
    }
 
    NIR_PASS_V(nir, nir_opt_deref);
