@@ -40,6 +40,9 @@ protected:
       y       = bi_register(2);
       z       = bi_register(3);
       w       = bi_register(4);
+
+      x3210   = x;
+      x3210.swizzle = BI_SWIZZLE_B3210;
    }
 
    ~LowerSwizzle() {
@@ -49,6 +52,7 @@ protected:
    void *mem_ctx;
 
    bi_index reg, x, y, z, w;
+   bi_index x3210;
 };
 
 TEST_F(LowerSwizzle, Csel16)
@@ -63,4 +67,11 @@ TEST_F(LowerSwizzle, Fma16)
    NEGCASE(bi_fma_v2f16_to(b, reg, bi_half(x, 0), y, z));
 }
 
+TEST_F(LowerSwizzle, ClzHadd8)
+{
+   CASE(bi_clz_v4u8_to(b, reg, x3210, true),
+        bi_clz_v4u8_to(b, reg, bi_swz_v4i8(b, x3210), true));
 
+   CASE(bi_hadd_v4u8_to(b, reg, y, x3210, BI_ROUND_RTP),
+        bi_hadd_v4u8_to(b, reg, y, bi_swz_v4i8(b, x3210), BI_ROUND_RTP));
+}
