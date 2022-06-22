@@ -802,6 +802,17 @@ try_copy_propagate(const brw_compiler *compiler, fs_inst *inst,
        (reg_offset(inst->dst) % REG_SIZE) != (reg_offset(entry->src) % REG_SIZE))
       return false;
 
+   /* The <8;8,0> regions used for FS attributes in multipolygon
+    * dispatch mode could violate regioning restrictions, don't copy
+    * propagate them in such cases.
+    */
+   if (entry->src.file == ATTR && max_polygons > 1 &&
+       (has_dst_aligned_region_restriction(devinfo, inst, dst_type) ||
+	instruction_requires_packed_data(inst) ||
+	(inst->is_3src(compiler) && arg == 2) ||
+	entry->dst.type != inst->src[arg].type))
+      return false;
+
    /* Bail if the source FIXED_GRF region of the copy cannot be trivially
     * composed with the source region of the instruction -- E.g. because the
     * copy uses some extended stride greater than 4 not supported natively by
