@@ -1657,6 +1657,38 @@ dzn_compute_pipeline_destroy(struct dzn_compute_pipeline *pipeline,
 }
 
 static VkResult
+dzn_compute_pipeline_compile_shader(struct dzn_device *device,
+                                    struct dzn_compute_pipeline *pipeline,
+                                    const struct dzn_pipeline_layout *layout,
+                                    D3D12_PIPELINE_STATE_STREAM_DESC *stream_desc,
+                                    D3D12_SHADER_BYTECODE *shader,
+                                    const VkComputePipelineCreateInfo *info)
+{
+   nir_shader *nir = NULL;
+   VkResult ret =
+      dzn_pipeline_get_nir_shader(device, layout,
+                                  &info->stage, MESA_SHADER_COMPUTE,
+                                  DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
+                                  false, NULL,
+                                  dxil_get_nir_compiler_options(), &nir);
+   if (ret != VK_SUCCESS)
+      return ret;
+
+   NIR_PASS_V(nir, adjust_var_bindings, layout);
+
+   ret = dzn_pipeline_compile_shader(device, nir, shader);
+   if (ret != VK_SUCCESS)
+      goto out;
+
+   d3d12_compute_pipeline_state_stream_new_desc(stream_desc, CS, D3D12_SHADER_BYTECODE, cs);
+   *cs = *shader;
+
+out:
+   ralloc_free(nir);
+   return ret;
+}
+
+static VkResult
 dzn_compute_pipeline_create(struct dzn_device *device,
                             VkPipelineCache cache,
                             const VkComputePipelineCreateInfo *pCreateInfo,
@@ -1680,24 +1712,12 @@ dzn_compute_pipeline_create(struct dzn_device *device,
                      VK_PIPELINE_BIND_POINT_COMPUTE,
                      layout, &stream_desc);
 
-   d3d12_compute_pipeline_state_stream_new_desc(&stream_desc, CS, D3D12_SHADER_BYTECODE, shader);
-
-   nir_shader *nir = NULL;
+   D3D12_SHADER_BYTECODE shader = { 0 };
    VkResult ret =
-      dzn_pipeline_get_nir_shader(device, layout,
-                                  &pCreateInfo->stage, MESA_SHADER_COMPUTE,
-                                  DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
-                                  false, NULL,
-                                  dxil_get_nir_compiler_options(), &nir);
+      dzn_compute_pipeline_compile_shader(device, pipeline, layout,
+                                          &stream_desc, &shader, pCreateInfo);
    if (ret != VK_SUCCESS)
       goto out;
-
-   NIR_PASS_V(nir, adjust_var_bindings, layout);
-
-   ret = dzn_pipeline_compile_shader(device, nir, shader);
-   if (ret != VK_SUCCESS)
-      goto out;
-
 
    if (FAILED(ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
                                                 &IID_ID3D12PipelineState,
@@ -1705,8 +1725,7 @@ dzn_compute_pipeline_create(struct dzn_device *device,
       ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 out:
-   ralloc_free(nir);
-   free((void *)shader->pShaderBytecode);
+   free((void *)shader.pShaderBytecode);
    if (ret != VK_SUCCESS)
       dzn_compute_pipeline_destroy(pipeline, pAllocator);
    else
