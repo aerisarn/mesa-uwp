@@ -1966,6 +1966,7 @@ iris_compile_fs(struct iris_screen *screen,
       .prog_data = fs_prog_data,
 
       .allow_spilling = true,
+      .max_polygons = 1,
       .vue_map = vue_map,
    };
 

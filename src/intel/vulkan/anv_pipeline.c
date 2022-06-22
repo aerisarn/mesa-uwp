@@ -1520,6 +1520,7 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
       .prog_data = &fs_stage->prog_data.wm,
 
       .allow_spilling = true,
+      .max_polygons = 1,
    };
 
    if (prev_stage && prev_stage->stage == MESA_SHADER_MESH) {

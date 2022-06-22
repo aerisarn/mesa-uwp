@@ -2014,6 +2014,7 @@ struct brw_compile_fs_params {
 
    bool allow_spilling;
    bool use_rep_send;
+   uint8_t max_polygons;
 };
 
 /**

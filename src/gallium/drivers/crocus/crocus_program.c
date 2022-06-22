@@ -1851,6 +1851,7 @@ crocus_compile_fs(struct crocus_context *ice,
       .prog_data = fs_prog_data,
 
       .allow_spilling = true,
+      .max_polygons = 1,
       .vue_map = vue_map,
    };
    const unsigned *program =
