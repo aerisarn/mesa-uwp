@@ -190,6 +190,8 @@ to_dxil_shader_stage(VkShaderStageFlagBits in)
 static VkResult
 dzn_pipeline_get_nir_shader(struct dzn_device *device,
                             const struct dzn_pipeline_layout *layout,
+                            struct vk_pipeline_cache *cache,
+                            const uint8_t *hash,
                             const VkPipelineShaderStageCreateInfo *stage_info,
                             gl_shader_stage stage,
                             enum dxil_spirv_yz_flip_mode yz_flip_mode,
@@ -199,6 +201,13 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
                             const nir_shader_compiler_options *nir_opts,
                             nir_shader **nir)
 {
+   if (cache) {
+      *nir = vk_pipeline_cache_lookup_nir(cache, hash, SHA1_DIGEST_LENGTH,
+                                          nir_opts, NULL, NULL);
+       if (*nir)
+          return VK_SUCCESS;
+   }
+
    struct dzn_instance *instance =
       container_of(device->vk.physical->instance, struct dzn_instance, vk);
    const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
@@ -258,6 +267,9 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
       if (needs_conv)
          NIR_PASS_V(*nir, dxil_nir_lower_vs_vertex_conversion, vi_conversions);
    }
+
+   if (cache)
+      vk_pipeline_cache_add_nir(cache, hash, SHA1_DIGEST_LENGTH, *nir);
 
    return VK_SUCCESS;
 }
@@ -407,9 +419,23 @@ dzn_pipeline_get_gfx_shader_slot(D3D12_PIPELINE_STATE_STREAM_DESC *stream,
    }
 }
 
+static void
+dzn_graphics_pipeline_hash_attribs(D3D12_INPUT_ELEMENT_DESC *attribs,
+                                   enum pipe_format *vi_conversions,
+                                   uint8_t *result)
+{
+   struct mesa_sha1 ctx;
+
+   _mesa_sha1_init(&ctx);
+   _mesa_sha1_update(&ctx, attribs, sizeof(*attribs) * MAX_VERTEX_GENERIC_ATTRIBS);
+   _mesa_sha1_update(&ctx, vi_conversions, sizeof(*vi_conversions) * MAX_VERTEX_GENERIC_ATTRIBS);
+   _mesa_sha1_final(&ctx, result);
+}
+
 static VkResult
 dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                                       struct dzn_graphics_pipeline *pipeline,
+                                      struct vk_pipeline_cache *cache,
                                       const struct dzn_pipeline_layout *layout,
                                       D3D12_PIPELINE_STATE_STREAM_DESC *out,
                                       D3D12_INPUT_ELEMENT_DESC *attribs,
@@ -421,7 +447,9 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       NULL : info->pViewportState;
    struct {
       const VkPipelineShaderStageCreateInfo *info;
+      uint8_t spirv_hash[SHA1_DIGEST_LENGTH];
    } stages[MESA_VULKAN_SHADER_STAGES] = { 0 };
+   uint8_t attribs_hash[SHA1_DIGEST_LENGTH];
    gl_shader_stage yz_flip_stage = MESA_SHADER_NONE;
    uint32_t active_stage_mask = 0;
    VkResult ret;
@@ -482,11 +510,35 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       info->pMultisampleState &&
       info->pMultisampleState->sampleShadingEnable;
 
+   if (cache) {
+      dzn_graphics_pipeline_hash_attribs(attribs, vi_conversions, attribs_hash);
+      u_foreach_bit(stage, active_stage_mask) {
+         vk_pipeline_hash_shader_stage(stages[stage].info, stages[stage].spirv_hash);
+      }
+   }
+
    /* Second step: get NIR shaders for all stages. */
    nir_shader_compiler_options nir_opts = *dxil_get_nir_compiler_options();
    nir_opts.lower_base_vertex = true;
    u_foreach_bit(stage, active_stage_mask) {
+      struct mesa_sha1 nir_hash_ctx;
+      uint8_t nir_hash[SHA1_DIGEST_LENGTH];
+
+      if (cache) {
+         _mesa_sha1_init(&nir_hash_ctx);
+         if (stage == MESA_SHADER_VERTEX)
+            _mesa_sha1_update(&nir_hash_ctx, attribs_hash, sizeof(attribs_hash));
+         if (stage == yz_flip_stage) {
+            _mesa_sha1_update(&nir_hash_ctx, &yz_flip_mode, sizeof(yz_flip_mode));
+            _mesa_sha1_update(&nir_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
+            _mesa_sha1_update(&nir_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
+         }
+         _mesa_sha1_update(&nir_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
+         _mesa_sha1_final(&nir_hash_ctx, nir_hash);
+      }
+
       ret = dzn_pipeline_get_nir_shader(device, layout,
+                                        cache, nir_hash,
                                         stages[stage].info, stage,
                                         stage == yz_flip_stage ? yz_flip_mode : DXIL_SPIRV_YZ_FLIP_NONE,
                                         y_flip_mask, z_flip_mask,
@@ -1255,6 +1307,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
 {
    const VkPipelineRenderingCreateInfo *ri = (const VkPipelineRenderingCreateInfo *)
       vk_find_struct_const(pCreateInfo, PIPELINE_RENDERING_CREATE_INFO);
+   VK_FROM_HANDLE(vk_pipeline_cache, pcache, cache);
    VK_FROM_HANDLE(vk_render_pass, pass, pCreateInfo->renderPass);
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
    uint32_t color_count = 0;
@@ -1385,8 +1438,8 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                                    VK_IMAGE_ASPECT_STENCIL_BIT);
    }
 
-   ret = dzn_graphics_pipeline_compile_shaders(device, pipeline, layout,
-                                               stream_desc,
+   ret = dzn_graphics_pipeline_compile_shaders(device, pipeline, pcache,
+                                               layout, stream_desc,
                                                attribs, vi_conversions,
                                                pCreateInfo);
    if (ret != VK_SUCCESS)
@@ -1659,14 +1712,20 @@ dzn_compute_pipeline_destroy(struct dzn_compute_pipeline *pipeline,
 static VkResult
 dzn_compute_pipeline_compile_shader(struct dzn_device *device,
                                     struct dzn_compute_pipeline *pipeline,
+                                    struct vk_pipeline_cache *cache,
                                     const struct dzn_pipeline_layout *layout,
                                     D3D12_PIPELINE_STATE_STREAM_DESC *stream_desc,
                                     D3D12_SHADER_BYTECODE *shader,
                                     const VkComputePipelineCreateInfo *info)
 {
+   uint8_t spirv_hash[SHA1_DIGEST_LENGTH];
    nir_shader *nir = NULL;
+
+   if (cache)
+      vk_pipeline_hash_shader_stage(&info->stage, spirv_hash);
+
    VkResult ret =
-      dzn_pipeline_get_nir_shader(device, layout,
+      dzn_pipeline_get_nir_shader(device, layout, cache, spirv_hash,
                                   &info->stage, MESA_SHADER_COMPUTE,
                                   DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
                                   false, NULL,
@@ -1696,6 +1755,7 @@ dzn_compute_pipeline_create(struct dzn_device *device,
                             VkPipeline *out)
 {
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
+   VK_FROM_HANDLE(vk_pipeline_cache, pcache, cache);
 
    struct dzn_compute_pipeline *pipeline =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
@@ -1714,7 +1774,7 @@ dzn_compute_pipeline_create(struct dzn_device *device,
 
    D3D12_SHADER_BYTECODE shader = { 0 };
    VkResult ret =
-      dzn_compute_pipeline_compile_shader(device, pipeline, layout,
+      dzn_compute_pipeline_compile_shader(device, pipeline, pcache, layout,
                                           &stream_desc, &shader, pCreateInfo);
    if (ret != VK_SUCCESS)
       goto out;
