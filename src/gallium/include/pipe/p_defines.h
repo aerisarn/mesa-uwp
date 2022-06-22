@@ -1036,6 +1036,7 @@ enum pipe_texture_transfer_mode {
 
 #define PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50 (1 << 0)
 #define PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_R600 (1 << 1)
+#define PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_FREEDRENO (1 << 2)
 
 enum pipe_endian
 {

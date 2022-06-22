@@ -128,6 +128,9 @@ st_convert_sampler(const struct st_context *st,
       } else {
          st_translate_color(&sampler->border_color,
                             texBaseFormat, is_integer);
+         if (st->use_format_with_border_color)
+            sampler->border_color_format = st_get_sampler_view_format(st, texobj,
+                                                                      msamp->Attrib.sRGBDecode == GL_SKIP_DECODE_EXT);
       }
       sampler->border_color_is_integer = is_integer;
    }

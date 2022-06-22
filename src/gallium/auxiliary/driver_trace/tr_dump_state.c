@@ -549,6 +549,7 @@ void trace_dump_sampler_state(const struct pipe_sampler_state *state)
    trace_dump_member(float, state, min_lod);
    trace_dump_member(float, state, max_lod);
    trace_dump_member_array(float, state, border_color.f);
+   trace_dump_member(format, state, border_color_format);
 
    trace_dump_struct_end();
 }
