@@ -38,6 +38,7 @@
 #include "radv_private.h"
 #include "radv_shader.h"
 #include "radv_shader_args.h"
+#include "vk_pipeline.h"
 #include "vk_util.h"
 
 #include "util/debug.h"
@@ -4477,25 +4478,6 @@ radv_lower_fs_output(nir_shader *nir, const struct radv_pipeline_key *pipeline_k
    return progress;
 }
 
-static void
-radv_pipeline_hash_shader(const unsigned char *spirv_sha1, const uint32_t spirv_sha1_size,
-                          const char *entrypoint, gl_shader_stage stage,
-                          const VkSpecializationInfo *spec_info, unsigned char *sha1_out)
-{
-   struct mesa_sha1 ctx;
-   _mesa_sha1_init(&ctx);
-
-   _mesa_sha1_update(&ctx, spirv_sha1, spirv_sha1_size);
-   _mesa_sha1_update(&ctx, entrypoint, strlen(entrypoint));
-   if (spec_info) {
-      _mesa_sha1_update(&ctx, spec_info->pMapEntries,
-                        spec_info->mapEntryCount * sizeof(*spec_info->pMapEntries));
-      _mesa_sha1_update(&ctx, spec_info->pData, spec_info->dataSize);
-   }
-
-   _mesa_sha1_final(&ctx, sha1_out);
-}
-
 void
 radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                          struct radv_pipeline_stage *out_stage, gl_shader_stage stage)
@@ -4515,28 +4497,20 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
 
    if (sinfo->module != VK_NULL_HANDLE) {
       struct vk_shader_module *module = vk_shader_module_from_handle(sinfo->module);
+      STATIC_ASSERT(sizeof(out_stage->spirv.sha1) == sizeof(module->sha1));
 
       out_stage->spirv.data = module->data;
       out_stage->spirv.size = module->size;
       out_stage->spirv.object = &module->base;
 
-      if (module->nir) {
+      if (module->nir)
          out_stage->internal_nir = module->nir;
-         _mesa_sha1_compute(module->nir->info.name, strlen(module->nir->info.name),
-                            out_stage->spirv.sha1);
-      } else {
-         assert(sizeof(out_stage->spirv.sha1) == sizeof(module->sha1));
-         memcpy(out_stage->spirv.sha1, module->sha1, sizeof(out_stage->spirv.sha1));
-      }
    } else {
       out_stage->spirv.data = (const char *) minfo->pCode;
       out_stage->spirv.size = minfo->codeSize;
-      _mesa_sha1_compute(out_stage->spirv.data, out_stage->spirv.size, out_stage->spirv.sha1);
    }
 
-   radv_pipeline_hash_shader(out_stage->spirv.sha1, sizeof(out_stage->spirv.sha1),
-                             out_stage->entrypoint, stage, out_stage->spec_info,
-                             out_stage->shader_sha1);
+   vk_pipeline_hash_shader_stage(sinfo, out_stage->shader_sha1);
 }
 
 static struct radv_shader *
