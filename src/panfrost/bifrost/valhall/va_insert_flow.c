@@ -214,10 +214,13 @@ bi_set_dependencies(bi_block *block, bi_instr *I, struct bi_scoreboard_state *st
     *
     * Luckily, this situation is pretty rare. The wait introduced here can
     * usually be merged into the preceding instruction.
+    *
+    * We also use the same workaround to serialize all async instructions when
+    * debugging this pass with the BIFROST_MESA_DEBUG=nosb option.
     */
-   if (I->op == BI_OPCODE_BARRIER) {
+   if (I->op == BI_OPCODE_BARRIER || (bifrost_debug & BIFROST_DBG_NOSB)) {
       for (unsigned i = 0; i < VA_NUM_GENERAL_SLOTS; ++i) {
-         if (st->write[i] || (st->memory & BITFIELD_BIT(i)))
+         if (st->write[i] || ((st->varying | st->memory) & BITFIELD_BIT(i)))
             I->flow |= bi_pop_slot(st, i);
       }
    }
