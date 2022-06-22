@@ -379,7 +379,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
          warn_missing_feature(warned, "customBorderColorWithoutFormat");
       }
       if (screen->info.have_EXT_custom_border_color &&
-          screen->info.border_color_feats.customBorderColorWithoutFormat) {
+          (screen->info.border_color_feats.customBorderColorWithoutFormat || state->border_color_format)) {
          if (!screen->info.have_EXT_border_color_swizzle) {
             static bool warned = false;
             warn_missing_feature(warned, "VK_EXT_border_color_swizzle");
@@ -401,7 +401,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
             }
          }
          cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
-         cbci.format = VK_FORMAT_UNDEFINED;
+         cbci.format = screen->info.border_color_feats.customBorderColorWithoutFormat ? VK_FORMAT_UNDEFINED : zink_get_format(screen, state->border_color_format);
          /* these are identical unions */
          memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
          cbci.pNext = sci.pNext;

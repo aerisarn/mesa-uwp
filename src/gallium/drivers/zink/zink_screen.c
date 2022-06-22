@@ -532,6 +532,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
+      if (!screen->info.border_color_feats.customBorderColorWithoutFormat)
+         return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_FREEDRENO;
       /* assume that if drivers don't implement this extension they either:
        * - don't support custom border colors
        * - handle things correctly
