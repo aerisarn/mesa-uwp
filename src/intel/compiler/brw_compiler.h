@@ -311,7 +311,7 @@ struct brw_vs_prog_key {
     *
     * For each attribute, a combination of BRW_ATTRIB_WA_*.
     *
-    * For OpenGL, where we expose a maximum of 16 user input atttributes
+    * For OpenGL, where we expose a maximum of 16 user input attributes
     * we only need up to VERT_ATTRIB_MAX slots, however, in Vulkan
     * slots preceding VERT_ATTRIB_GENERIC0 are unused and we can
     * expose up to 28 user input vertex attributes that are mapped to slots
@@ -1404,7 +1404,7 @@ struct brw_sf_prog_data {
    uint32_t urb_read_length;
    uint32_t total_grf;
 
-   /* Each vertex may have upto 12 attributes, 4 components each,
+   /* Each vertex may have up to 12 attributes, 4 components each,
     * except WPOS which requires only 2.  (11*4 + 2) == 44 ==> 11
     * rows.
     *

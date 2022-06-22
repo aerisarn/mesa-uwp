@@ -1190,7 +1190,7 @@ update_l3_banks(struct intel_device_info *devinfo)
 
 /* At some point in time, some people decided to redefine what topology means,
  * from useful HW related information (slice, subslice, etc...), to much less
- * useful generic stuff that noone cares about (a single slice with lots of
+ * useful generic stuff that no one cares about (a single slice with lots of
  * subslices). Of course all of this was done without asking the people who
  * defined the topology query in the first place, to solve a lack of
  * information Gfx10+. This function is here to workaround the fact it's not

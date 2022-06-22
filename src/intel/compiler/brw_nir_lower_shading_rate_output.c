@@ -39,7 +39,7 @@
  *
  * According to the specification, the shading rate output can be read &
  * written. A read after a write should report a different value if the
- * implemention decides on different primitive shading rate for some reason.
+ * implementation decides on different primitive shading rate for some reason.
  * This is never the case in our implementation.
  */
 

@@ -355,7 +355,7 @@ struct intel_device_info
     * SKL (or scale factor of 83.33333333) and a frequency of 19200000Hz for
     * BXT.
     *
-    * For simplicty to fit with the current code scaling by a single constant
+    * For simplicity to fit with the current code scaling by a single constant
     * to map from raw timestamps to nanoseconds we now do the conversion in
     * floating point instead of integer arithmetic.
     *

@@ -603,7 +603,7 @@ TEST_F(mi_builder_test, add_imm)
    mi_store(&b, out_mem64(88),
                 mi_iadd(&b, mi_inot(&b, mi_imm(add)), in_mem64(0)));
 
-   // And som add_imm just for good measure
+   // And some add_imm just for good measure
    mi_store(&b, out_mem64(96), mi_iadd_imm(&b, in_mem64(0), 0));
    mi_store(&b, out_mem64(104), mi_iadd_imm(&b, in_mem64(0), add));
 

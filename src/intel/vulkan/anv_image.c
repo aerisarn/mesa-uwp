@@ -326,7 +326,7 @@ add_surface(struct anv_device *device,
  *
  * If hardware limitations force us to use a shadow surface, then the same
  * limitations may also constrain the tiling of the primary surface; therefore
- * paramater @a inout_primary_tiling_flags.
+ * parameter @a inout_primary_tiling_flags.
  *
  * If the image plane is a separate stencil plane and if the user provided
  * VkImageStencilUsageCreateInfoEXT, then @a usage must be stencilUsage.
@@ -1804,7 +1804,7 @@ VkResult anv_BindImageMemory2(
          }
          case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
             /* Ignore this struct on Android, we cannot access swapchain
-             * structures threre.
+             * structures there.
              */
 #ifndef VK_USE_PLATFORM_ANDROID_KHR
             const VkBindImageMemorySwapchainInfoKHR *swapchain_info =

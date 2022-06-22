@@ -79,7 +79,7 @@
  * our allocation fast-path, there isn't really a way to munmap the old mmap,
  * so we just keep it around until garbage collection time.  While the block
  * allocator is lockless for normal operations, we block other threads trying
- * to allocate while we're growing the map.  It sholdn't happen often, and
+ * to allocate while we're growing the map.  It shouldn't happen often, and
  * growing is fast anyway.
  *
  * At the next level we can use various sub-allocators.  The state pool is a
@@ -998,7 +998,7 @@ anv_state_pool_return_chunk(struct anv_state_pool *pool,
 
    if (nblocks > 0) {
       /* First return divisor aligned and sized chunks. We start returning
-       * larger blocks from the end fo the chunk, since they should already be
+       * larger blocks from the end of the chunk, since they should already be
        * aligned to divisor. Also anv_state_pool_return_blocks() only accepts
        * aligned chunks.
        */
@@ -1102,7 +1102,7 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
                                                 alloc_size,
                                                 pool->block_size,
                                                 &padding);
-   /* Everytime we allocate a new state, add it to the state pool */
+   /* Every time we allocate a new state, add it to the state pool */
    uint32_t idx;
    UNUSED VkResult result = anv_state_table_add(&pool->table, &idx, 1);
    assert(result == VK_SUCCESS);

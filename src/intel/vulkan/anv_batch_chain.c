@@ -442,14 +442,14 @@ anv_batch_bo_finish(struct anv_batch_bo *bbo, struct anv_batch *batch)
 
 static VkResult
 anv_batch_bo_grow(struct anv_cmd_buffer *cmd_buffer, struct anv_batch_bo *bbo,
-                  struct anv_batch *batch, size_t aditional,
+                  struct anv_batch *batch, size_t additional,
                   size_t batch_padding)
 {
    assert(batch->start == bbo->bo->map);
    bbo->length = batch->next - batch->start;
 
    size_t new_size = bbo->bo->size;
-   while (new_size <= bbo->length + aditional + batch_padding)
+   while (new_size <= bbo->length + additional + batch_padding)
       new_size *= 2;
 
    if (new_size == bbo->bo->size)
@@ -571,7 +571,7 @@ static void
 emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
                         struct anv_bo *bo, uint32_t offset)
 {
-   /* In gfx8+ the address field grew to two dwords to accomodate 48 bit
+   /* In gfx8+ the address field grew to two dwords to accommodate 48 bit
     * offsets. The high 16 bits are in the last dword, so we can use the gfx8
     * version in either case, as long as we set the instruction length in the
     * header accordingly.  This means that we always emit three dwords here
@@ -1689,7 +1689,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       /* Since we aren't in the softpin case, all of our STATE_BASE_ADDRESS BOs
        * will get added automatically by processing relocations on the batch
        * buffer.  We have to add the surface state BO manually because it has
-       * relocations of its own that we need to be sure are processsed.
+       * relocations of its own that we need to be sure are processed.
        */
       result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
                                   ss_pool->block_pool.bo,
@@ -2060,7 +2060,7 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
  *     with our list of BOs out of sync with our list of gem handles.
  *
  *  2) The algorithm we use for building the list of unique buffers isn't
- *     thread-safe. While the client is supposed to syncronize around
+ *     thread-safe. While the client is supposed to synchronize around
  *     QueueSubmit, this would be extremely difficult to debug if it ever came
  *     up in the wild due to a broken app. It's better to play it safe and
  *     just lock around QueueSubmit.

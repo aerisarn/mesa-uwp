@@ -243,7 +243,7 @@ get_start_end_pos(int *start, int *end)
    /* start value has to be mod with 32 as we need the relative
     * start position in the first DWord. For the end position, add
     * the length of the field to the start position to get the
-    * relative postion in the 64 bit address.
+    * relative position in the 64 bit address.
     */
    if (*end - *start > 32) {
       int len = *end - *start;

@@ -645,7 +645,7 @@ emit_find_msb_using_lzd(const fs_builder &bld,
        * For all negative number cases, including 0x80000000 and
        * 0xffffffff, the correct value is obtained from LZD if instead of
        * negating the (already negative) value the logical-not is used.  A
-       * conditonal logical-not can be achieved in two instructions.
+       * conditional logical-not can be achieved in two instructions.
        */
       temp = bld.vgrf(BRW_REGISTER_TYPE_D);
 
@@ -933,7 +933,7 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
 }
 
 /**
- * Deteremine whether sources of a nir_op_fmul can be fused with a nir_op_fsign
+ * Determine whether sources of a nir_op_fmul can be fused with a nir_op_fsign
  *
  * Checks the operands of a \c nir_op_fmul to determine whether or not
  * \c emit_fsign could fuse the multiplication with the \c sign() calculation.
@@ -1404,7 +1404,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        * turn that into a predicate.  This leads us to an XOR.l instruction.
        *
        * Technically, according to the PRM, you're not allowed to use .l on a
-       * XOR instruction.  However, emperical experiments and Curro's reading
+       * XOR instruction.  However, empirical experiments and Curro's reading
        * of the simulator source both indicate that it's safe.
        */
       fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_D);
@@ -3696,7 +3696,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
             /* Make a loop that sends a message to the pixel interpolater
              * for the sample number in each live channel. If there are
              * multiple channels with the same sample number then these
-             * will be handled simultaneously with a single interation of
+             * will be handled simultaneously with a single iteration of
              * the loop.
              */
             bld.emit(BRW_OPCODE_DO);
@@ -6667,7 +6667,7 @@ setup_imm_df(const fs_builder &bld, double v)
    if (devinfo->ver >= 8)
       return brw_imm_df(v);
 
-   /* gfx7.5 does not support DF immediates straighforward but the DIM
+   /* gfx7.5 does not support DF immediates straightforward but the DIM
     * instruction allows to set the 64-bit immediate value.
     */
    if (devinfo->platform == INTEL_PLATFORM_HSW) {

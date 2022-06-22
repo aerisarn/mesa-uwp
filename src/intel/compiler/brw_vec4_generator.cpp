@@ -1992,7 +1992,7 @@ generate_code(struct brw_codegen *p,
          brw_set_default_access_mode(p, BRW_ALIGN_1);
 
          /* When converting from DF->F, we set destination's stride as 2 as an
-          * aligment requirement. But in IVB/BYT, each DF implicitly writes
+          * alignment requirement. But in IVB/BYT, each DF implicitly writes
           * two floats, being the first one the converted value. So we don't
           * need to explicitly set stride 2, but 1.
           */

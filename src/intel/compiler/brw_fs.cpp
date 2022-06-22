@@ -1048,7 +1048,7 @@ unsigned
 fs_inst::flags_written(const intel_device_info *devinfo) const
 {
    /* On Gfx4 and Gfx5, sel.l (for min) and sel.ge (for max) are implemented
-    * using a separte cmpn and sel instruction.  This lowering occurs in
+    * using a separate cmpn and sel instruction.  This lowering occurs in
     * fs_vistor::lower_minmax which is called very, very late.
     */
    if ((conditional_mod && ((opcode != BRW_OPCODE_SEL || devinfo->ver <= 5) &&
@@ -1405,7 +1405,7 @@ fs_visitor::emit_sampleid_setup()
        */
 
       /* SKL+ has an extra bit for the Starting Sample Pair Index to
-       * accomodate 16x MSAA.
+       * accommodate 16x MSAA.
        */
       abld.exec_all().group(1, 0)
           .AND(t1, fs_reg(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD)),

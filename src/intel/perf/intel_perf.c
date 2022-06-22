@@ -1204,7 +1204,7 @@ intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result
                                                 start + field->location,
                                                 end + field->location);
          /* no_oa_accumulate=true is used when doing GL perf queries, we
-          * manually parse the OA reports from the OA buffer and substract
+          * manually parse the OA reports from the OA buffer and subtract
           * unrelated deltas, so don't accumulate the begin/end reports here.
           */
          if (!no_oa_accumulate) {

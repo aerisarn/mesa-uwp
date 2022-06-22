@@ -71,7 +71,7 @@ struct bo {
    uint32_t size;
    uint64_t offset;
    void *map;
-   /* Whether the buffer has been positionned in the GTT already. */
+   /* Whether the buffer has been positioned in the GTT already. */
    bool gtt_mapped : 1;
    /* Tracks userspace mmapping of the buffer */
    bool user_mapped : 1;

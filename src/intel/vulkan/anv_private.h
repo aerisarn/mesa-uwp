@@ -476,7 +476,7 @@ struct anv_bo {
    uint32_t refcount;
 
    /* Index into the current validation list.  This is used by the
-    * validation list building alrogithm to track which buffers are already
+    * validation list building algorithm to track which buffers are already
     * in the validation list so that we can ensure uniqueness.
     */
    uint32_t exec_obj_index;
@@ -1824,7 +1824,7 @@ struct anv_descriptor_set_binding_layout {
     */
    uint32_t array_size;
 
-   /* Index into the flattend descriptor set */
+   /* Index into the flattened descriptor set */
    uint32_t descriptor_index;
 
    /* Index into the dynamic state array for a dynamic buffer */
@@ -2971,7 +2971,7 @@ struct anv_cmd_state {
     */
    bool                                         hiz_enabled;
 
-   /* We ensure the registers for the gfx12 D16 fix are initalized at the
+   /* We ensure the registers for the gfx12 D16 fix are initialized at the
     * first non-NULL depth stencil packet emission of every command buffer.
     * For secondary command buffer execution, we transfer the state from the
     * last command buffer to the primary (if known).

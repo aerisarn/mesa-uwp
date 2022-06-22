@@ -436,7 +436,7 @@ VkResult anv_CreateDescriptorSetLayout(
          immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
    }
 
-   /* We need to allocate decriptor set layouts off the device allocator
+   /* We need to allocate descriptor set layouts off the device allocator
     * with DEVICE scope because they are reference counted and may not be
     * destroyed when vkDestroyDescriptorSetLayout is called.
     */
@@ -846,11 +846,11 @@ void anv_DestroyPipelineLayout(
  * view surface state. The spec allows us to fail to allocate due to
  * fragmentation in all cases but two: 1) after pool reset, allocating up
  * until the pool size with no freeing must succeed and 2) allocating and
- * freeing only descriptor sets with the same layout. Case 1) is easy enogh,
+ * freeing only descriptor sets with the same layout. Case 1) is easy enough,
  * and the free lists lets us recycle blocks for case 2).
  */
 
-/* The vma heap reserves 0 to mean NULL; we have to offset by some ammount to
+/* The vma heap reserves 0 to mean NULL; we have to offset by some amount to
  * ensure we can allocate the entire BO without hitting zero.  The actual
  * amount doesn't matter.
  */

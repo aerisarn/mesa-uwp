@@ -2534,7 +2534,7 @@ brw_compact_instructions(struct brw_codegen *p, int start_offset,
             dst = store + offset;
          }
 
-         /* If we didn't compact this intruction, we need to move it down into
+         /* If we didn't compact this instruction, we need to move it down into
           * place.
           */
          if (offset != src_offset) {

@@ -1394,7 +1394,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp,
                             nir_imm_float(&b, 0.5f));
          color = blorp_nir_tex(&b, &v, key, src_pos);
       } else {
-         /* Gfx7+ hardware doesn't automaticaly blend. */
+         /* Gfx7+ hardware doesn't automatically blend. */
          color = blorp_nir_combine_samples(&b, &v, src_pos, key->src_samples,
                                            key->tex_aux_usage,
                                            key->texture_data_type,

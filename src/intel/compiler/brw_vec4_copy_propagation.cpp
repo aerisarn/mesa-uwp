@@ -389,7 +389,7 @@ try_copy_propagate(const struct intel_device_info *devinfo,
    if (inst->is_send_from_grf())
       return false;
 
-   /* we can't generally copy-propagate UD negations becuse we
+   /* we can't generally copy-propagate UD negations because we
     * end up accessing the resulting values as signed integers
     * instead. See also resolve_ud_negate().
     */

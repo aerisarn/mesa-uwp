@@ -151,7 +151,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
    if (!devinfo->has_64bit_int)
       int64_options |= (nir_lower_int64_options)~0;
 
-   /* The Bspec's section tittled "Instruction_multiply[DevBDW+]" claims that
+   /* The Bspec's section titled "Instruction_multiply[DevBDW+]" claims that
     * destination type can be Quadword and source type Doubleword for Gfx8 and
     * Gfx9. So, lower 64 bit multiply instruction on rest of the platforms.
     */

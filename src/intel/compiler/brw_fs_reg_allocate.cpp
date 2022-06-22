@@ -560,7 +560,7 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
        *
        * We are avoiding using grf127 as part of the destination of send
        * messages adding a node interference to the grf127_send_hack_node.
-       * This node has a fixed asignment to grf127.
+       * This node has a fixed assignment to grf127.
        *
        * We don't apply it to SIMD16 instructions because previous code avoids
        * any register overlap between sources and destination.
@@ -570,7 +570,7 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
          ra_add_node_interference(g, first_vgrf_node + inst->dst.nr,
                                      grf127_send_hack_node);
 
-      /* Spilling instruction are genereated as SEND messages from MRF but as
+      /* Spilling instruction are generated as SEND messages from MRF but as
        * Gfx7+ supports sending from GRF the driver will maps assingn these
        * MRF registers to a GRF. Implementations reuses the dest of the send
        * message as source. So as we will have an overlap for sure, we create
@@ -1141,7 +1141,7 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
             spill_max_size(fs));
 
          /* Spills should only write data initialized by the instruction for
-          * whichever channels are enabled in the excution mask.  If that's
+          * whichever channels are enabled in the execution mask.  If that's
           * not possible we'll have to emit a matching unspill before the
           * instruction and set force_writemask_all on the spill.
           */

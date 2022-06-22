@@ -227,7 +227,7 @@ namespace {
    }
 
    /**
-    * Substract two vectors with saturation.
+    * Subtract two vectors with saturation.
     */
    vector_type
    subs(vector_type v, vector_type w)

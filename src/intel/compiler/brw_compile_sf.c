@@ -38,7 +38,7 @@ struct brw_sf_compile {
    struct brw_reg dy0;
    struct brw_reg dy2;
 
-   /* z and 1/w passed in seperately:
+   /* z and 1/w passed in separately:
     */
    struct brw_reg z[3];
    struct brw_reg inv_w[3];
@@ -161,7 +161,7 @@ static void do_twoside_color( struct brw_sf_compile *c )
    /* Need to use BRW_EXECUTE_4 and also do an 4-wide compare in order
     * to get all channels active inside the IF.  In the clipping code
     * we run with NoMask, so it's not an option and we can use
-    * BRW_EXECUTE_1 for all comparisions.
+    * BRW_EXECUTE_1 for all comparisons.
     */
    brw_CMP(p, vec4(brw_null_reg()), backface_conditional, c->det, brw_imm_f(0));
    brw_IF(p, BRW_EXECUTE_4);
@@ -290,7 +290,7 @@ static void alloc_regs( struct brw_sf_compile *c )
    c->dy0 = brw_vec1_grf(1, 5);
    c->dy2 = brw_vec1_grf(1, 6);
 
-   /* z and 1/w passed in seperately:
+   /* z and 1/w passed in separately:
     */
    c->z[0]     = brw_vec1_grf(2, 0);
    c->inv_w[0] = brw_vec1_grf(2, 1);
@@ -376,7 +376,7 @@ calculate_masks(struct brw_sf_compile *c,
    } else if (interp == INTERP_MODE_NOPERSPECTIVE)
       *pc_linear = 0xf;
 
-   /* Maybe only processs one attribute on the final round:
+   /* Maybe only process one attribute on the final round:
     */
    if (vert_reg_to_varying(c, reg, 1) != BRW_VARYING_SLOT_COUNT) {
       *pc |= 0xf0;
@@ -632,7 +632,7 @@ static void brw_emit_point_sprite_setup(struct brw_sf_compile *c, bool allocate)
        */
       if (pc_coord_replace) {
 	 set_predicate_control_flag_value(p, c, pc_coord_replace);
-	 /* Caculate 1.0/PointWidth */
+	 /* Calculate 1.0/PointWidth */
 	 gfx4_math(&c->func,
 		   c->tmp,
 		   BRW_MATH_FUNCTION_INV,

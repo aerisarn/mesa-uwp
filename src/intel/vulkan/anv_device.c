@@ -4662,7 +4662,7 @@ VkResult anv_GetCalibratedTimestampsEXT(
      * clock edges is when the sampled clock with the largest period is
      * sampled at the end of that period but right at the beginning of the
      * sampling interval and some other clock is sampled right at the
-     * begining of its sampling period and right at the end of the
+     * beginning of its sampling period and right at the end of the
      * sampling interval. Let's assume the GPU has the longest clock
      * period and that the application is sampling GPU and monotonic:
      *

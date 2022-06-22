@@ -120,7 +120,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
    /* Emit a render target cache flush.
     *
     * This isn't documented anywhere in the PRM.  However, it seems to be
-    * necessary prior to changing the surface state base adress.  Without
+    * necessary prior to changing the surface state base address.  Without
     * this, we get GPU hangs when using multi-level command buffers which
     * clear depth, reset state base address, and then go render stuff.
     */
@@ -237,7 +237,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #endif /* GFX_VERx10 < 125 */
 
    /* After re-setting the surface state base address, we have to do some
-    * cache flusing so that the sampler engine will pick up the new
+    * cache flushing so that the sampler engine will pick up the new
     * SURFACE_STATE objects and binding tables. From the Broadwell PRM,
     * Shared Function > 3D Sampler > State > State Caching (page 96):
     *
@@ -1678,7 +1678,7 @@ genX(BeginCommandBuffer)(
    }
 
    /* We send an "Indirect State Pointers Disable" packet at
-    * EndCommandBuffer, so all push contant packets are ignored during a
+    * EndCommandBuffer, so all push constant packets are ignored during a
     * context restore. Documentation says after that command, we need to
     * emit push constants again before any rendering operation. So we
     * flag them dirty here to make sure they get emitted.
@@ -6926,7 +6926,7 @@ void genX(CmdBeginRendering)(
 #if GFX_VER >= 11
    /* The PIPE_CONTROL command description says:
     *
-    *    "Whenever a Binding Table Index (BTI) used by a Render Taget Message
+    *    "Whenever a Binding Table Index (BTI) used by a Render Target Message
     *     points to a different RENDER_SURFACE_STATE, SW must issue a Render
     *     Target Cache Flush by enabling this bit. When render target flush
     *     is set due to new association of BTI, PS Scoreboard Stall bit must
