@@ -515,6 +515,134 @@ dzn_pipeline_cache_add_dxil_shader(struct vk_pipeline_cache *cache,
    vk_pipeline_cache_object_unref(cache_obj);
 }
 
+struct dzn_cached_gfx_pipeline_header {
+   uint32_t stages;
+   uint32_t input_count;
+};
+
+static VkResult
+dzn_pipeline_cache_lookup_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
+                                       struct vk_pipeline_cache *cache,
+                                       const uint8_t *pipeline_hash,
+                                       bool *cache_hit)
+{
+   *cache_hit = false;
+
+   if (!cache)
+      return VK_SUCCESS;
+
+   struct vk_pipeline_cache_object *cache_obj = NULL;
+
+   cache_obj =
+      vk_pipeline_cache_lookup_object(cache, pipeline_hash, SHA1_DIGEST_LENGTH,
+                                      &dzn_cached_blob_ops,
+                                      NULL);
+   if (!cache_obj)
+      return VK_SUCCESS;
+
+   struct dzn_cached_blob *cached_blob =
+      container_of(cache_obj, struct dzn_cached_blob, base);
+   D3D12_PIPELINE_STATE_STREAM_DESC *stream_desc =
+      &pipeline->templates.stream_desc;
+
+   const struct dzn_cached_gfx_pipeline_header *info =
+      (const struct dzn_cached_gfx_pipeline_header *)(cached_blob->data);
+   size_t offset = sizeof(*info);
+
+   assert(cached_blob->size >= sizeof(*info));
+
+   if (info->input_count > 0) {
+      offset = ALIGN_POT(offset, alignof(D3D12_INPUT_LAYOUT_DESC));
+      const D3D12_INPUT_ELEMENT_DESC *inputs =
+         (const D3D12_INPUT_ELEMENT_DESC *)((uint8_t *)cached_blob->data + offset);
+
+      assert(cached_blob->size >= offset + sizeof(*inputs) * info->input_count);
+
+      memcpy(pipeline->templates.inputs, inputs,
+             sizeof(*inputs) * info->input_count);
+      d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, INPUT_LAYOUT, D3D12_INPUT_LAYOUT_DESC, desc);
+      desc->pInputElementDescs = pipeline->templates.inputs;
+      desc->NumElements = info->input_count;
+      offset += sizeof(*inputs) * info->input_count;
+   }
+
+   assert(cached_blob->size == offset + util_bitcount(info->stages) * SHA1_DIGEST_LENGTH);
+
+   u_foreach_bit(s, info->stages) {
+      uint8_t *dxil_hash = (uint8_t *)cached_blob->data + offset;
+      gl_shader_stage stage;
+
+      D3D12_SHADER_BYTECODE *slot =
+         dzn_pipeline_get_gfx_shader_slot(stream_desc, s);
+
+      VkResult ret =
+         dzn_pipeline_cache_lookup_dxil_shader(cache, dxil_hash, &stage, slot);
+      if (ret != VK_SUCCESS)
+         return ret;
+
+      assert(stage == s);
+      offset += SHA1_DIGEST_LENGTH;
+   }
+
+   *cache_hit = true;
+
+   vk_pipeline_cache_object_unref(cache_obj);
+   return VK_SUCCESS;
+}
+
+static void
+dzn_pipeline_cache_add_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
+                                    struct vk_pipeline_cache *cache,
+                                    uint32_t vertex_input_count,
+                                    const uint8_t *pipeline_hash,
+                                    const uint8_t *const *dxil_hashes)
+{
+   size_t offset =
+      ALIGN_POT(sizeof(struct dzn_cached_gfx_pipeline_header), alignof(D3D12_INPUT_ELEMENT_DESC)) +
+      (sizeof(D3D12_INPUT_ELEMENT_DESC) * vertex_input_count);
+   uint32_t stages = 0;
+
+   for (uint32_t i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (pipeline->templates.shaders[i].bc) {
+         stages |= BITFIELD_BIT(i);
+         offset += SHA1_DIGEST_LENGTH;
+      }
+   }
+
+   struct vk_pipeline_cache_object *cache_obj =
+      dzn_cached_blob_create(cache->base.device, pipeline_hash, NULL, offset);
+   if (!cache_obj)
+      return;
+
+   struct dzn_cached_blob *cached_blob =
+      container_of(cache_obj, struct dzn_cached_blob, base);
+
+   offset = 0;
+   struct dzn_cached_gfx_pipeline_header *info =
+      (struct dzn_cached_gfx_pipeline_header *)(cached_blob->data);
+
+   info->input_count = vertex_input_count;
+   info->stages = stages;
+
+   offset = ALIGN_POT(offset + sizeof(*info), alignof(D3D12_INPUT_ELEMENT_DESC));
+
+   D3D12_INPUT_ELEMENT_DESC *inputs =
+      (D3D12_INPUT_ELEMENT_DESC *)((uint8_t *)cached_blob->data + offset);
+   memcpy(inputs, pipeline->templates.inputs,
+          sizeof(*inputs) * vertex_input_count);
+   offset += sizeof(*inputs) * vertex_input_count;
+
+   u_foreach_bit(s, stages) {
+      uint8_t *dxil_hash = (uint8_t *)cached_blob->data + offset;
+
+      memcpy(dxil_hash, dxil_hashes[s], SHA1_DIGEST_LENGTH);
+      offset += SHA1_DIGEST_LENGTH;
+   }
+
+   cache_obj = vk_pipeline_cache_add_object(cache, cache_obj);
+   vk_pipeline_cache_object_unref(cache_obj);
+}
+
 static void
 dzn_graphics_pipeline_hash_attribs(D3D12_INPUT_ELEMENT_DESC *attribs,
                                    enum pipe_format *vi_conversions,
@@ -546,7 +674,9 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       uint8_t spirv_hash[SHA1_DIGEST_LENGTH];
       uint8_t dxil_hash[SHA1_DIGEST_LENGTH];
    } stages[MESA_VULKAN_SHADER_STAGES] = { 0 };
+   const uint8_t *dxil_hashes[MESA_VULKAN_SHADER_STAGES] = { 0 };
    uint8_t attribs_hash[SHA1_DIGEST_LENGTH];
+   uint8_t pipeline_hash[SHA1_DIGEST_LENGTH];
    gl_shader_stage yz_flip_stage = MESA_SHADER_NONE;
    uint32_t active_stage_mask = 0;
    VkResult ret;
@@ -609,9 +739,31 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
    if (cache) {
       dzn_graphics_pipeline_hash_attribs(attribs, vi_conversions, attribs_hash);
+
+      struct mesa_sha1 pipeline_hash_ctx;
+
+      _mesa_sha1_init(&pipeline_hash_ctx);
+      _mesa_sha1_update(&pipeline_hash_ctx, attribs_hash, sizeof(attribs_hash));
+      _mesa_sha1_update(&pipeline_hash_ctx, &yz_flip_mode, sizeof(yz_flip_mode));
+      _mesa_sha1_update(&pipeline_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
+      _mesa_sha1_update(&pipeline_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
+      _mesa_sha1_update(&pipeline_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
+
       u_foreach_bit(stage, active_stage_mask) {
          vk_pipeline_hash_shader_stage(stages[stage].info, stages[stage].spirv_hash);
+         _mesa_sha1_update(&pipeline_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
+         _mesa_sha1_update(&pipeline_hash_ctx, layout->stages[stage].hash, sizeof(layout->stages[stage].hash));
       }
+      _mesa_sha1_final(&pipeline_hash_ctx, pipeline_hash);
+
+      bool cache_hit;
+      ret = dzn_pipeline_cache_lookup_gfx_pipeline(pipeline, cache, pipeline_hash,
+                                                   &cache_hit);
+      if (ret != VK_SUCCESS)
+         return ret;
+
+      if (cache_hit)
+         return VK_SUCCESS;
    }
 
    /* Second step: get NIR shaders for all stages. */
@@ -687,6 +839,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          _mesa_sha1_update(&dxil_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
          _mesa_sha1_update(&dxil_hash_ctx, bindings_hash, sizeof(bindings_hash));
          _mesa_sha1_final(&dxil_hash_ctx, stages[stage].dxil_hash);
+         dxil_hashes[stage] = stages[stage].dxil_hash;
 
          gl_shader_stage cached_stage;
          D3D12_SHADER_BYTECODE bc;
@@ -704,26 +857,26 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       }
    }
 
+   uint32_t vert_input_count = 0;
    if (pipeline->templates.shaders[MESA_SHADER_VERTEX].nir) {
       /* Now, declare one D3D12_INPUT_ELEMENT_DESC per VS input variable, so
        * we can handle location overlaps properly.
        */
-      unsigned drv_loc = 0;
       nir_foreach_shader_in_variable(var, pipeline->templates.shaders[MESA_SHADER_VERTEX].nir) {
          assert(var->data.location >= VERT_ATTRIB_GENERIC0);
          unsigned loc = var->data.location - VERT_ATTRIB_GENERIC0;
-         assert(drv_loc < D3D12_VS_INPUT_REGISTER_COUNT);
+         assert(vert_input_count < D3D12_VS_INPUT_REGISTER_COUNT);
          assert(loc < MAX_VERTEX_GENERIC_ATTRIBS);
 
-         pipeline->templates.inputs[drv_loc] = attribs[loc];
-         pipeline->templates.inputs[drv_loc].SemanticIndex = drv_loc;
-         var->data.driver_location = drv_loc++;
+         pipeline->templates.inputs[vert_input_count] = attribs[loc];
+         pipeline->templates.inputs[vert_input_count].SemanticIndex = vert_input_count;
+         var->data.driver_location = vert_input_count++;
       }
 
-      if (drv_loc > 0) {
+      if (vert_input_count > 0) {
          d3d12_gfx_pipeline_state_stream_new_desc(out, INPUT_LAYOUT, D3D12_INPUT_LAYOUT_DESC, desc);
          desc->pInputElementDescs = pipeline->templates.inputs;
-         desc->NumElements = drv_loc;
+         desc->NumElements = vert_input_count;
       }
    }
 
@@ -756,6 +909,10 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       if (cache)
          dzn_pipeline_cache_add_dxil_shader(cache, stages[stage].dxil_hash, stage, slot);
    }
+
+   if (cache)
+      dzn_pipeline_cache_add_gfx_pipeline(pipeline, cache, vert_input_count, pipeline_hash,
+                                          dxil_hashes);
 
    return VK_SUCCESS;
 }
@@ -1853,6 +2010,71 @@ dzn_compute_pipeline_destroy(struct dzn_compute_pipeline *pipeline,
 }
 
 static VkResult
+dzn_pipeline_cache_lookup_compute_pipeline(struct vk_pipeline_cache *cache,
+                                           uint8_t *pipeline_hash,
+                                           D3D12_PIPELINE_STATE_STREAM_DESC *stream_desc,
+                                           D3D12_SHADER_BYTECODE *dxil,
+                                           bool *cache_hit)
+{
+   *cache_hit = false;
+
+   if (!cache)
+      return VK_SUCCESS;
+
+   struct vk_pipeline_cache_object *cache_obj = NULL;
+
+   cache_obj =
+      vk_pipeline_cache_lookup_object(cache, pipeline_hash, SHA1_DIGEST_LENGTH,
+                                      &dzn_cached_blob_ops,
+                                      NULL);
+   if (!cache_obj)
+      return VK_SUCCESS;
+
+   struct dzn_cached_blob *cached_blob =
+      container_of(cache_obj, struct dzn_cached_blob, base);
+
+   assert(cached_blob->size == SHA1_DIGEST_LENGTH);
+
+   const uint8_t *dxil_hash = cached_blob->data;
+   gl_shader_stage stage;
+
+   VkResult ret =
+      dzn_pipeline_cache_lookup_dxil_shader(cache, dxil_hash, &stage, dxil);
+
+   if (ret != VK_SUCCESS || stage == MESA_SHADER_NONE)
+      goto out;
+
+   assert(stage == MESA_SHADER_COMPUTE);
+
+   d3d12_compute_pipeline_state_stream_new_desc(stream_desc, CS, D3D12_SHADER_BYTECODE, slot);
+   *slot = *dxil;
+   *cache_hit = true;
+
+out:
+   vk_pipeline_cache_object_unref(cache_obj);
+   return ret;
+}
+
+static void
+dzn_pipeline_cache_add_compute_pipeline(struct vk_pipeline_cache *cache,
+                                        uint8_t *pipeline_hash,
+                                        uint8_t *dxil_hash)
+{
+   struct vk_pipeline_cache_object *cache_obj =
+      dzn_cached_blob_create(cache->base.device, pipeline_hash, NULL, SHA1_DIGEST_LENGTH);
+   if (!cache_obj)
+      return;
+
+   struct dzn_cached_blob *cached_blob =
+      container_of(cache_obj, struct dzn_cached_blob, base);
+
+   memcpy((void *)cached_blob->data, dxil_hash, SHA1_DIGEST_LENGTH);
+
+   cache_obj = vk_pipeline_cache_add_object(cache, cache_obj);
+   vk_pipeline_cache_object_unref(cache_obj);
+}
+
+static VkResult
 dzn_compute_pipeline_compile_shader(struct dzn_device *device,
                                     struct dzn_compute_pipeline *pipeline,
                                     struct vk_pipeline_cache *cache,
@@ -1861,18 +2083,33 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
                                     D3D12_SHADER_BYTECODE *shader,
                                     const VkComputePipelineCreateInfo *info)
 {
-   uint8_t spirv_hash[SHA1_DIGEST_LENGTH];
+   uint8_t spirv_hash[SHA1_DIGEST_LENGTH], pipeline_hash[SHA1_DIGEST_LENGTH];
+   VkResult ret = VK_SUCCESS;
    nir_shader *nir = NULL;
 
-   if (cache)
-      vk_pipeline_hash_shader_stage(&info->stage, spirv_hash);
+   if (cache) {
+      struct mesa_sha1 pipeline_hash_ctx;
 
-   VkResult ret =
-      dzn_pipeline_get_nir_shader(device, layout, cache, spirv_hash,
-                                  &info->stage, MESA_SHADER_COMPUTE,
-                                  DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
-                                  false, NULL,
-                                  dxil_get_nir_compiler_options(), &nir);
+      _mesa_sha1_init(&pipeline_hash_ctx);
+      vk_pipeline_hash_shader_stage(&info->stage, spirv_hash);
+      _mesa_sha1_update(&pipeline_hash_ctx, spirv_hash, sizeof(spirv_hash));
+      _mesa_sha1_update(&pipeline_hash_ctx, layout->stages[MESA_SHADER_COMPUTE].hash,
+                        sizeof(layout->stages[MESA_SHADER_COMPUTE].hash));
+      _mesa_sha1_final(&pipeline_hash_ctx, pipeline_hash);
+
+      bool cache_hit = false;
+      ret = dzn_pipeline_cache_lookup_compute_pipeline(cache, pipeline_hash,
+                                                       stream_desc, shader,
+                                                       &cache_hit);
+      if (ret != VK_SUCCESS || cache_hit)
+         goto out;
+   }
+
+   ret = dzn_pipeline_get_nir_shader(device, layout, cache, spirv_hash,
+                                     &info->stage, MESA_SHADER_COMPUTE,
+                                     DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
+                                     false, NULL,
+                                     dxil_get_nir_compiler_options(), &nir);
    if (ret != VK_SUCCESS)
       return ret;
 
@@ -1898,6 +2135,7 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
          assert(stage == MESA_SHADER_COMPUTE);
          d3d12_compute_pipeline_state_stream_new_desc(stream_desc, CS, D3D12_SHADER_BYTECODE, cs);
          *cs = *shader;
+         dzn_pipeline_cache_add_compute_pipeline(cache, pipeline_hash, dxil_hash);
          goto out;
       }
    }
@@ -1909,8 +2147,10 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
    d3d12_compute_pipeline_state_stream_new_desc(stream_desc, CS, D3D12_SHADER_BYTECODE, cs);
    *cs = *shader;
 
-   if (cache)
+   if (cache) {
       dzn_pipeline_cache_add_dxil_shader(cache, dxil_hash, MESA_SHADER_COMPUTE, shader);
+      dzn_pipeline_cache_add_compute_pipeline(cache, pipeline_hash, dxil_hash);
+   }
 
 out:
    ralloc_free(nir);
