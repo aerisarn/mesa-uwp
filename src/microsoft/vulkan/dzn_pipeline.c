@@ -1701,10 +1701,8 @@ dzn_compute_pipeline_create(struct dzn_device *device,
 
    if (FAILED(ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
                                                 &IID_ID3D12PipelineState,
-                                                (void **)&pipeline->base.state))) {
+                                                (void **)&pipeline->base.state)))
       ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto out;
-   }
 
 out:
    ralloc_free(nir);
