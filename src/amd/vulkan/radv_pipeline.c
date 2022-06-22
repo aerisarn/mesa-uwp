@@ -4648,7 +4648,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                     uint32_t *num_stack_sizes,
                     gl_shader_stage *last_vgt_api_stage)
 {
-   struct vk_shader_module fs_m = {0};
    const char *noop_fs_entrypoint = "noop_fs";
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    struct radv_shader_binary *gs_copy_binary = NULL;
@@ -5051,9 +5050,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          ralloc_free(stages[i].nir);
       }
    }
-
-   if (fs_m.nir)
-      ralloc_free(fs_m.nir);
 
 done:
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
