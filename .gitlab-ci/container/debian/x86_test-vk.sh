@@ -14,6 +14,7 @@ STABLE_EPHEMERAL=" \
       g++-mingw-w64-x86-64-posix \
       glslang-tools \
       libexpat1-dev \
+      gnupg2 \
       libgbm-dev \
       libgles2-mesa-dev \
       liblz4-dev \
@@ -36,6 +37,7 @@ STABLE_EPHEMERAL=" \
       patch \
       pkg-config \
       python3-distutils \
+      software-properties-common \
       wget \
       wine64-tools \
       xz-utils \
@@ -53,12 +55,12 @@ apt-get install -y --no-remove \
 # We need multiarch for Wine
 dpkg --add-architecture i386
 
-apt-get update
+# Install a more recent version of Wine than exists in Debian.
+apt-key add .gitlab-ci/container/debian/winehq.gpg.key
+apt-add-repository https://dl.winehq.org/wine-builds/debian/
+apt update -qyy
 
-apt-get install -y --no-remove \
-      wine \
-      wine32 \
-      wine64
+apt install -y --no-remove --install-recommends winehq-stable
 
 function setup_wine() {
     export WINEDEBUG="-all"
