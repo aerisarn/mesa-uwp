@@ -7,7 +7,6 @@ GTF-GL46.gtf30.GL3Tests.sgis_texture_lod.sgis_texture_lod_basic_lod_selection,Fa
 GTF-GL46.gtf32.GL3Tests.draw_elements_base_vertex.draw_elements_base_vertex_invalid_mode,Fail
 KHR-GL46.buffer_storage.map_persistent_draw,Fail
 KHR-GL46.copy_image.functional,Fail
-KHR-GL46.direct_state_access.buffers_functional,Fail
 KHR-GL46.gpu_shader_fp64.builtin.mod_dvec2,Fail
 KHR-GL46.gpu_shader_fp64.builtin.mod_dvec3,Fail
 KHR-GL46.gpu_shader_fp64.builtin.mod_dvec4,Fail

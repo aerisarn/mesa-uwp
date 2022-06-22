@@ -3031,7 +3031,7 @@ gfx_write_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages,
                               tu_stages | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 }
 static enum tu_cmd_access_mask
-vk2tu_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages, bool gmem)
+vk2tu_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages, bool image_only, bool gmem)
 {
    enum tu_cmd_access_mask mask = 0;
 
@@ -3142,8 +3142,16 @@ vk2tu_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages, bool gmem)
                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)) {
       if (gmem) {
          mask |= TU_ACCESS_SYSMEM_WRITE;
-      } else {
+      } else if (image_only) {
+         /* Because we always split up blits/copies of images involving
+          * multiple layers, we always access each layer in the same way, with
+          * the same base address, same format, etc. This means we can avoid
+          * flushing between multiple writes to the same image. This elides
+          * flushes between e.g. multiple blits to the same image.
+          */
          mask |= TU_ACCESS_CCU_COLOR_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
       }
    }
 
@@ -3507,9 +3515,9 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
    VkPipelineStageFlags2 dst_stage_vk =
       sanitize_dst_stage(barrier->dst_stage_mask);
    enum tu_cmd_access_mask src_flags =
-      vk2tu_access(barrier->src_access_mask, src_stage_vk, false);
+      vk2tu_access(barrier->src_access_mask, src_stage_vk, false, false);
    enum tu_cmd_access_mask dst_flags =
-      vk2tu_access(barrier->dst_access_mask, dst_stage_vk, false);
+      vk2tu_access(barrier->dst_access_mask, dst_stage_vk, false, false);
 
    if (barrier->incoherent_ccu_color)
       src_flags |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
@@ -4753,9 +4761,9 @@ tu_barrier(struct tu_cmd_buffer *cmd,
       VkPipelineStageFlags2 sanitized_dst_stage =
          sanitize_dst_stage(dep_info->pMemoryBarriers[i].dstStageMask);
       src_flags |= vk2tu_access(dep_info->pMemoryBarriers[i].srcAccessMask,
-                                sanitized_src_stage, gmem);
+                                sanitized_src_stage, false, gmem);
       dst_flags |= vk2tu_access(dep_info->pMemoryBarriers[i].dstAccessMask,
-                                sanitized_dst_stage, gmem);
+                                sanitized_dst_stage, false, gmem);
       srcStage |= sanitized_src_stage;
       dstStage |= sanitized_dst_stage;
    }
@@ -4766,9 +4774,9 @@ tu_barrier(struct tu_cmd_buffer *cmd,
       VkPipelineStageFlags2 sanitized_dst_stage =
          sanitize_dst_stage(dep_info->pBufferMemoryBarriers[i].dstStageMask);
       src_flags |= vk2tu_access(dep_info->pBufferMemoryBarriers[i].srcAccessMask,
-                                sanitized_src_stage, gmem);
+                                sanitized_src_stage, false, gmem);
       dst_flags |= vk2tu_access(dep_info->pBufferMemoryBarriers[i].dstAccessMask,
-                                sanitized_dst_stage, gmem);
+                                sanitized_dst_stage, false, gmem);
       srcStage |= sanitized_src_stage;
       dstStage |= sanitized_dst_stage;
    }
@@ -4790,9 +4798,9 @@ tu_barrier(struct tu_cmd_buffer *cmd,
       VkPipelineStageFlags2 sanitized_dst_stage =
          sanitize_dst_stage(dep_info->pImageMemoryBarriers[i].dstStageMask);
       src_flags |= vk2tu_access(dep_info->pImageMemoryBarriers[i].srcAccessMask,
-                                sanitized_src_stage, gmem);
+                                sanitized_src_stage, true, gmem);
       dst_flags |= vk2tu_access(dep_info->pImageMemoryBarriers[i].dstAccessMask,
-                                sanitized_dst_stage, gmem);
+                                sanitized_dst_stage, true, gmem);
       srcStage |= sanitized_src_stage;
       dstStage |= sanitized_dst_stage;
    }
