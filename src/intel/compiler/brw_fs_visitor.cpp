@@ -64,7 +64,19 @@ fs_visitor::interp_reg(const fs_builder &bld, unsigned location,
    const unsigned per_vertex_start = prog_data->num_per_primitive_inputs;
    const unsigned regnr = per_vertex_start + (nr * 4) + channel;
 
-   return component(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F), comp);
+   if (max_polygons > 1) {
+      /* In multipolygon dispatch each plane parameter is a
+       * dispatch_width-wide SIMD vector (see comment in
+       * assign_urb_setup()), so we need to use offset() instead of
+       * component() to select the specified parameter.
+       */
+      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.MOV(tmp, offset(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_UD),
+                          dispatch_width, comp));
+      return retype(tmp, BRW_REGISTER_TYPE_F);
+   } else {
+      return component(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F), comp);
+   }
 }
 
 /* The register location here is relative to the start of the URB
@@ -87,7 +99,19 @@ fs_visitor::per_primitive_reg(const fs_builder &bld, int location, unsigned comp
 
    assert(regnr < prog_data->num_per_primitive_inputs);
 
-   return component(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F), comp % 4);
+   if (max_polygons > 1) {
+      /* In multipolygon dispatch each primitive constant is a
+       * dispatch_width-wide SIMD vector (see comment in
+       * assign_urb_setup()), so we need to use offset() instead of
+       * component() to select the specified parameter.
+       */
+      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.MOV(tmp, offset(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_UD),
+                          dispatch_width, comp % 4));
+      return retype(tmp, BRW_REGISTER_TYPE_F);
+   } else {
+      return component(fs_reg(ATTR, regnr, BRW_REGISTER_TYPE_F), comp % 4);
+   }
 }
 
 /** Emits the interpolation for the varying inputs. */

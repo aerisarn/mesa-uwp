@@ -1741,20 +1741,112 @@ fs_visitor::assign_urb_setup()
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file == ATTR) {
-            /* ATTR regs in the FS are in units of logical scalar inputs each
-             * of which consumes half of a GRF register.
+            /* ATTR fs_reg::nr in the FS is in units of logical scalar
+             * inputs each of which consumes half of a GRF register on
+             * current platforms.  In single polygon mode this leads
+             * to the following layout of the vertex setup plane
+             * parameters in the ATTR register file:
+             *
+             *  fs_reg::nr   Input   Comp0  Comp1  Comp2  Comp3
+             *      0       Attr0.x  a1-a0  a2-a0   N/A    a0
+             *      1       Attr0.y  a1-a0  a2-a0   N/A    a0
+             *      2       Attr0.z  a1-a0  a2-a0   N/A    a0
+             *      3       Attr0.w  a1-a0  a2-a0   N/A    a0
+             *      4       Attr1.x  a1-a0  a2-a0   N/A    a0
+             *     ...
+             *
+             * In multipolygon mode that no longer works since
+             * different channels may be processing polygons with
+             * different plane parameters, so each parameter above is
+             * represented as a dispatch_width-wide vector:
+             *
+             *  fs_reg::nr     fs_reg::offset    Input      Comp0     ...    CompN
+             *      0                 0          Attr0.x  a1[0]-a0[0] ... a1[N]-a0[N]
+             *      0        4 * dispatch_width  Attr0.x  a2[0]-a0[0] ... a2[N]-a0[N]
+             *      0        8 * dispatch_width  Attr0.x     N/A      ...     N/A
+             *      0       12 * dispatch_width  Attr0.x    a0[0]     ...    a0[N]
+             *      1                 0          Attr0.y  a1[0]-a0[0] ... a1[N]-a0[N]
+             *     ...
+             *
+             * Note that many of the components on a single row above
+             * are likely to be replicated multiple times (if, say, a
+             * single SIMD thread is only processing 2 different
+             * polygons), so plane parameters aren't actually stored
+             * in GRF memory with that layout to avoid wasting space.
+             * Instead we compose ATTR register regions with a 2D
+             * region that walks through the parameters of each
+             * polygon with the correct stride, reading the parameter
+             * corresponding to each channel directly from the PS
+             * thread payload.
+             *
+             * The latter layout corresponds to a param_width equal to
+             * dispatch_width, while the former (scalar parameter)
+             * layout has a param_width of 1.
              */
-            assert(inst->src[i].offset < REG_SIZE / 2);
-            const unsigned grf = urb_start + inst->src[i].nr / 2;
-            const unsigned offset = (inst->src[i].nr % 2) * (REG_SIZE / 2) +
-                                    inst->src[i].offset;
-            const unsigned width = inst->src[i].stride == 0 ?
-                                   1 : MIN2(inst->exec_size, 8);
-            struct brw_reg reg = stride(
-               byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type),
-                           offset),
-               width * inst->src[i].stride,
-               width, inst->src[i].stride);
+            const unsigned param_width = (max_polygons > 1 ? dispatch_width : 1);
+            assert(inst->src[i].offset / param_width < REG_SIZE / 2);
+            assert(max_polygons > 0);
+
+            /* Size of a single scalar component of a plane parameter
+             * in bytes.
+             */
+            const unsigned chan_sz = 4;
+
+            /* Translate the offset within the param_width-wide
+             * representation described above into an offset into grf,
+             * which contains plane parameters for the first polygon
+             * handled by the thread.
+             */
+            const unsigned grf = urb_start + inst->src[i].nr / 2 * max_polygons;
+            const unsigned delta = (inst->src[i].nr % 2) * (REG_SIZE / 2) +
+               inst->src[i].offset / (param_width * chan_sz) * chan_sz +
+               inst->src[i].offset % chan_sz;
+            struct brw_reg reg =
+               byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type), delta);
+
+            if (max_polygons > 1) {
+               assert(devinfo->ver == 12);
+               assert(max_polygons == 2);
+               assert(dispatch_width == 16);
+               /* Misaligned channel strides that would lead to
+                * cross-channel access in the representation above are
+                * disallowed.
+                */
+               assert(inst->src[i].stride * type_sz(inst->src[i].type) == chan_sz);
+               /* Accessing a subset of channels of a parameter vector
+                * starting from "chan" is necessary to handle
+                * SIMD-lowered instructions though.
+                */
+               const unsigned chan = inst->src[i].offset %
+                  (param_width * chan_sz) / chan_sz;
+               assert(chan < dispatch_width);
+
+               if (inst->exec_size > 8) {
+                  /* Accessing the parameters for multiple polygons.
+                   * Corresponding parameters for different polygons
+                   * are stored 32B apart on the thread payload, so
+                   * use that as vertical stride.
+                   */
+                  const unsigned vstride = REG_SIZE / type_sz(inst->src[i].type);
+                  assert(vstride <= 32);
+                  assert(chan == 0);
+                  assert(inst->exec_size == dispatch_width);
+                  reg = stride(reg, vstride, 8, 0);
+               } else {
+                  /* Accessing one parameter for a single polygon --
+                   * Translate to a scalar region.
+                   */
+                  assert(chan % 8 + inst->exec_size <= 8);
+                  reg = stride(offset(reg, chan / 8), 0, 1, 0);
+               }
+
+            } else {
+               const unsigned width = inst->src[i].stride == 0 ?
+                  1 : MIN2(inst->exec_size, 8);
+               reg = stride(reg, width * inst->src[i].stride,
+                            width, inst->src[i].stride);
+            }
+
             reg.abs = inst->src[i].abs;
             reg.negate = inst->src[i].negate;
             inst->src[i] = reg;
@@ -1762,14 +1854,17 @@ fs_visitor::assign_urb_setup()
       }
    }
 
-   /* Each attribute is 4 setup channels, each of which is half a reg. */
-   this->first_non_payload_grf += prog_data->num_varying_inputs * 2;
+   /* Each attribute is 4 setup channels, each of which is half a reg,
+    * but they may be replicated multiple times for multipolygon
+    * dispatch.
+    */
+   this->first_non_payload_grf += prog_data->num_varying_inputs * 2 * max_polygons;
 
    /* Unlike regular attributes, per-primitive attributes have all 4 channels
     * in the same slot, so each GRF can store two slots.
     */
    assert(prog_data->num_per_primitive_inputs % 2 == 0);
-   this->first_non_payload_grf += prog_data->num_per_primitive_inputs / 2;
+   this->first_non_payload_grf += prog_data->num_per_primitive_inputs / 2 * max_polygons;
 }
 
 void
