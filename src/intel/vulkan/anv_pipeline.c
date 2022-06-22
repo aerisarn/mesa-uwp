@@ -38,6 +38,7 @@
 #include "anv_nir.h"
 #include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
+#include "vk_pipeline.h"
 #include "vk_render_pass.h"
 #include "vk_util.h"
 
@@ -575,30 +576,6 @@ struct anv_pipeline_stage {
 
    struct anv_shader_bin *bin;
 };
-
-static void
-anv_pipeline_hash_shader(const struct vk_shader_module *module,
-                         const char *entrypoint,
-                         gl_shader_stage stage,
-                         const VkSpecializationInfo *spec_info,
-                         unsigned char *sha1_out)
-{
-   struct mesa_sha1 ctx;
-   _mesa_sha1_init(&ctx);
-
-   _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
-   _mesa_sha1_update(&ctx, entrypoint, strlen(entrypoint));
-   _mesa_sha1_update(&ctx, &stage, sizeof(stage));
-   if (spec_info) {
-      _mesa_sha1_update(&ctx, spec_info->pMapEntries,
-                        spec_info->mapEntryCount *
-                        sizeof(*spec_info->pMapEntries));
-      _mesa_sha1_update(&ctx, spec_info->pData,
-                        spec_info->dataSize);
-   }
-
-   _mesa_sha1_final(&ctx, sha1_out);
-}
 
 static void
 anv_pipeline_hash_graphics(struct anv_graphics_pipeline *pipeline,
@@ -1443,11 +1420,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       stages[stage].module = vk_shader_module_from_handle(sinfo->module);
       stages[stage].entrypoint = sinfo->pName;
       stages[stage].spec_info = sinfo->pSpecializationInfo;
-      anv_pipeline_hash_shader(stages[stage].module,
-                               stages[stage].entrypoint,
-                               stage,
-                               stages[stage].spec_info,
-                               stages[stage].shader_sha1);
+      vk_pipeline_hash_shader_stage(&info->pStages[i], stages[stage].shader_sha1);
 
       const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info =
          vk_find_struct_const(sinfo->pNext,
@@ -1907,11 +1880,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
       },
    };
-   anv_pipeline_hash_shader(stage.module,
-                            stage.entrypoint,
-                            MESA_SHADER_COMPUTE,
-                            stage.spec_info,
-                            stage.shader_sha1);
+   vk_pipeline_hash_shader_stage(&info->stage, stage.shader_sha1);
 
    struct anv_shader_bin *bin = NULL;
 
@@ -2740,11 +2709,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
                            pipeline->base.device->robust_buffer_access,
                            &stages[i].key.bs);
 
-      anv_pipeline_hash_shader(stages[i].module,
-                               stages[i].entrypoint,
-                               stages[i].stage,
-                               stages[i].spec_info,
-                               stages[i].shader_sha1);
+      vk_pipeline_hash_shader_stage(sinfo, stages[i].shader_sha1);
 
       if (stages[i].stage != MESA_SHADER_INTERSECTION) {
          anv_pipeline_hash_ray_tracing_shader(pipeline, layout, &stages[i],
