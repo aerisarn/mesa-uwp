@@ -953,6 +953,7 @@ static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 		if (cur->U.I.Opcode == RC_OPCODE_MOV &&
 			cur->U.I.DstReg.File == orig_dst_file &&
 			cur->U.I.DstReg.Index == orig_dst_reg &&
+			cur->U.I.SaturateMode == inst->U.I.SaturateMode &&
 			(cur->U.I.DstReg.WriteMask & orig_dst_wmask) == 0) {
 
 			/* We can merge the movs if one of them is from inline constant */
