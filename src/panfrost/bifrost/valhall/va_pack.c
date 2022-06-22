@@ -32,6 +32,19 @@
  */
 
 /*
+ * Unreachable for encoding failures, when hitting an invalid instruction.
+ * Prints the (first) failing instruction to aid debugging.
+ */
+NORETURN static void
+invalid_instruction(const bi_instr *I, const char *cause)
+{
+   fprintf(stderr, "\nPacking failure due to invalid %s:\n\t", cause);
+   bi_print_instr(I, stderr);
+   fprintf(stderr, "\n");
+   unreachable("Invalid instruction");
+}
+
+/*
  * Validate that two adjacent 32-bit sources form an aligned 64-bit register
  * pair. This is a compiler invariant, required on Valhall but not on Bifrost.
  */
@@ -277,7 +290,7 @@ va_pack_source_format(const bi_instr *I)
    case BI_SOURCE_FORMAT_F16: return VA_SOURCE_FORMAT_SRC_F16;
    }
 
-   unreachable("unhandled source format");
+   invalid_instruction(I, "source format");
 }
 
 static uint64_t
@@ -480,8 +493,8 @@ va_pack_alu(const bi_instr *I)
          assert(src_info.size == VA_SIZE_8);
          assert(i == 0);
          hex |= (uint64_t) va_pack_halfswizzle(src.swizzle) << 36;
-      } else {
-         assert(src.swizzle == BI_SWIZZLE_H01 && "Unexpected swizzle");
+      } else if (src.swizzle != BI_SWIZZLE_H01) {
+         invalid_instruction(I, "swizzle");
       }
    }
 
@@ -613,7 +626,7 @@ va_pack_register_format(const bi_instr *I)
    case BI_REGISTER_FORMAT_S16:  return VA_REGISTER_FORMAT_S16;
    case BI_REGISTER_FORMAT_U32:  return VA_REGISTER_FORMAT_U32;
    case BI_REGISTER_FORMAT_U16:  return VA_REGISTER_FORMAT_U16;
-   default: unreachable("unhandled register format");
+   default: invalid_instruction(I, "register format");
    }
 }
 
@@ -776,11 +789,8 @@ va_pack_instr(const bi_instr *I)
    }
 
    default:
-      if (!info.exact && I->op != BI_OPCODE_NOP) {
-         bi_print_instr(I, stderr);
-         fflush(stderr);
-         unreachable("Opcode not packable on Valhall");
-      }
+      if (!info.exact && I->op != BI_OPCODE_NOP)
+         invalid_instruction(I, "opcode");
 
       hex |= va_pack_alu(I);
       break;
