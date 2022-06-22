@@ -167,6 +167,7 @@ deep_copy_vertex_input_state(void *mem_ctx,
             break;
          }
          default:
+            unreachable("unhandled pNext!");
             break;
          }
       }
@@ -221,6 +222,24 @@ deep_copy_viewport_state(void *mem_ctx,
       dst->scissorCount = src->scissorCount;
    else
       dst->scissorCount = 0;
+
+   if (src->pNext) {
+      vk_foreach_struct(ext, src->pNext) {
+         switch (ext->sType) {
+         case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: {
+            VkPipelineViewportDepthClipControlCreateInfoEXT *ext_src = (VkPipelineViewportDepthClipControlCreateInfoEXT *)ext;
+            VkPipelineViewportDepthClipControlCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineViewportDepthClipControlCreateInfoEXT);
+            memcpy(ext_dst, ext_src, sizeof(*ext_dst));
+            ext_dst->pNext = dst->pNext;
+            dst->pNext = ext_dst;
+            break;
+         }
+         default:
+            unreachable("unhandled pNext!");
+            break;
+         }
+      }
+   }
 
    return VK_SUCCESS;
 }
@@ -332,12 +351,33 @@ deep_copy_rasterization_state(void *mem_ctx,
             VkPipelineRasterizationDepthClipStateCreateInfoEXT *ext_src = (VkPipelineRasterizationDepthClipStateCreateInfoEXT *)ext;
             VkPipelineRasterizationDepthClipStateCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineRasterizationDepthClipStateCreateInfoEXT);
             ext_dst->sType = ext_src->sType;
+            ext_dst->pNext = dst->pNext;
             ext_dst->flags = ext_src->flags;
             ext_dst->depthClipEnable = ext_src->depthClipEnable;
             dst->pNext = ext_dst;
             break;
          }
+         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *ext_src = (VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *)ext;
+            VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineRasterizationProvokingVertexStateCreateInfoEXT);
+            memcpy(ext_dst, ext_src, sizeof(*ext_dst));
+            ext_dst->pNext = dst->pNext;
+            dst->pNext = ext_dst;
+            break;
+         }
+         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationLineStateCreateInfoEXT *ext_src = (VkPipelineRasterizationLineStateCreateInfoEXT *)ext;
+            VkPipelineRasterizationLineStateCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineRasterizationLineStateCreateInfoEXT);
+            memcpy(ext_dst, ext_src, sizeof(*ext_dst));
+            ext_dst->pNext = dst->pNext;
+            dst->pNext = ext_dst;
+            break;
+         }
+         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
+            /* do nothing */
+            break;
          default:
+            unreachable("unhandled pNext!");
             break;
          }
       }
@@ -368,6 +408,12 @@ deep_copy_graphics_create_info(void *mem_ctx,
       dst->subpass = src->subpass;
       dst->renderPass = src->renderPass;
       rp_info = vk_get_pipeline_rendering_create_info(src);
+      if (rp_info && !src->renderPass) {
+         VkPipelineRenderingCreateInfoKHR *r = ralloc(mem_ctx, VkPipelineRenderingCreateInfoKHR);
+         memcpy(r, rp_info, sizeof(VkPipelineRenderingCreateInfoKHR));
+         r->pNext = NULL;
+         dst->pNext = r;
+      }
    }
    bool has_depth = false;
    bool has_stencil = false;
