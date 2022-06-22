@@ -1599,7 +1599,7 @@
     <desc>
       Used as a primitive for various bitwise operations.
     </desc>
-    <src/>
+    <src swizzle="true"/>
   </ins>
 
   <ins name="CLZ.v4u8" title="Count leading zeroes" dests="1" opcode="0x91" opcode2="0x6" unit="CVT">
