@@ -2329,28 +2329,20 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         switch (instr->op) {
         case nir_op_vec2:
         case nir_op_vec3:
-        case nir_op_vec4: {
-                bi_index unoffset_srcs[4] = {
-                        srcs > 0 ? bi_src_index(&instr->src[0].src) : bi_null(),
-                        srcs > 1 ? bi_src_index(&instr->src[1].src) : bi_null(),
-                        srcs > 2 ? bi_src_index(&instr->src[2].src) : bi_null(),
-                        srcs > 3 ? bi_src_index(&instr->src[3].src) : bi_null(),
-                };
+        case nir_op_vec4:
+        case nir_op_vec8:
+        case nir_op_vec16: {
+                bi_index unoffset_srcs[16] = { bi_null() };
+                unsigned channels[16] = { 0 };
 
-                unsigned channels[4] = {
-                        instr->src[0].swizzle[0],
-                        instr->src[1].swizzle[0],
-                        srcs > 2 ? instr->src[2].swizzle[0] : 0,
-                        srcs > 3 ? instr->src[3].swizzle[0] : 0,
-                };
+                for (unsigned i = 0; i < srcs; ++i) {
+                        unoffset_srcs[i] = bi_src_index(&instr->src[i].src);
+                        channels[i] = instr->src[i].swizzle[0];
+                }
 
                 bi_make_vec_to(b, dst, unoffset_srcs, channels, srcs, sz);
                 return;
         }
-
-        case nir_op_vec8:
-        case nir_op_vec16:
-                unreachable("should've been lowered");
 
         case nir_op_unpack_32_2x16: {
                 /* Should have been scalarized */
