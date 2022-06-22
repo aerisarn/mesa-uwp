@@ -37,6 +37,7 @@
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
 #include "vk_format.h"
+#include "vk_pipeline.h"
 #include "vk_util.h"
 
 #include "tu_cs.h"
@@ -2572,17 +2573,10 @@ tu_hash_stage(struct mesa_sha1 *ctx,
               const VkPipelineShaderStageCreateInfo *stage,
               const struct tu_shader_key *key)
 {
-   VK_FROM_HANDLE(vk_shader_module, module, stage->module);
-   const VkSpecializationInfo *spec_info = stage->pSpecializationInfo;
+   unsigned char stage_hash[SHA1_DIGEST_LENGTH];
 
-   _mesa_sha1_update(ctx, module->sha1, sizeof(module->sha1));
-   _mesa_sha1_update(ctx, stage->pName, strlen(stage->pName));
-   if (spec_info && spec_info->mapEntryCount) {
-      _mesa_sha1_update(ctx, spec_info->pMapEntries,
-                        spec_info->mapEntryCount * sizeof spec_info->pMapEntries[0]);
-      _mesa_sha1_update(ctx, spec_info->pData, spec_info->dataSize);
-   }
-
+   vk_pipeline_hash_shader_stage(stage, stage_hash);
+   _mesa_sha1_update(ctx, stage_hash, sizeof(stage_hash));
    _mesa_sha1_update(ctx, key, sizeof(*key));
 }
 
