@@ -759,12 +759,21 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       for (i = 0; i < cb->attachmentCount; i++) {
          state->blend_state.rt[i].colormask = cb->pAttachments[i].colorWriteMask;
          state->blend_state.rt[i].blend_enable = cb->pAttachments[i].blendEnable;
-         state->blend_state.rt[i].rgb_func = vk_conv_blend_func(cb->pAttachments[i].colorBlendOp);
-         state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(cb->pAttachments[i].srcColorBlendFactor);
-         state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(cb->pAttachments[i].dstColorBlendFactor);
-         state->blend_state.rt[i].alpha_func = vk_conv_blend_func(cb->pAttachments[i].alphaBlendOp);
-         state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(cb->pAttachments[i].srcAlphaBlendFactor);
-         state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(cb->pAttachments[i].dstAlphaBlendFactor);
+         if (state->blend_state.rt[i].blend_enable) {
+            state->blend_state.rt[i].rgb_func = vk_conv_blend_func(cb->pAttachments[i].colorBlendOp);
+            state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(cb->pAttachments[i].srcColorBlendFactor);
+            state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(cb->pAttachments[i].dstColorBlendFactor);
+            state->blend_state.rt[i].alpha_func = vk_conv_blend_func(cb->pAttachments[i].alphaBlendOp);
+            state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(cb->pAttachments[i].srcAlphaBlendFactor);
+            state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(cb->pAttachments[i].dstAlphaBlendFactor);
+         } else {
+            state->blend_state.rt[i].rgb_func = 0;
+            state->blend_state.rt[i].rgb_src_factor = 0;
+            state->blend_state.rt[i].rgb_dst_factor = 0;
+            state->blend_state.rt[i].alpha_func = 0;
+            state->blend_state.rt[i].alpha_src_factor = 0;
+            state->blend_state.rt[i].alpha_dst_factor = 0;
+         }
 
          /* At least llvmpipe applies the blend factor prior to the blend function,
           * regardless of what function is used. (like i965 hardware).
