@@ -7503,8 +7503,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
    float throughput = 0;
    bool has_spilled = false;
 
-   v8 = std::make_unique<fs_visitor>(compiler, &params->base, &key->base,
-                                     &prog_data->base, nir, 8,
+   v8 = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                     prog_data, nir, 8, 1,
                                      params->base.stats != NULL,
                                      debug_enabled);
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
@@ -7549,8 +7549,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
        v8->max_dispatch_width >= 16 &&
        (INTEL_SIMD(FS, 16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
-      v16 = std::make_unique<fs_visitor>(compiler, &params->base, &key->base,
-                                         &prog_data->base, nir, 16,
+      v16 = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                         prog_data, nir, 16, 1,
                                          params->base.stats != NULL,
                                          debug_enabled);
       v16->import_uniforms(v8.get());
@@ -7580,8 +7580,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
        devinfo->ver >= 6 && !simd16_failed &&
        INTEL_SIMD(FS, 32)) {
       /* Try a SIMD32 compile */
-      v32 = std::make_unique<fs_visitor>(compiler, &params->base, &key->base,
-                                         &prog_data->base, nir, 32,
+      v32 = std::make_unique<fs_visitor>(compiler, &params->base, key,
+                                         prog_data, nir, 32, 1,
                                          params->base.stats != NULL,
                                          debug_enabled);
       v32->import_uniforms(v8.get());

@@ -192,6 +192,15 @@ public:
               bool debug_enabled);
    fs_visitor(const struct brw_compiler *compiler,
               const struct brw_compile_params *params,
+              const brw_wm_prog_key *key,
+              struct brw_wm_prog_data *prog_data,
+              const nir_shader *shader,
+              unsigned dispatch_width,
+              unsigned num_polygons,
+              bool needs_register_pressure,
+              bool debug_enabled);
+   fs_visitor(const struct brw_compiler *compiler,
+              const struct brw_compile_params *params,
               struct brw_gs_compile *gs_compile,
               struct brw_gs_prog_data *prog_data,
               const nir_shader *shader,
@@ -426,6 +435,7 @@ public:
    bool needs_register_pressure;
 
    const unsigned dispatch_width; /**< 8, 16 or 32 */
+   const unsigned max_polygons;
    unsigned max_dispatch_width;
 
    /* The API selected subgroup size */
