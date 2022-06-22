@@ -86,7 +86,7 @@ struct lp_setup_args
 
 static void
 store_coef(struct gallivm_state *gallivm,
-           struct lp_setup_args *args,
+           const struct lp_setup_args *args,
            unsigned slot,
            LLVMValueRef a0,
            LLVMValueRef dadx,
@@ -111,7 +111,7 @@ store_coef(struct gallivm_state *gallivm,
 
 static void
 emit_constant_coef4(struct gallivm_state *gallivm,
-                    struct lp_setup_args *args,
+                    const struct lp_setup_args *args,
                     unsigned slot,
                     LLVMValueRef vert)
 {
@@ -315,8 +315,7 @@ lp_do_offset_tri(struct gallivm_state *gallivm,
       zoffset = lp_build_min(&flt_scalar_bld,
                              lp_build_const_float(gallivm, key->pgon_offset_clamp),
                              zoffset);
-   }
-   else if (key->pgon_offset_clamp < 0) {
+   } else if (key->pgon_offset_clamp < 0) {
       zoffset = lp_build_max(&flt_scalar_bld,
                              lp_build_const_float(gallivm, key->pgon_offset_clamp),
                              zoffset);
@@ -431,11 +430,7 @@ emit_linear_coef(struct gallivm_state *gallivm,
                  LLVMValueRef attribv[3])
 {
    /* nothing to do anymore */
-   emit_coef4(gallivm,
-              args, slot,
-              attribv[0],
-              attribv[1],
-              attribv[2]);
+   emit_coef4(gallivm, args, slot, attribv[0], attribv[1], attribv[2]);
 }
 
 
@@ -487,8 +482,7 @@ emit_tri_coef(struct gallivm_state *gallivm,
          load_attribute(gallivm, args, key, key->inputs[slot].src_index, attribs);
          if (key->flatshade_first) {
             emit_constant_coef4(gallivm, args, slot+1, attribs[0]);
-         }
-         else {
+         } else {
             emit_constant_coef4(gallivm, args, slot+1, attribs[2]);
          }
          break;
@@ -611,9 +605,7 @@ init_args(struct gallivm_state *gallivm,
    args->y0_center = lp_build_extract_broadcast(gallivm, typef4, typef4, xy0_center, onei);
 
    LLVMValueRef coeffs[3];
-   calc_coef4(gallivm, args,
-              attr_pos[0], attr_pos[1], attr_pos[2],
-              coeffs);
+   calc_coef4(gallivm, args, attr_pos[0], attr_pos[1], attr_pos[2], coeffs);
 
    /* This is a bit sneaky:
     * Because we observe that the X component of A0 is otherwise unused,
@@ -624,8 +616,7 @@ init_args(struct gallivm_state *gallivm,
    coeffs[0] = LLVMBuildInsertElement(b, coeffs[0], polygon_offset,
                                       lp_build_const_int32(gallivm, 0), "");
 
-   store_coef(gallivm, args, 0,
-              coeffs[0], coeffs[1], coeffs[2]);
+   store_coef(gallivm, args, 0, coeffs[0], coeffs[1], coeffs[2]);
 }
 
 
@@ -762,7 +753,7 @@ fail:
 
 
 static void
-lp_make_setup_variant_key(struct llvmpipe_context *lp,
+lp_make_setup_variant_key(const struct llvmpipe_context *lp,
                           struct lp_setup_variant_key *key)
 {
    const struct lp_fragment_shader *fs = lp->fs;
@@ -774,8 +765,7 @@ lp_make_setup_variant_key(struct llvmpipe_context *lp,
    key->pixel_center_half = lp->rasterizer->half_pixel_center;
    key->multisample = lp->rasterizer->multisample;
    key->twoside = lp->rasterizer->light_twoside;
-   key->size = Offset(struct lp_setup_variant_key,
-                      inputs[key->num_inputs]);
+   key->size = Offset(struct lp_setup_variant_key, inputs[key->num_inputs]);
 
    key->color_slot = lp->color_slot[0];
    key->bcolor_slot = lp->bcolor_slot[0];
@@ -880,7 +870,7 @@ llvmpipe_update_setup(struct llvmpipe_context *lp)
    lp_make_setup_variant_key(lp, key);
 
    LIST_FOR_EACH_ENTRY(li, &lp->setup_variants_list.list, list) {
-      if(li->base->key.size == key->size &&
+      if (li->base->key.size == key->size &&
          memcmp(&li->base->key, key, key->size) == 0) {
          variant = li->base;
          break;
@@ -889,8 +879,7 @@ llvmpipe_update_setup(struct llvmpipe_context *lp)
 
    if (variant) {
       list_move_to(&variant->list_item_global.list, &lp->setup_variants_list.list);
-   }
-   else {
+   } else {
       if (lp->nr_setup_variants >= LP_MAX_SETUP_VARIANTS) {
          cull_setup_variants(lp);
       }
