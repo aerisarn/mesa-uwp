@@ -302,9 +302,14 @@ adjust_resource_index_binding(struct nir_builder *builder, nir_instr *instr,
 
 static bool
 adjust_var_bindings(nir_shader *shader,
-                    const struct dzn_pipeline_layout *layout)
+                    const struct dzn_pipeline_layout *layout,
+                    uint8_t *bindings_hash)
 {
    uint32_t modes = nir_var_image | nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo;
+   struct mesa_sha1 bindings_hash_ctx;
+
+   if (bindings_hash)
+      _mesa_sha1_init(&bindings_hash_ctx);
 
    nir_foreach_variable_with_modes(var, shader, modes) {
       if (var->data.mode == nir_var_uniform) {
@@ -321,7 +326,16 @@ adjust_var_bindings(nir_shader *shader,
 
       assert(b < layout->binding_translation[s].binding_count);
       var->data.binding = layout->binding_translation[s].base_reg[b];
+
+      if (bindings_hash) {
+         _mesa_sha1_update(&bindings_hash_ctx, &s, sizeof(s));
+         _mesa_sha1_update(&bindings_hash_ctx, &b, sizeof(b));
+         _mesa_sha1_update(&bindings_hash_ctx, &var->data.binding, sizeof(var->data.binding));
+      }
    }
+
+   if (bindings_hash)
+      _mesa_sha1_final(&bindings_hash_ctx, bindings_hash);
 
    return nir_shader_instructions_pass(shader, adjust_resource_index_binding,
                                        nir_metadata_all, (void *)layout);
@@ -565,7 +579,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
    }
 
    u_foreach_bit(stage, active_stage_mask) {
-      NIR_PASS_V(pipeline->templates.shaders[stage].nir, adjust_var_bindings, layout);
+      NIR_PASS_V(pipeline->templates.shaders[stage].nir, adjust_var_bindings, layout, NULL);
    }
 
    if (pipeline->templates.shaders[MESA_SHADER_VERTEX].nir) {
@@ -1733,7 +1747,7 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
    if (ret != VK_SUCCESS)
       return ret;
 
-   NIR_PASS_V(nir, adjust_var_bindings, layout);
+   NIR_PASS_V(nir, adjust_var_bindings, layout, NULL);
 
    ret = dzn_pipeline_compile_shader(device, nir, shader);
    if (ret != VK_SUCCESS)
