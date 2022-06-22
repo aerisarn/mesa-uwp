@@ -1603,7 +1603,7 @@ query_regions(struct intel_device_info *devinfo, int fd, bool update)
    for (int i = 0; i < meminfo->num_regions; i++) {
       const struct drm_i915_memory_region_info *mem = &meminfo->regions[i];
       switch (mem->region.memory_class) {
-      case I915_MEMORY_CLASS_SYSTEM:
+      case I915_MEMORY_CLASS_SYSTEM: {
          if (!update) {
             devinfo->mem.sram.mem_class = mem->region.memory_class;
             devinfo->mem.sram.mem_instance = mem->region.memory_instance;
@@ -1613,9 +1613,14 @@ query_regions(struct intel_device_info *devinfo, int fd, bool update)
             assert(devinfo->mem.sram.mem_instance == mem->region.memory_instance);
             assert(devinfo->mem.sram.mappable.size == mem->probed_size);
          }
-         if (mem->unallocated_size != -1)
-            devinfo->mem.sram.mappable.free = mem->unallocated_size;
+         /* The kernel uAPI only reports an accurate unallocated_size value
+          * for I915_MEMORY_CLASS_DEVICE.
+          */
+         uint64_t available;
+         if (os_get_available_system_memory(&available))
+            devinfo->mem.sram.mappable.free = MIN2(available, mem->probed_size);
          break;
+      }
       case I915_MEMORY_CLASS_DEVICE:
          if (!update) {
             devinfo->mem.vram.mem_class = mem->region.memory_class;
