@@ -85,7 +85,7 @@ struct zink_resource_object {
    int handle;
    struct zink_bo *bo;
    // struct {
-   void *dt;
+   struct kopper_displaytarget *dt;
    uint32_t dt_idx;
    uint32_t last_dt_idx;
    VkSemaphore present;

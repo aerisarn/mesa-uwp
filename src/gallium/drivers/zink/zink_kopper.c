@@ -29,8 +29,6 @@
 #include "zink_kopper.h"
 #include "vk_enum_to_str.h"
 
-#define kopper_displaytarget(dt) ((struct kopper_displaytarget*)dt)
-
 static void
 init_dt_type(struct kopper_displaytarget *cdt)
 {
@@ -449,7 +447,7 @@ zink_kopper_displaytarget_destroy(struct zink_screen *screen, struct kopper_disp
 static VkResult
 kopper_acquire(struct zink_screen *screen, struct zink_resource *res, uint64_t timeout)
 {
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
 
    /* if:
     * - we don't need a new image
@@ -546,7 +544,7 @@ bool
 zink_kopper_acquire(struct zink_context *ctx, struct zink_resource *res, uint64_t timeout)
 {
    assert(zink_is_swapchain(res));
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    if (!cdt)
       /* dead swapchain */
       return false;
@@ -574,7 +572,7 @@ VkSemaphore
 zink_kopper_acquire_submit(struct zink_screen *screen, struct zink_resource *res)
 {
    assert(res->obj->dt);
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    if (cdt->swapchain->dt_has_data)
       return VK_NULL_HANDLE;
    assert(res->obj->dt_idx != UINT32_MAX);
@@ -705,7 +703,7 @@ void
 zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
 {
    assert(res->obj->dt);
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    assert(zink_kopper_acquired(res->obj->dt, res->obj->dt_idx));
    assert(res->obj->present);
    struct kopper_present_info *cpi = malloc(sizeof(struct kopper_present_info));
@@ -740,7 +738,7 @@ zink_kopper_acquire_readback(struct zink_context *ctx, struct zink_resource *res
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(res->obj->dt);
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    const struct kopper_swapchain *cswap = cdt->swapchain;
    uint32_t last_dt_idx = res->obj->last_dt_idx;
    VkResult ret = VK_SUCCESS;
@@ -805,7 +803,7 @@ zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int 
    assert(pres->bind & PIPE_BIND_DISPLAY_TARGET);
    if (!res->obj->dt)
       return false;
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    if (cdt->type != KOPPER_X11) {
       *w = res->base.b.width0;
       *h = res->base.b.height0;
@@ -872,7 +870,7 @@ zink_kopper_check(struct pipe_resource *pres)
    assert(pres->bind & PIPE_BIND_DISPLAY_TARGET);
    if (!res->obj->dt)
       return false;
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    return !cdt->is_kill;
 }
 
@@ -882,7 +880,7 @@ zink_kopper_set_swap_interval(struct pipe_screen *pscreen, struct pipe_resource 
    struct zink_resource *res = zink_resource(pres);
    struct zink_screen *screen = zink_screen(pscreen);
    assert(res->obj->dt);
-   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
    VkPresentModeKHR old_present_mode = cdt->present_mode;
 
    assert(interval >= 0); /* TODO: VK_PRESENT_MODE_FIFO_RELAXED_KHR */
