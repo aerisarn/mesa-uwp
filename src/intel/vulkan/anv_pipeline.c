@@ -382,6 +382,10 @@ struct anv_pipeline_stage {
 
    struct vk_pipeline_robustness_state rstate;
 
+   /* VkComputePipelineCreateInfo, VkGraphicsPipelineCreateInfo or
+    * VkRayTracingPipelineCreateInfoKHR pNext field
+    */
+   const void *pipeline_pNext;
    const VkPipelineShaderStageCreateInfo *info;
 
    unsigned char shader_sha1[20];
@@ -687,9 +691,22 @@ populate_bs_prog_key(struct anv_pipeline_stage *stage,
 
 static void
 anv_stage_write_shader_hash(struct anv_pipeline_stage *stage,
-                            const VkPipelineShaderStageCreateInfo *sinfo)
+                            const struct anv_device *device)
 {
-   vk_pipeline_hash_shader_stage(sinfo, NULL, stage->shader_sha1);
+   vk_pipeline_robustness_state_fill(&device->vk,
+                                     &stage->rstate,
+                                     stage->pipeline_pNext,
+                                     stage->info->pNext);
+
+   vk_pipeline_hash_shader_stage(stage->info, &stage->rstate, stage->shader_sha1);
+
+   stage->robust_flags =
+      ((stage->rstate.storage_buffers !=
+        VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT) ?
+       BRW_ROBUSTNESS_SSBO : 0) |
+      ((stage->rstate.uniform_buffers !=
+        VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT) ?
+       BRW_ROBUSTNESS_UBO : 0);
 
    /* Use lowest dword of source shader sha1 for shader hash. */
    stage->source_hash = ((uint32_t*)stage->shader_sha1)[0];
@@ -1669,13 +1686,6 @@ anv_graphics_pipeline_skip_shader_compile(struct anv_graphics_base_pipeline *pip
    return stages[stage].info == NULL;
 }
 
-static enum brw_robustness_flags
-anv_device_get_robust_flags(const struct anv_device *device)
-{
-   return device->robust_buffer_access ?
-          (BRW_ROBUSTNESS_UBO | BRW_ROBUSTNESS_SSBO) : 0;
-}
-
 static void
 anv_graphics_pipeline_init_keys(struct anv_graphics_base_pipeline *pipeline,
                                 const struct vk_graphics_pipeline_state *state,
@@ -1984,9 +1994,12 @@ anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline,
 
    struct brw_nir_compiler_opts opts = {
       .softfp64 = device->fp64_nir,
-      .robust_image_access =
-         device->vk.enabled_features.robustImageAccess ||
-         device->vk.enabled_features.robustImageAccess2,
+      /* Assume robustness with EXT_pipeline_robustness because this can be
+       * turned on/off per pipeline and we have no visibility on this here.
+       */
+      .robust_image_access = device->vk.enabled_features.robustImageAccess ||
+                             device->vk.enabled_features.robustImageAccess2 ||
+                             device->vk.enabled_extensions.EXT_pipeline_robustness,
       .input_vertices = stage->nir->info.stage == MESA_SHADER_TESS_CTRL ?
                         stage->key.tcs.input_vertices : 0,
    };
@@ -2081,12 +2094,11 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
          continue;
 
       stages[stage].stage = stage;
+      stages[stage].pipeline_pNext = info->pNext;
       stages[stage].info = &info->pStages[i];
       stages[stage].feedback_idx = shader_count++;
 
-      anv_stage_write_shader_hash(&stages[stage], stages[stage].info);
-
-      stages[stage].robust_flags = anv_device_get_robust_flags(device);
+      anv_stage_write_shader_hash(&stages[stage], device);
    }
 
    /* Prepare shader keys for all shaders in pipeline->base.active_stages
@@ -2504,6 +2516,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    struct anv_pipeline_stage stage = {
       .stage = MESA_SHADER_COMPUTE,
       .info = &info->stage,
+      .pipeline_pNext = info->pNext,
       .cache_key = {
          .stage = MESA_SHADER_COMPUTE,
       },
@@ -2511,7 +2524,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
       },
    };
-   anv_stage_write_shader_hash(&stage, &info->stage);
+   anv_stage_write_shader_hash(&stage, device);
 
    struct anv_shader_bin *bin = NULL;
 
@@ -3416,6 +3429,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
                                      const VkRayTracingPipelineCreateInfoKHR *info,
                                      void *pipeline_ctx)
 {
+   struct anv_device *device = pipeline->base.device;
    /* Create enough stage entries for all shader modules plus potential
     * combinaisons in the groups.
     */
@@ -3434,6 +3448,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 
       stages[i] = (struct anv_pipeline_stage) {
          .stage = vk_to_mesa_shader_stage(sinfo->stage),
+         .pipeline_pNext = info->pNext,
          .info = sinfo,
          .cache_key = {
             .stage = vk_to_mesa_shader_stage(sinfo->stage),
@@ -3445,7 +3460,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 
       pipeline->base.active_stages |= sinfo->stage;
 
-      anv_stage_write_shader_hash(&stages[i], sinfo);
+      anv_stage_write_shader_hash(&stages[i], device);
 
       populate_bs_prog_key(&stages[i],
                            pipeline->base.device,

@@ -346,6 +346,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_pipeline_creation_cache_control   = true,
       .EXT_pipeline_creation_feedback        = true,
       .EXT_pipeline_library_group_handles    = rt_enabled,
+      .EXT_pipeline_robustness               = true,
       .EXT_post_depth_coverage               = true,
       .EXT_primitives_generated_query        = true,
       .EXT_primitive_topology_list_restart   = true,
@@ -829,6 +830,9 @@ get_features(const struct anv_physical_device *pdevice,
       .floatRepresentation = true,
       .leastRepresentableValueForceUnormRepresentation = false,
       .depthBiasExact = true,
+
+      /* VK_EXT_pipeline_robustness */
+      .pipelineRobustness = true,
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
@@ -2408,6 +2412,20 @@ void anv_GetPhysicalDeviceProperties2(
           * normalization.
           */
          properties->allowCommandBufferQueryCopies = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT: {
+         VkPhysicalDevicePipelineRobustnessPropertiesEXT *properties =
+            (VkPhysicalDevicePipelineRobustnessPropertiesEXT *)ext;
+         properties->defaultRobustnessStorageBuffers =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
+         properties->defaultRobustnessUniformBuffers =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
+         properties->defaultRobustnessVertexInputs =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2_EXT;
+         properties->defaultRobustnessImages =
+            VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2_EXT;
          break;
       }
 

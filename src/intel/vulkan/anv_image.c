@@ -2567,9 +2567,14 @@ anv_image_fill_surface_state(struct anv_device *device,
                                         view_usage),
                        .x_offset_sa = tile_x_sa,
                        .y_offset_sa = tile_y_sa,
+                       /* Assume robustness with EXT_pipeline_robustness
+                        * because this can be turned on/off per pipeline and
+                        * we have no visibility on this here.
+                        */
                        .robust_image_access =
                           device->vk.enabled_features.robustImageAccess ||
-                          device->vk.enabled_features.robustImageAccess2);
+                          device->vk.enabled_features.robustImageAccess2 ||
+                          device->vk.enabled_extensions.EXT_pipeline_robustness);
 
    /* With the exception of gfx8, the bottom 12 bits of the MCS base address
     * are used to store other information. This should be ok, however, because

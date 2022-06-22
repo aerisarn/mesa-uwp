@@ -5,3 +5,4 @@ New drivers
 
 New features
 ------------
+VK_EXT_pipeline_robustness on ANV
