@@ -29,6 +29,10 @@
 
 #include "radix_sort/radv_radix_sort.h"
 
+static const uint32_t leaf_spv[] = {
+#include "bvh/leaf.comp.spv.h"
+};
+
 static const uint32_t morton_spv[] = {
 #include "bvh/morton.comp.spv.h"
 };
@@ -200,194 +204,23 @@ create_accel_build_shader(struct radv_device *device, const char *name)
    return b;
 }
 
-static nir_ssa_def *
-get_indices(nir_builder *b, nir_ssa_def *addr, nir_ssa_def *type, nir_ssa_def *id)
-{
-   const struct glsl_type *uvec3_type = glsl_vector_type(GLSL_TYPE_UINT, 3);
-   nir_variable *result =
-      nir_variable_create(b->shader, nir_var_shader_temp, uvec3_type, "indices");
+struct leaf_constants {
+   uint64_t bvh_addr;
+   uint64_t bounds_addr;
+   uint64_t ids_addr;
 
-   nir_push_if(b, nir_ult(b, type, nir_imm_int(b, 2)));
-   nir_push_if(b, nir_ieq_imm(b, type, VK_INDEX_TYPE_UINT16));
-   {
-      nir_ssa_def *index_id = nir_umul24(b, id, nir_imm_int(b, 6));
-      nir_ssa_def *indices[3];
-      for (unsigned i = 0; i < 3; ++i) {
-         indices[i] = nir_build_load_global(
-            b, 1, 16, nir_iadd(b, addr, nir_u2u64(b, nir_iadd_imm(b, index_id, 2 * i))));
-      }
-      nir_store_var(b, result, nir_u2u32(b, nir_vec(b, indices, 3)), 7);
-   }
-   nir_push_else(b, NULL);
-   {
-      nir_ssa_def *index_id = nir_umul24(b, id, nir_imm_int(b, 12));
-      nir_ssa_def *indices =
-         nir_build_load_global(b, 3, 32, nir_iadd(b, addr, nir_u2u64(b, index_id)));
-      nir_store_var(b, result, indices, 7);
-   }
-   nir_pop_if(b, NULL);
-   nir_push_else(b, NULL);
-   {
-      nir_ssa_def *index_id = nir_umul24(b, id, nir_imm_int(b, 3));
-      nir_ssa_def *indices[] = {
-         index_id,
-         nir_iadd_imm(b, index_id, 1),
-         nir_iadd_imm(b, index_id, 2),
-      };
+   uint64_t data_addr;
+   uint64_t indices_addr;
+   uint64_t transform_addr;
 
-      nir_push_if(b, nir_ieq_imm(b, type, VK_INDEX_TYPE_NONE_KHR));
-      {
-         nir_store_var(b, result, nir_vec(b, indices, 3), 7);
-      }
-      nir_push_else(b, NULL);
-      {
-         for (unsigned i = 0; i < 3; ++i) {
-            indices[i] =
-               nir_build_load_global(b, 1, 8, nir_iadd(b, addr, nir_u2u64(b, indices[i])));
-         }
-         nir_store_var(b, result, nir_u2u32(b, nir_vec(b, indices, 3)), 7);
-      }
-      nir_pop_if(b, NULL);
-   }
-   nir_pop_if(b, NULL);
-   return nir_load_var(b, result);
-}
-
-static void
-get_vertices(nir_builder *b, nir_ssa_def *addresses, nir_ssa_def *format, nir_ssa_def *positions[3])
-{
-   const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
-   nir_variable *results[3] = {
-      nir_variable_create(b->shader, nir_var_shader_temp, vec3_type, "vertex0"),
-      nir_variable_create(b->shader, nir_var_shader_temp, vec3_type, "vertex1"),
-      nir_variable_create(b->shader, nir_var_shader_temp, vec3_type, "vertex2")};
-
-   VkFormat formats[] = {
-      VK_FORMAT_R32G32B32_SFLOAT,
-      VK_FORMAT_R32G32B32A32_SFLOAT,
-      VK_FORMAT_R16G16B16_SFLOAT,
-      VK_FORMAT_R16G16B16A16_SFLOAT,
-      VK_FORMAT_R16G16_SFLOAT,
-      VK_FORMAT_R32G32_SFLOAT,
-      VK_FORMAT_R16G16_SNORM,
-      VK_FORMAT_R16G16_UNORM,
-      VK_FORMAT_R16G16B16A16_SNORM,
-      VK_FORMAT_R16G16B16A16_UNORM,
-      VK_FORMAT_R8G8_SNORM,
-      VK_FORMAT_R8G8_UNORM,
-      VK_FORMAT_R8G8B8A8_SNORM,
-      VK_FORMAT_R8G8B8A8_UNORM,
-      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-   };
-
-   for (unsigned f = 0; f < ARRAY_SIZE(formats); ++f) {
-      if (f + 1 < ARRAY_SIZE(formats))
-         nir_push_if(b, nir_ieq_imm(b, format, formats[f]));
-
-      for (unsigned i = 0; i < 3; ++i) {
-         switch (formats[f]) {
-         case VK_FORMAT_R32G32B32_SFLOAT:
-         case VK_FORMAT_R32G32B32A32_SFLOAT:
-            nir_store_var(b, results[i],
-                          nir_build_load_global(b, 3, 32, nir_channel(b, addresses, i)), 7);
-            break;
-         case VK_FORMAT_R32G32_SFLOAT:
-         case VK_FORMAT_R16G16_SFLOAT:
-         case VK_FORMAT_R16G16B16_SFLOAT:
-         case VK_FORMAT_R16G16B16A16_SFLOAT:
-         case VK_FORMAT_R16G16_SNORM:
-         case VK_FORMAT_R16G16_UNORM:
-         case VK_FORMAT_R16G16B16A16_SNORM:
-         case VK_FORMAT_R16G16B16A16_UNORM:
-         case VK_FORMAT_R8G8_SNORM:
-         case VK_FORMAT_R8G8_UNORM:
-         case VK_FORMAT_R8G8B8A8_SNORM:
-         case VK_FORMAT_R8G8B8A8_UNORM:
-         case VK_FORMAT_A2B10G10R10_UNORM_PACK32: {
-            unsigned components = MIN2(3, vk_format_get_nr_components(formats[f]));
-            unsigned comp_bits =
-               vk_format_get_blocksizebits(formats[f]) / vk_format_get_nr_components(formats[f]);
-            unsigned comp_bytes = comp_bits / 8;
-            nir_ssa_def *values[3];
-            nir_ssa_def *addr = nir_channel(b, addresses, i);
-
-            if (formats[f] == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
-               comp_bits = 10;
-               nir_ssa_def *val = nir_build_load_global(b, 1, 32, addr);
-               for (unsigned j = 0; j < 3; ++j)
-                  values[j] = nir_ubfe(b, val, nir_imm_int(b, j * 10), nir_imm_int(b, 10));
-            } else {
-               for (unsigned j = 0; j < components; ++j)
-                  values[j] =
-                     nir_build_load_global(b, 1, comp_bits, nir_iadd_imm(b, addr, j * comp_bytes));
-
-               for (unsigned j = components; j < 3; ++j)
-                  values[j] = nir_imm_intN_t(b, 0, comp_bits);
-            }
-
-            nir_ssa_def *vec;
-            if (util_format_is_snorm(vk_format_to_pipe_format(formats[f]))) {
-               for (unsigned j = 0; j < 3; ++j) {
-                  values[j] = nir_fdiv(b, nir_i2f32(b, values[j]),
-                                       nir_imm_float(b, (1u << (comp_bits - 1)) - 1));
-                  values[j] = nir_fmax(b, values[j], nir_imm_float(b, -1.0));
-               }
-               vec = nir_vec(b, values, 3);
-            } else if (util_format_is_unorm(vk_format_to_pipe_format(formats[f]))) {
-               for (unsigned j = 0; j < 3; ++j) {
-                  values[j] =
-                     nir_fdiv(b, nir_u2f32(b, values[j]), nir_imm_float(b, (1u << comp_bits) - 1));
-                  values[j] = nir_fmin(b, values[j], nir_imm_float(b, 1.0));
-               }
-               vec = nir_vec(b, values, 3);
-            } else if (comp_bits == 16)
-               vec = nir_f2f32(b, nir_vec(b, values, 3));
-            else
-               vec = nir_vec(b, values, 3);
-            nir_store_var(b, results[i], vec, 7);
-            break;
-         }
-         default:
-            unreachable("Unhandled format");
-         }
-      }
-      if (f + 1 < ARRAY_SIZE(formats))
-         nir_push_else(b, NULL);
-   }
-   for (unsigned f = 1; f < ARRAY_SIZE(formats); ++f) {
-      nir_pop_if(b, NULL);
-   }
-
-   for (unsigned i = 0; i < 3; ++i)
-      positions[i] = nir_load_var(b, results[i]);
-}
-
-struct build_primitive_constants {
-   uint64_t node_dst_addr;
-   uint64_t scratch_addr;
    uint32_t dst_offset;
-   uint32_t dst_scratch_offset;
+   uint32_t first_id;
    uint32_t geometry_type;
    uint32_t geometry_id;
 
-   union {
-      struct {
-         uint64_t vertex_addr;
-         uint64_t index_addr;
-         uint64_t transform_addr;
-         uint32_t vertex_stride;
-         uint32_t vertex_format;
-         uint32_t index_format;
-      };
-      struct {
-         uint64_t instance_data;
-         uint32_t array_of_pointers;
-      };
-      struct {
-         uint64_t aabb_addr;
-         uint32_t aabb_stride;
-      };
-   };
+   uint32_t stride;
+   uint32_t vertex_format;
+   uint32_t index_format;
 };
 
 struct morton_constants {
@@ -403,330 +236,6 @@ struct internal_constants {
    uint32_t dst_offset;
    uint32_t fill_count;
 };
-
-/* This inverts a 3x3 matrix using cofactors, as in e.g.
- * https://www.mathsisfun.com/algebra/matrix-inverse-minors-cofactors-adjugate.html */
-static void
-nir_invert_3x3(nir_builder *b, nir_ssa_def *in[3][3], nir_ssa_def *out[3][3])
-{
-   nir_ssa_def *cofactors[3][3];
-   for (unsigned i = 0; i < 3; ++i) {
-      for (unsigned j = 0; j < 3; ++j) {
-         cofactors[i][j] =
-            nir_fsub(b, nir_fmul(b, in[(i + 1) % 3][(j + 1) % 3], in[(i + 2) % 3][(j + 2) % 3]),
-                     nir_fmul(b, in[(i + 1) % 3][(j + 2) % 3], in[(i + 2) % 3][(j + 1) % 3]));
-      }
-   }
-
-   nir_ssa_def *det = NULL;
-   for (unsigned i = 0; i < 3; ++i) {
-      nir_ssa_def *det_part = nir_fmul(b, in[0][i], cofactors[0][i]);
-      det = det ? nir_fadd(b, det, det_part) : det_part;
-   }
-
-   nir_ssa_def *det_inv = nir_frcp(b, det);
-   for (unsigned i = 0; i < 3; ++i) {
-      for (unsigned j = 0; j < 3; ++j) {
-         out[i][j] = nir_fmul(b, cofactors[j][i], det_inv);
-      }
-   }
-}
-
-static void
-atomic_fminmax(struct radv_device *dev, nir_builder *b, nir_ssa_def *addr, bool is_max,
-               nir_ssa_def *val)
-{
-   /* Use an integer comparison to work correctly with negative zero. */
-   val = nir_bcsel(b, nir_ilt(b, val, nir_imm_int(b, 0)),
-                   nir_isub(b, nir_imm_int(b, -2147483648), val), val);
-
-   if (is_max)
-      nir_global_atomic_imax(b, 32, addr, val);
-   else
-      nir_global_atomic_imin(b, 32, addr, val);
-}
-
-static nir_shader *
-build_leaf_shader(struct radv_device *dev)
-{
-   const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
-   nir_builder b = create_accel_build_shader(dev, "accel_build_leaf_shader");
-
-   nir_ssa_def *pconst0 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
-   nir_ssa_def *pconst1 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 16, .range = 16);
-   nir_ssa_def *pconst2 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 32, .range = 16);
-   nir_ssa_def *pconst3 =
-      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 48, .range = 16);
-   nir_ssa_def *index_format =
-      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 64, .range = 4);
-
-   nir_ssa_def *node_dst_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0b0011));
-   nir_ssa_def *scratch_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0b1100));
-   nir_ssa_def *node_dst_offset = nir_channel(&b, pconst1, 0);
-   nir_ssa_def *scratch_offset = nir_channel(&b, pconst1, 1);
-   nir_ssa_def *geom_type = nir_channel(&b, pconst1, 2);
-   nir_ssa_def *geometry_id = nir_channel(&b, pconst1, 3);
-
-   nir_ssa_def *global_id =
-      nir_iadd(&b,
-               nir_imul_imm(&b, nir_channels(&b, nir_load_workgroup_id(&b, 32), 1),
-                            b.shader->info.workgroup_size[0]),
-               nir_channels(&b, nir_load_local_invocation_id(&b), 1));
-
-   nir_ssa_def *scratch_dst_addr = nir_iadd(
-      &b, scratch_addr,
-      nir_u2u64(&b, nir_iadd(&b, scratch_offset, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE))));
-   scratch_dst_addr = nir_iadd_imm(&b, scratch_dst_addr, SCRATCH_TOTAL_BOUNDS_SIZE);
-
-   nir_variable *bounds[2] = {
-      nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "min_bound"),
-      nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "max_bound"),
-   };
-
-   nir_push_if(&b, nir_ieq_imm(&b, geom_type, VK_GEOMETRY_TYPE_TRIANGLES_KHR));
-   { /* Triangles */
-      nir_ssa_def *vertex_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b0011));
-      nir_ssa_def *index_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b1100));
-      nir_ssa_def *transform_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst3, 3));
-      nir_ssa_def *vertex_stride = nir_channel(&b, pconst3, 2);
-      nir_ssa_def *vertex_format = nir_channel(&b, pconst3, 3);
-      unsigned repl_swizzle[4] = {0, 0, 0, 0};
-
-      nir_ssa_def *node_offset = nir_iadd(&b, node_dst_offset, nir_imul_imm(&b, global_id, 64));
-      nir_ssa_def *triangle_node_dst_addr = nir_iadd(&b, node_dst_addr, nir_u2u64(&b, node_offset));
-
-      nir_ssa_def *indices = get_indices(&b, index_addr, index_format, global_id);
-      nir_ssa_def *vertex_addresses = nir_iadd(
-         &b, nir_u2u64(&b, nir_imul(&b, indices, nir_swizzle(&b, vertex_stride, repl_swizzle, 3))),
-         nir_swizzle(&b, vertex_addr, repl_swizzle, 3));
-      nir_ssa_def *positions[3];
-      get_vertices(&b, vertex_addresses, vertex_format, positions);
-
-      nir_ssa_def *node_data[16];
-      memset(node_data, 0, sizeof(node_data));
-
-      nir_variable *transform[] = {
-         nir_variable_create(b.shader, nir_var_shader_temp, glsl_vec4_type(), "transform0"),
-         nir_variable_create(b.shader, nir_var_shader_temp, glsl_vec4_type(), "transform1"),
-         nir_variable_create(b.shader, nir_var_shader_temp, glsl_vec4_type(), "transform2"),
-      };
-      nir_store_var(&b, transform[0], nir_imm_vec4(&b, 1.0, 0.0, 0.0, 0.0), 0xf);
-      nir_store_var(&b, transform[1], nir_imm_vec4(&b, 0.0, 1.0, 0.0, 0.0), 0xf);
-      nir_store_var(&b, transform[2], nir_imm_vec4(&b, 0.0, 0.0, 1.0, 0.0), 0xf);
-
-      nir_push_if(&b, nir_ine_imm(&b, transform_addr, 0));
-      nir_store_var(&b, transform[0],
-                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 0),
-                                          .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER),
-                    0xf);
-      nir_store_var(&b, transform[1],
-                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 16),
-                                          .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER),
-                    0xf);
-      nir_store_var(&b, transform[2],
-                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 32),
-                                          .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER),
-                    0xf);
-      nir_pop_if(&b, NULL);
-
-      for (unsigned i = 0; i < 3; ++i)
-         for (unsigned j = 0; j < 3; ++j)
-            node_data[i * 3 + j] = nir_fdph(&b, positions[i], nir_load_var(&b, transform[j]));
-
-      nir_ssa_def *min_bound = NULL;
-      nir_ssa_def *max_bound = NULL;
-      for (unsigned i = 0; i < 3; ++i) {
-         nir_ssa_def *position = nir_vec(&b, node_data + i * 3, 3);
-         if (min_bound) {
-            min_bound = nir_fmin(&b, min_bound, position);
-            max_bound = nir_fmax(&b, max_bound, position);
-         } else {
-            min_bound = position;
-            max_bound = position;
-         }
-      }
-
-      nir_store_var(&b, bounds[0], min_bound, 7);
-      nir_store_var(&b, bounds[1], max_bound, 7);
-
-      node_data[12] = global_id;
-      node_data[13] = geometry_id;
-      node_data[15] = nir_imm_int(&b, 9);
-      for (unsigned i = 0; i < ARRAY_SIZE(node_data); ++i)
-         if (!node_data[i])
-            node_data[i] = nir_imm_int(&b, 0);
-
-      for (unsigned i = 0; i < 4; ++i) {
-         nir_build_store_global(&b, nir_vec(&b, node_data + i * 4, 4),
-                                nir_iadd_imm(&b, triangle_node_dst_addr, i * 16), .align_mul = 16);
-      }
-
-      nir_ssa_def *node_id =
-         nir_iadd_imm(&b, nir_ushr_imm(&b, node_offset, 3), radv_bvh_node_triangle);
-      nir_build_store_global(&b, node_id, scratch_dst_addr);
-   }
-   nir_push_else(&b, NULL);
-   nir_push_if(&b, nir_ieq_imm(&b, geom_type, VK_GEOMETRY_TYPE_AABBS_KHR));
-   { /* AABBs */
-      nir_ssa_def *aabb_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b0011));
-      nir_ssa_def *aabb_stride = nir_channel(&b, pconst2, 2);
-
-      nir_ssa_def *node_offset = nir_iadd(&b, node_dst_offset, nir_imul_imm(&b, global_id, 64));
-      nir_ssa_def *aabb_node_dst_addr = nir_iadd(&b, node_dst_addr, nir_u2u64(&b, node_offset));
-
-      nir_ssa_def *node_id = nir_iadd_imm(&b, nir_ushr_imm(&b, node_offset, 3), radv_bvh_node_aabb);
-      nir_build_store_global(&b, node_id, scratch_dst_addr);
-
-      aabb_addr = nir_iadd(&b, aabb_addr, nir_u2u64(&b, nir_imul(&b, aabb_stride, global_id)));
-
-      nir_ssa_def *min_bound =
-         nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, aabb_addr, 0),
-                               .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
-      nir_ssa_def *max_bound =
-         nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, aabb_addr, 12),
-                               .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
-
-      nir_store_var(&b, bounds[0], min_bound, 7);
-      nir_store_var(&b, bounds[1], max_bound, 7);
-
-      nir_ssa_def *values[] = {nir_channel(&b, min_bound, 0),
-                               nir_channel(&b, min_bound, 1),
-                               nir_channel(&b, min_bound, 2),
-                               nir_channel(&b, max_bound, 0),
-                               nir_channel(&b, max_bound, 1),
-                               nir_channel(&b, max_bound, 2),
-                               global_id,
-                               geometry_id};
-
-      nir_build_store_global(&b, nir_vec(&b, values + 0, 4),
-                             nir_iadd_imm(&b, aabb_node_dst_addr, 0), .align_mul = 16);
-      nir_build_store_global(&b, nir_vec(&b, values + 4, 4),
-                             nir_iadd_imm(&b, aabb_node_dst_addr, 16), .align_mul = 16);
-   }
-   nir_push_else(&b, NULL);
-   { /* Instances */
-
-      nir_variable *instance_addr_var =
-         nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint64_t_type(), "instance_addr");
-      nir_push_if(&b, nir_ine_imm(&b, nir_channel(&b, pconst2, 2), 0));
-      {
-         nir_ssa_def *ptr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b0011)),
-                                     nir_u2u64(&b, nir_imul_imm(&b, global_id, 8)));
-         nir_ssa_def *addr =
-            nir_pack_64_2x32(&b, nir_build_load_global(&b, 2, 32, ptr, .align_mul = 8));
-         nir_store_var(&b, instance_addr_var, addr, 1);
-      }
-      nir_push_else(&b, NULL);
-      {
-         nir_ssa_def *addr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 0b0011)),
-                                      nir_u2u64(&b, nir_imul_imm(&b, global_id, 64)));
-         nir_store_var(&b, instance_addr_var, addr, 1);
-      }
-      nir_pop_if(&b, NULL);
-      nir_ssa_def *instance_addr = nir_load_var(&b, instance_addr_var);
-
-      nir_ssa_def *inst_transform[] = {
-         nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_addr, 0)),
-         nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_addr, 16)),
-         nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_addr, 32))};
-      nir_ssa_def *inst3 = nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_addr, 48));
-
-      nir_ssa_def *node_offset = nir_iadd(&b, node_dst_offset, nir_imul_imm(&b, global_id, 128));
-      node_dst_addr = nir_iadd(&b, node_dst_addr, nir_u2u64(&b, node_offset));
-
-      nir_ssa_def *node_id =
-         nir_iadd_imm(&b, nir_ushr_imm(&b, node_offset, 3), radv_bvh_node_instance);
-      nir_build_store_global(&b, node_id, scratch_dst_addr);
-
-      nir_ssa_def *header_addr = nir_pack_64_2x32(&b, nir_channels(&b, inst3, 12));
-      nir_push_if(&b, nir_ine_imm(&b, header_addr, 0));
-      nir_ssa_def *header_root_offset =
-         nir_build_load_global(&b, 1, 32, nir_iadd_imm(&b, header_addr, 0));
-      nir_ssa_def *header_min = nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, header_addr, 8));
-      nir_ssa_def *header_max = nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, header_addr, 20));
-
-      nir_ssa_def *bound_defs[2][3];
-      for (unsigned i = 0; i < 3; ++i) {
-         bound_defs[0][i] = bound_defs[1][i] = nir_channel(&b, inst_transform[i], 3);
-
-         nir_ssa_def *mul_a = nir_fmul(&b, nir_channels(&b, inst_transform[i], 7), header_min);
-         nir_ssa_def *mul_b = nir_fmul(&b, nir_channels(&b, inst_transform[i], 7), header_max);
-         nir_ssa_def *mi = nir_fmin(&b, mul_a, mul_b);
-         nir_ssa_def *ma = nir_fmax(&b, mul_a, mul_b);
-         for (unsigned j = 0; j < 3; ++j) {
-            bound_defs[0][i] = nir_fadd(&b, bound_defs[0][i], nir_channel(&b, mi, j));
-            bound_defs[1][i] = nir_fadd(&b, bound_defs[1][i], nir_channel(&b, ma, j));
-         }
-      }
-
-      nir_store_var(&b, bounds[0], nir_vec(&b, bound_defs[0], 3), 7);
-      nir_store_var(&b, bounds[1], nir_vec(&b, bound_defs[1], 3), 7);
-
-      /* Store object to world matrix */
-      for (unsigned i = 0; i < 3; ++i) {
-         nir_ssa_def *vals[3];
-         for (unsigned j = 0; j < 3; ++j)
-            vals[j] = nir_channel(&b, inst_transform[j], i);
-
-         nir_build_store_global(&b, nir_vec(&b, vals, 3),
-                                nir_iadd_imm(&b, node_dst_addr, 92 + 12 * i));
-      }
-
-      nir_ssa_def *m_in[3][3], *m_out[3][3], *m_vec[3][4];
-      for (unsigned i = 0; i < 3; ++i)
-         for (unsigned j = 0; j < 3; ++j)
-            m_in[i][j] = nir_channel(&b, inst_transform[i], j);
-      nir_invert_3x3(&b, m_in, m_out);
-      for (unsigned i = 0; i < 3; ++i) {
-         for (unsigned j = 0; j < 3; ++j)
-            m_vec[i][j] = m_out[i][j];
-         m_vec[i][3] = nir_channel(&b, inst_transform[i], 3);
-      }
-
-      for (unsigned i = 0; i < 3; ++i) {
-         nir_build_store_global(&b, nir_vec(&b, m_vec[i], 4),
-                                nir_iadd_imm(&b, node_dst_addr, 16 + 16 * i));
-      }
-
-      nir_ssa_def *out0[4] = {
-         nir_ior(&b, nir_channel(&b, nir_unpack_64_2x32(&b, header_addr), 0), header_root_offset),
-         nir_channel(&b, nir_unpack_64_2x32(&b, header_addr), 1), nir_channel(&b, inst3, 0),
-         nir_channel(&b, inst3, 1)};
-      nir_build_store_global(&b, nir_vec(&b, out0, 4), nir_iadd_imm(&b, node_dst_addr, 0));
-      nir_build_store_global(&b, global_id, nir_iadd_imm(&b, node_dst_addr, 88));
-      nir_pop_if(&b, NULL);
-      nir_build_store_global(&b, nir_load_var(&b, bounds[0]), nir_iadd_imm(&b, node_dst_addr, 64));
-      nir_build_store_global(&b, nir_load_var(&b, bounds[1]), nir_iadd_imm(&b, node_dst_addr, 76));
-   }
-   nir_pop_if(&b, NULL);
-   nir_pop_if(&b, NULL);
-
-   nir_ssa_def *min = nir_load_var(&b, bounds[0]);
-   nir_ssa_def *max = nir_load_var(&b, bounds[1]);
-
-   nir_ssa_def *min_reduced = nir_reduce(&b, min, .reduction_op = nir_op_fmin);
-   nir_ssa_def *max_reduced = nir_reduce(&b, max, .reduction_op = nir_op_fmax);
-
-   nir_push_if(&b, nir_elect(&b, 1));
-
-   atomic_fminmax(dev, &b, scratch_addr, false, nir_channel(&b, min_reduced, 0));
-   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 4), false,
-                  nir_channel(&b, min_reduced, 1));
-   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 8), false,
-                  nir_channel(&b, min_reduced, 2));
-
-   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 12), true,
-                  nir_channel(&b, max_reduced, 0));
-   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 16), true,
-                  nir_channel(&b, max_reduced, 1));
-   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 20), true,
-                  nir_channel(&b, max_reduced, 2));
-
-   return b.shader;
-}
 
 enum copy_mode {
    COPY_MODE_COPY,
@@ -1096,12 +605,12 @@ VkResult
 radv_device_init_accel_struct_build_state(struct radv_device *device)
 {
    VkResult result;
-   nir_shader *leaf_cs = build_leaf_shader(device);
    nir_shader *copy_cs = build_copy_shader(device);
 
-   result = create_build_pipeline(device, leaf_cs, sizeof(struct build_primitive_constants),
-                                  &device->meta_state.accel_struct_build.leaf_pipeline,
-                                  &device->meta_state.accel_struct_build.leaf_p_layout);
+   result =
+      create_build_pipeline_spv(device, leaf_spv, sizeof(leaf_spv), sizeof(struct leaf_constants),
+                                &device->meta_state.accel_struct_build.leaf_pipeline,
+                                &device->meta_state.accel_struct_build.leaf_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1188,14 +697,15 @@ radv_CmdBuildAccelerationStructuresKHR(
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
                        pInfos[i].dstAccelerationStructure);
 
-      struct build_primitive_constants prim_consts = {
-         .node_dst_addr = radv_accel_struct_get_va(accel_struct),
-         .scratch_addr = pInfos[i].scratchData.deviceAddress,
-         .dst_offset = ALIGN(sizeof(struct radv_accel_struct_header), 64) + 128,
-         .dst_scratch_offset = 0,
+      struct leaf_constants leaf_consts = {
+         .bvh_addr = radv_accel_struct_get_va(accel_struct),
+         .bounds_addr = pInfos[i].scratchData.deviceAddress,
+         .ids_addr = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
+         .dst_offset =
+            ALIGN(sizeof(struct radv_accel_struct_header), 64) + sizeof(struct radv_bvh_box32_node),
       };
-      bvh_states[i].node_offset = prim_consts.dst_offset;
-      bvh_states[i].instance_offset = prim_consts.dst_offset;
+      bvh_states[i].node_offset = leaf_consts.dst_offset;
+      bvh_states[i].instance_offset = leaf_consts.dst_offset;
 
       for (int inst = 1; inst >= 0; --inst) {
          for (unsigned j = 0; j < pInfos[i].geometryCount; ++j) {
@@ -1208,42 +718,52 @@ radv_CmdBuildAccelerationStructuresKHR(
             const VkAccelerationStructureBuildRangeInfoKHR *buildRangeInfo =
                &ppBuildRangeInfos[i][j];
 
-            prim_consts.geometry_type = geom->geometryType;
-            prim_consts.geometry_id = j | (geom->flags << 28);
+            leaf_consts.first_id = bvh_states[i].node_count;
+
+            leaf_consts.geometry_type = geom->geometryType;
+            leaf_consts.geometry_id = j | (geom->flags << 28);
             unsigned prim_size;
             switch (geom->geometryType) {
             case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
-               prim_consts.vertex_addr =
+               leaf_consts.data_addr =
                   geom->geometry.triangles.vertexData.deviceAddress +
                   buildRangeInfo->firstVertex * geom->geometry.triangles.vertexStride;
-               prim_consts.index_addr = geom->geometry.triangles.indexData.deviceAddress;
+               leaf_consts.indices_addr = geom->geometry.triangles.indexData.deviceAddress;
 
                if (geom->geometry.triangles.indexType == VK_INDEX_TYPE_NONE_KHR)
-                  prim_consts.vertex_addr += buildRangeInfo->primitiveOffset;
+                  leaf_consts.data_addr += buildRangeInfo->primitiveOffset;
                else
-                  prim_consts.index_addr += buildRangeInfo->primitiveOffset;
+                  leaf_consts.indices_addr += buildRangeInfo->primitiveOffset;
 
-               prim_consts.transform_addr = geom->geometry.triangles.transformData.deviceAddress;
-               if (prim_consts.transform_addr)
-                  prim_consts.transform_addr += buildRangeInfo->transformOffset;
+               leaf_consts.transform_addr = geom->geometry.triangles.transformData.deviceAddress;
+               if (leaf_consts.transform_addr)
+                  leaf_consts.transform_addr += buildRangeInfo->transformOffset;
 
-               prim_consts.vertex_stride = geom->geometry.triangles.vertexStride;
-               prim_consts.vertex_format = geom->geometry.triangles.vertexFormat;
-               prim_consts.index_format = geom->geometry.triangles.indexType;
-               prim_size = 64;
+               leaf_consts.stride = geom->geometry.triangles.vertexStride;
+               leaf_consts.vertex_format = geom->geometry.triangles.vertexFormat;
+               leaf_consts.index_format = geom->geometry.triangles.indexType;
+
+               prim_size = sizeof(struct radv_bvh_triangle_node);
                break;
             case VK_GEOMETRY_TYPE_AABBS_KHR:
-               prim_consts.aabb_addr =
+               leaf_consts.data_addr =
                   geom->geometry.aabbs.data.deviceAddress + buildRangeInfo->primitiveOffset;
-               prim_consts.aabb_stride = geom->geometry.aabbs.stride;
-               prim_size = 64;
+               leaf_consts.stride = geom->geometry.aabbs.stride;
+
+               prim_size = sizeof(struct radv_bvh_aabb_node);
                break;
             case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-               prim_consts.instance_data =
+               leaf_consts.data_addr =
                   geom->geometry.instances.data.deviceAddress + buildRangeInfo->primitiveOffset;
-               prim_consts.array_of_pointers = geom->geometry.instances.arrayOfPointers ? 1 : 0;
-               prim_size = 128;
+
+               if (geom->geometry.instances.arrayOfPointers)
+                  leaf_consts.stride = 8;
+               else
+                  leaf_consts.stride = sizeof(VkAccelerationStructureInstanceKHR);
+
                bvh_states[i].instance_count += buildRangeInfo->primitiveCount;
+
+               prim_size = sizeof(struct radv_bvh_instance_node);
                break;
             default:
                unreachable("Unknown geometryType");
@@ -1251,14 +771,15 @@ radv_CmdBuildAccelerationStructuresKHR(
 
             radv_CmdPushConstants(
                commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.leaf_p_layout,
-               VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(prim_consts), &prim_consts);
+               VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(leaf_consts), &leaf_consts);
             radv_unaligned_dispatch(cmd_buffer, buildRangeInfo->primitiveCount, 1, 1);
-            prim_consts.dst_offset += prim_size * buildRangeInfo->primitiveCount;
-            prim_consts.dst_scratch_offset += KEY_ID_PAIR_SIZE * buildRangeInfo->primitiveCount;
+
+            leaf_consts.dst_offset += prim_size * buildRangeInfo->primitiveCount;
+
+            bvh_states[i].node_count += buildRangeInfo->primitiveCount;
          }
       }
-      bvh_states[i].node_offset = prim_consts.dst_offset;
-      bvh_states[i].node_count = prim_consts.dst_scratch_offset / KEY_ID_PAIR_SIZE;
+      bvh_states[i].node_offset = leaf_consts.dst_offset;
    }
 
    cmd_buffer->state.flush_bits |= flush_bits;
