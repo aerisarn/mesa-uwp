@@ -546,9 +546,7 @@ populate_bs_prog_key(const struct anv_device *device,
 struct anv_pipeline_stage {
    gl_shader_stage stage;
 
-   const struct vk_shader_module *module;
-   const char *entrypoint;
-   const VkSpecializationInfo *spec_info;
+   const VkPipelineShaderStageCreateInfo *info;
 
    unsigned char shader_sha1[20];
 
@@ -597,7 +595,7 @@ anv_pipeline_hash_graphics(struct anv_graphics_pipeline *pipeline,
    _mesa_sha1_update(&ctx, &rba, sizeof(rba));
 
    for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-      if (stages[s].entrypoint) {
+      if (stages[s].info) {
          _mesa_sha1_update(&ctx, stages[s].shader_sha1,
                            sizeof(stages[s].shader_sha1));
          _mesa_sha1_update(&ctx, &stages[s].key, brw_prog_key_size(s));
@@ -700,12 +698,13 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
       return nir;
    }
 
+   VK_FROM_HANDLE(vk_shader_module, module, stage->info->module);
    nir = anv_shader_compile_to_nir(pipeline->device,
                                    mem_ctx,
-                                   stage->module,
-                                   stage->entrypoint,
+                                   module,
+                                   stage->info->pName,
                                    stage->stage,
-                                   stage->spec_info);
+                                   stage->info->pSpecializationInfo);
    if (nir) {
       anv_device_upload_nir(pipeline->device, cache, nir, stage->shader_sha1);
       return nir;
@@ -1413,14 +1412,13 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    VkResult result;
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
+      VK_FROM_HANDLE(vk_shader_module, module, sinfo->module);
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
       int64_t stage_start = os_time_get_nano();
 
       stages[stage].stage = stage;
-      stages[stage].module = vk_shader_module_from_handle(sinfo->module);
-      stages[stage].entrypoint = sinfo->pName;
-      stages[stage].spec_info = sinfo->pSpecializationInfo;
+      stages[stage].info = sinfo;
       vk_pipeline_hash_shader_stage(&info->pStages[i], stages[stage].shader_sha1);
 
       const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info =
@@ -1428,7 +1426,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
 
       enum brw_subgroup_size_type subgroup_size_type =
-         anv_subgroup_size_type(stage, stages[stage].module, sinfo->flags, rss_info);
+         anv_subgroup_size_type(stage, module, sinfo->flags, rss_info);
 
       const struct anv_device *device = pipeline->base.device;
       switch (stage) {
@@ -1493,7 +1491,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    anv_pipeline_hash_graphics(pipeline, layout, stages, sha1);
 
    for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-      if (!stages[s].entrypoint)
+      if (!stages[s].info)
          continue;
 
       stages[s].cache_key.stage = s;
@@ -1507,7 +1505,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       unsigned found = 0;
       unsigned cache_hits = 0;
       for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-         if (!stages[s].entrypoint)
+         if (!stages[s].info)
             continue;
 
          int64_t stage_start = os_time_get_nano();
@@ -1537,7 +1535,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          }
          /* We found all our shaders in the cache.  We're done. */
          for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-            if (!stages[s].entrypoint)
+            if (!stages[s].info)
                continue;
 
             anv_pipeline_add_executables(&pipeline->base, &stages[s],
@@ -1591,7 +1589,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
    for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
       gl_shader_stage s = shader_order[i];
-      if (!stages[s].entrypoint)
+      if (!stages[s].info)
          continue;
 
       int64_t stage_start = os_time_get_nano();
@@ -1637,7 +1635,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    struct anv_pipeline_stage *next_stage = NULL;
    for (int i = ARRAY_SIZE(shader_order) - 1; i >= 0; i--) {
       gl_shader_stage s = shader_order[i];
-      if (!stages[s].entrypoint)
+      if (!stages[s].info)
          continue;
 
       switch (s) {
@@ -1689,7 +1687,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    struct anv_pipeline_stage *prev_stage = NULL;
    for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
       gl_shader_stage s = shader_order[i];
-      if (!stages[s].entrypoint)
+      if (!stages[s].info)
          continue;
 
       int64_t stage_start = os_time_get_nano();
@@ -1724,15 +1722,15 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
     */
    const struct intel_device_info *devinfo = &pipeline->base.device->info;
    if (devinfo->has_coarse_pixel_primitive_and_cb &&
-       stages[MESA_SHADER_FRAGMENT].entrypoint &&
+       stages[MESA_SHADER_FRAGMENT].info &&
        stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
-       stages[MESA_SHADER_MESH].entrypoint == NULL) {
+       stages[MESA_SHADER_MESH].info == NULL) {
       struct anv_pipeline_stage *last_psr = NULL;
 
       for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
          gl_shader_stage s = shader_order[ARRAY_SIZE(shader_order) - i - 1];
 
-         if (!stages[s].entrypoint ||
+         if (!stages[s].info ||
              !gl_shader_stage_can_set_fragment_shading_rate(s))
             continue;
 
@@ -1747,7 +1745,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    prev_stage = NULL;
    for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
       gl_shader_stage s = shader_order[i];
-      if (!stages[s].entrypoint)
+      if (!stages[s].info)
          continue;
 
       int64_t stage_start = os_time_get_nano();
@@ -1872,9 +1870,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
    struct anv_pipeline_stage stage = {
       .stage = MESA_SHADER_COMPUTE,
-      .module = module,
-      .entrypoint = sinfo->pName,
-      .spec_info = sinfo->pSpecializationInfo,
+      .info = &info->stage,
       .cache_key = {
          .stage = MESA_SHADER_COMPUTE,
       },
@@ -1891,7 +1887,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                            PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
 
    const enum brw_subgroup_size_type subgroup_size_type =
-      anv_subgroup_size_type(MESA_SHADER_COMPUTE, stage.module, info->stage.flags, rss_info);
+      anv_subgroup_size_type(MESA_SHADER_COMPUTE, module, info->stage.flags, rss_info);
 
    populate_cs_prog_key(device, subgroup_size_type,
                         device->robust_buffer_access,
@@ -2689,16 +2685,15 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
-      if (sinfo->module == VK_NULL_HANDLE)
+      VK_FROM_HANDLE(vk_shader_module, module, sinfo->module);
+      if (module != NULL)
          continue;
 
       int64_t stage_start = os_time_get_nano();
 
       stages[i] = (struct anv_pipeline_stage) {
          .stage = vk_to_mesa_shader_stage(sinfo->stage),
-         .module = vk_shader_module_from_handle(sinfo->module),
-         .entrypoint = sinfo->pName,
-         .spec_info = sinfo->pSpecializationInfo,
+         .info = sinfo,
          .cache_key = {
             .stage = vk_to_mesa_shader_stage(sinfo->stage),
          },
@@ -2761,7 +2756,7 @@ anv_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
 {
    uint32_t shaders = 0, cache_hits = 0;
    for (uint32_t i = 0; i < info->stageCount; i++) {
-      if (stages[i].entrypoint == NULL)
+      if (stages[i].info == NULL)
          continue;
 
       shaders++;
@@ -2833,7 +2828,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
    }
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
-      if (stages[i].entrypoint == NULL)
+      if (stages[i].info == NULL)
          continue;
 
       int64_t stage_start = os_time_get_nano();
@@ -2851,7 +2846,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
    }
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
-      if (stages[i].entrypoint == NULL)
+      if (stages[i].info == NULL)
          continue;
 
       /* Shader found in cache already. */
