@@ -540,7 +540,28 @@ optimize_frontfacing_ternary(nir_to_brw_state &ntb,
 
    fs_reg tmp = s.vgrf(glsl_int_type());
 
-   if (devinfo->ver >= 12) {
+   if (devinfo->ver >= 12 && s.max_polygons == 2) {
+      /* According to the BSpec "PS Thread Payload for Normal
+       * Dispatch", the front/back facing interpolation bit is stored
+       * as bit 15 of either the R1.1 or R1.6 poly info field, for the
+       * first and second polygons respectively in multipolygon PS
+       * dispatch mode.
+       */
+      assert(s.dispatch_width == 16);
+
+      for (unsigned i = 0; i < s.max_polygons; i++) {
+         const fs_builder hbld = ntb.bld.group(8, i);
+         struct brw_reg g1 = retype(brw_vec1_grf(1, 1 + 5 * i),
+                                    BRW_REGISTER_TYPE_UW);
+
+         if (value1 == -1.0f)
+            g1.negate = true;
+
+         hbld.OR(subscript(offset(tmp, hbld, i), BRW_REGISTER_TYPE_UW, 1),
+                 g1, brw_imm_uw(0x3f80));
+      }
+
+   } else if (devinfo->ver >= 12) {
       /* Bit 15 of g1.1 is 0 if the polygon is front facing. */
       fs_reg g1 = fs_reg(retype(brw_vec1_grf(1, 1), BRW_REGISTER_TYPE_W));
 
@@ -3547,10 +3568,30 @@ emit_frontfacing_interpolation(nir_to_brw_state &ntb)
 {
    const intel_device_info *devinfo = ntb.devinfo;
    const fs_builder &bld = ntb.bld;
+   fs_visitor &s = ntb.s;
 
    fs_reg ff = bld.vgrf(BRW_REGISTER_TYPE_D);
 
-   if (devinfo->ver >= 12) {
+   if (devinfo->ver >= 12 && s.max_polygons == 2) {
+      /* According to the BSpec "PS Thread Payload for Normal
+       * Dispatch", the front/back facing interpolation bit is stored
+       * as bit 15 of either the R1.1 or R1.6 poly info field, for the
+       * first and second polygons respectively in multipolygon PS
+       * dispatch mode.
+       */
+      assert(s.dispatch_width == 16);
+      fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_W);
+
+      for (unsigned i = 0; i < s.max_polygons; i++) {
+         const fs_builder hbld = bld.group(8, i);
+         const struct brw_reg g1 = retype(brw_vec1_grf(1, 1 + 5 * i),
+                                          BRW_REGISTER_TYPE_W);
+         hbld.ASR(offset(tmp, hbld, i), g1, brw_imm_d(15));
+      }
+
+      bld.NOT(ff, tmp);
+
+   } else if (devinfo->ver >= 12) {
       fs_reg g1 = fs_reg(retype(brw_vec1_grf(1, 1), BRW_REGISTER_TYPE_W));
 
       fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_W);
