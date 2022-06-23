@@ -3304,7 +3304,26 @@ fs_nir_emit_gs_intrinsic(nir_to_brw_state &ntb,
 static fs_reg
 fetch_render_target_array_index(const fs_builder &bld)
 {
-   if (bld.shader->devinfo->ver >= 12) {
+   const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
+
+   if (bld.shader->devinfo->ver >= 12 && v->max_polygons == 2) {
+      /* According to the BSpec "PS Thread Payload for Normal
+       * Dispatch", the render target array index is stored as bits
+       * 26:16 of either the R1.1 or R1.6 poly info dwords, for the
+       * first and second polygons respectively in multipolygon PS
+       * dispatch mode.
+       */
+      assert(bld.dispatch_width() == 16);
+      const fs_reg idx = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+      for (unsigned i = 0; i < v->max_polygons; i++) {
+         const fs_builder hbld = bld.group(8, i);
+         const struct brw_reg g1 = brw_uw1_reg(BRW_GENERAL_REGISTER_FILE, 1, 3 + 10 * i);
+         hbld.AND(offset(idx, hbld, i), g1, brw_imm_uw(0x7ff));
+      }
+
+      return idx;
+   } else if (bld.shader->devinfo->ver >= 12) {
       /* The render target array index is provided in the thread payload as
        * bits 26:16 of r1.1.
        */
