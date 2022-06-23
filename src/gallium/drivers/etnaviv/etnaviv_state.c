@@ -738,6 +738,20 @@ etna_update_zsa(struct etna_context *ctx)
          late_z_test = true;
    }
 
+   /* Linear PE breaks the combination of early test with late write, as it
+    * seems RA and PE disagree about the cache layout in this mode. Switch to
+    * late test to work around this issue.
+    */
+   if (ctx->framebuffer_s.nr_cbufs > 0) {
+      struct etna_surface *cbuf = etna_surface(ctx->framebuffer_s.cbufs[0]);
+      struct etna_resource *res = etna_resource(cbuf->base.texture);
+
+      if (res->layout == ETNA_LAYOUT_LINEAR && early_z_test && late_z_write) {
+         early_z_test = false;
+         late_z_test = true;
+      }
+   }
+
    new_pe_depth = VIVS_PE_DEPTH_CONFIG_DEPTH_FUNC(zsa->z_test_enabled ?
                      /* compare funcs have 1 to 1 mapping */
                      zsa_state->depth_func : PIPE_FUNC_ALWAYS) |
@@ -812,7 +826,8 @@ static const struct etna_state_updater etna_state_updates[] = {
                             ETNA_DIRTY_RASTERIZER | ETNA_DIRTY_VIEWPORT,
    },
    {
-      etna_update_zsa, ETNA_DIRTY_ZSA | ETNA_DIRTY_SHADER,
+      etna_update_zsa, ETNA_DIRTY_ZSA | ETNA_DIRTY_SHADER |
+                       ETNA_DIRTY_FRAMEBUFFER,
    },
    {
       etna_record_flush_resources, ETNA_DIRTY_FRAMEBUFFER,
