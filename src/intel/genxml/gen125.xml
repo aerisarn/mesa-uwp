@@ -1583,6 +1583,26 @@
       <field name="Inline Data" start="0" end="31" type="uint" />
     </group>
   </instruction>
+  <instruction name="EXECUTE_INDIRECT_DRAW" bias="2" length="6" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="4" />
+    <field name="Predicate Enable" start="8" end="8" type="bool" />
+    <field name="TBIMR Enabled" start="9" end="9" type="uint" />
+    <field name="Argument Format" start="10" end="11" type="uint">
+      <value name="DRAW" value="0" />
+      <value name="DRAWINDEXED" value="1" />
+      <value name="MESH_3D" value="2" />
+      <value name="MESH_1D" value="3" />
+    </field>
+    <field name="MOCS" start="12" end="15" type="uint" nonzero="true" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="0" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="4" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="3" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="Max Count" start="32" end="63" type="uint" />
+    <field name="Count Buffer Indirect Enable" start="64" end="64" type="bool" />
+    <field name="Count Buffer Address" start="66" end="127" type="address" />
+    <field name="Argument Buffer Start Address" start="130" end="191" type="address" />
+  </instruction>
   <instruction name="HCP_FQM_STATE" bias="2" length="34" engine="video">
     <field name="DWord Length" start="0" end="11" type="uint" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="5" />
