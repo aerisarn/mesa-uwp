@@ -4871,6 +4871,26 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
 #endif
 }
 
+static const bool
+execute_indirect_draw_supported(struct anv_cmd_buffer *cmd_buffer)
+{
+#if GFX_VERx10 >= 125
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
+   struct anv_graphics_pipeline *pipeline =
+      anv_pipeline_to_graphics(cmd_buffer->state.gfx.base.pipeline);
+   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+   const bool is_multiview = pipeline->instance_multiplier > 1;
+
+   return (devinfo->has_indirect_unroll &&
+           !is_multiview &&
+           !vs_prog_data->uses_firstvertex &&
+           !vs_prog_data->uses_baseinstance &&
+           !vs_prog_data->uses_drawid);
+#else
+   return false;
+#endif
+}
+
 static void
 emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
                     struct anv_address indirect_data_addr,
@@ -4883,6 +4903,12 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
       anv_pipeline_to_graphics(cmd_buffer->state.gfx.base.pipeline);
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
 #endif
+   UNUSED const struct intel_device_info *devinfo = cmd_buffer->device->info;
+   UNUSED const bool aligned_stride =
+      (indirect_data_stride == 0 ||
+       indirect_data_stride == sizeof(VkDrawIndirectCommand));
+   UNUSED const bool execute_indirect_supported =
+      execute_indirect_draw_supported(cmd_buffer);
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4918,8 +4944,6 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
        */
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-      load_indirect_parameters(cmd_buffer, draw, indexed, i);
-
       /* Wa_1306463417, Wa_16011107343 - Send HS state for every primitive,
        * first one was handled by cmd_buffer_flush_gfx_state.
        */
@@ -4927,17 +4951,44 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
          genX(emit_hs)(cmd_buffer);
       genX(emit_ds)(cmd_buffer);
 
-      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
-      anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
+      if (execute_indirect_supported) {
 #if GFX_VERx10 >= 125
-         prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+         genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
+         anv_batch_emit(&cmd_buffer->batch, GENX(EXECUTE_INDIRECT_DRAW), ind) {
+            ind.ArgumentFormat             = DRAW;
+            ind.TBIMREnabled               = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+            ind.PredicateEnable            =
+               cmd_buffer->state.conditional_render_enabled;
+            ind.MaxCount                   = aligned_stride ? draw_count : 1;
+            ind.ArgumentBufferStartAddress = draw;
+            ind.MOCS                       =
+               anv_mocs(cmd_buffer->device, draw.bo, 0);
+         }
+         /* If all the indirect structures are aligned, then we can let the HW
+          * do the unrolling and we only need one instruction. Otherwise we
+          * need to emit one instruction per draw, but we're still avoiding
+          * the register loads with MI commands.
+          */
+         if (aligned_stride)
+            break;
+#else
+         unreachable("EXECUTE_INDIRECT_DRAW instruction expectation mismatch");
 #endif
-         prim.IndirectParameterEnable  = true;
-         prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
-         prim.VertexAccessType         = indexed ? RANDOM : SEQUENTIAL;
+      } else {
+         load_indirect_parameters(cmd_buffer, draw, indexed, i);
+
+         genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
+         anv_batch_emit(&cmd_buffer->batch, _3DPRIMITIVE_DIRECT, prim) {
+#if GFX_VERx10 >= 125
+            prim.TBIMREnable = cmd_buffer->state.gfx.dyn_state.use_tbimr;
+#endif
+            prim.IndirectParameterEnable  = true;
+            prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
+            prim.VertexAccessType         = indexed ? RANDOM : SEQUENTIAL;
 #if GFX_VER >= 11
-         prim.ExtendedParametersPresent = true;
+            prim.ExtendedParametersPresent = true;
 #endif
+         }
       }
 
       genX(batch_emit_post_3dprimitive_was)(&cmd_buffer->batch,
