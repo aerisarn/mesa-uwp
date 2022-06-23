@@ -32,6 +32,7 @@
 
 #include <util/macros.h>
 #include <util/ralloc.h>
+#include <util/u_math.h>
 
 #include "intel_decoder.h"
 
@@ -1094,7 +1095,7 @@ iter_decode_field(struct intel_field_iterator *iter)
    case INTEL_TYPE_SFIXED: {
       /* Sign extend before converting */
       int bits = iter->field->type.i + iter->field->type.f + 1;
-      int64_t v_sign_extend = ((int64_t)(v.qw << (64 - bits))) >> (64 - bits);
+      int64_t v_sign_extend = util_mask_sign_extend(v.qw, bits);
       snprintf(iter->value, sizeof(iter->value), "%f",
                (float) v_sign_extend / (1 << iter->field->type.f));
       break;
