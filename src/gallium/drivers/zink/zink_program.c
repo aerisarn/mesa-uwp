@@ -861,6 +861,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    }
    state->modules_changed = false;
    state->uses_dynamic_stride = uses_dynamic_stride;
+   state->idx = idx;
    ctx->vertex_state_changed = false;
 
    entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[idx], state->final_hash, state);
@@ -887,7 +888,6 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 
    struct gfx_pipeline_cache_entry *cache_entry = entry->data;
    state->pipeline = cache_entry->pipeline;
-   state->idx = idx;
    return state->pipeline;
 }
 
