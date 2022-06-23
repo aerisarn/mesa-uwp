@@ -287,16 +287,10 @@ glx_context_init(struct glx_context *gc,
 static Bool
 __glXIsDirect(Display * dpy, GLXContextID contextID, Bool *error)
 {
-   CARD8 opcode;
    xcb_connection_t *c;
    xcb_generic_error_t *err;
    xcb_glx_is_direct_reply_t *reply;
    Bool is_direct;
-
-   opcode = __glXSetupForCommand(dpy);
-   if (!opcode) {
-      return False;
-   }
 
    c = XGetXCBConnection(dpy);
    reply = xcb_glx_is_direct_reply(c, xcb_glx_is_direct(c, contextID), &err);
