@@ -2421,10 +2421,15 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
                       IRIS_MEMZONE_SURFACE_START, _4GB_minus_1 -
                       IRIS_BINDER_ZONE_SIZE - IRIS_BINDLESS_SIZE);
-   /* TODO: Why does limiting to 2GB help some state items on gfx12?
-    *  - CC Viewport Pointer
-    *  - Blend State Pointer
-    *  - Color Calc State Pointer
+
+   /* Wa_2209859288: the Tigerlake PRM's workarounds volume says:
+    *
+    *    "PSDunit is dropping MSB of the blend state pointer from SD FIFO"
+    *    "Limit the Blend State Pointer to < 2G"
+    *
+    * We restrict the dynamic state pool to 2GB so that we don't ever get a
+    * BLEND_STATE pointer with the MSB set.  We aren't likely to need the
+    * full 4GB for dynamic state anyway.
     */
    const uint64_t dynamic_pool_size =
       (devinfo->ver >= 12 ? _2GB : _4GB_minus_1) - IRIS_BORDER_COLOR_POOL_SIZE;
