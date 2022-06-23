@@ -352,7 +352,7 @@ kill(wait_imm& imm, Instruction* instr, wait_ctx& ctx, memory_sync_info sync_inf
       /* Force emitting waitcnt states right after the instruction if there is
        * something to wait for.
        */
-      return force_waitcnt(ctx, imm);
+      force_waitcnt(ctx, imm);
    }
 
    if (ctx.exp_cnt || ctx.vm_cnt || ctx.lgkm_cnt)
