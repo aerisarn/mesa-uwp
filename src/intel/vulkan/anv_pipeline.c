@@ -788,9 +788,9 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    NIR_PASS(_, nir, brw_nir_lower_ray_queries, &pdevice->info);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
-   anv_nir_apply_pipeline_layout(pdevice,
-                                 pipeline->device->robust_buffer_access,
-                                 layout, nir, &stage->bind_map);
+   NIR_PASS_V(nir, anv_nir_apply_pipeline_layout,
+              pdevice, pipeline->device->robust_buffer_access,
+              layout, &stage->bind_map);
 
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
             anv_nir_ubo_addr_format(pdevice,
@@ -818,8 +818,9 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                 .callback = NULL,
             });
 
-   anv_nir_compute_push_layout(pdevice, pipeline->device->robust_buffer_access,
-                               nir, prog_data, &stage->bind_map, mem_ctx);
+   NIR_PASS_V(nir, anv_nir_compute_push_layout,
+              pdevice, pipeline->device->robust_buffer_access,
+              prog_data, &stage->bind_map, mem_ctx);
 
    if (gl_shader_stage_uses_workgroup(nir->info.stage)) {
       if (!nir->info.shared_memory_explicit_layout) {
