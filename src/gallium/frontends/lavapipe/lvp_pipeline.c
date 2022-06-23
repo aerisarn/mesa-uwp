@@ -402,7 +402,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
    dst->pNext = NULL;
    dst->flags = src->flags;
    dst->layout = src->layout;
-   if (shaders & (VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT | VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+   if (shaders & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
       assert(!dst->renderPass || !src->renderPass || dst->renderPass == src->renderPass);
       assert(!dst->subpass || !src->subpass || dst->subpass == src->subpass);
       dst->subpass = src->subpass;
@@ -420,6 +420,14 @@ deep_copy_graphics_create_info(void *mem_ctx,
    if (rp_info) {
       has_depth = rp_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
       has_stencil = rp_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
+   } else if ((shaders & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+              (shaders ^ VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+      /* if this is a fragment stage without a fragment output,
+       * assume both of these exist so the dynamic states are covered,
+       * then let them be naturally pruned in the final pipeline
+       */
+      has_depth = true;
+      has_stencil = true;
    }
    dst->basePipelineHandle = src->basePipelineHandle;
    dst->basePipelineIndex = src->basePipelineIndex;
@@ -503,8 +511,6 @@ deep_copy_graphics_create_info(void *mem_ctx,
    }
 
    if (shaders & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
-      assert(rp_info);
-      bool have_output = (shaders & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) > 0;
       /* pDepthStencilState */
       if (src->pDepthStencilState && !rasterization_disabled &&
           /*
@@ -522,7 +528,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
                state but not fragment output interface state, pDepthStencilState must be a valid pointer
                to a valid VkPipelineDepthStencilStateCreateInfo structure
           */
-          (!have_output || has_depth || has_stencil)) {
+          (has_depth || has_stencil)) {
          LVP_PIPELINE_DUP(dst->pDepthStencilState,
                           src->pDepthStencilState,
                           VkPipelineDepthStencilStateCreateInfo,
