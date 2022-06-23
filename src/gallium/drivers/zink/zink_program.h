@@ -208,7 +208,7 @@ zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
 
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
-                        struct zink_shader *stages[ZINK_SHADER_COUNT],
+                        struct zink_shader **stages,
                         unsigned vertices_per_patch);
 
 void
