@@ -758,6 +758,21 @@ zink_destroy_compute_program(struct zink_context *ctx,
 }
 
 static unsigned
+get_primtype_idx(enum pipe_prim_type mode)
+{
+   if (mode == PIPE_PRIM_PATCHES)
+      return 3;
+   switch (u_reduced_prim(mode)) {
+   case PIPE_PRIM_POINTS:
+      return 0;
+   case PIPE_PRIM_LINES:
+      return 1;
+   default:
+      return 2;
+   }
+}
+
+static unsigned
 get_pipeline_idx(bool have_EXT_extended_dynamic_state, enum pipe_prim_type mode, VkPrimitiveTopology vkmode)
 {
    /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY specifies that the topology state in
@@ -766,16 +781,7 @@ get_pipeline_idx(bool have_EXT_extended_dynamic_state, enum pipe_prim_type mode,
     * with vkCmdSetPrimitiveTopology before any drawing commands.
     */
    if (have_EXT_extended_dynamic_state) {
-      if (mode == PIPE_PRIM_PATCHES)
-         return 3;
-      switch (u_reduced_prim(mode)) {
-      case PIPE_PRIM_POINTS:
-         return 0;
-      case PIPE_PRIM_LINES:
-         return 1;
-      default:
-         return 2;
-      }
+      return get_primtype_idx(mode);
    }
    return vkmode;
 }
