@@ -1319,7 +1319,7 @@ write_load_const(write_ctx *ctx, const nir_load_const_instr *lc)
             /* packed_value contains high 19 bits, low bits are 0 */
             header.load_const.packing = load_const_scalar_hi_19bits;
             header.load_const.packed_value = lc->value[0].u64 >> 45;
-         } else if (((lc->value[0].i64 << 45) >> 45) == lc->value[0].i64) {
+         } else if (util_sign_extend(lc->value[0].i64 & BITFIELD64_MASK(19), 19) == lc->value[0].i64) {
             /* packed_value contains low 19 bits, high bits are sign-extended */
             header.load_const.packing = load_const_scalar_lo_19bits_sext;
             header.load_const.packed_value = lc->value[0].u64;
@@ -1330,7 +1330,7 @@ write_load_const(write_ctx *ctx, const nir_load_const_instr *lc)
          if ((lc->value[0].u32 & 0x1fff) == 0) {
             header.load_const.packing = load_const_scalar_hi_19bits;
             header.load_const.packed_value = lc->value[0].u32 >> 13;
-         } else if (((lc->value[0].i32 << 13) >> 13) == lc->value[0].i32) {
+         } else if (util_sign_extend(lc->value[0].i32 & BITFIELD_MASK(19), 19) == lc->value[0].i32) {
             header.load_const.packing = load_const_scalar_lo_19bits_sext;
             header.load_const.packed_value = lc->value[0].u32;
          }
