@@ -798,6 +798,80 @@ void pvr_CmdCopyBufferToImage2KHR(
    }
 }
 
+static void pvr_calc_mip_level_extents(const struct pvr_image *image,
+                                       uint16_t mip_level,
+                                       VkExtent3D *extent_out)
+{
+   /* 3D textures are clamped to 4x4x4. */
+   const uint32_t clamp = (image->vk.image_type == VK_IMAGE_TYPE_3D) ? 4 : 1;
+   const VkExtent3D *extent = &image->vk.extent;
+
+   extent_out->width = MAX2(extent->width >> mip_level, clamp);
+   extent_out->height = MAX2(extent->height >> mip_level, clamp);
+   extent_out->depth = MAX2(extent->depth >> mip_level, clamp);
+}
+
+static VkResult pvr_clear_image_range(struct pvr_cmd_buffer *cmd_buffer,
+                                      const struct pvr_image *image,
+                                      const VkClearColorValue *pColor,
+                                      const VkImageSubresourceRange *psRange)
+{
+   const uint32_t layer_count =
+      vk_image_subresource_layer_count(&image->vk, psRange);
+   const uint32_t max_layers = psRange->baseArrayLayer + layer_count;
+   VkFormat format = image->vk.format;
+   const VkOffset3D offset = { 0 };
+   VkExtent3D mip_extent;
+
+   assert((psRange->baseArrayLayer + layer_count) <= image->vk.array_layers);
+
+   for (uint32_t layer = psRange->baseArrayLayer; layer < max_layers; layer++) {
+      const uint32_t level_count =
+         vk_image_subresource_level_count(&image->vk, psRange);
+      const uint32_t max_level = psRange->baseMipLevel + level_count;
+
+      assert((psRange->baseMipLevel + level_count) <= image->vk.mip_levels);
+
+      for (uint32_t level = psRange->baseMipLevel; level < max_level; level++) {
+         pvr_calc_mip_level_extents(image, level, &mip_extent);
+
+         for (uint32_t depth = 0; depth < mip_extent.depth; depth++) {
+            struct pvr_transfer_cmd *transfer_cmd;
+            VkResult result;
+
+            transfer_cmd = pvr_transfer_cmd_alloc(cmd_buffer);
+            if (!transfer_cmd)
+               return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+            transfer_cmd->flags |= PVR_TRANSFER_CMD_FLAGS_FILL;
+
+            for (uint32_t i = 0; i < ARRAY_SIZE(transfer_cmd->clear_color); i++)
+               transfer_cmd->clear_color[i].ui = pColor->uint32[i];
+
+            pvr_setup_transfer_surface(cmd_buffer->device,
+                                       &transfer_cmd->dst,
+                                       &transfer_cmd->scissor,
+                                       image,
+                                       layer,
+                                       level,
+                                       &offset,
+                                       &mip_extent,
+                                       depth,
+                                       format,
+                                       psRange->aspectMask);
+
+            result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
+            if (result != VK_SUCCESS) {
+               vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
+               return result;
+            }
+         }
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 void pvr_CmdClearColorImage(VkCommandBuffer commandBuffer,
                             VkImage _image,
                             VkImageLayout imageLayout,
@@ -805,7 +879,15 @@ void pvr_CmdClearColorImage(VkCommandBuffer commandBuffer,
                             uint32_t rangeCount,
                             const VkImageSubresourceRange *pRanges)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   PVR_FROM_HANDLE(pvr_image, image, _image);
+
+   for (uint32_t i = 0; i < rangeCount; i++) {
+      const VkResult result =
+         pvr_clear_image_range(cmd_buffer, image, pColor, &pRanges[i]);
+      if (result != VK_SUCCESS)
+         return;
+   }
 }
 
 void pvr_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
