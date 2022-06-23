@@ -3545,10 +3545,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_de
 VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct vk_pipeline_cache *cache,
-                        const VkComputePipelineCreateInfo *info,
-                        const struct vk_shader_module *module,
-                        const char *entrypoint,
-                        const VkSpecializationInfo *spec_info);
+                        const VkComputePipelineCreateInfo *info);
 
 VkResult
 anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,

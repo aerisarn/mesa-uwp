@@ -1856,11 +1856,12 @@ fail:
 VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct vk_pipeline_cache *cache,
-                        const VkComputePipelineCreateInfo *info,
-                        const struct vk_shader_module *module,
-                        const char *entrypoint,
-                        const VkSpecializationInfo *spec_info)
+                        const VkComputePipelineCreateInfo *info)
 {
+   const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
+   VK_FROM_HANDLE(vk_shader_module, module, sinfo->module);
+   assert(sinfo->stage == VK_SHADER_STAGE_COMPUTE_BIT);
+
    VkPipelineCreationFeedbackEXT pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
@@ -1872,8 +1873,8 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    struct anv_pipeline_stage stage = {
       .stage = MESA_SHADER_COMPUTE,
       .module = module,
-      .entrypoint = entrypoint,
-      .spec_info = spec_info,
+      .entrypoint = sinfo->pName,
+      .spec_info = sinfo->pSpecializationInfo,
       .cache_key = {
          .stage = MESA_SHADER_COMPUTE,
       },
