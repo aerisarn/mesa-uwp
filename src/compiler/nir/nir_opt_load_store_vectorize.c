@@ -360,17 +360,11 @@ type_scalar_size_bytes(const struct glsl_type *type)
    return glsl_type_is_boolean(type) ? 4u : glsl_get_bit_size(type) / 8u;
 }
 
-static uint64_t
-mask_sign_extend(uint64_t val, unsigned bit_size)
-{
-   return (int64_t)(val << (64 - bit_size)) >> (64 - bit_size);
-}
-
 static unsigned
 add_to_entry_key(nir_ssa_scalar *offset_defs, uint64_t *offset_defs_mul,
                  unsigned offset_def_count, nir_ssa_scalar def, uint64_t mul)
 {
-   mul = mask_sign_extend(mul, def.def->bit_size);
+   mul = util_mask_sign_extend(mul, def.def->bit_size);
 
    for (unsigned i = 0; i <= offset_def_count; i++) {
       if (i == offset_def_count || def.def->index > offset_defs[i].def->index) {
@@ -437,7 +431,7 @@ create_entry_key_from_deref(void *mem_ctx,
          nir_ssa_scalar base = {.def=index, .comp=0};
          uint64_t offset = 0, base_mul = 1;
          parse_offset(&base, &base_mul, &offset);
-         offset = mask_sign_extend(offset, index->bit_size);
+         offset = util_mask_sign_extend(offset, index->bit_size);
 
          *offset_base += offset * stride;
          if (base.def) {
@@ -609,7 +603,7 @@ create_entry(struct vectorize_ctx *ctx,
       entry->offset = offset;
 
       if (base)
-         entry->offset = mask_sign_extend(entry->offset, base->bit_size);
+         entry->offset = util_mask_sign_extend(entry->offset, base->bit_size);
    }
 
    if (entry->info->resource_src >= 0)

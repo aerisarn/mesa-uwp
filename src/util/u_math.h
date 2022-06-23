@@ -580,6 +580,21 @@ util_bswap16(uint16_t n)
 }
 
 /**
+ * Mask and sign-extend a number
+ *
+ * The bit at position `width - 1` is replicated to all the higher bits.
+ * This makes no assumptions about the high bits of the value and will
+ * overwrite them with the sign bit.
+ */
+static inline int64_t
+util_mask_sign_extend(uint64_t val, unsigned width)
+{
+   assert(width > 0 && width <= 64);
+   unsigned shift = 64 - width;
+   return (int64_t)(val << shift) >> shift;
+}
+
+/**
  * Sign-extend a number
  *
  * The bit at position `width - 1` is replicated to all the higher bits.
@@ -588,10 +603,8 @@ util_bswap16(uint16_t n)
 static inline int64_t
 util_sign_extend(uint64_t val, unsigned width)
 {
-   assert(width > 0 && width <= 64);
    assert(width == 64 || val < (UINT64_C(1) << width));
-   unsigned shift = 64 - width;
-   return (int64_t)(val << shift) >> shift;
+   return util_mask_sign_extend(val, width);
 }
 
 static inline void*
