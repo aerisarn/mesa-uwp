@@ -589,12 +589,9 @@ static inline int64_t
 util_sign_extend(uint64_t val, unsigned width)
 {
    assert(width > 0 && width <= 64);
-   assert(width == 64 || val < (1ull << width));
-   if (val & (UINT64_C(1) << (width - 1))) {
-      return -(int64_t)((UINT64_C(1) << width) - val);
-   } else {
-      return val;
-   }
+   assert(width == 64 || val < (UINT64_C(1) << width));
+   unsigned shift = 64 - width;
+   return (int64_t)(val << shift) >> shift;
 }
 
 static inline void*
