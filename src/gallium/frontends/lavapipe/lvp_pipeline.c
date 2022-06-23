@@ -1443,9 +1443,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
              }
           }
        }
-   }
-
-   if (pipeline->stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
+   } else if (pipeline->stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
+      /* composite pipelines should have these values set above */
       if (pipeline->graphics_create_info.pViewportState) {
          /* if pViewportState is null, it means rasterization is discarded,
           * so this is ignored
