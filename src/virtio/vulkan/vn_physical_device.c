@@ -984,6 +984,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_extended_dynamic_state2 = false,
       .EXT_image_robustness = true,
       .EXT_shader_demote_to_helper_invocation = true,
+      .KHR_copy_commands2 = true,
 
       /* EXT */
       .EXT_calibrated_timestamps = true,

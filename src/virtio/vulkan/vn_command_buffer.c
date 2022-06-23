@@ -987,6 +987,13 @@ vn_CmdCopyBuffer(VkCommandBuffer commandBuffer,
 }
 
 void
+vn_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
+                  const VkCopyBufferInfo2 *pCopyBufferInfo)
+{
+   VN_CMD_ENQUEUE(vkCmdCopyBuffer2, commandBuffer, pCopyBufferInfo);
+}
+
+void
 vn_CmdCopyImage(VkCommandBuffer commandBuffer,
                 VkImage srcImage,
                 VkImageLayout srcImageLayout,
@@ -997,6 +1004,13 @@ vn_CmdCopyImage(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdCopyImage, commandBuffer, srcImage, srcImageLayout,
                   dstImage, dstImageLayout, regionCount, pRegions);
+}
+
+void
+vn_CmdCopyImage2(VkCommandBuffer commandBuffer,
+                 const VkCopyImageInfo2 *pCopyImageInfo)
+{
+   VN_CMD_ENQUEUE(vkCmdCopyImage2, commandBuffer, pCopyImageInfo);
 }
 
 void
@@ -1014,6 +1028,13 @@ vn_CmdBlitImage(VkCommandBuffer commandBuffer,
 }
 
 void
+vn_CmdBlitImage2(VkCommandBuffer commandBuffer,
+                 const VkBlitImageInfo2 *pBlitImageInfo)
+{
+   VN_CMD_ENQUEUE(vkCmdBlitImage2, commandBuffer, pBlitImageInfo);
+}
+
+void
 vn_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                         VkBuffer srcBuffer,
                         VkImage dstImage,
@@ -1023,6 +1044,46 @@ vn_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdCopyBufferToImage, commandBuffer, srcBuffer, dstImage,
                   dstImageLayout, regionCount, pRegions);
+}
+
+void
+vn_CmdCopyBufferToImage2(
+   VkCommandBuffer commandBuffer,
+   const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
+{
+   VN_CMD_ENQUEUE(vkCmdCopyBufferToImage2, commandBuffer,
+                  pCopyBufferToImageInfo);
+}
+
+static bool
+vn_needs_prime_blit(VkImage src_image, VkImageLayout src_image_layout)
+{
+   if (src_image_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+       VN_PRESENT_SRC_INTERNAL_LAYOUT != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+
+      /* sanity check */
+      ASSERTED const struct vn_image *img = vn_image_from_handle(src_image);
+      assert(img->wsi.is_wsi && img->wsi.is_prime_blit_src);
+      return true;
+   }
+
+   return false;
+}
+
+static void
+vn_transition_prime_layout(struct vn_command_buffer *cmd, VkBuffer dst_buffer)
+{
+   const VkBufferMemoryBarrier buf_barrier = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .srcQueueFamilyIndex = cmd->queue_family_index,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT,
+      .buffer = dst_buffer,
+      .size = VK_WHOLE_SIZE,
+   };
+   vn_cmd_encode_memory_barriers(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 1,
+                                 &buf_barrier, 0, NULL);
 }
 
 void
@@ -1036,33 +1097,35 @@ vn_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
 
-   bool prime_blit = false;
-   if (srcImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
-       VN_PRESENT_SRC_INTERNAL_LAYOUT != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+   bool prime_blit = vn_needs_prime_blit(srcImage, srcImageLayout);
+   if (prime_blit)
       srcImageLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
-
-      /* sanity check */
-      const struct vn_image *img = vn_image_from_handle(srcImage);
-      prime_blit = img->wsi.is_wsi && img->wsi.is_prime_blit_src;
-      assert(prime_blit);
-   }
 
    VN_CMD_ENQUEUE(vkCmdCopyImageToBuffer, commandBuffer, srcImage,
                   srcImageLayout, dstBuffer, regionCount, pRegions);
 
-   if (prime_blit) {
-      const VkBufferMemoryBarrier buf_barrier = {
-         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-         .srcQueueFamilyIndex = cmd->queue_family_index,
-         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT,
-         .buffer = dstBuffer,
-         .size = VK_WHOLE_SIZE,
-      };
-      vn_cmd_encode_memory_barriers(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                    VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 1,
-                                    &buf_barrier, 0, NULL);
-   }
+   if (prime_blit)
+      vn_transition_prime_layout(cmd, dstBuffer);
+}
+
+void
+vn_CmdCopyImageToBuffer2(
+   VkCommandBuffer commandBuffer,
+   const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   struct VkCopyImageToBufferInfo2 copy_info = *pCopyImageToBufferInfo;
+
+   bool prime_blit =
+      vn_needs_prime_blit(copy_info.srcImage, copy_info.srcImageLayout);
+   if (prime_blit)
+      copy_info.srcImageLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
+
+   VN_CMD_ENQUEUE(vkCmdCopyImageToBuffer2, commandBuffer, &copy_info);
+
+   if (prime_blit)
+      vn_transition_prime_layout(cmd, copy_info.dstBuffer);
 }
 
 void
@@ -1133,6 +1196,13 @@ vn_CmdResolveImage(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdResolveImage, commandBuffer, srcImage, srcImageLayout,
                   dstImage, dstImageLayout, regionCount, pRegions);
+}
+
+void
+vn_CmdResolveImage2(VkCommandBuffer commandBuffer,
+                    const VkResolveImageInfo2 *pResolveImageInfo)
+{
+   VN_CMD_ENQUEUE(vkCmdResolveImage2, commandBuffer, pResolveImageInfo);
 }
 
 void
