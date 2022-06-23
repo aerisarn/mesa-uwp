@@ -2083,6 +2083,7 @@ static void
 init_driver_workarounds(struct zink_screen *screen)
 {
    /* enable implicit sync for all non-mesa drivers */
+   screen->driver_workarounds.force_pipeline_library = debug_get_bool_option("ZINK_PIPELINE_LIBRARY_FORCE", false);
    screen->driver_workarounds.implicit_sync = true;
    switch (screen->info.driver_props.driverID) {
    case VK_DRIVER_ID_MESA_RADV:
@@ -2097,11 +2098,18 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
-
+   if (screen->info.have_EXT_graphics_pipeline_library)
+      screen->info.have_EXT_graphics_pipeline_library = screen->info.have_EXT_extended_dynamic_state &&
+                                                        screen->info.have_EXT_extended_dynamic_state2 &&
+                                                        screen->info.have_KHR_dynamic_rendering &&
+                                                        (screen->info.gpl_props.graphicsPipelineLibraryFastLinking ||
+                                                         screen->is_cpu ||
+                                                         screen->driver_workarounds.force_pipeline_library);
+   if (!screen->driver_workarounds.force_pipeline_library)
+      screen->info.have_EXT_graphics_pipeline_library = false;
    screen->driver_workarounds.color_write_missing =
       !screen->info.have_EXT_color_write_enable ||
       !screen->info.cwrite_feats.colorWriteEnable;
-
    screen->driver_workarounds.depth_clip_control_missing = !screen->info.have_EXT_depth_clip_control;
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
       /* this completely breaks xfb somehow */

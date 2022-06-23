@@ -252,6 +252,8 @@ struct zink_context {
    struct hash_table program_cache[8];
    uint32_t gfx_hash;
    struct zink_gfx_program *curr_program;
+   struct set gfx_inputs;
+   struct set gfx_outputs;
 
    struct zink_descriptor_data *dd;
 

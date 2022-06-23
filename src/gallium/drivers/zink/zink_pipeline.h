@@ -72,9 +72,7 @@ struct zink_gfx_pipeline_state {
 
    struct zink_pipeline_dynamic_state2 dyn_state2;
 
-#if VK_USE_64_BIT_PTR_DEFINES
    uint32_t _pad;
-#endif
    uint32_t gkey; //for pipeline library lookups
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];
    bool modules_changed;
@@ -83,9 +81,7 @@ struct zink_gfx_pipeline_state {
 
    uint32_t final_hash;
 
-#if VK_USE_64_BIT_PTR_DEFINES
    uint32_t _pad2;
-#endif
    /* order matches zink_gfx_input_key */
    union {
       struct {
@@ -142,4 +138,17 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
 VkPipeline
 zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_program *comp, struct zink_compute_pipeline_state *state);
+
+VkPipeline
+zink_create_gfx_pipeline_input(struct zink_screen *screen,
+                               struct zink_gfx_pipeline_state *state,
+                               const uint8_t *binding_map,
+                               VkPrimitiveTopology primitive_topology);
+VkPipeline
+zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_program *prog,
+                                 struct zink_rasterizer_hw_state *hw_rast_state, bool line);
+VkPipeline
+zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipeline_state *state);
+VkPipeline
+zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline library, VkPipeline output);
 #endif
