@@ -580,17 +580,21 @@ util_bswap16(uint16_t n)
 }
 
 /**
- * Extend sign.
+ * Sign-extend a number
+ *
+ * The bit at position `width - 1` is replicated to all the higher bits.
+ * This assumes and asserts that the value fits into `width` bits.
  */
 static inline int64_t
 util_sign_extend(uint64_t val, unsigned width)
 {
-	assert(width > 0);
-	if (val & (UINT64_C(1) << (width - 1))) {
-		return -(int64_t)((UINT64_C(1) << width) - val);
-	} else {
-		return val;
-	}
+   assert(width > 0 && width <= 64);
+   assert(width == 64 || val < (1ull << width));
+   if (val & (UINT64_C(1) << (width - 1))) {
+      return -(int64_t)((UINT64_C(1) << width) - val);
+   } else {
+      return val;
+   }
 }
 
 static inline void*
