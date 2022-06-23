@@ -517,6 +517,7 @@ va_pack_alu(const bi_instr *I)
       }
    }
 
+   if (info.saturate) hex |= (uint64_t) I->saturate << 30;
    if (info.clamp) hex |= (uint64_t) I->clamp << 32;
    if (info.round_mode) hex |= (uint64_t) I->round << 30;
    if (info.condition) hex |= (uint64_t) I->cmpf << 32;
