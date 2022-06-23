@@ -1274,18 +1274,6 @@ isl_color_value_pack(const union isl_color_value *value,
    assert(fmtl->channels.p.bits == 0);
 }
 
-/** Extend an N-bit signed integer to 32 bits */
-static inline int32_t
-sign_extend(int32_t x, unsigned bits)
-{
-   if (bits < 32) {
-      unsigned shift = 32 - bits;
-      return (x << shift) >> shift;
-   } else {
-      return x;
-   }
-}
-
 static inline void
 unpack_channel(union isl_color_value *value,
                unsigned start, unsigned count,
@@ -1323,7 +1311,7 @@ unpack_channel(union isl_color_value *value,
       }
       break;
    case ISL_SNORM:
-      unpacked.f32 = _mesa_snorm_to_float(sign_extend(packed, layout->bits),
+      unpacked.f32 = _mesa_snorm_to_float(util_sign_extend(packed, layout->bits),
                                           layout->bits);
       break;
    case ISL_SFLOAT:
@@ -1338,7 +1326,7 @@ unpack_channel(union isl_color_value *value,
       unpacked.u32 = packed;
       break;
    case ISL_SINT:
-      unpacked.u32 = sign_extend(packed, layout->bits);
+      unpacked.u32 = util_sign_extend(packed, layout->bits);
       break;
 
    default:
