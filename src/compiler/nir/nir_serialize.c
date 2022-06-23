@@ -666,8 +666,8 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned num_srcs:4;
       unsigned op:4;
-      unsigned dest:8;
       unsigned _pad:12;
+      unsigned dest:8;
    } tex;
    struct {
       unsigned instr_type:4;
