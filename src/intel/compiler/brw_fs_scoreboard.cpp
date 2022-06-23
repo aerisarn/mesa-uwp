@@ -1155,7 +1155,7 @@ namespace {
                   sb.get(brw_uvec_mrf(8, inst->base_mrf + j, 0))));
          }
 
-         if (is_unordered(inst))
+         if (is_unordered(inst) && !inst->eot)
             add_dependency(ids, deps[ip],
                            dependency(TGL_SBID_SET, ip, exec_all));
 
