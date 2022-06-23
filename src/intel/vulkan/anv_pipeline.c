@@ -50,15 +50,13 @@
  * we can't do that yet because we don't have the ability to copy nir.
  */
 static nir_shader *
-anv_shader_compile_to_nir(struct anv_device *device,
-                          void *mem_ctx,
-                          const struct vk_shader_module *module,
-                          const char *entrypoint_name,
-                          gl_shader_stage stage,
-                          const VkSpecializationInfo *spec_info)
+anv_shader_stage_to_nir(struct anv_device *device,
+                        const VkPipelineShaderStageCreateInfo *stage_info,
+                        void *mem_ctx)
 {
    const struct anv_physical_device *pdevice = device->physical;
    const struct brw_compiler *compiler = pdevice->compiler;
+   gl_shader_stage stage = vk_to_mesa_shader_stage(stage_info->stage);
    const nir_shader_compiler_options *nir_options =
       compiler->nir_options[stage];
 
@@ -135,10 +133,10 @@ anv_shader_compile_to_nir(struct anv_device *device,
    };
 
    nir_shader *nir;
-   VkResult result = vk_shader_module_to_nir(&device->vk, module,
-                                             stage, entrypoint_name,
-                                             spec_info, &spirv_options,
-                                             nir_options, mem_ctx, &nir);
+   VkResult result =
+      vk_pipeline_shader_stage_to_nir(&device->vk, stage_info,
+                                      &spirv_options, nir_options,
+                                      mem_ctx, &nir);
    if (result != VK_SUCCESS)
       return NULL;
 
@@ -698,13 +696,7 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
       return nir;
    }
 
-   VK_FROM_HANDLE(vk_shader_module, module, stage->info->module);
-   nir = anv_shader_compile_to_nir(pipeline->device,
-                                   mem_ctx,
-                                   module,
-                                   stage->info->pName,
-                                   stage->stage,
-                                   stage->info->pSpecializationInfo);
+   nir = anv_shader_stage_to_nir(pipeline->device, stage->info, mem_ctx);
    if (nir) {
       anv_device_upload_nir(pipeline->device, cache, nir, stage->shader_sha1);
       return nir;
