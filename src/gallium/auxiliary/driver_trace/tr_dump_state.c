@@ -139,6 +139,7 @@ void trace_dump_rasterizer_state(const struct pipe_rasterizer_state *state)
    trace_dump_member(bool, state, no_ms_sample_mask_out);
    trace_dump_member(bool, state, force_persample_interp);
    trace_dump_member(bool, state, line_smooth);
+   trace_dump_member(bool, state, line_rectangular);
    trace_dump_member(bool, state, line_stipple_enable);
    trace_dump_member(bool, state, line_last_pixel);
 
