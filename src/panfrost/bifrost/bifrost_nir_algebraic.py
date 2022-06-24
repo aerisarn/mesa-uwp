@@ -69,6 +69,10 @@ algebraic_late = [
     # directly to the hardware.
     (('f2i8', a), ('i2i8', ('f2i16', a))),
     (('f2u8', a), ('u2u8', ('f2u16', a))),
+
+    # XXX: Duplicate of nir_lower_pack
+    (('unpack_64_2x32', a), ('vec2', ('unpack_64_2x32_split_x', a),
+                                     ('unpack_64_2x32_split_y', a))),
 ]
 
 # Handling all combinations of boolean and float sizes for b2f is nontrivial.
