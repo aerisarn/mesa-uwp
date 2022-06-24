@@ -7124,7 +7124,7 @@ iris_upload_compute_walker(struct iris_context *ice,
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
          cfe.MaximumNumberofThreads =
-            devinfo->max_cs_threads * devinfo->subslice_total - 1;
+            devinfo->max_cs_threads * devinfo->subslice_total;
          uint32_t scratch_addr = pin_scratch_space(ice, batch, prog_data,
                                                    MESA_SHADER_COMPUTE);
          cfe.ScratchSpaceBuffer = scratch_addr >> 4;

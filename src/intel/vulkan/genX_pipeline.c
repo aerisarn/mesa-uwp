@@ -2843,7 +2843,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
 
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
-         devinfo->max_cs_threads * devinfo->subslice_total - 1;
+         devinfo->max_cs_threads * devinfo->subslice_total;
       cfe.ScratchSpaceBuffer =
          get_scratch_surf(&pipeline->base, MESA_SHADER_COMPUTE, cs_bin);
    }
