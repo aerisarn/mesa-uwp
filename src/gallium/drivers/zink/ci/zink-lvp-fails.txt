@@ -201,7 +201,6 @@ spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
-spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_depth_texture@depth-tex-modes,Fail
 spec@arb_framebuffer_object@fbo-gl_pointcoord,Fail
 spec@arb_get_program_binary@restore-sso-program,Fail

@@ -492,7 +492,6 @@ spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl 3.0@clearbuffer-depth-cs-probe,Fail
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
-spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 
 # Regression introduced by moving from LLVM 11 to 13
 dEQP-GLES2.functional.shaders.random.basic_expression.fragment.70,Fail
