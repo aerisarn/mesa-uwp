@@ -2075,8 +2075,12 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
          continue;
       /* be conservative: use the bigger of the interface and variable types to ensure in-bounds access */
       unsigned size = glsl_count_attribute_slots(glsl_type_is_array(var->type) ? var->type : type, false);
-      if (var->interface_type)
-         size = MAX2(size, glsl_count_attribute_slots(glsl_without_array(var->interface_type), false));
+      const struct glsl_type *interface_type = var->interface_type ? glsl_without_array(var->interface_type) : NULL;
+      if (interface_type) {
+         unsigned block_size = glsl_get_explicit_size(interface_type, true);
+         block_size /= sizeof(float) * 4;
+         size = MAX2(size, block_size);
+      }
       if (var->data.mode == nir_var_mem_ubo) {
          if (var->data.driver_location)
             max_ubo_size = MAX2(max_ubo_size, size);
