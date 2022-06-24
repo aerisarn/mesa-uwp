@@ -2064,6 +2064,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
 {
    uint64_t max_ssbo_size = 0;
    uint64_t max_ubo_size = 0;
+   uint64_t max_uniform_size = 0;
 
    if (!shader->info.num_ssbos && !shader->info.num_ubos)
       return false;
@@ -2076,10 +2077,14 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       unsigned size = glsl_count_attribute_slots(glsl_type_is_array(var->type) ? var->type : type, false);
       if (var->interface_type)
          size = MAX2(size, glsl_count_attribute_slots(glsl_without_array(var->interface_type), false));
-      if (var->data.mode == nir_var_mem_ubo)
-         max_ubo_size = MAX2(max_ubo_size, size);
-      else
+      if (var->data.mode == nir_var_mem_ubo) {
+         if (var->data.driver_location)
+            max_ubo_size = MAX2(max_ubo_size, size);
+         else
+            max_uniform_size = MAX2(max_uniform_size, size);
+      } else {
          max_ssbo_size = MAX2(max_ssbo_size, size);
+      }
       var->data.mode = nir_var_shader_temp;
    }
    nir_fixup_deref_modes(shader);
@@ -2090,9 +2095,8 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
    fields[0].name = ralloc_strdup(shader, "base");
    fields[1].name = ralloc_strdup(shader, "unsized");
    if (shader->info.num_ubos) {
-      const struct glsl_type *ubo_type = glsl_array_type(glsl_uint_type(), max_ubo_size * 4, 4);
-      fields[0].type = ubo_type;
       if (shader->num_uniforms && zs->ubos_used & BITFIELD_BIT(0)) {
+         fields[0].type = glsl_array_type(glsl_uint_type(), max_uniform_size * 4, 4);
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo,
                                                  glsl_array_type(glsl_struct_type(fields, 1, "struct", false), 1, 0),
                                                  "uniform_0");
@@ -2104,6 +2108,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       unsigned num_ubos = shader->info.num_ubos - !!shader->info.first_ubo_is_default_ubo;
       uint32_t ubos_used = zs->ubos_used & ~BITFIELD_BIT(0);
       if (num_ubos && ubos_used) {
+         fields[0].type = glsl_array_type(glsl_uint_type(), max_ubo_size * 4, 4);
          /* shrink array as much as possible */
          unsigned first_ubo = ffs(ubos_used) - 2;
          assert(first_ubo < PIPE_MAX_CONSTANT_BUFFERS);
