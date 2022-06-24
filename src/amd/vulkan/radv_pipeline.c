@@ -7070,6 +7070,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.has_ngg_culling;
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
+   pipeline->uses_user_sample_locations = info.ms.sample_locs_enable;
 
    pipeline->base.push_constant_size = pipeline_layout->push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout->dynamic_offset_count;

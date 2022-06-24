@@ -6681,8 +6681,10 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
          : G_028814_CULL_BACK(pa_su_sc_mode_cntl))
       nggc_settings |= radv_nggc_back_face;
 
-   /* Small primitive culling is only valid when conservative overestimation is not used. */
-   if (!pipeline->uses_conservative_overestimate) {
+   /* Small primitive culling is only valid when conservative overestimation is not used. It's also
+    * disabled for user sample locations because small primitive culling assumes a sample
+    * position at (0.5, 0.5). */
+   if (!pipeline->uses_conservative_overestimate && !pipeline->uses_user_sample_locations) {
       nggc_settings |= radv_nggc_small_primitives;
 
       /* small_prim_precision = num_samples / 2^subpixel_bits

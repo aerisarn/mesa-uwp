@@ -2105,6 +2105,7 @@ struct radv_graphics_pipeline {
    bool negative_one_to_one;
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
+   bool uses_user_sample_locations;
 
    /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
    bool force_vrs_per_vertex;
