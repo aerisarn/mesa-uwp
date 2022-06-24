@@ -715,7 +715,7 @@ panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_t
 		RET((uint32_t []) { 800 /* MHz -- TODO */ });
 
 	case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
-		RET((uint32_t []) { 9999 });  // TODO
+		RET((uint32_t []) { dev->core_count });
 
 	case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
 		RET((uint32_t []) { 1 });
