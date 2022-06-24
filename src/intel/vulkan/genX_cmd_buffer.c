@@ -5864,6 +5864,47 @@ get_interface_descriptor_data(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static inline void
+emit_indirect_compute_walker(struct anv_cmd_buffer *cmd_buffer,
+                             const struct anv_shader_bin *shader,
+                             const struct brw_cs_prog_data *prog_data,
+                             struct anv_address indirect_addr)
+{
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
+   assert(devinfo->has_indirect_unroll);
+
+   struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
+   bool predicate = cmd_buffer->state.conditional_render_enabled;
+
+   const struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(devinfo, prog_data, NULL);
+   const int dispatch_size = dispatch.simd_size / 16;
+
+   struct GENX(COMPUTE_WALKER_BODY) body =  {
+      .SIMDSize                 = dispatch_size,
+      .MessageSIMD              = dispatch_size,
+      .IndirectDataStartAddress = comp_state->push_data.offset,
+      .IndirectDataLength       = comp_state->push_data.alloc_size,
+      .LocalXMaximum            = prog_data->local_size[0] - 1,
+      .LocalYMaximum            = prog_data->local_size[1] - 1,
+      .LocalZMaximum            = prog_data->local_size[2] - 1,
+      .ExecutionMask            = dispatch.right_mask,
+      .PostSync.MOCS            = anv_mocs(cmd_buffer->device, NULL, 0),
+      .InterfaceDescriptor =
+         get_interface_descriptor_data(cmd_buffer, shader, prog_data,
+                                       &dispatch),
+   };
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(EXECUTE_INDIRECT_DISPATCH), ind) {
+      ind.PredicateEnable            = predicate;
+      ind.MaxCount                   = 1;
+      ind.COMPUTE_WALKER_BODY        = body;
+      ind.ArgumentBufferStartAddress = indirect_addr;
+      ind.MOCS                       = anv_mocs(cmd_buffer->device,
+                                                indirect_addr.bo, 0);
+   }
+}
+
+static inline void
 emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
                     const struct anv_compute_pipeline *pipeline, bool indirect,
                     const struct brw_cs_prog_data *prog_data,
@@ -5945,6 +5986,14 @@ emit_cs_walker(struct anv_cmd_buffer *cmd_buffer,
                uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
    bool is_indirect = !anv_address_is_null(indirect_addr);
+
+#if GFX_VERx10 >= 125
+   if (is_indirect && cmd_buffer->device->info->has_indirect_unroll) {
+      emit_indirect_compute_walker(cmd_buffer, pipeline->cs, prog_data,
+                                   indirect_addr);
+      return;
+   }
+#endif
 
    if (is_indirect)
       compute_load_indirect_params(cmd_buffer, indirect_addr);
