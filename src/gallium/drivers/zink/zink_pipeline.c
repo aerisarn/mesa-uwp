@@ -191,6 +191,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    } else {
       static bool warned = false;
       warn_missing_feature(warned, "VK_EXT_depth_clip_enable");
+      rast_state.depthClampEnable = !hw_rast_state->depth_clip;
    }
 
    VkPipelineRasterizationProvokingVertexStateCreateInfoEXT pv_state;
