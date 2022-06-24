@@ -613,12 +613,20 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
 }
 
 static void
-attachment_set_ops(struct tu_render_pass_attachment *att,
+attachment_set_ops(struct tu_device *device,
+                   struct tu_render_pass_attachment *att,
                    VkAttachmentLoadOp load_op,
                    VkAttachmentLoadOp stencil_load_op,
                    VkAttachmentStoreOp store_op,
                    VkAttachmentStoreOp stencil_store_op)
 {
+   if (device->instance->debug_flags & TU_DEBUG_DONT_CARE_AS_LOAD) {
+      if (load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+         load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+      if (stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+         stencil_load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+   }
+
    /* load/store ops */
    att->clear_mask =
       (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ? VK_IMAGE_ASPECT_COLOR_BIT : 0;
@@ -725,16 +733,7 @@ tu_CreateRenderPass2(VkDevice _device,
       VkAttachmentLoadOp loadOp = pCreateInfo->pAttachments[i].loadOp;
       VkAttachmentLoadOp stencilLoadOp = pCreateInfo->pAttachments[i].stencilLoadOp;
 
-      if (device->instance->debug_flags & TU_DEBUG_DONT_CARE_AS_LOAD) {
-         if (loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
-            loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-         if (stencilLoadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
-            stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-      }
-
-      attachment_set_ops(att,
-                         loadOp,
-                         stencilLoadOp,
+      attachment_set_ops(device, att, loadOp, stencilLoadOp,
                          pCreateInfo->pAttachments[i].storeOp,
                          pCreateInfo->pAttachments[i].stencilStoreOp);
    }
