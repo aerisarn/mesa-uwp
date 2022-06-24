@@ -503,7 +503,7 @@ get_bo_vars(struct zink_shader *zs, nir_shader *shader)
 }
 
 static void
-optimize_nir(struct nir_shader *s)
+optimize_nir(struct nir_shader *s, struct zink_shader *zs)
 {
    bool progress;
    do {
@@ -963,7 +963,7 @@ decompose_attribs(nir_shader *nir, uint32_t decomposed_attrs, uint32_t decompose
    }
    nir_fixup_deref_modes(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(nir);
+   optimize_nir(nir, NULL);
    return true;
 }
 
@@ -1415,7 +1415,7 @@ zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
          var->data.mode = nir_var_shader_temp;
          nir_fixup_deref_modes(producer);
          NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-         optimize_nir(producer);
+         optimize_nir(producer, NULL);
       }
    }
    if (producer->info.stage == MESA_SHADER_TESS_CTRL) {
@@ -1442,7 +1442,7 @@ zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
       return;
    nir_fixup_deref_modes(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(nir);
+   optimize_nir(nir, NULL);
 }
 
 /* all types that hit this function contain something that is 64bit */
@@ -2014,7 +2014,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       need_optimize = true;
    }
    if (inlined_uniforms) {
-      optimize_nir(nir);
+      optimize_nir(nir, zs);
 
       /* This must be done again. */
       NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
@@ -2024,7 +2024,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       if (impl->ssa_alloc > ZINK_ALWAYS_INLINE_LIMIT)
          zs->can_inline = false;
    } else if (need_optimize)
-      optimize_nir(nir);
+      optimize_nir(nir, zs);
    prune_io(nir);
 
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
@@ -2106,7 +2106,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
    }
    nir_fixup_deref_modes(shader);
    NIR_PASS_V(shader, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(shader);
+   optimize_nir(shader, NULL);
 
    struct glsl_struct_field *fields = rzalloc_array(shader, struct glsl_struct_field, 2);
    fields[0].name = ralloc_strdup(shader, "base");
@@ -2348,7 +2348,7 @@ lower_bindless(nir_shader *shader, struct zink_bindless_info *bindless)
       return false;
    nir_fixup_deref_modes(shader);
    NIR_PASS_V(shader, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-   optimize_nir(shader);
+   optimize_nir(shader, NULL);
    return true;
 }
 
@@ -2731,7 +2731,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    }
 
-   optimize_nir(nir);
+   optimize_nir(nir, NULL);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_lower_discard_if);
    NIR_PASS_V(nir, nir_lower_fragcolor,
@@ -2765,7 +2765,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (has_bindless_io)
       NIR_PASS_V(nir, lower_bindless_io);
 
-   optimize_nir(nir);
+   optimize_nir(nir, NULL);
    prune_io(nir);
 
    scan_nir(screen, nir, ret);
@@ -2891,7 +2891,7 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
    NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
-   optimize_nir(nir);
+   optimize_nir(nir, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (screen->driconf.inline_uniforms)
       nir_find_inlinable_uniforms(nir);
@@ -3054,7 +3054,7 @@ zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsig
    nir_validate_shader(nir, "created");
 
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
-   optimize_nir(nir);
+   optimize_nir(nir, NULL);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
