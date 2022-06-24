@@ -1054,15 +1054,6 @@ emit_uav_var(struct ntd_context *ctx, nir_variable *var, unsigned count)
    return emit_uav(ctx, binding, space, count, comp_type, res_kind, name);
 }
 
-static unsigned get_dword_size(const struct glsl_type *type)
-{
-   if (glsl_type_is_array(type)) {
-      type = glsl_without_array(type);
-   }
-   assert(glsl_type_is_struct(type) || glsl_type_is_interface(type));
-   return glsl_get_explicit_size(type, false);
-}
-
 static void
 var_fill_const_array_with_vector_or_scalar(struct ntd_context *ctx,
                                            const struct nir_constant *c,
@@ -1218,8 +1209,12 @@ emit_ubo_var(struct ntd_context *ctx, nir_variable *var)
       name = temp_name;
    }
 
+   const struct glsl_type *type = glsl_without_array(var->type);
+   assert(glsl_type_is_struct(type) || glsl_type_is_interface(type));
+   unsigned dwords = ALIGN_POT(glsl_get_explicit_size(type, false), 16) / 4;
+
    return emit_cbv(ctx, var->data.binding, var->data.descriptor_set,
-                   get_dword_size(var->type), count, name);
+                   dwords, count, name);
 }
 
 static bool
