@@ -1725,7 +1725,7 @@ tu_lrz_clear_depth_image(struct tu_cmd_buffer *cmd,
 
 void
 tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
-                        const VkRenderPassBeginInfo *pRenderPassBegin);
+                        const VkClearValue *clear_values);
 
 void
 tu_lrz_begin_secondary_cmdbuf(struct tu_cmd_buffer *cmd);
@@ -1821,13 +1821,13 @@ void
 tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
                            struct tu_cs *cs,
                            uint32_t a,
-                           const VkRenderPassBeginInfo *info);
+                           const VkClearValue *value);
 
 void
 tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                          struct tu_cs *cs,
                          uint32_t a,
-                         const VkRenderPassBeginInfo *info);
+                         const VkClearValue *value);
 
 void
 tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,

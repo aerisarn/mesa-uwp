@@ -277,7 +277,7 @@ tu_lrz_init_secondary(struct tu_cmd_buffer *cmd,
 
 void
 tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
-                        const VkRenderPassBeginInfo *pRenderPassBegin)
+                        const VkClearValue *clear_values)
 {
    const struct tu_render_pass *pass = cmd->state.pass;
 
@@ -310,7 +310,7 @@ tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
       const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
       tu_lrz_init_state(cmd, att, cmd->state.attachments[a]);
       if (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT)) {
-         VkClearValue clear = pRenderPassBegin->pClearValues[a];
+         VkClearValue clear = clear_values[a];
          cmd->state.lrz.depth_clear_value = clear;
          cmd->state.lrz.fast_clear = cmd->state.lrz.fast_clear &&
                                      (clear.depthStencil.depth == 0.f ||

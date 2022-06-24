@@ -2836,7 +2836,7 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
                         struct tu_cs *cs,
                         VkFormat vk_format,
                         VkImageAspectFlags clear_mask,
-                        const VkRenderPassBeginInfo *info,
+                        const VkClearValue *value,
                         uint32_t a,
                         bool separate_ds)
 {
@@ -2852,8 +2852,9 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
 
    ops->setup(cmd, cs, format, format, clear_mask, 0, true, iview->view.ubwc_enabled,
               cmd->state.pass->attachments[a].samples);
-   ops->coords(cs, &info->renderArea.offset, NULL, &info->renderArea.extent);
-   ops->clear_value(cs, format, &info->pClearValues[a]);
+   ops->coords(cs, &cmd->state.render_area.offset, NULL,
+               &cmd->state.render_area.extent);
+   ops->clear_value(cs, format, value);
 
    for_each_layer(i, clear_views, fb->layers) {
       if (separate_ds) {
@@ -2879,7 +2880,7 @@ void
 tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
                            struct tu_cs *cs,
                            uint32_t a,
-                           const VkRenderPassBeginInfo *info)
+                           const VkClearValue *value)
 {
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
@@ -2890,15 +2891,15 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
    if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (attachment->clear_mask & VK_IMAGE_ASPECT_DEPTH_BIT) {
          clear_sysmem_attachment(cmd, cs, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT,
-                                 info, a, true);
+                                 value, a, true);
       }
       if (attachment->clear_mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
          clear_sysmem_attachment(cmd, cs, VK_FORMAT_S8_UINT, VK_IMAGE_ASPECT_COLOR_BIT,
-                                 info, a, true);
+                                 value, a, true);
       }
    } else {
       clear_sysmem_attachment(cmd, cs, attachment->format, attachment->clear_mask,
-                              info, a, false);
+                              value, a, false);
    }
 
    /* The spec doesn't explicitly say, but presumably the initial renderpass
@@ -2926,7 +2927,7 @@ void
 tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                          struct tu_cs *cs,
                          uint32_t a,
-                         const VkRenderPassBeginInfo *info)
+                         const VkClearValue *value)
 {
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
@@ -2936,8 +2937,7 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_regs(cs, A6XX_RB_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
 
-   tu_emit_clear_gmem_attachment(cmd, cs, a, attachment->clear_mask,
-                                 &info->pClearValues[a]);
+   tu_emit_clear_gmem_attachment(cmd, cs, a, attachment->clear_mask, value);
 }
 
 static void

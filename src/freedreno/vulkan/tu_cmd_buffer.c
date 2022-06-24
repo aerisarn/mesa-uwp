@@ -1235,7 +1235,7 @@ tu_set_input_attachments(struct tu_cmd_buffer *cmd, const struct tu_subpass *sub
 
 static void
 tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
-                         const VkRenderPassBeginInfo *info)
+                         const VkClearValue *clear_values)
 {
    struct tu_cs *cs = &cmd->draw_cs;
 
@@ -1246,14 +1246,14 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
    tu6_emit_blit_scissor(cmd, cs, false);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_clear_gmem_attachment(cmd, cs, i, info);
+      tu_clear_gmem_attachment(cmd, cs, i, &clear_values[i]);
 
    tu_cond_exec_end(cs);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_clear_sysmem_attachment(cmd, cs, i, info);
+      tu_clear_sysmem_attachment(cmd, cs, i, &clear_values[i]);
 
    tu_cond_exec_end(cs);
 }
@@ -3582,11 +3582,11 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    if (pass->subpasses[0].feedback_invalidate)
       cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_CACHE_INVALIDATE;
 
-   tu_lrz_begin_renderpass(cmd, pRenderPassBegin);
+   tu_lrz_begin_renderpass(cmd, pRenderPassBegin->pClearValues);
 
    cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
 
-   tu_emit_renderpass_begin(cmd, pRenderPassBegin);
+   tu_emit_renderpass_begin(cmd, pRenderPassBegin->pClearValues);
    tu_emit_subpass_begin(cmd);
 }
 
