@@ -803,8 +803,10 @@ fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
                   break;
                }
             } else {
-               exp.done = true;
-               exp.valid_mask = true;
+               if (!program->info.ps.has_epilog) {
+                  exp.done = true;
+                  exp.valid_mask = true;
+               }
                exported = true;
                break;
             }
