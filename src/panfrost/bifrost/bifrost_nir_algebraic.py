@@ -55,6 +55,13 @@ algebraic_late = [
     (('fabs', ('fddy', b)), ('fabs', ('fddy_must_abs_mali', b))),
 
     (('b32csel', 'b@32', ('iadd', 'a@32', 1), a), ('iadd', a, ('b2i32', b))),
+
+    # We don't have an 8-bit CSEL, so this is the best we can do.
+    # Note that we use 8-bit booleans internally to preserve vectorization.
+    (('imin', 'a@8', 'b@8'), ('b8csel', ('ilt8', a, b), a, b)),
+    (('imax', 'a@8', 'b@8'), ('b8csel', ('ilt8', a, b), b, a)),
+    (('umin', 'a@8', 'b@8'), ('b8csel', ('ult8', a, b), a, b)),
+    (('umax', 'a@8', 'b@8'), ('b8csel', ('ult8', a, b), b, a)),
 ]
 
 # Handling all combinations of boolean and float sizes for b2f is nontrivial.
