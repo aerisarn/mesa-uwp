@@ -144,7 +144,7 @@ pan_wls_mem_size(const struct panfrost_device *dev,
 {
         unsigned instances = pan_wls_instances(dim);
 
-        return pan_wls_adjust_size(wls_size) * instances * dev->core_count;
+        return pan_wls_adjust_size(wls_size) * instances * dev->core_id_range;
 }
 
 #ifdef PAN_ARCH

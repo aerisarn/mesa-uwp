@@ -42,7 +42,7 @@ panfrost_perf_counter_read(const struct panfrost_perf_counter *counter,
 
    // If counter belongs to shader core, accumulate values for all other cores
    if (counter->category_index == PAN_SHADER_CORE_INDEX) {
-      for (uint32_t core = 1; core < perf->dev->core_count; ++core) {
+      for (uint32_t core = 1; core < perf->dev->core_id_range; ++core) {
          ret += perf->counter_values[offset + PAN_COUNTERS_PER_CATEGORY * core];
       }
    }
@@ -77,7 +77,7 @@ panfrost_perf_init(struct panfrost_perf *perf, struct panfrost_device *dev)
    // Generally counter blocks are laid out in the following order:
    // Job manager, tiler, one or more L2 caches, and one or more shader cores.
    unsigned l2_slices = panfrost_query_l2_slices(dev);
-   uint32_t n_blocks = 2 + l2_slices + dev->core_count;
+   uint32_t n_blocks = 2 + l2_slices + dev->core_id_range;
    perf->n_counter_values = PAN_COUNTERS_PER_CATEGORY * n_blocks;
    perf->counter_values = ralloc_array(perf, uint32_t, perf->n_counter_values);
 

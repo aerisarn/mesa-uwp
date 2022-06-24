@@ -869,7 +869,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
-                unsigned size = sizeof(uint64_t) * dev->core_count;
+                unsigned size = sizeof(uint64_t) * dev->core_id_range;
 
                 /* Allocate a resource for the query results to be stored */
                 if (!query->rsrc) {
@@ -953,7 +953,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
                 if (query->type == PIPE_QUERY_OCCLUSION_COUNTER) {
                         uint64_t passed = 0;
-                        for (int i = 0; i < dev->core_count; ++i)
+                        for (int i = 0; i < dev->core_id_range; ++i)
                                 passed += result[i];
 
                         if (dev->arch <= 5 && !query->msaa)

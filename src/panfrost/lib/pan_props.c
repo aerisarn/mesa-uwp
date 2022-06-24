@@ -152,20 +152,21 @@ panfrost_query_tiler_features(int fd)
 }
 
 static unsigned
-panfrost_query_core_count(int fd)
+panfrost_query_core_count(int fd, unsigned *core_id_range)
 {
         /* On older kernels, worst-case to 16 cores */
 
         unsigned mask = panfrost_query_raw(fd,
                         DRM_PANFROST_PARAM_SHADER_PRESENT, false, 0xffff);
 
-        /* Some cores might be absent. For TLS computation purposes, we care
-         * about the greatest ID + 1, which equals the core count if all cores
-         * are present, but allocates space for absent cores if needed.
-         * util_last_bit is defined to return the greatest bit set + 1, which
-         * is exactly what we need. */
+        /* Some cores might be absent. In some cases, we care
+         * about the range of core IDs (that is, the greatest core ID + 1). If
+         * the core mask is contiguous, this equals the core count.
+         */
+        *core_id_range = util_last_bit(mask);
 
-        return util_last_bit(mask);
+        /* The actual core count skips overs the gaps */
+        return util_bitcount(mask);
 }
 
 /* Architectural maximums, since this register may be not implemented
@@ -263,7 +264,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->memctx = memctx;
         dev->gpu_id = panfrost_query_gpu_version(fd);
         dev->arch = pan_arch(dev->gpu_id);
-        dev->core_count = panfrost_query_core_count(fd);
+        dev->core_count = panfrost_query_core_count(fd, &dev->core_id_range);
         dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(fd, dev->arch);
         dev->kernel_version = drmGetVersion(fd);
         dev->revision = panfrost_query_gpu_revision(fd);

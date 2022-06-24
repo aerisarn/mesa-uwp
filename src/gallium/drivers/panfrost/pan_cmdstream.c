@@ -1585,7 +1585,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                         panfrost_batch_get_scratchpad(batch,
                                                       ss->info.tls_size,
                                                       dev->thread_tls_alloc,
-                                                      dev->core_count);
+                                                      dev->core_id_range);
                 info.tls.ptr = bo->ptr.gpu;
         }
 
@@ -1593,7 +1593,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                 unsigned size =
                         pan_wls_adjust_size(info.wls.size) *
                         pan_wls_instances(&info.wls.dim) *
-                        dev->core_count;
+                        dev->core_id_range;
 
                 struct panfrost_bo *bo =
                         panfrost_batch_get_shared_memory(batch, size, 1);
@@ -2732,7 +2732,7 @@ emit_tls(struct panfrost_batch *batch)
                 panfrost_batch_get_scratchpad(batch,
                                               batch->stack_size,
                                               dev->thread_tls_alloc,
-                                              dev->core_count):
+                                              dev->core_id_range):
                 NULL;
         struct pan_tls_info tls = {
                 .tls = {
@@ -2754,7 +2754,7 @@ emit_fbd(struct panfrost_batch *batch, const struct pan_fb_info *fb)
                 panfrost_batch_get_scratchpad(batch,
                                               batch->stack_size,
                                               dev->thread_tls_alloc,
-                                              dev->core_count):
+                                              dev->core_id_range):
                 NULL;
         struct pan_tls_info tls = {
                 .tls = {
