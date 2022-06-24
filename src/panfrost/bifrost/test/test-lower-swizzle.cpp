@@ -75,3 +75,26 @@ TEST_F(LowerSwizzle, ClzHadd8)
    CASE(bi_hadd_v4u8_to(b, reg, y, x3210, BI_ROUND_RTP),
         bi_hadd_v4u8_to(b, reg, y, bi_swz_v4i8(b, x3210), BI_ROUND_RTP));
 }
+
+TEST_F(LowerSwizzle, FirstShift8)
+{
+   enum bi_opcode ops[] = {
+      BI_OPCODE_LSHIFT_AND_V4I8,
+      BI_OPCODE_LSHIFT_OR_V4I8,
+      BI_OPCODE_LSHIFT_XOR_V4I8,
+      BI_OPCODE_RSHIFT_AND_V4I8,
+      BI_OPCODE_RSHIFT_OR_V4I8,
+      BI_OPCODE_RSHIFT_XOR_V4I8,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(ops); ++i) {
+      CASE({
+            bi_instr *I = bi_lshift_and_v4i8_to(b, reg, x3210, y, z);
+            I->op = ops[i];
+      },
+      {
+            bi_instr *I = bi_lshift_and_v4i8_to(b, reg, bi_swz_v4i8(b, x3210), y, z);
+            I->op = ops[i];
+      });
+   }
+}
