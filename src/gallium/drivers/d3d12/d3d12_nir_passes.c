@@ -413,9 +413,7 @@ invert_depth_impl(nir_builder *b, struct invert_depth_state *state)
    nir_ssa_def *pos = nir_ssa_for_src(b, intr->src[1], 4);
 
    if (state->viewport_index) {
-      nir_push_if(b, nir_i2b1(b, nir_iand_imm(b,
-         nir_ishl(b, nir_imm_int(b, 1), state->viewport_index),
-         state->viewport_mask)));
+      nir_push_if(b, nir_test_mask(b, nir_ishl(b, nir_imm_int(b, 1), state->viewport_index), state->viewport_mask));
    }
    nir_ssa_def *def = nir_vec4(b,
                                nir_channel(b, pos, 0),
