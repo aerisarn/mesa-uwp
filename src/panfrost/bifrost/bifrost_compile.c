@@ -1493,8 +1493,17 @@ bi_emit_image_store(bi_builder *b, nir_intrinsic_instr *instr)
         bi_index a[4] = { bi_null() };
         bi_emit_split_i32(b, a, bi_emit_lea_image(b, instr), 3);
 
+        /* Due to SPIR-V limitations, the source type is not fully reliable: it
+         * reports uint32 even for write_imagei. This causes an incorrect
+         * u32->s32->u32 roundtrip which incurs an unwanted clamping. Use auto32
+         * instead, which will match per the OpenCL spec. Of course this does
+         * not work for 16-bit stores, but those are not available in OpenCL.
+         */
+        nir_alu_type T = nir_intrinsic_src_type(instr);
+        assert(nir_alu_type_get_type_size(T) == 32);
+
         bi_st_cvt(b, bi_src_index(&instr->src[3]), a[0], a[1], a[2],
-                     bi_reg_fmt_for_nir(nir_intrinsic_src_type(instr)),
+                     BI_REGISTER_FORMAT_AUTO,
                      instr->num_components - 1);
 }
 
