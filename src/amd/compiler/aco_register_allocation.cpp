@@ -749,6 +749,7 @@ adjust_max_used_regs(ra_ctx& ctx, RegClass rc, unsigned reg)
    if (rc.type() == RegType::vgpr) {
       assert(reg >= 256);
       uint16_t hi = reg - 256 + size - 1;
+      assert(hi <= 255);
       ctx.max_used_vgpr = std::max(ctx.max_used_vgpr, hi);
    } else if (reg + rc.size() <= max_addressible_sgpr) {
       uint16_t hi = reg + size - 1;
@@ -1117,7 +1118,11 @@ get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
             }
          }
       }
-      if (!res.second) {
+      if (!res.second && !def_reg.size) {
+         /* If this is before definitions are handled, def_reg may be an empty interval. */
+         info.bounds = bounds;
+         res = get_reg_simple(ctx, reg_file, info);
+      } else if (!res.second) {
          /* Try to find space within the bounds but outside of the definition */
          info.bounds = PhysRegInterval::from_until(bounds.lo(), MIN2(def_reg.lo(), bounds.hi()));
          res = get_reg_simple(ctx, reg_file, info);

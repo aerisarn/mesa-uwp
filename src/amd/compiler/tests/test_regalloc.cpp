@@ -149,6 +149,18 @@ BEGIN_TEST(regalloc.precolor.vector.collect)
    finish_ra_test(ra_test_policy());
 END_TEST
 
+BEGIN_TEST(regalloc.precolor.vgpr_move)
+   //>> v1: %tmp0:v[0], v1: %tmp1:v[1] = p_startpgm
+   if (!setup_cs("v1 v1", GFX10))
+      return;
+
+   //! v1: %tmp0_2:v[1], v1: %tmp1_2:v[0] = p_parallelcopy %tmp0:v[0], %tmp1:v[1]
+   //! p_unit_test %tmp0_2:v[1], %tmp1_2:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, inputs[0], Operand(inputs[1], PhysReg(256)));
+
+   finish_ra_test(ra_test_policy());
+END_TEST
+
 BEGIN_TEST(regalloc.scratch_sgpr.create_vector)
    if (!setup_cs("v1 s1", GFX7))
       return;
