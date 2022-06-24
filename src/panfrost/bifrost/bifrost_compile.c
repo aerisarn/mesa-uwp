@@ -2388,7 +2388,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 
         case nir_op_pack_32_2x16: {
-                assert(nir_src_num_components(instr->src[0].src) == 2);
                 assert(comps == 1);
 
                 bi_index idx = bi_src_index(&instr->src[0].src);
