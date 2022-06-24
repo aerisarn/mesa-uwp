@@ -98,3 +98,9 @@ TEST_F(LowerSwizzle, FirstShift8)
       });
    }
 }
+
+TEST_F(LowerSwizzle, ShiftWithNot)
+{
+   CASE(bi_lshift_and_v4i8_to(b, reg, y, bi_neg(x3210), z),
+        bi_lshift_and_v4i8_to(b, reg, y, bi_neg(bi_swz_v4i8(b, x3210)), z));
+}
