@@ -298,9 +298,8 @@ static void
 insert_terminate_on_first_hit(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars,
                               bool break_on_terminate)
 {
-   nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
-      b, nir_iand_imm(b, rq_load_var(b, index, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
-      0);
+   nir_ssa_def *terminate_on_first_hit =
+      nir_test_mask(b, rq_load_var(b, index, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask);
    nir_push_if(b, terminate_on_first_hit);
    {
       rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, false), 0x1);
@@ -512,15 +511,13 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
    dist = nir_fdiv(b, dist, div);
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
    nir_ssa_def *switch_ccw =
-      nir_ine_imm(b,
-                  nir_iand_imm(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
-                               VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24),
-                  0);
+      nir_test_mask(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
+                    VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24);
    frontface = nir_ixor(b, frontface, switch_ccw);
    rq_store_var(b, index, vars->candidate.frontface, frontface, 0x1);
 
-   nir_ssa_def *not_cull = nir_ieq_imm(
-      b, nir_iand_imm(b, rq_load_var(b, index, vars->flags), SpvRayFlagsSkipTrianglesKHRMask), 0);
+   nir_ssa_def *not_cull = nir_inot(
+      b, nir_test_mask(b, rq_load_var(b, index, vars->flags), SpvRayFlagsSkipTrianglesKHRMask));
    nir_ssa_def *not_facing_cull = nir_ieq_imm(
       b,
       nir_iand(b, rq_load_var(b, index, vars->flags),
@@ -530,12 +527,9 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
 
    not_cull = nir_iand(
       b, not_cull,
-      nir_ior(
-         b, not_facing_cull,
-         nir_ine_imm(b,
-                     nir_iand_imm(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
-                                  VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24),
-                     0)));
+      nir_ior(b, not_facing_cull,
+              nir_test_mask(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
+                            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)));
 
    nir_push_if(b, nir_iand(b,
                            nir_iand(b, nir_fge(b, rq_load_var(b, index, vars->closest.t), dist),
@@ -599,8 +593,8 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b, nir_ssa_d
       hit_is_opaque(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
                     rq_load_var(b, index, vars->flags), geometry_id_and_flags);
 
-   nir_ssa_def *not_skip_aabb = nir_ieq_imm(
-      b, nir_iand_imm(b, rq_load_var(b, index, vars->flags), SpvRayFlagsSkipAABBsKHRMask), 0);
+   nir_ssa_def *not_skip_aabb = nir_inot(
+      b, nir_test_mask(b, rq_load_var(b, index, vars->flags), SpvRayFlagsSkipAABBsKHRMask));
    nir_ssa_def *not_cull = nir_iand(
       b, not_skip_aabb,
       nir_ieq_imm(b,

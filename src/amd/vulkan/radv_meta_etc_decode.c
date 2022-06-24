@@ -273,7 +273,7 @@ build_shader(struct radv_device *dev)
       color_payload = flip_endian(&b, color_payload, 2);
       nir_ssa_def *color_y = nir_channel(&b, color_payload, 0);
       nir_ssa_def *color_x = nir_channel(&b, color_payload, 1);
-      nir_ssa_def *flip = nir_ine_imm(&b, nir_iand_imm(&b, color_y, 1), 0);
+      nir_ssa_def *flip = nir_test_mask(&b, color_y, 1);
       nir_ssa_def *subblock = nir_ushr_imm(
          &b, nir_bcsel(&b, flip, nir_channel(&b, pixel_coord, 1), nir_channel(&b, pixel_coord, 0)),
          1);
@@ -281,7 +281,7 @@ build_shader(struct radv_device *dev)
       nir_variable *punchthrough =
          nir_variable_create(b.shader, nir_var_shader_temp, glsl_bool_type(), "punchthrough");
       nir_ssa_def *punchthrough_init =
-         nir_iand(&b, alpha_bits_1, nir_ieq_imm(&b, nir_iand_imm(&b, color_y, 2), 0));
+         nir_iand(&b, alpha_bits_1, nir_inot(&b, nir_test_mask(&b, color_y, 2)));
       nir_store_var(&b, punchthrough, punchthrough_init, 0x1);
 
       nir_variable *etc1_compat =
@@ -313,8 +313,8 @@ build_shader(struct radv_device *dev)
          nir_iand_imm(&b, nir_ushr(&b, color_x, nir_iadd_imm(&b, linear_pixel, 15)), 2);
       nir_ssa_def *lsb = nir_iand_imm(&b, nir_ushr(&b, color_x, linear_pixel), 1);
 
-      nir_push_if(&b, nir_iand(&b, nir_inot(&b, alpha_bits_1),
-                               nir_ieq_imm(&b, nir_iand_imm(&b, color_y, 2), 0)));
+      nir_push_if(
+         &b, nir_iand(&b, nir_inot(&b, alpha_bits_1), nir_inot(&b, nir_test_mask(&b, color_y, 2))));
       {
          nir_store_var(&b, etc1_compat, nir_imm_bool(&b, true), 1);
          nir_ssa_def *tmp[3];

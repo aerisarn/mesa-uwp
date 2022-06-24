@@ -41,19 +41,13 @@
 static const int pipelinestat_block_size = 11 * 8;
 static const unsigned pipeline_statistics_indices[] = {7, 6, 3, 4, 5, 2, 1, 0, 8, 9, 10};
 
-static nir_ssa_def *
-nir_test_flag(nir_builder *b, nir_ssa_def *flags, uint32_t flag)
-{
-   return nir_i2b(b, nir_iand_imm(b, flags, flag));
-}
-
 static void
 radv_store_availability(nir_builder *b, nir_ssa_def *flags, nir_ssa_def *dst_buf,
                         nir_ssa_def *offset, nir_ssa_def *value32)
 {
-   nir_push_if(b, nir_test_flag(b, flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT));
+   nir_push_if(b, nir_test_mask(b, flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT));
 
-   nir_push_if(b, nir_test_flag(b, flags, VK_QUERY_RESULT_64_BIT));
+   nir_push_if(b, nir_test_mask(b, flags, VK_QUERY_RESULT_64_BIT));
 
    nir_store_ssbo(b, nir_vec2(b, value32, nir_imm_int(b, 0)), dst_buf, offset, .align_mul = 8);
 
@@ -174,10 +168,10 @@ build_occlusion_query_shader(struct radv_device *device)
 
    /* Store the result if complete or if partial results have been requested. */
 
-   nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
+   nir_ssa_def *result_is_64bit = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *result_size =
       nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
-   nir_push_if(&b, nir_ior(&b, nir_test_flag(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
+   nir_push_if(&b, nir_ior(&b, nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
                            nir_load_var(&b, available)));
 
    nir_push_if(&b, result_is_64bit);
@@ -280,7 +274,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
    nir_ssa_def *available32 = nir_load_ssbo(&b, 1, 32, src_buf, avail_offset);
 
-   nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
+   nir_ssa_def *result_is_64bit = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *elem_size = nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
    nir_ssa_def *elem_count = nir_ushr_imm(&b, stats_mask, 16);
 
@@ -292,7 +286,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
    nir_store_var(&b, output_offset, output_base, 0x1);
    for (int i = 0; i < ARRAY_SIZE(pipeline_statistics_indices); ++i) {
-      nir_push_if(&b, nir_test_flag(&b, stats_mask, 1u << i));
+      nir_push_if(&b, nir_test_mask(&b, stats_mask, BITFIELD64_BIT(i)));
 
       nir_ssa_def *start_offset = nir_iadd_imm(&b, input_base, pipeline_statistics_indices[i] * 8);
       nir_ssa_def *start = nir_load_ssbo(&b, 1, 64, src_buf, start_offset);
@@ -341,7 +335,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
    nir_push_else(&b, NULL); /* nir_i2b(&b, available32) */
 
-   nir_push_if(&b, nir_test_flag(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT));
+   nir_push_if(&b, nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT));
 
    /* Stores zeros in all outputs. */
 
@@ -444,7 +438,7 @@ build_tfb_query_shader(struct radv_device *device)
    avails[0] = nir_iand(&b, nir_channel(&b, load1, 1), nir_channel(&b, load1, 3));
    avails[1] = nir_iand(&b, nir_channel(&b, load2, 1), nir_channel(&b, load2, 3));
    nir_ssa_def *result_is_available =
-      nir_i2b(&b, nir_iand_imm(&b, nir_iand(&b, avails[0], avails[1]), 0x80000000));
+      nir_test_mask(&b, nir_iand(&b, avails[0], avails[1]), 0x80000000);
 
    /* Only compute result if available. */
    nir_push_if(&b, result_is_available);
@@ -470,12 +464,12 @@ build_tfb_query_shader(struct radv_device *device)
    nir_pop_if(&b, NULL);
 
    /* Determine if result is 64 or 32 bit. */
-   nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
+   nir_ssa_def *result_is_64bit = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *result_size =
       nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 16), nir_imm_int(&b, 8));
 
    /* Store the result if complete or partial results have been requested. */
-   nir_push_if(&b, nir_ior(&b, nir_test_flag(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
+   nir_push_if(&b, nir_ior(&b, nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
                            nir_load_var(&b, available)));
 
    /* Store result. */
@@ -574,12 +568,12 @@ build_timestamp_query_shader(struct radv_device *device)
    nir_pop_if(&b, NULL);
 
    /* Determine if result is 64 or 32 bit. */
-   nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
+   nir_ssa_def *result_is_64bit = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *result_size =
       nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
 
    /* Store the result if complete or partial results have been requested. */
-   nir_push_if(&b, nir_ior(&b, nir_test_flag(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
+   nir_push_if(&b, nir_ior(&b, nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
                            nir_load_var(&b, available)));
 
    /* Store result. */
@@ -723,12 +717,12 @@ build_pg_query_shader(struct radv_device *device)
    nir_pop_if(&b, NULL);
 
    /* Determine if result is 64 or 32 bit. */
-   nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
+   nir_ssa_def *result_is_64bit = nir_test_mask(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *result_size =
       nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 16), nir_imm_int(&b, 8));
 
    /* Store the result if complete or partial results have been requested. */
-   nir_push_if(&b, nir_ior(&b, nir_test_flag(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
+   nir_push_if(&b, nir_ior(&b, nir_test_mask(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
                            nir_load_var(&b, available)));
 
    /* Store result. */

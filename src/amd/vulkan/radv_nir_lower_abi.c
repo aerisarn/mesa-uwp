@@ -54,8 +54,7 @@ static nir_ssa_def *
 nggc_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
 {
    nir_ssa_def *settings = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_culling_settings);
-   nir_ssa_def *x = nir_iand_imm(b, settings, mask);
-   return nir_ine(b, x, nir_imm_int(b, 0));
+   return nir_test_mask(b, settings, mask);
 }
 
 static nir_ssa_def *

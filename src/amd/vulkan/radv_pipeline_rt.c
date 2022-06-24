@@ -1128,14 +1128,12 @@ insert_traversal_triangle_case(struct radv_device *device,
    dist = nir_fdiv(b, dist, div);
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
    nir_ssa_def *switch_ccw =
-      nir_ine_imm(b,
-                  nir_iand_imm(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
-                               VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24),
-                  0);
+      nir_test_mask(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
+                    VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24);
    frontface = nir_ixor(b, frontface, switch_ccw);
 
-   nir_ssa_def *not_cull = nir_ieq_imm(
-      b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsSkipTrianglesKHRMask), 0);
+   nir_ssa_def *not_cull =
+      nir_inot(b, nir_test_mask(b, nir_load_var(b, vars->flags), SpvRayFlagsSkipTrianglesKHRMask));
    nir_ssa_def *not_facing_cull = nir_ieq_imm(
       b,
       nir_iand(b, nir_load_var(b, vars->flags),
@@ -1145,12 +1143,9 @@ insert_traversal_triangle_case(struct radv_device *device,
 
    not_cull = nir_iand(
       b, not_cull,
-      nir_ior(
-         b, not_facing_cull,
-         nir_ine_imm(b,
-                     nir_iand_imm(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
-                                  VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24),
-                     0)));
+      nir_ior(b, not_facing_cull,
+              nir_test_mask(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
+                            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)));
 
    nir_push_if(b, nir_iand(b,
                            nir_iand(b, nir_flt(b, dist, nir_load_var(b, vars->tmax)),
@@ -1232,16 +1227,13 @@ insert_traversal_triangle_case(struct radv_device *device,
 
          nir_store_var(b, trav_vars->should_return,
                        nir_ior(b,
-                               nir_ine_imm(b,
-                                           nir_iand_imm(b, nir_load_var(b, vars->flags),
-                                                        SpvRayFlagsSkipClosestHitShaderKHRMask),
-                                           0),
+                               nir_test_mask(b, nir_load_var(b, vars->flags),
+                                             SpvRayFlagsSkipClosestHitShaderKHRMask),
                                nir_ieq_imm(b, nir_load_var(b, vars->idx), 0)),
                        1);
 
-         nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
-            b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
-            0);
+         nir_ssa_def *terminate_on_first_hit =
+            nir_test_mask(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask);
          nir_ssa_def *ray_terminated =
             nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), rt_ahit_status_terminate);
          nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
@@ -1270,7 +1262,7 @@ insert_traversal_aabb_case(struct radv_device *device,
                                           nir_load_var(b, vars->flags), geometry_id_and_flags);
 
    nir_ssa_def *not_skip_aabb =
-      nir_ieq_imm(b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsSkipAABBsKHRMask), 0);
+      nir_inot(b, nir_test_mask(b, nir_load_var(b, vars->flags), SpvRayFlagsSkipAABBsKHRMask));
    nir_ssa_def *not_cull = nir_iand(
       b, not_skip_aabb,
       nir_ieq_imm(b,
@@ -1386,16 +1378,13 @@ insert_traversal_aabb_case(struct radv_device *device,
 
          nir_store_var(b, trav_vars->should_return,
                        nir_ior(b,
-                               nir_ine_imm(b,
-                                           nir_iand_imm(b, nir_load_var(b, vars->flags),
-                                                        SpvRayFlagsSkipClosestHitShaderKHRMask),
-                                           0),
+                               nir_test_mask(b, nir_load_var(b, vars->flags),
+                                             SpvRayFlagsSkipClosestHitShaderKHRMask),
                                nir_ieq_imm(b, nir_load_var(b, vars->idx), 0)),
                        1);
 
-         nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
-            b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
-            0);
+         nir_ssa_def *terminate_on_first_hit =
+            nir_test_mask(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask);
          nir_ssa_def *ray_terminated =
             nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), rt_ahit_status_terminate);
          nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
