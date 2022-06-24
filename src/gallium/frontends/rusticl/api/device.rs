@@ -201,6 +201,9 @@ static mut DEVICES: Vec<Arc<Device>> = Vec::new();
 static INIT: Once = Once::new();
 
 fn load_devices() {
+    unsafe {
+        glsl_type_singleton_init_or_ref();
+    }
     Device::all()
         .into_iter()
         .for_each(|d| unsafe { DEVICES.push(d) });
