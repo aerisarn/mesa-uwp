@@ -840,6 +840,7 @@ radv_ace_internal_finalize(struct radv_cmd_buffer *cmd_buffer)
       radv_emit_clear_data(cmd_buffer, V_370_ME, gfx2ace_va, 8);
    }
 
+   device->ws->cs_add_buffers(ace_cs, cmd_buffer->cs);
    return device->ws->cs_finalize(ace_cs);
 }
 

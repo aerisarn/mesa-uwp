@@ -288,6 +288,8 @@ struct radeon_winsys {
 
    void (*cs_add_buffer)(struct radeon_cmdbuf *cs, struct radeon_winsys_bo *bo);
 
+   void (*cs_add_buffers)(struct radeon_cmdbuf *to, struct radeon_cmdbuf *from);
+
    void (*cs_execute_secondary)(struct radeon_cmdbuf *parent, struct radeon_cmdbuf *child,
                                 bool allow_ib2);
 
