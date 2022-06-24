@@ -336,4 +336,10 @@ SOFTWARE.
 		<field name="dadjust" start="0" end="12" type="DADJUST"/>
 	</struct>
 
+	<struct name="SAMPLER_WORD1" length="2">
+		<field name="cemedge_dontfilter" start="63" end="63" type="bool"/>
+		<field name="texaddr_plane3" start="24" end="61" shift="2" type="address"/>
+		<field name="texaddr_plane2_hi" start="0" end="23" shift="16" type="address"/>
+	</struct>
+
 </csbgen>

@@ -119,4 +119,10 @@ void pvr_hard_code_graphics_get_build_info(
    struct rogue_build_data *const build_data,
    struct pvr_explicit_constant_usage *const explicit_const_usage);
 
+void pvr_hard_code_get_idfwdf_program(
+   const struct pvr_device_info *const dev_info,
+   const struct rogue_shader_binary **const program_out,
+   uint32_t *usc_shareds_out,
+   uint32_t *usc_temps_out);
+
 #endif /* PVR_HARDCODE_SHADERS_H */

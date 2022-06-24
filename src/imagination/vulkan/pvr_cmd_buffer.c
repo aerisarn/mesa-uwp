@@ -1094,7 +1094,7 @@ pvr_sub_cmd_compute_job_init(const struct pvr_physical_device *pdevice,
       value.border_colour_table_address = PVR_DEV_ADDR_INVALID;
    }
 
-   sub_cmd->num_shared_regs = MAX2(PVR_IDF_WDF_IN_REGISTER_CONST_COUNT,
+   sub_cmd->num_shared_regs = MAX2(cmd_buffer->device->idfwdf_state.usc_shareds,
                                    cmd_buffer->state.max_shared_regs);
 
    cmd_buffer->state.max_shared_regs = 0U;

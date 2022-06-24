@@ -279,6 +279,20 @@ struct pvr_device {
       struct pvr_bo *usc;
    } nop_program;
 
+   /* Issue Data Fence, Wait for Data Fence state. */
+   struct {
+      uint32_t usc_shareds;
+      struct pvr_bo *usc;
+
+      /* Buffer in which the IDF/WDF program performs store ops. */
+      struct pvr_bo *store_bo;
+      /* Contains the initialization values for the shared registers. */
+      struct pvr_bo *shareds_bo;
+
+      struct pvr_pds_upload pds;
+      struct pvr_pds_upload sw_compute_barrier_pds;
+   } idfwdf_state;
+
    VkPhysicalDeviceFeatures features;
 };
 

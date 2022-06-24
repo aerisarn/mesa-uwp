@@ -39,16 +39,19 @@
 #include <xf86drm.h>
 
 #include "hwdef/rogue_hw_utils.h"
+#include "pipe/p_defines.h"
 #include "pvr_bo.h"
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
 #include "pvr_debug.h"
 #include "pvr_device_info.h"
+#include "pvr_hardcode.h"
 #include "pvr_job_render.h"
 #include "pvr_limits.h"
 #include "pvr_nop_usc.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
+#include "pvr_tex_state.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "rogue/rogue_compiler.h"
@@ -1177,6 +1180,289 @@ static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
    return result;
 }
 
+static VkResult pvr_pds_idfwdf_programs_create_and_upload(
+   struct pvr_device *device,
+   pvr_dev_addr_t usc_addr,
+   uint32_t shareds,
+   uint32_t temps,
+   pvr_dev_addr_t shareds_buffer_addr,
+   struct pvr_pds_upload *const upload_out,
+   struct pvr_pds_upload *const sw_compute_barrier_upload_out)
+{
+   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   struct pvr_pds_vertex_shader_sa_program program = {
+      .kick_usc = true,
+      .clear_pds_barrier = PVR_NEED_SW_COMPUTE_PDS_BARRIER(dev_info),
+   };
+   size_t staging_buffer_size;
+   uint32_t *staging_buffer;
+   VkResult result;
+
+   /* We'll need to DMA the shareds into the USC's Common Store. */
+   program.num_dma_kicks = pvr_pds_encode_dma_burst(program.dma_control,
+                                                    program.dma_address,
+                                                    0,
+                                                    shareds,
+                                                    shareds_buffer_addr.addr,
+                                                    dev_info);
+
+   /* DMA temp regs. */
+   pvr_pds_setup_doutu(&program.usc_task_control,
+                       usc_addr.addr,
+                       temps,
+                       PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
+                       false);
+
+   pvr_pds_vertex_shader_sa(&program, NULL, PDS_GENERATE_SIZES, dev_info);
+
+   staging_buffer_size =
+      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+
+   staging_buffer = vk_alloc(&device->vk.alloc,
+                             staging_buffer_size,
+                             8,
+                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!staging_buffer)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   /* FIXME: Add support for PDS_GENERATE_CODEDATA_SEGMENTS? */
+   pvr_pds_vertex_shader_sa(&program,
+                            staging_buffer,
+                            PDS_GENERATE_DATA_SEGMENT,
+                            dev_info);
+   pvr_pds_vertex_shader_sa(&program,
+                            &staging_buffer[program.data_size],
+                            PDS_GENERATE_CODE_SEGMENT,
+                            dev_info);
+
+   /* At the time of writing, the SW_COMPUTE_PDS_BARRIER variant of the program
+    * is bigger so we handle it first (if needed) and realloc() for a smaller
+    * size.
+    */
+   if (PVR_NEED_SW_COMPUTE_PDS_BARRIER(dev_info)) {
+      /* FIXME: Figure out the define for alignment of 16. */
+      result = pvr_gpu_upload_pds(device,
+                                  &staging_buffer[0],
+                                  program.data_size,
+                                  16,
+                                  &staging_buffer[program.data_size],
+                                  program.code_size,
+                                  16,
+                                  16,
+                                  sw_compute_barrier_upload_out);
+      if (result != VK_SUCCESS) {
+         vk_free(&device->vk.alloc, staging_buffer);
+         return result;
+      }
+
+      program.clear_pds_barrier = false;
+
+      pvr_pds_vertex_shader_sa(&program, NULL, PDS_GENERATE_SIZES, dev_info);
+
+      staging_buffer_size =
+         (program.code_size + program.data_size) * sizeof(*staging_buffer);
+
+      staging_buffer = vk_realloc(&device->vk.alloc,
+                                  staging_buffer,
+                                  staging_buffer_size,
+                                  8,
+                                  VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      if (!staging_buffer) {
+         pvr_bo_free(device, sw_compute_barrier_upload_out->pvr_bo);
+
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+
+      /* FIXME: Add support for PDS_GENERATE_CODEDATA_SEGMENTS? */
+      pvr_pds_vertex_shader_sa(&program,
+                               staging_buffer,
+                               PDS_GENERATE_DATA_SEGMENT,
+                               dev_info);
+      pvr_pds_vertex_shader_sa(&program,
+                               &staging_buffer[program.data_size],
+                               PDS_GENERATE_CODE_SEGMENT,
+                               dev_info);
+   } else {
+      *sw_compute_barrier_upload_out = (struct pvr_pds_upload){
+         .pvr_bo = NULL,
+      };
+   }
+
+   /* FIXME: Figure out the define for alignment of 16. */
+   result = pvr_gpu_upload_pds(device,
+                               &staging_buffer[0],
+                               program.data_size,
+                               16,
+                               &staging_buffer[program.data_size],
+                               program.code_size,
+                               16,
+                               16,
+                               upload_out);
+   if (result != VK_SUCCESS) {
+      vk_free(&device->vk.alloc, staging_buffer);
+      pvr_bo_free(device, sw_compute_barrier_upload_out->pvr_bo);
+
+      return result;
+   }
+
+   vk_free(&device->vk.alloc, staging_buffer);
+
+   return VK_SUCCESS;
+}
+
+static VkResult pvr_device_init_compute_idfwdf_state(struct pvr_device *device)
+{
+   uint64_t sampler_state[ROGUE_NUM_TEXSTATE_SAMPLER_WORDS];
+   uint64_t image_state[ROGUE_NUM_TEXSTATE_IMAGE_WORDS];
+   const struct rogue_shader_binary *usc_program;
+   struct pvr_texture_state_info tex_info;
+   uint32_t *dword_ptr;
+   uint32_t usc_shareds;
+   uint32_t usc_temps;
+   VkResult result;
+
+   pvr_hard_code_get_idfwdf_program(&device->pdevice->dev_info,
+                                    &usc_program,
+                                    &usc_shareds,
+                                    &usc_temps);
+
+   device->idfwdf_state.usc_shareds = usc_shareds;
+
+   /* FIXME: Figure out the define for alignment of 16. */
+   result = pvr_gpu_upload_usc(device,
+                               usc_program->data,
+                               usc_program->size,
+                               16,
+                               &device->idfwdf_state.usc);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* TODO: Get the store buffer size from the compiler? */
+   /* TODO: How was the size derived here? */
+   result = pvr_bo_alloc(device,
+                         device->heaps.general_heap,
+                         4 * sizeof(float) * 4 * 2,
+                         4,
+                         0,
+                         &device->idfwdf_state.store_bo);
+   if (result != VK_SUCCESS)
+      goto err_free_usc_program;
+
+   result = pvr_bo_alloc(device,
+                         device->heaps.general_heap,
+                         usc_shareds * ROGUE_REG_SIZE_BYTES,
+                         ROGUE_REG_SIZE_BYTES,
+                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                         &device->idfwdf_state.shareds_bo);
+   if (result != VK_SUCCESS)
+      goto err_free_store_buffer;
+
+   /* Pack state words. */
+
+   pvr_csb_pack (&sampler_state[0], TEXSTATE_SAMPLER, sampler) {
+      sampler.dadjust = PVRX(TEXSTATE_DADJUST_ZERO_UINT);
+      sampler.magfilter = PVRX(TEXSTATE_FILTER_POINT);
+      sampler.addrmode_u = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+      sampler.addrmode_v = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+   }
+
+   /* clang-format off */
+   pvr_csb_pack (&sampler_state[1], TEXSTATE_SAMPLER_WORD1, sampler_word1) {}
+   /* clang-format on */
+
+   STATIC_ASSERT(1 + 1 == ROGUE_NUM_TEXSTATE_SAMPLER_WORDS);
+
+   tex_info = (struct pvr_texture_state_info){
+      .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+      .mem_layout = PVR_MEMLAYOUT_LINEAR,
+      .flags = PVR_TEXFLAGS_INDEX_LOOKUP,
+      /* TODO: Is this correct? Is it 2D, 3D, or 2D_ARRAY? */
+      .type = VK_IMAGE_VIEW_TYPE_2D,
+      .extent = { .width = 4, .height = 2, .depth = 0 },
+      .mip_levels = 1,
+      .sample_count = 1,
+      .stride = 4,
+      .swizzle = { PIPE_SWIZZLE_X,
+                   PIPE_SWIZZLE_Y,
+                   PIPE_SWIZZLE_Z,
+                   PIPE_SWIZZLE_W },
+      .addr = device->idfwdf_state.store_bo->vma->dev_addr,
+   };
+
+   result = pvr_pack_tex_state(device, &tex_info, image_state);
+   if (result != VK_SUCCESS)
+      goto err_free_shareds_buffer;
+
+   /* Fill the shareds buffer. */
+
+   dword_ptr = (uint32_t *)device->idfwdf_state.shareds_bo->bo->map;
+
+#define HIGH_32(val) ((uint32_t)((val) >> 32U))
+#define LOW_32(val) ((uint32_t)(val))
+
+   /* TODO: Should we use compiler info to setup the shareds data instead of
+    * assuming there's always 12 and this is how they should be setup?
+    */
+
+   dword_ptr[0] = HIGH_32(device->idfwdf_state.store_bo->vma->dev_addr.addr);
+   dword_ptr[1] = LOW_32(device->idfwdf_state.store_bo->vma->dev_addr.addr);
+
+   /* Pad the shareds as the texture/sample state words are 128 bit aligned. */
+   dword_ptr[2] = 0U;
+   dword_ptr[3] = 0U;
+
+   dword_ptr[4] = LOW_32(image_state[0]);
+   dword_ptr[5] = HIGH_32(image_state[0]);
+   dword_ptr[6] = LOW_32(image_state[1]);
+   dword_ptr[7] = HIGH_32(image_state[1]);
+
+   dword_ptr[8] = LOW_32(sampler_state[0]);
+   dword_ptr[9] = HIGH_32(sampler_state[0]);
+   dword_ptr[10] = LOW_32(sampler_state[1]);
+   dword_ptr[11] = HIGH_32(sampler_state[1]);
+   assert(11 + 1 == usc_shareds);
+
+#undef HIGH_32
+#undef LOW_32
+
+   pvr_bo_cpu_unmap(device, device->idfwdf_state.shareds_bo);
+   dword_ptr = NULL;
+
+   /* Generate and upload PDS programs. */
+   result = pvr_pds_idfwdf_programs_create_and_upload(
+      device,
+      device->idfwdf_state.usc->vma->dev_addr,
+      usc_shareds,
+      usc_temps,
+      device->idfwdf_state.shareds_bo->vma->dev_addr,
+      &device->idfwdf_state.pds,
+      &device->idfwdf_state.sw_compute_barrier_pds);
+   if (result != VK_SUCCESS)
+      goto err_free_shareds_buffer;
+
+   return VK_SUCCESS;
+
+err_free_shareds_buffer:
+   pvr_bo_free(device, device->idfwdf_state.shareds_bo);
+
+err_free_store_buffer:
+   pvr_bo_free(device, device->idfwdf_state.store_bo);
+
+err_free_usc_program:
+   pvr_bo_free(device, device->idfwdf_state.usc);
+
+   return result;
+}
+
+static void pvr_device_finish_compute_idfwdf_state(struct pvr_device *device)
+{
+   pvr_bo_free(device, device->idfwdf_state.pds.pvr_bo);
+   pvr_bo_free(device, device->idfwdf_state.sw_compute_barrier_pds.pvr_bo);
+   pvr_bo_free(device, device->idfwdf_state.shareds_bo);
+   pvr_bo_free(device, device->idfwdf_state.store_bo);
+   pvr_bo_free(device, device->idfwdf_state.usc);
+}
+
 /* FIXME: We should be calculating the size when we upload the code in
  * pvr_srv_setup_static_pixel_event_program().
  */
@@ -1358,9 +1644,13 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_pvr_free_nop_program;
 
-   result = pvr_queues_create(device, pCreateInfo);
+   result = pvr_device_init_compute_idfwdf_state(device);
    if (result != VK_SUCCESS)
       goto err_pvr_free_compute_fence;
+
+   result = pvr_queues_create(device, pCreateInfo);
+   if (result != VK_SUCCESS)
+      goto err_pvr_finish_compute_idfwdf;
 
    pvr_device_init_default_sampler_state(device);
 
@@ -1383,6 +1673,9 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    *pDevice = pvr_device_to_handle(device);
 
    return VK_SUCCESS;
+
+err_pvr_finish_compute_idfwdf:
+   pvr_device_finish_compute_idfwdf_state(device);
 
 err_pvr_free_compute_fence:
    pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
@@ -1418,6 +1711,7 @@ void pvr_DestroyDevice(VkDevice _device,
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
    pvr_queues_destroy(device);
+   pvr_device_finish_compute_idfwdf_state(device);
    pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
    pvr_bo_free(device, device->nop_program.pds.pvr_bo);
    pvr_bo_free(device, device->nop_program.usc);
