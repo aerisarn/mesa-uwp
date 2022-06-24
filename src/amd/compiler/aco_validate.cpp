@@ -261,6 +261,7 @@ validate_ir(Program* program)
                bool flat = instr->isFlatLike();
                bool can_be_undef = is_phi(instr) || instr->isEXP() || instr->isReduction() ||
                                    instr->opcode == aco_opcode::p_create_vector ||
+                                   instr->opcode == aco_opcode::p_jump_to_epilog ||
                                    (flat && i == 1) || (instr->isMIMG() && (i == 1 || i == 2)) ||
                                    ((instr->isMUBUF() || instr->isMTBUF()) && i == 1) ||
                                    (instr->isScratch() && i == 0);
@@ -511,6 +512,18 @@ validate_ir(Program* program)
                unsigned comp = data_bits / MAX2(op_bits, 1);
                check(instr->operands[1].constantValue() < comp, "Index must be in-bounds",
                      instr.get());
+            } else if (instr->opcode == aco_opcode::p_jump_to_epilog) {
+               check(instr->definitions.size() == 0, "p_jump_to_epilog must have 0 definitions",
+                     instr.get());
+               check(instr->operands.size() > 0 &&
+                        instr->operands[0].getTemp().type() == RegType::sgpr &&
+                        instr->operands[0].getTemp().size() == 2,
+                     "First operand of p_jump_to_epilog must be a SGPR", instr.get());
+               for (unsigned i = 1; i < instr->operands.size(); i++) {
+                  check(instr->operands[i].getTemp().type() == RegType::vgpr ||
+                           instr->operands[i].isUndefined(),
+                        "Other operands of p_jump_to_epilog must be VGPRs or undef", instr.get());
+               }
             }
             break;
          }

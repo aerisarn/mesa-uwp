@@ -320,6 +320,8 @@ opcode("p_insert") # src1=index, src2=bits
 
 opcode("p_init_scratch")
 
+# jumps to a shader epilog
+opcode("p_jump_to_epilog")
 
 # SOP2 instructions: 2 scalar inputs, 1 scalar output (+optional scc)
 SOP2 = {

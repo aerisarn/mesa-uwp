@@ -359,9 +359,10 @@ force_waitcnt(wait_ctx& ctx, wait_imm& imm)
 void
 kill(wait_imm& imm, Instruction* instr, wait_ctx& ctx, memory_sync_info sync_info)
 {
-   if (debug_flags & DEBUG_FORCE_WAITCNT) {
+   if (instr->opcode == aco_opcode::s_setpc_b64 || (debug_flags & DEBUG_FORCE_WAITCNT)) {
       /* Force emitting waitcnt states right after the instruction if there is
-       * something to wait for.
+       * something to wait for. This is also applied for s_setpc_b64 to ensure
+       * waitcnt states are inserted before jumping to the PS epilog.
        */
       force_waitcnt(ctx, imm);
    }

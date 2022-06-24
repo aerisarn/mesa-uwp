@@ -2368,6 +2368,10 @@ lower_to_hw_instr(Program* program)
                }
                break;
             }
+            case aco_opcode::p_jump_to_epilog: {
+               bld.sop1(aco_opcode::s_setpc_b64, instr->operands[0]);
+               break;
+            }
             default: break;
             }
          } else if (instr->isBranch()) {
