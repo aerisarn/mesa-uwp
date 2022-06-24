@@ -5751,7 +5751,49 @@ anv_cmd_buffer_push_base_group_id(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+#define GPGPU_DISPATCHDIMX 0x2500
+#define GPGPU_DISPATCHDIMY 0x2504
+#define GPGPU_DISPATCHDIMZ 0x2508
+
+static void
+compute_load_indirect_params(struct anv_cmd_buffer *cmd_buffer,
+                             const struct anv_address indirect_addr)
+{
+   struct mi_builder b;
+   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+
+   struct mi_value size_x = mi_mem32(anv_address_add(indirect_addr, 0));
+   struct mi_value size_y = mi_mem32(anv_address_add(indirect_addr, 4));
+   struct mi_value size_z = mi_mem32(anv_address_add(indirect_addr, 8));
+
+   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMX), size_x);
+   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMY), size_y);
+   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
+}
+
 #if GFX_VERx10 >= 125
+
+static inline struct GENX(INTERFACE_DESCRIPTOR_DATA)
+get_interface_descriptor_data(struct anv_cmd_buffer *cmd_buffer,
+                              const struct anv_shader_bin *shader,
+                              const struct brw_cs_prog_data *prog_data,
+                              const struct brw_cs_dispatch_info *dispatch)
+{
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
+
+   return (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
+      .KernelStartPointer = shader->kernel.offset,
+      .SamplerStatePointer = cmd_buffer->state.samplers[MESA_SHADER_COMPUTE].offset,
+      .BindingTablePointer = cmd_buffer->state.binding_tables[MESA_SHADER_COMPUTE].offset,
+      /* Typically set to 0 to avoid prefetching on every thread dispatch. */
+      .BindingTableEntryCount = devinfo->verx10 == 125 ?
+         0 : 1 + MIN2(shader->bind_map.surface_count, 30),
+      .NumberofThreadsinGPGPUThreadGroup = dispatch->threads,
+      .SharedLocalMemorySize = encode_slm_size(GFX_VER, prog_data->base.total_shared),
+      .PreferredSLMAllocationSize = preferred_slm_allocation_size(devinfo),
+      .NumberOfBarriers = prog_data->uses_barrier,
+   };
+}
 
 static inline void
 emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
@@ -5761,7 +5803,6 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
                     uint32_t groupCountZ)
 {
    const struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
-   const struct anv_shader_bin *cs_bin = pipeline->cs;
    const bool predicate = cmd_buffer->state.conditional_render_enabled;
 
    const struct intel_device_info *devinfo = pipeline->base.device->info;
@@ -5788,22 +5829,10 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
          .PostSync                       = {
             .MOCS                        = anv_mocs(pipeline->base.device, NULL, 0),
          },
-
-         .InterfaceDescriptor            = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
-            .KernelStartPointer                = cs_bin->kernel.offset,
-            .SamplerStatePointer               = cmd_buffer->state.samplers[
-               MESA_SHADER_COMPUTE].offset,
-            .BindingTablePointer               = cmd_buffer->state.binding_tables[
-               MESA_SHADER_COMPUTE].offset,
-            /* Typically set to 0 to avoid prefetching on every thread dispatch. */
-            .BindingTableEntryCount            = devinfo->verx10 == 125 ?
-               0 : 1 + MIN2(pipeline->cs->bind_map.surface_count, 30),
-            .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
-            .SharedLocalMemorySize             = encode_slm_size(
-               GFX_VER, prog_data->base.total_shared),
-            .PreferredSLMAllocationSize        = preferred_slm_allocation_size(devinfo),
-            .NumberOfBarriers                  = prog_data->uses_barrier,
-         });
+         .InterfaceDescriptor =
+            get_interface_descriptor_data(cmd_buffer, pipeline->cs,
+                                          prog_data, &dispatch),
+      );
 }
 
 #else /* #if GFX_VERx10 >= 125 */
@@ -5842,17 +5871,22 @@ emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
 
 static inline void
 emit_cs_walker(struct anv_cmd_buffer *cmd_buffer,
-               const struct anv_compute_pipeline *pipeline, bool indirect,
+               const struct anv_compute_pipeline *pipeline,
                const struct brw_cs_prog_data *prog_data,
-               uint32_t groupCountX, uint32_t groupCountY,
-               uint32_t groupCountZ)
+               struct anv_address indirect_addr,
+               uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
+   bool is_indirect = !anv_address_is_null(indirect_addr);
+
+   if (is_indirect)
+      compute_load_indirect_params(cmd_buffer, indirect_addr);
+
 #if GFX_VERx10 >= 125
-   emit_compute_walker(cmd_buffer, pipeline, indirect, prog_data, groupCountX,
-                       groupCountY, groupCountZ);
+   emit_compute_walker(cmd_buffer, pipeline, is_indirect, prog_data,
+                       groupCountX, groupCountY, groupCountZ);
 #else
-   emit_gpgpu_walker(cmd_buffer, pipeline, indirect, prog_data, groupCountX,
-                     groupCountY, groupCountZ);
+   emit_gpgpu_walker(cmd_buffer, pipeline, is_indirect, prog_data,
+                     groupCountX, groupCountY, groupCountZ);
 #endif
 }
 
@@ -5905,16 +5939,13 @@ void genX(CmdDispatchBase)(
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   emit_cs_walker(cmd_buffer, pipeline, false, prog_data, groupCountX,
-                  groupCountY, groupCountZ);
+   emit_cs_walker(cmd_buffer, pipeline, prog_data,
+                  ANV_NULL_ADDRESS /* no indirect data */,
+                  groupCountX, groupCountY, groupCountZ);
 
    trace_intel_end_compute(&cmd_buffer->trace,
                            groupCountX, groupCountY, groupCountZ);
 }
-
-#define GPGPU_DISPATCHDIMX 0x2500
-#define GPGPU_DISPATCHDIMY 0x2504
-#define GPGPU_DISPATCHDIMZ 0x2508
 
 void genX(CmdDispatchIndirect)(
     VkCommandBuffer                             commandBuffer,
@@ -5946,21 +5977,10 @@ void genX(CmdDispatchIndirect)(
 
    genX(cmd_buffer_flush_compute_state)(cmd_buffer);
 
-   struct mi_builder b;
-   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
-
-   struct mi_value size_x = mi_mem32(anv_address_add(addr, 0));
-   struct mi_value size_y = mi_mem32(anv_address_add(addr, 4));
-   struct mi_value size_z = mi_mem32(anv_address_add(addr, 8));
-
-   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMX), size_x);
-   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMY), size_y);
-   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
-
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   emit_cs_walker(cmd_buffer, pipeline, true, prog_data, 0, 0, 0);
+   emit_cs_walker(cmd_buffer, pipeline, prog_data, addr, 0, 0, 0);
 
    trace_intel_end_compute(&cmd_buffer->trace, 0, 0, 0);
 }
@@ -6409,6 +6429,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMX), launch_size[0]);
       mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMY), launch_size[1]);
       mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), launch_size[2]);
+
    } else {
       calc_local_trace_size(local_size_log2, params->launch_size);
 
