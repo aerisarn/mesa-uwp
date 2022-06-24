@@ -464,6 +464,43 @@ filter_pack_instr(const nir_instr *const_instr, UNUSED const void *data)
    return false;
 }
 
+
+struct bo_vars {
+   nir_variable *uniforms[5];
+   nir_variable *ubo[5];
+   nir_variable *ssbo[5];
+   uint32_t first_ubo;
+   uint32_t first_ssbo;
+};
+
+static struct bo_vars
+get_bo_vars(struct zink_shader *zs, nir_shader *shader)
+{
+   struct bo_vars bo;
+   memset(&bo, 0, sizeof(bo));
+   if (zs->ubos_used)
+      bo.first_ubo = ffs(zs->ubos_used & ~BITFIELD_BIT(0)) - 2;
+   assert(bo.first_ssbo < PIPE_MAX_CONSTANT_BUFFERS);
+   if (zs->ssbos_used)
+      bo.first_ssbo = ffs(zs->ssbos_used) - 1;
+   assert(bo.first_ssbo < PIPE_MAX_SHADER_BUFFERS);
+   nir_foreach_variable_with_modes(var, shader, nir_var_mem_ssbo | nir_var_mem_ubo) {
+      if (var->data.mode == nir_var_mem_ssbo) {
+         assert(!bo.ssbo[32 >> 4]);
+         bo.ssbo[32 >> 4] = var;
+      } else {
+         if (var->data.driver_location) {
+            assert(!bo.ubo[32 >> 4]);
+            bo.ubo[32 >> 4] = var;
+         } else {
+            assert(!bo.uniforms[32 >> 4]);
+            bo.uniforms[32 >> 4] = var;
+         }
+      }
+   }
+   return bo;
+}
+
 static void
 optimize_nir(struct nir_shader *s)
 {
@@ -1049,14 +1086,6 @@ rewrite_bo_access(nir_shader *shader, struct zink_screen *screen)
    return nir_shader_instructions_pass(shader, rewrite_bo_access_instr, nir_metadata_dominance, screen);
 }
 
-struct bo_vars {
-   nir_variable *uniforms[5];
-   nir_variable *ubo[5];
-   nir_variable *ssbo[5];
-   uint32_t first_ubo;
-   uint32_t first_ssbo;
-};
-
 static nir_variable *
 get_bo_var(nir_shader *shader, struct bo_vars *bo, bool ssbo, nir_src *src, unsigned bit_size)
 {
@@ -1260,28 +1289,7 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
 static bool
 remove_bo_access(nir_shader *shader, struct zink_shader *zs)
 {
-   struct bo_vars bo;
-   memset(&bo, 0, sizeof(bo));
-   if (zs->ubos_used)
-      bo.first_ubo = ffs(zs->ubos_used & ~BITFIELD_BIT(0)) - 2;
-   assert(bo.first_ssbo < PIPE_MAX_CONSTANT_BUFFERS);
-   if (zs->ssbos_used)
-      bo.first_ssbo = ffs(zs->ssbos_used) - 1;
-   assert(bo.first_ssbo < PIPE_MAX_SHADER_BUFFERS);
-   nir_foreach_variable_with_modes(var, shader, nir_var_mem_ssbo | nir_var_mem_ubo) {
-      if (var->data.mode == nir_var_mem_ssbo) {
-         assert(!bo.ssbo[32 >> 4]);
-         bo.ssbo[32 >> 4] = var;
-      } else {
-         if (var->data.driver_location) {
-            assert(!bo.ubo[32 >> 4]);
-            bo.ubo[32 >> 4] = var;
-         } else {
-            assert(!bo.uniforms[32 >> 4]);
-            bo.uniforms[32 >> 4] = var;
-         }
-      }
-   }
+   struct bo_vars bo = get_bo_vars(zs, shader);
    return nir_shader_instructions_pass(shader, remove_bo_access_instr, nir_metadata_dominance, &bo);
 }
 
