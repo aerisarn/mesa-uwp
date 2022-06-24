@@ -3815,16 +3815,9 @@ dzn_CmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
 
    for (uint32_t i = 0; i < num_states; i++) {
       memcpy(((char *)states[i]->values) + offset, pValues, size);
-
-      uint32_t current_offset = states[i]->offset;
-      uint32_t current_end = states[i]->end;
-      uint32_t end = offset + size;
-      if (current_end != 0) {
-         offset = MIN2(current_offset, offset);
-         end = MAX2(current_end, end);
-      }
-      states[i]->offset = offset;
-      states[i]->end = end;
+      states[i]->offset =
+         states[i]->end > 0 ? MIN2(states[i]->offset, offset) : offset;
+      states[i]->end = MAX2(states[i]->end, offset + size);
    }
 }
 
