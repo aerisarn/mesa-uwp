@@ -742,7 +742,7 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
                                   nir_udiv_imm(b, idx, int_val->bit_size));
          }
 
-         return nir_i2b(b, nir_iand_imm(b, nir_ushr(b, int_val, idx), 1));
+         return nir_test_mask(b, nir_ushr(b, int_val, idx), 1);
       }
       case nir_intrinsic_ballot_bit_count_reduce:
          return vec_bit_count(b, int_val);
