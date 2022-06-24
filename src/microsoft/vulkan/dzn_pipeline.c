@@ -647,6 +647,17 @@ translate_cull_mode(VkCullModeFlags in)
    }
 }
 
+static int32_t
+translate_depth_bias(double depth_bias)
+{
+   if (depth_bias > INT32_MAX)
+      return INT32_MAX;
+   else if (depth_bias < INT32_MIN)
+      return INT32_MIN;
+
+   return depth_bias;
+}
+
 static void
 dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
                                      D3D12_PIPELINE_STATE_STREAM_DESC *out,
@@ -680,7 +691,7 @@ dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
    desc->FrontCounterClockwise =
       in_rast->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE;
    if (in_rast->depthBiasEnable) {
-      desc->DepthBias = in_rast->depthBiasConstantFactor;
+      desc->DepthBias = translate_depth_bias(in_rast->depthBiasConstantFactor);
       desc->SlopeScaledDepthBias = in_rast->depthBiasSlopeFactor;
       desc->DepthBiasClamp = in_rast->depthBiasClamp;
    }
@@ -1339,7 +1350,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
       D3D12_RASTERIZER_DESC *rast =
          dzn_graphics_pipeline_get_desc(pipeline, stream_buf, rast);
       if (rast && pipeline->zsa.dynamic_depth_bias) {
-         rast->DepthBias = masked_key.depth_bias.constant_factor;
+         rast->DepthBias = translate_depth_bias(masked_key.depth_bias.constant_factor);
          rast->DepthBiasClamp = masked_key.depth_bias.clamp;
          rast->SlopeScaledDepthBias = masked_key.depth_bias.slope_factor;
       }
