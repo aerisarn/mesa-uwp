@@ -4501,7 +4501,6 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS(progress, nir, nir_lower_int64);
 
         nir_lower_idiv_options idiv_options = {
-                .imprecise_32bit_lowering = true,
                 .allow_fp16 = true,
         };
         NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
