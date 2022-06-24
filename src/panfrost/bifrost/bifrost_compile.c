@@ -1384,6 +1384,9 @@ bi_emit_image_coord(bi_builder *b, bi_index coord, unsigned src_idx,
                 if (coord_comps == 3 && b->shader->arch >= 9)
                         return bi_mkvec_v2i16(b, bi_imm_u16(0),
                                               bi_half(bi_extract(b, coord, 2), false));
+                else if (coord_comps == 2 && is_array && b->shader->arch >= 9)
+                        return bi_mkvec_v2i16(b, bi_imm_u16(0),
+                                                 bi_half(bi_extract(b, coord, 1), false));
                 else if (coord_comps == 3)
                         return bi_extract(b, coord, 2);
                 else if (coord_comps == 2 && is_array)
