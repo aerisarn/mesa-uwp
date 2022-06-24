@@ -502,6 +502,74 @@ get_bo_vars(struct zink_shader *zs, nir_shader *shader)
    return bo;
 }
 
+static bool
+bound_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct bo_vars *bo = data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   nir_variable *var = NULL;
+   nir_ssa_def *offset = NULL;
+   bool is_load = true;
+   b->cursor = nir_before_instr(instr);
+
+   switch (intr->intrinsic) {
+   case nir_intrinsic_store_ssbo:
+      var = bo->ssbo[nir_dest_bit_size(intr->dest) >> 4];
+      offset = intr->src[2].ssa;
+      is_load = false;
+      break;
+   case nir_intrinsic_load_ssbo:
+      var = bo->ssbo[nir_dest_bit_size(intr->dest) >> 4];
+      offset = intr->src[1].ssa;
+      break;
+   case nir_intrinsic_load_ubo:
+      if (nir_src_is_const(intr->src[0]) && nir_src_as_const_value(intr->src[0])->u32 == 0)
+         var = bo->uniforms[nir_dest_bit_size(intr->dest) >> 4];
+      else
+         var = bo->ubo[nir_dest_bit_size(intr->dest) >> 4];
+      offset = intr->src[1].ssa;
+      break;
+   default:
+      return false;
+   }
+   nir_src offset_src = nir_src_for_ssa(offset);
+   if (!nir_src_is_const(offset_src))
+      return false;
+
+   unsigned offset_bytes = nir_src_as_const_value(offset_src)->u32;
+   const struct glsl_type *strct_type = glsl_get_array_element(var->type);
+   unsigned size = glsl_array_size(glsl_get_struct_field(strct_type, 0));
+   bool has_unsized = glsl_array_size(glsl_get_struct_field(strct_type, glsl_get_length(strct_type) - 1)) == 0;
+   if (has_unsized || offset_bytes + intr->num_components - 1 < size)
+      return false;
+
+   unsigned rewrites = 0;
+   nir_ssa_def *result[2];
+   for (unsigned i = 0; i < intr->num_components; i++) {
+      if (offset_bytes + i >= size) {
+         rewrites++;
+         if (is_load)
+            result[i] = nir_imm_zero(b, 1, nir_dest_bit_size(intr->dest));
+      }
+   }
+   assert(rewrites == intr->num_components);
+   if (is_load) {
+      nir_ssa_def *load = nir_vec(b, result, intr->num_components);
+      nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
+   }
+   nir_instr_remove(instr);
+   return true;
+}
+
+static bool
+bound_bo_access(nir_shader *shader, struct zink_shader *zs)
+{
+   struct bo_vars bo = get_bo_vars(zs, shader);
+   return nir_shader_instructions_pass(shader, bound_bo_access_instr, nir_metadata_dominance, &bo);
+}
+
 static void
 optimize_nir(struct nir_shader *s, struct zink_shader *zs)
 {
@@ -528,6 +596,8 @@ optimize_nir(struct nir_shader *s, struct zink_shader *zs)
       NIR_PASS(progress, s, nir_opt_constant_folding);
       NIR_PASS(progress, s, nir_opt_undef);
       NIR_PASS(progress, s, zink_nir_lower_b2b);
+      if (zs)
+         NIR_PASS(progress, s, bound_bo_access, zs);
    } while (progress);
 
    do {
