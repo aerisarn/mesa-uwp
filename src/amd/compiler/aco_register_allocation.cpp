@@ -1918,9 +1918,6 @@ bool
 operand_can_use_reg(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr, unsigned idx, PhysReg reg,
                     RegClass rc)
 {
-   if (instr->operands[idx].isFixed())
-      return instr->operands[idx].physReg() == reg;
-
    bool is_writelane = instr->opcode == aco_opcode::v_writelane_b32 ||
                        instr->opcode == aco_opcode::v_writelane_b32_e64;
    if (gfx_level <= GFX9 && is_writelane && idx <= 1) {
@@ -1953,36 +1950,76 @@ operand_can_use_reg(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr, unsign
 }
 
 void
+handle_fixed_operands(ra_ctx& ctx, RegisterFile& register_file,
+                      std::vector<std::pair<Operand, Definition>>& parallelcopy,
+                      aco_ptr<Instruction>& instr)
+{
+   assert(instr->operands.size() <= 64);
+
+   RegisterFile tmp_file(register_file);
+
+   uint64_t mask = 0;
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      Operand& op = instr->operands[i];
+
+      if (!op.isTemp() || !op.isFixed())
+         continue;
+
+      PhysReg src = ctx.assignments[op.tempId()].reg;
+
+      if (op.physReg() == src) {
+         tmp_file.block(op.physReg(), op.regClass());
+         continue;
+      }
+
+      bool found = false;
+      u_foreach_bit64 (j, mask) {
+         if (instr->operands[j].tempId() == op.tempId() &&
+             instr->operands[j].physReg() == op.physReg()) {
+            found = true;
+            break;
+         }
+      }
+      if (found)
+         continue; /* the copy is already added to the list */
+
+      /* clear from register_file so fixed operands are not collected be collect_vars() */
+      tmp_file.clear(src, op.regClass()); // TODO: try to avoid moving block vars to src
+
+      mask |= (uint64_t)1 << i;
+
+      Operand pc_op(instr->operands[i].getTemp(), src);
+      Definition pc_def = Definition(op.physReg(), pc_op.regClass());
+      parallelcopy.emplace_back(pc_op, pc_def);
+   }
+
+   if (!mask)
+      return;
+
+   std::vector<unsigned> blocking_vars;
+   u_foreach_bit64 (i, mask) {
+      Operand& op = instr->operands[i];
+      PhysRegInterval target{op.physReg(), op.size()};
+      std::vector<unsigned> blocking_vars2 = collect_vars(ctx, tmp_file, target);
+      blocking_vars.insert(blocking_vars.end(), blocking_vars2.begin(), blocking_vars2.end());
+
+      /* prevent get_regs_for_copies() from using these registers */
+      tmp_file.block(op.physReg(), op.regClass());
+   }
+
+   get_regs_for_copies(ctx, tmp_file, parallelcopy, blocking_vars, instr, PhysRegInterval());
+   update_renames(ctx, register_file, parallelcopy, instr, rename_not_killed_ops | fill_killed_ops);
+}
+
+void
 get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopy,
                     aco_ptr<Instruction>& instr, Operand& operand, unsigned operand_index)
 {
-   /* check if the operand is fixed */
+   /* clear the operand in case it's only a stride mismatch */
    PhysReg src = ctx.assignments[operand.tempId()].reg;
-   PhysReg dst;
-   if (operand.isFixed()) {
-      assert(operand.physReg() != src);
-
-      /* check if target reg is blocked, and move away the blocking var */
-      if (register_file.test(operand.physReg(), operand.bytes())) {
-         PhysRegInterval target{operand.physReg(), operand.size()};
-
-         RegisterFile tmp_file(register_file);
-
-         std::vector<unsigned> blocking_vars = collect_vars(ctx, tmp_file, target);
-
-         tmp_file.clear(src, operand.regClass()); // TODO: try to avoid moving block vars to src
-         tmp_file.block(operand.physReg(), operand.regClass());
-
-         get_regs_for_copies(ctx, tmp_file, parallelcopy, blocking_vars, instr, PhysRegInterval());
-      }
-      dst = operand.physReg();
-
-   } else {
-      /* clear the operand in case it's only a stride mismatch */
-      register_file.clear(src, operand.regClass());
-      dst = get_reg(ctx, register_file, operand.getTemp(), parallelcopy, instr, operand_index);
-   }
+   register_file.clear(src, operand.regClass());
+   PhysReg dst = get_reg(ctx, register_file, operand.getTemp(), parallelcopy, instr, operand_index);
 
    Operand pc_op = operand;
    pc_op.setFixed(src);
@@ -2757,6 +2794,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
          bool temp_in_scc = register_file[scc];
 
          /* handle operands */
+         bool fixed = false;
          for (unsigned i = 0; i < instr->operands.size(); ++i) {
             auto& operand = instr->operands[i];
             if (!operand.isTemp())
@@ -2765,6 +2803,18 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             /* rename operands */
             operand.setTemp(read_variable(ctx, operand.getTemp(), block.index));
             assert(ctx.assignments[operand.tempId()].assigned);
+
+            fixed |=
+               operand.isFixed() && ctx.assignments[operand.tempId()].reg != operand.physReg();
+         }
+
+         if (fixed)
+            handle_fixed_operands(ctx, register_file, parallelcopy, instr);
+
+         for (unsigned i = 0; i < instr->operands.size(); ++i) {
+            auto& operand = instr->operands[i];
+            if (!operand.isTemp() || operand.isFixed())
+               continue;
 
             PhysReg reg = ctx.assignments[operand.tempId()].reg;
             if (operand_can_use_reg(program->gfx_level, instr, i, reg, operand.regClass()))
