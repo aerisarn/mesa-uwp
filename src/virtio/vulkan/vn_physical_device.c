@@ -143,6 +143,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        CUSTOM_BORDER_COLOR_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_depth_clip_enable, feats->depth_clip_enable,
                        DEPTH_CLIP_ENABLE_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_image_view_min_lod, feats->image_view_min_lod,
+                       IMAGE_VIEW_MIN_LOD_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_index_type_uint8, feats->index_type_uint8,
                        INDEX_TYPE_UINT8_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
@@ -992,6 +994,7 @@ vn_physical_device_get_passthrough_extensions(
 #ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
 #endif
+      .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_line_rasterization = true,
       .EXT_provoking_vertex = true,
