@@ -46,7 +46,14 @@ from lava.exceptions import (
     MesaCIRetryError,
     MesaCITimeoutError,
 )
-from lava.utils.lava_log import GitlabSection
+from lava.utils.lava_log import (
+    CONSOLE_LOG,
+    GitlabSection,
+    fatal_err,
+    hide_sensitive_data,
+    parse_lava_lines,
+    print_log,
+)
 from lavacli.utils import loader
 
 # Timeout in seconds to decide if the device from the dispatched LAVA job has
@@ -65,26 +72,6 @@ NUMBER_OF_RETRIES_TIMEOUT_DETECTION = int(getenv("LAVA_NUMBER_OF_RETRIES_TIMEOUT
 
 # How many attempts should be made when a timeout happen during LAVA device boot.
 NUMBER_OF_ATTEMPTS_LAVA_BOOT = int(getenv("LAVA_NUMBER_OF_ATTEMPTS_LAVA_BOOT", 3))
-
-# Helper constants to colorize the job output
-CONSOLE_LOG_COLOR_GREEN = "\x1b[1;32;5;197m"
-CONSOLE_LOG_COLOR_RED = "\x1b[1;38;5;197m"
-CONSOLE_LOG_COLOR_RESET = "\x1b[0m"
-
-
-def print_log(msg):
-    # Reset color from timestamp, since `msg` can tint the terminal color
-    print(f"{CONSOLE_LOG_COLOR_RESET}{datetime.now()}: {msg}")
-
-
-def fatal_err(msg):
-    print_log(msg)
-    sys.exit(1)
-
-
-def hide_sensitive_data(yaml_data, hide_tag="HIDEME"):
-    return "".join(line for line in yaml_data.splitlines(True) if hide_tag not in line)
-
 
 def generate_lava_yaml(args):
     # General metadata and permissions, plus also inexplicably kernel arguments
@@ -247,7 +234,7 @@ def _call_proxy(fn, *args):
 
 
 class LAVAJob:
-    color_status_map = {"pass": CONSOLE_LOG_COLOR_GREEN}
+    COLOR_STATUS_MAP = {"pass": CONSOLE_LOG["COLOR_GREEN"]}
 
     def __init__(self, proxy, definition):
         self.job_id = None
@@ -322,11 +309,13 @@ class LAVAJob:
             if result := re.search(r"hwci: mesa: (pass|fail)", line):
                 self.is_finished = True
                 self.status = result.group(1)
-                color = LAVAJob.color_status_map.get(self.status, CONSOLE_LOG_COLOR_RED)
+                color = LAVAJob.COLOR_STATUS_MAP.get(
+                    self.status, CONSOLE_LOG["COLOR_RED"]
+                )
                 print_log(
                     f"{color}"
                     f"LAVA Job finished with result: {self.status}"
-                    f"{CONSOLE_LOG_COLOR_RESET}"
+                    f"{CONSOLE_LOG['RESET']}"
                 )
 
                 # We reached the log end here. hwci script has finished.
@@ -375,82 +364,6 @@ def show_job_data(job):
     show = _call_proxy(job.proxy.scheduler.jobs.show, job.job_id)
     for field, value in show.items():
         print("{}\t: {}".format(field, value))
-
-
-def fix_lava_color_log(line):
-    """This function is a temporary solution for the color escape codes mangling
-    problem. There is some problem in message passing between the LAVA
-    dispatcher and the device under test (DUT). Here \x1b character is missing
-    before `[:digit::digit:?:digit:?m` ANSI TTY color codes, or the more
-    complicated ones with number values for text format before background and
-    foreground colors.
-    When this problem is fixed on the LAVA side, one should remove this function.
-    """
-    line["msg"] = re.sub(r"(\[(\d+;){0,2}\d{1,3}m)", "\x1b" + r"\1", line["msg"])
-
-
-def fix_lava_gitlab_section_log(line):
-    """This function is a temporary solution for the Gitlab section markers
-    mangling problem. Gitlab parses the following lines to define a collapsible
-    gitlab section in their log:
-    - \x1b[0Ksection_start:timestamp:section_id[collapsible=true/false]\r\x1b[0Ksection_header
-    - \x1b[0Ksection_end:timestamp:section_id\r\x1b[0K
-    There is some problem in message passing between the LAVA dispatcher and the
-    device under test (DUT), that digests \x1b and \r control characters
-    incorrectly. When this problem is fixed on the LAVA side, one should remove
-    this function.
-    """
-    if match := re.match(r"\[0K(section_\w+):(\d+):(\S+)\[0K([\S ]+)?", line["msg"]):
-        marker, timestamp, id_collapsible, header = match.groups()
-        # The above regex serves for both section start and end lines.
-        # When the header is None, it means we are dealing with `section_end` line
-        header = header or ""
-        line["msg"] = f"\x1b[0K{marker}:{timestamp}:{id_collapsible}\r\x1b[0K{header}"
-
-
-def filter_debug_messages(line: dict[str, str]) -> bool:
-    """Filter some LAVA debug messages that does not add much information to the
-    developer and may clutter the trace log."""
-    if line["lvl"] != "debug":
-        return False
-    # line["msg"] can be a list[str] when there is a kernel dump
-    if not isinstance(line["msg"], str):
-        return False
-
-    if re.match(
-        # Sometimes LAVA dumps this messages lots of times when the LAVA job is
-        # reaching the end.
-        r"^Listened to connection for namespace",
-        line["msg"],
-    ):
-        return True
-    return False
-
-
-def parse_lava_lines(new_lines) -> list[str]:
-    parsed_lines: list[str] = []
-    for line in new_lines:
-        prefix = ""
-        suffix = ""
-
-        if line["lvl"] in ["results", "feedback"]:
-            continue
-        elif line["lvl"] in ["warning", "error"]:
-            prefix = CONSOLE_LOG_COLOR_RED
-            suffix = CONSOLE_LOG_COLOR_RESET
-        elif filter_debug_messages(line):
-            continue
-        elif line["lvl"] == "input":
-            prefix = "$ "
-            suffix = ""
-        elif line["lvl"] == "target":
-            fix_lava_color_log(line)
-            fix_lava_gitlab_section_log(line)
-
-        line = f'{prefix}{line["msg"]}{suffix}'
-        parsed_lines.append(line)
-
-    return parsed_lines
 
 
 def fetch_logs(job, max_idle_time) -> None:
