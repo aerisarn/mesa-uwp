@@ -910,6 +910,136 @@ tu_get_debug_option_name(int id);
 const char *
 tu_get_perftest_option_name(int id);
 
+struct tu_attachment_info
+{
+   struct tu_image_view *attachment;
+};
+
+struct tu_framebuffer
+{
+   struct vk_object_base base;
+
+   uint32_t width;
+   uint32_t height;
+   uint32_t layers;
+
+   /* size of the first tile */
+   VkExtent2D tile0;
+   /* number of tiles */
+   VkExtent2D tile_count;
+
+   /* size of the first VSC pipe */
+   VkExtent2D pipe0;
+   /* number of VSC pipes */
+   VkExtent2D pipe_count;
+
+   /* Whether binning should be used for gmem rendering using this framebuffer. */
+   bool binning;
+
+   /* Whether binning could be used for gmem rendering using this framebuffer. */
+   bool binning_possible;
+
+   /* pipe register values */
+   uint32_t pipe_config[MAX_VSC_PIPES];
+   uint32_t pipe_sizes[MAX_VSC_PIPES];
+
+   uint32_t attachment_count;
+   struct tu_attachment_info attachments[0];
+};
+
+struct tu_subpass_barrier {
+   VkPipelineStageFlags2 src_stage_mask;
+   VkPipelineStageFlags2 dst_stage_mask;
+   VkAccessFlags2 src_access_mask;
+   VkAccessFlags2 dst_access_mask;
+   bool incoherent_ccu_color, incoherent_ccu_depth;
+};
+
+struct tu_subpass_attachment
+{
+   uint32_t attachment;
+
+   /* For input attachments, true if it needs to be patched to refer to GMEM
+    * in GMEM mode. This is false if it hasn't already been written as an
+    * attachment.
+    */
+   bool patch_input_gmem;
+};
+
+struct tu_subpass
+{
+   uint32_t input_count;
+   uint32_t color_count;
+   uint32_t resolve_count;
+   bool resolve_depth_stencil;
+
+   bool feedback_loop_color;
+   bool feedback_loop_ds;
+
+   /* True if we must invalidate UCHE thanks to a feedback loop. */
+   bool feedback_invalidate;
+
+   /* In other words - framebuffer fetch support */
+   bool raster_order_attachment_access;
+
+   struct tu_subpass_attachment *input_attachments;
+   struct tu_subpass_attachment *color_attachments;
+   struct tu_subpass_attachment *resolve_attachments;
+   struct tu_subpass_attachment depth_stencil_attachment;
+
+   VkSampleCountFlagBits samples;
+
+   uint32_t srgb_cntl;
+   uint32_t multiview_mask;
+
+   struct tu_subpass_barrier start_barrier;
+};
+
+struct tu_render_pass_attachment
+{
+   VkFormat format;
+   uint32_t samples;
+   uint32_t cpp;
+   VkImageAspectFlags clear_mask;
+   uint32_t clear_views;
+   bool load;
+   bool store;
+   int32_t gmem_offset;
+   bool will_be_resolved;
+   /* for D32S8 separate stencil: */
+   bool load_stencil;
+   bool store_stencil;
+
+   bool cond_load_allowed;
+   bool cond_store_allowed;
+
+   int32_t gmem_offset_stencil;
+};
+
+struct tu_render_pass
+{
+   struct vk_object_base base;
+
+   uint32_t attachment_count;
+   uint32_t subpass_count;
+   uint32_t gmem_pixels;
+   uint32_t tile_align_w;
+
+   /* memory bandwidth costs (in bytes) for gmem / sysmem rendering */
+   uint32_t gmem_bandwidth_per_pixel;
+   uint32_t sysmem_bandwidth_per_pixel;
+
+   struct tu_subpass_attachment *subpass_attachments;
+   struct tu_render_pass_attachment *attachments;
+   struct tu_subpass_barrier end_barrier;
+   struct tu_subpass subpasses[0];
+};
+
+void
+tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
+                             const struct tu_device *device,
+                             const struct tu_render_pass *pass);
+
 struct tu_descriptor_state
 {
    struct tu_descriptor_set *sets[MAX_SETS];
@@ -1895,136 +2025,6 @@ void
 tu_buffer_view_init(struct tu_buffer_view *view,
                     struct tu_device *device,
                     const VkBufferViewCreateInfo *pCreateInfo);
-
-struct tu_attachment_info
-{
-   struct tu_image_view *attachment;
-};
-
-struct tu_framebuffer
-{
-   struct vk_object_base base;
-
-   uint32_t width;
-   uint32_t height;
-   uint32_t layers;
-
-   /* size of the first tile */
-   VkExtent2D tile0;
-   /* number of tiles */
-   VkExtent2D tile_count;
-
-   /* size of the first VSC pipe */
-   VkExtent2D pipe0;
-   /* number of VSC pipes */
-   VkExtent2D pipe_count;
-
-   /* Whether binning should be used for gmem rendering using this framebuffer. */
-   bool binning;
-
-   /* Whether binning could be used for gmem rendering using this framebuffer. */
-   bool binning_possible;
-
-   /* pipe register values */
-   uint32_t pipe_config[MAX_VSC_PIPES];
-   uint32_t pipe_sizes[MAX_VSC_PIPES];
-
-   uint32_t attachment_count;
-   struct tu_attachment_info attachments[0];
-};
-
-void
-tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
-                             const struct tu_device *device,
-                             const struct tu_render_pass *pass);
-
-struct tu_subpass_barrier {
-   VkPipelineStageFlags2 src_stage_mask;
-   VkPipelineStageFlags2 dst_stage_mask;
-   VkAccessFlags2 src_access_mask;
-   VkAccessFlags2 dst_access_mask;
-   bool incoherent_ccu_color, incoherent_ccu_depth;
-};
-
-struct tu_subpass_attachment
-{
-   uint32_t attachment;
-
-   /* For input attachments, true if it needs to be patched to refer to GMEM
-    * in GMEM mode. This is false if it hasn't already been written as an
-    * attachment.
-    */
-   bool patch_input_gmem;
-};
-
-struct tu_subpass
-{
-   uint32_t input_count;
-   uint32_t color_count;
-   uint32_t resolve_count;
-   bool resolve_depth_stencil;
-
-   bool feedback_loop_color;
-   bool feedback_loop_ds;
-
-   /* True if we must invalidate UCHE thanks to a feedback loop. */
-   bool feedback_invalidate;
-
-   /* In other words - framebuffer fetch support */
-   bool raster_order_attachment_access;
-
-   struct tu_subpass_attachment *input_attachments;
-   struct tu_subpass_attachment *color_attachments;
-   struct tu_subpass_attachment *resolve_attachments;
-   struct tu_subpass_attachment depth_stencil_attachment;
-
-   VkSampleCountFlagBits samples;
-
-   uint32_t srgb_cntl;
-   uint32_t multiview_mask;
-
-   struct tu_subpass_barrier start_barrier;
-};
-
-struct tu_render_pass_attachment
-{
-   VkFormat format;
-   uint32_t samples;
-   uint32_t cpp;
-   VkImageAspectFlags clear_mask;
-   uint32_t clear_views;
-   bool load;
-   bool store;
-   int32_t gmem_offset;
-   bool will_be_resolved;
-   /* for D32S8 separate stencil: */
-   bool load_stencil;
-   bool store_stencil;
-
-   bool cond_load_allowed;
-   bool cond_store_allowed;
-
-   int32_t gmem_offset_stencil;
-};
-
-struct tu_render_pass
-{
-   struct vk_object_base base;
-
-   uint32_t attachment_count;
-   uint32_t subpass_count;
-   uint32_t gmem_pixels;
-   uint32_t tile_align_w;
-
-   /* memory bandwidth costs (in bytes) for gmem / sysmem rendering */
-   uint32_t gmem_bandwidth_per_pixel;
-   uint32_t sysmem_bandwidth_per_pixel;
-
-   struct tu_subpass_attachment *subpass_attachments;
-   struct tu_render_pass_attachment *attachments;
-   struct tu_subpass_barrier end_barrier;
-   struct tu_subpass subpasses[0];
-};
 
 #define PERF_CNTRS_REG 4
 
