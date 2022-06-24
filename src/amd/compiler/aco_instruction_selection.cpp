@@ -5160,6 +5160,18 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
       idx++;
    }
 
+   if (ctx->stage == fragment_fs && ctx->program->info.ps.has_epilog) {
+      unsigned index = nir_intrinsic_base(instr) - FRAG_RESULT_DATA0;
+
+      if (nir_intrinsic_src_type(instr) == nir_type_float16) {
+         ctx->output_color_types |= ACO_TYPE_FLOAT16 << (index * 2);
+      } else if (nir_intrinsic_src_type(instr) == nir_type_int16) {
+         ctx->output_color_types |= ACO_TYPE_INT16 << (index * 2);
+      } else if (nir_intrinsic_src_type(instr) == nir_type_uint16) {
+         ctx->output_color_types |= ACO_TYPE_UINT16 << (index * 2);
+      }
+   }
+
    return true;
 }
 
@@ -11116,8 +11128,59 @@ create_fs_null_export(isel_context* ctx)
 }
 
 static void
+create_fs_jump_to_epilog(isel_context* ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+   std::vector<Operand> color_exports;
+   PhysReg exports_start(256); /* VGPR 0 */
+
+   for (unsigned slot = FRAG_RESULT_DATA0; slot < FRAG_RESULT_DATA7 + 1; ++slot) {
+      unsigned color_index = slot - FRAG_RESULT_DATA0;
+      unsigned color_type = (ctx->output_color_types >> (color_index * 2)) & 0x3;
+      unsigned write_mask = ctx->outputs.mask[slot];
+
+      if (!write_mask)
+         continue;
+
+      PhysReg color_start(exports_start.reg() + color_index * 4);
+
+      for (unsigned i = 0; i < 4; i++) {
+         if (!(write_mask & BITFIELD_BIT(i))) {
+            color_exports.emplace_back(Operand(v1));
+            continue;
+         }
+
+         PhysReg chan_reg = color_start.advance(i * 4u);
+         Operand chan(ctx->outputs.temps[slot * 4u + i]);
+
+         if (color_type == ACO_TYPE_FLOAT16) {
+            chan = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), chan);
+         } else if (color_type == ACO_TYPE_INT16 || color_type == ACO_TYPE_UINT16) {
+            bool sign_ext = color_type == ACO_TYPE_INT16;
+            Temp tmp = convert_int(ctx, bld, chan.getTemp(), 16, 32, sign_ext);
+            chan = Operand(tmp);
+         }
+
+         chan.setFixed(chan_reg);
+         color_exports.emplace_back(chan);
+      }
+   }
+
+   Temp continue_pc = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ps_epilog_pc));
+
+   aco_ptr<Pseudo_instruction> jump{create_instruction<Pseudo_instruction>(
+      aco_opcode::p_jump_to_epilog, Format::PSEUDO, 1 + color_exports.size(), 0)};
+   jump->operands[0] = Operand(continue_pc);
+   for (unsigned i = 0; i < color_exports.size(); i++) {
+      jump->operands[i + 1] = color_exports[i];
+   }
+   ctx->block->instructions.emplace_back(std::move(jump));
+}
+
+static void
 create_fs_exports(isel_context* ctx)
 {
+   Builder bld(ctx->program, ctx->block);
    bool exported = false;
 
    /* Export depth, stencil and sample mask. */
@@ -11125,13 +11188,17 @@ create_fs_exports(isel_context* ctx)
        ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK])
       exported |= export_fs_mrt_z(ctx);
 
-   /* Export all color render targets. */
-   for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i)
-      if (ctx->outputs.mask[i])
-         exported |= export_fs_mrt_color(ctx, i);
+   if (ctx->program->info.ps.has_epilog) {
+      create_fs_jump_to_epilog(ctx);
+   } else {
+      /* Export all color render targets. */
+      for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i)
+         if (ctx->outputs.mask[i])
+            exported |= export_fs_mrt_color(ctx, i);
 
-   if (!exported)
-      create_fs_null_export(ctx);
+      if (!exported)
+         create_fs_null_export(ctx);
+   }
 
    ctx->block->kind |= block_kind_export_end;
 }

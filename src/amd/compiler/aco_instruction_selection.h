@@ -35,6 +35,13 @@
 
 namespace aco {
 
+enum aco_color_output_type {
+   ACO_TYPE_ANY32,
+   ACO_TYPE_FLOAT16,
+   ACO_TYPE_INT16,
+   ACO_TYPE_UINT16,
+};
+
 struct shader_io_state {
    uint8_t mask[VARYING_SLOT_MAX];
    Temp temps[VARYING_SLOT_MAX * 4u];
@@ -98,6 +105,9 @@ struct isel_context {
    uint64_t tcs_temp_only_inputs;
    uint32_t tcs_num_patches;
    bool tcs_in_out_eq = false;
+
+   /* Fragment color output information */
+   uint16_t output_color_types;
 
    /* I/O information */
    shader_io_state inputs;
