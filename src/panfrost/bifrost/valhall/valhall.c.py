@@ -154,6 +154,7 @@ valhall_opcodes[BI_NUM_OPCODES] = {
         .nr_staging_dests = ${sum([sr.write for sr in op.staging])},
         .clamp = ${hasmod(x, 'clamp')},
         .saturate = ${hasmod(x, 'saturate')},
+        .rhadd = ${hasmod(x, 'rhadd')},
         .round_mode = ${hasmod(x, 'round_mode')},
         .condition = ${hasmod(x, 'condition')},
         .result_type = ${hasmod(x, 'result_type')},
