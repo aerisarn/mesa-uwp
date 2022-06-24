@@ -411,10 +411,9 @@ dzn_nir_triangle_fan_prim_restart_rewrite_index_shader(uint8_t old_index_size)
                     old_index_size == 2 ? nir_iand_imm(&b, old_index_offset, ~3ULL) : old_index_offset,
                     .align_mul = 4);
    if (old_index_size == 2) {
-      index_val = nir_bcsel(&b,
-                            nir_ieq_imm(&b, nir_iand_imm(&b, old_index_offset, 0x2), 0),
-                            nir_iand_imm(&b, index_val, 0xffff),
-                            nir_ushr_imm(&b, index_val, 16));
+     index_val = nir_bcsel(&b, nir_test_mask(&b, old_index_offset, 0x2),
+                           nir_ushr_imm(&b, index_val, 16),
+                           nir_iand_imm(&b, index_val, 0xffff));
    }
 
    nir_store_var(&b, index0_var, index_val, 1);
@@ -433,11 +432,9 @@ dzn_nir_triangle_fan_prim_restart_rewrite_index_shader(uint8_t old_index_size)
          nir_iand_imm(&b, nir_channel(&b, index12, 1), 0xffff),
       };
 
-      index12 =
-         nir_bcsel(&b,
-                   nir_ieq_imm(&b, nir_iand_imm(&b, old_index_offset, 0x2), 0),
-                   nir_vec2(&b, indices[0], indices[1]),
-                   nir_vec2(&b, indices[1], indices[2]));
+      index12 = nir_bcsel(&b, nir_test_mask(&b, old_index_offset, 0x2),
+                          nir_vec2(&b, indices[1], indices[2]),
+                          nir_vec2(&b, indices[0], indices[1]));
    }
 
    nir_push_if(&b, nir_ieq(&b, nir_channel(&b, index12, 1), prim_restart_val));
@@ -516,11 +513,9 @@ dzn_nir_triangle_fan_rewrite_index_shader(uint8_t old_index_size)
                        .align_mul = 4);
 
       if (old_index_size == 2) {
-         old_index0 =
-            nir_bcsel(&b,
-                      nir_ieq_imm(&b, nir_iand_imm(&b, old_index0_offset, 0x2), 0),
-                      nir_iand_imm(&b, old_index0, 0xffff),
-                      nir_ushr_imm(&b, old_index0, 16));
+        old_index0 = nir_bcsel(&b, nir_test_mask(&b, old_index0_offset, 0x2),
+                               nir_ushr_imm(&b, old_index0, 16),
+                               nir_iand_imm(&b, old_index0, 0xffff));
       }
 
       nir_ssa_def *old_index12 =
@@ -534,11 +529,9 @@ dzn_nir_triangle_fan_rewrite_index_shader(uint8_t old_index_size)
             nir_iand_imm(&b, nir_channel(&b, old_index12, 1), 0xffff),
          };
 
-         old_index12 =
-            nir_bcsel(&b,
-                      nir_ieq_imm(&b, nir_iand_imm(&b, old_index1_offset, 0x2), 0),
-                      nir_vec2(&b, indices[0], indices[1]),
-                      nir_vec2(&b, indices[1], indices[2]));
+         old_index12 = nir_bcsel(&b, nir_test_mask(&b, old_index1_offset, 0x2),
+                                 nir_vec2(&b, indices[1], indices[2]),
+                                 nir_vec2(&b, indices[0], indices[1]));
       }
 
       /* TODO: VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT */
