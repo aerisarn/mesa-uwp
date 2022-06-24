@@ -62,6 +62,13 @@ algebraic_late = [
     (('imax', 'a@8', 'b@8'), ('b8csel', ('ilt8', a, b), b, a)),
     (('umin', 'a@8', 'b@8'), ('b8csel', ('ult8', a, b), a, b)),
     (('umax', 'a@8', 'b@8'), ('b8csel', ('ult8', a, b), b, a)),
+
+    # Floats are at minimum 16-bit, which means when converting to an 8-bit
+    # integer, the vectorization changes. So there's no one-shot hardware
+    # instruction for f2i8. Instead, lower to two NIR instructions that map
+    # directly to the hardware.
+    (('f2i8', a), ('i2i8', ('f2i16', a))),
+    (('f2u8', a), ('u2u8', ('f2u16', a))),
 ]
 
 # Handling all combinations of boolean and float sizes for b2f is nontrivial.
