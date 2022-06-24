@@ -2088,6 +2088,10 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
             max_uniform_size = MAX2(max_uniform_size, size);
       } else {
          max_ssbo_size = MAX2(max_ssbo_size, size);
+         if (interface_type) {
+            if (glsl_type_is_unsized_array(glsl_get_struct_field(interface_type, glsl_get_length(interface_type) - 1)))
+               needs_size = true;
+         }
       }
       var->data.mode = nir_var_shader_temp;
    }
