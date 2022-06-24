@@ -2332,12 +2332,18 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 
         case nir_op_unpack_64_2x32_split_x:
-                bi_mov_i32_to(b, dst, bi_extract(b, bi_src_index(&instr->src[0].src), 0));
+        {
+                unsigned chan = (instr->src[0].swizzle[0] * 2) + 0;
+                bi_mov_i32_to(b, dst, bi_extract(b, bi_src_index(&instr->src[0].src), chan));
                 return;
+        }
 
         case nir_op_unpack_64_2x32_split_y:
-                bi_mov_i32_to(b, dst, bi_extract(b, bi_src_index(&instr->src[0].src), 1));
+        {
+                unsigned chan = (instr->src[0].swizzle[0] * 2) + 1;
+                bi_mov_i32_to(b, dst, bi_extract(b, bi_src_index(&instr->src[0].src), chan));
                 return;
+        }
 
         case nir_op_pack_64_2x32_split:
                 bi_collect_v2i32_to(b, dst,
