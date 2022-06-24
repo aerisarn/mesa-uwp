@@ -239,3 +239,4 @@ c4 c0 40 10 71 c0 b6 00    LSHIFT_AND.v4i8 r0, 0x1000000.b3333, 0x0.b00, ^r0
 40 00 13 00 80 c0 90 00    V2U8_TO_V2F16 r0, ^r0.b02
 41 40 00 40 00 c0 aa 00    IADD.v4s8.saturate r0, ^r1, ^r0
 41 40 01 40 00 c0 aa 00    ISUB.v4s8.saturate r0, ^r1, ^r0
+41 40 0b 40 00 c0 aa 00    HADD.v4s8.rhadd r0, ^r1, ^r0
