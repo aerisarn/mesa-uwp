@@ -78,7 +78,6 @@
  * still want to use normal TLS (which involves a function call, but not the
  * expensive pthread_getspecific() or its equivalent).
  */
-#ifdef USE_ELF_TLS
 #if DETECT_OS_APPLE
 /* Apple Clang emits wrappers when using thread_local that break module linkage,
  * but not with __thread
@@ -89,7 +88,6 @@
 #define REALLY_INITIAL_EXEC
 #else
 #define __THREAD_INITIAL_EXEC thread_local
-#endif
 #endif
 
 static inline int
