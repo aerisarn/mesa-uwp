@@ -328,14 +328,14 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
    /* TODO: Multi-viewport */
 
    if (y_flip_mask) {
-      nir_ssa_def *flip = nir_ieq_imm(builder, nir_iand_imm(builder, y_flip_mask, 1), 1);
+      nir_ssa_def *flip = nir_test_mask(builder, y_flip_mask, 1);
 
       // Z-flip => pos.y = -pos.y
       y_pos = nir_bcsel(builder, flip, nir_fneg(builder, y_pos), y_pos);
    }
 
    if (z_flip_mask) {
-      nir_ssa_def *flip = nir_ieq_imm(builder, nir_iand_imm(builder, z_flip_mask, 1), 1);
+      nir_ssa_def *flip = nir_test_mask(builder, z_flip_mask, 1);
 
       // Z-flip => pos.z = -pos.z + 1.0f
       z_pos = nir_bcsel(builder, flip,
