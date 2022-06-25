@@ -3640,7 +3640,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       if (stages[i].nir) {
          int64_t stage_start = os_time_get_nano();
 
-         radv_optimize_nir(stages[i].nir, optimize_conservatively, false);
+         radv_optimize_nir(stages[i].nir, optimize_conservatively);
 
          /* Gather info again, information such as outputs_read can be out-of-date. */
          nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
@@ -5528,7 +5528,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    /* Compile SPIR-V shader to NIR. */
    cs_stage.nir = radv_shader_spirv_to_nir(device, &cs_stage, pipeline_key, pipeline->base.is_internal);
 
-   radv_optimize_nir(cs_stage.nir, pipeline_key->optimisations_disabled, false);
+   radv_optimize_nir(cs_stage.nir, pipeline_key->optimisations_disabled);
 
    /* Gather info again, information such as outputs_read can be out-of-date. */
    nir_shader_gather_info(cs_stage.nir,

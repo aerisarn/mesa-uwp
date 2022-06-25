@@ -170,7 +170,7 @@ radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir)
 }
 
 void
-radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool allow_copies)
+radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively)
 {
    bool progress;
 
@@ -180,11 +180,10 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool 
       NIR_PASS(progress, shader, nir_split_array_vars, nir_var_function_temp);
       NIR_PASS(progress, shader, nir_shrink_vec_array_vars, nir_var_function_temp);
 
-      if (allow_copies) {
-         /* Only run this pass in the first call to
-          * radv_optimize_nir.  Later calls assume that we've
-          * lowered away any copy_deref instructions and we
-          *  don't want to introduce any more.
+      if (!shader->info.var_copies_lowered) {
+         /* Only run this pass if nir_lower_var_copies was not called
+          * yet. That would lower away any copy_deref instructions and we
+          * don't want to introduce any more.
           */
          NIR_PASS(progress, shader, nir_opt_find_array_copies);
       }
@@ -1044,7 +1043,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
    NIR_PASS(_, nir, nir_opt_shrink_stores, !device->instance->disable_shrink_image_store);
 
    if (!key->optimisations_disabled)
-      radv_optimize_nir(nir, false, true);
+      radv_optimize_nir(nir, false);
 
    /* We call nir_lower_var_copies() after the first radv_optimize_nir()
     * to remove any copies introduced by nir_opt_find_array_copies().
@@ -1124,7 +1123,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
    if (ac_nir_lower_indirect_derefs(nir, device->physical_device->rad_info.gfx_level) &&
        !key->optimisations_disabled && nir->info.stage != MESA_SHADER_COMPUTE) {
       /* Optimize the lowered code before the linking optimizations. */
-      radv_optimize_nir(nir, false, false);
+      radv_optimize_nir(nir, false);
    }
 
 
