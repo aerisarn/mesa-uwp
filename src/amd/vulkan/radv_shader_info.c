@@ -500,8 +500,10 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
    struct radv_vs_output_info *outinfo = get_vs_output_info(nir, info);
    if (outinfo) {
+      /* These are not compiled into neither output param nor position exports. */
       uint64_t special_mask = BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) |
-                              BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
+                              BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) |
+                              BITFIELD64_BIT(VARYING_SLOT_CULL_PRIMITIVE);
       uint64_t per_prim_mask =
          nir->info.outputs_written & nir->info.per_primitive_outputs & ~special_mask;
       uint64_t per_vtx_mask =
