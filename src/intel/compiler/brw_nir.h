@@ -188,8 +188,7 @@ bool brw_nir_clamp_per_vertex_loads(nir_shader *shader,
 
 void brw_nir_optimize(nir_shader *nir,
                       const struct brw_compiler *compiler,
-                      bool is_scalar,
-                      bool allow_copies);
+                      bool is_scalar);
 
 nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
                                            const struct brw_compiler *compiler,
