@@ -2051,7 +2051,6 @@ static void
 ms_store_prim_indices(nir_builder *b,
                       nir_ssa_def *val,
                       nir_ssa_def *offset_src,
-                      unsigned offset_const,
                       lower_ngg_ms_state *s)
 {
    assert(val->num_components <= 3);
@@ -2059,19 +2058,18 @@ ms_store_prim_indices(nir_builder *b,
    if (!offset_src)
       offset_src = nir_imm_int(b, 0);
 
-   nir_store_shared(b, nir_u2u8(b, val), offset_src, .base = s->layout.lds.indices_addr + offset_const);
+   nir_store_shared(b, nir_u2u8(b, val), offset_src, .base = s->layout.lds.indices_addr);
 }
 
 static nir_ssa_def *
 ms_load_prim_indices(nir_builder *b,
                      nir_ssa_def *offset_src,
-                     unsigned offset_const,
                      lower_ngg_ms_state *s)
 {
    if (!offset_src)
       offset_src = nir_imm_int(b, 0);
 
-   return nir_load_shared(b, 1, 8, offset_src, .base = s->layout.lds.indices_addr + offset_const);
+   return nir_load_shared(b, 1, 8, offset_src, .base = s->layout.lds.indices_addr);
 }
 
 static void
@@ -2098,7 +2096,6 @@ lower_ms_store_output(nir_builder *b,
 {
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
    nir_ssa_def *store_val = intrin->src[0].ssa;
-   unsigned base = nir_intrinsic_base(intrin);
 
    /* Component makes no sense here. */
    assert(nir_intrinsic_component(intrin) == 0);
@@ -2110,7 +2107,6 @@ lower_ms_store_output(nir_builder *b,
 
       /* Base, offset and component make no sense here. */
       assert(nir_src_is_const(intrin->src[1]) && nir_src_as_uint(intrin->src[1]) == 0);
-      assert(base == 0);
 
       ms_store_num_prims(b, store_val, s);
    } else if (io_sem.location == VARYING_SLOT_PRIMITIVE_INDICES) {
@@ -2120,7 +2116,7 @@ lower_ms_store_output(nir_builder *b,
        */
 
       nir_ssa_def *offset_src = nir_get_io_offset_src(intrin)->ssa;
-      ms_store_prim_indices(b, store_val, offset_src, base, s);
+      ms_store_prim_indices(b, store_val, offset_src, s);
    } else {
       unreachable("Invalid mesh shader output");
    }
@@ -2134,7 +2130,6 @@ lower_ms_load_output(nir_builder *b,
                      lower_ngg_ms_state *s)
 {
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
-   unsigned base = nir_intrinsic_base(intrin);
 
    /* Component makes no sense here. */
    assert(nir_intrinsic_component(intrin) == 0);
@@ -2142,12 +2137,11 @@ lower_ms_load_output(nir_builder *b,
    if (io_sem.location == VARYING_SLOT_PRIMITIVE_COUNT) {
       /* Base, offset and component make no sense here. */
       assert(nir_src_is_const(intrin->src[1]) && nir_src_as_uint(intrin->src[1]) == 0);
-      assert(base == 0);
 
       return ms_load_num_prims(b, s);
    } else if (io_sem.location == VARYING_SLOT_PRIMITIVE_INDICES) {
       nir_ssa_def *offset_src = nir_get_io_offset_src(intrin)->ssa;
-      nir_ssa_def *index = ms_load_prim_indices(b, offset_src, base, s);
+      nir_ssa_def *index = ms_load_prim_indices(b, offset_src, s);
       return nir_u2u(b, index, intrin->dest.ssa.bit_size);
    }
 
