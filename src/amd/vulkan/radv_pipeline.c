@@ -3228,36 +3228,12 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, struct radv_pipeline_s
    }
 
    if (stages[MESA_SHADER_MESH].nir) {
-      nir_shader *ms = stages[MESA_SHADER_MESH].nir;
-
-      /* Mesh shader output driver locations are set separately for per-vertex
-       * and per-primitive outputs, because they are stored in separate LDS regions.
+      /* ac_nir_lower_ngg ignores driver locations for mesh shaders,
+       * but set them to all zero just to be on the safe side.
        */
-      uint64_t special_mask = BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) |
-                              BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
-      uint64_t per_vertex_mask =
-         ms->info.outputs_written & ~ms->info.per_primitive_outputs & ~special_mask;
-      uint64_t per_primitive_mask =
-         ms->info.per_primitive_outputs & ms->info.outputs_written & ~special_mask;
-
-      nir_foreach_shader_out_variable(var, stages[MESA_SHADER_MESH].nir)
-      {
-         /* NV_mesh_shader:
-          * These are not real outputs of the shader and require special handling.
-          * So it doesn't make sense to assign a driver location to them.
-          */
-         if (var->data.location == VARYING_SLOT_PRIMITIVE_COUNT ||
-             var->data.location == VARYING_SLOT_PRIMITIVE_INDICES)
-            continue;
-
-         uint64_t loc_mask = u_bit_consecutive64(0, var->data.location);
-
-         if (var->data.per_primitive)
-            var->data.driver_location = util_bitcount64(per_primitive_mask & loc_mask);
-         else
-            var->data.driver_location = util_bitcount64(per_vertex_mask & loc_mask);
+      nir_foreach_shader_out_variable(var, stages[MESA_SHADER_MESH].nir) {
+         var->data.driver_location = 0;
       }
-
       return;
    }
 
