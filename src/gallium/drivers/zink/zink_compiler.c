@@ -485,16 +485,17 @@ get_bo_vars(struct zink_shader *zs, nir_shader *shader)
       bo.first_ssbo = ffs(zs->ssbos_used) - 1;
    assert(bo.first_ssbo < PIPE_MAX_SHADER_BUFFERS);
    nir_foreach_variable_with_modes(var, shader, nir_var_mem_ssbo | nir_var_mem_ubo) {
+      unsigned idx = glsl_get_explicit_stride(glsl_get_struct_field(glsl_without_array(var->type), 0)) >> 1;
       if (var->data.mode == nir_var_mem_ssbo) {
-         assert(!bo.ssbo[32 >> 4]);
-         bo.ssbo[32 >> 4] = var;
+         assert(!bo.ssbo[idx]);
+         bo.ssbo[idx] = var;
       } else {
          if (var->data.driver_location) {
-            assert(!bo.ubo[32 >> 4]);
-            bo.ubo[32 >> 4] = var;
+            assert(!bo.ubo[idx]);
+            bo.ubo[idx] = var;
          } else {
-            assert(!bo.uniforms[32 >> 4]);
-            bo.uniforms[32 >> 4] = var;
+            assert(!bo.uniforms[idx]);
+            bo.uniforms[idx] = var;
          }
       }
    }
