@@ -974,6 +974,8 @@ VkResult genX(CreateSampler)(
          has_custom_color = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT:
+         break;
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
