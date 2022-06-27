@@ -1055,7 +1055,7 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device,
          layout->vbo_offsets[pCreateInfo->pTokens[i].vertexBindingUnit] =
             pCreateInfo->pTokens[i].offset;
          if (pCreateInfo->pTokens[i].vertexDynamicStride)
-            layout->vbo_offsets[pCreateInfo->pTokens[i].vertexBindingUnit] |= 1u << 15;
+            layout->vbo_offsets[pCreateInfo->pTokens[i].vertexBindingUnit] |= DGC_DYNAMIC_STRIDE;
          break;
       case VK_INDIRECT_COMMANDS_TOKEN_TYPE_PUSH_CONSTANT_NV:
          for (unsigned j = pCreateInfo->pTokens[i].pushconstantOffset / 4, k = 0;
@@ -1115,4 +1115,275 @@ radv_GetGeneratedCommandsMemoryRequirementsNV(
    pMemoryRequirements->memoryRequirements.alignment = 256;
    pMemoryRequirements->memoryRequirements.size =
       align(cmd_buf_size + upload_buf_size, pMemoryRequirements->memoryRequirements.alignment);
+}
+
+void
+radv_CmdPreprocessGeneratedCommandsNV(VkCommandBuffer commandBuffer,
+                                      const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+{
+   /* Can't do anything here as we depend on some dynamic state in some cases that we only know
+    * at draw time. */
+}
+
+/* Always need to call this directly before draw due to dependence on bound state. */
+void
+radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
+                 const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+{
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout,
+                  pGeneratedCommandsInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
+   VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
+   struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+   struct radv_meta_saved_state saved_state;
+   struct radv_buffer token_buffer;
+
+   uint32_t cmd_stride, upload_stride;
+   radv_get_sequence_size(layout, graphics_pipeline, &cmd_stride, &upload_stride);
+
+   unsigned cmd_buf_size =
+      radv_align_cmdbuf_size(cmd_stride * pGeneratedCommandsInfo->sequencesCount);
+
+   unsigned vb_size = layout->bind_vbo_mask ? util_bitcount(graphics_pipeline->vb_desc_usage_mask) * 24 : 0;
+   unsigned const_size = graphics_pipeline->base.push_constant_size +
+                         16 * graphics_pipeline->base.dynamic_offset_count +
+                         sizeof(layout->push_constant_offsets) + ARRAY_SIZE(graphics_pipeline->base.shaders) * 12;
+   if (!layout->push_constant_mask)
+      const_size = 0;
+
+   unsigned scissor_size = (8 + 2 * cmd_buffer->state.dynamic.scissor.count) * 4;
+   if (!layout->binds_state || !cmd_buffer->state.dynamic.scissor.count ||
+       !cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
+      scissor_size = 0;
+
+   unsigned upload_size = MAX2(vb_size + const_size + scissor_size, 16);
+
+   void *upload_data;
+   unsigned upload_offset;
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, upload_size, &upload_offset, &upload_data)) {
+      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return;
+   }
+
+   void *upload_data_base = upload_data;
+
+   radv_buffer_init(&token_buffer, cmd_buffer->device, cmd_buffer->upload.upload_bo, upload_size,
+                    upload_offset);
+
+   uint64_t upload_addr = radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset +
+                          pGeneratedCommandsInfo->preprocessOffset;
+
+   uint16_t vtx_base_sgpr =
+      (cmd_buffer->state.graphics_pipeline->vtx_base_sgpr - SI_SH_REG_OFFSET) >> 2;
+   if (cmd_buffer->state.graphics_pipeline->uses_drawid)
+      vtx_base_sgpr |= DGC_USES_DRAWID;
+   if (cmd_buffer->state.graphics_pipeline->uses_baseinstance)
+      vtx_base_sgpr |= DGC_USES_BASEINSTANCE;
+
+   uint16_t vbo_sgpr =
+      ((radv_lookup_user_sgpr(&graphics_pipeline->base, MESA_SHADER_VERTEX, AC_UD_VS_VERTEX_BUFFERS)->sgpr_idx * 4 +
+        graphics_pipeline->base.user_data_0[MESA_SHADER_VERTEX]) -
+       SI_SH_REG_OFFSET) >>
+      2;
+   struct radv_dgc_params params = {
+      .cmd_buf_stride = cmd_stride,
+      .cmd_buf_size = cmd_buf_size,
+      .upload_addr = (uint32_t)upload_addr,
+      .upload_stride = upload_stride,
+      .sequence_count = pGeneratedCommandsInfo->sequencesCount,
+      .stream_stride = layout->input_stride,
+      .draw_indexed = layout->indexed,
+      .draw_params_offset = layout->draw_params_offset,
+      .base_index_size =
+         layout->binds_index_buffer ? 0 : radv_get_vgt_index_size(cmd_buffer->state.index_type),
+      .vtx_base_sgpr = vtx_base_sgpr,
+      .max_index_count = cmd_buffer->state.max_index_count,
+      .index_buffer_offset = layout->index_buffer_offset,
+      .vbo_reg = vbo_sgpr,
+      .ibo_type_32 = layout->ibo_type_32,
+      .ibo_type_8 = layout->ibo_type_8,
+      .emit_state = layout->binds_state,
+      .pa_su_sc_mode_cntl_base = radv_get_pa_su_sc_mode_cntl(cmd_buffer) & C_028814_FACE,
+      .state_offset = layout->state_offset,
+   };
+
+   if (layout->bind_vbo_mask) {
+      radv_write_vertex_descriptors(cmd_buffer, graphics_pipeline, true, upload_data);
+
+      uint32_t *vbo_info = (uint32_t *)((char *)upload_data + graphics_pipeline->vb_desc_alloc_size);
+
+      struct radv_shader *vs_shader = radv_get_shader(&graphics_pipeline->base, MESA_SHADER_VERTEX);
+      const struct radv_vs_input_state *vs_state =
+         vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
+      uint32_t mask = graphics_pipeline->vb_desc_usage_mask;
+      unsigned idx = 0;
+      while (mask) {
+         unsigned i = u_bit_scan(&mask);
+         unsigned binding =
+            vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
+                     : (graphics_pipeline->use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i);
+         uint32_t attrib_end =
+            vs_state ? vs_state->offsets[i] + vs_state->format_sizes[i] : graphics_pipeline->attrib_ends[i];
+
+         params.vbo_bind_mask |= ((layout->bind_vbo_mask >> binding) & 1u) << idx;
+         vbo_info[2 * idx] = ((graphics_pipeline->use_per_attribute_vb_descs ? 1u : 0u) << 31) |
+                             (vs_state ? vs_state->offsets[i] << 16 : 0) |
+                             layout->vbo_offsets[binding];
+         vbo_info[2 * idx + 1] = graphics_pipeline->attrib_index_offset[i] | (attrib_end << 16);
+         ++idx;
+      }
+      params.vbo_cnt = idx | (vs_state ? DGC_DYNAMIC_VERTEX_INPUT : 0);
+      upload_data = (char *)upload_data + vb_size;
+   }
+
+   if (layout->push_constant_mask) {
+      uint32_t *desc = upload_data;
+      upload_data = (char *)upload_data + ARRAY_SIZE(graphics_pipeline->base.shaders) * 12;
+
+      unsigned idx = 0;
+      for (unsigned i = 0; i < ARRAY_SIZE(graphics_pipeline->base.shaders); ++i) {
+         if (!graphics_pipeline->base.shaders[i])
+            continue;
+
+         struct radv_userdata_locations *locs = &graphics_pipeline->base.shaders[i]->info.user_sgprs_locs;
+         if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0)
+            params.const_copy = 1;
+
+         if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0 ||
+             locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx >= 0) {
+            unsigned upload_sgpr = 0;
+            unsigned inline_sgpr = 0;
+
+            if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0) {
+               upload_sgpr =
+                  (graphics_pipeline->base.user_data_0[i] + 4 * locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx -
+                   SI_SH_REG_OFFSET) >>
+                  2;
+            }
+
+            if (locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx >= 0) {
+               inline_sgpr = (graphics_pipeline->base.user_data_0[i] +
+                              4 * locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx -
+                              SI_SH_REG_OFFSET) >>
+                             2;
+               desc[idx * 3 + 1] = graphics_pipeline->base.shaders[i]->info.inline_push_constant_mask;
+               desc[idx * 3 + 2] = graphics_pipeline->base.shaders[i]->info.inline_push_constant_mask >> 32;
+            }
+            desc[idx * 3] = upload_sgpr | (inline_sgpr << 16);
+            ++idx;
+         }
+      }
+
+      params.push_constant_shader_cnt = idx;
+
+      params.const_copy_size = graphics_pipeline->base.push_constant_size +
+                               16 * graphics_pipeline->base.dynamic_offset_count;
+      params.push_constant_mask = layout->push_constant_mask;
+
+      memcpy(upload_data, layout->push_constant_offsets, sizeof(layout->push_constant_offsets));
+      upload_data = (char *)upload_data + sizeof(layout->push_constant_offsets);
+
+      memcpy(upload_data, cmd_buffer->push_constants, graphics_pipeline->base.push_constant_size);
+      upload_data = (char *)upload_data + graphics_pipeline->base.push_constant_size;
+
+      struct radv_descriptor_state *descriptors_state =
+         radv_get_descriptors_state(cmd_buffer, pGeneratedCommandsInfo->pipelineBindPoint);
+      memcpy(upload_data, descriptors_state->dynamic_buffers, 16 * graphics_pipeline->base.dynamic_offset_count);
+      upload_data = (char *)upload_data + 16 * graphics_pipeline->base.dynamic_offset_count;
+   }
+
+   if (scissor_size) {
+      params.scissor_offset = (char*)upload_data - (char*)upload_data_base;
+      params.scissor_count = scissor_size / 4;
+
+      struct radeon_cmdbuf scissor_cs = {
+         .buf = upload_data,
+         .cdw = 0,
+         .max_dw = scissor_size / 4
+      };
+
+      radv_write_scissors(cmd_buffer, &scissor_cs);
+      assert(scissor_cs.cdw * 4 == scissor_size);
+      upload_data = (char *)upload_data + scissor_size;
+   }
+
+   VkWriteDescriptorSet ds_writes[5];
+   VkDescriptorBufferInfo buf_info[ARRAY_SIZE(ds_writes)];
+   int ds_cnt = 0;
+   buf_info[ds_cnt] = (VkDescriptorBufferInfo){.buffer = radv_buffer_to_handle(&token_buffer),
+                                               .offset = 0,
+                                               .range = upload_size};
+   ds_writes[ds_cnt] = (VkWriteDescriptorSet){.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                              .dstBinding = DGC_DESC_PARAMS,
+                                              .dstArrayElement = 0,
+                                              .descriptorCount = 1,
+                                              .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              .pBufferInfo = &buf_info[ds_cnt]};
+   ++ds_cnt;
+
+   buf_info[ds_cnt] = (VkDescriptorBufferInfo){.buffer = pGeneratedCommandsInfo->preprocessBuffer,
+                                               .offset = pGeneratedCommandsInfo->preprocessOffset,
+                                               .range = pGeneratedCommandsInfo->preprocessSize};
+   ds_writes[ds_cnt] = (VkWriteDescriptorSet){.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                              .dstBinding = DGC_DESC_PREPARE,
+                                              .dstArrayElement = 0,
+                                              .descriptorCount = 1,
+                                              .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              .pBufferInfo = &buf_info[ds_cnt]};
+   ++ds_cnt;
+
+   if (pGeneratedCommandsInfo->streamCount > 0) {
+      buf_info[ds_cnt] =
+         (VkDescriptorBufferInfo){.buffer = pGeneratedCommandsInfo->pStreams[0].buffer,
+                                  .offset = pGeneratedCommandsInfo->pStreams[0].offset,
+                                  .range = VK_WHOLE_SIZE};
+      ds_writes[ds_cnt] =
+         (VkWriteDescriptorSet){.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstBinding = DGC_DESC_STREAM,
+                                .dstArrayElement = 0,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &buf_info[ds_cnt]};
+      ++ds_cnt;
+   }
+
+   if (pGeneratedCommandsInfo->sequencesCountBuffer != VK_NULL_HANDLE) {
+      buf_info[ds_cnt] =
+         (VkDescriptorBufferInfo){.buffer = pGeneratedCommandsInfo->sequencesCountBuffer,
+                                  .offset = pGeneratedCommandsInfo->sequencesCountOffset,
+                                  .range = VK_WHOLE_SIZE};
+      ds_writes[ds_cnt] =
+         (VkWriteDescriptorSet){.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstBinding = DGC_DESC_COUNT,
+                                .dstArrayElement = 0,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &buf_info[ds_cnt]};
+      ++ds_cnt;
+      params.sequence_count = UINT32_MAX;
+   }
+
+   radv_meta_save(
+      &saved_state, cmd_buffer,
+      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
+
+   radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
+                        cmd_buffer->device->meta_state.dgc_prepare.pipeline);
+
+   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+                         cmd_buffer->device->meta_state.dgc_prepare.p_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
+
+   radv_meta_push_descriptor_set(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                 cmd_buffer->device->meta_state.dgc_prepare.p_layout, 0, ds_cnt,
+                                 ds_writes);
+
+   unsigned block_count = MAX2(1, round_up_u32(pGeneratedCommandsInfo->sequencesCount, 64));
+   radv_CmdDispatch(radv_cmd_buffer_to_handle(cmd_buffer), block_count, 1, 1);
+
+   radv_buffer_finish(&token_buffer);
+   radv_meta_restore(&saved_state, cmd_buffer);
+
+   cmd_buffer->state.flush_bits |=
+      RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2;
 }

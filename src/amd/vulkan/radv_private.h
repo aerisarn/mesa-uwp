@@ -3019,6 +3019,9 @@ struct radv_indirect_command_layout {
 
 uint32_t radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info);
 
+void radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
+                      const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
+
 uint64_t radv_get_current_time(void);
 
 static inline uint32_t
