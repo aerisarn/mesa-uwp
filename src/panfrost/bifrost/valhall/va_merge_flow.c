@@ -83,9 +83,11 @@ merge_end_reconverge(bi_block *block)
    if (last->op != BI_OPCODE_NOP) return;
    if (last->flow != VA_FLOW_RECONVERGE && last->flow != VA_FLOW_END) return;
 
-   /* End implies all other flow control, so remove blocking flow control */
+   /* End implies all other flow control except for waiting on barriers (slot
+    * #7, with VA_FLOW_WAIT), so remove blocking flow control.
+    */
    if (last->flow == VA_FLOW_END) {
-      while (penult->op == BI_OPCODE_NOP) {
+      while (penult->op == BI_OPCODE_NOP && penult->flow != VA_FLOW_WAIT) {
          bi_remove_instruction(penult);
 
          /* There may be nothing left */

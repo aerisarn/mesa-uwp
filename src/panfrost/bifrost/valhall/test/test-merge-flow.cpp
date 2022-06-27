@@ -292,3 +292,14 @@ TEST_F(MergeFlow, DeletePointlessDiscard) {
    });
 }
 
+TEST_F(MergeFlow, PreserveTerminalBarriers) {
+   CASE({
+         bi_barrier(b);
+         flow(WAIT);
+         flow(END);
+   },
+   {
+         bi_barrier(b)->flow = VA_FLOW_WAIT;
+         flow(END);
+   });
+}
