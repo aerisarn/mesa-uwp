@@ -119,7 +119,7 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
       cache->compression_disabled = true;
 
    if (env_var_as_boolean("MESA_DISK_CACHE_SINGLE_FILE", false)) {
-      if (!disk_cache_load_cache_index(local, cache))
+      if (!disk_cache_load_cache_index_foz(local, cache))
          goto path_fail;
    }
 

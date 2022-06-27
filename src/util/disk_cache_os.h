@@ -127,7 +127,7 @@ bool
 disk_cache_enabled(void);
 
 bool
-disk_cache_load_cache_index(void *mem_ctx, struct disk_cache *cache);
+disk_cache_load_cache_index_foz(void *mem_ctx, struct disk_cache *cache);
 
 bool
 disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,

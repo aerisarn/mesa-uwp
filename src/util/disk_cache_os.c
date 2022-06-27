@@ -978,7 +978,7 @@ disk_cache_write_item_to_disk_foz(struct disk_cache_put_job *dc_job)
 }
 
 bool
-disk_cache_load_cache_index(void *mem_ctx, struct disk_cache *cache)
+disk_cache_load_cache_index_foz(void *mem_ctx, struct disk_cache *cache)
 {
    /* Load cache index into a hash map (from fossilise files) */
    return foz_prepare(&cache->foz_db, cache->path);
