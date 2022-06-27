@@ -1759,6 +1759,7 @@
       a 32-bit destination.
     </desc>
     <clamp/>
+    <roundmode/>
     <src absneg="true">A</src>
     <src absneg="true">B</src>
   </group>
