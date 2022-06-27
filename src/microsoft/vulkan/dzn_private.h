@@ -572,6 +572,8 @@ struct dzn_cmd_buffer {
       struct dzn_descriptor_heap_pool pool;
    } rtvs, dsvs;
 
+   struct hash_table *transition_barriers;
+
    struct dzn_descriptor_heap_pool cbv_srv_uav_pool, sampler_pool;
    D3D12_CPU_DESCRIPTOR_HANDLE null_rtv;
 

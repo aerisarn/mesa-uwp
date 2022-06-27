@@ -28,6 +28,181 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
+
+static void
+dzn_cmd_buffer_exec_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
+                                        D3D12_RESOURCE_BARRIER *barriers,
+                                        uint32_t barrier_count)
+{
+   uint32_t flush_count = 0;
+   for (uint32_t b = 0; b < barrier_count; b++) {
+      assert(barriers[b].Transition.pResource);
+
+      /* some layouts map to the same states, and NOP-barriers are illegal */
+      if (barriers[b].Transition.StateBefore == barriers[b].Transition.StateAfter) {
+         if (flush_count) {
+            ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, flush_count,
+                                                       &barriers[b - flush_count]);
+            flush_count = 0;
+         }
+      } else {
+         flush_count++;
+      }
+   }
+
+   if (flush_count)
+      ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, flush_count,
+                                                 &barriers[barrier_count - flush_count]);
+}
+
+static void
+dzn_cmd_buffer_flush_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
+                                         ID3D12Resource *res,
+                                         uint32_t first_subres,
+                                         uint32_t subres_count)
+{
+   struct hash_entry *he =
+      _mesa_hash_table_search(cmdbuf->transition_barriers, res);
+   D3D12_RESOURCE_BARRIER *barriers = he ? he->data : NULL;
+
+   if (!barriers)
+      return;
+
+   dzn_cmd_buffer_exec_transition_barriers(cmdbuf, &barriers[first_subres], subres_count);
+
+   /* Set Before = After so we don't execute the same barrier twice */
+   for (uint32_t b = first_subres; b < first_subres + subres_count; b++)
+      barriers[b].Transition.StateBefore = barriers[b].Transition.StateAfter;
+}
+
+enum dzn_queue_transition_flags {
+   DZN_QUEUE_TRANSITION_FLUSH = 1 << 0,
+   DZN_QUEUE_TRANSITION_BEFORE_IS_UNDEFINED = 1 << 1,
+};
+
+static VkResult
+dzn_cmd_buffer_queue_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
+                                         ID3D12Resource *res,
+                                         uint32_t first_subres,
+                                         uint32_t subres_count,
+                                         D3D12_RESOURCE_STATES before,
+                                         D3D12_RESOURCE_STATES after,
+                                         uint32_t flags)
+{
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct hash_entry *he =
+      _mesa_hash_table_search(cmdbuf->transition_barriers, res);
+   struct D3D12_RESOURCE_BARRIER *barriers = he ? he->data : NULL;
+
+   if (!barriers) {
+      D3D12_RESOURCE_DESC desc;
+      ID3D12Resource_GetDesc(res, &desc);
+      D3D12_FEATURE_DATA_FORMAT_INFO fmt_info = { desc.Format, 0 };
+      ID3D12Device_CheckFeatureSupport(device->dev, D3D12_FEATURE_FORMAT_INFO, &fmt_info, sizeof(fmt_info));
+      uint32_t barrier_count =
+         fmt_info.PlaneCount *
+         desc.MipLevels * desc.DepthOrArraySize;
+
+      barriers =
+         vk_zalloc(&cmdbuf->vk.pool->alloc, sizeof(*barriers) * barrier_count,
+                   8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!barriers) {
+         cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return cmdbuf->error;
+      }
+
+      he = _mesa_hash_table_insert(cmdbuf->transition_barriers, res, barriers);
+      if (!he) {
+         vk_free(&cmdbuf->vk.pool->alloc, barriers);
+         cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return cmdbuf->error;
+      }
+   }
+
+   for (uint32_t subres = first_subres; subres < first_subres + subres_count; subres++) {
+      if (!barriers[subres].Transition.pResource) {
+         barriers[subres] = (D3D12_RESOURCE_BARRIER) {
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            .Flags = 0,
+            .Transition = {
+               .pResource = res,
+               .Subresource = subres,
+               .StateBefore = before,
+               .StateAfter = after,
+            },
+         };
+      } else {
+	 if (flags & DZN_QUEUE_TRANSITION_BEFORE_IS_UNDEFINED)
+            before = barriers[subres].Transition.StateAfter;
+
+         assert(barriers[subres].Transition.StateAfter == before ||
+                barriers[subres].Transition.StateAfter == after);
+         barriers[subres].Transition.StateAfter = after;
+      }
+   }
+
+   if (flags & DZN_QUEUE_TRANSITION_FLUSH)
+      dzn_cmd_buffer_exec_transition_barriers(cmdbuf, &barriers[first_subres], subres_count);
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+dzn_cmd_buffer_queue_image_subres_range_transition(struct dzn_cmd_buffer *cmdbuf,
+                                                   const struct dzn_image *image,
+                                                   const VkImageSubresourceRange *range,
+                                                   VkImageLayout old_layout,
+                                                   VkImageLayout new_layout,
+                                                   uint32_t flags)
+{
+   uint32_t first_barrier = 0, barrier_count = 0;
+   bool is_undefined = old_layout == VK_IMAGE_LAYOUT_UNDEFINED;
+   VkResult ret = VK_SUCCESS;
+
+   if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED)
+      flags |= DZN_QUEUE_TRANSITION_BEFORE_IS_UNDEFINED;
+
+   dzn_foreach_aspect(aspect, range->aspectMask) {
+      D3D12_RESOURCE_STATES after =
+         dzn_image_layout_to_state(new_layout, aspect);
+      D3D12_RESOURCE_STATES before =
+         (old_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
+          old_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) ?
+         image->mem->initial_state :
+         dzn_image_layout_to_state(old_layout, aspect);
+
+      uint32_t layer_count = dzn_get_layer_count(image, range);
+      uint32_t level_count = dzn_get_level_count(image, range);
+      for (uint32_t layer = 0; layer < layer_count; layer++) {
+         uint32_t subres = dzn_image_range_get_subresource_index(image, range, aspect, 0, layer);
+         if (!barrier_count) {
+            first_barrier = subres;
+            barrier_count = level_count;
+         } else if (first_barrier + barrier_count == subres) {
+            barrier_count += level_count;
+         }
+
+         ret = dzn_cmd_buffer_queue_transition_barriers(cmdbuf, image->res,
+                                                        first_barrier, barrier_count,
+                                                        before, after, flags);
+         if (ret != VK_SUCCESS)
+            return ret;
+
+         barrier_count = 0;
+      }
+
+      if (barrier_count) {
+         ret = dzn_cmd_buffer_queue_transition_barriers(cmdbuf, image->res,
+                                                        first_barrier, barrier_count,
+                                                        before, after, flags);
+         if (ret != VK_SUCCESS)
+            return ret;
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 static void
 dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
 {
@@ -84,6 +259,12 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
          vk_free(&cbuf->pool->alloc, he->data);
       }
       _mesa_hash_table_destroy(cmdbuf->queries.ht, NULL);
+   }
+
+   if (cmdbuf->transition_barriers) {
+      hash_table_foreach(cmdbuf->transition_barriers, he)
+         vk_free(&cbuf->pool->alloc, he->data);
+      _mesa_hash_table_destroy(cmdbuf->transition_barriers, NULL);
    }
 
    vk_command_buffer_finish(&cmdbuf->vk);
@@ -164,6 +345,8 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
       _mesa_pointer_hash_table_create(NULL);
    cmdbuf->queries.ht =
       _mesa_pointer_hash_table_create(NULL);
+   cmdbuf->transition_barriers =
+      _mesa_pointer_hash_table_create(NULL);
    cmdbuf->rtvs.ht =
       _mesa_hash_table_create(NULL,
                               dzn_cmd_buffer_rtv_key_hash_function,
@@ -173,6 +356,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
                               dzn_cmd_buffer_dsv_key_hash_function,
                               dzn_cmd_buffer_dsv_key_equals_function);
    if (!cmdbuf->events.ht || !cmdbuf->queries.ht ||
+       !cmdbuf->transition_barriers ||
        !cmdbuf->rtvs.ht || !cmdbuf->dsvs.ht) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
@@ -246,6 +430,9 @@ dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
    }
    _mesa_hash_table_clear(cmdbuf->queries.ht, NULL);
    _mesa_hash_table_clear(cmdbuf->events.ht, NULL);
+   hash_table_foreach(cmdbuf->transition_barriers, he)
+      vk_free(&cmdbuf->vk.pool->alloc, he->data);
+   _mesa_hash_table_clear(cmdbuf->transition_barriers, NULL);
    dzn_descriptor_heap_pool_reset(&cmdbuf->dsvs.pool);
    dzn_descriptor_heap_pool_reset(&cmdbuf->cbv_srv_uav_pool);
    dzn_descriptor_heap_pool_reset(&cmdbuf->sampler_pool);
@@ -528,8 +715,11 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
    if (result != VK_SUCCESS)
       return result;
 
+   dzn_cmd_buffer_flush_transition_barriers(cmdbuf, qpool->resolve_buffer, 0, 1);
+
    BITSET_WORD *collect =
       util_dynarray_element(&state->collect, BITSET_WORD, 0);
+
    for (start = first_query, end = first_query,
         __bitset_next_range(&start, &end, collect, nbits);
         start < nbits;
@@ -542,19 +732,14 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
                                                   qpool->query_size * start);
    }
 
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = qpool->resolve_buffer,
-         .StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-         .StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE,
-      },
-   };
    uint32_t offset = dzn_query_pool_get_result_offset(qpool, first_query);
    uint32_t size = dzn_query_pool_get_result_size(qpool, query_count);
 
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->resolve_buffer,
+                                            0, 1,
+                                            D3D12_RESOURCE_STATE_COPY_DEST,
+                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
    ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist,
                                                qpool->collect_buffer, offset,
@@ -583,8 +768,11 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
       dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->collect, start, count);
    }
 
-   DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->resolve_buffer,
+                                            0, 1,
+                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                            D3D12_RESOURCE_STATE_COPY_DEST,
+                                            0);
    return VK_SUCCESS;
 }
 
@@ -736,38 +924,10 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
 
       ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &aliasing_barrier);
 
-      dzn_foreach_aspect(aspect, range->aspectMask) {
-         D3D12_RESOURCE_BARRIER transition_barrier = {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition = {
-               .pResource = image->res,
-               .StateAfter = dzn_image_layout_to_state(ibarrier->newLayout, aspect),
-            },
-         };
-
-         if (ibarrier->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED ||
-             ibarrier->oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-            transition_barrier.Transition.StateBefore = image->mem->initial_state;
-         } else {
-            transition_barrier.Transition.StateBefore =
-               dzn_image_layout_to_state(ibarrier->oldLayout, aspect);
-         }
-
-         if (transition_barrier.Transition.StateBefore == transition_barrier.Transition.StateAfter)
-            continue;
-
-         /* some layouts map to the same states, and NOP-barriers are illegal */
-         uint32_t layer_count = dzn_get_layer_count(image, range);
-         uint32_t level_count = dzn_get_level_count(image, range);
-         for (uint32_t layer = 0; layer < layer_count; layer++) {
-            for (uint32_t lvl = 0; lvl < level_count; lvl++) {
-               transition_barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, range, aspect, lvl, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &transition_barrier);
-            }
-         }
-      }
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                         ibarrier->oldLayout,
+                                                         ibarrier->newLayout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
    }
 }
 
@@ -974,19 +1134,16 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
 
    D3D12_RESOURCE_STATES dst_state =
       dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT);
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = src_res,
-         .StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ,
-         .StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE,
-      },
-   };
 
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
+                                            D3D12_RESOURCE_STATE_GENERIC_READ,
+                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
-   barrier.Transition.pResource = image->res;
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                      layout,
+                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
 
    assert(dzn_get_level_count(image, range) == 1);
    uint32_t layer_count = dzn_get_layer_count(image, range);
@@ -1000,14 +1157,6 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       };
 
       for (uint32_t layer = 0; layer < layer_count; layer++) {
-         if (dst_state != D3D12_RESOURCE_STATE_COPY_DEST) {
-            barrier.Transition.Subresource =
-               dzn_image_range_get_subresource_index(image, range, aspect, 0, layer);
-            barrier.Transition.StateBefore = dst_state;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-            ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-         }
-
          D3D12_TEXTURE_COPY_LOCATION dst_loc =
             dzn_image_get_copy_loc(image, &subres, aspect, layer);
 
@@ -1033,14 +1182,13 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
                                                          &src_loc,
                                                          &src_box);
          }
-
-         if (dst_state != D3D12_RESOURCE_STATE_COPY_DEST) {
-            barrier.Transition.StateAfter = dst_state;
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-            ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-         }
       }
    }
+
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                      layout,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
 }
 
 static VkClearColorValue
@@ -1124,22 +1272,20 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
 
    D3D12_RESOURCE_STATES dst_state =
       dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT);
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = src_res,
-         .StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ,
-         .StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE,
-      },
-   };
 
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
+                                            D3D12_RESOURCE_STATE_GENERIC_READ,
+                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
-   barrier.Transition.pResource = image->res;
    for (uint32_t r = 0; r < range_count; r++) {
       uint32_t level_count = dzn_get_level_count(image, &ranges[r]);
       uint32_t layer_count = dzn_get_layer_count(image, &ranges[r]);
+
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &ranges[r],
+                                                         layout,
+                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
 
       dzn_foreach_aspect(aspect, ranges[r].aspectMask) {
          for (uint32_t lvl = 0; lvl < level_count; lvl++) {
@@ -1154,14 +1300,6 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
             };
 
             for (uint32_t layer = 0; layer < layer_count; layer++) {
-               if (dst_state != D3D12_RESOURCE_STATE_COPY_DEST) {
-                  barrier.Transition.Subresource =
-                     dzn_image_range_get_subresource_index(image, &ranges[r], aspect, lvl, layer);
-                  barrier.Transition.StateBefore = dst_state;
-                  barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-                  ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-               }
-
                D3D12_TEXTURE_COPY_LOCATION dst_loc =
                   dzn_image_get_copy_loc(image, &subres, aspect, layer);
 
@@ -1186,14 +1324,14 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
                ID3D12GraphicsCommandList1_CopyTextureRegion(cmdbuf->cmdlist, &dst_loc, 0, 0, 0,
                                                   &src_loc, &src_box);
 
-               if (dst_state != D3D12_RESOURCE_STATE_COPY_DEST) {
-                  barrier.Transition.StateAfter = dst_state;
-                  barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                  ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-               }
             }
          }
       }
+
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &ranges[r],
+                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                         layout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
    }
 }
 
@@ -1216,12 +1354,10 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
       .baseMipLevel = view->vk.base_mip_level,
       .levelCount = 1,
       .baseArrayLayer = view->vk.base_array_layer + base_layer,
-      .layerCount = layer_count,
+      .layerCount = layer_count == VK_REMAINING_ARRAY_LAYERS ?
+                    view->vk.layer_count - base_layer : layer_count,
    };
-   bool all_layers =
-      base_layer == 0 &&
-      (layer_count == view->vk.layer_count ||
-       layer_count == VK_REMAINING_ARRAY_LAYERS);
+
    layer_count = vk_image_subresource_layer_count(&image->vk, &range);
 
    if (vk_format_is_depth_or_stencil(view->vk.format)) {
@@ -1233,26 +1369,10 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
       if (flags != 0) {
-         D3D12_RESOURCE_BARRIER barrier = {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition = {
-               .pResource = image->res,
-               .StateBefore =
-                  dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT),
-               .StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            },
-         };
-
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, &range,
-                                                        VK_IMAGE_ASPECT_COLOR_BIT,
-                                                        range.baseMipLevel, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-            }
-         }
+         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+                                                            layout,
+                                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
 
          D3D12_DEPTH_STENCIL_VIEW_DESC desc = dzn_image_get_dsv_desc(image, &range, 0);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_dsv(cmdbuf, image, &desc);
@@ -1261,16 +1381,10 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                                 value->depthStencil.stencil,
                                                 rect_count, rects);
 
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, &range, VK_IMAGE_ASPECT_COLOR_BIT,
-                                                        range.baseMipLevel, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-            }
-         }
+         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+                                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                            layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
       }
    } else if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       VkClearColorValue color = adjust_clear_color(view->vk.format, &value->color);
@@ -1304,41 +1418,19 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                               &value->color,
                                               &range, rect_count, rects);
       } else {
-         D3D12_RESOURCE_BARRIER barrier = {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition = {
-               .pResource = image->res,
-               .StateBefore =
-                  dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT),
-               .StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
-            },
-         };
-
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, &range,
-                                                        VK_IMAGE_ASPECT_COLOR_BIT,
-                                                        range.baseMipLevel, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-            }
-         }
+         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+                                                            layout,
+                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
 
          D3D12_RENDER_TARGET_VIEW_DESC desc = dzn_image_get_rtv_desc(image, &range, 0);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_rtv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, vals, rect_count, rects);
 
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, &range, VK_IMAGE_ASPECT_COLOR_BIT,
-                                                        range.baseMipLevel, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-            }
-         }
+         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                            layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
       }
    }
 }
@@ -1386,28 +1478,11 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
       uint32_t layer_count = dzn_get_layer_count(image, range);
       uint32_t level_count = dzn_get_level_count(image, range);
 
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                         layout,
+                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
       for (uint32_t lvl = 0; lvl < level_count; lvl++) {
-         D3D12_RESOURCE_BARRIER barrier = {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition = {
-               .pResource = image->res,
-               .StateBefore =
-                  dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT),
-               .StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
-            },
-         };
-
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, range,
-                                                        VK_IMAGE_ASPECT_COLOR_BIT,
-                                                        lvl, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-            }
-         }
-
          VkImageSubresourceRange view_range = *range;
 
          if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
@@ -1418,17 +1493,12 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
          D3D12_RENDER_TARGET_VIEW_DESC desc = dzn_image_get_rtv_desc(image, &view_range, lvl);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_rtv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, clear_vals, 0, NULL);
-
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               barrier.Transition.Subresource =
-                  dzn_image_range_get_subresource_index(image, range, VK_IMAGE_ASPECT_COLOR_BIT, lvl, layer);
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
-            }
-         }
       }
+
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                         layout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
    }
 }
 
@@ -1454,40 +1524,12 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
       if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                         layout,
+                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+
       for (uint32_t lvl = 0; lvl < level_count; lvl++) {
-         uint32_t barrier_count = 0;
-         D3D12_RESOURCE_BARRIER barriers[2];
-         VkImageAspectFlagBits barrier_aspects[2];
-
-         dzn_foreach_aspect(aspect, range->aspectMask) {
-            barrier_aspects[barrier_count] = aspect;
-            barriers[barrier_count] = (D3D12_RESOURCE_BARRIER) {
-               .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-               .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-               .Transition = {
-                  .pResource = image->res,
-                  .StateBefore = dzn_image_layout_to_state(layout, aspect),
-                  .StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE,
-               },
-            };
-
-            if (barriers[barrier_count].Transition.StateBefore != barriers[barrier_count].Transition.StateAfter)
-               barrier_count++;
-         }
-
-         if (barrier_count > 0) {
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               for (uint32_t b = 0; b < barrier_count; b++) {
-                  barriers[b].Transition.Subresource =
-                     dzn_image_range_get_subresource_index(image, range, barrier_aspects[b], lvl, layer);
-               }
-
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist,
-                                                          barrier_count,
-                                                          barriers);
-            }
-         }
-
          D3D12_DEPTH_STENCIL_VIEW_DESC desc = dzn_image_get_dsv_desc(image, range, lvl);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_dsv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearDepthStencilView(cmdbuf->cmdlist,
@@ -1495,23 +1537,12 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
                                                           zs->depth,
                                                           zs->stencil,
                                                           0, NULL);
-
-         if (barrier_count > 0) {
-            for (uint32_t b = 0; b < barrier_count; b++)
-               DZN_SWAP(D3D12_RESOURCE_STATES, barriers[b].Transition.StateBefore, barriers[b].Transition.StateAfter);
-
-            for (uint32_t layer = 0; layer < layer_count; layer++) {
-               for (uint32_t b = 0; b < barrier_count; b++) {
-                  barriers[b].Transition.Subresource =
-                     dzn_image_range_get_subresource_index(image, range, barrier_aspects[b], lvl, layer);
-               }
-
-               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist,
-                                                          barrier_count,
-                                                          barriers);
-            }
-         }
       }
+
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                         layout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
    }
 }
 
@@ -1750,24 +1781,21 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
 
    tmp_loc->PlacedFootprint.Footprint.Depth = depth;
 
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = tmp_loc->pResource,
-         .Subresource = 0,
-         .StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE,
-         .StateAfter = D3D12_RESOURCE_STATE_COPY_DEST,
-      },
-   };
-
-   if (r > 0 || l > 0)
-      ID3D12GraphicsCommandList1_ResourceBarrier(cmdlist, 1, &barrier);
+   if (r > 0 || l > 0) {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, tmp_loc->pResource, 0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist, tmp_loc, 0, 0, 0, &src_loc, &src_box);
 
-   DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdlist, 1, &barrier);
+   if (r > 0 || l > 0) {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, tmp_loc->pResource, 0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    tmp_desc->Format =
       dzn_image_get_placed_footprint_format(dst->vk.format, aspect);
@@ -2003,49 +2031,39 @@ dzn_cmd_buffer_blit_issue_barriers(struct dzn_cmd_buffer *cmdbuf,
                                    VkImageAspectFlagBits aspect,
                                    bool post)
 {
-   bool ds = aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
-   D3D12_RESOURCE_BARRIER barriers[2] = {
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         .Transition = {
-            .pResource = src->res,
-            .StateBefore = dzn_image_layout_to_state(src_layout, aspect),
-            .StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-         },
-      },
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         .Transition = {
-            .pResource = dst->res,
-            .StateBefore = dzn_image_layout_to_state(dst_layout, aspect),
-            .StateAfter = ds ?
-                          D3D12_RESOURCE_STATE_DEPTH_WRITE :
-                          D3D12_RESOURCE_STATE_RENDER_TARGET,
-         },
-      },
+   VkImageSubresourceRange src_range = {
+      .aspectMask = src_subres->aspectMask,
+      .baseMipLevel = src_subres->mipLevel,
+      .levelCount = 1,
+      .baseArrayLayer = src_subres->baseArrayLayer,
+      .layerCount = src_subres->layerCount,
+   };
+   VkImageSubresourceRange dst_range = {
+      .aspectMask = dst_subres->aspectMask,
+      .baseMipLevel = dst_subres->mipLevel,
+      .levelCount = 1,
+      .baseArrayLayer = dst_subres->baseArrayLayer,
+      .layerCount = dst_subres->layerCount,
    };
 
-   if (post) {
-      DZN_SWAP(D3D12_RESOURCE_STATES, barriers[0].Transition.StateBefore, barriers[0].Transition.StateAfter);
-      DZN_SWAP(D3D12_RESOURCE_STATES, barriers[1].Transition.StateBefore, barriers[1].Transition.StateAfter);
-   }
-
-   uint32_t layer_count = dzn_get_layer_count(src, src_subres);
-   uint32_t src_level = src_subres->mipLevel;
-   uint32_t dst_level = dst_subres->mipLevel;
-
-   assert(dzn_get_layer_count(dst, dst_subres) == layer_count);
-   assert(src_level < src->vk.mip_levels);
-   assert(dst_level < dst->vk.mip_levels);
-
-   for (uint32_t layer = 0; layer < layer_count; layer++) {
-      barriers[0].Transition.Subresource =
-         dzn_image_layers_get_subresource_index(src, src_subres, aspect, layer);
-      barriers[1].Transition.Subresource =
-         dzn_image_layers_get_subresource_index(dst, dst_subres, aspect, layer);
-      ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(barriers), barriers);
+   if (!post) {
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src, &src_range,
+                                                         src_layout,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst, &dst_range,
+                                                         dst_layout,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+   } else {
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src, &src_range,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         src_layout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst, &dst_range,
+                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                         dst_layout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
    }
 }
 
@@ -2572,23 +2590,10 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
    ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, 2, old_index_buf_gpu);
    ID3D12GraphicsCommandList1_Dispatch(cmdbuf->cmdlist, triangle_count, 1, 1);
 
-   D3D12_RESOURCE_BARRIER post_barriers[] = {
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-          /* Transition the exec buffer to indirect arg so it can be
-           * pass to ExecuteIndirect() as an argument buffer.
-           */
-         .Transition = {
-            .pResource = new_index_buf,
-            .Subresource = 0,
-            .StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            .StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER,
-         },
-      },
-   };
-
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(post_barriers), post_barriers);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, new_index_buf, 0, 1,
+                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                            D3D12_RESOURCE_STATE_INDEX_BUFFER,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
    /* We don't mess up with the driver state when executing our internal
     * compute shader, but we still change the D3D12 state, so let's mark
@@ -2809,35 +2814,6 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
 
    ID3D12GraphicsCommandList1_Dispatch(cmdbuf->cmdlist, max_draw_count, 1, 1);
 
-   D3D12_RESOURCE_BARRIER post_barriers[] = {
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-          /* Transition the exec buffer to indirect arg so it can be
-           * pass to ExecuteIndirect() as an argument buffer.
-           */
-         .Transition = {
-            .pResource = exec_buf,
-            .Subresource = 0,
-            .StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            .StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-         },
-      },
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-          /* Transition the exec buffer to indirect arg so it can be
-           * pass to ExecuteIndirect() as an argument buffer.
-           */
-         .Transition = {
-            .pResource = triangle_fan_exec_buf,
-            .Subresource = 0,
-            .StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            .StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-         },
-      },
-   };
-
    D3D12_INDEX_BUFFER_VIEW ib_view = { 0 };
 
    if (triangle_fan_exec_buf) {
@@ -2854,21 +2830,10 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       assert(rewrite_index->pipeline_state);
       assert(rewrite_index->cmd_sig);
 
-      D3D12_RESOURCE_BARRIER triangle_fan_exec_buf_barrier = {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-          /* Transition the exec buffer to indirect arg so it can be
-           * pass to ExecuteIndirect() as an argument buffer.
-           */
-         .Transition = {
-            .pResource = triangle_fan_exec_buf,
-            .Subresource = 0,
-            .StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            .StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-         },
-      };
-
-      ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &triangle_fan_exec_buf_barrier);
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, triangle_fan_exec_buf, 0, 1,
+                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                               D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
 
       ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, rewrite_index->root_sig);
       ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, rewrite_index->pipeline_state);
@@ -2889,20 +2854,10 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
                                                  max_draw_count, triangle_fan_exec_buf, 0,
                                                  count_buf ? exec_buf : NULL, 0);
 
-      D3D12_RESOURCE_BARRIER index_buf_barriers[] = {
-         {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition = {
-               .pResource = triangle_fan_index_buf,
-               .Subresource = 0,
-               .StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-               .StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER,
-            },
-         },
-      };
-
-      ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(index_buf_barriers), index_buf_barriers);
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, triangle_fan_index_buf, 0, 1,
+                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                               D3D12_RESOURCE_STATE_INDEX_BUFFER,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
 
       /* After our triangle-fan lowering the draw is indexed */
       indexed = true;
@@ -2913,21 +2868,10 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
    }
 
-   D3D12_RESOURCE_BARRIER exec_buf_barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-       /* Transition the exec buffer to indirect arg so it can be
-        * pass to ExecuteIndirect() as an argument buffer.
-        */
-      .Transition = {
-         .pResource = exec_buf,
-         .Subresource = 0,
-         .StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-         .StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-      },
-   };
-
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &exec_buf_barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, exec_buf, 0, 1,
+                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                            D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
    /* We don't mess up with the driver state when executing our internal
     * compute shader, but we still change the D3D12 state, so let's mark
@@ -3448,26 +3392,6 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
    D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_layout, aspect);
    struct dzn_image *dst_img = container_of(dst->vk.image, struct dzn_image, vk);
    D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(src_layout, aspect);
-   D3D12_RESOURCE_BARRIER barriers[2] = {
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         .Transition = {
-            .pResource = src_img->res,
-            .StateBefore = dzn_image_layout_to_state(src_layout, aspect),
-            .StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-         },
-      },
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         .Transition = {
-            .pResource = dst_img->res,
-            .StateBefore = dzn_image_layout_to_state(dst_layout, aspect),
-            .StateAfter = D3D12_RESOURCE_STATE_RESOLVE_DEST,
-         },
-      },
-   };
 
    VkImageSubresourceRange src_range = {
       .aspectMask = (VkImageAspectFlags)aspect,
@@ -3485,6 +3409,15 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = MIN2(src->vk.layer_count, dst->vk.layer_count),
    };
 
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src_img, &src_range,
+                                                      src_layout,
+                                                      D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst_img, &dst_range,
+                                                      dst_layout,
+                                                      D3D12_RESOURCE_STATE_RESOLVE_DEST,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
+
    for (uint32_t level = 0; level < src_range.levelCount; level++) {
       for (uint32_t layer = 0; layer < src_range.layerCount; layer++) {
          uint32_t src_subres =
@@ -3492,27 +3425,21 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
          uint32_t dst_subres =
             dzn_image_range_get_subresource_index(dst_img, &dst_range, aspect, level, layer);
 
-         barriers[0].Transition.Subresource = src_subres;
-         barriers[0].Transition.StateBefore = src_state;
-         barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-         barriers[1].Transition.Subresource = dst_subres,
-         barriers[1].Transition.StateBefore = dst_state;
-         barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_DEST;
-         ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(barriers), barriers);
-
          ID3D12GraphicsCommandList1_ResolveSubresource(cmdbuf->cmdlist,
                                                        dst_img->res, dst_subres,
                                                        src_img->res, src_subres,
                                                        dst->srv_desc.Format);
-         DZN_SWAP(D3D12_RESOURCE_STATES,
-                  barriers[0].Transition.StateBefore,
-                  barriers[0].Transition.StateAfter);
-         DZN_SWAP(D3D12_RESOURCE_STATES,
-                  barriers[1].Transition.StateBefore,
-                  barriers[1].Transition.StateAfter);
-         ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(barriers), barriers);
       }
    }
+
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src_img, &src_range,
+                                                      D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+                                                      src_layout,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst_img, &dst_range,
+                                                      D3D12_RESOURCE_STATE_RESOLVE_DEST,
+                                                      dst_layout,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
 }
 
 static void
@@ -3528,20 +3455,6 @@ dzn_rendering_attachment_initial_transition(struct dzn_cmd_buffer *cmdbuf,
       return;
 
    struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
-
-   D3D12_RESOURCE_BARRIER transition_barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = image->res,
-         .StateBefore = dzn_image_layout_to_state(initial_layout->initialLayout, aspect),
-         .StateAfter = dzn_image_layout_to_state(att->imageLayout, aspect),
-      },
-   };
-
-   if (transition_barrier.Transition.StateBefore == transition_barrier.Transition.StateAfter)
-      return;
-
    const VkImageSubresourceRange range = {
       .aspectMask = aspect,
       .baseMipLevel = iview->vk.base_mip_level,
@@ -3550,13 +3463,10 @@ dzn_rendering_attachment_initial_transition(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = iview->vk.layer_count,
    };
 
-   for (uint32_t layer = 0; layer < iview->vk.layer_count; layer++) {
-      for (uint32_t lvl = 0; lvl < iview->vk.level_count; lvl++) {
-         transition_barrier.Transition.Subresource =
-            dzn_image_range_get_subresource_index(image, &range, aspect, lvl, layer);
-         ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &transition_barrier);
-      }
-   }
+   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+                                                      initial_layout->initialLayout,
+                                                      att->imageLayout,
+                                                      DZN_QUEUE_TRANSITION_FLUSH);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3673,7 +3583,8 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       if (iview != NULL && att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
          dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
                                          &att->clearValue,
-                                         VK_IMAGE_ASPECT_COLOR_BIT, 0, ~0, 1,
+                                         VK_IMAGE_ASPECT_COLOR_BIT, 0,
+                                         VK_REMAINING_ARRAY_LAYERS, 1,
                                          &cmdbuf->state.render.area);
       }
    }
@@ -3705,7 +3616,8 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
 
       if (aspects != 0) {
          dzn_cmd_buffer_clear_attachment(cmdbuf, iview, layout,
-                                         &clear_val, aspects, 0, ~0, 1,
+                                         &clear_val, aspects, 0,
+                                         VK_REMAINING_ARRAY_LAYERS, 1,
                                          &cmdbuf->state.render.area);
       }
    }
@@ -4395,17 +4307,10 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
       raw_copy = false;
 #undef ALL_STATS
 
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = qpool->collect_buffer,
-         .StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-         .StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE,
-      },
-   };
-
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
+                                            D3D12_RESOURCE_STATE_COPY_DEST,
+                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
    if (raw_copy) {
       ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, buf->res, dstOffset,
@@ -4448,8 +4353,10 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
       }
    }
 
-   DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
+                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                            D3D12_RESOURCE_STATE_COPY_DEST,
+                                            0);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4496,23 +4403,11 @@ dzn_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                                      buf->res,
                                      offset,
                                      sizeof(D3D12_DISPATCH_ARGUMENTS));
-   D3D12_RESOURCE_BARRIER barriers[] = {
-      {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-          /* Transition the exec buffer to indirect arg so it can be
-           * passed to ExecuteIndirect() as an argument buffer.
-           */
-         .Transition = {
-            .pResource = exec_buf,
-            .Subresource = 0,
-            .StateBefore = D3D12_RESOURCE_STATE_COPY_DEST,
-            .StateAfter = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-         },
-      },
-   };
 
-   ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, ARRAY_SIZE(barriers), barriers);
+   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, exec_buf, 0, 1,
+                                            D3D12_RESOURCE_STATE_COPY_DEST,
+                                            D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                                            DZN_QUEUE_TRANSITION_FLUSH);
 
    ID3D12GraphicsCommandList1_ExecuteIndirect(cmdbuf->cmdlist, cmdsig, 1, exec_buf, 0, NULL, 0);
 }
