@@ -515,8 +515,14 @@ dzn_image_get_rtv_desc(const struct dzn_image *image,
 }
 
 D3D12_RESOURCE_STATES
-dzn_image_layout_to_state(VkImageLayout layout, VkImageAspectFlagBits aspect)
+dzn_image_layout_to_state(const struct dzn_image *image,
+                          VkImageLayout layout,
+                          VkImageAspectFlagBits aspect)
 {
+   D3D12_RESOURCE_STATES shaders_access =
+      (image->desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) ?
+      0 : D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
+
    switch (layout) {
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
    case VK_IMAGE_LAYOUT_UNDEFINED:
@@ -542,16 +548,16 @@ dzn_image_layout_to_state(VkImageLayout layout, VkImageAspectFlagBits aspect)
 
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
-      return D3D12_RESOURCE_STATE_DEPTH_READ;
+      return D3D12_RESOURCE_STATE_DEPTH_READ | shaders_access;
 
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
       return aspect == VK_IMAGE_ASPECT_STENCIL_BIT ?
              D3D12_RESOURCE_STATE_DEPTH_WRITE :
-             D3D12_RESOURCE_STATE_DEPTH_READ;
+             (D3D12_RESOURCE_STATE_DEPTH_READ | shaders_access);
 
    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
       return aspect == VK_IMAGE_ASPECT_STENCIL_BIT ?
-             D3D12_RESOURCE_STATE_DEPTH_READ :
+             (D3D12_RESOURCE_STATE_DEPTH_READ | shaders_access) :
              D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:

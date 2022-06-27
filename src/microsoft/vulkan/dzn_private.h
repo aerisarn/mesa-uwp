@@ -904,7 +904,9 @@ dzn_image_get_rtv_desc(const struct dzn_image *image,
                        uint32_t level);
 
 D3D12_RESOURCE_STATES
-dzn_image_layout_to_state(VkImageLayout layout, VkImageAspectFlagBits aspect);
+dzn_image_layout_to_state(const struct dzn_image *image,
+                          VkImageLayout layout,
+                          VkImageAspectFlagBits aspect);
 
 uint32_t
 dzn_image_layers_get_subresource_index(const struct dzn_image *image,

@@ -210,12 +210,12 @@ dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf
 
    dzn_foreach_aspect(aspect, range->aspectMask) {
       D3D12_RESOURCE_STATES after =
-         dzn_image_layout_to_state(new_layout, aspect);
+         dzn_image_layout_to_state(image, new_layout, aspect);
       D3D12_RESOURCE_STATES before =
          (old_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
           old_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) ?
          image->mem->initial_state :
-         dzn_image_layout_to_state(old_layout, aspect);
+         dzn_image_layout_to_state(image, old_layout, aspect);
 
       uint32_t layer_count = dzn_get_layer_count(image, range);
       uint32_t level_count = dzn_get_level_count(image, range);
@@ -1181,7 +1181,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
    };
 
    D3D12_RESOURCE_STATES dst_state =
-      dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT);
+      dzn_image_layout_to_state(image, layout, VK_IMAGE_ASPECT_COLOR_BIT);
 
    dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
                                             D3D12_RESOURCE_STATE_GENERIC_READ,
@@ -1319,7 +1319,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
    };
 
    D3D12_RESOURCE_STATES dst_state =
-      dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT);
+      dzn_image_layout_to_state(image, layout, VK_IMAGE_ASPECT_COLOR_BIT);
 
    dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
                                             D3D12_RESOURCE_STATE_GENERIC_READ,
@@ -3437,9 +3437,9 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
    VkImageLayout src_layout = att->layout;
    VkImageLayout dst_layout = att->resolve.layout;
    struct dzn_image *src_img = container_of(src->vk.image, struct dzn_image, vk);
-   D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_layout, aspect);
+   D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect);
    struct dzn_image *dst_img = container_of(dst->vk.image, struct dzn_image, vk);
-   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(src_layout, aspect);
+   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect);
 
    VkImageSubresourceRange src_range = {
       .aspectMask = (VkImageAspectFlags)aspect,
