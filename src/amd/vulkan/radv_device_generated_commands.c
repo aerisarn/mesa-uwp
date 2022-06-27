@@ -26,6 +26,88 @@
 
 #include "nir_builder.h"
 
+static void
+radv_get_sequence_size(const struct radv_indirect_command_layout *layout,
+                       const struct radv_graphics_pipeline *pipeline, uint32_t *cmd_size,
+                       uint32_t *upload_size)
+{
+   *cmd_size = 0;
+   *upload_size = 0;
+
+   if (layout->bind_vbo_mask) {
+      *upload_size += 16 * util_bitcount(pipeline->vb_desc_usage_mask);
+
+     /* One PKT3_SET_SH_REG for emitting VBO pointer (32-bit) */
+      *cmd_size += 3 * 4;
+   }
+
+   if (layout->push_constant_mask) {
+      bool need_copy = false;
+
+      for (unsigned i = 0; i < ARRAY_SIZE(pipeline->base.shaders); ++i) {
+         if (!pipeline->base.shaders[i])
+            continue;
+
+         struct radv_userdata_locations *locs = &pipeline->base.shaders[i]->info.user_sgprs_locs;
+         if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0) {
+            /* One PKT3_SET_SH_REG for emitting push constants pointer (32-bit) */
+            *cmd_size += 3 * 4;
+            need_copy = true;
+         }
+         if (locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx >= 0)
+            /* One PKT3_SET_SH_REG writing all inline push constants. */
+            *cmd_size += (2 + locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].num_sgprs) * 4;
+      }
+      if (need_copy)
+         *upload_size +=
+            align(pipeline->base.push_constant_size + 16 * pipeline->base.dynamic_offset_count, 16);
+   }
+
+   if (layout->binds_index_buffer) {
+      /* Index type write (normal reg write) + index buffer base write (64-bits, but special packet
+       * so only 1 word overhead) + index buffer size (again, special packet so only 1 word
+       * overhead)
+       */
+      *cmd_size += (3 + 3 + 2) * 4;
+   }
+
+   if (layout->indexed) {
+      /* userdata writes + instance count + indexed draw */
+      *cmd_size += (5 + 2 + 5) * 4;
+   } else {
+      /* userdata writes + instance count + non-indexed draw */
+      *cmd_size += (5 + 2 + 3) * 4;
+   }
+
+   if (layout->binds_state) {
+      /* One PKT3_SET_CONTEXT_REG (PA_SU_SC_MODE_CNTL) */
+      *cmd_size += 3 * 4;
+
+      if (pipeline->base.device->physical_device->rad_info.has_gfx9_scissor_bug) {
+         /* 1 reg write of 4 regs + 1 reg write of 2 regs per scissor */
+         *cmd_size += (8 + 2 * MAX_SCISSORS) * 4;
+      }
+   }
+}
+
+static uint32_t
+radv_align_cmdbuf_size(uint32_t size)
+{
+   return align(MAX2(1, size), 256);
+}
+
+uint32_t
+radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info)
+{
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout, cmd_info->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, cmd_info->pipeline);
+   struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+
+   uint32_t cmd_size, upload_size;
+   radv_get_sequence_size(layout, graphics_pipeline, &cmd_size, &upload_size);
+   return radv_align_cmdbuf_size(cmd_size * cmd_info->sequencesCount);
+}
+
 enum radv_dgc_token_type {
    RADV_DGC_INDEX_BUFFER,
    RADV_DGC_DRAW,
@@ -919,4 +1001,118 @@ fail:
    radv_device_finish_dgc_prepare_state(device);
    ralloc_free(cs);
    return result;
+}
+
+VkResult
+radv_CreateIndirectCommandsLayoutNV(VkDevice _device,
+                                    const VkIndirectCommandsLayoutCreateInfoNV *pCreateInfo,
+                                    const VkAllocationCallbacks *pAllocator,
+                                    VkIndirectCommandsLayoutNV *pIndirectCommandsLayout)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   struct radv_indirect_command_layout *layout;
+
+   size_t size =
+      sizeof(*layout) + pCreateInfo->tokenCount * sizeof(VkIndirectCommandsLayoutTokenNV);
+
+   layout =
+      vk_zalloc2(&device->vk.alloc, pAllocator, size, alignof(struct radv_indirect_command_layout),
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!layout)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV);
+
+   layout->input_stride = pCreateInfo->pStreamStrides[0];
+   layout->token_count = pCreateInfo->tokenCount;
+   typed_memcpy(layout->tokens, pCreateInfo->pTokens, pCreateInfo->tokenCount);
+
+   layout->ibo_type_32 = VK_INDEX_TYPE_UINT32;
+   layout->ibo_type_8 = VK_INDEX_TYPE_UINT8_EXT;
+
+   for (unsigned i = 0; i < pCreateInfo->tokenCount; ++i) {
+      switch (pCreateInfo->pTokens[i].tokenType) {
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_NV:
+         layout->draw_params_offset = pCreateInfo->pTokens[i].offset;
+         break;
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_INDEXED_NV:
+         layout->indexed = true;
+         layout->draw_params_offset = pCreateInfo->pTokens[i].offset;
+         break;
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_INDEX_BUFFER_NV:
+         layout->binds_index_buffer = true;
+         layout->index_buffer_offset = pCreateInfo->pTokens[i].offset;
+         /* 16-bit is implied if we find no match. */
+         for (unsigned j = 0; j < pCreateInfo->pTokens[i].indexTypeCount; j++) {
+            if (pCreateInfo->pTokens[i].pIndexTypes[j] == VK_INDEX_TYPE_UINT32)
+               layout->ibo_type_32 = pCreateInfo->pTokens[i].pIndexTypeValues[j];
+            else if (pCreateInfo->pTokens[i].pIndexTypes[j] == VK_INDEX_TYPE_UINT8_EXT)
+               layout->ibo_type_8 = pCreateInfo->pTokens[i].pIndexTypeValues[j];
+         }
+         break;
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_VERTEX_BUFFER_NV:
+         layout->bind_vbo_mask |= 1u << pCreateInfo->pTokens[i].vertexBindingUnit;
+         layout->vbo_offsets[pCreateInfo->pTokens[i].vertexBindingUnit] =
+            pCreateInfo->pTokens[i].offset;
+         if (pCreateInfo->pTokens[i].vertexDynamicStride)
+            layout->vbo_offsets[pCreateInfo->pTokens[i].vertexBindingUnit] |= 1u << 15;
+         break;
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_PUSH_CONSTANT_NV:
+         for (unsigned j = pCreateInfo->pTokens[i].pushconstantOffset / 4, k = 0;
+              k < pCreateInfo->pTokens[i].pushconstantSize / 4; ++j, ++k) {
+            layout->push_constant_mask |= 1ull << j;
+            layout->push_constant_offsets[j] = pCreateInfo->pTokens[i].offset + k * 4;
+         }
+         break;
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_STATE_FLAGS_NV:
+         layout->binds_state = true;
+         layout->state_offset = pCreateInfo->pTokens[i].offset;
+         break;
+      default:
+         unreachable("Unhandled token type");
+      }
+   }
+   if (!layout->indexed)
+      layout->binds_index_buffer = false;
+
+   *pIndirectCommandsLayout = radv_indirect_command_layout_to_handle(layout);
+   return VK_SUCCESS;
+}
+
+void
+radv_DestroyIndirectCommandsLayoutNV(VkDevice _device,
+                                     VkIndirectCommandsLayoutNV indirectCommandsLayout,
+                                     const VkAllocationCallbacks *pAllocator)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout, indirectCommandsLayout);
+
+   if (!layout)
+      return;
+
+   vk_object_base_finish(&layout->base);
+   vk_free2(&device->vk.alloc, pAllocator, layout);
+}
+
+void
+radv_GetGeneratedCommandsMemoryRequirementsNV(
+   VkDevice _device, const VkGeneratedCommandsMemoryRequirementsInfoNV *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout, pInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, pInfo->pipeline);
+   struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+
+   uint32_t cmd_stride, upload_stride;
+   radv_get_sequence_size(layout, graphics_pipeline, &cmd_stride, &upload_stride);
+
+   VkDeviceSize cmd_buf_size = radv_align_cmdbuf_size(cmd_stride * pInfo->maxSequencesCount);
+   VkDeviceSize upload_buf_size = upload_stride * pInfo->maxSequencesCount;
+
+   pMemoryRequirements->memoryRequirements.memoryTypeBits =
+      device->physical_device->memory_types_32bit;
+   pMemoryRequirements->memoryRequirements.alignment = 256;
+   pMemoryRequirements->memoryRequirements.size =
+      align(cmd_buf_size + upload_buf_size, pMemoryRequirements->memoryRequirements.alignment);
 }

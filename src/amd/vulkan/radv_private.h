@@ -2991,6 +2991,34 @@ void radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
                                      const struct radv_barrier_data *barrier);
 
+struct radv_indirect_command_layout {
+   struct vk_object_base base;
+
+   uint32_t input_stride;
+   uint32_t token_count;
+
+   bool indexed;
+   bool binds_index_buffer;
+   bool binds_state;
+   uint16_t draw_params_offset;
+   uint16_t index_buffer_offset;
+
+   uint16_t state_offset;
+
+   uint32_t bind_vbo_mask;
+   uint32_t vbo_offsets[MAX_VBS];
+
+   uint64_t push_constant_mask;
+   uint32_t push_constant_offsets[MAX_PUSH_CONSTANTS_SIZE / 4];
+
+   uint32_t ibo_type_32;
+   uint32_t ibo_type_8;
+
+   VkIndirectCommandsLayoutTokenNV tokens[0];
+};
+
+uint32_t radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info);
+
 uint64_t radv_get_current_time(void);
 
 static inline uint32_t
@@ -3256,6 +3284,8 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_indirect_command_layout, base, VkIndirectCommandsLayoutNV,
+                               VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline, base, VkPipeline,
