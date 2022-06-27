@@ -908,7 +908,8 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
          fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, p);
          bld8.LOAD_PAYLOAD(payload, payload_srcs, p, header_size);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED, reg_undef, payload);
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+                                   reg_undef, payload);
          inst->mlen = p;
          inst->offset = urb_global_offset;
          assert(inst->offset < 2048);
@@ -935,7 +936,8 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
          fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, p);
          bld8.LOAD_PAYLOAD(payload, payload_srcs, p, header_size);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED, reg_undef, payload);
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+                                   reg_undef, payload);
          inst->mlen = p;
          inst->offset = urb_global_offset;
          assert(inst->offset < 2048);
@@ -998,7 +1000,8 @@ emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
          fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, x);
          bld8.LOAD_PAYLOAD(payload, payload_srcs, x, 3);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT, reg_undef, payload);
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL,
+                                   reg_undef, payload);
          inst->mlen = x;
          inst->offset = 0;
       }
@@ -1033,7 +1036,7 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
    fs_builder ubld8 = bld.group(8, 0).exec_all();
    fs_reg data = ubld8.vgrf(BRW_REGISTER_TYPE_UD, num_regs);
 
-   fs_inst *inst = ubld8.emit(SHADER_OPCODE_URB_READ_SIMD8, data, urb_handle);
+   fs_inst *inst = ubld8.emit(SHADER_OPCODE_URB_READ_LOGICAL, data, urb_handle);
    inst->mlen = 1;
    inst->offset = urb_global_offset;
    assert(inst->offset < 2048);
@@ -1097,7 +1100,8 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          fs_reg data = bld8.vgrf(BRW_REGISTER_TYPE_UD, 4);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, data, payload);
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL,
+                                   data, payload);
          inst->mlen = 2;
          inst->offset = 0;
          inst->size_written = 4 * REG_SIZE;

@@ -909,6 +909,12 @@ fs_inst::size_read(int arg) const
    case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
    case SHADER_OPCODE_URB_READ_SIMD8:
    case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
+   case SHADER_OPCODE_URB_WRITE_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
+   case SHADER_OPCODE_URB_READ_LOGICAL:
+   case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
       if (arg == 0)
@@ -1542,10 +1548,10 @@ fs_visitor::emit_gs_thread_end()
 
    if (gs_prog_data->static_vertex_count != -1) {
       foreach_in_list_reverse(fs_inst, prev, &this->instructions) {
-         if (prev->opcode == SHADER_OPCODE_URB_WRITE_SIMD8 ||
-             prev->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_MASKED ||
-             prev->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT ||
-             prev->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT) {
+         if (prev->opcode == SHADER_OPCODE_URB_WRITE_LOGICAL ||
+             prev->opcode == SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL ||
+             prev->opcode == SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL ||
+             prev->opcode == SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL) {
             prev->eot = true;
 
             /* Delete now dead instructions. */
@@ -1561,7 +1567,7 @@ fs_visitor::emit_gs_thread_end()
       }
       fs_reg hdr = abld.vgrf(BRW_REGISTER_TYPE_UD, 1);
       abld.MOV(hdr, fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD)));
-      inst = abld.emit(SHADER_OPCODE_URB_WRITE_SIMD8, reg_undef, hdr);
+      inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef, hdr);
       inst->mlen = 1;
    } else {
       fs_reg payload = abld.vgrf(BRW_REGISTER_TYPE_UD, 2);
@@ -1569,7 +1575,7 @@ fs_visitor::emit_gs_thread_end()
       sources[0] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
       sources[1] = this->final_gs_vertex_count;
       abld.LOAD_PAYLOAD(payload, sources, 2, 2);
-      inst = abld.emit(SHADER_OPCODE_URB_WRITE_SIMD8, reg_undef, payload);
+      inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef, payload);
       inst->mlen = 2;
    }
    inst->eot = true;
@@ -5083,6 +5089,12 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
    case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
    case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
    case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
+   case SHADER_OPCODE_URB_READ_LOGICAL:
+   case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
       return MIN2(8, inst->exec_size);
 
    case SHADER_OPCODE_QUAD_SWIZZLE: {
@@ -6697,7 +6709,7 @@ fs_visitor::run_tcs()
    fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, 3);
    bld.LOAD_PAYLOAD(payload, srcs, 3, 2);
 
-   fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED,
+   fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
                             bld.null_reg_ud(), payload);
    inst->mlen = 3;
    inst->eot = true;

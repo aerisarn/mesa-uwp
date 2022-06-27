@@ -31,6 +31,18 @@
 using namespace brw;
 
 static void
+lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
+{
+   inst->opcode = op;
+}
+
+static void
+lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
+{
+   inst->opcode = op;
+}
+
+static void
 setup_color_payload(const fs_builder &bld, const brw_wm_prog_key *key,
                     fs_reg *dst, fs_reg color, unsigned components)
 {
@@ -2627,6 +2639,26 @@ fs_visitor::lower_logical_sends()
 
       case RT_OPCODE_TRACE_RAY_LOGICAL:
          lower_trace_ray_logical_send(ibld, inst);
+         break;
+
+      case SHADER_OPCODE_URB_READ_LOGICAL:
+         lower_urb_read_logical_send(ibld, inst, SHADER_OPCODE_URB_READ_SIMD8);
+         break;
+      case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
+         lower_urb_read_logical_send(ibld, inst, SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT);
+         break;
+
+      case SHADER_OPCODE_URB_WRITE_LOGICAL:
+         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8);
+         break;
+      case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
+         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT);
+         break;
+      case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
+         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8_MASKED);
+         break;
+      case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
+         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT);
          break;
 
       default:

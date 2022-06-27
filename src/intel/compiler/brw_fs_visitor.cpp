@@ -774,7 +774,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
    else
       urb_handle = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
 
-   opcode opcode = SHADER_OPCODE_URB_WRITE_SIMD8;
+   opcode opcode = SHADER_OPCODE_URB_WRITE_LOGICAL;
    int header_size = 1;
    fs_reg per_slot_offsets;
 
@@ -794,7 +794,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
        * Vertex Count.  SIMD8 mode processes 8 different primitives at a
        * time; each may output a different number of vertices.
        */
-      opcode = SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT;
+      opcode = SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL;
       header_size++;
 
       /* The URB offset is in 128-bit units, so we need to multiply by 2 */
@@ -941,7 +941,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
                                  BRW_REGISTER_TYPE_F);
          payload_sources[0] = urb_handle;
 
-         if (opcode == SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT)
+         if (opcode == SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL)
             payload_sources[1] = per_slot_offsets;
 
          memcpy(&payload_sources[header_size], sources,
@@ -988,7 +988,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       fs_reg payload = fs_reg(VGRF, alloc.allocate(2), BRW_REGISTER_TYPE_UD);
       bld.exec_all().MOV(payload, urb_handle);
 
-      fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_SIMD8, reg_undef, payload);
+      fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef, payload);
       inst->eot = true;
       inst->mlen = 2;
       inst->offset = 1;
@@ -1031,7 +1031,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       bld.exec_all().MOV(offset(payload, bld, 4), brw_imm_ud(0u));
       bld.exec_all().MOV(offset(payload, bld, 5), brw_imm_ud(0u));
 
-      fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED,
+      fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
                                           reg_undef, payload);
       inst->eot = true;
       inst->mlen = 6;

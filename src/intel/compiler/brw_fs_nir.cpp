@@ -2285,17 +2285,17 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
     * Similarly, if the control data header is <= 32 bits, there is only one
     * DWord, so we can skip channel masks.
     */
-   enum opcode opcode = SHADER_OPCODE_URB_WRITE_SIMD8;
+   enum opcode opcode = SHADER_OPCODE_URB_WRITE_LOGICAL;
 
    fs_reg channel_mask, per_slot_offset;
 
    if (gs_compile->control_data_header_size_bits > 32) {
-      opcode = SHADER_OPCODE_URB_WRITE_SIMD8_MASKED;
+      opcode = SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL;
       channel_mask = vgrf(glsl_type::uint_type);
    }
 
    if (gs_compile->control_data_header_size_bits > 128) {
-      opcode = SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT;
+      opcode = SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL;
       per_slot_offset = vgrf(glsl_type::uint_type);
    }
 
@@ -2308,7 +2308,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
     *
     *    dword_index = (vertex_count - 1) >> (6 - log2(bits_per_vertex))
     */
-   if (opcode != SHADER_OPCODE_URB_WRITE_SIMD8) {
+   if (opcode != SHADER_OPCODE_URB_WRITE_LOGICAL) {
       fs_reg dword_index = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
       fs_reg prev_count = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
       abld.ADD(prev_count, vertex_count, brw_imm_ud(0xffffffffu));
@@ -2616,7 +2616,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
       if (first_component != 0) {
          unsigned read_components = num_components + first_component;
          fs_reg tmp = bld.vgrf(dst.type, read_components);
-         inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, tmp, icp_handle);
+         inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp, icp_handle);
          inst->size_written = read_components *
                               tmp.component_size(inst->exec_size);
          for (unsigned i = 0; i < num_components; i++) {
@@ -2624,7 +2624,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
                     offset(tmp, bld, i + first_component));
          }
       } else {
-         inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, dst, icp_handle);
+         inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst, icp_handle);
          inst->size_written = num_components *
                               dst.component_size(inst->exec_size);
       }
@@ -2638,7 +2638,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
       fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, 2);
       bld.LOAD_PAYLOAD(payload, srcs, ARRAY_SIZE(srcs), 0);
       if (first_component != 0) {
-         inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, tmp,
+         inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
                          payload);
          inst->size_written = read_components *
                               tmp.component_size(inst->exec_size);
@@ -2647,7 +2647,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
                     offset(tmp, bld, i + first_component));
          }
       } else {
-         inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, dst, payload);
+         inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dst, payload);
          inst->size_written = num_components *
                               dst.component_size(inst->exec_size);
       }
@@ -2921,13 +2921,13 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          if (first_component != 0) {
             unsigned read_components = num_components + first_component;
             fs_reg tmp = bld.vgrf(dst.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, tmp, icp_handle);
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp, icp_handle);
             for (unsigned i = 0; i < num_components; i++) {
                bld.MOV(offset(dst, bld, i),
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, dst, icp_handle);
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst, icp_handle);
          }
          inst->offset = imm_offset;
          inst->mlen = 1;
@@ -2939,14 +2939,14 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          if (first_component != 0) {
             unsigned read_components = num_components + first_component;
             fs_reg tmp = bld.vgrf(dst.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, tmp,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
                             payload);
             for (unsigned i = 0; i < num_components; i++) {
                bld.MOV(offset(dst, bld, i),
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, dst,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dst,
                             payload);
          }
          inst->offset = imm_offset;
@@ -2990,7 +2990,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                unsigned read_components =
                   instr->num_components + first_component;
                fs_reg tmp = bld.vgrf(dst.type, read_components);
-               inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, tmp,
+               inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                                patch_handle);
                inst->size_written = read_components * REG_SIZE;
                for (unsigned i = 0; i < instr->num_components; i++) {
@@ -2998,7 +2998,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                           offset(tmp, bld, i + first_component));
                }
             } else {
-               inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, dst,
+               inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst,
                                patch_handle);
                inst->size_written = instr->num_components * REG_SIZE;
             }
@@ -3014,7 +3014,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
             unsigned read_components =
                instr->num_components + first_component;
             fs_reg tmp = bld.vgrf(dst.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, tmp,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
                             payload);
             inst->size_written = read_components * REG_SIZE;
             for (unsigned i = 0; i < instr->num_components; i++) {
@@ -3022,7 +3022,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, dst,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dst,
                             payload);
             inst->size_written = instr->num_components * REG_SIZE;
          }
@@ -3064,12 +3064,12 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       if (mask != WRITEMASK_XYZW) {
          srcs[header_regs++] = brw_imm_ud(mask << 16);
          opcode = indirect_offset.file != BAD_FILE ?
-            SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT :
-            SHADER_OPCODE_URB_WRITE_SIMD8_MASKED;
+            SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL :
+            SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL;
       } else {
          opcode = indirect_offset.file != BAD_FILE ?
-            SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT :
-            SHADER_OPCODE_URB_WRITE_SIMD8;
+            SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL :
+            SHADER_OPCODE_URB_WRITE_LOGICAL;
       }
 
       for (unsigned i = 0; i < num_components; i++) {
@@ -3153,7 +3153,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
                unsigned read_components =
                   instr->num_components + first_component;
                fs_reg tmp = bld.vgrf(dest.type, read_components);
-               inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, tmp,
+               inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                                patch_handle);
                inst->size_written = read_components * REG_SIZE;
                for (unsigned i = 0; i < instr->num_components; i++) {
@@ -3161,7 +3161,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
                           offset(tmp, bld, i + first_component));
                }
             } else {
-               inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, dest,
+               inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dest,
                                patch_handle);
                inst->size_written = instr->num_components * REG_SIZE;
             }
@@ -3187,14 +3187,14 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
             unsigned read_components =
                 num_components + first_component;
             fs_reg tmp = bld.vgrf(dest.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, tmp,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
                             payload);
             for (unsigned i = 0; i < num_components; i++) {
                bld.MOV(offset(dest, bld, i),
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT, dest,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dest,
                             payload);
          }
          inst->mlen = 2;
