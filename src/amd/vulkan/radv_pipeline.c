@@ -3990,6 +3990,11 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       return 0;
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
+   /* If an instruction is not scalarized by this point,
+    * it can be emitted as packed instruction */
+   if (alu->dest.dest.ssa.num_components > 1)
+      return 0;
+
    if (alu->dest.dest.ssa.bit_size & (8 | 16)) {
       unsigned bit_size = alu->dest.dest.ssa.bit_size;
       switch (alu->op) {
