@@ -48,6 +48,8 @@ vulkan_runtime_files = files(
   'vk_fence.h',
   'vk_framebuffer.c',
   'vk_framebuffer.h',
+  'vk_graphics_state.c',
+  'vk_graphics_state.h',
   'vk_image.c',
   'vk_image.h',
   'vk_instance.c',
