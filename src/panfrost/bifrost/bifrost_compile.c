@@ -2401,14 +2401,28 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 
         case nir_op_f2f16:
+        case nir_op_f2f16_rtz:
+        case nir_op_f2f16_rtne: {
                 assert(src_sz == 32);
                 bi_index idx = bi_src_index(&instr->src[0].src);
                 bi_index s0 = bi_extract(b, idx, instr->src[0].swizzle[0]);
                 bi_index s1 = comps > 1 ?
                         bi_extract(b, idx, instr->src[0].swizzle[1]) : s0;
 
-                bi_v2f32_to_v2f16_to(b, dst, s0, s1);
+                bi_instr *I = bi_v2f32_to_v2f16_to(b, dst, s0, s1);
+
+                /* Override rounding if explicitly requested. Otherwise, the
+                 * default rounding mode is selected by the builder. Depending
+                 * on the float controls required by the shader, the default
+                 * mode may not be nearest-even.
+                 */
+                if (instr->op == nir_op_f2f16_rtz)
+                        I->round = BI_ROUND_RTZ;
+                else if (instr->op == nir_op_f2f16_rtne)
+                        I->round = BI_ROUND_NONE; /* Nearest even */
+
                 return;
+        }
 
         /* Vectorized downcasts */
         case nir_op_u2u16:
