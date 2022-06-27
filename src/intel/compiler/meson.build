@@ -78,6 +78,7 @@ libintel_compiler_files = files(
   'brw_ir_vec4.h',
   'brw_isa_info.h',
   'brw_kernel.c',
+  'brw_lower_logical_sends.cpp',
   'brw_mesh.cpp',
   'brw_nir.h',
   'brw_nir.c',
