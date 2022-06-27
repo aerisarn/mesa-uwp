@@ -848,13 +848,14 @@ ComputeTest::configure(Shader &shader,
          throw runtime_error("failed to parse spirv!");
    }
 
-   shader.dxil = std::shared_ptr<clc_dxil_object>(new clc_dxil_object{}, [](clc_dxil_object *dxil)
+   std::unique_ptr<clc_dxil_object> dxil(new clc_dxil_object{});
+   if (!clc_spirv_to_dxil(compiler_ctx, shader.obj.get(), shader.metadata.get(), "main_test", conf, nullptr, &logger, dxil.get()))
+      throw runtime_error("failed to compile kernel!");
+   shader.dxil = std::shared_ptr<clc_dxil_object>(dxil.release(), [](clc_dxil_object *dxil)
       {
          clc_free_dxil_object(dxil);
          delete dxil;
       });
-   if (!clc_spirv_to_dxil(compiler_ctx, shader.obj.get(), shader.metadata.get(), "main_test", conf, nullptr, &logger, shader.dxil.get()))
-      throw runtime_error("failed to compile kernel!");
 }
 
 void
