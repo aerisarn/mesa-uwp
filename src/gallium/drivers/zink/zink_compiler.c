@@ -537,9 +537,7 @@ lower_fbfetch_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_ssa_def *deref = &nir_build_deref_var(b, fbfetch)->dest.ssa;
    nir_ssa_def *sample = ms ? nir_load_sample_id(b) : nir_ssa_undef(b, 1, 32);
    nir_ssa_def *load = nir_image_deref_load(b, 4, 32, deref, nir_imm_vec4(b, 0, 0, 0, 1), sample, nir_imm_int(b, 0));
-   unsigned swiz[4] = {2, 1, 0, 3};
-   nir_ssa_def *swizzle = nir_swizzle(b, load, swiz, 4);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, swizzle);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
    return true;
 }
 
