@@ -4175,6 +4175,15 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2 dst_fla
          /* SMEM loads are used to read compute dispatch size in shaders */
          if (!cmd_buffer->device->load_grid_size_from_user_sgpr)
             flush_bits |= RADV_CMD_FLAG_INV_SCACHE;
+
+         /* Ensure the DGC meta shader can read the commands. */
+         if (cmd_buffer->device->uses_device_generated_commands) {
+            flush_bits |= RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE;
+
+            if (cmd_buffer->device->physical_device->rad_info.gfx_level < GFX9)
+               flush_bits |= RADV_CMD_FLAG_INV_L2;
+         }
+
          break;
       case VK_ACCESS_2_INDEX_READ_BIT:
       case VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
