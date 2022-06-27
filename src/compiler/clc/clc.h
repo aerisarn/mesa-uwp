@@ -50,11 +50,14 @@ enum clc_spirv_version {
 };
 
 struct clc_optional_features {
+   bool fp16;
    bool fp64;
    bool int64;
    bool images;
    bool images_read_write;
    bool images_write_3d;
+   bool intel_subgroups;
+   bool subgroups;
 };
 
 struct clc_compile_args {
