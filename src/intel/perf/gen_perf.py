@@ -282,7 +282,7 @@ def output_rpn_equation_code(set, counter, equation):
 
     c("\nreturn " + value + ";")
 
-def splice_rpn_expression(set, counter, expression):
+def splice_rpn_expression(set, counter_name, expression):
     tokens = expression.split()
     stack = []
 
@@ -297,7 +297,7 @@ def splice_rpn_expression(set, counter, expression):
                 if operand[0] == "$":
                     resolved_variable = resolve_variable(operand, set, False)
                     if resolved_variable == None:
-                        raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter.get('name'))
+                        raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter_name)
                     operand = resolved_variable
                 args.append(operand)
 
@@ -307,7 +307,7 @@ def splice_rpn_expression(set, counter, expression):
 
     if len(stack) != 1:
         raise Exception("Spurious empty rpn expression for " + set.name + " :: " +
-                counter.get('name') + ".\nThis is probably due to some unhandled RPN operation, in the expression \"" +
+                counter_name + ".\nThis is probably due to some unhandled RPN operation, in the expression \"" +
                 expression + "\"")
 
     value = stack[-1]
@@ -315,7 +315,7 @@ def splice_rpn_expression(set, counter, expression):
     if value[0] == "$":
         resolved_variable = resolve_variable(value, set, False)
         if resolved_variable == None:
-            raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter.get('name'))
+            raise Exception("Failed to resolve variable " + operand + " in expression " + expression + " for " + set.name + " :: " + counter_name)
         value = resolved_variable
 
     return value
