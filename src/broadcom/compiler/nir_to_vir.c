@@ -531,6 +531,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
         if (!is_load)
                 c->tmu_dirty_rcl = true;
 
+        if (is_global)
+                c->has_global_address = true;
+
         bool has_index = !is_shared_or_scratch && !is_global;
 
         int offset_src;

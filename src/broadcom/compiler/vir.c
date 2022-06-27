@@ -859,6 +859,7 @@ v3d_set_prog_data(struct v3d_compile *c,
         prog_data->compile_strategy_idx = c->compile_strategy_idx;
         prog_data->tmu_dirty_rcl = c->tmu_dirty_rcl;
         prog_data->has_control_barrier = c->s->info.uses_control_barrier;
+        prog_data->has_global_address = c->has_global_address;
 
         v3d_set_prog_data_uniforms(c, prog_data);
 

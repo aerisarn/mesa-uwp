@@ -904,6 +904,7 @@ struct v3d_compile {
         enum v3d_compilation_result compilation_result;
 
         bool tmu_dirty_rcl;
+        bool has_global_address;
 };
 
 struct v3d_uniform_list {
@@ -933,6 +934,8 @@ struct v3d_prog_data {
         bool tmu_dirty_rcl;
 
         bool has_control_barrier;
+
+        bool has_global_address;
 };
 
 struct v3d_vs_prog_data {
