@@ -44,3 +44,6 @@ dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
 dEQP-VK.ubo.random.all_out_of_order_offsets.45
 dEQP-VK.ubo.random.all_shared_buffer.48
+dEQP-VK.ssbo.phys.layout.3*
+dEQP-VK.ssbo.phys.layout.single_struct_array*
+dEQP-VK.ssbo.phys.layout.basic_unsized_array*

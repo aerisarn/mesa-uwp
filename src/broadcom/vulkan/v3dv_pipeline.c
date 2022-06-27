@@ -178,10 +178,11 @@ static const struct spirv_to_nir_options default_spirv_options =  {
       .variable_pointers = true,
       .vk_memory_model = true,
       .vk_memory_model_device_scope = true,
+      .physical_storage_buffer_address = true,
     },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
-   .phys_ssbo_addr_format = nir_address_format_64bit_global,
+   .phys_ssbo_addr_format = nir_address_format_2x32bit_global,
    .push_const_addr_format = nir_address_format_logical,
    .shared_addr_format = nir_address_format_32bit_offset,
 };
@@ -404,6 +405,10 @@ preprocess_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_global,
+              nir_address_format_2x32bit_global);
 
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 
@@ -2320,6 +2325,20 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
    return true;
 }
 
+static void
+pipeline_check_buffer_device_address(struct v3dv_pipeline *pipeline)
+{
+   for (int i = BROADCOM_SHADER_VERTEX; i < BROADCOM_SHADER_STAGES; i++) {
+      struct v3dv_shader_variant *variant = pipeline->shared_data->variants[i];
+      if (variant && variant->prog_data.base->has_global_address) {
+         pipeline->uses_buffer_device_address = true;
+         return;
+      }
+   }
+
+   pipeline->uses_buffer_device_address = false;
+}
+
 /*
  * It compiles a pipeline. Note that it also allocate internal object, but if
  * some allocations success, but other fails, the method is not freeing the
@@ -2556,6 +2575,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    v3dv_pipeline_cache_upload_pipeline(pipeline, cache);
 
  success:
+
+   pipeline_check_buffer_device_address(pipeline);
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
    write_creation_feedback(pipeline,
@@ -3219,6 +3240,8 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    v3dv_pipeline_cache_upload_pipeline(pipeline, cache);
 
 success:
+
+   pipeline_check_buffer_device_address(pipeline);
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
    write_creation_feedback(pipeline,

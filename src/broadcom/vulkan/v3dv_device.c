@@ -116,6 +116,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_8bit_storage                    = true,
       .KHR_16bit_storage                   = true,
       .KHR_bind_memory2                    = true,
+      .KHR_buffer_device_address           = true,
       .KHR_copy_commands2                  = true,
       .KHR_create_renderpass2              = true,
       .KHR_dedicated_allocation            = true,
@@ -1203,6 +1204,10 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .vulkanMemoryModel = true,
       .vulkanMemoryModelDeviceScope = true,
       .vulkanMemoryModelAvailabilityVisibilityChains = true,
+
+      .bufferDeviceAddress = true,
+      .bufferDeviceAddressCaptureReplay = false,
+      .bufferDeviceAddressMultiDevice = false,
    };
 
    VkPhysicalDeviceVulkan11Features vk11 = {
@@ -1975,6 +1980,10 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->default_attribute_float =
       v3dv_pipeline_create_default_attribute_values(device, NULL);
 
+   device->device_address_mem_ctx = ralloc_context(NULL);
+   util_dynarray_init(&device->device_address_bo_list,
+                      device->device_address_mem_ctx);
+
    *pDevice = v3dv_device_to_handle(device);
 
    return VK_SUCCESS;
@@ -2003,6 +2012,8 @@ v3dv_DestroyDevice(VkDevice _device,
       v3dv_bo_free(device, device->default_attribute_float);
       device->default_attribute_float = NULL;
    }
+
+   ralloc_free(device->device_address_mem_ctx);
 
    /* Bo cache should be removed the last, as any other object could be
     * freeing their private bos
@@ -2203,6 +2214,24 @@ fail_create:
 #endif
 }
 
+static void
+device_add_device_address_bo(struct v3dv_device *device,
+                                  struct v3dv_bo *bo)
+{
+   util_dynarray_append(&device->device_address_bo_list,
+                        struct v3dv_bo *,
+                        bo);
+}
+
+static void
+device_remove_device_address_bo(struct v3dv_device *device,
+                                struct v3dv_bo *bo)
+{
+   util_dynarray_delete_unordered(&device->device_address_bo_list,
+                                  struct v3dv_bo *,
+                                  bo);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_AllocateMemory(VkDevice _device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
@@ -2229,6 +2258,7 @@ v3dv_AllocateMemory(VkDevice _device,
 
    const struct wsi_memory_allocate_info *wsi_info = NULL;
    const VkImportMemoryFdInfoKHR *fd_info = NULL;
+   const VkMemoryAllocateFlagsInfo *flags_info = NULL;
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
       switch ((unsigned)ext->sType) {
       case VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA:
@@ -2238,9 +2268,7 @@ v3dv_AllocateMemory(VkDevice _device,
          fd_info = (void *)ext;
          break;
       case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO:
-         /* We don't support VK_KHR_buffer_device_address or multiple
-          * devices per device group, so we can ignore this.
-          */
+         flags_info = (void *)ext;
          break;
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
          /* We don't have particular optimizations associated with memory
@@ -2288,6 +2316,20 @@ v3dv_AllocateMemory(VkDevice _device,
       return vk_error(device, result);
    }
 
+   /* If this memory can be used via VK_KHR_buffer_device_address then we
+    * will need to manually add the BO to any job submit that makes use of
+    * VK_KHR_buffer_device_address, since such jobs may produde buffer
+    * load/store operations that may access any buffer memory allocated with
+    * this flag and we don't have any means to tell which buffers will be
+    * accessed through this mechanism since they don't even have to be bound
+    * through descriptor state.
+    */
+   if (flags_info &&
+       (flags_info->flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR)) {
+      mem->is_for_device_address = true;
+      device_add_device_address_bo(device, mem->bo);
+   }
+
    *pMem = v3dv_device_memory_to_handle(mem);
    return result;
 }
@@ -2305,6 +2347,9 @@ v3dv_FreeMemory(VkDevice _device,
 
    if (mem->bo->map)
       v3dv_UnmapMemory(_device, _mem);
+
+   if (mem->is_for_device_address)
+      device_remove_device_address_bo(device, mem->bo);
 
    device_free(device, mem);
 
@@ -2843,4 +2888,29 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     */
    *pSupportedVersion = MIN2(*pSupportedVersion, 5u);
    return VK_SUCCESS;
+}
+
+VkDeviceAddress
+v3dv_GetBufferDeviceAddress(VkDevice device,
+                            const VkBufferDeviceAddressInfoKHR *pInfo)
+{
+   V3DV_FROM_HANDLE(v3dv_buffer, buffer, pInfo->buffer);
+   return buffer->mem_offset + buffer->mem->bo->offset;
+}
+
+uint64_t
+v3dv_GetBufferOpaqueCaptureAddress(VkDevice device,
+                                   const VkBufferDeviceAddressInfoKHR *pInfo)
+{
+   /* Not implemented */
+   return 0;
+}
+
+uint64_t
+v3dv_GetDeviceMemoryOpaqueCaptureAddress(
+    VkDevice device,
+    const VkDeviceMemoryOpaqueCaptureAddressInfoKHR *pInfo)
+{
+   /* Not implemented */
+   return 0;
 }

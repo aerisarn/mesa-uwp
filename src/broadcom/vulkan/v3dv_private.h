@@ -513,6 +513,9 @@ struct v3dv_device {
    struct v3dv_bo *default_attribute_float;
    VkPhysicalDeviceFeatures features;
 
+   void *device_address_mem_ctx;
+   struct util_dynarray device_address_bo_list; /* Array of struct v3dv_bo * */
+
 #ifdef ANDROID
    const void *gralloc;
    enum {
@@ -529,6 +532,7 @@ struct v3dv_device_memory {
    struct v3dv_bo *bo;
    const VkMemoryType *type;
    bool is_for_wsi;
+   bool is_for_device_address;
 };
 
 #define V3D_OUTPUT_IMAGE_FORMAT_NO 255
@@ -1058,6 +1062,15 @@ struct v3dv_job {
 
    /* If the job executes on the transfer stage of the pipeline */
    bool is_transfer;
+
+   /* VK_KHR_buffer_device_address allows shaders to use pointers that can
+    * dereference memory in any buffer that has been flagged with
+    * VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR. These buffers may not
+    * be bound via descriptor sets, so we need to make sure that a job that
+    * uses this functionality includes all these buffers in its kernel
+    * submission.
+    */
+   bool uses_buffer_device_address;
 
    enum v3dv_job_type type;
 
@@ -1950,6 +1963,9 @@ struct v3dv_pipeline {
 
    /* Flags for whether optional pipeline stages are present, for convenience */
    bool has_gs;
+
+   /* Whether any stage in this pipeline uses VK_KHR_buffer_device_address */
+   bool uses_buffer_device_address;
 
    /* Spilling memory requirements */
    struct {

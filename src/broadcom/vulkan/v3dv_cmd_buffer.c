@@ -2538,6 +2538,10 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_job *job = cmd_buffer_pre_draw_split_job(cmd_buffer);
    job->draw_count++;
 
+   /* Track VK_KHR_buffer_device_address usage in the job */
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   job->uses_buffer_device_address |= pipeline->uses_buffer_device_address;
+
    /* If this job is serialized (has consumed a barrier) then check if we need
     * to sync at the binning stage by testing if the binning shaders involved
     * with the draw call require access to external resources.
@@ -2545,7 +2549,6 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
    if (job->serialize && (cmd_buffer->state.barrier.bcl_buffer_access ||
                           cmd_buffer->state.barrier.bcl_image_access)) {
       assert(!job->needs_bcl_sync);
-      struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
       if (cmd_buffer_binning_sync_required(cmd_buffer, pipeline,
                                            indexed, indirect)) {
          consume_bcl_sync(cmd_buffer, job);
@@ -3720,6 +3723,10 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
                                      cs_variant,
                                      wg_uniform_offsets_out);
    submit->cfg[6] = uniforms.bo->offset + uniforms.offset;
+
+
+   /* Track VK_KHR_buffer_device_address usage in the job */
+   job->uses_buffer_device_address |= pipeline->uses_buffer_device_address;
 
    v3dv_job_add_bo(job, uniforms.bo);
 
