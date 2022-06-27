@@ -227,16 +227,21 @@ exp_ops["=="]   = (2, splice_equal)
 
 hw_vars = {}
 hw_vars["$EuCoresTotalCount"] = "perf->sys_vars.n_eus"
+hw_vars["$VectorEngineTotalCount"] = "perf->sys_vars.n_eus"
 hw_vars["$EuSlicesTotalCount"] = "perf->sys_vars.n_eu_slices"
 hw_vars["$EuSubslicesTotalCount"] = "perf->sys_vars.n_eu_sub_slices"
+hw_vars["$XeCoreTotalCount"] = "perf->sys_vars.n_eu_sub_slices"
 hw_vars["$EuDualSubslicesTotalCount"] = "perf->sys_vars.n_eu_sub_slices"
 hw_vars["$EuDualSubslicesSlice0123Count"] = "perf->sys_vars.n_eu_slice0123"
 hw_vars["$EuThreadsCount"] = "perf->devinfo.num_thread_per_eu"
+hw_vars["$VectorEngineThreadsCount"] = "perf->devinfo.num_thread_per_eu"
 hw_vars["$SliceMask"] = "perf->sys_vars.slice_mask"
+hw_vars["$SliceTotalCount"] = "perf->sys_vars.n_eu_slices"
 # subslice_mask is interchangeable with subslice/dual-subslice since Gfx12+
 # only has dual subslices which can be assimilated with 16EUs subslices.
 hw_vars["$SubsliceMask"] = "perf->sys_vars.subslice_mask"
 hw_vars["$DualSubsliceMask"] = "perf->sys_vars.subslice_mask"
+hw_vars["$XeCoreMask"] = "perf->sys_vars.subslice_mask"
 hw_vars["$GpuTimestampFrequency"] = "perf->devinfo.timestamp_frequency"
 hw_vars["$GpuMinFrequency"] = "perf->sys_vars.gt_min_freq"
 hw_vars["$GpuMaxFrequency"] = "perf->sys_vars.gt_max_freq"
@@ -249,7 +254,7 @@ def resolve_variable(name, set, allow_counters):
     m = re.search('\$GtSlice([0-9]+)$', name)
     if m:
         return 'intel_device_info_slice_available(&perf->devinfo, {0})'.format(m.group(1))
-    m = re.search('\$GtSlice([0-9]+)DualSubslice([0-9]+)$', name)
+    m = re.search('\$GtSlice([0-9]+)XeCore([0-9]+)$', name)
     if m:
         return 'intel_device_info_subslice_available(&perf->devinfo, {0}, {1})'.format(m.group(1), m.group(2))
     if allow_counters and name in set.counter_vars:
