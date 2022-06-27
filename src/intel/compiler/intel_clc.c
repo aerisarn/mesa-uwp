@@ -428,6 +428,11 @@ int main(int argc, char **argv)
             .name = *infile,
             .value = map,
          },
+         .features = {
+            .fp16 = true,
+            .intel_subgroups = true,
+            .subgroups = true,
+         },
          .args = util_dynarray_begin(&clang_args),
          .num_args = util_dynarray_num_elements(&clang_args, char *),
          .allowed_spirv_extensions = allowed_spirv_extensions,
