@@ -128,7 +128,8 @@ cache_exists(struct disk_cache *cache)
 #define CACHE_TEST_TMP "./cache-test-tmp"
 
 static void
-test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
+test_disk_cache_create(void *mem_ctx, const char *cache_dir_name,
+                       const char *driver_id)
 {
    struct disk_cache *cache;
    int err;
@@ -137,7 +138,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
     * MESA_SHADER_CACHE_DISABLE set to true, that disk_cache_create returns NULL.
     */
    setenv("MESA_SHADER_CACHE_DISABLE", "true", 1);
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_EQ(cache, nullptr) << "disk_cache_create with MESA_SHADER_CACHE_DISABLE set";
 
    unsetenv("MESA_SHADER_CACHE_DISABLE");
@@ -147,7 +148,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
     * MESA_SHADER_CACHE_DISABLE set to nothing, disk_cache_create returns NULL.
     */
    unsetenv("MESA_SHADER_CACHE_DISABLE");
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_EQ(cache, nullptr)
       << "disk_cache_create with MESA_SHADER_CACHE_DISABLE unset "
          "and SHADER_CACHE_DISABLE_BY_DEFAULT build option";
@@ -162,7 +163,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
    unsetenv("MESA_SHADER_CACHE_DIR");
    unsetenv("XDG_CACHE_HOME");
 
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_NE(cache, nullptr) << "disk_cache_create with no environment variables";
 
    disk_cache_destroy(cache);
@@ -176,7 +177,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
 
    /* Test with XDG_CACHE_HOME set */
    setenv("XDG_CACHE_HOME", CACHE_TEST_TMP "/xdg-cache-home", 1);
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_FALSE(cache_exists(cache))
       << "disk_cache_create with XDG_CACHE_HOME set with a non-existing parent directory";
 
@@ -187,7 +188,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
    }
    disk_cache_destroy(cache);
 
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_TRUE(cache_exists(cache))
       << "disk_cache_create with XDG_CACHE_HOME set";
 
@@ -202,7 +203,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
    EXPECT_EQ(err, 0) << "Removing " CACHE_TEST_TMP;
 
    setenv("MESA_SHADER_CACHE_DIR", CACHE_TEST_TMP "/mesa-shader-cache-dir", 1);
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_FALSE(cache_exists(cache))
       << "disk_cache_create with MESA_SHADER_CACHE_DIR set with a non-existing parent directory";
 
@@ -213,7 +214,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
    }
    disk_cache_destroy(cache);
 
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
    EXPECT_TRUE(cache_exists(cache)) << "disk_cache_create with MESA_SHADER_CACHE_DIR set";
 
    path = ralloc_asprintf(
@@ -224,7 +225,7 @@ test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
 }
 
 static void
-test_put_and_get(bool test_cache_size_limit)
+test_put_and_get(bool test_cache_size_limit, const char *driver_id)
 {
    struct disk_cache *cache;
    char blob[] = "This is a blob of thirty-seven bytes";
@@ -241,7 +242,7 @@ test_put_and_get(bool test_cache_size_limit)
    setenv("MESA_SHADER_CACHE_DISABLE", "false", 1);
 #endif /* SHADER_CACHE_DISABLE_BY_DEFAULT */
 
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
 
    disk_cache_compute_key(cache, blob, sizeof(blob), blob_key);
 
@@ -282,7 +283,7 @@ test_put_and_get(bool test_cache_size_limit)
       return;
 
    setenv("MESA_SHADER_CACHE_MAX_SIZE", "1K", 1);
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
 
    one_KB = (uint8_t *) calloc(1, 1024);
 
@@ -345,7 +346,7 @@ test_put_and_get(bool test_cache_size_limit)
    disk_cache_destroy(cache);
 
    setenv("MESA_SHADER_CACHE_MAX_SIZE", "1M", 1);
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
 
    disk_cache_put(cache, blob_key, blob, sizeof(blob), NULL);
    disk_cache_put(cache, string_key, string, sizeof(string), NULL);
@@ -402,7 +403,7 @@ test_put_and_get(bool test_cache_size_limit)
 }
 
 static void
-test_put_key_and_get_key(void)
+test_put_key_and_get_key(const char *driver_id)
 {
    struct disk_cache *cache;
    bool result;
@@ -419,7 +420,7 @@ test_put_key_and_get_key(void)
    setenv("MESA_SHADER_CACHE_DISABLE", "false", 1);
 #endif /* SHADER_CACHE_DISABLE_BY_DEFAULT */
 
-   cache = disk_cache_create("test", "make_check", 0);
+   cache = disk_cache_create("test", driver_id, 0);
 
    /* First test that disk_cache_has_key returns false before disk_cache_put_key */
    result = disk_cache_has_key(cache, key_a);
@@ -462,7 +463,7 @@ test_put_key_and_get_key(void)
  * cache instances.
  */
 static void
-test_put_and_get_between_instances()
+test_put_and_get_between_instances(const char *driver_id)
 {
    char blob[] = "This is a blob of thirty-seven bytes";
    uint8_t blob_key[20];
@@ -476,9 +477,9 @@ test_put_and_get_between_instances()
 #endif /* SHADER_CACHE_DISABLE_BY_DEFAULT */
 
    struct disk_cache *cache1 = disk_cache_create("test_between_instances",
-                                                 "make_check", 0);
+                                                 driver_id, 0);
    struct disk_cache *cache2 = disk_cache_create("test_between_instances",
-                                                 "make_check", 0);
+                                                 driver_id, 0);
 
    disk_cache_compute_key(cache1, blob, sizeof(blob), blob_key);
 
@@ -535,41 +536,71 @@ protected:
 
 TEST_F(Cache, MultiFile)
 {
+   const char *driver_id;
+
 #ifndef ENABLE_SHADER_CACHE
    GTEST_SKIP() << "ENABLE_SHADER_CACHE not defined.";
 #else
-   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME);
+   bool compress = true;
 
-   test_put_and_get(true);
+run_tests:
+   if (!compress)
+      driver_id = "make_check_uncompressed";
+   else
+      driver_id = "make_check";
 
-   test_put_key_and_get_key();
+   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME, driver_id);
+
+   test_put_and_get(true, driver_id);
+
+   test_put_key_and_get_key(driver_id);
 
    int err = rmrf_local(CACHE_TEST_TMP);
    EXPECT_EQ(err, 0) << "Removing " CACHE_TEST_TMP " again";
+
+   if (compress) {
+      compress = false;
+      goto run_tests;
+   }
 #endif
 }
 
 TEST_F(Cache, SingleFile)
 {
+   const char *driver_id;
+
 #ifndef ENABLE_SHADER_CACHE
    GTEST_SKIP() << "ENABLE_SHADER_CACHE not defined.";
 #else
+   bool compress = true;
+
+run_tests:
    setenv("MESA_DISK_CACHE_SINGLE_FILE", "true", 1);
 
-   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME_SF);
+   if (!compress)
+      driver_id = "make_check_uncompressed";
+   else
+      driver_id = "make_check";
+
+   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME_SF, driver_id);
 
    /* We skip testing cache size limit as the single file cache currently
     * doesn't have any functionality to enforce cache size limits.
     */
-   test_put_and_get(false);
+   test_put_and_get(false, driver_id);
 
-   test_put_key_and_get_key();
+   test_put_key_and_get_key(driver_id);
 
-   test_put_and_get_between_instances();
+   test_put_and_get_between_instances(driver_id);
 
    setenv("MESA_DISK_CACHE_SINGLE_FILE", "false", 1);
 
    int err = rmrf_local(CACHE_TEST_TMP);
    EXPECT_EQ(err, 0) << "Removing " CACHE_TEST_TMP " again";
+
+   if (compress) {
+      compress = false;
+      goto run_tests;
+   }
 #endif
 }
