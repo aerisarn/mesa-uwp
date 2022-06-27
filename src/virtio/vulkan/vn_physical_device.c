@@ -991,6 +991,7 @@ vn_physical_device_get_passthrough_extensions(
       /* TODO re-enable with fixed extended_dynamic_state.*_raster cts */
       .EXT_extended_dynamic_state2 = false,
       .EXT_image_robustness = true,
+      .EXT_inline_uniform_block = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .KHR_copy_commands2 = true,
 
