@@ -2841,8 +2841,8 @@ void radv_thread_trace_finish(struct radv_device *device);
 bool radv_begin_thread_trace(struct radv_queue *queue);
 bool radv_end_thread_trace(struct radv_queue *queue);
 bool radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_trace);
-void radv_emit_thread_trace_userdata(const struct radv_device *device, struct radeon_cmdbuf *cs,
-                                     const void *data, uint32_t num_dwords);
+void radv_emit_thread_trace_userdata(struct radv_cmd_buffer *cmd_buffer, const void *data,
+                                     uint32_t num_dwords);
 bool radv_is_instruction_timing_enabled(void);
 
 bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
