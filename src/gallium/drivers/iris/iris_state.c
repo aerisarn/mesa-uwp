@@ -8332,7 +8332,51 @@ iris_load_indirect_location(struct iris_context *ice,
    mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
 }
 
+static bool iris_emit_indirect_dispatch_supported(const struct intel_device_info *devinfo)
+{
+   // TODO: Swizzling X and Y workgroup sizes is not supported in execute indirect dispatch
+   return devinfo->has_indirect_unroll;
+}
+
 #if GFX_VERx10 >= 125
+
+static void iris_emit_execute_indirect_dispatch(struct iris_context *ice,
+                                                struct iris_batch *batch,
+                                                const struct pipe_grid_info *grid,
+                                                const struct GENX(INTERFACE_DESCRIPTOR_DATA) idd)
+{
+   const struct iris_screen *screen = batch->screen;
+   const struct intel_device_info *devinfo = screen->devinfo;
+   struct iris_compiled_shader *shader =
+      ice->shaders.prog[MESA_SHADER_COMPUTE];
+   struct brw_stage_prog_data *prog_data = shader->prog_data;
+   struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
+   const struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(devinfo, cs_prog_data, grid->block);
+   struct iris_bo *indirect = iris_resource_bo(grid->indirect);
+   const int dispatch_size = dispatch.simd_size / 16;
+
+   struct GENX(COMPUTE_WALKER_BODY) body = {};
+   body.SIMDSize            = dispatch_size;
+   body.MessageSIMD         = dispatch_size;
+   body.LocalXMaximum       = grid->block[0] - 1;
+   body.LocalYMaximum       = grid->block[1] - 1;
+   body.LocalZMaximum       = grid->block[2] - 1;
+   body.ExecutionMask       = dispatch.right_mask;
+   body.PostSync.MOCS       = iris_mocs(NULL, &screen->isl_dev, 0);
+   body.InterfaceDescriptor = idd;
+
+   struct iris_address indirect_bo = ro_bo(indirect, grid->indirect_offset);
+   iris_emit_cmd(batch, GENX(EXECUTE_INDIRECT_DISPATCH), ind) {
+      ind.PredicateEnable            =
+         ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
+      ind.MaxCount                   = 1;
+      ind.COMPUTE_WALKER_BODY        = body;
+      ind.ArgumentBufferStartAddress = indirect_bo;
+      ind.MOCS                       =
+         iris_mocs(indirect_bo.bo, &screen->isl_dev, 0);
+   }
+}
 
 static void
 iris_upload_compute_walker(struct iris_context *ice,
@@ -8363,42 +8407,48 @@ iris_upload_compute_walker(struct iris_context *ice,
       }
    }
 
-   if (grid->indirect)
-      iris_load_indirect_location(ice, batch, grid);
+   struct GENX(INTERFACE_DESCRIPTOR_DATA) idd = {};
+   idd.KernelStartPointer = KSP(shader);
+   idd.NumberofThreadsinGPGPUThreadGroup = dispatch.threads;
+   idd.SharedLocalMemorySize =
+      encode_slm_size(GFX_VER, prog_data->total_shared);
+   idd.SamplerStatePointer = shs->sampler_table.offset;
+   idd.SamplerCount = encode_sampler_count(shader),
+   idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
+   /* Typically set to 0 to avoid prefetching on every thread dispatch. */
+   idd.BindingTableEntryCount = devinfo->verx10 == 125 ?
+      0 : MIN2(shader->bt.size_bytes / 4, 31);
+   idd.PreferredSLMAllocationSize = preferred_slm_allocation_size(devinfo);
+   idd.NumberOfBarriers = cs_prog_data->uses_barrier;
 
    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_COMPUTE, NULL, NULL, NULL);
 
-   ice->utrace.last_compute_walker =
-      iris_emit_dwords(batch, GENX(COMPUTE_WALKER_length));
-   _iris_pack_command(batch, GENX(COMPUTE_WALKER),
-                      ice->utrace.last_compute_walker, cw) {
-      cw.IndirectParameterEnable        = grid->indirect;
-      cw.SIMDSize                       = dispatch.simd_size / 16;
-      cw.LocalXMaximum                  = grid->block[0] - 1;
-      cw.LocalYMaximum                  = grid->block[1] - 1;
-      cw.LocalZMaximum                  = grid->block[2] - 1;
-      cw.ThreadGroupIDXDimension        = grid->grid[0];
-      cw.ThreadGroupIDYDimension        = grid->grid[1];
-      cw.ThreadGroupIDZDimension        = grid->grid[2];
-      cw.ExecutionMask                  = dispatch.right_mask;
-      cw.PostSync.MOCS                  = iris_mocs(NULL, &screen->isl_dev, 0);
+   if (iris_emit_indirect_dispatch_supported(devinfo) && grid->indirect) {
+      iris_emit_execute_indirect_dispatch(ice, batch, grid, idd);
+   } else {
+      if (grid->indirect)
+         iris_load_indirect_location(ice, batch, grid);
 
-      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
-         .KernelStartPointer = KSP(shader),
-         .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
-         .SharedLocalMemorySize =
-            encode_slm_size(GFX_VER, prog_data->total_shared),
-         .PreferredSLMAllocationSize = preferred_slm_allocation_size(devinfo),
-         .NumberOfBarriers = cs_prog_data->uses_barrier,
-         .SamplerStatePointer = shs->sampler_table.offset,
-         .SamplerCount = encode_sampler_count(shader),
-         .BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE],
-         /* Typically set to 0 to avoid prefetching on every thread dispatch. */
-         .BindingTableEntryCount = devinfo->verx10 == 125 ?
-            0 : MIN2(shader->bt.size_bytes / 4, 31),
-      };
+      iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_COMPUTE, NULL, NULL, NULL);
 
-      assert(brw_cs_push_const_total_size(cs_prog_data, dispatch.threads) == 0);
+      ice->utrace.last_compute_walker =
+         iris_emit_dwords(batch, GENX(COMPUTE_WALKER_length));
+      _iris_pack_command(batch, GENX(COMPUTE_WALKER),
+                         ice->utrace.last_compute_walker, cw) {
+         cw.IndirectParameterEnable        = grid->indirect;
+         cw.SIMDSize                       = dispatch.simd_size / 16;
+         cw.LocalXMaximum                  = grid->block[0] - 1;
+         cw.LocalYMaximum                  = grid->block[1] - 1;
+         cw.LocalZMaximum                  = grid->block[2] - 1;
+         cw.ThreadGroupIDXDimension        = grid->grid[0];
+         cw.ThreadGroupIDYDimension        = grid->grid[1];
+         cw.ThreadGroupIDZDimension        = grid->grid[2];
+         cw.ExecutionMask                  = dispatch.right_mask;
+         cw.PostSync.MOCS                  = iris_mocs(NULL, &screen->isl_dev, 0);
+         cw.InterfaceDescriptor            = idd;
+
+         assert(brw_cs_push_const_total_size(cs_prog_data, dispatch.threads) == 0);
+      }
    }
 
    trace_intel_end_compute(&batch->trace, grid->grid[0], grid->grid[1], grid->grid[2]);
