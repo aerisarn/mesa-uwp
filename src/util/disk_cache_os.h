@@ -34,6 +34,10 @@
 
 #include "util/fossilize_db.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Number of bits to mask off from a cache key to get an index. */
 #define CACHE_INDEX_KEY_BITS 16
 
@@ -140,6 +144,10 @@ disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
 
 void
 disk_cache_destroy_mmap(struct disk_cache *cache);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
