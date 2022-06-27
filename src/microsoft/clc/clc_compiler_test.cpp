@@ -181,8 +181,7 @@ TEST_F(ComputeTest, null_constant_ptr)
       EXPECT_EQ(g1[i], expected2[i]);
 }
 
-/* This test seems to fail on older versions of WARP. */
-TEST_F(ComputeTest, DISABLED_null_global_ptr)
+TEST_F(ComputeTest, null_global_ptr)
 {
    const char *kernel_source =
    "__kernel void main_test(__global uint *g1, __global uint *g2)\n\
@@ -354,11 +353,8 @@ TEST_F(ComputeTest, globals_16bit)
       EXPECT_EQ(inout[i], expected[i]);
 }
 
-TEST_F(ComputeTest, DISABLED_globals_64bit)
+TEST_F(ComputeTest, globals_64bit)
 {
-   /* Test disabled, because we need a fixed version of WARP that hasn't
-      been officially shipped yet */
-
    const char *kernel_source =
    "__kernel void main_test(__global unsigned long *inout)\n\
    {\n\
@@ -431,6 +427,7 @@ TEST_F(ComputeTest, types_float_basics)
 
 TEST_F(ComputeTest, DISABLED_types_double_basics)
 {
+   /* Disabled because doubles are unsupported */
    const char *kernel_source =
    "__kernel void main_test(__global uint *output)\n\
    {\n\
@@ -544,12 +541,12 @@ TEST_F(ComputeTest, types_for_loop)
       EXPECT_EQ(output[i], expected[i]);
 }
 
-TEST_F(ComputeTest, DISABLED_complex_types_local_array_long)
+TEST_F(ComputeTest, complex_types_local_array_long)
 {
    const char *kernel_source =
    "__kernel void main_test(__global ulong *inout)\n\
    {\n\
-      ushort tmp[] = {\n\
+      ulong tmp[] = {\n\
          get_global_id(1) + 0x00000000,\n\
          get_global_id(1) + 0x10000001,\n\
          get_global_id(1) + 0x20000020,\n\
@@ -858,11 +855,8 @@ TEST_F(ComputeTest, complex_types_constant_uint8)
    }
 }
 
-TEST_F(ComputeTest, DISABLED_complex_types_const_array)
+TEST_F(ComputeTest, complex_types_const_array)
 {
-   /* DISABLED because current release versions of WARP either return
-    * rubbish from reads or crash: they are not prepared to handle
-    * non-float global constants */
    const char *kernel_source =
    "__kernel void main_test(__global uint *output)\n\
    {\n\
@@ -904,11 +898,8 @@ TEST_F(ComputeTest, mem_access_load_store_ordering)
       EXPECT_EQ(output[i], expected[i]);
 }
 
-TEST_F(ComputeTest, DISABLED_two_const_arrays)
+TEST_F(ComputeTest, two_const_arrays)
 {
-   /* DISABLED because current release versions of WARP either return
-    * rubbish from reads or crash: they are not prepared to handle
-    * non-float global constants */
    const char *kernel_source =
    "__kernel void main_test(__global uint *output)\n\
    {\n\
@@ -1223,10 +1214,8 @@ TEST_F(ComputeTest, sin)
    }
 }
 
-TEST_F(ComputeTest, DISABLED_cosh)
+TEST_F(ComputeTest, cosh)
 {
-   /* Disabled because of WARP failures, where we fetch incorrect results when
-    * sourcing from non-float ICBs */
    const char *kernel_source =
    "__kernel void main_test(__global float *inout)\n\
    {\n\
@@ -1720,6 +1709,9 @@ TEST_F(ComputeTest, vec_hint_none)
 
 TEST_F(ComputeTest, DISABLED_debug_layer_failure)
 {
+   /* This is a negative test case, it intentionally triggers a failure to validate the mechanism
+    * is in place, so other tests will fail if they produce debug messages
+    */
    const char *kernel_source =
    "__kernel void main_test(__global float *inout, float mul)\n\
    {\n\
@@ -1761,10 +1753,7 @@ TEST_F(ComputeTest, compiler_defines)
    EXPECT_EQ(out[1], 100);
 }
 
-/* There's a bug in WARP turning atomic_add(ptr, x) into
- * atomic_add(ptr, x * 4). Works fine on intel HW.
- */
-TEST_F(ComputeTest, DISABLED_global_atomic_add)
+TEST_F(ComputeTest, global_atomic_add)
 {
    const char *kernel_source =
    "__kernel void main_test(__global int *inout, __global int *old)\n\
@@ -2113,9 +2102,6 @@ TEST_F(ComputeTest, packed_struct_local)
    }
 }
 
-/* DISABLED because current release versions of WARP either return
- * rubbish from reads or crash: they are not prepared to handle
- * non-float global constants */
 TEST_F(ComputeTest, DISABLED_packed_struct_const)
 {
 #pragma pack(push, 1)
@@ -2150,14 +2136,12 @@ TEST_F(ComputeTest, DISABLED_packed_struct_const)
    }
 }
 
-TEST_F(ComputeTest, DISABLED_printf)
+TEST_F(ComputeTest, printf)
 {
    const char *kernel_source = R"(
    __kernel void main_test(__global float *src, __global uint *dest)
    {
-      __constant char *format_str = "%s: %f";
-      __constant char *str_val = "Test";
-      *dest = printf(format_str, str_val, src[0]);
+      *dest = printf("%s: %f", "Test", src[0]);
    })";
 
    auto src = ShaderArg<float>({ 1.0f }, SHADER_ARG_INPUT);
