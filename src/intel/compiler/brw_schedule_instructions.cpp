@@ -575,6 +575,10 @@ schedule_node::set_latency_gfx7(bool is_haswell)
          latency = 200;
          break;
 
+      case BRW_SFID_URB:
+         latency = 200;
+         break;
+
       default:
          unreachable("Unknown SFID");
       }

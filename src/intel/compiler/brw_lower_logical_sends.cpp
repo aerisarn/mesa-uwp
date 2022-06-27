@@ -31,15 +31,71 @@
 using namespace brw;
 
 static void
-lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
+lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst,
+                            bool per_slot_present)
 {
-   inst->opcode = op;
+   const intel_device_info *devinfo = bld.shader->devinfo;
+
+
+   assert(inst->size_written % REG_SIZE == 0);
+   assert(inst->src[0].type == BRW_REGISTER_TYPE_UD);
+   assert(inst->src[0].file == FIXED_GRF || inst->src[0].file == VGRF);
+
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->header_size = 1;
+
+   inst->sfid = BRW_SFID_URB;
+   inst->desc = brw_urb_desc(devinfo,
+                             GFX8_URB_OPCODE_SIMD8_READ,
+                             per_slot_present,
+                             false,
+                             inst->offset);
+
+   inst->ex_desc = 0;
+   inst->ex_mlen = 0;
+   inst->send_is_volatile = true;
+
+   fs_reg tmp = inst->src[0];
+
+   inst->resize_sources(4);
+
+   inst->src[0] = brw_imm_ud(0); /* desc */
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   inst->src[2] = tmp;
+   inst->src[3] = brw_null_reg();
 }
 
 static void
-lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
+lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst,
+                             bool per_slot_present, bool channel_mask_present)
 {
-   inst->opcode = op;
+   const intel_device_info *devinfo = bld.shader->devinfo;
+
+   assert(inst->header_size == 0);
+
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->header_size = 1;
+   inst->dst = brw_null_reg();
+
+   inst->sfid = BRW_SFID_URB;
+   inst->desc = brw_urb_desc(devinfo,
+                             GFX8_URB_OPCODE_SIMD8_WRITE,
+                             per_slot_present,
+                             channel_mask_present,
+                             inst->offset);
+
+   inst->ex_desc = 0;
+   inst->ex_mlen = 0;
+   inst->send_has_side_effects = true;
+
+   fs_reg tmp = inst->src[0];
+
+   inst->resize_sources(4);
+
+   inst->src[0] = brw_imm_ud(0); /* desc */
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   inst->src[2] = tmp;
+   inst->src[3] = brw_null_reg();
 }
 
 static void
@@ -2642,23 +2698,23 @@ fs_visitor::lower_logical_sends()
          break;
 
       case SHADER_OPCODE_URB_READ_LOGICAL:
-         lower_urb_read_logical_send(ibld, inst, SHADER_OPCODE_URB_READ_SIMD8);
+         lower_urb_read_logical_send(ibld, inst, false);
          break;
       case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
-         lower_urb_read_logical_send(ibld, inst, SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT);
+         lower_urb_read_logical_send(ibld, inst, true);
          break;
 
       case SHADER_OPCODE_URB_WRITE_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8);
+         lower_urb_write_logical_send(ibld, inst, false, false);
          break;
       case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT);
+         lower_urb_write_logical_send(ibld, inst, true, false);
          break;
       case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8_MASKED);
+         lower_urb_write_logical_send(ibld, inst, false, true);
          break;
       case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT);
+         lower_urb_write_logical_send(ibld, inst, true, true);
          break;
 
       default:
