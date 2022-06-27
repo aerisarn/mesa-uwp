@@ -434,6 +434,12 @@ struct lvp_pipeline {
    bool force_min_sample;
    nir_shader *pipeline_nir[MESA_SHADER_STAGES];
    void *shader_cso[PIPE_SHADER_TYPES];
+   struct {
+      uint32_t uniform_offsets[PIPE_MAX_CONSTANT_BUFFERS][MAX_INLINABLE_UNIFORMS];
+      uint8_t count[PIPE_MAX_CONSTANT_BUFFERS];
+      bool must_inline;
+      uint32_t can_inline; //bitmask
+   } inlines[MESA_SHADER_STAGES];
    gl_shader_stage last_vertex;
    struct pipe_stream_output_info stream_output;
    VkGraphicsPipelineCreateInfo graphics_create_info;
@@ -625,6 +631,12 @@ void
 lvp_shader_optimize(nir_shader *nir);
 void *
 lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir);
+bool
+lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *shader);
+void
+lvp_inline_uniforms(nir_shader *shader, const struct lvp_pipeline *pipeline, const uint32_t *uniform_values, uint32_t ubo);
+void *
+lvp_pipeline_compile(struct lvp_pipeline *pipeline, nir_shader *base_nir);
 #ifdef __cplusplus
 }
 #endif

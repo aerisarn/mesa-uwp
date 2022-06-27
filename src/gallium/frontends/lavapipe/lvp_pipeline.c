@@ -1060,6 +1060,9 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                nir->info.stage);
 
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   if (impl->ssa_alloc > 100) //skip for small shaders
+      pipeline->inlines[stage].must_inline = lvp_find_inlinable_uniforms(pipeline, nir);
    pipeline->pipeline_nir[stage] = nir;
 
    return VK_SUCCESS;
@@ -1180,15 +1183,12 @@ lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir)
    return NULL;
 }
 
-static VkResult
-lvp_pipeline_compile(struct lvp_pipeline *pipeline,
-                     gl_shader_stage stage)
+void *
+lvp_pipeline_compile(struct lvp_pipeline *pipeline, nir_shader *nir)
 {
    struct lvp_device *device = pipeline->device;
-   device->physical_device->pscreen->finalize_nir(device->physical_device->pscreen, pipeline->pipeline_nir[stage]);
-   nir_shader *nir = nir_shader_clone(NULL, pipeline->pipeline_nir[stage]);
-   pipeline->shader_cso[pipe_shader_type_from_mesa(stage)] = lvp_pipeline_compile_stage(pipeline, nir);
-   return VK_SUCCESS;
+   device->physical_device->pscreen->finalize_nir(device->physical_device->pscreen, nir);
+   return lvp_pipeline_compile_stage(pipeline, nir);
 }
 
 #ifndef NDEBUG
@@ -1450,7 +1450,10 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          const VkPipelineShaderStageCreateInfo *sinfo =
             &pipeline->graphics_create_info.pStages[i];
          gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
-         lvp_pipeline_compile(pipeline, stage);
+         enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
+         if (!pipeline->inlines[stage].can_inline)
+            pipeline->shader_cso[pstage] = lvp_pipeline_compile(pipeline,
+                                                                nir_shader_clone(NULL, pipeline->pipeline_nir[stage]));
          if (stage == MESA_SHADER_FRAGMENT)
             has_fragment_shader = true;
       }
@@ -1571,7 +1574,8 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
    if (result != VK_SUCCESS)
       return result;
 
-   lvp_pipeline_compile(pipeline, MESA_SHADER_COMPUTE);
+   if (!pipeline->inlines[MESA_SHADER_COMPUTE].can_inline)
+      pipeline->shader_cso[PIPE_SHADER_COMPUTE] = lvp_pipeline_compile(pipeline, nir_shader_clone(NULL, pipeline->pipeline_nir[MESA_SHADER_COMPUTE]));
    return VK_SUCCESS;
 }
 
