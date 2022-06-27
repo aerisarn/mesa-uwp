@@ -1382,7 +1382,16 @@ tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    trace_start_draw_ib_gmem(&cmd->trace, &cmd->cs);
 
+   /* Primitives that passed all tests are still counted in in each
+    * tile even with HW binning beforehand. Do not permit it.
+    */
+   if (cmd->state.prim_generated_query_running_before_rp)
+      tu6_emit_event_write(cmd, cs, STOP_PRIMITIVE_CTRS);
+
    tu_cs_emit_call(cs, &cmd->draw_cs);
+
+   if (cmd->state.prim_generated_query_running_before_rp)
+      tu6_emit_event_write(cmd, cs, START_PRIMITIVE_CTRS);
 
    if (use_hw_binning(cmd)) {
       tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
@@ -1746,6 +1755,9 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       }
    } else if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       assert(pBeginInfo->pInheritanceInfo);
+
+      cmd_buffer->inherited_pipeline_statistics =
+         pBeginInfo->pInheritanceInfo->pipelineStatistics;
 
       vk_foreach_struct(ext, pBeginInfo->pInheritanceInfo) {
          switch (ext->sType) {

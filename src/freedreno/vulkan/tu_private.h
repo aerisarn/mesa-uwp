@@ -484,6 +484,8 @@ struct tu6_global
 
    ALIGN16 uint32_t cs_indirect_xyz[3];
 
+   volatile uint32_t vtx_stats_query_not_running;
+
    /* To know when renderpass stats for autotune are valid */
    volatile uint32_t autotune_fence;
 
@@ -1258,6 +1260,12 @@ struct tu_cmd_state
     */
    uint32_t drawcall_bandwidth_per_sample_sum;
 
+   /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
+    * VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT are allowed to run simultaniously,
+    * but they use the same {START,STOP}_PRIMITIVE_CTRS control.
+    */
+   uint32_t prim_counters_running;
+
    bool prim_generated_query_running_before_rp;
    bool has_prim_generated_query_in_rp;
 
@@ -1303,6 +1311,8 @@ struct tu_cmd_buffer
 
    VkCommandBufferUsageFlags usage_flags;
    enum tu_cmd_buffer_status status;
+
+   VkQueryPipelineStatisticFlags inherited_pipeline_statistics;
 
    struct tu_cmd_state state;
    uint32_t queue_family_index;

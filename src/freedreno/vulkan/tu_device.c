@@ -1868,6 +1868,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    struct tu6_global *global = device->global_bo->map;
    tu_init_clear_blit_shaders(device);
    global->predicate = 0;
+   global->vtx_stats_query_not_running = 1;
    global->dbg_one = (uint32_t)-1;
    global->dbg_gmem_total_loads = 0;
    global->dbg_gmem_taken_loads = 0;
