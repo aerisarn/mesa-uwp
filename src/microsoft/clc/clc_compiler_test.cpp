@@ -1558,6 +1558,16 @@ TEST_F(ComputeTest, image_two_reads)
    validate(shader);
 }
 
+TEST_F(ComputeTest, image_unused)
+{
+   const char* kernel_source =
+   "__kernel void main_test(read_only image2d_t input, write_only image2d_t output)\n\
+   {\n\
+   }\n";
+   Shader shader = compile(std::vector<const char*>({ kernel_source }));
+   validate(shader);
+}
+
 TEST_F(ComputeTest, image_read_write)
 {
    const char *kernel_source =
