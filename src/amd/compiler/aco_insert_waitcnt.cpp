@@ -694,11 +694,9 @@ gen(Instruction* instr, wait_ctx& ctx)
          insert_wait_entry(ctx, instr->definitions[0], ev, get_vmem_type(instr));
 
       if (ctx.gfx_level == GFX6 && instr->format != Format::MIMG && instr->operands.size() == 4) {
-         ctx.exp_cnt++;
          update_counters(ctx, event_vmem_gpr_lock);
          insert_wait_entry(ctx, instr->operands[3], event_vmem_gpr_lock);
       } else if (ctx.gfx_level == GFX6 && instr->isMIMG() && !instr->operands[2].isUndefined()) {
-         ctx.exp_cnt++;
          update_counters(ctx, event_vmem_gpr_lock);
          insert_wait_entry(ctx, instr->operands[2], event_vmem_gpr_lock);
       }
