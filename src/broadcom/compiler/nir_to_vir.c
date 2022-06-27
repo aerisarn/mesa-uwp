@@ -195,39 +195,51 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_shared:
         case nir_intrinsic_load_scratch:
+        case nir_intrinsic_load_global_2x32:
         case nir_intrinsic_store_ssbo:
         case nir_intrinsic_store_shared:
         case nir_intrinsic_store_scratch:
+        case nir_intrinsic_store_global_2x32:
                 return V3D_TMU_OP_REGULAR;
         case nir_intrinsic_ssbo_atomic_add:
                 return v3d_get_op_for_atomic_add(instr, 2);
         case nir_intrinsic_shared_atomic_add:
+        case nir_intrinsic_global_atomic_add_2x32:
                 return v3d_get_op_for_atomic_add(instr, 1);
         case nir_intrinsic_ssbo_atomic_imin:
+        case nir_intrinsic_global_atomic_imin_2x32:
         case nir_intrinsic_shared_atomic_imin:
                 return V3D_TMU_OP_WRITE_SMIN;
         case nir_intrinsic_ssbo_atomic_umin:
+        case nir_intrinsic_global_atomic_umin_2x32:
         case nir_intrinsic_shared_atomic_umin:
                 return V3D_TMU_OP_WRITE_UMIN_FULL_L1_CLEAR;
         case nir_intrinsic_ssbo_atomic_imax:
+        case nir_intrinsic_global_atomic_imax_2x32:
         case nir_intrinsic_shared_atomic_imax:
                 return V3D_TMU_OP_WRITE_SMAX;
         case nir_intrinsic_ssbo_atomic_umax:
+        case nir_intrinsic_global_atomic_umax_2x32:
         case nir_intrinsic_shared_atomic_umax:
                 return V3D_TMU_OP_WRITE_UMAX;
         case nir_intrinsic_ssbo_atomic_and:
+        case nir_intrinsic_global_atomic_and_2x32:
         case nir_intrinsic_shared_atomic_and:
                 return V3D_TMU_OP_WRITE_AND_READ_INC;
         case nir_intrinsic_ssbo_atomic_or:
+        case nir_intrinsic_global_atomic_or_2x32:
         case nir_intrinsic_shared_atomic_or:
                 return V3D_TMU_OP_WRITE_OR_READ_DEC;
         case nir_intrinsic_ssbo_atomic_xor:
+        case nir_intrinsic_global_atomic_xor_2x32:
         case nir_intrinsic_shared_atomic_xor:
                 return V3D_TMU_OP_WRITE_XOR_READ_NOT;
         case nir_intrinsic_ssbo_atomic_exchange:
+        case nir_intrinsic_global_atomic_exchange_2x32:
         case nir_intrinsic_shared_atomic_exchange:
                 return V3D_TMU_OP_WRITE_XCHG_READ_FLUSH;
         case nir_intrinsic_ssbo_atomic_comp_swap:
+        case nir_intrinsic_global_atomic_comp_swap_2x32:
         case nir_intrinsic_shared_atomic_comp_swap:
                 return V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH;
         default:
@@ -489,7 +501,7 @@ emit_tmu_general_address_write(struct v3d_compile *c,
  */
 static void
 ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
-                     bool is_shared_or_scratch)
+                     bool is_shared_or_scratch, bool is_global)
 {
         uint32_t tmu_op = v3d_general_tmu_op(instr);
 
@@ -499,24 +511,27 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
          */
         bool atomic_add_replaced =
                 ((instr->intrinsic == nir_intrinsic_ssbo_atomic_add ||
-                  instr->intrinsic == nir_intrinsic_shared_atomic_add) &&
+                  instr->intrinsic == nir_intrinsic_shared_atomic_add ||
+                  instr->intrinsic == nir_intrinsic_global_atomic_add_2x32) &&
                  (tmu_op == V3D_TMU_OP_WRITE_AND_READ_INC ||
                   tmu_op == V3D_TMU_OP_WRITE_OR_READ_DEC));
 
         bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
                          instr->intrinsic == nir_intrinsic_store_scratch ||
-                         instr->intrinsic == nir_intrinsic_store_shared);
+                         instr->intrinsic == nir_intrinsic_store_shared ||
+                         instr->intrinsic == nir_intrinsic_store_global_2x32);
 
         bool is_load = (instr->intrinsic == nir_intrinsic_load_uniform ||
                         instr->intrinsic == nir_intrinsic_load_ubo ||
                         instr->intrinsic == nir_intrinsic_load_ssbo ||
                         instr->intrinsic == nir_intrinsic_load_scratch ||
-                        instr->intrinsic == nir_intrinsic_load_shared);
+                        instr->intrinsic == nir_intrinsic_load_shared ||
+                        instr->intrinsic == nir_intrinsic_load_global_2x32);
 
         if (!is_load)
                 c->tmu_dirty_rcl = true;
 
-        bool has_index = !is_shared_or_scratch;
+        bool has_index = !is_shared_or_scratch && !is_global;
 
         int offset_src;
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
@@ -525,6 +540,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                    instr->intrinsic == nir_intrinsic_load_ubo ||
                    instr->intrinsic == nir_intrinsic_load_scratch ||
                    instr->intrinsic == nir_intrinsic_load_shared ||
+                   instr->intrinsic == nir_intrinsic_load_global_2x32 ||
                    atomic_add_replaced) {
                 offset_src = 0 + has_index;
         } else if (is_store) {
@@ -568,6 +584,12 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         base_offset = c->cs_shared_offset;
                         const_offset += nir_intrinsic_base(instr);
                 }
+        } else if (is_global) {
+                /* Global load/store intrinsics use gloal addresses, so the
+                 * offset is the target address and we don't need to add it
+                 * to a base offset.
+                 */
+                base_offset = vir_uniform_ui(c, 0);
         } else {
                 base_offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
                                           nir_src_as_uint(instr->src[is_store ?
@@ -2713,7 +2735,7 @@ ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
         }
 
         if (!ntq_emit_load_unifa(c, instr)) {
-                ntq_emit_tmu_general(c, instr, false);
+                ntq_emit_tmu_general(c, instr, false, false);
                 c->has_general_tmu_load = true;
         }
 }
@@ -3291,13 +3313,18 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_emit_load_uniform(c, instr);
                 break;
 
+        case nir_intrinsic_load_global_2x32:
+                ntq_emit_tmu_general(c, instr, false, true);
+                c->has_general_tmu_load = true;
+                break;
+
         case nir_intrinsic_load_ubo:
            if (ntq_emit_inline_ubo_load(c, instr))
                    break;
            FALLTHROUGH;
         case nir_intrinsic_load_ssbo:
                 if (!ntq_emit_load_unifa(c, instr)) {
-                        ntq_emit_tmu_general(c, instr, false);
+                        ntq_emit_tmu_general(c, instr, false, false);
                         c->has_general_tmu_load = true;
                 }
                 break;
@@ -3313,7 +3340,21 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_ssbo_atomic_exchange:
         case nir_intrinsic_ssbo_atomic_comp_swap:
         case nir_intrinsic_store_ssbo:
-                ntq_emit_tmu_general(c, instr, false);
+                ntq_emit_tmu_general(c, instr, false, false);
+                break;
+
+        case nir_intrinsic_global_atomic_add_2x32:
+        case nir_intrinsic_global_atomic_imin_2x32:
+        case nir_intrinsic_global_atomic_umin_2x32:
+        case nir_intrinsic_global_atomic_imax_2x32:
+        case nir_intrinsic_global_atomic_umax_2x32:
+        case nir_intrinsic_global_atomic_and_2x32:
+        case nir_intrinsic_global_atomic_or_2x32:
+        case nir_intrinsic_global_atomic_xor_2x32:
+        case nir_intrinsic_global_atomic_exchange_2x32:
+        case nir_intrinsic_global_atomic_comp_swap_2x32:
+        case nir_intrinsic_store_global_2x32:
+                ntq_emit_tmu_general(c, instr, false, true);
                 break;
 
         case nir_intrinsic_shared_atomic_add:
@@ -3328,12 +3369,12 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_shared_atomic_comp_swap:
         case nir_intrinsic_store_shared:
         case nir_intrinsic_store_scratch:
-                ntq_emit_tmu_general(c, instr, true);
+                ntq_emit_tmu_general(c, instr, true, false);
                 break;
 
         case nir_intrinsic_load_scratch:
         case nir_intrinsic_load_shared:
-                ntq_emit_tmu_general(c, instr, true);
+                ntq_emit_tmu_general(c, instr, true, false);
                 c->has_general_tmu_load = true;
                 break;
 
