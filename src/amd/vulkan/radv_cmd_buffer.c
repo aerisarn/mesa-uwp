@@ -1576,11 +1576,11 @@ radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
                              S_028A0C_AUTO_RESET_CNTL(auto_reset_cntl));
 }
 
-static void
-radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint64_t states)
+uint32_t
+radv_get_pa_su_sc_mode_cntl(const struct radv_cmd_buffer *cmd_buffer)
 {
    unsigned pa_su_sc_mode_cntl = cmd_buffer->state.graphics_pipeline->pa_su_sc_mode_cntl;
-   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    pa_su_sc_mode_cntl &= C_028814_CULL_FRONT &
                          C_028814_CULL_BACK &
@@ -1595,6 +1595,13 @@ radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint64_t states)
                          S_028814_POLY_OFFSET_FRONT_ENABLE(d->depth_bias_enable) |
                          S_028814_POLY_OFFSET_BACK_ENABLE(d->depth_bias_enable) |
                          S_028814_POLY_OFFSET_PARA_ENABLE(d->depth_bias_enable);
+   return pa_su_sc_mode_cntl;
+}
+
+static void
+radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint64_t states)
+{
+   unsigned pa_su_sc_mode_cntl = radv_get_pa_su_sc_mode_cntl(cmd_buffer);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028814_PA_SU_SC_MODE_CNTL, pa_su_sc_mode_cntl);
 }
