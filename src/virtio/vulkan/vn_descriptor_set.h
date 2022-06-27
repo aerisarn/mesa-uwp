@@ -13,12 +13,28 @@
 
 #include "vn_common.h"
 
-/* TODO accommodate new discrete type enums by:
- * 1. increase the number of types here
- * 2. add a helper to map to continuous array index
- */
-#define VN_NUM_DESCRIPTOR_TYPES (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT + 1)
+enum vn_descriptor_type {
+   VN_DESCRIPTOR_TYPE_SAMPLER,
+   VN_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+   VN_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+   VN_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+   VN_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+   VN_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+   VN_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+   VN_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+   VN_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+   VN_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+   VN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
 
+   /* add new enum types before this line */
+   VN_NUM_DESCRIPTOR_TYPES,
+};
+
+/* TODO refactor struct to track enum vn_descriptor_type type.
+ * On VkDescriptorSetLayout creation. When we check against
+ * VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, it will be against
+ * VN_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK instead
+ */
 struct vn_descriptor_set_layout_binding {
    VkDescriptorType type;
    uint32_t count;

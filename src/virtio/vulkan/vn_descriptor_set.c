@@ -62,6 +62,40 @@ vn_descriptor_set_destroy(struct vn_device *dev,
    vk_free(alloc, set);
 }
 
+/* Mapping VkDescriptorType to array index */
+static enum vn_descriptor_type
+vn_descriptor_type_index(VkDescriptorType type)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLER:
+      return VN_DESCRIPTOR_TYPE_SAMPLER;
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      return VN_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      return VN_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      return VN_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      return VN_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      return VN_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      return VN_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      return VN_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      return VN_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      return VN_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      return VN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+   default:
+      break;
+   }
+
+   unreachable("bad VkDescriptorType");
+}
+
 /* descriptor set layout commands */
 
 void
@@ -268,11 +302,11 @@ vn_CreateDescriptorPool(VkDevice device,
 
    for (uint32_t i = 0; i < pCreateInfo->poolSizeCount; i++) {
       const VkDescriptorPoolSize *pool_size = &pCreateInfo->pPoolSizes[i];
+      const uint32_t type_index = vn_descriptor_type_index(pool_size->type);
 
-      assert(pool_size->type < VN_NUM_DESCRIPTOR_TYPES);
+      assert(type_index < VN_NUM_DESCRIPTOR_TYPES);
 
-      pool->max.descriptor_counts[pool_size->type] +=
-         pool_size->descriptorCount;
+      pool->max.descriptor_counts[type_index] += pool_size->descriptorCount;
    }
 
    list_inithead(&pool->descriptor_sets);
@@ -341,10 +375,11 @@ vn_descriptor_pool_alloc_descriptors(
                                 ? last_binding_descriptor_count
                                 : layout->bindings[i].count;
 
-      pool->used.descriptor_counts[type] += count;
+      const uint32_t type_index = vn_descriptor_type_index(type);
+      pool->used.descriptor_counts[type_index] += count;
 
-      if (pool->used.descriptor_counts[type] >
-          pool->max.descriptor_counts[type]) {
+      if (pool->used.descriptor_counts[type_index] >
+          pool->max.descriptor_counts[type_index]) {
          /* restore pool state before this allocation */
          pool->used = recovery;
          return false;
@@ -368,7 +403,8 @@ vn_descriptor_pool_free_descriptors(
                                 ? last_binding_descriptor_count
                                 : layout->bindings[i].count;
 
-      pool->used.descriptor_counts[layout->bindings[i].type] -= count;
+      pool->used.descriptor_counts[vn_descriptor_type_index(
+         layout->bindings[i].type)] -= count;
    }
 
    --pool->used.set_count;
