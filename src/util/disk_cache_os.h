@@ -80,6 +80,11 @@ struct disk_cache {
    bool compression_disabled;
 };
 
+struct cache_entry_file_data {
+   uint32_t crc32;
+   uint32_t uncompressed_size;
+};
+
 struct disk_cache_put_job {
    struct util_queue_fence fence;
 

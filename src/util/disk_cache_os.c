@@ -36,11 +36,6 @@
 #include "util/disk_cache.h"
 #include "util/disk_cache_os.h"
 
-struct cache_entry_file_data {
-   uint32_t crc32;
-   uint32_t uncompressed_size;
-};
-
 #if DETECT_OS_WINDOWS
 
 bool
