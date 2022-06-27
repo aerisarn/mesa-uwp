@@ -1899,6 +1899,17 @@ dzn_device_destroy(struct dzn_device *device, const VkAllocationCallbacks *pAllo
 }
 
 static VkResult
+dzn_device_check_status(struct vk_device *dev)
+{
+   struct dzn_device *device = container_of(dev, struct dzn_device, vk);
+
+   if (FAILED(ID3D12Device_GetDeviceRemovedReason(device->dev)))
+      return vk_device_set_lost(&device->vk, "D3D12 device removed");
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 dzn_device_create(struct dzn_physical_device *pdev,
                   const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
@@ -1954,6 +1965,7 @@ dzn_device_create(struct dzn_physical_device *pdev,
    device->vk.ref_pipeline_layout = dzn_device_ref_pipeline_layout;
    device->vk.unref_pipeline_layout = dzn_device_unref_pipeline_layout;
    device->vk.create_sync_for_memory = dzn_device_create_sync_for_memory;
+   device->vk.check_status = dzn_device_check_status;
 
    device->dev = dzn_physical_device_get_d3d12_dev(pdev);
    if (!device->dev) {
