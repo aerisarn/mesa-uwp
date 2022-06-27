@@ -907,6 +907,16 @@ optimize(nir_shader *nir)
    } while (progress);
 }
 
+void
+lvp_shader_optimize(nir_shader *nir)
+{
+   optimize(nir);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, nir_opt_dce);
+   nir_sweep(nir);
+}
+
 static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
                          uint32_t size,
@@ -1065,12 +1075,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    if (!nir_has_any_rounding_mode_enabled(nir->info.float_controls_execution_mode))
       NIR_PASS_V(nir, nir_fold_16bit_sampler_conversions, 0, UINT32_MAX);
 
-   optimize(nir);
-
-   NIR_PASS_V(nir, nir_lower_var_copies);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-   NIR_PASS_V(nir, nir_opt_dce);
-   nir_sweep(nir);
+   lvp_shader_optimize(nir);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 

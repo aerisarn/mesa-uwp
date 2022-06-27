@@ -661,6 +661,9 @@ lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline);
 
 void
 queue_thread_noop(void *data, void *gdata, int thread_index);
+
+void
+lvp_shader_optimize(nir_shader *nir);
 #ifdef __cplusplus
 }
 #endif
