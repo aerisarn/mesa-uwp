@@ -252,8 +252,8 @@ d3d12_texture_array_dpb_manager::get_new_tracked_picture_allocation()
    }
 
    if (!bAvailableResourceInPool) {
-      debug_printf("[d3d12_texture_array_dpb_manager] ID3D12Resource pool is full - Pool capacity (%ld) - Returning null allocation",
-                      m_ResourcesPool.size());
+      debug_printf("[d3d12_texture_array_dpb_manager] ID3D12Resource pool is full - Pool capacity (%" PRIu32 ") - Returning null allocation",
+                      static_cast<uint32_t>(m_ResourcesPool.size()));
    }
 
    return freshAllocation;

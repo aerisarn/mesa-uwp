@@ -432,7 +432,7 @@ d3d12_video_decoder_references_manager::print_dpb()
    debug_printf("[D3D12 Video Decoder Picture Manager] Decode session information:\n"
                "\tDPB Maximum Size (max_ref_count + one_slot_curpic): %d\n"
                "\tDXGI_FORMAT: %d\n"
-               "\tTexture resolution: (%ld, %d)\n"
+               "\tTexture resolution: (%" PRIu64 ", %d)\n"
                "\tD3D12_RESOURCE_FLAG_VIDEO_DECODE_REFERENCE_ONLY enforced: %d\n"
                "\tAllocation Mode: %s\n"
                "\n ----------------------\n\tCurrent frame information:\n"

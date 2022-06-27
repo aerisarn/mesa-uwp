@@ -140,7 +140,7 @@ d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder 
    debug_printf("[d3d12_video_decoder_h264] Upper layer reported %d slices for this frame, parsing them below...\n",
                   picture_h264->slice_count);
    size_t processedBitstreamBytes = 0u;
-   size_t sliceIdx = 0;
+   uint32_t sliceIdx = 0;
    bool sliceFound = false;
    do {
       DXVA_Slice_H264_Short currentSliceEntry = {};
@@ -156,7 +156,7 @@ d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder 
             pD3D12Dec->m_stagingDecodeBitstream[currentSliceEntry.BSNALunitDataLocation +
                                                 (DXVA_H264_START_CODE_LEN_BITS / 8)] &
             0x1F);
-         debug_printf("[d3d12_video_decoder_h264] Detected slice (NALU Type %d) index %ld with size %d and offset %d "
+         debug_printf("[d3d12_video_decoder_h264] Detected slice (NALU Type %d) index %" PRIu32 " with size %d and offset %d "
                         "for frame with "
                         "fenceValue: %d\n",
                         naluType,
