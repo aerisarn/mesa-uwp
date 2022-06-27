@@ -2698,6 +2698,11 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    struct radv_cmd_state *state = &cmd_buffer->state;
 
+   /* With indirect generated commands the index buffer bind may be part of the
+    * indirect command buffer, in which case the app may not have bound any yet. */
+   if (state->index_type < 0)
+      return;
+
    /* For the direct indexed draws we use DRAW_INDEX_2, which includes
     * the index_va and max_index_count already. */
    if (!indirect)
@@ -7466,6 +7471,87 @@ radv_CmdDrawMeshTasksIndirectCountNV(VkCommandBuffer commandBuffer, VkBuffer _bu
    if (!radv_before_draw(cmd_buffer, &info, maxDrawCount))
       return;
    radv_emit_indirect_draw_packets(cmd_buffer, &info);
+   radv_after_draw(cmd_buffer);
+}
+
+void
+radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPreprocessed,
+                                   const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+{
+   VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout,
+                  pGeneratedCommandsInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
+
+   /* The only actions that can be done are draws, so skip on other queues. */
+   if (cmd_buffer->qf != RADV_QUEUE_GENERAL)
+      return;
+
+   /* Secondary command buffers are needed for the full extension but can't use
+    * PKT3_INDIRECT_BUFFER_CIK.
+    */
+   assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+   radv_prepare_dgc(cmd_buffer, pGeneratedCommandsInfo);
+
+   struct radv_draw_info info;
+
+   info.count = pGeneratedCommandsInfo->sequencesCount;
+   info.indirect = prep_buffer; /* We're not really going use it this way, but a good signal
+                                   that this is not direct. */
+   info.indirect_offset = 0;
+   info.stride = 0;
+   info.strmout_buffer = NULL;
+   info.count_buffer = NULL;
+   info.indexed = layout->indexed;
+   info.instance_count = 0;
+
+   if (!radv_before_draw(cmd_buffer, &info, 1))
+      return;
+
+   uint32_t cmdbuf_size = radv_get_indirect_cmdbuf_size(pGeneratedCommandsInfo);
+   uint64_t va = radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset +
+                 pGeneratedCommandsInfo->preprocessOffset;
+   const uint32_t view_mask = cmd_buffer->state.subpass->view_mask;
+
+   radeon_emit(cmd_buffer->cs, PKT3(PKT3_PFP_SYNC_ME, 0, cmd_buffer->state.predicating));
+   radeon_emit(cmd_buffer->cs, 0);
+
+   if (!view_mask) {
+      radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
+      radeon_emit(cmd_buffer->cs, va);
+      radeon_emit(cmd_buffer->cs, va >> 32);
+      radeon_emit(cmd_buffer->cs, cmdbuf_size >> 2);
+   } else {
+      u_foreach_bit (view, view_mask) {
+         radv_emit_view_index(cmd_buffer, view);
+
+         radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
+         radeon_emit(cmd_buffer->cs, va);
+         radeon_emit(cmd_buffer->cs, va >> 32);
+         radeon_emit(cmd_buffer->cs, cmdbuf_size >> 2);
+      }
+   }
+
+   if (layout->binds_index_buffer) {
+      cmd_buffer->state.last_index_type = -1;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
+   }
+
+   if (layout->bind_vbo_mask)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+
+   if (layout->binds_state)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+
+   cmd_buffer->push_constant_stages |= ~0;
+
+   cmd_buffer->state.last_index_type = -1;
+   cmd_buffer->state.last_num_instances = -1;
+   cmd_buffer->state.last_vertex_offset = -1;
+   cmd_buffer->state.last_first_instance = -1;
+   cmd_buffer->state.last_drawid = -1;
+
    radv_after_draw(cmd_buffer);
 }
 
