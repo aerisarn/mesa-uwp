@@ -31,6 +31,7 @@
 #include "lvp_lower_vulkan_resource.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
+#include "tgsi/tgsi_from_mesa.h"
 #include "nir/nir_xfb_info.h"
 
 #define SPIR_V_MAGIC_NUMBER 0x07230203
@@ -1094,13 +1095,8 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    }
    nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                nir->info.stage);
-   pipeline->pipeline_nir[stage] = nir;
-}
 
-static void fill_shader_prog(struct pipe_shader_state *state, gl_shader_stage stage, struct lvp_pipeline *pipeline)
-{
-   state->type = PIPE_SHADER_IR_NIR;
-   state->ir.nir = nir_shader_clone(NULL, pipeline->pipeline_nir[stage]);
+   pipeline->pipeline_nir[stage] = nir;
 }
 
 static void
@@ -1164,75 +1160,90 @@ lvp_shader_stage(VkShaderStageFlagBits stage)
    }
 }
 
+static void
+lvp_pipeline_xfb_init(struct lvp_pipeline *pipeline)
+{
+   gl_shader_stage stage = MESA_SHADER_VERTEX;
+   if (pipeline->pipeline_nir[MESA_SHADER_GEOMETRY])
+      stage = MESA_SHADER_GEOMETRY;
+   else if (pipeline->pipeline_nir[MESA_SHADER_TESS_EVAL])
+      stage = MESA_SHADER_TESS_EVAL;
+   pipeline->last_vertex = stage;
+
+   nir_xfb_info *xfb_info = pipeline->pipeline_nir[stage]->xfb_info;
+   if (xfb_info) {
+      uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
+      memset(output_mapping, 0, sizeof(output_mapping));
+
+      nir_foreach_shader_out_variable(var, pipeline->pipeline_nir[stage]) {
+         unsigned slots = var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
+                                            : glsl_count_attribute_slots(var->type, false);
+         for (unsigned i = 0; i < slots; i++)
+            output_mapping[var->data.location + i] = var->data.driver_location + i;
+      }
+
+      pipeline->stream_output.num_outputs = xfb_info->output_count;
+      for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+         if (xfb_info->buffers_written & (1 << i)) {
+            pipeline->stream_output.stride[i] = xfb_info->buffers[i].stride / 4;
+         }
+      }
+      for (unsigned i = 0; i < xfb_info->output_count; i++) {
+         pipeline->stream_output.output[i].output_buffer = xfb_info->outputs[i].buffer;
+         pipeline->stream_output.output[i].dst_offset = xfb_info->outputs[i].offset / 4;
+         pipeline->stream_output.output[i].register_index = output_mapping[xfb_info->outputs[i].location];
+         pipeline->stream_output.output[i].num_components = util_bitcount(xfb_info->outputs[i].component_mask);
+         pipeline->stream_output.output[i].start_component = ffs(xfb_info->outputs[i].component_mask) - 1;
+         pipeline->stream_output.output[i].stream = xfb_info->buffer_to_stream[xfb_info->outputs[i].buffer];
+      }
+
+   }
+}
+
+void *
+lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir)
+{
+   struct lvp_device *device = pipeline->device;
+   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+      struct pipe_compute_state shstate = {0};
+      shstate.prog = nir;
+      shstate.ir_type = PIPE_SHADER_IR_NIR;
+      shstate.req_local_mem = nir->info.shared_size;
+      return device->queue.ctx->create_compute_state(device->queue.ctx, &shstate);
+   } else {
+      struct pipe_shader_state shstate = {0};
+      shstate.type = PIPE_SHADER_IR_NIR;
+      shstate.ir.nir = nir;
+      if (nir->info.stage == pipeline->last_vertex)
+         memcpy(&shstate.stream_output, &pipeline->stream_output, sizeof(shstate.stream_output));
+
+      switch (nir->info.stage) {
+      case MESA_SHADER_FRAGMENT:
+         return device->queue.ctx->create_fs_state(device->queue.ctx, &shstate);
+      case MESA_SHADER_VERTEX:
+         return device->queue.ctx->create_vs_state(device->queue.ctx, &shstate);
+      case MESA_SHADER_GEOMETRY:
+         return device->queue.ctx->create_gs_state(device->queue.ctx, &shstate);
+      case MESA_SHADER_TESS_CTRL:
+         return device->queue.ctx->create_tcs_state(device->queue.ctx, &shstate);
+      case MESA_SHADER_TESS_EVAL:
+         return device->queue.ctx->create_tes_state(device->queue.ctx, &shstate);
+      default:
+         unreachable("illegal shader");
+         break;
+      }
+   }
+   return NULL;
+}
+
 static VkResult
 lvp_pipeline_compile(struct lvp_pipeline *pipeline,
                      gl_shader_stage stage)
 {
    struct lvp_device *device = pipeline->device;
    device->physical_device->pscreen->finalize_nir(device->physical_device->pscreen, pipeline->pipeline_nir[stage]);
-   if (stage == MESA_SHADER_COMPUTE) {
-      struct pipe_compute_state shstate = {0};
-      shstate.prog = (void *)nir_shader_clone(NULL, pipeline->pipeline_nir[MESA_SHADER_COMPUTE]);
-      shstate.ir_type = PIPE_SHADER_IR_NIR;
-      shstate.req_local_mem = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.shared_size;
-      pipeline->shader_cso[PIPE_SHADER_COMPUTE] = device->queue.ctx->create_compute_state(device->queue.ctx, &shstate);
-   } else {
-      struct pipe_shader_state shstate = {0};
-      fill_shader_prog(&shstate, stage, pipeline);
-
-      if (stage == MESA_SHADER_VERTEX ||
-          stage == MESA_SHADER_GEOMETRY ||
-          stage == MESA_SHADER_TESS_EVAL) {
-         nir_xfb_info *xfb_info = pipeline->pipeline_nir[stage]->xfb_info;
-         if (xfb_info) {
-            uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
-            memset(output_mapping, 0, sizeof(output_mapping));
-
-            nir_foreach_shader_out_variable(var, pipeline->pipeline_nir[stage]) {
-               unsigned slots = var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
-                                                  : glsl_count_attribute_slots(var->type, false);
-               for (unsigned i = 0; i < slots; i++)
-                  output_mapping[var->data.location + i] = var->data.driver_location + i;
-            }
-
-            shstate.stream_output.num_outputs = xfb_info->output_count;
-            for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
-               if (xfb_info->buffers_written & (1 << i)) {
-                  shstate.stream_output.stride[i] = xfb_info->buffers[i].stride / 4;
-               }
-            }
-            for (unsigned i = 0; i < xfb_info->output_count; i++) {
-               shstate.stream_output.output[i].output_buffer = xfb_info->outputs[i].buffer;
-               shstate.stream_output.output[i].dst_offset = xfb_info->outputs[i].offset / 4;
-               shstate.stream_output.output[i].register_index = output_mapping[xfb_info->outputs[i].location];
-               shstate.stream_output.output[i].num_components = util_bitcount(xfb_info->outputs[i].component_mask);
-               shstate.stream_output.output[i].start_component = ffs(xfb_info->outputs[i].component_mask) - 1;
-               shstate.stream_output.output[i].stream = xfb_info->buffer_to_stream[xfb_info->outputs[i].buffer];
-            }
-         }
-      }
-
-      switch (stage) {
-      case MESA_SHADER_FRAGMENT:
-         pipeline->shader_cso[PIPE_SHADER_FRAGMENT] = device->queue.ctx->create_fs_state(device->queue.ctx, &shstate);
-         break;
-      case MESA_SHADER_VERTEX:
-         pipeline->shader_cso[PIPE_SHADER_VERTEX] = device->queue.ctx->create_vs_state(device->queue.ctx, &shstate);
-         break;
-      case MESA_SHADER_GEOMETRY:
-         pipeline->shader_cso[PIPE_SHADER_GEOMETRY] = device->queue.ctx->create_gs_state(device->queue.ctx, &shstate);
-         break;
-      case MESA_SHADER_TESS_CTRL:
-         pipeline->shader_cso[PIPE_SHADER_TESS_CTRL] = device->queue.ctx->create_tcs_state(device->queue.ctx, &shstate);
-         break;
-      case MESA_SHADER_TESS_EVAL:
-         pipeline->shader_cso[PIPE_SHADER_TESS_EVAL] = device->queue.ctx->create_tes_state(device->queue.ctx, &shstate);
-         break;
-      default:
-         unreachable("illegal shader");
-         break;
-      }
-   }
+   nir_shader *nir = nir_shader_clone(NULL, pipeline->pipeline_nir[stage]);
+   pipeline->shader_cso[pipe_shader_type_from_mesa(stage)] = lvp_pipeline_compile_stage(pipeline, nir);
    return VK_SUCCESS;
 }
 
@@ -1486,6 +1497,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          }
       } else
          pipeline->line_rectangular = true;
+      lvp_pipeline_xfb_init(pipeline);
    }
 
    if (!pipeline->library) {

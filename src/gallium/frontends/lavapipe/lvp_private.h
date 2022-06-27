@@ -477,6 +477,8 @@ struct lvp_pipeline {
    bool force_min_sample;
    nir_shader *pipeline_nir[MESA_SHADER_STAGES];
    void *shader_cso[PIPE_SHADER_TYPES];
+   gl_shader_stage last_vertex;
+   struct pipe_stream_output_info stream_output;
    VkGraphicsPipelineCreateInfo graphics_create_info;
    VkComputePipelineCreateInfo compute_create_info;
    VkGraphicsPipelineLibraryFlagsEXT stages;
@@ -664,6 +666,8 @@ queue_thread_noop(void *data, void *gdata, int thread_index);
 
 void
 lvp_shader_optimize(nir_shader *nir);
+void *
+lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir);
 #ifdef __cplusplus
 }
 #endif
