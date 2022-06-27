@@ -106,6 +106,9 @@ dEQP-GL45-ES31.functional.primitive_bounding_box.wide_points.tessellation_set_pe
 dEQP-GL45-ES31.functional.primitive_bounding_box.wide_points.tessellation_set_per_primitive.vertex_tessellation_fragment.fbo,Fail
 
 
+# #6745
+spec@glsl-1.50@gs-max-output,Fail
+
 # #6115
 spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-float-index-rd,Crash
 spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-vec2-index-rd,Crash
@@ -131,14 +134,8 @@ spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fai
 spec@ext_framebuffer_blit@fbo-sys-blit,Fail
 spec@ext_framebuffer_blit@fbo-sys-sub-blit,Fail
 
-dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
-dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
-dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
-dEQP-GLES3.functional.clipping.point.wide_point_clip,Fail
-dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_center,Fail
-dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_corner,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag_reverse_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag_reverse_src_dst_x,Fail

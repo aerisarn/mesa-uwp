@@ -4013,6 +4013,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->dsa_dirty = true;
    state->rs_dirty = true;
    state->vp_dirty = true;
+   state->rs_state.point_tri_clip = true;
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
       for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++)
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
