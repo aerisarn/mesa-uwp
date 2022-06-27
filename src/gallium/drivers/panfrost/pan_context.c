@@ -345,7 +345,7 @@ panfrost_create_shader_state(
 
                 panfrost_shader_compile(pctx->screen,
                                         &ctx->shaders, &ctx->descs,
-                                        so->nir, &ctx->base.debug, &state);
+                                        so->nir, &ctx->base.debug, &state, 0);
         }
 
         return so;
@@ -517,7 +517,7 @@ panfrost_new_variant_locked(
         /* We finally have a variant, so compile it */
         panfrost_shader_compile(ctx->base.screen,
                                 &ctx->shaders, &ctx->descs,
-                                variants->nir, &ctx->base.debug, shader_state);
+                                variants->nir, &ctx->base.debug, shader_state, 0);
 
         /* Fixup the stream out information */
         shader_state->stream_output = variants->stream_output;

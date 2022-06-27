@@ -41,7 +41,8 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *desc_pool,
                         const nir_shader *ir,
                         struct util_debug_callback *dbg,
-                        struct panfrost_shader_state *state)
+                        struct panfrost_shader_state *state,
+                        unsigned req_local_mem)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_device *dev = pan_device(pscreen);
@@ -55,7 +56,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 xfb->info.internal = true;
 
                 state->xfb = calloc(1, sizeof(struct panfrost_shader_state));
-                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb);
+                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb, 0);
 
                 /* Main shader no longer uses XFB */
                 s->info.has_transform_feedback_varyings = false;
@@ -97,6 +98,9 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 
         util_dynarray_init(&binary, NULL);
         screen->vtbl.compile_shader(s, &inputs, &binary, &state->info);
+
+        assert(req_local_mem >= state->info.wls_size);
+        state->info.wls_size = req_local_mem;
 
         if (binary.size) {
                 state->bin = panfrost_pool_take_ref(shader_pool,
