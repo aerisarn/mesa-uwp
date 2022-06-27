@@ -68,6 +68,7 @@ static FILE *stream = NULL;
 static mtx_t call_mutex = _MTX_INITIALIZER_NP;
 static long unsigned call_no = 0;
 static bool dumping = false;
+static long nir_count = 0;
 
 static bool trigger_active = true;
 static char *trigger_filename = NULL;
@@ -251,6 +252,8 @@ trace_dump_trace_begin(void)
    filename = debug_get_option("GALLIUM_TRACE", NULL);
    if (!filename)
       return false;
+
+   nir_count = debug_get_num_option("GALLIUM_TRACE_NIR", 32);
 
    if (!stream) {
 
@@ -653,6 +656,17 @@ void trace_dump_nir(void *nir)
 {
    if (!dumping)
       return;
+
+   if (nir_count < 0) {
+      fputs("<string>...</string>", stream);
+      return;
+   }
+
+   if ((nir_count--) == 0) {
+      fputs("<string>Set GALLIUM_TRACE_NIR to a sufficiently big number "
+            "to enable NIR shader dumping.</string>", stream);
+      return;
+   }
 
    // NIR doesn't have a print to string function.  Use CDATA and hope for the
    // best.
