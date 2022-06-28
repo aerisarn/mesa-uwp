@@ -2187,6 +2187,83 @@ send_descriptor_restrictions(const struct brw_isa_info *isa,
       break;
    }
 
+   if (brw_inst_sfid(devinfo, inst) == BRW_SFID_URB) {
+      /* Gfx4 doesn't have a "header present" bit in the SEND message. */
+      ERROR_IF(devinfo->ver > 4 && !brw_inst_header_present(devinfo, inst),
+               "Header must be present for all URB messages.");
+
+      switch (brw_inst_urb_opcode(devinfo, inst)) {
+      case BRW_URB_OPCODE_WRITE_HWORD:
+         break;
+
+      /* case FF_SYNC: */
+      case BRW_URB_OPCODE_WRITE_OWORD:
+         /* Gfx5 / Gfx6 FF_SYNC message and Gfx7+ URB_WRITE_OWORD have the
+          * same opcode value.
+          */
+         if (devinfo->ver == 5 || devinfo->ver == 6) {
+            ERROR_IF(brw_inst_urb_global_offset(devinfo, inst) != 0,
+                     "FF_SYNC global offset must be zero.");
+            ERROR_IF(brw_inst_urb_swizzle_control(devinfo, inst) != 0,
+                     "FF_SYNC swizzle control must be zero.");
+            ERROR_IF(brw_inst_urb_used(devinfo, inst) != 0,
+                     "FF_SYNC used must be zero.");
+            ERROR_IF(brw_inst_urb_complete(devinfo, inst) != 0,
+                     "FF_SYNC complete must be zero.");
+
+            /* Volume 4 part 2 of the Sandybridge PRM (page 28) says:
+             *
+             *    A message response (writeback) length of 1 GRF will be
+             *    indicated on the ‘send’ instruction if the thread requires
+             *    response data and/or synchronization.
+             */
+            ERROR_IF((unsigned)brw_inst_rlen(devinfo, inst) > 1,
+                     "FF_SYNC read length must be 0 or 1.");
+         } else {
+            ERROR_IF(devinfo->ver < 7,
+                     "URB OWORD write messages only valid on gfx >= 7");
+         }
+         break;
+
+      case BRW_URB_OPCODE_READ_HWORD:
+      case BRW_URB_OPCODE_READ_OWORD:
+         ERROR_IF(devinfo->ver < 7,
+                  "URB read messages only valid on gfx >= 7");
+         break;
+
+      case GFX7_URB_OPCODE_ATOMIC_MOV:
+      case GFX7_URB_OPCODE_ATOMIC_INC:
+         ERROR_IF(devinfo->ver < 7,
+                  "URB atomic move and increment messages only valid on gfx >= 7");
+         break;
+
+      case GFX8_URB_OPCODE_ATOMIC_ADD:
+         /* The Haswell PRM lists this opcode as valid on page 317. */
+         ERROR_IF(devinfo->verx10 < 75,
+                  "URB atomic add message only valid on gfx >= 7.5");
+         break;
+
+      case GFX8_URB_OPCODE_SIMD8_READ:
+         ERROR_IF(brw_inst_rlen(devinfo, inst) == 0,
+                  "URB SIMD8 read message must read some data.");
+         FALLTHROUGH;
+
+      case GFX8_URB_OPCODE_SIMD8_WRITE:
+         ERROR_IF(devinfo->ver < 8,
+                  "URB SIMD8 messages only valid on gfx >= 8");
+         break;
+
+      case GFX125_URB_OPCODE_FENCE:
+         ERROR_IF(devinfo->verx10 < 125,
+                  "URB fence message only valid on gfx >= 12.5");
+         break;
+
+      default:
+         ERROR_IF(true, "Invalid URB message");
+         break;
+      }
+   }
+
    return error_msg;
 }
 
