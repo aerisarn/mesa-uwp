@@ -187,29 +187,14 @@
       when: on_success
     - when: never
 
-# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
-# rules duplication manually
 .freedreno-rules-restricted:
   stage: freedreno
   rules:
-    - !reference [.freedreno-farm-rules, rules]
     # If the triggerer has access to the restricted traces and if it is pre-merge
     - if: '($GITLAB_USER_LOGIN !~ "/^(robclark|anholt|flto|cwabbott0|Danil|tomeu|okias)$/") &&
            ($GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH)'
       when: never
-    - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
-    - changes:
-        *vulkan_file_list
-      when: on_success
-    - changes:
-        *freedreno_file_list
-      when: on_success
+    - !reference [.freedreno-rules, rules]
     - when: never
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
