@@ -688,7 +688,7 @@ clip_point_guard_xy(struct draw_stage *stage, struct prim_header *header)
 static void
 clip_first_point(struct draw_stage *stage, struct prim_header *header)
 {
-   stage->point = stage->draw->guard_band_points_xy ? clip_point_guard_xy : clip_point;
+   stage->point = stage->draw->guard_band_points_lines_xy ? clip_point_guard_xy : clip_point;
    stage->point(stage, header);
 }
 
