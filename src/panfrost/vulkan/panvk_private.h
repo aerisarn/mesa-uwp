@@ -52,6 +52,7 @@
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
+#include "vk_descriptor_set_layout.h"
 #include "vk_device.h"
 #include "vk_image.h"
 #include "vk_instance.h"
@@ -369,11 +370,7 @@ struct panvk_descriptor_set_binding_layout {
 };
 
 struct panvk_descriptor_set_layout {
-   struct vk_object_base base;
-   int32_t refcount;
-
-   /* The create flags for this descriptor set layout */
-   VkDescriptorSetLayoutCreateFlags flags;
+   struct vk_descriptor_set_layout vk;
 
    /* Shader stages affected by this descriptor set */
    uint16_t shader_stages;
@@ -397,27 +394,6 @@ struct panvk_descriptor_set_layout {
    /* Bindings in this descriptor set */
    struct panvk_descriptor_set_binding_layout bindings[0];
 };
-
-void
-panvk_descriptor_set_layout_destroy(struct panvk_device *dev,
-                                    struct panvk_descriptor_set_layout *layout);
-
-static inline void
-panvk_descriptor_set_layout_unref(struct panvk_device *dev,
-                                  struct panvk_descriptor_set_layout *layout)
-{
-   if (layout && p_atomic_dec_zero(&layout->refcount))
-      panvk_descriptor_set_layout_destroy(dev, layout);
-}
-
-static inline struct panvk_descriptor_set_layout *
-panvk_descriptor_set_layout_ref(struct panvk_descriptor_set_layout *layout)
-{
-   if (layout)
-      p_atomic_inc(&layout->refcount);
-
-   return layout;
-}
 
 struct panvk_pipeline_layout {
    struct vk_object_base base;
@@ -1100,7 +1076,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_B
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_buffer_view, base, VkBufferView, VK_OBJECT_TYPE_BUFFER_VIEW)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_pool, base, VkDescriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_set, base, VkDescriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_set_layout, base,
+VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_set_layout, vk.base,
                                VkDescriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)

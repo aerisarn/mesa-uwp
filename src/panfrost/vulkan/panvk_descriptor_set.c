@@ -38,27 +38,6 @@
 
 #include "pan_bo.h"
 
-void
-panvk_descriptor_set_layout_destroy(struct panvk_device *device,
-                                    struct panvk_descriptor_set_layout *layout)
-{
-   vk_object_free(&device->vk, NULL, layout);
-}
-
-void
-panvk_DestroyDescriptorSetLayout(VkDevice _device,
-                                 VkDescriptorSetLayout _set_layout,
-                                 const VkAllocationCallbacks *pAllocator)
-{
-   VK_FROM_HANDLE(panvk_device, device, _device);
-   VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout, _set_layout);
-
-   if (!set_layout)
-      return;
-
-   panvk_descriptor_set_layout_unref(device, set_layout);
-}
-
 /* FIXME: make sure those values are correct */
 #define PANVK_MAX_TEXTURES     (1 << 16)
 #define PANVK_MAX_IMAGES       (1 << 8)
@@ -163,8 +142,8 @@ panvk_CreatePipelineLayout(VkDevice _device,
    for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++) {
       VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
-      layout->sets[set].layout = panvk_descriptor_set_layout_ref(set_layout);
-      p_atomic_inc(&set_layout->refcount);
+      vk_descriptor_set_layout_ref(&set_layout->vk);
+      layout->sets[set].layout = set_layout;
       layout->sets[set].sampler_offset = sampler_idx;
       layout->sets[set].tex_offset = tex_idx;
       layout->sets[set].ubo_offset = ubo_idx;
@@ -231,7 +210,7 @@ panvk_pipeline_layout_destroy(struct panvk_device *device,
                               struct panvk_pipeline_layout *layout)
 {
    for (unsigned i = 0; i < layout->num_sets; i++)
-      panvk_descriptor_set_layout_unref(device, layout->sets[i].layout);
+      vk_descriptor_set_layout_unref(&device->vk, &layout->sets[i].layout->vk);
 
    vk_object_free(&device->vk, NULL, layout);
 }

@@ -113,8 +113,7 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
                  (sizeof(struct panvk_descriptor_set_binding_layout) *
                   num_bindings) +
                  (sizeof(struct panvk_sampler *) * num_immutable_samplers);
-   set_layout = vk_object_zalloc(&device->vk, NULL, size,
-                                 VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
+   set_layout = vk_descriptor_set_layout_zalloc(&device->vk, size);
    if (!set_layout) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto err_free_bindings;
@@ -125,7 +124,6 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
                                 (sizeof(struct panvk_descriptor_set_binding_layout) *
                                  num_bindings));
 
-   set_layout->flags = pCreateInfo->flags;
    set_layout->binding_count = num_bindings;
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
@@ -218,7 +216,6 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
    set_layout->num_dyn_ubos = dyn_ubo_idx;
    set_layout->num_dyn_ssbos = dyn_ssbo_idx;
    set_layout->num_imgs = img_idx;
-   p_atomic_set(&set_layout->refcount, 1);
 
    free(bindings);
    *pSetLayout = panvk_descriptor_set_layout_to_handle(set_layout);
