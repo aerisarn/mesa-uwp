@@ -1,18 +1,24 @@
 # This file list source dependencies to avoid creating/running jobs
 # those outcome cannot be changed by the modifications from a branch.
 
-# Generic rule to not run the job during scheduled pipelines
-# ----------------------------------------------------------
-.scheduled_pipelines-rules:
-  rules: &ignore_scheduled_pipelines
-    if: '$CI_PIPELINE_SOURCE == "schedule"'
-    when: never
+# Rule to filter for only scheduled pipelines.
+.scheduled_pipeline-rules:
+  rules:
+    - if: &is-scheduled-pipeline '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
+
+# Generic rule to not run the job during scheduled pipelines. Jobs that aren't
+# something like a nightly run should include this rule.
+.no_scheduled_pipelines-rules:
+  rules:
+    - if: *is-scheduled-pipeline
+      when: never
 
 # Mesa core source file dependencies
 # ----------------------------------
 .mesa-rules:
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &mesa_core_file_list
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
@@ -46,7 +52,7 @@
 
 .vulkan-rules:
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &vulkan_file_list
       - src/vulkan/**/*
       when: on_success
@@ -56,7 +62,7 @@
 # -------------------------------------
 .gallium-rules:
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes: &gallium_core_file_list
       - src/gallium/*
       - src/gallium/auxiliary/**/*
@@ -71,7 +77,7 @@
 .softpipe-rules:
   stage: software-renderer
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -87,7 +93,7 @@
 .llvmpipe-rules:
   stage: software-renderer
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -103,7 +109,7 @@
 .lavapipe-rules:
   stage: software-renderer
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -123,7 +129,7 @@
 .llvmpipe-cl-rules:
   stage: software-renderer
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
@@ -152,7 +158,7 @@
       when: never
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -185,7 +191,7 @@
     - if: '($GITLAB_USER_LOGIN !~ "/^(robclark|anholt|flto|cwabbott0|Danil|tomeu|okias)$/") &&
            ($GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH)'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -209,7 +215,7 @@
       when: never
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     # Run only on pre-merge pipelines from Marge
     - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
       when: never
@@ -230,7 +236,7 @@
 .nouveau-rules:
   stage: nouveau
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -248,7 +254,7 @@
 .panfrost-midgard-rules:
   stage: arm
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -276,7 +282,7 @@
 .panfrost-bifrost-rules:
   stage: arm
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -305,7 +311,7 @@
 .vc4-rules:
   stage: broadcom
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -323,7 +329,7 @@
 .v3d-rules:
   stage: broadcom
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -341,7 +347,7 @@
 .v3dv-rules:
   stage: broadcom
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -356,7 +362,7 @@
 .lima-rules:
   stage: arm
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$LIMA_FARM == "offline"'
       when: never
     - changes:
@@ -375,7 +381,7 @@
 .radv-rules:
   stage: amd
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -390,7 +396,7 @@
 .virgl-rules:
   stage: layered-backends
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -411,7 +417,7 @@
 .virgl-iris-rules-performance:
   stage: layered-backends
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     # Run only on pre-merge pipelines from Marge
@@ -434,7 +440,7 @@
 .radeonsi-rules:
   stage: amd
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -458,7 +464,7 @@
 .radeonsi-vaapi-rules:
   stage: amd
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -478,7 +484,7 @@
 .i915g-rules:
   stage: intel
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -495,7 +501,7 @@
 .crocus-rules:
   stage: intel
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -512,7 +518,7 @@
 .iris-rules:
   stage: intel
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -533,7 +539,7 @@
 .iris-rules-performance:
   stage: intel
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     # Run only on pre-merge pipelines from Marge
@@ -553,7 +559,7 @@
 .anv-rules:
   stage: intel
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -570,7 +576,7 @@
 .intel-rules:
   stage: intel
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       when: never
     - changes:
@@ -592,7 +598,7 @@
 .zink-rules:
   stage: layered-backends
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -610,7 +616,7 @@
 .zink-anv-rules:
   stage: layered-backends
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -631,7 +637,7 @@
 .zink-turnip-rules:
   stage: layered-backends
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -655,7 +661,7 @@
   rules:
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -693,7 +699,7 @@
   rules:
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -710,7 +716,7 @@
   rules:
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -725,7 +731,7 @@
   rules:
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -743,7 +749,7 @@
 .etnaviv-rules:
   stage: etnaviv
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -763,7 +769,7 @@
 # Rules for unusual architectures that only build a subset of drivers
 .ppc64el-rules:
    rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -799,7 +805,7 @@
 
 .s390x-rules:
    rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
         *mesa_core_file_list
       when: on_success

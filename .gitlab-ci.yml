@@ -89,12 +89,6 @@ stages:
   - layered-backends
   - deploy
 
-# Generic rule to not run the job during scheduled pipelines
-# ----------------------------------------------------------
-.scheduled_pipelines-rules:
-  rules: &ignore_scheduled_pipelines
-    if: &is-scheduled-pipeline '$CI_PIPELINE_SOURCE == "schedule"'
-    when: never
 
 # YAML anchors for rule conditions
 # --------------------------------
@@ -141,7 +135,7 @@ pages:
     - public
   needs: []
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: *is-mesa-main
       changes: &docs-or-ci
       - docs/**/*
@@ -156,7 +150,7 @@ test-docs:
   stage: deploy
   needs: []
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: *is-forked-branch
       changes: *docs-or-ci
       when: manual
@@ -180,7 +174,7 @@ test-docs-mr:
 # When to automatically run the CI
 .ci-run-policy:
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     # If any files affecting the pipeline are changed, build/test jobs run
     # automatically once all dependency jobs have passed
     - changes: &all_paths
@@ -224,7 +218,7 @@ test-docs-mr:
   extends:
     - .ci-run-policy
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     # Run pipeline by default in the main project if any CI pipeline
     # configuration files were changed, to ensure docker images are up to date
     - if: *is-post-merge
@@ -259,8 +253,7 @@ make git archive:
     - .fdo.ci-fairy
   stage: git-archive
   rules:
-    - if: *is-scheduled-pipeline
-      when: on_success
+    - !reference [.scheduled_pipeline-rules, rules]
   # ensure we are running on packet
   tags:
     - packet.net
@@ -299,7 +292,7 @@ sanity:
 # pipelines.
 .test-manual-mr:
   rules:
-    - *ignore_scheduled_pipelines
+    - !reference [.no_scheduled_pipelines-rules, rules]
     - if: *is-forked-branch-or-pre-merge-not-for-marge
       changes:
         *all_paths
