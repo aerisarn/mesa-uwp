@@ -1364,7 +1364,6 @@ struct tu_cmd_state
    bool xfb_used;
    bool has_tess;
    bool tessfactor_addr_set;
-   bool has_subpass_predication;
    bool predication_active;
    bool disable_gmem;
    enum a5xx_line_mode line_mode;

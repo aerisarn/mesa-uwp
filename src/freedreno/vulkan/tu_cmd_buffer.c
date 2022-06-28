@@ -3373,8 +3373,6 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
          if (secondary->state.has_tess) {
             cmd->state.has_tess = true;
          }
-         if (secondary->state.has_subpass_predication)
-            cmd->state.has_subpass_predication = true;
          if (secondary->state.disable_gmem)
             cmd->state.disable_gmem = true;
 
@@ -4834,7 +4832,6 @@ tu_end_rendering(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.attachments = NULL;
    cmd_buffer->state.has_tess = false;
-   cmd_buffer->state.has_subpass_predication = false;
    cmd_buffer->state.xfb_used = false;
    cmd_buffer->state.disable_gmem = false;
    cmd_buffer->state.drawcall_count = 0;
@@ -5085,8 +5082,6 @@ tu_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
 
    cmd->state.predication_active = true;
-   if (cmd->state.pass)
-      cmd->state.has_subpass_predication = true;
 
    struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
 
