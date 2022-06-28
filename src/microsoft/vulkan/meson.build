@@ -65,6 +65,7 @@ if cc.get_argument_syntax() != 'msvc'
   dzn_flags += [
     '-Werror=unused-variable',
     '-Werror=unused-but-set-variable',
+    '-Werror=unused-value',
   ]
 endif
 

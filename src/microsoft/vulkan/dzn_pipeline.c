@@ -1474,7 +1474,6 @@ dzn_graphics_pipeline_translate_blend(struct dzn_graphics_pipeline *pipeline,
 
       desc->RenderTarget[i].BlendEnable =
          in_blend->pAttachments[i].blendEnable;
-         in_blend->logicOpEnable;
       desc->RenderTarget[i].RenderTargetWriteMask =
          in_blend->pAttachments[i].colorWriteMask;
 
