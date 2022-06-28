@@ -273,7 +273,7 @@ dxgi_get_factory(bool debug)
    IDXGIFactory4 *factory;
    HRESULT hr = CreateDXGIFactory2(flags, &IID_IDXGIFactory4, (void **)&factory);
    if (FAILED(hr)) {
-      mesa_loge("CreateDXGIFactory2 failed: %08x\n", hr);
+      mesa_loge("CreateDXGIFactory2 failed: %08x\n", (int32_t)hr);
       return NULL;
    }
 
