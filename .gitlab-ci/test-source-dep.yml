@@ -485,15 +485,11 @@
       - src/gallium/drivers/zink/**/*
       when: on_success
 
-.zink-rules:
+.zink-lvp-rules:
   stage: layered-backends
   rules:
-    - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.zink-common-rules, rules]
-    - changes:
-        *lavapipe_file_list
-      when: on_success
-    - when: never
+    - !reference [.lavapipe-rules, rules]
 
 .zink-anv-rules:
   stage: layered-backends

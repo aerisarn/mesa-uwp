@@ -1,6 +1,6 @@
 .zink-lvp-test:
   extends:
-    - .zink-rules
+    - .zink-lvp-rules
   variables:
     MESA_LOADER_DRIVER_OVERRIDE: "zink"
     LIBGL_ALWAYS_SOFTWARE: "true"
