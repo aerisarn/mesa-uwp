@@ -50,24 +50,6 @@ KHR-GL43.shader_image_load_store.basic-allFormats-loadGeometryStages,Fail
 KHR-GL43.shader_image_load_store.basic-allFormats-storeGeometryStages,Fail
 KHR-GL43.shader_image_load_store.basic-allTargets-store,Fail
 KHR-GL43.shader_image_load_store.incomplete_textures,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-cs-float,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-cs-int,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-cs-uint,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-fs-float,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-fs-int,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-fs-uint,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-gs-float,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-gs-int,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-gs-uint,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-tcs-float,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-tcs-int,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-tcs-uint,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-tes-float,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-tes-int,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-tes-uint,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-vs-float,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-vs-int,Fail
-KHR-GL43.shader_image_size.advanced-nonMS-vs-uint,Fail
 KHR-GL43.shader_storage_buffer_object.advanced-indirectAddressing-case2,Fail
 KHR-GL43.shader_storage_buffer_object.advanced-usage-case1,Fail
 KHR-GL43.shader_storage_buffer_object.advanced-usage-sync,Fail
@@ -374,8 +356,6 @@ spec@arb_get_texture_sub_image@arb_get_texture_sub_image-get,Fail
 
 # segfault
 spec@arb_get_texture_sub_image@arb_get_texture_sub_image-getcompressed,Crash
-
-spec@arb_gpu_shader5@execution@precise@fs-fract-of-nan,Fail
 
 spec@arb_gpu_shader_fp64@execution@conversion@frag-conversion-explicit-dmat2-mat2,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@frag-conversion-explicit-dmat2x3-mat2x3,Fail
@@ -869,8 +849,6 @@ spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-clamp-z,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 
-spec@glsl-1.30@execution@vs-isnan-and-more-comparison,Fail
-
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 
@@ -984,7 +962,3 @@ spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_ext
 spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp,Crash
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_sampler,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_size_via_sampler,Fail

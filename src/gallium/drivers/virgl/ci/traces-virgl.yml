@@ -17,7 +17,7 @@ traces:
   - path: gputest/furmark-v2.trace
     expectations:
       - device: gl-virgl
-        checksum: 57ddd36b117adc9216c65c10d914a37e
+        checksum: 2762c809316c58d4eefad6677ecfcb2e
   - path: gputest/pixmark-piano-v2.trace
     expectations:
       - device: gl-virgl
