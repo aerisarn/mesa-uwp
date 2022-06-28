@@ -68,6 +68,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_descriptor_set_layout.h"
+#include "vk_pipeline_layout.h"
 #include "vk_queue.h"
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
@@ -320,6 +321,12 @@ struct lvp_descriptor_set_layout {
    struct lvp_descriptor_set_binding_layout binding[0];
 };
 
+static inline const struct lvp_descriptor_set_layout *
+vk_to_lvp_descriptor_set_layout(const struct vk_descriptor_set_layout *layout)
+{
+   return container_of(layout, const struct lvp_descriptor_set_layout, vk);
+}
+
 union lvp_descriptor_info {
    struct {
       struct lvp_sampler *sampler;
@@ -398,16 +405,8 @@ lvp_descriptor_set_destroy(struct lvp_device *device,
                            struct lvp_descriptor_set *set);
 
 struct lvp_pipeline_layout {
-   struct vk_object_base base;
+   struct vk_pipeline_layout vk;
 
-   /* Pipeline layouts can be destroyed at almost any time */
-   uint32_t ref_cnt;
-
-   struct {
-      struct lvp_descriptor_set_layout *layout;
-   } set[MAX_SETS];
-
-   uint32_t num_sets;
    uint32_t push_constant_size;
    VkShaderStageFlags push_constant_stages;
    struct {
@@ -415,27 +414,7 @@ struct lvp_pipeline_layout {
       uint16_t uniform_block_count;
       uint16_t uniform_block_sizes[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
    } stage[MESA_SHADER_STAGES];
-   bool independent_sets;
 };
-
-void lvp_pipeline_layout_destroy(struct lvp_device *device,
-                                 struct lvp_pipeline_layout *layout);
-
-static inline void
-lvp_pipeline_layout_ref(struct lvp_pipeline_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   p_atomic_inc(&layout->ref_cnt);
-}
-
-static inline void
-lvp_pipeline_layout_unref(struct lvp_device *device,
-                          struct lvp_pipeline_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&layout->ref_cnt))
-      lvp_pipeline_layout_destroy(device, layout);
-}
 
 struct lvp_access_info {
    uint32_t images_read;
@@ -571,7 +550,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_layout, base, VkPipelineLayout,
+VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_layout, vk.base, VkPipelineLayout,
                                VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_query_pool, base, VkQueryPool,
                                VK_OBJECT_TYPE_QUERY_POOL)

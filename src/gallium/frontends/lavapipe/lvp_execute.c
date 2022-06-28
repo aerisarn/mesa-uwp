@@ -1387,8 +1387,12 @@ static void handle_set_stage(struct rendering_state *state,
 }
 
 static void increment_dyn_info(struct dyn_info *dyn_info,
-                               struct lvp_descriptor_set_layout *layout, bool inc_dyn)
+                               const struct vk_descriptor_set_layout *vk_layout,
+                               bool inc_dyn)
 {
+   const struct lvp_descriptor_set_layout *layout =
+      vk_to_lvp_descriptor_set_layout(vk_layout);
+
    for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < MESA_SHADER_STAGES; stage++) {
       dyn_info->stage[stage].const_buffer_count += layout->stage[stage].const_buffer_count;
       dyn_info->stage[stage].shader_buffer_count += layout->stage[stage].shader_buffer_count;
@@ -1410,14 +1414,14 @@ static void handle_compute_descriptor_sets(struct vk_cmd_queue_entry *cmd,
    int i;
 
    for (i = 0; i < bds->first_set; i++) {
-      increment_dyn_info(dyn_info, layout->set[i].layout, false);
+      increment_dyn_info(dyn_info, layout->vk.set_layouts[i], false);
    }
    for (i = 0; i < bds->descriptor_set_count; i++) {
       const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
          handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE);
-      increment_dyn_info(dyn_info, layout->set[bds->first_set + i].layout, true);
+      increment_dyn_info(dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
    }
 }
 
@@ -1440,12 +1444,13 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
    }
 
    for (i = 0; i < bds->first_set; i++) {
-      increment_dyn_info(&dyn_info, layout->set[i].layout, false);
+      increment_dyn_info(&dyn_info, layout->vk.set_layouts[i], false);
    }
 
    for (i = 0; i < bds->descriptor_set_count; i++) {
-      if (!layout->set[bds->first_set + i].layout)
+      if (!layout->vk.set_layouts[bds->first_set + i])
          continue;
+
       const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
       if (!set)
          continue;
@@ -1471,7 +1476,7 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
       if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT);
 
-      increment_dyn_info(&dyn_info, layout->set[bds->first_set + i].layout, true);
+      increment_dyn_info(&dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
    }
 }
 
@@ -3088,17 +3093,19 @@ static void handle_compute_push_descriptor_set(struct lvp_cmd_push_descriptor_se
                                                struct dyn_info *dyn_info,
                                                struct rendering_state *state)
 {
-   struct lvp_descriptor_set_layout *layout = pds->layout->set[pds->set].layout;
+   const struct lvp_descriptor_set_layout *layout =
+      vk_to_lvp_descriptor_set_layout(pds->layout->vk.set_layouts[pds->set]);
 
    if (!(layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT))
       return;
    for (unsigned i = 0; i < pds->set; i++) {
-      increment_dyn_info(dyn_info, pds->layout->set[i].layout, false);
+      increment_dyn_info(dyn_info, pds->layout->vk.set_layouts[i], false);
    }
    unsigned info_idx = 0;
    for (unsigned i = 0; i < pds->descriptor_write_count; i++) {
       struct lvp_write_descriptor *desc = &pds->descriptors[i];
-      struct lvp_descriptor_set_binding_layout *binding = &layout->binding[desc->dst_binding];
+      const struct lvp_descriptor_set_binding_layout *binding =
+         &layout->binding[desc->dst_binding];
 
       if (!binding->valid)
          continue;
@@ -3195,13 +3202,11 @@ static struct lvp_cmd_push_descriptor_set *create_push_descriptor_set(struct vk_
 static void handle_push_descriptor_set_generic(struct vk_cmd_push_descriptor_set_khr *_pds,
                                                struct rendering_state *state)
 {
-   struct lvp_cmd_push_descriptor_set *pds;
-   struct lvp_descriptor_set_layout *layout;
+   struct lvp_cmd_push_descriptor_set *pds = create_push_descriptor_set(_pds);
+   const struct lvp_descriptor_set_layout *layout =
+      vk_to_lvp_descriptor_set_layout(pds->layout->vk.set_layouts[pds->set]);
+
    struct dyn_info dyn_info;
-
-   pds = create_push_descriptor_set(_pds);
-   layout = pds->layout->set[pds->set].layout;
-
    memset(&dyn_info.stage, 0, sizeof(dyn_info.stage));
    dyn_info.dyn_index = 0;
    if (pds->bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
@@ -3209,13 +3214,14 @@ static void handle_push_descriptor_set_generic(struct vk_cmd_push_descriptor_set
    }
 
    for (unsigned i = 0; i < pds->set; i++) {
-      increment_dyn_info(&dyn_info, pds->layout->set[i].layout, false);
+      increment_dyn_info(&dyn_info, pds->layout->vk.set_layouts[i], false);
    }
 
    unsigned info_idx = 0;
    for (unsigned i = 0; i < pds->descriptor_write_count; i++) {
       struct lvp_write_descriptor *desc = &pds->descriptors[i];
-      struct lvp_descriptor_set_binding_layout *binding = &layout->binding[desc->dst_binding];
+      const struct lvp_descriptor_set_binding_layout *binding =
+         &layout->binding[desc->dst_binding];
 
       if (!binding->valid)
          continue;

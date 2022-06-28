@@ -228,28 +228,16 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_pipeline_layout *layout;
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
+   layout = vk_pipeline_layout_zalloc(&device->vk, sizeof(*layout),
+                                      pCreateInfo);
 
-   layout = vk_zalloc(&device->vk.alloc, sizeof(*layout), 8,
-                     VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (layout == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &layout->base,
-                       VK_OBJECT_TYPE_PIPELINE_LAYOUT);
-   layout->ref_cnt = 1;
-   layout->num_sets = pCreateInfo->setLayoutCount;
-   if (pCreateInfo->flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT)
-      layout->independent_sets = true;
-
-   for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
-      LVP_FROM_HANDLE(lvp_descriptor_set_layout, set_layout,
-                      pCreateInfo->pSetLayouts[set]);
-      if (layout->independent_sets && (!layout->num_sets || !set_layout)) {
-         layout->set[set].layout = NULL;
+   for (uint32_t set = 0; set < layout->vk.set_count; set++) {
+      if (layout->vk.set_layouts[set] == NULL)
          continue;
-      }
-      layout->set[set].layout = set_layout;
+
+      const struct lvp_descriptor_set_layout *set_layout =
+         vk_to_lvp_descriptor_set_layout(layout->vk.set_layouts[set]);
+
       for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
          layout->stage[i].uniform_block_size += set_layout->stage[i].uniform_block_size;
          for (unsigned j = 0; j < set_layout->stage[i].uniform_block_count; j++) {
@@ -258,7 +246,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
          }
          layout->stage[i].uniform_block_count += set_layout->stage[i].uniform_block_count;
       }
-      vk_descriptor_set_layout_ref(&set_layout->vk);
    }
 
 #ifndef NDEBUG
@@ -277,13 +264,19 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
       uint16_t sampler_count = 0;
       uint16_t sampler_view_count = 0;
       uint16_t image_count = 0;
-      for (unsigned j = 0; j < layout->num_sets; j++) {
-         if (layout->set[j].layout && layout->set[j].layout->shader_stages & array[i]) {
-            const_buffer_count += layout->set[j].layout->stage[i].const_buffer_count;
-            shader_buffer_count += layout->set[j].layout->stage[i].shader_buffer_count;
-            sampler_count += layout->set[j].layout->stage[i].sampler_count;
-            sampler_view_count += layout->set[j].layout->stage[i].sampler_view_count;
-            image_count += layout->set[j].layout->stage[i].image_count;
+      for (unsigned j = 0; j < layout->vk.set_count; j++) {
+         if (layout->vk.set_layouts[j] == NULL)
+            continue;
+
+         const struct lvp_descriptor_set_layout *set_layout =
+            vk_to_lvp_descriptor_set_layout(layout->vk.set_layouts[j]);
+
+         if (set_layout->shader_stages & array[i]) {
+            const_buffer_count += set_layout->stage[i].const_buffer_count;
+            shader_buffer_count += set_layout->stage[i].shader_buffer_count;
+            sampler_count += set_layout->stage[i].sampler_count;
+            sampler_view_count += set_layout->stage[i].sampler_view_count;
+            image_count += set_layout->stage[i].image_count;
          }
       }
       assert(const_buffer_count <= device->physical_device->device_limits.maxPerStageDescriptorUniformBuffers);
@@ -305,32 +298,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
    *pPipelineLayout = lvp_pipeline_layout_to_handle(layout);
 
    return VK_SUCCESS;
-}
-
-void lvp_pipeline_layout_destroy(struct lvp_device *device,
-                                 struct lvp_pipeline_layout *pipeline_layout)
-{
-   assert(pipeline_layout->ref_cnt == 0);
-
-   for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
-      vk_descriptor_set_layout_unref(&device->vk, &pipeline_layout->set[i].layout->vk);
-
-   vk_object_base_finish(&pipeline_layout->base);
-   vk_free(&device->vk.alloc, pipeline_layout);
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipelineLayout(
-    VkDevice                                    _device,
-    VkPipelineLayout                            _pipelineLayout,
-    const VkAllocationCallbacks*                pAllocator)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_pipeline_layout, pipeline_layout, _pipelineLayout);
-
-   if (!_pipelineLayout)
-     return;
-
-   lvp_pipeline_layout_unref(device, pipeline_layout);
 }
 
 VkResult

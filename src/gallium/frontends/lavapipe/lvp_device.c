@@ -1498,16 +1498,15 @@ ref_pipeline_layout(struct vk_device *vk_device, VkPipelineLayout _layout)
 {
    LVP_FROM_HANDLE(lvp_pipeline_layout, layout, _layout);
 
-   lvp_pipeline_layout_ref(layout);
+   vk_pipeline_layout_ref(&layout->vk);
 }
 
 static void
-unref_pipeline_layout(struct vk_device *vk_device, VkPipelineLayout _layout)
+unref_pipeline_layout(struct vk_device *device, VkPipelineLayout _layout)
 {
-   struct lvp_device *device = container_of(vk_device, struct lvp_device, vk);
    LVP_FROM_HANDLE(lvp_pipeline_layout, layout, _layout);
 
-   lvp_pipeline_layout_unref(device, layout);
+   vk_pipeline_layout_unref(device, &layout->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(

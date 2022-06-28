@@ -63,7 +63,7 @@ lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
       ralloc_free(pipeline->pipeline_nir[i]);
 
    if (pipeline->layout)
-      lvp_pipeline_layout_unref(device, pipeline->layout);
+      vk_pipeline_layout_unref(&device->vk, &pipeline->layout->vk);
 
    ralloc_free(pipeline->mem_ctx);
    vk_object_base_finish(&pipeline->base);
@@ -1302,20 +1302,29 @@ merge_layouts(struct lvp_pipeline *dst, struct lvp_pipeline_layout *src)
    }
 #ifndef NDEBUG
    /* verify that layouts match */
-   const struct lvp_pipeline_layout *smaller = dst->layout->num_sets < src->num_sets ? dst->layout : src;
+   const struct lvp_pipeline_layout *smaller = dst->layout->vk.set_count < src->vk.set_count ? dst->layout : src;
    const struct lvp_pipeline_layout *bigger = smaller == dst->layout ? src : dst->layout;
-   for (unsigned i = 0; i < smaller->num_sets; i++) {
-      assert(!smaller->set[i].layout || !bigger->set[i].layout ||
-             !smaller->set[i].layout->binding_count || !bigger->set[i].layout->binding_count ||
-             smaller->set[i].layout == bigger->set[i].layout ||
-             layouts_equal(smaller->set[i].layout, bigger->set[i].layout));
+   for (unsigned i = 0; i < smaller->vk.set_count; i++) {
+      if (!smaller->vk.set_layouts[i] || !bigger->vk.set_layouts[i] ||
+          smaller->vk.set_layouts[i] == bigger->vk.set_layouts[i])
+         continue;
+
+      const struct lvp_descriptor_set_layout *smaller_set_layout =
+         vk_to_lvp_descriptor_set_layout(smaller->vk.set_layouts[i]);
+      const struct lvp_descriptor_set_layout *bigger_set_layout =
+         vk_to_lvp_descriptor_set_layout(bigger->vk.set_layouts[i]);
+
+      assert(!smaller_set_layout->binding_count ||
+             !bigger_set_layout->binding_count ||
+             layouts_equal(smaller_set_layout, bigger_set_layout));
    }
 #endif
-   for (unsigned i = 0; i < src->num_sets; i++) {
-      if (!dst->layout->set[i].layout)
-         dst->layout->set[i].layout = src->set[i].layout;
+   for (unsigned i = 0; i < src->vk.set_count; i++) {
+      if (!dst->layout->vk.set_layouts[i])
+         dst->layout->vk.set_layouts[i] = src->vk.set_layouts[i];
    }
-   dst->layout->num_sets = MAX2(dst->layout->num_sets, src->num_sets);
+   dst->layout->vk.set_count = MAX2(dst->layout->vk.set_count,
+                                    src->vk.set_count);
    dst->layout->push_constant_size += src->push_constant_size;
    dst->layout->push_constant_stages |= src->push_constant_stages;
 }
@@ -1346,9 +1355,9 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
 
    struct lvp_pipeline_layout *layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
    if (layout)
-      lvp_pipeline_layout_ref(layout);
+      vk_pipeline_layout_ref(&layout->vk);
 
-   if (!layout || !layout->independent_sets)
+   if (!layout || !(layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
       /* this is a regular pipeline with no partials: directly reuse */
       pipeline->layout = layout;
    else if (pipeline->stages & layout_stages) {
@@ -1381,7 +1390,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)
             pipeline->force_min_sample = p->force_min_sample;
          if (p->stages & layout_stages) {
-            if (!layout || layout->independent_sets)
+            if (!layout || (layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
                merge_layouts(pipeline, p->layout);
          }
          pipeline->stages |= p->stages;
@@ -1607,7 +1616,7 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
                    pCreateInfo->stage.module);
    pipeline->device = device;
    pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
-   lvp_pipeline_layout_ref(pipeline->layout);
+   vk_pipeline_layout_ref(&pipeline->layout->vk);
    pipeline->force_min_sample = false;
 
    pipeline->mem_ctx = ralloc_context(NULL);
