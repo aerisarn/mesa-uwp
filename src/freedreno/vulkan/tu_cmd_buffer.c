@@ -3375,6 +3375,14 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
          }
          if (secondary->state.disable_gmem)
             cmd->state.disable_gmem = true;
+         if (secondary->state.xfb_used)
+            cmd->state.xfb_used = true;
+         if (secondary->state.has_prim_generated_query_in_rp)
+            cmd->state.has_prim_generated_query_in_rp = true;
+
+         cmd->state.drawcall_count += secondary->state.drawcall_count;
+         cmd->state.drawcall_bandwidth_per_sample_sum +=
+            secondary->state.drawcall_bandwidth_per_sample_sum;
 
          cmd->state.draw_cs_writes_to_cond_pred |=
             secondary->state.draw_cs_writes_to_cond_pred;
