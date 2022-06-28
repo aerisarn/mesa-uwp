@@ -285,7 +285,7 @@ draw_update_clip_flags(struct draw_context *draw)
    draw->guard_band_points_xy = draw->guard_band_xy ||
                                 (draw->driver.bypass_clip_points &&
                                 (draw->rasterizer &&
-                                 draw->rasterizer->point_tri_clip));
+                                 draw->rasterizer->point_line_tri_clip));
 }
 
 

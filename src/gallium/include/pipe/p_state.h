@@ -109,7 +109,7 @@ struct pipe_rasterizer_state
    unsigned point_smooth:1;
    unsigned sprite_coord_mode:1;     /**< PIPE_SPRITE_COORD_ */
    unsigned point_quad_rasterization:1; /** points rasterized as quads or points */
-   unsigned point_tri_clip:1; /** large points clipped as tris or points */
+   unsigned point_line_tri_clip:1; /** large points/lines clipped as tris or points/lines */
    unsigned point_size_per_vertex:1; /**< size computed in vertex shader */
    unsigned multisample:1;         /* XXX maybe more ms state in future */
    unsigned no_ms_sample_mask_out:1;

@@ -599,7 +599,7 @@ lp_setup_bind_rasterizer(struct lp_setup_context *setup,
    setup->point_size = rast->point_size;
    setup->sprite_coord_enable = rast->sprite_coord_enable;
    setup->sprite_coord_origin = rast->sprite_coord_mode;
-   setup->point_tri_clip = rast->point_tri_clip;
+   setup->point_line_tri_clip = rast->point_line_tri_clip;
    setup->point_size_per_vertex = rast->point_size_per_vertex;
    setup->legacy_points = !rast->point_quad_rasterization && !setup->multisample;
 }
@@ -1386,7 +1386,7 @@ try_update_scene_state(struct lp_setup_context *setup)
             u_rect_possible_intersection(&setup->vpwh,
                                          &setup->draw_regions[0]);
          }
-      } else if (setup->point_tri_clip) {
+      } else if (setup->point_line_tri_clip) {
          /*
           * for d3d-style point clipping, we're going to need
           * the fake vp scissor too. Hence do the intersection with vp,
@@ -1396,7 +1396,7 @@ try_update_scene_state(struct lp_setup_context *setup)
           * points are always single pixel).
           * (Also note that if we have permit_linear_rasterizer this will
           * cause large points to always get vp scissored, regardless the
-          * point_tri_clip setting.)
+          * point_line_tri_clip setting.)
           */
          boolean need_vp_scissoring =
             !!memcmp(&setup->vpwh, &setup->framebuffer,
