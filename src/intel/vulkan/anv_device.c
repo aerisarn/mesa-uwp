@@ -1515,13 +1515,6 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR: {
-         VkPhysicalDeviceDynamicRenderingFeaturesKHR *features =
-            (VkPhysicalDeviceDynamicRenderingFeaturesKHR *)ext;
-         features->dynamicRendering = true;
-         break;
-      }
-
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
          VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT *features =
             (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT *)ext;
@@ -1585,13 +1578,6 @@ void anv_GetPhysicalDeviceFeatures2(
          features->stippledRectangularLines = false;
          features->stippledBresenhamLines = true;
          features->stippledSmoothLines = false;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR: {
-         VkPhysicalDeviceMaintenance4FeaturesKHR *features =
-            (VkPhysicalDeviceMaintenance4FeaturesKHR *)ext;
-         features->maintenance4 = true;
          break;
       }
 
