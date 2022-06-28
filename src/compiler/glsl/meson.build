@@ -155,8 +155,6 @@ files_libglsl = files(
   'link_varyings.h',
   'list.h',
   'lower_blend_equation_advanced.cpp',
-  'lower_buffer_access.cpp',
-  'lower_buffer_access.h',
   'lower_builtins.cpp',
   'lower_cs_derived.cpp',
   'lower_discard.cpp',
