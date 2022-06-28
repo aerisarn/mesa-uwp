@@ -1257,24 +1257,24 @@ translate_stencil_test(struct dzn_graphics_pipeline *pipeline,
 
    bool back_wr_uses_ref =
       !(in->pRasterizationState->cullMode & VK_CULL_MODE_BACK_BIT) &&
-      (in_zsa->back.compareOp != VK_COMPARE_OP_ALWAYS &&
-       in_zsa->back.failOp == VK_STENCIL_OP_REPLACE) ||
-      (in_zsa->back.compareOp != VK_COMPARE_OP_NEVER &&
-       (!in_zsa->depthTestEnable || in_zsa->depthCompareOp != VK_COMPARE_OP_NEVER) &&
-       in_zsa->back.passOp == VK_STENCIL_OP_REPLACE) ||
-      (in_zsa->depthTestEnable &&
-       in_zsa->depthCompareOp != VK_COMPARE_OP_ALWAYS &&
-       in_zsa->back.depthFailOp == VK_STENCIL_OP_REPLACE);
+      ((in_zsa->back.compareOp != VK_COMPARE_OP_ALWAYS &&
+        in_zsa->back.failOp == VK_STENCIL_OP_REPLACE) ||
+       (in_zsa->back.compareOp != VK_COMPARE_OP_NEVER &&
+        (!in_zsa->depthTestEnable || in_zsa->depthCompareOp != VK_COMPARE_OP_NEVER) &&
+        in_zsa->back.passOp == VK_STENCIL_OP_REPLACE) ||
+       (in_zsa->depthTestEnable &&
+        in_zsa->depthCompareOp != VK_COMPARE_OP_ALWAYS &&
+        in_zsa->back.depthFailOp == VK_STENCIL_OP_REPLACE));
    bool front_wr_uses_ref =
       !(in->pRasterizationState->cullMode & VK_CULL_MODE_FRONT_BIT) &&
-      (in_zsa->front.compareOp != VK_COMPARE_OP_ALWAYS &&
-       in_zsa->front.failOp == VK_STENCIL_OP_REPLACE) ||
-      (in_zsa->front.compareOp != VK_COMPARE_OP_NEVER &&
-       (!in_zsa->depthTestEnable || in_zsa->depthCompareOp != VK_COMPARE_OP_NEVER) &&
-       in_zsa->front.passOp == VK_STENCIL_OP_REPLACE) ||
-      (in_zsa->depthTestEnable &&
-       in_zsa->depthCompareOp != VK_COMPARE_OP_ALWAYS &&
-       in_zsa->front.depthFailOp == VK_STENCIL_OP_REPLACE);
+      ((in_zsa->front.compareOp != VK_COMPARE_OP_ALWAYS &&
+        in_zsa->front.failOp == VK_STENCIL_OP_REPLACE) ||
+       (in_zsa->front.compareOp != VK_COMPARE_OP_NEVER &&
+        (!in_zsa->depthTestEnable || in_zsa->depthCompareOp != VK_COMPARE_OP_NEVER) &&
+        in_zsa->front.passOp == VK_STENCIL_OP_REPLACE) ||
+       (in_zsa->depthTestEnable &&
+        in_zsa->depthCompareOp != VK_COMPARE_OP_ALWAYS &&
+        in_zsa->front.depthFailOp == VK_STENCIL_OP_REPLACE));
 
    pipeline->zsa.stencil_test.front.write_mask =
       (pipeline->zsa.stencil_test.dynamic_write_mask ||
