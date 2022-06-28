@@ -1459,6 +1459,15 @@ struct tu_cmd_buffer
 
    struct tu_descriptor_state descriptors[MAX_BIND_POINTS];
 
+   struct tu_render_pass_attachment dynamic_rp_attachments[2 * (MAX_RTS + 1)];
+   struct tu_subpass_attachment dynamic_color_attachments[MAX_RTS];
+   struct tu_subpass_attachment dynamic_resolve_attachments[MAX_RTS + 1];
+   const struct tu_image_view *dynamic_attachments[2 * (MAX_RTS + 1)];
+
+   struct tu_render_pass dynamic_pass;
+   struct tu_subpass dynamic_subpass;
+   struct tu_framebuffer dynamic_framebuffer;
+
    VkResult record_result;
 
    struct tu_cs cs;
@@ -1491,6 +1500,15 @@ void tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
 void tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
                              struct tu_cs *cs,
                              enum tu_cmd_ccu_state ccu_state);
+
+void tu_setup_dynamic_render_pass(struct tu_cmd_buffer *cmd_buffer,
+                                  const VkRenderingInfo *pRenderingInfo);
+
+void tu_setup_dynamic_inheritance(struct tu_cmd_buffer *cmd_buffer,
+                                  const VkCommandBufferInheritanceRenderingInfo *info);
+
+void tu_setup_dynamic_framebuffer(struct tu_cmd_buffer *cmd_buffer,
+                                  const VkRenderingInfo *pRenderingInfo);
 
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
@@ -1935,6 +1953,8 @@ struct tu_image_view
    struct vk_object_base base;
 
    struct tu_image *image; /**< VkImageViewCreateInfo::image */
+
+   VkFormat format;
 
    struct fdl6_view view;
 

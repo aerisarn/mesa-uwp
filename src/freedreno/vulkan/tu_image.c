@@ -180,6 +180,7 @@ tu_image_view_init(struct tu_image_view *iview,
       vk_find_struct_const(pCreateInfo->pNext, IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT);
 
    iview->image = image;
+   iview->format = pCreateInfo->format;
 
    const struct fdl_layout *layouts[3];
 

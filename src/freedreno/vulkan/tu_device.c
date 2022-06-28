@@ -2628,6 +2628,23 @@ tu_CreateFramebuffer(VkDevice _device,
    return VK_SUCCESS;
 }
 
+void
+tu_setup_dynamic_framebuffer(struct tu_cmd_buffer *cmd_buffer,
+                             const VkRenderingInfo *pRenderingInfo)
+{
+   struct tu_render_pass *pass = &cmd_buffer->dynamic_pass;
+   struct tu_framebuffer *framebuffer = &cmd_buffer->dynamic_framebuffer;
+
+   framebuffer->attachment_count = pass->attachment_count;
+   framebuffer->width = pRenderingInfo->renderArea.offset.x +
+      pRenderingInfo->renderArea.extent.width;
+   framebuffer->height = pRenderingInfo->renderArea.offset.y +
+      pRenderingInfo->renderArea.extent.height;
+   framebuffer->layers = pRenderingInfo->layerCount;
+
+   tu_framebuffer_tiling_config(framebuffer, cmd_buffer->device, pass);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_DestroyFramebuffer(VkDevice _device,
                       VkFramebuffer _fb,

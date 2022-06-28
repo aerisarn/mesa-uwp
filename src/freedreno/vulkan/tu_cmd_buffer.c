@@ -269,8 +269,22 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
 
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       uint32_t a = subpass->color_attachments[i].attachment;
-      if (a == VK_ATTACHMENT_UNUSED)
+      if (a == VK_ATTACHMENT_UNUSED) {
+         /* From the VkPipelineRenderingCreateInfo definition:
+          *
+          *    Valid formats indicate that an attachment can be used - but it
+          *    is still valid to set the attachment to NULL when beginning
+          *    rendering.
+          *
+          * This means that with dynamic rendering, pipelines may write to
+          * some attachments that are UNUSED here. Setting the format to 0
+          * here should prevent them from writing to anything.
+          */
+         tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
+         for (unsigned i = 0; i < 6; i++)
+            tu_cs_emit(cs, 0);
          continue;
+      }
 
       const struct tu_image_view *iview = cmd->state.attachments[a];
 
@@ -1770,10 +1784,18 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       }
 
       if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
-         cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
-         cmd_buffer->state.subpass =
-            &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
-
+         if (pBeginInfo->pInheritanceInfo->renderPass) {
+            cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
+            cmd_buffer->state.subpass =
+               &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
+         } else {
+            const VkCommandBufferInheritanceRenderingInfo *rendering_info =
+               vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext,
+                                    COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
+            tu_setup_dynamic_inheritance(cmd_buffer, rendering_info);
+            cmd_buffer->state.pass = &cmd_buffer->dynamic_pass;
+            cmd_buffer->state.subpass = &cmd_buffer->dynamic_subpass;
+         }
          tu_lrz_begin_secondary_cmdbuf(cmd_buffer);
       } else {
          /* When executing in the middle of another command buffer, the CCU
@@ -3591,6 +3613,85 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
+                     const VkRenderingInfo *pRenderingInfo)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   VkClearValue clear_values[2 * (MAX_RTS + 1)];
+
+   tu_setup_dynamic_render_pass(cmd, pRenderingInfo);
+   tu_setup_dynamic_framebuffer(cmd, pRenderingInfo);
+
+   cmd->state.pass = &cmd->dynamic_pass;
+   cmd->state.subpass = &cmd->dynamic_subpass;
+   cmd->state.framebuffer = &cmd->dynamic_framebuffer;
+   cmd->state.render_area = pRenderingInfo->renderArea;
+
+   cmd->state.attachments = cmd->dynamic_attachments;
+
+   cmd->state.draw_cs_writes_to_cond_pred = false;
+
+   for (unsigned i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
+      uint32_t a = cmd->dynamic_subpass.color_attachments[i].attachment;
+      if (!pRenderingInfo->pColorAttachments[i].imageView)
+         continue;
+
+      TU_FROM_HANDLE(tu_image_view, view,
+                     pRenderingInfo->pColorAttachments[i].imageView);
+      cmd->state.attachments[a] = view;
+      clear_values[a] = pRenderingInfo->pColorAttachments[i].clearValue;
+
+      a = cmd->dynamic_subpass.resolve_attachments[i].attachment;
+      if (a != VK_ATTACHMENT_UNUSED) {
+         TU_FROM_HANDLE(tu_image_view, resolve_view,
+                        pRenderingInfo->pColorAttachments[i].resolveImageView);
+         cmd->state.attachments[a] = resolve_view;
+      }
+   }
+
+   uint32_t a = cmd->dynamic_subpass.depth_stencil_attachment.attachment;
+   if (pRenderingInfo->pDepthAttachment || pRenderingInfo->pStencilAttachment) {
+      const struct VkRenderingAttachmentInfo *common_info =
+         (pRenderingInfo->pDepthAttachment &&
+          pRenderingInfo->pDepthAttachment->imageView != VK_NULL_HANDLE) ?
+         pRenderingInfo->pDepthAttachment :
+         pRenderingInfo->pStencilAttachment;
+      if (common_info && common_info->imageView != VK_NULL_HANDLE) {
+         TU_FROM_HANDLE(tu_image_view, view, common_info->imageView);
+         cmd->state.attachments[a] = view;
+         if (pRenderingInfo->pDepthAttachment) {
+            clear_values[a].depthStencil.depth =
+               pRenderingInfo->pDepthAttachment->clearValue.depthStencil.depth;
+         }
+
+         if (pRenderingInfo->pStencilAttachment) {
+            clear_values[a].depthStencil.stencil =
+               pRenderingInfo->pStencilAttachment->clearValue.depthStencil.stencil;
+         }
+
+         if (cmd->dynamic_subpass.resolve_count >
+             cmd->dynamic_subpass.color_count) {
+            TU_FROM_HANDLE(tu_image_view, resolve_view,
+                           common_info->resolveImageView);
+            a = cmd->dynamic_subpass.resolve_attachments[cmd->dynamic_subpass.color_count].attachment;
+            cmd->state.attachments[a] = resolve_view;
+         }
+      }
+   }
+
+   cmd->state.renderpass_cache.pending_flush_bits =
+      cmd->state.cache.pending_flush_bits;
+   cmd->state.renderpass_cache.flush_bits = 0;
+
+   trace_start_render_pass(&cmd->trace, &cmd->cs);
+
+   cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+
+   tu_emit_renderpass_begin(cmd, clear_values);
+   tu_emit_subpass_begin(cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
                    const VkSubpassBeginInfo *pSubpassBeginInfo,
                    const VkSubpassEndInfo *pSubpassEndInfo)
@@ -4698,12 +4799,9 @@ tu_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    tu_dispatch(cmd_buffer, &info);
 }
 
-VKAPI_ATTR void VKAPI_CALL
-tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
-                     const VkSubpassEndInfo *pSubpassEndInfo)
+static void
+tu_end_rendering(struct tu_cmd_buffer *cmd_buffer)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-
    tu_cs_end(&cmd_buffer->draw_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
@@ -4731,12 +4829,6 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    tu_cs_discard_entries(&cmd_buffer->draw_epilogue_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
-   cmd_buffer->state.cache.pending_flush_bits |=
-      cmd_buffer->state.renderpass_cache.pending_flush_bits;
-   tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
-
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
-
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
@@ -4752,6 +4844,29 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    /* LRZ is not valid next time we use it */
    cmd_buffer->state.lrz.valid = false;
    cmd_buffer->state.dirty |= TU_CMD_DIRTY_LRZ;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
+                     const VkSubpassEndInfo *pSubpassEndInfo)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   tu_end_rendering(cmd_buffer);
+
+   cmd_buffer->state.cache.pending_flush_bits |=
+      cmd_buffer->state.renderpass_cache.pending_flush_bits;
+   tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
+
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdEndRendering(VkCommandBuffer commandBuffer)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   tu_end_rendering(cmd_buffer);
 }
 
 static void

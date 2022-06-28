@@ -3890,24 +3890,85 @@ tu_pipeline_builder_init_graphics(
       }
    }
 
-   const struct tu_render_pass *pass =
-      tu_render_pass_from_handle(create_info->renderPass);
-   const struct tu_subpass *subpass =
-      &pass->subpasses[create_info->subpass];
-
-   builder->subpass_raster_order_attachment_access =
-      subpass->raster_order_attachment_access;
-   builder->subpass_feedback_loop_color = subpass->feedback_loop_color;
-   builder->subpass_feedback_loop_ds = subpass->feedback_loop_ds;
-
-   builder->multiview_mask = subpass->multiview_mask;
-
    builder->rasterizer_discard =
       builder->create_info->pRasterizationState->rasterizerDiscardEnable &&
       !rasterizer_discard_dynamic;
 
-   /* variableMultisampleRate support */
-   builder->emit_msaa_state = (subpass->samples == 0) && !builder->rasterizer_discard;
+   const VkPipelineRenderingCreateInfo *rendering_info =
+      vk_find_struct_const(create_info->pNext, PIPELINE_RENDERING_CREATE_INFO);
+
+   if (rendering_info) {
+      builder->subpass_raster_order_attachment_access = false;
+      builder->subpass_feedback_loop_ds = false;
+      builder->subpass_feedback_loop_color = false;
+
+      builder->multiview_mask = rendering_info->viewMask;
+
+      /* We don't know with dynamic rendering whether the pipeline will be
+       * used in a render pass with none of attachments enabled, so we have to
+       * dynamically emit MSAA state.
+       *
+       * TODO: Move MSAA state to a separate draw state and emit it
+       * dynamically only when the sample count is different from the
+       * subpass's sample count.
+       */
+      builder->emit_msaa_state = !builder->rasterizer_discard;
+
+      if (!builder->rasterizer_discard) {
+         builder->depth_attachment_format =
+            rendering_info->depthAttachmentFormat == VK_FORMAT_UNDEFINED ?
+            rendering_info->stencilAttachmentFormat :
+            rendering_info->depthAttachmentFormat;
+
+         builder->color_attachment_count =
+            rendering_info->colorAttachmentCount;
+
+         for (unsigned i = 0; i < rendering_info->colorAttachmentCount; i++) {
+            builder->color_attachment_formats[i] =
+               rendering_info->pColorAttachmentFormats[i];
+            if (builder->color_attachment_formats[i] != VK_FORMAT_UNDEFINED) {
+               builder->use_color_attachments = true;
+               builder->render_components |= 0xf << (i * 4);
+            }
+         }
+      }
+   } else {
+      const struct tu_render_pass *pass =
+         tu_render_pass_from_handle(create_info->renderPass);
+      const struct tu_subpass *subpass =
+         &pass->subpasses[create_info->subpass];
+
+      builder->subpass_raster_order_attachment_access =
+         subpass->raster_order_attachment_access;
+      builder->subpass_feedback_loop_color = subpass->feedback_loop_color;
+      builder->subpass_feedback_loop_ds = subpass->feedback_loop_ds;
+
+      builder->multiview_mask = subpass->multiview_mask;
+
+      /* variableMultisampleRate support */
+      builder->emit_msaa_state = (subpass->samples == 0) && !builder->rasterizer_discard;
+
+      if (!builder->rasterizer_discard) {
+         const uint32_t a = subpass->depth_stencil_attachment.attachment;
+         builder->depth_attachment_format = (a != VK_ATTACHMENT_UNUSED) ?
+            pass->attachments[a].format : VK_FORMAT_UNDEFINED;
+
+         assert(subpass->color_count == 0 ||
+                !create_info->pColorBlendState ||
+                subpass->color_count == create_info->pColorBlendState->attachmentCount);
+         builder->color_attachment_count = subpass->color_count;
+         for (uint32_t i = 0; i < subpass->color_count; i++) {
+            const uint32_t a = subpass->color_attachments[i].attachment;
+            if (a == VK_ATTACHMENT_UNUSED)
+               continue;
+
+            builder->color_attachment_formats[i] = pass->attachments[a].format;
+            builder->use_color_attachments = true;
+            builder->render_components |= 0xf << (i * 4);
+         }
+      }
+   }
+
 
    if (builder->rasterizer_discard) {
       builder->samples = VK_SAMPLE_COUNT_1_BIT;
@@ -3915,29 +3976,11 @@ tu_pipeline_builder_init_graphics(
       builder->samples = create_info->pMultisampleState->rasterizationSamples;
       builder->alpha_to_coverage = create_info->pMultisampleState->alphaToCoverageEnable;
 
-      const uint32_t a = subpass->depth_stencil_attachment.attachment;
-      builder->depth_attachment_format = (a != VK_ATTACHMENT_UNUSED) ?
-         pass->attachments[a].format : VK_FORMAT_UNDEFINED;
-
-      assert(subpass->color_count == 0 ||
-             !create_info->pColorBlendState ||
-             subpass->color_count == create_info->pColorBlendState->attachmentCount);
-      builder->color_attachment_count = subpass->color_count;
-      for (uint32_t i = 0; i < subpass->color_count; i++) {
-         const uint32_t a = subpass->color_attachments[i].attachment;
-         if (a == VK_ATTACHMENT_UNUSED)
-            continue;
-
-         builder->color_attachment_formats[i] = pass->attachments[a].format;
-         builder->use_color_attachments = true;
-         builder->render_components |= 0xf << (i * 4);
-      }
-
       if (tu_blend_state_is_dual_src(create_info->pColorBlendState)) {
          builder->color_attachment_count++;
          builder->use_dual_src_blend = true;
          /* dual source blending has an extra fs output in the 2nd slot */
-         if (subpass->color_attachments[0].attachment != VK_ATTACHMENT_UNUSED)
+         if (builder->color_attachment_formats[0] != VK_FORMAT_UNDEFINED)
             builder->render_components |= 0xf << 4;
       }
    }
