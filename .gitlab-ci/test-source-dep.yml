@@ -150,20 +150,48 @@
       when: never
     - !reference [.collabora-farm-rules, rules]
 
+# Rules for changes that impact either freedreno or turnip.
+.freedreno-common-rules:
+  rules:
+    - !reference [.freedreno-farm-rules, rules]
+    - changes: &freedreno_core_file_list
+      - src/freedreno/ci/**/*
+      - src/freedreno/common/**/*
+      - src/freedreno/drm/**/*
+      - src/freedreno/fdl/**/*
+      - src/freedreno/ir3/**/*
+      - src/freedreno/isa/**/*
+      - src/freedreno/registers/**/*
+      when: on_success
+    - when: never
+
 .freedreno-rules:
   stage: freedreno
   rules:
-    - !reference [.freedreno-farm-rules, rules]
-    - !reference [.vulkan-rules, rules]
     - !reference [.gl-rules, rules]
-    - changes: &freedreno_file_list
-      # Note: when https://gitlab.com/gitlab-org/gitlab/-/issues/198688
-      # is supported, we can change the src/freedreno/ rule to explicitly
-      # exclude tools
-      - src/freedreno/**/*
+    - !reference [.freedreno-common-rules, rules]
+    - changes: &freedreno_gl_file_list
+      - src/freedreno/ir2/**/*
       - src/gallium/drivers/freedreno/**/*
       - src/gallium/winsys/freedreno/**/*
       when: on_success
+    - when: never
+
+.turnip-rules:
+  stage: freedreno
+  rules:
+    - !reference [.vulkan-rules, rules]
+    - !reference [.freedreno-common-rules, rules]
+    - changes:
+      - src/freedreno/vulkan/**/*
+      when: on_success
+    - when: never
+
+# For piglit and skqp test jobs that run both GL and VK tests.
+.freedreno-turnip-rules:
+  rules:
+    - !reference [.freedreno-rules, rules]
+    - !reference [.turnip-rules, rules]
     - when: never
 
 .freedreno-rules-restricted:
@@ -196,7 +224,10 @@
         *vulkan_file_list
       when: manual
     - changes:
-        *freedreno_file_list
+        *freedreno_core_file_list
+      when: manual
+    - changes:
+        *freedreno_gl_file_list
       when: manual
     - when: never
 
@@ -478,11 +509,7 @@
   stage: layered-backends
   rules:
     - !reference [.zink-common-rules, rules]
-    - !reference [.vulkan-rules, rules]
-    - changes:
-      - src/freedreno/**/*
-      when: on_success
-    - when: never
+    - !reference [.turnip-rules, rules]
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually

@@ -127,7 +127,7 @@ a530-traces:
 a618_vk:
   extends:
     - .lava-test:arm64
-    - .freedreno-rules
+    - .turnip-rules
   parallel: 7
   variables:
     VK_DRIVER: freedreno
@@ -205,6 +205,7 @@ a630_skqp:
   extends:
     - .baremetal-skqp-test
     - .a630-test
+    - .freedreno-turnip-rules
   variables:
     # Possible skqp backends: gl, gles, unitTest and vk
     SKQP_BACKENDS: gl gles vk unitTest  # space separated values
@@ -214,6 +215,7 @@ a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
+    - .turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk
 
@@ -235,6 +237,7 @@ a630_vk_asan:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
     - .baremetal-arm64-asan-test
+    - .turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk-asan
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
@@ -244,6 +247,8 @@ a630_piglit:
   extends:
     - .piglit-test
     - .a630-test
+    # Note that piglit has GL+VK integration testing.
+    - .freedreno-turnip-rules
   variables:
     HWCI_START_XORG: 1
     PIGLIT_PROFILES: gpu
