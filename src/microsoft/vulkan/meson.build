@@ -67,6 +67,7 @@ if cc.get_argument_syntax() != 'msvc'
     '-Werror=unused-but-set-variable',
     '-Werror=unused-value',
     '-Werror=format',
+    '-Werror=switch',
   ]
 endif
 

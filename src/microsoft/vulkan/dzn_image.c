@@ -519,6 +519,8 @@ dzn_image_get_rtv_desc(const struct dzn_image *image,
       rtv_desc.Texture3D.WSize =
          range->layerCount == VK_REMAINING_ARRAY_LAYERS ? -1 : layer_count;
       break;
+   default:
+      unreachable("Invalid ViewDimension");
    }
 
    return rtv_desc;
@@ -529,6 +531,14 @@ dzn_image_layout_to_state(const struct dzn_image *image,
                           VkImageLayout layout,
                           VkImageAspectFlagBits aspect)
 {
+   /* Handle VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA separately to
+    * silence -Wswitch warnings (VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA is
+    * not part of the official VkImageLayout enum, it's a define in
+    * vk_render_pass.h)
+    */
+   if (layout == VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA)
+      return D3D12_RESOURCE_STATE_COMMON;
+
    D3D12_RESOURCE_STATES shaders_access =
       (image->desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) ?
       0 : D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
@@ -537,7 +547,6 @@ dzn_image_layout_to_state(const struct dzn_image *image,
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
    case VK_IMAGE_LAYOUT_UNDEFINED:
    case VK_IMAGE_LAYOUT_GENERAL:
-   case VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA:
       /* YOLO! */
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
       return D3D12_RESOURCE_STATE_COMMON;
