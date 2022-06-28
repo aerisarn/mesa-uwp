@@ -499,11 +499,7 @@
   stage: layered-backends
   rules:
     - !reference [.zink-common-rules, rules]
-    - !reference [.vulkan-rules, rules]
-    - changes:
-      - src/intel/**/*
-      when: on_success
-    - when: never
+    - !reference [.anv-rules, rules]
 
 .zink-turnip-rules:
   stage: layered-backends
