@@ -38,6 +38,8 @@ vulkan_runtime_files = files(
   'vk_debug_utils.h',
   'vk_deferred_operation.c',
   'vk_deferred_operation.h',
+  'vk_descriptor_set_layout.c',
+  'vk_descriptor_set_layout.h',
   'vk_descriptors.c',
   'vk_descriptors.h',
   'vk_device.c',
