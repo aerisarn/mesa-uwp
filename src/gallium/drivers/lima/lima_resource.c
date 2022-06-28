@@ -89,7 +89,8 @@ lima_resource_create_scanout(struct pipe_screen *pscreen,
 
 static uint32_t
 setup_miptree(struct lima_resource *res,
-              unsigned width0, unsigned height0)
+              unsigned width0, unsigned height0,
+              bool align_to_tile)
 {
    struct pipe_resource *pres = &res->base;
    unsigned level;
@@ -105,8 +106,13 @@ setup_miptree(struct lima_resource *res,
       unsigned aligned_width;
       unsigned aligned_height;
 
-      aligned_width = align(width, 16);
-      aligned_height = align(height, 16);
+      if (align_to_tile) {
+         aligned_width = align(width, 16);
+         aligned_height = align(height, 16);
+      } else {
+         aligned_width = width;
+         aligned_height = height;
+      }
 
       stride = util_format_get_stride(pres->format, aligned_width);
       actual_level_size = stride *
@@ -139,7 +145,8 @@ setup_miptree(struct lima_resource *res,
 static struct pipe_resource *
 lima_resource_create_bo(struct pipe_screen *pscreen,
                         const struct pipe_resource *templat,
-                        unsigned width, unsigned height)
+                        unsigned width, unsigned height,
+                        bool align_to_tile)
 {
    struct lima_screen *screen = lima_screen(pscreen);
    struct lima_resource *res;
@@ -155,7 +162,7 @@ lima_resource_create_bo(struct pipe_screen *pscreen,
 
    pres = &res->base;
 
-   uint32_t size = setup_miptree(res, width, height);
+   uint32_t size = setup_miptree(res, width, height, align_to_tile);
    size = align(size, LIMA_PAGE_SIZE);
 
    res->bo = lima_bo_create(screen, size, 0);
@@ -177,6 +184,7 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
    bool should_tile = lima_debug & LIMA_DEBUG_NO_TILING ? false : true;
    unsigned width, height;
    bool has_user_modifiers = true;
+   bool align_to_tile = false;
 
    if (count == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID)
       has_user_modifiers = false;
@@ -197,14 +205,23 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
                          modifiers, count))
       should_tile = false;
 
-   width = align(templat->width0, 16);
-   height = align(templat->height0, 16);
+   /* Don't align index, vertex or constant buffers */
+   if (templat->bind & (PIPE_BIND_INDEX_BUFFER |
+                        PIPE_BIND_VERTEX_BUFFER |
+                        PIPE_BIND_CONSTANT_BUFFER)) {
+      width = templat->width0;
+      height = templat->height0;
+   } else {
+      width = align(templat->width0, 16);
+      height = align(templat->height0, 16);
+      align_to_tile = true;
+   }
 
    struct pipe_resource *pres;
    if (screen->ro && (templat->bind & PIPE_BIND_SCANOUT))
       pres = lima_resource_create_scanout(pscreen, templat, width, height);
    else
-      pres = lima_resource_create_bo(pscreen, templat, width, height);
+      pres = lima_resource_create_bo(pscreen, templat, width, height, align_to_tile);
 
    if (pres) {
       struct lima_resource *res = lima_resource(pres);
