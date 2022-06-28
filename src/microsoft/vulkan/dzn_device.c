@@ -1857,22 +1857,6 @@ dzn_device_create_sync_for_memory(struct vk_device *device,
                          0, 1, sync_out);
 }
 
-static void
-dzn_device_ref_pipeline_layout(struct vk_device *dev, VkPipelineLayout layout)
-{
-   VK_FROM_HANDLE(dzn_pipeline_layout, playout, layout);
-
-   dzn_pipeline_layout_ref(playout);
-}
-
-static void
-dzn_device_unref_pipeline_layout(struct vk_device *dev, VkPipelineLayout layout)
-{
-   VK_FROM_HANDLE(dzn_pipeline_layout, playout, layout);
-
-   dzn_pipeline_layout_unref(playout);
-}
-
 static VkResult
 dzn_device_query_init(struct dzn_device *device)
 {
@@ -2008,8 +1992,6 @@ dzn_device_create(struct dzn_physical_device *pdev,
     * whole struct.
     */
    device->vk.command_dispatch_table = &device->cmd_dispatch;
-   device->vk.ref_pipeline_layout = dzn_device_ref_pipeline_layout;
-   device->vk.unref_pipeline_layout = dzn_device_unref_pipeline_layout;
    device->vk.create_sync_for_memory = dzn_device_create_sync_for_memory;
    device->vk.check_status = dzn_device_check_status;
 

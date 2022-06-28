@@ -169,22 +169,6 @@ struct vk_device {
                                       bool signal_memory,
                                       struct vk_sync **sync_out);
 
-   /** Increments the reference count on a pipeline layout
-    *
-    * This is required for vk_enqueue_CmdBindDescriptorSets() to avoid
-    * use-after-free problems with pipeline layouts.  If you're not using
-    * the command queue, you can ignore this.
-    */
-   void (*ref_pipeline_layout)(struct vk_device *device,
-                               VkPipelineLayout layout);
-
-   /** Decrements the reference count on a pipeline layout
-    *
-    * See ref_pipeline_layout above.
-    */
-   void (*unref_pipeline_layout)(struct vk_device *device,
-                                 VkPipelineLayout layout);
-
    /* Set by vk_device_set_drm_fd() */
    int drm_fd;
 

@@ -1493,22 +1493,6 @@ lvp_queue_finish(struct lvp_queue *queue)
    queue->ctx->destroy(queue->ctx);
 }
 
-static void
-ref_pipeline_layout(struct vk_device *vk_device, VkPipelineLayout _layout)
-{
-   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, _layout);
-
-   vk_pipeline_layout_ref(&layout->vk);
-}
-
-static void
-unref_pipeline_layout(struct vk_device *device, VkPipelineLayout _layout)
-{
-   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, _layout);
-
-   vk_pipeline_layout_unref(device, &layout->vk);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    VkPhysicalDevice                            physicalDevice,
    const VkDeviceCreateInfo*                   pCreateInfo,
@@ -1552,9 +1536,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
 
    device->instance = (struct lvp_instance *)physical_device->vk.instance;
    device->physical_device = physical_device;
-
-   device->vk.ref_pipeline_layout = ref_pipeline_layout;
-   device->vk.unref_pipeline_layout = unref_pipeline_layout;
 
    device->pscreen = physical_device->pscreen;
 

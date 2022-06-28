@@ -932,24 +932,6 @@ panvk_queue_finish(struct panvk_queue *queue)
    vk_queue_finish(&queue->vk);
 }
 
-static void
-panvk_ref_pipeline_layout(struct vk_device *dev,
-                          VkPipelineLayout layout)
-{
-   VK_FROM_HANDLE(vk_pipeline_layout, playout, layout);
-
-   vk_pipeline_layout_ref(playout);
-}
-
-static void
-panvk_unref_pipeline_layout(struct vk_device *dev,
-                            VkPipelineLayout layout)
-{
-   VK_FROM_HANDLE(vk_pipeline_layout, playout, layout);
-
-   vk_pipeline_layout_unref(dev, playout);
-}
-
 VkResult
 panvk_CreateDevice(VkPhysicalDevice physicalDevice,
                    const VkDeviceCreateInfo *pCreateInfo,
@@ -1019,8 +1001,6 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
     * whole struct.
     */
    device->vk.command_dispatch_table = &device->cmd_dispatch;
-   device->vk.ref_pipeline_layout = panvk_ref_pipeline_layout;
-   device->vk.unref_pipeline_layout = panvk_unref_pipeline_layout;
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
