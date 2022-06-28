@@ -882,6 +882,10 @@ struct dzn_image {
    VkDeviceSize mem_offset;
 };
 
+void
+dzn_image_align_extent(const struct dzn_image *image,
+                       VkExtent3D *extent);
+
 DXGI_FORMAT
 dzn_image_get_dxgi_format(VkFormat format,
                           VkImageUsageFlags usage,

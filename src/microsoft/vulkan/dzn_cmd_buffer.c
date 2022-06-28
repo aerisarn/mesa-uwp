@@ -1608,15 +1608,21 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
    ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
-   const VkBufferImageCopy2 *region = &info->pRegions[r];
+   VkBufferImageCopy2 region = info->pRegions[r];
    enum pipe_format pfmt = vk_format_to_pipe_format(dst_image->vk.format);
    uint32_t blkh = util_format_get_blockheight(pfmt);
    uint32_t blkd = util_format_get_blockdepth(pfmt);
 
+   /* D3D12 wants block aligned offsets/extent, but vulkan allows the extent
+    * to not be block aligned if it's reaching the image boundary, offsets still
+    * have to be aligned. Align the image extent to make D3D12 happy.
+    */
+   dzn_image_align_extent(dst_image, &region.imageExtent);
+
    D3D12_TEXTURE_COPY_LOCATION dst_img_loc =
-      dzn_image_get_copy_loc(dst_image, &region->imageSubresource, aspect, l);
+      dzn_image_get_copy_loc(dst_image, &region.imageSubresource, aspect, l);
    D3D12_TEXTURE_COPY_LOCATION src_buf_loc =
-      dzn_buffer_get_copy_loc(src_buffer, dst_image->vk.format, region, aspect, l);
+      dzn_buffer_get_copy_loc(src_buffer, dst_image->vk.format, &region, aspect, l);
 
    if (dzn_buffer_supports_region_copy(&src_buf_loc)) {
       /* RowPitch and Offset are properly aligned, we can copy
@@ -1626,15 +1632,15 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
          .left = 0,
          .top = 0,
          .front = 0,
-         .right = region->imageExtent.width,
-         .bottom = region->imageExtent.height,
-         .back = region->imageExtent.depth,
+         .right = region.imageExtent.width,
+         .bottom = region.imageExtent.height,
+         .back = region.imageExtent.depth,
       };
 
       ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist, &dst_img_loc,
-                                                   region->imageOffset.x,
-                                                   region->imageOffset.y,
-                                                   region->imageOffset.z,
+                                                   region.imageOffset.x,
+                                                   region.imageOffset.y,
+                                                   region.imageOffset.z,
                                                    &src_buf_loc, &src_box);
       return;
    }
@@ -1647,22 +1653,22 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
       .back = blkd,
    };
 
-   for (uint32_t z = 0; z < region->imageExtent.depth; z += blkd) {
-      for (uint32_t y = 0; y < region->imageExtent.height; y += blkh) {
+   for (uint32_t z = 0; z < region.imageExtent.depth; z += blkd) {
+      for (uint32_t y = 0; y < region.imageExtent.height; y += blkh) {
          uint32_t src_x;
 
          D3D12_TEXTURE_COPY_LOCATION src_buf_line_loc =
             dzn_buffer_get_line_copy_loc(src_buffer, dst_image->vk.format,
-                                         region, &src_buf_loc,
+                                         &region, &src_buf_loc,
                                          y, z, &src_x);
 
          src_box.left = src_x;
-         src_box.right = src_x + region->imageExtent.width;
+         src_box.right = src_x + region.imageExtent.width;
          ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist,
                                                       &dst_img_loc,
-                                                      region->imageOffset.x,
-                                                      region->imageOffset.y + y,
-                                                      region->imageOffset.z + z,
+                                                      region.imageOffset.x,
+                                                      region.imageOffset.y + y,
+                                                      region.imageOffset.z + z,
                                                       &src_buf_line_loc,
                                                       &src_box);
       }
@@ -1683,27 +1689,33 @@ dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
    ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
-   const VkBufferImageCopy2 *region = &info->pRegions[r];
+   VkBufferImageCopy2 region = info->pRegions[r];
    enum pipe_format pfmt = vk_format_to_pipe_format(src_image->vk.format);
    uint32_t blkh = util_format_get_blockheight(pfmt);
    uint32_t blkd = util_format_get_blockdepth(pfmt);
 
+   /* D3D12 wants block aligned offsets/extent, but vulkan allows the extent
+    * to not be block aligned if it's reaching the image boundary, offsets still
+    * have to be aligned. Align the image extent to make D3D12 happy.
+    */
+   dzn_image_align_extent(src_image, &region.imageExtent);
+
    D3D12_TEXTURE_COPY_LOCATION src_img_loc =
-      dzn_image_get_copy_loc(src_image, &region->imageSubresource, aspect, l);
+      dzn_image_get_copy_loc(src_image, &region.imageSubresource, aspect, l);
    D3D12_TEXTURE_COPY_LOCATION dst_buf_loc =
-      dzn_buffer_get_copy_loc(dst_buffer, src_image->vk.format, region, aspect, l);
+      dzn_buffer_get_copy_loc(dst_buffer, src_image->vk.format, &region, aspect, l);
 
    if (dzn_buffer_supports_region_copy(&dst_buf_loc)) {
       /* RowPitch and Offset are properly aligned on 256 bytes, we can copy
        * the whole thing in one call.
        */
       D3D12_BOX src_box = {
-         .left = (UINT)region->imageOffset.x,
-         .top = (UINT)region->imageOffset.y,
-         .front = (UINT)region->imageOffset.z,
-         .right = (UINT)(region->imageOffset.x + region->imageExtent.width),
-         .bottom = (UINT)(region->imageOffset.y + region->imageExtent.height),
-         .back = (UINT)(region->imageOffset.z + region->imageExtent.depth),
+         .left = (UINT)region.imageOffset.x,
+         .top = (UINT)region.imageOffset.y,
+         .front = (UINT)region.imageOffset.z,
+         .right = (UINT)(region.imageOffset.x + region.imageExtent.width),
+         .bottom = (UINT)(region.imageOffset.y + region.imageExtent.height),
+         .back = (UINT)(region.imageOffset.z + region.imageExtent.depth),
       };
 
       ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist, &dst_buf_loc,
@@ -1713,24 +1725,24 @@ dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
    }
 
    D3D12_BOX src_box = {
-      .left = (UINT)region->imageOffset.x,
-      .right = (UINT)(region->imageOffset.x + region->imageExtent.width),
+      .left = (UINT)region.imageOffset.x,
+      .right = (UINT)(region.imageOffset.x + region.imageExtent.width),
    };
 
    /* Copy line-by-line if things are not properly aligned. */
-   for (uint32_t z = 0; z < region->imageExtent.depth; z += blkd) {
-      src_box.front = region->imageOffset.z + z;
+   for (uint32_t z = 0; z < region.imageExtent.depth; z += blkd) {
+      src_box.front = region.imageOffset.z + z;
       src_box.back = src_box.front + blkd;
 
-      for (uint32_t y = 0; y < region->imageExtent.height; y += blkh) {
+      for (uint32_t y = 0; y < region.imageExtent.height; y += blkh) {
          uint32_t dst_x;
 
          D3D12_TEXTURE_COPY_LOCATION dst_buf_line_loc =
             dzn_buffer_get_line_copy_loc(dst_buffer, src_image->vk.format,
-                                         region, &dst_buf_loc,
+                                         &region, &dst_buf_loc,
                                          y, z, &dst_x);
 
-         src_box.top = region->imageOffset.y + y;
+         src_box.top = region.imageOffset.y + y;
          src_box.bottom = src_box.top + blkh;
 
          ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist,
@@ -1758,9 +1770,11 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
-   const VkImageCopy2 *region = &info->pRegions[r];
-   const VkImageSubresourceLayers *src_subres = &region->srcSubresource;
-   const VkImageSubresourceLayers *dst_subres = &region->dstSubresource;
+   VkImageCopy2 region = info->pRegions[r];
+   dzn_image_align_extent(src, &region.extent);
+
+   const VkImageSubresourceLayers *src_subres = &region.srcSubresource;
+   const VkImageSubresourceLayers *dst_subres = &region.dstSubresource;
    VkFormat src_format =
       dzn_image_get_plane_format(src->vk.format, aspect);
    VkFormat dst_format =
@@ -1774,8 +1788,8 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    uint32_t dst_blkw = util_format_get_blockwidth(dst_pfmt);
    uint32_t dst_blkh = util_format_get_blockheight(dst_pfmt);
    uint32_t dst_blkd = util_format_get_blockdepth(dst_pfmt);
-   uint32_t dst_z = region->dstOffset.z, src_z = region->srcOffset.z;
-   uint32_t depth = region->extent.depth;
+   uint32_t dst_z = region.dstOffset.z, src_z = region.srcOffset.z;
+   uint32_t depth = region.extent.depth;
    uint32_t dst_l = l, src_l = l;
 
    assert(src_subres->aspectMask == dst_subres->aspectMask);
@@ -1800,18 +1814,18 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    D3D12_TEXTURE_COPY_LOCATION src_loc = dzn_image_get_copy_loc(src, src_subres, aspect, src_l);
 
    D3D12_BOX src_box = {
-      .left = (UINT)MAX2(region->srcOffset.x, 0),
-      .top = (UINT)MAX2(region->srcOffset.y, 0),
+      .left = (UINT)MAX2(region.srcOffset.x, 0),
+      .top = (UINT)MAX2(region.srcOffset.y, 0),
       .front = (UINT)MAX2(src_z, 0),
-      .right = (UINT)region->srcOffset.x + region->extent.width,
-      .bottom = (UINT)region->srcOffset.y + region->extent.height,
+      .right = (UINT)region.srcOffset.x + region.extent.width,
+      .bottom = (UINT)region.srcOffset.y + region.extent.height,
       .back = (UINT)src_z + depth,
    };
 
    if (!tmp_loc->pResource) {
       ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist, &dst_loc,
-                                                   region->dstOffset.x,
-                                                   region->dstOffset.y,
+                                                   region.dstOffset.x,
+                                                   region.dstOffset.y,
                                                    dst_z, &src_loc,
                                                    &src_box);
       return;
@@ -1819,8 +1833,8 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
 
    tmp_desc->Format =
       dzn_image_get_placed_footprint_format(src->vk.format, aspect);
-   tmp_desc->Width = region->extent.width;
-   tmp_desc->Height = region->extent.height;
+   tmp_desc->Width = region.extent.width;
+   tmp_desc->Height = region.extent.height;
 
    ID3D12Device1_GetCopyableFootprints(dev, tmp_desc,
                                        0, 1, 0,
@@ -1848,9 +1862,9 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    tmp_desc->Format =
       dzn_image_get_placed_footprint_format(dst->vk.format, aspect);
    if (src_blkw != dst_blkw)
-      tmp_desc->Width = DIV_ROUND_UP(region->extent.width, src_blkw) * dst_blkw;
+      tmp_desc->Width = DIV_ROUND_UP(region.extent.width, src_blkw) * dst_blkw;
    if (src_blkh != dst_blkh)
-      tmp_desc->Height = DIV_ROUND_UP(region->extent.height, src_blkh) * dst_blkh;
+      tmp_desc->Height = DIV_ROUND_UP(region.extent.height, src_blkh) * dst_blkh;
 
    ID3D12Device1_GetCopyableFootprints(device->dev, tmp_desc,
                                        0, 1, 0,
@@ -1861,7 +1875,7 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
       tmp_loc->PlacedFootprint.Footprint.Depth =
          DIV_ROUND_UP(depth, src_blkd) * dst_blkd;
    } else {
-      tmp_loc->PlacedFootprint.Footprint.Depth = region->extent.depth;
+      tmp_loc->PlacedFootprint.Footprint.Depth = region.extent.depth;
    }
 
    D3D12_BOX tmp_box = {
@@ -1874,8 +1888,8 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    };
 
    ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist, &dst_loc,
-                                                region->dstOffset.x,
-                                                region->dstOffset.y,
+                                                region.dstOffset.x,
+                                                region.dstOffset.y,
                                                 dst_z,
                                                 tmp_loc, &tmp_box);
 }

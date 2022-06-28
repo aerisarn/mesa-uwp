@@ -28,6 +28,24 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
+void
+dzn_image_align_extent(const struct dzn_image *image,
+                       VkExtent3D *extent)
+{
+   enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);
+   uint32_t blkw = util_format_get_blockwidth(pfmt);
+   uint32_t blkh = util_format_get_blockheight(pfmt);
+   uint32_t blkd = util_format_get_blockdepth(pfmt);
+
+   assert(util_is_power_of_two_nonzero(blkw) &&
+          util_is_power_of_two_nonzero(blkh) &&
+          util_is_power_of_two_nonzero(blkh));
+
+   extent->width = ALIGN_POT(extent->width, blkw);
+   extent->height = ALIGN_POT(extent->height, blkh);
+   extent->depth = ALIGN_POT(extent->depth, blkd);
+}
+
 static void
 dzn_image_destroy(struct dzn_image *image,
                   const VkAllocationCallbacks *pAllocator)
