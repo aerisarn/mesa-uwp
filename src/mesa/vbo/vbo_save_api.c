@@ -846,6 +846,7 @@ compile_vertex_list(struct gl_context *ctx)
                            vertex_to_index ? temp_vertices_buffer : save->vertex_store->buffer_in_ram,
                            node->cold->ib.obj);
    save->current_bo_bytes_used += total_vert_count * save->vertex_size * sizeof(fi_type);
+   node->cold->bo_bytes_used = save->current_bo_bytes_used;
 
   if (vertex_to_index) {
       _mesa_hash_table_destroy(vertex_to_index, _free_entry);
