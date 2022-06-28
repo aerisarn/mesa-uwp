@@ -1252,7 +1252,7 @@ static bool
 layouts_equal(const struct lvp_descriptor_set_layout *a, const struct lvp_descriptor_set_layout *b)
 {
    const uint8_t *pa = (const uint8_t*)a, *pb = (const uint8_t*)b;
-   uint32_t hash_start_offset = offsetof(struct lvp_descriptor_set_layout, ref_cnt) + sizeof(uint32_t);
+   uint32_t hash_start_offset = sizeof(struct vk_descriptor_set_layout);
    uint32_t binding_offset = offsetof(struct lvp_descriptor_set_layout, binding);
    /* base equal */
    if (memcmp(pa + hash_start_offset, pb + hash_start_offset, binding_offset - hash_start_offset))

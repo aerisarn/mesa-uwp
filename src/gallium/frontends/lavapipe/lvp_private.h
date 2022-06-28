@@ -67,6 +67,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_cmd_queue.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
+#include "vk_descriptor_set_layout.h"
 #include "vk_queue.h"
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
@@ -286,10 +287,8 @@ struct lvp_descriptor_set_binding_layout {
 };
 
 struct lvp_descriptor_set_layout {
-   struct vk_object_base base;
+   struct vk_descriptor_set_layout vk;
 
-   /* Descriptor set layouts can be destroyed at almost any time */
-   uint32_t ref_cnt;
    /* add new members after this */
 
    uint32_t immutable_sampler_count;
@@ -320,27 +319,6 @@ struct lvp_descriptor_set_layout {
    /* Bindings in this descriptor set */
    struct lvp_descriptor_set_binding_layout binding[0];
 };
-
-void lvp_descriptor_set_layout_destroy(struct lvp_device *device,
-                                       struct lvp_descriptor_set_layout *layout);
-
-static inline void
-lvp_descriptor_set_layout_ref(struct lvp_descriptor_set_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   p_atomic_inc(&layout->ref_cnt);
-}
-
-static inline void
-lvp_descriptor_set_layout_unref(struct lvp_device *device,
-                                struct lvp_descriptor_set_layout *layout)
-{
-   if (!layout)
-      return;
-   assert(layout->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&layout->ref_cnt))
-      lvp_descriptor_set_layout_destroy(device, layout);
-}
 
 union lvp_descriptor_info {
    struct {
@@ -579,7 +557,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_pool, base, VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set, base, VkDescriptorSet,
                                VK_OBJECT_TYPE_DESCRIPTOR_SET)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set_layout, base, VkDescriptorSetLayout,
+VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set_layout, vk.base, VkDescriptorSetLayout,
                                VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_update_template, base, VkDescriptorUpdateTemplate,
                                VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)

@@ -62,14 +62,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
                  num_bindings * sizeof(set_layout->binding[0]) +
                  immutable_sampler_count * sizeof(struct lvp_sampler *);
 
-   set_layout = vk_zalloc(&device->vk.alloc, size, 8,
-                          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   set_layout = vk_descriptor_set_layout_zalloc(&device->vk, size);
    if (!set_layout)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &set_layout->base,
-                       VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
-   set_layout->ref_cnt = 1;
    set_layout->immutable_sampler_count = immutable_sampler_count;
    /* We just allocate all the samplers at the end of the struct */
    struct lvp_sampler **samplers =
@@ -84,8 +80,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
                                                pCreateInfo->bindingCount,
                                                &bindings);
    if (result != VK_SUCCESS) {
-      vk_object_base_finish(&set_layout->base);
-      vk_free(&device->vk.alloc, set_layout);
+      vk_descriptor_set_layout_unref(&device->vk, &set_layout->vk);
       return vk_error(device, result);
    }
 
@@ -224,29 +219,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    return VK_SUCCESS;
 }
 
-void
-lvp_descriptor_set_layout_destroy(struct lvp_device *device,
-                                  struct lvp_descriptor_set_layout *layout)
-{
-   assert(layout->ref_cnt == 0);
-   vk_object_base_finish(&layout->base);
-   vk_free(&device->vk.alloc, layout);
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_DestroyDescriptorSetLayout(
-    VkDevice                                    _device,
-    VkDescriptorSetLayout                       _set_layout,
-    const VkAllocationCallbacks*                pAllocator)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_descriptor_set_layout, set_layout, _set_layout);
-
-   if (!_set_layout)
-     return;
-
-   lvp_descriptor_set_layout_unref(device, set_layout);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
     VkDevice                                    _device,
     const VkPipelineLayoutCreateInfo*           pCreateInfo,
@@ -286,7 +258,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
          }
          layout->stage[i].uniform_block_count += set_layout->stage[i].uniform_block_count;
       }
-      lvp_descriptor_set_layout_ref(set_layout);
+      vk_descriptor_set_layout_ref(&set_layout->vk);
    }
 
 #ifndef NDEBUG
@@ -341,7 +313,7 @@ void lvp_pipeline_layout_destroy(struct lvp_device *device,
    assert(pipeline_layout->ref_cnt == 0);
 
    for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
-      lvp_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
+      vk_descriptor_set_layout_unref(&device->vk, &pipeline_layout->set[i].layout->vk);
 
    vk_object_base_finish(&pipeline_layout->base);
    vk_free(&device->vk.alloc, pipeline_layout);
@@ -384,7 +356,7 @@ lvp_descriptor_set_create(struct lvp_device *device,
    vk_object_base_init(&device->vk, &set->base,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET);
    set->layout = layout;
-   lvp_descriptor_set_layout_ref(layout);
+   vk_descriptor_set_layout_ref(&layout->vk);
 
    /* Go through and fill out immutable samplers if we have any */
    struct lvp_descriptor *desc = set->descriptors;
@@ -412,7 +384,7 @@ void
 lvp_descriptor_set_destroy(struct lvp_device *device,
                            struct lvp_descriptor_set *set)
 {
-   lvp_descriptor_set_layout_unref(device, set->layout);
+   vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
    vk_object_base_finish(&set->base);
    vk_free(&device->vk.alloc, set);
 }
@@ -629,7 +601,7 @@ static void lvp_reset_descriptor_pool(struct lvp_device *device,
 {
    struct lvp_descriptor_set *set, *tmp;
    LIST_FOR_EACH_ENTRY_SAFE(set, tmp, &pool->sets, link) {
-      lvp_descriptor_set_layout_unref(device, set->layout);
+      vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
       list_del(&set->link);
       vk_free(&device->vk.alloc, set);
    }
