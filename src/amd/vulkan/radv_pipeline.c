@@ -4917,6 +4917,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                     radv_use_llvm_for_stage(device, i));
          radv_optimize_nir_algebraic(
             stages[i].nir, io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE || i == MESA_SHADER_TASK);
+         NIR_PASS(_, stages[i].nir, nir_lower_alu_width, opt_vectorize_callback, device);
 
          if (stages[i].nir->info.bit_sizes_int & (8 | 16)) {
             if (device->physical_device->rad_info.gfx_level >= GFX8) {
