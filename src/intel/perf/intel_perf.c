@@ -1128,7 +1128,8 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
                            result->accumulator + query->a_offset + 32 + i);
       }
 
-      if (can_use_mi_rpc_bc_counters(&query->perf->devinfo)) {
+      if (can_use_mi_rpc_bc_counters(&query->perf->devinfo) ||
+          !query->perf->sys_vars.query_mode) {
          /* 8x 32bit B counters */
          for (i = 0; i < 8; i++) {
             accumulate_uint32(start + 48 + i, end + 48 + i,
