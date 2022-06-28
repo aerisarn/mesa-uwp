@@ -588,8 +588,7 @@
       when: on_success
     - when: never
 
-.zink-rules:
-  stage: layered-backends
+.zink-common-rules:
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     - changes:
@@ -599,10 +598,16 @@
         *gallium_core_file_list
       when: on_success
     - changes:
-        *lavapipe_file_list
-      when: on_success
-    - changes: &zink_file_list
       - src/gallium/drivers/zink/**/*
+      when: on_success
+
+.zink-rules:
+  stage: layered-backends
+  rules:
+    - !reference [.no_scheduled_pipelines-rules, rules]
+    - !reference [.zink-common-rules, rules]
+    - changes:
+        *lavapipe_file_list
       when: on_success
     - when: never
 
@@ -610,20 +615,12 @@
   stage: layered-backends
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
+    - !reference [.zink-common-rules, rules]
     - changes:
         *vulkan_file_list
       when: on_success
     - changes:
       - src/intel/**/*
-      when: on_success
-    - changes: &zink_file_list
-      - src/gallium/drivers/zink/**/*
       when: on_success
     - when: never
 
@@ -631,17 +628,9 @@
   stage: layered-backends
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
+    - !reference [.zink-common-rules, rules]
     - changes:
         *vulkan_file_list
-      when: on_success
-    - changes:
-        *zink_file_list
       when: on_success
     - changes:
       - src/freedreno/**/*
@@ -655,12 +644,7 @@
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
     - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
+    - !reference [.zink-common-rules, rules]
     - changes:
         *softpipe_file_list
       when: on_success
@@ -679,9 +663,6 @@
       when: on_success
     - changes:
       - src/microsoft/**/*
-      when: on_success
-    - changes:
-        *zink_file_list
       when: on_success
     - changes:
         *radv_file_list
@@ -763,12 +744,7 @@
 .ppc64el-rules:
    rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
+    - !reference [.zink-common-rules, rules]
     - changes:
         *softpipe_file_list
       when: on_success
@@ -785,9 +761,6 @@
         *radeonsi_file_list
       when: on_success
     - changes:
-        *zink_file_list
-      when: on_success
-    - changes:
         *virgl_file_list
       when: on_success
     - changes:
@@ -799,12 +772,7 @@
 .s390x-rules:
    rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
-        *mesa_core_file_list
-      when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
+    - !reference [.zink-common-rules, rules]
     - changes:
         *softpipe_file_list
       when: on_success
@@ -813,8 +781,5 @@
       when: on_success
     - changes:
         *lavapipe_file_list
-      when: on_success
-    - changes:
-        *zink_file_list
       when: on_success
     - when: never
