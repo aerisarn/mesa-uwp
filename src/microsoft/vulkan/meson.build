@@ -61,6 +61,13 @@ if with_platform_windows
   dzn_flags += '-DVK_USE_PLATFORM_WIN32_KHR'
 endif
 
+if cc.get_argument_syntax() != 'msvc'
+  dzn_flags += [
+    '-Werror=unused-variable',
+    '-Werror=unused-but-set-variable',
+  ]
+endif
+
 libvulkan_dzn = shared_library(
   'vulkan_dzn',
   [libdzn_files, dzn_entrypoints, sha1_h],

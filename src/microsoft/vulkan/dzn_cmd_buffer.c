@@ -202,7 +202,6 @@ dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf
                                                    uint32_t flags)
 {
    uint32_t first_barrier = 0, barrier_count = 0;
-   bool is_undefined = old_layout == VK_IMAGE_LAYOUT_UNDEFINED;
    VkResult ret = VK_SUCCESS;
 
    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED)
@@ -258,7 +257,6 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
       return;
 
    struct dzn_cmd_buffer *cmdbuf = container_of(cbuf, struct dzn_cmd_buffer, vk);
-   struct dzn_device *device = container_of(cbuf->base.device, struct dzn_device, vk);
 
    if (cmdbuf->cmdlist)
       ID3D12GraphicsCommandList1_Release(cmdbuf->cmdlist);
@@ -512,7 +510,6 @@ dzn_AllocateCommandBuffers(VkDevice device,
                            const VkCommandBufferAllocateInfo *pAllocateInfo,
                            VkCommandBuffer *pCommandBuffers)
 {
-   VK_FROM_HANDLE(vk_command_pool, pool, pAllocateInfo->commandPool);
    VK_FROM_HANDLE(dzn_device, dev, device);
    VkResult result = VK_SUCCESS;
    uint32_t i;
@@ -628,8 +625,6 @@ dzn_cmd_buffer_dynbitset_test(struct util_dynarray *array, uint32_t bit)
 static VkResult
 dzn_cmd_buffer_dynbitset_set(struct dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-
    VkResult result = dzn_cmd_buffer_dynbitset_reserve(cmdbuf, array, bit);
    if (result != VK_SUCCESS)
       return result;
@@ -641,8 +636,6 @@ dzn_cmd_buffer_dynbitset_set(struct dzn_cmd_buffer *cmdbuf, struct util_dynarray
 static void
 dzn_cmd_buffer_dynbitset_clear(struct dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-
    if (bit >= util_dynarray_num_elements(array, BITSET_WORD) * BITSET_WORDBITS)
       return;
 
@@ -654,8 +647,6 @@ dzn_cmd_buffer_dynbitset_set_range(struct dzn_cmd_buffer *cmdbuf,
                                    struct util_dynarray *array,
                                    uint32_t bit, uint32_t count)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-
    VkResult result = dzn_cmd_buffer_dynbitset_reserve(cmdbuf, array, bit + count - 1);
    if (result != VK_SUCCESS)
       return result;
@@ -669,7 +660,6 @@ dzn_cmd_buffer_dynbitset_clear_range(struct dzn_cmd_buffer *cmdbuf,
                                      struct util_dynarray *array,
                                      uint32_t bit, uint32_t count)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    uint32_t nbits = util_dynarray_num_elements(array, BITSET_WORD) * BITSET_WORDBITS;
 
    if (!nbits)
@@ -1180,9 +1170,6 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       },
    };
 
-   D3D12_RESOURCE_STATES dst_state =
-      dzn_image_layout_to_state(image, layout, VK_IMAGE_ASPECT_COLOR_BIT);
-
    dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
                                             D3D12_RESOURCE_STATE_GENERIC_READ,
                                             D3D12_RESOURCE_STATE_COPY_SOURCE,
@@ -1317,9 +1304,6 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
          .Offset = 0,
       },
    };
-
-   D3D12_RESOURCE_STATES dst_state =
-      dzn_image_layout_to_state(image, layout, VK_IMAGE_ASPECT_COLOR_BIT);
 
    dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
                                             D3D12_RESOURCE_STATE_GENERIC_READ,
@@ -1523,7 +1507,6 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
 
    for (uint32_t r = 0; r < range_count; r++) {
       const VkImageSubresourceRange *range = &ranges[r];
-      uint32_t layer_count = dzn_get_layer_count(image, range);
       uint32_t level_count = dzn_get_level_count(image, range);
 
       dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
@@ -1562,7 +1545,6 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
 
    for (uint32_t r = 0; r < range_count; r++) {
       const VkImageSubresourceRange *range = &ranges[r];
-      uint32_t layer_count = dzn_get_layer_count(image, range);
       uint32_t level_count = dzn_get_level_count(image, range);
 
       D3D12_CLEAR_FLAGS flags = (D3D12_CLEAR_FLAGS)0;
@@ -1601,11 +1583,9 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
                                    VkImageAspectFlagBits aspect,
                                    uint32_t l)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_buffer, src_buffer, info->srcBuffer);
    VK_FROM_HANDLE(dzn_image, dst_image, info->dstImage);
 
-   ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    VkBufferImageCopy2 region = info->pRegions[r];
@@ -1682,11 +1662,9 @@ dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
                                    VkImageAspectFlagBits aspect,
                                    uint32_t l)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src_image, info->srcImage);
    VK_FROM_HANDLE(dzn_buffer, dst_buffer, info->dstBuffer);
 
-   ID3D12Device2 *dev = device->dev;
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    VkBufferImageCopy2 region = info->pRegions[r];
@@ -2136,7 +2114,6 @@ dzn_cmd_buffer_blit_region(struct dzn_cmd_buffer *cmdbuf,
                            uint32_t *heap_slot,
                            uint32_t r)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -2212,11 +2189,9 @@ dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
                               uint32_t *heap_slot,
                               uint32_t r)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
-   ID3D12Device2 *dev = device->dev;
    const VkImageResolve2 *region = &info->pRegions[r];
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
@@ -2330,7 +2305,6 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
       struct dzn_descriptor_heap_pool *pool =
          type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ?
          &cmdbuf->cbv_srv_uav_pool : &cmdbuf->sampler_pool;
-      uint32_t dst_offset = 0;
       struct dzn_descriptor_heap *dst_heap = NULL;
       uint32_t dst_heap_offset = 0;
 
@@ -2458,7 +2432,6 @@ dzn_cmd_buffer_update_scissors(struct dzn_cmd_buffer *cmdbuf)
    }
 
    D3D12_RECT scissors[MAX_SCISSOR];
-   uint32_t scissor_count = pipeline->scissor.count;
 
    memcpy(scissors, cmdbuf->state.scissors, sizeof(D3D12_RECT) * pipeline->scissor.count);
    for (uint32_t i = 0; i < pipeline->scissor.count; i++) {
@@ -2474,8 +2447,6 @@ dzn_cmd_buffer_update_scissors(struct dzn_cmd_buffer *cmdbuf)
 static void
 dzn_cmd_buffer_update_vbviews(struct dzn_cmd_buffer *cmdbuf)
 {
-   const struct dzn_graphics_pipeline *pipeline =
-      (const struct dzn_graphics_pipeline *)cmdbuf->state.pipeline;
    unsigned start, end;
 
    BITSET_FOREACH_RANGE(start, end, cmdbuf->state.vb.dirty, MAX_VBS)
@@ -2554,7 +2525,6 @@ dzn_cmd_buffer_update_depth_bounds(struct dzn_cmd_buffer *cmdbuf)
 static VkResult
 dzn_cmd_buffer_triangle_fan_create_index(struct dzn_cmd_buffer *cmdbuf, uint32_t *vertex_count)
 {
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    uint8_t index_size = *vertex_count <= 0xffff ? 2 : 4;
    uint32_t triangle_count = MAX2(*vertex_count, 2) - 2;
 
@@ -2636,9 +2606,6 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
       dzn_index_type_from_dxgi_format(cmdbuf->state.ib.view.Format, false);
    const struct dzn_meta_triangle_fan_rewrite_index *rewrite_index =
       &device->triangle_fan[index_type];
-
-   const struct dzn_pipeline *compute_pipeline =
-      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].pipeline;
 
    struct dzn_triangle_fan_rewrite_index_params params = {
       .first_index = *first_index,
@@ -2740,7 +2707,6 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    struct dzn_graphics_pipeline *pipeline = (struct dzn_graphics_pipeline *)
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
-   bool triangle_fan = pipeline->ia.triangle_fan;
    uint32_t min_draw_buf_stride =
       indexed ?
       sizeof(struct dzn_indirect_indexed_draw_params) :
@@ -2752,7 +2718,6 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    assert(draw_buf_stride >= min_draw_buf_stride);
    assert((draw_buf_stride & 3) == 0);
 
-   uint32_t sysvals_stride = ALIGN_POT(sizeof(cmdbuf->state.sysvals.gfx), 256);
    uint32_t triangle_fan_index_buf_stride =
       dzn_cmd_buffer_triangle_fan_get_max_index_buf_size(cmdbuf, indexed) *
       sizeof(uint32_t);
@@ -2848,9 +2813,6 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    }
 
    struct dzn_meta_indirect_draw *indirect_draw = &device->indirect_draws[draw_type];
-
-   const struct dzn_pipeline *compute_pipeline =
-      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].pipeline;
    uint32_t root_param_idx = 0;
 
    ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, indirect_draw->root_sig);
@@ -3213,7 +3175,6 @@ dzn_CmdBlitImage2(VkCommandBuffer commandBuffer,
 
    ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-   uint32_t heap_offset = 0;
    for (uint32_t r = 0; r < info->regionCount; r++)
       dzn_cmd_buffer_blit_region(cmdbuf, info, heap, &heap_slot, r);
 
@@ -3400,7 +3361,6 @@ dzn_CmdClearAttachments(VkCommandBuffer commandBuffer,
       VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
       struct dzn_image_view *view = NULL;
 
-      uint32_t idx = VK_ATTACHMENT_UNUSED;
       if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
          assert(pAttachments[i].colorAttachment < cmdbuf->state.render.attachments.color_count);
          view = cmdbuf->state.render.attachments.colors[pAttachments[i].colorAttachment].iview;
@@ -4216,7 +4176,6 @@ dzn_CmdBeginQuery(VkCommandBuffer commandBuffer,
                   VkQueryControlFlags flags)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_query_pool, qpool, queryPool);
 
    struct dzn_cmd_buffer_query_pool_state *state =

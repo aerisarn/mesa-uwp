@@ -1695,7 +1695,6 @@ dzn_FreeDescriptorSets(VkDevice dev,
                        const VkDescriptorSet *pDescriptorSets)
 {
    VK_FROM_HANDLE(dzn_descriptor_pool, pool, descriptorPool);
-   VK_FROM_HANDLE(dzn_device, device, dev);
 
    for (uint32_t s = 0; s < count; s++) {
       VK_FROM_HANDLE(dzn_descriptor_set, set, pDescriptorSets[s]);
@@ -1944,8 +1943,6 @@ dzn_UpdateDescriptorSets(VkDevice _device,
                          uint32_t descriptorCopyCount,
                          const VkCopyDescriptorSet *pDescriptorCopies)
 {
-   VK_FROM_HANDLE(dzn_device, dev, _device);
-
    for (unsigned i = 0; i < descriptorWriteCount; i++)
       dzn_descriptor_set_write(&pDescriptorWrites[i]);
 

@@ -424,7 +424,6 @@ static const D3D12_SHADER_BYTECODE *
 dzn_meta_blits_get_vs(struct dzn_device *device)
 {
    struct dzn_meta_blits *meta = &device->blits;
-   D3D12_SHADER_BYTECODE *out;
 
    mtx_lock(&meta->shaders_lock);
 
@@ -450,12 +449,9 @@ dzn_meta_blits_get_vs(struct dzn_device *device)
       if (meta->vs.pShaderBytecode) {
          meta->vs.BytecodeLength = bc.BytecodeLength;
          memcpy((void *)meta->vs.pShaderBytecode, bc.pShaderBytecode, bc.BytecodeLength);
-         out = &meta->vs;
       }
       free((void *)bc.pShaderBytecode);
       ralloc_free(nir);
-   } else {
-      out = &meta->vs;
    }
 
    mtx_unlock(&meta->shaders_lock);
@@ -530,7 +526,6 @@ dzn_meta_blit_destroy(struct dzn_device *device, struct dzn_meta_blit *blit)
 static struct dzn_meta_blit *
 dzn_meta_blit_create(struct dzn_device *device, const struct dzn_meta_blit_key *key)
 {
-   struct dzn_meta_blits *blits = &device->blits;
    struct dzn_meta_blit *blit =
       vk_zalloc(&device->vk.alloc, sizeof(*blit), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);

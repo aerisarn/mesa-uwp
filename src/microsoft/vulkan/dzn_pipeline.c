@@ -208,9 +208,6 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
           return VK_SUCCESS;
    }
 
-   struct dzn_instance *instance =
-      container_of(device->vk.physical->instance, struct dzn_instance, vk);
-   const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
    VK_FROM_HANDLE(vk_shader_module, module, stage_info->module);
    struct spirv_to_nir_options spirv_opts = {
       .caps = {
@@ -948,8 +945,6 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
                                    D3D12_INPUT_ELEMENT_DESC *inputs,
                                    enum pipe_format *vi_conversions)
 {
-   struct dzn_device *device =
-      container_of(pipeline->base.base.device, struct dzn_device, vk);
    const VkPipelineVertexInputStateCreateInfo *in_vi =
       in->pVertexInputState;
    const VkPipelineVertexInputDivisorStateCreateInfoEXT *divisors =
@@ -1630,10 +1625,6 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                      layout, stream_desc);
    D3D12_INPUT_ELEMENT_DESC attribs[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
    enum pipe_format vi_conversions[MAX_VERTEX_GENERIC_ATTRIBS] = { 0 };
-
-   const VkPipelineViewportStateCreateInfo *vp_info =
-      pCreateInfo->pRasterizationState->rasterizerDiscardEnable ?
-      NULL : pCreateInfo->pViewportState;
 
    ret = dzn_graphics_pipeline_translate_vi(pipeline, pCreateInfo,
                                             attribs, vi_conversions);

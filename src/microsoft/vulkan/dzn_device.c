@@ -651,8 +651,6 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
       return;
    }
 
-   ID3D12Device2 *dev = dzn_physical_device_get_d3d12_dev(pdev);
-
    *base_props = (VkFormatProperties) {
       .linearTilingFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT,
       .optimalTilingFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT,
@@ -2122,8 +2120,6 @@ dzn_CreateDevice(VkPhysicalDevice physicalDevice,
                  VkDevice *pDevice)
 {
    VK_FROM_HANDLE(dzn_physical_device, physical_device, physicalDevice);
-   struct dzn_instance *instance =
-      container_of(physical_device->vk.instance, struct dzn_instance, vk);
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
@@ -2373,7 +2369,6 @@ VKAPI_ATTR void VKAPI_CALL
 dzn_UnmapMemory(VkDevice _device,
                 VkDeviceMemory _memory)
 {
-   VK_FROM_HANDLE(dzn_device, device, _device);
    VK_FROM_HANDLE(dzn_device_memory, mem, _memory);
 
    if (mem == NULL)
@@ -2475,8 +2470,6 @@ dzn_buffer_get_copy_loc(const struct dzn_buffer *buf,
 {
    const uint32_t buffer_row_length =
       region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width;
-   const uint32_t buffer_image_height =
-      region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height;
 
    VkFormat plane_format = dzn_image_get_plane_format(format, aspect);
 

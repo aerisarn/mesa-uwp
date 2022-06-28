@@ -77,10 +77,6 @@ dzn_image_create(struct dzn_device *device,
    if (!image)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   const VkExternalMemoryImageCreateInfo *create_info =
-      (const VkExternalMemoryImageCreateInfo *)
-      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
-
 #if 0
     VkExternalMemoryHandleTypeFlags supported =
         VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT |
@@ -357,12 +353,8 @@ dzn_image_get_copy_loc(const struct dzn_image *image,
    };
 
    assert((subres->aspectMask & aspect) != 0);
-   VkFormat format = dzn_image_get_plane_format(image->vk.format, aspect);
 
    if (image->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-      VkImageUsageFlags usage =
-         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
       assert((subres->baseArrayLayer + layer) == 0);
       assert(subres->mipLevel == 0);
       loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
@@ -1093,10 +1085,7 @@ dzn_image_view_init(struct dzn_device *device,
    VK_FROM_HANDLE(dzn_image, image, pCreateInfo->image);
 
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
-   uint32_t level_count = dzn_get_level_count(image, range);
    uint32_t layer_count = dzn_get_layer_count(image, range);
-   uint32_t plane_slice =
-      pCreateInfo->subresourceRange.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ? 1 : 0;
 
    vk_image_view_init(&device->vk, &iview->vk, false, pCreateInfo);
 

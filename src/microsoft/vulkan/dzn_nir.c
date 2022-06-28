@@ -125,13 +125,6 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
                                      type_str[type]);
    b.shader->info.internal = true;
 
-   struct glsl_struct_field field = {
-      .type = glsl_uint_type(),
-      .name = "dummy_int",
-   };
-   const struct glsl_type *dummy_type =
-      glsl_struct_type(&field, 1, "dummy_type", false);
-
    nir_ssa_def *params_desc =
       dzn_nir_create_bo_desc(&b, nir_var_mem_ubo, 0, 0, "params", 0);
    nir_ssa_def *draw_buf_desc =
