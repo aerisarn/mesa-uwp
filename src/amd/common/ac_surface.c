@@ -405,48 +405,56 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
       unsigned num_pipes = 1 << pipe_xor_bits;
 
       /* R_X swizzle modes are the best for rendering and DCC requires them. */
-      unsigned swizzle_r_x = num_pipes > 16 ? AMD_FMT_MOD_TILE_GFX11_256K_R_X :
-                                              AMD_FMT_MOD_TILE_GFX9_64K_R_X;
-      uint64_t modifier_r_x = AMD_FMT_MOD |
-                              AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX11) |
-                              AMD_FMT_MOD_SET(TILE, swizzle_r_x) |
-                              AMD_FMT_MOD_SET(PIPE_XOR_BITS, pipe_xor_bits) |
-                              AMD_FMT_MOD_SET(PACKERS, pkrs);
+      for (unsigned i = 0; i < 2; i++) {
+         unsigned swizzle_r_x;
 
-      /* DCC_CONSTANT_ENCODE is not set because it can't vary with gfx11 (it's implied to be 1). */
-      uint64_t modifier_dcc_best = modifier_r_x |
-                                   AMD_FMT_MOD_SET(DCC, 1) |
-                                   AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 0) |
-                                   AMD_FMT_MOD_SET(DCC_INDEPENDENT_128B, 1) |
-                                   AMD_FMT_MOD_SET(DCC_MAX_COMPRESSED_BLOCK, AMD_FMT_MOD_DCC_BLOCK_128B);
+         /* Insert the best one first. */
+         if (num_pipes > 16)
+            swizzle_r_x = !i ? AMD_FMT_MOD_TILE_GFX11_256K_R_X : AMD_FMT_MOD_TILE_GFX9_64K_R_X;
+         else
+            swizzle_r_x = !i ? AMD_FMT_MOD_TILE_GFX9_64K_R_X : AMD_FMT_MOD_TILE_GFX11_256K_R_X;
 
-      /* DCC settings for 4K and greater resolutions. (required by display hw) */
-      uint64_t modifier_dcc_4k = modifier_r_x |
-                                 AMD_FMT_MOD_SET(DCC, 1) |
-                                 AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 1) |
-                                 AMD_FMT_MOD_SET(DCC_INDEPENDENT_128B, 1) |
-                                 AMD_FMT_MOD_SET(DCC_MAX_COMPRESSED_BLOCK, AMD_FMT_MOD_DCC_BLOCK_64B);
+         uint64_t modifier_r_x = AMD_FMT_MOD |
+                                 AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX11) |
+                                 AMD_FMT_MOD_SET(TILE, swizzle_r_x) |
+                                 AMD_FMT_MOD_SET(PIPE_XOR_BITS, pipe_xor_bits) |
+                                 AMD_FMT_MOD_SET(PACKERS, pkrs);
 
-      /* Modifiers have to be sorted from best to worst.
-       *
-       * Top level order:
-       *   1. The best chip-specific modifiers with DCC, potentially non-displayable.
-       *   2. Chip-specific displayable modifiers with DCC.
-       *   3. Chip-specific displayable modifiers without DCC.
-       *   4. Chip-independent modifiers without DCC.
-       *   5. Linear.
-       */
+         /* DCC_CONSTANT_ENCODE is not set because it can't vary with gfx11 (it's implied to be 1). */
+         uint64_t modifier_dcc_best = modifier_r_x |
+                                      AMD_FMT_MOD_SET(DCC, 1) |
+                                      AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 0) |
+                                      AMD_FMT_MOD_SET(DCC_INDEPENDENT_128B, 1) |
+                                      AMD_FMT_MOD_SET(DCC_MAX_COMPRESSED_BLOCK, AMD_FMT_MOD_DCC_BLOCK_128B);
 
-      /* Add the best non-displayable modifier first. */
-      ADD_MOD(modifier_dcc_best | AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1));
+         /* DCC settings for 4K and greater resolutions. (required by display hw) */
+         uint64_t modifier_dcc_4k = modifier_r_x |
+                                    AMD_FMT_MOD_SET(DCC, 1) |
+                                    AMD_FMT_MOD_SET(DCC_INDEPENDENT_64B, 1) |
+                                    AMD_FMT_MOD_SET(DCC_INDEPENDENT_128B, 1) |
+                                    AMD_FMT_MOD_SET(DCC_MAX_COMPRESSED_BLOCK, AMD_FMT_MOD_DCC_BLOCK_64B);
 
-      /* Displayable modifiers are next. */
-      /* Add other displayable DCC settings. (DCC_RETILE implies displayable on all chips) */
-      ADD_MOD(modifier_dcc_best | AMD_FMT_MOD_SET(DCC_RETILE, 1))
-      ADD_MOD(modifier_dcc_4k | AMD_FMT_MOD_SET(DCC_RETILE, 1))
+         /* Modifiers have to be sorted from best to worst.
+          *
+          * Top level order:
+          *   1. The best chip-specific modifiers with DCC, potentially non-displayable.
+          *   2. Chip-specific displayable modifiers with DCC.
+          *   3. Chip-specific displayable modifiers without DCC.
+          *   4. Chip-independent modifiers without DCC.
+          *   5. Linear.
+          */
 
-      /* Add one without DCC that is displayable (it's also optimal for non-displayable cases). */
-      ADD_MOD(modifier_r_x)
+         /* Add the best non-displayable modifier first. */
+         ADD_MOD(modifier_dcc_best | AMD_FMT_MOD_SET(DCC_PIPE_ALIGN, 1));
+
+         /* Displayable modifiers are next. */
+         /* Add other displayable DCC settings. (DCC_RETILE implies displayable on all chips) */
+         ADD_MOD(modifier_dcc_best | AMD_FMT_MOD_SET(DCC_RETILE, 1))
+         ADD_MOD(modifier_dcc_4k | AMD_FMT_MOD_SET(DCC_RETILE, 1))
+
+         /* Add one without DCC that is displayable (it's also optimal for non-displayable cases). */
+         ADD_MOD(modifier_r_x)
+      }
 
       /* Add one that is compatible with other gfx11 chips. */
       ADD_MOD(AMD_FMT_MOD |
