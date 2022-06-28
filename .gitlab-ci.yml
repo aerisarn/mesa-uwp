@@ -194,8 +194,7 @@ test-docs-mr:
       - include/**/*
       - src/**/*
       when: on_success
-    # Otherwise, build/test jobs won't run
-    - when: never
+    # Otherwise, build/test jobs won't run because no rule matched.
   retry:
     max: 2
     when:
@@ -243,8 +242,7 @@ test-docs-mr:
     - changes:
         *all_paths
       when: manual
-    # Otherwise, container jobs won't run
-    - when: never
+    # Otherwise, container jobs won't run because no rule matched.
 
 # Git archive
 
@@ -289,7 +287,8 @@ sanity:
 
 # Rules for tests that should not block merging, but should be available to
 # optionally run with the "play" button in the UI in pre-merge non-marge
-# pipelines.
+# pipelines.  This should appear in "extends:" after any includes of
+# test-source-dep.yml rules, so that these rules replace those.
 .test-manual-mr:
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
@@ -297,7 +296,6 @@ sanity:
       changes:
         *all_paths
       when: manual
-    - when: never
   variables:
     GIT_STRATEGY: none
     JOB_TIMEOUT: 80

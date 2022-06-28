@@ -88,7 +88,6 @@
       - src/gallium/drivers/softpipe/**/*
       - src/gallium/winsys/sw/**/*
       when: on_success
-    - when: never
 
 .llvmpipe-rules:
   stage: software-renderer
@@ -98,7 +97,6 @@
       - src/gallium/drivers/llvmpipe/**/*
       - src/gallium/winsys/sw/**/*
       when: on_success
-    - when: never
 
 .lavapipe-rules:
   stage: software-renderer
@@ -111,7 +109,6 @@
       - src/gallium/frontends/lavapipe/**/*
       - src/gallium/winsys/sw/**/*
       when: on_success
-    - when: never
 
 .llvmpipe-cl-rules:
   stage: software-renderer
@@ -136,7 +133,6 @@
     - changes: &clover_file_list
       - src/gallium/frontends/clover/**/*
       when: on_success
-    - when: never
 
 .collabora-farm-rules:
   rules:
@@ -163,7 +159,6 @@
       - src/freedreno/isa/**/*
       - src/freedreno/registers/**/*
       when: on_success
-    - when: never
 
 .freedreno-rules:
   stage: freedreno
@@ -175,7 +170,6 @@
       - src/gallium/drivers/freedreno/**/*
       - src/gallium/winsys/freedreno/**/*
       when: on_success
-    - when: never
 
 .turnip-rules:
   stage: freedreno
@@ -185,14 +179,12 @@
     - changes:
       - src/freedreno/vulkan/**/*
       when: on_success
-    - when: never
 
 # For piglit and skqp test jobs that run both GL and VK tests.
 .freedreno-turnip-rules:
   rules:
     - !reference [.freedreno-rules, rules]
     - !reference [.turnip-rules, rules]
-    - when: never
 
 .freedreno-rules-restricted:
   stage: freedreno
@@ -202,7 +194,6 @@
            ($GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH)'
       when: never
     - !reference [.freedreno-rules, rules]
-    - when: never
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
@@ -229,7 +220,6 @@
     - changes:
         *freedreno_gl_file_list
       when: manual
-    - when: never
 
 .nouveau-rules:
   stage: nouveau
@@ -241,7 +231,6 @@
       - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/nouveau/**/*
       when: on_success
-    - when: never
 
 .panfrost-midgard-rules:
   stage: arm
@@ -262,7 +251,6 @@
     - changes:
       - src/panfrost/midgard/**/*
       when: on_success
-    - when: never
 
 .panfrost-bifrost-rules:
   stage: arm
@@ -282,7 +270,6 @@
     - changes:
       - src/panfrost/bifrost/**/*
       when: on_success
-    - when: never
 
 .vc4-rules:
   stage: broadcom
@@ -294,7 +281,6 @@
       - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/vc4/**/*
       when: on_success
-    - when: never
 
 .v3d-rules:
   stage: broadcom
@@ -306,7 +292,6 @@
       - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/v3d/**/*
       when: on_success
-    - when: never
 
 .v3dv-rules:
   stage: broadcom
@@ -315,7 +300,6 @@
     - changes:
       - src/broadcom/**/*
       when: on_success
-    - when: never
 
 .lima-rules:
   stage: arm
@@ -328,7 +312,6 @@
       - src/gallium/winsys/lima/**/*
       - src/lima/**/*
       when: on_success
-    - when: never
 
 .radv-rules:
   stage: amd
@@ -339,7 +322,6 @@
       - src/amd/**/*
       - src/vulkan/**/*
       when: on_success
-    - when: never
 
 .virgl-rules:
   stage: layered-backends
@@ -352,7 +334,6 @@
       - src/gallium/drivers/virgl/**/*
       - src/gallium/winsys/virgl/**/*
       when: on_success
-    - when: never
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
@@ -370,7 +351,6 @@
     - changes:
         *virgl_file_list
       when: manual
-    - when: never
 
 .radeonsi-rules:
   stage: amd
@@ -387,7 +367,6 @@
       - src/amd/llvm/**/*
       - src/amd/registers/**/*
       when: on_success
-    - when: never
 
 .radeonsi-vaapi-rules:
   stage: amd
@@ -400,7 +379,6 @@
     - changes: &radeon_vcn_file_list
       - src/gallium/frontends/va/**/*
       when: on_success
-    - when: never
 
 .i915g-rules:
   stage: intel
@@ -411,7 +389,6 @@
       - src/gallium/winsys/i915/**/*
       - src/intel/**/*
       when: on_success
-    - when: never
 
 .crocus-rules:
   stage: intel
@@ -422,7 +399,6 @@
       - src/gallium/winsys/crocus/**/*
       - src/intel/**/*
       when: on_success
-    - when: never
 
 .iris-rules:
   stage: intel
@@ -435,7 +411,6 @@
       - src/gallium/winsys/iris/**/*
       - src/intel/**/*
       when: on_success
-    - when: never
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
@@ -451,7 +426,6 @@
     - changes:
         *iris_file_list
       when: manual
-    - when: never
 
 .anv-rules:
   stage: intel
@@ -462,7 +436,6 @@
     - changes:
       - src/intel/**/*
       when: on_success
-    - when: never
 
 .intel-rules:
   stage: intel
@@ -476,7 +449,6 @@
       - src/gallium/winsys/iris/**/*
       - src/intel/**/*
       when: on_success
-    - when: never
 
 .zink-common-rules:
   rules:
@@ -530,7 +502,6 @@
     - changes:
         *radv_file_list
       when: on_success
-    - when: never
 
 .glon12-test-rules:
   rules:
@@ -542,7 +513,6 @@
     - changes:
       - src/microsoft/compiler/*
       when: on_success
-    - when: never
 
 .spirv2dxil-test-rules:
   rules:
@@ -555,7 +525,6 @@
       - src/microsoft/compiler/*
       - src/microsoft/spirv_to_dxil/*
       when: on_success
-    - when: never
 
 .dozen-test-rules:
   rules:
@@ -568,7 +537,6 @@
     - changes:
       - src/microsoft/vulkan/*
       when: on_success
-    - when: never
 
 .etnaviv-rules:
   stage: etnaviv
@@ -582,7 +550,6 @@
       - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/etnaviv/**/*
       when: on_success
-    - when: never
 
 # Rules for unusual architectures that only build a subset of drivers
 .ppc64el-rules:
@@ -611,7 +578,6 @@
       - src/gallium/drivers/nouveau/**/*
       - src/gallium/winsys/nouveau/**/*
       when: on_success
-    - when: never
 
 .s390x-rules:
    rules:
@@ -626,4 +592,3 @@
     - changes:
         *lavapipe_file_list
       when: on_success
-    - when: never
