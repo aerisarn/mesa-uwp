@@ -922,12 +922,6 @@ namespace {
                                8 /* XXX */, 750 /* XXX */, 0, 0,
                                2 /* XXX */, 0);
 
-      case SHADER_OPCODE_URB_READ_SIMD8:
-      case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
-      case SHADER_OPCODE_URB_WRITE_SIMD8:
-      case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
-      case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
-      case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
       case VEC4_OPCODE_URB_READ:
       case VEC4_VS_OPCODE_URB_WRITE:
       case VEC4_GS_OPCODE_URB_WRITE:

@@ -371,18 +371,6 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
       return "gfx7_scratch_read";
    case SHADER_OPCODE_SCRATCH_HEADER:
       return "scratch_header";
-   case SHADER_OPCODE_URB_WRITE_SIMD8:
-      return "gfx8_urb_write_simd8";
-   case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
-      return "gfx8_urb_write_simd8_per_slot";
-   case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
-      return "gfx8_urb_write_simd8_masked";
-   case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
-      return "gfx8_urb_write_simd8_masked_per_slot";
-   case SHADER_OPCODE_URB_READ_SIMD8:
-      return "urb_read_simd8";
-   case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
-      return "urb_read_simd8_per_slot";
 
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
       return "urb_write_logical";
@@ -1148,10 +1136,6 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_MEMORY_FENCE:
    case SHADER_OPCODE_INTERLOCK:
-   case SHADER_OPCODE_URB_WRITE_SIMD8:
-   case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
-   case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
-   case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
    case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
    case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
@@ -1191,8 +1175,6 @@ backend_instruction::is_volatile() const
    case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
    case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
-   case SHADER_OPCODE_URB_READ_SIMD8:
-   case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
    case VEC4_OPCODE_URB_READ:
       return true;
    default:

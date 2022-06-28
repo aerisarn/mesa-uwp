@@ -477,14 +477,6 @@ enum opcode {
    SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
    SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL,
 
-   SHADER_OPCODE_URB_READ_SIMD8,
-   SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT,
-
-   SHADER_OPCODE_URB_WRITE_SIMD8,
-   SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT,
-   SHADER_OPCODE_URB_WRITE_SIMD8_MASKED,
-   SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT,
-
    /**
     * Return the index of the first enabled live channel and assign it to
     * to the first component of the destination.  Frequently used as input

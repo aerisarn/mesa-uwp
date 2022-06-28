@@ -785,61 +785,6 @@ fs_generator::generate_quad_swizzle(const fs_inst *inst,
 }
 
 void
-fs_generator::generate_urb_read(fs_inst *inst,
-                                struct brw_reg dst,
-                                struct brw_reg header)
-{
-   assert(inst->size_written % REG_SIZE == 0);
-   assert(header.file == BRW_GENERAL_REGISTER_FILE);
-   assert(header.type == BRW_REGISTER_TYPE_UD);
-
-   brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
-   brw_set_dest(p, send, retype(dst, BRW_REGISTER_TYPE_UD));
-   brw_set_src0(p, send, header);
-   if (devinfo->ver < 12)
-      brw_set_src1(p, send, brw_imm_ud(0u));
-
-   brw_inst_set_sfid(p->devinfo, send, BRW_SFID_URB);
-   brw_inst_set_urb_opcode(p->devinfo, send, GFX8_URB_OPCODE_SIMD8_READ);
-
-   if (inst->opcode == SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT)
-      brw_inst_set_urb_per_slot_offset(p->devinfo, send, true);
-
-   brw_inst_set_mlen(p->devinfo, send, inst->mlen);
-   brw_inst_set_rlen(p->devinfo, send, inst->size_written / REG_SIZE);
-   brw_inst_set_header_present(p->devinfo, send, true);
-   brw_inst_set_urb_global_offset(p->devinfo, send, inst->offset);
-}
-
-void
-fs_generator::generate_urb_write(fs_inst *inst, struct brw_reg payload)
-{
-   brw_inst *insn = brw_next_insn(p, BRW_OPCODE_SEND);
-
-   brw_set_dest(p, insn, brw_null_reg());
-   brw_set_src0(p, insn, payload);
-   if (devinfo->ver < 12)
-      brw_set_src1(p, insn, brw_imm_ud(0u));
-
-   brw_inst_set_sfid(p->devinfo, insn, BRW_SFID_URB);
-   brw_inst_set_urb_opcode(p->devinfo, insn, GFX8_URB_OPCODE_SIMD8_WRITE);
-
-   if (inst->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT ||
-       inst->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT)
-      brw_inst_set_urb_per_slot_offset(p->devinfo, insn, true);
-
-   if (inst->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_MASKED ||
-       inst->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT)
-      brw_inst_set_urb_channel_mask_present(p->devinfo, insn, true);
-
-   brw_inst_set_mlen(p->devinfo, insn, inst->mlen);
-   brw_inst_set_rlen(p->devinfo, insn, 0);
-   brw_inst_set_eot(p->devinfo, insn, inst->eot);
-   brw_inst_set_header_present(p->devinfo, insn, true);
-   brw_inst_set_urb_global_offset(p->devinfo, insn, inst->offset);
-}
-
-void
 fs_generator::generate_cs_terminate(fs_inst *inst, struct brw_reg payload)
 {
    struct brw_inst *insn;
@@ -2318,20 +2263,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          assert(src[0].file == BRW_IMMEDIATE_VALUE);
          brw_MOV_reloc_imm(p, dst, dst.type, src[0].ud);
          break;
-
-      case SHADER_OPCODE_URB_READ_SIMD8:
-      case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
-         generate_urb_read(inst, dst, src[0]);
-         send_count++;
-         break;
-
-      case SHADER_OPCODE_URB_WRITE_SIMD8:
-      case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
-      case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
-      case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
-	 generate_urb_write(inst, src[0]);
-         send_count++;
-	 break;
 
       case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
          assert(inst->force_writemask_all);
