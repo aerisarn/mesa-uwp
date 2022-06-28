@@ -4917,7 +4917,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                     radv_use_llvm_for_stage(device, i));
          radv_optimize_nir_algebraic(
             stages[i].nir, io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE || i == MESA_SHADER_TASK);
-         NIR_PASS(_, stages[i].nir, nir_lower_alu_width, opt_vectorize_callback, device);
 
          if (stages[i].nir->info.bit_sizes_int & (8 | 16)) {
             if (device->physical_device->rad_info.gfx_level >= GFX8) {
@@ -4927,7 +4926,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
             if (nir_lower_bit_size(stages[i].nir, lower_bit_size_callback, device)) {
                NIR_PASS(_, stages[i].nir, nir_opt_constant_folding);
-               NIR_PASS(_, stages[i].nir, nir_opt_dce);
             }
 
             if (device->physical_device->rad_info.gfx_level >= GFX8)
@@ -4935,26 +4933,23 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          }
          if (((stages[i].nir->info.bit_sizes_int | stages[i].nir->info.bit_sizes_float) & 16) &&
              device->physical_device->rad_info.gfx_level >= GFX9) {
-            bool copy_prop = false;
             uint32_t sampler_dims = UINT32_MAX;
             /* Skip because AMD doesn't support 16-bit types with these. */
             sampler_dims &= ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE);
             // TODO: also optimize the tex srcs. see radeonSI for reference */
             /* Skip if there are potentially conflicting rounding modes */
             if (!nir_has_any_rounding_mode_enabled(stages[i].nir->info.float_controls_execution_mode))
-               NIR_PASS(copy_prop, stages[i].nir, nir_fold_16bit_sampler_conversions, 0, sampler_dims);
-            NIR_PASS(copy_prop, stages[i].nir, nir_fold_16bit_image_load_store_conversions);
+               NIR_PASS(_, stages[i].nir, nir_fold_16bit_sampler_conversions, 0, sampler_dims);
 
-            if (copy_prop) {
-               NIR_PASS(_, stages[i].nir, nir_copy_prop);
-               NIR_PASS(_, stages[i].nir, nir_opt_dce);
-            }
-
+            NIR_PASS(_, stages[i].nir, nir_fold_16bit_image_load_store_conversions);
             NIR_PASS(_, stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, device);
          }
 
          /* cleanup passes */
+         NIR_PASS(_, stages[i].nir, nir_lower_alu_width, opt_vectorize_callback, device);
          NIR_PASS(_, stages[i].nir, nir_lower_load_const_to_scalar);
+         NIR_PASS(_, stages[i].nir, nir_copy_prop);
+         NIR_PASS(_, stages[i].nir, nir_opt_dce);
 
          sink_opts |= nir_move_comparisons | nir_move_load_ubo | nir_move_load_ssbo;
          NIR_PASS(_, stages[i].nir, nir_opt_sink, sink_opts);
