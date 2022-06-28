@@ -936,19 +936,18 @@ static void
 panvk_ref_pipeline_layout(struct vk_device *dev,
                           VkPipelineLayout layout)
 {
-   VK_FROM_HANDLE(panvk_pipeline_layout, playout, layout);
+   VK_FROM_HANDLE(vk_pipeline_layout, playout, layout);
 
-   panvk_pipeline_layout_ref(playout);
+   vk_pipeline_layout_ref(playout);
 }
 
 static void
 panvk_unref_pipeline_layout(struct vk_device *dev,
                             VkPipelineLayout layout)
 {
-   struct panvk_device *device = container_of(dev, struct panvk_device, vk);
-   VK_FROM_HANDLE(panvk_pipeline_layout, playout, layout);
+   VK_FROM_HANDLE(vk_pipeline_layout, playout, layout);
 
-   panvk_pipeline_layout_unref(device, playout);
+   vk_pipeline_layout_unref(dev, playout);
 }
 
 VkResult

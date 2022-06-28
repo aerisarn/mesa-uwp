@@ -129,21 +129,19 @@ panvk_CreatePipelineLayout(VkDevice _device,
    struct panvk_pipeline_layout *layout;
    struct mesa_sha1 ctx;
 
-   layout = vk_object_zalloc(&device->vk, NULL, sizeof(*layout),
-                             VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+   layout = vk_pipeline_layout_zalloc(&device->vk, sizeof(*layout),
+                                      pCreateInfo);
    if (layout == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   layout->num_sets = pCreateInfo->setLayoutCount;
    _mesa_sha1_init(&ctx);
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
    unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, img_idx = 0;
    for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++) {
-      VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout,
-                     pCreateInfo->pSetLayouts[set]);
-      vk_descriptor_set_layout_ref(&set_layout->vk);
-      layout->sets[set].layout = set_layout;
+      const struct panvk_descriptor_set_layout *set_layout =
+         vk_to_panvk_descriptor_set_layout(layout->vk.set_layouts[set]);
+
       layout->sets[set].sampler_offset = sampler_idx;
       layout->sets[set].tex_offset = tex_idx;
       layout->sets[set].ubo_offset = ubo_idx;
@@ -158,7 +156,7 @@ panvk_CreatePipelineLayout(VkDevice _device,
       img_idx += set_layout->num_imgs;
 
       for (unsigned b = 0; b < set_layout->binding_count; b++) {
-         struct panvk_descriptor_set_binding_layout *binding_layout =
+         const struct panvk_descriptor_set_binding_layout *binding_layout =
             &set_layout->bindings[b];
 
          if (binding_layout->immutable_samplers) {
@@ -199,34 +197,8 @@ panvk_CreatePipelineLayout(VkDevice _device,
 
    _mesa_sha1_final(&ctx, layout->sha1);
 
-   p_atomic_set(&layout->refcount, 1);
-
    *pPipelineLayout = panvk_pipeline_layout_to_handle(layout);
    return VK_SUCCESS;
-}
-
-void
-panvk_pipeline_layout_destroy(struct panvk_device *device,
-                              struct panvk_pipeline_layout *layout)
-{
-   for (unsigned i = 0; i < layout->num_sets; i++)
-      vk_descriptor_set_layout_unref(&device->vk, &layout->sets[i].layout->vk);
-
-   vk_object_free(&device->vk, NULL, layout);
-}
-
-void
-panvk_DestroyPipelineLayout(VkDevice _device,
-                            VkPipelineLayout _pipelineLayout,
-                            const VkAllocationCallbacks *pAllocator)
-{
-   VK_FROM_HANDLE(panvk_device, device, _device);
-   VK_FROM_HANDLE(panvk_pipeline_layout, pipeline_layout, _pipelineLayout);
-
-   if (!pipeline_layout)
-      return;
-
-   panvk_pipeline_layout_unref(device, pipeline_layout);
 }
 
 VkResult

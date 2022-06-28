@@ -328,9 +328,9 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
       memset(&ubos[PANVK_PUSH_CONST_UBO_INDEX], 0, sizeof(*ubos));
    }
 
-   for (unsigned s = 0; s < pipeline->layout->num_sets; s++) {
+   for (unsigned s = 0; s < pipeline->layout->vk.set_count; s++) {
       const struct panvk_descriptor_set_layout *set_layout =
-         pipeline->layout->sets[s].layout;
+         vk_to_panvk_descriptor_set_layout(pipeline->layout->vk.set_layouts[s]);
       const struct panvk_descriptor_set *set = state->sets[s];
 
       unsigned ubo_start =

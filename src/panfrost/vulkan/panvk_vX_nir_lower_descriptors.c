@@ -59,6 +59,19 @@ addr_format_for_desc_type(VkDescriptorType desc_type,
    }
 }
 
+static const struct panvk_descriptor_set_layout *
+get_set_layout(uint32_t set, const struct apply_descriptors_ctx *ctx)
+{
+   return vk_to_panvk_descriptor_set_layout(ctx->layout->vk.set_layouts[set]);
+}
+
+static const struct panvk_descriptor_set_binding_layout *
+get_binding_layout(uint32_t set, uint32_t binding,
+                   const struct apply_descriptors_ctx *ctx)
+{
+   return &get_set_layout(set, ctx)->bindings[binding];
+}
+
 /** Build a Vulkan resource index
  *
  * A "resource index" is the term used by our SPIR-V parser and the relevant
@@ -85,7 +98,7 @@ build_res_index(nir_builder *b, uint32_t set, uint32_t binding,
                 const struct apply_descriptors_ctx *ctx)
 {
    const struct panvk_descriptor_set_layout *set_layout =
-      ctx->layout->sets[set].layout;
+      get_set_layout(set, ctx);
    const struct panvk_descriptor_set_binding_layout *bind_layout =
       &set_layout->bindings[binding];
 
@@ -349,7 +362,7 @@ load_resource_deref_desc(nir_builder *b, nir_deref_instr *deref,
                               &index_imm, &index_ssa);
 
    const struct panvk_descriptor_set_layout *set_layout =
-      ctx->layout->sets[set].layout;
+      get_set_layout(set, ctx);
    const struct panvk_descriptor_set_binding_layout *bind_layout =
       &set_layout->bindings[binding];
 
@@ -466,7 +479,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
                                  &index_imm, &index_ssa);
 
       const struct panvk_descriptor_set_binding_layout *bind_layout =
-         &ctx->layout->sets[set].layout->bindings[binding];
+         get_binding_layout(set, binding, ctx);
 
       tex->sampler_index = ctx->layout->sets[set].sampler_offset +
                            bind_layout->sampler_idx + index_imm;
@@ -489,7 +502,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
                                  &index_imm, &index_ssa);
 
       const struct panvk_descriptor_set_binding_layout *bind_layout =
-         &ctx->layout->sets[set].layout->bindings[binding];
+         get_binding_layout(set, binding, ctx);
 
       tex->texture_index = ctx->layout->sets[set].tex_offset +
                            bind_layout->tex_idx + index_imm;
@@ -513,7 +526,7 @@ get_img_index(nir_builder *b, nir_deref_instr *deref,
    get_resource_deref_binding(deref, &set, &binding, &index_imm, &index_ssa);
 
    const struct panvk_descriptor_set_binding_layout *bind_layout =
-      &ctx->layout->sets[set].layout->bindings[binding];
+      get_binding_layout(set, binding, ctx);
    assert(bind_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
           bind_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
           bind_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
