@@ -36,10 +36,11 @@ using namespace brw;
 #define REG_CLASS_COUNT 20
 
 static void
-assign_reg(unsigned *reg_hw_locations, fs_reg *reg)
+assign_reg(const struct intel_device_info *devinfo,
+           unsigned *reg_hw_locations, fs_reg *reg)
 {
    if (reg->file == VGRF) {
-      reg->nr = reg_hw_locations[reg->nr] + reg->offset / REG_SIZE;
+      reg->nr = reg_unit(devinfo) * reg_hw_locations[reg->nr] + reg->offset / REG_SIZE;
       reg->offset %= REG_SIZE;
    }
 }
@@ -55,14 +56,15 @@ fs_visitor::assign_regs_trivial()
    hw_reg_mapping[0] = ALIGN(this->first_non_payload_grf, reg_width);
    for (i = 1; i <= this->alloc.count; i++) {
       hw_reg_mapping[i] = (hw_reg_mapping[i - 1] +
-			   this->alloc.sizes[i - 1]);
+                           DIV_ROUND_UP(this->alloc.sizes[i - 1],
+                                        reg_unit(devinfo)));
    }
    this->grf_used = hw_reg_mapping[this->alloc.count];
 
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
-      assign_reg(hw_reg_mapping, &inst->dst);
+      assign_reg(devinfo, hw_reg_mapping, &inst->dst);
       for (i = 0; i < inst->sources; i++) {
-         assign_reg(hw_reg_mapping, &inst->src[i]);
+         assign_reg(devinfo, hw_reg_mapping, &inst->src[i]);
       }
    }
 
@@ -115,8 +117,8 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
     * instruction, and on gfx4 we need 8 contiguous regs for workaround simd16
     * texturing.
     */
+   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE(devinfo) / reg_unit(devinfo));
    int class_sizes[REG_CLASS_COUNT];
-   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE(devinfo));
    for (unsigned i = 0; i < REG_CLASS_COUNT; i++)
       class_sizes[i] = i + 1;
 
@@ -626,7 +628,8 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
    if (inst->eot) {
       const int vgrf = inst->opcode == SHADER_OPCODE_SEND ?
                        inst->src[2].nr : inst->src[0].nr;
-      int reg = BRW_MAX_GRF - fs->alloc.sizes[vgrf];
+      const int size = DIV_ROUND_UP(fs->alloc.sizes[vgrf], reg_unit(devinfo));
+      int reg = BRW_MAX_GRF - size;
 
       if (first_mrf_hack_node >= 0) {
          /* If something happened to spill, we want to push the EOT send
@@ -645,7 +648,7 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
 
       if (inst->ex_mlen > 0) {
          const int vgrf = inst->src[3].nr;
-         reg -= fs->alloc.sizes[vgrf];
+         reg -= DIV_ROUND_UP(fs->alloc.sizes[vgrf], reg_unit(devinfo));
          ra_set_node_reg(g, first_vgrf_node + vgrf, reg);
       }
    }
@@ -709,7 +712,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
 
    /* Specify the classes of each virtual register. */
    for (unsigned i = 0; i < fs->alloc.count; i++) {
-      unsigned size = fs->alloc.sizes[i];
+      unsigned size = DIV_ROUND_UP(fs->alloc.sizes[i], reg_unit(devinfo));
 
       assert(size <= ARRAY_SIZE(compiler->fs_reg_sets[rsi].classes) &&
              "Register allocation relies on split_virtual_grfs()");
@@ -1115,7 +1118,8 @@ fs_reg
 fs_reg_alloc::alloc_spill_reg(unsigned size, int ip)
 {
    int vgrf = fs->alloc.allocate(size);
-   int n = ra_add_node(g, compiler->fs_reg_sets[rsi].classes[size - 1]);
+   int class_idx = DIV_ROUND_UP(size, reg_unit(devinfo)) - 1;
+   int n = ra_add_node(g, compiler->fs_reg_sets[rsi].classes[class_idx]);
    assert(n == first_vgrf_node + vgrf);
    assert(n == first_spill_node + spill_node_count);
 
@@ -1371,13 +1375,14 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
 
       hw_reg_mapping[i] = reg;
       fs->grf_used = MAX2(fs->grf_used,
-			  hw_reg_mapping[i] + fs->alloc.sizes[i]);
+			  hw_reg_mapping[i] + DIV_ROUND_UP(fs->alloc.sizes[i],
+                                                           reg_unit(devinfo)));
    }
 
    foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-      assign_reg(hw_reg_mapping, &inst->dst);
+      assign_reg(devinfo, hw_reg_mapping, &inst->dst);
       for (int i = 0; i < inst->sources; i++) {
-         assign_reg(hw_reg_mapping, &inst->src[i]);
+         assign_reg(devinfo, hw_reg_mapping, &inst->src[i]);
       }
    }
 

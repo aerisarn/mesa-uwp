@@ -284,6 +284,12 @@ ALU2(SUBB)
 #undef ALU2
 #undef ALU3
 
+static inline unsigned
+reg_unit(const struct intel_device_info *devinfo)
+{
+   return devinfo->ver >= 20 ? 2 : 1;
+}
+
 
 /* Helpers for SEND instruction:
  */
