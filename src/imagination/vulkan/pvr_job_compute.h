@@ -28,11 +28,11 @@
 #include <vulkan/vulkan.h>
 
 struct pvr_compute_ctx;
-struct pvr_sub_cmd;
+struct pvr_sub_cmd_compute;
 struct vk_sync;
 
 VkResult pvr_compute_job_submit(struct pvr_compute_ctx *ctx,
-                                struct pvr_sub_cmd *sub_cmd,
+                                struct pvr_sub_cmd_compute *sub_cmd,
                                 struct vk_sync **waits,
                                 uint32_t wait_count,
                                 uint32_t *stage_flags,

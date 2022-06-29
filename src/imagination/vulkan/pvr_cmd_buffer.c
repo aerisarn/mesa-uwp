@@ -247,12 +247,12 @@ static void pvr_cmd_buffer_update_barriers(struct pvr_cmd_buffer *cmd_buffer,
 static VkResult pvr_cmd_buffer_upload_tables(struct pvr_device *device,
                                              struct pvr_cmd_buffer *cmd_buffer)
 {
-   struct pvr_sub_cmd *sub_cmd = cmd_buffer->state.current_sub_cmd;
+   struct pvr_sub_cmd_gfx *sub_cmd = &cmd_buffer->state.current_sub_cmd->gfx;
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
    VkResult result;
 
-   assert(!sub_cmd->gfx.depth_bias_bo && !sub_cmd->gfx.scissor_bo);
+   assert(!sub_cmd->depth_bias_bo && !sub_cmd->scissor_bo);
 
    if (cmd_buffer->depth_bias_array.size > 0) {
       result =
@@ -261,7 +261,7 @@ static VkResult pvr_cmd_buffer_upload_tables(struct pvr_device *device,
                         util_dynarray_begin(&cmd_buffer->depth_bias_array),
                         cmd_buffer->depth_bias_array.size,
                         cache_line_size,
-                        &sub_cmd->gfx.depth_bias_bo);
+                        &sub_cmd->depth_bias_bo);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -272,7 +272,7 @@ static VkResult pvr_cmd_buffer_upload_tables(struct pvr_device *device,
                               util_dynarray_begin(&cmd_buffer->scissor_array),
                               cmd_buffer->scissor_array.size,
                               cache_line_size,
-                              &sub_cmd->gfx.scissor_bo);
+                              &sub_cmd->scissor_bo);
       if (result != VK_SUCCESS)
          goto err_free_depth_bias_bo;
    }
@@ -283,24 +283,24 @@ static VkResult pvr_cmd_buffer_upload_tables(struct pvr_device *device,
    return VK_SUCCESS;
 
 err_free_depth_bias_bo:
-   pvr_bo_free(device, sub_cmd->gfx.depth_bias_bo);
-   sub_cmd->gfx.depth_bias_bo = NULL;
+   pvr_bo_free(device, sub_cmd->depth_bias_bo);
+   sub_cmd->depth_bias_bo = NULL;
 
    return result;
 }
 
 static VkResult pvr_cmd_buffer_emit_ppp_state(struct pvr_cmd_buffer *cmd_buffer)
 {
-   struct pvr_sub_cmd *sub_cmd = cmd_buffer->state.current_sub_cmd;
+   struct pvr_sub_cmd_gfx *sub_cmd = &cmd_buffer->state.current_sub_cmd->gfx;
    struct pvr_framebuffer *framebuffer =
       cmd_buffer->state.render_pass_info.framebuffer;
 
-   pvr_csb_emit (&sub_cmd->gfx.control_stream, VDMCTRL_PPP_STATE0, state0) {
+   pvr_csb_emit (&sub_cmd->control_stream, VDMCTRL_PPP_STATE0, state0) {
       state0.addrmsb = framebuffer->ppp_state_bo->vma->dev_addr;
       state0.word_count = framebuffer->ppp_state_size;
    }
 
-   pvr_csb_emit (&sub_cmd->gfx.control_stream, VDMCTRL_PPP_STATE1, state1) {
+   pvr_csb_emit (&sub_cmd->control_stream, VDMCTRL_PPP_STATE1, state1) {
       state1.addrlsb = framebuffer->ppp_state_bo->vma->dev_addr;
    }
 
@@ -869,13 +869,13 @@ pvr_pass_get_pixel_output_width(const struct pvr_render_pass *pass,
 
 static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
-                                         struct pvr_sub_cmd *sub_cmd)
+                                         struct pvr_sub_cmd_gfx *sub_cmd)
 {
    struct pvr_render_pass_info *render_pass_info =
       &cmd_buffer->state.render_pass_info;
    const struct pvr_renderpass_hwsetup_render *hw_render =
-      &render_pass_info->pass->hw_setup->renders[sub_cmd->gfx.hw_render_idx];
-   struct pvr_render_job *job = &sub_cmd->gfx.job;
+      &render_pass_info->pass->hw_setup->renders[sub_cmd->hw_render_idx];
+   struct pvr_render_job *job = &sub_cmd->job;
    struct pvr_pds_upload pds_pixel_event_program;
 
    uint32_t pbe_cs_words[PVR_MAX_COLOR_ATTACHMENTS]
@@ -929,7 +929,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
        * when the pool gets emptied?
        */
       result = pvr_load_op_data_create_and_upload(cmd_buffer,
-                                                  sub_cmd->gfx.hw_render_idx,
+                                                  sub_cmd->hw_render_idx,
                                                   &load_op_program);
       if (result != VK_SUCCESS)
          return result;
@@ -944,30 +944,29 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
    render_target = pvr_get_render_target(render_pass_info->pass,
                                          render_pass_info->framebuffer,
-                                         sub_cmd->gfx.hw_render_idx);
+                                         sub_cmd->hw_render_idx);
    job->rt_dataset = render_target->rt_dataset;
 
-   job->ctrl_stream_addr =
-      pvr_csb_get_start_address(&sub_cmd->gfx.control_stream);
+   job->ctrl_stream_addr = pvr_csb_get_start_address(&sub_cmd->control_stream);
 
    /* FIXME: Need to set up the border color table at device creation
     * time. Set to invalid for the time being.
     */
    job->border_colour_table_addr = PVR_DEV_ADDR_INVALID;
 
-   if (sub_cmd->gfx.depth_bias_bo)
-      job->depth_bias_table_addr = sub_cmd->gfx.depth_bias_bo->vma->dev_addr;
+   if (sub_cmd->depth_bias_bo)
+      job->depth_bias_table_addr = sub_cmd->depth_bias_bo->vma->dev_addr;
    else
       job->depth_bias_table_addr = PVR_DEV_ADDR_INVALID;
 
-   if (sub_cmd->gfx.scissor_bo)
-      job->scissor_table_addr = sub_cmd->gfx.scissor_bo->vma->dev_addr;
+   if (sub_cmd->scissor_bo)
+      job->scissor_table_addr = sub_cmd->scissor_bo->vma->dev_addr;
    else
       job->scissor_table_addr = PVR_DEV_ADDR_INVALID;
 
    job->pixel_output_width =
       pvr_pass_get_pixel_output_width(render_pass_info->pass,
-                                      sub_cmd->gfx.hw_render_idx,
+                                      sub_cmd->hw_render_idx,
                                       dev_info);
 
    if (hw_render->ds_surface_id != -1) {
@@ -1041,15 +1040,15 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       job->samples = 1;
    }
 
-   if (sub_cmd->gfx.max_tiles_in_flight ==
+   if (sub_cmd->max_tiles_in_flight ==
        PVR_GET_FEATURE_VALUE(dev_info, isp_max_tiles_in_flight, 1U)) {
       /* Use the default limit based on the partition store. */
       job->max_tiles_in_flight = 0U;
    } else {
-      job->max_tiles_in_flight = sub_cmd->gfx.max_tiles_in_flight;
+      job->max_tiles_in_flight = sub_cmd->max_tiles_in_flight;
    }
 
-   job->frag_uses_atomic_ops = sub_cmd->gfx.frag_uses_atomic_ops;
+   job->frag_uses_atomic_ops = sub_cmd->frag_uses_atomic_ops;
    job->disable_compute_overlap = false;
    job->max_shared_registers = cmd_buffer->state.max_shared_regs;
    job->run_frag = true;
@@ -1065,56 +1064,53 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
 static void pvr_sub_cmd_compute_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
-                                         struct pvr_sub_cmd *sub_cmd)
+                                         struct pvr_sub_cmd_compute *sub_cmd)
 {
-   if (sub_cmd->compute.uses_barrier) {
-      sub_cmd->compute.submit_info.flags |=
-         PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
-   }
+   if (sub_cmd->uses_barrier)
+      sub_cmd->submit_info.flags |= PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
 
-   pvr_csb_pack (&sub_cmd->compute.submit_info.regs.cdm_ctrl_stream_base,
+   pvr_csb_pack (&sub_cmd->submit_info.regs.cdm_ctrl_stream_base,
                  CR_CDM_CTRL_STREAM_BASE,
                  value) {
-      value.addr = pvr_csb_get_start_address(&sub_cmd->compute.control_stream);
+      value.addr = pvr_csb_get_start_address(&sub_cmd->control_stream);
    }
 
    /* FIXME: Need to set up the border color table at device creation
     * time. Set to invalid for the time being.
     */
-   pvr_csb_pack (&sub_cmd->compute.submit_info.regs.tpu_border_colour_table,
+   pvr_csb_pack (&sub_cmd->submit_info.regs.tpu_border_colour_table,
                  CR_TPU_BORDER_COLOUR_TABLE_CDM,
                  value) {
       value.border_colour_table_address = PVR_DEV_ADDR_INVALID;
    }
 
-   sub_cmd->compute.num_shared_regs = MAX2(PVR_IDF_WDF_IN_REGISTER_CONST_COUNT,
-                                           cmd_buffer->state.max_shared_regs);
+   sub_cmd->num_shared_regs = MAX2(PVR_IDF_WDF_IN_REGISTER_CONST_COUNT,
+                                   cmd_buffer->state.max_shared_regs);
 
    cmd_buffer->state.max_shared_regs = 0U;
 
    if (PVR_HAS_FEATURE(dev_info, compute_morton_capable))
-      sub_cmd->compute.submit_info.regs.cdm_item = 0;
+      sub_cmd->submit_info.regs.cdm_item = 0;
 
-   pvr_csb_pack (&sub_cmd->compute.submit_info.regs.tpu, CR_TPU, value) {
+   pvr_csb_pack (&sub_cmd->submit_info.regs.tpu, CR_TPU, value) {
       value.tag_cem_4k_face_packing = true;
    }
 
    if (PVR_HAS_FEATURE(dev_info, cluster_grouping) &&
        PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls) &&
-       rogue_get_num_phantoms(dev_info) > 1 &&
-       sub_cmd->compute.uses_atomic_ops) {
+       rogue_get_num_phantoms(dev_info) > 1 && sub_cmd->uses_atomic_ops) {
       /* Each phantom has its own MCU, so atomicity can only be guaranteed
        * when all work items are processed on the same phantom. This means we
        * need to disable all USCs other than those of the first phantom, which
        * has 4 clusters.
        */
-      pvr_csb_pack (&sub_cmd->compute.submit_info.regs.compute_cluster,
+      pvr_csb_pack (&sub_cmd->submit_info.regs.compute_cluster,
                     CR_COMPUTE_CLUSTER,
                     value) {
          value.mask = 0xFU;
       }
    } else {
-      pvr_csb_pack (&sub_cmd->compute.submit_info.regs.compute_cluster,
+      pvr_csb_pack (&sub_cmd->submit_info.regs.compute_cluster,
                     CR_COMPUTE_CLUSTER,
                     value) {
          value.mask = 0U;
@@ -1122,8 +1118,8 @@ static void pvr_sub_cmd_compute_job_init(const struct pvr_device_info *dev_info,
    }
 
    if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support) &&
-       sub_cmd->compute.uses_atomic_ops) {
-      sub_cmd->compute.submit_info.flags |= PVR_WINSYS_COMPUTE_FLAG_SINGLE_CORE;
+       sub_cmd->uses_atomic_ops) {
+      sub_cmd->submit_info.flags |= PVR_WINSYS_COMPUTE_FLAG_SINGLE_CORE;
    }
 }
 
@@ -1390,7 +1386,7 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
 
       result = pvr_sub_cmd_gfx_job_init(&device->pdevice->dev_info,
                                         cmd_buffer,
-                                        sub_cmd);
+                                        &sub_cmd->gfx);
       if (result != VK_SUCCESS) {
          state->status = result;
          return result;
@@ -1409,7 +1405,7 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
 
       pvr_sub_cmd_compute_job_init(&device->pdevice->dev_info,
                                    cmd_buffer,
-                                   sub_cmd);
+                                   &sub_cmd->compute);
       break;
 
    case PVR_SUB_CMD_TYPE_TRANSFER:
@@ -2478,14 +2474,16 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 VkResult pvr_cmd_buffer_add_transfer_cmd(struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_transfer_cmd *transfer_cmd)
 {
+   struct pvr_sub_cmd_transfer *sub_cmd;
    VkResult result;
 
    result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_TRANSFER);
    if (result != VK_SUCCESS)
       return result;
 
-   list_addtail(&transfer_cmd->link,
-                &cmd_buffer->state.current_sub_cmd->transfer.transfer_cmds);
+   sub_cmd = &cmd_buffer->state.current_sub_cmd->transfer;
+
+   list_addtail(&transfer_cmd->link, &sub_cmd->transfer_cmds);
 
    return VK_SUCCESS;
 }
@@ -3616,7 +3614,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer)
       &cmd_buffer->device->pdevice->dev_info;
    struct pvr_emit_state *const emit_state = &state->emit_state;
    struct pvr_ppp_state *const ppp_state = &state->ppp_state;
-   struct pvr_sub_cmd *sub_cmd = state->current_sub_cmd;
+   struct pvr_sub_cmd_gfx *sub_cmd = &state->current_sub_cmd->gfx;
 
    const uint32_t pds_uniform_size =
       DIV_ROUND_UP(uniform_shader_state->pds_info.data_size_in_dwords,
@@ -3647,8 +3645,8 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer)
    uint32_t size_info_mask;
    uint32_t size_info2;
 
-   if (max_tiles_in_flight < sub_cmd->gfx.max_tiles_in_flight)
-      sub_cmd->gfx.max_tiles_in_flight = max_tiles_in_flight;
+   if (max_tiles_in_flight < sub_cmd->max_tiles_in_flight)
+      sub_cmd->max_tiles_in_flight = max_tiles_in_flight;
 
    pvr_csb_pack (&ppp_state->pds.pixel_shader_base,
                  TA_STATE_PDS_SHADERBASE,

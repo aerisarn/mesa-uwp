@@ -233,13 +233,13 @@ static VkResult
 pvr_process_graphics_cmd(struct pvr_device *device,
                          struct pvr_queue *queue,
                          struct pvr_cmd_buffer *cmd_buffer,
-                         struct pvr_sub_cmd *sub_cmd,
+                         struct pvr_sub_cmd_gfx *sub_cmd,
                          struct vk_sync **waits,
                          uint32_t wait_count,
                          uint32_t *stage_flags,
                          struct vk_sync *completions[static PVR_JOB_TYPE_MAX])
 {
-   const struct pvr_framebuffer *framebuffer = sub_cmd->gfx.framebuffer;
+   const struct pvr_framebuffer *framebuffer = sub_cmd->framebuffer;
    struct vk_sync *sync_geom;
    struct vk_sync *sync_frag;
    uint32_t bo_count = 0;
@@ -272,7 +272,7 @@ pvr_process_graphics_cmd(struct pvr_device *device,
    /* FIXME: If the framebuffer being rendered to has multiple layers then we
     * need to split submissions that run a fragment job into two.
     */
-   if (sub_cmd->gfx.job.run_frag && framebuffer->layers > 1)
+   if (sub_cmd->job.run_frag && framebuffer->layers > 1)
       pvr_finishme("Split job submission for framebuffers with > 1 layers");
 
    /* Get any imported buffers used in framebuffer attachments. */
@@ -287,7 +287,7 @@ pvr_process_graphics_cmd(struct pvr_device *device,
 
    /* This passes ownership of the wait fences to pvr_render_job_submit(). */
    result = pvr_render_job_submit(queue->gfx_ctx,
-                                  &sub_cmd->gfx.job,
+                                  &sub_cmd->job,
                                   bos,
                                   bo_count,
                                   waits,
@@ -321,7 +321,7 @@ pvr_process_graphics_cmd(struct pvr_device *device,
 static VkResult
 pvr_process_compute_cmd(struct pvr_device *device,
                         struct pvr_queue *queue,
-                        struct pvr_sub_cmd *sub_cmd,
+                        struct pvr_sub_cmd_compute *sub_cmd,
                         struct vk_sync **waits,
                         uint32_t wait_count,
                         uint32_t *stage_flags,
@@ -362,7 +362,7 @@ pvr_process_compute_cmd(struct pvr_device *device,
 static VkResult
 pvr_process_transfer_cmds(struct pvr_device *device,
                           struct pvr_queue *queue,
-                          struct pvr_sub_cmd *sub_cmd,
+                          struct pvr_sub_cmd_transfer *sub_cmd,
                           struct vk_sync **waits,
                           uint32_t wait_count,
                           uint32_t *stage_flags,
@@ -516,7 +516,7 @@ pvr_process_cmd_buffer(struct pvr_device *device,
          result = pvr_process_graphics_cmd(device,
                                            queue,
                                            cmd_buffer,
-                                           sub_cmd,
+                                           &sub_cmd->gfx,
                                            waits,
                                            wait_count,
                                            stage_flags,
@@ -526,7 +526,7 @@ pvr_process_cmd_buffer(struct pvr_device *device,
       case PVR_SUB_CMD_TYPE_COMPUTE:
          result = pvr_process_compute_cmd(device,
                                           queue,
-                                          sub_cmd,
+                                          &sub_cmd->compute,
                                           waits,
                                           wait_count,
                                           stage_flags,
@@ -536,7 +536,7 @@ pvr_process_cmd_buffer(struct pvr_device *device,
       case PVR_SUB_CMD_TYPE_TRANSFER:
          result = pvr_process_transfer_cmds(device,
                                             queue,
-                                            sub_cmd,
+                                            &sub_cmd->transfer,
                                             waits,
                                             wait_count,
                                             stage_flags,

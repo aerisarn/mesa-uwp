@@ -36,14 +36,14 @@
 
 static void pvr_compute_job_ws_submit_info_init(
    struct pvr_compute_ctx *ctx,
-   struct pvr_sub_cmd *sub_cmd,
+   struct pvr_sub_cmd_compute *sub_cmd,
    struct vk_sync **waits,
    uint32_t wait_count,
    uint32_t *stage_flags,
    struct pvr_winsys_compute_submit_info *submit_info)
 {
    const struct pvr_compute_ctx_switch *const ctx_switch = &ctx->ctx_switch;
-   uint32_t shared_regs = sub_cmd->compute.num_shared_regs;
+   uint32_t shared_regs = sub_cmd->num_shared_regs;
 
    submit_info->frame_num = ctx->device->global_queue_present_count;
    submit_info->job_num = ctx->device->global_queue_job_count;
@@ -86,7 +86,7 @@ static void pvr_compute_job_ws_submit_info_init(
 }
 
 VkResult pvr_compute_job_submit(struct pvr_compute_ctx *ctx,
-                                struct pvr_sub_cmd *sub_cmd,
+                                struct pvr_sub_cmd_compute *sub_cmd,
                                 struct vk_sync **waits,
                                 uint32_t wait_count,
                                 uint32_t *stage_flags,
@@ -99,9 +99,9 @@ VkResult pvr_compute_job_submit(struct pvr_compute_ctx *ctx,
                                        waits,
                                        wait_count,
                                        stage_flags,
-                                       &sub_cmd->compute.submit_info);
+                                       &sub_cmd->submit_info);
 
    return device->ws->ops->compute_submit(ctx->ws_ctx,
-                                          &sub_cmd->compute.submit_info,
+                                          &sub_cmd->submit_info,
                                           signal_sync);
 }

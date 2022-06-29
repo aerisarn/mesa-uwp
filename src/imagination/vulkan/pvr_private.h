@@ -514,6 +514,75 @@ struct pvr_transfer_cmd {
    VkBufferCopy2 regions[0];
 };
 
+struct pvr_sub_cmd_gfx {
+   const struct pvr_framebuffer *framebuffer;
+
+   struct pvr_render_job job;
+
+   struct pvr_bo *depth_bias_bo;
+   struct pvr_bo *scissor_bo;
+
+   /* Tracking how the loaded depth/stencil values are being used. */
+   enum pvr_depth_stencil_usage depth_usage;
+   enum pvr_depth_stencil_usage stencil_usage;
+
+   /* Tracking whether the subcommand modifies depth/stencil. */
+   bool modifies_depth;
+   bool modifies_stencil;
+
+   /* Control stream builder object */
+   struct pvr_csb control_stream;
+
+   uint32_t hw_render_idx;
+
+   uint32_t max_tiles_in_flight;
+
+   bool empty_cmd;
+
+   /* True if any fragment shader used in this sub command uses atomic
+    * operations.
+    */
+   bool frag_uses_atomic_ops;
+
+   bool disable_compute_overlap;
+
+   /* True if any fragment shader used in this sub command has side
+    * effects.
+    */
+   bool frag_has_side_effects;
+
+   /* True if any vertex shader used in this sub command contains both
+    * texture reads and texture writes.
+    */
+   bool vertex_uses_texture_rw;
+
+   /* True if any fragment shader used in this sub command contains
+    * both texture reads and texture writes.
+    */
+   bool frag_uses_texture_rw;
+};
+
+struct pvr_sub_cmd_compute {
+   /* Control stream builder object. */
+   struct pvr_csb control_stream;
+
+   struct pvr_winsys_compute_submit_info submit_info;
+
+   uint32_t num_shared_regs;
+
+   /* True if any shader used in this sub command uses atomic
+    * operations.
+    */
+   bool uses_atomic_ops;
+
+   bool uses_barrier;
+};
+
+struct pvr_sub_cmd_transfer {
+   /* List of pvr_transfer_cmd type structures. */
+   struct list_head transfer_cmds;
+};
+
 struct pvr_sub_cmd {
    /* This links the subcommand in pvr_cmd_buffer:sub_cmds list. */
    struct list_head link;
@@ -521,74 +590,9 @@ struct pvr_sub_cmd {
    enum pvr_sub_cmd_type type;
 
    union {
-      struct {
-         const struct pvr_framebuffer *framebuffer;
-
-         struct pvr_render_job job;
-
-         struct pvr_bo *depth_bias_bo;
-         struct pvr_bo *scissor_bo;
-
-         /* Tracking how the loaded depth/stencil values are being used. */
-         enum pvr_depth_stencil_usage depth_usage;
-         enum pvr_depth_stencil_usage stencil_usage;
-
-         /* Tracking whether the subcommand modifies depth/stencil. */
-         bool modifies_depth;
-         bool modifies_stencil;
-
-         /* Control stream builder object */
-         struct pvr_csb control_stream;
-
-         uint32_t hw_render_idx;
-
-         uint32_t max_tiles_in_flight;
-
-         bool empty_cmd;
-
-         /* True if any fragment shader used in this sub command uses atomic
-          * operations.
-          */
-         bool frag_uses_atomic_ops;
-
-         bool disable_compute_overlap;
-
-         /* True if any fragment shader used in this sub command has side
-          * effects.
-          */
-         bool frag_has_side_effects;
-
-         /* True if any vertex shader used in this sub command contains both
-          * texture reads and texture writes.
-          */
-         bool vertex_uses_texture_rw;
-
-         /* True if any fragment shader used in this sub command contains
-          * both texture reads and texture writes.
-          */
-         bool frag_uses_texture_rw;
-      } gfx;
-
-      struct {
-         /* Control stream builder object. */
-         struct pvr_csb control_stream;
-
-         struct pvr_winsys_compute_submit_info submit_info;
-
-         uint32_t num_shared_regs;
-
-         /* True if any shader used in this sub command uses atomic
-          * operations.
-          */
-         bool uses_atomic_ops;
-
-         bool uses_barrier;
-      } compute;
-
-      struct {
-         /* List of pvr_transfer_cmd type structures. */
-         struct list_head transfer_cmds;
-      } transfer;
+      struct pvr_sub_cmd_gfx gfx;
+      struct pvr_sub_cmd_compute compute;
+      struct pvr_sub_cmd_transfer transfer;
    };
 };
 

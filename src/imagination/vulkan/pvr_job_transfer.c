@@ -38,7 +38,7 @@
 /* FIXME: Implement gpu based transfer support. */
 VkResult pvr_transfer_job_submit(struct pvr_device *device,
                                  struct pvr_transfer_ctx *ctx,
-                                 struct pvr_sub_cmd *sub_cmd,
+                                 struct pvr_sub_cmd_transfer *sub_cmd,
                                  struct vk_sync **waits,
                                  uint32_t wait_count,
                                  uint32_t *stage_flags,
@@ -61,7 +61,7 @@ VkResult pvr_transfer_job_submit(struct pvr_device *device,
 
    list_for_each_entry_safe (struct pvr_transfer_cmd,
                              transfer_cmd,
-                             &sub_cmd->transfer.transfer_cmds,
+                             &sub_cmd->transfer_cmds,
                              link) {
       bool src_mapped = false;
       bool dst_mapped = false;
