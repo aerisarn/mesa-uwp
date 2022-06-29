@@ -644,7 +644,7 @@ struct pvr_ppp_state {
 
    struct {
       /* TODO: Can we get rid of the "control" field? */
-      struct pvr_cmd_struct(TA_STATE_ISPCTL) control_struct;
+      struct PVRX(TA_STATE_ISPCTL) control_struct;
       uint32_t control;
 
       uint32_t front_a;

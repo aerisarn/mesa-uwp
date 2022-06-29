@@ -126,7 +126,6 @@ VkResult pvr_csb_emit_return(struct pvr_csb *csb);
 VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
 
 #define PVRX(x) ROGUE_##x
-#define pvr_cmd_struct(x) PVRX(x)
 #define pvr_cmd_length(x) PVRX(x##_length)
 #define pvr_cmd_header(x) PVRX(x##_header)
 #define pvr_cmd_pack(x) PVRX(x##_pack)
@@ -143,8 +142,8 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
  *                     state information before it's packed.
  */
 #define pvr_csb_pack(_dst, cmd, name)                                 \
-   for (struct pvr_cmd_struct(cmd) name = { pvr_cmd_header(cmd) },    \
-                                   *_loop_terminate = &name;          \
+   for (struct PVRX(cmd) name = { pvr_cmd_header(cmd) },              \
+                         *_loop_terminate = &name;                    \
         __builtin_expect(_loop_terminate != NULL, 1);                 \
         ({                                                            \
            STATIC_ASSERT(sizeof(*(_dst)) == pvr_cmd_length(cmd) * 4); \
@@ -183,7 +182,7 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
  *                     information before it's packed.
  */
 #define pvr_csb_emit(csb, cmd, name)                               \
-   for (struct pvr_cmd_struct(cmd)                                 \
+   for (struct PVRX(cmd)                                           \
            name = { pvr_cmd_header(cmd) },                         \
            *_dst = pvr_csb_alloc_dwords(csb, pvr_cmd_length(cmd)); \
         __builtin_expect(_dst != NULL, 1);                         \

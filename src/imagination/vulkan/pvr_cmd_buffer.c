@@ -3197,9 +3197,9 @@ static void pvr_setup_output_select(struct pvr_cmd_buffer *const cmd_buffer)
    }
 }
 
-static void pvr_setup_isp_faces_and_control(
-   struct pvr_cmd_buffer *const cmd_buffer,
-   struct pvr_cmd_struct(TA_STATE_ISPA) *const ispa_out)
+static void
+pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
+                                struct PVRX(TA_STATE_ISPA) *const ispa_out)
 {
    struct pvr_emit_state *const emit_state = &cmd_buffer->state.emit_state;
    const struct pvr_graphics_pipeline *const gfx_pipeline =
@@ -3476,7 +3476,7 @@ pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
    struct pvr_ppp_state *const ppp_state = &cmd_buffer->state.ppp_state;
    const struct pvr_dynamic_state *const dynamic_state =
       &cmd_buffer->state.dynamic.common;
-   const struct pvr_cmd_struct(TA_STATE_ISPCTL) *const ispctl =
+   const struct PVRX(TA_STATE_ISPCTL) *const ispctl =
       &ppp_state->isp.control_struct;
    struct pvr_device_info *const dev_info =
       &cmd_buffer->device->pdevice->dev_info;
@@ -3581,7 +3581,7 @@ pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
 
 static void
 pvr_setup_triangle_merging_flag(struct pvr_cmd_buffer *const cmd_buffer,
-                                struct pvr_cmd_struct(TA_STATE_ISPA) * ispa)
+                                struct PVRX(TA_STATE_ISPA) * ispa)
 {
    struct pvr_emit_state *const emit_state = &cmd_buffer->state.emit_state;
    struct pvr_ppp_state *const ppp_state = &cmd_buffer->state.ppp_state;
@@ -4063,7 +4063,7 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer)
    }
 
    if (state->dirty.gfx_pipeline_binding) {
-      struct pvr_cmd_struct(TA_STATE_ISPA) ispa;
+      struct PVRX(TA_STATE_ISPA) ispa;
 
       pvr_setup_output_select(cmd_buffer);
       pvr_setup_isp_faces_and_control(cmd_buffer, &ispa);
@@ -4172,7 +4172,7 @@ pvr_emit_dirty_vdm_state(const struct pvr_cmd_buffer *const cmd_buffer)
       &cmd_buffer->device->pdevice->dev_info;
    ASSERTED const uint32_t max_user_vertex_output_components =
       pvr_get_max_user_vertex_output_components(dev_info);
-   struct pvr_cmd_struct(VDMCTRL_VDM_STATE0)
+   struct PVRX(VDMCTRL_VDM_STATE0)
       header = { pvr_cmd_header(VDMCTRL_VDM_STATE0) };
    const struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    const struct pvr_graphics_pipeline *const gfx_pipeline = state->gfx_pipeline;
@@ -4497,7 +4497,7 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
 {
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_csb *const csb = &state->current_sub_cmd->gfx.control_stream;
-   struct pvr_cmd_struct(VDMCTRL_INDEX_LIST0)
+   struct PVRX(VDMCTRL_INDEX_LIST0)
       list_hdr = { pvr_cmd_header(VDMCTRL_INDEX_LIST0) };
    pvr_dev_addr_t index_buffer_addr = { 0 };
    unsigned int index_stride = 0;
