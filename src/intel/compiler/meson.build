@@ -102,6 +102,7 @@ libintel_compiler_files = files(
   'brw_nir_clamp_image_1d_2d_array_sizes.c',
   'brw_packed_float.c',
   'brw_predicated_break.cpp',
+  'brw_prim.h',
   'brw_private.h',
   'brw_reg.h',
   'brw_reg_type.c',

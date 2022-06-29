@@ -32,6 +32,7 @@
 #include "brw_cfg.h"
 #include "brw_fs.h"
 #include "brw_nir.h"
+#include "brw_prim.h"
 #include "dev/intel_debug.h"
 
 namespace brw {

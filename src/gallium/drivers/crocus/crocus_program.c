@@ -44,6 +44,7 @@
 #include "compiler/nir/nir_serialize.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/compiler/brw_nir.h"
+#include "intel/compiler/brw_prim.h"
 #include "crocus_context.h"
 #include "nir/tgsi_to_nir.h"
 

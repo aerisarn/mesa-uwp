@@ -34,6 +34,7 @@
 #include "program/program.h"
 
 #include "brw_clip.h"
+#include "brw_prim.h"
 
 static void release_tmps( struct brw_clip_compile *c )
 {

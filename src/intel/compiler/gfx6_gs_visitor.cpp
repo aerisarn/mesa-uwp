@@ -31,6 +31,7 @@
 
 #include "gfx6_gs_visitor.h"
 #include "brw_eu.h"
+#include "brw_prim.h"
 
 namespace brw {
 

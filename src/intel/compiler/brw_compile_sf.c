@@ -23,6 +23,7 @@
 
 #include "brw_compiler.h"
 #include "brw_eu.h"
+#include "brw_prim.h"
 
 #include "dev/intel_debug.h"
 
