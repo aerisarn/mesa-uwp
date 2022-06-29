@@ -746,3 +746,31 @@ vn_DestroySamplerYcbcrConversion(VkDevice device,
    vn_object_base_fini(&conv->base);
    vk_free(alloc, conv);
 }
+
+void
+vn_GetDeviceImageMemoryRequirements(
+   VkDevice device,
+   const VkDeviceImageMemoryRequirements *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
+{
+   struct vn_device *dev = vn_device_from_handle(device);
+
+   /* TODO per-device cache */
+   vn_call_vkGetDeviceImageMemoryRequirements(dev->instance, device, pInfo,
+                                              pMemoryRequirements);
+}
+
+void
+vn_GetDeviceImageSparseMemoryRequirements(
+   VkDevice device,
+   const VkDeviceImageMemoryRequirements *pInfo,
+   uint32_t *pSparseMemoryRequirementCount,
+   VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
+{
+   struct vn_device *dev = vn_device_from_handle(device);
+
+   /* TODO per-device cache */
+   vn_call_vkGetDeviceImageSparseMemoryRequirements(
+      dev->instance, device, pInfo, pSparseMemoryRequirementCount,
+      pSparseMemoryRequirements);
+}

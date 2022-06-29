@@ -132,6 +132,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
                        feats->inline_uniform_block,
                        INLINE_UNIFORM_BLOCK_FEATURES, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_maintenance4, feats->maintenance4,
+                       MAINTENANCE_4_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_shader_demote_to_helper_invocation,
                        feats->shader_demote_to_helper_invocation,
                        SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES,
@@ -491,6 +493,8 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
                        props->transform_feedback,
                        TRANSFORM_FEEDBACK_PROPERTIES_EXT, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_maintenance4, props->maintenance4,
+                       MAINTENANCE_4_PROPERTIES, properties2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_vertex_attribute_divisor,
                        props->vertex_attribute_divisor,
                        VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT, properties2);
@@ -996,6 +1000,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_inline_uniform_block = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .KHR_copy_commands2 = true,
+      .KHR_maintenance4 = true,
 
       /* EXT */
       .EXT_calibrated_timestamps = true,
@@ -1621,6 +1626,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          *extended_dynamic_state2;
       VkPhysicalDeviceImageRobustnessFeaturesEXT *image_robustness;
       VkPhysicalDeviceInlineUniformBlockFeatures *inline_uniform_block;
+      VkPhysicalDeviceMaintenance4Features *maintenance4;
       VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
          *shader_demote_to_helper_invocation;
 
@@ -1844,6 +1850,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT:
          *u.vertex_attribute_divisor = feats->vertex_attribute_divisor;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES:
+         *u.maintenance4 = feats->maintenance4;
+         break;
       default:
          break;
       }
@@ -1901,6 +1910,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
       VkPhysicalDeviceProvokingVertexPropertiesEXT *provoking_vertex;
       VkPhysicalDeviceRobustness2PropertiesEXT *robustness_2;
+      VkPhysicalDeviceMaintenance4PropertiesKHR *maintenance4;
       VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
       VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT
          *vertex_attribute_divisor;
@@ -2144,6 +2154,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT:
          *u.vertex_attribute_divisor = props->vertex_attribute_divisor;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES:
+         *u.maintenance4 = props->maintenance4;
          break;
       default:
          break;

@@ -253,6 +253,7 @@ vn_buffer_cache_get_memory_requirements(
     */
    for (uint32_t i = 0; i < cache->entry_count; i++) {
       const struct vn_buffer_cache_entry *entry = &cache->entries[i];
+      // TODO: Fix the spec regarding the usage and alignment behavior
       if ((entry->create_info->flags == create_info->flags) &&
           ((entry->create_info->usage & create_info->usage) ==
            create_info->usage)) {
@@ -527,4 +528,17 @@ vn_DestroyBufferView(VkDevice device,
 
    vn_object_base_fini(&view->base);
    vk_free(alloc, view);
+}
+
+void
+vn_GetDeviceBufferMemoryRequirements(
+   VkDevice device,
+   const VkDeviceBufferMemoryRequirements *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
+{
+   struct vn_device *dev = vn_device_from_handle(device);
+
+   /* TODO per-device cache */
+   vn_call_vkGetDeviceBufferMemoryRequirements(dev->instance, device, pInfo,
+                                               pMemoryRequirements);
 }
