@@ -82,6 +82,32 @@ together but store the final state on the stack for immediate consumption:
 
 .. doxygenfunction:: vk_graphics_pipeline_state_merge
 
+
+Dynamic state
+-------------
+
+All dynamic states in Vulkan, regardless of which API version or extension
+introduced them, are represented by the
+:cpp:enum:`mesa_vk_dynamic_graphics_state` enum.  This corresponds to the
+:cpp:type:`VkDynamicState` enum in the Vulkan API only it's compact (has no
+holes due to extension namespacing) and a bit better organized.  Each
+enumerant is named with the name of the state group to which the dynamic
+state belongs as well as the name of the dynamic state itself.  The fact
+that it's compact allows us to use to index bitsets.
+
+.. doxygenfunction:: vk_get_dynamic_graphics_states
+
+We also provide a :cpp:struct:`vk_dynamic_graphics_state` structure which
+contains all the dynamic graphics states, regardless of which API version
+or extension introduced them.  This structure can be populated from a
+:cpp:struct:`vk_graphics_pipeline_state` via
+:cpp:func:`vk_dynamic_graphics_state_init`.
+
+.. doxygenfunction:: vk_dynamic_graphics_state_init
+
+.. doxygenfunction:: vk_dynamic_graphics_state_copy
+
+
 Reference
 ---------
 
@@ -133,3 +159,7 @@ Reference
 .. doxygenstruct:: vk_render_pass_state
    :members:
 
+.. doxygenenum:: mesa_vk_dynamic_graphics_state
+
+.. doxygenstruct:: vk_dynamic_graphics_state
+   :members:

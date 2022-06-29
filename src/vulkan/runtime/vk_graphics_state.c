@@ -180,6 +180,9 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
 #define IS_DYNAMIC(STATE) \
    BITSET_TEST(dynamic, MESA_VK_DYNAMIC_##STATE)
 
+#define IS_NEEDED(STATE) \
+   BITSET_TEST(needed, MESA_VK_DYNAMIC_##STATE)
+
 static void
 vk_vertex_input_state_init(struct vk_vertex_input_state *vi,
                            const BITSET_WORD *dynamic,
@@ -237,6 +240,24 @@ vk_vertex_input_state_init(struct vk_vertex_input_state *vi,
 }
 
 static void
+vk_dynamic_graphics_state_init_vi(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_vertex_input_state *vi)
+{
+   if (IS_NEEDED(VI))
+      *dst->vi = *vi;
+
+   if (IS_NEEDED(VI_BINDING_STRIDES)) {
+      for (uint32_t b = 0; b < MESA_VK_MAX_VERTEX_BINDINGS; b++) {
+         if (vi->bindings_valid & BITFIELD_BIT(b))
+            dst->vi_binding_strides[b] = vi->bindings[b].stride;
+         else
+            dst->vi_binding_strides[b] = 0;
+      }
+   }
+}
+
+static void
 vk_input_assembly_state_init(struct vk_input_assembly_state *ia,
                              const BITSET_WORD *dynamic,
                              const VkPipelineInputAssemblyStateCreateInfo *ia_info)
@@ -249,6 +270,14 @@ vk_input_assembly_state_init(struct vk_input_assembly_state *ia,
    }
 
    ia->primitive_restart_enable = ia_info->primitiveRestartEnable;
+}
+
+static void
+vk_dynamic_graphics_state_init_ia(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_input_assembly_state *ia)
+{
+   dst->ia = *ia;
 }
 
 static void
@@ -272,6 +301,14 @@ vk_tessellation_state_init(struct vk_tessellation_state *ts,
    } else {
       ts->domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
    }
+}
+
+static void
+vk_dynamic_graphics_state_init_ts(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_tessellation_state *ts)
+{
+   dst->ts.patch_control_points = ts->patch_control_points;
 }
 
 static void
@@ -311,6 +348,20 @@ vk_viewport_state_init(struct vk_viewport_state *vp,
 }
 
 static void
+vk_dynamic_graphics_state_init_vp(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_viewport_state *vp)
+{
+   dst->vp.viewport_count = vp->viewport_count;
+   if (IS_NEEDED(VP_VIEWPORTS))
+      typed_memcpy(dst->vp.viewports, vp->viewports, vp->viewport_count);
+
+   dst->vp.scissor_count = vp->scissor_count;
+   if (IS_NEEDED(VP_SCISSORS))
+      typed_memcpy(dst->vp.scissors, vp->scissors, vp->scissor_count);
+}
+
+static void
 vk_discard_rectangles_state_init(struct vk_discard_rectangles_state *dr,
                                  const BITSET_WORD *dynamic,
                                  const VkPipelineDiscardRectangleStateCreateInfoEXT *dr_info)
@@ -328,6 +379,15 @@ vk_discard_rectangles_state_init(struct vk_discard_rectangles_state *dr,
       typed_memcpy(dr->rectangles, dr_info->pDiscardRectangles,
                    dr_info->discardRectangleCount);
    }
+}
+
+static void
+vk_dynamic_graphics_state_init_dr(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_discard_rectangles_state *dr)
+{
+   dst->dr.rectangle_count = dr->rectangle_count;
+   typed_memcpy(dst->dr.rectangles, dr->rectangles, dr->rectangle_count);
 }
 
 static void
@@ -428,6 +488,23 @@ vk_rasterization_state_init(struct vk_rasterization_state *rs,
 }
 
 static void
+vk_dynamic_graphics_state_init_rs(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_rasterization_state *rs)
+{
+   dst->rs.rasterizer_discard_enable = rs->rasterizer_discard_enable;
+   dst->rs.cull_mode = rs->cull_mode;
+   dst->rs.front_face = rs->front_face;
+   dst->rs.depth_bias.enable = rs->depth_bias.enable;
+   dst->rs.depth_bias.constant = rs->depth_bias.constant;
+   dst->rs.depth_bias.clamp = rs->depth_bias.clamp;
+   dst->rs.depth_bias.slope = rs->depth_bias.slope;
+   dst->rs.line.width = rs->line.width;
+   dst->rs.line.stipple.factor = rs->line.stipple.factor;
+   dst->rs.line.stipple.pattern = rs->line.stipple.pattern;
+}
+
+static void
 vk_fragment_shading_rate_state_init(
    struct vk_fragment_shading_rate_state *fsr,
    const BITSET_WORD *dynamic,
@@ -442,6 +519,15 @@ vk_fragment_shading_rate_state_init(
       fsr->combiner_ops[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
       fsr->combiner_ops[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
    }
+}
+
+static void
+vk_dynamic_graphics_state_init_fsr(
+   struct vk_dynamic_graphics_state *dst,
+   const BITSET_WORD *needed,
+   const struct vk_fragment_shading_rate_state *fsr)
+{
+   dst->fsr = *fsr;
 }
 
 static void
@@ -530,6 +616,15 @@ vk_multisample_sample_locations_state_init(
 }
 
 static void
+vk_dynamic_graphics_state_init_ms(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_multisample_state *ms)
+{
+   if (IS_NEEDED(MS_SAMPLE_LOCATIONS))
+      *dst->ms.sample_locations = *ms->sample_locations;
+}
+
+static void
 vk_stencil_test_face_state_init(struct vk_stencil_test_face_state *face,
                                 const VkStencilOpState *info)
 {
@@ -559,6 +654,14 @@ vk_depth_stencil_state_init(struct vk_depth_stencil_state *ds,
    ds->stencil.test_enable = ds_info->stencilTestEnable;
    vk_stencil_test_face_state_init(&ds->stencil.front, &ds_info->front);
    vk_stencil_test_face_state_init(&ds->stencil.back, &ds_info->back);
+}
+
+static void
+vk_dynamic_graphics_state_init_ds(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_depth_stencil_state *ds)
+{
+   dst->ds = *ds;
 }
 
 static void
@@ -603,6 +706,18 @@ vk_color_blend_state_init(struct vk_color_blend_state *cb,
    } else {
       cb->color_write_enables = BITFIELD_MASK(cb_info->attachmentCount);
    }
+}
+
+static void
+vk_dynamic_graphics_state_init_cb(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_color_blend_state *cb)
+{
+   dst->cb.logic_op = cb->logic_op;
+   dst->cb.color_write_enables = cb->color_write_enables;
+
+   if (IS_NEEDED(CB_BLEND_CONSTANTS))
+      typed_memcpy(dst->cb.blend_constants, cb->blend_constants, 4);
 }
 
 static bool
@@ -695,6 +810,12 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
       rp->stencil_self_dependency = rsd_info->stencilSelfDependency;
    }
 }
+
+static void
+vk_dynamic_graphics_state_init_rp(struct vk_dynamic_graphics_state *dst,
+                                  const BITSET_WORD *needed,
+                                  const struct vk_render_pass_state *rp)
+{ }
 
 #define FOREACH_STATE_GROUP(f)                           \
    f(MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT,            \
@@ -1061,6 +1182,7 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
 }
 
 #undef IS_DYNAMIC
+#undef IS_NEEDED
 
 void
 vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
@@ -1085,4 +1207,272 @@ vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
    FOREACH_STATE_GROUP(MERGE)
 
 #undef MERGE
+}
+
+const struct vk_dynamic_graphics_state vk_default_dynamic_graphics_state = {
+   .rs = {
+      .line = {
+         .width = 1.0f,
+      },
+   },
+   .fsr = {
+      .fragment_size = {1u, 1u},
+      .combiner_ops = {
+         VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+         VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+      },
+   },
+   .ds = {
+      .depth = {
+         .bounds_test = {
+            .min = 0.0f,
+            .max = 1.0f,
+         },
+      },
+      .stencil = {
+         .front = {
+            .compare_mask = -1,
+            .write_mask = -1,
+         },
+         .back = {
+            .compare_mask = -1,
+            .write_mask = -1,
+         },
+      },
+   },
+   .cb = {
+      .color_write_enables = 0xffffffffu,
+   },
+};
+
+void
+vk_dynamic_graphics_state_init(struct vk_dynamic_graphics_state *dyn)
+{
+   *dyn = vk_default_dynamic_graphics_state;
+}
+
+void
+vk_dynamic_graphics_state_clear(struct vk_dynamic_graphics_state *dyn)
+{
+   struct vk_vertex_input_state *vi = dyn->vi;
+   struct vk_sample_locations_state *sl = dyn->ms.sample_locations;
+
+   *dyn = vk_default_dynamic_graphics_state;
+
+   if (vi != NULL) {
+      memset(vi, 0, sizeof(*vi));
+      dyn->vi = vi;
+   }
+
+   if (sl != NULL) {
+      memset(sl, 0, sizeof(*sl));
+      dyn->ms.sample_locations = sl;
+   }
+}
+
+void
+vk_dynamic_graphics_state_fill(struct vk_dynamic_graphics_state *dyn,
+                               const struct vk_graphics_pipeline_state *p)
+{
+   /* This funciton (and the individual vk_dynamic_graphics_state_init_*
+    * functions it calls) are a bit sloppy.  Instead of checking every single
+    * bit, we just copy everything and set the bits the right way at the end
+    * based on what groups we actually had.
+    */
+   enum mesa_vk_graphics_state_groups groups = 0;
+
+   BITSET_DECLARE(needed, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+   BITSET_COPY(needed, p->dynamic);
+   BITSET_NOT(needed);
+
+   /* We only want to copy these if the driver has filled out the relevant
+    * pointer in the dynamic state struct.  If not, they don't support them
+    * as dynamic state and we should leave them alone.
+    */
+   if (dyn->vi == NULL)
+      BITSET_CLEAR(needed, MESA_VK_DYNAMIC_VI);
+   if (dyn->ms.sample_locations == NULL)
+      BITSET_CLEAR(needed, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS);
+
+#define INIT_DYNAMIC_STATE(STATE, type, s) \
+   if (p->s != NULL) { \
+      vk_dynamic_graphics_state_init_##s(dyn, needed, p->s); \
+      groups |= STATE; \
+   }
+
+   FOREACH_STATE_GROUP(INIT_DYNAMIC_STATE);
+
+#undef INIT_DYNAMIC_STATE
+
+   /* Mask off all but the groups we actually found */
+   get_dynamic_state_groups(dyn->set, groups);
+   BITSET_AND(dyn->set, dyn->set, needed);
+}
+
+#define SET_DYN_VALUE(dst, STATE, state, value) do {        \
+   if (!BITSET_TEST((dst)->set, MESA_VK_DYNAMIC_##STATE) || \
+       (dst)->state != (value)) {                           \
+      (dst)->state = (value);                               \
+      assert((dst)->state == (value));                      \
+      BITSET_SET(dst->set, MESA_VK_DYNAMIC_##STATE);        \
+      BITSET_SET(dst->dirty, MESA_VK_DYNAMIC_##STATE);      \
+   }                                                        \
+} while(0)
+
+#define SET_DYN_BOOL(dst, STATE, state, value) \
+   SET_DYN_VALUE(dst, STATE, state, (bool)value);
+
+#define SET_DYN_ARRAY(dst, STATE, state, start, count, src) do {  \
+   assert(start + count <= ARRAY_SIZE((dst)->state));             \
+   STATIC_ASSERT(sizeof(*(dst)->state) == sizeof(*(src)));        \
+   const size_t __state_size = sizeof(*(dst)->state) * (count);   \
+   if (!BITSET_TEST((dst)->set, MESA_VK_DYNAMIC_##STATE) ||       \
+       memcmp((dst)->state + start, src, __state_size)) {         \
+      memcpy((dst)->state + start, src, __state_size);            \
+      BITSET_SET(dst->set, MESA_VK_DYNAMIC_##STATE);              \
+      BITSET_SET(dst->dirty, MESA_VK_DYNAMIC_##STATE);            \
+   }                                                              \
+} while(0)
+
+void
+vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
+                               const struct vk_dynamic_graphics_state *src)
+{
+#define IS_SET_IN_SRC(STATE) \
+   BITSET_TEST(src->set, MESA_VK_DYNAMIC_##STATE)
+
+#define COPY_MEMBER(STATE, state) \
+   SET_DYN_VALUE(dst, STATE, state, src->state)
+
+#define COPY_ARRAY(STATE, state, count) \
+   SET_DYN_ARRAY(dst, STATE, state, 0, count, src->state)
+
+#define COPY_IF_SET(STATE, state) \
+   if (IS_SET_IN_SRC(STATE)) SET_DYN_VALUE(dst, STATE, state, src->state)
+
+   assert((dst->vi != NULL) == (src->vi != NULL));
+   if (dst->vi != NULL && IS_SET_IN_SRC(VI)) {
+      COPY_MEMBER(VI, vi->bindings_valid);
+      u_foreach_bit(b, src->vi->bindings_valid) {
+         COPY_MEMBER(VI, vi->bindings[b].stride);
+         COPY_MEMBER(VI, vi->bindings[b].input_rate);
+         COPY_MEMBER(VI, vi->bindings[b].divisor);
+      }
+      COPY_MEMBER(VI, vi->attributes_valid);
+      u_foreach_bit(a, src->vi->attributes_valid) {
+         COPY_MEMBER(VI, vi->attributes[a].binding);
+         COPY_MEMBER(VI, vi->attributes[a].format);
+         COPY_MEMBER(VI, vi->attributes[a].offset);
+      }
+   }
+
+   if (IS_SET_IN_SRC(VI_BINDING_STRIDES)) {
+      COPY_ARRAY(VI_BINDING_STRIDES, vi_binding_strides,
+                 MESA_VK_MAX_VERTEX_BINDINGS);
+   }
+
+   COPY_IF_SET(IA_PRIMITIVE_TOPOLOGY, ia.primitive_topology);
+   COPY_IF_SET(IA_PRIMITIVE_RESTART_ENABLE, ia.primitive_restart_enable);
+   COPY_IF_SET(TS_PATCH_CONTROL_POINTS, ts.patch_control_points);
+
+   COPY_IF_SET(VP_VIEWPORT_COUNT, vp.viewport_count);
+   if (IS_SET_IN_SRC(VP_VIEWPORTS)) {
+      assert(IS_SET_IN_SRC(VP_VIEWPORT_COUNT));
+      COPY_ARRAY(VP_VIEWPORT_COUNT, vp.viewports, src->vp.viewport_count);
+   }
+
+   COPY_IF_SET(VP_SCISSOR_COUNT, vp.scissor_count);
+   if (IS_SET_IN_SRC(VP_SCISSORS)) {
+      assert(IS_SET_IN_SRC(VP_SCISSOR_COUNT));
+      COPY_ARRAY(VP_SCISSOR_COUNT, vp.scissors, src->vp.scissor_count);
+   }
+
+   if (IS_SET_IN_SRC(DR_RECTANGLES)) {
+      COPY_MEMBER(DR_RECTANGLES, dr.rectangle_count);
+      COPY_ARRAY(DR_RECTANGLES, dr.rectangles, src->dr.rectangle_count);
+   }
+
+   COPY_IF_SET(RS_RASTERIZER_DISCARD_ENABLE, rs.rasterizer_discard_enable);
+   COPY_IF_SET(RS_CULL_MODE, rs.cull_mode);
+   COPY_IF_SET(RS_FRONT_FACE, rs.front_face);
+   COPY_IF_SET(RS_DEPTH_BIAS_ENABLE, rs.depth_bias.enable);
+   COPY_IF_SET(RS_DEPTH_BIAS_FACTORS, rs.depth_bias.constant);
+   COPY_IF_SET(RS_DEPTH_BIAS_FACTORS, rs.depth_bias.clamp);
+   COPY_IF_SET(RS_DEPTH_BIAS_FACTORS, rs.depth_bias.slope);
+   COPY_IF_SET(RS_LINE_WIDTH, rs.line.width);
+   COPY_IF_SET(RS_LINE_STIPPLE, rs.line.stipple.factor);
+   COPY_IF_SET(RS_LINE_STIPPLE, rs.line.stipple.pattern);
+
+   COPY_IF_SET(FSR, fsr.fragment_size.width);
+   COPY_IF_SET(FSR, fsr.fragment_size.height);
+   COPY_IF_SET(FSR, fsr.combiner_ops[0]);
+   COPY_IF_SET(FSR, fsr.combiner_ops[1]);
+
+   assert((dst->ms.sample_locations == NULL) ==
+          (src->ms.sample_locations == NULL));
+   if (dst->ms.sample_locations != NULL &&
+       IS_SET_IN_SRC(MS_SAMPLE_LOCATIONS)) {
+      COPY_MEMBER(MS_SAMPLE_LOCATIONS, ms.sample_locations->per_pixel);
+      COPY_MEMBER(MS_SAMPLE_LOCATIONS, ms.sample_locations->grid_size.width);
+      COPY_MEMBER(MS_SAMPLE_LOCATIONS, ms.sample_locations->grid_size.height);
+      const uint32_t sl_count = src->ms.sample_locations->per_pixel *
+                                src->ms.sample_locations->grid_size.width *
+                                src->ms.sample_locations->grid_size.height;
+      COPY_ARRAY(MS_SAMPLE_LOCATIONS, ms.sample_locations->locations, sl_count);
+   }
+
+   COPY_IF_SET(DS_DEPTH_TEST_ENABLE, ds.depth.test_enable);
+   COPY_IF_SET(DS_DEPTH_WRITE_ENABLE, ds.depth.write_enable);
+   COPY_IF_SET(DS_DEPTH_COMPARE_OP, ds.depth.compare_op);
+   COPY_IF_SET(DS_DEPTH_BOUNDS_TEST_ENABLE, ds.depth.bounds_test.enable);
+   if (IS_SET_IN_SRC(DS_DEPTH_BOUNDS_TEST_BOUNDS)) {
+      COPY_MEMBER(DS_DEPTH_BOUNDS_TEST_BOUNDS, ds.depth.bounds_test.min);
+      COPY_MEMBER(DS_DEPTH_BOUNDS_TEST_BOUNDS, ds.depth.bounds_test.max);
+   }
+
+   COPY_IF_SET(DS_STENCIL_TEST_ENABLE, ds.stencil.test_enable);
+   if (IS_SET_IN_SRC(DS_STENCIL_OP)) {
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.front.op.fail);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.front.op.pass);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.front.op.depth_fail);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.front.op.compare);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.back.op.fail);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.back.op.pass);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.back.op.depth_fail);
+      COPY_MEMBER(DS_STENCIL_OP, ds.stencil.back.op.compare);
+   }
+   if (IS_SET_IN_SRC(DS_STENCIL_COMPARE_MASK)) {
+      COPY_MEMBER(DS_STENCIL_COMPARE_MASK, ds.stencil.front.compare_mask);
+      COPY_MEMBER(DS_STENCIL_COMPARE_MASK, ds.stencil.back.compare_mask);
+   }
+   if (IS_SET_IN_SRC(DS_STENCIL_WRITE_MASK)) {
+      COPY_MEMBER(DS_STENCIL_WRITE_MASK, ds.stencil.front.write_mask);
+      COPY_MEMBER(DS_STENCIL_WRITE_MASK, ds.stencil.back.write_mask);
+   }
+   if (IS_SET_IN_SRC(DS_STENCIL_REFERENCE)) {
+      COPY_MEMBER(DS_STENCIL_REFERENCE, ds.stencil.front.reference);
+      COPY_MEMBER(DS_STENCIL_REFERENCE, ds.stencil.back.reference);
+   }
+
+   COPY_IF_SET(CB_LOGIC_OP, cb.logic_op);
+   COPY_IF_SET(CB_COLOR_WRITE_ENABLES, cb.color_write_enables);
+   if (IS_SET_IN_SRC(CB_BLEND_CONSTANTS))
+      COPY_ARRAY(CB_BLEND_CONSTANTS, cb.blend_constants, 4);
+
+#undef IS_SET_IN_SRC
+#undef MARK_DIRTY
+#undef COPY_MEMBER
+#undef COPY_ARRAY
+#undef COPY_IF_SET
+
+   for (uint32_t w = 0; w < ARRAY_SIZE(dst->dirty); w++) {
+      /* If it's in the source but isn't set in the destination at all, mark
+       * it dirty.  It's possible that the default values just happen to equal
+       * the value from src.
+       */
+      dst->dirty[w] |= src->set[w] & ~dst->set[w];
+
+      /* Everything that was in the source is now in the destination */
+      dst->set[w] |= src->set[w];
+   }
 }

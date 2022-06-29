@@ -474,6 +474,184 @@ struct vk_render_pass_state {
    VkFormat stencil_attachment_format;
 };
 
+/** Struct representing all dynamic graphics state
+ *
+ * Before invoking any core functions, the driver must properly populate
+ * initialize this struct:
+ *
+ *  - Initialize using vk_default_dynamic_graphics_state, if desired
+ *  - Set vi to a driver-allocated vk_vertex_input_state struct
+ *  - Set ms.sample_locations to a driver-allocated
+ *    vk_sample_locations_state struct
+ */
+struct vk_dynamic_graphics_state {
+   /** Vertex input state
+    *
+    * Must be provided by the driver if VK_EXT_vertex_input_dynamic_state is
+    * supported.
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VI
+    */
+   struct vk_vertex_input_state *vi;
+
+   /** Vertex binding strides
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VI_BINDING_STRIDES
+    */
+   uint16_t vi_binding_strides[MESA_VK_MAX_VERTEX_BINDINGS];
+
+   struct vk_input_assembly_state ia;
+
+   struct {
+      uint32_t patch_control_points;
+   } ts;
+
+   /** Viewport state */
+   struct {
+      /** Viewport count
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_VIEWPORT_COUNT
+       */
+      uint32_t viewport_count;
+
+      /** Viewports
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_VIEWPORTS
+       */
+      VkViewport viewports[MESA_VK_MAX_VIEWPORTS];
+
+      /** Scissor count
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_SCISSOR_COUNT
+       */
+      uint32_t scissor_count;
+
+      /** Scissor rects
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_SCISSORS
+       */
+      VkRect2D scissors[MESA_VK_MAX_SCISSORS];
+   } vp;
+
+   /** Discard rectangles
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_DR_RECTANGLES
+    */
+   struct {
+      uint32_t rectangle_count;
+      VkRect2D rectangles[MESA_VK_MAX_DISCARD_RECTANGLES];
+   } dr;
+
+   /** Rasterization state */
+   struct {
+      /** Rasterizer discard
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_RASTERIZER_DISCARD_ENABLE
+       */
+      bool rasterizer_discard_enable;
+
+      /** Cull mode
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_CULL_MODE
+       */
+      VkCullModeFlags cull_mode;
+
+      /** Front face
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_FRONT_FACE
+       */
+      VkFrontFace front_face;
+
+      struct {
+         /** Depth bias enable
+          *
+          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_ENABLE
+          */
+         bool enable;
+
+         /** Depth bias constant factor
+          *
+          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_FACTORS
+          */
+         float constant;
+
+         /** Depth bias clamp
+          *
+          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_FACTORS
+          */
+         float clamp;
+
+         /** Depth bias slope
+          *
+          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_FACTORS
+          */
+         float slope;
+      } depth_bias;
+
+      struct {
+         /** Line width
+          *
+          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_LINE_WIDTH
+          */
+         float width;
+
+         /** Line stipple
+          *
+          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_LINE_STIPPLE
+          */
+         struct {
+            uint32_t factor;
+            uint16_t pattern;
+         } stipple;
+      } line;
+   } rs;
+
+   struct vk_fragment_shading_rate_state fsr;
+
+   /** Multisample state */
+   struct {
+      /** Sample locations
+       *
+       * Must be provided by the driver if VK_EXT_sample_locations is
+       * supported.
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_MS_SAMPLE_LOCATIONS
+       */
+      struct vk_sample_locations_state *sample_locations;
+   } ms;
+
+   struct vk_depth_stencil_state ds;
+
+   /** Color blend state */
+   struct {
+      /** Integer color logic op
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_LOGIC_OP,
+       */
+      VkLogicOp logic_op;
+
+      /** Color write enables
+       *
+       * Bitmask of color write enables, indexed by color attachment index.
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_COLOR_WRITE_ENABLES,
+       */
+      uint32_t color_write_enables;
+
+      /** Blend constants
+       *
+       * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_BLEND_CONSTANTS,
+       */
+      float blend_constants[4];
+   } cb;
+
+   /** For pipelines, which bits of dynamic state are set */
+   BITSET_DECLARE(set, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+
+   /** For command buffers, which bits of dynamic state have changed */
+   BITSET_DECLARE(dirty, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+};
+
 struct vk_graphics_pipeline_all_state {
    struct vk_vertex_input_state vi;
    struct vk_input_assembly_state ia;
@@ -605,6 +783,75 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
 void
 vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
                                  const struct vk_graphics_pipeline_state *src);
+
+extern const struct vk_dynamic_graphics_state vk_default_dynamic_graphics_state;
+
+/** Initialize a vk_dynamic_graphics_state with defaults
+ *
+ * @param[out] dyn         Dynamic graphics state to initizlie
+ */
+void
+vk_dynamic_graphics_state_init(struct vk_dynamic_graphics_state *dyn);
+
+/** Clear a vk_dynamic_graphics_state to defaults
+ *
+ * @param[out] dyn         Dynamic graphics state to initizlie
+ */
+void
+vk_dynamic_graphics_state_clear(struct vk_dynamic_graphics_state *dyn);
+
+/** Initialize a vk_dynamic_graphics_state for a pipeline
+ *
+ * @param[out] dyn         Dynamic graphics state to initizlie
+ * @param[in]  supported   Bitset of all dynamic state supported by the driver.
+ * @param[in]  p           The pipeline state from which to initialize the
+ *                         dynamic state.
+ */
+void
+vk_dynamic_graphics_state_fill(struct vk_dynamic_graphics_state *dyn,
+                               const struct vk_graphics_pipeline_state *p);
+
+/** Mark all states in the given vk_dynamic_graphics_state dirty
+ *
+ * @param[out] d  Dynamic graphics state struct
+ */
+static inline void
+vk_dynamic_graphics_state_dirty_all(struct vk_dynamic_graphics_state *d)
+{
+   BITSET_SET_RANGE(d->dirty, 0, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX - 1);
+}
+
+/** Mark all states in the given vk_dynamic_graphics_state not dirty
+ *
+ * @param[out] d  Dynamic graphics state struct
+ */
+static inline void
+vk_dynamic_graphics_state_clear_dirty(struct vk_dynamic_graphics_state *d)
+{
+   memset(d->dirty, 0, sizeof(d->dirty));
+}
+
+/** Test if any states in the given vk_dynamic_graphics_state are dirty
+ *
+ * @param[in]  d  Dynamic graphics state struct to test
+ * @returns       true if any state is dirty
+ */
+static inline bool
+vk_dynamic_graphics_state_any_dirty(const struct vk_dynamic_graphics_state *d)
+{
+   return BITSET_TEST_RANGE(d->dirty,
+      0, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX - 1);
+}
+
+/** Copies all set state from src to dst
+ *
+ * Both src and dst are assumed to be properly initialized dynamic state
+ * structs.  Anything not set in src, as indicated by src->set, is ignored and
+ * those bits of dst are left untouched.
+ */
+void
+vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
+                               const struct vk_dynamic_graphics_state *src);
 
 #ifdef __cplusplus
 }
