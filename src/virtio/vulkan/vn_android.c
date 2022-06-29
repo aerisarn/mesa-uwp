@@ -965,7 +965,8 @@ vn_android_get_ahb_format_properties(
          .a = VK_COMPONENT_SWIZZLE_IDENTITY,
       },
       .suggestedYcbcrModel = model,
-      .suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL,
+      /* match EGL_YUV_NARROW_RANGE_EXT used in egl platform_android */
+      .suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_NARROW,
       .suggestedXChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
       .suggestedYChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
    };
