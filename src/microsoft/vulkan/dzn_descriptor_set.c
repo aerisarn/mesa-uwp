@@ -483,14 +483,16 @@ dzn_GetDescriptorSetLayoutSupport(VkDevice device,
 }
 
 static void
-dzn_pipeline_layout_destroy(struct dzn_pipeline_layout *layout)
+dzn_pipeline_layout_destroy(struct vk_device *vk_device,
+                            struct vk_pipeline_layout *vk_layout)
 {
-   struct dzn_device *device = container_of(layout->base.device, struct dzn_device, vk);
+   struct dzn_pipeline_layout *layout =
+      container_of(vk_layout, struct dzn_pipeline_layout, vk);
 
    if (layout->root.sig)
       ID3D12RootSignature_Release(layout->root.sig);
 
-   vk_free(&device->vk.alloc, layout);
+   vk_pipeline_layout_destroy(vk_device, &layout->vk);
 }
 
 // Reserve two root parameters for the push constants and sysvals CBVs.
@@ -562,11 +564,10 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    VK_MULTIALLOC_DECL(&ma, struct dzn_pipeline_layout, layout, 1);
    VK_MULTIALLOC_DECL(&ma, uint32_t, binding_translation, binding_count);
 
-   if (!vk_multialloc_zalloc(&ma, &device->vk.alloc,
-                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
+   if (!vk_pipeline_layout_multizalloc(&device->vk, &ma, pCreateInfo))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+   layout->vk.destroy = dzn_pipeline_layout_destroy;
 
    for (uint32_t s = 0; s < pCreateInfo->setLayoutCount; s++) {
       VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[s]);
@@ -579,8 +580,6 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    }
 
    uint32_t range_count = 0, static_sampler_count = 0;
-
-   p_atomic_set(&layout->refcount, 1);
 
    layout->root.param_count = 0;
    dzn_foreach_pool_type (type)
@@ -628,7 +627,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*ranges) * range_count, 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (range_count && !ranges) {
-      dzn_pipeline_layout_destroy(layout);
+      vk_pipeline_layout_unref(&device->vk, &layout->vk);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -638,7 +637,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (static_sampler_count && !static_sampler_descs) {
       vk_free2(&device->vk.alloc, pAllocator, ranges);
-      dzn_pipeline_layout_destroy(layout);
+      vk_pipeline_layout_unref(&device->vk, &layout->vk);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -746,31 +745,13 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    vk_free2(&device->vk.alloc, pAllocator, static_sampler_descs);
 
    if (!layout->root.sig) {
-      dzn_pipeline_layout_destroy(layout);
+      vk_pipeline_layout_unref(&device->vk, &layout->vk);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    dzn_pipeline_layout_hash_stages(layout, pCreateInfo);
    *out = dzn_pipeline_layout_to_handle(layout);
    return VK_SUCCESS;
-}
-
-struct dzn_pipeline_layout *
-dzn_pipeline_layout_ref(struct dzn_pipeline_layout *layout)
-{
-   if (layout)
-      p_atomic_inc(&layout->refcount);
-
-   return layout;
-}
-
-void
-dzn_pipeline_layout_unref(struct dzn_pipeline_layout *layout)
-{
-   if (layout) {
-      if (p_atomic_dec_zero(&layout->refcount))
-         dzn_pipeline_layout_destroy(layout);
-   }
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -781,16 +762,6 @@ dzn_CreatePipelineLayout(VkDevice device,
 {
    return dzn_pipeline_layout_create(dzn_device_from_handle(device),
                                      pCreateInfo, pAllocator, pPipelineLayout);
-}
-
-VKAPI_ATTR void VKAPI_CALL
-dzn_DestroyPipelineLayout(VkDevice device,
-                          VkPipelineLayout layout,
-                          const VkAllocationCallbacks *pAllocator)
-{
-   VK_FROM_HANDLE(dzn_pipeline_layout, playout, layout);
-
-   dzn_pipeline_layout_unref(playout);
 }
 
 static D3D12_DESCRIPTOR_HEAP_TYPE

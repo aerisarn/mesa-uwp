@@ -33,6 +33,7 @@
 #include "vk_image.h"
 #include "vk_log.h"
 #include "vk_physical_device.h"
+#include "vk_pipeline_layout.h"
 #include "vk_render_pass.h"
 #include "vk_sync.h"
 #include "vk_sync_binary.h"
@@ -645,8 +646,7 @@ struct dzn_descriptor_set {
 };
 
 struct dzn_pipeline_layout {
-   struct vk_object_base base;
-   int32_t refcount;
+   struct vk_pipeline_layout vk;
    struct {
       uint32_t heap_offsets[NUM_POOL_TYPES];
       struct {
@@ -673,12 +673,6 @@ struct dzn_pipeline_layout {
       uint8_t hash[SHA1_DIGEST_LENGTH];
    } stages[MESA_VULKAN_SHADER_STAGES];
 };
-
-struct dzn_pipeline_layout *
-dzn_pipeline_layout_ref(struct dzn_pipeline_layout *layout);
-
-void
-dzn_pipeline_layout_unref(struct dzn_pipeline_layout *layout);
 
 struct dzn_descriptor_update_template_entry {
    VkDescriptorType type;
@@ -1117,7 +1111,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_image_view, vk.base, VkImageView, VK_OBJECT_T
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_pipeline, base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_graphics_pipeline, base.base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_compute_pipeline, base.base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_pipeline_layout, vk.base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_query_pool, base, VkQueryPool, VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
 
