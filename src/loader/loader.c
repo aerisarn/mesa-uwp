@@ -240,8 +240,11 @@ static char *loader_get_dri_config_device_id(void)
                       ARRAY_SIZE(__driConfigOptionsLoader));
    driParseConfigFiles(&userInitOptions, &defaultInitOptions, 0,
                        "loader", NULL, NULL, NULL, 0, NULL, 0);
-   if (driCheckOption(&userInitOptions, "device_id", DRI_STRING))
-      prime = strdup(driQueryOptionstr(&userInitOptions, "device_id"));
+   if (driCheckOption(&userInitOptions, "device_id", DRI_STRING)) {
+      char *opt = driQueryOptionstr(&userInitOptions, "device_id");
+      if (*opt)
+         prime = strdup(opt);
+   }
    driDestroyOptionCache(&userInitOptions);
    driDestroyOptionInfo(&defaultInitOptions);
 
