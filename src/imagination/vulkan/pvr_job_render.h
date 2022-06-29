@@ -30,12 +30,13 @@
 
 #include "hwdef/rogue_hw_defs.h"
 #include "pvr_limits.h"
-#include "pvr_winsys.h"
+#include "pvr_types.h"
 
 struct pvr_device;
 struct pvr_free_list;
 struct pvr_render_ctx;
 struct pvr_rt_dataset;
+struct pvr_winsys_job_bo;
 struct vk_sync;
 
 /* FIXME: Turn 'struct pvr_sub_cmd' into 'struct pvr_job' and change 'struct

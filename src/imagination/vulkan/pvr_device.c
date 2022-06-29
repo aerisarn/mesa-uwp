@@ -49,6 +49,7 @@
 #include "pvr_nop_usc.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "rogue/rogue_compiler.h"
 #include "util/build_id.h"

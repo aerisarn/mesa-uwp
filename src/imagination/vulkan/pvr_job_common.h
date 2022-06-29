@@ -30,7 +30,7 @@
 
 #include "hwdef/rogue_hw_defs.h"
 #include "pvr_private.h"
-#include "pvr_winsys.h"
+#include "pvr_types.h"
 
 enum pvr_pbe_gamma {
    PVR_PBE_GAMMA_NONE,

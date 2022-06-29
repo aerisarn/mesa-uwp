@@ -43,6 +43,7 @@
 #include "pvr_limits.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "util/compiler.h"
 #include "util/list.h"

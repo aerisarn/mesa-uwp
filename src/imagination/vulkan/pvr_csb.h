@@ -36,6 +36,7 @@
 #include <vulkan/vulkan.h>
 
 #include "pvr_bo.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "util/list.h"
 #include "util/macros.h"

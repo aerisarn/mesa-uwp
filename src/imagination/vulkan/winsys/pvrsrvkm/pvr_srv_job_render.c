@@ -40,6 +40,7 @@
 #include "pvr_srv_job_common.h"
 #include "pvr_srv_job_render.h"
 #include "pvr_srv_sync.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "util/libsync.h"
 #include "util/log.h"

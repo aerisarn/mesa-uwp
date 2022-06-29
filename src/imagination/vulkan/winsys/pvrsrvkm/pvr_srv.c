@@ -38,6 +38,7 @@
 #include "pvr_srv_public.h"
 #include "pvr_srv_sync.h"
 #include "pvr_srv_job_null.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "pvr_winsys_helper.h"
 #include "util/log.h"

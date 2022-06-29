@@ -45,6 +45,7 @@
 #include "pvr_job_render.h"
 #include "pvr_limits.h"
 #include "pvr_pds.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "rogue/rogue.h"
 #include "util/bitscan.h"

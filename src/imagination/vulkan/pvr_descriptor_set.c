@@ -31,6 +31,7 @@
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
 #include "pvr_private.h"
+#include "pvr_types.h"
 #include "util/compiler.h"
 #include "util/list.h"
 #include "util/log.h"

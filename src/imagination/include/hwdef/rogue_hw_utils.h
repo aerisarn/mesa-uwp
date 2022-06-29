@@ -31,7 +31,7 @@
 
 #include <stdint.h>
 
-#include "pvr_winsys.h"
+#include "pvr_types.h"
 
 #define __pvr_address_type pvr_dev_addr_t
 #define __pvr_get_address(pvr_dev_addr) (pvr_dev_addr).addr

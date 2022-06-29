@@ -34,23 +34,15 @@
 #include <vulkan/vulkan.h>
 
 #include "hwdef/rogue_hw_defs.h"
-#include "pvr_rogue_fw.h"
 #include "pvr_limits.h"
+#include "pvr_rogue_fw.h"
+#include "pvr_types.h"
 #include "util/macros.h"
 #include "util/vma.h"
 #include "vk_sync.h"
 
 struct pvr_device_info;
 struct pvr_device_runtime_info;
-
-/* device virtual address */
-typedef struct pvr_dev_addr {
-   uint64_t addr;
-} pvr_dev_addr_t;
-
-/* clang-format off */
-#define PVR_DEV_ADDR_INVALID (pvr_dev_addr_t){ .addr = 0 }
-/* clang-format on */
 
 struct pvr_winsys_heaps {
    struct pvr_winsys_heap *general_heap;

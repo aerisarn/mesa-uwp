@@ -28,6 +28,7 @@
 #include <xf86drm.h>
 
 #include "pvr_private.h"
+#include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "pvr_winsys_helper.h"
 #include "util/u_atomic.h"

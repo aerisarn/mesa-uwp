@@ -40,7 +40,7 @@
 #include "pvr_pds.h"
 #include "pvr_private.h"
 #include "pvr_shader.h"
-#include "pvr_winsys.h"
+#include "pvr_types.h"
 #include "rogue/rogue.h"
 #include "rogue/rogue_build_data.h"
 #include "util/log.h"

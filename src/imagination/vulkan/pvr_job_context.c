@@ -35,6 +35,7 @@
 #include "pvr_pds.h"
 #include "pvr_private.h"
 #include "pvr_transfer_eot.h"
+#include "pvr_types.h"
 #include "pvr_vdm_load_sr.h"
 #include "pvr_vdm_store_sr.h"
 #include "pvr_winsys.h"

@@ -33,6 +33,7 @@
 #include "pvr_private.h"
 #include "pvr_srv.h"
 #include "pvr_srv_bridge.h"
+#include "pvr_types.h"
 #include "util/log.h"
 #include "util/macros.h"
 #include "vk_log.h"

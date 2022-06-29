@@ -33,6 +33,7 @@
 #include "pvr_srv.h"
 #include "pvr_srv_bo.h"
 #include "pvr_srv_bridge.h"
+#include "pvr_types.h"
 #include "pvr_winsys_helper.h"
 #include "util/u_atomic.h"
 #include "util/bitscan.h"
