@@ -2185,7 +2185,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       if (shader->num_uniforms && zs->ubos_used & BITFIELD_BIT(0)) {
          fields[0].type = glsl_array_type(glsl_uint_type(), max_uniform_size * 4, 4);
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo,
-                                                 glsl_array_type(glsl_struct_type(fields, 1, "struct", false), 1, 0),
+                                                 glsl_array_type(glsl_interface_type(fields, 1, GLSL_INTERFACE_PACKING_STD430, false, "struct"), 1, 0),
                                                  "uniform_0");
          var->interface_type = var->type;
          var->data.mode = nir_var_mem_ubo;
