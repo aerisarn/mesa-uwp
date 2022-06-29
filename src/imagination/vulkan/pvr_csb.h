@@ -88,7 +88,7 @@ struct pvr_csb {
  * \return VK_SUCCESS if the csb hasn't encountered any error or error code
  *         otherwise.
  */
-static inline VkResult pvr_csb_get_status(struct pvr_csb *csb)
+static inline VkResult pvr_csb_get_status(const struct pvr_csb *csb)
 {
    return csb->status;
 }
@@ -99,12 +99,13 @@ static inline VkResult pvr_csb_get_status(struct pvr_csb *csb)
  * \param[in] csb Control Stream Builder object.
  * \return true if csb is empty false otherwise.
  */
-static inline bool pvr_csb_is_empty(struct pvr_csb *csb)
+static inline bool pvr_csb_is_empty(const struct pvr_csb *csb)
 {
    return list_is_empty(&csb->pvr_bo_list);
 }
 
-static inline pvr_dev_addr_t pvr_csb_get_start_address(struct pvr_csb *csb)
+static inline pvr_dev_addr_t
+pvr_csb_get_start_address(const struct pvr_csb *csb)
 {
    if (!pvr_csb_is_empty(csb)) {
       struct pvr_bo *pvr_bo =
