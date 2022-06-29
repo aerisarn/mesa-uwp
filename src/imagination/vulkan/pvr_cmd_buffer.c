@@ -3068,15 +3068,6 @@ void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
-void pvr_CmdDraw(VkCommandBuffer commandBuffer,
-                 uint32_t vertexCount,
-                 uint32_t instanceCount,
-                 uint32_t firstVertex,
-                 uint32_t firstInstance)
-{
-   assert(!"Unimplemented");
-}
-
 static void
 pvr_update_draw_state(struct pvr_cmd_buffer_state *const state,
                       const struct pvr_cmd_buffer_draw_state *const draw_state)
@@ -4580,6 +4571,39 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
    /* TODO: See if we need list_words[5-9]. */
 }
 
+void pvr_CmdDraw(VkCommandBuffer commandBuffer,
+                 uint32_t vertexCount,
+                 uint32_t instanceCount,
+                 uint32_t firstVertex,
+                 uint32_t firstInstance)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   struct pvr_cmd_buffer_draw_state draw_state;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   draw_state.base_vertex = firstVertex;
+   draw_state.base_instance = firstInstance;
+   draw_state.draw_indirect = false;
+   draw_state.draw_indexed = false;
+   pvr_update_draw_state(state, &draw_state);
+
+   result = pvr_validate_draw_state(cmd_buffer);
+   if (result != VK_SUCCESS)
+      return;
+
+   /* Write the VDM control stream for the primitive. */
+   pvr_emit_vdm_index_list(cmd_buffer,
+                           state->gfx_pipeline->input_asm_state.topology,
+                           firstVertex,
+                           vertexCount,
+                           0U,
+                           0U,
+                           instanceCount);
+}
+
 void pvr_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                         uint32_t indexCount,
                         uint32_t instanceCount,
@@ -4598,7 +4622,7 @@ void pvr_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    draw_state.base_instance = firstInstance;
    draw_state.draw_indirect = false;
    draw_state.draw_indexed = true;
-   pvr_update_draw_state(&cmd_buffer->state, &draw_state);
+   pvr_update_draw_state(state, &draw_state);
 
    result = pvr_validate_draw_state(cmd_buffer);
    if (result != VK_SUCCESS)
