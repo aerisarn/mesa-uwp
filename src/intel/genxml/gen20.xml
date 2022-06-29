@@ -1,4 +1,74 @@
 <?xml version='1.0' encoding='utf-8'?>
 <genxml name="XE2" gen="20">
   <import name="gen125.xml" />
+  <instruction name="COMPUTE_WALKER" bias="2" length="40">
+    <field name="DWord Length" start="0" end="7" type="uint" default="38" />
+    <field name="Predicate Enable" start="8" end="8" type="bool" />
+    <field name="Workload Partition Enable" start="9" end="9" type="bool" />
+    <field name="Indirect Parameter Enable" start="10" end="10" type="bool" />
+    <field name="Systolic Mode Enable" start="14" end="14" type="bool" />
+    <field name="CFE SubOpcode Variant" start="16" end="17" type="uint" default="0" />
+    <field name="CFE SubOpcode" start="18" end="23" type="uint" default="2" />
+    <field name="Compute Command Opcode" start="24" end="26" type="uint" default="2" />
+    <field name="Pipeline" start="27" end="28" type="uint" default="2" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="Indirect Data Length" start="64" end="80" type="uint" />
+    <field name="L3 prefetch disable" start="81" end="81" type="bool" />
+    <field name="Partition Type" start="94" end="95" type="uint">
+      <value name="WALKER_PARTITION_X" value="1" />
+      <value name="WALKER_PARTITION_Y" value="2" />
+      <value name="WALKER_PARTITION_Z" value="3" />
+    </field>
+    <field name="Indirect Data Start Address" start="102" end="127" type="offset" />
+    <field name="Message SIMD" start="145" end="146" type="uint">
+      <value name="SIMT16" value="1" />
+      <value name="SIMT32" value="2" />
+    </field>
+    <field name="Tile Layout" start="147" end="149" type="uint">
+      <value name="Linear" value="0" />
+      <value name="TileY 32bpe" value="1" />
+      <value name="TileY 64bpe" value="2" />
+      <value name="TileY 128bpe" value="3" />
+    </field>
+    <field name="Walk Order" start="150" end="152" type="uint">
+      <value name="Walk 012" value="0" />
+      <value name="Walk 021" value="1" />
+      <value name="Walk 102" value="2" />
+      <value name="Walk 120" value="3" />
+      <value name="Walk 201" value="4" />
+      <value name="Walk 210" value="5" />
+    </field>
+    <field name="Emit Inline Parameter" start="153" end="153" type="bool" />
+    <field name="Emit Local" start="154" end="156" type="uint">
+      <value name="Emit None" value="0" />
+      <value name="Emit X" value="1" />
+      <value name="Emit XY" value="3" />
+      <value name="Emit XYZ" value="7" />
+    </field>
+    <field name="Generate Local ID" start="157" end="157" type="bool" />
+    <field name="SIMD Size" start="158" end="159" type="uint">
+      <value name="SIMT16" value="1" />
+      <value name="SIMT32" value="2" />
+    </field>
+    <field name="Execution Mask" start="160" end="191" type="uint" />
+    <field name="Local X Maximum" start="192" end="201" type="uint" />
+    <field name="Local Y Maximum" start="202" end="211" type="uint" />
+    <field name="Local Z Maximum" start="212" end="221" type="uint" />
+    <field name="Thread Group ID X Dimension" start="224" end="255" type="uint" />
+    <field name="Thread Group ID Y Dimension" start="256" end="287" type="uint" />
+    <field name="Thread Group ID Z Dimension" start="288" end="319" type="uint" />
+    <field name="Thread Group ID Starting X" start="320" end="351" type="uint" />
+    <field name="Thread Group ID Starting Y" start="352" end="383" type="uint" />
+    <field name="Thread Group ID Starting Z" start="384" end="415" type="uint" />
+    <field name="Partition ID" start="416" end="447" type="uint" />
+    <field name="Partition Size" start="448" end="479" type="uint" />
+    <field name="Preempt X" start="480" end="511" type="uint" />
+    <field name="Preempt Y" start="512" end="543" type="uint" />
+    <field name="Preempt Z" start="544" end="575" type="uint" />
+    <field name="Interface Descriptor" start="608" end="863" type="INTERFACE_DESCRIPTOR_DATA" />
+    <field name="Post Sync" start="864" end="1023" type="POSTSYNC_DATA" />
+    <group count="8" start="1024" size="32">
+      <field name="Inline Data" start="0" end="31" type="uint" />
+    </group>
+  </instruction>
 </genxml>
