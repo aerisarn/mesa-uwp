@@ -8437,6 +8437,7 @@ iris_upload_compute_walker(struct iris_context *ice,
                          ice->utrace.last_compute_walker, cw) {
          cw.IndirectParameterEnable        = grid->indirect;
          cw.SIMDSize                       = dispatch.simd_size / 16;
+         cw.MessageSIMD                    = dispatch.simd_size / 16;
          cw.LocalXMaximum                  = grid->block[0] - 1;
          cw.LocalYMaximum                  = grid->block[1] - 1;
          cw.LocalZMaximum                  = grid->block[2] - 1;
