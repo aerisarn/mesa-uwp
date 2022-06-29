@@ -1285,12 +1285,56 @@ struct tu_vs_params {
    uint32_t first_instance;
 };
 
+/* This should be for state that is set inside a renderpass and used at
+ * renderpass end time, e.g. to decide whether to use sysmem. This needs
+ * special handling for secondary cmdbufs and suspending/resuming render
+ * passes where the state may need to be combined afterwards.
+ */
+struct tu_render_pass_state
+{
+   bool xfb_used;
+   bool has_tess;
+   bool has_prim_generated_query_in_rp;
+   bool disable_gmem;
+
+   /* Track whether conditional predicate for COND_REG_EXEC is changed in draw_cs */
+   bool draw_cs_writes_to_cond_pred;
+
+   uint32_t drawcall_count;
+
+   /* A calculated "draw cost" value for renderpass, which tries to
+    * estimate the bandwidth-per-sample of all the draws according
+    * to:
+    *
+    *    foreach_draw (...) {
+    *      sum += pipeline->color_bandwidth_per_sample;
+    *      if (depth_test_enabled)
+    *        sum += pipeline->depth_cpp_per_sample;
+    *      if (depth_write_enabled)
+    *        sum += pipeline->depth_cpp_per_sample;
+    *      if (stencil_write_enabled)
+    *        sum += pipeline->stencil_cpp_per_sample * 2;
+    *    }
+    *    drawcall_bandwidth_per_sample = sum / drawcall_count;
+    *
+    * It allows us to estimate the total bandwidth of drawcalls later, by
+    * calculating (drawcall_bandwidth_per_sample * zpass_sample_count).
+    *
+    * This does ignore depth buffer traffic for samples which do not
+    * pass due to depth-test fail, and some other details.  But it is
+    * just intended to be a rough estimate that is easy to calculate.
+    */
+   uint32_t drawcall_bandwidth_per_sample_sum;
+};
+
 struct tu_cmd_state
 {
    uint32_t dirty;
 
    struct tu_pipeline *pipeline;
    struct tu_pipeline *compute_pipeline;
+
+   struct tu_render_pass_state rp;
 
    /* Vertex buffers, viewports, and scissors
     * the states for these can be updated partially, so we need to save these
@@ -1358,42 +1402,11 @@ struct tu_cmd_state
    VkRect2D render_area;
 
    const struct tu_image_view **attachments;
-   /* Track whether conditional predicate for COND_REG_EXEC is changed in draw_cs */
-   bool draw_cs_writes_to_cond_pred;
 
-   bool xfb_used;
-   bool has_tess;
    bool tessfactor_addr_set;
    bool predication_active;
-   bool disable_gmem;
    enum a5xx_line_mode line_mode;
    bool z_negative_one_to_one;
-
-   uint32_t drawcall_count;
-
-   /* A calculated "draw cost" value for renderpass, which tries to
-    * estimate the bandwidth-per-sample of all the draws according
-    * to:
-    *
-    *    foreach_draw (...) {
-    *      sum += pipeline->color_bandwidth_per_sample;
-    *      if (depth_test_enabled)
-    *        sum += pipeline->depth_cpp_per_sample;
-    *      if (depth_write_enabled)
-    *        sum += pipeline->depth_cpp_per_sample;
-    *      if (stencil_write_enabled)
-    *        sum += pipeline->stencil_cpp_per_sample * 2;
-    *    }
-    *    drawcall_bandwidth_per_sample = sum / drawcall_count;
-    *
-    * It allows us to estimate the total bandwidth of drawcalls later, by
-    * calculating (drawcall_bandwidth_per_sample * zpass_sample_count).
-    *
-    * This does ignore depth buffer traffic for samples which do not
-    * pass due to depth-test fail, and some other details.  But it is
-    * just intended to be a rough estimate that is easy to calculate.
-    */
-   uint32_t drawcall_bandwidth_per_sample_sum;
 
    /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
     * VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT are allowed to run simultaniously,
@@ -1402,7 +1415,6 @@ struct tu_cmd_state
    uint32_t prim_counters_running;
 
    bool prim_generated_query_running_before_rp;
-   bool has_prim_generated_query_in_rp;
 
    struct tu_lrz_state lrz;
 

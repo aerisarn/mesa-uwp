@@ -932,7 +932,7 @@ emit_begin_perf_query(struct tu_cmd_buffer *cmdbuf,
    uint32_t last_pass = ~0;
 
    if (cmdbuf->state.pass) {
-      cmdbuf->state.draw_cs_writes_to_cond_pred = true;
+      cmdbuf->state.rp.draw_cs_writes_to_cond_pred = true;
    }
 
    /* Querying perf counters happens in these steps:
@@ -1023,7 +1023,7 @@ emit_begin_prim_generated_query(struct tu_cmd_buffer *cmdbuf,
    uint64_t begin_iova = primitives_generated_query_iova(pool, query, begin);
 
    if (cmdbuf->state.pass) {
-      cmdbuf->state.has_prim_generated_query_in_rp = true;
+      cmdbuf->state.rp.has_prim_generated_query_in_rp = true;
    } else {
       cmdbuf->state.prim_generated_query_running_before_rp = true;
    }

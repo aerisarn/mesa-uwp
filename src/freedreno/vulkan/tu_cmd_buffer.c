@@ -569,7 +569,7 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
     * use_sysmem_rendering() should have made sure we only ended up here if no
     * XFB was used.
     */
-   if (cmd->state.xfb_used) {
+   if (cmd->state.rp.xfb_used) {
       assert(fb->binning_possible);
       return true;
    }
@@ -579,7 +579,7 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
     * be multiplied by tile count.
     * See https://gitlab.khronos.org/vulkan/vulkan/-/issues/3131
     */
-   if (cmd->state.has_prim_generated_query_in_rp ||
+   if (cmd->state.rp.has_prim_generated_query_in_rp ||
        cmd->state.prim_generated_query_running_before_rp) {
       assert(fb->binning_possible);
       return true;
@@ -607,20 +607,20 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
        cmd->state.render_area.extent.height == 0)
       return true;
 
-   if (cmd->state.has_tess)
+   if (cmd->state.rp.has_tess)
       return true;
 
-   if (cmd->state.disable_gmem)
+   if (cmd->state.rp.disable_gmem)
       return true;
 
    /* XFB is incompatible with non-hw binning GMEM rendering, see use_hw_binning */
-   if (cmd->state.xfb_used && !cmd->state.framebuffer->binning_possible)
+   if (cmd->state.rp.xfb_used && !cmd->state.framebuffer->binning_possible)
       return true;
 
    /* QUERY_TYPE_PRIMITIVES_GENERATED is incompatible with non-hw binning
     * GMEM rendering, see use_hw_binning.
     */
-   if ((cmd->state.has_prim_generated_query_in_rp ||
+   if ((cmd->state.rp.has_prim_generated_query_in_rp ||
         cmd->state.prim_generated_query_running_before_rp) &&
        !cmd->state.framebuffer->binning_possible)
       return true;
@@ -1411,7 +1411,7 @@ tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    }
 
    /* Predicate is changed in draw_cs so we have to re-emit it */
-   if (cmd->state.draw_cs_writes_to_cond_pred)
+   if (cmd->state.rp.draw_cs_writes_to_cond_pred)
       tu6_emit_cond_for_load_stores(cmd, cs, pipe, slot, false);
 
    tu_cs_emit_call(cs, &cmd->tile_store_cs);
@@ -2270,7 +2270,7 @@ tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
 
    tu_cond_exec_end(cs);
 
-   cmd->state.xfb_used = true;
+   cmd->state.rp.xfb_used = true;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2396,7 +2396,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    }
 
    if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
-      cmd->state.has_tess = true;
+      cmd->state.rp.has_tess = true;
 
       /* maximum number of patches that can fit in tess factor/param buffers */
       uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
@@ -3331,6 +3331,21 @@ tu_flush_for_stage(struct tu_cache_state *cache,
    }
 }
 
+static void
+tu_render_pass_state_merge(struct tu_render_pass_state *dst,
+                           const struct tu_render_pass_state *src)
+{
+   dst->xfb_used |= src->xfb_used;
+   dst->has_tess |= src->has_tess;
+   dst->has_prim_generated_query_in_rp |= src->has_prim_generated_query_in_rp;
+   dst->disable_gmem |= src->disable_gmem;
+   dst->draw_cs_writes_to_cond_pred |= src->draw_cs_writes_to_cond_pred;
+
+   dst->drawcall_count += src->drawcall_count;
+   dst->drawcall_bandwidth_per_sample_sum +=
+      src->drawcall_bandwidth_per_sample_sum;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                       uint32_t commandBufferCount,
@@ -3370,28 +3385,13 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             break;
          }
 
-         if (secondary->state.has_tess) {
-            cmd->state.has_tess = true;
-         }
-         if (secondary->state.disable_gmem)
-            cmd->state.disable_gmem = true;
-         if (secondary->state.xfb_used)
-            cmd->state.xfb_used = true;
-         if (secondary->state.has_prim_generated_query_in_rp)
-            cmd->state.has_prim_generated_query_in_rp = true;
-
-         cmd->state.drawcall_count += secondary->state.drawcall_count;
-         cmd->state.drawcall_bandwidth_per_sample_sum +=
-            secondary->state.drawcall_bandwidth_per_sample_sum;
-
-         cmd->state.draw_cs_writes_to_cond_pred |=
-            secondary->state.draw_cs_writes_to_cond_pred;
-
          /* If LRZ was made invalid in secondary - we should disable
           * LRZ retroactively for the whole renderpass.
           */
          if (!secondary->state.lrz.valid)
             cmd->state.lrz.valid = false;
+
+         tu_render_pass_state_merge(&cmd->state.rp, &secondary->state.rp);
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
@@ -3588,8 +3588,6 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
       return;
    }
 
-   cmd->state.draw_cs_writes_to_cond_pred = false;
-
    for (unsigned i = 0; i < pass->attachment_count; i++) {
       cmd->state.attachments[i] = pAttachmentInfo ?
          tu_image_view_from_handle(pAttachmentInfo->pAttachments[i]) :
@@ -3634,8 +3632,6 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
    cmd->state.render_area = pRenderingInfo->renderArea;
 
    cmd->state.attachments = cmd->dynamic_attachments;
-
-   cmd->state.draw_cs_writes_to_cond_pred = false;
 
    for (unsigned i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
       uint32_t a = cmd->dynamic_subpass.color_attachments[i].attachment;
@@ -4020,23 +4016,23 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
 
    /* Fill draw stats for autotuner */
-   cmd->state.drawcall_count++;
+   cmd->state.rp.drawcall_count++;
 
-   cmd->state.drawcall_bandwidth_per_sample_sum +=
+   cmd->state.rp.drawcall_bandwidth_per_sample_sum +=
       cmd->state.pipeline->color_bandwidth_per_sample;
 
    /* add depth memory bandwidth cost */
    const uint32_t depth_bandwidth = cmd->state.pipeline->depth_cpp_per_sample;
    if (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE)
-      cmd->state.drawcall_bandwidth_per_sample_sum += depth_bandwidth;
+      cmd->state.rp.drawcall_bandwidth_per_sample_sum += depth_bandwidth;
    if (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE)
-      cmd->state.drawcall_bandwidth_per_sample_sum += depth_bandwidth;
+      cmd->state.rp.drawcall_bandwidth_per_sample_sum += depth_bandwidth;
 
    /* add stencil memory bandwidth cost */
    const uint32_t stencil_bandwidth =
       cmd->state.pipeline->stencil_cpp_per_sample;
    if (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE)
-      cmd->state.drawcall_bandwidth_per_sample_sum += stencil_bandwidth * 2;
+      cmd->state.rp.drawcall_bandwidth_per_sample_sum += stencil_bandwidth * 2;
 
    tu_emit_cache_flush_renderpass(cmd, cs);
 
@@ -4813,7 +4809,7 @@ tu_end_rendering(struct tu_cmd_buffer *cmd_buffer)
 
    cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
 
-   if (cmd_buffer->state.has_tess)
+   if (cmd_buffer->state.rp.has_tess)
       tu6_lazy_emit_tessfactor_addr(cmd_buffer);
 
    struct tu_renderpass_result *autotune_result = NULL;
@@ -4839,12 +4835,7 @@ tu_end_rendering(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.attachments = NULL;
-   cmd_buffer->state.has_tess = false;
-   cmd_buffer->state.xfb_used = false;
-   cmd_buffer->state.disable_gmem = false;
-   cmd_buffer->state.drawcall_count = 0;
-   cmd_buffer->state.drawcall_bandwidth_per_sample_sum = 0;
-   cmd_buffer->state.has_prim_generated_query_in_rp = false;
+   memset(&cmd_buffer->state.rp, 0, sizeof(cmd_buffer->state.rp));
 
    /* LRZ is not valid next time we use it */
    cmd_buffer->state.lrz.valid = false;
@@ -4969,7 +4960,7 @@ tu_barrier(struct tu_cmd_buffer *cmd,
        */
       if ((srcStage & ~framebuffer_space_stages) ||
           (dstStage & ~framebuffer_space_stages)) {
-         cmd->state.disable_gmem = true;
+         cmd->state.rp.disable_gmem = true;
       }
    }
 

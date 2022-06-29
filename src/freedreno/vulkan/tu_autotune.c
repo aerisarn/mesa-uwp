@@ -480,7 +480,7 @@ fallback_use_bypass(const struct tu_render_pass *pass,
                     const struct tu_framebuffer *framebuffer,
                     const struct tu_cmd_buffer *cmd_buffer)
 {
-   if (cmd_buffer->state.drawcall_count > 5)
+   if (cmd_buffer->state.rp.drawcall_count > 5)
       return false;
 
    for (unsigned i = 0; i < pass->subpass_count; i++) {
@@ -504,12 +504,12 @@ estimate_drawcall_bandwidth(const struct tu_cmd_buffer *cmd,
 {
    const struct tu_cmd_state *state = &cmd->state;
 
-   if (!state->drawcall_count)
+   if (!state->rp.drawcall_count)
       return 0;
 
    /* sample count times drawcall_bandwidth_per_sample */
    return (uint64_t)avg_renderpass_sample_count *
-      state->drawcall_bandwidth_per_sample_sum / state->drawcall_count;
+      state->rp.drawcall_bandwidth_per_sample_sum / state->rp.drawcall_count;
 }
 
 bool
@@ -583,12 +583,12 @@ tu_autotune_use_bypass(struct tu_autotune *at,
       if (TU_AUTOTUNE_DEBUG_LOG) {
          const VkExtent2D *extent = &cmd_buffer->state.render_area.extent;
          const float drawcall_bandwidth_per_sample =
-            (float)cmd_buffer->state.drawcall_bandwidth_per_sample_sum /
-            cmd_buffer->state.drawcall_count;
+            (float)cmd_buffer->state.rp.drawcall_bandwidth_per_sample_sum /
+            cmd_buffer->state.rp.drawcall_count;
 
          mesa_logi("autotune %016" PRIx64 ":%u selecting %s",
                renderpass_key,
-               cmd_buffer->state.drawcall_count,
+               cmd_buffer->state.rp.drawcall_count,
                select_sysmem ? "sysmem" : "gmem");
          mesa_logi("   avg_samples=%u, draw_bandwidth_per_sample=%.2f, total_draw_call_bandwidth=%" PRIu64,
                avg_samples,
