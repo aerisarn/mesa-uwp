@@ -710,44 +710,22 @@ brw_init_isa_info(struct brw_isa_info *isa,
                   const struct intel_device_info *devinfo)
 {
    isa->devinfo = devinfo;
-}
 
-/**
- * Look up the opcode_descs[] entry with \p key member matching \p k which is
- * supported by the device specified by \p devinfo, or NULL if there is no
- * matching entry.
- *
- * This is implemented by using an index data structure (storage for which is
- * provided by the caller as \p index_ver and \p index_descs) in order to
- * provide efficient constant-time look-up.
- */
-static const opcode_desc *
-lookup_opcode_desc(gfx_ver *index_ver,
-                   const opcode_desc **index_descs,
-                   unsigned index_size,
-                   unsigned opcode_desc::*key,
-                   const intel_device_info *devinfo,
-                   unsigned k)
-{
-   if (*index_ver != gfx_ver_from_devinfo(devinfo)) {
-      *index_ver = gfx_ver_from_devinfo(devinfo);
+   enum gfx_ver ver = gfx_ver_from_devinfo(devinfo);
 
-      for (unsigned l = 0; l < index_size; l++)
-         index_descs[l] = NULL;
+   memset(isa->ir_to_descs, 0, sizeof(isa->ir_to_descs));
+   memset(isa->hw_to_descs, 0, sizeof(isa->hw_to_descs));
 
-      for (unsigned i = 0; i < ARRAY_SIZE(opcode_descs); i++) {
-         if (opcode_descs[i].gfx_vers & *index_ver) {
-            const unsigned l = opcode_descs[i].*key;
-            assert(l < index_size && !index_descs[l]);
-            index_descs[l] = &opcode_descs[i];
-         }
+   for (unsigned i = 0; i < ARRAY_SIZE(opcode_descs); i++) {
+      if (opcode_descs[i].gfx_vers & ver) {
+         const unsigned e = opcode_descs[i].ir;
+         const unsigned h = opcode_descs[i].hw;
+         assert(e < ARRAY_SIZE(isa->ir_to_descs) && !isa->ir_to_descs[e]);
+         assert(h < ARRAY_SIZE(isa->hw_to_descs) && !isa->hw_to_descs[h]);
+         isa->ir_to_descs[e] = &opcode_descs[i];
+         isa->hw_to_descs[h] = &opcode_descs[i];
       }
    }
-
-   if (k < index_size)
-      return index_descs[k];
-   else
-      return NULL;
 }
 
 /**
@@ -755,12 +733,9 @@ lookup_opcode_desc(gfx_ver *index_ver,
  * generation, or NULL if the opcode is not supported by the device.
  */
 const struct opcode_desc *
-brw_opcode_desc(const struct brw_isa_info *isa, enum opcode opcode)
+brw_opcode_desc(const struct brw_isa_info *isa, enum opcode op)
 {
-   static thread_local gfx_ver index_ver = {};
-   static thread_local const opcode_desc *index_descs[NUM_BRW_OPCODES];
-   return lookup_opcode_desc(&index_ver, index_descs, ARRAY_SIZE(index_descs),
-                             &opcode_desc::ir, isa->devinfo, opcode);
+   return op < ARRAY_SIZE(isa->ir_to_descs) ? isa->ir_to_descs[op] : NULL;
 }
 
 /**
@@ -770,8 +745,5 @@ brw_opcode_desc(const struct brw_isa_info *isa, enum opcode opcode)
 const struct opcode_desc *
 brw_opcode_desc_from_hw(const struct brw_isa_info *isa, unsigned hw)
 {
-   static thread_local gfx_ver index_ver = {};
-   static thread_local const opcode_desc *index_descs[128];
-   return lookup_opcode_desc(&index_ver, index_descs, ARRAY_SIZE(index_descs),
-                             &opcode_desc::hw, isa->devinfo, hw);
+   return hw < ARRAY_SIZE(isa->hw_to_descs) ? isa->hw_to_descs[hw] : NULL;
 }

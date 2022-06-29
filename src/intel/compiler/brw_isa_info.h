@@ -34,6 +34,12 @@ struct opcode_desc;
 
 struct brw_isa_info {
    const struct intel_device_info *devinfo;
+
+   /* A mapping from enum opcode to the corresponding opcode_desc */
+   const struct opcode_desc *ir_to_descs[NUM_BRW_OPCODES];
+
+   /** A mapping from a HW opcode encoding to the corresponding opcode_desc */
+   const struct opcode_desc *hw_to_descs[128];
 };
 
 void brw_init_isa_info(struct brw_isa_info *isa,
