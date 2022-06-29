@@ -148,6 +148,52 @@ dzn_cmd_buffer_queue_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
 }
 
 static VkResult
+dzn_cmd_buffer_queue_image_range_state_transition(struct dzn_cmd_buffer *cmdbuf,
+                                                  const struct dzn_image *image,
+                                                  const VkImageSubresourceRange *range,
+                                                  D3D12_RESOURCE_STATES before,
+                                                  D3D12_RESOURCE_STATES after,
+                                                  uint32_t flags)
+{
+   uint32_t first_barrier = 0, barrier_count = 0;
+   VkResult ret = VK_SUCCESS;
+
+   dzn_foreach_aspect(aspect, range->aspectMask) {
+      uint32_t layer_count = dzn_get_layer_count(image, range);
+      uint32_t level_count = dzn_get_level_count(image, range);
+      for (uint32_t layer = 0; layer < layer_count; layer++) {
+         uint32_t subres = dzn_image_range_get_subresource_index(image, range, aspect, 0, layer);
+         if (!barrier_count) {
+            first_barrier = subres;
+            barrier_count = level_count;
+            continue;
+         } else if (first_barrier + barrier_count == subres) {
+            barrier_count += level_count;
+            continue;
+         }
+
+         ret = dzn_cmd_buffer_queue_transition_barriers(cmdbuf, image->res,
+                                                        first_barrier, barrier_count,
+                                                        before, after, flags);
+         if (ret != VK_SUCCESS)
+            return ret;
+
+         barrier_count = 0;
+      }
+
+      if (barrier_count) {
+         ret = dzn_cmd_buffer_queue_transition_barriers(cmdbuf, image->res,
+                                                        first_barrier, barrier_count,
+                                                        before, after, flags);
+         if (ret != VK_SUCCESS)
+            return ret;
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf,
                                                    const struct dzn_image *image,
                                                    const VkImageSubresourceRange *range,
@@ -3411,14 +3457,14 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = MIN2(src->vk.layer_count, dst->vk.layer_count),
    };
 
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src_img, &src_range,
-                                                      src_layout,
-                                                      D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst_img, &dst_range,
-                                                      dst_layout,
-                                                      D3D12_RESOURCE_STATE_RESOLVE_DEST,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, src_img, &src_range,
+                                                     src_state,
+                                                     D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+                                                     DZN_QUEUE_TRANSITION_FLUSH);
+   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, dst_img, &dst_range,
+                                                     dst_state,
+                                                     D3D12_RESOURCE_STATE_RESOLVE_DEST,
+                                                     DZN_QUEUE_TRANSITION_FLUSH);
 
    for (uint32_t level = 0; level < src_range.levelCount; level++) {
       for (uint32_t layer = 0; layer < src_range.layerCount; layer++) {
@@ -3434,14 +3480,14 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       }
    }
 
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src_img, &src_range,
-                                                      D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-                                                      src_layout,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst_img, &dst_range,
-                                                      D3D12_RESOURCE_STATE_RESOLVE_DEST,
-                                                      dst_layout,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, src_img, &src_range,
+                                                     D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+                                                     src_state,
+                                                     DZN_QUEUE_TRANSITION_FLUSH);
+   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, dst_img, &dst_range,
+                                                     D3D12_RESOURCE_STATE_RESOLVE_DEST,
+                                                     dst_state,
+                                                     DZN_QUEUE_TRANSITION_FLUSH);
 }
 
 static void
