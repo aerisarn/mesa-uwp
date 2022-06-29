@@ -130,6 +130,11 @@ nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
       nir_metadata_preserve(impl, nir_metadata_all);
    }
 
+   if (modes & nir_var_shader_in)
+      nir->num_inputs = BITSET_COUNT(inputs);
+   if (modes & nir_var_shader_out)
+      nir->num_outputs = BITSET_COUNT(outputs);
+
    return changed;
 }
 
