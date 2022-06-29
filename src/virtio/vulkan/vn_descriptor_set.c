@@ -89,6 +89,8 @@ vn_descriptor_type_index(VkDescriptorType type)
       return VN_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
       return VN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+      return VN_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
    default:
       break;
    }
@@ -278,6 +280,10 @@ vn_CreateDescriptorPool(VkDevice device,
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
 
+   const VkDescriptorPoolInlineUniformBlockCreateInfo *iub_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO);
+
    struct vn_descriptor_pool *pool =
       vk_zalloc(alloc, sizeof(*pool), VN_DEFAULT_ALIGN,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -307,6 +313,10 @@ vn_CreateDescriptorPool(VkDevice device,
       assert(type_index < VN_NUM_DESCRIPTOR_TYPES);
 
       pool->max.descriptor_counts[type_index] += pool_size->descriptorCount;
+
+      assert((pCreateInfo->pPoolSizes[i].type !=
+              VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) ||
+             iub_info);
    }
 
    list_inithead(&pool->descriptor_sets);
@@ -706,6 +716,7 @@ vn_update_descriptor_sets_parse_writes(uint32_t write_count,
          write->pImageInfo = NULL;
          write->pTexelBufferView = NULL;
          break;
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
       default:
          write->pImageInfo = NULL;
          write->pBufferInfo = NULL;
