@@ -918,6 +918,12 @@ lvp_shader_optimize(nir_shader *nir)
    nir_sweep(nir);
 }
 
+static bool
+can_remove_var(nir_variable *var, void *data)
+{
+   return var->data.mode != nir_var_shader_out || (!var->data.explicit_xfb_buffer && !var->data.explicit_xfb_stride);
+}
+
 static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
                          uint32_t size,
@@ -1023,8 +1029,10 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
+   nir_remove_dead_variables_options var_opts = {0};
+   var_opts.can_remove_var = can_remove_var;
    NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out | nir_var_system_value, NULL);
+              nir_var_shader_in | nir_var_shader_out | nir_var_system_value, &var_opts);
 
    if (stage == MESA_SHADER_FRAGMENT)
       lvp_lower_input_attachments(nir, false);
