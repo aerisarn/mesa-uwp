@@ -41,6 +41,7 @@ anv_entrypoints = custom_target(
     '--device-prefix', 'gfx11',
     '--device-prefix', 'gfx12',
     '--device-prefix', 'gfx125',
+    '--device-prefix', 'gfx20',
     '--device-prefix', 'doom64',
     '--device-prefix', 'hitman3',
     '--device-prefix', 'android'
@@ -112,7 +113,7 @@ if with_intel_vk_rt
   anv_per_hw_ver_files += files('genX_acceleration_structure.c',)
 endif
 
-foreach _gfx_ver : ['90', '110', '120', '125']
+foreach _gfx_ver : ['90', '110', '120', '125', '200']
   libanv_per_hw_ver_libs += static_library(
     'anv_per_hw_ver@0@'.format(_gfx_ver),
     [anv_per_hw_ver_files, anv_entrypoints[0], anv_internal_spvs, ],
