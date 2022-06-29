@@ -23,13 +23,6 @@ dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg
 # RGB/RGBA half float should be incomplete, tested as complete.
 dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb_half_float_oes,Fail
 
-dEQP-GLES2.functional.rasterization.interpolation.basic.line_loop_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.basic.line_strip_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.basic.lines_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.line_loop_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.line_strip_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide,Fail
-
 dEQP-GLES2.functional.shaders.texture_functions.vertex.texturecubelod,Fail
 
 # Subpixel precision errors

@@ -1,25 +1,3 @@
-# These line rasterization failures are waived in the CTS
-dEQP-GLES2.functional.rasterization.interpolation.basic.line_loop_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.basic.line_strip_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.basic.lines_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.line_loop_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.line_strip_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.fbo.rbo_singlesample.interpolation.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.fbo.texture_2d.interpolation.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.basic.line_loop_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.basic.line_strip_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
-565-nozs-dEQP-GLES3.functional.rasterization.interpolation.basic.line_loop_wide,Fail
-565-nozs-dEQP-GLES3.functional.rasterization.interpolation.basic.line_strip_wide,Fail
-565-nozs-dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
-565-nozs-dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
-565-nozs-dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
-565-nozs-dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
-
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4167
 dEQP-GLES3.functional.texture.compressed.astc.void_extent_ldr.10x10,Fail
 dEQP-GLES3.functional.texture.compressed.astc.void_extent_ldr.10x5,Fail

@@ -10,21 +10,6 @@ KHR-GL46.tessellation_shader.vertex.vertex_spacing,Fail
 KHR-GL46.texture_view.view_classes,Fail
 KHR-GL46.texture_view.view_sampling,Fail
 
-dEQP-GLES2.functional.rasterization.interpolation.basic.line_loop_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.basic.line_strip_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.basic.lines_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.line_loop_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.line_strip_wide,Fail
-dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide,Fail
-dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
-dEQP-GLES3.functional.rasterization.fbo.rbo_singlesample.interpolation.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.fbo.texture_2d.interpolation.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.basic.line_loop_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.basic.line_strip_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
-dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
 dEQP-GLES31.functional.copy_image.non_compressed.viewclass_32_bits.r32i_rg16i.renderbuffer_to_renderbuffer,Fail
 dEQP-GLES31.functional.copy_image.non_compressed.viewclass_32_bits.r32i_rg16ui.renderbuffer_to_renderbuffer,Fail
 dEQP-GLES31.functional.copy_image.non_compressed.viewclass_32_bits.r32i_rgb10_a2ui.renderbuffer_to_renderbuffer,Fail

@@ -44,6 +44,7 @@ dEQP-GLES3.functional.fbo.msaa.4_samples.depth24_stencil8,Fail
 dEQP-GLES3.functional.fbo.msaa.4_samples.depth32f_stencil8,Fail
 dEQP-GLES3.functional.fbo.msaa.4_samples.stencil_index8,Fail
 dEQP-GLES3.functional.polygon_offset.float32_displacement_with_units,Fail
+dEQP-GLES3.functional.shaders.builtin_variable.vertex_id,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2darray_fixed_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler2dshadow_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texturegradoffset.sampler3d_fixed_vertex,Fail

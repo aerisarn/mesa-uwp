@@ -2,11 +2,3 @@
 # Likely fixed by VK-GL-CTS a3ac66a77e14 ("Zero initialize XFB counter buffer")
 dEQP-VK.rasterization.provoking_vertex.transform_feedback.first.line_strip_with_adjacency,Fail
 dEQP-VK.rasterization.provoking_vertex.transform_feedback.per_pipeline.triangle_strip_with_adjacency,Fail
-
-#full list
-dEQP-VK.api.driver_properties.conformance_version,Fail
-dEQP-VK.subgroups.size_control.compute.required_subgroup_size_max_require_full_subgroups,Fail
-dEQP-VK.subgroups.size_control.compute.required_subgroup_size_max_require_full_subgroups_flags_spirv16,Fail
-dEQP-VK.subgroups.size_control.compute.required_subgroup_size_max_require_full_subgroups_spirv16,Fail
-dEQP-VK.subgroups.size_control.compute.required_subgroup_size_min_require_full_subgroups_flags_spirv16,Fail
-dEQP-VK.subgroups.size_control.compute.required_subgroup_size_min_require_full_subgroups_spirv16,Fail

@@ -44,10 +44,6 @@ dEQP-VK.ray_tracing_pipeline.misc.recursiveTraces_tri_13
 dEQP-VK.ray_tracing_pipeline.misc.recursiveTraces_tri_14
 dEQP-VK.ray_tracing_pipeline.misc.recursiveTraces_tri_15
 
-# CTS bug (https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3717)
-dEQP-VK.fragment_operations.transient_attachment_bit.color_load_store_op_test_local_bit
-dEQP-VK.fragment_operations.transient_attachment_bit.stencil_load_store_op_test_local_bit
-
 # CTS bug (Missing barriers, issue pending)
 dEQP-VK.image.sample_texture.*_compressed_format*
 
