@@ -1763,7 +1763,7 @@ qtr_ctrl(FILE *file, const struct intel_device_info *devinfo,
 {
    int qtr_ctl = brw_inst_qtr_control(devinfo, inst);
    int exec_size = 1 << brw_inst_exec_size(devinfo, inst);
-   const unsigned nib_ctl = devinfo->ver < 7 ? 0 :
+   const unsigned nib_ctl = devinfo->ver < 7 || devinfo->ver >= 20 ? 0 :
                             brw_inst_nib_control(devinfo, inst);
 
    if (exec_size < 8 || nib_ctl) {
@@ -2583,7 +2583,7 @@ brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
       if (has_branch_ctrl(devinfo, opcode)) {
          err |= control(file, "branch ctrl", branch_ctrl,
                         brw_inst_branch_control(devinfo, inst), &space);
-      } else if (devinfo->ver >= 6) {
+      } else if (devinfo->ver >= 6 && devinfo->ver < 20) {
          err |= control(file, "acc write control", accwr,
                         brw_inst_acc_wr_control(devinfo, inst), &space);
       }
