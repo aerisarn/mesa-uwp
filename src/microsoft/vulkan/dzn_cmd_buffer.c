@@ -178,8 +178,10 @@ dzn_cmd_buffer_queue_image_subres_range_transition(struct dzn_cmd_buffer *cmdbuf
          if (!barrier_count) {
             first_barrier = subres;
             barrier_count = level_count;
+            continue;
          } else if (first_barrier + barrier_count == subres) {
             barrier_count += level_count;
+            continue;
          }
 
          ret = dzn_cmd_buffer_queue_transition_barriers(cmdbuf, image->res,
