@@ -148,7 +148,7 @@ dzn_cmd_buffer_queue_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
 }
 
 static VkResult
-dzn_cmd_buffer_queue_image_subres_range_transition(struct dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf,
                                                    const struct dzn_image *image,
                                                    const VkImageSubresourceRange *range,
                                                    VkImageLayout old_layout,
@@ -926,7 +926,7 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
 
       ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &aliasing_barrier);
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                          ibarrier->oldLayout,
                                                          ibarrier->newLayout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -1142,7 +1142,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
                                             D3D12_RESOURCE_STATE_COPY_SOURCE,
                                             DZN_QUEUE_TRANSITION_FLUSH);
 
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                       layout,
                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
@@ -1187,7 +1187,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       }
    }
 
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                       layout,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
@@ -1284,7 +1284,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
       uint32_t level_count = dzn_get_level_count(image, &ranges[r]);
       uint32_t layer_count = dzn_get_layer_count(image, &ranges[r]);
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &ranges[r],
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &ranges[r],
                                                          layout,
                                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -1330,7 +1330,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
          }
       }
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &ranges[r],
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &ranges[r],
                                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                          layout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -1371,7 +1371,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
       if (flags != 0) {
-         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
                                                             layout,
                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                             DZN_QUEUE_TRANSITION_FLUSH);
@@ -1383,7 +1383,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                                 value->depthStencil.stencil,
                                                 rect_count, rects);
 
-         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
                                                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                             layout,
                                                             DZN_QUEUE_TRANSITION_FLUSH);
@@ -1420,7 +1420,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                               &value->color,
                                               &range, rect_count, rects);
       } else {
-         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
                                                             layout,
                                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                             DZN_QUEUE_TRANSITION_FLUSH);
@@ -1429,7 +1429,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_rtv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, vals, rect_count, rects);
 
-         dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
                                                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                             layout,
                                                             DZN_QUEUE_TRANSITION_FLUSH);
@@ -1480,7 +1480,7 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
       uint32_t layer_count = dzn_get_layer_count(image, range);
       uint32_t level_count = dzn_get_level_count(image, range);
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                          layout,
                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -1497,7 +1497,7 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, clear_vals, 0, NULL);
       }
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                          layout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -1526,7 +1526,7 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
       if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                          layout,
                                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -1541,7 +1541,7 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
                                                           0, NULL);
       }
 
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                          layout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -2049,20 +2049,20 @@ dzn_cmd_buffer_blit_issue_barriers(struct dzn_cmd_buffer *cmdbuf,
    };
 
    if (!post) {
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src, &src_range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src, &src_range,
                                                          src_layout,
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst, &dst_range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst, &dst_range,
                                                          dst_layout,
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
    } else {
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src, &src_range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src, &src_range,
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          src_layout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
-      dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst, &dst_range,
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst, &dst_range,
                                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                          dst_layout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
@@ -3411,11 +3411,11 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = MIN2(src->vk.layer_count, dst->vk.layer_count),
    };
 
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src_img, &src_range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src_img, &src_range,
                                                       src_layout,
                                                       D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst_img, &dst_range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst_img, &dst_range,
                                                       dst_layout,
                                                       D3D12_RESOURCE_STATE_RESOLVE_DEST,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
@@ -3434,11 +3434,11 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       }
    }
 
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, src_img, &src_range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src_img, &src_range,
                                                       D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
                                                       src_layout,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, dst_img, &dst_range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst_img, &dst_range,
                                                       D3D12_RESOURCE_STATE_RESOLVE_DEST,
                                                       dst_layout,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
@@ -3465,7 +3465,7 @@ dzn_rendering_attachment_initial_transition(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = iview->vk.layer_count,
    };
 
-   dzn_cmd_buffer_queue_image_subres_range_transition(cmdbuf, image, &range,
+   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
                                                       initial_layout->initialLayout,
                                                       att->imageLayout,
                                                       DZN_QUEUE_TRANSITION_FLUSH);
