@@ -471,7 +471,7 @@ EXT(OES_stencil_wrap                        , dummy_true                        
 EXT(OES_surfaceless_context                 , dummy_true                             ,  x ,  x , ES1, ES2, 2012)
 EXT(OES_tessellation_point_size             , ARB_tessellation_shader                ,  x ,  x ,  x ,  31, 2014)
 EXT(OES_tessellation_shader                 , ARB_tessellation_shader                ,  x ,  x ,  x ,  31, 2014)
-EXT(OES_texture_3D                          , dummy_true                             ,  x ,  x ,  x , ES2, 2005)
+EXT(OES_texture_3D                          , OES_texture_3D                         ,  x ,  x ,  x , ES2, 2005)
 EXT(OES_texture_border_clamp                , dummy_true                             ,  x ,  x ,  x , ES2, 2014)
 EXT(OES_texture_buffer                      , OES_texture_buffer                     ,  x ,  x ,  x ,  31, 2014)
 EXT(OES_texture_compression_astc            , OES_texture_compression_astc           ,  x ,  x , ES1, ES2, 2015)

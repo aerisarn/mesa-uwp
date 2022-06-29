@@ -3797,7 +3797,8 @@ check_textarget(struct gl_context *ctx, int dims, GLenum target,
       err = dims != 2;
       break;
    case GL_TEXTURE_3D:
-      err = dims != 3;
+      err = dims != 3 ||
+            (ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D);
       break;
    default:
       _mesa_error(ctx, GL_INVALID_ENUM,

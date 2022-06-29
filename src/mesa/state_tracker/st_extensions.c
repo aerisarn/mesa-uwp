@@ -94,6 +94,7 @@ void st_init_limits(struct pipe_screen *screen,
    c->Max3DTextureLevels
       = _min(screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_3D_LEVELS),
             MAX_TEXTURE_LEVELS);
+   extensions->OES_texture_3D = c->Max3DTextureLevels != 0;
 
    c->MaxCubeTextureLevels
       = _min(screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS),

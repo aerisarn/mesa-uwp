@@ -497,7 +497,8 @@ _mesa_max_texture_levels(const struct gl_context *ctx, GLenum target)
       return ffs(util_next_power_of_two(ctx->Const.MaxTextureSize));
    case GL_TEXTURE_3D:
    case GL_PROXY_TEXTURE_3D:
-      return ctx->Const.Max3DTextureLevels;
+      return !(ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D)
+         ? ctx->Const.Max3DTextureLevels : 0;
    case GL_TEXTURE_CUBE_MAP:
    case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:

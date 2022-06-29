@@ -2464,7 +2464,9 @@ tex_binding_to_index(const struct gl_context *ctx, GLenum binding)
    case GL_TEXTURE_BINDING_2D:
       return TEXTURE_2D_INDEX;
    case GL_TEXTURE_BINDING_3D:
-      return ctx->API != API_OPENGLES ? TEXTURE_3D_INDEX : -1;
+      return (ctx->API != API_OPENGLES &&
+              !(ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D))
+         ? TEXTURE_3D_INDEX : -1;
    case GL_TEXTURE_BINDING_CUBE_MAP:
       return TEXTURE_CUBE_INDEX;
    case GL_TEXTURE_BINDING_RECTANGLE:
