@@ -2413,17 +2413,19 @@ ngg_gs_setup_vertex_compaction(nir_builder *b, nir_ssa_def *vertex_live, nir_ssa
 }
 
 static nir_ssa_def *
-ngg_gs_load_out_vtx_primflag_0(nir_builder *b, nir_ssa_def *tid_in_tg, nir_ssa_def *vtx_lds_addr,
-                               nir_ssa_def *max_num_out_vtx, lower_ngg_gs_state *s)
+ngg_gs_load_out_vtx_primflag(nir_builder *b, unsigned stream, nir_ssa_def *tid_in_tg,
+                             nir_ssa_def *vtx_lds_addr, nir_ssa_def *max_num_out_vtx,
+                             lower_ngg_gs_state *s)
 {
    nir_ssa_def *zero = nir_imm_int(b, 0);
 
    nir_if *if_outvtx_thread = nir_push_if(b, nir_ilt(b, tid_in_tg, max_num_out_vtx));
-   nir_ssa_def *primflag_0 = nir_load_shared(b, 1, 8, vtx_lds_addr, .base = s->lds_offs_primflags, .align_mul = 4u);
-   primflag_0 = nir_u2u32(b, primflag_0);
+   nir_ssa_def *primflag = nir_load_shared(b, 1, 8, vtx_lds_addr,
+                                           .base = s->lds_offs_primflags + stream);
+   primflag = nir_u2u32(b, primflag);
    nir_pop_if(b, if_outvtx_thread);
 
-   return nir_if_phi(b, primflag_0, zero);
+   return nir_if_phi(b, primflag, zero);
 }
 
 static void
@@ -2568,7 +2570,7 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
    nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-   nir_ssa_def *out_vtx_primflag_0 = ngg_gs_load_out_vtx_primflag_0(b, tid_in_tg, out_vtx_lds_addr, max_vtxcnt, s);
+   nir_ssa_def *out_vtx_primflag_0 = ngg_gs_load_out_vtx_primflag(b, 0, tid_in_tg, out_vtx_lds_addr, max_vtxcnt, s);
 
    if (s->output_compile_time_known) {
       ngg_gs_export_primitives(b, max_vtxcnt, tid_in_tg, tid_in_tg, out_vtx_primflag_0, s);
