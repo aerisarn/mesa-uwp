@@ -1275,7 +1275,7 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
       /* Creating this is far cheaper than it looks.  It's perfectly fine to
        * do it for every binary.
        */
-      intel_disassemble(&pipeline->device->info,
+      intel_disassemble(&pipeline->device->physical->compiler->isa,
                         stage->code, code_offset, stream);
 
       fclose(stream);

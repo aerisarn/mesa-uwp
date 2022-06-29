@@ -107,6 +107,8 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
 
    compiler->devinfo = devinfo;
 
+   brw_init_isa_info(&compiler->isa, devinfo);
+
    brw_fs_alloc_reg_sets(compiler);
    brw_vec4_alloc_reg_set(compiler);
 
@@ -278,7 +280,7 @@ brw_prog_key_size(gl_shader_stage stage)
 }
 
 void
-brw_write_shader_relocs(const struct intel_device_info *devinfo,
+brw_write_shader_relocs(const struct brw_isa_info *isa,
                         void *program,
                         const struct brw_stage_prog_data *prog_data,
                         struct brw_shader_reloc_value *values,
@@ -295,7 +297,7 @@ brw_write_shader_relocs(const struct intel_device_info *devinfo,
                *(uint32_t *)dst = value;
                break;
             case BRW_SHADER_RELOC_TYPE_MOV_IMM:
-               brw_update_reloc_imm(devinfo, dst, value);
+               brw_update_reloc_imm(isa, dst, value);
                break;
             default:
                unreachable("Invalid relocation type");

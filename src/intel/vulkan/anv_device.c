@@ -3086,6 +3086,7 @@ VkResult anv_CreateDevice(
          INTEL_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&device->decoder_ctx,
+                                  &physical_device->compiler->isa,
                                   &physical_device->info,
                                   stderr, decode_flags, NULL,
                                   decode_get_bo, NULL, device);

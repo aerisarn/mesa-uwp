@@ -34,13 +34,13 @@ void
 dump_assembly(void *assembly, int start_offset, int end_offset,
               struct disasm_info *disasm, const unsigned *block_latency)
 {
-   const struct intel_device_info *devinfo = disasm->devinfo;
+   const struct brw_isa_info *isa = disasm->isa;
    const char *last_annotation_string = NULL;
    const void *last_annotation_ir = NULL;
 
    void *mem_ctx = ralloc_context(NULL);
    const struct brw_label *root_label =
-      brw_label_assembly(devinfo, assembly, start_offset, end_offset, mem_ctx);
+      brw_label_assembly(isa, assembly, start_offset, end_offset, mem_ctx);
 
    foreach_list_typed(struct inst_group, group, link, &disasm->group_list) {
       struct exec_node *next_node = exec_node_get_next(&group->link);
@@ -81,7 +81,7 @@ dump_assembly(void *assembly, int start_offset, int end_offset,
             fprintf(stderr, "   %s\n", last_annotation_string);
       }
 
-      brw_disassemble(devinfo, assembly, start_offset, end_offset,
+      brw_disassemble(isa, assembly, start_offset, end_offset,
                       root_label, stderr);
 
       if (group->error) {
@@ -104,12 +104,12 @@ dump_assembly(void *assembly, int start_offset, int end_offset,
 }
 
 struct disasm_info *
-disasm_initialize(const struct intel_device_info *devinfo,
+disasm_initialize(const struct brw_isa_info *isa,
                   const struct cfg_t *cfg)
 {
    struct disasm_info *disasm = ralloc(NULL, struct disasm_info);
    exec_list_make_empty(&disasm->group_list);
-   disasm->devinfo = devinfo;
+   disasm->isa = isa;
    disasm->cfg = cfg;
    disasm->cur_block = 0;
    disasm->use_tail = false;
@@ -129,7 +129,7 @@ void
 disasm_annotate(struct disasm_info *disasm,
                 struct backend_instruction *inst, unsigned offset)
 {
-   const struct intel_device_info *devinfo = disasm->devinfo;
+   const struct intel_device_info *devinfo = disasm->isa->devinfo;
    const struct cfg_t *cfg = disasm->cfg;
 
    struct inst_group *group;

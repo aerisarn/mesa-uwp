@@ -30,6 +30,15 @@
 extern "C" {
 #endif
 
+struct opcode_desc;
+
+struct brw_isa_info {
+   const struct intel_device_info *devinfo;
+};
+
+void brw_init_isa_info(struct brw_isa_info *isa,
+                       const struct intel_device_info *devinfo);
+
 struct opcode_desc {
    unsigned ir;
    unsigned hw;
@@ -40,28 +49,28 @@ struct opcode_desc {
 };
 
 const struct opcode_desc *
-brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode);
+brw_opcode_desc(const struct brw_isa_info *isa, enum opcode opcode);
 
 const struct opcode_desc *
-brw_opcode_desc_from_hw(const struct intel_device_info *devinfo, unsigned hw);
+brw_opcode_desc_from_hw(const struct brw_isa_info *isa, unsigned hw);
 
 static inline unsigned
-brw_opcode_encode(const struct intel_device_info *devinfo, enum opcode opcode)
+brw_opcode_encode(const struct brw_isa_info *isa, enum opcode opcode)
 {
-   return brw_opcode_desc(devinfo, opcode)->hw;
+   return brw_opcode_desc(isa, opcode)->hw;
 }
 
 static inline enum opcode
-brw_opcode_decode(const struct intel_device_info *devinfo, unsigned hw)
+brw_opcode_decode(const struct brw_isa_info *isa, unsigned hw)
 {
-   const struct opcode_desc *desc = brw_opcode_desc_from_hw(devinfo, hw);
+   const struct opcode_desc *desc = brw_opcode_desc_from_hw(isa, hw);
    return desc ? (enum opcode)desc->ir : BRW_OPCODE_ILLEGAL;
 }
 
 static inline bool
-is_3src(const struct intel_device_info *devinfo, enum opcode opcode)
+is_3src(const struct brw_isa_info *isa, enum opcode opcode)
 {
-   const struct opcode_desc *desc = brw_opcode_desc(devinfo, opcode);
+   const struct opcode_desc *desc = brw_opcode_desc(isa, opcode);
    return desc && desc->nsrc == 3;
 }
 

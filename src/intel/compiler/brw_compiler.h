@@ -29,6 +29,7 @@
 #include "dev/intel_device_info.h"
 #include "util/ralloc.h"
 #include "util/u_math.h"
+#include "brw_isa_info.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +50,8 @@ struct brw_compiler {
     * including adding something to the ralloc child list.
     */
    mtx_t mutex;
+
+   struct brw_isa_info isa;
 
    struct {
       struct ra_regs *regs;
@@ -1910,7 +1913,7 @@ brw_cs_push_const_total_size(const struct brw_cs_prog_data *cs_prog_data,
                              unsigned threads);
 
 void
-brw_write_shader_relocs(const struct intel_device_info *devinfo,
+brw_write_shader_relocs(const struct brw_isa_info *isa,
                         void *program,
                         const struct brw_stage_prog_data *prog_data,
                         struct brw_shader_reloc_value *values,

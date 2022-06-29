@@ -197,7 +197,7 @@ fs_generator::fs_generator(const struct brw_compiler *compiler, void *log_data,
      shader_name(NULL), stage(stage), mem_ctx(mem_ctx)
 {
    p = rzalloc(mem_ctx, struct brw_codegen);
-   brw_init_codegen(devinfo, p, mem_ctx);
+   brw_init_codegen(&compiler->isa, p, mem_ctx);
 
    /* In the FS code generator, we are very careful to ensure that we always
     * set the right execution size so we don't need the EU code to "help" us
@@ -252,7 +252,7 @@ fs_generator::patch_halt_jumps()
    foreach_in_list(ip_record, patch_ip, &discard_halt_patches) {
       brw_inst *patch = &p->store[patch_ip->ip];
 
-      assert(brw_inst_opcode(p->devinfo, patch) == BRW_OPCODE_HALT);
+      assert(brw_inst_opcode(p->isa, patch) == BRW_OPCODE_HALT);
       if (devinfo->ver >= 6) {
          /* HALT takes a half-instruction distance from the pre-incremented IP. */
          brw_inst_set_uip(p->devinfo, patch, (ip - patch_ip->ip) * scale);
@@ -343,13 +343,13 @@ fs_generator::generate_send(fs_inst *inst,
                                       desc, desc_imm, ex_desc, ex_desc_imm,
                                       inst->eot);
       if (inst->check_tdr)
-         brw_inst_set_opcode(p->devinfo, brw_last_inst,
+         brw_inst_set_opcode(p->isa, brw_last_inst,
                              devinfo->ver >= 12 ? BRW_OPCODE_SENDC : BRW_OPCODE_SENDSC);
    } else {
       brw_send_indirect_message(p, inst->sfid, dst, payload, desc, desc_imm,
                                    inst->eot);
       if (inst->check_tdr)
-         brw_inst_set_opcode(p->devinfo, brw_last_inst, BRW_OPCODE_SENDC);
+         brw_inst_set_opcode(p->isa, brw_last_inst, BRW_OPCODE_SENDC);
    }
 }
 
@@ -1831,7 +1831,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
    int loop_count = 0, send_count = 0, nop_count = 0;
    bool is_accum_used = false;
 
-   struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
+   struct disasm_info *disasm_info = disasm_initialize(p->isa, cfg);
 
    foreach_block_and_inst (block, fs_inst, inst, cfg) {
       if (inst->opcode == SHADER_OPCODE_UNDEF)
@@ -1854,7 +1854,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       if (devinfo->ver >= 8 &&
           devinfo->ver <= 9 &&
           p->nr_insn > 1 &&
-          brw_inst_opcode(devinfo, brw_last_inst) == BRW_OPCODE_MATH &&
+          brw_inst_opcode(p->isa, brw_last_inst) == BRW_OPCODE_MATH &&
           brw_inst_math_function(devinfo, brw_last_inst) == BRW_MATH_FUNCTION_POW &&
           inst->dst.component_size(inst->exec_size) > REG_SIZE) {
          brw_NOP(p);
@@ -2637,7 +2637,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 #else
    if (unlikely(debug_flag))
 #endif
-      brw_validate_instructions(devinfo, p->store,
+      brw_validate_instructions(&compiler->isa, p->store,
                                 start_offset,
                                 p->next_insn_offset,
                                 disasm_info);

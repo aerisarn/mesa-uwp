@@ -370,8 +370,10 @@ is_logic_op(enum opcode opcode)
 static bool
 can_take_stride(fs_inst *inst, brw_reg_type dst_type,
                 unsigned arg, unsigned stride,
-                const intel_device_info *devinfo)
+                const struct brw_compiler *compiler)
 {
+   const struct intel_device_info *devinfo = compiler->devinfo;
+
    if (stride > 4)
       return false;
 
@@ -395,7 +397,7 @@ can_take_stride(fs_inst *inst, brw_reg_type dst_type,
     *    This is applicable to 32b datatypes and 16b datatype. 64b datatypes
     *    cannot use the replicate control.
     */
-   if (inst->is_3src(devinfo)) {
+   if (inst->is_3src(compiler)) {
       if (type_sz(inst->src[arg].type) > 4)
          return stride == 1;
       else
@@ -545,7 +547,7 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
     */
    if (!can_take_stride(inst, dst_type, arg,
                         entry_stride * inst->src[arg].stride,
-                        devinfo))
+                        compiler))
       return false;
 
    /* From the Cherry Trail/Braswell PRMs, Volume 7: 3D Media GPGPU:

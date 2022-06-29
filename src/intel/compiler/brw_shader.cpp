@@ -162,8 +162,10 @@ brw_texture_offset(const nir_tex_instr *tex, unsigned src,
 }
 
 const char *
-brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
+brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
 {
+   const struct intel_device_info *devinfo = isa->devinfo;
+
    switch (op) {
    case 0 ... NUM_BRW_OPCODES - 1:
       /* The DO instruction doesn't exist on Gfx6+, but we use it to mark the
@@ -181,8 +183,8 @@ brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
       if (devinfo->ver > 7 && op == BRW_OPCODE_F16TO32)
          return "f16to32";
 
-      assert(brw_opcode_desc(devinfo, op)->name);
-      return brw_opcode_desc(devinfo, op)->name;
+      assert(brw_opcode_desc(isa, op)->name);
+      return brw_opcode_desc(isa, op)->name;
    case FS_OPCODE_FB_WRITE:
       return "fb_write";
    case FS_OPCODE_FB_WRITE_LOGICAL:
@@ -887,9 +889,9 @@ backend_instruction::is_commutative() const
 }
 
 bool
-backend_instruction::is_3src(const struct intel_device_info *devinfo) const
+backend_instruction::is_3src(const struct brw_compiler *compiler) const
 {
-   return ::is_3src(devinfo, opcode);
+   return ::is_3src(&compiler->isa, opcode);
 }
 
 bool

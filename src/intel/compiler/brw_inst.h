@@ -1446,17 +1446,17 @@ FC(3src_hw_opcode,      /* 4+ */  6,  0, /* 12+ */  6,  0, devinfo->ver >= 8)
 #undef F
 
 static inline void
-brw_inst_set_opcode(const struct intel_device_info *devinfo,
+brw_inst_set_opcode(const struct brw_isa_info *isa,
                     struct brw_inst *inst, enum opcode opcode)
 {
-   brw_inst_set_hw_opcode(devinfo, inst, brw_opcode_encode(devinfo, opcode));
+   brw_inst_set_hw_opcode(isa->devinfo, inst, brw_opcode_encode(isa, opcode));
 }
 
 static inline enum opcode
-brw_inst_opcode(const struct intel_device_info *devinfo,
+brw_inst_opcode(const struct brw_isa_info *isa,
                 const struct brw_inst *inst)
 {
-   return brw_opcode_decode(devinfo, brw_inst_hw_opcode(devinfo, inst));
+   return brw_opcode_decode(isa, brw_inst_hw_opcode(isa->devinfo, inst));
 }
 
 #ifdef __cplusplus

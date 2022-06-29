@@ -1523,7 +1523,7 @@ generate_code(struct brw_codegen *p,
 {
    const struct intel_device_info *devinfo = p->devinfo;
    const char *stage_abbrev = _mesa_shader_stage_to_abbrev(nir->info.stage);
-   struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
+   struct disasm_info *disasm_info = disasm_initialize(p->isa, cfg);
 
    /* `send_count` explicitly does not include spills or fills, as we'd
     * like to use it as a metric for intentional memory access or other
@@ -2216,7 +2216,7 @@ generate_code(struct brw_codegen *p,
 #else
    if (unlikely(debug_enabled))
 #endif
-      brw_validate_instructions(devinfo, p->store,
+      brw_validate_instructions(&compiler->isa, p->store,
                                 0, p->next_insn_offset,
                                 disasm_info);
 
@@ -2283,7 +2283,7 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
                            bool debug_enabled)
 {
    struct brw_codegen *p = rzalloc(mem_ctx, struct brw_codegen);
-   brw_init_codegen(compiler->devinfo, p, mem_ctx);
+   brw_init_codegen(&compiler->isa, p, mem_ctx);
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
    generate_code(p, compiler, log_data, nir, prog_data, cfg, perf, stats,

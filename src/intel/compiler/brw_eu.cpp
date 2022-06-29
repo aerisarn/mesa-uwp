@@ -317,12 +317,13 @@ void brw_pop_insn_state( struct brw_codegen *p )
 /***********************************************************************
  */
 void
-brw_init_codegen(const struct intel_device_info *devinfo,
+brw_init_codegen(const struct brw_isa_info *isa,
                  struct brw_codegen *p, void *mem_ctx)
 {
    memset(p, 0, sizeof(*p));
 
-   p->devinfo = devinfo;
+   p->isa = isa;
+   p->devinfo = isa->devinfo;
    p->automatic_exec_sizes = true;
    /*
     * Set the initial instruction store array size to 1024, if found that
@@ -408,7 +409,7 @@ bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
    }
 
    ASSERTED bool valid =
-      brw_validate_instructions(p->devinfo, p->store,
+      brw_validate_instructions(p->isa, p->store,
                                 start_offset, p->next_insn_offset,
                                 NULL);
    assert(valid);
@@ -465,9 +466,11 @@ brw_create_label(struct brw_label **labels, int offset, void *mem_ctx)
 }
 
 const struct brw_label *
-brw_label_assembly(const struct intel_device_info *devinfo,
+brw_label_assembly(const struct brw_isa_info *isa,
                    const void *assembly, int start, int end, void *mem_ctx)
 {
+   const struct intel_device_info *const devinfo = isa->devinfo;
+
    struct brw_label *root_label = NULL;
 
    int to_bytes_scale = sizeof(brw_inst) / brw_jump_scale(devinfo);
@@ -480,17 +483,17 @@ brw_label_assembly(const struct intel_device_info *devinfo,
 
       if (is_compact) {
          brw_compact_inst *compacted = (brw_compact_inst *)inst;
-         brw_uncompact_instruction(devinfo, &uncompacted, compacted);
+         brw_uncompact_instruction(isa, &uncompacted, compacted);
          inst = &uncompacted;
       }
 
-      if (brw_has_uip(devinfo, brw_inst_opcode(devinfo, inst))) {
+      if (brw_has_uip(devinfo, brw_inst_opcode(isa, inst))) {
          /* Instructions that have UIP also have JIP. */
          brw_create_label(&root_label,
             offset + brw_inst_uip(devinfo, inst) * to_bytes_scale, mem_ctx);
          brw_create_label(&root_label,
             offset + brw_inst_jip(devinfo, inst) * to_bytes_scale, mem_ctx);
-      } else if (brw_has_jip(devinfo, brw_inst_opcode(devinfo, inst))) {
+      } else if (brw_has_jip(devinfo, brw_inst_opcode(isa, inst))) {
          int jip;
          if (devinfo->ver >= 7) {
             jip = brw_inst_jip(devinfo, inst);
@@ -512,23 +515,25 @@ brw_label_assembly(const struct intel_device_info *devinfo,
 }
 
 void
-brw_disassemble_with_labels(const struct intel_device_info *devinfo,
+brw_disassemble_with_labels(const struct brw_isa_info *isa,
                             const void *assembly, int start, int end, FILE *out)
 {
    void *mem_ctx = ralloc_context(NULL);
    const struct brw_label *root_label =
-      brw_label_assembly(devinfo, assembly, start, end, mem_ctx);
+      brw_label_assembly(isa, assembly, start, end, mem_ctx);
 
-   brw_disassemble(devinfo, assembly, start, end, root_label, out);
+   brw_disassemble(isa, assembly, start, end, root_label, out);
 
    ralloc_free(mem_ctx);
 }
 
 void
-brw_disassemble(const struct intel_device_info *devinfo,
+brw_disassemble(const struct brw_isa_info *isa,
                 const void *assembly, int start, int end,
                 const struct brw_label *root_label, FILE *out)
 {
+   const struct intel_device_info *devinfo = isa->devinfo;
+
    bool dump_hex = INTEL_DEBUG(DEBUG_HEX);
 
    for (int offset = start; offset < end;) {
@@ -564,7 +569,7 @@ brw_disassemble(const struct intel_device_info *devinfo,
             fprintf(out, "%*c", blank_spaces, ' ');
          }
 
-         brw_uncompact_instruction(devinfo, &uncompacted, compacted);
+         brw_uncompact_instruction(isa, &uncompacted, compacted);
          insn = &uncompacted;
       } else {
          if (dump_hex) {
@@ -579,7 +584,7 @@ brw_disassemble(const struct intel_device_info *devinfo,
          }
       }
 
-      brw_disassemble_inst(out, devinfo, insn, compacted, offset, root_label);
+      brw_disassemble_inst(out, isa, insn, compacted, offset, root_label);
 
       if (compacted) {
          offset += sizeof(brw_compact_inst);
@@ -700,6 +705,13 @@ static const struct opcode_desc opcode_descs[] = {
    { BRW_OPCODE_NOP,      96,  "nop",     0,    0,    GFX_GE(GFX12) }
 };
 
+void
+brw_init_isa_info(struct brw_isa_info *isa,
+                  const struct intel_device_info *devinfo)
+{
+   isa->devinfo = devinfo;
+}
+
 /**
  * Look up the opcode_descs[] entry with \p key member matching \p k which is
  * supported by the device specified by \p devinfo, or NULL if there is no
@@ -743,12 +755,12 @@ lookup_opcode_desc(gfx_ver *index_ver,
  * generation, or NULL if the opcode is not supported by the device.
  */
 const struct opcode_desc *
-brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
+brw_opcode_desc(const struct brw_isa_info *isa, enum opcode opcode)
 {
    static thread_local gfx_ver index_ver = {};
    static thread_local const opcode_desc *index_descs[NUM_BRW_OPCODES];
    return lookup_opcode_desc(&index_ver, index_descs, ARRAY_SIZE(index_descs),
-                             &opcode_desc::ir, devinfo, opcode);
+                             &opcode_desc::ir, isa->devinfo, opcode);
 }
 
 /**
@@ -756,10 +768,10 @@ brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
  * generation, or NULL if the opcode is not supported by the device.
  */
 const struct opcode_desc *
-brw_opcode_desc_from_hw(const struct intel_device_info *devinfo, unsigned hw)
+brw_opcode_desc_from_hw(const struct brw_isa_info *isa, unsigned hw)
 {
    static thread_local gfx_ver index_ver = {};
    static thread_local const opcode_desc *index_descs[128];
    return lookup_opcode_desc(&index_ver, index_descs, ARRAY_SIZE(index_descs),
-                             &opcode_desc::hw, devinfo, hw);
+                             &opcode_desc::hw, isa->devinfo, hw);
 }

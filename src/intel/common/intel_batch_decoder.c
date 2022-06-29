@@ -30,6 +30,7 @@
 
 void
 intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
+                            const struct brw_isa_info *isa,
                             const struct intel_device_info *devinfo,
                             FILE *fp, enum intel_batch_decode_flags flags,
                             const char *xml_path,
@@ -42,6 +43,7 @@ intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
 {
    memset(ctx, 0, sizeof(*ctx));
 
+   ctx->isa = isa;
    ctx->devinfo = *devinfo;
    ctx->get_bo = get_bo;
    ctx->get_state_size = get_state_size;
@@ -137,7 +139,7 @@ ctx_disassemble_program(struct intel_batch_decode_ctx *ctx,
       return;
 
    fprintf(ctx->fp, "\nReferenced %s:\n", type);
-   intel_disassemble(&ctx->devinfo, bo.map, 0, ctx->fp);
+   intel_disassemble(ctx->isa, bo.map, 0, ctx->fp);
 }
 
 /* Heuristic to determine whether a uint32_t is probably actually a float

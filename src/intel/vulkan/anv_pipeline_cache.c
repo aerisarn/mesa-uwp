@@ -142,7 +142,8 @@ anv_shader_bin_create(struct anv_device *device,
       };
    }
 
-   brw_write_shader_relocs(&device->info, shader->kernel.map, prog_data_in,
+   brw_write_shader_relocs(&device->physical->compiler->isa,
+                           shader->kernel.map, prog_data_in,
                            reloc_values, rv_count);
 
    memcpy(prog_data, prog_data_in, prog_data_size);

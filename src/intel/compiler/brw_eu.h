@@ -113,6 +113,7 @@ struct brw_codegen {
    bool automatic_exec_sizes;
 
    bool single_program_flow;
+   const struct brw_isa_info *isa;
    const struct intel_device_info *devinfo;
 
    /* Control flow stacks:
@@ -174,22 +175,22 @@ void brw_set_default_flag_reg(struct brw_codegen *p, int reg, int subreg);
 void brw_set_default_acc_write_control(struct brw_codegen *p, unsigned value);
 void brw_set_default_swsb(struct brw_codegen *p, struct tgl_swsb value);
 
-void brw_init_codegen(const struct intel_device_info *, struct brw_codegen *p,
-		      void *mem_ctx);
+void brw_init_codegen(const struct brw_isa_info *isa,
+                      struct brw_codegen *p, void *mem_ctx);
 bool brw_has_jip(const struct intel_device_info *devinfo, enum opcode opcode);
 bool brw_has_uip(const struct intel_device_info *devinfo, enum opcode opcode);
 const struct brw_label *brw_find_label(const struct brw_label *root, int offset);
 void brw_create_label(struct brw_label **labels, int offset, void *mem_ctx);
-int brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
+int brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
                          const struct brw_inst *inst, bool is_compacted,
                          int offset, const struct brw_label *root_label);
 const struct
-brw_label *brw_label_assembly(const struct intel_device_info *devinfo,
+brw_label *brw_label_assembly(const struct brw_isa_info *isa,
                               const void *assembly, int start, int end,
                               void *mem_ctx);
-void brw_disassemble_with_labels(const struct intel_device_info *devinfo,
+void brw_disassemble_with_labels(const struct brw_isa_info *isa,
                                  const void *assembly, int start, int end, FILE *out);
-void brw_disassemble(const struct intel_device_info *devinfo,
+void brw_disassemble(const struct brw_isa_info *isa,
                      const void *assembly, int start, int end,
                      const struct brw_label *root_label, FILE *out);
 const struct brw_shader_reloc *brw_get_shader_relocs(struct brw_codegen *p,
@@ -1814,7 +1815,7 @@ brw_float_controls_mode(struct brw_codegen *p,
                         unsigned mode, unsigned mask);
 
 void
-brw_update_reloc_imm(const struct intel_device_info *devinfo,
+brw_update_reloc_imm(const struct brw_isa_info *isa,
                      brw_inst *inst,
                      uint32_t value);
 
@@ -1871,19 +1872,19 @@ enum brw_conditional_mod brw_swap_cmod(enum brw_conditional_mod cmod);
 /* brw_eu_compact.c */
 void brw_compact_instructions(struct brw_codegen *p, int start_offset,
                               struct disasm_info *disasm);
-void brw_uncompact_instruction(const struct intel_device_info *devinfo,
+void brw_uncompact_instruction(const struct brw_isa_info *isa,
                                brw_inst *dst, brw_compact_inst *src);
-bool brw_try_compact_instruction(const struct intel_device_info *devinfo,
+bool brw_try_compact_instruction(const struct brw_isa_info *isa,
                                  brw_compact_inst *dst, const brw_inst *src);
 
-void brw_debug_compact_uncompact(const struct intel_device_info *devinfo,
+void brw_debug_compact_uncompact(const struct brw_isa_info *isa,
                                  brw_inst *orig, brw_inst *uncompacted);
 
 /* brw_eu_validate.c */
-bool brw_validate_instruction(const struct intel_device_info *devinfo,
+bool brw_validate_instruction(const struct brw_isa_info *isa,
                               const brw_inst *inst, int offset,
                               struct disasm_info *disasm);
-bool brw_validate_instructions(const struct intel_device_info *devinfo,
+bool brw_validate_instructions(const struct brw_isa_info *isa,
                                const void *assembly, int start_offset, int end_offset,
                                struct disasm_info *disasm);
 
