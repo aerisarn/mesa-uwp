@@ -32,6 +32,7 @@
 #include "util/macros.h"
 
 struct pvr_device;
+struct pvr_dump_ctx;
 struct pvr_winsys_bo;
 struct pvr_winsys_vma;
 struct pvr_winsys_heap;
@@ -97,5 +98,9 @@ static ALWAYS_INLINE void *pvr_bo_cpu_map_unchanged(struct pvr_device *device,
    return pvr_bo_cpu_map(device, pvr_bo);
 }
 #endif /* defined(HAVE_VALGRIND) */
+
+void pvr_bo_list_dump(struct pvr_dump_ctx *ctx,
+                      const struct list_head *bo_list,
+                      uint32_t bo_size);
 
 #endif /* PVR_BO_H */

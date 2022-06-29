@@ -21,28 +21,30 @@
  * SOFTWARE.
  */
 
-#include <stdint.h>
+#ifndef PVR_DUMP_BO_H
+#define PVR_DUMP_BO_H
 
-#include "util/u_debug.h"
-#include "pvr_debug.h"
+#include <stdbool.h>
 
-uint32_t PVR_DEBUG = 0;
+#include "pvr_dump.h"
 
-/* clang-format off */
-static const struct debug_named_value debug_control[] = {
-   { "cs", PVR_DEBUG_DUMP_CONTROL_STREAM,
-     "Dump the contents of the control stream buffer on every job submit." },
-   DEBUG_NAMED_VALUE_END
+struct pvr_bo;
+struct pvr_device;
+
+struct pvr_dump_bo_ctx {
+   struct pvr_dump_buffer_ctx base;
+
+   struct pvr_device *device;
+   struct pvr_bo *bo;
+   bool bo_mapped_in_ctx;
+
+   /* No user-modifiable values */
 };
-/* clang-format on */
 
-DEBUG_GET_ONCE_FLAGS_OPTION(pvr_debug, "PVR_DEBUG", debug_control, 0)
+bool pvr_dump_bo_ctx_push(struct pvr_dump_bo_ctx *ctx,
+                          struct pvr_dump_ctx *parent_ctx,
+                          struct pvr_device *device,
+                          struct pvr_bo *bo);
+bool pvr_dump_bo_ctx_pop(struct pvr_dump_bo_ctx *ctx);
 
-void pvr_process_debug_variable(void)
-{
-   PVR_DEBUG = debug_get_option_pvr_debug();
-
-   /* Perform any automatic selections. For example, if one debug option
-    * implies another it should be set here.
-    */
-}
+#endif /* PVR_DUMP_BO_H */

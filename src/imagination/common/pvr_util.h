@@ -24,9 +24,18 @@
 #ifndef PVR_UTIL_H
 #define PVR_UTIL_H
 
+#include <assert.h>
 #include <stdint.h>
 
 #include "util/bitscan.h"
+#include "util/macros.h"
+
+static inline bool ptr_is_aligned(const void *const ptr,
+                                  const uint32_t alignment)
+{
+   assert(util_is_power_of_two_nonzero(alignment));
+   return ((uintptr_t)(ptr) & (alignment - 1)) == 0;
+}
 
 /*****************************************************************************
   Math functions

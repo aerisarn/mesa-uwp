@@ -42,6 +42,8 @@ pvr_files = files(
   'pvr_csb.c',
   'pvr_descriptor_set.c',
   'pvr_device.c',
+  'pvr_dump_bo.c',
+  'pvr_dump_csb.c',
   'pvr_formats.c',
   'pvr_hardcode.c',
   'pvr_hw_pass.c',

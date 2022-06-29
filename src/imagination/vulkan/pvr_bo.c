@@ -27,11 +27,61 @@
 #include <vulkan/vulkan.h>
 
 #include "pvr_bo.h"
+#include "pvr_dump.h"
 #include "pvr_private.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "vk_alloc.h"
 #include "vk_log.h"
+
+static void pvr_bo_dump_line(struct pvr_dump_ctx *const ctx,
+                             const struct pvr_bo *bo,
+                             const uint32_t index,
+                             const uint32_t nr_bos_log10)
+{
+   static const char *const pretty_sizes[64 + 1] = {
+      "",        "1 B",     "2 B",     "4 B",     "8 B",     "16 B",
+      "32 B",    "64 B",    "128 B",   "256 B",   "512 B",   "1 KiB",
+      "2 KiB",   "4 KiB",   "8 KiB",   "16 KiB",  "32 KiB",  "64 KiB",
+      "128 KiB", "256 KiB", "512 KiB", "1 MiB",   "2 MiB",   "4 MiB",
+      "8 MiB",   "16 MiB",  "32 MiB",  "64 MiB",  "128 MiB", "256 MiB",
+      "512 MiB", "1 GiB",   "2 GiB",   "4 GiB",   "8 GiB",   "16 GiB",
+      "32 GiB",  "64 GiB",  "128 GiB", "256 GiB", "512 GiB", "1 TiB",
+      "2 TiB",   "4 TiB",   "8 TiB",   "16 TiB",  "32 TiB",  "64 TiB",
+      "128 TiB", "256 TiB", "512 TiB", "1 PiB",   "2 PiB",   "4 PiB",
+      "8 PiB",   "16 PiB",  "32 PiB",  "64 PiB",  "128 PiB", "256 PiB",
+      "512 PiB", "1 EiB",   "2 EiB",   "4 EiB",   "8 EiB",
+   };
+
+   const uint64_t size = bo->vma->size;
+   const uint32_t size_log2 =
+      util_is_power_of_two_or_zero64(size) ? util_last_bit(size) : 0;
+
+   pvr_dump_println(ctx,
+                    "[%0*" PRIu32 "] " PVR_DEV_ADDR_FMT " -> %*p "
+                    "(%s%s0x%" PRIx64 " bytes)",
+                    nr_bos_log10,
+                    index,
+                    bo->vma->dev_addr.addr,
+                    (int)sizeof(void *) * 2 + 2, /* nr hex digits + 0x prefix */
+                    bo->bo->map,
+                    pretty_sizes[size_log2],
+                    size_log2 ? ", " : "",
+                    size);
+}
+
+void pvr_bo_list_dump(struct pvr_dump_ctx *const ctx,
+                      const struct list_head *const bo_list,
+                      const uint32_t nr_bos)
+{
+   const uint32_t real_nr_bos = nr_bos ? nr_bos : list_length(bo_list);
+   const uint32_t nr_bos_log10 = u32_dec_digits(real_nr_bos);
+   uint32_t bo_idx = 0;
+
+   list_for_each_entry (struct pvr_bo, bo, bo_list, link) {
+      pvr_bo_dump_line(ctx, bo, bo_idx++, nr_bos_log10);
+   }
+}
 
 static uint32_t pvr_bo_alloc_to_winsys_flags(uint64_t flags)
 {
@@ -103,6 +153,9 @@ VkResult pvr_bo_alloc(struct pvr_device *device,
          result = VK_ERROR_MEMORY_MAP_FAILED;
          goto err_buffer_destroy;
       }
+
+      if (flags & PVR_BO_ALLOC_FLAG_ZERO_ON_ALLOC)
+         VG(VALGRIND_MAKE_MEM_DEFINED(map, pvr_bo->bo->size));
    }
 
    pvr_bo->vma = device->ws->ops->heap_alloc(heap, size, alignment);
