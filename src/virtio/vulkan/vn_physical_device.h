@@ -27,6 +27,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state;
    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state_2;
    VkPhysicalDeviceImageRobustnessFeaturesEXT image_robustness;
+   VkPhysicalDeviceInlineUniformBlockFeatures inline_uniform_block;
    VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
       shader_demote_to_helper_invocation;
 
@@ -47,6 +48,9 @@ struct vn_physical_device_properties {
    VkPhysicalDeviceProperties vulkan_1_0;
    VkPhysicalDeviceVulkan11Properties vulkan_1_1;
    VkPhysicalDeviceVulkan12Properties vulkan_1_2;
+
+   /* Vulkan 1.3 */
+   VkPhysicalDeviceInlineUniformBlockProperties inline_uniform_block;
 
    /* EXT */
    VkPhysicalDeviceConservativeRasterizationPropertiesEXT

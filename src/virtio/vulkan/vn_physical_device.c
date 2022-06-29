@@ -129,6 +129,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_image_robustness, feats->image_robustness,
                        IMAGE_ROBUSTNESS_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
+                       feats->inline_uniform_block,
+                       INLINE_UNIFORM_BLOCK_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_shader_demote_to_helper_invocation,
                        feats->shader_demote_to_helper_invocation,
                        SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES,
@@ -465,6 +468,11 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VN_ADD_TO_PNEXT(local_props.timeline_semaphore,
                       TIMELINE_SEMAPHORE_PROPERTIES, properties2);
    }
+
+   /* Vulkan 1.3 */
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
+                       props->inline_uniform_block,
+                       INLINE_UNIFORM_BLOCK_PROPERTIES, properties2);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT(
@@ -1609,6 +1617,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceExtendedDynamicState2FeaturesEXT
          *extended_dynamic_state2;
       VkPhysicalDeviceImageRobustnessFeaturesEXT *image_robustness;
+      VkPhysicalDeviceInlineUniformBlockFeatures *inline_uniform_block;
       VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
          *shader_demote_to_helper_invocation;
 
@@ -1796,6 +1805,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT:
          *u.image_robustness = feats->image_robustness;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES:
+         *u.inline_uniform_block = feats->inline_uniform_block;
+         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES:
          *u.shader_demote_to_helper_invocation =
             feats->shader_demote_to_helper_invocation;
@@ -1872,6 +1884,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceDepthStencilResolveProperties *depth_stencil_resolve;
       VkPhysicalDeviceSamplerFilterMinmaxProperties *sampler_filter_minmax;
       VkPhysicalDeviceTimelineSemaphoreProperties *timeline_semaphore;
+
+      /* Vulkan 1.3 */
+      VkPhysicalDeviceInlineUniformBlockProperties *inline_uniform_block;
 
       /* EXT */
       VkPhysicalDeviceConservativeRasterizationPropertiesEXT
@@ -2065,6 +2080,11 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES:
          u.timeline_semaphore->maxTimelineSemaphoreValueDifference =
             vk12_props->maxTimelineSemaphoreValueDifference;
+         break;
+
+      /* Vulkan 1.3 */
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES:
+         *u.inline_uniform_block = props->inline_uniform_block;
          break;
 
       /* EXT */
