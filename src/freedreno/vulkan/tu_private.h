@@ -1591,8 +1591,7 @@ tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
                         const VkRenderPassBeginInfo *pRenderPassBegin);
 
 void
-tu_lrz_begin_secondary_cmdbuf(struct tu_cmd_buffer *cmd,
-                              struct tu_framebuffer *fb);
+tu_lrz_begin_secondary_cmdbuf(struct tu_cmd_buffer *cmd);
 
 void
 tu_lrz_tiling_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs);

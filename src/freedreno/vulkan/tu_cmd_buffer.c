@@ -1772,13 +1772,11 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       }
 
       if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
-         TU_FROM_HANDLE(tu_framebuffer, fb, pBeginInfo->pInheritanceInfo->framebuffer);
-
          cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
          cmd_buffer->state.subpass =
             &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
 
-         tu_lrz_begin_secondary_cmdbuf(cmd_buffer, fb);
+         tu_lrz_begin_secondary_cmdbuf(cmd_buffer);
       } else {
          /* When executing in the middle of another command buffer, the CCU
           * state is unknown.
