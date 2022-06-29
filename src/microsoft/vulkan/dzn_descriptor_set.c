@@ -130,19 +130,6 @@ num_descs_for_type(VkDescriptorType type, bool static_sampler)
    return num_descs;
 }
 
-static void
-dzn_descriptor_set_layout_destroy(struct dzn_descriptor_set_layout *set_layout,
-                                  const VkAllocationCallbacks *pAllocator)
-{
-   if (!set_layout)
-      return;
-
-   struct dzn_device *device = container_of(set_layout->base.device, struct dzn_device, vk);
-
-   vk_object_base_finish(&set_layout->base);
-   vk_free2(&device->vk.alloc, pAllocator, set_layout);
-}
-
 static VkResult
 dzn_descriptor_set_layout_create(struct dzn_device *device,
                                  const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
@@ -230,11 +217,9 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
    VK_MULTIALLOC_DECL(&ma, struct dzn_descriptor_set_layout_binding, binfos,
                       binding_count);
 
-   if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+   if (!vk_descriptor_set_layout_multizalloc(&device->vk, &ma))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &set_layout->base, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
    set_layout->static_samplers = static_samplers;
    set_layout->static_sampler_count = static_sampler_count;
    set_layout->immutable_samplers = immutable_samplers;
@@ -470,15 +455,6 @@ dzn_CreateDescriptorSetLayout(VkDevice device,
 {
    return dzn_descriptor_set_layout_create(dzn_device_from_handle(device),
                                            pCreateInfo, pAllocator, pSetLayout);
-}
-
-VKAPI_ATTR void VKAPI_CALL
-dzn_DestroyDescriptorSetLayout(VkDevice device,
-                               VkDescriptorSetLayout descriptorSetLayout,
-                               const VkAllocationCallbacks *pAllocator)
-{
-   dzn_descriptor_set_layout_destroy(dzn_descriptor_set_layout_from_handle(descriptorSetLayout),
-                                     pAllocator);
 }
 
 VKAPI_ATTR void VKAPI_CALL
