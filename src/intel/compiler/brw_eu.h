@@ -38,6 +38,7 @@
 #include "brw_inst.h"
 #include "brw_compiler.h"
 #include "brw_eu_defines.h"
+#include "brw_isa_info.h"
 #include "brw_reg.h"
 #include "brw_disasm_info.h"
 
@@ -1895,54 +1896,6 @@ next_offset(const struct intel_device_info *devinfo, void *store, int offset)
       return offset + 8;
    else
       return offset + 16;
-}
-
-struct opcode_desc {
-   unsigned ir;
-   unsigned hw;
-   const char *name;
-   int nsrc;
-   int ndst;
-   int gfx_vers;
-};
-
-const struct opcode_desc *
-brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode);
-
-const struct opcode_desc *
-brw_opcode_desc_from_hw(const struct intel_device_info *devinfo, unsigned hw);
-
-static inline unsigned
-brw_opcode_encode(const struct intel_device_info *devinfo, enum opcode opcode)
-{
-   return brw_opcode_desc(devinfo, opcode)->hw;
-}
-
-static inline enum opcode
-brw_opcode_decode(const struct intel_device_info *devinfo, unsigned hw)
-{
-   const struct opcode_desc *desc = brw_opcode_desc_from_hw(devinfo, hw);
-   return desc ? (enum opcode)desc->ir : BRW_OPCODE_ILLEGAL;
-}
-
-static inline void
-brw_inst_set_opcode(const struct intel_device_info *devinfo,
-                    brw_inst *inst, enum opcode opcode)
-{
-   brw_inst_set_hw_opcode(devinfo, inst, brw_opcode_encode(devinfo, opcode));
-}
-
-static inline enum opcode
-brw_inst_opcode(const struct intel_device_info *devinfo, const brw_inst *inst)
-{
-   return brw_opcode_decode(devinfo, brw_inst_hw_opcode(devinfo, inst));
-}
-
-static inline bool
-is_3src(const struct intel_device_info *devinfo, enum opcode opcode)
-{
-   const struct opcode_desc *desc = brw_opcode_desc(devinfo, opcode);
-   return desc && desc->nsrc == 3;
 }
 
 /** Maximum SEND message length */
