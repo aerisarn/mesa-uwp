@@ -305,9 +305,10 @@ zink_create_sampler_state(struct pipe_context *pctx,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    bool need_custom = false;
-
+   bool need_clamped_border_color = false;
    VkSamplerCreateInfo sci = {0};
    VkSamplerCustomBorderColorCreateInfoEXT cbci = {0};
+   VkSamplerCustomBorderColorCreateInfoEXT cbci_clamped = {0};
    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
    if (screen->info.have_EXT_non_seamless_cube_map && !state->seamless_cube_map)
       sci.flags |= VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT;
@@ -381,6 +382,22 @@ zink_create_sampler_state(struct pipe_context *pctx,
             static bool warned = false;
             warn_missing_feature(warned, "VK_EXT_border_color_swizzle");
          }
+
+         if (!is_integer && !screen->have_D24_UNORM_S8_UINT) {
+            union pipe_color_union clamped_border_color;
+            for (unsigned i = 0; i < 4; ++i) {
+               /* Use channel 0 on purpose, so that we can use OPAQUE_WHITE
+                * when the border color is 1.0. */
+               clamped_border_color.f[i] = CLAMP(state->border_color.f[0], 0, 1);
+            }
+            if (memcmp(&state->border_color, &clamped_border_color, sizeof(clamped_border_color)) != 0) {
+               need_clamped_border_color = true;
+               cbci_clamped.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
+               cbci_clamped.format = VK_FORMAT_UNDEFINED;
+               /* these are identical unions */
+               memcpy(&cbci_clamped.customBorderColor, &clamped_border_color, sizeof(union pipe_color_union));
+            }
+         }
          cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
          cbci.format = VK_FORMAT_UNDEFINED;
          /* these are identical unions */
@@ -408,6 +425,15 @@ zink_create_sampler_state(struct pipe_context *pctx,
       mesa_loge("ZINK: vkCreateSampler failed");
       FREE(sampler);
       return NULL;
+   }
+   if (need_clamped_border_color) {
+      sci.pNext = &cbci_clamped;
+      if (VKSCR(CreateSampler)(screen->dev, &sci, NULL, &sampler->sampler_clamped) != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateSampler failed");
+         VKSCR(DestroySampler)(screen->dev, sampler->sampler, NULL);
+         FREE(sampler);
+         return NULL;
+      }
    }
    util_dynarray_init(&sampler->desc_set_refs.refs, NULL);
    calc_descriptor_hash_sampler_state(sampler);
@@ -539,6 +565,18 @@ update_descriptor_state_sampler(struct zink_context *ctx, enum pipe_shader_type 
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
          ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(ctx, res, type, shader == PIPE_SHADER_COMPUTE);
          ctx->di.textures[shader][slot].imageView = surface->image_view;
+         if (!screen->have_D24_UNORM_S8_UINT &&
+             ctx->sampler_states[shader][slot] && ctx->sampler_states[shader][slot]->sampler_clamped) {
+            struct zink_sampler_state *state = ctx->sampler_states[shader][slot];
+            VkSampler sampler = (surface->base.format == PIPE_FORMAT_Z24X8_UNORM && surface->ivci.format == VK_FORMAT_D32_SFLOAT) ||
+                                (surface->base.format == PIPE_FORMAT_Z24_UNORM_S8_UINT && surface->ivci.format == VK_FORMAT_D32_SFLOAT_S8_UINT) ?
+                                state->sampler_clamped :
+                                state->sampler;
+            if (ctx->di.textures[shader][slot].sampler != sampler) {
+               screen->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot, 1);
+               ctx->di.textures[shader][slot].sampler = sampler;
+            }
+         }
          ctx->di.sampler_surfaces[shader][slot].surface = surface;
          ctx->di.sampler_surfaces[shader][slot].is_buffer = false;
       }
@@ -629,8 +667,15 @@ zink_bind_sampler_states(struct pipe_context *pctx,
       if (ctx->sampler_states[shader][start_slot + i])
          was_nonseamless = ctx->sampler_states[shader][start_slot + i]->emulate_nonseamless;
       ctx->sampler_states[shader][start_slot + i] = state;
-      ctx->di.textures[shader][start_slot + i].sampler = state ? state->sampler : VK_NULL_HANDLE;
       if (state) {
+         ctx->di.textures[shader][start_slot + i].sampler = state->sampler;
+         if (state->sampler_clamped && !screen->have_D24_UNORM_S8_UINT) {
+            struct zink_surface *surface = get_imageview_for_binding(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
+            if (surface &&
+                ((surface->base.format == PIPE_FORMAT_Z24X8_UNORM && surface->ivci.format == VK_FORMAT_D32_SFLOAT) ||
+                 (surface->base.format == PIPE_FORMAT_Z24_UNORM_S8_UINT && surface->ivci.format == VK_FORMAT_D32_SFLOAT_S8_UINT)))
+               ctx->di.textures[shader][start_slot + i].sampler = state->sampler_clamped;
+         }
          zink_batch_usage_set(&state->batch_uses, ctx->batch.state);
          if (screen->info.have_EXT_non_seamless_cube_map)
             continue;
@@ -646,6 +691,8 @@ zink_bind_sampler_states(struct pipe_context *pctx,
                screen->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i, 1);
             }
          }
+      } else {
+         ctx->di.textures[shader][start_slot + i].sampler = VK_NULL_HANDLE;
       }
    }
    ctx->di.num_samplers[shader] = start_slot + num_samplers;
@@ -661,9 +708,13 @@ zink_delete_sampler_state(struct pipe_context *pctx,
    struct zink_batch *batch = &zink_context(pctx)->batch;
    zink_descriptor_set_refs_clear(&sampler->desc_set_refs, sampler_state);
    /* may be called if context_create fails */
-   if (batch->state)
+   if (batch->state) {
       util_dynarray_append(&batch->state->zombie_samplers, VkSampler,
                            sampler->sampler);
+      if (sampler->sampler_clamped)
+         util_dynarray_append(&batch->state->zombie_samplers, VkSampler,
+                              sampler->sampler_clamped);
+   }
    if (sampler->custom_border_color)
       p_atomic_dec(&zink_screen(pctx->screen)->cur_custom_border_color_samplers);
    FREE(sampler);
