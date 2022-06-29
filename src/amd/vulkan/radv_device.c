@@ -3424,13 +3424,13 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
               radv_spm_trace_enabled() ? "enabled" : "disabled");
 
       if (radv_spm_trace_enabled()) {
-         if (device->physical_device->rad_info.gfx_level < GFX10) {
-            fprintf(stderr, "SPM isn't supported for this GPU!\n");
-            abort();
+         if (device->physical_device->rad_info.gfx_level >= GFX10) {
+            if (!radv_spm_init(device))
+               goto fail;
+         } else {
+            fprintf(stderr, "radv: SPM isn't supported for this GPU (%s)!\n",
+                    device->physical_device->name);
          }
-
-         if (!radv_spm_init(device))
-            goto fail;
       }
    }
 
