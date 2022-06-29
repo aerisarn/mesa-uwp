@@ -968,8 +968,20 @@ struct brw_wm_prog_data {
 
    uint8_t color_outputs_written;
    uint8_t computed_depth_mode;
-   bool computed_stencil;
 
+   /**
+    * Number of polygons handled in parallel by the multi-polygon PS
+    * kernel.
+    */
+   uint8_t max_polygons;
+
+   /**
+    * Dispatch width of the multi-polygon PS kernel, or 0 if no
+    * multi-polygon kernel was built.
+    */
+   uint8_t dispatch_multi;
+
+   bool computed_stencil;
    bool early_fragment_tests;
    bool post_depth_coverage;
    bool inner_coverage;
