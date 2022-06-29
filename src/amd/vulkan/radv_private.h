@@ -357,7 +357,6 @@ struct radv_instance {
    bool disable_shrink_image_store;
    bool absolute_depth_bias;
    bool report_apu_as_dgpu;
-   bool disable_htile_layers;
    bool disable_aniso_single_level;
    bool zero_vram;
    bool disable_sinking_load_input_fs;
