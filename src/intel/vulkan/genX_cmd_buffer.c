@@ -5930,6 +5930,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
          .IndirectParameterEnable        = indirect,
          .PredicateEnable                = predicate,
          .SIMDSize                       = dispatch.simd_size / 16,
+         .MessageSIMD                    = dispatch.simd_size / 16,
          .IndirectDataStartAddress       = comp_state->push_data.offset,
          .IndirectDataLength             = comp_state->push_data.alloc_size,
          .LocalXMaximum                  = prog_data->local_size[0] - 1,
@@ -6212,6 +6213,7 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(COMPUTE_WALKER), cw) {
       cw.PredicateEnable                = false;
       cw.SIMDSize                       = dispatch.simd_size / 16;
+      cw.MessageSIMD                    = dispatch.simd_size / 16;
       cw.IndirectDataStartAddress       = indirect_data.offset;
       cw.IndirectDataLength             = indirect_data.alloc_size;
       cw.LocalXMaximum                  = cs_prog_data->local_size[0] - 1;
@@ -6609,6 +6611,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       cw.IndirectParameterEnable        = params->is_launch_size_indirect;
       cw.PredicateEnable                = cmd_buffer->state.conditional_render_enabled;
       cw.SIMDSize                       = dispatch.simd_size / 16;
+      cw.MessageSIMD                    = dispatch.simd_size / 16;
       cw.LocalXMaximum                  = (1 << local_size_log2[0]) - 1;
       cw.LocalYMaximum                  = (1 << local_size_log2[1]) - 1;
       cw.LocalZMaximum                  = (1 << local_size_log2[2]) - 1;
