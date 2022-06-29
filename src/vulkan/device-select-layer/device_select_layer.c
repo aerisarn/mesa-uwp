@@ -439,10 +439,16 @@ static uint32_t get_default_device(const struct instance_info *info,
       default_idx = device_select_find_explicit_default(pci_infos, physical_device_count, selection);
 
    if (default_idx == -1 && dri_prime && !dri_prime_is_one) {
-      if (!info->has_vulkan11 && !info->has_pci_bus)
-         fprintf(stderr, "device-select: cannot correctly use DRI_PRIME tag\n");
-      else
-         default_idx = device_select_find_dri_prime_tag_default(pci_infos, physical_device_count, dri_prime);
+      /* Try DRI_PRIME=vendor_id:device_id */
+      default_idx = device_select_find_explicit_default(pci_infos, physical_device_count, dri_prime);
+
+      if (default_idx == -1) {
+         /* Try DRI_PRIME=pci-xxxx_yy_zz_w */
+         if (!info->has_vulkan11 && !info->has_pci_bus)
+            fprintf(stderr, "device-select: cannot correctly use DRI_PRIME tag\n");
+         else
+            default_idx = device_select_find_dri_prime_tag_default(pci_infos, physical_device_count, dri_prime);
+      }
    }
    if (default_idx == -1 && info->has_wayland)
       default_idx = device_select_find_wayland_pci_default(pci_infos, physical_device_count);
