@@ -1352,6 +1352,15 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
    OUT_PKT4(ring, REG_A6XX_RB_LRZ_CNTL, 1);
    OUT_RING(ring, 0x00000000);
 
+   /* Initialize VFD_FETCH[n].SIZE to zero to avoid iova faults trying
+    * to fetch from a VFD_FETCH[n].BASE which we've potentially inherited
+    * from another process:
+    */
+   for (int32_t i = 0; i < 32; i++) {
+      OUT_PKT4(ring, REG_A6XX_VFD_FETCH_SIZE(i), 1);
+      OUT_RING(ring, 0);
+   }
+
    /* This happens after all drawing has been emitted to the draw CS, so we know
     * whether we need the tess BO pointers.
     */
