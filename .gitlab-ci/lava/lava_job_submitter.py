@@ -357,9 +357,15 @@ def find_lava_error(job) -> None:
 
 
 def show_job_data(job):
-    show = _call_proxy(job.proxy.scheduler.jobs.show, job.job_id)
-    for field, value in show.items():
-        print("{}\t: {}".format(field, value))
+    with GitlabSection(
+        "job_data",
+        "LAVA job info",
+        type=LogSectionType.LAVA_POST_PROCESSING,
+        start_collapsed=True,
+    ):
+        show = _call_proxy(job.proxy.scheduler.jobs.show, job.job_id)
+        for field, value in show.items():
+            print("{}\t: {}".format(field, value))
 
 
 def fetch_logs(job, max_idle_time, log_follower) -> None:
