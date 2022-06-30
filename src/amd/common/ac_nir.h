@@ -144,7 +144,8 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
                     unsigned gs_out_vtx_bytes,
                     unsigned gs_total_out_vtx_bytes,
                     bool provoking_vtx_last,
-                    bool can_cull);
+                    bool can_cull,
+                    bool disable_streamout);
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
