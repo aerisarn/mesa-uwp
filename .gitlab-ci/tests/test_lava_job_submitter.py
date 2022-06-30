@@ -302,3 +302,61 @@ def test_filter_debug_messages(message, expectation, mock_proxy):
     job.parse_job_result_from_log([message])
 
     assert job.status == expectation
+
+
+@pytest.mark.skip(reason="Integration test. Needs a LAVA log raw file at /tmp/log.yaml")
+def test_full_yaml_log(mock_proxy, frozen_time):
+    import itertools
+    import random
+    from datetime import datetime
+
+    import yaml
+
+    def time_travel_from_log_chunk(data_chunk):
+        if not data_chunk:
+            return
+
+        first_log_time = data_chunk[0]["dt"]
+        frozen_time.move_to(first_log_time)
+        yield
+
+        last_log_time = data_chunk[-1]["dt"]
+        frozen_time.move_to(last_log_time)
+        return
+
+    def time_travel_to_test_time():
+        # Suppose that the first message timestamp of the entire LAVA job log is
+        # the same of from the job submitter execution
+        with open("/tmp/log.yaml", "r") as f:
+            first_log = f.readline()
+            first_log_time = yaml.safe_load(first_log)[0]["dt"]
+            frozen_time.move_to(first_log_time)
+
+    def load_lines() -> list:
+        with open("/tmp/log.yaml", "r") as f:
+            data = yaml.safe_load(f)
+            chain = itertools.chain(data)
+            try:
+                while True:
+                    data_chunk = [next(chain) for _ in range(random.randint(0, 50))]
+                    # Suppose that the first message timestamp is the same of
+                    # log fetch RPC call
+                    time_travel_from_log_chunk(data_chunk)
+                    yield False, []
+                    # Travel to the same datetime of the last fetched log line
+                    # in the chunk
+                    time_travel_from_log_chunk(data_chunk)
+                    yield False, data_chunk
+            except StopIteration:
+                yield True, data_chunk
+                return
+
+    proxy = mock_proxy()
+
+    def reset_logs(*args):
+        proxy.scheduler.jobs.logs.side_effect = load_lines()
+
+    proxy.scheduler.jobs.submit = reset_logs
+    with pytest.raises(MesaCIRetryError):
+        time_travel_to_test_time()
+        retriable_follow_job(proxy, "")
