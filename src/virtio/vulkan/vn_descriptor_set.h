@@ -85,6 +85,7 @@ struct vn_update_descriptor_sets {
    VkDescriptorImageInfo *images;
    VkDescriptorBufferInfo *buffers;
    VkBufferView *views;
+   VkWriteDescriptorSetInlineUniformBlock *iubs;
 };
 
 struct vn_descriptor_set {

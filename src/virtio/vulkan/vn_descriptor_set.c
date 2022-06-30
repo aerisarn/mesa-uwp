@@ -622,6 +622,7 @@ vn_update_descriptor_sets_alloc(uint32_t write_count,
                                 uint32_t image_count,
                                 uint32_t buffer_count,
                                 uint32_t view_count,
+                                uint32_t iub_count,
                                 const VkAllocationCallbacks *alloc,
                                 VkSystemAllocationScope scope)
 {
@@ -632,7 +633,11 @@ vn_update_descriptor_sets_alloc(uint32_t write_count,
       images_offset + sizeof(VkDescriptorImageInfo) * image_count;
    const size_t views_offset =
       buffers_offset + sizeof(VkDescriptorBufferInfo) * buffer_count;
-   const size_t alloc_size = views_offset + sizeof(VkBufferView) * view_count;
+   const size_t iubs_offset =
+      views_offset + sizeof(VkBufferView) * view_count;
+   const size_t alloc_size =
+      iubs_offset +
+      sizeof(VkWriteDescriptorSetInlineUniformBlock) * iub_count;
 
    void *storage = vk_alloc(alloc, alloc_size, VN_DEFAULT_ALIGN, scope);
    if (!storage)
@@ -644,6 +649,7 @@ vn_update_descriptor_sets_alloc(uint32_t write_count,
    update->images = storage + images_offset;
    update->buffers = storage + buffers_offset;
    update->views = storage + views_offset;
+   update->iubs = storage + iubs_offset;
 
    return update;
 }
@@ -670,7 +676,7 @@ vn_update_descriptor_sets_parse_writes(uint32_t write_count,
    }
 
    struct vn_update_descriptor_sets *update =
-      vn_update_descriptor_sets_alloc(write_count, img_count, 0, 0, alloc,
+      vn_update_descriptor_sets_alloc(write_count, img_count, 0, 0, 0, alloc,
                                       VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!update)
       return NULL;
@@ -785,6 +791,7 @@ vn_update_descriptor_sets_parse_template(
    uint32_t img_count = 0;
    uint32_t buf_count = 0;
    uint32_t view_count = 0;
+   uint32_t iub_count = 0;
    for (uint32_t i = 0; i < create_info->descriptorUpdateEntryCount; i++) {
       const VkDescriptorUpdateTemplateEntry *entry =
          &create_info->pDescriptorUpdateEntries[i];
@@ -807,6 +814,9 @@ vn_update_descriptor_sets_parse_template(
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          buf_count += entry->descriptorCount;
          break;
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+         iub_count += 1;
+         break;
       default:
          unreachable("unhandled descriptor type");
          break;
@@ -815,13 +825,14 @@ vn_update_descriptor_sets_parse_template(
 
    struct vn_update_descriptor_sets *update = vn_update_descriptor_sets_alloc(
       create_info->descriptorUpdateEntryCount, img_count, buf_count,
-      view_count, alloc, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      view_count, iub_count, alloc, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!update)
       return NULL;
 
    img_count = 0;
    buf_count = 0;
    view_count = 0;
+   iub_count = 0;
    for (uint32_t i = 0; i < create_info->descriptorUpdateEntryCount; i++) {
       const VkDescriptorUpdateTemplateEntry *entry =
          &create_info->pDescriptorUpdateEntries[i];
@@ -863,6 +874,19 @@ vn_update_descriptor_sets_parse_template(
          write->pBufferInfo = &update->buffers[buf_count];
          write->pTexelBufferView = NULL;
          buf_count += entry->descriptorCount;
+         break;
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+         write->pImageInfo = NULL;
+         write->pBufferInfo = NULL;
+         write->pTexelBufferView = NULL;
+         VkWriteDescriptorSetInlineUniformBlock *iub_data =
+            &update->iubs[iub_count];
+         iub_data->sType =
+            VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK;
+         iub_data->pNext = write->pNext;
+         iub_data->dataSize = entry->descriptorCount;
+         write->pNext = iub_data;
+         iub_count += 1;
          break;
       default:
          break;
@@ -1004,6 +1028,12 @@ vn_UpdateDescriptorSetWithTemplate(
                (VkDescriptorBufferInfo *)&write->pBufferInfo[j];
             *dst = *src;
          }
+         break;
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:;
+         VkWriteDescriptorSetInlineUniformBlock *iub_data =
+            (VkWriteDescriptorSetInlineUniformBlock *)vk_find_struct_const(
+               write->pNext, WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK);
+         iub_data->pData = pData + entry->offset;
          break;
       default:
          unreachable("unhandled descriptor type");
