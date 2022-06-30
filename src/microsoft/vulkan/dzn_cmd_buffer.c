@@ -53,6 +53,10 @@ dzn_cmd_buffer_exec_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
    if (flush_count)
       ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, flush_count,
                                                  &barriers[barrier_count - flush_count]);
+
+   /* Set Before = After so we don't execute the same barrier twice. */
+   for (uint32_t b = 0; b < barrier_count; b++)
+      barriers[b].Transition.StateBefore = barriers[b].Transition.StateAfter;
 }
 
 static void
@@ -69,10 +73,6 @@ dzn_cmd_buffer_flush_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
       return;
 
    dzn_cmd_buffer_exec_transition_barriers(cmdbuf, &barriers[first_subres], subres_count);
-
-   /* Set Before = After so we don't execute the same barrier twice */
-   for (uint32_t b = first_subres; b < first_subres + subres_count; b++)
-      barriers[b].Transition.StateBefore = barriers[b].Transition.StateAfter;
 }
 
 enum dzn_queue_transition_flags {
