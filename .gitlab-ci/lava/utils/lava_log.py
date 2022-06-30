@@ -253,12 +253,44 @@ class LogFollower:
             if new_section := log_section.from_log_line_to_section(line):
                 self.update_section(new_section)
 
-    def feed(self, new_lines: list[dict[str, str]]) -> None:
+    def detect_kernel_dump_line(self, line: dict[str, Union[str, list]]) -> bool:
+        # line["msg"] can be a list[str] when there is a kernel dump
+        if isinstance(line["msg"], list):
+            return line["lvl"] == "debug"
+
+        # result level has dict line["msg"]
+        if not isinstance(line["msg"], str):
+            return False
+
+        # we have a line, check if it is a kernel message
+        if re.search(r"\[[\d\s]{5}\.[\d\s]{6}\] +\S{2,}", line["msg"]):
+            print_log(f"{line['msg']}")
+            return True
+
+        return False
+
+    def feed(self, new_lines: list[dict[str, str]]) -> bool:
+        """Input data to be processed by LogFollower instance
+        Returns true if the DUT (device under test) seems to be alive.
+        """
+
         self.watchdog()
+
+        # No signal of job health in the log
+        is_job_healthy = False
+
         for line in new_lines:
+            if self.detect_kernel_dump_line(line):
+                continue
+
+            # At least we are fed with a non-kernel dump log, it seems that the
+            # job is progressing
+            is_job_healthy = True
             self.manage_gl_sections(line)
             if parsed_line := parse_lava_line(line):
                 self._buffer.append(parsed_line)
+
+        return is_job_healthy
 
     def flush(self) -> list[str]:
         buffer = self._buffer

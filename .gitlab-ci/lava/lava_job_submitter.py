@@ -278,8 +278,6 @@ class LAVAJob:
         # When there is no new log data, the YAML is empty
         if loaded_lines := yaml.load(str(data), Loader=loader(False)):
             lines = loaded_lines
-            # If we had non-empty log data, we can assure that the device is alive.
-            self.heartbeat()
             self.last_log_line += len(lines)
         return lines
 
@@ -391,7 +389,9 @@ def fetch_logs(job, max_idle_time, log_follower) -> None:
     else:
         raise MesaCIParseException
 
-    log_follower.feed(new_log_lines)
+    if log_follower.feed(new_log_lines):
+        # If we had non-empty log data, we can assure that the device is alive.
+        job.heartbeat()
     parsed_lines = log_follower.flush()
 
     for line in parsed_lines:
