@@ -15,6 +15,7 @@
 
 #include "vn_android.h"
 #include "vn_device.h"
+#include "vn_physical_device.h"
 #include "vn_device_memory.h"
 
 /* buffer commands */
@@ -120,7 +121,7 @@ vn_buffer_cache_entries_create(struct vn_device *dev,
 
       buf = vn_buffer_from_handle(buf_handle);
 
-      /* TODO remove below after VK_KHR_maintenance4 is available */
+      /* TODO remove below after VK_KHR_maintenance4 becomes a requirement */
       if (buf->requirements.memory.memoryRequirements.alignment <
           buf->requirements.memory.memoryRequirements.size) {
          vk_free(alloc, entries);
@@ -155,8 +156,8 @@ static VkResult
 vn_buffer_get_max_buffer_size(struct vn_device *dev,
                               uint64_t *out_max_buffer_size)
 {
-   /* TODO use VK_KHR_maintenance4 when available */
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   struct vn_physical_device *pdev = dev->physical_device;
    VkDevice dev_handle = vn_device_to_handle(dev);
    VkBuffer buf_handle;
    VkBufferCreateInfo create_info = {
@@ -168,6 +169,16 @@ vn_buffer_get_max_buffer_size(struct vn_device *dev,
    uint8_t begin = 0;
    uint8_t end = 64;
 
+   if (pdev->features.maintenance4.maintenance4) {
+      *out_max_buffer_size = pdev->properties.maintenance4.maxBufferSize;
+      return VK_SUCCESS;
+   }
+
+   /* For drivers that don't support VK_KHR_maintenance4, we try to estimate
+    * the maxBufferSize using binary search.
+    * TODO remove all the search code after VK_KHR_maintenance4 becomes
+    * a requirement.
+    */
    while (begin < end) {
       uint8_t mid = (begin + end) >> 1;
       create_info.size = 1ull << mid;
@@ -259,7 +270,8 @@ vn_buffer_cache_get_memory_requirements(
            create_info->usage)) {
          *out = entry->requirements;
 
-         /* TODO remove the comment after VK_KHR_maintenance4 is available
+         /* TODO remove the comment after VK_KHR_maintenance4 becomes a
+          * requirement
           *
           * This is based on below implementation defined behavior:
           *
