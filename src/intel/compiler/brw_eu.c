@@ -147,7 +147,7 @@ brw_get_default_access_mode(struct brw_codegen *p)
    return p->current->access_mode;
 }
 
-tgl_swsb
+struct tgl_swsb
 brw_get_default_swsb(struct brw_codegen *p)
 {
    return p->current->swsb;
@@ -295,7 +295,7 @@ void brw_set_default_acc_write_control(struct brw_codegen *p, unsigned value)
    p->current->acc_wr_control = value;
 }
 
-void brw_set_default_swsb(struct brw_codegen *p, tgl_swsb value)
+void brw_set_default_swsb(struct brw_codegen *p, struct tgl_swsb value)
 {
    p->current->swsb = value;
 }
@@ -364,7 +364,7 @@ const unsigned *brw_get_program( struct brw_codegen *p,
    return (const unsigned *)p->store;
 }
 
-const brw_shader_reloc *
+const struct brw_shader_reloc *
 brw_get_shader_relocs(struct brw_codegen *p, unsigned *num_relocs)
 {
    *num_relocs = p->num_relocs;
