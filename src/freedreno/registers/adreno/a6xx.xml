@@ -2778,12 +2778,12 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa002" name="VFD_CONTROL_2">
 		<bitfield name="REGID_HSRELPATCHID" low="0" high="7" type="a3xx_regid">
 			<doc>
-                                This is the ID of the current patch within the
-                                subdraw, used to calculate the offset of the
-                                patch within the HS->DS buffers. When a draw is
-                                split into multiple subdraws then this differs
-                                from gl_PrimitiveID on the second, third, etc.
-                                subdraws.
+				This is the ID of the current patch within the
+				subdraw, used to calculate the offset of the
+				patch within the HS->DS buffers. When a draw is
+				split into multiple subdraws then this differs
+				from gl_PrimitiveID on the second, third, etc.
+				subdraws.
 			</doc>
 		</bitfield>
 		<bitfield name="REGID_INVOCATIONID" low="8" high="15" type="a3xx_regid"/>
@@ -2851,6 +2851,9 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xa0f8" name="VFD_POWER_CNTL" low="0" high="2"/>
 
+	<reg32 offset="0xa601" name="VFD_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
+	<array offset="0xa610" name="VFD_PERFCTR_VFD_SEL" stride="1" length="8"/>
+
 	<!--
 	Note: this seems to always be paired with another bit in another
 	block.
@@ -2859,8 +2862,6 @@ to upconvert to 32b float internally?
 		<value value="0" name="THREAD64"/>
 		<value value="1" name="THREAD128"/>
 	</enum>
-	<reg32 offset="0xa601" name="VFD_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
-	<array offset="0xa610" name="VFD_PERFCTR_VFD_SEL" stride="1" length="8"/>
 
 	<bitset name="a6xx_sp_xs_ctrl_reg0" inline="yes">
 		<!-- if set to SINGLE, only use 1 concurrent wave on each SP -->
