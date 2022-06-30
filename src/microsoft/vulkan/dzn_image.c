@@ -587,6 +587,53 @@ dzn_image_layout_to_state(const struct dzn_image *image,
    }
 }
 
+bool
+dzn_image_formats_are_compatible(const struct dzn_device *device,
+                                 VkFormat orig_fmt, VkFormat new_fmt,
+                                 VkImageUsageFlags usage,
+                                 VkImageAspectFlagBits aspect)
+{
+   const struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
+   DXGI_FORMAT orig_dxgi = dzn_image_get_dxgi_format(orig_fmt, usage, aspect);
+   DXGI_FORMAT new_dxgi = dzn_image_get_dxgi_format(new_fmt, usage, aspect);
+
+   if (orig_dxgi == new_dxgi)
+      return true;
+
+   DXGI_FORMAT typeless_orig = dzn_get_typeless_dxgi_format(orig_dxgi);
+   DXGI_FORMAT typeless_new = dzn_get_typeless_dxgi_format(new_dxgi);
+
+   if (!(usage & VK_IMAGE_USAGE_SAMPLED_BIT))
+      return typeless_orig == typeless_new;
+
+   if (pdev->options3.CastingFullyTypedFormatSupported) {
+      enum pipe_format orig_pfmt = vk_format_to_pipe_format(orig_fmt);
+      enum pipe_format new_pfmt = vk_format_to_pipe_format(new_fmt);
+
+      /* Types don't belong to the same group, they're incompatible. */
+      if (typeless_orig != typeless_new)
+         return false;
+
+      /* FLOAT <-> non-FLOAT casting is disallowed. */
+      if (util_format_is_float(orig_pfmt) != util_format_is_float(new_pfmt))
+         return false;
+
+      /* UNORM <-> SNORM casting is disallowed. */
+      bool orig_is_norm =
+         util_format_is_unorm(orig_pfmt) || util_format_is_snorm(orig_pfmt);
+      bool new_is_norm =
+         util_format_is_unorm(new_pfmt) || util_format_is_snorm(new_pfmt);
+      if (orig_is_norm && new_is_norm &&
+          util_format_is_unorm(orig_pfmt) != util_format_is_unorm(new_pfmt))
+         return false;
+
+      return true;
+   }
+
+   return false;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 dzn_CreateImage(VkDevice device,
                 const VkImageCreateInfo *pCreateInfo,
