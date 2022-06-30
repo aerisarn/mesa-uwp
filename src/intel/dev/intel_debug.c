@@ -116,6 +116,8 @@ static const struct debug_control simd_control[] = {
    { "fs16",   DEBUG_FS_SIMD16 },
    { "fs32",   DEBUG_FS_SIMD32 },
    { "fs2x8",  DEBUG_FS_SIMD2X8 },
+   { "fs4x8",  DEBUG_FS_SIMD4X8 },
+   { "fs2x16", DEBUG_FS_SIMD2X16 },
    { "cs8",    DEBUG_CS_SIMD8 },
    { "cs16",   DEBUG_CS_SIMD16 },
    { "cs32",   DEBUG_CS_SIMD32 },
