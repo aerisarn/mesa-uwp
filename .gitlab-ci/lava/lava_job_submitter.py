@@ -374,8 +374,11 @@ def fetch_logs(job, max_idle_time, log_follower) -> None:
     if datetime.now() - job.last_log_time > max_idle_time:
         max_idle_time_min = max_idle_time.total_seconds() / 60
         print_log(
+            f"{CONSOLE_LOG['BOLD']}"
+            f"{CONSOLE_LOG['COLOR_RED']}"
             f"No log output for {max_idle_time_min} minutes; "
             "assuming device has died, retrying"
+            f"{CONSOLE_LOG['RESET']}"
         )
 
         raise MesaCITimeoutError(
