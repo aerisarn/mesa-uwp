@@ -902,6 +902,15 @@ static LLVMValueRef si_llvm_load_user_clip_plane(struct ac_shader_abi *abi, unsi
                                ctx->ac.f32, 0, true, true);
 }
 
+static LLVMValueRef si_llvm_load_streamout_buffer(struct ac_shader_abi *abi, unsigned buffer)
+{
+   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+   LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+
+   return ac_build_load_to_sgpr(
+      &ctx->ac, buf_ptr, LLVMConstInt(ctx->ac.i32, SI_VS_STREAMOUT_BUF0 + buffer, false));
+}
+
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
                            struct nir_shader *nir, bool free_nir, bool ngg_cull_shader)
 {
@@ -919,6 +928,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
 
    ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
    ctx->abi.load_user_clip_plane = si_llvm_load_user_clip_plane;
+   ctx->abi.load_streamout_buffer = si_llvm_load_streamout_buffer;
 
    si_llvm_init_resource_callbacks(ctx);
    si_llvm_create_main_func(ctx, ngg_cull_shader);
