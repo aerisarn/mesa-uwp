@@ -1089,12 +1089,13 @@ get_reg_for_create_vector_copy(ra_ctx& ctx, RegisterFile& reg_file,
 bool
 get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
                     std::vector<std::pair<Operand, Definition>>& parallelcopies,
-                    const std::vector<unsigned>& vars, const PhysRegInterval bounds,
-                    aco_ptr<Instruction>& instr, const PhysRegInterval def_reg)
+                    const std::vector<unsigned>& vars, aco_ptr<Instruction>& instr,
+                    const PhysRegInterval def_reg)
 {
    /* Variables are sorted from large to small and with increasing assigned register */
    for (unsigned id : vars) {
       assignment& var = ctx.assignments[id];
+      PhysRegInterval bounds = get_reg_bounds(ctx.program, var.rc.type());
       DefInfo info = DefInfo(ctx, ctx.pseudo_dummy, var.rc, -1);
       uint32_t size = info.size;
 
@@ -1223,7 +1224,7 @@ get_regs_for_copies(ra_ctx& ctx, RegisterFile& reg_file,
       reg_file.block(reg_win.lo(), var.rc);
       adjust_max_used_regs(ctx, var.rc, reg_win.lo());
 
-      if (!get_regs_for_copies(ctx, reg_file, parallelcopies, new_vars, bounds, instr, def_reg))
+      if (!get_regs_for_copies(ctx, reg_file, parallelcopies, new_vars, instr, def_reg))
          return false;
 
       /* create parallelcopy pair (without definition id) */
@@ -1376,7 +1377,7 @@ get_reg_impl(ra_ctx& ctx, RegisterFile& reg_file,
    }
 
    std::vector<std::pair<Operand, Definition>> pc;
-   if (!get_regs_for_copies(ctx, tmp_file, pc, vars, bounds, instr, best_win))
+   if (!get_regs_for_copies(ctx, tmp_file, pc, vars, instr, best_win))
       return {{}, false};
 
    parallelcopies.insert(parallelcopies.end(), pc.begin(), pc.end());
@@ -1842,8 +1843,7 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
 
    bool success = false;
    std::vector<std::pair<Operand, Definition>> pc;
-   success =
-      get_regs_for_copies(ctx, tmp_file, pc, vars, bounds, instr, PhysRegInterval{best_pos, size});
+   success = get_regs_for_copies(ctx, tmp_file, pc, vars, instr, PhysRegInterval{best_pos, size});
 
    if (!success) {
       if (!increase_register_file(ctx, temp.type())) {
@@ -1974,9 +1974,7 @@ get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
          tmp_file.clear(src, operand.regClass()); // TODO: try to avoid moving block vars to src
          tmp_file.block(operand.physReg(), operand.regClass());
 
-         DefInfo info(ctx, instr, operand.regClass(), -1);
-         get_regs_for_copies(ctx, tmp_file, parallelcopy, blocking_vars, info.bounds, instr,
-                             PhysRegInterval());
+         get_regs_for_copies(ctx, tmp_file, parallelcopy, blocking_vars, instr, PhysRegInterval());
       }
       dst = operand.physReg();
 
@@ -2846,9 +2844,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                }
 
                ASSERTED bool success = false;
-               DefInfo info(ctx, instr, definition.regClass(), -1);
-               success = get_regs_for_copies(ctx, tmp_file, parallelcopy, vars, info.bounds, instr,
-                                             def_regs);
+               success = get_regs_for_copies(ctx, tmp_file, parallelcopy, vars, instr, def_regs);
                assert(success);
 
                update_renames(ctx, register_file, parallelcopy, instr, (UpdateRenames)0);
