@@ -8435,7 +8435,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_load_ray_launch_size_addr_amd: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Temp addr = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.ray_launch_size_addr));
+      Temp addr = get_arg(ctx, ctx->args->ac.ray_launch_size_addr);
+      assert(addr.regClass() == s2);
       bld.copy(Definition(dst), Operand(addr));
       break;
    }

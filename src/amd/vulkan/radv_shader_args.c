@@ -51,7 +51,8 @@ static void
 set_loc_shader_ptr(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
 {
    bool use_32bit_pointers = idx != AC_UD_SCRATCH_RING_OFFSETS &&
-                             idx != AC_UD_CS_TASK_RING_OFFSETS;
+                             idx != AC_UD_CS_TASK_RING_OFFSETS &&
+                             idx != AC_UD_CS_RAY_LAUNCH_SIZE_ADDR;
 
    set_loc_shader(args, idx, sgpr_idx, use_32bit_pointers ? 1 : 2);
 }
@@ -175,7 +176,7 @@ allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info 
       if (info->cs.uses_grid_size)
          user_sgpr_count += args->load_grid_size_from_user_sgpr ? 3 : 2;
       if (info->cs.uses_ray_launch_size)
-         user_sgpr_count++;
+         user_sgpr_count += 2;
       if (info->vs.needs_draw_id)
          user_sgpr_count += 1;
       if (info->cs.uses_task_rings)
@@ -575,7 +576,7 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
       }
 
       if (info->cs.uses_ray_launch_size) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.ray_launch_size_addr);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.ray_launch_size_addr);
       }
 
       if (info->vs.needs_draw_id) {
