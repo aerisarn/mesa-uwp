@@ -4335,6 +4335,69 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
       break;
    }
+   case nir_intrinsic_ordered_xfb_counter_add_amd: {
+      /* must be called in a single lane of a workgroup. */
+      LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
+      LLVMValueRef gdsbase = LLVMBuildIntToPtr(ctx->ac.builder, ctx->ac.i32_0, gdsptr, "");
+
+      /* Gfx11 GDS instructions only operate on the first active lane. All other lanes are
+       * ignored. So are their EXEC bits. This uses the mutex feature of ds_ordered_count
+       * to emulate a multi-dword atomic.
+       *
+       * This is the expected code:
+       *    ds_ordered_count release=0 done=0   // lock mutex
+       *    ds_add_rtn_u32 dwords_written0
+       *    ds_add_rtn_u32 dwords_written1
+       *    ds_add_rtn_u32 dwords_written2
+       *    ds_add_rtn_u32 dwords_written3
+       *    ds_ordered_count release=1 done=1   // unlock mutex
+       *
+       * TODO: Increment GDS_STRMOUT registers instead of GDS memory.
+       */
+      LLVMValueRef args[8] = {
+         LLVMBuildIntToPtr(ctx->ac.builder, get_src(ctx, instr->src[0]), gdsptr, ""),
+         ctx->ac.i32_0,                             /* value to add */
+         ctx->ac.i32_0,                             /* ordering */
+         ctx->ac.i32_0,                             /* scope */
+         ctx->ac.i1false,                           /* isVolatile */
+         LLVMConstInt(ctx->ac.i32, 1 << 24, false), /* OA index, bits 24+: lane count */
+         ctx->ac.i1false,                           /* wave release */
+         ctx->ac.i1false,                           /* wave done */
+      };
+
+      /* Set release=0 to start a GDS mutex. Set done=0 because it's not the last one. */
+      ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add", ctx->ac.i32,
+                         args, ARRAY_SIZE(args), 0);
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
+
+      LLVMValueRef global_count[4];
+      LLVMValueRef add_count = get_src(ctx, instr->src[1]);
+      unsigned write_mask = nir_intrinsic_write_mask(instr);
+      for (unsigned i = 0; i < instr->num_components; i++) {
+         if (write_mask & (1 << i)) {
+            LLVMValueRef gds_ptr =
+               ac_build_gep_ptr(&ctx->ac, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
+            LLVMValueRef count =
+               LLVMBuildExtractElement(ctx->ac.builder, add_count,
+                                       LLVMConstInt(ctx->ac.i32, i, false), "");
+
+            global_count[i] =
+               LLVMBuildAtomicRMW(ctx->ac.builder, LLVMAtomicRMWBinOpAdd, gds_ptr, count,
+                                  LLVMAtomicOrderingMonotonic, false);
+         } else
+            global_count[i] = LLVMGetUndef(ctx->ac.i32);
+      }
+
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
+
+      /* Set release=1 to end a GDS mutex. Set done=1 because it's the last one. */
+      args[6] = args[7] = ctx->ac.i1true;
+      ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.ds.ordered.add", ctx->ac.i32,
+                         args, ARRAY_SIZE(args), 0);
+
+      result = ac_build_gather_values(&ctx->ac, global_count, instr->num_components);
+      break;
+   }
    default:
       fprintf(stderr, "Unknown intrinsic: ");
       nir_print_instr(&instr->instr, stderr);
