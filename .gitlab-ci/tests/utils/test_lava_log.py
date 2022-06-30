@@ -31,7 +31,6 @@ from lava.utils.lava_log import (
     GitlabSection,
     LogFollower,
     LogSectionType,
-    filter_debug_messages,
     fix_lava_color_log,
     fix_lava_gitlab_section_log,
     hide_sensitive_data,
@@ -248,40 +247,6 @@ def test_fix_lava_gitlab_section_log(message, fixed_message):
     fix_lava_gitlab_section_log(message)
 
     assert message["msg"] == fixed_message
-
-
-LAVA_DEBUG_SPAM_MESSAGES = {
-    "Listened to connection in debug level": (
-        create_lava_yaml_msg(
-            msg="Listened to connection for namespace 'common' for up to 1s",
-            lvl="debug",
-        ),
-        True,
-    ),
-    "Listened to connection in debug level - v2": (
-        create_lava_yaml_msg(
-            msg="Listened to connection for namespace 'prepare' for up to 9s",
-            lvl="debug",
-        ),
-        True,
-    ),
-    "Listened to connection in target level": (
-        create_lava_yaml_msg(
-            msg="Listened to connection for namespace 'common' for up to 1s",
-            lvl="target",
-        ),
-        False,
-    ),
-}
-
-
-@pytest.mark.parametrize(
-    "message, expectation",
-    LAVA_DEBUG_SPAM_MESSAGES.values(),
-    ids=LAVA_DEBUG_SPAM_MESSAGES.keys(),
-)
-def test_filter_debug_messages(message, expectation):
-    assert filter_debug_messages(message) == expectation
 
 
 WATCHDOG_SCENARIOS = {
