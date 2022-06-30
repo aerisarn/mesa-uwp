@@ -294,28 +294,23 @@ class LAVAJob:
                 f"Could not get LAVA job logs. Reason: {mesa_ci_err}"
             ) from mesa_ci_err
 
-    def parse_job_result_from_log(self, lava_lines: list[dict[str, str]]) -> None:
+    def parse_job_result_from_log(
+        self, lava_lines: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
         """Use the console log to catch if the job has completed successfully or
-        not.
-        Returns true only the job finished by looking into the log result
-        parsing.
-        """
-        log_lines = [l["msg"] for l in lava_lines if l["lvl"] == "target"]
-        for line in log_lines:
+        not. Returns the list of log lines until the result line."""
+
+        last_line = None  # Print all lines. lines[:None] == lines[:]
+
+        for idx, line in enumerate(lava_lines):
             if result := re.search(r"hwci: mesa: (pass|fail)", line):
                 self.is_finished = True
                 self.status = result.group(1)
-                color = LAVAJob.COLOR_STATUS_MAP.get(
-                    self.status, CONSOLE_LOG["COLOR_RED"]
-                )
-                print_log(
-                    f"{color}"
-                    f"LAVA Job finished with result: {self.status}"
-                    f"{CONSOLE_LOG['RESET']}"
-                )
 
+                last_line = idx + 1
                 # We reached the log end here. hwci script has finished.
                 break
+        return lava_lines[:last_line]
 
 
 def find_exception_from_metadata(metadata, job_id):
@@ -403,10 +398,10 @@ def fetch_logs(job, max_idle_time, log_follower) -> None:
         job.heartbeat()
     parsed_lines = log_follower.flush()
 
+    parsed_lines = job.parse_job_result_from_log(parsed_lines)
+
     for line in parsed_lines:
         print_log(line)
-
-    job.parse_job_result_from_log(new_log_lines)
 
 
 def follow_job_execution(job):
@@ -447,6 +442,18 @@ def follow_job_execution(job):
         find_lava_error(job)
 
 
+def print_job_final_status(job):
+    if job.status == "running":
+        job.status = "hung"
+
+    color = LAVAJob.COLOR_STATUS_MAP.get(job.status, CONSOLE_LOG["COLOR_RED"])
+    print_log(
+        f"{color}"
+        f"LAVA Job finished with status: {job.status}"
+        f"{CONSOLE_LOG['RESET']}"
+    )
+
+
 def retriable_follow_job(proxy, job_definition) -> LAVAJob:
     retry_count = NUMBER_OF_RETRIES_TIMEOUT_DETECTION
 
@@ -464,6 +471,7 @@ def retriable_follow_job(proxy, job_definition) -> LAVAJob:
             raise e
         finally:
             print_log(f"Finished executing LAVA job in the attempt #{attempt_no}")
+            print_job_final_status(job)
 
     raise MesaCIRetryError(
         "Job failed after it exceeded the number of " f"{retry_count} retries.",
