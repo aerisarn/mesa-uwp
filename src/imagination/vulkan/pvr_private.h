@@ -486,12 +486,17 @@ struct pvr_descriptor_pool {
 struct pvr_descriptor {
    VkDescriptorType type;
 
-   /* TODO: Follow anv_descriptor layout when adding support for
-    * other descriptor types.
-    */
-   pvr_dev_addr_t buffer_dev_addr;
-   VkDeviceSize buffer_desc_range;
-   VkDeviceSize buffer_create_info_size;
+   union {
+      struct {
+         pvr_dev_addr_t buffer_dev_addr;
+         VkDeviceSize buffer_desc_range;
+         VkDeviceSize buffer_create_info_size;
+      };
+
+      struct {
+         const struct pvr_sampler *sampler;
+      };
+   };
 };
 
 struct pvr_descriptor_set {
