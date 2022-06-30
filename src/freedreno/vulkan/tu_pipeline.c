@@ -268,6 +268,7 @@ struct tu_pipeline_builder
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
    bool emit_msaa_state;
+   bool depth_clip_disable;
    VkSampleCountFlagBits samples;
    bool use_color_attachments;
    bool use_dual_src_blend;
@@ -3340,12 +3341,12 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
-   bool depth_clip_disable = rast_info->depthClampEnable;
+   builder->depth_clip_disable = rast_info->depthClampEnable;
 
    const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
       vk_find_struct_const(rast_info, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
    if (depth_clip_state)
-      depth_clip_disable = !depth_clip_state->depthClipEnable;
+      builder->depth_clip_disable = !depth_clip_state->depthClipEnable;
 
    pipeline->line_mode = RECTANGULAR;
 
@@ -3370,8 +3371,8 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
-                     .znear_clip_disable = depth_clip_disable,
-                     .zfar_clip_disable = depth_clip_disable,
+                     .znear_clip_disable = builder->depth_clip_disable,
+                     .zfar_clip_disable = builder->depth_clip_disable,
                      /* TODO should this be depth_clip_disable instead? */
                      .unk5 = rast_info->depthClampEnable,
                      .zero_gb_scale_z = pipeline->z_negative_one_to_one ? 0 : 1,
@@ -3450,8 +3451,6 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
     */
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       builder->create_info->pDepthStencilState;
-   const VkPipelineRasterizationStateCreateInfo *rast_info =
-      builder->create_info->pRasterizationState;
    const enum pipe_format pipe_format =
       vk_format_to_pipe_format(builder->depth_attachment_format);
    uint32_t rb_depth_cntl = 0, rb_stencil_cntl = 0;
@@ -3465,7 +3464,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
             A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
             A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE; /* TODO: don't set for ALWAYS/NEVER */
 
-         if (rast_info->depthClampEnable)
+         if (builder->depth_clip_disable)
             rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLIP_DISABLE;
 
          if (ds_info->depthWriteEnable)
