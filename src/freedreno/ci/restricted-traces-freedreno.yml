@@ -3,10 +3,11 @@ traces-db:
 
 traces:
   # takes approx. 70 seconds
-  - path: stellaris/Stellaris-trim--f722-v20201203-v2.trace
-    expectations:
-      - device: freedreno-a630
-        checksum: 9d3e44e66842611728c7db0cfb29862c
+  # disable for now, triggers Hangcheck on testing runner (not on OnePlus 6T thou)
+  #- path: stellaris/Stellaris-trim--f722-v20201203-v2.trace
+  #  expectations:
+  #    - device: freedreno-a630
+  #      checksum: 9d3e44e66842611728c7db0cfb29862c
   # takes approx. 50 seconds
   - path: SirYouAreBeingHunted/sir-f750-v2.trace
     expectations:
