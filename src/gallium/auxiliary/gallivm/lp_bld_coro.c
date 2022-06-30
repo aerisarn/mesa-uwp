@@ -206,7 +206,7 @@ LLVMValueRef lp_build_coro_alloc_mem_array(struct gallivm_state *gallivm,
 					   LLVMValueRef coro_num_hdls)
 {
    LLVMTypeRef mem_ptr_type = LLVMPointerType(LLVMInt8TypeInContext(gallivm->context), 0);
-   LLVMValueRef alloced_ptr = LLVMBuildLoad(gallivm->builder, coro_hdl_ptr, "");
+   LLVMValueRef alloced_ptr = LLVMBuildLoad2(gallivm->builder, mem_ptr_type, coro_hdl_ptr, "");
 
    LLVMValueRef not_alloced = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, alloced_ptr, LLVMConstNull(mem_ptr_type), "");
    LLVMValueRef coro_size = lp_build_coro_size(gallivm);

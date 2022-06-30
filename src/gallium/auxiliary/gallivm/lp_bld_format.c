@@ -28,7 +28,10 @@
 
 #include "lp_bld_format.h"
 
-
+LLVMTypeRef lp_build_format_cache_member_data_type(struct gallivm_state *gallivm)
+{
+   return LLVMArrayType(LLVMInt32TypeInContext(gallivm->context), LP_BUILD_FORMAT_CACHE_SIZE * 16);
+}
 
 LLVMTypeRef
 lp_build_format_cache_type(struct gallivm_state *gallivm)
@@ -36,9 +39,8 @@ lp_build_format_cache_type(struct gallivm_state *gallivm)
    LLVMTypeRef elem_types[LP_BUILD_FORMAT_CACHE_MEMBER_COUNT];
    LLVMTypeRef s;
 
-   elem_types[LP_BUILD_FORMAT_CACHE_MEMBER_DATA] =
-         LLVMArrayType(LLVMInt32TypeInContext(gallivm->context),
-                       LP_BUILD_FORMAT_CACHE_SIZE * 16);
+   elem_types[LP_BUILD_FORMAT_CACHE_MEMBER_DATA] = lp_build_format_cache_member_data_type(gallivm);
+
    elem_types[LP_BUILD_FORMAT_CACHE_MEMBER_TAGS] =
          LLVMArrayType(LLVMInt64TypeInContext(gallivm->context),
                        LP_BUILD_FORMAT_CACHE_SIZE);

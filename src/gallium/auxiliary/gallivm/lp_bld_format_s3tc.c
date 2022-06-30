@@ -1134,14 +1134,15 @@ s3tc_store_cached_block(struct gallivm_state *gallivm,
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_TAGS);
    indices[2] = hash_index;
-   ptr = LLVMBuildGEP(builder, cache, indices, ARRAY_SIZE(indices), "");
+   LLVMTypeRef cache_type = lp_build_format_cache_type(gallivm);
+   ptr = LLVMBuildGEP2(builder, cache_type, cache, indices, ARRAY_SIZE(indices), "");
    LLVMBuildStore(builder, tag_value, ptr);
 
    indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_DATA);
    hash_index = LLVMBuildMul(builder, hash_index, lp_build_const_int32(gallivm, 16), "");
    for (count = 0; count < 4; count++) {
       indices[2] = hash_index;
-      ptr = LLVMBuildGEP(builder, cache, indices, ARRAY_SIZE(indices), "");
+      ptr = LLVMBuildGEP2(builder, cache_type, cache, indices, ARRAY_SIZE(indices), "");
       ptr = LLVMBuildBitCast(builder, ptr, type_ptr4x32, "");
       LLVMBuildStore(builder, col[count], ptr);
       hash_index = LLVMBuildAdd(builder, hash_index, lp_build_const_int32(gallivm, 4), "");
@@ -1150,7 +1151,7 @@ s3tc_store_cached_block(struct gallivm_state *gallivm,
 
 static LLVMValueRef
 s3tc_lookup_cached_pixel(struct gallivm_state *gallivm,
-                         LLVMValueRef ptr,
+                         LLVMValueRef cache,
                          LLVMValueRef index)
 {
    LLVMBuilderRef builder = gallivm->builder;
@@ -1159,8 +1160,9 @@ s3tc_lookup_cached_pixel(struct gallivm_state *gallivm,
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_DATA);
    indices[2] = index;
-   member_ptr = LLVMBuildGEP(builder, ptr, indices, ARRAY_SIZE(indices), "");
-   return LLVMBuildLoad(builder, member_ptr, "cache_data");
+   member_ptr = LLVMBuildGEP2(builder, lp_build_format_cache_type(gallivm), cache, indices, ARRAY_SIZE(indices), "");
+
+   return LLVMBuildLoad2(builder, lp_build_format_cache_member_data_type(gallivm), member_ptr, "cache_data");
 }
 
 static LLVMValueRef

@@ -82,6 +82,8 @@ enum {
 LLVMTypeRef
 lp_build_format_cache_type(struct gallivm_state *gallivm);
 
+LLVMTypeRef
+lp_build_format_cache_member_data_type(struct gallivm_state *gallivm);
 
 /*
  * AoS
