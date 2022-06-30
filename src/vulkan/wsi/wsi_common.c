@@ -992,8 +992,8 @@ wsi_common_queue_present(const struct wsi_device *wsi,
    VkResult final_result = VK_SUCCESS;
 
    STACK_ARRAY(VkPipelineStageFlags, stage_flags,
-               pPresentInfo->waitSemaphoreCount);
-   for (uint32_t s = 0; s < pPresentInfo->waitSemaphoreCount; s++)
+               MAX2(1, pPresentInfo->waitSemaphoreCount));
+   for (uint32_t s = 0; s < MAX2(1, pPresentInfo->waitSemaphoreCount); s++)
       stage_flags[s] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
    const VkPresentRegionsKHR *regions =
@@ -1086,6 +1086,7 @@ wsi_common_queue_present(const struct wsi_device *wsi,
             submit_info.pSignalSemaphores = NULL;
             submit_info.commandBufferCount = 1;
             submit_info.pCommandBuffers = &image->buffer.blit_cmd_buffers[0];
+            submit_info.pWaitDstStageMask = stage_flags;
          }
       }
 
