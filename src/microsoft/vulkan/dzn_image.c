@@ -169,6 +169,9 @@ dzn_image_create(struct dzn_device *device,
       image->desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
    }
 
+   if (image->vk.create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)
+      image->desc.Format = dzn_get_typeless_dxgi_format(image->desc.Format);
+
    if (image->desc.SampleDesc.Count > 1)
       image->desc.Alignment = D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT;
    else
