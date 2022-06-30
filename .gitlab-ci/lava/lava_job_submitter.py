@@ -479,8 +479,13 @@ def main(args):
     job_definition = generate_lava_yaml(args)
 
     if args.dump_yaml:
-        print("LAVA job definition (YAML):")
-        print(hide_sensitive_data(job_definition))
+        with GitlabSection(
+            "yaml_dump",
+            "LAVA job definition (YAML)",
+            type=LogSectionType.LAVA_BOOT,
+            start_collapsed=True,
+        ):
+            print(hide_sensitive_data(job_definition))
     job = LAVAJob(proxy, job_definition)
 
     if errors := job.validate():
