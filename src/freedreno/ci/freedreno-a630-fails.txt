@@ -458,12 +458,4 @@ dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments5_
 dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
 dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
 
-dEQP-VK.draw.renderpass.linear_interpolation.offset_max_1_sample,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.offset_max_2_samples,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.offset_max_4_samples,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.offset_min_1_sample,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.offset_min_2_samples,Fail
 dEQP-VK.draw.renderpass.linear_interpolation.offset_min_4_samples,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.no_offset_1_sample,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.no_offset_2_samples,Fail
-dEQP-VK.draw.renderpass.linear_interpolation.no_offset_4_samples,Fail

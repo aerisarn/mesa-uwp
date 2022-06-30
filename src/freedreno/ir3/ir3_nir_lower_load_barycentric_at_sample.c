@@ -43,7 +43,7 @@ lower_load_barycentric_at_sample(nir_builder *b, nir_intrinsic_instr *intr)
 {
    nir_ssa_def *pos = load_sample_pos(b, intr->src[0].ssa);
 
-   return nir_load_barycentric_at_offset(b, 32, pos);
+   return nir_load_barycentric_at_offset(b, 32, pos, .interp_mode = nir_intrinsic_interp_mode(intr));
 }
 
 static nir_ssa_def *

@@ -44,11 +44,14 @@ ir3_nir_lower_load_barycentric_at_offset_instr(nir_builder *b, nir_instr *instr,
                                                void *data)
 {
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   enum glsl_interp_mode interp_mode = nir_intrinsic_interp_mode(intr);
 
 #define chan(var, c) nir_channel(b, var, c)
 
    nir_ssa_def *off = intr->src[0].ssa;
-   nir_ssa_def *ij = load(b, 2, nir_intrinsic_load_barycentric_pixel);
+   /* note: at_offset is defined to be relative to the center of the pixel */
+   nir_ssa_def *ij = nir_load_barycentric_pixel(b, 32, .interp_mode = interp_mode);
+
    nir_ssa_def *s = load(b, 1, nir_intrinsic_load_size_ir3);
 
    s = nir_frcp(b, s);
