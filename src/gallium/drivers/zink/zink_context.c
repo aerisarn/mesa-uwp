@@ -161,7 +161,8 @@ zink_context_destroy(struct pipe_context *pctx)
 
    zink_descriptor_layouts_deinit(ctx);
 
-   p_atomic_dec(&screen->base.num_contexts);
+   if (!(ctx->flags & ZINK_CONTEXT_COPY_ONLY))
+      p_atomic_dec(&screen->base.num_contexts);
 
    ralloc_free(ctx);
 }
@@ -4448,8 +4449,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          ctx->di.fbfetch.imageView = zink_csurface(ctx->dummy_surface[0])->image_view;
 
       reapply_color_write(ctx);
+      p_atomic_inc(&screen->base.num_contexts);
    }
-   p_atomic_inc(&screen->base.num_contexts);
 
    zink_select_draw_vbo(ctx);
    zink_select_launch_grid(ctx);
