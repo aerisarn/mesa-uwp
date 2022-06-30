@@ -36,7 +36,7 @@ zink-anv-tgl:
     HWCI_START_XORG: 1
     GPU_VERSION: zink-anv-tgl
 
-zink-freedreno-a630-traces:
+.zink-freedreno-a630-traces:
   extends:
     - a630-traces
     - .zink-turnip-rules
