@@ -184,6 +184,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_hs_out_patch_data_offset_amd:
    case nir_intrinsic_load_clip_half_line_width_amd:
    case nir_intrinsic_load_num_vertices_per_primitive_amd:
+   case nir_intrinsic_load_streamout_buffer_amd:
       is_divergent = false;
       break;
 
