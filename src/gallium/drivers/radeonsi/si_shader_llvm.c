@@ -30,6 +30,7 @@
 #include "sid.h"
 #include "tgsi/tgsi_from_mesa.h"
 #include "util/u_memory.h"
+#include "util/u_prim.h"
 
 struct si_llvm_diagnostics {
    struct util_debug_callback *debug;
@@ -717,6 +718,36 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
       LLVMBuildRet(builder, ret);
 }
 
+static LLVMValueRef si_get_num_vertices_per_prim(struct si_shader_context *ctx)
+{
+   const struct si_shader_info *info = &ctx->shader->selector->info;
+
+   unsigned num_vertices;
+   if (ctx->stage == MESA_SHADER_GEOMETRY) {
+      num_vertices = u_vertices_per_prim(info->base.gs.output_primitive);
+   } else if (ctx->stage == MESA_SHADER_VERTEX) {
+      if (info->base.vs.blit_sgprs_amd) {
+         num_vertices = 3;
+      } else if (ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES) {
+         num_vertices = 2;
+      } else {
+         /* Extract OUTPRIM field. */
+         LLVMValueRef num = GET_FIELD(ctx, GS_STATE_OUTPRIM);
+         return LLVMBuildAdd(ctx->ac.builder, num, ctx->ac.i32_1, "");
+      }
+   } else {
+      assert(ctx->stage == MESA_SHADER_TESS_EVAL);
+
+      if (info->base.tess.point_mode)
+         num_vertices = 1;
+      else if (info->base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
+         num_vertices = 2;
+      else
+         num_vertices = 3;
+   }
+   return LLVMConstInt(ctx->ac.i32, num_vertices, false);
+}
+
 static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrinsic_op op)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -812,6 +843,9 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
          ac_build_load_to_sgpr(&ctx->ac, ptr, prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
       return LLVMBuildBitCast(ctx->ac.builder, terms, ctx->ac.v4f32, "");
    }
+
+   case nir_intrinsic_load_num_vertices_per_primitive_amd:
+      return si_get_num_vertices_per_prim(ctx);
 
    case nir_intrinsic_load_cull_ccw_amd:
       /* radeonsi embed cw/ccw info into front/back face enabled */
