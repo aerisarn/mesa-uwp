@@ -306,6 +306,9 @@ vn_CreateDescriptorPool(VkDevice device,
 
    pool->max.set_count = pCreateInfo->maxSets;
 
+   if (iub_info)
+      pool->max.iub_binding_count = iub_info->maxInlineUniformBlockBindings;
+
    for (uint32_t i = 0; i < pCreateInfo->poolSizeCount; i++) {
       const VkDescriptorPoolSize *pool_size = &pCreateInfo->pPoolSizes[i];
       const uint32_t type_index = vn_descriptor_type_index(pool_size->type);
@@ -385,6 +388,20 @@ vn_descriptor_pool_alloc_descriptors(
                                 ? last_binding_descriptor_count
                                 : layout->bindings[i].count;
 
+      /* Allocation may fail if a call to vkAllocateDescriptorSets would cause
+       * the total number of inline uniform block bindings allocated from the
+       * pool to exceed the value of
+       * VkDescriptorPoolInlineUniformBlockCreateInfo::maxInlineUniformBlockBindings
+       * used to create the descriptor pool.
+       */
+      if (type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         if (++pool->used.iub_binding_count > pool->max.iub_binding_count) {
+            /* restore pool state before this allocation */
+            pool->used = recovery;
+            return false;
+         }
+      }
+
       const uint32_t type_index = vn_descriptor_type_index(type);
       pool->used.descriptor_counts[type_index] += count;
 
@@ -415,6 +432,9 @@ vn_descriptor_pool_free_descriptors(
 
       pool->used.descriptor_counts[vn_descriptor_type_index(
          layout->bindings[i].type)] -= count;
+
+      if (layout->bindings[i].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
+         --pool->used.iub_binding_count;
    }
 
    --pool->used.set_count;

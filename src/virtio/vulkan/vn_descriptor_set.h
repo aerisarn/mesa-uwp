@@ -60,6 +60,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_set_layout,
 
 struct vn_descriptor_pool_state {
    uint32_t set_count;
+   uint32_t iub_binding_count;
    uint32_t descriptor_counts[VN_NUM_DESCRIPTOR_TYPES];
 };
 
