@@ -2357,25 +2357,21 @@ radv_aco_build_shader_binary(void **bin,
    *binary = (struct radv_shader_binary*)legacy_binary;
 }
 
-static struct radv_shader *
-shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count, gl_shader_stage stage,
-               const struct radv_shader_info *info, const struct radv_shader_args *args,
-               struct radv_nir_compiler_options *options, bool gs_copy_shader,
-               bool trap_handler_shader, bool keep_shader_info, bool keep_statistic_info,
-               struct radv_shader_binary **binary_out)
+static void
+radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options,
+                               struct radv_device *device, const struct radv_pipeline_key *key,
+                               bool should_use_wgp, bool can_dump_shader, bool is_meta_shader,
+                               bool keep_shader_info, bool keep_statistic_info)
 {
-   enum radeon_family chip_family = device->physical_device->rad_info.family;
-   struct radv_shader_binary *binary = NULL;
+   if (key)
+      options->key = *key;
 
-   struct radv_shader_debug_data debug_data = {
-      .device = device,
-      .object = NULL,
-   };
-
-   options->family = chip_family;
+   options->robust_buffer_access = device->robust_buffer_access;
+   options->wgp_mode = should_use_wgp;
+   options->family = device->physical_device->rad_info.family;
    options->gfx_level = device->physical_device->rad_info.gfx_level;
    options->has_3d_cube_border_color_mipmap = device->physical_device->rad_info.has_3d_cube_border_color_mipmap;
-   options->dump_shader = radv_can_dump_shader(device, shaders[0], gs_copy_shader || trap_handler_shader);
+   options->dump_shader = can_dump_shader;
    options->dump_preoptir =
       options->dump_shader && device->instance->debug_flags & RADV_DEBUG_PREOPTIR;
    options->record_ir = keep_shader_info;
@@ -2384,23 +2380,44 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    options->address32_hi = device->physical_device->rad_info.address32_hi;
    options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
    options->enable_mrt_output_nan_fixup =
-      !is_meta_shader(shaders[0]) && options->key.ps.enable_mrt_output_nan_fixup;
-   options->debug.func = radv_compiler_debug;
-   options->debug.private_data = &debug_data;
+      !is_meta_shader && options->key.ps.enable_mrt_output_nan_fixup;
+}
+
+static struct radv_shader *
+shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count,
+               gl_shader_stage stage, const struct radv_shader_info *info,
+               const struct radv_shader_args *args, const struct radv_pipeline_key *key,
+               bool gs_copy_shader, bool trap_handler_shader, bool keep_shader_info,
+               bool keep_statistic_info, struct radv_shader_binary **binary_out)
+{
+   struct radv_nir_compiler_options options = {0};
+   radv_fill_nir_compiler_options(
+      &options, device, key, radv_should_use_wgp_mode(device, stage, info),
+      radv_can_dump_shader(device, shaders[0], gs_copy_shader || trap_handler_shader),
+      is_meta_shader(shaders[0]), keep_shader_info, keep_statistic_info);
+
+   struct radv_shader_debug_data debug_data = {
+      .device = device,
+      .object = NULL,
+   };
+   options.debug.func = radv_compiler_debug;
+   options.debug.private_data = &debug_data;
+
+   struct radv_shader_binary *binary = NULL;
 
 #ifdef LLVM_AVAILABLE
-   if (radv_use_llvm_for_stage(device, stage) || options->dump_shader || options->record_ir)
+   if (radv_use_llvm_for_stage(device, stage) || options.dump_shader || options.record_ir)
       ac_init_llvm_once();
 
    if (radv_use_llvm_for_stage(device, stage)) {
-      llvm_compile_shader(options, info, shader_count, shaders, &binary, args);
+      llvm_compile_shader(&options, info, shader_count, shaders, &binary, args);
 #else
    if (false) {
 #endif
    } else {
       struct aco_shader_info ac_info;
       struct aco_compiler_options ac_opts;
-      radv_aco_convert_opts(&ac_opts, options);
+      radv_aco_convert_opts(&ac_opts, &options);
       radv_aco_convert_shader_info(&ac_info, info);
       aco_compile_shader(&ac_opts, &ac_info, shader_count, shaders, args, &radv_aco_build_shader_binary, (void **)&binary);
    }
@@ -2413,7 +2430,7 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
       return NULL;
    }
 
-   if (options->dump_shader) {
+   if (options.dump_shader) {
       fprintf(stderr, "%s", radv_get_shader_name(info, shaders[0]->info.stage));
       for (int i = 1; i < shader_count; ++i)
          fprintf(stderr, " + %s", radv_get_shader_name(info, shaders[i]->info.stage));
@@ -2439,17 +2456,9 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *p
                        bool keep_statistic_info, struct radv_shader_binary **binary_out)
 {
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
-   struct radv_nir_compiler_options options = {0};
 
-   if (key)
-      options.key = *key;
-
-   options.robust_buffer_access = device->robust_buffer_access;
-   options.wgp_mode = radv_should_use_wgp_mode(device, stage, &pl_stage->info);
-
-   return shader_compile(device, shaders, shader_count, stage, &pl_stage->info,
-                         &pl_stage->args, &options, false, false, keep_shader_info,
-                         keep_statistic_info, binary_out);
+   return shader_compile(device, shaders, shader_count, stage, &pl_stage->info, &pl_stage->args,
+                         key, false, false, keep_shader_info, keep_statistic_info, binary_out);
 }
 
 struct radv_shader *
@@ -2458,19 +2467,20 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader
                            struct radv_shader_binary **binary_out, bool keep_shader_info,
                            bool keep_statistic_info, bool disable_optimizations)
 {
-   struct radv_nir_compiler_options options = {0};
    gl_shader_stage stage = MESA_SHADER_VERTEX;
 
-   options.key.optimisations_disabled = disable_optimizations;
+   struct radv_pipeline_key key = {
+      .optimisations_disabled = disable_optimizations,
+   };
 
-   return shader_compile(device, &shader, 1, stage, info, args, &options, true, false,
-                         keep_shader_info, keep_statistic_info, binary_out);
+   return shader_compile(device, &shader, 1, stage, info, args, &key, true, false, keep_shader_info,
+                         keep_statistic_info, binary_out);
 }
 
 struct radv_trap_handler_shader *
 radv_create_trap_handler_shader(struct radv_device *device)
 {
-   struct radv_nir_compiler_options options = {0};
+   gl_shader_stage stage = MESA_SHADER_COMPUTE;
    struct radv_shader *shader = NULL;
    struct radv_shader_binary *binary = NULL;
    struct radv_shader_info info = {0};
@@ -2481,19 +2491,18 @@ radv_create_trap_handler_shader(struct radv_device *device)
    if (!trap)
       return NULL;
 
-   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "meta_trap_handler");
+   nir_builder b = radv_meta_init_shader(device, stage, "meta_trap_handler");
 
-   options.wgp_mode = radv_should_use_wgp_mode(device, MESA_SHADER_COMPUTE, &info);
    info.wave_size = 64;
 
    struct radv_shader_args args;
    args.explicit_scratch_args = true;
    args.is_trap_handler_shader = true;
-   radv_declare_shader_args(device->physical_device->rad_info.gfx_level, &key, &info,
-                            MESA_SHADER_COMPUTE, false, MESA_SHADER_VERTEX, &args);
+   radv_declare_shader_args(device->physical_device->rad_info.gfx_level, &key, &info, stage, false,
+                            MESA_SHADER_VERTEX, &args);
 
-   shader = shader_compile(device, &b.shader, 1, MESA_SHADER_COMPUTE, &info, &args, &options,
-                           false, true, false, false, &binary);
+   shader = shader_compile(device, &b.shader, 1, stage, &info, &args, &key, false, true, false,
+                           false, &binary);
 
    trap->alloc = radv_alloc_shader_memory(device, shader->code_size, NULL);
 
