@@ -264,7 +264,7 @@ class LogFollower:
 
         # we have a line, check if it is a kernel message
         if re.search(r"\[[\d\s]{5}\.[\d\s]{6}\] +\S{2,}", line["msg"]):
-            print_log(f"{line['msg']}")
+            print_log(f"{CONSOLE_LOG['BOLD']}{line['msg']}{CONSOLE_LOG['RESET']}")
             return True
 
         return False
