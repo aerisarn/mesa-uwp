@@ -1526,6 +1526,46 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd,
    trace_end_render_pass(&cmd->trace, &cmd->cs, cmd->state.framebuffer);
 }
 
+void
+tu_cmd_render(struct tu_cmd_buffer *cmd_buffer)
+{
+   if (cmd_buffer->state.rp.has_tess)
+      tu6_lazy_emit_tessfactor_addr(cmd_buffer);
+
+   struct tu_renderpass_result *autotune_result = NULL;
+   if (use_sysmem_rendering(cmd_buffer, &autotune_result))
+      tu_cmd_render_sysmem(cmd_buffer, autotune_result);
+   else
+      tu_cmd_render_tiles(cmd_buffer, autotune_result);
+
+   /* Outside of renderpasses we assume all draw states are disabled. We do
+    * this outside the draw CS for the normal case where 3d gmem stores aren't
+    * used.
+    */
+   tu_disable_draw_states(cmd_buffer, &cmd_buffer->cs);
+
+}
+
+static void tu_reset_render_pass(struct tu_cmd_buffer *cmd_buffer)
+{
+   /* discard draw_cs and draw_epilogue_cs entries now that the tiles are
+      rendered */
+   tu_cs_discard_entries(&cmd_buffer->draw_cs);
+   tu_cs_begin(&cmd_buffer->draw_cs);
+   tu_cs_discard_entries(&cmd_buffer->draw_epilogue_cs);
+   tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
+
+   cmd_buffer->state.pass = NULL;
+   cmd_buffer->state.subpass = NULL;
+   cmd_buffer->state.framebuffer = NULL;
+   cmd_buffer->state.attachments = NULL;
+   memset(&cmd_buffer->state.rp, 0, sizeof(cmd_buffer->state.rp));
+
+   /* LRZ is not valid next time we use it */
+   cmd_buffer->state.lrz.valid = false;
+   cmd_buffer->state.dirty |= TU_CMD_DIRTY_LRZ;
+}
+
 static VkResult
 tu_create_cmd_buffer(struct tu_device *device,
                      struct tu_cmd_pool *pool,
@@ -1570,6 +1610,8 @@ tu_create_cmd_buffer(struct tu_device *device,
    tu_cs_init(&cmd_buffer->tile_store_cs, device, TU_CS_MODE_GROW, 2048);
    tu_cs_init(&cmd_buffer->draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->sub_cs, device, TU_CS_MODE_SUB_STREAM, 2048);
+   tu_cs_init(&cmd_buffer->pre_chain.draw_cs, device, TU_CS_MODE_GROW, 4096);
+   tu_cs_init(&cmd_buffer->pre_chain.draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096);
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
@@ -1586,6 +1628,8 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_finish(&cmd_buffer->tile_store_cs);
    tu_cs_finish(&cmd_buffer->draw_epilogue_cs);
    tu_cs_finish(&cmd_buffer->sub_cs);
+   tu_cs_finish(&cmd_buffer->pre_chain.draw_cs);
+   tu_cs_finish(&cmd_buffer->pre_chain.draw_epilogue_cs);
 
    u_trace_fini(&cmd_buffer->trace);
 
@@ -1614,6 +1658,8 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_reset(&cmd_buffer->tile_store_cs);
    tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
    tu_cs_reset(&cmd_buffer->sub_cs);
+   tu_cs_reset(&cmd_buffer->pre_chain.draw_cs);
+   tu_cs_reset(&cmd_buffer->pre_chain.draw_epilogue_cs);
 
    tu_autotune_free_results(cmd_buffer->device, &cmd_buffer->renderpass_autotune_results);
 
@@ -1728,13 +1774,15 @@ tu_cache_init(struct tu_cache_state *cache)
    cache->pending_flush_bits = TU_CMD_FLAG_ALL_INVALIDATE;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
-                      const VkCommandBufferBeginInfo *pBeginInfo)
+/* Unlike the public entrypoint, this doesn't handle cache tracking, and
+ * tracking the CCU state. It's used for the driver to insert its own command
+ * buffer in the middle of a submit.
+ */
+VkResult
+tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
+                    VkCommandBufferUsageFlags usage_flags)
 {
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
    VkResult result = VK_SUCCESS;
-
    if (cmd_buffer->status != TU_CMD_BUFFER_STATUS_INITIAL) {
       /* If the command buffer has already been resetted with
        * vkResetCommandBuffer, no need to do it again.
@@ -1750,11 +1798,24 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    tu_cache_init(&cmd_buffer->state.cache);
    tu_cache_init(&cmd_buffer->state.renderpass_cache);
-   cmd_buffer->usage_flags = pBeginInfo->flags;
+   cmd_buffer->usage_flags = usage_flags;
 
    tu_cs_begin(&cmd_buffer->cs);
    tu_cs_begin(&cmd_buffer->draw_cs);
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
+
+   cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
+                      const VkCommandBufferBeginInfo *pBeginInfo)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+   VkResult result = tu_cmd_buffer_begin(cmd_buffer, pBeginInfo->flags);
+   if (result != VK_SUCCESS)
+      return result;
 
    /* setup initial configuration into command buffer */
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
@@ -1804,8 +1865,6 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          cmd_buffer->state.ccu_state = TU_CMD_CCU_UNKNOWN;
       }
    }
-
-   cmd_buffer->status = TU_CMD_BUFFER_STATUS_RECORDING;
 
    return VK_SUCCESS;
 }
@@ -3331,7 +3390,7 @@ tu_flush_for_stage(struct tu_cache_state *cache,
    }
 }
 
-static void
+void
 tu_render_pass_state_merge(struct tu_render_pass_state *dst,
                            const struct tu_render_pass_state *src)
 {
@@ -3344,6 +3403,103 @@ tu_render_pass_state_merge(struct tu_render_pass_state *dst,
    dst->drawcall_count += src->drawcall_count;
    dst->drawcall_bandwidth_per_sample_sum +=
       src->drawcall_bandwidth_per_sample_sum;
+}
+
+void
+tu_restore_suspended_pass(struct tu_cmd_buffer *cmd,
+                          struct tu_cmd_buffer *suspended)
+{
+   cmd->state.pass = suspended->state.suspended_pass.pass;
+   cmd->state.subpass = suspended->state.suspended_pass.subpass;
+   cmd->state.framebuffer = suspended->state.suspended_pass.framebuffer;
+   cmd->state.attachments = suspended->state.suspended_pass.attachments;
+   cmd->state.render_area = suspended->state.suspended_pass.render_area;
+   cmd->state.lrz = suspended->state.suspended_pass.lrz;
+}
+
+/* Take the saved pre-chain in "secondary" and copy its commands to "cmd",
+ * appending it after any saved-up commands in "cmd".
+ */
+void
+tu_append_pre_chain(struct tu_cmd_buffer *cmd,
+                    struct tu_cmd_buffer *secondary)
+{
+   tu_cs_add_entries(&cmd->draw_cs, &secondary->pre_chain.draw_cs);
+   tu_cs_add_entries(&cmd->draw_epilogue_cs,
+                     &secondary->pre_chain.draw_epilogue_cs);
+   tu_render_pass_state_merge(&cmd->state.rp,
+                              &secondary->pre_chain.state);
+   if (!u_trace_iterator_equal(secondary->pre_chain.trace_renderpass_start,
+                               secondary->pre_chain.trace_renderpass_end)) {
+      tu_cs_emit_wfi(&cmd->draw_cs);
+      tu_cs_emit_pkt7(&cmd->draw_cs, CP_WAIT_FOR_ME, 0);
+      u_trace_clone_append(secondary->pre_chain.trace_renderpass_start,
+                           secondary->pre_chain.trace_renderpass_end,
+                           &cmd->trace, &cmd->draw_cs,
+                           tu_copy_timestamp_buffer);
+   }
+}
+
+/* Take the saved post-chain in "secondary" and copy it to "cmd".
+ */
+void
+tu_append_post_chain(struct tu_cmd_buffer *cmd,
+                     struct tu_cmd_buffer *secondary)
+{
+   tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
+   tu_cs_add_entries(&cmd->draw_epilogue_cs, &secondary->draw_epilogue_cs);
+   if (!u_trace_iterator_equal(secondary->trace_renderpass_start,
+                               secondary->trace_renderpass_end)) {
+      tu_cs_emit_wfi(&cmd->draw_cs);
+      tu_cs_emit_pkt7(&cmd->draw_cs, CP_WAIT_FOR_ME, 0);
+      u_trace_clone_append(secondary->trace_renderpass_start,
+                           secondary->trace_renderpass_end,
+                           &cmd->trace, &cmd->draw_cs,
+                           tu_copy_timestamp_buffer);
+   }
+   cmd->state.rp = secondary->state.rp;
+}
+
+/* Assuming "secondary" is just a sequence of suspended and resuming passes,
+ * copy its state to "cmd". This also works instead of tu_append_post_chain(),
+ * but it's a bit slower because we don't assume that the chain begins in
+ * "secondary" and therefore have to care about the command buffer's
+ * renderpass state.
+ */
+void
+tu_append_pre_post_chain(struct tu_cmd_buffer *cmd,
+                         struct tu_cmd_buffer *secondary)
+{
+   tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
+   tu_cs_add_entries(&cmd->draw_epilogue_cs, &secondary->draw_epilogue_cs);
+   if (!u_trace_iterator_equal(secondary->trace_renderpass_start,
+                               secondary->trace_renderpass_end)) {
+      tu_cs_emit_wfi(&cmd->draw_cs);
+      tu_cs_emit_pkt7(&cmd->draw_cs, CP_WAIT_FOR_ME, 0);
+      u_trace_clone_append(secondary->trace_renderpass_start,
+                           secondary->trace_renderpass_end,
+                           &cmd->trace, &cmd->draw_cs,
+                           tu_copy_timestamp_buffer);
+   }
+   tu_render_pass_state_merge(&cmd->state.rp,
+                              &secondary->state.rp);
+}
+
+/* Take the current render pass state and save it to "pre_chain" to be
+ * combined later.
+ */
+static void
+tu_save_pre_chain(struct tu_cmd_buffer *cmd)
+{
+   tu_cs_add_entries(&cmd->pre_chain.draw_cs,
+                     &cmd->draw_cs);
+   tu_cs_add_entries(&cmd->pre_chain.draw_epilogue_cs,
+                     &cmd->draw_epilogue_cs);
+   cmd->pre_chain.trace_renderpass_start =
+      cmd->trace_renderpass_start;
+   cmd->pre_chain.trace_renderpass_end =
+      cmd->trace_renderpass_end;
+   cmd->pre_chain.state = cmd->state.rp;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3393,10 +3549,110 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
 
          tu_render_pass_state_merge(&cmd->state.rp, &secondary->state.rp);
       } else {
-         assert(tu_cs_is_empty(&secondary->draw_cs));
-         assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
+         switch (secondary->state.suspend_resume) {
+         case SR_NONE:
+            assert(tu_cs_is_empty(&secondary->draw_cs));
+            assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
+            tu_cs_add_entries(&cmd->cs, &secondary->cs);
+            break;
 
-         tu_cs_add_entries(&cmd->cs, &secondary->cs);
+         case SR_IN_PRE_CHAIN:
+            /* cmd may be empty, which means that the chain begins before cmd
+             * in which case we have to update its state.
+             */
+            if (cmd->state.suspend_resume == SR_NONE) {
+               cmd->state.suspend_resume = SR_IN_PRE_CHAIN;
+               cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+            }
+
+            /* The secondary is just a continuous suspend/resume chain so we
+             * just have to append it to the the command buffer.
+             */
+            assert(tu_cs_is_empty(&secondary->cs));
+            tu_append_pre_post_chain(cmd, secondary);
+            break;
+
+         case SR_AFTER_PRE_CHAIN:
+         case SR_IN_CHAIN:
+         case SR_IN_CHAIN_AFTER_PRE_CHAIN:
+            if (secondary->state.suspend_resume == SR_AFTER_PRE_CHAIN ||
+                secondary->state.suspend_resume == SR_IN_CHAIN_AFTER_PRE_CHAIN) {
+               /* In thse cases there is a `pre_chain` in the secondary which
+                * ends that we need to append to the primary.
+                */
+
+               if (cmd->state.suspend_resume == SR_NONE)
+                  cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+
+               tu_append_pre_chain(cmd, secondary);
+               cmd->trace_renderpass_end = u_trace_end_iterator(&cmd->trace);
+
+               /* We're about to render, so we need to end the command stream
+                * in case there were any extra commands generated by copying
+                * the trace.
+                */
+               tu_cs_end(&cmd->draw_cs);
+               tu_cs_end(&cmd->draw_epilogue_cs);
+
+               switch (cmd->state.suspend_resume) {
+               case SR_NONE:
+               case SR_IN_PRE_CHAIN:
+                  /* The renderpass chain ends in the secondary but isn't
+                   * started in the primary, so we have to move the state to
+                   * `pre_chain`.
+                   */
+                  tu_save_pre_chain(cmd);
+                  cmd->state.suspend_resume = SR_AFTER_PRE_CHAIN;
+                  break;
+               case SR_IN_CHAIN:
+               case SR_IN_CHAIN_AFTER_PRE_CHAIN:
+                  /* The renderpass ends in the secondary and starts somewhere
+                   * earlier in this primary. Since the last render pass in
+                   * the chain is in the secondary, we are technically outside
+                   * of a render pass.  Fix that here by reusing the dynamic
+                   * render pass that was setup for the last suspended render
+                   * pass before the secondary.
+                   */
+                  tu_restore_suspended_pass(cmd, cmd);
+
+                  tu_cmd_render(cmd);
+                  if (cmd->state.suspend_resume == SR_IN_CHAIN)
+                     cmd->state.suspend_resume = SR_NONE;
+                  else
+                     cmd->state.suspend_resume = SR_AFTER_PRE_CHAIN;
+                  break;
+               case SR_AFTER_PRE_CHAIN:
+                  unreachable("resuming render pass is not preceded by suspending one");
+               }
+
+               tu_reset_render_pass(cmd);
+            }
+
+            tu_cs_add_entries(&cmd->cs, &secondary->cs);
+
+            if (secondary->state.suspend_resume == SR_IN_CHAIN_AFTER_PRE_CHAIN ||
+                secondary->state.suspend_resume == SR_IN_CHAIN) {
+               /* The secondary ends in a "post-chain" (the opposite of a
+                * pre-chain) that we need to copy into the current command
+                * buffer.
+                */
+               cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+               tu_append_post_chain(cmd, secondary);
+               cmd->trace_renderpass_end = u_trace_end_iterator(&cmd->trace);
+               cmd->state.suspended_pass = secondary->state.suspended_pass;
+
+               switch (cmd->state.suspend_resume) {
+               case SR_NONE:
+                  cmd->state.suspend_resume = SR_IN_CHAIN;
+                  break;
+               case SR_AFTER_PRE_CHAIN:
+                  cmd->state.suspend_resume = SR_IN_CHAIN_AFTER_PRE_CHAIN;
+                  break;
+               default:
+                  unreachable("suspending render pass is followed by a not resuming one");
+               }
+            }
+         }
       }
 
       cmd->state.index_size = secondary->state.index_size; /* for restart index update */
@@ -3685,12 +3941,65 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
       cmd->state.cache.pending_flush_bits;
    cmd->state.renderpass_cache.flush_bits = 0;
 
-   trace_start_render_pass(&cmd->trace, &cmd->cs);
+   bool resuming = pRenderingInfo->flags & VK_RENDERING_RESUMING_BIT;
+   bool suspending = pRenderingInfo->flags & VK_RENDERING_SUSPENDING_BIT;
+   cmd->state.suspending = suspending;
+   cmd->state.resuming = resuming;
 
-   cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+   /* We can't track LRZ across command buffer boundaries, so we have to
+    * disable LRZ when resuming/suspending unless we can track on the GPU.
+    */
+   if ((resuming || suspending) &&
+       !cmd->device->physical_device->info->a6xx.has_lrz_dir_tracking) {
+      cmd->state.lrz.valid = false;
+   } else {
+      if (resuming)
+         tu_lrz_begin_resumed_renderpass(cmd, clear_values);
+      else
+         tu_lrz_begin_renderpass(cmd, clear_values);
+   }
 
-   tu_emit_renderpass_begin(cmd, clear_values);
-   tu_emit_subpass_begin(cmd);
+
+   if (suspending) {
+      cmd->state.suspended_pass.pass = cmd->state.pass;
+      cmd->state.suspended_pass.subpass = cmd->state.subpass;
+      cmd->state.suspended_pass.framebuffer = cmd->state.framebuffer;
+      cmd->state.suspended_pass.render_area = cmd->state.render_area;
+      cmd->state.suspended_pass.attachments = cmd->state.attachments;
+   }
+
+   if (!resuming) {
+      trace_start_render_pass(&cmd->trace, &cmd->cs);
+   }
+
+   if (!resuming || cmd->state.suspend_resume == SR_NONE) {
+      cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
+   }
+
+   if (!resuming) {
+      tu_emit_renderpass_begin(cmd, clear_values);
+      tu_emit_subpass_begin(cmd);
+   }
+
+   if (suspending && !resuming) {
+      /* entering a chain */
+      switch (cmd->state.suspend_resume) {
+      case SR_NONE:
+         cmd->state.suspend_resume = SR_IN_CHAIN;
+         break;
+      case SR_AFTER_PRE_CHAIN:
+         cmd->state.suspend_resume = SR_IN_CHAIN_AFTER_PRE_CHAIN;
+         break;
+      case SR_IN_PRE_CHAIN:
+      case SR_IN_CHAIN:
+      case SR_IN_CHAIN_AFTER_PRE_CHAIN:
+         unreachable("suspending render pass not followed by resuming pass");
+         break;
+      }
+   }
+
+   if (resuming && cmd->state.suspend_resume == SR_NONE)
+      cmd->state.suspend_resume = SR_IN_PRE_CHAIN;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4801,60 +5110,25 @@ tu_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    tu_dispatch(cmd_buffer, &info);
 }
 
-static void
-tu_end_rendering(struct tu_cmd_buffer *cmd_buffer)
-{
-   tu_cs_end(&cmd_buffer->draw_cs);
-   tu_cs_end(&cmd_buffer->draw_epilogue_cs);
-
-   cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
-
-   if (cmd_buffer->state.rp.has_tess)
-      tu6_lazy_emit_tessfactor_addr(cmd_buffer);
-
-   struct tu_renderpass_result *autotune_result = NULL;
-   if (use_sysmem_rendering(cmd_buffer, &autotune_result))
-      tu_cmd_render_sysmem(cmd_buffer, autotune_result);
-   else
-      tu_cmd_render_tiles(cmd_buffer, autotune_result);
-
-   /* Outside of renderpasses we assume all draw states are disabled. We do
-    * this outside the draw CS for the normal case where 3d gmem stores aren't
-    * used.
-    */
-   tu_disable_draw_states(cmd_buffer, &cmd_buffer->cs);
-
-   /* discard draw_cs and draw_epilogue_cs entries now that the tiles are
-      rendered */
-   tu_cs_discard_entries(&cmd_buffer->draw_cs);
-   tu_cs_begin(&cmd_buffer->draw_cs);
-   tu_cs_discard_entries(&cmd_buffer->draw_epilogue_cs);
-   tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
-
-   cmd_buffer->state.pass = NULL;
-   cmd_buffer->state.subpass = NULL;
-   cmd_buffer->state.framebuffer = NULL;
-   cmd_buffer->state.attachments = NULL;
-   memset(&cmd_buffer->state.rp, 0, sizeof(cmd_buffer->state.rp));
-
-   /* LRZ is not valid next time we use it */
-   cmd_buffer->state.lrz.valid = false;
-   cmd_buffer->state.dirty |= TU_CMD_DIRTY_LRZ;
-}
-
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
                      const VkSubpassEndInfo *pSubpassEndInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
-   tu_end_rendering(cmd_buffer);
+   cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
+
+   tu_cs_end(&cmd_buffer->draw_cs);
+   tu_cs_end(&cmd_buffer->draw_epilogue_cs);
+   tu_cmd_render(cmd_buffer);
 
    cmd_buffer->state.cache.pending_flush_bits |=
       cmd_buffer->state.renderpass_cache.pending_flush_bits;
    tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
 
    vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+
+   tu_reset_render_pass(cmd_buffer);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4862,7 +5136,38 @@ tu_CmdEndRendering(VkCommandBuffer commandBuffer)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
-   tu_end_rendering(cmd_buffer);
+   cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
+
+   if (cmd_buffer->state.suspending)
+      cmd_buffer->state.suspended_pass.lrz = cmd_buffer->state.lrz;
+
+   if (!cmd_buffer->state.suspending) {
+      tu_cs_end(&cmd_buffer->draw_cs);
+      tu_cs_end(&cmd_buffer->draw_epilogue_cs);
+
+      if (cmd_buffer->state.suspend_resume == SR_IN_PRE_CHAIN) {
+         tu_save_pre_chain(cmd_buffer);
+      } else {
+         tu_cmd_render(cmd_buffer);
+      }
+
+      tu_reset_render_pass(cmd_buffer);
+   }
+
+   if (cmd_buffer->state.resuming && !cmd_buffer->state.suspending) {
+      /* exiting suspend/resume chain */
+      switch (cmd_buffer->state.suspend_resume) {
+      case SR_IN_CHAIN:
+         cmd_buffer->state.suspend_resume = SR_NONE;
+         break;
+      case SR_IN_PRE_CHAIN:
+      case SR_IN_CHAIN_AFTER_PRE_CHAIN:
+         cmd_buffer->state.suspend_resume = SR_AFTER_PRE_CHAIN;
+         break;
+      default:
+         unreachable("suspending render pass not followed by resuming pass");
+      }
+   }
 }
 
 static void

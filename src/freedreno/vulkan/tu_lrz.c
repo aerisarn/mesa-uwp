@@ -275,6 +275,32 @@ tu_lrz_init_secondary(struct tu_cmd_buffer *cmd,
    cmd->state.lrz.reuse_previous_state = false;
 }
 
+/* This is generally the same as tu_lrz_begin_renderpass(), but we skip
+ * actually emitting anything. The lrz state needs to be consistent between
+ * renderpasses, but only the first should actually emit commands to disable
+ * lrz etc.
+ */
+void
+tu_lrz_begin_resumed_renderpass(struct tu_cmd_buffer *cmd,
+                                const VkClearValue *clear_values)
+{
+    /* Track LRZ valid state */
+   memset(&cmd->state.lrz, 0, sizeof(cmd->state.lrz));
+   uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
+   if (a != VK_ATTACHMENT_UNUSED) {
+      const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
+      tu_lrz_init_state(cmd, att, cmd->state.attachments[a]);
+      if (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT)) {
+         VkClearValue clear = clear_values[a];
+         cmd->state.lrz.depth_clear_value = clear;
+         cmd->state.lrz.fast_clear = cmd->state.lrz.fast_clear &&
+                                     (clear.depthStencil.depth == 0.f ||
+                                      clear.depthStencil.depth == 1.f);
+      }
+      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+   }
+}
+
 void
 tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
                         const VkClearValue *clear_values)
@@ -304,20 +330,7 @@ tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
    }
 
     /* Track LRZ valid state */
-   memset(&cmd->state.lrz, 0, sizeof(cmd->state.lrz));
-   uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
-   if (a != VK_ATTACHMENT_UNUSED) {
-      const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
-      tu_lrz_init_state(cmd, att, cmd->state.attachments[a]);
-      if (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT)) {
-         VkClearValue clear = clear_values[a];
-         cmd->state.lrz.depth_clear_value = clear;
-         cmd->state.lrz.fast_clear = cmd->state.lrz.fast_clear &&
-                                     (clear.depthStencil.depth == 0.f ||
-                                      clear.depthStencil.depth == 1.f);
-      }
-      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
-   }
+   tu_lrz_begin_resumed_renderpass(cmd, clear_values);
 
    if (!cmd->state.lrz.valid) {
       tu6_emit_lrz_buffer(&cmd->cs, NULL);

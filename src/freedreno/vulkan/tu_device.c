@@ -180,6 +180,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_zero_initialize_workgroup_memory = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_synchronization2 = true,
+      .KHR_dynamic_rendering = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
@@ -237,6 +238,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .VALVE_mutable_descriptor_type = true,
       .EXT_image_2d_view_of_3d = true,
       .EXT_color_write_enable = true,
+      .EXT_load_store_op_none = true,
    };
 }
 
@@ -640,7 +642,7 @@ tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
    features->synchronization2                    = true;
    features->textureCompressionASTC_HDR          = false;
    features->shaderZeroInitializeWorkgroupMemory = true;
-   features->dynamicRendering                    = false;
+   features->dynamicRendering                    = true;
    features->shaderIntegerDotProduct             = true;
    features->maintenance4                        = true;
 }
@@ -1611,6 +1613,37 @@ tu_copy_timestamp_buffer(struct u_trace_context *utctx, void *cmdstream,
    tu_cs_emit_qw(cs, bo_to->iova + to_offset * sizeof(uint64_t));
 }
 
+/* Special helpers instead of u_trace_begin_iterator()/u_trace_end_iterator()
+ * that ignore tracepoints at the beginning/end that are part of a
+ * suspend/resume chain.
+ */
+static struct u_trace_iterator
+tu_cmd_begin_iterator(struct tu_cmd_buffer *cmdbuf)
+{
+   switch (cmdbuf->state.suspend_resume) {
+   case SR_IN_PRE_CHAIN:
+      return cmdbuf->trace_renderpass_end;
+   case SR_AFTER_PRE_CHAIN:
+   case SR_IN_CHAIN_AFTER_PRE_CHAIN:
+      return cmdbuf->pre_chain.trace_renderpass_end;
+   default:
+      return u_trace_begin_iterator(&cmdbuf->trace);
+   }
+}
+
+static struct u_trace_iterator
+tu_cmd_end_iterator(struct tu_cmd_buffer *cmdbuf)
+{
+   switch (cmdbuf->state.suspend_resume) {
+   case SR_IN_PRE_CHAIN:
+      return cmdbuf->trace_renderpass_end;
+   case SR_IN_CHAIN:
+   case SR_IN_CHAIN_AFTER_PRE_CHAIN:
+      return cmdbuf->trace_renderpass_start;
+   default:
+      return u_trace_end_iterator(&cmdbuf->trace);
+   }
+}
 VkResult
 tu_create_copy_timestamp_cs(struct tu_cmd_buffer *cmdbuf, struct tu_cs** cs,
                             struct u_trace **trace_copy)
@@ -1638,8 +1671,8 @@ tu_create_copy_timestamp_cs(struct tu_cmd_buffer *cmdbuf, struct tu_cs** cs,
    }
 
    u_trace_init(*trace_copy, cmdbuf->trace.utctx);
-   u_trace_clone_append(u_trace_begin_iterator(&cmdbuf->trace),
-                        u_trace_end_iterator(&cmdbuf->trace),
+   u_trace_clone_append(tu_cmd_begin_iterator(cmdbuf),
+                        tu_cmd_end_iterator(cmdbuf),
                         *trace_copy, *cs,
                         tu_copy_timestamp_buffer);
 
@@ -1900,6 +1933,12 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    /* initialize to ones so ffs can be used to find unused slots */
    BITSET_ONES(device->custom_border_color);
 
+   result = tu_init_dynamic_rendering(device);
+   if (result != VK_SUCCESS) {
+      vk_startup_errorf(device->instance, result, "dynamic rendering");
+      goto fail_dynamic_rendering;
+   }
+
    struct vk_pipeline_cache_create_info pcc_info = { };
    device->mem_cache = vk_pipeline_cache_create(&device->vk, &pcc_info,
                                                 false);
@@ -2009,6 +2048,8 @@ fail_perfcntrs_pass_entries_alloc:
 fail_perfcntrs_pass_alloc:
    vk_pipeline_cache_destroy(device->mem_cache, &device->vk.alloc);
 fail_pipeline_cache:
+   tu_destroy_dynamic_rendering(device);
+fail_dynamic_rendering:
    tu_destroy_clear_blit_shaders(device);
 fail_global_bo_map:
    tu_bo_finish(device, device->global_bo);
@@ -2054,6 +2095,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    }
 
    tu_destroy_clear_blit_shaders(device);
+
+   tu_destroy_dynamic_rendering(device);
 
    ir3_compiler_destroy(device->compiler);
 

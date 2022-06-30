@@ -489,6 +489,9 @@ struct tu6_global
    /* To know when renderpass stats for autotune are valid */
    volatile uint32_t autotune_fence;
 
+   /* For recycling command buffers for dynamic suspend/resume comamnds */
+   volatile uint32_t dynamic_rendering_fence;
+
    volatile uint32_t dbg_one;
    volatile uint32_t dbg_gmem_total_loads;
    volatile uint32_t dbg_gmem_taken_loads;
@@ -593,6 +596,10 @@ struct tu_device
    struct tu_cs *perfcntrs_pass_cs;
    struct tu_cs_entry *perfcntrs_pass_cs_entries;
 
+   struct util_dynarray dynamic_rendering_pending;
+   VkCommandPool dynamic_rendering_pool;
+   uint32_t dynamic_rendering_fence;
+
    /* Condition variable for timeline semaphore to notify waiters when a
     * new submit is executed. */
    pthread_cond_t timeline_cond;
@@ -623,6 +630,14 @@ struct tu_device
 void tu_init_clear_blit_shaders(struct tu_device *dev);
 
 void tu_destroy_clear_blit_shaders(struct tu_device *dev);
+
+VkResult tu_init_dynamic_rendering(struct tu_device *dev);
+
+void tu_destroy_dynamic_rendering(struct tu_device *dev);
+
+VkResult tu_insert_dynamic_cmdbufs(struct tu_device *dev,
+                                   struct tu_cmd_buffer ***cmds_ptr,
+                                   uint32_t *size);
 
 VkResult
 tu_device_submit_deferred_locked(struct tu_device *dev);
@@ -1327,6 +1342,8 @@ struct tu_render_pass_state
    uint32_t drawcall_bandwidth_per_sample_sum;
 };
 
+void tu_render_pass_state_merge(struct tu_render_pass_state *dst,
+                                const struct tu_render_pass_state *src);
 struct tu_cmd_state
 {
    uint32_t dirty;
@@ -1403,6 +1420,22 @@ struct tu_cmd_state
 
    const struct tu_image_view **attachments;
 
+   /* State that in the dynamic case comes from VkRenderingInfo and needs to
+    * be saved/restored when suspending. This holds the state for the last
+    * suspended renderpass, which may point to this command buffer's dynamic_*
+    * or another command buffer if executed on a secondary.
+    */
+   struct {
+      const struct tu_render_pass *pass;
+      const struct tu_subpass *subpass;
+      const struct tu_framebuffer *framebuffer;
+      VkRect2D render_area;
+
+      const struct tu_image_view **attachments;
+
+      struct tu_lrz_state lrz;
+   } suspended_pass;
+
    bool tessfactor_addr_set;
    bool predication_active;
    enum a5xx_line_mode line_mode;
@@ -1415,6 +1448,97 @@ struct tu_cmd_state
    uint32_t prim_counters_running;
 
    bool prim_generated_query_running_before_rp;
+
+   /* These are the states of the suspend/resume state machine. In addition to
+    * tracking whether we're in the middle of a chain of suspending and
+    * resuming passes that will be merged, we need to track whether the
+    * command buffer begins in the middle of such a chain, for when it gets
+    * merged with other command buffers. We call such a chain that begins
+    * before the command buffer starts a "pre-chain".
+    *
+    * Note that when this command buffer is finished, this state is untouched
+    * but it gains a different meaning. For example, if we finish in state
+    * SR_IN_CHAIN, we finished in the middle of a suspend/resume chain, so
+    * there's a suspend/resume chain that extends past the end of the command
+    * buffer. In this sense it's the "opposite" of SR_AFTER_PRE_CHAIN, which
+    * means that there's a suspend/resume chain that extends before the
+    * beginning.
+    */
+   enum {
+      /* Either there are no suspend/resume chains, or they are entirely
+       * contained in the current command buffer.
+       *
+       *   BeginCommandBuffer() <- start of current command buffer
+       *       ...
+       *       // we are here
+       */
+      SR_NONE = 0,
+
+      /* We are in the middle of a suspend/resume chain that starts before the
+       * current command buffer. This happens when the command buffer begins
+       * with a resuming render pass and all of the passes up to the current
+       * one are suspending. In this state, our part of the chain is not saved
+       * and is in the current draw_cs/state.
+       *
+       *   BeginRendering() ... EndRendering(suspending)
+       *   BeginCommandBuffer() <- start of current command buffer
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       ...
+       *       // we are here
+       */
+      SR_IN_PRE_CHAIN,
+
+      /* We are currently outside of any suspend/resume chains, but there is a
+       * chain starting before the current command buffer. It is saved in
+       * pre_chain.
+       *
+       *   BeginRendering() ... EndRendering(suspending)
+       *   BeginCommandBuffer() <- start of current command buffer
+       *       // This part is stashed in pre_chain
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       ...
+       *       BeginRendering(resuming) ... EndRendering() // end of chain
+       *       ...
+       *       // we are here
+       */
+      SR_AFTER_PRE_CHAIN,
+
+      /* We are in the middle of a suspend/resume chain and there is no chain
+       * starting before the current command buffer.
+       *
+       *   BeginCommandBuffer() <- start of current command buffer
+       *       ...
+       *       BeginRendering() ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       ...
+       *       // we are here
+       */
+      SR_IN_CHAIN,
+
+      /* We are in the middle of a suspend/resume chain and there is another,
+       * separate, chain starting before the current command buffer.
+       *
+       *   BeginRendering() ... EndRendering(suspending)
+       *   CommandBufferBegin() <- start of current command buffer
+       *       // This part is stashed in pre_chain
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       ...
+       *       BeginRendering(resuming) ... EndRendering() // end of chain
+       *       ...
+       *       BeginRendering() ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       BeginRendering(resuming) ... EndRendering(suspending)
+       *       ...
+       *       // we are here
+       */
+      SR_IN_CHAIN_AFTER_PRE_CHAIN,
+   } suspend_resume;
+
+   bool suspending, resuming;
 
    struct tu_lrz_state lrz;
 
@@ -1487,6 +1611,24 @@ struct tu_cmd_buffer
    struct tu_cs draw_epilogue_cs;
    struct tu_cs sub_cs;
 
+   /* If the first render pass in the command buffer is resuming, then it is
+    * part of a suspend/resume chain that starts before the current command
+    * buffer and needs to be merged later. In this case, its incomplete state
+    * is stored in pre_chain. In the symmetric case where the last render pass
+    * is suspending, we just skip ending the render pass and its state is
+    * stored in draw_cs/the current state. The first and last render pass
+    * might be part of different chains, which is why all the state may need
+    * to be saved separately here.
+    */
+   struct {
+      struct tu_cs draw_cs;
+      struct tu_cs draw_epilogue_cs;
+
+      struct u_trace_iterator trace_renderpass_start, trace_renderpass_end;
+
+      struct tu_render_pass_state state;
+   } pre_chain;
+
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;
 };
@@ -1504,6 +1646,8 @@ struct tu_reg_value {
    uint32_t bo_shift;
 };
 
+VkResult tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
+                             VkCommandBufferUsageFlags usage_flags);
 
 void tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
                                     struct tu_cs *cs);
@@ -1520,6 +1664,24 @@ void tu_setup_dynamic_inheritance(struct tu_cmd_buffer *cmd_buffer,
 
 void tu_setup_dynamic_framebuffer(struct tu_cmd_buffer *cmd_buffer,
                                   const VkRenderingInfo *pRenderingInfo);
+
+void
+tu_append_pre_chain(struct tu_cmd_buffer *cmd,
+                    struct tu_cmd_buffer *secondary);
+
+void
+tu_append_pre_post_chain(struct tu_cmd_buffer *cmd,
+                         struct tu_cmd_buffer *secondary);
+
+void
+tu_append_post_chain(struct tu_cmd_buffer *cmd,
+                     struct tu_cmd_buffer *secondary);
+
+void
+tu_restore_suspended_pass(struct tu_cmd_buffer *cmd,
+                          struct tu_cmd_buffer *suspended);
+
+void tu_cmd_render(struct tu_cmd_buffer *cmd);
 
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
@@ -1755,6 +1917,10 @@ tu_lrz_clear_depth_image(struct tu_cmd_buffer *cmd,
 void
 tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
                         const VkClearValue *clear_values);
+
+void
+tu_lrz_begin_resumed_renderpass(struct tu_cmd_buffer *cmd,
+                                const VkClearValue *clear_values);
 
 void
 tu_lrz_begin_secondary_cmdbuf(struct tu_cmd_buffer *cmd);
