@@ -3013,9 +3013,24 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
 
    assert(src->vk.samples == dst->vk.samples);
 
-   bool requires_temp_res = src->vk.format != dst->vk.format &&
-                            src->vk.tiling != VK_IMAGE_TILING_LINEAR &&
-                            dst->vk.tiling != VK_IMAGE_TILING_LINEAR;
+   bool requires_temp_res = false;
+
+   for (uint32_t i = 0; i < info->regionCount; i++) {
+      const VkImageCopy2 *region = &info->pRegions[i];
+
+      dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
+         assert(aspect & region->dstSubresource.aspectMask);
+
+         if (!dzn_image_formats_are_compatible(device, src->vk.format, dst->vk.format,
+                                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT, aspect) &&
+             src->vk.tiling != VK_IMAGE_TILING_LINEAR &&
+             dst->vk.tiling != VK_IMAGE_TILING_LINEAR) {
+            requires_temp_res = true;
+            break;
+         }
+      }
+   }
+
    bool use_blit = false;
    if (src->vk.samples > 1) {
       use_blit = requires_temp_res;
