@@ -7794,7 +7794,7 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
       radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_COMPUTE, AC_UD_CS_SBT_DESCRIPTORS);
    if (desc_loc->sgpr_idx != -1) {
       radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
-                               base_reg + desc_loc->sgpr_idx * 4, sbt_va, false);
+                               base_reg + desc_loc->sgpr_idx * 4, sbt_va, true);
    }
 
    struct radv_userdata_info *size_loc =
