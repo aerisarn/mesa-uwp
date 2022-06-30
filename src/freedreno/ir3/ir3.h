@@ -1843,7 +1843,6 @@ bool ir3_cf(struct ir3 *ir);
 
 /* copy-propagate: */
 bool ir3_cp(struct ir3 *ir, struct ir3_shader_variant *so);
-bool ir3_cp_postsched(struct ir3 *ir);
 
 /* common subexpression elimination: */
 bool ir3_cse(struct ir3 *ir);
