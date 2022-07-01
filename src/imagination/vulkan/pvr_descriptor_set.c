@@ -79,6 +79,36 @@ static const char *descriptor_names[] = { "VK SAMPLER",
                                           "VK INPUT_ATTACHMENT" };
 #endif
 
+#define PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYBASE 0U
+#define PVR_DESC_IMAGE_SECONDARY_SIZE_ARRAYBASE 2U
+#define PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYSTRIDE \
+   (PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYBASE +     \
+    PVR_DESC_IMAGE_SECONDARY_SIZE_ARRAYBASE)
+#define PVR_DESC_IMAGE_SECONDARY_SIZE_ARRAYSTRIDE 1U
+
+#define PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYMAXINDEX(dev_info) \
+   (PVR_HAS_FEATURE(dev_info, tpu_array_textures)               \
+       ? (0)                                                    \
+       : PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYSTRIDE +          \
+            PVR_DESC_IMAGE_SECONDARY_SIZE_ARRAYSTRIDE)
+
+#define PVR_DESC_IMAGE_SECONDARY_SIZE_ARRAYMAXINDEX 1U
+#define PVR_DESC_IMAGE_SECONDARY_OFFSET_WIDTH(dev_info)       \
+   (PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYMAXINDEX(dev_info) + \
+    PVR_DESC_IMAGE_SECONDARY_SIZE_ARRAYMAXINDEX)
+#define PVR_DESC_IMAGE_SECONDARY_SIZE_WIDTH 1U
+#define PVR_DESC_IMAGE_SECONDARY_OFFSET_HEIGHT(dev_info) \
+   (PVR_DESC_IMAGE_SECONDARY_OFFSET_WIDTH(dev_info) +    \
+    PVR_DESC_IMAGE_SECONDARY_SIZE_WIDTH)
+#define PVR_DESC_IMAGE_SECONDARY_SIZE_HEIGHT 1U
+#define PVR_DESC_IMAGE_SECONDARY_OFFSET_DEPTH(dev_info) \
+   (PVR_DESC_IMAGE_SECONDARY_OFFSET_HEIGHT(dev_info) +  \
+    PVR_DESC_IMAGE_SECONDARY_SIZE_HEIGHT)
+#define PVR_DESC_IMAGE_SECONDARY_SIZE_DEPTH 1U
+#define PVR_DESC_IMAGE_SECONDARY_TOTAL_SIZE(dev_info) \
+   (PVR_DESC_IMAGE_SECONDARY_OFFSET_DEPTH(dev_info) + \
+    PVR_DESC_IMAGE_SECONDARY_SIZE_DEPTH)
+
 static void pvr_descriptor_size_info_init(
    const struct pvr_device *device,
    VkDescriptorType type,
@@ -91,7 +121,7 @@ static void pvr_descriptor_size_info_init(
       /* VK_DESCRIPTOR_TYPE_SAMPLER */
       { PVR_SAMPLER_DESCRIPTOR_SIZE, 0, 4 },
       /* VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER */
-      { PVR_SAMPLER_DESCRIPTOR_SIZE + 4, UINT_MAX, 4 },
+      { PVR_IMAGE_DESCRIPTOR_SIZE + PVR_SAMPLER_DESCRIPTOR_SIZE, UINT_MAX, 4 },
       /* VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE */
       { 4, UINT_MAX, 4 },
       /* VK_DESCRIPTOR_TYPE_STORAGE_IMAGE */
@@ -125,39 +155,11 @@ static void pvr_descriptor_size_info_init(
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-      const uint32_t image_secondary_offset_arraybase = 0;
-      const uint32_t image_secondary_size_arraybase = 2;
-      const uint32_t image_secondary_size_arraystride = 1;
-
-      const uint32_t image_secondary_offset_arraystride =
-         image_secondary_offset_arraybase + image_secondary_size_arraybase;
-
-      const uint32_t image_secondary_offset_arraymaxindex =
-         (PVR_HAS_FEATURE(&device->pdevice->dev_info, tpu_array_textures))
-            ? 0
-            : image_secondary_offset_arraystride +
-                 image_secondary_size_arraystride;
-
-      const uint32_t image_secondary_size_arraymaxindex = 1;
-
-      const uint32_t image_secondary_size_width = 1;
-      const uint32_t image_secondary_size_height = 1;
-      const uint32_t image_secondary_size_depth = 1;
-
-      const uint32_t image_secondary_offset_width =
-         image_secondary_offset_arraymaxindex +
-         image_secondary_size_arraymaxindex;
-      const uint32_t image_secondary_offset_height =
-         image_secondary_offset_width + image_secondary_size_width;
-      const uint32_t image_secondary_offset_depth =
-         image_secondary_offset_height + image_secondary_size_height;
-      const uint32_t image_secondary_total_size =
-         image_secondary_offset_depth + image_secondary_size_depth;
-
-      size_info_out->secondary = image_secondary_total_size;
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      size_info_out->secondary =
+         PVR_DESC_IMAGE_SECONDARY_TOTAL_SIZE(&device->pdevice->dev_info);
       break;
-   }
+
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       size_info_out->secondary = (uint32_t)device->features.robustBufferAccess;
@@ -1431,6 +1433,153 @@ static void pvr_descriptor_update_sampler(
    }
 }
 
+static void
+pvr_write_image_descriptor_primaries(const struct pvr_device_info *dev_info,
+                                     const struct pvr_image_view *iview,
+                                     VkDescriptorType descriptorType,
+                                     uint32_t *primary)
+{
+   uint64_t *qword_ptr = (uint64_t *)primary;
+
+   if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE &&
+       (iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
+        iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)) {
+      qword_ptr[0] = iview->texture_state[PVR_TEXTURE_STATE_STORAGE][0];
+      qword_ptr[1] = iview->texture_state[PVR_TEXTURE_STATE_STORAGE][1];
+   } else if (descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+      qword_ptr[0] = iview->texture_state[PVR_TEXTURE_STATE_ATTACHMENT][0];
+      qword_ptr[1] = iview->texture_state[PVR_TEXTURE_STATE_ATTACHMENT][1];
+   } else {
+      qword_ptr[0] = iview->texture_state[PVR_TEXTURE_STATE_SAMPLE][0];
+      qword_ptr[1] = iview->texture_state[PVR_TEXTURE_STATE_SAMPLE][1];
+   }
+
+   if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE &&
+       !PVR_HAS_FEATURE(dev_info, tpu_extended_integer_lookup)) {
+      uint64_t tmp;
+
+      pvr_csb_pack (&tmp, TEXSTATE_STRIDE_IMAGE_WORD1, word1) {
+         word1.index_lookup = true;
+      }
+
+      qword_ptr[1] |= tmp;
+   }
+}
+
+static void
+pvr_write_image_descriptor_secondaries(const struct pvr_device_info *dev_info,
+                                       const struct pvr_image_view *iview,
+                                       VkDescriptorType descriptorType,
+                                       uint32_t *secondary)
+{
+   const bool cube_array_adjust =
+      descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE &&
+      iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+
+   if (!PVR_HAS_FEATURE(dev_info, tpu_array_textures)) {
+      uint64_t addr = iview->image->dev_addr.addr +
+                      iview->vk.base_array_layer * iview->image->layer_size;
+
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYBASE] = (uint32_t)addr;
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYBASE + 1U] =
+         (uint32_t)(addr >> 32U);
+
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYSTRIDE] =
+         cube_array_adjust ? iview->image->layer_size * 6
+                           : iview->image->layer_size;
+   }
+
+   if (cube_array_adjust) {
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYMAXINDEX(dev_info)] =
+         iview->vk.layer_count / 6 - 1;
+   } else {
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYMAXINDEX(dev_info)] =
+         iview->vk.layer_count - 1;
+   }
+
+   secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_WIDTH(dev_info)] =
+      iview->vk.extent.width;
+   secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_HEIGHT(dev_info)] =
+      iview->vk.extent.height;
+   secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_DEPTH(dev_info)] =
+      iview->vk.extent.depth;
+}
+
+static void pvr_descriptor_update_sampler_texture(
+   const struct pvr_device *device,
+   const VkWriteDescriptorSet *write_set,
+   struct pvr_descriptor_set *set,
+   const struct pvr_descriptor_set_layout_binding *binding,
+   uint32_t *mem_ptr,
+   uint32_t start_stage,
+   uint32_t end_stage)
+{
+   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+
+   for (uint32_t i = 0; i < write_set->descriptorCount; i++) {
+      PVR_FROM_HANDLE(pvr_image_view,
+                      iview,
+                      write_set->pImageInfo[i].imageView);
+      const uint32_t desc_idx =
+         binding->descriptor_index + write_set->dstArrayElement + i;
+
+      set->descriptors[desc_idx].type = write_set->descriptorType;
+      set->descriptors[desc_idx].iview = iview;
+      set->descriptors[desc_idx].layout = write_set->pImageInfo[i].imageLayout;
+
+      for (uint32_t j = start_stage; j < end_stage; j++) {
+         uint32_t secondary_offset;
+         uint32_t primary_offset;
+
+         if (!(binding->shader_stage_mask & BITFIELD_BIT(j)))
+            continue;
+
+         /* Offset calculation functions expect descriptor_index to be
+          * binding relative not layout relative, so we have used
+          * write_set->dstArrayElement + i rather than desc_idx.
+          */
+         primary_offset =
+            pvr_get_descriptor_primary_offset(device,
+                                              set->layout,
+                                              binding,
+                                              j,
+                                              write_set->dstArrayElement + i);
+         secondary_offset =
+            pvr_get_descriptor_secondary_offset(device,
+                                                set->layout,
+                                                binding,
+                                                j,
+                                                write_set->dstArrayElement + i);
+
+         pvr_write_image_descriptor_primaries(dev_info,
+                                              iview,
+                                              write_set->descriptorType,
+                                              mem_ptr + primary_offset);
+
+         /* We don't need to update the sampler words if they belong to an
+          * immutable sampler.
+          */
+         if (!binding->has_immutable_samplers) {
+            PVR_FROM_HANDLE(pvr_sampler,
+                            sampler,
+                            write_set->pImageInfo[i].sampler);
+            set->descriptors[desc_idx].sampler = sampler;
+
+            /* Sampler words are located at the end of the primary image words.
+             */
+            memcpy(mem_ptr + primary_offset + PVR_IMAGE_DESCRIPTOR_SIZE,
+                   sampler->descriptor.words,
+                   sizeof(sampler->descriptor.words));
+         }
+
+         pvr_write_image_descriptor_secondaries(dev_info,
+                                                iview,
+                                                write_set->descriptorType,
+                                                mem_ptr + secondary_offset);
+      }
+   }
+}
+
 void pvr_UpdateDescriptorSets(VkDevice _device,
                               uint32_t descriptorWriteCount,
                               const VkWriteDescriptorSet *pDescriptorWrites,
@@ -1472,6 +1621,15 @@ void pvr_UpdateDescriptorSets(VkDevice _device,
          break;
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         pvr_descriptor_update_sampler_texture(device,
+                                               write_set,
+                                               set,
+                                               binding,
+                                               map,
+                                               0,
+                                               PVR_STAGE_ALLOCATION_COUNT);
+         break;
+
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:

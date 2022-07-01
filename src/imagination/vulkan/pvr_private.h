@@ -77,6 +77,7 @@
 #define PVR_WORKGROUP_DIMENSIONS 3U
 
 #define PVR_SAMPLER_DESCRIPTOR_SIZE 4U
+#define PVR_IMAGE_DESCRIPTOR_SIZE 4U
 
 #define PVR_STATE_PBE_DWORDS 2U
 
@@ -494,6 +495,8 @@ struct pvr_descriptor {
       };
 
       struct {
+         VkImageLayout layout;
+         const struct pvr_image_view *iview;
          const struct pvr_sampler *sampler;
       };
    };
