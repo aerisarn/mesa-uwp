@@ -28,7 +28,7 @@
 #ifndef U_POINTER_H
 #define U_POINTER_H
 
-#include "pipe/p_compiler.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

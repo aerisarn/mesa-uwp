@@ -30,16 +30,16 @@
 #define U_DL_H_
 
 
-#include "pipe/p_config.h"
+#include "detect_os.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if defined(PIPE_OS_WINDOWS)
+#if DETECT_OS_WINDOWS
 #  define UTIL_DL_EXT ".dll"
 #  define UTIL_DL_PREFIX ""
-#elif defined(PIPE_OS_APPLE)
+#elif DETECT_OS_APPLE
 #  define UTIL_DL_EXT ".dylib"
 #  define UTIL_DL_PREFIX "lib"
 #else
