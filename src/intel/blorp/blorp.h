@@ -35,6 +35,22 @@ struct brw_stage_prog_data;
 extern "C" {
 #endif
 
+enum blorp_op {
+   BLORP_OP_BLIT,
+   BLORP_OP_COPY,
+   BLORP_OP_CCS_AMBIGUATE,
+   BLORP_OP_CCS_COLOR_CLEAR,
+   BLORP_OP_CCS_PARTIAL_RESOLVE,
+   BLORP_OP_CCS_RESOLVE,
+   BLORP_OP_HIZ_AMBIGUATE,
+   BLORP_OP_HIZ_CLEAR,
+   BLORP_OP_HIZ_RESOLVE,
+   BLORP_OP_MCS_COLOR_CLEAR,
+   BLORP_OP_MCS_PARTIAL_RESOLVE,
+   BLORP_OP_SLOW_COLOR_CLEAR,
+   BLORP_OP_SLOW_DEPTH_CLEAR,
+};
+
 struct blorp_batch;
 struct blorp_params;
 

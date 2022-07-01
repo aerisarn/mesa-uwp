@@ -2528,7 +2528,7 @@ blorp_blit(struct blorp_batch *batch,
 {
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_BLIT;
+   params.op = BLORP_OP_BLIT;
    const bool compute = batch->flags & BLORP_BATCH_USE_COMPUTE;
    if (compute) {
       assert(blorp_blit_supports_compute(batch->blorp,
@@ -2869,7 +2869,7 @@ blorp_copy(struct blorp_batch *batch,
       return;
 
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_COPY;
+   params.op = BLORP_OP_COPY;
 
    const bool compute = batch->flags & BLORP_BATCH_USE_COMPUTE;
    if (compute) {

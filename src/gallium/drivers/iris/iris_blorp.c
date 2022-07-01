@@ -465,7 +465,9 @@ blorp_measure_start(struct blorp_batch *blorp_batch,
    if (batch->measure == NULL)
       return;
 
-   iris_measure_snapshot(ice, batch, params->snapshot_type, NULL, NULL, NULL);
+   iris_measure_snapshot(ice, batch,
+                         blorp_op_to_intel_measure_snapshot(params->op),
+                         NULL, NULL, NULL);
 }
 
 

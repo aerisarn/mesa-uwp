@@ -220,6 +220,7 @@ enum blorp_shader_pipeline {
 
 struct blorp_params
 {
+   enum blorp_op op;
    uint32_t x0;
    uint32_t y0;
    uint32_t x1;
@@ -255,8 +256,12 @@ struct blorp_params
    uint32_t pre_baked_binding_table_offset;
    enum blorp_shader_type shader_type;
    enum blorp_shader_pipeline shader_pipeline;
-   enum intel_measure_snapshot_type snapshot_type;
 };
+
+enum intel_measure_snapshot_type
+blorp_op_to_intel_measure_snapshot(enum blorp_op op);
+
+const char *blorp_op_to_name(enum blorp_op op);
 
 void blorp_params_init(struct blorp_params *params);
 

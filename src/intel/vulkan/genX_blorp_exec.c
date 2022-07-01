@@ -42,7 +42,7 @@ static void blorp_measure_start(struct blorp_batch *_batch,
    struct anv_cmd_buffer *cmd_buffer = _batch->driver_batch;
    trace_intel_begin_blorp(&cmd_buffer->trace);
    anv_measure_snapshot(cmd_buffer,
-                        params->snapshot_type,
+                        blorp_op_to_intel_measure_snapshot(params->op),
                         NULL, 0);
 }
 

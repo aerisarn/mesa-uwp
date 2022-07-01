@@ -476,9 +476,9 @@ blorp_fast_clear(struct blorp_batch *batch,
 
    assert(params.num_samples != 0);
    if (params.num_samples == 1)
-      params.snapshot_type = INTEL_SNAPSHOT_CCS_COLOR_CLEAR;
+      params.op = BLORP_OP_CCS_COLOR_CLEAR;
    else
-      params.snapshot_type = INTEL_SNAPSHOT_MCS_COLOR_CLEAR;
+      params.op = BLORP_OP_MCS_COLOR_CLEAR;
 
    /* If a swizzle was provided, we need to swizzle the clear color so that
     * the hardware color format conversion will work properly.
@@ -518,7 +518,7 @@ blorp_clear(struct blorp_batch *batch,
 {
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_SLOW_COLOR_CLEAR;
+   params.op = BLORP_OP_SLOW_COLOR_CLEAR;
 
    const bool compute = batch->flags & BLORP_BATCH_USE_COMPUTE;
    if (compute)
@@ -746,7 +746,7 @@ blorp_clear_stencil_as_rgba(struct blorp_batch *batch,
 
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_SLOW_DEPTH_CLEAR;
+   params.op = BLORP_OP_SLOW_DEPTH_CLEAR;
 
    if (!blorp_params_get_clear_kernel(batch, &params, true, false))
       return false;
@@ -827,7 +827,7 @@ blorp_clear_depth_stencil(struct blorp_batch *batch,
 
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_SLOW_DEPTH_CLEAR;
+   params.op = BLORP_OP_SLOW_DEPTH_CLEAR;
 
    params.x0 = x0;
    params.y0 = y0;
@@ -1015,7 +1015,7 @@ blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
 {
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_HIZ_CLEAR;
+   params.op = BLORP_OP_HIZ_CLEAR;
 
    /* This requires WM_HZ_OP which only exists on gfx8+ */
    assert(ISL_GFX_VER(batch->blorp->isl_dev) >= 8);
@@ -1081,7 +1081,7 @@ blorp_gfx8_hiz_clear_attachments(struct blorp_batch *batch,
 
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_HIZ_CLEAR;
+   params.op = BLORP_OP_HIZ_CLEAR;
    params.num_layers = 1;
    params.hiz_op = ISL_AUX_OP_FAST_CLEAR;
    params.x0 = x0;
@@ -1136,7 +1136,7 @@ blorp_clear_attachments(struct blorp_batch *batch,
 
    if (clear_color) {
       params.dst.enabled = true;
-      params.snapshot_type = INTEL_SNAPSHOT_SLOW_COLOR_CLEAR;
+      params.op = BLORP_OP_SLOW_COLOR_CLEAR;
 
       memcpy(&params.wm_inputs.clear_color, color_value.f32, sizeof(float) * 4);
 
@@ -1150,7 +1150,7 @@ blorp_clear_attachments(struct blorp_batch *batch,
 
    if (clear_depth) {
       params.depth.enabled = true;
-      params.snapshot_type = INTEL_SNAPSHOT_SLOW_DEPTH_CLEAR;
+      params.op = BLORP_OP_SLOW_DEPTH_CLEAR;
 
       params.z = depth_value;
       params.depth_format = isl_format_get_depth_format(depth_format, false);
@@ -1158,7 +1158,7 @@ blorp_clear_attachments(struct blorp_batch *batch,
 
    if (stencil_mask) {
       params.stencil.enabled = true;
-      params.snapshot_type = INTEL_SNAPSHOT_SLOW_DEPTH_CLEAR;
+      params.op = BLORP_OP_SLOW_DEPTH_CLEAR;
 
       params.stencil_mask = stencil_mask;
       params.stencil_ref = stencil_value;
@@ -1185,13 +1185,13 @@ blorp_ccs_resolve(struct blorp_batch *batch,
    blorp_params_init(&params);
    switch(resolve_op) {
    case ISL_AUX_OP_AMBIGUATE:
-      params.snapshot_type = INTEL_SNAPSHOT_CCS_AMBIGUATE;
+      params.op = BLORP_OP_CCS_AMBIGUATE;
       break;
    case ISL_AUX_OP_FULL_RESOLVE:
-      params.snapshot_type = INTEL_SNAPSHOT_CCS_RESOLVE;
+      params.op = BLORP_OP_CCS_RESOLVE;
       break;
    case ISL_AUX_OP_PARTIAL_RESOLVE:
-      params.snapshot_type = INTEL_SNAPSHOT_CCS_PARTIAL_RESOLVE;
+      params.op = BLORP_OP_CCS_PARTIAL_RESOLVE;
       break;
    default:
       assert(false);
@@ -1365,7 +1365,7 @@ blorp_mcs_partial_resolve(struct blorp_batch *batch,
 {
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_MCS_PARTIAL_RESOLVE;
+   params.op = BLORP_OP_MCS_PARTIAL_RESOLVE;
 
    assert(batch->blorp->isl_dev->info->ver >= 7);
 
@@ -1413,7 +1413,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
 
    struct blorp_params params;
    blorp_params_init(&params);
-   params.snapshot_type = INTEL_SNAPSHOT_CCS_AMBIGUATE;
+   params.op = BLORP_OP_CCS_AMBIGUATE;
 
    assert(ISL_GFX_VER(batch->blorp->isl_dev) >= 7);
 
