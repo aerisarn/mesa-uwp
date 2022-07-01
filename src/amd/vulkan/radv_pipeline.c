@@ -4579,7 +4579,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                               (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
                               device->keep_shader_info;
    struct radv_pipeline_stage stages[MESA_VULKAN_SHADER_STAGES] = {0};
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+   VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    bool noop_fs = false;

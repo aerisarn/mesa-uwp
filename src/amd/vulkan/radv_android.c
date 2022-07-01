@@ -582,13 +582,13 @@ get_ahb_buffer_format_properties2(VkDevice device_h, const struct AHardwareBuffe
     *  the Android hardware buffer’s format has a Vulkan equivalent."
     *
     * "The formatFeatures member *must* include
-    *  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR and at least one of
-    *  VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR or
-    *  VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT_KHR"
+    *  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT and at least one of
+    *  VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT or
+    *  VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT"
     */
-   assert(p->formatFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR);
+   assert(p->formatFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT);
 
-   p->formatFeatures |= VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR;
+   p->formatFeatures |= VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
 
    /* "Implementations may not always be able to determine the color model,
     *  numerical range, or chroma offsets of the image contents, so the values

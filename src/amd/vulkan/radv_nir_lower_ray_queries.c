@@ -512,7 +512,7 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
    nir_ssa_def *switch_ccw =
       nir_test_mask(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
-                    VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24);
+                    VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR << 24);
    frontface = nir_ixor(b, frontface, switch_ccw);
    rq_store_var(b, index, vars->candidate.frontface, frontface, 0x1);
 

@@ -18,6 +18,7 @@ EXCLUDE_PATHS = [
 
     # These files come from other repos, there's no point checking and
     # fixing them here as that would be overwritten in the next sync.
+    'src/amd/vulkan/radix_sort/',
 ]
 
 

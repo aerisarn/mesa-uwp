@@ -291,7 +291,7 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
 
       if (variable_flags && binding->binding < variable_flags->bindingCount &&
           (variable_flags->pBindingFlags[binding->binding] &
-           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
+           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
          assert(
             !binding->pImmutableSamplers); /* Terribly ill defined  how many samplers are valid */
          assert(binding->binding == num_bindings - 1);
@@ -465,7 +465,7 @@ radv_GetDescriptorSetLayoutSupport(VkDevice device,
       }
       if (variable_flags && binding->binding < variable_flags->bindingCount && variable_count &&
           (variable_flags->pBindingFlags[binding->binding] &
-           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
+           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
          variable_count->maxVariableDescriptorCount = MIN2(UINT32_MAX, max_count);
       }
       size += descriptor_count * descriptor_size;

@@ -322,7 +322,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
             };
 
-            const VkRenderingInfoKHR rendering_info = {
+            const VkRenderingInfo rendering_info = {
                .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
                .renderArea = {
                   .offset = { rects[r].dst_x, rects[r].dst_y },

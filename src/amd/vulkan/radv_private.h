@@ -2201,7 +2201,7 @@ struct radv_pipeline_stage {
    struct radv_shader_info info;
    struct radv_shader_args args;
 
-   VkPipelineCreationFeedbackEXT feedback;
+   VkPipelineCreationFeedback feedback;
 };
 
 static inline bool
@@ -2841,7 +2841,7 @@ bool radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *
 
 int radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
                     const VkDeviceQueueCreateInfo *create_info,
-                    const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority);
+                    const VkDeviceQueueGlobalPriorityCreateInfoKHR *global_priority);
 
 void radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point,
                              struct radv_descriptor_set *set, unsigned idx);

@@ -1634,9 +1634,9 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState2PatchControlPoints = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: {
-         VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *features =
-            (VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: {
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features =
+            (VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *)ext;
          features->globalPriorityQuery = true;
          break;
       }
@@ -2572,11 +2572,11 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    *pCount = idx;
 }
 
-static const VkQueueGlobalPriorityEXT radv_global_queue_priorities[] = {
-   VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT,
-   VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT,
-   VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT,
-   VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT,
+static const VkQueueGlobalPriorityKHR radv_global_queue_priorities[] = {
+   VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR,
+   VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
+   VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR,
+   VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR,
 };
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2600,10 +2600,10 @@ radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, ui
       vk_foreach_struct(ext, pQueueFamilyProperties[i].pNext)
       {
          switch (ext->sType) {
-         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: {
-            VkQueueFamilyGlobalPriorityPropertiesEXT *prop =
-               (VkQueueFamilyGlobalPriorityPropertiesEXT *)ext;
-            STATIC_ASSERT(ARRAY_SIZE(radv_global_queue_priorities) <= VK_MAX_GLOBAL_PRIORITY_SIZE_EXT);
+         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_KHR: {
+            VkQueueFamilyGlobalPriorityPropertiesKHR *prop =
+               (VkQueueFamilyGlobalPriorityPropertiesKHR *)ext;
+            STATIC_ASSERT(ARRAY_SIZE(radv_global_queue_priorities) <= VK_MAX_GLOBAL_PRIORITY_SIZE_KHR);
             prop->priorityCount = ARRAY_SIZE(radv_global_queue_priorities);
             memcpy(&prop->priorities, radv_global_queue_priorities, sizeof(radv_global_queue_priorities));
             break;
@@ -2761,20 +2761,20 @@ radv_GetMemoryHostPointerPropertiesEXT(
 }
 
 static enum radeon_ctx_priority
-radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoEXT *pObj)
+radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *pObj)
 {
    /* Default to MEDIUM when a specific global priority isn't requested */
    if (!pObj)
       return RADEON_CTX_PRIORITY_MEDIUM;
 
    switch (pObj->globalPriority) {
-   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR:
       return RADEON_CTX_PRIORITY_REALTIME;
-   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR:
       return RADEON_CTX_PRIORITY_HIGH;
-   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR:
       return RADEON_CTX_PRIORITY_MEDIUM;
-   case VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR:
       return RADEON_CTX_PRIORITY_LOW;
    default:
       unreachable("Illegal global priority value");
@@ -2785,7 +2785,7 @@ radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoEXT *p
 int
 radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
                 const VkDeviceQueueCreateInfo *create_info,
-                const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority)
+                const VkDeviceQueueGlobalPriorityCreateInfoKHR *global_priority)
 {
    queue->device = device;
    queue->priority = radv_get_queue_global_priority(global_priority);
@@ -3394,8 +3394,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    /* Create one context per queue priority. */
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create = &pCreateInfo->pQueueCreateInfos[i];
-      const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority =
-         vk_find_struct_const(queue_create->pNext, DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT);
+      const VkDeviceQueueGlobalPriorityCreateInfoKHR *global_priority =
+         vk_find_struct_const(queue_create->pNext, DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
       enum radeon_ctx_priority priority = radv_get_queue_global_priority(global_priority);
 
       if (device->hw_ctx[priority])
@@ -3409,8 +3409,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create = &pCreateInfo->pQueueCreateInfos[i];
       uint32_t qfi = queue_create->queueFamilyIndex;
-      const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority =
-         vk_find_struct_const(queue_create->pNext, DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT);
+      const VkDeviceQueueGlobalPriorityCreateInfoKHR *global_priority =
+         vk_find_struct_const(queue_create->pNext, DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
 
       device->queues[qfi] =
          vk_alloc(&device->vk.alloc, queue_create->queueCount * sizeof(struct radv_queue), 8,
@@ -6500,7 +6500,7 @@ radv_tex_filter(VkFilter filter, unsigned max_ansio)
    case VK_FILTER_LINEAR:
       return (max_ansio > 1 ? V_008F38_SQ_TEX_XY_FILTER_ANISO_BILINEAR
                             : V_008F38_SQ_TEX_XY_FILTER_BILINEAR);
-   case VK_FILTER_CUBIC_IMG:
+   case VK_FILTER_CUBIC_EXT:
    default:
       fprintf(stderr, "illegal texture filter");
       return 0;
@@ -6552,11 +6552,11 @@ static unsigned
 radv_tex_filter_mode(VkSamplerReductionMode mode)
 {
    switch (mode) {
-   case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT:
+   case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE:
       return V_008F30_SQ_IMG_FILTER_MODE_BLEND;
-   case VK_SAMPLER_REDUCTION_MODE_MIN_EXT:
+   case VK_SAMPLER_REDUCTION_MODE_MIN:
       return V_008F30_SQ_IMG_FILTER_MODE_MIN;
-   case VK_SAMPLER_REDUCTION_MODE_MAX_EXT:
+   case VK_SAMPLER_REDUCTION_MODE_MAX:
       return V_008F30_SQ_IMG_FILTER_MODE_MAX;
    default:
       break;

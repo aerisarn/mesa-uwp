@@ -1528,7 +1528,7 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
 
    r = amdgpu_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx);
    if (r && r == -EACCES) {
-      result = VK_ERROR_NOT_PERMITTED_EXT;
+      result = VK_ERROR_NOT_PERMITTED_KHR;
       goto fail_create;
    } else if (r) {
       fprintf(stderr, "radv/amdgpu: radv_amdgpu_cs_ctx_create2 failed. (%i)\n", r);
