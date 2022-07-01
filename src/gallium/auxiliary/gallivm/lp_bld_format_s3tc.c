@@ -1150,35 +1150,39 @@ s3tc_store_cached_block(struct gallivm_state *gallivm,
 }
 
 static LLVMValueRef
+lookup_cache_member(struct gallivm_state *gallivm, LLVMValueRef cache, enum cache_member member, LLVMValueRef index) {
+   assert(member == LP_BUILD_FORMAT_CACHE_MEMBER_DATA || member == LP_BUILD_FORMAT_CACHE_MEMBER_TAGS);
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef member_ptr, indices[3];
+
+   indices[0] = lp_build_const_int32(gallivm, 0);
+   indices[1] = lp_build_const_int32(gallivm, member);
+   indices[2] = index;
+
+   const char *name =
+         member == LP_BUILD_FORMAT_CACHE_MEMBER_DATA ? "cache_data" :
+         member == LP_BUILD_FORMAT_CACHE_MEMBER_TAGS ? "tag_data" : "";
+
+   member_ptr = LLVMBuildGEP2(builder, lp_build_format_cache_type(gallivm),
+                              cache, indices, ARRAY_SIZE(indices), "cache_gep");
+
+   return LLVMBuildLoad2(builder, lp_build_format_cache_elem_type(gallivm, member), member_ptr, name);
+}
+
+static LLVMValueRef
 s3tc_lookup_cached_pixel(struct gallivm_state *gallivm,
                          LLVMValueRef cache,
                          LLVMValueRef index)
 {
-   LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef member_ptr, indices[3];
-
-   indices[0] = lp_build_const_int32(gallivm, 0);
-   indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_DATA);
-   indices[2] = index;
-   member_ptr = LLVMBuildGEP2(builder, lp_build_format_cache_type(gallivm), cache, indices, ARRAY_SIZE(indices), "");
-
-   return LLVMBuildLoad2(builder, lp_build_format_cache_member_data_type(gallivm), member_ptr, "cache_data");
+   return lookup_cache_member(gallivm, cache, LP_BUILD_FORMAT_CACHE_MEMBER_DATA, index);
 }
 
 static LLVMValueRef
 s3tc_lookup_tag_data(struct gallivm_state *gallivm,
-                     LLVMValueRef ptr,
+                     LLVMValueRef cache,
                      LLVMValueRef index)
 {
-   LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef member_ptr, indices[3];
-
-   indices[0] = lp_build_const_int32(gallivm, 0);
-   indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_TAGS);
-   indices[2] = index;
-   LLVMTypeRef tag_type = LLVMInt64TypeInContext(gallivm->context);
-   member_ptr = LLVMBuildGEP(builder, ptr, indices, ARRAY_SIZE(indices), "");
-   return LLVMBuildLoad2(builder, tag_type, member_ptr, "tag_data");
+   return lookup_cache_member(gallivm, cache, LP_BUILD_FORMAT_CACHE_MEMBER_TAGS, index);
 }
 
 #if LP_BUILD_FORMAT_CACHE_DEBUG
