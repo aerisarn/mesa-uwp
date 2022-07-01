@@ -1161,6 +1161,10 @@ tu6_emit_vpc(struct tu_cs *cs,
       }
    }
 
+   /* if vertex_flags somehow gets optimized out, your gonna have a bad time: */
+   if (gs)
+      assert(flags_regid != INVALID_REG);
+
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_primitive_cntl, 1);
    tu_cs_emit(cs, A6XX_SP_VS_PRIMITIVE_CNTL_OUT(linkage.cnt) |
                   A6XX_SP_GS_PRIMITIVE_CNTL_FLAGS_REGID(flags_regid));
