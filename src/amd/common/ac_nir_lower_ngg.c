@@ -1554,6 +1554,7 @@ static void
 ngg_build_streamout_buffer_info(nir_builder *b,
                                 nir_xfb_info *info,
                                 unsigned scratch_base,
+                                bool has_prim_query,
                                 nir_ssa_def *tid_in_tg,
                                 nir_ssa_def *gen_prim[4],
                                 nir_ssa_def *prim_stride_ret[4],
@@ -1644,6 +1645,18 @@ ngg_build_streamout_buffer_info(nir_builder *b,
          nir_store_shared(b, emit_prim[stream], nir_imm_int(b, stream * 4),
                           .base = scratch_base + 16);
       }
+
+      /* Update shader query. */
+      if (has_prim_query) {
+         nir_if *if_shader_query = nir_push_if(b, nir_load_prim_xfb_query_enabled_amd(b));
+         {
+            for (unsigned stream = 0; stream < 4; stream++) {
+               if (info->streams_written & BITFIELD_BIT(stream))
+                  nir_atomic_add_xfb_prim_count_amd(b, emit_prim[stream], .stream_id = stream);
+            }
+         }
+         nir_pop_if(b, if_shader_query);
+      }
    }
    nir_pop_if(b, if_invocation_0);
 
@@ -1733,7 +1746,8 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
    nir_ssa_def *so_buffer[4] = {0};
    nir_ssa_def *prim_stride[4] = {0};
    nir_ssa_def *tid_in_tg = nir_load_local_invocation_index(b);
-   ngg_build_streamout_buffer_info(b, info, scratch_base, tid_in_tg,
+   ngg_build_streamout_buffer_info(b, info, scratch_base,
+                                   s->has_prim_query, tid_in_tg,
                                    gen_prim_per_stream, prim_stride,
                                    so_buffer, buffer_offsets,
                                    emit_prim_per_stream);
@@ -2692,7 +2706,8 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
    nir_ssa_def *buffer_offsets[4] = {0};
    nir_ssa_def *so_buffer[4] = {0};
    nir_ssa_def *prim_stride[4] = {0};
-   ngg_build_streamout_buffer_info(b, info, st->lds_addr_gs_scratch, tid_in_tg, gen_prim,
+   ngg_build_streamout_buffer_info(b, info, st->lds_addr_gs_scratch,
+                                   st->has_xfb_query, tid_in_tg, gen_prim,
                                    prim_stride, so_buffer, buffer_offsets, emit_prim);
 
    /* GS use packed location for vertex LDS storage. */
