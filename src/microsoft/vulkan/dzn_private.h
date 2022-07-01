@@ -201,6 +201,7 @@ struct dzn_physical_device {
 
    mtx_t dev_lock;
    ID3D12Device2 *dev;
+   ID3D12Device10 *dev10;
    D3D_FEATURE_LEVEL feature_level;
    D3D_SHADER_MODEL shader_model;
    D3D12_FEATURE_DATA_ARCHITECTURE1 architecture;
@@ -254,6 +255,7 @@ struct dzn_device {
    struct vk_device_dispatch_table cmd_dispatch;
 
    ID3D12Device2 *dev;
+   ID3D12Device10 *dev10;
    ID3D12DeviceConfiguration *dev_config;
 
    struct dzn_meta_indirect_draw indirect_draws[DZN_NUM_INDIRECT_DRAW_TYPES];
