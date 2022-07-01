@@ -909,6 +909,11 @@ ir3_nir_lower_gs(nir_shader *shader)
 {
    struct state state = {};
 
+   /* Don't lower multiple times: */
+   nir_foreach_shader_out_variable (var, shader)
+      if (var->data.location == VARYING_SLOT_GS_VERTEX_FLAGS_IR3)
+         return;
+
    if (shader_debug_enabled(shader->info.stage)) {
       mesa_logi("NIR (before gs lowering):");
       nir_log_shaderi(shader);
