@@ -1135,7 +1135,7 @@ resource_create(struct pipe_screen *pscreen,
       if (zink_kopper_has_srgb(cdt))
          res->obj->vkflags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
       if (cdt->swapchain->scci.flags == VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)
-         res->obj->vkflags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
+         res->obj->vkflags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
       res->obj->vkusage = cdt->swapchain->scci.imageUsage;
       res->base.b.bind |= PIPE_BIND_DISPLAY_TARGET;
       res->optimal_tiling = true;

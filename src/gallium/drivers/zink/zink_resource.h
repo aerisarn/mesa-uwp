@@ -99,7 +99,7 @@ struct zink_resource_object {
    VkImageUsageFlags vkusage;
    uint64_t modifier;
    VkImageAspectFlags modifier_aspect;
-   VkSamplerYcbcrConversionKHR sampler_conversion;
+   VkSamplerYcbcrConversion sampler_conversion;
    unsigned plane_offsets[3];
    unsigned plane_strides[3];
    unsigned plane_count;

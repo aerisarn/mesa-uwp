@@ -76,7 +76,7 @@ struct kopper_displaytarget
    struct util_queue_fence present_fence;
 
    VkSurfaceCapabilitiesKHR caps;
-   VkImageFormatListCreateInfoKHR format_list;
+   VkImageFormatListCreateInfo format_list;
    enum kopper_type type;
    bool is_kill;
    VkPresentModeKHR present_mode;

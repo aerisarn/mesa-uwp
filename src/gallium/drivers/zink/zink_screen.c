@@ -255,7 +255,7 @@ cache_get_job(void *data, void *gdata, int thread_index)
    VkPipelineCacheCreateInfo pcci;
    pcci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
    pcci.pNext = NULL;
-   pcci.flags = screen->info.have_EXT_pipeline_creation_cache_control ? VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT : 0;
+   pcci.flags = screen->info.have_EXT_pipeline_creation_cache_control ? VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT : 0;
    pcci.initialDataSize = 0;
    pcci.pInitialData = NULL;
 
@@ -914,8 +914,8 @@ zink_get_shader_param(struct pipe_screen *pscreen,
          /* intel drivers report fewer components, but it's a value that's compatible
           * with what we need for GL, so we can still force a conformant value here
           */
-         if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR ||
-             screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR)
+         if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA ||
+             screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS)
             return 32;
          max = screen->info.props.limits.maxFragmentInputComponents / 4;
          break;
@@ -1522,9 +1522,9 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
       return VK_FORMAT_D32_SFLOAT_S8_UINT;
    }
 
-   if ((ret == VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT &&
+   if ((ret == VK_FORMAT_A4B4G4R4_UNORM_PACK16 &&
         !screen->info.format_4444_feats.formatA4B4G4R4) ||
-       (ret == VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT &&
+       (ret == VK_FORMAT_A4R4G4B4_UNORM_PACK16 &&
         !screen->info.format_4444_feats.formatA4R4G4B4))
       return VK_FORMAT_UNDEFINED;
 

@@ -757,10 +757,10 @@ zink_destroy_compute_program(struct zink_context *ctx,
 static unsigned
 get_pipeline_idx(bool have_EXT_extended_dynamic_state, enum pipe_prim_type mode, VkPrimitiveTopology vkmode)
 {
-   /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT specifies that the topology state in
+   /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY specifies that the topology state in
     * VkPipelineInputAssemblyStateCreateInfo only specifies the topology class,
     * and the specific topology order and adjacency must be set dynamically
-    * with vkCmdSetPrimitiveTopologyEXT before any drawing commands.
+    * with vkCmdSetPrimitiveTopology before any drawing commands.
     */
    if (have_EXT_extended_dynamic_state) {
       if (mode == PIPE_PRIM_PATCHES)

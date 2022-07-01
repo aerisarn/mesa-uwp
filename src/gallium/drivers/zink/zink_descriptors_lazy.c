@@ -342,7 +342,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       template[i].pipelineBindPoint = pg->is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
       template[i].pipelineLayout = pg->layout;
       template[i].set = i;
-      VkDescriptorUpdateTemplateKHR t;
+      VkDescriptorUpdateTemplate t;
       if (VKSCR(CreateDescriptorUpdateTemplate)(screen->dev, &template[i], NULL, &t) != VK_SUCCESS)
          return false;
       pg->dd->templates[i] = t;
