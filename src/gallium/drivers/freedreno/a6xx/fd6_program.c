@@ -991,6 +991,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       uint32_t flags_regid =
          ir3_find_output_regid(gs, VARYING_SLOT_GS_VERTEX_FLAGS_IR3);
 
+      /* if vertex_flags somehow gets optimized out, your gonna have a bad time: */
+      assert(flags_regid != INVALID_REG);
+
       OUT_PKT4(ring, REG_A6XX_SP_GS_PRIMITIVE_CNTL, 1);
       OUT_RING(ring, A6XX_SP_GS_PRIMITIVE_CNTL_OUT(l.cnt) |
                         A6XX_SP_GS_PRIMITIVE_CNTL_FLAGS_REGID(flags_regid));
