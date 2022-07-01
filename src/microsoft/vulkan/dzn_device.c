@@ -46,8 +46,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
+#endif
 
 #include <directx/d3d12sdklayers.h>
 
@@ -146,8 +148,10 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
    if (!instance)
       return;
 
+#ifdef _WIN32
    if (instance->dxil_validator)
       dxil_destroy_validator(instance->dxil_validator);
+#endif
 
    list_for_each_entry_safe(struct dzn_physical_device, pdev,
                             &instance->physical_devices, link) {
@@ -188,6 +192,7 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    instance->debug_flags =
       parse_debug_string(getenv("DZN_DEBUG"), dzn_debug_options);
 
+#ifdef _WIN32
    if (instance->debug_flags & DZN_DEBUG_DEBUGGER) {
       /* wait for debugger to attach... */
       while (!IsDebuggerPresent()) {
@@ -204,11 +209,17 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
          freopen(path, "w", stdout);
       }
    }
+#endif
 
+   bool missing_validator = false;
+#ifdef _WIN32
    instance->dxil_validator = dxil_create_validator(NULL);
+   missing_validator = !instance->dxil_validator;
+#endif
+
    instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig();
 
-   if (!instance->dxil_validator ||
+   if (missing_validator ||
        !instance->d3d12.serialize_root_sig) {
       dzn_instance_destroy(instance, pAllocator);
       return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);

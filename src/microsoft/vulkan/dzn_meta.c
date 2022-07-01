@@ -48,6 +48,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
    ASSERTED bool ret = nir_to_dxil(nir, &opts, &dxil_blob);
    assert(ret);
 
+#ifdef _WIN32
    char *err = NULL;
    bool res = dxil_validate_module(instance->dxil_validator,
                                    dxil_blob.data,
@@ -79,6 +80,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
       ralloc_free(err);
    }
    assert(res);
+#endif
 
    void *data;
    size_t size;

@@ -367,6 +367,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
    if (result != VK_SUCCESS)
       return result;
 
+#ifdef _WIN32
    char *err;
    bool res = dxil_validate_module(instance->dxil_validator,
                                    (void *)slot->pShaderBytecode,
@@ -397,6 +398,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
       }
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
+#endif
 
    return VK_SUCCESS;
 }
