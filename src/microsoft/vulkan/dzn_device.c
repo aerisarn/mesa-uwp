@@ -1015,11 +1015,13 @@ dzn_EnumeratePhysicalDevices(VkInstance inst,
    VK_FROM_HANDLE(dzn_instance, instance, inst);
 
    if (!instance->physical_devices_enumerated) {
+      VkResult result = dzn_enumerate_physical_devices_dxcore(instance);
 #ifdef _WIN32
-      VkResult result = dzn_enumerate_physical_devices_dxgi(instance);
+      if (result != VK_SUCCESS)
+         result = dzn_enumerate_physical_devices_dxgi(instance);
+#endif
       if (result != VK_SUCCESS)
          return result;
-#endif
    }
 
    VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,

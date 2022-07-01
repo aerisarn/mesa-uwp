@@ -34,6 +34,7 @@ libdzn_files = files(
   'dzn_cmd_buffer.c',
   'dzn_descriptor_set.c',
   'dzn_device.c',
+  'dzn_dxcore.cpp',
   'dzn_image.c',
   'dzn_meta.c',
   'dzn_nir.c',

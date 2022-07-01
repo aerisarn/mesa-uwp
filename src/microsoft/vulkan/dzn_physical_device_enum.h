@@ -57,6 +57,9 @@ VkResult
 dzn_enumerate_physical_devices_dxgi(struct dzn_instance *instance);
 
 VkResult
+dzn_enumerate_physical_devices_dxcore(struct dzn_instance *instance);
+
+VkResult
 dzn_instance_add_physical_device(struct dzn_instance *instance,
                                  IUnknown *adapter,
                                  const struct dzn_physical_device_desc *desc);
