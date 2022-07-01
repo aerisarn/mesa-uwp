@@ -194,6 +194,20 @@ struct aco_compiler_options {
    } debug;
 };
 
+enum aco_statistic {
+   aco_statistic_hash,
+   aco_statistic_instructions,
+   aco_statistic_copies,
+   aco_statistic_branches,
+   aco_statistic_latency,
+   aco_statistic_inv_throughput,
+   aco_statistic_vmem_clauses,
+   aco_statistic_smem_clauses,
+   aco_statistic_sgpr_presched,
+   aco_statistic_vgpr_presched,
+   aco_num_statistics
+};
+
 #ifdef __cplusplus
 }
 #endif

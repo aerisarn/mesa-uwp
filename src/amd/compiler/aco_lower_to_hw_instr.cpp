@@ -1653,7 +1653,7 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
    bool skip_partial_copies = true;
    for (auto it = copy_map.begin();;) {
       if (copy_map.empty()) {
-         ctx->program->statistics[statistic_copies] +=
+         ctx->program->statistics[aco_statistic_copies] +=
             ctx->instructions.size() - num_instructions_before;
          return;
       }
@@ -1961,7 +1961,8 @@ handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context* ctx,
             break;
       }
    }
-   ctx->program->statistics[statistic_copies] += ctx->instructions.size() - num_instructions_before;
+   ctx->program->statistics[aco_statistic_copies] +=
+      ctx->instructions.size() - num_instructions_before;
 }
 
 void
