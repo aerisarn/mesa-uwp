@@ -33,6 +33,7 @@
 #include "util/log.h"
 
 #include <directx/d3d12sdklayers.h>
+#include <util/u_dl.h>
 #include <dxgi1_4.h>
 
 static const DXGI_FORMAT formats[PIPE_FORMAT_COUNT] = {
@@ -339,13 +340,13 @@ get_debug_interface()
    typedef HRESULT(WINAPI *PFN_D3D12_GET_DEBUG_INTERFACE)(REFIID riid, void **ppFactory);
    PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface;
 
-   HMODULE d3d12_mod = LoadLibraryA("D3D12.DLL");
+   struct util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
    if (!d3d12_mod) {
-      mesa_loge("failed to load D3D12.DLL\n");
+      mesa_loge("failed to load D3D12\n");
       return NULL;
    }
 
-   D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(d3d12_mod, "D3D12GetDebugInterface");
+   D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetDebugInterface");
    if (!D3D12GetDebugInterface) {
       mesa_loge("failed to load D3D12GetDebugInterface from D3D12.DLL\n");
       return NULL;
@@ -392,9 +393,9 @@ d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
    typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IDXGIAdapter1 *, D3D_FEATURE_LEVEL, REFIID, void **);
    PFN_D3D12CREATEDEVICE D3D12CreateDevice;
 
-   HMODULE d3d12_mod = LoadLibraryA("D3D12.DLL");
+   struct util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
    if (!d3d12_mod) {
-      mesa_loge("failed to load D3D12.DLL\n");
+      mesa_loge("failed to load D3D12\n");
       return NULL;
    }
 
@@ -404,16 +405,16 @@ d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
    {
       typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID *, void *, UINT *);
       PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures =
-         (PFN_D3D12ENABLEEXPERIMENTALFEATURES)GetProcAddress(d3d12_mod, "D3D12EnableExperimentalFeatures");
+         (PFN_D3D12ENABLEEXPERIMENTALFEATURES)util_dl_get_proc_address(d3d12_mod, "D3D12EnableExperimentalFeatures");
       if (FAILED(D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, NULL, NULL))) {
          mesa_loge("failed to enable experimental shader models\n");
          return NULL;
       }
    }
 
-   D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)GetProcAddress(d3d12_mod, "D3D12CreateDevice");
+   D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)util_dl_get_proc_address(d3d12_mod, "D3D12CreateDevice");
    if (!D3D12CreateDevice) {
-      mesa_loge("failed to load D3D12CreateDevice from D3D12.DLL\n");
+      mesa_loge("failed to load D3D12CreateDevice from D3D12\n");
       return NULL;
    }
 
@@ -430,12 +431,12 @@ d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE
 d3d12_get_serialize_root_sig(void)
 {
-   HMODULE d3d12_mod = LoadLibraryA("d3d12.dll");
+   struct util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
    if (!d3d12_mod) {
-      mesa_loge("failed to load d3d12.dll\n");
+      mesa_loge("failed to load D3D12\n");
       return NULL;
    }
 
    return (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)
-      GetProcAddress(d3d12_mod, "D3D12SerializeVersionedRootSignature");
+      util_dl_get_proc_address(d3d12_mod, "D3D12SerializeVersionedRootSignature");
 }
