@@ -1819,7 +1819,7 @@ dzn_descriptor_set_copy(const VkCopyDescriptorSet *pDescriptorCopy)
           copied_count < pDescriptorCopy->descriptorCount) {
       VkDescriptorType src_type =
          dzn_descriptor_set_ptr_get_vk_type(src_set->layout, &src_ptr);
-      VkDescriptorType dst_type =
+      ASSERTED VkDescriptorType dst_type =
          dzn_descriptor_set_ptr_get_vk_type(dst_set->layout, &dst_ptr);
 
       assert(src_type == dst_type);
@@ -1928,7 +1928,7 @@ dzn_descriptor_update_template_create(struct dzn_device *device,
                                   info->pDescriptorUpdateEntries[e].dstBinding,
                                   info->pDescriptorUpdateEntries[e].dstArrayElement);
       uint32_t desc_count = info->pDescriptorUpdateEntries[e].descriptorCount;
-      VkDescriptorType type = info->pDescriptorUpdateEntries[e].descriptorType;
+      ASSERTED VkDescriptorType type = info->pDescriptorUpdateEntries[e].descriptorType;
       uint32_t d = 0;
 
       while (dzn_descriptor_set_ptr_is_valid(&ptr) && d < desc_count) {

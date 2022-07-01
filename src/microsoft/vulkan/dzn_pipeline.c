@@ -1521,7 +1521,7 @@ dzn_pipeline_init(struct dzn_pipeline *pipeline,
    memcpy(pipeline->sets, layout->sets, sizeof(pipeline->sets));
    vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
 
-   uint32_t max_streamsz =
+   ASSERTED uint32_t max_streamsz =
       type == VK_PIPELINE_BIND_POINT_GRAPHICS ?
       MAX_GFX_PIPELINE_STATE_STREAM_SIZE :
       MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE;
@@ -1853,9 +1853,9 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
          }
       }
 
-      HRESULT hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
-                                                       &IID_ID3D12PipelineState,
-                                                       (void**)(&variant->state));
+      ASSERTED HRESULT hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
+                                                                &IID_ID3D12PipelineState,
+                                                                (void**)(&variant->state));
       assert(!FAILED(hres));
       he = _mesa_hash_table_insert(pipeline->variants, &variant->key, variant);
       assert(he);

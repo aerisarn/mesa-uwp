@@ -690,7 +690,7 @@ dzn_BindImageMemory2(VkDevice dev,
          case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
             const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
                (const VkBindImageMemorySwapchainInfoKHR *) s;
-            struct dzn_image *swapchain_image =
+            ASSERTED struct dzn_image *swapchain_image =
                dzn_swapchain_get_image(device,
                                        swapchain_info->swapchain,
                                        swapchain_info->imageIndex);
@@ -1144,7 +1144,7 @@ dzn_image_view_init(struct dzn_device *device,
    VK_FROM_HANDLE(dzn_image, image, pCreateInfo->image);
 
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
-   uint32_t layer_count = dzn_get_layer_count(image, range);
+   ASSERTED uint32_t layer_count = dzn_get_layer_count(image, range);
 
    vk_image_view_init(&device->vk, &iview->vk, false, pCreateInfo);
 

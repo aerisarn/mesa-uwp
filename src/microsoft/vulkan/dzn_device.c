@@ -596,7 +596,7 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
    };
 
    ID3D12Device2 *dev = dzn_physical_device_get_d3d12_dev(pdev);
-   HRESULT hres =
+   ASSERTED HRESULT hres =
       ID3D12Device1_CheckFeatureSupport(dev, D3D12_FEATURE_FORMAT_SUPPORT,
                                         &dfmt_info, sizeof(dfmt_info));
    assert(!FAILED(hres));
@@ -2194,7 +2194,7 @@ dzn_device_memory_create(struct dzn_device *device,
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
-         const VkExportMemoryAllocateInfo *exp =
+         UNUSED const VkExportMemoryAllocateInfo *exp =
             (const VkExportMemoryAllocateInfo *)ext;
 
          // TODO: support export

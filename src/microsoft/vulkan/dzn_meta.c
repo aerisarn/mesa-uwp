@@ -45,7 +45,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
 
    struct nir_to_dxil_options opts = { .environment = DXIL_ENVIRONMENT_VULKAN };
    struct blob dxil_blob;
-   bool ret = nir_to_dxil(nir, &opts, &dxil_blob);
+   ASSERTED bool ret = nir_to_dxil(nir, &opts, &dxil_blob);
    assert(ret);
 
    char *err = NULL;
