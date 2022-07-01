@@ -3820,6 +3820,22 @@ struct anv_image {
 
       /** Location of the fast clear state.  */
       struct anv_image_memory_range fast_clear_memory_range;
+
+      /**
+       * Whether this image can be fast cleared with non-zero clear colors.
+       * This can happen with mutable images when formats of different bit
+       * sizes per components are used.
+       *
+       * On Gfx9+, because the clear colors are stored as a 4 components 32bit
+       * values, we can clear in R16G16_UNORM (store 2 16bit values in the
+       * components 0 & 1 of the clear color) and then draw in R32_UINT which
+       * would interpret the clear color as a single component value, using
+       * only the first 16bit component of the previous written clear color.
+       *
+       * On Gfx7/7.5/8, only CC_ZERO/CC_ONE clear colors are supported, this
+       * boolean will prevent the usage of CC_ONE.
+       */
+      bool can_non_zero_fast_clear;
    } planes[3];
 };
 

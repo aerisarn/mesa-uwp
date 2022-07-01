@@ -369,6 +369,65 @@ anv_image_plane_needs_shadow_surface(const struct intel_device_info *devinfo,
    return false;
 }
 
+static bool
+can_fast_clear_with_non_zero_color(const struct intel_device_info *devinfo,
+                                   const struct anv_image *image,
+                                   uint32_t plane,
+                                   const VkImageFormatListCreateInfoKHR *fmt_list)
+{
+   /* If we don't have an AUX surface where fast clears apply, we can return
+    * early.
+    */
+   if (!isl_aux_usage_has_fast_clears(image->planes[plane].aux_usage))
+      return false;
+
+   /* Non mutable image, we can fast clear with any color supported by HW.
+    */
+   if (!(image->vk.create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
+      return true;
+
+   /* Mutable image with no format list, we have to assume all formats */
+   if (!fmt_list || fmt_list->viewFormatCount == 0)
+      return false;
+
+   enum isl_format img_format = image->planes[plane].primary_surface.isl.format;
+
+   /* Check bit compatibility for clear color components */
+   for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
+      struct anv_format_plane view_format_plane =
+         anv_get_format_plane(devinfo, fmt_list->pViewFormats[i],
+                              plane, image->vk.tiling);
+
+      enum isl_format view_format = view_format_plane.isl_format;
+
+      if (!isl_formats_have_same_bits_per_channel(img_format, view_format))
+         return false;
+
+      /* Switching between any of those format types on Gfx7/8 will cause
+       * problems https://gitlab.freedesktop.org/mesa/mesa/-/issues/1711
+       */
+      if (devinfo->ver <= 8) {
+         if (isl_format_has_float_channel(img_format) &&
+             !isl_format_has_float_channel(view_format))
+            return false;
+
+         if (isl_format_has_int_channel(img_format) &&
+             !isl_format_has_int_channel(view_format))
+            return false;
+
+         if (isl_format_has_unorm_channel(img_format) &&
+             !isl_format_has_unorm_channel(view_format))
+            return false;
+
+         if (isl_format_has_snorm_channel(img_format) &&
+             !isl_format_has_snorm_channel(view_format))
+            return false;
+      }
+   }
+
+   return true;
+}
+
 /**
  * Return true if the storage image could be used with atomics.
  *
@@ -1429,6 +1488,14 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
    if (r != VK_SUCCESS)
       goto fail;
 
+   /* Once we have all the bindings, determine whether we can do non 0 fast
+    * clears for each plane.
+    */
+   for (uint32_t p = 0; p < image->n_planes; p++) {
+      image->planes[p].can_non_zero_fast_clear =
+         can_fast_clear_with_non_zero_color(&device->info, image, p, fmt_list);
+   }
+
    return VK_SUCCESS;
 
 fail:
@@ -2315,6 +2382,10 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
           */
          return ANV_FAST_CLEAR_DEFAULT_VALUE;
       } else if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+         /* The image might not support non zero fast clears when mutable. */
+         if (!image->planes[plane].can_non_zero_fast_clear)
+            return ANV_FAST_CLEAR_DEFAULT_VALUE;
+
          /* When we're in a render pass we have the clear color data from the
           * VkRenderPassBeginInfo and we can use arbitrary clear colors.  They
           * must get partially resolved before we leave the render pass.
@@ -2323,6 +2394,10 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
       } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_MCS ||
                  image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
          if (devinfo->ver >= 11) {
+            /* The image might not support non zero fast clears when mutable. */
+            if (!image->planes[plane].can_non_zero_fast_clear)
+               return ANV_FAST_CLEAR_DEFAULT_VALUE;
+
             /* On ICL and later, the sampler hardware uses a copy of the clear
              * value that is encoded as a pixel value.  Therefore, we can use
              * any clear color we like for sampling.
