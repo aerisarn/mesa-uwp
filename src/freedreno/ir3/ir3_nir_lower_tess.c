@@ -839,6 +839,16 @@ ir3_nir_lower_tess_eval(nir_shader *shader, struct ir3_shader_variant *v,
 }
 
 static void
+copy_vars(nir_builder *b, struct exec_list *dests, struct exec_list *srcs)
+{
+   foreach_two_lists (dest_node, dests, src_node, srcs) {
+      nir_variable *dest = exec_node_data(nir_variable, dest_node, node);
+      nir_variable *src = exec_node_data(nir_variable, src_node, node);
+      nir_copy_var(b, dest, src);
+   }
+}
+
+static void
 lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
 {
    nir_foreach_instr_safe (instr, block) {
@@ -874,12 +884,7 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
                                nir_imm_int(b, stream)),
                        0x1 /* .x */);
 
-         foreach_two_lists (dest_node, &state->emit_outputs, src_node,
-                            &state->old_outputs) {
-            nir_variable *dest = exec_node_data(nir_variable, dest_node, node);
-            nir_variable *src = exec_node_data(nir_variable, src_node, node);
-            nir_copy_var(b, dest, src);
-         }
+         copy_vars(b, &state->emit_outputs, &state->old_outputs);
 
          nir_instr_remove(&intr->instr);
 
@@ -998,12 +1003,7 @@ ir3_nir_lower_gs(nir_shader *shader)
 
       nir_discard_if(&b, cond);
 
-      foreach_two_lists (dest_node, &state.new_outputs, src_node,
-                         &state.emit_outputs) {
-         nir_variable *dest = exec_node_data(nir_variable, dest_node, node);
-         nir_variable *src = exec_node_data(nir_variable, src_node, node);
-         nir_copy_var(&b, dest, src);
-      }
+      copy_vars(&b, &state.new_outputs, &state.emit_outputs);
    }
 
    exec_list_append(&shader->variables, &state.old_outputs);
