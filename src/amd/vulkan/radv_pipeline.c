@@ -202,10 +202,14 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       free(library_pipeline->groups);
       for (uint32_t i = 0; i < library_pipeline->stage_count; i++) {
          RADV_FROM_HANDLE(vk_shader_module, module, library_pipeline->stages[i].module);
-         vk_object_base_finish(&module->base);
-         ralloc_free(module);
+         if (module) {
+            vk_object_base_finish(&module->base);
+            ralloc_free(module);
+         }
       }
       free(library_pipeline->stages);
+      free(library_pipeline->identifiers);
+      free(library_pipeline->hashes);
    }
 
    if (pipeline->slab)
@@ -4460,8 +4464,10 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
 {
    const VkShaderModuleCreateInfo *minfo =
       vk_find_struct_const(sinfo->pNext, SHADER_MODULE_CREATE_INFO);
+   const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
+      vk_find_struct_const(sinfo->pNext, PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
 
-   if (sinfo->module == VK_NULL_HANDLE && !minfo)
+   if (sinfo->module == VK_NULL_HANDLE && !minfo && !iinfo)
       return;
 
    memset(out_stage, 0, sizeof(*out_stage));
@@ -4481,7 +4487,7 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
 
       if (module->nir)
          out_stage->internal_nir = module->nir;
-   } else {
+   } else if (minfo) {
       out_stage->spirv.data = (const char *) minfo->pCode;
       out_stage->spirv.size = minfo->codeSize;
    }

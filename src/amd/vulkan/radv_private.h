@@ -2136,6 +2136,10 @@ struct radv_library_pipeline {
    VkPipelineShaderStageCreateInfo *stages;
    unsigned group_count;
    VkRayTracingShaderGroupCreateInfoKHR *groups;
+   VkPipelineShaderStageModuleIdentifierCreateInfoEXT *identifiers;
+   struct {
+      uint8_t sha1[SHA1_DIGEST_LENGTH];
+   } *hashes;
 };
 
 #define RADV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)            \

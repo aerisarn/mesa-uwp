@@ -122,11 +122,38 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
       memcpy(pipeline->stages, local_create_info.pStages, size);
 
+      pipeline->hashes = malloc(sizeof(*pipeline->hashes) * local_create_info.stageCount);
+      if (!pipeline->hashes)
+         goto fail;
+
+      pipeline->identifiers = malloc(sizeof(*pipeline->identifiers) * local_create_info.stageCount);
+      if (!pipeline->identifiers)
+         goto fail;
+
       for (uint32_t i = 0; i < local_create_info.stageCount; i++) {
          RADV_FROM_HANDLE(vk_shader_module, module, pipeline->stages[i].module);
 
-         struct vk_shader_module *new_module = vk_shader_module_clone(NULL, module);
-         pipeline->stages[i].module = vk_shader_module_to_handle(new_module);
+         const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
+            vk_find_struct_const(pCreateInfo->pStages[i].pNext,
+               PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
+
+         if (module) {
+            struct vk_shader_module *new_module = vk_shader_module_clone(NULL, module);
+            pipeline->stages[i].module = vk_shader_module_to_handle(new_module);
+            pipeline->stages[i].pNext = NULL;
+         } else {
+            assert(iinfo);
+            pipeline->identifiers[i].identifierSize =
+               MIN2(iinfo->identifierSize, sizeof(pipeline->hashes[i].sha1));
+            memcpy(pipeline->hashes[i].sha1, iinfo->pIdentifier,
+                   pipeline->identifiers[i].identifierSize);
+            pipeline->stages[i].module = VK_NULL_HANDLE;
+            pipeline->stages[i].pNext = &pipeline->identifiers[i];
+            pipeline->identifiers[i].sType =
+               VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT;
+            pipeline->identifiers[i].pNext = NULL;
+            pipeline->identifiers[i].pIdentifier = pipeline->hashes[i].sha1;
+         }
       }
    }
 
@@ -147,6 +174,8 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 fail:
    free(pipeline->groups);
    free(pipeline->stages);
+   free(pipeline->hashes);
+   free(pipeline->identifiers);
    free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);
    return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1860,7 +1889,11 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
     * generating the nir. */
    result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, hash,
                                          stack_sizes, local_create_info.groupCount, pPipeline);
+
    if (result == VK_PIPELINE_COMPILE_REQUIRED) {
+      if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
+         goto fail;
+
       stack_sizes = calloc(sizeof(*stack_sizes), local_create_info.groupCount);
       if (!stack_sizes) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;

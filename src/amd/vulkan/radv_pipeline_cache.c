@@ -166,7 +166,18 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
       RADV_FROM_HANDLE(vk_shader_module, module, pCreateInfo->pStages[i].module);
       const VkSpecializationInfo *spec_info = pCreateInfo->pStages[i].pSpecializationInfo;
 
-      _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
+      const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
+         vk_find_struct_const(pCreateInfo->pStages[i].pNext,
+               PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
+
+      if (module) {
+         _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
+      } else {
+         assert(iinfo);
+         assert(iinfo->identifierSize <= VK_MAX_SHADER_MODULE_IDENTIFIER_SIZE_EXT);
+         _mesa_sha1_update(&ctx, iinfo->pIdentifier, iinfo->identifierSize);
+      }
+
       _mesa_sha1_update(&ctx, pCreateInfo->pStages[i].pName, strlen(pCreateInfo->pStages[i].pName));
       if (spec_info && spec_info->mapEntryCount) {
          _mesa_sha1_update(&ctx, spec_info->pMapEntries,

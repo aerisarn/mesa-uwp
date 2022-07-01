@@ -526,6 +526,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
 #endif
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_image_atomic_int64 = true,
+      .EXT_shader_module_identifier = true,
       .EXT_shader_stencil_export = true,
       .EXT_shader_subgroup_ballot = true,
       .EXT_shader_subgroup_vote = true,
@@ -1773,6 +1774,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->borderColorSwizzleFromImage = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT: {
+         VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *features =
+            (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *)ext;
+         features->shaderModuleIdentifier = true;
+         break;
+      }
       default:
          break;
       }
@@ -2455,6 +2462,16 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->meshOutputPerPrimitiveGranularity = 1;
          properties->meshOutputPerVertexGranularity = 1;
 
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_PROPERTIES_EXT: {
+         VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT *properties =
+            (VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT *)ext;
+         STATIC_ASSERT(sizeof(vk_shaderModuleIdentifierAlgorithmUUID) ==
+                       sizeof(properties->shaderModuleIdentifierAlgorithmUUID));
+         memcpy(properties->shaderModuleIdentifierAlgorithmUUID,
+                vk_shaderModuleIdentifierAlgorithmUUID,
+                sizeof(properties->shaderModuleIdentifierAlgorithmUUID));
          break;
       }
       default:
