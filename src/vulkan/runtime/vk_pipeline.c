@@ -117,19 +117,27 @@ vk_pipeline_hash_shader_stage(const VkPipelineShaderStageCreateInfo *info,
       return;
    }
 
+   const VkShaderModuleCreateInfo *minfo =
+      vk_find_struct_const(info->pNext, SHADER_MODULE_CREATE_INFO);
+   const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
+      vk_find_struct_const(info->pNext, PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
+
    struct mesa_sha1 ctx;
 
    _mesa_sha1_init(&ctx);
    if (module) {
       _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
-   } else {
-      const VkShaderModuleCreateInfo *minfo =
-         vk_find_struct_const(info->pNext, SHADER_MODULE_CREATE_INFO);
+   } else if (minfo) {
       unsigned char spirv_sha1[SHA1_DIGEST_LENGTH];
 
-      assert(minfo);
       _mesa_sha1_compute(minfo->pCode, minfo->codeSize, spirv_sha1);
       _mesa_sha1_update(&ctx, spirv_sha1, sizeof(spirv_sha1));
+   } else {
+      /* It is legal to pass in arbitrary identifiers as long as they don't exceed
+       * the limit. Shaders with bogus identifiers are more or less guaranteed to fail. */
+      assert(iinfo);
+      assert(iinfo->identifierSize <= VK_MAX_SHADER_MODULE_IDENTIFIER_SIZE_EXT);
+      _mesa_sha1_update(&ctx, iinfo->pIdentifier, iinfo->identifierSize);
    }
 
    _mesa_sha1_update(&ctx, info->pName, strlen(info->pName));

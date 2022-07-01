@@ -45,6 +45,8 @@ struct vk_shader_module {
    char data[0];
 };
 
+extern const uint8_t vk_shaderModuleIdentifierAlgorithmUUID[VK_UUID_SIZE];
+
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_shader_module, base, VkShaderModule,
                                VK_OBJECT_TYPE_SHADER_MODULE)
 

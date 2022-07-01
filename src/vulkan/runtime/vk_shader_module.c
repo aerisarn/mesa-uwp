@@ -60,6 +60,28 @@ vk_common_CreateShaderModule(VkDevice _device,
     return VK_SUCCESS;
 }
 
+const uint8_t vk_shaderModuleIdentifierAlgorithmUUID[VK_UUID_SIZE] = "MESA-SHA1";
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_GetShaderModuleIdentifierEXT(VkDevice _device,
+                                       VkShaderModule _module,
+                                       VkShaderModuleIdentifierEXT *pIdentifier)
+{
+   VK_FROM_HANDLE(vk_shader_module, module, _module);
+   memcpy(pIdentifier->identifier, module->sha1, sizeof(module->sha1));
+   pIdentifier->identifierSize = sizeof(module->sha1);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_GetShaderModuleCreateInfoIdentifierEXT(VkDevice _device,
+                                                 const VkShaderModuleCreateInfo *pCreateInfo,
+                                                 VkShaderModuleIdentifierEXT *pIdentifier)
+{
+   _mesa_sha1_compute(pCreateInfo->pCode, pCreateInfo->codeSize,
+                      pIdentifier->identifier);
+   pIdentifier->identifierSize = SHA1_DIGEST_LENGTH;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 vk_common_DestroyShaderModule(VkDevice _device,
                               VkShaderModule _module,
