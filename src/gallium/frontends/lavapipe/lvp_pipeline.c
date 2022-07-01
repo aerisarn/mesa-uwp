@@ -200,26 +200,26 @@ deep_copy_viewport_state(void *mem_ctx,
    dst->pScissors = NULL;
 
    if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT) &&
-       !dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)) {
+       !dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT)) {
       LVP_PIPELINE_DUP(dst->pViewports,
                        src->pViewports,
                        VkViewport,
                        src->viewportCount);
    }
-   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT))
+   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT))
       dst->viewportCount = src->viewportCount;
    else
       dst->viewportCount = 0;
 
    if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR) &&
-       !dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT)) {
+       !dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT)) {
       if (src->pScissors)
          LVP_PIPELINE_DUP(dst->pScissors,
                           src->pScissors,
                           VkRect2D,
                           src->scissorCount);
    }
-   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT))
+   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT))
       dst->scissorCount = src->scissorCount;
    else
       dst->scissorCount = 0;
@@ -280,7 +280,7 @@ deep_copy_dynamic_state(void *mem_ctx,
    VkDynamicState *states = (void*)dst->pDynamicStates;
    for (unsigned i = 0; i < src->dynamicStateCount; i++) {
       switch (src->pDynamicStates[i]) {
-      case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
+      case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE:
       case VK_DYNAMIC_STATE_VERTEX_INPUT_EXT:
          if (stages & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT)
             states[dst->dynamicStateCount++] = src->pDynamicStates[i];
@@ -290,25 +290,25 @@ deep_copy_dynamic_state(void *mem_ctx,
       case VK_DYNAMIC_STATE_SCISSOR:
       case VK_DYNAMIC_STATE_LINE_WIDTH:
       case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
-      case VK_DYNAMIC_STATE_CULL_MODE_EXT:
-      case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
-      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
-      case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT:
-      case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT:
+      case VK_DYNAMIC_STATE_CULL_MODE:
+      case VK_DYNAMIC_STATE_FRONT_FACE:
+      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
+      case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
+      case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
       case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:
-      case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT:
-      case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
+      case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
          if (stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT)
             states[dst->dynamicStateCount++] = src->pDynamicStates[i];
          break;
 
       case VK_DYNAMIC_STATE_DEPTH_BIAS:
       case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
-      case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT:
-      case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT:
-      case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT:
-      case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT:
-      case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
+      case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:
+      case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:
+      case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:
+      case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
          if (has_depth && (stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT))
             states[dst->dynamicStateCount++] = src->pDynamicStates[i];
          break;
@@ -316,8 +316,8 @@ deep_copy_dynamic_state(void *mem_ctx,
       case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
       case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
       case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
-      case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT:
-      case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
+      case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:
+      case VK_DYNAMIC_STATE_STENCIL_OP:
          if (has_stencil && (stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT))
             states[dst->dynamicStateCount++] = src->pDynamicStates[i];
          break;
@@ -397,7 +397,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
    VkPipelineShaderStageCreateInfo *stages;
    VkPipelineVertexInputStateCreateInfo *vertex_input;
    VkPipelineRasterizationStateCreateInfo *rasterization_state;
-   const VkPipelineRenderingCreateInfoKHR *rp_info = NULL;
+   const VkPipelineRenderingCreateInfo *rp_info = NULL;
 
    dst->sType = src->sType;
    dst->pNext = NULL;
@@ -410,8 +410,8 @@ deep_copy_graphics_create_info(void *mem_ctx,
       dst->renderPass = src->renderPass;
       rp_info = vk_get_pipeline_rendering_create_info(src);
       if (rp_info && !src->renderPass) {
-         VkPipelineRenderingCreateInfoKHR *r = ralloc(mem_ctx, VkPipelineRenderingCreateInfoKHR);
-         memcpy(r, rp_info, sizeof(VkPipelineRenderingCreateInfoKHR));
+         VkPipelineRenderingCreateInfo *r = ralloc(mem_ctx, VkPipelineRenderingCreateInfo);
+         memcpy(r, rp_info, sizeof(VkPipelineRenderingCreateInfo));
          r->pNext = NULL;
          dst->pNext = r;
       }
@@ -490,7 +490,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
       }
 
       /* pViewportState */
-      rasterization_disabled = !dynamic_state_contains(src->pDynamicState, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT) &&
+      rasterization_disabled = !dynamic_state_contains(src->pDynamicState, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE) &&
                                     src->pRasterizationState->rasterizerDiscardEnable;
       if (src->pViewportState && !rasterization_disabled) {
          VkPipelineViewportStateCreateInfo *viewport_state;

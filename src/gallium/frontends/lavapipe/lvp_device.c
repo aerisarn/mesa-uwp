@@ -742,9 +742,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          continue;
 
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
-         VkPhysicalDevicePrivateDataFeaturesEXT *features =
-            (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: {
+         VkPhysicalDevicePrivateDataFeatures *features =
+            (VkPhysicalDevicePrivateDataFeatures *)ext;
          features->privateData = true;
          break;
       }
@@ -872,9 +872,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->extendedDynamicState = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
-         VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *features =
-            (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES: {
+         VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures *features =
+            (VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures *)ext;
          features->shaderDemoteToHelperInvocation = true;
          break;
       }
@@ -941,7 +941,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: {
-         VkPhysicalDeviceImageRobustnessFeaturesEXT *features = (VkPhysicalDeviceImageRobustnessFeaturesEXT *)ext;
+         VkPhysicalDeviceImageRobustnessFeatures *features = (VkPhysicalDeviceImageRobustnessFeatures *)ext;
          features->robustImageAccess = true;
          break;
       }
@@ -963,8 +963,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->shaderTerminateInvocation = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR: {
-         VkPhysicalDeviceDynamicRenderingFeaturesKHR *features = (VkPhysicalDeviceDynamicRenderingFeaturesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
+         VkPhysicalDeviceDynamicRenderingFeatures *features = (VkPhysicalDeviceDynamicRenderingFeatures *)ext;
          features->dynamicRendering = VK_TRUE;
          break;
       }
@@ -1056,8 +1056,8 @@ lvp_get_physical_device_properties_1_2(struct lvp_physical_device *pdevice,
       .patch = 0,
    };
 
-   p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
-   p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+   p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
+   p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
    p->shaderDenormFlushToZeroFloat16 = false;
    p->shaderDenormPreserveFloat16 = false;
    p->shaderRoundingModeRTEFloat16 = true;
@@ -1212,9 +1212,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          properties->transformFeedbackDraw = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR: {
-         VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
-            (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: {
+         VkPhysicalDeviceMaintenance4Properties *properties =
+            (VkPhysicalDeviceMaintenance4Properties *)ext;
          properties->maxBufferSize = UINT32_MAX;
          break;
       }
@@ -1268,9 +1268,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          props->maxMultiDrawCount = 2048;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
-         VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *properties =
-            (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: {
+         VkPhysicalDeviceTexelBufferAlignmentProperties *properties =
+            (VkPhysicalDeviceTexelBufferAlignmentProperties *)ext;
          int alignment = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
          properties->storageTexelBufferOffsetAlignmentBytes = alignment;
          properties->storageTexelBufferOffsetSingleTexelAlignment = true;
@@ -2250,9 +2250,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePrivateDataSlotEXT(
    VkDevice                                    _device,
-   const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
+   const VkPrivateDataSlotCreateInfo*          pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
-   VkPrivateDataSlotEXT*                       pPrivateDataSlot)
+   VkPrivateDataSlot*                          pPrivateDataSlot)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    return vk_private_data_slot_create(&device->vk, pCreateInfo, pAllocator,
@@ -2261,7 +2261,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePrivateDataSlotEXT(
 
 VKAPI_ATTR void VKAPI_CALL lvp_DestroyPrivateDataSlotEXT(
    VkDevice                                    _device,
-   VkPrivateDataSlotEXT                        privateDataSlot,
+   VkPrivateDataSlot                           privateDataSlot,
    const VkAllocationCallbacks*                pAllocator)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
@@ -2272,7 +2272,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_SetPrivateDataEXT(
    VkDevice                                    _device,
    VkObjectType                                objectType,
    uint64_t                                    objectHandle,
-   VkPrivateDataSlotEXT                        privateDataSlot,
+   VkPrivateDataSlot                           privateDataSlot,
    uint64_t                                    data)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
@@ -2285,7 +2285,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPrivateDataEXT(
    VkDevice                                    _device,
    VkObjectType                                objectType,
    uint64_t                                    objectHandle,
-   VkPrivateDataSlotEXT                        privateDataSlot,
+   VkPrivateDataSlot                           privateDataSlot,
    uint64_t*                                   pData)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);

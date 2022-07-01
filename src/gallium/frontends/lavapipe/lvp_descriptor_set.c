@@ -683,8 +683,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
          &set->layout->binding[entry->dstBinding];
       struct lvp_descriptor *desc =
          &set->descriptors[bind_layout->descriptor_index];
-      if (entry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-         desc->type = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT;
+      if (entry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         desc->type = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
          memcpy(desc->info.uniform + entry->dstArrayElement, pSrc, entry->descriptorCount);
          continue;
       }

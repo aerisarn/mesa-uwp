@@ -503,26 +503,26 @@ get_viewport_xform(struct rendering_state *state,
 
     VK_DYNAMIC_STATE_LINE_STIPPLE_EXT
 
-    VK_DYNAMIC_STATE_CULL_MODE_EXT
-    VK_DYNAMIC_STATE_FRONT_FACE_EXT
-    VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT
-    VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT
-    VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT
-    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT
-    VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT
-    VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT
-    VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT
-    VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT
-    VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT
-    VK_DYNAMIC_STATE_STENCIL_OP_EXT
+    VK_DYNAMIC_STATE_CULL_MODE
+    VK_DYNAMIC_STATE_FRONT_FACE
+    VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY
+    VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT
+    VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT
+    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
+    VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
+    VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE
+    VK_DYNAMIC_STATE_DEPTH_COMPARE_OP
+    VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE
+    VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE
+    VK_DYNAMIC_STATE_STENCIL_OP
 
     VK_DYNAMIC_STATE_VERTEX_INPUT_EXT
 
     VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT
-    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT
-    VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT
+    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE
+    VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE
     VK_DYNAMIC_STATE_LOGIC_OP_EXT
-    VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT
+    VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE
 
     VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT
 */
@@ -533,19 +533,19 @@ static int conv_dynamic_state_idx(VkDynamicState dyn_state)
    if (dyn_state == VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)
       /* this one has a weird id, map after the normal dynamic state ones */
       return VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1;
-   if (dyn_state >= VK_DYNAMIC_STATE_CULL_MODE_EXT &&
-       dyn_state <= VK_DYNAMIC_STATE_STENCIL_OP_EXT)
-      return dyn_state - VK_DYNAMIC_STATE_CULL_MODE_EXT + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2;
+   if (dyn_state >= VK_DYNAMIC_STATE_CULL_MODE &&
+       dyn_state <= VK_DYNAMIC_STATE_STENCIL_OP)
+      return dyn_state - VK_DYNAMIC_STATE_CULL_MODE + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2;
    if (dyn_state == VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)
-      return (VK_DYNAMIC_STATE_STENCIL_OP_EXT - VK_DYNAMIC_STATE_CULL_MODE_EXT) + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1;
+      return (VK_DYNAMIC_STATE_STENCIL_OP - VK_DYNAMIC_STATE_CULL_MODE) + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1;
    if (dyn_state >= VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT &&
-       dyn_state <= VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT)
+       dyn_state <= VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE)
       return dyn_state - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
-             VK_DYNAMIC_STATE_STENCIL_OP_EXT - VK_DYNAMIC_STATE_CULL_MODE_EXT +
+             VK_DYNAMIC_STATE_STENCIL_OP - VK_DYNAMIC_STATE_CULL_MODE +
              VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1 + 1;
    if (dyn_state == VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)
-      return VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
-             VK_DYNAMIC_STATE_STENCIL_OP_EXT - VK_DYNAMIC_STATE_CULL_MODE_EXT +
+      return VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
+             VK_DYNAMIC_STATE_STENCIL_OP - VK_DYNAMIC_STATE_CULL_MODE +
              VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1 + 1 + 1;
    assert(0);
    return -1;
@@ -651,7 +651,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       else
          state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = depth_clip_state->depthClipEnable;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE)])
          state->rs_state.rasterizer_discard = rsc->rasterizerDiscardEnable;
 
       state->rs_state.line_smooth = pipeline->line_smooth;
@@ -673,7 +673,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->rs_state.line_stipple_pattern = pipeline->line_stipple_pattern;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE)])
          state->depth_bias.enabled = pipeline->graphics_create_info.pRasterizationState->depthBiasEnable;
       if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BIAS]) {
          state->depth_bias.offset_units = rsc->depthBiasConstantFactor;
@@ -681,10 +681,10 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->depth_bias.offset_clamp = rsc->depthBiasClamp;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_CULL_MODE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_CULL_MODE)])
          state->rs_state.cull_face = vk_cull_to_pipe(rsc->cullMode);
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_FRONT_FACE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_FRONT_FACE)])
          state->rs_state.front_ccw = (rsc->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE);
       state->rs_dirty = true;
    }
@@ -692,13 +692,13 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    if (pipeline->graphics_create_info.pDepthStencilState) {
       const VkPipelineDepthStencilStateCreateInfo *dsa = pipeline->graphics_create_info.pDepthStencilState;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE)])
          state->dsa_state.depth_enabled = dsa->depthTestEnable;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE)])
          state->dsa_state.depth_writemask = dsa->depthWriteEnable;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_COMPARE_OP)])
          state->dsa_state.depth_func = dsa->depthCompareOp;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE)])
          state->dsa_state.depth_bounds_test = dsa->depthBoundsTestEnable;
 
       if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BOUNDS]) {
@@ -706,12 +706,12 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->dsa_state.depth_bounds_max = dsa->maxDepthBounds;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT)]) {
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE)]) {
          state->dsa_state.stencil[0].enabled = dsa->stencilTestEnable;
          state->dsa_state.stencil[1].enabled = dsa->stencilTestEnable;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_OP_EXT)]) {
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_OP)]) {
          state->dsa_state.stencil[0].func = dsa->front.compareOp;
          state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(dsa->front.failOp);
          state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(dsa->front.passOp);
@@ -842,7 +842,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          vk_find_struct_const(vi->pNext,
                               PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT)]) {
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE)]) {
          for (i = 0; i < vi->vertexBindingDescriptionCount; i++) {
             state->vb[vi->pVertexBindingDescriptions[i].binding].stride = vi->pVertexBindingDescriptions[i].stride;
          }
@@ -899,11 +899,11 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    {
       const VkPipelineInputAssemblyStateCreateInfo *ia = pipeline->graphics_create_info.pInputAssemblyState;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT)]) {
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)]) {
          state->info.mode = vk_conv_topology(ia->topology);
          state->rs_dirty = true;
       }
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT)])
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE)])
          state->info.primitive_restart = ia->primitiveRestartEnable;
    }
 
@@ -926,17 +926,17 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       const VkPipelineViewportStateCreateInfo *vpi= pipeline->graphics_create_info.pViewportState;
       int i;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)]) {
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT)]) {
          state->num_viewports = vpi->viewportCount;
          state->vp_dirty = true;
       }
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT)]) {
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT)]) {
          state->num_scissors = vpi->scissorCount;
          state->scissor_dirty = true;
       }
 
       if (!dynamic_states[VK_DYNAMIC_STATE_VIEWPORT] &&
-          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)]) {
+          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT)]) {
          for (i = 0; i < vpi->viewportCount; i++) {
             get_viewport_xform(state, &vpi->pViewports[i], i);
             set_viewport_depth_xform(state, i);
@@ -950,7 +950,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->vp_dirty = true;
       }
       if (!dynamic_states[VK_DYNAMIC_STATE_SCISSOR] &&
-          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT)]) {
+          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT)]) {
          for (i = 0; i < vpi->scissorCount; i++) {
             const VkRect2D *ss = &vpi->pScissors[i];
             state->scissors[i].minx = ss->offset.x;
@@ -1827,8 +1827,8 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
                                    struct rendering_state *state)
 {
    const VkRenderingInfo *info = cmd->u.begin_rendering.rendering_info;
-   bool resuming = (info->flags & VK_RENDERING_RESUMING_BIT_KHR) == VK_RENDERING_RESUMING_BIT_KHR;
-   bool suspending = (info->flags & VK_RENDERING_SUSPENDING_BIT_KHR) == VK_RENDERING_SUSPENDING_BIT_KHR;
+   bool resuming = (info->flags & VK_RENDERING_RESUMING_BIT) == VK_RENDERING_RESUMING_BIT;
+   bool suspending = (info->flags & VK_RENDERING_SUSPENDING_BIT) == VK_RENDERING_SUSPENDING_BIT;
 
    state->info.view_mask = info->viewMask;
    state->render_area = info->renderArea;
@@ -2688,7 +2688,7 @@ static void handle_event_set2(struct vk_cmd_queue_entry *cmd,
 {
    LVP_FROM_HANDLE(lvp_event, event, cmd->u.set_event2.event);
 
-   VkPipelineStageFlags2KHR src_stage_mask = 0;
+   VkPipelineStageFlags2 src_stage_mask = 0;
 
    for (uint32_t i = 0; i < cmd->u.set_event2.dependency_info->memoryBarrierCount; i++)
       src_stage_mask |= cmd->u.set_event2.dependency_info->pMemoryBarriers[i].srcStageMask;
