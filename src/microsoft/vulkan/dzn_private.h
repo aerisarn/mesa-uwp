@@ -24,6 +24,8 @@
 #ifndef DZN_PRIVATE_H
 #define DZN_PRIVATE_H
 
+#define COBJMACROS
+
 #include "vk_command_pool.h"
 #include "vk_command_buffer.h"
 #include "vk_cmd_queue.h"
@@ -56,7 +58,6 @@
 #include <vulkan/vk_icd.h>
 
 #define D3D12_IGNORE_SDK_LAYERS
-#define COBJMACROS
 #include <unknwn.h>
 #include <dxgi1_4.h>
 #include <directx/d3d12.h>
