@@ -235,7 +235,7 @@ static const struct dzn_sampler_filter_info filter_table[] = {
 D3D12_FILTER
 dzn_translate_sampler_filter(const VkSamplerCreateInfo *create_info)
 {
-   D3D12_FILTER filter;
+   D3D12_FILTER filter = (D3D12_FILTER)0;
 
    if (!create_info->anisotropyEnable) {
       unsigned i;
