@@ -1175,13 +1175,13 @@ bool AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
 
    if (shader.chip_class() == ISA_CC_CAYMAN) {
       switch (alu->op) {
-      case nir_op_fcos_r600: return emit_alu_trans_op1_cayman(*alu, op1_cos, shader);
+      case nir_op_fcos_amd: return emit_alu_trans_op1_cayman(*alu, op1_cos, shader);
       case nir_op_fexp2: return emit_alu_trans_op1_cayman(*alu, op1_exp_ieee, shader);
       case nir_op_flog2: return emit_alu_trans_op1_cayman(*alu, op1_log_clamped, shader);
       case nir_op_frcp: return emit_alu_trans_op1_cayman(*alu, op1_recip_ieee, shader);
       case nir_op_frsq: return emit_alu_trans_op1_cayman(*alu,  op1_recipsqrt_ieee1, shader);
       case nir_op_fsqrt: return emit_alu_trans_op1_cayman(*alu, op1_sqrt_ieee, shader);
-      case nir_op_fsin_r600: return emit_alu_trans_op1_cayman(*alu, op1_sin, shader);
+      case nir_op_fsin_amd: return emit_alu_trans_op1_cayman(*alu, op1_sin, shader);
       case nir_op_i2f32: return emit_alu_op1(*alu, op1_int_to_flt, shader);
       case nir_op_u2f32: return emit_alu_op1(*alu, op1_uint_to_flt, shader);
       case nir_op_imul: return emit_alu_trans_op2_cayman(*alu, op2_mullo_int, shader);
@@ -1194,12 +1194,12 @@ bool AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
       }
    } else {
       switch (alu->op) {
-      case nir_op_fcos_r600: return emit_alu_trans_op1_eg(*alu, op1_cos, shader);
+      case nir_op_fcos_amd: return emit_alu_trans_op1_eg(*alu, op1_cos, shader);
       case nir_op_fexp2: return emit_alu_trans_op1_eg(*alu, op1_exp_ieee, shader);
       case nir_op_flog2: return emit_alu_trans_op1_eg(*alu, op1_log_clamped, shader);
       case nir_op_frcp: return emit_alu_trans_op1_eg(*alu, op1_recip_ieee, shader);
       case nir_op_frsq: return emit_alu_trans_op1_eg(*alu, op1_recipsqrt_ieee1, shader);
-      case nir_op_fsin_r600: return emit_alu_trans_op1_eg(*alu, op1_sin, shader);
+      case nir_op_fsin_amd: return emit_alu_trans_op1_eg(*alu, op1_sin, shader);
       case nir_op_fsqrt: return emit_alu_trans_op1_eg(*alu, op1_sqrt_ieee, shader);
       case nir_op_i2f32: return emit_alu_trans_op1_eg(*alu, op1_int_to_flt, shader);
       case nir_op_u2f32: return emit_alu_trans_op1_eg(*alu, op1_uint_to_flt, shader);

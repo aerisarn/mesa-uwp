@@ -83,9 +83,9 @@ nir_ssa_def *LowerSinCos::lower(nir_instr *instr)
                               nir_imm_float(b, -0.5));
 
    if (alu->op == nir_op_fsin)
-      return nir_fsin_r600(b, normalized);
+      return nir_fsin_amd(b, normalized);
    else
-      return nir_fcos_r600(b, normalized);
+      return nir_fcos_amd(b, normalized);
 }
 
 
