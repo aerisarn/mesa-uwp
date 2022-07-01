@@ -183,22 +183,22 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
     * we probably need to make their use conditional on this extension. */
    case DRM_FORMAT_ARGB4444:
       wsi_wl_display_add_vk_format_modifier(display, formats,
-                                            VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,
+                                            VK_FORMAT_A4R4G4B4_UNORM_PACK16,
                                             WSI_WL_FMT_ALPHA, modifier);
       break;
    case DRM_FORMAT_XRGB4444:
       wsi_wl_display_add_vk_format_modifier(display, formats,
-                                            VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,
+                                            VK_FORMAT_A4R4G4B4_UNORM_PACK16,
                                             WSI_WL_FMT_OPAQUE, modifier);
       break;
    case DRM_FORMAT_ABGR4444:
       wsi_wl_display_add_vk_format_modifier(display, formats,
-                                            VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT,
+                                            VK_FORMAT_A4B4G4R4_UNORM_PACK16,
                                             WSI_WL_FMT_ALPHA, modifier);
       break;
    case DRM_FORMAT_XBGR4444:
       wsi_wl_display_add_vk_format_modifier(display, formats,
-                                            VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT,
+                                            VK_FORMAT_A4B4G4R4_UNORM_PACK16,
                                             WSI_WL_FMT_OPAQUE, modifier);
       break;
 #endif
@@ -381,9 +381,9 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
 {
    switch (vk_format) {
 #if 0
-   case VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT:
+   case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
       return alpha ? DRM_FORMAT_ARGB4444 : DRM_FORMAT_XRGB4444;
-   case VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT:
+   case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
       return alpha ? DRM_FORMAT_ABGR4444 : DRM_FORMAT_XBGR4444;
 #endif
 #if MESA_LITTLE_ENDIAN
@@ -794,7 +794,7 @@ wsi_wl_surface_get_formats(VkIcdSurfaceBase *icd_surface,
 
       vk_outarray_append_typed(VkSurfaceFormatKHR, &out, out_fmt) {
          out_fmt->format = disp_fmt->vk_format;
-         out_fmt->colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+         out_fmt->colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
       }
    }
 
@@ -833,7 +833,7 @@ wsi_wl_surface_get_formats2(VkIcdSurfaceBase *icd_surface,
 
       vk_outarray_append_typed(VkSurfaceFormat2KHR, &out, out_fmt) {
          out_fmt->surfaceFormat.format = disp_fmt->vk_format;
-         out_fmt->surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+         out_fmt->surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
       }
    }
 

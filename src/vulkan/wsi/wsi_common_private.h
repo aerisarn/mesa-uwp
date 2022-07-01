@@ -41,7 +41,7 @@ struct wsi_image_info {
    VkImageCreateInfo create;
    struct wsi_image_create_info wsi;
    VkExternalMemoryImageCreateInfo ext_mem;
-   VkImageFormatListCreateInfoKHR format_list;
+   VkImageFormatListCreateInfo format_list;
    VkImageDrmFormatModifierListCreateInfoEXT drm_mod_list;
 
    bool prime_use_linear_modifier;

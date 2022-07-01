@@ -385,7 +385,7 @@ wsi_configure_native_image(const struct wsi_swapchain *chain,
             .flags = info->create.flags,
          };
 
-         VkImageFormatListCreateInfoKHR format_list;
+         VkImageFormatListCreateInfo format_list;
          if (info->create.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
             format_list = info->format_list;
             format_list.pNext = NULL;

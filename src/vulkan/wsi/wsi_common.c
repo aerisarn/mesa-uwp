@@ -473,11 +473,11 @@ wsi_configure_image(const struct wsi_swapchain *chain,
 
    if (pCreateInfo->flags & VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR) {
       info->create.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT |
-                            VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
+                            VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
 
-      const VkImageFormatListCreateInfoKHR *format_list_in =
+      const VkImageFormatListCreateInfo *format_list_in =
          vk_find_struct_const(pCreateInfo->pNext,
-                              IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+                              IMAGE_FORMAT_LIST_CREATE_INFO);
 
       assume(format_list_in && format_list_in->viewFormatCount > 0);
 
@@ -496,8 +496,8 @@ wsi_configure_image(const struct wsi_swapchain *chain,
       }
       assert(format_found);
 
-      info->format_list = (VkImageFormatListCreateInfoKHR) {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR,
+      info->format_list = (VkImageFormatListCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
          .viewFormatCount = view_format_count,
          .pViewFormats = view_formats,
       };

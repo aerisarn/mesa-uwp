@@ -927,7 +927,7 @@ wsi_display_surface_get_surface_counters(
    VkIcdSurfaceBase *surface_base,
    VkSurfaceCounterFlagsEXT *counters)
 {
-   *counters = VK_SURFACE_COUNTER_VBLANK_EXT;
+   *counters = VK_SURFACE_COUNTER_VBLANK_BIT_EXT;
    return VK_SUCCESS;
 }
 
@@ -997,7 +997,7 @@ wsi_display_surface_get_formats(VkIcdSurfaceBase *icd_surface,
    for (unsigned i = 0; i < ARRAY_SIZE(sorted_formats); i++) {
       vk_outarray_append_typed(VkSurfaceFormatKHR, &out, f) {
          f->format = sorted_formats[i];
-         f->colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+         f->colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
       }
    }
 
@@ -1021,7 +1021,7 @@ wsi_display_surface_get_formats2(VkIcdSurfaceBase *surface,
       vk_outarray_append_typed(VkSurfaceFormat2KHR, &out, f) {
          assert(f->sType == VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR);
          f->surfaceFormat.format = sorted_formats[i];
-         f->surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+         f->surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
       }
    }
 

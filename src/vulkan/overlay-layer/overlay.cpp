@@ -2182,7 +2182,7 @@ static void overlay_CmdBindPipeline(
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_GRAPHICS: cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_pipeline_graphics]++; break;
    case VK_PIPELINE_BIND_POINT_COMPUTE: cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_pipeline_compute]++; break;
-   case VK_PIPELINE_BIND_POINT_RAY_TRACING_NV: cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_pipeline_raytracing]++; break;
+   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_pipeline_raytracing]++; break;
    default: break;
    }
    struct device_data *device_data = cmd_buffer_data->device;
@@ -2455,7 +2455,7 @@ static VkResult overlay_QueueSubmit(
 static VkResult overlay_QueueSubmit2KHR(
     VkQueue                                     queue,
     uint32_t                                    submitCount,
-    const VkSubmitInfo2KHR*                     pSubmits,
+    const VkSubmitInfo2*                        pSubmits,
     VkFence                                     fence)
 {
    struct queue_data *queue_data = FIND(struct queue_data, queue);

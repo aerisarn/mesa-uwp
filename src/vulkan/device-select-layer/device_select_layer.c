@@ -204,8 +204,8 @@ static void print_gpu(const struct instance_info *info, unsigned index, VkPhysic
    VkPhysicalDevicePCIBusInfoPropertiesEXT ext_pci_properties = (VkPhysicalDevicePCIBusInfoPropertiesEXT) {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT
    };
-   VkPhysicalDeviceProperties2KHR properties = (VkPhysicalDeviceProperties2KHR){
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR
+   VkPhysicalDeviceProperties2 properties = (VkPhysicalDeviceProperties2){
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
    };
    if (info->has_vulkan11 && info->has_pci_bus)
       properties.pNext = &ext_pci_properties;
@@ -246,8 +246,8 @@ static bool fill_drm_device_info(const struct instance_info *info,
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT
    };
 
-   VkPhysicalDeviceProperties2KHR properties = (VkPhysicalDeviceProperties2KHR){
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR
+   VkPhysicalDeviceProperties2 properties = (VkPhysicalDeviceProperties2){
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
    };
 
    if (info->has_vulkan11 && info->has_pci_bus)
@@ -575,8 +575,8 @@ static VkResult device_select_EnumeratePhysicalDeviceGroups(VkInstance instance,
       bool group_has_cpu_device = false;
       for (unsigned j = 0; j < physical_device_groups[i].physicalDeviceCount; j++) {
          VkPhysicalDevice physical_device = physical_device_groups[i].physicalDevices[j];
-         VkPhysicalDeviceProperties2KHR properties = (VkPhysicalDeviceProperties2KHR){
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR
+         VkPhysicalDeviceProperties2 properties = (VkPhysicalDeviceProperties2){
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2
          };
          info->GetPhysicalDeviceProperties(physical_device, &properties.properties);
          group_has_cpu_device = properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
