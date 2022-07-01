@@ -1841,6 +1841,12 @@ isl_format_get_name(enum isl_format fmt)
    return isl_format_names + isl_format_name_offsets[fmt];
 }
 
+static inline const char * ATTRIBUTE_CONST
+isl_format_get_short_name(enum isl_format fmt)
+{
+   return isl_format_get_name(fmt) + 11 /* ISL_FORMAT_ */;
+}
+
 enum isl_format isl_format_for_pipe_format(enum pipe_format pf);
 
 bool isl_format_supports_rendering(const struct intel_device_info *devinfo,
