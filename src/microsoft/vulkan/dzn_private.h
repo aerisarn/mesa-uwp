@@ -53,13 +53,13 @@
 
 #include "dzn_entrypoints.h"
 #include "dzn_nir.h"
+#include "dzn_physical_device_enum.h"
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
 
 #define D3D12_IGNORE_SDK_LAYERS
 #include <unknwn.h>
-#include <dxgi1_4.h>
 #include <directx/d3d12.h>
 
 #include "spirv_to_dxil.h"
@@ -175,19 +175,6 @@ dzn_meta_blits_get_context(struct dzn_device *device,
 #define MAX_SYNC_TYPES 3
 #define MAX_QUEUE_FAMILIES 3
 
-struct dzn_physical_device_desc {
-   LUID adapter_luid;
-   uint32_t vendor_id;
-   uint32_t device_id;
-   uint32_t subsys_id;
-   uint32_t revision;
-   uint64_t shared_system_memory;
-   uint64_t dedicated_system_memory;
-   uint64_t dedicated_video_memory;
-   bool is_warp;
-   char description[128];
-};
-
 struct dzn_physical_device {
    struct vk_physical_device vk;
    struct list_head link;
@@ -233,9 +220,6 @@ dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_dev
 
 #define dzn_debug_ignored_stype(sType) \
    mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
-
-IDXGIFactory4 *
-dxgi_get_factory(bool debug);
 
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE
 d3d12_get_serialize_root_sig(void);

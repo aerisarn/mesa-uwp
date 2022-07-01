@@ -59,6 +59,7 @@ dzn_flags = [ ]
 
 if with_platform_windows
   dzn_flags += '-DVK_USE_PLATFORM_WIN32_KHR'
+  libdzn_files += files('dzn_dxgi.c')
 endif
 
 if cc.get_argument_syntax() != 'msvc'

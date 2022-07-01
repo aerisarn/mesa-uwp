@@ -49,6 +49,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
+#include "dzn_dxgi.h"
 #endif
 
 #include <directx/d3d12sdklayers.h>
@@ -994,7 +995,7 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
       };
 }
 
-static VkResult
+VkResult
 dzn_instance_add_physical_device(struct dzn_instance *instance,
                                  IUnknown *adapter,
                                  const struct dzn_physical_device_desc *desc)
@@ -1014,40 +1015,11 @@ dzn_EnumeratePhysicalDevices(VkInstance inst,
    VK_FROM_HANDLE(dzn_instance, instance, inst);
 
    if (!instance->physical_devices_enumerated) {
-      IDXGIFactory4 *factory = dxgi_get_factory(false);
-      IDXGIAdapter1 *adapter = NULL;
-      VkResult result = VK_SUCCESS;
-      for (UINT i = 0; SUCCEEDED(IDXGIFactory4_EnumAdapters1(factory, i, &adapter)); ++i) {
-         DXGI_ADAPTER_DESC1 dxgi_desc;
-         IDXGIAdapter1_GetDesc1(adapter, &dxgi_desc);
-
-         struct dzn_physical_device_desc desc = {
-            .adapter_luid = dxgi_desc.AdapterLuid,
-            .vendor_id = dxgi_desc.VendorId,
-            .device_id = dxgi_desc.DeviceId,
-            .subsys_id = dxgi_desc.SubSysId,
-            .revision = dxgi_desc.Revision,
-            .shared_system_memory = dxgi_desc.SharedSystemMemory,
-            .dedicated_system_memory = dxgi_desc.DedicatedSystemMemory,
-            .dedicated_video_memory = dxgi_desc.DedicatedVideoMemory,
-            .is_warp = (dxgi_desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0,
-         };
-         WideCharToMultiByte(CP_ACP, 0, dxgi_desc.Description, ARRAYSIZE(dxgi_desc.Description),
-                             desc.description, ARRAYSIZE(desc.description), NULL, NULL);
-
-         result =
-            dzn_instance_add_physical_device(instance, (IUnknown *)adapter, &desc);
-
-         IDXGIAdapter1_Release(adapter);
-
-         if (result != VK_SUCCESS)
-            break;
-      }
-
-      IDXGIFactory4_Release(factory);
-
+#ifdef _WIN32
+      VkResult result = dzn_enumerate_physical_devices_dxgi(instance);
       if (result != VK_SUCCESS)
          return result;
+#endif
    }
 
    VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,

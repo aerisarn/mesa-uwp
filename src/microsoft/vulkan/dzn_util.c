@@ -34,7 +34,6 @@
 
 #include <directx/d3d12sdklayers.h>
 #include <util/u_dl.h>
-#include <dxgi1_4.h>
 
 static const DXGI_FORMAT formats[PIPE_FORMAT_COUNT] = {
 #define MAP_FORMAT_NORM(FMT) \
@@ -295,43 +294,6 @@ dzn_translate_rect(D3D12_RECT *out,
    out->top = in->offset.y;
    out->right = in->offset.x + in->extent.width;
    out->bottom = in->offset.y + in->extent.height;
-}
-
-IDXGIFactory4 *
-dxgi_get_factory(bool debug)
-{
-   static const GUID IID_IDXGIFactory4 = {
-      0x1bc6ea02, 0xef36, 0x464f,
-      { 0xbf, 0x0c, 0x21, 0xca, 0x39, 0xe5, 0x16, 0x8a }
-   };
-
-   HMODULE dxgi_mod = LoadLibraryA("DXGI.DLL");
-   if (!dxgi_mod) {
-      mesa_loge("failed to load DXGI.DLL\n");
-      return NULL;
-   }
-
-   typedef HRESULT(WINAPI *PFN_CREATE_DXGI_FACTORY2)(UINT flags, REFIID riid, void **ppFactory);
-   PFN_CREATE_DXGI_FACTORY2 CreateDXGIFactory2;
-
-   CreateDXGIFactory2 = (PFN_CREATE_DXGI_FACTORY2)GetProcAddress(dxgi_mod, "CreateDXGIFactory2");
-   if (!CreateDXGIFactory2) {
-      mesa_loge("failed to load CreateDXGIFactory2 from DXGI.DLL\n");
-      return NULL;
-   }
-
-   UINT flags = 0;
-   if (debug)
-      flags |= DXGI_CREATE_FACTORY_DEBUG;
-
-   IDXGIFactory4 *factory;
-   HRESULT hr = CreateDXGIFactory2(flags, &IID_IDXGIFactory4, (void **)&factory);
-   if (FAILED(hr)) {
-      mesa_loge("CreateDXGIFactory2 failed: %08x\n", (int32_t)hr);
-      return NULL;
-   }
-
-   return factory;
 }
 
 static ID3D12Debug *
