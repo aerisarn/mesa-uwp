@@ -551,7 +551,7 @@ struct anv_pipeline_stage {
    struct brw_compile_stats stats[3];
    char *disasm[3];
 
-   VkPipelineCreationFeedbackEXT feedback;
+   VkPipelineCreationFeedback feedback;
 
    const unsigned *code;
 
@@ -1336,7 +1336,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               const VkGraphicsPipelineCreateInfo *info,
                               const VkPipelineRenderingCreateInfo *rendering_info)
 {
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+   VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
@@ -1788,7 +1788,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
    assert(sinfo->stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+   VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();

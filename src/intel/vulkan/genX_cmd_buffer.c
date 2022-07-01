@@ -3781,7 +3781,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          if (buffer) {
             uint32_t stride = dynamic_stride ?
                cmd_buffer->state.vertex_bindings[vb].stride : pipeline->vb[vb].stride;
-            /* From the Vulkan spec (vkCmdBindVertexBuffers2EXT):
+            /* From the Vulkan spec (vkCmdBindVertexBuffers2):
              *
              * "If pname:pSizes is not NULL then pname:pSizes[i] specifies
              * the bound size of the vertex buffer starting from the corresponding

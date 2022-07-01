@@ -1293,7 +1293,7 @@ void genX(CmdWriteTimestamp2)(
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
-   if (stage == VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR) {
+   if (stage == VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT) {
       mi_store(&b, mi_mem64(anv_address_add(query_addr, 8)),
                    mi_reg64(TIMESTAMP));
       emit_query_mi_availability(&b, query_addr, true);

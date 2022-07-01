@@ -168,7 +168,7 @@ android_format_from_vk(unsigned vk_format)
 }
 
 static VkFormatFeatureFlags
-features2_to_features(VkFormatFeatureFlags2KHR features2)
+features2_to_features(VkFormatFeatureFlags2 features2)
 {
    return features2 & VK_ALL_FORMAT_FEATURE_FLAG_BITS;
 }
@@ -230,7 +230,7 @@ get_ahw_buffer_format_properties2(
     *  VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT"
     */
    p->formatFeatures |=
-      VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT_KHR;
+      VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
 
    /* "Implementations may not always be able to determine the color model,
     *  numerical range, or chroma offsets of the image contents, so the values

@@ -869,9 +869,9 @@ static const uint32_t vk_to_intel_shadow_compare_op[] = {
 
 #if GFX_VER >= 9
 static const uint32_t vk_to_intel_sampler_reduction_mode[] = {
-   [VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT] = STD_FILTER,
-   [VK_SAMPLER_REDUCTION_MODE_MIN_EXT]              = MINIMUM,
-   [VK_SAMPLER_REDUCTION_MODE_MAX_EXT]              = MAXIMUM,
+   [VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE] = STD_FILTER,
+   [VK_SAMPLER_REDUCTION_MODE_MIN]              = MINIMUM,
+   [VK_SAMPLER_REDUCTION_MODE_MAX]              = MAXIMUM,
 };
 #endif
 

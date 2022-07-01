@@ -1526,9 +1526,9 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: {
-         VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *features =
-            (VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: {
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features =
+            (VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *)ext;
          features->globalPriorityQuery = true;
          break;
       }
@@ -2054,19 +2054,19 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
 {
    assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES);
 
-   p->driverID = VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR;
+   p->driverID = VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA;
    memset(p->driverName, 0, sizeof(p->driverName));
-   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
+   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE,
             "Intel open-source Mesa driver");
    memset(p->driverInfo, 0, sizeof(p->driverInfo));
-   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
    /* Don't advertise conformance with a particular version if the hardware's
     * support is incomplete/alpha.
     */
    if (pdevice->is_alpha) {
-      p->conformanceVersion = (VkConformanceVersionKHR) {
+      p->conformanceVersion = (VkConformanceVersion) {
          .major = 0,
          .minor = 0,
          .subminor = 0,
@@ -2074,7 +2074,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
       };
    }
    else {
-      p->conformanceVersion = (VkConformanceVersionKHR) {
+      p->conformanceVersion = (VkConformanceVersion) {
          .major = 1,
          .minor = 3,
          .subminor = 0,
@@ -2083,9 +2083,9 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    }
 
    p->denormBehaviorIndependence =
-      VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+      VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
    p->roundingModeIndependence =
-      VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE_KHR;
+      VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE;
 
    /* Broadwell does not support HF denorms and there are restrictions
     * other gens. According to Kabylake's PRM:
@@ -2154,18 +2154,18 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->maxDescriptorSetUpdateAfterBindInputAttachments    = MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS;
 
    /* We support all of the depth resolve modes */
-   p->supportedDepthResolveModes    = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
-                                      VK_RESOLVE_MODE_AVERAGE_BIT_KHR |
-                                      VK_RESOLVE_MODE_MIN_BIT_KHR |
-                                      VK_RESOLVE_MODE_MAX_BIT_KHR;
+   p->supportedDepthResolveModes    = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                      VK_RESOLVE_MODE_AVERAGE_BIT |
+                                      VK_RESOLVE_MODE_MIN_BIT |
+                                      VK_RESOLVE_MODE_MAX_BIT;
    /* Average doesn't make sense for stencil so we don't support that */
-   p->supportedStencilResolveModes  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
+   p->supportedStencilResolveModes  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
    if (pdevice->info.ver >= 8) {
       /* The advanced stencil resolve modes currently require stencil
        * sampling be supported by the hardware.
        */
-      p->supportedStencilResolveModes |= VK_RESOLVE_MODE_MIN_BIT_KHR |
-                                         VK_RESOLVE_MODE_MAX_BIT_KHR;
+      p->supportedStencilResolveModes |= VK_RESOLVE_MODE_MIN_BIT |
+                                         VK_RESOLVE_MODE_MAX_BIT;
    }
    p->independentResolveNone  = true;
    p->independentResolve      = true;
@@ -2430,9 +2430,9 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR: {
-         VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
-            (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: {
+         VkPhysicalDeviceMaintenance4Properties *properties =
+            (VkPhysicalDeviceMaintenance4Properties *)ext;
          properties->maxBufferSize = pdevice->isl_dev.max_buffer_size;
          break;
       }
@@ -2624,13 +2624,13 @@ static int
 vk_priority_to_gen(int priority)
 {
    switch (priority) {
-   case VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR:
       return INTEL_CONTEXT_LOW_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR:
       return INTEL_CONTEXT_MEDIUM_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR:
       return INTEL_CONTEXT_HIGH_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT:
+   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR:
       return INTEL_CONTEXT_REALTIME_PRIORITY;
    default:
       unreachable("Invalid priority");
@@ -2661,16 +2661,16 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2(
 
          vk_foreach_struct(ext, p->pNext) {
             switch (ext->sType) {
-            case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: {
-               VkQueueFamilyGlobalPriorityPropertiesEXT *properties =
-                  (VkQueueFamilyGlobalPriorityPropertiesEXT *)ext;
+            case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_KHR: {
+               VkQueueFamilyGlobalPriorityPropertiesKHR *properties =
+                  (VkQueueFamilyGlobalPriorityPropertiesKHR *)ext;
 
                /* Deliberately sorted low to high */
-               VkQueueGlobalPriorityEXT all_priorities[] = {
-                  VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT,
-                  VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT,
-                  VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT,
-                  VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT,
+               VkQueueGlobalPriorityKHR all_priorities[] = {
+                  VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR,
+                  VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
+                  VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR,
+                  VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR,
                };
 
                uint32_t count = 0;
@@ -3071,13 +3071,13 @@ VkResult anv_CreateDevice(
    }
 
    /* Check if client specified queue priority. */
-   const VkDeviceQueueGlobalPriorityCreateInfoEXT *queue_priority =
+   const VkDeviceQueueGlobalPriorityCreateInfoKHR *queue_priority =
       vk_find_struct_const(pCreateInfo->pQueueCreateInfos[0].pNext,
-                           DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT);
+                           DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
 
-   VkQueueGlobalPriorityEXT priority =
+   VkQueueGlobalPriorityKHR priority =
       queue_priority ? queue_priority->globalPriority :
-         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT;
+         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
 
    device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
                        sizeof(*device), 8,
@@ -3229,15 +3229,15 @@ VkResult anv_CreateDevice(
 
    /* As per spec, the driver implementation may deny requests to acquire
     * a priority above the default priority (MEDIUM) if the caller does not
-    * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_EXT
+    * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_KHR
     * is returned.
     */
    if (physical_device->max_context_priority >= INTEL_CONTEXT_MEDIUM_PRIORITY) {
       int err = anv_gem_set_context_param(device->fd, device->context_id,
                                           I915_CONTEXT_PARAM_PRIORITY,
                                           vk_priority_to_gen(priority));
-      if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT) {
-         result = vk_error(device, VK_ERROR_NOT_PERMITTED_EXT);
+      if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
+         result = vk_error(device, VK_ERROR_NOT_PERMITTED_KHR);
          goto fail_vmas;
       }
    }
@@ -3811,9 +3811,9 @@ VkResult anv_AllocateMemory(
          dedicated_info = (void *)ext;
          break;
 
-      case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO_KHR: {
-         const VkMemoryOpaqueCaptureAddressAllocateInfoKHR *addr_info =
-            (const VkMemoryOpaqueCaptureAddressAllocateInfoKHR *)ext;
+      case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: {
+         const VkMemoryOpaqueCaptureAddressAllocateInfo *addr_info =
+            (const VkMemoryOpaqueCaptureAddressAllocateInfo *)ext;
          client_address = addr_info->opaqueCaptureAddress;
          break;
       }
@@ -3832,7 +3832,7 @@ VkResult anv_AllocateMemory(
    if (device->physical->has_implicit_ccs && device->info.has_aux_map)
       alloc_flags |= ANV_BO_ALLOC_IMPLICIT_CCS;
 
-   if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR)
+   if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT)
       alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
 
    if ((export_info && export_info->handleTypes) ||
@@ -4444,7 +4444,7 @@ void anv_GetBufferMemoryRequirements2(
 
 void anv_GetDeviceBufferMemoryRequirementsKHR(
     VkDevice                                    _device,
-    const VkDeviceBufferMemoryRequirementsKHR* pInfo,
+    const VkDeviceBufferMemoryRequirements*     pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
@@ -4500,7 +4500,7 @@ void anv_DestroyBuffer(
 
 VkDeviceAddress anv_GetBufferDeviceAddress(
     VkDevice                                    device,
-    const VkBufferDeviceAddressInfoKHR*         pInfo)
+    const VkBufferDeviceAddressInfo*            pInfo)
 {
    ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
 
@@ -4512,14 +4512,14 @@ VkDeviceAddress anv_GetBufferDeviceAddress(
 
 uint64_t anv_GetBufferOpaqueCaptureAddress(
     VkDevice                                    device,
-    const VkBufferDeviceAddressInfoKHR*         pInfo)
+    const VkBufferDeviceAddressInfo*            pInfo)
 {
    return 0;
 }
 
 uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
     VkDevice                                    device,
-    const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
+    const VkDeviceMemoryOpaqueCaptureAddressInfo* pInfo)
 {
    ANV_FROM_HANDLE(anv_device_memory, memory, pInfo->memory);
 

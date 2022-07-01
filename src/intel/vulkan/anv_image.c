@@ -54,7 +54,7 @@ memory_range_end(struct anv_image_memory_range memory_range)
 
 /**
  * Get binding for VkImagePlaneMemoryRequirementsInfo,
- * VkBindImagePlaneMemoryInfo and VkDeviceImageMemoryRequirementsKHR.
+ * VkBindImagePlaneMemoryInfo and VkDeviceImageMemoryRequirements.
  */
 static struct anv_image_binding *
 image_aspect_to_binding(struct anv_image *image, VkImageAspectFlags aspect)
@@ -329,7 +329,7 @@ add_surface(struct anv_device *device,
  * parameter @a inout_primary_tiling_flags.
  *
  * If the image plane is a separate stencil plane and if the user provided
- * VkImageStencilUsageCreateInfoEXT, then @a usage must be stencilUsage.
+ * VkImageStencilUsageCreateInfo, then @a usage must be stencilUsage.
  *
  * @see anv_image::planes[]::shadow_surface
  */
@@ -373,7 +373,7 @@ static bool
 can_fast_clear_with_non_zero_color(const struct intel_device_info *devinfo,
                                    const struct anv_image *image,
                                    uint32_t plane,
-                                   const VkImageFormatListCreateInfoKHR *fmt_list)
+                                   const VkImageFormatListCreateInfo *fmt_list)
 {
    /* If we don't have an AUX surface where fast clears apply, we can return
     * early.
@@ -453,7 +453,7 @@ storage_image_format_supports_atomic(const struct intel_device_info *devinfo,
                                      VkImageCreateFlags create_flags,
                                      enum isl_format format,
                                      VkImageTiling vk_tiling,
-                                     const VkImageFormatListCreateInfoKHR *fmt_list)
+                                     const VkImageFormatListCreateInfo *fmt_list)
 {
    if (isl_format_supports_typed_atomics(devinfo, format))
       return true;
@@ -502,7 +502,7 @@ formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                          VkImageCreateFlags create_flags,
                          enum isl_format format, VkImageTiling vk_tiling,
                          VkImageUsageFlags vk_usage,
-                         const VkImageFormatListCreateInfoKHR *fmt_list)
+                         const VkImageFormatListCreateInfo *fmt_list)
 {
    if (!isl_format_supports_ccs_e(devinfo, format))
       return false;
@@ -535,7 +535,7 @@ anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                              VkImageCreateFlags create_flags,
                              VkFormat vk_format, VkImageTiling vk_tiling,
                              VkImageUsageFlags vk_usage,
-                             const VkImageFormatListCreateInfoKHR *fmt_list)
+                             const VkImageFormatListCreateInfo *fmt_list)
 {
    enum isl_format format =
       anv_get_isl_format_with_usage(devinfo, vk_format,
@@ -689,7 +689,7 @@ add_aux_surface_if_supported(struct anv_device *device,
                              struct anv_image *image,
                              uint32_t plane,
                              struct anv_format_plane plane_format,
-                             const VkImageFormatListCreateInfoKHR *fmt_list,
+                             const VkImageFormatListCreateInfo *fmt_list,
                              uint64_t offset,
                              uint32_t stride,
                              isl_surf_usage_flags_t isl_extra_usage_flags)
@@ -1472,9 +1472,9 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
       choose_isl_tiling_flags(&device->info, create_info, isl_mod_info,
                               image->vk.wsi_legacy_scanout);
 
-   const VkImageFormatListCreateInfoKHR *fmt_list =
+   const VkImageFormatListCreateInfo *fmt_list =
       vk_find_struct_const(pCreateInfo->pNext,
-                           IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
+                           IMAGE_FORMAT_LIST_CREATE_INFO);
 
    if (mod_explicit_info) {
       r = add_all_surfaces_explicit_layout(device, image, fmt_list,
@@ -1789,7 +1789,7 @@ void anv_GetImageMemoryRequirements2(
 
 void anv_GetDeviceImageMemoryRequirementsKHR(
     VkDevice                                    _device,
-    const VkDeviceImageMemoryRequirementsKHR*   pInfo,
+    const VkDeviceImageMemoryRequirements*   pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
@@ -1826,7 +1826,7 @@ void anv_GetImageSparseMemoryRequirements2(
 
 void anv_GetDeviceImageSparseMemoryRequirementsKHR(
     VkDevice                                    device,
-    const VkDeviceImageMemoryRequirementsKHR* pInfo,
+    const VkDeviceImageMemoryRequirements* pInfo,
     uint32_t*                                   pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
 {

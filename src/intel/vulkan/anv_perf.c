@@ -371,7 +371,7 @@ VkResult anv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
 
       vk_outarray_append_typed(VkPerformanceCounterKHR, &out, counter) {
          counter->unit = intel_perf_counter_unit_to_vk_unit[intel_counter->units];
-         counter->scope = VK_QUERY_SCOPE_COMMAND_KHR;
+         counter->scope = VK_PERFORMANCE_COUNTER_SCOPE_COMMAND_KHR;
          counter->storage = intel_perf_counter_data_type_to_vk_storage[intel_counter->data_type];
 
          unsigned char sha1_result[20];

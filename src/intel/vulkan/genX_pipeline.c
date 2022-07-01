@@ -2708,7 +2708,7 @@ genX(graphics_pipeline_create)(
                                        pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (result == VK_PIPELINE_COMPILE_REQUIRED)
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
@@ -2990,7 +2990,7 @@ compute_pipeline_create(
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base, device, pAllocator);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (result == VK_PIPELINE_COMPILE_REQUIRED)
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
@@ -3028,10 +3028,10 @@ VkResult genX(CreateGraphicsPipelines)(
        * is not obvious what error should be report upon 2 different failures.
        * */
       result = res;
-      if (res != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (res != VK_PIPELINE_COMPILE_REQUIRED)
          break;
 
-      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
          break;
    }
 
@@ -3066,10 +3066,10 @@ VkResult genX(CreateComputePipelines)(
        * is not obvious what error should be report upon 2 different failures.
        * */
       result = res;
-      if (res != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (res != VK_PIPELINE_COMPILE_REQUIRED)
          break;
 
-      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
          break;
    }
 
@@ -3245,10 +3245,10 @@ genX(CreateRayTracingPipelinesKHR)(
       /* Bail out on the first error as it is not obvious what error should be
        * report upon 2 different failures. */
       result = res;
-      if (result != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (result != VK_PIPELINE_COMPILE_REQUIRED)
          break;
 
-      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
          break;
    }
 
