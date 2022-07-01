@@ -1,6 +1,8 @@
 #include "vk_graphics_state.h"
 
 #include "vk_alloc.h"
+#include "vk_command_buffer.h"
+#include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "vk_log.h"
 #include "vk_render_pass.h"
@@ -1475,4 +1477,498 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
       /* Everything that was in the source is now in the destination */
       dst->set[w] |= src->set[w];
    }
+}
+
+void
+vk_cmd_set_dynamic_graphics_state(struct vk_command_buffer *cmd,
+                                  const struct vk_dynamic_graphics_state *state)
+{
+   vk_dynamic_graphics_state_copy(&cmd->dynamic_graphics_state, state);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer,
+   uint32_t vertexBindingDescriptionCount,
+   const VkVertexInputBindingDescription2EXT* pVertexBindingDescriptions,
+   uint32_t vertexAttributeDescriptionCount,
+   const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   uint32_t bindings_valid = 0;
+   for (uint32_t i = 0; i < vertexBindingDescriptionCount; i++) {
+      const VkVertexInputBindingDescription2EXT *desc =
+         &pVertexBindingDescriptions[i];
+
+      assert(desc->binding < MESA_VK_MAX_VERTEX_BINDINGS);
+      assert(desc->stride <= MESA_VK_MAX_VERTEX_BINDING_STRIDE);
+      assert(desc->inputRate <= UINT8_MAX);
+
+      const uint32_t b = desc->binding;
+      bindings_valid |= BITFIELD_BIT(b);
+      SET_DYN_VALUE(dyn, VI, vi->bindings[b].stride, desc->stride);
+      SET_DYN_VALUE(dyn, VI, vi->bindings[b].input_rate, desc->inputRate);
+      SET_DYN_VALUE(dyn, VI, vi->bindings[b].divisor, desc->divisor);
+
+      /* Also set bindings_strides in case a driver is keying off that */
+      SET_DYN_VALUE(dyn, VI_BINDING_STRIDES,
+                    vi_binding_strides[b], desc->stride);
+   }
+   SET_DYN_VALUE(dyn, VI, vi->bindings_valid, bindings_valid);
+
+   uint32_t attributes_valid = 0;
+   for (uint32_t i = 0; i < vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription2EXT *desc =
+         &pVertexAttributeDescriptions[i];
+
+      assert(desc->location < MESA_VK_MAX_VERTEX_ATTRIBUTES);
+      assert(desc->binding < MESA_VK_MAX_VERTEX_BINDINGS);
+      assert(bindings_valid & BITFIELD_BIT(desc->binding));
+
+      const uint32_t a = desc->location;
+      attributes_valid |= BITFIELD_BIT(a);
+      SET_DYN_VALUE(dyn, VI, vi->attributes[a].binding, desc->binding);
+      SET_DYN_VALUE(dyn, VI, vi->attributes[a].format, desc->format);
+      SET_DYN_VALUE(dyn, VI, vi->attributes[a].offset, desc->offset);
+   }
+   SET_DYN_VALUE(dyn, VI, vi->attributes_valid, attributes_valid);
+}
+
+void
+vk_cmd_set_vertex_binding_strides(struct vk_command_buffer *cmd,
+                                  uint32_t first_binding,
+                                  uint32_t binding_count,
+                                  const VkDeviceSize *strides)
+{
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   for (uint32_t i = 0; i < binding_count; i++) {
+      SET_DYN_VALUE(dyn, VI_BINDING_STRIDES,
+                    vi_binding_strides[first_binding + i], strides[i]);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetPrimitiveTopology(VkCommandBuffer commandBuffer,
+                                  VkPrimitiveTopology primitiveTopology)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, IA_PRIMITIVE_TOPOLOGY,
+                 ia.primitive_topology, primitiveTopology);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetPrimitiveRestartEnable(VkCommandBuffer commandBuffer,
+                                       VkBool32 primitiveRestartEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, IA_PRIMITIVE_RESTART_ENABLE,
+                ia.primitive_restart_enable, primitiveRestartEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer,
+                                      uint32_t patchControlPoints)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, TS_PATCH_CONTROL_POINTS,
+                 ts.patch_control_points, patchControlPoints);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetViewport(VkCommandBuffer commandBuffer,
+                         uint32_t firstViewport,
+                         uint32_t viewportCount,
+                         const VkViewport *pViewports)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_ARRAY(dyn, VP_VIEWPORTS, vp.viewports,
+                 firstViewport, viewportCount, pViewports);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetViewportWithCount(VkCommandBuffer commandBuffer,
+                                  uint32_t viewportCount,
+                                  const VkViewport *pViewports)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, VP_VIEWPORT_COUNT, vp.viewport_count, viewportCount);
+   SET_DYN_ARRAY(dyn, VP_VIEWPORTS, vp.viewports, 0, viewportCount, pViewports);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetScissor(VkCommandBuffer commandBuffer,
+                        uint32_t firstScissor,
+                        uint32_t scissorCount,
+                        const VkRect2D *pScissors)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_ARRAY(dyn, VP_SCISSORS, vp.scissors,
+                 firstScissor, scissorCount, pScissors);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetScissorWithCount(VkCommandBuffer commandBuffer,
+                                 uint32_t scissorCount,
+                                 const VkRect2D *pScissors)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, VP_SCISSOR_COUNT, vp.scissor_count, scissorCount);
+   SET_DYN_ARRAY(dyn, VP_SCISSORS, vp.scissors, 0, scissorCount, pScissors);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDiscardRectangleEXT(VkCommandBuffer commandBuffer,
+                                    uint32_t firstDiscardRectangle,
+                                    uint32_t discardRectangleCount,
+                                    const VkRect2D *pDiscardRectangles)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, DR_RECTANGLES, dr.rectangle_count, discardRectangleCount);
+   SET_DYN_ARRAY(dyn, DR_RECTANGLES, dr.rectangles, firstDiscardRectangle,
+                 discardRectangleCount, pDiscardRectangles);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
+                                           VkBool32 rasterizerDiscardEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, RS_RASTERIZER_DISCARD_ENABLE,
+                rs.rasterizer_discard_enable, rasterizerDiscardEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetCullMode(VkCommandBuffer commandBuffer,
+                         VkCullModeFlags cullMode)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_CULL_MODE, rs.cull_mode, cullMode);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetFrontFace(VkCommandBuffer commandBuffer,
+                          VkFrontFace frontFace)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_FRONT_FACE, rs.front_face, frontFace);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthBiasEnable(VkCommandBuffer commandBuffer,
+                                VkBool32 depthBiasEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, RS_DEPTH_BIAS_ENABLE,
+                rs.depth_bias.enable, depthBiasEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthBias(VkCommandBuffer commandBuffer,
+                          float depthBiasConstantFactor,
+                          float depthBiasClamp,
+                          float depthBiasSlopeFactor)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
+                 rs.depth_bias.constant, depthBiasConstantFactor);
+   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
+                 rs.depth_bias.clamp, depthBiasClamp);
+   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
+                 rs.depth_bias.slope, depthBiasSlopeFactor);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetLineWidth(VkCommandBuffer commandBuffer,
+                          float lineWidth)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_LINE_WIDTH, rs.line.width, lineWidth);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer,
+                               uint32_t lineStippleFactor,
+                               uint16_t lineStipplePattern)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_LINE_STIPPLE,
+                 rs.line.stipple.factor, lineStippleFactor);
+   SET_DYN_VALUE(dyn, RS_LINE_STIPPLE,
+                 rs.line.stipple.pattern, lineStipplePattern);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetFragmentShadingRateKHR(VkCommandBuffer commandBuffer,
+   const VkExtent2D *pFragmentSize,
+   const VkFragmentShadingRateCombinerOpKHR combinerOps[2])
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, FSR, fsr.fragment_size.width, pFragmentSize->width);
+   SET_DYN_VALUE(dyn, FSR, fsr.fragment_size.height, pFragmentSize->height);
+   SET_DYN_VALUE(dyn, FSR, fsr.combiner_ops[0], combinerOps[0]);
+   SET_DYN_VALUE(dyn, FSR, fsr.combiner_ops[1], combinerOps[1]);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
+                                   const VkSampleLocationsInfoEXT *pSampleLocationsInfo)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, MS_SAMPLE_LOCATIONS,
+                 ms.sample_locations->per_pixel,
+                 pSampleLocationsInfo->sampleLocationsPerPixel);
+   SET_DYN_VALUE(dyn, MS_SAMPLE_LOCATIONS,
+                 ms.sample_locations->grid_size.width,
+                 pSampleLocationsInfo->sampleLocationGridSize.width);
+   SET_DYN_VALUE(dyn, MS_SAMPLE_LOCATIONS,
+                 ms.sample_locations->grid_size.height,
+                 pSampleLocationsInfo->sampleLocationGridSize.height);
+
+   assert(pSampleLocationsInfo->sampleLocationsCount ==
+          pSampleLocationsInfo->sampleLocationsPerPixel *
+          pSampleLocationsInfo->sampleLocationGridSize.width *
+          pSampleLocationsInfo->sampleLocationGridSize.height);
+
+   assert(pSampleLocationsInfo->sampleLocationsCount <=
+          MESA_VK_MAX_SAMPLE_LOCATIONS);
+
+   SET_DYN_ARRAY(dyn, MS_SAMPLE_LOCATIONS,
+                 ms.sample_locations->locations,
+                 0, pSampleLocationsInfo->sampleLocationsCount,
+                 pSampleLocationsInfo->pSampleLocations);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthTestEnable(VkCommandBuffer commandBuffer,
+                                VkBool32 depthTestEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, DS_DEPTH_TEST_ENABLE,
+                ds.depth.test_enable, depthTestEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthWriteEnable(VkCommandBuffer commandBuffer,
+                                VkBool32 depthWriteEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, DS_DEPTH_WRITE_ENABLE,
+                ds.depth.write_enable, depthWriteEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthCompareOp(VkCommandBuffer commandBuffer,
+                               VkCompareOp depthCompareOp)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, DS_DEPTH_COMPARE_OP, ds.depth.compare_op,
+                 depthCompareOp);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthBoundsTestEnable(VkCommandBuffer commandBuffer,
+                                      VkBool32 depthBoundsTestEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, DS_DEPTH_BOUNDS_TEST_ENABLE,
+                ds.depth.bounds_test.enable, depthBoundsTestEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
+                            float minDepthBounds,
+                            float maxDepthBounds)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, DS_DEPTH_BOUNDS_TEST_BOUNDS,
+                 ds.depth.bounds_test.min, minDepthBounds);
+   SET_DYN_VALUE(dyn, DS_DEPTH_BOUNDS_TEST_BOUNDS,
+                 ds.depth.bounds_test.max, maxDepthBounds);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetStencilTestEnable(VkCommandBuffer commandBuffer,
+                                  VkBool32 stencilTestEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, DS_STENCIL_TEST_ENABLE,
+                ds.stencil.test_enable, stencilTestEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetStencilOp(VkCommandBuffer commandBuffer,
+                          VkStencilFaceFlags faceMask,
+                          VkStencilOp failOp,
+                          VkStencilOp passOp,
+                          VkStencilOp depthFailOp,
+                          VkCompareOp compareOp)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.front.op.fail, failOp);
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.front.op.pass, passOp);
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.front.op.depth_fail, depthFailOp);
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.front.op.compare, compareOp);
+   }
+
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.back.op.fail, failOp);
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.back.op.pass, passOp);
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.back.op.depth_fail, depthFailOp);
+      SET_DYN_VALUE(dyn, DS_STENCIL_OP, ds.stencil.back.op.compare, compareOp);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
+                                   VkStencilFaceFlags faceMask,
+                                   uint32_t compareMask)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   /* We assume 8-bit stencil always */
+   STATIC_ASSERT(sizeof(dyn->ds.stencil.front.write_mask) == 1);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_COMPARE_MASK,
+                    ds.stencil.front.compare_mask, (uint8_t)compareMask);
+   }
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_COMPARE_MASK,
+                    ds.stencil.back.compare_mask, (uint8_t)compareMask);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
+                                 VkStencilFaceFlags faceMask,
+                                 uint32_t writeMask)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   /* We assume 8-bit stencil always */
+   STATIC_ASSERT(sizeof(dyn->ds.stencil.front.write_mask) == 1);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_WRITE_MASK,
+                    ds.stencil.front.write_mask, (uint8_t)writeMask);
+   }
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_WRITE_MASK,
+                    ds.stencil.back.write_mask, (uint8_t)writeMask);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetStencilReference(VkCommandBuffer commandBuffer,
+                                 VkStencilFaceFlags faceMask,
+                                 uint32_t reference)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   /* We assume 8-bit stencil always */
+   STATIC_ASSERT(sizeof(dyn->ds.stencil.front.write_mask) == 1);
+
+   if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_REFERENCE,
+                    ds.stencil.front.reference, (uint8_t)reference);
+   }
+   if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
+      SET_DYN_VALUE(dyn, DS_STENCIL_REFERENCE,
+                    ds.stencil.back.reference, (uint8_t)reference);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer,
+                           VkLogicOp logicOp)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, CB_LOGIC_OP, cb.logic_op, logicOp);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer,
+                                    uint32_t attachmentCount,
+                                    const VkBool32 *pColorWriteEnables)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   assert(attachmentCount <= MESA_VK_MAX_COLOR_ATTACHMENTS);
+
+   uint8_t color_write_enables = 0;
+   for (uint32_t a = 0; a < attachmentCount; a++) {
+      if (pColorWriteEnables[a])
+         color_write_enables |= BITFIELD_BIT(a);
+   }
+
+   SET_DYN_VALUE(dyn, CB_COLOR_WRITE_ENABLES,
+                 cb.color_write_enables, color_write_enables);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
+                               const float  blendConstants[4])
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_ARRAY(dyn, CB_BLEND_CONSTANTS, cb.blend_constants,
+                 0, 4, blendConstants);
 }

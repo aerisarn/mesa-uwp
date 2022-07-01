@@ -25,7 +25,7 @@
 #define VK_COMMAND_BUFFER_H
 
 #include "vk_cmd_queue.h"
-#include "vk_limits.h"
+#include "vk_graphics_state.h"
 #include "vk_object.h"
 #include "util/list.h"
 #include "util/u_dynarray.h"
@@ -65,6 +65,8 @@ struct vk_command_buffer {
 
    /** VkCommandBufferAllocateInfo::level */
    VkCommandBufferLevel level;
+
+   struct vk_dynamic_graphics_state dynamic_graphics_state;
 
    /** Link in vk_command_pool::command_buffers if pool != NULL */
    struct list_head pool_link;

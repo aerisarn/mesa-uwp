@@ -104,8 +104,80 @@ or extension introduced them.  This structure can be populated from a
 :cpp:func:`vk_dynamic_graphics_state_init`.
 
 .. doxygenfunction:: vk_dynamic_graphics_state_init
-
 .. doxygenfunction:: vk_dynamic_graphics_state_copy
+
+There is also a :cpp:struct:`vk_dynamic_graphics_state` embedded in
+:cpp:struct:`vk_command_buffer`.  Should you choose to use them, we provide
+common implementations for all ``vkCmdSet*()`` functions.  Two additional
+functions are provided for the driver to call in ``CmdBindPipeline()`` and
+``CmdBindVertexBuffers2()``:
+
+.. doxygenfunction:: vk_cmd_set_dynamic_graphics_state
+.. doxygenfunction:: vk_cmd_set_vertex_binding_strides
+
+To use the dynamic state framework, you will need the following in your
+pipeline structure:
+
+.. code-block:: c
+
+   struct drv_graphics_pipeline {
+      ....
+      struct vk_vertex_input_state vi_state;
+      struct vk_sample_locations_state sl_state;
+      struct vk_dynamic_graphics_state dynamic;
+      ...
+   };
+
+Then, in your pipeline create function,
+
+.. code-block:: c
+
+   memset(&pipeline->dynamic, 0, sizeof(pipeline->dynamic));
+   pipeline->dynamic->vi = &pipeline->vi_state;
+   pipeline->dynamic->ms.sample_locations = &pipeline->sl_state;
+   vk_dynamic_graphics_state_init(&pipeline->dynamic, &state);
+
+In your implementation of ``vkCmdBindPipeline()``,
+
+.. code-block:: c
+
+   vk_cmd_set_dynamic_graphics_state(&cmd->vk, &pipeline->dynamic_state);
+
+And, finally, at ``vkCmdDraw*()`` time, the code to emit dynamic state into
+your hardware command buffer will look something like this:
+
+.. code-block:: c
+
+   static void
+   emit_dynamic_state(struct drv_cmd_buffer *cmd)
+   {
+      struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;
+
+      if (!vk_dynamic_graphics_state_any_dirty(dyn))
+         return;
+
+      if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS) |
+          BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT)) {
+         /* Re-emit viewports */
+      }
+
+      if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS) |
+          BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSOR_COUNT)) {
+         /* Re-emit scissors */
+      }
+
+      /* etc... */
+
+      vk_dynamic_graphics_state_clear_dirty(dyn);
+   }
+
+Any states used by the currently bound pipeline and attachments are always
+valid in ``vk_command_buffer::dynamic_graphics_state`` so you can always
+use a state even if it isn't dirty on this particular draw.
+
+.. doxygenfunction:: vk_dynamic_graphics_state_dirty_all
+.. doxygenfunction:: vk_dynamic_graphics_state_clear_dirty
+.. doxygenfunction:: vk_dynamic_graphics_state_any_dirty
 
 
 Reference

@@ -34,6 +34,7 @@
 extern "C" {
 #endif
 
+struct vk_command_buffer;
 struct vk_device;
 
 /** Enumeration of all Vulkan dynamic graphics states
@@ -828,7 +829,7 @@ vk_dynamic_graphics_state_dirty_all(struct vk_dynamic_graphics_state *d)
 static inline void
 vk_dynamic_graphics_state_clear_dirty(struct vk_dynamic_graphics_state *d)
 {
-   memset(d->dirty, 0, sizeof(d->dirty));
+   BITSET_ZERO(d->dirty);
 }
 
 /** Test if any states in the given vk_dynamic_graphics_state are dirty
@@ -848,10 +849,40 @@ vk_dynamic_graphics_state_any_dirty(const struct vk_dynamic_graphics_state *d)
  * Both src and dst are assumed to be properly initialized dynamic state
  * structs.  Anything not set in src, as indicated by src->set, is ignored and
  * those bits of dst are left untouched.
+ *
+ * @param[out] dst   Copy destination
+ * @param[in]  src   Copy source
  */
 void
 vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
                                const struct vk_dynamic_graphics_state *src);
+
+/** Set all of the state in src on a command buffer
+ *
+ * Anything not set, as indicated by src->set, is ignored and those states in
+ * the command buffer are left untouched.
+ *
+ * @param[inout]  cmd   Command buffer to update
+ * @param[in]     src   State to set
+ */
+void
+vk_cmd_set_dynamic_graphics_state(struct vk_command_buffer *cmd,
+                                  const struct vk_dynamic_graphics_state *src);
+
+/** Set vertex binding strides on a command buffer
+ *
+ * This is the dynamic state part of vkCmdBindVertexBuffers2().
+ *
+ * @param[inout]  cmd            Command buffer to update
+ * @param[in]     first_binding  First binding to update
+ * @param[in]     binding_count  Number of bindings to update
+ * @param[in]     strides        binding_count many stride values to set
+ */
+void
+vk_cmd_set_vertex_binding_strides(struct vk_command_buffer *cmd,
+                                  uint32_t first_binding,
+                                  uint32_t binding_count,
+                                  const VkDeviceSize *strides);
 
 #ifdef __cplusplus
 }
