@@ -2454,7 +2454,7 @@ dzn_buffer_get_dxgi_format(VkFormat format)
 D3D12_TEXTURE_COPY_LOCATION
 dzn_buffer_get_copy_loc(const struct dzn_buffer *buf,
                         VkFormat format,
-                        const VkBufferImageCopy2KHR *region,
+                        const VkBufferImageCopy2 *region,
                         VkImageAspectFlagBits aspect,
                         uint32_t layer)
 {
@@ -2495,7 +2495,7 @@ dzn_buffer_get_copy_loc(const struct dzn_buffer *buf,
 
 D3D12_TEXTURE_COPY_LOCATION
 dzn_buffer_get_line_copy_loc(const struct dzn_buffer *buf, VkFormat format,
-                             const VkBufferImageCopy2KHR *region,
+                             const VkBufferImageCopy2 *region,
                              const D3D12_TEXTURE_COPY_LOCATION *loc,
                              uint32_t y, uint32_t z, uint32_t *start_x)
 {

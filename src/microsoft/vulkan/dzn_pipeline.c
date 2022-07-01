@@ -1973,10 +1973,10 @@ dzn_CreateGraphicsPipelines(VkDevice dev,
          /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED_EX as it
           * is not obvious what error should be report upon 2 different failures.
           */
-         if (result != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         if (result != VK_PIPELINE_COMPILE_REQUIRED)
             break;
 
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }
@@ -2260,10 +2260,10 @@ dzn_CreateComputePipelines(VkDevice dev,
          /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED_EX as it
           * is not obvious what error should be report upon 2 different failures.
           */
-         if (result != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         if (result != VK_PIPELINE_COMPILE_REQUIRED)
             break;
 
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }
