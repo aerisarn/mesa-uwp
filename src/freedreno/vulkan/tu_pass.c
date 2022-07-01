@@ -278,7 +278,7 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
       }
 
       const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
-         vk_find_struct_const(subpass->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+         vk_find_struct_const(subpass->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
 
       if (ds_resolve && ds_resolve->pDepthStencilResolveAttachment &&
           ds_resolve->pDepthStencilResolveAttachment->attachment != VK_ATTACHMENT_UNUSED) {
@@ -294,7 +294,7 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
       }
 
       if (src_implicit_dep) {
-         tu_render_pass_add_subpass_dep(pass, &(VkSubpassDependency2KHR) {
+         tu_render_pass_add_subpass_dep(pass, &(VkSubpassDependency2) {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = i,
             .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -370,7 +370,7 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
       }
 
       const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
-         vk_find_struct_const(subpass->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+         vk_find_struct_const(subpass->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
 
       if (ds_resolve && ds_resolve->pDepthStencilResolveAttachment &&
           ds_resolve->pDepthStencilResolveAttachment->attachment != VK_ATTACHMENT_UNUSED) {
@@ -386,7 +386,7 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
       }
 
       if (dst_implicit_dep) {
-         tu_render_pass_add_subpass_dep(pass, &(VkSubpassDependency2KHR) {
+         tu_render_pass_add_subpass_dep(pass, &(VkSubpassDependency2) {
             .srcSubpass = i,
             .dstSubpass = VK_SUBPASS_EXTERNAL,
             .srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -672,7 +672,7 @@ is_depth_stencil_resolve_enabled(const VkSubpassDescriptionDepthStencilResolve *
 }
 
 static void
-tu_subpass_use_attachment(struct tu_render_pass *pass, int i, uint32_t a, const VkRenderPassCreateInfo2KHR *pCreateInfo)
+tu_subpass_use_attachment(struct tu_render_pass *pass, int i, uint32_t a, const VkRenderPassCreateInfo2 *pCreateInfo)
 {
    struct tu_subpass *subpass = &pass->subpasses[i];
 
@@ -683,7 +683,7 @@ tu_subpass_use_attachment(struct tu_render_pass *pass, int i, uint32_t a, const 
 
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateRenderPass2(VkDevice _device,
-                     const VkRenderPassCreateInfo2KHR *pCreateInfo,
+                     const VkRenderPassCreateInfo2 *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator,
                      VkRenderPass *pRenderPass)
 {
@@ -692,7 +692,7 @@ tu_CreateRenderPass2(VkDevice _device,
    size_t size;
    size_t attachments_offset;
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR);
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2);
 
    size = sizeof(*pass);
    size += pCreateInfo->subpassCount * sizeof(pass->subpasses[0]);
@@ -743,7 +743,7 @@ tu_CreateRenderPass2(VkDevice _device,
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       const VkSubpassDescription2 *desc = &pCreateInfo->pSubpasses[i];
       const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
-         vk_find_struct_const(desc->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+         vk_find_struct_const(desc->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
 
       subpass_attachment_count +=
          desc->inputAttachmentCount + desc->colorAttachmentCount +
@@ -767,7 +767,7 @@ tu_CreateRenderPass2(VkDevice _device,
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       const VkSubpassDescription2 *desc = &pCreateInfo->pSubpasses[i];
       const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
-         vk_find_struct_const(desc->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+         vk_find_struct_const(desc->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
       struct tu_subpass *subpass = &pass->subpasses[i];
 
       subpass->input_count = desc->inputAttachmentCount;

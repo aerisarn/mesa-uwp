@@ -216,11 +216,11 @@ tu_physical_device_get_format_properties(
                  VK_FORMAT_FEATURE_BLIT_DST_BIT |
                  VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
                  VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
-                 VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
+                 VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
 
       buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT |
                 VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
-                VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
+                VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
 
       /* TODO: The blob also exposes these for R16G16_UINT/R16G16_SINT, but we
        * don't have any tests for those.

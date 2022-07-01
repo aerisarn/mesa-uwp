@@ -4090,7 +4090,7 @@ tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
    if (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)) {
       if (primtype < DI_PT_PATCHES0) {
          /* If tesselation used, only VK_PRIMITIVE_TOPOLOGY_PATCH_LIST can be
-          * set via vkCmdSetPrimitiveTopologyEXT, but primtype is already
+          * set via vkCmdSetPrimitiveTopology, but primtype is already
           * calculated at the pipeline creation based on control points
           * for each patch.
           *
@@ -4680,7 +4680,7 @@ tu_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
 
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
-                     const VkSubpassEndInfoKHR *pSubpassEndInfo)
+                     const VkSubpassEndInfo *pSubpassEndInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -4733,7 +4733,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
 
 static void
 tu_barrier(struct tu_cmd_buffer *cmd,
-           const VkDependencyInfoKHR *dep_info)
+           const VkDependencyInfo *dep_info)
 {
    VkPipelineStageFlags2 srcStage = 0;
    VkPipelineStageFlags2 dstStage = 0;
@@ -4813,7 +4813,7 @@ tu_barrier(struct tu_cmd_buffer *cmd,
        *    VK_DEPENDENCY_BY_REGION_BIT.
        *    [...]
        *    Each of the synchronization scopes and access scopes of a
-       *    vkCmdPipelineBarrier2KHR or vkCmdPipelineBarrier command inside
+       *    vkCmdPipelineBarrier2 or vkCmdPipelineBarrier command inside
        *    a render pass instance must be a subset of the scopes of one of
        *    the self-dependencies for the current subpass.
        *
@@ -4841,7 +4841,7 @@ tu_barrier(struct tu_cmd_buffer *cmd,
 
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
-                       const VkDependencyInfoKHR *pDependencyInfo)
+                       const VkDependencyInfo *pDependencyInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -4882,11 +4882,11 @@ write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdSetEvent2(VkCommandBuffer commandBuffer,
                 VkEvent _event,
-                const VkDependencyInfoKHR *pDependencyInfo)
+                const VkDependencyInfo *pDependencyInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
-   VkPipelineStageFlags2KHR src_stage_mask = 0;
+   VkPipelineStageFlags2 src_stage_mask = 0;
 
    for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
       src_stage_mask |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
@@ -4913,7 +4913,7 @@ VKAPI_ATTR void VKAPI_CALL
 tu_CmdWaitEvents2(VkCommandBuffer commandBuffer,
                   uint32_t eventCount,
                   const VkEvent *pEvents,
-                  const VkDependencyInfoKHR* pDependencyInfos)
+                  const VkDependencyInfo* pDependencyInfos)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;

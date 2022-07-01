@@ -806,8 +806,8 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderInt8 = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
-         VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features = (void *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
+         VkPhysicalDeviceScalarBlockLayoutFeatures *features = (void *)ext;
          features->scalarBlockLayout = true;
          break;
       }
@@ -819,8 +819,8 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
-         VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
-            (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
+         VkPhysicalDeviceTimelineSemaphoreFeatures *features =
+            (VkPhysicalDeviceTimelineSemaphoreFeatures *) ext;
          features->timelineSemaphore = true;
          break;
       }
@@ -969,12 +969,12 @@ tu_get_physical_device_properties_1_2(struct tu_physical_device *pdevice,
 
    p->driverID = VK_DRIVER_ID_MESA_TURNIP;
    memset(p->driverName, 0, sizeof(p->driverName));
-   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
+   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE,
             "turnip Mesa driver");
    memset(p->driverInfo, 0, sizeof(p->driverInfo));
-   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
-   p->conformanceVersion = (VkConformanceVersionKHR) {
+   p->conformanceVersion = (VkConformanceVersion) {
       .major = 1,
       .minor = 2,
       .subminor = 7,
@@ -2888,7 +2888,7 @@ tu_GetPhysicalDeviceMultisamplePropertiesEXT(
 
 VkDeviceAddress
 tu_GetBufferDeviceAddress(VkDevice _device,
-                          const VkBufferDeviceAddressInfoKHR* pInfo)
+                          const VkBufferDeviceAddressInfo* pInfo)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, pInfo->buffer);
 
@@ -2897,7 +2897,7 @@ tu_GetBufferDeviceAddress(VkDevice _device,
 
 uint64_t tu_GetBufferOpaqueCaptureAddress(
     VkDevice                                    device,
-    const VkBufferDeviceAddressInfoKHR*         pInfo)
+    const VkBufferDeviceAddressInfo*            pInfo)
 {
    tu_stub();
    return 0;
@@ -2905,7 +2905,7 @@ uint64_t tu_GetBufferOpaqueCaptureAddress(
 
 uint64_t tu_GetDeviceMemoryOpaqueCaptureAddress(
     VkDevice                                    device,
-    const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
+    const VkDeviceMemoryOpaqueCaptureAddressInfo* pInfo)
 {
    tu_stub();
    return 0;

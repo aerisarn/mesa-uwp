@@ -2551,12 +2551,12 @@ tu_shader_key_init(struct tu_shader_key *key,
 
    if (stage_info) {
       if (stage_info->flags &
-          VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) {
+          VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) {
          api_wavesize = real_wavesize = IR3_SINGLE_OR_DOUBLE;
       } else {
-         const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *size_info =
+         const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *size_info =
             vk_find_struct_const(stage_info->pNext,
-                                 PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
+                                 PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
 
          if (size_info) {
             if (size_info->requiredSubgroupSize == dev->compiler->threadsize_base) {
@@ -2571,7 +2571,7 @@ tu_shader_key_init(struct tu_shader_key *key,
          }
 
          if (stage_info->flags &
-             VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT)
+             VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT)
             real_wavesize = api_wavesize;
          else if (api_wavesize == IR3_SINGLE_ONLY)
             real_wavesize = IR3_SINGLE_ONLY;
@@ -2782,10 +2782,10 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    const VkPipelineShaderStageCreateInfo *stage_infos[MESA_SHADER_STAGES] = {
       NULL
    };
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+   VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
-   VkPipelineCreationFeedbackEXT stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
+   VkPipelineCreationFeedback stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
 
    int64_t pipeline_start = os_time_get_nano();
 
@@ -3095,52 +3095,52 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS);
          break;
-      case VK_DYNAMIC_STATE_CULL_MODE_EXT:
+      case VK_DYNAMIC_STATE_CULL_MODE:
          pipeline->gras_su_cntl_mask &=
             ~(A6XX_GRAS_SU_CNTL_CULL_BACK | A6XX_GRAS_SU_CNTL_CULL_FRONT);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
          break;
-      case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
+      case VK_DYNAMIC_STATE_FRONT_FACE:
          pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_FRONT_CW;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
          break;
-      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
+      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
          break;
-      case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
+      case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_VB_STRIDE);
          break;
-      case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT:
+      case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
          pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_VIEWPORT);
          break;
-      case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT:
+      case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
          pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_SCISSOR);
          break;
-      case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
          pipeline->rb_depth_cntl_mask &=
             ~(A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
-      case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:
          pipeline->rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
-      case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT:
+      case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:
          pipeline->rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_ZFUNC__MASK;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
-      case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:
          pipeline->rb_depth_cntl_mask &=
             ~(A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
-      case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:
          pipeline->rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
                                              A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
                                              A6XX_RB_STENCIL_CONTROL_STENCIL_READ);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
          break;
-      case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
+      case VK_DYNAMIC_STATE_STENCIL_OP:
          pipeline->rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_FUNC__MASK |
                                              A6XX_RB_STENCIL_CONTROL_FAIL__MASK |
                                              A6XX_RB_STENCIL_CONTROL_ZPASS__MASK |
@@ -3151,14 +3151,14 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
                                              A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
          break;
-      case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
          pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_POLY_OFFSET;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
          break;
-      case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE);
          break;
-      case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT:
+      case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
          pipeline->pc_raster_cntl_mask &= ~A6XX_PC_RASTER_CNTL_DISCARD;
          pipeline->vpc_unknown_9107_mask &= ~A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD);
@@ -3861,7 +3861,7 @@ tu_pipeline_builder_init_graphics(
    if (create_info->pDynamicState) {
       for (uint32_t i = 0; i < create_info->pDynamicState->dynamicStateCount; i++) {
          if (create_info->pDynamicState->pDynamicStates[i] ==
-               VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT) {
+               VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE) {
             rasterizer_discard_dynamic = true;
             break;
          }
@@ -4000,7 +4000,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    *pPipeline = VK_NULL_HANDLE;
 
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+   VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
 

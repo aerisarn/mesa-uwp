@@ -116,10 +116,10 @@ tu_CreateDescriptorSetLayout(
 
    assert(pCreateInfo->sType ==
           VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
-   const VkDescriptorSetLayoutBindingFlagsCreateInfoEXT *variable_flags =
+   const VkDescriptorSetLayoutBindingFlagsCreateInfo *variable_flags =
       vk_find_struct_const(
          pCreateInfo->pNext,
-         DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
+         DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
    const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
       vk_find_struct_const(
          pCreateInfo->pNext,
@@ -205,7 +205,7 @@ tu_CreateDescriptorSetLayout(
 
       if (variable_flags && binding->binding < variable_flags->bindingCount &&
           (variable_flags->pBindingFlags[binding->binding] &
-           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
+           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
          assert(!binding->pImmutableSamplers); /* Terribly ill defined  how
                                                   many samplers are valid */
          assert(binding->binding == num_bindings - 1);
@@ -305,14 +305,14 @@ tu_GetDescriptorSetLayoutSupport(
       return;
    }
 
-   const VkDescriptorSetLayoutBindingFlagsCreateInfoEXT *variable_flags =
+   const VkDescriptorSetLayoutBindingFlagsCreateInfo *variable_flags =
       vk_find_struct_const(
          pCreateInfo->pNext,
-         DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
-   VkDescriptorSetVariableDescriptorCountLayoutSupportEXT *variable_count =
+         DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
+   VkDescriptorSetVariableDescriptorCountLayoutSupport *variable_count =
       vk_find_struct(
          (void *) pCreateInfo->pNext,
-         DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT);
+         DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT);
    const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
       vk_find_struct_const(
          pCreateInfo->pNext,
@@ -368,7 +368,7 @@ tu_GetDescriptorSetLayoutSupport(
       if (variable_flags && binding->binding < variable_flags->bindingCount &&
           variable_count &&
           (variable_flags->pBindingFlags[binding->binding] &
-           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
+           VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
          variable_count->maxVariableDescriptorCount =
             MIN2(UINT32_MAX, max_count);
       }
@@ -824,8 +824,8 @@ tu_AllocateDescriptorSets(VkDevice _device,
    uint32_t i;
    struct tu_descriptor_set *set = NULL;
 
-   const VkDescriptorSetVariableDescriptorCountAllocateInfoEXT *variable_counts =
-      vk_find_struct_const(pAllocateInfo->pNext, DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT);
+   const VkDescriptorSetVariableDescriptorCountAllocateInfo *variable_counts =
+      vk_find_struct_const(pAllocateInfo->pNext, DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO);
    const uint32_t zero = 0;
 
    /* allocate a set of buffers for each shader to contain descriptors */
