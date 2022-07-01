@@ -976,8 +976,8 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       metadata->kernel_inputs_buf_size += metadata->args[i].size;
    }
 
-   // Before removing dead uniforms, dedupe constant samplers to make more dead uniforms
-   NIR_PASS_V(nir, clc_nir_dedupe_const_samplers);
+   // Before removing dead uniforms, dedupe inline samplers to make more dead uniforms
+   NIR_PASS_V(nir, nir_dedup_inline_samplers);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform | nir_var_mem_ubo |
               nir_var_mem_constant | nir_var_function_temp | nir_var_image, NULL);
 
