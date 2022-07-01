@@ -27,6 +27,8 @@
 #include "vk_debug_report.h"
 #include "vk_util.h"
 
+#include "os_time.h"
+
 static D3D12_QUERY_HEAP_TYPE
 dzn_query_pool_get_heap_type(VkQueryType in)
 {
@@ -290,7 +292,7 @@ dzn_GetQueryPoolResults(VkDevice device,
             /* Check again in 10ms.
              * FIXME: decrease the polling period if it happens to hurt latency.
              */
-            Sleep(10);
+            os_time_sleep(10 * 1000);
          }
 
          ID3D12Fence_SetEventOnCompletion(query_fence, query_fence_val, NULL);
