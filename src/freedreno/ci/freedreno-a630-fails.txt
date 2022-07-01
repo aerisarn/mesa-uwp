@@ -53,7 +53,6 @@ glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 shaders@glsl-fs-fogscale,Fail
-shaders@glsl-fs-fogscale@gs-out and fs,Fail
 
 # "../src/freedreno/ir3/ir3_shader.h:968:ir3_link_add: Assertion `i < ARRAY_SIZE(l->var)' failed."
 shaders@glsl-max-varyings >max_varying_components,Crash
@@ -462,27 +461,17 @@ spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Crash
 spec@!opengl 2.0@vertex-program-two-side back back2,Crash
 
 spec@!opengl 2.0@vertex-program-two-side back front2 back2,Fail
-spec@!opengl 2.0@vertex-program-two-side back front2 back2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side back front2,Fail
-spec@!opengl 2.0@vertex-program-two-side back front2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side back,Crash
 spec@!opengl 2.0@vertex-program-two-side back2,Crash
 spec@!opengl 2.0@vertex-program-two-side enabled back back2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled back back2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled back front2 back2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled back front2 back2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled back front2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled back front2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled back,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled back@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled back2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled back2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled front back back2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled front back back2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled front back front2 back2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled front back front2 back2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled front back front2,Fail
-spec@!opengl 2.0@vertex-program-two-side enabled front back front2@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled front back,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled front back@gs-out and fs,Fail
 spec@!opengl 2.0@vertex-program-two-side enabled front back2,Fail
