@@ -59,7 +59,7 @@ static const struct {
 
 static inline bool pvr_subpass_has_msaa_input_attachment(
    struct pvr_render_subpass *subpass,
-   const VkRenderPassCreateInfo2KHR *pCreateInfo)
+   const VkRenderPassCreateInfo2 *pCreateInfo)
 {
    for (uint32_t i = 0; i < subpass->input_count; i++) {
       const uint32_t attachment = subpass->input_attachments[i];
@@ -304,7 +304,7 @@ static void pvr_load_op_destroy(struct pvr_device *device,
    })
 
 VkResult pvr_CreateRenderPass2(VkDevice _device,
-                               const VkRenderPassCreateInfo2KHR *pCreateInfo,
+                               const VkRenderPassCreateInfo2 *pCreateInfo,
                                const VkAllocationCallbacks *pAllocator,
                                VkRenderPass *pRenderPass)
 {

@@ -2330,7 +2330,7 @@ pvr_cmd_buffer_set_clear_values(struct pvr_cmd_buffer *cmd_buffer,
 
 void pvr_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                              const VkRenderPassBeginInfo *pRenderPassBeginInfo,
-                             const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
+                             const VkSubpassBeginInfo *pSubpassBeginInfo)
 {
    PVR_FROM_HANDLE(pvr_framebuffer,
                    framebuffer,
@@ -4640,7 +4640,7 @@ pvr_resolve_unemitted_resolve_attachments(struct pvr_cmd_buffer *cmd_buffer)
 }
 
 void pvr_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
-                           const VkSubpassEndInfoKHR *pSubpassEndInfo)
+                           const VkSubpassEndInfo *pSubpassEndInfo)
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
@@ -4690,21 +4690,21 @@ void pvr_CmdNextSubpass2(VkCommandBuffer commandBuffer,
 }
 
 void pvr_CmdPipelineBarrier2KHR(VkCommandBuffer commandBuffer,
-                                const VkDependencyInfoKHR *pDependencyInfo)
+                                const VkDependencyInfo *pDependencyInfo)
 {
    assert(!"Unimplemented");
 }
 
 void pvr_CmdResetEvent2KHR(VkCommandBuffer commandBuffer,
                            VkEvent _event,
-                           VkPipelineStageFlags2KHR stageMask)
+                           VkPipelineStageFlags2 stageMask)
 {
    assert(!"Unimplemented");
 }
 
 void pvr_CmdSetEvent2KHR(VkCommandBuffer commandBuffer,
                          VkEvent _event,
-                         const VkDependencyInfoKHR *pDependencyInfo)
+                         const VkDependencyInfo *pDependencyInfo)
 {
    assert(!"Unimplemented");
 }
@@ -4712,13 +4712,13 @@ void pvr_CmdSetEvent2KHR(VkCommandBuffer commandBuffer,
 void pvr_CmdWaitEvents2KHR(VkCommandBuffer commandBuffer,
                            uint32_t eventCount,
                            const VkEvent *pEvents,
-                           const VkDependencyInfoKHR *pDependencyInfos)
+                           const VkDependencyInfo *pDependencyInfos)
 {
    assert(!"Unimplemented");
 }
 
 void pvr_CmdWriteTimestamp2KHR(VkCommandBuffer commandBuffer,
-                               VkPipelineStageFlags2KHR stage,
+                               VkPipelineStageFlags2 stage,
                                VkQueryPool queryPool,
                                uint32_t query)
 {

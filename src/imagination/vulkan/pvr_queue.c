@@ -190,7 +190,7 @@ VkResult pvr_QueueWaitIdle(VkQueue _queue)
 }
 
 static enum pvr_pipeline_stage_bits
-pvr_convert_stage_mask(VkPipelineStageFlags2KHR stage_mask)
+pvr_convert_stage_mask(VkPipelineStageFlags2 stage_mask)
 {
    enum pvr_pipeline_stage_bits stages = 0;
 
