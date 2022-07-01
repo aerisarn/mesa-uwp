@@ -388,9 +388,9 @@ d3d12_enable_gpu_validation(void)
 }
 
 ID3D12Device2 *
-d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
+d3d12_create_device(IUnknown *adapter, bool experimental_features)
 {
-   typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IDXGIAdapter1 *, D3D_FEATURE_LEVEL, REFIID, void **);
+   typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown *, D3D_FEATURE_LEVEL, REFIID, void **);
    PFN_D3D12CREATEDEVICE D3D12CreateDevice;
 
    struct util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);

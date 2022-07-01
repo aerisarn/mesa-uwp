@@ -182,7 +182,7 @@ struct dzn_physical_device {
    struct vk_device_extension_table supported_extensions;
    struct vk_physical_device_dispatch_table dispatch;
 
-   IDXGIAdapter1 *adapter;
+   IUnknown *adapter;
    DXGI_ADAPTER_DESC1 adapter_desc;
 
    uint32_t queue_family_count;
@@ -234,7 +234,7 @@ void
 d3d12_enable_gpu_validation(void);
 
 ID3D12Device2 *
-d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features);
+d3d12_create_device(IUnknown *adapter, bool experimental_features);
 
 struct dzn_queue {
    struct vk_queue vk;

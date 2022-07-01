@@ -135,7 +135,7 @@ dzn_physical_device_destroy(struct dzn_physical_device *pdev)
       ID3D12Device1_Release(pdev->dev);
 
    if (pdev->adapter)
-      IDXGIAdapter1_Release(pdev->adapter);
+      IUnknown_Release(pdev->adapter);
 
    dzn_wsi_finish(pdev);
    vk_physical_device_finish(&pdev->vk);
@@ -299,7 +299,7 @@ const struct vk_pipeline_cache_object_ops *const dzn_pipeline_cache_import_ops[]
 
 static VkResult
 dzn_physical_device_create(struct dzn_instance *instance,
-                           IDXGIAdapter1 *adapter,
+                           IUnknown *adapter,
                            const DXGI_ADAPTER_DESC1 *adapter_desc)
 {
    struct dzn_physical_device *pdev =
@@ -329,7 +329,7 @@ dzn_physical_device_create(struct dzn_instance *instance,
    mtx_init(&pdev->dev_lock, mtx_plain);
    pdev->adapter_desc = *adapter_desc;
    pdev->adapter = adapter;
-   IDXGIAdapter1_AddRef(adapter);
+   IUnknown_AddRef(adapter);
    list_addtail(&pdev->link, &instance->physical_devices);
 
    vk_warn_non_conformant_implementation("dzn");
@@ -998,16 +998,14 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
 
 static VkResult
 dzn_instance_add_physical_device(struct dzn_instance *instance,
-                                 IDXGIAdapter1 *adapter)
+                                 IUnknown *adapter,
+                                 const DXGI_ADAPTER_DESC1 *desc)
 {
-   DXGI_ADAPTER_DESC1 desc;
-   IDXGIAdapter1_GetDesc1(adapter, &desc);
-
    if ((instance->debug_flags & DZN_DEBUG_WARP) &&
-       !(desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE))
+       !(desc->Flags & DXGI_ADAPTER_FLAG_SOFTWARE))
       return VK_SUCCESS;
 
-   return dzn_physical_device_create(instance, adapter, &desc);
+   return dzn_physical_device_create(instance, adapter, desc);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -1022,8 +1020,10 @@ dzn_EnumeratePhysicalDevices(VkInstance inst,
       IDXGIAdapter1 *adapter = NULL;
       VkResult result = VK_SUCCESS;
       for (UINT i = 0; SUCCEEDED(IDXGIFactory4_EnumAdapters1(factory, i, &adapter)); ++i) {
+         DXGI_ADAPTER_DESC1 desc;
+         IDXGIAdapter1_GetDesc1(adapter, &desc);
          result =
-            dzn_instance_add_physical_device(instance, adapter);
+            dzn_instance_add_physical_device(instance, (IUnknown *)adapter, &desc);
 
          IDXGIAdapter1_Release(adapter);
 
