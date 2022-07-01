@@ -85,9 +85,9 @@ vk_image_init(struct vk_device *device,
    image->usage = pCreateInfo->usage;
 
    if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-      const VkImageStencilUsageCreateInfoEXT *stencil_usage_info =
+      const VkImageStencilUsageCreateInfo *stencil_usage_info =
          vk_find_struct_const(pCreateInfo->pNext,
-                              IMAGE_STENCIL_USAGE_CREATE_INFO_EXT);
+                              IMAGE_STENCIL_USAGE_CREATE_INFO);
       image->stencil_usage =
          stencil_usage_info ? stencil_usage_info->stencilUsage :
                               pCreateInfo->usage;
@@ -286,7 +286,7 @@ vk_image_offset_to_elements(const struct vk_image *image, VkOffset3D offset)
 
 struct vk_image_buffer_layout
 vk_image_buffer_copy_layout(const struct vk_image *image,
-                            const VkBufferImageCopy2KHR* region)
+                            const VkBufferImageCopy2* region)
 {
    VkExtent3D extent = vk_image_sanitize_extent(image, region->imageExtent);
 
@@ -555,7 +555,7 @@ vk_image_layout_is_read_only(VkImageLayout layout,
    case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
    case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:
-   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL:
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
@@ -570,11 +570,11 @@ vk_image_layout_is_read_only(VkImageLayout layout,
    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
    case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-   case VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:
+   case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
    case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
    case VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL:
-   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
       return true;
 
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
@@ -620,7 +620,7 @@ vk_image_layout_is_depth_only(VkImageLayout layout)
  *    all relevant image aspects."
  */
 VkImageLayout
-vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref,
+vk_att_ref_stencil_layout(const VkAttachmentReference2 *att_ref,
                           const VkAttachmentDescription2 *attachments)
 {
    /* From VUID-VkAttachmentReference2-attachment-04755:
@@ -632,8 +632,8 @@ vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref,
        !vk_format_has_stencil(attachments[att_ref->attachment].format))
       return VK_IMAGE_LAYOUT_UNDEFINED;
 
-   const VkAttachmentReferenceStencilLayoutKHR *stencil_ref =
-      vk_find_struct_const(att_ref->pNext, ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR);
+   const VkAttachmentReferenceStencilLayout *stencil_ref =
+      vk_find_struct_const(att_ref->pNext, ATTACHMENT_REFERENCE_STENCIL_LAYOUT);
 
    if (stencil_ref)
       return stencil_ref->stencilLayout;
@@ -670,14 +670,13 @@ vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref,
  *    the pNext chain."
  */
 VkImageLayout
-vk_att_desc_stencil_layout(const VkAttachmentDescription2KHR *att_desc,
-                             bool final)
+vk_att_desc_stencil_layout(const VkAttachmentDescription2 *att_desc, bool final)
 {
    if (!vk_format_has_stencil(att_desc->format))
       return VK_IMAGE_LAYOUT_UNDEFINED;
 
-   const VkAttachmentDescriptionStencilLayoutKHR *stencil_desc =
-      vk_find_struct_const(att_desc->pNext, ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR);
+   const VkAttachmentDescriptionStencilLayout *stencil_desc =
+      vk_find_struct_const(att_desc->pNext, ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT);
 
    if (stencil_desc) {
       return final ?
@@ -801,15 +800,15 @@ vk_image_layout_to_usage_flags(VkImageLayout layout,
       assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
       return vk_image_layout_to_usage_flags(VK_IMAGE_LAYOUT_GENERAL, aspect);
 
-   case VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:
+   case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
       assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
-      return VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV;
+      return VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
 
    case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
       assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
       return VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT;
 
-   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL:
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT ||
           aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
          return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -818,7 +817,7 @@ vk_image_layout_to_usage_flags(VkImageLayout layout,
          return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       }
 
-   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
       return VK_IMAGE_USAGE_SAMPLED_BIT |
              VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 

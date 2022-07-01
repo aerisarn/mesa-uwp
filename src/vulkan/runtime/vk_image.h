@@ -165,14 +165,14 @@ vk_image_offset_to_elements(const struct vk_image *image, VkOffset3D offset);
 
 struct vk_image_buffer_layout {
    /**
-    * VkBufferImageCopy2KHR::bufferRowLength or
-    * VkBufferImageCopy2KHR::extent::width as needed.
+    * VkBufferImageCopy2::bufferRowLength or
+    * VkBufferImageCopy2::extent::width as needed.
     */
    uint32_t row_length;
 
    /**
-    * VkBufferImageCopy2KHR::bufferImageHeight or
-    * VkBufferImageCopy2KHR::extent::height as needed.
+    * VkBufferImageCopy2::bufferImageHeight or
+    * VkBufferImageCopy2::extent::height as needed.
     */
    uint32_t image_height;
 
@@ -193,7 +193,7 @@ struct vk_image_buffer_layout {
 
 struct vk_image_buffer_layout
 vk_image_buffer_copy_layout(const struct vk_image *image,
-                            const VkBufferImageCopy2KHR* region);
+                            const VkBufferImageCopy2* region);
 
 struct vk_image_view {
    struct vk_object_base base;
@@ -320,9 +320,9 @@ bool vk_image_layout_is_depth_only(VkImageLayout layout);
 VkImageUsageFlags vk_image_layout_to_usage_flags(VkImageLayout layout,
                                                  VkImageAspectFlagBits aspect);
 
-VkImageLayout vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref,
+VkImageLayout vk_att_ref_stencil_layout(const VkAttachmentReference2 *att_ref,
                                         const VkAttachmentDescription2 *attachments);
-VkImageLayout vk_att_desc_stencil_layout(const VkAttachmentDescription2KHR *att_desc,
+VkImageLayout vk_att_desc_stencil_layout(const VkAttachmentDescription2 *att_desc,
                                            bool final);
 
 #ifdef __cplusplus

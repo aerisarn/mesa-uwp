@@ -165,10 +165,10 @@ struct vk_subpass {
    uint32_t view_mask;
 
    /** VkSubpassDescriptionDepthStencilResolve::depthResolveMode */
-   VkResolveModeFlagBitsKHR depth_resolve_mode;
+   VkResolveModeFlagBits depth_resolve_mode;
 
    /** VkSubpassDescriptionDepthStencilResolve::stencilResolveMode */
-   VkResolveModeFlagBitsKHR stencil_resolve_mode;
+   VkResolveModeFlagBits stencil_resolve_mode;
 
    /** VkFragmentShadingRateAttachmentInfoKHR::shadingRateAttachmentTexelSize */
    VkExtent2D fragment_shading_rate_attachment_texel_size;

@@ -144,14 +144,14 @@ static void
 vk_pipeline_cache_lock(struct vk_pipeline_cache *cache)
 {
 
-   if (!(cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT))
+   if (!(cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT))
       simple_mtx_lock(&cache->lock);
 }
 
 static void
 vk_pipeline_cache_unlock(struct vk_pipeline_cache *cache)
 {
-   if (!(cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT))
+   if (!(cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT))
       simple_mtx_unlock(&cache->lock);
 }
 

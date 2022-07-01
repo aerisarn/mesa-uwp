@@ -50,9 +50,9 @@ vk_pipeline_shader_stage_is_null(const VkPipelineShaderStageCreateInfo *info)
 static uint32_t
 get_required_subgroup_size(const VkPipelineShaderStageCreateInfo *info)
 {
-   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info =
+   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *rss_info =
       vk_find_struct_const(info->pNext,
-                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
+                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
    return rss_info != NULL ? rss_info->requiredSubgroupSize : 0;
 }
 
@@ -110,11 +110,11 @@ vk_pipeline_shader_stage_to_nir(struct vk_device *device,
       assert(util_is_power_of_two_nonzero(req_subgroup_size));
       assert(req_subgroup_size >= 8 && req_subgroup_size <= 128);
       subgroup_size = req_subgroup_size;
-   } else if (info->flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT ||
+   } else if (info->flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT ||
               vk_spirv_version(spirv_data, spirv_size) >= 0x10600) {
       /* Starting with SPIR-V 1.6, varying subgroup size the default */
       subgroup_size = SUBGROUP_SIZE_VARYING;
-   } else if (info->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
+   } else if (info->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
       assert(stage == MESA_SHADER_COMPUTE);
       subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
    } else {

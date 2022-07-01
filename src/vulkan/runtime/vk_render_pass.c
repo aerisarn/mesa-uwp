@@ -903,7 +903,7 @@ vk_get_command_buffer_inheritance_as_rendering_resume(
    const struct vk_subpass *subpass = &pass->subpasses[inheritance->subpass];
 
    VK_FROM_HANDLE(vk_framebuffer, fb, inheritance->framebuffer);
-   if (fb == NULL || (fb->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR))
+   if (fb == NULL || (fb->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT))
       return NULL;
 
    data->rendering = (VkRenderingInfo) {
@@ -1170,7 +1170,7 @@ stage_access_for_layout(VkImageLayout layout, VkImageAspectFlags aspects)
          access |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
          /* It might be a resolve attachment */
-         stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+         stages |= VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
          access |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
       }
    } else {
@@ -1182,7 +1182,7 @@ stage_access_for_layout(VkImageLayout layout, VkImageAspectFlags aspects)
                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
          /* It might be a resolve attachment */
-         stages |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+         stages |= VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
          access |= VK_ACCESS_2_TRANSFER_WRITE_BIT;
       }
    }
@@ -1797,11 +1797,11 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
           * that, if we resolve to the wrong aspect, we will still consider
           * it bound and clear it if requested.
           */
-         VkResolveModeFlagBitsKHR depth_resolve_mode = VK_RESOLVE_MODE_NONE;
+         VkResolveModeFlagBits depth_resolve_mode = VK_RESOLVE_MODE_NONE;
          if (res_rp_att->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
             depth_resolve_mode = subpass->depth_resolve_mode;
 
-         VkResolveModeFlagBitsKHR stencil_resolve_mode = VK_RESOLVE_MODE_NONE;
+         VkResolveModeFlagBits stencil_resolve_mode = VK_RESOLVE_MODE_NONE;
          if (res_rp_att->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
             stencil_resolve_mode = subpass->stencil_resolve_mode;
 

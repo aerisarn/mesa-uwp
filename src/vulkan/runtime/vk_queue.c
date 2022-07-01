@@ -571,13 +571,13 @@ struct vulkan_submit_info {
    const void *pNext;
 
    uint32_t command_buffer_count;
-   const VkCommandBufferSubmitInfoKHR *command_buffers;
+   const VkCommandBufferSubmitInfo *command_buffers;
 
    uint32_t wait_count;
-   const VkSemaphoreSubmitInfoKHR *waits;
+   const VkSemaphoreSubmitInfo *waits;
 
    uint32_t signal_count;
-   const VkSemaphoreSubmitInfoKHR *signals;
+   const VkSemaphoreSubmitInfo *signals;
 
    uint32_t buffer_bind_count;
    const VkSparseBufferMemoryBindInfo *buffer_binds;
@@ -1043,7 +1043,7 @@ vk_queue_wait_before_present(struct vk_queue *queue,
 
       waits[i] = (struct vk_sync_wait) {
          .sync = vk_semaphore_get_active_sync(semaphore),
-         .stage_mask = ~(VkPipelineStageFlags2KHR)0,
+         .stage_mask = ~(VkPipelineStageFlags2)0,
       };
    }
 
@@ -1125,7 +1125,7 @@ vk_queue_finish(struct vk_queue *queue)
 VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_QueueSubmit2KHR(VkQueue _queue,
                           uint32_t submitCount,
-                          const VkSubmitInfo2KHR *pSubmits,
+                          const VkSubmitInfo2 *pSubmits,
                           VkFence _fence)
 {
    VK_FROM_HANDLE(vk_queue, queue, _queue);
@@ -1215,9 +1215,9 @@ vk_common_QueueBindSparse(VkQueue _queue,
          signal_values = timeline_info->pSignalSemaphoreValues;
       }
 
-      STACK_ARRAY(VkSemaphoreSubmitInfoKHR, wait_semaphore_infos,
+      STACK_ARRAY(VkSemaphoreSubmitInfo, wait_semaphore_infos,
                   pBindInfo[i].waitSemaphoreCount);
-      STACK_ARRAY(VkSemaphoreSubmitInfoKHR, signal_semaphore_infos,
+      STACK_ARRAY(VkSemaphoreSubmitInfo, signal_semaphore_infos,
                   pBindInfo[i].signalSemaphoreCount);
 
       if (!wait_semaphore_infos || !signal_semaphore_infos) {
@@ -1227,16 +1227,16 @@ vk_common_QueueBindSparse(VkQueue _queue,
       }
 
       for (uint32_t j = 0; j < pBindInfo[i].waitSemaphoreCount; j++) {
-         wait_semaphore_infos[j] = (VkSemaphoreSubmitInfoKHR) {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+         wait_semaphore_infos[j] = (VkSemaphoreSubmitInfo) {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = pBindInfo[i].pWaitSemaphores[j],
             .value = wait_values ? wait_values[j] : 0,
          };
       }
 
       for (uint32_t j = 0; j < pBindInfo[i].signalSemaphoreCount; j++) {
-         signal_semaphore_infos[j] = (VkSemaphoreSubmitInfoKHR) {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
+         signal_semaphore_infos[j] = (VkSemaphoreSubmitInfo) {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
             .semaphore = pBindInfo[i].pSignalSemaphores[j],
             .value = signal_values ? signal_values[j] : 0,
          };
