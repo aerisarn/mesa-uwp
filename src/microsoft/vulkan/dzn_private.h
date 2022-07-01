@@ -883,6 +883,8 @@ struct dzn_image {
    ID3D12Resource *res;
    struct dzn_device_memory *mem;
    VkDeviceSize mem_offset;
+   uint32_t castable_format_count;
+   DXGI_FORMAT *castable_formats;
 };
 
 bool
