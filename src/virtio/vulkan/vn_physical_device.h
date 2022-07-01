@@ -26,7 +26,7 @@ struct vn_physical_device_features {
    VkPhysicalDevice4444FormatsFeaturesEXT argb_4444_formats;
    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state;
    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state_2;
-   VkPhysicalDeviceImageRobustnessFeaturesEXT image_robustness;
+   VkPhysicalDeviceImageRobustnessFeatures image_robustness;
    VkPhysicalDeviceInlineUniformBlockFeatures inline_uniform_block;
    VkPhysicalDeviceMaintenance4Features maintenance4;
    VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures

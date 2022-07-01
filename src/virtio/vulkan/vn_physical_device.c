@@ -719,7 +719,7 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    snprintf(vk12_props->driverName, sizeof(vk12_props->driverName), "venus");
    snprintf(vk12_props->driverInfo, sizeof(vk12_props->driverInfo),
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
-   vk12_props->conformanceVersion = (VkConformanceVersionKHR){
+   vk12_props->conformanceVersion = (VkConformanceVersion){
       .major = 1,
       .minor = 2,
       .subminor = 7,
@@ -1624,7 +1624,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
       VkPhysicalDeviceExtendedDynamicState2FeaturesEXT
          *extended_dynamic_state2;
-      VkPhysicalDeviceImageRobustnessFeaturesEXT *image_robustness;
+      VkPhysicalDeviceImageRobustnessFeatures *image_robustness;
       VkPhysicalDeviceInlineUniformBlockFeatures *inline_uniform_block;
       VkPhysicalDeviceMaintenance4Features *maintenance4;
       VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
@@ -1811,7 +1811,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT:
          *u.extended_dynamic_state2 = feats->extended_dynamic_state_2;
          break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT:
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES:
          *u.image_robustness = feats->image_robustness;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES:
@@ -1910,7 +1910,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
       VkPhysicalDeviceProvokingVertexPropertiesEXT *provoking_vertex;
       VkPhysicalDeviceRobustness2PropertiesEXT *robustness_2;
-      VkPhysicalDeviceMaintenance4PropertiesKHR *maintenance4;
+      VkPhysicalDeviceMaintenance4Properties *maintenance4;
       VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
       VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT
          *vertex_attribute_divisor;
@@ -2260,7 +2260,7 @@ vn_physical_device_fix_image_format_info(
          memcpy(&local_info->list, src, sizeof(local_info->list));
          pnext = &local_info->list;
          break;
-      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT:
+      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
          memcpy(&local_info->stencil_usage, src,
                 sizeof(local_info->stencil_usage));
          pnext = &local_info->stencil_usage;
@@ -2533,8 +2533,8 @@ vn_GetPhysicalDeviceExternalSemaphoreProperties(
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
 
-   const VkSemaphoreTypeCreateInfoKHR *type_info = vk_find_struct_const(
-      pExternalSemaphoreInfo->pNext, SEMAPHORE_TYPE_CREATE_INFO_KHR);
+   const VkSemaphoreTypeCreateInfo *type_info = vk_find_struct_const(
+      pExternalSemaphoreInfo->pNext, SEMAPHORE_TYPE_CREATE_INFO);
    const VkSemaphoreType sem_type =
       type_info ? type_info->semaphoreType : VK_SEMAPHORE_TYPE_BINARY;
    const VkExternalSemaphoreHandleTypeFlags valid_handles =
