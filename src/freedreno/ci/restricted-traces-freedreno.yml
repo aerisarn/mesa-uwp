@@ -14,10 +14,11 @@ traces:
       - device: freedreno-a630
         checksum: 3f6d0626b9ebe1d73860fc9faa0475b5
   # takes approx. 40 seconds
-  - path: SpecOps/specops-s0-1088-f1300-v2.trace
-    expectations:
-      - device: freedreno-a630
-        checksum: 8ab8fa893171d6b21cf8af2d6d4e1f17
+  # flaky on current CI
+  #- path: SpecOps/specops-s0-1088-f1300-v2.trace
+  #  expectations:
+  #    - device: freedreno-a630
+  #      checksum: 8ab8fa893171d6b21cf8af2d6d4e1f17
   # re-enable after https://gitlab.freedesktop.org/mesa/mesa/-/issues/6763 is fixed
   #- path: AmnesiaTDD/Amnesia-f700-v2.trace
   #  expectations:
