@@ -1617,7 +1617,7 @@ struct v3dv_pipeline_stage {
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
 
-   VkPipelineCreationFeedbackEXT feedback;
+   VkPipelineCreationFeedback feedback;
 };
 
 /* We are using the descriptor pool entry for two things:
@@ -2085,7 +2085,7 @@ v3dv_get_compatible_tfu_format(struct v3dv_device *device,
                                uint32_t bpp, VkFormat *out_vk_format);
 bool v3dv_buffer_format_supports_features(struct v3dv_device *device,
                                           VkFormat vk_format,
-                                          VkFormatFeatureFlags2KHR features);
+                                          VkFormatFeatureFlags2 features);
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          struct v3dv_pipeline *pipeline,

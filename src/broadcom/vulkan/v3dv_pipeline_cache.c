@@ -221,7 +221,7 @@ v3dv_pipeline_cache_init(struct v3dv_pipeline_cache *cache,
       cache->stats.count = 0;
 
       cache->externally_synchronized = flags &
-         VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT;
+         VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
    } else {
       cache->nir_cache = NULL;
       cache->cache = NULL;

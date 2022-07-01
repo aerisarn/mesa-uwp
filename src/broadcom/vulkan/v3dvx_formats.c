@@ -229,8 +229,8 @@ v3dX(get_format)(VkFormat format)
 
    switch (format) {
    /* VK_EXT_4444_formats */
-   case VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT:
-   case VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT:
+   case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+   case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
       return &format_table_4444[VK_ENUM_OFFSET(format)];
 
    default:

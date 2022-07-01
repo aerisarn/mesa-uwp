@@ -564,7 +564,7 @@ pipeline_get_descriptor_map(struct v3dv_pipeline *pipeline,
          &pipeline->shared_data->maps[broadcom_stage]->texture_map;
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
       return &pipeline->shared_data->maps[broadcom_stage]->ubo_map;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
@@ -599,7 +599,7 @@ lower_vulkan_resource_index(nir_builder *b,
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
       struct v3dv_descriptor_map *descriptor_map =
          pipeline_get_descriptor_map(pipeline, binding_layout->type,
                                      shader->info.stage, false);
@@ -631,7 +631,7 @@ lower_vulkan_resource_index(nir_builder *b,
       /* We always reserve index 0 for push constants */
       if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
           binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-          binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+          binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          index++;
       }
 
@@ -1434,7 +1434,7 @@ pipeline_stage_create_binning(const struct v3dv_pipeline_stage *src,
     */
    p_stage->nir = NULL;
    p_stage->spec_info = src->spec_info;
-   p_stage->feedback = (VkPipelineCreationFeedbackEXT) { 0 };
+   p_stage->feedback = (VkPipelineCreationFeedback) { 0 };
    memcpy(p_stage->shader_sha1, src->shader_sha1, 20);
 
    return p_stage;
@@ -2114,12 +2114,12 @@ fail:
 static void
 write_creation_feedback(struct v3dv_pipeline *pipeline,
                         const void *next,
-                        const VkPipelineCreationFeedbackEXT *pipeline_feedback,
+                        const VkPipelineCreationFeedback *pipeline_feedback,
                         uint32_t stage_count,
                         const VkPipelineShaderStageCreateInfo *stages)
 {
-   const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
-      vk_find_struct_const(next, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
+      vk_find_struct_const(next, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
    if (create_feedback) {
       typed_memcpy(create_feedback->pPipelineCreationFeedback,
@@ -2339,8 +2339,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator)
 {
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   VkPipelineCreationFeedback pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 
@@ -2478,14 +2478,14 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
             pipeline_feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
          goto success;
       }
    }
 
-   if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
-      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+   if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
+      return VK_PIPELINE_COMPILE_REQUIRED;
 
    /* Otherwise we try to get the NIR shaders (either from the original SPIR-V
     * shader or the pipeline cache) and compile.
@@ -2494,12 +2494,12 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       v3dv_pipeline_shared_data_new_empty(pipeline->sha1, pipeline, true);
 
    pipeline->vs->feedback.flags |=
-      VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
+      VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
    if (pipeline->gs)
       pipeline->gs->feedback.flags |=
-         VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
+         VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
    pipeline->fs->feedback.flags |=
-      VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
+      VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
    if (!pipeline->vs->nir)
       pipeline->vs->nir = pipeline_stage_get_nir(pipeline->vs, pipeline, cache);
@@ -3048,7 +3048,7 @@ graphics_pipeline_create(VkDevice _device,
 
    if (result != VK_SUCCESS) {
       v3dv_destroy_pipeline(pipeline, device, pAllocator);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (result == VK_PIPELINE_COMPILE_REQUIRED)
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
@@ -3087,7 +3087,7 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
          pPipelines[i] = VK_NULL_HANDLE;
 
          if (pCreateInfos[i].flags &
-             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }
@@ -3128,8 +3128,8 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
                          const VkComputePipelineCreateInfo *info,
                          const VkAllocationCallbacks *alloc)
 {
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   VkPipelineCreationFeedback pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 
@@ -3152,7 +3152,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->entrypoint = sinfo->pName;
    p_stage->module = vk_shader_module_from_handle(sinfo->module);
    p_stage->spec_info = sinfo->pSpecializationInfo;
-   p_stage->feedback = (VkPipelineCreationFeedbackEXT) { 0 };
+   p_stage->feedback = (VkPipelineCreationFeedback) { 0 };
 
    vk_pipeline_hash_shader_stage(&info->stage, p_stage->shader_sha1);
 
@@ -3180,20 +3180,20 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
          assert(pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE]);
          if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
             pipeline_feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
          goto success;
       }
    }
 
-   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
-      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
+      return VK_PIPELINE_COMPILE_REQUIRED;
 
    pipeline->shared_data = v3dv_pipeline_shared_data_new_empty(pipeline->sha1,
                                                                pipeline,
                                                                false);
 
-   p_stage->feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
+   p_stage->feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
    /* If not found on cache, compile it */
    p_stage->nir = pipeline_stage_get_nir(p_stage, pipeline, cache);
@@ -3284,7 +3284,7 @@ compute_pipeline_create(VkDevice _device,
                                   pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       v3dv_destroy_pipeline(pipeline, device, pAllocator);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+      if (result == VK_PIPELINE_COMPILE_REQUIRED)
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
@@ -3322,7 +3322,7 @@ v3dv_CreateComputePipelines(VkDevice _device,
          pPipelines[i] = VK_NULL_HANDLE;
 
          if (pCreateInfos[i].flags &
-             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }

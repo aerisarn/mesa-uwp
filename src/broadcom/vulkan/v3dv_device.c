@@ -1599,10 +1599,10 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .shaderRoundingModeRTZFloat32 = false,
       .shaderRoundingModeRTZFloat64 = false,
    };
-   memset(vk12.driverName, 0, VK_MAX_DRIVER_NAME_SIZE_KHR);
-   snprintf(vk12.driverName, VK_MAX_DRIVER_NAME_SIZE_KHR, "V3DV Mesa");
-   memset(vk12.driverInfo, 0, VK_MAX_DRIVER_INFO_SIZE_KHR);
-   snprintf(vk12.driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+   memset(vk12.driverName, 0, VK_MAX_DRIVER_NAME_SIZE);
+   snprintf(vk12.driverName, VK_MAX_DRIVER_NAME_SIZE, "V3DV Mesa");
+   memset(vk12.driverInfo, 0, VK_MAX_DRIVER_INFO_SIZE);
+   snprintf(vk12.driverInfo, VK_MAX_DRIVER_INFO_SIZE,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
    VkPhysicalDeviceVulkan11Properties vk11 = {
@@ -2242,12 +2242,12 @@ v3dv_AllocateMemory(VkDevice _device,
           * devices per device group, so we can ignore this.
           */
          break;
-      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR:
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
          /* We don't have particular optimizations associated with memory
           * allocations that won't be suballocated to multiple resources.
           */
          break;
-      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR:
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
          /* The mask of handle types specified here must be supported
           * according to VkExternalImageFormatProperties, so it must be
           * fd or dmabuf, which don't have special requirements for us.

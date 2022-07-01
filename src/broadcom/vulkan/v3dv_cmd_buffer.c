@@ -892,8 +892,8 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
       struct v3dv_image_view *dst_iview =
          cmd_buffer->state.attachments[dst_attachment_idx].image_view;
 
-      VkImageResolve2KHR region = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR,
+      VkImageResolve2 region = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2,
          .srcSubresource = {
             VK_IMAGE_ASPECT_COLOR_BIT,
             src_iview->vk.base_mip_level,
@@ -913,8 +913,8 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
 
       struct v3dv_image *src_image = (struct v3dv_image *) src_iview->vk.image;
       struct v3dv_image *dst_image = (struct v3dv_image *) dst_iview->vk.image;
-      VkResolveImageInfo2KHR resolve_info = {
-         .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR,
+      VkResolveImageInfo2 resolve_info = {
+         .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2,
          .srcImage = v3dv_image_to_handle(src_image),
          .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
          .dstImage = v3dv_image_to_handle(dst_image),
@@ -1184,8 +1184,8 @@ cmd_buffer_state_set_attachments(struct v3dv_cmd_buffer *cmd_buffer,
    V3DV_FROM_HANDLE(v3dv_render_pass, pass, pRenderPassBegin->renderPass);
    V3DV_FROM_HANDLE(v3dv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
 
-   const VkRenderPassAttachmentBeginInfoKHR *attach_begin =
-      vk_find_struct_const(pRenderPassBegin, RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
+   const VkRenderPassAttachmentBeginInfo *attach_begin =
+      vk_find_struct_const(pRenderPassBegin, RENDER_PASS_ATTACHMENT_BEGIN_INFO);
 
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 

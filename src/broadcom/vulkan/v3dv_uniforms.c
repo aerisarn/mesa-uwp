@@ -299,7 +299,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
           */
          struct v3dv_bo *bo;
          uint32_t addr;
-         if (descriptor->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+         if (descriptor->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
             assert(dynamic_offset == 0);
             struct v3dv_cl_reloc reloc =
                v3dv_descriptor_map_get_descriptor_bo(cmd_buffer->device,

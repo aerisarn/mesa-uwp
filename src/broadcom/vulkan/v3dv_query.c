@@ -729,7 +729,7 @@ v3dv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
    for (int i = 0; i < ARRAY_SIZE(v3dv_counters); i++) {
       vk_outarray_append_typed(VkPerformanceCounterKHR, &out, counter) {
          counter->unit = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR;
-         counter->scope = VK_QUERY_SCOPE_COMMAND_KHR;
+         counter->scope = VK_PERFORMANCE_COUNTER_SCOPE_COMMAND_KHR;
          counter->storage = VK_PERFORMANCE_COUNTER_STORAGE_UINT64_KHR;
 
          unsigned char sha1_result[20];
