@@ -816,8 +816,9 @@ radv_lookup_user_sgpr(struct radv_pipeline *pipeline, gl_shader_stage stage, int
 }
 
 static void
-radv_emit_userdata_address(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline,
-                           gl_shader_stage stage, int idx, uint64_t va)
+radv_emit_userdata_address(struct radv_device *device, struct radeon_cmdbuf *cs,
+                           struct radv_pipeline *pipeline, gl_shader_stage stage, int idx,
+                           uint64_t va)
 {
    struct radv_userdata_info *loc = radv_lookup_user_sgpr(pipeline, stage, idx);
    uint32_t base_reg = pipeline->user_data_0[stage];
@@ -826,8 +827,7 @@ radv_emit_userdata_address(struct radv_cmd_buffer *cmd_buffer, struct radv_pipel
 
    assert(loc->num_sgprs == 1);
 
-   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, va,
-                            false);
+   radv_emit_shader_pointer(device, cs, base_reg + loc->sgpr_idx * 4, va, false);
 }
 
 static void
@@ -3261,6 +3261,8 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
       uptr[0] = set_va & 0xffffffff;
    }
 
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   struct radv_device *device = cmd_buffer->device;
    uint64_t va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
    va += offset;
 
@@ -3268,30 +3270,30 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
       struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
 
       if (pipeline->shaders[MESA_SHADER_VERTEX])
-         radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_VERTEX,
+         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_VERTEX,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (pipeline->shaders[MESA_SHADER_FRAGMENT])
-         radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_FRAGMENT,
+         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_FRAGMENT,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH))
-         radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_MESH,
+         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_MESH,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_GEOMETRY))
-         radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_GEOMETRY,
+         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_GEOMETRY,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
-         radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_TESS_CTRL,
+         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_TESS_CTRL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
-         radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_TESS_EVAL,
+         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_TESS_EVAL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    } else {
-      radv_emit_userdata_address(cmd_buffer, pipeline, MESA_SHADER_COMPUTE,
+      radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_COMPUTE,
                                  AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    }
 }
@@ -3424,6 +3426,9 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       ASSERTED unsigned cdw_max =
          radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MESA_VULKAN_SHADER_STAGES * 4);
 
+      struct radeon_cmdbuf *cs = cmd_buffer->cs;
+      struct radv_device *device = cmd_buffer->device;
+
       prev_shader = NULL;
       radv_foreach_stage(stage, internal_stages)
       {
@@ -3431,7 +3436,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 
          /* Avoid redundantly emitting the address for merged stages. */
          if (shader && shader != prev_shader) {
-            radv_emit_userdata_address(cmd_buffer, pipeline, stage, AC_UD_PUSH_CONSTANTS, va);
+            radv_emit_userdata_address(device, cs, pipeline, stage, AC_UD_PUSH_CONSTANTS, va);
 
             prev_shader = shader;
          }
@@ -3651,8 +3656,8 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
       va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
       va += vb_offset;
 
-      radv_emit_userdata_address(cmd_buffer, &pipeline->base, MESA_SHADER_VERTEX,
-                                 AC_UD_VS_VERTEX_BUFFERS, va);
+      radv_emit_userdata_address(cmd_buffer->device, cmd_buffer->cs, &pipeline->base,
+                                 MESA_SHADER_VERTEX, AC_UD_VS_VERTEX_BUFFERS, va);
 
       cmd_buffer->state.vb_va = va;
       cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_VBO_DESCRIPTORS;
