@@ -55,7 +55,9 @@
 #include <directx/d3d12sdklayers.h>
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR) || \
-    defined(VK_USE_PLATFORM_DISPLAY_KHR)
+    defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
+    defined(VK_USE_PLATFORM_XCB_KHR) || \
+    defined(VK_USE_PLATFORM_XLIB_KHR)
 #define DZN_USE_WSI_PLATFORM
 #endif
 
@@ -71,11 +73,14 @@ static const struct vk_instance_extension_table instance_extensions = {
 #ifdef VK_USE_PLATFORM_WIN32_KHR
    .KHR_win32_surface                        = true,
 #endif
-#ifdef VK_USE_PLATFORM_DISPLAY_KHR
-   .KHR_display                              = true,
-   .KHR_get_display_properties2              = true,
-   .EXT_direct_mode_display                  = true,
-   .EXT_display_surface_counter              = true,
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   .KHR_xcb_surface                          = true,
+#endif
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+   .KHR_wayland_surface                      = true,
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+   .KHR_xlib_surface                         = true,
 #endif
    .EXT_debug_report                         = true,
    .EXT_debug_utils                          = true,
