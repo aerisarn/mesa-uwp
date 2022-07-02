@@ -102,13 +102,39 @@ class Extension:
     # e.g.: "VK_EXT_robustness2" -> "Robustness2"
     def name_in_camel_case(self):
         return "".join([x.title() for x in self.name.split('_')[2:]])
-    
-    # e.g.: "VK_EXT_robustness2" -> "VK_EXT_ROBUSTNESS2_EXTENSION_NAME"
-    # do note that inconsistencies exist, i.e. we have
-    # VK_EXT_ROBUSTNESS_2_EXTENSION_NAME defined in the headers, but then
-    # we also have VK_KHR_MAINTENANCE1_EXTENSION_NAME
+
+    # e.g.: "VK_EXT_robustness2" -> "VK_EXT_ROBUSTNESS_2"
+    def name_in_snake_uppercase(self):
+        def replace(original):
+            # we do not split the types into two, e.g. INT_32
+            match_types = re.match(".*(int|float)(8|16|32|64)$", original)
+
+            # do not match win32
+            match_os = re.match(".*win32$", original)
+
+            # try to match extensions with alphanumeric names, like robustness2
+            match_alphanumeric = re.match("([a-z]+)(\d+)", original)
+
+            if match_types is not None or match_os is not None:
+                return original.upper()
+
+            if match_alphanumeric is not None:
+                return (match_alphanumeric[1].upper()
+                        + '_' 
+                        + match_alphanumeric[2])
+
+            return original.upper()
+
+        replaced = list(map(replace, self.name.split('_')))
+        return '_'.join(replaced)
+
+    # e.g.: "VK_EXT_robustness2" -> "ROBUSTNESS_2"
+    def pure_name_in_snake_uppercase(self):
+        return '_'.join(self.name_in_snake_uppercase().split('_')[2:])
+
+    # e.g.: "VK_EXT_robustness2" -> "VK_EXT_ROBUSTNESS_2_EXTENSION_NAME"
     def extension_name(self):
-        return self.name.upper() + "_EXTENSION_NAME"
+        return self.name_in_snake_uppercase() + "_EXTENSION_NAME"
 
     # generate a C string literal for the extension
     def extension_name_literal(self):
@@ -134,7 +160,7 @@ class Extension:
     # for VK_EXT_transform_feedback and struct="FEATURES"
     def stype(self, struct: str):
         return ("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_" 
-                + self.pure_name().upper()
+                + self.pure_name_in_snake_uppercase()
                 + '_' + struct + '_' 
                 + self.vendor())
 

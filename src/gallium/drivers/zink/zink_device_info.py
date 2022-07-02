@@ -260,10 +260,7 @@ VERSIONS = [
 # There exists some inconsistencies regarding the enum constants, fix them.
 # This is basically generated_code.replace(key, value).
 REPLACEMENTS = {
-    "ROBUSTNESS2": "ROBUSTNESS_2",
     "PROPERTIES_PROPERTIES": "PROPERTIES",
-    "EXTENDED_DYNAMIC_STATE2": "EXTENDED_DYNAMIC_STATE_2",
-    "SYNCHRONIZATION2": "SYNCHRONIZATION_2",
 }
 
 
