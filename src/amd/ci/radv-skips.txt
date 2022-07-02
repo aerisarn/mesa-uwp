@@ -44,9 +44,6 @@ dEQP-VK.ray_tracing_pipeline.misc.recursiveTraces_tri_13
 dEQP-VK.ray_tracing_pipeline.misc.recursiveTraces_tri_14
 dEQP-VK.ray_tracing_pipeline.misc.recursiveTraces_tri_15
 
-# CTS bug (Missing barriers, issue pending)
-dEQP-VK.image.sample_texture.*_compressed_format*
-
 # LLVM (soft hangs)
 dEQP-VK.graphicsfuzz.while-inside-switch
 
