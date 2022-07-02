@@ -828,46 +828,17 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 #  define raster sf
 #endif
 
-   VkPolygonMode raster_mode =
-      genX(raster_polygon_mode)(pipeline, ia_info ? ia_info->topology : VK_PRIMITIVE_TOPOLOGY_MAX_ENUM);
-   bool dynamic_primitive_topology =
-      pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
-
    /* For details on 3DSTATE_RASTER multisample state, see the BSpec table
     * "Multisample Modes State".
     */
 #if GFX_VER >= 8
-   if (!dynamic_primitive_topology)
-      genX(rasterization_mode)(raster_mode, pipeline->line_mode,
-                               rs_info->lineWidth,
-                               &raster.APIMode,
-                               &raster.DXMultisampleRasterizationEnable);
-
    /* NOTE: 3DSTATE_RASTER::ForcedSampleCount affects the BDW and SKL PMA fix
     * computations.  If we ever set this bit to a different value, they will
     * need to be updated accordingly.
     */
    raster.ForcedSampleCount = FSC_NUMRASTSAMPLES_0;
    raster.ForceMultisampling = false;
-#else
-   uint32_t ms_rast_mode = 0;
-
-   if (!dynamic_primitive_topology)
-      ms_rast_mode = genX(ms_rasterization_mode)(pipeline, raster_mode);
-
-   raster.MultisampleRasterizationMode = ms_rast_mode;
 #endif
-
-   raster.AntialiasingEnable =
-      dynamic_primitive_topology ? 0 :
-      anv_rasterization_aa_mode(raster_mode, pipeline->line_mode);
-
-   raster.FrontWinding =
-      pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE ?
-         0 : genX(vk_to_intel_front_face)[rs_info->frontFace];
-   raster.CullMode =
-      pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_CULL_MODE ?
-         0 : genX(vk_to_intel_cullmode)[rs_info->cullMode];
 
    raster.FrontFaceFillMode = genX(vk_to_intel_fillmode)[rs_info->polygonMode];
    raster.BackFaceFillMode = genX(vk_to_intel_fillmode)[rs_info->polygonMode];
@@ -886,14 +857,6 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
       vk_conservative_rasterization_mode(rs_info) !=
          VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
 #endif
-
-   bool depth_bias_enable =
-      pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE ?
-         0 : rs_info->depthBiasEnable;
-
-   raster.GlobalDepthOffsetEnableSolid = depth_bias_enable;
-   raster.GlobalDepthOffsetEnableWireframe = depth_bias_enable;
-   raster.GlobalDepthOffsetEnablePoint = depth_bias_enable;
 
 #if GFX_VER == 7
    /* Gfx7 requires that we provide the depth format in 3DSTATE_SF so that it
@@ -1208,52 +1171,13 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    pipeline->depth_test_enable = info.depthTestEnable;
    pipeline->depth_bounds_test_enable = info.depthBoundsTestEnable;
 
-   bool dynamic_stencil_op =
-      pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
-
 #if GFX_VER <= 7
    struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
 #else
    struct GENX(3DSTATE_WM_DEPTH_STENCIL) depth_stencil = {
 #endif
-      .DepthTestEnable =
-         pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE ?
-            0 : info.depthTestEnable,
-
-      .DepthBufferWriteEnable =
-         pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE ?
-            0 : info.depthWriteEnable,
-
-      .DepthTestFunction =
-         pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP ?
-            0 : genX(vk_to_intel_compare_op)[info.depthCompareOp],
-
       .DoubleSidedStencilEnable = true,
-
-      .StencilTestEnable =
-         pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE ?
-            0 : info.stencilTestEnable,
-
-      .StencilFailOp = genX(vk_to_intel_stencil_op)[info.front.failOp],
-      .StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[info.front.passOp],
-      .StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[info.front.depthFailOp],
-      .StencilTestFunction = genX(vk_to_intel_compare_op)[info.front.compareOp],
-      .BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[info.back.failOp],
-      .BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[info.back.passOp],
-      .BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[info.back.depthFailOp],
-      .BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[info.back.compareOp],
    };
-
-   if (dynamic_stencil_op) {
-      depth_stencil.StencilFailOp = 0;
-      depth_stencil.StencilPassDepthPassOp = 0;
-      depth_stencil.StencilPassDepthFailOp = 0;
-      depth_stencil.StencilTestFunction = 0;
-      depth_stencil.BackfaceStencilFailOp = 0;
-      depth_stencil.BackfaceStencilPassDepthPassOp = 0;
-      depth_stencil.BackfaceStencilPassDepthFailOp = 0;
-      depth_stencil.BackfaceStencilTestFunction = 0;
-   }
 
 #if GFX_VER <= 7
    GENX(DEPTH_STENCIL_STATE_pack)(NULL, depth_stencil_dw, &depth_stencil);
@@ -1460,16 +1384,6 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.EarlyCullEnable          = true;
    clip.APIMode                  = pipeline->negative_one_to_one ? APIMODE_OGL : APIMODE_D3D;
    clip.GuardbandClipTestEnable  = true;
-
-   /* Only enable the XY clip test when the final polygon rasterization
-    * mode is VK_POLYGON_MODE_FILL.  We want to leave it disabled for
-    * points and lines so we get "pop-free" clipping.
-    */
-   VkPolygonMode raster_mode =
-      genX(raster_polygon_mode)(pipeline, ia_info ? ia_info->topology : VK_PRIMITIVE_TOPOLOGY_MAX_ENUM);
-   clip.ViewportXYClipTestEnable =
-      pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY ?
-      0 : (raster_mode == VK_POLYGON_MODE_FILL);
 
 #if GFX_VER >= 8
    clip.VertexSubPixelPrecisionSelect = _8Bit;
@@ -1694,9 +1608,6 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
 
    struct GENX(3DSTATE_STREAMOUT) so = {
       GENX(3DSTATE_STREAMOUT_header),
-      .RenderingDisable =
-         (pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE) ?
-         0 : rs_info->rasterizerDiscardEnable,
    };
 
    if (xfb_info) {
@@ -2206,13 +2117,6 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
       pipeline->force_fragment_thread_dispatch =
          wm_prog_data->has_side_effects ||
          wm_prog_data->uses_kill;
-
-      /* Only set this value in non dynamic mode. */
-      if (!(pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
-         wm.ForceThreadDispatchEnable =
-            (pipeline->force_fragment_thread_dispatch ||
-             !has_color_buffer_write_enabled(pipeline, blend)) ? ForceON : 0;
-      }
 #endif
 
       wm.BarycentricInterpolationMode =
@@ -2240,13 +2144,6 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
          wm_prog_data->has_side_effects ||
          wm.PixelShaderKillsPixel;
 
-      /* Only set this value in non dynamic mode. */
-      if (!(pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
-         wm.ThreadDispatchEnable =
-            pipeline->force_fragment_thread_dispatch ||
-            has_color_buffer_write_enabled(pipeline, blend);
-      }
-
       if (multisample && multisample->rasterizationSamples > 1) {
          if (wm_prog_data->persample_dispatch) {
             wm.MultisampleDispatchMode = MSDISPMODE_PERSAMPLE;
@@ -2256,13 +2153,6 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
       } else {
          wm.MultisampleDispatchMode = MSDISPMODE_PERSAMPLE;
       }
-
-      VkPolygonMode raster_mode =
-         genX(raster_polygon_mode)(pipeline, ia ? ia->topology : VK_PRIMITIVE_TOPOLOGY_MAX_ENUM);
-
-      wm.MultisampleRasterizationMode =
-         pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY ?
-         0 : genX(ms_rasterization_mode)(pipeline, raster_mode);
 #endif
 
       wm.LineStippleEnable = line && line->stippledLineEnable;

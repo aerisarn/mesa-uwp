@@ -375,25 +375,18 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        */
       uint32_t api_mode = 0;
       bool msaa_raster_enable = false;
-      bool aa_enable = 0;
 
-      if (cmd_buffer->state.gfx.pipeline->dynamic_states &
-          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-         VkPrimitiveTopology primitive_topology =
-            cmd_buffer->state.gfx.dynamic.primitive_topology;
+      VkPolygonMode dynamic_raster_mode =
+         genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
+                                   d->primitive_topology);
 
-         VkPolygonMode dynamic_raster_mode =
-            genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
-                                      primitive_topology);
+      genX(rasterization_mode)(
+         dynamic_raster_mode, pipeline->line_mode, d->line_width,
+         &api_mode, &msaa_raster_enable);
 
-         genX(rasterization_mode)(
-            dynamic_raster_mode, pipeline->line_mode, d->line_width,
-            &api_mode, &msaa_raster_enable);
-
-         aa_enable =
-            anv_rasterization_aa_mode(dynamic_raster_mode,
-                                      pipeline->line_mode);
-      }
+      bool aa_enable =
+         anv_rasterization_aa_mode(dynamic_raster_mode,
+                                   pipeline->line_mode);
 
       uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
       struct GENX(3DSTATE_RASTER) raster = {

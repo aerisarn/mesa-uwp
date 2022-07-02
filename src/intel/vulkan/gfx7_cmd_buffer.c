@@ -84,20 +84,11 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_SF::MultisampleRasterizationMode
        */
-      uint32_t ms_rast_mode = 0;
-
-      if (cmd_buffer->state.gfx.pipeline->dynamic_states &
-          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-         VkPrimitiveTopology primitive_topology =
-            cmd_buffer->state.gfx.dynamic.primitive_topology;
-
-         VkPolygonMode dynamic_raster_mode =
-            genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
-                                      primitive_topology);
-
-         ms_rast_mode =
-            genX(ms_rasterization_mode)(pipeline, dynamic_raster_mode);
-      }
+      VkPolygonMode dynamic_raster_mode =
+         genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
+                                   d->primitive_topology);
+      uint32_t ms_rast_mode =
+         genX(ms_rasterization_mode)(pipeline, dynamic_raster_mode);
 
       uint32_t sf_dw[GENX(3DSTATE_SF_length)];
       struct GENX(3DSTATE_SF) sf = {
@@ -113,6 +104,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetEnableWireframe = d->depth_bias_enable,
          .GlobalDepthOffsetEnablePoint = d->depth_bias_enable,
          .MultisampleRasterizationMode = ms_rast_mode,
+         .AntialiasingEnable = anv_rasterization_aa_mode(dynamic_raster_mode,
+                                                         pipeline->line_mode),
       };
       GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);
 
