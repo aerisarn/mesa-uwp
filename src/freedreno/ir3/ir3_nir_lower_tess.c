@@ -30,7 +30,7 @@ struct state {
 
    struct primitive_map {
       /* +POSITION, +PSIZE, ... - see shader_io_get_unique_index */
-      unsigned loc[32 + 6];
+      unsigned loc[32 + 11];
       unsigned stride;
    } map;
 
@@ -99,21 +99,31 @@ is_tess_levels(gl_varying_slot slot)
 static unsigned
 shader_io_get_unique_index(gl_varying_slot slot)
 {
-   if (slot == VARYING_SLOT_POS)
-      return 0;
-   if (slot == VARYING_SLOT_PSIZ)
-      return 1;
-   if (slot == VARYING_SLOT_CLIP_DIST0)
-      return 2;
-   if (slot == VARYING_SLOT_CLIP_DIST1)
-      return 3;
-   if (slot == VARYING_SLOT_VIEWPORT)
-      return 4;
-   if (slot == VARYING_SLOT_LAYER)
-      return 5;
-   if (slot >= VARYING_SLOT_VAR0 && slot <= VARYING_SLOT_VAR31)
-      return 6 + (slot - VARYING_SLOT_VAR0);
-   unreachable("illegal slot in get unique index\n");
+   switch (slot) {
+   case VARYING_SLOT_POS:         return 0;
+   case VARYING_SLOT_PSIZ:        return 1;
+   case VARYING_SLOT_COL0:        return 2;
+   case VARYING_SLOT_COL1:        return 3;
+   case VARYING_SLOT_BFC0:        return 4;
+   case VARYING_SLOT_BFC1:        return 5;
+   case VARYING_SLOT_FOGC:        return 6;
+   case VARYING_SLOT_CLIP_DIST0:  return 7;
+   case VARYING_SLOT_CLIP_DIST1:  return 8;
+   case VARYING_SLOT_CLIP_VERTEX: return 9;
+   case VARYING_SLOT_LAYER:       return 10;
+   case VARYING_SLOT_VIEWPORT:    return 11;
+   case VARYING_SLOT_VAR0 ... VARYING_SLOT_VAR31: {
+      struct state state = {};
+      STATIC_ASSERT(ARRAY_SIZE(state.map.loc) ==
+                    (12 + VARYING_SLOT_VAR31 - VARYING_SLOT_VAR0));
+      struct ir3_shader_variant v = {};
+      STATIC_ASSERT(ARRAY_SIZE(v.output_loc) ==
+                    (12 + VARYING_SLOT_VAR31 - VARYING_SLOT_VAR0));
+      return 12 + (slot - VARYING_SLOT_VAR0);
+   }
+   default:
+      unreachable("illegal slot in get unique index\n");
+   }
 }
 
 static nir_ssa_def *

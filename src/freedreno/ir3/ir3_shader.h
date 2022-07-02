@@ -627,7 +627,7 @@ struct ir3_shader_variant {
     * offset, and in bytes for all other stages.
     * +POSITION, +PSIZE, ... - see shader_io_get_unique_index
     */
-   unsigned output_loc[32 + 6];
+   unsigned output_loc[32 + 11];
 
    /* attributes (VS) / varyings (FS):
     * Note that sysval's should come *after* normal inputs.
