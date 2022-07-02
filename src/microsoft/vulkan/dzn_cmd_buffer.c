@@ -95,8 +95,7 @@ dzn_cmd_buffer_queue_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
    struct D3D12_RESOURCE_BARRIER *barriers = he ? he->data : NULL;
 
    if (!barriers) {
-      D3D12_RESOURCE_DESC desc;
-      ID3D12Resource_GetDesc(res, &desc);
+      D3D12_RESOURCE_DESC desc = dzn_ID3D12Resource_GetDesc(res);
       D3D12_FEATURE_DATA_FORMAT_INFO fmt_info = { desc.Format, 0 };
       ID3D12Device_CheckFeatureSupport(device->dev, D3D12_FEATURE_FORMAT_INFO, &fmt_info, sizeof(fmt_info));
       uint32_t barrier_count =

@@ -759,8 +759,7 @@ dzn_GetImageMemoryRequirements2(VkDevice _device,
       }
    }
 
-   D3D12_RESOURCE_ALLOCATION_INFO info;
-   ID3D12Device1_GetResourceAllocationInfo(device->dev, &info, 0, 1, &image->desc);
+   D3D12_RESOURCE_ALLOCATION_INFO info = dzn_ID3D12Device2_GetResourceAllocationInfo(device->dev, 0, 1, &image->desc);
 
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .size = info.SizeInBytes,

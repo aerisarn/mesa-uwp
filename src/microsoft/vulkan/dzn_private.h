@@ -63,6 +63,7 @@
 #include <directx/d3d12.h>
 
 #include "spirv_to_dxil.h"
+#include "dzn_abi_helper.h"
 
 #define DZN_SWAP(t, a, b) \
    do { \

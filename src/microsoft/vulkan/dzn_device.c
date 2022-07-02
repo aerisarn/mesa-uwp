@@ -1864,8 +1864,7 @@ static VkResult
 dzn_device_query_init(struct dzn_device *device)
 {
    /* FIXME: create the resource in the default heap */
-   D3D12_HEAP_PROPERTIES hprops;
-   ID3D12Device1_GetCustomHeapProperties(device->dev, &hprops, 0, D3D12_HEAP_TYPE_UPLOAD);
+   D3D12_HEAP_PROPERTIES hprops = dzn_ID3D12Device2_GetCustomHeapProperties(device->dev, 0, D3D12_HEAP_TYPE_UPLOAD);
    D3D12_RESOURCE_DESC rdesc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,

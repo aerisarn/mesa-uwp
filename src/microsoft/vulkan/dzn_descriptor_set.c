@@ -825,12 +825,10 @@ dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
                       VK_ERROR_OUT_OF_DEVICE_MEMORY : VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
-   ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap->heap, &cpu_handle);
+   D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle = dzn_ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap->heap);
    heap->cpu_base = cpu_handle.ptr;
    if (shader_visible) {
-      D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
-      ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(heap->heap, &gpu_handle);
+      D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle = dzn_ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(heap->heap);
       heap->gpu_base = gpu_handle.ptr;
    }
 
