@@ -495,9 +495,28 @@ gpu_supports_render_format(struct etna_screen *screen, enum pipe_format format,
    if (fmt == ETNA_NO_MATCH)
       return false;
 
-   /* MSAA is broken */
-   if (sample_count > 1)
+   if (sample_count > 1) {
+      /* The hardware supports it. */
+      if (!VIV_FEATURE(screen, chipFeatures, MSAA))
          return false;
+
+      /* Number of samples must be allowed. */
+      if (!translate_samples_to_xyscale(sample_count, NULL, NULL))
+         return false;
+
+      /* On SMALL_MSAA hardware 2x MSAA does not work. */
+      if (sample_count == 2 && VIV_FEATURE(screen, chipMinorFeatures4, SMALL_MSAA))
+         return false;
+
+      /* BLT/RS supports the format. */
+      if (screen->specs.use_blt) {
+         if (translate_blt_format(format) == ETNA_NO_MATCH)
+            return false;
+      } else {
+         if (translate_rs_format(format) == ETNA_NO_MATCH)
+            return false;
+      }
+   }
 
    if (format == PIPE_FORMAT_R8_UNORM)
       return VIV_FEATURE(screen, chipMinorFeatures5, HALTI5);
