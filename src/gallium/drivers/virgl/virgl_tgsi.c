@@ -59,6 +59,7 @@ struct virgl_transform_context {
    bool cull_enabled;
    bool has_precise;
    bool fake_fp64;
+   bool is_separable;
 
    unsigned next_temp;
 
@@ -185,6 +186,14 @@ static void
 virgl_tgsi_transform_prolog(struct tgsi_transform_context * ctx)
 {
    struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
+
+   if (vtctx->is_separable) {
+      struct tgsi_full_property prop = tgsi_default_full_property();
+      prop.Property.PropertyName = TGSI_PROPERTY_SEPARABLE_PROGRAM;
+      prop.Property.NrTokens += 1;
+      prop.u[0].Data = 1;
+      ctx->emit_property(ctx, &prop);
+   }
 
    vtctx->src_temp = vtctx->next_temp;
    vtctx->next_temp += 4;
@@ -418,7 +427,8 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
    }
 }
 
-struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const struct tgsi_token *tokens_in)
+struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const struct tgsi_token *tokens_in,
+                                        bool is_separable)
 {
    struct virgl_transform_context transform;
    const uint newLen = tgsi_num_tokens(tokens_in);
@@ -432,6 +442,7 @@ struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const stru
    transform.has_precise = vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_TGSI_PRECISE;
    transform.fake_fp64 =
       vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_FAKE_FP64;
+   transform.is_separable = is_separable && (vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_SSO);
 
    for (int i = 0; i < ARRAY_SIZE(transform.input_temp); i++)
       transform.input_temp[i].index = ~0;

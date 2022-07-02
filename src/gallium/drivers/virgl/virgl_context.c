@@ -682,18 +682,23 @@ static void *virgl_shader_encoder(struct pipe_context *ctx,
    const struct tgsi_token *ntt_tokens = NULL;
    struct tgsi_token *new_tokens;
    int ret;
+   bool is_separable = false;
 
    if (shader->type == PIPE_SHADER_IR_NIR) {
       struct nir_to_tgsi_options options = {
          .unoptimized_ra = true
       };
       nir_shader *s = nir_shader_clone(NULL, shader->ir.nir);
+
+      /* Propagare the separable shader property to the host, unless
+       * it is an internal shader - these are marked separable even though they are not. */
+      is_separable = s->info.separate_shader && !s->info.internal;
       ntt_tokens = tokens = nir_to_tgsi_options(s, vctx->base.screen, &options); /* takes ownership */
    } else {
       tokens = shader->tokens;
    }
 
-   new_tokens = virgl_tgsi_transform((struct virgl_screen *)vctx->base.screen, tokens);
+   new_tokens = virgl_tgsi_transform((struct virgl_screen *)vctx->base.screen, tokens, is_separable);
    if (!new_tokens)
       return NULL;
 
@@ -1378,7 +1383,7 @@ static void *virgl_create_compute_state(struct pipe_context *ctx,
       tokens = state->prog;
    }
 
-   void *new_tokens = virgl_tgsi_transform((struct virgl_screen *)vctx->base.screen, tokens);
+   void *new_tokens = virgl_tgsi_transform((struct virgl_screen *)vctx->base.screen, tokens, false);
    if (!new_tokens)
       return NULL;
 
