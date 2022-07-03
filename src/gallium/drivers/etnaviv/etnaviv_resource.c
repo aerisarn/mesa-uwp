@@ -371,6 +371,15 @@ etna_resource_create(struct pipe_screen *pscreen,
       layout |= ETNA_LAYOUT_BIT_SUPER;
    }
 
+   if (/* MSAA render target */
+       (templat->nr_samples > 1) &&
+       (templat->bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL))) {
+      if (screen->specs.pixel_pipes > 1 && !screen->specs.single_buffer)
+         layout |= ETNA_LAYOUT_BIT_MULTI;
+      if (screen->specs.can_supertile)
+         layout |= ETNA_LAYOUT_BIT_SUPER;
+   }
+
    if (/* linear base or scanout without modifier requested */
        (templat->bind & (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT)) ||
        templat->target == PIPE_BUFFER || /* buffer always linear */
