@@ -1,28 +1,58 @@
+# Samples as luminance or intensity, instead of red.
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component16,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component24,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_component16,Fail
 
+#  Creating OpenGL ES 3 context
+# Fail, context: 0x00000000, error: EGL_BAD_MATCH
 dEQP-EGL.functional.create_context.no_config,Fail
 
+# wide line outside the viewport incorrectly clipped out when ES wants it
+# rendered as a quad and clipped appropriately.  I think by expanding
+# CLIPPER_XY_SCALING to have a guard band we might get these to work.
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
+
 dEQP-GLES2.functional.depth_stencil_clear.depth_stencil_masked,Fail
+
+# 2-count line loop incorrectly draws nothing (HW bug).  Need to demote to being
+# GL_LINES, though that wouldn't be correct with blending/logicop.
 dEQP-GLES2.functional.draw.draw_arrays.line_loop.multiple_attributes,Fail
 dEQP-GLES2.functional.draw.draw_arrays.line_loop.single_attribute,Fail
+
+# A glTexImage, glDraw, glTexSubImage sequence into a texture is missing what looks like the drawing.
 dEQP-GLES2.functional.fbo.render.texsubimage.after_render_tex2d_rgba,Fail
+# A glTexImage, glDraw, glTexSubImage, glDraw sequence into a texture is missing what looks like the first drawing.
 dEQP-GLES2.functional.fbo.render.texsubimage.between_render_tex2d_rgba,Fail
+
+# "GL_INVALID_VALUE is generated if index is greater than or equal to GL_MAX_VERTEX_ATTRIBS."
+# but we didn't generate an error.
 dEQP-GLES2.functional.negative_api.vertex_array.vertex_attrib,Fail
 dEQP-GLES2.functional.negative_api.vertex_array.vertex_attribv,Fail
+
+# Sampling grid slightly off in test 2?
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_linear_mirror_rgba8888,Fail
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_linear_repeat_rgba8888,Fail
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_nearest_linear_mirror_rgba8888,Fail
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_nearest_linear_repeat_rgba8888,Fail
+
+# " Warning: High precision not supported in fragment shaders.
+#   ERROR: Image verification failed, found 2048 invalid pixels!"
+# one of the magnified pixels is (0xff, 0x29,0xd6) instead of (0xff,0x2d,0xd2).
+# We do support highp, so we should fix glGetShaderPrecisionFormat reporting.
 dEQP-GLES2.functional.texture.mipmap.2d.basic.linear_linear_repeat_non_square,Fail
 dEQP-GLES2.functional.texture.mipmap.2d.basic.nearest_linear_clamp_non_square,Fail
 dEQP-GLES2.functional.texture.mipmap.2d.basic.nearest_linear_mirror_non_square,Fail
 dEQP-GLES2.functional.texture.mipmap.2d.basic.nearest_linear_repeat_non_square,Fail
+
+# Sequence of glTexImage, glDraw, glCopyTexSubImage.
+# background red/green checkerboard on the left side is incorrectly white.
 dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.2d_rgba,Fail
+# Maybe it was copied as RGB instead of RGBA?
 dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_rgba,Fail
+
+# One of the pixels on the left edge near the bottom is wrong for both min and
+# mag.  Also a line of pixels through the image in minification.
 dEQP-GLES2.functional.texture.wrap.clamp_clamp_nearest_npot_etc1,Fail
 
 # Despite exposing GL 2.1, the HW doesn't actually support 3D textures so we set
@@ -797,6 +827,7 @@ spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
 spec@!opengl 1.1@linestipple@Restarting lines within a single Begin-End block,Fail
+
 spec@!opengl 1.1@polygon-mode,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on bottom edge,Fail
