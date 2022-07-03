@@ -181,6 +181,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_private_data                     = true,
       .EXT_provoking_vertex                 = true,
       .EXT_separate_stencil_usage           = true,
+      .EXT_shader_module_identifier         = true,
       .EXT_texel_buffer_alignment           = true,
       .EXT_tooling_info                     = true,
       .EXT_vertex_attribute_divisor         = true,
@@ -1306,6 +1307,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT: {
+         VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *features =
+            (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *)ext;
+         features->shaderModuleIdentifier = true;
+         break;
+      }
+
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -1701,6 +1709,16 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->storageTexelBufferOffsetSingleTexelAlignment = false;
          props->uniformTexelBufferOffsetAlignmentBytes = V3D_TMU_TEXEL_ALIGN;
          props->uniformTexelBufferOffsetSingleTexelAlignment = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_PROPERTIES_EXT: {
+         VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT *props =
+            (VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT *)ext;
+         STATIC_ASSERT(sizeof(vk_shaderModuleIdentifierAlgorithmUUID) ==
+                       sizeof(props->shaderModuleIdentifierAlgorithmUUID));
+         memcpy(props->shaderModuleIdentifierAlgorithmUUID,
+                vk_shaderModuleIdentifierAlgorithmUUID,
+                sizeof(props->shaderModuleIdentifierAlgorithmUUID));
          break;
       }
       default:
