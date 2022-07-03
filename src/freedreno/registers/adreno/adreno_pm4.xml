@@ -67,20 +67,20 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CACHE_INVALIDATE" value="49" varset="chip" variants="A6XX"/>
 
 	<!-- note, some of these are the same as a6xx, just named differently -->
-	<value name="CCU_INVALIDATE_DEPTH" value="24" variants="A7XX"/>
-	<value name="CCU_INVALIDATE_COLOR" value="25" variants="A7XX"/>
-	<value name="CCU_RESOLVE_CLEAN" value="26" variants="A7XX"/>
-	<value name="CCU_FLUSH_DEPTH" value="28" variants="A7XX"/>
-	<value name="CCU_FLUSH_COLOR" value="29" variants="A7XX"/>
-	<value name="CCU_RESOLVE" value="30" variants="A7XX"/>
-	<value name="CCU_END_RESOLVE_GROUP" value="31" variants="A7XX"/>
-	<value name="CCU_CLEAN_DEPTH" value="32" variants="A7XX"/>
-	<value name="CCU_CLEAN_COLOR" value="33" variants="A7XX"/>
-	<value name="CACHE_RESET" value="48" variants="A7XX"/>
-	<value name="CACHE_CLEAN" value="49" variants="A7XX"/>
+	<value name="CCU_INVALIDATE_DEPTH" value="24" varset="chip" variants="A7XX"/>
+	<value name="CCU_INVALIDATE_COLOR" value="25" varset="chip" variants="A7XX"/>
+	<value name="CCU_RESOLVE_CLEAN" value="26" varset="chip" variants="A7XX"/>
+	<value name="CCU_FLUSH_DEPTH" value="28" varset="chip" variants="A7XX"/>
+	<value name="CCU_FLUSH_COLOR" value="29" varset="chip" variants="A7XX"/>
+	<value name="CCU_RESOLVE" value="30" varset="chip" variants="A7XX"/>
+	<value name="CCU_END_RESOLVE_GROUP" value="31" varset="chip" variants="A7XX"/>
+	<value name="CCU_CLEAN_DEPTH" value="32" varset="chip" variants="A7XX"/>
+	<value name="CCU_CLEAN_COLOR" value="33" varset="chip" variants="A7XX"/>
+	<value name="CACHE_RESET" value="48" varset="chip" variants="A7XX"/>
+	<value name="CACHE_CLEAN" value="49" varset="chip" variants="A7XX"/>
 	<!-- TODO: deal with name conflicts with other gens -->
-	<value name="CACHE_FLUSH7" value="50" variants="A7XX"/>
-	<value name="CACHE_INVALIDATE7" value="51" variants="A7XX"/>
+	<value name="CACHE_FLUSH7" value="50" varset="chip" variants="A7XX"/>
+	<value name="CACHE_INVALIDATE7" value="51" varset="chip" variants="A7XX"/>
 </enum>
 
 <enum name="pc_di_primtype">
