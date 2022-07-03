@@ -1256,12 +1256,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    const char *ib_filename = debug_get_option("AMD_PARSE_IB", NULL);
    if (ib_filename) {
-	   FILE *f = fopen(ib_filename, "r");
-	   if (f) {
-		   fseek(f, 0, SEEK_END);
+      FILE *f = fopen(ib_filename, "r");
+      if (f) {
+         fseek(f, 0, SEEK_END);
          size_t size = ftell(f);
-		   uint32_t *ib = (uint32_t *)malloc(size);
-		   fseek(f, 0, SEEK_SET);
+         uint32_t *ib = (uint32_t *)malloc(size);
+         fseek(f, 0, SEEK_SET);
          size_t n_read = fread(ib, 1, size, f);
          fclose(f);
 
@@ -1271,9 +1271,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          }
 
          ac_parse_ib(stdout, ib, size / 4, NULL, 0, "IB", info->gfx_level, NULL, NULL);
-		   free(ib);
-		   exit(0);
-	   }
+         free(ib);
+         exit(0);
+      }
    }
    return true;
 }
