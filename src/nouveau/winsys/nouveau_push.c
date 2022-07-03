@@ -2,7 +2,6 @@
 
 #include <errno.h>
 #include <nouveau_drm.h>
-#include <nouveau/nouveau.h>
 #include <sys/mman.h>
 #include <xf86drm.h>
 
@@ -216,9 +215,6 @@ nouveau_ws_push_submit(
    struct nouveau_ws_device *dev,
    struct nouveau_ws_context *ctx
 ) {
-   struct nouveau_ws_device_priv *pdev = nouveau_ws_device(dev);
-   struct nouveau_fifo *fifo = ctx->channel->data;
-
    struct drm_nouveau_gem_pushbuf_bo req_bo[NOUVEAU_GEM_MAX_BUFFERS] = {};
    struct drm_nouveau_gem_pushbuf req = {};
    struct drm_nouveau_gem_pushbuf_push req_push = {};
@@ -241,8 +237,8 @@ nouveau_ws_push_submit(
             req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
             req_bo[i].read_domains |= NOUVEAU_GEM_DOMAIN_GART;
          } else {
-            req_bo[i].valid_domains |= pdev->local_mem_domain;
-            req_bo[i].read_domains |= pdev->local_mem_domain;
+            req_bo[i].valid_domains |= dev->local_mem_domain;
+            req_bo[i].read_domains |= dev->local_mem_domain;
          }
       }
 
@@ -251,8 +247,8 @@ nouveau_ws_push_submit(
             req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
             req_bo[i].write_domains |= NOUVEAU_GEM_DOMAIN_GART;
          } else {
-            req_bo[i].valid_domains |= pdev->local_mem_domain;
-            req_bo[i].write_domains |= pdev->local_mem_domain;
+            req_bo[i].valid_domains |= dev->local_mem_domain;
+            req_bo[i].write_domains |= dev->local_mem_domain;
          }
       }
 
@@ -263,7 +259,7 @@ nouveau_ws_push_submit(
    req_push.offset = 0;
    req_push.length = (push->map - push->orig_map) * 4;
 
-   req.channel = fifo->channel;
+   req.channel = ctx->channel;
    req.nr_buffers = i;
    req.buffers = (uintptr_t)&req_bo;
    req.nr_push = 1;
@@ -272,7 +268,7 @@ nouveau_ws_push_submit(
    if (dev->debug_flags & NVK_DEBUG_PUSH_SYNC)
       req.vram_available |= NOUVEAU_GEM_PUSHBUF_SYNC;
 
-   int ret = drmCommandWriteRead(pdev->fd, DRM_NOUVEAU_GEM_PUSHBUF, &req, sizeof(req));
+   int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_PUSHBUF, &req, sizeof(req));
 
    if ((ret && (dev->debug_flags & NVK_DEBUG_PUSH_SYNC)) || dev->debug_flags & NVK_DEBUG_PUSH_DUMP) {
       printf("DRM_NOUVEAU_GEM_PUSHBUF returned %i, dumping pushbuffer\n", ret);

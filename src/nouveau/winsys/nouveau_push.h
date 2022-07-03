@@ -4,7 +4,6 @@
 #include "nouveau_private.h"
 
 #include "nouveau_bo.h"
-#include "nouveau_drm.h"
 #include "util/u_dynarray.h"
 
 struct nouveau_ws_context;

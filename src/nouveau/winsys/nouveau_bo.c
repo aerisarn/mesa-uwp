@@ -1,6 +1,5 @@
 #include "nouveau_bo.h"
 
-#include <nouveau/nouveau.h>
 #include <nouveau_drm.h>
 #include <xf86drm.h>
 
@@ -10,7 +9,6 @@
 struct nouveau_ws_bo *
 nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, enum nouveau_ws_bo_flags flags)
 {
-   struct nouveau_ws_device_priv *pdev = nouveau_ws_device(dev);
    struct nouveau_ws_bo *bo = CALLOC_STRUCT(nouveau_ws_bo);
    struct drm_nouveau_gem_new req = {};
 
@@ -22,7 +20,7 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, 
    if (flags & NOUVEAU_WS_BO_GART)
       req.info.domain |= NOUVEAU_GEM_DOMAIN_GART;
    else
-      req.info.domain |= pdev->local_mem_domain;
+      req.info.domain |= dev->local_mem_domain;
 
    if (flags & NOUVEAU_WS_BO_MAP)
       req.info.domain |= NOUVEAU_GEM_DOMAIN_MAPPABLE;
@@ -30,7 +28,7 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, 
    req.info.size = size;
    req.align = align;
 
-   int ret = drmCommandWriteRead(pdev->fd, DRM_NOUVEAU_GEM_NEW, &req, sizeof(req));
+   int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_NEW, &req, sizeof(req));
    if (ret) {
       FREE(bo);
       return NULL;
@@ -40,7 +38,7 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev, uint64_t size, uint64_t align, 
    bo->offset = req.info.offset;
    bo->handle = req.info.handle;
    bo->map_handle = req.info.map_handle;
-   bo->fd = pdev->fd;
+   bo->fd = dev->fd;
    bo->flags = flags;
    bo->refcnt = 1;
 

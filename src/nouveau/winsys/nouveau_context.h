@@ -5,12 +5,18 @@
 
 struct nouveau_ws_device;
 
-struct nouveau_ws_context {
-   struct nouveau_object *channel;
+struct nouveau_ws_object {
+   uint8_t __pad;
+};
 
-   struct nouveau_object *eng2d;
-   struct nouveau_object *m2mf;
-   struct nouveau_object *compute;
+struct nouveau_ws_context {
+   struct nouveau_ws_device *dev;
+
+   int channel;
+
+   struct nouveau_ws_object eng2d;
+   struct nouveau_ws_object m2mf;
+   struct nouveau_ws_object compute;
 };
 
 int nouveau_ws_context_create(struct nouveau_ws_device *, struct nouveau_ws_context **out);

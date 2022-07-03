@@ -1,10 +1,11 @@
 #include "nouveau_device.h"
 
 #include <drm/drm.h>
-#include <nouveau/nouveau.h>
 #include <nouveau_drm.h>
+#include <nouveau/nvif/ioctl.h>
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
+#include <xf86drm.h>
 
 #include "util/u_debug.h"
 #include "util/os_file.h"
@@ -125,63 +126,161 @@ nouveau_ws_device_set_dbg_flags(struct nouveau_ws_device *dev)
    dev->debug_flags = parse_debug_string(getenv("NVK_DEBUG"), flags);
 }
 
+static int
+nouveau_ws_param(int fd, uint64_t param, uint64_t *value)
+{
+   struct drm_nouveau_getparam data = { .param = param };
+
+   int ret = drmCommandWriteRead(fd, DRM_NOUVEAU_GETPARAM, &data, sizeof(data));
+   if (ret)
+      return ret;
+
+   *value = data.value;
+   return 0;
+}
+
+static int
+nouveau_ws_device_alloc(int fd, struct nouveau_ws_device *dev)
+{
+   struct {
+      struct nvif_ioctl_v0 ioctl;
+      struct nvif_ioctl_new_v0 new;
+      struct nv_device_v0 dev;
+   } args = {
+      .ioctl = {
+         .object = 0,
+         .owner = NVIF_IOCTL_V0_OWNER_ANY,
+         .route = 0x00,
+         .type = NVIF_IOCTL_V0_NEW,
+         .version = 0,
+      },
+      .new = {
+         .handle = 0,
+         .object = (uintptr_t)dev,
+         .oclass = NV_DEVICE,
+         .route = NVIF_IOCTL_V0_ROUTE_NVIF,
+         .token = (uintptr_t)dev,
+         .version = 0,
+      },
+      .dev = {
+         .device = ~0ULL,
+      },
+   };
+
+   return drmCommandWrite(fd, DRM_NOUVEAU_NVIF, &args, sizeof(args));
+}
+
+static int
+nouveau_ws_device_info(int fd, struct nouveau_ws_device *dev)
+{
+   struct {
+      struct nvif_ioctl_v0 ioctl;
+      struct nvif_ioctl_mthd_v0 mthd;
+      struct nv_device_info_v0 info;
+   } args = {
+      .ioctl = {
+         .object = (uintptr_t)dev,
+         .owner = NVIF_IOCTL_V0_OWNER_ANY,
+         .route = 0x00,
+         .type = NVIF_IOCTL_V0_MTHD,
+         .version = 0,
+      },
+      .mthd = {
+         .method = NV_DEVICE_V0_INFO,
+         .version = 0,
+      },
+      .info = {
+         .version = 0,
+      },
+   };
+
+   int ret = drmCommandWriteRead(fd, DRM_NOUVEAU_NVIF, &args, sizeof(args));
+   if (ret)
+      return ret;
+
+   dev->chipset = args.info.chipset;
+   dev->vram_size = args.info.ram_user;
+
+   switch (args.info.platform) {
+   case NV_DEVICE_INFO_V0_IGP:
+      dev->device_type = NOUVEAU_WS_DEVICE_TYPE_IGP;
+      break;
+   case NV_DEVICE_INFO_V0_SOC:
+      dev->device_type = NOUVEAU_WS_DEVICE_TYPE_SOC;
+      break;
+   case NV_DEVICE_INFO_V0_PCI:
+   case NV_DEVICE_INFO_V0_AGP:
+   case NV_DEVICE_INFO_V0_PCIE:
+   default:
+      dev->device_type = NOUVEAU_WS_DEVICE_TYPE_DIS;
+      break;
+   }
+
+   dev->chipset_name = strndup(args.info.chip, sizeof(args.info.chip));
+   dev->device_name = strndup(args.info.name, sizeof(args.info.name));
+
+   return 0;
+}
+
 struct nouveau_ws_device *
 nouveau_ws_device_new(int fd)
 {
-   struct nouveau_ws_device_priv *device = CALLOC_STRUCT(nouveau_ws_device_priv);
-   uint64_t device_id = 0;
-   struct nouveau_drm *drm;
-   struct nouveau_device *dev;
+   struct nouveau_ws_device *device = CALLOC_STRUCT(nouveau_ws_device);
+   uint64_t value = 0;
    int dup_fd = os_dupfd_cloexec(fd);
+   drmVersionPtr ver;
 
-   if (nouveau_drm_new(dup_fd, &drm)) {
+   ver = drmGetVersion(dup_fd);
+   if (!ver)
       return NULL;
-   }
 
-   struct nv_device_v0 v0 = {
-      .device = ~0ULL,
-   };
+   uint32_t version =
+      ver->version_major << 24 |
+      ver->version_minor << 8  |
+      ver->version_patchlevel;
+   drmFreeVersion(ver);
 
-   if (nouveau_device_new(&drm->client, NV_DEVICE, &v0, sizeof(v0), &dev)) {
+   if (version < 0x01000301)
       goto out_drm;
-   }
 
-   if (nouveau_getparam(dev, NOUVEAU_GETPARAM_PCI_DEVICE, &device_id)) {
+   if (nouveau_ws_device_alloc(dup_fd, device))
+      goto out_drm;
+
+   if (nouveau_ws_device_info(dup_fd, device))
+      goto out_drm;
+
+   if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
       goto out_dev;
-   }
+   device->device_id = value;
 
-   device->base.vendor_id = 0x10de;
-   device->base.device_id = device_id;
-   device->base.chipset = dev->chipset;
-   device->base.cls = cls_for_chipset(dev->chipset);
-   device->base.cm = sm_for_cls(device->base.cls, dev->chipset);
-   device->base.vram_size = dev->vram_size;
-   os_get_available_system_memory(&device->base.gart_size);
-   device->base.gart_size = MIN2(device->base.gart_size, dev->gart_size);
-   device->base.is_integrated = dev->vram_size == 0;
-   device->drm = drm;
-   device->dev = dev;
+   if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
+      goto out_dev;
+   os_get_available_system_memory(&device->gart_size);
+   device->gart_size = MIN2(device->gart_size, value);
+
    device->fd = dup_fd;
+   device->vendor_id = 0x10de;
+   device->cls = cls_for_chipset(device->chipset);
+   device->cm = sm_for_cls(device->cls, device->chipset);
+   device->is_integrated = device->vram_size == 0;
 
-   if (dev->vram_size == 0)
+   if (device->vram_size == 0)
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_GART;
    else
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_VRAM;
 
-   uint64_t value;
-   if (nouveau_getparam(dev, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
+   if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
       goto out_dev;
-   device->base.gpc_count = value & 0x000000ff;
-   device->base.mp_count = value >> 8;
+   device->gpc_count = value & 0x000000ff;
+   device->mp_count = value >> 8;
 
-   nouveau_ws_device_set_dbg_flags(&device->base);
+   nouveau_ws_device_set_dbg_flags(device);
 
-   return &device->base;
+   return device;
 
 out_dev:
-   nouveau_device_del(&dev);
+   FREE(device);
 out_drm:
-   nouveau_drm_del(&drm);
    close(dup_fd);
    return NULL;
 }
@@ -192,11 +291,8 @@ nouveau_ws_device_destroy(struct nouveau_ws_device *device)
    if (!device)
       return;
 
-   struct nouveau_ws_device_priv *priv = nouveau_ws_device(device);
-
-   nouveau_device_del(&priv->dev);
-   nouveau_drm_del(&priv->drm);
-   close(priv->fd);
-
-   FREE(priv);
+   close(device->fd);
+   FREE(device->chipset_name);
+   FREE(device->device_name);
+   FREE(device);
 }
