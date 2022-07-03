@@ -50,7 +50,8 @@ private:
    bool m_first_vertex_emitted{false};
    int m_offset{0};
    int m_next_input_ring_offset{0};
-   int m_clip_dist_mask{0};
+   int m_cc_dist_mask{0};
+   int m_clip_dist_write{0};
    int m_cur_ring_output{0};
    bool m_gs_tri_strip_adj_fix{false};
    uint64_t m_input_mask{0};

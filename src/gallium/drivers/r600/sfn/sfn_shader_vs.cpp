@@ -97,9 +97,13 @@ bool VertexExportForFs::do_store_output(const store_loc &store_info, nir_intrins
    case VARYING_SLOT_CLIP_VERTEX:
       return emit_clip_vertices(store_info, intr);
    case VARYING_SLOT_CLIP_DIST0:
-   case VARYING_SLOT_CLIP_DIST1:
+   case VARYING_SLOT_CLIP_DIST1: {
+      bool success = emit_varying_pos(store_info, intr);
       m_num_clip_dist += 4;
-      return emit_varying_param(store_info, intr) && emit_varying_pos(store_info, intr);
+      if (!nir_intrinsic_io_semantics(&intr).no_varying)
+         success &= emit_varying_param(store_info, intr);
+      return success;
+      }
    case VARYING_SLOT_LAYER: {
       m_out_misc_write = 1;
       m_vs_out_layer = 1;
@@ -127,29 +131,6 @@ bool VertexExportForFs::emit_clip_vertices(const store_loc &store_info, const ni
    m_clip_vertex = vf.src_vec4(instr.src[store_info.data_loc], pin_group, {0,1,2,3});
 
    m_output_registers[nir_intrinsic_base(&instr)] = &m_clip_vertex;
-
-   RegisterVec4 clip_dist[2] = { vf.temp_vec4(pin_group), vf.temp_vec4(pin_group)};
-
-   for (int i = 0; i < 8; i++) {
-      int oreg = i >> 2;
-      int ochan = i & 3;
-      AluInstr *ir = nullptr;
-      AluInstr::SrcValues src(8);
-
-      for (int j = 0; j < 4; j++) {
-         src[2 * j] = m_clip_vertex[j];
-         src[2 * j + 1] = vf.uniform(512 + i, j, R600_BUFFER_INFO_CONST_BUFFER);
-      }
-
-      ir = new AluInstr(op2_dot4_ieee, clip_dist[oreg][ochan], src, AluInstr::last_write, 4);
-      m_parent->emit_instruction(ir);
-   }
-
-   m_last_pos_export = new ExportInstr(ExportInstr::pos, m_cur_clip_pos++, clip_dist[0]);
-   m_parent->emit_instruction(m_last_pos_export);
-
-   m_last_pos_export = new ExportInstr(ExportInstr::pos, m_cur_clip_pos++, clip_dist[1]);
-   m_parent->emit_instruction(m_last_pos_export);
 
    return true;
 }
@@ -450,22 +431,24 @@ bool VertexShader::do_scan_instruction(nir_instr *instr)
       output.set_sid(sid);
 
       switch (location) {
-      case VARYING_SLOT_PSIZ:
-      case VARYING_SLOT_POS:
-      case VARYING_SLOT_CLIP_VERTEX:
-      case VARYING_SLOT_EDGE: {
-         break;
-      }
       case VARYING_SLOT_CLIP_DIST0:
       case VARYING_SLOT_CLIP_DIST1:
+         if (nir_intrinsic_io_semantics(intr).no_varying)
+            break;
+         FALLTHROUGH;
       case VARYING_SLOT_VIEWPORT:
       case VARYING_SLOT_LAYER:
       case VARYING_SLOT_VIEW_INDEX:
       default:
          output.set_is_param(true);
+         FALLTHROUGH;
+      case VARYING_SLOT_PSIZ:
+      case VARYING_SLOT_POS:
+      case VARYING_SLOT_CLIP_VERTEX:
+      case VARYING_SLOT_EDGE:
+         add_output(output);
+         break;
       }
-      add_output(output);
-      break;
    }
    case nir_intrinsic_load_vertex_id:
       m_sv_values.set(es_vertexid);

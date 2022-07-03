@@ -284,6 +284,8 @@ static void r600_set_clip_state(struct pipe_context *ctx,
 	rctx->clip_state.state = *state;
 	r600_mark_atom_dirty(rctx, &rctx->clip_state.atom);
 	rctx->driver_consts[PIPE_SHADER_VERTEX].vs_ucp_dirty = true;
+	rctx->driver_consts[PIPE_SHADER_TESS_EVAL].vs_ucp_dirty = true;
+	rctx->driver_consts[PIPE_SHADER_GEOMETRY].vs_ucp_dirty = true;
 }
 
 static void r600_set_stencil_ref(struct pipe_context *ctx,
@@ -1350,6 +1352,12 @@ void r600_update_driver_const_buffers(struct r600_context *rctx, bool compute_on
 	start = compute_only ? PIPE_SHADER_COMPUTE : 0;
 	end = compute_only ? PIPE_SHADER_TYPES : PIPE_SHADER_COMPUTE;
 
+	int last_vertex_stage = PIPE_SHADER_VERTEX;
+	if (rctx->tes_shader)
+		last_vertex_stage = PIPE_SHADER_TESS_EVAL;
+	if (rctx->gs_shader)
+		last_vertex_stage  = PIPE_SHADER_GEOMETRY;
+
 	for (sh = start; sh < end; sh++) {
 		struct r600_shader_driver_constants_info *info = &rctx->driver_consts[sh];
 		if (!info->vs_ucp_dirty &&
@@ -1362,7 +1370,9 @@ void r600_update_driver_const_buffers(struct r600_context *rctx, bool compute_on
 		ptr = info->constants;
 		size = info->alloc_size;
 		if (info->vs_ucp_dirty) {
-			assert(sh == PIPE_SHADER_VERTEX);
+			assert(sh == PIPE_SHADER_VERTEX ||
+			       sh == PIPE_SHADER_GEOMETRY ||
+			       sh == PIPE_SHADER_TESS_EVAL);
 			if (!size) {
 				ptr = rctx->clip_state.state.ucp;
 				size = R600_UCP_SIZE;
@@ -1411,7 +1421,7 @@ void r600_update_driver_const_buffers(struct r600_context *rctx, bool compute_on
 		if (info->texture_const_dirty) {
 			assert (ptr);
 			assert (size);
-			if (sh == PIPE_SHADER_VERTEX)
+			if (sh == last_vertex_stage)
 				memcpy(ptr, rctx->clip_state.state.ucp, R600_UCP_SIZE);
 			if (sh == PIPE_SHADER_FRAGMENT)
 				memcpy(ptr, rctx->sample_positions, R600_UCP_SIZE);

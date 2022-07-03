@@ -67,6 +67,8 @@ bool r600_merge_vec2_stores(nir_shader *shader);
 bool r600_split_64bit_uniforms_and_ubo(nir_shader *sh);
 bool r600_lower_64bit_to_vec2(nir_shader *sh);
 bool r600_split_64bit_alu_and_phi(nir_shader *sh);
+bool r600_lower_clipvertex_to_clipdist(nir_shader *sh);
+
 
 class AssemblyFromShader {
 public:

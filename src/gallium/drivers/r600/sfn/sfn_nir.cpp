@@ -54,7 +54,6 @@ using std::vector;
 NirLowerInstruction::NirLowerInstruction():
 	b(nullptr)
 {
-
 }
 
 bool NirLowerInstruction::filter_instr(const nir_instr *instr, const void *data)
@@ -191,6 +190,75 @@ void sort_fsoutput(nir_shader *shader)
    exec_list_append(&shader->variables, &new_list);
 }
 
+class LowerClipvertexWrite : public NirLowerInstruction {
+
+public:
+   LowerClipvertexWrite(int noutputs, pipe_stream_output_info& so_info) :
+      m_clipplane1(noutputs),
+      m_clipvtx(noutputs + 1),
+      m_so_info(so_info){}
+private:
+   bool filter(const nir_instr *instr) const override {
+      if (instr->type != nir_instr_type_intrinsic)
+         return false;
+
+      auto intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic != nir_intrinsic_store_output)
+         return false;
+
+      return nir_intrinsic_io_semantics(intr).location == VARYING_SLOT_CLIP_VERTEX;
+   }
+
+   nir_ssa_def *lower(nir_instr *instr) override {
+
+      auto intr = nir_instr_as_intrinsic(instr);
+      nir_ssa_def *output[8] = {nullptr};
+
+      // for UBO loads we correct the buffer ID by adding 1
+      auto buf_id = nir_imm_int(b, R600_BUFFER_INFO_CONST_BUFFER - 1);
+
+      assert(intr->src[0].is_ssa);
+      auto clip_vtx = intr->src[0].ssa;
+
+      for (int i = 0; i < 8; ++i) {
+         auto sel = nir_imm_int(b, i);
+         auto mrow = nir_load_ubo_vec4(b, 4, 32, buf_id, sel);
+         output[i] = nir_fdot4(b, clip_vtx, mrow);
+      }
+
+      unsigned clip_vertex_index = nir_intrinsic_base(intr);
+
+      for (int i = 0; i < 2; ++i) {
+         auto clip_i = nir_vec(b, &output[4 * i], 4);
+         auto store = nir_store_output(b, clip_i,  intr->src[1].ssa);
+         nir_intrinsic_set_write_mask(store, 0xf);
+         nir_intrinsic_set_base(store, clip_vertex_index);
+         nir_io_semantics semantic = nir_intrinsic_io_semantics(intr);
+         semantic.location = VARYING_SLOT_CLIP_DIST0 + i;
+         semantic.no_varying = 1;
+
+         if (i > 0)
+            nir_intrinsic_set_base(store, m_clipplane1);
+         nir_intrinsic_set_write_mask(store, 0xf);
+         nir_intrinsic_set_io_semantics(store, semantic);
+      }
+      nir_intrinsic_set_base(intr, m_clipvtx);
+
+      nir_ssa_def *result = NIR_LOWER_INSTR_PROGRESS_REPLACE;
+      for (unsigned  i = 0; i < m_so_info.num_outputs; ++i) {
+         if (m_so_info.output[i].register_index == clip_vertex_index) {
+            m_so_info.output[i].register_index = m_clipvtx;
+            result = NIR_LOWER_INSTR_PROGRESS;
+         }
+      }
+      return result;
+   }
+   int m_clipplane1;
+   int m_clipvtx;
+   pipe_stream_output_info& m_so_info;
+};
+
+
 }
 
 static nir_intrinsic_op
@@ -276,6 +344,19 @@ r600_lower_deref_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
    nir_deref_instr_remove_if_unused(deref);
 
    return true;
+}
+
+
+static bool
+r600_lower_clipvertex_to_clipdist(nir_shader *sh,
+                                  pipe_stream_output_info& so_info)
+{
+   if (!(sh->info.outputs_written & VARYING_BIT_CLIP_VERTEX))
+      return false;
+
+   int noutputs = util_bitcount64(sh->info.outputs_written);
+   bool result = r600::LowerClipvertexWrite(noutputs, so_info).run(sh);
+   return result;
 }
 
 static bool
@@ -504,6 +585,22 @@ bool has_saturate(const nir_function *func)
    return false;
 }
 
+static bool r600_is_last_vertex_stage(nir_shader *nir, const r600_shader_key& key)
+{
+   if (nir->info.stage == MESA_SHADER_GEOMETRY)
+      return true;
+
+   if (nir->info.stage == MESA_SHADER_TESS_EVAL &&
+       !key.tes.as_es)
+      return true;
+
+   if (nir->info.stage == MESA_SHADER_VERTEX &&
+       !key.vs.as_es && !key.vs.as_ls)
+      return true;
+
+   return false;
+}
+
 extern "C"
 bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
 {
@@ -618,6 +715,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    auto sh = nir_shader_clone(sel->nir, sel->nir);
 
+   if (r600_is_last_vertex_stage(sh, *key))
+      r600_lower_clipvertex_to_clipdist(sh, sel->so);
+
    if (sh->info.stage == MESA_SHADER_TESS_CTRL ||
        sh->info.stage == MESA_SHADER_TESS_EVAL ||
        (sh->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
@@ -644,7 +744,6 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sh, nir_lower_int64);
 
    NIR_PASS_V(sh, nir_lower_ubo_vec4);
-
 
    if (lower_64bit)
       NIR_PASS_V(sh, r600::r600_nir_64_to_vec2);
