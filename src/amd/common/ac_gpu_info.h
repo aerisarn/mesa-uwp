@@ -114,7 +114,7 @@ struct radeon_info {
    uint64_t gart_size;
    uint64_t vram_size;
    uint64_t vram_vis_size;
-   uint32_t vram_bit_width;
+   uint32_t memory_bus_width;
    uint32_t vram_type;
    uint32_t max_heap_size_kb;
    uint32_t min_alloc_size;
@@ -132,7 +132,7 @@ struct radeon_info {
    uint32_t lds_size_per_workgroup;
    uint32_t lds_alloc_granularity;
    uint32_t lds_encode_granularity;
-   uint32_t max_memory_clock;
+   uint32_t memory_freq_mhz;
    uint32_t l1_cache_size;
    uint32_t l2_cache_size;
 
@@ -204,7 +204,7 @@ struct radeon_info {
    uint32_t cu_mask[AMD_MAX_SE][AMD_MAX_SA_PER_SE];
    uint32_t r600_max_quad_pipes; /* wave size / 16 */
    uint32_t max_shader_clock;
-   uint32_t num_good_compute_units;
+   uint32_t num_cu;             /* only enabled CUs */
    uint32_t max_good_cu_per_sa;
    uint32_t min_good_cu_per_sa; /* min != max if SAs have different # of CUs */
    uint32_t max_se;             /* number of shader engines incl. disabled ones */

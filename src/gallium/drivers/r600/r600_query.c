@@ -427,7 +427,7 @@ static bool r600_query_sw_get_result(struct r600_common_context *rctx,
 		result->u32 = 0;
 		return true;
 	case R600_QUERY_GPIN_NUM_SIMD:
-		result->u32 = rctx->screen->info.num_good_compute_units;
+		result->u32 = rctx->screen->info.num_cu;
 		return true;
 	case R600_QUERY_GPIN_NUM_RB:
 		result->u32 = rctx->screen->info.max_render_backends;

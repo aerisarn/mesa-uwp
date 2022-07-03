@@ -488,9 +488,9 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                         &ws->info.r600_max_quad_pipes);
 
    /* All GPUs have at least one compute unit */
-   ws->info.num_good_compute_units = 1;
+   ws->info.num_cu = 1;
    radeon_get_drm_value(ws->fd, RADEON_INFO_ACTIVE_CU_COUNT, NULL,
-                        &ws->info.num_good_compute_units);
+                        &ws->info.num_cu);
 
    radeon_get_drm_value(ws->fd, RADEON_INFO_MAX_SE, NULL,
                         &ws->info.max_se);
@@ -546,7 +546,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                         &ws->info.max_sa_per_se);
    if (ws->gen == DRV_SI) {
       ws->info.max_good_cu_per_sa =
-      ws->info.min_good_cu_per_sa = ws->info.num_good_compute_units /
+      ws->info.min_good_cu_per_sa = ws->info.num_cu /
                                     (ws->info.max_se * ws->info.max_sa_per_se);
    }
 

@@ -210,8 +210,8 @@ enum {
 };
 
 #define CTR_NUM_SIMD                                                                               \
-   CONSTANT(pdev->rad_info.num_simd_per_compute_unit * pdev->rad_info.num_good_compute_units)
-#define CTR_NUM_CUS CONSTANT(pdev->rad_info.num_good_compute_units)
+   CONSTANT(pdev->rad_info.num_simd_per_compute_unit * pdev->rad_info.num_cu)
+#define CTR_NUM_CUS CONSTANT(pdev->rad_info.num_cu)
 
 static void
 radv_query_perfcounter_descs(struct radv_physical_device *pdev, uint32_t *count,

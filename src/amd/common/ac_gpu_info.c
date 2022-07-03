@@ -814,7 +814,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->max_heap_size_kb = info->gart_size_kb;
 
    info->vram_type = amdinfo->vram_type;
-   info->vram_bit_width = amdinfo->vram_bit_width;
+   info->memory_bus_width = amdinfo->vram_bit_width;
 
    /* Set which chips have uncached device memory. */
    info->has_l2_uncached = info->gfx_level >= GFX9;
@@ -822,7 +822,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Set hardware information. */
    /* convert the shader/memory clocks from KHz to MHz */
    info->max_shader_clock = amdinfo->max_engine_clk / 1000;
-   info->max_memory_clock = amdinfo->max_memory_clk / 1000;
+   info->memory_freq_mhz = amdinfo->max_memory_clk / 1000;
    info->max_tcc_blocks = device_info.num_tcc_blocks;
    info->max_se = amdinfo->num_shader_engines;
    info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
@@ -1058,7 +1058,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                                   info->me_fw_feature >= 52);
 
    /* Get the number of good compute units. */
-   info->num_good_compute_units = 0;
+   info->num_cu = 0;
    for (i = 0; i < info->max_se; i++) {
       for (j = 0; j < info->max_sa_per_se; j++) {
          if (info->gfx_level >= GFX11) {
@@ -1081,7 +1081,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          } else {
             info->cu_mask[i][j] = amdinfo->cu_bitmap[i][j];
          }
-         info->num_good_compute_units += util_bitcount(info->cu_mask[i][j]);
+         info->num_cu += util_bitcount(info->cu_mask[i][j]);
       }
    }
 
@@ -1107,10 +1107,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    unsigned cu_group = info->gfx_level >= GFX10 ? 2 : 1;
    info->max_good_cu_per_sa =
-      DIV_ROUND_UP(info->num_good_compute_units, (info->num_se * info->max_sa_per_se * cu_group)) *
+      DIV_ROUND_UP(info->num_cu, (info->num_se * info->max_sa_per_se * cu_group)) *
       cu_group;
    info->min_good_cu_per_sa =
-      (info->num_good_compute_units / (info->num_se * info->max_sa_per_se * cu_group)) * cu_group;
+      (info->num_cu / (info->num_se * info->max_sa_per_se * cu_group)) * cu_group;
 
    memcpy(info->si_tile_mode_array, amdinfo->gb_tile_mode, sizeof(amdinfo->gb_tile_mode));
    info->enabled_rb_mask = amdinfo->enabled_rb_pipes_mask;
@@ -1380,7 +1380,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    vram_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_size, 1024 * 1024));
    fprintf(f, "    vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_vis_size, 1024 * 1024));
    fprintf(f, "    vram_type = %i\n", info->vram_type);
-   fprintf(f, "    vram_bit_width = %i\n", info->vram_bit_width);
+   fprintf(f, "    memory_bus_width = %i\n", info->memory_bus_width);
    fprintf(f, "    max_heap_size_kb = %i MB\n", (int)DIV_ROUND_UP(info->max_heap_size_kb, 1024));
    fprintf(f, "    min_alloc_size = %u\n", info->min_alloc_size);
    fprintf(f, "    address32_hi = 0x%x\n", info->address32_hi);
@@ -1395,7 +1395,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    lds_size_per_workgroup = %u\n", info->lds_size_per_workgroup);
    fprintf(f, "    lds_alloc_granularity = %i\n", info->lds_alloc_granularity);
    fprintf(f, "    lds_encode_granularity = %i\n", info->lds_encode_granularity);
-   fprintf(f, "    max_memory_clock = %i MHz\n", info->max_memory_clock);
+   fprintf(f, "    memory_freq = %i MHz\n", info->memory_freq_mhz);
    fprintf(f, "    l1_cache_size = %i\n", info->l1_cache_size);
    fprintf(f, "    l2_cache_size = %i\n", info->l2_cache_size);
 
@@ -1462,7 +1462,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    }
    fprintf(f, "    spi_cu_en_has_effect = %i\n", info->spi_cu_en_has_effect);
    fprintf(f, "    max_shader_clock = %i MHz\n", info->max_shader_clock);
-   fprintf(f, "    num_good_compute_units = %i\n", info->num_good_compute_units);
+   fprintf(f, "    num_cu = %i\n", info->num_cu);
    fprintf(f, "    max_good_cu_per_sa = %i\n", info->max_good_cu_per_sa);
    fprintf(f, "    min_good_cu_per_sa = %i\n", info->min_good_cu_per_sa);
    fprintf(f, "    max_se = %i\n", info->max_se);
@@ -1762,7 +1762,7 @@ ac_get_compute_resource_limits(const struct radeon_info *info, unsigned waves_pe
    unsigned compute_resource_limits = S_00B854_SIMD_DEST_CNTL(waves_per_threadgroup % 4 == 0);
 
    if (info->gfx_level >= GFX7) {
-      unsigned num_cu_per_se = info->num_good_compute_units / info->num_se;
+      unsigned num_cu_per_se = info->num_cu / info->num_se;
 
       /* Gfx9 should set the limit to max instead of 0 to fix high priority compute. */
       if (info->gfx_level == GFX9 && !max_waves_per_sh) {

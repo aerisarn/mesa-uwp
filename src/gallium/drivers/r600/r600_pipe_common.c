@@ -1029,7 +1029,7 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 	case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
 		if (ret) {
 			uint32_t *max_compute_units = ret;
-			*max_compute_units = rscreen->info.num_good_compute_units;
+			*max_compute_units = rscreen->info.num_cu;
 		}
 		return sizeof(uint32_t);
 
@@ -1312,7 +1312,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 		printf("r600_max_quad_pipes = %i\n", rscreen->info.r600_max_quad_pipes);
 		printf("max_shader_clock = %i\n", rscreen->info.max_shader_clock);
-		printf("num_good_compute_units = %i\n", rscreen->info.num_good_compute_units);
+		printf("num_cu = %i\n", rscreen->info.num_cu);
 		printf("max_se = %i\n", rscreen->info.max_se);
 		printf("max_sh_per_se = %i\n", rscreen->info.max_sa_per_se);
 

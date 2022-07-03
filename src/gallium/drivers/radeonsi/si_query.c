@@ -465,7 +465,7 @@ static bool si_query_sw_get_result(struct si_context *sctx, struct si_query *squ
       result->u32 = 0;
       return true;
    case SI_QUERY_GPIN_NUM_SIMD:
-      result->u32 = sctx->screen->info.num_good_compute_units;
+      result->u32 = sctx->screen->info.num_cu;
       return true;
    case SI_QUERY_GPIN_NUM_RB:
       result->u32 = sctx->screen->info.max_render_backends;

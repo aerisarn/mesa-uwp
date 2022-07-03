@@ -934,7 +934,7 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
    case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
       if (ret) {
          uint32_t *max_compute_units = ret;
-         *max_compute_units = sscreen->info.num_good_compute_units;
+         *max_compute_units = sscreen->info.num_cu;
       }
       return sizeof(uint32_t);
 

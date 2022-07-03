@@ -2333,7 +2333,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceShaderCoreProperties2AMD *)ext;
 
          properties->shaderCoreFeatures = 0;
-         properties->activeComputeUnitCount = pdevice->rad_info.num_good_compute_units;
+         properties->activeComputeUnitCount = pdevice->rad_info.num_cu;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
@@ -3529,7 +3529,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
     */
    uint32_t max_threads_per_block = 2048;
    device->scratch_waves =
-      MAX2(32 * physical_device->rad_info.num_good_compute_units, max_threads_per_block / 64);
+      MAX2(32 * physical_device->rad_info.num_cu, max_threads_per_block / 64);
 
    device->dispatch_initiator = S_00B800_COMPUTE_SHADER_EN(1);
 
