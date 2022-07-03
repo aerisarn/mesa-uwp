@@ -451,8 +451,8 @@ static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
    if (rad_info->gfx_level >= GFX9)
       chunk->flags |= SQTT_FILE_CHUNK_ASIC_INFO_FLAG_PS1_EVENT_TOKENS_ENABLED;
 
-   chunk->trace_shader_core_clock = rad_info->max_shader_clock * 1000000;
-   chunk->trace_memory_clock = rad_info->memory_freq_mhz * 1000000;
+   chunk->trace_shader_core_clock = rad_info->max_gpu_freq_mhz * 1000000ull;
+   chunk->trace_memory_clock = rad_info->memory_freq_mhz * 1000000ull;
 
    /* RGP gets very confused if these clocks are 0. The numbers here are for profile_peak on
     * VGH since that is the chips where we've seen the need for this workaround. */
@@ -506,7 +506,7 @@ static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
    chunk->pixels_per_clock = 0.0;
 
    chunk->gpu_timestamp_frequency = rad_info->clock_crystal_freq * 1000;
-   chunk->max_shader_core_clock = rad_info->max_shader_clock * 1000000;
+   chunk->max_shader_core_clock = rad_info->max_gpu_freq_mhz * 1000000;
    chunk->max_memory_clock = rad_info->memory_freq_mhz * 1000000;
    chunk->memory_ops_per_clock = ac_memory_ops_per_clock(rad_info->vram_type);
    chunk->memory_chip_type = ac_vram_type_to_sqtt_memory_type(rad_info->vram_type);

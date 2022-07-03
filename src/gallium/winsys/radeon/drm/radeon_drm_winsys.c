@@ -392,8 +392,8 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
 
    /* Get max clock frequency info and convert it to MHz */
    radeon_get_drm_value(ws->fd, RADEON_INFO_MAX_SCLK, NULL,
-                        &ws->info.max_shader_clock);
-   ws->info.max_shader_clock /= 1000;
+                        &ws->info.max_gpu_freq_mhz);
+   ws->info.max_gpu_freq_mhz /= 1000;
 
    ws->num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
 

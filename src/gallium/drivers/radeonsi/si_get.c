@@ -927,7 +927,7 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
    case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
       if (ret) {
          uint32_t *max_clock_frequency = ret;
-         *max_clock_frequency = sscreen->info.max_shader_clock;
+         *max_clock_frequency = sscreen->info.max_gpu_freq_mhz;
       }
       return sizeof(uint32_t);
 

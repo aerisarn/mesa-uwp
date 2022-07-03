@@ -1022,7 +1022,7 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 	case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
 		if (ret) {
 			uint32_t *max_clock_frequency = ret;
-			*max_clock_frequency = rscreen->info.max_shader_clock;
+			*max_clock_frequency = rscreen->info.max_gpu_freq_mhz;
 		}
 		return sizeof(uint32_t);
 
@@ -1311,7 +1311,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		printf("has_syncobj = %u\n", rscreen->info.has_syncobj);
 
 		printf("r600_max_quad_pipes = %i\n", rscreen->info.r600_max_quad_pipes);
-		printf("max_shader_clock = %i\n", rscreen->info.max_shader_clock);
+		printf("max_gpu_freq_mhz = %i\n", rscreen->info.max_gpu_freq_mhz);
 		printf("num_cu = %i\n", rscreen->info.num_cu);
 		printf("max_se = %i\n", rscreen->info.max_se);
 		printf("max_sh_per_se = %i\n", rscreen->info.max_sa_per_se);
