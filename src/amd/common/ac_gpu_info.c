@@ -38,6 +38,12 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#define AMDGPU_ARCTURUS_RANGE   0x32, 0x3C
+#define AMDGPU_ALDEBARAN_RANGE  0x3C, 0xFF
+
+#define ASICREV_IS_ARCTURUS(r)         ASICREV_IS(r, ARCTURUS)
+#define ASICREV_IS_ALDEBARAN(r)        ASICREV_IS(r, ALDEBARAN)
+
 #ifdef _WIN32
 #define DRM_CAP_ADDFB2_MODIFIERS 0x10
 #define DRM_CAP_SYNCOBJ 0x13

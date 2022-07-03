@@ -58,8 +58,8 @@ struct Gfx10ChipSettings
         UINT_32 supportRbPlus       : 1;
         UINT_32 dsMipmapHtileFix    : 1;
         UINT_32 dccUnsup3DSwDis     : 1;
-        UINT_32                     : 2;
-        UINT_32 reserved2           : 26;
+        UINT_32                     : 3;
+        UINT_32 reserved2           : 25;
     };
 };
 
@@ -80,10 +80,14 @@ const UINT_32 Gfx10LinearSwModeMask = (1u << ADDR_SW_LINEAR);
 const UINT_32 Gfx10Blk256BSwModeMask = (1u << ADDR_SW_256B_S) |
                                        (1u << ADDR_SW_256B_D);
 
+
+const UINT_32 Gfx10Blk4K_R_XMask    = (1u << ADDR_SW_4KB_R_X);
+
 const UINT_32 Gfx10Blk4KBSwModeMask = (1u << ADDR_SW_4KB_S)   |
                                       (1u << ADDR_SW_4KB_D)   |
                                       (1u << ADDR_SW_4KB_S_X) |
-                                      (1u << ADDR_SW_4KB_D_X);
+                                      (1u << ADDR_SW_4KB_D_X) |
+                                      (1u << ADDR_SW_4KB_R_X);
 
 const UINT_32 Gfx10Blk64KBSwModeMask = (1u << ADDR_SW_64KB_S)   |
                                        (1u << ADDR_SW_64KB_D)   |
@@ -119,6 +123,7 @@ const UINT_32 Gfx10RenderSwModeMask = (1u << ADDR_SW_64KB_R_X) |
 
 const UINT_32 Gfx10XSwModeMask = (1u << ADDR_SW_4KB_S_X)  |
                                  (1u << ADDR_SW_4KB_D_X)  |
+                                 (1u << ADDR_SW_4KB_R_X)  |
                                  (1u << ADDR_SW_64KB_Z_X) |
                                  (1u << ADDR_SW_64KB_S_X) |
                                  (1u << ADDR_SW_64KB_D_X) |
@@ -146,6 +151,7 @@ const UINT_32 Gfx10Rsrc3dSwModeMask = (1u << ADDR_SW_LINEAR)   |
                                       (1u << ADDR_SW_64KB_S)   |
                                       (1u << ADDR_SW_64KB_S_T) |
                                       (1u << ADDR_SW_4KB_S_X)  |
+                                      (1u << ADDR_SW_4KB_R_X)  |
                                       (1u << ADDR_SW_64KB_Z_X) |
                                       (1u << ADDR_SW_64KB_S_X) |
                                       (1u << ADDR_SW_64KB_D_X) |
@@ -167,8 +173,9 @@ const UINT_32 Gfx10Rsrc3dThick4KBSwModeMask = Gfx10Rsrc3dThickSwModeMask & Gfx10
 
 const UINT_32 Gfx10Rsrc3dThick64KBSwModeMask = Gfx10Rsrc3dThickSwModeMask & Gfx10Blk64KBSwModeMask;
 
-const UINT_32 Gfx10MsaaSwModeMask = Gfx10ZSwModeMask |
-                                    Gfx10RenderSwModeMask;
+const UINT_32 Gfx10MsaaSwModeMask = (Gfx10ZSwModeMask      |
+                                     Gfx10RenderSwModeMask) &
+                                    ~Gfx10Blk4K_R_XMask;
 
 const UINT_32 Dcn20NonBpp64SwModeMask = (1u << ADDR_SW_LINEAR)   |
                                         (1u << ADDR_SW_4KB_S)    |
@@ -397,6 +404,12 @@ private:
         UINT_32          log2Elem,
         UINT_32          numFrag) const;
 
+    /**
+     * Will use the indices, "nibbles", to build an index equation inside pSwizzle
+     *
+     * @param pPatInfo Pointer to a patInfo. Contains indices mapping to the 2D nibble arrays which will be used to build an index equation.
+     * @param pSwizzle Array to write the index equation to.
+     */
     VOID GetSwizzlePatternFromPatternInfo(
         const ADDR_SW_PATINFO* pPatInfo,
         ADDR_BIT_SETTING       (&pSwizzle)[20]) const
