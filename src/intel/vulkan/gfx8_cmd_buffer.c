@@ -588,7 +588,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          vf.GeometryDistributionEnable = true;
 #endif
          vf.IndexedDrawCutIndexEnable  = d->primitive_restart_enable;
-         vf.CutIndex                   = cmd_buffer->state.restart_index;
+         vf.CutIndex                   = cmd_buffer->state.gfx.restart_index;
       }
    }
 

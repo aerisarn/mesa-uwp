@@ -2890,6 +2890,8 @@ struct anv_cmd_graphics_state {
    struct anv_vb_cache_range vb_bound_ranges[33];
    struct anv_vb_cache_range vb_dirty_ranges[33];
 
+   uint32_t restart_index;
+
    VkShaderStageFlags push_constant_stages;
 
    struct anv_dynamic_state dynamic;
@@ -2954,7 +2956,6 @@ struct anv_cmd_state {
    VkShaderStageFlags                           descriptors_dirty;
    VkShaderStageFlags                           push_constants_dirty;
 
-   uint32_t                                     restart_index;
    struct anv_vertex_binding                    vertex_bindings[MAX_VBS];
    bool                                         xfb_enabled;
    struct anv_xfb_binding                       xfb_bindings[MAX_XFB_BUFFERS];

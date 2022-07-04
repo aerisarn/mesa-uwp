@@ -258,8 +258,8 @@ anv_cmd_state_init(struct anv_cmd_buffer *cmd_buffer)
    memset(state, 0, sizeof(*state));
 
    state->current_pipeline = UINT32_MAX;
-   state->restart_index = UINT32_MAX;
    anv_dynamic_state_init(&state->gfx.dynamic);
+   state->gfx.restart_index = UINT32_MAX;
    state->gfx.dirty = ANV_CMD_DIRTY_DYNAMIC_ALL;
 }
 
