@@ -1100,8 +1100,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
       case FD6_GROUP_CONST:
          state = fd6_build_user_consts(emit);
          break;
-      case FD6_GROUP_VS_DRIVER_PARAMS:
-         state = fd6_build_vs_driver_params(emit);
+      case FD6_GROUP_DRIVER_PARAMS:
+         state = fd6_build_driver_params(emit);
          break;
       case FD6_GROUP_PRIMITIVE_PARAMS:
          state = fd6_build_tess_consts(emit);

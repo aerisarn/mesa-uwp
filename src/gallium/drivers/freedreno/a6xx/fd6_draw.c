@@ -220,7 +220,11 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.fs = fd6_emit_get_prog(&emit)->fs;
 
    if (emit.vs->need_driver_params || fd6_ctx->has_dp_state)
-      emit.dirty_groups |= BIT(FD6_GROUP_VS_DRIVER_PARAMS);
+      emit.dirty_groups |= BIT(FD6_GROUP_DRIVER_PARAMS);
+   else if (emit.gs && emit.gs->need_driver_params)
+      emit.dirty_groups |= BIT(FD6_GROUP_DRIVER_PARAMS);
+   else if (emit.ds && emit.ds->need_driver_params)
+      emit.dirty_groups |= BIT(FD6_GROUP_DRIVER_PARAMS);
 
    /* If we are doing xfb, we need to emit the xfb state on every draw: */
    if (emit.prog->stream_output)

@@ -293,22 +293,48 @@ fd6_build_user_consts(struct fd6_emit *emit)
 }
 
 struct fd_ringbuffer *
-fd6_build_vs_driver_params(struct fd6_emit *emit)
+fd6_build_driver_params(struct fd6_emit *emit)
 {
    struct fd_context *ctx = emit->ctx;
    struct fd6_context *fd6_ctx = fd6_context(ctx);
-   const struct ir3_shader_variant *vs = emit->vs;
+   unsigned num_dp = 0;
 
-   if (vs->need_driver_params) {
-      struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
-         ctx->batch->submit, (4 + IR3_DP_VS_COUNT) * 4, FD_RINGBUFFER_STREAMING);
-      ir3_emit_driver_params(vs, dpconstobj, ctx, emit->info, emit->indirect, emit->draw);
-      fd6_ctx->has_dp_state = true;
-      return dpconstobj;
+   if (emit->vs->need_driver_params)
+      num_dp++;
+
+   if (emit->gs && emit->gs->need_driver_params)
+      num_dp++;
+
+   if (emit->ds && emit->ds->need_driver_params)
+      num_dp++;
+
+   if (!num_dp) {
+      fd6_ctx->has_dp_state = false;
+      return NULL;
    }
 
-   fd6_ctx->has_dp_state = false;
-   return NULL;
+   unsigned size_dwords = num_dp * (4 + IR3_DP_VS_COUNT);  /* 4dw PKT7 header */
+   struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
+         ctx->batch->submit, size_dwords * 4, FD_RINGBUFFER_STREAMING);
+
+   if (emit->vs->need_driver_params) {
+      ir3_emit_driver_params(emit->vs, dpconstobj, ctx, emit->info,
+                             emit->indirect, emit->draw);
+   }
+
+   if (emit->gs && emit->gs->need_driver_params) {
+      ir3_emit_driver_params(emit->gs, dpconstobj, ctx, emit->info,
+                             emit->indirect, emit->draw);
+   }
+
+   if (emit->ds && emit->ds->need_driver_params) {
+      ir3_emit_driver_params(emit->ds, dpconstobj, ctx, emit->info,
+                             emit->indirect, emit->draw);
+   }
+
+   fd6_ctx->has_dp_state = true;
+
+   return dpconstobj;
 }
 
 void
