@@ -4566,7 +4566,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 nir_convert_to_lcssa(nir, true, true);
                 NIR_PASS_V(nir, nir_divergence_analysis);
                 NIR_PASS_V(nir, bi_lower_divergent_indirects,
-                                bifrost_lanes_per_warp(gpu_id));
+                                pan_subgroup_size(gpu_id >> 12));
                 NIR_PASS_V(nir, nir_shader_instructions_pass,
                         nir_invalidate_divergence, nir_metadata_all, NULL);
         }

@@ -502,4 +502,22 @@ bool pan_nir_lower_64bit_intrin(nir_shader *shader);
 bool pan_lower_helper_invocation(nir_shader *shader);
 bool pan_lower_sample_pos(nir_shader *shader);
 
+/*
+ * Helper returning the subgroup size. Generally, this is equal to the number of
+ * threads in a warp. For Midgard (including warping models), this returns 1, as
+ * subgroups are not supported.
+ */
+static inline unsigned
+pan_subgroup_size(unsigned arch)
+{
+        if (arch >= 9)
+                return 16;
+        else if (arch >= 7)
+                return 8;
+        else if (arch >= 6)
+                return 4;
+        else
+                return 1;
+}
+
 #endif
