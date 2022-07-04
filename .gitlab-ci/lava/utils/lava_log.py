@@ -145,7 +145,7 @@ class GitlabSection:
 @dataclass(frozen=True)
 class LogSection:
     regex: Union[Pattern, str]
-    level: str
+    levels: tuple[str]
     section_id: str
     section_header: str
     section_type: LogSectionType
@@ -154,36 +154,38 @@ class LogSection:
     def from_log_line_to_section(
         self, lava_log_line: dict[str, str]
     ) -> Optional[GitlabSection]:
-        if lava_log_line["lvl"] == self.level:
-            if match := re.match(self.regex, lava_log_line["msg"]):
-                section_id = self.section_id.format(*match.groups())
-                section_header = self.section_header.format(*match.groups())
-                return GitlabSection(
-                    id=section_id,
-                    header=section_header,
-                    type=self.section_type,
-                    start_collapsed=self.collapsed,
-                )
+        if lava_log_line["lvl"] not in self.levels:
+            return
+
+        if match := re.search(self.regex, lava_log_line["msg"]):
+            section_id = self.section_id.format(*match.groups())
+            section_header = self.section_header.format(*match.groups())
+            return GitlabSection(
+                id=section_id,
+                header=section_header,
+                type=self.section_type,
+                start_collapsed=self.collapsed,
+            )
 
 
 LOG_SECTIONS = (
     LogSection(
-        regex=re.compile(r".*<STARTTC> (.*)"),
-        level="debug",
+        regex=re.compile(r"<?STARTTC>? ([^>]*)"),
+        levels=("target", "debug"),
         section_id="{}",
         section_header="test_case {}",
         section_type=LogSectionType.TEST_CASE,
     ),
     LogSection(
-        regex=re.compile(r".*<STARTRUN> (\S*)"),
-        level="debug",
+        regex=re.compile(r"<?STARTRUN>? ([^>]*)"),
+        levels=("target", "debug"),
         section_id="{}",
         section_header="test_suite {}",
         section_type=LogSectionType.TEST_SUITE,
     ),
     LogSection(
-        regex=re.compile(r"^<LAVA_SIGNAL_ENDTC ([^>]+)"),
-        level="target",
+        regex=re.compile(r"ENDTC>? ([^>]+)"),
+        levels=("target", "debug"),
         section_id="post-{}",
         section_header="Post test_case {}",
         collapsed=True,
@@ -208,7 +210,7 @@ class LogFollower:
         )
         assert (
             section_is_created == section_has_started
-        ), "Can't follow logs beginning from uninitalized GitLab sections."
+        ), "Can't follow logs beginning from uninitialized GitLab sections."
 
     def __enter__(self):
         return self
@@ -240,6 +242,10 @@ class LogFollower:
             self.current_section = None
 
     def update_section(self, new_section: GitlabSection):
+        # Sections can have redundant regex to find them to mitigate LAVA
+        # interleaving kmsg and stderr/stdout issue.
+        if self.current_section and self.current_section.id == new_section.id:
+            return
         self.clear_current_section()
         self.current_section = new_section
         self._buffer.append(new_section.start())

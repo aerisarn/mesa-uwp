@@ -86,10 +86,23 @@ def test_gl_sections():
             "lvl": "debug",
             "msg": "Received signal: <STARTRUN> 0_mesa 5971831_1.3.2.3.1",
         },
+        # Redundant log message which triggers the same Gitlab Section, it
+        # should be ignored, unless the id is different
+        {
+            "dt": datetime.now(),
+            "lvl": "target",
+            "msg": "[    7.778836] <LAVA_SIGNAL_STARTRUN 0_mesa 5971831_1.3.2.3.1>",
+        },
         {
             "dt": datetime.now(),
             "lvl": "debug",
             "msg": "Received signal: <STARTTC> mesa-ci_iris-kbl-traces",
+        },
+        # Another redundant log message
+        {
+            "dt": datetime.now(),
+            "lvl": "target",
+            "msg": "[   16.997829] <LAVA_SIGNAL_STARTTC mesa-ci_iris-kbl-traces>",
         },
         {
             "dt": datetime.now(),
