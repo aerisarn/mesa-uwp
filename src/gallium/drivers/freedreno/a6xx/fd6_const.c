@@ -301,7 +301,7 @@ fd6_build_vs_driver_params(struct fd6_emit *emit)
 
    if (vs->need_driver_params) {
       struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
-         ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
+         ctx->batch->submit, (4 + IR3_DP_VS_COUNT) * 4, FD_RINGBUFFER_STREAMING);
       ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info, emit->indirect,
                                 emit->draw);
       fd6_ctx->has_dp_state = true;
