@@ -1355,12 +1355,12 @@ pvr_descriptor_update_buffer_info(const struct pvr_device *device,
       const pvr_dev_addr_t addr =
          PVR_DEV_ADDR_OFFSET(buffer->dev_addr, buffer_info->offset);
       uint32_t range = (buffer_info->range == VK_WHOLE_SIZE)
-                          ? (buffer->size - buffer_info->offset)
+                          ? (buffer->vk.size - buffer_info->offset)
                           : (buffer_info->range);
 
       set->descriptors[desc_idx].type = write_set->descriptorType;
       set->descriptors[desc_idx].buffer_dev_addr = addr;
-      set->descriptors[desc_idx].buffer_create_info_size = buffer->size;
+      set->descriptors[desc_idx].buffer_create_info_size = buffer->vk.size;
       set->descriptors[desc_idx].buffer_desc_range = range;
 
       if (is_dynamic)

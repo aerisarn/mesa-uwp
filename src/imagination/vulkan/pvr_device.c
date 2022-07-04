@@ -1755,7 +1755,7 @@ VkResult pvr_BindBufferMemory2(VkDevice _device,
       VkResult result = pvr_bind_memory(device,
                                         mem,
                                         pBindInfos[i].memoryOffset,
-                                        buffer->size,
+                                        buffer->vk.size,
                                         buffer->alignment,
                                         &buffer->vma,
                                         &buffer->dev_addr);
@@ -1834,14 +1834,11 @@ VkResult pvr_CreateBuffer(VkDevice _device,
    if (pCreateInfo->size >= ULONG_MAX - alignment)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
-   buffer = vk_object_zalloc(&device->vk,
-                             pAllocator,
-                             sizeof(*buffer),
-                             VK_OBJECT_TYPE_BUFFER);
+   buffer =
+      vk_buffer_create(&device->vk, pCreateInfo, pAllocator, sizeof(*buffer));
    if (!buffer)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   buffer->size = pCreateInfo->size;
    buffer->alignment = alignment;
 
    *pBuffer = pvr_buffer_to_handle(buffer);
@@ -1862,7 +1859,7 @@ void pvr_DestroyBuffer(VkDevice _device,
    if (buffer->vma)
       pvr_unbind_memory(device, buffer->vma);
 
-   vk_object_free(&device->vk, pAllocator, buffer);
+   vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
 }
 
 VkResult pvr_gpu_upload(struct pvr_device *device,
@@ -2434,7 +2431,7 @@ void pvr_GetBufferMemoryRequirements2(
 
    pMemoryRequirements->memoryRequirements.alignment = buffer->alignment;
    pMemoryRequirements->memoryRequirements.size =
-      ALIGN_POT(buffer->size, buffer->alignment);
+      ALIGN_POT(buffer->vk.size, buffer->alignment);
 }
 
 void pvr_GetImageMemoryRequirements2(VkDevice _device,

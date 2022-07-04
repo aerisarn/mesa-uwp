@@ -2017,7 +2017,7 @@ void pvr_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    PVR_FROM_HANDLE(pvr_buffer, index_buffer, buffer);
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
 
-   assert(offset < index_buffer->size);
+   assert(offset < index_buffer->vk.size);
    assert(indexType == VK_INDEX_TYPE_UINT32 ||
           indexType == VK_INDEX_TYPE_UINT16);
 

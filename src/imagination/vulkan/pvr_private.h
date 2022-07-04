@@ -53,6 +53,7 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/u_dynarray.h"
+#include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_device.h"
 #include "vk_image.h"
@@ -322,10 +323,7 @@ struct pvr_image {
 };
 
 struct pvr_buffer {
-   struct vk_object_base base;
-
-   /* Saved information from pCreateInfo */
-   VkDeviceSize size;
+   struct vk_buffer vk;
 
    /* Derived and other state */
    uint32_t alignment;
@@ -1361,7 +1359,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_pipeline_cache,
                                base,
                                VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_buffer, base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_buffer,
+                               vk.base,
+                               VkBuffer,
+                               VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_image_view,
                                vk.base,
                                VkImageView,
