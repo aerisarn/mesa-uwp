@@ -47,21 +47,21 @@ fd6_emit_const_user(struct fd_ringbuffer *ring,
    uint32_t align_sz = align(sizedwords, 4);
 
    if (fd6_geom_stage(v->type)) {
-      OUT_PKTBUF(
-         ring, CP_LOAD_STATE6_GEOM, dwords, align_sz,
+      OUT_PKTBUF(ring, CP_LOAD_STATE6_GEOM, dwords, align_sz,
          CP_LOAD_STATE6_0(.dst_off = regid / 4, .state_type = ST6_CONSTANTS,
                           .state_src = SS6_DIRECT,
                           .state_block = fd6_stage2shadersb(v->type),
                           .num_unit = DIV_ROUND_UP(sizedwords, 4)),
-         CP_LOAD_STATE6_1(), CP_LOAD_STATE6_2());
+         CP_LOAD_STATE6_1(),
+         CP_LOAD_STATE6_2());
    } else {
-      OUT_PKTBUF(
-         ring, CP_LOAD_STATE6_FRAG, dwords, align_sz,
+      OUT_PKTBUF(ring, CP_LOAD_STATE6_FRAG, dwords, align_sz,
          CP_LOAD_STATE6_0(.dst_off = regid / 4, .state_type = ST6_CONSTANTS,
                           .state_src = SS6_DIRECT,
                           .state_block = fd6_stage2shadersb(v->type),
                           .num_unit = DIV_ROUND_UP(sizedwords, 4)),
-         CP_LOAD_STATE6_1(), CP_LOAD_STATE6_2());
+         CP_LOAD_STATE6_1(),
+         CP_LOAD_STATE6_2());
    }
 }
 void
