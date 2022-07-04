@@ -426,6 +426,14 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return is_a2xx(screen);
 
    case PIPE_CAP_CLIP_PLANES:
+      /* Gens that support GS, have GS lowered into a quasi-VS which confuses
+       * the frontend clip-plane lowering.  So we handle this in the backend
+       *
+       */
+      if (pscreen->get_shader_param(pscreen, PIPE_SHADER_GEOMETRY,
+                                    PIPE_SHADER_CAP_MAX_INSTRUCTIONS))
+         return 1;
+
       /* On a3xx, there is HW support for GL user clip planes that
        * occasionally has to fall back to shader key-based lowering to clip
        * distances in the VS, and we don't support clip distances so that is
@@ -439,8 +447,10 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * On a5xx-a6xx, we have the HW clip distances hooked up, so we just let
        * mesa/st lower desktop GL's clip planes to clip distances in the last
        * vertex shader stage.
+       *
+       * NOTE: but see comment above about geometry shaders
        */
-      return !is_a5xx(screen) && !is_a6xx(screen);
+      return !is_a5xx(screen);
 
    /* Stream output. */
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:

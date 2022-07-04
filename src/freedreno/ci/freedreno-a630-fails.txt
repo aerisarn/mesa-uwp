@@ -289,26 +289,6 @@ spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 spec@ext_transform_feedback@tessellation triangle_strip flat_first,Fail
 spec@glsl-1.30@execution@texelfetch fs sampler3d 1x129x9-98x129x9,Fail
 spec@glsl-1.30@execution@texelfetch fs sampler3d 98x1x9-98x129x9,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-accept,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-different-from-position,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-enables,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-equal-to-position,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-homogeneity,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-lines,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-points,Fail
-spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-triangle-strip,Fail
-
-# The precompile without UCP lowering triggers an assertion failure:
-# "shader_io_get_unique_index: Assertion `!"illegal slot in get unique index\n"'
-# failed." We shouldn't crash if clipvertex is written without actually doing
-# clipping, we should just drop the output on the floor.
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-const-accept,Crash
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-const-reject,Crash
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-different-from-position,Crash
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-enables,Crash
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-equal-to-position,Crash
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-homogeneity,Crash
-spec@glsl-1.50@execution@compatibility@clipping@vs-gs-clip-vertex-primitives-triangle-strip,Crash
 
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array-2,Crash
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array,Crash
