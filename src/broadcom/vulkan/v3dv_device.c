@@ -1094,7 +1094,7 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .logicOp = true,
       .multiDrawIndirect = false,
       .drawIndirectFirstInstance = true,
-      .depthClamp = false,
+      .depthClamp = false, /* Only available since V3D 4.5.1.1 */
       .depthBiasClamp = true,
       .fillModeNonSolid = true,
       .depthBounds = false, /* Only available since V3D 4.3.16.2 */
