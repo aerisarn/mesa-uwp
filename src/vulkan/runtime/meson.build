@@ -77,6 +77,8 @@ vulkan_runtime_files = files(
   'vk_semaphore.h',
   'vk_shader_module.c',
   'vk_shader_module.h',
+  'vk_standard_sample_locations.c',
+  'vk_standard_sample_locations.h',
   'vk_sync.c',
   'vk_sync.h',
   'vk_sync_binary.c',
