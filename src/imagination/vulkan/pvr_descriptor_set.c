@@ -37,6 +37,7 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "vk_alloc.h"
+#include "vk_format.h"
 #include "vk_log.h"
 #include "vk_object.h"
 #include "vk_util.h"
@@ -1639,6 +1640,95 @@ static void pvr_descriptor_update_texture(
    }
 }
 
+static void pvr_write_buffer_descriptor(const struct pvr_device_info *dev_info,
+                                        const struct pvr_buffer_view *bview,
+                                        VkDescriptorType descriptorType,
+                                        uint32_t *primary,
+                                        uint32_t *secondary)
+{
+   uint64_t *qword_ptr = (uint64_t *)primary;
+
+   qword_ptr[0] = bview->texture_state[0];
+   qword_ptr[1] = bview->texture_state[1];
+
+   if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER &&
+       !PVR_HAS_FEATURE(dev_info, tpu_extended_integer_lookup)) {
+      uint64_t tmp;
+
+      pvr_csb_pack (&tmp, TEXSTATE_STRIDE_IMAGE_WORD1, word1) {
+         word1.index_lookup = true;
+      }
+
+      qword_ptr[1] |= tmp;
+   }
+
+   if (secondary) {
+      /* NOTE: Range check for texture buffer writes is not strictly required as
+       * we have already validated that the index is in range. We'd need a
+       * compiler change to allow us to skip the range check.
+       */
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_WIDTH(dev_info)] =
+         (uint32_t)(bview->range / vk_format_get_blocksize(bview->format));
+      secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_HEIGHT(dev_info)] = 1;
+   }
+}
+
+static void pvr_descriptor_update_buffer_view(
+   const struct pvr_device *device,
+   const VkWriteDescriptorSet *write_set,
+   struct pvr_descriptor_set *set,
+   const struct pvr_descriptor_set_layout_binding *binding,
+   uint32_t *mem_ptr,
+   uint32_t start_stage,
+   uint32_t end_stage)
+{
+   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   struct pvr_descriptor_size_info size_info;
+
+   pvr_descriptor_size_info_init(device, binding->type, &size_info);
+
+   for (uint32_t i = 0; i < write_set->descriptorCount; i++) {
+      PVR_FROM_HANDLE(pvr_buffer_view, bview, write_set->pTexelBufferView[i]);
+      const uint32_t desc_idx =
+         binding->descriptor_index + write_set->dstArrayElement + i;
+
+      set->descriptors[desc_idx].type = write_set->descriptorType;
+      set->descriptors[desc_idx].bview = bview;
+
+      for (uint32_t j = start_stage; j < end_stage; j++) {
+         uint32_t secondary_offset;
+         uint32_t primary_offset;
+
+         if (!(binding->shader_stage_mask & BITFIELD_BIT(j)))
+            continue;
+
+         /* Offset calculation functions expect descriptor_index to be
+          * binding relative not layout relative, so we have used
+          * write_set->dstArrayElement + i rather than desc_idx.
+          */
+         primary_offset =
+            pvr_get_descriptor_primary_offset(device,
+                                              set->layout,
+                                              binding,
+                                              j,
+                                              write_set->dstArrayElement + i);
+         secondary_offset =
+            pvr_get_descriptor_secondary_offset(device,
+                                                set->layout,
+                                                binding,
+                                                j,
+                                                write_set->dstArrayElement + i);
+
+         pvr_write_buffer_descriptor(
+            dev_info,
+            bview,
+            write_set->descriptorType,
+            mem_ptr + primary_offset,
+            size_info.secondary ? mem_ptr + secondary_offset : NULL);
+      }
+   }
+}
+
 void pvr_UpdateDescriptorSets(VkDevice _device,
                               uint32_t descriptorWriteCount,
                               const VkWriteDescriptorSet *pDescriptorWrites,
@@ -1701,8 +1791,17 @@ void pvr_UpdateDescriptorSets(VkDevice _device,
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         pvr_descriptor_update_buffer_view(device,
+                                           write_set,
+                                           set,
+                                           binding,
+                                           map,
+                                           0,
+                                           PVR_STAGE_ALLOCATION_COUNT);
+         break;
+
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          pvr_finishme("Update support missing for %d descriptor type\n",
                       write_set->descriptorType);
          break;

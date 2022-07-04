@@ -489,6 +489,7 @@ struct pvr_descriptor {
 
    union {
       struct {
+         struct pvr_buffer_view *bview;
          pvr_dev_addr_t buffer_dev_addr;
          VkDeviceSize buffer_desc_range;
          VkDeviceSize buffer_create_info_size;
