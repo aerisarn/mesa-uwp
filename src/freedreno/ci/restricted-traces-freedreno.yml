@@ -19,11 +19,10 @@ traces:
   #  expectations:
   #    - device: freedreno-a630
   #      checksum: 8ab8fa893171d6b21cf8af2d6d4e1f17
-  # re-enable after https://gitlab.freedesktop.org/mesa/mesa/-/issues/6763 is fixed
-  #- path: AmnesiaTDD/Amnesia-f700-v2.trace
-  #  expectations:
-  #    - device: freedreno-a630
-  #      checksum: d65b15a48cc7488020a1d4ae3d5dd583
+  - path: AmnesiaTDD/Amnesia-f700-v2.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: d65b15a48cc7488020a1d4ae3d5dd583
   - path: Antichamber/antichamber-f240-v2.trace
     expectations:
       - device: freedreno-a630
