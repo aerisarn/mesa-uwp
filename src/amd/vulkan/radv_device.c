@@ -366,7 +366,7 @@ static const struct vk_instance_extension_table radv_instance_extensions_support
    .KHR_external_semaphore_capabilities = true,
    .KHR_get_physical_device_properties2 = true,
    .EXT_debug_report = true,
-   /* EXT_debug_utils is exposed only if thread trace is enabled. See radv_CreateInstance */
+   .EXT_debug_utils = true,
 
 #ifdef RADV_USE_WSI_PLATFORM
    .KHR_get_surface_capabilities2 = true,
@@ -1046,8 +1046,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table, &radv_instance_entrypoints, true);
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table, &wsi_instance_entrypoints, false);
    struct vk_instance_extension_table extensions_supported = radv_instance_extensions_supported;
-   if (radv_thread_trace_enabled())
-      extensions_supported.EXT_debug_utils = true;
+
    result = vk_instance_init(&instance->vk, &extensions_supported, &dispatch_table,
                              pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
