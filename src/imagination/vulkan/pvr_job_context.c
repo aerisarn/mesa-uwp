@@ -925,6 +925,8 @@ static VkResult pvr_pds_sr_fence_terminate_program_create_and_upload(
 {
    const uint32_t pds_data_alignment =
       PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE) / 4U;
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &device->pdevice->dev_runtime_info;
    ASSERTED const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    uint32_t staging_buffer[PVRX(PDS_TASK_PROGRAM_SIZE) >> 2U];
    struct pvr_pds_fence_program program = { 0 };
@@ -934,7 +936,7 @@ static VkResult pvr_pds_sr_fence_terminate_program_create_and_upload(
 
    /* SW_COMPUTE_PDS_BARRIER is not supported with 2 or more phantoms. */
    assert(!(PVR_NEED_SW_COMPUTE_PDS_BARRIER(dev_info) &&
-            rogue_get_num_phantoms(dev_info) >= 2));
+            dev_runtime_info->num_phantoms >= 2));
 
    pvr_pds_generate_fence_terminate_program(&program,
                                             staging_buffer,

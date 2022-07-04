@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <xf86drm.h>
 
+#include "hwdef/rogue_hw_utils.h"
 #include "pvr_csb.h"
 #include "pvr_device_info.h"
 #include "pvr_private.h"
@@ -42,6 +43,7 @@
 #include "pvr_winsys.h"
 #include "pvr_winsys_helper.h"
 #include "util/log.h"
+#include "util/macros.h"
 #include "util/os_misc.h"
 #include "vk_log.h"
 
@@ -377,6 +379,125 @@ static void pvr_srv_winsys_destroy(struct pvr_winsys *ws)
    pvr_srv_connection_destroy(fd);
 }
 
+static uint64_t
+pvr_srv_get_min_free_list_size(const struct pvr_device_info *dev_info)
+{
+   uint64_t min_num_pages;
+
+   if (PVR_HAS_FEATURE(dev_info, roguexe)) {
+      if (PVR_HAS_QUIRK(dev_info, 66011))
+         min_num_pages = 40U;
+      else
+         min_num_pages = 25U;
+   } else {
+      min_num_pages = 50U;
+   }
+
+   return min_num_pages << ROGUE_BIF_PM_PHYSICAL_PAGE_SHIFT;
+}
+
+static inline uint64_t
+pvr_srv_get_num_phantoms(const struct pvr_device_info *dev_info)
+{
+   return DIV_ROUND_UP(PVR_GET_FEATURE_VALUE(dev_info, num_clusters, 1U), 4U);
+}
+
+/* Return the total reserved size of partition in dwords. */
+static inline uint64_t pvr_srv_get_total_reserved_partition_size(
+   const struct pvr_device_info *dev_info)
+{
+   uint32_t tile_size_x = PVR_GET_FEATURE_VALUE(dev_info, tile_size_x, 0);
+   uint32_t tile_size_y = PVR_GET_FEATURE_VALUE(dev_info, tile_size_y, 0);
+   uint32_t max_partitions = PVR_GET_FEATURE_VALUE(dev_info, max_partitions, 0);
+
+   if (tile_size_x == 16 && tile_size_y == 16) {
+      return tile_size_x * tile_size_y * max_partitions *
+             PVR_GET_FEATURE_VALUE(dev_info,
+                                   usc_min_output_registers_per_pix,
+                                   0);
+   }
+
+   return max_partitions * 1024U;
+}
+
+static inline uint64_t
+pvr_srv_get_reserved_shared_size(const struct pvr_device_info *dev_info)
+{
+   uint32_t common_store_size_in_dwords =
+      PVR_GET_FEATURE_VALUE(dev_info,
+                            common_store_size_in_dwords,
+                            512U * 4U * 4U);
+   uint32_t reserved_shared_size =
+      common_store_size_in_dwords - (256U * 4U) -
+      pvr_srv_get_total_reserved_partition_size(dev_info);
+
+   if (PVR_HAS_QUIRK(dev_info, 44079)) {
+      uint32_t common_store_split_point = (768U * 4U * 4U);
+
+      return MIN2(common_store_split_point - (256U * 4U), reserved_shared_size);
+   }
+
+   return reserved_shared_size;
+}
+
+static inline uint64_t
+pvr_srv_get_max_coeffs(const struct pvr_device_info *dev_info)
+{
+   uint32_t max_coeff_additional_portion = ROGUE_MAX_VERTEX_SHARED_REGISTERS;
+   uint32_t pending_allocation_shared_regs = 2U * 1024U;
+   uint32_t pending_allocation_coeff_regs = 0U;
+   uint32_t num_phantoms = pvr_srv_get_num_phantoms(dev_info);
+   uint32_t tiles_in_flight =
+      PVR_GET_FEATURE_VALUE(dev_info, isp_max_tiles_in_flight, 0);
+   uint32_t max_coeff_pixel_portion =
+      DIV_ROUND_UP(tiles_in_flight, num_phantoms);
+
+   max_coeff_pixel_portion *= ROGUE_MAX_PIXEL_SHARED_REGISTERS;
+
+   /* Compute tasks on cores with BRN48492 and without compute overlap may lock
+    * up without two additional lines of coeffs.
+    */
+   if (PVR_HAS_QUIRK(dev_info, 48492) &&
+       !PVR_HAS_FEATURE(dev_info, compute_overlap)) {
+      pending_allocation_coeff_regs = 2U * 1024U;
+   }
+
+   if (PVR_HAS_ERN(dev_info, 38748))
+      pending_allocation_shared_regs = 0U;
+
+   if (PVR_HAS_ERN(dev_info, 38020)) {
+      max_coeff_additional_portion +=
+         rogue_max_compute_shared_registers(dev_info);
+   }
+
+   return pvr_srv_get_reserved_shared_size(dev_info) +
+          pending_allocation_coeff_regs -
+          (max_coeff_pixel_portion + max_coeff_additional_portion +
+           pending_allocation_shared_regs);
+}
+
+static inline uint64_t
+pvr_srv_get_cdm_max_local_mem_size_regs(const struct pvr_device_info *dev_info)
+{
+   uint32_t available_coeffs_in_dwords = pvr_srv_get_max_coeffs(dev_info);
+
+   if (PVR_HAS_QUIRK(dev_info, 48492) && PVR_HAS_FEATURE(dev_info, roguexe) &&
+       !PVR_HAS_FEATURE(dev_info, compute_overlap)) {
+      /* Driver must not use the 2 reserved lines. */
+      available_coeffs_in_dwords -= ROGUE_CSRM_LINE_SIZE_IN_DWORDS * 2;
+   }
+
+   /* The maximum amount of local memory available to a kernel is the minimum
+    * of the total number of coefficient registers available and the max common
+    * store allocation size which can be made by the CDM.
+    *
+    * If any coeff lines are reserved for tessellation or pixel then we need to
+    * subtract those too.
+    */
+   return MIN2(available_coeffs_in_dwords,
+               ROGUE_MAX_PER_KERNEL_LOCAL_MEM_SIZE_REGS);
+}
+
 static int
 pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
                                 struct pvr_device_info *dev_info,
@@ -395,6 +516,16 @@ pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
                 PVR_BVNC_UNPACK_C(srv_ws->bvnc));
       return ret;
    }
+
+   runtime_info->min_free_list_size = pvr_srv_get_min_free_list_size(dev_info);
+   runtime_info->reserved_shared_size =
+      pvr_srv_get_reserved_shared_size(dev_info);
+   runtime_info->total_reserved_partition_size =
+      pvr_srv_get_total_reserved_partition_size(dev_info);
+   runtime_info->num_phantoms = pvr_srv_get_num_phantoms(dev_info);
+   runtime_info->max_coeffs = pvr_srv_get_max_coeffs(dev_info);
+   runtime_info->cdm_max_local_mem_size_regs =
+      pvr_srv_get_cdm_max_local_mem_size_regs(dev_info);
 
    if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support)) {
       result = pvr_srv_get_multicore_info(srv_ws->render_fd,

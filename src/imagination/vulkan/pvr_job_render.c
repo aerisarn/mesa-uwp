@@ -1298,6 +1298,8 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
 {
    const enum PVRX(CR_ISP_AA_MODE_TYPE)
       isp_aa_mode = pvr_cr_isp_aa_mode_type(job->samples);
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &ctx->device->pdevice->dev_runtime_info;
    const struct pvr_device_info *dev_info = &ctx->device->pdevice->dev_info;
    uint32_t isp_ctl;
 
@@ -1305,6 +1307,7 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
 
    /* FIXME: pass in the number of samples rather than isp_aa_mode? */
    pvr_setup_tiles_in_flight(dev_info,
+                             dev_runtime_info,
                              isp_aa_mode,
                              job->pixel_output_width,
                              false,
@@ -1340,7 +1343,7 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
 
    if (PVR_HAS_FEATURE(dev_info, cluster_grouping) &&
        PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls) &&
-       rogue_get_num_phantoms(dev_info) > 1 && job->frag_uses_atomic_ops) {
+       dev_runtime_info->num_phantoms > 1 && job->frag_uses_atomic_ops) {
       /* Each phantom has its own MCU, so atomicity can only be guaranteed
        * when all work items are processed on the same phantom. This means we
        * need to disable all USCs other than those of the first phantom, which

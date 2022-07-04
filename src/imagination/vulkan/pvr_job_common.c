@@ -286,13 +286,15 @@ void pvr_pbe_pack_state(
  * total_tiles_in_flight so that CR_ISP_CTL can be fully packed in
  * pvr_render_job_ws_fragment_state_init().
  */
-void pvr_setup_tiles_in_flight(const struct pvr_device_info *dev_info,
-                               uint32_t msaa_mode,
-                               uint32_t pixel_width,
-                               bool paired_tiles,
-                               uint32_t max_tiles_in_flight,
-                               uint32_t *const isp_ctl_out,
-                               uint32_t *const pixel_ctl_out)
+void pvr_setup_tiles_in_flight(
+   const struct pvr_device_info *dev_info,
+   const struct pvr_device_runtime_info *dev_runtime_info,
+   uint32_t msaa_mode,
+   uint32_t pixel_width,
+   bool paired_tiles,
+   uint32_t max_tiles_in_flight,
+   uint32_t *const isp_ctl_out,
+   uint32_t *const pixel_ctl_out)
 {
    uint32_t total_tiles_in_flight = 0;
    uint32_t usable_partition_size;
@@ -347,9 +349,8 @@ void pvr_setup_tiles_in_flight(const struct pvr_device_info *dev_info,
 
    /* Maximum available partition space for partitions of this size. */
    max_partitions = PVR_GET_FEATURE_VALUE(dev_info, max_partitions, 0);
-   usable_partition_size =
-      MIN2(rogue_get_total_reserved_partition_size(dev_info),
-           partition_size * max_partitions);
+   usable_partition_size = MIN2(dev_runtime_info->total_reserved_partition_size,
+                                partition_size * max_partitions);
 
    if (PVR_GET_FEATURE_VALUE(dev_info, common_store_size_in_dwords, 0) <
        (1024 * 4 * 4)) {
@@ -371,7 +372,7 @@ void pvr_setup_tiles_in_flight(const struct pvr_device_info *dev_info,
       MIN2(max_partitions, usable_partition_size / partition_size);
 
    if (PVR_HAS_FEATURE(dev_info, xt_top_infrastructure))
-      max_phantoms = rogue_get_num_phantoms(dev_info);
+      max_phantoms = dev_runtime_info->num_phantoms;
    else if (PVR_HAS_FEATURE(dev_info, roguexe))
       max_phantoms = PVR_GET_FEATURE_VALUE(dev_info, num_raster_pipes, 0);
    else
@@ -399,7 +400,7 @@ void pvr_setup_tiles_in_flight(const struct pvr_device_info *dev_info,
       if (!PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) ||
           PVR_GET_FEATURE_VALUE(dev_info, simple_parameter_format_version, 0) !=
              2) {
-         isp_tiles_in_flight /= rogue_get_num_phantoms(dev_info);
+         isp_tiles_in_flight /= dev_runtime_info->num_phantoms;
       }
 
       isp_tiles_in_flight = MIN2(usc_tiles_in_flight, isp_tiles_in_flight);

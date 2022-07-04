@@ -1066,10 +1066,15 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
  */
 #define PVR_IDF_WDF_IN_REGISTER_CONST_COUNT 12U
 
-static void pvr_sub_cmd_compute_job_init(const struct pvr_device_info *dev_info,
-                                         struct pvr_cmd_buffer *cmd_buffer,
-                                         struct pvr_sub_cmd_compute *sub_cmd)
+static void
+pvr_sub_cmd_compute_job_init(const struct pvr_physical_device *pdevice,
+                             struct pvr_cmd_buffer *cmd_buffer,
+                             struct pvr_sub_cmd_compute *sub_cmd)
 {
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &pdevice->dev_runtime_info;
+   const struct pvr_device_info *dev_info = &pdevice->dev_info;
+
    if (sub_cmd->uses_barrier)
       sub_cmd->submit_info.flags |= PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
 
@@ -1102,7 +1107,7 @@ static void pvr_sub_cmd_compute_job_init(const struct pvr_device_info *dev_info,
 
    if (PVR_HAS_FEATURE(dev_info, cluster_grouping) &&
        PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls) &&
-       rogue_get_num_phantoms(dev_info) > 1 && sub_cmd->uses_atomic_ops) {
+       dev_runtime_info->num_phantoms > 1 && sub_cmd->uses_atomic_ops) {
       /* Each phantom has its own MCU, so atomicity can only be guaranteed
        * when all work items are processed on the same phantom. This means we
        * need to disable all USCs other than those of the first phantom, which
@@ -1131,14 +1136,17 @@ static void pvr_sub_cmd_compute_job_init(const struct pvr_device_info *dev_info,
    (1024 / PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE))
 
 static uint32_t
-pvr_compute_flat_slot_size(const struct pvr_device_info *dev_info,
+pvr_compute_flat_slot_size(const struct pvr_physical_device *pdevice,
                            uint32_t coeff_regs_count,
                            bool use_barrier,
                            uint32_t total_workitems)
 {
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &pdevice->dev_runtime_info;
+   const struct pvr_device_info *dev_info = &pdevice->dev_info;
    uint32_t max_workgroups_per_task = ROGUE_CDM_MAX_PACKED_WORKGROUPS_PER_TASK;
    uint32_t max_avail_coeff_regs =
-      rogue_get_cdm_max_local_mem_size_regs(dev_info);
+      dev_runtime_info->cdm_max_local_mem_size_regs;
    uint32_t localstore_chunks_count =
       DIV_ROUND_UP(coeff_regs_count << 2,
                    PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE));
@@ -1309,8 +1317,7 @@ pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
 {
    const struct pvr_pds_upload *program =
       &cmd_buffer->device->pds_compute_fence_program;
-   const struct pvr_device_info *dev_info =
-      &cmd_buffer->device->pdevice->dev_info;
+   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
    struct pvr_csb *csb = &sub_cmd->control_stream;
 
    struct pvr_compute_kernel_info info = {
@@ -1336,7 +1343,7 @@ pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
    /* Here we calculate the slot size. This can depend on the use of barriers,
     * local memory, BRN's or other factors.
     */
-   info.max_instances = pvr_compute_flat_slot_size(dev_info, 0U, false, 1U);
+   info.max_instances = pvr_compute_flat_slot_size(pdevice, 0U, false, 1U);
 
    pvr_compute_generate_control_stream(csb, &info);
 }
@@ -1413,7 +1420,7 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
          return result;
       }
 
-      pvr_sub_cmd_compute_job_init(&device->pdevice->dev_info,
+      pvr_sub_cmd_compute_job_init(device->pdevice,
                                    cmd_buffer,
                                    compute_sub_cmd);
       break;
@@ -2838,8 +2845,7 @@ static VkResult pvr_setup_descriptor_mappings(
 static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
                                       struct pvr_sub_cmd_compute *const sub_cmd)
 {
-   const struct pvr_device_info *dev_info =
-      &cmd_buffer->device->pdevice->dev_info;
+   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_csb *csb = &sub_cmd->control_stream;
    const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
@@ -2892,18 +2898,21 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
    /* We don't need to pad the workgroup size. */
 
    info.max_instances =
-      pvr_compute_flat_slot_size(dev_info, const_shared_reg_count, false, 1U);
+      pvr_compute_flat_slot_size(pdevice, const_shared_reg_count, false, 1U);
 
    pvr_compute_generate_control_stream(csb, &info);
 }
 
 static uint32_t
-pvr_compute_flat_pad_workgroup_size(const struct pvr_device_info *dev_info,
+pvr_compute_flat_pad_workgroup_size(const struct pvr_physical_device *pdevice,
                                     uint32_t workgroup_size,
                                     uint32_t coeff_regs_count)
 {
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &pdevice->dev_runtime_info;
+   const struct pvr_device_info *dev_info = &pdevice->dev_info;
    uint32_t max_avail_coeff_regs =
-      rogue_get_cdm_max_local_mem_size_regs(dev_info);
+      dev_runtime_info->cdm_max_local_mem_size_regs;
    uint32_t coeff_regs_count_aligned =
       ALIGN_POT(coeff_regs_count,
                 PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE) >> 2U);
@@ -2934,8 +2943,9 @@ static void pvr_compute_update_kernel(
    struct pvr_sub_cmd_compute *const sub_cmd,
    const uint32_t global_workgroup_size[static const PVR_WORKGROUP_DIMENSIONS])
 {
-   const struct pvr_device_info *dev_info =
-      &cmd_buffer->device->pdevice->dev_info;
+   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &pdevice->dev_runtime_info;
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_csb *csb = &sub_cmd->control_stream;
    const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
@@ -2976,7 +2986,7 @@ static void pvr_compute_update_kernel(
    if (work_size > ROGUE_MAX_INSTANCES_PER_TASK) {
       /* Enforce a single workgroup per cluster through allocation starvation.
        */
-      coeff_regs = rogue_get_cdm_max_local_mem_size_regs(dev_info);
+      coeff_regs = dev_runtime_info->cdm_max_local_mem_size_regs;
    } else {
       coeff_regs = pipeline->state.shader.coefficient_register_count;
    }
@@ -2991,14 +3001,14 @@ static void pvr_compute_update_kernel(
    coeff_regs += pipeline->state.shader.const_shared_reg_count;
 
    work_size =
-      pvr_compute_flat_pad_workgroup_size(dev_info, work_size, coeff_regs);
+      pvr_compute_flat_pad_workgroup_size(pdevice, work_size, coeff_regs);
 
    info.local_size[0] = work_size;
    info.local_size[1] = 1U;
    info.local_size[2] = 1U;
 
    info.max_instances =
-      pvr_compute_flat_slot_size(dev_info, coeff_regs, false, work_size);
+      pvr_compute_flat_slot_size(pdevice, coeff_regs, false, work_size);
 
    pvr_compute_generate_control_stream(csb, &info);
 }
@@ -3632,8 +3642,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
       &state->gfx_pipeline->fragment_shader_state.pds_coeff_program;
    const struct pvr_pipeline_stage_state *fragment_state =
       &state->gfx_pipeline->fragment_shader_state.stage_state;
-   struct pvr_device_info *const dev_info =
-      &cmd_buffer->device->pdevice->dev_info;
+   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
    struct pvr_emit_state *const emit_state = &state->emit_state;
    struct pvr_ppp_state *const ppp_state = &state->ppp_state;
 
@@ -3659,7 +3668,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
 
    const uint32_t max_tiles_in_flight =
       pvr_calc_fscommon_size_and_tiles_in_flight(
-         dev_info,
+         pdevice,
          usc_shared_size *
             PVRX(TA_STATE_PDS_SIZEINFO2_USC_SHAREDSIZE_UNIT_SIZE),
          1);

@@ -356,6 +356,16 @@ struct pvr_device_info {
    struct pvr_device_quirks quirks;
 };
 
+struct pvr_device_runtime_info {
+   uint64_t min_free_list_size;
+   uint64_t reserved_shared_size;
+   uint64_t total_reserved_partition_size;
+   uint64_t num_phantoms;
+   uint64_t max_coeffs;
+   uint64_t cdm_max_local_mem_size_regs;
+   uint32_t core_count;
+};
+
 /**
  * Packs B, V, N and C values into a 64-bit unsigned integer.
  *

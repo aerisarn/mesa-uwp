@@ -661,33 +661,35 @@ void pvr_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
 /* TODO: See if this function can be improved once fully implemented. */
 uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
-   const struct pvr_device_info *dev_info,
+   const struct pvr_physical_device *pdevice,
    uint32_t fs_common_size,
    uint32_t min_tiles_in_flight)
 {
+   const struct pvr_device_runtime_info *dev_runtime_info =
+      &pdevice->dev_runtime_info;
+   const struct pvr_device_info *dev_info = &pdevice->dev_info;
    uint32_t max_tiles_in_flight;
    uint32_t num_allocs;
 
    if (PVR_HAS_FEATURE(dev_info, s8xe)) {
       num_allocs = PVR_GET_FEATURE_VALUE(dev_info, num_raster_pipes, 0U);
    } else {
-      uint32_t num_phantoms = rogue_get_num_phantoms(dev_info);
       uint32_t min_cluster_per_phantom = 0;
 
-      if (num_phantoms > 1) {
+      if (dev_runtime_info->num_phantoms > 1) {
          pvr_finishme("Unimplemented path!!");
       } else {
          min_cluster_per_phantom =
             PVR_GET_FEATURE_VALUE(dev_info, num_clusters, 1U);
       }
 
-      if (num_phantoms > 1)
+      if (dev_runtime_info->num_phantoms > 1)
          pvr_finishme("Unimplemented path!!");
 
-      if (num_phantoms > 2)
+      if (dev_runtime_info->num_phantoms > 2)
          pvr_finishme("Unimplemented path!!");
 
-      if (num_phantoms > 3)
+      if (dev_runtime_info->num_phantoms > 3)
          pvr_finishme("Unimplemented path!!");
 
       if (min_cluster_per_phantom >= 4)
@@ -702,6 +704,8 @@ uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
       PVR_GET_FEATURE_VALUE(dev_info, isp_max_tiles_in_flight, 1U);
 
    if (fs_common_size == UINT_MAX) {
+      const struct pvr_device_runtime_info *dev_runtime_info =
+         &pdevice->dev_runtime_info;
       uint32_t max_common_size;
 
       num_allocs *= MIN2(min_tiles_in_flight, max_tiles_in_flight);
@@ -711,8 +715,8 @@ uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
          num_allocs += 1;
       }
 
-      max_common_size = rogue_get_reserved_shared_size(dev_info) -
-                        rogue_get_max_coeffs(dev_info);
+      max_common_size =
+         dev_runtime_info->reserved_shared_size - dev_runtime_info->max_coeffs;
 
       /* Double resource requirements to deal with fragmentation. */
       max_common_size /= num_allocs * 2;
@@ -764,7 +768,7 @@ pvr_get_physical_device_descriptor_limits(struct pvr_physical_device *pdevice)
    };
 
    const uint32_t common_size =
-      pvr_calc_fscommon_size_and_tiles_in_flight(&pdevice->dev_info, -1, 1);
+      pvr_calc_fscommon_size_and_tiles_in_flight(pdevice, -1, 1);
    enum pvr_descriptor_cs_level cs_level;
 
    if (common_size >= 2048) {
