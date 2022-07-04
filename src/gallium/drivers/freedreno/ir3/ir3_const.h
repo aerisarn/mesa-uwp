@@ -450,11 +450,11 @@ emit_kernel_params(struct fd_context *ctx, const struct ir3_shader_variant *v,
 }
 
 static inline void
-ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
-                          struct fd_ringbuffer *ring, struct fd_context *ctx,
-                          const struct pipe_draw_info *info,
-                          const struct pipe_draw_indirect_info *indirect,
-                          const struct pipe_draw_start_count_bias *draw) assert_dt
+ir3_emit_driver_params(const struct ir3_shader_variant *v,
+                       struct fd_ringbuffer *ring, struct fd_context *ctx,
+                       const struct pipe_draw_info *info,
+                       const struct pipe_draw_indirect_info *indirect,
+                       const struct pipe_draw_start_count_bias *draw) assert_dt
 {
    assert(v->need_driver_params);
 
@@ -500,7 +500,6 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
          pipe_buffer_create(&ctx->screen->base, PIPE_BIND_CONSTANT_BUFFER,
                             PIPE_USAGE_STREAM, vertex_params_area * 4);
       unsigned src_off = indirect->offset;
-      ;
       void *ptr;
 
       ptr = fd_bo_map(fd_resource(vertex_params_rsc)->bo);
@@ -546,7 +545,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v,
    /* emit driver params every time: */
    if (info && v->need_driver_params) {
       ring_wfi(ctx->batch, ring);
-      ir3_emit_vs_driver_params(v, ring, ctx, info, indirect, draw);
+      ir3_emit_driver_params(v, ring, ctx, info, indirect, draw);
    }
 }
 
