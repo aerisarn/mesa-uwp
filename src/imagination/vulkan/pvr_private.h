@@ -270,6 +270,8 @@ struct pvr_device {
 
    uint32_t pixel_event_data_size_in_dwords;
 
+   uint64_t input_attachment_sampler;
+
    struct pvr_pds_upload pds_compute_fence_program;
 
    struct {

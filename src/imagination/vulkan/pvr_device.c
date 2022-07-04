@@ -1256,6 +1256,20 @@ err_free_nop_usc_bo:
    return result;
 }
 
+static void pvr_device_init_default_sampler_state(struct pvr_device *device)
+{
+   pvr_csb_pack (&device->input_attachment_sampler, TEXSTATE_SAMPLER, sampler) {
+      sampler.addrmode_u = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+      sampler.addrmode_v = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+      sampler.addrmode_w = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+      sampler.dadjust = PVRX(TEXSTATE_DADJUST_ZERO_UINT);
+      sampler.magfilter = PVRX(TEXSTATE_FILTER_POINT);
+      sampler.minfilter = PVRX(TEXSTATE_FILTER_POINT);
+      sampler.anisoctl = PVRX(TEXSTATE_ANISOCTL_DISABLED);
+      sampler.non_normalized_coords = true;
+   }
+}
+
 VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
                           const VkDeviceCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator,
@@ -1343,6 +1357,8 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    result = pvr_queues_create(device, pCreateInfo);
    if (result != VK_SUCCESS)
       goto err_pvr_free_compute_fence;
+
+   pvr_device_init_default_sampler_state(device);
 
    if (pCreateInfo->pEnabledFeatures)
       memcpy(&device->features,
