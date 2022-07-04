@@ -62,6 +62,9 @@ void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *
                           unsigned ballot_mask_bits)
 {
    ctx->context = LLVMContextCreate();
+   #if LLVM_VERSION_MAJOR >= 15
+   LLVMContextSetOpaquePointers(ctx->context, false);
+   #endif
 
    ctx->gfx_level = gfx_level;
    ctx->family = family;
