@@ -608,6 +608,25 @@ ir3_nir_lower_view_layer_id(nir_shader *nir, bool layer_zero, bool view_zero)
    return progress;
 }
 
+static bool
+lower_ucp_vs(struct ir3_shader_variant *so)
+{
+   if (!so->key.ucp_enables)
+      return false;
+
+   gl_shader_stage last_geom_stage = MESA_SHADER_VERTEX;
+
+   if (so->key.tessellation) {
+      last_geom_stage = MESA_SHADER_TESS_EVAL;
+   } else if (so->key.has_gs) {
+      last_geom_stage = MESA_SHADER_GEOMETRY;
+   } else {
+      last_geom_stage = MESA_SHADER_VERTEX;
+   }
+
+   return so->type == last_geom_stage;
+}
+
 void
 ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 {
@@ -647,10 +666,11 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
       }
    }
 
-   if (s->info.stage == MESA_SHADER_VERTEX) {
-      if (so->key.ucp_enables)
-         progress |=
-            OPT(s, nir_lower_clip_vs, so->key.ucp_enables, false, true, NULL);
+   /* Note that it is intentional to use the VS lowering pass for GS, since we
+    * lower GS into something that looks more like a VS in ir3_nir_lower_gs():
+    */
+   if (lower_ucp_vs(so)) {
+      progress |= OPT(s, nir_lower_clip_vs, so->key.ucp_enables, false, true, NULL);
    } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
       bool layer_zero =
          so->key.layer_zero && (s->info.inputs_read & VARYING_BIT_LAYER);
