@@ -340,12 +340,24 @@ struct pvr_image_view {
    const struct pvr_image *image;
 
    /* Prepacked Texture Image dword 0 and 1. It will be copied to the
-    * descriptor info during pvr_UpdateDescriptorSets.
+    * descriptor info during pvr_UpdateDescriptorSets().
     *
     * We create separate texture states for sampling, storage and input
     * attachment cases.
     */
    uint64_t texture_state[PVR_TEXTURE_STATE_MAX_ENUM][2];
+};
+
+struct pvr_buffer_view {
+   struct vk_object_base base;
+
+   uint64_t range;
+   VkFormat format;
+
+   /* Prepacked Texture dword 0 and 1. It will be copied to the descriptor
+    * during pvr_UpdateDescriptorSets().
+    */
+   uint64_t texture_state[2];
 };
 
 union pvr_sampler_descriptor {
@@ -1367,6 +1379,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_image_view,
                                vk.base,
                                VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW)
+VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_buffer_view,
+                               base,
+                               VkBufferView,
+                               VK_OBJECT_TYPE_BUFFER_VIEW)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_descriptor_set_layout,
                                base,
                                VkDescriptorSetLayout,
