@@ -94,6 +94,8 @@ static const struct debug_named_value debug_control[] = {
         { "cache", V3D_DEBUG_CACHE,
           "Print on-disk cache events (only with cache enabled)" },
 #endif
+        { "no_merge_jobs", V3D_DEBUG_NO_MERGE_JOBS,
+          "Don't try to merge subpasses in the same job even if they share framebuffer configuration (v3dv only)" },
         { NULL }
 };
 
