@@ -479,16 +479,17 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx)
    /* Read the output values. */
    for (i = 0; i < info->num_outputs; i++) {
       unsigned semantic = info->output_semantic[i];
+      LLVMTypeRef type = ctx->abi.is_16bit[4 * i] ? ctx->ac.f16 : ctx->ac.f32;
 
       switch (semantic) {
       case FRAG_RESULT_DEPTH:
-         depth = LLVMBuildLoad(builder, addrs[4 * i + 0], "");
+         depth = LLVMBuildLoad2(builder, type, addrs[4 * i + 0], "");
          break;
       case FRAG_RESULT_STENCIL:
-         stencil = LLVMBuildLoad(builder, addrs[4 * i + 0], "");
+         stencil = LLVMBuildLoad2(builder, type, addrs[4 * i + 0], "");
          break;
       case FRAG_RESULT_SAMPLE_MASK:
-         samplemask = LLVMBuildLoad(builder, addrs[4 * i + 0], "");
+         samplemask = LLVMBuildLoad2(builder, type, addrs[4 * i + 0], "");
          break;
       default:
          if (semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
@@ -496,7 +497,8 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx)
 
             for (j = 0; j < 4; j++) {
                LLVMValueRef ptr = addrs[4 * i + j];
-               LLVMValueRef result = LLVMBuildLoad(builder, ptr, "");
+               type = ctx->abi.is_16bit[4 * i + j] ? ctx->ac.f16 : ctx->ac.f32;
+               LLVMValueRef result = LLVMBuildLoad2(builder, type, ptr, "");
                color[index][j] = result;
             }
          } else {
