@@ -2746,6 +2746,81 @@ lower_sparse(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_sparse_instr, nir_metadata_dominance, NULL);
 }
 
+static bool
+match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
+{
+   if (in->type != nir_instr_type_tex)
+      return false;
+   nir_tex_instr *tex = nir_instr_as_tex(in);
+   if (tex->op == nir_texop_txs)
+      return false;
+   int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+   nir_variable *var = NULL;
+   if (handle != -1) {
+      var = nir_deref_instr_get_variable(nir_src_as_deref(tex->src[handle].src));
+   } else {
+      nir_foreach_variable_with_modes(img, b->shader, nir_var_uniform) {
+         if (glsl_type_is_sampler(glsl_without_array(img->type))) {
+            unsigned size = glsl_type_is_array(img->type) ? glsl_get_aoa_size(img->type) : 1;
+            if (tex->texture_index >= img->data.driver_location &&
+                tex->texture_index < img->data.driver_location + size) {
+               var = img;
+               break;
+            }
+         }
+      }
+   }
+   assert(var);
+   const struct glsl_type *type = glsl_without_array(var->type);
+   enum glsl_base_type ret_type = glsl_get_sampler_result_type(type);
+   bool is_int = glsl_base_type_is_integer(ret_type);
+   unsigned bit_size = glsl_base_type_get_bit_size(ret_type);
+   unsigned dest_size = nir_dest_bit_size(tex->dest);
+   b->cursor = nir_after_instr(in);
+   unsigned num_components = nir_dest_num_components(tex->dest);
+   bool rewrite_depth = tex->is_shadow && num_components > 1 && tex->op != nir_texop_tg4;
+   if (bit_size == dest_size && !rewrite_depth)
+      return false;
+   nir_ssa_def *dest = &tex->dest.ssa;
+   if (bit_size != dest_size) {
+      tex->dest.ssa.bit_size = bit_size;
+      tex->dest_type = nir_get_nir_type_for_glsl_base_type(ret_type);
+      if (rewrite_depth) {
+         assert(!tex->is_new_style_shadow);
+         tex->dest.ssa.num_components = 1;
+         tex->is_new_style_shadow = true;
+      }
+
+      if (is_int) {
+         if (glsl_unsigned_base_type_of(ret_type) == ret_type)
+            dest = nir_u2uN(b, &tex->dest.ssa, dest_size);
+         else
+            dest = nir_i2iN(b, &tex->dest.ssa, dest_size);
+      } else {
+         dest = nir_f2fN(b, &tex->dest.ssa, dest_size);
+      }
+      if (rewrite_depth) {
+         nir_ssa_def *vec[4] = {dest, dest, dest, dest};
+         dest = nir_vec(b, vec, num_components);
+      }
+      nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, dest, dest->parent_instr);
+   } else if (rewrite_depth) {
+      assert(!tex->is_new_style_shadow);
+      tex->dest.ssa.num_components = 1;
+      tex->is_new_style_shadow = true;
+      nir_ssa_def *vec[4] = {dest, dest, dest, dest};
+      nir_ssa_def *splat = nir_vec(b, vec, num_components);
+      nir_ssa_def_rewrite_uses_after(dest, splat, splat->parent_instr);
+   }
+   return true;
+}
+
+static bool
+match_tex_dests(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, match_tex_dests_instr, nir_metadata_dominance, NULL);
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -2912,6 +2987,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    if (!screen->info.feats.features.shaderInt64)
       NIR_PASS_V(nir, lower_64bit_vars);
+   NIR_PASS_V(nir, match_tex_dests);
 
    ret->nir = nir;
    if (so_info && nir->info.outputs_written && nir->info.has_transform_feedback_varyings)
