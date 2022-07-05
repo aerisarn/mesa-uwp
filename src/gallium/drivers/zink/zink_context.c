@@ -3362,6 +3362,10 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
    if (!ctx->framebuffer || !ctx->framebuffer->state.num_attachments)
       return;
 
+   /* if this is a fb barrier, flush all pending clears */
+   if (ctx->rp_clears_enabled && dst == VK_ACCESS_INPUT_ATTACHMENT_READ_BIT)
+      zink_batch_rp(ctx);
+
    /* this is not an in-renderpass barrier */
    if (!ctx->fbfetch_outputs)
       zink_batch_no_rp(ctx);
