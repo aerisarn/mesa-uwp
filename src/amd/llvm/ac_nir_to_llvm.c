@@ -3495,7 +3495,8 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
       assert(is_output);
 
       for (unsigned chan = component; chan < count + component; chan++)
-         values[chan] = LLVMBuildLoad(ctx->ac.builder, ctx->abi->outputs[base * 4 + chan], "");
+         values[chan] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32,
+                                       ctx->abi->outputs[base * 4 + chan], "");
 
       LLVMValueRef result = ac_build_varying_gather_values(&ctx->ac, values, count, component);
       return LLVMBuildBitCast(ctx->ac.builder, result, dest_type, "");
