@@ -523,7 +523,7 @@ void si_llvm_tcs_build_end(struct si_shader_context *ctx)
       for (unsigned i = 0; i < 6; i++) {
          int loc = i < 4 ? outer_loc : inner_loc;
          LLVMValueRef value = loc < 0 ? LLVMGetUndef(ctx->ac.f32) :
-            LLVMBuildLoad(builder, ctx->abi.outputs[loc * 4 + i % 4], "");
+            LLVMBuildLoad2(builder, ctx->ac.f32, ctx->abi.outputs[loc * 4 + i % 4], "");
          value = ac_to_float(&ctx->ac, value);
          ret = LLVMBuildInsertValue(builder, ret, value, vgpr++, "");
       }
@@ -585,7 +585,7 @@ void si_llvm_ls_build_end(struct si_shader_context *ctx)
             if (!(info->output_usagemask[i] & (1 << chan)))
                continue;
 
-            LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
+            LLVMValueRef value = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + chan], "");
 
             ctx->return_value = LLVMBuildInsertValue(ctx->ac.builder, ctx->return_value,
                                                      value, ret_offset + param * 4 + chan, "");

@@ -210,7 +210,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
              ((info->output_streams[i] >> (2 * chan)) & 3) != stream)
             continue;
 
-         LLVMValueRef out_val = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
+         LLVMValueRef out_val = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + chan], "");
          LLVMValueRef voffset =
             LLVMConstInt(ctx->ac.i32, offset * shader->selector->info.base.gs.vertices_out, 0);
          offset++;

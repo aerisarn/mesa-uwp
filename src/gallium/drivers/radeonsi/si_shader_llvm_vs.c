@@ -499,7 +499,7 @@ static void si_vertex_color_clamping(struct si_shader_context *ctx,
          continue;
 
       for (unsigned j = 0; j < 4; j++) {
-         outputs[i].values[j] = LLVMBuildLoad(ctx->ac.builder, addr[i][j], "");
+         outputs[i].values[j] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addr[i][j], "");
       }
    }
 }
@@ -794,7 +794,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
       for (unsigned i = 0; i < shader->info.nr_param_exports; i++) {
          for (unsigned chan = 0; chan < 4; chan++) {
             param_exports[i].out[chan] =
-               LLVMBuildLoad(ctx->ac.builder, param_exports[i].out[chan], "");
+               LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, param_exports[i].out[chan], "");
          }
 
          LLVMValueRef vdata = ac_build_gather_values_extended(&ctx->ac, param_exports[i].out,
@@ -826,7 +826,7 @@ void si_llvm_vs_build_end(struct si_shader_context *ctx)
       outputs[i].semantic = info->output_semantic[i];
 
       for (j = 0; j < 4; j++) {
-         outputs[i].values[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
+         outputs[i].values[j] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
          outputs[i].vertex_streams = info->output_streams[i];
       }
    }

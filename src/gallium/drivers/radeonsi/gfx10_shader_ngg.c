@@ -1044,7 +1044,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
 
          pos_index = i;
          for (unsigned j = 0; j < 4; j++) {
-            position[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
+            position[j] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
          }
 
          /* Store Position.W into LDS. */
@@ -1071,7 +1071,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
             if (!(clipdist_enable & BITFIELD_BIT(index)))
                continue;
 
-            LLVMValueRef distance = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
+            LLVMValueRef distance = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
             add_clipdist_bit(ctx, distance, index, &packed_data);
             has_clipdist_mask = true;
          }
@@ -1079,7 +1079,7 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
 
       case VARYING_SLOT_CLIP_VERTEX:
          for (unsigned j = 0; j < 4; j++)
-            clipvertex[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
+            clipvertex[j] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
 
          if (add_clipdist_bits_for_clipvertex(ctx, clipdist_enable, clipvertex, &packed_data))
             has_clipdist_mask = true;
@@ -1291,7 +1291,8 @@ void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
       /* Store Position.XYZW into LDS. */
       for (unsigned chan = 0; chan < 4; chan++) {
          LLVMBuildStore(
-            builder, ac_to_integer(&ctx->ac, LLVMBuildLoad(builder, addrs[4 * pos_index + chan], "")),
+            builder, ac_to_integer(&ctx->ac,
+                                   LLVMBuildLoad2(builder, ctx->ac.f32, addrs[4 * pos_index + chan], "")),
             ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_pos_x + chan, 0)));
       }
 
@@ -1532,15 +1533,16 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
           */
          if (ctx->so.num_outputs) {
             tmp = ac_build_gep0(&ctx->ac, vertex_ptr, LLVMConstInt(ctx->ac.i32, 4 * i + j, false));
-            tmp2 = LLVMBuildLoad(builder, addrs[4 * i + j], "");
-            tmp2 = ac_to_integer(&ctx->ac, tmp2);
+            tmp2 = LLVMBuildLoad2(builder, ctx->ac.f32, addrs[4 * i + j], "");
+            LLVMTypeRef type = ac_to_integer_type(&ctx->ac, ctx->ac.f32);
+            tmp2 = LLVMBuildBitCast(ctx->ac.builder, tmp2, type, "");
             LLVMBuildStore(builder, tmp2, tmp);
          }
       }
 
       /* Store the edgeflag at the end (if streamout is enabled) */
       if (info->output_semantic[i] == VARYING_SLOT_EDGE && gfx10_ngg_writes_user_edgeflags(ctx->shader)) {
-         LLVMValueRef edgeflag = LLVMBuildLoad(builder, addrs[4 * i], "");
+         LLVMValueRef edgeflag = LLVMBuildLoad2(builder, ctx->ac.f32, addrs[4 * i], "");
          /* The output is a float, but the hw expects a 1-bit integer. */
          edgeflag = LLVMBuildFPToUI(ctx->ac.builder, edgeflag, ctx->ac.i32, "");
          edgeflag = ac_build_umin(&ctx->ac, edgeflag, ctx->ac.i32_1);
@@ -1706,11 +1708,12 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
                tmp = LLVMConstInt(ctx->ac.i32, lds_pos_x + j, 0);
                tmp = ac_build_gep0(&ctx->ac, vertex_ptr, tmp);
                tmp = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
-               outputs[i].values[j] = ac_to_float(&ctx->ac, tmp);
+               outputs[i].values[j] = LLVMBuildBitCast(ctx->ac.builder, tmp,
+                                                       ac_to_float_type(&ctx->ac, ctx->ac.i32), "");
             }
          } else {
             for (unsigned j = 0; j < 4; j++) {
-               outputs[i].values[j] = LLVMBuildLoad(builder, addrs[4 * i + j], "");
+               outputs[i].values[j] = LLVMBuildLoad2(builder, ctx->ac.f32, addrs[4 * i + j], "");
             }
          }
       }
@@ -1732,7 +1735,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
             outputs[i].values[0] = si_get_primitive_id(ctx, 0);
          }
 
-         outputs[i].values[0] = ac_to_float(&ctx->ac, outputs[i].values[0]);
+         outputs[i].values[0] = LLVMBuildBitCast(ctx->ac.builder, outputs[i].values[0], ctx->ac.f32, "");
          for (unsigned j = 1; j < 4; j++)
             outputs[i].values[j] = LLVMGetUndef(ctx->ac.f32);
          i++;
@@ -1870,8 +1873,9 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
              ((info->output_streams[i] >> (2 * chan)) & 3) != stream)
             continue;
 
-         LLVMValueRef out_val = LLVMBuildLoad(builder, addrs[4 * i + chan], "");
-         out_val = ac_to_integer(&ctx->ac, out_val);
+         LLVMValueRef out_val = LLVMBuildLoad2(builder, ctx->ac.f32, addrs[4 * i + chan], "");
+         LLVMTypeRef as_int = ac_to_integer_type(&ctx->ac, ctx->ac.f32);
+         out_val = LLVMBuildBitCast(ctx->ac.builder, out_val, as_int, "");
          LLVMBuildStore(builder, out_val, ngg_gs_get_emit_output_ptr(ctx, vertexptr, out_idx));
       }
    }
@@ -2304,7 +2308,8 @@ void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
 
          for (unsigned j = 0; j < 4; j++, out_idx++) {
             tmp = ngg_gs_get_emit_output_ptr(ctx, vertexptr, out_idx);
-            tmp = LLVMBuildLoad(builder, tmp, "");
+            tmp = LLVMBuildLoad2(builder, ctx->ac.i32, tmp, "");
+            assert(LLVMGetTypeKind(LLVMTypeOf(tmp)) != LLVMPointerTypeKind);
             outputs[i].values[j] = ac_to_float(&ctx->ac, tmp);
             outputs[i].vertex_streams = info->output_streams[i];
          }
