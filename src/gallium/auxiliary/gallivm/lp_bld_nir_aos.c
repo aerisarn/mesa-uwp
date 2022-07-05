@@ -197,20 +197,18 @@ emit_store_reg(struct lp_build_nir_context *bld_base,
 
    LLVMValueRef cur = LLVMBuildLoad(gallivm->builder, reg_storage, "");
    LLVMTypeRef i32t = LLVMInt32TypeInContext(gallivm->context);
-   for (unsigned i = 0; i < 4; i++) {
-      if (writemask & (1 << i)) {
-         LLVMValueRef shuffles[LP_MAX_VECTOR_LENGTH] = { 0 };
-         for (unsigned j = 0; j < 16; j++){
-            if (j % 4 == i)
-               shuffles[j] = LLVMConstInt(i32t, 16 + j, 0);
-            else
-               shuffles[j] = LLVMConstInt(i32t, j, 0);
-         }
-
-         cur = LLVMBuildShuffleVector(gallivm->builder, cur, dst[0],
-                                      LLVMConstVector(shuffles, 16), "");
+   LLVMValueRef shuffles[LP_MAX_VECTOR_LENGTH];
+   for (unsigned j = 0; j < 16; j++) {
+      unsigned comp = j % 4;
+      if (writemask & (1 << comp)) {
+         shuffles[j] = LLVMConstInt(i32t, 16 + j, 0); // new val
+      } else {
+         shuffles[j] = LLVMConstInt(i32t, j, 0);      // cur val
       }
    }
+   cur = LLVMBuildShuffleVector(gallivm->builder, cur, dst[0],
+                                LLVMConstVector(shuffles, 16), "");
+
    LLVMBuildStore(gallivm->builder, cur, reg_storage);
 }
 
