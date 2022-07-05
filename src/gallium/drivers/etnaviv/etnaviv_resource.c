@@ -424,12 +424,6 @@ etna_resource_create_modifiers(struct pipe_screen *pscreen,
    if (modifier == DRM_FORMAT_MOD_INVALID)
       return NULL;
 
-   /*
-    * We currently assume that all buffers allocated through this interface
-    * should be scanout enabled.
-    */
-   tmpl.bind |= PIPE_BIND_SCANOUT;
-
    return etna_resource_alloc(pscreen, modifier_to_layout(modifier), modifier, &tmpl);
 }
 
