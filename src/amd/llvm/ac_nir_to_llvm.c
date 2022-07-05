@@ -2402,7 +2402,7 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
       LLVMValueRef value = ac_llvm_extract_elem(&ctx->ac, src, chan - component);
       LLVMValueRef output_addr = ctx->abi->outputs[base * 4 + chan];
 
-      if (LLVMGetElementType(LLVMTypeOf(output_addr)) == ctx->ac.f32 &&
+      if (!ctx->abi->is_16bit[base * 4 + chan] &&
           LLVMTypeOf(value) == ctx->ac.f16) {
          LLVMValueRef output, index;
 
