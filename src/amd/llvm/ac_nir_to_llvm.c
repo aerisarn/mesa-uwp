@@ -79,23 +79,12 @@ static LLVMValueRef get_src(struct ac_nir_context *nir, nir_src src)
    return nir->ssa_defs[src.ssa->index];
 }
 
-static LLVMValueRef get_memory_ptr_t(struct ac_nir_context *ctx, nir_src src, LLVMTypeRef elem_type, unsigned c_off)
+static LLVMValueRef get_memory_ptr(struct ac_nir_context *ctx, nir_src src, unsigned c_off)
 {
    LLVMValueRef ptr = get_src(ctx, src);
-   LLVMValueRef lds_i8 = ctx->ac.lds;
-   if (ctx->stage != MESA_SHADER_COMPUTE)
-      lds_i8 = LLVMBuildBitCast(ctx->ac.builder, ctx->ac.lds, LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS), "");
-
    ptr = LLVMBuildAdd(ctx->ac.builder, ptr, LLVMConstInt(ctx->ac.i32, c_off, 0), "");
-   ptr = LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, lds_i8, &ptr, 1, "");
-   int addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));
-
-   return LLVMBuildBitCast(ctx->ac.builder, ptr, LLVMPointerType(elem_type, addr_space), "");
-}
-
-static LLVMValueRef get_memory_ptr(struct ac_nir_context *ctx, nir_src src, unsigned bit_size, unsigned c_off)
-{
-   return get_memory_ptr_t(ctx, src, LLVMIntTypeInContext(ctx->ac.context, bit_size), c_off);
+   /* LDS is used here as a i8 pointer. */
+   return LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, ctx->ac.lds, &ptr, 1, "");
 }
 
 static LLVMBasicBlockRef get_block(struct ac_nir_context *nir, const struct nir_block *b)
@@ -3073,10 +3062,15 @@ static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intr
    unsigned const_off = nir_intrinsic_base(instr);
 
    LLVMTypeRef elem_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
-   LLVMValueRef ptr = get_memory_ptr_t(ctx, instr->src[0], elem_type, const_off);
+   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], const_off);
 
    for (int chan = 0; chan < instr->num_components; chan++) {
       index = LLVMConstInt(ctx->ac.i32, chan, 0);
+      #if LLVM_VERSION_MAJOR < 14
+      ptr = LLVMBuildBitCast(
+         ctx->ac.builder, ptr,
+         LLVMPointerType(elem_type, LLVMGetPointerAddressSpace(LLVMTypeOf(ptr))), "");
+      #endif
       derived_ptr = LLVMBuildGEP2(ctx->ac.builder, elem_type, ptr, &index, 1, "");
       values[chan] = LLVMBuildLoad2(ctx->ac.builder, elem_type, derived_ptr, "");
    }
@@ -3093,7 +3087,7 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
 
    unsigned const_off = nir_intrinsic_base(instr);
    LLVMTypeRef elem_type = LLVMIntTypeInContext(ctx->ac.context, instr->src[0].ssa->bit_size);
-   LLVMValueRef ptr = get_memory_ptr_t(ctx, instr->src[1], elem_type, const_off);
+   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[1], const_off);
    LLVMValueRef src = get_src(ctx, instr->src[0]);
 
    int writemask = nir_intrinsic_write_mask(instr);
@@ -3103,6 +3097,11 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
       }
       data = ac_llvm_extract_elem(&ctx->ac, src, chan);
       index = LLVMConstInt(ctx->ac.i32, chan, 0);
+      #if LLVM_VERSION_MAJOR < 14
+      ptr = LLVMBuildBitCast(
+         ctx->ac.builder, ptr,
+         LLVMPointerType(elem_type, LLVMGetPointerAddressSpace(LLVMTypeOf(ptr))), "");
+      #endif
       derived_ptr = LLVMBuildGEP2(builder, elem_type, ptr, &index, 1, "");
       LLVMBuildStore(builder, data, derived_ptr);
    }
@@ -3111,15 +3110,16 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
 static LLVMValueRef visit_load_shared2_amd(struct ac_nir_context *ctx,
                                            const nir_intrinsic_instr *instr)
 {
-   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], instr->dest.ssa.bit_size, 0);
+   LLVMTypeRef pointee_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
+   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], 0);
 
    LLVMValueRef values[2];
    uint8_t offsets[] = {nir_intrinsic_offset0(instr), nir_intrinsic_offset1(instr)};
    unsigned stride = nir_intrinsic_st64(instr) ? 64 : 1;
    for (unsigned i = 0; i < 2; i++) {
       LLVMValueRef index = LLVMConstInt(ctx->ac.i32, offsets[i] * stride, 0);
-      LLVMValueRef derived_ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &index, 1, "");
-      values[i] = LLVMBuildLoad(ctx->ac.builder, derived_ptr, "");
+      LLVMValueRef derived_ptr = LLVMBuildGEP2(ctx->ac.builder, pointee_type, ptr, &index, 1, "");
+      values[i] = LLVMBuildLoad2(ctx->ac.builder, pointee_type, derived_ptr, "");
    }
 
    LLVMValueRef ret = ac_build_gather_values(&ctx->ac, values, 2);
@@ -3128,14 +3128,15 @@ static LLVMValueRef visit_load_shared2_amd(struct ac_nir_context *ctx,
 
 static void visit_store_shared2_amd(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
-   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[1], instr->src[0].ssa->bit_size, 0);
+   LLVMTypeRef pointee_type = LLVMIntTypeInContext(ctx->ac.context, instr->src[0].ssa->bit_size);
+   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[1], 0);
    LLVMValueRef src = get_src(ctx, instr->src[0]);
 
    uint8_t offsets[] = {nir_intrinsic_offset0(instr), nir_intrinsic_offset1(instr)};
    unsigned stride = nir_intrinsic_st64(instr) ? 64 : 1;
    for (unsigned i = 0; i < 2; i++) {
       LLVMValueRef index = LLVMConstInt(ctx->ac.i32, offsets[i] * stride, 0);
-      LLVMValueRef derived_ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &index, 1, "");
+      LLVMValueRef derived_ptr = LLVMBuildGEP2(ctx->ac.builder, pointee_type, ptr, &index, 1, "");
       LLVMBuildStore(ctx->ac.builder, ac_llvm_extract_elem(&ctx->ac, src, i), derived_ptr);
    }
 }
@@ -3950,7 +3951,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_shared_atomic_fadd:
    case nir_intrinsic_shared_atomic_fmin:
    case nir_intrinsic_shared_atomic_fmax: {
-      LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], instr->src[1].ssa->bit_size, 0);
+      LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], 0);
       result = visit_var_atomic(ctx, instr, ptr, 1);
       break;
    }
@@ -5382,8 +5383,7 @@ static void setup_shared(struct ac_nir_context *ctx, struct nir_shader *nir)
       LLVMAddGlobalInAddressSpace(ctx->ac.module, type, "compute_lds", AC_ADDR_SPACE_LDS);
    LLVMSetAlignment(lds, 64 * 1024);
 
-   ctx->ac.lds =
-      LLVMBuildBitCast(ctx->ac.builder, lds, LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS), "");
+   ctx->ac.lds = lds;
 }
 
 static void setup_gds(struct ac_nir_context *ctx, nir_function_impl *impl)
