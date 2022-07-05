@@ -417,17 +417,19 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
       nir_foreach_instr_safe (instr, block) {
          switch (instr->type) {
          case nir_instr_type_intrinsic: {
+            b_shader.cursor = nir_before_instr(instr);
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            nir_ssa_def *ret = NULL;
+
             switch (intr->intrinsic) {
             case nir_intrinsic_rt_execute_callable: {
                uint32_t size = align(nir_intrinsic_stack_size(intr), 16) + RADV_MAX_HIT_ATTRIB_SIZE;
-               uint32_t ret = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
-               b_shader.cursor = nir_instr_remove(instr);
+               uint32_t ret_idx = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
                   nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
-               nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret),
+               nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret_idx),
                                  nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
                nir_store_var(&b_shader, vars->stack_ptr,
@@ -444,13 +446,12 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_rt_trace_ray: {
                uint32_t size = align(nir_intrinsic_stack_size(intr), 16) + RADV_MAX_HIT_ATTRIB_SIZE;
-               uint32_t ret = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
-               b_shader.cursor = nir_instr_remove(instr);
+               uint32_t ret_idx = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
                   nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
-               nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret),
+               nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret_idx),
                                  nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
                nir_store_var(&b_shader, vars->stack_ptr,
@@ -483,7 +484,6 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_rt_resume: {
                uint32_t size = align(nir_intrinsic_stack_size(intr), 16) + RADV_MAX_HIT_ATTRIB_SIZE;
-               b_shader.cursor = nir_instr_remove(instr);
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
@@ -491,8 +491,6 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_rt_return_amd: {
-               b_shader.cursor = nir_instr_remove(instr);
-
                if (shader->info.stage == MESA_SHADER_RAYGEN) {
                   nir_store_var(&b_shader, vars->idx, nir_imm_int(&b_shader, 0), 1);
                   break;
@@ -501,39 +499,30 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_scratch: {
-               b_shader.cursor = nir_before_instr(instr);
                nir_instr_rewrite_src_ssa(
                   instr, &intr->src[0],
                   nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[0].ssa));
-               break;
+               continue;
             }
             case nir_intrinsic_store_scratch: {
-               b_shader.cursor = nir_before_instr(instr);
                nir_instr_rewrite_src_ssa(
                   instr, &intr->src[1],
                   nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[1].ssa));
-               break;
+               continue;
             }
             case nir_intrinsic_load_rt_arg_scratch_offset_amd: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->arg);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->arg);
                break;
             }
             case nir_intrinsic_load_shader_record_ptr: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->shader_record_ptr);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->shader_record_ptr);
                break;
             }
             case nir_intrinsic_load_ray_launch_id: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_global_invocation_id(&b_shader, 32);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_global_invocation_id(&b_shader, 32);
                break;
             }
             case nir_intrinsic_load_ray_launch_size: {
-               b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *launch_size_addr =
                   nir_load_ray_launch_size_addr_amd(&b_shader);
 
@@ -547,74 +536,53 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                   nir_channel(&b_shader, xy, 1),
                   z,
                };
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec(&b_shader, xyz, 3));
+               ret = nir_vec(&b_shader, xyz, 3);
                break;
             }
             case nir_intrinsic_load_ray_t_min: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->tmin);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->tmin);
                break;
             }
             case nir_intrinsic_load_ray_t_max: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->tmax);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->tmax);
                break;
             }
             case nir_intrinsic_load_ray_world_origin: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->origin);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->origin);
                break;
             }
             case nir_intrinsic_load_ray_world_direction: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->direction);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->direction);
                break;
             }
             case nir_intrinsic_load_ray_instance_custom_index: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->custom_instance_and_mask);
+               ret = nir_load_var(&b_shader, vars->custom_instance_and_mask);
                ret = nir_iand_imm(&b_shader, ret, 0xFFFFFF);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
                break;
             }
             case nir_intrinsic_load_primitive_id: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->primitive_id);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->primitive_id);
                break;
             }
             case nir_intrinsic_load_ray_geometry_index: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->geometry_id_and_flags);
+               ret = nir_load_var(&b_shader, vars->geometry_id_and_flags);
                ret = nir_iand_imm(&b_shader, ret, 0xFFFFFFF);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
                break;
             }
             case nir_intrinsic_load_instance_id: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->instance_id);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->instance_id);
                break;
             }
             case nir_intrinsic_load_ray_flags: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->flags);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->flags);
                break;
             }
             case nir_intrinsic_load_ray_hit_kind: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->hit_kind);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->hit_kind);
                break;
             }
             case nir_intrinsic_load_ray_world_to_object: {
                unsigned c = nir_intrinsic_column(intr);
-               b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
                nir_ssa_def *wto_matrix[3];
                nir_build_wto_matrix_load(&b_shader, instance_node_addr, wto_matrix);
@@ -623,18 +591,15 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                for (unsigned i = 0; i < 3; ++i)
                   vals[i] = nir_channel(&b_shader, wto_matrix[i], c);
 
-               nir_ssa_def *val = nir_vec(&b_shader, vals, 3);
+               ret = nir_vec(&b_shader, vals, 3);
                if (c == 3)
-                  val = nir_fneg(&b_shader,
-                                 nir_build_vec3_mat_mult(&b_shader, val, wto_matrix, false));
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
+                  ret = nir_fneg(&b_shader,
+                                 nir_build_vec3_mat_mult(&b_shader, ret, wto_matrix, false));
                break;
             }
             case nir_intrinsic_load_ray_object_to_world: {
                unsigned c = nir_intrinsic_column(intr);
-               b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
-               nir_ssa_def *val;
                if (c == 3) {
                   nir_ssa_def *wto_matrix[3];
                   nir_build_wto_matrix_load(&b_shader, instance_node_addr, wto_matrix);
@@ -643,16 +608,14 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                   for (unsigned i = 0; i < 3; ++i)
                      vals[i] = nir_channel(&b_shader, wto_matrix[i], c);
 
-                  val = nir_vec(&b_shader, vals, 3);
+                  ret = nir_vec(&b_shader, vals, 3);
                } else {
-                  val = nir_build_load_global(
+                  ret = nir_build_load_global(
                      &b_shader, 3, 32, nir_iadd_imm(&b_shader, instance_node_addr, 92 + c * 12));
                }
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
                break;
             }
             case nir_intrinsic_load_ray_object_origin: {
-               b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
                nir_ssa_def *wto_matrix[] = {
                   nir_build_load_global(&b_shader, 4, 32,
@@ -664,35 +627,27 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                   nir_build_load_global(&b_shader, 4, 32,
                                         nir_iadd_imm(&b_shader, instance_node_addr, 48),
                                         .align_mul = 64, .align_offset = 48)};
-               nir_ssa_def *val = nir_build_vec3_mat_mult_pre(
+               ret = nir_build_vec3_mat_mult_pre(
                   &b_shader, nir_load_var(&b_shader, vars->origin), wto_matrix);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
                break;
             }
             case nir_intrinsic_load_ray_object_direction: {
-               b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
                nir_ssa_def *wto_matrix[3];
                nir_build_wto_matrix_load(&b_shader, instance_node_addr, wto_matrix);
-               nir_ssa_def *val = nir_build_vec3_mat_mult(
+               ret = nir_build_vec3_mat_mult(
                   &b_shader, nir_load_var(&b_shader, vars->direction), wto_matrix, false);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
                break;
             }
             case nir_intrinsic_load_intersection_opaque_amd: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->opaque);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->opaque);
                break;
             }
             case nir_intrinsic_load_cull_mask: {
-               b_shader.cursor = nir_instr_remove(instr);
-               nir_ssa_def *ret = nir_load_var(&b_shader, vars->cull_mask);
-               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               ret = nir_load_var(&b_shader, vars->cull_mask);
                break;
             }
             case nir_intrinsic_ignore_ray_intersection: {
-               b_shader.cursor = nir_instr_remove(instr);
                nir_store_var(&b_shader, vars->ahit_accept, nir_imm_false(&b_shader), 0x1);
 
                /* The if is a workaround to avoid having to fix up control flow manually */
@@ -702,7 +657,6 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_terminate_ray: {
-               b_shader.cursor = nir_instr_remove(instr);
                nir_store_var(&b_shader, vars->ahit_accept, nir_imm_true(&b_shader), 0x1);
                nir_store_var(&b_shader, vars->ahit_terminate, nir_imm_true(&b_shader), 0x1);
 
@@ -713,7 +667,6 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_report_ray_intersection: {
-               b_shader.cursor = nir_instr_remove(instr);
                nir_push_if(
                   &b_shader,
                   nir_iand(
@@ -729,8 +682,12 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             default:
-               break;
+               continue;
             }
+
+            if (ret)
+               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+            nir_instr_remove(instr);
             break;
          }
          case nir_instr_type_jump: {
