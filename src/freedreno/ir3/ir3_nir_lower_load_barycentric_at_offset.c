@@ -30,16 +30,6 @@
  */
 
 static nir_ssa_def *
-load(nir_builder *b, unsigned ncomp, nir_intrinsic_op op)
-{
-   nir_intrinsic_instr *load_size = nir_intrinsic_instr_create(b->shader, op);
-   nir_ssa_dest_init(&load_size->instr, &load_size->dest, ncomp, 32, NULL);
-   nir_builder_instr_insert(b, &load_size->instr);
-
-   return &load_size->dest.ssa;
-}
-
-static nir_ssa_def *
 ir3_nir_lower_load_barycentric_at_offset_instr(nir_builder *b, nir_instr *instr,
                                                void *data)
 {
@@ -52,38 +42,28 @@ ir3_nir_lower_load_barycentric_at_offset_instr(nir_builder *b, nir_instr *instr,
    /* note: at_offset is defined to be relative to the center of the pixel */
    nir_ssa_def *ij = nir_load_barycentric_pixel(b, 32, .interp_mode = interp_mode);
 
-   nir_ssa_def *s = load(b, 1, nir_intrinsic_load_persp_center_rhw_ir3);
-
-   s = nir_frcp(b, s);
-
-   /* scaled ij with s as 3rd component: */
-   nir_ssa_def *sij =
-      nir_vec3(b, nir_fmul(b, chan(ij, 0), s), nir_fmul(b, chan(ij, 1), s), s);
-
-   nir_ssa_def *foo = nir_fddx(b, sij);
-   nir_ssa_def *bar = nir_fddy(b, sij);
-
+   /* Need helper invocations for our ddx/ddys to work. */
    if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
       b->shader->info.fs.needs_quad_helper_invocations = true;
 
-   nir_ssa_def *x, *y, *z, *i, *j;
+   nir_ssa_def *center_w = nir_frcp(b, nir_load_persp_center_rhw_ir3(b, 32));
 
-   x = nir_ffma(b, chan(off, 0), chan(foo, 0), chan(sij, 0));
-   y = nir_ffma(b, chan(off, 0), chan(foo, 1), chan(sij, 1));
-   z = nir_ffma(b, chan(off, 0), chan(foo, 2), chan(sij, 2));
+   /* scaled ij -- ij comes in multiplied by by 1/center_w so multiply that back
+    * out, plus add center_w as the 3rd component for taking the derivatives.
+    *
+    * We actually suspect that we should be using rhw here instead of center_w,
+    * but no tests seem to distinguish between the two.
+    */
+   nir_ssa_def *sij =
+      nir_vec3(b, nir_fmul(b, chan(ij, 0), center_w), nir_fmul(b, chan(ij, 1), center_w), center_w);
 
-   x = nir_ffma(b, chan(off, 1), chan(bar, 0), x);
-   y = nir_ffma(b, chan(off, 1), chan(bar, 1), y);
-   z = nir_ffma(b, chan(off, 1), chan(bar, 2), z);
+   /* Get the offset value from pixel center for ij, and also for w. */
+   nir_ssa_def *pos = sij;
+   pos = nir_ffma(b, chan(off, 0), nir_fddx(b, sij), pos);
+   pos = nir_ffma(b, chan(off, 1), nir_fddy(b, sij), pos);
 
-   /* convert back into primitive space: */
-   z = nir_frcp(b, z);
-   i = nir_fmul(b, z, x);
-   j = nir_fmul(b, z, y);
-
-   ij = nir_vec2(b, i, j);
-
-   return ij;
+   /* convert back into screen space, dividing by the offset 1/w */
+   return nir_fmul(b, nir_channels(b, pos, 0x3), nir_frcp(b, chan(pos, 2)));
 }
 
 static bool
