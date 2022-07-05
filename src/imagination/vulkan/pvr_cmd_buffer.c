@@ -575,7 +575,7 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
    const struct pvr_render_pass *pass = render_pass_info->pass;
    const struct pvr_renderpass_hwsetup_render *hw_render =
       &pass->hw_setup->renders[idx];
-   ASSERTED const struct pvr_load_op *load_op = hw_render->client_data;
+   ASSERTED const struct pvr_load_op *load_op = hw_render->load_op;
    const struct pvr_renderpass_colorinit *color_init =
       &hw_render->color_init[0];
    const struct pvr_render_pass_attachment *attachment =
@@ -618,7 +618,7 @@ static VkResult pvr_load_op_pds_data_create_and_upload(
    const struct pvr_render_pass_info *render_pass_info =
       &cmd_buffer->state.render_pass_info;
    const struct pvr_load_op *load_op =
-      render_pass_info->pass->hw_setup->renders[idx].client_data;
+      render_pass_info->pass->hw_setup->renders[idx].load_op;
    struct pvr_device *device = cmd_buffer->device;
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    struct pvr_pds_pixel_shader_sa_program program = { 0 };
@@ -979,7 +979,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
    /* FIXME: Don't do this if there is a barrier load. */
    if (render_pass_info->enable_bg_tag) {
-      const struct pvr_load_op *load_op = hw_render->client_data;
+      const struct pvr_load_op *load_op = hw_render->load_op;
       struct pvr_pds_upload load_op_program;
 
       /* FIXME: Should we free the PDS pixel event data or let it be freed

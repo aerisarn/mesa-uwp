@@ -499,11 +499,14 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
    pass->max_tilebuffer_count =
       PVR_SPM_LOAD_IN_BUFFERS_COUNT(&device->pdevice->dev_info);
 
-   pass->hw_setup = pvr_create_renderpass_hwsetup(device, pass, false);
-   if (!pass->hw_setup) {
-      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   result =
+      pvr_create_renderpass_hwsetup(device,
+                                    pAllocator ? pAllocator : &device->vk.alloc,
+                                    pass,
+                                    false,
+                                    &pass->hw_setup);
+   if (result != VK_SUCCESS)
       goto err_free_pass;
-   }
 
    pvr_init_subpass_userpass_spawn(pass->hw_setup, pass, pass->subpasses);
 
@@ -516,7 +519,7 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
          pvr_finishme("Set up tile buffer table");
 
       if (!hw_render->color_init_count) {
-         assert(!hw_render->client_data);
+         assert(!hw_render->load_op);
          continue;
       }
 
@@ -527,7 +530,7 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
       if (result != VK_SUCCESS)
          goto err_load_op_destroy;
 
-      hw_render->client_data = load_op;
+      hw_render->load_op = load_op;
    }
 
    *pRenderPass = pvr_render_pass_to_handle(pass);
@@ -539,11 +542,12 @@ err_load_op_destroy:
       struct pvr_renderpass_hwsetup_render *hw_render =
          &pass->hw_setup->renders[i];
 
-      if (hw_render->client_data)
-         pvr_load_op_destroy(device, pAllocator, hw_render->client_data);
+      if (hw_render->load_op)
+         pvr_load_op_destroy(device, pAllocator, hw_render->load_op);
    }
 
-   pvr_destroy_renderpass_hwsetup(device, pass->hw_setup);
+   pvr_destroy_renderpass_hwsetup(pAllocator ? pAllocator : &device->vk.alloc,
+                                  pass->hw_setup);
 
 err_free_pass:
    vk_object_base_finish(&pass->base);
@@ -566,10 +570,11 @@ void pvr_DestroyRenderPass(VkDevice _device,
       struct pvr_renderpass_hwsetup_render *hw_render =
          &pass->hw_setup->renders[i];
 
-      pvr_load_op_destroy(device, pAllocator, hw_render->client_data);
+      pvr_load_op_destroy(device, pAllocator, hw_render->load_op);
    }
 
-   pvr_destroy_renderpass_hwsetup(device, pass->hw_setup);
+   pvr_destroy_renderpass_hwsetup(pAllocator ? pAllocator : &device->vk.alloc,
+                                  pass->hw_setup);
    vk_object_base_finish(&pass->base);
    vk_free2(&device->vk.alloc, pAllocator, pass);
 }
