@@ -5377,8 +5377,9 @@ void ac_handle_shader_output_decl(struct ac_llvm_context *ctx, struct ac_shader_
    LLVMTypeRef type = is_16bit ? ctx->f16 : ctx->f32;
    for (unsigned i = 0; i < attrib_count; ++i) {
       for (unsigned chan = 0; chan < 4; chan++) {
-         abi->outputs[ac_llvm_reg_index_soa(output_loc + i, chan)] =
-            ac_build_alloca_undef(ctx, type, "");
+         int idx = ac_llvm_reg_index_soa(output_loc + i, chan);
+         abi->outputs[idx] = ac_build_alloca_undef(ctx, type, "");
+         abi->is_16bit[idx] = is_16bit;
       }
    }
 }

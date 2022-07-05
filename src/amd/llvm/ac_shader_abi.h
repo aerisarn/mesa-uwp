@@ -38,7 +38,9 @@
  * radv to share a compiler backend.
  */
 struct ac_shader_abi {
+   /* Each entry is a pointer to a f32 or a f16 value (only possible for FS) */
    LLVMValueRef outputs[AC_LLVM_MAX_OUTPUTS * 4];
+   bool is_16bit[AC_LLVM_MAX_OUTPUTS * 4];
 
    /* These input registers sometimes need to be fixed up. */
    LLVMValueRef vertex_id;

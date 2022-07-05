@@ -1062,8 +1062,10 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
           nir_alu_type_get_type_size(ctx->shader->selector->info.output_type[i]) == 16)
          type = ctx->ac.f16;
 
-      for (unsigned j = 0; j < 4; j++)
+      for (unsigned j = 0; j < 4; j++) {
          ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, type, "");
+         ctx->abi.is_16bit[i * 4 + j] = type == ctx->ac.f16;
+      }
    }
 
    ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
