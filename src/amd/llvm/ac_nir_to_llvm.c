@@ -1667,7 +1667,8 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
       }
    }
 
-   ptr = LLVMBuildGEP(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->push_constants), &addr, 1, "");
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, ctx->args, ctx->args->push_constants);
+   ptr = LLVMBuildGEP2(ctx->ac.builder, type, ac_get_arg(&ctx->ac, ctx->args->push_constants), &addr, 1, "");
 
    if (instr->dest.ssa.bit_size == 8) {
       unsigned load_dwords = instr->dest.ssa.num_components > 1 ? 2 : 1;
@@ -2129,8 +2130,8 @@ static LLVMValueRef get_global_address(struct ac_nir_context *ctx,
 
       LLVMTypeRef i8_ptr_type = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_GLOBAL);
       addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, i8_ptr_type, "");
-      addr = LLVMBuildGEP(ctx->ac.builder, addr, &offset, 1, "");
-      return type == ctx->ac.i8 ? addr : LLVMBuildBitCast(ctx->ac.builder, addr, ptr_type, "");
+      addr = LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, addr, &offset, 1, "");
+      return addr;
    } else {
       return LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
    }
