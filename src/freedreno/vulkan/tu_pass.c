@@ -527,6 +527,20 @@ static void
 tu_render_pass_gmem_config(struct tu_render_pass *pass,
                            const struct tu_physical_device *phys_dev)
 {
+   /* From the VK_KHR_multiview spec:
+    *
+    *    Multiview is all-or-nothing for a render pass - that is, either all
+    *    subpasses must have a non-zero view mask (though some subpasses may
+    *    have only one view) or all must be zero.
+    *
+    * This means we only have to check one of the view masks.
+    */
+   if (pass->subpasses[0].multiview_mask) {
+      /* It seems multiview must use sysmem rendering. */
+      pass->gmem_pixels = 0;
+      return;
+   }
+
    uint32_t block_align_shift = 3; /* log2(gmem_align/(tile_align_w*tile_align_h)) */
    uint32_t tile_align_w = phys_dev->info->tile_align_w;
    uint32_t gmem_align = (1 << block_align_shift) * tile_align_w * phys_dev->info->tile_align_h;
@@ -869,20 +883,7 @@ tu_CreateRenderPass2(VkDevice _device,
          (att->store || att->store_stencil) && !att->clear_mask;
    }
 
-   /* From the VK_KHR_multiview spec:
-    *
-    *    Multiview is all-or-nothing for a render pass - that is, either all
-    *    subpasses must have a non-zero view mask (though some subpasses may
-    *    have only one view) or all must be zero.
-    *
-    * This means we only have to check one of the view masks.
-    */
-   if (pCreateInfo->pSubpasses[0].viewMask) {
-      /* It seems multiview must use sysmem rendering. */
-      pass->gmem_pixels = 0;
-   } else {
-      tu_render_pass_gmem_config(pass, device->physical_device);
-   }
+   tu_render_pass_gmem_config(pass, device->physical_device);
 
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       const struct tu_render_pass_attachment *att = &pass->attachments[i];
