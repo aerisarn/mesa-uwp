@@ -842,8 +842,8 @@ namespace {
 
       case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       case TCS_OPCODE_GET_INSTANCE_ID:
-      case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
-      case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
+      case VEC4_TCS_OPCODE_SET_INPUT_URB_OFFSETS:
+      case VEC4_TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
       case TES_OPCODE_CREATE_INPUT_READ_HEADER:
          if (devinfo->ver >= 8)
             return calculate_desc(info, EU_UNIT_FPU, 22 /* XXX */, 0, 0,
@@ -929,12 +929,12 @@ namespace {
       case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
       case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
       case VEC4_OPCODE_URB_READ:
-      case VS_OPCODE_URB_WRITE:
-      case GS_OPCODE_URB_WRITE:
-      case GS_OPCODE_URB_WRITE_ALLOCATE:
+      case VEC4_VS_OPCODE_URB_WRITE:
+      case VEC4_GS_OPCODE_URB_WRITE:
+      case VEC4_GS_OPCODE_URB_WRITE_ALLOCATE:
       case GS_OPCODE_THREAD_END:
       case GS_OPCODE_FF_SYNC:
-      case TCS_OPCODE_URB_WRITE:
+      case VEC4_TCS_OPCODE_URB_WRITE:
       case TCS_OPCODE_RELEASE_INPUT:
       case TCS_OPCODE_THREAD_END:
          return calculate_desc(info, EU_UNIT_URB, 2, 0, 0, 0, 6 /* XXX */,

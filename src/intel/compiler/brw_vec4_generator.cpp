@@ -1815,7 +1815,7 @@ generate_code(struct brw_codegen *p,
          send_count++;
          break;
 
-      case VS_OPCODE_URB_WRITE:
+      case VEC4_VS_OPCODE_URB_WRITE:
          generate_vs_urb_write(p, inst);
          send_count++;
          break;
@@ -1840,12 +1840,12 @@ generate_code(struct brw_codegen *p,
          send_count++;
          break;
 
-      case GS_OPCODE_URB_WRITE:
+      case VEC4_GS_OPCODE_URB_WRITE:
          generate_gs_urb_write(p, inst);
          send_count++;
          break;
 
-      case GS_OPCODE_URB_WRITE_ALLOCATE:
+      case VEC4_GS_OPCODE_URB_WRITE_ALLOCATE:
          generate_gs_urb_write_allocate(p, inst);
          send_count++;
          break;
@@ -2110,7 +2110,7 @@ generate_code(struct brw_codegen *p,
          generate_zero_oob_push_regs(p, &prog_data->base, dst, src[0]);
          break;
 
-      case TCS_OPCODE_URB_WRITE:
+      case VEC4_TCS_OPCODE_URB_WRITE:
          generate_tcs_urb_write(p, inst, src[0]);
          send_count++;
          break;
@@ -2120,11 +2120,11 @@ generate_code(struct brw_codegen *p,
          send_count++;
          break;
 
-      case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
+      case VEC4_TCS_OPCODE_SET_INPUT_URB_OFFSETS:
          generate_tcs_input_urb_offsets(p, dst, src[0], src[1]);
          break;
 
-      case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
+      case VEC4_TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
          generate_tcs_output_urb_offsets(p, dst, src[0], src[1]);
          break;
 

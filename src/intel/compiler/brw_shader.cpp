@@ -474,7 +474,7 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
       return "interp_per_slot_offset";
 
-   case VS_OPCODE_URB_WRITE:
+   case VEC4_VS_OPCODE_URB_WRITE:
       return "vs_urb_write";
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       return "pull_constant_load";
@@ -484,9 +484,9 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
-   case GS_OPCODE_URB_WRITE:
+   case VEC4_GS_OPCODE_URB_WRITE:
       return "gs_urb_write";
-   case GS_OPCODE_URB_WRITE_ALLOCATE:
+   case VEC4_GS_OPCODE_URB_WRITE_ALLOCATE:
       return "gs_urb_write_allocate";
    case GS_OPCODE_THREAD_END:
       return "gs_thread_end";
@@ -531,11 +531,11 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
       return "urb_read";
    case TCS_OPCODE_GET_INSTANCE_ID:
       return "tcs_get_instance_id";
-   case TCS_OPCODE_URB_WRITE:
+   case VEC4_TCS_OPCODE_URB_WRITE:
       return "tcs_urb_write";
-   case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
+   case VEC4_TCS_OPCODE_SET_INPUT_URB_OFFSETS:
       return "tcs_set_input_urb_offsets";
-   case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
+   case VEC4_TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
       return "tcs_set_output_urb_offsets";
    case TCS_OPCODE_GET_PRIMITIVE_ID:
       return "tcs_get_primitive_id";
@@ -1143,7 +1143,7 @@ backend_instruction::has_side_effects() const
    case FS_OPCODE_FB_WRITE_LOGICAL:
    case FS_OPCODE_REP_FB_WRITE:
    case SHADER_OPCODE_BARRIER:
-   case TCS_OPCODE_URB_WRITE:
+   case VEC4_TCS_OPCODE_URB_WRITE:
    case TCS_OPCODE_RELEASE_INPUT:
    case SHADER_OPCODE_RND_MODE:
    case SHADER_OPCODE_FLOAT_CONTROL_MODE:

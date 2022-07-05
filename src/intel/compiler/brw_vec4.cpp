@@ -155,7 +155,7 @@ vec4_instruction::is_send_from_grf() const
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
    case VEC4_OPCODE_URB_READ:
-   case TCS_OPCODE_URB_WRITE:
+   case VEC4_TCS_OPCODE_URB_WRITE:
    case TCS_OPCODE_RELEASE_INPUT:
    case SHADER_OPCODE_BARRIER:
       return true;
@@ -187,8 +187,8 @@ bool
 vec4_instruction::has_source_and_destination_hazard() const
 {
    switch (opcode) {
-   case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
-   case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
+   case VEC4_TCS_OPCODE_SET_INPUT_URB_OFFSETS:
+   case VEC4_TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
    case TES_OPCODE_ADD_INDIRECT_URB_OFFSET:
       return true;
    default:
@@ -209,7 +209,7 @@ vec4_instruction::size_read(unsigned arg) const
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
-   case TCS_OPCODE_URB_WRITE:
+   case VEC4_TCS_OPCODE_URB_WRITE:
       if (arg == 0)
          return mlen * REG_SIZE;
       break;
@@ -283,8 +283,8 @@ vec4_instruction::can_do_writemask(const struct intel_device_info *devinfo)
    case VEC4_OPCODE_SET_HIGH_32BIT:
    case VS_OPCODE_PULL_CONSTANT_LOAD:
    case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
-   case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
-   case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
+   case VEC4_TCS_OPCODE_SET_INPUT_URB_OFFSETS:
+   case VEC4_TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
    case TES_OPCODE_CREATE_INPUT_READ_HEADER:
    case TES_OPCODE_ADD_INDIRECT_URB_OFFSET:
    case VEC4_OPCODE_URB_READ:
@@ -343,7 +343,7 @@ vec4_instruction::implied_mrf_writes() const
    case SHADER_OPCODE_POW:
    case TCS_OPCODE_THREAD_END:
       return 2;
-   case VS_OPCODE_URB_WRITE:
+   case VEC4_VS_OPCODE_URB_WRITE:
       return 1;
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       return 2;
@@ -351,13 +351,13 @@ vec4_instruction::implied_mrf_writes() const
       return 2;
    case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
       return 3;
-   case GS_OPCODE_URB_WRITE:
-   case GS_OPCODE_URB_WRITE_ALLOCATE:
+   case VEC4_GS_OPCODE_URB_WRITE:
+   case VEC4_GS_OPCODE_URB_WRITE_ALLOCATE:
    case GS_OPCODE_THREAD_END:
       return 0;
    case GS_OPCODE_FF_SYNC:
       return 1;
-   case TCS_OPCODE_URB_WRITE:
+   case VEC4_TCS_OPCODE_URB_WRITE:
       return 0;
    case SHADER_OPCODE_TEX:
    case SHADER_OPCODE_TXL:

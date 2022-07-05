@@ -293,7 +293,7 @@ gfx6_gs_visitor::emit_snb_gs_urb_write_opcode(bool complete, int base_mrf,
 
    if (!complete) {
       /* If the vertex is not complete we don't have to do anything special */
-      inst = emit(GS_OPCODE_URB_WRITE);
+      inst = emit(VEC4_GS_OPCODE_URB_WRITE);
       inst->urb_write_flags = BRW_URB_WRITE_NO_FLAGS;
    } else {
       /* Otherwise we always request to allocate a new VUE handle. If this is
@@ -304,7 +304,7 @@ gfx6_gs_visitor::emit_snb_gs_urb_write_opcode(bool complete, int base_mrf,
        * which would require to end the program with an IF/ELSE/ENDIF block,
        * something we do not want.
        */
-      inst = emit(GS_OPCODE_URB_WRITE_ALLOCATE);
+      inst = emit(VEC4_GS_OPCODE_URB_WRITE_ALLOCATE);
       inst->urb_write_flags = BRW_URB_WRITE_COMPLETE;
       inst->dst = dst_reg(MRF, base_mrf);
       inst->src[0] = this->temp;
