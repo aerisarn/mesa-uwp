@@ -403,7 +403,7 @@ zink_clear_texture(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_resource *res = zink_resource(pres);
    struct u_rect region = zink_rect_from_box(box);
-   bool needs_rp = !zink_blit_region_fills(region, pres->width0, pres->height0) || ctx->render_condition_active;
+   bool needs_rp = !zink_blit_region_fills(region, u_minify(pres->width0, level), u_minify(pres->height0, level)) || ctx->render_condition_active;
    struct pipe_surface *surf = NULL;
 
    if (res->aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
