@@ -33,7 +33,9 @@ LLVMValueRef si_get_rel_patch_id(struct si_shader_context *ctx)
       return si_unpack_param(ctx, ctx->args.tcs_rel_ids, 0, 8);
 
    case MESA_SHADER_TESS_EVAL:
-      return ac_get_arg(&ctx->ac, ctx->args.tes_rel_patch_id);
+      return ctx->abi.tes_rel_patch_id_replaced ?
+         ctx->abi.tes_rel_patch_id_replaced :
+         ac_get_arg(&ctx->ac, ctx->args.tes_rel_patch_id);
 
    default:
       assert(0);

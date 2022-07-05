@@ -391,7 +391,9 @@ LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle
    case MESA_SHADER_TESS_CTRL:
       return ac_get_arg(&ctx->ac, ctx->args.tcs_patch_id);
    case MESA_SHADER_TESS_EVAL:
-      return ac_get_arg(&ctx->ac, ctx->args.tes_patch_id);
+      return ctx->abi.tes_patch_id_replaced ?
+         ctx->abi.tes_patch_id_replaced :
+         ac_get_arg(&ctx->ac, ctx->args.tes_patch_id);
    case MESA_SHADER_GEOMETRY:
       return ac_get_arg(&ctx->ac, ctx->args.gs_prim_id);
    default:
