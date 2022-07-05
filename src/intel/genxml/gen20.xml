@@ -1,6 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <genxml name="XE2" gen="20">
-  <import name="gen125.xml" />
+  <import name="gen125.xml">
+    <exclude name="3DSTATE_CLEAR_PARAMS" />
+  </import>
   <enum name="PREF_SLM_ALLOCATION_SIZE">
     <value name="SLM_ENCODES_0K" value="0" />
     <value name="SLM_ENCODES_16K" value="1" />
