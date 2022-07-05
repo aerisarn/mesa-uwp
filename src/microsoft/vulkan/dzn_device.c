@@ -287,7 +287,6 @@ dzn_physical_device_init_uuids(struct dzn_physical_device *pdev)
    _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.DeviceId, sizeof(pdev->adapter_desc.DeviceId));
    _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.SubSysId, sizeof(pdev->adapter_desc.SubSysId));
    _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.Revision, sizeof(pdev->adapter_desc.Revision));
-   _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.AdapterLuid, sizeof(pdev->adapter_desc.AdapterLuid));
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(pdev->device_uuid, sha1, VK_UUID_SIZE);
 }
