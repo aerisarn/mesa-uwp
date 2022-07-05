@@ -1129,65 +1129,10 @@ pvr_sub_cmd_compute_job_init(const struct pvr_physical_device *pdevice,
                              struct pvr_cmd_buffer *cmd_buffer,
                              struct pvr_sub_cmd_compute *sub_cmd)
 {
-   const struct pvr_device_runtime_info *dev_runtime_info =
-      &pdevice->dev_runtime_info;
-   const struct pvr_device_info *dev_info = &pdevice->dev_info;
-
-   if (sub_cmd->uses_barrier)
-      sub_cmd->submit_info.flags |= PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
-
-   pvr_csb_pack (&sub_cmd->submit_info.regs.cdm_ctrl_stream_base,
-                 CR_CDM_CTRL_STREAM_BASE,
-                 value) {
-      value.addr = pvr_csb_get_start_address(&sub_cmd->control_stream);
-   }
-
-   /* FIXME: Need to set up the border color table at device creation
-    * time. Set to invalid for the time being.
-    */
-   pvr_csb_pack (&sub_cmd->submit_info.regs.tpu_border_colour_table,
-                 CR_TPU_BORDER_COLOUR_TABLE_CDM,
-                 value) {
-      value.border_colour_table_address = PVR_DEV_ADDR_INVALID;
-   }
-
    sub_cmd->num_shared_regs = MAX2(cmd_buffer->device->idfwdf_state.usc_shareds,
                                    cmd_buffer->state.max_shared_regs);
 
    cmd_buffer->state.max_shared_regs = 0U;
-
-   if (PVR_HAS_FEATURE(dev_info, compute_morton_capable))
-      sub_cmd->submit_info.regs.cdm_item = 0;
-
-   pvr_csb_pack (&sub_cmd->submit_info.regs.tpu, CR_TPU, value) {
-      value.tag_cem_4k_face_packing = true;
-   }
-
-   if (PVR_HAS_FEATURE(dev_info, cluster_grouping) &&
-       PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls) &&
-       dev_runtime_info->num_phantoms > 1 && sub_cmd->uses_atomic_ops) {
-      /* Each phantom has its own MCU, so atomicity can only be guaranteed
-       * when all work items are processed on the same phantom. This means we
-       * need to disable all USCs other than those of the first phantom, which
-       * has 4 clusters.
-       */
-      pvr_csb_pack (&sub_cmd->submit_info.regs.compute_cluster,
-                    CR_COMPUTE_CLUSTER,
-                    value) {
-         value.mask = 0xFU;
-      }
-   } else {
-      pvr_csb_pack (&sub_cmd->submit_info.regs.compute_cluster,
-                    CR_COMPUTE_CLUSTER,
-                    value) {
-         value.mask = 0U;
-      }
-   }
-
-   if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support) &&
-       sub_cmd->uses_atomic_ops) {
-      sub_cmd->submit_info.flags |= PVR_WINSYS_COMPUTE_FLAG_SINGLE_CORE;
-   }
 }
 
 #define PIXEL_ALLOCATION_SIZE_MAX_IN_BLOCKS \

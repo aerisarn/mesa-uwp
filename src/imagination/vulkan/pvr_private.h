@@ -722,8 +722,6 @@ struct pvr_sub_cmd_compute {
    /* Control stream builder object. */
    struct pvr_csb control_stream;
 
-   struct pvr_winsys_compute_submit_info submit_info;
-
    uint32_t num_shared_regs;
 
    /* True if any shader used in this sub command uses atomic
