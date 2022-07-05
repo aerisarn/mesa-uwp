@@ -175,6 +175,19 @@ dzn_meta_blits_get_context(struct dzn_device *device,
 #define MAX_SYNC_TYPES 3
 #define MAX_QUEUE_FAMILIES 3
 
+struct dzn_physical_device_desc {
+   LUID adapter_luid;
+   uint32_t vendor_id;
+   uint32_t device_id;
+   uint32_t subsys_id;
+   uint32_t revision;
+   uint64_t shared_system_memory;
+   uint64_t dedicated_system_memory;
+   uint64_t dedicated_video_memory;
+   bool is_warp;
+   char description[128];
+};
+
 struct dzn_physical_device {
    struct vk_physical_device vk;
    struct list_head link;
@@ -183,7 +196,7 @@ struct dzn_physical_device {
    struct vk_physical_device_dispatch_table dispatch;
 
    IUnknown *adapter;
-   DXGI_ADAPTER_DESC1 adapter_desc;
+   struct dzn_physical_device_desc desc;
 
    uint32_t queue_family_count;
    struct dzn_queue_family {

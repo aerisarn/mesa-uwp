@@ -283,10 +283,10 @@ dzn_physical_device_init_uuids(struct dzn_physical_device *pdev)
 
    /* The device UUID uniquely identifies the given device within the machine. */
    _mesa_sha1_init(&sha1_ctx);
-   _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.VendorId, sizeof(pdev->adapter_desc.VendorId));
-   _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.DeviceId, sizeof(pdev->adapter_desc.DeviceId));
-   _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.SubSysId, sizeof(pdev->adapter_desc.SubSysId));
-   _mesa_sha1_update(&sha1_ctx, &pdev->adapter_desc.Revision, sizeof(pdev->adapter_desc.Revision));
+   _mesa_sha1_update(&sha1_ctx, &pdev->desc.vendor_id, sizeof(pdev->desc.vendor_id));
+   _mesa_sha1_update(&sha1_ctx, &pdev->desc.device_id, sizeof(pdev->desc.device_id));
+   _mesa_sha1_update(&sha1_ctx, &pdev->desc.subsys_id, sizeof(pdev->desc.subsys_id));
+   _mesa_sha1_update(&sha1_ctx, &pdev->desc.revision, sizeof(pdev->desc.revision));
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(pdev->device_uuid, sha1, VK_UUID_SIZE);
 }
@@ -299,7 +299,7 @@ const struct vk_pipeline_cache_object_ops *const dzn_pipeline_cache_import_ops[]
 static VkResult
 dzn_physical_device_create(struct dzn_instance *instance,
                            IUnknown *adapter,
-                           const DXGI_ADAPTER_DESC1 *adapter_desc)
+                           const struct dzn_physical_device_desc *desc)
 {
    struct dzn_physical_device *pdev =
       vk_zalloc(&instance->vk.alloc, sizeof(*pdev), 8,
@@ -326,7 +326,7 @@ dzn_physical_device_create(struct dzn_instance *instance,
    }
 
    mtx_init(&pdev->dev_lock, mtx_plain);
-   pdev->adapter_desc = *adapter_desc;
+   pdev->desc = *desc;
    pdev->adapter = adapter;
    IUnknown_AddRef(adapter);
    list_addtail(&pdev->link, &instance->physical_devices);
@@ -443,11 +443,10 @@ static void
 dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
 {
    VkPhysicalDeviceMemoryProperties *mem = &pdev->memory;
-   const DXGI_ADAPTER_DESC1 *desc = &pdev->adapter_desc;
 
    mem->memoryHeapCount = 1;
    mem->memoryHeaps[0] = (VkMemoryHeap) {
-      .size = desc->SharedSystemMemory,
+      .size = pdev->desc.shared_system_memory,
       .flags = 0,
    };
 
@@ -465,7 +464,7 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
 
    if (!pdev->architecture.UMA) {
       mem->memoryHeaps[mem->memoryHeapCount++] = (VkMemoryHeap) {
-         .size = desc->DedicatedVideoMemory,
+         .size = pdev->desc.dedicated_video_memory,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
       };
       mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
@@ -998,10 +997,10 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
 static VkResult
 dzn_instance_add_physical_device(struct dzn_instance *instance,
                                  IUnknown *adapter,
-                                 const DXGI_ADAPTER_DESC1 *desc)
+                                 const struct dzn_physical_device_desc *desc)
 {
    if ((instance->debug_flags & DZN_DEBUG_WARP) &&
-       !(desc->Flags & DXGI_ADAPTER_FLAG_SOFTWARE))
+       !desc->is_warp)
       return VK_SUCCESS;
 
    return dzn_physical_device_create(instance, adapter, desc);
@@ -1019,8 +1018,23 @@ dzn_EnumeratePhysicalDevices(VkInstance inst,
       IDXGIAdapter1 *adapter = NULL;
       VkResult result = VK_SUCCESS;
       for (UINT i = 0; SUCCEEDED(IDXGIFactory4_EnumAdapters1(factory, i, &adapter)); ++i) {
-         DXGI_ADAPTER_DESC1 desc;
-         IDXGIAdapter1_GetDesc1(adapter, &desc);
+         DXGI_ADAPTER_DESC1 dxgi_desc;
+         IDXGIAdapter1_GetDesc1(adapter, &dxgi_desc);
+
+         struct dzn_physical_device_desc desc = {
+            .adapter_luid = dxgi_desc.AdapterLuid,
+            .vendor_id = dxgi_desc.VendorId,
+            .device_id = dxgi_desc.DeviceId,
+            .subsys_id = dxgi_desc.SubSysId,
+            .revision = dxgi_desc.Revision,
+            .shared_system_memory = dxgi_desc.SharedSystemMemory,
+            .dedicated_system_memory = dxgi_desc.DedicatedSystemMemory,
+            .dedicated_video_memory = dxgi_desc.DedicatedVideoMemory,
+            .is_warp = (dxgi_desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0,
+         };
+         WideCharToMultiByte(CP_ACP, 0, dxgi_desc.Description, ARRAYSIZE(dxgi_desc.Description),
+                             desc.description, ARRAYSIZE(desc.description), NULL, NULL);
+
          result =
             dzn_instance_add_physical_device(instance, (IUnknown *)adapter, &desc);
 
@@ -1518,10 +1532,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize                      = 256,
    };
 
-   const DXGI_ADAPTER_DESC1 *desc = &pdevice->adapter_desc;
-
    VkPhysicalDeviceType devtype = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-   if (desc->Flags == DXGI_ADAPTER_FLAG_SOFTWARE)
+   if (pdevice->desc.is_warp)
       devtype = VK_PHYSICAL_DEVICE_TYPE_CPU;
    else if (false) { // TODO: detect discreete GPUs
       /* This is a tad tricky to get right, because we need to have the
@@ -1537,8 +1549,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .apiVersion = DZN_API_VERSION,
       .driverVersion = vk_get_driver_version(),
 
-      .vendorID = desc->VendorId,
-      .deviceID = desc->DeviceId,
+      .vendorID = pdevice->desc.vendor_id,
+      .deviceID = pdevice->desc.device_id,
       .deviceType = devtype,
 
       .limits = limits,
@@ -1547,7 +1559,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    snprintf(pProperties->properties.deviceName,
             sizeof(pProperties->properties.deviceName),
-            "Microsoft Direct3D12 (%S)", desc->Description);
+            "Microsoft Direct3D12 (%s)", pdevice->desc.description);
    memcpy(pProperties->properties.pipelineCacheUUID,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 
@@ -1573,16 +1585,16 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
        * just the VRAM.
        */
       .maxMemoryAllocationSize               =
-         CLAMP(MAX2(pdevice->adapter_desc.DedicatedVideoMemory,
-                    pdevice->adapter_desc.DedicatedSystemMemory +
-                    pdevice->adapter_desc.SharedSystemMemory) / 4,
+         CLAMP(MAX2(pdevice->desc.dedicated_video_memory,
+                    pdevice->desc.dedicated_system_memory +
+                    pdevice->desc.shared_system_memory) / 4,
                128ull * 1024 * 1024, 2ull * 1024 * 1024 * 1024),
    };
    memcpy(core_1_1.driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
    memcpy(core_1_1.deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
-   memcpy(core_1_1.deviceLUID, &pdevice->adapter_desc.AdapterLuid, VK_LUID_SIZE);
+   memcpy(core_1_1.deviceLUID, &pdevice->desc.adapter_luid, VK_LUID_SIZE);
 
-   STATIC_ASSERT(sizeof(pdevice->adapter_desc.AdapterLuid) == sizeof(core_1_1.deviceLUID));
+   STATIC_ASSERT(sizeof(pdevice->desc.adapter_luid) == sizeof(core_1_1.deviceLUID));
 
    const VkPhysicalDeviceVulkan12Properties core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
