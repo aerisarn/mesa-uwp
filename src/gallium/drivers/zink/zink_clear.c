@@ -393,6 +393,18 @@ create_clear_surface(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    return pctx->create_surface(pctx, pres, &tmpl);
 }
 
+static void
+set_clear_fb(struct pipe_context *pctx, struct pipe_surface *psurf, struct pipe_surface *zsurf)
+{
+   struct pipe_framebuffer_state fb_state;
+   fb_state.width = psurf ? psurf->width : zsurf->width;
+   fb_state.height = psurf ? psurf->height : zsurf->height;
+   fb_state.nr_cbufs = !!psurf;
+   fb_state.cbufs[0] = psurf;
+   fb_state.zsbuf = zsurf;
+   pctx->set_framebuffer_state(pctx, &fb_state);
+}
+
 void
 zink_clear_texture(struct pipe_context *pctx,
                    struct pipe_resource *pres,
@@ -405,6 +417,7 @@ zink_clear_texture(struct pipe_context *pctx,
    struct u_rect region = zink_rect_from_box(box);
    bool needs_rp = !zink_blit_region_fills(region, u_minify(pres->width0, level), u_minify(pres->height0, level)) || ctx->render_condition_active;
    struct pipe_surface *surf = NULL;
+   struct pipe_scissor_state scissor = {box->x, box->y, box->x + box->width, box->y + box->height};
 
    if (res->aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
       union pipe_color_union color;
@@ -416,8 +429,10 @@ zink_clear_texture(struct pipe_context *pctx,
          clear_color_no_rp(ctx, res, &color, level, box->z, box->depth);
       } else {
          surf = create_clear_surface(pctx, pres, level, box);
-         zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS);
-         util_blitter_clear_render_target(ctx->blitter, surf, &color, box->x, box->y, box->width, box->height);
+         util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+         set_clear_fb(pctx, surf, NULL);
+         pctx->clear(pctx, PIPE_CLEAR_COLOR0, &scissor, &color, 0, 0);
+         util_blitter_restore_fb_state(ctx->blitter);
       }
    } else {
       float depth = 0.0;
@@ -439,16 +454,10 @@ zink_clear_texture(struct pipe_context *pctx,
          if (res->aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
             flags |= PIPE_CLEAR_STENCIL;
          surf = create_clear_surface(pctx, pres, level, box);
-         zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS);
-         /* Vulkan requires depth to be in the range of [0.0, 1.0], while GL uses
-          * the viewport range of [-1.0, 1.0], creating a mismatch during u_blitter rendering;
-          * to account for this, de-convert depth back to GL for viewport transform:
-
-            depth = (depth * 2) - 1
-
-          * this yields the correct result after the viewport has been clamped
-          */
-         util_blitter_clear_depth_stencil(ctx->blitter, surf, flags, (depth * 2) - 1, stencil, box->x, box->y, box->width, box->height);
+         util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+         set_clear_fb(pctx, NULL, surf);
+         pctx->clear(pctx, flags, &scissor, NULL, depth, stencil);
+         util_blitter_restore_fb_state(ctx->blitter);
       }
    }
    /* this will never destroy the surface */
