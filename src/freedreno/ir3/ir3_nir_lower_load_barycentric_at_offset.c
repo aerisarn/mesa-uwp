@@ -52,7 +52,7 @@ ir3_nir_lower_load_barycentric_at_offset_instr(nir_builder *b, nir_instr *instr,
    /* note: at_offset is defined to be relative to the center of the pixel */
    nir_ssa_def *ij = nir_load_barycentric_pixel(b, 32, .interp_mode = interp_mode);
 
-   nir_ssa_def *s = load(b, 1, nir_intrinsic_load_size_ir3);
+   nir_ssa_def *s = load(b, 1, nir_intrinsic_load_persp_center_rhw_ir3);
 
    s = nir_frcp(b, s);
 

@@ -840,7 +840,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    OUT_RING(ring, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
                      A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                      A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
-                     A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_SIZE]));
+                     A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_CENTER_RHW]));
    OUT_RING(
       ring,
       A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
@@ -878,7 +878,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 
    bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
    bool need_size_persamp = false;
-   if (VALIDREG(ij_regid[IJ_PERSP_SIZE])) {
+   if (VALIDREG(ij_regid[IJ_PERSP_CENTER_RHW])) {
       if (sample_shading)
          need_size_persamp = true;
       else
@@ -925,7 +925,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    OUT_RING(ring,
             CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
                CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
-               CONDREG(ij_regid[IJ_PERSP_SIZE], A6XX_RB_RENDER_CONTROL1_SIZE) |
+               CONDREG(ij_regid[IJ_PERSP_CENTER_RHW], A6XX_RB_RENDER_CONTROL1_SIZE) |
                COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
    OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_CNTL, 1);

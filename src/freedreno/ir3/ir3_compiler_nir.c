@@ -1753,8 +1753,8 @@ get_barycentric(struct ir3_context *ctx, enum ir3_bary bary)
                  SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
    STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_CENTROID ==
                  SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
-   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_SIZE ==
-                 SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE);
+   STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_PERSP_CENTER_RHW ==
+                 SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTER_RHW);
    STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_LINEAR_PIXEL ==
                  SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
    STATIC_ASSERT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + IJ_LINEAR_CENTROID ==
@@ -2171,12 +2171,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
       break;
    }
-   case nir_intrinsic_load_size_ir3:
-      if (!ctx->ij[IJ_PERSP_SIZE]) {
-         ctx->ij[IJ_PERSP_SIZE] =
-            create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_SIZE, 0x1);
+   case nir_intrinsic_load_persp_center_rhw_ir3:
+      if (!ctx->ij[IJ_PERSP_CENTER_RHW]) {
+         ctx->ij[IJ_PERSP_CENTER_RHW] =
+            create_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTER_RHW, 0x1);
       }
-      dst[0] = ctx->ij[IJ_PERSP_SIZE];
+      dst[0] = ctx->ij[IJ_PERSP_CENTER_RHW];
       break;
    case nir_intrinsic_load_barycentric_centroid:
    case nir_intrinsic_load_barycentric_sample:

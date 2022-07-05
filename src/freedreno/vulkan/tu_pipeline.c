@@ -1442,7 +1442,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
-                  A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_SIZE]));
+                  A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_CENTER_RHW]));
    tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
                   A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_PIXEL(ij_regid[IJ_LINEAR_PIXEL]) |
                   A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_regid[IJ_PERSP_CENTROID]) |
@@ -1460,7 +1460,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
    bool need_size_persamp = false;
-   if (VALIDREG(ij_regid[IJ_PERSP_SIZE])) {
+   if (VALIDREG(ij_regid[IJ_PERSP_CENTER_RHW])) {
       if (sample_shading)
          need_size_persamp = true;
       else
@@ -1497,7 +1497,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
             sample_shading ? FRAGCOORD_SAMPLE : FRAGCOORD_CENTER) |
          CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
          CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
-         CONDREG(ij_regid[IJ_PERSP_SIZE], A6XX_RB_RENDER_CONTROL1_SIZE) |
+         CONDREG(ij_regid[IJ_PERSP_CENTER_RHW], A6XX_RB_RENDER_CONTROL1_SIZE) |
          COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CNTL, 1);

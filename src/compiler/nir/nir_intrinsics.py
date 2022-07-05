@@ -932,8 +932,8 @@ barycentric("at_offset", 2, [2])
 intrinsic("load_sample_pos_from_id", src_comp=[1], dest_comp=2,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
-# Loads what I believe is the primitive size, for scaling ij to pixel size:
-intrinsic("load_size_ir3", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("load_persp_center_rhw_ir3", dest_comp=1,
+          flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # Load texture scaling values:
 #
