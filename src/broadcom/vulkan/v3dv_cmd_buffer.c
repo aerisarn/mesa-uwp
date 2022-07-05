@@ -277,27 +277,6 @@ cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 }
 
 static bool
-attachment_list_is_subset(struct v3dv_subpass_attachment *l1, uint32_t l1_count,
-                          struct v3dv_subpass_attachment *l2, uint32_t l2_count)
-{
-   for (uint32_t i = 0; i < l1_count; i++) {
-      uint32_t attachment_idx = l1[i].attachment;
-      if (attachment_idx == VK_ATTACHMENT_UNUSED)
-         continue;
-
-      uint32_t j;
-      for (j = 0; j < l2_count; j++) {
-         if (l2[j].attachment == attachment_idx)
-            break;
-      }
-      if (j == l2_count)
-         return false;
-   }
-
-   return true;
- }
-
-static bool
 cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
                              uint32_t subpass_idx)
 {
@@ -332,35 +311,25 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_subpass *prev_subpass = &state->pass->subpasses[state->subpass_idx];
    struct v3dv_subpass *subpass = &state->pass->subpasses[subpass_idx];
 
+   if (subpass->ds_attachment.attachment !=
+       prev_subpass->ds_attachment.attachment)
+      return false;
+
+   if (subpass->color_count != prev_subpass->color_count)
+      return false;
+
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      if (subpass->color_attachments[i].attachment !=
+          prev_subpass->color_attachments[i].attachment) {
+         return false;
+      }
+   }
+
    /* Don't merge if the subpasses have different view masks, since in that
     * case the framebuffer setup is different and we need to emit different
     * RCLs.
     */
    if (subpass->view_mask != prev_subpass->view_mask)
-      return false;
-
-   /* Because the list of subpass attachments can include VK_ATTACHMENT_UNUSED,
-    * we need to check that for each subpass all its used attachments are
-    * used by the other subpass.
-    */
-   bool compatible =
-      attachment_list_is_subset(prev_subpass->color_attachments,
-                                prev_subpass->color_count,
-                                subpass->color_attachments,
-                                subpass->color_count);
-   if (!compatible)
-      return false;
-
-   compatible =
-      attachment_list_is_subset(subpass->color_attachments,
-                                subpass->color_count,
-                                prev_subpass->color_attachments,
-                                prev_subpass->color_count);
-   if (!compatible)
-      return false;
-
-   if (subpass->ds_attachment.attachment !=
-       prev_subpass->ds_attachment.attachment)
       return false;
 
    /* FIXME: Since some attachment formats can't be resolved using the TLB we
