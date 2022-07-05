@@ -518,7 +518,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RING(ring, A5XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
                      A5XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                      A5XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samp_mask_regid) |
-                     A5XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_CENTER_RHW]));
+                     A5XX_HLSQ_CONTROL_2_REG_CENTERRHW(ij_regid[IJ_PERSP_CENTER_RHW]));
    OUT_RING(
       ring,
       A5XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |

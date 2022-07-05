@@ -840,7 +840,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    OUT_RING(ring, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
                      A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                      A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
-                     A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_regid[IJ_PERSP_CENTER_RHW]));
+                     A6XX_HLSQ_CONTROL_2_REG_CENTERRHW(ij_regid[IJ_PERSP_CENTER_RHW]));
    OUT_RING(
       ring,
       A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
@@ -925,7 +925,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    OUT_RING(ring,
             CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
                CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
-               CONDREG(ij_regid[IJ_PERSP_CENTER_RHW], A6XX_RB_RENDER_CONTROL1_SIZE) |
+               CONDREG(ij_regid[IJ_PERSP_CENTER_RHW], A6XX_RB_RENDER_CONTROL1_CENTERRHW) |
                COND(fs->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
    OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_CNTL, 1);
