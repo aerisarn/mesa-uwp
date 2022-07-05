@@ -1298,7 +1298,7 @@ x11_present_to_x11_sw(struct x11_swapchain *chain, uint32_t image_index,
 
    chain->base.wsi->MapMemory(chain->base.device,
                               image->base.memory,
-                              0, 0, 0, &myptr);
+                              0, VK_WHOLE_SIZE, 0, &myptr);
 
    if (size < max_req_len) {
       cookie = xcb_put_image(chain->conn, XCB_IMAGE_FORMAT_Z_PIXMAP,
