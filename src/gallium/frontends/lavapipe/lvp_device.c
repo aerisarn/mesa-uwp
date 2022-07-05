@@ -156,6 +156,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_index_type_uint8                  = true,
    .EXT_inline_uniform_block              = true,
    .EXT_multi_draw                        = true,
+   .EXT_non_seamless_cube_map             = true,
    .EXT_pipeline_creation_feedback        = true,
    .EXT_pipeline_creation_cache_control   = true,
    .EXT_post_depth_coverage               = true,
@@ -773,6 +774,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *)ext;
          features->borderColorSwizzle = true;
          features->borderColorSwizzleFromImage = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: {
+         VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *features =
+            (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *)ext;
+         features->nonSeamlessCubeMap = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {

@@ -1037,7 +1037,7 @@ static void fill_sampler(struct pipe_sampler_state *ss,
    ss->normalized_coords = !samp->create_info.unnormalizedCoordinates;
    ss->compare_mode = samp->create_info.compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
    ss->compare_func = samp->create_info.compareOp;
-   ss->seamless_cube_map = true;
+   ss->seamless_cube_map = !(samp->create_info.flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
    ss->reduction_mode = samp->reduction_mode;
    memcpy(&ss->border_color, &samp->border_color,
           sizeof(union pipe_color_union));

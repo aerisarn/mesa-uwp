@@ -9,9 +9,6 @@ spec@arb_framebuffer_object@fbo-attachments-blit-scaled-linear,Fail
 spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
 
 
-# #6270
-spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
-
 # #6905
 glx@glx-swap-copy,Fail
 
