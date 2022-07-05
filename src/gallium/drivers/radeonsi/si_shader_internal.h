@@ -139,6 +139,7 @@ struct si_shader_context {
    LLVMValueRef esgs_ring;
    LLVMValueRef gsvs_ring[4];
    LLVMValueRef tess_offchip_ring;
+   LLVMValueRef instance_divisor_constbuf;
 
    LLVMValueRef gs_next_vertex[4];
    LLVMValueRef gs_curprim_verts[4];
