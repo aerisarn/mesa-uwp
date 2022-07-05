@@ -3588,9 +3588,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
    SpvId actual_dest_type;
    if (dref && tex->op != nir_texop_tg4)
-      actual_dest_type =
-         spirv_builder_type_float(&ctx->builder,
-                                  nir_dest_bit_size(tex->dest));
+      actual_dest_type = spirv_builder_type_float(&ctx->builder, 32);
    else {
       unsigned num_components = nir_dest_num_components(tex->dest);
       switch (nir_alu_type_get_base_type(tex->dest_type)) {
@@ -3624,10 +3622,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       if (tex->op == nir_texop_tg4) {
          if (const_offset)
             spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageGatherExtended);
-         actual_dest_type = dest_type;
-         result = spirv_builder_emit_image_gather(&ctx->builder, dest_type,
+         result = spirv_builder_emit_image_gather(&ctx->builder, actual_dest_type,
                                                  load, coord, emit_uint_const(ctx, 32, tex->component),
                                                  lod, sample, const_offset, offset, dref, tex->is_sparse);
+         actual_dest_type = dest_type;
       } else
          result = spirv_builder_emit_image_fetch(&ctx->builder, actual_dest_type,
                                                  image, coord, lod, sample, const_offset, offset, tex->is_sparse);
