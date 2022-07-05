@@ -3761,20 +3761,12 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
           * stride/size that was setup in the pipeline object.
           */
          bool dynamic_stride = cmd_buffer->state.gfx.dynamic.dyn_vbo_stride;
-         bool dynamic_size = cmd_buffer->state.gfx.dynamic.dyn_vbo_size;
 
          struct GENX(VERTEX_BUFFER_STATE) state;
          if (buffer) {
             uint32_t stride = dynamic_stride ?
                cmd_buffer->state.vertex_bindings[vb].stride : pipeline->vb[vb].stride;
-            /* From the Vulkan spec (vkCmdBindVertexBuffers2):
-             *
-             * "If pname:pSizes is not NULL then pname:pSizes[i] specifies
-             * the bound size of the vertex buffer starting from the corresponding
-             * elements of pname:pBuffers[i] plus pname:pOffsets[i]."
-             */
-            UNUSED uint32_t size = dynamic_size ?
-               cmd_buffer->state.vertex_bindings[vb].size : buffer->vk.size - offset;
+            UNUSED uint32_t size = cmd_buffer->state.vertex_bindings[vb].size;
 
 #if GFX_VER <= 7
             bool per_instance = pipeline->vb[vb].instanced;

@@ -99,7 +99,6 @@ const struct anv_dynamic_state default_dynamic_state = {
    .depth_bounds_test_enable = 0,
    .stencil_test_enable = 0,
    .dyn_vbo_stride = 0,
-   .dyn_vbo_size = 0,
    .color_writes = 0xff,
    .raster_discard = 0,
    .depth_bias_enable = 0,
@@ -208,7 +207,6 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
    }
 
    ANV_CMP_COPY(dyn_vbo_stride, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
-   ANV_CMP_COPY(dyn_vbo_size, ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE);
 
    ANV_CMP_COPY(raster_discard, ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
    ANV_CMP_COPY(depth_bias_enable, ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE);
@@ -1183,17 +1181,26 @@ void anv_CmdBindVertexBuffers2(
    /* We have to defer setting up vertex buffer since we need the buffer
     * stride from the pipeline. */
 
-   if (pSizes)
-      cmd_buffer->state.gfx.dynamic.dyn_vbo_size = true;
    if (pStrides)
       cmd_buffer->state.gfx.dynamic.dyn_vbo_stride = true;
 
    assert(firstBinding + bindingCount <= MAX_VBS);
    for (uint32_t i = 0; i < bindingCount; i++) {
-      vb[firstBinding + i].buffer = anv_buffer_from_handle(pBuffers[i]);
-      vb[firstBinding + i].offset = pOffsets[i];
-      vb[firstBinding + i].size = pSizes ? pSizes[i] : 0;
-      vb[firstBinding + i].stride = pStrides ? pStrides[i] : 0;
+      ANV_FROM_HANDLE(anv_buffer, buffer, pBuffers[i]);
+
+      if (buffer == NULL) {
+         vb[firstBinding + i] = (struct anv_vertex_binding) {
+            .buffer = NULL,
+         };
+      } else {
+         vb[firstBinding + i] = (struct anv_vertex_binding) {
+            .buffer = buffer,
+            .offset = pOffsets[i],
+            .size = vk_buffer_range(&buffer->vk, pOffsets[i],
+                                    pSizes ? pSizes[i] : VK_WHOLE_SIZE),
+            .stride = pStrides ? pStrides[i] : 0,
+         };
+      }
       cmd_buffer->state.gfx.vb_dirty |= 1 << (firstBinding + i);
    }
 }

@@ -2727,7 +2727,6 @@ struct anv_dynamic_state {
    bool                                         primitive_restart_enable;
    VkLogicOp                                    logic_op;
    bool                                         dyn_vbo_stride;
-   bool                                         dyn_vbo_size;
 
    /* Bitfield, one bit per render target */
    uint8_t                                      color_writes;
