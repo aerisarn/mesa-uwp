@@ -2661,16 +2661,6 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    struct zink_surface *transient = zink_transient_surface(surf);
    struct zink_resource *res = zink_resource(surf->texture);
    if (changed) {
-      if (zink_fb_clear_enabled(ctx, idx)) {
-         if (zink_is_swapchain(res)) {
-            if (zink_kopper_acquire(ctx, res, UINT64_MAX)) {
-               zink_surface_swapchain_update(ctx, zink_csurface(surf));
-               zink_fb_clears_apply(ctx, surf->texture);
-            }
-         } else {
-            zink_fb_clears_apply(ctx, surf->texture);
-         }
-      }
       if (zink_batch_usage_exists(zink_csurface(surf)->batch_uses)) {
          zink_batch_reference_surface(&ctx->batch, zink_csurface(surf));
          if (transient)
@@ -2713,6 +2703,15 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    unsigned samples = state->nr_cbufs || state->zsbuf ? 0 : state->samples;
 
+   bool flush_clears = false;
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      if (i >= state->nr_cbufs || ctx->fb_state.cbufs[i] != state->cbufs[i])
+         flush_clears |= zink_fb_clear_enabled(ctx, i);
+   }
+   if (ctx->fb_state.zsbuf != state->zsbuf)
+      flush_clears |= zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS);
+   if (flush_clears)
+      zink_batch_rp(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (i < state->nr_cbufs)
