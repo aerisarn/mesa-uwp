@@ -50,7 +50,6 @@ struct ac_nir_context {
 
    struct hash_table *defs;
    struct hash_table *phis;
-   struct hash_table *vars;
    struct hash_table *verified_interp;
 
    LLVMValueRef main_function;
@@ -5193,11 +5192,6 @@ static bool visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
 
    LLVMValueRef result = NULL;
    switch (instr->deref_type) {
-   case nir_deref_type_var: {
-      struct hash_entry *entry = _mesa_hash_table_search(ctx->vars, instr->var);
-      result = entry->data;
-      break;
-   }
    case nir_deref_type_struct:
       if (nir_deref_mode_is(instr, nir_var_mem_global)) {
          nir_deref_instr *parent = nir_deref_instr_parent(instr);
@@ -5547,7 +5541,6 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 
    ctx.defs = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    ctx.phis = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   ctx.vars = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    if (ctx.abi->kill_ps_if_inf_interp)
       ctx.verified_interp =
@@ -5582,7 +5575,6 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    free(ctx.ssa_defs);
    ralloc_free(ctx.defs);
    ralloc_free(ctx.phis);
-   ralloc_free(ctx.vars);
    if (ctx.abi->kill_ps_if_inf_interp)
       ralloc_free(ctx.verified_interp);
 
