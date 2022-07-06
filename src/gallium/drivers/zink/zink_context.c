@@ -2240,7 +2240,7 @@ begin_rendering(struct zink_context *ctx)
             continue;
       }
       /* we now know there's one clear that can be done here */
-      zink_fb_clear_util_unpack_clear_color(clear, ctx->fb_state.cbufs[i]->format, (void*)&ctx->dynamic_fb.attachments[i].clearValue);
+      memcpy(&ctx->dynamic_fb.attachments[i].clearValue, &clear->color.color, sizeof(float) * 4);
       ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
    }
    if (ctx->fb_state.zsbuf && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS)) {

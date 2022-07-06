@@ -528,7 +528,7 @@ begin_render_pass(struct zink_context *ctx)
             continue;
       }
       /* we now know there's one clear that can be done here */
-      zink_fb_clear_util_unpack_clear_color(clear, fb_state->cbufs[i]->format, (void*)&clears[i].color);
+      memcpy(&clears[i].color, &clear->color.color, sizeof(float) * 4);
       rpbi.clearValueCount = i + 1;
       clear_validate |= PIPE_CLEAR_COLOR0 << i;
       assert(ctx->framebuffer->rp->state.clears);

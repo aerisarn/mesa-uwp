@@ -560,12 +560,6 @@ zink_fb_clear_first_needs_explicit(struct zink_framebuffer_clear *fb_clear)
    return zink_fb_clear_element_needs_explicit(zink_fb_clear_element(fb_clear, 0));
 }
 
-void
-zink_fb_clear_util_unpack_clear_color(struct zink_framebuffer_clear_data *clear, enum pipe_format format, union pipe_color_union *color)
-{
-   *color = clear->color.color;
-}
-
 static void
 fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, int i)
 {
