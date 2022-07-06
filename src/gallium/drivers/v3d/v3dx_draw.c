@@ -985,6 +985,9 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
             !u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
                 return;
 
+        if (!v3d_render_condition_check(v3d))
+                return;
+
         /* Fall back for weird desktop GL primitive restart values. */
         if (info->primitive_restart &&
             info->index_size) {
@@ -1518,7 +1521,7 @@ v3d_draw_clear(struct v3d_context *v3d,
                const union pipe_color_union *color,
                double depth, unsigned stencil)
 {
-        v3d_blitter_save(v3d, false);
+        v3d_blitter_save(v3d, false, true);
         util_blitter_clear(v3d->blitter,
                            v3d->framebuffer.width,
                            v3d->framebuffer.height,
@@ -1658,8 +1661,10 @@ v3d_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
 
         buffers &= ~v3d_tlb_clear(job, buffers, color, depth, stencil);
 
-        if (buffers)
-                v3d_draw_clear(v3d, buffers, color, depth, stencil);
+        if (!buffers || !v3d_render_condition_check(v3d))
+                return;
+
+        v3d_draw_clear(v3d, buffers, color, depth, stencil);
 }
 
 static void
