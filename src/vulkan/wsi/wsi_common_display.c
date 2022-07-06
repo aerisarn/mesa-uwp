@@ -1972,7 +1972,6 @@ wsi_display_surface_create_swapchain(
 
    result = wsi_configure_native_image(&chain->base, create_info,
                                        0, NULL, NULL,
-                                       NULL /* alloc_shm */,
                                        &chain->base.image_info);
    if (result != VK_SUCCESS) {
       vk_free(allocator, chain);

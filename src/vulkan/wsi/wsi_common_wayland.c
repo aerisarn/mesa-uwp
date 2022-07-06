@@ -1323,7 +1323,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                                           chain->num_drm_modifiers > 0 ? 1 : 0,
                                           &chain->num_drm_modifiers,
                                           &chain->drm_modifiers,
-                                          NULL /* alloc_shm */,
                                           &chain->base.image_info);
    }
    if (result != VK_SUCCESS)

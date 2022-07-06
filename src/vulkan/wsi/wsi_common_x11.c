@@ -2094,7 +2094,6 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       result = wsi_configure_native_image(&chain->base, pCreateInfo,
                                           num_tranches, num_modifiers,
                                           (const uint64_t *const *)modifiers,
-                                          NULL /* alloc_shm */,
                                           &chain->base.image_info);
    }
    if (result != VK_SUCCESS)
