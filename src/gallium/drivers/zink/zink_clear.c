@@ -414,8 +414,6 @@ zink_clear_texture(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_resource *res = zink_resource(pres);
-   struct u_rect region = zink_rect_from_box(box);
-   bool needs_rp = !zink_blit_region_fills(region, u_minify(pres->width0, level), u_minify(pres->height0, level)) || ctx->render_condition_active;
    struct pipe_surface *surf = NULL;
    struct pipe_scissor_state scissor = {box->x, box->y, box->x + box->width, box->y + box->height};
 
@@ -424,16 +422,11 @@ zink_clear_texture(struct pipe_context *pctx,
 
       util_format_unpack_rgba(pres->format, color.ui, data, 1);
 
-      if (!needs_rp) {
-         zink_batch_no_rp(ctx);
-         clear_color_no_rp(ctx, res, &color, level, box->z, box->depth);
-      } else {
-         surf = create_clear_surface(pctx, pres, level, box);
-         util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
-         set_clear_fb(pctx, surf, NULL);
-         pctx->clear(pctx, PIPE_CLEAR_COLOR0, &scissor, &color, 0, 0);
-         util_blitter_restore_fb_state(ctx->blitter);
-      }
+      surf = create_clear_surface(pctx, pres, level, box);
+      util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+      set_clear_fb(pctx, surf, NULL);
+      pctx->clear(pctx, PIPE_CLEAR_COLOR0, &scissor, &color, 0, 0);
+      util_blitter_restore_fb_state(ctx->blitter);
    } else {
       float depth = 0.0;
       uint8_t stencil = 0;
@@ -444,21 +437,16 @@ zink_clear_texture(struct pipe_context *pctx,
       if (res->aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
          util_format_unpack_s_8uint(pres->format, &stencil, data, 1);
 
-      if (!needs_rp) {
-         zink_batch_no_rp(ctx);
-         clear_zs_no_rp(ctx, res, res->aspect, depth, stencil, level, box->z, box->depth);
-      } else {
-         unsigned flags = 0;
-         if (res->aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
-            flags |= PIPE_CLEAR_DEPTH;
-         if (res->aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
-            flags |= PIPE_CLEAR_STENCIL;
-         surf = create_clear_surface(pctx, pres, level, box);
-         util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
-         set_clear_fb(pctx, NULL, surf);
-         pctx->clear(pctx, flags, &scissor, NULL, depth, stencil);
-         util_blitter_restore_fb_state(ctx->blitter);
-      }
+      unsigned flags = 0;
+      if (res->aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
+         flags |= PIPE_CLEAR_DEPTH;
+      if (res->aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
+         flags |= PIPE_CLEAR_STENCIL;
+      surf = create_clear_surface(pctx, pres, level, box);
+      util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+      set_clear_fb(pctx, NULL, surf);
+      pctx->clear(pctx, flags, &scissor, NULL, depth, stencil);
+      util_blitter_restore_fb_state(ctx->blitter);
    }
    /* this will never destroy the surface */
    pipe_surface_reference(&surf, NULL);
