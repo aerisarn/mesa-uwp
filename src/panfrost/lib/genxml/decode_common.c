@@ -262,6 +262,8 @@ pandecode_dump_mappings(void)
                 pan_hexdump(pandecode_dump_stream, it->addr, it->length, false);
                 fprintf(pandecode_dump_stream, "\n");
         }
+
+        fflush(pandecode_dump_stream);
 }
 
 void pandecode_abort_on_fault_v4(mali_ptr jc_gpu_va);
