@@ -171,6 +171,13 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
                           struct wsi_image_info *info);
 
 VkResult
+wsi_configure_cpu_image(const struct wsi_swapchain *chain,
+                        const VkSwapchainCreateInfoKHR *pCreateInfo,
+                        uint8_t *(alloc_shm)(struct wsi_image *image,
+                                             unsigned size),
+                        struct wsi_image_info *info);
+
+VkResult
 wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
                             const struct wsi_image_info *info,
                             struct wsi_image *image,

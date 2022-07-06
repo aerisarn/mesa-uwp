@@ -1293,6 +1293,14 @@ wsi_select_device_memory_type(const struct wsi_device *wsi,
                                  0 /* deny_props */, type_bits);
 }
 
+static uint32_t
+wsi_select_host_memory_type(const struct wsi_device *wsi,
+                            uint32_t type_bits)
+{
+   return wsi_select_memory_type(wsi, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                 0 /* deny_props */, type_bits);
+}
+
 VkResult
 wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
                             const struct wsi_image_info *info,
@@ -1503,6 +1511,87 @@ wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
    info->create.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
    info->wsi.buffer_blit_src = true;
    info->finish_create = wsi_finish_create_buffer_image;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+wsi_create_cpu_image_mem(const struct wsi_swapchain *chain,
+                         const struct wsi_image_info *info,
+                         struct wsi_image *image)
+{
+   const struct wsi_device *wsi = chain->wsi;
+   VkResult result;
+
+   VkMemoryRequirements reqs;
+   wsi->GetImageMemoryRequirements(chain->device, image->image, &reqs);
+
+   VkSubresourceLayout layout;
+   wsi->GetImageSubresourceLayout(chain->device, image->image,
+                                  &(VkImageSubresource) {
+                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                     .mipLevel = 0,
+                                     .arrayLayer = 0,
+                                  }, &layout);
+   assert(layout.offset == 0);
+
+   const VkMemoryDedicatedAllocateInfo memory_dedicated_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+      .image = image->image,
+      .buffer = VK_NULL_HANDLE,
+   };
+   VkMemoryAllocateInfo memory_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = &memory_dedicated_info,
+      .allocationSize = reqs.size,
+      .memoryTypeIndex =
+         wsi_select_host_memory_type(wsi, reqs.memoryTypeBits),
+   };
+
+   void *sw_host_ptr = NULL;
+   if (info->alloc_shm)
+      sw_host_ptr = info->alloc_shm(image, layout.size);
+
+   VkImportMemoryHostPointerInfoEXT host_ptr_info;
+   if (sw_host_ptr != NULL) {
+      host_ptr_info = (VkImportMemoryHostPointerInfoEXT) {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT,
+         .pHostPointer = sw_host_ptr,
+         .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT,
+      };
+      __vk_append_struct(&memory_info, &host_ptr_info);
+   }
+
+   result = wsi->AllocateMemory(chain->device, &memory_info,
+                                &chain->alloc, &image->memory);
+   if (result != VK_SUCCESS)
+      return result;
+
+   image->num_planes = 1;
+   image->sizes[0] = reqs.size;
+   image->row_pitches[0] = layout.rowPitch;
+   image->offsets[0] = 0;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+wsi_configure_cpu_image(const struct wsi_swapchain *chain,
+                        const VkSwapchainCreateInfoKHR *pCreateInfo,
+                        uint8_t *(alloc_shm)(struct wsi_image *image,
+                                             unsigned size),
+                        struct wsi_image_info *info)
+{
+   const VkExternalMemoryHandleTypeFlags handle_type =
+      alloc_shm ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT : 0;
+
+   VkResult result = wsi_configure_image(chain, pCreateInfo,
+                                         handle_type, info);
+   if (result != VK_SUCCESS)
+      return result;
+
+   info->alloc_shm = alloc_shm;
+   info->create_mem = wsi_create_cpu_image_mem;
 
    return VK_SUCCESS;
 }
