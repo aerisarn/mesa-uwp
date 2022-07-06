@@ -1826,7 +1826,7 @@ void genX(CmdCopyQueryPoolResults)(
    }
 }
 
-#if GFX_VERx10 >= 125 && ANV_SUPPORT_RT
+#if GFX_VERx10 == 125 && ANV_SUPPORT_RT
 
 #include "grl/include/GRLRTASCommon.h"
 #include "grl/grl_metakernel_postbuild_info.h"

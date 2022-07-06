@@ -33,7 +33,7 @@
 #include "genxml/genX_pack.h"
 #include "genxml/genX_rt_pack.h"
 
-#if GFX_VERx10 >= 125
+#if GFX_VERx10 == 125
 
 #include "grl/grl_structs.h"
 
