@@ -1251,6 +1251,48 @@ wsi_common_bind_swapchain_image(const struct wsi_device *wsi,
    return wsi->BindImageMemory(chain->device, vk_image, image->memory, 0);
 }
 
+uint32_t
+wsi_select_memory_type(const struct wsi_device *wsi,
+                       VkMemoryPropertyFlags req_props,
+                       VkMemoryPropertyFlags deny_props,
+                       uint32_t type_bits)
+{
+   assert(type_bits != 0);
+
+   VkMemoryPropertyFlags common_props = ~0;
+   u_foreach_bit(t, type_bits) {
+      const VkMemoryType type = wsi->memory_props.memoryTypes[t];
+
+      common_props &= type.propertyFlags;
+
+      if (deny_props & type.propertyFlags)
+         continue;
+
+      if (!(req_props & ~type.propertyFlags))
+         return t;
+   }
+
+   if ((deny_props & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
+       (common_props & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+      /* If they asked for non-device-local and all the types are device-local
+       * (this is commonly true for UMA platforms), try again without denying
+       * device-local types
+       */
+      deny_props &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      return wsi_select_memory_type(wsi, req_props, deny_props, type_bits);
+   }
+
+   unreachable("No memory type found");
+}
+
+uint32_t
+wsi_select_device_memory_type(const struct wsi_device *wsi,
+                              uint32_t type_bits)
+{
+   return wsi_select_memory_type(wsi, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                 0 /* deny_props */, type_bits);
+}
+
 VkResult
 wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
                             const struct wsi_image_info *info,

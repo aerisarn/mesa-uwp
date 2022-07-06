@@ -145,6 +145,15 @@ wsi_swapchain_get_present_mode(struct wsi_device *wsi,
 
 void wsi_swapchain_finish(struct wsi_swapchain *chain);
 
+uint32_t
+wsi_select_memory_type(const struct wsi_device *wsi,
+                       VkMemoryPropertyFlags req_flags,
+                       VkMemoryPropertyFlags deny_flags,
+                       uint32_t type_bits);
+uint32_t
+wsi_select_device_memory_type(const struct wsi_device *wsi,
+                              uint32_t type_bits);
+
 VkResult
 wsi_configure_native_image(const struct wsi_swapchain *chain,
                            const VkSwapchainCreateInfoKHR *pCreateInfo,
