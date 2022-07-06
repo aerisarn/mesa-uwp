@@ -4532,6 +4532,7 @@ uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
 void
 anv_fill_buffer_surface_state(struct anv_device *device, struct anv_state state,
                               enum isl_format format,
+                              struct isl_swizzle swizzle,
                               isl_surf_usage_flags_t usage,
                               struct anv_address address,
                               uint32_t range, uint32_t stride)
@@ -4542,7 +4543,7 @@ anv_fill_buffer_surface_state(struct anv_device *device, struct anv_state state,
                                           address.bo && address.bo->is_external),
                          .size_B = range,
                          .format = format,
-                         .swizzle = ISL_SWIZZLE_IDENTITY,
+                         .swizzle = swizzle,
                          .stride_B = stride);
 }
 

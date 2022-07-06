@@ -2568,8 +2568,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          const enum isl_format format =
             anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-         anv_fill_buffer_surface_state(cmd_buffer->device,
-                                       surface_state, format,
+         anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
+                                       format, ISL_SWIZZLE_IDENTITY,
                                        ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                        constant_data, constant_data_size, 1);
 
@@ -2590,7 +2590,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
          anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
-                                       format,
+                                       format, ISL_SWIZZLE_IDENTITY,
                                        ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                        cmd_buffer->state.compute.num_workgroups,
                                        12, 1);
@@ -2752,7 +2752,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   ISL_SURF_USAGE_STORAGE_BIT;
 
                anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
-                                             format, usage, address, range, 1);
+                                             format, ISL_SWIZZLE_IDENTITY,
+                                             usage, address, range, 1);
                if (need_client_mem_relocs)
                   add_surface_reloc(cmd_buffer, surface_state, address);
             } else {

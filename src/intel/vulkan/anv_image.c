@@ -2860,12 +2860,11 @@ anv_CreateBufferView(VkDevice _device,
    if (!view)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   /* TODO: Handle the format swizzle? */
+   struct anv_format_plane format;
+   format = anv_get_format_plane(&device->info, pCreateInfo->format,
+                                 0, VK_IMAGE_TILING_LINEAR);
 
-   view->format = anv_get_isl_format(&device->info, pCreateInfo->format,
-                                     VK_IMAGE_ASPECT_COLOR_BIT,
-                                     VK_IMAGE_TILING_LINEAR);
-   const uint32_t format_bs = isl_format_get_layout(view->format)->bpb / 8;
+   const uint32_t format_bs = isl_format_get_layout(format.isl_format)->bpb / 8;
    view->range = vk_buffer_range(&buffer->vk, pCreateInfo->offset,
                                               pCreateInfo->range);
    view->range = align_down_npot_u32(view->range, format_bs);
@@ -2876,7 +2875,8 @@ anv_CreateBufferView(VkDevice _device,
       view->surface_state = alloc_surface_state(device);
 
       anv_fill_buffer_surface_state(device, view->surface_state,
-                                    view->format, ISL_SURF_USAGE_TEXTURE_BIT,
+                                    format.isl_format, format.swizzle,
+                                    ISL_SURF_USAGE_TEXTURE_BIT,
                                     view->address, view->range, format_bs);
    } else {
       view->surface_state = (struct anv_state){ 0 };
@@ -2887,25 +2887,34 @@ anv_CreateBufferView(VkDevice _device,
       view->lowered_storage_surface_state = alloc_surface_state(device);
 
       anv_fill_buffer_surface_state(device, view->storage_surface_state,
-                                    view->format, ISL_SURF_USAGE_STORAGE_BIT,
-                                    view->address, view->range,
-                                    isl_format_get_layout(view->format)->bpb / 8);
+                                    format.isl_format, format.swizzle,
+                                    ISL_SURF_USAGE_STORAGE_BIT,
+                                    view->address, view->range, format_bs);
 
       enum isl_format lowered_format =
          isl_has_matching_typed_storage_image_format(&device->info,
-                                                     view->format) ?
-         isl_lower_storage_image_format(&device->info, view->format) :
+                                                     format.isl_format) ?
+         isl_lower_storage_image_format(&device->info, format.isl_format) :
          ISL_FORMAT_RAW;
 
+      /* If we lower the format, we should ensure either they both match in
+       * bits per channel or that there is no swizzle because we can't use
+       * the swizzle for a different bit pattern.
+       */
+      assert(isl_formats_have_same_bits_per_channel(lowered_format,
+                                                    format.isl_format) ||
+             isl_swizzle_is_identity(format.swizzle));
+
       anv_fill_buffer_surface_state(device, view->lowered_storage_surface_state,
-                                    lowered_format, ISL_SURF_USAGE_STORAGE_BIT,
+                                    lowered_format, format.swizzle,
+                                    ISL_SURF_USAGE_STORAGE_BIT,
                                     view->address, view->range,
                                     (lowered_format == ISL_FORMAT_RAW ? 1 :
                                      isl_format_get_layout(lowered_format)->bpb / 8));
 
       isl_buffer_fill_image_param(&device->isl_dev,
                                   &view->lowered_storage_image_param,
-                                  view->format, view->range);
+                                  format.isl_format, view->range);
    } else {
       view->storage_surface_state = (struct anv_state){ 0 };
       view->lowered_storage_surface_state = (struct anv_state){ 0 };

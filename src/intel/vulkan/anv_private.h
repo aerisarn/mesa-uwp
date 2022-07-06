@@ -1965,7 +1965,6 @@ anv_descriptor_set_is_push(struct anv_descriptor_set *set)
 struct anv_buffer_view {
    struct vk_object_base base;
 
-   enum isl_format format; /**< VkBufferViewCreateInfo::format */
    uint64_t range; /**< VkBufferViewCreateInfo::range */
 
    struct anv_address address;
@@ -4258,6 +4257,7 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
 void anv_fill_buffer_surface_state(struct anv_device *device,
                                    struct anv_state state,
                                    enum isl_format format,
+                                   struct isl_swizzle swizzle,
                                    isl_surf_usage_flags_t usage,
                                    struct anv_address address,
                                    uint32_t range, uint32_t stride);
