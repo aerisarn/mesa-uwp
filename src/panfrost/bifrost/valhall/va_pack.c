@@ -881,7 +881,7 @@ va_lower_blend(bi_context *ctx)
    /* Program counter for *next* instruction */
    bi_index pc = bi_fau(BIR_FAU_PROGRAM_COUNTER, false);
 
-   bi_foreach_instr_global(ctx, I) {
+   bi_foreach_instr_global_safe(ctx, I) {
       if (I->op != BI_OPCODE_BLEND)
          continue;
 
