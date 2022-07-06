@@ -909,8 +909,9 @@ struct wsi_wl_image {
    struct wsi_image                             base;
    struct wl_buffer *                           buffer;
    bool                                         busy;
-   void *                                       data_ptr;
-   uint32_t                                     data_size;
+   int                                          shm_fd;
+   void *                                       shm_ptr;
+   unsigned                                     shm_size;
 };
 
 struct wsi_wl_swapchain {
@@ -1043,9 +1044,9 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
 
-   if (chain->display->sw) {
+   if (!chain->base.wsi->has_import_memory_host) {
       struct wsi_wl_image *image = &chain->images[image_index];
-      memcpy(image->data_ptr, image->base.cpu_map,
+      memcpy(image->shm_ptr, image->base.cpu_map,
              image->base.row_pitches[0] * chain->extent.height);
    }
    if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
@@ -1100,6 +1101,29 @@ static const struct wl_buffer_listener buffer_listener = {
    buffer_handle_release,
 };
 
+static uint8_t *
+wsi_wl_alloc_image_shm(struct wsi_image *imagew, unsigned size)
+{
+   struct wsi_wl_image *image = (struct wsi_wl_image *)imagew;
+
+   /* Create a shareable buffer */
+   int fd = os_create_anonymous_file(size, NULL);
+   if (fd < 0)
+      return NULL;
+
+   void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+   if (ptr == MAP_FAILED) {
+      close(fd);
+      return NULL;
+   }
+
+   image->shm_fd = fd;
+   image->shm_ptr = ptr;
+   image->shm_size = size;
+
+   return ptr;
+}
+
 static VkResult
 wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                   struct wsi_wl_image *image,
@@ -1115,29 +1139,24 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
       return result;
 
    if (display->sw) {
-      int fd, stride;
-
-      stride = image->base.row_pitches[0];
-      image->data_size = stride * chain->extent.height;
-
-      /* Create a shareable buffer */
-      fd = os_create_anonymous_file(image->data_size, NULL);
-      if (fd < 0)
-         goto fail_image;
-
-      image->data_ptr = mmap(NULL, image->data_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-      if (image->data_ptr == MAP_FAILED) {
-         close(fd);
-         goto fail_image;
+      if (chain->base.wsi->has_import_memory_host) {
+         assert(image->shm_ptr != NULL);
+      } else {
+         assert(image->shm_ptr == NULL);
+         wsi_wl_alloc_image_shm(&image->base, image->base.row_pitches[0] *
+                                              chain->extent.height);
       }
+
       /* Share it in a wl_buffer */
-      struct wl_shm_pool *pool = wl_shm_create_pool(display->wl_shm, fd, image->data_size);
+      struct wl_shm_pool *pool = wl_shm_create_pool(display->wl_shm,
+                                                    image->shm_fd,
+                                                    image->shm_size);
       wl_proxy_set_queue((struct wl_proxy *)pool, display->queue);
       image->buffer = wl_shm_pool_create_buffer(pool, 0, chain->extent.width,
-                                                chain->extent.height, stride,
+                                                chain->extent.height,
+                                                image->base.row_pitches[0],
                                                 chain->shm_format);
       wl_shm_pool_destroy(pool);
-      close(fd);
    } else {
       assert(display->wl_dmabuf);
 
@@ -1185,8 +1204,10 @@ wsi_wl_swapchain_images_free(struct wsi_wl_swapchain *chain)
       if (chain->images[i].buffer) {
          wl_buffer_destroy(chain->images[i].buffer);
          wsi_destroy_image(&chain->base, &chain->images[i].base);
-         if (chain->images[i].data_ptr)
-            munmap(chain->images[i].data_ptr, chain->images[i].data_size);
+         if (chain->images[i].shm_size) {
+            close(chain->images[i].shm_fd);
+            munmap(chain->images[i].shm_ptr, chain->images[i].shm_size);
+         }
       }
    }
    wsi_destroy_image_info(&chain->base, &chain->base.image_info);
@@ -1307,7 +1328,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    if (wsi_device->sw) {
       result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
-                                       NULL /* alloc_shm */,
+                                       wsi_device->has_import_memory_host ?
+                                          wsi_wl_alloc_image_shm : NULL,
                                        &chain->base.image_info);
    } else {
       result = wsi_configure_native_image(&chain->base, pCreateInfo,
