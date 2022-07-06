@@ -3062,10 +3062,12 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_bit_count:
+                assert(sz == 32 && src_sz == 32 && "should've been lowered");
                 bi_popcount_i32_to(b, dst, s0);
                 break;
 
         case nir_op_bitfield_reverse:
+                assert(sz == 32 && src_sz == 32 && "should've been lowered");
                 bi_bitrev_i32_to(b, dst, s0);
                 break;
 
@@ -4386,8 +4388,11 @@ should_split_wrmask(const nir_instr *instr, UNUSED const void *data)
         }
 }
 
-/* Bifrost wants transcendentals as FP32 */
-
+/*
+ * Some operations are only available as 32-bit instructions. 64-bit floats are
+ * unsupported and ints are lowered with nir_lower_int64.  Certain 8-bit and
+ * 16-bit instructions, however, are lowered here.
+ */
 static unsigned
 bi_lower_bit_size(const nir_instr *instr, UNUSED void *data)
 {
@@ -4402,7 +4407,9 @@ bi_lower_bit_size(const nir_instr *instr, UNUSED void *data)
         case nir_op_fpow:
         case nir_op_fsin:
         case nir_op_fcos:
-                return (nir_dest_bit_size(alu->dest.dest) == 32) ? 0 : 32;
+        case nir_op_bit_count:
+        case nir_op_bitfield_reverse:
+                return (nir_src_bit_size(alu->src[0].src) == 32) ? 0 : 32;
         default:
                 return 0;
         }
