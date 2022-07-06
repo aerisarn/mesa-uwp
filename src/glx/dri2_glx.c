@@ -63,13 +63,6 @@ struct dri2_display
 {
    __GLXDRIdisplay base;
 
-   /*
-    ** XFree86-DRI version information
-    */
-   int driMajor;
-   int driMinor;
-   int driPatch;
-
    __glxHashTable *dri2Hash;
 
    const __DRIextension *loader_extensions[5];
@@ -1321,6 +1314,7 @@ dri2CreateDisplay(Display * dpy)
 {
    struct dri2_display *pdp;
    int eventBase, errorBase, i;
+   int driMajor, driMinor;
 
    if (!DRI2QueryExtension(dpy, &eventBase, &errorBase))
       return NULL;
@@ -1329,17 +1323,11 @@ dri2CreateDisplay(Display * dpy)
    if (pdp == NULL)
       return NULL;
 
-   if (!DRI2QueryVersion(dpy, &pdp->driMajor, &pdp->driMinor)) {
+   if (!DRI2QueryVersion(dpy, &driMajor, &driMinor) ||
+       driMinor < 3) {
       free(pdp);
       return NULL;
    }
-
-   if (pdp->driMinor < 3) {
-      free(pdp);
-      return NULL;
-   }
-
-   pdp->driPatch = 0;
 
    pdp->base.destroyDisplay = dri2DestroyDisplay;
    pdp->base.createScreen = dri2CreateScreen;
