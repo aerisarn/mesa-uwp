@@ -501,6 +501,7 @@ static const struct opc_info {
    OPC(FLOOR),
    OPC(CEIL),
    OPC(SIGN),
+   OPC(I2I),
    OPC(I2F),
    OPC(F2I),
    OPC(CMP),
