@@ -140,6 +140,9 @@ struct wsi_device {
 
    bool sw;
 
+   /* Set to true if the implementation is ok with linear WSI images. */
+   bool wants_linear;
+
    /* Signals the semaphore such that any wait on the semaphore will wait on
     * any reads or writes on the give memory object.  This is used to
     * implement the semaphore signal operation in vkAcquireNextImage.  This

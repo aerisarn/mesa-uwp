@@ -43,6 +43,7 @@ lvp_init_wsi(struct lvp_physical_device *physical_device)
    if (result != VK_SUCCESS)
       return result;
 
+   physical_device->wsi_device.wants_linear = true;
    physical_device->vk.wsi_device = &physical_device->wsi_device;
 
    return VK_SUCCESS;
