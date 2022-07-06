@@ -4888,11 +4888,29 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          }
          if (((stages[i].nir->info.bit_sizes_int | stages[i].nir->info.bit_sizes_float) & 16) &&
              device->physical_device->rad_info.gfx_level >= GFX9) {
-            // TODO: also optimize the tex srcs. see radeonSI for reference */
+            bool separate_g16 = device->physical_device->rad_info.gfx_level >= GFX10;
+            struct nir_fold_tex_srcs_options fold_srcs_options[] = {
+               {
+                  .sampler_dims =
+                     ~(BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) | BITFIELD_BIT(GLSL_SAMPLER_DIM_BUF)),
+                  .src_types = (1 << nir_tex_src_coord) | (1 << nir_tex_src_lod) |
+                               (1 << nir_tex_src_bias) | (1 << nir_tex_src_min_lod) |
+                               (1 << nir_tex_src_ms_index) |
+                               (separate_g16 ? 0 : (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy)),
+                  .only_fold_all = true,
+               },
+               {
+                  .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
+                  .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
+                  .only_fold_all = true,
+               },
+            };
             struct nir_fold_16bit_tex_image_options fold_16bit_options = {
                .rounding_mode = nir_rounding_mode_rtne,
                .fold_tex_dest = true,
                .fold_image_load_store_data = true,
+               .fold_srcs_options_count = separate_g16 ? 2 : 1,
+               .fold_srcs_options = fold_srcs_options,
             };
             NIR_PASS(_, stages[i].nir, nir_fold_16bit_tex_image, &fold_16bit_options);
 
