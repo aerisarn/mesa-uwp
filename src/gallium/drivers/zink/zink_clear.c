@@ -243,7 +243,7 @@ zink_clear(struct pipe_context *pctx,
             if (scissor_state && needs_rp)
                clear->scissor = *scissor_state;
             for (unsigned i = 0; i < 4; i++)
-               clamp_color(desc, &clear->color.color, pcolor, i);
+               clamp_color(desc, &clear->color, pcolor, i);
             if (zink_fb_clear_first_needs_explicit(fb_clear))
                ctx->rp_clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
             else
@@ -312,7 +312,7 @@ zink_clear_framebuffer(struct zink_context *ctx, unsigned clear_buffers)
                   goto out;
 
                /* colors don't match, fire this one off */
-               if (!colors_equal(&a->color.color, &b->color.color))
+               if (!colors_equal(&a->color, &b->color))
                   goto out;
             }
          } else {
@@ -356,7 +356,7 @@ out:
                }
                zink_clear(&ctx->base, clear_bits,
                           clear->has_scissor ? &clear->scissor : NULL,
-                          &clear->color.color,
+                          &clear->color,
                           zsclear ? zsclear->zs.depth : 0,
                           zsclear ? zsclear->zs.stencil : 0);
             }

@@ -34,9 +34,7 @@ struct zink_resource;
 
 struct zink_framebuffer_clear_data {
    union {
-      struct {
-         union pipe_color_union color;
-      } color;
+      union pipe_color_union color;
       struct {
          float depth;
          unsigned stencil;
