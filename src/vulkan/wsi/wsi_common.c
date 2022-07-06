@@ -547,6 +547,9 @@ wsi_destroy_image(const struct wsi_swapchain *chain,
       close(image->dma_buf_fd);
 #endif
 
+   if (image->cpu_map != NULL)
+      wsi->UnmapMemory(chain->device, image->memory);
+
    if (image->buffer.blit_cmd_buffers) {
       int cmd_buffer_count =
          chain->buffer_blit_queue != VK_NULL_HANDLE ? 1 : wsi->queue_family_count;
@@ -1564,6 +1567,11 @@ wsi_create_cpu_image_mem(const struct wsi_swapchain *chain,
 
    result = wsi->AllocateMemory(chain->device, &memory_info,
                                 &chain->alloc, &image->memory);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = wsi->MapMemory(chain->device, image->memory,
+                           0, VK_WHOLE_SIZE, 0, &image->cpu_map);
    if (result != VK_SUCCESS)
       return result;
 

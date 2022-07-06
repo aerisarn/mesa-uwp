@@ -85,6 +85,7 @@ struct wsi_image {
 #ifndef _WIN32
    int dma_buf_fd;
 #endif
+   void *cpu_map;
 };
 
 struct wsi_swapchain {

@@ -1045,17 +1045,8 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
 
    if (chain->display->sw) {
       struct wsi_wl_image *image = &chain->images[image_index];
-      void *dptr = image->data_ptr;
-      void *sptr;
-      chain->base.wsi->MapMemory(chain->base.device,
-                                 image->base.memory,
-                                 0, VK_WHOLE_SIZE, 0, &sptr);
-
-      memcpy(dptr, sptr, image->base.row_pitches[0] * chain->extent.height);
-
-      chain->base.wsi->UnmapMemory(chain->base.device,
-                                   image->base.memory);
-
+      memcpy(image->data_ptr, image->base.cpu_map,
+             image->base.row_pitches[0] * chain->extent.height);
    }
    if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
       while (!chain->fifo_ready) {
