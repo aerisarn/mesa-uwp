@@ -1454,10 +1454,16 @@ struct iris_vertex_buffer_state {
 
 struct iris_depth_buffer_state {
    /* Depth/HiZ/Stencil related hardware packets. */
+#if GFX_VER < 20
    uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
                     GENX(3DSTATE_STENCIL_BUFFER_length) +
                     GENX(3DSTATE_HIER_DEPTH_BUFFER_length) +
                     GENX(3DSTATE_CLEAR_PARAMS_length)];
+#else
+   uint32_t packets[GENX(3DSTATE_DEPTH_BUFFER_length) +
+                    GENX(3DSTATE_STENCIL_BUFFER_length) +
+                    GENX(3DSTATE_HIER_DEPTH_BUFFER_length)];
+#endif
 };
 
 #if INTEL_NEEDS_WA_1808121037
@@ -7627,6 +7633,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       if (zres && ice->state.hiz_usage != ISL_AUX_USAGE_NONE) {
+#if GFX_VER < 20
          uint32_t *clear_params =
             cso_z->packets + ARRAY_SIZE(cso_z->packets) -
             GENX(3DSTATE_CLEAR_PARAMS_length);
@@ -7635,6 +7642,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             clear.DepthClearValueValid = true;
             clear.DepthClearValue = zres->aux.clear_color.f32[0];
          }
+#endif
       }
 
       iris_batch_emit(batch, cso_z->packets, sizeof(cso_z->packets));
