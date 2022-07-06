@@ -692,7 +692,7 @@ fold_16bit_tex_srcs(nir_builder *b, nir_tex_instr *tex,
    if (!(options->sampler_dims & BITFIELD_BIT(tex->sampler_dim)))
       return false;
 
-   bool changed = false;
+   unsigned fold_srcs = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       /* Filter out sources that should be ignored. */
       if (!(BITFIELD_BIT(tex->src[i].src_type) & options->src_types))
@@ -707,14 +707,19 @@ fold_16bit_tex_srcs(nir_builder *b, nir_tex_instr *tex,
        * because it's out of bounds and the higher bits don't
        * matter.
        */
-      if (!can_fold_16bit_src(src->ssa, src_type, false))
-         continue;
-
-      fold_16bit_src(b, &tex->instr, src, src_type);
-      changed = true;
+      if (can_fold_16bit_src(src->ssa, src_type, false))
+         fold_srcs |= (1 << i);
+      else if (options->only_fold_all)
+         return false;
    }
 
-   return changed;
+   u_foreach_bit(i, fold_srcs) {
+      nir_src *src = &tex->src[i].src;
+      nir_alu_type src_type = nir_tex_instr_src_type(tex, i) | src->ssa->bit_size;
+      fold_16bit_src(b, &tex->instr, src, src_type);
+   }
+
+   return !!fold_srcs;
 }
 
 static bool

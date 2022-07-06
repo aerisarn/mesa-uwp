@@ -5343,6 +5343,7 @@ bool nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes);
 struct nir_fold_tex_srcs_options {
    unsigned sampler_dims;
    unsigned src_types;
+   bool only_fold_all; /* Only fold sources if all of them can be folded. */
 };
 
 struct nir_fold_16bit_tex_image_options {
