@@ -505,10 +505,19 @@ zink_clear_render_target(struct pipe_context *pctx, struct pipe_surface *dst,
                          bool render_condition_enabled)
 {
    struct zink_context *ctx = zink_context(pctx);
-   zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | (render_condition_enabled ? 0 : ZINK_BLIT_NO_COND_RENDER));
-   util_blitter_clear_render_target(ctx->blitter, dst, color, dstx, dsty, width, height);
-   if (!render_condition_enabled && ctx->render_condition_active)
+   bool render_condition_active = ctx->render_condition_active;
+   if (!render_condition_enabled && render_condition_active) {
+      zink_stop_conditional_render(ctx);
+      ctx->render_condition_active = false;
+   }
+   util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+   set_clear_fb(pctx, dst, NULL);
+   struct pipe_scissor_state scissor = {dstx, dsty, dstx + width, dsty + height};
+   pctx->clear(pctx, PIPE_CLEAR_COLOR0, &scissor, color, 0, 0);
+   util_blitter_restore_fb_state(ctx->blitter);
+   if (!render_condition_enabled && render_condition_active)
       zink_start_conditional_render(ctx);
+   ctx->render_condition_active = render_condition_active;
 }
 
 void
