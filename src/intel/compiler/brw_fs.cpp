@@ -1178,13 +1178,16 @@ fs_visitor::emit_fragcoord_interpolation(fs_reg wpos)
 }
 
 enum brw_barycentric_mode
-brw_barycentric_mode(enum glsl_interp_mode mode, nir_intrinsic_op op)
+brw_barycentric_mode(nir_intrinsic_instr *intr)
 {
+   const glsl_interp_mode mode =
+      (enum glsl_interp_mode) nir_intrinsic_interp_mode(intr);
+
    /* Barycentric modes don't make sense for flat inputs. */
    assert(mode != INTERP_MODE_FLAT);
 
    unsigned bary;
-   switch (op) {
+   switch (intr->intrinsic) {
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_at_offset:
       bary = BRW_BARYCENTRIC_PERSPECTIVE_PIXEL;
@@ -7088,11 +7091,9 @@ brw_compute_barycentric_interp_modes(const struct intel_device_info *devinfo,
             if (!is_used_in_not_interp_frag_coord(&intrin->dest.ssa))
                continue;
 
-            enum glsl_interp_mode interp = (enum glsl_interp_mode)
-               nir_intrinsic_interp_mode(intrin);
             nir_intrinsic_op bary_op = intrin->intrinsic;
             enum brw_barycentric_mode bary =
-               brw_barycentric_mode(interp, bary_op);
+               brw_barycentric_mode(intrin);
 
             barycentric_interp_modes |= 1 << bary;
 
