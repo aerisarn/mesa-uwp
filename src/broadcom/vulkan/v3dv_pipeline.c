@@ -214,11 +214,6 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .lower_pack_32_2x16 = true,
    .lower_pack_32_2x16_split = true,
    .lower_unpack_32_2x16_split = true,
-   /* FIXME: see if we can avoid the uadd_carry and usub_borrow lowering and
-    * get the tests to pass since it might produce slightly better code.
-    */
-   .lower_uadd_carry = true,
-   .lower_usub_borrow = true,
    /* FIXME: check if we can use multop + umul24 to implement mul2x32_64
     * without lowering.
     */
