@@ -3014,7 +3014,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
 
    bool requires_temp_res = false;
 
-   for (uint32_t i = 0; i < info->regionCount; i++) {
+   for (uint32_t i = 0; i < info->regionCount && !requires_temp_res; i++) {
       const VkImageCopy2 *region = &info->pRegions[i];
 
       dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
