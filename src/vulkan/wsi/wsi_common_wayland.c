@@ -1314,12 +1314,18 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    chain->fifo_ready = true;
 
-   result = wsi_configure_native_image(&chain->base, pCreateInfo,
-                                       chain->num_drm_modifiers > 0 ? 1 : 0,
-                                       &chain->num_drm_modifiers,
-                                       &chain->drm_modifiers,
+   if (wsi_device->sw) {
+      result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
                                        NULL /* alloc_shm */,
                                        &chain->base.image_info);
+   } else {
+      result = wsi_configure_native_image(&chain->base, pCreateInfo,
+                                          chain->num_drm_modifiers > 0 ? 1 : 0,
+                                          &chain->num_drm_modifiers,
+                                          &chain->drm_modifiers,
+                                          NULL /* alloc_shm */,
+                                          &chain->base.image_info);
+   }
    if (result != VK_SUCCESS)
       goto fail;
 
