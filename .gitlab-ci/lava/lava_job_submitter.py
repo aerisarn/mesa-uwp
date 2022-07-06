@@ -232,7 +232,7 @@ def _call_proxy(fn, *args):
 
 
 class LAVAJob:
-    COLOR_STATUS_MAP = {"pass": CONSOLE_LOG["COLOR_GREEN"]}
+    COLOR_STATUS_MAP = {"pass": CONSOLE_LOG["FG_GREEN"]}
 
     def __init__(self, proxy, definition):
         self.job_id = None
@@ -370,7 +370,7 @@ def fetch_logs(job, max_idle_time, log_follower) -> None:
         max_idle_time_min = max_idle_time.total_seconds() / 60
         print_log(
             f"{CONSOLE_LOG['BOLD']}"
-            f"{CONSOLE_LOG['COLOR_RED']}"
+            f"{CONSOLE_LOG['FG_RED']}"
             f"No log output for {max_idle_time_min} minutes; "
             "assuming device has died, retrying"
             f"{CONSOLE_LOG['RESET']}"
@@ -446,7 +446,7 @@ def print_job_final_status(job):
     if job.status == "running":
         job.status = "hung"
 
-    color = LAVAJob.COLOR_STATUS_MAP.get(job.status, CONSOLE_LOG["COLOR_RED"])
+    color = LAVAJob.COLOR_STATUS_MAP.get(job.status, CONSOLE_LOG["FG_RED"])
     print_log(
         f"{color}"
         f"LAVA Job finished with status: {job.status}"

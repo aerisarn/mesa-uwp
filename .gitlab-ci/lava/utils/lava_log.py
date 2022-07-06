@@ -37,10 +37,9 @@ from typing import Optional, Pattern, Union
 
 from lava.exceptions import MesaCITimeoutError
 
-# Helper constants to colorize the job output
 CONSOLE_LOG = {
-    "COLOR_GREEN": "\x1b[1;32;5;197m",
-    "COLOR_RED": "\x1b[1;38;5;197m",
+    "FG_GREEN": "\x1b[1;32;5;197m",
+    "FG_RED": "\x1b[1;38;5;197m",
     "RESET": "\x1b[0m",
     "UNDERLINED": "\x1b[3m",
     "BOLD": "\x1b[1m",
@@ -76,7 +75,7 @@ class GitlabSection:
     type: LogSectionType
     start_collapsed: bool = False
     escape: str = "\x1b[0K"
-    colour: str = f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['COLOR_GREEN']}"
+    colour: str = f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['FG_GREEN']}"
     __start_time: Optional[datetime] = field(default=None, init=False)
     __end_time: Optional[datetime] = field(default=None, init=False)
 
@@ -342,7 +341,7 @@ def parse_lava_line(line) -> Optional[str]:
     if line["lvl"] in ["results", "feedback", "debug"]:
         return
     elif line["lvl"] in ["warning", "error"]:
-        prefix = CONSOLE_LOG["COLOR_RED"]
+        prefix = CONSOLE_LOG["FG_RED"]
         suffix = CONSOLE_LOG["RESET"]
     elif line["lvl"] == "input":
         prefix = "$ "
