@@ -39,24 +39,6 @@
 #include "util/u_helpers.h"
 
 static inline bool
-check_3d_layers(struct pipe_surface *psurf)
-{
-   if (psurf->texture->target != PIPE_TEXTURE_3D)
-      return true;
-   /* SPEC PROBLEM:
-    * though the vk spec doesn't seem to explicitly address this, currently drivers
-    * are claiming that all 3D images have a single "3D" layer regardless of layercount,
-    * so we can never clear them if we aren't trying to clear only layer 0
-    */
-   if (psurf->u.tex.first_layer)
-      return false;
-      
-   if (psurf->u.tex.last_layer - psurf->u.tex.first_layer > 0)
-      return false;
-   return true;
-}
-
-static inline bool
 scissor_states_equal(const struct pipe_scissor_state *a, const struct pipe_scissor_state *b)
 {
    return a->minx == b->minx && a->miny == b->miny && a->maxx == b->maxx && a->maxy == b->maxy;
@@ -135,58 +117,6 @@ clear_in_rp(struct pipe_context *pctx,
    if (ctx->fbfetch_outputs)
       ctx->base.texture_barrier(&ctx->base, PIPE_TEXTURE_BARRIER_FRAMEBUFFER);
 }
-
-static void
-clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const union pipe_color_union *pcolor, unsigned level, unsigned layer, unsigned layerCount)
-{
-   struct zink_batch *batch = &ctx->batch;
-   zink_batch_no_rp(ctx);
-   VkImageSubresourceRange range = {0};
-   range.baseMipLevel = level;
-   range.levelCount = 1;
-   range.baseArrayLayer = layer;
-   range.layerCount = layerCount;
-   range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-   VkClearColorValue color;
-   color.uint32[0] = pcolor->ui[0];
-   color.uint32[1] = pcolor->ui[1];
-   color.uint32[2] = pcolor->ui[2];
-   color.uint32[3] = pcolor->ui[3];
-
-   if (zink_is_swapchain(res)) {
-      if (!zink_kopper_acquire(ctx, res, UINT64_MAX))
-         return;
-   }
-   if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
-       zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
-      zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
-   zink_batch_reference_resource_rw(batch, res, true);
-   VKCTX(CmdClearColorImage)(batch->state->cmdbuf, res->obj->image, res->layout, &color, 1, &range);
-}
-
-static void
-clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspectFlags aspects, double depth, unsigned stencil, unsigned level, unsigned layer, unsigned layerCount)
-{
-   struct zink_batch *batch = &ctx->batch;
-   zink_batch_no_rp(ctx);
-   VkImageSubresourceRange range = {0};
-   range.baseMipLevel = level;
-   range.levelCount = 1;
-   range.baseArrayLayer = layer;
-   range.layerCount = layerCount;
-   range.aspectMask = aspects;
-
-   VkClearDepthStencilValue zs_value = {depth, stencil};
-
-   if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
-       zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
-      zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
-   zink_batch_reference_resource_rw(batch, res, true);
-   VKCTX(CmdClearDepthStencilImage)(batch->state->cmdbuf, res->obj->image, res->layout, &zs_value, 1, &range);
-}
-
-
 
 static struct zink_framebuffer_clear_data *
 get_clear_data(struct zink_context *ctx, struct zink_framebuffer_clear *fb_clear, const struct pipe_scissor_state *scissor_state)
@@ -633,69 +563,19 @@ zink_fb_clear_first_needs_explicit(struct zink_framebuffer_clear *fb_clear)
 void
 zink_fb_clear_util_unpack_clear_color(struct zink_framebuffer_clear_data *clear, enum pipe_format format, union pipe_color_union *color)
 {
-   const struct util_format_description *desc = util_format_description(format);
-   if (clear->color.srgb) {
-      /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
-       * convert this to srgb color
-       */
-      for (unsigned j = 0; j < MIN2(3, desc->nr_channels); j++) {
-         assert(desc->channel[j].normalized);
-         color->f[j] = util_format_srgb_to_linear_float(clear->color.color.f[j]);
-      }
-      color->f[3] = clear->color.color.f[3];
-   } else {
-      *color = clear->color.color;
-   }
+   *color = clear->color.color;
 }
 
 static void
 fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, int i)
 {
-   struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[i];
-   struct zink_resource *res = zink_resource(pres);
-
    if (!zink_fb_clear_enabled(ctx, i))
       return;
    if (ctx->batch.in_rp)
       zink_clear_framebuffer(ctx, BITFIELD_BIT(i));
-   else if (res->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
-      if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.cbufs[i]))
-         /* this will automatically trigger all the clears */
-         zink_batch_rp(ctx);
-      else {
-         struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
-         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-         union pipe_color_union color = clear->color.color;
-
-         if (psurf->format != psurf->texture->format) {
-            uint32_t data[4];
-            util_format_pack_rgba(psurf->format, data, color.ui, 1);
-            util_format_unpack_rgba(pres->format, color.ui, data, 1);
-         }
-
-         clear_color_no_rp(ctx, res, &color,
-                                psurf->u.tex.level, psurf->u.tex.first_layer,
-                                psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
-      }
-      zink_fb_clear_reset(ctx, i);
-      return;
-   } else {
-      if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.zsbuf))
-         /* this will automatically trigger all the clears */
-         zink_batch_rp(ctx);
-      else {
-         struct pipe_surface *psurf = ctx->fb_state.zsbuf;
-         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-         VkImageAspectFlags aspects = 0;
-         if (clear->zs.bits & PIPE_CLEAR_DEPTH)
-            aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-         if (clear->zs.bits & PIPE_CLEAR_STENCIL)
-            aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-         clear_zs_no_rp(ctx, res, aspects, clear->zs.depth, clear->zs.stencil,
-                             psurf->u.tex.level, psurf->u.tex.first_layer,
-                             psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
-      }
-   }
+   else
+      /* this will automatically trigger all the clears */
+      zink_batch_rp(ctx);
    zink_fb_clear_reset(ctx, i);
 }
 
