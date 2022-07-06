@@ -534,8 +534,9 @@ zink_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *dst,
    struct u_rect rect = {dstx, dstx + width, dsty, dsty + height};
    bool needs_rp = !zink_blit_region_fills(rect, dst->texture->width0, dst->texture->height0);
    needs_rp |= check_3d_layers(dst);
+   bool cur_attachment = zink_csurface(ctx->fb_state.zsbuf) == zink_csurface(dst);
    bool render_condition_active = ctx->render_condition_active;
-   if (res->fb_binds) { //current depth attachment
+   if (cur_attachment) { //current depth attachment
       struct pipe_scissor_state scissor = {dstx, dsty, dstx + width, dsty + height};
       if (!render_condition_enabled && render_condition_active) {
          zink_stop_conditional_render(ctx);
