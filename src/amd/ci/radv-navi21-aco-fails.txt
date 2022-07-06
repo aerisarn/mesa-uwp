@@ -9,3 +9,15 @@ dEQP-VK.rasterization.rasterization_order_attachment_access.stencil.samples_8.mu
 # Those cases crash in spirv to nir.
 dEQP-VK.ray_query.advanced.using_wrapper_function.comp.triangles,Crash
 dEQP-VK.ray_query.advanced.using_wrapper_function.comp.aabbs,Crash
+
+# New fails in CTS 1.3.3.0
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.copy_within_pipeline.cpu.access_sbt_read,Crash
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.copy_within_pipeline.cpu.stage_all_transfer,Crash
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.copy_within_pipeline.cpu.stage_as_copy_bit,Crash
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.copy_within_pipeline.gpu.access_sbt_read,Crash
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.copy_within_pipeline.gpu.stage_all_transfer,Crash
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.copy_within_pipeline.gpu.stage_as_copy_bit,Crash
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.query_pool_results.cpu.buffer.size,Fail
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.query_pool_results.cpu.memory.size,Fail
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.query_pool_results.gpu.buffer.size,Fail
+dEQP-VK.ray_tracing_pipeline.acceleration_structures.query_pool_results.gpu.memory.size,Fail
