@@ -1734,6 +1734,13 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
    if (result != VK_SUCCESS)
       goto fail;
 
+   if (stages[MESA_SHADER_MESH].info && stages[MESA_SHADER_FRAGMENT].info) {
+      anv_apply_per_prim_attr_wa(stages[MESA_SHADER_MESH].nir,
+                                 stages[MESA_SHADER_FRAGMENT].nir,
+                                 device,
+                                 info);
+   }
+
    /* Walk backwards to link */
    struct anv_pipeline_stage *next_stage = NULL;
    for (int i = ARRAY_SIZE(graphics_shader_order) - 1; i >= 0; i--) {

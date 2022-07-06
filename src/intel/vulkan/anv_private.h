@@ -1031,6 +1031,7 @@ struct anv_instance {
     struct driOptionCache                       dri_options;
     struct driOptionCache                       available_dri_options;
 
+    int                                         mesh_conv_prim_attrs_to_vert_attrs;
     /**
      * Workarounds for game bugs.
      */
@@ -4192,6 +4193,11 @@ void anv_perf_write_pass_results(struct intel_perf_config *perf,
                                  struct anv_query_pool *pool, uint32_t pass,
                                  const struct intel_perf_query_result *accumulated_results,
                                  union VkPerformanceCounterResultKHR *results);
+
+void anv_apply_per_prim_attr_wa(struct nir_shader *ms_nir,
+                                struct nir_shader *fs_nir,
+                                struct anv_device *device,
+                                const VkGraphicsPipelineCreateInfo *info);
 
 /* Use to emit a series of memcpy operations */
 struct anv_memcpy_state {
