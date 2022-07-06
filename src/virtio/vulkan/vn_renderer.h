@@ -42,6 +42,15 @@ struct vn_renderer_sync {
 
 struct vn_renderer_info {
    struct {
+      bool has_primary;
+      int primary_major;
+      int primary_minor;
+      bool has_render;
+      int render_major;
+      int render_minor;
+   } drm;
+
+   struct {
       uint16_t vendor_id;
       uint16_t device_id;
 

@@ -928,6 +928,8 @@ vn_physical_device_get_native_extensions(
    exts->KHR_swapchain_mutable_format = true;
 #endif
 #endif /* ANDROID */
+
+   exts->EXT_physical_device_drm = true;
 }
 
 static void
@@ -1893,6 +1895,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceConservativeRasterizationPropertiesEXT
          *conservative_rasterization;
       VkPhysicalDeviceCustomBorderColorPropertiesEXT *custom_border_color;
+      VkPhysicalDeviceDrmPropertiesEXT *drm;
       VkPhysicalDeviceLineRasterizationPropertiesEXT *line_rasterization;
       VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
       VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
@@ -2094,6 +2097,20 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
          *u.custom_border_color = props->custom_border_color;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT:
+         u.drm->hasPrimary =
+            physical_dev->instance->renderer->info.drm.has_primary;
+         u.drm->primaryMajor =
+            physical_dev->instance->renderer->info.drm.primary_major;
+         u.drm->primaryMinor =
+            physical_dev->instance->renderer->info.drm.primary_minor;
+         u.drm->hasRender =
+            physical_dev->instance->renderer->info.drm.has_render;
+         u.drm->renderMajor =
+            physical_dev->instance->renderer->info.drm.render_major;
+         u.drm->renderMinor =
+            physical_dev->instance->renderer->info.drm.render_minor;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT:
          *u.line_rasterization = props->line_rasterization;
