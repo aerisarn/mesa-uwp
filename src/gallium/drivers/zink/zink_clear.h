@@ -36,7 +36,6 @@ struct zink_framebuffer_clear_data {
    union {
       struct {
          union pipe_color_union color;
-         bool srgb;
       } color;
       struct {
          float depth;

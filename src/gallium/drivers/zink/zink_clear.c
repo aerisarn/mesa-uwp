@@ -244,8 +244,6 @@ zink_clear(struct pipe_context *pctx,
                clear->scissor = *scissor_state;
             for (unsigned i = 0; i < 4; i++)
                clamp_color(desc, &clear->color.color, pcolor, i);
-            clear->color.srgb = psurf->format != psurf->texture->format &&
-                                !util_format_is_srgb(psurf->format) && util_format_is_srgb(psurf->texture->format);
             if (zink_fb_clear_first_needs_explicit(fb_clear))
                ctx->rp_clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
             else
