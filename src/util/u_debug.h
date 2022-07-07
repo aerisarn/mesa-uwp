@@ -204,34 +204,6 @@ debug_get_num_option(const char *name, long dfault);
 void
 debug_get_version_option(const char *name, unsigned *major, unsigned *minor);
 
-#ifdef _MSC_VER
-__declspec(noreturn)
-#endif
-void _debug_assert_fail(const char *expr,
-                        const char *file,
-                        unsigned line,
-                        const char *function)
-#if defined(__GNUC__) && !defined(DEBUG)
-   __attribute__((noreturn))
-#endif
-;
-
-
-/**
- * Assert macro
- *
- * Do not expect that the assert call terminates -- errors must be handled
- * regardless of assert behavior.
- *
- * For non debug builds the assert macro will expand to a no-op, so do not
- * call functions with side effects in the assert expression.
- */
-#ifndef NDEBUG
-#define debug_assert(expr) ((expr) ? (void)0 : _debug_assert_fail(#expr, __FILE__, __LINE__, __FUNCTION__))
-#else
-#define debug_assert(expr) (void)(0 && (expr))
-#endif
-
 
 /**
  * Output the current function name.

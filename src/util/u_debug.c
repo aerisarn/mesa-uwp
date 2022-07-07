@@ -327,16 +327,6 @@ debug_get_flags_option(const char *name,
 }
 
 
-void
-_debug_assert_fail(const char *expr, const char *file, unsigned line,
-                   const char *function)
-{
-   _debug_printf("%s:%u:%s: Assertion `%s' failed.\n",
-                 file, line, function, expr);
-   os_abort();
-}
-
-
 const char *
 debug_dump_enum(const struct debug_named_value *names,
                 unsigned long value)
