@@ -250,23 +250,29 @@ void fs_visitor::calculate_payload_ranges(unsigned payload_node_count,
        */
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file == FIXED_GRF) {
-            unsigned node_nr = inst->src[i].nr;
-            if (node_nr >= payload_node_count)
+            unsigned reg_nr = inst->src[i].nr;
+            if (reg_nr / reg_unit(devinfo) >= payload_node_count)
                continue;
 
-            for (unsigned j = 0; j < regs_read(inst, i); j++) {
-               payload_last_use_ip[node_nr + j] = use_ip;
-               assert(node_nr + j < payload_node_count);
+            for (unsigned j = reg_nr / reg_unit(devinfo);
+                 j < DIV_ROUND_UP(reg_nr + regs_read(inst, i),
+                                  reg_unit(devinfo));
+                 j++) {
+               payload_last_use_ip[j] = use_ip;
+               assert(j < payload_node_count);
             }
          }
       }
 
       if (inst->dst.file == FIXED_GRF) {
-         unsigned node_nr = inst->dst.nr;
-         if (node_nr < payload_node_count) {
-            for (unsigned j = 0; j < regs_written(inst); j++) {
-               payload_last_use_ip[node_nr + j] = use_ip;
-               assert(node_nr + j < payload_node_count);
+         unsigned reg_nr = inst->dst.nr;
+         if (reg_nr / reg_unit(devinfo) < payload_node_count) {
+            for (unsigned j = reg_nr / reg_unit(devinfo);
+                 j < DIV_ROUND_UP(reg_nr + regs_written(inst),
+                                  reg_unit(devinfo));
+                 j++) {
+               payload_last_use_ip[j] = use_ip;
+               assert(j < payload_node_count);
             }
          }
       }
