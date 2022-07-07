@@ -8120,13 +8120,22 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_load_barycentric_at_sample: {
+      Temp bary = get_interp_param(ctx, instr->intrinsic, (glsl_interp_mode)nir_intrinsic_interp_mode(instr));
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       uint32_t sample_pos_offset = RING_PS_SAMPLE_POSITIONS * 16;
-      switch (ctx->options->key.ps.num_samples) {
-      case 2: sample_pos_offset += 1 << 3; break;
-      case 4: sample_pos_offset += 3 << 3; break;
-      case 8: sample_pos_offset += 7 << 3; break;
-      default: break;
+      if (ctx->options->key.ps.num_samples == 2) {
+         sample_pos_offset += 1 << 3;
+      } else if (ctx->options->key.ps.num_samples == 4) {
+         sample_pos_offset += 3 << 3;
+      } else if (ctx->options->key.ps.num_samples == 8) {
+         sample_pos_offset += 7 << 3;
+      } else {
+         assert(ctx->options->key.ps.num_samples == 0);
+         bld.copy(Definition(dst), bary);
+         emit_split_vector(ctx, dst, 2);
+         break;
       }
+
       Temp sample_pos;
       Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
       nir_const_value* const_addr = nir_src_as_const_value(instr->src[0]);
@@ -8211,8 +8220,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       pos1 = bld.vop2_e64(aco_opcode::v_sub_f32, bld.def(v1), pos1, Operand::c32(0x3f000000u));
       pos2 = bld.vop2_e64(aco_opcode::v_sub_f32, bld.def(v1), pos2, Operand::c32(0x3f000000u));
 
-      Temp bary = get_interp_param(ctx, instr->intrinsic, (glsl_interp_mode)nir_intrinsic_interp_mode(instr));
-      emit_interp_center(ctx, get_ssa_temp(ctx, &instr->dest.ssa), bary, pos1, pos2);
+      emit_interp_center(ctx, dst, bary, pos1, pos2);
       break;
    }
    case nir_intrinsic_load_barycentric_at_offset: {
