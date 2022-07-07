@@ -35,6 +35,7 @@
 #include <assert.h>
 #include "util/debug.h"
 #include "kopper_interface.h"
+#include "loader_dri_helper.h"
 
 static int xshm_error = 0;
 static int xshm_opcode = -1;
@@ -706,7 +707,9 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    if (kopper) {
       pdp->driDrawable =
          (*kopper->createNewDrawable) (psc->driScreen, config->driConfig, pdp, !(type & GLX_WINDOW_BIT));
-      pdp->swapInterval = 1;
+
+      pdp->swapInterval = dri_get_initial_swap_interval(psc->driScreen, psc->config);
+      psc->kopper->setSwapInterval(pdp->driDrawable, pdp->swapInterval);
    }
    else
       pdp->driDrawable =
@@ -845,6 +848,9 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
       }
       if (strcmp(extensions[i]->name, __DRI2_FLUSH) == 0)
          psc->f = (__DRI2flushExtension *) extensions[i];
+      if ((strcmp(extensions[i]->name, __DRI2_CONFIG_QUERY) == 0))
+         psc->config = (__DRI2configQueryExtension *) extensions[i];
+
    }
 
    if (psc->kopper) {
@@ -893,6 +899,9 @@ kopperSetSwapInterval(__GLXDRIdrawable *pdraw, int interval)
 {
    struct drisw_drawable *pdp = (struct drisw_drawable *) pdraw;
    struct drisw_screen *psc = (struct drisw_screen *) pdp->base.psc;
+
+   if (!dri_valid_swap_interval(psc->driScreen, psc->config, interval))
+      return GLX_BAD_VALUE;
 
    psc->kopper->setSwapInterval(pdp->driDrawable, interval);
    pdp->swapInterval = interval;
