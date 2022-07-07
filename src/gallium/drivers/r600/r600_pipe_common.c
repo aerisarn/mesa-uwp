@@ -1137,8 +1137,8 @@ static void r600_query_memory_info(struct pipe_screen *screen,
 	struct radeon_winsys *ws = rscreen->ws;
 	unsigned vram_usage, gtt_usage;
 
-	info->total_device_memory = rscreen->info.vram_size / 1024;
-	info->total_staging_memory = rscreen->info.gart_size / 1024;
+	info->total_device_memory = rscreen->info.vram_size_kb;
+	info->total_staging_memory = rscreen->info.gart_size_kb;
 
 	/* The real TTM memory usage is somewhat random, because:
 	 *
@@ -1286,9 +1286,9 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		printf("gfx_level = %i\n", rscreen->info.gfx_level);
 		printf("pte_fragment_size = %u\n", rscreen->info.pte_fragment_size);
 		printf("gart_page_size = %u\n", rscreen->info.gart_page_size);
-		printf("gart_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.gart_size, 1024*1024));
-		printf("vram_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.vram_size, 1024*1024));
-		printf("vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.vram_vis_size, 1024*1024));
+		printf("gart_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.gart_size_kb, 1024));
+		printf("vram_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.vram_size_kb, 1024));
+		printf("vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(rscreen->info.vram_vis_size_kb, 1024));
 		printf("max_heap_size = %i MB\n",
 		       (int)DIV_ROUND_UP(rscreen->info.max_heap_size_kb, 1024));
 		printf("min_alloc_size = %u\n", rscreen->info.min_alloc_size);

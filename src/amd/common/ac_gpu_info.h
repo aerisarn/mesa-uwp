@@ -126,9 +126,7 @@ struct radeon_info {
    uint32_t gart_page_size;
    uint32_t gart_size_kb;
    uint32_t vram_size_kb;
-   uint64_t gart_size;
-   uint64_t vram_size;
-   uint64_t vram_vis_size;
+   uint64_t vram_vis_size_kb;
    uint32_t vram_type;
    uint32_t max_heap_size_kb;
    uint32_t min_alloc_size;

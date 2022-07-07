@@ -360,17 +360,14 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
               retval);
       return false;
    }
-   ws->info.gart_size = gem_info.gart_size;
-   ws->info.vram_size = gem_info.vram_size;
-   ws->info.vram_vis_size = gem_info.vram_visible;
+   ws->info.gart_size_kb = DIV_ROUND_UP(gem_info.gart_size, 1024);
+   ws->info.vram_size_kb = DIV_ROUND_UP(gem_info.vram_size, 1024);
+   ws->info.vram_vis_size_kb = DIV_ROUND_UP(gem_info.vram_visible, 1024);
    /* Older versions of the kernel driver reported incorrect values, and
     * didn't support more than 256MB of visible VRAM anyway
     */
    if (ws->info.drm_minor < 49)
-      ws->info.vram_vis_size = MIN2(ws->info.vram_vis_size, 256*1024*1024);
-
-   ws->info.gart_size_kb = DIV_ROUND_UP(ws->info.gart_size, 1024);
-   ws->info.vram_size_kb = DIV_ROUND_UP(ws->info.vram_size, 1024);
+      ws->info.vram_vis_size_kb = MIN2(ws->info.vram_vis_size_kb, 256*1024);
 
    /* Radeon allocates all buffers contiguously, which makes large allocations
     * unlikely to succeed. */
@@ -859,7 +856,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
 
    pb_cache_init(&ws->bo_cache, RADEON_NUM_HEAPS,
                  500000, ws->check_vm ? 1.0f : 2.0f, 0,
-                 MIN2(ws->info.vram_size, ws->info.gart_size), NULL,
+                 (uint64_t)MIN2(ws->info.vram_size_kb, ws->info.gart_size_kb) * 1024, NULL,
                  radeon_bo_destroy,
                  radeon_bo_can_reclaim);
 

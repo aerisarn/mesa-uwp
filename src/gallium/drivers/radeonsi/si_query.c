@@ -1885,19 +1885,19 @@ static int si_get_driver_query_info(struct pipe_screen *screen, unsigned index,
    case SI_QUERY_VRAM_USAGE:
    case SI_QUERY_MAPPED_VRAM:
    case SI_QUERY_SLAB_WASTED_VRAM:
-      info->max_value.u64 = sscreen->info.vram_size;
+      info->max_value.u64 = (uint64_t)sscreen->info.vram_size_kb * 1024;
       break;
    case SI_QUERY_REQUESTED_GTT:
    case SI_QUERY_GTT_USAGE:
    case SI_QUERY_MAPPED_GTT:
    case SI_QUERY_SLAB_WASTED_GTT:
-      info->max_value.u64 = sscreen->info.gart_size;
+      info->max_value.u64 = (uint64_t)sscreen->info.gart_size_kb * 1024;
       break;
    case SI_QUERY_GPU_TEMPERATURE:
       info->max_value.u64 = 125;
       break;
    case SI_QUERY_VRAM_VIS_USAGE:
-      info->max_value.u64 = sscreen->info.vram_vis_size;
+      info->max_value.u64 = (uint64_t)sscreen->info.vram_vis_size_kb * 1024;
       break;
    }
 

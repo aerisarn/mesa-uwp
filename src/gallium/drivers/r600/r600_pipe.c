@@ -522,7 +522,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_ACCELERATED:
 		return 1;
 	case PIPE_CAP_VIDEO_MEMORY:
-		return rscreen->b.info.vram_size >> 20;
+		return rscreen->b.info.vram_size_kb >> 10;
 	case PIPE_CAP_UMA:
 		return 0;
 	case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:

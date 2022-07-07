@@ -487,7 +487,7 @@ static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
    chunk->ce_ram_size_compute = 0;
 
    chunk->vram_bus_width = rad_info->memory_bus_width;
-   chunk->vram_size = rad_info->vram_size;
+   chunk->vram_size = (uint64_t)rad_info->vram_size_kb * 1024;
    chunk->l2_cache_size = rad_info->l2_cache_size;
    chunk->l1_cache_size = rad_info->l1_cache_size;
    chunk->lds_size = rad_info->lds_size_per_workgroup;

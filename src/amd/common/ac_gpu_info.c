@@ -654,9 +654,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       }
 
       /* Note: usable_heap_size values can be random and can't be relied on. */
-      info->gart_size = meminfo.gtt.total_heap_size;
-      info->vram_size = fix_vram_size(meminfo.vram.total_heap_size);
-      info->vram_vis_size = meminfo.cpu_accessible_vram.total_heap_size;
+      info->gart_size_kb = DIV_ROUND_UP(meminfo.gtt.total_heap_size, 1024);
+      info->vram_size_kb = DIV_ROUND_UP(fix_vram_size(meminfo.vram.total_heap_size), 1024);
+      info->vram_vis_size_kb = DIV_ROUND_UP(meminfo.cpu_accessible_vram.total_heap_size, 1024);
    } else {
       /* This is a deprecated interface, which reports usable sizes
        * (total minus pinned), but the pinned size computation is
@@ -684,13 +684,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          return false;
       }
 
-      info->gart_size = gtt.heap_size;
-      info->vram_size = fix_vram_size(vram.heap_size);
-      info->vram_vis_size = vram_vis.heap_size;
+      info->gart_size_kb = DIV_ROUND_UP(gtt.heap_size, 1024);
+      info->vram_size_kb = DIV_ROUND_UP(fix_vram_size(vram.heap_size), 1024);
+      info->vram_vis_size_kb = DIV_ROUND_UP(vram_vis.heap_size, 1024);
    }
-
-   info->gart_size_kb = MIN2(DIV_ROUND_UP(info->gart_size, 1024), UINT32_MAX);
-   info->vram_size_kb = MIN2(DIV_ROUND_UP(info->vram_size, 1024), UINT32_MAX);
 
    if (info->drm_minor >= 41) {
       amdgpu_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_DECODE,
@@ -700,7 +697,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    /* Add some margin of error, though this shouldn't be needed in theory. */
-   info->all_vram_visible = info->vram_size * 0.9 < info->vram_vis_size;
+   info->all_vram_visible = info->vram_size_kb * 0.9 < info->vram_vis_size_kb;
 
    /* Set chip identification. */
    info->pci_id = amdinfo->asic_id; /* TODO: is this correct? */
@@ -931,7 +928,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          info->num_tcc_blocks = info->max_tcc_blocks - util_bitcount64(device_info.tcc_disabled_mask);
       } else {
          /* This is a hack, but it's all we can do without a kernel upgrade. */
-         info->num_tcc_blocks = info->vram_size / (512 * 1024 * 1024);
+         info->num_tcc_blocks = info->vram_size_kb / (512 * 1024);
          if (info->num_tcc_blocks > info->max_tcc_blocks)
             info->num_tcc_blocks /= 2;
       }
@@ -1451,9 +1448,9 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "Memory info:\n");
    fprintf(f, "    pte_fragment_size = %u\n", info->pte_fragment_size);
    fprintf(f, "    gart_page_size = %u\n", info->gart_page_size);
-   fprintf(f, "    gart_size = %i MB\n", (int)DIV_ROUND_UP(info->gart_size, 1024 * 1024));
-   fprintf(f, "    vram_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_size, 1024 * 1024));
-   fprintf(f, "    vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_vis_size, 1024 * 1024));
+   fprintf(f, "    gart_size = %i MB\n", (int)DIV_ROUND_UP(info->gart_size_kb, 1024));
+   fprintf(f, "    vram_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_size_kb, 1024));
+   fprintf(f, "    vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_vis_size_kb, 1024));
    fprintf(f, "    vram_type = %i\n", info->vram_type);
    fprintf(f, "    max_heap_size_kb = %i MB\n", (int)DIV_ROUND_UP(info->max_heap_size_kb, 1024));
    fprintf(f, "    min_alloc_size = %u\n", info->min_alloc_size);

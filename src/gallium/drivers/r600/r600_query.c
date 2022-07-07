@@ -2058,18 +2058,18 @@ static int r600_get_driver_query_info(struct pipe_screen *screen,
 	case R600_QUERY_REQUESTED_VRAM:
 	case R600_QUERY_VRAM_USAGE:
 	case R600_QUERY_MAPPED_VRAM:
-		info->max_value.u64 = rscreen->info.vram_size;
+		info->max_value.u64 = (uint64_t)rscreen->info.vram_size_kb * 1024;
 		break;
 	case R600_QUERY_REQUESTED_GTT:
 	case R600_QUERY_GTT_USAGE:
 	case R600_QUERY_MAPPED_GTT:
-		info->max_value.u64 = rscreen->info.gart_size;
+		info->max_value.u64 = (uint64_t)rscreen->info.gart_size_kb * 1024;
 		break;
 	case R600_QUERY_GPU_TEMPERATURE:
 		info->max_value.u64 = 125;
 		break;
 	case R600_QUERY_VRAM_VIS_USAGE:
-		info->max_value.u64 = rscreen->info.vram_vis_size;
+		info->max_value.u64 = (uint64_t)rscreen->info.vram_vis_size_kb * 1024;
 		break;
 	}
 

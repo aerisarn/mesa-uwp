@@ -511,7 +511,7 @@ struct pipe_context* r300_create_context(struct pipe_screen* screen,
 #endif
         fprintf(stderr,
                 "r300: DRM version: %d.%d.%d, Name: %s, ID: 0x%04x, GB: %d, Z: %d\n"
-                "r300: GART size: %"PRIu64" MB, VRAM size: %"PRIu64" MB\n"
+                "r300: GART size: %u MB, VRAM size: %u MB\n"
                 "r300: AA compression RAM: %s, Z compression RAM: %s, HiZ RAM: %s\n",
                 r300->screen->info.drm_major,
                 r300->screen->info.drm_minor,
@@ -520,8 +520,8 @@ struct pipe_context* r300_create_context(struct pipe_screen* screen,
                 r300->screen->info.pci_id,
                 r300->screen->info.r300_num_gb_pipes,
                 r300->screen->info.r300_num_z_pipes,
-                r300->screen->info.gart_size >> 20,
-                r300->screen->info.vram_size >> 20,
+                r300->screen->info.gart_size_kb >> 10,
+                r300->screen->info.vram_size_kb >> 10,
                 "YES", /* XXX really? */
                 r300->screen->caps.zmask_ram ? "YES" : "NO",
                 r300->screen->caps.hiz_ram ? "YES" : "NO");

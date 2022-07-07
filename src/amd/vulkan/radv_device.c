@@ -164,21 +164,21 @@ radv_get_adjusted_vram_size(struct radv_physical_device *device)
 {
    int ov = driQueryOptioni(&device->instance->dri_options, "override_vram_size");
    if (ov >= 0)
-      return MIN2(device->rad_info.vram_size, (uint64_t)ov << 20);
-   return device->rad_info.vram_size;
+      return MIN2((uint64_t)device->rad_info.vram_size_kb * 1024, (uint64_t)ov << 20);
+   return (uint64_t)device->rad_info.vram_size_kb * 1024;
 }
 
 static uint64_t
 radv_get_visible_vram_size(struct radv_physical_device *device)
 {
-   return MIN2(radv_get_adjusted_vram_size(device), device->rad_info.vram_vis_size);
+   return MIN2(radv_get_adjusted_vram_size(device), (uint64_t)device->rad_info.vram_vis_size_kb * 1024);
 }
 
 static uint64_t
 radv_get_vram_size(struct radv_physical_device *device)
 {
    uint64_t total_size = radv_get_adjusted_vram_size(device);
-   return total_size - MIN2(total_size, device->rad_info.vram_vis_size);
+   return total_size - MIN2(total_size, (uint64_t)device->rad_info.vram_vis_size_kb * 1024);
 }
 
 enum radv_heap {
@@ -193,7 +193,7 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 {
    uint64_t visible_vram_size = radv_get_visible_vram_size(device);
    uint64_t vram_size = radv_get_vram_size(device);
-   uint64_t gtt_size = device->rad_info.gart_size;
+   uint64_t gtt_size = (uint64_t)device->rad_info.gart_size_kb * 1024;
    int vram_index = -1, visible_vram_index = -1, gart_index = -1;
 
    device->memory_properties.memoryHeapCount = 0;

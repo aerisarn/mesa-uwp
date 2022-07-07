@@ -393,7 +393,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEVICE_ID:
       return sscreen->info.pci_id;
    case PIPE_CAP_VIDEO_MEMORY:
-      return sscreen->info.vram_size >> 20;
+      return sscreen->info.vram_size_kb >> 10;
    case PIPE_CAP_PCI_GROUP:
       return sscreen->info.pci_domain;
    case PIPE_CAP_PCI_BUS:

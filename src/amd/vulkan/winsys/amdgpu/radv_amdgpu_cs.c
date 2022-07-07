@@ -213,7 +213,7 @@ radv_amdgpu_cs_domain(const struct radeon_winsys *_ws)
    const struct radv_amdgpu_winsys *ws = (const struct radv_amdgpu_winsys *)_ws;
 
    bool enough_vram = ws->info.all_vram_visible ||
-                      p_atomic_read_relaxed(&ws->allocated_vram_vis) * 2 <= ws->info.vram_vis_size;
+                      p_atomic_read_relaxed(&ws->allocated_vram_vis) * 2 <= (uint64_t)ws->info.vram_vis_size_kb * 1024;
    bool use_sam =
       (enough_vram && ws->info.has_dedicated_vram && !(ws->perftest & RADV_PERFTEST_NO_SAM)) ||
       (ws->perftest & RADV_PERFTEST_SAM);
