@@ -1501,8 +1501,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .lineWidthGranularity                     = 0.0f,
       .strictLines                              = 0,
       .standardSampleLocations                  = false,
-      .optimalBufferCopyOffsetAlignment         = 1,
-      .optimalBufferCopyRowPitchAlignment       = 1,
+      .optimalBufferCopyOffsetAlignment         = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
+      .optimalBufferCopyRowPitchAlignment       = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT,
       .nonCoherentAtomSize                      = 256,
    };
 
