@@ -488,11 +488,30 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
                             entry->dst, entry->size_written))
       return false;
 
-   /* Avoid propagating a FIXED_GRF register into an EOT instruction in order
-    * for any register allocation restrictions to be applied.
+   /* Send messages with EOT set are restricted to use g112-g127 (and we
+    * sometimes need g127 for other purposes), so avoid copy propagating
+    * anything that would make it impossible to satisfy that restriction.
     */
-   if (entry->src.file == FIXED_GRF && inst->eot)
-      return false;
+   if (inst->eot) {
+      /* Avoid propagating a FIXED_GRF register, as that's already pinned. */
+      if (entry->src.file == FIXED_GRF)
+         return false;
+
+      /* We might be propagating from a large register, while the SEND only
+       * is reading a portion of it (say the .A channel in an RGBA value).
+       * We need to pin both split SEND sources in g112-g126/127, so only
+       * allow this if the registers aren't too large.
+       */
+      if (inst->opcode == SHADER_OPCODE_SEND && entry->src.file == VGRF) {
+         int other_src = arg == 2 ? 3 : 2;
+         unsigned other_size = inst->src[other_src].file == VGRF ?
+                               alloc.sizes[inst->src[other_src].nr] :
+                               inst->size_read(other_src);
+         unsigned prop_src_size = alloc.sizes[entry->src.nr];
+         if (other_size + prop_src_size > 15)
+            return false;
+      }
+   }
 
    /* Avoid propagating odd-numbered FIXED_GRF registers into the first source
     * of a LINTERP instruction on platforms where the PLN instruction has
