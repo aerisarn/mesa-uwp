@@ -195,12 +195,12 @@
       when: never
     - !reference [.freedreno-rules, rules]
 
-# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
-# rules duplication manually
-.freedreno-rules-performance:
-  stage: freedreno
+# Rules for GL driver performance tracking.  We want them to run as code is
+# merged to main, but we don't want them to block marge.  So, they need to have
+# only when: never or when: manual, and a separate script maintained by
+# Collabora triggers the manual job after merge to main.
+.gl-rules-performance:
   rules:
-    - !reference [.freedreno-farm-rules, rules]
     - !reference [.no_scheduled_pipelines-rules, rules]
     # Run only on pre-merge pipelines from Marge
     - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
@@ -211,9 +211,14 @@
     - changes:
         *gallium_core_file_list
       when: manual
-    - changes:
-        *vulkan_file_list
-      when: manual
+
+# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
+# rules duplication manually
+.freedreno-rules-performance:
+  stage: freedreno
+  rules:
+    - !reference [.freedreno-farm-rules, rules]
+    - !reference [.gl-rules-performance, rules]
     - changes:
         *freedreno_core_file_list
       when: manual
@@ -335,16 +340,14 @@
       - src/gallium/winsys/virgl/**/*
       when: on_success
 
-# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
-# rules duplication manually
+# Unfortunately we can't sed the on_success from another rules set, so we have
+# to do duplicate the files lists to set the job to manual (see
+# .gl-rules-performance)
 .virgl-iris-rules-performance:
   stage: layered-backends
   rules:
     - !reference [.collabora-farm-rules, rules]
-    # Run only on pre-merge pipelines from Marge
-    - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
-      when: never
-    - !reference [.gl-rules, rules]
+    - !reference [.gl-rules-performance, rules]
     - changes:
         *llvmpipe_file_list
       when: manual
@@ -412,17 +415,14 @@
       - src/intel/**/*
       when: on_success
 
-# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
-# rules duplication manually
+# Unfortunately we can't sed the on_success from another rules set, so we have
+# to do duplicate the files lists to set the job to manual (see
+# .gl-rules-performance)
 .iris-rules-performance:
   stage: intel
   rules:
-    - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
-    # Run only on pre-merge pipelines from Marge
-    - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
-      when: never
-    - !reference [.gl-rules, rules]
+    - !reference [.gl-rules-performance, rules]
     - changes:
         *iris_file_list
       when: manual
