@@ -1314,9 +1314,6 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
    const struct wsi_device *wsi = chain->wsi;
    VkResult result;
 
-   uint32_t linear_size = info->linear_stride * info->create.extent.height;
-   linear_size = ALIGN_POT(linear_size, info->size_align);
-
    const VkExternalMemoryBufferCreateInfo buffer_external_info = {
       .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO,
       .pNext = NULL,
@@ -1325,7 +1322,7 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
    const VkBufferCreateInfo buffer_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .pNext = &buffer_external_info,
-      .size = linear_size,
+      .size = info->linear_size,
       .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    };
@@ -1336,7 +1333,7 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
 
    VkMemoryRequirements reqs;
    wsi->GetBufferMemoryRequirements(chain->device, image->buffer.buffer, &reqs);
-   assert(reqs.size <= linear_size);
+   assert(reqs.size <= info->linear_size);
 
    const struct wsi_memory_allocate_info memory_wsi_info = {
       .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
@@ -1357,7 +1354,7 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
    const VkMemoryAllocateInfo buf_mem_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .pNext = &buf_mem_dedicated_info,
-      .allocationSize = linear_size,
+      .allocationSize = info->linear_size,
       .memoryTypeIndex =
          info->select_buffer_memory_type(wsi, reqs.memoryTypeBits),
    };
@@ -1393,7 +1390,7 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
       return result;
 
    image->num_planes = 1;
-   image->sizes[0] = linear_size;
+   image->sizes[0] = info->linear_size;
    image->row_pitches[0] = info->linear_stride;
    image->offsets[0] = 0;
 
@@ -1504,8 +1501,12 @@ wsi_finish_create_buffer_image(const struct wsi_swapchain *chain,
 VkResult
 wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
                            const VkSwapchainCreateInfoKHR *pCreateInfo,
+                           uint32_t stride_align, uint32_t size_align,
                            struct wsi_image_info *info)
 {
+   assert(util_is_power_of_two_nonzero(stride_align));
+   assert(util_is_power_of_two_nonzero(size_align));
+
    VkResult result = wsi_configure_image(chain, pCreateInfo,
                                          0 /* handle_types */, info);
    if (result != VK_SUCCESS)
@@ -1513,6 +1514,14 @@ wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
 
    info->create.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
    info->wsi.buffer_blit_src = true;
+
+   const uint32_t cpp = vk_format_get_blocksize(pCreateInfo->imageFormat);
+   info->linear_stride = pCreateInfo->imageExtent.width * cpp;
+   info->linear_stride = ALIGN_POT(info->linear_stride, stride_align);
+
+   info->linear_size = info->linear_stride * pCreateInfo->imageExtent.height;
+   info->linear_size = ALIGN_POT(info->linear_size, size_align);
+
    info->finish_create = wsi_finish_create_buffer_image;
 
    return VK_SUCCESS;

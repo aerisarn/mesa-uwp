@@ -27,7 +27,6 @@
 #include "util/os_file.h"
 #include "util/xmlconfig.h"
 #include "vk_device.h"
-#include "vk_format.h"
 #include "vk_physical_device.h"
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
@@ -597,16 +596,13 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
                           struct wsi_image_info *info)
 {
    VkResult result =
-      wsi_configure_buffer_image(chain, pCreateInfo, info);
+      wsi_configure_buffer_image(chain, pCreateInfo,
+                                 WSI_PRIME_LINEAR_STRIDE_ALIGN, 4096,
+                                 info);
    if (result != VK_SUCCESS)
       return result;
 
    info->prime_use_linear_modifier = use_modifier;
-
-   const uint32_t cpp = vk_format_get_blocksize(info->create.format);
-   info->linear_stride = ALIGN_POT(info->create.extent.width * cpp,
-                                   WSI_PRIME_LINEAR_STRIDE_ALIGN);
-   info->size_align = 4096;
 
    info->create_mem = wsi_create_prime_image_mem;
    info->select_buffer_memory_type = prime_select_buffer_memory_type;

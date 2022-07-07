@@ -47,7 +47,9 @@ struct wsi_image_info {
 
    /* For buffer blit images, the linear stride in bytes */
    uint32_t linear_stride;
-   uint32_t size_align;
+
+   /* For buffer blit images, the size of the buffer in bytes */
+   uint32_t linear_size;
 
    uint32_t (*select_image_memory_type)(const struct wsi_device *wsi,
                                         uint32_t type_bits);
@@ -191,6 +193,7 @@ wsi_finish_create_buffer_image(const struct wsi_swapchain *chain,
 VkResult
 wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
                            const VkSwapchainCreateInfoKHR *pCreateInfo,
+                           uint32_t stride_align, uint32_t size_align,
                            struct wsi_image_info *info);
 
 VkResult
