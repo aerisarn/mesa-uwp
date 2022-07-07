@@ -5200,7 +5200,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
          bld.emit(SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL,
                   dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
-      } else if (nir_dest_bit_size(instr->dest) >= 4 &&
+      } else if (nir_dest_bit_size(instr->dest) == 32 &&
                  nir_intrinsic_align(instr) >= 4) {
          /* The offset for a DWORD scattered message is in dwords. */
          srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
