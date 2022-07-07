@@ -4583,7 +4583,7 @@ sopc_is_signed(aco_opcode opcode)
 }
 
 static aco_opcode
-sopc_32_inverse(aco_opcode opcode)
+sopc_32_swapped(aco_opcode opcode)
 {
 #define SOPC(op1, op2)                                                                             \
    case aco_opcode::s_cmp_##op1##_i32: return aco_opcode::s_cmp_##op2##_i32;                       \
@@ -4591,10 +4591,10 @@ sopc_32_inverse(aco_opcode opcode)
    switch (opcode) {
       SOPC(eq, eq)
       SOPC(lg, lg)
-      SOPC(gt, le)
-      SOPC(ge, lt)
-      SOPC(lt, ge)
-      SOPC(le, gt)
+      SOPC(gt, lt)
+      SOPC(ge, le)
+      SOPC(lt, gt)
+      SOPC(le, ge)
    default: return aco_opcode::num_opcodes;
    }
 #undef SOPC
@@ -4608,7 +4608,7 @@ try_convert_sopc_to_sopk(aco_ptr<Instruction>& instr)
 
    if (instr->operands[0].isLiteral()) {
       std::swap(instr->operands[0], instr->operands[1]);
-      instr->opcode = sopc_32_inverse(instr->opcode);
+      instr->opcode = sopc_32_swapped(instr->opcode);
    }
 
    if (!instr->operands[1].isLiteral())
