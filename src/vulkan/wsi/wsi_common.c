@@ -104,6 +104,11 @@ wsi_device_init(struct wsi_device *wsi,
          wsi->semaphore_export_handle_types |= handle_type;
    }
 
+   const struct vk_device_extension_table *supported_extensions =
+      &vk_physical_device_from_handle(pdevice)->supported_extensions;
+   wsi->has_import_memory_host =
+      supported_extensions->EXT_external_memory_host;
+
    list_inithead(&wsi->hotplug_fences);
 
 #define WSI_GET_CB(func) \

@@ -104,6 +104,8 @@ struct wsi_device {
 
    VkExternalSemaphoreHandleTypeFlags semaphore_export_handle_types;
 
+   bool has_import_memory_host;
+
    bool supports_modifiers;
    uint32_t maxImageDimension2D;
    uint32_t optimalBufferCopyRowPitchAlignment;

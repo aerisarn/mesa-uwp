@@ -196,6 +196,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply,
                                *amd_reply, *nv_reply, *shm_reply = NULL,
                                *xfixes_reply;
+   bool wants_shm = wsi_dev->sw && wsi_dev->has_import_memory_host;
    bool has_dri3_v1_2 = false;
    bool has_present_v1_2 = false;
 
@@ -211,7 +212,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    randr_cookie = xcb_query_extension(conn, 5, "RANDR");
    xfixes_cookie = xcb_query_extension(conn, 6, "XFIXES");
 
-   if (wsi_dev->sw)
+   if (wants_shm)
       shm_cookie = xcb_query_extension(conn, 7, "MIT-SHM");
 
    /* We try to be nice to users and emit a warning if they try to use a
@@ -233,7 +234,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    amd_reply = xcb_query_extension_reply(conn, amd_cookie, NULL);
    nv_reply = xcb_query_extension_reply(conn, nv_cookie, NULL);
    xfixes_reply = xcb_query_extension_reply(conn, xfixes_cookie, NULL);
-   if (wsi_dev->sw)
+   if (wants_shm)
       shm_reply = xcb_query_extension_reply(conn, shm_cookie, NULL);
    if (!dri3_reply || !pres_reply || !xfixes_reply) {
       free(dri3_reply);
@@ -242,7 +243,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
       free(randr_reply);
       free(amd_reply);
       free(nv_reply);
-      if (wsi_dev->sw)
+      if (wants_shm)
          free(shm_reply);
       vk_free(&wsi_dev->instance_alloc, wsi_conn);
       return NULL;
@@ -300,7 +301,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
       wsi_conn->is_proprietary_x11 = true;
 
    wsi_conn->has_mit_shm = false;
-   if (wsi_conn->has_dri3 && wsi_conn->has_present && wsi_dev->sw) {
+   if (wsi_conn->has_dri3 && wsi_conn->has_present && wants_shm) {
       bool has_mit_shm = shm_reply->present != 0;
 
       xcb_shm_query_version_cookie_t ver_cookie;
@@ -329,7 +330,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    free(randr_reply);
    free(amd_reply);
    free(nv_reply);
-   if (wsi_dev->sw)
+   if (wants_shm)
       free(shm_reply);
 
    return wsi_conn;
