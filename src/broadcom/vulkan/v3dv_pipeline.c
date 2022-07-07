@@ -214,9 +214,6 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .lower_pack_32_2x16 = true,
    .lower_pack_32_2x16_split = true,
    .lower_unpack_32_2x16_split = true,
-   /* FIXME: check if we can use multop + umul24 to implement mul2x32_64
-    * without lowering.
-    */
    .lower_mul_2x32_64 = true,
    .lower_fdiv = true,
    .lower_find_lsb = true,
