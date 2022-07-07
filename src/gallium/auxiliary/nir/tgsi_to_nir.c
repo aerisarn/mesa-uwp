@@ -2323,6 +2323,8 @@ ttn_compile_init(const void *tgsi_tokens,
       c->cap_face_is_sysval = true;
    }
 
+   s->info.subgroup_size = SUBGROUP_SIZE_UNIFORM;
+
    if (s->info.stage == MESA_SHADER_FRAGMENT)
       s->info.fs.untyped_color_outputs = true;
 

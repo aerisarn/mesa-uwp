@@ -1223,6 +1223,12 @@ enum PACKED gl_subgroup_size
    /** Actual subgroup size, whatever that happens to be */
    SUBGROUP_SIZE_VARYING = 0,
 
+   /** Subgroup size must appear to be draw or dispatch-uniform
+    *
+    * This is the OpenGL behavior
+    */
+   SUBGROUP_SIZE_UNIFORM,
+
    /** Subgroup size must appear to be the API advertised constant
     *
     * This is the default Vulkan 1.1 behavior

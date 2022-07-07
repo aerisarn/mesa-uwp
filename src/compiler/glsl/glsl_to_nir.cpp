@@ -253,6 +253,8 @@ glsl_to_nir(const struct gl_constants *consts,
    if (shader_prog->Label)
       shader->info.label = ralloc_strdup(shader, shader_prog->Label);
 
+   shader->info.subgroup_size = SUBGROUP_SIZE_UNIFORM;
+
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.pixel_center_integer = sh->Program->info.fs.pixel_center_integer;
       shader->info.fs.origin_upper_left = sh->Program->info.fs.origin_upper_left;
