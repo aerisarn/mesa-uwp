@@ -2679,8 +2679,11 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       ctx->rp_changed = true;
    }
    res->fb_binds--;
-   if (!res->fb_binds)
+   if (!res->fb_binds) {
       check_resource_for_batch_ref(ctx, res);
+      if (res->sampler_bind_count[0])
+         update_res_sampler_layouts(ctx, res);
+   }
 }
 
 void
