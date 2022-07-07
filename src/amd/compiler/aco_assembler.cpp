@@ -149,10 +149,6 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
    }
    case Format::SOP1: {
       uint32_t encoding = (0b101111101 << 23);
-      if (opcode >= 55 && ctx.gfx_level <= GFX9) {
-         assert(ctx.gfx_level == GFX9 && opcode < 60);
-         opcode = opcode - 4;
-      }
       encoding |= !instr->definitions.empty() ? instr->definitions[0].physReg() << 16 : 0;
       encoding |= opcode << 8;
       encoding |= !instr->operands.empty() ? instr->operands[0].physReg() : 0;
