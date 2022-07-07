@@ -42,32 +42,33 @@
 #define NO_ANISO (~0)
 #define HAS_ANISO (0)
 
-#define MODEL(gpu_id_, shortname, counters_, min_rev_anisotropic_, quirks_) \
+#define MODEL(gpu_id_, shortname, counters_, min_rev_anisotropic_, tib_size_, quirks_) \
         { \
                 .gpu_id = gpu_id_, \
                 .name = "Mali-" shortname " (Panfrost)", \
                 .performance_counters = counters_, \
                 .min_rev_anisotropic = min_rev_anisotropic_, \
+                .tilebuffer_size = tib_size_, \
                 .quirks = quirks_, \
         }
 
 /* Table of supported Mali GPUs */
 const struct panfrost_model panfrost_model_list[] = {
-        MODEL(0x720, "T720", "T72x", NO_ANISO, { .no_hierarchical_tiling = true }),
-        MODEL(0x750, "T760", "T76x", NO_ANISO, {}),
-        MODEL(0x820, "T820", "T82x", NO_ANISO, { .no_hierarchical_tiling = true }),
-        MODEL(0x830, "T830", "T83x", NO_ANISO, { .no_hierarchical_tiling = true }),
-        MODEL(0x860, "T860", "T86x", NO_ANISO, {}),
-        MODEL(0x880, "T880", "T88x", NO_ANISO, {}),
+        MODEL(0x720, "T720", "T72x", NO_ANISO, 8192, { .no_hierarchical_tiling = true }),
+        MODEL(0x750, "T760", "T76x", NO_ANISO, 8192, {}),
+        MODEL(0x820, "T820", "T82x", NO_ANISO, 8192, { .no_hierarchical_tiling = true }),
+        MODEL(0x830, "T830", "T83x", NO_ANISO, 8192, { .no_hierarchical_tiling = true }),
+        MODEL(0x860, "T860", "T86x", NO_ANISO, 8192, {}),
+        MODEL(0x880, "T880", "T88x", NO_ANISO, 8192, {}),
 
-        MODEL(0x6000, "G71", "TMIx", NO_ANISO, {}),
-        MODEL(0x6221, "G72", "THEx", 0x0030 /* r0p3 */, {}),
-        MODEL(0x7090, "G51", "TSIx", 0x1010 /* r1p1 */, {}),
-        MODEL(0x7093, "G31", "TDVx", HAS_ANISO, {}),
-        MODEL(0x7211, "G76", "TNOx", HAS_ANISO, {}),
-        MODEL(0x7212, "G52", "TGOx", HAS_ANISO, {}),
-        MODEL(0x7402, "G52 r1", "TGOx", HAS_ANISO, {}),
-        MODEL(0x9093, "G57", "TNAx", HAS_ANISO, {}),
+        MODEL(0x6000, "G71", "TMIx", NO_ANISO, 8192, {}),
+        MODEL(0x6221, "G72", "THEx", 0x0030 /* r0p3 */, 16384, {}),
+        MODEL(0x7090, "G51", "TSIx", 0x1010 /* r1p1 */, 16384, {}),
+        MODEL(0x7093, "G31", "TDVx", HAS_ANISO, 16384, {}),
+        MODEL(0x7211, "G76", "TNOx", HAS_ANISO, 16384, {}),
+        MODEL(0x7212, "G52", "TGOx", HAS_ANISO, 16384, {}),
+        MODEL(0x7402, "G52 r1", "TGOx", HAS_ANISO, 16384, {}),
+        MODEL(0x9093, "G57", "TNAx", HAS_ANISO, 16384, {}),
 };
 
 #undef NO_ANISO
@@ -257,6 +258,25 @@ panfrost_query_afbc(int fd, unsigned arch)
         return (arch >= 5) && (reg == 0);
 }
 
+/*
+ * To pipeline multiple tiles, a given tile may use at most half of the tile
+ * buffer. This function returns the optimal size (assuming pipelining).
+ *
+ * For Mali-G510 and Mali-G310, we will need extra logic to query the tilebuffer
+ * size for the particular variant. The CORE_FEATURES register might help.
+ */
+static unsigned
+panfrost_query_optimal_tib_size(const struct panfrost_device *dev)
+{
+        /* Preconditions ensure the returned value is a multiple of 1 KiB, the
+         * granularity of the colour buffer allocation field.
+         */
+        assert(dev->model->tilebuffer_size >= 2048);
+        assert(util_is_power_of_two_nonzero(dev->model->tilebuffer_size));
+
+        return dev->model->tilebuffer_size / 2;
+}
+
 void
 panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
 {
@@ -269,6 +289,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->kernel_version = drmGetVersion(fd);
         dev->revision = panfrost_query_gpu_revision(fd);
         dev->model = panfrost_get_model(dev->gpu_id);
+        dev->optimal_tib_size = panfrost_query_optimal_tib_size(dev);
         dev->compressed_formats = panfrost_query_compressed_formats(fd);
         dev->tiler_features = panfrost_query_tiler_features(fd);
         dev->has_afbc = panfrost_query_afbc(fd, dev->arch);

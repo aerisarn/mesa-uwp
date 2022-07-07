@@ -709,7 +709,8 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 #endif
 
         unsigned bytes_per_pixel = pan_cbuf_bytes_per_pixel(fb);
-        unsigned tile_size = pan_select_max_tile_size(4096, bytes_per_pixel);
+        unsigned tile_size = pan_select_max_tile_size(dev->optimal_tib_size,
+                                                      bytes_per_pixel);
 
         /* Clamp tile size to hardware limits */
         tile_size = MIN2(tile_size, 16 * 16);
@@ -717,7 +718,7 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 
         /* Colour buffer allocations must be 1K aligned. */
         unsigned cbuf_allocation = ALIGN_POT(bytes_per_pixel * tile_size, 1024);
-        assert(cbuf_allocation <= 4096 && "tile too big");
+        assert(cbuf_allocation <= dev->optimal_tib_size && "tile too big");
 
         int crc_rt = GENX(pan_select_crc_rt)(fb, tile_size);
         bool has_zs_crc_ext = (fb->zs.view.zs || fb->zs.view.s || crc_rt >= 0);

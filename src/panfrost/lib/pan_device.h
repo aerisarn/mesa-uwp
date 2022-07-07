@@ -165,6 +165,9 @@ struct panfrost_model {
          */
         uint32_t min_rev_anisotropic;
 
+        /* Default tilebuffer size in bytes for the model. */
+        unsigned tilebuffer_size;
+
         struct {
                 /* The GPU lacks the capability for hierarchical tiling, without
                  * an "Advanced Tiling Unit", instead requiring a single bin
@@ -192,6 +195,9 @@ struct panfrost_device {
          * core_id_range >= core_count.
          */
         unsigned core_id_range;
+
+        /* Maximum tilebuffer size in bytes for optimal performance. */
+        unsigned optimal_tib_size;
 
         unsigned thread_tls_alloc;
         struct panfrost_tiler_features tiler_features;
