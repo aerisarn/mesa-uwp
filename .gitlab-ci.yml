@@ -216,8 +216,6 @@ test-docs-mr:
       - _build/meson-logs/strace
 
 .container-rules:
-  extends:
-    - .build-rules
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     # Run pipeline by default in the main project if any CI pipeline
