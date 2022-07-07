@@ -798,22 +798,23 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    for (unsigned i = 0; info->name[i] && i < ARRAY_SIZE(info->lowercase_name) - 1; i++)
       info->lowercase_name[i] = tolower(info->name[i]);
 
-   if (info->family >= CHIP_GFX1100)
+   if (info->ip[AMD_IP_GFX].ver_major == 11)
       info->gfx_level = GFX11;
-   else if (info->family >= CHIP_NAVI21)
+   else if (info->ip[AMD_IP_GFX].ver_major == 10 && info->ip[AMD_IP_GFX].ver_minor == 3)
       info->gfx_level = GFX10_3;
-   else if (info->family >= CHIP_NAVI10)
+   else if (info->ip[AMD_IP_GFX].ver_major == 10 && info->ip[AMD_IP_GFX].ver_minor == 1)
       info->gfx_level = GFX10;
-   else if (info->family >= CHIP_VEGA10)
+   else if (info->ip[AMD_IP_GFX].ver_major == 9)
       info->gfx_level = GFX9;
-   else if (info->family >= CHIP_TONGA)
+   else if (info->ip[AMD_IP_GFX].ver_major == 8)
       info->gfx_level = GFX8;
-   else if (info->family >= CHIP_BONAIRE)
+   else if (info->ip[AMD_IP_GFX].ver_major == 7)
       info->gfx_level = GFX7;
-   else if (info->family >= CHIP_TAHITI)
+   else if (info->ip[AMD_IP_GFX].ver_major == 6)
       info->gfx_level = GFX6;
    else {
-      fprintf(stderr, "amdgpu: Unknown family.\n");
+      fprintf(stderr, "amdgpu: Unknown gfx version: %u.%u\n",
+              info->ip[AMD_IP_GFX].ver_major, info->ip[AMD_IP_GFX].ver_minor);
       return false;
    }
 
