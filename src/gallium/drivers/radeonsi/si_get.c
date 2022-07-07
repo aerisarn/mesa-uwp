@@ -676,7 +676,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          return false;
       case PIPE_VIDEO_FORMAT_JPEG:
          if (sscreen->info.family >= CHIP_RAVEN) {
-            if (!sscreen->info.has_video_hw.jpeg_decode)
+            if (!sscreen->info.ip[AMD_IP_VCN_JPEG].num_queues)
                return false;
             else
                return true;
@@ -1052,7 +1052,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
    sscreen->b.get_disk_shader_cache = si_get_disk_shader_cache;
 
    if (sscreen->info.ip[AMD_IP_UVD].num_queues || sscreen->info.has_video_hw.vcn_decode ||
-       sscreen->info.has_video_hw.jpeg_decode || sscreen->info.has_video_hw.vce_encode ||
+       sscreen->info.ip[AMD_IP_VCN_JPEG].num_queues || sscreen->info.has_video_hw.vce_encode ||
        sscreen->info.has_video_hw.uvd_encode || sscreen->info.has_video_hw.vcn_encode) {
       sscreen->b.get_video_param = si_get_video_param;
       sscreen->b.is_video_format_supported = si_vid_is_format_supported;
