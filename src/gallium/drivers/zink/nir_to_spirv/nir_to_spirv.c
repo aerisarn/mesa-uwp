@@ -1322,6 +1322,7 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
    case GLSL_TYPE_BOOL:
       return get_bvec_type(ctx, num_components);
 
+   case GLSL_TYPE_DOUBLE: //this case is misleading, as so outputs are always 32bit floats
    case GLSL_TYPE_FLOAT:
       return get_fvec_type(ctx, 32, num_components);
 
@@ -1330,9 +1331,6 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
 
    case GLSL_TYPE_UINT:
       return get_uvec_type(ctx, 32, num_components);
-
-   case GLSL_TYPE_DOUBLE:
-      return get_fvec_type(ctx, 64, num_components);
 
    default:
       unreachable("unknown type");
