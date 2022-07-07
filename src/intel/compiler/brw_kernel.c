@@ -439,9 +439,7 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
    NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
    NIR_PASS_V(nir, lower_kernel_intrinsics);
 
-   struct brw_cs_prog_key key = {
-      .base.subgroup_size_type = BRW_SUBGROUP_SIZE_VARYING,
-   };
+   struct brw_cs_prog_key key = { };
 
    memset(&kernel->prog_data, 0, sizeof(kernel->prog_data));
    kernel->prog_data.base.nr_params = DIV_ROUND_UP(nir->num_uniforms, 4);

@@ -7759,7 +7759,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    }
 
    const unsigned required_dispatch_width =
-      brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
+      brw_required_dispatch_width(&nir->info);
 
    fs_visitor *v[3]     = {0};
    const char *error[3] = {0};

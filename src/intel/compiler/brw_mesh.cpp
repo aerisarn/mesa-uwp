@@ -217,7 +217,7 @@ brw_compile_task(const struct brw_compiler *compiler,
    NIR_PASS_V(nir, brw_nir_lower_tue_outputs, &prog_data->map);
 
    const unsigned required_dispatch_width =
-      brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
+      brw_required_dispatch_width(&nir->info);
 
    fs_visitor *v[3]     = {0};
    const char *error[3] = {0};
@@ -715,7 +715,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    NIR_PASS_V(nir, brw_nir_lower_mue_outputs, &prog_data->map);
 
    const unsigned required_dispatch_width =
-      brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
+      brw_required_dispatch_width(&nir->info);
 
    fs_visitor *v[3]     = {0};
    const char *error[3] = {0};

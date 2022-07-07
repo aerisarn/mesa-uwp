@@ -315,11 +315,9 @@ populate_sampler_prog_key(const struct intel_device_info *devinfo,
 
 static void
 populate_base_prog_key(const struct anv_device *device,
-                       enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_acccess,
                        struct brw_base_prog_key *key)
 {
-   key->subgroup_size_type = subgroup_size_type;
    key->robust_buffer_access = robust_buffer_acccess;
    key->limit_trig_input_range =
       device->physical->instance->limit_trig_input_range;
@@ -329,14 +327,12 @@ populate_base_prog_key(const struct anv_device *device,
 
 static void
 populate_vs_prog_key(const struct anv_device *device,
-                     enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_vs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type,
-                          robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 
    /* XXX: Handle vertex input work-arounds */
 
@@ -345,41 +341,35 @@ populate_vs_prog_key(const struct anv_device *device,
 
 static void
 populate_tcs_prog_key(const struct anv_device *device,
-                      enum brw_subgroup_size_type subgroup_size_type,
                       bool robust_buffer_acccess,
                       unsigned input_vertices,
                       struct brw_tcs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type,
-                          robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 
    key->input_vertices = input_vertices;
 }
 
 static void
 populate_tes_prog_key(const struct anv_device *device,
-                      enum brw_subgroup_size_type subgroup_size_type,
                       bool robust_buffer_acccess,
                       struct brw_tes_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type,
-                          robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 }
 
 static void
 populate_gs_prog_key(const struct anv_device *device,
-                     enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_gs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type,
-                          robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 }
 
 static bool
@@ -439,29 +429,26 @@ pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
 
 static void
 populate_task_prog_key(const struct anv_device *device,
-                       enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_access,
                        struct brw_task_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type, robust_buffer_access, &key->base);
+   populate_base_prog_key(device, robust_buffer_access, &key->base);
 }
 
 static void
 populate_mesh_prog_key(const struct anv_device *device,
-                       enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_access,
                        struct brw_mesh_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type, robust_buffer_access, &key->base);
+   populate_base_prog_key(device, robust_buffer_access, &key->base);
 }
 
 static void
 populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
-                     VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
                      const VkPipelineMultisampleStateCreateInfo *ms_info,
                      const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_info,
@@ -472,7 +459,7 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, flags, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 
    /* We set this to 0 here and set to the actual value before we call
     * brw_compile_fs.
@@ -520,25 +507,22 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 
 static void
 populate_cs_prog_key(const struct anv_device *device,
-                     enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_cs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, subgroup_size_type,
-                          robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 }
 
 static void
 populate_bs_prog_key(const struct anv_device *device,
-                     VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_access,
                      struct brw_bs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(device, flags, robust_buffer_access, &key->base);
+   populate_base_prog_key(device, robust_buffer_access, &key->base);
 }
 
 struct anv_pipeline_stage {
@@ -1323,45 +1307,6 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    pipeline->ray_queries = MAX2(pipeline->ray_queries, bin->prog_data->ray_queries);
 }
 
-static enum brw_subgroup_size_type
-anv_subgroup_size_type(gl_shader_stage stage,
-                       const struct vk_shader_module *module,
-                       VkPipelineShaderStageCreateFlags flags,
-                       const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info)
-{
-   enum brw_subgroup_size_type subgroup_size_type;
-
-   const bool allow_varying =
-      flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT ||
-      vk_shader_module_spirv_version(module) >= 0x10600;
-
-   if (rss_info) {
-      assert(gl_shader_stage_uses_workgroup(stage));
-      /* These enum values are expressly chosen to be equal to the subgroup
-       * size that they require.
-       */
-      assert(rss_info->requiredSubgroupSize == 8 ||
-             rss_info->requiredSubgroupSize == 16 ||
-             rss_info->requiredSubgroupSize == 32);
-      subgroup_size_type = rss_info->requiredSubgroupSize;
-   } else if (allow_varying) {
-      subgroup_size_type = BRW_SUBGROUP_SIZE_VARYING;
-   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
-      assert(stage == MESA_SHADER_COMPUTE);
-      /* If the client expressly requests full subgroups and they don't
-       * specify a subgroup size neither allow varying subgroups, we need to
-       * pick one.  So we specify the API value of 32.  Performance will
-       * likely be terrible in this case but there's nothing we can do about
-       * that.  The client should have chosen a size.
-       */
-      subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
-   } else {
-      subgroup_size_type = BRW_SUBGROUP_SIZE_API_CONSTANT;
-   }
-
-   return subgroup_size_type;
-}
-
 static void
 anv_pipeline_init_from_cached_graphics(struct anv_graphics_pipeline *pipeline)
 {
@@ -1404,7 +1349,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    VkResult result;
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
-      VK_FROM_HANDLE(vk_shader_module, module, sinfo->module);
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
       int64_t stage_start = os_time_get_nano();
@@ -1413,33 +1357,26 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       stages[stage].info = sinfo;
       vk_pipeline_hash_shader_stage(&info->pStages[i], stages[stage].shader_sha1);
 
-      const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info =
-         vk_find_struct_const(sinfo->pNext,
-                              PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
-
-      enum brw_subgroup_size_type subgroup_size_type =
-         anv_subgroup_size_type(stage, module, sinfo->flags, rss_info);
-
       const struct anv_device *device = pipeline->base.device;
       switch (stage) {
       case MESA_SHADER_VERTEX:
-         populate_vs_prog_key(device, subgroup_size_type,
+         populate_vs_prog_key(device,
                               pipeline->base.device->robust_buffer_access,
                               &stages[stage].key.vs);
          break;
       case MESA_SHADER_TESS_CTRL:
-         populate_tcs_prog_key(device, subgroup_size_type,
+         populate_tcs_prog_key(device,
                                pipeline->base.device->robust_buffer_access,
                                info->pTessellationState->patchControlPoints,
                                &stages[stage].key.tcs);
          break;
       case MESA_SHADER_TESS_EVAL:
-         populate_tes_prog_key(device, subgroup_size_type,
+         populate_tes_prog_key(device,
                                pipeline->base.device->robust_buffer_access,
                                &stages[stage].key.tes);
          break;
       case MESA_SHADER_GEOMETRY:
-         populate_gs_prog_key(device, subgroup_size_type,
+         populate_gs_prog_key(device,
                               pipeline->base.device->robust_buffer_access,
                               &stages[stage].key.gs);
          break;
@@ -1447,7 +1384,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          const bool raster_enabled =
             !info->pRasterizationState->rasterizerDiscardEnable ||
             dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
-         populate_wm_prog_key(pipeline, subgroup_size_type,
+         populate_wm_prog_key(pipeline,
                               pipeline->base.device->robust_buffer_access,
                               raster_enabled ? info->pMultisampleState : NULL,
                               vk_find_struct_const(info->pNext,
@@ -1457,12 +1394,12 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          break;
       }
       case MESA_SHADER_TASK:
-         populate_task_prog_key(device, subgroup_size_type,
+         populate_task_prog_key(device,
                                 pipeline->base.device->robust_buffer_access,
                                 &stages[stage].key.task);
          break;
       case MESA_SHADER_MESH:
-         populate_mesh_prog_key(device, subgroup_size_type,
+         populate_mesh_prog_key(device,
                                 pipeline->base.device->robust_buffer_access,
                                 &stages[stage].key.mesh);
          break;
@@ -1849,7 +1786,6 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         const VkComputePipelineCreateInfo *info)
 {
    const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
-   VK_FROM_HANDLE(vk_shader_module, module, sinfo->module);
    assert(sinfo->stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
    VkPipelineCreationFeedbackEXT pipeline_feedback = {
@@ -1874,16 +1810,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
    struct anv_shader_bin *bin = NULL;
 
-   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *rss_info =
-      vk_find_struct_const(info->stage.pNext,
-                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
-
-   const enum brw_subgroup_size_type subgroup_size_type =
-      anv_subgroup_size_type(MESA_SHADER_COMPUTE, module, info->stage.flags, rss_info);
-
-   populate_cs_prog_key(device, subgroup_size_type,
-                        device->robust_buffer_access,
-                        &stage.key.cs);
+   populate_cs_prog_key(device, device->robust_buffer_access, &stage.key.cs);
 
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
 
@@ -1939,10 +1866,19 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
        */
       if (device->physical->instance->assume_full_subgroups &&
           stage.nir->info.cs.uses_wide_subgroup_intrinsics &&
-          subgroup_size_type == BRW_SUBGROUP_SIZE_API_CONSTANT &&
+          stage.nir->info.subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
           local_size &&
           local_size % BRW_SUBGROUP_SIZE == 0)
-         stage.key.base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
+         stage.nir->info.subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
+
+      /* If the client requests that we dispatch full subgroups but doesn't
+       * allow us to pick a subgroup size, we have to smash it to the API
+       * value of 32.  Performance will likely be terrible in this case but
+       * there's nothing we can do about that.  The client should have chosen
+       * a size.
+       */
+      if (stage.nir->info.subgroup_size == SUBGROUP_SIZE_FULL_SUBGROUPS)
+         stage.nir->info.subgroup_size = BRW_SUBGROUP_SIZE;
 
       stage.num_stats = 1;
 
@@ -2693,7 +2629,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
          },
       };
 
-      populate_bs_prog_key(pipeline->base.device, sinfo->flags,
+      populate_bs_prog_key(pipeline->base.device,
                            pipeline->base.device->robust_buffer_access,
                            &stages[i].key.bs);
 
@@ -2997,10 +2933,6 @@ anv_device_init_rt_shaders(struct anv_device *device)
       struct brw_cs_prog_key key;
    } trampoline_key = {
       .name = "rt-trampoline",
-      .key = {
-         /* TODO: Other subgroup sizes? */
-         .base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_8,
-      },
    };
    device->rt_trampoline =
       anv_device_search_for_kernel(device, device->internal_cache,
@@ -3011,6 +2943,8 @@ anv_device_init_rt_shaders(struct anv_device *device)
       void *tmp_ctx = ralloc_context(NULL);
       nir_shader *trampoline_nir =
          brw_nir_create_raygen_trampoline(device->physical->compiler, tmp_ctx);
+
+      trampoline_nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
 
       struct anv_pipeline_bind_map bind_map = {
          .surface_count = 0,

@@ -1353,16 +1353,14 @@ brw_nir_apply_sampler_key(nir_shader *nir,
 }
 
 static unsigned
-get_subgroup_size(gl_shader_stage stage,
-                  const struct brw_base_prog_key *key,
-                  unsigned max_subgroup_size)
+get_subgroup_size(const struct shader_info *info, unsigned max_subgroup_size)
 {
-   switch (key->subgroup_size_type) {
-   case BRW_SUBGROUP_SIZE_API_CONSTANT:
+   switch (info->subgroup_size) {
+   case SUBGROUP_SIZE_API_CONSTANT:
       /* We have to use the global constant size. */
       return BRW_SUBGROUP_SIZE;
 
-   case BRW_SUBGROUP_SIZE_UNIFORM:
+   case SUBGROUP_SIZE_UNIFORM:
       /* It has to be uniform across all invocations but can vary per stage
        * if we want.  This gives us a bit more freedom.
        *
@@ -1373,7 +1371,7 @@ get_subgroup_size(gl_shader_stage stage,
        */
       return max_subgroup_size;
 
-   case BRW_SUBGROUP_SIZE_VARYING:
+   case SUBGROUP_SIZE_VARYING:
       /* The subgroup size is allowed to be fully varying.  For geometry
        * stages, we know it's always 8 which is max_subgroup_size so we can
        * return that.  For compute, brw_nir_apply_key is called once per
@@ -1384,16 +1382,21 @@ get_subgroup_size(gl_shader_stage stage,
        * that's a risk the client took when it asked for a varying subgroup
        * size.
        */
-      return stage == MESA_SHADER_FRAGMENT ? 0 : max_subgroup_size;
+      return info->stage == MESA_SHADER_FRAGMENT ? 0 : max_subgroup_size;
 
-   case BRW_SUBGROUP_SIZE_REQUIRE_8:
-   case BRW_SUBGROUP_SIZE_REQUIRE_16:
-   case BRW_SUBGROUP_SIZE_REQUIRE_32:
-      assert(gl_shader_stage_uses_workgroup(stage));
+   case SUBGROUP_SIZE_REQUIRE_8:
+   case SUBGROUP_SIZE_REQUIRE_16:
+   case SUBGROUP_SIZE_REQUIRE_32:
+      assert(gl_shader_stage_uses_workgroup(info->stage));
       /* These enum values are expressly chosen to be equal to the subgroup
        * size that they require.
        */
-      return key->subgroup_size_type;
+      return info->subgroup_size;
+
+   case SUBGROUP_SIZE_FULL_SUBGROUPS:
+   case SUBGROUP_SIZE_REQUIRE_64:
+   case SUBGROUP_SIZE_REQUIRE_128:
+      break;
    }
 
    unreachable("Invalid subgroup size type");
@@ -1411,8 +1414,7 @@ brw_nir_apply_key(nir_shader *nir,
    OPT(brw_nir_apply_sampler_key, compiler, &key->tex);
 
    const nir_lower_subgroups_options subgroups_options = {
-      .subgroup_size = get_subgroup_size(nir->info.stage, key,
-                                         max_subgroup_size),
+      .subgroup_size = get_subgroup_size(&nir->info, max_subgroup_size),
       .ballot_bit_size = 32,
       .ballot_components = 1,
       .lower_subgroup_masks = true,
