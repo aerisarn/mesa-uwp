@@ -1215,8 +1215,10 @@ pandecode_resource_tables(mali_ptr addr, const char *label)
                 pan_unpack(cl + i * MALI_RESOURCE_LENGTH, RESOURCE, entry);
                 DUMP_UNPACKED(RESOURCE, entry, "Entry %u:\n", i);
 
+                pandecode_indent += 2;
                 if (entry.address)
                         pandecode_resources(entry.address, entry.size);
+                pandecode_indent -= 2;
         }
 }
 
