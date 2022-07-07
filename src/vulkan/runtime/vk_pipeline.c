@@ -125,6 +125,10 @@ vk_pipeline_hash_shader_stage(const VkPipelineShaderStageCreateInfo *info,
    struct mesa_sha1 ctx;
 
    _mesa_sha1_init(&ctx);
+
+   assert(util_bitcount(info->stage) == 1);
+   _mesa_sha1_update(&ctx, &info->stage, sizeof(info->stage));
+
    if (module) {
       _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
    } else if (minfo) {
@@ -141,9 +145,6 @@ vk_pipeline_hash_shader_stage(const VkPipelineShaderStageCreateInfo *info,
    }
 
    _mesa_sha1_update(&ctx, info->pName, strlen(info->pName));
-
-   assert(util_bitcount(info->stage) == 1);
-   _mesa_sha1_update(&ctx, &info->stage, sizeof(info->stage));
 
    if (info->pSpecializationInfo) {
       _mesa_sha1_update(&ctx, info->pSpecializationInfo->pMapEntries,
