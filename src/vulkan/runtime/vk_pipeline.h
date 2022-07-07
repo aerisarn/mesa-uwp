@@ -26,6 +26,8 @@
 
 #include "vulkan/vulkan_core.h"
 
+#include <stdbool.h>
+
 struct nir_shader;
 struct nir_shader_compiler_options;
 struct spirv_to_nir_options;
@@ -34,6 +36,9 @@ struct vk_device;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+bool
+vk_pipeline_shader_stage_is_null(const VkPipelineShaderStageCreateInfo *info);
 
 VkResult
 vk_pipeline_shader_stage_to_nir(struct vk_device *device,

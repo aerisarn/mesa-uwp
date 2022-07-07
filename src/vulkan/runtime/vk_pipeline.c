@@ -32,6 +32,21 @@
 
 #include "util/mesa-sha1.h"
 
+bool
+vk_pipeline_shader_stage_is_null(const VkPipelineShaderStageCreateInfo *info)
+{
+   if (info->module != VK_NULL_HANDLE)
+      return false;
+
+   vk_foreach_struct_const(ext, info->pNext) {
+      if (ext->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO ||
+          ext->sType == VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT)
+         return false;
+   }
+
+   return true;
+}
+
 static uint32_t
 get_required_subgroup_size(const VkPipelineShaderStageCreateInfo *info)
 {
