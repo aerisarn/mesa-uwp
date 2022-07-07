@@ -106,6 +106,7 @@ struct drm_amdgpu_info_hw_ip {
    uint32_t ib_start_alignment;
    uint32_t ib_size_alignment;
    uint32_t available_rings;
+   uint32_t ip_discovery_version;
 };
 typedef struct _drmPciBusInfo {
    uint16_t domain;
@@ -563,8 +564,27 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       if (r || !ip_info.available_rings)
          continue;
 
-      info->ip[ip_type].ver_major = ip_info.hw_ip_version_major;
-      info->ip[ip_type].ver_minor = ip_info.hw_ip_version_minor;
+      /* Gfx6-8 don't set ip_discovery_version. */
+      if (info->drm_minor >= 48 && ip_info.ip_discovery_version) {
+         info->ip[ip_type].ver_major = (ip_info.ip_discovery_version >> 16) & 0xff;
+         info->ip[ip_type].ver_minor = (ip_info.ip_discovery_version >> 8) & 0xff;
+      } else {
+         info->ip[ip_type].ver_major = ip_info.hw_ip_version_major;
+         info->ip[ip_type].ver_minor = ip_info.hw_ip_version_minor;
+
+         /* Fix incorrect IP versions reported by the kernel. */
+         if (device_info.family == FAMILY_NV &&
+             (ASICREV_IS(device_info.external_rev, NAVI10) ||
+              ASICREV_IS(device_info.external_rev, NAVI12) ||
+              ASICREV_IS(device_info.external_rev, NAVI14)))
+            info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 1;
+         else if (device_info.family == FAMILY_NV ||
+                  device_info.family == FAMILY_VGH ||
+                  device_info.family == FAMILY_RMB ||
+                  device_info.family == FAMILY_GC_10_3_6 ||
+                  device_info.family == FAMILY_GC_10_3_7)
+            info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
+      }
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
       info->ib_alignment = MAX3(info->ib_alignment, ip_info.ib_start_alignment,
                                 ip_info.ib_size_alignment);
@@ -796,12 +816,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       fprintf(stderr, "amdgpu: Unknown family.\n");
       return false;
    }
-
-   /* Fix incorrect IP versions reported by the kernel. */
-   if (info->gfx_level == GFX10_3)
-      info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
-   else if (info->gfx_level == GFX10)
-      info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 1;
 
    info->smart_access_memory = info->all_vram_visible &&
                                info->gfx_level >= GFX10_3 &&
