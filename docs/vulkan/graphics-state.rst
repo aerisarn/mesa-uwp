@@ -180,6 +180,12 @@ use a state even if it isn't dirty on this particular draw.
 .. doxygenfunction:: vk_dynamic_graphics_state_any_dirty
 
 
+Depth stencil state optimization
+--------------------------------
+
+.. doxygenfunction:: vk_optimize_depth_stencil_state
+
+
 Reference
 ---------
 

@@ -654,6 +654,7 @@ vk_depth_stencil_state_init(struct vk_depth_stencil_state *ds,
    ds->depth.bounds_test.max = ds_info->maxDepthBounds;
 
    ds->stencil.test_enable = ds_info->stencilTestEnable;
+   ds->stencil.write_enable = true;
    vk_stencil_test_face_state_init(&ds->stencil.front, &ds_info->front);
    vk_stencil_test_face_state_init(&ds->stencil.back, &ds_info->back);
 }
@@ -664,6 +665,100 @@ vk_dynamic_graphics_state_init_ds(struct vk_dynamic_graphics_state *dst,
                                   const struct vk_depth_stencil_state *ds)
 {
    dst->ds = *ds;
+}
+
+static bool
+optimize_stencil_face(struct vk_stencil_test_face_state *face,
+                      VkCompareOp depthCompareOp)
+{
+   /* If compareOp is ALWAYS then the stencil test will never fail and failOp
+    * will never happen.  Set failOp to KEEP in this case.
+    */
+   if (face->op.compare == VK_COMPARE_OP_ALWAYS)
+      face->op.fail = VK_STENCIL_OP_KEEP;
+
+   /* If compareOp is NEVER or depthCompareOp is NEVER then one of the depth
+    * or stencil tests will fail and passOp will never happen.
+    */
+   if (face->op.compare == VK_COMPARE_OP_NEVER ||
+       depthCompareOp == VK_COMPARE_OP_NEVER)
+      face->op.pass = VK_STENCIL_OP_KEEP;
+
+   /* If compareOp is NEVER or depthCompareOp is ALWAYS then either the
+    * stencil test will fail or the depth test will pass.  In either case,
+    * depthFailOp will never happen.
+    */
+   if (face->op.compare == VK_COMPARE_OP_NEVER ||
+       depthCompareOp == VK_COMPARE_OP_ALWAYS)
+      face->op.depth_fail = VK_STENCIL_OP_KEEP;
+
+   return face->op.fail != VK_STENCIL_OP_KEEP ||
+          face->op.depth_fail != VK_STENCIL_OP_KEEP ||
+          face->op.pass != VK_STENCIL_OP_KEEP;
+}
+
+void
+vk_optimize_depth_stencil_state(struct vk_depth_stencil_state *ds,
+                                VkImageAspectFlags ds_aspects)
+{
+   /* stencil.write_enable is a dummy right now that should always be true */
+   assert(ds->stencil.write_enable);
+
+   /* If the depth test is disabled, we won't be writing anything. Make sure we
+    * treat the test as always passing later on as well.
+    *
+    * Also, the Vulkan spec requires that if either depth or stencil is not
+    * present, the pipeline is to act as if the test silently passes. In that
+    * case we won't write either.
+    */
+   if (!ds->depth.test_enable || !(ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
+      ds->depth.write_enable = false;
+      ds->depth.compare_op = VK_COMPARE_OP_ALWAYS;
+   }
+
+   if (!(ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      ds->stencil.write_enable = false;
+      ds->stencil.front.op.compare = VK_COMPARE_OP_ALWAYS;
+      ds->stencil.back.op.compare = VK_COMPARE_OP_ALWAYS;
+   }
+
+   /* If the stencil test is enabled and always fails, then we will never get
+    * to the depth test so we can just disable the depth test entirely.
+    */
+   if (ds->stencil.test_enable &&
+       ds->stencil.front.op.compare == VK_COMPARE_OP_NEVER &&
+       ds->stencil.back.op.compare == VK_COMPARE_OP_NEVER) {
+      ds->depth.test_enable = false;
+      ds->depth.write_enable = false;
+   }
+
+   /* If depthCompareOp is EQUAL then the value we would be writing to the
+    * depth buffer is the same as the value that's already there so there's no
+    * point in writing it.
+    */
+   if (ds->depth.compare_op == VK_COMPARE_OP_EQUAL)
+      ds->depth.write_enable = false;
+
+   /* If the stencil ops are such that we don't actually ever modify the
+    * stencil buffer, we should disable writes.
+    */
+   if (!optimize_stencil_face(&ds->stencil.front, ds->depth.compare_op) &&
+       !optimize_stencil_face(&ds->stencil.back, ds->depth.compare_op))
+      ds->stencil.write_enable = false;
+
+   /* If the depth test always passes and we never write out depth, that's the
+    * same as if the depth test is disabled entirely.
+    */
+   if (ds->depth.compare_op == VK_COMPARE_OP_ALWAYS && !ds->depth.write_enable)
+      ds->depth.test_enable = false;
+
+   /* If the stencil test always passes and we never write out stencil, that's
+    * the same as if the stencil test is disabled entirely.
+    */
+   if (ds->stencil.front.op.compare == VK_COMPARE_OP_ALWAYS &&
+       ds->stencil.back.op.compare == VK_COMPARE_OP_ALWAYS &&
+       !ds->stencil.write_enable)
+      ds->stencil.test_enable = false;
 }
 
 static void
@@ -1232,6 +1327,7 @@ const struct vk_dynamic_graphics_state vk_default_dynamic_graphics_state = {
          },
       },
       .stencil = {
+         .write_enable = true,
          .front = {
             .compare_mask = -1,
             .write_mask = -1,

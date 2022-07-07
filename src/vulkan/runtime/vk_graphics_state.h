@@ -382,6 +382,16 @@ struct vk_depth_stencil_state {
        */
       bool test_enable;
 
+      /** Whether or not stencil is should be written
+       *
+       * This does not map directly to any particular Vulkan API state and is
+       * initialized to true.  If independent stencil disable ever becomes a
+       * thing, it will use this state.  vk_optimize_depth_stencil_state() may
+       * set this to false if it can prove that the stencil test will never
+       * alter the stencil value.
+       */
+      bool write_enable;
+
       /** VkPipelineDepthStencilStateCreateInfo::front */
       struct vk_stencil_test_face_state front;
 
@@ -389,6 +399,23 @@ struct vk_depth_stencil_state {
       struct vk_stencil_test_face_state back;
    } stencil;
 };
+
+/** Optimize a depth/stencil state
+ *
+ * The way depth and stencil testing is specified, there are many case where,
+ * regardless of depth/stencil writes being enabled, nothing actually gets
+ * written due to some other bit of state being set.  In the presence of
+ * discards, it's fairly easy to get into cases where early depth/stencil
+ * testing is disabled on some hardware, leading to a fairly big performance
+ * hit.  This function attempts to optimize the depth stencil state and
+ * disable writes and sometimes even testing whenever possible.
+ *
+ * @param[inout]  ds          The depth stencil state to optimize
+ * @param[in]     ds_aspects  Which image aspects are present in the render
+ *                            pass.
+ */
+void vk_optimize_depth_stencil_state(struct vk_depth_stencil_state *ds,
+                                     VkImageAspectFlags ds_aspects);
 
 struct vk_color_blend_attachment_state {
    /** VkPipelineColorBlendAttachmentState::blendEnable */
