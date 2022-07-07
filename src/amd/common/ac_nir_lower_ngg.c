@@ -1128,7 +1128,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    unsigned total_es_lds_bytes = pervertex_lds_bytes * nogs_state->max_es_num_vertices;
    unsigned max_num_waves = nogs_state->max_num_waves;
    unsigned ngg_scratch_lds_base_addr = ALIGN(total_es_lds_bytes, 8u);
-   unsigned ngg_scratch_lds_bytes = DIV_ROUND_UP(max_num_waves, 4u);
+   unsigned ngg_scratch_lds_bytes = ALIGN(max_num_waves, 4u);
    nogs_state->total_lds_bytes = ngg_scratch_lds_base_addr + ngg_scratch_lds_bytes;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(b->shader);
