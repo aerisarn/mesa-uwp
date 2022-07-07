@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from lava.utils import LogFollower
 
 from lava.exceptions import MesaCIKnownIssueException
+from lava.utils.console_format import CONSOLE_LOG
 from lava.utils.log_section import LogSectionType
 
 
@@ -34,7 +35,9 @@ class LAVALogHints:
                 line["msg"],
             ):
                 raise MesaCIKnownIssueException(
+                    f"{CONSOLE_LOG['FG_MAGENTA']}"
                     "Probable network issue failure encountered, retrying the job"
+                    f"{CONSOLE_LOG['RESET']}"
                 )
 
         self.has_r8152_issue_history = False

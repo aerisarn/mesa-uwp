@@ -27,6 +27,7 @@ import lavacli
 import yaml
 from lava.exceptions import (
     MesaCIException,
+    MesaCIKnownIssueException,
     MesaCIParseException,
     MesaCIRetryError,
     MesaCITimeoutError,
@@ -221,6 +222,7 @@ class LAVAJob:
         "pass": CONSOLE_LOG["FG_GREEN"],
         "hung": CONSOLE_LOG["FG_YELLOW"],
         "fail": CONSOLE_LOG["FG_RED"],
+        "canceled": CONSOLE_LOG["FG_MAGENTA"],
     }
 
     def __init__(self, proxy, definition):
@@ -447,6 +449,9 @@ def retriable_follow_job(proxy, job_definition) -> LAVAJob:
         try:
             follow_job_execution(job)
             return job
+        except MesaCIKnownIssueException as found_issue:
+            print_log(found_issue)
+            job.status = "canceled"
         except MesaCIException as mesa_exception:
             print_log(mesa_exception)
             job.cancel()
@@ -455,11 +460,19 @@ def retriable_follow_job(proxy, job_definition) -> LAVAJob:
             job.cancel()
             raise e
         finally:
-            print_log(f"Finished executing LAVA job in the attempt #{attempt_no}")
+            print_log(
+                f"{CONSOLE_LOG['BOLD']}"
+                f"Finished executing LAVA job in the attempt #{attempt_no}"
+                f"{CONSOLE_LOG['RESET']}"
+            )
             print_job_final_status(job)
 
     raise MesaCIRetryError(
-        "Job failed after it exceeded the number of " f"{retry_count} retries.",
+        f"{CONSOLE_LOG['BOLD']}"
+        f"{CONSOLE_LOG['FG_RED']}"
+        "Job failed after it exceeded the number of "
+        f"{retry_count} retries."
+        f"{CONSOLE_LOG['RESET']}",
         retry_count=retry_count,
     )
 
