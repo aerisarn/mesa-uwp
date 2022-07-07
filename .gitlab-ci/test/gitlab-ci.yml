@@ -1,6 +1,4 @@
 .test:
-  extends:
-    - .build-rules
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   variables:
@@ -116,7 +114,6 @@
 
 .baremetal-test:
   extends:
-    - .build-rules
     - .test
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
