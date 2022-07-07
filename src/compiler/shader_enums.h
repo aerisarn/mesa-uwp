@@ -1223,13 +1223,29 @@ enum PACKED gl_subgroup_size
    /** Actual subgroup size, whatever that happens to be */
    SUBGROUP_SIZE_VARYING = 0,
 
+   /** Subgroup size must appear to be the API advertised constant
+    *
+    * This is the default Vulkan 1.1 behavior
+    */
+   SUBGROUP_SIZE_API_CONSTANT,
+
+   /** Subgroup size must actually be the API advertised constant
+    *
+    * Not only must the subgroup size match the API advertised constant as
+    * with SUBGROUP_SIZE_API_CONSTANT but it must also be dispatched such that
+    * all the subgroups are full if there are enough invocations.
+    */
+   SUBGROUP_SIZE_FULL_SUBGROUPS,
+
    /* These enums are specifically chosen so that the value of the enum is
     * also the subgroup size.  If any new values are added, they must respect
     * this invariant.
     */
-   SUBGROUP_SIZE_REQUIRE_8   = 8,  /**< VK_EXT_subgroup_size_control */
-   SUBGROUP_SIZE_REQUIRE_16  = 16, /**< VK_EXT_subgroup_size_control */
-   SUBGROUP_SIZE_REQUIRE_32  = 32, /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_8   = 8,   /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_16  = 16,  /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_32  = 32,  /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_64  = 64,  /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_128 = 128, /**< VK_EXT_subgroup_size_control */
 };
 
 #ifdef __cplusplus

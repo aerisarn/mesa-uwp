@@ -75,6 +75,9 @@ struct spirv_to_nir_options {
     */
    uint16_t float_controls_execution_mode;
 
+   /* Initial subgroup size.  This may be overwritten for CL kernels */
+   enum gl_subgroup_size subgroup_size;
+
    /* True if RelaxedPrecision-decorated ALU result values should be performed
     * with 16-bit math.
     */

@@ -32,6 +32,15 @@
 
 #include "util/mesa-sha1.h"
 
+static uint32_t
+get_required_subgroup_size(const VkPipelineShaderStageCreateInfo *info)
+{
+   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info =
+      vk_find_struct_const(info->pNext,
+                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
+   return rss_info != NULL ? rss_info->requiredSubgroupSize : 0;
+}
+
 VkResult
 vk_pipeline_shader_stage_to_nir(struct vk_device *device,
                                 const VkPipelineShaderStageCreateInfo *info,
@@ -80,8 +89,26 @@ vk_pipeline_shader_stage_to_nir(struct vk_device *device,
       spirv_size = minfo->codeSize;
    }
 
+   enum gl_subgroup_size subgroup_size;
+   uint32_t req_subgroup_size = get_required_subgroup_size(info);
+   if (req_subgroup_size > 0) {
+      assert(util_is_power_of_two_nonzero(req_subgroup_size));
+      assert(req_subgroup_size >= 8 && req_subgroup_size <= 128);
+      subgroup_size = req_subgroup_size;
+   } else if (info->flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT ||
+              vk_spirv_version(spirv_data, spirv_size) >= 0x10600) {
+      /* Starting with SPIR-V 1.6, varying subgroup size the default */
+      subgroup_size = SUBGROUP_SIZE_VARYING;
+   } else if (info->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
+      assert(stage == MESA_SHADER_COMPUTE);
+      subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
+   } else {
+      subgroup_size = SUBGROUP_SIZE_API_CONSTANT;
+   }
+
    nir_shader *nir = vk_spirv_to_nir(device, spirv_data, spirv_size, stage,
-                                     info->pName, info->pSpecializationInfo,
+                                     info->pName, subgroup_size,
+                                     info->pSpecializationInfo,
                                      spirv_options, nir_options, mem_ctx);
    if (nir == NULL)
       return vk_errorf(device, VK_ERROR_UNKNOWN, "spirv_to_nir failed");
@@ -126,6 +153,8 @@ vk_pipeline_hash_shader_stage(const VkPipelineShaderStageCreateInfo *info,
 
    _mesa_sha1_init(&ctx);
 
+   _mesa_sha1_update(&ctx, &info->flags, sizeof(info->flags));
+
    assert(util_bitcount(info->stage) == 1);
    _mesa_sha1_update(&ctx, &info->stage, sizeof(info->stage));
 
@@ -153,5 +182,9 @@ vk_pipeline_hash_shader_stage(const VkPipelineShaderStageCreateInfo *info,
       _mesa_sha1_update(&ctx, info->pSpecializationInfo->pData,
                         info->pSpecializationInfo->dataSize);
    }
+
+   uint32_t req_subgroup_size = get_required_subgroup_size(info);
+   _mesa_sha1_update(&ctx, &req_subgroup_size, sizeof(req_subgroup_size));
+
    _mesa_sha1_final(&ctx, stage_sha1);
 }
