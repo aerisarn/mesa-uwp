@@ -876,7 +876,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                   = info->family >= CHIP_GFX1100
                     ? info->ip[AMD_IP_VCN_UNIFIED].num_queues != 0
                     : info->ip[AMD_IP_VCN_DEC].num_queues != 0;
-   info->has_video_hw.vcn_encode = info->ip[AMD_IP_VCN_ENC].num_queues != 0;
    info->has_userptr = true;
    info->has_syncobj = has_syncobj(fd);
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
@@ -1480,7 +1479,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
       fprintf(f, "    vcn_unified = %u\n", info->has_video_hw.vcn_decode);
    else {
       fprintf(f, "    vcn_decode = %u\n", info->has_video_hw.vcn_decode);
-      fprintf(f, "    vcn_encode = %u\n", info->has_video_hw.vcn_encode);
+      fprintf(f, "    vcn_encode = %u\n", info->ip[AMD_IP_VCN_ENC].num_queues);
    }
 
    fprintf(f, "    uvd_fw_version = %u\n", info->uvd_fw_version);

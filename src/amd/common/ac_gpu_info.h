@@ -156,8 +156,7 @@ struct radeon_info {
 
    /* Multimedia info. */
    struct {
-      bool vcn_decode;
-      bool vcn_encode;
+      bool vcn_decode; /* TODO: remove */
    } has_video_hw;
 
    uint32_t uvd_fw_version;
