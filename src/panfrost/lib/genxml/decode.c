@@ -1205,11 +1205,10 @@ pandecode_resources(mali_ptr addr, unsigned size)
 static void
 pandecode_resource_tables(mali_ptr addr, const char *label)
 {
-        fprintf(pandecode_dump_stream, "Tag %x\n", (int) (addr & 0xF));
-        addr = addr & ~0xF;
+        unsigned count = addr & 0x3F;
+        addr = addr & ~0x3F;
 
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(addr);
-        unsigned count = 9; // TODO: what is the actual count? at least 5.
         const uint8_t *cl = pandecode_fetch_gpu_mem(mem, addr, MALI_RESOURCE_LENGTH * count);
 
         for (unsigned i = 0; i < count; ++i) {
