@@ -1491,7 +1491,7 @@ emit_so_outputs(struct ntv_context *ctx,
       /* this is the type being indexed into */
       const struct glsl_type *bare_type = glsl_without_array(out_type);
       /* this is the array index into matrix types */
-      unsigned matrix_offset = so_output.register_index;
+      unsigned matrix_offset = glsl_type_is_matrix(bare_type) ? 0 : so_output.register_index;
       do {
          if (glsl_type_is_struct_or_ifc(bare_type)) {
             uint32_t base_slot = (location & ~so_output.start_component) / 4;
