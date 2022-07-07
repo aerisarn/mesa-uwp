@@ -1835,6 +1835,76 @@ lower_64bit_vars(nir_shader *shader)
    return progress;
 }
 
+static bool
+split_blocks(nir_shader *nir)
+{
+   bool progress = false;
+   bool changed = true;
+   do {
+      progress = false;
+      nir_foreach_shader_out_variable(var, nir) {
+         const struct glsl_type *base_type = glsl_without_array(var->type);
+         nir_variable *members[32]; //can't have more than this without breaking NIR
+         if (!glsl_type_is_struct(base_type))
+            continue;
+         /* TODO: arrays? */
+         if (!glsl_type_is_struct(var->type) || glsl_get_length(var->type) == 1)
+            continue;
+         if (glsl_count_attribute_slots(var->type, false) == 1)
+            continue;
+         unsigned offset = 0;
+         for (unsigned i = 0; i < glsl_get_length(var->type); i++) {
+            members[i] = nir_variable_clone(var, nir);
+            members[i]->type = glsl_get_struct_field(var->type, i);
+            members[i]->name = (void*)glsl_get_struct_elem_name(var->type, i);
+            members[i]->data.location += offset;
+            offset += glsl_count_attribute_slots(members[i]->type, false);
+            nir_shader_add_variable(nir, members[i]);
+         }
+         nir_foreach_function(function, nir) {
+            bool func_progress = false;
+            if (!function->impl)
+               continue;
+            nir_builder b;
+            nir_builder_init(&b, function->impl);
+            nir_foreach_block(block, function->impl) {
+               nir_foreach_instr_safe(instr, block) {
+                  switch (instr->type) {
+                  case nir_instr_type_deref: {
+                  nir_deref_instr *deref = nir_instr_as_deref(instr);
+                  if (!(deref->modes & nir_var_shader_out))
+                     continue;
+                  if (nir_deref_instr_get_variable(deref) != var)
+                     continue;
+                  if (deref->deref_type != nir_deref_type_struct)
+                     continue;
+                  nir_deref_instr *parent = nir_deref_instr_parent(deref);
+                  if (parent->deref_type != nir_deref_type_var)
+                     continue;
+                  deref->modes = nir_var_shader_temp;
+                  parent->modes = nir_var_shader_temp;
+                  b.cursor = nir_before_instr(instr);
+                  nir_ssa_def *dest = &nir_build_deref_var(&b, members[deref->strct.index])->dest.ssa;
+                  nir_ssa_def_rewrite_uses_after(&deref->dest.ssa, dest, &deref->instr);
+                  nir_instr_remove(&deref->instr);
+                  func_progress = true;
+                  break;
+                  }
+                  default: break;
+                  }
+               }
+            }
+            if (func_progress)
+               nir_metadata_preserve(function->impl, nir_metadata_none);
+         }
+         var->data.mode = nir_var_shader_temp;
+         changed = true;
+         progress = true;
+      }
+   } while (progress);
+   return changed;
+}
+
 static void
 zink_shader_dump(void *words, size_t size, const char *file)
 {
@@ -2878,6 +2948,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       }
       NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    }
+
+   if (so_info && so_info->num_outputs)
+      NIR_PASS_V(nir, split_blocks);
 
    optimize_nir(nir, NULL);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
