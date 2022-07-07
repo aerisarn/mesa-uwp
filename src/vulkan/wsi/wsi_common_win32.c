@@ -301,88 +301,6 @@ wsi_win32_surface_get_present_rectangles(VkIcdSurfaceBase *surface,
    return vk_outarray_status(&out);
 }
 
-static uint32_t
-select_memory_type(const struct wsi_device *wsi,
-                   VkMemoryPropertyFlags props,
-                   uint32_t type_bits)
-{
-   for (uint32_t i = 0; i < wsi->memory_props.memoryTypeCount; i++) {
-       const VkMemoryType type = wsi->memory_props.memoryTypes[i];
-       if ((type_bits & (1 << i)) && (type.propertyFlags & props) == props)
-         return i;
-   }
-
-   unreachable("No memory type found");
-}
-
-static uint32_t
-select_image_memory_type(const struct wsi_device *wsi,
-                         uint32_t type_bits)
-{
-   return select_memory_type(wsi,
-                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                             type_bits);
-}
-
-static uint32_t
-select_buffer_memory_type(const struct wsi_device *wsi,
-                         uint32_t type_bits)
-{
-   return select_memory_type(wsi,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                             type_bits);
-}
-
-static VkResult
-wsi_create_win32_image_mem(const struct wsi_swapchain *chain,
-                           const struct wsi_image_info *info,
-                           struct wsi_image *image)
-{
-   const struct wsi_device *wsi = chain->wsi;
-   VkResult result =
-      wsi_create_buffer_image_mem(chain, info, image, 0, false);
-   if (result != VK_SUCCESS)
-      return result;
-
-   const VkImageSubresource image_subresource = {
-      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-      .mipLevel = 0,
-      .arrayLayer = 0,
-   };
-   VkSubresourceLayout image_layout;
-   wsi->GetImageSubresourceLayout(chain->device, image->image,
-                                  &image_subresource, &image_layout);
-
-   image->row_pitches[0] = image_layout.rowPitch;
-
-   return VK_SUCCESS;
-}
-
-#define WSI_WIN32_LINEAR_STRIDE_ALIGN 256
-
-static VkResult
-wsi_configure_win32_image(const struct wsi_swapchain *chain,
-                          const VkSwapchainCreateInfoKHR *pCreateInfo,
-                          struct wsi_image_info *info)
-{
-   VkResult result =
-      wsi_configure_buffer_image(chain, pCreateInfo, info);
-   if (result != VK_SUCCESS)
-      return result;
-
-   info->create_mem = wsi_create_win32_image_mem;
-   info->select_image_memory_type = select_image_memory_type;
-   info->select_buffer_memory_type = select_buffer_memory_type;
-
-   const uint32_t cpp = vk_format_get_blocksize(info->create.format);
-   info->linear_stride = ALIGN_POT(info->create.extent.width * cpp,
-                                   WSI_WIN32_LINEAR_STRIDE_ALIGN);
-   info->size_align = 4096;
-
-   return VK_SUCCESS;
-}
-
-
 static VkResult
 wsi_win32_image_init(VkDevice device_h,
                      struct wsi_win32_swapchain *chain,
@@ -488,32 +406,19 @@ wsi_win32_queue_present(struct wsi_swapchain *drv_chain,
    struct wsi_win32_swapchain *chain = (struct wsi_win32_swapchain *) drv_chain;
    assert(image_index < chain->base.image_count);
    struct wsi_win32_image *image = &chain->images[image_index];
-   VkResult result;
 
    assert(chain->base.use_buffer_blit);
 
-   char *ptr;
+   char *ptr = image->base.cpu_map;
    char *dptr = image->ppvBits;
-   result = chain->base.wsi->MapMemory(chain->base.device,
-                                       image->base.buffer.memory,
-                                       0, image->base.sizes[0], 0, (void**)&ptr);
 
    for (unsigned h = 0; h < chain->extent.height; h++) {
       memcpy(dptr, ptr, chain->extent.width * 4);
       dptr += image->bmp_row_pitch;
       ptr += image->base.row_pitches[0];
    }
-   if(StretchBlt(chain->chain_dc, 0, 0, chain->extent.width, chain->extent.height, image->dc, 0, 0, chain->extent.width, chain->extent.height, SRCCOPY))
-      result = VK_SUCCESS;
-   else
-     result = VK_ERROR_MEMORY_MAP_FAILED;
-
-   chain->base.wsi->UnmapMemory(chain->base.device, image->base.buffer.memory);
-   if (result != VK_SUCCESS)
-      chain->status = result;
-
-   if (result != VK_SUCCESS)
-      return result;
+   if (!StretchBlt(chain->chain_dc, 0, 0, chain->extent.width, chain->extent.height, image->dc, 0, 0, chain->extent.width, chain->extent.height, SRCCOPY))
+      chain->status = VK_ERROR_MEMORY_MAP_FAILED;
 
    return chain->status;
 }
@@ -566,8 +471,7 @@ wsi_win32_surface_create_swapchain(
    assert(wsi_device->sw);
    chain->base.use_buffer_blit = true;
 
-   result = wsi_configure_win32_image(&chain->base, create_info,
-                                      &chain->base.image_info);
+   result = wsi_configure_cpu_image(&chain->base, create_info, NULL /*alloc_shm*/, &chain->base.image_info);
    if (result != VK_SUCCESS) {
       vk_free(allocator, chain);
       goto fail_init_images;
