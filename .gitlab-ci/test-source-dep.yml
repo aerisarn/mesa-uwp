@@ -14,8 +14,8 @@
     - if: *is-scheduled-pipeline
       when: never
 
-# Mesa core source file dependencies that may impact any build or test.
-# ---------------------------------------------------------------------
+# Mesa core source file dependencies that may impact any test job
+# ---------------------------------------------------------------
 .core-rules:
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
@@ -39,7 +39,7 @@
       - src/util/**/*
       when: on_success
 
-# Mesa source file dependencies that may impact any GL driver build or test.
+# Mesa source file dependencies that may impact any GL driver test job.
 .gl-rules:
   rules:
     - !reference [.core-rules, rules]

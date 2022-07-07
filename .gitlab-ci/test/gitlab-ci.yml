@@ -1,6 +1,6 @@
 .test:
   extends:
-    - .ci-run-policy
+    - .build-rules
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   variables:
@@ -116,7 +116,7 @@
 
 .baremetal-test:
   extends:
-    - .ci-run-policy
+    - .build-rules
     - .test
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true

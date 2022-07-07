@@ -126,7 +126,7 @@ stages:
 .docs-base:
   extends:
     - .fdo.ci-fairy
-    - .ci-run-policy
+    - .build-rules
   script:
   - apk --no-cache add graphviz doxygen
   - pip3 install sphinx breathe mako sphinx_rtd_theme
@@ -177,8 +177,8 @@ test-docs-mr:
       when: on_success
     # Other cases default to never
 
-# When to automatically run the CI
-.ci-run-policy:
+# When to automatically run the CI for build jobs
+.build-rules:
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     # If any files affecting the pipeline are changed, build/test jobs run
@@ -217,7 +217,7 @@ test-docs-mr:
 
 .container-rules:
   extends:
-    - .ci-run-policy
+    - .build-rules
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     # Run pipeline by default in the main project if any CI pipeline

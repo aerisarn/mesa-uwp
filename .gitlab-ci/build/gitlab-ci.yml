@@ -1,6 +1,6 @@
 # Shared between windows and Linux
 .build-common:
-  extends: .ci-run-policy
+  extends: .build-rules
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   artifacts:
