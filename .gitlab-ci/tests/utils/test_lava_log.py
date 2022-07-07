@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 import pytest
 import yaml
-from lava.exceptions import MesaCITimeoutError
+from lava.exceptions import MesaCIKnownIssueException, MesaCITimeoutError
 from lava.utils import (
     GitlabSection,
     LogFollower,
@@ -290,3 +290,60 @@ def test_gitlab_section_id(case_name, expected_id):
 
     assert gl.id == expected_id
 
+
+A618_NETWORK_ISSUE_LOGS = [
+    create_lava_yaml_msg(
+        msg="[ 1733.599402] r8152 2-1.3:1.0 eth0: Tx status -71", lvl="target"
+    ),
+    create_lava_yaml_msg(
+        msg="[ 1733.604506] nfs: server 192.168.201.1 not responding, still trying",
+        lvl="target",
+    ),
+]
+TEST_PHASE_LAVA_SIGNAL = create_lava_yaml_msg(
+    msg="Received signal: <STARTTC> mesa-ci_a618_vk", lvl="debug"
+)
+
+
+A618_NETWORK_ISSUE_SCENARIOS = {
+    "Pass - R8152 kmsg during boot": (A618_NETWORK_ISSUE_LOGS, does_not_raise()),
+    "Fail - R8152 kmsg during test phase": (
+        [TEST_PHASE_LAVA_SIGNAL, *A618_NETWORK_ISSUE_LOGS],
+        pytest.raises(MesaCIKnownIssueException),
+    ),
+    "Pass - Partial (1) R8152 kmsg during test phase": (
+        [TEST_PHASE_LAVA_SIGNAL, A618_NETWORK_ISSUE_LOGS[0]],
+        does_not_raise(),
+    ),
+    "Pass - Partial (2) R8152 kmsg during test phase": (
+        [TEST_PHASE_LAVA_SIGNAL, A618_NETWORK_ISSUE_LOGS[1]],
+        does_not_raise(),
+    ),
+    "Pass - Partial subsequent (3) R8152 kmsg during test phase": (
+        [
+            TEST_PHASE_LAVA_SIGNAL,
+            A618_NETWORK_ISSUE_LOGS[0],
+            A618_NETWORK_ISSUE_LOGS[0],
+        ],
+        does_not_raise(),
+    ),
+    "Pass - Partial subsequent (4) R8152 kmsg during test phase": (
+        [
+            TEST_PHASE_LAVA_SIGNAL,
+            A618_NETWORK_ISSUE_LOGS[1],
+            A618_NETWORK_ISSUE_LOGS[1],
+        ],
+        does_not_raise(),
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "messages, expectation",
+    A618_NETWORK_ISSUE_SCENARIOS.values(),
+    ids=A618_NETWORK_ISSUE_SCENARIOS.keys(),
+)
+def test_detect_failure(messages, expectation):
+    lf = LogFollower()
+    with expectation:
+        lf.feed(messages)

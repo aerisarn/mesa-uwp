@@ -20,6 +20,7 @@ from typing import Optional, Union
 from lava.exceptions import MesaCITimeoutError
 from lava.utils.console_format import CONSOLE_LOG
 from lava.utils.gitlab_section import GitlabSection
+from lava.utils.lava_log_hints import LAVALogHints
 from lava.utils.log_section import (
     DEFAULT_GITLAB_SECTION_TIMEOUTS,
     FALLBACK_GITLAB_SECTION_TIMEOUT,
@@ -36,12 +37,14 @@ class LogFollower:
     )
     fallback_timeout: timedelta = FALLBACK_GITLAB_SECTION_TIMEOUT
     _buffer: list[str] = field(default_factory=list, init=False)
+    log_hints: LAVALogHints = field(init=False)
 
     def __post_init__(self):
         section_is_created = bool(self.current_section)
         section_has_started = bool(
             self.current_section and self.current_section.has_started
         )
+        self.log_hints = LAVALogHints(self)
         assert (
             section_is_created == section_has_started
         ), "Can't follow logs beginning from uninitialized GitLab sections."
@@ -137,6 +140,8 @@ class LogFollower:
             self.manage_gl_sections(line)
             if parsed_line := parse_lava_line(line):
                 self._buffer.append(parsed_line)
+
+        self.log_hints.detect_failure(new_lines)
 
         return is_job_healthy
 

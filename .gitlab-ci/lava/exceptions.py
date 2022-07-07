@@ -19,3 +19,10 @@ class MesaCIRetryError(MesaCIException):
 
 class MesaCIParseException(MesaCIException):
     pass
+
+
+class MesaCIKnownIssueException(MesaCIException):
+    """Exception raised when the Mesa CI script finds something in the logs that
+    is known to cause the LAVA job to eventually fail"""
+
+    pass
