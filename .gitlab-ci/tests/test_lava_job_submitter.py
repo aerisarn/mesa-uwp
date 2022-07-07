@@ -275,7 +275,9 @@ def test_parse_job_result_from_log(message, expectation, mock_proxy):
     assert job.status == expectation
 
 
-@pytest.mark.skip(reason="Integration test. Needs a LAVA log raw file at /tmp/log.yaml")
+@pytest.mark.slow(
+    reason="Slow and sketchy test. Needs a LAVA log raw file at /tmp/log.yaml"
+)
 def test_full_yaml_log(mock_proxy, frozen_time):
     import itertools
     import random

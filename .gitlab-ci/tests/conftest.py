@@ -7,6 +7,11 @@ from freezegun import freeze_time
 from .lava.helpers import generate_testsuite_result, jobs_logs_response
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+
 @pytest.fixture
 def mock_sleep():
     """Mock time.sleep to make test faster"""
