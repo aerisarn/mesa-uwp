@@ -297,6 +297,5 @@ sanity:
         *all_paths
       when: manual
   variables:
-    GIT_STRATEGY: none
     JOB_TIMEOUT: 80
 
