@@ -106,6 +106,7 @@ struct wsi_device {
 
    bool supports_modifiers;
    uint32_t maxImageDimension2D;
+   uint32_t optimalBufferCopyRowPitchAlignment;
    VkPresentModeKHR override_present_mode;
    bool force_bgra8_unorm_first;
 

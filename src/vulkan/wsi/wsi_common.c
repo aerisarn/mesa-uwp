@@ -79,6 +79,9 @@ wsi_device_init(struct wsi_device *wsi,
    GetPhysicalDeviceProperties2(pdevice, &pdp2);
 
    wsi->maxImageDimension2D = pdp2.properties.limits.maxImageDimension2D;
+   assert(pdp2.properties.limits.optimalBufferCopyRowPitchAlignment <= UINT32_MAX);
+   wsi->optimalBufferCopyRowPitchAlignment =
+      pdp2.properties.limits.optimalBufferCopyRowPitchAlignment;
    wsi->override_present_mode = VK_PRESENT_MODE_MAX_ENUM_KHR;
 
    GetPhysicalDeviceMemoryProperties(pdevice, &wsi->memory_props);
@@ -1504,6 +1507,8 @@ wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
                            uint32_t stride_align, uint32_t size_align,
                            struct wsi_image_info *info)
 {
+   const struct wsi_device *wsi = chain->wsi;
+
    assert(util_is_power_of_two_nonzero(stride_align));
    assert(util_is_power_of_two_nonzero(size_align));
 
@@ -1518,6 +1523,13 @@ wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
    const uint32_t cpp = vk_format_get_blocksize(pCreateInfo->imageFormat);
    info->linear_stride = pCreateInfo->imageExtent.width * cpp;
    info->linear_stride = ALIGN_POT(info->linear_stride, stride_align);
+
+   /* Since we can pick the stride to be whatever we want, also align to the
+    * device's optimalBufferCopyRowPitchAlignment so we get efficient copies.
+    */
+   assert(wsi->optimalBufferCopyRowPitchAlignment > 0);
+   info->linear_stride = ALIGN_POT(info->linear_stride,
+                                   wsi->optimalBufferCopyRowPitchAlignment);
 
    info->linear_size = info->linear_stride * pCreateInfo->imageExtent.height;
    info->linear_size = ALIGN_POT(info->linear_size, size_align);
