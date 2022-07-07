@@ -15,164 +15,16 @@ import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum, auto
-from typing import Optional, Pattern, Union
+from typing import Optional, Union
 
 from lava.exceptions import MesaCITimeoutError
-
-CONSOLE_LOG = {
-    "FG_GREEN": "\x1b[1;32;5;197m",
-    "FG_RED": "\x1b[1;38;5;197m",
-    "RESET": "\x1b[0m",
-    "UNDERLINED": "\x1b[3m",
-    "BOLD": "\x1b[1m",
-    "DIM": "\x1b[2m",
-}
-
-
-class LogSectionType(Enum):
-    LAVA_BOOT = auto()
-    TEST_SUITE = auto()
-    TEST_CASE = auto()
-    LAVA_POST_PROCESSING = auto()
-
-
-FALLBACK_GITLAB_SECTION_TIMEOUT = timedelta(minutes=10)
-DEFAULT_GITLAB_SECTION_TIMEOUTS = {
-    # Empirically, the devices boot time takes 3 minutes on average.
-    LogSectionType.LAVA_BOOT: timedelta(minutes=5),
-    # Test suite phase is where the initialization happens.
-    LogSectionType.TEST_SUITE: timedelta(minutes=5),
-    # Test cases may take a long time, this script has no right to interrupt
-    # them. But if the test case takes almost 1h, it will never succeed due to
-    # Gitlab job timeout.
-    LogSectionType.TEST_CASE: timedelta(minutes=60),
-    # LAVA post processing may refer to a test suite teardown, or the
-    # adjustments to start the next test_case
-    LogSectionType.LAVA_POST_PROCESSING: timedelta(minutes=5),
-}
-@dataclass
-class GitlabSection:
-    id: str
-    header: str
-    type: LogSectionType
-    start_collapsed: bool = False
-    escape: str = "\x1b[0K"
-    colour: str = f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['FG_GREEN']}"
-    __start_time: Optional[datetime] = field(default=None, init=False)
-    __end_time: Optional[datetime] = field(default=None, init=False)
-
-    @classmethod
-    def section_id_filter(cls, value) -> str:
-        return str(re.sub(r"[^\w_-]+", "-", value))
-
-    def __post_init__(self):
-        self.id = self.section_id_filter(self.id)
-
-    @property
-    def has_started(self) -> bool:
-        return self.__start_time is not None
-
-    @property
-    def has_finished(self) -> bool:
-        return self.__end_time is not None
-
-    def get_timestamp(self, time: datetime) -> str:
-        unix_ts = datetime.timestamp(time)
-        return str(int(unix_ts))
-
-    def section(self, marker: str, header: str, time: datetime) -> str:
-        preamble = f"{self.escape}section_{marker}"
-        collapse = marker == "start" and self.start_collapsed
-        collapsed = "[collapsed=true]" if collapse else ""
-        section_id = f"{self.id}{collapsed}"
-
-        timestamp = self.get_timestamp(time)
-        before_header = ":".join([preamble, timestamp, section_id])
-        colored_header = f"{self.colour}{header}\x1b[0m" if header else ""
-        header_wrapper = "\r" + f"{self.escape}{colored_header}"
-
-        return f"{before_header}{header_wrapper}"
-
-    def __enter__(self):
-        print(self.start())
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print(self.end())
-
-    def start(self) -> str:
-        assert not self.has_finished, "Starting an already finished section"
-        self.__start_time = datetime.now()
-        return self.section(marker="start", header=self.header, time=self.__start_time)
-
-    def end(self) -> str:
-        assert self.has_started, "Ending an uninitalized section"
-        self.__end_time = datetime.now()
-        assert (
-            self.__end_time >= self.__start_time
-        ), "Section execution time will be negative"
-        return self.section(marker="end", header="", time=self.__end_time)
-
-    def delta_time(self) -> Optional[timedelta]:
-        if self.__start_time and self.__end_time:
-            return self.__end_time - self.__start_time
-
-        if self.has_started:
-            return datetime.now() - self.__start_time
-
-        return None
-
-
-@dataclass(frozen=True)
-class LogSection:
-    regex: Union[Pattern, str]
-    levels: tuple[str]
-    section_id: str
-    section_header: str
-    section_type: LogSectionType
-    collapsed: bool = False
-
-    def from_log_line_to_section(
-        self, lava_log_line: dict[str, str]
-    ) -> Optional[GitlabSection]:
-        if lava_log_line["lvl"] not in self.levels:
-            return
-
-        if match := re.search(self.regex, lava_log_line["msg"]):
-            section_id = self.section_id.format(*match.groups())
-            section_header = self.section_header.format(*match.groups())
-            return GitlabSection(
-                id=section_id,
-                header=section_header,
-                type=self.section_type,
-                start_collapsed=self.collapsed,
-            )
-
-
-LOG_SECTIONS = (
-    LogSection(
-        regex=re.compile(r"<?STARTTC>? ([^>]*)"),
-        levels=("target", "debug"),
-        section_id="{}",
-        section_header="test_case {}",
-        section_type=LogSectionType.TEST_CASE,
-    ),
-    LogSection(
-        regex=re.compile(r"<?STARTRUN>? ([^>]*)"),
-        levels=("target", "debug"),
-        section_id="{}",
-        section_header="test_suite {}",
-        section_type=LogSectionType.TEST_SUITE,
-    ),
-    LogSection(
-        regex=re.compile(r"ENDTC>? ([^>]+)"),
-        levels=("target", "debug"),
-        section_id="post-{}",
-        section_header="Post test_case {}",
-        collapsed=True,
-        section_type=LogSectionType.LAVA_POST_PROCESSING,
-    ),
+from lava.utils.console_format import CONSOLE_LOG
+from lava.utils.gitlab_section import GitlabSection
+from lava.utils.log_section import (
+    DEFAULT_GITLAB_SECTION_TIMEOUTS,
+    FALLBACK_GITLAB_SECTION_TIMEOUT,
+    LOG_SECTIONS,
+    LogSectionType,
 )
 
 
@@ -193,6 +45,14 @@ class LogFollower:
         assert (
             section_is_created == section_has_started
         ), "Can't follow logs beginning from uninitialized GitLab sections."
+
+    @property
+    def phase(self) -> LogSectionType:
+        return (
+            self.current_section.type
+            if self.current_section
+            else LogSectionType.UNKNOWN
+        )
 
     def __enter__(self):
         return self

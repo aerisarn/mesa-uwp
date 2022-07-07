@@ -31,7 +31,7 @@ from lava.exceptions import (
     MesaCIRetryError,
     MesaCITimeoutError,
 )
-from lava.utils.lava_log import (
+from lava.utils import (
     CONSOLE_LOG,
     GitlabSection,
     LogFollower,

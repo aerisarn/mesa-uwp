@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import pytest
 import yaml
 from lava.exceptions import MesaCITimeoutError
-from lava.utils.lava_log import (
+from lava.utils import (
     GitlabSection,
     LogFollower,
     LogSectionType,
@@ -289,3 +289,4 @@ def test_gitlab_section_id(case_name, expected_id):
     )
 
     assert gl.id == expected_id
+

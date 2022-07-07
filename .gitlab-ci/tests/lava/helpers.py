@@ -5,7 +5,7 @@ from typing import Callable, Generator, Iterable, Tuple, Union
 
 import yaml
 from freezegun import freeze_time
-from lava.utils.lava_log import (
+from lava.utils.log_section import (
     DEFAULT_GITLAB_SECTION_TIMEOUTS,
     FALLBACK_GITLAB_SECTION_TIMEOUT,
     LogSectionType,

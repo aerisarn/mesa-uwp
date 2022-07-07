@@ -19,7 +19,7 @@ from lava.lava_job_submitter import (
     follow_job_execution,
     retriable_follow_job,
 )
-from lava.utils.lava_log import LogSectionType
+from lava.utils import LogSectionType
 
 from .lava.helpers import (
     create_lava_yaml_msg,
