@@ -6332,9 +6332,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          cl.PerspectiveDivideDisable = ice->state.window_space_position;
          cl.ViewportXYClipTestEnable = !points_or_lines;
 
-         if (wm_prog_data->barycentric_interp_modes &
-             BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
-            cl.NonPerspectiveBarycentricEnable = true;
+         cl.NonPerspectiveBarycentricEnable = wm_prog_data->uses_nonperspective_interp_modes;
 
          cl.ForceZeroRTAIndexEnable = cso_fb->layers <= 1;
          cl.MaximumVPIndex = ice->state.num_viewports - 1;

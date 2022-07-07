@@ -2168,7 +2168,14 @@ emit_pixel_interpolater_send(const fs_builder &bld,
    fs_inst *inst = bld.emit(opcode, dst, src, desc);
    /* 2 floats per slot returned */
    inst->size_written = 2 * dst.component_size(inst->exec_size);
-   inst->pi_noperspective = interpolation == INTERP_MODE_NOPERSPECTIVE;
+   if (interpolation == INTERP_MODE_NOPERSPECTIVE) {
+      inst->pi_noperspective = true;
+      /* TGL BSpec says:
+       *     This field cannot be set to "Linear Interpolation"
+       *     unless Non-Perspective Barycentric Enable in 3DSTATE_CLIP is enabled"
+       */
+      wm_prog_data->uses_nonperspective_interp_modes = true;
+   }
 
    wm_prog_data->pulls_bary = true;
 

@@ -7277,6 +7277,9 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
 
    prog_data->barycentric_interp_modes =
       brw_compute_barycentric_interp_modes(devinfo, shader);
+   prog_data->uses_nonperspective_interp_modes |=
+      (prog_data->barycentric_interp_modes &
+      BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) != 0;
 
    /* You can't be coarse and per-sample */
    assert(!key->coarse_pixel || !key->persample_interp);

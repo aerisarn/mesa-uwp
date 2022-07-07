@@ -1543,8 +1543,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.ViewportZClipTestEnable = pipeline->depth_clip_enable;
 #else
    clip.NonPerspectiveBarycentricEnable = wm_prog_data ?
-      (wm_prog_data->barycentric_interp_modes &
-       BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) != 0 : 0;
+      wm_prog_data->uses_nonperspective_interp_modes : 0;
 #endif
 
    GENX(3DSTATE_CLIP_pack)(NULL, pipeline->gfx7.clip, &clip);
