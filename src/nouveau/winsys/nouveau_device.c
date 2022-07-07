@@ -12,107 +12,60 @@
 #include "util/os_misc.h"
 
 static uint8_t
-cls_for_chipset(uint16_t chipset)
+sm_for_chipset(uint16_t chipset)
 {
    if (chipset >= 0x180)
-      assert(!"unknown chipset");
+      return 0x90;
    else if (chipset == 0x17b)
-      return 0xc7;
-   else if (chipset >= 0x172)
-      return 0xc6;
-   else if (chipset >= 0x170)
-      return 0xc5;
-   else if (chipset >= 0x160)
-      return 0xc4;
-   else if (chipset >= 0x140)
-      return 0xc3;
-   else if (chipset >= 0x132)
-      return 0xc1;
-   else if (chipset >= 0x130)
-      return 0xc0;
-   else if (chipset >= 0x120)
-      return 0xb1;
-   else if (chipset >= 0x110)
-      return 0xb0;
-   else if (chipset >= 0x0f0)
-      return 0xa2;
-   else if (chipset >= 0x0ea)
-      return 0xa1;
-   else if (chipset >= 0x0e0)
-      return 0xa0;
-   // GF110 is like GF100
-   else if (chipset == 0x0c8)
-      return 0x90;
-   else if (chipset >= 0x0c1)
-      return 0x91;
-   else if (chipset >= 0x0c0)
-      return 0x90;
-   else if (chipset >= 0x0a3)
-      return 0x85;
-   // GT200 is special
-   else if (chipset >= 0x0a0)
-      return 0x86;
-   else if (chipset >= 0x082)
-      return 0x82;
-   // this has to be == because 0x63 is older than 0x50
-   else if (chipset == 0x050)
-      return 0x50;
-   else if (chipset >= 0x044)
-      return 0x44;
-   else if (chipset >= 0x040)
-      return 0x40;
-   else if (chipset >= 0x036)
-      return 0x36;
-   else if (chipset >= 0x020)
-      return 0x20;
-   return 0x00;
-}
-
-static uint8_t
-sm_for_cls(uint8_t cls, uint16_t chipset)
-{
-   switch (cls) {
-   case 0xc7:
       return 0x87;
-   case 0xc6:
+   else if (chipset >= 0x172)
       return 0x86;
-   case 0xc5:
+   else if (chipset >= 0x170)
       return 0x80;
-   case 0xc4:
+   else if (chipset >= 0x160)
       return 0x75;
-   case 0xc3:
-      return chipset >= 0x14b ? 0x72 : 0x70;
-   case 0xc1:
-      // TODO maybe that's 0xc2?
-      return chipset >= 0x13b ? 0x62 : 0x61;
-   case 0xc0:
+   else if (chipset >= 0x14b)
+      return 0x72;
+   else if (chipset >= 0x140)
+      return 0x70;
+   else if (chipset >= 0x13b)
+      return 0x62;
+   else if (chipset >= 0x132)
+      return 0x61;
+   else if (chipset >= 0x130)
       return 0x60;
-   case 0xb1:
-      // TODO is there a 0xb2?
-      return chipset >= 0x12b ? 0x53 : 0x52;
-   case 0xb0:
+   else if (chipset >= 0x12b)
+      return 0x53;
+   else if (chipset >= 0x120)
+      return 0x52;
+   else if (chipset >= 0x110)
       return 0x50;
-   case 0xa2:
+   // TODO: 0x37
+   else if (chipset >= 0x0f0)
       return 0x35;
-   case 0xa1:
-      return 0x31;
-   case 0xa0:
+   else if (chipset >= 0x0ea)
+      return 0x32;
+   else if (chipset >= 0x0e0)
       return 0x30;
-   case 0x91:
-      return 0x21;
-   case 0x90:
+   // GF110 is SM20
+   else if (chipset == 0x0c8)
       return 0x20;
-   case 0x86:
-      return 0x13;
-   case 0x85:
+   else if (chipset >= 0x0c1)
+      return 0x21;
+   else if (chipset >= 0x0c0)
+      return 0x20;
+   else if (chipset >= 0x0a3)
       return 0x12;
-   case 0x82:
+   // GT200 is SM13
+   else if (chipset >= 0x0a0)
+      return 0x13;
+   else if (chipset >= 0x080)
       return 0x11;
-   case 0x50:
+   // this has to be == because 0x63 is older than 0x50 and has no compute
+   else if (chipset == 0x050)
       return 0x10;
-   default:
-      return 0;
-   }
+   // no compute
+   return 0x00;
 }
 
 static void
@@ -260,8 +213,7 @@ nouveau_ws_device_new(int fd)
 
    device->fd = dup_fd;
    device->vendor_id = 0x10de;
-   device->cls = cls_for_chipset(device->chipset);
-   device->cm = sm_for_cls(device->cls, device->chipset);
+   device->cm = sm_for_chipset(device->chipset);
    device->is_integrated = device->vram_size == 0;
 
    if (device->vram_size == 0)

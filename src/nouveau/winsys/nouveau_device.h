@@ -34,8 +34,6 @@ struct nouveau_ws_device {
    char *chipset_name;
    char *device_name;
 
-   /* first byte of class id */
-   uint8_t cls;
    /* maps to CUDAs Compute capability version */
    uint8_t cm;
 

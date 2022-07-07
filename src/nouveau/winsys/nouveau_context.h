@@ -6,7 +6,7 @@
 struct nouveau_ws_device;
 
 struct nouveau_ws_object {
-   uint8_t __pad;
+   uint16_t cls;
 };
 
 struct nouveau_ws_context {
@@ -14,6 +14,7 @@ struct nouveau_ws_context {
 
    int channel;
 
+   struct nouveau_ws_object copy;
    struct nouveau_ws_object eng2d;
    struct nouveau_ws_object m2mf;
    struct nouveau_ws_object compute;

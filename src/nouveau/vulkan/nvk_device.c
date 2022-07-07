@@ -63,7 +63,7 @@ nvk_update_preamble_push(struct nvk_queue_state *qs, struct nvk_device *dev,
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_B(push, temp_size & ~0x7fff);
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_C(push, 0xff);
 
-   if (dev->pdev->dev->cls < 0xc3) {
+   if (dev->ctx->compute.cls < 0xc3c0) {
       P_MTHD(push, NVA0C0, SET_SHADER_LOCAL_MEMORY_THROTTLED_A);
       P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_A(push, temp_size >> 32);
       P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_B(push, temp_size & ~0x7fff);
@@ -90,7 +90,7 @@ nvk_update_preamble_push(struct nvk_queue_state *qs, struct nvk_device *dev,
    }
 
    P_MTHD(push, NVA0C0, SET_SPA_VERSION);
-   P_NVA0C0_SET_SPA_VERSION(push, { .major = dev->pdev->dev->cls >= 0xa1 ? 0x4 : 0x3 });
+   P_NVA0C0_SET_SPA_VERSION(push, { .major = dev->ctx->compute.cls >= 0xa1c0 ? 0x4 : 0x3 });
 
    if (qs->push)
       nouveau_ws_push_destroy(qs->push);

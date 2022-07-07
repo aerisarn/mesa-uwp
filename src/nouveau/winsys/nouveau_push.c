@@ -101,7 +101,7 @@ nouveau_ws_push_valid(struct nouveau_ws_push *push) {
 }
 
 static void
-nouveau_ws_push_dump(struct nouveau_ws_push *push, uint8_t cls)
+nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ctx)
 {
    uint32_t *cur = push->orig_map;
 
@@ -144,9 +144,9 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, uint8_t cls)
          const char *mthd_name = "";
          switch (subchan) {
          case 1:
-            if (cls >= 0xc3)
+            if (ctx->compute.cls >= 0xc3c0)
                mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
-            else if (cls >= 0xc0)
+            else if (ctx->compute.cls >= 0xc0c0)
                mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
             else
                mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
@@ -155,9 +155,9 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, uint8_t cls)
             mthd_name = P_PARSE_NV902D_MTHD(mthd);
             break;
          case 4:
-            if (cls >= 0xc1)
+            if (ctx->copy.cls >= 0xc1b5)
                mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
-            else if (cls >= 0xa0)
+            else if (ctx->copy.cls >= 0xa0b5)
                mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
             else
                mthd_name = P_PARSE_NV90B5_MTHD(mthd);
@@ -173,9 +173,9 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, uint8_t cls)
          printf("\tmthd %04x %s\n", mthd, mthd_name);
          switch (subchan) {
          case 1:
-            if (cls >= 0xc3)
+            if (ctx->compute.cls >= 0xc3c0)
                P_DUMP_NVC3C0_MTHD_DATA(mthd, value, "\t\t");
-            else if (cls >= 0xc0)
+            else if (ctx->compute.cls >= 0xc0c0)
                P_DUMP_NVC0C0_MTHD_DATA(mthd, value, "\t\t");
             else
                P_DUMP_NVA0C0_MTHD_DATA(mthd, value, "\t\t");
@@ -184,9 +184,9 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, uint8_t cls)
             P_DUMP_NV902D_MTHD_DATA(mthd, value, "\t\t");
             break;
          case 4:
-            if (cls >= 0xc1)
+            if (ctx->copy.cls >= 0xc1b5)
                P_DUMP_NVC1B5_MTHD_DATA(mthd, value, "\t\t");
-            else if (cls >= 0xa0)
+            else if (ctx->copy.cls >= 0xa0b5)
                P_DUMP_NVA0B5_MTHD_DATA(mthd, value, "\t\t");
             else
                P_DUMP_NV90B5_MTHD_DATA(mthd, value, "\t\t");
@@ -272,7 +272,7 @@ nouveau_ws_push_submit(
 
    if ((ret && (dev->debug_flags & NVK_DEBUG_PUSH_SYNC)) || dev->debug_flags & NVK_DEBUG_PUSH_DUMP) {
       printf("DRM_NOUVEAU_GEM_PUSHBUF returned %i, dumping pushbuffer\n", ret);
-      nouveau_ws_push_dump(push, dev->cls);
+      nouveau_ws_push_dump(push, ctx);
    }
 
    /* TODO: later we want to report that the channel is gone, but for now just assert */

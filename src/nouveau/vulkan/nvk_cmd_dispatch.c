@@ -4,6 +4,8 @@
 #include "nvk_physical_device.h"
 #include "nvk_pipeline.h"
 
+#include "nouveau_context.h"
+
 #include "classes/cla0b5.h"
 
 #include "nvk_cla0c0.h"
@@ -43,9 +45,8 @@ nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
                              const VkCommandBufferBeginInfo *pBeginInfo)
 {
    struct nvk_device *dev = (struct nvk_device *)cmd->vk.base.device;
-   struct nvk_physical_device *pdev = dev->pdev;
 
-   if (pdev->dev->cls < 0xa0)
+   if (dev->ctx->compute.cls < 0xa0c0)
       return;
 
    cmd->tls_space_needed = calc_tls_size(dev, 128 * 16, 0, 0x200);

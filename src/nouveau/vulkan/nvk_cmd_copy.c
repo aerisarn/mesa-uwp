@@ -10,6 +10,7 @@
 #include "nvk_physical_device.h"
 
 #include "nouveau_bo.h"
+#include "nouveau_context.h"
 #include "nouveau_push.h"
 
 #include "nvtypes.h"
@@ -180,7 +181,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
             P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent_el.depth);
             P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset_el.z);
 
-            if (cmd->pool->dev->pdev->dev->cls >= 0xc1) {
+            if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(push, NVC1B5, SRC_ORIGIN_X);
                P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x * copy->bpp);
                P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset_el.y);
@@ -213,7 +214,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
             P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent_el.depth);
             P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset_el.z);
 
-            if (cmd->pool->dev->pdev->dev->cls >= 0xc1) {
+            if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(push, NVC1B5, DST_ORIGIN_X);
                P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x * copy->bpp);
                P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset_el.y);

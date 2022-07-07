@@ -8,10 +8,6 @@
 
 #include "nouveau_device.h"
 
-#include "nvtypes.h"
-#include "classes/cl902d.h"
-#include "classes/clc5c0.h"
-
 static void
 nouveau_ws_subchan_dealloc(int fd, struct nouveau_ws_object *obj)
 {
@@ -30,6 +26,54 @@ nouveau_ws_subchan_dealloc(int fd, struct nouveau_ws_object *obj)
 
    /* TODO returns -ENOENT for unknown reasons */
    drmCommandWrite(fd, DRM_NOUVEAU_NVIF, &args, sizeof(args));
+}
+
+#define NOUVEAU_WS_CONTEXT_MAX_CLASSES 16
+
+static int
+nouveau_ws_context_query_classes(int fd, int channel, uint32_t classes[NOUVEAU_WS_CONTEXT_MAX_CLASSES])
+{
+   struct {
+      struct nvif_ioctl_v0 ioctl;
+      struct nvif_ioctl_sclass_v0 sclass;
+      struct nvif_ioctl_sclass_oclass_v0 list[NOUVEAU_WS_CONTEXT_MAX_CLASSES];
+   } args = {
+      .ioctl = {
+         .route = 0xff,
+         .token = channel,
+         .type = NVIF_IOCTL_V0_SCLASS,
+         .version = 0,
+      },
+      .sclass = {
+         .count = NOUVEAU_WS_CONTEXT_MAX_CLASSES,
+         .version = 0,
+      },
+   };
+
+   int ret = drmCommandWriteRead(fd, DRM_NOUVEAU_NVIF, &args, sizeof(args));
+   if (ret)
+      return ret;
+
+   assert(args.sclass.count <= NOUVEAU_WS_CONTEXT_MAX_CLASSES);
+   for (unsigned i = 0; i < NOUVEAU_WS_CONTEXT_MAX_CLASSES; i++)
+      classes[i] = args.list[i].oclass;
+
+   return 0;
+}
+
+static uint32_t
+nouveau_ws_context_find_class(uint32_t classes[NOUVEAU_WS_CONTEXT_MAX_CLASSES], uint8_t type)
+{
+   uint32_t ret = 0;
+
+   /* find the highest matching one */
+   for (unsigned i = 0; i < NOUVEAU_WS_CONTEXT_MAX_CLASSES; i++) {
+      uint32_t val = classes[i];
+      if ((val & 0xff) == type)
+         ret = MAX2(ret, val);
+   }
+
+   return ret;
 }
 
 static int
@@ -55,6 +99,13 @@ nouveau_ws_subchan_alloc(int fd, int channel, uint32_t handle, uint16_t oclass, 
       },
    };
 
+   if (!oclass) {
+      assert(!"called with invalid oclass");
+      return -EINVAL;
+   }
+
+   obj->cls = oclass;
+
    return drmCommandWrite(fd, DRM_NOUVEAU_NVIF, &args, sizeof(args));
 }
 
@@ -73,6 +124,7 @@ int
 nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_context **out)
 {
    struct drm_nouveau_channel_alloc req = { };
+   uint32_t classes[NOUVEAU_WS_CONTEXT_MAX_CLASSES];
 
    *out = CALLOC_STRUCT(nouveau_ws_context);
    if (!*out)
@@ -82,20 +134,29 @@ nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_conte
    if (ret)
       goto fail_chan;
 
-   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef902d, FERMI_TWOD_A, &(*out)->eng2d);
+   ret = nouveau_ws_context_query_classes(dev->fd, req.channel, classes);
+   if (ret)
+      goto fail_chan;
+
+   uint32_t obj_class = nouveau_ws_context_find_class(classes, 0x2d);
+   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef902d, obj_class, &(*out)->eng2d);
    if (ret)
       goto fail_2d;
 
-   uint32_t obj_class = 0xa140;//NVF0_P2MF_CLASS;
+   obj_class = nouveau_ws_context_find_class(classes, 0x40);
+   if (!obj_class)
+      obj_class = nouveau_ws_context_find_class(classes, 0x39);
    ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef323f, obj_class, &(*out)->m2mf);
    if (ret)
       goto fail_subchan;
 
-   obj_class = TURING_COMPUTE_A;
+   obj_class = nouveau_ws_context_find_class(classes, 0xc0);
    ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef00c0, obj_class, &(*out)->compute);
    if (ret)
       goto fail_subchan;
 
+   /* no need to allocate it */
+   (*out)->copy.cls = nouveau_ws_context_find_class(classes, 0xb5);
    (*out)->channel = req.channel;
    (*out)->dev = dev;
    return 0;
