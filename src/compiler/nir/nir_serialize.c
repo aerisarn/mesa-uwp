@@ -1389,6 +1389,7 @@ read_load_const(read_ctx *ctx, union packed_instr header)
    nir_load_const_instr *lc =
       nir_load_const_instr_create(ctx->nir, header.load_const.last_component + 1,
                                   decode_bit_size_3bits(header.load_const.bit_size));
+   lc->def.divergent = false;
 
    switch (header.load_const.packing) {
    case load_const_scalar_hi_19bits:
@@ -1477,6 +1478,8 @@ read_ssa_undef(read_ctx *ctx, union packed_instr header)
    nir_ssa_undef_instr *undef =
       nir_ssa_undef_instr_create(ctx->nir, header.undef.last_component + 1,
                                  decode_bit_size_3bits(header.undef.bit_size));
+
+   undef->def.divergent = false;
 
    read_add_object(ctx, &undef->def);
    return undef;
