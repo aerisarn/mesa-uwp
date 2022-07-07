@@ -1636,7 +1636,8 @@ void si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs);
 void cik_create_gfx_config(struct radv_device *device);
 
 void si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D *scissors,
-                       const VkViewport *viewports, bool can_use_guardband);
+                       const VkViewport *viewports, unsigned rast_prim, float line_width);
+
 uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
                                    bool indirect_draw, bool count_from_stream_output,
                                    uint32_t draw_vertex_count, unsigned topology,
@@ -2121,7 +2122,6 @@ struct radv_graphics_pipeline {
    bool disable_out_of_order_rast_for_occlusion;
    bool uses_drawid;
    bool uses_baseinstance;
-   bool can_use_guardband;
    bool uses_dynamic_stride;
    bool uses_conservative_overestimate;
    bool negative_one_to_one;
@@ -2138,6 +2138,9 @@ struct radv_graphics_pipeline {
 
    /* Not NULL if graphics pipeline uses streamout. */
    struct radv_shader *streamout_shader;
+
+   unsigned rast_prim;
+   float line_width;
 };
 
 struct radv_compute_pipeline {
@@ -3038,6 +3041,36 @@ si_translate_prim(unsigned topology)
       return V_008958_DI_PT_PATCH;
    default:
       unreachable("unhandled primitive type");
+   }
+}
+
+static inline bool
+radv_prim_is_points_or_lines(unsigned topology)
+{
+   switch (topology) {
+   case V_008958_DI_PT_POINTLIST:
+   case V_008958_DI_PT_LINELIST:
+   case V_008958_DI_PT_LINESTRIP:
+   case V_008958_DI_PT_LINELIST_ADJ:
+   case V_008958_DI_PT_LINESTRIP_ADJ:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
+radv_rast_prim_is_points_or_lines(unsigned rast_prim)
+{
+   switch (rast_prim) {
+   case V_028A6C_POINTLIST:
+   case V_028A6C_LINESTRIP:
+      return true;
+   case V_028A6C_TRISTRIP:
+   case V_028A6C_RECTLIST:
+      return false;
+   default:
+      unreachable("invalid rast prim");
    }
 }
 

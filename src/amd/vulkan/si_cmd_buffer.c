@@ -715,10 +715,11 @@ si_intersect_scissor(const VkRect2D *a, const VkRect2D *b)
 
 void
 si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D *scissors,
-                  const VkViewport *viewports, bool can_use_guardband)
+                  const VkViewport *viewports, unsigned rast_prim, float line_width)
 {
    int i;
    float scale[3], translate[3], guardband_x = INFINITY, guardband_y = INFINITY;
+   float discard_x = 1.0f, discard_y = 1.0f;
    const float max_range = 32767.0f;
    if (!count)
       return;
@@ -744,17 +745,33 @@ si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D
                          S_028250_WINDOW_OFFSET_DISABLE(1));
       radeon_emit(cs, S_028254_BR_X(scissor.offset.x + scissor.extent.width) |
                          S_028254_BR_Y(scissor.offset.y + scissor.extent.height));
-   }
-   if (!can_use_guardband) {
-      guardband_x = 1.0;
-      guardband_y = 1.0;
+
+      if (radv_rast_prim_is_points_or_lines(rast_prim)) {
+         /* When rendering wide points or lines, we need to be more conservative about when to
+          * discard them entirely. */
+         float pixels;
+
+         if (rast_prim == V_028A6C_POINTLIST) {
+            pixels = 8191.875f;
+         } else {
+            pixels = line_width;
+         }
+
+         /* Add half the point size / line width. */
+         discard_x += pixels / (2.0 * scale[0]);
+         discard_y += pixels / (2.0 * scale[1]);
+
+         /* Discard primitives that would lie entirely outside the clip region. */
+         discard_x = MIN2(discard_x, guardband_x);
+         discard_y = MIN2(discard_y, guardband_y);
+      }
    }
 
    radeon_set_context_reg_seq(cs, R_028BE8_PA_CL_GB_VERT_CLIP_ADJ, 4);
    radeon_emit(cs, fui(guardband_y));
-   radeon_emit(cs, fui(1.0));
+   radeon_emit(cs, fui(discard_y));
    radeon_emit(cs, fui(guardband_x));
-   radeon_emit(cs, fui(1.0));
+   radeon_emit(cs, fui(discard_x));
 }
 
 static inline unsigned

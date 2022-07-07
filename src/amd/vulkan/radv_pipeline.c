@@ -1208,28 +1208,6 @@ gfx103_pipeline_init_vrs_state(struct radv_graphics_pipeline *pipeline,
    }
 }
 
-static bool
-radv_prim_can_use_guardband(uint32_t topology)
-{
-   switch (topology) {
-   case V_008958_DI_PT_POINTLIST:
-   case V_008958_DI_PT_LINELIST:
-   case V_008958_DI_PT_LINESTRIP:
-   case V_008958_DI_PT_LINELIST_ADJ:
-   case V_008958_DI_PT_LINESTRIP_ADJ:
-      return false;
-   case V_008958_DI_PT_TRILIST:
-   case V_008958_DI_PT_TRISTRIP:
-   case V_008958_DI_PT_TRIFAN:
-   case V_008958_DI_PT_TRILIST_ADJ:
-   case V_008958_DI_PT_TRISTRIP_ADJ:
-   case V_008958_DI_PT_PATCH:
-      return true;
-   default:
-      unreachable("unhandled primitive type");
-   }
-}
-
 static uint32_t
 si_conv_tess_prim_to_gs_out(enum tess_primitive_mode prim)
 {
@@ -1972,20 +1950,6 @@ static void
 radv_pipeline_init_input_assembly_state(struct radv_graphics_pipeline *pipeline,
                                         const struct radv_graphics_pipeline_info *info)
 {
-   struct radv_shader *tes = pipeline->base.shaders[MESA_SHADER_TESS_EVAL];
-   struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
-
-   pipeline->can_use_guardband = radv_prim_can_use_guardband(info->ia.primitive_topology);
-
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
-      if (si_conv_gl_prim_to_gs_out(gs->info.gs.output_prim) == V_028A6C_TRISTRIP)
-         pipeline->can_use_guardband = true;
-   } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      if (!tes->info.tes.point_mode &&
-          tes->info.tes._primitive_mode != TESS_PRIMITIVE_ISOLINES)
-         pipeline->can_use_guardband = true;
-   }
-
    pipeline->ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline);
 }
 
@@ -6893,11 +6857,11 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
       struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
       dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
 
-      pipeline->can_use_guardband = true;
-
       *vgt_gs_out_prim_type = V_028A6C_TRISTRIP;
       if (radv_pipeline_has_ngg(pipeline))
          *vgt_gs_out_prim_type = V_028A6C_RECTLIST;
+
+      pipeline->rast_prim = *vgt_gs_out_prim_type;
    }
 
    if (radv_pipeline_has_ds_attachments(&info->ri)) {
@@ -7033,6 +6997,11 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
    pipeline->uses_user_sample_locations = info.ms.sample_locs_enable;
+   pipeline->rast_prim = vgt_gs_out_prim_type;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_LINE_WIDTH)) {
+      pipeline->line_width = info.rs.line_width;
+   }
 
    pipeline->base.push_constant_size = pipeline_layout->push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout->dynamic_offset_count;

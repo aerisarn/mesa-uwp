@@ -1344,7 +1344,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->scratch_waves_wanted = MAX2(cmd_buffer->scratch_waves_wanted, pipeline->base.max_waves);
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->can_use_guardband != pipeline->can_use_guardband)
+       radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim) ||
+       cmd_buffer->state.emitted_graphics_pipeline->line_width != pipeline->line_width)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
@@ -1460,11 +1461,24 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_scissor(struct radv_cmd_buffer *cmd_buffer)
 {
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    uint32_t count = cmd_buffer->state.dynamic.scissor.count;
+   unsigned rast_prim;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) ||
+       (pipeline->active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                   VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                   VK_SHADER_STAGE_GEOMETRY_BIT |
+                                   VK_SHADER_STAGE_MESH_BIT_NV))) {
+      /* Ignore dynamic primitive topology for TES/GS/MS stages. */
+      rast_prim = pipeline->rast_prim;
+   } else {
+      rast_prim = si_conv_prim_to_gs_out(cmd_buffer->state.dynamic.primitive_topology);
+   }
 
    si_write_scissors(cmd_buffer->cs, 0, count, cmd_buffer->state.dynamic.scissor.scissors,
-                     cmd_buffer->state.dynamic.viewport.viewports,
-                     cmd_buffer->state.emitted_graphics_pipeline->can_use_guardband);
+                     cmd_buffer->state.dynamic.viewport.viewports, rast_prim,
+                     cmd_buffer->state.dynamic.line_width);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = false;
 }
@@ -5345,6 +5359,9 @@ radv_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   if (cmd_buffer->state.dynamic.line_width != lineWidth)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
+
    cmd_buffer->state.dynamic.line_width = lineWidth;
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
 }
@@ -5506,11 +5523,15 @@ radv_CmdSetPrimitiveTopology(VkCommandBuffer commandBuffer, VkPrimitiveTopology 
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned primitive_topology = si_translate_prim(primitiveTopology);
-   bool old_is_linestrip = (state->dynamic.primitive_topology == V_008958_DI_PT_LINESTRIP);
-   bool new_is_linestrip = (primitive_topology == V_008958_DI_PT_LINESTRIP);
 
-   if (old_is_linestrip != new_is_linestrip)
+   if ((state->dynamic.primitive_topology == V_008958_DI_PT_LINESTRIP) !=
+       (primitive_topology == V_008958_DI_PT_LINESTRIP))
       state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
+
+   if (radv_prim_is_points_or_lines(state->dynamic.primitive_topology) !=
+       radv_prim_is_points_or_lines(primitive_topology))
+      state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
+
    state->dynamic.primitive_topology = primitive_topology;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
