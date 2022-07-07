@@ -156,7 +156,6 @@ struct radeon_info {
 
    /* Multimedia info. */
    struct {
-      bool uvd_decode;
       bool vcn_decode;
       bool jpeg_decode;
       bool vce_encode;

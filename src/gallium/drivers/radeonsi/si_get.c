@@ -639,7 +639,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
           sscreen->info.family >= CHIP_NAVI24)
          return false;
       if (codec != PIPE_VIDEO_FORMAT_JPEG &&
-          !(sscreen->info.has_video_hw.uvd_decode ||
+          !(sscreen->info.ip[AMD_IP_UVD].num_queues ||
             sscreen->info.has_video_hw.vcn_decode))
          return false;
 
@@ -1051,7 +1051,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
    sscreen->b.query_memory_info = si_query_memory_info;
    sscreen->b.get_disk_shader_cache = si_get_disk_shader_cache;
 
-   if (sscreen->info.has_video_hw.uvd_decode || sscreen->info.has_video_hw.vcn_decode ||
+   if (sscreen->info.ip[AMD_IP_UVD].num_queues || sscreen->info.has_video_hw.vcn_decode ||
        sscreen->info.has_video_hw.jpeg_decode || sscreen->info.has_video_hw.vce_encode ||
        sscreen->info.has_video_hw.uvd_encode || sscreen->info.has_video_hw.vcn_encode) {
       sscreen->b.get_video_param = si_get_video_param;

@@ -853,7 +853,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
    info->uvd_fw_version = info->ip[AMD_IP_UVD].num_queues ? uvd_version : 0;
    info->vce_fw_version = info->ip[AMD_IP_VCE].num_queues ? vce_version : 0;
-   info->has_video_hw.uvd_decode = info->ip[AMD_IP_UVD].num_queues != 0;
 
    /* Based on MemoryOpsPerClockTable from PAL. */
    switch (info->vram_type) {
@@ -1478,7 +1477,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    pfp_fw_feature = %i\n", info->pfp_fw_feature);
 
    fprintf(f, "Multimedia info:\n");
-   fprintf(f, "    uvd_decode = %u\n", info->has_video_hw.uvd_decode);
    fprintf(f, "    jpeg_decode = %u\n", info->has_video_hw.jpeg_decode);
    fprintf(f, "    vce_encode = %u\n", info->has_video_hw.vce_encode);
    fprintf(f, "    uvd_encode = %u\n", info->has_video_hw.uvd_encode);
