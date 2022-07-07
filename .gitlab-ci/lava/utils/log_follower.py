@@ -207,7 +207,10 @@ def print_log(msg):
 
 
 def fatal_err(msg):
-    print_log(msg)
+    colored_msg = f"{CONSOLE_LOG['FG_RED']}"
+    f"{msg}"
+    f"{CONSOLE_LOG['RESET']}"
+    print_log(colored_msg)
     sys.exit(1)
 
 
