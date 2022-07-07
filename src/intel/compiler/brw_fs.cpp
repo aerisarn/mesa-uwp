@@ -4413,7 +4413,9 @@ fs_visitor::lower_mul_qword_inst(fs_inst *inst, bblock_t *block)
    } else {
       fs_reg bd_high(VGRF, alloc.allocate(d_regs), BRW_REGISTER_TYPE_UD);
       fs_reg bd_low(VGRF, alloc.allocate(d_regs), BRW_REGISTER_TYPE_UD);
-      fs_reg acc = retype(brw_acc_reg(inst->exec_size), BRW_REGISTER_TYPE_UD);
+      const unsigned acc_width = reg_unit(devinfo) * 8;
+      fs_reg acc = suboffset(retype(brw_acc_reg(inst->exec_size), BRW_REGISTER_TYPE_UD),
+                             inst->group % acc_width);
 
       fs_inst *mul = ibld.MUL(acc,
                             subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 0),
@@ -4469,7 +4471,9 @@ fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block)
 
    /* Should have been lowered to 8-wide. */
    assert(inst->exec_size <= get_lowered_simd_width(compiler, inst));
-   const fs_reg acc = retype(brw_acc_reg(inst->exec_size), inst->dst.type);
+   const unsigned acc_width = reg_unit(devinfo) * 8;
+   const fs_reg acc = suboffset(retype(brw_acc_reg(inst->exec_size), inst->dst.type),
+                                inst->group % acc_width);
    fs_inst *mul = ibld.MUL(acc, inst->src[0], inst->src[1]);
    fs_inst *mach = ibld.MACH(inst->dst, inst->src[0], inst->src[1]);
 
