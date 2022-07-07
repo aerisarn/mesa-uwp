@@ -31,7 +31,7 @@
 #define SPIR_V_MAGIC_NUMBER 0x07230203
 
 uint32_t
-vk_spirv_version(uint32_t *spirv_data, size_t spirv_size_B)
+vk_spirv_version(const uint32_t *spirv_data, size_t spirv_size_B)
 {
    assert(spirv_size_B >= 8);
    assert(spirv_data[0] == SPIR_V_MAGIC_NUMBER);

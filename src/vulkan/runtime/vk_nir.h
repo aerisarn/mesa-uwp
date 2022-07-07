@@ -34,7 +34,7 @@ struct vk_device;
 extern "C" {
 #endif
 
-uint32_t vk_spirv_version(uint32_t *spirv_data, size_t spirv_size_B);
+uint32_t vk_spirv_version(const uint32_t *spirv_data, size_t spirv_size_B);
 
 nir_shader *
 vk_spirv_to_nir(struct vk_device *device,
