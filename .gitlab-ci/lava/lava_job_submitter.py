@@ -217,7 +217,11 @@ def _call_proxy(fn, *args):
 
 
 class LAVAJob:
-    COLOR_STATUS_MAP = {"pass": CONSOLE_LOG["FG_GREEN"]}
+    COLOR_STATUS_MAP = {
+        "pass": CONSOLE_LOG["FG_GREEN"],
+        "hung": CONSOLE_LOG["FG_YELLOW"],
+        "fail": CONSOLE_LOG["FG_RED"],
+    }
 
     def __init__(self, proxy, definition):
         self.job_id = None
