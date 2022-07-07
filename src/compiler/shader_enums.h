@@ -26,6 +26,8 @@
 #ifndef SHADER_ENUMS_H
 #define SHADER_ENUMS_H
 
+#include "util/macros.h"
+
 #include <stdbool.h>
 
 /* Project-wide (GL and Vulkan) maximum. */
@@ -1214,6 +1216,21 @@ enum cl_sampler_filter_mode {
 #define MAT_BIT_BACK_SHININESS        (1<<MAT_ATTRIB_BACK_SHININESS)
 #define MAT_BIT_FRONT_INDEXES         (1<<MAT_ATTRIB_FRONT_INDEXES)
 #define MAT_BIT_BACK_INDEXES          (1<<MAT_ATTRIB_BACK_INDEXES)
+
+/** An enum representing what kind of input gl_SubgroupSize is. */
+enum PACKED gl_subgroup_size
+{
+   /** Actual subgroup size, whatever that happens to be */
+   SUBGROUP_SIZE_VARYING = 0,
+
+   /* These enums are specifically chosen so that the value of the enum is
+    * also the subgroup size.  If any new values are added, they must respect
+    * this invariant.
+    */
+   SUBGROUP_SIZE_REQUIRE_8   = 8,  /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_16  = 16, /**< VK_EXT_subgroup_size_control */
+   SUBGROUP_SIZE_REQUIRE_32  = 32, /**< VK_EXT_subgroup_size_control */
+};
 
 #ifdef __cplusplus
 } /* extern "C" */

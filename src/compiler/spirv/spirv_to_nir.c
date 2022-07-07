@@ -5262,7 +5262,7 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
 
    case SpvExecutionModeSubgroupSize:
       vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
-      b->shader->info.cs.subgroup_size = mode->operands[0];
+      b->shader->info.subgroup_size = mode->operands[0];
       break;
 
    case SpvExecutionModeSubgroupUniformControlFlowKHR:

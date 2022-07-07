@@ -41,9 +41,10 @@ brw_required_dispatch_width(const struct shader_info *info,
       required = (unsigned)subgroup_size_type;
    }
 
-   if (gl_shader_stage_is_compute(info->stage) && info->cs.subgroup_size > 0) {
-      assert(required == 0 || required == info->cs.subgroup_size);
-      required = info->cs.subgroup_size;
+   if (gl_shader_stage_is_compute(info->stage) &&
+       info->subgroup_size >= SUBGROUP_SIZE_REQUIRE_8) {
+      assert(required == 0 || required == info->subgroup_size);
+      required = info->subgroup_size;
    }
 
    return required;
