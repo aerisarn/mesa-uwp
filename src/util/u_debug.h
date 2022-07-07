@@ -233,13 +233,6 @@ void _debug_assert_fail(const char *expr,
 #endif
 
 
-/** Override standard assert macro */
-#ifdef assert
-#undef assert
-#endif
-#define assert(expr) debug_assert(expr)
-
-
 /**
  * Output the current function name.
  */
