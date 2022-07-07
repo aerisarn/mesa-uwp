@@ -37,6 +37,12 @@ default:
       export CI_JOB_JWT="$(<${CI_JOB_JWT_FILE})" &&
       rm "${CI_JOB_JWT_FILE}"
 
+  # Retry build or test jobs up to twice when the gitlab-runner itself fails somehow.
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+
 include:
   - project: 'freedesktop/ci-templates'
     ref: 34f4ade99434043f88e164933f570301fd18b125
@@ -195,10 +201,6 @@ test-docs-mr:
       - src/**/*
       when: on_success
     # Otherwise, build/test jobs won't run because no rule matched.
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
 
 
 .ci-deqp-artifacts:

@@ -368,7 +368,7 @@ debian/arm_test:
 
 .windows_container_build:
   inherit:
-    default: false
+    default: [retry]
   extends:
     - .container
     - .windows-docker-vs2019
@@ -389,7 +389,7 @@ debian/arm_test:
 
 windows_vs2019:
   inherit:
-    default: false
+    default: [retry]
   extends:
     - .windows_container_build
   variables:
@@ -400,7 +400,7 @@ windows_vs2019:
 
 windows_build_vs2019:
   inherit:
-    default: false
+    default: [retry]
   extends:
     - .windows_container_build
   rules:
@@ -420,7 +420,7 @@ windows_build_vs2019:
 
 windows_test_vs2019:
   inherit:
-    default: false
+    default: [retry]
   extends:
     - .windows_container_build
   rules:
@@ -439,7 +439,7 @@ windows_test_vs2019:
 
 .use-windows_build_vs2019:
   inherit:
-    default: false
+    default: [retry]
   extends: .windows-docker-vs2019
   image: "$MESA_IMAGE"
   variables:
@@ -450,7 +450,7 @@ windows_test_vs2019:
 
 .use-windows_test_vs2019:
   inherit:
-    default: false
+    default: [retry]
   extends: .windows-docker-vs2019
   image: "$MESA_IMAGE"
   variables:
