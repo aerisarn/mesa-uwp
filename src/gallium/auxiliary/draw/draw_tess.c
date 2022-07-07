@@ -568,7 +568,7 @@ draw_create_tess_eval_shader(struct draw_context *draw,
          tes->clipvertex_output = i;
       }
       if (tes->info.output_semantic_name[i] == TGSI_SEMANTIC_CLIPDIST) {
-         debug_assert(tes->info.output_semantic_index[i] <
+         assert(tes->info.output_semantic_index[i] <
                       PIPE_MAX_CLIP_OR_CULL_DISTANCE_ELEMENT_COUNT);
          tes->ccdistance_output[tes->info.output_semantic_index[i]] = i;
       }

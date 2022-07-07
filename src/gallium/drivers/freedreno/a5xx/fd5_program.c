@@ -108,7 +108,7 @@ emit_stream_out(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v,
          if (l->var[idx].slot == v->outputs[k].slot)
             break;
 
-      debug_assert(idx < l->cnt);
+      assert(idx < l->cnt);
 
       for (unsigned j = 0; j < out->num_components; j++) {
          unsigned c = j + out->start_component;

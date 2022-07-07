@@ -314,7 +314,7 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
                           : nir_ushr(b, ubo_offset, nir_imm_int(b, -shift));
    }
 
-   debug_assert(!(const_offset & 0x3));
+   assert(!(const_offset & 0x3));
    const_offset >>= 2;
 
    const int range_offset = ((int)range->offset - (int)range->start) / 4;
@@ -453,7 +453,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
    for (uint32_t i = 0; i < state->num_enabled; i++) {
       uint32_t range_size = state->range[i].end - state->range[i].start;
 
-      debug_assert(offset <= max_upload);
+      assert(offset <= max_upload);
       state->range[i].offset = offset;
       assert(offset <= max_upload);
       offset += range_size;

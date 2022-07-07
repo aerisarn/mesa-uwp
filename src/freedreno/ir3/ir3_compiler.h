@@ -284,7 +284,7 @@ shader_debug_enabled(gl_shader_stage type)
    case MESA_SHADER_KERNEL:
       return !!(ir3_shader_debug & IR3_DBG_SHADER_CS);
    default:
-      debug_assert(0);
+      assert(0);
       return false;
    }
 }

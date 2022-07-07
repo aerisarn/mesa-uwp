@@ -252,7 +252,7 @@ fd_ringbuffer_size(struct fd_ringbuffer *ring)
     * do what you expect for growable rb's.. so lets just restrict
     * this to stateobj's for now:
     */
-   debug_assert(!(ring->flags & FD_RINGBUFFER_GROWABLE));
+   assert(!(ring->flags & FD_RINGBUFFER_GROWABLE));
    return offset_bytes(ring->cur, ring->start);
 }
 
@@ -287,7 +287,7 @@ OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo, uint32_t offset,
       fprintf(stderr, "ring[%p]: OUT_RELOC   %04x:  %p+%u << %d", ring,
               (uint32_t)(ring->cur - ring->start), bo, offset, shift);
    }
-   debug_assert(offset < fd_bo_size(bo));
+   assert(offset < fd_bo_size(bo));
 
    uint64_t iova = fd_bo_get_iova(bo) + offset;
 

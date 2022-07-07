@@ -17,7 +17,7 @@
       case PIPE_PRIM_LINE_STRIP_ADJACENCY:                        \
       case PIPE_PRIM_TRIANGLES_ADJACENCY:                         \
       case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:                    \
-         debug_assert(!"unexpected primitive type in stream output"); \
+         assert(!"unexpected primitive type in stream output"); \
          return;                                                  \
       default:                                                    \
          break;                                                   \

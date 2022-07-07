@@ -1896,7 +1896,7 @@ create_multidst_mov(struct ir3_block *block, struct ir3_register *dst)
       ir3_src_create(mov, INVALID_REG, IR3_REG_SSA | src_flags);
    src->wrmask = dst->wrmask;
    src->def = dst;
-   debug_assert(!(dst->flags & IR3_REG_RELATIV));
+   assert(!(dst->flags & IR3_REG_RELATIV));
    mov->cat1.src_type = mov->cat1.dst_type =
       (dst->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
    return mov;
@@ -3220,7 +3220,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
                bits = 10;
             break;
          default:
-            debug_assert(0);
+            assert(0);
          }
 
          sam->cat5.type = TYPE_F32;
@@ -3881,7 +3881,7 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
    if ((ctx->compiler->gen < 5) &&
        (ctx->so->stream_output.num_outputs > 0) &&
        !ctx->so->binning_pass) {
-      debug_assert(ctx->so->type == MESA_SHADER_VERTEX);
+      assert(ctx->so->type == MESA_SHADER_VERTEX);
       emit_stream_out(ctx);
    }
 
@@ -4153,7 +4153,7 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          break;
       case VARYING_SLOT_PRIMITIVE_ID:
       case VARYING_SLOT_GS_VERTEX_FLAGS_IR3:
-         debug_assert(ctx->so->type == MESA_SHADER_GEOMETRY);
+         assert(ctx->so->type == MESA_SHADER_GEOMETRY);
          FALLTHROUGH;
       case VARYING_SLOT_COL0:
       case VARYING_SLOT_COL1:
@@ -4755,7 +4755,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
             unsigned n = i / 4;
             unsigned c = i % 4;
 
-            debug_assert(n < so->nonbinning->inputs_count);
+            assert(n < so->nonbinning->inputs_count);
 
             if (so->nonbinning->inputs[n].sysval)
                continue;

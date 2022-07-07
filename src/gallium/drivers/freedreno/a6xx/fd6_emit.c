@@ -497,7 +497,7 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
       [PIPE_SHADER_FRAGMENT] = {FD6_GROUP_FS_TEX, ENABLE_DRAW},
    };
 
-   debug_assert(s[type].state_id);
+   assert(s[type].state_id);
 
    if (!v->image_mapping.num_tex && !v->fb_read) {
       /* in the fast-path, when we don't have to mix in any image/SSBO
@@ -830,11 +830,11 @@ build_ibo(struct fd6_emit *emit) assert_dt
    struct fd_context *ctx = emit->ctx;
 
    if (emit->hs) {
-      debug_assert(ir3_shader_nibo(emit->hs) == 0);
-      debug_assert(ir3_shader_nibo(emit->ds) == 0);
+      assert(ir3_shader_nibo(emit->hs) == 0);
+      assert(ir3_shader_nibo(emit->ds) == 0);
    }
    if (emit->gs) {
-      debug_assert(ir3_shader_nibo(emit->gs) == 0);
+      assert(ir3_shader_nibo(emit->gs) == 0);
    }
 
    struct fd_ringbuffer *ibo_state =
@@ -1154,7 +1154,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          struct fd6_state_group *g = &emit->groups[i];
          unsigned n = g->stateobj ? fd_ringbuffer_size(g->stateobj) / 4 : 0;
 
-         debug_assert((g->enable_mask & ~ENABLE_ALL) == 0);
+         assert((g->enable_mask & ~ENABLE_ALL) == 0);
 
          if (n == 0) {
             OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |

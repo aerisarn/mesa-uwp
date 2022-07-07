@@ -1876,7 +1876,7 @@ emit_primitive(struct tgsi_exec_machine *mach,
    prim_count = &mach->OutputPrimCount[stream_id];
    if (mach->ExecMask) {
       ++(*prim_count);
-      debug_assert((*prim_count * mach->NumOutputs) < TGSI_MAX_TOTAL_VERTICES);
+      assert((*prim_count * mach->NumOutputs) < TGSI_MAX_TOTAL_VERTICES);
       mach->Primitives[stream_id][*prim_count] = 0;
    }
 }

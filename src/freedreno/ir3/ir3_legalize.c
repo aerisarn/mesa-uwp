@@ -563,7 +563,7 @@ retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
    if (cur_block->successors[0] == old_target) {
       cur_block->successors[0] = new_target;
    } else {
-      debug_assert(cur_block->successors[1] == old_target);
+      assert(cur_block->successors[1] == old_target);
       cur_block->successors[1] = new_target;
    }
 
@@ -571,7 +571,7 @@ retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
    if (cur_block->physical_successors[0] == old_target) {
       cur_block->physical_successors[0] = new_target;
    } else {
-      debug_assert(cur_block->physical_successors[1] == old_target);
+      assert(cur_block->physical_successors[1] == old_target);
       cur_block->physical_successors[1] = new_target;
    }
 
@@ -753,7 +753,7 @@ block_sched(struct ir3 *ir)
              * to follow it with an inverted branch, so follow it by an
              * unconditional branch.
              */
-            debug_assert(!block->condition);
+            assert(!block->condition);
             if (block->brtype == IR3_BRANCH_GETONE)
                br1 = ir3_GETONE(block);
             else
@@ -763,7 +763,7 @@ block_sched(struct ir3 *ir)
             br2 = ir3_JUMP(block);
             br2->cat0.target = block->successors[0];
          } else {
-            debug_assert(block->condition);
+            assert(block->condition);
 
             /* create "else" branch first (since "then" block should
              * frequently/always end up being a fall-thru):
@@ -914,7 +914,7 @@ nop_sched(struct ir3 *ir, struct ir3_shader_variant *so)
          }
 
          if (delay > 0) {
-            debug_assert(delay <= 6);
+            assert(delay <= 6);
             ir3_NOP(block)->repeat = delay - 1;
          }
 

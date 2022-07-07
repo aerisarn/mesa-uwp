@@ -4573,7 +4573,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
       /* There's no specific value for this because it should always
        * be set, but apps using ext_geometry_shader4 quite often
        * were forgetting so we're using MAX_VERTEX_VARYING from
-       * that spec even though we could debug_assert if it's not
+       * that spec even though we could assert if it's not
        * set, but that's a lot uglier. */
       uint max_output_vertices;
 

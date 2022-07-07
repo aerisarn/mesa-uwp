@@ -1044,7 +1044,7 @@ ir3_link_add(struct ir3_shader_linkage *l, uint8_t slot, uint8_t regid_,
 
    if (regid_ != regid(63, 0)) {
       int i = l->cnt++;
-      debug_assert(i < ARRAY_SIZE(l->var));
+      assert(i < ARRAY_SIZE(l->var));
 
       l->var[i].slot = slot;
       l->var[i].regid = regid_;

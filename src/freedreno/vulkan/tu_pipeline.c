@@ -821,7 +821,7 @@ tu6_setup_streamout(struct tu_cs *cs,
          if (l->var[idx].slot == v->outputs[k].slot)
             break;
 
-      debug_assert(idx < l->cnt);
+      assert(idx < l->cnt);
 
       for (unsigned j = 0; j < out->num_components; j++) {
          unsigned c   = j + out->start_component;

@@ -386,8 +386,8 @@ void draw_set_viewport_states( struct draw_context *draw,
    const struct pipe_viewport_state *viewport = vps;
    draw_do_flush(draw, DRAW_FLUSH_PARAMETER_CHANGE);
 
-   debug_assert(start_slot < PIPE_MAX_VIEWPORTS);
-   debug_assert((start_slot + num_viewports) <= PIPE_MAX_VIEWPORTS);
+   assert(start_slot < PIPE_MAX_VIEWPORTS);
+   assert((start_slot + num_viewports) <= PIPE_MAX_VIEWPORTS);
 
    memcpy(draw->viewports + start_slot, vps,
           sizeof(struct pipe_viewport_state) * num_viewports);
@@ -455,11 +455,11 @@ draw_set_mapped_constant_buffer(struct draw_context *draw,
                                 const void *buffer,
                                 unsigned size )
 {
-   debug_assert(shader_type == PIPE_SHADER_VERTEX ||
+   assert(shader_type == PIPE_SHADER_VERTEX ||
                 shader_type == PIPE_SHADER_GEOMETRY ||
                 shader_type == PIPE_SHADER_TESS_CTRL ||
                 shader_type == PIPE_SHADER_TESS_EVAL);
-   debug_assert(slot < PIPE_MAX_CONSTANT_BUFFERS);
+   assert(slot < PIPE_MAX_CONSTANT_BUFFERS);
 
    draw_do_flush(draw, DRAW_FLUSH_PARAMETER_CHANGE);
 
@@ -492,11 +492,11 @@ draw_set_mapped_shader_buffer(struct draw_context *draw,
                               const void *buffer,
                               unsigned size )
 {
-   debug_assert(shader_type == PIPE_SHADER_VERTEX ||
+   assert(shader_type == PIPE_SHADER_VERTEX ||
                 shader_type == PIPE_SHADER_GEOMETRY ||
                 shader_type == PIPE_SHADER_TESS_CTRL ||
                 shader_type == PIPE_SHADER_TESS_EVAL);
-   debug_assert(slot < PIPE_MAX_SHADER_BUFFERS);
+   assert(slot < PIPE_MAX_SHADER_BUFFERS);
 
    draw_do_flush(draw, DRAW_FLUSH_PARAMETER_CHANGE);
 
@@ -1010,7 +1010,7 @@ draw_current_shader_clipvertex_output(const struct draw_context *draw)
 uint
 draw_current_shader_ccdistance_output(const struct draw_context *draw, int index)
 {
-   debug_assert(index < PIPE_MAX_CLIP_OR_CULL_DISTANCE_ELEMENT_COUNT);
+   assert(index < PIPE_MAX_CLIP_OR_CULL_DISTANCE_ELEMENT_COUNT);
    if (draw->gs.geometry_shader)
       return draw->gs.geometry_shader->ccdistance_output[index];
    if (draw->tes.tess_eval_shader)
@@ -1099,8 +1099,8 @@ draw_set_sampler_views(struct draw_context *draw,
 {
    unsigned i;
 
-   debug_assert(shader_stage < PIPE_SHADER_TYPES);
-   debug_assert(num <= PIPE_MAX_SHADER_SAMPLER_VIEWS);
+   assert(shader_stage < PIPE_SHADER_TYPES);
+   assert(num <= PIPE_MAX_SHADER_SAMPLER_VIEWS);
 
    draw_do_flush( draw, DRAW_FLUSH_STATE_CHANGE );
 
@@ -1120,8 +1120,8 @@ draw_set_samplers(struct draw_context *draw,
 {
    unsigned i;
 
-   debug_assert(shader_stage < PIPE_SHADER_TYPES);
-   debug_assert(num <= PIPE_MAX_SAMPLERS);
+   assert(shader_stage < PIPE_SHADER_TYPES);
+   assert(num <= PIPE_MAX_SAMPLERS);
 
    draw_do_flush( draw, DRAW_FLUSH_STATE_CHANGE );
 
@@ -1146,8 +1146,8 @@ draw_set_images(struct draw_context *draw,
 {
    unsigned i;
 
-   debug_assert(shader_stage < PIPE_SHADER_TYPES);
-   debug_assert(num <= PIPE_MAX_SHADER_IMAGES);
+   assert(shader_stage < PIPE_SHADER_TYPES);
+   assert(num <= PIPE_MAX_SHADER_IMAGES);
 
    draw_do_flush( draw, DRAW_FLUSH_STATE_CHANGE );
 

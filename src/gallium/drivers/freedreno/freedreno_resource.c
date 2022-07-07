@@ -453,7 +453,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
     * by any batches, but the existing rsc (probably) is.  We need to
     * transfer those references over:
     */
-   debug_assert(shadow->track->batch_mask == 0);
+   assert(shadow->track->batch_mask == 0);
    foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask) {
       struct set_entry *entry = _mesa_set_search_pre_hashed(batch->resources, rsc->hash, rsc);
       _mesa_set_remove(batch->resources, entry);
@@ -558,7 +558,7 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc, bool lin
    bool success = fd_try_shadow_resource(ctx, rsc, 0, NULL, modifier);
 
    /* shadow should not fail in any cases where we need to uncompress: */
-   debug_assert(success);
+   assert(success);
 }
 
 /**
@@ -1078,9 +1078,9 @@ fd_resource_resize(struct pipe_resource *prsc, uint32_t sz)
 {
    struct fd_resource *rsc = fd_resource(prsc);
 
-   debug_assert(prsc->width0 == 0);
-   debug_assert(prsc->target == PIPE_BUFFER);
-   debug_assert(prsc->bind == PIPE_BIND_QUERY_BUFFER);
+   assert(prsc->width0 == 0);
+   assert(prsc->target == PIPE_BUFFER);
+   assert(prsc->bind == PIPE_BIND_QUERY_BUFFER);
 
    prsc->width0 = sz;
    realloc_bo(rsc, fd_screen(prsc->screen)->setup_slices(rsc));
@@ -1283,7 +1283,7 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
     */
    if (size == 0) {
       /* note, semi-intention == instead of & */
-      debug_assert(prsc->bind == PIPE_BIND_QUERY_BUFFER);
+      assert(prsc->bind == PIPE_BIND_QUERY_BUFFER);
       *psize = 0;
       return prsc;
    }

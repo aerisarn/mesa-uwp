@@ -131,7 +131,7 @@ fd_screen_get_timestamp(struct pipe_screen *pscreen)
    if (screen->has_timestamp) {
       uint64_t n;
       fd_pipe_get_param(screen->pipe, FD_TIMESTAMP, &n);
-      debug_assert(screen->max_freq > 0);
+      assert(screen->max_freq > 0);
       return n * 1000000000 / screen->max_freq;
    } else {
       int64_t cpu_time = os_time_get() * 1000;

@@ -232,7 +232,7 @@ emit_const(struct fd_ringbuffer *ring, uint32_t regid, uint32_t sizedwords,
 {
    uint32_t align_sz;
 
-   debug_assert((regid % 4) == 0);
+   assert((regid % 4) == 0);
 
    align_sz = align(sizedwords, 4);
 

@@ -12,7 +12,7 @@
    const boolean last_vertex_last = !asmblr->draw->rasterizer->flatshade_first;  \
    switch (prim) {                                                  \
    case PIPE_PRIM_POLYGON:                                          \
-      debug_assert(!"unexpected primitive type in prim assembler"); \
+      assert(!"unexpected primitive type in prim assembler"); \
       return;                                                       \
    default:                                                         \
       break;                                                        \

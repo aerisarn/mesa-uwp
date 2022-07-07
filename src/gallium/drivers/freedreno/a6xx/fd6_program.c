@@ -216,7 +216,7 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
          if (l->var[idx].slot == v->outputs[k].slot)
             break;
 
-      debug_assert(idx < l->cnt);
+      assert(idx < l->cnt);
 
       for (unsigned j = 0; j < out->num_components; j++) {
          unsigned c = j + out->start_component;
@@ -302,7 +302,7 @@ setup_config_stateobj(struct fd_context *ctx, struct fd6_program_state *state)
                                           .fs_state = true, .cs_state = true,
                                           .gfx_ibo = true, .cs_ibo = true, ));
 
-   debug_assert(state->vs->constlen >= state->bs->constlen);
+   assert(state->vs->constlen >= state->bs->constlen);
 
    OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
    OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(state->vs->constlen) |
@@ -655,7 +655,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
          setup_stream_out_disable(ctx);
    }
 
-   debug_assert(l.cnt <= 32);
+   assert(l.cnt <= 32);
    if (gs)
       OUT_PKT4(ring, REG_A6XX_SP_GS_OUT_REG(0), DIV_ROUND_UP(l.cnt, 2));
    else if (ds)
@@ -1263,7 +1263,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
       for (unsigned i = 0; i < bs->inputs_count; i++) {
          if (vs->inputs[i].sysval)
             continue;
-         debug_assert(bs->inputs[i].regid == vs->inputs[i].regid);
+         assert(bs->inputs[i].regid == vs->inputs[i].regid);
       }
    }
 #endif

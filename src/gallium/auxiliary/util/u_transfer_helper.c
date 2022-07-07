@@ -91,7 +91,7 @@ struct u_transfer {
 static inline struct u_transfer *
 u_transfer(struct pipe_transfer *ptrans)
 {
-   debug_assert(handle_transfer(ptrans->resource));
+   assert(handle_transfer(ptrans->resource));
    return (struct u_transfer *)ptrans;
 }
 
@@ -259,7 +259,7 @@ u_transfer_helper_transfer_map(struct pipe_context *pctx,
    if (helper->msaa_map && (prsc->nr_samples > 1))
       return transfer_map_msaa(pctx, prsc, level, usage, box, pptrans);
 
-   debug_assert(box->depth == 1);
+   assert(box->depth == 1);
 
    trans = calloc(1, sizeof(*trans));
    if (!trans)
@@ -601,7 +601,7 @@ u_transfer_helper_deinterleave_transfer_map(struct pipe_context *pctx,
    if (!need_interleave_path(helper, format))
       return helper->vtbl->transfer_map(pctx, prsc, level, usage, box, pptrans);
 
-   debug_assert(box->depth == 1);
+   assert(box->depth == 1);
 
    trans = calloc(1, sizeof(*trans));
    if (!trans)

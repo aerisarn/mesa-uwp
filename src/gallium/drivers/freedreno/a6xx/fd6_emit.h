@@ -133,7 +133,7 @@ static inline void
 fd6_emit_take_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
                     enum fd6_state_id group_id, unsigned enable_mask)
 {
-   debug_assert(emit->num_groups < ARRAY_SIZE(emit->groups));
+   assert(emit->num_groups < ARRAY_SIZE(emit->groups));
    struct fd6_state_group *g = &emit->groups[emit->num_groups++];
    g->stateobj = stateobj;
    g->group_id = group_id;

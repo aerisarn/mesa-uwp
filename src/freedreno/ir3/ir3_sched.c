@@ -261,24 +261,24 @@ cycle_count(struct ir3_instruction *instr)
 static void
 schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 {
-   debug_assert(ctx->block == instr->block);
+   assert(ctx->block == instr->block);
 
    /* remove from depth list:
     */
    list_delinit(&instr->node);
 
    if (writes_addr0(instr)) {
-      debug_assert(ctx->addr0 == NULL);
+      assert(ctx->addr0 == NULL);
       ctx->addr0 = instr;
    }
 
    if (writes_addr1(instr)) {
-      debug_assert(ctx->addr1 == NULL);
+      assert(ctx->addr1 == NULL);
       ctx->addr1 = instr;
    }
 
    if (writes_pred(instr)) {
-      debug_assert(ctx->pred == NULL);
+      assert(ctx->pred == NULL);
       ctx->pred = instr;
    }
 
@@ -416,7 +416,7 @@ static bool
 check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
             struct ir3_instruction *instr)
 {
-   debug_assert(!is_scheduled(instr));
+   assert(!is_scheduled(instr));
 
    if (instr == ctx->split) {
       /* Don't schedule instructions created by splitting a a0.x/a1.x/p0.x
@@ -474,19 +474,19 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
     * free:
     */
    if (writes_addr0(instr) && ctx->addr0) {
-      debug_assert(ctx->addr0 != instr);
+      assert(ctx->addr0 != instr);
       notes->addr0_conflict = true;
       return false;
    }
 
    if (writes_addr1(instr) && ctx->addr1) {
-      debug_assert(ctx->addr1 != instr);
+      assert(ctx->addr1 != instr);
       notes->addr1_conflict = true;
       return false;
    }
 
    if (writes_pred(instr) && ctx->pred) {
-      debug_assert(ctx->pred != instr);
+      assert(ctx->pred != instr);
       notes->pred_conflict = true;
       return false;
    }
@@ -919,7 +919,7 @@ split_addr(struct ir3_sched_ctx *ctx, struct ir3_instruction **addr,
    struct ir3_instruction *new_addr = NULL;
    unsigned i;
 
-   debug_assert(*addr);
+   assert(*addr);
 
    for (i = 0; i < users_count; i++) {
       struct ir3_instruction *indirect = users[i];
@@ -966,7 +966,7 @@ split_pred(struct ir3_sched_ctx *ctx)
    struct ir3_instruction *new_pred = NULL;
    unsigned i;
 
-   debug_assert(ctx->pred);
+   assert(ctx->pred);
 
    ir = ctx->pred->block->shader;
 
@@ -1038,7 +1038,7 @@ sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruction *src,
 
    /* we could have false-dep's that end up unused: */
    if (src->flags & IR3_INSTR_UNUSED) {
-      debug_assert(__is_false_dep(instr, i));
+      assert(__is_false_dep(instr, i));
       return;
    }
 
@@ -1234,7 +1234,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
          unsigned delay = node_delay(ctx, instr->data);
          d("delay=%u", delay);
 
-         debug_assert(delay <= 6);
+         assert(delay <= 6);
 
          schedule(ctx, instr);
 
@@ -1263,7 +1263,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
             d("unscheduled_list:");
             foreach_instr (instr, &ctx->unscheduled_list)
                di(instr, "unscheduled: ");
-            debug_assert(0);
+            assert(0);
             ctx->error = true;
             return;
          }

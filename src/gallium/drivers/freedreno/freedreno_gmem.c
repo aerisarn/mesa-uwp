@@ -716,7 +716,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
     * bypass.
     */
    if (batch->tessellation) {
-      debug_assert(ctx->emit_sysmem_prep);
+      assert(ctx->emit_sysmem_prep);
       sysmem = true;
    }
 

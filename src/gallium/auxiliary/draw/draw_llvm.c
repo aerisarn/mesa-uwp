@@ -1251,7 +1251,7 @@ store_aos_array(struct gallivm_state *gallivm,
    int vector_length = soa_type.length;
    int i;
 
-   debug_assert(TGSI_NUM_CHANNELS == 4);
+   assert(TGSI_NUM_CHANNELS == 4);
 
    for (i = 0; i < vector_length; i++) {
       linear_inds[i] = lp_build_const_int32(gallivm, i);

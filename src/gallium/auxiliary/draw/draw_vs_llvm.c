@@ -60,7 +60,7 @@ vs_llvm_run_linear( struct draw_vertex_shader *shader,
 {
    /* we should never get here since the entire pipeline is
     * generated in draw_pt_fetch_shade_pipeline_llvm.c */
-   debug_assert(0);
+   assert(0);
 }
 
 

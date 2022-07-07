@@ -332,8 +332,8 @@ llvm_fetch_gs_outputs(struct draw_geometry_shader *shader,
 
       }
 #endif
-      debug_assert(current_verts <= shader->max_output_vertices);
-      debug_assert(next_verts <= shader->max_output_vertices);
+      assert(current_verts <= shader->max_output_vertices);
+      assert(next_verts <= shader->max_output_vertices);
       if (next_verts) {
          memmove(output_ptr + (vertex_count + current_verts) * shader->vertex_size,
                  output_ptr + ((i + 1) * next_prim_boundary) * shader->vertex_size,
@@ -419,7 +419,7 @@ static void gs_flush(struct draw_geometry_shader *shader)
       shader->draw->statistics.gs_invocations += input_primitives;
    }
 
-   debug_assert(input_primitives > 0 &&
+   assert(input_primitives > 0 &&
                 input_primitives <= 4);
 
    for (unsigned invocation = 0; invocation < shader->num_invocations; invocation++) {
@@ -592,7 +592,7 @@ int draw_geometry_shader_run(struct draw_geometry_shader *shader,
          (struct vertex_header *)MALLOC(output_verts[i].vertex_size *
                                         total_verts_per_buffer * shader->num_invocations +
                                         DRAW_EXTRA_VERTICES_PADDING);
-      debug_assert(output_verts[i].verts);
+      assert(output_verts[i].verts);
    }
 
 #if 0
@@ -669,7 +669,7 @@ int draw_geometry_shader_run(struct draw_geometry_shader *shader,
    if (shader->fetched_prim_count > 0) {
       gs_flush(shader);
    }
-   debug_assert(shader->fetched_prim_count == 0);
+   assert(shader->fetched_prim_count == 0);
 
    /* Update prim_info:
     */
@@ -856,7 +856,7 @@ draw_create_geometry_shader(struct draw_context *draw,
          gs->clipvertex_output = i;
       }
       if (gs->info.output_semantic_name[i] == TGSI_SEMANTIC_CLIPDIST) {
-         debug_assert(gs->info.output_semantic_index[i] <
+         assert(gs->info.output_semantic_index[i] <
                       PIPE_MAX_CLIP_OR_CULL_DISTANCE_ELEMENT_COUNT);
          gs->ccdistance_output[gs->info.output_semantic_index[i]] = i;
       }

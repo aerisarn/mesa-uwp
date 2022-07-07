@@ -446,7 +446,7 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
                     target->internal_offset / vertex_buffer->stride;
 
    /* Stream output draw can not be indexed */
-   debug_assert(!info->index_size);
+   assert(!info->index_size);
    info->max_index = draw->count - 1;
 }
 
