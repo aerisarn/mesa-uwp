@@ -158,7 +158,6 @@ struct radeon_info {
    struct {
       bool vcn_decode;
       bool vce_encode;
-      bool uvd_encode;
       bool vcn_encode;
    } has_video_hw;
 
