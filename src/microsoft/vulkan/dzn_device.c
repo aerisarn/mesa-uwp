@@ -1813,8 +1813,9 @@ dzn_queue_init(struct dzn_queue *queue,
    D3D12_COMMAND_QUEUE_DESC queue_desc =
       pdev->queue_families[pCreateInfo->queueFamilyIndex].desc;
 
+   float priority_in = pCreateInfo->pQueuePriorities[index_in_family];
    queue_desc.Priority =
-      (INT)(pCreateInfo->pQueuePriorities[index_in_family] * (float)D3D12_COMMAND_QUEUE_PRIORITY_HIGH);
+      priority_in > 0.5f ? D3D12_COMMAND_QUEUE_PRIORITY_HIGH : D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
    queue_desc.NodeMask = 0;
 
    if (FAILED(ID3D12Device1_CreateCommandQueue(device->dev, &queue_desc,
