@@ -236,9 +236,14 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       db.StencilWriteEnable = true;
 #endif
 #if GFX_VERx10 >= 125
+#if GFX_VER < 20
       sb.CompressionMode = isl_aux_usage_has_ccs(info->stencil_aux_usage);
       sb.RenderCompressionFormat =
          isl_get_render_compression_format(info->stencil_surf->format);
+#else
+      sb.CompressionFormat =
+         isl_get_render_compression_format(info->stencil_surf->format);
+#endif
 #endif
 #if GFX_VER >= 12
       sb.TiledMode = isl_encode_tiling[info->stencil_surf->tiling];
@@ -252,9 +257,11 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       sb.MinimumArrayElement = info->view->base_array_layer;
       assert(info->stencil_aux_usage == ISL_AUX_USAGE_NONE ||
              info->stencil_aux_usage == ISL_AUX_USAGE_STC_CCS);
+#if GFX_VER < 20
       sb.StencilCompressionEnable =
          info->stencil_aux_usage == ISL_AUX_USAGE_STC_CCS;
       sb.ControlSurfaceEnable = sb.StencilCompressionEnable;
+#endif
 #elif GFX_VERx10 >= 75
       sb.StencilBufferEnable = true;
 #endif

@@ -188,6 +188,37 @@
     <field name="LOD" start="240" end="243" type="uint" />
     <field name="Render Target View Extent" start="245" end="255" type="uint" />
   </instruction>
+  <instruction name="3DSTATE_STENCIL_BUFFER" bias="2" length="8" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="6" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="6" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="3" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="Surface Pitch" start="32" end="48" type="uint" />
+    <field name="Corner Texel Mode" start="55" end="55" type="bool" />
+    <field name="Null Page Coherency Enable" start="59" end="59" type="bool" />
+    <field name="Stencil Write Enable" start="60" end="60" type="bool" />
+    <field name="Surface Type" start="61" end="63" type="uint">
+      <value name="SURFTYPE_2D" value="1" />
+      <value name="SURFTYPE_CUBE" value="3" />
+      <value name="SURFTYPE_NULL" value="7" />
+    </field>
+    <field name="Surface Base Address" start="64" end="127" type="address" />
+    <field name="Width" start="129" end="142" type="uint" />
+    <field name="Height" start="145" end="158" type="uint" />
+    <field name="MOCS" start="160" end="166" type="uint" nonzero="true" />
+    <field name="Minimum Array Element" start="168" end="178" type="uint" />
+    <field name="Depth" start="180" end="190" type="uint" />
+    <field name="Compression Format" start="192" end="195" type="UNIFIED_COMPRESSION_FORMAT" />
+    <field name="Mip Tail Start LOD" start="218" end="221" type="uint" />
+    <field name="Tiled Mode" start="222" end="223" type="uint">
+      <value name="TILE64" value="1" />
+      <value name="TILE4" value="3" />
+    </field>
+    <field name="Surface QPitch" start="224" end="238" type="uint" />
+    <field name="Surf LOD" start="240" end="243" type="uint" />
+    <field name="Render Target View Extent" start="245" end="255" type="uint" />
+  </instruction>
   <instruction name="3DSTATE_TE" bias="2" length="5" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="3" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="28" />
