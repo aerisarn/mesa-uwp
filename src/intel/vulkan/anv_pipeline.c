@@ -2677,8 +2677,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
-      VK_FROM_HANDLE(vk_shader_module, module, sinfo->module);
-      if (module != NULL)
+      if (vk_pipeline_shader_stage_is_null(sinfo))
          continue;
 
       int64_t stage_start = os_time_get_nano();
