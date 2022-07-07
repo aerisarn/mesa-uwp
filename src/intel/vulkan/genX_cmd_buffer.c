@@ -3776,14 +3776,20 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
             UNUSED uint32_t size = dynamic_size ?
                cmd_buffer->state.vertex_bindings[vb].size : buffer->vk.size - offset;
 
+#if GFX_VER <= 7
+            bool per_instance = pipeline->vb[vb].instanced;
+            uint32_t divisor = pipeline->vb[vb].instance_divisor *
+                               pipeline->instance_multiplier;
+#endif
+
             state = (struct GENX(VERTEX_BUFFER_STATE)) {
                .VertexBufferIndex = vb,
 
                .MOCS = anv_mocs(cmd_buffer->device, buffer->address.bo,
                                 ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
 #if GFX_VER <= 7
-               .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
-               .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
+               .BufferAccessType = per_instance ? INSTANCEDATA : VERTEXDATA,
+               .InstanceDataStepRate = per_instance ? divisor : 1,
 #endif
                .AddressModifyEnable = true,
                .BufferPitch = stride,
@@ -4118,13 +4124,6 @@ cmd_buffer_emit_vertex_constants_and_flush(struct anv_cmd_buffer *cmd_buffer,
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 }
 
-static unsigned
-anv_cmd_buffer_get_view_count(struct anv_cmd_buffer *cmd_buffer)
-{
-   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
-   return MAX2(1, util_bitcount(gfx->view_mask));
-}
-
 void genX(CmdDraw)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    vertexCount,
@@ -4139,10 +4138,8 @@ void genX(CmdDraw)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   const uint32_t count = (vertexCount *
-                           instanceCount *
-                           (pipeline->use_primitive_replication ?
-                            1 : anv_cmd_buffer_get_view_count(cmd_buffer)));
+   const uint32_t count =
+      vertexCount * instanceCount * pipeline->instance_multiplier;
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw", count);
@@ -4157,19 +4154,14 @@ void genX(CmdDraw)(
                                               firstVertex, firstInstance, 0,
                                               true);
 
-   /* Our implementation of VK_KHR_multiview uses instancing to draw the
-    * different views.  We need to multiply instanceCount by the view count.
-    */
-   if (!pipeline->use_primitive_replication)
-      instanceCount *= anv_cmd_buffer_get_view_count(cmd_buffer);
-
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
       prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       prim.VertexCountPerInstance   = vertexCount;
       prim.StartVertexLocation      = firstVertex;
-      prim.InstanceCount            = instanceCount;
+      prim.InstanceCount            = instanceCount *
+                                      pipeline->instance_multiplier;
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = 0;
    }
@@ -4194,10 +4186,8 @@ void genX(CmdDrawMultiEXT)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   const uint32_t count = (drawCount *
-                           instanceCount *
-                           (pipeline->use_primitive_replication ?
-                            1 : anv_cmd_buffer_get_view_count(cmd_buffer)));
+   const uint32_t count =
+      drawCount * instanceCount * pipeline->instance_multiplier;
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw_multi", count);
@@ -4207,12 +4197,6 @@ void genX(CmdDrawMultiEXT)(
 
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
-
-   /* Our implementation of VK_KHR_multiview uses instancing to draw the
-    * different views.  We need to multiply instanceCount by the view count.
-    */
-   if (!pipeline->use_primitive_replication)
-      instanceCount *= anv_cmd_buffer_get_view_count(cmd_buffer);
 
    uint32_t i = 0;
    vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride) {
@@ -4226,7 +4210,8 @@ void genX(CmdDrawMultiEXT)(
          prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
          prim.VertexCountPerInstance   = draw->vertexCount;
          prim.StartVertexLocation      = draw->firstVertex;
-         prim.InstanceCount            = instanceCount;
+         prim.InstanceCount            = instanceCount *
+                                         pipeline->instance_multiplier;
          prim.StartInstanceLocation    = firstInstance;
          prim.BaseVertexLocation       = 0;
       }
@@ -4252,10 +4237,8 @@ void genX(CmdDrawIndexed)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   const uint32_t count = (indexCount *
-                           instanceCount *
-                           (pipeline->use_primitive_replication ?
-                            1 : anv_cmd_buffer_get_view_count(cmd_buffer)));
+   const uint32_t count =
+      indexCount * instanceCount * pipeline->instance_multiplier;
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw indexed",
@@ -4269,19 +4252,14 @@ void genX(CmdDrawIndexed)(
 
    cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data, vertexOffset, firstInstance, 0, true);
 
-   /* Our implementation of VK_KHR_multiview uses instancing to draw the
-    * different views.  We need to multiply instanceCount by the view count.
-    */
-   if (!pipeline->use_primitive_replication)
-      instanceCount *= anv_cmd_buffer_get_view_count(cmd_buffer);
-
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = RANDOM;
       prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       prim.VertexCountPerInstance   = indexCount;
       prim.StartVertexLocation      = firstIndex;
-      prim.InstanceCount            = instanceCount;
+      prim.InstanceCount            = instanceCount *
+                                      pipeline->instance_multiplier;
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = vertexOffset;
    }
@@ -4307,10 +4285,8 @@ void genX(CmdDrawMultiIndexedEXT)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   const uint32_t count = (drawCount *
-                           instanceCount *
-                           (pipeline->use_primitive_replication ?
-                            1 : anv_cmd_buffer_get_view_count(cmd_buffer)));
+   const uint32_t count =
+      drawCount * instanceCount * pipeline->instance_multiplier;
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw indexed_multi",
@@ -4321,12 +4297,6 @@ void genX(CmdDrawMultiIndexedEXT)(
 
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
-
-   /* Our implementation of VK_KHR_multiview uses instancing to draw the
-    * different views.  We need to multiply instanceCount by the view count.
-    */
-   if (!pipeline->use_primitive_replication)
-      instanceCount *= anv_cmd_buffer_get_view_count(cmd_buffer);
 
    uint32_t i = 0;
    if (pVertexOffset) {
@@ -4354,7 +4324,8 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
                prim.VertexCountPerInstance   = draw->indexCount;
                prim.StartVertexLocation      = draw->firstIndex;
-               prim.InstanceCount            = instanceCount;
+               prim.InstanceCount            = instanceCount *
+                                               pipeline->instance_multiplier;
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
@@ -4376,7 +4347,8 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
                prim.VertexCountPerInstance   = draw->indexCount;
                prim.StartVertexLocation      = draw->firstIndex;
-               prim.InstanceCount            = instanceCount;
+               prim.InstanceCount            = instanceCount *
+                                               pipeline->instance_multiplier;
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
@@ -4394,7 +4366,8 @@ void genX(CmdDrawMultiIndexedEXT)(
             prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
             prim.VertexCountPerInstance   = draw->indexCount;
             prim.StartVertexLocation      = draw->firstIndex;
-            prim.InstanceCount            = instanceCount;
+            prim.InstanceCount            = instanceCount *
+                                            pipeline->instance_multiplier;
             prim.StartInstanceLocation    = firstInstance;
             prim.BaseVertexLocation       = draw->vertexOffset;
          }
@@ -4438,7 +4411,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
    anv_measure_snapshot(cmd_buffer,
                         INTEL_SNAPSHOT_DRAW,
                         "draw indirect byte count",
-                        instanceCount);
+                        instanceCount * pipeline->instance_multiplier);
    trace_intel_begin_draw_indirect_byte_count(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
@@ -4457,12 +4430,6 @@ void genX(CmdDrawIndirectByteCountEXT)(
     */
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   /* Our implementation of VK_KHR_multiview uses instancing to draw the
-    * different views.  We need to multiply instanceCount by the view count.
-    */
-   if (!pipeline->use_primitive_replication)
-      instanceCount *= anv_cmd_buffer_get_view_count(cmd_buffer);
-
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
    struct mi_value count =
@@ -4474,7 +4441,8 @@ void genX(CmdDrawIndirectByteCountEXT)(
    mi_store(&b, mi_reg32(GFX7_3DPRIM_VERTEX_COUNT), count);
 
    mi_store(&b, mi_reg32(GFX7_3DPRIM_START_VERTEX), mi_imm(firstVertex));
-   mi_store(&b, mi_reg32(GFX7_3DPRIM_INSTANCE_COUNT), mi_imm(instanceCount));
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_INSTANCE_COUNT),
+            mi_imm(instanceCount * pipeline->instance_multiplier));
    mi_store(&b, mi_reg32(GFX7_3DPRIM_START_INSTANCE), mi_imm(firstInstance));
    mi_store(&b, mi_reg32(GFX7_3DPRIM_BASE_VERTEX), mi_imm(0));
 
@@ -4487,7 +4455,8 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
-   trace_intel_end_draw_indirect_byte_count(&cmd_buffer->trace, instanceCount);
+   trace_intel_end_draw_indirect_byte_count(&cmd_buffer->trace,
+      instanceCount * pipeline->instance_multiplier);
 #endif /* GFX_VERx10 >= 75 */
 }
 
@@ -4496,6 +4465,8 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
                          struct anv_address addr,
                          bool indexed)
 {
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
@@ -4503,10 +4474,10 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
                 mi_mem32(anv_address_add(addr, 0)));
 
    struct mi_value instance_count = mi_mem32(anv_address_add(addr, 4));
-   unsigned view_count = anv_cmd_buffer_get_view_count(cmd_buffer);
-   if (view_count > 1) {
+   if (pipeline->instance_multiplier > 1) {
 #if GFX_VERx10 >= 75
-      instance_count = mi_imul_imm(&b, instance_count, view_count);
+      instance_count = mi_imul_imm(&b, instance_count,
+                                   pipeline->instance_multiplier);
 #else
       anv_finishme("Multiview + indirect draw requires MI_MATH; "
                    "MI_MATH is not supported on Ivy Bridge");

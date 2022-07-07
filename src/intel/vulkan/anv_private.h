@@ -3352,6 +3352,7 @@ struct anv_graphics_pipeline {
    VkColorComponentFlags                        color_comp_writes[MAX_RTS];
 
    uint32_t                                     view_mask;
+   uint32_t                                     instance_multiplier;
 
    bool                                         writes_depth;
    bool                                         depth_test_enable;

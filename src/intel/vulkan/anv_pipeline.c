@@ -2519,13 +2519,9 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
        * the instance divisor by the number of views ensure that we repeat the
        * client's per-instance data once for each view.
        */
-      if (pipeline->view_mask && !pipeline->use_primitive_replication) {
-         const uint32_t view_count = util_bitcount(pipeline->view_mask);
-         for (uint32_t vb = 0; vb < MAX_VBS; vb++) {
-            if (pipeline->vb[vb].instanced)
-               pipeline->vb[vb].instance_divisor *= view_count;
-         }
-      }
+      pipeline->instance_multiplier = 1;
+      if (pipeline->view_mask && !pipeline->use_primitive_replication)
+         pipeline->instance_multiplier = util_bitcount(pipeline->view_mask);
 
       const VkPipelineInputAssemblyStateCreateInfo *ia_info =
          pCreateInfo->pInputAssemblyState;

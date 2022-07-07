@@ -184,10 +184,13 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
        * VERTEX_BUFFER_STATE which we emit later.
        */
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_VF_INSTANCING), vfi) {
-         vfi.InstancingEnable = pipeline->vb[desc->binding].instanced;
+         bool per_instance = pipeline->vb[desc->binding].instanced;
+         uint32_t divisor = pipeline->vb[desc->binding].instance_divisor *
+                            pipeline->instance_multiplier;
+
+         vfi.InstancingEnable = per_instance;
          vfi.VertexElementIndex = slot;
-         vfi.InstanceDataStepRate =
-            pipeline->vb[desc->binding].instance_divisor;
+         vfi.InstanceDataStepRate = per_instance ? divisor : 1;
       }
 #endif
    }
