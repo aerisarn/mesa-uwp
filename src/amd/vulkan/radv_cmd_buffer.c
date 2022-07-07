@@ -4884,7 +4884,7 @@ vk_to_index_type(VkIndexType type)
    }
 }
 
-static uint32_t
+uint32_t
 radv_get_vgt_index_size(uint32_t type)
 {
    uint32_t index_type = G_028A7C_INDEX_TYPE(type);
