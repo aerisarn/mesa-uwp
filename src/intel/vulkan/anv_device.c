@@ -962,15 +962,15 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    device->local_fd = fd;
 
-   result = anv_init_wsi(device);
-   if (result != VK_SUCCESS)
-      goto fail_engine_info;
-
    anv_physical_device_init_perf(device, fd);
 
-   anv_measure_device_init(device);
-
    get_device_extensions(device, &device->vk.supported_extensions);
+
+   result = anv_init_wsi(device);
+   if (result != VK_SUCCESS)
+      goto fail_perf;
+
+   anv_measure_device_init(device);
 
    anv_genX(&device->info, init_physical_device_state)(device);
 
@@ -1000,7 +1000,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    return VK_SUCCESS;
 
-fail_engine_info:
+fail_perf:
+   ralloc_free(device->perf);
    free(device->engine_info);
    anv_physical_device_free_disk_cache(device);
 fail_compiler:
