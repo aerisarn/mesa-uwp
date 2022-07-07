@@ -59,10 +59,11 @@ traces:
       - device: gl-panfrost-t760
         # Wrong rendering, many elements are missing
         checksum: 67db7302b28cb8e3e217cc79b672af79
-  - path: 0ad/0ad-v2.trace
-    expectations:
-      - device: gl-panfrost-t860
-        checksum: 5a4fba0ae20e3ab9dc6fc4089add9457
+  # Timeouts
+  #- path: 0ad/0ad-v2.trace
+  #  expectations:
+  #    - device: gl-panfrost-t860
+  #      checksum: 5a4fba0ae20e3ab9dc6fc4089add9457
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false-v2.trace
     expectations:
       - device: gl-panfrost-t860
