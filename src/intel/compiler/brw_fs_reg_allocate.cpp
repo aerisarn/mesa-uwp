@@ -208,13 +208,13 @@ count_to_loop_end(const bblock_t *block)
    unreachable("not reached");
 }
 
-void fs_visitor::calculate_payload_ranges(int payload_node_count,
+void fs_visitor::calculate_payload_ranges(unsigned payload_node_count,
                                           int *payload_last_use_ip) const
 {
    int loop_depth = 0;
    int loop_end_ip = 0;
 
-   for (int i = 0; i < payload_node_count; i++)
+   for (unsigned i = 0; i < payload_node_count; i++)
       payload_last_use_ip[i] = -1;
 
    int ip = 0;
@@ -250,23 +250,23 @@ void fs_visitor::calculate_payload_ranges(int payload_node_count,
        */
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file == FIXED_GRF) {
-            int node_nr = inst->src[i].nr;
+            unsigned node_nr = inst->src[i].nr;
             if (node_nr >= payload_node_count)
                continue;
 
             for (unsigned j = 0; j < regs_read(inst, i); j++) {
                payload_last_use_ip[node_nr + j] = use_ip;
-               assert(node_nr + j < unsigned(payload_node_count));
+               assert(node_nr + j < payload_node_count);
             }
          }
       }
 
       if (inst->dst.file == FIXED_GRF) {
-         int node_nr = inst->dst.nr;
+         unsigned node_nr = inst->dst.nr;
          if (node_nr < payload_node_count) {
             for (unsigned j = 0; j < regs_written(inst); j++) {
                payload_last_use_ip[node_nr + j] = use_ip;
-               assert(node_nr + j < unsigned(payload_node_count));
+               assert(node_nr + j < payload_node_count);
             }
          }
       }

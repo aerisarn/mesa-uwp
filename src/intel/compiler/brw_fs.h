@@ -247,7 +247,7 @@ public:
    void assign_gs_urb_setup();
    bool assign_regs(bool allow_spilling, bool spill_all);
    void assign_regs_trivial();
-   void calculate_payload_ranges(int payload_node_count,
+   void calculate_payload_ranges(unsigned payload_node_count,
                                  int *payload_last_use_ip) const;
    bool split_virtual_grfs();
    bool compact_virtual_grfs();
