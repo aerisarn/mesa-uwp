@@ -381,6 +381,17 @@ can_fast_clear_with_non_zero_color(const struct intel_device_info *devinfo,
    if (!isl_aux_usage_has_fast_clears(image->planes[plane].aux_usage))
       return false;
 
+   /* On TGL, if a block of fragment shader outputs match the surface's clear
+    * color, the HW may convert them to fast-clears (see HSD 14010672564).
+    * This can lead to rendering corruptions if not handled properly. We
+    * restrict the clear color to zero to avoid issues that can occur with:
+    *     - Texture view rendering (including blorp_copy calls)
+    *     - Images with multiple levels or array layers
+    */
+   if (devinfo->ver >= 12 &&
+       image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E)
+      return false;
+
    /* Non mutable image, we can fast clear with any color supported by HW.
     */
    if (!(image->vk.create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
@@ -2369,17 +2380,6 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
    case ISL_AUX_STATE_PARTIAL_CLEAR:
    case ISL_AUX_STATE_COMPRESSED_CLEAR:
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
-         return ANV_FAST_CLEAR_DEFAULT_VALUE;
-      } else if (devinfo->ver >= 12 &&
-                 image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
-         /* On TGL, if a block of fragment shader outputs match the surface's
-          * clear color, the HW may convert them to fast-clears (see HSD
-          * 14010672564). This can lead to rendering corruptions if not
-          * handled properly. We restrict the clear color to zero to avoid
-          * issues that can occur with: 
-          *     - Texture view rendering (including blorp_copy calls)
-          *     - Images with multiple levels or array layers
-          */
          return ANV_FAST_CLEAR_DEFAULT_VALUE;
       } else if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
          /* The image might not support non zero fast clears when mutable. */
