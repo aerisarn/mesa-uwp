@@ -168,7 +168,7 @@ simple_mtx_unlock(simple_mtx_t *mtx)
 static inline void
 simple_mtx_assert_locked(simple_mtx_t *mtx)
 {
-#ifdef DEBUG
+#ifndef NDEBUG
    /* NOTE: this would not work for recursive mutexes, but
     * mtx_t doesn't support those
     */
