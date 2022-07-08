@@ -356,7 +356,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
 
    if (nir_to_dxil(nir, &opts, &dxil_blob)) {
       blob_finish_get_buffer(&dxil_blob, (void **)&slot->pShaderBytecode,
-                             &slot->BytecodeLength);
+                             (size_t *)&slot->BytecodeLength);
    } else {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
