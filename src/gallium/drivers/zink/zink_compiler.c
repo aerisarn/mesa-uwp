@@ -923,6 +923,8 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
 
             /* if all the components the variable exports to this slot aren't captured, skip consolidation */
             unsigned num_components = get_slot_components(var, slot, var->data.location);
+            if (glsl_type_is_array(var->type) && !glsl_type_is_struct_or_ifc(glsl_without_array(var->type)))
+               num_components /= glsl_array_size(var->type);
             if (num_components != packed_components[slot])
                goto out;
 
