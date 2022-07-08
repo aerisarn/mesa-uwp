@@ -64,13 +64,14 @@ if with_platform_windows
 endif
 
 if cc.get_argument_syntax() != 'msvc'
-  dzn_flags += [
+  dzn_flags_to_try = [
     '-Werror=unused-variable',
     '-Werror=unused-but-set-variable',
     '-Werror=unused-value',
     '-Werror=format',
     '-Werror=switch',
   ]
+  dzn_flags += cc.get_supported_arguments(dzn_flags_to_try)
 endif
 
 libvulkan_dzn = shared_library(
