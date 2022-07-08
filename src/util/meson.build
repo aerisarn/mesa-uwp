@@ -209,6 +209,7 @@ deps_for_libmesa_util = [
   dep_zstd,
   dep_dl,
   dep_unwind,
+  dep_futex,
   idep_mesautilc11
 ]
 
@@ -275,7 +276,7 @@ _libmesa_util = static_library(
 idep_mesautil = declare_dependency(
   link_with : _libmesa_util,
   include_directories : [inc_util, inc_gallium],
-  dependencies : [dep_zlib, dep_clock, dep_thread, dep_atomic, dep_m, dep_valgrind],
+  dependencies : [dep_zlib, dep_clock, dep_thread, dep_atomic, dep_m, dep_valgrind, dep_futex],
 )
 
 xmlconfig_deps = []

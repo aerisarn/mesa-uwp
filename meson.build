@@ -1617,6 +1617,15 @@ if with_platform_haiku
   dep_network = cc.find_library('network')
 endif
 
+dep_futex = null_dep
+if host_machine.system() == 'windows'
+  if (get_option('min-windows-version') < 8)
+    dep_futex = declare_dependency(compile_args : ['-DWINDOWS_NO_FUTEX'])
+  else
+    dep_futex = cc.find_library('synchronization', required : true)
+  endif
+endif
+
 # Check for libdrm. Various drivers have different libdrm version requirements,
 # but we always want to use the same version for all libdrm modules. That means
 # even if driver foo requires 2.4.0 and driver bar requires 2.4.3, if foo and

@@ -548,3 +548,11 @@ option(
   value : '',
   description : 'Override build id for shader cache keys (hex string). Can be extracted with readelf -x .note.gnu.build-id'
 )
+option(
+  'min-windows-version',
+  type : 'integer',
+  min : 7,
+  max : 11,
+  value : 8,
+  description : 'Minimum Windows version to support. Defaults to Windows 8.'
+)
