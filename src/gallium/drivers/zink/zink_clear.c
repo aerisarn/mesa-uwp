@@ -227,6 +227,34 @@ zink_clear(struct pipe_context *pctx,
       needs_rp = !zink_blit_region_fills(scissor, fb->width, fb->height);
    }
 
+   if (unlikely(ctx->fb_layer_mismatch)) {
+      /* this is a terrible scenario:
+       * at least one attachment has a layerCount greater than the others,
+       * so iterate over all the mismatched attachments and pre-clear them separately,
+       * then continue to flag them as need (additional) clearing
+       * to avoid loadOp=LOAD
+       */
+      unsigned x = 0;
+      unsigned y = 0;
+      unsigned w = ctx->fb_state.width;
+      unsigned h = ctx->fb_state.height;
+      if (scissor_state) {
+         x = scissor_state->minx;
+         y = scissor_state->miny;
+         w = scissor_state->minx + scissor_state->maxx;
+         h = scissor_state->miny + scissor_state->maxy;
+      }
+      unsigned clear_buffers = buffers >> 2;
+      for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         if (ctx->fb_state.cbufs[i] &&
+             (ctx->fb_layer_mismatch & clear_buffers & BITFIELD_BIT(i)))
+            pctx->clear_render_target(pctx, ctx->fb_state.cbufs[i], pcolor,
+                                      x, y, w, h, ctx->render_condition_active);
+      }
+      if (ctx->fb_state.zsbuf && (buffers & PIPE_CLEAR_DEPTHSTENCIL))
+         pctx->clear_depth_stencil(pctx, ctx->fb_state.zsbuf, buffers & PIPE_CLEAR_DEPTHSTENCIL, depth, stencil,
+                                   x, y, w, h, ctx->render_condition_active);
+   }
 
    if (batch->in_rp) {
       clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
