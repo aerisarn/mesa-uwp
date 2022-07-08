@@ -1146,6 +1146,13 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
    case nir_instr_type_phi:
       return 1;
 
+   /* We should not use very large delays for TMU instructions. Typically,
+    * thread switches will be sufficient to hide all or most of the latency,
+    * so we typically only need a little bit of extra room. If we over-estimate
+    * the latency here we may end up unnecesarily delaying the critical path in
+    * the shader, which would have a negative effect in performance, so here
+    * we are trying to strike a balance based on empirical testing.
+    */
    case nir_instr_type_intrinsic: {
       if (!c->disable_general_tmu_sched) {
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
@@ -1154,10 +1161,10 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
          case nir_intrinsic_load_scratch:
          case nir_intrinsic_load_shared:
          case nir_intrinsic_image_load:
-            return 30;
+            return 3;
          case nir_intrinsic_load_ubo:
             if (nir_src_is_divergent(intr->src[1]))
-               return 30;
+               return 3;
             FALLTHROUGH;
          default:
             return 1;
@@ -1169,7 +1176,7 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
    }
 
    case nir_instr_type_tex:
-      return 50;
+      return 5;
    }
 
    return 0;
