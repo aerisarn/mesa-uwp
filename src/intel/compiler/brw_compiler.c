@@ -110,7 +110,8 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
    brw_init_isa_info(&compiler->isa, devinfo);
 
    brw_fs_alloc_reg_sets(compiler);
-   brw_vec4_alloc_reg_set(compiler);
+   if (devinfo->ver < 8)
+      brw_vec4_alloc_reg_set(compiler);
 
    compiler->precise_trig = env_var_as_boolean("INTEL_PRECISE_TRIG", false);
 
