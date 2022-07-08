@@ -986,7 +986,6 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_SPLIT_FMA(false)
       DRI_CONF_RADV_DISABLE_TC_COMPAT_HTILE_GENERAL(false)
       DRI_CONF_RADV_DISABLE_DCC(false)
-      DRI_CONF_RADV_REPORT_APU_AS_DGPU(false)
       DRI_CONF_RADV_REQUIRE_ETC2(false)
       DRI_CONF_RADV_DISABLE_ANISO_SINGLE_LEVEL(false)
       DRI_CONF_RADV_DISABLE_SINKING_LOAD_INPUT_FS(false)
@@ -1032,9 +1031,6 @@ radv_init_dri_options(struct radv_instance *instance)
 
    instance->zero_vram =
       driQueryOptionb(&instance->dri_options, "radv_zero_vram");
-
-   instance->report_apu_as_dgpu =
-      driQueryOptionb(&instance->dri_options, "radv_report_apu_as_dgpu");
 
    instance->disable_aniso_single_level =
       driQueryOptionb(&instance->dri_options, "radv_disable_aniso_single_level");
@@ -1961,7 +1957,7 @@ radv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
    VkPhysicalDeviceType device_type;
 
-   if (pdevice->rad_info.has_dedicated_vram || pdevice->instance->report_apu_as_dgpu) {
+   if (pdevice->rad_info.has_dedicated_vram) {
       device_type = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
    } else {
       device_type = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;

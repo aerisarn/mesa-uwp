@@ -566,10 +566,6 @@
    DRI_CONF_OPT_B(radv_disable_dcc, def, \
                   "Disable DCC for color images")
 
-#define DRI_CONF_RADV_REPORT_APU_AS_DGPU(def) \
-   DRI_CONF_OPT_B(radv_report_apu_as_dgpu, def, \
-                  "Report APUs as discrete GPUs instead of integrated GPUs")
-
 #define DRI_CONF_RADV_REQUIRE_ETC2(def)                                        \
   DRI_CONF_OPT_B(radv_require_etc2, def,                                       \
                  "Implement emulated ETC2 on HW that does not support it")
