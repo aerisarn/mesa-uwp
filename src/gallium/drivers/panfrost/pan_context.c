@@ -510,6 +510,8 @@ panfrost_new_variant_locked(
                 update_so_info(&shader_state->stream_output,
                                shader_state->info.outputs_written);
 
+        shader_state->earlyzs = pan_earlyzs_analyze(&shader_state->info);
+
         return variant;
 }
 

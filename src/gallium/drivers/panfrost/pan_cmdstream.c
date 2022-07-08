@@ -70,6 +70,9 @@ struct panfrost_zsa_state {
          */
         bool zs_always_passes;
 
+        /* Are depth or stencil writes possible? */
+        bool writes_zs;
+
 #if PAN_ARCH <= 7
         /* Prepacked words from the RSD */
         struct mali_multisample_misc_packed rsd_depth;
@@ -526,9 +529,21 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         for (unsigned c = 0; c < rt_count; ++c)
                 has_blend_shader |= (blend_shaders[c] != 0);
 
+        bool has_oq = ctx->occlusion_query && ctx->active_queries;
+
         pan_pack(rsd, RENDERER_STATE, cfg) {
                 if (panfrost_fs_required(fs, so, &ctx->pipe_framebuffer, zsa)) {
 #if PAN_ARCH >= 6
+                        struct pan_earlyzs_state earlyzs =
+                               pan_earlyzs_get(fs->earlyzs,
+                                               ctx->depth_stencil->writes_zs ||
+                                               has_oq,
+                                               ctx->blend->base.alpha_to_coverage,
+                                               ctx->depth_stencil->zs_always_passes);
+
+                        cfg.properties.pixel_kill_operation = earlyzs.kill;
+                        cfg.properties.zs_update_operation = earlyzs.update;
+
                         cfg.properties.allow_forward_pixel_to_kill =
                                 pan_allow_forward_pixel_to_kill(ctx, fs);
 #else
@@ -544,7 +559,6 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
 
                         /* Hardware quirks around early-zs forcing without a
                          * depth buffer. Note this breaks occlusion queries. */
-                        bool has_oq = ctx->occlusion_query && ctx->active_queries;
                         bool force_ez_with_discard = !zsa->enabled && !has_oq;
 
                         cfg.properties.shader_reads_tilebuffer =
@@ -3326,9 +3340,16 @@ panfrost_emit_draw(void *out,
                 cfg.depth_stencil = batch->depth_stencil;
 
                 if (fs_required) {
-                        struct pan_pixel_kill kill = pan_shader_classify_pixel_kill_coverage(&fs->info);
-                        cfg.pixel_kill_operation = kill.pixel_kill;
-                        cfg.zs_update_operation = kill.zs_update;
+                        bool has_oq = ctx->occlusion_query && ctx->active_queries;
+
+                        struct pan_earlyzs_state earlyzs =
+                               pan_earlyzs_get(fs->earlyzs,
+                                               ctx->depth_stencil->writes_zs || has_oq,
+                                               ctx->blend->base.alpha_to_coverage,
+                                               ctx->depth_stencil->zs_always_passes);
+
+                        cfg.pixel_kill_operation = earlyzs.kill;
+                        cfg.zs_update_operation = earlyzs.update;
 
                         cfg.allow_forward_pixel_to_kill = pan_allow_forward_pixel_to_kill(ctx, fs);
                         cfg.allow_forward_pixel_to_be_killed = !fs->info.writes_global;
@@ -4449,6 +4470,7 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
                 (zsa->depth_enabled && zsa->depth_func != PIPE_FUNC_ALWAYS);
 
         so->zs_always_passes = pipe_zs_always_passes(zsa);
+        so->writes_zs = util_writes_depth_stencil(zsa);
 
         /* TODO: Bounds test should be easy */
         assert(!zsa->depth_bounds_test);

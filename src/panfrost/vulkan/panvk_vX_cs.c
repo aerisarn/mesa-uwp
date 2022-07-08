@@ -32,6 +32,7 @@
 #include "pan_encoder.h"
 #include "pan_pool.h"
 #include "pan_shader.h"
+#include "pan_earlyzs.h"
 
 #include "panvk_cs.h"
 #include "panvk_private.h"
@@ -722,6 +723,17 @@ panvk_per_arch(emit_base_fs_rsd)(const struct panvk_device *dev,
                  !(rt_mask & ~rt_written) &&
                  !pipeline->ms.alpha_to_coverage &&
                  !pipeline->blend.reads_dest;
+
+         bool writes_zs = pipeline->zs.z_write || pipeline->zs.s_test;
+         bool zs_always_passes = !pipeline->zs.z_test && !pipeline->zs.s_test;
+         bool oq = false; /* TODO: Occlusion queries */
+
+         struct pan_earlyzs_state earlyzs =
+            pan_earlyzs_get(pan_earlyzs_analyze(info), writes_zs || oq,
+                            pipeline->ms.alpha_to_coverage, zs_always_passes);
+
+         cfg.properties.pixel_kill_operation = earlyzs.kill;
+         cfg.properties.zs_update_operation = earlyzs.update;
       } else {
          cfg.properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
          cfg.properties.allow_forward_pixel_to_kill = true;

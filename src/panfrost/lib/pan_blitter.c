@@ -259,8 +259,14 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                 cfg.stencil_back = cfg.stencil_front;
 
 #if PAN_ARCH >= 6
-                /* Skipping ATEST requires forcing Z/S */
-                if (!zs) {
+                if (zs) {
+                        /* Writing Z/S requires late updates */
+                        cfg.properties.zs_update_operation =
+                                MALI_PIXEL_KILL_FORCE_LATE;
+                        cfg.properties.pixel_kill_operation =
+                                MALI_PIXEL_KILL_FORCE_LATE;
+                } else {
+                        /* Skipping ATEST requires forcing Z/S */
                         cfg.properties.zs_update_operation =
                                 MALI_PIXEL_KILL_STRONG_EARLY;
                         cfg.properties.pixel_kill_operation =
