@@ -233,7 +233,6 @@ struct gl_extensions
    GLboolean AMD_vertex_shader_layer;
    GLboolean AMD_vertex_shader_viewport_index;
    GLboolean ANDROID_extension_pack_es31a;
-   GLboolean APPLE_object_purgeable;
    GLboolean ARM_shader_framebuffer_fetch_depth_stencil;
    GLboolean ATI_meminfo;
    GLboolean ATI_texture_compression_3dc;

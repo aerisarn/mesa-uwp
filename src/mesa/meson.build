@@ -148,7 +148,6 @@ files_libmesa = files(
   'main/multisample.c',
   'main/multisample.h',
   'main/objectlabel.c',
-  'main/objectpurge.c',
   'main/pack.c',
   'main/pack.h',
   'main/pbo.c',
