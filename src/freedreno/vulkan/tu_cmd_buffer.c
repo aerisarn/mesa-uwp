@@ -3670,7 +3670,6 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
 
 static uint32_t
 tu6_user_consts_size(const struct tu_pipeline *pipeline,
-                     struct tu_descriptor_state *descriptors_state,
                      gl_shader_stage type)
 {
    const struct tu_program_descriptor_linkage *link =
@@ -3686,8 +3685,8 @@ tu6_user_consts_size(const struct tu_pipeline *pipeline,
 }
 
 static void
-tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
-                     struct tu_descriptor_state *descriptors_state,
+tu6_emit_user_consts(struct tu_cs *cs,
+                     const struct tu_pipeline *pipeline,
                      gl_shader_stage type,
                      uint32_t *push_constants)
 {
@@ -3713,30 +3712,28 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 static struct tu_draw_state
 tu6_emit_consts(struct tu_cmd_buffer *cmd,
                 const struct tu_pipeline *pipeline,
-                struct tu_descriptor_state *descriptors_state,
                 gl_shader_stage type)
 {
-   uint32_t dwords = tu6_user_consts_size(pipeline, descriptors_state, type);
+   uint32_t dwords = tu6_user_consts_size(pipeline, type);
    if (dwords == 0)
       return (struct tu_draw_state) {};
 
    struct tu_cs cs;
    tu_cs_begin_sub_stream(&cmd->sub_cs, dwords, &cs);
 
-   tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
+   tu6_emit_user_consts(&cs, pipeline, type, cmd->push_constants);
 
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
 static struct tu_draw_state
 tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
-                      const struct tu_pipeline *pipeline,
-                      struct tu_descriptor_state *descriptors_state)
+                     const struct tu_pipeline *pipeline)
 {
    uint32_t dwords = 0;
 
    for (uint32_t type = MESA_SHADER_VERTEX; type < MESA_SHADER_FRAGMENT; type++)
-      dwords += tu6_user_consts_size(pipeline, descriptors_state, type);
+      dwords += tu6_user_consts_size(pipeline, type);
 
    if (dwords == 0)
       return (struct tu_draw_state) {};
@@ -3745,7 +3742,7 @@ tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
    tu_cs_begin_sub_stream(&cmd->sub_cs, dwords, &cs);
 
    for (uint32_t type = MESA_SHADER_VERTEX; type < MESA_SHADER_FRAGMENT; type++)
-      tu6_emit_user_consts(&cs, pipeline, descriptors_state, type, cmd->push_constants);
+      tu6_emit_user_consts(&cs, pipeline, type, cmd->push_constants);
 
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
@@ -3927,9 +3924,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL |
                           TU_CMD_DIRTY_RB_STENCIL_CNTL | TU_CMD_DIRTY_BLEND);
 
-   struct tu_descriptor_state *descriptors_state =
-      &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
-
    if (dirty_lrz) {
       struct tu_cs cs;
       uint32_t size = cmd->device->physical_device->info->a6xx.lrz_track_quirk ? 10 : 8;
@@ -3976,9 +3970,9 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 
    if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
       cmd->state.shader_const[0] =
-         tu6_emit_consts_geom(cmd, pipeline, descriptors_state);
+         tu6_emit_consts_geom(cmd, pipeline);
       cmd->state.shader_const[1] =
-         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
+         tu6_emit_consts(cmd, pipeline, MESA_SHADER_FRAGMENT);
    }
 
    if (cmd->state.dirty & TU_CMD_DIRTY_VIEWPORTS) {
@@ -4571,8 +4565,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    struct tu_cs *cs = &cmd->cs;
    struct tu_pipeline *pipeline = cmd->state.compute_pipeline;
-   struct tu_descriptor_state *descriptors_state =
-      &cmd->descriptors[VK_PIPELINE_BIND_POINT_COMPUTE];
 
    /* TODO: We could probably flush less if we add a compute_flush_bits
     * bitfield.
@@ -4581,7 +4573,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    /* note: no reason to have this in a separate IB */
    tu_cs_emit_state_ib(cs,
-         tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_COMPUTE));
+         tu6_emit_consts(cmd, pipeline, MESA_SHADER_COMPUTE));
 
    tu_emit_compute_driver_params(cmd, cs, pipeline, info);
 
