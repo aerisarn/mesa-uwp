@@ -98,6 +98,19 @@ radv_get_current_time(void)
    return os_time_get_nano();
 }
 
+static void
+parse_hex(char *out, const char *in, unsigned length)
+{
+   for (unsigned i = 0; i < length; ++i)
+      out[i] = 0;
+
+   for (unsigned i = 0; i < 2 * length; ++i) {
+      unsigned v =
+         in[i] <= '9' ? in[i] - '0' : (in[i] >= 'a' ? (in[i] - 'a' + 10) : (in[i] - 'A' + 10));
+      out[i / 2] |= v << (4 * (1 - i % 2));
+   }
+}
+
 static int
 radv_device_get_cache_uuid(struct radv_physical_device *pdevice, void *uuid)
 {
@@ -109,13 +122,22 @@ radv_device_get_cache_uuid(struct radv_physical_device *pdevice, void *uuid)
    memset(uuid, 0, VK_UUID_SIZE);
    _mesa_sha1_init(&ctx);
 
-   if (!disk_cache_get_function_identifier(radv_device_get_cache_uuid, &ctx)
-#ifdef LLVM_AVAILABLE
-       || (pdevice->use_llvm &&
-           !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx))
-#endif
-   )
+#ifdef RADV_BUILD_ID_OVERRIDE
+   {
+      char data[strlen(RADV_BUILD_ID_OVERRIDE) / 2];
+      parse_hex(data, RADV_BUILD_ID_OVERRIDE, ARRAY_SIZE(data));
+      _mesa_sha1_update(&ctx, data, ARRAY_SIZE(data));
+   }
+#else
+   if (!disk_cache_get_function_identifier(radv_device_get_cache_uuid, &ctx))
       return -1;
+#endif
+
+#ifdef LLVM_AVAILABLE
+   if (pdevice->use_llvm &&
+       !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx))
+      return -1;
+#endif
 
    _mesa_sha1_update(&ctx, &family, sizeof(family));
    _mesa_sha1_update(&ctx, &ptr_size, sizeof(ptr_size));

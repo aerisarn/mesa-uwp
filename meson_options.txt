@@ -542,3 +542,9 @@ option(
   value : 'auto',
   description : 'build gallium d3d12 with video support.',
 )
+option(
+  'radv-build-id',
+  type : 'string',
+  value : '',
+  description : 'Override build id for shader cache keys (hex string). Can be extracted with readelf -x .note.gnu.build-id'
+)

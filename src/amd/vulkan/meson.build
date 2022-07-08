@@ -153,6 +153,11 @@ if with_ld_version_script
   libvulkan_radeon_link_depends += files('vulkan.sym')
 endif
 
+radv_build_id = get_option('radv-build-id')
+if radv_build_id != ''
+  radv_flags += '-DRADV_BUILD_ID_OVERRIDE="' + radv_build_id + '"'
+endif
+
 libvulkan_radeon = shared_library(
   'vulkan_radeon',
   [libradv_files, radv_entrypoints, sha1_h, radix_sort_spv],
