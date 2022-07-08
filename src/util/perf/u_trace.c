@@ -619,6 +619,9 @@ u_trace_begin_iterator(struct u_trace *ut)
    if (!ut->enabled)
       return (struct u_trace_iterator) {NULL, NULL, 0};
 
+   if (list_is_empty(&ut->trace_chunks))
+      return (struct u_trace_iterator) { ut, NULL, 0 };
+
    struct u_trace_chunk *first_chunk =
       list_first_entry(&ut->trace_chunks, struct u_trace_chunk, node);
 
@@ -631,16 +634,35 @@ u_trace_end_iterator(struct u_trace *ut)
    if (!ut->enabled)
       return (struct u_trace_iterator) {NULL, NULL, 0};
 
+   if (list_is_empty(&ut->trace_chunks))
+      return (struct u_trace_iterator) { ut, NULL, 0 };
+
    struct u_trace_chunk *last_chunk =
       list_last_entry(&ut->trace_chunks, struct u_trace_chunk, node);
 
    return (struct u_trace_iterator) { ut, last_chunk, last_chunk->num_traces};
 }
 
+/* If an iterator was created when there were no chunks and there are now
+ * chunks, "sanitize" it to include the first chunk.
+ */
+static struct u_trace_iterator
+sanitize_iterator(struct u_trace_iterator iter)
+{
+   if (iter.ut && !iter.chunk && !list_is_empty(&iter.ut->trace_chunks)) {
+      iter.chunk = list_first_entry(&iter.ut->trace_chunks, struct
+                                    u_trace_chunk, node);
+   }
+
+   return iter;
+}
+
 bool
 u_trace_iterator_equal(struct u_trace_iterator a,
                        struct u_trace_iterator b)
 {
+   a = sanitize_iterator(a);
+   b = sanitize_iterator(b);
    return a.ut == b.ut &&
           a.chunk == b.chunk &&
           a.event_idx == b.event_idx;
@@ -653,6 +675,9 @@ u_trace_clone_append(struct u_trace_iterator begin_it,
                      void *cmdstream,
                      u_trace_copy_ts_buffer copy_ts_buffer)
 {
+   begin_it = sanitize_iterator(begin_it);
+   end_it = sanitize_iterator(end_it);
+
    struct u_trace_chunk *from_chunk = begin_it.chunk;
    uint32_t from_idx = begin_it.event_idx;
 
@@ -702,6 +727,9 @@ void
 u_trace_disable_event_range(struct u_trace_iterator begin_it,
                             struct u_trace_iterator end_it)
 {
+   begin_it = sanitize_iterator(begin_it);
+   end_it = sanitize_iterator(end_it);
+
    struct u_trace_chunk *current_chunk = begin_it.chunk;
    uint32_t start_idx = begin_it.event_idx;
 
