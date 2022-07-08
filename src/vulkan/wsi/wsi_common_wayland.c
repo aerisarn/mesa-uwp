@@ -1044,7 +1044,7 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
 
-   if (!chain->base.wsi->has_import_memory_host) {
+   if (chain->display->sw && !chain->base.wsi->has_import_memory_host) {
       struct wsi_wl_image *image = &chain->images[image_index];
       memcpy(image->shm_ptr, image->base.cpu_map,
              image->base.row_pitches[0] * chain->extent.height);
