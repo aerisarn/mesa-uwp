@@ -121,10 +121,7 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       /* TODO: need replicate EXT */
       //attachments[num_attachments].storeOp = rt->resolve ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
       //attachments[num_attachments].stencilStoreOp = rt->resolve ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-      if (rt->mixed_zs)
-         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_NONE;
-      else
-         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
       /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
       attachments[num_attachments].initialLayout = layout;
