@@ -23,6 +23,7 @@
 
 #include "wsi_common_private.h"
 #include "wsi_common_entrypoints.h"
+#include "util/debug.h"
 #include "util/macros.h"
 #include "util/os_file.h"
 #include "util/xmlconfig.h"
@@ -45,6 +46,16 @@
 #include <unistd.h>
 #endif
 
+uint64_t WSI_DEBUG;
+
+static const struct debug_control debug_control[] = {
+   { "buffer",       WSI_DEBUG_BUFFER },
+   { "sw",           WSI_DEBUG_SW },
+   { "noshm",        WSI_DEBUG_NOSHM },
+   { "linear",       WSI_DEBUG_LINEAR },
+   { NULL, },
+};
+
 VkResult
 wsi_device_init(struct wsi_device *wsi,
                 VkPhysicalDevice pdevice,
@@ -57,11 +68,14 @@ wsi_device_init(struct wsi_device *wsi,
    const char *present_mode;
    UNUSED VkResult result;
 
+   WSI_DEBUG = parse_debug_string(getenv("MESA_VK_WSI_DEBUG"), debug_control);
+
    memset(wsi, 0, sizeof(*wsi));
 
    wsi->instance_alloc = *alloc;
    wsi->pdevice = pdevice;
-   wsi->sw = sw_device;
+   wsi->sw = sw_device || (WSI_DEBUG & WSI_DEBUG_SW);
+   wsi->wants_linear = (WSI_DEBUG & WSI_DEBUG_LINEAR) != 0;
 #define WSI_GET_CB(func) \
    PFN_vk##func func = (PFN_vk##func)proc_addr(pdevice, "vk" #func)
    WSI_GET_CB(GetPhysicalDeviceExternalSemaphoreProperties);
@@ -271,7 +285,7 @@ wsi_swapchain_init(const struct wsi_device *wsi,
    chain->device = _device;
    chain->alloc = *pAllocator;
 
-   chain->use_buffer_blit = use_buffer_blit;
+   chain->use_buffer_blit = use_buffer_blit || (WSI_DEBUG & WSI_DEBUG_BUFFER);
    if (wsi->sw && !wsi->wants_linear)
       chain->use_buffer_blit = true;
 

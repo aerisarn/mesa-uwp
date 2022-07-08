@@ -196,7 +196,8 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply,
                                *amd_reply, *nv_reply, *shm_reply = NULL,
                                *xfixes_reply;
-   bool wants_shm = wsi_dev->sw && wsi_dev->has_import_memory_host;
+   bool wants_shm = wsi_dev->sw && !(WSI_DEBUG & WSI_DEBUG_NOSHM) &&
+                    wsi_dev->has_import_memory_host;
    bool has_dri3_v1_2 = false;
    bool has_present_v1_2 = false;
 

@@ -30,6 +30,13 @@
 struct wsi_image;
 struct wsi_swapchain;
 
+#define WSI_DEBUG_BUFFER      (1ull << 0)
+#define WSI_DEBUG_SW          (1ull << 1)
+#define WSI_DEBUG_NOSHM       (1ull << 2)
+#define WSI_DEBUG_LINEAR      (1ull << 3)
+
+extern uint64_t WSI_DEBUG;
+
 struct wsi_image_info {
    VkImageCreateInfo create;
    struct wsi_image_create_info wsi;

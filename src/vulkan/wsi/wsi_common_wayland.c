@@ -1299,7 +1299,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
    if (wsi_device->sw) {
-      chain->buffer_type = chain->base.wsi->has_import_memory_host ?
+      chain->buffer_type = (chain->base.wsi->has_import_memory_host &&
+                            !(WSI_DEBUG & WSI_DEBUG_NOSHM)) ?
                            WSI_WL_BUFFER_GPU_SHM : WSI_WL_BUFFER_SHM_MEMCPY;
       chain->shm_format = wl_shm_format_for_vk_format(chain->vk_format, alpha);
    } else {
