@@ -538,6 +538,13 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    assert(info->drm_major == 3);
    info->is_amdgpu = true;
 
+   if (info->drm_minor < 2) {
+      fprintf(stderr, "amdgpu: DRM version is %u.%u.%u, but this driver is "
+                      "only compatible with 3.2.0 (kernel 4.7) or later.\n",
+              info->drm_major, info->drm_minor, info->drm_patchlevel);
+      return false;
+   }
+
    /* Query hardware and driver information. */
    r = amdgpu_query_gpu_info(dev, amdinfo);
    if (r) {
@@ -888,8 +895,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_gpu_reset_status_query = true;
    info->has_eqaa_surface_allocator = info->gfx_level < GFX11;
    info->has_format_bc1_through_bc7 = true;
-   /* DRM 3.1.0 doesn't flush TC for GFX8 correctly. */
-   info->kernel_flushes_tc_l2_after_ib = info->gfx_level != GFX8 || info->drm_minor >= 2;
    info->has_indirect_compute_dispatch = true;
    /* GFX6 doesn't support unaligned loads. */
    info->has_unaligned_shader_loads = info->gfx_level != GFX6;
@@ -1500,7 +1505,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_gpu_reset_status_query = %u\n", info->has_gpu_reset_status_query);
    fprintf(f, "    has_eqaa_surface_allocator = %u\n", info->has_eqaa_surface_allocator);
    fprintf(f, "    has_format_bc1_through_bc7 = %u\n", info->has_format_bc1_through_bc7);
-   fprintf(f, "    kernel_flushes_tc_l2_after_ib = %u\n", info->kernel_flushes_tc_l2_after_ib);
    fprintf(f, "    has_indirect_compute_dispatch = %u\n", info->has_indirect_compute_dispatch);
    fprintf(f, "    has_unaligned_shader_loads = %u\n", info->has_unaligned_shader_loads);
    fprintf(f, "    has_sparse_vm_mappings = %u\n", info->has_sparse_vm_mappings);

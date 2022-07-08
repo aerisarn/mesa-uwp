@@ -586,7 +586,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    ws->info.has_gpu_reset_status_query = ws->info.drm_minor >= 43;
    ws->info.has_eqaa_surface_allocator = false;
    ws->info.has_format_bc1_through_bc7 = ws->info.drm_minor >= 31;
-   ws->info.kernel_flushes_tc_l2_after_ib = true;
    /* Old kernels disallowed register writes via COPY_DATA
     * that are used for indirect compute dispatches. */
    ws->info.has_indirect_compute_dispatch = ws->info.gfx_level == GFX7 ||

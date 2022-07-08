@@ -55,9 +55,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 39)
       flags |= RADEON_FLUSH_START_NEXT_GFX_IB_NOW;
 
-   if (!sscreen->info.kernel_flushes_tc_l2_after_ib) {
-      wait_flags |= wait_ps_cs | SI_CONTEXT_INV_L2;
-   } else if (ctx->gfx_level == GFX6) {
+   if (ctx->gfx_level == GFX6) {
       /* The kernel flushes L2 before shaders are finished. */
       wait_flags |= wait_ps_cs;
    } else if (!(flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW) ||
