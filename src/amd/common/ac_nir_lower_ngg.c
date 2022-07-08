@@ -71,6 +71,13 @@ typedef struct
 
    nir_instr *compact_arg_stores[4];
    nir_intrinsic_instr *overwrite_args;
+
+   /* clip distance */
+   nir_variable *clip_vertex_var;
+   nir_variable *clipdist_neg_mask_var;
+   unsigned clipdist_enable_mask;
+   unsigned user_clip_plane_enable_mask;
+   bool has_clipdist;
 } lower_ngg_nogs_state;
 
 typedef struct
@@ -174,10 +181,6 @@ typedef struct
    } output_info[VARYING_SLOT_MAX];
 } lower_ngg_ms_state;
 
-typedef struct {
-   nir_variable *pre_cull_position_value_var;
-} remove_culling_shader_outputs_state;
-
 /* Per-vertex LDS layout of culling shaders */
 enum {
    /* Position of the ES vertex (at the beginning for alignment reasons) */
@@ -190,6 +193,8 @@ enum {
    lds_es_vertex_accepted = 16,
    /* ID of the thread which will export the current thread's vertex */
    lds_es_exporter_tid = 17,
+   /* bit i is set when the i'th clip distance of a vertex is negative */
+   lds_es_clipdist_neg_mask = 18,
 
    /* Repacked arguments - also listed separately for VS and TES */
    lds_es_arg_0 = 20,
@@ -529,10 +534,19 @@ store_var_components(nir_builder *b, nir_variable *var, nir_ssa_def *value,
    nir_store_var(b, var, value, writemask);
 }
 
+static void
+add_clipdist_bit(nir_builder *b, nir_ssa_def *dist, unsigned index, nir_variable *mask)
+{
+   nir_ssa_def *is_neg = nir_flt(b, dist, nir_imm_float(b, 0));
+   nir_ssa_def *neg_mask = nir_ishl_imm(b, nir_b2i8(b, is_neg), index);
+   neg_mask = nir_ior(b, neg_mask, nir_load_var(b, mask));
+   nir_store_var(b, mask, neg_mask, 1);
+}
+
 static bool
 remove_culling_shader_output(nir_builder *b, nir_instr *instr, void *state)
 {
-   remove_culling_shader_outputs_state *s = (remove_culling_shader_outputs_state *) state;
+   lower_ngg_nogs_state *s = (lower_ngg_nogs_state *) state;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -560,7 +574,24 @@ remove_culling_shader_output(nir_builder *b, nir_instr *instr, void *state)
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
    switch (io_sem.location) {
    case VARYING_SLOT_POS:
-      store_var_components(b, s->pre_cull_position_value_var, store_val, component, writemask);
+      store_var_components(b, s->position_value_var, store_val, component, writemask);
+      break;
+   case VARYING_SLOT_CLIP_DIST0:
+   case VARYING_SLOT_CLIP_DIST1: {
+      unsigned base = io_sem.location == VARYING_SLOT_CLIP_DIST1 ? 4 : 0;
+      base += component;
+
+      /* valid clipdist component mask */
+      unsigned mask = (s->clipdist_enable_mask >> base) & writemask;
+      u_foreach_bit(i, mask) {
+         add_clipdist_bit(b, nir_channel(b, store_val, i), base + i,
+                          s->clipdist_neg_mask_var);
+         s->has_clipdist = true;
+      }
+      break;
+   }
+   case VARYING_SLOT_CLIP_VERTEX:
+      store_var_components(b, s->clip_vertex_var, store_val, component, writemask);
       break;
    default:
       break;
@@ -572,14 +603,10 @@ remove_culling_shader_output(nir_builder *b, nir_instr *instr, void *state)
 }
 
 static void
-remove_culling_shader_outputs(nir_shader *culling_shader, lower_ngg_nogs_state *nogs_state, nir_variable *pre_cull_position_value_var)
+remove_culling_shader_outputs(nir_shader *culling_shader, lower_ngg_nogs_state *nogs_state)
 {
-   remove_culling_shader_outputs_state s = {
-      .pre_cull_position_value_var = pre_cull_position_value_var,
-   };
-
    nir_shader_instructions_pass(culling_shader, remove_culling_shader_output,
-                                nir_metadata_block_index | nir_metadata_dominance, &s);
+                                nir_metadata_block_index | nir_metadata_dominance, nogs_state);
 
    /* Remove dead code resulting from the deleted outputs. */
    bool progress;
@@ -1164,6 +1191,38 @@ cull_primitive_accepted(nir_builder *b, void *state)
 }
 
 static void
+clipdist_culling_es_part(nir_builder *b, lower_ngg_nogs_state *nogs_state,
+                         nir_ssa_def *es_vertex_lds_addr)
+{
+   /* no gl_ClipDistance used but we have user defined clip plane */
+   if (nogs_state->user_clip_plane_enable_mask && !nogs_state->has_clipdist) {
+      /* use gl_ClipVertex if defined */
+      nir_variable *clip_vertex_var =
+         b->shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_CLIP_VERTEX) ?
+         nogs_state->clip_vertex_var : nogs_state->position_value_var;
+      nir_ssa_def *clip_vertex = nir_load_var(b, clip_vertex_var);
+
+      /* clip against user defined clip planes */
+      for (unsigned i = 0; i < 8; i++) {
+         if (!(nogs_state->user_clip_plane_enable_mask & BITFIELD_BIT(i)))
+            continue;
+
+         nir_ssa_def *plane = nir_load_user_clip_plane(b, .ucp_id = i);
+         nir_ssa_def *dist = nir_fdot(b, clip_vertex, plane);
+         add_clipdist_bit(b, dist, i, nogs_state->clipdist_neg_mask_var);
+      }
+
+      nogs_state->has_clipdist = true;
+   }
+
+   /* store clipdist_neg_mask to LDS for culling latter in gs thread */
+   if (nogs_state->has_clipdist) {
+      nir_ssa_def *mask = nir_load_var(b, nogs_state->clipdist_neg_mask_var);
+      nir_store_shared(b, mask, es_vertex_lds_addr, .base = lds_es_clipdist_neg_mask);
+   }
+}
+
+static void
 add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_cf, lower_ngg_nogs_state *nogs_state)
 {
    bool uses_instance_id = BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
@@ -1200,6 +1259,13 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_local_variable_create(impl, glsl_uint_type(), "repacked_arg_2"),
       nir_local_variable_create(impl, glsl_uint_type(), "repacked_arg_3"),
    };
+
+   if (nogs_state->clipdist_enable_mask || nogs_state->user_clip_plane_enable_mask) {
+      nogs_state->clip_vertex_var =
+         nir_local_variable_create(impl, glsl_vec4_type(), "clip_vertex");
+      nogs_state->clipdist_neg_mask_var =
+         nir_local_variable_create(impl, glsl_uint8_t_type(), "clipdist_neg_mask");
+   }
 
    /* Top part of the culling shader (aka. position shader part)
     *
@@ -1247,7 +1313,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
    /* Remove all non-position outputs, and put the position output into the variable. */
    nir_metadata_preserve(impl, nir_metadata_none);
-   remove_culling_shader_outputs(b->shader, nogs_state, position_value_var);
+   remove_culling_shader_outputs(b->shader, nogs_state);
    b->cursor = nir_after_cf_list(&impl->body);
 
    /* Run culling algorithms if culling is enabled.
@@ -1275,6 +1341,9 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
          /* Clear out the ES accepted flag in LDS */
          nir_store_shared(b, nir_imm_zero(b, 1, 8), es_vertex_lds_addr, .align_mul = 4, .base = lds_es_vertex_accepted);
+
+         /* For clipdist culling */
+         clipdist_culling_es_part(b, nogs_state, es_vertex_lds_addr);
       }
       nir_pop_if(b, if_es_thread);
 
@@ -1308,8 +1377,23 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
             pos[vtx][1] = nir_channel(b, xy, 1);
          }
 
+         nir_ssa_def *accepted_by_clipdist;
+         if (nogs_state->has_clipdist) {
+            nir_ssa_def *clipdist_neg_mask = nir_imm_intN_t(b, 0xff, 8);
+            for (unsigned vtx = 0; vtx < nogs_state->num_vertices_per_primitives; ++vtx) {
+               nir_ssa_def *mask =
+                  nir_load_shared(b, 1, 8, nogs_state->vtx_addr[vtx],
+                                  .base = lds_es_clipdist_neg_mask);
+               clipdist_neg_mask = nir_iand(b, clipdist_neg_mask, mask);
+            }
+            /* primitive is culled if any plane's clipdist of all vertices are negative */
+            accepted_by_clipdist = nir_ieq_imm(b, clipdist_neg_mask, 0);
+         } else {
+            accepted_by_clipdist = nir_imm_bool(b, true);
+         }
+
          /* See if the current primitive is accepted */
-         ac_nir_cull_primitive(b, nir_imm_bool(b, true), pos,
+         ac_nir_cull_primitive(b, accepted_by_clipdist, pos,
                                nogs_state->num_vertices_per_primitives,
                                cull_primitive_accepted, nogs_state);
       }
@@ -1414,7 +1498,9 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       bool provoking_vtx_last,
                       bool use_edgeflags,
                       bool has_prim_query,
-                      uint32_t instance_rate_inputs)
+                      uint32_t instance_rate_inputs,
+                      uint32_t clipdist_enable_mask,
+                      uint32_t user_clip_plane_enable_mask)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
@@ -1443,6 +1529,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .max_es_num_vertices = max_num_es_vertices,
       .wave_size = wave_size,
       .instance_rate_inputs = instance_rate_inputs,
+      .clipdist_enable_mask = clipdist_enable_mask,
+      .user_clip_plane_enable_mask = user_clip_plane_enable_mask,
    };
 
    const bool need_prim_id_store_shared =
@@ -2087,8 +2175,11 @@ ngg_gs_cull_primitive(nir_builder *b, nir_ssa_def *tid_in_tg, nir_ssa_def *max_v
          pos[i][1] = nir_fdiv(b, pos[i][1], pos[i][3]);
       }
 
+      /* TODO: support clipdist culling in GS */
+      nir_ssa_def *accepted_by_clipdist = nir_imm_bool(b, true);
+
       nir_ssa_def *accepted = ac_nir_cull_primitive(
-         b, nir_imm_bool(b, true), pos, s->num_vertices_per_primitive, NULL, NULL);
+         b, accepted_by_clipdist, pos, s->num_vertices_per_primitive, NULL, NULL);
 
       nir_if *if_rejected = nir_push_if(b, nir_inot(b, accepted));
       {
