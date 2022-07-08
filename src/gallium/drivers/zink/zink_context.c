@@ -2746,6 +2746,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
    ctx->gfx_pipeline_state.void_alpha_attachments = 0;
    ctx->transient_attachments = 0;
+   ctx->fb_layer_mismatch = 0;
 
    ctx->dynamic_fb.info.renderArea.offset.x = 0;
    ctx->dynamic_fb.info.renderArea.offset.y = 0;
@@ -2766,6 +2767,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          if (!samples)
             samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
          struct zink_resource *res = zink_resource(psurf->texture);
+         if (zink_csurface(psurf)->info.layerCount > layers)
+            ctx->fb_layer_mismatch |= BITFIELD_BIT(i);
          if (res->modifiers) {
             assert(!ctx->needs_present || ctx->needs_present == res);
             ctx->needs_present = res;
@@ -2794,6 +2797,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          ctx->transient_attachments |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       if (!samples)
          samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
+      if (zink_csurface(psurf)->info.layerCount > layers)
+         ctx->fb_layer_mismatch |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       zink_resource(psurf->texture)->fb_binds++;
    }
    rebind_fb_state(ctx, NULL, true);
