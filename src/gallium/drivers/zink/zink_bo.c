@@ -1218,12 +1218,7 @@ bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_ind
 
    list_inithead(&slab->base.free);
 
-#ifdef _MSC_VER
-   /* C11 too hard for msvc, no __sync_fetch_and_add */
-   base_id = p_atomic_add_return(&screen->pb.next_bo_unique_id, slab->base.num_entries) - slab->base.num_entries;
-#else
-   base_id = __sync_fetch_and_add(&screen->pb.next_bo_unique_id, slab->base.num_entries);
-#endif
+   base_id = p_atomic_fetch_add(&screen->pb.next_bo_unique_id, slab->base.num_entries);
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       struct zink_bo *bo = &slab->entries[i];
 
