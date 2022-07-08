@@ -125,15 +125,6 @@ void r600_init_resource_fields(struct r600_common_screen *rscreen,
 		res->domains = RADEON_DOMAIN_GTT;
 		break;
 	case PIPE_USAGE_DYNAMIC:
-		/* Older kernels didn't always flush the HDP cache before
-		 * CS execution
-		 */
-		if (rscreen->info.drm_minor < 40) {
-			res->domains = RADEON_DOMAIN_GTT;
-			res->flags |= RADEON_FLAG_GTT_WC;
-			break;
-		}
-		FALLTHROUGH;
 	case PIPE_USAGE_DEFAULT:
 	case PIPE_USAGE_IMMUTABLE:
 	default:
@@ -142,21 +133,6 @@ void r600_init_resource_fields(struct r600_common_screen *rscreen,
 		res->domains = RADEON_DOMAIN_VRAM;
 		res->flags |= RADEON_FLAG_GTT_WC;
 		break;
-	}
-
-	if (res->b.b.target == PIPE_BUFFER &&
-	    res->b.b.flags & (PIPE_RESOURCE_FLAG_MAP_PERSISTENT |
-			      PIPE_RESOURCE_FLAG_MAP_COHERENT)) {
-		/* Use GTT for all persistent mappings with older
-		 * kernels, because they didn't always flush the HDP
-		 * cache before CS execution.
-		 *
-		 * Write-combined CPU mappings are fine, the kernel
-		 * ensures all CPU writes finish before the GPU
-		 * executes a command stream.
-		 */
-		if (rscreen->info.drm_minor < 40)
-			res->domains = RADEON_DOMAIN_GTT;
 	}
 
 	/* Tiled textures are unmappable. Always put them in VRAM. */

@@ -153,9 +153,9 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    /* Get DRM version. */
    version = drmGetVersion(ws->fd);
    if (version->version_major != 2 ||
-       version->version_minor < 12) {
+       version->version_minor < 45) {
       fprintf(stderr, "%s: DRM version is %d.%d.%d but this driver is "
-                      "only compatible with 2.12.0 (kernel 3.2) or later.\n",
+                      "only compatible with 2.45.0 (kernel 4.7) or later.\n",
               __FUNCTION__,
               version->version_major,
               version->version_minor,
@@ -308,28 +308,27 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    /* Check for dma */
    ws->info.ip[AMD_IP_SDMA].num_queues = 0;
    /* DMA is disabled on R700. There is IB corruption and hangs. */
-   if (ws->info.gfx_level >= EVERGREEN && ws->info.drm_minor >= 27) {
+   if (ws->info.gfx_level >= EVERGREEN) {
       ws->info.ip[AMD_IP_SDMA].num_queues = 1;
    }
 
    /* Check for UVD and VCE */
    ws->info.vce_fw_version = 0x00000000;
-   if (ws->info.drm_minor >= 32) {
-      uint32_t value = RADEON_CS_RING_UVD;
-      if (radeon_get_drm_value(ws->fd, RADEON_INFO_RING_WORKING,
-                               "UVD Ring working", &value)) {
-         ws->info.ip[AMD_IP_UVD].num_queues = 1;
-      }
 
-      value = RADEON_CS_RING_VCE;
-      if (radeon_get_drm_value(ws->fd, RADEON_INFO_RING_WORKING,
-                               NULL, &value) && value) {
+   uint32_t value = RADEON_CS_RING_UVD;
+   if (radeon_get_drm_value(ws->fd, RADEON_INFO_RING_WORKING,
+                            "UVD Ring working", &value)) {
+      ws->info.ip[AMD_IP_UVD].num_queues = 1;
+   }
 
-         if (radeon_get_drm_value(ws->fd, RADEON_INFO_VCE_FW_VERSION,
-                                  "VCE FW version", &value)) {
-            ws->info.vce_fw_version = value;
-            ws->info.ip[AMD_IP_VCE].num_queues = 1;
-         }
+   value = RADEON_CS_RING_VCE;
+   if (radeon_get_drm_value(ws->fd, RADEON_INFO_RING_WORKING,
+                            NULL, &value) && value) {
+
+      if (radeon_get_drm_value(ws->fd, RADEON_INFO_VCE_FW_VERSION,
+                               "VCE FW version", &value)) {
+         ws->info.vce_fw_version = value;
+         ws->info.ip[AMD_IP_VCE].num_queues = 1;
       }
    }
 
@@ -371,12 +370,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
       ws->info.max_heap_size_kb = ws->info.vram_size_kb;
    else
       ws->info.max_heap_size_kb = ws->info.gart_size_kb;
-
-   /* Old kernel driver limitation for allocation sizes. We only use this to limit per-buffer
-    * allocation size.
-    */
-   if (ws->info.drm_minor < 40)
-      ws->info.max_heap_size_kb = MIN2(ws->info.max_heap_size_kb, 256 * 1024);
 
    /* Both 32-bit and 64-bit address spaces only have 4GB.
     * This is a limitation of the VM allocator in the winsys.
@@ -457,19 +450,19 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                               &ws->info.enabled_rb_mask);
 
       ws->info.r600_has_virtual_memory = false;
-      if (ws->info.drm_minor >= 13) {
-         uint32_t ib_vm_max_size;
 
-         ws->info.r600_has_virtual_memory = true;
-         if (!radeon_get_drm_value(ws->fd, RADEON_INFO_VA_START, NULL,
-                                   &ws->va_start))
-            ws->info.r600_has_virtual_memory = false;
-         if (!radeon_get_drm_value(ws->fd, RADEON_INFO_IB_VM_MAX_SIZE, NULL,
-                                   &ib_vm_max_size))
-            ws->info.r600_has_virtual_memory = false;
-         radeon_get_drm_value(ws->fd, RADEON_INFO_VA_UNMAP_WORKING, NULL,
-                              &ws->va_unmap_working);
-      }
+      uint32_t ib_vm_max_size;
+
+      ws->info.r600_has_virtual_memory = true;
+      if (!radeon_get_drm_value(ws->fd, RADEON_INFO_VA_START, NULL,
+                                &ws->va_start))
+         ws->info.r600_has_virtual_memory = false;
+      if (!radeon_get_drm_value(ws->fd, RADEON_INFO_IB_VM_MAX_SIZE, NULL,
+                                &ib_vm_max_size))
+         ws->info.r600_has_virtual_memory = false;
+      radeon_get_drm_value(ws->fd, RADEON_INFO_VA_UNMAP_WORKING, NULL,
+                           &ws->va_unmap_working);
+
       if (ws->gen == DRV_R600 && !debug_get_bool_option("RADEON_VA", false))
          ws->info.r600_has_virtual_memory = false;
    }
@@ -577,27 +570,21 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                                      ws->accel_working2 < 3);
    ws->info.tcc_cache_line_size = 64; /* TC L2 line size on GCN */
    ws->info.ib_alignment = 4096;
-   ws->info.kernel_flushes_hdp_before_ib = ws->info.drm_minor >= 40;
+   ws->info.kernel_flushes_hdp_before_ib = true;
    /* HTILE is broken with 1D tiling on old kernels and GFX7. */
-   ws->info.htile_cmask_support_1d_tiling = ws->info.gfx_level != GFX7 ||
-                                                                   ws->info.drm_minor >= 38;
+   ws->info.htile_cmask_support_1d_tiling = true;
    ws->info.si_TA_CS_BC_BASE_ADDR_allowed = ws->info.drm_minor >= 48;
    ws->info.has_bo_metadata = false;
-   ws->info.has_gpu_reset_status_query = ws->info.drm_minor >= 43;
+   ws->info.has_gpu_reset_status_query = true;
    ws->info.has_eqaa_surface_allocator = false;
-   ws->info.has_format_bc1_through_bc7 = ws->info.drm_minor >= 31;
-   /* Old kernels disallowed register writes via COPY_DATA
-    * that are used for indirect compute dispatches. */
-   ws->info.has_indirect_compute_dispatch = ws->info.gfx_level == GFX7 ||
-                                            (ws->info.gfx_level == GFX6 &&
-                                             ws->info.drm_minor >= 45);
+   ws->info.has_format_bc1_through_bc7 = true;
+   ws->info.has_indirect_compute_dispatch = true;
    /* GFX6 doesn't support unaligned loads. */
    ws->info.has_unaligned_shader_loads = ws->info.gfx_level == GFX7 &&
                                          ws->info.drm_minor >= 50;
    ws->info.has_sparse_vm_mappings = false;
-   /* 2D tiling on GFX7 is supported since DRM 2.35.0 */
-   ws->info.has_2d_tiling = ws->info.gfx_level <= GFX6 || ws->info.drm_minor >= 35;
-   ws->info.has_read_registers_query = ws->info.drm_minor >= 42;
+   ws->info.has_2d_tiling = true;
+   ws->info.has_read_registers_query = true;
    ws->info.max_alignment = 1024*1024;
    ws->info.has_graphics = true;
    ws->info.cpdma_prefetch_writes_memory = true;
@@ -710,7 +697,7 @@ static uint64_t radeon_query_value(struct radeon_winsys *rws,
    case RADEON_NUM_MAPPED_BUFFERS:
       return ws->num_mapped_buffers;
    case RADEON_TIMESTAMP:
-      if (ws->info.drm_minor < 20 || ws->gen < DRV_R600) {
+      if (ws->gen < DRV_R600) {
          assert(0);
          return 0;
       }
@@ -921,17 +908,8 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    ws->vm32.start = ws->va_start;
    ws->vm32.end = 1ull << 32;
 
-   /* The maximum is 8GB of virtual address space limited by the kernel.
-    * It's obviously not enough for bigger cards, like Hawaiis with 4GB
-    * and 8GB of physical memory and 4GB of GART.
-    *
-    * Older kernels set the limit to 4GB, which is even worse, so they only
-    * have 32-bit address space.
-    */
-   if (ws->info.drm_minor >= 41) {
-      ws->vm64.start = 1ull << 32;
-      ws->vm64.end = 1ull << 33;
-   }
+   ws->vm64.start = 1ull << 32;
+   ws->vm64.end = 1ull << 33;
 
    /* TTM aligns the BO size to the CPU page size */
    ws->info.gart_page_size = sysconf(_SC_PAGESIZE);

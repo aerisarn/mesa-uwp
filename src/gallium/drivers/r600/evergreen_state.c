@@ -1424,11 +1424,7 @@ static void evergreen_init_depth_surface(struct r600_context *rctx,
 					S_028044_TILE_SPLIT(stile_split);
 	} else {
 		surf->db_stencil_base = offset;
-		/* DRM 2.6.18 allows the INVALID format to disable stencil.
-		 * Older kernels are out of luck. */
-		surf->db_stencil_info = rctx->screen->b.info.drm_minor >= 18 ?
-					S_028044_FORMAT(V_028044_STENCIL_INVALID) :
-					S_028044_FORMAT(V_028044_STENCIL_8);
+		surf->db_stencil_info = S_028044_FORMAT(V_028044_STENCIL_INVALID);
 	}
 
 	if (r600_htile_enabled(rtex, level)) {
@@ -1585,7 +1581,7 @@ static void evergreen_set_framebuffer_state(struct pipe_context *ctx,
 	if (state->zsbuf) {
 		rctx->framebuffer.atom.num_dw += 24;
 		rctx->framebuffer.atom.num_dw += 2;
-	} else if (rctx->screen->b.info.drm_minor >= 18) {
+	} else {
 		rctx->framebuffer.atom.num_dw += 4;
 	}
 
@@ -1952,9 +1948,7 @@ static void evergreen_emit_framebuffer_state(struct r600_context *rctx, struct r
 
 		radeon_emit(cs, PKT3(PKT3_NOP, 0, 0)); /* R_028054_DB_STENCIL_WRITE_BASE */
 		radeon_emit(cs, reloc);
-	} else if (rctx->screen->b.info.drm_minor >= 18) {
-		/* DRM 2.6.18 allows the INVALID format to disable depth/stencil.
-		 * Older kernels are out of luck. */
+	} else {
 		radeon_set_context_reg_seq(cs, R_028040_DB_Z_INFO, 2);
 		radeon_emit(cs, S_028040_FORMAT(V_028040_Z_INVALID)); /* R_028040_DB_Z_INFO */
 		radeon_emit(cs, S_028044_FORMAT(V_028044_STENCIL_INVALID)); /* R_028044_DB_STENCIL_INFO */
@@ -3539,7 +3533,6 @@ void evergreen_update_es_state(struct pipe_context *ctx, struct r600_pipe_shader
 
 void evergreen_update_gs_state(struct pipe_context *ctx, struct r600_pipe_shader *shader)
 {
-	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct r600_command_buffer *cb = &shader->command_buffer;
 	struct r600_shader *rshader = &shader->shader;
 	struct r600_shader *cp_shader = &shader->gs_copy_shader->shader;
@@ -3560,11 +3553,9 @@ void evergreen_update_gs_state(struct pipe_context *ctx, struct r600_pipe_shader
 	r600_store_context_reg(cb, R_028A6C_VGT_GS_OUT_PRIM_TYPE,
 			       r600_conv_prim_to_gs_out(shader->selector->gs_output_prim));
 
-	if (rctx->screen->b.info.drm_minor >= 35) {
-		r600_store_context_reg(cb, R_028B90_VGT_GS_INSTANCE_CNT,
+	r600_store_context_reg(cb, R_028B90_VGT_GS_INSTANCE_CNT,
 				S_028B90_CNT(MIN2(shader->selector->gs_num_invocations, 127)) |
 				S_028B90_ENABLE(shader->selector->gs_num_invocations > 0));
-	}
 	r600_store_context_reg_seq(cb, R_02891C_SQ_GS_VERT_ITEMSIZE, 4);
 	r600_store_value(cb, cp_shader->ring_item_sizes[0] >> 2);
 	r600_store_value(cb, cp_shader->ring_item_sizes[1] >> 2);

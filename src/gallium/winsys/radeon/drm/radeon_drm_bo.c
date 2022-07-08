@@ -179,9 +179,6 @@ static enum radeon_bo_domain radeon_bo_get_initial_domain(
    struct radeon_bo *bo = (struct radeon_bo*)buf;
    struct drm_radeon_gem_op args;
 
-   if (bo->rws->info.drm_minor < 38)
-      return RADEON_DOMAIN_VRAM_GTT;
-
    memset(&args, 0, sizeof(args));
    args.handle = bo->handle;
    args.op = RADEON_GEM_OP_GET_INITIAL_DOMAIN;

@@ -404,8 +404,9 @@ struct pipe_video_codec *si_vce_create_encoder(struct pipe_context *context,
 
    if (sscreen->info.is_amdgpu)
       enc->use_vm = true;
-   if ((!sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 42) || sscreen->info.is_amdgpu)
-      enc->use_vui = true;
+
+   enc->use_vui = true;
+
    if (sscreen->info.family >= CHIP_TONGA && sscreen->info.family != CHIP_STONEY &&
        sscreen->info.family != CHIP_POLARIS11 && sscreen->info.family != CHIP_POLARIS12 &&
        sscreen->info.family != CHIP_VEGAM)
