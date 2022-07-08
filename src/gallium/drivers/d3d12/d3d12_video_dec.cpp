@@ -780,16 +780,6 @@ d3d12_video_decoder_create_command_objects(const struct d3d12_screen *pD3D12Scre
       return false;
    }
 
-   D3D12_COMMAND_QUEUE_DESC copyQueueDesc = { D3D12_COMMAND_LIST_TYPE_COPY };
-   hr = pD3D12Screen->dev->CreateCommandQueue(&copyQueueDesc, IID_PPV_ARGS(pD3D12Dec->m_spCopyQueue.GetAddressOf()));
-
-   if (FAILED(hr)) {
-      debug_printf("[d3d12_video_decoder] d3d12_video_decoder_create_command_objects - Call to CreateCommandQueue "
-                      "failed with HR %x\n",
-                      hr);
-      return false;
-   }
-
    return true;
 }
 

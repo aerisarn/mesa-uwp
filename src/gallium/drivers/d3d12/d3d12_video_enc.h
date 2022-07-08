@@ -129,7 +129,6 @@ struct d3d12_video_encoder
    ComPtr<ID3D12CommandQueue>            m_spEncodeCommandQueue;
    ComPtr<ID3D12CommandAllocator>        m_spCommandAllocator;
    ComPtr<ID3D12VideoEncodeCommandList2> m_spEncodeCommandList;
-   ComPtr<ID3D12CommandQueue>            m_spCopyQueue;
    std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList;
 
    std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager;

@@ -883,17 +883,6 @@ d3d12_video_encoder_create_command_objects(struct d3d12_video_encoder *pD3D12Enc
       return false;
    }
 
-   D3D12_COMMAND_QUEUE_DESC copyQueueDesc = { D3D12_COMMAND_LIST_TYPE_COPY };
-   hr                                     = pD3D12Enc->m_pD3D12Screen->dev->CreateCommandQueue(&copyQueueDesc,
-                                                           IID_PPV_ARGS(pD3D12Enc->m_spCopyQueue.GetAddressOf()));
-
-   if (FAILED(hr)) {
-      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_create_command_objects - Call to CreateCommandQueue "
-                      "failed with HR %x\n",
-                      hr);
-      return false;
-   }
-
    return true;
 }
 

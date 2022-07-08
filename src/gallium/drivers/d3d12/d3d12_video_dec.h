@@ -107,7 +107,6 @@ struct d3d12_video_decoder
    ComPtr<ID3D12CommandQueue>            m_spDecodeCommandQueue;
    ComPtr<ID3D12CommandAllocator>        m_spCommandAllocator;
    ComPtr<ID3D12VideoDecodeCommandList1> m_spDecodeCommandList;
-   ComPtr<ID3D12CommandQueue>            m_spCopyQueue;
 
    std::vector<D3D12_RESOURCE_BARRIER> m_transitionsBeforeCloseCmdList;
 
