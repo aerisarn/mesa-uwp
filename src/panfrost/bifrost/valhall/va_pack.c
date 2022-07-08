@@ -53,6 +53,13 @@ invalid_instruction(const bi_instr *I, const char *cause, ...)
 }
 
 /*
+ * Like assert, but prints the instruction if the assertion fails to aid
+ * debugging invalid inputs to the packing module.
+ */
+#define pack_assert(I, cond) \
+   if (!(cond)) invalid_instruction(I, "invariant " #cond);
+
+/*
  * Validate that two adjacent 32-bit sources form an aligned 64-bit register
  * pair. This is a compiler invariant, required on Valhall but not on Bifrost.
  */
@@ -61,25 +68,26 @@ va_validate_register_pair(const bi_instr *I, unsigned s)
 {
    ASSERTED bi_index lo = I->src[s], hi = I->src[s + 1];
 
-   assert(lo.type == hi.type);
+   pack_assert(I, lo.type == hi.type);
 
    if (lo.type == BI_INDEX_REGISTER) {
-      assert(hi.value & 1);
-      assert(hi.value == lo.value + 1);
+      pack_assert(I, hi.value & 1);
+      pack_assert(I, hi.value == lo.value + 1);
    } else if (lo.type == BI_INDEX_FAU && lo.value & BIR_FAU_IMMEDIATE) {
       /* Small constants are zero extended, so the top word encode zero */
-      assert(hi.value == (BIR_FAU_IMMEDIATE | 0));
+      pack_assert(I, hi.value == (BIR_FAU_IMMEDIATE | 0));
    } else {
-      assert(hi.offset & 1);
-      assert(hi.offset == lo.offset + 1);
+      pack_assert(I, hi.offset & 1);
+      pack_assert(I, hi.offset == lo.offset + 1);
    }
 }
 
 static unsigned
-va_pack_reg(bi_index idx)
+va_pack_reg(const bi_instr *I, bi_index idx)
 {
-   assert(idx.type == BI_INDEX_REGISTER);
-   assert(idx.value < 64);
+   pack_assert(I, idx.type == BI_INDEX_REGISTER);
+   pack_assert(I, idx.value < 64);
+
    return idx.value;
 }
 
@@ -109,7 +117,7 @@ va_pack_fau_special(const bi_instr *I, enum bir_fau fau)
 static unsigned
 va_pack_fau_64(const bi_instr *I, bi_index idx)
 {
-   assert(idx.type == BI_INDEX_FAU);
+   pack_assert(I, idx.type == BI_INDEX_FAU);
 
    unsigned val = (idx.value & BITFIELD_MASK(5));
 
@@ -127,11 +135,11 @@ va_pack_src(const bi_instr *I, unsigned s)
    bi_index idx = I->src[s];
 
    if (idx.type == BI_INDEX_REGISTER) {
-      unsigned value = va_pack_reg(idx);
+      unsigned value = va_pack_reg(I, idx);
       if (idx.discard) value |= (1 << 6);
       return value;
    } else if (idx.type == BI_INDEX_FAU) {
-      assert(idx.offset <= 1);
+      pack_assert(I, idx.offset <= 1);
       return va_pack_fau_64(I, idx) | idx.offset;
    }
 
@@ -183,7 +191,7 @@ va_pack_atom_opc_1(const bi_instr *I)
 static unsigned
 va_pack_dest(const bi_instr *I)
 {
-   return va_pack_reg(I->dest[0]) | (va_pack_wrmask(I) << 6);
+   return va_pack_reg(I, I->dest[0]) | (va_pack_wrmask(I) << 6);
 }
 
 static enum va_widen
@@ -329,7 +337,7 @@ va_pack_alu(const bi_instr *I)
    /* Add .eq flag */
    case BI_OPCODE_BRANCHZ_I16:
    case BI_OPCODE_BRANCHZI:
-      assert(I->cmpf == BI_CMPF_EQ || I->cmpf == BI_CMPF_NE);
+      pack_assert(I, I->cmpf == BI_CMPF_EQ || I->cmpf == BI_CMPF_NE);
 
       if (I->cmpf == BI_CMPF_EQ) hex |= (1ull << 36);
 
@@ -424,7 +432,7 @@ va_pack_alu(const bi_instr *I)
 
    /* FMA_RSCALE.f32 special modes treated as extra opcodes */
    if (I->op == BI_OPCODE_FMA_RSCALE_F32) {
-      assert(I->special < 4);
+      pack_assert(I, I->special < 4);
       hex |= ((uint64_t) I->special) << 48;
    }
 
@@ -434,7 +442,7 @@ va_pack_alu(const bi_instr *I)
    if (info.has_dest && info.nr_staging_dests == 0) {
       hex |= (uint64_t) va_pack_dest(I) << 40;
    } else if (info.nr_staging_dests == 0 && info.nr_staging_srcs == 0) {
-      assert(bi_is_null(I->dest[0]));
+      pack_assert(I, bi_is_null(I->dest[0]));
       hex |= 0xC0ull << 40; /* Placeholder */
    }
 
@@ -461,14 +469,14 @@ va_pack_alu(const bi_instr *I)
          if (src.neg) hex |= 1ull << neg_offs;
          if (src.abs) hex |= 1ull << abs_offs;
       } else {
-         assert(!src.neg && "Unexpected negate");
-         assert(!src.abs && "Unexpected absolute value");
+         if (src.neg) invalid_instruction(I, "negate");
+         if (src.abs) invalid_instruction(I, "absolute value");
       }
 
       if (src_info.swizzle) {
          unsigned offs = 24 + ((2 - i) * 2);
          unsigned S = src.swizzle;
-         assert(size == VA_SIZE_16 || size == VA_SIZE_32);
+         pack_assert(I, size == VA_SIZE_16 || size == VA_SIZE_32);
 
          uint64_t v = (size == VA_SIZE_32 ? va_pack_widen_f32(I, S) : va_pack_swizzle_f16(I, S));
          hex |= v << offs;
@@ -485,23 +493,23 @@ va_pack_alu(const bi_instr *I)
          } else if (I->op == BI_OPCODE_BRANCHZ_I16) {
             hex |= ((uint64_t) va_pack_combine(I, src.swizzle) << 37);
          } else {
-            assert(src_info.size == VA_SIZE_8);
+            pack_assert(I, src_info.size == VA_SIZE_8);
             unsigned comp = src.swizzle - BI_SWIZZLE_B0000;
-            assert(comp < 4);
+            pack_assert(I, comp < 4);
             hex |= (uint64_t) comp << offs;
          }
       } else if (src_info.lanes) {
-         assert(src_info.size == VA_SIZE_8);
-         assert(i == 1);
+         pack_assert(I, src_info.size == VA_SIZE_8);
+         pack_assert(I, i == 1);
          hex |= (uint64_t) va_pack_shift_lanes(I, src.swizzle) << 26;
       } else if (src_info.combine) {
          /* Treat as swizzle, subgroup ops not yet supported */
-         assert(src_info.size == VA_SIZE_32);
-         assert(i == 0);
+         pack_assert(I, src_info.size == VA_SIZE_32);
+         pack_assert(I, i == 0);
          hex |= (uint64_t) va_pack_widen_f32(I, src.swizzle) << 37;
       } else if (src_info.halfswizzle) {
-         assert(src_info.size == VA_SIZE_8);
-         assert(i == 0);
+         pack_assert(I, src_info.size == VA_SIZE_8);
+         pack_assert(I, i == 0);
          hex |= (uint64_t) va_pack_halfswizzle(I, src.swizzle) << 36;
       } else if (src.swizzle != BI_SWIZZLE_H01) {
          invalid_instruction(I, "swizzle");
@@ -520,7 +528,7 @@ static uint64_t
 va_pack_byte_offset(const bi_instr *I)
 {
    int16_t offset = I->byte_offset;
-   assert(offset == I->byte_offset && "offset overflow");
+   if (offset != I->byte_offset) invalid_instruction(I, "byte offset");
 
    uint16_t offset_as_u16 = offset;
    return ((uint64_t) offset_as_u16) << 8;
@@ -530,7 +538,7 @@ static uint64_t
 va_pack_byte_offset_8(const bi_instr *I)
 {
    uint8_t offset = I->byte_offset;
-   assert(offset == I->byte_offset && "offset overflow");
+   if (offset != I->byte_offset) invalid_instruction(I, "byte offset");
 
    return ((uint64_t) offset) << 8;
 }
@@ -660,13 +668,13 @@ va_pack_instr(const bi_instr *I)
          bi_count_write_registers(I, 0);
 
       hex |= ((uint64_t) count << 33);
-      hex |= (uint64_t) va_pack_reg(sr) << 40;
+      hex |= (uint64_t) va_pack_reg(I, sr) << 40;
       hex |= ((uint64_t) info.sr_control << 46);
    }
 
    if (info.sr_write_count) {
       hex |= ((uint64_t) bi_count_write_registers(I, 0) - 1) << 36;
-      hex |= ((uint64_t) va_pack_reg(I->dest[0])) << 16;
+      hex |= ((uint64_t) va_pack_reg(I, I->dest[0])) << 16;
    }
 
    if (info.vecsize)
@@ -753,11 +761,11 @@ va_pack_instr(const bi_instr *I)
       va_validate_register_pair(I, 2);
 
       /* Target */
-      assert((I->branch_offset & 0x7) == 0);
+      if (I->branch_offset & 0x7) invalid_instruction(I, "unaligned branch");
       hex |= ((I->branch_offset >> 3) << 8);
 
       /* Source 2 - coverage mask */
-      hex |= ((uint64_t) va_pack_reg(I->src[1])) << 16;
+      hex |= ((uint64_t) va_pack_reg(I, I->src[1])) << 16;
 
       /* Vector size */
       unsigned vecsize = 4;
@@ -773,7 +781,8 @@ va_pack_instr(const bi_instr *I)
       /* Image to read from */
       hex |= ((uint64_t) va_pack_src(I, 1)) << 0;
 
-      assert(!(I->op == BI_OPCODE_TEX_FETCH && I->shadow));
+      if (I->op == BI_OPCODE_TEX_FETCH && I->shadow)
+         invalid_instruction(I, "TEX_FETCH does not support .shadow");
 
       if (I->array_enable) hex |= (1ull << 10);
       if (I->texel_offset) hex |= (1ull << 11);
