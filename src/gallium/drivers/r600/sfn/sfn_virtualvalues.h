@@ -33,6 +33,7 @@
 #include <iosfwd>
 #include <map>
 #include <set>
+#include <array>
 #include <cassert>
 
 #if __cpp_exceptions >= 199711L
