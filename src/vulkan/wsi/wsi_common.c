@@ -1350,12 +1350,12 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
    wsi->GetBufferMemoryRequirements(chain->device, image->buffer.buffer, &reqs);
    assert(reqs.size <= info->linear_size);
 
-   const struct wsi_memory_allocate_info memory_wsi_info = {
+   struct wsi_memory_allocate_info memory_wsi_info = {
       .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
       .pNext = NULL,
       .implicit_sync = implicit_sync,
    };
-   const VkMemoryDedicatedAllocateInfo buf_mem_dedicated_info = {
+   VkMemoryDedicatedAllocateInfo buf_mem_dedicated_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
       .pNext = &memory_wsi_info,
       .image = VK_NULL_HANDLE,
@@ -1385,7 +1385,6 @@ wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
    } else if (handle_types != 0) {
       memory_export_info = (VkExportMemoryAllocateInfo) {
          .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
-         .pNext = &memory_wsi_info,
          .handleTypes = handle_types,
       };
       __vk_append_struct(&buf_mem_info, &memory_export_info);
