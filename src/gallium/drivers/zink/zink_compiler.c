@@ -3065,7 +3065,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, match_tex_dests);
 
    ret->nir = nir;
-   if (so_info && nir->info.outputs_written && nir->info.has_transform_feedback_varyings)
+   if (so_info && so_info->num_outputs)
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {
       bool have_fake_psiz = false;
