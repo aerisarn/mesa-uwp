@@ -196,7 +196,7 @@ debian-release:
       -D gallium-opencl=disabled
       -D llvm=enabled
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
-    VULKAN_DRIVERS: "amd,imagination-experimental"
+    VULKAN_DRIVERS: "amd,imagination-experimental,microsoft-experimental"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
       -D spirv-to-dxil=true
@@ -412,7 +412,7 @@ debian-clang:
     DRI_LOADERS: >
       -D glvnd=true
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus,i915,asahi"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost,imagination-experimental
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost,imagination-experimental,microsoft-experimental
     EXTRA_OPTIONS:
       -D spirv-to-dxil=true
       -D imagination-srv=true
@@ -479,7 +479,7 @@ debian-vulkan:
       -D c_args=-fno-sanitize-recover=all
       -D cpp_args=-fno-sanitize-recover=all
     UBSAN_OPTIONS: "print_stacktrace=1"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,imagination-experimental
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,imagination-experimental,microsoft-experimental
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
