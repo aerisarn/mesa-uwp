@@ -41,7 +41,6 @@ extern "C" {
 struct dzn_instance;
 
 struct dzn_physical_device_desc {
-   LUID adapter_luid;
    uint32_t vendor_id;
    uint32_t device_id;
    uint32_t subsys_id;
@@ -49,6 +48,7 @@ struct dzn_physical_device_desc {
    uint64_t shared_system_memory;
    uint64_t dedicated_system_memory;
    uint64_t dedicated_video_memory;
+   LUID adapter_luid;
    bool is_warp;
    char description[128];
 };
