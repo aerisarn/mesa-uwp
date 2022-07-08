@@ -914,6 +914,12 @@ struct wsi_wl_image {
    unsigned                                     shm_size;
 };
 
+enum wsi_wl_buffer_type {
+   WSI_WL_BUFFER_NATIVE,
+   WSI_WL_BUFFER_GPU_SHM,
+   WSI_WL_BUFFER_SHM_MEMCPY,
+};
+
 struct wsi_wl_swapchain {
    struct wsi_swapchain                         base;
 
@@ -925,6 +931,7 @@ struct wsi_wl_swapchain {
 
    VkExtent2D                                   extent;
    VkFormat                                     vk_format;
+   enum wsi_wl_buffer_type                      buffer_type;
    uint32_t                                     drm_format;
    enum wl_shm_format                           shm_format;
 
@@ -1044,7 +1051,7 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
 
-   if (chain->display->sw && !chain->base.wsi->has_import_memory_host) {
+   if (chain->buffer_type == WSI_WL_BUFFER_SHM_MEMCPY) {
       struct wsi_wl_image *image = &chain->images[image_index];
       memcpy(image->shm_ptr, image->base.cpu_map,
              image->base.row_pitches[0] * chain->extent.height);
@@ -1138,14 +1145,14 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    if (result != VK_SUCCESS)
       return result;
 
-   if (display->sw) {
-      if (chain->base.wsi->has_import_memory_host) {
-         assert(image->shm_ptr != NULL);
-      } else {
-         assert(image->shm_ptr == NULL);
+   switch (chain->buffer_type) {
+   case WSI_WL_BUFFER_GPU_SHM:
+   case WSI_WL_BUFFER_SHM_MEMCPY: {
+      if (chain->buffer_type == WSI_WL_BUFFER_SHM_MEMCPY) {
          wsi_wl_alloc_image_shm(&image->base, image->base.row_pitches[0] *
                                               chain->extent.height);
       }
+      assert(image->shm_ptr != NULL);
 
       /* Share it in a wl_buffer */
       struct wl_shm_pool *pool = wl_shm_create_pool(display->wl_shm,
@@ -1157,7 +1164,10 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                                                 image->base.row_pitches[0],
                                                 chain->shm_format);
       wl_shm_pool_destroy(pool);
-   } else {
+      break;
+   }
+
+   case WSI_WL_BUFFER_NATIVE: {
       assert(display->wl_dmabuf);
 
       struct zwp_linux_buffer_params_v1 *params =
@@ -1182,6 +1192,11 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                                                  chain->drm_format,
                                                  0);
       zwp_linux_buffer_params_v1_destroy(params);
+      break;
+   }
+
+   default:
+      unreachable("Invalid buffer type");
    }
 
    if (!image->buffer)
@@ -1283,10 +1298,14 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.image_count = num_images;
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
-   if (wsi_device->sw)
+   if (wsi_device->sw) {
+      chain->buffer_type = chain->base.wsi->has_import_memory_host ?
+                           WSI_WL_BUFFER_GPU_SHM : WSI_WL_BUFFER_SHM_MEMCPY;
       chain->shm_format = wl_shm_format_for_vk_format(chain->vk_format, alpha);
-   else
+   } else {
+      chain->buffer_type = WSI_WL_BUFFER_NATIVE;
       chain->drm_format = wl_drm_format_for_vk_format(chain->vk_format, alpha);
+   }
 
    if (pCreateInfo->oldSwapchain) {
       /* If we have an oldSwapchain parameter, copy the display struct over
@@ -1326,17 +1345,28 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    chain->fifo_ready = true;
 
-   if (wsi_device->sw) {
-      result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
-                                       wsi_device->has_import_memory_host ?
-                                          wsi_wl_alloc_image_shm : NULL,
-                                       &chain->base.image_info);
-   } else {
+   switch (chain->buffer_type) {
+   case WSI_WL_BUFFER_NATIVE:
       result = wsi_configure_native_image(&chain->base, pCreateInfo,
                                           chain->num_drm_modifiers > 0 ? 1 : 0,
                                           &chain->num_drm_modifiers,
                                           &chain->drm_modifiers,
                                           &chain->base.image_info);
+      break;
+
+   case WSI_WL_BUFFER_GPU_SHM:
+      result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
+                                       wsi_wl_alloc_image_shm,
+                                       &chain->base.image_info);
+      break;
+
+   case WSI_WL_BUFFER_SHM_MEMCPY:
+      result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
+                                       NULL, &chain->base.image_info);
+      break;
+
+   default:
+      unreachable("Invalid buffer type");
    }
    if (result != VK_SUCCESS)
       goto fail;
