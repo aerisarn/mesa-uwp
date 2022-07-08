@@ -2372,9 +2372,11 @@ static void radv_aco_build_prolog(void **bin,
    prolog_binary->num_preserved_sgprs = num_preserved_sgprs;
    prolog_binary->code_size = code_size * sizeof(uint32_t);
    memcpy(prolog_binary->data, code, prolog_binary->code_size);
-   if (disasm_size)
+   if (disasm_size) {
       memcpy((char*)prolog_binary->data + prolog_binary->code_size,
              disasm_str, disasm_size);
+      prolog_binary->disasm_size = disasm_size;
+   }
 
    *binary = prolog_binary;
 }
