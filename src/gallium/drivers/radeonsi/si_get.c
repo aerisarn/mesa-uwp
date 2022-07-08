@@ -166,6 +166,8 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
+   case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
+   case PIPE_CAP_TEXTURE_MULTISAMPLE:
       return 1;
 
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
@@ -195,14 +197,8 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
       return !SI_BIG_ENDIAN && sscreen->info.has_userptr;
 
-   case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
-      return sscreen->info.has_gpu_reset_status_query;
-
    case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
       return sscreen->info.has_tmz_support;
-
-   case PIPE_CAP_TEXTURE_MULTISAMPLE:
-      return sscreen->info.has_2d_tiling;
 
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return SI_MAP_BUFFER_ALIGNMENT;
@@ -221,8 +217,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      if (!sscreen->info.has_indirect_compute_dispatch)
-         return 420;
       return 460;
 
    case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET:
@@ -475,9 +469,8 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       if (shader == PIPE_SHADER_COMPUTE) {
          return (1 << PIPE_SHADER_IR_NATIVE) |
-                (sscreen->info.has_indirect_compute_dispatch ?
-                    (1 << PIPE_SHADER_IR_NIR) |
-                    (1 << PIPE_SHADER_IR_TGSI) : 0);
+                (1 << PIPE_SHADER_IR_NIR) |
+                (1 << PIPE_SHADER_IR_TGSI);
       }
       return (1 << PIPE_SHADER_IR_TGSI) |
              (1 << PIPE_SHADER_IR_NIR);

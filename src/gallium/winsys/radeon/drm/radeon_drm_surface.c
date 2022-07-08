@@ -293,10 +293,6 @@ static void si_compute_htile(const struct radeon_info *info,
        surf->flags & RADEON_SURF_NO_HTILE)
       return;
 
-   if (surf->u.legacy.level[0].mode == RADEON_SURF_MODE_1D &&
-       !info->htile_cmask_support_1d_tiling)
-      return;
-
    /* Overalign HTILE on P2 configs to work around GPU hangs in
      * piglit/depthstencil-render-miplevels 585.
      *

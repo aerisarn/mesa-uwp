@@ -570,21 +570,13 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                                      ws->accel_working2 < 3);
    ws->info.tcc_cache_line_size = 64; /* TC L2 line size on GCN */
    ws->info.ib_alignment = 4096;
-   ws->info.kernel_flushes_hdp_before_ib = true;
-   /* HTILE is broken with 1D tiling on old kernels and GFX7. */
-   ws->info.htile_cmask_support_1d_tiling = true;
    ws->info.si_TA_CS_BC_BASE_ADDR_allowed = ws->info.drm_minor >= 48;
    ws->info.has_bo_metadata = false;
-   ws->info.has_gpu_reset_status_query = true;
    ws->info.has_eqaa_surface_allocator = false;
-   ws->info.has_format_bc1_through_bc7 = true;
-   ws->info.has_indirect_compute_dispatch = true;
    /* GFX6 doesn't support unaligned loads. */
    ws->info.has_unaligned_shader_loads = ws->info.gfx_level == GFX7 &&
                                          ws->info.drm_minor >= 50;
    ws->info.has_sparse_vm_mappings = false;
-   ws->info.has_2d_tiling = true;
-   ws->info.has_read_registers_query = true;
    ws->info.max_alignment = 1024*1024;
    ws->info.has_graphics = true;
    ws->info.cpdma_prefetch_writes_memory = true;
@@ -668,9 +660,6 @@ static bool radeon_cs_request_feature(struct radeon_cmdbuf *rcs,
 uint32_t radeon_drm_get_gpu_reset_counter(struct radeon_drm_winsys *ws)
 {
    uint64_t retval = 0;
-
-   if (!ws->info.has_gpu_reset_status_query)
-      return 0;
 
    radeon_get_drm_value(ws->fd, RADEON_INFO_GPU_RESET_COUNTER,
                         "gpu-reset-counter", (uint32_t*)&retval);

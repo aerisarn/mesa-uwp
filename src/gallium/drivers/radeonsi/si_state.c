@@ -1868,9 +1868,6 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    }
 
    if (desc->layout == UTIL_FORMAT_LAYOUT_RGTC) {
-      if (!sscreen->info.has_format_bc1_through_bc7)
-         goto out_unknown;
-
       switch (format) {
       case PIPE_FORMAT_RGTC1_SNORM:
       case PIPE_FORMAT_LATC1_SNORM:
@@ -1913,9 +1910,6 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    }
 
    if (desc->layout == UTIL_FORMAT_LAYOUT_BPTC) {
-      if (!sscreen->info.has_format_bc1_through_bc7)
-         goto out_unknown;
-
       switch (format) {
       case PIPE_FORMAT_BPTC_RGBA_UNORM:
       case PIPE_FORMAT_BPTC_SRGBA:
@@ -1942,9 +1936,6 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    }
 
    if (desc->layout == UTIL_FORMAT_LAYOUT_S3TC) {
-      if (!sscreen->info.has_format_bc1_through_bc7)
-         goto out_unknown;
-
       switch (format) {
       case PIPE_FORMAT_DXT1_RGB:
       case PIPE_FORMAT_DXT1_RGBA:

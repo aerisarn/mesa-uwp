@@ -888,22 +888,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
    info->has_fence_to_handle = info->has_syncobj && info->drm_minor >= 21;
    info->has_local_buffers = info->drm_minor >= 20;
-   info->kernel_flushes_hdp_before_ib = true;
-   info->htile_cmask_support_1d_tiling = true;
    info->si_TA_CS_BC_BASE_ADDR_allowed = true;
    info->has_bo_metadata = true;
-   info->has_gpu_reset_status_query = true;
    info->has_eqaa_surface_allocator = info->gfx_level < GFX11;
-   info->has_format_bc1_through_bc7 = true;
-   info->has_indirect_compute_dispatch = true;
    /* GFX6 doesn't support unaligned loads. */
    info->has_unaligned_shader_loads = info->gfx_level != GFX6;
    /* Disable sparse mappings on GFX6 due to VM faults in CP DMA. Enable them once
     * these faults are mitigated in software.
     */
    info->has_sparse_vm_mappings = info->gfx_level >= GFX7 && info->drm_minor >= 13;
-   info->has_2d_tiling = true;
-   info->has_read_registers_query = true;
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
    info->mid_command_buffer_preemption_enabled = amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
@@ -1498,18 +1491,11 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_timeline_syncobj = %u\n", info->has_timeline_syncobj);
    fprintf(f, "    has_fence_to_handle = %u\n", info->has_fence_to_handle);
    fprintf(f, "    has_local_buffers = %u\n", info->has_local_buffers);
-   fprintf(f, "    kernel_flushes_hdp_before_ib = %u\n", info->kernel_flushes_hdp_before_ib);
-   fprintf(f, "    htile_cmask_support_1d_tiling = %u\n", info->htile_cmask_support_1d_tiling);
    fprintf(f, "    si_TA_CS_BC_BASE_ADDR_allowed = %u\n", info->si_TA_CS_BC_BASE_ADDR_allowed);
    fprintf(f, "    has_bo_metadata = %u\n", info->has_bo_metadata);
-   fprintf(f, "    has_gpu_reset_status_query = %u\n", info->has_gpu_reset_status_query);
    fprintf(f, "    has_eqaa_surface_allocator = %u\n", info->has_eqaa_surface_allocator);
-   fprintf(f, "    has_format_bc1_through_bc7 = %u\n", info->has_format_bc1_through_bc7);
-   fprintf(f, "    has_indirect_compute_dispatch = %u\n", info->has_indirect_compute_dispatch);
    fprintf(f, "    has_unaligned_shader_loads = %u\n", info->has_unaligned_shader_loads);
    fprintf(f, "    has_sparse_vm_mappings = %u\n", info->has_sparse_vm_mappings);
-   fprintf(f, "    has_2d_tiling = %u\n", info->has_2d_tiling);
-   fprintf(f, "    has_read_registers_query = %u\n", info->has_read_registers_query);
    fprintf(f, "    has_stable_pstate = %u\n", info->has_stable_pstate);
    fprintf(f, "    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
    fprintf(f, "    mid_command_buffer_preemption_enabled = %u\n",

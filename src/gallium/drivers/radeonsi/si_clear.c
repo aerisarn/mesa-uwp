@@ -713,10 +713,6 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
          continue;
       }
 
-      if (sctx->gfx_level <= GFX8 && tex->surface.u.legacy.level[0].mode == RADEON_SURF_MODE_1D &&
-          !sctx->screen->info.htile_cmask_support_1d_tiling)
-         continue;
-
       /* Use a slow clear for small surfaces where the cost of
        * the eliminate pass can be higher than the benefit of fast
        * clear. The closed driver does this, but the numbers may differ.

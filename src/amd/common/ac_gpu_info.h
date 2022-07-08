@@ -183,18 +183,11 @@ struct radeon_info {
    bool has_timeline_syncobj;
    bool has_fence_to_handle;
    bool has_local_buffers;
-   bool kernel_flushes_hdp_before_ib;
-   bool htile_cmask_support_1d_tiling;
    bool si_TA_CS_BC_BASE_ADDR_allowed;
    bool has_bo_metadata;
-   bool has_gpu_reset_status_query;
    bool has_eqaa_surface_allocator;
-   bool has_format_bc1_through_bc7;
-   bool has_indirect_compute_dispatch;
    bool has_unaligned_shader_loads;
    bool has_sparse_vm_mappings;
-   bool has_2d_tiling;
-   bool has_read_registers_query;
    bool has_scheduled_fence_dependency;
    bool has_stable_pstate;
    /* Whether SR-IOV is enabled or amdgpu.mcbp=1 was set on the kernel command line. */

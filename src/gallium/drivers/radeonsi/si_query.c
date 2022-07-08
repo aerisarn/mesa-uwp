@@ -1853,12 +1853,10 @@ static unsigned si_get_num_queries(struct si_screen *sscreen)
    }
 
    /* radeon */
-   if (sscreen->info.has_read_registers_query) {
-      if (sscreen->info.gfx_level == GFX7)
-         return ARRAY_SIZE(si_driver_query_list) - 6;
-      else
-         return ARRAY_SIZE(si_driver_query_list) - 7;
-   }
+   if (sscreen->info.gfx_level == GFX7)
+      return ARRAY_SIZE(si_driver_query_list) - 6;
+   else
+      return ARRAY_SIZE(si_driver_query_list) - 7;
 
    return ARRAY_SIZE(si_driver_query_list) - 21;
 }
