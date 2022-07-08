@@ -166,6 +166,12 @@
    sizeof *(_v) == sizeof(__int64) ? InterlockedCompareExchange64 ((__int64 *)(_v), (__int64)(_new), (__int64)(_old)) : \
                                      (assert(!"should not get here"), 0))
 
+#define PIPE_NATIVE_ATOMIC_XCHG
+#define p_atomic_xchg(_v, _new) (\
+   sizeof *(_v) == sizeof(long)    ? InterlockedExchange  ((long *)   (_v), (long)   (_new)) : \
+   sizeof *(_v) == sizeof(__int64) ? InterlockedExchange64((__int64 *)(_v), (__int64)(_new)) : \
+                                     (assert(!"should not get here"), 0))
+
 #endif
 
 #if defined(PIPE_ATOMIC_OS_SOLARIS)
