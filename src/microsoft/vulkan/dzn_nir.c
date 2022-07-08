@@ -21,12 +21,12 @@
  * IN THE SOFTWARE.
  */
 
+#include "dzn_nir.h"
+
 #include "spirv_to_dxil.h"
 #include "nir_to_dxil.h"
 #include "nir_builder.h"
 #include "nir_vulkan.h"
-
-#include "dzn_nir.h"
 
 static nir_ssa_def *
 dzn_nir_create_bo_desc(nir_builder *b,
