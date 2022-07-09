@@ -3947,13 +3947,13 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
    if (alu->dest.dest.ssa.bit_size & (8 | 16)) {
       unsigned bit_size = alu->dest.dest.ssa.bit_size;
       switch (alu->op) {
-      case nir_op_iabs:
       case nir_op_bitfield_select:
       case nir_op_imul_high:
       case nir_op_umul_high:
       case nir_op_ineg:
       case nir_op_isign:
          return 32;
+      case nir_op_iabs:
       case nir_op_imax:
       case nir_op_umax:
       case nir_op_imin:
@@ -4026,6 +4026,7 @@ opt_vectorize_callback(const nir_instr *instr, const void *_)
    case nir_op_fsat:
    case nir_op_fmin:
    case nir_op_fmax:
+   case nir_op_iabs:
    case nir_op_iadd:
    case nir_op_iadd_sat:
    case nir_op_uadd_sat:

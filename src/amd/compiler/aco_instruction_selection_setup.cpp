@@ -556,6 +556,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_op_b2f16:
                case nir_op_b2f32:
                case nir_op_mov: break;
+               case nir_op_iabs:
                case nir_op_iadd:
                case nir_op_iadd_sat:
                case nir_op_uadd_sat:

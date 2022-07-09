@@ -1495,12 +1495,31 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_iabs: {
+      if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
+         Temp src = get_alu_src_vop3p(ctx, instr->src[0]);
+
+         unsigned opsel_lo = (instr->src[0].swizzle[0] & 1) << 1;
+         unsigned opsel_hi = ((instr->src[0].swizzle[1] & 1) << 1) | 1;
+
+         Temp sub = bld.vop3p(aco_opcode::v_pk_sub_u16, Definition(bld.tmp(v1)), Operand::zero(),
+                              src, opsel_lo, opsel_hi);
+         bld.vop3p(aco_opcode::v_pk_max_i16, Definition(dst), sub, src, opsel_lo, opsel_hi);
+         break;
+      }
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (dst.regClass() == s1) {
          bld.sop1(aco_opcode::s_abs_i32, Definition(dst), bld.def(s1, scc), src);
       } else if (dst.regClass() == v1) {
          bld.vop2(aco_opcode::v_max_i32, Definition(dst), src,
                   bld.vsub32(bld.def(v1), Operand::zero(), src));
+      } else if (dst.regClass() == v2b && ctx->program->gfx_level >= GFX10) {
+         bld.vop3(
+            aco_opcode::v_max_i16_e64, Definition(dst), src,
+            bld.vop3(aco_opcode::v_sub_u16_e64, Definition(bld.tmp(v2b)), Operand::zero(2), src));
+      } else if (dst.regClass() == v2b) {
+         src = as_vgpr(ctx, src);
+         bld.vop2(aco_opcode::v_max_i16, Definition(dst), src,
+                  bld.vop2(aco_opcode::v_sub_u16, Definition(bld.tmp(v2b)), Operand::zero(2), src));
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
