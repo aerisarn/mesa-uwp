@@ -1091,6 +1091,34 @@ d3d12_init_null_rtv(struct d3d12_screen *screen)
    screen->dev->CreateRenderTargetView(NULL, &rtv, screen->null_rtv.cpu_handle);
 }
 
+static void
+d3d12_get_adapter_luid(struct pipe_screen *pscreen, char *luid)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   memcpy(luid, &screen->adapter_luid, PIPE_LUID_SIZE);
+}
+
+static void
+d3d12_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   memcpy(uuid, &screen->device_uuid, PIPE_UUID_SIZE);
+}
+
+static void
+d3d12_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   memcpy(uuid, &screen->driver_uuid, PIPE_UUID_SIZE);
+}
+
+static uint32_t
+d3d12_get_node_mask(struct pipe_screen *pscreen)
+{
+   /* This implementation doesn't support linked adapters */
+   return 1;
+}
+
 void
 d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid)
 {
@@ -1112,6 +1140,10 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    screen->base.get_compiler_options = d3d12_get_compiler_options;
    screen->base.context_create = d3d12_context_create;
    screen->base.flush_frontbuffer = d3d12_flush_frontbuffer;
+   screen->base.get_device_luid = d3d12_get_adapter_luid;
+   screen->base.get_device_uuid = d3d12_get_device_uuid;
+   screen->base.get_driver_uuid = d3d12_get_driver_uuid;
+   screen->base.get_device_node_mask = d3d12_get_node_mask;
 }
 
 bool
