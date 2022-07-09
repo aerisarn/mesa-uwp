@@ -215,7 +215,7 @@ radv_WriteAccelerationStructuresPropertiesKHR(
             value = header->instance_count;
             break;
          case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
-            value = accel->size;
+            value = header->size;
             break;
          default:
             unreachable("Unhandled acceleration structure query");
@@ -627,6 +627,24 @@ optimize_bvh(const char *base_ptr, uint32_t *node_ids, uint32_t node_count)
    free(entries);
 }
 
+static void
+fill_accel_struct_header(struct radv_accel_struct_header *header)
+{
+   /* 16 bytes per invocation, 64 invocations per workgroup */
+   header->copy_dispatch_size[0] = DIV_ROUND_UP(header->compacted_size, 16 * 64);
+   header->copy_dispatch_size[1] = 1;
+   header->copy_dispatch_size[2] = 1;
+
+   header->serialization_size =
+      header->compacted_size + align(sizeof(struct radv_accel_struct_serialization_header) +
+                                        sizeof(uint64_t) * header->instance_count,
+                                     128);
+
+   header->size = header->serialization_size -
+                  sizeof(struct radv_accel_struct_serialization_header) -
+                  sizeof(uint64_t) * header->instance_count;
+}
+
 static VkResult
 build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometryInfoKHR *info,
           const VkAccelerationStructureBuildRangeInfoKHR *ranges)
@@ -751,17 +769,7 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
    header->instance_count = instance_count;
    header->compacted_size = (char *)ctx.curr_ptr - base_ptr;
 
-   /* 16 bytes per invocation, 64 invocations per workgroup */
-   header->copy_dispatch_size[0] = DIV_ROUND_UP(header->compacted_size, 16 * 64);
-   header->copy_dispatch_size[1] = 1;
-   header->copy_dispatch_size[2] = 1;
-
-   header->serialization_size =
-      header->compacted_size + align(sizeof(struct radv_accel_struct_serialization_header) +
-                                        sizeof(uint64_t) * header->instance_count,
-                                     128);
-
-   header->size = accel->size;
+   fill_accel_struct_header(header);
 
 fail:
    device->ws->buffer_unmap(accel->bo);
@@ -2279,17 +2287,7 @@ radv_CmdBuildAccelerationStructuresKHR(
       header.instance_count = bvh_states[i].instance_count;
       header.compacted_size = bvh_states[i].node_offset;
 
-      /* 16 bytes per invocation, 64 invocations per workgroup */
-      header.copy_dispatch_size[0] = DIV_ROUND_UP(header.compacted_size, 16 * 64);
-      header.copy_dispatch_size[1] = 1;
-      header.copy_dispatch_size[2] = 1;
-
-      header.serialization_size =
-         header.compacted_size + align(sizeof(struct radv_accel_struct_serialization_header) +
-                                          sizeof(uint64_t) * header.instance_count,
-                                       128);
-
-      header.size = accel_struct->size;
+      fill_accel_struct_header(&header);
 
       radv_update_buffer_cp(cmd_buffer,
                             radv_buffer_get_va(accel_struct->bo) + accel_struct->mem_offset + base,
