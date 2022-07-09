@@ -60,6 +60,8 @@ struct d3d12_screen {
    struct pipe_screen base;
    struct sw_winsys *winsys;
    LUID adapter_luid;
+   char driver_uuid[PIPE_UUID_SIZE];
+   char device_uuid[PIPE_UUID_SIZE];
 
    ID3D12Device3 *dev;
    ID3D12CommandQueue *cmdqueue;

@@ -42,11 +42,13 @@
 #include "util/u_memory.h"
 #include "util/u_screen.h"
 #include "util/u_dl.h"
+#include "util/mesa-sha1.h"
 
 #include "nir.h"
 #include "frontend/sw_winsys.h"
 
 #include "nir_to_dxil.h"
+#include "git_sha1.h"
 
 #include <directx/d3d12sdklayers.h>
 
@@ -1310,6 +1312,28 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
    if (!screen->opts.DoublePrecisionFloatShaderOps)
       screen->nir_options.lower_doubles_options = (nir_lower_doubles_options)~0;
+
+   const char *mesa_version = "Mesa " PACKAGE_VERSION MESA_GIT_SHA1;
+   struct mesa_sha1 sha1_ctx;
+   uint8_t sha1[SHA1_DIGEST_LENGTH];
+   STATIC_ASSERT(PIPE_UUID_SIZE <= sizeof(sha1));
+
+   /* The driver UUID is used for determining sharability of images and memory
+    * between two instances in separate processes.  People who want to
+    * share memory need to also check the device UUID or LUID so all this
+    * needs to be is the build-id.
+    */
+   _mesa_sha1_compute(mesa_version, strlen(mesa_version), sha1);
+   memcpy(screen->driver_uuid, sha1, PIPE_UUID_SIZE);
+
+   /* The device UUID uniquely identifies the given device within the machine. */
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, &screen->vendor_id, sizeof(screen->vendor_id));
+   _mesa_sha1_update(&sha1_ctx, &screen->device_id, sizeof(screen->device_id));
+   _mesa_sha1_update(&sha1_ctx, &screen->subsys_id, sizeof(screen->subsys_id));
+   _mesa_sha1_update(&sha1_ctx, &screen->revision, sizeof(screen->revision));
+   _mesa_sha1_final(&sha1_ctx, sha1);
+   memcpy(screen->device_uuid, sha1, PIPE_UUID_SIZE);
 
    glsl_type_singleton_init_or_ref();
    return true;
