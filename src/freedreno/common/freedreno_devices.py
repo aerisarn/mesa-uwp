@@ -285,7 +285,9 @@ a6xx_gen4 = dict(
 
 add_gpus([
         GPUId(615),
+        GPUId(616),
         GPUId(618),
+        GPUId(620),
     ], A6xxGPUInfo(
         a6xx_gen1,
         num_sp_cores = 1,
