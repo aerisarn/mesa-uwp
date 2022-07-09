@@ -105,6 +105,9 @@ struct d3d12_screen {
 
    /* description */
    uint32_t vendor_id;
+   uint32_t device_id;
+   uint32_t subsys_id;
+   uint32_t revision;
    uint64_t driver_version;
    uint64_t memory_size_megabytes;
    double timestamp_multiplier;

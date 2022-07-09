@@ -176,6 +176,9 @@ d3d12_init_dxgi_screen(struct d3d12_screen *dscreen)
    screen->base.driver_version = driver_version.QuadPart;
 
    screen->base.vendor_id = adapter_desc.VendorId;
+   screen->base.device_id = adapter_desc.DeviceId;
+   screen->base.subsys_id = adapter_desc.SubSysId;
+   screen->base.revision = adapter_desc.Revision;
    // Note: memory sizes in bytes, but stored in size_t, so may be capped at 4GB.
    // In that case, adding before conversion to MB can easily overflow.
    screen->base.memory_size_megabytes = (adapter_desc.DedicatedVideoMemory >> 20) +

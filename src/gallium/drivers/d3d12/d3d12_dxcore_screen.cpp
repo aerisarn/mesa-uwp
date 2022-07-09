@@ -210,6 +210,9 @@ d3d12_init_dxcore_screen(struct d3d12_screen *dscreen)
    }
 
    screen->base.vendor_id = hardware_ids.vendorID;
+   screen->base.device_id = hardware_ids.deviceID;
+   screen->base.subsys_id = hardware_ids.subSysID;
+   screen->base.revision = hardware_ids.revision;
    screen->base.memory_size_megabytes = (dedicated_video_memory + dedicated_system_memory + shared_system_memory) >> 20;
    screen->base.base.get_name = dxcore_get_name;
    screen->base.get_memory_info = dxcore_get_memory_info;
