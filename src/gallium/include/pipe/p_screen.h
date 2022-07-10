@@ -416,6 +416,7 @@ struct pipe_screen {
    void (*create_fence_win32)(struct pipe_screen *screen,
                               struct pipe_fence_handle **fence,
                               void *handle,
+                              const void *name,
                               enum pipe_fd_type type);
 
    /**

@@ -619,9 +619,10 @@ static bool noop_check_resource_capability(struct pipe_screen *screen,
 static void noop_create_fence_win32(struct pipe_screen *screen,
                                     struct pipe_fence_handle **fence,
                                     void *handle,
+                                    const void *name,
                                     enum pipe_fd_type type)
 {
-   screen->create_fence_win32(screen, fence, handle, type);
+   screen->create_fence_win32(screen, fence, handle, name, type);
 }
 
 static void noop_set_max_shader_compiler_threads(struct pipe_screen *screen,

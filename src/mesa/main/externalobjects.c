@@ -645,11 +645,12 @@ import_semaphoreobj_fd(struct gl_context *ctx,
 static void
 import_semaphoreobj_win32(struct gl_context *ctx,
                           struct gl_semaphore_object *semObj,
-                          void *handle)
+                          void *handle,
+                          const void *name)
 {
    struct pipe_context *pipe = ctx->pipe;
 
-   pipe->screen->create_fence_win32(pipe->screen, &semObj->fence, handle, PIPE_FD_TYPE_SYNCOBJ);
+   pipe->screen->create_fence_win32(pipe->screen, &semObj->fence, handle, name, PIPE_FD_TYPE_SYNCOBJ);
 }
 
 static void
@@ -1162,7 +1163,7 @@ _mesa_ImportSemaphoreWin32HandleEXT(GLuint semaphore,
       _mesa_HashInsert(ctx->Shared->SemaphoreObjects, semaphore, semObj, true);
    }
 
-   import_semaphoreobj_win32(ctx, semObj, handle);
+   import_semaphoreobj_win32(ctx, semObj, handle, NULL);
 }
 
 void GLAPIENTRY

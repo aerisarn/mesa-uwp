@@ -266,7 +266,7 @@ fail:
 
 #ifdef _WIN32
 void
-zink_create_fence_win32(struct pipe_screen *pscreen, struct pipe_fence_handle **pfence, void *handle, enum pipe_fd_type type)
+zink_create_fence_win32(struct pipe_screen *pscreen, struct pipe_fence_handle **pfence, void *handle, const void *name, enum pipe_fd_type type)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    VkResult ret = VK_ERROR_UNKNOWN;
@@ -294,6 +294,7 @@ zink_create_fence_win32(struct pipe_screen *pscreen, struct pipe_fence_handle **
    sdi.semaphore = mfence->sem;
    sdi.handleType = flags[type];
    sdi.handle = handle;
+   sdi.name = (LPCWSTR)name;
    ret = VKSCR(ImportSemaphoreWin32HandleKHR)(screen->dev, &sdi);
 
    if (!zink_screen_handle_vkresult(screen, ret))
