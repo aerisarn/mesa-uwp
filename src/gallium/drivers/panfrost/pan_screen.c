@@ -69,6 +69,9 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"linear",    PAN_DBG_LINEAR,   "Force linear textures"},
         {"nocache",   PAN_DBG_NO_CACHE, "Disable BO cache"},
         {"dump",      PAN_DBG_DUMP,     "Dump all graphics memory"},
+#ifdef PAN_DBG_OVERFLOW
+        {"overflow",  PAN_DBG_OVERFLOW, "Check for buffer overflows in pool uploads"},
+#endif
         DEBUG_NAMED_VALUE_END
 };
 
