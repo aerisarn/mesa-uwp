@@ -897,6 +897,122 @@ agx_create_shader_state(struct pipe_context *pctx,
    return so;
 }
 
+static unsigned
+agx_find_linked_slot(struct agx_varyings_vs *vs, struct agx_varyings_fs *fs,
+                     gl_varying_slot slot, unsigned offset)
+{
+   assert(offset < 4);
+   assert(slot != VARYING_SLOT_PNTC && "point coords aren't linked");
+
+   if (slot == VARYING_SLOT_POS) {
+      if (offset == 3) {
+         return 0; /* W */
+      } else if (offset == 2) {
+         assert(fs->reads_z);
+         return 1; /* Z */
+      } else {
+         unreachable("gl_Position.xy are not varyings");
+      }
+   }
+
+   unsigned vs_index = vs->slots[slot];
+
+   assert(vs_index >= 4 && "gl_Position should have been the first 4 slots");
+   assert(vs_index < vs->nr_index &&
+         "varyings not written by vertex shader are undefined");
+   assert((vs_index < vs->base_index_fp16) ==
+          ((vs_index + offset) < vs->base_index_fp16) &&
+          "a given varying must have a consistent type");
+
+   unsigned vs_user_index = (vs_index + offset) - 4;
+
+   if (fs->reads_z)
+      return vs_user_index + 2;
+   else
+      return vs_user_index + 1;
+}
+
+static unsigned
+agx_num_general_outputs(struct agx_varyings_vs *vs)
+{
+   unsigned nr_vs = vs->nr_index;
+   bool writes_psiz = vs->slots[VARYING_SLOT_PSIZ] < nr_vs;
+
+   assert(nr_vs >= 4 && "gl_Position must be written");
+   if (writes_psiz)
+      assert(nr_vs >= 5 && "gl_PointSize is written");
+
+   return nr_vs - (writes_psiz ? 5 : 4);
+}
+
+static uint32_t
+agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
+                        struct agx_varyings_fs *fs, bool first_provoking_vertex)
+{
+   /* If there are no bindings, there's nothing to emit */
+   if (fs->nr_bindings == 0)
+      return 0;
+
+   size_t linkage_size = AGX_CF_BINDING_HEADER_LENGTH +
+                         (fs->nr_bindings * AGX_CF_BINDING_LENGTH);
+
+   void *tmp = alloca(linkage_size);
+   struct agx_cf_binding_header_packed *header = tmp;
+   struct agx_cf_binding_packed *bindings = (void *) (header + 1);
+
+   unsigned nr_slots = agx_num_general_outputs(vs) + 1 + (fs->reads_z ? 1 : 0);
+
+   agx_pack(header, CF_BINDING_HEADER, cfg) {
+      cfg.number_of_32_bit_slots = nr_slots;
+      cfg.number_of_coefficient_registers = fs->nr_cf;
+   }
+
+   for (unsigned i = 0; i < fs->nr_bindings; ++i) {
+      agx_pack(bindings + i, CF_BINDING, cfg) {
+         cfg.base_coefficient_register = fs->bindings[i].cf_base;
+         cfg.components = fs->bindings[i].count;
+         cfg.perspective = fs->bindings[i].perspective;
+ 
+         cfg.shade_model = fs->bindings[i].smooth ? AGX_SHADE_MODEL_GOURAUD :
+                           first_provoking_vertex ? AGX_SHADE_MODEL_FLAT_VERTEX_0 :
+                                                    AGX_SHADE_MODEL_FLAT_VERTEX_2;
+
+         if (fs->bindings[i].slot == VARYING_SLOT_PNTC) {
+            assert(fs->bindings[i].offset == 0);
+            cfg.point_sprite = true;
+         } else {
+            cfg.base_slot = agx_find_linked_slot(vs, fs, fs->bindings[i].slot,
+                                                 fs->bindings[i].offset);
+
+            assert(cfg.base_slot + cfg.components <= nr_slots &&
+                   "overflow slots");
+         }
+
+         if (fs->bindings[i].slot == VARYING_SLOT_POS) {
+             if (fs->bindings[i].offset == 2)
+                cfg.fragcoord_z = true;
+             else
+                assert(!cfg.perspective && "W must not be perspective divided");
+         }
+
+         assert(cfg.base_coefficient_register + cfg.components <= fs->nr_cf &&
+                "overflowed coefficient registers");
+      }
+   }
+
+   struct agx_ptr ptr = agx_pool_alloc_aligned(pool, (3 * linkage_size), 256);
+   assert(ptr.gpu < (1ull << 32) && "varyings must be in low memory");
+
+   /* I don't understand why the data structures are repeated thrice */
+   for (unsigned i = 0; i < 3; ++i) {
+      memcpy(((uint8_t *) ptr.cpu) + (i * linkage_size),
+             ((uint8_t *) tmp) + (i * linkage_size),
+             linkage_size);
+   }
+
+   return ptr.gpu;
+}
+
 /* Does not take ownership of key. Clones if necessary. */
 static bool
 agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
@@ -942,35 +1058,10 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
-   struct agx_varyings *varyings = &compiled->info.varyings;
-   unsigned packed_varying_sz = (AGX_CF_BINDING_HEADER_LENGTH +
-         varyings->nr_descs * AGX_CF_BINDING_LENGTH);
-   uint8_t *packed_varyings = alloca(packed_varying_sz);
-
-   agx_pack(packed_varyings, CF_BINDING_HEADER, cfg) {
-      cfg.number_of_32_bit_slots = varyings->nr_slots;
-      cfg.number_of_coefficient_registers = varyings->nr_slots;
-   }
-
-   memcpy(packed_varyings + AGX_CF_BINDING_HEADER_LENGTH,
-         varyings->packed, varyings->nr_descs * AGX_CF_BINDING_LENGTH);
-
    if (binary.size) {
       struct agx_device *dev = agx_device(ctx->base.screen);
-      compiled->bo = agx_bo_create(dev,
-                                   ALIGN_POT(binary.size, 256) + (3 * packed_varying_sz),
-                                   AGX_MEMORY_TYPE_SHADER);
+      compiled->bo = agx_bo_create(dev, binary.size, AGX_MEMORY_TYPE_SHADER);
       memcpy(compiled->bo->ptr.cpu, binary.data, binary.size);
-
-
-      /* TODO: Why is the varying descriptor duplicated 3x? */
-      unsigned offs = ALIGN_POT(binary.size, 256);
-      for (unsigned copy = 0; copy < 3; ++copy) {
-         memcpy(((uint8_t *) compiled->bo->ptr.cpu) + offs, packed_varyings, packed_varying_sz);
-         offs += packed_varying_sz;
-      }
-
-      compiled->varyings = compiled->bo->ptr.gpu + ALIGN_POT(binary.size, 256);
    }
 
    ralloc_free(nir);
@@ -1161,7 +1252,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
       agx_pack(record, SET_SHADER, cfg) {
          cfg.code = cs->bo->ptr.gpu;
          cfg.register_quadwords = 0;
-         cfg.unk_2b = cs->info.varyings.nr_slots;
+         cfg.unk_2b = cs->info.varyings.vs.nr_index;
          cfg.unk_2 = 0x0d;
       }
 
@@ -1377,27 +1468,27 @@ demo_launch_fragment(struct agx_context *ctx, struct agx_pool *pool, uint32_t pi
 }
 
 static uint64_t
-demo_interpolation(struct agx_compiled_shader *fs, struct agx_pool *pool)
+demo_interpolation(struct agx_varyings_vs *vs, struct agx_pool *pool)
 {
    struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_INTERPOLATION_LENGTH, 64);
 
    agx_pack(t.cpu, INTERPOLATION, cfg) {
-      cfg.varying_count = fs->info.varyings.nr_slots;
+      cfg.varying_count = agx_num_general_outputs(vs);
    };
 
    return t.gpu;
 }
 
 static uint64_t
-demo_linkage(struct agx_compiled_shader *vs, struct agx_pool *pool)
+demo_linkage(struct agx_compiled_shader *vs, struct agx_compiled_shader *fs, struct agx_pool *pool)
 {
    struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_LINKAGE_LENGTH, 64);
 
    agx_pack(t.cpu, LINKAGE, cfg) {
-      cfg.varying_count = vs->info.varyings.nr_slots;
-      cfg.any_varyings = !!cfg.varying_count;
+      cfg.varying_count = vs->info.varyings.vs.nr_index;
+      cfg.any_varyings = !!fs->info.varyings.fs.nr_bindings;
       cfg.has_point_size = vs->info.writes_psiz;
-      cfg.has_frag_coord_z = 1;
+      cfg.has_frag_coord_z = fs->info.varyings.fs.reads_z;
    };
 
    return t.gpu;
@@ -1505,8 +1596,8 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
    agx_pack(out, BIND_VERTEX_PIPELINE, cfg) {
       cfg.pipeline = pipeline_vertex;
-      cfg.output_count_1 = ctx->vs->info.varyings.nr_slots;
-      cfg.output_count_2 = ctx->vs->info.varyings.nr_slots;
+      cfg.output_count_1 = ctx->vs->info.varyings.vs.nr_index;
+      cfg.output_count_2 = cfg.output_count_1;
 
       cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
       cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
@@ -1519,9 +1610,10 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    bool reads_tib = ctx->fs->info.reads_tib;
    bool sample_mask_from_shader = ctx->fs->info.writes_sample_mask;
 
-   agx_push_record(&out, 5, demo_interpolation(ctx->fs, pool));
-   agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment, varyings, ctx->fs->info.varyings.nr_descs));
-   agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
+   agx_push_record(&out, 5, demo_interpolation(&ctx->vs->info.varyings.vs, pool));
+   agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment,
+            varyings, ctx->fs->info.varyings.fs.nr_bindings));
+   agx_push_record(&out, 4, demo_linkage(ctx->vs, ctx->fs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool, is_points));
    agx_push_record(&out, 5, demo_unk11(pool, is_lines, is_points, reads_tib, sample_mask_from_shader));
 
@@ -1620,6 +1712,12 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    agx_update_vs(ctx);
    agx_update_fs(ctx);
 
+   /* TODO: Cache or dirty track */
+   uint32_t varyings = agx_link_varyings_vs_fs(&ctx->batch->pipeline_pool,
+         &ctx->vs->info.varyings.vs,
+         &ctx->fs->info.varyings.fs,
+         ctx->rast->base.flatshade_first);
+
    agx_batch_add_bo(batch, ctx->vs->bo);
    agx_batch_add_bo(batch, ctx->fs->bo);
 
@@ -1634,7 +1732,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    uint8_t *out = agx_encode_state(ctx, batch->encoder_current,
                                    agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX),
                                    agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
-                                   ctx->fs->varyings, is_lines, info->mode == PIPE_PRIM_POINTS);
+                                   varyings, is_lines, info->mode == PIPE_PRIM_POINTS);
 
    enum agx_primitive prim = agx_primitive_for_pipe(info->mode);
    unsigned idx_size = info->index_size;

@@ -494,7 +494,6 @@
     <field name="Padding 1" size="8" start="1:24" type="hex" default="0x0"/>
     <field name="Pipeline" size="32" start="2:0" type="address"/>
     <field name="CF bindings" size="32" start="3:0" type="address"/>
-    <field name="Padding 2" size="16" start="3:16" type="hex" default="0x0"/>
     <field name="More than 4 textures" start="4:0" size="1" type="bool"/>
   </struct>
 

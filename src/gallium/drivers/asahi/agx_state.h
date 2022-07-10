@@ -58,9 +58,6 @@ struct agx_compiled_shader {
    /* Mapped executable memory */
    struct agx_bo *bo;
 
-   /* Varying descriptor (TODO: is this the right place?) */
-   uint64_t varyings;
-
    /* Metadata returned from the compiler */
    struct agx_shader_info info;
 };
