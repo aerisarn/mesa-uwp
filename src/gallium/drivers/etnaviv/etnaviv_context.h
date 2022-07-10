@@ -38,6 +38,7 @@
 #include "pipe/p_shader_tokens.h"
 #include "pipe/p_state.h"
 #include "util/slab.h"
+#include <util/u_suballoc.h>
 
 struct pipe_screen;
 struct etna_shader_variant;
@@ -143,6 +144,7 @@ struct etna_context {
    } dirty;
 
    struct slab_child_pool transfer_pool;
+   struct u_suballocator tex_desc_allocator;
    struct blitter_context *blitter;
 
    /* compiled bindable state */

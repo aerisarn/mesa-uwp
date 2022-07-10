@@ -62,7 +62,7 @@ struct etna_sampler_view_desc {
    uint32_t SAMP_CTRL0;
    uint32_t SAMP_CTRL1;
 
-   struct etna_bo *bo;
+   struct pipe_resource *res;
    struct etna_reloc DESC_ADDR;
    struct etna_sampler_ts ts;
 };
@@ -135,6 +135,7 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
    const uint32_t swiz = get_texture_swiz(so->format, so->swizzle_r,
                                           so->swizzle_g, so->swizzle_b,
                                           so->swizzle_a);
+   unsigned suballoc_offset;
 
    if (!sv)
       return NULL;
@@ -164,13 +165,12 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
       sv->SAMP_CTRL1 |= VIVS_NTE_DESCRIPTOR_SAMP_CTRL1_SRGB;
 
    /* Create texture descriptor */
-   sv->bo = etna_bo_new(ctx->screen->dev, 0x100, DRM_ETNA_GEM_CACHE_WC);
-   if (!sv->bo)
+   u_suballocator_alloc(&ctx->tex_desc_allocator, 256, 64,
+                        &suballoc_offset, &sv->res);
+   if (!sv->res)
       goto error;
 
-   uint32_t *buf = etna_bo_map(sv->bo);
-   etna_bo_cpu_prep(sv->bo, DRM_ETNA_PREP_WRITE);
-   memset(buf, 0, 0x100);
+   uint32_t *buf = etna_bo_map(etna_resource(sv->res)->bo) + suballoc_offset;
 
    /** GC7000 needs the size of the BASELOD level */
    uint32_t base_width = u_minify(res->base.width0, sv->base.u.tex.first_level);
@@ -217,10 +217,8 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
       DESC_SET(LOD_ADDR(lod), etna_bo_gpu_va(res->bo) + res->levels[lod].offset);
 #undef DESC_SET
 
-   etna_bo_cpu_fini(sv->bo);
-
-   sv->DESC_ADDR.bo = sv->bo;
-   sv->DESC_ADDR.offset = 0;
+   sv->DESC_ADDR.bo = etna_resource(sv->res)->bo;
+   sv->DESC_ADDR.offset = suballoc_offset;
    sv->DESC_ADDR.flags = ETNA_RELOC_READ;
 
    return &sv->base;
@@ -251,8 +249,9 @@ etna_sampler_view_desc_destroy(struct pipe_context *pctx,
                           struct pipe_sampler_view *so)
 {
    struct etna_sampler_view_desc *sv = etna_sampler_view_desc(so);
+
    pipe_resource_reference(&sv->base.texture, NULL);
-   etna_bo_del(sv->bo);
+   pipe_resource_reference(&sv->res, NULL);
    FREE(sv);
 }
 

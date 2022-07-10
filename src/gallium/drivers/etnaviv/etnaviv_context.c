@@ -119,6 +119,8 @@ etna_context_destroy(struct pipe_context *pctx)
    if (ctx->stream)
       etna_cmd_stream_del(ctx->stream);
 
+   etna_texture_fini(pctx);
+
    slab_destroy_child(&ctx->transfer_pool);
 
    if (ctx->in_fence_fd != -1)
