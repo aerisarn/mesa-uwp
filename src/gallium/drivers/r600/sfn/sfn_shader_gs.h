@@ -1,5 +1,5 @@
-#ifndef GEOMETRYSHADER_H
-#define GEOMETRYSHADER_H
+#ifndef SFN_GEOMETRYSHADER_H
+#define SFN_GEOMETRYSHADER_H
 
 
 #include "sfn_shader.h"
