@@ -141,10 +141,8 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
       return NULL;
 
    struct etna_resource *res = etna_texture_handle_incompatible(pctx, prsc);
-   if (!res) {
-      free(sv);
-      return NULL;
-   }
+   if (!res)
+      goto error;
 
    sv->base = *so;
    pipe_reference_init(&sv->base.reference, 1);
@@ -156,8 +154,7 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
    uint32_t target_hw = translate_texture_target(sv->base.target);
    if (target_hw == ETNA_NO_MATCH) {
       BUG("Unhandled texture target");
-      free(sv);
-      return NULL;
+      goto error;
    }
 
    /* Texture descriptor sampler bits */
@@ -222,6 +219,7 @@ etna_create_sampler_view_desc(struct pipe_context *pctx, struct pipe_resource *p
    sv->DESC_ADDR.flags = ETNA_RELOC_READ;
 
    return &sv->base;
+
 error:
    free(sv);
    return NULL;
