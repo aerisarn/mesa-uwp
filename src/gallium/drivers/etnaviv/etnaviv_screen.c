@@ -85,6 +85,12 @@ etna_screen_destroy(struct pipe_screen *pscreen)
 {
    struct etna_screen *screen = etna_screen(pscreen);
 
+   if (screen->dummy_desc_reloc.bo)
+      etna_bo_del(screen->dummy_desc_reloc.bo);
+
+   if (screen->dummy_rt_reloc.bo)
+      etna_bo_del(screen->dummy_rt_reloc.bo);
+
    if (screen->perfmon)
       etna_perfmon_del(screen->perfmon);
 
@@ -1157,6 +1163,33 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
 
    if (screen->drm_version >= ETNA_DRM_VERSION_PERFMON)
       etna_pm_query_setup(screen);
+
+
+   /* create dummy RT buffer, used when rendering with no color buffer */
+   screen->dummy_rt_reloc.bo = etna_bo_new(screen->dev, 64 * 64 * 4,
+                                           DRM_ETNA_GEM_CACHE_WC);
+   if (!screen->dummy_rt_reloc.bo)
+      goto fail;
+
+   screen->dummy_rt_reloc.offset = 0;
+   screen->dummy_rt_reloc.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
+
+   if (screen->specs.halti >= 5) {
+      void *buf;
+
+      /* create an empty dummy texture descriptor */
+      screen->dummy_desc_reloc.bo = etna_bo_new(screen->dev, 0x100,
+                                                DRM_ETNA_GEM_CACHE_WC);
+      if (!screen->dummy_desc_reloc.bo)
+         goto fail;
+
+      buf = etna_bo_map(screen->dummy_desc_reloc.bo);
+      etna_bo_cpu_prep(screen->dummy_desc_reloc.bo, DRM_ETNA_PREP_WRITE);
+      memset(buf, 0, 0x100);
+      etna_bo_cpu_fini(screen->dummy_desc_reloc.bo);
+      screen->dummy_desc_reloc.offset = 0;
+      screen->dummy_desc_reloc.flags = ETNA_RELOC_READ;
+   }
 
    return pscreen;
 

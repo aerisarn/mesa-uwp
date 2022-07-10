@@ -191,13 +191,6 @@ struct etna_context {
    /* list of accumulated HW queries */
    struct list_head active_acc_queries;
 
-   struct etna_bo *dummy_rt;
-   struct etna_reloc dummy_rt_reloc;
-
-   /* Dummy texture descriptor (if needed) */
-   struct etna_bo *dummy_desc_bo;
-   struct etna_reloc DUMMY_DESC_ADDR;
-
    /* set of resources used by currently-unsubmitted renders */
    struct hash_table *pending_resources;
 

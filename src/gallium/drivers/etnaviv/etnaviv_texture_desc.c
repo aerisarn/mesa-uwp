@@ -322,7 +322,8 @@ etna_emit_texture_desc(struct etna_context *ctx)
                etna_set_state_reloc(stream, VIVS_NTE_DESCRIPTOR_ADDR(x), &sv->DESC_ADDR);
             } else {
                /* dummy texture descriptors for unused samplers */
-               etna_set_state_reloc(stream, VIVS_NTE_DESCRIPTOR_ADDR(x), &ctx->DUMMY_DESC_ADDR);
+               etna_set_state_reloc(stream, VIVS_NTE_DESCRIPTOR_ADDR(x),
+                                    &ctx->screen->dummy_desc_reloc);
             }
          }
       }

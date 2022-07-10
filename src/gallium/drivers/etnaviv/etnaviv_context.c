@@ -108,12 +108,6 @@ etna_context_destroy(struct pipe_context *pctx)
    if (ctx->flush_resources)
       _mesa_set_destroy(ctx->flush_resources, NULL);
 
-   if (ctx->dummy_desc_bo)
-      etna_bo_del(ctx->dummy_desc_bo);
-
-   if (ctx->dummy_rt)
-      etna_bo_del(ctx->dummy_rt);
-
    util_copy_framebuffer_state(&ctx->framebuffer_s, NULL);
 
    if (ctx->blitter)
@@ -634,30 +628,6 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
    list_inithead(&ctx->active_acc_queries);
-
-   /* create dummy RT buffer, used when rendering with no color buffer */
-   ctx->dummy_rt = etna_bo_new(ctx->screen->dev, 64 * 64 * 4,
-                               DRM_ETNA_GEM_CACHE_WC);
-   if (!ctx->dummy_rt)
-      goto fail;
-
-   ctx->dummy_rt_reloc.bo = ctx->dummy_rt;
-   ctx->dummy_rt_reloc.offset = 0;
-   ctx->dummy_rt_reloc.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
-
-   if (screen->specs.halti >= 5) {
-      /* Create an empty dummy texture descriptor */
-      ctx->dummy_desc_bo = etna_bo_new(ctx->screen->dev, 0x100, DRM_ETNA_GEM_CACHE_WC);
-      if (!ctx->dummy_desc_bo)
-         goto fail;
-      uint32_t *buf = etna_bo_map(ctx->dummy_desc_bo);
-      etna_bo_cpu_prep(ctx->dummy_desc_bo, DRM_ETNA_PREP_WRITE);
-      memset(buf, 0, 0x100);
-      etna_bo_cpu_fini(ctx->dummy_desc_bo);
-      ctx->DUMMY_DESC_ADDR.bo = ctx->dummy_desc_bo;
-      ctx->DUMMY_DESC_ADDR.offset = 0;
-      ctx->DUMMY_DESC_ADDR.flags = ETNA_RELOC_READ;
-   }
 
    return pctx;
 
