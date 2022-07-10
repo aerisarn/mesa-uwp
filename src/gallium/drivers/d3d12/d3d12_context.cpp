@@ -2142,6 +2142,25 @@ d3d12_flush_resource(struct pipe_context *pctx,
 }
 
 static void
+d3d12_signal(struct pipe_context *pipe,
+             struct pipe_fence_handle *pfence)
+{
+   struct d3d12_screen *screen = d3d12_screen(pipe->screen);
+   struct d3d12_fence *fence = d3d12_fence(pfence);
+   d3d12_flush_cmdlist(d3d12_context(pipe));
+   screen->cmdqueue->Signal(fence->cmdqueue_fence, fence->value);
+}
+
+static void
+d3d12_wait(struct pipe_context *pipe, struct pipe_fence_handle *pfence)
+{
+   struct d3d12_screen *screen = d3d12_screen(pipe->screen);
+   struct d3d12_fence *fence = d3d12_fence(pfence);
+   d3d12_flush_cmdlist(d3d12_context(pipe));
+   screen->cmdqueue->Wait(fence->cmdqueue_fence, fence->value);
+}
+
+static void
 d3d12_init_null_sampler(struct d3d12_context *ctx)
 {
    struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
@@ -2495,6 +2514,9 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.launch_grid = d3d12_launch_grid;
    ctx->base.flush = d3d12_flush;
    ctx->base.flush_resource = d3d12_flush_resource;
+
+   ctx->base.fence_server_signal = d3d12_signal;
+   ctx->base.fence_server_sync = d3d12_wait;
 
    ctx->base.memory_barrier = d3d12_memory_barrier;
 
