@@ -494,6 +494,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS:
    case PIPE_CAP_QUERY_SPARSE_TEXTURE_RESIDENCY:
    case PIPE_CAP_CLAMP_SPARSE_TEXTURE_LOD:
+   case PIPE_CAP_TIMELINE_SEMAPHORE_IMPORT:
       return 0;
 
    case PIPE_CAP_MAX_CONSTANT_BUFFER_SIZE_UINT:
