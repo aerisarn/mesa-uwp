@@ -25,11 +25,6 @@ dEQP-GLES2.functional.fbo.render.texsubimage.after_render_tex2d_rgba,Fail
 # A glTexImage, glDraw, glTexSubImage, glDraw sequence into a texture is missing what looks like the first drawing.
 dEQP-GLES2.functional.fbo.render.texsubimage.between_render_tex2d_rgba,Fail
 
-# "GL_INVALID_VALUE is generated if index is greater than or equal to GL_MAX_VERTEX_ATTRIBS."
-# but we didn't generate an error.
-dEQP-GLES2.functional.negative_api.vertex_array.vertex_attrib,Fail
-dEQP-GLES2.functional.negative_api.vertex_array.vertex_attribv,Fail
-
 # Sampling grid slightly off in test 2?
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_linear_mirror_rgba8888,Fail
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_linear_repeat_rgba8888,Fail
