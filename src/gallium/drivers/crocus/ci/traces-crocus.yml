@@ -205,8 +205,9 @@ traces:
     expectations:
       # needs GL 4.5
       #- device: crocus-g41
-      - device: crocus-hsw
-        checksum: f8cc19569c0c5a43cc4f16414167d234
+      # Inconsistent rendering.
+      # - device: crocus-hsw
+      #   checksum: f8cc19569c0c5a43cc4f16414167d234
   - path: blender/blender-demo-ellie_pose.trace
     expectations:
       # needs GL 4.5
