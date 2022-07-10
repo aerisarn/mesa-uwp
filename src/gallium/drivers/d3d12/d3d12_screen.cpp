@@ -1166,6 +1166,8 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
       return false;
    }
 
+   screen->adapter_luid = screen->dev->GetAdapterLuid();
+
    ID3D12InfoQueue *info_queue;
    if (SUCCEEDED(screen->dev->QueryInterface(IID_PPV_ARGS(&info_queue)))) {
       D3D12_MESSAGE_SEVERITY severities[] = {
