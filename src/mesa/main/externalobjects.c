@@ -646,11 +646,13 @@ static void
 import_semaphoreobj_win32(struct gl_context *ctx,
                           struct gl_semaphore_object *semObj,
                           void *handle,
-                          const void *name)
+                          const void *name,
+                          enum pipe_fd_type type)
 {
    struct pipe_context *pipe = ctx->pipe;
+   semObj->type = type;
 
-   pipe->screen->create_fence_win32(pipe->screen, &semObj->fence, handle, name, PIPE_FD_TYPE_SYNCOBJ);
+   pipe->screen->create_fence_win32(pipe->screen, &semObj->fence, handle, name, type);
 }
 
 static void
@@ -1144,9 +1146,15 @@ _mesa_ImportSemaphoreWin32HandleEXT(GLuint semaphore,
       return;
    }
 
-   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT) {
+   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D12_FENCE_EXT) {
       _mesa_error(ctx, GL_INVALID_ENUM, "%s(handleType=%u)", func, handleType);
       return;
+   }
+
+   if (handleType == GL_HANDLE_TYPE_D3D12_FENCE_EXT &&
+       !ctx->screen->get_param(ctx->screen, PIPE_CAP_TIMELINE_SEMAPHORE_IMPORT)) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(handleType=%u)", func, handleType);
    }
 
    struct gl_semaphore_object *semObj = _mesa_lookup_semaphore_object(ctx,
@@ -1163,7 +1171,9 @@ _mesa_ImportSemaphoreWin32HandleEXT(GLuint semaphore,
       _mesa_HashInsert(ctx->Shared->SemaphoreObjects, semaphore, semObj, true);
    }
 
-   import_semaphoreobj_win32(ctx, semObj, handle, NULL);
+   enum pipe_fd_type type = handleType == GL_HANDLE_TYPE_D3D12_FENCE_EXT ?
+      PIPE_FD_TYPE_TIMELINE_SEMAPHORE : PIPE_FD_TYPE_SYNCOBJ;
+   import_semaphoreobj_win32(ctx, semObj, handle, NULL, type);
 }
 
 void GLAPIENTRY

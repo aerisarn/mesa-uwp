@@ -3069,6 +3069,7 @@ struct gl_semaphore_object
 {
    GLuint Name;            /**< hash table ID/name */
    struct pipe_fence_handle *fence;
+   enum pipe_fd_type type;
 };
 
 /**
