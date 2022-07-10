@@ -1,10 +1,12 @@
-# Samples as luminance or intensity, instead of red.
+# Test expects red instead of luminance, contra OES_depth_texture spec.
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3815
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component16,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component24,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_component16,Fail
 
 #  Creating OpenGL ES 3 context
 # Fail, context: 0x00000000, error: EGL_BAD_MATCH
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3816
 dEQP-EGL.functional.create_context.no_config,Fail
 
 # wide line outside the viewport incorrectly clipped out when ES wants it
