@@ -176,11 +176,10 @@ traces:
         checksum: 96dcdfa2fc7e64b8bd2da0ea7b854f6c
   - path: valve/portal-2-v2.trace
     expectations:
-      # A bunch of stuff incorrectly rendered white.
       - device: crocus-g41
-        checksum: d1e3bb943aa32a3fc9d2681106c4a087
+        checksum: fff536c4fb7753d5cf1896c4ad4c4452
       - device: crocus-hsw
-        checksum: 98eeb4c504b0f03b136d5fd89edd6d5c
+        checksum: 3c9cea7f98d8e5ab93d69c4834b570c9
   #- path: xonotic/xonotic-keybench-high-v2.trace
   #  expectations:
     # Requires GLSL 140
