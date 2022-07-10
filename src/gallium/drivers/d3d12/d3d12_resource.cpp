@@ -761,6 +761,62 @@ d3d12_resource_get_info(struct pipe_screen *pscreen,
    }
 }
 
+static struct pipe_memory_object *
+d3d12_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handle *handle, bool dedicated)
+{
+   if (handle->type != WINSYS_HANDLE_TYPE_WIN32_HANDLE) {
+      debug_printf("d3d12: Unsupported memobj handle type\n");
+      return NULL;
+   }
+
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   IUnknown *obj;
+#ifdef _WIN32
+      HANDLE d3d_handle = handle->handle;
+#else
+      HANDLE d3d_handle = (HANDLE)(intptr_t)handle->handle;
+#endif
+   if (FAILED(screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&obj)))) {
+      debug_printf("d3d12: Failed to open memobj handle as anything\n");
+      return NULL;
+   }
+
+   struct d3d12_memory_object *memobj = CALLOC_STRUCT(d3d12_memory_object);
+   if (!memobj) {
+      obj->Release();
+      return NULL;
+   }
+   memobj->base.dedicated = dedicated;
+
+   (void)obj->QueryInterface(&memobj->res);
+   (void)obj->QueryInterface(&memobj->heap);
+   obj->Release();
+   if (!memobj->res && !memobj->heap) {
+      debug_printf("d3d12: Memory object isn't a resource or heap\n");
+      free(memobj);
+      return NULL;
+   }
+
+   bool expect_dedicated = memobj->res != nullptr;
+   if (dedicated != expect_dedicated)
+      debug_printf("d3d12: Expected dedicated to be %s for imported %s\n",
+                   expect_dedicated ? "true" : "false",
+                   expect_dedicated ? "resource" : "heap");
+
+   return &memobj->base;
+}
+
+static void
+d3d12_memobj_destroy(struct pipe_screen *pscreen, struct pipe_memory_object *pmemobj)
+{
+   struct d3d12_memory_object *memobj = d3d12_memory_object(pmemobj);
+   if (memobj->res)
+      memobj->res->Release();
+   if (memobj->heap)
+      memobj->heap->Release();
+   free(memobj);
+}
+
 void
 d3d12_screen_resource_init(struct pipe_screen *pscreen)
 {
@@ -769,6 +825,9 @@ d3d12_screen_resource_init(struct pipe_screen *pscreen)
    pscreen->resource_get_handle = d3d12_resource_get_handle;
    pscreen->resource_destroy = d3d12_resource_destroy;
    pscreen->resource_get_info = d3d12_resource_get_info;
+
+   pscreen->memobj_create_from_handle = d3d12_memobj_create_from_handle;
+   pscreen->memobj_destroy = d3d12_memobj_destroy;
 }
 
 unsigned int
