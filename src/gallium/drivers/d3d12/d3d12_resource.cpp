@@ -409,7 +409,8 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
 {
    struct d3d12_screen *screen = d3d12_screen(pscreen);
    if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES &&
-       handle->type != WINSYS_HANDLE_TYPE_FD)
+       handle->type != WINSYS_HANDLE_TYPE_FD &&
+       handle->type != WINSYS_HANDLE_TYPE_WIN32_NAME)
       return NULL;
 
    struct d3d12_resource *res = CALLOC_STRUCT(d3d12_resource);
@@ -425,6 +426,20 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
       }
    }
 
+#ifdef _WIN32
+   HANDLE d3d_handle = handle->handle;
+#else
+   HANDLE d3d_handle = (HANDLE) (intptr_t) handle->handle;
+#endif
+
+#ifdef _WIN32
+   HANDLE d3d_handle_to_close = nullptr;
+   if (handle->type == WINSYS_HANDLE_TYPE_WIN32_NAME) {
+      screen->dev->OpenSharedHandleByName((LPCWSTR)handle->name, GENERIC_ALL, &d3d_handle_to_close);
+      d3d_handle = d3d_handle_to_close;
+   }
+#endif
+
    ID3D12Resource *d3d12_res = nullptr;
    ID3D12Heap *d3d12_heap = nullptr;
    if (res->bo) {
@@ -435,15 +450,14 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
       (void)obj->QueryInterface(&d3d12_heap);
       obj->Release();
    } else {
-      struct d3d12_screen *screen = d3d12_screen(pscreen);
-
-#ifdef _WIN32
-      HANDLE d3d_handle = handle->handle;
-#else
-      HANDLE d3d_handle = (HANDLE)(intptr_t)handle->handle;
-#endif
       screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&d3d12_res));
    }
+
+#ifdef _WIN32
+   if (d3d_handle_to_close) {
+      CloseHandle(d3d_handle_to_close);
+   }
+#endif
 
    D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint = {};
    D3D12_SUBRESOURCE_FOOTPRINT *footprint = &placed_footprint.Footprint;
@@ -808,7 +822,8 @@ d3d12_resource_get_info(struct pipe_screen *pscreen,
 static struct pipe_memory_object *
 d3d12_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handle *handle, bool dedicated)
 {
-   if (handle->type != WINSYS_HANDLE_TYPE_WIN32_HANDLE) {
+   if (handle->type != WINSYS_HANDLE_TYPE_WIN32_HANDLE &&
+       handle->type != WINSYS_HANDLE_TYPE_WIN32_NAME) {
       debug_printf("d3d12: Unsupported memobj handle type\n");
       return NULL;
    }
@@ -820,7 +835,24 @@ d3d12_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handl
 #else
       HANDLE d3d_handle = (HANDLE)(intptr_t)handle->handle;
 #endif
-   if (FAILED(screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&obj)))) {
+
+#ifdef _WIN32
+      HANDLE d3d_handle_to_close = nullptr;
+      if (handle->type == WINSYS_HANDLE_TYPE_WIN32_NAME) {
+         screen->dev->OpenSharedHandleByName((LPCWSTR) handle->name, GENERIC_ALL, &d3d_handle_to_close);
+         d3d_handle = d3d_handle_to_close;
+      }
+#endif
+
+   screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&obj));
+
+#ifdef _WIN32
+   if (d3d_handle_to_close) {
+      CloseHandle(d3d_handle_to_close);
+   }
+#endif
+
+   if (!obj) {
       debug_printf("d3d12: Failed to open memobj handle as anything\n");
       return NULL;
    }
