@@ -354,6 +354,7 @@ struct pan_shader_info {
         unsigned sampler_count;
         unsigned texture_count;
         unsigned ubo_count;
+        unsigned attributes_read_count;
         unsigned attribute_count;
         unsigned attributes_read;
 

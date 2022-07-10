@@ -2186,7 +2186,12 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
          * addressing modes and now base is 64 aligned.
          */
 
-        for (unsigned i = 0; i < so->num_elements; ++i) {
+        /* While these are usually equal, they are not required to be. In some
+         * cases, u_blitter passes too high a value for num_elements.
+         */
+        assert(vs->info.attributes_read_count <= so->num_elements);
+
+        for (unsigned i = 0; i < vs->info.attributes_read_count; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
 

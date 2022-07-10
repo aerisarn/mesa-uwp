@@ -215,8 +215,9 @@ GENX(pan_shader_compile)(nir_shader *s,
 
         switch (info->stage) {
         case MESA_SHADER_VERTEX:
-                info->attribute_count = util_bitcount64(s->info.inputs_read);
                 info->attributes_read = s->info.inputs_read;
+                info->attributes_read_count = util_bitcount64(info->attributes_read);
+                info->attribute_count = info->attributes_read_count;
 
 #if PAN_ARCH <= 5
                 bool vertex_id = BITSET_TEST(s->info.system_values_read,
