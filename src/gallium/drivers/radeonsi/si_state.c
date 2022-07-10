@@ -110,17 +110,16 @@ static void si_emit_cb_render_state(struct si_context *sctx)
        */
       bool oc_disable =
          blend->dcc_msaa_corruption_4bit & cb_target_mask && sctx->framebuffer.nr_samples >= 2;
-      unsigned watermark = sctx->framebuffer.dcc_overwrite_combiner_watermark;
 
       if (sctx->gfx_level >= GFX11) {
          radeon_opt_set_context_reg(sctx, R_028424_CB_FDCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
                                     S_028424_SAMPLE_MASK_TRACKER_DISABLE(oc_disable) |
-                                    S_028424_SAMPLE_MASK_TRACKER_WATERMARK(watermark));
+                                    S_028424_SAMPLE_MASK_TRACKER_WATERMARK(15));
       } else {
          radeon_opt_set_context_reg(
             sctx, R_028424_CB_DCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
             S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(sctx->gfx_level <= GFX9) |
-               S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
+               S_028424_OVERWRITE_COMBINER_WATERMARK(sctx->gfx_level >= GFX10 ? 6 : 4) |
                S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
                S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->gfx_level < GFX11 &&
                                                     sctx->screen->info.has_dcc_constant_encode));
@@ -3087,12 +3086,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
           tex->surface.bpe < sctx->framebuffer.min_bytes_per_pixel)
          sctx->framebuffer.min_bytes_per_pixel = tex->surface.bpe;
    }
-
-   /* For optimal DCC performance. */
-   if (sctx->gfx_level >= GFX10)
-      sctx->framebuffer.dcc_overwrite_combiner_watermark = 6;
-   else
-      sctx->framebuffer.dcc_overwrite_combiner_watermark = 4;
 
    struct si_texture *zstex = NULL;
 
