@@ -72,7 +72,7 @@ anv-tgl-vk:
 .iris-amly-test:
   extends:
     - .iris-test
-    - .test-manual-mr
+    - .iris-manual-rules
   variables:
     DEVICE_TYPE: asus-C433TA-AJ0005-rammus
     GPU_VERSION: iris-amly
@@ -103,7 +103,7 @@ anv-tgl-vk:
 .iris-cml-test:
   extends:
     - .iris-test
-    - .test-manual-mr    # Devices have too often network problems and fail to boot.
+    - .iris-manual-rules    # Devices have too often network problems and fail to boot.
   variables:
     DEVICE_TYPE: asus-C436FA-Flip-hatch
     GPU_VERSION: iris-cml
@@ -123,7 +123,7 @@ anv-tgl-vk:
 iris-apl-deqp:
   extends:
     - .iris-apl-test
-    - .test-manual-mr
+    - .iris-manual-rules
   variables:
     DEQP_SUITE: iris-apl
   parallel: 3

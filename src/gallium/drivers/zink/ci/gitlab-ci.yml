@@ -144,7 +144,7 @@ zink-radv-navi10-valve:
   extends:
     - .radv-zink-test-valve
     - .navi10-test-valve
-    - .test-manual-mr
+    - .radv-valve-manual-rules
   variables:
     GPU_VERSION: zink-radv-navi10
 
@@ -153,6 +153,6 @@ zink-radv-vangogh-valve:
   extends:
     - .radv-zink-test-valve
     - .vangogh-test-valve
-    - .test-manual-mr
+    - .radv-valve-manual-rules
   variables:
     GPU_VERSION: zink-radv-vangogh

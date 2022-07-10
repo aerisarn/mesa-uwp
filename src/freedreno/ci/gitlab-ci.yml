@@ -54,7 +54,7 @@ a306_gl:
   extends:
     - .piglit-test
     - .a306-test
-    - .test-manual-mr
+    - .freedreno-manual-rules
   variables:
     HWCI_START_XORG: 1
 
@@ -96,7 +96,7 @@ a530_gl:
   extends:
     - .baremetal-deqp-test
     - .a530-test
-    - .test-manual-mr # Unstable as of kernel 5.19
+    - .freedreno-manual-rules # Unstable as of kernel 5.19
   variables:
     DEQP_SUITE: freedreno-a530
     PIGLIT_PLATFORM: gbm
@@ -114,7 +114,7 @@ a530_gl:
 a530_piglit_gl:
   extends:
     - .a530_piglit
-    - .test-manual-mr
+    - .freedreno-manual-rules
   variables:
     PIGLIT_PROFILES: quick_gl
 
@@ -166,7 +166,7 @@ a618_vk:
 a618_vk_full:
   extends:
     - a618_vk
-    - .test-manual-mr
+    - .turnip-manual-rules
   # We use a longer timeout to keep the parallel down so that we don't lock up
   # too many runners for a long time when a dev is trying out at full VK status.
   timeout: 2h
@@ -288,7 +288,7 @@ a630_vk_full:
   timeout: 2h
   extends:
     - a630_vk
-    - .test-manual-mr
+    - .turnip-manual-rules
   parallel: 2
   variables:
     DEQP_SUITE: freedreno-a630-vk-full
