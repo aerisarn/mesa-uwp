@@ -327,6 +327,8 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
    case PIPE_CAP_MEMOBJ:
+   case PIPE_CAP_FENCE_SIGNAL:
+   case PIPE_CAP_TIMELINE_SEMAPHORE_IMPORT:
       return 1;
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:

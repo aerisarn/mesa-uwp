@@ -2618,7 +2618,6 @@ spec/ext_direct_state_access/named-buffers 15/mapnamedbufferrangeext: skip
 spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
 spec/ext_disjoint_timer_query/simple: skip
 spec/ext_draw_instanced/ext_draw_instanced-drawarrays: skip
-spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
 spec/ext_external_objects/vk-depth-display: skip
 spec/ext_external_objects/vk-image-display: skip
@@ -3516,10 +3515,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17866
+       pass:    17870
        fail:     2035
       crash:       12
-       skip:     1449
+       skip:     1448
     timeout:        0
        warn:       10
  incomplete:        0
@@ -3528,4 +3527,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21381
+      total:    21384
