@@ -86,13 +86,14 @@ import_memoryobj_fd(struct gl_context *ctx,
 
 static void
 import_memoryobj_win32(struct gl_context *ctx,
-                    struct gl_memory_object *obj,
-                    GLuint64 size,
-                    void *handle)
+                       struct gl_memory_object *obj,
+                       GLuint64 size,
+                       void *handle,
+                       const void *name)
 {
    struct pipe_screen *screen = ctx->pipe->screen;
    struct winsys_handle whandle = {
-      .type = WINSYS_HANDLE_TYPE_WIN32_HANDLE,
+      .type = handle ? WINSYS_HANDLE_TYPE_WIN32_HANDLE : WINSYS_HANDLE_TYPE_WIN32_NAME,
 #ifdef _WIN32
       .handle = handle,
 #else
@@ -101,6 +102,7 @@ import_memoryobj_win32(struct gl_context *ctx,
 #ifdef HAVE_LIBDRM
       .modifier = DRM_FORMAT_MOD_INVALID,
 #endif
+      .name = name,
    };
 
    obj->memory = screen->memobj_create_from_handle(screen,
@@ -1056,7 +1058,7 @@ _mesa_ImportMemoryWin32HandleEXT(GLuint memory,
    if (!memObj)
       return;
 
-   import_memoryobj_win32(ctx, memObj, size, handle);
+   import_memoryobj_win32(ctx, memObj, size, handle, NULL);
    memObj->Immutable = GL_TRUE;
 }
 
@@ -1066,6 +1068,29 @@ _mesa_ImportMemoryWin32NameEXT(GLuint memory,
                                  GLenum handleType,
                                  const void *name)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   const char *func = "glImportMemoryWin32NameEXT";
+
+   if (!ctx->Extensions.EXT_memory_object_win32) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported)", func);
+      return;
+   }
+
+   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D11_IMAGE_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D12_RESOURCE_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(handleType=%u)", func, handleType);
+      return;
+   }
+
+   struct gl_memory_object *memObj = _mesa_lookup_memory_object(ctx, memory);
+   if (!memObj)
+      return;
+
+   import_memoryobj_win32(ctx, memObj, size, NULL, name);
+   memObj->Immutable = GL_TRUE;
 }
 
 void GLAPIENTRY
