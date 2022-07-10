@@ -15,11 +15,6 @@ dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 
 dEQP-GLES2.functional.depth_stencil_clear.depth_stencil_masked,Fail
 
-# 2-count line loop incorrectly draws nothing (HW bug).  Need to demote to being
-# GL_LINES, though that wouldn't be correct with blending/logicop.
-dEQP-GLES2.functional.draw.draw_arrays.line_loop.multiple_attributes,Fail
-dEQP-GLES2.functional.draw.draw_arrays.line_loop.single_attribute,Fail
-
 # A glTexImage, glDraw, glTexSubImage sequence into a texture is missing what looks like the drawing.
 dEQP-GLES2.functional.fbo.render.texsubimage.after_render_tex2d_rgba,Fail
 # A glTexImage, glDraw, glTexSubImage, glDraw sequence into a texture is missing what looks like the first drawing.
