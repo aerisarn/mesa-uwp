@@ -242,8 +242,7 @@ init_texture(struct d3d12_screen *screen,
    }
 
    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-   if (templ->bind & (PIPE_BIND_SCANOUT |
-                      PIPE_BIND_SHARED | PIPE_BIND_LINEAR))
+   if (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR))
       desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
    D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
@@ -469,6 +468,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    res->base.b.nr_samples = incoming_res_desc.SampleDesc.Count;
    res->base.b.last_level = incoming_res_desc.MipLevels - 1;
    res->base.b.usage = PIPE_USAGE_DEFAULT;
+   res->base.b.bind |= PIPE_BIND_SHARED;
    if (incoming_res_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
       res->base.b.bind |= PIPE_BIND_RENDER_TARGET | PIPE_BIND_BLENDABLE | PIPE_BIND_DISPLAY_TARGET;
    if (incoming_res_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
