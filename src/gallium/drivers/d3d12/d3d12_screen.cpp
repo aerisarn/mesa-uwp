@@ -1120,6 +1120,21 @@ d3d12_get_node_mask(struct pipe_screen *pscreen)
    return 1;
 }
 
+static void
+d3d12_create_fence_win32(struct pipe_screen *pscreen, struct pipe_fence_handle **pfence, void *handle, const void *name, enum pipe_fd_type type)
+{
+   d3d12_fence_reference((struct d3d12_fence **)pfence,
+                         type == PIPE_FD_TYPE_TIMELINE_SEMAPHORE ?
+                           d3d12_open_fence(d3d12_screen(pscreen), handle, name) :
+                           nullptr);
+}
+
+static void
+d3d12_set_fence_timeline_value(struct pipe_screen *pscreen, struct pipe_fence_handle *pfence, uint64_t value)
+{
+   d3d12_fence(pfence)->value = value;
+}
+
 void
 d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid)
 {
@@ -1145,6 +1160,8 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    screen->base.get_device_uuid = d3d12_get_device_uuid;
    screen->base.get_driver_uuid = d3d12_get_driver_uuid;
    screen->base.get_device_node_mask = d3d12_get_node_mask;
+   screen->base.create_fence_win32 = d3d12_create_fence_win32;
+   screen->base.set_fence_timeline_value = d3d12_set_fence_timeline_value;
 }
 
 bool
