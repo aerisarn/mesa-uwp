@@ -1044,7 +1044,10 @@ _mesa_ImportMemoryWin32HandleEXT(GLuint memory,
       return;
    }
 
-   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT) {
+   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D11_IMAGE_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D12_RESOURCE_EXT &&
+       handleType != GL_HANDLE_TYPE_D3D12_TILEPOOL_EXT) {
       _mesa_error(ctx, GL_INVALID_ENUM, "%s(handleType=%u)", func, handleType);
       return;
    }
