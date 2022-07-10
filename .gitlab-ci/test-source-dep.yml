@@ -168,8 +168,8 @@
 .freedreno-rules:
   stage: freedreno
   rules:
-    - !reference [.gl-rules, rules]
     - !reference [.freedreno-common-rules, rules]
+    - !reference [.gl-rules, rules]
     - changes: &freedreno_gl_file_list
       - src/freedreno/ir2/**/*
       - src/gallium/drivers/freedreno/**/*
@@ -179,8 +179,8 @@
 .turnip-rules:
   stage: freedreno
   rules:
-    - !reference [.vulkan-rules, rules]
     - !reference [.freedreno-common-rules, rules]
+    - !reference [.vulkan-rules, rules]
     - changes:
       - src/freedreno/vulkan/**/*
       when: on_success
@@ -477,20 +477,20 @@
 .zink-lvp-rules:
   stage: layered-backends
   rules:
-    - !reference [.zink-common-rules, rules]
     - !reference [.lavapipe-rules, rules]
+    - !reference [.zink-common-rules, rules]
 
 .zink-anv-rules:
   stage: layered-backends
   rules:
-    - !reference [.zink-common-rules, rules]
     - !reference [.anv-rules, rules]
+    - !reference [.zink-common-rules, rules]
 
 .zink-turnip-rules:
   stage: layered-backends
   rules:
-    - !reference [.zink-common-rules, rules]
     - !reference [.turnip-rules, rules]
+    - !reference [.zink-common-rules, rules]
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
