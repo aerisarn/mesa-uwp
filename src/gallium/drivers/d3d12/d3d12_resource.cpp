@@ -167,7 +167,9 @@ init_buffer(struct d3d12_screen *screen,
 static bool
 init_texture(struct d3d12_screen *screen,
              struct d3d12_resource *res,
-             const struct pipe_resource *templ)
+             const struct pipe_resource *templ,
+             ID3D12Heap *heap,
+             uint64_t placed_offset)
 {
    ID3D12Resource *d3d12_res;
 
@@ -183,9 +185,18 @@ init_texture(struct d3d12_screen *screen,
    desc.MipLevels = templ->last_level + 1;
 
    desc.SampleDesc.Count = MAX2(templ->nr_samples, 1);
-   desc.SampleDesc.Quality = 0; /* TODO: figure this one out */
+   desc.SampleDesc.Quality = 0;
+
+   desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+   desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
    switch (templ->target) {
+   case PIPE_BUFFER:
+      desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+      desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+      desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+      break;
+
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_1D_ARRAY:
       desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
@@ -209,8 +220,6 @@ init_texture(struct d3d12_screen *screen,
    default:
       unreachable("Invalid texture type");
    }
-
-   desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
    if (templ->bind & PIPE_BIND_SHADER_BUFFER)
       desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -241,23 +250,35 @@ init_texture(struct d3d12_screen *screen,
       }
    }
 
-   desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
    if (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR))
       desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-   D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
+   HRESULT hres = E_FAIL;
+   enum d3d12_residency_status init_residency;
 
-   D3D12_HEAP_FLAGS heap_flags = screen->support_create_not_resident ?
-      D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT : D3D12_HEAP_FLAG_NONE;
-   enum d3d12_residency_status init_residency = screen->support_create_not_resident ?
-      d3d12_evicted : d3d12_resident;
+   if (heap) {
+      init_residency = d3d12_permanently_resident;
+      hres = screen->dev->CreatePlacedResource(heap,
+                                               placed_offset,
+                                               &desc,
+                                               D3D12_RESOURCE_STATE_COMMON,
+                                               nullptr,
+                                               IID_PPV_ARGS(&d3d12_res));
+   } else {
+      D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
 
-   HRESULT hres = screen->dev->CreateCommittedResource(&heap_pris,
-                                                   heap_flags,
-                                                   &desc,
-                                                   D3D12_RESOURCE_STATE_COMMON,
-                                                   NULL,
-                                                   IID_PPV_ARGS(&d3d12_res));
+      D3D12_HEAP_FLAGS heap_flags = screen->support_create_not_resident ?
+         D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT : D3D12_HEAP_FLAG_NONE;
+      init_residency = screen->support_create_not_resident ? d3d12_evicted : d3d12_resident;
+
+      hres = screen->dev->CreateCommittedResource(&heap_pris,
+                                                  heap_flags,
+                                                  &desc,
+                                                  D3D12_RESOURCE_STATE_COMMON,
+                                                  NULL,
+                                                  IID_PPV_ARGS(&d3d12_res));
+   }
+
    if (FAILED(hres))
       return false;
 
@@ -322,14 +343,16 @@ convert_planar_resource(struct d3d12_resource *res)
 }
 
 static struct pipe_resource *
-d3d12_resource_create(struct pipe_screen *pscreen,
-                      const struct pipe_resource *templ)
+d3d12_resource_create_or_place(struct d3d12_screen *screen,
+                               struct d3d12_resource *res,
+                               const struct pipe_resource *templ,
+                               ID3D12Heap *heap,
+                               uint64_t placed_offset)
 {
-   struct d3d12_screen *screen = d3d12_screen(pscreen);
-   struct d3d12_resource *res = CALLOC_STRUCT(d3d12_resource);
    bool ret;
 
    res->base.b = *templ;
+
    res->overall_format = templ->format;
    res->plane_slice = 0;
    res->first_plane = &res->base.b;
@@ -343,12 +366,12 @@ d3d12_resource_create(struct pipe_screen *pscreen,
    }
 
    pipe_reference_init(&res->base.b.reference, 1);
-   res->base.b.screen = pscreen;
+   res->base.b.screen = &screen->base;
 
-   if (templ->target == PIPE_BUFFER) {
+   if (templ->target == PIPE_BUFFER && !heap) {
       ret = init_buffer(screen, res, templ);
    } else {
-      ret = init_texture(screen, res, templ);
+      ret = init_texture(screen, res, templ, heap, placed_offset);
    }
 
    if (!ret) {
@@ -366,6 +389,17 @@ d3d12_resource_create(struct pipe_screen *pscreen,
    convert_planar_resource(res);
 
    return &res->base.b;
+}
+
+static struct pipe_resource *
+d3d12_resource_create(struct pipe_screen *pscreen,
+                      const struct pipe_resource *templ)
+{
+   struct d3d12_resource *res = CALLOC_STRUCT(d3d12_resource);
+   if (!res)
+      return NULL;
+
+   return d3d12_resource_create_or_place(d3d12_screen(pscreen), res, templ, nullptr, 0);
 }
 
 static struct pipe_resource *
@@ -391,14 +425,15 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
       }
    }
 
-   pipe_reference_init(&res->base.b.reference, 1);
-   res->base.b.screen = pscreen;
-
    ID3D12Resource *d3d12_res = nullptr;
+   ID3D12Heap *d3d12_heap = nullptr;
    if (res->bo) {
       d3d12_res = res->bo->res;
    } else if (handle->type == WINSYS_HANDLE_TYPE_D3D12_RES) {
-      d3d12_res = (ID3D12Resource *)handle->com_obj;
+      IUnknown *obj = (IUnknown *)handle->com_obj;
+      (void)obj->QueryInterface(&d3d12_res);
+      (void)obj->QueryInterface(&d3d12_heap);
+      obj->Release();
    } else {
       struct d3d12_screen *screen = d3d12_screen(pscreen);
 
@@ -414,9 +449,18 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    D3D12_SUBRESOURCE_FOOTPRINT *footprint = &placed_footprint.Footprint;
    D3D12_RESOURCE_DESC incoming_res_desc;
 
-   if (!d3d12_res)
+   if (!d3d12_res && !d3d12_heap)
       goto invalid;
 
+   if (d3d12_heap) {
+      assert(templ);
+      assert(!res->bo);
+      assert(!d3d12_res);
+      return d3d12_resource_create_or_place(screen, res, templ, d3d12_heap, handle->offset);
+   }
+
+   pipe_reference_init(&res->base.b.reference, 1);
+   res->base.b.screen = pscreen;
    incoming_res_desc = d3d12_res->GetDesc();
 
    /* Get a description for this plane */
@@ -817,6 +861,25 @@ d3d12_memobj_destroy(struct pipe_screen *pscreen, struct pipe_memory_object *pme
    free(memobj);
 }
 
+static pipe_resource *
+d3d12_resource_from_memobj(struct pipe_screen *pscreen,
+                           const struct pipe_resource *templ,
+                           struct pipe_memory_object *pmemobj,
+                           uint64_t offset)
+{
+   struct d3d12_memory_object *memobj = d3d12_memory_object(pmemobj);
+
+   struct winsys_handle whandle = {};
+   whandle.type = WINSYS_HANDLE_TYPE_D3D12_RES;
+   whandle.com_obj = memobj->res ? (void *) memobj->res : (void *) memobj->heap;
+   whandle.offset = offset;
+   whandle.format = templ->format;
+
+   // WINSYS_HANDLE_TYPE_D3D12_RES implies taking ownership of the reference
+   ((IUnknown *)whandle.com_obj)->AddRef();
+   return d3d12_resource_from_handle(pscreen, templ, &whandle, 0);
+}
+
 void
 d3d12_screen_resource_init(struct pipe_screen *pscreen)
 {
@@ -828,6 +891,7 @@ d3d12_screen_resource_init(struct pipe_screen *pscreen)
 
    pscreen->memobj_create_from_handle = d3d12_memobj_create_from_handle;
    pscreen->memobj_destroy = d3d12_memobj_destroy;
+   pscreen->resource_from_memobj = d3d12_resource_from_memobj;
 }
 
 unsigned int
