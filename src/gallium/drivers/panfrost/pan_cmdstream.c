@@ -2667,7 +2667,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
 #if PAN_ARCH >= 6
         /* Suppress prefetch on Bifrost */
-        memset(varyings + (xfb_base * ctx->streamout.num_targets), 0, sizeof(*varyings));
+        memset(varyings + xfb_base + ctx->streamout.num_targets, 0, sizeof(*varyings));
 #else
         /* Emit the stream out buffers. We need enough room for all the
          * vertices we emit across all instances */
