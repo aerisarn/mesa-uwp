@@ -855,15 +855,6 @@ _mesa_IsSemaphoreEXT(GLuint semaphore)
 static void
 semaphore_parameter_stub(const char* func, GLenum pname)
 {
-   GET_CURRENT_CONTEXT(ctx);
-
-   if (!ctx->Extensions.EXT_semaphore) {
-      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported)", func);
-      return;
-   }
-
-   /* EXT_semaphore and EXT_semaphore_fd define no parameters */
-   _mesa_error(ctx, GL_INVALID_ENUM, "%s(pname=0x%x)", func, pname);
 }
 
 void GLAPIENTRY
@@ -871,9 +862,31 @@ _mesa_SemaphoreParameterui64vEXT(GLuint semaphore,
                                  GLenum pname,
                                  const GLuint64 *params)
 {
+   GET_CURRENT_CONTEXT(ctx);
    const char *func = "glSemaphoreParameterui64vEXT";
 
-   semaphore_parameter_stub(func, pname);
+   if (!ctx->Extensions.EXT_semaphore) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported)", func);
+      return;
+   }
+
+   if (pname != GL_D3D12_FENCE_VALUE_EXT) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(pname=0x%x)", func, pname);
+      return;
+   }
+
+   struct gl_semaphore_object *semObj = _mesa_lookup_semaphore_object(ctx,
+                                                                      semaphore);
+   if (!semObj)
+      return;
+
+   if (semObj->type != PIPE_FD_TYPE_TIMELINE_SEMAPHORE) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(Not a D3D12 fence)", func);
+      return;
+   }
+
+   semObj->timeline_value = params[0];
+   ctx->screen->set_fence_timeline_value(ctx->screen, semObj->fence, params[0]);
 }
 
 void GLAPIENTRY
@@ -881,9 +894,30 @@ _mesa_GetSemaphoreParameterui64vEXT(GLuint semaphore,
                                     GLenum pname,
                                     GLuint64 *params)
 {
+   GET_CURRENT_CONTEXT(ctx);
    const char *func = "glGetSemaphoreParameterui64vEXT";
 
-   semaphore_parameter_stub(func, pname);
+   if (!ctx->Extensions.EXT_semaphore) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported)", func);
+      return;
+   }
+
+   if (pname != GL_D3D12_FENCE_VALUE_EXT) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(pname=0x%x)", func, pname);
+      return;
+   }
+
+   struct gl_semaphore_object *semObj = _mesa_lookup_semaphore_object(ctx,
+                                                                      semaphore);
+   if (!semObj)
+      return;
+
+   if (semObj->type != PIPE_FD_TYPE_TIMELINE_SEMAPHORE) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(Not a D3D12 fence)", func);
+      return;
+   }
+
+   params[0] = semObj->timeline_value;
 }
 
 void GLAPIENTRY

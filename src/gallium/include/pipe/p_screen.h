@@ -724,6 +724,14 @@ struct pipe_screen {
     */
    pipe_create_vertex_state_func create_vertex_state;
    pipe_vertex_state_destroy_func vertex_state_destroy;
+
+   /**
+    * Update a timeline semaphore value stored within a driver fence object.
+    * Future waits and signals will use the new value.
+    */
+   void (*set_fence_timeline_value)(struct pipe_screen *screen,
+                                    struct pipe_fence_handle *fence,
+                                    uint64_t value);
 };
 
 
