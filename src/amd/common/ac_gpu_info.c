@@ -1134,6 +1134,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
                                  (info->gfx_level == GFX9 &&
                                   info->me_fw_feature >= 52);
 
+   info->has_export_conflict_bug = info->gfx_level == GFX11;
+
    /* Get the number of good compute units. */
    info->num_cu = 0;
    for (i = 0; i < info->max_se; i++) {

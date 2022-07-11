@@ -636,8 +636,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
          si_pm4_set_reg(pm4, R_028760_SX_MRT0_BLEND_OPT + i * 4, sx_mrt_blend_opt[i]);
 
       /* RB+ doesn't work with dual source blending, logic op, and RESOLVE. */
-      if (blend->dual_src_blend || logicop_enable || mode == V_028808_CB_RESOLVE ||
-          (sctx->gfx_level == GFX11 && blend->blend_enable_4bit))
+      if (blend->dual_src_blend || logicop_enable || mode == V_028808_CB_RESOLVE)
          color_control |= S_028808_DISABLE_DUAL_QUAD(1);
    }
 
@@ -742,6 +741,10 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        (old_blend->dcc_msaa_corruption_4bit != blend->dcc_msaa_corruption_4bit &&
         sctx->framebuffer.has_dcc_msaa))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
+
+   if (sctx->screen->info.has_export_conflict_bug &&
+       old_blend->blend_enable_4bit != blend->blend_enable_4bit)
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
    if (old_blend->cb_target_mask != blend->cb_target_mask ||
        old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
@@ -1591,6 +1594,13 @@ static void si_emit_db_render_state(struct si_context *sctx)
 
    if (sctx->screen->info.has_rbplus && !sctx->screen->info.rbplus_allowed)
       db_shader_control |= S_02880C_DUAL_QUAD_DISABLE(1);
+
+   if (sctx->screen->info.has_export_conflict_bug &&
+       sctx->queued.named.blend->blend_enable_4bit &&
+       si_get_num_coverage_samples(sctx) == 1) {
+      db_shader_control |= S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(1) |
+                           S_02880C_OVERRIDE_INTRINSIC_RATE(2);
+   }
 
    radeon_opt_set_context_reg(sctx, R_02880C_DB_SHADER_CONTROL, SI_TRACKED_DB_SHADER_CONTROL,
                               db_shader_control);

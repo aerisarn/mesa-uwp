@@ -289,7 +289,8 @@ static bool si_update_shaders(struct si_context *sctx)
       if (GFX_VERSION >= GFX10 && sctx->screen->use_ngg_culling)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.ngg_cull_state);
 
-      if (GFX_VERSION == GFX6)
+      if (GFX_VERSION == GFX6 ||
+          (GFX_VERSION == GFX11 && sctx->screen->info.has_export_conflict_bug))
          si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
       if (sctx->framebuffer.nr_samples <= 1)
