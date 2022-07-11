@@ -91,6 +91,8 @@ vn_descriptor_type_index(VkDescriptorType type)
       return VN_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
       return VN_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
+   case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+      return VN_DESCRIPTOR_TYPE_MUTABLE_VALVE;
    default:
       break;
    }
@@ -288,6 +290,7 @@ vn_CreateDescriptorPool(VkDevice device,
    struct vn_descriptor_pool *pool =
       vk_zalloc(alloc, sizeof(*pool), VN_DEFAULT_ALIGN,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
    if (!pool)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -823,6 +826,8 @@ vn_update_descriptor_sets_parse_template(
       case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
          iub_count += 1;
          break;
+      case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+         break;
       default:
          unreachable("unhandled descriptor type");
          break;
@@ -1043,6 +1048,8 @@ vn_UpdateDescriptorSetWithTemplate(
             (VkWriteDescriptorSetInlineUniformBlock *)vk_find_struct_const(
                write->pNext, WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK);
          iub_data->pData = pData + entry->offset;
+         break;
+      case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
          break;
       default:
          unreachable("unhandled descriptor type");
