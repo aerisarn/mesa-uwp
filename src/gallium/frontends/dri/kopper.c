@@ -975,6 +975,7 @@ static void
 kopperSetSwapInterval(__DRIdrawable *dPriv, int interval)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
    struct dri_screen *screen = dri_screen(drawable->sPriv);
    struct kopper_screen *kscreen = (struct kopper_screen *)screen;
    struct pipe_screen *pscreen = kscreen->screen;
@@ -982,10 +983,13 @@ kopperSetSwapInterval(__DRIdrawable *dPriv, int interval)
                                 drawable->textures[ST_ATTACHMENT_BACK_LEFT] :
                                 drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
 
-   // the conditional is because we can be called before buffer allocation, though
-   // this is almost certainly not the right fix.
+   /* the conditional is because we can be called before buffer allocation.  If
+    * we're before allocation, then the initial_swap_interval will be used when
+    * the swapchain is eventually created.
+    */
    if (ptex)
       zink_kopper_set_swap_interval(pscreen, ptex, interval);
+   cdraw->info.initial_swap_interval = interval;
 }
 
 const __DRIkopperExtension driKopperExtension = {

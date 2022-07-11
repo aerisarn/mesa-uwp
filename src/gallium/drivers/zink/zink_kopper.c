@@ -30,6 +30,26 @@
 #include "vk_enum_to_str.h"
 
 static void
+zink_kopper_set_present_mode_for_interval(struct kopper_displaytarget *cdt, int interval)
+{
+#ifdef WIN32
+    // not hooked up yet so let's not sabotage benchmarks
+    cdt->present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+#else
+   assert(interval >= 0); /* TODO: VK_PRESENT_MODE_FIFO_RELAXED_KHR */
+   if (interval == 0) {
+      if (cdt->present_modes & BITFIELD_BIT(VK_PRESENT_MODE_IMMEDIATE_KHR))
+         cdt->present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      else
+         cdt->present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+   } else if (interval > 0) {
+      cdt->present_mode = VK_PRESENT_MODE_FIFO_KHR;
+   }
+   assert(cdt->present_modes & BITFIELD_BIT(cdt->present_mode));
+#endif
+}
+
+static void
 init_dt_type(struct kopper_displaytarget *cdt)
 {
     VkStructureType type = cdt->info.bos.sType;
@@ -52,13 +72,6 @@ init_dt_type(struct kopper_displaytarget *cdt)
     default:
        unreachable("unsupported!");
     }
-#ifdef WIN32
-    // not hooked up yet so let's not sabotage benchmarks
-    cdt->present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-#else
-    // Matches the EGL and GLX_SGI_swap_interval default
-    cdt->present_mode = VK_PRESENT_MODE_FIFO_KHR;
-#endif
 }
 
 static VkSurfaceKHR
@@ -111,6 +124,8 @@ kopper_CreateSurface(struct zink_screen *screen, struct kopper_displaytarget *cd
        if (modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
           cdt->present_modes |= BITFIELD_BIT(modes[i]);
     }
+
+    zink_kopper_set_present_mode_for_interval(cdt, cdt->info.initial_swap_interval);
 
     return surface;
 fail:
@@ -884,16 +899,7 @@ zink_kopper_set_swap_interval(struct pipe_screen *pscreen, struct pipe_resource 
    struct kopper_displaytarget *cdt = res->obj->dt;
    VkPresentModeKHR old_present_mode = cdt->present_mode;
 
-   assert(interval >= 0); /* TODO: VK_PRESENT_MODE_FIFO_RELAXED_KHR */
-   if (interval == 0) {
-      if (cdt->present_modes & BITFIELD_BIT(VK_PRESENT_MODE_IMMEDIATE_KHR))
-         cdt->present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-      else
-         cdt->present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
-   } else if (interval > 0) {
-      cdt->present_mode = VK_PRESENT_MODE_FIFO_KHR;
-   }
-   assert(cdt->present_modes & BITFIELD_BIT(cdt->present_mode));
+   zink_kopper_set_present_mode_for_interval(cdt, interval);
 
    if (old_present_mode != cdt->present_mode)
       update_swapchain(screen, cdt, cdt->caps.currentExtent.width, cdt->caps.currentExtent.height);

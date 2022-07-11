@@ -95,6 +95,7 @@ struct kopper_loader_info {
 #endif
    };
    int has_alpha;
+   int initial_swap_interval;
 };
 
 #define __DRI_KOPPER_LOADER "DRI_KopperLoader"
