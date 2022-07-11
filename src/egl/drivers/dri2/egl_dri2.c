@@ -68,6 +68,7 @@
 #include "util/u_vector.h"
 #include "mapi/glapi/glapi.h"
 #include "util/bitscan.h"
+#include "util/driconf.h"
 #include "util/u_math.h"
 
 #define NUM_ATTRIBS 12

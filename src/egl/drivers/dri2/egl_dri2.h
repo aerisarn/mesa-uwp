@@ -417,12 +417,6 @@ struct dri2_egl_sync {
    void *fence;
 };
 
-/* From driconf.h, user exposed so should be stable */
-#define DRI_CONF_VBLANK_NEVER 0
-#define DRI_CONF_VBLANK_DEF_INTERVAL_0 1
-#define DRI_CONF_VBLANK_DEF_INTERVAL_1 2
-#define DRI_CONF_VBLANK_ALWAYS_SYNC 3
-
 /* standard typecasts */
 _EGL_DRIVER_STANDARD_TYPECASTS(dri2_egl)
 _EGL_DRIVER_TYPECAST(dri2_egl_image, _EGLImage, obj)
