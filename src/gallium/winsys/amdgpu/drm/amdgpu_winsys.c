@@ -95,7 +95,7 @@ static bool do_winsys_init(struct amdgpu_winsys *ws,
                            const struct pipe_screen_config *config,
                            int fd)
 {
-   if (!ac_query_gpu_info(fd, ws->dev, &ws->info, &ws->amdinfo))
+   if (!ac_query_gpu_info(fd, ws->dev, &ws->info))
       goto fail;
 
    /* TODO: Enable this once the kernel handles it efficiently. */

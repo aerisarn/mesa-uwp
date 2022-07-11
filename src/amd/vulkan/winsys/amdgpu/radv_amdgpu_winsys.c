@@ -42,7 +42,7 @@
 static bool
 do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
 {
-   if (!ac_query_gpu_info(fd, ws->dev, &ws->info, &ws->amdinfo))
+   if (!ac_query_gpu_info(fd, ws->dev, &ws->info))
       return false;
 
    if (ws->info.drm_minor < 23) {

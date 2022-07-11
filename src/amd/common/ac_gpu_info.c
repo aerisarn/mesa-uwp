@@ -579,9 +579,9 @@ static void set_custom_cu_en_mask(struct radeon_info *info)
    }
 }
 
-bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
-                       struct amdgpu_gpu_info *amdinfo)
+bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 {
+   struct amdgpu_gpu_info amdinfo;
    struct drm_amdgpu_info_device device_info = {0};
    struct amdgpu_buffer_size_alignments alignment_info = {0};
    uint32_t vce_version = 0, vce_feature = 0, uvd_version = 0, uvd_feature = 0;
@@ -622,7 +622,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    /* Query hardware and driver information. */
-   r = amdgpu_query_gpu_info(dev, amdinfo);
+   r = amdgpu_query_gpu_info(dev, &amdinfo);
    if (r) {
       fprintf(stderr, "amdgpu: amdgpu_query_gpu_info failed.\n");
       return false;
@@ -1044,13 +1044,13 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->l1_cache_size = 16384;
 
-   info->mc_arb_ramcfg = amdinfo->mc_arb_ramcfg;
-   info->gb_addr_config = amdinfo->gb_addr_cfg;
+   info->mc_arb_ramcfg = amdinfo.mc_arb_ramcfg;
+   info->gb_addr_config = amdinfo.gb_addr_cfg;
    if (info->gfx_level >= GFX9) {
       info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(info->gb_addr_config);
       info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
    } else {
-      info->num_tile_pipes = cik_get_num_tile_pipes(amdinfo);
+      info->num_tile_pipes = cik_get_num_tile_pipes(&amdinfo);
       info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX6(info->gb_addr_config);
    }
    info->r600_has_virtual_memory = true;
@@ -1223,11 +1223,11 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->min_good_cu_per_sa =
       (info->num_cu / (info->num_se * info->max_sa_per_se * cu_group)) * cu_group;
 
-   memcpy(info->si_tile_mode_array, amdinfo->gb_tile_mode, sizeof(amdinfo->gb_tile_mode));
-   info->enabled_rb_mask = amdinfo->enabled_rb_pipes_mask;
+   memcpy(info->si_tile_mode_array, amdinfo.gb_tile_mode, sizeof(amdinfo.gb_tile_mode));
+   info->enabled_rb_mask = amdinfo.enabled_rb_pipes_mask;
 
-   memcpy(info->cik_macrotile_mode_array, amdinfo->gb_macro_tile_mode,
-          sizeof(amdinfo->gb_macro_tile_mode));
+   memcpy(info->cik_macrotile_mode_array, amdinfo.gb_macro_tile_mode,
+          sizeof(amdinfo.gb_macro_tile_mode));
 
    info->pte_fragment_size = alignment_info.size_local;
    info->gart_page_size = alignment_info.size_remote;

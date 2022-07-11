@@ -92,7 +92,6 @@ struct amdgpu_winsys {
    /* multithreaded IB submission */
    struct util_queue cs_queue;
 
-   struct amdgpu_gpu_info amdinfo;
    struct ac_addrlib *addrlib;
 
    bool check_vm;

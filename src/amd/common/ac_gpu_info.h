@@ -239,8 +239,7 @@ struct radeon_info {
    uint32_t spi_cu_en;
 };
 
-bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
-                       struct amdgpu_gpu_info *amdinfo);
+bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info);
 
 void ac_compute_driver_uuid(char *uuid, size_t size);
 
