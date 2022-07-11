@@ -5703,17 +5703,27 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                      S_028A44_ES_VERTS_PER_SUBGRP(64) | S_028A44_GS_PRIMS_PER_SUBGRP(4));
    }
 
-   if (sctx->gfx_level == GFX8) {
+   if (sctx->gfx_level >= GFX8) {
       unsigned vgt_tess_distribution;
 
-      vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) | S_028B50_ACCUM_TRI(11) |
-                              S_028B50_ACCUM_QUAD(11) | S_028B50_DONUT_SPLIT_GFX81(16);
+      if (sctx->gfx_level >= GFX9) {
+         vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(12) |
+                                 S_028B50_ACCUM_TRI(30) |
+                                 S_028B50_ACCUM_QUAD(24) |
+                                 S_028B50_DONUT_SPLIT_GFX9(24) |
+                                 S_028B50_TRAP_SPLIT(6);
+      } else if (sctx->gfx_level == GFX8) {
+         vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) |
+                                 S_028B50_ACCUM_TRI(11) |
+                                 S_028B50_ACCUM_QUAD(11) |
+                                 S_028B50_DONUT_SPLIT_GFX81(16);
 
-      /* Testing with Unigine Heaven extreme tesselation yielded best results
-       * with TRAP_SPLIT = 3.
-       */
-      if (sctx->family == CHIP_FIJI || sctx->family >= CHIP_POLARIS10)
-         vgt_tess_distribution |= S_028B50_TRAP_SPLIT(3);
+         /* Testing with Unigine Heaven extreme tesselation yielded best results
+          * with TRAP_SPLIT = 3.
+          */
+         if (sctx->family == CHIP_FIJI || sctx->family >= CHIP_POLARIS10)
+            vgt_tess_distribution |= S_028B50_TRAP_SPLIT(3);
+      }
 
       si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION, vgt_tess_distribution);
    }
@@ -5738,9 +5748,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                        0, &sscreen->info,
                        (void*)(sctx->gfx_level >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
 
-      si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
-                     S_028B50_ACCUM_ISOLINE(12) | S_028B50_ACCUM_TRI(30) | S_028B50_ACCUM_QUAD(24) |
-                     S_028B50_DONUT_SPLIT_GFX9(24) | S_028B50_TRAP_SPLIT(6));
       si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,
                      S_028C48_MAX_ALLOC_COUNT(sscreen->info.pbb_max_alloc_count - 1) |
                      S_028C48_MAX_PRIM_PER_BATCH(1023));
