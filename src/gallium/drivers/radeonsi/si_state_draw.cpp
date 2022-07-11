@@ -177,7 +177,7 @@ static bool si_update_shaders(struct si_context *sctx)
 
          if (!si_update_gs_ring_buffers(sctx))
             return false;
-      } else {
+      } else if (GFX_VERSION < GFX11) {
          si_pm4_bind_state(sctx, vs, NULL);
          sctx->prefetch_L2_mask &= ~SI_PREFETCH_VS;
       }
@@ -201,8 +201,10 @@ static bool si_update_shaders(struct si_context *sctx)
       if (!HAS_TESS && !HAS_GS) {
          if (NGG) {
             si_pm4_bind_state(sctx, gs, sctx->shader.vs.current);
-            si_pm4_bind_state(sctx, vs, NULL);
-            sctx->prefetch_L2_mask &= ~SI_PREFETCH_VS;
+            if (GFX_VERSION < GFX11) {
+               si_pm4_bind_state(sctx, vs, NULL);
+               sctx->prefetch_L2_mask &= ~SI_PREFETCH_VS;
+            }
          } else {
             si_pm4_bind_state(sctx, vs, sctx->shader.vs.current);
          }
@@ -322,7 +324,7 @@ static bool si_update_shaders(struct si_context *sctx)
    if ((GFX_VERSION <= GFX8 &&
         (si_pm4_state_enabled_and_changed(sctx, ls) || si_pm4_state_enabled_and_changed(sctx, es))) ||
        si_pm4_state_enabled_and_changed(sctx, hs) || si_pm4_state_enabled_and_changed(sctx, gs) ||
-       si_pm4_state_enabled_and_changed(sctx, vs) || si_pm4_state_enabled_and_changed(sctx, ps)) {
+       (!NGG && si_pm4_state_enabled_and_changed(sctx, vs)) || si_pm4_state_enabled_and_changed(sctx, ps)) {
       unsigned scratch_size = 0;
 
       if (HAS_TESS) {
