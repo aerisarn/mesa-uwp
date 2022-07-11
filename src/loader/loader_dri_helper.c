@@ -28,6 +28,7 @@
 
 #include "drm-uapi/drm_fourcc.h"
 #include "loader_dri_helper.h"
+#include "util/driconf.h"
 
 __DRIimage *loader_dri_create_image(__DRIscreen *screen,
                                     const __DRIimageExtension *image,
@@ -72,12 +73,6 @@ __DRIimage *loader_dri_create_image(__DRIscreen *screen,
    return image->createImage(screen, width, height, dri_format, dri_usage,
                              loaderPrivate);
 }
-
-/* From driconf.h, user exposed so should be stable */
-#define DRI_CONF_VBLANK_NEVER 0
-#define DRI_CONF_VBLANK_DEF_INTERVAL_0 1
-#define DRI_CONF_VBLANK_DEF_INTERVAL_1 2
-#define DRI_CONF_VBLANK_ALWAYS_SYNC 3
 
 static int dri_vblank_mode(__DRIscreen *driScreen, const __DRI2configQueryExtension *config)
 {
