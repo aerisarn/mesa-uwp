@@ -96,8 +96,86 @@ struct drm_amdgpu_memory_info {
    struct drm_amdgpu_heap_info gtt;
 };
 struct drm_amdgpu_info_device {
+   /** PCI Device ID */
+   uint32_t device_id;
+   /** Internal chip revision: A0, A1, etc.) */
+   uint32_t chip_rev;
+   uint32_t external_rev;
+   /** Revision id in PCI Config space */
+   uint32_t pci_rev;
+   uint32_t family;
+   uint32_t num_shader_engines;
+   uint32_t num_shader_arrays_per_engine;
+   /* in KHz */
+   uint32_t gpu_counter_freq;
+   uint64_t max_engine_clock;
+   uint64_t max_memory_clock;
+   /* cu information */
+   uint32_t cu_active_number;
+   /* NOTE: cu_ao_mask is INVALID, DON'T use it */
+   uint32_t cu_ao_mask;
+   uint32_t cu_bitmap[4][4];
+   /** Render backend pipe mask. One render backend is CB+DB. */
+   uint32_t enabled_rb_pipes_mask;
+   uint32_t num_rb_pipes;
+   uint32_t num_hw_gfx_contexts;
+   uint32_t _pad;
+   uint64_t ids_flags;
+   /** Starting virtual address for UMDs. */
+   uint64_t virtual_address_offset;
+   /** The maximum virtual address */
+   uint64_t virtual_address_max;
+   /** Required alignment of virtual addresses. */
+   uint32_t virtual_address_alignment;
+   /** Page table entry - fragment size */
+   uint32_t pte_fragment_size;
+   uint32_t gart_page_size;
+   /** constant engine ram size*/
+   uint32_t ce_ram_size;
+   /** video memory type info*/
+   uint32_t vram_type;
+   /** video memory bit width*/
+   uint32_t vram_bit_width;
+   /* vce harvesting instance */
+   uint32_t vce_harvest_config;
+   /* gfx double offchip LDS buffers */
+   uint32_t gc_double_offchip_lds_buf;
+   /* NGG Primitive Buffer */
+   uint64_t prim_buf_gpu_addr;
+   /* NGG Position Buffer */
+   uint64_t pos_buf_gpu_addr;
+   /* NGG Control Sideband */
+   uint64_t cntl_sb_buf_gpu_addr;
+   /* NGG Parameter Cache */
+   uint64_t param_buf_gpu_addr;
+   uint32_t prim_buf_size;
+   uint32_t pos_buf_size;
+   uint32_t cntl_sb_buf_size;
+   uint32_t param_buf_size;
+   /* wavefront size*/
+   uint32_t wave_front_size;
+   /* shader visible vgprs*/
+   uint32_t num_shader_visible_vgprs;
+   /* CU per shader array*/
+   uint32_t num_cu_per_sh;
+   /* number of tcc blocks*/
    uint32_t num_tcc_blocks;
+   /* gs vgt table depth*/
+   uint32_t gs_vgt_table_depth;
+   /* gs primitive buffer depth*/
+   uint32_t gs_prim_buffer_depth;
+   /* max gs wavefront per vgt*/
+   uint32_t max_gs_waves_per_vgt;
+   uint32_t _pad1;
+   /* always on cu bitmap */
+   uint32_t cu_ao_bitmap[4][4];
+   /** Starting high virtual address for UMDs. */
+   uint64_t high_va_offset;
+   /** The maximum high virtual address */
+   uint64_t high_va_max;
+   /* gfx10 pa_sc_tile_steering_override */
    uint32_t pa_sc_tile_steering_override;
+   /* disabled TCCs */
    uint64_t tcc_disabled_mask;
 };
 struct drm_amdgpu_info_hw_ip {
@@ -324,15 +402,13 @@ static uint64_t fix_vram_size(uint64_t size)
 }
 
 static bool
-has_tmz_support(amdgpu_device_handle dev,
-                struct radeon_info *info,
-                struct amdgpu_gpu_info *amdinfo)
+has_tmz_support(amdgpu_device_handle dev, struct radeon_info *info, uint32_t ids_flags)
 {
    struct amdgpu_bo_alloc_request request = {0};
    int r;
    amdgpu_bo_handle bo;
 
-   if (amdinfo->ids_flags & AMDGPU_IDS_FLAGS_TMZ)
+   if (ids_flags & AMDGPU_IDS_FLAGS_TMZ)
       return true;
 
    /* AMDGPU_IDS_FLAGS_TMZ is supported starting from drm_minor 40 */
@@ -707,18 +783,18 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->all_vram_visible = info->vram_size_kb * 0.9 < info->vram_vis_size_kb;
 
    /* Set chip identification. */
-   info->pci_id = amdinfo->asic_id; /* TODO: is this correct? */
-   info->pci_rev_id = amdinfo->pci_rev_id;
-   info->vce_harvest_config = amdinfo->vce_harvest_config;
+   info->pci_id = device_info.device_id;
+   info->pci_rev_id = device_info.pci_rev;
+   info->vce_harvest_config = device_info.vce_harvest_config;
 
 #define identify_chip2(asic, chipname)                                                             \
-   if (ASICREV_IS(amdinfo->chip_external_rev, asic)) {                                             \
+   if (ASICREV_IS(device_info.external_rev, asic)) {                                             \
       info->family = CHIP_##chipname;                                                              \
       info->name = #chipname;                                                                      \
    }
 #define identify_chip(chipname) identify_chip2(chipname, chipname)
 
-   switch (amdinfo->family_id) {
+   switch (device_info.family) {
    case FAMILY_SI:
       identify_chip(TAHITI);
       identify_chip(PITCAIRN);
@@ -794,7 +870,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    if (!info->name) {
       fprintf(stderr, "amdgpu: unknown (family_id, chip_external_rev): (%u, %u)\n",
-              amdinfo->family_id, amdinfo->chip_external_rev);
+              device_info.family, device_info.external_rev);
       return false;
    }
 
@@ -827,15 +903,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                                util_get_cpu_caps()->family >= CPU_AMD_ZEN3 &&
                                util_get_cpu_caps()->family < CPU_AMD_LAST;
 
-   info->family_id = amdinfo->family_id;
-   info->chip_external_rev = amdinfo->chip_external_rev;
+   info->family_id = device_info.family;
+   info->chip_external_rev = device_info.external_rev;
    info->marketing_name = amdgpu_get_marketing_name(dev);
    info->is_pro_graphics = info->marketing_name && (strstr(info->marketing_name, "Pro") ||
                                                     strstr(info->marketing_name, "PRO") ||
                                                     strstr(info->marketing_name, "Frontier"));
 
    /* Set which chips have dedicated VRAM. */
-   info->has_dedicated_vram = !(amdinfo->ids_flags & AMDGPU_IDS_FLAGS_FUSION);
+   info->has_dedicated_vram = !(device_info.ids_flags & AMDGPU_IDS_FLAGS_FUSION);
 
    /* The kernel can split large buffers in VRAM but not in GTT, so large
     * allocations can fail or cause buffer movement failures in the kernel.
@@ -845,19 +921,19 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    else
       info->max_heap_size_kb = info->gart_size_kb;
 
-   info->vram_type = amdinfo->vram_type;
-   info->memory_bus_width = amdinfo->vram_bit_width;
+   info->vram_type = device_info.vram_type;
+   info->memory_bus_width = device_info.vram_bit_width;
 
    /* Set which chips have uncached device memory. */
    info->has_l2_uncached = info->gfx_level >= GFX9;
 
    /* Set hardware information. */
    /* convert the shader/memory clocks from KHz to MHz */
-   info->max_gpu_freq_mhz = amdinfo->max_engine_clk / 1000;
-   info->memory_freq_mhz_effective = info->memory_freq_mhz = amdinfo->max_memory_clk / 1000;
+   info->max_gpu_freq_mhz = device_info.max_engine_clock / 1000;
+   info->memory_freq_mhz_effective = info->memory_freq_mhz = device_info.max_memory_clock / 1000;
    info->max_tcc_blocks = device_info.num_tcc_blocks;
-   info->max_se = amdinfo->num_shader_engines;
-   info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
+   info->max_se = device_info.num_shader_engines;
+   info->max_sa_per_se = device_info.num_shader_arrays_per_engine;
    info->uvd_fw_version = info->ip[AMD_IP_UVD].num_queues ? uvd_version : 0;
    info->vce_fw_version = info->ip[AMD_IP_VCE].num_queues ? vce_version : 0;
 
@@ -898,18 +974,18 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    info->has_sparse_vm_mappings = info->gfx_level >= GFX7 && info->drm_minor >= 13;
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
-   info->mid_command_buffer_preemption_enabled = amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
-   info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
+   info->mid_command_buffer_preemption_enabled = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
+   info->has_tmz_support = has_tmz_support(dev, info, device_info.ids_flags);
    info->kernel_has_modifiers = has_modifiers(fd);
    info->has_graphics = info->ip[AMD_IP_GFX].num_queues > 0;
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
-   info->max_render_backends = amdinfo->rb_pipes;
+   info->max_render_backends = device_info.num_rb_pipes;
    /* The value returned by the kernel driver was wrong. */
    if (info->family == CHIP_KAVERI)
       info->max_render_backends = 2;
 
-   info->clock_crystal_freq = amdinfo->gpu_counter_freq;
+   info->clock_crystal_freq = device_info.gpu_counter_freq;
    if (!info->clock_crystal_freq) {
       fprintf(stderr, "amdgpu: clock crystal frequency is 0, timestamps will be wrong\n");
       info->clock_crystal_freq = 1;
@@ -971,11 +1047,11 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->mc_arb_ramcfg = amdinfo->mc_arb_ramcfg;
    info->gb_addr_config = amdinfo->gb_addr_cfg;
    if (info->gfx_level >= GFX9) {
-      info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(amdinfo->gb_addr_cfg);
-      info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(amdinfo->gb_addr_cfg);
+      info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(info->gb_addr_config);
+      info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
    } else {
       info->num_tile_pipes = cik_get_num_tile_pipes(amdinfo);
-      info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX6(amdinfo->gb_addr_cfg);
+      info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX6(info->gb_addr_config);
    }
    info->r600_has_virtual_memory = true;
 
@@ -1098,7 +1174,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       for (j = 0; j < info->max_sa_per_se; j++) {
          if (info->gfx_level >= GFX11) {
             assert(info->max_sa_per_se <= 2);
-            info->cu_mask[i][j] = amdinfo->cu_bitmap[i % 4][(i / 4) * 2 + j];
+            info->cu_mask[i][j] = device_info.cu_bitmap[i % 4][(i / 4) * 2 + j];
          } else if (info->family == CHIP_ARCTURUS) {
             /* The CU bitmap in amd gpu info structure is
              * 4x4 size array, and it's usually suitable for Vega
@@ -1112,9 +1188,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
              *    SE7 --> cu_bitmap[3][1]
              */
             assert(info->max_sa_per_se == 1);
-            info->cu_mask[i][0] = amdinfo->cu_bitmap[i % 4][i / 4];
+            info->cu_mask[i][0] = device_info.cu_bitmap[i % 4][i / 4];
          } else {
-            info->cu_mask[i][j] = amdinfo->cu_bitmap[i][j];
+            info->cu_mask[i][j] = device_info.cu_bitmap[i][j];
          }
          info->num_cu += util_bitcount(info->cu_mask[i][j]);
       }
