@@ -193,11 +193,18 @@ if with_gallium_opencl
   r600_c_args += '-DHAVE_OPENCL'
 endif
 
+r600_cpp_args = ['-std=c++17']
+if cpp.has_type('std::pmr::monotonic_buffer_resource',
+                 args:['-std=c++17'],
+                 prefix : '#include <memory_resource>')
+   r600_cpp_args += '-DHAVE_MEMORY_RESOURCE'
+endif
+
 libr600 = static_library(
   'r600',
   [files_r600, egd_tables_h],
   c_args : [r600_c_args, '-Wstrict-overflow=0'],
-  cpp_args: '-std=c++17',
+  cpp_args: r600_cpp_args,
   gnu_symbol_visibility : 'hidden',
   include_directories : [
     inc_src, inc_mapi, inc_mesa, inc_include, inc_compiler, inc_gallium, inc_gallium_aux, inc_amd_common,

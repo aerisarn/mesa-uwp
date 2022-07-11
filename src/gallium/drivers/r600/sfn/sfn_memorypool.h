@@ -31,12 +31,7 @@
 #include <memory>
 #include <stack>
 
-#if __cplusplus >= 21703L
-#include <memory_resource>
 #define R600_POINTER_TYPE(X) X *
-#else
-#error Need C++17
-#endif
 
 namespace r600  {
 

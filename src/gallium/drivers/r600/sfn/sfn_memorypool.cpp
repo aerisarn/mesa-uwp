@@ -29,15 +29,34 @@
 #include <cassert>
 #include <iostream>
 
+#ifdef HAVE_MEMORY_RESOURCE
+#include <memory_resource>
+#else
+#include <list>
+#include <stdlib.h>
+#endif
+
 namespace r600 {
+
+#ifndef HAVE_MEMORY_RESOURCE
+/* Fallback memory resource if the C++17 memory resource is not
+ * avaliable
+*/
+struct MemoryBacking {
+   ~MemoryBacking();
+   void *allocate(size_t size);
+   void *allocate(size_t size, size_t align);
+   std::list<void *> m_data;
+};
+#endif
 
 struct MemoryPoolImpl {
 public:
    MemoryPoolImpl();
    ~MemoryPoolImpl();
-
+#ifdef HAVE_MEMORY_RESOURCE
    using MemoryBacking = ::std::pmr::monotonic_buffer_resource;
-
+#endif
    MemoryBacking *pool;
 };
 
@@ -108,5 +127,28 @@ MemoryPoolImpl::~MemoryPoolImpl()
 {   
    delete pool;
 }
+
+#ifndef HAVE_MEMORY_RESOURCE
+MemoryBacking::~MemoryBacking()
+{
+   for (auto p : m_data)
+      free(p);
+}
+
+void *MemoryBacking::allocate(size_t size)
+{
+   void *retval = malloc(size);
+   m_data.push_back(retval);
+   return retval;
+}
+
+void *MemoryBacking::allocate(size_t size, size_t align)
+{
+   void *retval = aligned_alloc(align, size);
+   m_data.push_back(retval);
+   return retval;
+}
+
+#endif
 
 }

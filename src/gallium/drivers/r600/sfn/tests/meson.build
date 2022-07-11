@@ -1,6 +1,6 @@
 
 r600_test_lib = static_library('r600_test', 'sfn_test_shaders.cpp',
-   cpp_args: '-std=c++17',
+   cpp_args: r600_cpp_args,
    include_directories : [ inc_src, inc_mapi, inc_mesa, inc_include,
                            inc_compiler, inc_gallium, inc_gallium_aux, inc_amd_common,
                            inc_gallium_drivers, ],

@@ -35,6 +35,8 @@
 #include <ostream>
 #include <iostream>
 #include <iomanip>
+#include <limits>
+#include <sstream>
 
 namespace r600 {
 
