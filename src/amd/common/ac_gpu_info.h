@@ -82,6 +82,7 @@ struct radeon_info {
    enum amd_gfx_level gfx_level;
    uint32_t family_id;
    uint32_t chip_external_rev;
+   uint32_t chip_rev; /* 0 = A0, 1 = A1, etc. */
 
    /* Flags. */
    bool is_pro_graphics;

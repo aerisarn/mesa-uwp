@@ -668,8 +668,11 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
 
 unsigned si_get_shader_prefetch_size(struct si_shader *shader)
 {
-   /* TODO: Disable for now. */
-   if (shader->selector->screen->info.gfx_level == GFX11)
+   /* Return 0 for some A0 chips only. Other chips don't need it. */
+   if ((shader->selector->screen->info.family == CHIP_GFX1100 ||
+        shader->selector->screen->info.family == CHIP_GFX1102 ||
+        shader->selector->screen->info.family == CHIP_GFX1103) &&
+       shader->selector->screen->info.chip_rev == 0)
       return 0;
 
    /* inst_pref_size is calculated in cache line size granularity */
