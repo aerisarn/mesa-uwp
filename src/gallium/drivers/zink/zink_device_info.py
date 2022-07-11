@@ -578,6 +578,7 @@ zink_verify_device_extensions(struct zink_screen *screen)
 {
 %for ext in extensions:
 %if registry.in_registry(ext.name):
+<%helpers:guard ext="${ext}">
    if (screen->info.have_${ext.name_with_vendor()}) {
 %for cmd in registry.get_registry_entry(ext.name).device_commands:
 %if cmd.find("win32"):
@@ -595,6 +596,7 @@ zink_verify_device_extensions(struct zink_screen *screen)
 %endif
 %endfor
    }
+</%helpers:guard>
 %endif
 %endfor
 }
