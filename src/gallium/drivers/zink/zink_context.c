@@ -470,7 +470,7 @@ get_imageview_for_binding(struct zink_context *ctx, enum pipe_shader_type stage,
    switch (type) {
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW: {
       struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[stage][idx]);
-      if (!sampler_view->base.texture)
+      if (!sampler_view || !sampler_view->base.texture)
          return NULL;
       /* if this is a non-seamless cube sampler, return the cube array view */
       return (ctx->di.emulate_nonseamless[stage] & ctx->di.cubes[stage] & BITFIELD_BIT(idx)) ?
