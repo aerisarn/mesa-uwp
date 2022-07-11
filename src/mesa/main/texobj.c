@@ -1619,6 +1619,14 @@ bind_texture_object(struct gl_context *ctx, unsigned unit,
     */
    FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT, GL_TEXTURE_BIT);
 
+   /* if the previously bound texture uses GL_CLAMP, flag the driver here
+    * to ensure any emulation is disabled
+    */
+   if (texUnit->CurrentTex[targetIndex] &&
+       texUnit->CurrentTex[targetIndex]->Sampler.glclamp_mask !=
+       texObj->Sampler.glclamp_mask)
+      ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
+
    /* If the refcount on the previously bound texture is decremented to
     * zero, it'll be deleted here.
     */
