@@ -80,14 +80,10 @@ const UINT_32 Gfx10LinearSwModeMask = (1u << ADDR_SW_LINEAR);
 const UINT_32 Gfx10Blk256BSwModeMask = (1u << ADDR_SW_256B_S) |
                                        (1u << ADDR_SW_256B_D);
 
-
-const UINT_32 Gfx10Blk4K_R_XMask    = (1u << ADDR_SW_4KB_R_X);
-
 const UINT_32 Gfx10Blk4KBSwModeMask = (1u << ADDR_SW_4KB_S)   |
                                       (1u << ADDR_SW_4KB_D)   |
                                       (1u << ADDR_SW_4KB_S_X) |
-                                      (1u << ADDR_SW_4KB_D_X) |
-                                      (1u << ADDR_SW_4KB_R_X);
+                                      (1u << ADDR_SW_4KB_D_X);
 
 const UINT_32 Gfx10Blk64KBSwModeMask = (1u << ADDR_SW_64KB_S)   |
                                        (1u << ADDR_SW_64KB_D)   |
@@ -123,7 +119,6 @@ const UINT_32 Gfx10RenderSwModeMask = (1u << ADDR_SW_64KB_R_X) |
 
 const UINT_32 Gfx10XSwModeMask = (1u << ADDR_SW_4KB_S_X)  |
                                  (1u << ADDR_SW_4KB_D_X)  |
-                                 (1u << ADDR_SW_4KB_R_X)  |
                                  (1u << ADDR_SW_64KB_Z_X) |
                                  (1u << ADDR_SW_64KB_S_X) |
                                  (1u << ADDR_SW_64KB_D_X) |
@@ -151,7 +146,6 @@ const UINT_32 Gfx10Rsrc3dSwModeMask = (1u << ADDR_SW_LINEAR)   |
                                       (1u << ADDR_SW_64KB_S)   |
                                       (1u << ADDR_SW_64KB_S_T) |
                                       (1u << ADDR_SW_4KB_S_X)  |
-                                      (1u << ADDR_SW_4KB_R_X)  |
                                       (1u << ADDR_SW_64KB_Z_X) |
                                       (1u << ADDR_SW_64KB_S_X) |
                                       (1u << ADDR_SW_64KB_D_X) |
@@ -173,9 +167,8 @@ const UINT_32 Gfx10Rsrc3dThick4KBSwModeMask = Gfx10Rsrc3dThickSwModeMask & Gfx10
 
 const UINT_32 Gfx10Rsrc3dThick64KBSwModeMask = Gfx10Rsrc3dThickSwModeMask & Gfx10Blk64KBSwModeMask;
 
-const UINT_32 Gfx10MsaaSwModeMask = (Gfx10ZSwModeMask      |
-                                     Gfx10RenderSwModeMask) &
-                                    ~Gfx10Blk4K_R_XMask;
+const UINT_32 Gfx10MsaaSwModeMask = Gfx10ZSwModeMask |
+                                    Gfx10RenderSwModeMask;
 
 const UINT_32 Dcn20NonBpp64SwModeMask = (1u << ADDR_SW_LINEAR)   |
                                         (1u << ADDR_SW_4KB_S)    |
