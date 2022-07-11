@@ -3389,7 +3389,7 @@ static void handle_begin_transform_feedback(struct vk_cmd_queue_entry *cmd,
 
    memset(offsets, 0, sizeof(uint32_t)*4);
 
-   for (unsigned i = 0; i < btf->counter_buffer_count; i++) {
+   for (unsigned i = 0; btf->counter_buffers && i < btf->counter_buffer_count; i++) {
       if (!btf->counter_buffers[i])
          continue;
 
@@ -3409,7 +3409,7 @@ static void handle_end_transform_feedback(struct vk_cmd_queue_entry *cmd,
    struct vk_cmd_end_transform_feedback_ext *etf = &cmd->u.end_transform_feedback_ext;
 
    if (etf->counter_buffer_count) {
-      for (unsigned i = 0; i < etf->counter_buffer_count; i++) {
+      for (unsigned i = 0; etf->counter_buffers && i < etf->counter_buffer_count; i++) {
          if (!etf->counter_buffers[i])
             continue;
 
