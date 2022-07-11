@@ -425,11 +425,6 @@ struct glx_context
    /*@} */
 
    /**
-    * Number of threads we're currently current in.
-    */
-   unsigned long thread_refcount;
-
-   /**
     * GLX_ARB_create_context_no_error setting for this context.
     * This needs to be kept here to enforce shared context rules.
     */
