@@ -410,6 +410,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->instance_info.have_KHR_external_memory_capabilities && (screen->info.have_KHR_external_memory_fd || screen->info.have_KHR_external_memory_win32);
    case PIPE_CAP_FENCE_SIGNAL:
       return screen->info.have_KHR_external_semaphore_fd || screen->info.have_KHR_external_semaphore_win32;
+   case PIPE_CAP_NATIVE_FENCE_FD:
+      return screen->instance_info.have_KHR_external_semaphore_capabilities && screen->info.have_KHR_external_semaphore_fd;
 
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
    case PIPE_CAP_QUERY_MEMORY_INFO:
