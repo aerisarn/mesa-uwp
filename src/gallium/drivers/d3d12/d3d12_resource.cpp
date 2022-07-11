@@ -568,25 +568,31 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
             res->base.b.last_level + 1, templ->last_level + 1);
          goto invalid;
       }
-      if ((footprint->Format != d3d12_get_format(templ->format) &&
-           footprint->Format != d3d12_get_typeless_format(templ->format)) ||
-          (incoming_res_desc.Format != d3d12_get_format((enum pipe_format)handle->format) &&
-           incoming_res_desc.Format != d3d12_get_typeless_format((enum pipe_format)handle->format))) {
-         debug_printf("d3d12: Importing resource with mismatched format: "
-            "plane could be DXGI format %d or %d, but is %d, "
-            "overall could be DXGI format %d or %d, but is %d\n",
-            d3d12_get_format(templ->format),
-            d3d12_get_typeless_format(templ->format),
-            footprint->Format,
-            d3d12_get_format((enum pipe_format)handle->format),
-            d3d12_get_typeless_format((enum pipe_format)handle->format),
-            incoming_res_desc.Format);
-         goto invalid;
+      if (templ->target != PIPE_BUFFER) {
+         if ((footprint->Format != d3d12_get_format(templ->format) &&
+              footprint->Format != d3d12_get_typeless_format(templ->format)) ||
+             (incoming_res_desc.Format != d3d12_get_format((enum pipe_format)handle->format) &&
+              incoming_res_desc.Format != d3d12_get_typeless_format((enum pipe_format)handle->format))) {
+            debug_printf("d3d12: Importing resource with mismatched format: "
+               "plane could be DXGI format %d or %d, but is %d, "
+               "overall could be DXGI format %d or %d, but is %d\n",
+               d3d12_get_format(templ->format),
+               d3d12_get_typeless_format(templ->format),
+               footprint->Format,
+               d3d12_get_format((enum pipe_format)handle->format),
+               d3d12_get_typeless_format((enum pipe_format)handle->format),
+               incoming_res_desc.Format);
+            goto invalid;
+         }
       }
+      /* In an ideal world we'd be able to validate this, but gallium's use of bind
+       * flags during resource creation is pretty bad: some bind flags are always set
+       * (like PIPE_BIND_RENDER_TARGET) while others are never set (PIPE_BIND_SHADER_BUFFER)
+       * 
       if (templ->bind & ~res->base.b.bind) {
          debug_printf("d3d12: Imported resource doesn't have necessary bind flags\n");
          goto invalid;
-      }
+      } */
 
       res->base.b.format = templ->format;
       res->overall_format = (enum pipe_format)handle->format;
