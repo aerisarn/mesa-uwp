@@ -998,6 +998,113 @@ static bool merge_movs(
 	return true;
 }
 
+static int have_shared_source(struct rc_instruction * inst1, struct rc_instruction * inst2)
+{
+	int shared_src = -1;
+	const struct rc_opcode_info * opcode1 = rc_get_opcode_info(inst1->U.I.Opcode);
+	const struct rc_opcode_info * opcode2 = rc_get_opcode_info(inst2->U.I.Opcode);
+	for (unsigned i = 0; i < opcode1->NumSrcRegs; i++) {
+		for (unsigned j = 0; j < opcode2->NumSrcRegs; j++) {
+			if (inst1->U.I.SrcReg[i].File == inst2->U.I.SrcReg[j].File &&
+				inst1->U.I.SrcReg[i].Index == inst2->U.I.SrcReg[j].Index &&
+				inst1->U.I.SrcReg[i].RelAddr == inst2->U.I.SrcReg[j].RelAddr)
+				shared_src = i;
+		}
+	}
+	return shared_src;
+}
+
+/**
+ * This function will try to merge MOV and ADD/MUL instructions with the same
+ * destination, making use of the constant swizzles.
+ *
+ * For example:
+ *   MOV temp[0].x const[0].x
+ *   MUL temp[0].yz const[1].yz const[2].yz
+ *
+ * becomes
+ *   MAD temp[0].xyz const[1].0yz const[2].0yz const[0].x00
+ */
+static int merge_mov_add_mul(
+	struct radeon_compiler * c,
+	struct rc_instruction * inst1,
+	struct rc_instruction * inst2)
+{
+	struct rc_instruction * inst, * mov;
+	if (inst1->U.I.Opcode == RC_OPCODE_MOV) {
+		mov = inst1;
+		inst = inst2;
+	} else {
+		mov = inst2;
+		inst = inst1;
+	}
+
+	const bool is_mul = inst->U.I.Opcode == RC_OPCODE_MUL;
+	int shared_index = have_shared_source(inst, mov);
+	unsigned wmask = mov->U.I.DstReg.WriteMask | inst->U.I.DstReg.WriteMask;
+
+	/* If there is a shared source, just merge the swizzles and be done with it. */
+	if (shared_index != -1) {
+		struct rc_src_register shared_src = inst->U.I.SrcReg[shared_index];
+		struct rc_src_register other_src = inst->U.I.SrcReg[1 - shared_index];
+
+		shared_src.Negate = merge_negates(mov->U.I.SrcReg[0], shared_src);
+		shared_src.Swizzle = merge_swizzles(shared_src.Swizzle,
+					mov->U.I.SrcReg[0].Swizzle);
+		other_src.Negate = clean_negate(other_src);
+		unsigned int swz = is_mul ? RC_SWIZZLE_ONE : RC_SWIZZLE_ZERO;
+		other_src.Swizzle = fill_swizzle(other_src.Swizzle, wmask, swz);
+
+		if (!c->SwizzleCaps->IsNative(RC_OPCODE_ADD, shared_src) ||
+			!c->SwizzleCaps->IsNative(RC_OPCODE_ADD, other_src))
+			return 0;
+
+		inst2->U.I.Opcode = inst->U.I.Opcode;
+		inst2->U.I.SrcReg[0] = shared_src;
+		inst2->U.I.SrcReg[1] = other_src;
+
+	/* TODO: we can do a bit better in the special case when one of the sources is none.
+	 * Convert to MAD otherwise.
+	 */
+	} else {
+		struct rc_src_register src0, src1, src2;
+		if (is_mul) {
+			src2 = mov->U.I.SrcReg[0];
+			src0 = inst->U.I.SrcReg[0];
+			src1 = inst->U.I.SrcReg[1];
+		} else {
+			src0 = mov->U.I.SrcReg[0];
+			src1 = inst->U.I.SrcReg[0];
+			src2 = inst->U.I.SrcReg[1];
+		}
+		/* The following login expects that the unused channels have empty negate bits. */
+		src0.Negate = clean_negate(src0);
+		src1.Negate = clean_negate(src1);
+		src2.Negate = clean_negate(src2);
+
+		src0.Swizzle = fill_swizzle(src0.Swizzle,
+					wmask, RC_SWIZZLE_ONE);
+		src1.Swizzle = fill_swizzle(src1.Swizzle,
+					wmask, is_mul ? RC_SWIZZLE_ZERO : RC_SWIZZLE_ONE);
+		src2.Swizzle = fill_swizzle(src2.Swizzle,
+					wmask, RC_SWIZZLE_ZERO);
+		if (!c->SwizzleCaps->IsNative(RC_OPCODE_MAD, src0) ||
+			!c->SwizzleCaps->IsNative(RC_OPCODE_MAD, src1) ||
+			!c->SwizzleCaps->IsNative(RC_OPCODE_MAD, src2))
+			return 0;
+
+		inst2->U.I.Opcode = RC_OPCODE_MAD;
+		inst2->U.I.SrcReg[0] = src0;
+		inst2->U.I.SrcReg[1] = src1;
+		inst2->U.I.SrcReg[2] = src2;
+	}
+	inst2->U.I.DstReg.WriteMask = wmask;
+	/* finally delete the original instruction */
+	rc_remove_instruction(inst1);
+
+	return 1;
+}
+
 static bool inst_combination(
 	struct rc_instruction * inst1,
 	struct rc_instruction * inst2,
@@ -1071,6 +1178,12 @@ static void merge_channels(struct radeon_compiler * c, struct rc_instruction * i
 				if (merge_movs(c, inst, cur))
 					return;
 			}
+
+			if (inst_combination(cur, inst, RC_OPCODE_MOV, RC_OPCODE_ADD) ||
+				inst_combination(cur, inst, RC_OPCODE_MOV, RC_OPCODE_MUL)) {
+				if (merge_mov_add_mul(c, inst, cur))
+					return;
+			}
 		}
 	}
 }
@@ -1102,7 +1215,9 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 		while(inst != &c->Program.Instructions) {
 			struct rc_instruction * cur = inst;
 			inst = inst->Next;
-			if (cur->U.I.Opcode == RC_OPCODE_MOV)
+			if (cur->U.I.Opcode == RC_OPCODE_MOV ||
+				cur->U.I.Opcode == RC_OPCODE_ADD ||
+				cur->U.I.Opcode == RC_OPCODE_MUL)
 				merge_channels(c, cur);
 		}
 	}
