@@ -2221,11 +2221,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
 
    screen->have_triangle_fans = true;
-#if defined(VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME)
-   if (screen->info.have_EXTX_portability_subset) {
-      screen->have_triangle_fans = (VK_TRUE == screen->info.portability_subset_extx_feats.triangleFans);
+#if defined(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+   if (screen->info.have_KHR_portability_subset) {
+      screen->have_triangle_fans = (VK_TRUE == screen->info.portability_subset_feats.triangleFans);
    }
-#endif // VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
+#endif // VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
 
    check_base_requirements(screen);
    util_live_shader_cache_init(&screen->shaders, zink_create_gfx_shader_state, zink_delete_shader_state);
