@@ -153,9 +153,9 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    /* Get DRM version. */
    version = drmGetVersion(ws->fd);
    if (version->version_major != 2 ||
-       version->version_minor < 45) {
+       version->version_minor < 50) {
       fprintf(stderr, "%s: DRM version is %d.%d.%d but this driver is "
-                      "only compatible with 2.45.0 (kernel 4.7) or later.\n",
+                      "only compatible with 2.50.0 (kernel 4.12) or later.\n",
               __FUNCTION__,
               version->version_major,
               version->version_minor,
@@ -358,11 +358,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    ws->info.gart_size_kb = DIV_ROUND_UP(gem_info.gart_size, 1024);
    ws->info.vram_size_kb = DIV_ROUND_UP(gem_info.vram_size, 1024);
    ws->info.vram_vis_size_kb = DIV_ROUND_UP(gem_info.vram_visible, 1024);
-   /* Older versions of the kernel driver reported incorrect values, and
-    * didn't support more than 256MB of visible VRAM anyway
-    */
-   if (ws->info.drm_minor < 49)
-      ws->info.vram_vis_size_kb = MIN2(ws->info.vram_vis_size_kb, 256*1024);
 
    /* Radeon allocates all buffers contiguously, which makes large allocations
     * unlikely to succeed. */
@@ -570,7 +565,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                                      ws->accel_working2 < 3);
    ws->info.tcc_cache_line_size = 64; /* TC L2 line size on GCN */
    ws->info.ib_alignment = 4096;
-   ws->info.si_TA_CS_BC_BASE_ADDR_allowed = ws->info.drm_minor >= 48;
    ws->info.has_bo_metadata = false;
    ws->info.has_eqaa_surface_allocator = false;
    ws->info.has_sparse_vm_mappings = false;

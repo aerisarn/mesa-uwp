@@ -438,8 +438,7 @@ void r600_emit_pfp_sync_me(struct r600_context *rctx)
 {
 	struct radeon_cmdbuf *cs = &rctx->b.gfx.cs;
 
-	if (rctx->b.gfx_level >= EVERGREEN &&
-	    rctx->b.screen->info.drm_minor >= 46) {
+	if (rctx->b.gfx_level >= EVERGREEN) {
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
 	} else {

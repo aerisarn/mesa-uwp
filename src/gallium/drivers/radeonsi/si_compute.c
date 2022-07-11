@@ -394,12 +394,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
        * (number of compute units) * 4 * (waves per simd) - 1
        */
       radeon_set_sh_reg(R_00B82C_COMPUTE_MAX_WAVE_ID, 0x190 /* Default value */);
-
-      if (sctx->screen->info.si_TA_CS_BC_BASE_ADDR_allowed) {
-         uint64_t bc_va = sctx->border_color_buffer->gpu_address;
-
-         radeon_set_config_reg(R_00950C_TA_CS_BC_BASE_ADDR, bc_va >> 8);
-      }
+      radeon_set_config_reg(R_00950C_TA_CS_BC_BASE_ADDR, sctx->border_color_buffer->gpu_address >> 8);
    }
 
    if (sctx->gfx_level >= GFX7) {
