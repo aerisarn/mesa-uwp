@@ -3060,8 +3060,9 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
        */
       if (ctx->sinfo)
          emit_so_outputs(ctx, ctx->sinfo);
-      spirv_builder_emit_vertex(&ctx->builder, nir_intrinsic_stream_id(intr),
-                                ctx->nir->info.stage == MESA_SHADER_GEOMETRY && util_bitcount(ctx->nir->info.gs.active_stream_mask) > 1);
+      if (ctx->nir->info.gs.vertices_out) //skip vertex emission if !vertices_out
+         spirv_builder_emit_vertex(&ctx->builder, nir_intrinsic_stream_id(intr),
+                                   ctx->nir->info.stage == MESA_SHADER_GEOMETRY && util_bitcount(ctx->nir->info.gs.active_stream_mask) > 1);
       break;
 
    case nir_intrinsic_set_vertex_and_primitive_count:
@@ -4336,7 +4337,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
                                            s->info.gs.invocations);
       spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
                                            SpvExecutionModeOutputVertices,
-                                           s->info.gs.vertices_out);
+                                           MAX2(s->info.gs.vertices_out, 1));
       break;
    case MESA_SHADER_COMPUTE:
       if (s->info.shared_size)
