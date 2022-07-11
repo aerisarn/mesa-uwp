@@ -593,6 +593,7 @@ static int check_and_set_bank_swizzle(const struct r600_bytecode *bc,
 	int i, r = 0, forced = 1;
 	boolean scalar_only = bc->gfx_level == CAYMAN ? false : true;
 	int max_slots = bc->gfx_level == CAYMAN ? 4 : 5;
+	int max_checks = max_slots * 1000;
 
 	for (i = 0; i < max_slots; i++) {
 		if (slots[i]) {
@@ -618,8 +619,8 @@ static int check_and_set_bank_swizzle(const struct r600_bytecode *bc,
 			bank_swizzle[i] = slots[i]->bank_swizzle;
 
 	bank_swizzle[4] = SQ_ALU_SCL_210;
-	while(bank_swizzle[4] <= SQ_ALU_SCL_221) {
 
+	while(bank_swizzle[4] <= SQ_ALU_SCL_221 && max_checks--) {
 		init_bank_swizzle(&bs);
 		if (scalar_only == false) {
 			for (i = 0; i < 4; i++) {
