@@ -614,9 +614,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    assert(info->drm_major == 3);
    info->is_amdgpu = true;
 
-   if (info->drm_minor < 2) {
+   if (info->drm_minor < 15) {
       fprintf(stderr, "amdgpu: DRM version is %u.%u.%u, but this driver is "
-                      "only compatible with 3.2.0 (kernel 4.7) or later.\n",
+                      "only compatible with 3.15.0 (kernel 4.12) or later.\n",
               info->drm_major, info->drm_minor, info->drm_patchlevel);
       return false;
    }
@@ -727,50 +727,18 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       return false;
    }
 
-   if (info->drm_minor >= 9) {
-      struct drm_amdgpu_memory_info meminfo = {0};
+   struct drm_amdgpu_memory_info meminfo = {0};
 
-      r = amdgpu_query_info(dev, AMDGPU_INFO_MEMORY, sizeof(meminfo), &meminfo);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_info(memory) failed.\n");
-         return false;
-      }
-
-      /* Note: usable_heap_size values can be random and can't be relied on. */
-      info->gart_size_kb = DIV_ROUND_UP(meminfo.gtt.total_heap_size, 1024);
-      info->vram_size_kb = DIV_ROUND_UP(fix_vram_size(meminfo.vram.total_heap_size), 1024);
-      info->vram_vis_size_kb = DIV_ROUND_UP(meminfo.cpu_accessible_vram.total_heap_size, 1024);
-   } else {
-      /* This is a deprecated interface, which reports usable sizes
-       * (total minus pinned), but the pinned size computation is
-       * buggy, so the values returned from these functions can be
-       * random.
-       */
-      struct amdgpu_heap_info vram, vram_vis, gtt;
-
-      r = amdgpu_query_heap_info(dev, AMDGPU_GEM_DOMAIN_VRAM, 0, &vram);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_heap_info(vram) failed.\n");
-         return false;
-      }
-
-      r = amdgpu_query_heap_info(dev, AMDGPU_GEM_DOMAIN_VRAM, AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED,
-                                 &vram_vis);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_heap_info(vram_vis) failed.\n");
-         return false;
-      }
-
-      r = amdgpu_query_heap_info(dev, AMDGPU_GEM_DOMAIN_GTT, 0, &gtt);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_heap_info(gtt) failed.\n");
-         return false;
-      }
-
-      info->gart_size_kb = DIV_ROUND_UP(gtt.heap_size, 1024);
-      info->vram_size_kb = DIV_ROUND_UP(fix_vram_size(vram.heap_size), 1024);
-      info->vram_vis_size_kb = DIV_ROUND_UP(vram_vis.heap_size, 1024);
+   r = amdgpu_query_info(dev, AMDGPU_INFO_MEMORY, sizeof(meminfo), &meminfo);
+   if (r) {
+      fprintf(stderr, "amdgpu: amdgpu_query_info(memory) failed.\n");
+      return false;
    }
+
+   /* Note: usable_heap_size values can be random and can't be relied on. */
+   info->gart_size_kb = DIV_ROUND_UP(meminfo.gtt.total_heap_size, 1024);
+   info->vram_size_kb = DIV_ROUND_UP(fix_vram_size(meminfo.vram.total_heap_size), 1024);
+   info->vram_vis_size_kb = DIV_ROUND_UP(meminfo.cpu_accessible_vram.total_heap_size, 1024);
 
    if (info->drm_minor >= 41) {
       amdgpu_query_video_caps_info(dev, AMDGPU_INFO_VIDEO_CAPS_DECODE,
@@ -969,7 +937,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    /* Disable sparse mappings on GFX6 due to VM faults in CP DMA. Enable them once
     * these faults are mitigated in software.
     */
-   info->has_sparse_vm_mappings = info->gfx_level >= GFX7 && info->drm_minor >= 13;
+   info->has_sparse_vm_mappings = info->gfx_level >= GFX7;
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
    info->mid_command_buffer_preemption_enabled = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, device_info.ids_flags);

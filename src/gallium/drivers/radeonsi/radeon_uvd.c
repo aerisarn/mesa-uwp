@@ -1317,7 +1317,7 @@ struct pipe_video_codec *si_common_uvd_create_decoder(struct pipe_context *conte
       si_vid_clear_buffer(context, &dec->ctx);
    }
 
-   if (sctx->family >= CHIP_POLARIS10 && sctx->screen->info.drm_minor >= 3) {
+   if (sctx->family >= CHIP_POLARIS10) {
       if (!si_vid_create_buffer(dec->screen, &dec->sessionctx, UVD_SESSION_CONTEXT_SIZE,
                                 PIPE_USAGE_DEFAULT)) {
          RVID_ERR("Can't allocated session ctx.\n");

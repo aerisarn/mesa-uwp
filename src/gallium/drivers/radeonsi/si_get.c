@@ -997,7 +997,7 @@ static void si_query_memory_info(struct pipe_screen *screen, struct pipe_memory_
 
    info->device_memory_evicted = ws->query_value(ws, RADEON_NUM_BYTES_MOVED) / 1024;
 
-   if (sscreen->info.is_amdgpu && sscreen->info.drm_minor >= 4)
+   if (sscreen->info.is_amdgpu)
       info->nr_device_memory_evictions = ws->query_value(ws, RADEON_NUM_EVICTIONS);
    else
       /* Just return the number of evicted 64KB pages. */
