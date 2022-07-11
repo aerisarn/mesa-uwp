@@ -334,8 +334,7 @@ set_tex_parameteri(struct gl_context *ctx,
          return GL_FALSE;
       if (validate_texture_wrap_mode(ctx, texObj->Target, params[0])) {
          flush(ctx);
-         if (is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapS) != is_wrap_gl_clamp(params[0]))
-            ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
+         update_sampler_gl_clamp(ctx, &texObj->Sampler, is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapS), is_wrap_gl_clamp(params[0]), WRAP_S);
          texObj->Sampler.Attrib.WrapS = params[0];
          texObj->Sampler.Attrib.state.wrap_s = wrap_to_gallium(params[0]);
          _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
@@ -351,8 +350,7 @@ set_tex_parameteri(struct gl_context *ctx,
          return GL_FALSE;
       if (validate_texture_wrap_mode(ctx, texObj->Target, params[0])) {
          flush(ctx);
-         if (is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapT) != is_wrap_gl_clamp(params[0]))
-            ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
+         update_sampler_gl_clamp(ctx, &texObj->Sampler, is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapT), is_wrap_gl_clamp(params[0]), WRAP_T);
          texObj->Sampler.Attrib.WrapT = params[0];
          texObj->Sampler.Attrib.state.wrap_t = wrap_to_gallium(params[0]);
          _mesa_lower_gl_clamp(ctx, &texObj->Sampler);
@@ -368,8 +366,7 @@ set_tex_parameteri(struct gl_context *ctx,
          return GL_FALSE;
       if (validate_texture_wrap_mode(ctx, texObj->Target, params[0])) {
          flush(ctx);
-         if (is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapR) != is_wrap_gl_clamp(params[0]))
-            ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
+         update_sampler_gl_clamp(ctx, &texObj->Sampler, is_wrap_gl_clamp(texObj->Sampler.Attrib.WrapR), is_wrap_gl_clamp(params[0]), WRAP_R);
          texObj->Sampler.Attrib.WrapR = params[0];
          texObj->Sampler.Attrib.state.wrap_r = wrap_to_gallium(params[0]);
          _mesa_lower_gl_clamp(ctx, &texObj->Sampler);

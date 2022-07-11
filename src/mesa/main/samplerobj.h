@@ -189,6 +189,17 @@ is_wrap_gl_clamp(GLint param)
    return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
 }
 
+static inline void
+update_sampler_gl_clamp(struct gl_context *ctx, struct gl_sampler_object *samp, bool cur_state, bool new_state, gl_sampler_wrap wrap)
+{
+   if (cur_state == new_state)
+      return;
+   ctx->NewDriverState |= ctx->DriverFlags.NewSamplersWithClamp;
+   if (new_state)
+      samp->glclamp_mask |= wrap;
+   else
+      samp->glclamp_mask &= ~wrap;
+}
 #ifdef __cplusplus
 }
 #endif

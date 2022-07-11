@@ -876,6 +876,14 @@ struct gl_texture_object_attrib
    GLubyte NumLevels;          /**< GL_ARB_texture_view */
 };
 
+
+typedef enum
+{
+   WRAP_S = (1<<0),
+   WRAP_T = (1<<1),
+   WRAP_R = (1<<2),
+} gl_sampler_wrap;
+
 /**
  * Sampler object state.  These objects are new with GL_ARB_sampler_objects
  * and OpenGL 3.3.  Legacy texture objects also contain a sampler object.
@@ -887,6 +895,8 @@ struct gl_sampler_object
    GLint RefCount;
 
    struct gl_sampler_attrib Attrib;  /**< State saved by glPushAttrib */
+
+   uint8_t glclamp_mask; /**< mask of GL_CLAMP wraps active */
 
    /** GL_ARB_bindless_texture */
    bool HandleAllocated;
