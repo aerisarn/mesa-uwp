@@ -2428,6 +2428,17 @@ vn_GetPhysicalDeviceSparseImageFormatProperties2(
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
 
+   /* TODO allow sparse resource along with sync feedback
+    *
+    * If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given
+    * arguments, pPropertyCount will be set to zero upon return, and no data
+    * will be written to pProperties.
+    */
+   if (!VN_PERF(NO_FENCE_FEEDBACK)) {
+      *pPropertyCount = 0;
+      return;
+   }
+
    /* TODO per-device cache */
    vn_call_vkGetPhysicalDeviceSparseImageFormatProperties2(
       physical_dev->instance, physicalDevice, pFormatInfo, pPropertyCount,
