@@ -785,6 +785,101 @@ vn_encode_VkClearColorValue(struct vn_cs_encoder *enc, const VkClearColorValue *
     vn_encode_VkClearColorValue_tag(enc, val, 2); /* union with default tag */
 }
 
+/* struct VkMutableDescriptorTypeListVALVE */
+
+static inline size_t
+vn_sizeof_VkMutableDescriptorTypeListVALVE(const VkMutableDescriptorTypeListVALVE *val)
+{
+    size_t size = 0;
+    size += vn_sizeof_uint32_t(&val->descriptorTypeCount);
+    if (val->pDescriptorTypes) {
+        size += vn_sizeof_array_size(val->descriptorTypeCount);
+        size += vn_sizeof_VkDescriptorType_array(val->pDescriptorTypes, val->descriptorTypeCount);
+    } else {
+        size += vn_sizeof_array_size(0);
+    }
+    return size;
+}
+
+static inline void
+vn_encode_VkMutableDescriptorTypeListVALVE(struct vn_cs_encoder *enc, const VkMutableDescriptorTypeListVALVE *val)
+{
+    vn_encode_uint32_t(enc, &val->descriptorTypeCount);
+    if (val->pDescriptorTypes) {
+        vn_encode_array_size(enc, val->descriptorTypeCount);
+        vn_encode_VkDescriptorType_array(enc, val->pDescriptorTypes, val->descriptorTypeCount);
+    } else {
+        vn_encode_array_size(enc, 0);
+    }
+}
+
+/* struct VkMutableDescriptorTypeCreateInfoVALVE chain */
+
+static inline size_t
+vn_sizeof_VkMutableDescriptorTypeCreateInfoVALVE_pnext(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkMutableDescriptorTypeCreateInfoVALVE_self(const VkMutableDescriptorTypeCreateInfoVALVE *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    size += vn_sizeof_uint32_t(&val->mutableDescriptorTypeListCount);
+    if (val->pMutableDescriptorTypeLists) {
+        size += vn_sizeof_array_size(val->mutableDescriptorTypeListCount);
+        for (uint32_t i = 0; i < val->mutableDescriptorTypeListCount; i++)
+            size += vn_sizeof_VkMutableDescriptorTypeListVALVE(&val->pMutableDescriptorTypeLists[i]);
+    } else {
+        size += vn_sizeof_array_size(0);
+    }
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkMutableDescriptorTypeCreateInfoVALVE(const VkMutableDescriptorTypeCreateInfoVALVE *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkMutableDescriptorTypeCreateInfoVALVE_pnext(val->pNext);
+    size += vn_sizeof_VkMutableDescriptorTypeCreateInfoVALVE_self(val);
+
+    return size;
+}
+
+static inline void
+vn_encode_VkMutableDescriptorTypeCreateInfoVALVE_pnext(struct vn_cs_encoder *enc, const void *val)
+{
+    /* no known/supported struct */
+    vn_encode_simple_pointer(enc, NULL);
+}
+
+static inline void
+vn_encode_VkMutableDescriptorTypeCreateInfoVALVE_self(struct vn_cs_encoder *enc, const VkMutableDescriptorTypeCreateInfoVALVE *val)
+{
+    /* skip val->{sType,pNext} */
+    vn_encode_uint32_t(enc, &val->mutableDescriptorTypeListCount);
+    if (val->pMutableDescriptorTypeLists) {
+        vn_encode_array_size(enc, val->mutableDescriptorTypeListCount);
+        for (uint32_t i = 0; i < val->mutableDescriptorTypeListCount; i++)
+            vn_encode_VkMutableDescriptorTypeListVALVE(enc, &val->pMutableDescriptorTypeLists[i]);
+    } else {
+        vn_encode_array_size(enc, 0);
+    }
+}
+
+static inline void
+vn_encode_VkMutableDescriptorTypeCreateInfoVALVE(struct vn_cs_encoder *enc, const VkMutableDescriptorTypeCreateInfoVALVE *val)
+{
+    assert(val->sType == VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+    vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE });
+    vn_encode_VkMutableDescriptorTypeCreateInfoVALVE_pnext(enc, val->pNext);
+    vn_encode_VkMutableDescriptorTypeCreateInfoVALVE_self(enc, val);
+}
+
 /* struct VkMemoryDedicatedRequirements chain */
 
 static inline size_t

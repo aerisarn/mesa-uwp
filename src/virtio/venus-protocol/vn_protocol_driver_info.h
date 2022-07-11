@@ -19,8 +19,8 @@ struct vn_info_extension {
 };
 
 /* sorted by extension names for bsearch */
-static const uint32_t _vn_info_extension_count = 90;
-static const struct vn_info_extension _vn_info_extensions[90] = {
+static const uint32_t _vn_info_extension_count = 91;
+static const struct vn_info_extension _vn_info_extensions[91] = {
    { "VK_EXT_4444_formats", 341, 1 },
    { "VK_EXT_calibrated_timestamps", 185, 2 },
    { "VK_EXT_command_serialization", 384, 0 },
@@ -111,6 +111,7 @@ static const struct vn_info_extension _vn_info_extensions[90] = {
    { "VK_KHR_vulkan_memory_model", 212, 3 },
    { "VK_KHR_zero_initialize_workgroup_memory", 326, 1 },
    { "VK_MESA_venus_protocol", 385, 100000 },
+   { "VK_VALVE_mutable_descriptor_type", 352, 1 },
 };
 
 static inline uint32_t
