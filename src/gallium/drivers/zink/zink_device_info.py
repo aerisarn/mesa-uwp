@@ -192,7 +192,6 @@ EXTENSIONS = [
         alias="stencil_export"),
     Extension("VK_KHR_portability_subset",
         alias="portability_subset",
-        properties=True,
         features=True,
         guard=True),
     Extension("VK_KHR_timeline_semaphore", alias="timeline", features=True),
