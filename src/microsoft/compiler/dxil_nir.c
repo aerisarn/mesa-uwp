@@ -2033,6 +2033,36 @@ dxil_nir_fix_io_uint_type(nir_shader *s, uint64_t in_mask, uint64_t out_mask)
    return progress;
 }
 
+struct remove_after_discard_state {
+   struct nir_block *active_block;
+};
+
+static bool
+remove_after_discard(struct nir_builder *builder, nir_instr *instr,
+                      void *cb_data)
+{
+   struct remove_after_discard_state *state = cb_data;
+   if (instr->block == state->active_block) {
+      nir_instr_remove_v(instr);
+      return true;
+   }
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+   if (intr->intrinsic != nir_intrinsic_discard &&
+       intr->intrinsic != nir_intrinsic_terminate &&
+       intr->intrinsic != nir_intrinsic_discard_if &&
+       intr->intrinsic != nir_intrinsic_terminate_if)
+      return false;
+
+   state->active_block = instr->block;
+
+   return false;
+}
+
 static bool
 lower_kill(struct nir_builder *builder, nir_instr *instr, void *_cb_data)
 {
@@ -2069,7 +2099,10 @@ dxil_nir_lower_discard_and_terminate(nir_shader *s)
 
    // This pass only works if all functions have been inlined
    assert(exec_list_length(&s->functions) == 1);
-
+   struct remove_after_discard_state state;
+   state.active_block = NULL;
+   nir_shader_instructions_pass(s, remove_after_discard, nir_metadata_none,
+                                &state);
    return nir_shader_instructions_pass(s, lower_kill, nir_metadata_none,
                                        NULL);
 }
