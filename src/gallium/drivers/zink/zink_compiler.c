@@ -2157,7 +2157,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       const struct glsl_type *interface_type = var->interface_type ? glsl_without_array(var->interface_type) : NULL;
       if (interface_type) {
          unsigned block_size = glsl_get_explicit_size(interface_type, true);
-         block_size /= sizeof(float) * 4;
+         block_size = DIV_ROUND_UP(block_size, sizeof(float) * 4);
          size = MAX2(size, block_size);
       }
       if (var->data.mode == nir_var_mem_ubo) {
