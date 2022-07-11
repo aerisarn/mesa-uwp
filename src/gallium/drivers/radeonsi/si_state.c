@@ -5706,7 +5706,14 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    if (sctx->gfx_level >= GFX8) {
       unsigned vgt_tess_distribution;
 
-      if (sctx->gfx_level >= GFX9) {
+      if (sctx->gfx_level >= GFX11) {
+         /* ACCUM fields changed their meaning. */
+         vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(255) |
+                                 S_028B50_ACCUM_TRI(255) |
+                                 S_028B50_ACCUM_QUAD(255) |
+                                 S_028B50_DONUT_SPLIT_GFX9(24) |
+                                 S_028B50_TRAP_SPLIT(6);
+      } else if (sctx->gfx_level >= GFX9) {
          vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(12) |
                                  S_028B50_ACCUM_TRI(30) |
                                  S_028B50_ACCUM_QUAD(24) |
