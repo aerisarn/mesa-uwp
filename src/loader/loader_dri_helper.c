@@ -72,3 +72,56 @@ __DRIimage *loader_dri_create_image(__DRIscreen *screen,
    return image->createImage(screen, width, height, dri_format, dri_usage,
                              loaderPrivate);
 }
+
+/* From driconf.h, user exposed so should be stable */
+#define DRI_CONF_VBLANK_NEVER 0
+#define DRI_CONF_VBLANK_DEF_INTERVAL_0 1
+#define DRI_CONF_VBLANK_DEF_INTERVAL_1 2
+#define DRI_CONF_VBLANK_ALWAYS_SYNC 3
+
+static int dri_vblank_mode(__DRIscreen *driScreen, const __DRI2configQueryExtension *config)
+{
+   GLint vblank_mode = DRI_CONF_VBLANK_DEF_INTERVAL_1;
+
+   if (config)
+      config->configQueryi(driScreen, "vblank_mode", &vblank_mode);
+
+   return vblank_mode;
+}
+
+int dri_get_initial_swap_interval(__DRIscreen *driScreen,
+                                  const __DRI2configQueryExtension *config)
+{
+   int vblank_mode = dri_vblank_mode(driScreen, config);
+
+   switch (vblank_mode) {
+   case DRI_CONF_VBLANK_NEVER:
+   case DRI_CONF_VBLANK_DEF_INTERVAL_0:
+      return 0;
+   case DRI_CONF_VBLANK_DEF_INTERVAL_1:
+   case DRI_CONF_VBLANK_ALWAYS_SYNC:
+   default:
+      return 1;
+   }
+}
+
+bool dri_valid_swap_interval(__DRIscreen *driScreen,
+                             const __DRI2configQueryExtension *config, int interval)
+{
+   int vblank_mode = dri_vblank_mode(driScreen, config);
+
+   switch (vblank_mode) {
+   case DRI_CONF_VBLANK_NEVER:
+      if (interval != 0)
+         return false;
+      break;
+   case DRI_CONF_VBLANK_ALWAYS_SYNC:
+      if (interval <= 0)
+         return false;
+      break;
+   default:
+      break;
+   }
+
+   return true;
+}

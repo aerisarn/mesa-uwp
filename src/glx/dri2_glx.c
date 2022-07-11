@@ -49,12 +49,7 @@
 #include "dri_common.h"
 #include "dri2_priv.h"
 #include "loader.h"
-
-/* From driconf.h, user exposed so should be stable */
-#define DRI_CONF_VBLANK_NEVER 0
-#define DRI_CONF_VBLANK_DEF_INTERVAL_0 1
-#define DRI_CONF_VBLANK_DEF_INTERVAL_1 2
-#define DRI_CONF_VBLANK_ALWAYS_SYNC 3
+#include "loader_dri_helper.h"
 
 #undef DRI2_MINOR
 #define DRI2_MINOR 1
@@ -302,7 +297,6 @@ dri2CreateDrawable(struct glx_screen *base, XID xDrawable,
    __GLXDRIconfigPrivate *config = (__GLXDRIconfigPrivate *) config_base;
    struct glx_display *dpyPriv;
    struct dri2_display *pdp;
-   GLint vblank_mode = DRI_CONF_VBLANK_DEF_INTERVAL_1;
 
    dpyPriv = __glXInitialize(psc->base.dpy);
    if (dpyPriv == NULL)
@@ -317,24 +311,8 @@ dri2CreateDrawable(struct glx_screen *base, XID xDrawable,
    pdraw->base.drawable = drawable;
    pdraw->base.psc = &psc->base;
    pdraw->bufferCount = 0;
-   pdraw->swap_interval = 1; /* default may be overridden below */
+   pdraw->swap_interval = dri_get_initial_swap_interval(psc->driScreen, psc->config);
    pdraw->have_back = 0;
-
-   if (psc->config)
-      psc->config->configQueryi(psc->driScreen,
-				"vblank_mode", &vblank_mode);
-
-   switch (vblank_mode) {
-   case DRI_CONF_VBLANK_NEVER:
-   case DRI_CONF_VBLANK_DEF_INTERVAL_0:
-      pdraw->swap_interval = 0;
-      break;
-   case DRI_CONF_VBLANK_DEF_INTERVAL_1:
-   case DRI_CONF_VBLANK_ALWAYS_SYNC:
-   default:
-      pdraw->swap_interval = 1;
-      break;
-   }
 
    DRI2CreateDrawable(psc->base.dpy, xDrawable);
    pdp = (struct dri2_display *)dpyPriv->dri2Display;
@@ -832,25 +810,10 @@ dri2SetSwapInterval(__GLXDRIdrawable *pdraw, int interval)
 {
    xcb_connection_t *c = XGetXCBConnection(pdraw->psc->dpy);
    struct dri2_drawable *priv =  (struct dri2_drawable *) pdraw;
-   GLint vblank_mode = DRI_CONF_VBLANK_DEF_INTERVAL_1;
    struct dri2_screen *psc = (struct dri2_screen *) priv->base.psc;
 
-   if (psc->config)
-      psc->config->configQueryi(psc->driScreen,
-				"vblank_mode", &vblank_mode);
-
-   switch (vblank_mode) {
-   case DRI_CONF_VBLANK_NEVER:
-      if (interval != 0)
-         return GLX_BAD_VALUE;
-      break;
-   case DRI_CONF_VBLANK_ALWAYS_SYNC:
-      if (interval <= 0)
-	 return GLX_BAD_VALUE;
-      break;
-   default:
-      break;
-   }
+   if (!dri_valid_swap_interval(psc->driScreen, psc->config, interval))
+      return GLX_BAD_VALUE;
 
    xcb_dri2_swap_interval(c, priv->base.xDrawable, interval);
    priv->swap_interval = interval;
