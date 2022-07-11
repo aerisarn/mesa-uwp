@@ -186,7 +186,6 @@ struct radeon_info {
    bool si_TA_CS_BC_BASE_ADDR_allowed;
    bool has_bo_metadata;
    bool has_eqaa_surface_allocator;
-   bool has_unaligned_shader_loads;
    bool has_sparse_vm_mappings;
    bool has_scheduled_fence_dependency;
    bool has_stable_pstate;

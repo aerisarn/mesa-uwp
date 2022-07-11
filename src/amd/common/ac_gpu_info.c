@@ -967,8 +967,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->si_TA_CS_BC_BASE_ADDR_allowed = true;
    info->has_bo_metadata = true;
    info->has_eqaa_surface_allocator = info->gfx_level < GFX11;
-   /* GFX6 doesn't support unaligned loads. */
-   info->has_unaligned_shader_loads = info->gfx_level != GFX6;
    /* Disable sparse mappings on GFX6 due to VM faults in CP DMA. Enable them once
     * these faults are mitigated in software.
     */
@@ -1570,7 +1568,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    si_TA_CS_BC_BASE_ADDR_allowed = %u\n", info->si_TA_CS_BC_BASE_ADDR_allowed);
    fprintf(f, "    has_bo_metadata = %u\n", info->has_bo_metadata);
    fprintf(f, "    has_eqaa_surface_allocator = %u\n", info->has_eqaa_surface_allocator);
-   fprintf(f, "    has_unaligned_shader_loads = %u\n", info->has_unaligned_shader_loads);
    fprintf(f, "    has_sparse_vm_mappings = %u\n", info->has_sparse_vm_mappings);
    fprintf(f, "    has_stable_pstate = %u\n", info->has_stable_pstate);
    fprintf(f, "    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);

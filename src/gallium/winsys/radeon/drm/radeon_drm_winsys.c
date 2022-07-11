@@ -573,9 +573,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
    ws->info.si_TA_CS_BC_BASE_ADDR_allowed = ws->info.drm_minor >= 48;
    ws->info.has_bo_metadata = false;
    ws->info.has_eqaa_surface_allocator = false;
-   /* GFX6 doesn't support unaligned loads. */
-   ws->info.has_unaligned_shader_loads = ws->info.gfx_level == GFX7 &&
-                                         ws->info.drm_minor >= 50;
    ws->info.has_sparse_vm_mappings = false;
    ws->info.max_alignment = 1024*1024;
    ws->info.has_graphics = true;
