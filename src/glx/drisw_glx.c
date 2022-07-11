@@ -897,7 +897,7 @@ kopperSetSwapInterval(__GLXDRIdrawable *pdraw, int interval)
    psc->kopper->setSwapInterval(pdp->driDrawable, interval);
    pdp->swapInterval = interval;
 
-   return 1;
+   return 0;
 }
 
 static int
