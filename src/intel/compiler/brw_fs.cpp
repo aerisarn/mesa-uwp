@@ -7278,10 +7278,12 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
    prog_data->barycentric_interp_modes =
       brw_compute_barycentric_interp_modes(devinfo, shader);
 
+   /* You can't be coarse and per-sample */
+   assert(!key->coarse_pixel || !key->persample_interp);
    prog_data->per_coarse_pixel_dispatch =
       key->coarse_pixel &&
+      !shader->info.fs.uses_sample_shading &&
       !prog_data->uses_omask &&
-      !prog_data->persample_dispatch &&
       !prog_data->uses_sample_mask &&
       (prog_data->computed_depth_mode == BRW_PSCDEPTH_OFF) &&
       !prog_data->computed_stencil;

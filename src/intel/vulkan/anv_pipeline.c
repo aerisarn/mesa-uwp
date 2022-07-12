@@ -501,6 +501,7 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
    }
 
    key->coarse_pixel =
+      !key->persample_interp &&
       device->vk.enabled_extensions.KHR_fragment_shading_rate &&
       pipeline_has_coarse_pixel(pipeline, ms_info, fsr_info);
 }
@@ -1539,24 +1540,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          goto fail;
       }
 
-      /* This is rather ugly.
-       *
-       * Any variable annotated as interpolated by sample essentially disables
-       * coarse pixel shading. Unfortunately the CTS tests exercising this set
-       * the varying value in the previous stage using a constant. Our NIR
-       * infrastructure is clever enough to lookup variables across stages and
-       * constant fold, removing the variable. So in order to comply with CTS
-       * we have check variables here.
-       */
-      if (s == MESA_SHADER_FRAGMENT) {
-         nir_foreach_variable_in_list(var, &stages[s].nir->variables) {
-            if (var->data.sample) {
-               stages[s].key.wm.coarse_pixel = false;
-               break;
-            }
-         }
-      }
-
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
 
@@ -1653,6 +1636,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    if (devinfo->has_coarse_pixel_primitive_and_cb &&
        stages[MESA_SHADER_FRAGMENT].info &&
        stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
+       !stages[MESA_SHADER_FRAGMENT].nir->info.fs.uses_sample_shading &&
        stages[MESA_SHADER_MESH].info == NULL) {
       struct anv_pipeline_stage *last_psr = NULL;
 
