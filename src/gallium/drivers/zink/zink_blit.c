@@ -44,8 +44,11 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    struct zink_resource *dst = zink_resource(info->dst.resource);
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   /* aliased/swizzled formats need u_blitter */
    if (src->format != zink_get_format(screen, info->src.format) ||
        dst->format != zink_get_format(screen, info->dst.format))
+      return false;
+   if (src->format != dst->format)
       return false;
 
    apply_dst_clears(ctx, info, false);
