@@ -2057,13 +2057,10 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       return handled;
 
-   /* FIXME: for some reason passing region->bufferOffset here for the
-    * offset field doesn't work, making the following CTS tests fail:
-    *
-    * dEQP-VK.api.copy_and_blit.core.buffer_to_image.*buffer_offset*
-    *
-    * So instead we pass 0 here and we pass the offset in texels as a push
-    * constant to the shader, which seems to work correctly.
+   /* We can't pass region->bufferOffset here for the offset field because
+    * the texture base pointer in the texture shader state must be a 64-byte
+    * aligned value. Instead, we use 0 here and we pass the offset in texels
+    * as a push constant to the shader.
     */
    VkDevice _device = v3dv_device_to_handle(cmd_buffer->device);
    VkBufferViewCreateInfo buffer_view_info = {
