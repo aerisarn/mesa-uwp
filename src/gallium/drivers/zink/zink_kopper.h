@@ -33,6 +33,7 @@ struct kopper_swapchain_image {
    bool init;
    bool acquired;
    bool dt_has_data;
+   int age;
    VkImage image;
    VkSemaphore acquire;
 };
@@ -137,4 +138,6 @@ bool
 zink_kopper_check(struct pipe_resource *pres);
 void
 zink_kopper_set_swap_interval(struct pipe_screen *pscreen, struct pipe_resource *pres, int interval);
+int
+zink_kopper_query_buffer_age(struct pipe_context *pctx, struct pipe_resource *pres);
 #endif

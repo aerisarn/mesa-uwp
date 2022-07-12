@@ -528,6 +528,20 @@ drisw_release_tex_image(__GLXDRIdrawable *base, int buffer)
    }
 }
 
+static int
+kopper_get_buffer_age(__GLXDRIdrawable *pdraw)
+{
+   struct drisw_drawable *pdp = (struct drisw_drawable *) pdraw;
+
+   if (pdp) {
+      struct drisw_screen *psc = (struct drisw_screen *) pdraw->psc;
+
+      if (psc->kopper)
+         return psc->kopper->queryBufferAge(pdp->driDrawable);
+   }
+   return 0;
+}
+
 static const struct glx_context_vtable drisw_context_vtable = {
    .destroy             = drisw_destroy_context,
    .bind                = drisw_bind_context,
@@ -854,6 +868,7 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
    }
 
    if (psc->kopper) {
+       __glXEnableDirectExtension(&psc->base, "GLX_EXT_buffer_age");
        __glXEnableDirectExtension(&psc->base, "GLX_EXT_swap_control");
        __glXEnableDirectExtension(&psc->base, "GLX_SGI_swap_control");
        __glXEnableDirectExtension(&psc->base, "GLX_MESA_swap_control");
@@ -1014,6 +1029,7 @@ driswCreateScreenDriver(int screen, struct glx_display *priv,
       psp->copySubBuffer = driswCopySubBuffer;
 
    if (psc->kopper) {
+      psp->getBufferAge = kopper_get_buffer_age;
       psp->setSwapInterval = kopperSetSwapInterval;
       psp->getSwapInterval = kopperGetSwapInterval;
       psp->maxSwapInterval = 1;

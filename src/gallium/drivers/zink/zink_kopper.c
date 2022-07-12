@@ -736,6 +736,22 @@ zink_kopper_present_queue(struct zink_screen *screen, struct zink_resource *res)
    cpi->info.pImageIndices = &cpi->image;
    cpi->info.pResults = NULL;
    res->obj->present = VK_NULL_HANDLE;
+   /* Ex GLX_EXT_buffer_age:
+    *
+    *  Buffers' ages are initialized to 0 at buffer creation time.
+    *  When a frame boundary is reached, the following occurs before
+    *  any exchanging or copying of color buffers:
+    *
+    *  * The current back buffer's age is set to 1.
+    *  * Any other color buffers' ages are incremented by 1 if
+    *    their age was previously greater than 0.
+    */
+   for (int i = 0; i < cdt->swapchain->num_images; i++) {
+       if (i == res->obj->dt_idx)
+           cdt->swapchain->images[i].age = 1;
+       else if (cdt->swapchain->images[i].age > 0)
+           cdt->swapchain->images[i].age += 1;
+   }
    if (util_queue_is_initialized(&screen->flush_queue)) {
       p_atomic_inc(&cpi->swapchain->async_presents);
       util_queue_add_job(&screen->flush_queue, cpi, &cdt->present_fence,
@@ -903,4 +919,24 @@ zink_kopper_set_swap_interval(struct pipe_screen *pscreen, struct pipe_resource 
 
    if (old_present_mode != cdt->present_mode)
       update_swapchain(screen, cdt, cdt->caps.currentExtent.width, cdt->caps.currentExtent.height);
+}
+
+int
+zink_kopper_query_buffer_age(struct pipe_context *pctx, struct pipe_resource *pres)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *res = zink_resource(pres);
+   assert(res->obj->dt);
+   struct kopper_displaytarget *cdt = res->obj->dt;
+
+   ctx = zink_tc_context_unwrap(pctx);
+
+   /* Returning 0 here isn't ideal (yes, the buffer is undefined, because you
+    * lost it) but threading the error up is more hassle than it's worth.
+    */
+   if (!zink_kopper_acquired(res->obj->dt, res->obj->dt_idx))
+      if (!zink_kopper_acquire(ctx, res, UINT64_MAX))
+         return 0;
+
+   return cdt->swapchain->images[res->obj->dt_idx].age;
 }

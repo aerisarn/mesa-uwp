@@ -992,11 +992,24 @@ kopperSetSwapInterval(__DRIdrawable *dPriv, int interval)
    cdraw->info.initial_swap_interval = interval;
 }
 
+static int
+kopperQueryBufferAge(__DRIdrawable *dPriv)
+{
+   struct dri_context *ctx = dri_get_current(dPriv->driScreenPriv);
+   struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct pipe_resource *ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT] ?
+                                drawable->textures[ST_ATTACHMENT_BACK_LEFT] :
+                                drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
+
+   return zink_kopper_query_buffer_age(ctx->st->pipe, ptex);
+}
+
 const __DRIkopperExtension driKopperExtension = {
    .base = { __DRI_KOPPER, 1 },
    .createNewDrawable          = kopperCreateNewDrawable,
    .swapBuffers                = kopperSwapBuffers,
    .setSwapInterval            = kopperSetSwapInterval,
+   .queryBufferAge             = kopperQueryBufferAge,
 };
 
 const struct __DriverAPIRec galliumvk_driver_api = {
