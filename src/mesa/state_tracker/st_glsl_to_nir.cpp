@@ -290,6 +290,40 @@ st_can_remove_varying_before_linking(nir_variable *var, void *data)
       return true;
 }
 
+static void
+zero_array_members(nir_builder *b, nir_variable *var)
+{
+   nir_deref_instr *deref = nir_build_deref_var(b, var);
+   nir_ssa_def *zero = nir_imm_zero(b, 4, 32);
+   for (int i = 0; i < glsl_array_size(var->type); i++) {
+      nir_deref_instr *arr = nir_build_deref_array_imm(b, deref, i);
+      uint32_t mask = BITFIELD_MASK(glsl_get_vector_elements(arr->type));
+      nir_store_deref(b, arr, nir_channels(b, zero, mask), mask);
+   }
+}
+
+/* GL has an implicit default of 0 for unwritten gl_ClipDistance members;
+ * to achieve this, write 0 to all members at the start of the shader and
+ * let them be naturally overwritten later
+ */
+static bool
+st_nir_zero_initialize_clip_distance(nir_shader *nir)
+{
+   nir_variable *clip_dist0 = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_CLIP_DIST0);
+   nir_variable *clip_dist1 = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_CLIP_DIST1);
+   if (!clip_dist0 && !clip_dist1)
+      return false;
+   nir_builder b;
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_builder_init(&b, impl);
+   b.cursor = nir_before_block(nir_start_block(impl));
+   if (clip_dist0)
+      zero_array_members(&b, clip_dist0);
+   if (clip_dist1)
+      zero_array_members(&b, clip_dist1);
+   return true;
+}
+
 /* First third of converting glsl_to_nir.. this leaves things in a pre-
  * nir_lower_io state, so that shader variants can more easily insert/
  * replace variables, etc.
@@ -338,6 +372,10 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
        st_can_add_pointsize_to_program(st, prog)) {
       NIR_PASS_V(nir, st_nir_add_point_size);
    }
+
+   if (stage < MESA_SHADER_FRAGMENT && stage != MESA_SHADER_TESS_CTRL &&
+       (nir->info.outputs_written & (VARYING_BIT_CLIP_DIST0 | VARYING_BIT_CLIP_DIST1)))
+      NIR_PASS_V(nir, st_nir_zero_initialize_clip_distance);
 
    struct nir_remove_dead_variables_options opts;
    bool is_sso = nir->info.separate_shader;
