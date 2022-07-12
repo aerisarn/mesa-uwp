@@ -2319,6 +2319,21 @@ zink_batch_no_rp(struct zink_context *ctx)
    assert(!ctx->batch.in_rp);
 }
 
+ALWAYS_INLINE static void
+update_res_sampler_layouts(struct zink_context *ctx, struct zink_resource *res)
+{
+   unsigned find = res->sampler_bind_count[0];
+   for (unsigned i = 0; find && i < PIPE_SHADER_COMPUTE; i++) {
+      u_foreach_bit(slot, res->sampler_binds[i]) {
+         /* only set layout, skip rest of update */
+         if (ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i][slot] == res)
+            ctx->di.textures[i][slot].imageLayout = zink_descriptor_util_image_layout_eval(ctx, res, false);
+         find--;
+         if (!find) break;
+      }
+   }
+}
+
 VkImageView
 zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned i)
 {
@@ -2354,18 +2369,8 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
       layout = zink_render_pass_attachment_get_barrier_info(&rt, i < ctx->fb_state.nr_cbufs, &pipeline, &access);
    }
    zink_resource_image_barrier(ctx, res, layout, access, pipeline);
-   if (i == ctx->fb_state.nr_cbufs && res->sampler_bind_count[0]) {
-      unsigned find = res->sampler_bind_count[0];
-      for (unsigned i = 0; find && i < PIPE_SHADER_COMPUTE; i++) {
-         u_foreach_bit(slot, res->sampler_binds[i]) {
-            /* only set layout, skip rest of update */
-            if (ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i][slot] == res)
-               ctx->di.textures[i][slot].imageLayout = zink_descriptor_util_image_layout_eval(ctx, res, false);
-            find--;
-            if (!find) break;
-         }
-      }
-   }
+   if (i == ctx->fb_state.nr_cbufs && res->sampler_bind_count[0])
+      update_res_sampler_layouts(ctx, res);
    return surf->image_view;
 }
 
