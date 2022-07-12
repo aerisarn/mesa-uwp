@@ -2797,8 +2797,6 @@ uint32_t r600_translate_texformat(struct pipe_screen *screen,
 		format = PIPE_FORMAT_A4R4_UNORM;
 
 	desc = util_format_description(format);
-	if (!desc)
-		goto out_unknown;
 
 	/* Depth and stencil swizzling is handled separately. */
 	if (desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS) {
@@ -3164,8 +3162,6 @@ uint32_t r600_translate_colorformat(enum amd_gfx_level chip, enum pipe_format fo
 	const struct util_format_description *desc = util_format_description(format);
 	int channel = util_format_get_first_non_void_channel(format);
 	bool is_float;
-	if (!desc)
-		return ~0U;
 
 #define HAS_SIZE(x,y,z,w) \
 	(desc->channel[0].size == (x) && desc->channel[1].size == (y) && \

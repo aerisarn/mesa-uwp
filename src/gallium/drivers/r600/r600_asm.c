@@ -2780,11 +2780,6 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 				      &format, &num_format, &format_comp, &endian);
 
 		desc = util_format_description(elements[i].src_format);
-		if (!desc) {
-			r600_bytecode_clear(&bc);
-			R600_ERR("unknown format %d\n", elements[i].src_format);
-			return NULL;
-		}
 
 		if (elements[i].src_offset > 65535) {
 			r600_bytecode_clear(&bc);
