@@ -201,7 +201,7 @@ radv_sqtt_reloc_graphics_shaders(struct radv_device *device,
    }
 
    if (device->shader_use_invisible_vram) {
-      if (!radv_shader_dma_submit(device, submission, NULL))
+      if (!radv_shader_dma_submit(device, submission, &pipeline->base.shader_upload_seq))
          return VK_ERROR_UNKNOWN;
    }
 

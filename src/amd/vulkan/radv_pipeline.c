@@ -4998,6 +4998,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
 
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (pipeline->base.shaders[i]) {
+         pipeline->base.shader_upload_seq = MAX2(pipeline->base.shader_upload_seq,
+                                                 pipeline->base.shaders[i]->upload_seq);
+      }
+   }
+
    if (extra) {
       radv_pipeline_init_extra(pipeline, extra, &blend, &state, &vgt_gs_out_prim_type);
    }
@@ -5263,6 +5270,8 @@ radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
 
    pipeline->base.push_constant_size = layout->push_constant_size;
    pipeline->base.dynamic_offset_count = layout->dynamic_offset_count;
+
+   pipeline->base.shader_upload_seq = pipeline->base.shaders[MESA_SHADER_COMPUTE]->upload_seq;
 
    if (device->physical_device->rad_info.has_cs_regalloc_hang_bug) {
       struct radv_shader *compute_shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];

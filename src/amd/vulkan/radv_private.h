@@ -839,6 +839,8 @@ struct radv_queue {
    struct radv_queue_state state;
    struct radv_queue_state *ace_internal_state;
    struct radeon_winsys_bo *gang_sem_bo;
+
+   uint64_t last_shader_upload_seq;
 };
 
 int radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
@@ -1771,6 +1773,8 @@ struct radv_cmd_buffer {
       struct radv_video_session *vid;
       struct radv_video_session_params *params;
    } video;
+
+   uint64_t shader_upload_seq;
 };
 
 extern const struct vk_command_buffer_ops radv_cmd_buffer_ops;
@@ -2153,6 +2157,8 @@ struct radv_pipeline {
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
    struct radv_shader *gs_copy_shader;
+
+   uint64_t shader_upload_seq;
 
    struct radeon_cmdbuf cs;
    uint32_t ctx_cs_hash;

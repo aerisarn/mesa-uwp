@@ -492,6 +492,8 @@ struct radv_shader {
    union radv_shader_arena_block *alloc;
    uint64_t va;
 
+   uint64_t upload_seq;
+
    struct ac_shader_config config;
    uint32_t code_size;
    uint32_t exec_size;
@@ -521,6 +523,7 @@ struct radv_shader_part {
    uint8_t num_preserved_sgprs;
    bool nontrivial_divisors;
    uint32_t spi_shader_col_format;
+   uint64_t upload_seq;
 
    struct radv_shader_part_binary *binary;
 

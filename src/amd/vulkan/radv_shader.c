@@ -2474,7 +2474,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
          return NULL;
       }
 
-      if (!radv_shader_dma_submit(device, submission, NULL))
+      if (!radv_shader_dma_submit(device, submission, &shader->upload_seq))
          return NULL;
    } else {
       void *dest_ptr = shader->alloc->arena->ptr + shader->alloc->offset;
@@ -2535,7 +2535,7 @@ radv_shader_part_binary_upload(struct radv_device *device, struct radv_shader_pa
       ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
    if (device->shader_use_invisible_vram) {
-      if (!radv_shader_dma_submit(device, submission, NULL))
+      if (!radv_shader_dma_submit(device, submission, &shader_part->upload_seq))
          return false;
    }
 
@@ -3011,6 +3011,11 @@ radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 {
    assert(shader->ref_count == 0);
 
+   if (device->shader_use_invisible_vram) {
+      /* Wait for any pending upload to complete, or we'll be writing into freed shader memory. */
+      radv_shader_wait_for_upload(device, shader->upload_seq);
+   }
+
    radv_free_shader_memory(device, shader->alloc);
 
    free(shader->code);
@@ -3026,6 +3031,11 @@ void
 radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part)
 {
    assert(shader_part->ref_count == 0);
+
+   if (device->shader_use_invisible_vram) {
+      /* Wait for any pending upload to complete, or we'll be writing into freed shader memory. */
+      radv_shader_wait_for_upload(device, shader_part->upload_seq);
+   }
 
    if (shader_part->alloc)
       radv_free_shader_memory(device, shader_part->alloc);

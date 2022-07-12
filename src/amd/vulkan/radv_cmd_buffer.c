@@ -420,6 +420,7 @@ radv_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    cmd_buffer->ace_internal.sem.gfx2ace_value = 0;
    cmd_buffer->ace_internal.sem.emitted_gfx2ace_value = 0;
    cmd_buffer->ace_internal.sem.va = 0;
+   cmd_buffer->shader_upload_seq = 0;
 
    if (cmd_buffer->upload.upload_bo)
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, cmd_buffer->upload.upload_bo);
@@ -1847,6 +1848,8 @@ radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
    assert(loc->num_sgprs == 1);
    radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
                             ps_epilog->va, false);
+
+   cmd_buffer->shader_upload_seq = MAX2(cmd_buffer->shader_upload_seq, ps_epilog->upload_seq);
 
    cmd_buffer->state.emitted_ps_epilog = ps_epilog;
 }
@@ -3904,6 +3907,8 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
    }
    emit_prolog_regs(cmd_buffer, vs_shader, prolog, pipeline_is_dirty);
    emit_prolog_inputs(cmd_buffer, vs_shader, nontrivial_divisors, pipeline_is_dirty);
+
+   cmd_buffer->shader_upload_seq = MAX2(cmd_buffer->shader_upload_seq, prolog->upload_seq);
 
    cmd_buffer->state.emitted_vs_prolog = prolog;
 
@@ -6374,6 +6379,10 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       assert(!"invalid bind point");
       break;
    }
+
+   if (cmd_buffer->device->shader_use_invisible_vram)
+      cmd_buffer->shader_upload_seq =
+         MAX2(cmd_buffer->shader_upload_seq, pipeline->shader_upload_seq);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -7152,6 +7161,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          primary->gds_needed = true;
       if (secondary->gds_oa_needed)
          primary->gds_oa_needed = true;
+
+      primary->shader_upload_seq = MAX2(primary->shader_upload_seq, secondary->shader_upload_seq);
 
       if (!secondary->state.render.has_image_views && primary->state.render.active &&
           (primary->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER)) {
