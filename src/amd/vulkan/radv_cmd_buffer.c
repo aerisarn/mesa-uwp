@@ -1037,18 +1037,19 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_inline_push_consts(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline,
-                             gl_shader_stage stage, int idx, uint32_t *values)
+radv_emit_inline_push_consts(struct radv_device *device, struct radeon_cmdbuf *cs,
+                             struct radv_pipeline *pipeline, gl_shader_stage stage, int idx,
+                             uint32_t *values)
 {
    struct radv_userdata_info *loc = radv_lookup_user_sgpr(pipeline, stage, idx);
    uint32_t base_reg = pipeline->user_data_0[stage];
    if (loc->sgpr_idx == -1)
       return;
 
-   radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 2 + loc->num_sgprs);
+   radeon_check_space(device->ws, cs, 2 + loc->num_sgprs);
 
-   radeon_set_sh_reg_seq(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, loc->num_sgprs);
-   radeon_emit_array(cmd_buffer->cs, values, loc->num_sgprs);
+   radeon_set_sh_reg_seq(cs, base_reg + loc->sgpr_idx * 4, loc->num_sgprs);
+   radeon_emit_array(cs, values, loc->num_sgprs);
 }
 
 static void
@@ -3354,6 +3355,8 @@ static void
 radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
                      struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
 {
+   struct radv_device *device = cmd_buffer->device;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
    struct radv_descriptor_state *descriptors_state =
       radv_get_descriptors_state(cmd_buffer, bind_point);
    struct radv_shader *shader, *prev_shader;
@@ -3398,7 +3401,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       uint8_t base = ffs(mask) - 1;
       if (mask == u_bit_consecutive64(base, util_last_bit64(mask) - base)) {
          /* consecutive inline push constants */
-         radv_emit_inline_push_consts(cmd_buffer, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
+         radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
                                       (uint32_t *)cmd_buffer->push_constants + base);
       } else {
          /* sparse inline push constants */
@@ -3406,7 +3409,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
          unsigned num_consts = 0;
          u_foreach_bit64 (idx, mask)
             consts[num_consts++] = ((uint32_t *)cmd_buffer->push_constants)[idx];
-         radv_emit_inline_push_consts(cmd_buffer, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
+         radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
                                       consts);
       }
    }
@@ -3426,9 +3429,6 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 
       ASSERTED unsigned cdw_max =
          radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MESA_VULKAN_SHADER_STAGES * 4);
-
-      struct radeon_cmdbuf *cs = cmd_buffer->cs;
-      struct radv_device *device = cmd_buffer->device;
 
       prev_shader = NULL;
       radv_foreach_stage(stage, internal_stages)
