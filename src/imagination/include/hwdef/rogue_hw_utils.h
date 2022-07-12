@@ -36,7 +36,7 @@
 #define __pvr_address_type pvr_dev_addr_t
 #define __pvr_get_address(pvr_dev_addr) (pvr_dev_addr).addr
 /* clang-format off */
-#define __pvr_make_address(addr_u64) (pvr_dev_addr_t){ .addr = addr_u64 }
+#define __pvr_make_address(addr_u64) PVR_DEV_ADDR(addr_u64)
 /* clang-format on */
 
 #include "csbgen/rogue_cdm.h"

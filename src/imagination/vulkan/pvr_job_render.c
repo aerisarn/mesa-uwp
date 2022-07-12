@@ -440,8 +440,8 @@ static VkResult pvr_rt_vheap_rtc_data_init(struct pvr_device *device,
    rt_dataset->vheap_dev_addr = rt_dataset->vheap_rtc_bo->vma->dev_addr;
 
    if (rtc_size > 0) {
-      rt_dataset->rtc_dev_addr.addr =
-         rt_dataset->vheap_dev_addr.addr + vheap_size;
+      rt_dataset->rtc_dev_addr =
+         PVR_DEV_ADDR_OFFSET(rt_dataset->vheap_dev_addr, vheap_size);
    } else {
       rt_dataset->rtc_dev_addr = PVR_DEV_ADDR_INVALID;
    }
@@ -645,19 +645,19 @@ pvr_rt_mta_mlist_data_init(struct pvr_device *device,
    for (uint32_t i = 0; i < num_rt_datas; i++) {
       if (mta_size != 0) {
          rt_dataset->rt_datas[i].mta_dev_addr = dev_addr;
-         dev_addr.addr += mta_size;
+         dev_addr = PVR_DEV_ADDR_OFFSET(dev_addr, mta_size);
       } else {
          rt_dataset->rt_datas[i].mta_dev_addr = PVR_DEV_ADDR_INVALID;
       }
    }
 
-   dev_addr.addr =
-      rt_dataset->mta_mlist_bo->vma->dev_addr.addr + rt_datas_mta_size;
+   dev_addr = PVR_DEV_ADDR_OFFSET(rt_dataset->mta_mlist_bo->vma->dev_addr,
+                                  rt_datas_mta_size);
 
    for (uint32_t i = 0; i < num_rt_datas; i++) {
       if (mlist_size != 0) {
          rt_dataset->rt_datas[i].mlist_dev_addr = dev_addr;
-         dev_addr.addr += mlist_size;
+         dev_addr = PVR_DEV_ADDR_OFFSET(dev_addr, mlist_size);
       } else {
          rt_dataset->rt_datas[i].mlist_dev_addr = PVR_DEV_ADDR_INVALID;
       }
@@ -707,7 +707,7 @@ pvr_rt_rgn_headers_data_init(struct pvr_device *device,
 
    for (uint32_t i = 0; i < num_rt_datas; i++) {
       rt_dataset->rt_datas[i].rgn_headers_dev_addr = dev_addr;
-      dev_addr.addr += rgn_headers_size;
+      dev_addr = PVR_DEV_ADDR_OFFSET(dev_addr, rgn_headers_size);
    }
 
    return VK_SUCCESS;
@@ -1456,7 +1456,7 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
    pvr_csb_pack (&state->regs.event_pixel_pds_data,
                  CR_EVENT_PIXEL_PDS_DATA,
                  value) {
-      value.addr.addr = job->pds_pixel_event_data_offset;
+      value.addr = PVR_DEV_ADDR(job->pds_pixel_event_data_offset);
    }
 
    STATIC_ASSERT(ARRAY_SIZE(state->regs.pbe_word) ==

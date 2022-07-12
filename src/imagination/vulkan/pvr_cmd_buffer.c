@@ -661,12 +661,13 @@ static void pvr_pds_bgnd_pack_state(
    uint64_t pds_reg_values[static const ROGUE_NUM_CR_PDS_BGRND_WORDS])
 {
    pvr_csb_pack (&pds_reg_values[0], CR_PDS_BGRND0_BASE, value) {
-      value.shader_addr.addr = load_op->pds_frag_prog.data_offset;
-      value.texunicode_addr.addr = load_op->pds_tex_state_prog.code_offset;
+      value.shader_addr = PVR_DEV_ADDR(load_op->pds_frag_prog.data_offset);
+      value.texunicode_addr =
+         PVR_DEV_ADDR(load_op->pds_tex_state_prog.code_offset);
    }
 
    pvr_csb_pack (&pds_reg_values[1], CR_PDS_BGRND1_BASE, value) {
-      value.texturedata_addr.addr = load_op_program->data_offset;
+      value.texturedata_addr = PVR_DEV_ADDR(load_op_program->data_offset);
    }
 
    pvr_csb_pack (&pds_reg_values[2], CR_PDS_BGRND3_SIZEINFO, value) {
@@ -758,9 +759,9 @@ static void pvr_setup_pbe_state(
    /* FIXME: Should we have an inline function to return the address of a mip
     * level?
     */
-   surface_params.addr.addr =
-      image->vma->dev_addr.addr +
-      image->mip_levels[iview->vk.base_mip_level].offset;
+   surface_params.addr =
+      PVR_DEV_ADDR_OFFSET(image->vma->dev_addr,
+                          image->mip_levels[iview->vk.base_mip_level].offset);
 
    surface_params.mem_layout = image->memlayout;
    surface_params.stride = pvr_stride_from_pitch(level_pitch, iview->vk.format);
@@ -1243,7 +1244,7 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
 
    /* Compute kernel 1. */
    pvr_csb_emit (csb, CDMCTRL_KERNEL1, kernel1) {
-      kernel1.data_addr.addr = info->pds_data_offset;
+      kernel1.data_addr = PVR_DEV_ADDR(info->pds_data_offset);
       kernel1.sd_type = info->sd_type;
 
       if (!info->is_fence)
@@ -1252,7 +1253,7 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
 
    /* Compute kernel 2. */
    pvr_csb_emit (csb, CDMCTRL_KERNEL2, kernel2) {
-      kernel2.code_addr.addr = info->pds_code_offset;
+      kernel2.code_addr = PVR_DEV_ADDR(info->pds_code_offset);
    }
 
    if (info->indirect_buffer_addr.addr) {
@@ -1313,7 +1314,7 @@ pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_csb *csb = &sub_cmd->control_stream;
 
    struct pvr_compute_kernel_info info = {
-      .indirect_buffer_addr.addr = 0ULL,
+      .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
       .global_offsets_present = false,
       .usc_common_size = 0U,
       .usc_unified_size = 0U,
@@ -2569,10 +2570,11 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
       case PVR_PDS_CONST_MAP_ENTRY_TYPE_DOUTU_ADDRESS: {
          const struct pvr_const_map_entry_doutu_address *const doutu_addr =
             (struct pvr_const_map_entry_doutu_address *)entries;
-         pvr_dev_addr_t exec_addr = vertex_state->bo->vma->dev_addr;
+         const pvr_dev_addr_t exec_addr =
+            PVR_DEV_ADDR_OFFSET(vertex_state->bo->vma->dev_addr,
+                                vertex_state->entry_offset);
          uint64_t addr = 0ULL;
 
-         exec_addr.addr += vertex_state->entry_offset;
          pvr_set_usc_execution_address64(&addr, exec_addr.addr);
 
          PVR_WRITE(qword_buffer,
@@ -2603,13 +2605,12 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
                (struct pvr_const_map_entry_vertex_attribute_address *)entries;
          const struct pvr_vertex_binding *const binding =
             &state->vertex_bindings[attribute->binding_index];
-         uint64_t addr = binding->buffer->dev_addr.addr;
-
-         addr += binding->offset;
-         addr += attribute->offset;
+         const pvr_dev_addr_t addr =
+            PVR_DEV_ADDR_OFFSET(binding->buffer->dev_addr,
+                                binding->offset + attribute->offset);
 
          PVR_WRITE(qword_buffer,
-                   addr,
+                   addr.addr,
                    attribute->const_offset,
                    pds_info->data_size_in_dwords);
 
@@ -2728,8 +2729,9 @@ static VkResult pvr_setup_descriptor_mappings(
          assert(descriptor->buffer_create_info_size ==
                 const_buffer_entry->size_in_dwords * sizeof(uint32_t));
 
-         buffer_addr = descriptor->buffer_dev_addr;
-         buffer_addr.addr += const_buffer_entry->offset * sizeof(uint32_t);
+         buffer_addr =
+            PVR_DEV_ADDR_OFFSET(descriptor->buffer_dev_addr,
+                                const_buffer_entry->offset * sizeof(uint32_t));
 
          PVR_WRITE(qword_buffer,
                    buffer_addr.addr,
@@ -2791,18 +2793,22 @@ static VkResult pvr_setup_descriptor_mappings(
          desc_set_addr = descriptor_set->pvr_bo->vma->dev_addr;
 
          if (desc_set_entry->primary) {
-            desc_set_addr.addr +=
+            desc_set_addr = PVR_DEV_ADDR_OFFSET(
+               desc_set_addr,
                descriptor_set->layout->memory_layout_in_dwords_per_stage[stage]
-                  .primary_offset
-               << 2U;
+                     .primary_offset
+                  << 2U);
          } else {
-            desc_set_addr.addr +=
+            desc_set_addr = PVR_DEV_ADDR_OFFSET(
+               desc_set_addr,
                descriptor_set->layout->memory_layout_in_dwords_per_stage[stage]
-                  .secondary_offset
-               << 2U;
+                     .secondary_offset
+                  << 2U);
          }
 
-         desc_set_addr.addr += (uint64_t)desc_set_entry->offset_in_dwords << 2U;
+         desc_set_addr = PVR_DEV_ADDR_OFFSET(
+            desc_set_addr,
+            (uint64_t)desc_set_entry->offset_in_dwords << 2U);
 
          PVR_WRITE(qword_buffer,
                    desc_set_addr.addr,
@@ -2846,7 +2852,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
       return;
 
    info = (struct pvr_compute_kernel_info){
-      .indirect_buffer_addr.addr = 0ULL,
+      .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
       .sd_type = PVRX(CDMCTRL_SD_TYPE_NONE),
 
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
@@ -2937,7 +2943,7 @@ static void pvr_compute_update_kernel(
       &pipeline->state.primary_program_info;
 
    struct pvr_compute_kernel_info info = {
-      .indirect_buffer_addr.addr = 0ULL,
+      .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ANY),
       .pds_temp_size =
          DIV_ROUND_UP(program_info->temps_required << 2U,
@@ -3154,12 +3160,13 @@ pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
    }
 
    pvr_csb_emit (csb, VDMCTRL_PDS_STATE1, state1) {
-      state1.pds_data_addr.addr = pds_vertex_uniform_data_offset;
+      state1.pds_data_addr = PVR_DEV_ADDR(pds_vertex_uniform_data_offset);
       state1.sd_type = PVRX(VDMCTRL_SD_TYPE_NONE);
    }
 
    pvr_csb_emit (csb, VDMCTRL_PDS_STATE2, state2) {
-      state2.pds_code_addr.addr = vertex_uniform_state->pds_code.code_offset;
+      state2.pds_code_addr =
+         PVR_DEV_ADDR(vertex_uniform_state->pds_code.code_offset);
    }
 }
 
@@ -3668,14 +3675,15 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
       const struct pvr_pds_upload *const pds_upload =
          &state->gfx_pipeline->fragment_shader_state.pds_fragment_program;
 
-      shader_base.addr.addr = pds_upload->data_offset;
+      shader_base.addr = PVR_DEV_ADDR(pds_upload->data_offset);
    }
 
    if (uniform_shader_state->pds_code.pvr_bo) {
       pvr_csb_pack (&ppp_state->pds.texture_uniform_code_base,
                     TA_STATE_PDS_TEXUNICODEBASE,
                     tex_base) {
-         tex_base.addr.addr = uniform_shader_state->pds_code.code_offset;
+         tex_base.addr =
+            PVR_DEV_ADDR(uniform_shader_state->pds_code.code_offset);
       }
    } else {
       ppp_state->pds.texture_uniform_code_base = 0U;
@@ -3707,7 +3715,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
       pvr_csb_pack (&ppp_state->pds.varying_base,
                     TA_STATE_PDS_VARYINGBASE,
                     base) {
-         base.addr.addr = pds_coeff_program->data_offset;
+         base.addr = PVR_DEV_ADDR(pds_coeff_program->data_offset);
       }
    } else {
       ppp_state->pds.varying_base = 0U;
@@ -3716,7 +3724,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
    pvr_csb_pack (&ppp_state->pds.uniform_state_data_base,
                  TA_STATE_PDS_UNIFORMDATABASE,
                  base) {
-      base.addr.addr = state->pds_fragment_uniform_data_offset;
+      base.addr = PVR_DEV_ADDR(state->pds_fragment_uniform_data_offset);
    }
 
    emit_state->pds_fragment_stateptr0 = true;
@@ -4270,7 +4278,8 @@ pvr_emit_dirty_vdm_state(const struct pvr_cmd_buffer *const cmd_buffer,
 
    if (header.vs_data_addr_present) {
       pvr_csb_emit (csb, VDMCTRL_VDM_STATE2, state2) {
-         state2.vs_pds_data_base_addr.addr = state->pds_vertex_attrib_offset;
+         state2.vs_pds_data_base_addr =
+            PVR_DEV_ADDR(state->pds_vertex_attrib_offset);
       }
    }
 
@@ -4279,7 +4288,8 @@ pvr_emit_dirty_vdm_state(const struct pvr_cmd_buffer *const cmd_buffer,
          gfx_pipeline->vertex_shader_state.vertex_input_size << 2;
 
       pvr_csb_emit (csb, VDMCTRL_VDM_STATE3, state3) {
-         state3.vs_pds_code_base_addr.addr = state->pds_shader.code_offset;
+         state3.vs_pds_code_base_addr =
+            PVR_DEV_ADDR(state->pds_shader.code_offset);
       }
 
       pvr_csb_emit (csb, VDMCTRL_VDM_STATE4, state4) {
@@ -4507,7 +4517,7 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_csb *const csb = &sub_cmd->control_stream;
    struct PVRX(VDMCTRL_INDEX_LIST0)
       list_hdr = { pvr_cmd_header(VDMCTRL_INDEX_LIST0) };
-   pvr_dev_addr_t index_buffer_addr = { 0 };
+   pvr_dev_addr_t index_buffer_addr = PVR_DEV_ADDR_INVALID;
    unsigned int index_stride = 0;
 
    pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
@@ -4547,9 +4557,9 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
          }
 
          list0.index_addr_present = true;
-         index_buffer_addr.addr = buffer->dev_addr.addr;
-         index_buffer_addr.addr += state->index_buffer_binding.offset;
-         index_buffer_addr.addr += first_index * index_stride;
+         index_buffer_addr = PVR_DEV_ADDR_OFFSET(
+            buffer->dev_addr,
+            state->index_buffer_binding.offset + first_index * index_stride);
          list0.index_base_addrmsb = index_buffer_addr;
       }
 

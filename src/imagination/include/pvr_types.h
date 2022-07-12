@@ -34,8 +34,8 @@ typedef struct pvr_dev_addr {
    uint64_t addr;
 } pvr_dev_addr_t;
 
-/* clang-format off */
-#define PVR_DEV_ADDR_INVALID (pvr_dev_addr_t){ .addr = 0 }
-/* clang-format on */
+#define PVR_DEV_ADDR(addr_) ((pvr_dev_addr_t){ .addr = (addr_) })
+#define PVR_DEV_ADDR_OFFSET(base, offset) PVR_DEV_ADDR((base).addr + (offset))
+#define PVR_DEV_ADDR_INVALID PVR_DEV_ADDR(0)
 
 #endif /* PVR_TYPES_H */
