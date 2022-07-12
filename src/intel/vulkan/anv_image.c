@@ -487,14 +487,27 @@ anv_get_isl_format_with_usage(const struct intel_device_info *devinfo,
                               VkImageTiling vk_tiling)
 {
    assert(util_bitcount(vk_usage) == 1);
-   enum isl_format format = anv_get_isl_format(devinfo, vk_format, vk_aspect,
-                                               vk_tiling);
+   struct anv_format_plane format =
+      anv_get_format_aspect(devinfo, vk_format, vk_aspect,
+                            vk_tiling);
 
    if ((vk_usage == VK_IMAGE_USAGE_STORAGE_BIT) &&
-       isl_is_storage_image_format(format))
-      format = isl_lower_storage_image_format(devinfo, format);
+       isl_is_storage_image_format(format.isl_format)) {
+      enum isl_format lowered_format =
+         isl_lower_storage_image_format(devinfo, format.isl_format);
 
-   return format;
+      /* If we lower the format, we should ensure either they both match in
+       * bits per channel or that there is no swizzle, because we can't use
+       * the swizzle for a different bit pattern.
+       */
+      assert(isl_formats_have_same_bits_per_channel(lowered_format,
+                                                    format.isl_format) ||
+             isl_swizzle_is_identity(format.swizzle));
+
+      format.isl_format = lowered_format;
+   }
+
+   return format.isl_format;
 }
 
 static bool
@@ -2546,6 +2559,15 @@ anv_image_fill_surface_state(struct anv_device *device,
                                                     view.format,
                                                     lower_format));
          }
+
+         /* If we lower the format, we should ensure either they both match in
+          * bits per channel or that there is no swizzle, because we can't use
+          * the swizzle for a different bit pattern.
+          */
+         assert(isl_formats_have_same_bits_per_channel(lower_format,
+                                                       view.format) ||
+                isl_swizzle_is_identity(view.swizzle));
+
          view.format = lower_format;
       }
 
