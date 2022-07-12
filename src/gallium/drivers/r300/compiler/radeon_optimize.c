@@ -900,12 +900,28 @@ static unsigned int merge_swizzles(unsigned int swz1, unsigned int swz2) {
 	return new_swz;
 }
 
+/* Sets negate to 0 for unused channels. */
+static unsigned int clean_negate(struct rc_src_register src)
+{
+	unsigned int new_negate = 0;
+	for (unsigned int chan = 0; chan < 4; chan++) {
+		unsigned int swz = GET_SWZ(src.Swizzle, chan);
+		if (swz != RC_SWIZZLE_UNUSED)
+			new_negate |= src.Negate & (1 << chan);
+	}
+	return new_negate;
+}
+
+static unsigned int merge_negates(struct rc_src_register src1, struct rc_src_register src2)
+{
+	return clean_negate(src1) | clean_negate(src2);
+}
+
 static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 {
 	unsigned int orig_dst_reg = inst->U.I.DstReg.Index;
 	unsigned int orig_dst_file = inst->U.I.DstReg.File;
 	unsigned int orig_dst_wmask = inst->U.I.DstReg.WriteMask;
-	unsigned int orig_src_reg = inst->U.I.SrcReg[0].Index;
 	unsigned int orig_src_file = inst->U.I.SrcReg[0].File;
 
 	struct rc_instruction * cur = inst;
@@ -944,17 +960,19 @@ static int merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 				orig_src_file == RC_FILE_NONE) {
 				cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
 
+				struct rc_src_register src;
 				if (cur->U.I.SrcReg[0].File == RC_FILE_NONE) {
-					cur->U.I.SrcReg[0].File = orig_src_file;
-					cur->U.I.SrcReg[0].Index = orig_src_reg;
-					cur->U.I.SrcReg[0].Abs = inst->U.I.SrcReg[0].Abs;
-					cur->U.I.SrcReg[0].RelAddr = inst->U.I.SrcReg[0].RelAddr;
+					src = inst->U.I.SrcReg[0];
+				} else {
+					src = cur->U.I.SrcReg[0];
 				}
-				cur->U.I.SrcReg[0].Swizzle =
-					merge_swizzles(cur->U.I.SrcReg[0].Swizzle,
-							inst->U.I.SrcReg[0].Swizzle);
-
-				cur->U.I.SrcReg[0].Negate |= inst->U.I.SrcReg[0].Negate;
+				src.Swizzle = merge_swizzles(cur->U.I.SrcReg[0].Swizzle,
+								inst->U.I.SrcReg[0].Swizzle);
+				src.Negate = merge_negates(inst->U.I.SrcReg[0], cur->U.I.SrcReg[0]);
+				if (!c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src))
+					return 0;
+				cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
+				cur->U.I.SrcReg[0] = src;
 
 				/* finally delete the original mov */
 				rc_remove_instruction(inst);
