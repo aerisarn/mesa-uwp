@@ -1012,8 +1012,6 @@ agx_is_format_supported(struct pipe_screen* pscreen,
                         unsigned storage_sample_count,
                         unsigned usage)
 {
-   const struct util_format_description *format_desc;
-
    assert(target == PIPE_BUFFER ||
           target == PIPE_TEXTURE_1D ||
           target == PIPE_TEXTURE_1D_ARRAY ||
@@ -1023,11 +1021,6 @@ agx_is_format_supported(struct pipe_screen* pscreen,
           target == PIPE_TEXTURE_3D ||
           target == PIPE_TEXTURE_CUBE ||
           target == PIPE_TEXTURE_CUBE_ARRAY);
-
-   format_desc = util_format_description(format);
-
-   if (!format_desc)
-      return false;
 
    if (sample_count > 1)
       return false;
