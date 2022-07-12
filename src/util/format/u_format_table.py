@@ -176,23 +176,19 @@ def write_format_table(formats):
         suffix = ""
         if type == "unpack_":
             suffix = "_generic"
-        print("const struct util_format_%sdescription *" % type)
+        print("ATTRIBUTE_RETURNS_NONNULL const struct util_format_%sdescription *" % type)
         print("util_format_%sdescription%s(enum pipe_format format)" % (type, suffix))
         print("{")
-        print("   if (format >= ARRAY_SIZE(util_format_%sdescriptions))" % (type))
-        print("      return NULL;")
-        print()
+        print("   assert(format < PIPE_FORMAT_COUNT);")
         print("   return &util_format_%sdescriptions[format];" % (type))
         print("}")
         print()
 
     def generate_function_getter(func):
-        print("util_format_%s_func_ptr" % func)
+        print("ATTRIBUTE_RETURNS_NONNULL util_format_%s_func_ptr" % func)
         print("util_format_%s_func(enum pipe_format format)" % (func))
         print("{")
-        print("   if (format >= ARRAY_SIZE(util_format_%s_table))" % (func))
-        print("      return NULL;")
-        print()
+        print("   assert(format < PIPE_FORMAT_COUNT);")
         print("   return util_format_%s_table[format];" % (func))
         print("}")
         print()
