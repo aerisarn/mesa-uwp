@@ -7204,6 +7204,7 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
    struct radeon_winsys *ws = cmd_buffer->device->ws;
    const unsigned num_views = MAX2(1, util_bitcount(view_mask));
    unsigned ace_predication_size = num_views * 11; /* DISPATCH_TASKMESH_INDIRECT_MULTI_ACE size */
+   struct radeon_cmdbuf *ace_cs = cmd_buffer->ace_internal.cs;
 
    const uint64_t va =
       radv_buffer_get_va(info->indirect->bo) + info->indirect->offset + info->indirect_offset;
@@ -7211,9 +7212,41 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
                                 ? 0
                                 : radv_buffer_get_va(info->count_buffer->bo) +
                                      info->count_buffer->offset + info->count_buffer_offset;
+   uint64_t workaround_cond_va = 0;
 
    if (count_va) {
       radv_cs_add_buffer(ws, cmd_buffer->ace_internal.cs, info->count_buffer->bo);
+
+      /* MEC firmware bug workaround.
+       * When the count buffer contains zero, DISPATCH_TASKMESH_INDIRECT_MULTI_ACE hangs.
+       * - We must ensure that DISPATCH_TASKMESH_INDIRECT_MULTI_ACE
+       *   is only executed when the count buffer contains non-zero.
+       * - Furthermore, we must also ensure that each DISPATCH_TASKMESH_GFX packet
+       *   has a matching ACE packet.
+       *
+       * As a workaround:
+       * - Reserve a dword in the upload buffer and initialize it to 1 for the workaround
+       * - When count != 0, write 0 to the workaround BO and execute the indirect dispatch
+       * - When workaround BO != 0 (count was 0), execute an empty direct dispatch
+       */
+
+      uint32_t workaround_cond_init = 0;
+      uint32_t workaround_cond_off;
+      if (!radv_cmd_buffer_upload_data(cmd_buffer, 4, &workaround_cond_init, &workaround_cond_off))
+         cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      workaround_cond_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + workaround_cond_off;
+
+      radeon_emit(ace_cs, PKT3(PKT3_COPY_DATA, 4, 0));
+      radeon_emit(ace_cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                             COPY_DATA_WR_CONFIRM);
+      radeon_emit(ace_cs, 1);
+      radeon_emit(ace_cs, 0);
+      radeon_emit(ace_cs, workaround_cond_va);
+      radeon_emit(ace_cs, workaround_cond_va >> 32);
+
+      /* 2x COND_EXEC + 1x COPY_DATA + Nx DISPATCH_TASKMESH_DIRECT_ACE */
+      ace_predication_size += 2 * 5 + 6 + 6 * num_views;
    }
 
    radv_cs_add_buffer(ws, cmd_buffer->ace_internal.cs, info->indirect->bo);
@@ -7222,6 +7255,23 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
    radv_cs_emit_compute_predication(&cmd_buffer->state, cmd_buffer->ace_internal.cs,
                                     cmd_buffer->mec_inv_pred_va, &cmd_buffer->mec_inv_pred_emitted,
                                     ace_predication_size);
+
+   if (workaround_cond_va) {
+      radeon_emit(ace_cs, PKT3(PKT3_COND_EXEC, 3, 0));
+      radeon_emit(ace_cs, count_va);
+      radeon_emit(ace_cs, count_va >> 32);
+      radeon_emit(ace_cs, 0);
+      radeon_emit(ace_cs,
+                  6 + 11 * num_views); /* 1x COPY_DATA + Nx DISPATCH_TASKMESH_INDIRECT_MULTI_ACE */
+
+      radeon_emit(ace_cs, PKT3(PKT3_COPY_DATA, 4, 0));
+      radeon_emit(ace_cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                             COPY_DATA_WR_CONFIRM);
+      radeon_emit(ace_cs, 0);
+      radeon_emit(ace_cs, 0);
+      radeon_emit(ace_cs, workaround_cond_va);
+      radeon_emit(ace_cs, workaround_cond_va >> 32);
+   }
 
    if (!view_mask) {
       radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(cmd_buffer, va, info->count,
@@ -7233,6 +7283,18 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
          radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(cmd_buffer, va, info->count,
                                                                   count_va, info->stride);
          radv_cs_emit_dispatch_taskmesh_gfx_packet(cmd_buffer);
+      }
+   }
+
+   if (workaround_cond_va) {
+      radeon_emit(ace_cs, PKT3(PKT3_COND_EXEC, 3, 0));
+      radeon_emit(ace_cs, workaround_cond_va);
+      radeon_emit(ace_cs, workaround_cond_va >> 32);
+      radeon_emit(ace_cs, 0);
+      radeon_emit(ace_cs, 6 * num_views); /* Nx DISPATCH_TASKMESH_DIRECT_ACE */
+
+      for (unsigned v = 0; v < num_views; ++v) {
+         radv_cs_emit_dispatch_taskmesh_direct_ace_packet(cmd_buffer, 0, 0, 0);
       }
    }
 }
