@@ -274,7 +274,7 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
                       const struct aco_shader_info* info,
                       const struct aco_vs_prolog_key* key,
                       const struct radv_shader_args* args,
-                      aco_prolog_callback *build_prolog,
+                      aco_shader_part_callback *build_prolog,
                       void **binary)
 {
    aco::init();
