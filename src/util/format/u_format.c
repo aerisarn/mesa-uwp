@@ -100,11 +100,6 @@ util_format_is_float(enum pipe_format format)
    const struct util_format_description *desc = util_format_description(format);
    int i;
 
-   assert(desc);
-   if (!desc) {
-      return FALSE;
-   }
-
    i = util_format_get_first_non_void_channel(format);
    if (i < 0) {
       return FALSE;
@@ -339,8 +334,6 @@ util_get_depth_format_mrd(const struct util_format_description *desc)
     */
    double mrd = 1.0 / ((1 << 24) - 1);
    unsigned depth_channel;
-
-   assert(desc);
 
    /*
     * Some depth formats do not store the depth component in the first
