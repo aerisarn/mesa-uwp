@@ -3352,6 +3352,37 @@ radv_shader_loads_push_constants(struct radv_pipeline *pipeline, gl_shader_stage
 }
 
 static void
+radv_emit_all_inline_push_consts(struct radv_device *device, struct radeon_cmdbuf *cs,
+                                 struct radv_pipeline *pipeline, gl_shader_stage stage,
+                                 uint32_t *values, bool *need_push_constants)
+{
+   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
+   if (!shader)
+      return;
+
+   *need_push_constants |= radv_shader_loads_push_constants(pipeline, stage);
+
+   const uint64_t mask = shader->info.inline_push_constant_mask;
+   if (!mask)
+      return;
+
+   const uint8_t base = ffs(mask) - 1;
+   if (mask == u_bit_consecutive64(base, util_last_bit64(mask) - base)) {
+      /* consecutive inline push constants */
+      radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
+                                   values + base);
+   } else {
+      /* sparse inline push constants */
+      uint32_t consts[AC_MAX_INLINE_PUSH_CONSTS];
+      unsigned num_consts = 0;
+      u_foreach_bit64 (idx, mask)
+         consts[num_consts++] = values[idx];
+      radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
+                                   consts);
+   }
+}
+
+static void
 radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
                      struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
 {
@@ -3388,30 +3419,8 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 
    radv_foreach_stage(stage, internal_stages)
    {
-      shader = radv_get_shader(pipeline, stage);
-      if (!shader)
-         continue;
-
-      need_push_constants |= radv_shader_loads_push_constants(pipeline, stage);
-
-      uint64_t mask = shader->info.inline_push_constant_mask;
-      if (!mask)
-         continue;
-
-      uint8_t base = ffs(mask) - 1;
-      if (mask == u_bit_consecutive64(base, util_last_bit64(mask) - base)) {
-         /* consecutive inline push constants */
-         radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
-                                      (uint32_t *)cmd_buffer->push_constants + base);
-      } else {
-         /* sparse inline push constants */
-         uint32_t consts[AC_MAX_INLINE_PUSH_CONSTS];
-         unsigned num_consts = 0;
-         u_foreach_bit64 (idx, mask)
-            consts[num_consts++] = ((uint32_t *)cmd_buffer->push_constants)[idx];
-         radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
-                                      consts);
-      }
+      radv_emit_all_inline_push_consts(
+         device, cs, pipeline, stage, (uint32_t *)cmd_buffer->push_constants, &need_push_constants);
    }
 
    if (need_push_constants) {
