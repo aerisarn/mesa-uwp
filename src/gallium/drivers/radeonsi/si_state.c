@@ -1650,8 +1650,6 @@ uint32_t si_translate_colorformat(enum amd_gfx_level gfx_level,
                                   enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
-   if (!desc)
-      return V_028C70_COLOR_INVALID;
 
 #define HAS_SIZE(x, y, z, w)                                                                       \
    (desc->channel[0].size == (x) && desc->channel[1].size == (y) &&                                \
@@ -2212,9 +2210,6 @@ static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe
    struct si_screen *sscreen = (struct si_screen *)screen;
    const struct util_format_description *desc = util_format_description(format);
 
-   if (!desc)
-      return false;
-
    /* Samplers don't support 64 bits per channel. */
    if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
        desc->channel[0].size == 64)
@@ -2354,8 +2349,6 @@ static unsigned si_is_vertex_format_supported(struct pipe_screen *screen, enum p
           0);
 
    desc = util_format_description(format);
-   if (!desc)
-      return 0;
 
    /* There are no native 8_8_8 or 16_16_16 data formats, and we currently
     * select 8_8_8_8 and 16_16_16_16 instead. This works reasonably well
