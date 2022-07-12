@@ -217,11 +217,20 @@ zink_set_device_reset_callback(struct pipe_context *pctx,
                                const struct pipe_device_reset_callback *cb)
 {
    struct zink_context *ctx = zink_context(pctx);
+   bool had_reset = !!ctx->reset.reset;
 
    if (cb)
       ctx->reset = *cb;
    else
       memset(&ctx->reset, 0, sizeof(ctx->reset));
+
+   bool have_reset = !!ctx->reset.reset;
+   if (had_reset != have_reset) {
+      if (have_reset)
+         p_atomic_inc(&zink_screen(pctx->screen)->robust_ctx_count);
+      else
+         p_atomic_dec(&zink_screen(pctx->screen)->robust_ctx_count);
+   }
 }
 
 static void

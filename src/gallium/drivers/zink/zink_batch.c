@@ -332,6 +332,9 @@ post_submit(void *data, void *gdata, int thread_index)
    if (bs->is_device_lost) {
       if (bs->ctx->reset.reset)
          bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+      else if (screen->abort_on_hang && !screen->robust_ctx_count)
+         /* if nothing can save us, abort */
+         abort();
       screen->device_lost = true;
    } else if (bs->ctx->batch_states_count > 5000) {
       zink_screen_timeline_wait(screen, bs->fence.batch_id - 2500, PIPE_TIMEOUT_INFINITE);

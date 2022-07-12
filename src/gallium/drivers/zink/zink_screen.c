@@ -2103,6 +2103,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       return NULL;
 
    screen->threaded = util_get_cpu_caps()->nr_cpus > 1 && debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1);
+   screen->abort_on_hang = debug_get_bool_option("ZINK_HANG_ABORT", false);
 
    zink_debug = debug_get_option_zink_debug();
    zink_descriptor_mode = debug_get_option_zink_descriptor_mode();

@@ -101,6 +101,7 @@ struct zink_screen {
 
    bool threaded;
    bool is_cpu;
+   bool abort_on_hang;
    uint64_t curr_batch; //the current batch id
    uint32_t last_finished;
    VkSemaphore sem;
@@ -110,6 +111,7 @@ struct zink_screen {
 
    unsigned buffer_rebind_counter;
    unsigned image_rebind_counter;
+   unsigned robust_ctx_count;
 
    struct hash_table dts;
    simple_mtx_t dt_lock;
@@ -258,6 +260,9 @@ zink_screen_handle_vkresult(struct zink_screen *screen, VkResult ret)
    case VK_ERROR_DEVICE_LOST:
       screen->device_lost = true;
       mesa_loge("zink: DEVICE LOST!\n");
+      /* if nothing can save us, abort */
+      if (screen->abort_on_hang && !screen->robust_ctx_count)
+         abort();
       FALLTHROUGH;
    default:
       success = false;
