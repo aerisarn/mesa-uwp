@@ -4199,11 +4199,11 @@ VkResult anv_FlushMappedMemoryRanges(
 
    for (uint32_t i = 0; i < memoryRangeCount; i++) {
       ANV_FROM_HANDLE(anv_device_memory, mem, pMemoryRanges[i].memory);
-      uint64_t map_offset = pMemoryRanges[i].offset + mem->map_delta;
-      if (map_offset >= mem->map_size)
+      if (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
          continue;
 
-      if (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+      uint64_t map_offset = pMemoryRanges[i].offset + mem->map_delta;
+      if (map_offset >= mem->map_size)
          continue;
 
       intel_clflush_range(mem->map + map_offset,
@@ -4226,11 +4226,11 @@ VkResult anv_InvalidateMappedMemoryRanges(
 
    for (uint32_t i = 0; i < memoryRangeCount; i++) {
       ANV_FROM_HANDLE(anv_device_memory, mem, pMemoryRanges[i].memory);
-      uint64_t map_offset = pMemoryRanges[i].offset + mem->map_delta;
-      if (map_offset >= mem->map_size)
+      if (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
          continue;
 
-      if (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+      uint64_t map_offset = pMemoryRanges[i].offset + mem->map_delta;
+      if (map_offset >= mem->map_size)
          continue;
 
       intel_invalidate_range(mem->map + map_offset,
