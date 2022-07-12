@@ -698,8 +698,7 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
    bool blendable;
    bool scaled = false;
    /* TODO: implement some software emulation of SUBSAMPLED formats. */
-   if (vk_format_to_pipe_format(format) == PIPE_FORMAT_NONE ||
-       desc->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
+   if (desc->format == PIPE_FORMAT_NONE || desc->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
       out_properties->linearTilingFeatures = linear;
       out_properties->optimalTilingFeatures = tiled;
       out_properties->bufferFeatures = buffer;
