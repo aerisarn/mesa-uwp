@@ -574,8 +574,6 @@ virgl_is_vertex_format_supported(struct pipe_screen *screen,
    int i;
 
    format_desc = util_format_description(format);
-   if (!format_desc)
-      return false;
 
    if (format == PIPE_FORMAT_R11G11B10_FLOAT) {
       int vformat = VIRGL_FORMAT_R11G11B10_FLOAT;
@@ -683,8 +681,6 @@ virgl_is_format_supported( struct pipe_screen *screen,
           target == PIPE_TEXTURE_CUBE_ARRAY);
 
    format_desc = util_format_description(format);
-   if (!format_desc)
-      return false;
 
    if (util_format_is_intensity(format))
       return false;
