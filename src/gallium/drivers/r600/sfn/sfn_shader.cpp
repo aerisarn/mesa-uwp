@@ -664,8 +664,8 @@ bool Shader::process_if(nir_if *if_stmt)
    }
 
    if (!child_block_empty(if_stmt->else_list)) {
-      assert(emit_control_flow(ControlFlowInstr::cf_else));
-
+      if (!emit_control_flow(ControlFlowInstr::cf_else))
+         return false;
       foreach_list_typed(nir_cf_node, n, node, &if_stmt->else_list)
             if (!process_cf_node(n)) return false;
    }
