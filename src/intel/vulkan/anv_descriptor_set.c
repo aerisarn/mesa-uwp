@@ -113,6 +113,9 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
     * Do not handle VK_DESCRIPTOR_TYPE_STORAGE_IMAGE and
     * VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT because they already must
     * have identity swizzle.
+    *
+    * TODO: We need to handle swizzle on buffer views too for those same
+    *       platforms.
     */
    if (device->info.verx10 == 70 &&
        (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
