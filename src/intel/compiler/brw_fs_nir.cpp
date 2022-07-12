@@ -2341,27 +2341,27 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
    }
 
    /* Store the control data bits in the message payload and send it. */
-   unsigned mlen = 2;
-   if (channel_mask.file != BAD_FILE)
-      mlen += 4; /* channel masks, plus 3 extra copies of the data */
-   if (per_slot_offset.file != BAD_FILE)
-      mlen++;
+   const unsigned header_size = 1 + unsigned(channel_mask.file != BAD_FILE) +
+      unsigned(per_slot_offset.file != BAD_FILE);
 
-   fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, mlen);
-   fs_reg *sources = ralloc_array(mem_ctx, fs_reg, mlen);
-   unsigned i = 0;
-   sources[i++] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
-   if (per_slot_offset.file != BAD_FILE)
-      sources[i++] = per_slot_offset;
-   if (channel_mask.file != BAD_FILE)
-      sources[i++] = channel_mask;
-   while (i < mlen) {
-      sources[i++] = this->control_data_bits;
-   }
+   /* If there are channel masks, add 3 extra copies of the data. */
+   const unsigned length = 1 + 3 * unsigned(channel_mask.file != BAD_FILE);
 
-   abld.LOAD_PAYLOAD(payload, sources, mlen, mlen);
-   fs_inst *inst = abld.emit(opcode, reg_undef, payload);
-   inst->mlen = mlen;
+   fs_reg sources[4];
+
+   for (unsigned i = 0; i < ARRAY_SIZE(sources); i++)
+      sources[i] = this->control_data_bits;
+
+   fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+   srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+   srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = per_slot_offset;
+   srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = channel_mask;
+   srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, alloc.allocate(length),
+                                       BRW_REGISTER_TYPE_F);
+   abld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
+
+   fs_inst *inst = abld.emit(opcode, reg_undef, srcs, ARRAY_SIZE(srcs));
+   inst->mlen = header_size + length;
    /* We need to increment Global Offset by 256-bits to make room for
     * Broadwell's extra "Vertex Count" payload at the beginning of the
     * URB entry.  Since this is an OWord message, Global Offset is counted
@@ -3046,15 +3046,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       fs_reg indirect_offset = get_indirect_offset(instr);
       unsigned imm_offset = instr->const_index[0];
       unsigned mask = instr->const_index[1];
-      unsigned header_regs = 0;
-      struct brw_reg output_handles = get_tcs_output_urb_handle();
-
-      fs_reg srcs[7];
-      srcs[header_regs++] = output_handles;
-
-      if (indirect_offset.file != BAD_FILE) {
-         srcs[header_regs++] = indirect_offset;
-      }
 
       if (mask == 0)
          break;
@@ -3068,8 +3059,9 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       unsigned first_component = nir_intrinsic_component(instr);
       mask = mask << first_component;
 
+      fs_reg mask_reg;
       if (mask != WRITEMASK_XYZW) {
-         srcs[header_regs++] = brw_imm_ud(mask << 16);
+         mask_reg = brw_imm_ud(mask << 16);
          opcode = indirect_offset.file != BAD_FILE ?
             SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL :
             SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL;
@@ -3079,21 +3071,30 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
             SHADER_OPCODE_URB_WRITE_LOGICAL;
       }
 
+      fs_reg sources[4];
+
       for (unsigned i = 0; i < num_components; i++) {
          if (!(mask & (1 << (i + first_component))))
             continue;
 
-         srcs[header_regs + i + first_component] = offset(value, bld, i);
+         sources[i + first_component] = offset(value, bld, i);
       }
 
-      unsigned mlen = header_regs + num_components + first_component;
-      fs_reg payload =
-         bld.vgrf(BRW_REGISTER_TYPE_UD, mlen);
-      bld.LOAD_PAYLOAD(payload, srcs, mlen, header_regs);
+      unsigned header_size = 1 + unsigned(indirect_offset.file != BAD_FILE) +
+         unsigned(mask != WRITEMASK_XYZW);
+      const unsigned length = num_components + first_component;
 
-      fs_inst *inst = bld.emit(opcode, bld.null_reg_ud(), payload);
+      fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+      srcs[URB_LOGICAL_SRC_HANDLE] = get_tcs_output_urb_handle();
+      srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
+      srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = mask_reg;
+      srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, alloc.allocate(length),
+                                          BRW_REGISTER_TYPE_F);
+      bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
+
+      fs_inst *inst = bld.emit(opcode, reg_undef, srcs, ARRAY_SIZE(srcs));
       inst->offset = imm_offset;
-      inst->mlen = mlen;
+      inst->mlen = header_size + length;
       break;
    }
 

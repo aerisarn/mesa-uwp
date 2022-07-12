@@ -892,25 +892,25 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
       for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
          fs_builder bld8 = bld.group(8, q);
 
-         fs_reg payload_srcs[6];
-         unsigned p = 0;
-
-         payload_srcs[p++] = urb_handle;
-         payload_srcs[p++] = brw_imm_ud(first_mask << 16);
-         const unsigned header_size = p;
+         fs_reg payload_srcs[4];
+         unsigned length = 0;
 
          for (unsigned i = 0; i < comp_shift; i++)
-            payload_srcs[p++] = reg_undef;
+            payload_srcs[length++] = reg_undef;
 
          for (unsigned c = 0; c < first_comps; c++)
-            payload_srcs[p++] = quarter(offset(src, bld, c), q);
+            payload_srcs[length++] = quarter(offset(src, bld, c), q);
 
-         fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, p);
-         bld8.LOAD_PAYLOAD(payload, payload_srcs, p, header_size);
+         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
+         srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(first_mask << 16);
+         srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, bld.shader->alloc.allocate(length),
+                                             BRW_REGISTER_TYPE_F);
+         bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
-                                   reg_undef, payload);
-         inst->mlen = p;
+                                   reg_undef, srcs, ARRAY_SIZE(srcs));
+         inst->mlen = 2 + length;
          inst->offset = urb_global_offset;
          assert(inst->offset < 2048);
       }
@@ -923,22 +923,22 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
       for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
          fs_builder bld8 = bld.group(8, q);
 
-         fs_reg payload_srcs[6];
-         unsigned p = 0;
-
-         payload_srcs[p++] = urb_handle;
-         payload_srcs[p++] = brw_imm_ud(second_mask << 16);
-         const unsigned header_size = p;
+         fs_reg payload_srcs[4];
+         unsigned length = 0;
 
          for (unsigned c = 0; c < second_comps; c++)
-            payload_srcs[p++] = quarter(offset(src, bld, c + first_comps), q);
+            payload_srcs[length++] = quarter(offset(src, bld, c + first_comps), q);
 
-         fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, p);
-         bld8.LOAD_PAYLOAD(payload, payload_srcs, p, header_size);
+         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
+         srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(second_mask << 16);
+         srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, bld.shader->alloc.allocate(length),
+                                             BRW_REGISTER_TYPE_F);
+         bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
-                                   reg_undef, payload);
-         inst->mlen = p;
+                                   reg_undef, srcs, ARRAY_SIZE(srcs));
+         inst->mlen = 2 + length;
          inst->offset = urb_global_offset;
          assert(inst->offset < 2048);
       }
@@ -988,21 +988,23 @@ emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          bld8.SHR(off, off, brw_imm_ud(2));
 
-         fs_reg payload_srcs[7];
-         int x = 0;
-         payload_srcs[x++] = urb_handle;
-         payload_srcs[x++] = off;
-         payload_srcs[x++] = mask;
+         fs_reg payload_srcs[4];
+         unsigned length = 0;
 
          for (unsigned j = 0; j < 4; j++)
-            payload_srcs[x++] = quarter(src_comp, q);
+            payload_srcs[length++] = quarter(src_comp, q);
 
-         fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, x);
-         bld8.LOAD_PAYLOAD(payload, payload_srcs, x, 3);
+         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
+         srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = off;
+         srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = mask;
+         srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, bld.shader->alloc.allocate(length),
+                                             BRW_REGISTER_TYPE_F);
+         bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL,
-                                   reg_undef, payload);
-         inst->mlen = x;
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+                                   reg_undef, srcs, ARRAY_SIZE(srcs));
+         inst->mlen = 3 + length;
          inst->offset = 0;
       }
    }

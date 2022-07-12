@@ -73,8 +73,27 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst,
 
    assert(inst->header_size == 0);
 
+   fs_reg *payload_sources = new fs_reg[inst->mlen];
+   fs_reg payload = fs_reg(VGRF, bld.shader->alloc.allocate(inst->mlen),
+                           BRW_REGISTER_TYPE_F);
+
+   unsigned header_size = 0;
+   payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_HANDLE];
+   if (per_slot_present)
+      payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
+
+   if (channel_mask_present)
+      payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_CHANNEL_MASK];
+
+   for (unsigned i = header_size, j = 0; i < inst->mlen; i++, j++)
+      payload_sources[i] = offset(inst->src[URB_LOGICAL_SRC_DATA], bld, j);
+
+   bld.LOAD_PAYLOAD(payload, payload_sources, inst->mlen, header_size);
+
+   delete [] payload_sources;
+
    inst->opcode = SHADER_OPCODE_SEND;
-   inst->header_size = 1;
+   inst->header_size = header_size;
    inst->dst = brw_null_reg();
 
    inst->sfid = BRW_SFID_URB;
@@ -88,13 +107,11 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst,
    inst->ex_mlen = 0;
    inst->send_has_side_effects = true;
 
-   fs_reg tmp = inst->src[0];
-
    inst->resize_sources(4);
 
    inst->src[0] = brw_imm_ud(0); /* desc */
    inst->src[1] = brw_imm_ud(0); /* ex_desc */
-   inst->src[2] = tmp;
+   inst->src[2] = payload;
    inst->src[3] = brw_null_reg();
 }
 

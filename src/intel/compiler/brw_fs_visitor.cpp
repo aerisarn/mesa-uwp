@@ -935,22 +935,15 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       if (length == 8 || (length > 0 && slot == last_slot))
          flush = true;
       if (flush) {
-         fs_reg *payload_sources =
-            ralloc_array(mem_ctx, fs_reg, length + header_size);
-         fs_reg payload = fs_reg(VGRF, alloc.allocate(length + header_size),
-                                 BRW_REGISTER_TYPE_F);
-         payload_sources[0] = urb_handle;
+         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
 
-         if (opcode == SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL)
-            payload_sources[1] = per_slot_offsets;
+         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
+         srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = per_slot_offsets;
+         srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, alloc.allocate(length),
+                                             BRW_REGISTER_TYPE_F);
+         abld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
-         memcpy(&payload_sources[header_size], sources,
-                length * sizeof sources[0]);
-
-         abld.LOAD_PAYLOAD(payload, payload_sources, length + header_size,
-                           header_size);
-
-         fs_inst *inst = abld.emit(opcode, reg_undef, payload);
+         fs_inst *inst = abld.emit(opcode, reg_undef, srcs, ARRAY_SIZE(srcs));
 
          /* For ICL WA 1805992985 one needs additional write in the end. */
          if (devinfo->ver == 11 && stage == MESA_SHADER_TESS_EVAL)
@@ -985,10 +978,17 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       if (stage == MESA_SHADER_GEOMETRY)
          return;
 
-      fs_reg payload = fs_reg(VGRF, alloc.allocate(2), BRW_REGISTER_TYPE_UD);
-      bld.exec_all().MOV(payload, urb_handle);
+      fs_reg uniform_urb_handle = fs_reg(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
+      fs_reg payload = fs_reg(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
 
-      fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef, payload);
+      bld.exec_all().MOV(uniform_urb_handle, urb_handle);
+
+      fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+      srcs[URB_LOGICAL_SRC_HANDLE] = uniform_urb_handle;
+      srcs[URB_LOGICAL_SRC_DATA] = payload;
+
+      fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
+                               srcs, ARRAY_SIZE(srcs));
       inst->eot = true;
       inst->mlen = 2;
       inst->offset = 1;
@@ -1002,14 +1002,16 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
     * all 8 lanes must valid.
     */
    if (devinfo->ver == 11 && stage == MESA_SHADER_TESS_EVAL) {
-      fs_reg payload = fs_reg(VGRF, alloc.allocate(6), BRW_REGISTER_TYPE_UD);
+      fs_reg uniform_urb_handle = fs_reg(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
+      fs_reg uniform_mask = fs_reg(VGRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
+      fs_reg payload = fs_reg(VGRF, alloc.allocate(4), BRW_REGISTER_TYPE_UD);
 
       /* Workaround requires all 8 channels (lanes) to be valid. This is
        * understood to mean they all need to be alive. First trick is to find
        * a live channel and copy its urb handle for all the other channels to
        * make sure all handles are valid.
        */
-      bld.exec_all().MOV(payload, bld.emit_uniformize(urb_handle));
+      bld.exec_all().MOV(uniform_urb_handle, bld.emit_uniformize(urb_handle));
 
       /* Second trick is to use masked URB write where one can tell the HW to
        * actually write data only for selected channels even though all are
@@ -1025,14 +1027,19 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
        * 4 slots data. All are explicitly zeros in order to to keep the MBZ
        * area written as zeros.
        */
-      bld.exec_all().MOV(offset(payload, bld, 1), brw_imm_ud(0x10000u));
+      bld.exec_all().MOV(uniform_mask, brw_imm_ud(0x10000u));
+      bld.exec_all().MOV(offset(payload, bld, 0), brw_imm_ud(0u));
+      bld.exec_all().MOV(offset(payload, bld, 1), brw_imm_ud(0u));
       bld.exec_all().MOV(offset(payload, bld, 2), brw_imm_ud(0u));
       bld.exec_all().MOV(offset(payload, bld, 3), brw_imm_ud(0u));
-      bld.exec_all().MOV(offset(payload, bld, 4), brw_imm_ud(0u));
-      bld.exec_all().MOV(offset(payload, bld, 5), brw_imm_ud(0u));
+
+      fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+      srcs[URB_LOGICAL_SRC_HANDLE] = uniform_urb_handle;
+      srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = uniform_mask;
+      srcs[URB_LOGICAL_SRC_DATA] = payload;
 
       fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
-                                          reg_undef, payload);
+                                          reg_undef, srcs, ARRAY_SIZE(srcs));
       inst->eot = true;
       inst->mlen = 6;
       inst->offset = 0;

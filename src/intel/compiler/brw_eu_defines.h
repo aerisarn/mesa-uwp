@@ -950,6 +950,17 @@ enum rt_logical_srcs {
    RT_LOGICAL_NUM_SRCS
 };
 
+enum urb_logical_srcs {
+   URB_LOGICAL_SRC_HANDLE,
+   URB_LOGICAL_SRC_PER_SLOT_OFFSETS,
+   URB_LOGICAL_SRC_CHANNEL_MASK,
+   /** Data to be written.  BAD_FILE for reads. */
+   URB_LOGICAL_SRC_DATA,
+
+   URB_LOGICAL_NUM_SRCS
+};
+
+
 #ifdef __cplusplus
 /**
  * Allow brw_urb_write_flags enums to be ORed together.

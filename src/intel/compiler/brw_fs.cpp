@@ -863,6 +863,17 @@ fs_inst::components_read(unsigned i) const
          return 1;
    }
 
+   case SHADER_OPCODE_URB_WRITE_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
+   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
+      if (i == URB_LOGICAL_SRC_DATA)
+         return mlen - 1 -
+            unsigned(src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE) -
+            unsigned(src[URB_LOGICAL_SRC_CHANNEL_MASK].file != BAD_FILE);
+      else
+         return 1;
+
    default:
       return 1;
    }
@@ -891,10 +902,6 @@ fs_inst::size_read(int arg) const
       break;
 
    case FS_OPCODE_FB_READ:
-   case SHADER_OPCODE_URB_WRITE_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
    case SHADER_OPCODE_URB_READ_LOGICAL:
    case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
@@ -1546,17 +1553,17 @@ fs_visitor::emit_gs_thread_end()
             break;
          }
       }
-      fs_reg hdr = abld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-      abld.MOV(hdr, fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD)));
-      inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef, hdr);
+      fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+      srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+      inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
+                       srcs, ARRAY_SIZE(srcs));
       inst->mlen = 1;
    } else {
-      fs_reg payload = abld.vgrf(BRW_REGISTER_TYPE_UD, 2);
-      fs_reg *sources = ralloc_array(mem_ctx, fs_reg, 2);
-      sources[0] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
-      sources[1] = this->final_gs_vertex_count;
-      abld.LOAD_PAYLOAD(payload, sources, 2, 2);
-      inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef, payload);
+      fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+      srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+      srcs[URB_LOGICAL_SRC_DATA] = this->final_gs_vertex_count;
+      inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
+                       srcs, ARRAY_SIZE(srcs));
       inst->mlen = 2;
    }
    inst->eot = true;
@@ -6676,16 +6683,12 @@ fs_visitor::run_tcs()
    }
 
    /* Emit EOT write; set TR DS Cache bit */
-   fs_reg srcs[3] = {
-      fs_reg(get_tcs_output_urb_handle()),
-      fs_reg(brw_imm_ud(WRITEMASK_X << 16)),
-      fs_reg(brw_imm_ud(0)),
-   };
-   fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD, 3);
-   bld.LOAD_PAYLOAD(payload, srcs, 3, 2);
-
+   fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+   srcs[URB_LOGICAL_SRC_HANDLE] = get_tcs_output_urb_handle();
+   srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(WRITEMASK_X << 16);
+   srcs[URB_LOGICAL_SRC_DATA] = brw_imm_ud(0);
    fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
-                            bld.null_reg_ud(), payload);
+                            reg_undef, srcs, ARRAY_SIZE(srcs));
    inst->mlen = 3;
    inst->eot = true;
 
