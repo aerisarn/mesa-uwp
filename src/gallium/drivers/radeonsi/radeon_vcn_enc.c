@@ -142,10 +142,17 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
          pic->seq.log2_min_transform_block_size_minus2;
       enc->enc_pic.log2_diff_max_min_transform_block_size =
          pic->seq.log2_diff_max_min_transform_block_size;
+
+      /* To fix incorrect hardcoded values set by player
+       * log2_diff_max_min_luma_coding_block_size = log2(64) - (log2_min_luma_coding_block_size_minus3 + 3)
+       * max_transform_hierarchy_depth_inter = log2_diff_max_min_luma_coding_block_size + 1
+       * max_transform_hierarchy_depth_intra = log2_diff_max_min_luma_coding_block_size + 1
+       */
       enc->enc_pic.max_transform_hierarchy_depth_inter =
-         pic->seq.max_transform_hierarchy_depth_inter;
+         6 - (pic->seq.log2_min_luma_coding_block_size_minus3 + 3) + 1;
       enc->enc_pic.max_transform_hierarchy_depth_intra =
-         pic->seq.max_transform_hierarchy_depth_intra;
+         enc->enc_pic.max_transform_hierarchy_depth_inter;
+
       enc->enc_pic.log2_parallel_merge_level_minus2 = pic->pic.log2_parallel_merge_level_minus2;
       enc->enc_pic.bit_depth_luma_minus8 = pic->seq.bit_depth_luma_minus8;
       enc->enc_pic.bit_depth_chroma_minus8 = pic->seq.bit_depth_chroma_minus8;
