@@ -31,10 +31,11 @@
 using namespace brw;
 
 static void
-lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst,
-                            bool per_slot_present)
+lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
+   const bool per_slot_present =
+      inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE;
 
    assert(inst->size_written % REG_SIZE == 0);
    assert(inst->header_size == 0);
@@ -75,10 +76,13 @@ lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst,
 }
 
 static void
-lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst,
-                             bool per_slot_present, bool channel_mask_present)
+lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
+   const bool per_slot_present =
+      inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE;
+   const bool channel_mask_present =
+      inst->src[URB_LOGICAL_SRC_CHANNEL_MASK].file != BAD_FILE;
 
    assert(inst->header_size == 0);
 
@@ -2724,23 +2728,15 @@ fs_visitor::lower_logical_sends()
          break;
 
       case SHADER_OPCODE_URB_READ_LOGICAL:
-         lower_urb_read_logical_send(ibld, inst, false);
-         break;
       case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
-         lower_urb_read_logical_send(ibld, inst, true);
+         lower_urb_read_logical_send(ibld, inst);
          break;
 
       case SHADER_OPCODE_URB_WRITE_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, false, false);
-         break;
       case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, true, false);
-         break;
       case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, false, true);
-         break;
       case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst, true, true);
+         lower_urb_write_logical_send(ibld, inst);
          break;
 
       default:
