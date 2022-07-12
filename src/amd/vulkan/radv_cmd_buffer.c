@@ -831,12 +831,11 @@ radv_emit_userdata_address(struct radv_device *device, struct radeon_cmdbuf *cs,
 }
 
 static void
-radv_emit_descriptor_pointers(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline,
+radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *cs,
+                              struct radv_pipeline *pipeline,
                               struct radv_descriptor_state *descriptors_state,
                               gl_shader_stage stage)
 {
-   struct radv_device *device = cmd_buffer->device;
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t sh_base = pipeline->user_data_0[stage];
    struct radv_userdata_locations *locs = &pipeline->shaders[stage]->info.user_sgprs_locs;
    unsigned mask = locs->descriptor_sets_enabled;
@@ -3304,6 +3303,8 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
 {
    struct radv_descriptor_state *descriptors_state =
       radv_get_descriptors_state(cmd_buffer, bind_point);
+   struct radv_device *device = cmd_buffer->device;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
    bool flush_indirect_descriptors;
 
    if (!descriptors_state->dirty)
@@ -3318,17 +3319,17 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
       radv_flush_indirect_descriptor_sets(cmd_buffer, pipeline, bind_point);
 
    ASSERTED unsigned cdw_max =
-      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SETS * MESA_VULKAN_SHADER_STAGES * 4);
+      radeon_check_space(device->ws, cs, MAX_SETS * MESA_VULKAN_SHADER_STAGES * 4);
 
    if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
-      radv_emit_descriptor_pointers(cmd_buffer, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
+      radv_emit_descriptor_pointers(device, cs, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
    } else {
       radv_foreach_stage(stage, stages)
       {
          if (!cmd_buffer->state.graphics_pipeline->base.shaders[stage])
             continue;
 
-         radv_emit_descriptor_pointers(cmd_buffer, pipeline, descriptors_state, stage);
+         radv_emit_descriptor_pointers(device, cs, pipeline, descriptors_state, stage);
       }
    }
 
