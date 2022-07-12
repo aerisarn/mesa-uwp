@@ -374,16 +374,8 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
 
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
       return "urb_write_logical";
-   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-      return "urb_write_per_slot_logical";
-   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-      return "urb_write_masked_logical";
-   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
-      return "urb_write_masked_per_slot_logical";
    case SHADER_OPCODE_URB_READ_LOGICAL:
       return "urb_read_logical";
-   case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
-      return "urb_read_per_slot_logical";
 
    case SHADER_OPCODE_FIND_LIVE_CHANNEL:
       return "find_live_channel";
@@ -1137,9 +1129,6 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_MEMORY_FENCE:
    case SHADER_OPCODE_INTERLOCK:
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
    case FS_OPCODE_FB_WRITE:
    case FS_OPCODE_FB_WRITE_LOGICAL:
    case FS_OPCODE_REP_FB_WRITE:

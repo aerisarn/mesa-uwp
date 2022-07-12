@@ -467,15 +467,10 @@ enum opcode {
    SHADER_OPCODE_SCRATCH_HEADER,
 
    /**
-    * Gfx8+ SIMD8 URB Read messages.
+    * Gfx8+ SIMD8 URB messages.
     */
    SHADER_OPCODE_URB_READ_LOGICAL,
-   SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL,
-
    SHADER_OPCODE_URB_WRITE_LOGICAL,
-   SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL,
-   SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
-   SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL,
 
    /**
     * Return the index of the first enabled live channel and assign it to

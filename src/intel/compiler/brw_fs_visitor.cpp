@@ -774,7 +774,6 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
    else
       urb_handle = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
 
-   opcode opcode = SHADER_OPCODE_URB_WRITE_LOGICAL;
    int header_size = 1;
    fs_reg per_slot_offsets;
 
@@ -794,7 +793,6 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
        * Vertex Count.  SIMD8 mode processes 8 different primitives at a
        * time; each may output a different number of vertices.
        */
-      opcode = SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL;
       header_size++;
 
       /* The URB offset is in 128-bit units, so we need to multiply by 2 */
@@ -943,7 +941,8 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
                                              BRW_REGISTER_TYPE_F);
          abld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
-         fs_inst *inst = abld.emit(opcode, reg_undef, srcs, ARRAY_SIZE(srcs));
+         fs_inst *inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
+                                   srcs, ARRAY_SIZE(srcs));
 
          /* For ICL WA 1805992985 one needs additional write in the end. */
          if (devinfo->ver == 11 && stage == MESA_SHADER_TESS_EVAL)
@@ -1038,7 +1037,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = uniform_mask;
       srcs[URB_LOGICAL_SRC_DATA] = payload;
 
-      fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+      fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                           reg_undef, srcs, ARRAY_SIZE(srcs));
       inst->eot = true;
       inst->mlen = 6;

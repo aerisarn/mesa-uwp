@@ -908,7 +908,7 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
                                              BRW_REGISTER_TYPE_F);
          bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                    reg_undef, srcs, ARRAY_SIZE(srcs));
          inst->mlen = 2 + length;
          inst->offset = urb_global_offset;
@@ -936,7 +936,7 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
                                              BRW_REGISTER_TYPE_F);
          bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                    reg_undef, srcs, ARRAY_SIZE(srcs));
          inst->mlen = 2 + length;
          inst->offset = urb_global_offset;
@@ -1002,7 +1002,7 @@ emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
                                              BRW_REGISTER_TYPE_F);
          bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                    reg_undef, srcs, ARRAY_SIZE(srcs));
          inst->mlen = 3 + length;
          inst->offset = 0;
@@ -1102,7 +1102,7 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          fs_reg data = bld8.vgrf(BRW_REGISTER_TYPE_UD, 4);
 
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL,
+         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_READ_LOGICAL,
                                    data, srcs, ARRAY_SIZE(srcs));
          inst->mlen = 2;
          inst->offset = 0;

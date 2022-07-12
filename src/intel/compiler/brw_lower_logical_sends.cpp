@@ -2728,14 +2728,10 @@ fs_visitor::lower_logical_sends()
          break;
 
       case SHADER_OPCODE_URB_READ_LOGICAL:
-      case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
          lower_urb_read_logical_send(ibld, inst);
          break;
 
       case SHADER_OPCODE_URB_WRITE_LOGICAL:
-      case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-      case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-      case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
          lower_urb_write_logical_send(ibld, inst);
          break;
 

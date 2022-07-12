@@ -2292,19 +2292,13 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
     * Similarly, if the control data header is <= 32 bits, there is only one
     * DWord, so we can skip channel masks.
     */
-   enum opcode opcode = SHADER_OPCODE_URB_WRITE_LOGICAL;
-
    fs_reg channel_mask, per_slot_offset;
 
-   if (gs_compile->control_data_header_size_bits > 32) {
-      opcode = SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL;
+   if (gs_compile->control_data_header_size_bits > 32)
       channel_mask = vgrf(glsl_type::uint_type);
-   }
 
-   if (gs_compile->control_data_header_size_bits > 128) {
-      opcode = SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL;
+   if (gs_compile->control_data_header_size_bits > 128)
       per_slot_offset = vgrf(glsl_type::uint_type);
-   }
 
    /* Figure out which DWord we're trying to write to using the formula:
     *
@@ -2315,7 +2309,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
     *
     *    dword_index = (vertex_count - 1) >> (6 - log2(bits_per_vertex))
     */
-   if (opcode != SHADER_OPCODE_URB_WRITE_LOGICAL) {
+   if (channel_mask.file != BAD_FILE || per_slot_offset.file != BAD_FILE) {
       fs_reg dword_index = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
       fs_reg prev_count = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
       abld.ADD(prev_count, vertex_count, brw_imm_ud(0xffffffffu));
@@ -2360,7 +2354,8 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
                                        BRW_REGISTER_TYPE_F);
    abld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
-   fs_inst *inst = abld.emit(opcode, reg_undef, srcs, ARRAY_SIZE(srcs));
+   fs_inst *inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
+                             srcs, ARRAY_SIZE(srcs));
    inst->mlen = header_size + length;
    /* We need to increment Global Offset by 256-bits to make room for
     * Broadwell's extra "Vertex Count" payload at the beginning of the
@@ -2652,7 +2647,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
       srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
 
       if (first_component != 0) {
-         inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
+         inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                          srcs, ARRAY_SIZE(srcs));
          inst->size_written = read_components *
                               tmp.component_size(inst->exec_size);
@@ -2661,7 +2656,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
                     offset(tmp, bld, i + first_component));
          }
       } else {
-         inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dst,
+         inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst,
                          srcs, ARRAY_SIZE(srcs));
          inst->size_written = num_components *
                               dst.component_size(inst->exec_size);
@@ -2958,14 +2953,14 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          if (first_component != 0) {
             unsigned read_components = num_components + first_component;
             fs_reg tmp = bld.vgrf(dst.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                             srcs, ARRAY_SIZE(srcs));
             for (unsigned i = 0; i < num_components; i++) {
                bld.MOV(offset(dst, bld, i),
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dst,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst,
                             srcs, ARRAY_SIZE(srcs));
          }
          inst->offset = imm_offset;
@@ -3037,7 +3032,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
             unsigned read_components =
                instr->num_components + first_component;
             fs_reg tmp = bld.vgrf(dst.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                             srcs, ARRAY_SIZE(srcs));
             inst->size_written = read_components * REG_SIZE;
             for (unsigned i = 0; i < instr->num_components; i++) {
@@ -3045,7 +3040,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dst,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst,
                             srcs, ARRAY_SIZE(srcs));
             inst->size_written = instr->num_components * REG_SIZE;
          }
@@ -3067,7 +3062,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          break;
 
       unsigned num_components = util_last_bit(mask);
-      enum opcode opcode;
 
       /* We can only pack two 64-bit components in a single message, so send
        * 2 messages if we have more components
@@ -3076,16 +3070,8 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       mask = mask << first_component;
 
       fs_reg mask_reg;
-      if (mask != WRITEMASK_XYZW) {
+      if (mask != WRITEMASK_XYZW)
          mask_reg = brw_imm_ud(mask << 16);
-         opcode = indirect_offset.file != BAD_FILE ?
-            SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL :
-            SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL;
-      } else {
-         opcode = indirect_offset.file != BAD_FILE ?
-            SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL :
-            SHADER_OPCODE_URB_WRITE_LOGICAL;
-      }
 
       fs_reg sources[4];
 
@@ -3108,7 +3094,8 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                                           BRW_REGISTER_TYPE_F);
       bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
-      fs_inst *inst = bld.emit(opcode, reg_undef, srcs, ARRAY_SIZE(srcs));
+      fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
+                               srcs, ARRAY_SIZE(srcs));
       inst->offset = imm_offset;
       inst->mlen = header_size + length;
       break;
@@ -3208,14 +3195,14 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
             unsigned read_components =
                 num_components + first_component;
             fs_reg tmp = bld.vgrf(dest.type, read_components);
-            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, tmp,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                             srcs, ARRAY_SIZE(srcs));
             for (unsigned i = 0; i < num_components; i++) {
                bld.MOV(offset(dest, bld, i),
                        offset(tmp, bld, i + first_component));
             }
          } else {
-            inst = bld.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL, dest,
+            inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dest,
                             srcs, ARRAY_SIZE(srcs));
          }
          inst->mlen = 2;

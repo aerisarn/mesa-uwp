@@ -864,9 +864,6 @@ fs_inst::components_read(unsigned i) const
    }
 
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
       if (i == URB_LOGICAL_SRC_DATA)
          return mlen - 1 -
             unsigned(src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE) -
@@ -1534,10 +1531,7 @@ fs_visitor::emit_gs_thread_end()
 
    if (gs_prog_data->static_vertex_count != -1) {
       foreach_in_list_reverse(fs_inst, prev, &this->instructions) {
-         if (prev->opcode == SHADER_OPCODE_URB_WRITE_LOGICAL ||
-             prev->opcode == SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL ||
-             prev->opcode == SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL ||
-             prev->opcode == SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL) {
+         if (prev->opcode == SHADER_OPCODE_URB_WRITE_LOGICAL) {
             prev->eot = true;
 
             /* Delete now dead instructions. */
@@ -5070,11 +5064,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
       return 8;
 
    case SHADER_OPCODE_URB_READ_LOGICAL:
-   case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_PER_SLOT_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL:
-   case SHADER_OPCODE_URB_WRITE_MASKED_PER_SLOT_LOGICAL:
       return MIN2(8, inst->exec_size);
 
    case SHADER_OPCODE_QUAD_SWIZZLE: {
@@ -6685,7 +6675,7 @@ fs_visitor::run_tcs()
    srcs[URB_LOGICAL_SRC_HANDLE] = get_tcs_output_urb_handle();
    srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(WRITEMASK_X << 16);
    srcs[URB_LOGICAL_SRC_DATA] = brw_imm_ud(0);
-   fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_MASKED_LOGICAL,
+   fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                             reg_undef, srcs, ARRAY_SIZE(srcs));
    inst->mlen = 3;
    inst->eot = true;
