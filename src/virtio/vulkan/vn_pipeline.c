@@ -125,6 +125,7 @@ vn_CreatePipelineCache(VkDevice device,
                        const VkAllocationCallbacks *pAllocator,
                        VkPipelineCache *pPipelineCache)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
@@ -163,6 +164,7 @@ vn_DestroyPipelineCache(VkDevice device,
                         VkPipelineCache pipelineCache,
                         const VkAllocationCallbacks *pAllocator)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_pipeline_cache *cache =
       vn_pipeline_cache_from_handle(pipelineCache);
@@ -185,6 +187,7 @@ vn_GetPipelineCacheData(VkDevice device,
                         size_t *pDataSize,
                         void *pData)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_physical_device *physical_dev = dev->physical_device;
 
@@ -231,6 +234,7 @@ vn_MergePipelineCaches(VkDevice device,
                        uint32_t srcCacheCount,
                        const VkPipelineCache *pSrcCaches)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
 
    vn_async_vkMergePipelineCaches(dev->instance, device, dstCache,
@@ -261,6 +265,7 @@ vn_fix_graphics_pipeline_create_info(
    const VkAllocationCallbacks *alloc,
    VkGraphicsPipelineCreateInfo **out)
 {
+   VN_TRACE_FUNC();
    VkGraphicsPipelineCreateInfo *infos = NULL;
 
    /* Defer allocation until we find a needed fix. */
@@ -353,6 +358,7 @@ vn_CreateGraphicsPipelines(VkDevice device,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipeline *pPipelines)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
@@ -403,6 +409,7 @@ vn_CreateComputePipelines(VkDevice device,
                           const VkAllocationCallbacks *pAllocator,
                           VkPipeline *pPipelines)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
@@ -437,6 +444,7 @@ vn_DestroyPipeline(VkDevice device,
                    VkPipeline _pipeline,
                    const VkAllocationCallbacks *pAllocator)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_pipeline *pipeline = vn_pipeline_from_handle(_pipeline);
    const VkAllocationCallbacks *alloc =

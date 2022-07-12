@@ -276,6 +276,7 @@ vn_CreateDescriptorPool(VkDevice device,
                         const VkAllocationCallbacks *pAllocator,
                         VkDescriptorPool *pDescriptorPool)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
@@ -338,6 +339,7 @@ vn_DestroyDescriptorPool(VkDevice device,
                          VkDescriptorPool descriptorPool,
                          const VkAllocationCallbacks *pAllocator)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_pool *pool =
       vn_descriptor_pool_from_handle(descriptorPool);
@@ -454,6 +456,7 @@ vn_ResetDescriptorPool(VkDevice device,
                        VkDescriptorPool descriptorPool,
                        VkDescriptorPoolResetFlags flags)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_pool *pool =
       vn_descriptor_pool_from_handle(descriptorPool);
@@ -478,6 +481,7 @@ vn_AllocateDescriptorSets(VkDevice device,
                           const VkDescriptorSetAllocateInfo *pAllocateInfo,
                           VkDescriptorSet *pDescriptorSets)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_pool *pool =
       vn_descriptor_pool_from_handle(pAllocateInfo->descriptorPool);
@@ -596,6 +600,7 @@ vn_FreeDescriptorSets(VkDevice device,
                       uint32_t descriptorSetCount,
                       const VkDescriptorSet *pDescriptorSets)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_pool *pool =
       vn_descriptor_pool_from_handle(descriptorPool);
@@ -761,6 +766,7 @@ vn_UpdateDescriptorSets(VkDevice device,
                         uint32_t descriptorCopyCount,
                         const VkCopyDescriptorSet *pDescriptorCopies)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
 
@@ -903,6 +909,7 @@ vn_CreateDescriptorUpdateTemplate(
    const VkAllocationCallbacks *pAllocator,
    VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
@@ -941,6 +948,7 @@ vn_DestroyDescriptorUpdateTemplate(
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const VkAllocationCallbacks *pAllocator)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_update_template *templ =
       vn_descriptor_update_template_from_handle(descriptorUpdateTemplate);
@@ -965,6 +973,7 @@ vn_UpdateDescriptorSetWithTemplate(
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_set *set =
       vn_descriptor_set_from_handle(descriptorSet);

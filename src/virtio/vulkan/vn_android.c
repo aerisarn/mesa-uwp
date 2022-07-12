@@ -994,6 +994,7 @@ vn_GetAndroidHardwareBufferPropertiesANDROID(
    const struct AHardwareBuffer *buffer,
    VkAndroidHardwareBufferPropertiesANDROID *pProperties)
 {
+   VN_TRACE_FUNC();
    struct vn_device *dev = vn_device_from_handle(device);
    VkResult result = VK_SUCCESS;
    int dma_buf_fd = -1;
