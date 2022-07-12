@@ -198,7 +198,7 @@ def write_format_table(formats):
         print()
 
     print('static const struct util_format_description')
-    print('util_format_descriptions[] = {')
+    print('util_format_descriptions[PIPE_FORMAT_COUNT] = {')
     for format in formats:
         sn = format.short_name()
 
@@ -224,7 +224,7 @@ def write_format_table(formats):
     generate_table_getter("")
 
     print('static const struct util_format_pack_description')
-    print('util_format_pack_descriptions[] = {')
+    print('util_format_pack_descriptions[PIPE_FORMAT_COUNT] = {')
     for format in formats:
         sn = format.short_name()
 
@@ -253,7 +253,7 @@ def write_format_table(formats):
     print()
     generate_table_getter("pack_")
     print('static const struct util_format_unpack_description')
-    print('util_format_unpack_descriptions[] = {')
+    print('util_format_unpack_descriptions[PIPE_FORMAT_COUNT] = {')
     for format in formats:
         sn = format.short_name()
 
@@ -293,7 +293,7 @@ def write_format_table(formats):
 
     generate_table_getter("unpack_")
 
-    print('static const util_format_fetch_rgba_func_ptr util_format_fetch_rgba_table[] = {')
+    print('static const util_format_fetch_rgba_func_ptr util_format_fetch_rgba_table[PIPE_FORMAT_COUNT] = {')
     for format in formats:
         sn = format.short_name()
 
