@@ -1135,6 +1135,8 @@ static bool emit_tex_fdd(const nir_alu_instr& alu, TexInstr::Opcode opcode, bool
 
 static bool emit_alu_cube(const nir_alu_instr& alu, Shader& shader);
 
+static bool emit_fdph(const nir_alu_instr& alu, Shader& shader);
+
 static bool check_64_bit_op_src(nir_src *src, void *state)
 {
    if (nir_src_bit_size(*src) == 64) {
@@ -1273,6 +1275,7 @@ bool AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
    case nir_op_fcsel_ge: return emit_alu_op3(*alu, op3_cndge, shader, {0, 1, 2});
    case nir_op_fcsel_gt: return emit_alu_op3(*alu, op3_cndgt, shader, {0, 1, 2});
 
+   case nir_op_fdph: return emit_fdph(*alu, shader);
    case nir_op_fdot2: return emit_dot(*alu, 2, shader);
    case nir_op_fdot3: return emit_dot(*alu, 3, shader);
    case nir_op_fdot4: return emit_dot(*alu, 4, shader);
@@ -2069,6 +2072,39 @@ static bool emit_dot(const nir_alu_instr& alu, int n, Shader& shader)
       srcs[2 * i    ] = value_factory.zero();
       srcs[2 * i + 1] = value_factory.zero();
    }
+
+   auto op = unlikely(shader.has_flag(Shader::sh_legacy_math_rules)) ?
+                op2_dot4 : op2_dot4_ieee;
+   AluInstr *ir = new AluInstr(op, dest, srcs,  AluInstr::last_write, 4);
+
+   if (src0.negate) ir->set_alu_flag(alu_src0_neg);
+   if (src0.abs) ir->set_alu_flag(alu_src0_abs);
+   if (src1.negate) ir->set_alu_flag(alu_src1_neg);
+   if (src1.abs) ir->set_alu_flag(alu_src1_abs);
+
+   if (alu.dest.saturate) ir->set_alu_flag(alu_dst_clamp);
+
+   shader.emit_instruction(ir);
+   return true;
+}
+
+static bool emit_fdph(const nir_alu_instr& alu, Shader& shader)
+{
+   auto& value_factory = shader.value_factory();
+   const nir_alu_src& src0 = alu.src[0];
+   const nir_alu_src& src1 = alu.src[1];
+
+   auto dest = value_factory.dest(alu.dest.dest, 0, pin_free);
+
+   AluInstr::SrcValues srcs(8);
+
+   for (int i = 0; i < 3 ; ++i) {
+      srcs[2 * i    ] = value_factory.src(src0, i);
+      srcs[2 * i + 1] = value_factory.src(src1, i);
+   }
+
+   srcs[6] = value_factory.one();
+   srcs[7] = value_factory.src(src1, 3);
 
    auto op = unlikely(shader.has_flag(Shader::sh_legacy_math_rules)) ?
                 op2_dot4 : op2_dot4_ieee;
