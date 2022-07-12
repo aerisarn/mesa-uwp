@@ -180,7 +180,6 @@ image_format_features(struct v3dv_physical_device *pdevice,
 
    const struct util_format_description *desc =
       vk_format_description(vk_format);
-   assert(desc);
 
    if (tiling != VK_IMAGE_TILING_LINEAR) {
       if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN && desc->is_array) {
@@ -226,7 +225,6 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
 
    const struct util_format_description *desc =
       vk_format_description(vk_format);
-   assert(desc);
 
    VkFormatFeatureFlags2 flags = 0;
    if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
