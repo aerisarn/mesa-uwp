@@ -414,8 +414,6 @@ softpipe_is_format_supported( struct pipe_screen *screen,
       return false;
 
    format_desc = util_format_description(format);
-   if (!format_desc)
-      return false;
 
    if (sample_count > 1)
       return false;
