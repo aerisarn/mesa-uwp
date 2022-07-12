@@ -4457,6 +4457,8 @@ void genX(CmdBeginTransformFeedbackEXT)(
    assert(counterBufferCount <= MAX_XFB_BUFFERS);
    assert(firstCounterBuffer + counterBufferCount <= MAX_XFB_BUFFERS);
 
+   trace_intel_begin_xfb(&cmd_buffer->trace);
+
    /* From the SKL PRM Vol. 2c, SO_WRITE_OFFSET:
     *
     *    "Ssoftware must ensure that no HW stream output operations can be in
@@ -4544,6 +4546,8 @@ void genX(CmdEndTransformFeedbackEXT)(
          }
       }
    }
+
+   trace_intel_end_xfb(&cmd_buffer->trace);
 
    cmd_buffer->state.xfb_enabled = false;
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_XFB_ENABLE;

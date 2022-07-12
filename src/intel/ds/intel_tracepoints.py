@@ -57,6 +57,9 @@ def define_tracepoints(args):
                  tp_args=[Arg(type='uint8_t', var='level', c_format='%hhu'),],
                  end_pipelined=False)
 
+    begin_end_tp('xfb',
+                 end_pipelined=False)
+
     begin_end_tp('render_pass',
                  tp_args=[Arg(type='uint16_t', var='width', c_format='%hu'),
                           Arg(type='uint16_t', var='height', c_format='%hu'),
