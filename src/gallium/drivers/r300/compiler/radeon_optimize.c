@@ -886,7 +886,8 @@ static int peephole(struct radeon_compiler * c, struct rc_instruction * inst)
 	return 0;
 }
 
-static unsigned int merge_swizzles(unsigned int swz1, unsigned int swz2) {
+static unsigned int merge_swizzles(unsigned int swz1, unsigned int swz2)
+{
 	unsigned int new_swz = rc_init_swizzle(RC_SWIZZLE_UNUSED, 0);
 	for (unsigned int chan = 0; chan < 4; chan++) {
 		unsigned int swz = GET_SWZ(swz1, chan);
@@ -917,12 +918,79 @@ static unsigned int merge_negates(struct rc_src_register src1, struct rc_src_reg
 	return clean_negate(src1) | clean_negate(src2);
 }
 
-static void merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
+static unsigned int fill_swizzle(unsigned int orig_swz, unsigned int wmask, unsigned int const_swz)
+{
+	for (unsigned int chan = 0; chan < 4; chan++) {
+		unsigned int swz = GET_SWZ(orig_swz, chan);
+		if (swz == RC_SWIZZLE_UNUSED && (wmask & (1 << chan))) {
+			SET_SWZ(orig_swz, chan, const_swz);
+		}
+	}
+	return orig_swz;
+}
+
+/**
+ * Merges two MOVs writing different channels of the same destination register
+ * with the use of the constant swizzles.
+ */
+static bool merge_movs(
+	struct radeon_compiler * c,
+	struct rc_instruction * inst,
+	struct rc_instruction * cur)
+{
+	/* We can merge two MOVs into MOV if one of them is from inline constant,
+	 * i.e., constant swizzles and RC_FILE_NONE).
+	 *
+	 * For example
+	 *   MOV temp[0].x none.1___
+	 *   MOV temp[0].y input[0]._x__
+	 *
+	 * becomes
+	 *   MOV temp[0].xy input[0].1x__
+	 */
+	unsigned int orig_dst_wmask = inst->U.I.DstReg.WriteMask;
+	if (cur->U.I.SrcReg[0].File == RC_FILE_NONE ||
+		inst->U.I.SrcReg[0].File == RC_FILE_NONE) {
+		struct rc_src_register src;
+		if (cur->U.I.SrcReg[0].File == RC_FILE_NONE)
+			src = inst->U.I.SrcReg[0];
+		else
+			src = cur->U.I.SrcReg[0];
+		src.Swizzle = merge_swizzles(cur->U.I.SrcReg[0].Swizzle,
+						inst->U.I.SrcReg[0].Swizzle);
+		src.Negate = merge_negates(inst->U.I.SrcReg[0], cur->U.I.SrcReg[0]);
+		if (!c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src))
+			return false;
+		cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
+		cur->U.I.SrcReg[0] = src;
+		rc_remove_instruction(inst);
+		return true;
+	}
+	return false;
+}
+
+static bool inst_combination(
+	struct rc_instruction * inst1,
+	struct rc_instruction * inst2,
+	rc_opcode opcode1,
+	rc_opcode opcode2)
+{
+	return ((inst1->U.I.Opcode == opcode1 && inst2->U.I.Opcode == opcode2) ||
+		(inst2->U.I.Opcode == opcode1 && inst1->U.I.Opcode == opcode2));
+}
+
+/**
+ * Searches for instructions writing different channels of the same register that could
+ * be merged together with the use of constant swizzles.
+ *
+ * The potential candidates are combinations of MOVs, ADDs, MULs and MADs.
+ */
+static void merge_channels(struct radeon_compiler * c, struct rc_instruction * inst)
 {
 	unsigned int orig_dst_reg = inst->U.I.DstReg.Index;
 	unsigned int orig_dst_file = inst->U.I.DstReg.File;
 	unsigned int orig_dst_wmask = inst->U.I.DstReg.WriteMask;
-	unsigned int orig_src_file = inst->U.I.SrcReg[0].File;
+	const struct rc_opcode_info * orig_opcode = rc_get_opcode_info(inst->U.I.Opcode);
 
 	struct rc_instruction * cur = inst;
 	while (cur!= &c->Program.Instructions) {
@@ -950,35 +1018,21 @@ static void merge_movs(struct radeon_compiler * c, struct rc_instruction * inst)
 				return;
 		}
 
-		if (cur->U.I.Opcode == RC_OPCODE_MOV &&
-			cur->U.I.DstReg.File == orig_dst_file &&
+		/* Stop the search when some of the original sources are touched. */
+		for (unsigned i = 0; i < orig_opcode->NumSrcRegs; i++) {
+			if (inst->U.I.SrcReg[i].File == cur->U.I.DstReg.File &&
+				inst->U.I.SrcReg[i].Index == cur->U.I.DstReg.Index)
+				return;
+		}
+
+		if (cur->U.I.DstReg.File == orig_dst_file &&
 			cur->U.I.DstReg.Index == orig_dst_reg &&
 			cur->U.I.SaturateMode == inst->U.I.SaturateMode &&
 			(cur->U.I.DstReg.WriteMask & orig_dst_wmask) == 0) {
 
-			/* We can merge the movs if one of them is from inline constant */
-			if (cur->U.I.SrcReg[0].File == RC_FILE_NONE ||
-				orig_src_file == RC_FILE_NONE) {
-				cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
-
-				struct rc_src_register src;
-				if (cur->U.I.SrcReg[0].File == RC_FILE_NONE) {
-					src = inst->U.I.SrcReg[0];
-				} else {
-					src = cur->U.I.SrcReg[0];
-				}
-				src.Swizzle = merge_swizzles(cur->U.I.SrcReg[0].Swizzle,
-								inst->U.I.SrcReg[0].Swizzle);
-				src.Negate = merge_negates(inst->U.I.SrcReg[0], cur->U.I.SrcReg[0]);
-				if (!c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src))
+			if (inst_combination(cur, inst, RC_OPCODE_MOV, RC_OPCODE_MOV)) {
+				if (merge_movs(c, inst, cur))
 					return;
-				cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
-				cur->U.I.SrcReg[0] = src;
-
-				/* finally delete the original mov */
-				rc_remove_instruction(inst);
-
-				return;
 			}
 		}
 	}
@@ -1012,7 +1066,7 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 			struct rc_instruction * cur = inst;
 			inst = inst->Next;
 			if (cur->U.I.Opcode == RC_OPCODE_MOV)
-				merge_movs(c, cur);
+				merge_channels(c, cur);
 		}
 	}
 
