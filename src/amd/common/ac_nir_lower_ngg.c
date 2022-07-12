@@ -1674,51 +1674,39 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
    b->cursor = nir_before_instr(&intrin->instr);
 
    unsigned writemask = nir_intrinsic_write_mask(intrin);
-   unsigned base = nir_intrinsic_base(intrin);
    unsigned component_offset = nir_intrinsic_component(intrin);
    unsigned base_offset = nir_src_as_uint(intrin->src[1]);
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
 
-   assert((base + base_offset) < VARYING_SLOT_MAX);
+   unsigned location = io_sem.location + base_offset;
+   assert(location < VARYING_SLOT_MAX);
 
    nir_ssa_def *store_val = intrin->src[0].ssa;
 
-   for (unsigned comp = 0; comp < 4; ++comp) {
+   /* Small bitsize components consume the same amount of space as 32-bit components,
+    * but 64-bit ones consume twice as many. (Vulkan spec 15.1.5)
+    *
+    * 64-bit IO has been lowered to multi 32-bit IO.
+    */
+   assert(store_val->bit_size <= 32);
+
+   /* Save output usage info. */
+   gs_output_info *info = &s->output_info[location];
+
+   for (unsigned comp = 0; comp < store_val->num_components; ++comp) {
       if (!(writemask & (1 << comp)))
          continue;
       unsigned stream = (io_sem.gs_streams >> (comp * 2)) & 0x3;
       if (!(b->shader->info.gs.active_stream_mask & (1 << stream)))
          continue;
 
-      /* Small bitsize components consume the same amount of space as 32-bit components,
-       * but 64-bit ones consume twice as many. (Vulkan spec 15.1.5)
-       */
-      unsigned num_consumed_components = DIV_ROUND_UP(store_val->bit_size, 32);
-      nir_ssa_def *element = nir_channel(b, store_val, comp);
-      if (num_consumed_components > 1)
-         element = nir_extract_bits(b, &element, 1, 0, num_consumed_components, 32);
-
-      /* Save output usage info. */
-      gs_output_info *info = &s->output_info[io_sem.location];
       /* The same output should always belong to the same stream. */
       assert(!info->components_mask || info->stream == stream);
       info->stream = stream;
-      info->components_mask |= BITFIELD_BIT(component_offset + comp * num_consumed_components);
+      info->components_mask |= BITFIELD_BIT(component_offset + comp);
 
-      for (unsigned c = 0; c < num_consumed_components; ++c) {
-         unsigned component_index =  (comp * num_consumed_components) + c + component_offset;
-         unsigned base_index = base + base_offset + component_index / 4;
-         component_index %= 4;
-
-         /* Store the current component element */
-         nir_ssa_def *component_element = element;
-         if (num_consumed_components > 1)
-            component_element = nir_channel(b, component_element, c);
-         if (component_element->bit_size != 32)
-            component_element = nir_u2u32(b, component_element);
-
-         nir_store_var(b, s->output_vars[base_index][component_index], component_element, 0x1u);
-      }
+      nir_variable *var = s->output_vars[location][component_offset + comp];
+      nir_store_var(b, var, nir_channel(b, store_val, comp), 0x1u);
    }
 
    nir_instr_remove(&intrin->instr);
