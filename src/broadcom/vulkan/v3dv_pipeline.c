@@ -1234,11 +1234,8 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
       }
 
       if (key->is_points) {
-         /* FIXME: The mask would need to be computed based on the shader
-          * inputs. On gallium it is done at st_atom_rasterizer
-          * (sprite_coord_enable). anv seems (need to confirm) to do that on
-          * genX_pipeline (PointSpriteTextureCoordinateEnable). Would be also
-          * better to have tests to guide filling the mask.
+         /* This mask represents state for GL_ARB_point_sprite which is not
+          * relevant to Vulkan.
           */
          key->point_sprite_mask = 0;
 
