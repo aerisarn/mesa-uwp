@@ -789,7 +789,6 @@ tu6_setup_streamout(struct tu_cs *cs,
 #define A6XX_SO_PROG_DWORDS 64
    uint32_t prog[A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS] = {};
    BITSET_DECLARE(valid_dwords, A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) = {0};
-   uint32_t ncomp[IR3_MAX_SO_BUFFERS] = {};
 
    /* TODO: streamout state should be in a non-GMEM draw state */
 
@@ -803,8 +802,6 @@ tu6_setup_streamout(struct tu_cs *cs,
       return;
    }
 
-   /* is there something to do with info->stride[i]? */
-
    for (unsigned i = 0; i < info->num_outputs; i++) {
       const struct ir3_stream_output *out = &info->output[i];
       unsigned k = out->register_index;
@@ -813,8 +810,6 @@ tu6_setup_streamout(struct tu_cs *cs,
       /* Skip it, if it's an output that was never assigned a register. */
       if (k >= v->outputs_count || v->outputs[k].regid == INVALID_REG)
          continue;
-
-      ncomp[out->output_buffer] += out->num_components;
 
       /* linkage map sorted by order frag shader wants things, so
        * a bit less ideal here..
@@ -855,17 +850,17 @@ tu6_setup_streamout(struct tu_cs *cs,
    tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 10 + 2 * prog_count);
    tu_cs_emit(cs, REG_A6XX_VPC_SO_STREAM_CNTL);
    tu_cs_emit(cs, A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(info->streams_written) |
-                  COND(ncomp[0] > 0,
+                  COND(info->stride[0] > 0,
                        A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1 + info->buffer_to_stream[0])) |
-                  COND(ncomp[1] > 0,
+                  COND(info->stride[1] > 0,
                        A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1 + info->buffer_to_stream[1])) |
-                  COND(ncomp[2] > 0,
+                  COND(info->stride[2] > 0,
                        A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1 + info->buffer_to_stream[2])) |
-                  COND(ncomp[3] > 0,
+                  COND(info->stride[3] > 0,
                        A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1 + info->buffer_to_stream[3])));
    for (uint32_t i = 0; i < 4; i++) {
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(i));
-      tu_cs_emit(cs, ncomp[i]);
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_BUFFER_STRIDE(i));
+      tu_cs_emit(cs, info->stride[i]);
    }
    bool first = true;
    BITSET_FOREACH_RANGE(start, end, valid_dwords,

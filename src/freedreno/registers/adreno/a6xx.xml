@@ -2500,7 +2500,7 @@ to upconvert to 32b float internally?
 	<array offset="0x921a" name="VPC_SO" stride="7" length="4">
 		<reg64 offset="0" name="BUFFER_BASE" type="waddress" align="32"/>
 		<reg32 offset="2" name="BUFFER_SIZE" low="2" high="31" shr="2"/>
-		<reg32 offset="3" name="NCOMP" low="0" high="9"/>  <!-- component count -->
+		<reg32 offset="3" name="BUFFER_STRIDE" low="0" high="9" shr="2"/>
 		<reg32 offset="4" name="BUFFER_OFFSET" low="2" high="31" shr="2"/>
 		<reg64 offset="5" name="FLUSH_BASE" type="waddress" align="32"/>
 	</array>

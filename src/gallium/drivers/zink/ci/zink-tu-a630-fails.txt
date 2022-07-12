@@ -5,9 +5,6 @@ GTF-GL46.gtf21.GL3Tests.texture_lod_bias.texture_lod_bias_all,Fail
 GTF-GL46.gtf30.GL3Tests.framebuffer_blit.framebuffer_blit_functionality_multisampled_to_singlesampled_blit,Fail
 GTF-GL46.gtf30.GL3Tests.sgis_texture_lod.sgis_texture_lod_basic_lod_selection,Fail
 GTF-GL46.gtf32.GL3Tests.draw_elements_base_vertex.draw_elements_base_vertex_invalid_mode,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback3.transform_feedback3_multiple_streams,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback3.transform_feedback3_skip_components,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback3.transform_feedback3_skip_multiple_buffers,Fail
 KHR-GL46.buffer_storage.map_persistent_draw,Fail
 KHR-GL46.copy_image.functional,Fail
 KHR-GL46.direct_state_access.buffers_functional,Fail
@@ -21,8 +18,5 @@ KHR-GL46.texture_view.view_classes,Fail
 KHR-GL46.vertex_attrib_64bit.vao,Fail
 KHR-Single-GL46.arrays_of_arrays_gl.AtomicUsage,Fail
 KHR-Single-GL46.arrays_of_arrays_gl.SubroutineFunctionCalls2,Crash
-KHR-Single-GL46.enhanced_layouts.xfb_capture_inactive_output_block_member,Fail
-KHR-Single-GL46.enhanced_layouts.xfb_capture_struct,Fail
-KHR-Single-GL46.enhanced_layouts.xfb_vertex_streams,Fail
 dEQP-GLES31.functional.texture.border_clamp.range_clamp.linear_srgb_color,Fail
 dEQP-GLES31.functional.texture.border_clamp.range_clamp.nearest_srgb_color,Fail

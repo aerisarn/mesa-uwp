@@ -176,14 +176,6 @@ spec@arb_timer_query@timestamp-get,Fail
 # Note: no FS, rasterizer discard enabled.
 spec@arb_transform_feedback3@arb_transform_feedback3-ext_interleaved_two_bufs_vs,Fail
 
-spec@arb_transform_feedback3@gl_skipcomponents1-1,Fail
-spec@arb_transform_feedback3@gl_skipcomponents1234,Fail
-spec@arb_transform_feedback3@gl_skipcomponents1-2,Fail
-spec@arb_transform_feedback3@gl_skipcomponents1-3,Fail
-spec@arb_transform_feedback3@gl_skipcomponents1-gl_nextbuffer,Fail
-spec@arb_transform_feedback3@gl_skipcomponents2,Fail
-spec@arb_transform_feedback3@gl_skipcomponents3,Fail
-spec@arb_transform_feedback3@gl_skipcomponents4,Fail
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
 
 spec@egl 1.4@eglterminate then unbind context,Fail

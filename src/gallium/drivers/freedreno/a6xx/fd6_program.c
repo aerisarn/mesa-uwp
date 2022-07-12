@@ -197,17 +197,13 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
 #define A6XX_SO_PROG_DWORDS 64
    uint32_t prog[A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS] = {};
    BITSET_DECLARE(valid_dwords, A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) = {0};
-   uint32_t ncomp[PIPE_MAX_SO_BUFFERS];
 
-   memset(ncomp, 0, sizeof(ncomp));
    memset(prog, 0, sizeof(prog));
 
    for (unsigned i = 0; i < strmout->num_outputs; i++) {
       const struct ir3_stream_output *out = &strmout->output[i];
       unsigned k = out->register_index;
       unsigned idx;
-
-      ncomp[out->output_buffer] += out->num_components;
 
       /* linkage map sorted by order frag shader wants things, so
        * a bit less ideal here..
@@ -255,18 +251,18 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
    OUT_RING(ring, REG_A6XX_VPC_SO_STREAM_CNTL);
    OUT_RING(ring,
             A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(0x1) |
-               COND(ncomp[0] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1)) |
-               COND(ncomp[1] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1)) |
-               COND(ncomp[2] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1)) |
-               COND(ncomp[3] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1)));
-   OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(0));
-   OUT_RING(ring, ncomp[0]);
-   OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(1));
-   OUT_RING(ring, ncomp[1]);
-   OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(2));
-   OUT_RING(ring, ncomp[2]);
-   OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(3));
-   OUT_RING(ring, ncomp[3]);
+               COND(strmout->stride[0] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1)) |
+               COND(strmout->stride[1] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1)) |
+               COND(strmout->stride[2] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1)) |
+               COND(strmout->stride[3] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1)));
+   OUT_RING(ring, REG_A6XX_VPC_SO_BUFFER_STRIDE(0));
+   OUT_RING(ring, strmout->stride[0]);
+   OUT_RING(ring, REG_A6XX_VPC_SO_BUFFER_STRIDE(1));
+   OUT_RING(ring, strmout->stride[1]);
+   OUT_RING(ring, REG_A6XX_VPC_SO_BUFFER_STRIDE(2));
+   OUT_RING(ring, strmout->stride[2]);
+   OUT_RING(ring, REG_A6XX_VPC_SO_BUFFER_STRIDE(3));
+   OUT_RING(ring, strmout->stride[3]);
 
    bool first = true;
    BITSET_FOREACH_RANGE (start, end, valid_dwords,
