@@ -65,6 +65,11 @@ struct panfrost_zsa_state {
         /* Is any depth, stencil, or alpha testing enabled? */
         bool enabled;
 
+        /* Does the depth and stencil tests always pass? This ignores write
+         * masks, we are only interested in whether pixels may be killed.
+         */
+        bool zs_always_passes;
+
 #if PAN_ARCH <= 7
         /* Prepacked words from the RSD */
         struct mali_multisample_misc_packed rsd_depth;
@@ -4362,6 +4367,21 @@ pan_pipe_to_stencil(const struct pipe_stencil_state *in,
 }
 #endif
 
+static bool
+pipe_zs_always_passes(const struct pipe_depth_stencil_alpha_state *zsa)
+{
+        if (zsa->depth_enabled && zsa->depth_func != PIPE_FUNC_ALWAYS)
+                return false;
+
+        if (zsa->stencil[0].enabled && zsa->stencil[0].func != PIPE_FUNC_ALWAYS)
+                return false;
+
+        if (zsa->stencil[1].enabled && zsa->stencil[1].func != PIPE_FUNC_ALWAYS)
+                return false;
+
+        return true;
+}
+
 static void *
 panfrost_create_depth_stencil_state(struct pipe_context *pipe,
                                     const struct pipe_depth_stencil_alpha_state *zsa)
@@ -4427,6 +4447,8 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
 
         so->enabled = zsa->stencil[0].enabled ||
                 (zsa->depth_enabled && zsa->depth_func != PIPE_FUNC_ALWAYS);
+
+        so->zs_always_passes = pipe_zs_always_passes(zsa);
 
         /* TODO: Bounds test should be easy */
         assert(!zsa->depth_bounds_test);
