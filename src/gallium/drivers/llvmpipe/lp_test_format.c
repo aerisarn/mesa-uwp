@@ -375,9 +375,6 @@ test_all(unsigned verbose, FILE *fp)
          const struct util_format_description *format_desc;
 
          format_desc = util_format_description(format);
-         if (!format_desc) {
-            continue;
-         }
 
          /*
           * TODO: test more

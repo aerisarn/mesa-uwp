@@ -670,7 +670,6 @@ generate_fs_loop(struct gallivm_state *gallivm,
    if (key->depth.enabled ||
        key->stencil[0].enabled) {
       zs_format_desc = util_format_description(key->zsbuf_format);
-      assert(zs_format_desc);
 
       if (shader->info.base.properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL])
          depth_mode = EARLY_DEPTH_TEST | EARLY_DEPTH_WRITE;

@@ -667,8 +667,6 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
    const struct util_format_description *format_desc;
 
    format_desc = util_format_description(format);
-   if (!format_desc)
-      return false;
 
    assert(target == PIPE_BUFFER ||
           target == PIPE_TEXTURE_1D ||
