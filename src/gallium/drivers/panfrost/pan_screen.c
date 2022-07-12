@@ -541,9 +541,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
 
         format_desc = util_format_description(format);
 
-        if (!format_desc)
-                return false;
-
         /* MSAA 2x gets rounded up to 4x. MSAA 8x/16x only supported on v5+.
          * TODO: debug MSAA 8x/16x */
 
