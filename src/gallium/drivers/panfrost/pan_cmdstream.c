@@ -3101,13 +3101,6 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
 
         mali_ptr heap = t.gpu;
 
-        /* We emit this descriptor after the first draw. The provoking vertex
-         * for the batch should have already been set (on Valhall, where it is a
-         * property of the batch).
-         */
-        if (PAN_ARCH >= 9)
-                assert(pan_tristate_is_defined(batch->first_provoking_vertex));
-
         t = pan_pool_alloc_desc(&batch->pool.base, TILER_CONTEXT);
         GENX(pan_emit_tiler_ctx)(dev, batch->key.width, batch->key.height,
                                  util_framebuffer_get_num_samples(&batch->key),
