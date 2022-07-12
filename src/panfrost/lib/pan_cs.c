@@ -319,34 +319,37 @@ pan_bytes_per_pixel_tib(enum pipe_format format)
 }
 
 static unsigned
-pan_internal_cbuf_size(const struct pan_fb_info *fb,
-                       unsigned *tile_size)
+pan_cbuf_bytes_per_pixel(const struct pan_fb_info *fb)
 {
-        unsigned total_size = 0;
+        unsigned sum = 0;
 
-        *tile_size = 16 * 16;
         for (int cb = 0; cb < fb->rt_count; ++cb) {
                 const struct pan_image_view *rt = fb->rts[cb].view;
 
                 if (!rt)
                         continue;
 
-                total_size += pan_bytes_per_pixel_tib(rt->format) *
-                              rt->nr_samples * (*tile_size);
+                sum += pan_bytes_per_pixel_tib(rt->format) * rt->nr_samples;
         }
 
-        /* We have a 4KB budget, let's reduce the tile size until it fits. */
-        while (total_size > 4096) {
-                total_size >>= 1;
-                *tile_size >>= 1;
-        }
+        return sum;
+}
 
-        /* Align on 1k. */
-        total_size = ALIGN_POT(total_size, 1024);
+/*
+ * Select the largest tile size that fits within the tilebuffer budget.
+ * Formally, maximize (pixels per tile) such that it is a power of two and
+ *
+ *      (bytes per pixel) (pixels per tile) <= (max bytes per tile)
+ *
+ * A bit of algebra gives the following formula.
+ */
+static unsigned
+pan_select_max_tile_size(unsigned tile_buffer_bytes, unsigned bytes_per_pixel)
+{
+        assert(util_is_power_of_two_nonzero(tile_buffer_bytes));
+        assert(tile_buffer_bytes >= 1024);
 
-        /* Minimum tile size is 4x4. */
-        assert(*tile_size >= 4 * 4);
-        return total_size;
+        return tile_buffer_bytes >> util_logbase2_ceil(bytes_per_pixel);
 }
 
 static enum mali_color_format
@@ -705,8 +708,17 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
                            pan_section_ptr(fbd, FRAMEBUFFER, LOCAL_STORAGE));
 #endif
 
-        unsigned tile_size;
-        unsigned internal_cbuf_size = pan_internal_cbuf_size(fb, &tile_size);
+        unsigned bytes_per_pixel = pan_cbuf_bytes_per_pixel(fb);
+        unsigned tile_size = pan_select_max_tile_size(4096, bytes_per_pixel);
+
+        /* Clamp tile size to hardware limits */
+        tile_size = MIN2(tile_size, 16 * 16);
+        assert(tile_size >= 4 * 4);
+
+        /* Colour buffer allocations must be 1K aligned. */
+        unsigned cbuf_allocation = ALIGN_POT(bytes_per_pixel * tile_size, 1024);
+        assert(cbuf_allocation <= 4096 && "tile too big");
+
         int crc_rt = GENX(pan_select_crc_rt)(fb, tile_size);
         bool has_zs_crc_ext = (fb->zs.view.zs || fb->zs.view.s || crc_rt >= 0);
 
@@ -739,7 +751,7 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 
                 cfg.z_clear = fb->zs.clear_value.depth;
                 cfg.s_clear = fb->zs.clear_value.stencil;
-                cfg.color_buffer_allocation = internal_cbuf_size;
+                cfg.color_buffer_allocation = cbuf_allocation;
                 cfg.sample_count = fb->nr_samples;
                 cfg.sample_pattern = pan_sample_pattern(fb->nr_samples);
                 cfg.z_write_enable = (fb->zs.view.zs && !fb->zs.discard.z);
