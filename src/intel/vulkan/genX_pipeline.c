@@ -89,7 +89,7 @@ vertex_element_comp_control(enum isl_format format, unsigned comp)
 
 static void
 emit_vertex_input(struct anv_graphics_pipeline *pipeline,
-                  const VkPipelineVertexInputStateCreateInfo *info)
+                  const struct vk_vertex_input_state *vi)
 {
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
 
@@ -147,30 +147,29 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
       GENX(VERTEX_ELEMENT_STATE_pack)(NULL, &p[1 + i * 2], &element);
    }
 
-   for (uint32_t i = 0; i < info->vertexAttributeDescriptionCount; i++) {
-      const VkVertexInputAttributeDescription *desc =
-         &info->pVertexAttributeDescriptions[i];
+   u_foreach_bit(a, vi->attributes_valid) {
       enum isl_format format = anv_get_isl_format(&pipeline->base.device->info,
-                                                  desc->format,
+                                                  vi->attributes[a].format,
                                                   VK_IMAGE_ASPECT_COLOR_BIT,
                                                   VK_IMAGE_TILING_LINEAR);
 
-      assert(desc->binding < MAX_VBS);
+      uint32_t binding = vi->attributes[a].binding;
+      assert(binding < MAX_VBS);
 
-      if ((elements & (1 << desc->location)) == 0)
+      if ((elements & (1 << a)) == 0)
          continue; /* Binding unused */
 
       uint32_t slot =
-         __builtin_popcount(elements & ((1 << desc->location) - 1)) -
+         __builtin_popcount(elements & ((1 << a) - 1)) -
          DIV_ROUND_UP(__builtin_popcount(elements_double &
-                                        ((1 << desc->location) -1)), 2);
+                                        ((1 << a) -1)), 2);
 
       struct GENX(VERTEX_ELEMENT_STATE) element = {
-         .VertexBufferIndex = desc->binding,
+         .VertexBufferIndex = vi->attributes[a].binding,
          .Valid = true,
          .SourceElementFormat = format,
          .EdgeFlagEnable = false,
-         .SourceElementOffset = desc->offset,
+         .SourceElementOffset = vi->attributes[a].offset,
          .Component0Control = vertex_element_comp_control(format, 0),
          .Component1Control = vertex_element_comp_control(format, 1),
          .Component2Control = vertex_element_comp_control(format, 2),
@@ -184,8 +183,8 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
        * VERTEX_BUFFER_STATE which we emit later.
        */
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_VF_INSTANCING), vfi) {
-         bool per_instance = pipeline->vb[desc->binding].instanced;
-         uint32_t divisor = pipeline->vb[desc->binding].instance_divisor *
+         bool per_instance = pipeline->vb[binding].instanced;
+         uint32_t divisor = pipeline->vb[binding].instance_divisor *
                             pipeline->instance_multiplier;
 
          vfi.InstancingEnable = per_instance;
@@ -666,16 +665,6 @@ genX(ms_rasterization_mode)(struct anv_graphics_pipeline *pipeline,
 #endif
 }
 
-static VkProvokingVertexModeEXT
-vk_provoking_vertex_mode(const VkPipelineRasterizationStateCreateInfo *rs_info)
-{
-   const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *rs_pv_info =
-      vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
-
-   return rs_pv_info == NULL ? VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT :
-                               rs_pv_info->provokingVertexMode;
-}
-
 const uint32_t genX(vk_to_intel_cullmode)[] = {
    [VK_CULL_MODE_NONE]                       = CULLMODE_NONE,
    [VK_CULL_MODE_FRONT_BIT]                  = CULLMODE_FRONT,
@@ -693,18 +682,6 @@ const uint32_t genX(vk_to_intel_front_face)[] = {
    [VK_FRONT_FACE_COUNTER_CLOCKWISE]         = 1,
    [VK_FRONT_FACE_CLOCKWISE]                 = 0
 };
-
-#if GFX_VER >= 9
-static VkConservativeRasterizationModeEXT
-vk_conservative_rasterization_mode(const VkPipelineRasterizationStateCreateInfo *rs_info)
-{
-   const VkPipelineRasterizationConservativeStateCreateInfoEXT *cr =
-      vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT);
-
-   return cr ? cr->conservativeRasterizationMode :
-               VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
-}
-#endif
 
 void
 genX(rasterization_mode)(VkPolygonMode raster_mode,
@@ -761,11 +738,10 @@ genX(rasterization_mode)(VkPolygonMode raster_mode,
 
 static void
 emit_rs_state(struct anv_graphics_pipeline *pipeline,
-              const VkPipelineInputAssemblyStateCreateInfo *ia_info,
-              const VkPipelineRasterizationStateCreateInfo *rs_info,
-              const VkPipelineMultisampleStateCreateInfo *ms_info,
-              const VkPipelineRasterizationLineStateCreateInfoEXT *line_info,
-              const VkPipelineRenderingCreateInfo *rendering_info,
+              const struct vk_input_assembly_state *ia,
+              const struct vk_rasterization_state *rs,
+              const struct vk_multisample_state *ms,
+              const struct vk_render_pass_state *rp,
               enum intel_urb_deref_block_size urb_deref_block_size)
 {
    struct GENX(3DSTATE_SF) sf = {
@@ -777,7 +753,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    sf.VertexSubPixelPrecisionSelect = _8Bit;
    sf.AALineDistanceMode = true;
 
-   switch (vk_provoking_vertex_mode(rs_info)) {
+   switch (rs->provoking_vertex) {
    case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
       sf.TriangleStripListProvokingVertexSelect = 0;
       sf.LineStripListProvokingVertexSelect = 0;
@@ -795,7 +771,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    }
 
 #if GFX_VERx10 == 75
-   sf.LineStippleEnable = line_info && line_info->stippledLineEnable;
+   sf.LineStippleEnable = rs->line.stipple.enable;
 #endif
 
 #if GFX_VER >= 12
@@ -840,8 +816,8 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.ForceMultisampling = false;
 #endif
 
-   raster.FrontFaceFillMode = genX(vk_to_intel_fillmode)[rs_info->polygonMode];
-   raster.BackFaceFillMode = genX(vk_to_intel_fillmode)[rs_info->polygonMode];
+   raster.FrontFaceFillMode = genX(vk_to_intel_fillmode)[rs->polygon_mode];
+   raster.BackFaceFillMode = genX(vk_to_intel_fillmode)[rs->polygon_mode];
    raster.ScissorRectangleEnable = true;
 
 #if GFX_VER >= 9
@@ -854,20 +830,19 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 
 #if GFX_VER >= 9
    raster.ConservativeRasterizationEnable =
-      vk_conservative_rasterization_mode(rs_info) !=
-         VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+      rs->conservative_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
 #endif
 
 #if GFX_VER == 7
    /* Gfx7 requires that we provide the depth format in 3DSTATE_SF so that it
     * can get the depth offsets correct.
     */
-   if (rendering_info != NULL &&
-       rendering_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED) {
-      assert(vk_format_has_depth(rendering_info->depthAttachmentFormat));
+   if (rp != NULL &&
+       rp->depth_attachment_format != VK_FORMAT_UNDEFINED) {
+      assert(vk_format_has_depth(rp->depth_attachment_format));
       enum isl_format isl_format =
          anv_get_isl_format(&pipeline->base.device->info,
-                            rendering_info->depthAttachmentFormat,
+                            rp->depth_attachment_format,
                             VK_IMAGE_ASPECT_DEPTH_BIT,
                             VK_IMAGE_TILING_OPTIMAL);
       sf.DepthBufferSurfaceFormat =
@@ -886,7 +861,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 
 static void
 emit_ms_state(struct anv_graphics_pipeline *pipeline,
-              const VkPipelineMultisampleStateCreateInfo *info)
+              const struct vk_multisample_state *ms)
 {
 #if GFX_VER >= 8
    /* On Gfx8+ 3DSTATE_MULTISAMPLE only holds the number of samples. */
@@ -907,8 +882,8 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
    uint32_t sample_mask = 0xff;
 #endif
 
-   if (info && info->pSampleMask)
-      sample_mask &= info->pSampleMask[0];
+   if (ms != NULL)
+      sample_mask &= ms->sample_mask;
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
       sm.SampleMask = sample_mask;
@@ -999,141 +974,10 @@ const uint32_t genX(vk_to_intel_primitive_type)[] = {
    [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
 };
 
-/* This function sanitizes the VkStencilOpState by looking at the compare ops
- * and trying to determine whether or not a given stencil op can ever actually
- * occur.  Stencil ops which can never occur are set to VK_STENCIL_OP_KEEP.
- * This function returns true if, after sanitation, any of the stencil ops are
- * set to something other than VK_STENCIL_OP_KEEP.
- */
-static bool
-sanitize_stencil_face(VkStencilOpState *face,
-                      VkCompareOp depthCompareOp)
-{
-   /* If compareOp is ALWAYS then the stencil test will never fail and failOp
-    * will never happen.  Set failOp to KEEP in this case.
-    */
-   if (face->compareOp == VK_COMPARE_OP_ALWAYS)
-      face->failOp = VK_STENCIL_OP_KEEP;
-
-   /* If compareOp is NEVER or depthCompareOp is NEVER then one of the depth
-    * or stencil tests will fail and passOp will never happen.
-    */
-   if (face->compareOp == VK_COMPARE_OP_NEVER ||
-       depthCompareOp == VK_COMPARE_OP_NEVER)
-      face->passOp = VK_STENCIL_OP_KEEP;
-
-   /* If compareOp is NEVER or depthCompareOp is ALWAYS then either the
-    * stencil test will fail or the depth test will pass.  In either case,
-    * depthFailOp will never happen.
-    */
-   if (face->compareOp == VK_COMPARE_OP_NEVER ||
-       depthCompareOp == VK_COMPARE_OP_ALWAYS)
-      face->depthFailOp = VK_STENCIL_OP_KEEP;
-
-   return face->failOp != VK_STENCIL_OP_KEEP ||
-          face->depthFailOp != VK_STENCIL_OP_KEEP ||
-          face->passOp != VK_STENCIL_OP_KEEP;
-}
-
-/* Intel hardware is fairly sensitive to whether or not depth/stencil writes
- * are enabled.  In the presence of discards, it's fairly easy to get into the
- * non-promoted case which means a fairly big performance hit.  From the Iron
- * Lake PRM, Vol 2, pt. 1, section 8.4.3.2, "Early Depth Test Cases":
- *
- *    "Non-promoted depth (N) is active whenever the depth test can be done
- *    early but it cannot determine whether or not to write source depth to
- *    the depth buffer, therefore the depth write must be performed post pixel
- *    shader. This includes cases where the pixel shader can kill pixels,
- *    including via sampler chroma key, as well as cases where the alpha test
- *    function is enabled, which kills pixels based on a programmable alpha
- *    test. In this case, even if the depth test fails, the pixel cannot be
- *    killed if a stencil write is indicated. Whether or not the stencil write
- *    happens depends on whether or not the pixel is killed later. In these
- *    cases if stencil test fails and stencil writes are off, the pixels can
- *    also be killed early. If stencil writes are enabled, the pixels must be
- *    treated as Computed depth (described above)."
- *
- * The same thing as mentioned in the stencil case can happen in the depth
- * case as well if it thinks it writes depth but, thanks to the depth test
- * being GL_EQUAL, the write doesn't actually matter.  A little extra work
- * up-front to try and disable depth and stencil writes can make a big
- * difference.
- *
- * Unfortunately, the way depth and stencil testing is specified, there are
- * many case where, regardless of depth/stencil writes being enabled, nothing
- * actually gets written due to some other bit of state being set.  This
- * function attempts to "sanitize" the depth stencil state and disable writes
- * and sometimes even testing whenever possible.
- */
-static void
-sanitize_ds_state(VkPipelineDepthStencilStateCreateInfo *state,
-                  bool *stencilWriteEnable,
-                  VkImageAspectFlags ds_aspects)
-{
-   *stencilWriteEnable = state->stencilTestEnable;
-
-   /* If the depth test is disabled, we won't be writing anything. Make sure we
-    * treat the test as always passing later on as well.
-    *
-    * Also, the Vulkan spec requires that if either depth or stencil is not
-    * present, the pipeline is to act as if the test silently passes. In that
-    * case we won't write either.
-    */
-   if (!state->depthTestEnable || !(ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
-      state->depthWriteEnable = false;
-      state->depthCompareOp = VK_COMPARE_OP_ALWAYS;
-   }
-
-   if (!(ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      *stencilWriteEnable = false;
-      state->front.compareOp = VK_COMPARE_OP_ALWAYS;
-      state->back.compareOp = VK_COMPARE_OP_ALWAYS;
-   }
-
-   /* If the stencil test is enabled and always fails, then we will never get
-    * to the depth test so we can just disable the depth test entirely.
-    */
-   if (state->stencilTestEnable &&
-       state->front.compareOp == VK_COMPARE_OP_NEVER &&
-       state->back.compareOp == VK_COMPARE_OP_NEVER) {
-      state->depthTestEnable = false;
-      state->depthWriteEnable = false;
-   }
-
-   /* If depthCompareOp is EQUAL then the value we would be writing to the
-    * depth buffer is the same as the value that's already there so there's no
-    * point in writing it.
-    */
-   if (state->depthCompareOp == VK_COMPARE_OP_EQUAL)
-      state->depthWriteEnable = false;
-
-   /* If the stencil ops are such that we don't actually ever modify the
-    * stencil buffer, we should disable writes.
-    */
-   if (!sanitize_stencil_face(&state->front, state->depthCompareOp) &&
-       !sanitize_stencil_face(&state->back, state->depthCompareOp))
-      *stencilWriteEnable = false;
-
-   /* If the depth test always passes and we never write out depth, that's the
-    * same as if the depth test is disabled entirely.
-    */
-   if (state->depthCompareOp == VK_COMPARE_OP_ALWAYS &&
-       !state->depthWriteEnable)
-      state->depthTestEnable = false;
-
-   /* If the stencil test always passes and we never write out stencil, that's
-    * the same as if the stencil test is disabled entirely.
-    */
-   if (state->front.compareOp == VK_COMPARE_OP_ALWAYS &&
-       state->back.compareOp == VK_COMPARE_OP_ALWAYS &&
-       !*stencilWriteEnable)
-      state->stencilTestEnable = false;
-}
-
 static void
 emit_ds_state(struct anv_graphics_pipeline *pipeline,
-              const VkPipelineDepthStencilStateCreateInfo *pCreateInfo,
-              const VkPipelineRenderingCreateInfo *rendering_info)
+              const struct vk_depth_stencil_state *ds_in,
+              const struct vk_render_pass_state *rp)
 {
 #if GFX_VER == 7
 #  define depth_stencil_dw pipeline->gfx7.depth_stencil_state
@@ -1143,7 +987,7 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
 #  define depth_stencil_dw pipeline->gfx9.wm_depth_stencil
 #endif
 
-   if (pCreateInfo == NULL) {
+   if (ds_in == NULL) {
       /* We're going to OR this together with the dynamic state.  We need
        * to make sure it's initialized to something useful.
        */
@@ -1157,19 +1001,20 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    }
 
    VkImageAspectFlags ds_aspects = 0;
-   if (rendering_info != NULL) {
-      if (rendering_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED)
+   if (rp != NULL) {
+      if (rp->depth_attachment_format != VK_FORMAT_UNDEFINED)
          ds_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-      if (rendering_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)
+      if (rp->stencil_attachment_format != VK_FORMAT_UNDEFINED)
          ds_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
    }
 
-   VkPipelineDepthStencilStateCreateInfo info = *pCreateInfo;
-   sanitize_ds_state(&info, &pipeline->writes_stencil, ds_aspects);
-   pipeline->stencil_test_enable = info.stencilTestEnable;
-   pipeline->writes_depth = info.depthWriteEnable;
-   pipeline->depth_test_enable = info.depthTestEnable;
-   pipeline->depth_bounds_test_enable = info.depthBoundsTestEnable;
+   struct vk_depth_stencil_state ds = *ds_in;
+   vk_optimize_depth_stencil_state(&ds, ds_aspects);
+   pipeline->writes_stencil = ds.stencil.write_enable;
+   pipeline->stencil_test_enable = ds.stencil.test_enable;
+   pipeline->writes_depth = ds.depth.write_enable;
+   pipeline->depth_test_enable = ds.depth.test_enable;
+   pipeline->depth_bounds_test_enable = ds.depth.bounds_test.enable;
 
 #if GFX_VER <= 7
    struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
@@ -1210,16 +1055,16 @@ write_disabled_blend(uint32_t *state)
 
 static void
 emit_cb_state(struct anv_graphics_pipeline *pipeline,
-              const VkPipelineColorBlendStateCreateInfo *info,
-              const VkPipelineMultisampleStateCreateInfo *ms_info)
+              const struct vk_color_blend_state *cb,
+              const struct vk_multisample_state *ms)
 {
    struct anv_device *device = pipeline->base.device;
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
    struct GENX(BLEND_STATE) blend_state = {
 #if GFX_VER >= 8
-      .AlphaToCoverageEnable = ms_info && ms_info->alphaToCoverageEnable,
-      .AlphaToOneEnable = ms_info && ms_info->alphaToOneEnable,
+      .AlphaToCoverageEnable = ms && ms->alpha_to_coverage_enable,
+      .AlphaToOneEnable = ms && ms->alpha_to_one_enable,
 #endif
    };
 
@@ -1249,20 +1094,20 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       /* We can have at most 8 attachments */
       assert(i < MAX_RTS);
 
-      if (info == NULL || binding->index >= info->attachmentCount) {
+      if (cb == NULL || binding->index >= cb->attachment_count) {
          state_pos = write_disabled_blend(state_pos);
          continue;
       }
 
-      const VkPipelineColorBlendAttachmentState *a =
-         &info->pAttachments[binding->index];
+      const struct vk_color_blend_attachment_state *a =
+         &cb->attachments[binding->index];
 
       struct GENX(BLEND_STATE_ENTRY) entry = {
 #if GFX_VER < 8
-         .AlphaToCoverageEnable = ms_info && ms_info->alphaToCoverageEnable,
-         .AlphaToOneEnable = ms_info && ms_info->alphaToOneEnable,
+         .AlphaToCoverageEnable = ms && ms->alpha_to_coverage_enable,
+         .AlphaToOneEnable = ms && ms->alpha_to_one_enable,
 #endif
-         .LogicOpEnable = info->logicOpEnable,
+         .LogicOpEnable = cb->logic_op_enable,
 
          /* Vulkan specification 1.2.168, VkLogicOp:
           *
@@ -1279,21 +1124,21 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
           *   "Enabling LogicOp and Color Buffer Blending at the same time is
           *    UNDEFINED"
           */
-         .ColorBufferBlendEnable = !info->logicOpEnable && a->blendEnable,
+         .ColorBufferBlendEnable = !cb->logic_op_enable && a->blend_enable,
          .ColorClampRange = COLORCLAMP_RTFORMAT,
          .PreBlendColorClampEnable = true,
          .PostBlendColorClampEnable = true,
-         .SourceBlendFactor = vk_to_intel_blend[a->srcColorBlendFactor],
-         .DestinationBlendFactor = vk_to_intel_blend[a->dstColorBlendFactor],
-         .ColorBlendFunction = vk_to_intel_blend_op[a->colorBlendOp],
-         .SourceAlphaBlendFactor = vk_to_intel_blend[a->srcAlphaBlendFactor],
-         .DestinationAlphaBlendFactor = vk_to_intel_blend[a->dstAlphaBlendFactor],
-         .AlphaBlendFunction = vk_to_intel_blend_op[a->alphaBlendOp],
+         .SourceBlendFactor = vk_to_intel_blend[a->src_color_blend_factor],
+         .DestinationBlendFactor = vk_to_intel_blend[a->dst_color_blend_factor],
+         .ColorBlendFunction = vk_to_intel_blend_op[a->color_blend_op],
+         .SourceAlphaBlendFactor = vk_to_intel_blend[a->src_alpha_blend_factor],
+         .DestinationAlphaBlendFactor = vk_to_intel_blend[a->dst_alpha_blend_factor],
+         .AlphaBlendFunction = vk_to_intel_blend_op[a->alpha_blend_op],
       };
 
-      if (a->srcColorBlendFactor != a->srcAlphaBlendFactor ||
-          a->dstColorBlendFactor != a->dstAlphaBlendFactor ||
-          a->colorBlendOp != a->alphaBlendOp) {
+      if (a->src_color_blend_factor != a->src_alpha_blend_factor ||
+          a->dst_color_blend_factor != a->dst_alpha_blend_factor ||
+          a->color_blend_op != a->alpha_blend_op) {
 #if GFX_VER >= 8
          blend_state.IndependentAlphaBlendEnable = true;
 #else
@@ -1313,10 +1158,10 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
        * so we just disable the blending to prevent possible issues.
        */
       if (!wm_prog_data->dual_src_blend &&
-          (is_dual_src_blend_factor(a->srcColorBlendFactor) ||
-           is_dual_src_blend_factor(a->dstColorBlendFactor) ||
-           is_dual_src_blend_factor(a->srcAlphaBlendFactor) ||
-           is_dual_src_blend_factor(a->dstAlphaBlendFactor))) {
+          (is_dual_src_blend_factor(a->src_color_blend_factor) ||
+           is_dual_src_blend_factor(a->dst_color_blend_factor) ||
+           is_dual_src_blend_factor(a->src_alpha_blend_factor) ||
+           is_dual_src_blend_factor(a->dst_alpha_blend_factor))) {
          vk_logw(VK_LOG_OBJS(&device->vk.base),
                  "Enabled dual-src blend factors without writing both targets "
                  "in the shader.  Disabling blending to avoid GPU hangs.");
@@ -1329,13 +1174,13 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
        * means that, for MIN and MAX, we have to stomp the blend factor to
        * ONE to make it a no-op.
        */
-      if (a->colorBlendOp == VK_BLEND_OP_MIN ||
-          a->colorBlendOp == VK_BLEND_OP_MAX) {
+      if (a->color_blend_op == VK_BLEND_OP_MIN ||
+          a->color_blend_op == VK_BLEND_OP_MAX) {
          entry.SourceBlendFactor = BLENDFACTOR_ONE;
          entry.DestinationBlendFactor = BLENDFACTOR_ONE;
       }
-      if (a->alphaBlendOp == VK_BLEND_OP_MIN ||
-          a->alphaBlendOp == VK_BLEND_OP_MAX) {
+      if (a->alpha_blend_op == VK_BLEND_OP_MIN ||
+          a->alpha_blend_op == VK_BLEND_OP_MAX) {
          entry.SourceAlphaBlendFactor = BLENDFACTOR_ONE;
          entry.DestinationAlphaBlendFactor = BLENDFACTOR_ONE;
       }
@@ -1368,9 +1213,9 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
 
 static void
 emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
-                  const VkPipelineInputAssemblyStateCreateInfo *ia_info,
-                  const VkPipelineViewportStateCreateInfo *vp_info,
-                  const VkPipelineRasterizationStateCreateInfo *rs_info)
+                  const struct vk_input_assembly_state *ia,
+                  const struct vk_viewport_state *vp,
+                  const struct vk_rasterization_state *rs)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
    (void) wm_prog_data;
@@ -1390,7 +1235,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 #endif
    clip.ClipMode = CLIPMODE_NORMAL;
 
-   switch (vk_provoking_vertex_mode(rs_info)) {
+   switch (rs->provoking_vertex) {
    case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
       clip.TriangleStripListProvokingVertexSelect = 0;
       clip.LineStripListProvokingVertexSelect = 0;
@@ -1421,9 +1266,9 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
        *    interface does not include a variable decorated with
        *    ViewportIndex, then the first viewport is used."
        */
-      if (vp_info && (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT)) {
-         clip.MaximumVPIndex = vp_info->viewportCount > 0 ?
-            vp_info->viewportCount - 1 : 0;
+      if (vp && (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT)) {
+         clip.MaximumVPIndex = vp->viewport_count > 0 ?
+                               vp->viewport_count - 1 : 0;
       } else {
          clip.MaximumVPIndex = 0;
       }
@@ -1443,15 +1288,15 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 #endif
    } else if (anv_pipeline_is_mesh(pipeline)) {
       const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-      if (vp_info && vp_info->viewportCount > 0 &&
-            mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
-         clip.MaximumVPIndex = vp_info->viewportCount - 1;
+      if (vp && vp->viewport_count > 0 &&
+          mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
+         clip.MaximumVPIndex = vp->viewport_count - 1;
       }
    }
 
 #if GFX_VER == 7
-   clip.FrontWinding            = genX(vk_to_intel_front_face)[rs_info->frontFace];
-   clip.CullMode                = genX(vk_to_intel_cullmode)[rs_info->cullMode];
+   clip.FrontWinding            = genX(vk_to_intel_front_face)[rs->front_face];
+   clip.CullMode                = genX(vk_to_intel_cullmode)[rs->cull_mode];
    clip.ViewportZClipTestEnable = pipeline->depth_clip_enable;
 #else
    clip.NonPerspectiveBarycentricEnable = wm_prog_data ?
@@ -1474,7 +1319,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 
 static void
 emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
-                       const VkPipelineRasterizationStateCreateInfo *rs_info)
+                       const struct vk_rasterization_state *rs)
 {
    const struct brw_vue_prog_data *prog_data =
       anv_pipeline_get_last_vue_prog_data(pipeline);
@@ -1614,7 +1459,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
       so.SOFunctionEnable = true;
       so.SOStatisticsEnable = true;
 
-      switch (vk_provoking_vertex_mode(rs_info)) {
+      switch (rs->provoking_vertex) {
       case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
          so.ReorderMode = LEADING;
          break;
@@ -1627,10 +1472,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
          unreachable("Invalid provoking vertex mode");
       }
 
-      const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
-         vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
-      so.RenderStreamSelect = stream_info ?
-                              stream_info->rasterizationStream : 0;
+      so.RenderStreamSelect = rs->rasterization_stream;
 
 #if GFX_VER >= 8
       so.Buffer0SurfacePitch = xfb_info->buffers[0].stride;
@@ -1809,7 +1651,7 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
 
 static void
 emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
-                      const VkPipelineTessellationStateCreateInfo *tess_info)
+                      const struct vk_tessellation_state *ts)
 {
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_HS), hs);
@@ -1880,17 +1722,10 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
 #endif
    }
 
-   const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
-      tess_info ? vk_find_struct_const(tess_info, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO) : NULL;
-
-   VkTessellationDomainOrigin uv_origin =
-      domain_origin_state ? domain_origin_state->domainOrigin :
-                            VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
-
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TE), te) {
       te.Partitioning = tes_prog_data->partitioning;
 
-      if (uv_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
+      if (ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
          te.OutputTopology = tes_prog_data->output_topology;
       } else {
          /* When the origin is upper-left, we have to flip the winding order */
@@ -2039,44 +1874,13 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
    }
 }
 
-static bool
-has_color_buffer_write_enabled(const struct anv_graphics_pipeline *pipeline,
-                               const VkPipelineColorBlendStateCreateInfo *blend)
-{
-   const struct anv_shader_bin *shader_bin =
-      pipeline->shaders[MESA_SHADER_FRAGMENT];
-   if (!shader_bin)
-      return false;
-
-   if (!pipeline->non_dynamic_state.color_writes)
-      return false;
-
-   const struct anv_pipeline_bind_map *bind_map = &shader_bin->bind_map;
-   for (int i = 0; i < bind_map->surface_count; i++) {
-      struct anv_pipeline_binding *binding = &bind_map->surface_to_descriptor[i];
-
-      if (binding->set != ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS)
-         continue;
-
-      if (binding->index == UINT32_MAX)
-         continue;
-
-      if (blend && binding->index < blend->attachmentCount &&
-          blend->pAttachments[binding->index].colorWriteMask != 0)
-         return true;
-   }
-
-   return false;
-}
-
 static void
 emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
-                const VkPipelineInputAssemblyStateCreateInfo *ia,
-                const VkPipelineRasterizationStateCreateInfo *raster,
-                const VkPipelineColorBlendStateCreateInfo *blend,
-                const VkPipelineMultisampleStateCreateInfo *multisample,
-                const VkPipelineRasterizationLineStateCreateInfoEXT *line,
-                const VkRenderingSelfDependencyInfoMESA *rsd)
+                const struct vk_input_assembly_state *ia,
+                const struct vk_rasterization_state *rs,
+                const struct vk_multisample_state *ms,
+                const struct vk_color_blend_state *cb,
+                const struct vk_render_pass_state *rp)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
@@ -2135,8 +1939,8 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
        * may get the depth or stencil value from the current draw rather
        * than the previous one.
        */
-      wm.PixelShaderKillsPixel         = rsd->depthSelfDependency ||
-                                         rsd->stencilSelfDependency ||
+      wm.PixelShaderKillsPixel         = rp->depth_self_dependency ||
+                                         rp->stencil_self_dependency ||
                                          wm_prog_data->uses_kill;
 
       pipeline->force_fragment_thread_dispatch =
@@ -2144,7 +1948,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
          wm_prog_data->has_side_effects ||
          wm.PixelShaderKillsPixel;
 
-      if (multisample && multisample->rasterizationSamples > 1) {
+      if (ms != NULL && ms->rasterization_samples > 1) {
          if (wm_prog_data->persample_dispatch) {
             wm.MultisampleDispatchMode = MSDISPMODE_PERSAMPLE;
          } else {
@@ -2155,7 +1959,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
       }
 #endif
 
-      wm.LineStippleEnable = line && line->stippledLineEnable;
+      wm.LineStippleEnable = rs->line.stipple.enable;
    }
 
    const struct intel_device_info *devinfo = &pipeline->base.device->info;
@@ -2165,8 +1969,8 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
 
 static void
 emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
-                const VkPipelineColorBlendStateCreateInfo *blend,
-                const VkPipelineMultisampleStateCreateInfo *multisample)
+                const struct vk_multisample_state *ms,
+                const struct vk_color_blend_state *cb)
 {
    UNUSED const struct intel_device_info *devinfo =
       &pipeline->base.device->info;
@@ -2192,16 +1996,16 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
     * source blend factors.
     */
    bool dual_src_blend = false;
-   if (wm_prog_data->dual_src_blend && blend) {
-      for (uint32_t i = 0; i < blend->attachmentCount; i++) {
-         const VkPipelineColorBlendAttachmentState *bstate =
-            &blend->pAttachments[i];
+   if (wm_prog_data->dual_src_blend && cb) {
+      for (uint32_t i = 0; i < cb->attachment_count; i++) {
+         const struct vk_color_blend_attachment_state *a =
+            &cb->attachments[i];
 
-         if (bstate->blendEnable &&
-             (is_dual_src_blend_factor(bstate->srcColorBlendFactor) ||
-              is_dual_src_blend_factor(bstate->dstColorBlendFactor) ||
-              is_dual_src_blend_factor(bstate->srcAlphaBlendFactor) ||
-              is_dual_src_blend_factor(bstate->dstAlphaBlendFactor))) {
+         if (a->blend_enable &&
+             (is_dual_src_blend_factor(a->src_color_blend_factor) ||
+              is_dual_src_blend_factor(a->dst_color_blend_factor) ||
+              is_dual_src_blend_factor(a->src_alpha_blend_factor) ||
+              is_dual_src_blend_factor(a->dst_alpha_blend_factor))) {
             dual_src_blend = true;
             break;
          }
@@ -2223,7 +2027,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
        * the workaround on any older hardware.
        */
       if (GFX_VER >= 9 && !wm_prog_data->persample_dispatch &&
-          multisample && multisample->rasterizationSamples == 16) {
+          ms != NULL && ms->rasterization_samples == 16) {
          assert(ps._8PixelDispatchEnable || ps._16PixelDispatchEnable);
          ps._32PixelDispatchEnable = false;
       }
@@ -2286,8 +2090,8 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
 #if GFX_VER >= 8
 static void
 emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
-                      const VkPipelineRasterizationStateCreateInfo *rs_info,
-                      const VkRenderingSelfDependencyInfoMESA *rsd_info)
+                      const struct vk_rasterization_state *rs,
+                      const struct vk_render_pass_state *rp)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
@@ -2311,8 +2115,8 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
        * around to fetching from the input attachment and we may get the depth
        * or stencil value from the current draw rather than the previous one.
        */
-      ps.PixelShaderKillsPixel         = rsd_info->depthSelfDependency ||
-                                         rsd_info->stencilSelfDependency ||
+      ps.PixelShaderKillsPixel         = rp->depth_self_dependency ||
+                                         rp->stencil_self_dependency ||
                                          wm_prog_data->uses_kill;
 
 #if GFX_VER >= 9
@@ -2358,8 +2162,8 @@ emit_3dstate_vf_statistics(struct anv_graphics_pipeline *pipeline)
 
 static void
 compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
-                   const VkPipelineMultisampleStateCreateInfo *ms_info,
-                   const VkRenderingSelfDependencyInfoMESA *rsd_info)
+                   const struct vk_multisample_state *ms,
+                   const struct vk_render_pass_state *rp)
 {
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT)) {
       pipeline->kill_pixel = false;
@@ -2383,25 +2187,24 @@ compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
     * of an alpha test.
     */
    pipeline->kill_pixel =
-      rsd_info->depthSelfDependency ||
-      rsd_info->stencilSelfDependency ||
+      rp->depth_self_dependency ||
+      rp->stencil_self_dependency ||
       wm_prog_data->uses_kill ||
       wm_prog_data->uses_omask ||
-      (ms_info && ms_info->alphaToCoverageEnable);
+      (ms && ms->alpha_to_coverage_enable);
 }
 
 #if GFX_VER == 12
 static void
 emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
-                                   const VkPipelineRenderingCreateInfo *rendering_info)
+                                   const struct vk_render_pass_state *rp)
 {
    if (!pipeline->use_primitive_replication) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
       return;
    }
 
-   uint32_t view_mask = rendering_info != NULL ? rendering_info->viewMask : 0;
-   int view_count = util_bitcount(view_mask);
+   int view_count = util_bitcount(rp->view_mask);
    assert(view_count > 1 && view_count <= MAX_VIEWS_FOR_PRIMITIVE_REPLICATION);
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) {
@@ -2409,7 +2212,7 @@ emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
       pr.ReplicationCount = view_count - 1;
 
       int i = 0;
-      u_foreach_bit(view_index, view_mask) {
+      u_foreach_bit(view_index, rp->view_mask) {
          pr.RTAIOffset[i] = view_index;
          i++;
       }
@@ -2549,53 +2352,23 @@ emit_mesh_state(struct anv_graphics_pipeline *pipeline)
 
 void
 genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
-                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                             const VkPipelineRenderingCreateInfo *rendering_info,
-                             const VkRenderingSelfDependencyInfoMESA *rsd_info)
+                             const struct vk_graphics_pipeline_state *state)
 {
-   /* If rasterization is not enabled, various CreateInfo structs must be
-    * ignored.
-    */
-   const bool raster_enabled =
-      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
-      (pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
-
-   const VkPipelineViewportStateCreateInfo *vp_info =
-      raster_enabled ? pCreateInfo->pViewportState : NULL;
-
-   const VkPipelineMultisampleStateCreateInfo *ms_info =
-      raster_enabled ? pCreateInfo->pMultisampleState : NULL;
-
-   const VkPipelineDepthStencilStateCreateInfo *ds_info =
-      raster_enabled ? pCreateInfo->pDepthStencilState : NULL;
-
-   const VkPipelineColorBlendStateCreateInfo *cb_info =
-      raster_enabled ? pCreateInfo->pColorBlendState : NULL;
-
-   const VkPipelineRasterizationLineStateCreateInfoEXT *line_info =
-      vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
-                           PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
-
    enum intel_urb_deref_block_size urb_deref_block_size;
    emit_urb_setup(pipeline, &urb_deref_block_size);
 
-   assert(pCreateInfo->pRasterizationState);
-   emit_rs_state(pipeline, pCreateInfo->pInputAssemblyState,
-                           pCreateInfo->pRasterizationState,
-                           ms_info, line_info, rendering_info,
+   assert(state->rs != NULL);
+   emit_rs_state(pipeline, state->ia, state->rs, state->ms, state->rp,
                            urb_deref_block_size);
-   emit_ms_state(pipeline, ms_info);
-   emit_ds_state(pipeline, ds_info, rendering_info);
-   emit_cb_state(pipeline, cb_info, ms_info);
-   compute_kill_pixel(pipeline, ms_info, rsd_info);
+   emit_ms_state(pipeline, state->ms);
+   emit_ds_state(pipeline, state->ds, state->rp);
+   emit_cb_state(pipeline, state->cb, state->ms);
+   compute_kill_pixel(pipeline, state->ms, state->rp);
 
-   emit_3dstate_clip(pipeline,
-                     pCreateInfo->pInputAssemblyState,
-                     vp_info,
-                     pCreateInfo->pRasterizationState);
+   emit_3dstate_clip(pipeline, state->ia, state->vp, state->rs);
 
 #if GFX_VER == 12
-   emit_3dstate_primitive_replication(pipeline, rendering_info);
+   emit_3dstate_primitive_replication(pipeline, state->rp);
 #endif
 
 #if 0
@@ -2618,16 +2391,15 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 #endif
 
    if (anv_pipeline_is_primitive(pipeline)) {
-      assert(pCreateInfo->pVertexInputState);
-      emit_vertex_input(pipeline, pCreateInfo->pVertexInputState);
+      emit_vertex_input(pipeline, state->vi);
 
       emit_3dstate_vs(pipeline);
-      emit_3dstate_hs_te_ds(pipeline, pCreateInfo->pTessellationState);
+      emit_3dstate_hs_te_ds(pipeline, state->ts);
       emit_3dstate_gs(pipeline);
 
       emit_3dstate_vf_statistics(pipeline);
 
-      emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState);
+      emit_3dstate_streamout(pipeline, state->rs);
 
 #if GFX_VERx10 >= 125
       const struct anv_device *device = pipeline->base.device;
@@ -2652,13 +2424,11 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
    }
 
    emit_3dstate_sbe(pipeline);
-   emit_3dstate_wm(pipeline,
-                   pCreateInfo->pInputAssemblyState,
-                   pCreateInfo->pRasterizationState,
-                   cb_info, ms_info, line_info, rsd_info);
-   emit_3dstate_ps(pipeline, cb_info, ms_info);
+   emit_3dstate_wm(pipeline, state->ia, state->rs,
+                   state->ms, state->cb, state->rp);
+   emit_3dstate_ps(pipeline, state->ms, state->cb);
 #if GFX_VER >= 8
-   emit_3dstate_ps_extra(pipeline, pCreateInfo->pRasterizationState, rsd_info);
+   emit_3dstate_ps_extra(pipeline, state->rs, state->rp);
 #endif
 }
 

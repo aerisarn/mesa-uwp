@@ -171,9 +171,7 @@ genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
 
 void
 genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
-                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                             const VkPipelineRenderingCreateInfo *rendering_info,
-                             const VkRenderingSelfDependencyInfoMESA *rsd_info);
+                             const struct vk_graphics_pipeline_state *state);
 
 void
 genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline);
