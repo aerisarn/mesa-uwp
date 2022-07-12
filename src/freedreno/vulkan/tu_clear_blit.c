@@ -112,8 +112,8 @@ r2d_clear_value(struct tu_cs *cs, enum pipe_format format, const VkClearValue *v
       const struct util_format_description *desc = util_format_description(format);
       enum a6xx_2d_ifmt ifmt = format_to_ifmt(format);
 
-      assert(desc && (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ||
-                      format == PIPE_FORMAT_R11G11B10_FLOAT));
+      assert(desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ||
+             format == PIPE_FORMAT_R11G11B10_FLOAT);
 
       for (unsigned i = 0; i < desc->nr_channels; i++) {
          const struct util_format_channel_description *ch = &desc->channel[i];
