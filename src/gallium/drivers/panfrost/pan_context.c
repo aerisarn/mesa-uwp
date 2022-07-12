@@ -1060,7 +1060,7 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
                 pipe_so_target_reference(&so->targets[i], targets[i]);
         }
 
-        for (unsigned i = 0; i < so->num_targets; i++)
+        for (unsigned i = num_targets; i < so->num_targets; i++)
                 pipe_so_target_reference(&so->targets[i], NULL);
 
         so->num_targets = num_targets;
