@@ -3258,7 +3258,6 @@ static struct lp_type
 lp_build_texel_type(struct lp_type texel_type,
                     const struct util_format_description *format_desc)
 {
-   assert(format_desc != NULL);
    /* always using the first channel hopefully should be safe,
     * if not things WILL break in other places anyway.
     */
@@ -3383,8 +3382,6 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    bld.dynamic_state = dynamic_state;
    bld.format_desc = util_format_description(static_texture_state->format);
    bld.dims = dims;
-
-   assert(bld.format_desc);
 
    if (gallivm_perf & GALLIVM_PERF_NO_QUAD_LOD || op_is_lodq) {
       bld.no_quad_lod = TRUE;
@@ -4000,7 +3997,7 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
    if (dynamic_state->cache_ptr) {
       const struct util_format_description *format_desc;
       format_desc = util_format_description(static_texture_state->format);
-      if (format_desc && format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) {
+      if (format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) {
          need_cache = TRUE;
       }
    }
@@ -4129,7 +4126,7 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
    if (dynamic_state->cache_ptr) {
       const struct util_format_description *format_desc;
       format_desc = util_format_description(static_texture_state->format);
-      if (format_desc && format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) {
+      if (format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) {
          need_cache = TRUE;
       }
    }
@@ -4301,9 +4298,9 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
    if (USE_TEX_FUNC_CALL) {
       const struct util_format_description *format_desc =
          util_format_description(static_texture_state->format);
-      const boolean simple_format = !format_desc ||
-                      (util_format_is_rgba8_variant(format_desc) &&
-                       format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB);
+      const boolean simple_format =
+         (util_format_is_rgba8_variant(format_desc) &&
+         format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB);
       const enum lp_sampler_op_type op_type =
          (params->sample_key & LP_SAMPLER_OP_TYPE_MASK) >>
          LP_SAMPLER_OP_TYPE_SHIFT;
@@ -4313,7 +4310,7 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
              static_texture_state->level_zero_only == TRUE) &&
             static_sampler_state->min_img_filter == static_sampler_state->mag_img_filter);
 
-      use_tex_func = format_desc && !(simple_format && simple_tex);
+      use_tex_func = !(simple_format && simple_tex);
    }
 
    if (use_tex_func) {
