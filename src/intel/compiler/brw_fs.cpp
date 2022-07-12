@@ -7247,8 +7247,7 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
    prog_data->persample_dispatch =
       key->multisample_fbo &&
       (key->persample_interp ||
-       shader->info.fs.uses_sample_shading ||
-       shader->info.outputs_read);
+       shader->info.fs.uses_sample_shading);
 
    if (devinfo->ver >= 6) {
       prog_data->uses_sample_mask =
