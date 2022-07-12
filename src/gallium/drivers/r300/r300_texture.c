@@ -80,8 +80,6 @@ static unsigned r300_get_endian_swap(enum pipe_format format)
         return R300_SURF_NO_SWAP;
 
     desc = util_format_description(format);
-    if (!desc)
-        return R300_SURF_NO_SWAP;
 
     /* Compressed formats should be in the little endian format. */
     if (desc->block.width != 1 || desc->block.height != 1)
