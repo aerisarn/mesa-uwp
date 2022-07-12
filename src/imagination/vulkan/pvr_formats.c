@@ -117,16 +117,8 @@ pvr_get_image_format_features(const struct pvr_format *pvr_format,
 const uint8_t *pvr_get_format_swizzle(VkFormat vk_format)
 {
    const struct util_format_description *vf = vk_format_description(vk_format);
-   static const uint8_t fallback[] = { PIPE_SWIZZLE_X,
-                                       PIPE_SWIZZLE_Y,
-                                       PIPE_SWIZZLE_Z,
-                                       PIPE_SWIZZLE_W };
 
-   if (vf)
-      return vf->swizzle;
-
-   assert(!"Unsupported format");
-   return fallback;
+   return vf->swizzle;
 }
 
 static VkFormatFeatureFlags
