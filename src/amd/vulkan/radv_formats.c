@@ -208,8 +208,6 @@ radv_translate_tex_dataformat(VkFormat format, const struct util_format_descript
 
    assert(vk_format_get_plane_count(format) == 1);
 
-   if (!desc)
-      return ~0;
    /* Colorspace (return non-RGB formats directly). */
    switch (desc->colorspace) {
       /* Depth stencil formats */
@@ -522,7 +520,7 @@ radv_is_sampler_format_supported(VkFormat format, bool *linear_sampling)
 {
    const struct util_format_description *desc = vk_format_description(format);
    uint32_t num_format;
-   if (!desc || format == VK_FORMAT_UNDEFINED || format == VK_FORMAT_R64_UINT ||
+   if (format == VK_FORMAT_UNDEFINED || format == VK_FORMAT_R64_UINT ||
        format == VK_FORMAT_R64_SINT)
       return false;
    num_format =
@@ -555,7 +553,7 @@ radv_is_storage_image_format_supported(struct radv_physical_device *physical_dev
 {
    const struct util_format_description *desc = vk_format_description(format);
    unsigned data_format, num_format;
-   if (!desc || format == VK_FORMAT_UNDEFINED)
+   if (format == VK_FORMAT_UNDEFINED)
       return false;
 
    data_format =
@@ -610,7 +608,7 @@ radv_is_buffer_format_supported(VkFormat format, bool *scaled)
 {
    const struct util_format_description *desc = vk_format_description(format);
    unsigned data_format, num_format;
-   if (!desc || format == VK_FORMAT_UNDEFINED)
+   if (format == VK_FORMAT_UNDEFINED)
       return false;
 
    data_format =
@@ -700,7 +698,7 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
    bool blendable;
    bool scaled = false;
    /* TODO: implement some software emulation of SUBSAMPLED formats. */
-   if (!desc || vk_format_to_pipe_format(format) == PIPE_FORMAT_NONE ||
+   if (vk_format_to_pipe_format(format) == PIPE_FORMAT_NONE ||
        desc->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
       out_properties->linearTilingFeatures = linear;
       out_properties->optimalTilingFeatures = tiled;
@@ -1356,7 +1354,7 @@ radv_check_modifier_support(struct radv_physical_device *dev,
    if (info->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if (!desc || (desc->layout == UTIL_FORMAT_LAYOUT_ETC && dev->emulate_etc2))
+   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && dev->emulate_etc2)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    /* We did not add modifiers for sparse textures. */
@@ -1682,7 +1680,7 @@ get_external_image_format_properties(struct radv_physical_device *physical_devic
    VkExternalMemoryHandleTypeFlags compat_flags = 0;
    const struct util_format_description *desc = vk_format_description(pImageFormatInfo->format);
 
-   if (!desc || (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2))
+   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2)
       return;
 
    if (pImageFormatInfo->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)

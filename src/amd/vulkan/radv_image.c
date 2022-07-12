@@ -2104,7 +2104,6 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    if (device->physical_device->emulate_etc2 &&
        vk_format_description(image->vk.format)->layout == UTIL_FORMAT_LAYOUT_ETC) {
       const struct util_format_description *desc = vk_format_description(iview->vk.format);
-      assert(desc);
       if (desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
          iview->plane_id = 1;
          iview->vk.format = etc2_emulation_format(iview->vk.format);
