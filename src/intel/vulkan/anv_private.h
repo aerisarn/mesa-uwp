@@ -2700,13 +2700,8 @@ struct anv_dynamic_state {
    } line_stipple;
 
    struct {
-      struct intel_sample_position              locations_1[1];
-      struct intel_sample_position              locations_2[2];
-      struct intel_sample_position              locations_4[4];
-      struct intel_sample_position              locations_8[8];
-      struct intel_sample_position              locations_16[16];
-      /* Only valid on the pipeline dynamic state */
-      unsigned                                  pipeline_samples;
+      struct intel_sample_position              locations[16];
+      unsigned                                  samples;
    } sample_locations;
 
    struct {
@@ -2738,20 +2733,6 @@ void anv_dynamic_state_init(struct anv_dynamic_state *state);
 anv_cmd_dirty_mask_t anv_dynamic_state_copy(struct anv_dynamic_state *dest,
                                             const struct anv_dynamic_state *src,
                                             anv_cmd_dirty_mask_t copy_mask);
-
-static inline struct intel_sample_position *
-anv_dynamic_state_get_sample_locations(struct anv_dynamic_state *state,
-                                       unsigned samples)
-{
-   switch (samples) {
-   case  1: return state->sample_locations.locations_1;  break;
-   case  2: return state->sample_locations.locations_2;  break;
-   case  4: return state->sample_locations.locations_4;  break;
-   case  8: return state->sample_locations.locations_8;  break;
-   case 16: return state->sample_locations.locations_16; break;
-   default: unreachable("invalid sample count");
-   }
-}
 
 struct anv_surface_state {
    struct anv_state state;

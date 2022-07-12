@@ -257,10 +257,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
+      assert(d->sample_locations.samples == pipeline->rasterization_samples);
       genX(emit_multisample)(&cmd_buffer->batch,
-                             pipeline->rasterization_samples,
-                             anv_dynamic_state_get_sample_locations(d,
-                                                                    pipeline->rasterization_samples));
+                             d->sample_locations.samples,
+                             d->sample_locations.locations);
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |

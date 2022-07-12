@@ -746,22 +746,48 @@ genX(emit_sample_pattern)(struct anv_batch *batch,
        * lit sample and that it's the same for all samples in a pixel; they
        * have no requirement that it be the one closest to center.
        */
-      if (d) {
-         INTEL_SAMPLE_POS_1X_ARRAY(sp._1xSample,  d->sample_locations.locations_1);
-         INTEL_SAMPLE_POS_2X_ARRAY(sp._2xSample,  d->sample_locations.locations_2);
-         INTEL_SAMPLE_POS_4X_ARRAY(sp._4xSample,  d->sample_locations.locations_4);
-         INTEL_SAMPLE_POS_8X_ARRAY(sp._8xSample,  d->sample_locations.locations_8);
+      for (uint32_t i = 1; i <= (GFX_VER >= 9 ? 16 : 8); i *= 2) {
+         switch (i) {
+         case VK_SAMPLE_COUNT_1_BIT:
+            if (d && d->sample_locations.samples == i) {
+               INTEL_SAMPLE_POS_1X_ARRAY(sp._1xSample, d->sample_locations.locations);
+            } else {
+               INTEL_SAMPLE_POS_1X(sp._1xSample);
+            }
+            break;
+         case VK_SAMPLE_COUNT_2_BIT:
+            if (d && d->sample_locations.samples == i) {
+               INTEL_SAMPLE_POS_2X_ARRAY(sp._2xSample, d->sample_locations.locations);
+            } else {
+               INTEL_SAMPLE_POS_2X(sp._2xSample);
+            }
+            break;
+         case VK_SAMPLE_COUNT_4_BIT:
+            if (d && d->sample_locations.samples == i) {
+               INTEL_SAMPLE_POS_4X_ARRAY(sp._4xSample, d->sample_locations.locations);
+            } else {
+               INTEL_SAMPLE_POS_4X(sp._4xSample);
+            }
+            break;
+         case VK_SAMPLE_COUNT_8_BIT:
+            if (d && d->sample_locations.samples == i) {
+               INTEL_SAMPLE_POS_8X_ARRAY(sp._8xSample, d->sample_locations.locations);
+            } else {
+               INTEL_SAMPLE_POS_8X(sp._8xSample);
+            }
+            break;
 #if GFX_VER >= 9
-         INTEL_SAMPLE_POS_16X_ARRAY(sp._16xSample, d->sample_locations.locations_16);
+         case VK_SAMPLE_COUNT_16_BIT:
+            if (d && d->sample_locations.samples == i) {
+               INTEL_SAMPLE_POS_16X_ARRAY(sp._16xSample, d->sample_locations.locations);
+            } else {
+               INTEL_SAMPLE_POS_16X(sp._16xSample);
+            }
+            break;
 #endif
-      } else {
-         INTEL_SAMPLE_POS_1X(sp._1xSample);
-         INTEL_SAMPLE_POS_2X(sp._2xSample);
-         INTEL_SAMPLE_POS_4X(sp._4xSample);
-         INTEL_SAMPLE_POS_8X(sp._8xSample);
-#if GFX_VER >= 9
-         INTEL_SAMPLE_POS_16X(sp._16xSample);
-#endif
+         default:
+            unreachable("Invalid sample count");
+         }
       }
    }
 }
