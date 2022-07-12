@@ -959,14 +959,43 @@ static bool merge_movs(
 		src.Swizzle = merge_swizzles(cur->U.I.SrcReg[0].Swizzle,
 						inst->U.I.SrcReg[0].Swizzle);
 		src.Negate = merge_negates(inst->U.I.SrcReg[0], cur->U.I.SrcReg[0]);
-		if (!c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src))
-			return false;
-		cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
-		cur->U.I.SrcReg[0] = src;
-		rc_remove_instruction(inst);
-		return true;
+		if (c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src)) {
+			cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
+			cur->U.I.SrcReg[0] = src;
+			rc_remove_instruction(inst);
+			return true;
+		}
 	}
-	return false;
+
+	/* Otherwise, we can convert the MOVs into ADD.
+	 *
+	 * For example
+	 *   MOV temp[0].x const[0].x
+	 *   MOV temp[0].y input[0].y
+	 *
+	 * becomes
+	 *   ADD temp[0].xy const[0].x0 input[0].0y
+	 */
+	unsigned wmask = cur->U.I.DstReg.WriteMask | orig_dst_wmask;
+	struct rc_src_register src0 = inst->U.I.SrcReg[0];
+	struct rc_src_register src1 = cur->U.I.SrcReg[0];
+
+	src0.Swizzle = fill_swizzle(src0.Swizzle,
+				wmask, RC_SWIZZLE_ZERO);
+	src1.Swizzle = fill_swizzle(src1.Swizzle,
+				wmask, RC_SWIZZLE_ZERO);
+	if (!c->SwizzleCaps->IsNative(RC_OPCODE_ADD, src0) ||
+		!c->SwizzleCaps->IsNative(RC_OPCODE_ADD, src1))
+		return false;
+
+	cur->U.I.DstReg.WriteMask = wmask;
+	cur->U.I.Opcode = RC_OPCODE_ADD;
+	cur->U.I.SrcReg[0] = src0;
+	cur->U.I.SrcReg[1] = src1;
+
+	/* finally delete the original mov */
+	rc_remove_instruction(inst);
+	return true;
 }
 
 static bool inst_combination(
