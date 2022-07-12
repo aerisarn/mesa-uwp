@@ -1004,31 +1004,34 @@ ir3_nir_lower_gs(nir_shader *shader)
    nir_foreach_block_safe (block, impl)
       lower_gs_block(block, &b, &state);
 
-   set_foreach (impl->end_block->predecessors, block_entry) {
-      struct nir_block *block = (void *)block_entry->key;
-      b.cursor = nir_after_block_before_jump(block);
+   /* Note: returns are lowered, so there should be only one block before the
+    * end block.  If we had real returns, we would probably want to redirect
+    * them to this new if statement, rather than emitting this code at every
+    * return statement.
+    */
+   assert(impl->end_block->predecessors->entries == 1);
+   nir_block *block = nir_impl_last_block(impl);
+   b.cursor = nir_after_block_before_jump(block);
 
-      nir_ssa_def *cond =
-         nir_ieq_imm(&b, nir_load_var(&b, state.emitted_vertex_var), 0);
+   /* If we haven't emitted any vertex we need to copy the shadow (old)
+    * outputs to emit outputs here.
+    *
+    * Also some piglit GS tests[1] don't have EndPrimitive() so throw
+    * in an extra vertex_flags write for good measure.  If unneeded it
+    * will be optimized out.
+    *
+    * [1] ex, tests/spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept.shader_test
+    */
+   nir_ssa_def *cond =
+      nir_ieq_imm(&b, nir_load_var(&b, state.emitted_vertex_var), 0);
+   nir_push_if(&b, cond);
+   nir_store_var(&b, state.vertex_flags_out, nir_imm_int(&b, 4), 0x1);
+   copy_vars(&b, &state.emit_outputs, &state.old_outputs);
+   nir_pop_if(&b, NULL);
 
-      /* If we haven't emitted any vertex we need to copy the shadow (old)
-       * outputs to emit outputs here.
-       *
-       * Also some piglit GS tests[1] don't have EndPrimitive() so throw
-       * in an extra vertex_flags write for good measure.  If unneeded it
-       * will be optimized out.
-       *
-       * [1] ex, tests/spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept.shader_test
-       */
-      nir_push_if(&b, cond);
-      nir_store_var(&b, state.vertex_flags_out, nir_imm_int(&b, 4), 0x1);
-      copy_vars(&b, &state.emit_outputs, &state.old_outputs);
-      nir_pop_if(&b, NULL);
+   nir_discard_if(&b, cond);
 
-      nir_discard_if(&b, cond);
-
-      copy_vars(&b, &state.new_outputs, &state.emit_outputs);
-   }
+   copy_vars(&b, &state.new_outputs, &state.emit_outputs);
 
    exec_list_append(&shader->variables, &state.old_outputs);
    exec_list_append(&shader->variables, &state.emit_outputs);
