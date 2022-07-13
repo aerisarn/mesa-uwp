@@ -150,7 +150,7 @@ struct NOP_ctx_gfx6 {
 };
 
 struct NOP_ctx_gfx10 {
-   bool has_VOPC = false;
+   bool has_VOPC_write_exec = false;
    bool has_nonVALU_exec_read = false;
    bool has_VMEM = false;
    bool has_branch_after_VMEM = false;
@@ -163,7 +163,7 @@ struct NOP_ctx_gfx10 {
 
    void join(const NOP_ctx_gfx10& other)
    {
-      has_VOPC |= other.has_VOPC;
+      has_VOPC_write_exec |= other.has_VOPC_write_exec;
       has_nonVALU_exec_read |= other.has_nonVALU_exec_read;
       has_VMEM |= other.has_VMEM;
       has_branch_after_VMEM |= other.has_branch_after_VMEM;
@@ -177,9 +177,10 @@ struct NOP_ctx_gfx10 {
 
    bool operator==(const NOP_ctx_gfx10& other)
    {
-      return has_VOPC == other.has_VOPC && has_nonVALU_exec_read == other.has_nonVALU_exec_read &&
-             has_VMEM == other.has_VMEM && has_branch_after_VMEM == other.has_branch_after_VMEM &&
-             has_DS == other.has_DS && has_branch_after_DS == other.has_branch_after_DS &&
+      return has_VOPC_write_exec == other.has_VOPC_write_exec &&
+             has_nonVALU_exec_read == other.has_nonVALU_exec_read && has_VMEM == other.has_VMEM &&
+             has_branch_after_VMEM == other.has_branch_after_VMEM && has_DS == other.has_DS &&
+             has_branch_after_DS == other.has_branch_after_DS &&
              has_NSA_MIMG == other.has_NSA_MIMG && has_writelane == other.has_writelane &&
              sgprs_read_by_VMEM == other.sgprs_read_by_VMEM &&
              sgprs_read_by_SMEM == other.sgprs_read_by_SMEM;
@@ -679,13 +680,14 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
    }
 
    /* VcmpxPermlaneHazard
-    * Handle any permlane following a VOPC instruction, insert v_mov between them.
+    * Handle any permlane following a VOPC instruction writing exec, insert v_mov between them.
     */
-   if (instr->isVOPC()) {
-      ctx.has_VOPC = true;
-   } else if (ctx.has_VOPC && (instr->opcode == aco_opcode::v_permlane16_b32 ||
-                               instr->opcode == aco_opcode::v_permlanex16_b32)) {
-      ctx.has_VOPC = false;
+   if (instr->isVOPC() && instr->definitions[0].physReg() == exec) {
+      /* we only need to check definitions[0] because since GFX10 v_cmpx only writes one dest */
+      ctx.has_VOPC_write_exec = true;
+   } else if (ctx.has_VOPC_write_exec && (instr->opcode == aco_opcode::v_permlane16_b32 ||
+                                          instr->opcode == aco_opcode::v_permlanex16_b32)) {
+      ctx.has_VOPC_write_exec = false;
 
       /* v_nop would be discarded by SQ, so use v_mov with the first operand of the permlane */
       aco_ptr<VOP1_instruction> v_mov{
@@ -694,7 +696,7 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
       v_mov->operands[0] = Operand(instr->operands[0].physReg(), v1);
       new_instructions.emplace_back(std::move(v_mov));
    } else if (instr->isVALU() && instr->opcode != aco_opcode::v_nop) {
-      ctx.has_VOPC = false;
+      ctx.has_VOPC_write_exec = false;
    }
 
    /* VcmpxExecWARHazard
