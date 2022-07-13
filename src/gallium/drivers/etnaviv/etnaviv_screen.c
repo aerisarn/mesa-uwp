@@ -625,16 +625,15 @@ const uint64_t supported_modifiers[] = {
    DRM_FORMAT_MOD_VIVANTE_SPLIT_SUPER_TILED,
 };
 
-static bool modifier_num_supported(struct pipe_screen *pscreen, int num)
+static int etna_get_num_modifiers(struct etna_screen *screen)
 {
-   struct etna_screen *screen = etna_screen(pscreen);
+   int num = ARRAY_SIZE(supported_modifiers);
 
    /* don't advertise split tiled formats on single pipe/buffer GPUs */
-   if ((screen->specs.pixel_pipes == 1 || screen->specs.single_buffer) &&
-       num >= 3)
-      return false;
+   if (screen->specs.pixel_pipes == 1 || screen->specs.single_buffer)
+      num = 3;
 
-   return true;
+   return num;
 }
 
 static void
@@ -643,28 +642,24 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                    uint64_t *modifiers,
                                    unsigned int *external_only, int *count)
 {
-   int i, num_modifiers = 0;
+   struct etna_screen *screen = etna_screen(pscreen);
+   int num_modifiers = etna_get_num_modifiers(screen);
+   int i;
 
-   if (max > ARRAY_SIZE(supported_modifiers))
-      max = ARRAY_SIZE(supported_modifiers);
+   if (max > num_modifiers)
+      max = num_modifiers;
 
    if (!max) {
       modifiers = NULL;
-      max = ARRAY_SIZE(supported_modifiers);
+      max = num_modifiers;
    }
 
-   for (i = 0; num_modifiers < max; i++) {
-      if (!modifier_num_supported(pscreen, i))
-         break;
-
+   for (i = 0, *count = 0; *count < max && i < num_modifiers; i++, (*count)++) {
       if (modifiers)
-         modifiers[num_modifiers] = supported_modifiers[i];
+         modifiers[*count] = supported_modifiers[i];
       if (external_only)
-         external_only[num_modifiers] = util_format_is_yuv(format) ? 1 : 0;
-      num_modifiers++;
+         external_only[*count] = util_format_is_yuv(format) ? 1 : 0;
    }
-
-   *count = num_modifiers;
 }
 
 static bool
@@ -673,18 +668,18 @@ etna_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
                                          enum pipe_format format,
                                          bool *external_only)
 {
+   struct etna_screen *screen = etna_screen(pscreen);
+   int num_modifiers = etna_get_num_modifiers(screen);
    int i;
 
-   for (i = 0; i < ARRAY_SIZE(supported_modifiers); i++) {
-      if (!modifier_num_supported(pscreen, i))
-         break;
+   for (i = 0; i < num_modifiers; i++) {
+      if (modifier != supported_modifiers[i])
+         continue;
 
-      if (modifier == supported_modifiers[i]) {
-         if (external_only)
-            *external_only = util_format_is_yuv(format) ? 1 : 0;
+      if (external_only)
+         *external_only = util_format_is_yuv(format) ? 1 : 0;
 
-         return true;
-      }
+      return true;
    }
 
    return false;
