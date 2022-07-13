@@ -26,6 +26,7 @@
 #include "v3d_context.h"
 #include "broadcom/common/v3d_macros.h"
 #include "broadcom/cle/v3dx_pack.h"
+#include "broadcom/common/v3d_util.h"
 #include "broadcom/compiler/v3d_compiler.h"
 
 static uint8_t
@@ -110,24 +111,6 @@ swizzled_border_color(const struct v3d_device_info *devinfo,
         }
 }
 
-static uint32_t
-translate_swizzle(unsigned char pipe_swizzle)
-{
-        switch (pipe_swizzle) {
-        case PIPE_SWIZZLE_0:
-                return 0;
-        case PIPE_SWIZZLE_1:
-                return 1;
-        case PIPE_SWIZZLE_X:
-        case PIPE_SWIZZLE_Y:
-        case PIPE_SWIZZLE_Z:
-        case PIPE_SWIZZLE_W:
-                return 2 + pipe_swizzle;
-        default:
-                unreachable("unknown swizzle");
-        }
-}
-
 static void
 emit_one_texture(struct v3d_context *v3d, struct v3d_texture_stateobj *stage_tex,
                  int i)
@@ -195,15 +178,15 @@ emit_one_texture(struct v3d_context *v3d, struct v3d_texture_stateobj *stage_tex
          * the shader, because you need the Y/Z/W channels to be defined.
          */
         if (return_size == 32) {
-                unpacked.swizzle_r = translate_swizzle(PIPE_SWIZZLE_X);
-                unpacked.swizzle_g = translate_swizzle(PIPE_SWIZZLE_Y);
-                unpacked.swizzle_b = translate_swizzle(PIPE_SWIZZLE_Z);
-                unpacked.swizzle_a = translate_swizzle(PIPE_SWIZZLE_W);
+                unpacked.swizzle_r = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_X);
+                unpacked.swizzle_g = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_Y);
+                unpacked.swizzle_b = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_Z);
+                unpacked.swizzle_a = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_W);
         } else {
-                unpacked.swizzle_r = translate_swizzle(sview->swizzle[0]);
-                unpacked.swizzle_g = translate_swizzle(sview->swizzle[1]);
-                unpacked.swizzle_b = translate_swizzle(sview->swizzle[2]);
-                unpacked.swizzle_a = translate_swizzle(sview->swizzle[3]);
+                unpacked.swizzle_r = v3d_translate_pipe_swizzle(sview->swizzle[0]);
+                unpacked.swizzle_g = v3d_translate_pipe_swizzle(sview->swizzle[1]);
+                unpacked.swizzle_b = v3d_translate_pipe_swizzle(sview->swizzle[2]);
+                unpacked.swizzle_a = v3d_translate_pipe_swizzle(sview->swizzle[3]);
         }
 
         int min_img_filter = psampler->min_img_filter;

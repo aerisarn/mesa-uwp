@@ -122,3 +122,24 @@ v3d_choose_tile_size(uint32_t color_attachment_count, uint32_t max_color_bpp,
    *width = tile_sizes[idx * 2];
    *height = tile_sizes[idx * 2 + 1];
 }
+
+/* Translates a pipe swizzle to the swizzle values used in the
+ * TEXTURE_SHADER_STATE packet.
+ */
+uint32_t
+v3d_translate_pipe_swizzle(enum pipe_swizzle swizzle)
+{
+   switch (swizzle) {
+   case PIPE_SWIZZLE_0:
+      return 0;
+   case PIPE_SWIZZLE_1:
+      return 1;
+   case PIPE_SWIZZLE_X:
+   case PIPE_SWIZZLE_Y:
+   case PIPE_SWIZZLE_Z:
+   case PIPE_SWIZZLE_W:
+      return 2 + swizzle;
+   default:
+      unreachable("unknown swizzle");
+   }
+}

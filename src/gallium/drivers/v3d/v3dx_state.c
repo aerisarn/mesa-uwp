@@ -35,6 +35,7 @@
 #include "v3d_context.h"
 #include "broadcom/common/v3d_tiling.h"
 #include "broadcom/common/v3d_macros.h"
+#include "broadcom/common/v3d_util.h"
 #include "broadcom/compiler/v3d_compiler.h"
 #include "broadcom/cle/v3dx_pack.h"
 
@@ -836,26 +837,6 @@ v3d_sampler_state_delete(struct pipe_context *pctx,
         free(psampler);
 }
 
-#if V3D_VERSION >= 40
-static uint32_t
-translate_swizzle(unsigned char pipe_swizzle)
-{
-        switch (pipe_swizzle) {
-        case PIPE_SWIZZLE_0:
-                return 0;
-        case PIPE_SWIZZLE_1:
-                return 1;
-        case PIPE_SWIZZLE_X:
-        case PIPE_SWIZZLE_Y:
-        case PIPE_SWIZZLE_Z:
-        case PIPE_SWIZZLE_W:
-                return 2 + pipe_swizzle;
-        default:
-                unreachable("unknown swizzle");
-        }
-}
-#endif
-
 static void
 v3d_setup_texture_shader_state_from_buffer(struct V3DX(TEXTURE_SHADER_STATE) *tex,
                                            struct pipe_resource *prsc,
@@ -991,10 +972,10 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
                 tex.srgb = util_format_is_srgb(cso->format);
 
 #if V3D_VERSION >= 40
-                tex.swizzle_r = translate_swizzle(so->swizzle[0]);
-                tex.swizzle_g = translate_swizzle(so->swizzle[1]);
-                tex.swizzle_b = translate_swizzle(so->swizzle[2]);
-                tex.swizzle_a = translate_swizzle(so->swizzle[3]);
+                tex.swizzle_r = v3d_translate_pipe_swizzle(so->swizzle[0]);
+                tex.swizzle_g = v3d_translate_pipe_swizzle(so->swizzle[1]);
+                tex.swizzle_b = v3d_translate_pipe_swizzle(so->swizzle[2]);
+                tex.swizzle_a = v3d_translate_pipe_swizzle(so->swizzle[3]);
 #endif
 
                 if (prsc->nr_samples > 1 && V3D_VERSION < 40) {
@@ -1413,10 +1394,10 @@ v3d_create_image_view_texture_shader_state(struct v3d_context *v3d,
                                                                    iview->base.u.buf.size);
                 }
 
-                tex.swizzle_r = translate_swizzle(PIPE_SWIZZLE_X);
-                tex.swizzle_g = translate_swizzle(PIPE_SWIZZLE_Y);
-                tex.swizzle_b = translate_swizzle(PIPE_SWIZZLE_Z);
-                tex.swizzle_a = translate_swizzle(PIPE_SWIZZLE_W);
+                tex.swizzle_r = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_X);
+                tex.swizzle_g = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_Y);
+                tex.swizzle_b = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_Z);
+                tex.swizzle_a = v3d_translate_pipe_swizzle(PIPE_SWIZZLE_W);
 
                 tex.texture_type = v3d_get_tex_format(&v3d->screen->devinfo,
                                                       iview->base.format);
