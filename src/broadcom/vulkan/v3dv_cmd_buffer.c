@@ -2231,11 +2231,11 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
       state->meta.has_descriptor_state = false;
    }
 
-   if (cmd_buffer->push_constants_size > 0) {
-      state->meta.push_constants_size = cmd_buffer->push_constants_size;
-      memcpy(state->meta.push_constants, cmd_buffer->push_constants_data,
-             cmd_buffer->push_constants_size);
-      cmd_buffer->push_constants_size = 0;
+   if (cmd_buffer->state.push_constants_size > 0) {
+      state->meta.push_constants_size = cmd_buffer->state.push_constants_size;
+      memcpy(state->meta.push_constants, cmd_buffer->state.push_constants_data,
+             cmd_buffer->state.push_constants_size);
+      cmd_buffer->state.push_constants_size = 0;
    }
 }
 
@@ -2304,11 +2304,11 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
     * data.
     */
    if (state->meta.push_constants_size > 0 &&
-       cmd_buffer->push_constants_size > 0) {
-      memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
+       cmd_buffer->state.push_constants_size > 0) {
+      memcpy(cmd_buffer->state.push_constants_data, state->meta.push_constants,
              state->meta.push_constants_size);
    }
-   cmd_buffer->push_constants_size = state->meta.push_constants_size;
+   cmd_buffer->state.push_constants_size = state->meta.push_constants_size;
 
    state->meta.gfx.pipeline = NULL;
    state->meta.framebuffer = VK_NULL_HANDLE;
@@ -3092,12 +3092,15 @@ v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   if (!memcmp((uint8_t *) cmd_buffer->push_constants_data + offset, pValues, size))
+   if (!memcmp((uint8_t *) cmd_buffer->state.push_constants_data + offset,
+               pValues, size)) {
       return;
+   }
 
-   memcpy((uint8_t *) cmd_buffer->push_constants_data + offset, pValues, size);
-   cmd_buffer->push_constants_size =
-      MAX2(offset + size, cmd_buffer->push_constants_size);
+   memcpy((uint8_t *) cmd_buffer->state.push_constants_data + offset,
+           pValues, size);
+   cmd_buffer->state.push_constants_size =
+      MAX2(offset + size, cmd_buffer->state.push_constants_size);
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PUSH_CONSTANTS;
    cmd_buffer->state.dirty_push_constants_stages |= stageFlags;

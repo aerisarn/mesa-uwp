@@ -123,7 +123,7 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
 
    memcpy(cmd_buffer->push_constants_resource.bo->map +
           cmd_buffer->push_constants_resource.offset,
-          cmd_buffer->push_constants_data,
+          cmd_buffer->state.push_constants_data,
           MAX_PUSH_CONSTANTS_SIZE);
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
@@ -489,7 +489,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          break;
 
       case QUNIFORM_UNIFORM:
-         cl_aligned_u32(&uniforms, cmd_buffer->push_constants_data[data]);
+         cl_aligned_u32(&uniforms, cmd_buffer->state.push_constants_data[data]);
          break;
 
       case QUNIFORM_INLINE_UBO_0:

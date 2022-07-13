@@ -1279,6 +1279,14 @@ struct v3dv_cmd_buffer_state {
     */
    bool tile_aligned_render_area;
 
+   /* FIXME: we have just one client-side BO for the push constants,
+    * independently of the stageFlags in vkCmdPushConstants, and the
+    * pipelineBindPoint in vkCmdBindPipeline. We could probably do more stage
+    * tunning in the future if it makes sense.
+    */
+   uint32_t push_constants_size;
+   uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
+
    uint32_t attachment_alloc_count;
    struct v3dv_cmd_buffer_attachment_state *attachments;
 
@@ -1470,13 +1478,7 @@ struct v3dv_cmd_buffer {
 
    struct v3dv_cmd_buffer_state state;
 
-   /* FIXME: we have just one client-side and bo for the push constants,
-    * independently of the stageFlags in vkCmdPushConstants, and the
-    * pipelineBindPoint in vkCmdBindPipeline. We could probably do more stage
-    * tunning in the future if it makes sense.
-    */
-   uint32_t push_constants_size;
-   uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
+   /* Buffer where we upload push constant data to resolve indirect indexing */
    struct v3dv_cl_reloc push_constants_resource;
 
    /* Collection of Vulkan objects created internally by the driver (typically
