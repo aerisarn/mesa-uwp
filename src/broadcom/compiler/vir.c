@@ -1604,7 +1604,7 @@ v3d_attempt_compile(struct v3d_compile *c)
         }
 
         NIR_PASS_V(c->s, nir_lower_bool_to_int32);
-        nir_convert_to_lcssa(c->s, true, true);
+        NIR_PASS_V(c->s, nir_convert_to_lcssa, true, true);
         NIR_PASS_V(c->s, nir_divergence_analysis);
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
