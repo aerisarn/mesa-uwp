@@ -380,8 +380,6 @@ struct radv_shader_info {
 
 struct radv_vs_input_state {
    uint32_t attribute_mask;
-   uint32_t misaligned_mask;
-   uint32_t possibly_misaligned_mask;
 
    uint32_t instance_rate_inputs;
    uint32_t nontrivial_divisors;
@@ -399,6 +397,8 @@ struct radv_vs_input_state {
    uint8_t formats[MAX_VERTEX_ATTRIBS];
    uint8_t format_align_req_minus_1[MAX_VERTEX_ATTRIBS];
    uint8_t format_sizes[MAX_VERTEX_ATTRIBS];
+
+   bool bindings_match_attrib;
 };
 
 struct radv_vs_prolog_key {
