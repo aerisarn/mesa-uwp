@@ -119,15 +119,33 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    DBG_F(ETNA_DBG_RESOURCE_MSGS, "%p: Allocating tile status of size %zu",
          rsc, rt_ts_size);
 
-   struct etna_bo *rt_ts;
-   rt_ts = etna_bo_new(screen->dev, rt_ts_size, DRM_ETNA_GEM_CACHE_WC);
+   if ((rsc->base.bind & PIPE_BIND_SCANOUT) && screen->ro->kms_fd >= 0) {
+      struct pipe_resource scanout_templat;
+      struct winsys_handle handle;
 
-   if (unlikely(!rt_ts)) {
+      scanout_templat.format = PIPE_FORMAT_R8_UNORM;
+      scanout_templat.width0 = align(rt_ts_size, 4096);
+      scanout_templat.height0 = 1;
+
+      rsc->ts_scanout = renderonly_scanout_for_resource(&scanout_templat,
+                                                     screen->ro, &handle);
+      if (!rsc->ts_scanout) {
+         BUG("Problem allocating kms memory for TS resource");
+         return false;
+      }
+
+      assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+      rsc->ts_bo = etna_screen_bo_from_handle(pscreen, &handle);
+      close(handle.handle);
+   } else {
+      rsc->ts_bo = etna_bo_new(screen->dev, ts_bo_size, DRM_ETNA_GEM_CACHE_WC);
+   }
+
+   if (unlikely(!rsc->ts_bo)) {
       BUG("Problem allocating tile status for resource");
       return false;
    }
 
-   rsc->ts_bo = rt_ts;
    rsc->levels[0].ts_offset = 0;
    rsc->levels[0].ts_layer_stride = ts_layer_stride;
    rsc->levels[0].ts_size = rt_ts_size;
