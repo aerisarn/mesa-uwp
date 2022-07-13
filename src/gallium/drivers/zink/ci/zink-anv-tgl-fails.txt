@@ -1,2 +1,0 @@
-# 6205
-KHR-GL46.tessellation_shader.single.xfb_captures_data_from_correct_stage,Fail

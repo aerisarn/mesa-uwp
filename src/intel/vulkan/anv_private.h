@@ -2567,6 +2567,14 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
           */
          pipe_bits |= ANV_PIPE_FLUSH_BITS;
          break;
+      case VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT:
+         /* We're transitioning a buffer to be written by the streamout fixed
+          * function. This one is apparently not L3 coherent, so we need a
+          * tile cache flush to make sure any previous write is not going to
+          * create WaW hazards.
+          */
+         pipe_bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+         break;
       default:
          break; /* Nothing to do */
       }
