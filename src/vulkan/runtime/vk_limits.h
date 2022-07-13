@@ -24,6 +24,32 @@
 #ifndef VK_LIMITS_H
 #define VK_LIMITS_H
 
+#define MESA_VK_MAX_VERTEX_BINDINGS 32
+#define MESA_VK_MAX_VERTEX_ATTRIBUTES 32
+
+/* As of June 29, 2022, according to vulkan.gpuinfo.org, 99% of all reports
+ * listed a max vertex stride that fits in 16 bits.
+ */
+#define MESA_VK_MAX_VERTEX_BINDING_STRIDE UINT16_MAX
+
+#define MESA_VK_MAX_VIEWPORTS 16
+#define MESA_VK_MAX_SCISSORS 16
+#define MESA_VK_MAX_DISCARD_RECTANGLES 4
+
+/* As of June 29, 2022, according to vulkan.gpuinfo.org, no reports list more
+ * than 16 samples for framebufferColorSampleCounts except one layer running
+ * on top of WARP on Windows.
+ */
+#define MESA_VK_MAX_SAMPLES 16
+
+/* As of June 29, 2022, according to vulkan.gpuinfo.org, the only GPUs
+ * claiming support for maxSampleLocationGridSize greater than 1x1 is AMD
+ * which supports 2x2 but only up to 8 samples.
+ */
+#define MESA_VK_MAX_SAMPLE_LOCATIONS 32
+
+#define MESA_VK_MAX_COLOR_ATTACHMENTS 8
+
 /* Since VkSubpassDescription2::viewMask is a 32-bit integer, there are a
  * maximum of 32 possible views.
  */

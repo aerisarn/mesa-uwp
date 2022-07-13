@@ -23,13 +23,7 @@
 
 #include "vk_standard_sample_locations.h"
 
-#include "util/macros.h"
-
-struct vk_sample_locations_state {
-   VkSampleCountFlagBits per_pixel;
-   VkExtent2D grid_size;
-   VkSampleLocationEXT locations[16];
-};
+#include "vk_graphics_state.h"
 
 /**
  * 1x MSAA has a single sample at the center: (0.5, 0.5) -> (0x8, 0x8).
