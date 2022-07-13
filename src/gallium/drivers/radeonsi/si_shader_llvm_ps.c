@@ -127,15 +127,15 @@ static LLVMValueRef si_build_fs_interp(struct si_shader_context *ctx, unsigned a
 /**
  * Interpolate a fragment shader input.
  *
- * @param ctx		context
- * @param input_index		index of the input in hardware
- * @param semantic_index	semantic index
- * @param num_interp_inputs	number of all interpolated inputs (= BCOLOR offset)
- * @param colors_read_mask	color components read (4 bits for each color, 8 bits in total)
- * @param interp_param		interpolation weights (i,j)
- * @param prim_mask		SI_PARAM_PRIM_MASK
- * @param face			SI_PARAM_FRONT_FACE
- * @param result		the return value (4 components)
+ * @param ctx                context
+ * @param input_index        index of the input in hardware
+ * @param semantic_index     semantic index
+ * @param num_interp_inputs  number of all interpolated inputs (= BCOLOR offset)
+ * @param colors_read_mask   color components read (4 bits for each color, 8 bits in total)
+ * @param interp_param       interpolation weights (i,j)
+ * @param prim_mask          SI_PARAM_PRIM_MASK
+ * @param face               SI_PARAM_FRONT_FACE
+ * @param result             the return value (4 components)
  */
 static void interp_fs_color(struct si_shader_context *ctx, unsigned input_index,
                             unsigned semantic_index, unsigned num_interp_inputs,

@@ -628,25 +628,25 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
    //clear the dec->render list if it is not used as a reference
    for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++) {
       if (dec->render_pic_list[i]) {
-          for (j=0;j<8;j++) {
+         for (j=0;j<8;j++) {
             if (dec->render_pic_list[i] == pic->ref[j])
-                 break;
-	  }
-	  if(j == 8)
-             dec->render_pic_list[i] = NULL;
+               break;
+         }
+         if (j == 8)
+            dec->render_pic_list[i] = NULL;
       }
    }
 
    for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); ++i) {
       if (dec->render_pic_list[i] && dec->render_pic_list[i] == target) {
-	if (target->codec != NULL){
-	    result.curr_pic_idx =(uintptr_t)vl_video_buffer_get_associated_data(target, &dec->base);
-	} else {
-	    result.curr_pic_idx = i;
-	    vl_video_buffer_set_associated_data(target, &dec->base, (void *)(uintptr_t)i,
-						&radeon_dec_destroy_associated_data);
-	}
-	break;
+         if (target->codec != NULL) {
+            result.curr_pic_idx =(uintptr_t)vl_video_buffer_get_associated_data(target, &dec->base);
+         } else {
+            result.curr_pic_idx = i;
+            vl_video_buffer_set_associated_data(target, &dec->base, (void *)(uintptr_t)i,
+            &radeon_dec_destroy_associated_data);
+         }
+         break;
       } else if (!dec->render_pic_list[i]) {
          dec->render_pic_list[i] = target;
          result.curr_pic_idx = i;
@@ -1317,33 +1317,33 @@ static void rvcn_av1_default_coef_probs(void *prob, int index)
 
 static void rvcn_vcn4_av1_default_coef_probs(void *prob, int index)
 {
-	rvcn_av1_vcn4_frame_context_t * fc = (rvcn_av1_vcn4_frame_context_t*)prob;
-	void *p;
-	int i, j;
-	unsigned size;
+   rvcn_av1_vcn4_frame_context_t *fc = (rvcn_av1_vcn4_frame_context_t*)prob;
+   void *p;
+   int i, j;
+   unsigned size;
 
-	memcpy(fc->txb_skip_cdf, av1_default_txb_skip_cdfs[index], sizeof(av1_default_txb_skip_cdfs[index]));
+   memcpy(fc->txb_skip_cdf, av1_default_txb_skip_cdfs[index], sizeof(av1_default_txb_skip_cdfs[index]));
 
-	p = (void *)fc->eob_extra_cdf;
-	size = sizeof(av1_default_eob_extra_cdfs[0][0][0][0]) * EOB_COEF_CONTEXTS_VCN4;
-	for (i = 0; i < AV1_TX_SIZES; i++) {
-		for ( j = 0; j < AV1_PLANE_TYPES; j++) {
-			memcpy(p, &av1_default_eob_extra_cdfs[index][i][j][3], size);
-			p += size;
-		}
-	}
+   p = (void *)fc->eob_extra_cdf;
+   size = sizeof(av1_default_eob_extra_cdfs[0][0][0][0]) * EOB_COEF_CONTEXTS_VCN4;
+   for (i = 0; i < AV1_TX_SIZES; i++) {
+      for ( j = 0; j < AV1_PLANE_TYPES; j++) {
+         memcpy(p, &av1_default_eob_extra_cdfs[index][i][j][3], size);
+         p += size;
+      }
+   }
 
-	memcpy(fc->dc_sign_cdf, av1_default_dc_sign_cdfs[index], sizeof(av1_default_dc_sign_cdfs[index]));
-	memcpy(fc->coeff_br_cdf, av1_default_coeff_lps_multi_cdfs[index], sizeof(av1_default_coeff_lps_multi_cdfs[index]));
-	memcpy(fc->coeff_base_cdf, av1_default_coeff_base_multi_cdfs[index], sizeof(av1_default_coeff_base_multi_cdfs[index]));
-	memcpy(fc->coeff_base_eob_cdf, av1_default_coeff_base_eob_multi_cdfs[index], sizeof(av1_default_coeff_base_eob_multi_cdfs[index]));
-	memcpy(fc->eob_flag_cdf16, av1_default_eob_multi16_cdfs[index], sizeof(av1_default_eob_multi16_cdfs[index]));
-	memcpy(fc->eob_flag_cdf32, av1_default_eob_multi32_cdfs[index], sizeof(av1_default_eob_multi32_cdfs[index]));
-	memcpy(fc->eob_flag_cdf64, av1_default_eob_multi64_cdfs[index], sizeof(av1_default_eob_multi64_cdfs[index]));
-	memcpy(fc->eob_flag_cdf128, av1_default_eob_multi128_cdfs[index], sizeof(av1_default_eob_multi128_cdfs[index]));
-	memcpy(fc->eob_flag_cdf256, av1_default_eob_multi256_cdfs[index], sizeof(av1_default_eob_multi256_cdfs[index]));
-	memcpy(fc->eob_flag_cdf512, av1_default_eob_multi512_cdfs[index], sizeof(av1_default_eob_multi512_cdfs[index]));
-	memcpy(fc->eob_flag_cdf1024, av1_default_eob_multi1024_cdfs[index], sizeof(av1_default_eob_multi1024_cdfs[index]));
+   memcpy(fc->dc_sign_cdf, av1_default_dc_sign_cdfs[index], sizeof(av1_default_dc_sign_cdfs[index]));
+   memcpy(fc->coeff_br_cdf, av1_default_coeff_lps_multi_cdfs[index], sizeof(av1_default_coeff_lps_multi_cdfs[index]));
+   memcpy(fc->coeff_base_cdf, av1_default_coeff_base_multi_cdfs[index], sizeof(av1_default_coeff_base_multi_cdfs[index]));
+   memcpy(fc->coeff_base_eob_cdf, av1_default_coeff_base_eob_multi_cdfs[index], sizeof(av1_default_coeff_base_eob_multi_cdfs[index]));
+   memcpy(fc->eob_flag_cdf16, av1_default_eob_multi16_cdfs[index], sizeof(av1_default_eob_multi16_cdfs[index]));
+   memcpy(fc->eob_flag_cdf32, av1_default_eob_multi32_cdfs[index], sizeof(av1_default_eob_multi32_cdfs[index]));
+   memcpy(fc->eob_flag_cdf64, av1_default_eob_multi64_cdfs[index], sizeof(av1_default_eob_multi64_cdfs[index]));
+   memcpy(fc->eob_flag_cdf128, av1_default_eob_multi128_cdfs[index], sizeof(av1_default_eob_multi128_cdfs[index]));
+   memcpy(fc->eob_flag_cdf256, av1_default_eob_multi256_cdfs[index], sizeof(av1_default_eob_multi256_cdfs[index]));
+   memcpy(fc->eob_flag_cdf512, av1_default_eob_multi512_cdfs[index], sizeof(av1_default_eob_multi512_cdfs[index]));
+   memcpy(fc->eob_flag_cdf1024, av1_default_eob_multi1024_cdfs[index], sizeof(av1_default_eob_multi1024_cdfs[index]));
 }
 
 static unsigned calc_ctx_size_h265_main(struct radeon_decoder *dec)
@@ -2033,10 +2033,9 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       index_codec->message_id = RDECODE_MESSAGE_AV1;
 
       if (dec->ctx.res == NULL) {
-
          unsigned frame_ctxt_size = dec->av1_version == RDECODE_AV1_VER_0
-		                                   ? align(sizeof(rvcn_av1_frame_context_t), 2048)
-		                                   : align(sizeof(rvcn_av1_vcn4_frame_context_t), 2048);
+                                       ? align(sizeof(rvcn_av1_frame_context_t), 2048)
+                                       : align(sizeof(rvcn_av1_vcn4_frame_context_t), 2048);
 
          unsigned ctx_size = (9 + 4) * frame_ctxt_size + 9 * 64 * 34 * 512 + 9 * 64 * 34 * 256 * 5;
          int num_64x64_CTB_8k = 68;

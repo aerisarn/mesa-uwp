@@ -49,7 +49,7 @@ LLVMValueRef si_get_rel_patch_id(struct si_shader_context *ctx)
  * The LDS layout is:
  * - TCS inputs for patch 0
  * - TCS inputs for patch 1
- * - TCS inputs for patch 2		= get_tcs_in_current_patch_offset (if RelPatchID==2)
+ * - TCS inputs for patch 2             = get_tcs_in_current_patch_offset (if RelPatchID==2)
  * - ...
  * - TCS outputs for patch 0            = get_tcs_out_patch0_offset
  * - Per-patch TCS outputs for patch 0  = get_tcs_out_patch0_patch_data_offset
@@ -183,9 +183,9 @@ static LLVMValueRef get_tcs_tes_buffer_address(struct si_shader_context *ctx,
 /**
  * Load from LSHS LDS storage.
  *
- * \param type		output value type
- * \param swizzle	offset (typically 0..3); it can be ~0, which loads a vec4
- * \param dw_addr	address in dwords
+ * \param type     output value type
+ * \param swizzle  offset (typically 0..3); it can be ~0, which loads a vec4
+ * \param dw_addr  address in dwords
  */
 static LLVMValueRef lshs_lds_load(struct si_shader_context *ctx, LLVMTypeRef type, unsigned swizzle,
                                   LLVMValueRef dw_addr)

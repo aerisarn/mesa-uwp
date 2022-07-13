@@ -1923,15 +1923,15 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 /**
  * Create, compile and return a shader part (prolog or epilog).
  *
- * \param sscreen	screen
- * \param list		list of shader parts of the same category
- * \param type		shader type
- * \param key		shader part key
- * \param prolog	whether the part being requested is a prolog
- * \param tm		LLVM target machine
- * \param debug		debug callback
- * \param build		the callback responsible for building the main function
- * \return		non-NULL on success
+ * \param sscreen  screen
+ * \param list     list of shader parts of the same category
+ * \param type     shader type
+ * \param key      shader part key
+ * \param prolog   whether the part being requested is a prolog
+ * \param tm       LLVM target machine
+ * \param debug    debug callback
+ * \param build    the callback responsible for building the main function
+ * \return         non-NULL on success
  */
 static struct si_shader_part *
 si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,

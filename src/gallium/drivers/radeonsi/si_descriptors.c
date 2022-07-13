@@ -276,13 +276,13 @@ static void si_set_buf_desc_address(struct si_resource *buf, uint64_t offset, ui
 
 /* Set texture descriptor fields that can be changed by reallocations.
  *
- * \param tex			texture
- * \param base_level_info	information of the level of BASE_ADDRESS
- * \param base_level		the level of BASE_ADDRESS
- * \param first_level		pipe_sampler_view.u.tex.first_level
- * \param block_width		util_format_get_blockwidth()
- * \param is_stencil		select between separate Z & Stencil
- * \param state			descriptor to update
+ * \param tex              texture
+ * \param base_level_info  information of the level of BASE_ADDRESS
+ * \param base_level       the level of BASE_ADDRESS
+ * \param first_level      pipe_sampler_view.u.tex.first_level
+ * \param block_width      util_format_get_blockwidth()
+ * \param is_stencil       select between separate Z & Stencil
+ * \param state            descriptor to update
  */
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
                                     const struct legacy_surf_level *base_level_info,

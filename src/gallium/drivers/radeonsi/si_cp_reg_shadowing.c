@@ -129,13 +129,13 @@ si_create_shadowing_ib_preamble(struct si_context *sctx)
                           S_586_GLK_INV(1) | S_586_GLI_INV(V_586_GLI_ALL);
 
       si_pm4_cmd_add(pm4, PKT3(PKT3_ACQUIRE_MEM, 6, 0));
-      si_pm4_cmd_add(pm4, 0);		/* CP_COHER_CNTL */
+      si_pm4_cmd_add(pm4, 0);           /* CP_COHER_CNTL */
       si_pm4_cmd_add(pm4, 0xffffffff);  /* CP_COHER_SIZE */
-      si_pm4_cmd_add(pm4, 0xffffff);	/* CP_COHER_SIZE_HI */
-      si_pm4_cmd_add(pm4, 0);		/* CP_COHER_BASE */
-      si_pm4_cmd_add(pm4, 0);		/* CP_COHER_BASE_HI */
+      si_pm4_cmd_add(pm4, 0xffffff);    /* CP_COHER_SIZE_HI */
+      si_pm4_cmd_add(pm4, 0);           /* CP_COHER_BASE */
+      si_pm4_cmd_add(pm4, 0);           /* CP_COHER_BASE_HI */
       si_pm4_cmd_add(pm4, 0x0000000A);  /* POLL_INTERVAL */
-      si_pm4_cmd_add(pm4, gcr_cntl);	/* GCR_CNTL */
+      si_pm4_cmd_add(pm4, gcr_cntl);    /* GCR_CNTL */
 
       si_pm4_cmd_add(pm4, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
       si_pm4_cmd_add(pm4, 0);
@@ -149,9 +149,9 @@ si_create_shadowing_ib_preamble(struct si_context *sctx)
       si_pm4_cmd_add(pm4, PKT3(PKT3_ACQUIRE_MEM, 5, 0));
       si_pm4_cmd_add(pm4, cp_coher_cntl); /* CP_COHER_CNTL */
       si_pm4_cmd_add(pm4, 0xffffffff);    /* CP_COHER_SIZE */
-      si_pm4_cmd_add(pm4, 0xffffff);	  /* CP_COHER_SIZE_HI */
-      si_pm4_cmd_add(pm4, 0);		  /* CP_COHER_BASE */
-      si_pm4_cmd_add(pm4, 0);		  /* CP_COHER_BASE_HI */
+      si_pm4_cmd_add(pm4, 0xffffff);      /* CP_COHER_SIZE_HI */
+      si_pm4_cmd_add(pm4, 0);             /* CP_COHER_BASE */
+      si_pm4_cmd_add(pm4, 0);             /* CP_COHER_BASE_HI */
       si_pm4_cmd_add(pm4, 0x0000000A);    /* POLL_INTERVAL */
 
       si_pm4_cmd_add(pm4, PKT3(PKT3_PFP_SYNC_ME, 0, 0));

@@ -891,14 +891,14 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
 /**
  * Common function for si_texture_create and si_texture_from_handle.
  *
- * \param screen	screen
- * \param base		resource template
- * \param surface	radeon_surf
- * \param plane0	if a non-zero plane is being created, this is the first plane
- * \param imported_buf	from si_texture_from_handle
- * \param offset	offset for non-zero planes or imported buffers
- * \param alloc_size	the size to allocate if plane0 != NULL
- * \param alignment	alignment for the allocation
+ * \param screen       screen
+ * \param base         resource template
+ * \param surface      radeon_surf
+ * \param plane0       if a non-zero plane is being created, this is the first plane
+ * \param imported_buf from si_texture_from_handle
+ * \param offset       offset for non-zero planes or imported buffers
+ * \param alloc_size   the size to allocate if plane0 != NULL
+ * \param alignment    alignment for the allocation
  */
 static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
                                                    const struct pipe_resource *base,
@@ -1190,7 +1190,7 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
     */
    if (!force_tiling && !is_depth_stencil && !util_format_is_compressed(templ->format)) {
       if (sscreen->debug_flags & DBG(NO_TILING) ||
-	  (templ->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_TILING)))
+          (templ->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_TILING)))
          return RADEON_SURF_MODE_LINEAR_ALIGNED;
 
       /* Tiling doesn't work with the 422 (SUBSAMPLED) formats. */

@@ -871,7 +871,7 @@ static void si_emit_clip_regs(struct si_context *sctx)
 
    radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_02881C_PA_CL_VS_OUT_CNTL, SI_TRACKED_PA_CL_VS_OUT_CNTL,
-			      pa_cl_cntl | vs->pa_cl_vs_out_cntl);
+                              pa_cl_cntl | vs->pa_cl_vs_out_cntl);
    radeon_opt_set_context_reg(sctx, R_028810_PA_CL_CLIP_CNTL, SI_TRACKED_PA_CL_CLIP_CNTL,
                               rs->pa_cl_clip_cntl | ucp_mask | S_028810_CLIP_DISABLE(window_space));
    radeon_end_update_context_roll(sctx);
@@ -4527,9 +4527,9 @@ static void si_make_texture_descriptor(struct si_screen *screen, struct si_textu
 /**
  * Create a sampler view.
  *
- * @param ctx		context
- * @param texture	texture
- * @param state		sampler view template
+ * @param ctx      context
+ * @param texture  texture
+ * @param state    sampler view template
  */
 static struct pipe_sampler_view *si_create_sampler_view(struct pipe_context *ctx,
                                                         struct pipe_resource *texture,
