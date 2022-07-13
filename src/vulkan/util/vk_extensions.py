@@ -203,13 +203,38 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_vulkan_memory_model": 29,
     "VK_KHR_swapchain_mutable_format": 29,
     "VK_KHR_uniform_buffer_standard_layout": 29,
-
+    # on android11-tests-release
+    "VK_KHR_imageless_framebuffer": 30,
+    "VK_KHR_shader_subgroup_extended_types": 30,
+    "VK_KHR_buffer_device_address": 30,
+    "VK_KHR_separate_depth_stencil_layouts": 30,
+    "VK_KHR_timeline_semaphore": 30,
+    "VK_KHR_spirv_1_4": 30,
+    "VK_KHR_pipeline_executable_properties": 30,
+    "VK_KHR_shader_clock": 30,
     "VK_KHR_performance_query": 30,
+    "VK_KHR_shader_non_semantic_info": 30,
+    "VK_KHR_copy_commands2": 30,
+    # on android12-tests-release
+    "VK_KHR_shader_terminate_invocation": 31,
+    "VK_KHR_ray_tracing_pipeline": 31,
+    "VK_KHR_ray_query": 31,
+    "VK_KHR_acceleration_structure": 31,
+    "VK_KHR_pipeline_library": 31,
+    "VK_KHR_deferred_host_operations": 31,
+    "VK_KHR_fragment_shading_rate": 31,
+    "VK_KHR_zero_initialize_workgroup_memory": 31,
+    "VK_KHR_workgroup_memory_explicit_layout": 31,
+    "VK_KHR_synchronization2": 31,
+    "VK_KHR_shader_integer_dot_product": 31,
 
     # testNoUnknownExtensions on oreo-cts-release
     "VK_GOOGLE_display_timing": 26,
     # on pie-cts-release
     "VK_ANDROID_external_memory_android_hardware_buffer": 28,
+    # on android11-tests-release
+    "VK_GOOGLE_decorate_string": 30,
+    "VK_GOOGLE_hlsl_functionality1": 30,
 
     # this HAL extension is always allowed and will be filtered out by the
     # loader
