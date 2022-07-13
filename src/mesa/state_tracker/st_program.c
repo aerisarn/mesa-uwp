@@ -407,7 +407,7 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
       st_get_nir_compiler_options(st, prog->info.stage);
 
    /* Translate to NIR */
-   nir_shader *nir = prog_to_nir(prog, options);
+   nir_shader *nir = prog_to_nir(st->ctx, prog, options);
 
    st_prog_to_nir_postprocess(st, nir, prog);
 
@@ -824,8 +824,6 @@ st_translate_fragment_program(struct st_context *st,
 {
    /* Non-GLSL programs: */
    _mesa_remove_output_reads(fp, PROGRAM_OUTPUT);
-   if (st->ctx->Const.GLSLFragCoordIsSysVal)
-      _mesa_program_fragment_position_to_sysval(fp);
 
    /* This determines which states will be updated when the assembly
     * shader is bound.
