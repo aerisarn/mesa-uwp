@@ -4966,7 +4966,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    uint32_t advance;
    VkResult result;
    bool uses_perf_counters = false;
-   unsigned cmd_buffer_count = submission->command_buffer_count;
 
    result = radv_update_preambles(&queue->state, queue->device, submission->command_buffers,
                                   submission->command_buffer_count, &uses_perf_counters);
@@ -4976,8 +4975,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    if (queue->device->trace_bo)
       simple_mtx_lock(&queue->device->trace_mtx);
 
-   if (uses_perf_counters)
-      cmd_buffer_count += 2;
+   const unsigned cs_offset = uses_perf_counters ? 1 : 0;
+   const unsigned cmd_buffer_count =
+      submission->command_buffer_count + (uses_perf_counters ? 2 : 0);
 
    struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cmd_buffer_count);
    if (!cs_array)
@@ -4987,7 +4987,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       struct radv_cmd_buffer *cmd_buffer = (struct radv_cmd_buffer *)submission->command_buffers[j];
       assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-      cs_array[j + (uses_perf_counters ? 1 : 0)] = cmd_buffer->cs;
+      cs_array[j + cs_offset] = cmd_buffer->cs;
       if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
          can_patch = false;
 
