@@ -1462,8 +1462,8 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
    }
 }
 
-static void
-radv_emit_scissor(struct radv_cmd_buffer *cmd_buffer)
+void
+radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    uint32_t count = cmd_buffer->state.dynamic.scissor.count;
@@ -1480,9 +1480,15 @@ radv_emit_scissor(struct radv_cmd_buffer *cmd_buffer)
       rast_prim = si_conv_prim_to_gs_out(cmd_buffer->state.dynamic.primitive_topology);
    }
 
-   si_write_scissors(cmd_buffer->cs, 0, count, cmd_buffer->state.dynamic.scissor.scissors,
+   si_write_scissors(cs, 0, count, cmd_buffer->state.dynamic.scissor.scissors,
                      cmd_buffer->state.dynamic.viewport.viewports, rast_prim,
                      cmd_buffer->state.dynamic.line_width);
+}
+
+static void
+radv_emit_scissor(struct radv_cmd_buffer *cmd_buffer)
+{
+   radv_write_scissors(cmd_buffer, cmd_buffer->cs);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = false;
 }
