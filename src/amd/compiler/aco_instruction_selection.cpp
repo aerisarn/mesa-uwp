@@ -7467,6 +7467,8 @@ visit_shared_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    if (num_operands == 4) {
       Temp data2 = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa));
       ds->operands[2] = Operand(data2);
+      if (bld.program->gfx_level >= GFX11)
+         std::swap(ds->operands[1], ds->operands[2]);
    }
    ds->operands[num_operands - 1] = m;
    ds->offset0 = offset;
