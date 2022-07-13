@@ -793,6 +793,11 @@ draw_llvm_create(struct draw_context *draw, LLVMContextRef context)
    llvm->context = context;
    if (!llvm->context) {
       llvm->context = LLVMContextCreate();
+
+#if LLVM_VERSION_MAJOR >= 15
+      LLVMContextSetOpaquePointers(llvm->context, false);
+#endif
+
       llvm->context_owned = true;
    }
    if (!llvm->context)

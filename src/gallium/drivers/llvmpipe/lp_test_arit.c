@@ -434,6 +434,9 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
    }
 
    context = LLVMContextCreate();
+#if LLVM_VERSION_MAJOR >= 15
+   LLVMContextSetOpaquePointers(context, false);
+#endif
    gallivm = gallivm_create("test_module", context, NULL);
 
    test_func = build_unary_test_func(gallivm, test, length, test_name);
