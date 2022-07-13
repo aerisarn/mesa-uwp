@@ -714,6 +714,50 @@ tu6_emit_cs_config(struct tu_cs *cs,
    }
 }
 
+#define TU6_EMIT_VFD_DEST_MAX_DWORDS (MAX_VERTEX_ATTRIBS + 2)
+
+static void
+tu6_emit_vfd_dest(struct tu_cs *cs,
+                  const struct ir3_shader_variant *vs)
+{
+   int32_t input_for_attr[MAX_VERTEX_ATTRIBS];
+   uint32_t attr_count = 0;
+
+   for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; i++)
+      input_for_attr[i] = -1;
+
+   for (unsigned i = 0; i < vs->inputs_count; i++) {
+      if (vs->inputs[i].sysval || vs->inputs[i].regid == regid(63, 0))
+         continue;
+
+      assert(vs->inputs[i].slot >= VERT_ATTRIB_GENERIC0);
+      unsigned loc = vs->inputs[i].slot - VERT_ATTRIB_GENERIC0;
+      input_for_attr[loc] = i;
+      attr_count = MAX2(attr_count, loc + 1);
+   }
+
+   tu_cs_emit_regs(cs,
+                   A6XX_VFD_CONTROL_0(
+                     .fetch_cnt = attr_count, /* decode_cnt for binning pass ? */
+                     .decode_cnt = attr_count));
+
+   if (attr_count)
+      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DEST_CNTL_INSTR(0), attr_count);
+
+   for (unsigned i = 0; i < attr_count; i++) {
+      if (input_for_attr[i] >= 0) {
+            unsigned input_idx = input_for_attr[i];
+            tu_cs_emit(cs, A6XX_VFD_DEST_CNTL_INSTR(0,
+                             .writemask = vs->inputs[input_idx].compmask,
+                             .regid = vs->inputs[input_idx].regid).value);
+      } else {
+            tu_cs_emit(cs, A6XX_VFD_DEST_CNTL_INSTR(0,
+                             .writemask = 0,
+                             .regid = regid(63, 0)).value);
+      }
+   }
+}
+
 static void
 tu6_emit_vs_system_values(struct tu_cs *cs,
                           const struct ir3_shader_variant *vs,
@@ -1763,6 +1807,8 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
    tu_cs_emit(cs, 0);
 
+   tu6_emit_vfd_dest(cs, vs);
+
    tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
    tu6_emit_vpc_varying_modes(cs, fs);
 
@@ -1805,12 +1851,11 @@ tu6_emit_program(struct tu_cs *cs,
    }
 }
 
-#define TU6_EMIT_VERTEX_INPUT_MAX_DWORDS (MAX_VERTEX_ATTRIBS * 5 + 4)
+#define TU6_EMIT_VERTEX_INPUT_MAX_DWORDS (MAX_VERTEX_ATTRIBS * 2 + 1)
 
 static void
 tu6_emit_vertex_input(struct tu_pipeline *pipeline,
                       struct tu_draw_state *vi_state,
-                      const struct ir3_shader_variant *vs,
                       const VkPipelineVertexInputStateCreateInfo *info)
 {
    uint32_t binding_instanced = 0; /* bitmask of instanced bindings */
@@ -1845,60 +1890,37 @@ tu6_emit_vertex_input(struct tu_pipeline *pipeline,
       }
    }
 
-   int32_t input_for_attr[MAX_VERTEX_ATTRIBS];
-   uint32_t used_attrs_count = 0;
+   const VkVertexInputAttributeDescription *attrs[MAX_VERTEX_ATTRIBS] = { };
+   unsigned attr_count = 0;
+   for (uint32_t i = 0; i < info->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *attr =
+         &info->pVertexAttributeDescriptions[i];
+      attrs[attr->location] = attr;
+      attr_count = MAX2(attr_count, attr->location + 1);
+   }
 
-   for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
-      input_for_attr[attr_idx] = -1;
-      for (uint32_t input_idx = 0; input_idx < vs->inputs_count; input_idx++) {
-         if ((vs->inputs[input_idx].slot - VERT_ATTRIB_GENERIC0) ==
-             info->pVertexAttributeDescriptions[attr_idx].location) {
-            input_for_attr[attr_idx] = input_idx;
-            used_attrs_count++;
-            break;
-         }
+   if (attr_count != 0)
+      tu_cs_emit_pkt4(&cs, REG_A6XX_VFD_DECODE_INSTR(0), attr_count * 2);
+
+   for (uint32_t loc = 0; loc < attr_count; loc++) {
+      const VkVertexInputAttributeDescription *attr = attrs[loc];
+
+      if (attr) {
+         const struct tu_native_format format = tu6_format_vtx(attr->format);
+         tu_cs_emit(&cs, A6XX_VFD_DECODE_INSTR(0,
+                          .idx = attr->binding,
+                          .offset = attr->offset,
+                          .instanced = binding_instanced & (1 << attr->binding),
+                          .format = format.fmt,
+                          .swap = format.swap,
+                          .unk30 = 1,
+                          ._float = !vk_format_is_int(attr->format)).value);
+         tu_cs_emit(&cs, A6XX_VFD_DECODE_STEP_RATE(0, step_rate[attr->binding]).value);
+      } else {
+         tu_cs_emit(&cs, 0);
+         tu_cs_emit(&cs, 0);
       }
    }
-
-   if (used_attrs_count)
-      tu_cs_emit_pkt4(&cs, REG_A6XX_VFD_DECODE_INSTR(0), used_attrs_count * 2);
-
-   for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
-      const VkVertexInputAttributeDescription *attr =
-         &info->pVertexAttributeDescriptions[attr_idx];
-
-      if (input_for_attr[attr_idx] == -1)
-         continue;
-
-      const struct tu_native_format format = tu6_format_vtx(attr->format);
-      tu_cs_emit(&cs, A6XX_VFD_DECODE_INSTR(0,
-                       .idx = attr->binding,
-                       .offset = attr->offset,
-                       .instanced = binding_instanced & (1 << attr->binding),
-                       .format = format.fmt,
-                       .swap = format.swap,
-                       .unk30 = 1,
-                       ._float = !vk_format_is_int(attr->format)).value);
-      tu_cs_emit(&cs, A6XX_VFD_DECODE_STEP_RATE(0, step_rate[attr->binding]).value);
-   }
-
-   if (used_attrs_count)
-      tu_cs_emit_pkt4(&cs, REG_A6XX_VFD_DEST_CNTL_INSTR(0), used_attrs_count);
-
-   for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
-      int32_t input_idx = input_for_attr[attr_idx];
-      if (input_idx == -1)
-         continue;
-
-      tu_cs_emit(&cs, A6XX_VFD_DEST_CNTL_INSTR(0,
-                       .writemask = vs->inputs[input_idx].compmask,
-                       .regid = vs->inputs[input_idx].regid).value);
-   }
-
-   tu_cs_emit_regs(&cs,
-                   A6XX_VFD_CONTROL_0(
-                     .fetch_cnt = used_attrs_count, /* decode_cnt for binning pass ? */
-                     .decode_cnt = used_attrs_count));
 
    *vi_state = tu_cs_end_draw_state(&pipeline->cs, &cs);
 }
@@ -2336,7 +2358,8 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
 
    /* graphics case: */
    if (builder) {
-      size += 2 * TU6_EMIT_VERTEX_INPUT_MAX_DWORDS;
+      size += TU6_EMIT_VERTEX_INPUT_MAX_DWORDS +
+         2 * TU6_EMIT_VFD_DEST_MAX_DWORDS;
 
       for (uint32_t i = 0; i < ARRAY_SIZE(builder->shaders->variants); i++) {
          if (builder->shaders->variants[i]) {
@@ -3257,8 +3280,6 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
 {
    const VkPipelineVertexInputStateCreateInfo *vi_info =
       builder->create_info->pVertexInputState;
-   const struct ir3_shader_variant *vs = builder->shaders->variants[MESA_SHADER_VERTEX];
-   const struct ir3_shader_variant *bs = builder->binning_variant;
 
    /* Bindings may contain holes */
    for (unsigned i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
@@ -3266,9 +3287,7 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
          MAX2(pipeline->num_vbs, vi_info->pVertexBindingDescriptions[i].binding + 1);
    }
 
-   tu6_emit_vertex_input(pipeline, &pipeline->vi.state, vs, vi_info);
-   if (bs)
-      tu6_emit_vertex_input(pipeline, &pipeline->vi.binning_state, bs, vi_info);
+   tu6_emit_vertex_input(pipeline, &pipeline->vi.state, vi_info);
 }
 
 static void

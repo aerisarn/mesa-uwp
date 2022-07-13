@@ -167,7 +167,6 @@ struct tu_pipeline
    struct
    {
       struct tu_draw_state state;
-      struct tu_draw_state binning_state;
    } vi;
 
    struct
