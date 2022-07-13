@@ -339,55 +339,6 @@ _mesa_reference_program_(struct gl_context *ctx,
    *ptr = prog;
 }
 
-
-/**
- * Delete 'count' instructions at 'start' in the given program.
- * Adjust branch targets accordingly.
- */
-GLboolean
-_mesa_delete_instructions(struct gl_program *prog, GLuint start, GLuint count,
-                          void *mem_ctx)
-{
-   const GLuint origLen = prog->arb.NumInstructions;
-   const GLuint newLen = origLen - count;
-   struct prog_instruction *newInst;
-   GLuint i;
-
-   /* adjust branches */
-   for (i = 0; i < prog->arb.NumInstructions; i++) {
-      struct prog_instruction *inst = prog->arb.Instructions + i;
-      if (inst->BranchTarget > 0) {
-         if (inst->BranchTarget > (GLint) start) {
-            inst->BranchTarget -= count;
-         }
-      }
-   }
-
-   /* Alloc storage for new instructions */
-   newInst = rzalloc_array(mem_ctx, struct prog_instruction, newLen);
-   if (!newInst) {
-      return GL_FALSE;
-   }
-
-   /* Copy 'start' instructions into new instruction buffer */
-   _mesa_copy_instructions(newInst, prog->arb.Instructions, start);
-
-   /* Copy the remaining/tail instructions to new inst buffer */
-   _mesa_copy_instructions(newInst + start,
-                           prog->arb.Instructions + start + count,
-                           newLen - start);
-
-   /* free old instructions */
-   ralloc_free(prog->arb.Instructions);
-
-   /* install new instructions */
-   prog->arb.Instructions = newInst;
-   prog->arb.NumInstructions = newLen;
-
-   return GL_TRUE;
-}
-
-
 /* Gets the minimum number of shader invocations per fragment.
  * This function is useful to determine if we need to do per
  * sample shading or per fragment shading.

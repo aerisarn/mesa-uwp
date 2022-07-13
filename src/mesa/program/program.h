@@ -90,10 +90,6 @@ _mesa_reference_program(struct gl_context *ctx,
       _mesa_reference_program_(ctx, ptr, prog);
 }
 
-extern  GLboolean
-_mesa_delete_instructions(struct gl_program *prog, GLuint start, GLuint count,
-                          void *mem_ctx);
-
 extern GLint
 _mesa_get_min_invocations_per_fragment(struct gl_context *ctx,
                                        const struct gl_program *prog);
