@@ -105,7 +105,6 @@ etna_create_surface(struct pipe_context *pctx, struct pipe_resource *prsc,
     * offset and MMU. */
 
    if (VIV_FEATURE(screen, chipFeatures, FAST_CLEAR) &&
-       VIV_FEATURE(screen, chipMinorFeatures0, MC20) &&
        !rsc->ts_bo &&
        /* needs to be RS/BLT compatible for transfer_map/unmap */
        (rsc->levels[level].padded_width & ETNA_RS_WIDTH_MASK) == 0 &&

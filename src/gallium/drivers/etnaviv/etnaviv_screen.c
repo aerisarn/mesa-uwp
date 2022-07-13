@@ -926,6 +926,12 @@ etna_get_specs(struct etna_screen *screen)
 
    screen->specs.use_blt = VIV_FEATURE(screen, chipMinorFeatures5, BLT_ENGINE);
 
+   /* Only allow fast clear with MC2.0, as the TS unit bypasses the memory
+    * offset on MC1.0 and we have no way to fixup the address.
+    */
+   if (!VIV_FEATURE(screen, chipMinorFeatures0, MC20))
+      screen->features[viv_chipFeatures] &= ~chipFeatures_FAST_CLEAR;
+
    return true;
 
 fail:
