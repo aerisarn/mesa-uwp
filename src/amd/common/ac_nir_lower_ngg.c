@@ -74,6 +74,8 @@ typedef struct
 
 typedef struct
 {
+   /* store output base (driver location) */
+   uint8_t base;
    /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
    uint8_t components_mask : 4;
    /* output stream index  */
@@ -1673,6 +1675,7 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
    assert(nir_src_is_const(intrin->src[1]));
    b->cursor = nir_before_instr(&intrin->instr);
 
+   unsigned base = nir_intrinsic_base(intrin);
    unsigned writemask = nir_intrinsic_write_mask(intrin);
    unsigned component_offset = nir_intrinsic_component(intrin);
    unsigned base_offset = nir_src_as_uint(intrin->src[1]);
@@ -1680,6 +1683,9 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
    unsigned location = io_sem.location + base_offset;
    assert(location < VARYING_SLOT_MAX);
+
+   unsigned base_index = base + base_offset;
+   assert(base_index < VARYING_SLOT_MAX);
 
    nir_ssa_def *store_val = intrin->src[0].ssa;
 
@@ -1700,8 +1706,9 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       if (!(b->shader->info.gs.active_stream_mask & (1 << stream)))
          continue;
 
-      /* The same output should always belong to the same stream. */
-      assert(!info->components_mask || info->stream == stream);
+      /* The same output should always belong to the same stream and base. */
+      assert(!info->components_mask || (info->stream == stream && info->base == base_index));
+      info->base = base_index;
       info->stream = stream;
       info->components_mask |= BITFIELD_BIT(component_offset + comp);
 
@@ -1920,8 +1927,9 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
          if (out_bitsizes[slot] != 32)
             load = nir_u2u(b, load, out_bitsizes[slot]);
 
-         nir_store_output(b, load, nir_imm_int(b, 0), .base = slot, .io_semantics = io_sem,
-                          .component = start, .write_mask = BITFIELD_MASK(count));
+         nir_store_output(b, load, nir_imm_int(b, 0), .base = info->base,
+                          .io_semantics = io_sem, .component = start,
+                          .write_mask = BITFIELD_MASK(count));
       }
    }
 
