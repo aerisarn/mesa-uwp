@@ -161,8 +161,12 @@ nir_remove_unused_io_vars(nir_shader *shader,
 
       if (!(other_stage & get_variable_io_mask(var, shader->info.stage))) {
          /* This one is invalid, make it a global variable instead */
+         if (shader->info.stage == MESA_SHADER_MESH &&
+               (shader->info.outputs_read & BITFIELD64_BIT(var->data.location)))
+            var->data.mode = nir_var_mem_shared;
+         else
+            var->data.mode = nir_var_shader_temp;
          var->data.location = 0;
-         var->data.mode = nir_var_shader_temp;
 
          progress = true;
       }
