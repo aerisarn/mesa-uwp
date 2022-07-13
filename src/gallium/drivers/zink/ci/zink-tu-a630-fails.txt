@@ -1,6 +1,3 @@
-# needs block splitting
-KHR-Single-GL46.enhanced_layouts.xfb_struct_explicit_location,Crash
-
 GTF-GL46.gtf21.GL3Tests.texture_lod_bias.texture_lod_bias_all,Fail
 GTF-GL46.gtf30.GL3Tests.framebuffer_blit.framebuffer_blit_functionality_multisampled_to_singlesampled_blit,Fail
 GTF-GL46.gtf30.GL3Tests.sgis_texture_lod.sgis_texture_lod_basic_lod_selection,Fail
@@ -14,8 +11,14 @@ KHR-GL46.limits.max_fragment_input_components,Fail
 KHR-GL46.shader_image_load_store.multiple-uniforms,Fail
 KHR-GL46.texture_cube_map_array.image_op_geometry_sh,Fail
 KHR-GL46.texture_view.view_classes,Fail
-KHR-GL46.vertex_attrib_64bit.vao,Fail
 KHR-Single-GL46.arrays_of_arrays_gl.AtomicUsage,Fail
 KHR-Single-GL46.arrays_of_arrays_gl.SubroutineFunctionCalls2,Crash
 dEQP-GLES31.functional.texture.border_clamp.range_clamp.linear_srgb_color,Fail
 dEQP-GLES31.functional.texture.border_clamp.range_clamp.nearest_srgb_color,Fail
+
+KHR-GLES31.core.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail
+KHR-GLES31.core.texture_cube_map_array.image_op_geometry_sh,Fail
+KHR-GLES32.core.tessellation_shader.tessellation_shader_point_mode.point_rendering,Fail
+KHR-GLES32.core.tessellation_shader.winding.quads_cw,Fail
+KHR-GLES32.core.tessellation_shader.winding.triangles_cw,Fail
+KHR-GLES32.core.texture_cube_map_array.image_op_geometry_sh,Fail
