@@ -132,9 +132,10 @@ def init_exts_from_xml(xml, extensions, platform_defines):
         ext.type = ext_elem.attrib['type']
 
 # Mapping between extension name and the android version in which the extension
-# was whitelisted in Android CTS.
+# was whitelisted in Android CTS's dEQP-VK.info.device_extensions and
+# dEQP-VK.api.info.android.no_unknown_extensions.
 ALLOWED_ANDROID_VERSION = {
-    # Allowed Instance KHR Extensions
+    # checkInstanceExtensions on oreo-cts-release
     "VK_KHR_surface": 26,
     "VK_KHR_display": 26,
     "VK_KHR_android_surface": 26,
@@ -145,14 +146,15 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_xlib_surface": 26,
     "VK_KHR_get_physical_device_properties2": 26,
     "VK_KHR_get_surface_capabilities2": 26,
-    "VK_KHR_external_memory_capabilities": 28,
-    "VK_KHR_external_semaphore_capabilities": 28,
-    "VK_KHR_external_fence_capabilities": 28,
+    "VK_KHR_external_memory_capabilities": 26,
+    "VK_KHR_external_semaphore_capabilities": 26,
+    "VK_KHR_external_fence_capabilities": 26,
+
     "VK_KHR_device_group_creation": 28,
     "VK_KHR_get_display_properties2": 29,
     "VK_KHR_surface_protected_capabilities": 29,
 
-    # Allowed Device KHR Extensions
+    # checkDeviceExtensions on oreo-cts-release
     "VK_KHR_swapchain": 26,
     "VK_KHR_display_swapchain": 26,
     "VK_KHR_sampler_mirror_clamp_to_edge": 26,
@@ -162,26 +164,27 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_descriptor_update_template": 26,
     "VK_KHR_incremental_present": 26,
     "VK_KHR_shared_presentable_image": 26,
-    "VK_KHR_storage_buffer_storage_class": 28,
-    "VK_KHR_16bit_storage": 28,
-    "VK_KHR_get_memory_requirements2": 28,
-    "VK_KHR_external_memory": 28,
-    "VK_KHR_external_memory_fd": 28,
-    "VK_KHR_external_memory_win32": 28,
-    "VK_KHR_external_semaphore": 28,
-    "VK_KHR_external_semaphore_fd": 28,
-    "VK_KHR_external_semaphore_win32": 28,
-    "VK_KHR_external_fence": 28,
-    "VK_KHR_external_fence_fd": 28,
-    "VK_KHR_external_fence_win32": 28,
-    "VK_KHR_win32_keyed_mutex": 28,
-    "VK_KHR_dedicated_allocation": 28,
-    "VK_KHR_variable_pointers": 28,
-    "VK_KHR_relaxed_block_layout": 28,
-    "VK_KHR_bind_memory2": 28,
-    "VK_KHR_maintenance2": 28,
-    "VK_KHR_image_format_list": 28,
-    "VK_KHR_sampler_ycbcr_conversion": 28,
+    "VK_KHR_storage_buffer_storage_class": 26,
+    "VK_KHR_16bit_storage": 26,
+    "VK_KHR_get_memory_requirements2": 26,
+    "VK_KHR_external_memory": 26,
+    "VK_KHR_external_memory_fd": 26,
+    "VK_KHR_external_memory_win32": 26,
+    "VK_KHR_external_semaphore": 26,
+    "VK_KHR_external_semaphore_fd": 26,
+    "VK_KHR_external_semaphore_win32": 26,
+    "VK_KHR_external_fence": 26,
+    "VK_KHR_external_fence_fd": 26,
+    "VK_KHR_external_fence_win32": 26,
+    "VK_KHR_win32_keyed_mutex": 26,
+    "VK_KHR_dedicated_allocation": 26,
+    "VK_KHR_variable_pointers": 26,
+    "VK_KHR_relaxed_block_layout": 26,
+    "VK_KHR_bind_memory2": 26,
+    "VK_KHR_maintenance2": 26,
+    "VK_KHR_image_format_list": 26,
+    "VK_KHR_sampler_ycbcr_conversion": 26,
+
     "VK_KHR_device_group": 28,
     "VK_KHR_multiview": 28,
     "VK_KHR_maintenance3": 28,
@@ -197,7 +200,9 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_vulkan_memory_model": 29,
     "VK_KHR_performance_query": 30,
 
+    # testNoUnknownExtensions on oreo-cts-release
     "VK_GOOGLE_display_timing": 26,
+
     "VK_ANDROID_native_buffer": 26,
     "VK_ANDROID_external_memory_android_hardware_buffer": 28,
 }
