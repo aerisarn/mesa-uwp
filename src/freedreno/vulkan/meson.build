@@ -52,7 +52,6 @@ libtu_files = files(
   'tu_util.c',
   'tu_util.h',
   'tu_perfetto.h',
-  'vk_format.h',
 )
 
 tu_deps = []

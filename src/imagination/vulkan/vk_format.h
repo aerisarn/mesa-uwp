@@ -75,16 +75,6 @@ static inline bool vk_format_has_32bit_component(VkFormat vk_format)
    return false;
 }
 
-static inline uint
-vk_format_get_component_bits(VkFormat vk_format,
-                             enum util_format_colorspace colorspace,
-                             uint32_t component)
-{
-   return util_format_get_component_bits(vk_format_to_pipe_format(vk_format),
-                                         colorspace,
-                                         component);
-}
-
 static inline bool vk_format_is_normalized(VkFormat vk_format)
 {
    const struct util_format_description *desc =

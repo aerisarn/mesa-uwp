@@ -166,6 +166,15 @@ vk_format_description(VkFormat format)
 }
 
 static inline unsigned
+vk_format_get_component_bits(VkFormat format, enum util_format_colorspace colorspace,
+                             unsigned component)
+{
+   return util_format_get_component_bits(vk_format_to_pipe_format(format),
+                                         colorspace,
+                                         component);
+}
+
+static inline unsigned
 vk_format_get_nr_components(VkFormat format)
 {
    return util_format_get_nr_components(vk_format_to_pipe_format(format));

@@ -119,15 +119,6 @@ vk_format_no_srgb(VkFormat format)
    }
 }
 
-static inline unsigned
-vk_format_get_component_bits(VkFormat format, enum util_format_colorspace colorspace,
-                             unsigned component)
-{
-   return util_format_get_component_bits(vk_format_to_pipe_format(format),
-                                         colorspace,
-                                         component);
-}
-
 static inline VkFormat
 vk_to_non_srgb_format(VkFormat format)
 {
