@@ -5863,11 +5863,11 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
          unsigned bit = 1u << loc;
          if (binding->stride & found->fmt_align_req_minus_1) {
             state->misaligned_mask |= bit;
-            if (cmd_buffer->state.vbo_bound_mask & bit)
+            if (cmd_buffer->state.vbo_bound_mask & BITFIELD_BIT(attrib->binding))
                cmd_buffer->state.vbo_misaligned_mask |= bit;
          } else {
             state->possibly_misaligned_mask |= bit;
-            if (cmd_buffer->state.vbo_bound_mask & bit &&
+            if (cmd_buffer->state.vbo_bound_mask & BITFIELD_BIT(attrib->binding) &&
                 ((vb[attrib->binding].offset + state->offsets[loc]) & found->fmt_align_req_minus_1))
                cmd_buffer->state.vbo_misaligned_mask |= bit;
          }
