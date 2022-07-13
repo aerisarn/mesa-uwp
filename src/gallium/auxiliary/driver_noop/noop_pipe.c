@@ -622,7 +622,9 @@ static void noop_create_fence_win32(struct pipe_screen *screen,
                                     const void *name,
                                     enum pipe_fd_type type)
 {
-   screen->create_fence_win32(screen, fence, handle, name, type);
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen *)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+   oscreen->create_fence_win32(oscreen, fence, handle, name, type);
 }
 
 static void noop_set_max_shader_compiler_threads(struct pipe_screen *screen,
