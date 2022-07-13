@@ -972,6 +972,15 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    NIR_PASS(_, consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
    if (nir_remove_unused_varyings(producer, consumer)) {
+      if (should_print_nir(producer)) {
+         printf("nir_remove_unused_varyings\n");
+         nir_print_shader(producer, stdout);
+      }
+      if (should_print_nir(consumer)) {
+         printf("nir_remove_unused_varyings\n");
+         nir_print_shader(consumer, stdout);
+      }
+
       NIR_PASS(_, producer, nir_lower_global_vars_to_local);
       NIR_PASS(_, consumer, nir_lower_global_vars_to_local);
 
