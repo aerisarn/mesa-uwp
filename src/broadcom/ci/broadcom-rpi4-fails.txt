@@ -353,3 +353,11 @@ spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3711
 dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_1.multi_draw_barriers,Fail
 dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_4.multi_draw_barriers,Fail
+
+# These fail because the shaders use indirect indexing on samplers which we
+# don't support (the GLSL linker fails to link the shaders because of this).
+# If loop unrolling kicks-in for these tests it removes the indirect indexing
+# and the tests pass, but this would just be working around an issue in the
+# tests.
+spec@!opengl 2.0@max-samplers,Fail
+spec@!opengl 2.0@max-samplers border,Fail
