@@ -341,55 +341,6 @@ _mesa_reference_program_(struct gl_context *ctx,
 
 
 /**
- * Insert 'count' NOP instructions at 'start' in the given program.
- * Adjust branch targets accordingly.
- */
-GLboolean
-_mesa_insert_instructions(struct gl_program *prog, GLuint start, GLuint count)
-{
-   const GLuint origLen = prog->arb.NumInstructions;
-   const GLuint newLen = origLen + count;
-   struct prog_instruction *newInst;
-   GLuint i;
-
-   /* adjust branches */
-   for (i = 0; i < prog->arb.NumInstructions; i++) {
-      struct prog_instruction *inst = prog->arb.Instructions + i;
-      if (inst->BranchTarget > 0) {
-         if ((GLuint)inst->BranchTarget >= start) {
-            inst->BranchTarget += count;
-         }
-      }
-   }
-
-   /* Alloc storage for new instructions */
-   newInst = rzalloc_array(prog, struct prog_instruction, newLen);
-   if (!newInst) {
-      return GL_FALSE;
-   }
-
-   /* Copy 'start' instructions into new instruction buffer */
-   _mesa_copy_instructions(newInst, prog->arb.Instructions, start);
-
-   /* init the new instructions */
-   _mesa_init_instructions(newInst + start, count);
-
-   /* Copy the remaining/tail instructions to new inst buffer */
-   _mesa_copy_instructions(newInst + start + count,
-                           prog->arb.Instructions + start,
-                           origLen - start);
-
-   /* free old instructions */
-   ralloc_free(prog->arb.Instructions);
-
-   /* install new instructions */
-   prog->arb.Instructions = newInst;
-   prog->arb.NumInstructions = newLen;
-
-   return GL_TRUE;
-}
-
-/**
  * Delete 'count' instructions at 'start' in the given program.
  * Adjust branch targets accordingly.
  */
@@ -434,68 +385,6 @@ _mesa_delete_instructions(struct gl_program *prog, GLuint start, GLuint count,
    prog->arb.NumInstructions = newLen;
 
    return GL_TRUE;
-}
-
-
-/**
- * Populate the 'used' array with flags indicating which registers (TEMPs,
- * INPUTs, OUTPUTs, etc, are used by the given program.
- * \param file  type of register to scan for
- * \param used  returns true/false flags for in use / free
- * \param usedSize  size of the 'used' array
- */
-void
-_mesa_find_used_registers(const struct gl_program *prog,
-                          gl_register_file file,
-                          GLboolean used[], GLuint usedSize)
-{
-   GLuint i, j;
-
-   memset(used, 0, usedSize);
-
-   for (i = 0; i < prog->arb.NumInstructions; i++) {
-      const struct prog_instruction *inst = prog->arb.Instructions + i;
-      const GLuint n = _mesa_num_inst_src_regs(inst->Opcode);
-
-      if (inst->DstReg.File == file) {
-         assert(inst->DstReg.Index < usedSize);
-         if(inst->DstReg.Index < usedSize)
-            used[inst->DstReg.Index] = GL_TRUE;
-      }
-
-      for (j = 0; j < n; j++) {
-         if (inst->SrcReg[j].File == file) {
-            assert(inst->SrcReg[j].Index < (GLint) usedSize);
-            if (inst->SrcReg[j].Index < (GLint) usedSize)
-               used[inst->SrcReg[j].Index] = GL_TRUE;
-         }
-      }
-   }
-}
-
-
-/**
- * Scan the given 'used' register flag array for the first entry
- * that's >= firstReg.
- * \param used  vector of flags indicating registers in use (as returned
- *              by _mesa_find_used_registers())
- * \param usedSize  size of the 'used' array
- * \param firstReg  first register to start searching at
- * \return index of unused register, or -1 if none.
- */
-GLint
-_mesa_find_free_register(const GLboolean used[],
-                         GLuint usedSize, GLuint firstReg)
-{
-   GLuint i;
-
-   assert(firstReg < usedSize);
-
-   for (i = firstReg; i < usedSize; i++)
-      if (!used[i])
-         return i;
-
-   return -1;
 }
 
 
