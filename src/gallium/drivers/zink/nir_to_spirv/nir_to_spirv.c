@@ -3060,7 +3060,8 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
        */
       if (ctx->sinfo)
          emit_so_outputs(ctx, ctx->sinfo);
-      spirv_builder_emit_vertex(&ctx->builder, nir_intrinsic_stream_id(intr));
+      spirv_builder_emit_vertex(&ctx->builder, nir_intrinsic_stream_id(intr),
+                                ctx->nir->info.stage == MESA_SHADER_GEOMETRY && util_bitcount(ctx->nir->info.gs.active_stream_mask) > 1);
       break;
 
    case nir_intrinsic_set_vertex_and_primitive_count:
@@ -3068,7 +3069,8 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_end_primitive_with_counter:
-      spirv_builder_end_primitive(&ctx->builder, nir_intrinsic_stream_id(intr));
+      spirv_builder_end_primitive(&ctx->builder, nir_intrinsic_stream_id(intr),
+                                  ctx->nir->info.stage == MESA_SHADER_GEOMETRY && util_bitcount(ctx->nir->info.gs.active_stream_mask) > 1);
       break;
 
    case nir_intrinsic_load_helper_invocation:
