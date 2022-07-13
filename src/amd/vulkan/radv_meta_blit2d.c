@@ -537,6 +537,8 @@ build_nir_copy_fragment_shader(struct radv_device *device, texel_fetch_build_fun
    nir_ssa_def *color = txf_func(&b, device, tex_pos, is_3d, is_multisampled);
    nir_store_var(&b, color_out, color, 0xf);
 
+   b.shader->info.fs.uses_sample_shading = is_multisampled;
+
    return b.shader;
 }
 
@@ -560,6 +562,8 @@ build_nir_copy_fragment_shader_depth(struct radv_device *device, texel_fetch_bui
    nir_ssa_def *color = txf_func(&b, device, tex_pos, is_3d, is_multisampled);
    nir_store_var(&b, color_out, color, 0x1);
 
+   b.shader->info.fs.uses_sample_shading = is_multisampled;
+
    return b.shader;
 }
 
@@ -582,6 +586,8 @@ build_nir_copy_fragment_shader_stencil(struct radv_device *device, texel_fetch_b
 
    nir_ssa_def *color = txf_func(&b, device, tex_pos, is_3d, is_multisampled);
    nir_store_var(&b, color_out, color, 0x1);
+
+   b.shader->info.fs.uses_sample_shading = is_multisampled;
 
    return b.shader;
 }
