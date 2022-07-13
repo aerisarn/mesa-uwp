@@ -149,9 +149,10 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_external_memory_capabilities": 26,
     "VK_KHR_external_semaphore_capabilities": 26,
     "VK_KHR_external_fence_capabilities": 26,
-
+    # on pie-cts-release
     "VK_KHR_device_group_creation": 28,
-    "VK_KHR_get_display_properties2": 29,
+    "VK_KHR_get_display_properties2": 28,
+    # on android10-tests-release
     "VK_KHR_surface_protected_capabilities": 29,
 
     # checkDeviceExtensions on oreo-cts-release
@@ -184,13 +185,15 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_maintenance2": 26,
     "VK_KHR_image_format_list": 26,
     "VK_KHR_sampler_ycbcr_conversion": 26,
-
+    # on oreo-mr1-cts-release
+    "VK_KHR_draw_indirect_count": 27,
+    # on pie-cts-release
     "VK_KHR_device_group": 28,
     "VK_KHR_multiview": 28,
     "VK_KHR_maintenance3": 28,
-    "VK_KHR_draw_indirect_count": 28,
     "VK_KHR_create_renderpass2": 28,
     "VK_KHR_driver_properties": 28,
+    # on android10-tests-release
     "VK_KHR_shader_float_controls": 29,
     "VK_KHR_shader_float16_int8": 29,
     "VK_KHR_8bit_storage": 29,
@@ -198,13 +201,19 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_swapchain_mutable_format": 29,
     "VK_KHR_shader_atomic_int64": 29,
     "VK_KHR_vulkan_memory_model": 29,
+    "VK_KHR_swapchain_mutable_format": 29,
+    "VK_KHR_uniform_buffer_standard_layout": 29,
+
     "VK_KHR_performance_query": 30,
 
     # testNoUnknownExtensions on oreo-cts-release
     "VK_GOOGLE_display_timing": 26,
-
-    "VK_ANDROID_native_buffer": 26,
+    # on pie-cts-release
     "VK_ANDROID_external_memory_android_hardware_buffer": 28,
+
+    # this HAL extension is always allowed and will be filtered out by the
+    # loader
+    "VK_ANDROID_native_buffer": 26,
 }
 
 # Extensions with these prefixes are checked in Android CTS, and thus must be
