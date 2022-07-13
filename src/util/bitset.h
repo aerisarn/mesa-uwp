@@ -207,7 +207,7 @@ __bitset_shl(BITSET_WORD *x, unsigned amount, unsigned n)
    (assert (!"BITSET_CLEAR_RANGE: bit range crosses word boundary"), 0))
 
 static inline bool
-__bitset_test_range(BITSET_WORD *r, unsigned start, unsigned end)
+__bitset_test_range(const BITSET_WORD *r, unsigned start, unsigned end)
 {
    const unsigned size = end - start + 1;
    const unsigned start_mod = start % BITSET_WORDBITS;
