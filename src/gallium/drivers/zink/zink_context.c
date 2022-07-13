@@ -2287,6 +2287,13 @@ zink_batch_rp(struct zink_context *ctx)
 {
    if (ctx->batch.in_rp)
       return;
+   if (!ctx->batch.in_rp && ctx->void_clears) {
+      union pipe_color_union color;
+      color.f[0] = color.f[1] = color.f[2] = 0;
+      color.f[3] = 1.0;
+      ctx->base.clear(&ctx->base, ctx->void_clears, NULL, &color, 0, 0);
+      ctx->void_clears = 0;
+   }
    unsigned clear_buffers;
    /* use renderpass for multisample-to-singlesample or fbfetch:
     * - msrtss is TODO
@@ -2757,6 +2764,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->dynamic_fb.info.layerCount = layers;
    ctx->gfx_pipeline_state.rendering_info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
 
+   ctx->void_clears = 0;
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (psurf) {
@@ -2784,7 +2792,11 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
             }
          }
          res->fb_binds++;
-         ctx->gfx_pipeline_state.void_alpha_attachments |= util_format_has_alpha1(psurf->format) ? BITFIELD_BIT(i) : 0;
+         if (util_format_has_alpha1(psurf->format)) {
+            ctx->gfx_pipeline_state.void_alpha_attachments |= BITFIELD_BIT(i);
+            if (!res->valid)
+               ctx->void_clears |= (PIPE_CLEAR_COLOR0 << i);
+         }
       }
    }
    if (ctx->gfx_pipeline_state.void_alpha_attachments != prev_void_alpha_attachments)

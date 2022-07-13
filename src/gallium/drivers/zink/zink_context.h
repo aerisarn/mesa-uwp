@@ -280,6 +280,7 @@ struct zink_context {
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];
    uint16_t clears_enabled;
    uint16_t rp_clears_enabled;
+   uint16_t void_clears;
    uint16_t fbfetch_outputs;
    struct zink_resource *needs_present;
 

@@ -215,9 +215,19 @@ zink_clear(struct pipe_context *pctx,
       unsigned clear_buffers = buffers >> 2;
       for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          if (ctx->fb_state.cbufs[i] &&
-             (ctx->fb_layer_mismatch & clear_buffers & BITFIELD_BIT(i)))
+             (ctx->fb_layer_mismatch & clear_buffers & BITFIELD_BIT(i))) {
+            if (ctx->void_clears & (PIPE_CLEAR_COLOR0 << i)) {
+               union pipe_color_union color;
+               color.f[0] = color.f[1] = color.f[2] = 0;
+               color.f[3] = 1.0;
+               pctx->clear_render_target(pctx, ctx->fb_state.cbufs[i], &color,
+                                         0, 0,
+                                         ctx->fb_state.cbufs[i]->width, ctx->fb_state.cbufs[i]->height,
+                                         ctx->render_condition_active);
+            }
             pctx->clear_render_target(pctx, ctx->fb_state.cbufs[i], pcolor,
                                       x, y, w, h, ctx->render_condition_active);
+         }
       }
       if (ctx->fb_state.zsbuf && (buffers & PIPE_CLEAR_DEPTHSTENCIL))
          pctx->clear_depth_stencil(pctx, ctx->fb_state.zsbuf, buffers & PIPE_CLEAR_DEPTHSTENCIL, depth, stencil,
@@ -227,6 +237,15 @@ zink_clear(struct pipe_context *pctx,
    if (batch->in_rp) {
       clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
       return;
+   }
+
+   if (ctx->void_clears & buffers) {
+      unsigned void_clears = ctx->void_clears & buffers;
+      ctx->void_clears &= ~buffers;
+      union pipe_color_union color;
+      color.f[0] = color.f[1] = color.f[2] = 0;
+      color.f[3] = 1.0;
+      pctx->clear(pctx, void_clears, NULL, &color, 0, 0);
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {
