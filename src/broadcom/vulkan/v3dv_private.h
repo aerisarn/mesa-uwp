@@ -1335,6 +1335,7 @@ struct v3dv_cmd_buffer_state {
       bool has_descriptor_state;
 
       uint32_t push_constants[MAX_PUSH_CONSTANTS_SIZE / 4];
+      uint32_t push_constants_size;
    } meta;
 
    /* Command buffer state for queries */
@@ -1474,6 +1475,7 @@ struct v3dv_cmd_buffer {
     * pipelineBindPoint in vkCmdBindPipeline. We could probably do more stage
     * tunning in the future if it makes sense.
     */
+   uint32_t push_constants_size;
    uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
    struct v3dv_cl_reloc push_constants_resource;
 

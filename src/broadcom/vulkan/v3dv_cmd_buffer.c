@@ -2231,12 +2231,12 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
       state->meta.has_descriptor_state = false;
    }
 
-   /* FIXME: if we keep track of wether we have bound any push constant state
-    *        at all we could restruct this only to cases where it is actually
-    *        necessary.
-    */
-   memcpy(state->meta.push_constants, cmd_buffer->push_constants_data,
-          sizeof(state->meta.push_constants));
+   if (cmd_buffer->push_constants_size > 0) {
+      state->meta.push_constants_size = cmd_buffer->push_constants_size;
+      memcpy(state->meta.push_constants, cmd_buffer->push_constants_data,
+             cmd_buffer->push_constants_size);
+      cmd_buffer->push_constants_size = 0;
+   }
 }
 
 /* This restores command buffer state after a meta operation
@@ -2299,14 +2299,23 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
-   memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
-          sizeof(state->meta.push_constants));
+   /* We only need to restore push constant data if we had any data in the
+    * original command buffer and the meta operation wrote new push constant
+    * data.
+    */
+   if (state->meta.push_constants_size > 0 &&
+       cmd_buffer->push_constants_size > 0) {
+      memcpy(cmd_buffer->push_constants_data, state->meta.push_constants,
+             state->meta.push_constants_size);
+   }
+   cmd_buffer->push_constants_size = state->meta.push_constants_size;
 
    state->meta.gfx.pipeline = NULL;
    state->meta.framebuffer = VK_NULL_HANDLE;
    state->meta.pass = VK_NULL_HANDLE;
    state->meta.subpass_idx = -1;
    state->meta.has_descriptor_state = false;
+   state->meta.push_constants_size = 0;
 }
 
 static struct v3dv_job *
@@ -3087,6 +3096,8 @@ v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
       return;
 
    memcpy((uint8_t *) cmd_buffer->push_constants_data + offset, pValues, size);
+   cmd_buffer->push_constants_size =
+      MAX2(offset + size, cmd_buffer->push_constants_size);
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PUSH_CONSTANTS;
    cmd_buffer->state.dirty_push_constants_stages |= stageFlags;
