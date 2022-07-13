@@ -1363,7 +1363,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    const uint32_t max_varying_components = 16 * 4;
 
    const float v3d_point_line_granularity = 2.0f / (1 << V3D_COORD_SHIFT);
-   const uint32_t max_fb_size = 4096;
+   const uint32_t max_fb_size = V3D_MAX_IMAGE_DIMENSION;
 
    const VkSampleCountFlags supported_sample_counts =
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
@@ -1375,11 +1375,11 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
    /* FIXME: this will probably require an in-depth review */
    VkPhysicalDeviceLimits limits = {
-      .maxImageDimension1D                      = 4096,
-      .maxImageDimension2D                      = 4096,
-      .maxImageDimension3D                      = 4096,
-      .maxImageDimensionCube                    = 4096,
-      .maxImageArrayLayers                      = 2048,
+      .maxImageDimension1D                      = V3D_MAX_IMAGE_DIMENSION,
+      .maxImageDimension2D                      = V3D_MAX_IMAGE_DIMENSION,
+      .maxImageDimension3D                      = V3D_MAX_IMAGE_DIMENSION,
+      .maxImageDimensionCube                    = V3D_MAX_IMAGE_DIMENSION,
+      .maxImageArrayLayers                      = V3D_MAX_ARRAY_LAYERS,
       .maxTexelBufferElements                   = (1ul << 28),
       .maxUniformBufferRange                    = V3D_MAX_BUFFER_RANGE,
       .maxStorageBufferRange                    = V3D_MAX_BUFFER_RANGE,

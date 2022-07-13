@@ -52,9 +52,6 @@
 #define V3D_MAX_TEXTURE_SAMPLERS MAX2(V3D_VULKAN_MAX_TEXTURE_SAMPLERS, \
                                       V3D_OPENGL_MAX_TEXTURE_SAMPLERS)
 
-/* The HW can do 16384 (15), but we run into hangs when we expose that. */
-#define V3D_MAX_MIP_LEVELS 13
-
 #define V3D_MAX_SAMPLES 4
 
 #define V3D_MAX_DRAW_BUFFERS 4
@@ -69,5 +66,15 @@
 
 /* Size of a cache line */
 #define V3D_NON_COHERENT_ATOM_SIZE 256
+
+#define V3D_MAX_IMAGE_DIMENSION 4096
+
+/* The HW can do 16384 (15), but we run into hangs when we expose that. Also,
+ * since we are only exposing images up to 4096 pixels per dimension 13 is
+ * all we need.
+ */
+#define V3D_MAX_MIP_LEVELS 13
+
+#define V3D_MAX_ARRAY_LAYERS 2048
 
 #endif /* V3D_LIMITS_H */

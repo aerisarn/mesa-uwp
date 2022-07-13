@@ -437,31 +437,27 @@ get_image_format_properties(
       }
    }
 
-   /* FIXME: these are taken from VkPhysicalDeviceLimits, we should just put
-    * these limits available in the physical device and read them from there
-    * wherever we need them.
-    */
    switch (info->type) {
    case VK_IMAGE_TYPE_1D:
-      pImageFormatProperties->maxExtent.width = 4096;
+      pImageFormatProperties->maxExtent.width = V3D_MAX_IMAGE_DIMENSION;
       pImageFormatProperties->maxExtent.height = 1;
       pImageFormatProperties->maxExtent.depth = 1;
-      pImageFormatProperties->maxArrayLayers = 2048;
-      pImageFormatProperties->maxMipLevels = 13; /* log2(maxWidth) + 1 */
+      pImageFormatProperties->maxArrayLayers = V3D_MAX_ARRAY_LAYERS;
+      pImageFormatProperties->maxMipLevels = V3D_MAX_MIP_LEVELS;
       break;
    case VK_IMAGE_TYPE_2D:
-      pImageFormatProperties->maxExtent.width = 4096;
-      pImageFormatProperties->maxExtent.height = 4096;
+      pImageFormatProperties->maxExtent.width = V3D_MAX_IMAGE_DIMENSION;
+      pImageFormatProperties->maxExtent.height = V3D_MAX_IMAGE_DIMENSION;
       pImageFormatProperties->maxExtent.depth = 1;
-      pImageFormatProperties->maxArrayLayers = 2048;
-      pImageFormatProperties->maxMipLevels = 13; /* log2(maxWidth) + 1 */
+      pImageFormatProperties->maxArrayLayers = V3D_MAX_ARRAY_LAYERS;
+      pImageFormatProperties->maxMipLevels = V3D_MAX_MIP_LEVELS;
       break;
    case VK_IMAGE_TYPE_3D:
-      pImageFormatProperties->maxExtent.width = 4096;
-      pImageFormatProperties->maxExtent.height = 4096;
-      pImageFormatProperties->maxExtent.depth = 4096;
+      pImageFormatProperties->maxExtent.width = V3D_MAX_IMAGE_DIMENSION;
+      pImageFormatProperties->maxExtent.height = V3D_MAX_IMAGE_DIMENSION;
+      pImageFormatProperties->maxExtent.depth = V3D_MAX_IMAGE_DIMENSION;
       pImageFormatProperties->maxArrayLayers = 1;
-      pImageFormatProperties->maxMipLevels = 13; /* log2(maxWidth) + 1 */
+      pImageFormatProperties->maxMipLevels = V3D_MAX_MIP_LEVELS;
       break;
    default:
       unreachable("bad VkImageType");

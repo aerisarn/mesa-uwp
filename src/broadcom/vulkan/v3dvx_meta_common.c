@@ -1185,8 +1185,8 @@ v3dX(meta_emit_copy_buffer_to_image_rcl)(struct v3dv_job *job,
 }
 
 /* Figure out a TLB size configuration for a number of pixels to process.
- * Beware that we can't "render" more than 4096x4096 pixels in a single job,
- * if the pixel count is larger than this, the caller might need to split
+ * Beware that we can't "render" more than MAX_DIMxMAX_DIM pixels in a single
+ * job, if the pixel count is larger than this, the caller might need to split
  * the job and call this function multiple times.
  */
 static void
@@ -1196,7 +1196,7 @@ framebuffer_size_for_pixel_count(uint32_t num_pixels,
 {
    assert(num_pixels > 0);
 
-   const uint32_t max_dim_pixels = 4096;
+   const uint32_t max_dim_pixels = V3D_MAX_IMAGE_DIMENSION;
    const uint32_t max_pixels = max_dim_pixels * max_dim_pixels;
 
    uint32_t w, h;

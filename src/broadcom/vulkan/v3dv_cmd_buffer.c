@@ -970,17 +970,14 @@ cmd_buffer_begin_render_pass_secondary(
     *
     *    "The application must ensure (using scissor if necessary) that all
     *     rendering is contained within the render area."
-    *
-    * FIXME: setup constants for the max framebuffer dimensions and use them
-    * here and when filling in VkPhysicalDeviceLimits.
     */
    const struct v3dv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
    cmd_buffer->state.render_area.offset.x = 0;
    cmd_buffer->state.render_area.offset.y = 0;
    cmd_buffer->state.render_area.extent.width =
-      framebuffer ? framebuffer->width : 4096;
+      framebuffer ? framebuffer->width : V3D_MAX_IMAGE_DIMENSION;
    cmd_buffer->state.render_area.extent.height =
-      framebuffer ? framebuffer->height : 4096;
+      framebuffer ? framebuffer->height : V3D_MAX_IMAGE_DIMENSION;
 
    return VK_SUCCESS;
 }

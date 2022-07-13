@@ -243,7 +243,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 else if (screen->nonmsaa_texture_size_limit)
                         return 7680;
                 else
-                        return 4096;
+                        return V3D_MAX_IMAGE_DIMENSION;
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
                 if (screen->devinfo.ver < 40)
@@ -251,7 +251,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 else
                         return V3D_MAX_MIP_LEVELS;
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-                return 2048;
+                return V3D_MAX_ARRAY_LAYERS;
 
                 /* Render targets. */
         case PIPE_CAP_MAX_RENDER_TARGETS:
