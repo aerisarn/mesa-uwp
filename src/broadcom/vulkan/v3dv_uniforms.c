@@ -80,10 +80,6 @@ state_bo_in_list(struct state_bo_list *list, struct v3dv_bo *bo)
  *
  * push contants ubo is only used for push constants accessed by a non-const
  * index.
- *
- * FIXME: right now for this cases we are uploading the full
- * push_constants_data. An improvement would be to upload only the data that
- * we need to rely on a UBO.
  */
 static void
 check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
@@ -111,9 +107,11 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
          abort();
       }
    } else {
-      if (cmd_buffer->push_constants_resource.offset + MAX_PUSH_CONSTANTS_SIZE <=
+      if (cmd_buffer->push_constants_resource.offset +
+          cmd_buffer->state.push_constants_size <=
           cmd_buffer->push_constants_resource.bo->size) {
-         cmd_buffer->push_constants_resource.offset += MAX_PUSH_CONSTANTS_SIZE;
+         cmd_buffer->push_constants_resource.offset +=
+            cmd_buffer->state.push_constants_size;
       } else {
          /* FIXME: we got out of space for push descriptors. Should we create
           * a new bo? This could be easier with a uploader
@@ -121,10 +119,11 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   assert(cmd_buffer->state.push_constants_size <= MAX_PUSH_CONSTANTS_SIZE);
    memcpy(cmd_buffer->push_constants_resource.bo->map +
           cmd_buffer->push_constants_resource.offset,
           cmd_buffer->state.push_constants_data,
-          MAX_PUSH_CONSTANTS_SIZE);
+          cmd_buffer->state.push_constants_size);
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
 }
