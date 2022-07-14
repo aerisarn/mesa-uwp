@@ -1387,9 +1387,10 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
                  device->physical_device->rad_info.family,
                  max_vtx_in, num_vertices_per_prim,
                  info->workgroup_size, info->wave_size, info->has_ngg_culling,
-                 info->has_ngg_early_prim_export, info->is_ngg_passthrough, export_prim_id,
+                 info->has_ngg_early_prim_export, info->is_ngg_passthrough,
                  false, pl_key->primitives_generated_query,
-                 true, pl_key->vs.instance_rate_inputs, 0, 0);
+                 true, export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1,
+                 pl_key->vs.instance_rate_inputs, 0, 0);
 
       /* Increase ESGS ring size so the LLVM binary contains the correct LDS size. */
       ngg_stage->info.ngg_info.esgs_ring_size = nir->info.shared_size;

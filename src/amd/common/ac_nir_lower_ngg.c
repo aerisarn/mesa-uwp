@@ -58,7 +58,6 @@ typedef struct
    struct u_vector saved_uniforms;
 
    bool passthrough;
-   bool export_prim_id;
    bool early_prim_export;
    bool use_edgeflags;
    bool has_prim_query;
@@ -69,6 +68,7 @@ typedef struct
    unsigned num_vertices_per_primitives;
    unsigned max_es_num_vertices;
    unsigned position_store_base;
+   int primitive_id_location;
 
    /* LDS params */
    unsigned pervertex_lds_bytes;
@@ -430,7 +430,7 @@ static nir_ssa_def *
 emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *st)
 {
    if (st->passthrough) {
-      assert(!st->export_prim_id || b->shader->info.stage != MESA_SHADER_VERTEX);
+      assert(st->primitive_id_location < 0 || b->shader->info.stage != MESA_SHADER_VERTEX);
       return nir_load_packed_passthrough_primitive_amd(b);
    } else {
       nir_ssa_def *vtx_idx[3] = {0};
@@ -556,7 +556,7 @@ emit_store_ngg_nogs_es_primitive_id(nir_builder *b, lower_ngg_nogs_state *st)
    };
 
    nir_store_output(b, prim_id, nir_imm_zero(b, 1, 32),
-                    .base = io_sem.location,
+                    .base = st->primitive_id_location,
                     .src_type = nir_type_uint32, .io_semantics = io_sem);
 }
 
@@ -1850,10 +1850,10 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       bool can_cull,
                       bool early_prim_export,
                       bool passthrough,
-                      bool export_prim_id,
                       bool use_edgeflags,
                       bool has_prim_query,
                       bool disable_streamout,
+                      int primitive_id_location,
                       uint32_t instance_rate_inputs,
                       uint32_t clipdist_enable_mask,
                       uint32_t user_clip_plane_enable_mask)
@@ -1883,7 +1883,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
 
    lower_ngg_nogs_state state = {
       .passthrough = passthrough,
-      .export_prim_id = export_prim_id,
+      .primitive_id_location = primitive_id_location,
       .early_prim_export = early_prim_export,
       .use_edgeflags = use_edgeflags,
       .has_prim_query = has_prim_query,
@@ -1903,9 +1903,9 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    };
 
    const bool need_prim_id_store_shared =
-      export_prim_id && shader->info.stage == MESA_SHADER_VERTEX;
+      primitive_id_location >= 0 && shader->info.stage == MESA_SHADER_VERTEX;
 
-   if (export_prim_id) {
+   if (primitive_id_location >= 0) {
       nir_variable *prim_id_var = nir_variable_create(shader, nir_var_shader_out, glsl_uint_type(), "ngg_prim_id");
       prim_id_var->data.location = VARYING_SLOT_PRIMITIVE_ID;
       prim_id_var->data.driver_location = VARYING_SLOT_PRIMITIVE_ID;
@@ -2000,7 +2000,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       nir_cf_reinsert(&extracted, b->cursor);
       b->cursor = nir_after_cf_list(&if_es_thread->then_list);
 
-      if (state.export_prim_id)
+      if (state.primitive_id_location >= 0)
          emit_store_ngg_nogs_es_primitive_id(b, &state);
 
       /* Export all vertex attributes (including the primitive ID) */
