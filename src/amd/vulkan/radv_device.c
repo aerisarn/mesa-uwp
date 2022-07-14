@@ -7150,14 +7150,11 @@ radv_thread_trace_set_pstate(struct radv_device *device, bool enable)
    enum radeon_ctx_pstate pstate = enable ? RADEON_CTX_PSTATE_PEAK : RADEON_CTX_PSTATE_NONE;
 
    if (device->physical_device->rad_info.has_stable_pstate) {
-      for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
-         for (unsigned q = 0; q < device->queue_count[i]; q++) {
-            struct radv_queue *queue = &device->queues[i][q];
-
-            if (ws->ctx_set_pstate(queue->hw_ctx, pstate) < 0)
-               return false;
-         }
-      }
+      /* pstate is per-device; setting it for one ctx is sufficient.
+       * We pick the first initialized one below. */
+      for (unsigned i = 0; i < RADV_NUM_HW_CTX; i++)
+         if (device->hw_ctx[i])
+            return ws->ctx_set_pstate(device->hw_ctx[i], pstate) >= 0;
    }
 
    return true;
