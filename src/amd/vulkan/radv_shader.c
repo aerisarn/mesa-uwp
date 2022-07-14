@@ -2444,6 +2444,55 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    return prolog;
 }
 
+struct radv_shader_part *
+radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_key *key)
+{
+   struct radv_shader_args args = {0};
+   struct radv_nir_compiler_options options = {0};
+   options.family = device->physical_device->rad_info.family;
+   options.gfx_level = device->physical_device->rad_info.gfx_level;
+   options.address32_hi = device->physical_device->rad_info.address32_hi;
+   options.dump_shader = device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS;
+   options.record_ir = device->instance->debug_flags & RADV_DEBUG_HANG;
+   options.dump_preoptir = device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS;
+   options.dump_shader = device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS;
+
+   struct radv_shader_info info = {0};
+   info.wave_size = key->wave32 ? 32 : 64;
+   info.workgroup_size = 64;
+
+   radv_declare_ps_epilog_args(device->physical_device->rad_info.gfx_level, key, &args);
+
+#ifdef LLVM_AVAILABLE
+   if (options.dump_shader || options.record_ir)
+      ac_init_llvm_once();
+#endif
+
+   struct radv_shader_part_binary *binary = NULL;
+   struct aco_shader_info ac_info;
+   struct aco_ps_epilog_key ac_key;
+   struct aco_compiler_options ac_opts;
+   radv_aco_convert_shader_info(&ac_info, &info);
+   radv_aco_convert_opts(&ac_opts, &options);
+   radv_aco_convert_ps_epilog_key(&ac_key, key);
+   aco_compile_ps_epilog(&ac_opts, &ac_info, &ac_key, &args, &radv_aco_build_shader_part,
+                         (void **)&binary);
+   struct radv_shader_part *epilog = upload_shader_part(device, binary, info.wave_size);
+   if (epilog) {
+      epilog->disasm_string =
+         binary->disasm_size ? strdup((const char *)(binary->data + binary->code_size)) : NULL;
+   }
+
+   free(binary);
+
+   if (epilog && options.dump_shader) {
+      fprintf(stderr, "Fragment epilog");
+      fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
+   }
+
+   return epilog;
+}
+
 void
 radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 {

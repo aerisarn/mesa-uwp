@@ -967,6 +967,7 @@ static const struct debug_control radv_debug_options[] = {
    {"nonggc", RADV_DEBUG_NO_NGGC},
    {"prologs", RADV_DEBUG_DUMP_PROLOGS},
    {"nodma", RADV_DEBUG_NO_DMA_BLIT},
+   {"epilogs", RADV_DEBUG_DUMP_EPILOGS},
    {NULL, 0}};
 
 const char *
