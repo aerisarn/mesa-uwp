@@ -533,8 +533,8 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
       }
    }
    if (prev_zwrite != (ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write : false)) {
+      /* flag renderpass for re-check on next draw */
       ctx->rp_changed = true;
-      zink_batch_no_rp(ctx);
    }
 }
 
