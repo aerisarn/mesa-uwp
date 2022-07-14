@@ -5109,10 +5109,12 @@ bi_compile_variant_nir(nir_shader *nir,
                 bi_opt_dead_code_eliminate(ctx);
         }
 
-        if (likely(!(bifrost_debug & BIFROST_DBG_NOPSCHED)))
-                bi_pressure_schedule(ctx);
-
         bi_validate(ctx, "Late lowering");
+
+        if (likely(!(bifrost_debug & BIFROST_DBG_NOPSCHED))) {
+                bi_pressure_schedule(ctx);
+                bi_validate(ctx, "Pre-RA scheduling");
+        }
 
         bi_register_allocate(ctx);
 
