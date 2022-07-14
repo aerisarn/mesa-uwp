@@ -2366,7 +2366,7 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
    unsigned wrmask = nir_intrinsic_write_mask(intr);
    if (!glsl_type_is_scalar(gtype) &&
-       wrmask != BITFIELD_MASK(glsl_get_length(gtype))) {
+       wrmask != BITFIELD_MASK(glsl_type_is_array(gtype) ? glsl_get_aoa_size(gtype) : glsl_get_vector_elements(gtype))) {
       /* no idea what we do if this fails */
       assert(glsl_type_is_array(gtype) || glsl_type_is_vector(gtype));
 
