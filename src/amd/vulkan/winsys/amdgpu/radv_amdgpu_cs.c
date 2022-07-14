@@ -56,6 +56,7 @@ struct radv_amdgpu_cs_ib_info {
    int64_t flags;
    uint64_t ib_mc_address;
    uint32_t size;
+   enum amd_ip_type ip_type;
 };
 
 struct radv_amdgpu_cs {
@@ -265,6 +266,7 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type)
       cs->base.max_dw = ib_size / 4 - 4;
       cs->ib_size_ptr = &cs->ib.size;
       cs->ib.size = 0;
+      cs->ib.ip_type = ip_type;
 
       ws->cs_add_buffer(&cs->base, cs->ib_buffer);
    } else {
@@ -1160,6 +1162,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
             ibs[j].size = size;
             ibs[j].ib_mc_address = radv_buffer_get_va(bos[j]);
             ibs[j].flags = 0;
+            ibs[j].ip_type = cs->hw_ip;
          }
 
          cnt++;
@@ -1206,6 +1209,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
          ibs[0].size = size;
          ibs[0].ib_mc_address = radv_buffer_get_va(bos[0]);
          ibs[0].flags = 0;
+         ibs[0].ip_type = cs->hw_ip;
       }
 
       u_rwlock_rdlock(&aws->global_bo_list.lock);
@@ -1776,11 +1780,13 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
       chunk_data[i].ib_data._pad = 0;
       chunk_data[i].ib_data.va_start = ib->ib_mc_address;
       chunk_data[i].ib_data.ib_bytes = ib->size * 4;
-      chunk_data[i].ib_data.ip_type = request->ip_type;
+      chunk_data[i].ib_data.ip_type = ib->ip_type;
       chunk_data[i].ib_data.ip_instance = request->ip_instance;
       chunk_data[i].ib_data.ring = request->ring;
       chunk_data[i].ib_data.flags = ib->flags;
    }
+
+   assert(chunk_data[request->number_of_ibs - 1].ib_data.ip_type == request->ip_type);
 
    if (has_user_fence) {
       i = num_chunks++;
