@@ -168,6 +168,11 @@ def generate_lava_yaml(args):
       'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
 
+      # Sleep a bit to give time for bash to dump shell xtrace messages into
+      # console which may cause interleaving with LAVA_SIGNAL_STARTTC in some
+      # devices like a618.
+      'sleep 1',
+
       # Putting CI_JOB name as the testcase name, it may help LAVA farm
       # maintainers with monitoring
       f"lava-test-case 'mesa-ci_{args.mesa_job_name}' --shell /init-stage2.sh",
