@@ -193,6 +193,15 @@ struct NOP_ctx_gfx10 {
    }
 };
 
+struct NOP_ctx_gfx11 {
+   /* VcmpxPermlaneHazard */
+   bool has_Vcmpx = false;
+
+   void join(const NOP_ctx_gfx11& other) { has_Vcmpx |= other.has_Vcmpx; }
+
+   bool operator==(const NOP_ctx_gfx11& other) { return has_Vcmpx == other.has_Vcmpx; }
+};
+
 int
 get_wait_states(aco_ptr<Instruction>& instr)
 {
@@ -856,6 +865,29 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
    }
 }
 
+void
+handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>& instr,
+                         std::vector<aco_ptr<Instruction>>& new_instructions)
+{
+   Builder bld(state.program, &new_instructions);
+
+   /* VcmpxPermlaneHazard
+    * Handle any permlane following a VOPC instruction writing exec, insert v_mov between them.
+    */
+   if (instr->isVOPC() && instr->definitions[0].physReg() == exec) {
+      ctx.has_Vcmpx = true;
+   } else if (ctx.has_Vcmpx && (instr->opcode == aco_opcode::v_permlane16_b32 ||
+                                instr->opcode == aco_opcode::v_permlanex16_b32)) {
+      ctx.has_Vcmpx = false;
+
+      /* v_nop would be discarded by SQ, so use v_mov with the first operand of the permlane */
+      bld.vop1(aco_opcode::v_mov_b32, Definition(instr->operands[0].physReg(), v1),
+               Operand(instr->operands[0].physReg(), v1));
+   } else if (instr->isVALU() && instr->opcode != aco_opcode::v_nop) {
+      ctx.has_Vcmpx = false;
+   }
+}
+
 template <typename Ctx>
 using HandleInstr = void (*)(State& state, Ctx&, aco_ptr<Instruction>&,
                              std::vector<aco_ptr<Instruction>>&);
@@ -925,7 +957,9 @@ mitigate_hazards(Program* program)
 void
 insert_NOPs(Program* program)
 {
-   if (program->gfx_level >= GFX10_3)
+   if (program->gfx_level >= GFX11)
+      mitigate_hazards<NOP_ctx_gfx11, handle_instruction_gfx11>(program);
+   else if (program->gfx_level >= GFX10_3)
       ; /* no hazards/bugs to mitigate */
    else if (program->gfx_level >= GFX10)
       mitigate_hazards<NOP_ctx_gfx10, handle_instruction_gfx10>(program);

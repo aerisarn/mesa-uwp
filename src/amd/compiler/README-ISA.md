@@ -288,3 +288,9 @@ Only `s_waitcnt_vscnt null, 0`. Needed even if the first instruction is a load.
 
 NSA MIMG instructions should be limited to 3 dwords before GFX10.3 to avoid
 stability issues: https://reviews.llvm.org/D103348
+
+## RDNA3 / GFX11 hazards
+
+### VcmpxPermlaneHazard
+
+Same as GFX10.
