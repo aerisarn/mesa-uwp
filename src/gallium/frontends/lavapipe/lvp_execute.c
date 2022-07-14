@@ -2044,6 +2044,7 @@ static void handle_draw(struct vk_cmd_queue_entry *cmd,
 
    draw.start = cmd->u.draw.first_vertex;
    draw.count = cmd->u.draw.vertex_count;
+   draw.index_bias = 0;
 
    state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, &draw, 1);
