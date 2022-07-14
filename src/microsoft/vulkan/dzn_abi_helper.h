@@ -40,6 +40,8 @@ dzn_ID3D12Device2_GetCustomHeapProperties(ID3D12Device2 *dev, UINT node_mask, D3
     D3D12_HEAP_PROPERTIES ret;
 #ifdef _WIN32
     ID3D12Device2_GetCustomHeapProperties(dev, &ret, node_mask, type);
+#elif D3D12_SDK_VERSION >= 606
+    ret = ID3D12Device2_GetCustomHeapProperties(dev, node_mask, type);
 #else
     ret = ((D3D12_HEAP_PROPERTIES (STDMETHODCALLTYPE *)(ID3D12Device2 *, UINT, D3D12_HEAP_TYPE))dev->lpVtbl->GetCustomHeapProperties)(dev, node_mask, type);
 #endif
@@ -52,6 +54,8 @@ dzn_ID3D12Device2_GetResourceAllocationInfo(ID3D12Device2 *dev, UINT visible_mas
     D3D12_RESOURCE_ALLOCATION_INFO ret;
 #ifdef _WIN32
     ID3D12Device2_GetResourceAllocationInfo(dev, &ret, visible_mask, num_resource_descs, resource_descs);
+#elif D3D12_SDK_VERSION >= 606
+    ret = ID3D12Device2_GetResourceAllocationInfo(dev, visible_mask, num_resource_descs, resource_descs);
 #else
     ret = ((D3D12_RESOURCE_ALLOCATION_INFO (STDMETHODCALLTYPE *)(ID3D12Device2 *, UINT, UINT, const D3D12_RESOURCE_DESC *))
         dev->lpVtbl->GetResourceAllocationInfo)(dev, visible_mask, num_resource_descs, resource_descs);
@@ -65,6 +69,8 @@ dzn_ID3D12Resource_GetDesc(ID3D12Resource *res)
     D3D12_RESOURCE_DESC ret;
 #ifdef _WIN32
     ID3D12Resource_GetDesc(res, &ret);
+#elif D3D12_SDK_VERSION >= 606
+    ret = ID3D12Resource_GetDesc(res);
 #else
     ret = ((D3D12_RESOURCE_DESC (STDMETHODCALLTYPE *)(ID3D12Resource *))res->lpVtbl->GetDesc)(res);
 #endif
@@ -77,6 +83,8 @@ dzn_ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap
     D3D12_CPU_DESCRIPTOR_HANDLE ret;
 #ifdef _WIN32
     ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap, &ret);
+#elif D3D12_SDK_VERSION >= 606
+    ret = ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap);
 #else
     ret = ((D3D12_CPU_DESCRIPTOR_HANDLE (STDMETHODCALLTYPE *)(ID3D12DescriptorHeap *))heap->lpVtbl->GetCPUDescriptorHandleForHeapStart)(heap);
 #endif
@@ -89,6 +97,8 @@ dzn_ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap
     D3D12_GPU_DESCRIPTOR_HANDLE ret;
 #ifdef _WIN32
     ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(heap, &ret);
+#elif D3D12_SDK_VERSION >= 606
+    ret = ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(heap);
 #else
     ret = ((D3D12_GPU_DESCRIPTOR_HANDLE (STDMETHODCALLTYPE *)(ID3D12DescriptorHeap *))heap->lpVtbl->GetGPUDescriptorHandleForHeapStart)(heap);
 #endif
