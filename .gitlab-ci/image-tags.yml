@@ -3,10 +3,10 @@ variables:
    DEBIAN_BASE_TAG: "2022-07-01-bb-llvm13"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-07-01-db-llvm13"
+   DEBIAN_BUILD_TAG: "2022-07-14-directx-headers"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
-   DEBIAN_BUILD_MINGW_TAG: "2022-07-01-dmgw-llvm13"
+   DEBIAN_BUILD_MINGW_TAG: "2022-07-14-directx-headers"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
