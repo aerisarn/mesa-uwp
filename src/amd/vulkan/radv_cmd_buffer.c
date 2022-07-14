@@ -9583,3 +9583,12 @@ radv_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer, VkPipelineStageFlag
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
 }
+
+void
+radv_CmdBindPipelineShaderGroupNV(VkCommandBuffer commandBuffer,
+                                  VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline,
+                                  uint32_t groupIndex)
+{
+   fprintf(stderr, "radv: unimplemented vkCmdBindPipelineShaderGroupNV\n");
+   abort();
+}
