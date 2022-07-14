@@ -520,7 +520,6 @@ format_is_float32(VkFormat format)
 
 static void
 radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pipeline,
-                                        const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                         struct radv_blend_state *blend,
                                         const struct vk_graphics_pipeline_state *state)
 {
@@ -656,7 +655,6 @@ radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkB
 
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
-                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_device *device = pipeline->base.device;
@@ -826,7 +824,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    else
       cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
 
-   radv_pipeline_compute_spi_color_formats(pipeline, pCreateInfo, &blend, state);
+   radv_pipeline_compute_spi_color_formats(pipeline, &blend, state);
 
    pipeline->cb_color_control = cb_color_control;
 
@@ -6519,7 +6517,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (result != VK_SUCCESS)
       return result;
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo, &state);
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state);
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
