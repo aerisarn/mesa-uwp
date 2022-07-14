@@ -819,27 +819,6 @@ manual:
    return false;
 }
 
-static bool
-etna_blit_rs(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
-{
-   /* This is a more extended version of resource_copy_region */
-   /* TODO Some cases can be handled by RS; if not, fall back to rendering or
-    * even CPU copy block of pixels from info->src to info->dst
-    * (resource, level, box, format);
-    * function is used for scaling, flipping in x and y direction (negative
-    * width/height), format conversion, mask and filter and even a scissor rectangle
-    *
-    * What can the RS do for us:
-    *   convert between tiling formats (layouts)
-    *   downsample 2x in x and y
-    *   convert between a limited number of pixel formats
-    *
-    * For the rest, fall back to util_blitter
-    * XXX this goes wrong when source surface is supertiled. */
-
-   return etna_try_rs_blit(pctx, blit_info);
-}
-
 void
 etna_clear_blit_rs_init(struct pipe_context *pctx)
 {
@@ -847,5 +826,5 @@ etna_clear_blit_rs_init(struct pipe_context *pctx)
 
    DBG("etnaviv: Using RS blit engine");
    pctx->clear = etna_clear_rs;
-   ctx->blit = etna_blit_rs;
+   ctx->blit = etna_try_rs_blit;
 }
