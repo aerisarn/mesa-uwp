@@ -1054,7 +1054,7 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
         assert(num_targets <= ARRAY_SIZE(so->targets));
 
         for (unsigned i = 0; i < num_targets; i++) {
-                if (offsets[i] != -1)
+                if (targets[i] && offsets[i] != -1)
                         pan_so_target(targets[i])->offset = offsets[i];
 
                 pipe_so_target_reference(&so->targets[i], targets[i]);

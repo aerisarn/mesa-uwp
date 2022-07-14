@@ -1317,14 +1317,15 @@ panfrost_upload_sysvals(struct panfrost_batch *batch,
                         struct pipe_stream_output_info *so = &vs->stream_output;
                         unsigned stride = so->stride[buf] * 4;
 
-                        if (buf >= batch->ctx->streamout.num_targets) {
+                        struct pipe_stream_output_target *target = NULL;
+                        if (buf < batch->ctx->streamout.num_targets)
+                                target = batch->ctx->streamout.targets[buf];
+
+                        if (!target) {
                                 /* Memory sink */
                                 uniforms[i].du[0] = 0x8ull << 60;
                                 break;
                         }
-
-                        struct pipe_stream_output_target *target = batch->ctx->streamout.targets[buf];
-                        assert(target != NULL);
 
                         struct panfrost_resource *rsrc = pan_resource(target->buffer);
                         unsigned offset = panfrost_xfb_offset(stride, target);
@@ -2549,11 +2550,14 @@ panfrost_emit_varying_descs(
         out->stride = pan_assign_varyings(dev, &producer->info,
                         &consumer->info, offsets);
 
-        unsigned xfb_offsets[PIPE_MAX_SO_BUFFERS];
+        unsigned xfb_offsets[PIPE_MAX_SO_BUFFERS] = {0};
 
         for (unsigned i = 0; i < xfb->num_targets; ++i) {
+                if (!xfb->targets[i])
+                        continue;
+
                 xfb_offsets[i] = panfrost_xfb_offset(xfb_info->stride[i] * 4,
-                                xfb->targets[i]);
+                                                     xfb->targets[i]);
         }
 
         for (unsigned i = 0; i < producer_count; ++i) {
@@ -2678,6 +2682,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                 u_stream_outputs_for_vertices(ctx->active_prim, ctx->vertex_count);
 
         for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+                if (!ctx->streamout.targets[i])
+                        continue;
+
                 panfrost_emit_streamout(batch, &varyings[xfb_base + i],
                                         so->stride[i] * 4,
                                         out_count,
@@ -2907,11 +2914,13 @@ panfrost_statistics_record(
 static void
 panfrost_update_streamout_offsets(struct panfrost_context *ctx)
 {
-        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
-                unsigned count;
+        unsigned count = u_stream_outputs_for_vertices(ctx->active_prim,
+                                                       ctx->vertex_count);
 
-                count = u_stream_outputs_for_vertices(ctx->active_prim,
-                                                      ctx->vertex_count);
+        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+                if (!ctx->streamout.targets[i])
+                        continue;
+
                 pan_so_target(ctx->streamout.targets[i])->offset += count;
         }
 }
