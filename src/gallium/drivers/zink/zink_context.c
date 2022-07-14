@@ -2288,7 +2288,11 @@ begin_rendering(struct zink_context *ctx)
    ctx->rp_changed = false;
    /* update pipeline info id for compatibility VUs */
    unsigned rp_state = find_rp_state(ctx);
-   ctx->gfx_pipeline_state.dirty |= ctx->gfx_pipeline_state.rp_state != rp_state;
+   bool rp_changed = ctx->gfx_pipeline_state.rp_state != rp_state;
+   if (!rp_changed && ctx->batch.in_rp)
+      return 0;
+   zink_batch_no_rp(ctx);
+   ctx->gfx_pipeline_state.dirty |= rp_changed;
    ctx->gfx_pipeline_state.rp_state = rp_state;
 
    VKCTX(CmdBeginRendering)(ctx->batch.state->cmdbuf, &ctx->dynamic_fb.info);
@@ -2300,9 +2304,11 @@ begin_rendering(struct zink_context *ctx)
 void
 zink_batch_rp(struct zink_context *ctx)
 {
-   if (ctx->batch.in_rp)
+   assert(!(ctx->batch.in_rp && ctx->rp_changed));
+   if (ctx->batch.in_rp && !ctx->rp_layout_changed)
       return;
-   if (!ctx->batch.in_rp && ctx->void_clears) {
+   bool in_rp = ctx->batch.in_rp;
+   if (!in_rp && ctx->void_clears) {
       union pipe_color_union color;
       color.f[0] = color.f[1] = color.f[2] = 0;
       color.f[3] = 1.0;
@@ -2318,8 +2324,8 @@ zink_batch_rp(struct zink_context *ctx)
       clear_buffers = zink_begin_render_pass(ctx);
    else
       clear_buffers = begin_rendering(ctx);
-   if (!ctx->batch.in_rp)
-      return; //dead swapchain
+   if (in_rp || !ctx->batch.in_rp)
+      return; //dead swapchain or continued renderpass
    if (ctx->render_condition.query)
       zink_start_conditional_render(ctx);
    zink_clear_framebuffer(ctx, clear_buffers);

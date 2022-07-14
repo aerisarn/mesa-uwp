@@ -529,6 +529,7 @@ setup_framebuffer(struct zink_context *ctx)
    zink_init_framebuffer(screen, ctx->framebuffer, rp);
    ctx->fb_changed = false;
    ctx->gfx_pipeline_state.render_pass = rp;
+   zink_batch_no_rp(ctx);
 }
 
 static bool
@@ -673,6 +674,8 @@ unsigned
 zink_begin_render_pass(struct zink_context *ctx)
 {
    setup_framebuffer(ctx);
+   if (ctx->batch.in_rp)
+      return 0;
    /* TODO: need replicate EXT */
    if (ctx->framebuffer->rp->state.msaa_expand_mask) {
       uint32_t rp_state = ctx->gfx_pipeline_state.rp_state;
