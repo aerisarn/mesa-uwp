@@ -74,6 +74,15 @@ state_bo_in_list(struct state_bo_list *list, struct v3dv_bo *bo)
    return false;
 }
 
+static void
+push_constants_bo_free(VkDevice _device,
+                       uint64_t bo_ptr,
+                       VkAllocationCallbacks *alloc)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   v3dv_bo_free(device, (struct v3dv_bo *)(uintptr_t) bo_ptr);
+}
+
 /*
  * This method checks if the ubo used for push constants is needed to be
  * updated or not.
@@ -115,9 +124,19 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
          cmd_buffer->push_constants_resource.offset +=
             cmd_buffer->state.push_constants_size;
       } else {
-         /* FIXME: we got out of space for push descriptors. Should we create
-          * a new bo? This could be easier with a uploader
+         /* We ran out of space so we'll have to allocate a new buffer but we
+          * need to ensure the old one is preserved until the end of the command
+          * buffer life and make sure it is eventually freed. We use the
+          * private object machinery in the command buffer for this.
           */
+         v3dv_cmd_buffer_add_private_obj(
+            cmd_buffer, (uintptr_t) cmd_buffer->push_constants_resource.bo,
+            (v3dv_cmd_buffer_private_obj_destroy_cb) push_constants_bo_free);
+
+         /* Now call back so we create a new BO */
+         cmd_buffer->push_constants_resource.bo = NULL;
+         check_push_constants_ubo(cmd_buffer, pipeline);
+         return;
       }
    }
 
