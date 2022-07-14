@@ -6024,8 +6024,8 @@ static MIMG_instruction*
 emit_mimg(Builder& bld, aco_opcode op, Definition dst, Temp rsrc, Operand samp,
           std::vector<Temp> coords, unsigned wqm_mask = 0, Operand vdata = Operand(v1))
 {
-   /* Limit NSA instructions to 3 dwords on GFX10 to avoid stability issues. */
-   unsigned max_nsa_size = bld.program->gfx_level >= GFX10_3 ? 13 : 5;
+   /* Limit NSA instructions to 3 dwords on GFX10/11 to avoid stability/encoding issues. */
+   unsigned max_nsa_size = bld.program->gfx_level == GFX10_3 ? 13 : 5;
    bool use_nsa = bld.program->gfx_level >= GFX10 && coords.size() <= max_nsa_size;
 
    if (!use_nsa) {
