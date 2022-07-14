@@ -183,6 +183,12 @@ _mesa_lower_gl_clamp(struct gl_context *ctx, struct gl_sampler_object *samp)
    }
 }
 
+static inline GLboolean
+is_wrap_gl_clamp(GLint param)
+{
+   return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
+}
+
 #ifdef __cplusplus
 }
 #endif

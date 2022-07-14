@@ -72,13 +72,6 @@ get_texture_index(struct gl_context *ctx, const unsigned unit)
    return index;
 }
 
-
-static inline GLboolean
-is_wrap_gl_clamp(GLint param)
-{
-   return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
-}
-
 static void
 update_gl_clamp(struct st_context *st, struct gl_program *prog, uint32_t *gl_clamp)
 {

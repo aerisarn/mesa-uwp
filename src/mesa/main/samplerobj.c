@@ -532,12 +532,6 @@ flush(struct gl_context *ctx)
 #define INVALID_PNAME 0x101
 #define INVALID_VALUE 0x102
 
-static inline GLboolean
-is_wrap_gl_clamp(GLint param)
-{
-   return param == GL_CLAMP || param == GL_MIRROR_CLAMP_EXT;
-}
-
 static GLuint
 set_sampler_wrap_s(struct gl_context *ctx, struct gl_sampler_object *samp,
                    GLint param)
