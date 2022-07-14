@@ -421,17 +421,6 @@ emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *st)
 static void
 emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def *arg)
 {
-   bool need_prim_id_store_shared =
-      st->export_prim_id && b->shader->info.stage == MESA_SHADER_VERTEX;
-
-   /* Add barrier if LDS is already used by culling and we need LDS for prim id here. */
-   if (st->can_cull && need_prim_id_store_shared) {
-      nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
-                            .memory_scope = NIR_SCOPE_WORKGROUP,
-                            .memory_semantics = NIR_MEMORY_ACQ_REL,
-                            .memory_modes = nir_var_mem_shared);
-   }
-
    nir_ssa_def *gs_thread = st->gs_accepted_var
                             ? nir_load_var(b, st->gs_accepted_var)
                             : nir_has_input_primitive_amd(b);
@@ -440,23 +429,6 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
    {
       if (!arg)
          arg = emit_ngg_nogs_prim_exp_arg(b, st);
-
-      if (need_prim_id_store_shared) {
-         nir_ssa_def *prim_valid = nir_ieq_imm(b, nir_ushr_imm(b, arg, 31), 0);
-         nir_if *if_prim_valid = nir_push_if(b, prim_valid);
-         {
-            /* Copy Primitive IDs from GS threads to the LDS address
-             * corresponding to the ES thread of the provoking vertex.
-             * It will be exported as a per-vertex attribute.
-             */
-            nir_ssa_def *prim_id = nir_load_primitive_id(b);
-            nir_ssa_def *provoking_vtx_idx = nir_load_var(b, st->gs_vtx_indices_vars[st->provoking_vtx_idx]);
-            nir_ssa_def *addr = pervertex_lds_addr(b, provoking_vtx_idx, 4u);
-
-            nir_store_shared(b, prim_id, addr);
-         }
-         nir_pop_if(b, if_prim_valid);
-      }
 
       if (st->has_prim_query) {
          nir_if *if_shader_query = nir_push_if(b, nir_load_shader_query_enabled_amd(b));
@@ -477,6 +449,27 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
       }
 
       nir_export_primitive_amd(b, arg);
+   }
+   nir_pop_if(b, if_gs_thread);
+}
+
+static void
+emit_ngg_nogs_prim_id_store_shared(nir_builder *b, lower_ngg_nogs_state *st)
+{
+   nir_ssa_def *gs_thread = st->gs_accepted_var ?
+      nir_load_var(b, st->gs_accepted_var) : nir_has_input_primitive_amd(b);
+
+   nir_if *if_gs_thread = nir_push_if(b, gs_thread);
+   {
+      /* Copy Primitive IDs from GS threads to the LDS address
+       * corresponding to the ES thread of the provoking vertex.
+       * It will be exported as a per-vertex attribute.
+       */
+      nir_ssa_def *prim_id = nir_load_primitive_id(b);
+      nir_ssa_def *provoking_vtx_idx = nir_load_var(b, st->gs_vtx_indices_vars[st->provoking_vtx_idx]);
+      nir_ssa_def *addr = pervertex_lds_addr(b, provoking_vtx_idx, 4u);
+
+      nir_store_shared(b, prim_id, addr);
    }
    nir_pop_if(b, if_gs_thread);
 }
@@ -1414,9 +1407,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .instance_rate_inputs = instance_rate_inputs,
    };
 
-   /* We need LDS space when VS needs to export the primitive ID. */
-   if (shader->info.stage == MESA_SHADER_VERTEX && export_prim_id)
-      state.total_lds_bytes = max_num_es_vertices * 4u;
+   const bool need_prim_id_store_shared =
+      export_prim_id && shader->info.stage == MESA_SHADER_VERTEX;
 
    nir_builder builder;
    nir_builder *b = &builder; /* This is to avoid the & */
@@ -1461,6 +1453,21 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
          emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, state.prim_exp_arg_var));
    }
 
+   if (need_prim_id_store_shared) {
+      /* We need LDS space when VS needs to export the primitive ID. */
+      state.total_lds_bytes = MAX2(state.total_lds_bytes, max_num_es_vertices * 4u);
+
+      /* The LDS space aliases with what is used by culling, so we need a barrier. */
+      if (can_cull) {
+         nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
+                               .memory_scope = NIR_SCOPE_WORKGROUP,
+                               .memory_semantics = NIR_MEMORY_ACQ_REL,
+                               .memory_modes = nir_var_mem_shared);
+      }
+
+      emit_ngg_nogs_prim_id_store_shared(b, &state);
+   }
+
    nir_intrinsic_instr *export_vertex_instr;
    nir_ssa_def *es_thread = can_cull ? nir_load_var(b, es_accepted_var) : nir_has_input_vertex_amd(b);
 
@@ -1470,23 +1477,17 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       nir_cf_reinsert(&extracted, b->cursor);
       b->cursor = nir_after_cf_list(&if_es_thread->then_list);
 
-      /* Export all vertex attributes (except primitive ID) */
-      export_vertex_instr = nir_export_vertex_amd(b);
-
-      /* Export primitive ID (in case of early primitive export or TES) */
-      if (state.export_prim_id && (state.early_prim_export || shader->info.stage != MESA_SHADER_VERTEX))
+      if (state.export_prim_id)
          emit_store_ngg_nogs_es_primitive_id(b);
+
+      /* Export all vertex attributes (including the primitive ID) */
+      export_vertex_instr = nir_export_vertex_amd(b);
    }
    nir_pop_if(b, if_es_thread);
 
    /* Take care of late primitive export */
    if (!state.early_prim_export) {
       emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, prim_exp_arg_var));
-      if (state.export_prim_id && shader->info.stage == MESA_SHADER_VERTEX) {
-         if_es_thread = nir_push_if(b, can_cull ? es_thread : nir_has_input_vertex_amd(b));
-         emit_store_ngg_nogs_es_primitive_id(b);
-         nir_pop_if(b, if_es_thread);
-      }
    }
 
    if (can_cull) {
