@@ -511,8 +511,12 @@ etna_create_shader_state(struct pipe_context *pctx,
 static void
 etna_delete_shader_state(struct pipe_context *pctx, void *ss)
 {
+   struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
    struct etna_shader *shader = ss;
    struct etna_shader_variant *v, *t;
+
+   util_queue_drop_job(&screen->shader_compiler_queue, &shader->ready);
 
    v = shader->variants;
    while (v) {
@@ -526,6 +530,7 @@ etna_delete_shader_state(struct pipe_context *pctx, void *ss)
 
    tgsi_free_tokens(shader->tokens);
    ralloc_free(shader->nir);
+   util_queue_fence_destroy(&shader->ready);
    FREE(shader);
 }
 
