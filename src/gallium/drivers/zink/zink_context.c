@@ -2220,47 +2220,47 @@ begin_rendering(struct zink_context *ctx)
          ctx->dynamic_fb.info.pDepthAttachment = NULL;
          ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
       }
-   }
 
-   /* similar to begin_render_pass(), but just filling in VkRenderingInfo */
-   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-      /* these are no-ops */
-      if (!ctx->fb_state.cbufs[i] || !zink_fb_clear_enabled(ctx, i))
-         continue;
-      /* these need actual clear calls inside the rp */
-      struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(&ctx->fb_clears[i], 0);
-      if (zink_fb_clear_needs_explicit(&ctx->fb_clears[i])) {
-         clear_buffers |= (PIPE_CLEAR_COLOR0 << i);
-         if (zink_fb_clear_count(&ctx->fb_clears[i]) < 2 ||
-             zink_fb_clear_element_needs_explicit(clear))
+      /* similar to begin_render_pass(), but just filling in VkRenderingInfo */
+      for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         /* these are no-ops */
+         if (!ctx->fb_state.cbufs[i] || !zink_fb_clear_enabled(ctx, i))
             continue;
-      }
-      /* we now know there's one clear that can be done here */
-      memcpy(&ctx->dynamic_fb.attachments[i].clearValue, &clear->color, sizeof(float) * 4);
-      ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-   }
-   if (ctx->fb_state.zsbuf && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS)) {
-      struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
-      struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-      if (!zink_fb_clear_element_needs_explicit(clear)) {
-         /* base zs clear info */
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].clearValue.depthStencil.depth = clear->zs.depth;
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].clearValue.depthStencil.stencil = clear->zs.stencil;
-         /* always init separate stencil attachment */
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].clearValue.depthStencil.stencil = clear->zs.stencil;
-         if ((zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH))
-            /* initiate a depth clear */
-            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-         if ((zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL)) {
-            /* use a stencil clear, also set stencil attachment */
-            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+         /* these need actual clear calls inside the rp */
+         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(&ctx->fb_clears[i], 0);
+         if (zink_fb_clear_needs_explicit(&ctx->fb_clears[i])) {
+            clear_buffers |= (PIPE_CLEAR_COLOR0 << i);
+            if (zink_fb_clear_count(&ctx->fb_clears[i]) < 2 ||
+                zink_fb_clear_element_needs_explicit(clear))
+               continue;
          }
+         /* we now know there's one clear that can be done here */
+         memcpy(&ctx->dynamic_fb.attachments[i].clearValue, &clear->color, sizeof(float) * 4);
+         ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
       }
-      if (zink_fb_clear_needs_explicit(fb_clear)) {
-         for (int j = !zink_fb_clear_element_needs_explicit(clear);
-              (clear_buffers & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL && j < zink_fb_clear_count(fb_clear);
-              j++)
-            clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
+      if (ctx->fb_state.zsbuf && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS)) {
+         struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
+         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
+         if (!zink_fb_clear_element_needs_explicit(clear)) {
+            /* base zs clear info */
+            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].clearValue.depthStencil.depth = clear->zs.depth;
+            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].clearValue.depthStencil.stencil = clear->zs.stencil;
+            /* always init separate stencil attachment */
+            ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].clearValue.depthStencil.stencil = clear->zs.stencil;
+            if ((zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH))
+               /* initiate a depth clear */
+               ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            if ((zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL)) {
+               /* use a stencil clear, also set stencil attachment */
+               ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            }
+         }
+         if (zink_fb_clear_needs_explicit(fb_clear)) {
+            for (int j = !zink_fb_clear_element_needs_explicit(clear);
+                 (clear_buffers & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL && j < zink_fb_clear_count(fb_clear);
+                 j++)
+               clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
+         }
       }
    }
    /* validate zs VUs: attachment must be null or format must be valid */
