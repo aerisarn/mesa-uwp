@@ -3608,13 +3608,13 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zin
    region.size = size;
 
    struct zink_batch *batch = &ctx->batch;
-   zink_batch_no_rp(ctx);
-   zink_batch_reference_resource_rw(batch, src, false);
-   zink_batch_reference_resource_rw(batch, dst, true);
    util_range_add(&dst->base.b, &dst->valid_buffer_range, dst_offset, dst_offset + size);
    zink_resource_buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
    zink_resource_buffer_barrier(ctx, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
-   VKCTX(CmdCopyBuffer)(batch->state->cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
+   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
+   zink_batch_reference_resource_rw(batch, src, false);
+   zink_batch_reference_resource_rw(batch, dst, true);
+   VKCTX(CmdCopyBuffer)(cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
 }
 
 void
@@ -3626,7 +3626,6 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    struct zink_resource *buf = dst->base.b.target == PIPE_BUFFER ? dst : src;
    struct zink_batch *batch = &ctx->batch;
    bool needs_present_readback = false;
-   zink_batch_no_rp(ctx);
 
    bool buf2img = buf == src;
 
@@ -3684,6 +3683,8 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    region.imageExtent.width = src_box->width;
    region.imageExtent.height = src_box->height;
 
+   /* never promote to unordered if swapchain was acquired */
+   VkCommandBuffer cmdbuf = needs_present_readback ? ctx->batch.state->cmdbuf : get_cmdbuf(ctx, buf, img);
    zink_batch_reference_resource_rw(batch, img, buf2img);
    zink_batch_reference_resource_rw(batch, buf, !buf2img);
 
@@ -3714,9 +3715,9 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
        * - vkCmdCopyBufferToImage spec
        */
       if (buf2img)
-         VKCTX(CmdCopyBufferToImage)(batch->state->cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
+         VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
       else
-         VKCTX(CmdCopyImageToBuffer)(batch->state->cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
+         VKCTX(CmdCopyImageToBuffer)(cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
    }
    if (needs_present_readback)
       zink_kopper_present_readback(ctx, img);
@@ -3817,12 +3818,12 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.extent.height = src_box->height;
 
       struct zink_batch *batch = &ctx->batch;
-      zink_batch_no_rp(ctx);
+      VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
       zink_batch_reference_resource_rw(batch, src, false);
       zink_batch_reference_resource_rw(batch, dst, true);
 
       zink_resource_setup_transfer_layouts(ctx, src, dst);
-      VKCTX(CmdCopyImage)(batch->state->cmdbuf, src->obj->image, src->layout,
+      VKCTX(CmdCopyImage)(cmdbuf, src->obj->image, src->layout,
                      dst->obj->image, dst->layout,
                      1, &region);
    } else if (dst->base.b.target == PIPE_BUFFER &&
