@@ -1068,6 +1068,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       sscreen->info.gfx_level >= GFX9 && sscreen->options.force_use_fma32;
 
    const struct nir_shader_compiler_options nir_options = {
+      .vertex_id_zero_based = true,
       .lower_scmp = true,
       .lower_flrp16 = true,
       .lower_flrp32 = true,
