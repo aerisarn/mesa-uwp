@@ -3122,16 +3122,24 @@ resource_check_defer_buffer_barrier(struct zink_context *ctx, struct zink_resour
       _mesa_set_add(ctx->need_barriers[1], res);
 }
 
-static inline VkCommandBuffer
-get_cmdbuf(struct zink_context *ctx, struct zink_resource *res)
+static inline bool
+unordered_res_exec(const struct zink_context *ctx, const struct zink_resource *res)
 {
-   if (!zink_resource_usage_matches(res, ctx->batch.state) || res->obj->unordered_exec || (zink_debug & ZINK_DEBUG_NOREORDER) == 0) {
-      res->obj->unordered_exec = true;
+   return !zink_resource_usage_matches(res, ctx->batch.state) || res->obj->unordered_exec;
+}
+
+static inline VkCommandBuffer
+get_cmdbuf(struct zink_context *ctx, struct zink_resource *res, struct zink_resource *res_2)
+{
+   bool unordered_exec = unordered_res_exec(ctx, res) && (!res_2 || unordered_res_exec(ctx, res_2)) && (zink_debug & ZINK_DEBUG_NOREORDER) == 0;
+   res->obj->unordered_exec = unordered_exec;
+   if (res_2)
+      res_2->obj->unordered_exec = unordered_exec;
+   if (unordered_exec) {
       ctx->batch.state->has_barriers = true;
       return ctx->batch.state->barrier_cmdbuf;
    }
    zink_batch_no_rp(ctx);
-   res->obj->unordered_exec = false;
    return ctx->batch.state->cmdbuf;
 }
 
@@ -3172,7 +3180,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    if (!zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline))
       return;
    /* only barrier if we're changing layout or doing something besides read -> read */
-   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
+   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
    if (!res->obj->access_stage)
       imb.srcAccessMask = 0;
@@ -3269,7 +3277,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
    bmb.dstAccessMask = flags;
    if (!res->obj->access_stage)
       bmb.srcAccessMask = 0;
-   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
+   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res, NULL);
    /* only barrier if we're changing layout or doing something besides read -> read */
    VKCTX(CmdPipelineBarrier)(
       cmdbuf,
