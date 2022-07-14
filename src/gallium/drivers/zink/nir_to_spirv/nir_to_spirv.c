@@ -1651,6 +1651,7 @@ emit_so_outputs(struct ntv_context *ctx,
                    v = 1;
                    components[idx++] = spirv_builder_emit_composite_extract(&ctx->builder, get_uvec_type(ctx, 32, 1), val, &v, 1);
                 } else {
+                   components[idx] = emit_bitcast(ctx, spirv_builder_type_uint(&ctx->builder, 32), components[idx]);
                    idx++;
                 }
              }
