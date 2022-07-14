@@ -56,7 +56,6 @@ typedef struct
    bool early_prim_export;
    bool use_edgeflags;
    bool has_prim_query;
-   bool can_cull;
    unsigned wave_size;
    unsigned max_num_waves;
    unsigned num_vertices_per_primitives;
@@ -1244,7 +1243,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    unsigned max_num_waves = nogs_state->max_num_waves;
    unsigned ngg_scratch_lds_base_addr = ALIGN(total_es_lds_bytes, 8u);
    unsigned ngg_scratch_lds_bytes = ALIGN(max_num_waves, 4u);
-   nogs_state->total_lds_bytes = ngg_scratch_lds_base_addr + ngg_scratch_lds_bytes;
+   nogs_state->total_lds_bytes = MAX2(nogs_state->total_lds_bytes,
+                                      ngg_scratch_lds_base_addr + ngg_scratch_lds_bytes);
 
    nir_function_impl *impl = nir_shader_get_entrypoint(b->shader);
 
@@ -1523,7 +1523,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .early_prim_export = early_prim_export,
       .use_edgeflags = use_edgeflags,
       .has_prim_query = has_prim_query,
-      .can_cull = can_cull,
       .num_vertices_per_primitives = num_vertices_per_primitives,
       .provoking_vtx_idx = provoking_vtx_last ? (num_vertices_per_primitives - 1) : 0,
       .position_value_var = position_value_var,
@@ -1590,19 +1589,19 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
 
       if (state.early_prim_export)
          emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, state.prim_exp_arg_var));
-   }
 
-   if (need_prim_id_store_shared) {
-      /* We need LDS space when VS needs to export the primitive ID. */
-      state.total_lds_bytes = MAX2(state.total_lds_bytes, max_num_es_vertices * 4u);
-
-      /* The LDS space aliases with what is used by culling, so we need a barrier. */
-      if (can_cull) {
+      /* Wait for culling to finish using LDS. */
+      if (need_prim_id_store_shared) {
          nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
                                .memory_scope = NIR_SCOPE_WORKGROUP,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
                                .memory_modes = nir_var_mem_shared);
       }
+   }
+
+   if (need_prim_id_store_shared) {
+      /* We need LDS space when VS needs to export the primitive ID. */
+      state.total_lds_bytes = MAX2(state.total_lds_bytes, max_num_es_vertices * 4u);
 
       emit_ngg_nogs_prim_id_store_shared(b, &state);
 
