@@ -714,38 +714,6 @@ nir_builder PRINTFLIKE(3, 4)
    return b;
 }
 
-nir_ssa_def *
-radv_meta_gen_rect_vertices_comp2(nir_builder *vs_b, nir_ssa_def *comp2)
-{
-
-   nir_ssa_def *vertex_id = nir_load_vertex_id_zero_base(vs_b);
-
-   /* vertex 0 - -1.0, -1.0 */
-   /* vertex 1 - -1.0, 1.0 */
-   /* vertex 2 - 1.0, -1.0 */
-   /* so channel 0 is vertex_id != 2 ? -1.0 : 1.0
-      channel 1 is vertex id != 1 ? -1.0 : 1.0 */
-
-   nir_ssa_def *c0cmp = nir_ine_imm(vs_b, vertex_id, 2);
-   nir_ssa_def *c1cmp = nir_ine_imm(vs_b, vertex_id, 1);
-
-   nir_ssa_def *comp[4];
-   comp[0] = nir_bcsel(vs_b, c0cmp, nir_imm_float(vs_b, -1.0), nir_imm_float(vs_b, 1.0));
-
-   comp[1] = nir_bcsel(vs_b, c1cmp, nir_imm_float(vs_b, -1.0), nir_imm_float(vs_b, 1.0));
-   comp[2] = comp2;
-   comp[3] = nir_imm_float(vs_b, 1.0);
-   nir_ssa_def *outvec = nir_vec(vs_b, comp, 4);
-
-   return outvec;
-}
-
-nir_ssa_def *
-radv_meta_gen_rect_vertices(nir_builder *vs_b)
-{
-   return radv_meta_gen_rect_vertices_comp2(vs_b, nir_imm_float(vs_b, 0.0));
-}
-
 /* vertex shader that generates vertices */
 nir_shader *
 radv_meta_build_nir_vs_generate_vertices(struct radv_device *dev)
@@ -756,7 +724,7 @@ radv_meta_build_nir_vs_generate_vertices(struct radv_device *dev)
 
    nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_VERTEX, "meta_vs_gen_verts");
 
-   nir_ssa_def *outvec = radv_meta_gen_rect_vertices(&b);
+   nir_ssa_def *outvec = nir_gen_rect_vertices(&b, NULL, NULL);
 
    v_position = nir_variable_create(b.shader, nir_var_shader_out, vec4, "gl_Position");
    v_position->data.location = VARYING_SLOT_POS;

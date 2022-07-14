@@ -55,7 +55,7 @@ build_color_shaders(struct radv_device *dev, struct nir_shader **out_vs, struct 
 
    nir_store_var(&fs_b, fs_out_color, in_color_load, 0xf);
 
-   nir_ssa_def *outvec = radv_meta_gen_rect_vertices(&vs_b);
+   nir_ssa_def *outvec = nir_gen_rect_vertices(&vs_b, NULL, NULL);
    nir_store_var(&vs_b, vs_out_pos, outvec, 0xf);
 
    const struct glsl_type *layer_type = glsl_int_type();
@@ -416,7 +416,7 @@ build_depthstencil_shader(struct radv_device *dev, struct nir_shader **out_vs,
       z = nir_load_push_constant(&vs_b, 1, 32, nir_imm_int(&vs_b, 0), .range = 4);
    }
 
-   nir_ssa_def *outvec = radv_meta_gen_rect_vertices_comp2(&vs_b, z);
+   nir_ssa_def *outvec = nir_gen_rect_vertices(&vs_b, z, NULL);
    nir_store_var(&vs_b, vs_out_pos, outvec, 0xf);
 
    const struct glsl_type *layer_type = glsl_int_type();
