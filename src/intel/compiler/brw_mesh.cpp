@@ -1037,8 +1037,11 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
    fs_builder ubld8 = bld.group(8, 0).exec_all();
    fs_reg data = ubld8.vgrf(BRW_REGISTER_TYPE_UD, num_regs);
+   fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+   srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
 
-   fs_inst *inst = ubld8.emit(SHADER_OPCODE_URB_READ_LOGICAL, data, urb_handle);
+   fs_inst *inst = ubld8.emit(SHADER_OPCODE_URB_READ_LOGICAL, data,
+                              srcs, ARRAY_SIZE(srcs));
    inst->mlen = 1;
    inst->offset = urb_global_offset;
    assert(inst->offset < 2048);
@@ -1093,17 +1096,14 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          bld8.SHR(off, off, brw_imm_ud(2));
 
-         fs_reg payload_srcs[2];
-         payload_srcs[0] = urb_handle;
-         payload_srcs[1] = off;
-
-         fs_reg payload = bld8.vgrf(BRW_REGISTER_TYPE_UD, 2);
-         bld8.LOAD_PAYLOAD(payload, payload_srcs, 2, 2);
+         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
+         srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = off;
 
          fs_reg data = bld8.vgrf(BRW_REGISTER_TYPE_UD, 4);
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL,
-                                   data, payload);
+                                   data, srcs, ARRAY_SIZE(srcs));
          inst->mlen = 2;
          inst->offset = 0;
          inst->size_written = 4 * REG_SIZE;

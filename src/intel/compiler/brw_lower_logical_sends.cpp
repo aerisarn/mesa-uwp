@@ -36,13 +36,24 @@ lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst,
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
 
-
    assert(inst->size_written % REG_SIZE == 0);
-   assert(inst->src[0].type == BRW_REGISTER_TYPE_UD);
-   assert(inst->src[0].file == FIXED_GRF || inst->src[0].file == VGRF);
+   assert(inst->header_size == 0);
+
+   fs_reg *payload_sources = new fs_reg[inst->mlen];
+   fs_reg payload = fs_reg(VGRF, bld.shader->alloc.allocate(inst->mlen),
+                           BRW_REGISTER_TYPE_F);
+
+   unsigned header_size = 0;
+   payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_HANDLE];
+   if (per_slot_present)
+      payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
+
+   bld.LOAD_PAYLOAD(payload, payload_sources, inst->mlen, header_size);
+
+   delete [] payload_sources;
 
    inst->opcode = SHADER_OPCODE_SEND;
-   inst->header_size = 1;
+   inst->header_size = header_size;
 
    inst->sfid = BRW_SFID_URB;
    inst->desc = brw_urb_desc(devinfo,
@@ -55,13 +66,11 @@ lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst,
    inst->ex_mlen = 0;
    inst->send_is_volatile = true;
 
-   fs_reg tmp = inst->src[0];
-
    inst->resize_sources(4);
 
    inst->src[0] = brw_imm_ud(0); /* desc */
    inst->src[1] = brw_imm_ud(0); /* ex_desc */
-   inst->src[2] = tmp;
+   inst->src[2] = payload;
    inst->src[3] = brw_null_reg();
 }
 

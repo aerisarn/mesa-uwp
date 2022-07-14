@@ -902,8 +902,6 @@ fs_inst::size_read(int arg) const
       break;
 
    case FS_OPCODE_FB_READ:
-   case SHADER_OPCODE_URB_READ_LOGICAL:
-   case SHADER_OPCODE_URB_READ_PER_SLOT_LOGICAL:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
       if (arg == 0)
