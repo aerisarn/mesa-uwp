@@ -91,8 +91,7 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
 
    if (cmd_buffer->push_constants_resource.bo == NULL) {
       cmd_buffer->push_constants_resource.bo =
-         v3dv_bo_alloc(cmd_buffer->device, MAX_PUSH_CONSTANTS_SIZE,
-                       "push constants", true);
+         v3dv_bo_alloc(cmd_buffer->device, 4096, "push constants", true);
 
       if (!cmd_buffer->push_constants_resource.bo) {
          fprintf(stderr, "Failed to allocate memory for push constants\n");
@@ -101,7 +100,7 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
 
       bool ok = v3dv_bo_map(cmd_buffer->device,
                             cmd_buffer->push_constants_resource.bo,
-                            MAX_PUSH_CONSTANTS_SIZE);
+                            cmd_buffer->push_constants_resource.bo->size);
       if (!ok) {
          fprintf(stderr, "failed to map push constants buffer\n");
          abort();
