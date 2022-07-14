@@ -1597,8 +1597,6 @@ create_blit_render_pass(struct v3dv_device *device,
                         VkRenderPass *pass_load,
                         VkRenderPass *pass_no_load);
 
-static nir_ssa_def *gen_rect_vertices(nir_builder *b);
-
 static bool
 create_pipeline(struct v3dv_device *device,
                 struct v3dv_render_pass *pass,
@@ -1623,7 +1621,7 @@ get_texel_buffer_copy_vs()
                           glsl_vec4_type(), "gl_Position");
    vs_out_pos->data.location = VARYING_SLOT_POS;
 
-   nir_ssa_def *pos = gen_rect_vertices(&b);
+   nir_ssa_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
    nir_store_var(&b, vs_out_pos, pos, 0xf);
 
    return b.shader;
@@ -3050,39 +3048,6 @@ create_blit_render_pass(struct v3dv_device *device,
 }
 
 static nir_ssa_def *
-gen_rect_vertices(nir_builder *b)
-{
-   nir_ssa_def *vertex_id = nir_load_vertex_id(b);
-
-   /* vertex 0: -1.0, -1.0
-    * vertex 1: -1.0,  1.0
-    * vertex 2:  1.0, -1.0
-    * vertex 3:  1.0,  1.0
-    *
-    * so:
-    *
-    * channel 0 is vertex_id < 2 ? -1.0 :  1.0
-    * channel 1 is vertex id & 1 ?  1.0 : -1.0
-    */
-
-   nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *c0cmp = nir_ilt(b, vertex_id, nir_imm_int(b, 2));
-   nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
-
-   nir_ssa_def *comp[4];
-   comp[0] = nir_bcsel(b, c0cmp,
-                       nir_imm_float(b, -1.0f),
-                       nir_imm_float(b, 1.0f));
-
-   comp[1] = nir_bcsel(b, c1cmp,
-                       nir_imm_float(b, 1.0f),
-                       nir_imm_float(b, -1.0f));
-   comp[2] = nir_imm_float(b, 0.0f);
-   comp[3] = nir_imm_float(b, 1.0f);
-   return nir_vec(b, comp, 4);
-}
-
-static nir_ssa_def *
 gen_tex_coords(nir_builder *b)
 {
    nir_ssa_def *tex_box =
@@ -3288,7 +3253,7 @@ get_blit_vs()
    vs_out_tex_coord->data.location = VARYING_SLOT_VAR0;
    vs_out_tex_coord->data.interpolation = INTERP_MODE_SMOOTH;
 
-   nir_ssa_def *pos = gen_rect_vertices(&b);
+   nir_ssa_def *pos = nir_gen_rect_vertices(&b, NULL, NULL);
    nir_store_var(&b, vs_out_pos, pos, 0xf);
 
    nir_ssa_def *tex_coord = gen_tex_coords(&b);
