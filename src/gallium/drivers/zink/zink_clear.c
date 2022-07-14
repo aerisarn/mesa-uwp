@@ -239,6 +239,8 @@ zink_clear(struct pipe_context *pctx,
       return;
    }
 
+   unsigned rp_clears_enabled = ctx->rp_clears_enabled;
+
    if (ctx->void_clears & buffers) {
       unsigned void_clears = ctx->void_clears & buffers;
       ctx->void_clears &= ~buffers;
@@ -289,6 +291,7 @@ zink_clear(struct pipe_context *pctx,
       else
          ctx->rp_clears_enabled |= (buffers & PIPE_CLEAR_DEPTHSTENCIL);
    }
+   ctx->rp_changed |= ctx->rp_clears_enabled != rp_clears_enabled;
 }
 
 static inline bool
@@ -593,6 +596,7 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
 void
 zink_fb_clear_reset(struct zink_context *ctx, unsigned i)
 {
+   unsigned rp_clears_enabled = ctx->clears_enabled;
    util_dynarray_clear(&ctx->fb_clears[i].clears);
    if (i == PIPE_MAX_COLOR_BUFS) {
       ctx->clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
@@ -601,6 +605,8 @@ zink_fb_clear_reset(struct zink_context *ctx, unsigned i)
       ctx->clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
       ctx->rp_clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
    }
+   if (ctx->rp_clears_enabled != rp_clears_enabled)
+      ctx->rp_changed = true;
 }
 
 void
