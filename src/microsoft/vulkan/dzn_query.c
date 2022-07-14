@@ -22,6 +22,7 @@
  */
 
 #include "dzn_private.h"
+#include "dzn_abi_helper.h"
 
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
@@ -131,9 +132,8 @@ dzn_query_pool_create(struct dzn_device *device,
    default: unreachable("Unsupported query type");
    }
 
-   D3D12_HEAP_PROPERTIES hprops;
-   ID3D12Device1_GetCustomHeapProperties(device->dev, &hprops, 0,
-                                         D3D12_HEAP_TYPE_DEFAULT);
+   D3D12_HEAP_PROPERTIES hprops =
+      dzn_ID3D12Device2_GetCustomHeapProperties(device->dev, 0, D3D12_HEAP_TYPE_DEFAULT);
    D3D12_RESOURCE_DESC rdesc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
@@ -159,8 +159,8 @@ dzn_query_pool_create(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
-   ID3D12Device1_GetCustomHeapProperties(device->dev, &hprops, 0,
-                                         D3D12_HEAP_TYPE_READBACK);
+   hprops = dzn_ID3D12Device2_GetCustomHeapProperties(device->dev, 0,
+                                                      D3D12_HEAP_TYPE_READBACK);
    rdesc.Width = info->queryCount * (qpool->query_size + sizeof(uint64_t));
    hres = ID3D12Device1_CreateCommittedResource(device->dev, &hprops,
                                                 D3D12_HEAP_FLAG_NONE,

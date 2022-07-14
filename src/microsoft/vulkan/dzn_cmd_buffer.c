@@ -1063,8 +1063,7 @@ dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
    /* Align size on 64k (the default alignment) */
    size = ALIGN_POT(size, 64 * 1024);
 
-   D3D12_HEAP_PROPERTIES hprops;
-   ID3D12Device1_GetCustomHeapProperties(device->dev, &hprops, 0, heap_type);
+   D3D12_HEAP_PROPERTIES hprops = dzn_ID3D12Device2_GetCustomHeapProperties(device->dev, 0, heap_type);
    D3D12_RESOURCE_DESC rdesc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
