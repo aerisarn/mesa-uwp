@@ -143,6 +143,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       uint32_t depth_stencil_dw[GENX(DEPTH_STENCIL_STATE_length)];
 
       struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
+         .DoubleSidedStencilEnable = true,
+
          .StencilTestMask = d->stencil_compare_mask.front & 0xff,
          .StencilWriteMask = d->stencil_write_mask.front & 0xff,
 
@@ -169,9 +171,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       GENX(DEPTH_STENCIL_STATE_pack)(NULL, depth_stencil_dw, &depth_stencil);
 
       struct anv_state ds_state =
-         anv_cmd_buffer_merge_dynamic(cmd_buffer, depth_stencil_dw,
-                                      pipeline->gfx7.depth_stencil_state,
-                                      GENX(DEPTH_STENCIL_STATE_length), 64);
+         anv_cmd_buffer_emit_dynamic(cmd_buffer, depth_stencil_dw,
+                                     sizeof(depth_stencil_dw), 64);
 
       anv_batch_emit(&cmd_buffer->batch,
                      GENX(3DSTATE_DEPTH_STENCIL_STATE_POINTERS), dsp) {

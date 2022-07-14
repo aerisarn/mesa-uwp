@@ -979,14 +979,6 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
               const struct vk_depth_stencil_state *ds_in,
               const struct vk_render_pass_state *rp)
 {
-#if GFX_VER == 7
-#  define depth_stencil_dw pipeline->gfx7.depth_stencil_state
-#elif GFX_VER == 8
-#  define depth_stencil_dw pipeline->gfx8.wm_depth_stencil
-#else
-#  define depth_stencil_dw pipeline->gfx9.wm_depth_stencil
-#endif
-
    if (ds_in == NULL) {
       /* We're going to OR this together with the dynamic state.  We need
        * to make sure it's initialized to something useful.
@@ -996,7 +988,6 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
       pipeline->writes_depth = false;
       pipeline->depth_test_enable = false;
       pipeline->depth_bounds_test_enable = false;
-      memset(depth_stencil_dw, 0, sizeof(depth_stencil_dw));
       return;
    }
 
@@ -1015,20 +1006,6 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    pipeline->writes_depth = ds.depth.write_enable;
    pipeline->depth_test_enable = ds.depth.test_enable;
    pipeline->depth_bounds_test_enable = ds.depth.bounds_test.enable;
-
-#if GFX_VER <= 7
-   struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
-#else
-   struct GENX(3DSTATE_WM_DEPTH_STENCIL) depth_stencil = {
-#endif
-      .DoubleSidedStencilEnable = true,
-   };
-
-#if GFX_VER <= 7
-   GENX(DEPTH_STENCIL_STATE_pack)(NULL, depth_stencil_dw, &depth_stencil);
-#else
-   GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, depth_stencil_dw, &depth_stencil);
-#endif
 }
 
 static bool

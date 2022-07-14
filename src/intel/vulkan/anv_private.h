@@ -3368,7 +3368,6 @@ struct anv_graphics_pipeline {
     */
    struct {
       uint32_t                                  sf[7];
-      uint32_t                                  depth_stencil_state[3];
       uint32_t                                  clip[4];
       uint32_t                                  xfb_bo_pitch[4];
       uint32_t                                  wm[3];
@@ -3379,16 +3378,11 @@ struct anv_graphics_pipeline {
    struct {
       uint32_t                                  sf[4];
       uint32_t                                  raster[5];
-      uint32_t                                  wm_depth_stencil[3];
       uint32_t                                  wm[2];
       uint32_t                                  ps_blend[2];
       uint32_t                                  blend_state[1 + MAX_RTS * 2];
       uint32_t                                  streamout_state[5];
    } gfx8;
-
-   struct {
-      uint32_t                                  wm_depth_stencil[4];
-   } gfx9;
 };
 
 struct anv_compute_pipeline {
