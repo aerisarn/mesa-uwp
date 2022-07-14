@@ -1716,6 +1716,9 @@ nir_f2iN(nir_builder *b, nir_ssa_def *src, unsigned bit_size)
          (nir_alu_type) (nir_type_int | bit_size));
 }
 
+nir_ssa_def *
+nir_gen_rect_vertices(nir_builder *b, nir_ssa_def *z, nir_ssa_def *w);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
