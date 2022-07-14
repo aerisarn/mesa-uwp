@@ -11046,10 +11046,16 @@ struct mrt_color_export {
    unsigned write_mask;
    Operand values[4];
    uint8_t col_format;
+
+   /* Fields below are only used for PS epilogs. */
+   bool is_int8;
+   bool is_int10;
+   bool enable_mrt_output_nan_fixup;
 };
 
 static bool
-export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export *out)
+export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export *out,
+                    bool is_ps_epilog)
 {
    Builder bld(ctx->program, ctx->block);
    Operand values[4];
@@ -11060,9 +11066,23 @@ export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export *out)
 
    unsigned target;
    unsigned enabled_channels = 0;
+   aco_opcode compr_op = aco_opcode::num_opcodes;
    bool compr = false;
 
    target = V_008DFC_SQ_EXP_MRT + out->slot;
+
+   /* Replace NaN by zero (only 32-bit) to fix game bugs if requested. */
+   if (out->enable_mrt_output_nan_fixup &&
+       (out->col_format == V_028714_SPI_SHADER_32_R || out->col_format == V_028714_SPI_SHADER_32_GR ||
+        out->col_format == V_028714_SPI_SHADER_32_AR || out->col_format == V_028714_SPI_SHADER_32_ABGR ||
+        out->col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
+      u_foreach_bit(i, out->write_mask) {
+         Temp isnan = bld.vopc(aco_opcode::v_cmp_class_f32, bld.def(bld.lm), values[i],
+                               bld.copy(bld.def(v1), Operand::c32(3u)));
+         values[i] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), values[i],
+                              bld.copy(bld.def(v1), Operand::zero()), isnan);
+      }
+   }
 
    switch (out->col_format) {
    case V_028714_SPI_SHADER_32_R: enabled_channels = 1; break;
@@ -11081,12 +11101,91 @@ export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export *out)
       break;
 
    case V_028714_SPI_SHADER_FP16_ABGR:
-   case V_028714_SPI_SHADER_UNORM16_ABGR:
-   case V_028714_SPI_SHADER_SNORM16_ABGR:
-   case V_028714_SPI_SHADER_UINT16_ABGR:
-   case V_028714_SPI_SHADER_SINT16_ABGR:
-      enabled_channels = util_widen_mask(out->write_mask, 2);
+      if (is_ps_epilog) {
+         for (int i = 0; i < 2; i++) {
+            bool enabled = (out->write_mask >> (i * 2)) & 0x3;
+            if (enabled) {
+               enabled_channels |= 0x3 << (i * 2);
+               if (ctx->options->gfx_level == GFX8 || ctx->options->gfx_level == GFX9) {
+                  values[i] =
+                     bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32_e64, bld.def(v1),
+                              values[i * 2].isUndefined() ? Operand::zero() : values[i * 2],
+                              values[i * 2 + 1].isUndefined() ? Operand::zero() : values[i * 2 + 1]);
+               } else {
+                  values[i] =
+                     bld.vop2(aco_opcode::v_cvt_pkrtz_f16_f32, bld.def(v1),
+                              values[i * 2].isUndefined() ? values[i * 2 + 1] : values[i * 2],
+                              values[i * 2 + 1].isUndefined() ? values[i * 2] : values[i * 2 + 1]);
+               }
+            } else {
+               values[i] = Operand(v1);
+            }
+         }
+         values[2] = Operand(v1);
+         values[3] = Operand(v1);
+      } else {
+         enabled_channels = util_widen_mask(out->write_mask, 2);
+      }
       compr = true;
+      break;
+
+   case V_028714_SPI_SHADER_UNORM16_ABGR:
+      if (is_ps_epilog) {
+         compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
+      } else {
+         enabled_channels = util_widen_mask(out->write_mask, 2);
+         compr = true;
+      }
+      break;
+
+   case V_028714_SPI_SHADER_SNORM16_ABGR:
+      if (is_ps_epilog) {
+         compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
+      } else {
+         enabled_channels = util_widen_mask(out->write_mask, 2);
+         compr = true;
+      }
+      break;
+
+   case V_028714_SPI_SHADER_UINT16_ABGR:
+      if (is_ps_epilog) {
+         compr_op = aco_opcode::v_cvt_pk_u16_u32;
+         if (out->is_int8 || out->is_int10) {
+            /* clamp */
+            uint32_t max_rgb = out->is_int8 ? 255 : out->is_int10 ? 1023 : 0;
+
+            u_foreach_bit(i, out->write_mask) {
+               uint32_t max = i == 3 && out->is_int10 ? 3 : max_rgb;
+
+               values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1), Operand::c32(max), values[i]);
+            }
+         }
+      } else {
+         enabled_channels = util_widen_mask(out->write_mask, 2);
+         compr = true;
+      }
+      break;
+
+   case V_028714_SPI_SHADER_SINT16_ABGR:
+      if (is_ps_epilog) {
+         compr_op = aco_opcode::v_cvt_pk_i16_i32;
+         if (out->is_int8 || out->is_int10) {
+            /* clamp */
+            uint32_t max_rgb = out->is_int8 ? 127 : out->is_int10 ? 511 : 0;
+            uint32_t min_rgb = out->is_int8 ? -128 : out->is_int10 ? -512 : 0;
+
+            u_foreach_bit(i, out->write_mask) {
+               uint32_t max = i == 3 && out->is_int10 ? 1 : max_rgb;
+               uint32_t min = i == 3 && out->is_int10 ? -2u : min_rgb;
+
+               values[i] = bld.vop2(aco_opcode::v_min_i32, bld.def(v1), Operand::c32(max), values[i]);
+               values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1), Operand::c32(min), values[i]);
+            }
+         }
+      } else {
+         enabled_channels = util_widen_mask(out->write_mask, 2);
+         compr = true;
+      }
       break;
 
    case V_028714_SPI_SHADER_32_ABGR: enabled_channels = 0xF; break;
@@ -11095,7 +11194,23 @@ export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export *out)
    default: return false;
    }
 
-   if (!compr) {
+   if (compr_op != aco_opcode::num_opcodes) {
+      for (int i = 0; i < 2; i++) {
+         /* check if at least one of the values to be compressed is enabled */
+         bool enabled = (out->write_mask >> (i * 2)) & 0x3;
+         if (enabled) {
+            enabled_channels |= 0x3 << (i * 2);
+            values[i] = bld.vop3(
+               compr_op, bld.def(v1), values[i * 2].isUndefined() ? Operand::zero() : values[i * 2],
+               values[i * 2 + 1].isUndefined() ? Operand::zero() : values[i * 2 + 1]);
+         } else {
+            values[i] = Operand(v1);
+         }
+      }
+      values[2] = Operand(v1);
+      values[3] = Operand(v1);
+      compr = true;
+   } else if (!compr) {
       for (int i = 0; i < 4; i++)
          values[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
    }
@@ -11210,7 +11325,7 @@ create_fs_exports(isel_context* ctx)
             }
          }
 
-         exported |= export_fs_mrt_color(ctx, &out);
+         exported |= export_fs_mrt_color(ctx, &out, false);
       }
 
       if (!exported)
@@ -11683,7 +11798,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                const struct aco_shader_info* info,
                const struct radv_shader_args* args)
 {
-   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false);
+   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false, false);
    if_context ic_merged_wave_info;
    bool ngg_gs = ctx.stage.hw == HWStage::NGG && ctx.stage.has(SWStage::GS);
 
@@ -11812,7 +11927,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
                       const struct aco_shader_info* info,
                       const struct radv_shader_args* args)
 {
-   isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, options, info, args, true);
+   isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, options, info, args, true, false);
 
    ctx.block->fp_mode = program->next_fp_mode;
 
@@ -12292,5 +12407,59 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
    program->needs_vcc = program->gfx_level <= GFX8;
    program->config->num_vgprs = get_vgpr_alloc(program, num_vgprs);
    program->config->num_sgprs = get_sgpr_alloc(program, num_sgprs);
+}
+
+void
+select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shader_config* config,
+                 const struct aco_compiler_options* options,
+                 const struct aco_shader_info* info,
+                 const struct radv_shader_args* args)
+{
+   isel_context ctx = setup_isel_context(program, 0, NULL, config, options, info, args, false, true);
+
+   ctx.block->fp_mode = program->next_fp_mode;
+
+   add_startpgm(&ctx);
+   append_logical_start(ctx.block);
+
+   Builder bld(ctx.program, ctx.block);
+
+   /* Export all color render targets */
+   bool exported = false;
+
+   for (unsigned i = 0; i < 8; i++) {
+      unsigned col_format = (key->spi_shader_col_format >> (i * 4)) & 0xf;
+
+      if (col_format == V_028714_SPI_SHADER_ZERO)
+         continue;
+
+      struct mrt_color_export out;
+
+      out.slot = i;
+      out.write_mask = 0xf;
+      out.col_format = col_format;
+      out.is_int8 = (key->color_is_int8 >> i) & 1;
+      out.is_int10 = (key->color_is_int10 >> i) & 1;
+      out.enable_mrt_output_nan_fixup = (key->enable_mrt_output_nan_fixup >> i) & 1;
+
+      Temp inputs = get_arg(&ctx, ctx.args->ps_epilog_inputs[i]);
+      for (unsigned c = 0; c < 4; ++c) {
+         out.values[c] = Operand(emit_extract_vector(&ctx, inputs, c, v1));
+      }
+
+      exported |= export_fs_mrt_color(&ctx, &out, true);
+   }
+
+   if (!exported)
+      create_fs_null_export(&ctx);
+
+   program->config->float_mode = program->blocks[0].fp_mode.val;
+
+   append_logical_end(ctx.block);
+   ctx.block->kind |= block_kind_export_end;
+   bld.reset(ctx.block);
+   bld.sopp(aco_opcode::s_endpgm);
+
+   cleanup_cfg(program);
 }
 } // namespace aco

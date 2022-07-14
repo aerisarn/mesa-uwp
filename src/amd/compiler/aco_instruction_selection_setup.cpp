@@ -825,7 +825,8 @@ isel_context
 setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
                    ac_shader_config* config, const struct aco_compiler_options* options,
                    const struct aco_shader_info* info,
-                   const struct radv_shader_args* args, bool is_gs_copy_shader)
+                   const struct radv_shader_args* args, bool is_gs_copy_shader,
+                   bool is_ps_epilog)
 {
    SWStage sw_stage = SWStage::None;
    for (unsigned i = 0; i < shader_count; i++) {
@@ -843,6 +844,12 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
       default: unreachable("Shader stage not implemented");
       }
    }
+
+   if (is_ps_epilog) {
+      assert(shader_count == 0 && !shaders);
+      sw_stage = SWStage::FS;
+   }
+
    bool gfx9_plus = options->gfx_level >= GFX9;
    bool ngg = info->is_ngg && options->gfx_level >= GFX10;
    HWStage hw_stage{};

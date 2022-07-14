@@ -314,3 +314,48 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
                    disasm.data(),
                    disasm.size());
 }
+
+void
+aco_compile_ps_epilog(const struct aco_compiler_options* options,
+                      const struct aco_shader_info* info,
+                      const struct aco_ps_epilog_key* key,
+                      const struct radv_shader_args* args,
+                      aco_shader_part_callback* build_epilog,
+                      void** binary)
+{
+   aco::init();
+
+   ac_shader_config config = {0};
+   std::unique_ptr<aco::Program> program{new aco::Program};
+
+   program->collect_statistics = options->record_stats;
+   if (program->collect_statistics)
+      memset(program->statistics, 0, sizeof(program->statistics));
+
+   program->debug.func = options->debug.func;
+   program->debug.private_data = options->debug.private_data;
+
+   /* Instruction selection */
+   aco::select_ps_epilog(program.get(), key, &config, options, info, args);
+
+   aco_postprocess_shader(options, args, program);
+
+   /* assembly */
+   std::vector<uint32_t> code;
+   unsigned exec_size = aco::emit_program(program.get(), code);
+
+   bool get_disasm = options->dump_shader || options->record_ir;
+
+   std::string disasm;
+   if (get_disasm)
+      disasm = get_disasm_string(program.get(), code, exec_size);
+
+   (*build_epilog)(binary,
+                   config.num_sgprs,
+                   config.num_vgprs,
+                   0,
+                   code.data(),
+                   code.size(),
+                   disasm.data(),
+                   disasm.size());
+}

@@ -2206,6 +2206,12 @@ void select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key,
                       const struct radv_shader_args* args,
                       unsigned* num_preserved_sgprs);
 
+void select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key,
+                      ac_shader_config* config,
+                      const struct aco_compiler_options* options,
+                      const struct aco_shader_info* info,
+                      const struct radv_shader_args* args);
+
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
