@@ -265,7 +265,7 @@ init_texture(struct d3d12_screen *screen,
                                                nullptr,
                                                IID_PPV_ARGS(&d3d12_res));
    } else {
-      D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
+      D3D12_HEAP_PROPERTIES heap_pris = GetCustomHeapProperties(screen->dev, D3D12_HEAP_TYPE_DEFAULT);
 
       D3D12_HEAP_FLAGS heap_flags = screen->support_create_not_resident ?
          D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT : D3D12_HEAP_FLAG_NONE;
@@ -329,7 +329,7 @@ convert_planar_resource(struct d3d12_resource *res)
 
 #if DEBUG
       struct d3d12_screen *screen = d3d12_screen(res->base.b.screen);
-      D3D12_RESOURCE_DESC desc = res->bo->res->GetDesc();
+      D3D12_RESOURCE_DESC desc = GetDesc(res->bo->res);
       D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint = {};
       D3D12_SUBRESOURCE_FOOTPRINT *footprint = &placed_footprint.Footprint;
       unsigned subresource = plane * desc.MipLevels * desc.DepthOrArraySize;
@@ -475,7 +475,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
 
    pipe_reference_init(&res->base.b.reference, 1);
    res->base.b.screen = pscreen;
-   incoming_res_desc = d3d12_res->GetDesc();
+   incoming_res_desc = GetDesc(d3d12_res);
 
    /* Get a description for this plane */
    if (templ && handle->format != templ->format) {
@@ -682,7 +682,7 @@ struct pipe_resource *
 d3d12_resource_from_resource(struct pipe_screen *pscreen,
                               ID3D12Resource* input_res)
 {
-    D3D12_RESOURCE_DESC input_desc = input_res->GetDesc();
+    D3D12_RESOURCE_DESC input_desc = GetDesc(input_res);
     struct winsys_handle handle;
     memset(&handle, 0, sizeof(handle));
     handle.type = WINSYS_HANDLE_TYPE_D3D12_RES;
@@ -977,7 +977,7 @@ fill_buffer_location(struct d3d12_context *ctx,
    D3D12_TEXTURE_COPY_LOCATION buf_loc = {0};
    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
    uint64_t offset = 0;
-   auto descr = d3d12_resource_underlying(res, &offset)->GetDesc();
+   auto descr = GetDesc(d3d12_resource_underlying(res, &offset));
    struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
    ID3D12Device* dev = screen->dev;
 

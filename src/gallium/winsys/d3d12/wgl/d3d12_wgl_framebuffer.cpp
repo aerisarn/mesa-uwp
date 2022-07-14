@@ -193,7 +193,7 @@ d3d12_wgl_framebuffer_get_resource(struct stw_winsys_framebuffer *pframebuffer,
    handle.format = framebuffer->pformat;
    handle.com_obj = res;
 
-   D3D12_RESOURCE_DESC res_desc = res->GetDesc();
+   D3D12_RESOURCE_DESC res_desc = GetDesc(res);
 
    struct pipe_resource templ;
    memset(&templ, 0, sizeof(templ));

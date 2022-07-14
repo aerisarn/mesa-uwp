@@ -35,4 +35,70 @@
 #define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
 
+#if defined(__cplusplus)
+#if !defined(_WIN32) || defined(_MSC_VER) || D3D12_SDK_VERSION < 606
+inline D3D12_CPU_DESCRIPTOR_HANDLE
+GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   return heap->GetCPUDescriptorHandleForHeapStart();
+}
+inline D3D12_GPU_DESCRIPTOR_HANDLE
+GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   return heap->GetGPUDescriptorHandleForHeapStart();
+}
+inline D3D12_RESOURCE_DESC
+GetDesc(ID3D12Resource *res)
+{
+   return res->GetDesc();
+}
+inline D3D12_HEAP_PROPERTIES
+GetCustomHeapProperties(ID3D12Device *dev, D3D12_HEAP_TYPE type)
+{
+   return dev->GetCustomHeapProperties(0, type);
+}
+inline LUID
+GetAdapterLuid(ID3D12Device *dev)
+{
+   return dev->GetAdapterLuid();
+}
+#else
+inline D3D12_CPU_DESCRIPTOR_HANDLE
+GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   D3D12_CPU_DESCRIPTOR_HANDLE ret;
+   heap->GetCPUDescriptorHandleForHeapStart(&ret);
+   return ret;
+}
+inline D3D12_GPU_DESCRIPTOR_HANDLE
+GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   D3D12_GPU_DESCRIPTOR_HANDLE ret;
+   heap->GetGPUDescriptorHandleForHeapStart(&ret);
+   return ret;
+}
+inline D3D12_RESOURCE_DESC
+GetDesc(ID3D12Resource *res)
+{
+   D3D12_RESOURCE_DESC ret;
+   res->GetDesc(&ret);
+   return ret;
+}
+inline D3D12_HEAP_PROPERTIES
+GetCustomHeapProperties(ID3D12Device *dev, D3D12_HEAP_TYPE type)
+{
+   D3D12_HEAP_PROPERTIES ret;
+   dev->GetCustomHeapProperties(&ret, 0, type);
+   return ret;
+}
+inline LUID
+GetAdapterLuid(ID3D12Device *dev)
+{
+   LUID ret;
+   dev->GetAdapterLuid(&ret);
+   return ret;
+}
+#endif
+#endif
+
 #endif

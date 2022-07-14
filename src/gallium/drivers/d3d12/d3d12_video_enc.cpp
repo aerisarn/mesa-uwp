@@ -983,7 +983,7 @@ d3d12_video_encoder_prepare_output_buffers(struct d3d12_video_encoder *pD3D12Enc
 
    D3D12_HEAP_PROPERTIES Properties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
    if ((pD3D12Enc->m_spResolvedMetadataBuffer == nullptr) ||
-       (pD3D12Enc->m_spResolvedMetadataBuffer->GetDesc().Width <
+       (GetDesc(pD3D12Enc->m_spResolvedMetadataBuffer.Get()).Width <
         pD3D12Enc->m_currentEncodeCapabilities.m_resolvedLayoutMetadataBufferRequiredSize)) {
       CD3DX12_RESOURCE_DESC resolvedMetadataBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
          pD3D12Enc->m_currentEncodeCapabilities.m_resolvedLayoutMetadataBufferRequiredSize);
@@ -1003,7 +1003,7 @@ d3d12_video_encoder_prepare_output_buffers(struct d3d12_video_encoder *pD3D12Enc
    }
 
    if ((pD3D12Enc->m_spMetadataOutputBuffer == nullptr) ||
-       (pD3D12Enc->m_spMetadataOutputBuffer->GetDesc().Width <
+       (GetDesc(pD3D12Enc->m_spMetadataOutputBuffer.Get()).Width <
         pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.MaxEncoderOutputMetadataBufferSize)) {
       CD3DX12_RESOURCE_DESC metadataBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
          pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.MaxEncoderOutputMetadataBufferSize);
@@ -1253,7 +1253,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
          // reference pics in ppTexture2Ds and also for the pReconstructedPicture output allocations, just different
          // subresources.
 
-         CD3DX12_RESOURCE_DESC referencesTexArrayDesc(referenceFramesDescriptor.ppTexture2Ds[0]->GetDesc());
+         CD3DX12_RESOURCE_DESC referencesTexArrayDesc(GetDesc(referenceFramesDescriptor.ppTexture2Ds[0]));
 
          for (uint32_t referenceSubresource = 0; referenceSubresource < referencesTexArrayDesc.DepthOrArraySize;
               referenceSubresource++) {

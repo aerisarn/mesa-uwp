@@ -1186,7 +1186,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
       return false;
    }
 
-   screen->adapter_luid = screen->dev->GetAdapterLuid();
+   screen->adapter_luid = GetAdapterLuid(screen->dev);
 
    ID3D12InfoQueue *info_queue;
    if (SUCCEEDED(screen->dev->QueryInterface(IID_PPV_ARGS(&info_queue)))) {

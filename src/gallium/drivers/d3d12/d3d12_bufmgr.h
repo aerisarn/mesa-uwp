@@ -88,7 +88,7 @@ d3d12_bo_get_size(struct d3d12_bo *bo)
    if (bo->buffer)
       return bo->buffer->size;
    else
-      return bo->res->GetDesc().Width;
+      return GetDesc(bo->res).Width;
 }
 
 static inline bool

@@ -54,7 +54,7 @@ d3d12_bufmgr(struct pb_manager *mgr)
 static struct TransitionableResourceState *
 create_trans_state(ID3D12Resource *res, enum pipe_format format)
 {
-   D3D12_RESOURCE_DESC desc = res->GetDesc();
+   D3D12_RESOURCE_DESC desc = GetDesc(res);
 
    // Calculate the total number of subresources
    unsigned arraySize = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ?
@@ -111,7 +111,7 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_fo
 
    bo->residency_status = residency;
    bo->last_used_timestamp = 0;
-   D3D12_RESOURCE_DESC desc = res->GetDesc();
+   D3D12_RESOURCE_DESC desc = GetDesc(res);
    screen->dev->GetCopyableFootprints(&desc, 0, bo->trans_state->NumSubresources(), 0, nullptr, nullptr, nullptr, &bo->estimated_size);
    if (residency != d3d12_evicted) {
       mtx_lock(&screen->submit_mutex);
@@ -152,7 +152,7 @@ d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
    enum d3d12_residency_status init_residency = screen->support_create_not_resident ?
       d3d12_evicted : d3d12_resident;
 
-   D3D12_HEAP_PROPERTIES heap_pris = dev->GetCustomHeapProperties(0, heap_type);
+   D3D12_HEAP_PROPERTIES heap_pris = GetCustomHeapProperties(dev, heap_type);
    HRESULT hres = dev->CreateCommittedResource(&heap_pris,
                                                heap_flags,
                                                &res_desc,

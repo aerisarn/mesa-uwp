@@ -40,6 +40,22 @@
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
+#if !defined(_WIN32) || defined(_MSC_VER) || D3D12_SDK_VERSION < 606
+inline D3D12_VIDEO_DECODER_HEAP_DESC
+GetDesc(ID3D12VideoDecoderHeap *heap)
+{
+   return heap->GetDesc();
+}
+#else
+inline D3D12_VIDEO_DECODER_HEAP_DESC
+GetDesc(ID3D12VideoDecoderHeap *heap)
+{
+   D3D12_VIDEO_DECODER_HEAP_DESC ret;
+   heap->GetDesc(&ret);
+   return ret;
+}
+#endif
+
 // Allow encoder to continue the encoding session when an optional 
 // rate control mode such as the following is used but not supported
 //

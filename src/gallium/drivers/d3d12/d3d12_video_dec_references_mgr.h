@@ -187,7 +187,7 @@ d3d12_video_decoder_references_manager::update_entries(T (&picEntries)[size],
          /// in other areas of D3D12 we need to convert it to the D3D12CalcSubresource format, explained in
          /// https://docs.microsoft.com/en-us/windows/win32/direct3d12/subresources
          ///
-         CD3DX12_RESOURCE_DESC refDesc(pOutputReference->GetDesc());
+         CD3DX12_RESOURCE_DESC refDesc(GetDesc(pOutputReference));
          uint32_t              MipLevel, PlaneSlice, ArraySlice;
          D3D12DecomposeSubresource(OutputSubresource,
                                    refDesc.MipLevels,

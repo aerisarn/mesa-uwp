@@ -523,8 +523,7 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
       d3d12OutputArguments.ConversionArguments.pReferenceTexture2D = pRefOnlyOutputD3D12Texture;
       d3d12OutputArguments.ConversionArguments.ReferenceSubresource = refOnlyOutputD3D12Subresource;
 
-      const D3D12_RESOURCE_DESC &descReference =
-         d3d12OutputArguments.ConversionArguments.pReferenceTexture2D->GetDesc();
+      const D3D12_RESOURCE_DESC &descReference = GetDesc(d3d12OutputArguments.ConversionArguments.pReferenceTexture2D);
       d3d12OutputArguments.ConversionArguments.DecodeColorSpace = d3d12_convert_from_legacy_color_space(
          !util_format_is_yuv(d3d12_get_pipe_format(descReference.Format)),
          util_format_get_blocksize(d3d12_get_pipe_format(descReference.Format)) * 8 /*bytes to bits conversion*/,
@@ -532,7 +531,7 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
          /* P709= */ true,
          /* StudioYUV= */ true);
 
-      const D3D12_RESOURCE_DESC &descOutput = d3d12OutputArguments.pOutputTexture2D->GetDesc();
+      const D3D12_RESOURCE_DESC &descOutput = GetDesc(d3d12OutputArguments.pOutputTexture2D);
       d3d12OutputArguments.ConversionArguments.OutputColorSpace = d3d12_convert_from_legacy_color_space(
          !util_format_is_yuv(d3d12_get_pipe_format(descOutput.Format)),
          util_format_get_blocksize(d3d12_get_pipe_format(descOutput.Format)) * 8 /*bytes to bits conversion*/,
@@ -540,14 +539,14 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
          /* P709= */ true,
          /* StudioYUV= */ true);
 
-      const D3D12_VIDEO_DECODER_HEAP_DESC &HeapDesc = pD3D12Dec->m_spVideoDecoderHeap->GetDesc();
+      const D3D12_VIDEO_DECODER_HEAP_DESC &HeapDesc = GetDesc(pD3D12Dec->m_spVideoDecoderHeap.Get());
       d3d12OutputArguments.ConversionArguments.OutputWidth = HeapDesc.DecodeWidth;
       d3d12OutputArguments.ConversionArguments.OutputHeight = HeapDesc.DecodeHeight;
    } else {
       d3d12OutputArguments.ConversionArguments.Enable = FALSE;
    }
 
-   CD3DX12_RESOURCE_DESC outputDesc(d3d12OutputArguments.pOutputTexture2D->GetDesc());
+   CD3DX12_RESOURCE_DESC outputDesc(GetDesc(d3d12OutputArguments.pOutputTexture2D));
    uint32_t MipLevel, PlaneSlice, ArraySlice;
    D3D12DecomposeSubresource(d3d12OutputArguments.OutputSubresource,
                              outputDesc.MipLevels,
@@ -958,7 +957,7 @@ d3d12_video_decoder_prepare_for_decode_frame(struct d3d12_video_decoder *pD3D12D
                                                            needsTransitionToDecodeWrite);
       assert(needsTransitionToDecodeWrite);
 
-      CD3DX12_RESOURCE_DESC outputDesc((*ppRefOnlyOutTexture2D)->GetDesc());
+      CD3DX12_RESOURCE_DESC outputDesc(GetDesc(*ppRefOnlyOutTexture2D));
       uint32_t MipLevel, PlaneSlice, ArraySlice;
       D3D12DecomposeSubresource(*pRefOnlyOutSubresourceIndex,
                                 outputDesc.MipLevels,
@@ -1024,7 +1023,7 @@ d3d12_video_decoder_reconfigure_dpb(struct d3d12_video_decoder *pD3D12Dec,
    d3d12_video_decoder_get_frame_info(pD3D12Dec, &width, &height, &maxDPB, isInterlaced);
 
    ID3D12Resource *pPipeD3D12DstResource = d3d12_resource_resource(pD3D12VideoBuffer->texture);
-   D3D12_RESOURCE_DESC outputResourceDesc = pPipeD3D12DstResource->GetDesc();
+   D3D12_RESOURCE_DESC outputResourceDesc = GetDesc(pPipeD3D12DstResource);
 
    pD3D12VideoBuffer->base.interlaced = isInterlaced;
    D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE interlaceTypeRequested =
@@ -1200,7 +1199,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
          size_t dxvaPicParamsBufferSize = sizeof(DXVA_PicParams_H264);
          pipe_h264_picture_desc *pPicControlH264 = (pipe_h264_picture_desc *) picture;
          ID3D12Resource *pPipeD3D12DstResource = d3d12_resource_resource(pD3D12VideoBuffer->texture);
-         D3D12_RESOURCE_DESC outputResourceDesc = pPipeD3D12DstResource->GetDesc();
+         D3D12_RESOURCE_DESC outputResourceDesc = GetDesc(pPipeD3D12DstResource);
          DXVA_PicParams_H264 dxvaPicParamsH264 =
             d3d12_video_decoder_dxva_picparams_from_pipe_picparams_h264(pD3D12Dec->m_fenceValue,
                                                                         codec->base.profile,
