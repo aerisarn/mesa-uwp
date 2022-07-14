@@ -3322,13 +3322,12 @@ struct anv_graphics_pipeline {
 
    struct anv_dynamic_state                     non_dynamic_state;
 
-   uint32_t                                     topology;
-
    /* These fields are required with dynamic primitive topology,
     * rasterization_samples used only with gen < 8.
     */
    VkLineRasterizationModeEXT                   line_mode;
    VkPolygonMode                                polygon_mode;
+   uint32_t                                     patch_control_points;
    uint32_t                                     rasterization_samples;
 
    VkColorComponentFlags                        color_comp_writes[MAX_RTS];

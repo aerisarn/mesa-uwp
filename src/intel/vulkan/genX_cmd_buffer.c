@@ -37,6 +37,7 @@
 #include "genxml/genX_pack.h"
 #include "genxml/gen_rt_pack.h"
 #include "common/intel_guardband.h"
+#include "compiler/brw_prim.h"
 
 #include "nir/nir_xfb_info.h"
 
@@ -3899,9 +3900,6 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer_alloc_push_constants(cmd_buffer);
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE)
-      cmd_buffer->state.gfx.primitive_topology = pipeline->topology;
-
 #if GFX_VER <= 7
    if (cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_VERTEX_BIT ||
        cmd_buffer->state.push_constants_dirty & VK_SHADER_STAGE_VERTEX_BIT) {
@@ -3984,6 +3982,24 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                                       ANV_CMD_DIRTY_RENDER_TARGETS |
                                       ANV_CMD_DIRTY_DYNAMIC_VIEWPORT))
       cmd_buffer_emit_scissor(cmd_buffer);
+
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
+      const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
+      uint32_t topology;
+      if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
+         topology = _3DPRIM_PATCHLIST(pipeline->patch_control_points);
+      else
+         topology = genX(vk_to_intel_primitive_type)[d->primitive_topology];
+
+      cmd_buffer->state.gfx.primitive_topology = topology;
+
+#if (GFX_VER >= 8)
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_TOPOLOGY), vft) {
+         vft.PrimitiveTopologyType = topology;
+      }
+#endif
+   }
 
    genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 }

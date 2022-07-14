@@ -63,17 +63,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
-      uint32_t topology;
-      if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
-         topology = pipeline->topology;
-      else
-         topology = genX(vk_to_intel_primitive_type)[d->primitive_topology];
-
-      cmd_buffer->state.gfx.primitive_topology = topology;
-   }
-
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_RENDER_TARGETS |
                                       ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
                                       ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |

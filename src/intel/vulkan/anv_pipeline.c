@@ -35,7 +35,6 @@
 #include "anv_private.h"
 #include "compiler/brw_nir.h"
 #include "compiler/brw_nir_rt.h"
-#include "compiler/brw_prim.h"
 #include "anv_nir.h"
 #include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
@@ -269,19 +268,6 @@ void anv_DestroyPipeline(
    anv_pipeline_finish(pipeline, device, pAllocator);
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
-
-static const uint32_t vk_to_intel_primitive_type[] = {
-   [VK_PRIMITIVE_TOPOLOGY_POINT_LIST]                    = _3DPRIM_POINTLIST,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST]                     = _3DPRIM_LINELIST,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP]                    = _3DPRIM_LINESTRIP,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST]                 = _3DPRIM_TRILIST,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP]                = _3DPRIM_TRISTRIP,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN]                  = _3DPRIM_TRIFAN,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY]      = _3DPRIM_LINELIST_ADJ,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY]  = _3DPRIM_TRILIST_ADJ,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
-};
 
 static void
 populate_sampler_prog_key(const struct intel_device_info *devinfo,
@@ -2325,14 +2311,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       pipeline->instance_multiplier = 1;
       if (pipeline->view_mask && !pipeline->use_primitive_replication)
          pipeline->instance_multiplier = util_bitcount(pipeline->view_mask);
-
-      if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
-         pipeline->topology =
-            _3DPRIM_PATCHLIST(state->ts->patch_control_points);
-      } else {
-         pipeline->topology =
-            vk_to_intel_primitive_type[state->ia->primitive_topology];
-      }
    } else {
       assert(anv_pipeline_is_mesh(pipeline));
       /* TODO(mesh): Mesh vs. Multiview with Instancing. */
@@ -2352,6 +2330,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
          pipeline->line_mode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
       }
    }
+   pipeline->patch_control_points =
+      state->ts != NULL ? state->ts->patch_control_points : 0;
 
    /* Store the color write masks, to be merged with color write enable if
     * dynamic.
