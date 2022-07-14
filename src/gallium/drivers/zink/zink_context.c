@@ -3183,13 +3183,8 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
 
    resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
-   if (res->obj->unordered_barrier) {
-      res->obj->access |= imb.dstAccessMask;
-      res->obj->access_stage |= pipeline;
-   } else {
-      res->obj->access = imb.dstAccessMask;
-      res->obj->access_stage = pipeline;
-   }
+   res->obj->access = imb.dstAccessMask;
+   res->obj->access_stage = pipeline;
    res->layout = new_layout;
 }
 
@@ -3275,13 +3270,8 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
 
    resource_check_defer_buffer_barrier(ctx, res, pipeline);
 
-   if (res->obj->unordered_barrier) {
-      res->obj->access |= bmb.dstAccessMask;
-      res->obj->access_stage |= pipeline;
-   } else {
-      res->obj->access = bmb.dstAccessMask;
-      res->obj->access_stage = pipeline;
-   }
+   res->obj->access = bmb.dstAccessMask;
+   res->obj->access_stage = pipeline;
 }
 
 bool
