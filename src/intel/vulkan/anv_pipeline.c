@@ -360,6 +360,7 @@ populate_gs_prog_key(const struct anv_device *device,
 
 static bool
 pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
+                          const BITSET_WORD *dynamic,
                           const struct vk_multisample_state *ms,
                           const struct vk_fragment_shading_rate_state *fsr)
 {
@@ -396,14 +397,10 @@ pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
    if (ms != NULL && ms->sample_shading_enable)
       return false;
 
-   /* Not dynamic & not specified for the pipeline. */
-   if ((pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) == 0 && fsr == NULL)
-      return false;
-
    /* Not dynamic & pipeline has a 1x1 fragment shading rate with no
     * possibility for element of the pipeline to change the value.
     */
-   if ((pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) == 0 &&
+   if (!BITSET_TEST(dynamic, MESA_VK_DYNAMIC_FSR) &&
        fsr->fragment_size.width <= 1 &&
        fsr->fragment_size.height <= 1 &&
        fsr->combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
@@ -436,6 +433,7 @@ populate_mesh_prog_key(const struct anv_device *device,
 static void
 populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
                      bool robust_buffer_acccess,
+                     const BITSET_WORD *dynamic,
                      const struct vk_multisample_state *ms,
                      const struct vk_fragment_shading_rate_state *fsr,
                      const struct vk_render_pass_state *rp,
@@ -489,7 +487,7 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
    key->coarse_pixel =
       !key->persample_interp &&
       device->vk.enabled_extensions.KHR_fragment_shading_rate &&
-      pipeline_has_coarse_pixel(pipeline, ms, fsr);
+      pipeline_has_coarse_pixel(pipeline, dynamic, ms, fsr);
 }
 
 static void
@@ -1356,7 +1354,7 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_pipeline *pipeline,
       case MESA_SHADER_FRAGMENT: {
          populate_wm_prog_key(pipeline,
                               pipeline->base.device->robust_buffer_access,
-                              state->ms, state->fsr, state->rp,
+                              state->dynamic, state->ms, state->fsr, state->rp,
                               &stages[s].key.wm);
          break;
       }
@@ -2032,195 +2030,6 @@ VkResult anv_CreateComputePipelines(
 }
 
 /**
- * Copy pipeline state not marked as dynamic.
- * Dynamic state is pipeline state which hasn't been provided at pipeline
- * creation time, but is dynamically provided afterwards using various
- * vkCmdSet* functions.
- *
- * The set of state considered "non_dynamic" is determined by the pieces of
- * state that have their corresponding VkDynamicState enums omitted from
- * VkPipelineDynamicStateCreateInfo::pDynamicStates.
- *
- * @param[out] pipeline    Destination non_dynamic state.
- * @param[in]  pCreateInfo Source of non_dynamic state to be copied.
- */
-static void
-copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
-                       const struct vk_graphics_pipeline_state *state)
-{
-   anv_cmd_dirty_mask_t states = ANV_CMD_DIRTY_DYNAMIC_ALL;
-
-   anv_dynamic_state_init(&pipeline->non_dynamic_state);
-
-   states &= ~pipeline->dynamic_states;
-
-   struct anv_dynamic_state *dynamic = &pipeline->non_dynamic_state;
-
-   /* Section 9.2 of the Vulkan 1.0.15 spec says:
-    *
-    *    pViewportState is [...] NULL if the pipeline
-    *    has rasterization disabled.
-    */
-   if (state->vp) {
-      pipeline->negative_one_to_one = state->vp->negative_one_to_one;
-
-      dynamic->viewport.count = state->vp->viewport_count;
-      if (states & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT) {
-         typed_memcpy(dynamic->viewport.viewports,
-                      state->vp->viewports, state->vp->viewport_count);
-      }
-
-      dynamic->scissor.count = state->vp->scissor_count;
-      if (states & ANV_CMD_DIRTY_DYNAMIC_SCISSOR) {
-         typed_memcpy(dynamic->scissor.scissors,
-                      state->vp->scissors, state->vp->scissor_count);
-      }
-   }
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH)
-      dynamic->line_width = state->rs->line.width;
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS) {
-      dynamic->depth_bias.bias = state->rs->depth_bias.constant;
-      dynamic->depth_bias.clamp = state->rs->depth_bias.clamp;
-      dynamic->depth_bias.slope = state->rs->depth_bias.slope;
-   }
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_CULL_MODE)
-      dynamic->cull_mode = state->rs->cull_mode;
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE)
-      dynamic->front_face = state->rs->front_face;
-
-   if ((states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) &&
-       (pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT))
-      dynamic->primitive_topology = state->ia->primitive_topology;
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE)
-      dynamic->raster_discard = state->rs->rasterizer_discard_enable;
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE)
-      dynamic->depth_bias_enable = state->rs->depth_bias.enable;
-
-   if ((states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE) &&
-       (pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT))
-      dynamic->primitive_restart_enable = state->ia->primitive_restart_enable;
-
-   if (state->cb != NULL && (states & ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS))
-      typed_memcpy(dynamic->blend_constants, state->cb->blend_constants, 4);
-
-   if (state->ds != NULL) {
-      if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS) {
-         dynamic->depth_bounds.min = state->ds->depth.bounds_test.min;
-         dynamic->depth_bounds.max = state->ds->depth.bounds_test.max;
-      }
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK) {
-         dynamic->stencil_compare_mask.front =
-            state->ds->stencil.front.compare_mask;
-         dynamic->stencil_compare_mask.back =
-            state->ds->stencil.back.compare_mask;
-      }
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK) {
-         dynamic->stencil_write_mask.front =
-            state->ds->stencil.front.write_mask;
-         dynamic->stencil_write_mask.back =
-            state->ds->stencil.back.write_mask;
-      }
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE) {
-         dynamic->stencil_reference.front =
-            state->ds->stencil.front.reference;
-         dynamic->stencil_reference.back =
-            state->ds->stencil.back.reference;
-      }
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE)
-         dynamic->depth_test_enable = state->ds->depth.test_enable;
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE)
-         dynamic->depth_write_enable = state->ds->depth.write_enable;
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP)
-         dynamic->depth_compare_op = state->ds->depth.compare_op;
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE) {
-         dynamic->depth_bounds_test_enable =
-            state->ds->depth.bounds_test.enable;
-      }
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE)
-         dynamic->stencil_test_enable = state->ds->stencil.test_enable;
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP) {
-         dynamic->stencil_op.front.fail_op = state->ds->stencil.front.op.fail;
-         dynamic->stencil_op.front.pass_op = state->ds->stencil.front.op.pass;
-         dynamic->stencil_op.front.depth_fail_op = state->ds->stencil.front.op.depth_fail;
-         dynamic->stencil_op.front.compare_op = state->ds->stencil.front.op.compare;
-
-         dynamic->stencil_op.back.fail_op = state->ds->stencil.back.op.fail;
-         dynamic->stencil_op.back.pass_op = state->ds->stencil.back.op.pass;
-         dynamic->stencil_op.back.depth_fail_op = state->ds->stencil.back.op.depth_fail;
-         dynamic->stencil_op.back.compare_op = state->ds->stencil.back.op.compare;
-      }
-   }
-
-   if (state->rs != NULL) {
-      if (states & ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE) {
-         dynamic->line_stipple.factor = state->rs->line.stipple.factor;
-         dynamic->line_stipple.pattern = state->rs->line.stipple.pattern;
-      }
-   }
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
-      if (state->ms != NULL) {
-         uint32_t samples = state->ms->rasterization_samples;
-         for (uint32_t i = 0; i < samples; i++) {
-            dynamic->sample_locations.locations[i].x =
-               state->ms->sample_locations->locations[i].x;
-            dynamic->sample_locations.locations[i].y =
-               state->ms->sample_locations->locations[i].y;
-         }
-         dynamic->sample_locations.samples = samples;
-      } else {
-         dynamic->sample_locations.samples = 1;
-         dynamic->sample_locations.locations[0].x = 0.5;
-         dynamic->sample_locations.locations[0].y = 0.5;
-      }
-   }
-
-   if (state->cb != NULL) {
-      if (states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)
-         dynamic->color_writes = state->cb->color_write_enables;
-
-      if (states & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)
-         dynamic->logic_op = state->cb->logic_op;
-   }
-
-   if (states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) {
-      dynamic->fragment_shading_rate.rate = state->fsr->fragment_size;
-      memcpy(dynamic->fragment_shading_rate.ops, state->fsr->combiner_ops,
-             sizeof(dynamic->fragment_shading_rate.ops));
-   }
-
-   /* When binding a mesh pipeline into a command buffer, it should not affect the
-    * pre-rasterization bits of legacy graphics pipelines. So remove all the
-    * pre-rasterization flags from the non-dynamic bits from the mesh pipelines
-    * here so we don't copy any of that stuff when binding those into a command
-    * buffer.
-    */
-   if (pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV) {
-      states &= ~(ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
-                  ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE |
-                  ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
-   }
-
-
-   pipeline->non_dynamic_state_mask = states;
-}
-
-/**
  * Calculate the desired L3 partitioning based on the current state of the
  * pipeline.  For now this simply returns the conservative defaults calculated
  * by get_default_l3_weights(), but we could probably do better by gathering
@@ -2257,13 +2066,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    anv_batch_set_storage(&pipeline->base.batch, ANV_NULL_ADDRESS,
                          pipeline->batch_data, sizeof(pipeline->batch_data));
 
-   enum mesa_vk_dynamic_graphics_state s;
-   BITSET_FOREACH_SET(s, state->dynamic,
-                      MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX) {
-      pipeline->dynamic_states |=
-         anv_cmd_dirty_bit_for_mesa_vk_dynamic_graphics_state(s);
-   }
-
    pipeline->active_stages = 0;
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++)
       pipeline->active_stages |= pCreateInfo->pStages[i].stage;
@@ -2274,7 +2076,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    if (anv_pipeline_is_mesh(pipeline))
       assert(device->physical->vk.supported_extensions.NV_mesh_shader);
 
-   copy_non_dynamic_state(pipeline, state);
+   pipeline->dynamic_state.ms.sample_locations = &pipeline->sample_locations;
+   vk_dynamic_graphics_state_fill(&pipeline->dynamic_state, state);
 
    pipeline->depth_clamp_enable = state->rs->depth_clamp_enable;
    pipeline->depth_clip_enable = state->rs->depth_clip_enable;
@@ -2315,6 +2118,9 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       assert(anv_pipeline_is_mesh(pipeline));
       /* TODO(mesh): Mesh vs. Multiview with Instancing. */
    }
+
+   pipeline->negative_one_to_one =
+      state->vp != NULL && state->vp->negative_one_to_one;
 
    /* Store line mode, polygon mode and rasterization samples, these are used
     * for dynamic primitive topology.

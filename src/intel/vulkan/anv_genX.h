@@ -133,14 +133,14 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                      enum intel_urb_deref_block_size *deref_block_size);
 
 void genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
-                            const struct intel_sample_position *positions);
+                            const struct vk_sample_locations_state *sl);
 
 void genX(emit_sample_pattern)(struct anv_batch *batch,
-                               const struct anv_dynamic_state *dynamic_state);
+                               const struct vk_sample_locations_state *sl);
 
 void genX(emit_shading_rate)(struct anv_batch *batch,
                              const struct anv_graphics_pipeline *pipeline,
-                             struct anv_dynamic_state *dynamic_state);
+                             const struct vk_fragment_shading_rate_state *fsr);
 
 void genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
                                 struct anv_address dst, struct anv_address src,

@@ -336,21 +336,26 @@ blorp_exec_on_render(struct blorp_batch *batch,
    /* Calculate state that does not get touched by blorp.
     * Flush everything else.
     */
-   anv_cmd_dirty_mask_t skip_bits = ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
-                                    ANV_CMD_DIRTY_INDEX_BUFFER |
-                                    ANV_CMD_DIRTY_XFB_ENABLE |
-                                    ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE |
-                                    ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |
-                                    ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE |
-                                    ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+   anv_cmd_dirty_mask_t dirty = ~(ANV_CMD_DIRTY_INDEX_BUFFER |
+                                  ANV_CMD_DIRTY_XFB_ENABLE);
 
+   BITSET_DECLARE(dyn_dirty, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+   BITSET_ONES(dyn_dirty);
+   BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE);
+   BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_VP_SCISSOR_COUNT);
+   BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_VP_SCISSORS);
+   BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE);
+   BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_FSR);
+   BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS);
    if (!params->wm_prog_data) {
-      skip_bits |= ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
-                   ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+      BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
+      BITSET_CLEAR(dyn_dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP);
    }
 
    cmd_buffer->state.gfx.vb_dirty = ~0;
-   cmd_buffer->state.gfx.dirty |= ~skip_bits;
+   cmd_buffer->state.gfx.dirty |= dirty;
+   BITSET_OR(cmd_buffer->vk.dynamic_graphics_state.dirty,
+             cmd_buffer->vk.dynamic_graphics_state.dirty, dyn_dirty);
    cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_ALL_GRAPHICS;
 }
 

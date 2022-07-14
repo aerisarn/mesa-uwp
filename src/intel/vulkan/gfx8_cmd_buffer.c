@@ -198,6 +198,9 @@ want_depth_pma_fix(struct anv_cmd_buffer *cmd_buffer)
 UNUSED static bool
 want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer)
 {
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+
    if (GFX_VER > 9)
       return false;
    assert(GFX_VER == 9);
@@ -293,8 +296,8 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer)
     */
    const bool stc_write_en =
       cmd_buffer->state.gfx.stencil_att.iview != NULL &&
-      (cmd_buffer->state.gfx.dynamic.stencil_write_mask.front ||
-       cmd_buffer->state.gfx.dynamic.stencil_write_mask.back) &&
+      (dyn->ds.stencil.front.write_mask ||
+       dyn->ds.stencil.back.write_mask) &&
       pipeline->writes_stencil;
 
    /* STC_TEST_EN && 3DSTATE_PS_EXTRA::PixelShaderComputesStencil */
@@ -320,39 +323,40 @@ void
 genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
 
 #if GFX_VER >= 11
    if (cmd_buffer->device->vk.enabled_extensions.KHR_fragment_shading_rate &&
-       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE)
-      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline, d);
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_FSR))
+      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline, &dyn->fsr);
 #endif /* GFX_VER >= 11 */
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH)) {
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_WIDTH)) {
       uint32_t sf_dw[GENX(3DSTATE_SF_length)];
       struct GENX(3DSTATE_SF) sf = {
          GENX(3DSTATE_SF_header),
       };
 #if GFX_VER == 8
       if (cmd_buffer->device->info.platform == INTEL_PLATFORM_CHV) {
-         sf.CHVLineWidth = d->line_width;
+         sf.CHVLineWidth = dyn->rs.line.width;
       } else {
-         sf.LineWidth = d->line_width;
+         sf.LineWidth = dyn->rs.line.width;
       }
 #else
-      sf.LineWidth = d->line_width,
+      sf.LineWidth = dyn->rs.line.width,
 #endif
       GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);
       anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gfx8.sf);
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
-                                      ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
-                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_CULL_MODE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_FRONT_FACE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_RASTER::APIMode
        *    3DSTATE_RASTER::DXMultisampleRasterizationEnable
@@ -363,15 +367,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
       VkPolygonMode dynamic_raster_mode =
          genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
-                                   d->primitive_topology);
+                                   dyn->ia.primitive_topology);
 
-      genX(rasterization_mode)(
-         dynamic_raster_mode, pipeline->line_mode, d->line_width,
-         &api_mode, &msaa_raster_enable);
+      genX(rasterization_mode)(dynamic_raster_mode,
+                               pipeline->line_mode, dyn->rs.line.width,
+                               &api_mode, &msaa_raster_enable);
 
-      bool aa_enable =
-         anv_rasterization_aa_mode(dynamic_raster_mode,
-                                   pipeline->line_mode);
+      bool aa_enable = anv_rasterization_aa_mode(dynamic_raster_mode,
+                                                 pipeline->line_mode);
 
       uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
       struct GENX(3DSTATE_RASTER) raster = {
@@ -379,14 +382,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .APIMode = api_mode,
          .DXMultisampleRasterizationEnable = msaa_raster_enable,
          .AntialiasingEnable = aa_enable,
-         .GlobalDepthOffsetConstant = d->depth_bias.bias,
-         .GlobalDepthOffsetScale = d->depth_bias.slope,
-         .GlobalDepthOffsetClamp = d->depth_bias.clamp,
-         .CullMode = genX(vk_to_intel_cullmode)[d->cull_mode],
-         .FrontWinding = genX(vk_to_intel_front_face)[d->front_face],
-         .GlobalDepthOffsetEnableSolid = d->depth_bias_enable,
-         .GlobalDepthOffsetEnableWireframe = d->depth_bias_enable,
-         .GlobalDepthOffsetEnablePoint = d->depth_bias_enable,
+         .CullMode     = genX(vk_to_intel_cullmode)[dyn->rs.cull_mode],
+         .FrontWinding = genX(vk_to_intel_front_face)[dyn->rs.front_face],
+         .GlobalDepthOffsetEnableSolid       = dyn->rs.depth_bias.enable,
+         .GlobalDepthOffsetEnableWireframe   = dyn->rs.depth_bias.enable,
+         .GlobalDepthOffsetEnablePoint       = dyn->rs.depth_bias.enable,
+         .GlobalDepthOffsetConstant          = dyn->rs.depth_bias.constant,
+         .GlobalDepthOffsetScale             = dyn->rs.depth_bias.slope,
+         .GlobalDepthOffsetClamp             = dyn->rs.depth_bias.clamp,
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
@@ -399,19 +402,19 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
     * using a big old #if switch here.
     */
 #if GFX_VER == 8
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
       struct anv_state cc_state =
          anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
                                             GENX(COLOR_CALC_STATE_length) * 4,
                                             64);
       struct GENX(COLOR_CALC_STATE) cc = {
-         .BlendConstantColorRed = d->blend_constants[0],
-         .BlendConstantColorGreen = d->blend_constants[1],
-         .BlendConstantColorBlue = d->blend_constants[2],
-         .BlendConstantColorAlpha = d->blend_constants[3],
-         .StencilReferenceValue = d->stencil_reference.front & 0xff,
-         .BackfaceStencilReferenceValue = d->stencil_reference.back & 0xff,
+         .BlendConstantColorRed = dyn->cb.blend_constants[0],
+         .BlendConstantColorGreen = dyn->cb.blend_constants[1],
+         .BlendConstantColorBlue = dyn->cb.blend_constants[2],
+         .BlendConstantColorAlpha = dyn->cb.blend_constants[3],
+         .StencilReferenceValue = dyn->ds.stencil.front.reference & 0xff,
+         .BackfaceStencilReferenceValue = dyn->ds.stencil.back.reference & 0xff,
       };
       GENX(COLOR_CALC_STATE_pack)(NULL, cc_state.map, &cc);
 
@@ -421,56 +424,58 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_RENDER_TARGETS |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP)) {
+   if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                       ANV_CMD_DIRTY_RENDER_TARGETS)) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_OP) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_WM_DEPTH_STENCIL), ds) {
          ds.DoubleSidedStencilEnable = true;
 
-         ds.StencilTestMask = d->stencil_compare_mask.front & 0xff;
-         ds.StencilWriteMask = d->stencil_write_mask.front & 0xff;
+         ds.StencilTestMask = dyn->ds.stencil.front.compare_mask & 0xff;
+         ds.StencilWriteMask = dyn->ds.stencil.front.write_mask & 0xff;
 
-         ds.BackfaceStencilTestMask = d->stencil_compare_mask.back & 0xff;
-         ds.BackfaceStencilWriteMask = d->stencil_write_mask.back & 0xff;
+         ds.BackfaceStencilTestMask = dyn->ds.stencil.back.compare_mask & 0xff;
+         ds.BackfaceStencilWriteMask = dyn->ds.stencil.back.write_mask & 0xff;
 
          ds.StencilBufferWriteEnable =
-            (d->stencil_write_mask.front || d->stencil_write_mask.back) &&
-            d->stencil_test_enable;
+            (dyn->ds.stencil.front.write_mask ||
+             dyn->ds.stencil.back.write_mask) &&
+            dyn->ds.stencil.test_enable;
 
-         ds.DepthTestEnable = d->depth_test_enable;
-         ds.DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable;
-         ds.DepthTestFunction = genX(vk_to_intel_compare_op)[d->depth_compare_op];
-         ds.StencilTestEnable = d->stencil_test_enable;
-         ds.StencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.fail_op];
-         ds.StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.pass_op];
-         ds.StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.depth_fail_op];
-         ds.StencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.front.compare_op];
-         ds.BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.fail_op];
-         ds.BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.pass_op];
-         ds.BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.depth_fail_op];
-         ds.BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.back.compare_op];
+         ds.DepthTestEnable = dyn->ds.depth.test_enable;
+         ds.DepthBufferWriteEnable = dyn->ds.depth.test_enable &&
+                                     dyn->ds.depth.write_enable;
+         ds.DepthTestFunction = genX(vk_to_intel_compare_op)[dyn->ds.depth.compare_op];
+         ds.StencilTestEnable = dyn->ds.stencil.test_enable;
+         ds.StencilFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.front.op.fail];
+         ds.StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.front.op.pass];
+         ds.StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.front.op.depth_fail];
+         ds.StencilTestFunction = genX(vk_to_intel_compare_op)[dyn->ds.stencil.front.op.compare];
+         ds.BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.back.op.fail];
+         ds.BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.back.op.pass];
+         ds.BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.back.op.depth_fail];
+         ds.BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[dyn->ds.stencil.back.op.compare];
       }
 
       genX(cmd_buffer_enable_pma_fix)(cmd_buffer,
                                       want_depth_pma_fix(cmd_buffer));
    }
 #else
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
       struct anv_state cc_state =
          anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
                                             GENX(COLOR_CALC_STATE_length) * 4,
                                             64);
       struct GENX(COLOR_CALC_STATE) cc = {
-         .BlendConstantColorRed = d->blend_constants[0],
-         .BlendConstantColorGreen = d->blend_constants[1],
-         .BlendConstantColorBlue = d->blend_constants[2],
-         .BlendConstantColorAlpha = d->blend_constants[3],
+         .BlendConstantColorRed = dyn->cb.blend_constants[0],
+         .BlendConstantColorGreen = dyn->cb.blend_constants[1],
+         .BlendConstantColorBlue = dyn->cb.blend_constants[2],
+         .BlendConstantColorAlpha = dyn->cb.blend_constants[3],
       };
       GENX(COLOR_CALC_STATE_pack)(NULL, cc_state.map, &cc);
 
@@ -480,44 +485,46 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_RENDER_TARGETS |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP)) {
+   if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                       ANV_CMD_DIRTY_RENDER_TARGETS)) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_OP) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_WM_DEPTH_STENCIL), ds) {
          ds.DoubleSidedStencilEnable = true;
 
-         ds.StencilTestMask = d->stencil_compare_mask.front & 0xff;
-         ds.StencilWriteMask = d->stencil_write_mask.front & 0xff;
+         ds.StencilTestMask = dyn->ds.stencil.front.compare_mask & 0xff;
+         ds.StencilWriteMask = dyn->ds.stencil.front.write_mask & 0xff;
 
-         ds.BackfaceStencilTestMask = d->stencil_compare_mask.back & 0xff;
-         ds.BackfaceStencilWriteMask = d->stencil_write_mask.back & 0xff;
+         ds.BackfaceStencilTestMask = dyn->ds.stencil.back.compare_mask & 0xff;
+         ds.BackfaceStencilWriteMask = dyn->ds.stencil.back.write_mask & 0xff;
 
-         ds.StencilReferenceValue = d->stencil_reference.front & 0xff;
-         ds.BackfaceStencilReferenceValue = d->stencil_reference.back & 0xff;
+         ds.StencilReferenceValue = dyn->ds.stencil.front.reference & 0xff;
+         ds.BackfaceStencilReferenceValue = dyn->ds.stencil.back.reference & 0xff;
 
          ds.StencilBufferWriteEnable =
-            (d->stencil_write_mask.front || d->stencil_write_mask.back) &&
-            d->stencil_test_enable;
+            (dyn->ds.stencil.front.write_mask ||
+             dyn->ds.stencil.back.write_mask) &&
+            dyn->ds.stencil.test_enable;
 
-         ds.DepthTestEnable = d->depth_test_enable;
-         ds.DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable;
-         ds.DepthTestFunction = genX(vk_to_intel_compare_op)[d->depth_compare_op];
-         ds.StencilTestEnable = d->stencil_test_enable;
-         ds.StencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.fail_op];
-         ds.StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.pass_op];
-         ds.StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.depth_fail_op];
-         ds.StencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.front.compare_op];
-         ds.BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.fail_op];
-         ds.BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.pass_op];
-         ds.BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.depth_fail_op];
-         ds.BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.back.compare_op];
+         ds.DepthTestEnable = dyn->ds.depth.test_enable;
+         ds.DepthBufferWriteEnable = dyn->ds.depth.test_enable &&
+                                     dyn->ds.depth.write_enable;
+         ds.DepthTestFunction = genX(vk_to_intel_compare_op)[dyn->ds.depth.compare_op];
+         ds.StencilTestEnable = dyn->ds.stencil.test_enable;
+         ds.StencilFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.front.op.fail];
+         ds.StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.front.op.pass];
+         ds.StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.front.op.depth_fail];
+         ds.StencilTestFunction = genX(vk_to_intel_compare_op)[dyn->ds.stencil.front.op.compare];
+         ds.BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.back.op.fail];
+         ds.BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.back.op.pass];
+         ds.BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[dyn->ds.stencil.back.op.depth_fail];
+         ds.BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[dyn->ds.stencil.back.op.compare];
 
       }
 
@@ -527,33 +534,33 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
 #if GFX_VER >= 12
-   if(cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
-                                     ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE)) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_DEPTH_BOUNDS), db) {
-         db.DepthBoundsTestEnable = d->depth_bounds_test_enable;
-         db.DepthBoundsTestMinValue = d->depth_bounds.min;
-         db.DepthBoundsTestMaxValue = d->depth_bounds.max;
+         db.DepthBoundsTestEnable = dyn->ds.depth.bounds_test.enable;
+         db.DepthBoundsTestMinValue = dyn->ds.depth.bounds_test.min;
+         db.DepthBoundsTestMaxValue = dyn->ds.depth.bounds_test.max;
       }
    }
 #endif
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_LINE_STIPPLE), ls) {
-         ls.LineStipplePattern = d->line_stipple.pattern;
+         ls.LineStipplePattern = dyn->rs.line.stipple.pattern;
          ls.LineStippleInverseRepeatCount =
-            1.0f / MAX2(1, d->line_stipple.factor);
-         ls.LineStippleRepeatCount = d->line_stipple.factor;
+            1.0f / MAX2(1, dyn->rs.line.stipple.factor);
+         ls.LineStippleRepeatCount = dyn->rs.line.stipple.factor;
       }
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_INDEX_BUFFER |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
+   if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                       ANV_CMD_DIRTY_INDEX_BUFFER)) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF), vf) {
 #if GFX_VERx10 >= 125
          vf.GeometryDistributionEnable = true;
 #endif
-         vf.IndexedDrawCutIndexEnable  = d->primitive_restart_enable;
+         vf.IndexedDrawCutIndexEnable  = dyn->ia.primitive_restart_enable;
          vf.CutIndex                   = cmd_buffer->state.gfx.restart_index;
       }
    }
@@ -576,8 +583,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
 #if GFX_VERx10 >= 125
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VFG), vfg) {
          /* If 3DSTATE_TE: TE Enable == 1 then RR_STRICT else RR_FREE*/
          vfg.DistributionMode =
@@ -587,7 +594,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          /* Wa_14014890652 */
          if (intel_device_info_is_dg2(&cmd_buffer->device->info))
             vfg.GranularityThresholdDisable = 1;
-         vfg.ListCutIndexEnable = d->primitive_restart_enable;
+         vfg.ListCutIndexEnable = dyn->ia.primitive_restart_enable;
          /* 192 vertices for TRILIST_ADJ */
          vfg.ListNBatchSizeScale = 0;
          /* Batch size of 384 vertices */
@@ -607,11 +614,11 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
    if (pipeline->base.device->vk.enabled_extensions.EXT_sample_locations &&
-       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)
-      genX(emit_sample_pattern)(&cmd_buffer->batch, d);
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS))
+      genX(emit_sample_pattern)(&cmd_buffer->batch, dyn->ms.sample_locations);
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
@@ -629,10 +636,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit_merge(&cmd_buffer->batch, wm_dwords, pipeline->gfx8.wm);
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
-                                      ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
-      const uint8_t color_writes = d->color_writes;
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
+      const uint8_t color_writes = dyn->cb.color_write_enables;
       const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
       bool has_writeable_rt =
          anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
@@ -675,7 +682,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
             .WriteDisableBlue  = write_disabled ||
                                  (pipeline->color_comp_writes[i] &
                                   VK_COLOR_COMPONENT_B_BIT) == 0,
-            .LogicOpFunction   = genX(vk_to_intel_logic_op)[d->logic_op],
+            .LogicOpFunction   = genX(vk_to_intel_logic_op)[dyn->cb.logic_op],
          };
          GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
          dws += GENX(BLEND_STATE_ENTRY_length);
@@ -693,5 +700,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
+   /* When we're done, there is no more dirty gfx state. */
+   vk_dynamic_graphics_state_clear_dirty(&cmd_buffer->vk.dynamic_graphics_state);
    cmd_buffer->state.gfx.dirty = 0;
 }

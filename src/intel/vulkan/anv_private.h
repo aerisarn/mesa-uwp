@@ -2199,136 +2199,12 @@ struct anv_buffer {
 };
 
 enum anv_cmd_dirty_bits {
-   ANV_CMD_DIRTY_DYNAMIC_VIEWPORT                    = 1 << 0, /* VK_DYNAMIC_STATE_VIEWPORT */
-   ANV_CMD_DIRTY_DYNAMIC_SCISSOR                     = 1 << 1, /* VK_DYNAMIC_STATE_SCISSOR */
-   ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH                  = 1 << 2, /* VK_DYNAMIC_STATE_LINE_WIDTH */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS                  = 1 << 3, /* VK_DYNAMIC_STATE_DEPTH_BIAS */
-   ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS             = 1 << 4, /* VK_DYNAMIC_STATE_BLEND_CONSTANTS */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS                = 1 << 5, /* VK_DYNAMIC_STATE_DEPTH_BOUNDS */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK        = 1 << 6, /* VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK          = 1 << 7, /* VK_DYNAMIC_STATE_STENCIL_WRITE_MASK */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE           = 1 << 8, /* VK_DYNAMIC_STATE_STENCIL_REFERENCE */
-   ANV_CMD_DIRTY_PIPELINE                            = 1 << 9,
-   ANV_CMD_DIRTY_INDEX_BUFFER                        = 1 << 10,
-   ANV_CMD_DIRTY_RENDER_TARGETS                      = 1 << 11,
-   ANV_CMD_DIRTY_XFB_ENABLE                          = 1 << 12,
-   ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE                = 1 << 13, /* VK_DYNAMIC_STATE_LINE_STIPPLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_CULL_MODE                   = 1 << 14, /* VK_DYNAMIC_STATE_CULL_MODE */
-   ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE                  = 1 << 15, /* VK_DYNAMIC_STATE_FRONT_FACE */
-   ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY          = 1 << 16, /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY */
-   ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE = 1 << 17, /* VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE           = 1 << 18, /* VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE          = 1 << 19, /* VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP            = 1 << 20, /* VK_DYNAMIC_STATE_DEPTH_COMPARE_OP */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE    = 1 << 21, /* VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE         = 1 << 22, /* VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP                  = 1 << 23, /* VK_DYNAMIC_STATE_STENCIL_OP */
-   ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS            = 1 << 24, /* VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE           = 1 << 25, /* VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE                = 1 << 26, /* VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR */
-   ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE   = 1 << 27, /* VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE           = 1 << 28, /* VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE */
-   ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP                    = 1 << 29, /* VK_DYNAMIC_STATE_LOGIC_OP_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE    = 1 << 30, /* VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE */
+   ANV_CMD_DIRTY_PIPELINE                            = 1 << 0,
+   ANV_CMD_DIRTY_INDEX_BUFFER                        = 1 << 1,
+   ANV_CMD_DIRTY_RENDER_TARGETS                      = 1 << 2,
+   ANV_CMD_DIRTY_XFB_ENABLE                          = 1 << 3,
 };
 typedef enum anv_cmd_dirty_bits anv_cmd_dirty_mask_t;
-
-#define ANV_CMD_DIRTY_DYNAMIC_ALL                       \
-   (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |                    \
-    ANV_CMD_DIRTY_DYNAMIC_SCISSOR |                     \
-    ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |                  \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |                  \
-    ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |             \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |                \
-    ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |        \
-    ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |          \
-    ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE |           \
-    ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE |                \
-    ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |                   \
-    ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |                  \
-    ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |          \
-    ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE | \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |           \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |          \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |            \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |    \
-    ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |         \
-    ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP |                  \
-    ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |            \
-    ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |           \
-    ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE |                \
-    ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |   \
-    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |           \
-    ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP |                    \
-    ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)
-
-static inline enum anv_cmd_dirty_bits
-anv_cmd_dirty_bit_for_mesa_vk_dynamic_graphics_state(
-   enum mesa_vk_dynamic_graphics_state state)
-{
-   switch (state) {
-   case MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT:
-   case MESA_VK_DYNAMIC_VP_VIEWPORTS:
-      return ANV_CMD_DIRTY_DYNAMIC_VIEWPORT;
-   case MESA_VK_DYNAMIC_VP_SCISSOR_COUNT:
-   case MESA_VK_DYNAMIC_VP_SCISSORS:
-      return ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
-   case MESA_VK_DYNAMIC_RS_LINE_WIDTH:
-      return ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
-   case MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
-   case MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS:
-      return ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS;
-   case MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
-   case MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK:
-      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
-   case MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK:
-      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
-   case MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE:
-      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
-   case MESA_VK_DYNAMIC_RS_LINE_STIPPLE:
-      return ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
-   case MESA_VK_DYNAMIC_RS_CULL_MODE:
-      return ANV_CMD_DIRTY_DYNAMIC_CULL_MODE;
-   case MESA_VK_DYNAMIC_RS_FRONT_FACE:
-      return ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
-   case MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY:
-      return ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
-   case MESA_VK_DYNAMIC_VI_BINDING_STRIDES:
-      return ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
-   case MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE;
-   case MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE;
-   case MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP;
-   case MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
-   case MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE;
-   case MESA_VK_DYNAMIC_DS_STENCIL_OP:
-      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
-   case MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS:
-      return ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
-   case MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES:
-      return ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
-   case MESA_VK_DYNAMIC_FSR:
-      return ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE;
-   case MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
-   case MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE;
-   case MESA_VK_DYNAMIC_CB_LOGIC_OP:
-      return ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
-   case MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE:
-      return ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
-   default:
-      assert(!"Unsupported dynamic state");
-      return 0;
-   }
-}
-
 
 enum anv_pipe_bits {
    ANV_PIPE_DEPTH_CACHE_FLUSH_BIT            = (1 << 0),
@@ -2598,7 +2474,6 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
 struct anv_vertex_binding {
    struct anv_buffer *                          buffer;
    VkDeviceSize                                 offset;
-   VkDeviceSize                                 stride;
    VkDeviceSize                                 size;
 };
 
@@ -2639,102 +2514,6 @@ struct anv_push_constants {
       uint32_t subgroup_id;
    } cs;
 };
-
-struct anv_dynamic_state {
-   struct {
-      uint32_t                                  count;
-      VkViewport                                viewports[MAX_VIEWPORTS];
-   } viewport;
-
-   struct {
-      uint32_t                                  count;
-      VkRect2D                                  scissors[MAX_SCISSORS];
-   } scissor;
-
-   float                                        line_width;
-
-   struct {
-      float                                     bias;
-      float                                     clamp;
-      float                                     slope;
-   } depth_bias;
-
-   float                                        blend_constants[4];
-
-   struct {
-      float                                     min;
-      float                                     max;
-   } depth_bounds;
-
-   struct {
-      uint32_t                                  front;
-      uint32_t                                  back;
-   } stencil_compare_mask;
-
-   struct {
-      uint32_t                                  front;
-      uint32_t                                  back;
-   } stencil_write_mask;
-
-   struct {
-      uint32_t                                  front;
-      uint32_t                                  back;
-   } stencil_reference;
-
-   struct {
-      struct {
-         VkStencilOp fail_op;
-         VkStencilOp pass_op;
-         VkStencilOp depth_fail_op;
-         VkCompareOp compare_op;
-      } front;
-      struct {
-         VkStencilOp fail_op;
-         VkStencilOp pass_op;
-         VkStencilOp depth_fail_op;
-         VkCompareOp compare_op;
-      } back;
-   } stencil_op;
-
-   struct {
-      uint32_t                                  factor;
-      uint16_t                                  pattern;
-   } line_stipple;
-
-   struct {
-      struct intel_sample_position              locations[16];
-      unsigned                                  samples;
-   } sample_locations;
-
-   struct {
-      VkExtent2D                                rate;
-      VkFragmentShadingRateCombinerOpKHR        ops[2];
-   } fragment_shading_rate;
-
-   VkCullModeFlags                              cull_mode;
-   VkFrontFace                                  front_face;
-   VkPrimitiveTopology                          primitive_topology;
-   bool                                         depth_test_enable;
-   bool                                         depth_write_enable;
-   VkCompareOp                                  depth_compare_op;
-   bool                                         depth_bounds_test_enable;
-   bool                                         stencil_test_enable;
-   bool                                         raster_discard;
-   bool                                         depth_bias_enable;
-   bool                                         primitive_restart_enable;
-   VkLogicOp                                    logic_op;
-   bool                                         dyn_vbo_stride;
-
-   /* Bitfield, one bit per render target */
-   uint8_t                                      color_writes;
-};
-
-extern const struct anv_dynamic_state default_dynamic_state;
-
-void anv_dynamic_state_init(struct anv_dynamic_state *state);
-anv_cmd_dirty_mask_t anv_dynamic_state_copy(struct anv_dynamic_state *dest,
-                                            const struct anv_dynamic_state *src,
-                                            anv_cmd_dirty_mask_t copy_mask);
 
 struct anv_surface_state {
    struct anv_state state;
@@ -2876,13 +2655,13 @@ struct anv_cmd_graphics_state {
 
    VkShaderStageFlags push_constant_stages;
 
-   struct anv_dynamic_state dynamic;
-
    uint32_t primitive_topology;
 
    struct anv_buffer *index_buffer;
    uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */
    uint32_t index_offset;
+
+   struct vk_sample_locations_state sample_locations;
 };
 
 enum anv_depth_reg_mode {
@@ -3306,21 +3085,13 @@ struct anv_pipeline {
 struct anv_graphics_pipeline {
    struct anv_pipeline                          base;
 
-   /* States declared dynamic at pipeline creation. */
-   anv_cmd_dirty_mask_t                         dynamic_states;
-
    /* Shaders */
    struct anv_shader_bin *                      shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT];
 
    VkShaderStageFlags                           active_stages;
 
-   /* States that need to be reemitted in cmd_buffer_flush_dynamic_state().
-    * This might cover more than the dynamic states specified at pipeline
-    * creation.
-    */
-   anv_cmd_dirty_mask_t                         non_dynamic_state_mask;
-
-   struct anv_dynamic_state                     non_dynamic_state;
+   struct vk_sample_locations_state             sample_locations;
+   struct vk_dynamic_graphics_state             dynamic_state;
 
    /* These fields are required with dynamic primitive topology,
     * rasterization_samples used only with gen < 8.
@@ -3342,7 +3113,6 @@ struct anv_graphics_pipeline {
    bool                                         depth_clamp_enable;
    bool                                         depth_clip_enable;
    bool                                         kill_pixel;
-   bool                                         depth_bounds_test_enable;
    bool                                         force_fragment_thread_dispatch;
    bool                                         negative_one_to_one;
 
@@ -3456,7 +3226,9 @@ static inline bool
 anv_cmd_buffer_all_color_write_masked(const struct anv_cmd_buffer *cmd_buffer)
 {
    const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
-   uint8_t color_writes = state->dynamic.color_writes;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+   uint8_t color_writes = dyn->cb.color_write_enables;
 
    /* All writes disabled through vkCmdSetColorWriteEnableEXT */
    if ((color_writes & ((1u << state->color_att_count) - 1)) == 0)

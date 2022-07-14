@@ -987,7 +987,6 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
       pipeline->stencil_test_enable = false;
       pipeline->writes_depth = false;
       pipeline->depth_test_enable = false;
-      pipeline->depth_bounds_test_enable = false;
       return;
    }
 
@@ -1005,7 +1004,6 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    pipeline->stencil_test_enable = ds.stencil.test_enable;
    pipeline->writes_depth = ds.depth.write_enable;
    pipeline->depth_test_enable = ds.depth.test_enable;
-   pipeline->depth_bounds_test_enable = ds.depth.bounds_test.enable;
 }
 
 static bool

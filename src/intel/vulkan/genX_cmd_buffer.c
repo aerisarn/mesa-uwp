@@ -1924,8 +1924,8 @@ genX(CmdExecuteCommands)(
    primary->state.current_pipeline = UINT32_MAX;
    primary->state.current_l3_config = NULL;
    primary->state.current_hash_scale = 0;
-   primary->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_ALL;
    primary->state.gfx.push_constant_stages = 0;
+   vk_dynamic_graphics_state_dirty_all(&primary->vk.dynamic_graphics_state);
 
    /* Each of the secondary command buffers will use its own state base
     * address.  We need to re-emit state base address for the primary after
@@ -3413,36 +3413,31 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
 static void
 cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 {
-   const uint32_t clip_states =
-#if GFX_VER <= 7
-      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
-      ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
-#endif
-      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
-      ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-      ANV_CMD_DIRTY_PIPELINE;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
 
-   if ((cmd_buffer->state.gfx.dirty & clip_states) == 0)
+   if (!(cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) &&
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) &&
+#if GFX_VER <= 7
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_CULL_MODE) &&
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_FRONT_FACE) &&
+#endif
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT))
       return;
 
    /* Take dynamic primitive topology in to account with
     *    3DSTATE_CLIP::ViewportXYClipTestEnable
     */
-   VkPrimitiveTopology primitive_topology =
-      cmd_buffer->state.gfx.dynamic.primitive_topology;
    VkPolygonMode dynamic_raster_mode =
       genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
-                                primitive_topology);
+                                dyn->ia.primitive_topology);
    bool xy_clip_test_enable = (dynamic_raster_mode == VK_POLYGON_MODE_FILL);
 
-#if GFX_VER <= 7
-   const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
-#endif
    struct GENX(3DSTATE_CLIP) clip = {
       GENX(3DSTATE_CLIP_header),
 #if GFX_VER <= 7
-      .FrontWinding = genX(vk_to_intel_front_face)[d->front_face],
-      .CullMode     = genX(vk_to_intel_cullmode)[d->cull_mode],
+      .FrontWinding = genX(vk_to_intel_front_face)[dyn->rs.front_face],
+      .CullMode     = genX(vk_to_intel_cullmode)[dyn->rs.cull_mode],
 #endif
       .ViewportXYClipTestEnable = xy_clip_test_enable,
    };
@@ -3454,15 +3449,14 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
       const struct brw_vue_prog_data *last =
          anv_pipeline_get_last_vue_prog_data(pipeline);
       if (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT) {
-         clip.MaximumVPIndex =
-            cmd_buffer->state.gfx.dynamic.viewport.count > 0 ?
-            cmd_buffer->state.gfx.dynamic.viewport.count - 1 : 0;
+         clip.MaximumVPIndex = dyn->vp.viewport_count > 0 ?
+                               dyn->vp.viewport_count - 1 : 0;
       }
    } else if (anv_pipeline_is_mesh(pipeline)) {
       const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
       if (mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
-         uint32_t viewport_count = cmd_buffer->state.gfx.dynamic.viewport.count;
-         clip.MaximumVPIndex = viewport_count > 0 ? viewport_count - 1 : 0;
+         clip.MaximumVPIndex = dyn->vp.viewport_count > 0 ?
+                               dyn->vp.viewport_count - 1 : 0;
       }
    }
 
@@ -3475,8 +3469,10 @@ static void
 cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
-   uint32_t count = gfx->dynamic.viewport.count;
-   const VkViewport *viewports = gfx->dynamic.viewport.viewports;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+   uint32_t count = dyn->vp.viewport_count;
+   const VkViewport *viewports = dyn->vp.viewports;
    struct anv_state sf_clip_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 64, 64);
 
@@ -3538,8 +3534,8 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
        * It's theoretically possible that they could do all their clipping
        * with clip planes but that'd be a bit odd.
        */
-      if (i < gfx->dynamic.scissor.count) {
-         const VkRect2D *scissor = &gfx->dynamic.scissor.scissors[i];
+      if (i < dyn->vp.scissor_count) {
+         const VkRect2D *scissor = &dyn->vp.scissors[i];
          x_min = MAX2(x_min, scissor->offset.x);
          x_max = MIN2(x_min, scissor->offset.x + scissor->extent.width);
          y_min = MAX2(y_min, scissor->offset.y);
@@ -3576,9 +3572,10 @@ static void
 cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
                                bool depth_clamp_enable)
 {
-   uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
-   const VkViewport *viewports =
-      cmd_buffer->state.gfx.dynamic.viewport.viewports;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+   uint32_t count = dyn->vp.viewport_count;
+   const VkViewport *viewports = dyn->vp.viewports;
    struct anv_state cc_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 8, 32);
 
@@ -3622,9 +3619,11 @@ static void
 cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
-   uint32_t count = gfx->dynamic.scissor.count;
-   const VkRect2D *scissors = gfx->dynamic.scissor.scissors;
-   const VkViewport *viewports = gfx->dynamic.viewport.viewports;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+   uint32_t count = dyn->vp.scissor_count;
+   const VkRect2D *scissors = dyn->vp.scissors;
+   const VkViewport *viewports = dyn->vp.viewports;
 
    /* Wa_1409725701:
     *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
@@ -3697,7 +3696,8 @@ cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
 
 #if GFX_VER == 7
@@ -3710,7 +3710,7 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
 
    struct GENX(3DSTATE_STREAMOUT) so = {
       GENX(3DSTATE_STREAMOUT_header),
-      .RenderingDisable = d->raster_discard,
+      .RenderingDisable = dyn->rs.rasterizer_discard_enable,
    };
    GENX(3DSTATE_STREAMOUT_pack)(NULL, dwords, &so);
    anv_batch_emit_merge(&cmd_buffer->batch, dwords, streamout_state_dw);
@@ -3720,6 +3720,8 @@ void
 genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
    uint32_t *p;
 
    assert((pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT) == 0);
@@ -3751,15 +3753,9 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          struct anv_buffer *buffer = cmd_buffer->state.vertex_bindings[vb].buffer;
          uint32_t offset = cmd_buffer->state.vertex_bindings[vb].offset;
 
-         /* If dynamic, use stride/size from vertex binding, otherwise use
-          * stride/size that was setup in the pipeline object.
-          */
-         bool dynamic_stride = cmd_buffer->state.gfx.dynamic.dyn_vbo_stride;
-
          struct GENX(VERTEX_BUFFER_STATE) state;
          if (buffer) {
-            uint32_t stride = dynamic_stride ?
-               cmd_buffer->state.vertex_bindings[vb].stride : pipeline->vb[vb].stride;
+            uint32_t stride = dyn->vi_binding_strides[vb];
             UNUSED uint32_t size = cmd_buffer->state.vertex_bindings[vb].size;
 
 #if GFX_VER <= 7
@@ -3821,6 +3817,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    uint32_t descriptors_dirty = cmd_buffer->state.descriptors_dirty &
                                 pipeline->active_stages;
    if (!cmd_buffer->state.gfx.dirty && !descriptors_dirty &&
+       !vk_dynamic_graphics_state_any_dirty(dyn) &&
        !cmd_buffer->state.push_constants_dirty)
       return;
 
@@ -3964,33 +3961,32 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    cmd_buffer_emit_clip(cmd_buffer);
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
-                                      ANV_CMD_DIRTY_XFB_ENABLE))
+   if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                       ANV_CMD_DIRTY_XFB_ENABLE)) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
       cmd_buffer_emit_streamout(cmd_buffer);
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
-                                      ANV_CMD_DIRTY_RENDER_TARGETS |
-                                      ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-                                      ANV_CMD_DIRTY_PIPELINE)) {
+   if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                       ANV_CMD_DIRTY_RENDER_TARGETS)) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS)) {
       cmd_buffer_emit_viewport(cmd_buffer);
       cmd_buffer_emit_depth_viewport(cmd_buffer,
                                      pipeline->depth_clamp_enable);
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
-                                      ANV_CMD_DIRTY_RENDER_TARGETS |
-                                      ANV_CMD_DIRTY_DYNAMIC_VIEWPORT))
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_RENDER_TARGETS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS))
       cmd_buffer_emit_scissor(cmd_buffer);
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
-      const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY)) {
       uint32_t topology;
       if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
          topology = _3DPRIM_PATCHLIST(pipeline->patch_control_points);
       else
-         topology = genX(vk_to_intel_primitive_type)[d->primitive_topology];
+         topology = genX(vk_to_intel_primitive_type)[dyn->ia.primitive_topology];
 
       cmd_buffer->state.gfx.primitive_topology = topology;
 
