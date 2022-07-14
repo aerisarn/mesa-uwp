@@ -52,11 +52,17 @@ struct radv_amdgpu_ib {
    unsigned cdw;
 };
 
+struct radv_amdgpu_cs_ib_info {
+   int64_t flags;
+   uint64_t ib_mc_address;
+   uint32_t size;
+};
+
 struct radv_amdgpu_cs {
    struct radeon_cmdbuf base;
    struct radv_amdgpu_winsys *ws;
 
-   struct amdgpu_cs_ib_info ib;
+   struct radv_amdgpu_cs_ib_info ib;
 
    struct radeon_winsys_bo *ib_buffer;
    uint8_t *ib_mapped;
@@ -149,9 +155,9 @@ struct radv_amdgpu_cs_request {
    uint32_t number_of_ibs;
 
    /**
-    * IBs to submit. Those IBs will be submit together as single entity
+    * IBs to submit. Those IBs will be submitted together as single entity
     */
-   struct amdgpu_cs_ib_info *ibs;
+   struct radv_amdgpu_cs_ib_info *ibs;
 
    /**
     * The returned sequence number for the command submission
@@ -902,7 +908,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
    struct radv_amdgpu_winsys *aws = cs0->ws;
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    struct radv_amdgpu_cs_request request;
-   struct amdgpu_cs_ib_info ibs[2];
+   struct radv_amdgpu_cs_ib_info ibs[2];
    unsigned number_of_ibs = 1;
    unsigned num_handles = 0;
    VkResult result;
@@ -983,7 +989,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
 {
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    struct radv_amdgpu_cs_request request;
-   struct amdgpu_cs_ib_info *ibs;
+   struct radv_amdgpu_cs_ib_info *ibs;
    struct radv_amdgpu_cs *last_cs;
    struct radv_amdgpu_winsys *aws;
    unsigned num_handles = 0;
@@ -1079,7 +1085,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
    assert(cs_count);
 
    for (unsigned i = 0; i < cs_count;) {
-      struct amdgpu_cs_ib_info *ibs;
+      struct radv_amdgpu_cs_ib_info *ibs;
       struct radeon_winsys_bo **bos;
       struct radeon_cmdbuf *preamble_cs = i ? continue_preamble_cs : initial_preamble_cs;
       struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
@@ -1760,7 +1766,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
 
    num_chunks = request->number_of_ibs;
    for (i = 0; i < request->number_of_ibs; i++) {
-      struct amdgpu_cs_ib_info *ib;
+      struct radv_amdgpu_cs_ib_info *ib;
       chunks[i].chunk_id = AMDGPU_CHUNK_ID_IB;
       chunks[i].length_dw = sizeof(struct drm_amdgpu_cs_chunk_ib) / 4;
       chunks[i].chunk_data = (uint64_t)(uintptr_t)&chunk_data[i];
