@@ -60,7 +60,7 @@ struct zink_resource_object {
 
    VkPipelineStageFlagBits access_stage;
    VkAccessFlags access;
-   bool unordered_barrier;
+   bool unordered_exec;
 
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct zink_descriptor_refs desc_set_refs;

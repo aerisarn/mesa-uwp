@@ -3112,12 +3112,12 @@ resource_check_defer_buffer_barrier(struct zink_context *ctx, struct zink_resour
 static inline VkCommandBuffer
 get_cmdbuf(struct zink_context *ctx, struct zink_resource *res)
 {
-   if ((res->obj->access && !res->obj->unordered_barrier) || !ctx->batch.in_rp || (zink_debug & ZINK_DEBUG_NOREORDER) > 0) {
+   if ((res->obj->access && !res->obj->unordered_exec) || !ctx->batch.in_rp || (zink_debug & ZINK_DEBUG_NOREORDER) > 0) {
       zink_batch_no_rp(ctx);
-      res->obj->unordered_barrier = false;
+      res->obj->unordered_exec = false;
       return ctx->batch.state->cmdbuf;
    }
-   res->obj->unordered_barrier = true;
+   res->obj->unordered_exec = true;
    ctx->batch.state->has_barriers = true;
    return ctx->batch.state->barrier_cmdbuf;
 }
