@@ -292,6 +292,12 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
          compiler->nir_options.force_indirect_unrolling = nir_var_all;
    }
 
+   /* 16-bit ALU op generation is mostly controlled by frontend compiler options, but
+    * this core NIR option enables some optimizations of 16-bit operations.
+    */
+   if (compiler->gen >= 5 && !(ir3_shader_debug & IR3_DBG_NOFP16))
+      compiler->nir_options.support_16bit_alu = true;
+
    if (!options->disable_cache)
       ir3_disk_cache_init(compiler);
 
