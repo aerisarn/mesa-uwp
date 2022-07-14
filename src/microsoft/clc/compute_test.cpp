@@ -39,6 +39,46 @@
 
 #include <spirv-tools/libspirv.hpp>
 
+#if (defined(_WIN32) && defined(_MSC_VER)) || D3D12_SDK_VERSION < 606
+inline D3D12_CPU_DESCRIPTOR_HANDLE
+GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   return heap->GetCPUDescriptorHandleForHeapStart();
+}
+inline D3D12_GPU_DESCRIPTOR_HANDLE
+GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   return heap->GetGPUDescriptorHandleForHeapStart();
+}
+inline D3D12_HEAP_PROPERTIES
+GetCustomHeapProperties(ID3D12Device *dev, D3D12_HEAP_TYPE type)
+{
+   return dev->GetCustomHeapProperties(0, type);
+}
+#else
+inline D3D12_CPU_DESCRIPTOR_HANDLE
+GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   D3D12_CPU_DESCRIPTOR_HANDLE ret;
+   heap->GetCPUDescriptorHandleForHeapStart(&ret);
+   return ret;
+}
+inline D3D12_GPU_DESCRIPTOR_HANDLE
+GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *heap)
+{
+   D3D12_GPU_DESCRIPTOR_HANDLE ret;
+   heap->GetGPUDescriptorHandleForHeapStart(&ret);
+   return ret;
+}
+inline D3D12_HEAP_PROPERTIES
+GetCustomHeapProperties(ID3D12Device *dev, D3D12_HEAP_TYPE type)
+{
+   D3D12_HEAP_PROPERTIES ret;
+   dev->GetCustomHeapProperties(&ret, 0, type);
+   return ret;
+}
+#endif
+
 using std::runtime_error;
 using Microsoft::WRL::ComPtr;
 
@@ -249,7 +289,7 @@ ComputeTest::create_buffer(int size, D3D12_HEAP_TYPE heap_type)
    desc.Flags = heap_type == D3D12_HEAP_TYPE_DEFAULT ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-   D3D12_HEAP_PROPERTIES heap_pris = dev->GetCustomHeapProperties(0, heap_type);
+   D3D12_HEAP_PROPERTIES heap_pris = GetCustomHeapProperties(dev, heap_type);
 
    ComPtr<ID3D12Resource> res;
    if (FAILED(dev->CreateCommittedResource(&heap_pris,
@@ -384,7 +424,7 @@ ComputeTest::add_uav_resource(ComputeTest::Resources &resources,
    size_t size = align(elem_size * num_elems, 4);
    D3D12_CPU_DESCRIPTOR_HANDLE handle;
    ComPtr<ID3D12Resource> res;
-   handle = uav_heap->GetCPUDescriptorHandleForHeapStart();
+   handle = GetCPUDescriptorHandleForHeapStart(uav_heap);
    handle = offset_cpu_handle(handle, resources.descs.size() * uav_heap_incr);
 
    if (size) {
@@ -409,7 +449,7 @@ ComputeTest::add_cbv_resource(ComputeTest::Resources &resources,
    unsigned aligned_size = align(size, 256);
    D3D12_CPU_DESCRIPTOR_HANDLE handle;
    ComPtr<ID3D12Resource> res;
-   handle = uav_heap->GetCPUDescriptorHandleForHeapStart();
+   handle = GetCPUDescriptorHandleForHeapStart(uav_heap);
    handle = offset_cpu_handle(handle, resources.descs.size() * uav_heap_incr);
 
    if (size) {
@@ -570,7 +610,7 @@ ComputeTest::run_shader_with_raw_args(Shader shader,
 
    cmdlist->SetDescriptorHeaps(1, &uav_heap);
    cmdlist->SetComputeRootSignature(root_sig.Get());
-   cmdlist->SetComputeRootDescriptorTable(0, uav_heap->GetGPUDescriptorHandleForHeapStart());
+   cmdlist->SetComputeRootDescriptorTable(0, GetGPUDescriptorHandleForHeapStart(uav_heap));
    cmdlist->SetPipelineState(pipeline_state.Get());
 
    cmdlist->Dispatch(compile_args.x / conf.local_size[0],
