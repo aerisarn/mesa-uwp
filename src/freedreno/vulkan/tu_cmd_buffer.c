@@ -75,8 +75,6 @@ tu6_lazy_emit_tessfactor_addr(struct tu_cmd_buffer *cmd)
    if (cmd->state.tessfactor_addr_set)
       return;
 
-   assert(cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
    tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo->iova));
    cmd->state.tessfactor_addr_set = true;
 }
@@ -2378,12 +2376,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
       cmd->state.has_tess = true;
 
-      /* Set up the tess factor address if this is the first tess pipeline bound
-       * to the primary cmdbuf.
-      */
-      if (cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-         tu6_lazy_emit_tessfactor_addr(cmd);
-
       /* maximum number of patches that can fit in tess factor/param buffers */
       uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
                            TU_TESS_PARAM_SIZE / pipeline->tess.param_stride);
@@ -3356,11 +3348,7 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             break;
          }
 
-         /* Set up the tess factor address if this is the first time a tess
-          * pipeline has been executed on this primary cmdbuf.
-          */
          if (secondary->state.has_tess) {
-            tu6_lazy_emit_tessfactor_addr(cmd);
             cmd->state.has_tess = true;
          }
          if (secondary->state.has_subpass_predication)
@@ -4720,6 +4708,9 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
 
    cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
+
+   if (cmd_buffer->state.has_tess)
+      tu6_lazy_emit_tessfactor_addr(cmd_buffer);
 
    struct tu_renderpass_result *autotune_result = NULL;
    if (use_sysmem_rendering(cmd_buffer, &autotune_result))
