@@ -97,7 +97,6 @@ tu_spirv_to_nir(struct tu_device *dev,
 
    struct vk_shader_module *module =
       vk_shader_module_from_handle(stage_info->module);
-   assert(module->size % 4 == 0);
 
    nir_shader *nir;
    VkResult result = vk_shader_module_to_nir(&dev->vk, module,
