@@ -2709,14 +2709,14 @@ static void handle_push_constants(struct vk_cmd_queue_entry *cmd,
 }
 
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
-                                   struct rendering_state *state);
+                                   struct rendering_state *state, bool print_cmds);
 
 static void handle_execute_commands(struct vk_cmd_queue_entry *cmd,
-                                    struct rendering_state *state)
+                                    struct rendering_state *state, bool print_cmds)
 {
    for (unsigned i = 0; i < cmd->u.execute_commands.command_buffer_count; i++) {
       LVP_FROM_HANDLE(lvp_cmd_buffer, secondary_buf, cmd->u.execute_commands.command_buffers[i]);
-      lvp_execute_cmd_buffer(secondary_buf, state);
+      lvp_execute_cmd_buffer(secondary_buf, state, print_cmds);
    }
 }
 
@@ -4001,13 +4001,15 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
 }
 
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
-                                   struct rendering_state *state)
+                                   struct rendering_state *state, bool print_cmds)
 {
    struct vk_cmd_queue_entry *cmd;
    bool first = true;
    bool did_flush = false;
 
    LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->vk.cmd_queue.cmds, cmd_link) {
+      if (print_cmds)
+         fprintf(stderr, "%s\n", vk_cmd_queue_type_names[cmd->type]);
       switch (cmd->type) {
       case VK_CMD_BIND_PIPELINE:
          handle_pipeline(cmd, state);
@@ -4154,7 +4156,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          handle_push_constants(cmd, state);
          break;
       case VK_CMD_EXECUTE_COMMANDS:
-         handle_execute_commands(cmd, state);
+         handle_execute_commands(cmd, state, print_cmds);
          break;
       case VK_CMD_DRAW_INDIRECT_COUNT:
          emit_state(state);
@@ -4344,7 +4346,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
    }
    /* create a gallium context */
-   lvp_execute_cmd_buffer(cmd_buffer, state);
+   lvp_execute_cmd_buffer(cmd_buffer, state, device->print_cmds);
 
    state->start_vb = -1;
    state->num_vb = 0;
