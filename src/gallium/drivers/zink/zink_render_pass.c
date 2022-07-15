@@ -576,7 +576,7 @@ begin_render_pass(struct zink_context *ctx)
             surf = zink_csurface(ctx->dummy_surface[util_logbase2_ceil(ctx->fb_state.samples)]);
             assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
          } else {
-            struct zink_surface *transient = zink_transient_surface(&surf->base);
+            struct zink_surface *transient = zink_transient_surface(ctx->fb_state.cbufs[i]);
             if (surf->base.format == ctx->fb_state.cbufs[i]->format) {
                if (transient) {
                   assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
