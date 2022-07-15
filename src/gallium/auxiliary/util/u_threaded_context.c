@@ -2370,8 +2370,14 @@ tc_transfer_flush_region(struct pipe_context *_pipe,
          tc_buffer_do_flush_region(tc, ttrans, &box);
       }
 
-      /* Staging transfers don't send the call to the driver. */
-      if (ttrans->staging)
+      /* Staging transfers don't send the call to the driver.
+       *
+       * Transfers using the CPU storage shouldn't call transfer_flush_region
+       * in the driver because the buffer is not really mapped on the driver
+       * side and the CPU storage always re-uploads everything (flush_region
+       * makes no difference).
+       */
+      if (ttrans->staging || ttrans->cpu_storage_mapped)
          return;
    }
 
