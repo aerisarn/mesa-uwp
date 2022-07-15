@@ -37,6 +37,7 @@
 #ifdef HAVE_GALLIUM_D3D12_VIDEO
 #include "d3d12_video_dec.h"
 #include "d3d12_video_enc.h"
+#include "d3d12_video_proc.h"
 #include "d3d12_video_buffer.h"
 #endif
 #include "util/u_atomic.h"
@@ -2407,6 +2408,8 @@ d3d12_video_create_codec(struct pipe_context *context,
         return d3d12_video_encoder_create_encoder(context, templat);
     } else if (templat->entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
         return d3d12_video_create_decoder(context, templat);
+    } else if (templat->entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+        return d3d12_video_processor_create(context, templat);
     } else {
         debug_printf("D3D12: Unsupported video codec entrypoint %d\n", templat->entrypoint);
         return nullptr;

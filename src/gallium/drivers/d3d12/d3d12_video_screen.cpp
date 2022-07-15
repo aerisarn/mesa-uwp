@@ -542,6 +542,164 @@ d3d12_screen_get_video_param_decode(struct pipe_screen *pscreen,
    }
 }
 
+
+static bool
+d3d12_has_video_process_support(struct pipe_screen *pscreen, D3D12_FEATURE_DATA_VIDEO_PROCESS_SUPPORT &supportCaps)
+{
+   ComPtr<ID3D12VideoDevice2> spD3D12VideoDevice;
+   struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) pscreen;
+   if (FAILED(pD3D12Screen->dev->QueryInterface(IID_PPV_ARGS(spD3D12VideoDevice.GetAddressOf())))) {
+      // No video encode support in underlying d3d12 device (needs ID3D12VideoDevice2)
+      return false;
+   }
+
+   D3D12_FEATURE_DATA_VIDEO_FEATURE_AREA_SUPPORT VideoFeatureAreaSupport = {};
+   if (FAILED(spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_FEATURE_AREA_SUPPORT,
+                                                      &VideoFeatureAreaSupport,
+                                                      sizeof(VideoFeatureAreaSupport)))) {
+      return false;
+   }
+
+   struct ResolStruct {
+      uint Width;
+      uint Height;
+   };
+
+   ResolStruct resolutionsList[] = {
+      { 8192, 8192 },   // 8k
+      { 8192, 4320 },   // 8k - alternative
+      { 7680, 4800 },   // 8k - alternative
+      { 7680, 4320 },   // 8k - alternative
+      { 4096, 2304 },   // 2160p (4K)
+      { 4096, 2160 },   // 2160p (4K) - alternative
+      { 2560, 1440 },   // 1440p
+      { 1920, 1200 },   // 1200p
+      { 1920, 1080 },   // 1080p
+      { 1280, 720 },    // 720p
+      { 800, 600 },
+   };
+
+   uint32_t idxResol = 0;
+   bool bSupportsAny = false;
+   while ((idxResol < ARRAY_SIZE(resolutionsList)) && !bSupportsAny) {
+      supportCaps.InputSample.Width = resolutionsList[idxResol].Width;
+      supportCaps.InputSample.Height = resolutionsList[idxResol].Height;
+      if (SUCCEEDED(spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_PROCESS_SUPPORT, &supportCaps, sizeof(supportCaps)))) {
+         bSupportsAny = ((supportCaps.SupportFlags & D3D12_VIDEO_PROCESS_SUPPORT_FLAG_SUPPORTED) != 0) ;
+      }
+      idxResol++;
+   }
+
+   return VideoFeatureAreaSupport.VideoProcessSupport && bSupportsAny;
+}
+
+static int
+d3d12_screen_get_video_param_postproc(struct pipe_screen *pscreen,
+                                    enum pipe_video_profile profile,
+                                    enum pipe_video_entrypoint entrypoint,
+                                    enum pipe_video_cap param)
+{
+   switch (param) {
+      case PIPE_VIDEO_CAP_NPOT_TEXTURES:
+         return 1;
+      case PIPE_VIDEO_CAP_MAX_WIDTH:
+      case PIPE_VIDEO_CAP_MAX_HEIGHT:
+      case PIPE_VIDEO_CAP_SUPPORTED:
+      case PIPE_VIDEO_CAP_PREFERED_FORMAT:
+      case PIPE_VIDEO_CAP_SUPPORTS_INTERLACED:
+      case PIPE_VIDEO_CAP_SUPPORTS_PROGRESSIVE:
+      case PIPE_VIDEO_CAP_VPP_MAX_INPUT_WIDTH:
+      case PIPE_VIDEO_CAP_VPP_MAX_INPUT_HEIGHT:
+      case PIPE_VIDEO_CAP_VPP_MIN_INPUT_WIDTH:
+      case PIPE_VIDEO_CAP_VPP_MIN_INPUT_HEIGHT:
+      case PIPE_VIDEO_CAP_VPP_MAX_OUTPUT_WIDTH:
+      case PIPE_VIDEO_CAP_VPP_MAX_OUTPUT_HEIGHT:
+      case PIPE_VIDEO_CAP_VPP_MIN_OUTPUT_WIDTH:
+      case PIPE_VIDEO_CAP_VPP_MIN_OUTPUT_HEIGHT:
+      case PIPE_VIDEO_CAP_VPP_ORIENTATION_MODES:
+      case PIPE_VIDEO_CAP_VPP_BLEND_MODES:
+      {
+         // Assume defaults for now, we don't have the input args passed by get_video_param to be accurate here.
+         const D3D12_VIDEO_FIELD_TYPE FieldType = D3D12_VIDEO_FIELD_TYPE_NONE;
+         const D3D12_VIDEO_FRAME_STEREO_FORMAT StereoFormat = D3D12_VIDEO_FRAME_STEREO_FORMAT_NONE;
+         const DXGI_RATIONAL FrameRate = { 30, 1 };
+         const DXGI_FORMAT InputFormat = DXGI_FORMAT_NV12;
+         const DXGI_COLOR_SPACE_TYPE InputColorSpace = DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709;
+         const DXGI_FORMAT OutputFormat = DXGI_FORMAT_NV12;
+         const DXGI_COLOR_SPACE_TYPE OutputColorSpace = DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709;
+         const UINT Width = 1280;
+         const UINT Height = 720;
+         D3D12_FEATURE_DATA_VIDEO_PROCESS_SUPPORT supportCaps =
+         {
+            0, // NodeIndex
+            { Width, Height, { InputFormat, InputColorSpace } },
+            FieldType,
+            StereoFormat,
+            FrameRate,
+            { OutputFormat, OutputColorSpace },
+            StereoFormat,
+            FrameRate,
+         };
+
+         if (d3d12_has_video_process_support(pscreen, supportCaps)) {
+            if (param == PIPE_VIDEO_CAP_SUPPORTED) {
+               return true;
+            } else if (param == PIPE_VIDEO_CAP_PREFERED_FORMAT) {
+               return  PIPE_FORMAT_NV12;
+            } else if (param == PIPE_VIDEO_CAP_SUPPORTS_INTERLACED) {
+               return false;
+            } else if (param == PIPE_VIDEO_CAP_MAX_WIDTH) {
+               return supportCaps.InputSample.Width;
+            } else if (param == PIPE_VIDEO_CAP_MAX_HEIGHT) {
+               return supportCaps.InputSample.Height;
+            } else if (param == PIPE_VIDEO_CAP_SUPPORTS_PROGRESSIVE) {
+               return true;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MAX_INPUT_WIDTH) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MaxWidth;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MAX_INPUT_HEIGHT) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MaxHeight;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MIN_INPUT_WIDTH) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MinWidth;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MIN_INPUT_HEIGHT) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MinHeight;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MAX_OUTPUT_WIDTH) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MaxWidth;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MAX_OUTPUT_HEIGHT) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MaxHeight;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MIN_OUTPUT_WIDTH) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MinWidth;
+            } else if (param == PIPE_VIDEO_CAP_VPP_MIN_OUTPUT_HEIGHT) {
+               return supportCaps.ScaleSupport.OutputSizeRange.MinHeight;
+            } else if (param == PIPE_VIDEO_CAP_VPP_BLEND_MODES) {
+               uint32_t blend_modes = PIPE_VIDEO_VPP_BLEND_MODE_NONE;
+               if (((supportCaps.FeatureSupport & D3D12_VIDEO_PROCESS_FEATURE_FLAG_ALPHA_BLENDING) != 0)
+                  && ((supportCaps.FeatureSupport & D3D12_VIDEO_PROCESS_FEATURE_FLAG_ALPHA_FILL) != 0))
+                  {
+                     blend_modes |= PIPE_VIDEO_VPP_BLEND_MODE_GLOBAL_ALPHA;
+                  }
+                  return blend_modes;
+            } else if (param == PIPE_VIDEO_CAP_VPP_ORIENTATION_MODES) {
+                uint32_t orientation_modes = PIPE_VIDEO_VPP_ORIENTATION_DEFAULT;
+                if((supportCaps.FeatureSupport & D3D12_VIDEO_PROCESS_FEATURE_FLAG_FLIP) != 0) {
+                  orientation_modes |= PIPE_VIDEO_VPP_FLIP_HORIZONTAL;
+                  orientation_modes |= PIPE_VIDEO_VPP_FLIP_VERTICAL;
+                }
+
+                if((supportCaps.FeatureSupport & D3D12_VIDEO_PROCESS_FEATURE_FLAG_ROTATION) != 0) {
+                  orientation_modes |= PIPE_VIDEO_VPP_ROTATION_90;
+                  orientation_modes |= PIPE_VIDEO_VPP_ROTATION_180;
+                  orientation_modes |= PIPE_VIDEO_VPP_ROTATION_270;
+                }
+                return orientation_modes;
+            }
+         }
+         return 0;
+      } break;
+      default:
+         return 0;
+   }
+}
+
 static int
 d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                                     enum pipe_video_profile profile,
@@ -613,6 +771,8 @@ d3d12_screen_get_video_param(struct pipe_screen *pscreen,
       return d3d12_screen_get_video_param_decode(pscreen, profile, entrypoint, param);
    } else if (entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
       return d3d12_screen_get_video_param_encode(pscreen, profile, entrypoint, param);
+   } else if (entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      return d3d12_screen_get_video_param_postproc(pscreen, profile, entrypoint, param);
    }
    return 0;
 }
