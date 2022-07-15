@@ -443,8 +443,6 @@ setup_framebuffer(struct zink_context *ctx)
 
    zink_update_vk_sample_locations(ctx);
 
-   if (rp)
-      ctx->rp_changed |= ctx->rp_clears_enabled != rp->state.clears;
    if (ctx->rp_changed)
       rp = get_render_pass(ctx);
 
