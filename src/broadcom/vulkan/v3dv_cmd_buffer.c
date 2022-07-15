@@ -2097,8 +2097,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
    const bool needs_fs_update = has_new_pipeline ||
                                 has_new_view_index ||
                                 has_new_push_constants_fs ||
-                                has_new_descriptors_fs ||
-                                has_new_view_index;
+                                has_new_descriptors_fs;
 
    if (needs_fs_update) {
       struct v3dv_shader_variant *fs_variant =
