@@ -443,7 +443,7 @@ setup_framebuffer(struct zink_context *ctx)
 
    zink_update_vk_sample_locations(ctx);
 
-   if (ctx->rp_changed)
+   if (ctx->rp_changed || ctx->rp_layout_changed)
       rp = get_render_pass(ctx);
 
    ctx->fb_changed |= rp != ctx->gfx_pipeline_state.render_pass;
@@ -452,6 +452,7 @@ setup_framebuffer(struct zink_context *ctx)
       ctx->gfx_pipeline_state.dirty = true;
    }
 
+   ctx->rp_layout_changed = false;
    ctx->rp_changed = false;
    zink_render_update_swapchain(ctx);
 
@@ -636,6 +637,7 @@ zink_begin_render_pass(struct zink_context *ctx)
          pipe_sampler_view_reference(&src_view, NULL);
          csurf->transient_init = true;
       }
+      ctx->rp_layout_changed = ctx->rp_loadop_changed = false;
       ctx->fb_changed = ctx->rp_changed = false;
       ctx->gfx_pipeline_state.rp_state = rp_state;
       ctx->gfx_pipeline_state.render_pass = rp;

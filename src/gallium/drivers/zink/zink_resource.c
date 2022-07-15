@@ -1562,7 +1562,7 @@ zink_resource_invalidate(struct pipe_context *pctx, struct pipe_resource *pres)
    else {
       struct zink_resource *res = zink_resource(pres);
       if (res->valid && res->fb_binds)
-         zink_context(pctx)->rp_changed = true;
+         zink_context(pctx)->rp_loadop_changed = true;
       res->valid = false;
    }
 }
@@ -1957,7 +1957,7 @@ zink_image_map(struct pipe_context *pctx,
       goto fail;
    if (usage & PIPE_MAP_WRITE) {
       if (!res->valid && res->fb_binds)
-         ctx->rp_changed = true;
+         ctx->rp_loadop_changed = true;
       res->valid = true;
    }
 

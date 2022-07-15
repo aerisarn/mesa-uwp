@@ -607,7 +607,7 @@ zink_fb_clear_reset(struct zink_context *ctx, unsigned i)
       ctx->rp_clears_enabled &= ~(PIPE_CLEAR_COLOR0 << i);
    }
    if (ctx->rp_clears_enabled != rp_clears_enabled)
-      ctx->rp_changed = true;
+      ctx->rp_loadop_changed = true;
 }
 
 void

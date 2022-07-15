@@ -498,7 +498,7 @@ zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *re
    }
    if (write && !res->obj->is_buffer) {
       if (!res->valid && res->fb_binds)
-         batch->state->ctx->rp_changed = true;
+         batch->state->ctx->rp_loadop_changed = true;
       res->valid = true;
    }
    zink_resource_usage_set(res, batch->state, write);

@@ -2160,7 +2160,9 @@ begin_rendering(struct zink_context *ctx)
    zink_render_update_swapchain(ctx);
    bool has_depth = false;
    bool has_stencil = false;
-   if (ctx->rp_changed) {
+   bool changed_layout = false;
+   bool changed_size = false;
+   if (ctx->rp_changed || ctx->rp_layout_changed || ctx->rp_loadop_changed) {
       /* init imageviews, base loadOp, formats */
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
@@ -2177,11 +2179,17 @@ begin_rendering(struct zink_context *ctx)
          /* use dummy fb size of 1024 if no surf exists */
          unsigned width = surf ? surf->base.texture->width0 : 1024;
          unsigned height = surf ? surf->base.texture->height0 : 1024;
+         unsigned prev_width = ctx->dynamic_fb.info.renderArea.extent.width;
+         unsigned prev_height = ctx->dynamic_fb.info.renderArea.extent.height;
          ctx->dynamic_fb.info.renderArea.extent.width = MIN2(ctx->dynamic_fb.info.renderArea.extent.width, width);
          ctx->dynamic_fb.info.renderArea.extent.height = MIN2(ctx->dynamic_fb.info.renderArea.extent.height, height);
+         changed_size |= ctx->dynamic_fb.info.renderArea.extent.width != prev_width;
+         changed_size |= ctx->dynamic_fb.info.renderArea.extent.height != prev_height;
       }
 
       /* unset depth and stencil info: reset below */
+      VkImageLayout zlayout = ctx->dynamic_fb.info.pDepthAttachment ? ctx->dynamic_fb.info.pDepthAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED;
+      VkImageLayout slayout = ctx->dynamic_fb.info.pStencilAttachment ? ctx->dynamic_fb.info.pStencilAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED;
       ctx->dynamic_fb.info.pDepthAttachment = NULL;
       ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
       ctx->dynamic_fb.info.pStencilAttachment = NULL;
@@ -2220,6 +2228,10 @@ begin_rendering(struct zink_context *ctx)
          ctx->dynamic_fb.info.pDepthAttachment = NULL;
          ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
       }
+      if (zlayout != (ctx->dynamic_fb.info.pDepthAttachment ? ctx->dynamic_fb.info.pDepthAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED))
+         changed_layout = true;
+      if (slayout != (ctx->dynamic_fb.info.pStencilAttachment ? ctx->dynamic_fb.info.pStencilAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED))
+         changed_layout = true;
 
       /* similar to begin_render_pass(), but just filling in VkRenderingInfo */
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
@@ -2262,12 +2274,18 @@ begin_rendering(struct zink_context *ctx)
                clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
          }
       }
-      ctx->rp_changed = false;
+      if (changed_size || changed_layout)
+         ctx->rp_changed = true;
+      ctx->rp_loadop_changed = false;
+      ctx->rp_layout_changed = false;
    }
    /* validate zs VUs: attachment must be null or format must be valid */
    assert(!ctx->dynamic_fb.info.pDepthAttachment || ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat);
    assert(!ctx->dynamic_fb.info.pStencilAttachment || ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat);
 
+   if (!ctx->rp_changed && ctx->batch.in_rp)
+      return 0;
+   ctx->rp_changed = false;
    /* update pipeline info id for compatibility VUs */
    unsigned rp_state = find_rp_state(ctx);
    ctx->gfx_pipeline_state.dirty |= ctx->gfx_pipeline_state.rp_state != rp_state;

@@ -274,7 +274,9 @@ struct zink_context {
    bool new_swapchain;
    VkExtent2D swapchain_size;
    bool fb_changed;
-   bool rp_changed;
+   bool rp_changed; //force renderpass restart
+   bool rp_layout_changed; //renderpass changed, maybe restart
+   bool rp_loadop_changed; //renderpass changed, don't restart
 
    struct zink_framebuffer *framebuffer;
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];
