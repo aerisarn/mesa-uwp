@@ -33,6 +33,16 @@
 #include "util/u_string.h"
 #include "util/u_blitter.h"
 
+static VkAttachmentLoadOp
+get_rt_loadop(const struct zink_rt_attrib *rt, bool clear)
+{
+   return clear ? VK_ATTACHMENT_LOAD_OP_CLEAR :
+                  /* TODO: need replicate EXT */
+                  //rt->resolve || rt->invalid ?
+                  rt->invalid ?
+                  VK_ATTACHMENT_LOAD_OP_DONT_CARE :
+                  VK_ATTACHMENT_LOAD_OP_LOAD;
+}
 
 static VkRenderPass
 create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
@@ -58,12 +68,7 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       attachments[i].flags = 0;
       pstate->attachments[i].format = attachments[i].format = rt->format;
       pstate->attachments[i].samples = attachments[i].samples = rt->samples;
-      attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR :
-                                                /* TODO: need replicate EXT */
-                                                //rt->resolve || rt->invalid ?
-                                                rt->invalid ?
-                                                VK_ATTACHMENT_LOAD_OP_DONT_CARE :
-                                                VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachments[i].loadOp = get_rt_loadop(rt, rt->clear_color);
 
       /* TODO: need replicate EXT */
       //attachments[i].storeOp = rt->resolve ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
