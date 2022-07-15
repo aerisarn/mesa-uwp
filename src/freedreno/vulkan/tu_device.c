@@ -213,6 +213,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_stencil_export = true,
       .EXT_shader_viewport_index_layer = true,
+      .EXT_shader_module_identifier = true,
       .EXT_texel_buffer_alignment = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_provoking_vertex = true,
@@ -903,6 +904,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->colorWriteEnable = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT: {
+         VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *features =
+            (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *)ext;
+         features->shaderModuleIdentifier = true;
+         break;
+      }
 
       default:
          break;
@@ -1352,7 +1359,16 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->renderMinor = pdevice->local_minor;
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_PROPERTIES_EXT: {
+         VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT *props =
+            (VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT *)ext;
+         STATIC_ASSERT(sizeof(vk_shaderModuleIdentifierAlgorithmUUID) ==
+                       sizeof(props->shaderModuleIdentifierAlgorithmUUID));
+         memcpy(props->shaderModuleIdentifierAlgorithmUUID,
+                vk_shaderModuleIdentifierAlgorithmUUID,
+                sizeof(props->shaderModuleIdentifierAlgorithmUUID));
+         break;
+      }
       default:
          break;
       }
