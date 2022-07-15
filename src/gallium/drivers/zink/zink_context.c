@@ -3150,8 +3150,8 @@ unordered_res_exec(const struct zink_context *ctx, const struct zink_resource *r
    return res->obj->unordered_write || !zink_batch_usage_matches(res->obj->bo->writes, ctx->batch.state);
 }
 
-static inline VkCommandBuffer
-get_cmdbuf(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst)
+VkCommandBuffer
+zink_get_cmdbuf(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst)
 {
    bool unordered_exec = (zink_debug & ZINK_DEBUG_NOREORDER) == 0;
    if (src)
@@ -3208,7 +3208,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
       return;
    /* only barrier if we're changing layout or doing something besides read -> read */
    bool is_write = zink_resource_access_is_write(imb.dstAccessMask);
-   VkCommandBuffer cmdbuf = is_write ? get_cmdbuf(ctx, NULL, res) : get_cmdbuf(ctx, res, NULL);
+   VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
    if (!res->obj->access_stage)
       imb.srcAccessMask = 0;
@@ -3306,7 +3306,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
    if (!res->obj->access_stage)
       bmb.srcAccessMask = 0;
    bool is_write = zink_resource_access_is_write(flags);
-   VkCommandBuffer cmdbuf = is_write ? get_cmdbuf(ctx, NULL, res) : get_cmdbuf(ctx, res, NULL);
+   VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    /* only barrier if we're changing layout or doing something besides read -> read */
    VKCTX(CmdPipelineBarrier)(
       cmdbuf,
@@ -3945,7 +3945,7 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zin
    util_range_add(&dst->base.b, &dst->valid_buffer_range, dst_offset, dst_offset + size);
    zink_resource_buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
    zink_resource_buffer_barrier(ctx, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
-   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
+   VkCommandBuffer cmdbuf = zink_get_cmdbuf(ctx, src, dst);
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
    VKCTX(CmdCopyBuffer)(cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
@@ -4020,7 +4020,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    /* never promote to unordered if swapchain was acquired */
    VkCommandBuffer cmdbuf = needs_present_readback ?
                             ctx->batch.state->cmdbuf :
-                            buf2img ? get_cmdbuf(ctx, buf, img) : get_cmdbuf(ctx, img, buf);
+                            buf2img ? zink_get_cmdbuf(ctx, buf, img) : zink_get_cmdbuf(ctx, img, buf);
    zink_batch_reference_resource_rw(batch, img, buf2img);
    zink_batch_reference_resource_rw(batch, buf, !buf2img);
 
@@ -4154,7 +4154,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.extent.height = src_box->height;
 
       struct zink_batch *batch = &ctx->batch;
-      VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
+      VkCommandBuffer cmdbuf = zink_get_cmdbuf(ctx, src, dst);
       zink_batch_reference_resource_rw(batch, src, false);
       zink_batch_reference_resource_rw(batch, dst, true);
 

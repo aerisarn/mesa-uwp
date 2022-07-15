@@ -420,7 +420,8 @@ zink_wait_on_batch(struct zink_context *ctx, uint64_t batch_id);
 
 bool
 zink_check_batch_completion(struct zink_context *ctx, uint64_t batch_id);
-
+VkCommandBuffer
+zink_get_cmdbuf(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst);
 void
 zink_flush_queue(struct zink_context *ctx);
 void
