@@ -48,11 +48,16 @@ struct zink_rt_attrib {
 };
 
 struct zink_render_pass_state {
-   uint8_t num_cbufs : 5; /* PIPE_MAX_COLOR_BUFS = 8 */
-   uint8_t have_zsbuf : 1;
-   uint8_t samples:1; //for fs samplemask
-   uint32_t num_zsresolves : 1;
-   uint32_t num_cresolves : 24; /* PIPE_MAX_COLOR_BUFS, but this is a struct hole */
+   union {
+      struct {
+         uint8_t num_cbufs : 5; /* PIPE_MAX_COLOR_BUFS = 8 */
+         uint8_t have_zsbuf : 1;
+         uint8_t samples:1; //for fs samplemask
+         uint32_t num_zsresolves : 1;
+         uint32_t num_cresolves : 24; /* PIPE_MAX_COLOR_BUFS, but this is a struct hole */
+      };
+      uint32_t val; //for comparison
+   };
    struct zink_rt_attrib rts[PIPE_MAX_COLOR_BUFS + 1];
    unsigned num_rts;
    uint32_t clears; //for extra verification and update flagging
