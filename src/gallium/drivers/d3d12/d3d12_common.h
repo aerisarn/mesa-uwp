@@ -34,6 +34,7 @@
 
 #define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
+#include <directx/d3d12video.h>
 
 #if defined(__cplusplus)
 #if !defined(_WIN32) || defined(_MSC_VER) || D3D12_SDK_VERSION < 606
@@ -61,6 +62,11 @@ inline LUID
 GetAdapterLuid(ID3D12Device *dev)
 {
    return dev->GetAdapterLuid();
+}
+inline D3D12_VIDEO_PROCESS_OUTPUT_STREAM_DESC
+GetOutputStreamDesc(ID3D12VideoProcessor *proc)
+{
+   return proc->GetOutputStreamDesc();
 }
 #else
 inline D3D12_CPU_DESCRIPTOR_HANDLE
@@ -96,6 +102,13 @@ GetAdapterLuid(ID3D12Device *dev)
 {
    LUID ret;
    dev->GetAdapterLuid(&ret);
+   return ret;
+}
+inline D3D12_VIDEO_PROCESS_OUTPUT_STREAM_DESC
+GetOutputStreamDesc(ID3D12VideoProcessor *proc)
+{
+   D3D12_VIDEO_PROCESS_OUTPUT_STREAM_DESC ret;
+   proc->GetOutputStreamDesc(&ret);
    return ret;
 }
 #endif

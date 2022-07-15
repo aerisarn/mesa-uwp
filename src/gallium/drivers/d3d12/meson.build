@@ -62,6 +62,7 @@ if with_gallium_d3d12_video
     'd3d12_video_texture_array_dpb_manager.cpp',
     'd3d12_video_array_of_textures_dpb_manager.cpp',
     'd3d12_video_screen.cpp',
+    'd3d12_video_proc.cpp',
   ]
 endif
 
