@@ -2106,6 +2106,11 @@ v3dX(cmd_buffer_emit_gl_shader_state)(struct v3dv_cmd_buffer *cmd_buffer)
       }
    }
 
+   /* Clearing push constants and descriptor sets for all stages is not quite
+    * correct (some shader stages may not be used at all or they may not be
+    * consuming push constants), however this is not relevant because if we
+    * bind a different pipeline we always have to rebuild the uniform streams.
+    */
    cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_VERTEX_BUFFER |
                                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                                 V3DV_CMD_DIRTY_PUSH_CONSTANTS);
