@@ -291,6 +291,7 @@ zink_clear(struct pipe_context *pctx,
       else
          ctx->rp_clears_enabled |= (buffers & PIPE_CLEAR_DEPTHSTENCIL);
    }
+   assert(!ctx->batch.in_rp);
    ctx->rp_changed |= ctx->rp_clears_enabled != rp_clears_enabled;
 }
 
