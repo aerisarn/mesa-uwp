@@ -999,7 +999,7 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    }
 
    struct vk_depth_stencil_state ds = *ds_in;
-   vk_optimize_depth_stencil_state(&ds, ds_aspects);
+   vk_optimize_depth_stencil_state(&ds, ds_aspects, false);
    pipeline->writes_stencil = ds.stencil.write_enable;
    pipeline->stencil_test_enable = ds.stencil.test_enable;
    pipeline->writes_depth = ds.depth.write_enable;

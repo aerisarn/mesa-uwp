@@ -669,7 +669,8 @@ vk_dynamic_graphics_state_init_ds(struct vk_dynamic_graphics_state *dst,
 
 static bool
 optimize_stencil_face(struct vk_stencil_test_face_state *face,
-                      VkCompareOp depthCompareOp)
+                      VkCompareOp depthCompareOp,
+                      bool consider_write_mask)
 {
    /* If compareOp is ALWAYS then the stencil test will never fail and failOp
     * will never happen.  Set failOp to KEEP in this case.
@@ -692,6 +693,15 @@ optimize_stencil_face(struct vk_stencil_test_face_state *face,
        depthCompareOp == VK_COMPARE_OP_ALWAYS)
       face->op.depth_fail = VK_STENCIL_OP_KEEP;
 
+   /* If the write mask is zero, nothing will be written to the stencil buffer
+    * so it's as if all operations are KEEP.
+    */
+   if (consider_write_mask && face->write_mask == 0) {
+      face->op.pass = VK_STENCIL_OP_KEEP;
+      face->op.fail = VK_STENCIL_OP_KEEP;
+      face->op.depth_fail = VK_STENCIL_OP_KEEP;
+   }
+
    return face->op.fail != VK_STENCIL_OP_KEEP ||
           face->op.depth_fail != VK_STENCIL_OP_KEEP ||
           face->op.pass != VK_STENCIL_OP_KEEP;
@@ -699,24 +709,39 @@ optimize_stencil_face(struct vk_stencil_test_face_state *face,
 
 void
 vk_optimize_depth_stencil_state(struct vk_depth_stencil_state *ds,
-                                VkImageAspectFlags ds_aspects)
+                                VkImageAspectFlags ds_aspects,
+                                bool consider_write_mask)
 {
    /* stencil.write_enable is a dummy right now that should always be true */
    assert(ds->stencil.write_enable);
 
+   /* From the Vulkan 1.3.221 spec:
+    *
+    *    "If there is no depth attachment then the depth test is skipped."
+    */
+   if (!(ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
+      ds->depth.test_enable = false;
+
+   /* From the Vulkan 1.3.221 spec:
+    *
+    *    "...or if there is no stencil attachment, the coverage mask is
+    *    unmodified by this operation."
+    */
+   if (!(ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT))
+      ds->stencil.test_enable = false;
+
    /* If the depth test is disabled, we won't be writing anything. Make sure we
     * treat the test as always passing later on as well.
-    *
-    * Also, the Vulkan spec requires that if either depth or stencil is not
-    * present, the pipeline is to act as if the test silently passes. In that
-    * case we won't write either.
     */
-   if (!ds->depth.test_enable || !(ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
+   if (!ds->depth.test_enable) {
       ds->depth.write_enable = false;
       ds->depth.compare_op = VK_COMPARE_OP_ALWAYS;
    }
 
-   if (!(ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+   /* If the stencil test is disabled, we won't be writing anything. Make sure
+    * we treat the test as always passing later on as well.
+    */
+   if (!ds->stencil.test_enable) {
       ds->stencil.write_enable = false;
       ds->stencil.front.op.compare = VK_COMPARE_OP_ALWAYS;
       ds->stencil.back.op.compare = VK_COMPARE_OP_ALWAYS;
@@ -742,8 +767,10 @@ vk_optimize_depth_stencil_state(struct vk_depth_stencil_state *ds,
    /* If the stencil ops are such that we don't actually ever modify the
     * stencil buffer, we should disable writes.
     */
-   if (!optimize_stencil_face(&ds->stencil.front, ds->depth.compare_op) &&
-       !optimize_stencil_face(&ds->stencil.back, ds->depth.compare_op))
+   if (!optimize_stencil_face(&ds->stencil.front, ds->depth.compare_op,
+                              consider_write_mask) &&
+       !optimize_stencil_face(&ds->stencil.back, ds->depth.compare_op,
+                              consider_write_mask))
       ds->stencil.write_enable = false;
 
    /* If the depth test always passes and we never write out depth, that's the

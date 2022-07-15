@@ -410,12 +410,16 @@ struct vk_depth_stencil_state {
  * hit.  This function attempts to optimize the depth stencil state and
  * disable writes and sometimes even testing whenever possible.
  *
- * @param[inout]  ds          The depth stencil state to optimize
- * @param[in]     ds_aspects  Which image aspects are present in the render
- *                            pass.
+ * @param[inout]  ds                   The depth stencil state to optimize
+ * @param[in]     ds_aspects           Which image aspects are present in the
+ *                                     render pass.
+ * @param[in]     consider_write_mask  If true, the write mask will be taken
+ *                                     into account when optimizing.  If
+ *                                     false, it will be ignored.
  */
 void vk_optimize_depth_stencil_state(struct vk_depth_stencil_state *ds,
-                                     VkImageAspectFlags ds_aspects);
+                                     VkImageAspectFlags ds_aspects,
+                                     bool consider_write_mask);
 
 struct vk_color_blend_attachment_state {
    /** VkPipelineColorBlendAttachmentState::blendEnable */
