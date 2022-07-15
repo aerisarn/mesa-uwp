@@ -2166,11 +2166,7 @@ begin_rendering(struct zink_context *ctx)
       /* init imageviews, base loadOp, formats */
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
-         VkImageView iv = zink_prep_fb_attachment(ctx, surf, i);
-         if (!iv)
-            /* dead swapchain */
-            return 0;
-         ctx->dynamic_fb.attachments[i].imageView = iv;
+
          if (!surf || !zink_resource(surf->base.texture)->valid || (surf->is_swapchain && ctx->new_swapchain))
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          else
@@ -2199,19 +2195,14 @@ begin_rendering(struct zink_context *ctx)
          struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
          has_depth = util_format_has_depth(util_format_description(ctx->fb_state.zsbuf->format));
          has_stencil = util_format_has_stencil(util_format_description(ctx->fb_state.zsbuf->format));
-         VkImageView iv = zink_prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
 
          /* depth may or may not be used but init it anyway */
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].imageView = iv;
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].imageLayout = zink_resource(surf->base.texture)->layout;
          if (zink_resource(surf->base.texture)->valid)
             ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
          else
             ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
          /* stencil may or may not be used but init it anyway */
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageView = iv;
-         ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageLayout = zink_resource(surf->base.texture)->layout;
          ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].loadOp = ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp;
 
          if (has_depth) {
@@ -2292,6 +2283,22 @@ begin_rendering(struct zink_context *ctx)
    if (!rp_changed && ctx->batch.in_rp)
       return 0;
    zink_batch_no_rp(ctx);
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
+      VkImageView iv = zink_prep_fb_attachment(ctx, surf, i);
+      if (!iv)
+         /* dead swapchain */
+         return 0;
+      ctx->dynamic_fb.attachments[i].imageView = iv;
+   }
+   if (ctx->fb_state.zsbuf) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
+      VkImageView iv = zink_prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
+      ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].imageView = iv;
+      ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].imageLayout = zink_resource(surf->base.texture)->layout;
+      ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageView = iv;
+      ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageLayout = zink_resource(surf->base.texture)->layout;
+   }
    ctx->gfx_pipeline_state.dirty |= rp_changed;
    ctx->gfx_pipeline_state.rp_state = rp_state;
 
