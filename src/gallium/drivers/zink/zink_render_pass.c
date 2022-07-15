@@ -44,6 +44,15 @@ get_rt_loadop(const struct zink_rt_attrib *rt, bool clear)
                   VK_ATTACHMENT_LOAD_OP_LOAD;
 }
 
+static VkImageLayout
+get_zs_rt_layout(const struct zink_rt_attrib *rt)
+{
+   bool has_clear = rt->clear_color || rt->clear_stencil;
+   if (rt->mixed_zs)
+      return VK_IMAGE_LAYOUT_GENERAL;
+   return rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+}
+
 static VkRenderPass
 create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
 {
@@ -110,12 +119,7 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    int num_attachments = state->num_cbufs;
    if (state->have_zsbuf)  {
       struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
-      bool has_clear = rt->clear_color || rt->clear_stencil;
-      VkImageLayout layout;
-      if (rt->mixed_zs)
-         layout = VK_IMAGE_LAYOUT_GENERAL;
-      else
-         layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      VkImageLayout layout = get_zs_rt_layout(rt);
       attachments[num_attachments].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
       attachments[num_attachments].pNext = NULL;
       attachments[num_attachments].flags = 0;
