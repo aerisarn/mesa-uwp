@@ -94,7 +94,7 @@ static void
 check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
                          struct v3dv_pipeline *pipeline)
 {
-   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PUSH_CONSTANTS) ||
+   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PUSH_CONSTANTS_UBO) ||
        pipeline->layout->push_constant_size == 0)
       return;
 
@@ -146,7 +146,7 @@ check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer,
           cmd_buffer->state.push_constants_data,
           cmd_buffer->state.push_constants_size);
 
-   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS_UBO;
 }
 
 /** V3D 4.x TMU configuration parameter 0 (texture) */

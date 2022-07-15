@@ -885,12 +885,13 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_DESCRIPTOR_SETS           = 1 << 9,
    V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS   = 1 << 10,
    V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 11,
-   V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 12,
-   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 13,
-   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 14,
-   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 15,
-   V3DV_CMD_DIRTY_VIEW_INDEX                = 1 << 16,
-   V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE        = 1 << 17,
+   V3DV_CMD_DIRTY_PUSH_CONSTANTS_UBO        = 1 << 12,
+   V3DV_CMD_DIRTY_BLEND_CONSTANTS           = 1 << 13,
+   V3DV_CMD_DIRTY_OCCLUSION_QUERY           = 1 << 14,
+   V3DV_CMD_DIRTY_DEPTH_BIAS                = 1 << 15,
+   V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 16,
+   V3DV_CMD_DIRTY_VIEW_INDEX                = 1 << 17,
+   V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE        = 1 << 18,
 };
 
 struct v3dv_dynamic_state {
