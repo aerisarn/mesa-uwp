@@ -53,8 +53,6 @@
 
 #include "util/u_cpu_detect.h"
 
-#include "driver_trace/tr_context.h"
-
 #if DETECT_OS_WINDOWS
 #include <io.h>
 #define VK_LIBNAME "vulkan-1.dll"
@@ -1428,11 +1426,7 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
    if (!zink_is_swapchain(res) || (!zink_kopper_acquired(res->obj->dt, res->obj->dt_idx) && res->obj->last_dt_idx == UINT32_MAX))
       return;
 
-   /* need to get the actual zink_context, not the threaded context */
-   if (screen->threaded)
-      pctx = threaded_context_unwrap_sync(pctx);
-   pctx = trace_get_possibly_threaded_context(pctx);
-   ctx = zink_context(pctx);
+   ctx = zink_tc_context_unwrap(pctx);
    if (ctx->batch.swapchain || ctx->needs_present) {
       ctx->batch.has_work = true;
       pctx->flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);

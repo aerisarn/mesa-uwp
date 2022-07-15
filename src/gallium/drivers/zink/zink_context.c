@@ -51,6 +51,8 @@
 #include "util/strndup.h"
 #include "nir.h"
 
+#include "driver_trace/tr_context.h"
+
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 
@@ -4515,4 +4517,16 @@ fail:
    if (ctx)
       zink_context_destroy(&ctx->base);
    return NULL;
+}
+
+struct zink_context *
+zink_tc_context_unwrap(struct pipe_context *pctx)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   /* need to get the actual zink_context, not the threaded context */
+   if (screen->threaded)
+      pctx = threaded_context_unwrap_sync(pctx);
+   pctx = trace_get_possibly_threaded_context(pctx);
+   return zink_context(pctx);
 }
