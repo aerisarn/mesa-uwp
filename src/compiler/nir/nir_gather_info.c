@@ -1056,14 +1056,19 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    ralloc_free(dead_ctx);
 
    shader->info.per_primitive_outputs = 0;
-   if (shader->info.stage == MESA_SHADER_MESH) {
-      nir_foreach_shader_out_variable(var, shader) {
-         if (var->data.per_primitive) {
-            assert(nir_is_arrayed_io(var, shader->info.stage));
-            const unsigned slots =
-               glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
-            shader->info.per_primitive_outputs |= BITFIELD64_RANGE(var->data.location, slots);
-         }
+   shader->info.per_view_outputs = 0;
+   nir_foreach_shader_out_variable(var, shader) {
+      if (var->data.per_primitive) {
+         assert(shader->info.stage == MESA_SHADER_MESH);
+         assert(nir_is_arrayed_io(var, shader->info.stage));
+         const unsigned slots =
+            glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
+         shader->info.per_primitive_outputs |= BITFIELD64_RANGE(var->data.location, slots);
+      }
+      if (var->data.per_view) {
+         const unsigned slots =
+            glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
+         shader->info.per_view_outputs |= BITFIELD64_RANGE(var->data.location, slots);
       }
    }
 

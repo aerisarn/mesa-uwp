@@ -172,6 +172,9 @@ typedef struct shader_info {
    uint64_t per_primitive_inputs;
    uint64_t per_primitive_outputs;
 
+   /* Which I/O is per-view */
+   uint64_t per_view_outputs;
+
    /* Which 16-bit inputs and outputs are used corresponding to
     * VARYING_SLOT_VARn_16BIT.
     */
