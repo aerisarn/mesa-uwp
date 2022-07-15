@@ -280,6 +280,8 @@ variable:
    Dump Validation layer output.
 ``sync``
    Emit full synchronization barriers before every draw and dispatch.
+``compact``
+   Use a maximum of 4 descriptor sets
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^
