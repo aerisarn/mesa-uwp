@@ -3,65 +3,108 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-static nir_variable *
-find_identical_inline_sampler(nir_shader *nir, nir_variable *sampler)
+static bool
+var_is_inline_sampler(const nir_variable *var)
 {
-   nir_foreach_variable_with_modes(uniform, nir, nir_var_uniform) {
-      if (!glsl_type_is_sampler(uniform->type) || !uniform->data.sampler.is_inline_sampler)
+   if (var->data.mode != nir_var_uniform)
+      return false;
+
+   return glsl_type_is_sampler(var->type) &&
+          var->data.sampler.is_inline_sampler;
+}
+
+static bool
+inline_sampler_vars_equal(const nir_variable *a, const nir_variable *b)
+{
+   assert(var_is_inline_sampler(a) && var_is_inline_sampler(b));
+
+   if (a == b)
+      return true;
+
+   return a->data.sampler.addressing_mode == b->data.sampler.addressing_mode &&
+          a->data.sampler.normalized_coordinates == b->data.sampler.normalized_coordinates &&
+          a->data.sampler.filter_mode == b->data.sampler.filter_mode;
+}
+
+static nir_variable *
+find_identical_inline_sampler(nir_shader *nir,
+                              struct exec_list *inline_samplers,
+                              nir_variable *sampler)
+{
+   nir_foreach_variable_in_list(var, inline_samplers) {
+      if (inline_sampler_vars_equal(var, sampler))
+         return var;
+   }
+
+   nir_foreach_uniform_variable(var, nir) {
+      if (!var_is_inline_sampler(var) ||
+          !inline_sampler_vars_equal(var, sampler))
          continue;
-      if (uniform->data.sampler.addressing_mode == sampler->data.sampler.addressing_mode &&
-          uniform->data.sampler.normalized_coordinates == sampler->data.sampler.normalized_coordinates &&
-          uniform->data.sampler.filter_mode == sampler->data.sampler.filter_mode)
-         return uniform;
+
+      exec_node_remove(&var->node);
+      exec_list_push_tail(inline_samplers, &var->node);
+      return var;
    }
    unreachable("Should have at least found the input sampler");
 }
 
 static bool
 nir_dedup_inline_samplers_instr(nir_builder *b,
-                                    nir_instr *instr,
-                                    void *cb_data)
+                                nir_instr *instr,
+                                void *cb_data)
 {
-   nir_shader *nir = cb_data;
-   if (instr->type != nir_instr_type_tex)
+   struct exec_list *inline_samplers = cb_data;
+
+   if (instr->type != nir_instr_type_deref)
       return false;
 
-   nir_tex_instr *tex = nir_instr_as_tex(instr);
-   int sampler_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
-   if (sampler_idx == -1)
+   nir_deref_instr *deref = nir_instr_as_deref(instr);
+   if (deref->deref_type != nir_deref_type_var)
       return false;
 
-   nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_idx].src);
    nir_variable *sampler = nir_deref_instr_get_variable(deref);
-   if (!sampler)
+   if (!var_is_inline_sampler(sampler))
       return false;
 
-   assert(sampler->data.mode == nir_var_uniform);
-
-   if (!sampler->data.sampler.is_inline_sampler)
-      return false;
-
-   nir_variable *replacement = find_identical_inline_sampler(nir, sampler);
-   if (replacement == sampler)
-      return false;
-
-   b->cursor = nir_before_instr(&tex->instr);
-   nir_deref_instr *replacement_deref = nir_build_deref_var(b, replacement);
-   nir_instr_rewrite_src(&tex->instr, &tex->src[sampler_idx].src,
-                         nir_src_for_ssa(&replacement_deref->dest.ssa));
-   nir_deref_instr_remove_if_unused(deref);
-
+   nir_variable *replacement =
+      find_identical_inline_sampler(b->shader, inline_samplers, sampler);
+   deref->var = replacement;
    return true;
 }
 
+/** De-duplicates inline sampler variables
+ *
+ * Any dead or redundant inline sampler variables are removed any live inline
+ * sampler variables are placed at the end of the variables list.
+ */
 bool
 nir_dedup_inline_samplers(nir_shader *nir)
 {
-   return nir_shader_instructions_pass(nir,
-                                       nir_dedup_inline_samplers_instr,
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance,
-                                       nir);
+   struct exec_list inline_samplers;
+   exec_list_make_empty(&inline_samplers);
+
+   nir_shader_instructions_pass(nir, nir_dedup_inline_samplers_instr,
+                                nir_metadata_block_index |
+                                nir_metadata_dominance,
+                                &inline_samplers);
+
+   /* If we found any inline samplers in the instructions pass, they'll now be
+    * in the inline_samplers list.
+    */
+   bool progress = !exec_list_is_empty(&inline_samplers);
+
+   /* Remove any dead samplers */
+   nir_foreach_uniform_variable_safe(var, nir) {
+      if (var_is_inline_sampler(var)) {
+         exec_node_remove(&var->node);
+         progress = true;
+      }
+   }
+
+   exec_node_insert_list_after(exec_list_get_tail(&nir->variables),
+                               &inline_samplers);
+
+   return progress;
 }
 
 bool
