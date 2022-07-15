@@ -1586,67 +1586,56 @@ fs_visitor::assign_curb_setup()
       assert(devinfo->verx10 >= 125);
       assert(uniform_push_length <= 1);
    } else if (is_compute && devinfo->verx10 >= 125) {
-      fs_builder ubld = bld.exec_all().group(8, 0).at(
+      assert(devinfo->has_lsc);
+      fs_builder ubld = bld.exec_all().group(1, 0).at(
          cfg->first_block(), cfg->first_block()->start());
 
-      /* The base address for our push data is passed in as R0.0[31:6].  We
-       * have to mask off the bottom 6 bits.
+      /* The base offset for our push data is passed in as R0.0[31:6]. We have
+       * to mask off the bottom 6 bits.
        */
       fs_reg base_addr = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.group(1, 0).AND(base_addr,
-                           retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD),
-                           brw_imm_ud(INTEL_MASK(31, 6)));
-
-      fs_reg header0 = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.MOV(header0, brw_imm_ud(0));
-      ubld.group(1, 0).SHR(component(header0, 2), base_addr, brw_imm_ud(4));
+      ubld.AND(base_addr,
+               retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD),
+               brw_imm_ud(INTEL_MASK(31, 6)));
 
       /* On Gfx12-HP we load constants at the start of the program using A32
        * stateless messages.
        */
       for (unsigned i = 0; i < uniform_push_length;) {
-         /* Limit ourselves to HW limit of 8 Owords (8 * 16bytes = 128 bytes
-          * or 4 registers).
-          */
-         unsigned num_regs = MIN2(uniform_push_length - i, 4);
+         /* Limit ourselves to LSC HW limit of 8 GRFs (256bytes D32V64). */
+         unsigned num_regs = MIN2(uniform_push_length - i, 8);
          assert(num_regs > 0);
          num_regs = 1 << util_logbase2(num_regs);
 
-         fs_reg header;
-         if (i == 0) {
-            header = header0;
-         } else {
-            header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-            ubld.MOV(header, brw_imm_ud(0));
-            ubld.group(1, 0).ADD(component(header, 2),
-                                 component(header0, 2),
-                                 brw_imm_ud(i * 2));
-         }
+         fs_reg addr = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.ADD(addr, base_addr, brw_imm_ud(i * REG_SIZE));
 
          fs_reg srcs[4] = {
             brw_imm_ud(0), /* desc */
             brw_imm_ud(0), /* ex_desc */
-            header, /* payload */
-            fs_reg(), /* payload2 */
+            addr,          /* payload */
+            fs_reg(),      /* payload2 */
          };
 
          fs_reg dest = retype(brw_vec8_grf(payload.num_regs + i, 0),
                               BRW_REGISTER_TYPE_UD);
+         fs_inst *send = ubld.emit(SHADER_OPCODE_SEND, dest, srcs, 4);
 
-         /* This instruction has to be run SIMD16 if we're filling more than a
-          * single register.
-          */
-         unsigned send_width = MIN2(16, num_regs * 8);
-
-         fs_inst *send = ubld.group(send_width, 0).emit(SHADER_OPCODE_SEND,
-                                                        dest, srcs, 4);
-         send->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
-         send->desc = brw_dp_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
-                                  GFX7_DATAPORT_DC_OWORD_BLOCK_READ,
-                                  BRW_DATAPORT_OWORD_BLOCK_OWORDS(num_regs * 2));
-         send->header_size = 1;
-         send->mlen = 1;
-         send->size_written = num_regs * REG_SIZE;
+         send->sfid = GFX12_SFID_UGM;
+         send->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD,
+                                   1 /* exec_size */,
+                                   LSC_ADDR_SURFTYPE_FLAT,
+                                   LSC_ADDR_SIZE_A32,
+                                   1 /* num_coordinates */,
+                                   LSC_DATA_SIZE_D32,
+                                   num_regs * 8 /* num_channels */,
+                                   true /* transpose */,
+                                   LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                   true /* has_dest */);
+         send->header_size = 0;
+         send->mlen = lsc_msg_desc_src0_len(devinfo, send->desc);
+         send->size_written =
+            lsc_msg_desc_dest_len(devinfo, send->desc) * REG_SIZE;
          send->send_is_volatile = true;
 
          i += num_regs;
