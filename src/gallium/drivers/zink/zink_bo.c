@@ -126,7 +126,7 @@ bo_destroy(struct zink_screen *screen, struct pb_buffer *pbuf)
    struct zink_bo *bo = zink_bo(pbuf);
 
 #ifdef ZINK_USE_DMABUF
-   if (!bo->u.real.use_reusable_pool) {
+   if (bo->mem && !bo->u.real.use_reusable_pool) {
       simple_mtx_lock(&bo->u.real.export_lock);
       list_for_each_entry_safe(struct bo_export, export, &bo->u.real.exports, link) {
          struct drm_gem_close args = { .handle = export->gem_handle };
