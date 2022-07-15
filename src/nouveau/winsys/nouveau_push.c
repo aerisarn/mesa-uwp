@@ -1,6 +1,7 @@
 #include "nouveau_push.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <nouveau_drm.h>
 #include <sys/mman.h>
 #include <xf86drm.h>
@@ -115,7 +116,7 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ct
       uint32_t value = 0;
       bool is_immd = false;
 
-      printf("[0x%08lx] HDR %x subch %i", cur - push->orig_map, hdr, subchan);
+      printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - push->orig_map, hdr, subchan);
       cur++;
 
       switch (type) {
