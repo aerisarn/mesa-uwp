@@ -3598,241 +3598,6 @@ zink_flush_resource(struct pipe_context *pctx,
       res->dmabuf_acquire = true;
 }
 
-void
-zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
-                 unsigned dst_offset, unsigned src_offset, unsigned size)
-{
-   VkBufferCopy region;
-   region.srcOffset = src_offset;
-   region.dstOffset = dst_offset;
-   region.size = size;
-
-   struct zink_batch *batch = &ctx->batch;
-   util_range_add(&dst->base.b, &dst->valid_buffer_range, dst_offset, dst_offset + size);
-   zink_resource_buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
-   zink_resource_buffer_barrier(ctx, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
-   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
-   zink_batch_reference_resource_rw(batch, src, false);
-   zink_batch_reference_resource_rw(batch, dst, true);
-   VKCTX(CmdCopyBuffer)(cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
-}
-
-void
-zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
-                       unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
-                       unsigned src_level, const struct pipe_box *src_box, enum pipe_map_flags map_flags)
-{
-   struct zink_resource *img = dst->base.b.target == PIPE_BUFFER ? src : dst;
-   struct zink_resource *buf = dst->base.b.target == PIPE_BUFFER ? dst : src;
-   struct zink_batch *batch = &ctx->batch;
-   bool needs_present_readback = false;
-
-   bool buf2img = buf == src;
-
-   if (buf2img) {
-      if (zink_is_swapchain(img)) {
-         if (!zink_kopper_acquire(ctx, img, UINT64_MAX))
-            return;
-      }
-      zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
-      zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-   } else {
-      if (zink_is_swapchain(img))
-         needs_present_readback = zink_kopper_acquire_readback(ctx, img);
-      zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
-      zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-      util_range_add(&dst->base.b, &dst->valid_buffer_range, dstx, dstx + src_box->width);
-   }
-
-   VkBufferImageCopy region = {0};
-   region.bufferOffset = buf2img ? src_box->x : dstx;
-   region.bufferRowLength = 0;
-   region.bufferImageHeight = 0;
-   region.imageSubresource.mipLevel = buf2img ? dst_level : src_level;
-   enum pipe_texture_target img_target = img->base.b.target;
-   if (img->need_2D)
-      img_target = img_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
-   switch (img_target) {
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-   case PIPE_TEXTURE_2D_ARRAY:
-   case PIPE_TEXTURE_1D_ARRAY:
-      /* these use layer */
-      region.imageSubresource.baseArrayLayer = buf2img ? dstz : src_box->z;
-      region.imageSubresource.layerCount = src_box->depth;
-      region.imageOffset.z = 0;
-      region.imageExtent.depth = 1;
-      break;
-   case PIPE_TEXTURE_3D:
-      /* this uses depth */
-      region.imageSubresource.baseArrayLayer = 0;
-      region.imageSubresource.layerCount = 1;
-      region.imageOffset.z = buf2img ? dstz : src_box->z;
-      region.imageExtent.depth = src_box->depth;
-      break;
-   default:
-      /* these must only copy one layer */
-      region.imageSubresource.baseArrayLayer = 0;
-      region.imageSubresource.layerCount = 1;
-      region.imageOffset.z = 0;
-      region.imageExtent.depth = 1;
-   }
-   region.imageOffset.x = buf2img ? dstx : src_box->x;
-   region.imageOffset.y = buf2img ? dsty : src_box->y;
-
-   region.imageExtent.width = src_box->width;
-   region.imageExtent.height = src_box->height;
-
-   /* never promote to unordered if swapchain was acquired */
-   VkCommandBuffer cmdbuf = needs_present_readback ? ctx->batch.state->cmdbuf : get_cmdbuf(ctx, buf, img);
-   zink_batch_reference_resource_rw(batch, img, buf2img);
-   zink_batch_reference_resource_rw(batch, buf, !buf2img);
-
-   /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
-    * to indicate whether to copy either the depth or stencil aspects
-    */
-   unsigned aspects = 0;
-   if (map_flags) {
-      assert((map_flags & (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY)) !=
-             (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY));
-      if (map_flags & PIPE_MAP_DEPTH_ONLY)
-         aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
-      else if (map_flags & PIPE_MAP_STENCIL_ONLY)
-         aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
-   }
-   if (!aspects)
-      aspects = img->aspect;
-   while (aspects) {
-      int aspect = 1 << u_bit_scan(&aspects);
-      region.imageSubresource.aspectMask = aspect;
-
-      /* this may or may not work with multisampled depth/stencil buffers depending on the driver implementation:
-       *
-       * srcImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
-       * - vkCmdCopyImageToBuffer spec
-       *
-       * dstImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
-       * - vkCmdCopyBufferToImage spec
-       */
-      if (buf2img)
-         VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
-      else
-         VKCTX(CmdCopyImageToBuffer)(cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
-   }
-   if (needs_present_readback)
-      zink_kopper_present_readback(ctx, img);
-}
-
-static void
-zink_resource_copy_region(struct pipe_context *pctx,
-                          struct pipe_resource *pdst,
-                          unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
-                          struct pipe_resource *psrc,
-                          unsigned src_level, const struct pipe_box *src_box)
-{
-   struct zink_resource *dst = zink_resource(pdst);
-   struct zink_resource *src = zink_resource(psrc);
-   struct zink_context *ctx = zink_context(pctx);
-   if (dst->base.b.target != PIPE_BUFFER && src->base.b.target != PIPE_BUFFER) {
-      VkImageCopy region = {0};
-      if (util_format_get_num_planes(src->base.b.format) == 1 &&
-          util_format_get_num_planes(dst->base.b.format) == 1) {
-      /* If neither the calling command’s srcImage nor the calling command’s dstImage
-       * has a multi-planar image format then the aspectMask member of srcSubresource
-       * and dstSubresource must match
-       *
-       * -VkImageCopy spec
-       */
-         assert(src->aspect == dst->aspect);
-      } else
-         unreachable("planar formats not yet handled");
-
-      zink_fb_clears_apply_or_discard(ctx, pdst, (struct u_rect){dstx, dstx + src_box->width, dsty, dsty + src_box->height}, false);
-      zink_fb_clears_apply_region(ctx, psrc, zink_rect_from_box(src_box));
-
-      region.srcSubresource.aspectMask = src->aspect;
-      region.srcSubresource.mipLevel = src_level;
-      enum pipe_texture_target src_target = src->base.b.target;
-      if (src->need_2D)
-         src_target = src_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
-      switch (src_target) {
-      case PIPE_TEXTURE_CUBE:
-      case PIPE_TEXTURE_CUBE_ARRAY:
-      case PIPE_TEXTURE_2D_ARRAY:
-      case PIPE_TEXTURE_1D_ARRAY:
-         /* these use layer */
-         region.srcSubresource.baseArrayLayer = src_box->z;
-         region.srcSubresource.layerCount = src_box->depth;
-         region.srcOffset.z = 0;
-         region.extent.depth = 1;
-         break;
-      case PIPE_TEXTURE_3D:
-         /* this uses depth */
-         region.srcSubresource.baseArrayLayer = 0;
-         region.srcSubresource.layerCount = 1;
-         region.srcOffset.z = src_box->z;
-         region.extent.depth = src_box->depth;
-         break;
-      default:
-         /* these must only copy one layer */
-         region.srcSubresource.baseArrayLayer = 0;
-         region.srcSubresource.layerCount = 1;
-         region.srcOffset.z = 0;
-         region.extent.depth = 1;
-      }
-
-      region.srcOffset.x = src_box->x;
-      region.srcOffset.y = src_box->y;
-
-      region.dstSubresource.aspectMask = dst->aspect;
-      region.dstSubresource.mipLevel = dst_level;
-      enum pipe_texture_target dst_target = dst->base.b.target;
-      if (dst->need_2D)
-         dst_target = dst_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
-      switch (dst_target) {
-      case PIPE_TEXTURE_CUBE:
-      case PIPE_TEXTURE_CUBE_ARRAY:
-      case PIPE_TEXTURE_2D_ARRAY:
-      case PIPE_TEXTURE_1D_ARRAY:
-         /* these use layer */
-         region.dstSubresource.baseArrayLayer = dstz;
-         region.dstSubresource.layerCount = src_box->depth;
-         region.dstOffset.z = 0;
-         break;
-      case PIPE_TEXTURE_3D:
-         /* this uses depth */
-         region.dstSubresource.baseArrayLayer = 0;
-         region.dstSubresource.layerCount = 1;
-         region.dstOffset.z = dstz;
-         break;
-      default:
-         /* these must only copy one layer */
-         region.dstSubresource.baseArrayLayer = 0;
-         region.dstSubresource.layerCount = 1;
-         region.dstOffset.z = 0;
-      }
-
-      region.dstOffset.x = dstx;
-      region.dstOffset.y = dsty;
-      region.extent.width = src_box->width;
-      region.extent.height = src_box->height;
-
-      struct zink_batch *batch = &ctx->batch;
-      VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
-      zink_batch_reference_resource_rw(batch, src, false);
-      zink_batch_reference_resource_rw(batch, dst, true);
-
-      zink_resource_setup_transfer_layouts(ctx, src, dst);
-      VKCTX(CmdCopyImage)(cmdbuf, src->obj->image, src->layout,
-                     dst->obj->image, dst->layout,
-                     1, &region);
-   } else if (dst->base.b.target == PIPE_BUFFER &&
-              src->base.b.target == PIPE_BUFFER) {
-      zink_copy_buffer(ctx, dst, src, dstx, src_box->x, src_box->width);
-   } else
-      zink_copy_image_buffer(ctx, dst, src, dst_level, dstx, dsty, dstz, src_level, src_box, 0);
-}
-
 static struct pipe_stream_output_target *
 zink_create_stream_output_target(struct pipe_context *pctx,
                                  struct pipe_resource *pres,
@@ -4137,6 +3902,243 @@ end:
    if (num_rebinds)
       zink_batch_resource_usage_set(&ctx->batch, res, has_write);
    return num_rebinds;
+}
+
+void
+zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
+                 unsigned dst_offset, unsigned src_offset, unsigned size)
+{
+   VkBufferCopy region;
+   region.srcOffset = src_offset;
+   region.dstOffset = dst_offset;
+   region.size = size;
+
+   struct zink_batch *batch = &ctx->batch;
+   util_range_add(&dst->base.b, &dst->valid_buffer_range, dst_offset, dst_offset + size);
+   zink_resource_buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
+   zink_resource_buffer_barrier(ctx, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+   VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
+   zink_batch_reference_resource_rw(batch, src, false);
+   zink_batch_reference_resource_rw(batch, dst, true);
+   VKCTX(CmdCopyBuffer)(cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
+}
+
+void
+zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
+                       unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
+                       unsigned src_level, const struct pipe_box *src_box, enum pipe_map_flags map_flags)
+{
+   struct zink_resource *img = dst->base.b.target == PIPE_BUFFER ? src : dst;
+   struct zink_resource *buf = dst->base.b.target == PIPE_BUFFER ? dst : src;
+   struct zink_batch *batch = &ctx->batch;
+   bool needs_present_readback = false;
+
+   bool buf2img = buf == src;
+
+   if (buf2img) {
+      if (zink_is_swapchain(img)) {
+         if (!zink_kopper_acquire(ctx, img, UINT64_MAX))
+            return;
+      }
+      zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+   } else {
+      if (zink_is_swapchain(img))
+         needs_present_readback = zink_kopper_acquire_readback(ctx, img);
+      zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
+      zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      util_range_add(&dst->base.b, &dst->valid_buffer_range, dstx, dstx + src_box->width);
+   }
+
+   VkBufferImageCopy region = {0};
+   region.bufferOffset = buf2img ? src_box->x : dstx;
+   region.bufferRowLength = 0;
+   region.bufferImageHeight = 0;
+   region.imageSubresource.mipLevel = buf2img ? dst_level : src_level;
+   enum pipe_texture_target img_target = img->base.b.target;
+   if (img->need_2D)
+      img_target = img_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
+   switch (img_target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.imageSubresource.baseArrayLayer = buf2img ? dstz : src_box->z;
+      region.imageSubresource.layerCount = src_box->depth;
+      region.imageOffset.z = 0;
+      region.imageExtent.depth = 1;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
+      region.imageSubresource.baseArrayLayer = 0;
+      region.imageSubresource.layerCount = 1;
+      region.imageOffset.z = buf2img ? dstz : src_box->z;
+      region.imageExtent.depth = src_box->depth;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.imageSubresource.baseArrayLayer = 0;
+      region.imageSubresource.layerCount = 1;
+      region.imageOffset.z = 0;
+      region.imageExtent.depth = 1;
+   }
+   region.imageOffset.x = buf2img ? dstx : src_box->x;
+   region.imageOffset.y = buf2img ? dsty : src_box->y;
+
+   region.imageExtent.width = src_box->width;
+   region.imageExtent.height = src_box->height;
+
+   /* never promote to unordered if swapchain was acquired */
+   VkCommandBuffer cmdbuf = needs_present_readback ?
+                            ctx->batch.state->cmdbuf :
+                            buf2img ? get_cmdbuf(ctx, buf, img) : get_cmdbuf(ctx, img, buf);
+   zink_batch_reference_resource_rw(batch, img, buf2img);
+   zink_batch_reference_resource_rw(batch, buf, !buf2img);
+
+   /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
+    * to indicate whether to copy either the depth or stencil aspects
+    */
+   unsigned aspects = 0;
+   if (map_flags) {
+      assert((map_flags & (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY)) !=
+             (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY));
+      if (map_flags & PIPE_MAP_DEPTH_ONLY)
+         aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
+      else if (map_flags & PIPE_MAP_STENCIL_ONLY)
+         aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+   }
+   if (!aspects)
+      aspects = img->aspect;
+   while (aspects) {
+      int aspect = 1 << u_bit_scan(&aspects);
+      region.imageSubresource.aspectMask = aspect;
+
+      /* this may or may not work with multisampled depth/stencil buffers depending on the driver implementation:
+       *
+       * srcImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
+       * - vkCmdCopyImageToBuffer spec
+       *
+       * dstImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
+       * - vkCmdCopyBufferToImage spec
+       */
+      if (buf2img)
+         VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
+      else
+         VKCTX(CmdCopyImageToBuffer)(cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
+   }
+   if (needs_present_readback)
+      zink_kopper_present_readback(ctx, img);
+}
+
+static void
+zink_resource_copy_region(struct pipe_context *pctx,
+                          struct pipe_resource *pdst,
+                          unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
+                          struct pipe_resource *psrc,
+                          unsigned src_level, const struct pipe_box *src_box)
+{
+   struct zink_resource *dst = zink_resource(pdst);
+   struct zink_resource *src = zink_resource(psrc);
+   struct zink_context *ctx = zink_context(pctx);
+   if (dst->base.b.target != PIPE_BUFFER && src->base.b.target != PIPE_BUFFER) {
+      VkImageCopy region = {0};
+      if (util_format_get_num_planes(src->base.b.format) == 1 &&
+          util_format_get_num_planes(dst->base.b.format) == 1) {
+      /* If neither the calling command’s srcImage nor the calling command’s dstImage
+       * has a multi-planar image format then the aspectMask member of srcSubresource
+       * and dstSubresource must match
+       *
+       * -VkImageCopy spec
+       */
+         assert(src->aspect == dst->aspect);
+      } else
+         unreachable("planar formats not yet handled");
+
+      zink_fb_clears_apply_or_discard(ctx, pdst, (struct u_rect){dstx, dstx + src_box->width, dsty, dsty + src_box->height}, false);
+      zink_fb_clears_apply_region(ctx, psrc, zink_rect_from_box(src_box));
+
+      region.srcSubresource.aspectMask = src->aspect;
+      region.srcSubresource.mipLevel = src_level;
+      enum pipe_texture_target src_target = src->base.b.target;
+      if (src->need_2D)
+         src_target = src_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
+      switch (src_target) {
+      case PIPE_TEXTURE_CUBE:
+      case PIPE_TEXTURE_CUBE_ARRAY:
+      case PIPE_TEXTURE_2D_ARRAY:
+      case PIPE_TEXTURE_1D_ARRAY:
+         /* these use layer */
+         region.srcSubresource.baseArrayLayer = src_box->z;
+         region.srcSubresource.layerCount = src_box->depth;
+         region.srcOffset.z = 0;
+         region.extent.depth = 1;
+         break;
+      case PIPE_TEXTURE_3D:
+         /* this uses depth */
+         region.srcSubresource.baseArrayLayer = 0;
+         region.srcSubresource.layerCount = 1;
+         region.srcOffset.z = src_box->z;
+         region.extent.depth = src_box->depth;
+         break;
+      default:
+         /* these must only copy one layer */
+         region.srcSubresource.baseArrayLayer = 0;
+         region.srcSubresource.layerCount = 1;
+         region.srcOffset.z = 0;
+         region.extent.depth = 1;
+      }
+
+      region.srcOffset.x = src_box->x;
+      region.srcOffset.y = src_box->y;
+
+      region.dstSubresource.aspectMask = dst->aspect;
+      region.dstSubresource.mipLevel = dst_level;
+      enum pipe_texture_target dst_target = dst->base.b.target;
+      if (dst->need_2D)
+         dst_target = dst_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
+      switch (dst_target) {
+      case PIPE_TEXTURE_CUBE:
+      case PIPE_TEXTURE_CUBE_ARRAY:
+      case PIPE_TEXTURE_2D_ARRAY:
+      case PIPE_TEXTURE_1D_ARRAY:
+         /* these use layer */
+         region.dstSubresource.baseArrayLayer = dstz;
+         region.dstSubresource.layerCount = src_box->depth;
+         region.dstOffset.z = 0;
+         break;
+      case PIPE_TEXTURE_3D:
+         /* this uses depth */
+         region.dstSubresource.baseArrayLayer = 0;
+         region.dstSubresource.layerCount = 1;
+         region.dstOffset.z = dstz;
+         break;
+      default:
+         /* these must only copy one layer */
+         region.dstSubresource.baseArrayLayer = 0;
+         region.dstSubresource.layerCount = 1;
+         region.dstOffset.z = 0;
+      }
+
+      region.dstOffset.x = dstx;
+      region.dstOffset.y = dsty;
+      region.extent.width = src_box->width;
+      region.extent.height = src_box->height;
+
+      struct zink_batch *batch = &ctx->batch;
+      VkCommandBuffer cmdbuf = get_cmdbuf(ctx, src, dst);
+      zink_batch_reference_resource_rw(batch, src, false);
+      zink_batch_reference_resource_rw(batch, dst, true);
+
+      zink_resource_setup_transfer_layouts(ctx, src, dst);
+      VKCTX(CmdCopyImage)(cmdbuf, src->obj->image, src->layout,
+                     dst->obj->image, dst->layout,
+                     1, &region);
+   } else if (dst->base.b.target == PIPE_BUFFER &&
+              src->base.b.target == PIPE_BUFFER) {
+      zink_copy_buffer(ctx, dst, src, dstx, src_box->x, src_box->width);
+   } else
+      zink_copy_image_buffer(ctx, dst, src, dst_level, dstx, dsty, dstz, src_level, src_box, 0);
 }
 
 static bool
