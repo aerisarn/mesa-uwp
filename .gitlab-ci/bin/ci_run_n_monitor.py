@@ -12,17 +12,16 @@ Helper script to restrict running only required CI jobs
 and show the job(s) logs.
 """
 
-from typing import Optional
-from functools import partial
-from concurrent.futures import ThreadPoolExecutor
-
+import argparse
 import os
 import re
-import time
-import argparse
 import sys
-import gitlab
+import time
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+from typing import Optional
 
+import gitlab
 from colorama import Fore, Style
 
 REFRESH_WAIT_LOG = 10
