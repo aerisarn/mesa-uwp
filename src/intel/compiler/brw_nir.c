@@ -1057,17 +1057,61 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    brw_nir_optimize(nir, compiler, is_scalar);
 }
 
+static bool
+brw_nir_zero_inputs_instr(struct nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_load_deref)
+      return false;
+
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   if (!nir_deref_mode_is(deref, nir_var_shader_in))
+      return false;
+
+   if (deref->deref_type != nir_deref_type_var)
+      return false;
+
+   nir_variable *var = deref->var;
+
+   uint64_t zero_inputs = *(uint64_t *)data;
+   if (!(BITFIELD64_BIT(var->data.location) & zero_inputs))
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   nir_ssa_def *zero = nir_imm_zero(b, 1, 32);
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, zero);
+
+   nir_instr_remove(instr);
+
+   return true;
+}
+
+static bool
+brw_nir_zero_inputs(nir_shader *shader, uint64_t *zero_inputs)
+{
+   return nir_shader_instructions_pass(shader, brw_nir_zero_inputs_instr,
+         nir_metadata_block_index | nir_metadata_dominance, zero_inputs);
+}
+
 void
 brw_nir_link_shaders(const struct brw_compiler *compiler,
                      nir_shader *producer, nir_shader *consumer)
 {
    if (producer->info.stage == MESA_SHADER_MESH &&
        consumer->info.stage == MESA_SHADER_FRAGMENT) {
+      uint64_t fs_inputs = 0, ms_outputs = 0;
       /* gl_MeshPerPrimitiveNV[].gl_ViewportIndex, gl_PrimitiveID and gl_Layer
        * are per primitive, but fragment shader does not have them marked as
        * such. Add the annotation here.
        */
       nir_foreach_shader_in_variable(var, consumer) {
+         fs_inputs |= BITFIELD64_BIT(var->data.location);
+
          switch (var->data.location) {
             case VARYING_SLOT_LAYER:
             case VARYING_SLOT_PRIMITIVE_ID:
@@ -1078,6 +1122,16 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
                continue;
          }
       }
+
+      nir_foreach_shader_out_variable(var, producer)
+         ms_outputs |= BITFIELD64_BIT(var->data.location);
+
+      uint64_t zero_inputs = ~ms_outputs & fs_inputs;
+      zero_inputs &= BITFIELD64_BIT(VARYING_SLOT_LAYER) |
+                     BITFIELD64_BIT(VARYING_SLOT_VIEWPORT);
+
+      if (zero_inputs)
+         NIR_PASS(_, consumer, brw_nir_zero_inputs, &zero_inputs);
    }
 
    nir_lower_io_arrays_to_elements(producer, consumer);
