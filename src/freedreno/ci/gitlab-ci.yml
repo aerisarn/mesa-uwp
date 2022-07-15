@@ -124,7 +124,7 @@ a530-traces:
     PIGLIT_REPLAY_DEVICE_NAME: "freedreno-a530"
     PIGLIT_RESULTS: "freedreno-a530-replay"
 
-a618_vk:
+.a618_vk:
   extends:
     - .lava-test:arm64
     - .turnip-rules
@@ -143,9 +143,9 @@ a618_vk:
     # the .5s default.
     FREEDRENO_HANGCHECK_MS: 2000
 
-a618_vk_full:
+.a618_vk_full:
   extends:
-    - a618_vk
+    - .a618_vk
     - .test-manual-mr
   # We use a longer timeout to keep the parallel down so that we don't lock up
   # too many runners for a long time when a dev is trying out at full VK status.
