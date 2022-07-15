@@ -92,6 +92,7 @@ struct zink_gfx_pipeline_state {
    } shader_keys;
    struct zink_blend_state *blend_state;
    struct zink_render_pass *render_pass;
+   struct zink_render_pass *next_render_pass; //will be used next time rp is begun
    VkFormat rendering_formats[PIPE_MAX_COLOR_BUFS];
    VkPipelineRenderingCreateInfo rendering_info;
    VkPipeline pipeline;

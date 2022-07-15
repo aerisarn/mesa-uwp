@@ -449,6 +449,37 @@ get_render_pass(struct zink_context *ctx)
    return rp;
 }
 
+/* check whether the active rp needs to be split to replace it with rp2 */
+static bool
+rp_must_change(const struct zink_render_pass *rp, const struct zink_render_pass *rp2, bool in_rp)
+{
+   if (rp == rp2)
+      return false;
+   unsigned num_cbufs = rp->state.num_cbufs;
+   if (rp->pipeline_state != rp2->pipeline_state) {
+      /* if any core attrib bits are different, must split */
+      if (rp->state.val != rp2->state.val)
+         return true;
+      for (unsigned i = 0; i < num_cbufs; i++) {
+         const struct zink_rt_attrib *rt = &rp->state.rts[i];
+         const struct zink_rt_attrib *rt2 = &rp2->state.rts[i];
+         /* if layout changed, must split */
+         if (get_color_rt_layout(rt) != get_color_rt_layout(rt2))
+            return true;
+      }
+   }
+   if (rp->state.have_zsbuf) {
+      const struct zink_rt_attrib *rt = &rp->state.rts[num_cbufs];
+      const struct zink_rt_attrib *rt2 = &rp2->state.rts[num_cbufs];
+      /* if zs layout has gone from read-only to read-write, split renderpass */
+      if (get_zs_rt_layout(rt) == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
+          get_zs_rt_layout(rt2) == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+         return true;
+   }
+   /* any other change doesn't require splitting a renderpass */
+   return !in_rp;
+}
+
 static void
 setup_framebuffer(struct zink_context *ctx)
 {
@@ -457,15 +488,36 @@ setup_framebuffer(struct zink_context *ctx)
 
    zink_update_vk_sample_locations(ctx);
 
-   if (ctx->rp_changed || ctx->rp_layout_changed)
+   if (ctx->rp_changed || ctx->rp_layout_changed || ctx->rp_loadop_changed) {
+      /* 0. ensure no stale pointers are set */
+      ctx->gfx_pipeline_state.next_render_pass = NULL;
+      /* 1. calc new rp */
       rp = get_render_pass(ctx);
-
-   ctx->fb_changed |= rp != ctx->gfx_pipeline_state.render_pass;
+      /* 2. evaluate whether to use new rp */
+      if (ctx->gfx_pipeline_state.render_pass) {
+         /* 2a. if previous rp exists, check whether new rp MUST be used */
+         bool must_change = rp_must_change(ctx->gfx_pipeline_state.render_pass, rp, ctx->batch.in_rp);
+         ctx->fb_changed |= must_change;
+         if (!must_change)
+            /* 2b. if non-essential attribs have changed, store for later use and continue on */
+            ctx->gfx_pipeline_state.next_render_pass = rp;
+      } else {
+         /* 2c. no previous rp in use, use this one */
+         ctx->fb_changed = true;
+      }
+   } else if (ctx->gfx_pipeline_state.next_render_pass) {
+      /* previous rp was calculated but deferred: use it */
+      assert(!ctx->batch.in_rp);
+      rp = ctx->gfx_pipeline_state.next_render_pass;
+      ctx->gfx_pipeline_state.next_render_pass = NULL;
+      ctx->fb_changed = true;
+   }
    if (rp->pipeline_state != ctx->gfx_pipeline_state.rp_state) {
       ctx->gfx_pipeline_state.rp_state = rp->pipeline_state;
       ctx->gfx_pipeline_state.dirty = true;
    }
 
+   ctx->rp_loadop_changed = false;
    ctx->rp_layout_changed = false;
    ctx->rp_changed = false;
    zink_render_update_swapchain(ctx);
