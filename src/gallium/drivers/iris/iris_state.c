@@ -2634,22 +2634,10 @@ iris_create_surface(struct pipe_context *ctx,
    }
 
    struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
-   struct pipe_surface *psurf = &surf->base;
    struct iris_resource *res = (struct iris_resource *) tex;
 
    if (!surf)
       return NULL;
-
-   pipe_reference_init(&psurf->reference, 1);
-   pipe_resource_reference(&psurf->texture, tex);
-   psurf->context = ctx;
-   psurf->format = tmpl->format;
-   psurf->width = tex->width0;
-   psurf->height = tex->height0;
-   psurf->texture = tex;
-   psurf->u.tex.first_layer = tmpl->u.tex.first_layer;
-   psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
-   psurf->u.tex.level = tmpl->u.tex.level;
 
    uint32_t array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
 
@@ -2710,7 +2698,7 @@ iris_create_surface(struct pipe_context *ctx,
    }
 #endif
 
-   struct isl_surf isl_surf;
+   struct isl_surf isl_surf = res->surf;
    uint64_t offset_B = 0;
    uint32_t tile_x_el = 0, tile_y_el = 0;
    if (isl_format_is_compressed(res->surf.format)) {
@@ -2737,6 +2725,18 @@ iris_create_surface(struct pipe_context *ctx,
    }
 
    surf->clear_color = res->aux.clear_color;
+
+   struct pipe_surface *psurf = &surf->base;
+   pipe_reference_init(&psurf->reference, 1);
+   pipe_resource_reference(&psurf->texture, tex);
+   psurf->context = ctx;
+   psurf->format = tmpl->format;
+   psurf->width = isl_surf.logical_level0_px.width;
+   psurf->height = isl_surf.logical_level0_px.height;
+   psurf->texture = tex;
+   psurf->u.tex.first_layer = tmpl->u.tex.first_layer;
+   psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
+   psurf->u.tex.level = tmpl->u.tex.level;
 
    /* Bail early for depth/stencil - we don't want SURFACE_STATE for them. */
    if (res->surf.usage & (ISL_SURF_USAGE_DEPTH_BIT |
@@ -2775,9 +2775,6 @@ iris_create_surface(struct pipe_context *ctx,
 #endif
       return psurf;
    }
-
-   psurf->width = isl_surf.logical_level0_px.width;
-   psurf->height = isl_surf.logical_level0_px.height;
 
    struct isl_surf_fill_state_info f = {
       .surf = &isl_surf,
