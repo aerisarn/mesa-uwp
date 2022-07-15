@@ -55,7 +55,8 @@ lower_nv_task_output(nir_builder *b,
    case nir_intrinsic_load_output: {
       b->cursor = nir_after_instr(instr);
       nir_ssa_def *load =
-         nir_load_shared(b, 1, 32, nir_imm_int(b, s->task_count_shared_addr));
+         nir_load_shared(b, 1, 32, nir_imm_int(b, 0),
+                         .base = s->task_count_shared_addr);
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, load);
       nir_instr_remove(instr);
       return true;
@@ -64,7 +65,8 @@ lower_nv_task_output(nir_builder *b,
    case nir_intrinsic_store_output: {
       b->cursor = nir_after_instr(instr);
       nir_ssa_def *store_val = intrin->src[0].ssa;
-      nir_store_shared(b, store_val, nir_imm_int(b, s->task_count_shared_addr));
+      nir_store_shared(b, store_val, nir_imm_int(b, 0),
+                       .base = s->task_count_shared_addr);
       nir_instr_remove(instr);
       return true;
    }
@@ -84,7 +86,7 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
     */
    b->cursor = nir_before_cf_list(&b->impl->body);
    nir_ssa_def *zero = nir_imm_int(b, 0);
-   nir_store_shared(b, zero, nir_imm_int(b, s->task_count_shared_addr));
+   nir_store_shared(b, zero, zero, .base = s->task_count_shared_addr);
 
    nir_scoped_barrier(b,
          .execution_scope = NIR_SCOPE_WORKGROUP,
@@ -104,7 +106,7 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
          .memory_modes = nir_var_mem_shared);
 
    nir_ssa_def *task_count =
-      nir_load_shared(b, 1, 32, nir_imm_int(b, s->task_count_shared_addr));
+      nir_load_shared(b, 1, 32, zero, .base = s->task_count_shared_addr);
 
    /* NV_mesh_shader doesn't offer to choose which task_payload variable
     * should be passed to mesh shaders, we just pass all.
