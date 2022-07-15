@@ -3884,12 +3884,21 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_load_shared: {
       assert(devinfo->ver >= 7);
-      assert(nir_intrinsic_base(instr) == 0);
 
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
       srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
-      srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[0]);
+
+      fs_reg addr = get_nir_src(instr->src[0]);
+      int base = nir_intrinsic_base(instr);
+      if (base) {
+         fs_reg addr_off = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+         bld.ADD(addr_off, addr, brw_imm_d(base));
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = addr_off;
+      } else {
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = addr;
+      }
+
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
       srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(0);
 
@@ -3921,12 +3930,21 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_store_shared: {
       assert(devinfo->ver >= 7);
-      assert(nir_intrinsic_base(instr) == 0);
 
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
       srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
-      srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
+
+      fs_reg addr = get_nir_src(instr->src[1]);
+      int base = nir_intrinsic_base(instr);
+      if (base) {
+         fs_reg addr_off = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+         bld.ADD(addr_off, addr, brw_imm_d(base));
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = addr_off;
+      } else {
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = addr;
+      }
+
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
       /* No point in masking with sample mask, here we're handling compute
        * intrinsics.
