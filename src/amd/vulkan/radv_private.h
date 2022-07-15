@@ -810,6 +810,7 @@ struct radv_device {
    bool pbb_allowed;
    uint32_t scratch_waves;
    uint32_t dispatch_initiator;
+   uint32_t dispatch_initiator_task;
 
    /* MSAA sample locations.
     * The first index is the sample index.

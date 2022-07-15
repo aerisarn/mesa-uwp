@@ -3509,6 +3509,13 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       device->dispatch_initiator |= S_00B800_ORDER_MODE(1);
    }
 
+   /* Disable partial preemption for task shaders.
+    * The kernel may not support preemption, but PAL always sets this bit,
+    * so let's also set it here for consistency.
+    */
+   device->dispatch_initiator_task =
+      device->dispatch_initiator | S_00B800_DISABLE_DISP_PREMPT_EN(1);
+
    if (device->instance->debug_flags & RADV_DEBUG_HANG) {
       /* Enable GPU hangs detection and dump logs if a GPU hang is
        * detected.
