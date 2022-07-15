@@ -2710,6 +2710,32 @@ iris_create_surface(struct pipe_context *ctx,
    }
 #endif
 
+   struct isl_surf isl_surf;
+   uint64_t offset_B = 0;
+   uint32_t tile_x_el = 0, tile_y_el = 0;
+   if (isl_format_is_compressed(res->surf.format)) {
+      /* The resource has a compressed format, which is not renderable, but we
+       * have a renderable view format.  We must be attempting to upload
+       * blocks of compressed data via an uncompressed view.
+       *
+       * In this case, we can assume there are no auxiliary buffers, a single
+       * miplevel, and that the resource is single-sampled.  Gallium may try
+       * and create an uncompressed view with multiple layers, however.
+       */
+      assert(res->aux.usage == ISL_AUX_USAGE_NONE);
+      assert(res->surf.samples == 1);
+      assert(view->levels == 1);
+
+      bool ok = isl_surf_get_uncompressed_surf(&screen->isl_dev,
+                                               &res->surf, view,
+                                               &isl_surf, view, &offset_B,
+                                               &tile_x_el, &tile_y_el);
+      if (!ok) {
+         free(surf);
+         return NULL;
+      }
+   }
+
    surf->clear_color = res->aux.clear_color;
 
    /* Bail early for depth/stencil - we don't want SURFACE_STATE for them. */
@@ -2748,30 +2774,6 @@ iris_create_surface(struct pipe_context *ctx,
                           read_surf_tile_x_sa, read_surf_tile_y_sa);
 #endif
       return psurf;
-   }
-
-   /* The resource has a compressed format, which is not renderable, but we
-    * have a renderable view format.  We must be attempting to upload blocks
-    * of compressed data via an uncompressed view.
-    *
-    * In this case, we can assume there are no auxiliary buffers, a single
-    * miplevel, and that the resource is single-sampled.  Gallium may try
-    * and create an uncompressed view with multiple layers, however.
-    */
-   assert(!isl_format_is_compressed(fmt.fmt));
-   assert(res->aux.usage == ISL_AUX_USAGE_NONE);
-   assert(res->surf.samples == 1);
-   assert(view->levels == 1);
-
-   struct isl_surf isl_surf;
-   uint64_t offset_B = 0;
-   uint32_t tile_x_el = 0, tile_y_el = 0;
-   bool ok = isl_surf_get_uncompressed_surf(&screen->isl_dev, &res->surf,
-                                            view, &isl_surf, view,
-                                            &offset_B, &tile_x_el, &tile_y_el);
-   if (!ok) {
-      free(surf);
-      return NULL;
    }
 
    psurf->width = isl_surf.logical_level0_px.width;
