@@ -69,6 +69,7 @@ enum zink_debug {
    ZINK_DEBUG_VALIDATION = (1<<3),
    ZINK_DEBUG_SYNC = (1<<4),
    ZINK_DEBUG_COMPACT = (1<<5),
+   ZINK_DEBUG_NOREORDER = (1<<6),
 };
 
 #define NUM_SLAB_ALLOCATORS 3

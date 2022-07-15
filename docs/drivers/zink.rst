@@ -282,6 +282,8 @@ variable:
    Emit full synchronization barriers before every draw and dispatch.
 ``compact``
    Use a maximum of 4 descriptor sets
+``noreorder``
+   Do not reorder or optimize GL command streams
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^

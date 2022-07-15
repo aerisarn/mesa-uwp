@@ -78,6 +78,7 @@ zink_debug_options[] = {
    { "validation", ZINK_DEBUG_VALIDATION, "Dump Validation layer output" },
    { "sync", ZINK_DEBUG_SYNC, "Force synchronization before draws/dispatches" },
    { "compact", ZINK_DEBUG_COMPACT, "Use only 4 descriptor sets" },
+   { "noreorder", ZINK_DEBUG_NOREORDER, "Do not reorder command streams" },
    DEBUG_NAMED_VALUE_END
 };
 
