@@ -284,7 +284,7 @@ bo_create_internal(struct zink_screen *screen,
 
    VkResult ret = VKSCR(AllocateMemory)(screen->dev, &mai, NULL, &bo->mem);
    if (!zink_screen_handle_vkresult(screen, ret)) {
-      mesa_loge("zink: couldn't allocate memory! from heap %u", heap);
+      mesa_loge("zink: couldn't allocate memory: heap=%u size=%" PRIu64, heap, size);
       goto fail;
    }
 
