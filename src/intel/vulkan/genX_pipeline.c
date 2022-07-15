@@ -974,38 +974,6 @@ const uint32_t genX(vk_to_intel_primitive_type)[] = {
    [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
 };
 
-static void
-emit_ds_state(struct anv_graphics_pipeline *pipeline,
-              const struct vk_depth_stencil_state *ds_in,
-              const struct vk_render_pass_state *rp)
-{
-   if (ds_in == NULL) {
-      /* We're going to OR this together with the dynamic state.  We need
-       * to make sure it's initialized to something useful.
-       */
-      pipeline->writes_stencil = false;
-      pipeline->stencil_test_enable = false;
-      pipeline->writes_depth = false;
-      pipeline->depth_test_enable = false;
-      return;
-   }
-
-   VkImageAspectFlags ds_aspects = 0;
-   if (rp != NULL) {
-      if (rp->depth_attachment_format != VK_FORMAT_UNDEFINED)
-         ds_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-      if (rp->stencil_attachment_format != VK_FORMAT_UNDEFINED)
-         ds_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-   }
-
-   struct vk_depth_stencil_state ds = *ds_in;
-   vk_optimize_depth_stencil_state(&ds, ds_aspects, false);
-   pipeline->writes_stencil = ds.stencil.write_enable;
-   pipeline->stencil_test_enable = ds.stencil.test_enable;
-   pipeline->writes_depth = ds.depth.write_enable;
-   pipeline->depth_test_enable = ds.depth.test_enable;
-}
-
 static bool
 is_dual_src_blend_factor(VkBlendFactor factor)
 {
@@ -2336,7 +2304,6 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
    emit_rs_state(pipeline, state->ia, state->rs, state->ms, state->rp,
                            urb_deref_block_size);
    emit_ms_state(pipeline, state->ms);
-   emit_ds_state(pipeline, state->ds, state->rp);
    emit_cb_state(pipeline, state->cb, state->ms);
    compute_kill_pixel(pipeline, state->ms, state->rp);
 

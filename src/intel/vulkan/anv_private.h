@@ -3106,10 +3106,6 @@ struct anv_graphics_pipeline {
    uint32_t                                     view_mask;
    uint32_t                                     instance_multiplier;
 
-   bool                                         writes_depth;
-   bool                                         depth_test_enable;
-   bool                                         writes_stencil;
-   bool                                         stencil_test_enable;
    bool                                         depth_clamp_enable;
    bool                                         depth_clip_enable;
    bool                                         kill_pixel;
