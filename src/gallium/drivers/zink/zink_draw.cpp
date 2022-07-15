@@ -40,7 +40,7 @@ zink_emit_xfb_counter_barrier(struct zink_context *ctx)
          stage |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
       }
       zink_resource_buffer_barrier(ctx, res, access, stage);
-      res->obj->unordered_exec = false;
+      res->obj->unordered_read = false;
    }
 }
 
@@ -86,7 +86,7 @@ check_buffer_barrier(struct zink_context *ctx, struct pipe_resource *pres, VkAcc
 {
    struct zink_resource *res = zink_resource(pres);
    zink_resource_buffer_barrier(ctx, res, flags, pipeline);
-   res->obj->unordered_exec = false;
+   res->obj->unordered_read = false;
 }
 
 ALWAYS_INLINE static void
@@ -345,7 +345,10 @@ update_barriers(struct zink_context *ctx, bool is_compute,
             if (layout != res->layout)
                zink_resource_image_barrier(ctx, res, layout, res->barrier_access[is_compute], pipeline);
          }
-         res->obj->unordered_exec = false;
+         if (zink_resource_access_is_write(res->barrier_access[is_compute]))
+            res->obj->unordered_read = res->obj->unordered_write = false;
+         else
+            res->obj->unordered_read = false;
          /* always barrier on draw if this resource has either multiple image write binds or
           * image write binds and image read binds
           */
@@ -484,7 +487,7 @@ zink_draw(struct pipe_context *pctx,
                struct zink_resource *res = zink_resource(t->base.buffer);
                zink_resource_buffer_barrier(ctx, res,
                                             VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
-               res->obj->unordered_exec = false;
+               res->obj->unordered_read = res->obj->unordered_write = false;
             }
          }
       }
@@ -502,7 +505,7 @@ zink_draw(struct pipe_context *pctx,
       zink_resource_buffer_barrier(ctx, res,
                                    VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
                                    VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-      res->obj->unordered_exec = false;
+      res->obj->unordered_read = false;
    }
 
    zink_query_update_gs_states(ctx, dinfo->was_line_loop);
@@ -775,7 +778,7 @@ zink_draw(struct pipe_context *pctx,
             struct zink_resource *res = zink_resource(t->counter_buffer);
             t->stride = ctx->last_vertex_stage->sinfo.so_info.stride[i] * sizeof(uint32_t);
             zink_batch_reference_resource_rw(batch, res, true);
-            res->obj->unordered_exec = false;
+            res->obj->unordered_read = res->obj->unordered_write = false;
             if (t->counter_buffer_valid) {
                counter_buffers[i] = res->obj->buffer;
                counter_buffer_offsets[i] = t->counter_buffer_offset;
@@ -892,7 +895,7 @@ zink_draw_vertex_state(struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(vstate->input.vbuffer.buffer.resource);
    zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-   res->obj->unordered_exec = false;
+   res->obj->unordered_read = false;
    struct zink_vertex_elements_hw_state *hw_state = ctx->gfx_pipeline_state.element_state;
    ctx->gfx_pipeline_state.element_state = &((struct zink_vertex_state*)vstate)->velems.hw_state;
 

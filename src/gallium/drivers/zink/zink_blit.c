@@ -372,8 +372,8 @@ zink_blit(struct pipe_context *pctx,
       util_blitter_blit(ctx->blitter, info);
    }
 end:
-   src->obj->unordered_exec = false;
-   dst->obj->unordered_exec = false;
+   src->obj->unordered_read = false;
+   dst->obj->unordered_read = dst->obj->unordered_write = false;
    if (needs_present_readback)
       zink_kopper_present_readback(ctx, src);
 }
