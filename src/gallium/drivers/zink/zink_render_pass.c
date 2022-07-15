@@ -45,6 +45,12 @@ get_rt_loadop(const struct zink_rt_attrib *rt, bool clear)
 }
 
 static VkImageLayout
+get_color_rt_layout(const struct zink_rt_attrib *rt)
+{
+   return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+}
+
+static VkImageLayout
 get_zs_rt_layout(const struct zink_rt_attrib *rt)
 {
    bool has_clear = rt->clear_color || rt->clear_stencil;
@@ -85,7 +91,7 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
       /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
-      VkImageLayout layout = rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      VkImageLayout layout = get_color_rt_layout(rt);
       attachments[i].initialLayout = layout;
       attachments[i].finalLayout = layout;
       color_refs[i].sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
