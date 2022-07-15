@@ -268,20 +268,19 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_rt_attrib *rt, bo
       *access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       if (!rt->clear_color && !rt->invalid)
          *access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-      return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      return get_color_rt_layout(rt);
    }
 
    *pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
    if (rt->mixed_zs) {
       *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-      return VK_IMAGE_LAYOUT_GENERAL;
+   } else {
+      if (!rt->clear_color && !rt->clear_stencil)
+         *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+      if (rt->clear_color || rt->clear_stencil || rt->needs_write)
+         *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
    }
-   if (!rt->clear_color && !rt->clear_stencil)
-      *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-   if (!rt->clear_color && !rt->clear_stencil && !rt->needs_write)
-      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-   *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-   return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+   return get_zs_rt_layout(rt);
 }
 
 
