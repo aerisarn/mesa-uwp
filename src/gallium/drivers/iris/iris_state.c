@@ -2743,6 +2743,9 @@ iris_create_surface(struct pipe_context *ctx,
                           ISL_SURF_USAGE_STENCIL_BIT))
       return psurf;
 
+   /* Fill out a SURFACE_STATE for each possible auxiliary surface mode and
+    * return the pipe_surface.
+    */
    unsigned aux_usages = 0;
 
    if ((res->aux.usage == ISL_AUX_USAGE_CCS_E ||
@@ -2756,37 +2759,16 @@ iris_create_surface(struct pipe_context *ctx,
 
    alloc_surface_states(&surf->surface_state, aux_usages);
    surf->surface_state.bo_address = res->bo->address;
+   fill_surface_states(&screen->isl_dev, &surf->surface_state, res,
+                       &isl_surf, view, offset_B, tile_x_el, tile_y_el);
 
 #if GFX_VER == 8
    alloc_surface_states(&surf->surface_state_read, aux_usages);
    surf->surface_state_read.bo_address = res->bo->address;
+   fill_surface_states(&screen->isl_dev, &surf->surface_state_read, res,
+                       &read_surf, read_view, read_surf_offset_B,
+                       read_surf_tile_x_sa, read_surf_tile_y_sa);
 #endif
-
-   if (!isl_format_is_compressed(res->surf.format)) {
-      /* This is a normal surface.  Fill out a SURFACE_STATE for each possible
-       * auxiliary surface mode and return the pipe_surface.
-       */
-      fill_surface_states(&screen->isl_dev, &surf->surface_state, res,
-                          &res->surf, view, 0, 0, 0);
-#if GFX_VER == 8
-      fill_surface_states(&screen->isl_dev, &surf->surface_state_read, res,
-                          &read_surf, read_view, read_surf_offset_B,
-                          read_surf_tile_x_sa, read_surf_tile_y_sa);
-#endif
-      return psurf;
-   }
-
-   struct isl_surf_fill_state_info f = {
-      .surf = &isl_surf,
-      .view = view,
-      .mocs = iris_mocs(res->bo, &screen->isl_dev,
-                        ISL_SURF_USAGE_RENDER_TARGET_BIT),
-      .address = res->bo->address + offset_B,
-      .x_offset_sa = tile_x_el, /* Single-sampled, so el == sa */
-      .y_offset_sa = tile_y_el, /* Single-sampled, so el == sa */
-   };
-
-   isl_surf_fill_state_s(&screen->isl_dev, surf->surface_state.cpu, &f);
 
    return psurf;
 }
