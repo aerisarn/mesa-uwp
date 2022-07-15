@@ -164,10 +164,10 @@ struct lp_fragment_shader_variant
     */
    unsigned potentially_opaque:1;
 
+   unsigned opaque:1;
    unsigned blit:1;
    unsigned linear_input_mask:16;
    struct pipe_reference reference;
-   boolean opaque;
 
    struct gallivm_state *gallivm;
 
