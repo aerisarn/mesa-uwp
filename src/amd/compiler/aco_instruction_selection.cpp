@@ -11041,30 +11041,30 @@ export_fs_mrt_z(isel_context* ctx)
    return true;
 }
 
+struct mrt_color_export {
+   int slot;
+   unsigned write_mask;
+   Operand values[4];
+   uint8_t col_format;
+};
+
 static bool
-export_fs_mrt_color(isel_context* ctx, int slot)
+export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export *out)
 {
    Builder bld(ctx->program, ctx->block);
-   unsigned write_mask = ctx->outputs.mask[slot];
    Operand values[4];
 
    for (unsigned i = 0; i < 4; ++i) {
-      if (write_mask & (1 << i)) {
-         values[i] = Operand(ctx->outputs.temps[slot * 4u + i]);
-      } else {
-         values[i] = Operand(v1);
-      }
+      values[i] = out->values[i];
    }
 
-   unsigned target, col_format;
+   unsigned target;
    unsigned enabled_channels = 0;
    bool compr = false;
 
-   slot -= FRAG_RESULT_DATA0;
-   target = V_008DFC_SQ_EXP_MRT + slot;
-   col_format = (ctx->options->key.ps.col_format >> (4 * slot)) & 0xf;
+   target = V_008DFC_SQ_EXP_MRT + out->slot;
 
-   switch (col_format) {
+   switch (out->col_format) {
    case V_028714_SPI_SHADER_32_R: enabled_channels = 1; break;
 
    case V_028714_SPI_SHADER_32_GR: enabled_channels = 0x3; break;
@@ -11085,7 +11085,7 @@ export_fs_mrt_color(isel_context* ctx, int slot)
    case V_028714_SPI_SHADER_SNORM16_ABGR:
    case V_028714_SPI_SHADER_UINT16_ABGR:
    case V_028714_SPI_SHADER_SINT16_ABGR:
-      enabled_channels = util_widen_mask(write_mask, 2);
+      enabled_channels = util_widen_mask(out->write_mask, 2);
       compr = true;
       break;
 
@@ -11192,9 +11192,26 @@ create_fs_exports(isel_context* ctx)
       create_fs_jump_to_epilog(ctx);
    } else {
       /* Export all color render targets. */
-      for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i)
-         if (ctx->outputs.mask[i])
-            exported |= export_fs_mrt_color(ctx, i);
+      for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i) {
+         if (!ctx->outputs.mask[i])
+            continue;
+
+         struct mrt_color_export out = {0};
+
+         out.slot = i - FRAG_RESULT_DATA0;
+         out.write_mask = ctx->outputs.mask[i];
+         out.col_format = (ctx->options->key.ps.col_format >> (4 * out.slot)) & 0xf;
+
+         for (unsigned c = 0; c < 4; ++c) {
+            if (out.write_mask & (1 << c)) {
+               out.values[c] = Operand(ctx->outputs.temps[i * 4u + c]);
+            } else {
+               out.values[c] = Operand(v1);
+            }
+         }
+
+         exported |= export_fs_mrt_color(ctx, &out);
+      }
 
       if (!exported)
          create_fs_null_export(ctx);
