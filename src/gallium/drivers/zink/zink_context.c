@@ -2262,6 +2262,7 @@ begin_rendering(struct zink_context *ctx)
                clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
          }
       }
+      ctx->rp_changed = false;
    }
    /* validate zs VUs: attachment must be null or format must be valid */
    assert(!ctx->dynamic_fb.info.pDepthAttachment || ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat);
