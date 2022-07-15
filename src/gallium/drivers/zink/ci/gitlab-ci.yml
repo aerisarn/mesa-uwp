@@ -23,7 +23,7 @@ zink:
   script:
     - xvfb-run --server-args='-noreset' sh -c "GALLIUM_DRIVER=zink VK_DRIVER=lvp install/deqp-runner.sh"
 
-.zink-anv-tgl:
+zink-anv-tgl:
   extends:
     - .anv-tgl-test
     - .zink-anv-rules
