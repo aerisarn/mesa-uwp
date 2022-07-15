@@ -62,12 +62,14 @@ enum zink_descriptor_type;
 /* this is the spec minimum */
 #define ZINK_SPARSE_BUFFER_PAGE_SIZE (64 * 1024)
 
-#define ZINK_DEBUG_NIR 0x1
-#define ZINK_DEBUG_SPIRV 0x2
-#define ZINK_DEBUG_TGSI 0x4
-#define ZINK_DEBUG_VALIDATION 0x8
-#define ZINK_DEBUG_SYNC 0x10
-#define ZINK_DEBUG_COMPACT (1<<5)
+enum zink_debug {
+   ZINK_DEBUG_NIR = (1<<0),
+   ZINK_DEBUG_SPIRV = (1<<1),
+   ZINK_DEBUG_TGSI = (1<<2),
+   ZINK_DEBUG_VALIDATION = (1<<3),
+   ZINK_DEBUG_SYNC = (1<<4),
+   ZINK_DEBUG_COMPACT = (1<<5),
+};
 
 #define NUM_SLAB_ALLOCATORS 3
 #define MIN_SLAB_ORDER 8
