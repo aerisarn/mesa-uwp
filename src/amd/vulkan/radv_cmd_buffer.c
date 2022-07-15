@@ -6289,19 +6289,23 @@ radv_CmdNextSubpass2(VkCommandBuffer commandBuffer, const VkSubpassBeginInfo *pS
 }
 
 static void
+radv_emit_view_index_per_stage(struct radeon_cmdbuf *cs, struct radv_graphics_pipeline *pipeline,
+                               unsigned stage, unsigned index)
+{
+   struct radv_userdata_info *loc = radv_lookup_user_sgpr(&pipeline->base, stage, AC_UD_VIEW_INDEX);
+   if (loc->sgpr_idx == -1)
+      return;
+   uint32_t base_reg = pipeline->base.user_data_0[stage];
+   radeon_set_sh_reg(cs, base_reg + loc->sgpr_idx * 4, index);
+}
+
+static void
 radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
 
-   for (unsigned stage = 0; stage < MESA_VULKAN_SHADER_STAGES; ++stage) {
-      if (!radv_get_shader(&pipeline->base, stage))
-         continue;
-
-      struct radv_userdata_info *loc = radv_lookup_user_sgpr(&pipeline->base, stage, AC_UD_VIEW_INDEX);
-      if (loc->sgpr_idx == -1)
-         continue;
-      uint32_t base_reg = pipeline->base.user_data_0[stage];
-      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, index);
+   radv_foreach_stage(stage, pipeline->active_stages) {
+      radv_emit_view_index_per_stage(cmd_buffer->cs, pipeline, stage, index);
    }
    if (radv_pipeline_has_gs_copy_shader(&pipeline->base)) {
       struct radv_userdata_info *loc =
