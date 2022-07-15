@@ -754,7 +754,9 @@ tu_drm_device_init(struct tu_physical_device *device,
    }
 
    device->syncobj_type = vk_drm_syncobj_get_type(fd);
-   device->timeline_type = vk_sync_timeline_get_type(&tu_timeline_sync_type);
+   /* we don't support DRM_CAP_SYNCOBJ_TIMELINE, but drm-shim does */
+   if (!(device->syncobj_type.features & VK_SYNC_FEATURE_TIMELINE))
+      device->timeline_type = vk_sync_timeline_get_type(&tu_timeline_sync_type);
 
    device->sync_types[0] = &device->syncobj_type;
    device->sync_types[1] = &device->timeline_type.sync;
