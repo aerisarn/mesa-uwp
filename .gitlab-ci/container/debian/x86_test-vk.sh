@@ -135,18 +135,9 @@ setup_wine "/dxvk-wine64"
 dxvk_install_release "1.10.1"
 #dxvk_install_pr 2359
 
-############### Install Windows' apitrace binaries
+############### Install apitrace binaries for wine
 
-APITRACE_VERSION="10.0"
-APITRACE_VERSION_DATE=""
-
-wget "https://github.com/apitrace/apitrace/releases/download/${APITRACE_VERSION}/apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z"
-7zr x "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z" \
-      "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64/bin/apitrace.exe" \
-      "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64/bin/d3dretrace.exe"
-mv "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64" /apitrace-msvc-win64
-rm "apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z"
-
+. .gitlab-ci/container/install-wine-apitrace.sh
 # Add the apitrace path to the registry
 wine \
     reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment" \
