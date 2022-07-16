@@ -1082,7 +1082,14 @@ enum tu_cmd_flush_bits {
    TU_CMD_FLAG_ALL_INVALIDATE =
       TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
       TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
-      TU_CMD_FLAG_CACHE_INVALIDATE,
+      TU_CMD_FLAG_CACHE_INVALIDATE |
+      /* Treat CP_WAIT_FOR_ME as a "cache" that needs to be invalidated when a
+       * a command that needs CP_WAIT_FOR_ME is executed. This means we may
+       * insert an extra WAIT_FOR_ME before an indirect command requiring it
+       * in case there was another command before the current command buffer
+       * that it needs to wait for.
+       */
+      TU_CMD_FLAG_WAIT_FOR_ME,
 };
 
 /* Changing the CCU from sysmem mode to gmem mode or vice-versa is pretty
