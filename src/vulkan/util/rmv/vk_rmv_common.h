@@ -145,6 +145,8 @@ void vk_memory_trace_finish(struct vk_device *device);
 /* The memory trace mutex should be locked when entering this function. */
 void vk_rmv_handle_present_locked(struct vk_device *device);
 
+int vk_dump_rmv_capture(struct vk_memory_trace_data *data);
+
 void vk_rmv_emit_token(struct vk_memory_trace_data *data, enum vk_rmv_token_type type,
                        void *token_data);
 void vk_rmv_log_buffer_create(struct vk_device *device, bool is_internal, VkBuffer _buffer);
