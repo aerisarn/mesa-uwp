@@ -1,4 +1,8 @@
 #!/bin/bash
+# shellcheck disable=SC2086 # we want word splitting
+
+set -e
+
 wd=$PWD
 CMAKE_TOOLCHAIN_MINGW_PATH=$wd/.gitlab-ci/container/debian/x86_mingw-toolchain.cmake
 mkdir -p ~/tmp

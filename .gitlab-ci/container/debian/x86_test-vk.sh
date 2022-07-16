@@ -1,6 +1,7 @@
 #!/bin/bash
 # The relative paths in this file only become valid at runtime.
 # shellcheck disable=SC1091
+# shellcheck disable=SC2086 # we want word splitting
 
 set -e
 set -o xtrace

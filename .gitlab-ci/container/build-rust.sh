@@ -8,8 +8,8 @@ set -ex
 # cargo (and rustup) wants to store stuff in $HOME/.cargo, and binaries in
 # $HOME/.cargo/bin.  Make bin a link to a public bin directory so the commands
 # are just available to all build jobs.
-mkdir -p $HOME/.cargo
-ln -s /usr/local/bin $HOME/.cargo/bin
+mkdir -p "$HOME"/.cargo
+ln -s /usr/local/bin "$HOME"/.cargo/bin
 
 # For rust in Mesa, we use rustup to install.  This lets us pick an arbitrary
 # version of the compiler, rather than whatever the container's Debian comes

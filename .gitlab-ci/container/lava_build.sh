@@ -1,4 +1,7 @@
 #!/bin/bash
+# shellcheck disable=SC1091 # The relative paths in this file only become valid at runtime.
+# shellcheck disable=SC2034 # Variables are used in scripts called from here
+# shellcheck disable=SC2086 # we want word splitting
 
 set -e
 set -o xtrace
@@ -225,7 +228,8 @@ rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
 # Dependencies pulled during the creation of the rootfs may overwrite
 # the built libdrm. Hence, we add it after the rootfs has been already
 # created.
-find /libdrm/ -name lib\*\.so\* | xargs cp -t /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH/.
+find /libdrm/ -name lib\*\.so\* \
+  -exec cp -t /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH/. {} \;
 mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/libdrm/
 cp -Rp /libdrm/share /lava-files/rootfs-${DEBIAN_ARCH}/libdrm/share
 rm -rf /libdrm

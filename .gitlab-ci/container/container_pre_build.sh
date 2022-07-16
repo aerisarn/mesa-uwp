@@ -28,8 +28,11 @@ find /usr/bin -name \*-ld -o -name ld | \
 ccache --show-stats
 
 # Make a wrapper script for ninja to always include the -j flags
-echo '#!/bin/sh -x' > /usr/local/bin/ninja
-echo '/usr/bin/ninja -j${FDO_CI_CONCURRENT:-4} "$@"' >> /usr/local/bin/ninja
+{
+    echo '#!/bin/sh -x'
+    # shellcheck disable=SC2016
+    echo '/usr/bin/ninja -j${FDO_CI_CONCURRENT:-4} "$@"'
+} > /usr/local/bin/ninja
 chmod +x /usr/local/bin/ninja
 
 # Set MAKEFLAGS so that all make invocations in container builds include the

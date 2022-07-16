@@ -1,4 +1,7 @@
 #!/bin/bash
+# shellcheck disable=SC2140  # ugly array, remove later
+# shellcheck disable=SC2288  # ugly array, remove later
+# shellcheck disable=SC2086 # we want word splitting
 
 set -ex
 
