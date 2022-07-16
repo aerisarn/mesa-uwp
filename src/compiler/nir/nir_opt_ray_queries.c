@@ -146,7 +146,6 @@ nir_opt_ray_queries(nir_shader *shader)
       nir_remove_dead_variables(shader,
                                 nir_var_shader_temp | nir_var_function_temp,
                                 NULL);
-      nir_shader_gather_info(shader, nir_shader_get_entrypoint(shader));
    }
 
    _mesa_set_destroy(read_queries, NULL);
