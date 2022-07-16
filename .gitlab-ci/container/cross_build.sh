@@ -38,8 +38,9 @@ apt-get install -y --no-remove \
         wget
 
 if [[ $arch != "armhf" ]]; then
-    if [[ $arch == "s390x" ]]; then
-        LLVM=9
+    # See the list of available architectures in https://apt.llvm.org/bullseye/dists/llvm-toolchain-bullseye-13/main/
+    if [[ $arch == "s390x" ]] || [[ $arch == "i386" ]] || [[ $arch == "arm64" ]]; then
+        LLVM=13
     else
         LLVM=11
     fi
