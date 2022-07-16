@@ -209,13 +209,15 @@ assign_reg(struct lp_build_nir_context *bld_base, const nir_reg_dest *reg,
            unsigned write_mask,
            LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
+   assert(write_mask != 0x0);
    struct hash_entry *entry = _mesa_hash_table_search(bld_base->regs, reg->reg);
    LLVMValueRef reg_storage = (LLVMValueRef)entry->data;
    struct lp_build_context *reg_bld = get_int_bld(bld_base, true, reg->reg->bit_size);
    LLVMValueRef indir_src = NULL;
    if (reg->indirect)
       indir_src = get_src(bld_base, *reg->indirect);
-   bld_base->store_reg(bld_base, reg_bld, reg, write_mask ? write_mask : 0xf, indir_src, reg_storage, vals);
+   bld_base->store_reg(bld_base, reg_bld, reg, write_mask,
+                       indir_src, reg_storage, vals);
 }
 
 
@@ -227,7 +229,7 @@ assign_dest(struct lp_build_nir_context *bld_base,
    if (dest->is_ssa)
       assign_ssa_dest(bld_base, &dest->ssa, vals);
    else
-      assign_reg(bld_base, &dest->reg, 0, vals);
+      assign_reg(bld_base, &dest->reg, 0xf, vals);
 }
 
 
