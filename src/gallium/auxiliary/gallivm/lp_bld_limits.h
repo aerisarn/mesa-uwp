@@ -37,10 +37,7 @@
 #include "util/u_cpu_detect.h"
 
 /*
- * TGSI translation limits.
- *
- * Some are slightly above SM 3.0 requirements to give some wiggle room to
- * the gallium frontends.
+ * llvmpipe shader limits
  */
 
 #define LP_MAX_TGSI_TEMPS 4096
@@ -59,7 +56,7 @@
 
 #define LP_MAX_TGSI_SHADER_BUFFER_SIZE (1 << 27)
 
-#define LP_MAX_TGSI_SHADER_IMAGES 32
+#define LP_MAX_TGSI_SHADER_IMAGES 64
 
 /*
  * For quick access we cache registers in statically
