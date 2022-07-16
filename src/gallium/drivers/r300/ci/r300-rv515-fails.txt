@@ -45,11 +45,6 @@ dEQP-GLES2.functional.shaders.discard.dynamic_loop_always,Fail
 
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_write_dynamic_loop_read_fragment,Fail
 
-# Too many instructions due to https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/16770
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_read_fragment,Fail
-
 dEQP-GLES2.functional.shaders.random.texture.fragment.141,Fail
 
 dEQP-GLES2.functional.shaders.return.return_in_dynamic_loop_dynamic_fragment,Fail

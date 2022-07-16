@@ -220,6 +220,9 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
         case PIPE_CAP_MAX_VARYINGS:
             return 10;
 
+	case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
+	    return 0;
+
         case PIPE_CAP_VENDOR_ID:
                 return 0x1002;
         case PIPE_CAP_DEVICE_ID:
