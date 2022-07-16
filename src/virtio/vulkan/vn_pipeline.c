@@ -277,8 +277,8 @@ vn_fix_graphics_pipeline_create_info(
       bool any_fix = false;
 
       VkShaderStageFlags stages = 0;
-      for (uint32_t i = 0; i < info->stageCount; ++i) {
-         stages |= info->pStages[i].stage;
+      for (uint32_t j = 0; j < info->stageCount; j++) {
+         stages |= info->pStages[j].stage;
       }
 
       /* Fix pTessellationState?
@@ -291,13 +291,25 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
+      bool ignore_raster_dedicated_states =
+         !info->pRasterizationState ||
+         info->pRasterizationState->rasterizerDiscardEnable == VK_TRUE;
+      if (ignore_raster_dedicated_states && info->pDynamicState) {
+         for (uint32_t j = 0; j < info->pDynamicState->dynamicStateCount;
+              j++) {
+            if (info->pDynamicState->pDynamicStates[j] ==
+                VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE) {
+               ignore_raster_dedicated_states = false;
+               break;
+            }
+         }
+      }
+
       /* FIXME: Conditions for ignoring pDepthStencilState and
        * pColorBlendState miss some cases that depend on the render pass. Make
        * them agree with the VUIDs.
-       *
-       * TODO: Update conditions for VK_EXT_extended_dynamic_state2.
        */
-      if (info->pRasterizationState->rasterizerDiscardEnable == VK_TRUE &&
+      if (ignore_raster_dedicated_states &&
           (info->pViewportState || info->pMultisampleState ||
            info->pDepthStencilState || info->pColorBlendState)) {
          fix.ignore_raster_dedicated_states = true;
