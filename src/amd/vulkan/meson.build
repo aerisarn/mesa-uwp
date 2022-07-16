@@ -30,6 +30,7 @@ radv_entrypoints_gen_command += [
   # Tracing layer entrypoints
   '--device-prefix', 'sqtt',
   '--device-prefix', 'rra',
+  '--device-prefix', 'rmv',
 
   # Application layer entrypoints
   '--device-prefix', 'metro_exodus',
@@ -46,6 +47,7 @@ radv_entrypoints = custom_target(
 libradv_files = files(
   'bvh/bvh.h',
   'layers/radv_metro_exodus.c',
+  'layers/radv_rmv_layer.c',
   'layers/radv_rra_layer.c',
   'layers/radv_sqtt_layer.c',
   'winsys/null/radv_null_bo.c',

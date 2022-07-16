@@ -840,6 +840,7 @@ enum radv_dispatch_table {
    RADV_APP_DISPATCH_TABLE,
    RADV_RGP_DISPATCH_TABLE,
    RADV_RRA_DISPATCH_TABLE,
+   RADV_RMV_DISPATCH_TABLE,
    RADV_DISPATCH_TABLE_COUNT,
 };
 
@@ -847,6 +848,7 @@ struct radv_layer_dispatch_tables {
    struct vk_device_dispatch_table app;
    struct vk_device_dispatch_table rgp;
    struct vk_device_dispatch_table rra;
+   struct vk_device_dispatch_table rmv;
 };
 
 struct radv_device {
