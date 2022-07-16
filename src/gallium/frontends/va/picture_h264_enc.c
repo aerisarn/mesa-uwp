@@ -73,6 +73,7 @@ vlVaHandleVAEncPictureParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *cont
    if (context->desc.h264enc.gop_cnt == context->desc.h264enc.gop_size)
       context->desc.h264enc.gop_cnt = 0;
 
+   context->desc.h264enc.pic_ctrl.enc_cabac_enable = h264->pic_fields.bits.entropy_coding_mode_flag;
    context->desc.h264enc.num_ref_idx_l0_active_minus1 = h264->num_ref_idx_l0_active_minus1;
    context->desc.h264enc.num_ref_idx_l1_active_minus1 = h264->num_ref_idx_l1_active_minus1;
 
@@ -133,6 +134,8 @@ vlVaHandleVAEncSliceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *contex
    } else {
       context->desc.h264enc.picture_type = PIPE_H2645_ENC_PICTURE_TYPE_SKIP;
    }
+
+   context->desc.h264enc.pic_ctrl.enc_cabac_init_idc = h264->cabac_init_idc;
 
    /* Handle the slice control parameters */
    if (context->desc.h264enc.num_slice_descriptors < ARRAY_SIZE(context->desc.h264enc.slices_descriptors)) {
@@ -256,7 +259,6 @@ void getEncParamPresetH264(vlVaContext *context)
    context->desc.h264enc.motion_est.enc_ime2_search_range_y = 1;
 
    //pic control preset
-   context->desc.h264enc.pic_ctrl.enc_cabac_enable = 0x00000001;
    context->desc.h264enc.pic_ctrl.enc_constraint_set_flags = 0x00000040;
 
    //rate control
