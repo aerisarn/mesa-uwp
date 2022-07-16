@@ -33,6 +33,38 @@
 #include "util/u_math.h"
 
 
+struct lp_build_nir_aos_context
+{
+   struct lp_build_nir_context bld_base;
+
+   /* Builder for integer masks and indices */
+   struct lp_build_context int_bld;
+
+   /*
+    * AoS swizzle used:
+    * - swizzles[0] = red index
+    * - swizzles[1] = green index
+    * - swizzles[2] = blue index
+    * - swizzles[3] = alpha index
+    */
+   unsigned char swizzles[4];
+   unsigned char inv_swizzles[4];
+
+   LLVMValueRef consts_ptr;
+   const LLVMValueRef *inputs;
+   LLVMValueRef *outputs;
+
+   const struct lp_build_sampler_aos *sampler;
+};
+
+
+static inline struct lp_build_nir_aos_context *
+lp_nir_aos_context(struct lp_build_nir_context *bld_base)
+{
+   return (struct lp_build_nir_aos_context *) bld_base;
+}
+
+
 static LLVMValueRef
 swizzle_aos(struct lp_build_nir_context *bld_base,
             LLVMValueRef a,
@@ -92,8 +124,7 @@ static void
 init_var_slots(struct lp_build_nir_context *bld_base,
                nir_variable *var)
 {
-   struct lp_build_nir_aos_context *bld =
-      (struct lp_build_nir_aos_context *)bld_base;
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
 
    if (!bld->outputs)
       return;
@@ -127,8 +158,7 @@ emit_load_var(struct lp_build_nir_context *bld_base,
               LLVMValueRef indir_index,
               LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
-   struct lp_build_nir_aos_context *bld =
-      (struct lp_build_nir_aos_context *)bld_base;
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
    unsigned location = var->data.driver_location;
 
    if (deref_mode == nir_var_shader_in) {
@@ -149,8 +179,7 @@ emit_store_var(struct lp_build_nir_context *bld_base,
                LLVMValueRef indir_index,
                LLVMValueRef vals)
 {
-   struct lp_build_nir_aos_context *bld =
-      (struct lp_build_nir_aos_context *)bld_base;
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    unsigned location = var->data.driver_location;
 
@@ -222,8 +251,7 @@ emit_load_ubo(struct lp_build_nir_context *bld_base,
               LLVMValueRef offset,
               LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
-   struct lp_build_nir_aos_context *bld =
-      (struct lp_build_nir_aos_context *)bld_base;
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    struct lp_type type = bld_base->base.type;
@@ -278,8 +306,7 @@ static void
 emit_tex(struct lp_build_nir_context *bld_base,
          struct lp_sampler_params *params)
 {
-   struct lp_build_nir_aos_context *bld =
-      (struct lp_build_nir_aos_context *)bld_base;
+   struct lp_build_nir_aos_context *bld = lp_nir_aos_context(bld_base);
    static const struct lp_derivatives derivs = { 0 };
    params->type = bld_base->base.type;
    params->texel[0] = bld->sampler->emit_fetch_texel(bld->sampler,

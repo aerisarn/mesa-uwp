@@ -285,30 +285,6 @@ struct lp_build_nir_soa_context
    unsigned gs_vertex_streams;
 };
 
-struct lp_build_nir_aos_context
-{
-   struct lp_build_nir_context bld_base;
-
-   /* Builder for integer masks and indices */
-   struct lp_build_context int_bld;
-
-   /*
-    * AoS swizzle used:
-    * - swizzles[0] = red index
-    * - swizzles[1] = green index
-    * - swizzles[2] = blue index
-    * - swizzles[3] = alpha index
-    */
-   unsigned char swizzles[4];
-   unsigned char inv_swizzles[4];
-
-   LLVMValueRef consts_ptr;
-   const LLVMValueRef *inputs;
-   LLVMValueRef *outputs;
-
-   const struct lp_build_sampler_aos *sampler;
-};
-
 
 bool
 lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
@@ -382,15 +358,9 @@ get_int_bld(struct lp_build_nir_context *bld_base,
 }
 
 
-static inline struct lp_build_nir_aos_context *
-lp_nir_aos_context(struct lp_build_nir_context *bld_base)
-{
-   return (struct lp_build_nir_aos_context *) bld_base;
-}
-
-
 LLVMValueRef
 lp_nir_aos_conv_const(struct gallivm_state *gallivm,
                       LLVMValueRef constval, int nc);
+
 
 #endif
