@@ -1465,7 +1465,7 @@ region_alignment_rules(const struct brw_isa_info *isa,
       unsigned hstride_elements = (num_hstride - 1) * hstride;
       unsigned offset = (vstride_elements + hstride_elements) * element_size +
                         subreg;
-      ERROR_IF(offset >= 64,
+      ERROR_IF(offset >= 64 * reg_unit(devinfo),
                "A source cannot span more than 2 adjacent GRF registers");
    }
 
@@ -1477,7 +1477,7 @@ region_alignment_rules(const struct brw_isa_info *isa,
    unsigned element_size = brw_reg_type_to_size(dst_type);
    unsigned subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
    unsigned offset = ((exec_size - 1) * stride * element_size) + subreg;
-   ERROR_IF(offset >= 64,
+   ERROR_IF(offset >= 64 * reg_unit(devinfo),
             "A destination cannot span more than 2 adjacent GRF registers");
 
    if (error_msg.str)
