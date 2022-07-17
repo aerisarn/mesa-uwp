@@ -90,12 +90,13 @@ typedef struct {
 
 static uint32_t
 get_semantic_name_offset(name_offset_cache_t *cache, const char *name,
-                         struct _mesa_string_buffer *buf, uint32_t buf_offset)
+                         struct _mesa_string_buffer *buf, uint32_t buf_offset,
+                         bool validator_7)
 {
    uint32_t offset = buf->length + buf_offset;
 
-   // DXC doesn't de-duplicate arbitrary semantic names, only SVs.
-   if (strncmp(name, "SV_", 3) == 0) {
+   /* DXC doesn't de-duplicate arbitrary semantic names until validator 1.7, only SVs. */
+   if (validator_7 || strncmp(name, "SV_", 3) == 0) {
       /* consider replacing this with a binary search using rb_tree */
       for (unsigned i = 0; i < cache->num_entries; ++i) {
          if (!strcmp(name, cache->entries[i].name))
@@ -115,16 +116,22 @@ static uint32_t
 collect_semantic_names(unsigned num_records,
                        struct dxil_signature_record *io_data,
                        struct _mesa_string_buffer *buf,
-                       uint32_t buf_offset)
+                       uint32_t buf_offset,
+                       bool validator_7)
 {
    name_offset_cache_t cache;
    cache.num_entries = 0;
 
    for (unsigned i = 0; i < num_records; ++i) {
       struct dxil_signature_record *io = &io_data[i];
-      uint32_t offset = get_semantic_name_offset(&cache, io->name, buf, buf_offset);
+      uint32_t offset = get_semantic_name_offset(&cache, io->name, buf, buf_offset, validator_7);
       for (unsigned j = 0; j < io->num_elements; ++j)
          io->elements[j].semantic_name_offset = offset;
+   }
+   if (validator_7 && buf->length % sizeof(uint32_t) != 0) {
+      unsigned padding_to_add = sizeof(uint32_t) - (buf->length % sizeof(uint32_t));
+      char padding[sizeof(uint32_t)] = { 0 };
+      _mesa_string_buffer_append_len(buf, padding, padding_to_add);
    }
    return buf_offset + buf->length;
 }
@@ -133,7 +140,8 @@ bool
 dxil_container_add_io_signature(struct dxil_container *c,
                                 enum dxil_part_fourcc part,
                                 unsigned num_records,
-                                struct dxil_signature_record *io_data)
+                                struct dxil_signature_record *io_data,
+                                bool validator_7)
 {
    struct {
       uint32_t param_count;
@@ -157,7 +165,8 @@ dxil_container_add_io_signature(struct dxil_container *c,
          _mesa_string_buffer_create(NULL, 1024);
 
    uint32_t last_offset = collect_semantic_names(num_records, io_data,
-                                                 names, fixed_size);
+                                                 names, fixed_size,
+                                                 validator_7);
 
 
    if (!add_part_header(c, part, last_offset) ||

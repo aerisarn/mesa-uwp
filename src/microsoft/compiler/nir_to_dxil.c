@@ -5793,7 +5793,7 @@ dxil_validator_can_validate_shader_model(unsigned sm_minor, unsigned val_minor)
 }
 
 static const unsigned dxil_validator_min_capable_version = DXIL_VALIDATOR_1_4;
-static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_6;
+static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_7;
 
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
@@ -5935,7 +5935,8 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    if (!dxil_container_add_io_signature(&container,
                                         DXIL_ISG1,
                                         ctx->mod.num_sig_inputs,
-                                        ctx->mod.inputs)) {
+                                        ctx->mod.inputs,
+                                        ctx->mod.minor_validator >= 7)) {
       debug_printf("D3D12: failed to write input signature\n");
       retval = false;
       goto out;
@@ -5944,7 +5945,8 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    if (!dxil_container_add_io_signature(&container,
                                         DXIL_OSG1,
                                         ctx->mod.num_sig_outputs,
-                                        ctx->mod.outputs)) {
+                                        ctx->mod.outputs,
+                                        ctx->mod.minor_validator >= 7)) {
       debug_printf("D3D12: failed to write output signature\n");
       retval = false;
       goto out;
@@ -5955,7 +5957,8 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
        !dxil_container_add_io_signature(&container,
                                         DXIL_PSG1,
                                         ctx->mod.num_sig_patch_consts,
-                                        ctx->mod.patch_consts)) {
+                                        ctx->mod.patch_consts,
+                                        ctx->mod.minor_validator >= 7)) {
       debug_printf("D3D12: failed to write patch constant signature\n");
       retval = false;
       goto out;

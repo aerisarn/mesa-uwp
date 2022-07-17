@@ -113,7 +113,8 @@ bool
 dxil_container_add_io_signature(struct dxil_container *c,
                                 enum dxil_part_fourcc part,
                                 unsigned num_records,
-                                struct dxil_signature_record *io);
+                                struct dxil_signature_record *io,
+                                bool validator_7);
 
 bool
 dxil_container_add_state_validation(struct dxil_container *c,
