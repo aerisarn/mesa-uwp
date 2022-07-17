@@ -1427,7 +1427,7 @@ fd6_framebuffer_barrier(struct fd_context *ctx) assert_dt
    seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
    fd_wfi(batch, ring);
 
-   fd6_event_write(batch, ring, 0x31, false);
+   fd6_event_write(batch, ring, CACHE_INVALIDATE, false);
 
    OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
    OUT_RING(ring, CP_WAIT_MEM_GTE_0_RESERVED(0));
