@@ -91,7 +91,8 @@ struct spill_ctx {
        : target_pressure(target_pressure_), program(program_),
          register_demand(std::move(register_demand_)), renames(program->blocks.size()),
          spills_entry(program->blocks.size()), spills_exit(program->blocks.size()),
-         processed(program->blocks.size(), false), wave_size(program->wave_size)
+         processed(program->blocks.size(), false), wave_size(program->wave_size),
+         sgpr_spill_slots(0), vgpr_spill_slots(0)
    {}
 
    void add_affinity(uint32_t first, uint32_t second)
