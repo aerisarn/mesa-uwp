@@ -5242,16 +5242,6 @@ visit_store_output(isel_context* ctx, nir_intrinsic_instr* instr)
    } else {
       unreachable("Shader stage not implemented");
    }
-
-   /* For NGG VS and TES shaders (without GS) the primitive ID is exported
-    * manually after the other exports so we have to emit an exp here manually
-    */
-   if (ctx->stage.hw == HWStage::NGG &&
-       (ctx->stage.has(SWStage::VS) || ctx->stage.has(SWStage::TES)) &&
-       !ctx->stage.has(SWStage::GS) &&
-       nir_intrinsic_io_semantics(instr).location == VARYING_SLOT_PRIMITIVE_ID) {
-      export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, NULL);
-   }
 }
 
 void
