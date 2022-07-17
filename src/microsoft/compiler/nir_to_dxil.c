@@ -5681,7 +5681,7 @@ dxil_validator_can_validate_shader_model(unsigned sm_minor, unsigned val_minor)
 }
 
 static const unsigned dxil_validator_min_capable_version = DXIL_VALIDATOR_1_4;
-static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_4;
+static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_5;
 
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,

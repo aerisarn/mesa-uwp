@@ -438,7 +438,8 @@ append_semantic_index_to_table(struct dxil_psv_sem_index_table *table, uint32_t 
 static const struct dxil_mdnode *
 fill_SV_param_nodes(struct dxil_module *mod, unsigned record_id,
                     const struct dxil_signature_record *rec,
-                    const struct dxil_psv_signature_element *psv) {
+                    const struct dxil_psv_signature_element *psv,
+                    bool is_input) {
 
    const struct dxil_mdnode *SV_params_nodes[11];
    /* For this to always work we should use vectorize_io, but for FS out and VS in
@@ -460,11 +461,19 @@ fill_SV_param_nodes(struct dxil_module *mod, unsigned record_id,
    SV_params_nodes[8] = dxil_get_metadata_int32(mod, rec->elements[0].reg); // Element packing start row
    SV_params_nodes[9] = dxil_get_metadata_int8(mod, (psv->cols_and_start >> 4) & 0x3); // Element packing start column
 
-   const struct dxil_mdnode *SV_metadata[2];
+   const struct dxil_mdnode *SV_metadata[4];
    unsigned num_metadata_nodes = 0;
    if (rec->elements[0].stream != 0) {
       SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_OUTPUT_STREAM);
       SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, rec->elements[0].stream);
+   }
+   uint8_t usage_mask = rec->elements[0].always_reads_mask;
+   if (!is_input)
+      usage_mask = 0xf & ~rec->elements[0].never_writes_mask;
+   if (usage_mask && mod->minor_validator >= 5) {
+      usage_mask >>= (psv->cols_and_start >> 4) & 0x3;
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_USAGE_COMPONENT_MASK);
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int8(mod, usage_mask);
    }
 
    SV_params_nodes[10] = num_metadata_nodes ? dxil_get_metadata_node(mod, SV_metadata, num_metadata_nodes) : NULL;
@@ -487,7 +496,6 @@ fill_signature_element(struct dxil_signature_element *elm,
 
    assert(semantic->cols + semantic->start_col <= 4);
    elm->mask = (uint8_t) (((1 << semantic->cols) - 1) << semantic->start_col);
-   // elm->never_writes_mask = 0;
    elm->min_precision = DXIL_MIN_PREC_DEFAULT;
 }
 
@@ -512,7 +520,7 @@ fill_psv_signature_element(struct dxil_psv_signature_element *psv_elm,
       psv_elm->cols_and_start = (semantic->start_col << 4) | semantic->cols;
    }
    psv_elm->semantic_kind = (uint8_t)semantic->kind;
-   psv_elm->component_type = semantic->comp_type; //`??
+   psv_elm->component_type = semantic->comp_type;
    psv_elm->interpolation_mode = semantic->interpolation;
    psv_elm->dynamic_mask_and_stream = (semantic->stream) << 4;
    if (semantic->kind == DXIL_SEM_ARBITRARY && strlen(semantic->name)) {
@@ -645,10 +653,14 @@ process_output_signature(struct dxil_module *mod, nir_shader *s)
                              &mod->outputs[num_outputs], psv_elm))
          return;
 
-      /* This is fishy, logic suggests that the LHS should be 0xf, but from the
-       * validation it needs to be 0xff */
-      for (unsigned i = 0; i < mod->outputs[num_outputs].num_elements; ++i)
-         mod->outputs[num_outputs].elements[i].never_writes_mask = 0xff & ~mod->outputs[num_outputs].elements[i].mask;
+      for (unsigned i = 0; i < mod->outputs[num_outputs].num_elements; ++i) {
+         struct dxil_signature_element *elm = &mod->outputs[num_outputs].elements[i];
+         if (mod->minor_validator <= 4)
+            elm->never_writes_mask = 0xff & ~elm->mask;
+         else
+            /* This will be updated by the module processing */
+            elm->never_writes_mask = 0xf & ~elm->mask;
+      }
 
       ++num_outputs;
 
@@ -718,11 +730,16 @@ process_patch_const_signature(struct dxil_module *mod, nir_shader *s)
                              &mod->patch_consts[num_consts], psv_elm))
          return;
 
-      /* This is fishy, logic suggests that the LHS should be 0xf, but from the
-       * validation it needs to be 0xff */
-      if (mode == nir_var_shader_out)
-         for (unsigned i = 0; i < mod->patch_consts[num_consts].num_elements; ++i)
-            mod->patch_consts[num_consts].elements[i].never_writes_mask = 0xff & ~mod->patch_consts[num_consts].elements[i].mask;
+      if (mode == nir_var_shader_out) {
+         for (unsigned i = 0; i < mod->patch_consts[num_consts].num_elements; ++i) {
+            struct dxil_signature_element *elm = &mod->patch_consts[num_consts].elements[i];
+            if (mod->minor_validator <= 4)
+               elm->never_writes_mask = 0xff & ~elm->mask;
+            else
+               /* This will be updated by the module processing */
+               elm->never_writes_mask = 0xf & ~elm->mask;
+         }
+      }
 
       ++num_consts;
 
@@ -748,14 +765,15 @@ static const struct dxil_mdnode *
 get_signature_metadata(struct dxil_module *mod,
                        const struct dxil_signature_record *recs,
                        const struct dxil_psv_signature_element *psvs,
-                       unsigned num_elements)
+                       unsigned num_elements,
+                       bool is_input)
 {
    if (num_elements == 0)
       return NULL;
 
    const struct dxil_mdnode *nodes[VARYING_SLOT_MAX];
    for (unsigned i = 0; i < num_elements; ++i) {
-      nodes[i] = fill_SV_param_nodes(mod, i, &recs[i], &psvs[i]);
+      nodes[i] = fill_SV_param_nodes(mod, i, &recs[i], &psvs[i], is_input);
    }
 
    return dxil_get_metadata_node(mod, nodes, num_elements);
@@ -764,9 +782,10 @@ get_signature_metadata(struct dxil_module *mod,
 const struct dxil_mdnode *
 get_signatures(struct dxil_module *mod)
 {
-   const struct dxil_mdnode *input_signature = get_signature_metadata(mod, mod->inputs, mod->psv_inputs, mod->num_sig_inputs);
-   const struct dxil_mdnode *output_signature = get_signature_metadata(mod, mod->outputs, mod->psv_outputs, mod->num_sig_outputs);
-   const struct dxil_mdnode *patch_const_signature = get_signature_metadata(mod, mod->patch_consts, mod->psv_patch_consts, mod->num_sig_patch_consts);
+   const struct dxil_mdnode *input_signature = get_signature_metadata(mod, mod->inputs, mod->psv_inputs, mod->num_sig_inputs, true);
+   const struct dxil_mdnode *output_signature = get_signature_metadata(mod, mod->outputs, mod->psv_outputs, mod->num_sig_outputs, false);
+   const struct dxil_mdnode *patch_const_signature = get_signature_metadata(mod, mod->patch_consts, mod->psv_patch_consts, mod->num_sig_patch_consts,
+      mod->shader_kind == DXIL_DOMAIN_SHADER);
 
    const struct dxil_mdnode *SV_nodes[3] = {
       input_signature,
