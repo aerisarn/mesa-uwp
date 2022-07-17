@@ -3682,7 +3682,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          result = ctx->tes_patch_id_replaced ? ctx->tes_patch_id_replaced
                                              : ac_get_arg(&ctx->ac, ctx->args->tes_patch_id);
       } else if (ctx->stage == MESA_SHADER_VERTEX) {
-         result = ac_get_arg(&ctx->ac, ctx->args->vs_prim_id);
+         if (ctx->args->vs_prim_id.used)
+            result = ac_get_arg(&ctx->ac, ctx->args->vs_prim_id); /* legacy */
+         else
+            result = ac_get_arg(&ctx->ac, ctx->args->gs_prim_id); /* NGG */
       } else
          fprintf(stderr, "Unknown primitive id intrinsic: %d", ctx->stage);
       break;
