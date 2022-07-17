@@ -5289,7 +5289,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       cmd_buffer->state.rt_pipeline = compute_pipeline;
       cmd_buffer->push_constant_stages |= RADV_RT_STAGE_BITS;
-      radv_set_rt_stack_size(cmd_buffer, cmd_buffer->state.rt_stack_size);
+      if (compute_pipeline->dynamic_stack_size)
+         radv_set_rt_stack_size(cmd_buffer, cmd_buffer->state.rt_stack_size);
       break;
    }
    case VK_PIPELINE_BIND_POINT_GRAPHICS: {
