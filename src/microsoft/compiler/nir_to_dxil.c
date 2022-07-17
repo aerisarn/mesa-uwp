@@ -872,16 +872,24 @@ emit_createhandle_call_const_index(struct ntd_context *ctx,
 
 static void
 add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
+             enum dxil_resource_kind kind,
              const resource_array_layout *layout)
 {
-   struct dxil_resource *resource = util_dynarray_grow(&ctx->resources, struct dxil_resource, 1);
-   resource->resource_type = type;
-   resource->space = layout->space;
-   resource->lower_bound = layout->binding;
+   struct dxil_resource_v0 *resource_v0 = NULL;
+   struct dxil_resource_v1 *resource_v1 = NULL;
+   if (ctx->mod.minor_validator >= 6) {
+      resource_v1 = util_dynarray_grow(&ctx->resources, struct dxil_resource_v1, 1);
+      resource_v0 = &resource_v1->v0;
+   } else {
+      resource_v0 = util_dynarray_grow(&ctx->resources, struct dxil_resource_v0, 1);
+   }
+   resource_v0->resource_type = type;
+   resource_v0->space = layout->space;
+   resource_v0->lower_bound = layout->binding;
    if (layout->size == 0 || (uint64_t)layout->size + layout->binding >= UINT_MAX)
-      resource->upper_bound = UINT_MAX;
+      resource_v0->upper_bound = UINT_MAX;
    else
-      resource->upper_bound = layout->binding + layout->size - 1;
+      resource_v0->upper_bound = layout->binding + layout->size - 1;
    if (type == DXIL_RES_UAV_TYPED ||
        type == DXIL_RES_UAV_RAW ||
        type == DXIL_RES_UAV_STRUCTURED) {
@@ -892,6 +900,12 @@ add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
          ctx->num_uavs = new_uav_count;
       if (ctx->mod.minor_validator >= 6 && ctx->num_uavs > 8)
          ctx->mod.feats.use_64uavs = 1;
+   }
+
+   if (resource_v1) {
+      resource_v1->resource_kind = kind;
+      /* No flags supported yet */
+      resource_v1->resource_flags = 0;
    }
 }
 
@@ -926,9 +940,11 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
       break;
    }
 
-   assert(offset + count <= util_dynarray_num_elements(&ctx->resources, struct dxil_resource));
+   unsigned resource_element_size = ctx->mod.minor_validator >= 6 ?
+      sizeof(struct dxil_resource_v1) : sizeof(struct dxil_resource_v0);
+   assert(offset + count <= ctx->resources.size / resource_element_size);
    for (unsigned i = offset; i < offset + count; ++i) {
-      const struct dxil_resource *resource = util_dynarray_element(&ctx->resources, struct dxil_resource, i);
+      const struct dxil_resource_v0 *resource = (const struct dxil_resource_v0 *)((const char *)ctx->resources.data + resource_element_size * i);
       if (resource->space == space &&
           resource->lower_bound <= binding &&
           resource->upper_bound >= binding) {
@@ -971,7 +987,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
       return false;
 
    util_dynarray_append(&ctx->srv_metadata_nodes, const struct dxil_mdnode *, srv_meta);
-   add_resource(ctx, res_type, &layout);
+   add_resource(ctx, res_type, res_kind, &layout);
    if (res_type == DXIL_RES_SRV_RAW)
       ctx->mod.raw_and_structured_buffers = true;
 
@@ -1011,7 +1027,7 @@ emit_globals(struct ntd_context *ctx, unsigned size)
        util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
    /* Handles to UAVs used for kernel globals are created on-demand */
-   add_resource(ctx, DXIL_RES_UAV_RAW, &layout);
+   add_resource(ctx, DXIL_RES_UAV_RAW, DXIL_RESOURCE_KIND_RAW_BUFFER, &layout);
    ctx->mod.raw_and_structured_buffers = true;
    return true;
 }
@@ -1036,7 +1052,7 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
        util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
 
-   add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, &layout);
+   add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, res_kind, &layout);
    if (res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
       ctx->mod.raw_and_structured_buffers = true;
    if (ctx->mod.shader_kind != DXIL_PIXEL_SHADER &&
@@ -1204,7 +1220,7 @@ emit_cbv(struct ntd_context *ctx, unsigned binding, unsigned space,
       return false;
 
    util_dynarray_append(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *, cbv_meta);
-   add_resource(ctx, DXIL_RES_CBV, &layout);
+   add_resource(ctx, DXIL_RES_CBV, DXIL_RESOURCE_KIND_CBUFFER, &layout);
 
    return true;
 }
@@ -1250,7 +1266,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
       return false;
 
    util_dynarray_append(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *, sampler_meta);
-   add_resource(ctx, DXIL_RES_SAMPLER, &layout);
+   add_resource(ctx, DXIL_RES_SAMPLER, DXIL_RESOURCE_KIND_SAMPLER, &layout);
 
    return true;
 }
@@ -1264,7 +1280,12 @@ emit_static_indexing_handles(struct ntd_context *ctx)
 
    unsigned last_res_class = -1;
    unsigned id = 0;
-   util_dynarray_foreach(&ctx->resources, struct dxil_resource, res) {
+
+   unsigned resource_element_size = ctx->mod.minor_validator >= 6 ?
+      sizeof(struct dxil_resource_v1) : sizeof(struct dxil_resource_v0);
+   for (struct dxil_resource_v0 *res = (struct dxil_resource_v0 *)ctx->resources.data;
+        res < (struct dxil_resource_v0 *)((char *)ctx->resources.data + ctx->resources.size);
+        res = (struct dxil_resource_v0 *)((char *)res + resource_element_size)) {
       enum dxil_resource_class res_class;
       const struct dxil_value **handle_array;
       switch (res->resource_type) {
@@ -5607,8 +5628,10 @@ static
 void dxil_fill_validation_state(struct ntd_context *ctx,
                                 struct dxil_validation_state *state)
 {
-   state->num_resources = util_dynarray_num_elements(&ctx->resources, struct dxil_resource);
-   state->resources = (struct dxil_resource*)ctx->resources.data;
+   unsigned resource_element_size = ctx->mod.minor_validator >= 6 ?
+      sizeof(struct dxil_resource_v1) : sizeof(struct dxil_resource_v0);
+   state->num_resources = ctx->resources.size / resource_element_size;
+   state->resources.v0 = (struct dxil_resource_v0*)ctx->resources.data;
    state->state.psv1.psv0.max_expected_wave_lane_count = UINT_MAX;
    state->state.psv1.shader_stage = (uint8_t)ctx->mod.shader_kind;
    state->state.psv1.sig_input_elements = (uint8_t)ctx->mod.num_sig_inputs;

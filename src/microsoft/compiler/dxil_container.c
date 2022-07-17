@@ -200,7 +200,8 @@ dxil_container_add_state_validation(struct dxil_container *c,
    uint32_t psv_size = m->minor_validator >= 6 ?
       sizeof(struct dxil_psv_runtime_info_2) :
       sizeof(struct dxil_psv_runtime_info_1);
-   uint32_t resource_bind_info_size = 4 * sizeof(uint32_t);
+   uint32_t resource_bind_info_size = m->minor_validator >= 6 ?
+      sizeof(struct dxil_resource_v1) : sizeof(struct dxil_resource_v0);
    uint32_t dxil_pvs_sig_size = sizeof(struct dxil_psv_signature_element);
    uint32_t resource_count = state->num_resources;
 
@@ -265,7 +266,7 @@ dxil_container_add_state_validation(struct dxil_container *c,
 
    if (resource_count > 0) {
       if (!blob_write_bytes(&c->parts, &resource_bind_info_size, sizeof(resource_bind_info_size)) ||
-          !blob_write_bytes(&c->parts, state->resources, resource_bind_info_size * state->num_resources))
+          !blob_write_bytes(&c->parts, state->resources.v0, resource_bind_info_size * state->num_resources))
          return false;
    }
 
