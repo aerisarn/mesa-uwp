@@ -22,6 +22,8 @@ struct dxil_validator {
    IDxcValidator *dxc_validator;
    IDxcLibrary *dxc_library;
    IDxcCompiler *dxc_compiler;
+
+   enum dxil_validator_version version;
 };
 
 extern "C" {
@@ -84,6 +86,24 @@ create_dxc_validator(HMODULE dxil_mod)
    return dxc_validator;
 }
 
+static enum dxil_validator_version
+get_validator_version(IDxcValidator *val)
+{
+   ComPtr<IDxcVersionInfo> version_info;
+   if (FAILED(val->QueryInterface(version_info.ReleaseAndGetAddressOf())))
+      return NO_DXIL_VALIDATION;
+
+   UINT32 major, minor;
+   if (FAILED(version_info->GetVersion(&major, &minor)))
+      return NO_DXIL_VALIDATION;
+
+   if (major == 1)
+      return (enum dxil_validator_version)(DXIL_VALIDATOR_1_0 + MIN2(minor, 7));
+   if (major > 1)
+      return DXIL_VALIDATOR_1_7;
+   return NO_DXIL_VALIDATION;
+}
+
 struct dxil_validator *
 dxil_create_validator(const void *ctx)
 {
@@ -106,6 +126,8 @@ dxil_create_validator(const void *ctx)
    val->dxc_validator = create_dxc_validator(val->dxil_mod);
    if (!val->dxc_validator)
       goto fail;
+
+   val->version = get_validator_version(val->dxc_validator);
 
    /* Try to load dxcompiler.dll. This is just used for diagnostics, and
     * will fail on most end-users install. So we do not error out if this
@@ -271,4 +293,10 @@ dxil_disasm_module(struct dxil_validator *val, void *data, size_t size)
    char *str = reinterpret_cast<char*>(blob_utf8->GetBufferPointer());
    str[blob_utf8->GetBufferSize() - 1] = 0;
    return ralloc_strdup(val, str);
+}
+
+enum dxil_validator_version
+dxil_get_validator_version(struct dxil_validator *val)
+{
+   return val->version;
 }

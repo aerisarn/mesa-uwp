@@ -57,6 +57,9 @@ dxil_validate_module(struct dxil_validator *val, void *data,
 char *
 dxil_disasm_module(struct dxil_validator *val, void *data, size_t size);
 
+enum dxil_validator_version
+dxil_get_validator_version(struct dxil_validator *val);
+
 #ifdef __cplusplus
 }
 #endif
