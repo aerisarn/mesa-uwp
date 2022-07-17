@@ -3159,6 +3159,25 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
    unsigned var_base_component = var->data.location_frac;
    unsigned base_component = nir_intrinsic_component(intr) - var_base_component;
 
+   if (ctx->mod.minor_validator >= 5) {
+      struct dxil_signature_record *sig_rec = is_patch_constant ?
+         &ctx->mod.patch_consts[nir_intrinsic_base(intr)] :
+         &ctx->mod.outputs[nir_intrinsic_base(intr)];
+      unsigned comp_size = intr->src[0].ssa->bit_size == 64 ? 2 : 1;
+      unsigned comp_mask = 0;
+      if (is_tess_level)
+         comp_mask = 1;
+      else if (comp_size == 1)
+         comp_mask = writemask << var_base_component;
+      else {
+         for (unsigned i = 0; i < intr->num_components; ++i)
+            if ((writemask & (1 << i)))
+               comp_mask |= 3 << ((i + var_base_component) * comp_size);
+      }
+      for (unsigned r = 0; r < sig_rec->num_elements; ++r)
+         sig_rec->elements[r].never_writes_mask &= ~comp_mask;
+   }
+
    for (unsigned i = 0; i < intr->num_components && success; ++i) {
       if (writemask & (1 << i)) {
          if (is_tess_level)
@@ -3273,6 +3292,21 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
    unsigned var_base_component = var ? var->data.location_frac : 0;
    unsigned base_component = nir_intrinsic_component(intr) - var_base_component;
 
+   if (ctx->mod.minor_validator >= 5 &&
+       !is_output_control_point &&
+       intr->intrinsic != nir_intrinsic_load_output) {
+      struct dxil_signature_record *sig_rec = is_patch_constant ?
+         &ctx->mod.patch_consts[nir_intrinsic_base(intr)] :
+         &ctx->mod.inputs[ctx->mod.input_mappings[nir_intrinsic_base(intr)]];
+      unsigned comp_size = intr->dest.ssa.bit_size == 64 ? 2 : 1;
+      unsigned comp_mask = (1 << (intr->num_components * comp_size)) - 1;
+      comp_mask <<= (var_base_component * comp_size);
+      if (is_tess_level)
+         comp_mask = 1;
+      for (unsigned r = 0; r < sig_rec->num_elements; ++r)
+         sig_rec->elements[r].always_reads_mask |= (comp_mask & sig_rec->elements[r].mask);
+   }
+
    for (unsigned i = 0; i < intr->num_components; ++i) {
       if (is_tess_level)
          row = dxil_module_get_int32_const(&ctx->mod, i + base_component);
@@ -3348,8 +3382,22 @@ emit_load_interpolated_input(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!func)
       return false;
 
+   nir_variable *var = find_patch_matching_variable_by_driver_location(ctx->shader, nir_var_shader_in, nir_intrinsic_base(intr), false);
+   unsigned var_base_component = var ? var->data.location_frac : 0;
+   unsigned base_component = nir_intrinsic_component(intr) - var_base_component;
+
+   if (ctx->mod.minor_validator >= 5) {
+      struct dxil_signature_record *sig_rec =
+         &ctx->mod.inputs[ctx->mod.input_mappings[nir_intrinsic_base(intr)]];
+      unsigned comp_size = intr->dest.ssa.bit_size == 64 ? 2 : 1;
+      unsigned comp_mask = (1 << (intr->num_components * comp_size)) - 1;
+      comp_mask <<= (var_base_component * comp_size);
+      for (unsigned r = 0; r < sig_rec->num_elements; ++r)
+         sig_rec->elements[r].always_reads_mask |= (comp_mask & sig_rec->elements[r].mask);
+   }
+
    for (unsigned i = 0; i < intr->num_components; ++i) {
-      args[3] = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+      args[3] = dxil_module_get_int8_const(&ctx->mod, i + base_component);
 
       const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, num_args);
       if (!retval)
