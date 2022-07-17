@@ -148,7 +148,7 @@ struct blitter_context_priv
    bool has_stencil_export;
    bool has_texture_multisample;
    bool has_tex_lz;
-   bool has_txf;
+   bool has_txf_txq;
    bool has_sample_shading;
    bool cube_as_2darray;
    bool has_texrect;
@@ -214,8 +214,8 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
 
    ctx->has_tex_lz = pipe->screen->get_param(pipe->screen,
                                              PIPE_CAP_TGSI_TEX_TXF_LZ);
-   ctx->has_txf = pipe->screen->get_param(pipe->screen,
-                                          PIPE_CAP_GLSL_FEATURE_LEVEL) >= 130;
+   ctx->has_txf_txq = pipe->screen->get_param(pipe->screen,
+                                              PIPE_CAP_GLSL_FEATURE_LEVEL) >= 130;
    ctx->has_sample_shading = pipe->screen->get_param(pipe->screen,
                                                      PIPE_CAP_SAMPLE_SHADING);
    ctx->cube_as_2darray = pipe->screen->get_param(pipe->screen,
@@ -1036,7 +1036,7 @@ static void *blitter_get_fs_texfetch_col(struct blitter_context_priv *ctx,
             }
             else {
                *shader = util_make_fs_msaa_resolve(pipe, tgsi_tex,
-                                                   src_nr_samples);
+                                                   src_nr_samples, ctx->has_txf_txq);
             }
          }
       }
@@ -1050,7 +1050,8 @@ static void *blitter_get_fs_texfetch_col(struct blitter_context_priv *ctx,
          if (!*shader) {
             assert(!ctx->cached_all_shaders);
             *shader = util_make_fs_blit_msaa_color(pipe, tgsi_tex, stype, dtype,
-                                                   ctx->has_sample_shading);
+                                                   ctx->has_sample_shading,
+                                                   ctx->has_txf_txq);
          }
       }
 
@@ -1134,7 +1135,8 @@ void *blitter_get_fs_texfetch_depth(struct blitter_context_priv *ctx,
          enum tgsi_texture_type tgsi_tex;
          assert(!ctx->cached_all_shaders);
          tgsi_tex = util_pipe_tex_to_tgsi_tex(target, src_samples);
-         *shader = util_make_fs_blit_msaa_depth(pipe, tgsi_tex, sample_shading);
+         *shader = util_make_fs_blit_msaa_depth(pipe, tgsi_tex, sample_shading,
+                                                ctx->has_txf_txq);
       }
 
       return *shader;
@@ -1180,7 +1182,8 @@ void *blitter_get_fs_texfetch_depthstencil(struct blitter_context_priv *ctx,
          assert(!ctx->cached_all_shaders);
          tgsi_tex = util_pipe_tex_to_tgsi_tex(target, src_samples);
          *shader = util_make_fs_blit_msaa_depthstencil(pipe, tgsi_tex,
-                                                       sample_shading);
+                                                       sample_shading,
+                                                       ctx->has_txf_txq);
       }
 
       return *shader;
@@ -1226,7 +1229,8 @@ void *blitter_get_fs_texfetch_stencil(struct blitter_context_priv *ctx,
          assert(!ctx->cached_all_shaders);
          tgsi_tex = util_pipe_tex_to_tgsi_tex(target, src_samples);
          *shader = util_make_fs_blit_msaa_stencil(pipe, tgsi_tex,
-                                                  sample_shading);
+                                                  sample_shading,
+                                                  ctx->has_txf_txq);
       }
 
       return *shader;
@@ -1275,7 +1279,7 @@ void util_blitter_cache_all_shaders(struct blitter_context *blitter)
    /* It only matters if i <= 1 or > 1. */
    for (samples = 1; samples <= max_samples; samples++) {
       for (target = PIPE_TEXTURE_1D; target < PIPE_MAX_TEXTURE_TYPES; target++) {
-         for (use_txf = 0; use_txf <= ctx->has_txf; use_txf++) {
+         for (use_txf = 0; use_txf <= ctx->has_txf_txq; use_txf++) {
             if (!has_arraytex &&
                 (target == PIPE_TEXTURE_1D_ARRAY ||
                  target == PIPE_TEXTURE_2D_ARRAY)) {
@@ -2050,7 +2054,7 @@ void util_blitter_blit_generic(struct blitter_context *blitter,
    bool use_txf = false;
 
    /* Don't support scaled blits. The TXF shader uses F2I for rounding. */
-   if (ctx->has_txf &&
+   if (ctx->has_txf_txq &&
        !is_scaled &&
        filter == PIPE_TEX_FILTER_NEAREST &&
        src->target != PIPE_TEXTURE_CUBE &&
@@ -2839,7 +2843,7 @@ get_stencil_blit_fallback_fs(struct blitter_context_priv *ctx, bool msaa_src)
 {
    if (!ctx->fs_stencil_blit_fallback[msaa_src]) {
       ctx->fs_stencil_blit_fallback[msaa_src] =
-         util_make_fs_stencil_blit(ctx->base.pipe, msaa_src);
+         util_make_fs_stencil_blit(ctx->base.pipe, msaa_src, ctx->has_txf_txq);
    }
 
    return ctx->fs_stencil_blit_fallback[msaa_src];

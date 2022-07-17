@@ -208,7 +208,19 @@ ureg_load_tex(struct ureg_program *ureg, struct ureg_dst out,
    if (use_txf) {
       struct ureg_dst temp = ureg_DECL_temporary(ureg);
 
-      ureg_F2I(ureg, temp, coord);
+      /* Nearest filtering floors and then converts to integer, and then
+       * applies clamp to edge as clamp(coord, 0, dim - 1).
+       * u_blitter only uses this when the coordinates are in bounds,
+       * so no clamping is needed.
+       */
+      unsigned wrmask = tex_target == TGSI_TEXTURE_1D ||
+                        tex_target == TGSI_TEXTURE_1D_ARRAY ? TGSI_WRITEMASK_X :
+                        tex_target == TGSI_TEXTURE_3D ? TGSI_WRITEMASK_XYZ :
+                                                        TGSI_WRITEMASK_XY;
+
+      ureg_MOV(ureg, temp, coord);
+      ureg_FLR(ureg, ureg_writemask(temp, wrmask), ureg_src(temp));
+      ureg_F2I(ureg, temp, ureg_src(temp));
 
       if (load_level_zero)
          ureg_TXF_LZ(ureg, out, tex_target, ureg_src(temp), sampler);
@@ -527,41 +539,90 @@ util_make_fragment_cloneinput_shader(struct pipe_context *pipe, int num_cbufs,
 static void *
 util_make_fs_blit_msaa_gen(struct pipe_context *pipe,
                            enum tgsi_texture_type tgsi_tex,
-                           bool sample_shading,
+                           bool sample_shading, bool has_txq,
                            const char *samp_type,
                            const char *output_semantic,
                            const char *output_mask,
                            const char *conversion)
 {
-   static const char shader_templ[] =
-         "FRAG\n"
-         "DCL IN[0], GENERIC[0], LINEAR\n"
-         "DCL SAMP[0]\n"
-         "DCL SVIEW[0], %s, %s\n"
-         "DCL OUT[0], %s\n"
-         "DCL TEMP[0]\n"
-         "IMM[0] INT32 {0, -1, 2147483647, 0}\n"
-         "%s"
-
-         "F2U TEMP[0], IN[0]\n"
-         "%s"
-         "TXF TEMP[0], TEMP[0], SAMP[0], %s\n"
-         "%s"
-         "MOV OUT[0]%s, TEMP[0]\n"
-         "END\n";
-
-   const char *type = tgsi_texture_names[tgsi_tex];
-   char text[sizeof(shader_templ)+400];
+   char text[1000];
    struct tgsi_token tokens[1000];
    struct pipe_shader_state state = {0};
 
-   assert(tgsi_tex == TGSI_TEXTURE_2D_MSAA ||
-          tgsi_tex == TGSI_TEXTURE_2D_ARRAY_MSAA);
+   if (has_txq) {
+      static const char shader_templ[] =
+            "FRAG\n"
+            "DCL IN[0], GENERIC[0], LINEAR\n"
+            "DCL SAMP[0]\n"
+            "DCL SVIEW[0], %s, %s\n"
+            "DCL OUT[0], %s\n"
+            "DCL TEMP[0..1]\n"
+            "IMM[0] INT32 {0, -1, 2147483647, 0}\n"
+            "%s"
 
-   snprintf(text, sizeof(text), shader_templ, type, samp_type,
-            output_semantic, sample_shading ? "DCL SV[0], SAMPLEID\n" : "",
-            sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
-            type, conversion, output_mask);
+            /* Nearest filtering floors and then converts to integer, and then
+             * applies clamp to edge as clamp(coord, 0, dim - 1).
+             */
+            "MOV TEMP[0], IN[0]\n"
+            "FLR TEMP[0].xy, TEMP[0]\n"
+            "F2I TEMP[0], TEMP[0]\n"
+            "IMAX TEMP[0].xy, TEMP[0], IMM[0].xxxx\n"
+            /* Clamp to edge for the upper bound. */
+            "TXQ TEMP[1].xy, IMM[0].xxxx, SAMP[0], %s\n"
+            "UADD TEMP[1].xy, TEMP[1], IMM[0].yyyy\n" /* width - 1, height - 1 */
+            "IMIN TEMP[0].xy, TEMP[0], TEMP[1]\n"
+            /* Texel fetch. */
+            "%s"
+            "TXF TEMP[0], TEMP[0], SAMP[0], %s\n"
+            "%s"
+            "MOV OUT[0]%s, TEMP[0]\n"
+            "END\n";
+
+      const char *type = tgsi_texture_names[tgsi_tex];
+
+      assert(tgsi_tex == TGSI_TEXTURE_2D_MSAA ||
+             tgsi_tex == TGSI_TEXTURE_2D_ARRAY_MSAA);
+
+      snprintf(text, sizeof(text), shader_templ, type, samp_type,
+               output_semantic, sample_shading ? "DCL SV[0], SAMPLEID\n" : "",
+               type, sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
+               type, conversion, output_mask);
+   } else {
+      static const char shader_templ[] =
+            "FRAG\n"
+            "DCL IN[0], GENERIC[0], LINEAR\n"
+            "DCL SAMP[0]\n"
+            "DCL SVIEW[0], %s, %s\n"
+            "DCL OUT[0], %s\n"
+            "DCL TEMP[0..1]\n"
+            "IMM[0] INT32 {0, -1, 2147483647, 0}\n"
+            "%s"
+
+            /* Nearest filtering floors and then converts to integer, and then
+             * applies clamp to edge as clamp(coord, 0, dim - 1). Don't clamp
+             * to dim - 1 because TXQ is unsupported.
+             */
+            "MOV TEMP[0], IN[0]\n"
+            "FLR TEMP[0].xy, TEMP[0]\n"
+            "F2I TEMP[0], TEMP[0]\n"
+            "IMAX TEMP[0].xy, TEMP[0], IMM[0].xxxx\n"
+            /* Texel fetch. */
+            "%s"
+            "TXF TEMP[0], TEMP[0], SAMP[0], %s\n"
+            "%s"
+            "MOV OUT[0]%s, TEMP[0]\n"
+            "END\n";
+
+      const char *type = tgsi_texture_names[tgsi_tex];
+
+      assert(tgsi_tex == TGSI_TEXTURE_2D_MSAA ||
+             tgsi_tex == TGSI_TEXTURE_2D_ARRAY_MSAA);
+
+      snprintf(text, sizeof(text), shader_templ, type, samp_type,
+               output_semantic, sample_shading ? "DCL SV[0], SAMPLEID\n" : "",
+               sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
+               type, conversion, output_mask);
+   }
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
       puts(text);
@@ -587,7 +648,7 @@ util_make_fs_blit_msaa_color(struct pipe_context *pipe,
                              enum tgsi_texture_type tgsi_tex,
                              enum tgsi_return_type stype,
                              enum tgsi_return_type dtype,
-                             bool sample_shading)
+                             bool sample_shading, bool has_txq)
 {
    const char *samp_type;
    const char *conversion = "";
@@ -609,8 +670,8 @@ util_make_fs_blit_msaa_color(struct pipe_context *pipe,
       samp_type = "FLOAT";
    }
 
-   return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, samp_type,
-                                     "COLOR[0]", "", conversion);
+   return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, has_txq,
+                                     samp_type, "COLOR[0]", "", conversion);
 }
 
 
@@ -622,10 +683,10 @@ util_make_fs_blit_msaa_color(struct pipe_context *pipe,
 void *
 util_make_fs_blit_msaa_depth(struct pipe_context *pipe,
                              enum tgsi_texture_type tgsi_tex,
-                             bool sample_shading)
+                             bool sample_shading, bool has_txq)
 {
-   return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, "FLOAT",
-                                     "POSITION", ".z",
+   return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, has_txq,
+                                     "FLOAT", "POSITION", ".z",
                                      "MOV TEMP[0].z, TEMP[0].xxxx\n");
 }
 
@@ -638,10 +699,10 @@ util_make_fs_blit_msaa_depth(struct pipe_context *pipe,
 void *
 util_make_fs_blit_msaa_stencil(struct pipe_context *pipe,
                                enum tgsi_texture_type tgsi_tex,
-                               bool sample_shading)
+                               bool sample_shading, bool has_txq)
 {
-   return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, "UINT",
-                                     "STENCIL", ".y",
+   return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, has_txq,
+                                     "UINT", "STENCIL", ".y",
                                      "MOV TEMP[0].y, TEMP[0].xxxx\n");
 }
 
@@ -656,37 +717,82 @@ util_make_fs_blit_msaa_stencil(struct pipe_context *pipe,
 void *
 util_make_fs_blit_msaa_depthstencil(struct pipe_context *pipe,
                                     enum tgsi_texture_type tgsi_tex,
-                                    bool sample_shading)
+                                    bool sample_shading, bool has_txq)
 {
-   static const char shader_templ[] =
-         "FRAG\n"
-         "DCL IN[0], GENERIC[0], LINEAR\n"
-         "DCL SAMP[0..1]\n"
-         "DCL SVIEW[0], %s, FLOAT\n"
-         "DCL SVIEW[1], %s, UINT\n"
-         "DCL OUT[0], POSITION\n"
-         "DCL OUT[1], STENCIL\n"
-         "DCL TEMP[0]\n"
-         "%s"
-
-         "F2U TEMP[0], IN[0]\n"
-         "%s"
-         "TXF OUT[0].z, TEMP[0], SAMP[0], %s\n"
-         "TXF OUT[1].y, TEMP[0], SAMP[1], %s\n"
-         "END\n";
-
    const char *type = tgsi_texture_names[tgsi_tex];
-   char text[sizeof(shader_templ)+400];
+   char text[1000];
    struct tgsi_token tokens[1000];
    struct pipe_shader_state state = {0};
 
    assert(tgsi_tex == TGSI_TEXTURE_2D_MSAA ||
           tgsi_tex == TGSI_TEXTURE_2D_ARRAY_MSAA);
 
-   sprintf(text, shader_templ, type, type,
-           sample_shading ? "DCL SV[0], SAMPLEID\n" : "",
-           sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
-           type, type);
+   if (has_txq) {
+      static const char shader_templ[] =
+            "FRAG\n"
+            "DCL IN[0], GENERIC[0], LINEAR\n"
+            "DCL SAMP[0..1]\n"
+            "DCL SVIEW[0], %s, FLOAT\n"
+            "DCL SVIEW[1], %s, UINT\n"
+            "DCL OUT[0], POSITION\n"
+            "DCL OUT[1], STENCIL\n"
+            "DCL TEMP[0..1]\n"
+            "IMM[0] INT32 {0, -1, 0, 0}\n"
+            "%s"
+
+            /* Nearest filtering floors and then converts to integer, and then
+             * applies clamp to edge as clamp(coord, 0, dim - 1).
+             */
+            "MOV TEMP[0], IN[0]\n"
+            "FLR TEMP[0].xy, TEMP[0]\n"
+            "F2I TEMP[0], TEMP[0]\n"
+            "IMAX TEMP[0].xy, TEMP[0], IMM[0].xxxx\n"
+            /* Clamp to edge for the upper bound. */
+            "TXQ TEMP[1].xy, IMM[0].xxxx, SAMP[0], %s\n"
+            "UADD TEMP[1].xy, TEMP[1], IMM[0].yyyy\n" /* width - 1, height - 1 */
+            "IMIN TEMP[0].xy, TEMP[0], TEMP[1]\n"
+            /* Texel fetch. */
+            "%s"
+            "TXF OUT[0].z, TEMP[0], SAMP[0], %s\n"
+            "TXF OUT[1].y, TEMP[0], SAMP[1], %s\n"
+            "END\n";
+
+      sprintf(text, shader_templ, type, type,
+              sample_shading ? "DCL SV[0], SAMPLEID\n" : "", type,
+              sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
+              type, type);
+   } else {
+      static const char shader_templ[] =
+            "FRAG\n"
+            "DCL IN[0], GENERIC[0], LINEAR\n"
+            "DCL SAMP[0..1]\n"
+            "DCL SVIEW[0], %s, FLOAT\n"
+            "DCL SVIEW[1], %s, UINT\n"
+            "DCL OUT[0], POSITION\n"
+            "DCL OUT[1], STENCIL\n"
+            "DCL TEMP[0..1]\n"
+            "IMM[0] INT32 {0, -1, 0, 0}\n"
+            "%s"
+
+            /* Nearest filtering floors and then converts to integer, and then
+             * applies clamp to edge as clamp(coord, 0, dim - 1). Don't clamp
+             * to dim - 1 because TXQ is unsupported.
+             */
+            "MOV TEMP[0], IN[0]\n"
+            "FLR TEMP[0].xy, TEMP[0]\n"
+            "F2I TEMP[0], TEMP[0]\n"
+            "IMAX TEMP[0].xy, TEMP[0], IMM[0].xxxx\n"
+            /* Texel fetch. */
+            "%s"
+            "TXF OUT[0].z, TEMP[0], SAMP[0], %s\n"
+            "TXF OUT[1].y, TEMP[0], SAMP[1], %s\n"
+            "END\n";
+
+      sprintf(text, shader_templ, type, type,
+              sample_shading ? "DCL SV[0], SAMPLEID\n" : "",
+              sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
+              type, type);
+   }
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
       assert(0);
@@ -703,7 +809,8 @@ util_make_fs_blit_msaa_depthstencil(struct pipe_context *pipe,
 
 void *
 util_make_fs_msaa_resolve(struct pipe_context *pipe,
-                          enum tgsi_texture_type tgsi_tex, unsigned nr_samples)
+                          enum tgsi_texture_type tgsi_tex, unsigned nr_samples,
+                          bool has_txq)
 {
    struct ureg_program *ureg;
    struct ureg_src sampler, coord;
@@ -728,7 +835,25 @@ util_make_fs_msaa_resolve(struct pipe_context *pipe,
 
    /* Instructions. */
    ureg_MOV(ureg, tmp_sum, ureg_imm1f(ureg, 0));
-   ureg_F2U(ureg, tmp_coord, coord);
+
+   /* Nearest filtering floors and then converts to integer, and then
+    * applies clamp to edge as clamp(coord, 0, dim - 1).
+    */
+   ureg_MOV(ureg, tmp_coord, coord);
+   ureg_FLR(ureg, ureg_writemask(tmp_coord, TGSI_WRITEMASK_XY),
+            ureg_src(tmp_coord));
+   ureg_F2I(ureg, tmp_coord, ureg_src(tmp_coord));
+   ureg_IMAX(ureg, tmp_coord, ureg_src(tmp_coord), ureg_imm1i(ureg, 0));
+
+   /* Clamp to edge for the upper bound. */
+   if (has_txq) {
+      ureg_TXQ(ureg, ureg_writemask(tmp, TGSI_WRITEMASK_XY), tgsi_tex,
+               ureg_imm1u(ureg, 0), sampler);
+      ureg_UADD(ureg, ureg_writemask(tmp, TGSI_WRITEMASK_XY), ureg_src(tmp),
+                ureg_imm2i(ureg, -1, -1)); /* width - 1, height - 1 */
+      ureg_IMIN(ureg,  ureg_writemask(tmp_coord, TGSI_WRITEMASK_XY),
+                ureg_src(tmp_coord), ureg_src(tmp));
+   }
 
    for (i = 0; i < nr_samples; i++) {
       /* Read one sample. */
@@ -1153,32 +1278,73 @@ util_make_tess_ctrl_passthrough_shader(struct pipe_context *pipe,
 }
 
 void *
-util_make_fs_stencil_blit(struct pipe_context *pipe, bool msaa_src)
+util_make_fs_stencil_blit(struct pipe_context *pipe, bool msaa_src, bool has_txq)
 {
-   static const char shader_templ[] =
-      "FRAG\n"
-      "DCL IN[0], GENERIC[0], LINEAR\n"
-      "DCL SAMP[0]\n"
-      "DCL SVIEW[0], %s, UINT\n"
-      "DCL CONST[0][0]\n"
-      "DCL TEMP[0]\n"
-
-      "F2U TEMP[0], IN[0]\n"
-      "TXF_LZ TEMP[0].x, TEMP[0], SAMP[0], %s\n"
-      "AND TEMP[0].x, TEMP[0], CONST[0][0]\n"
-      "USNE TEMP[0].x, TEMP[0], CONST[0][0]\n"
-      "U2F TEMP[0].x, TEMP[0]\n"
-      "KILL_IF -TEMP[0].xxxx\n"
-      "END\n";
-
-   char text[sizeof(shader_templ)+100];
+   char text[1000];
    struct tgsi_token tokens[1000];
    struct pipe_shader_state state = { 0 };
-
    enum tgsi_texture_type tgsi_tex = msaa_src ? TGSI_TEXTURE_2D_MSAA :
                                                 TGSI_TEXTURE_2D;
 
-   sprintf(text, shader_templ, tgsi_texture_names[tgsi_tex], tgsi_texture_names[tgsi_tex]);
+   if (has_txq) {
+      static const char shader_templ[] =
+         "FRAG\n"
+         "DCL IN[0], GENERIC[0], LINEAR\n"
+         "DCL SAMP[0]\n"
+         "DCL SVIEW[0], %s, UINT\n"
+         "DCL CONST[0][0]\n"
+         "DCL TEMP[0..1]\n"
+         "IMM[0] INT32 {0, -1, 0, 0}\n"
+
+         /* Nearest filtering floors and then converts to integer, and then
+          * applies clamp to edge as clamp(coord, 0, dim - 1).
+          */
+         "MOV TEMP[0], IN[0]\n"
+         "FLR TEMP[0].xy, TEMP[0]\n"
+         "F2I TEMP[0], TEMP[0]\n"
+         "IMAX TEMP[0].xy, TEMP[0], IMM[0].xxxx\n"
+         /* Clamp to edge for the upper bound. */
+         "TXQ TEMP[1].xy, IMM[0].xxxx, SAMP[0], %s\n"
+         "UADD TEMP[1].xy, TEMP[1], IMM[0].yyyy\n" /* width - 1, height - 1 */
+         "IMIN TEMP[0].xy, TEMP[0], TEMP[1]\n"
+         /* Texel fetch. */
+         "TXF_LZ TEMP[0].x, TEMP[0], SAMP[0], %s\n"
+         "AND TEMP[0].x, TEMP[0], CONST[0][0]\n"
+         "USNE TEMP[0].x, TEMP[0], CONST[0][0]\n"
+         "U2F TEMP[0].x, TEMP[0]\n"
+         "KILL_IF -TEMP[0].xxxx\n"
+         "END\n";
+
+      sprintf(text, shader_templ, tgsi_texture_names[tgsi_tex],
+              tgsi_texture_names[tgsi_tex], tgsi_texture_names[tgsi_tex]);
+   } else {
+      static const char shader_templ[] =
+         "FRAG\n"
+         "DCL IN[0], GENERIC[0], LINEAR\n"
+         "DCL SAMP[0]\n"
+         "DCL SVIEW[0], %s, UINT\n"
+         "DCL CONST[0][0]\n"
+         "DCL TEMP[0..1]\n"
+         "IMM[0] INT32 {0, -1, 0, 0}\n"
+
+         /* Nearest filtering floors and then converts to integer, and then
+          * applies clamp to edge as clamp(coord, 0, dim - 1).
+          */
+         "MOV TEMP[0], IN[0]\n"
+         "FLR TEMP[0].xy, TEMP[0]\n"
+         "F2I TEMP[0], TEMP[0]\n"
+         "IMAX TEMP[0].xy, TEMP[0], IMM[0].xxxx\n"
+         /* Texel fetch. */
+         "TXF_LZ TEMP[0].x, TEMP[0], SAMP[0], %s\n"
+         "AND TEMP[0].x, TEMP[0], CONST[0][0]\n"
+         "USNE TEMP[0].x, TEMP[0], CONST[0][0]\n"
+         "U2F TEMP[0].x, TEMP[0]\n"
+         "KILL_IF -TEMP[0].xxxx\n"
+         "END\n";
+
+      sprintf(text, shader_templ, tgsi_texture_names[tgsi_tex],
+              tgsi_texture_names[tgsi_tex]);
+   }
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
       assert(0);
