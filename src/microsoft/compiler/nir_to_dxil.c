@@ -457,6 +457,7 @@ struct ntd_context {
    struct util_dynarray uav_metadata_nodes;
    const struct dxil_value *ssbo_handles[MAX_UAVS];
    const struct dxil_value *image_handles[MAX_UAVS];
+   uint32_t num_uavs;
 
    struct util_dynarray cbv_metadata_nodes;
    const struct dxil_value *cbv_handles[MAX_CBVS];
@@ -881,6 +882,17 @@ add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
       resource->upper_bound = UINT_MAX;
    else
       resource->upper_bound = layout->binding + layout->size - 1;
+   if (type == DXIL_RES_UAV_TYPED ||
+       type == DXIL_RES_UAV_RAW ||
+       type == DXIL_RES_UAV_STRUCTURED) {
+      uint32_t new_uav_count = ctx->num_uavs + layout->size;
+      if (layout->size == 0 || new_uav_count < ctx->num_uavs)
+         ctx->num_uavs = UINT_MAX;
+      else
+         ctx->num_uavs = new_uav_count;
+      if (ctx->mod.minor_validator >= 6 && ctx->num_uavs > 8)
+         ctx->mod.feats.use_64uavs = 1;
+   }
 }
 
 static unsigned
@@ -995,7 +1007,8 @@ emit_globals(struct ntd_context *ctx, unsigned size)
       return false;
 
    util_dynarray_append(&ctx->uav_metadata_nodes, const struct dxil_mdnode *, uav_meta);
-   if (util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
+   if (ctx->mod.minor_validator < 6 &&
+       util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
    /* Handles to UAVs used for kernel globals are created on-demand */
    add_resource(ctx, DXIL_RES_UAV_RAW, &layout);
@@ -1019,7 +1032,8 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
       return false;
 
    util_dynarray_append(&ctx->uav_metadata_nodes, const struct dxil_mdnode *, uav_meta);
-   if (util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
+   if (ctx->mod.minor_validator < 6 &&
+       util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
 
    add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, &layout);
