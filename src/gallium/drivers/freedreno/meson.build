@@ -246,13 +246,36 @@ freedreno_includes = [
 ]
 
 freedreno_c_args = [no_override_init_args]
-if cc.has_argument('-Wpacked-bitfield-compat')
-  freedreno_c_args += '-Wno-packed-bitfield-compat'
-endif
+freedreno_c_args += cc.get_supported_arguments([
+  '-Wno-packed-bitfield-compat',
+  '-Wno-array-bounds',
+])
 
 freedreno_cpp_args = []
-if cpp.has_argument('-Wpacked-bitfield-compat')
-  freedreno_cpp_args += '-Wno-packed-bitfield-compat'
+freedreno_cpp_args += cpp.get_supported_arguments([
+  '-fno-exceptions',
+  '-fno-rtti',
+  '-Wno-packed-bitfield-compat',
+  '-Wno-c99-designator',
+  '-Wno-reorder-init-list',
+  '-Wno-address-of-temporary',
+  '-Wno-c++11-narrowing',
+  '-Wno-narrowing',
+  '-Wno-sign-compare',
+  '-Wno-missing-field-initializers',
+  '-Wno-reorder',
+  '-Wno-array-bounds',
+  '-Wno-overflow',
+  '-Wno-c++11-narrowing',
+])
+
+# HACK compiler.get_supported_arguments()/has_argument() do not seem
+# to be reliable for cross builds (!?!) so just jam in some args we
+# need and hope for the best
+if meson.is_cross_build()
+  freedreno_cpp_args += '-Wno-array-bounds'
+  freedreno_cpp_args += '-Wno-c++11-narrowing'
+  freedreno_cpp_args += '-Wno-c99-designator'
 endif
 
 libfreedreno_dependencies = [
