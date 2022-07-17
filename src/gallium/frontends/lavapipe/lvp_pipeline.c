@@ -168,7 +168,6 @@ deep_copy_vertex_input_state(void *mem_ctx,
             break;
          }
          default:
-            unreachable("unhandled pNext!");
             break;
          }
       }
@@ -236,7 +235,6 @@ deep_copy_viewport_state(void *mem_ctx,
             break;
          }
          default:
-            unreachable("unhandled pNext!");
             break;
          }
       }
@@ -378,7 +376,6 @@ deep_copy_rasterization_state(void *mem_ctx,
             /* do nothing */
             break;
          default:
-            unreachable("unhandled pNext!");
             break;
          }
       }
