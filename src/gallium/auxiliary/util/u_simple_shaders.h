@@ -141,15 +141,13 @@ util_make_fs_blit_msaa_stencil(struct pipe_context *pipe,
 
 void *
 util_make_fs_msaa_resolve(struct pipe_context *pipe,
-                          enum tgsi_texture_type tgsi_tex, unsigned nr_samples,
-                          enum tgsi_return_type stype);
+                          enum tgsi_texture_type tgsi_tex, unsigned nr_samples);
 
 
 void *
 util_make_fs_msaa_resolve_bilinear(struct pipe_context *pipe,
                                    enum tgsi_texture_type tgsi_tex,
-                                   unsigned nr_samples,
-                                   enum tgsi_return_type stype);
+                                   unsigned nr_samples);
 
 extern void *
 util_make_geometry_passthrough_shader(struct pipe_context *pipe,
