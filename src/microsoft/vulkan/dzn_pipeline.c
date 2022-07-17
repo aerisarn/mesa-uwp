@@ -348,7 +348,9 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
       .shader_model_max = SHADER_MODEL_6_2,
-      .validator_version_max = DXIL_VALIDATOR_1_4,
+#ifdef _WIN32
+      .validator_version_max = dxil_get_validator_version(instance->dxil_validator),
+#endif
    };
    struct blob dxil_blob;
    VkResult result = VK_SUCCESS;
