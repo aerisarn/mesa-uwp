@@ -105,6 +105,16 @@ struct BitmaskEnum {
 #define BITMASK_ENUM(E) enum E
 #endif
 
+#ifdef __cplusplus
+#  define EXTERNC extern "C"
+#  define BEGINC EXTERNC {
+#  define ENDC }
+#else
+#  define EXTERNC
+#  define BEGINC
+#  define ENDC
+#endif
+
 /*
  * swap - swap value of @a and @b
  */

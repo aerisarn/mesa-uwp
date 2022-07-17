@@ -101,7 +101,7 @@ struct ir3_merge_set {
    struct ir3_register **regs;
 };
 
-typedef enum {
+typedef enum ir3_register_flags {
    IR3_REG_CONST = BIT(0),
    IR3_REG_IMMED = BIT(1),
    IR3_REG_HALF = BIT(2),
@@ -162,7 +162,7 @@ typedef enum {
 } ir3_register_flags;
 
 struct ir3_register {
-   ir3_register_flags flags;
+   BITMASK_ENUM(ir3_register_flags) flags;
 
    unsigned name;
 
@@ -259,7 +259,7 @@ typedef enum {
    REDUCE_OP_XOR_B,
 } reduce_op_t;
 
-typedef enum {
+typedef enum ir3_instruction_flags {
    /* (sy) flag is set on first instruction, and after sample
     * instructions (probably just on RAW hazard).
     */
@@ -324,7 +324,7 @@ typedef enum {
 struct ir3_instruction {
    struct ir3_block *block;
    opc_t opc;
-   ir3_instruction_flags flags;
+   BITMASK_ENUM(ir3_instruction_flags) flags;
    uint8_t repeat;
    uint8_t nop;
 #ifdef DEBUG
@@ -1291,7 +1291,7 @@ half_type(type_t type)
       return type;
    default:
       assert(0);
-      return ~0;
+      return (type_t)~0;
    }
 }
 
@@ -1313,7 +1313,7 @@ full_type(type_t type)
       return type;
    default:
       assert(0);
-      return ~0;
+      return (type_t)~0;
    }
 }
 
@@ -1609,7 +1609,7 @@ ir3_try_swap_signedness(opc_t opc, bool *can_swap)
 /* iterator for an instructions's sources (reg), also returns src #: */
 #define foreach_src_n(__srcreg, __n, __instr)                                  \
    if ((__instr)->srcs_count)                                                  \
-      for (struct ir3_register *__srcreg = (void *)~0; __srcreg;               \
+      for (struct ir3_register *__srcreg = (struct ir3_register *)~0; __srcreg;\
            __srcreg = NULL)                                                    \
          for (unsigned __cnt = (__instr)->srcs_count, __n = 0; __n < __cnt;    \
               __n++)                                                           \
@@ -1621,7 +1621,7 @@ ir3_try_swap_signedness(opc_t opc, bool *can_swap)
 /* iterator for an instructions's destinations (reg), also returns dst #: */
 #define foreach_dst_n(__dstreg, __n, __instr)                                  \
    if ((__instr)->dsts_count)                                                  \
-      for (struct ir3_register *__dstreg = (void *)~0; __dstreg;               \
+      for (struct ir3_register *__dstreg = (struct ir3_register *)~0; __dstreg;\
            __dstreg = NULL)                                                    \
          for (unsigned __cnt = (__instr)->dsts_count, __n = 0; __n < __cnt;    \
               __n++)                                                           \

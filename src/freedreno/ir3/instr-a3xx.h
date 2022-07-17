@@ -449,7 +449,7 @@ type_uint_size(unsigned bit_size)
    case 32: return TYPE_U32;
    default:
       ir3_assert(0); /* invalid size */
-      return 0;
+      return (type_t)0;
    }
 }
 
@@ -461,7 +461,7 @@ type_float_size(unsigned bit_size)
    case 32: return TYPE_F32;
    default:
       ir3_assert(0); /* invalid size */
-      return 0;
+      return (type_t)0;
    }
 }
 
