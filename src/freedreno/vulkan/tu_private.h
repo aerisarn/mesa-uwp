@@ -76,6 +76,7 @@
 #include "a6xx.xml.h"
 #include "fdl/freedreno_layout.h"
 #include "common/freedreno_dev_info.h"
+#include "common/freedreno_common.h"
 #include "perfcntrs/freedreno_perfcntr.h"
 
 #include "tu_descriptor_set.h"
@@ -137,9 +138,6 @@ typedef uint32_t xcb_window_t;
 
 #define A6XX_TEX_CONST_DWORDS 16
 #define A6XX_TEX_SAMP_DWORDS 4
-
-#define COND(bool, val) ((bool) ? (val) : 0)
-#define BIT(bit) (1u << (bit))
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
