@@ -877,12 +877,12 @@ util_make_fs_msaa_resolve(struct pipe_context *pipe,
 void *
 util_make_fs_msaa_resolve_bilinear(struct pipe_context *pipe,
                                    enum tgsi_texture_type tgsi_tex,
-                                   unsigned nr_samples)
+                                   unsigned nr_samples, bool has_txq)
 {
    struct ureg_program *ureg;
    struct ureg_src sampler, coord;
    struct ureg_dst out, tmp, top, bottom;
-   struct ureg_dst tmp_coord[4], tmp_sum[4];
+   struct ureg_dst tmp_coord[4], tmp_sum[4], weights;
    unsigned i, c;
 
    ureg = ureg_create(PIPE_SHADER_FRAGMENT);
@@ -903,20 +903,61 @@ util_make_fs_msaa_resolve_bilinear(struct pipe_context *pipe,
       tmp_coord[c] = ureg_DECL_temporary(ureg);
    tmp = ureg_DECL_temporary(ureg);
    top = ureg_DECL_temporary(ureg);
+   weights = ureg_DECL_temporary(ureg);
    bottom = ureg_DECL_temporary(ureg);
 
    /* Instructions. */
    for (c = 0; c < 4; c++)
       ureg_MOV(ureg, tmp_sum[c], ureg_imm1f(ureg, 0));
 
-   /* Get 4 texture coordinates for the bilinear filter. */
-   ureg_F2U(ureg, tmp_coord[0], coord); /* top-left */
-   ureg_UADD(ureg, tmp_coord[1], ureg_src(tmp_coord[0]),
-             ureg_imm4u(ureg, 1, 0, 0, 0)); /* top-right */
-   ureg_UADD(ureg, tmp_coord[2], ureg_src(tmp_coord[0]),
-             ureg_imm4u(ureg, 0, 1, 0, 0)); /* bottom-left */
+   /* Bilinear filtering starts with subtracting 0.5 from unnormalized
+    * coordinates.
+    */
+   ureg_MOV(ureg, ureg_writemask(tmp_coord[0], TGSI_WRITEMASK_ZW), coord);
+   ureg_ADD(ureg, ureg_writemask(tmp_coord[0], TGSI_WRITEMASK_XY), coord,
+            ureg_imm2f(ureg, -0.5, -0.5));
+
+   /* Get the filter weights. */
+   ureg_FRC(ureg, ureg_writemask(weights, TGSI_WRITEMASK_XY),
+            ureg_src(tmp_coord[0]));
+
+   /* Convert to integer by flooring to get the top-left coordinates. */
+   ureg_FLR(ureg, ureg_writemask(tmp_coord[0], TGSI_WRITEMASK_XY),
+         ureg_src(tmp_coord[0]));
+   ureg_F2I(ureg, tmp_coord[0], ureg_src(tmp_coord[0]));
+
+   /* Get the bottom-right coordinates. */
    ureg_UADD(ureg, tmp_coord[3], ureg_src(tmp_coord[0]),
              ureg_imm4u(ureg, 1, 1, 0, 0)); /* bottom-right */
+
+   /* Clamp to edge. */
+   if (has_txq) {
+      ureg_TXQ(ureg, ureg_writemask(tmp, TGSI_WRITEMASK_XY), tgsi_tex,
+               ureg_imm1u(ureg, 0), sampler);
+      ureg_UADD(ureg, ureg_writemask(tmp, TGSI_WRITEMASK_XY), ureg_src(tmp),
+                ureg_imm2i(ureg, -1, -1)); /* width - 1, height - 1 */
+
+      ureg_IMIN(ureg, ureg_writemask(tmp_coord[0], TGSI_WRITEMASK_XY),
+                ureg_src(tmp_coord[0]), ureg_src(tmp));
+      ureg_IMIN(ureg, ureg_writemask(tmp_coord[3], TGSI_WRITEMASK_XY),
+                ureg_src(tmp_coord[3]), ureg_src(tmp));
+   }
+
+   ureg_IMAX(ureg, ureg_writemask(tmp_coord[0], TGSI_WRITEMASK_XY),
+             ureg_src(tmp_coord[0]), ureg_imm2i(ureg, 0, 0));
+   ureg_IMAX(ureg, ureg_writemask(tmp_coord[3], TGSI_WRITEMASK_XY),
+             ureg_src(tmp_coord[3]), ureg_imm2i(ureg, 0, 0));
+
+   /* Get the remaining top-right and bottom-left coordinates. */
+   ureg_MOV(ureg, ureg_writemask(tmp_coord[1], TGSI_WRITEMASK_X),
+         ureg_src(tmp_coord[3]));
+   ureg_MOV(ureg, ureg_writemask(tmp_coord[1], TGSI_WRITEMASK_YZW),
+         ureg_src(tmp_coord[0])); /* top-right */
+
+   ureg_MOV(ureg, ureg_writemask(tmp_coord[2], TGSI_WRITEMASK_Y),
+         ureg_src(tmp_coord[3]));
+   ureg_MOV(ureg, ureg_writemask(tmp_coord[2], TGSI_WRITEMASK_XZW),
+         ureg_src(tmp_coord[0])); /* bottom-left */
 
    for (i = 0; i < nr_samples; i++) {
       for (c = 0; c < 4; c++) {
@@ -936,20 +977,18 @@ util_make_fs_msaa_resolve_bilinear(struct pipe_context *pipe,
                ureg_imm1f(ureg, 1.0 / nr_samples));
 
    /* Take the 4 average values and apply a standard bilinear filter. */
-   ureg_FRC(ureg, tmp, coord);
-
    ureg_LRP(ureg, top,
-            ureg_scalar(ureg_src(tmp), 0),
+            ureg_scalar(ureg_src(weights), 0),
             ureg_src(tmp_sum[1]),
             ureg_src(tmp_sum[0]));
 
    ureg_LRP(ureg, bottom,
-            ureg_scalar(ureg_src(tmp), 0),
+            ureg_scalar(ureg_src(weights), 0),
             ureg_src(tmp_sum[3]),
             ureg_src(tmp_sum[2]));
 
    ureg_LRP(ureg, out,
-            ureg_scalar(ureg_src(tmp), 1),
+            ureg_scalar(ureg_src(weights), 1),
             ureg_src(bottom),
             ureg_src(top));
    ureg_END(ureg);

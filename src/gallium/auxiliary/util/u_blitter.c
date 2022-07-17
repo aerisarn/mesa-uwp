@@ -1032,7 +1032,7 @@ static void *blitter_get_fs_texfetch_col(struct blitter_context_priv *ctx,
             assert(!ctx->cached_all_shaders);
             if (filter == PIPE_TEX_FILTER_LINEAR) {
                *shader = util_make_fs_msaa_resolve_bilinear(pipe, tgsi_tex,
-                                                   src_nr_samples);
+                                                   src_nr_samples, ctx->has_txf_txq);
             }
             else {
                *shader = util_make_fs_msaa_resolve(pipe, tgsi_tex,

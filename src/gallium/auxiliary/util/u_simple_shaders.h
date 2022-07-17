@@ -148,7 +148,7 @@ util_make_fs_msaa_resolve(struct pipe_context *pipe,
 void *
 util_make_fs_msaa_resolve_bilinear(struct pipe_context *pipe,
                                    enum tgsi_texture_type tgsi_tex,
-                                   unsigned nr_samples);
+                                   unsigned nr_samples, bool has_txq);
 
 extern void *
 util_make_geometry_passthrough_shader(struct pipe_context *pipe,
