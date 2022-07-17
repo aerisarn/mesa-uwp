@@ -34,6 +34,8 @@
 #include "util/set.h"
 #include "util/u_debug.h"
 
+#include "freedreno_common.h"
+
 #include "instr-a3xx.h"
 
 /* low level intermediate representation of an adreno shader program */
@@ -99,66 +101,68 @@ struct ir3_merge_set {
    struct ir3_register **regs;
 };
 
+typedef enum {
+   IR3_REG_CONST = BIT(0),
+   IR3_REG_IMMED = BIT(1),
+   IR3_REG_HALF = BIT(2),
+   /* Shared registers have the same value for all threads when read.
+    * They can only be written when one thread is active (that is, inside
+    * a "getone" block).
+    */
+   IR3_REG_SHARED = BIT(3),
+   IR3_REG_RELATIV = BIT(4),
+   IR3_REG_R = BIT(5),
+   /* Most instructions, it seems, can do float abs/neg but not
+    * integer.  The CP pass needs to know what is intended (int or
+    * float) in order to do the right thing.  For this reason the
+    * abs/neg flags are split out into float and int variants.  In
+    * addition, .b (bitwise) operations, the negate is actually a
+    * bitwise not, so split that out into a new flag to make it
+    * more clear.
+    */
+   IR3_REG_FNEG = BIT(6),
+   IR3_REG_FABS = BIT(7),
+   IR3_REG_SNEG = BIT(8),
+   IR3_REG_SABS = BIT(9),
+   IR3_REG_BNOT = BIT(10),
+   /* (ei) flag, end-input?  Set on last bary, presumably to signal
+    * that the shader needs no more input:
+    *
+    * Note: Has different meaning on other instructions like add.s/u
+    */
+   IR3_REG_EI = BIT(11),
+   /* meta-flags, for intermediate stages of IR, ie.
+    * before register assignment is done:
+    */
+   IR3_REG_SSA = BIT(12), /* 'def' is ptr to assigning destination */
+   IR3_REG_ARRAY = BIT(13),
+
+   /* Set on a use whenever the SSA value becomes dead after the current
+    * instruction.
+    */
+   IR3_REG_KILL = BIT(14),
+
+   /* Similar to IR3_REG_KILL, except that if there are multiple uses of the
+    * same SSA value in a single instruction, this is only set on the first
+    * use.
+    */
+   IR3_REG_FIRST_KILL = BIT(15),
+
+   /* Set when a destination doesn't have any uses and is dead immediately
+    * after the instruction. This can happen even after optimizations for
+    * corner cases such as destinations of atomic instructions.
+    */
+   IR3_REG_UNUSED = BIT(16),
+
+   /* "Early-clobber" on a destination means that the destination is
+    * (potentially) written before any sources are read and therefore
+    * interferes with the sources of the instruction.
+    */
+   IR3_REG_EARLY_CLOBBER = BIT(17),
+} ir3_register_flags;
+
 struct ir3_register {
-   enum {
-      IR3_REG_CONST = 0x001,
-      IR3_REG_IMMED = 0x002,
-      IR3_REG_HALF = 0x004,
-      /* Shared registers have the same value for all threads when read.
-       * They can only be written when one thread is active (that is, inside
-       * a "getone" block).
-       */
-      IR3_REG_SHARED = 0x008,
-      IR3_REG_RELATIV = 0x010,
-      IR3_REG_R = 0x020,
-      /* Most instructions, it seems, can do float abs/neg but not
-       * integer.  The CP pass needs to know what is intended (int or
-       * float) in order to do the right thing.  For this reason the
-       * abs/neg flags are split out into float and int variants.  In
-       * addition, .b (bitwise) operations, the negate is actually a
-       * bitwise not, so split that out into a new flag to make it
-       * more clear.
-       */
-      IR3_REG_FNEG = 0x040,
-      IR3_REG_FABS = 0x080,
-      IR3_REG_SNEG = 0x100,
-      IR3_REG_SABS = 0x200,
-      IR3_REG_BNOT = 0x400,
-      /* (ei) flag, end-input?  Set on last bary, presumably to signal
-       * that the shader needs no more input:
-       *
-       * Note: Has different meaning on other instructions like add.s/u
-       */
-      IR3_REG_EI = 0x2000,
-      /* meta-flags, for intermediate stages of IR, ie.
-       * before register assignment is done:
-       */
-      IR3_REG_SSA = 0x4000, /* 'def' is ptr to assigning destination */
-      IR3_REG_ARRAY = 0x8000,
-
-      /* Set on a use whenever the SSA value becomes dead after the current
-       * instruction.
-       */
-      IR3_REG_KILL = 0x10000,
-
-      /* Similar to IR3_REG_KILL, except that if there are multiple uses of the
-       * same SSA value in a single instruction, this is only set on the first
-       * use.
-       */
-      IR3_REG_FIRST_KILL = 0x20000,
-
-      /* Set when a destination doesn't have any uses and is dead immediately
-       * after the instruction. This can happen even after optimizations for
-       * corner cases such as destinations of atomic instructions.
-       */
-      IR3_REG_UNUSED = 0x40000,
-
-      /* "Early-clobber" on a destination means that the destination is
-       * (potentially) written before any sources are read and therefore
-       * interferes with the sources of the instruction.
-       */
-      IR3_REG_EARLY_CLOBBER = 0x80000,
-   } flags;
+   ir3_register_flags flags;
 
    unsigned name;
 
@@ -255,70 +259,72 @@ typedef enum {
    REDUCE_OP_XOR_B,
 } reduce_op_t;
 
+typedef enum {
+   /* (sy) flag is set on first instruction, and after sample
+    * instructions (probably just on RAW hazard).
+    */
+   IR3_INSTR_SY = BIT(0),
+   /* (ss) flag is set on first instruction, and first instruction
+    * to depend on the result of "long" instructions (RAW hazard):
+    *
+    *   rcp, rsq, log2, exp2, sin, cos, sqrt
+    *
+    * It seems to synchronize until all in-flight instructions are
+    * completed, for example:
+    *
+    *   rsq hr1.w, hr1.w
+    *   add.f hr2.z, (neg)hr2.z, hc0.y
+    *   mul.f hr2.w, (neg)hr2.y, (neg)hr2.y
+    *   rsq hr2.x, hr2.x
+    *   (rpt1)nop
+    *   mad.f16 hr2.w, hr2.z, hr2.z, hr2.w
+    *   nop
+    *   mad.f16 hr2.w, (neg)hr0.w, (neg)hr0.w, hr2.w
+    *   (ss)(rpt2)mul.f hr1.x, (r)hr1.x, hr1.w
+    *   (rpt2)mul.f hr0.x, (neg)(r)hr0.x, hr2.x
+    *
+    * The last mul.f does not have (ss) set, presumably because the
+    * (ss) on the previous instruction does the job.
+    *
+    * The blob driver also seems to set it on WAR hazards, although
+    * not really clear if this is needed or just blob compiler being
+    * sloppy.  So far I haven't found a case where removing the (ss)
+    * causes problems for WAR hazard, but I could just be getting
+    * lucky:
+    *
+    *   rcp r1.y, r3.y
+    *   (ss)(rpt2)mad.f32 r3.y, (r)c9.x, r1.x, (r)r3.z
+    *
+    */
+   IR3_INSTR_SS = BIT(1),
+   /* (jp) flag is set on jump targets:
+    */
+   IR3_INSTR_JP = BIT(2),
+   IR3_INSTR_UL = BIT(3),
+   IR3_INSTR_3D = BIT(4),
+   IR3_INSTR_A = BIT(5),
+   IR3_INSTR_O = BIT(6),
+   IR3_INSTR_P = BIT(7),
+   IR3_INSTR_S = BIT(8),
+   IR3_INSTR_S2EN = BIT(9),
+   IR3_INSTR_SAT = BIT(10),
+   /* (cat5/cat6) Bindless */
+   IR3_INSTR_B = BIT(11),
+   /* (cat5/cat6) nonuniform */
+   IR3_INSTR_NONUNIF = BIT(12),
+   /* (cat5-only) Get some parts of the encoding from a1.x */
+   IR3_INSTR_A1EN = BIT(13),
+   /* meta-flags, for intermediate stages of IR, ie.
+    * before register assignment is done:
+    */
+   IR3_INSTR_MARK = BIT(14),
+   IR3_INSTR_UNUSED = BIT(16),
+} ir3_instruction_flags;
+
 struct ir3_instruction {
    struct ir3_block *block;
    opc_t opc;
-   enum {
-      /* (sy) flag is set on first instruction, and after sample
-       * instructions (probably just on RAW hazard).
-       */
-      IR3_INSTR_SY = 0x001,
-      /* (ss) flag is set on first instruction, and first instruction
-       * to depend on the result of "long" instructions (RAW hazard):
-       *
-       *   rcp, rsq, log2, exp2, sin, cos, sqrt
-       *
-       * It seems to synchronize until all in-flight instructions are
-       * completed, for example:
-       *
-       *   rsq hr1.w, hr1.w
-       *   add.f hr2.z, (neg)hr2.z, hc0.y
-       *   mul.f hr2.w, (neg)hr2.y, (neg)hr2.y
-       *   rsq hr2.x, hr2.x
-       *   (rpt1)nop
-       *   mad.f16 hr2.w, hr2.z, hr2.z, hr2.w
-       *   nop
-       *   mad.f16 hr2.w, (neg)hr0.w, (neg)hr0.w, hr2.w
-       *   (ss)(rpt2)mul.f hr1.x, (r)hr1.x, hr1.w
-       *   (rpt2)mul.f hr0.x, (neg)(r)hr0.x, hr2.x
-       *
-       * The last mul.f does not have (ss) set, presumably because the
-       * (ss) on the previous instruction does the job.
-       *
-       * The blob driver also seems to set it on WAR hazards, although
-       * not really clear if this is needed or just blob compiler being
-       * sloppy.  So far I haven't found a case where removing the (ss)
-       * causes problems for WAR hazard, but I could just be getting
-       * lucky:
-       *
-       *   rcp r1.y, r3.y
-       *   (ss)(rpt2)mad.f32 r3.y, (r)c9.x, r1.x, (r)r3.z
-       *
-       */
-      IR3_INSTR_SS = 0x002,
-      /* (jp) flag is set on jump targets:
-       */
-      IR3_INSTR_JP = 0x004,
-      IR3_INSTR_UL = 0x008,
-      IR3_INSTR_3D = 0x010,
-      IR3_INSTR_A = 0x020,
-      IR3_INSTR_O = 0x040,
-      IR3_INSTR_P = 0x080,
-      IR3_INSTR_S = 0x100,
-      IR3_INSTR_S2EN = 0x200,
-      IR3_INSTR_SAT = 0x400,
-      /* (cat5/cat6) Bindless */
-      IR3_INSTR_B = 0x800,
-      /* (cat5/cat6) nonuniform */
-      IR3_INSTR_NONUNIF = 0x1000,
-      /* (cat5-only) Get some parts of the encoding from a1.x */
-      IR3_INSTR_A1EN = 0x02000,
-      /* meta-flags, for intermediate stages of IR, ie.
-       * before register assignment is done:
-       */
-      IR3_INSTR_MARK = 0x04000,
-      IR3_INSTR_UNUSED = 0x08000,
-   } flags;
+   ir3_instruction_flags flags;
    uint8_t repeat;
    uint8_t nop;
 #ifdef DEBUG
@@ -1928,11 +1934,19 @@ __ssa_dst(struct ir3_instruction *instr)
    return reg;
 }
 
+static ir3_register_flags
+type_flags(type_t type)
+{
+   if (type_size(type) < 32)
+      return IR3_REG_HALF;
+   return (ir3_register_flags)0;
+}
+
 static inline struct ir3_instruction *
 create_immed_typed(struct ir3_block *block, uint32_t val, type_t type)
 {
    struct ir3_instruction *mov;
-   unsigned flags = (type_size(type) < 32) ? IR3_REG_HALF : 0;
+   ir3_register_flags flags = type_flags(type);
 
    mov = ir3_instr_create(block, OPC_MOV, 1, 1);
    mov->cat1.src_type = type;
@@ -1953,7 +1967,7 @@ static inline struct ir3_instruction *
 create_uniform_typed(struct ir3_block *block, unsigned n, type_t type)
 {
    struct ir3_instruction *mov;
-   unsigned flags = (type_size(type) < 32) ? IR3_REG_HALF : 0;
+   ir3_register_flags flags = type_flags(type);
 
    mov = ir3_instr_create(block, OPC_MOV, 1, 1);
    mov->cat1.src_type = type;
@@ -1991,7 +2005,7 @@ static inline struct ir3_instruction *
 ir3_MOV(struct ir3_block *block, struct ir3_instruction *src, type_t type)
 {
    struct ir3_instruction *instr = ir3_instr_create(block, OPC_MOV, 1, 1);
-   unsigned flags = (type_size(type) < 32) ? IR3_REG_HALF : 0;
+   ir3_register_flags flags = type_flags(type);
 
    __ssa_dst(instr)->flags |= flags;
    if (src->dsts[0]->flags & IR3_REG_ARRAY) {
@@ -2011,8 +2025,8 @@ ir3_COV(struct ir3_block *block, struct ir3_instruction *src, type_t src_type,
         type_t dst_type)
 {
    struct ir3_instruction *instr = ir3_instr_create(block, OPC_MOV, 1, 1);
-   unsigned dst_flags = (type_size(dst_type) < 32) ? IR3_REG_HALF : 0;
-   ASSERTED unsigned src_flags = (type_size(src_type) < 32) ? IR3_REG_HALF : 0;
+   ir3_register_flags dst_flags = type_flags(dst_type);
+   ASSERTED ir3_register_flags src_flags = type_flags(src_type);
 
    assert((src->dsts[0]->flags & IR3_REG_HALF) == src_flags);
 
@@ -2068,7 +2082,7 @@ static inline struct ir3_instruction *ir3_##name(struct ir3_block *block)      \
 }
 /* clang-format on */
 #define INSTR0F(f, name) __INSTR0(IR3_INSTR_##f, name##_##f, OPC_##name)
-#define INSTR0(name)     __INSTR0(0, name, OPC_##name)
+#define INSTR0(name)     __INSTR0((ir3_instruction_flags)0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR1(flag, dst_count, name, opc)                                   \
@@ -2085,8 +2099,8 @@ static inline struct ir3_instruction *ir3_##name(                              \
 }
 /* clang-format on */
 #define INSTR1F(f, name)  __INSTR1(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR1(name)      __INSTR1(0, 1, name, OPC_##name)
-#define INSTR1NODST(name) __INSTR1(0, 0, name, OPC_##name)
+#define INSTR1(name)      __INSTR1((ir3_instruction_flags)0, 1, name, OPC_##name)
+#define INSTR1NODST(name) __INSTR1((ir3_instruction_flags)0, 0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR2(flag, dst_count, name, opc)                                   \
@@ -2104,8 +2118,8 @@ static inline struct ir3_instruction *ir3_##name(                              \
 }
 /* clang-format on */
 #define INSTR2F(f, name)   __INSTR2(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR2(name)       __INSTR2(0, 1, name, OPC_##name)
-#define INSTR2NODST(name)  __INSTR2(0, 0, name, OPC_##name)
+#define INSTR2(name)       __INSTR2((ir3_instruction_flags)0, 1, name, OPC_##name)
+#define INSTR2NODST(name)  __INSTR2((ir3_instruction_flags)0, 0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR3(flag, dst_count, name, opc)                                   \
@@ -2126,8 +2140,8 @@ static inline struct ir3_instruction *ir3_##name(                              \
 }
 /* clang-format on */
 #define INSTR3F(f, name)  __INSTR3(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR3(name)      __INSTR3(0, 1, name, OPC_##name)
-#define INSTR3NODST(name) __INSTR3(0, 0, name, OPC_##name)
+#define INSTR3(name)      __INSTR3((ir3_instruction_flags)0, 1, name, OPC_##name)
+#define INSTR3NODST(name) __INSTR3((ir3_instruction_flags)0, 0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR4(flag, dst_count, name, opc)                                   \
@@ -2149,8 +2163,8 @@ static inline struct ir3_instruction *ir3_##name(                              \
 }
 /* clang-format on */
 #define INSTR4F(f, name)  __INSTR4(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR4(name)      __INSTR4(0, 1, name, OPC_##name)
-#define INSTR4NODST(name) __INSTR4(0, 0, name, OPC_##name)
+#define INSTR4(name)      __INSTR4((ir3_instruction_flags)0, 1, name, OPC_##name)
+#define INSTR4NODST(name) __INSTR4((ir3_instruction_flags)0, 0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR5(flag, name, opc)                                              \
@@ -2172,7 +2186,7 @@ static inline struct ir3_instruction *ir3_##name(                              \
 }
 /* clang-format on */
 #define INSTR5F(f, name) __INSTR5(IR3_INSTR_##f, name##_##f, OPC_##name)
-#define INSTR5(name)     __INSTR5(0, name, OPC_##name)
+#define INSTR5(name)     __INSTR5((ir3_instruction_flags)0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR6(flag, dst_count, name, opc)                                   \
@@ -2197,8 +2211,8 @@ static inline struct ir3_instruction *ir3_##name(                              \
 }
 /* clang-format on */
 #define INSTR6F(f, name)  __INSTR6(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
-#define INSTR6(name)      __INSTR6(0, 1, name, OPC_##name)
-#define INSTR6NODST(name) __INSTR6(0, 0, name, OPC_##name)
+#define INSTR6(name)      __INSTR6((ir3_instruction_flags)0, 1, name, OPC_##name)
+#define INSTR6NODST(name) __INSTR6((ir3_instruction_flags)0, 0, name, OPC_##name)
 
 /* cat0 instructions: */
 INSTR1NODST(B)
@@ -2332,7 +2346,7 @@ INSTR1(RGETPOS)
 
 static inline struct ir3_instruction *
 ir3_SAM(struct ir3_block *block, opc_t opc, type_t type, unsigned wrmask,
-        unsigned flags, struct ir3_instruction *samp_tex,
+        ir3_instruction_flags flags, struct ir3_instruction *samp_tex,
         struct ir3_instruction *src0, struct ir3_instruction *src1)
 {
    struct ir3_instruction *sam;
