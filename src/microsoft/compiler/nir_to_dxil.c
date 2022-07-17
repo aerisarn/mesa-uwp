@@ -1463,6 +1463,8 @@ get_module_flags(struct ntd_context *ctx)
       flags |= (1 << 19);
    if (ctx->mod.feats.int64_ops)
       flags |= (1 << 20);
+   if (ctx->mod.feats.barycentrics)
+      flags |= (1 << 22);
    if (ctx->mod.feats.stencil_ref)
       flags |= (1 << 11);
    if (ctx->mod.feats.native_low_precision)
@@ -3243,6 +3245,8 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
    if (attr_at_vertex) {
       opcode_val = DXIL_INTR_ATTRIBUTE_AT_VERTEX;
       func_name = "dx.op.attributeAtVertex";
+      if (ctx->mod.minor_validator >= 6)
+         ctx->mod.feats.barycentrics = 1;
    } else if (is_patch_constant) {
       opcode_val = DXIL_INTR_LOAD_PATCH_CONSTANT;
       func_name = "dx.op.loadPatchConstant";
