@@ -1508,7 +1508,6 @@ spec/arb_sparse_buffer/commit: skip
 spec/arb_sparse_buffer/minmax: skip
 spec/arb_stencil_texturing/draw: fail
 spec/arb_sync/clientwaitsync-timeout: skip
-spec/arb_tessellation_shader/arb_tessellation_shader-tes-gs-max-output -small -scan 1 50: crash
 spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 1: skip
 spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 2: skip
 spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 3: skip
@@ -3514,7 +3513,7 @@ summary:
        ----  --------
        pass:    17873
        fail:     2035
-      crash:       12
+      crash:       11
        skip:     1445
     timeout:        0
        warn:       10
@@ -3524,4 +3523,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21384
+      total:    21383

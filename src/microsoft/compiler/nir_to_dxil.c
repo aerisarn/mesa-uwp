@@ -3176,31 +3176,6 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
       }
    }
 
-   /* Make sure all SV_Position components are written, otherwise the DXIL
-    * validator complains.
-    */
-   bool is_sv_pos =
-      ctx->mod.shader_kind != DXIL_COMPUTE_SHADER &&
-      ctx->mod.shader_kind != DXIL_PIXEL_SHADER &&
-      var->data.location == VARYING_SLOT_POS;
-
-   if (is_sv_pos) {
-      const struct dxil_type *float_type = dxil_module_get_float_type(&ctx->mod, 32);
-      const struct dxil_value *float_undef = dxil_module_get_undef(&ctx->mod, float_type);
-      unsigned pos_wrmask = writemask << base_component;
-
-      for (unsigned i = 0; i < 4; ++i) {
-         if (!(BITFIELD_BIT(i) & pos_wrmask)) {
-            const struct dxil_value *args[] = {
-               opcode, output_id, row,
-               dxil_module_get_int8_const(&ctx->mod, i),
-               float_undef,
-            };
-            success &= dxil_emit_call_void(&ctx->mod, func, args, ARRAY_SIZE(args));
-         }
-      }
-   }
-
    return success;
 }
 
@@ -5779,6 +5754,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_lower_frexp);
    NIR_PASS_V(s, nir_lower_flrp, 16 | 32 | 64, true);
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, nir_lower_io_lower_64bit_to_32);
+   NIR_PASS_V(s, dxil_nir_ensure_position_writes);
    NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, dxil_nir_lower_system_values);
 

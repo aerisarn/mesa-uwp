@@ -2106,3 +2106,53 @@ dxil_nir_lower_discard_and_terminate(nir_shader *s)
    return nir_shader_instructions_pass(s, lower_kill, nir_metadata_none,
                                        NULL);
 }
+
+static bool
+update_writes(struct nir_builder *b, nir_instr *instr, void *_state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   nir_io_semantics io = nir_intrinsic_io_semantics(intr);
+   if (io.location != VARYING_SLOT_POS)
+      return false;
+
+   nir_ssa_def *src = intr->src[0].ssa;
+   unsigned write_mask = nir_intrinsic_write_mask(intr);
+   if (src->num_components == 4 && write_mask == 0xf)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+   unsigned first_comp = nir_intrinsic_component(intr);
+   nir_ssa_def *channels[4] = { NULL, NULL, NULL, NULL };
+   assert(first_comp + src->num_components <= ARRAY_SIZE(channels));
+   for (unsigned i = 0; i < src->num_components; ++i)
+      if (write_mask & (1 << i))
+         channels[i + first_comp] = nir_channel(b, src, i);
+   for (unsigned i = 0; i < 4; ++i)
+      if (!channels[i])
+         channels[i] = nir_imm_intN_t(b, 0, src->bit_size);
+
+   nir_instr_rewrite_src_ssa(instr, &intr->src[0], nir_vec(b, channels, 4));
+   nir_intrinsic_set_component(intr, 0);
+   nir_intrinsic_set_write_mask(intr, 0xf);
+   return true;
+}
+
+bool
+dxil_nir_ensure_position_writes(nir_shader *s)
+{
+   if (s->info.stage != MESA_SHADER_VERTEX &&
+       s->info.stage != MESA_SHADER_GEOMETRY &&
+       s->info.stage != MESA_SHADER_TESS_EVAL)
+      return false;
+   if ((s->info.outputs_written & VARYING_BIT_POS) == 0)
+      return false;
+
+   return nir_shader_instructions_pass(s, update_writes,
+                                       nir_metadata_block_index | nir_metadata_dominance,
+                                       NULL);
+}
