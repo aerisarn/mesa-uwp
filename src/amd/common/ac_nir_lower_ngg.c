@@ -1890,6 +1890,16 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
       exported_out_vtx_lds_addr = ngg_gs_out_vertex_addr(b, nir_u2u32(b, exported_vtx_idx), s);
    }
 
+   /* Remember proper bit sizes of output variables. */
+   uint8_t out_bitsizes[VARYING_SLOT_MAX];
+   memset(out_bitsizes, 32, VARYING_SLOT_MAX);
+   nir_foreach_shader_out_variable(var, b->shader) {
+      /* Check 8/16-bit. All others should be lowered to 32-bit already. */
+      unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(glsl_without_array(var->type)));
+      if (bit_size == 8 || bit_size == 16)
+         out_bitsizes[var->data.location] = bit_size;
+   }
+
    for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
       if (!(b->shader->info.outputs_written & BITFIELD64_BIT(slot)))
          continue;
@@ -1909,6 +1919,10 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
             nir_load_shared(b, count, 32, exported_out_vtx_lds_addr,
                             .base = packed_location * 16 + start * 4,
                             .align_mul = 4);
+
+         /* Convert to the expected bit size of the output variable. */
+         if (out_bitsizes[slot] != 32)
+            load = nir_u2u(b, load, out_bitsizes[slot]);
 
          nir_store_output(b, load, nir_imm_int(b, 0), .base = slot, .io_semantics = io_sem,
                           .component = start, .write_mask = BITFIELD_MASK(count));
