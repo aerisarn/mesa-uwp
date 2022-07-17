@@ -3176,6 +3176,13 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
       }
       for (unsigned r = 0; r < sig_rec->num_elements; ++r)
          sig_rec->elements[r].never_writes_mask &= ~comp_mask;
+
+      if (!nir_src_is_const(intr->src[row_index])) {
+         struct dxil_psv_signature_element *psv_rec = is_patch_constant ?
+            &ctx->mod.psv_patch_consts[nir_intrinsic_base(intr)] :
+            &ctx->mod.psv_outputs[nir_intrinsic_base(intr)];
+         psv_rec->dynamic_mask_and_stream |= comp_mask;
+      }
    }
 
    for (unsigned i = 0; i < intr->num_components && success; ++i) {
@@ -3305,6 +3312,13 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
          comp_mask = 1;
       for (unsigned r = 0; r < sig_rec->num_elements; ++r)
          sig_rec->elements[r].always_reads_mask |= (comp_mask & sig_rec->elements[r].mask);
+
+      if (!nir_src_is_const(intr->src[row_index])) {
+         struct dxil_psv_signature_element *psv_rec = is_patch_constant ?
+            &ctx->mod.psv_patch_consts[nir_intrinsic_base(intr)] :
+            &ctx->mod.psv_inputs[ctx->mod.input_mappings[nir_intrinsic_base(intr)]];
+         psv_rec->dynamic_mask_and_stream |= comp_mask;
+      }
    }
 
    for (unsigned i = 0; i < intr->num_components; ++i) {
@@ -3394,6 +3408,12 @@ emit_load_interpolated_input(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       comp_mask <<= (var_base_component * comp_size);
       for (unsigned r = 0; r < sig_rec->num_elements; ++r)
          sig_rec->elements[r].always_reads_mask |= (comp_mask & sig_rec->elements[r].mask);
+
+      if (!nir_src_is_const(intr->src[1])) {
+         struct dxil_psv_signature_element *psv_rec =
+            &ctx->mod.psv_inputs[ctx->mod.input_mappings[nir_intrinsic_base(intr)]];
+         psv_rec->dynamic_mask_and_stream |= comp_mask;
+      }
    }
 
    for (unsigned i = 0; i < intr->num_components; ++i) {

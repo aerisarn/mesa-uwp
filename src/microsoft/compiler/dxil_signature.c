@@ -461,7 +461,7 @@ fill_SV_param_nodes(struct dxil_module *mod, unsigned record_id,
    SV_params_nodes[8] = dxil_get_metadata_int32(mod, rec->elements[0].reg); // Element packing start row
    SV_params_nodes[9] = dxil_get_metadata_int8(mod, (psv->cols_and_start >> 4) & 0x3); // Element packing start column
 
-   const struct dxil_mdnode *SV_metadata[4];
+   const struct dxil_mdnode *SV_metadata[6];
    unsigned num_metadata_nodes = 0;
    if (rec->elements[0].stream != 0) {
       SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_OUTPUT_STREAM);
@@ -474,6 +474,12 @@ fill_SV_param_nodes(struct dxil_module *mod, unsigned record_id,
       usage_mask >>= (psv->cols_and_start >> 4) & 0x3;
       SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_USAGE_COMPONENT_MASK);
       SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int8(mod, usage_mask);
+   }
+
+   uint8_t dynamic_index_mask = psv->dynamic_mask_and_stream & 0xf;
+   if (dynamic_index_mask) {
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_DYNAMIC_INDEX_COMPONENT_MASK);
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int8(mod, dynamic_index_mask);
    }
 
    SV_params_nodes[10] = num_metadata_nodes ? dxil_get_metadata_node(mod, SV_metadata, num_metadata_nodes) : NULL;
