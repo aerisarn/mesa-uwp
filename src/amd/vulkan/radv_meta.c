@@ -622,9 +622,11 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_etc_decode;
 
-   result = radv_device_init_dgc_prepare_state(device);
-   if (result != VK_SUCCESS)
-      goto fail_dgc;
+   if (device->uses_device_generated_commands) {
+      result = radv_device_init_dgc_prepare_state(device);
+      if (result != VK_SUCCESS)
+         goto fail_dgc;
+   }
 
    device->app_shaders_internal = false;
 
