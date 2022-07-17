@@ -33,7 +33,7 @@ public:
 protected:
    void check(const vector<PInst>& eval, const std::vector<PInst, Allocator<PInst>>& expect);
 private:
-   InstrFactory *m_instr_factory;
+   InstrFactory *m_instr_factory = nullptr;
 };
 
 
