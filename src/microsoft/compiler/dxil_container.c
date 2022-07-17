@@ -197,12 +197,14 @@ dxil_container_add_state_validation(struct dxil_container *c,
                                     const struct dxil_module *m,
                                     struct dxil_validation_state *state)
 {
-   uint32_t psv1_size = sizeof(struct dxil_psv_runtime_info_1);
+   uint32_t psv_size = m->minor_validator >= 6 ?
+      sizeof(struct dxil_psv_runtime_info_2) :
+      sizeof(struct dxil_psv_runtime_info_1);
    uint32_t resource_bind_info_size = 4 * sizeof(uint32_t);
    uint32_t dxil_pvs_sig_size = sizeof(struct dxil_psv_signature_element);
    uint32_t resource_count = state->num_resources;
 
-   uint32_t size = psv1_size + 2 * sizeof(uint32_t);
+   uint32_t size = psv_size + 2 * sizeof(uint32_t);
    if (resource_count > 0) {
       size += sizeof (uint32_t) +
               resource_bind_info_size * resource_count;
@@ -220,31 +222,31 @@ dxil_container_add_state_validation(struct dxil_container *c,
    size += dxil_pvs_sig_size * m->num_sig_outputs;
    size += dxil_pvs_sig_size * m->num_sig_patch_consts;
 
-   state->state.sig_input_vectors = (uint8_t)m->num_psv_inputs;
+   state->state.psv1.sig_input_vectors = (uint8_t)m->num_psv_inputs;
 
    for (unsigned i = 0; i < 4; ++i)
-      state->state.sig_output_vectors[i] = (uint8_t)m->num_psv_outputs[i];
+      state->state.psv1.sig_output_vectors[i] = (uint8_t)m->num_psv_outputs[i];
 
    // TODO: Add viewID records size
 
    uint32_t dependency_table_size = 0;
-   if (state->state.sig_input_vectors > 0) {
+   if (state->state.psv1.sig_input_vectors > 0) {
       for (unsigned i = 0; i < 4; ++i) {
-         if (state->state.sig_output_vectors[i] > 0)
+         if (state->state.psv1.sig_output_vectors[i] > 0)
             dependency_table_size += sizeof(uint32_t) *
-            compute_input_output_table_dwords(state->state.sig_input_vectors,
-               state->state.sig_output_vectors[i]);
+            compute_input_output_table_dwords(state->state.psv1.sig_input_vectors,
+               state->state.psv1.sig_output_vectors[i]);
       }
-      if (state->state.shader_stage == DXIL_HULL_SHADER && state->state.sig_patch_const_or_prim_vectors) {
-         dependency_table_size += sizeof(uint32_t) * compute_input_output_table_dwords(state->state.sig_input_vectors,
-            state->state.sig_patch_const_or_prim_vectors);
+      if (state->state.psv1.shader_stage == DXIL_HULL_SHADER && state->state.psv1.sig_patch_const_or_prim_vectors) {
+         dependency_table_size += sizeof(uint32_t) * compute_input_output_table_dwords(state->state.psv1.sig_input_vectors,
+            state->state.psv1.sig_patch_const_or_prim_vectors);
       }
    }
-   if (state->state.shader_stage == DXIL_DOMAIN_SHADER &&
-       state->state.sig_patch_const_or_prim_vectors &&
-       state->state.sig_output_vectors[0]) {
+   if (state->state.psv1.shader_stage == DXIL_DOMAIN_SHADER &&
+       state->state.psv1.sig_patch_const_or_prim_vectors &&
+       state->state.psv1.sig_output_vectors[0]) {
       dependency_table_size += sizeof(uint32_t) * compute_input_output_table_dwords(
-         state->state.sig_patch_const_or_prim_vectors, state->state.sig_output_vectors[0]);
+         state->state.psv1.sig_patch_const_or_prim_vectors, state->state.psv1.sig_output_vectors[0]);
    }
    size += dependency_table_size;
    // TODO: Domain shader table goes here
@@ -252,10 +254,10 @@ dxil_container_add_state_validation(struct dxil_container *c,
    if (!add_part_header(c, DXIL_PSV0, size))
       return false;
 
-   if (!blob_write_bytes(&c->parts, &psv1_size, sizeof(psv1_size)))
+   if (!blob_write_bytes(&c->parts, &psv_size, sizeof(psv_size)))
        return false;
 
-   if (!blob_write_bytes(&c->parts, &state->state, psv1_size))
+   if (!blob_write_bytes(&c->parts, &state->state, psv_size))
       return false;
 
    if (!blob_write_bytes(&c->parts, &resource_count, sizeof(resource_count)))

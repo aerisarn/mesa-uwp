@@ -82,7 +82,7 @@ struct dxil_resource {
 };
 
 struct dxil_validation_state {
-   struct dxil_psv_runtime_info_1 state;
+   struct dxil_psv_runtime_info_2 state;
    const struct dxil_resource *resources;
    uint32_t num_resources;
 };

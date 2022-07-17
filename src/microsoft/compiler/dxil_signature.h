@@ -141,6 +141,13 @@ struct dxil_psv_runtime_info_1 {
    uint8_t sig_output_vectors[4];
 };
 
+struct dxil_psv_runtime_info_2 {
+   struct dxil_psv_runtime_info_1 psv1;
+   uint32_t num_threads_x;
+   uint32_t num_threads_y;
+   uint32_t num_threads_z;
+};
+
 struct dxil_mdnode;
 struct dxil_module;
 
