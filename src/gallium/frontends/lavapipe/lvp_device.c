@@ -624,7 +624,7 @@ lvp_get_physical_device_features_1_1(struct lvp_physical_device *pdevice,
    f->multiviewGeometryShader             = true;
    f->multiviewTessellationShader         = true;
    f->variablePointersStorageBuffer       = true;
-   f->variablePointers                    = false;
+   f->variablePointers                    = true;
    f->protectedMemory                     = false;
    f->samplerYcbcrConversion              = false;
    f->shaderDrawParameters                = true;
