@@ -11,3 +11,4 @@ VK_EXT_border_color_swizzle on lavapipe, ANV, turnip, RADV
 VK_EXT_shader_module_identifier on RADV
 variablePointers on lavapipe
 VK_EXT_multisampled_render_to_single_sampled on lavapipe
+VK_EXT_shader_subgroup_vote/ballot on lavapipe
