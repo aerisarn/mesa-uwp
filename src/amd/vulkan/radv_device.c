@@ -5512,7 +5512,7 @@ radv_get_buffer_memory_requirements(struct radv_device *device, VkDeviceSize siz
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
       ((1u << device->physical_device->memory_properties.memoryTypeCount) - 1u) &
       ~device->physical_device->memory_types_32bit;
-   
+
    /* Allow 32-bit address-space for DGC usage, as this buffer will contain
     * cmd buffer upload buffers, and those get passed to shaders through 32-bit
     * pointers.

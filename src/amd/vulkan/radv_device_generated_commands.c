@@ -370,7 +370,6 @@ build_dgc_prepare_shader(struct radv_device *dev)
       nir_store_var(&b, cmd_buf.offset, nir_imul(&b, global_id, cmd_buf_stride), 1);
       nir_ssa_def *cmd_buf_end = nir_iadd(&b, nir_load_var(&b, cmd_buf.offset), cmd_buf_stride);
 
-      
       nir_ssa_def *stream_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_STREAM);
       nir_ssa_def *stream_base = nir_imul(&b, sequence_id, stream_stride);
 
