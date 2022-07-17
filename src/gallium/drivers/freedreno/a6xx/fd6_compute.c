@@ -106,14 +106,15 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 static void
 fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
 {
-   struct fd6_compute_state *cs = ctx->compute;
+   struct fd6_compute_state *cs = (struct fd6_compute_state *)ctx->compute;
    struct fd_ringbuffer *ring = ctx->batch->draw;
    unsigned nglobal = 0;
 
    if (unlikely(!cs->v)) {
+      struct ir3_shader_state *hwcso = (struct ir3_shader_state *)cs->hwcso;
       struct ir3_shader_key key = {};
 
-      cs->v = ir3_shader_variant(ir3_get_shader(cs->hwcso), key, false, &ctx->debug);
+      cs->v = ir3_shader_variant(ir3_get_shader(hwcso), key, false, &ctx->debug);
       if (!cs->v)
          return;
 
@@ -246,7 +247,8 @@ static void *
 fd6_compute_state_create(struct pipe_context *pctx,
                          const struct pipe_compute_state *cso)
 {
-   struct fd6_compute_state *hwcso = calloc(1, sizeof(*hwcso));
+   struct fd6_compute_state *hwcso =
+         (struct fd6_compute_state *)calloc(1, sizeof(*hwcso));
    hwcso->hwcso = ir3_shader_compute_state_create(pctx, cso);
    return hwcso;
 }
@@ -254,7 +256,7 @@ fd6_compute_state_create(struct pipe_context *pctx,
 static void
 fd6_compute_state_delete(struct pipe_context *pctx, void *_hwcso)
 {
-   struct fd6_compute_state *hwcso = _hwcso;
+   struct fd6_compute_state *hwcso = (struct fd6_compute_state *)_hwcso;
    ir3_shader_state_delete(pctx, hwcso->hwcso);
    if (hwcso->stateobj)
       fd_ringbuffer_del(hwcso->stateobj);

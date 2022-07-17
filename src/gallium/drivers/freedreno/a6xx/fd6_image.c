@@ -224,7 +224,7 @@ fd6_build_bindless_state(struct fd_context *ctx, enum pipe_shader_type shader,
             "%s bindless", _mesa_shader_stage_to_abbrev(shader));
       fd_bo_mark_for_dump(set->bo);
 
-      uint32_t *desc_buf = fd_bo_map(set->bo);
+      uint32_t *desc_buf = (uint32_t *)fd_bo_map(set->bo);
 
       memcpy(desc_buf, set->descriptor, sizeof(set->descriptor));
 

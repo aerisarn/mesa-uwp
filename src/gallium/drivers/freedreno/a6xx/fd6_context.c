@@ -89,7 +89,7 @@ fd6_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
    OUT_PKT4(ring, REG_A6XX_VFD_DECODE(0), 2 * num_elements);
    for (int32_t i = 0; i < num_elements; i++) {
       const struct pipe_vertex_element *elem = &elements[i];
-      enum pipe_format pfmt = elem->src_format;
+      enum pipe_format pfmt = (enum pipe_format)elem->src_format;
       enum a6xx_format fmt = fd6_vertex_format(pfmt);
       bool isint = util_format_is_pure_integer(pfmt);
       assert(fmt != FMT6_NONE);
@@ -112,7 +112,7 @@ fd6_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
 static void
 fd6_vertex_state_delete(struct pipe_context *pctx, void *hwcso)
 {
-   struct fd6_vertex_stateobj *so = hwcso;
+   struct fd6_vertex_stateobj *so = (struct fd6_vertex_stateobj *)hwcso;
 
    fd_ringbuffer_del(so->stateobj);
    FREE(hwcso);

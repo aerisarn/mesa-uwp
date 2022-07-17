@@ -54,7 +54,7 @@ blend_func(unsigned func)
       return BLEND_DST_MINUS_SRC;
    default:
       DBG("invalid blend func: %x", func);
-      return 0;
+      return (enum a3xx_rb_blend_opcode)0;
    }
 }
 
@@ -69,11 +69,11 @@ __fd6_setup_blend_variant(struct fd6_blend_stateobj *blend,
    unsigned mrt_blend = 0;
 
    if (cso->logicop_enable) {
-      rop = cso->logicop_func; /* maps 1:1 */
-      reads_dest = util_logicop_reads_dest(cso->logicop_func);
+      rop = (enum a3xx_rop_code)cso->logicop_func; /* maps 1:1 */
+      reads_dest = util_logicop_reads_dest((enum pipe_logicop)cso->logicop_func);
    }
 
-   so = rzalloc_size(blend, sizeof(*so));
+   so = (struct fd6_blend_variant *)rzalloc_size(blend, sizeof(*so));
    if (!so)
       return NULL;
 
@@ -153,7 +153,7 @@ fd6_blend_state_create(struct pipe_context *pctx,
 {
    struct fd6_blend_stateobj *so;
 
-   so = rzalloc_size(NULL, sizeof(*so));
+   so = (struct fd6_blend_stateobj *)rzalloc_size(NULL, sizeof(*so));
    if (!so)
       return NULL;
 
@@ -161,7 +161,7 @@ fd6_blend_state_create(struct pipe_context *pctx,
    so->ctx = fd_context(pctx);
 
    if (cso->logicop_enable) {
-      so->reads_dest |= util_logicop_reads_dest(cso->logicop_func);
+      so->reads_dest |= util_logicop_reads_dest((enum pipe_logicop)cso->logicop_func);
    }
 
    so->use_dual_src_blend =
@@ -187,7 +187,7 @@ fd6_blend_state_create(struct pipe_context *pctx,
 void
 fd6_blend_state_delete(struct pipe_context *pctx, void *hwcso)
 {
-   struct fd6_blend_stateobj *so = hwcso;
+   struct fd6_blend_stateobj *so = (struct fd6_blend_stateobj *)hwcso;
 
    util_dynarray_foreach (&so->variants, struct fd6_blend_variant *, vp) {
       struct fd6_blend_variant *v = *vp;

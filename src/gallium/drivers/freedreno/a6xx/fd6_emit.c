@@ -530,7 +530,7 @@ build_prim_mode(struct fd6_emit *emit, struct fd_context *ctx, bool gmem)
       prim_mode = NO_FLUSH;
    }
    OUT_REG(ring, A6XX_GRAS_SC_CNTL(.ccusinglecachelinesize = 2,
-                                   .single_prim_mode = prim_mode));
+                                   .single_prim_mode = (enum a6xx_single_prim_mode)prim_mode));
    return ring;
 }
 
@@ -553,7 +553,7 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
    }
 
    u_foreach_bit (b, emit->dirty_groups) {
-      enum fd6_state_id group = b;
+      enum fd6_state_id group = (enum fd6_state_id)b;
       struct fd_ringbuffer *state = NULL;
 
       switch (group) {
@@ -706,7 +706,7 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
          (BIT(FD6_GROUP_PROG) | BIT(FD6_GROUP_CS_TEX) | BIT(FD6_GROUP_CS_BINDLESS));
 
    u_foreach_bit (b, gen_dirty) {
-      enum fd6_state_id group = b;
+      enum fd6_state_id group = (enum fd6_state_id)b;
 
       switch (group) {
       case FD6_GROUP_PROG:

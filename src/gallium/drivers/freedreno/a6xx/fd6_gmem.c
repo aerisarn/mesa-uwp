@@ -85,7 +85,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
     * the effects of the fragment on the framebuffer contents are undefined."
     */
    unsigned max_layer_index = 0;
-   enum a6xx_format mrt0_format = 0;
+   enum a6xx_format mrt0_format = (enum a6xx_format)0;
 
    for (i = 0; i < pfb->nr_cbufs; i++) {
       enum a3xx_color_swap swap = WZYX;
@@ -105,7 +105,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
       uint32_t base = gmem ? gmem->cbuf_base[i] : 0;
       slice = fd_resource_slice(rsc, psurf->u.tex.level);
-      uint32_t tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
+      enum a6xx_tile_mode tile_mode = (enum a6xx_tile_mode)
+            fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
       enum a6xx_format format = fd6_color_format(pformat, tile_mode);
       sint = util_format_is_pure_sint(pformat);
       uint = util_format_is_pure_uint(pformat);
@@ -118,7 +119,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 
       stride = fd_resource_pitch(rsc, psurf->u.tex.level);
       array_stride = fd_resource_layer_stride(rsc, psurf->u.tex.level);
-      swap = fd6_color_swap(pformat, rsc->layout.tile_mode);
+      swap = fd6_color_swap(pformat, (enum a6xx_tile_mode)rsc->layout.tile_mode);
 
       max_layer_index = psurf->u.tex.last_layer - psurf->u.tex.first_layer;
 
@@ -274,7 +275,8 @@ patch_fb_read_gmem(struct fd_batch *batch)
 
    /* always TILE6_2 mode in GMEM, which also means no swap: */
    uint32_t descriptor[FDL6_TEX_CONST_DWORDS] = {
-         A6XX_TEX_CONST_0_FMT(fd6_texture_format(format, rsc->layout.tile_mode)) |
+         A6XX_TEX_CONST_0_FMT(fd6_texture_format(
+               format, (enum a6xx_tile_mode)rsc->layout.tile_mode)) |
          A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
          A6XX_TEX_CONST_0_SWAP(WZYX) |
          A6XX_TEX_CONST_0_TILE_MODE(TILE6_2) |
@@ -528,7 +530,8 @@ static void
 check_vsc_overflow(struct fd_context *ctx)
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
-   struct fd6_control *control = fd_bo_map(fd6_ctx->control_mem);
+   struct fd6_control *control =
+         (struct fd6_control *)fd_bo_map(fd6_ctx->control_mem);
    uint32_t vsc_overflow = control->vsc_overflow;
 
    if (!vsc_overflow)
@@ -1013,11 +1016,13 @@ emit_blit(struct fd_batch *batch, struct fd_ringbuffer *ring, uint32_t base,
 
    assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
-   uint32_t tile_mode = fd_resource_tile_mode(&rsc->b.b, psurf->u.tex.level);
+   enum a6xx_tile_mode tile_mode = (enum a6xx_tile_mode)
+         fd_resource_tile_mode(&rsc->b.b, psurf->u.tex.level);
    enum a6xx_format format = fd6_color_format(pfmt, tile_mode);
    uint32_t stride = fd_resource_pitch(rsc, psurf->u.tex.level);
    uint32_t array_stride = fd_resource_layer_stride(rsc, psurf->u.tex.level);
-   enum a3xx_color_swap swap = fd6_color_swap(pfmt, rsc->layout.tile_mode);
+   enum a3xx_color_swap swap =
+         fd6_color_swap(pfmt, (enum a6xx_tile_mode)rsc->layout.tile_mode);
    enum a3xx_msaa_samples samples = fd_msaa_samples(rsc->b.b.nr_samples);
 
    OUT_REG(ring,

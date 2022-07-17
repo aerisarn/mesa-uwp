@@ -355,12 +355,18 @@ struct PACKED fd6_primitives_sample {
 };
 DEFINE_CAST(fd_acc_query_sample, fd6_primitives_sample);
 
+/* g++ is a picky about offsets that cannot be resolved at compile time, so
+ * roll our own __offsetof()
+ */
+#define __offsetof(type, field)                                                \
+   ({ type _x = {}; ((uint8_t *)&_x.field) - ((uint8_t *)&_x);})
+
 #define primitives_relocw(ring, aq, field)                                     \
    OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
-             offsetof(struct fd6_primitives_sample, field), 0, 0);
+             __offsetof(struct fd6_primitives_sample, field), 0, 0);
 #define primitives_reloc(ring, aq, field)                                      \
    OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
-             offsetof(struct fd6_primitives_sample, field), 0, 0);
+             __offsetof(struct fd6_primitives_sample, field), 0, 0);
 
 #ifdef DEBUG_COUNTERS
 static const unsigned counter_count = 10;
@@ -586,7 +592,7 @@ struct fd_batch_query_data {
 static void
 perfcntr_resume(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
 {
-   struct fd_batch_query_data *data = aq->query_data;
+   struct fd_batch_query_data *data = (struct fd_batch_query_data *)aq->query_data;
    struct fd_screen *screen = data->screen;
    struct fd_ringbuffer *ring = batch->draw;
 
@@ -626,7 +632,7 @@ perfcntr_resume(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
 static void
 perfcntr_pause(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
 {
-   struct fd_batch_query_data *data = aq->query_data;
+   struct fd_batch_query_data *data = (struct fd_batch_query_data *)aq->query_data;
    struct fd_screen *screen = data->screen;
    struct fd_ringbuffer *ring = batch->draw;
 
@@ -667,7 +673,8 @@ perfcntr_accumulate_result(struct fd_acc_query *aq,
                            struct fd_acc_query_sample *s,
                            union pipe_query_result *result)
 {
-   struct fd_batch_query_data *data = aq->query_data;
+   struct fd_batch_query_data *data =
+         (struct fd_batch_query_data *)aq->query_data;
    struct fd6_query_sample *sp = fd6_query_sample(s);
 
    for (unsigned i = 0; i < data->num_query_entries; i++) {

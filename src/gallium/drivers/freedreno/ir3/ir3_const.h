@@ -190,8 +190,9 @@ ir3_emit_user_consts(const struct ir3_shader_variant *v,
       assert((offset % 16) == 0);
 
       if (cb->user_buffer) {
-         emit_const_user(ring, v, state->range[i].offset / 4, size / 4,
-                         cb->user_buffer + state->range[i].start);
+         uint8_t *p = (uint8_t *)cb->user_buffer;
+         p += state->range[i].start;
+         emit_const_user(ring, v, state->range[i].offset / 4, size / 4, (uint32_t *)p);
       } else {
          emit_const_prsc(ring, v, state->range[i].offset / 4, offset, size / 4,
                          cb->buffer);
@@ -408,7 +409,7 @@ emit_common_consts(const struct ir3_shader_variant *v,
     * different state-objects we could avoid this.
     */
    if (dirty && is_stateobj(ring))
-      dirty = ~0;
+      dirty = (enum fd_dirty_shader_state)~0;
 
    if (dirty & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST)) {
       struct fd_constbuf_stateobj *constbuf;
@@ -444,7 +445,7 @@ emit_kernel_params(struct fd_context *ctx, const struct ir3_shader_variant *v,
       ring_wfi(ctx->batch, ring);
       emit_const_user(ring, v, offset * 4,
                       align(v->cs.req_input_mem, 4),
-                      info->input);
+                      (uint32_t *)info->input);
    }
 }
 

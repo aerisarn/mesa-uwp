@@ -106,7 +106,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
    so->writes_z = util_writes_depth(cso);
 
    so->rb_depth_cntl |=
-      A6XX_RB_DEPTH_CNTL_ZFUNC(cso->depth_func); /* maps 1:1 */
+      A6XX_RB_DEPTH_CNTL_ZFUNC((enum adreno_compare_func)cso->depth_func); /* maps 1:1 */
 
    if (cso->depth_enabled) {
       so->rb_depth_cntl |=
@@ -167,12 +167,12 @@ fd6_zsa_state_create(struct pipe_context *pctx,
        * stencil test we don't really know what the updates to the
        * depth buffer will be.
        */
-      update_lrz_stencil(so, s->func, util_writes_stencil(s));
+      update_lrz_stencil(so, (enum pipe_compare_func)s->func, util_writes_stencil(s));
 
       so->rb_stencil_control |=
          A6XX_RB_STENCIL_CONTROL_STENCIL_READ |
          A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
-         A6XX_RB_STENCIL_CONTROL_FUNC(s->func) | /* maps 1:1 */
+         A6XX_RB_STENCIL_CONTROL_FUNC((enum adreno_compare_func)s->func) | /* maps 1:1 */
          A6XX_RB_STENCIL_CONTROL_FAIL(fd_stencil_op(s->fail_op)) |
          A6XX_RB_STENCIL_CONTROL_ZPASS(fd_stencil_op(s->zpass_op)) |
          A6XX_RB_STENCIL_CONTROL_ZFAIL(fd_stencil_op(s->zfail_op));
@@ -183,11 +183,11 @@ fd6_zsa_state_create(struct pipe_context *pctx,
       if (cso->stencil[1].enabled) {
          const struct pipe_stencil_state *bs = &cso->stencil[1];
 
-         update_lrz_stencil(so, bs->func, util_writes_stencil(bs));
+         update_lrz_stencil(so, (enum pipe_compare_func)bs->func, util_writes_stencil(bs));
 
          so->rb_stencil_control |=
             A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
-            A6XX_RB_STENCIL_CONTROL_FUNC_BF(bs->func) | /* maps 1:1 */
+            A6XX_RB_STENCIL_CONTROL_FUNC_BF((enum adreno_compare_func)bs->func) | /* maps 1:1 */
             A6XX_RB_STENCIL_CONTROL_FAIL_BF(fd_stencil_op(bs->fail_op)) |
             A6XX_RB_STENCIL_CONTROL_ZPASS_BF(fd_stencil_op(bs->zpass_op)) |
             A6XX_RB_STENCIL_CONTROL_ZFAIL_BF(fd_stencil_op(bs->zfail_op));
@@ -210,7 +210,8 @@ fd6_zsa_state_create(struct pipe_context *pctx,
       so->rb_alpha_control =
          A6XX_RB_ALPHA_CONTROL_ALPHA_TEST |
          A6XX_RB_ALPHA_CONTROL_ALPHA_REF(ref) |
-         A6XX_RB_ALPHA_CONTROL_ALPHA_TEST_FUNC(cso->alpha_func);
+         A6XX_RB_ALPHA_CONTROL_ALPHA_TEST_FUNC(
+               (enum adreno_compare_func)cso->alpha_func);
    }
 
    for (int i = 0; i < 4; i++) {
@@ -243,7 +244,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 void
 fd6_zsa_state_delete(struct pipe_context *pctx, void *hwcso)
 {
-   struct fd6_zsa_stateobj *so = hwcso;
+   struct fd6_zsa_stateobj *so = (struct fd6_zsa_stateobj *)hwcso;
 
    for (int i = 0; i < ARRAY_SIZE(so->stateobj); i++)
       fd_ringbuffer_del(so->stateobj[i]);

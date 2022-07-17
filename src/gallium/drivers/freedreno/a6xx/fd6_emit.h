@@ -306,7 +306,7 @@ fd6_stage2shadersb(gl_shader_stage type)
       return SB6_CS_SHADER;
    default:
       unreachable("bad shader type");
-      return ~0;
+      return (enum a6xx_state_block)~0;
    }
 }
 
@@ -326,6 +326,8 @@ fd6_gl2spacing(enum gl_tess_spacing spacing)
    }
 }
 
+BEGINC;
+
 void fd6_emit_3d_state(struct fd_ringbuffer *ring,
                        struct fd6_emit *emit) assert_dt;
 
@@ -336,6 +338,8 @@ void fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 void fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring);
 
 void fd6_emit_init_screen(struct pipe_screen *pscreen);
+
+ENDC;
 
 static inline void
 fd6_emit_ib(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)

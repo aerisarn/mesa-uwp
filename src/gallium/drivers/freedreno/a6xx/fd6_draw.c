@@ -138,24 +138,27 @@ get_program_state(struct fd_context *ctx, const struct pipe_draw_info *info)
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct ir3_cache_key key = {
-         .vs = ctx->prog.vs,
-         .gs = ctx->prog.gs,
-         .fs = ctx->prog.fs,
-         .key = {
-               .rasterflat = ctx->rasterizer->flatshade,
-               .ucp_enables = ctx->rasterizer->clip_plane_enable,
-               .sample_shading = (ctx->min_samples > 1),
-               .msaa = (ctx->framebuffer.samples > 1),
-         },
+         .vs = (struct ir3_shader_state *)ctx->prog.vs,
+         .gs = (struct ir3_shader_state *)ctx->prog.gs,
+         .fs = (struct ir3_shader_state *)ctx->prog.fs,
          .clip_plane_enable = ctx->rasterizer->clip_plane_enable,
          .patch_vertices = ctx->patch_vertices,
    };
 
-   if (info->mode == PIPE_PRIM_PATCHES) {
-      struct shader_info *gs_info = ir3_get_shader_info(ctx->prog.gs);
+   /* Some gcc versions get confused about designated order, so workaround
+    * by not initializing these inline:
+    */
+   key.key.ucp_enables = ctx->rasterizer->clip_plane_enable;
+   key.key.sample_shading = (ctx->min_samples > 1);
+   key.key.msaa = (ctx->framebuffer.samples > 1);
+   key.key.rasterflat = ctx->rasterizer->flatshade;
 
-      key.hs = ctx->prog.hs;
-      key.ds = ctx->prog.ds;
+   if (info->mode == PIPE_PRIM_PATCHES) {
+      struct shader_info *gs_info =
+            ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.gs);
+
+      key.hs = (struct ir3_shader_state *)ctx->prog.hs;
+      key.ds = (struct ir3_shader_state *)ctx->prog.ds;
 
       struct shader_info *ds_info = ir3_get_shader_info(key.ds);
       key.key.tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);
@@ -193,7 +196,8 @@ flush_streamout(struct fd_context *ctx, struct fd6_emit *emit)
 
    for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
       if (emit->streamout_mask & (1 << i)) {
-         fd6_event_write(ctx->batch, ring, FLUSH_SO_0 + i, false);
+         enum vgt_event_type evt = (enum vgt_event_type)(FLUSH_SO_0 + i);
+         fd6_event_write(ctx->batch, ring, evt, false);
       }
    }
 }
@@ -292,7 +296,8 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    }
 
    if (info->mode == PIPE_PRIM_PATCHES) {
-      struct shader_info *ds_info = ir3_get_shader_info(ctx->prog.ds);
+      struct shader_info *ds_info =
+            ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.ds);
       unsigned tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);
 
       uint32_t factor_stride = ir3_tess_factor_stride(tessellation);
@@ -300,9 +305,9 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       STATIC_ASSERT(IR3_TESS_ISOLINES == TESS_ISOLINES + 1);
       STATIC_ASSERT(IR3_TESS_TRIANGLES == TESS_TRIANGLES + 1);
       STATIC_ASSERT(IR3_TESS_QUADS == TESS_QUADS + 1);
-      draw0.patch_type = tessellation - 1;
+      draw0.patch_type = (enum a6xx_patch_type)(tessellation - 1);
 
-      draw0.prim_type = DI_PT_PATCHES0 + ctx->patch_vertices;
+      draw0.prim_type = (enum pc_di_primtype)(DI_PT_PATCHES0 + ctx->patch_vertices);
       draw0.tess_enable = true;
 
       /* maximum number of patches that can fit in tess factor/param buffers */
@@ -501,7 +506,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) a
    OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(zsbuf->lrz_width - 1) |
                      A6XX_GRAS_2D_DST_BR_Y(zsbuf->lrz_height - 1));
 
-   fd6_event_write(batch, ring, 0x3f, false);
+   fd6_event_write(batch, ring, (enum vgt_event_type)0x3f, false);
 
    if (screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit != screen->info->a6xx.magic.RB_DBG_ECO_CNTL) {
       /* This a non-context register, so we have to WFI before changing. */

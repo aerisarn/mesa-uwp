@@ -122,7 +122,7 @@ fd6_rasterizer_state_create(struct pipe_context *pctx,
 void
 fd6_rasterizer_state_delete(struct pipe_context *pctx, void *hwcso)
 {
-   struct fd6_rasterizer_stateobj *so = hwcso;
+   struct fd6_rasterizer_stateobj *so = (struct fd6_rasterizer_stateobj *)hwcso;
 
    for (unsigned i = 0; i < ARRAY_SIZE(so->stateobjs); i++)
       if (so->stateobjs[i])

@@ -791,7 +791,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       }
 
       OUT_PKT4(ring, REG_A6XX_PC_TESS_CNTL, 1);
-      uint32_t output;
+      enum a6xx_tess_output output;
       if (ds->tess.point_mode)
          output = TESS_POINTS;
       else if (ds->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES)
@@ -1039,7 +1039,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                   COND(gs_reads_primid, A6XX_PC_GS_OUT_CNTL_PRIMITIVE_ID) |
                   A6XX_PC_GS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
-      uint32_t output;
+      enum a6xx_tess_output output;
       switch (gs->gs.output_primitive) {
       case SHADER_PRIM_POINTS:
          output = TESS_POINTS;
@@ -1260,7 +1260,7 @@ emit_interp_state(struct fd_ringbuffer *ring, const struct fd6_program_state *st
          /* If the last geometry shader doesn't statically write these, they're
           * implicitly zero and the FS is supposed to read zero.
           */
-         if (ir3_find_output(last_shader, fs->inputs[j].slot) < 0 &&
+         if (ir3_find_output(last_shader, (gl_varying_slot)fs->inputs[j].slot) < 0 &&
              (compmask & 0x1)) {
             vinterp[loc / 16] |= INTERP_ZERO << ((loc % 16) * 2);
          } else {
@@ -1294,7 +1294,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
                    struct ir3_shader_variant *fs,
                    const struct ir3_cache_key *key) in_dt
 {
-   struct fd_context *ctx = fd_context(data);
+   struct fd_context *ctx = fd_context((struct pipe_context *)data);
    struct fd_screen *screen = ctx->screen;
    struct fd6_program_state *state = CALLOC_STRUCT(fd6_program_state);
 

@@ -688,8 +688,7 @@ fd_context_all_clean(struct fd_context *ctx) assert_dt
  * bit.
  */
 static inline void
-fd_context_add_map(struct fd_context *ctx, enum fd_dirty_3d_state dirty,
-                   uint32_t gen_dirty)
+fd_context_add_map(struct fd_context *ctx, uint32_t dirty, uint32_t gen_dirty)
 {
    u_foreach_bit (b, dirty) {
       ctx->gen_dirty_map[b] |= gen_dirty;

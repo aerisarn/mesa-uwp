@@ -45,7 +45,7 @@ static void fd6_texture_state_destroy(struct fd6_texture_state *state);
 static void
 remove_tex_entry(struct fd6_context *fd6_ctx, struct hash_entry *entry)
 {
-   struct fd6_texture_state *tex = entry->data;
+   struct fd6_texture_state *tex = (struct fd6_texture_state *)entry->data;
    _mesa_hash_table_remove(fd6_ctx->tex_cache, entry);
    fd6_texture_state_destroy(tex);
 }
@@ -73,7 +73,7 @@ tex_clamp(unsigned wrap, bool *needs_border)
        */
    default:
       DBG("invalid wrap: %u", wrap);
-      return 0;
+      return (enum a6xx_tex_clamp)0;
    }
 }
 
@@ -87,7 +87,7 @@ tex_filter(unsigned filter, bool aniso)
       return aniso ? A6XX_TEX_ANISO : A6XX_TEX_LINEAR;
    default:
       DBG("invalid filter: %u", filter);
-      return 0;
+      return (enum a6xx_tex_filter)0;
    }
 }
 
@@ -206,15 +206,15 @@ setup_border_color(struct fd_screen *screen,
 static uint32_t
 bcolor_key_hash(const void *_key)
 {
-   const struct fd6_bcolor_entry *key = _key;
+   const struct fd6_bcolor_entry *key = (const struct fd6_bcolor_entry *)_key;
    return XXH32(key, sizeof(*key), 0);
 }
 
 static bool
 bcolor_key_equals(const void *_a, const void *_b)
 {
-   const struct fd6_bcolor_entry *a = _a;
-   const struct fd6_bcolor_entry *b = _b;
+   const struct fd6_bcolor_entry *a = (const struct fd6_bcolor_entry *)_a;
+   const struct fd6_bcolor_entry *b = (const struct fd6_bcolor_entry *)_b;
    return memcmp(a, b, sizeof(struct fd6_bcolor_entry)) == 0;
 }
 
@@ -222,7 +222,8 @@ static unsigned
 get_bcolor_offset(struct fd_context *ctx, const struct pipe_sampler_state *sampler)
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
-   struct fd6_bcolor_entry *entries = fd_bo_map(fd6_ctx->bcolor_mem);
+   struct fd6_bcolor_entry *entries =
+         (struct fd6_bcolor_entry *)fd_bo_map(fd6_ctx->bcolor_mem);
    struct fd6_bcolor_entry key = {};
 
    setup_border_color(ctx->screen, sampler, &key);
@@ -273,7 +274,7 @@ fd6_sampler_state_create(struct pipe_context *pctx,
       COND(miplinear, A6XX_TEX_SAMP_0_MIPFILTER_LINEAR_NEAR) |
       A6XX_TEX_SAMP_0_XY_MAG(tex_filter(cso->mag_img_filter, aniso)) |
       A6XX_TEX_SAMP_0_XY_MIN(tex_filter(cso->min_img_filter, aniso)) |
-      A6XX_TEX_SAMP_0_ANISO(aniso) |
+      A6XX_TEX_SAMP_0_ANISO((enum a6xx_tex_aniso)aniso) |
       A6XX_TEX_SAMP_0_WRAP_S(tex_clamp(cso->wrap_s, &needs_border)) |
       A6XX_TEX_SAMP_0_WRAP_T(tex_clamp(cso->wrap_t, &needs_border)) |
       A6XX_TEX_SAMP_0_WRAP_R(tex_clamp(cso->wrap_r, &needs_border));
@@ -290,7 +291,7 @@ fd6_sampler_state_create(struct pipe_context *pctx,
 
    if (cso->compare_mode)
       so->texsamp1 |=
-         A6XX_TEX_SAMP_1_COMPARE_FUNC(cso->compare_func); /* maps 1:1 */
+         A6XX_TEX_SAMP_1_COMPARE_FUNC((enum adreno_compare_func)cso->compare_func); /* maps 1:1 */
 
    if (needs_border)
       so->texsamp2 = A6XX_TEX_SAMP_2_BCOLOR(get_bcolor_offset(ctx, cso));
@@ -310,12 +311,12 @@ fd6_sampler_state_delete(struct pipe_context *pctx, void *hwcso)
 {
    struct fd_context *ctx = fd_context(pctx);
    struct fd6_context *fd6_ctx = fd6_context(ctx);
-   struct fd6_sampler_stateobj *samp = hwcso;
+   struct fd6_sampler_stateobj *samp = (struct fd6_sampler_stateobj *)hwcso;
 
    fd_screen_lock(ctx->screen);
 
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
-      struct fd6_texture_state *state = entry->data;
+      struct fd6_texture_state *state = (struct fd6_texture_state *)entry->data;
 
       for (unsigned i = 0; i < ARRAY_SIZE(state->key.samp_seqno); i++) {
          if (samp->seqno == state->key.samp_seqno[i]) {
@@ -414,7 +415,7 @@ fd6_sampler_view_update(struct fd_context *ctx,
       struct fd_resource *plane1 = fd_resource(rsc->b.b.next);
       struct fd_resource *plane2 =
          plane1 ? fd_resource(plane1->b.b.next) : NULL;
-      static const struct fdl_layout dummy_layout = {0};
+      static const struct fdl_layout dummy_layout = {};
       const struct fdl_layout *layouts[3] = {
          &rsc->layout,
          plane1 ? &plane1->layout : &dummy_layout,
@@ -481,7 +482,7 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
    fd_screen_lock(ctx->screen);
 
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
-      struct fd6_texture_state *state = entry->data;
+      struct fd6_texture_state *state = (struct fd6_texture_state *)entry->data;
 
       for (unsigned i = 0; i < ARRAY_SIZE(state->key.view_seqno); i++) {
          if (view->seqno == state->key.view_seqno[i]) {
@@ -501,15 +502,15 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
 static uint32_t
 tex_key_hash(const void *_key)
 {
-   const struct fd6_texture_key *key = _key;
+   const struct fd6_texture_key *key = (const struct fd6_texture_key *)_key;
    return XXH32(key, sizeof(*key), 0);
 }
 
 static bool
 tex_key_equals(const void *_a, const void *_b)
 {
-   const struct fd6_texture_key *a = _a;
-   const struct fd6_texture_key *b = _b;
+   const struct fd6_texture_key *a = (const struct fd6_texture_key *)_a;
+   const struct fd6_texture_key *b = (const struct fd6_texture_key *)_b;
    return memcmp(a, b, sizeof(struct fd6_texture_key)) == 0;
 }
 
@@ -684,7 +685,7 @@ handle_invalidates(struct fd_context *ctx)
    fd_screen_lock(ctx->screen);
 
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
-      struct fd6_texture_state *state = entry->data;
+      struct fd6_texture_state *state = (struct fd6_texture_state *)entry->data;
 
       if (state->invalidate)
          remove_tex_entry(fd6_ctx, entry);
@@ -751,7 +752,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type)
       _mesa_hash_table_search_pre_hashed(fd6_ctx->tex_cache, hash, &key);
 
    if (entry) {
-      state = entry->data;
+      state = (struct fd6_texture_state *)entry->data;
       for (unsigned i = 0; i < tex->num_textures; i++) {
          uint16_t seqno = tex->textures[i] ?
                fd_resource(tex->textures[i]->texture)->seqno : 0;
@@ -802,13 +803,14 @@ fd6_rebind_resource(struct fd_context *ctx, struct fd_resource *rsc) assert_dt
    struct fd6_context *fd6_ctx = fd6_context(ctx);
 
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
-      struct fd6_texture_state *state = entry->data;
+      struct fd6_texture_state *state = (struct fd6_texture_state *)entry->data;
 
       STATIC_ASSERT(ARRAY_SIZE(state->view_rsc_seqno) == ARRAY_SIZE(state->key.view_seqno));
 
       for (unsigned i = 0; i < ARRAY_SIZE(state->view_rsc_seqno); i++) {
          if (rsc->seqno == state->view_rsc_seqno[i]) {
-            struct fd6_texture_state *tex = entry->data;
+            struct fd6_texture_state *tex =
+                  (struct fd6_texture_state *)entry->data;
             tex->invalidate = true;
             fd6_ctx->tex_cache_needs_invalidate = true;
          }
