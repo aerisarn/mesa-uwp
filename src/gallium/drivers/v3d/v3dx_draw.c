@@ -936,30 +936,6 @@ v3d_update_job_ez(struct v3d_context *v3d, struct v3d_job *job)
                 job->first_ez_state = job->ez_state;
 }
 
-static uint32_t
-v3d_hw_prim_type(enum pipe_prim_type prim_type)
-{
-        switch (prim_type) {
-        case PIPE_PRIM_POINTS:
-        case PIPE_PRIM_LINES:
-        case PIPE_PRIM_LINE_LOOP:
-        case PIPE_PRIM_LINE_STRIP:
-        case PIPE_PRIM_TRIANGLES:
-        case PIPE_PRIM_TRIANGLE_STRIP:
-        case PIPE_PRIM_TRIANGLE_FAN:
-                return prim_type;
-
-        case PIPE_PRIM_LINES_ADJACENCY:
-        case PIPE_PRIM_LINE_STRIP_ADJACENCY:
-        case PIPE_PRIM_TRIANGLES_ADJACENCY:
-        case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
-                return 8 + (prim_type - PIPE_PRIM_LINES_ADJACENCY);
-
-        default:
-                unreachable("Unsupported primitive type");
-        }
-}
-
 static bool
 v3d_check_compiled_shaders(struct v3d_context *v3d)
 {

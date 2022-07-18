@@ -43,4 +43,7 @@ v3d_choose_tile_size(uint32_t color_attachment_count, uint32_t max_color_bpp,
 uint32_t
 v3d_translate_pipe_swizzle(enum pipe_swizzle swizzle);
 
+uint32_t
+v3d_hw_prim_type(enum pipe_prim_type prim_type);
+
 #endif
