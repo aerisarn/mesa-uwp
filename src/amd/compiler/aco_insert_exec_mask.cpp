@@ -99,7 +99,11 @@ needs_exact(aco_ptr<Instruction>& instr)
    } else if (instr->isFlatLike()) {
       return instr->flatlike().disable_wqm;
    } else {
-      return instr->isEXP();
+      /* Require Exact for p_jump_to_epilog because if p_exit_early_if is
+       * emitted inside the same block, the main FS will always jump to the PS
+       * epilog without considering the exec mask.
+       */
+      return instr->isEXP() || instr->opcode == aco_opcode::p_jump_to_epilog;
    }
 }
 
