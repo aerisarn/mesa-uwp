@@ -312,18 +312,13 @@ anv_check_for_primitive_replication(nir_shader **shaders,
     * later than Vertex.  In that case only the last stage can refer to
     * gl_ViewIndex.
     */
-   if (pipeline->active_stages != (VK_SHADER_STAGE_VERTEX_BIT |
-                                   VK_SHADER_STAGE_FRAGMENT_BIT)) {
+   if (pipeline->active_stages & ~(VK_SHADER_STAGE_VERTEX_BIT |
+                                   VK_SHADER_STAGE_FRAGMENT_BIT))
       return false;
-   }
 
    uint32_t view_mask = pipeline->view_mask;
    int view_count = util_bitcount(view_mask);
    if (view_count == 1 || view_count > primitive_replication_max_views)
-      return false;
-
-   /* We can't access the view index in the fragment shader. */
-   if (nir_shader_uses_view_index(shaders[MESA_SHADER_FRAGMENT]))
       return false;
 
    return nir_can_lower_multiview(shaders[MESA_SHADER_VERTEX]);
