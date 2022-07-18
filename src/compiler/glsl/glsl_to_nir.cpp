@@ -490,13 +490,6 @@ get_nir_how_declared(unsigned how_declared)
 void
 nir_visitor::visit(ir_variable *ir)
 {
-   /* TODO: In future we should switch to using the NIR lowering pass but for
-    * now just ignore these variables as GLSL IR should have lowered them.
-    * Anything remaining are just dead vars that weren't cleaned up.
-    */
-   if (ir->data.mode == ir_var_shader_shared)
-      return;
-
    /* FINISHME: inout parameters */
    assert(ir->data.mode != ir_var_function_inout);
 
@@ -594,6 +587,10 @@ nir_visitor::visit(ir_variable *ir)
 
    case ir_var_system_value:
       var->data.mode = nir_var_system_value;
+      break;
+
+   case ir_var_shader_shared:
+      var->data.mode = nir_var_mem_shared;
       break;
 
    default:

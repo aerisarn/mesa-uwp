@@ -438,17 +438,6 @@ struct gl_shader_program
       unsigned ActiveStreamMask;
    } Geom;
 
-   /**
-    * Compute shader state - copied into gl_program by
-    * _mesa_copy_linked_program_data().
-    */
-   struct {
-      /**
-       * Size of shared variables accessed by the compute shader.
-       */
-      unsigned SharedSize;
-   } Comp;
-
    /** Data shared by gl_program and gl_shader_program */
    struct gl_shader_program_data *data;
 

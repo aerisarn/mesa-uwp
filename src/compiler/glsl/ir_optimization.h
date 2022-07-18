@@ -116,9 +116,6 @@ bool lower_clip_cull_distance(struct gl_shader_program *prog,
                               gl_linked_shader *shader);
 void lower_output_reads(unsigned stage, exec_list *instructions);
 bool lower_packing_builtins(exec_list *instructions, int op_mask);
-void lower_shared_reference(const struct gl_constants *consts,
-                            struct gl_shader_program *prog,
-                            struct gl_linked_shader *shader);
 bool lower_vector_insert(exec_list *instructions, bool lower_nonconstant_index);
 bool lower_vector_derefs(gl_linked_shader *shader);
 void lower_named_interface_blocks(void *mem_ctx, gl_linked_shader *shader);

@@ -409,9 +409,7 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    /* before buffers and vars_to_ssa */
    NIR_PASS_V(nir, gl_nir_lower_images, true);
 
-   /* TODO: Change GLSL to not lower shared memory. */
-   if (prog->nir->info.stage == MESA_SHADER_COMPUTE &&
-       shader_program->data->spirv) {
+   if (prog->nir->info.stage == MESA_SHADER_COMPUTE) {
       NIR_PASS_V(prog->nir, nir_lower_vars_to_explicit_types,
                  nir_var_mem_shared, shared_type_info);
       NIR_PASS_V(prog->nir, nir_lower_explicit_io,
@@ -731,6 +729,13 @@ st_link_nir(struct gl_context *ctx,
       memcpy(prog->nir->info.source_sha1, shader->linked_source_sha1,
              SHA1_DIGEST_LENGTH);
       st_nir_preprocess(st, prog, shader_program, shader->Stage);
+
+      if (prog->nir->info.shared_size > ctx->Const.MaxComputeSharedMemorySize) {
+         linker_error(shader_program, "Too much shared memory used (%u/%u)\n",
+                      prog->nir->info.shared_size,
+                      ctx->Const.MaxComputeSharedMemorySize);
+         return GL_FALSE;
+      }
 
       if (options->lower_to_scalar) {
          NIR_PASS_V(shader->Program->nir, nir_lower_load_const_to_scalar);

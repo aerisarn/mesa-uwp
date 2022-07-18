@@ -2661,10 +2661,6 @@ _mesa_copy_linked_program_data(const struct gl_shader_program *src,
       dst->info.fs.depth_layout = src->FragDepthLayout;
       break;
    }
-   case MESA_SHADER_COMPUTE: {
-      dst->info.shared_size = src->Comp.SharedSize;
-      break;
-   }
    default:
       break;
    }

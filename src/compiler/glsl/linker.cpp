@@ -3551,9 +3551,6 @@ link_varyings(const struct gl_constants *consts, struct gl_shader_program *prog,
       if (prog->_LinkedShaders[i] == NULL)
          continue;
 
-      if (i == MESA_SHADER_COMPUTE)
-         lower_shared_reference(consts, prog, prog->_LinkedShaders[i]);
-
       lower_vector_derefs(prog->_LinkedShaders[i]);
       do_vec_index_to_swizzle(prog->_LinkedShaders[i]->ir);
    }
