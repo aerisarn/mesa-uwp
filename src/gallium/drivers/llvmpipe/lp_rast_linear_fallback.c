@@ -86,52 +86,12 @@ static unsigned bottom_mask_tab[STAMP_SIZE] = {
 };
 
 
-/**
- * Shade all pixels in a 4x4 block.  The fragment code omits the
- * triangle in/out tests.
- * \param x, y location of 4x4 block in window coords
- */
-static void
-shade_quads_all(struct lp_rasterizer_task *task,
-                const struct lp_rast_shader_inputs *inputs,
-                unsigned x, unsigned y)
-{
-   const struct lp_scene *scene = task->scene;
-   const struct lp_rast_state *state = task->state;
-   struct lp_fragment_shader_variant *variant = state->variant;
-   uint8_t *color = scene->cbufs[0].map;
-   unsigned stride = scene->cbufs[0].stride;
-   uint8_t *cbufs[1];
-   unsigned strides[1];
-
-   color += x * 4;
-   color += y * stride;
-   cbufs[0] = color;
-   strides[0] = stride;
-
-   assert(!variant->key.depth.enabled);
-
-   /* run shader on 4x4 block */
-   BEGIN_JIT_CALL(state, task);
-   variant->jit_function[RAST_WHOLE](&state->jit_context,
-                                     x, y,
-                                     inputs->frontfacing,
-                                     GET_A0(inputs),
-                                     GET_DADX(inputs),
-                                     GET_DADY(inputs),
-                                     cbufs,
-                                     NULL,
-                                     0xffff,
-                                     &task->thread_data,
-                                     strides, 0, 0, 0);
-   END_JIT_CALL();
-}
 
 static void
-shade_quads_mask(struct lp_rasterizer_task *task,
-                 const struct lp_rast_shader_inputs *inputs,
-                 unsigned x, unsigned y,
-                 unsigned mask)
+shade_quads(struct lp_rasterizer_task *task,
+            const struct lp_rast_shader_inputs *inputs,
+            unsigned x, unsigned y,
+            unsigned mask)
 {
    const struct lp_rast_state *state = task->state;
    struct lp_fragment_shader_variant *variant = state->variant;
@@ -153,32 +113,19 @@ shade_quads_mask(struct lp_rasterizer_task *task,
 
    /* run shader on 4x4 block */
    BEGIN_JIT_CALL(state, task);
-   variant->jit_function[RAST_EDGE_TEST](&state->jit_context,
-                                         x, y,
-                                         inputs->frontfacing,
-                                         GET_A0(inputs),
-                                         GET_DADX(inputs),
-                                         GET_DADY(inputs),
-                                         cbufs,
-                                         NULL,
-                                         mask,
-                                         &task->thread_data,
-                                         strides, 0, 0, 0);
+   const unsigned fn_index = mask == 0xffff ? RAST_WHOLE : RAST_EDGE_TEST;
+   variant->jit_function[fn_index](&state->jit_context,
+                                   x, y,
+                                   inputs->frontfacing,
+                                   GET_A0(inputs),
+                                   GET_DADX(inputs),
+                                   GET_DADY(inputs),
+                                   cbufs,
+                                   NULL,
+                                   mask,
+                                   &task->thread_data,
+                                   strides, 0, 0, 0);
    END_JIT_CALL();
-}
-
-
-/* Shade a 4x4 stamp completely within the rectangle.
- */
-static inline void
-full(struct lp_rasterizer_task *task,
-     const struct lp_rast_shader_inputs *inputs,
-     unsigned ix, unsigned iy)
-{
-   shade_quads_all(task,
-                   inputs,
-                   ix * STAMP_SIZE,
-                   iy * STAMP_SIZE);
 }
 
 
@@ -194,16 +141,8 @@ partial(struct lp_rasterizer_task *task,
    /* Unfortunately we can end up generating full blocks on this path,
     * need to catch them.
     */
-   if (mask == 0xffff)
-      full(task, inputs, ix, iy);
-   else {
-      assert(mask);
-      shade_quads_mask(task,
-                       inputs,
-                       ix * STAMP_SIZE,
-                       iy * STAMP_SIZE,
-                       mask);
-   }
+   assert(mask != 0x0);
+   shade_quads(task, inputs, ix * STAMP_SIZE, iy * STAMP_SIZE, mask);
 }
 
 
@@ -291,7 +230,7 @@ lp_rast_linear_rect_fallback(struct lp_rasterizer_task *task,
        */
       for (unsigned j = iy0 + 1; j < iy1; j++) {
          for (unsigned i = ix0 + 1; i < ix1; i++) {
-            full(task, inputs, i, j);
+            shade_quads(task, inputs, i * STAMP_SIZE, j * STAMP_SIZE, 0xffff);
          }
       }
    }
