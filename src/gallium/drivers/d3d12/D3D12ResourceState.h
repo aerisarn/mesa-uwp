@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef D3D12_RESOURCE_STATE_H
-#define D3D12_RESOURCE_STATE_H
+#ifndef D3D12RESOURCESTATE_H
+#define D3D12RESOURCESTATE_H
 
 #include <vector>
 #include <assert.h>
@@ -30,6 +30,7 @@
 #include "util/list.h"
 
 #include "d3d12_common.h"
+#include "d3d12_resource_state.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
@@ -291,4 +292,4 @@ private:
                                                 UINT64 ExecutionId);
 };
 
-#endif // D3D12_RESOURCE_STATE_H
+#endif // D3D12RESOURCESTATEH
