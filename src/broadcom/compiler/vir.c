@@ -650,15 +650,15 @@ v3d_lower_nir(struct v3d_compile *c)
                 }
         }
 
-        NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
-        NIR_PASS_V(c->s, nir_lower_system_values);
-        NIR_PASS_V(c->s, nir_lower_compute_system_values, NULL);
+        NIR_PASS(_, c->s, nir_lower_tex, &tex_options);
+        NIR_PASS(_, c->s, nir_lower_system_values);
+        NIR_PASS(_, c->s, nir_lower_compute_system_values, NULL);
 
-        NIR_PASS_V(c->s, nir_lower_vars_to_scratch,
-                   nir_var_function_temp,
-                   0,
-                   glsl_get_natural_size_align_bytes);
-        NIR_PASS_V(c->s, v3d_nir_lower_scratch);
+        NIR_PASS(_, c->s, nir_lower_vars_to_scratch,
+                 nir_var_function_temp,
+                 0,
+                 glsl_get_natural_size_align_bytes);
+        NIR_PASS(_, c->s, v3d_nir_lower_scratch);
 }
 
 static void
@@ -903,32 +903,32 @@ v3d_nir_lower_vs_early(struct v3d_compile *c)
         /* Split our I/O vars and dead code eliminate the unused
          * components.
          */
-        NIR_PASS_V(c->s, nir_lower_io_to_scalar_early,
-                   nir_var_shader_in | nir_var_shader_out);
+        NIR_PASS(_, c->s, nir_lower_io_to_scalar_early,
+                 nir_var_shader_in | nir_var_shader_out);
         uint64_t used_outputs[4] = {0};
         for (int i = 0; i < c->vs_key->num_used_outputs; i++) {
                 int slot = v3d_slot_get_slot(c->vs_key->used_outputs[i]);
                 int comp = v3d_slot_get_component(c->vs_key->used_outputs[i]);
                 used_outputs[comp] |= 1ull << slot;
         }
-        NIR_PASS_V(c->s, nir_remove_unused_io_vars,
-                   nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
-        NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
+        NIR_PASS(_, c->s, nir_remove_unused_io_vars,
+                 nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
+        NIR_PASS(_, c->s, nir_lower_global_vars_to_local);
         v3d_optimize_nir(c, c->s);
-        NIR_PASS_V(c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
+        NIR_PASS(_, c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
         /* This must go before nir_lower_io */
         if (c->vs_key->per_vertex_point_size)
-                NIR_PASS_V(c->s, nir_lower_point_size, 1.0f, 0.0f);
+                NIR_PASS(_, c->s, nir_lower_point_size, 1.0f, 0.0f);
 
-        NIR_PASS_V(c->s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
-                   type_size_vec4,
-                   (nir_lower_io_options)0);
+        NIR_PASS(_, c->s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+                 type_size_vec4,
+                 (nir_lower_io_options)0);
         /* clean up nir_lower_io's deref_var remains and do a constant folding pass
          * on the code it generated.
          */
-        NIR_PASS_V(c->s, nir_opt_dce);
-        NIR_PASS_V(c->s, nir_opt_constant_folding);
+        NIR_PASS(_, c->s, nir_opt_dce);
+        NIR_PASS(_, c->s, nir_opt_constant_folding);
 }
 
 static void
@@ -937,32 +937,32 @@ v3d_nir_lower_gs_early(struct v3d_compile *c)
         /* Split our I/O vars and dead code eliminate the unused
          * components.
          */
-        NIR_PASS_V(c->s, nir_lower_io_to_scalar_early,
-                   nir_var_shader_in | nir_var_shader_out);
+        NIR_PASS(_, c->s, nir_lower_io_to_scalar_early,
+                 nir_var_shader_in | nir_var_shader_out);
         uint64_t used_outputs[4] = {0};
         for (int i = 0; i < c->gs_key->num_used_outputs; i++) {
                 int slot = v3d_slot_get_slot(c->gs_key->used_outputs[i]);
                 int comp = v3d_slot_get_component(c->gs_key->used_outputs[i]);
                 used_outputs[comp] |= 1ull << slot;
         }
-        NIR_PASS_V(c->s, nir_remove_unused_io_vars,
-                   nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
-        NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
+        NIR_PASS(_, c->s, nir_remove_unused_io_vars,
+                 nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
+        NIR_PASS(_, c->s, nir_lower_global_vars_to_local);
         v3d_optimize_nir(c, c->s);
-        NIR_PASS_V(c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
+        NIR_PASS(_, c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
         /* This must go before nir_lower_io */
         if (c->gs_key->per_vertex_point_size)
-                NIR_PASS_V(c->s, nir_lower_point_size, 1.0f, 0.0f);
+                NIR_PASS(_, c->s, nir_lower_point_size, 1.0f, 0.0f);
 
-        NIR_PASS_V(c->s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
-                   type_size_vec4,
-                   (nir_lower_io_options)0);
+        NIR_PASS(_, c->s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+                 type_size_vec4,
+                 (nir_lower_io_options)0);
         /* clean up nir_lower_io's deref_var remains and do a constant folding pass
          * on the code it generated.
          */
-        NIR_PASS_V(c->s, nir_opt_dce);
-        NIR_PASS_V(c->s, nir_opt_constant_folding);
+        NIR_PASS(_, c->s, nir_opt_dce);
+        NIR_PASS(_, c->s, nir_opt_constant_folding);
 }
 
 static void
@@ -1001,11 +1001,11 @@ v3d_nir_lower_fs_early(struct v3d_compile *c)
         if (c->fs_key->int_color_rb || c->fs_key->uint_color_rb)
                 v3d_fixup_fs_output_types(c);
 
-        NIR_PASS_V(c->s, v3d_nir_lower_logic_ops, c);
+        NIR_PASS(_, c->s, v3d_nir_lower_logic_ops, c);
 
         if (c->fs_key->line_smoothing) {
-                v3d_nir_lower_line_smooth(c->s);
-                NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
+                NIR_PASS(_, c->s, v3d_nir_lower_line_smooth);
+                NIR_PASS(_, c->s, nir_lower_global_vars_to_local);
                 /* The lowering pass can introduce new sysval reads */
                 nir_shader_gather_info(c->s, nir_shader_get_entrypoint(c->s));
         }
@@ -1015,8 +1015,8 @@ static void
 v3d_nir_lower_gs_late(struct v3d_compile *c)
 {
         if (c->key->ucp_enables) {
-                NIR_PASS_V(c->s, nir_lower_clip_gs, c->key->ucp_enables,
-                           false, NULL);
+                NIR_PASS(_, c->s, nir_lower_clip_gs, c->key->ucp_enables,
+                         false, NULL);
         }
 
         /* Note: GS output scalarizing must happen after nir_lower_clip_gs. */
@@ -1027,8 +1027,8 @@ static void
 v3d_nir_lower_vs_late(struct v3d_compile *c)
 {
         if (c->key->ucp_enables) {
-                NIR_PASS_V(c->s, nir_lower_clip_vs, c->key->ucp_enables,
-                           false, false, NULL);
+                NIR_PASS(_, c->s, nir_lower_clip_vs, c->key->ucp_enables,
+                         false, false, NULL);
                 NIR_PASS_V(c->s, nir_lower_io_to_scalar,
                            nir_var_shader_out);
         }
@@ -1048,7 +1048,7 @@ v3d_nir_lower_fs_late(struct v3d_compile *c)
          * are using.
          */
         if (c->key->ucp_enables)
-                NIR_PASS_V(c->s, nir_lower_clip_fs, c->key->ucp_enables, true);
+                NIR_PASS(_, c->s, nir_lower_clip_fs, c->key->ucp_enables, true);
 
         NIR_PASS_V(c->s, nir_lower_io_to_scalar, nir_var_shader_in);
 }
@@ -1559,32 +1559,32 @@ v3d_attempt_compile(struct v3d_compile *c)
                 break;
         }
 
-        NIR_PASS_V(c->s, v3d_nir_lower_io, c);
-        NIR_PASS_V(c->s, v3d_nir_lower_txf_ms, c);
-        NIR_PASS_V(c->s, v3d_nir_lower_image_load_store);
+        NIR_PASS(_, c->s, v3d_nir_lower_io, c);
+        NIR_PASS(_, c->s, v3d_nir_lower_txf_ms, c);
+        NIR_PASS(_, c->s, v3d_nir_lower_image_load_store);
         nir_lower_idiv_options idiv_options = {
                 .imprecise_32bit_lowering = true,
                 .allow_fp16 = true,
         };
-        NIR_PASS_V(c->s, nir_lower_idiv, &idiv_options);
+        NIR_PASS(_, c->s, nir_lower_idiv, &idiv_options);
 
         if (c->key->robust_buffer_access) {
-           /* v3d_nir_lower_robust_buffer_access assumes constant buffer
-            * indices on ubo/ssbo intrinsics so run copy propagation and
-            * constant folding passes before we run the lowering to warrant
-            * this. We also want to run the lowering before v3d_optimize to
-            * clean-up redundant get_buffer_size calls produced in the pass.
-            */
-           NIR_PASS_V(c->s, nir_copy_prop);
-           NIR_PASS_V(c->s, nir_opt_constant_folding);
-           NIR_PASS_V(c->s, v3d_nir_lower_robust_buffer_access, c);
+                /* v3d_nir_lower_robust_buffer_access assumes constant buffer
+                 * indices on ubo/ssbo intrinsics so run copy propagation and
+                 * constant folding passes before we run the lowering to warrant
+                 * this. We also want to run the lowering before v3d_optimize to
+                 * clean-up redundant get_buffer_size calls produced in the pass.
+                 */
+                NIR_PASS(_, c->s, nir_copy_prop);
+                NIR_PASS(_, c->s, nir_opt_constant_folding);
+                NIR_PASS(_, c->s, v3d_nir_lower_robust_buffer_access, c);
         }
 
-        NIR_PASS_V(c->s, nir_lower_wrmasks, should_split_wrmask, c->s);
+        NIR_PASS(_, c->s, nir_lower_wrmasks, should_split_wrmask, c->s);
 
-        NIR_PASS_V(c->s, v3d_nir_lower_load_store_bitsize, c);
+        NIR_PASS(_, c->s, v3d_nir_lower_load_store_bitsize, c);
 
-        NIR_PASS_V(c->s, v3d_nir_lower_subgroup_intrinsics, c);
+        NIR_PASS(_, c->s, v3d_nir_lower_subgroup_intrinsics, c);
 
         v3d_optimize_nir(c, c->s);
 
@@ -1597,16 +1597,16 @@ v3d_attempt_compile(struct v3d_compile *c)
         while (more_late_algebraic) {
                 more_late_algebraic = false;
                 NIR_PASS(more_late_algebraic, c->s, nir_opt_algebraic_late);
-                NIR_PASS_V(c->s, nir_opt_constant_folding);
-                NIR_PASS_V(c->s, nir_copy_prop);
-                NIR_PASS_V(c->s, nir_opt_dce);
-                NIR_PASS_V(c->s, nir_opt_cse);
+                NIR_PASS(_, c->s, nir_opt_constant_folding);
+                NIR_PASS(_, c->s, nir_copy_prop);
+                NIR_PASS(_, c->s, nir_opt_dce);
+                NIR_PASS(_, c->s, nir_opt_cse);
         }
 
-        NIR_PASS_V(c->s, nir_lower_bool_to_int32);
-        NIR_PASS_V(c->s, nir_convert_to_lcssa, true, true);
+        NIR_PASS(_, c->s, nir_lower_bool_to_int32);
+        NIR_PASS(_, c->s, nir_convert_to_lcssa, true, true);
         NIR_PASS_V(c->s, nir_divergence_analysis);
-        NIR_PASS_V(c->s, nir_convert_from_ssa, true);
+        NIR_PASS(_, c->s, nir_convert_from_ssa, true);
 
         struct nir_schedule_options schedule_options = {
                 /* Schedule for about half our register space, to enable more
@@ -1633,9 +1633,9 @@ v3d_attempt_compile(struct v3d_compile *c)
         NIR_PASS_V(c->s, nir_schedule, &schedule_options);
 
         if (!c->disable_constant_ubo_load_sorting)
-                NIR_PASS_V(c->s, v3d_nir_sort_constant_ubo_loads, c);
+                NIR_PASS(_, c->s, v3d_nir_sort_constant_ubo_loads, c);
 
-        NIR_PASS_V(c->s, nir_opt_move, nir_move_load_uniform |
+        NIR_PASS(_, c->s, nir_opt_move, nir_move_load_uniform |
                                        nir_move_const_undef);
 
         v3d_nir_to_vir(c);

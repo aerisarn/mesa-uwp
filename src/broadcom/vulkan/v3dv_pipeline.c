@@ -362,7 +362,7 @@ preprocess_nir(nir_shader *nir)
       .frag_coord = true,
       .point_coord = true,
    };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+   NIR_PASS(_, nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
@@ -370,12 +370,12 @@ preprocess_nir(nir_shader *nir)
    /* Make sure we lower variable initializers on output variables so that
     * nir_remove_dead_variables below sees the corresponding stores
     */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_shader_out);
+   NIR_PASS(_, nir, nir_lower_variable_initializers, nir_var_shader_out);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
+      NIR_PASS(_, nir, nir_lower_io_to_vector, nir_var_shader_out);
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_input_attachments,
+      NIR_PASS(_, nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
                     .use_fragcoord_sysval = false,
                        });
@@ -384,47 +384,47 @@ preprocess_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
 
-   NIR_PASS_V(nir, nir_lower_system_values);
-   NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
+   NIR_PASS(_, nir, nir_lower_system_values);
+   NIR_PASS(_, nir, nir_lower_clip_cull_distance_arrays);
 
-   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+   NIR_PASS(_, nir, nir_lower_alu_to_scalar, NULL, NULL);
 
-   NIR_PASS_V(nir, nir_normalize_cubemap_coords);
+   NIR_PASS(_, nir, nir_normalize_cubemap_coords);
 
-   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   NIR_PASS(_, nir, nir_lower_global_vars_to_local);
 
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_struct_vars, nir_var_function_temp);
+   NIR_PASS(_, nir, nir_split_var_copies);
+   NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
 
    nir_optimize(nir, true);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_push_const,
-              nir_address_format_32bit_offset);
+   NIR_PASS(_, nir, nir_lower_explicit_io,
+            nir_var_mem_push_const,
+            nir_address_format_32bit_offset);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_ubo | nir_var_mem_ssbo,
-              nir_address_format_32bit_index_offset);
+   NIR_PASS(_, nir, nir_lower_explicit_io,
+            nir_var_mem_ubo | nir_var_mem_ssbo,
+            nir_address_format_32bit_index_offset);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_global,
-              nir_address_format_2x32bit_global);
+   NIR_PASS(_, nir, nir_lower_explicit_io,
+            nir_var_mem_global,
+            nir_address_format_2x32bit_global);
 
-   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+   NIR_PASS(_, nir, nir_lower_load_const_to_scalar);
 
    /* Lower a bunch of stuff */
-   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS(_, nir, nir_lower_var_copies);
 
-   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in, UINT32_MAX);
+   NIR_PASS(_, nir, nir_lower_indirect_derefs, nir_var_shader_in, UINT32_MAX);
 
-   NIR_PASS_V(nir, nir_lower_indirect_derefs,
-              nir_var_function_temp, 2);
+   NIR_PASS(_, nir, nir_lower_indirect_derefs,
+            nir_var_function_temp, 2);
 
-   NIR_PASS_V(nir, nir_lower_array_deref_of_vec,
-              nir_var_mem_ubo | nir_var_mem_ssbo,
-              nir_lower_direct_array_deref_of_vec_load);
+   NIR_PASS(_, nir, nir_lower_array_deref_of_vec,
+            nir_var_mem_ubo | nir_var_mem_ssbo,
+            nir_lower_direct_array_deref_of_vec_load);
 
-   NIR_PASS_V(nir, nir_lower_frexp);
+   NIR_PASS(_, nir, nir_lower_frexp);
 
    /* Get rid of split copies */
    nir_optimize(nir, false);
@@ -978,7 +978,7 @@ lower_fs_io(nir_shader *nir)
 {
    /* Our backend doesn't handle array fragment shader outputs */
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
+   NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
 
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
                                MESA_SHADER_FRAGMENT);
@@ -986,8 +986,8 @@ lower_fs_io(nir_shader *nir)
    nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                MESA_SHADER_FRAGMENT);
 
-   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
-              type_size_vec4, 0);
+   NIR_PASS(_, nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+            type_size_vec4, 0);
 }
 
 static void
@@ -1704,8 +1704,8 @@ link_shaders(nir_shader *producer, nir_shader *consumer)
    assert(consumer);
 
    if (producer->options->lower_to_scalar) {
-      NIR_PASS_V(producer, nir_lower_io_to_scalar_early, nir_var_shader_out);
-      NIR_PASS_V(consumer, nir_lower_io_to_scalar_early, nir_var_shader_in);
+      NIR_PASS(_, producer, nir_lower_io_to_scalar_early, nir_var_shader_out);
+      NIR_PASS(_, consumer, nir_lower_io_to_scalar_early, nir_var_shader_in);
    }
 
    nir_lower_io_arrays_to_elements(producer, consumer);
@@ -1716,12 +1716,12 @@ link_shaders(nir_shader *producer, nir_shader *consumer)
    if (nir_link_opt_varyings(producer, consumer))
       nir_optimize(consumer, false);
 
-   NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
-   NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
+   NIR_PASS(_, producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
+   NIR_PASS(_, consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
    if (nir_remove_unused_varyings(producer, consumer)) {
-      NIR_PASS_V(producer, nir_lower_global_vars_to_local);
-      NIR_PASS_V(consumer, nir_lower_global_vars_to_local);
+      NIR_PASS(_, producer, nir_lower_global_vars_to_local);
+      NIR_PASS(_, consumer, nir_lower_global_vars_to_local);
 
       nir_optimize(producer, false);
       nir_optimize(consumer, false);
@@ -1730,8 +1730,8 @@ link_shaders(nir_shader *producer, nir_shader *consumer)
        * nir_compact_varyings() depends on all dead varyings being removed so
        * we need to call nir_remove_dead_variables() again here.
        */
-      NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
-      NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
+      NIR_PASS(_, producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
+      NIR_PASS(_, consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
    }
 }
 
@@ -1766,8 +1766,8 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    bool needs_default_sampler_state = false;
-   NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout,
-              &needs_default_sampler_state);
+   NIR_PASS(_, p_stage->nir, lower_pipeline_layout_info, pipeline, layout,
+            &needs_default_sampler_state);
 
    /* If in the end we didn't need to use the default sampler states and the
     * shader doesn't need any other samplers, get rid of them so we can
@@ -3127,10 +3127,10 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 static void
 lower_cs_shared(struct nir_shader *nir)
 {
-   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
-              nir_var_mem_shared, shared_type_info);
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_shared, nir_address_format_32bit_offset);
+   NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
+            nir_var_mem_shared, shared_type_info);
+   NIR_PASS(_, nir, nir_lower_explicit_io,
+            nir_var_mem_shared, nir_address_format_32bit_offset);
 }
 
 static VkResult
