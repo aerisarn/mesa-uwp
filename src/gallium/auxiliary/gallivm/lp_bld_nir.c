@@ -2184,10 +2184,12 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_read_invocation:
    case nir_intrinsic_read_first_invocation: {
       LLVMValueRef src1 = NULL;
-
-      if (instr->intrinsic == nir_intrinsic_read_invocation)
+      LLVMValueRef src0 = get_src(bld_base, instr->src[0]);
+      if (instr->intrinsic == nir_intrinsic_read_invocation) {
          src1 = cast_type(bld_base, get_src(bld_base, instr->src[1]), nir_type_int, 32);
-      bld_base->read_invocation(bld_base, get_src(bld_base, instr->src[0]), nir_src_bit_size(instr->src[0]), src1, result);
+         src0 = cast_type(bld_base, src0, nir_type_int, nir_src_bit_size(instr->src[0]));
+      }
+      bld_base->read_invocation(bld_base, src0, nir_src_bit_size(instr->src[0]), src1, result);
       break;
    }
    case nir_intrinsic_interp_deref_at_offset:
