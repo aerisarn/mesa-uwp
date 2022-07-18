@@ -533,10 +533,16 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
    return index;
 }
 
+struct lower_pipeline_layout_state {
+   struct v3dv_pipeline *pipeline;
+   const struct v3dv_pipeline_layout *layout;
+   bool needs_default_sampler_state;
+};
+
 
 static void
 lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
-                         struct v3dv_pipeline *pipeline)
+                         struct lower_pipeline_layout_state *state)
 {
    assert(instr->intrinsic == nir_intrinsic_load_push_constant);
    instr->intrinsic = nir_intrinsic_load_uniform;
@@ -584,9 +590,7 @@ pipeline_get_descriptor_map(struct v3dv_pipeline *pipeline,
 static void
 lower_vulkan_resource_index(nir_builder *b,
                             nir_intrinsic_instr *instr,
-                            nir_shader *shader,
-                            struct v3dv_pipeline *pipeline,
-                            const struct v3dv_pipeline_layout *layout)
+                            struct lower_pipeline_layout_state *state)
 {
    assert(instr->intrinsic == nir_intrinsic_vulkan_resource_index);
 
@@ -594,7 +598,7 @@ lower_vulkan_resource_index(nir_builder *b,
 
    unsigned set = nir_intrinsic_desc_set(instr);
    unsigned binding = nir_intrinsic_binding(instr);
-   struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct v3dv_descriptor_set_layout *set_layout = state->layout->set[set].layout;
    struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
    unsigned index = 0;
@@ -606,8 +610,8 @@ lower_vulkan_resource_index(nir_builder *b,
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
       struct v3dv_descriptor_map *descriptor_map =
-         pipeline_get_descriptor_map(pipeline, binding_layout->type,
-                                     shader->info.stage, false);
+         pipeline_get_descriptor_map(state->pipeline, binding_layout->type,
+                                     b->shader->info.stage, false);
 
       if (!const_val)
          unreachable("non-constant vulkan_resource_index array index");
@@ -661,10 +665,10 @@ lower_vulkan_resource_index(nir_builder *b,
  * sampler object
  */
 static uint8_t
-lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
-                        nir_shader *shader,
-                        struct v3dv_pipeline *pipeline,
-                        const struct v3dv_pipeline_layout *layout)
+lower_tex_src_to_offset(nir_builder *b,
+                        nir_tex_instr *instr,
+                        unsigned src_idx,
+                        struct lower_pipeline_layout_state *state)
 {
    nir_ssa_def *index = NULL;
    unsigned base_index = 0;
@@ -727,7 +731,7 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
     */
    bool relaxed_precision = deref->var->data.precision == GLSL_PRECISION_MEDIUM ||
                             deref->var->data.precision == GLSL_PRECISION_LOW;
-   struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct v3dv_descriptor_set_layout *set_layout = state->layout->set[set].layout;
    struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
 
@@ -747,8 +751,8 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
       return_size = relaxed_precision || instr->is_shadow ? 16 : 32;
 
    struct v3dv_descriptor_map *map =
-      pipeline_get_descriptor_map(pipeline, binding_layout->type,
-                                  shader->info.stage, is_sampler);
+      pipeline_get_descriptor_map(state->pipeline, binding_layout->type,
+                                  b->shader->info.stage, is_sampler);
    int desc_index =
       descriptor_map_add(map,
                          deref->var->data.descriptor_set,
@@ -767,11 +771,9 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
 }
 
 static bool
-lower_sampler(nir_builder *b, nir_tex_instr *instr,
-              nir_shader *shader,
-              struct v3dv_pipeline *pipeline,
-              const struct v3dv_pipeline_layout *layout,
-              bool *needs_default_sampler_state)
+lower_sampler(nir_builder *b,
+              nir_tex_instr *instr,
+              struct lower_pipeline_layout_state *state)
 {
    uint8_t return_size = 0;
 
@@ -779,14 +781,13 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
       nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
 
    if (texture_idx >= 0)
-      return_size = lower_tex_src_to_offset(b, instr, texture_idx, shader,
-                                            pipeline, layout);
+      return_size = lower_tex_src_to_offset(b, instr, texture_idx, state);
 
    int sampler_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
 
    if (sampler_idx >= 0)
-      lower_tex_src_to_offset(b, instr, sampler_idx, shader, pipeline, layout);
+      lower_tex_src_to_offset(b, instr, sampler_idx, state);
 
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
@@ -795,7 +796,7 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
     * case, and we ensure that it is using the correct return size.
     */
    if (sampler_idx < 0) {
-      *needs_default_sampler_state = true;
+      state->needs_default_sampler_state = true;
       instr->sampler_index = return_size == 16 ?
          V3DV_NO_SAMPLER_16BIT_IDX : V3DV_NO_SAMPLER_32BIT_IDX;
    }
@@ -807,9 +808,7 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
 static void
 lower_image_deref(nir_builder *b,
                   nir_intrinsic_instr *instr,
-                  nir_shader *shader,
-                  struct v3dv_pipeline *pipeline,
-                  const struct v3dv_pipeline_layout *layout)
+                  struct lower_pipeline_layout_state *state)
 {
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
    nir_ssa_def *index = NULL;
@@ -848,7 +847,7 @@ lower_image_deref(nir_builder *b,
 
    uint32_t set = deref->var->data.descriptor_set;
    uint32_t binding = deref->var->data.binding;
-   struct v3dv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   struct v3dv_descriptor_set_layout *set_layout = state->layout->set[set].layout;
    struct v3dv_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
 
@@ -858,8 +857,8 @@ lower_image_deref(nir_builder *b,
           binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
 
    struct v3dv_descriptor_map *map =
-      pipeline_get_descriptor_map(pipeline, binding_layout->type,
-                                  shader->info.stage, false);
+      pipeline_get_descriptor_map(state->pipeline, binding_layout->type,
+                                  b->shader->info.stage, false);
 
    int desc_index =
       descriptor_map_add(map,
@@ -882,18 +881,17 @@ lower_image_deref(nir_builder *b,
 }
 
 static bool
-lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
-                nir_shader *shader,
-                struct v3dv_pipeline *pipeline,
-                const struct v3dv_pipeline_layout *layout)
+lower_intrinsic(nir_builder *b,
+                nir_intrinsic_instr *instr,
+                struct lower_pipeline_layout_state *state)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_push_constant:
-      lower_load_push_constant(b, instr, pipeline);
+      lower_load_push_constant(b, instr, state);
       return true;
 
    case nir_intrinsic_vulkan_resource_index:
-      lower_vulkan_resource_index(b, instr, shader, pipeline, layout);
+      lower_vulkan_resource_index(b, instr, state);
       return true;
 
    case nir_intrinsic_load_vulkan_descriptor: {
@@ -919,7 +917,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_size:
    case nir_intrinsic_image_deref_samples:
-      lower_image_deref(b, instr, shader, pipeline, layout);
+      lower_image_deref(b, instr, state);
       return true;
 
    default:
@@ -928,34 +926,23 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 }
 
 static bool
-lower_impl(nir_function_impl *impl,
-           nir_shader *shader,
-           struct v3dv_pipeline *pipeline,
-           const struct v3dv_pipeline_layout *layout,
-           bool *needs_default_sampler_state)
+lower_pipeline_layout_cb(nir_builder *b,
+                         nir_instr *instr,
+                         void *_state)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
    bool progress = false;
+   struct lower_pipeline_layout_state *state = _state;
 
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         b.cursor = nir_before_instr(instr);
-         switch (instr->type) {
-         case nir_instr_type_tex:
-            progress |=
-               lower_sampler(&b, nir_instr_as_tex(instr), shader, pipeline,
-                             layout, needs_default_sampler_state);
-            break;
-         case nir_instr_type_intrinsic:
-            progress |=
-               lower_intrinsic(&b, nir_instr_as_intrinsic(instr), shader,
-                               pipeline, layout);
-            break;
-         default:
-            break;
-         }
-      }
+   b->cursor = nir_before_instr(instr);
+   switch (instr->type) {
+   case nir_instr_type_tex:
+      progress |= lower_sampler(b, nir_instr_as_tex(instr), state);
+      break;
+   case nir_instr_type_intrinsic:
+      progress |= lower_intrinsic(b, nir_instr_as_intrinsic(instr), state);
+      break;
+   default:
+      break;
    }
 
    return progress;
@@ -968,13 +955,19 @@ lower_pipeline_layout_info(nir_shader *shader,
                            bool *needs_default_sampler_state)
 {
    bool progress = false;
-   *needs_default_sampler_state = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= lower_impl(function->impl, shader, pipeline, layout,
-                                needs_default_sampler_state);
-   }
+   struct lower_pipeline_layout_state state = {
+      .pipeline = pipeline,
+      .layout = layout,
+      .needs_default_sampler_state = false,
+   };
+
+   progress = nir_shader_instructions_pass(shader, lower_pipeline_layout_cb,
+                                           nir_metadata_block_index |
+                                           nir_metadata_dominance,
+                                           &state);
+
+   *needs_default_sampler_state = state.needs_default_sampler_state;
 
    return progress;
 }
