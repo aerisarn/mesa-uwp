@@ -70,8 +70,29 @@ uint8_t *linear_to_Ytile_swizzle(const uint8_t *base_addr, uint32_t x_B, uint32_
    return (uint8_t *)(base_addr + tiled_off);
 }
 
+uint8_t *linear_to_tile4_swizzle(const uint8_t * base_addr, uint32_t x_B, uint32_t y_px)
+{
+   /* The table below represents the mapping from coordinate (x_B, y_px) to
+    * byte offset in a 128x32px 1Bpp image:
+    *
+    *    Bit ind : 11 10  9  8  7  6  5  4  3  2  1  0
+    *     Tile-Y : v4 v3 u6 v2 u5 u4 v1 v0 u3 u2 u1 u0
+    */
+   uint32_t tiled_off;
+
+   tiled_off = swizzle_bitops(x_B, 4, 0, 0) |
+               swizzle_bitops(y_px, 2, 0, 4) |
+               swizzle_bitops(x_B, 2, 4, 6) |
+               swizzle_bitops(y_px, 1, 2, 8) |
+               swizzle_bitops(x_B, 1, 6, 9) |
+	       swizzle_bitops(y_px, 2, 3, 10);
+
+   return (uint8_t *) (base_addr + tiled_off);
+}
+
 struct tile_swizzle_ops swizzle_opers[] = {
    {ISL_TILING_Y0, linear_to_Ytile_swizzle},
+   {ISL_TILING_4, linear_to_tile4_swizzle},
 };
 
 class tileTFixture: public ::testing::Test {
@@ -98,6 +119,11 @@ public:
 };
 
 class tileYFixture : public tileTFixture,
+                     public ::testing::WithParamInterface<std::tuple<int, int,
+                                                                     int, int>>
+{};
+
+class tile4Fixture : public tileTFixture,
                      public ::testing::WithParamInterface<std::tuple<int, int,
                                                                      int, int>>
 {};
@@ -239,4 +265,24 @@ TEST_P(tileYFixture, tiletolin)
     run_test(x1, x2, y1, y2);
 }
 
+TEST_P(tile4Fixture, lintotile)
+{
+    auto [x1, x2, y1, y2] = GetParam();
+    test_setup(LIN_TO_TILE, ISL_TILING_4, IMAGE_FORMAT);
+    if (print_results)
+       printf("Coordinates: x1=%d x2=%d y1=%d y2=%d \n", x1, x2, y1, y2);
+    run_test(x1, x2, y1, y2);
+}
+
+TEST_P(tile4Fixture, tiletolin)
+{
+    auto [x1, x2, y1, y2] = GetParam();
+    test_setup(TILE_TO_LIN, ISL_TILING_4, IMAGE_FORMAT);
+    if (print_results)
+       printf("Coordinates: x1=%d x2=%d y1=%d y2=%d \n", x1, x2, y1, y2);
+    run_test(x1, x2, y1, y2);
+}
+
+
 INSTANTIATE_TEST_SUITE_P(Ytile, tileYFixture, testing::Values(TILE_COORDINATES));
+INSTANTIATE_TEST_SUITE_P(tile4, tile4Fixture, testing::Values(TILE_COORDINATES));
