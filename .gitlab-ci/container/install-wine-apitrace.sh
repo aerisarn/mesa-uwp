@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APITRACE_VERSION="10.0"
+APITRACE_VERSION="11.1"
 APITRACE_VERSION_DATE=""
 
 wget "https://github.com/apitrace/apitrace/releases/download/${APITRACE_VERSION}/apitrace-${APITRACE_VERSION}${APITRACE_VERSION_DATE}-win64.7z"
