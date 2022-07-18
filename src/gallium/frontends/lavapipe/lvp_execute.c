@@ -4175,6 +4175,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->rs_dirty = true;
    state->vp_dirty = true;
    state->rs_state.point_tri_clip = true;
+   state->rs_state.unclamped_fragment_depth_values = device->vk.enabled_extensions.EXT_depth_range_unrestricted;
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
       for (unsigned i = 0; i < ARRAY_SIZE(state->cso_ss_ptr[s]); i++)
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
