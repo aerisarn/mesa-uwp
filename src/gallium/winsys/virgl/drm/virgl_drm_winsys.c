@@ -455,7 +455,7 @@ alloc:
       res = virgl_drm_winsys_resource_create(qws, target, format, bind, width,
                                              height, depth, array_size,
                                              last_level, nr_samples, size,
-                                             false);
+                                             true);
    return res;
 }
 
