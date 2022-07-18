@@ -22,7 +22,7 @@
 # IN THE SOFTWARE.
 
 import argparse
-import os
+import subprocess
 import re
 from serial_buffer import SerialBuffer
 import sys
@@ -46,13 +46,17 @@ class FastbootRun:
         NO_COLOR = '\033[0m'
         print(RED + message + NO_COLOR)
 
-    def logged_system(self, cmd):
+    def logged_system(self, cmd, timeout=60):
         print("Running '{}'".format(cmd))
-        return os.system(cmd)
+        try:
+            return subprocess.call(cmd, shell=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            self.print_error("timeout, restarting run...")
+            return 2
 
     def run(self):
-        if self.logged_system(self.powerup) != 0:
-            return 1
+        if ret := self.logged_system(self.powerup):
+            return ret
 
         fastboot_ready = False
         for line in self.ser.lines(timeout=2 * 60, phase="bootloader"):
@@ -71,8 +75,8 @@ class FastbootRun:
                 "Failed to get to fastboot prompt, restarting run...")
             return 2
 
-        if self.logged_system(self.fastboot) != 0:
-            return 1
+        if ret := self.logged_system(self.fastboot):
+            return ret
 
         print_more_lines = -1
         for line in self.ser.lines(timeout=self.test_timeout, phase="test"):
