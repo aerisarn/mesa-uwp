@@ -997,6 +997,24 @@ bind_last_vertex_stage(struct zink_context *ctx)
          /* always unset vertex shader values when changing to a non-vs last stage */
          memset(&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX].key.vs_base, 0, sizeof(struct zink_vs_key_base));
       }
+
+      unsigned num_viewports = ctx->vp_state.num_viewports;
+      struct zink_screen *screen = zink_screen(ctx->base.screen);
+      /* number of enabled viewports is based on whether last vertex stage writes viewport index */
+      if (ctx->last_vertex_stage) {
+         if (ctx->last_vertex_stage->nir->info.outputs_written & (VARYING_BIT_VIEWPORT | VARYING_BIT_VIEWPORT_MASK))
+            ctx->vp_state.num_viewports = MIN2(screen->info.props.limits.maxViewports, PIPE_MAX_VIEWPORTS);
+         else
+            ctx->vp_state.num_viewports = 1;
+      } else {
+         ctx->vp_state.num_viewports = 1;
+      }
+      ctx->vp_state_changed |= num_viewports != ctx->vp_state.num_viewports;
+      if (!screen->info.have_EXT_extended_dynamic_state) {
+         if (ctx->gfx_pipeline_state.dyn_state1.num_viewports != ctx->vp_state.num_viewports)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.dyn_state1.num_viewports = ctx->vp_state.num_viewports;
+      }
       ctx->last_vertex_stage_dirty = true;
    }
 }

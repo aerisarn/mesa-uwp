@@ -1160,13 +1160,7 @@ zink_set_viewport_states(struct pipe_context *pctx,
 
    for (unsigned i = 0; i < num_viewports; ++i)
       ctx->vp_state.viewport_states[start_slot + i] = state[i];
-   ctx->vp_state.num_viewports = start_slot + num_viewports;
 
-   if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state) {
-      if (ctx->gfx_pipeline_state.dyn_state1.num_viewports != ctx->vp_state.num_viewports)
-         ctx->gfx_pipeline_state.dirty = true;
-      ctx->gfx_pipeline_state.dyn_state1.num_viewports = ctx->vp_state.num_viewports;
-   }
    ctx->vp_state_changed = true;
 }
 
