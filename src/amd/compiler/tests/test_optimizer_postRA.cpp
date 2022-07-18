@@ -482,7 +482,7 @@ BEGIN_TEST(optimizer_postRA.dpp_across_cf)
       //! /* logical preds: BB0, / linear preds: BB0, / kind: */
       //! p_logical_start
 
-      //! buffer_store_dword %c:v[2], 0, %d:v[3], 0 offen storage: semantics: scope:invocation
+      //! buffer_store_dword %c:v[2], 0, %d:v[3], 0 offen
       bld.mubuf(aco_opcode::buffer_store_dword, c, Operand::zero(), d, Operand::zero(), 0, true);
 
       //! p_logical_end
@@ -561,7 +561,7 @@ BEGIN_TEST(optimizer_postRA.dpp_across_cf_overwritten)
       //! v1: %addr:v[0] = p_parallelcopy %f:s[2]
       Temp addr = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(v1, a.physReg()), f);
 
-      //! buffer_store_dword %addr:v[0], 0, %d:v[3], 0 offen storage: semantics: scope:invocation
+      //! buffer_store_dword %addr:v[0], 0, %d:v[3], 0 offen
       bld.mubuf(aco_opcode::buffer_store_dword, Operand(addr, a.physReg()), Operand::zero(), d, Operand::zero(), 0, true);
 
       //! p_logical_end
@@ -633,7 +633,7 @@ BEGIN_TEST(optimizer_postRA.scc_nocmp_across_cf)
       //! /* logical preds: BB0, / linear preds: BB0, / kind: */
       //! p_logical_start
 
-      //! buffer_store_dword %c:v[2], 0, %d:v[3], 0 offen storage: semantics: scope:invocation
+      //! buffer_store_dword %c:v[2], 0, %d:v[3], 0 offen
       bld.mubuf(aco_opcode::buffer_store_dword, c, Operand::zero(), d, Operand::zero(), 0, true);
 
       //! p_logical_end
@@ -716,7 +716,7 @@ BEGIN_TEST(optimizer_postRA.scc_nocmp_across_cf_partially_overwritten)
       //! s1: %ovrwr:s[3] = p_parallelcopy %f:s[4]
       Temp s_addr = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(s1, reg_s3), f);
 
-      //! buffer_store_dword %c:v[2], %ovrwr:s[3], %d:v[3], 0 offen storage: semantics: scope:invocation
+      //! buffer_store_dword %c:v[2], %ovrwr:s[3], %d:v[3], 0 offen
       bld.mubuf(aco_opcode::buffer_store_dword, c, Operand(s_addr, reg_s3), d, Operand::zero(), 0, true);
 
       //! p_logical_end

@@ -266,9 +266,12 @@ print_scope(sync_scope scope, FILE* output, const char* prefix = "scope")
 static void
 print_sync(memory_sync_info sync, FILE* output)
 {
-   print_storage(sync.storage, output);
-   print_semantics(sync.semantics, output);
-   print_scope(sync.scope, output);
+   if (sync.storage)
+      print_storage(sync.storage, output);
+   if (sync.semantics)
+      print_semantics(sync.semantics, output);
+   if (sync.scope != scope_invocation)
+      print_scope(sync.scope, output);
 }
 
 static void
