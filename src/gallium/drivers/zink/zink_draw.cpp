@@ -740,7 +740,10 @@ zink_draw(struct pipe_context *pctx,
    if (zink_program_has_descriptors(&ctx->curr_program->base))
       screen->descriptors_update(ctx, false);
 
-   if (ctx->di.any_bindless_dirty && ctx->curr_program->base.dd->bindless)
+   if (ctx->di.any_bindless_dirty &&
+       /* some apps (d3dretrace) call MakeTextureHandleResidentARB randomly */
+       zink_program_has_descriptors(&ctx->curr_program->base) &&
+       ctx->curr_program->base.dd->bindless)
       zink_descriptors_update_bindless(ctx);
 
    if (reads_basevertex) {
