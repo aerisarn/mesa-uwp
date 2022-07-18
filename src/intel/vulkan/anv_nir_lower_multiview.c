@@ -176,11 +176,10 @@ replace_load_view_index_with_layer_id(struct nir_builder *b,
 }
 
 bool
-anv_nir_lower_multiview(nir_shader *shader,
-                        struct anv_graphics_pipeline *pipeline)
+anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask,
+                        bool use_primitive_replication)
 {
    assert(shader->info.stage != MESA_SHADER_COMPUTE);
-   uint32_t view_mask = pipeline->view_mask;
 
    /* If multiview isn't enabled, just lower the ViewIndex builtin to zero. */
    if (view_mask == 0) {
@@ -201,8 +200,8 @@ anv_nir_lower_multiview(nir_shader *shader,
     * view, then it is possible to use the feature instead of instancing to
     * implement multiview.
     */
-   if (pipeline->use_primitive_replication) {
-      bool progress = nir_lower_multiview(shader, pipeline->view_mask);
+   if (use_primitive_replication) {
+      bool progress = nir_lower_multiview(shader, view_mask);
 
       if (progress) {
          nir_builder b;
@@ -289,10 +288,12 @@ anv_nir_lower_multiview(nir_shader *shader,
 }
 
 bool
-anv_check_for_primitive_replication(nir_shader **shaders,
-                                    struct anv_graphics_pipeline *pipeline)
+anv_check_for_primitive_replication(struct anv_device *device,
+                                    VkShaderStageFlags stages,
+                                    nir_shader **shaders,
+                                    uint32_t view_mask)
 {
-   assert(pipeline->base.device->info->ver >= 12);
+   assert(device->info->ver >= 12);
 
    static int primitive_replication_max_views = -1;
    if (primitive_replication_max_views < 0) {
@@ -312,11 +313,9 @@ anv_check_for_primitive_replication(nir_shader **shaders,
     * later than Vertex.  In that case only the last stage can refer to
     * gl_ViewIndex.
     */
-   if (pipeline->active_stages & ~(VK_SHADER_STAGE_VERTEX_BIT |
-                                   VK_SHADER_STAGE_FRAGMENT_BIT))
+   if (stages & ~(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT))
       return false;
 
-   uint32_t view_mask = pipeline->view_mask;
    int view_count = util_bitcount(view_mask);
    if (view_count == 1 || view_count > primitive_replication_max_views)
       return false;
