@@ -2069,14 +2069,7 @@ tu6_base_format(enum pipe_format format)
 
 struct tu_image
 {
-   struct vk_object_base base;
-
-   /* The original VkFormat provided by the client.  This may not match any
-    * of the actual surface formats.
-    */
-   VkFormat vk_format;
-   uint32_t level_count;
-   uint32_t layer_count;
+   struct vk_image vk;
 
    struct fdl_layout layout[3];
    uint32_t total_size;
@@ -2095,27 +2088,7 @@ struct tu_image
    uint32_t lrz_offset;
    uint32_t lrz_fc_offset;
    uint32_t lrz_fc_size;
-
-   bool shareable;
 };
-
-static inline uint32_t
-tu_get_layerCount(const struct tu_image *image,
-                  const VkImageSubresourceRange *range)
-{
-   return range->layerCount == VK_REMAINING_ARRAY_LAYERS
-             ? image->layer_count - range->baseArrayLayer
-             : range->layerCount;
-}
-
-static inline uint32_t
-tu_get_levelCount(const struct tu_image *image,
-                  const VkImageSubresourceRange *range)
-{
-   return range->levelCount == VK_REMAINING_MIP_LEVELS
-             ? image->level_count - range->baseMipLevel
-             : range->levelCount;
-}
 
 uint32_t tu6_plane_count(VkFormat format);
 enum pipe_format tu6_plane_format(VkFormat format, uint32_t plane);
@@ -2376,7 +2349,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, base, VkDeviceMemory,
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image, base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, base, VkPipelineCache,

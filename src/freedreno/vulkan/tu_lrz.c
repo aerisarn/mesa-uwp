@@ -544,7 +544,7 @@ tu_lrz_clear_depth_image(struct tu_cmd_buffer *cmd,
 
    tu6_write_lrz_reg(cmd, &cmd->cs, A6XX_GRAS_LRZ_DEPTH_VIEW(
          .base_layer = range->baseArrayLayer,
-         .layer_count = tu_get_layerCount(image, range),
+         .layer_count = vk_image_subresource_layer_count(&image->vk, range),
          .base_mip_level = range->baseMipLevel,
    ));
 

@@ -151,9 +151,9 @@ hash_renderpass_instance(const struct tu_render_pass *pass,
    for (unsigned i = 0; i < pass->attachment_count; i++) {
       APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->view.width);
       APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->view.height);
-      APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->image->vk_format);
-      APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->image->layer_count);
-      APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->image->level_count);
+      APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->image->vk.format);
+      APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->image->vk.array_layers);
+      APPEND_TO_HASH(&hash_state, cmd->state.attachments[i]->image->vk.mip_levels);
    }
 
    APPEND_TO_HASH(&hash_state, pass->subpass_count);
