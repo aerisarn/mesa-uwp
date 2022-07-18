@@ -1008,8 +1008,8 @@ zink_bind_vs_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    if (!cso && !ctx->gfx_stages[PIPE_SHADER_VERTEX])
       return;
-   void *prev = ctx->gfx_stages[PIPE_SHADER_VERTEX];
    bind_stage(ctx, PIPE_SHADER_VERTEX, cso);
+   bind_last_vertex_stage(ctx);
    if (cso) {
       struct zink_shader *zs = cso;
       ctx->shader_reads_drawid = BITSET_TEST(zs->nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
@@ -1018,9 +1018,6 @@ zink_bind_vs_state(struct pipe_context *pctx,
       ctx->shader_reads_drawid = false;
       ctx->shader_reads_basevertex = false;
    }
-   if (ctx->last_vertex_stage == prev)
-      ctx->last_vertex_stage = cso;
-
 }
 
 /* if gl_SampleMask[] is written to, we have to ensure that we get a shader with the same sample count:
