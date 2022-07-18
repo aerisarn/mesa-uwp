@@ -951,7 +951,7 @@ static void
 tu_setup_dynamic_attachment(struct tu_render_pass_attachment *att,
                             struct tu_image_view *view)
 {
-   att->format = view->format;
+   att->format = view->vk.format;
    att->samples = view->image->layout->nr_samples;
 
    /* for d32s8, cpp is for the depth image, and
@@ -1006,7 +1006,7 @@ tu_setup_dynamic_render_pass(struct tu_cmd_buffer *cmd_buffer,
 
       subpass->samples = view->image->layout->nr_samples;
 
-      if (vk_format_is_srgb(view->format))
+      if (vk_format_is_srgb(view->vk.format))
          subpass->srgb_cntl |= 1 << i;
 
       if (att_info->resolveMode != VK_RESOLVE_MODE_NONE) {

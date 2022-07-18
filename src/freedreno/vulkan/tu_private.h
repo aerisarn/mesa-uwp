@@ -2100,11 +2100,9 @@ enum pipe_format tu_format_for_aspect(enum pipe_format format,
 
 struct tu_image_view
 {
-   struct vk_object_base base;
+   struct vk_image_view vk;
 
    struct tu_image *image; /**< VkImageViewCreateInfo::image */
-
-   VkFormat format;
 
    struct fdl6_view view;
 
@@ -2169,11 +2167,6 @@ tu_import_memory_from_gralloc_handle(VkDevice device_h,
                                      int dma_buf,
                                      const VkAllocationCallbacks *alloc,
                                      VkImage image_h);
-
-void
-tu_image_view_init(struct tu_image_view *iview,
-                   const VkImageViewCreateInfo *pCreateInfo,
-                   bool limited_z24s8);
 
 bool
 tiling_possible(VkFormat format);
@@ -2350,7 +2343,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, base, VkImageView,
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)

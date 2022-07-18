@@ -161,8 +161,9 @@ tu_cs_image_flag_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t l
    tu_cs_emit(cs, iview->FLAG_BUFFER_PITCH);
 }
 
-void
-tu_image_view_init(struct tu_image_view *iview,
+static void
+tu_image_view_init(struct tu_device *device,
+                   struct tu_image_view *iview,
                    const VkImageViewCreateInfo *pCreateInfo,
                    bool has_z24uint_s8uint)
 {
@@ -176,11 +177,9 @@ tu_image_view_init(struct tu_image_view *iview,
    const struct tu_sampler_ycbcr_conversion *conversion = ycbcr_conversion ?
       tu_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
 
-   const struct VkImageViewMinLodCreateInfoEXT *min_lod =
-      vk_find_struct_const(pCreateInfo->pNext, IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT);
+   vk_image_view_init(&device->vk, &iview->vk, false, pCreateInfo);
 
    iview->image = image;
-   iview->format = pCreateInfo->format;
 
    const struct fdl_layout *layouts[3];
 
@@ -218,7 +217,7 @@ tu_image_view_init(struct tu_image_view *iview,
    args.base_miplevel = range->baseMipLevel;
    args.layer_count = vk_image_subresource_layer_count(&image->vk, range);
    args.level_count = vk_image_subresource_level_count(&image->vk, range);
-   args.min_lod_clamp = min_lod ? min_lod->minLod : 0.f;
+   args.min_lod_clamp = iview->vk.min_lod;
    args.format = tu_format_for_aspect(format, aspect_mask);
    vk_component_mapping_to_pipe_swizzle(pCreateInfo->components, args.swiz);
    if (conversion) {
@@ -804,7 +803,7 @@ tu_CreateImageView(VkDevice _device,
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   tu_image_view_init(view, pCreateInfo, device->use_z24uint_s8uint);
+   tu_image_view_init(device, view, pCreateInfo, device->use_z24uint_s8uint);
 
    *pView = tu_image_view_to_handle(view);
 
