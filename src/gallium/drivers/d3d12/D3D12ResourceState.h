@@ -40,48 +40,6 @@
 #define RESOURCE_STATE_VALID_INTERNAL_BITS 0x2fffff
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-//==================================================================================================================================
-// CCurrentResourceState
-// Stores the current state of either an entire resource, or each subresource.
-// Current state can either be shared read across multiple queues, or exclusive on a single queue.
-//==================================================================================================================================
-class CCurrentResourceState
-{
-public:
-   struct LogicalState
-   {
-      D3D12_RESOURCE_STATES State = D3D12_RESOURCE_STATE_COMMON;
-      UINT64 ExecutionId = 0;
-      bool IsPromotedState = false;
-      bool MayDecay = false;
-   };
-
-private:
-   const bool m_bSimultaneousAccess;
-   bool m_bAllSubresourcesSame = true;
-
-   std::vector<LogicalState> m_spLogicalState;
-
-   void ConvertToSubresourceTracking();
-
-public:
-   CCurrentResourceState(UINT SubresourceCount, bool bSimultaneousAccess);
-
-   bool SupportsSimultaneousAccess() const { return m_bSimultaneousAccess; }
-
-   // Returns the destination state if the current state is promotable.
-   // Returns D3D12_RESOURCE_STATE_COMMON if not.
-   D3D12_RESOURCE_STATES StateIfPromoted(D3D12_RESOURCE_STATES state, UINT SubresourceIndex);
-
-   bool AreAllSubresourcesSame() const { return m_bAllSubresourcesSame; }
-
-   void SetLogicalResourceState(LogicalState const& State);
-   void SetLogicalSubresourceState(UINT SubresourceIndex, LogicalState const& State);
-   LogicalState const& GetLogicalSubresourceState(UINT SubresourceIndex) const;
-
-   void Reset();
-};
     
 //==================================================================================================================================
 // TransitionableResourceState
@@ -91,14 +49,15 @@ struct TransitionableResourceState
 {
    struct list_head m_TransitionListEntry;
    struct d3d12_desired_resource_state m_DesiredState;
+   struct d3d12_resource_state m_currentState;
 
    TransitionableResourceState(ID3D12Resource *pResource, UINT TotalSubresources, bool SupportsSimultaneousAccess) :
       m_TotalSubresources(TotalSubresources),
-      m_currentState(TotalSubresources, SupportsSimultaneousAccess),
       m_pResource(pResource)
    {
       list_inithead(&m_TransitionListEntry);
       d3d12_desired_resource_state_init(&m_DesiredState, TotalSubresources);
+      d3d12_resource_state_init(&m_currentState, TotalSubresources, SupportsSimultaneousAccess);
    }
 
    ~TransitionableResourceState()
@@ -114,14 +73,10 @@ struct TransitionableResourceState
 
    UINT NumSubresources() { return m_TotalSubresources; }
 
-   CCurrentResourceState& GetCurrentState() { return m_currentState; }
-
    inline ID3D12Resource* GetD3D12Resource() const { return m_pResource; }
 
 private:
    unsigned m_TotalSubresources;
-
-   CCurrentResourceState m_currentState;
 
    ID3D12Resource* m_pResource;
 };
@@ -224,7 +179,7 @@ private:
    // May update the destination state of the resource.
    void ProcessTransitioningResource(ID3D12Resource* pTransitioningResource,
                                      TransitionableResourceState& TransitionableResourceState,
-                                     CCurrentResourceState& CurrentState,
+                                     d3d12_resource_state *CurrentState,
                                      UINT NumTotalSubresources,
                                      UINT64 ExecutionId);
 
@@ -232,10 +187,10 @@ private:
    // Helpers
    static bool TransitionRequired(D3D12_RESOURCE_STATES CurrentState, D3D12_RESOURCE_STATES& DestinationState);
    void AddCurrentStateUpdate(TransitionableResourceState& Resource,
-                              CCurrentResourceState& CurrentState,
+                              d3d12_resource_state *CurrentState,
                               UINT SubresourceIndex,
-                              const CCurrentResourceState::LogicalState &NewLogicalState);
-   void ProcessTransitioningSubresourceExplicit(CCurrentResourceState& CurrentState,
+                              const d3d12_subresource_state *NewLogicalState);
+   void ProcessTransitioningSubresourceExplicit(d3d12_resource_state *CurrentState,
                                                 UINT i,
                                                 D3D12_RESOURCE_STATES after,
                                                 TransitionableResourceState& TransitionableResourceState,

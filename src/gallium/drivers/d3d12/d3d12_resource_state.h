@@ -76,4 +76,47 @@ d3d12_set_desired_subresource_state(d3d12_desired_resource_state *state_obj,
 void
 d3d12_reset_desired_resource_state(d3d12_desired_resource_state *state_obj);
 
+struct d3d12_subresource_state
+{
+   D3D12_RESOURCE_STATES state;
+   uint64_t execution_id;
+   bool is_promoted;
+   bool may_decay;
+};
+
+/* Stores the current state of either an entire resource, or each subresource */
+struct d3d12_resource_state
+{
+   bool homogenous;
+   bool supports_simultaneous_access;
+   uint32_t num_subresources;
+   d3d12_subresource_state *subresource_states;
+};
+
+bool
+d3d12_resource_state_init(d3d12_resource_state *state, uint32_t subresource_count, bool simultaneous_access);
+
+void
+d3d12_resource_state_cleanup(d3d12_resource_state *state);
+
+const d3d12_subresource_state *
+d3d12_get_subresource_state(const d3d12_resource_state *state, uint32_t subresource);
+
+void
+d3d12_set_resource_state(d3d12_resource_state *state_obj, const d3d12_subresource_state *state);
+
+void
+d3d12_set_subresource_state(d3d12_resource_state *state_obj, uint32_t subresource, const d3d12_subresource_state *state);
+
+void
+d3d12_reset_resource_state(d3d12_resource_state *state);
+
+D3D12_RESOURCE_STATES
+d3d12_resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
+                                 bool simultaneous_access,
+                                 const d3d12_subresource_state *current_state);
+
+void
+d3d12_resource_state_copy(d3d12_resource_state *dest, d3d12_resource_state *src);
+
 #endif // D3D12_RESOURCE_STATE_H

@@ -1967,7 +1967,7 @@ d3d12_transition_resource_state(struct d3d12_context *ctx,
                                 D3D12_RESOURCE_STATES state,
                                 d3d12_bind_invalidate_option bind_invalidate)
 {
-   TransitionableResourceState *xres = d3d12_resource_state(res);
+   TransitionableResourceState *xres = d3d12_transitionable_resource_state(res);
    
    if (bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
       d3d12_invalidate_context_bindings(ctx, res);
@@ -1984,7 +1984,7 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
                                     D3D12_RESOURCE_STATES state,
                                     d3d12_bind_invalidate_option bind_invalidate)
 {
-   TransitionableResourceState *xres = d3d12_resource_state(res);
+   TransitionableResourceState *xres = d3d12_transitionable_resource_state(res);
 
    if(bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
       d3d12_invalidate_context_bindings(ctx, res);

@@ -102,7 +102,7 @@ d3d12_resource_resource(struct d3d12_resource *res)
 }
 
 static inline struct TransitionableResourceState *
-d3d12_resource_state(struct d3d12_resource *res)
+d3d12_transitionable_resource_state(struct d3d12_resource *res)
 {
    uint64_t offset;
    if (!res->bo)
