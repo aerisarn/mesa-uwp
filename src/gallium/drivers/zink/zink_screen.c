@@ -448,10 +448,13 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.feats11.shaderDrawParameters || screen->info.have_KHR_shader_draw_parameters;
 
    case PIPE_CAP_SHADER_GROUP_VOTE:
-      return screen->info.have_vulkan11 &&
+      if (screen->info.have_vulkan11 &&
              (screen->info.subgroup.supportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) &&
-             (screen->info.subgroup.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT);
-
+          (screen->info.subgroup.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT))
+         return true;
+      if (screen->info.have_EXT_shader_subgroup_vote)
+         return true;
+      return false;
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return screen->info.have_EXT_provoking_vertex;
 
@@ -518,8 +521,14 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_SHADER_BALLOT:
-      return screen->info.have_vulkan12 && screen->info.have_EXT_shader_subgroup_ballot && screen->info.props11.subgroupSize <= 64;
-
+      if (screen->info.props11.subgroupSize > 64)
+         return false;
+      if (screen->info.have_vulkan11 &&
+          screen->info.subgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT)
+         return true;
+      if (screen->info.have_EXT_shader_subgroup_ballot)
+         return true;
+      return false;
    case PIPE_CAP_SAMPLE_SHADING:
       return screen->info.feats.features.sampleRateShading;
 
