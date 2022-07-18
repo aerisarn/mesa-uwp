@@ -356,6 +356,13 @@ uses_task_payload_atomics(nir_shader *shader)
    return false;
 }
 
+static bool
+nir_lower_task_intrins(nir_shader *shader, lower_task_state *state)
+{
+   return nir_shader_instructions_pass(shader, lower_task_intrin,
+                                       nir_metadata_none, state);
+}
+
 /**
  * Common Task Shader lowering to make the job of the backends easier.
  *
@@ -391,7 +398,7 @@ nir_lower_task_shader(nir_shader *shader,
        * If the shader writes TASK_COUNT, lower that to emit
        * the new launch_mesh_workgroups intrinsic instead.
        */
-      nir_lower_nv_task_count(shader);
+      NIR_PASS_V(shader, nir_lower_nv_task_count);
    } else {
       /* To make sure that task shaders always have a code path that
        * executes a launch_mesh_workgroups, let's add one at the end.
@@ -414,13 +421,13 @@ nir_lower_task_shader(nir_shader *shader,
       shader->info.shared_size =
          state.payload_shared_addr + shader->info.task_payload_size;
 
-   nir_shader_instructions_pass(shader, lower_task_intrin,
-                                nir_metadata_none, &state);
+   NIR_PASS(_, shader, nir_lower_task_intrins, &state);
 
    /* Delete all code that potentially can't be reached due to
     * launch_mesh_workgroups being a terminating instruction.
     */
-   nir_lower_returns(shader);
+   NIR_PASS(_, shader, nir_lower_returns);
+
    bool progress;
    do {
       progress = false;

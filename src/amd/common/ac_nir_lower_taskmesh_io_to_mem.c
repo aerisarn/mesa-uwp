@@ -365,7 +365,7 @@ ac_nir_lower_task_outputs_to_mem(nir_shader *shader,
    nir_lower_task_shader_options lower_ts_opt = {
       .payload_to_shared_for_atomics = true,
    };
-   NIR_PASS(_, shader, nir_lower_task_shader, lower_ts_opt);
+   nir_lower_task_shader(shader, lower_ts_opt);
 
    lower_tsms_io_state state = {
       .draw_entry_bytes = 16,
