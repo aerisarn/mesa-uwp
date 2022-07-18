@@ -2142,17 +2142,22 @@ static void
 emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
                                    const struct vk_render_pass_state *rp)
 {
-   if (!pipeline->use_primitive_replication) {
+   const int replication_count =
+      anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map.num_pos_slots;
+
+   assert(replication_count >= 1);
+   if (replication_count == 1) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
       return;
    }
 
-   int view_count = util_bitcount(rp->view_mask);
-   assert(view_count > 1 && view_count <= MAX_VIEWS_FOR_PRIMITIVE_REPLICATION);
+   uint32_t view_mask = rp->view_mask;
+   assert(replication_count == util_bitcount(view_mask));
+   assert(replication_count <= MAX_VIEWS_FOR_PRIMITIVE_REPLICATION);
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) {
-      pr.ReplicaMask = (1 << view_count) - 1;
-      pr.ReplicationCount = view_count - 1;
+      pr.ReplicaMask = (1 << replication_count) - 1;
+      pr.ReplicationCount = replication_count - 1;
 
       int i = 0;
       u_foreach_bit(view_index, rp->view_mask) {
