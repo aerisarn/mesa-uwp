@@ -172,8 +172,14 @@ nir_remove_unused_io_vars(nir_shader *shader,
       }
    }
 
-   if (progress)
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_dominance |
+                            nir_metadata_block_index);
       nir_fixup_deref_modes(shader);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
 
    return progress;
 }
