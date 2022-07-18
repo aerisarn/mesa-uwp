@@ -1203,6 +1203,12 @@ struct brw_vue_map {
    int num_slots;
 
    /**
+    * Number of position VUE slots.  If num_pos_slots > 1, primitive
+    * replication is being used.
+    */
+   int num_pos_slots;
+
+   /**
     * Number of per-patch VUE slots. Only valid for tessellation control
     * shader outputs and tessellation evaluation shader inputs.
     */
