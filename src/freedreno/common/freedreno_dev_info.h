@@ -133,6 +133,14 @@ struct fd_dev_info {
          bool has_dp2acc;
          bool has_dp4acc;
 
+         /* LRZ fast-clear works on all gens, however blob disables it on
+          * gen1 and gen2. We also elect to disable fast-clear on these gens
+          * because for close to none gains it adds complexity and seem to work
+          * a bit differently from gen3+. Which creates at least one edge case:
+          * if first draw which uses LRZ fast-clear doesn't lock LRZ direction
+          * the fast-clear value is undefined. For details see
+          * https://gitlab.freedesktop.org/mesa/mesa/-/issues/6829
+          */
          bool enable_lrz_fast_clear;
          bool has_lrz_dir_tracking;
          bool lrz_track_quirk;
