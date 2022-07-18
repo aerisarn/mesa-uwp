@@ -495,6 +495,41 @@ complex_unroll_single_terminator(nir_loop *loop)
       complex_unroll_loop_body(loop, terminator, &lp_header, &lp_body,
                                remap_table, num_times_to_clone);
 
+   assert(unroll_loc->type == nir_cf_node_if);
+
+   /* We need to clone the lcssa vars in order to insert them on both sides
+    * of the if in the last iteration/if-statement. Otherwise the optimisation
+    * passes will have trouble optimising the unrolled if ladder.
+    */
+   nir_cursor cursor =
+      get_complex_unroll_insert_location(unroll_loc,
+                                         terminator->continue_from_then);
+
+   nir_if *if_stmt = nir_cf_node_as_if(unroll_loc);
+   nir_cursor start_cursor;
+   nir_cursor end_cursor;
+   if (terminator->continue_from_then) {
+      start_cursor = nir_before_block(nir_if_first_else_block(if_stmt));
+      end_cursor = nir_after_block(nir_if_last_else_block(if_stmt));
+   } else {
+      start_cursor = nir_before_block(nir_if_first_then_block(if_stmt));
+      end_cursor = nir_after_block(nir_if_last_then_block(if_stmt));
+   }
+
+   nir_cf_list lcssa_list;
+   nir_cf_extract(&lcssa_list, start_cursor, end_cursor);
+
+   /* Insert the cloned vars in the last continue branch */
+   nir_cf_list_clone_and_reinsert(&lcssa_list, loop->cf_node.parent,
+                                  cursor, remap_table);
+
+   start_cursor = terminator->continue_from_then ?
+      nir_before_block(nir_if_first_else_block(if_stmt)) :
+      nir_before_block(nir_if_first_then_block(if_stmt));
+
+   /* Reinsert the cloned vars back where they came from */
+   nir_cf_reinsert(&lcssa_list, start_cursor);
+
    /* Delete the original loop header and body */
    nir_cf_delete(&lp_header);
    nir_cf_delete(&lp_body);
