@@ -480,10 +480,6 @@ emit_store_ngg_nogs_es_primitive_id(nir_builder *b)
    nir_ssa_def *prim_id = NULL;
 
    if (b->shader->info.stage == MESA_SHADER_VERTEX) {
-      /* Workgroup barrier - wait for GS threads to store primitive ID in LDS. */
-      nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP, .memory_scope = NIR_SCOPE_WORKGROUP,
-                            .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);
-
       /* LDS address where the primitive ID is stored */
       nir_ssa_def *thread_id_in_threadgroup = nir_load_local_invocation_index(b);
       nir_ssa_def *addr =  pervertex_lds_addr(b, thread_id_in_threadgroup, 4u);
@@ -1466,6 +1462,10 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       }
 
       emit_ngg_nogs_prim_id_store_shared(b, &state);
+
+      /* Wait for GS threads to store primitive ID in LDS. */
+      nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP, .memory_scope = NIR_SCOPE_WORKGROUP,
+                            .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);
    }
 
    nir_intrinsic_instr *export_vertex_instr;
