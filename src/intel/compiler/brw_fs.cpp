@@ -7756,10 +7756,10 @@ lower_simd(nir_builder *b, nir_instr *instr, void *options)
    }
 }
 
-void
+bool
 brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width)
 {
-   nir_shader_lower_instructions(nir, filter_simd, lower_simd,
+   return nir_shader_lower_instructions(nir, filter_simd, lower_simd,
                                  (void *)(uintptr_t)dispatch_width);
 }
 
@@ -7803,11 +7803,11 @@ brw_compile_cs(const struct brw_compiler *compiler,
       brw_nir_apply_key(shader, compiler, &key->base,
                         dispatch_width, true /* is_scalar */);
 
-      NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
+      NIR_PASS(_, shader, brw_nir_lower_simd, dispatch_width);
 
       /* Clean up after the local index and ID calculations. */
-      NIR_PASS_V(shader, nir_opt_constant_folding);
-      NIR_PASS_V(shader, nir_opt_dce);
+      NIR_PASS(_, shader, nir_opt_constant_folding);
+      NIR_PASS(_, shader, nir_opt_dce);
 
       brw_postprocess_nir(shader, compiler, true, debug_enabled,
                           key->base.robust_buffer_access);
