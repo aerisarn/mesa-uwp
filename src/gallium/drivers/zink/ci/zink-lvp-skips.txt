@@ -4,6 +4,10 @@
 
 KHR-GL32.texture_size_promotion.functional
 
+# this is just broken.
+KHR-GL46.shader_ballot_tests.ShaderBallotBitmasks
+KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead
+
 # ignores copied from the old runner script
 spec@arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range
 spec@arb_timer_query.*

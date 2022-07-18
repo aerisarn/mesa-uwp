@@ -16,6 +16,9 @@ KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2
 arb_pipeline_statistics_query-comp
 gl-1.0-blend-func
 
+# this is just broken.
+KHR-GL45.shader_ballot_tests.ShaderBallotFunctionRead
+
 # piglit tests that would take too much memory on shared runners
 max-texture-size
 maxsize
