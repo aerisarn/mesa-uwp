@@ -3268,7 +3268,7 @@ gfx12_set_memory_fence_message(struct brw_codegen *p,
 
    if (sfid == BRW_SFID_URB) {
       brw_set_desc(p, insn, brw_urb_fence_desc(p->devinfo) |
-                            brw_message_desc(p->devinfo, mlen, rlen, false));
+                            brw_message_desc(p->devinfo, mlen, rlen, true));
    } else {
       enum lsc_fence_scope scope = lsc_fence_msg_desc_scope(p->devinfo, desc);
       enum lsc_flush_type flush_type = lsc_fence_msg_desc_flush_type(p->devinfo, desc);
