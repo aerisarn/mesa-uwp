@@ -257,4 +257,14 @@ rogue_get_compute_max_work_group_size(const struct pvr_device_info *dev_info)
    return ROGUE_MAX_INSTANCES_PER_TASK * max_tasks_per_usc;
 }
 
+/* Don't use this directly. Use the x and y define macros. */
+static inline uint32_t
+__rogue_get_param_vf_max(const struct pvr_device_info *dev_info)
+{
+   return (rogue_get_render_size_max(dev_info) * 3 / 2) - 1;
+}
+
+#define rogue_get_param_vf_max_x(dev_info) __rogue_get_param_vf_max(dev_info)
+#define rogue_get_param_vf_max_y(dev_info) __rogue_get_param_vf_max(dev_info)
+
 #endif /* ROGUE_HW_UTILS_H */

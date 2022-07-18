@@ -1474,6 +1474,127 @@ static void pvr_device_finish_compute_idfwdf_state(struct pvr_device *device)
    pvr_bo_free(device, device->idfwdf_state.usc);
 }
 
+static VkResult
+pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
+{
+   struct pvr_device_static_clear_state *state = &device->static_clear_state;
+   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
+   const float vf_x_max = (float)rogue_get_param_vf_max_x(dev_info);
+   const float vf_y_max = (float)rogue_get_param_vf_max_y(dev_info);
+   const struct rogue_shader_binary *passthrough_vert_shader;
+   struct pvr_pds_vertex_shader_program pds_program;
+   size_t staging_buffer_size;
+   uint32_t *staging_buffer;
+   VkResult result;
+
+   const float vertices[4][3] = { { 0.0f, 0.0f, 0.0f },
+                                  { vf_x_max, 0.0f, 0.0f },
+                                  { 0.0f, vf_y_max, 0.0f },
+                                  { vf_x_max, vf_y_max, 0.0f } };
+
+   pvr_hard_code_get_passthrough_vertex_shader(dev_info,
+                                               &passthrough_vert_shader);
+
+   result = pvr_gpu_upload_usc(device,
+                               passthrough_vert_shader->data,
+                               passthrough_vert_shader->size,
+                               cache_line_size,
+                               &state->usc_vertex_shader_bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = pvr_gpu_upload(device,
+                           device->heaps.general_heap,
+                           vertices,
+                           sizeof(vertices),
+                           sizeof(vertices[0][0]),
+                           &state->vertices_bo);
+   if (result != VK_SUCCESS)
+      goto err_free_usc_shader;
+
+   pds_program = (struct pvr_pds_vertex_shader_program) {
+      .num_streams = 1,
+      .streams = {
+         [0] = {
+            .address = state->vertices_bo->vma->dev_addr.addr,
+            .stride = sizeof(vertices[0]),
+            .num_elements = 1,
+            .elements = {
+               [0] = {
+                  .size = sizeof(vertices[0]),
+               },
+            },
+         },
+      },
+   };
+
+   pvr_pds_setup_doutu(&pds_program.usc_task_control,
+                       state->usc_vertex_shader_bo->vma->dev_addr.addr,
+                       0,
+                       PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
+                       false);
+
+   pvr_pds_vertex_shader(&pds_program, NULL, PDS_GENERATE_SIZES, dev_info);
+
+   staging_buffer_size =
+      (pds_program.code_size + pds_program.data_size) * sizeof(*staging_buffer);
+
+   staging_buffer = vk_alloc(&device->vk.alloc,
+                             staging_buffer_size,
+                             8,
+                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!staging_buffer)
+      goto err_free_verices_buffer;
+
+   pvr_pds_vertex_shader(&pds_program,
+                         staging_buffer,
+                         PDS_GENERATE_DATA_SEGMENT,
+                         dev_info);
+   pvr_pds_vertex_shader(&pds_program,
+                         &staging_buffer[pds_program.data_size],
+                         PDS_GENERATE_CODE_SEGMENT,
+                         dev_info);
+
+   /* FIXME: Figure out the define for alignment of 16. */
+   result = pvr_gpu_upload_pds(device,
+                               &staging_buffer[0],
+                               pds_program.data_size,
+                               16,
+                               &staging_buffer[pds_program.data_size],
+                               pds_program.code_size,
+                               16,
+                               16,
+                               &state->pds);
+   if (result != VK_SUCCESS)
+      goto err_free_staging_buffer;
+
+   vk_free(&device->vk.alloc, staging_buffer);
+
+   return VK_SUCCESS;
+
+err_free_staging_buffer:
+   vk_free(&device->vk.alloc, staging_buffer);
+
+err_free_verices_buffer:
+   pvr_bo_free(device, state->vertices_bo);
+
+err_free_usc_shader:
+   pvr_bo_free(device, state->usc_vertex_shader_bo);
+
+   return result;
+}
+
+static void
+pvr_device_finish_graphics_static_clear_state(struct pvr_device *device)
+{
+   struct pvr_device_static_clear_state *state = &device->static_clear_state;
+
+   pvr_bo_free(device, state->pds.pvr_bo);
+   pvr_bo_free(device, state->vertices_bo);
+   pvr_bo_free(device, state->usc_vertex_shader_bo);
+}
+
 /* FIXME: We should be calculating the size when we upload the code in
  * pvr_srv_setup_static_pixel_event_program().
  */
@@ -1659,9 +1780,13 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_pvr_free_compute_fence;
 
-   result = pvr_queues_create(device, pCreateInfo);
+   result = pvr_device_init_graphics_static_clear_state(device);
    if (result != VK_SUCCESS)
       goto err_pvr_finish_compute_idfwdf;
+
+   result = pvr_queues_create(device, pCreateInfo);
+   if (result != VK_SUCCESS)
+      goto err_pvr_finish_graphics_static_clear;
 
    pvr_device_init_default_sampler_state(device);
 
@@ -1684,6 +1809,9 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    *pDevice = pvr_device_to_handle(device);
 
    return VK_SUCCESS;
+
+err_pvr_finish_graphics_static_clear:
+   pvr_device_finish_graphics_static_clear_state(device);
 
 err_pvr_finish_compute_idfwdf:
    pvr_device_finish_compute_idfwdf_state(device);
@@ -1722,6 +1850,7 @@ void pvr_DestroyDevice(VkDevice _device,
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
    pvr_queues_destroy(device);
+   pvr_device_finish_graphics_static_clear_state(device);
    pvr_device_finish_compute_idfwdf_state(device);
    pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
    pvr_bo_free(device, device->nop_program.pds.pvr_bo);

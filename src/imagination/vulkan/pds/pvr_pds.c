@@ -695,6 +695,7 @@ static uint32_t pvr_pds_get_bank_based_constants(uint32_t num_backs,
  * \returns Pointer to just beyond the buffer for the data - i.e the value
  *          of the buffer after writing its contents.
  */
+/* FIXME: Implement PDS_GENERATE_CODEDATA_SEGMENTS? */
 uint32_t *
 pvr_pds_vertex_shader(struct pvr_pds_vertex_shader_program *restrict program,
                       uint32_t *restrict buffer,

@@ -293,6 +293,12 @@ struct pvr_device {
       struct pvr_pds_upload sw_compute_barrier_pds;
    } idfwdf_state;
 
+   struct pvr_device_static_clear_state {
+      struct pvr_bo *usc_vertex_shader_bo;
+      struct pvr_bo *vertices_bo;
+      struct pvr_pds_upload pds;
+   } static_clear_state;
+
    VkPhysicalDeviceFeatures features;
 };
 
