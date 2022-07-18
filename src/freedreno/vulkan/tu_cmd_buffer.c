@@ -31,6 +31,7 @@
 #include "adreno_common.xml.h"
 
 #include "vk_format.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 
 #include "tu_cs.h"
@@ -1845,17 +1846,24 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       }
 
       if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
-         if (pBeginInfo->pInheritanceInfo->renderPass) {
-            cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
-            cmd_buffer->state.subpass =
-               &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
-         } else {
-            const VkCommandBufferInheritanceRenderingInfo *rendering_info =
-               vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext,
-                                    COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
+         const VkCommandBufferInheritanceRenderingInfo *rendering_info =
+            vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext,
+                                 COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
+
+         if (unlikely(cmd_buffer->device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+            rendering_info =
+               vk_get_command_buffer_inheritance_rendering_info(cmd_buffer->vk.level,
+                                                                pBeginInfo);
+         }
+
+         if (rendering_info) {
             tu_setup_dynamic_inheritance(cmd_buffer, rendering_info);
             cmd_buffer->state.pass = &cmd_buffer->dynamic_pass;
             cmd_buffer->state.subpass = &cmd_buffer->dynamic_subpass;
+         } else {
+            cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
+            cmd_buffer->state.subpass =
+               &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
          }
          tu_lrz_begin_secondary_cmdbuf(cmd_buffer);
       } else {
@@ -3822,6 +3830,13 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                        const VkSubpassBeginInfo *pSubpassBeginInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   if (unlikely(cmd->device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+      vk_common_CmdBeginRenderPass2(commandBuffer, pRenderPassBegin,
+                                    pSubpassBeginInfo);
+      return;
+   }
+
    TU_FROM_HANDLE(tu_render_pass, pass, pRenderPassBegin->renderPass);
    TU_FROM_HANDLE(tu_framebuffer, fb, pRenderPassBegin->framebuffer);
 
@@ -3937,6 +3952,22 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
       }
    }
 
+   if (unlikely(cmd->device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+      const VkRenderingSelfDependencyInfoMESA *self_dependency =
+         vk_find_struct_const(pRenderingInfo->pNext, RENDERING_SELF_DEPENDENCY_INFO_MESA);
+      if (self_dependency &&
+          (self_dependency->colorSelfDependencies ||
+           self_dependency->depthSelfDependency ||
+           self_dependency->stencilSelfDependency)) {
+         /* Mesa's renderpass emulation requires us to use normal attachments
+          * for input attachments, and currently doesn't try to keep track of
+          * which color/depth attachment an input attachment corresponds to.
+          * So when there's a self-dependency, we have to use sysmem.
+          */
+         cmd->state.rp.disable_gmem = true;
+      }
+   }
+
    cmd->state.renderpass_cache.pending_flush_bits =
       cmd->state.cache.pending_flush_bits;
    cmd->state.renderpass_cache.flush_bits = 0;
@@ -4008,6 +4039,13 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
                    const VkSubpassEndInfo *pSubpassEndInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   if (unlikely(cmd->device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+      vk_common_CmdNextSubpass2(commandBuffer, pSubpassBeginInfo,
+                                pSubpassEndInfo);
+      return;
+   }
+
    const struct tu_render_pass *pass = cmd->state.pass;
    struct tu_cs *cs = &cmd->draw_cs;
    const struct tu_subpass *last_subpass = cmd->state.subpass;
@@ -5115,6 +5153,11 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
                      const VkSubpassEndInfo *pSubpassEndInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (unlikely(cmd_buffer->device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+      vk_common_CmdEndRenderPass2(commandBuffer, pSubpassEndInfo);
+      return;
+   }
 
    cmd_buffer->trace_renderpass_end = u_trace_end_iterator(&cmd_buffer->trace);
 

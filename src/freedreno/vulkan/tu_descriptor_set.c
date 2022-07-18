@@ -58,6 +58,9 @@ descriptor_size(struct tu_device *dev, VkDescriptorType type)
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      if (unlikely(dev->instance->debug_flags & TU_DEBUG_DYNAMIC))
+         return A6XX_TEX_CONST_DWORDS * 4;
+
       /* Input attachment doesn't use descriptor sets at all */
       return 0;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -1079,6 +1082,8 @@ tu_update_descriptor_sets(const struct tu_device *device,
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             /* nothing in descriptor set - framebuffer state is used instead */
+            if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC))
+               write_image_descriptor(ptr, writeset->descriptorType, writeset->pImageInfo + j);
             break;
          default:
             unreachable("unimplemented descriptor type");
@@ -1306,6 +1311,8 @@ tu_update_descriptor_set_with_template(
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             /* nothing in descriptor set - framebuffer state is used instead */
+            if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC))
+               write_image_descriptor(ptr, templ->entry[i].descriptor_type, src);
             break;
          default:
             unreachable("unimplemented descriptor type");

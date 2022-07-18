@@ -373,6 +373,7 @@ static const struct debug_control tu_debug_options[] = {
    { "rast_order", TU_DEBUG_RAST_ORDER },
    { "unaligned_store", TU_DEBUG_UNALIGNED_STORE },
    { "log_skip_gmem_ops", TU_DEBUG_LOG_SKIP_GMEM_OPS },
+   { "dynamic", TU_DEBUG_DYNAMIC },
    { NULL, 0 }
 };
 
@@ -2637,6 +2638,11 @@ tu_CreateFramebuffer(VkDevice _device,
                      VkFramebuffer *pFramebuffer)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC))
+      return vk_common_CreateFramebuffer(_device, pCreateInfo, pAllocator,
+                                         pFramebuffer);
+
    TU_FROM_HANDLE(tu_render_pass, pass, pCreateInfo->renderPass);
    struct tu_framebuffer *framebuffer;
 
@@ -2694,6 +2700,12 @@ tu_DestroyFramebuffer(VkDevice _device,
                       const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+      vk_common_DestroyFramebuffer(_device, _fb, pAllocator);
+      return;
+   }
+
    TU_FROM_HANDLE(tu_framebuffer, fb, _fb);
 
    if (!fb)

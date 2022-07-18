@@ -329,7 +329,8 @@ lower_ssbo_ubo_intrinsic(struct tu_device *dev,
 }
 
 static nir_ssa_def *
-build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
+build_bindless(struct tu_device *dev, nir_builder *b,
+               nir_deref_instr *deref, bool is_sampler,
                struct tu_shader *shader,
                const struct tu_pipeline_layout *layout)
 {
@@ -341,7 +342,8 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
       &layout->set[set].layout->binding[binding];
 
    /* input attachments use non bindless workaround */
-   if (bind_layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
+   if (bind_layout->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT &&
+       likely(!(dev->instance->debug_flags & TU_DEBUG_DYNAMIC))) {
       const struct glsl_type *glsl_type = glsl_without_array(var->type);
       uint32_t idx = var->data.index * 2;
 
@@ -388,12 +390,12 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
 }
 
 static void
-lower_image_deref(nir_builder *b,
+lower_image_deref(struct tu_device *dev, nir_builder *b,
                   nir_intrinsic_instr *instr, struct tu_shader *shader,
                   const struct tu_pipeline_layout *layout)
 {
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
-   nir_ssa_def *bindless = build_bindless(b, deref, false, shader, layout);
+   nir_ssa_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
    nir_rewrite_image_intrinsic(instr, bindless, true);
 }
 
@@ -454,7 +456,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_size:
    case nir_intrinsic_image_deref_samples:
-      lower_image_deref(b, instr, shader, layout);
+      lower_image_deref(dev, b, instr, shader, layout);
       return true;
 
    default:
@@ -533,7 +535,7 @@ lower_tex_ycbcr(const struct tu_pipeline_layout *layout,
 }
 
 static bool
-lower_tex(nir_builder *b, nir_tex_instr *tex,
+lower_tex(nir_builder *b, nir_tex_instr *tex, struct tu_device *dev,
           struct tu_shader *shader, const struct tu_pipeline_layout *layout)
 {
    lower_tex_ycbcr(layout, b, tex);
@@ -541,7 +543,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    int sampler_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
    if (sampler_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
-      nir_ssa_def *bindless = build_bindless(b, deref, true, shader, layout);
+      nir_ssa_def *bindless = build_bindless(dev, b, deref, true, shader, layout);
       nir_instr_rewrite_src(&tex->instr, &tex->src[sampler_src_idx].src,
                             nir_src_for_ssa(bindless));
       tex->src[sampler_src_idx].src_type = nir_tex_src_sampler_handle;
@@ -550,7 +552,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    int tex_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
    if (tex_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
-      nir_ssa_def *bindless = build_bindless(b, deref, false, shader, layout);
+      nir_ssa_def *bindless = build_bindless(dev, b, deref, false, shader, layout);
       nir_instr_rewrite_src(&tex->instr, &tex->src[tex_src_idx].src,
                             nir_src_for_ssa(bindless));
       tex->src[tex_src_idx].src_type = nir_tex_src_texture_handle;
@@ -576,7 +578,7 @@ lower_instr(nir_builder *b, nir_instr *instr, void *cb_data)
    b->cursor = nir_before_instr(instr);
    switch (instr->type) {
    case nir_instr_type_tex:
-      return lower_tex(b, nir_instr_as_tex(instr), params->shader, params->layout);
+      return lower_tex(b, nir_instr_as_tex(instr), params->dev, params->shader, params->layout);
    case nir_instr_type_intrinsic:
       return lower_intrinsic(b, nir_instr_as_intrinsic(instr), params->dev, params->shader, params->layout);
    default:

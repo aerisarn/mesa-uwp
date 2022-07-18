@@ -95,6 +95,7 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vulkan.h>
 
 #include "tu_entrypoints.h"
+#include "vulkan/runtime/vk_common_entrypoints.h"
 
 #include "vk_format.h"
 #include "vk_image.h"
@@ -266,6 +267,7 @@ enum tu_debug_flags
    TU_DEBUG_LOG_SKIP_GMEM_OPS = 1 << 17,
    TU_DEBUG_PERF = 1 << 18,
    TU_DEBUG_NOLRZFC = 1 << 19,
+   TU_DEBUG_DYNAMIC = 1 << 20,
 };
 
 struct tu_instance

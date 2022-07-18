@@ -49,3 +49,14 @@ prefix = "spill-"
 fraction = 10
 [deqp.env]
 IR3_SHADER_DEBUG = "spillall"
+
+# dynamic rendering testing using emulated renderpass
+[[deqp]]
+deqp = "/deqp/external/vulkancts/modules/vulkan/deqp-vk"
+caselists = ["/deqp/mustpass/vk-master.txt"]
+skips = ["install/freedreno-a630-premerge-skips.txt"]
+include = ["dEQP-VK.renderpass2.*"]
+prefix = "dynamic-"
+fraction = 10
+[deqp.env]
+TU_DEBUG = "dynamic"

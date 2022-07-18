@@ -38,6 +38,7 @@
 #include "util/u_atomic.h"
 #include "vk_format.h"
 #include "vk_pipeline.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 
 #include "tu_cs.h"
@@ -3897,6 +3898,9 @@ tu_pipeline_builder_init_graphics(
    const VkPipelineRenderingCreateInfo *rendering_info =
       vk_find_struct_const(create_info->pNext, PIPELINE_RENDERING_CREATE_INFO);
 
+   if (unlikely(dev->instance->debug_flags & TU_DEBUG_DYNAMIC) && !rendering_info)
+      rendering_info = vk_get_pipeline_rendering_create_info(create_info);
+
    if (rendering_info) {
       builder->subpass_raster_order_attachment_access = false;
       builder->subpass_feedback_loop_ds = false;
@@ -3913,6 +3917,17 @@ tu_pipeline_builder_init_graphics(
        * subpass's sample count.
        */
       builder->emit_msaa_state = !builder->rasterizer_discard;
+
+      const VkRenderingSelfDependencyInfoMESA *self_dependency =
+         vk_find_struct_const(rendering_info->pNext, RENDERING_SELF_DEPENDENCY_INFO_MESA);
+
+      if (self_dependency) {
+         builder->subpass_feedback_loop_ds =
+            self_dependency->depthSelfDependency ||
+            self_dependency->stencilSelfDependency;
+         builder->subpass_feedback_loop_color =
+            self_dependency->colorSelfDependencies;
+      }
 
       if (!builder->rasterizer_discard) {
          builder->depth_attachment_format =

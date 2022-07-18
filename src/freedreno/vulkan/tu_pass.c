@@ -749,6 +749,11 @@ tu_CreateRenderPass2(VkDevice _device,
                      VkRenderPass *pRenderPass)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC))
+      return vk_common_CreateRenderPass2(_device, pCreateInfo, pAllocator,
+                                         pRenderPass);
+
    struct tu_render_pass *pass;
    size_t size;
    size_t attachments_offset;
@@ -938,6 +943,12 @@ tu_DestroyRenderPass(VkDevice _device,
                      const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+      vk_common_DestroyRenderPass(_device, _pass, pAllocator);
+      return;
+   }
+
    TU_FROM_HANDLE(tu_render_pass, pass, _pass);
 
    if (!_pass)
