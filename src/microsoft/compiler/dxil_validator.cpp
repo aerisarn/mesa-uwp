@@ -9,6 +9,7 @@
 
 #include "util/ralloc.h"
 #include "util/u_debug.h"
+#include "util/compiler.h"
 
 #include "dxcapi.h"
 
@@ -104,6 +105,63 @@ get_validator_version(IDxcValidator *val)
    return NO_DXIL_VALIDATION;
 }
 
+static uint64_t
+get_dll_version(HMODULE mod)
+{
+   WCHAR filename[MAX_PATH];
+   DWORD filename_length = GetModuleFileNameW(mod, filename, ARRAY_SIZE(filename));
+
+   if (filename_length == 0 || filename_length == ARRAY_SIZE(filename))
+      return 0;
+
+   DWORD version_handle = 0;
+   DWORD version_size = GetFileVersionInfoSizeW(filename, &version_handle);
+   if (version_size == 0)
+      return 0;
+
+   void *version_data = malloc(version_size);
+   if (!version_data)
+      return 0;
+
+   if (!GetFileVersionInfoW(filename, version_handle, version_size, version_data)) {
+      free(version_data);
+      return 0;
+   }
+
+   UINT value_size = 0;
+   VS_FIXEDFILEINFO *version_info = nullptr;
+   if (!VerQueryValueW(version_data, L"\\", reinterpret_cast<void **>(&version_info), &value_size) ||
+       !value_size ||
+       version_info->dwSignature != VS_FFI_SIGNATURE) {
+      free(version_data);
+      return 0;
+   }
+
+   uint64_t ret =
+      ((uint64_t)version_info->dwFileVersionMS << 32ull) |
+      (uint64_t)version_info->dwFileVersionLS;
+   free(version_data);
+   return ret;
+}
+
+static enum dxil_validator_version
+get_filtered_validator_version(HMODULE mod, enum dxil_validator_version raw)
+{
+   switch (raw) {
+   case DXIL_VALIDATOR_1_6: {
+      uint64_t dxil_version = get_dll_version(mod);
+      static constexpr uint64_t known_bad_version =
+         // 101.5.2005.60
+         (101ull << 48ull) | (5ull << 32ull) | (2005ull << 16ull) | 60ull;
+      if (dxil_version == known_bad_version)
+         return DXIL_VALIDATOR_1_5;
+      FALLTHROUGH;
+   }
+   default:
+      return raw;
+   }
+}
+
 struct dxil_validator *
 dxil_create_validator(const void *ctx)
 {
@@ -127,7 +185,9 @@ dxil_create_validator(const void *ctx)
    if (!val->dxc_validator)
       goto fail;
 
-   val->version = get_validator_version(val->dxc_validator);
+   val->version = get_filtered_validator_version(
+      val->dxil_mod,
+      get_validator_version(val->dxc_validator));
 
    /* Try to load dxcompiler.dll. This is just used for diagnostics, and
     * will fail on most end-users install. So we do not error out if this
