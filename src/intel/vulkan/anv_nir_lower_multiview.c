@@ -71,6 +71,8 @@ build_instance_id(struct lower_multiview_state *state)
 static nir_ssa_def *
 build_view_index(struct lower_multiview_state *state)
 {
+   assert(state->builder.shader->info.stage != MESA_SHADER_FRAGMENT);
+
    if (state->view_index == NULL) {
       nir_builder *b = &state->builder;
 
@@ -165,6 +167,14 @@ replace_load_view_index_with_zero(struct nir_builder *b,
    return nir_imm_zero(b, 1, 32);
 }
 
+static nir_ssa_def *
+replace_load_view_index_with_layer_id(struct nir_builder *b,
+                                      nir_instr *instr, void *data)
+{
+   assert(is_load_view_index(instr, data));
+   return nir_load_layer_id(b);
+}
+
 bool
 anv_nir_lower_multiview(nir_shader *shader,
                         struct anv_graphics_pipeline *pipeline)
@@ -178,6 +188,11 @@ anv_nir_lower_multiview(nir_shader *shader,
                                            replace_load_view_index_with_zero, NULL);
    }
 
+   if (shader->info.stage == MESA_SHADER_FRAGMENT) {
+      return nir_shader_lower_instructions(shader, is_load_view_index,
+                                           replace_load_view_index_with_layer_id, NULL);
+   }
+
    /* This pass assumes a single entrypoint */
    nir_function_impl *entrypoint = nir_shader_get_entrypoint(shader);
 
@@ -187,9 +202,6 @@ anv_nir_lower_multiview(nir_shader *shader,
     * implement multiview.
     */
    if (pipeline->use_primitive_replication) {
-      if (shader->info.stage == MESA_SHADER_FRAGMENT)
-         return false;
-
       bool progress = nir_lower_multiview(shader, pipeline->view_mask);
 
       if (progress) {
@@ -216,7 +228,6 @@ anv_nir_lower_multiview(nir_shader *shader,
 
    nir_builder_init(&state.builder, entrypoint);
 
-   bool progress = false;
    nir_foreach_block(block, entrypoint) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
@@ -241,7 +252,6 @@ anv_nir_lower_multiview(nir_shader *shader,
          nir_ssa_def_rewrite_uses(&load->dest.ssa, value);
 
          nir_instr_remove(&load->instr);
-         progress = true;
       }
    }
 
@@ -249,41 +259,33 @@ anv_nir_lower_multiview(nir_shader *shader,
     * available in the VS.  If it's not a fragment shader, we need to pass
     * the view index on to the next stage.
     */
-   if (shader->info.stage != MESA_SHADER_FRAGMENT) {
-      nir_ssa_def *view_index = build_view_index(&state);
+   nir_ssa_def *view_index = build_view_index(&state);
 
-      nir_builder *b = &state.builder;
+   nir_builder *b = &state.builder;
 
-      assert(view_index->parent_instr->block == nir_start_block(entrypoint));
-      b->cursor = nir_after_instr(view_index->parent_instr);
+   assert(view_index->parent_instr->block == nir_start_block(entrypoint));
+   b->cursor = nir_after_instr(view_index->parent_instr);
 
-      /* Unless there is only one possible view index (that would be set
-       * directly), pass it to the next stage. */
-      if (util_bitcount(state.view_mask) != 1) {
-         nir_variable *view_index_out =
-            nir_variable_create(shader, nir_var_shader_out,
-                                glsl_int_type(), "view index");
-         view_index_out->data.location = VARYING_SLOT_VIEW_INDEX;
-         nir_store_var(b, view_index_out, view_index, 0x1);
-      }
-
-      nir_variable *layer_id_out =
+   /* Unless there is only one possible view index (that would be set
+    * directly), pass it to the next stage. */
+   if (util_bitcount(state.view_mask) != 1) {
+      nir_variable *view_index_out =
          nir_variable_create(shader, nir_var_shader_out,
-                             glsl_int_type(), "layer ID");
-      layer_id_out->data.location = VARYING_SLOT_LAYER;
-      nir_store_var(b, layer_id_out, view_index, 0x1);
-
-      progress = true;
+                             glsl_int_type(), "view index");
+      view_index_out->data.location = VARYING_SLOT_VIEW_INDEX;
+      nir_store_var(b, view_index_out, view_index, 0x1);
    }
 
-   if (progress) {
-      nir_metadata_preserve(entrypoint, nir_metadata_block_index |
-                                        nir_metadata_dominance);
-   } else {
-      nir_metadata_preserve(entrypoint, nir_metadata_all);
-   }
+   nir_variable *layer_id_out =
+      nir_variable_create(shader, nir_var_shader_out,
+                          glsl_int_type(), "layer ID");
+   layer_id_out->data.location = VARYING_SLOT_LAYER;
+   nir_store_var(b, layer_id_out, view_index, 0x1);
 
-   return progress;
+   nir_metadata_preserve(entrypoint, nir_metadata_block_index |
+                                     nir_metadata_dominance);
+
+   return true;
 }
 
 bool
