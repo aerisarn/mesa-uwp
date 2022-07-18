@@ -2553,7 +2553,6 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
                                            indexed, indirect)) {
          consume_bcl_sync(cmd_buffer, job);
       }
-      /* FIXME: clear bc flags whether consumed bcl barrier or not? */
    }
 
    /* GL shader state binds shaders, uniform and vertex attribute state. The
