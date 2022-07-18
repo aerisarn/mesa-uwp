@@ -24,6 +24,56 @@
 #ifndef D3D12_RESOURCE_STATE_H
 #define D3D12_RESOURCE_STATE_H
 
+#include <stdbool.h>
+#include <stdint.h>
 
+#include "d3d12_common.h"
+
+const D3D12_RESOURCE_STATES RESOURCE_STATE_ALL_WRITE_BITS =
+   D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_DEPTH_WRITE |
+   D3D12_RESOURCE_STATE_STREAM_OUT | D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_RESOLVE_DEST |
+   D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE | D3D12_RESOURCE_STATE_VIDEO_PROCESS_WRITE;
+
+inline bool
+d3d12_is_write_state(D3D12_RESOURCE_STATES state)
+{
+   return (state & RESOURCE_STATE_ALL_WRITE_BITS) != D3D12_RESOURCE_STATE_COMMON;
+}
+
+inline bool
+d3d12_resource_supports_simultaneous_access(const D3D12_RESOURCE_DESC *desc)
+{
+   return desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ||
+          (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) != D3D12_RESOURCE_FLAG_NONE;
+}
+
+/* Stores the current desired state of either an entire resource, or each subresource. */
+struct d3d12_desired_resource_state
+{
+   bool homogenous;
+   uint32_t num_subresources;
+   D3D12_RESOURCE_STATES *subresource_states;
+};
+
+bool
+d3d12_desired_resource_state_init(d3d12_desired_resource_state *state,
+                                  uint32_t subresource_count);
+
+void
+d3d12_desired_resource_state_cleanup(d3d12_desired_resource_state *state);
+
+D3D12_RESOURCE_STATES
+d3d12_get_desired_subresource_state(const d3d12_desired_resource_state *state, uint32_t subresource_index);
+
+void
+d3d12_set_desired_resource_state(d3d12_desired_resource_state *state_obj, D3D12_RESOURCE_STATES state);
+
+void
+d3d12_set_desired_subresource_state(d3d12_desired_resource_state *state_obj,
+                                    uint32_t subresource,
+                                    D3D12_RESOURCE_STATES state);
+
+void
+d3d12_reset_desired_resource_state(d3d12_desired_resource_state *state_obj);
 
 #endif // D3D12_RESOURCE_STATE_H

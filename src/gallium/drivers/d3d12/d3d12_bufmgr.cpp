@@ -67,7 +67,7 @@ create_trans_state(ID3D12Resource *res, enum pipe_format format)
 
    return new TransitionableResourceState(res,
                                           total_subresources,
-                                          SupportsSimultaneousAccess(desc));
+                                          d3d12_resource_supports_simultaneous_access(&desc));
 }
 
 static void

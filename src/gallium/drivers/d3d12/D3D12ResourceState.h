@@ -36,59 +36,10 @@
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
 #endif
 
-#define UNKNOWN_RESOURCE_STATE (D3D12_RESOURCE_STATES)0x8000u
 #define RESOURCE_STATE_VALID_BITS 0x2f3fff
 #define RESOURCE_STATE_VALID_INTERNAL_BITS 0x2fffff
-const D3D12_RESOURCE_STATES RESOURCE_STATE_ALL_WRITE_BITS =
-D3D12_RESOURCE_STATE_RENDER_TARGET          |
-D3D12_RESOURCE_STATE_UNORDERED_ACCESS       |
-D3D12_RESOURCE_STATE_DEPTH_WRITE            |
-D3D12_RESOURCE_STATE_STREAM_OUT             |
-D3D12_RESOURCE_STATE_COPY_DEST              |
-D3D12_RESOURCE_STATE_RESOLVE_DEST           |
-D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE     |
-D3D12_RESOURCE_STATE_VIDEO_PROCESS_WRITE;
 
 //---------------------------------------------------------------------------------------------------------------------------------
-inline bool IsD3D12WriteState(UINT State)
-{
-   return (State & RESOURCE_STATE_ALL_WRITE_BITS) != 0;
-}
-
-inline bool SupportsSimultaneousAccess(const D3D12_RESOURCE_DESC &desc)
-{
-   return D3D12_RESOURCE_DIMENSION_BUFFER == desc.Dimension ||
-          !!(desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
-}
-
-//==================================================================================================================================
-// CDesiredResourceState
-// Stores the current desired state of either an entire resource, or each subresource.
-//==================================================================================================================================
-class CDesiredResourceState
-{
-private:
-   bool m_bAllSubresourcesSame = true;
-
-   std::vector<D3D12_RESOURCE_STATES> m_spSubresourceStates;
-
-public:
-   CDesiredResourceState(UINT SubresourceCount) :
-      m_spSubresourceStates(SubresourceCount)
-   {
-   }
-
-   bool AreAllSubresourcesSame() const { return m_bAllSubresourcesSame; }
-
-   D3D12_RESOURCE_STATES GetSubresourceState(UINT SubresourceIndex) const;
-   void SetResourceState(D3D12_RESOURCE_STATES state);
-   void SetSubresourceState(UINT SubresourceIndex, D3D12_RESOURCE_STATES state);
-
-   void Reset();
-
-private:
-   void UpdateSubresourceState(unsigned SubresourceIndex, D3D12_RESOURCE_STATES state);
-};
 
 //==================================================================================================================================
 // CCurrentResourceState
@@ -139,19 +90,20 @@ public:
 struct TransitionableResourceState
 {
    struct list_head m_TransitionListEntry;
-   CDesiredResourceState m_DesiredState;
+   struct d3d12_desired_resource_state m_DesiredState;
 
    TransitionableResourceState(ID3D12Resource *pResource, UINT TotalSubresources, bool SupportsSimultaneousAccess) :
-      m_DesiredState(TotalSubresources),
       m_TotalSubresources(TotalSubresources),
       m_currentState(TotalSubresources, SupportsSimultaneousAccess),
       m_pResource(pResource)
    {
       list_inithead(&m_TransitionListEntry);
+      d3d12_desired_resource_state_init(&m_DesiredState, TotalSubresources);
    }
 
    ~TransitionableResourceState()
    {
+      d3d12_desired_resource_state_cleanup(&m_DesiredState);
       if (IsTransitionPending())
       {
          list_del(&m_TransitionListEntry);
@@ -285,7 +237,6 @@ private:
                               const CCurrentResourceState::LogicalState &NewLogicalState);
    void ProcessTransitioningSubresourceExplicit(CCurrentResourceState& CurrentState,
                                                 UINT i,
-                                                D3D12_RESOURCE_STATES state,
                                                 D3D12_RESOURCE_STATES after,
                                                 TransitionableResourceState& TransitionableResourceState,
                                                 D3D12_RESOURCE_BARRIER& TransitionDesc,

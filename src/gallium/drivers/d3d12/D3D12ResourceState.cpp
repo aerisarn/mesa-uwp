@@ -22,61 +22,7 @@
  */
 
 #include "D3D12ResourceState.h"
-
-//----------------------------------------------------------------------------------------------------------------------------------
- D3D12_RESOURCE_STATES CDesiredResourceState::GetSubresourceState(UINT SubresourceIndex) const
-{
-   if (AreAllSubresourcesSame())
-   {
-      SubresourceIndex = 0;
-   }
-   return m_spSubresourceStates[SubresourceIndex];
-}
-
-//----------------------------------------------------------------------------------------------------------------------------------
-void CDesiredResourceState::UpdateSubresourceState(unsigned SubresourceIndex, D3D12_RESOURCE_STATES state)
-{
-   assert(SubresourceIndex < m_spSubresourceStates.size());
-   if (m_spSubresourceStates[SubresourceIndex] == UNKNOWN_RESOURCE_STATE ||
-       state == UNKNOWN_RESOURCE_STATE ||
-       IsD3D12WriteState(state))
-   {
-      m_spSubresourceStates[SubresourceIndex] = state;
-   }
-   else
-   {
-      // Accumulate read state state bits
-      m_spSubresourceStates[SubresourceIndex] |= state;
-   }
-}
-
-//----------------------------------------------------------------------------------------------------------------------------------
-void CDesiredResourceState::SetResourceState(D3D12_RESOURCE_STATES state)
-{
-   m_bAllSubresourcesSame = true;
-   UpdateSubresourceState(0, state);
-}
-    
-//----------------------------------------------------------------------------------------------------------------------------------
-void CDesiredResourceState::SetSubresourceState(UINT SubresourceIndex, D3D12_RESOURCE_STATES state)
-{
-   if (m_bAllSubresourcesSame && m_spSubresourceStates.size() > 1)
-   {
-      std::fill(m_spSubresourceStates.begin() + 1, m_spSubresourceStates.end(), m_spSubresourceStates[0]);
-      m_bAllSubresourcesSame = false;
-   }
-   if (m_spSubresourceStates.size() == 1)
-   {
-      SubresourceIndex = 0;
-   }
-   UpdateSubresourceState(SubresourceIndex, state);
-}
-
-//----------------------------------------------------------------------------------------------------------------------------------
-void CDesiredResourceState::Reset()
-{
-   SetResourceState(UNKNOWN_RESOURCE_STATE);
-}
+#define UNKNOWN_RESOURCE_STATE (D3D12_RESOURCE_STATES) 0x8000u
 
 //----------------------------------------------------------------------------------------------------------------------------------
 void CCurrentResourceState::ConvertToSubresourceTracking()
@@ -171,7 +117,7 @@ ResourceStateManager::ResourceStateManager()
 void ResourceStateManager::TransitionResource(TransitionableResourceState& Resource,
                                               D3D12_RESOURCE_STATES state)
 {
-   Resource.m_DesiredState.SetResourceState(state);
+   d3d12_set_desired_resource_state(&Resource.m_DesiredState, state);
    if (!Resource.IsTransitionPending())
    {
       list_add(&Resource.m_TransitionListEntry, &m_TransitionListHead);
@@ -183,7 +129,7 @@ void ResourceStateManager::TransitionSubresource(TransitionableResourceState& Re
                                                  UINT SubresourceIndex,
                                                  D3D12_RESOURCE_STATES state)
 {
-   Resource.m_DesiredState.SetSubresourceState(SubresourceIndex, state);
+   d3d12_set_desired_subresource_state(&Resource.m_DesiredState, SubresourceIndex, state);
    if (!Resource.IsTransitionPending())
    {
       list_add(&Resource.m_TransitionListEntry, &m_TransitionListHead);
@@ -222,7 +168,7 @@ void ResourceStateManager::ApplyResourceTransitionsPreamble(bool IsImplicitDispa
 
    // If the transition involves a write state, then the destination should just be the requested destination.
    // Otherwise, accumulate read states to minimize future transitions (by triggering the above condition).
-   if (!IsD3D12WriteState(DestinationState) && !IsD3D12WriteState(CurrentState))
+   if (!d3d12_is_write_state(DestinationState) && !d3d12_is_write_state(CurrentState))
    {
       DestinationState |= CurrentState;
    }
@@ -254,7 +200,7 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
 {
    // Figure out the set of subresources that are transitioning
    auto& DestinationState = TransitionableResourceState.m_DesiredState;
-   bool bAllSubresourcesAtOnce = CurrentState.AreAllSubresourcesSame() && DestinationState.AreAllSubresourcesSame();
+   bool bAllSubresourcesAtOnce = CurrentState.AreAllSubresourcesSame() && DestinationState.homogenous;
 
    D3D12_RESOURCE_BARRIER TransitionDesc;
    memset(&TransitionDesc, 0, sizeof(TransitionDesc));
@@ -264,11 +210,10 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
    UINT numSubresources = bAllSubresourcesAtOnce ? 1 : NumTotalSubresources;
    for (UINT i = 0; i < numSubresources; ++i)
    {
-      D3D12_RESOURCE_STATES SubresourceDestinationState = DestinationState.GetSubresourceState(i);
+      D3D12_RESOURCE_STATES after = d3d12_get_desired_subresource_state(&DestinationState, i);
       TransitionDesc.Transition.Subresource = bAllSubresourcesAtOnce ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
 
       // Is this subresource currently being used, or is it just being iterated over?
-      D3D12_RESOURCE_STATES after = DestinationState.GetSubresourceState(i);
       if (after == UNKNOWN_RESOURCE_STATE)
       {
             // This subresource doesn't have any transition requested - move on to the next.
@@ -278,7 +223,7 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
       // This is a transition into a state that is both write and non-write.
       // This is invalid according to D3D12. We're venturing into undefined behavior
       // land, but let's just pick the write state.
-      if (IsD3D12WriteState(after) &&
+      if (d3d12_is_write_state(after) &&
          (after & ~RESOURCE_STATE_ALL_WRITE_BITS) != 0)
       {
          after &= RESOURCE_STATE_ALL_WRITE_BITS;
@@ -290,7 +235,6 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
       ProcessTransitioningSubresourceExplicit(
          CurrentState,
          i,
-         SubresourceDestinationState,
          after,
          TransitionableResourceState,
          TransitionDesc,
@@ -299,7 +243,7 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
 
    // Update destination states.
    // Coalesce destination state to ensure that it's set for the entire resource.
-   DestinationState.SetResourceState(UNKNOWN_RESOURCE_STATE);
+   d3d12_reset_desired_resource_state(&DestinationState);
 
 }
 
@@ -307,7 +251,6 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
 void ResourceStateManager::ProcessTransitioningSubresourceExplicit(
    CCurrentResourceState& CurrentState,
    UINT SubresourceIndex,
-   D3D12_RESOURCE_STATES state,
    D3D12_RESOURCE_STATES after,
    TransitionableResourceState& TransitionableResourceState,
    D3D12_RESOURCE_BARRIER& TransitionDesc,
@@ -352,7 +295,7 @@ void ResourceStateManager::ProcessTransitioningSubresourceExplicit(
          assert(TransitionDesc.Transition.StateBefore != TransitionDesc.Transition.StateAfter);
          m_vResourceBarriers.push_back(TransitionDesc); // throw( bad_alloc )
 
-         MayDecay = CurrentState.SupportsSimultaneousAccess() && !IsD3D12WriteState(after);
+         MayDecay = CurrentState.SupportsSimultaneousAccess() && !d3d12_is_write_state(after);
          IsPromotion = false;
       }
    }
@@ -362,7 +305,7 @@ void ResourceStateManager::ProcessTransitioningSubresourceExplicit(
       if(after != StateIfPromoted)
       {
          after = StateIfPromoted;
-         MayDecay = !IsD3D12WriteState(after);
+         MayDecay = !d3d12_is_write_state(after);
          IsPromotion = true;
       }
    }
