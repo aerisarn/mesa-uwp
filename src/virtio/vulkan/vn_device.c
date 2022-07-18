@@ -283,6 +283,11 @@ vn_device_fix_create_info(const struct vn_device *dev,
       }
    }
 
+   if (app_exts->EXT_physical_device_drm) {
+      /* see vn_physical_device_get_native_extensions */
+      block_exts[block_count++] = VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME;
+   }
+
    assert(extra_count <= ARRAY_SIZE(extra_exts));
    assert(block_count <= ARRAY_SIZE(block_exts));
 
