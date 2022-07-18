@@ -250,9 +250,17 @@ enum v3dv_queue_type {
  * cmd buf batch.
  */
 struct v3dv_last_job_sync {
-   /* If the job is the first submitted to a GPU queue in a cmd buffer batch */
+   /* If the job is the first submitted to a GPU queue in a cmd buffer batch.
+    *
+    * We use V3DV_QUEUE_{CL,CSD,TFU} both with and without multisync.
+    */
    bool first[V3DV_QUEUE_COUNT];
-   /* Array of syncobj to track the last job submitted to a GPU queue */
+   /* Array of syncobj to track the last job submitted to a GPU queue.
+    *
+    * With multisync we use V3DV_QUEUE_{CL,CSD,TFU} to track syncobjs for each
+    * queue, but without multisync we only track the last job submitted to any
+    * queue in V3DV_QUEUE_ANY.
+    */
    uint32_t syncs[V3DV_QUEUE_COUNT];
 };
 
