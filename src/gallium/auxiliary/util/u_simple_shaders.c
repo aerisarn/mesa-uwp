@@ -531,7 +531,6 @@ util_make_fs_blit_msaa_gen(struct pipe_context *pipe,
                            const char *samp_type,
                            const char *output_semantic,
                            const char *output_mask,
-                           const char *conversion_decl,
                            const char *conversion)
 {
    static const char shader_templ[] =
@@ -541,7 +540,7 @@ util_make_fs_blit_msaa_gen(struct pipe_context *pipe,
          "DCL SVIEW[0], %s, %s\n"
          "DCL OUT[0], %s\n"
          "DCL TEMP[0]\n"
-         "%s"
+         "IMM[0] INT32 {0, -1, 2147483647, 0}\n"
          "%s"
 
          "F2U TEMP[0], IN[0]\n"
@@ -561,7 +560,7 @@ util_make_fs_blit_msaa_gen(struct pipe_context *pipe,
 
    snprintf(text, sizeof(text), shader_templ, type, samp_type,
             output_semantic, sample_shading ? "DCL SV[0], SAMPLEID\n" : "",
-            conversion_decl, sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
+            sample_shading ? "MOV TEMP[0].w, SV[0].xxxx\n" : "",
             type, conversion, output_mask);
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
@@ -591,21 +590,18 @@ util_make_fs_blit_msaa_color(struct pipe_context *pipe,
                              bool sample_shading)
 {
    const char *samp_type;
-   const char *conversion_decl = "";
    const char *conversion = "";
 
    if (stype == TGSI_RETURN_TYPE_UINT) {
       samp_type = "UINT";
 
       if (dtype == TGSI_RETURN_TYPE_SINT) {
-         conversion_decl = "IMM[0] UINT32 {2147483647, 0, 0, 0}\n";
-         conversion = "UMIN TEMP[0], TEMP[0], IMM[0].xxxx\n";
+         conversion = "UMIN TEMP[0], TEMP[0], IMM[0].zzzz\n";
       }
    } else if (stype == TGSI_RETURN_TYPE_SINT) {
       samp_type = "SINT";
 
       if (dtype == TGSI_RETURN_TYPE_UINT) {
-         conversion_decl = "IMM[0] INT32 {0, 0, 0, 0}\n";
          conversion = "IMAX TEMP[0], TEMP[0], IMM[0].xxxx\n";
       }
    } else {
@@ -614,8 +610,7 @@ util_make_fs_blit_msaa_color(struct pipe_context *pipe,
    }
 
    return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, samp_type,
-                                     "COLOR[0]", "", conversion_decl,
-                                     conversion);
+                                     "COLOR[0]", "", conversion);
 }
 
 
@@ -630,7 +625,7 @@ util_make_fs_blit_msaa_depth(struct pipe_context *pipe,
                              bool sample_shading)
 {
    return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, "FLOAT",
-                                     "POSITION", ".z", "",
+                                     "POSITION", ".z",
                                      "MOV TEMP[0].z, TEMP[0].xxxx\n");
 }
 
@@ -646,7 +641,7 @@ util_make_fs_blit_msaa_stencil(struct pipe_context *pipe,
                                bool sample_shading)
 {
    return util_make_fs_blit_msaa_gen(pipe, tgsi_tex, sample_shading, "UINT",
-                                     "STENCIL", ".y", "",
+                                     "STENCIL", ".y",
                                      "MOV TEMP[0].y, TEMP[0].xxxx\n");
 }
 
