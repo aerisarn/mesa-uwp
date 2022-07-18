@@ -110,16 +110,15 @@ spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
 # #6270
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 
+# #6905
+glx@glx-swap-copy,Fail
+
 #kopper regressions/changes
-fast_color_clear@fcc-front-buffer-distraction,Fail
 glx@extension string sanity,Fail
-spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
-spec@!opengl 1.0@gl-1.0-front-invalidate-back,Fail
 spec@egl_chromium_sync_control@conformance,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fail
-spec@ext_framebuffer_blit@fbo-sys-blit,Fail
-spec@ext_framebuffer_blit@fbo-sys-sub-blit,Fail
+
 
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
@@ -171,7 +170,6 @@ shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Fail
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
-spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
