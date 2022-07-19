@@ -618,6 +618,19 @@ is_packed(unsigned vstride, unsigned width, unsigned hstride)
 }
 
 /**
+ * Returns whether a region is linear
+ *
+ * A region is linear if its elements do not overlap and are not replicated.
+ * Unlike a packed region, intervening space (i.e. strided values) is allowed.
+ */
+static bool
+is_linear(unsigned vstride, unsigned width, unsigned hstride)
+{
+   return vstride == width * hstride ||
+          (hstride == 0 && width == 1);
+}
+
+/**
  * Returns whether an instruction is an explicit or implicit conversion
  * to/from half-float.
  */
@@ -1887,7 +1900,7 @@ special_requirements_for_handling_double_precision_data_types(
       }
 #undef DO_SRC
 
-      const unsigned src_stride = hstride * type_size;
+      const unsigned src_stride = (hstride ? hstride : vstride) * type_size;
       const unsigned dst_stride = dst_hstride * dst_type_size;
 
       /* The PRMs say that for CHV, BXT:
@@ -1965,9 +1978,10 @@ special_requirements_for_handling_double_precision_data_types(
        *  integer DWord multiply [or in case where a floating point data type
        *  is used as destination]:
        *
-       *   1. Register Regioning patterns where register data bit locations
-       *      are changed between source and destination are not supported on
-       *      Src0 and Src1 except for broadcast of a scalar.
+       *   1. Register Regioning patterns where register data bit location
+       *      of the LSB of the channels are changed between source and
+       *      destination are not supported on Src0 and Src1 except for
+       *      broadcast of a scalar.
        *
        *   2. Explicit ARF registers except null and accumulator must not be
        *      used."
@@ -1977,12 +1991,13 @@ special_requirements_for_handling_double_precision_data_types(
            is_double_precision)) {
          ERROR_IF(!is_scalar_region &&
                   BRW_ADDRESS_REGISTER_INDIRECT_REGISTER != address_mode &&
-                  (vstride != width * hstride ||
+                  (!is_linear(vstride, width, hstride) ||
                    src_stride != dst_stride ||
                    subreg != dst_subreg),
                   "Register Regioning patterns where register data bit "
-                  "locations are changed between source and destination are not "
-                  "supported except for broadcast of a scalar.");
+                  "location of the LSB of the channels are changed between "
+                  "source and destination are not supported except for "
+                  "broadcast of a scalar.");
 
          ERROR_IF((file == BRW_ARCHITECTURE_REGISTER_FILE &&
                    reg != BRW_ARF_NULL && !(reg >= BRW_ARF_ACCUMULATOR && reg < BRW_ARF_FLAG)) ||
