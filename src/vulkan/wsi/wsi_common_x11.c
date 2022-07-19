@@ -1369,7 +1369,21 @@ x11_acquire_next_image(struct wsi_swapchain *anv_chain,
          if (!chain->images[i].busy) {
             *image_index = i;
             chain->images[i].busy = true;
-            return VK_SUCCESS;
+            xcb_generic_error_t *err;
+
+            xcb_get_geometry_cookie_t geom_cookie = xcb_get_geometry(chain->conn, chain->window);
+            xcb_get_geometry_reply_t *geom = xcb_get_geometry_reply(chain->conn, geom_cookie, &err);
+            VkResult result = VK_SUCCESS;
+            if (geom) {
+               if (chain->extent.width != geom->width ||
+                   chain->extent.height != geom->height)
+                  result = VK_SUBOPTIMAL_KHR;
+            } else {
+               result = VK_ERROR_SURFACE_LOST_KHR;
+            }
+            free(err);
+            free(geom);
+            return result;
          }
       }
       return VK_NOT_READY;
