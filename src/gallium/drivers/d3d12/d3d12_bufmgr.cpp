@@ -22,6 +22,7 @@
  */
 
 #include "d3d12_bufmgr.h"
+#include "d3d12_context.h"
 #include "d3d12_format.h"
 #include "d3d12_screen.h"
 
@@ -182,6 +183,7 @@ d3d12_bo_wrap_buffer(struct d3d12_screen *screen, struct pb_buffer *buf)
    bo->buffer = buf;
    bo->trans_state = NULL; /* State from base BO will be used */
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
+   bo->residency_status = d3d12_evicted;
 
    return bo;
 }
@@ -197,17 +199,25 @@ d3d12_bo_unreference(struct d3d12_bo *bo)
    if (pipe_reference_described(&bo->reference, NULL,
                                 (debug_reference_descriptor)
                                 d3d12_debug_describe_bo)) {
-      if (bo->buffer) {
+      if (bo->buffer)
          pb_reference(&bo->buffer, NULL);
-      } else {
-         mtx_lock(&bo->screen->submit_mutex);
-         if (bo->residency_status != d3d12_evicted) {
-            list_del(&bo->residency_list_entry);
-         }
-         mtx_unlock(&bo->screen->submit_mutex);
+
+      mtx_lock(&bo->screen->submit_mutex);
+
+      if (bo->residency_status != d3d12_evicted)
+         list_del(&bo->residency_list_entry);
+
+      /* MSVC's offsetof fails when the name is ambiguous between struct and function */
+      typedef struct d3d12_context d3d12_context_type;
+      list_for_each_entry(d3d12_context_type, ctx, &bo->screen->context_list, context_list_entry)
+         util_dynarray_append(&ctx->recently_destroyed_bos, uint64_t, bo->unique_id);
+
+      mtx_unlock(&bo->screen->submit_mutex);
+
+      if (bo->trans_state)
          delete bo->trans_state;
+      if (bo->res)
          bo->res->Release();
-      }
       FREE(bo);
    }
 }

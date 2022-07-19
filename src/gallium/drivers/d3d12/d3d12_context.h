@@ -179,6 +179,8 @@ struct d3d12_context {
    struct d3d12_batch batches[4];
    unsigned current_batch_idx;
 
+   struct util_dynarray recently_destroyed_bos;
+
    struct pipe_constant_buffer cbufs[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_framebuffer_state fb;
    struct pipe_vertex_buffer vbs[PIPE_MAX_ATTRIBS];
