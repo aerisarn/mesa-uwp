@@ -147,7 +147,6 @@ brw_nir_btd_retire(nir_builder *b)
 static inline void
 brw_nir_btd_return(struct nir_builder *b)
 {
-   assert(b->shader->scratch_size == BRW_BTD_STACK_CALLEE_DATA_SIZE);
    nir_ssa_def *resume_addr =
       brw_nir_rt_load_scratch(b, BRW_BTD_STACK_RESUME_BSR_ADDR_OFFSET,
                               8 /* align */, 1, 64);
