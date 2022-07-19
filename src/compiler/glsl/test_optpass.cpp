@@ -95,8 +95,6 @@ do_optimization(struct exec_list *ir, const char *optimization,
       return do_if_simplification(ir);
    } else if (strcmp(optimization, "do_mat_op_to_vec") == 0) {
       return do_mat_op_to_vec(ir);
-   } else if (strcmp(optimization, "optimize_swizzles") == 0) {
-      return optimize_swizzles(ir);
    } else if (strcmp(optimization, "do_structure_splitting") == 0) {
       return do_structure_splitting(ir);
    } else if (strcmp(optimization, "do_tree_grafting") == 0) {

@@ -194,7 +194,6 @@ files_libglsl = files(
   'opt_minmax.cpp',
   'opt_rebalance_tree.cpp',
   'opt_structure_splitting.cpp',
-  'opt_swizzle.cpp',
   'opt_tree_grafting.cpp',
   'program.h',
   'propagate_invariance.cpp',

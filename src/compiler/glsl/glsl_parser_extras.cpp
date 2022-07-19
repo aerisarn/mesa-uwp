@@ -2415,7 +2415,6 @@ do_common_optimization(exec_list *ir, bool linked,
        options->EmitNoCont);
    OPT(do_vec_index_to_swizzle, ir);
    OPT(lower_vector_insert, ir, false);
-   OPT(optimize_swizzles, ir);
 
    /* Some drivers only call do_common_optimization() once rather than in a
     * loop, and split arrays causes each element of a constant array to
