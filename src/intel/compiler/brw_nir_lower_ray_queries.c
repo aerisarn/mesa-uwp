@@ -200,20 +200,8 @@ fill_query(nir_builder *b,
            nir_ssa_def *shadow_stack_addr,
            nir_ssa_def *ctrl)
 {
-   brw_nir_memcpy_global(b,
-                         brw_nir_rt_mem_hit_addr_from_addr(b, hw_stack_addr, false), 16,
-                         brw_nir_rt_mem_hit_addr_from_addr(b, shadow_stack_addr, false), 16,
-                         BRW_RT_SIZEOF_HIT_INFO);
-   brw_nir_memcpy_global(b,
-                         brw_nir_rt_mem_hit_addr_from_addr(b, hw_stack_addr, true), 16,
-                         brw_nir_rt_mem_hit_addr_from_addr(b, shadow_stack_addr, true), 16,
-                         BRW_RT_SIZEOF_HIT_INFO);
-   brw_nir_memcpy_global(b,
-                         brw_nir_rt_mem_ray_addr(b, hw_stack_addr,
-                                                 BRW_RT_BVH_LEVEL_WORLD), 16,
-                         brw_nir_rt_mem_ray_addr(b, shadow_stack_addr,
-                                                 BRW_RT_BVH_LEVEL_WORLD), 16,
-                         BRW_RT_SIZEOF_RAY);
+   brw_nir_memcpy_global(b, hw_stack_addr, 64, shadow_stack_addr, 64,
+                         BRW_RT_SIZEOF_RAY_QUERY);
 }
 
 static void
@@ -221,24 +209,8 @@ spill_query(nir_builder *b,
             nir_ssa_def *hw_stack_addr,
             nir_ssa_def *shadow_stack_addr)
 {
-   struct brw_nir_rt_mem_hit_defs committed_hit = {};
-   brw_nir_rt_load_mem_hit_from_addr(b, &committed_hit, hw_stack_addr, true);
-
-   /* Always copy the potential hit back */
-   brw_nir_memcpy_global(b,
-                         brw_nir_rt_mem_hit_addr_from_addr(b, shadow_stack_addr, false), 16,
-                         brw_nir_rt_mem_hit_addr_from_addr(b, hw_stack_addr, false), 16,
-                         BRW_RT_SIZEOF_HIT_INFO);
-
-   /* Also copy the committed hit back if it is valid */
-   nir_push_if(b, committed_hit.valid);
-   {
-      brw_nir_memcpy_global(b,
-                            brw_nir_rt_mem_hit_addr_from_addr(b, shadow_stack_addr, true), 16,
-                            brw_nir_rt_mem_hit_addr_from_addr(b, hw_stack_addr, true), 16,
-                            BRW_RT_SIZEOF_HIT_INFO);
-   }
-   nir_pop_if(b, NULL);
+   brw_nir_memcpy_global(b, shadow_stack_addr, 64, hw_stack_addr, 64,
+                         BRW_RT_SIZEOF_RAY_QUERY);
 }
 
 
