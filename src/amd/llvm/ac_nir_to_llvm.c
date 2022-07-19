@@ -2491,7 +2491,7 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
       LLVMConstInt(ctx->ac.i32, 2, false),
       LLVMConstInt(ctx->ac.i32, 3, false),
    };
-   LLVMValueRef sample_index = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
+   LLVMValueRef sample_index = NULL;
 
    int count;
    ASSERTED bool add_frag_pos =
@@ -2515,6 +2515,7 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
       else
          fmask_load_address[2] = NULL;
 
+      sample_index = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
       sample_index = adjust_sample_index_using_fmask(
          &ctx->ac, fmask_load_address[0], fmask_load_address[1], fmask_load_address[2],
          sample_index, get_image_descriptor(ctx, instr, dynamic_desc_index, AC_DESC_FMASK, false));
@@ -2558,6 +2559,8 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
       }
 
       if (is_ms) {
+         if (!sample_index)
+            sample_index = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
          args->coords[count] = sample_index;
          count++;
       }
@@ -2626,6 +2629,20 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
 
       res = ac_trim_vector(&ctx->ac, res, instr->dest.ssa.num_components);
       res = ac_to_integer(&ctx->ac, res);
+   } else if (instr->intrinsic == nir_intrinsic_image_deref_samples_identical) {
+      assert(ctx->ac.gfx_level < GFX11);
+
+      args.opcode = ac_image_load;
+      args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_FMASK, false);
+      get_image_coords(ctx, instr, dynamic_index, &args, GLSL_SAMPLER_DIM_2D, is_array);
+      args.dmask = 0xf;
+      args.dim = is_array ? ac_image_2darray : ac_image_2d;
+      args.attributes = AC_FUNC_ATTR_READNONE;
+      args.a16 = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(args.coords[0])) == 16;
+
+      res = ac_build_image_opcode(&ctx->ac, &args);
+      res = LLVMBuildExtractElement(ctx->ac.builder, res, ctx->ac.i32_0, "");
+      res = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, res, ctx->ac.i32_0, "");
    } else {
       bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
 
