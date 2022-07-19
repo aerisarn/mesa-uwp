@@ -160,7 +160,7 @@ def generate_lava_yaml(args):
     else:
         run_steps += [
             "echo Could not find jwt file, disabling MINIO requests...",
-            "unset MINIO_RESULTS_UPLOAD",
+            "sed -i '/MINIO_RESULTS_UPLOAD/d' /set-job-env-vars.sh",
         ]
 
     run_steps += [
