@@ -201,8 +201,8 @@ traces:
         checksum: 3f4bfa1516e50194e4e86978420852c4
       - device: crocus-hsw
         checksum: 7a8b329f50653480eda50f53d715ad27
-  - path: blender/blender-demo-cube_diorama.trace
-    expectations:
+  #- path: blender/blender-demo-cube_diorama.trace
+  #  expectations:
       # needs GL 4.5
       #- device: crocus-g41
       # Inconsistent rendering.
