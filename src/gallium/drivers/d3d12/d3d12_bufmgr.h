@@ -43,6 +43,7 @@ enum d3d12_residency_status {
 
 struct d3d12_bo {
    struct pipe_reference reference;
+   struct d3d12_screen *screen;
    ID3D12Resource *res;
    struct pb_buffer *buffer;
    struct TransitionableResourceState *trans_state;

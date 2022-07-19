@@ -106,6 +106,7 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_fo
       return NULL;
 
    pipe_reference_init(&bo->reference, 1);
+   bo->screen = screen;
    bo->res = res;
    bo->trans_state = create_trans_state(res, format);
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
@@ -177,6 +178,7 @@ d3d12_bo_wrap_buffer(struct d3d12_screen *screen, struct pb_buffer *buf)
       return NULL;
 
    pipe_reference_init(&bo->reference, 1);
+   bo->screen = screen;
    bo->buffer = buf;
    bo->trans_state = NULL; /* State from base BO will be used */
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
@@ -198,11 +200,13 @@ d3d12_bo_unreference(struct d3d12_bo *bo)
       if (bo->buffer) {
          pb_reference(&bo->buffer, NULL);
       } else {
-         delete bo->trans_state;
-         bo->res->Release();
+         mtx_lock(&bo->screen->submit_mutex);
          if (bo->residency_status != d3d12_evicted) {
             list_del(&bo->residency_list_entry);
          }
+         mtx_unlock(&bo->screen->submit_mutex);
+         delete bo->trans_state;
+         bo->res->Release();
       }
       FREE(bo);
    }
