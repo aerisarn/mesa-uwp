@@ -345,6 +345,8 @@ lp_llvm_viewport(LLVMValueRef context_ptr,
 static LLVMValueRef
 lp_build_depth_clamp(struct gallivm_state *gallivm,
                      LLVMBuilderRef builder,
+                     bool depth_clamp,
+                     bool restrict_depth,
                      struct lp_type type,
                      LLVMValueRef context_ptr,
                      LLVMValueRef thread_data_ptr,
@@ -356,6 +358,12 @@ lp_build_depth_clamp(struct gallivm_state *gallivm,
 
    assert(type.floating);
    lp_build_context_init(&f32_bld, gallivm, type);
+
+   if (restrict_depth)
+      z = lp_build_clamp(&f32_bld, z, f32_bld.zero, f32_bld.one);
+
+   if (!depth_clamp)
+      return z;
 
    /*
     * Assumes clamping of the viewport index will occur in setup/gs. Value
@@ -870,13 +878,10 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    if (depth_mode & EARLY_DEPTH_TEST) {
-      /*
-       * Clamp according to ARB_depth_clamp semantics.
-       */
-      if (key->depth_clamp) {
-         z = lp_build_depth_clamp(gallivm, builder, type, context_ptr,
-                                  thread_data_ptr, z);
-      }
+      z = lp_build_depth_clamp(gallivm, builder, key->depth_clamp,
+                               key->restrict_depth_values, type, context_ptr,
+                               thread_data_ptr, z);
+
       lp_build_depth_stencil_load_swizzled(gallivm, type,
                                            zs_format_desc, key->resource_1d,
                                            depth_ptr, depth_stride,
@@ -892,7 +897,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                   z, z_fb, s_fb,
                                   facing,
                                   &z_value, &s_value,
-                                  !simple_shader && !key->multisample);
+                                  !simple_shader && !key->multisample,
+                                  key->restrict_depth_values);
 
       if (depth_mode & EARLY_DEPTH_WRITE) {
          lp_build_depth_stencil_write_swizzled(gallivm, type,
@@ -1254,16 +1260,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
       /*
        * Clamp according to ARB_depth_clamp semantics.
        */
-      if (key->depth_clamp) {
-         z = lp_build_depth_clamp(gallivm, builder, type, context_ptr,
-                                  thread_data_ptr, z);
-      } else {
-         struct lp_build_context f32_bld;
-         lp_build_context_init(&f32_bld, gallivm, type);
-         z = lp_build_clamp(&f32_bld, z,
-                            lp_build_const_vec(gallivm, type, 0.0),
-                            lp_build_const_vec(gallivm, type, 1.0));
-      }
+      z = lp_build_depth_clamp(gallivm, builder, key->depth_clamp,
+                               key->restrict_depth_values, type, context_ptr,
+                               thread_data_ptr, z);
 
       if (shader->info.base.writes_stencil) {
          LLVMValueRef idx = loop_state.counter;
@@ -1295,7 +1294,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                   z, z_fb, s_fb,
                                   facing,
                                   &z_value, &s_value,
-                                  !simple_shader);
+                                  !simple_shader,
+                                  key->restrict_depth_values);
       /* Late Z write */
       if (depth_mode & LATE_DEPTH_WRITE) {
          lp_build_depth_stencil_write_swizzled(gallivm, type,
@@ -3288,7 +3288,6 @@ generate_fragment(struct llvmpipe_context *lp,
                                pixel_center_integer,
                                key->coverage_samples, glob_sample_pos,
                                num_loop,
-                               key->depth_clamp,
                                builder, fs_type,
                                a0_ptr, dadx_ptr, dady_ptr,
                                x, y);
@@ -3466,6 +3465,9 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
    }
    if (key->depth_clamp)
       debug_printf("depth_clamp = 1\n");
+
+   if (key->restrict_depth_values)
+      debug_printf("restrict_depth_values = 1\n");
 
    if (key->multisample) {
       debug_printf("multisample = 1\n");
@@ -4277,6 +4279,14 @@ make_variant_key(struct llvmpipe_context *lp,
       }
       key->zsbuf_nr_samples =
          util_res_sample_count(lp->framebuffer.zsbuf->texture);
+
+      /*
+       * Restrict depth values if the API is clamped (GL, VK with ext)
+       * for non float Z buffer
+       */
+      key->restrict_depth_values =
+         !(lp->rasterizer->unclamped_fragment_depth_values &&
+           util_format_get_depth_only(zsbuf_format) == PIPE_FORMAT_Z32_FLOAT);
    }
 
    /*

@@ -425,16 +425,6 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                                              coeff_bld->type, bld->a0aos[0],
                                              lp_build_const_int32(gallivm, 0));
                a = LLVMBuildFAdd(builder, a, offset, "");
-
-               if (!bld->depth_clamp){
-                  /* OpenGL requires clamping z to 0..1 range after polgon offset
-                  * is applied if depth-clamping isn't enabled.
-                  *
-                  * This also fixes the problem that depth values can exceed 1.0,
-                  * due to imprecision in the calculations.
-                  */
-                  a = lp_build_clamp(coeff_bld, a, coeff_bld->zero, coeff_bld->one);
-               }
             }
 
             bld->attribs[attrib][chan] = a;
@@ -687,7 +677,6 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
                          unsigned coverage_samples,
                          LLVMValueRef sample_pos_array,
                          LLVMValueRef num_loop,
-                         boolean depth_clamp,
                          LLVMBuilderRef builder,
                          struct lp_type type,
                          LLVMValueRef a0_ptr,
@@ -756,7 +745,6 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
    } else {
       bld->pos_offset = 0.5;
    }
-   bld->depth_clamp = depth_clamp;
    bld->coverage_samples = coverage_samples;
    bld->num_loop = num_loop;
    bld->sample_pos_array = sample_pos_array;

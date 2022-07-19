@@ -836,7 +836,8 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
                             LLVMValueRef face,
                             LLVMValueRef *z_value,
                             LLVMValueRef *s_value,
-                            boolean do_branch)
+                            boolean do_branch,
+                            bool restrict_depth)
 {
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_type z_type;
@@ -856,10 +857,13 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
     * Depths are expected to be between 0 and 1, even if they are stored in
     * floats. Setting these bits here will ensure that the lp_build_conv() call
     * below won't try to unnecessarily clamp the incoming values.
+    * If depths are expected outside 0..1 don't set these bits.
     */
    if (z_src_type.floating) {
-      z_src_type.sign = FALSE;
-      z_src_type.norm = TRUE;
+      if (restrict_depth) {
+         z_src_type.sign = FALSE;
+         z_src_type.norm = TRUE;
+      }
    }
    else {
       assert(!z_src_type.sign);
