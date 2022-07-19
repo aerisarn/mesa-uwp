@@ -511,6 +511,14 @@ static void si_launch_grid_internal_images(struct si_context *sctx,
           !(images[i].access & SI_IMAGE_ACCESS_DCC_OFF))
          images[i].access |= SI_IMAGE_ACCESS_ALLOW_DCC_STORE;
 
+      /* Simplify the format according to what image stores support. */
+      if (images[i].access & PIPE_IMAGE_ACCESS_WRITE) {
+         images[i].format = util_format_linear(images[i].format); /* SRGB not supported */
+         images[i].format = util_format_luminance_to_red(images[i].format);
+         images[i].format = util_format_intensity_to_red(images[i].format);
+         images[i].format = util_format_rgbx_to_rgba(images[i].format); /* prevent partial writes */
+      }
+
       /* Save the image. */
       util_copy_image_view(&saved_image[i], &sctx->images[PIPE_SHADER_COMPUTE].views[i]);
    }
