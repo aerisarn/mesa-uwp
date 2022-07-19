@@ -513,6 +513,8 @@ struct radv_trap_handler_shader {
 };
 
 struct radv_shader_part {
+   uint32_t ref_count;
+
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
    uint32_t rsrc1;
@@ -635,6 +637,22 @@ radv_shader_unref(struct radv_device *device, struct radv_shader *shader)
    assert(shader && shader->ref_count >= 1);
    if (p_atomic_dec_zero(&shader->ref_count))
       radv_shader_destroy(device, shader);
+}
+
+static inline struct radv_shader_part *
+radv_shader_part_ref(struct radv_shader_part *shader_part)
+{
+   assert(shader_part && shader_part->ref_count >= 1);
+   p_atomic_inc(&shader_part->ref_count);
+   return shader_part;
+}
+
+static inline void
+radv_shader_part_unref(struct radv_device *device, struct radv_shader_part *shader_part)
+{
+   assert(shader_part && shader_part->ref_count >= 1);
+   if (p_atomic_dec_zero(&shader_part->ref_count))
+      radv_shader_part_destroy(device, shader_part);
 }
 
 static inline unsigned

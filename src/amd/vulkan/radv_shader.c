@@ -2335,6 +2335,8 @@ upload_shader_part(struct radv_device *device, struct radv_shader_part_binary *b
    if (!shader_part)
       return NULL;
 
+   shader_part->ref_count = 1;
+
    shader_part->alloc = radv_alloc_shader_memory(device, code_size, NULL);
    if (!shader_part->alloc) {
       free(shader_part);
@@ -2516,8 +2518,7 @@ radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 void
 radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part)
 {
-   if (!shader_part)
-      return;
+   assert(shader_part->ref_count == 0);
 
    radv_free_shader_memory(device, shader_part->alloc);
    free(shader_part->disasm_string);
