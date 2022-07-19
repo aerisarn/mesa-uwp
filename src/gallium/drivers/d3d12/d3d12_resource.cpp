@@ -159,7 +159,7 @@ init_buffer(struct d3d12_screen *screen,
    buf = bufmgr->create_buffer(bufmgr, templ->width0, &buf_desc);
    if (!buf)
       return false;
-   res->bo = d3d12_bo_wrap_buffer(buf);
+   res->bo = d3d12_bo_wrap_buffer(screen, buf);
 
    return true;
 }

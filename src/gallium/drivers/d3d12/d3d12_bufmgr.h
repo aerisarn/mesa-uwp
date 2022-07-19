@@ -47,6 +47,12 @@ struct d3d12_bo {
    struct pb_buffer *buffer;
    struct TransitionableResourceState *trans_state;
 
+   /* Used as a key in per-context resource state maps,
+    * to avoid needing to lock them for single-threaded lookups to
+    * protect against resource destruction.
+    */
+   uint64_t unique_id;
+
    struct list_head residency_list_entry;
    uint64_t estimated_size;
    int64_t last_used_timestamp;
@@ -111,7 +117,7 @@ struct d3d12_bo *
 d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_format format, enum d3d12_residency_status residency);
 
 struct d3d12_bo *
-d3d12_bo_wrap_buffer(struct pb_buffer *buf);
+d3d12_bo_wrap_buffer(struct d3d12_screen *screen, struct pb_buffer *buf);
 
 void
 d3d12_debug_describe_bo(char* buf, struct d3d12_bo* ptr);

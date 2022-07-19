@@ -93,6 +93,7 @@ struct d3d12_screen {
    struct d3d12_descriptor_handle null_rtv;
 
    volatile uint32_t ctx_count;
+   volatile uint64_t resource_id_generator;
 
    /* capabilities */
    D3D_FEATURE_LEVEL max_feature_level;

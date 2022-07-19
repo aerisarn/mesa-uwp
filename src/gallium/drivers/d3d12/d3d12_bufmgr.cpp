@@ -108,6 +108,7 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_fo
    pipe_reference_init(&bo->reference, 1);
    bo->res = res;
    bo->trans_state = create_trans_state(res, format);
+   bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
 
    bo->residency_status = residency;
    bo->last_used_timestamp = 0;
@@ -167,7 +168,7 @@ d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
 }
 
 struct d3d12_bo *
-d3d12_bo_wrap_buffer(struct pb_buffer *buf)
+d3d12_bo_wrap_buffer(struct d3d12_screen *screen, struct pb_buffer *buf)
 {
    struct d3d12_bo *bo;
 
@@ -178,6 +179,7 @@ d3d12_bo_wrap_buffer(struct pb_buffer *buf)
    pipe_reference_init(&bo->reference, 1);
    bo->buffer = buf;
    bo->trans_state = NULL; /* State from base BO will be used */
+   bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
 
    return bo;
 }
