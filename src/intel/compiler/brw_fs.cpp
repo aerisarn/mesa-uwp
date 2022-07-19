@@ -7875,7 +7875,10 @@ brw_compile_fs(const struct brw_compiler *compiler,
       return NULL;
    } else if (INTEL_SIMD(FS, 8)) {
       simd8_cfg = v8->cfg;
-      prog_data->base.dispatch_grf_start_reg = v8->payload().num_regs;
+
+      assert(v8->payload().num_regs % reg_unit(devinfo) == 0);
+      prog_data->base.dispatch_grf_start_reg = v8->payload().num_regs / reg_unit(devinfo);
+
       prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
       const performance &perf = v8->performance_analysis.require();
       throughput = MAX2(throughput, perf.throughput);
@@ -7920,7 +7923,10 @@ brw_compile_fs(const struct brw_compiler *compiler,
                              v16->fail_msg);
       } else {
          simd16_cfg = v16->cfg;
-         prog_data->dispatch_grf_start_reg_16 = v16->payload().num_regs;
+
+         assert(v16->payload().num_regs % reg_unit(devinfo) == 0);
+         prog_data->dispatch_grf_start_reg_16 = v16->payload().num_regs / reg_unit(devinfo);
+
          prog_data->reg_blocks_16 = brw_register_blocks(v16->grf_used);
          const performance &perf = v16->performance_analysis.require();
          throughput = MAX2(throughput, perf.throughput);
@@ -7954,7 +7960,10 @@ brw_compile_fs(const struct brw_compiler *compiler,
                                 "SIMD32 shader inefficient\n");
          } else {
             simd32_cfg = v32->cfg;
-            prog_data->dispatch_grf_start_reg_32 = v32->payload().num_regs;
+
+            assert(v32->payload().num_regs % reg_unit(devinfo) == 0);
+            prog_data->dispatch_grf_start_reg_32 = v32->payload().num_regs / reg_unit(devinfo);
+
             prog_data->reg_blocks_32 = brw_register_blocks(v32->grf_used);
             throughput = MAX2(throughput, perf.throughput);
          }
