@@ -97,6 +97,7 @@ nir_options = {
    .lower_all_io_to_temps = true,
    .lower_hadd = true,
    .lower_uadd_sat = true,
+   .lower_usub_sat = true,
    .lower_iadd_sat = true,
    .lower_uadd_carry = true,
    .lower_mul_high = true,

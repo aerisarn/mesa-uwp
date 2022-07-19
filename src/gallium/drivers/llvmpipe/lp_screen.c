@@ -597,6 +597,7 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .lower_fmod = true,
    .lower_hadd = true,
    .lower_uadd_sat = true,
+   .lower_usub_sat = true,
    .lower_iadd_sat = true,
    .lower_ldexp = true,
    .lower_pack_snorm_2x16 = true,

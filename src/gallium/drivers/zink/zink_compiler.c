@@ -349,6 +349,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_rotate = true,
       .lower_uadd_carry = true,
       .lower_uadd_sat = true,
+      .lower_usub_sat = true,
       .lower_vector_cmp = true,
       .lower_int64_options = 0,
       .lower_doubles_options = 0,

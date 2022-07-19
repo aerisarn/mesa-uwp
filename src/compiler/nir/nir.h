@@ -3459,13 +3459,20 @@ typedef struct nir_shader_compiler_options {
    bool lower_hadd64;
 
    /**
-    * Set if nir_op_uadd_sat and nir_op_usub_sat should be lowered to simple
-    * arithmetic.
+    * Set if nir_op_uadd_sat should be lowered to simple arithmetic.
     *
     * If this flag is set, the lowering will be applied to all bit-sizes of
     * these instructions.
     */
    bool lower_uadd_sat;
+
+   /**
+    * Set if nir_op_usub_sat should be lowered to simple arithmetic.
+    *
+    * If this flag is set, the lowering will be applied to all bit-sizes of
+    * these instructions.
+    */
+   bool lower_usub_sat;
 
    /**
     * Set if nir_op_iadd_sat and nir_op_isub_sat should be lowered to simple
