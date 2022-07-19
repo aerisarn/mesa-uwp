@@ -253,6 +253,8 @@ changing the descriptor manager may improve performance:
    Automatically detect best mode. This is the default.
 ``lazy``
    Disable caching and attempt to use the least amount of CPU.
+``cached``
+   Use caching to reuse descriptor sets.
 ``notemplates``
    The same as `auto`, but disables the use of `VK_KHR_descriptor_templates`.
 

@@ -91,6 +91,7 @@ static const struct debug_named_value
 zink_descriptor_options[] = {
    { "auto", ZINK_DESCRIPTOR_MODE_AUTO, "Automatically detect best mode" },
    { "lazy", ZINK_DESCRIPTOR_MODE_LAZY, "Don't cache, do least amount of updates" },
+   { "cached", ZINK_DESCRIPTOR_MODE_CACHED, "Cache, reuse sets" },
    { "notemplates", ZINK_DESCRIPTOR_MODE_NOTEMPLATES, "Cache, but disable templated updates" },
    DEBUG_NAMED_VALUE_END
 };
@@ -2210,6 +2211,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 3;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 4;
       screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
+   }
+   if (descriptor_mode == ZINK_DESCRIPTOR_MODE_AUTO) {
+      descriptor_mode = ZINK_DESCRIPTOR_MODE_CACHED;
    }
 
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))
