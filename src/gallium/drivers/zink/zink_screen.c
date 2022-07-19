@@ -98,6 +98,8 @@ zink_descriptor_options[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(zink_descriptor_mode, "ZINK_DESCRIPTORS", zink_descriptor_options, ZINK_DESCRIPTOR_MODE_AUTO)
 
+enum zink_descriptor_mode zink_descriptor_mode;
+
 static const char *
 zink_get_vendor(struct pipe_screen *pscreen)
 {
@@ -1530,7 +1532,7 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
 {
    if (screen->info.have_KHR_descriptor_update_template &&
        !fallback &&
-       screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
+       zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
 #define LAZY(FUNC) screen->FUNC = zink_##FUNC##_lazy
       LAZY(descriptor_program_init);
       LAZY(descriptor_program_deinit);
@@ -2104,8 +2106,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->threaded = util_get_cpu_caps()->nr_cpus > 1 && debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1);
 
    zink_debug = debug_get_option_zink_debug();
-   screen->descriptor_mode = debug_get_option_zink_descriptor_mode();
-   if (screen->descriptor_mode > ZINK_DESCRIPTOR_MODE_NOTEMPLATES) {
+   zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
+   if (zink_descriptor_mode > ZINK_DESCRIPTOR_MODE_NOTEMPLATES) {
       printf("Specify exactly one descriptor mode.\n");
       abort();
    }

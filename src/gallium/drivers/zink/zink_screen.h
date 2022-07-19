@@ -82,6 +82,8 @@ enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_COMPACT,
 };
 
+extern enum zink_descriptor_mode zink_descriptor_mode;
+
 //keep in sync with zink_descriptor_type since headers can't be cross-included
 #define ZINK_MAX_DESCRIPTOR_SETS 6
 
@@ -184,7 +186,6 @@ struct zink_screen {
    void (*batch_descriptor_deinit)(struct zink_screen *screen, struct zink_batch_state *bs);
    bool (*descriptors_init)(struct zink_context *ctx);
    void (*descriptors_deinit)(struct zink_context *ctx);
-   enum zink_descriptor_mode descriptor_mode;
 
    struct {
       bool dual_color_blend_by_location;

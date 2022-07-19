@@ -352,7 +352,7 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    dcslci.pNext = NULL;
    VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {0};
    VkDescriptorBindingFlags flags[ZINK_MAX_DESCRIPTORS_PER_TYPE];
-   if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
       dcslci.pNext = &fci;
       if (t == ZINK_DESCRIPTOR_TYPES)
          dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
@@ -524,9 +524,9 @@ init_push_binding(VkDescriptorSetLayoutBinding *binding, unsigned i, VkDescripto
 static VkDescriptorType
 get_push_types(struct zink_screen *screen, enum zink_descriptor_type *dsl_type)
 {
-   *dsl_type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
+   *dsl_type = zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
                screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
-   return screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ?
+   return zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ?
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 }
 
@@ -1134,7 +1134,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       has_pools = true;
    }
    if (has_pools && screen->info.have_KHR_descriptor_update_template &&
-       screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
+       zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
       create_descriptor_ref_template(ctx, pg);
 
    return true;
@@ -1170,9 +1170,8 @@ zink_descriptor_pool_init(struct zink_context *ctx)
       if (!ctx->dd->descriptor_pools[i])
          return false;
    }
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkDescriptorPoolSize sizes[2];
-   sizes[0].type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+   sizes[0].type = zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
    sizes[0].descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
    sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
    sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
@@ -1379,7 +1378,7 @@ update_descriptors_internal(struct zink_context *ctx, enum zink_descriptor_type 
       return;
 
    if (screen->info.have_KHR_descriptor_update_template &&
-       screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES) {
+       zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES) {
       set_descriptor_set_refs(ctx, zds, pg, cache_hit);
       zink_descriptor_set_update_lazy(ctx, pg, type, zds->desc_set);
       return;
@@ -1527,7 +1526,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                   zds = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit);
                   if (cache_hit) {
                      pdd_cached(pg)->cache_misses[h] = 0;
-                  } else if (likely(zink_screen(ctx->base.screen)->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOFALLBACK)) {
+                  } else if (likely(zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_NOFALLBACK)) {
                      if (++pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES) {
 #ifdef PRINT_DEBUG
                         const char *set_names[] = {
@@ -1908,7 +1907,7 @@ zink_descriptor_util_init_fbfetch(struct zink_context *ctx)
    //ralloc_free(ctx->dd->push_layout_keys[0]);
    ctx->dd->push_dsl[0] = create_gfx_layout(ctx, &ctx->dd->push_layout_keys[0], true);
    ctx->dd->has_fbfetch = true;
-   if (screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_LAZY)
+   if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_LAZY)
       zink_descriptor_pool_init(ctx);
 }
 
