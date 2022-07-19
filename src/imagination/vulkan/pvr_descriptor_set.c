@@ -1319,33 +1319,22 @@ pvr_get_descriptor_binding(const struct pvr_descriptor_set_layout *layout,
                   pvr_compare_layout_binding);
 }
 
-static void
-pvr_descriptor_update_buffer_info(const struct pvr_device *device,
-                                  const VkWriteDescriptorSet *write_set,
-                                  struct pvr_descriptor_set *set,
-                                  uint32_t *mem_ptr,
-                                  uint32_t start_stage,
-                                  uint32_t end_stage)
+static void pvr_descriptor_update_buffer_info(
+   const struct pvr_device *device,
+   const VkWriteDescriptorSet *write_set,
+   struct pvr_descriptor_set *set,
+   const struct pvr_descriptor_set_layout_binding *binding,
+   uint32_t *mem_ptr,
+   uint32_t start_stage,
+   uint32_t end_stage)
 {
-   const struct pvr_descriptor_set_layout_binding *binding;
    struct pvr_descriptor_size_info size_info;
    bool is_dynamic;
-
-   binding = pvr_get_descriptor_binding(set->layout, write_set->dstBinding);
-   /* Binding should not be NULL. */
-   assert(binding);
 
    is_dynamic = (binding->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) ||
                 (binding->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
 
    pvr_descriptor_size_info_init(device, binding->type, &size_info);
-
-   /* Only need to update the buffer if it is actually being used. If it was
-    * not present in any stage, then the shader_stage_mask would be 0 and we
-    * can skip this update.
-    */
-   if (binding->shader_stage_mask == 0)
-      return;
 
    for (uint32_t i = 0; i < write_set->descriptorCount; i++) {
       const VkDescriptorBufferInfo *buffer_info = &write_set->pBufferInfo[i];
@@ -1371,7 +1360,7 @@ pvr_descriptor_update_buffer_info(const struct pvr_device *device,
          uint32_t primary_offset;
          uint32_t secondary_offset;
 
-         if (!(binding->shader_stage_mask & (1U << j)))
+         if (!(binding->shader_stage_mask & BITFIELD_BIT(j)))
             continue;
 
          /* Offset calculation functions expect descriptor_index to be
@@ -1409,6 +1398,18 @@ void pvr_UpdateDescriptorSets(VkDevice _device,
       const VkWriteDescriptorSet *write_set = &pDescriptorWrites[i];
       PVR_FROM_HANDLE(pvr_descriptor_set, set, write_set->dstSet);
       uint32_t *map = set->pvr_bo->bo->map;
+      const struct pvr_descriptor_set_layout_binding *binding =
+         pvr_get_descriptor_binding(set->layout, write_set->dstBinding);
+
+      /* Binding should not be NULL. */
+      assert(binding);
+
+      /* Only need to update the descriptor if it is actually being used. If it
+       * was not used in any stage, then the shader_stage_mask would be 0 and we
+       * can skip this update.
+       */
+      if (binding->shader_stage_mask == 0)
+         continue;
 
       vk_foreach_struct_const (ext, write_set->pNext) {
          pvr_debug_ignored_stype(ext->sType);
@@ -1433,6 +1434,7 @@ void pvr_UpdateDescriptorSets(VkDevice _device,
          pvr_descriptor_update_buffer_info(device,
                                            write_set,
                                            set,
+                                           binding,
                                            map,
                                            0,
                                            PVR_STAGE_ALLOCATION_COUNT);
