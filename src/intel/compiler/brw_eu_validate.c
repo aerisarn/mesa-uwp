@@ -1974,11 +1974,16 @@ special_requirements_for_handling_double_precision_data_types(
 
       /* From the hardware spec section "Register Region Restrictions":
        *
-       * "In case where source or destination datatype is 64b or operation is
-       *  integer DWord multiply [or in case where a floating point data type
-       *  is used as destination]:
+       * There are two rules:
        *
-       *   1. Register Regioning patterns where register data bit location
+       * "In case of all floating point data types used in destination:" and
+       *
+       * "In case where source or destination datatype is 64b or operation is
+       *  integer DWord multiply:"
+       *
+       * both of which list the same restrictions:
+       *
+       *  "1. Register Regioning patterns where register data bit location
        *      of the LSB of the channels are changed between source and
        *      destination are not supported on Src0 and Src1 except for
        *      broadcast of a scalar.
