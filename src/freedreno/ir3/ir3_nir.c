@@ -765,7 +765,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    bool more_late_algebraic = true;
    while (more_late_algebraic) {
       more_late_algebraic = OPT(s, nir_opt_algebraic_late);
-      if (!more_late_algebraic) {
+      if (!more_late_algebraic && so->compiler->gen >= 5) {
          /* Lowers texture operations that have only f2f16 or u2u16 called on
           * them to have a 16-bit destination.  Also, lower 16-bit texture
           * coordinates that had been upconverted to 32-bits just for the
