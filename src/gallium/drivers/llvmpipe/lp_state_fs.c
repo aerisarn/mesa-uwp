@@ -1082,7 +1082,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       }
    }
 
-   if (key->blend.alpha_to_one && key->multisample) {
+   if (key->blend.alpha_to_one) {
       for (unsigned attrib = 0; attrib < shader->info.base.num_outputs; ++attrib) {
          unsigned cbuf = shader->info.base.output_semantic_index[attrib];
          if ((shader->info.base.output_semantic_name[attrib] == TGSI_SEMANTIC_COLOR) &&
