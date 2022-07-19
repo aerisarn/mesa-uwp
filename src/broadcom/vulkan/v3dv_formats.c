@@ -324,6 +324,29 @@ v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
          }
          break;
       }
+      case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_2_EXT: {
+         struct VkDrmFormatModifierPropertiesList2EXT *list = (void *)ext;
+         VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierProperties2EXT, out,
+                                list->pDrmFormatModifierProperties,
+                                &list->drmFormatModifierCount);
+         if (linear2) {
+            vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT,
+                                     &out, mod_props) {
+               mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
+               mod_props->drmFormatModifierPlaneCount = 1;
+               mod_props->drmFormatModifierTilingFeatures = linear2;
+            }
+         }
+         if (optimal2) {
+            vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT,
+                                     &out, mod_props) {
+               mod_props->drmFormatModifier = DRM_FORMAT_MOD_BROADCOM_UIF;
+               mod_props->drmFormatModifierPlaneCount = 1;
+               mod_props->drmFormatModifierTilingFeatures = optimal2;
+            }
+         }
+         break;
+      }
       case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3: {
          VkFormatProperties3 *props = (VkFormatProperties3 *)ext;
          props->linearTilingFeatures = linear2;
