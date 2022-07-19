@@ -464,7 +464,6 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
                    first_level, last_level, level_mask);
 
    if (need_dcc_decompress) {
-      assert(sctx->gfx_level == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2);
       custom_blend = sctx->custom_blend_dcc_decompress;
 
       assert(vi_dcc_enabled(tex, first_level));
@@ -971,7 +970,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
         si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
                                 vi_dcc_enabled(ssrc, src_level)))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
-                            src_box, false, SI_OP_SYNC_BEFORE_AFTER);
+                            src_box, SI_OP_SYNC_BEFORE_AFTER);
       return;
    }
 
@@ -1247,7 +1246,7 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          if (sscreen->async_compute_context) {
             si_compute_copy_image((struct si_context*)sctx->screen->async_compute_context,
                                   info->dst.resource, 0, info->src.resource, 0, 0, 0, 0,
-                                  &info->src.box, false, 0);
+                                  &info->src.box, 0);
             si_flush_gfx_cs((struct si_context*)sctx->screen->async_compute_context, 0, NULL);
             simple_mtx_unlock(&sscreen->async_compute_context_lock);
             return;
@@ -1354,53 +1353,11 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
    /* If graphics is disabled, we can't decompress DCC, but it shouldn't
     * be compressed either. The caller should simply discard it.
     */
-   if (!tex->surface.meta_offset || !sctx->has_graphics || sctx->in_dcc_decompress)
+   if (!tex->surface.meta_offset || !sctx->has_graphics)
       return;
 
-   sctx->in_dcc_decompress = true;
-
-   if (sctx->gfx_level == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2) {
-      si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
-                               util_max_layer(&tex->buffer.b.b, 0), true, false);
-   } else {
-      struct pipe_resource *ptex = &tex->buffer.b.b;
-      assert(ptex->nr_storage_samples <= 1);
-
-      /* DCC decompression using a compute shader. */
-      for (unsigned level = 0; level < tex->surface.num_meta_levels; level++) {
-         struct pipe_box box;
-
-         u_box_3d(0, 0, 0, u_minify(ptex->width0, level),
-                  u_minify(ptex->height0, level),
-                  util_num_layers(ptex, level), &box);
-         si_compute_copy_image(sctx, ptex, level, ptex, level, 0, 0, 0, &box, true,
-                               /* Sync before the first copy and after the last copy */
-                               (level == 0 ? SI_OP_SYNC_BEFORE : 0) |
-                               (level == tex->surface.num_meta_levels - 1 ? SI_OP_SYNC_AFTER : 0));
-      }
-
-      /* Now clear DCC metadata to uncompressed.
-       *
-       * This uses SI_COMPUTE_CLEAR_METHOD to avoid a failure when running this
-       * deqp caselist on gfx10:
-       *  dEQP-GLES31.functional.image_load_store.2d.format_reinterpret.rgba32f_rgba32ui
-       *  dEQP-GLES31.functional.image_load_store.2d.format_reinterpret.rgba32f_rgba32i
-       */
-      uint32_t clear_value = DCC_UNCOMPRESSED;
-      si_clear_buffer(sctx, ptex, tex->surface.meta_offset,
-                      tex->surface.meta_size, &clear_value, 4, SI_OP_SYNC_AFTER,
-                      SI_COHERENCY_CB_META, SI_COMPUTE_CLEAR_METHOD);
-      si_mark_display_dcc_dirty(sctx, tex);
-
-      /* Clearing DCC metadata requires flushing L2 and invalidating L2 metadata to make
-       * the metadata visible to L2 caches. This is because clear_buffer uses plain stores
-       * that can go to different L2 channels than where L2 metadata caches expect them.
-       * This is not done for fast clears because plain stores are visible to CB/DB. Only
-       * L2 metadata caches have the problem.
-       */
-      sctx->flags |= SI_CONTEXT_WB_L2 | SI_CONTEXT_INV_L2_METADATA;
-   }
-   sctx->in_dcc_decompress = false;
+   si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
+                            util_max_layer(&tex->buffer.b.b, 0), true, false);
 }
 
 void si_init_blit_functions(struct si_context *sctx)

@@ -984,7 +984,6 @@ struct si_context {
    void *cs_clear_render_target;
    void *cs_clear_render_target_1d_array;
    void *cs_clear_12bytes_buffer;
-   void *cs_dcc_decompress;
    void *cs_dcc_retile[32];
    void *cs_fmask_expand[3][2]; /* [log2(samples)-1][is_array] */
    struct si_screen *screen;
@@ -998,7 +997,6 @@ struct si_context {
 
    bool blitter_running;
    bool in_update_ps_colorbuf0_slot;
-   bool in_dcc_decompress;
    bool is_noop:1;
    bool has_graphics:1;
    bool gfx_flush_in_progress : 1;
@@ -1428,7 +1426,7 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
 void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
                            struct pipe_resource *src, unsigned src_level, unsigned dstx,
                            unsigned dsty, unsigned dstz, const struct pipe_box *src_box,
-                           bool is_dcc_decompress, unsigned flags);
+                           unsigned flags);
 void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surface *dstsurf,
                                     const union pipe_color_union *color, unsigned dstx,
                                     unsigned dsty, unsigned width, unsigned height,
@@ -1554,7 +1552,6 @@ void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type,
 void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy);
 void *si_create_clear_buffer_rmw_cs(struct si_context *sctx);
-void *si_create_dcc_decompress_cs(struct pipe_context *ctx);
 void *si_clear_render_target_shader(struct pipe_context *ctx);
 void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
 void *si_clear_12bytes_buffer_shader(struct pipe_context *ctx);

@@ -273,8 +273,6 @@ static void si_destroy_context(struct pipe_context *context)
       sctx->b.delete_compute_state(&sctx->b, sctx->cs_clear_render_target_1d_array);
    if (sctx->cs_clear_12bytes_buffer)
       sctx->b.delete_compute_state(&sctx->b, sctx->cs_clear_12bytes_buffer);
-   if (sctx->cs_dcc_decompress)
-      sctx->b.delete_compute_state(&sctx->b, sctx->cs_dcc_decompress);
    for (unsigned i = 0; i < ARRAY_SIZE(sctx->cs_dcc_retile); i++) {
       if (sctx->cs_dcc_retile[i])
          sctx->b.delete_compute_state(&sctx->b, sctx->cs_dcc_retile[i]);
