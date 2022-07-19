@@ -802,7 +802,11 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
             [nir_tex_src_ddy] = {true, 0, nir_tex_src_coord},
 
          };
-         NIR_PASS_V(s, nir_legalize_16bit_sampler_srcs, tex_constraints);
+         bool scalarize = false;
+         NIR_PASS(scalarize, s, nir_legalize_16bit_sampler_srcs, tex_constraints);
+         if (scalarize) {
+            OPT(s, nir_lower_alu_to_scalar, NULL, NULL);
+         }
       }
       OPT_V(s, nir_opt_constant_folding);
       OPT_V(s, nir_copy_prop);
