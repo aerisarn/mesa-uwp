@@ -531,7 +531,8 @@ static void si_launch_grid_internal_images(struct si_context *sctx,
       /* The driver doesn't decompress resources automatically here, so do it manually. */
       si_decompress_subresource(&sctx->b, images[i].resource, PIPE_MASK_RGBAZS,
                                 images[i].u.tex.level, images[i].u.tex.first_layer,
-                                images[i].u.tex.last_layer);
+                                images[i].u.tex.last_layer,
+                                images[i].access & PIPE_IMAGE_ACCESS_WRITE);
    }
 
    /* This must be done before the compute shader. */

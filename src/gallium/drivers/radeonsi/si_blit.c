@@ -843,7 +843,8 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
  * The driver doesn't decompress resources automatically while u_blitter is
  * rendering. */
 void si_decompress_subresource(struct pipe_context *ctx, struct pipe_resource *tex, unsigned planes,
-                               unsigned level, unsigned first_layer, unsigned last_layer)
+                               unsigned level, unsigned first_layer, unsigned last_layer,
+                               bool need_fmask_expand)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_texture *stex = (struct si_texture *)tex;
@@ -878,7 +879,8 @@ void si_decompress_subresource(struct pipe_context *ctx, struct pipe_resource *t
          }
       }
 
-      si_blit_decompress_color(sctx, stex, level, level, first_layer, last_layer, false, false);
+      si_blit_decompress_color(sctx, stex, level, level, first_layer, last_layer, false,
+                               need_fmask_expand);
    }
 }
 
@@ -979,7 +981,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
    /* The driver doesn't decompress resources automatically while
     * u_blitter is rendering. */
    si_decompress_subresource(ctx, src, PIPE_MASK_RGBAZS, src_level, src_box->z,
-                             src_box->z + src_box->depth - 1);
+                             src_box->z + src_box->depth - 1, false);
 
    util_blitter_default_dst_texture(&dst_templ, dst, dst_level, dstz);
    util_blitter_default_src_texture(sctx->blitter, &src_templ, src, src_level);
@@ -1278,7 +1280,8 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    vi_disable_dcc_if_incompatible_format(sctx, info->dst.resource, info->dst.level,
                                          info->dst.format);
    si_decompress_subresource(ctx, info->src.resource, PIPE_MASK_RGBAZS, info->src.level,
-                             info->src.box.z, info->src.box.z + info->src.box.depth - 1);
+                             info->src.box.z, info->src.box.z + info->src.box.depth - 1,
+                             false);
 
    if (unlikely(sctx->thread_trace_enabled))
       sctx->sqtt_next_event = EventCmdBlitImage;
@@ -1301,7 +1304,8 @@ static bool si_generate_mipmap(struct pipe_context *ctx, struct pipe_resource *t
    /* The driver doesn't decompress resources automatically while
     * u_blitter is rendering. */
    vi_disable_dcc_if_incompatible_format(sctx, tex, base_level, format);
-   si_decompress_subresource(ctx, tex, PIPE_MASK_RGBAZS, base_level, first_layer, last_layer);
+   si_decompress_subresource(ctx, tex, PIPE_MASK_RGBAZS, base_level, first_layer, last_layer,
+                             false);
 
    /* Clear dirty_level_mask for the levels that will be overwritten. */
    assert(base_level < last_level);
