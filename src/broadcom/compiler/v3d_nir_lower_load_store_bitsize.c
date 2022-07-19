@@ -257,12 +257,12 @@ lower_load_store_bitsize(nir_builder *b, nir_instr *instr, void *data)
         }
 }
 
-void
+bool
 v3d_nir_lower_load_store_bitsize(nir_shader *s, struct v3d_compile *c)
 {
-   nir_shader_instructions_pass(s,
-                                lower_load_store_bitsize,
-                                nir_metadata_block_index |
-                                nir_metadata_dominance,
-                                c);
+        return nir_shader_instructions_pass(s,
+                                            lower_load_store_bitsize,
+                                            nir_metadata_block_index |
+                                            nir_metadata_dominance,
+                                            c);
 }
