@@ -37,50 +37,13 @@ extern "C" {
 
 #include <vulkan/vulkan.h>
 
-#ifdef NDEBUG
 #define vk_foreach_struct(__iter, __start) \
-   for (VkBaseOutStructure *__iter = (VkBaseOutStructure *)(__start); \
+   for (struct VkBaseOutStructure *__iter = (struct VkBaseOutStructure *)(__start); \
         __iter; __iter = __iter->pNext)
 
 #define vk_foreach_struct_const(__iter, __start) \
-   for (const VkBaseInStructure *__iter = (const VkBaseInStructure *)(__start); \
+   for (const struct VkBaseInStructure *__iter = (const struct VkBaseInStructure *)(__start); \
         __iter; __iter = __iter->pNext)
-#else
-static inline void
-__vk_foreach_debug_next(VkBaseOutStructure **iter,
-                        VkBaseOutStructure *chaser)
-{
-   assert(*iter);
-   *iter = (*iter)->pNext;
-
-   if ((int)chaser->sType & 1) {
-      /** This the "tortoise and the hare" algorithm.  We increment
-       * chaser->pNext every other time *iter gets incremented.  Because *iter
-       * is incrementing twice as fast as chaser->pNext, the distance between
-       * them in the list increases by one for each time we get here.  If we
-       * have a loop, eventually, both iterators will be inside the loop and
-       * this distance will be an integer multiple of the loop length, at
-       * which point the two pointers will be equal.
-       */
-      chaser->pNext = chaser->pNext->pNext;
-      if (chaser->pNext == *iter)
-         assert(!"Vulkan input pNext chain has a loop!");
-   }
-   chaser->sType = (VkStructureType)((int)chaser->sType + 1);
-}
-
-#define vk_foreach_struct(__iter, __start) \
-   for (VkBaseOutStructure *__iter = (VkBaseOutStructure *)(__start), \
-        __chaser = { (VkStructureType)0, (VkBaseOutStructure *)(__start) }; \
-        __iter; __vk_foreach_debug_next(&__iter, &__chaser))
-
-#define vk_foreach_struct_const(__iter, __start) \
-   for (const VkBaseInStructure *__iter = (const VkBaseInStructure *)(__start), \
-        __chaser = { (VkStructureType)0, (const VkBaseInStructure *)(__start) }; \
-        __iter; __vk_foreach_debug_next((VkBaseOutStructure **)&__iter, \
-                                        (VkBaseOutStructure *)&__chaser))
-#endif
-
 
 /**
  * A wrapper for a Vulkan output array. A Vulkan output array is one that
