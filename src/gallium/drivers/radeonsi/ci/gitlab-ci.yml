@@ -1,3 +1,32 @@
+.radeon-raven-test:amd64:
+  extends:
+    - .radeonsi-rules
+  variables:
+    BOOT_METHOD: depthcharge
+    DRIVER_NAME: radeonsi
+    DTB: ""
+    GPU_VERSION: radeonsi-raven
+    HWCI_FREQ_MAX: "true"
+    HWCI_KERNEL_MODULES: amdgpu
+    KERNEL_IMAGE_TYPE: ""
+    VK_DRIVER: radeon
+
+.radeon-raven-device-zork:amd64:
+  extends:
+    - .radeon-raven-test:amd64
+  variables:
+    DEVICE_TYPE: lenovo-TPad-C13-Yoga-zork
+    RUNNER_TAG: mesa-ci-x86-64-lava-lenovo-TPad-C13-Yoga-zork
+
+radeon-raven-skqp:amd64:
+  extends:
+    - .lava-test:amd64
+    - .radeon-raven-device-zork:amd64
+    - .skqp-test
+  variables:
+    # Possible skqp backends: gl, gles, unitTest and vk
+    SKQP_BACKENDS: gl gles vk unitTest  # space separated values
+
 .radeonsi-stoney-test:amd64:
   extends:
     - .radeonsi-rules
