@@ -40,6 +40,7 @@ enum radv_meta_save_flags {
    RADV_META_SAVE_GRAPHICS_PIPELINE = (1 << 3),
    RADV_META_SAVE_COMPUTE_PIPELINE = (1 << 4),
    RADV_META_SAVE_SAMPLE_LOCATIONS = (1 << 5),
+   RADV_META_SUSPEND_PREDICATING = (1 << 6),
 };
 
 struct radv_meta_saved_state {
@@ -59,6 +60,8 @@ struct radv_meta_saved_state {
    VkRect2D render_area;
 
    unsigned active_pipeline_gds_queries;
+
+   bool predicating;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);
