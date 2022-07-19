@@ -3291,6 +3291,9 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_physical_device *pdevice,
 static bool
 radv_lower_fs_output(nir_shader *nir, const struct radv_pipeline_key *pipeline_key)
 {
+   if (pipeline_key->ps.has_epilog)
+      return false;
+
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
 
