@@ -1404,8 +1404,6 @@ void si_init_clear_functions(struct si_context *sctx);
 
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);
-void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
-                             void *shader, unsigned flags);
 void si_launch_grid_internal_ssbos(struct si_context *sctx, struct pipe_grid_info *info,
                                    void *shader, unsigned flags, enum si_coherency coher,
                                    unsigned num_buffers, const struct pipe_shader_buffer *buffers,

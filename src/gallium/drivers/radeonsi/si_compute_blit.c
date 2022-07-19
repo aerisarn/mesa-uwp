@@ -104,8 +104,8 @@ static void si_improve_sync_flags(struct si_context *sctx, struct pipe_resource 
    }
 }
 
-void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
-                             void *shader, unsigned flags)
+static void si_launch_grid_internal(struct si_context *sctx, const struct pipe_grid_info *info,
+                                    void *shader, unsigned flags)
 {
    /* Wait for previous shaders to finish. */
    if (flags & SI_OP_SYNC_GE_BEFORE)
