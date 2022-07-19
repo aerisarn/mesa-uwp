@@ -542,6 +542,8 @@ crocus_begin_query(struct pipe_context *ctx, struct pipe_query *query)
                   size, size, &q->query_state_ref.offset,
                   &q->query_state_ref.res, &ptr);
 
+   if (!q->query_state_ref.res)
+      return false;
    if (!crocus_resource_bo(q->query_state_ref.res))
       return false;
 
