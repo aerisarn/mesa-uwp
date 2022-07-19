@@ -1955,7 +1955,7 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
       };
 
       if (!ac_rtld_upload(&info)) {
-         radv_shader_destroy(device, shader);
+         radv_shader_unref(device, shader);
          ac_rtld_close(&rtld_binary);
          return false;
       }
@@ -2048,7 +2048,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
          size_t disasm_size;
          if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data,
                                           &disasm_size)) {
-            radv_shader_destroy(device, shader);
+            radv_shader_unref(device, shader);
             ac_rtld_close(&rtld_binary);
             return NULL;
          }
@@ -2503,8 +2503,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
 void
 radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 {
-   if (!p_atomic_dec_zero(&shader->ref_count))
-      return;
+   assert(shader->ref_count == 0);
 
    free(shader->spirv);
    free(shader->nir_string);

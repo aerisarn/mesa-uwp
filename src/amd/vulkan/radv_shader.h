@@ -621,6 +621,22 @@ bool radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir);
 VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline,
                                 gl_shader_stage stage, FILE *output);
 
+static inline struct radv_shader *
+radv_shader_ref(struct radv_shader *shader)
+{
+   assert(shader && shader->ref_count >= 1);
+   p_atomic_inc(&shader->ref_count);
+   return shader;
+}
+
+static inline void
+radv_shader_unref(struct radv_device *device, struct radv_shader *shader)
+{
+   assert(shader && shader->ref_count >= 1);
+   if (p_atomic_dec_zero(&shader->ref_count))
+      radv_shader_destroy(device, shader);
+}
+
 static inline unsigned
 calculate_tess_lds_size(enum amd_gfx_level gfx_level, unsigned tcs_num_input_vertices,
                         unsigned tcs_num_output_vertices, unsigned tcs_num_inputs,
