@@ -1039,7 +1039,8 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
    /* Copy. */
    si_blitter_begin(sctx, SI_COPY);
    util_blitter_blit_generic(sctx->blitter, dst_view, &dstbox, src_view, src_box, src->width0,
-                             src->height0, PIPE_MASK_RGBAZS, PIPE_TEX_FILTER_NEAREST, NULL, false, false);
+                             src->height0, PIPE_MASK_RGBAZS, PIPE_TEX_FILTER_NEAREST, NULL,
+                             false, false, 0);
    si_blitter_end(sctx);
 
    pipe_surface_reference(&dst_view, NULL);

@@ -895,6 +895,7 @@ struct pipe_blit_info
 
    unsigned mask; /**< bitmask of PIPE_MASK_R/G/B/A/Z/S */
    unsigned filter; /**< PIPE_TEX_FILTER_* */
+   uint8_t dst_sample; /**< if non-zero, set sample_mask to (1 << (dst_sample - 1)) */
    bool sample0_only;
    bool scissor_enable;
    struct pipe_scissor_state scissor;

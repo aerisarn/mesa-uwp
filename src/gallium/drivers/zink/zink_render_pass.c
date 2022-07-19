@@ -701,7 +701,7 @@ zink_begin_render_pass(struct zink_context *ctx)
          util_blitter_blit_generic(ctx->blitter, dst_view, &dstbox,
                                    src_view, &dstbox, ctx->fb_state.width, ctx->fb_state.height,
                                    PIPE_MASK_RGBAZS, PIPE_TEX_FILTER_NEAREST, NULL,
-                                   false, false);
+                                   false, false, 0);
 
          pipe_sampler_view_reference(&src_view, NULL);
          csurf->transient_init = true;

@@ -1790,7 +1790,7 @@ void util_blitter_copy_texture(struct blitter_context *blitter,
    util_blitter_blit_generic(blitter, dst_view, &dstbox,
                              src_view, srcbox, src->width0, src->height0,
                              PIPE_MASK_RGBAZS, PIPE_TEX_FILTER_NEAREST, NULL,
-                             false, false);
+                             false, false, 0);
 
    pipe_surface_reference(&dst_view, NULL);
    pipe_sampler_view_reference(&src_view, NULL);
@@ -1843,7 +1843,8 @@ static void do_blits(struct blitter_context_priv *ctx,
                      unsigned src_height0,
                      const struct pipe_box *srcbox,
                      bool is_zsbuf,
-                     bool uses_txf, bool sample0_only)
+                     bool uses_txf, bool sample0_only,
+                     unsigned dst_sample)
 {
    struct pipe_context *pipe = ctx->base.pipe;
    unsigned src_samples = src->texture->nr_samples;
@@ -1873,7 +1874,7 @@ static void do_blits(struct blitter_context_priv *ctx,
       pipe->set_framebuffer_state(pipe, &fb_state);
 
       /* Draw. */
-      pipe->set_sample_mask(pipe, ~0);
+      pipe->set_sample_mask(pipe, dst_sample ? BITFIELD_BIT(dst_sample - 1) : ~0);
       if (pipe->set_min_samples)
          pipe->set_min_samples(pipe, sample_shading ? dst_samples : 1);
       blitter_draw_tex(ctx, dstbox->x, dstbox->y,
@@ -1932,6 +1933,7 @@ static void do_blits(struct blitter_context_priv *ctx,
             unsigned i, max_sample = sample0_only ? 0 : dst_samples - 1;
 
             if (sample_shading) {
+               assert(dst_sample == 0);
                pipe->set_sample_mask(pipe, ~0);
                if (pipe->set_min_samples)
                   pipe->set_min_samples(pipe, max_sample);
@@ -1963,7 +1965,7 @@ static void do_blits(struct blitter_context_priv *ctx,
             }
          } else {
             /* Normal copy, MSAA upsampling, or MSAA resolve. */
-            pipe->set_sample_mask(pipe, ~0);
+            pipe->set_sample_mask(pipe, dst_sample ? BITFIELD_BIT(dst_sample - 1) : ~0);
             if (pipe->set_min_samples)
                pipe->set_min_samples(pipe, 1);
             blitter_draw_tex(ctx, dstbox->x, dstbox->y,
@@ -1998,7 +2000,8 @@ void util_blitter_blit_generic(struct blitter_context *blitter,
                                unsigned src_width0, unsigned src_height0,
                                unsigned mask, unsigned filter,
                                const struct pipe_scissor_state *scissor,
-                               bool alpha_blend, bool sample0_only)
+                               bool alpha_blend, bool sample0_only,
+                               unsigned dst_sample)
 {
    struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;
    struct pipe_context *pipe = ctx->base.pipe;
@@ -2207,7 +2210,8 @@ void util_blitter_blit_generic(struct blitter_context *blitter,
    blitter_set_common_draw_rect_state(ctx, scissor != NULL, dst_samples > 1);
 
    do_blits(ctx, dst, dstbox, src, src_width0, src_height0,
-            srcbox, dst_has_depth || dst_has_stencil, use_txf, sample0_only);
+            srcbox, dst_has_depth || dst_has_stencil, use_txf, sample0_only,
+            dst_sample);
 
    util_blitter_restore_vertex_states(blitter);
    util_blitter_restore_fragment_states(blitter);
@@ -2247,7 +2251,8 @@ util_blitter_blit(struct blitter_context *blitter,
                              src_view, &info->src.box, src->width0, src->height0,
                              info->mask, info->filter,
                              info->scissor_enable ? &info->scissor : NULL,
-                             info->alpha_blend, info->sample0_only);
+                             info->alpha_blend, info->sample0_only,
+                             info->dst_sample);
 
    pipe_surface_reference(&dst_view, NULL);
    pipe_sampler_view_reference(&src_view, NULL);
@@ -2345,7 +2350,7 @@ void util_blitter_generate_mipmap(struct blitter_context *blitter,
       pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, 0, false, &src_view);
 
       do_blits(ctx, dst_view, &dstbox, src_view, tex->width0, tex->height0,
-               &srcbox, is_depth, false, false);
+               &srcbox, is_depth, false, false, 0);
 
       pipe_surface_reference(&dst_view, NULL);
       pipe_sampler_view_reference(&src_view, NULL);
