@@ -170,7 +170,7 @@ disasm_annotate(struct disasm_info *disasm,
 
 void
 disasm_insert_error(struct disasm_info *disasm, unsigned offset,
-                    const char *error)
+                    unsigned inst_size, const char *error)
 {
    foreach_list_typed(struct inst_group, cur, link, &disasm->group_list) {
       struct exec_node *next_node = exec_node_get_next(&cur->link);
@@ -183,7 +183,7 @@ disasm_insert_error(struct disasm_info *disasm, unsigned offset,
       if (next->offset <= offset)
          continue;
 
-      if (offset + sizeof(brw_inst) != next->offset) {
+      if (offset + inst_size != next->offset) {
          struct inst_group *new = ralloc(disasm, struct inst_group);
          memcpy(new, cur, sizeof(struct inst_group));
 
@@ -191,7 +191,7 @@ disasm_insert_error(struct disasm_info *disasm, unsigned offset,
          cur->error_length = 0;
          cur->block_end = NULL;
 
-         new->offset = offset + sizeof(brw_inst);
+         new->offset = offset + inst_size;
          new->block_start = NULL;
 
          exec_node_insert_after(&cur->link, &new->link);

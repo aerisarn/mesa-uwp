@@ -2270,6 +2270,7 @@ send_descriptor_restrictions(const struct brw_isa_info *isa,
 bool
 brw_validate_instruction(const struct brw_isa_info *isa,
                          const brw_inst *inst, int offset,
+                         unsigned inst_size,
                          struct disasm_info *disasm)
 {
    struct string error_msg = { .str = NULL, .len = 0 };
@@ -2295,7 +2296,7 @@ brw_validate_instruction(const struct brw_isa_info *isa,
    }
 
    if (error_msg.str && disasm) {
-      disasm_insert_error(disasm, offset, error_msg.str);
+      disasm_insert_error(disasm, offset, inst_size, error_msg.str);
    }
    free(error_msg.str);
 
@@ -2323,7 +2324,8 @@ brw_validate_instructions(const struct brw_isa_info *isa,
          inst = &uncompacted;
       }
 
-      bool v = brw_validate_instruction(isa, inst, src_offset, disasm);
+      bool v = brw_validate_instruction(isa, inst, src_offset,
+                                        inst_size, disasm);
       valid = valid && v;
 
       src_offset += inst_size;

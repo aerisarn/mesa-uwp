@@ -81,7 +81,7 @@ disasm_annotate(struct disasm_info *disasm,
 
 void
 disasm_insert_error(struct disasm_info *disasm, unsigned offset,
-                    const char *error);
+                    unsigned inst_size, const char *error);
 
 #ifdef __cplusplus
 } /* extern "C" */

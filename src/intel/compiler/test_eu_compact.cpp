@@ -189,7 +189,7 @@ test_fuzz_compact_instruction(struct brw_codegen *p, brw_inst src)
 
          clear_pad_bits(p->isa, &instr);
 
-         if (!brw_validate_instruction(p->isa, &instr, 0, NULL))
+         if (!brw_validate_instruction(p->isa, &instr, 0, sizeof(brw_inst), NULL))
             continue;
 
 	 if (!test_compact_instruction(p, instr)) {
