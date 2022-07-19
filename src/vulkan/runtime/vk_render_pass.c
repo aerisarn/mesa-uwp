@@ -97,7 +97,7 @@ vk_common_CreateRenderPass(VkDevice _device,
 
    const VkRenderPassMultiviewCreateInfo *multiview_info = NULL;
    const VkRenderPassInputAttachmentAspectCreateInfo *aspect_info = NULL;
-   vk_foreach_struct(ext, pCreateInfo->pNext) {
+   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO:
          aspect_info = (const VkRenderPassInputAttachmentAspectCreateInfo *)ext;

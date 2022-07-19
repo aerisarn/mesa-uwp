@@ -1237,7 +1237,7 @@ wsi_common_create_swapchain_image(const struct wsi_device *wsi,
    assert(pCreateInfo->tiling == VK_IMAGE_TILING_OPTIMAL);
    assert(!(pCreateInfo->usage & ~swcInfo->usage));
 
-   vk_foreach_struct(ext, pCreateInfo->pNext) {
+   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
          const VkImageFormatListCreateInfo *iflci =

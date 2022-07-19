@@ -797,7 +797,7 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
    const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
       vk_find_struct_const(pCreateInfo->pNext, MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
 
-   vk_foreach_struct(ext, pCreateInfo->pNext)
+   vk_foreach_struct_const(ext, pCreateInfo->pNext)
    {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: {

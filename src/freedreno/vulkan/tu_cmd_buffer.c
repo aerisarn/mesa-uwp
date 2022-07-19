@@ -1759,7 +1759,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       cmd_buffer->inherited_pipeline_statistics =
          pBeginInfo->pInheritanceInfo->pipelineStatistics;
 
-      vk_foreach_struct(ext, pBeginInfo->pInheritanceInfo) {
+      vk_foreach_struct_const(ext, pBeginInfo->pInheritanceInfo) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
             const VkCommandBufferInheritanceConditionalRenderingInfoEXT *cond_rend = (void *) ext;

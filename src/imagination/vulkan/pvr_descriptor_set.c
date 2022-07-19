@@ -437,7 +437,7 @@ VkResult pvr_CreateDescriptorSetLayout(
    assert(pCreateInfo->sType ==
           VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
 
-   vk_foreach_struct (ext, pCreateInfo->pNext) {
+   vk_foreach_struct_const (ext, pCreateInfo->pNext) {
       pvr_debug_ignored_stype(ext->sType);
    }
 
@@ -1233,7 +1233,7 @@ pvr_AllocateDescriptorSets(VkDevice _device,
    VkResult result;
    uint32_t i;
 
-   vk_foreach_struct (ext, pAllocateInfo->pNext) {
+   vk_foreach_struct_const (ext, pAllocateInfo->pNext) {
       pvr_debug_ignored_stype(ext->sType);
    }
 
@@ -1410,7 +1410,7 @@ void pvr_UpdateDescriptorSets(VkDevice _device,
       PVR_FROM_HANDLE(pvr_descriptor_set, set, write_set->dstSet);
       uint32_t *map = set->pvr_bo->bo->map;
 
-      vk_foreach_struct (ext, write_set->pNext) {
+      vk_foreach_struct_const (ext, write_set->pNext) {
          pvr_debug_ignored_stype(ext->sType);
       }
 

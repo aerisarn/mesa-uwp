@@ -912,7 +912,7 @@ VkResult genX(CreateSampler)(
    bool enable_sampler_reduction = false;
 #endif
 
-   vk_foreach_struct(ext, pCreateInfo->pNext) {
+   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
          VkSamplerYcbcrConversionInfo *pSamplerConversion =

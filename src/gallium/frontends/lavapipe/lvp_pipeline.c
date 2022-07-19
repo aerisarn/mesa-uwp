@@ -141,7 +141,7 @@ deep_copy_vertex_input_state(void *mem_ctx,
                     src->vertexAttributeDescriptionCount);
 
    if (src->pNext) {
-      vk_foreach_struct(ext, src->pNext) {
+      vk_foreach_struct_const(ext, src->pNext) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
             const VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_src = (VkPipelineVertexInputDivisorStateCreateInfoEXT *)ext;
@@ -224,7 +224,7 @@ deep_copy_viewport_state(void *mem_ctx,
       dst->scissorCount = 0;
 
    if (src->pNext) {
-      vk_foreach_struct(ext, src->pNext) {
+      vk_foreach_struct_const(ext, src->pNext) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: {
             VkPipelineViewportDepthClipControlCreateInfoEXT *ext_src = (VkPipelineViewportDepthClipControlCreateInfoEXT *)ext;
@@ -344,7 +344,7 @@ deep_copy_rasterization_state(void *mem_ctx,
    dst->pNext = NULL;
 
    if (src->pNext) {
-      vk_foreach_struct(ext, src->pNext) {
+      vk_foreach_struct_const(ext, src->pNext) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
             VkPipelineRasterizationDepthClipStateCreateInfoEXT *ext_src = (VkPipelineRasterizationDepthClipStateCreateInfoEXT *)ext;
