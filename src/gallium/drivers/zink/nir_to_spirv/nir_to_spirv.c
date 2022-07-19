@@ -488,8 +488,11 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
          types[i] = get_glsl_type(ctx, glsl_get_struct_field(type, i));
       ret = spirv_builder_type_struct(&ctx->builder, types,
                                       glsl_get_length(type));
-      for (unsigned i = 0; i < glsl_get_length(type); i++)
-         spirv_builder_emit_member_offset(&ctx->builder, ret, i, glsl_get_struct_field_offset(type, i));
+      for (unsigned i = 0; i < glsl_get_length(type); i++) {
+         int32_t offset = glsl_get_struct_field_offset(type, i);
+         if (offset >= 0)
+            spirv_builder_emit_member_offset(&ctx->builder, ret, i, offset);
+      }
    } else
       unreachable("Unhandled GLSL type");
 
