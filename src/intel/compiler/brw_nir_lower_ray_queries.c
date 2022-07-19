@@ -309,7 +309,7 @@ lower_ray_query_intrinsic(nir_builder *b,
          update_trace_ctrl_level(b, ctrl_level_addr,
                                  NULL, NULL,
                                  nir_imm_int(b, GEN_RT_TRACE_RAY_CONTINUE),
-                                 nir_imm_int(b, BRW_RT_BVH_LEVEL_OBJECT));
+                                 hit_in.bvh_level);
 
          not_done_then = nir_inot(b, hit_in.done);
       }
