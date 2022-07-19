@@ -91,7 +91,6 @@ static const struct debug_named_value
 zink_descriptor_options[] = {
    { "auto", ZINK_DESCRIPTOR_MODE_AUTO, "Automatically detect best mode" },
    { "lazy", ZINK_DESCRIPTOR_MODE_LAZY, "Don't cache, do least amount of updates" },
-   { "nofallback", ZINK_DESCRIPTOR_MODE_NOFALLBACK, "Cache, never use lazy fallback" },
    { "notemplates", ZINK_DESCRIPTOR_MODE_NOTEMPLATES, "Cache, but disable templated updates" },
    DEBUG_NAMED_VALUE_END
 };
