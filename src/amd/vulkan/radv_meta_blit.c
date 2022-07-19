@@ -457,7 +457,6 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    const VkImageSubresourceLayers *dst_res = &region->dstSubresource;
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_saved_state saved_state;
-   bool old_predicating;
    VkSampler sampler;
 
    /* From the Vulkan 1.0 spec:
@@ -479,15 +478,12 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                       },
                       &cmd_buffer->pool->vk.alloc, &sampler);
 
-   radv_meta_save(
-      &saved_state, cmd_buffer,
-      RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS);
-
    /* VK_EXT_conditional_rendering says that blit commands should not be
     * affected by conditional rendering.
     */
-   old_predicating = cmd_buffer->state.predicating;
-   cmd_buffer->state.predicating = false;
+   radv_meta_save(&saved_state, cmd_buffer,
+                  RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_CONSTANTS |
+                     RADV_META_SAVE_DESCRIPTORS | RADV_META_SUSPEND_PREDICATING);
 
    unsigned dst_start, dst_end;
    if (dst_image->vk.image_type == VK_IMAGE_TYPE_3D) {
@@ -601,9 +597,6 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       radv_image_view_finish(&dst_iview);
       radv_image_view_finish(&src_iview);
    }
-
-   /* Restore conditional rendering. */
-   cmd_buffer->state.predicating = old_predicating;
 
    radv_meta_restore(&saved_state, cmd_buffer);
 

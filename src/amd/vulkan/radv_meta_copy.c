@@ -90,7 +90,6 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
                      const VkBufferImageCopy2 *region)
 {
    struct radv_meta_saved_state saved_state;
-   bool old_predicating;
    bool cs;
 
    /* The Vulkan 1.0 spec says "dstImage must have a sample count equal to
@@ -101,15 +100,13 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
    cs = cmd_buffer->qf == RADV_QUEUE_COMPUTE ||
         !radv_image_is_renderable(cmd_buffer->device, image);
 
-   radv_meta_save(&saved_state, cmd_buffer,
-                  (cs ? RADV_META_SAVE_COMPUTE_PIPELINE : RADV_META_SAVE_GRAPHICS_PIPELINE) |
-                     RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS);
-
    /* VK_EXT_conditional_rendering says that copy commands should not be
     * affected by conditional rendering.
     */
-   old_predicating = cmd_buffer->state.predicating;
-   cmd_buffer->state.predicating = false;
+   radv_meta_save(&saved_state, cmd_buffer,
+                  (cs ? RADV_META_SAVE_COMPUTE_PIPELINE : RADV_META_SAVE_GRAPHICS_PIPELINE) |
+                     RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS |
+                     RADV_META_SUSPEND_PREDICATING);
 
    /**
     * From the Vulkan 1.0.6 spec: 18.3 Copying Data Between Images
@@ -195,9 +192,6 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
          slice_array++;
    }
 
-   /* Restore conditional rendering. */
-   cmd_buffer->state.predicating = old_predicating;
-
    radv_meta_restore(&saved_state, cmd_buffer);
 }
 
@@ -250,17 +244,13 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
    }
 
    struct radv_meta_saved_state saved_state;
-   bool old_predicating;
-
-   radv_meta_save(
-      &saved_state, cmd_buffer,
-      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS);
 
    /* VK_EXT_conditional_rendering says that copy commands should not be
     * affected by conditional rendering.
     */
-   old_predicating = cmd_buffer->state.predicating;
-   cmd_buffer->state.predicating = false;
+   radv_meta_save(&saved_state, cmd_buffer,
+                  RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS |
+                     RADV_META_SAVE_DESCRIPTORS | RADV_META_SUSPEND_PREDICATING);
 
    /**
     * From the Vulkan 1.0.6 spec: 18.3 Copying Data Between Images
@@ -341,9 +331,6 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
          slice_array++;
    }
 
-   /* Restore conditional rendering. */
-   cmd_buffer->state.predicating = old_predicating;
-
    radv_meta_restore(&saved_state, cmd_buffer);
 }
 
@@ -368,7 +355,6 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
            VkImageLayout dst_image_layout, const VkImageCopy2 *region)
 {
    struct radv_meta_saved_state saved_state;
-   bool old_predicating;
    bool cs;
 
    /* From the Vulkan 1.0 spec:
@@ -381,15 +367,13 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    cs = cmd_buffer->qf == RADV_QUEUE_COMPUTE ||
         !radv_image_is_renderable(cmd_buffer->device, dst_image);
 
-   radv_meta_save(&saved_state, cmd_buffer,
-                  (cs ? RADV_META_SAVE_COMPUTE_PIPELINE : RADV_META_SAVE_GRAPHICS_PIPELINE) |
-                     RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS);
-
    /* VK_EXT_conditional_rendering says that copy commands should not be
     * affected by conditional rendering.
     */
-   old_predicating = cmd_buffer->state.predicating;
-   cmd_buffer->state.predicating = false;
+   radv_meta_save(&saved_state, cmd_buffer,
+                  (cs ? RADV_META_SAVE_COMPUTE_PIPELINE : RADV_META_SAVE_GRAPHICS_PIPELINE) |
+                     RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS |
+                     RADV_META_SUSPEND_PREDICATING);
 
    if (cs) {
       /* For partial copies, HTILE should be decompressed before copying because the metadata is
@@ -570,9 +554,6 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
          cmd_buffer->state.flush_bits |= radv_clear_htile(cmd_buffer, dst_image, &range, htile_value);
       }
    }
-
-   /* Restore conditional rendering. */
-   cmd_buffer->state.predicating = old_predicating;
 
    radv_meta_restore(&saved_state, cmd_buffer);
 }

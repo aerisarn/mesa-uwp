@@ -973,7 +973,6 @@ radv_query_shader(struct radv_cmd_buffer *cmd_buffer, VkPipeline *pipeline,
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_saved_state saved_state;
    struct radv_buffer src_buffer, dst_buffer;
-   bool old_predicating;
 
    if (!*pipeline) {
       VkResult ret = radv_device_init_meta_query_state_internal(device);
@@ -983,15 +982,12 @@ radv_query_shader(struct radv_cmd_buffer *cmd_buffer, VkPipeline *pipeline,
       }
    }
 
-   radv_meta_save(
-      &saved_state, cmd_buffer,
-      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS);
-
    /* VK_EXT_conditional_rendering says that copy commands should not be
     * affected by conditional rendering.
     */
-   old_predicating = cmd_buffer->state.predicating;
-   cmd_buffer->state.predicating = false;
+   radv_meta_save(&saved_state, cmd_buffer,
+                  RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS |
+                     RADV_META_SAVE_DESCRIPTORS | RADV_META_SUSPEND_PREDICATING);
 
    uint64_t src_buffer_size = MAX2(src_stride * count, avail_offset + 4 * count - src_offset);
    uint64_t dst_buffer_size = dst_stride * (count - 1) + dst_size;
@@ -1053,9 +1049,6 @@ radv_query_shader(struct radv_cmd_buffer *cmd_buffer, VkPipeline *pipeline,
     */
    cmd_buffer->active_query_flush_bits |=
       RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2 | RADV_CMD_FLAG_INV_VCACHE;
-
-   /* Restore conditional rendering. */
-   cmd_buffer->state.predicating = old_predicating;
 
    radv_buffer_finish(&src_buffer);
    radv_buffer_finish(&dst_buffer);
