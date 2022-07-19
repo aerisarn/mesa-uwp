@@ -307,12 +307,12 @@ struct pvr_winsys_compute_submit_info {
 
    struct {
       uint64_t tpu_border_colour_table;
-      uint64_t cdm_item;
-      uint32_t compute_cluster;
       uint64_t cdm_ctrl_stream_base;
       uint64_t cdm_ctx_state_base_addr;
       uint32_t tpu;
       uint32_t cdm_resume_pds1;
+      uint32_t cdm_item;
+      uint32_t compute_cluster;
    } regs;
 
    /* Must be 0 or a combination of PVR_WINSYS_COMPUTE_FLAG_* flags. */

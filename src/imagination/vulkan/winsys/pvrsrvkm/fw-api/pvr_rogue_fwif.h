@@ -467,12 +467,6 @@ struct rogue_fwif_cmd_abort {
 struct rogue_fwif_cdm_regs {
    uint64_t tpu_border_colour_table;
 
-   /* Only used when feature COMPUTE_MORTON_CAPABLE present. */
-   uint64_t cdm_item;
-
-   /* Only used when feature CLUSTER_GROUPING present. */
-   uint64_t compute_cluster;
-
    /* Only used when feature TPU_DM_GLOBAL_REGISTERS present. */
    uint64_t tpu_tag_cdm_ctrl;
 
@@ -500,6 +494,12 @@ struct rogue_fwif_cdm_regs {
    uint32_t tpu;
 
    uint32_t cdm_resume_pds1;
+
+   /* Only used when feature COMPUTE_MORTON_CAPABLE present. */
+   uint32_t cdm_item;
+
+   /* Only used when feature CLUSTER_GROUPING present. */
+   uint32_t compute_cluster;
 };
 
 /**
