@@ -3844,6 +3844,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_sparse_load:
+   case nir_intrinsic_image_deref_samples_identical:
       result = visit_image_load(ctx, instr, false);
       break;
    case nir_intrinsic_bindless_image_store:
