@@ -1530,8 +1530,7 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
 void
 zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
 {
-   if (screen->info.have_KHR_descriptor_update_template &&
-       !fallback &&
+   if (!fallback &&
        zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
 #define LAZY(FUNC) screen->FUNC = zink_##FUNC##_lazy
       LAZY(descriptor_program_init);
@@ -2212,8 +2211,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 4;
       screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
    }
-   if (descriptor_mode == ZINK_DESCRIPTOR_MODE_AUTO) {
-      descriptor_mode = ZINK_DESCRIPTOR_MODE_CACHED;
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_AUTO) {
+      if (screen->info.have_KHR_descriptor_update_template)
+         zink_descriptor_mode = ZINK_DESCRIPTOR_MODE_LAZY;
+      else
+         zink_descriptor_mode = ZINK_DESCRIPTOR_MODE_CACHED;
    }
 
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))

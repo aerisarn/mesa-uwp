@@ -770,8 +770,6 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
       entry->descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
       entry->offset = offsetof(struct zink_context, di.fbfetch);
       entry->stride = sizeof(VkDescriptorImageInfo);
-      if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY)
-         printf("ZINK: USING LAZY DESCRIPTORS\n");
    }
    struct zink_descriptor_layout_key *layout_key;
    if (!zink_descriptor_util_push_layouts_get(ctx, ctx->dd->push_dsl, ctx->dd->push_layout_keys))
