@@ -2572,7 +2572,10 @@ radv_pipeline_link_fs(struct radv_pipeline_stage *fs_stage,
 {
    assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   radv_remove_color_exports(pipeline_key, fs_stage->nir);
+   if (!pipeline_key->ps.has_epilog) {
+      /* Only remove color exports when the format is known. */
+      radv_remove_color_exports(pipeline_key, fs_stage->nir);
+   }
 
    nir_foreach_shader_out_variable(var, fs_stage->nir) {
       var->data.driver_location = var->data.location + var->data.index;
