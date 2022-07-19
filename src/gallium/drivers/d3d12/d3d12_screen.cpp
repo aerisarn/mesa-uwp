@@ -1149,6 +1149,8 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    mtx_init(&screen->descriptor_pool_mutex, mtx_plain);
    mtx_init(&screen->submit_mutex, mtx_plain);
 
+   list_inithead(&screen->context_list);
+
    screen->base.get_vendor = d3d12_get_vendor;
    screen->base.get_device_vendor = d3d12_get_device_vendor;
    screen->base.get_param = d3d12_get_param;

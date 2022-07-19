@@ -71,6 +71,11 @@ d3d12_context_destroy(struct pipe_context *pctx)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
 
+   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
+   mtx_lock(&screen->submit_mutex);
+   list_del(&ctx->context_list_entry);
+   mtx_unlock(&screen->submit_mutex);
+
 #ifdef _WIN32
    if (ctx->dxil_validator)
       dxil_destroy_validator(ctx->dxil_validator);
@@ -2630,6 +2635,10 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       FREE(ctx);
       return NULL;
    }
+
+   mtx_lock(&screen->submit_mutex);
+   list_addtail(&ctx->context_list_entry, &screen->context_list);
+   mtx_unlock(&screen->submit_mutex);
 
    if (flags & PIPE_CONTEXT_PREFER_THREADED)
       return threaded_context_create(&ctx->base,

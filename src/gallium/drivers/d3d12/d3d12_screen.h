@@ -77,6 +77,8 @@ struct d3d12_screen {
    ID3D12Fence *residency_fence;
    uint64_t residency_fence_value;
 
+   struct list_head context_list;
+
    struct slab_parent_pool transfer_pool;
    struct pb_manager *bufmgr;
    struct pb_manager *cache_bufmgr;

@@ -162,6 +162,7 @@ struct d3d12_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;
    struct slab_child_pool transfer_pool_unsync;
+   struct list_head context_list_entry;
    struct threaded_context *threaded_context;
    struct primconvert_context *primconvert;
    struct blitter_context *blitter;
