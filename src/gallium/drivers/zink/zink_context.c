@@ -1274,7 +1274,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
          }
          zink_batch_resource_usage_set(&ctx->batch, new_res, false);
          zink_resource_buffer_barrier(ctx, new_res, VK_ACCESS_UNIFORM_READ_BIT,
-                                      zink_pipeline_flags_from_pipe_stage(shader));
+                                      new_res->gfx_barrier);
       }
       update |= ((index || zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) && ctx->ubos[shader][index].buffer_offset != offset) ||
                 !!res != !!buffer || (res && res->obj->buffer != new_res->obj->buffer) ||
@@ -1391,7 +1391,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          util_range_add(&new_res->base.b, &new_res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
          zink_resource_buffer_barrier(ctx, new_res, access,
-                                      zink_pipeline_flags_from_pipe_stage(p_stage));
+                                      new_res->gfx_barrier);
          update = true;
          max_slot = MAX2(max_slot, start_slot + i);
          update_descriptor_state_ssbo(ctx, p_stage, start_slot + i, new_res);
@@ -1599,7 +1599,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             image_view->buffer_view = bv;
             zink_batch_usage_set(&image_view->buffer_view->batch_uses, ctx->batch.state);
             zink_resource_buffer_barrier(ctx, res, access,
-                                         zink_pipeline_flags_from_pipe_stage(p_stage));
+                                         res->gfx_barrier);
          } else {
             struct zink_surface *surface = create_image_surface(ctx, &images[i], p_stage == PIPE_SHADER_COMPUTE);
             assert(surface);
@@ -1714,7 +1714,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
             }
             zink_batch_usage_set(&b->buffer_view->batch_uses, ctx->batch.state);
             zink_resource_buffer_barrier(ctx, res, VK_ACCESS_SHADER_READ_BIT,
-                                         zink_pipeline_flags_from_pipe_stage(shader_type));
+                                         res->gfx_barrier);
             if (!a || a->buffer_view->buffer_view != b->buffer_view->buffer_view)
                update = true;
          } else if (!res->obj->is_buffer) {
