@@ -25,18 +25,31 @@ dEQP-VK.rasterization.depth_bias.d32_sfloat
 
 # Slow tests (> 1 minute to run)
 dEQP-VK.api.object_management.max_concurrent.query_pool
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertuvec2.nostore.multi.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertuvec2.nostore.single.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertuvec2.store.multi.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertuvec2.store.single.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.load.nostore.multi.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.load.nostore.single.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.load.store.multi.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.load.store.single.std140.vert
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 dEQP-VK.memory.mapping.dedicated_alloc.buffer.full.variable.implicit_unmap
 dEQP-VK.memory.mapping.dedicated_alloc.image.full.variable.implicit_unmap
 dEQP-VK.memory.mapping.suballocation.full.variable.implicit_unmap
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_geom
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_vert
+dEQP-VK.ssbo.layout.random.16bit.all_per_block_buffers.5
 dEQP-VK.ssbo.layout.random.16bit.all_shared_buffer.40
+dEQP-VK.ssbo.layout.random.8bit.all_per_block_buffers.5
 dEQP-VK.ssbo.layout.random.8bit.all_per_block_buffers.6
 dEQP-VK.ssbo.layout.random.8bit.nested_structs_arrays_instance_arrays.9
 dEQP-VK.ssbo.layout.random.all_shared_buffer.5
 dEQP-VK.ssbo.layout.random.arrays_of_arrays.13
 dEQP-VK.ssbo.layout.random.nested_structs_arrays.0
+dEQP-VK.ssbo.phys.layout.3*
+dEQP-VK.ssbo.phys.layout.basic_unsized_array*
+dEQP-VK.ssbo.phys.layout.single_struct_array*
 dEQP-VK.synchronization.basic.timeline_semaphore.chain
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_linear_repeat
@@ -44,6 +57,3 @@ dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
 dEQP-VK.ubo.random.all_out_of_order_offsets.45
 dEQP-VK.ubo.random.all_shared_buffer.48
-dEQP-VK.ssbo.phys.layout.3*
-dEQP-VK.ssbo.phys.layout.single_struct_array*
-dEQP-VK.ssbo.phys.layout.basic_unsized_array*

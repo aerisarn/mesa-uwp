@@ -31,10 +31,11 @@ traces:
   #     # Requires GL 3.3
   #     - device: broadcom-rpi4
   #       checksum: e58167bd8eeb8952facbc00ff0449135
-  - path: gputest/pixmark-julia-fp32.trace
-    expectations:
-      - device: broadcom-rpi4
-        checksum: be70fc9e3829fff5ad1b6ecfb6fa551c
+  # - path: gputest/pixmark-julia-fp32.trace
+  #  expectations:
+  #    # This is flaking
+  #    - device: broadcom-rpi4
+  #      checksum: be70fc9e3829fff5ad1b6ecfb6fa551c
   # - path: gputest/pixmark-julia-fp64.trace
   #   expectations:
   #     # Requires GL 4.0 (fp64)
