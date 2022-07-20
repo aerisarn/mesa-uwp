@@ -90,6 +90,7 @@ static const struct nir_shader_compiler_options vector_nir_options = {
     */
    .fdot_replicates = true,
 
+   .lower_usub_sat = true,
    .lower_pack_snorm_2x16 = true,
    .lower_pack_unorm_2x16 = true,
    .lower_unpack_snorm_2x16 = true,
