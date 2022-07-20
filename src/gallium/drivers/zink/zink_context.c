@@ -4203,6 +4203,8 @@ zink_rebind_all_images(struct zink_context *ctx)
     for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
       for (unsigned j = 0; j < ctx->di.num_sampler_views[i]; j++) {
          struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
+         if (!sv)
+            continue;
          struct zink_resource *res = zink_resource(sv->image_view->base.texture);
          if (res->obj != sv->image_view->obj) {
              struct pipe_surface *psurf = &sv->image_view->base;
@@ -4215,6 +4217,8 @@ zink_rebind_all_images(struct zink_context *ctx)
       for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
          struct zink_image_view *image_view = &ctx->image_views[i][j];
          struct zink_resource *res = zink_resource(image_view->base.resource);
+         if (!res)
+            continue;
          if (ctx->image_views[i][j].surface->obj != res->obj) {
             zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
             image_view->surface = create_image_surface(ctx, &image_view->base, i == PIPE_SHADER_COMPUTE);
