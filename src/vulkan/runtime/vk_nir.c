@@ -24,6 +24,7 @@
 
 #include "vk_nir.h"
 
+#include "compiler/nir/nir_xfb_info.h"
 #include "compiler/spirv/nir_spirv.h"
 #include "vk_log.h"
 #include "vk_util.h"
@@ -150,6 +151,11 @@ vk_spirv_to_nir(struct vk_device *device,
     * uninitialized garbage.
     */
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
+
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       nir->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, nir_shader_gather_xfb_info);
 
    NIR_PASS_V(nir, nir_propagate_invariant, false);
 

@@ -789,11 +789,6 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
        gl_shader_stage_is_mesh(nir->info.stage))
       NIR_PASS(_, nir, brw_nir_lower_cs_intrinsics);
 
-   if (nir->info.stage == MESA_SHADER_VERTEX ||
-       nir->info.stage == MESA_SHADER_TESS_EVAL ||
-       nir->info.stage == MESA_SHADER_GEOMETRY)
-      NIR_PASS_V(nir, nir_shader_gather_xfb_info);
-
    stage->nir = nir;
 }
 
