@@ -96,6 +96,35 @@ setup_backends() {
     fi
 }
 
+show_reports() (
+    set +xe
+
+    # Unit tests produce empty HTML reports, guide the user to check the TXT file.
+    if echo "${SKQP_BACKENDS}" | grep -qE "unitTest"
+    then
+        # Remove the empty HTML report to avoid confusion
+        rm -f "${SKQP_RESULTS_DIR}"/unitTest/report.html
+
+        echo "See skqp unit test results at:"
+        echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/${SKQP_RESULTS_DIR}/unitTest/unit_tests.txt"
+    fi
+
+    REPORT_FILES=$(mktemp)
+    find "${SKQP_RESULTS_DIR}"/**/report.html -type f > "${REPORT_FILES}"
+    while read -r REPORT
+    do
+        BACKEND_NAME=$(echo "${REPORT}" | sed  's@.*/\([^/]*\)/report.html@\1@')
+        echo "See skqp ${BACKEND_NAME} render tests report at:"
+        echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/${REPORT}"
+    done < "${REPORT_FILES}"
+
+    # If there is no report available, tell the user that something is wrong.
+    if [ ! -s "${REPORT_FILES}" ]
+    then
+        echo "No skqp report available. Probably some fatal error has occured during the skqp execution."
+    fi
+)
+
 usage() {
     cat <<EOF
     Usage: $(basename "$0") [-a]
@@ -151,6 +180,9 @@ SKQP_RESULTS_DIR="${SKQP_RESULTS_DIR:-$PWD/results}"
 
 mkdir -p "${SKQP_ASSETS_DIR}"/skqp
 
+# Show the reports on exit, even when a test crashes
+trap show_reports INT TERM EXIT
+
 SKQP_EXITCODE=0
 for SKQP_BACKEND in ${SKQP_BACKENDS}
 do
@@ -169,32 +201,5 @@ do
     # Propagate error codes to leverage the final job result
     SKQP_EXITCODE=$(( SKQP_EXITCODE | BACKEND_EXITCODE ))
 done
-
-set +x
-
-# Unit tests produce empty HTML reports, guide the user to check the TXT file.
-if echo "${SKQP_BACKENDS}" | grep -qE "unitTest"
-then
-    # Remove the empty HTML report to avoid confusion
-    rm -f "${SKQP_RESULTS_DIR}"/unitTest/report.html
-
-    echo "See skqp unit test results at:"
-    echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/${SKQP_RESULTS_DIR}/unitTest/unit_tests.txt"
-fi
-
-REPORT_FILES=$(mktemp)
-find "${SKQP_RESULTS_DIR}"/**/report.html -type f > "${REPORT_FILES}"
-while read -r REPORT
-do
-    BACKEND_NAME=$(echo "${REPORT}" | sed  's@.*/\([^/]*\)/report.html@\1@')
-    echo "See skqp ${BACKEND_NAME} render tests report at:"
-    echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/${REPORT}"
-done < "${REPORT_FILES}"
-
-# If there is no report available, tell the user that something is wrong.
-if [ ! -s "${REPORT_FILES}" ]
-then
-    echo "No skqp report available. Probably some fatal error has occured during the skqp execution."
-fi
 
 exit $SKQP_EXITCODE
