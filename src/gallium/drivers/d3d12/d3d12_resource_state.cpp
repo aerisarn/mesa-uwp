@@ -21,7 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#include "d3d12_bufmgr.h"
 #include "d3d12_context.h"
+#include "d3d12_format.h"
 #include "d3d12_resource_state.h"
 
 #include <assert.h>
@@ -211,6 +213,46 @@ d3d12_context_state_table_destroy(struct d3d12_context *ctx)
    _mesa_hash_table_u64_destroy(ctx->bo_state_table);
 }
 
+static unsigned
+get_subresource_count(const D3D12_RESOURCE_DESC *desc)
+{
+   unsigned array_size = desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : desc->DepthOrArraySize;
+   return desc->MipLevels * array_size * d3d12_non_opaque_plane_count(desc->Format);
+}
+
+static void
+init_state_table_entry(d3d12_context_state_table_entry *bo_state, d3d12_bo *bo)
+{
+   /* Default parameters for bos for suballocated buffers */
+   unsigned subresource_count = 1;
+   bool supports_simultaneous_access = true;
+   if (bo->res) {
+      D3D12_RESOURCE_DESC desc = GetDesc(bo->res);
+      subresource_count = get_subresource_count(&desc);
+      supports_simultaneous_access = d3d12_resource_supports_simultaneous_access(&desc);
+   }
+
+   d3d12_desired_resource_state_init(&bo_state->desired, subresource_count);
+   d3d12_resource_state_init(&bo_state->batch_end, subresource_count, supports_simultaneous_access);
+
+   /* We'll never need state fixups for simultaneous access resources, so don't bother initializing this second state */
+   if (!supports_simultaneous_access)
+      d3d12_resource_state_init(&bo_state->batch_begin, subresource_count, supports_simultaneous_access);
+}
+
+static d3d12_context_state_table_entry *
+find_or_create_state_entry(struct hash_table_u64 *table, d3d12_bo *bo)
+{
+   d3d12_context_state_table_entry *bo_state =
+      (d3d12_context_state_table_entry *) _mesa_hash_table_u64_search(table, bo->unique_id);
+   if (!bo_state) {
+      bo_state = CALLOC_STRUCT(d3d12_context_state_table_entry);
+      init_state_table_entry(bo_state, bo);
+      _mesa_hash_table_u64_insert(table, bo->unique_id, bo_state);
+   }
+   return bo_state;
+}
+
 void
 d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_batch *batch)
 {
@@ -222,4 +264,14 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
    }
 
    util_dynarray_clear(&ctx->recently_destroyed_bos);
+
+   hash_table_foreach(batch->bos, bo_entry) {
+      d3d12_bo *bo = (d3d12_bo *)bo_entry->key;
+      d3d12_context_state_table_entry *bo_state = find_or_create_state_entry(ctx->bo_state_table, bo);
+      if (!bo_state->batch_end.supports_simultaneous_access) {
+         d3d12_resource_state_copy(&bo_state->batch_begin, &bo_state->batch_end);
+      } else {
+         d3d12_reset_resource_state(&bo_state->batch_end);
+      }
+   }
 }
