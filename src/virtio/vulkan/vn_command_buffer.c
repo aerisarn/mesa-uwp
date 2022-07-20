@@ -634,6 +634,7 @@ vn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
 struct vn_command_buffer_begin_info {
    VkCommandBufferBeginInfo begin;
    VkCommandBufferInheritanceInfo inheritance;
+   VkCommandBufferInheritanceConditionalRenderingInfoEXT conditional_rendering;
 
    bool has_inherited_pass;
 };
@@ -655,6 +656,12 @@ vn_fix_command_buffer_begin_info(struct vn_command_buffer *cmd,
    const bool has_renderpass =
       begin_info->pInheritanceInfo->renderPass != VK_NULL_HANDLE;
 
+   /* Can early-return if dynamic rendering is used and no structures need to
+    * be dropped from the pNext chain of VkCommandBufferInheritanceInfo.
+    */
+   if (is_cmd_secondary && has_continue && !has_renderpass)
+      return begin_info;
+
    local->begin = *begin_info;
 
    if (!is_cmd_secondary) {
@@ -662,15 +669,51 @@ vn_fix_command_buffer_begin_info(struct vn_command_buffer *cmd,
       return &local->begin;
    }
 
+   local->inheritance = *begin_info->pInheritanceInfo;
+   local->begin.pInheritanceInfo = &local->inheritance;
+
    if (!has_continue) {
-      local->inheritance = *begin_info->pInheritanceInfo;
       local->inheritance.framebuffer = VK_NULL_HANDLE;
       local->inheritance.renderPass = VK_NULL_HANDLE;
       local->inheritance.subpass = 0;
-      local->begin.pInheritanceInfo = &local->inheritance;
    } else {
-      local->has_inherited_pass = has_renderpass;
+      /* With early-returns above, it must be an inherited pass. */
+      local->has_inherited_pass = true;
    }
+
+   /* Per spec, about VkCommandBufferInheritanceRenderingInfo:
+    *
+    * If VkCommandBufferInheritanceInfo::renderPass is not VK_NULL_HANDLE, or
+    * VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT is not specified in
+    * VkCommandBufferBeginInfo::flags, parameters of this structure are
+    * ignored.
+    */
+   VkBaseOutStructure *head = NULL;
+   VkBaseOutStructure *tail = NULL;
+   vk_foreach_struct_const(src, local->inheritance.pNext) {
+      void *pnext = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT:
+         memcpy(
+            &local->conditional_rendering, src,
+            sizeof(VkCommandBufferInheritanceConditionalRenderingInfoEXT));
+         pnext = &local->conditional_rendering;
+         break;
+      case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
+      default:
+         break;
+      }
+
+      if (pnext) {
+         if (!head)
+            head = pnext;
+         else
+            tail->pNext = pnext;
+
+         tail = pnext;
+      }
+   }
+   local->inheritance.pNext = head;
 
    return &local->begin;
 }
@@ -688,7 +731,6 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    vn_cs_encoder_reset(&cmd->cs);
    cmd->draw_cmd_batched = 0;
 
-   /* TODO: add support for VK_KHR_dynamic_rendering */
    struct vn_command_buffer_begin_info local_begin_info;
    pBeginInfo =
       vn_fix_command_buffer_begin_info(cmd, pBeginInfo, &local_begin_info);
@@ -913,6 +955,19 @@ vn_CmdDraw(VkCommandBuffer commandBuffer,
 
    vn_cmd_count_draw_and_submit_on_batch_limit(
       vn_command_buffer_from_handle(commandBuffer));
+}
+
+void
+vn_CmdBeginRendering(VkCommandBuffer commandBuffer,
+                     const VkRenderingInfo *pRenderingInfo)
+{
+   VN_CMD_ENQUEUE(vkCmdBeginRendering, commandBuffer, pRenderingInfo);
+}
+
+void
+vn_CmdEndRendering(VkCommandBuffer commandBuffer)
+{
+   VN_CMD_ENQUEUE(vkCmdEndRendering, commandBuffer);
 }
 
 void

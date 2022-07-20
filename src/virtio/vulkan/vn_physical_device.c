@@ -132,6 +132,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
                        feats->inline_uniform_block,
                        INLINE_UNIFORM_BLOCK_FEATURES, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_dynamic_rendering, feats->dynamic_rendering,
+                       DYNAMIC_RENDERING_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->KHR_maintenance4, feats->maintenance4,
                        MAINTENANCE_4_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_shader_demote_to_helper_invocation,
@@ -999,6 +1001,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_inline_uniform_block = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .KHR_copy_commands2 = true,
+      .KHR_dynamic_rendering = true,
       .KHR_maintenance4 = true,
 
       /* EXT */
@@ -1620,6 +1623,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       /* Vulkan 1.3 */
       VkPhysicalDevice4444FormatsFeaturesEXT *argb_4444_formats;
+      VkPhysicalDeviceDynamicRenderingFeatures *dynamic_rendering;
       VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
       VkPhysicalDeviceExtendedDynamicState2FeaturesEXT
          *extended_dynamic_state2;
@@ -1803,6 +1807,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* Vulkan 1.3 */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
          *u.argb_4444_formats = feats->argb_4444_formats;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES:
+         *u.dynamic_rendering = feats->dynamic_rendering;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
          *u.extended_dynamic_state = feats->extended_dynamic_state;
