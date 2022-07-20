@@ -373,6 +373,9 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_size:
    case nir_intrinsic_image_deref_size:
    case nir_intrinsic_bindless_image_size:
+   case nir_intrinsic_image_descriptor_amd:
+   case nir_intrinsic_image_deref_descriptor_amd:
+   case nir_intrinsic_bindless_image_descriptor_amd:
    case nir_intrinsic_copy_deref:
    case nir_intrinsic_vulkan_resource_index:
    case nir_intrinsic_vulkan_resource_reindex:
