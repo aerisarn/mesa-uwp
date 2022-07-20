@@ -23,6 +23,10 @@
 # SOFTWARE.
 
 
+run_all_tests() {
+    rm "${SKQP_ASSETS_DIR}"/skqp/*.txt
+}
+
 copy_tests_files() (
     # Copy either unit test or render test files from a specific driver given by
     # GPU VERSION variable.
@@ -48,6 +52,20 @@ copy_tests_files() (
         cp "${SKQP_UNIT_TESTS_FILE}" "${SKQP_ASSETS_DIR}"/skqp/unittests.txt
     fi
 )
+
+resolve_tests_files() {
+    if [ -n "${RUN_ALL_TESTS}" ]
+    then
+        run_all_tests
+        return
+    fi
+
+    SKQP_BACKEND=${1}
+    if ! copy_tests_files "${SKQP_BACKEND}"
+    then
+        echo "No override test file found for ${SKQP_BACKEND}. Using the default one."
+    fi
+}
 
 test_vk_backend() {
     if echo "${SKQP_BACKENDS}" | grep -qE 'vk'
@@ -78,7 +96,41 @@ setup_backends() {
     fi
 }
 
+usage() {
+    cat <<EOF
+    Usage: $(basename "$0") [-a]
+
+    Arguments:
+        -a: Run all unit tests and render tests, useful when introducing a new driver to skqp.
+EOF
+}
+
+parse_args() {
+    while getopts ':ah' opt; do
+        case "$opt" in
+            a)
+            echo "Running all skqp tests"
+            export RUN_ALL_TESTS=1
+            shift
+            ;;
+
+            h)
+            usage
+            exit 0
+            ;;
+
+            ?)
+            echo "Invalid command option."
+            usage
+            exit 1
+            ;;
+        esac
+    done
+}
+
 set -ex
+
+parse_args "${@}"
 
 # Needed so configuration files can contain paths to files in /install
 ln -sf "$CI_PROJECT_DIR"/install /install
@@ -102,17 +154,12 @@ mkdir -p "${SKQP_ASSETS_DIR}"/skqp
 SKQP_EXITCODE=0
 for SKQP_BACKEND in ${SKQP_BACKENDS}
 do
-    set -e
-    if !  copy_tests_files "${SKQP_BACKEND}"
-    then
-        echo "No override test file found for ${SKQP_BACKEND}. Using the default one."
-    fi
-
-    set +e
+    resolve_tests_files "${SKQP_BACKEND}"
     SKQP_BACKEND_RESULTS_DIR="${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"
     mkdir -p "${SKQP_BACKEND_RESULTS_DIR}"
-    /skqp/skqp "${SKQP_ASSETS_DIR}" "${SKQP_BACKEND_RESULTS_DIR}" "${SKQP_BACKEND}_"
-    BACKEND_EXITCODE=$?
+    BACKEND_EXITCODE=0
+    /skqp/skqp "${SKQP_ASSETS_DIR}" "${SKQP_BACKEND_RESULTS_DIR}" "${SKQP_BACKEND}_" ||
+        BACKEND_EXITCODE=$?
 
     if [ ! $BACKEND_EXITCODE -eq 0 ]
     then
