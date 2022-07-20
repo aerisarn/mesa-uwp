@@ -111,7 +111,8 @@
 #define NINE_MAX_CONST_F_SWVP   8192
 #define NINE_MAX_CONST_I_SWVP   2048
 #define NINE_MAX_CONST_B_SWVP   2048
-#define NINE_MAX_CONST_ALL 276 /* B consts count only 1/4 th */
+#define NINE_MAX_CONST_ALL_VS 276 /* B consts count only 1/4 th */
+#define NINE_MAX_CONST_ALL_PS (NINE_MAX_CONST_F_PS3 + (NINE_MAX_CONST_I + NINE_MAX_CONST_B / 4))
 
 #define NINE_CONST_I_BASE(nconstf) \
     ((nconstf)        * 4 * sizeof(float))

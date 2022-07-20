@@ -95,7 +95,6 @@ struct NineDevice9
     uint16_t vs_const_size;
     uint16_t ps_const_size;
     uint16_t max_vs_const_f;
-    uint16_t max_ps_const_f;
 
     struct pipe_resource *dummy_texture;
     struct pipe_sampler_view *dummy_sampler_view;

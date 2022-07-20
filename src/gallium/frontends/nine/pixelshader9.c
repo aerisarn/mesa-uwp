@@ -54,8 +54,8 @@ NinePixelShader9_ctor( struct NinePixelShader9 *This,
 
     info.type = PIPE_SHADER_FRAGMENT;
     info.byte_code = pFunction;
-    info.const_i_base = NINE_CONST_I_BASE(device->max_ps_const_f) / 16;
-    info.const_b_base = NINE_CONST_B_BASE(device->max_ps_const_f) / 16;
+    info.const_i_base = NINE_CONST_I_BASE(NINE_MAX_CONST_F_PS3) / 16;
+    info.const_b_base = NINE_CONST_B_BASE(NINE_MAX_CONST_F_PS3) / 16;
     info.sampler_mask_shadow = 0x0;
     info.fetch4 = 0x0;
     info.sampler_ps1xtypes = 0x0;
@@ -192,8 +192,8 @@ NinePixelShader9_GetVariant( struct NinePixelShader9 *This,
         HRESULT hr;
 
         info.type = PIPE_SHADER_FRAGMENT;
-        info.const_i_base = NINE_CONST_I_BASE(device->max_ps_const_f) / 16;
-        info.const_b_base = NINE_CONST_B_BASE(device->max_ps_const_f) / 16;
+        info.const_i_base = NINE_CONST_I_BASE(NINE_MAX_CONST_F_PS3) / 16;
+        info.const_b_base = NINE_CONST_B_BASE(NINE_MAX_CONST_F_PS3) / 16;
         info.byte_code = This->byte_code.tokens;
         info.sampler_mask_shadow = key & 0xffff;
         /* intended overlap with sampler_mask_shadow */

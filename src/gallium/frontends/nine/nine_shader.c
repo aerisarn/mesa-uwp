@@ -510,7 +510,7 @@ struct shader_translator
     struct sm1_local_const *lconstb;
     unsigned num_lconstb;
 
-    boolean slots_used[NINE_MAX_CONST_ALL];
+    boolean slots_used[NINE_MAX_CONST_ALL_VS];
     unsigned *slot_map;
     unsigned num_slots;
 
@@ -4018,14 +4018,14 @@ nine_translate_shader(struct NineDevice9 *device, struct nine_shader_info *info,
 
         num_ranges = 0;
         prev = -2;
-        for (i = 0; i < NINE_MAX_CONST_ALL; i++) {
+        for (i = 0; i < NINE_MAX_CONST_ALL_VS; i++) {
             if (tx->slots_used[i]) {
                 if (prev != i - 1)
                     num_ranges++;
                 prev = i;
             }
         }
-        slot_map = MALLOC(NINE_MAX_CONST_ALL * sizeof(unsigned));
+        slot_map = MALLOC(NINE_MAX_CONST_ALL_VS * sizeof(unsigned));
         const_ranges = CALLOC(num_ranges + 1, 2 * sizeof(unsigned)); /* ranges stop when last is of size 0 */
         if (!slot_map || !const_ranges) {
             hr = E_OUTOFMEMORY;
@@ -4034,7 +4034,7 @@ nine_translate_shader(struct NineDevice9 *device, struct nine_shader_info *info,
         c = 0;
         j = -1;
         prev = -2;
-        for (i = 0; i < NINE_MAX_CONST_ALL; i++) {
+        for (i = 0; i < NINE_MAX_CONST_ALL_VS; i++) {
             if (tx->slots_used[i]) {
                 if (prev != i - 1)
                     j++;

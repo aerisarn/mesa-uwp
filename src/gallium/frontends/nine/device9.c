@@ -440,25 +440,23 @@ NineDevice9_ctor( struct NineDevice9 *This,
 
     /* Create constant buffers. */
     {
-        unsigned max_const_vs, max_const_ps;
+        unsigned max_const_vs;
 
         /* vs 3.0: >= 256 float constants, but for cards with exactly 256 slots,
          * we have to take in some more slots for int and bool*/
         max_const_vs = _min(pScreen->get_shader_param(pScreen, PIPE_SHADER_VERTEX,
                                 PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE) /
                                 sizeof(float[4]),
-                            NINE_MAX_CONST_ALL);
+                            NINE_MAX_CONST_ALL_VS);
         /* ps 3.0: 224 float constants. All cards supported support at least
          * 256 constants for ps */
-        max_const_ps = NINE_MAX_CONST_F_PS3 + (NINE_MAX_CONST_I + NINE_MAX_CONST_B / 4);
+        assert(NINE_MAX_CONST_ALL_PS <= 256);
 
         This->max_vs_const_f = max_const_vs -
                                (NINE_MAX_CONST_I + NINE_MAX_CONST_B / 4);
-        This->max_ps_const_f = max_const_ps -
-                               (NINE_MAX_CONST_I + NINE_MAX_CONST_B / 4);
 
         This->vs_const_size = max_const_vs * sizeof(float[4]);
-        This->ps_const_size = max_const_ps * sizeof(float[4]);
+        This->ps_const_size = NINE_MAX_CONST_ALL_PS * sizeof(float[4]);
         /* Include space for I,B constants for user constbuf. */
         if (This->may_swvp) {
             This->state.vs_const_f = CALLOC(NINE_MAX_CONST_F_SWVP * sizeof(float[4]),1);
@@ -2516,7 +2514,7 @@ NineDevice9_CreateStateBlock( struct NineDevice9 *This,
           NINE_STATE_PS | NINE_STATE_PS_CONST | NINE_STATE_FF_PS_CONSTS;
        memcpy(dst->changed.rs,
               nine_render_states_pixel, sizeof(dst->changed.rs));
-       nine_ranges_insert(&dst->changed.ps_const_f, 0, This->max_ps_const_f,
+       nine_ranges_insert(&dst->changed.ps_const_f, 0, NINE_MAX_CONST_F_PS3,
                           &This->range_pool);
        dst->changed.ps_const_i = 0xffff;
        dst->changed.ps_const_b = 0xffff;
