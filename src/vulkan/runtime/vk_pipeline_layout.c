@@ -50,13 +50,10 @@ vk_pipeline_layout_init(struct vk_device *device,
       VK_FROM_HANDLE(vk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[s]);
 
-      if (set_layout == NULL) {
-         assert(layout->create_flags &
-                VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT);
-         continue;
-      }
-
-      layout->set_layouts[s] = vk_descriptor_set_layout_ref(set_layout);
+      if (set_layout != NULL)
+         layout->set_layouts[s] = vk_descriptor_set_layout_ref(set_layout);
+      else
+         layout->set_layouts[s] = NULL;
    }
 }
 
