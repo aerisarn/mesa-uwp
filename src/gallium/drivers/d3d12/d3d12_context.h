@@ -175,6 +175,7 @@ struct d3d12_context {
    struct hash_table *gs_variant_cache;
    struct hash_table *tcs_variant_cache;
    struct hash_table *compute_transform_cache;
+   struct hash_table_u64 *bo_state_table;
 
    struct d3d12_batch batches[4];
    unsigned current_batch_idx;

@@ -100,6 +100,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
    d3d12_root_signature_cache_destroy(ctx);
    d3d12_cmd_signature_cache_destroy(ctx);
    d3d12_compute_transform_cache_destroy(ctx);
+   d3d12_context_state_table_destroy(ctx);
    pipe_resource_reference(&ctx->pstipple.texture, nullptr);
    pipe_sampler_view_reference(&ctx->pstipple.sampler_view, nullptr);
    util_dynarray_fini(&ctx->recently_destroyed_bos);
@@ -2591,6 +2592,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    d3d12_gs_variant_cache_init(ctx);
    d3d12_tcs_variant_cache_init(ctx);
    d3d12_compute_transform_cache_init(ctx);
+   d3d12_context_state_table_init(ctx);
 
    util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
    if (!d3d12_mod) {

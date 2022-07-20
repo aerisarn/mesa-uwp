@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "d3d12_context.h"
 #include "d3d12_resource_state.h"
 
 #include <assert.h>
@@ -179,4 +180,46 @@ d3d12_resource_state_copy(d3d12_resource_state *dest, d3d12_resource_state *src)
       for (unsigned i = 0; i < src->num_subresources; ++i)
          dest->subresource_states[i] = src->subresource_states[i];
    }
+}
+
+struct d3d12_context_state_table_entry
+{
+   struct d3d12_desired_resource_state desired;
+   struct d3d12_resource_state batch_begin, batch_end;
+};
+
+static void
+destroy_context_state_table_entry(d3d12_context_state_table_entry *entry)
+{
+   d3d12_desired_resource_state_cleanup(&entry->desired);
+   d3d12_resource_state_cleanup(&entry->batch_begin);
+   d3d12_resource_state_cleanup(&entry->batch_end);
+   free(entry);
+}
+
+void
+d3d12_context_state_table_init(struct d3d12_context *ctx)
+{
+   ctx->bo_state_table = _mesa_hash_table_u64_create(nullptr);
+}
+
+void
+d3d12_context_state_table_destroy(struct d3d12_context *ctx)
+{
+   hash_table_foreach(ctx->bo_state_table->table, entry)
+      destroy_context_state_table_entry((d3d12_context_state_table_entry *)entry->data);
+   _mesa_hash_table_u64_destroy(ctx->bo_state_table);
+}
+
+void
+d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_batch *batch)
+{
+   util_dynarray_foreach(&ctx->recently_destroyed_bos, uint64_t, id) {
+      void *data = _mesa_hash_table_u64_search(ctx->bo_state_table, *id);
+      if (data)
+         destroy_context_state_table_entry((d3d12_context_state_table_entry *)data);
+      _mesa_hash_table_u64_remove(ctx->bo_state_table, *id);
+   }
+
+   util_dynarray_clear(&ctx->recently_destroyed_bos);
 }

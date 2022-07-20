@@ -29,6 +29,10 @@
 
 #include "d3d12_common.h"
 
+#include "util/hash_table.h"
+
+struct d3d12_context;
+
 const D3D12_RESOURCE_STATES RESOURCE_STATE_ALL_WRITE_BITS =
    D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_DEPTH_WRITE |
    D3D12_RESOURCE_STATE_STREAM_OUT | D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_RESOLVE_DEST |
@@ -118,5 +122,14 @@ d3d12_resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
 
 void
 d3d12_resource_state_copy(d3d12_resource_state *dest, d3d12_resource_state *src);
+
+void
+d3d12_context_state_table_init(struct d3d12_context *ctx);
+
+void
+d3d12_context_state_table_destroy(struct d3d12_context *ctx);
+
+void
+d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_batch *batch);
 
 #endif // D3D12_RESOURCE_STATE_H

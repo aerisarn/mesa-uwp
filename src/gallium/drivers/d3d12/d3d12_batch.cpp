@@ -27,6 +27,7 @@
 #include "d3d12_query.h"
 #include "d3d12_residency.h"
 #include "d3d12_resource.h"
+#include "d3d12_resource_state.h"
 #include "d3d12_screen.h"
 #include "d3d12_surface.h"
 
@@ -212,12 +213,11 @@ d3d12_end_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
 
    d3d12_process_batch_residency(screen, batch);
 
+   d3d12_context_state_resolve_submission(ctx, batch);
+
    ID3D12CommandList* cmdlists[] = { ctx->cmdlist };
    screen->cmdqueue->ExecuteCommandLists(1, cmdlists);
    batch->fence = d3d12_create_fence(screen);
-
-   /* TODO clean up resource state based on destroyed resources */
-   util_dynarray_clear(&ctx->recently_destroyed_bos);
 
    mtx_unlock(&screen->submit_mutex);
 }
