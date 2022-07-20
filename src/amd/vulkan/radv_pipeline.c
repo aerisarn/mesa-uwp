@@ -1072,7 +1072,8 @@ radv_pipeline_out_of_order_rast(struct radv_graphics_pipeline *pipeline,
 static void
 radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
                                      const struct radv_blend_state *blend,
-                                     const struct radv_graphics_pipeline_info *info)
+                                     const struct radv_graphics_pipeline_info *info,
+                                     unsigned rast_prim)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_multisample_state *ms = &pipeline->ms;
@@ -1142,12 +1143,16 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
                            S_028A48_VPORT_SCISSOR_ENABLE(1) |
                            S_028A48_LINE_STIPPLE_ENABLE(info->rs.stippled_line_enable);
 
-   if (info->rs.line_raster_mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
-      /* From the Vulkan spec 1.1.129:
+   if (info->rs.line_raster_mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT &&
+       radv_rast_prim_is_line(rast_prim)) {
+      /* From the Vulkan spec 1.3.221:
        *
-       * "When VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT lines are being rasterized, sample locations
-       * may all be treated as being at the pixel center (this may affect attribute and depth
-       * interpolation)."
+       * "When Bresenham lines are being rasterized, sample locations may all be treated as being at
+       * the pixel center (this may affect attribute and depth interpolation)."
+       *
+       * "One consequence of this is that Bresenham lines cover the same pixels regardless of the
+       * number of rasterization samples, and cover all samples in those pixels (unless masked out
+       * or killed)."
        */
       ms->num_samples = 1;
    }
@@ -6931,7 +6936,10 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       return result;
 
    pipeline->spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
-   radv_pipeline_init_multisample_state(pipeline, &blend, &info);
+
+   uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &info);
+
+   radv_pipeline_init_multisample_state(pipeline, &blend, &info, vgt_gs_out_prim_type);
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(pipeline, &info);
@@ -6984,8 +6992,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_vertex_input_state(pipeline, &info);
-
-   uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &info);
 
    radv_pipeline_init_binning_state(pipeline, &blend, &info);
    radv_pipeline_init_shader_stages_state(pipeline);

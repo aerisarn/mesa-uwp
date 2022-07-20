@@ -3169,18 +3169,21 @@ radv_prim_is_points_or_lines(unsigned topology)
 }
 
 static inline bool
+radv_rast_prim_is_point(unsigned rast_prim)
+{
+   return rast_prim == V_028A6C_POINTLIST;
+}
+
+static inline bool
+radv_rast_prim_is_line(unsigned rast_prim)
+{
+   return rast_prim == V_028A6C_LINESTRIP;
+}
+
+static inline bool
 radv_rast_prim_is_points_or_lines(unsigned rast_prim)
 {
-   switch (rast_prim) {
-   case V_028A6C_POINTLIST:
-   case V_028A6C_LINESTRIP:
-      return true;
-   case V_028A6C_TRISTRIP:
-   case V_028A6C_RECTLIST:
-      return false;
-   default:
-      unreachable("invalid rast prim");
-   }
+   return radv_rast_prim_is_point(rast_prim) || radv_rast_prim_is_line(rast_prim);
 }
 
 static inline uint32_t
