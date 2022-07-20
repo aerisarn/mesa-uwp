@@ -53,7 +53,7 @@ d3d12_bufmgr(struct pb_manager *mgr)
 }
 
 static struct TransitionableResourceState *
-create_trans_state(ID3D12Resource *res, enum pipe_format format)
+create_trans_state(ID3D12Resource *res)
 {
    D3D12_RESOURCE_DESC desc = GetDesc(res);
 
@@ -63,8 +63,6 @@ create_trans_state(ID3D12Resource *res, enum pipe_format format)
    unsigned total_subresources = desc.MipLevels *
                                  arraySize *
                                  d3d12_non_opaque_plane_count(desc.Format);
-   total_subresources *= util_format_has_stencil(util_format_description(format)) ?
-                         2 : 1;
 
    return new TransitionableResourceState(res,
                                           total_subresources,
@@ -98,7 +96,7 @@ d3d12_debug_describe_bo(char *buf, struct d3d12_bo *ptr)
 }
 
 struct d3d12_bo *
-d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_format format, enum d3d12_residency_status residency)
+d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum d3d12_residency_status residency)
 {
    struct d3d12_bo *bo;
 
@@ -109,7 +107,7 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_fo
    pipe_reference_init(&bo->reference, 1);
    bo->screen = screen;
    bo->res = res;
-   bo->trans_state = create_trans_state(res, format);
+   bo->trans_state = create_trans_state(res);
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
 
    bo->residency_status = residency;
@@ -166,7 +164,7 @@ d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
    if (FAILED(hres))
       return NULL;
 
-   return d3d12_bo_wrap_res(screen, res, PIPE_FORMAT_NONE, init_residency);
+   return d3d12_bo_wrap_res(screen, res, init_residency);
 }
 
 struct d3d12_bo *

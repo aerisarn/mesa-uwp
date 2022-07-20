@@ -115,7 +115,7 @@ struct d3d12_bo *
 d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, uint64_t alignment);
 
 struct d3d12_bo *
-d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_format format, enum d3d12_residency_status residency);
+d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum d3d12_residency_status residency);
 
 struct d3d12_bo *
 d3d12_bo_wrap_buffer(struct d3d12_screen *screen, struct pb_buffer *buf);

@@ -426,6 +426,16 @@ d3d12_non_opaque_plane_count(DXGI_FORMAT format)
    case DXGI_FORMAT_NV11:
       return 2;
 
+   case DXGI_FORMAT_R24G8_TYPELESS:
+   case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+   case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+   case DXGI_FORMAT_D24_UNORM_S8_UINT:
+   case DXGI_FORMAT_R32G8X24_TYPELESS:
+   case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+   case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+   case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+      return 2;
+
    default:
       return 1;
    }

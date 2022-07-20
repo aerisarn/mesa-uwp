@@ -293,7 +293,7 @@ init_texture(struct d3d12_screen *screen,
                                              &res->dt_stride);
    }
 
-   res->bo = d3d12_bo_wrap_res(screen, d3d12_res, templ->format, init_residency);
+   res->bo = d3d12_bo_wrap_res(screen, d3d12_res, init_residency);
 
    return true;
 }
@@ -621,7 +621,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    res->first_plane = &res->base.b;
 
    if (!res->bo) {
-      res->bo = d3d12_bo_wrap_res(screen, d3d12_res, res->overall_format, d3d12_permanently_resident);
+      res->bo = d3d12_bo_wrap_res(screen, d3d12_res, d3d12_permanently_resident);
    }
    init_valid_range(res);
 
