@@ -2979,6 +2979,32 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx, const nir_intri
    return exit_waterfall(ctx, &wctx, res);
 }
 
+static LLVMValueRef visit_image_descriptor(struct ac_nir_context *ctx,
+                                           const nir_intrinsic_instr *instr,
+                                           bool bindless)
+{
+   enum glsl_sampler_dim dim;
+
+   if (bindless) {
+      dim = nir_intrinsic_image_dim(instr);
+   } else {
+      const struct glsl_type *type = get_image_deref(instr)->type;
+      dim = glsl_get_sampler_dim(type);
+   }
+
+   nir_deref_instr *deref_instr = NULL;
+   if (instr->src[0].ssa->parent_instr->type == nir_instr_type_deref)
+      deref_instr = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+
+   LLVMValueRef dynamic_index = get_sampler_desc_index(ctx, deref_instr, &instr->instr, true);
+
+   if (dim == GLSL_SAMPLER_DIM_BUF) {
+      return get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_BUFFER, false);
+   } else {
+      return get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, false);
+   }
+}
+
 static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
    LLVMValueRef cond;
@@ -3905,6 +3931,12 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_image_deref_size:
       result = visit_image_size(ctx, instr, false);
+      break;
+   case nir_intrinsic_image_deref_descriptor_amd:
+      result = visit_image_descriptor(ctx, instr, false);
+      break;
+   case nir_intrinsic_bindless_image_descriptor_amd:
+      result = visit_image_descriptor(ctx, instr, true);
       break;
    case nir_intrinsic_shader_clock:
       result = ac_build_shader_clock(&ctx->ac, nir_intrinsic_memory_scope(instr));
