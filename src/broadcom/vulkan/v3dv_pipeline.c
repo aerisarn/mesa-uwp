@@ -385,7 +385,6 @@ preprocess_nir(nir_shader *nir)
               nir_shader_get_entrypoint(nir), true, false);
 
    NIR_PASS(_, nir, nir_lower_system_values);
-   NIR_PASS(_, nir, nir_lower_clip_cull_distance_arrays);
 
    NIR_PASS(_, nir, nir_lower_alu_to_scalar, NULL, NULL);
 
