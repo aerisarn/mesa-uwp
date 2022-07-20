@@ -34,7 +34,7 @@ traces:
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: broadcom-rpi4
-        checksum: 1d4801117383343b7e0f8ea99837b9b9
+        checksum: be70fc9e3829fff5ad1b6ecfb6fa551c
   # - path: gputest/pixmark-julia-fp64.trace
   #   expectations:
   #     # Requires GL 4.0 (fp64)
