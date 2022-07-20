@@ -2485,6 +2485,10 @@ send_descriptor_restrictions(const struct brw_isa_info *isa,
    const uint32_t desc = brw_inst_send_desc(devinfo, inst);
 
    switch (brw_inst_sfid(devinfo, inst)) {
+   case BRW_SFID_URB:
+      if (devinfo->ver < 20)
+         break;
+      FALLTHROUGH;
    case GFX12_SFID_TGM:
    case GFX12_SFID_SLM:
    case GFX12_SFID_UGM:
@@ -2500,7 +2504,7 @@ send_descriptor_restrictions(const struct brw_isa_info *isa,
       break;
    }
 
-   if (brw_inst_sfid(devinfo, inst) == BRW_SFID_URB) {
+   if (brw_inst_sfid(devinfo, inst) == BRW_SFID_URB && devinfo->ver < 20) {
       /* Gfx4 doesn't have a "header present" bit in the SEND message. */
       ERROR_IF(devinfo->ver > 4 && !brw_inst_header_present(devinfo, inst),
                "Header must be present for all URB messages.");

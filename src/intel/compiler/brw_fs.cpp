@@ -5391,7 +5391,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
 
    case SHADER_OPCODE_URB_READ_LOGICAL:
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
-      return MIN2(8, inst->exec_size);
+      return MIN2(devinfo->ver < 20 ? 8 : 16, inst->exec_size);
 
    case SHADER_OPCODE_QUAD_SWIZZLE: {
       const unsigned swiz = inst->src[1].ud;

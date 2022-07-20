@@ -267,6 +267,142 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst)
 }
 
 static void
+lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
+{
+   /* FINISHME: This is not yet implemented. */
+   assert(inst->src[URB_LOGICAL_SRC_CHANNEL_MASK].file == BAD_FILE);
+
+   const intel_device_info *devinfo = bld.shader->devinfo;
+   assert(devinfo->has_lsc);
+
+   /* Get the logical send arguments. */
+   const fs_reg handle = inst->src[URB_LOGICAL_SRC_HANDLE];
+   const fs_reg src = inst->src[URB_LOGICAL_SRC_DATA];
+
+   /* Calculate the total number of components of the payload. */
+   const unsigned src_comps = inst->components_read(URB_LOGICAL_SRC_DATA);
+   const unsigned src_sz = type_sz(src.type);
+
+   fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+   bld.MOV(payload, handle);
+
+   /* The low 24-bits of the URB handle is a byte offset into the URB area.
+    * Add the offset of the write to this value.
+    *
+    * FINISHME: What units is inst->offset? vec4, right?
+    */
+   if (inst->offset) {
+      bld.ADD(payload, payload, brw_imm_ud(inst->offset * 16));
+      inst->offset = 0;
+   }
+
+   if (inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE) {
+      fs_reg offsets = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
+      fs_reg payload1 = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      fs_reg payload2 = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+      for (unsigned i = 1; i < src_comps; i++) {
+         bld.MOV(payload2, offset(src, bld, i - 1));
+         bld.ADD(payload1, payload, offset(offsets, bld, i - 1));
+
+         fs_inst *send = bld.emit(SHADER_OPCODE_SEND,
+                                  bld.null_reg_ud(),
+                                  brw_imm_ud(0) /* desc */,
+                                  brw_imm_ud(0) /* ex_desc */,
+                                  brw_vec8_grf(0, 0) /* payload */);
+
+         const unsigned ex_mlen = (src_sz * inst->exec_size) / REG_SIZE;
+
+         send->sfid = BRW_SFID_URB;
+
+         send->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, send->exec_size,
+                                   LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
+                                   1 /* num_coordinates */,
+                                   LSC_DATA_SIZE_D32, 1 /* num_channels */,
+                                   false /* transpose */,
+                                   LSC_CACHE_STORE_L1UC_L3UC,
+                                   false /* has_dest */);
+
+         send->mlen = lsc_msg_desc_src0_len(devinfo, send->desc);
+         send->ex_mlen = ex_mlen;
+         send->header_size = 0;
+         send->send_has_side_effects = true;
+         send->send_is_volatile = false;
+
+         send->resize_sources(4);
+
+         send->src[0] = brw_imm_ud(0);
+         send->src[1] = brw_imm_ud(0);
+
+         send->src[2] = payload1;
+         send->src[3] = payload2;
+      }
+
+      bld.MOV(payload2, offset(src, bld, src_comps - 1));
+      bld.ADD(payload1, payload, offset(offsets, bld, src_comps - 1));
+      const unsigned ex_mlen = (src_sz * inst->exec_size) / REG_SIZE;
+
+      inst->sfid = BRW_SFID_URB;
+
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, 1 /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1UC_L3UC,
+                                false /* has_dest */);
+
+
+      /* Update the original instruction. */
+      inst->opcode = SHADER_OPCODE_SEND;
+      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+      inst->ex_mlen = ex_mlen;
+      inst->header_size = 0;
+      inst->send_has_side_effects = true;
+      inst->send_is_volatile = false;
+
+      inst->resize_sources(4);
+
+      inst->src[0] = brw_imm_ud(0);
+      inst->src[1] = brw_imm_ud(0);
+
+      inst->src[2] = payload1;
+      inst->src[3] = payload2;
+   } else {
+      fs_reg payload2 = bld.move_to_vgrf(src, src_comps);
+      const unsigned ex_mlen = (src_comps * src_sz * inst->exec_size) / REG_SIZE;
+
+      inst->sfid = BRW_SFID_URB;
+
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, inst->exec_size,
+                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, src_comps /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_STORE_L1UC_L3UC,
+                                false /* has_dest */);
+
+
+      /* Update the original instruction. */
+      inst->opcode = SHADER_OPCODE_SEND;
+      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+      inst->ex_mlen = ex_mlen;
+      inst->header_size = 0;
+      inst->send_has_side_effects = true;
+      inst->send_is_volatile = false;
+
+      inst->resize_sources(4);
+
+      inst->src[0] = brw_imm_ud(0);
+      inst->src[1] = brw_imm_ud(0);
+
+      inst->src[2] = payload;
+      inst->src[3] = payload2;
+   }
+}
+
+static void
 setup_color_payload(const fs_builder &bld, const brw_wm_prog_key *key,
                     fs_reg *dst, fs_reg color, unsigned components)
 {
@@ -3201,7 +3337,11 @@ fs_visitor::lower_logical_sends()
          break;
 
       case SHADER_OPCODE_URB_WRITE_LOGICAL:
-         lower_urb_write_logical_send(ibld, inst);
+         if (devinfo->ver < 20)
+            lower_urb_write_logical_send(ibld, inst);
+         else
+            lower_urb_write_logical_send_xe2(ibld, inst);
+
          break;
 
       default:
