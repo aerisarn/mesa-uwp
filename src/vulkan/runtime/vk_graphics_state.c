@@ -1119,7 +1119,27 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
 
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
       needs |= MESA_VK_GRAPHICS_STATE_FRAGMENT_SHADING_RATE_BIT;
-      needs |= MESA_VK_GRAPHICS_STATE_MULTISAMPLE_BIT;
+
+      /* From the Vulkan 1.3.218 spec:
+       *
+       *    "Fragment shader state is defined by:
+       *    ...
+       *     - VkPipelineMultisampleStateCreateInfo if sample shading is
+       *       enabled or renderpass is not VK_NULL_HANDLE"
+       *
+       * and
+       *
+       *    VUID-VkGraphicsPipelineCreateInfo-pMultisampleState-06629
+       *
+       *    "If the pipeline is being created with fragment shader state
+       *    pMultisampleState must be NULL or a valid pointer to a valid
+       *    VkPipelineMultisampleStateCreateInfo structure"
+       *
+       * so we can reliably detect when to include it based on the
+       * pMultisampleState pointer.
+       */
+      if (info->pMultisampleState != NULL)
+         needs |= MESA_VK_GRAPHICS_STATE_MULTISAMPLE_BIT;
 
       /* From the Vulkan 1.3.218 spec:
        *
