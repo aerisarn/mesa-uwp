@@ -193,7 +193,7 @@ disk_cache_init(struct zink_screen *screen)
 
    if (!util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen) ||
       !util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
-         UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen)) {
+         UTIL_QUEUE_INIT_RESIZE_IF_FULL | UTIL_QUEUE_INIT_SCALE_THREADS, screen)) {
       mesa_loge("zink: Failed to create disk cache queue\n");
 
       disk_cache_destroy(screen->disk_cache);
