@@ -68,6 +68,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_descriptor_set_layout.h"
+#include "vk_graphics_state.h"
 #include "vk_pipeline_layout.h"
 #include "vk_queue.h"
 #include "vk_sync.h"
@@ -431,6 +432,7 @@ struct lvp_pipeline {
    struct lvp_access_info access[MESA_SHADER_STAGES];
 
    void *mem_ctx;
+   void *state_data;
    bool is_compute_pipeline;
    bool force_min_sample;
    nir_shader *pipeline_nir[MESA_SHADER_STAGES];
@@ -443,18 +445,12 @@ struct lvp_pipeline {
    } inlines[MESA_SHADER_STAGES];
    gl_shader_stage last_vertex;
    struct pipe_stream_output_info stream_output;
-   VkGraphicsPipelineCreateInfo graphics_create_info;
-   VkComputePipelineCreateInfo compute_create_info;
+   struct vk_graphics_pipeline_state graphics_state;
    VkGraphicsPipelineLibraryFlagsEXT stages;
-   uint32_t line_stipple_factor;
-   uint16_t line_stipple_pattern;
-   bool line_stipple_enable;
    bool line_smooth;
    bool disable_multisample;
    bool line_rectangular;
    bool gs_output_lines;
-   bool provoking_vertex_last;
-   bool negative_one_to_one;
    bool library;
 };
 

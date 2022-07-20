@@ -150,7 +150,6 @@ struct rendering_state {
    enum gs_output gs_output_lines : 2;
 
    uint32_t color_write_disables:8;
-   bool has_color_write_disables:1;
    uint32_t pad:13;
 
    void *ss_cso[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
@@ -406,7 +405,7 @@ static void emit_state(struct rendering_state *state)
    if (state->blend_dirty) {
       uint32_t mask = 0;
       /* zero out the colormask values for disabled attachments */
-      if (state->has_color_write_disables && state->color_write_disables) {
+      if (state->color_write_disables) {
          u_foreach_bit(att, state->color_write_disables) {
             mask |= state->blend_state.rt[att].colormask << (att * 4);
             state->blend_state.rt[att].colormask = 0;
@@ -414,7 +413,7 @@ static void emit_state(struct rendering_state *state)
       }
       cso_set_blend(state->cso, &state->blend_state);
       /* reset colormasks using saved bitmask */
-      if (state->has_color_write_disables && state->color_write_disables) {
+      if (state->color_write_disables) {
          const uint32_t att_mask = BITFIELD_MASK(4);
          u_foreach_bit(att, state->color_write_disables) {
             state->blend_state.rt[att].colormask = (mask >> (att * 4)) & att_mask;
@@ -609,75 +608,12 @@ get_viewport_xform(struct rendering_state *state,
    memcpy(&state->depth[idx].min, &viewport->minDepth, sizeof(float) * 2);
 }
 
-/* enum re-indexing:
-
-    VK_DYNAMIC_STATE_VIEWPORT
-    VK_DYNAMIC_STATE_SCISSOR
-    VK_DYNAMIC_STATE_LINE_WIDTH
-    VK_DYNAMIC_STATE_DEPTH_BIAS
-    VK_DYNAMIC_STATE_BLEND_CONSTANTS
-    VK_DYNAMIC_STATE_DEPTH_BOUNDS
-    VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK
-    VK_DYNAMIC_STATE_STENCIL_WRITE_MASK
-    VK_DYNAMIC_STATE_STENCIL_REFERENCE
-
-    VK_DYNAMIC_STATE_LINE_STIPPLE_EXT
-
-    VK_DYNAMIC_STATE_CULL_MODE
-    VK_DYNAMIC_STATE_FRONT_FACE
-    VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY
-    VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT
-    VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT
-    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
-    VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE
-    VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE
-    VK_DYNAMIC_STATE_DEPTH_COMPARE_OP
-    VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE
-    VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE
-    VK_DYNAMIC_STATE_STENCIL_OP
-
-    VK_DYNAMIC_STATE_VERTEX_INPUT_EXT
-
-    VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT
-    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE
-    VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE
-    VK_DYNAMIC_STATE_LOGIC_OP_EXT
-    VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE
-
-    VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT
-*/
-static int conv_dynamic_state_idx(VkDynamicState dyn_state)
-{
-   if (dyn_state <= VK_DYNAMIC_STATE_STENCIL_REFERENCE)
-      return dyn_state;
-   if (dyn_state == VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)
-      /* this one has a weird id, map after the normal dynamic state ones */
-      return VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1;
-   if (dyn_state >= VK_DYNAMIC_STATE_CULL_MODE &&
-       dyn_state <= VK_DYNAMIC_STATE_STENCIL_OP)
-      return dyn_state - VK_DYNAMIC_STATE_CULL_MODE + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2;
-   if (dyn_state == VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)
-      return (VK_DYNAMIC_STATE_STENCIL_OP - VK_DYNAMIC_STATE_CULL_MODE) + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1;
-   if (dyn_state >= VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT &&
-       dyn_state <= VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE)
-      return dyn_state - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
-             VK_DYNAMIC_STATE_STENCIL_OP - VK_DYNAMIC_STATE_CULL_MODE +
-             VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1 + 1;
-   if (dyn_state == VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)
-      return VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE - VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT +
-             VK_DYNAMIC_STATE_STENCIL_OP - VK_DYNAMIC_STATE_CULL_MODE +
-             VK_DYNAMIC_STATE_STENCIL_REFERENCE + 2 + 1 + 1 + 1;
-   assert(0);
-   return -1;
-}
-
 static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
                                      struct rendering_state *state)
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
-   bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+32];
+   const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
    unsigned fb_samples = 0;
-   bool clip_halfz = state->rs_state.clip_halfz;
 
    for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
       state->iv_dirty[sh] |= state->num_shader_images[sh] &&
@@ -686,20 +622,6 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->sb_dirty[sh] |= state->num_shader_buffers[sh] && state->access[sh].buffers_written != pipeline->access[sh].buffers_written;
    }
    memcpy(state->access, pipeline->access, sizeof(struct lvp_access_info) * 5); //4 vertex stages + fragment
-
-   memset(dynamic_states, 0, sizeof(dynamic_states));
-   if (pipeline->graphics_create_info.pDynamicState)
-   {
-      const VkPipelineDynamicStateCreateInfo *dyn = pipeline->graphics_create_info.pDynamicState;
-      int i;
-      for (i = 0; i < dyn->dynamicStateCount; i++) {
-         int idx = conv_dynamic_state_idx(dyn->pDynamicStates[i]);
-         if (idx == -1)
-            continue;
-         dynamic_states[idx] = true;
-      }
-   }
-   state->has_color_write_disables = dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)];
 
    for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++)
       state->has_pcbuf[sh] = false;
@@ -726,10 +648,9 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->pctx->bind_tes_state(state->pctx, NULL);
    state->gs_output_lines = GS_OUTPUT_NONE;
    {
-      int i;
-      for (i = 0; i < pipeline->graphics_create_info.stageCount; i++) {
-         const VkPipelineShaderStageCreateInfo *sh = &pipeline->graphics_create_info.pStages[i];
-         switch (sh->stage) {
+      u_foreach_bit(b, pipeline->graphics_state.shader_stages) {
+         VkShaderStageFlagBits vk_stage = (1 << b);
+         switch (vk_stage) {
          case VK_SHADER_STAGE_FRAGMENT_BIT:
             state->inlines_dirty[PIPE_SHADER_FRAGMENT] = pipeline->inlines[MESA_SHADER_FRAGMENT].can_inline;
             if (!pipeline->inlines[MESA_SHADER_FRAGMENT].can_inline)
@@ -779,131 +700,125 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->pctx->bind_tes_state(state->pctx, NULL);
 
    /* rasterization state */
-   if (pipeline->graphics_create_info.pRasterizationState) {
-      const VkPipelineRasterizationStateCreateInfo *rsc = pipeline->graphics_create_info.pRasterizationState;
-      const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
-         vk_find_struct_const(rsc->pNext, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
-      state->rs_state.depth_clamp = rsc->depthClampEnable;
-      if (!depth_clip_state)
-         state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !rsc->depthClampEnable;
-      else
-         state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = depth_clip_state->depthClipEnable;
+   if (ps->rs) {
+      state->rs_state.depth_clamp = ps->rs->depth_clamp_enable;
+      state->rs_state.depth_clip_near = ps->rs->depth_clip_enable;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE)])
-         state->rs_state.rasterizer_discard = rsc->rasterizerDiscardEnable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
+         state->rs_state.rasterizer_discard = ps->rs->rasterizer_discard_enable;
 
       state->rs_state.line_smooth = pipeline->line_smooth;
-      state->rs_state.line_stipple_enable = pipeline->line_stipple_enable;
-      state->rs_state.fill_front = vk_polygon_mode_to_pipe(rsc->polygonMode);
-      state->rs_state.fill_back = vk_polygon_mode_to_pipe(rsc->polygonMode);
+      state->rs_state.line_stipple_enable = ps->rs->line.stipple.enable;
+      state->rs_state.fill_front = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
+      state->rs_state.fill_back = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
       state->rs_state.point_size_per_vertex = true;
-      state->rs_state.flatshade_first = !pipeline->provoking_vertex_last;
+      state->rs_state.flatshade_first =
+         ps->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT;
       state->rs_state.point_quad_rasterization = true;
       state->rs_state.half_pixel_center = true;
       state->rs_state.scissor = true;
       state->rs_state.no_ms_sample_mask_out = true;
       state->rs_state.line_rectangular = pipeline->line_rectangular;
 
-      if (!dynamic_states[VK_DYNAMIC_STATE_LINE_WIDTH])
-         state->rs_state.line_width = rsc->lineWidth;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_LINE_STIPPLE_EXT)]) {
-         state->rs_state.line_stipple_factor = pipeline->line_stipple_factor;
-         state->rs_state.line_stipple_pattern = pipeline->line_stipple_pattern;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_WIDTH))
+         state->rs_state.line_width = ps->rs->line.width;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_STIPPLE)) {
+         state->rs_state.line_stipple_factor = ps->rs->line.stipple.factor - 1;
+         state->rs_state.line_stipple_pattern = ps->rs->line.stipple.pattern;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE)])
-         state->depth_bias.enabled = pipeline->graphics_create_info.pRasterizationState->depthBiasEnable;
-      if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BIAS]) {
-         state->depth_bias.offset_units = rsc->depthBiasConstantFactor;
-         state->depth_bias.offset_scale = rsc->depthBiasSlopeFactor;
-         state->depth_bias.offset_clamp = rsc->depthBiasClamp;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE))
+         state->depth_bias.enabled = ps->rs->depth_bias.enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
+         state->depth_bias.offset_units = ps->rs->depth_bias.constant;
+         state->depth_bias.offset_scale = ps->rs->depth_bias.slope;
+         state->depth_bias.offset_clamp = ps->rs->depth_bias.clamp;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_CULL_MODE)])
-         state->rs_state.cull_face = vk_cull_to_pipe(rsc->cullMode);
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_CULL_MODE))
+         state->rs_state.cull_face = vk_cull_to_pipe(ps->rs->cull_mode);
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_FRONT_FACE)])
-         state->rs_state.front_ccw = (rsc->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_FRONT_FACE))
+         state->rs_state.front_ccw = (ps->rs->front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE);
       state->rs_dirty = true;
    }
 
-   if (pipeline->graphics_create_info.pDepthStencilState) {
-      const VkPipelineDepthStencilStateCreateInfo *dsa = pipeline->graphics_create_info.pDepthStencilState;
+   if (ps->ds) {
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE))
+         state->dsa_state.depth_enabled = ps->ds->depth.test_enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE))
+         state->dsa_state.depth_writemask = ps->ds->depth.write_enable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP))
+         state->dsa_state.depth_func = ps->ds->depth.compare_op;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE))
+         state->dsa_state.depth_bounds_test = ps->ds->depth.bounds_test.enable;
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE)])
-         state->dsa_state.depth_enabled = dsa->depthTestEnable;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE)])
-         state->dsa_state.depth_writemask = dsa->depthWriteEnable;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_COMPARE_OP)])
-         state->dsa_state.depth_func = dsa->depthCompareOp;
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE)])
-         state->dsa_state.depth_bounds_test = dsa->depthBoundsTestEnable;
-
-      if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BOUNDS]) {
-         state->dsa_state.depth_bounds_min = dsa->minDepthBounds;
-         state->dsa_state.depth_bounds_max = dsa->maxDepthBounds;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS)) {
+         state->dsa_state.depth_bounds_min = ps->ds->depth.bounds_test.min;
+         state->dsa_state.depth_bounds_max = ps->ds->depth.bounds_test.max;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE)]) {
-         state->dsa_state.stencil[0].enabled = dsa->stencilTestEnable;
-         state->dsa_state.stencil[1].enabled = dsa->stencilTestEnable;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE)) {
+         state->dsa_state.stencil[0].enabled = ps->ds->stencil.test_enable;
+         state->dsa_state.stencil[1].enabled = ps->ds->stencil.test_enable;
       }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_OP)]) {
-         state->dsa_state.stencil[0].func = dsa->front.compareOp;
-         state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(dsa->front.failOp);
-         state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(dsa->front.passOp);
-         state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(dsa->front.depthFailOp);
+      const struct vk_stencil_test_face_state *front = &ps->ds->stencil.front;
+      const struct vk_stencil_test_face_state *back = &ps->ds->stencil.back;
 
-         state->dsa_state.stencil[1].func = dsa->back.compareOp;
-         state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(dsa->back.failOp);
-         state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(dsa->back.passOp);
-         state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(dsa->back.depthFailOp);
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_STENCIL_OP)) {
+         state->dsa_state.stencil[0].func = front->op.compare;
+         state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(front->op.fail);
+         state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(front->op.pass);
+         state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(front->op.depth_fail);
+
+         state->dsa_state.stencil[1].func = back->op.compare;
+         state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(back->op.fail);
+         state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(back->op.pass);
+         state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(back->op.depth_fail);
       }
 
-      if (!dynamic_states[VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]) {
-         state->dsa_state.stencil[0].valuemask = dsa->front.compareMask;
-         state->dsa_state.stencil[1].valuemask = dsa->back.compareMask;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK)) {
+         state->dsa_state.stencil[0].valuemask = front->compare_mask;
+         state->dsa_state.stencil[1].valuemask = back->compare_mask;
       }
 
-      if (!dynamic_states[VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]) {
-         state->dsa_state.stencil[0].writemask = dsa->front.writeMask;
-         state->dsa_state.stencil[1].writemask = dsa->back.writeMask;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK)) {
+         state->dsa_state.stencil[0].writemask = front->write_mask;
+         state->dsa_state.stencil[1].writemask = back->write_mask;
       }
 
-      if (dsa->stencilTestEnable) {
-         if (!dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE]) {
-            state->stencil_ref.ref_value[0] = dsa->front.reference;
-            state->stencil_ref.ref_value[1] = dsa->back.reference;
-            state->stencil_ref_dirty = true;
-         }
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE)) {
+         state->stencil_ref.ref_value[0] = front->reference;
+         state->stencil_ref.ref_value[1] = back->reference;
+         state->stencil_ref_dirty = true;
       }
-   } else
-      memset(&state->dsa_state, 0, sizeof(state->dsa_state));
-   state->dsa_dirty = true;
+      state->dsa_dirty = true;
+   }
 
-   if (pipeline->graphics_create_info.pColorBlendState) {
-      const VkPipelineColorBlendStateCreateInfo *cb = pipeline->graphics_create_info.pColorBlendState;
-      int i;
-
-      state->blend_state.logicop_enable = cb->logicOpEnable;
-      if (cb->logicOpEnable) {
-         if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_LOGIC_OP_EXT)])
-            state->blend_state.logicop_func = vk_conv_logic_op(cb->logicOp);
+   if (ps->cb) {
+      state->blend_state.logicop_enable = ps->cb->logic_op_enable;
+      if (ps->cb->logic_op_enable) {
+         if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP))
+            state->blend_state.logicop_func = vk_conv_logic_op(ps->cb->logic_op);
       }
 
-      state->blend_state.independent_blend_enable = (cb->attachmentCount > 1);
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES))
+         state->color_write_disables = ~ps->cb->color_write_enables;
 
-      for (i = 0; i < cb->attachmentCount; i++) {
-         state->blend_state.rt[i].colormask = cb->pAttachments[i].colorWriteMask;
-         state->blend_state.rt[i].blend_enable = cb->pAttachments[i].blendEnable;
-         if (state->blend_state.rt[i].blend_enable) {
-            state->blend_state.rt[i].rgb_func = vk_conv_blend_func(cb->pAttachments[i].colorBlendOp);
-            state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(cb->pAttachments[i].srcColorBlendFactor);
-            state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(cb->pAttachments[i].dstColorBlendFactor);
-            state->blend_state.rt[i].alpha_func = vk_conv_blend_func(cb->pAttachments[i].alphaBlendOp);
-            state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(cb->pAttachments[i].srcAlphaBlendFactor);
-            state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(cb->pAttachments[i].dstAlphaBlendFactor);
+      state->blend_state.independent_blend_enable = (ps->cb->attachment_count > 1);
+
+      for (unsigned i = 0; i < ps->cb->attachment_count; i++) {
+         const struct vk_color_blend_attachment_state *att = &ps->cb->attachments[i];
+         state->blend_state.rt[i].colormask = att->write_mask;
+         state->blend_state.rt[i].blend_enable = att->blend_enable;
+         if (att->blend_enable) {
+            state->blend_state.rt[i].rgb_func = vk_conv_blend_func(att->color_blend_op);
+            state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(att->src_color_blend_factor);
+            state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(att->dst_color_blend_factor);
+            state->blend_state.rt[i].alpha_func = vk_conv_blend_func(att->alpha_blend_op);
+            state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(att->src_alpha_blend_factor);
+            state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(att->dst_alpha_blend_factor);
          } else {
             state->blend_state.rt[i].rgb_func = 0;
             state->blend_state.rt[i].rgb_src_factor = 0;
@@ -917,21 +832,21 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
           * regardless of what function is used. (like i965 hardware).
           * It means for MIN/MAX the blend factor has to be stomped to ONE.
           */
-         if (cb->pAttachments[i].colorBlendOp == VK_BLEND_OP_MIN ||
-             cb->pAttachments[i].colorBlendOp == VK_BLEND_OP_MAX) {
+         if (att->color_blend_op == VK_BLEND_OP_MIN ||
+             att->color_blend_op == VK_BLEND_OP_MAX) {
             state->blend_state.rt[i].rgb_src_factor = PIPE_BLENDFACTOR_ONE;
             state->blend_state.rt[i].rgb_dst_factor = PIPE_BLENDFACTOR_ONE;
          }
 
-         if (cb->pAttachments[i].alphaBlendOp == VK_BLEND_OP_MIN ||
-             cb->pAttachments[i].alphaBlendOp == VK_BLEND_OP_MAX) {
+         if (att->alpha_blend_op == VK_BLEND_OP_MIN ||
+             att->alpha_blend_op == VK_BLEND_OP_MAX) {
             state->blend_state.rt[i].alpha_src_factor = PIPE_BLENDFACTOR_ONE;
             state->blend_state.rt[i].alpha_dst_factor = PIPE_BLENDFACTOR_ONE;
          }
       }
       state->blend_dirty = true;
-      if (!dynamic_states[VK_DYNAMIC_STATE_BLEND_CONSTANTS]) {
-         memcpy(state->blend_color.color, cb->blendConstants, 4 * sizeof(float));
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
+         memcpy(state->blend_color.color, ps->cb->blend_constants, 4 * sizeof(float));
          state->blend_color_dirty = true;
       }
    } else {
@@ -940,26 +855,26 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    }
 
    state->disable_multisample = pipeline->disable_multisample;
-   if (pipeline->graphics_create_info.pMultisampleState) {
-      const VkPipelineMultisampleStateCreateInfo *ms = pipeline->graphics_create_info.pMultisampleState;
-      state->rs_state.multisample = ms->rasterizationSamples > 1;
-      state->sample_mask = ms->pSampleMask ? ms->pSampleMask[0] : 0xffffffff;
-      state->blend_state.alpha_to_coverage = ms->alphaToCoverageEnable;
-      state->blend_state.alpha_to_one = ms->alphaToOneEnable;
+   if (ps->ms) {
+      state->rs_state.multisample = ps->ms->rasterization_samples > 1;
+      state->sample_mask = ps->ms->sample_mask;
+      state->blend_state.alpha_to_coverage = ps->ms->alpha_to_coverage_enable;
+      state->blend_state.alpha_to_one = ps->ms->alpha_to_one_enable;
       state->blend_dirty = true;
       state->rs_dirty = true;
       state->min_samples = 1;
       state->sample_mask_dirty = true;
-      fb_samples = ms->rasterizationSamples;
-      if (ms->sampleShadingEnable) {
-         state->min_samples = ceil(ms->rasterizationSamples * ms->minSampleShading);
+      fb_samples = ps->ms->rasterization_samples;
+      if (ps->ms->sample_shading_enable) {
+         state->min_samples = ceil(ps->ms->rasterization_samples *
+                                   ps->ms->min_sample_shading);
          if (state->min_samples > 1)
-            state->min_samples = ms->rasterizationSamples;
+            state->min_samples = ps->ms->rasterization_samples;
          if (state->min_samples < 1)
             state->min_samples = 1;
       }
       if (pipeline->force_min_sample)
-         state->min_samples = ms->rasterizationSamples;
+         state->min_samples = ps->ms->rasterization_samples;
       state->min_samples_dirty = true;
    } else {
       state->rs_state.multisample = false;
@@ -973,131 +888,83 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->rs_dirty = true;
    }
 
-   if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_EXT)]) {
-      const VkPipelineVertexInputStateCreateInfo *vi = pipeline->graphics_create_info.pVertexInputState;
-      int i;
-      const VkPipelineVertexInputDivisorStateCreateInfoEXT *div_state =
-         vk_find_struct_const(vi->pNext,
-                              PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
+      u_foreach_bit(b, ps->vi->bindings_valid)
+         state->vb[b].stride = ps->vi->bindings[b].stride;
+      state->vb_dirty = true;
+   }
 
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE)]) {
-         for (i = 0; i < vi->vertexBindingDescriptionCount; i++) {
-            state->vb[vi->pVertexBindingDescriptions[i].binding].stride = vi->pVertexBindingDescriptions[i].stride;
-         }
-      }
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI)) {
+      u_foreach_bit(a, ps->vi->attributes_valid) {
+         uint32_t b = ps->vi->attributes[a].binding;
+         state->velem.velems[a].src_offset = ps->vi->attributes[a].offset;
+         state->velem.velems[a].vertex_buffer_index = b;
+         state->velem.velems[a].src_format =
+            lvp_vk_format_to_pipe_format(ps->vi->attributes[a].format);
+         state->velem.velems[a].dual_slot = false;
 
-      int max_location = -1;
-      for (i = 0; i < vi->vertexAttributeDescriptionCount; i++) {
-         unsigned location = vi->pVertexAttributeDescriptions[i].location;
-         unsigned binding = vi->pVertexAttributeDescriptions[i].binding;
-         const struct VkVertexInputBindingDescription *desc_binding = NULL;
-         for (unsigned j = 0; j < vi->vertexBindingDescriptionCount; j++) {
-            const struct VkVertexInputBindingDescription *b = &vi->pVertexBindingDescriptions[j];
-            if (b->binding == binding) {
-               desc_binding = b;
-               break;
-            }
-         }
-         assert(desc_binding);
-         state->velem.velems[location].src_offset = vi->pVertexAttributeDescriptions[i].offset;
-         state->velem.velems[location].vertex_buffer_index = binding;
-         state->velem.velems[location].src_format = lvp_vk_format_to_pipe_format(vi->pVertexAttributeDescriptions[i].format);
-         state->velem.velems[location].dual_slot = false;
-
-         switch (desc_binding->inputRate) {
+         uint32_t d = ps->vi->bindings[b].divisor;
+         switch (ps->vi->bindings[b].input_rate) {
          case VK_VERTEX_INPUT_RATE_VERTEX:
-            state->velem.velems[location].instance_divisor = 0;
+            state->velem.velems[a].instance_divisor = 0;
             break;
          case VK_VERTEX_INPUT_RATE_INSTANCE:
-            if (div_state) {
-               for (unsigned j = 0; j < div_state->vertexBindingDivisorCount; j++) {
-                  const VkVertexInputBindingDivisorDescriptionEXT *desc =
-                     &div_state->pVertexBindingDivisors[j];
-                  if (desc->binding == state->velem.velems[location].vertex_buffer_index) {
-                     state->velem.velems[location].instance_divisor = desc->divisor;
-                     break;
-                  }
-               }
-            } else
-               state->velem.velems[location].instance_divisor = 1;
+            state->velem.velems[a].instance_divisor = d ? d : UINT32_MAX;
             break;
          default:
-            assert(0);
-            break;
+            unreachable("Invalid vertex input rate");
          }
-
-         if ((int)location > max_location)
-            max_location = location;
       }
-      state->velem.count = max_location + 1;
+
+      state->velem.count = util_last_bit(ps->vi->attributes_valid);
       state->vb_dirty = true;
       state->ve_dirty = true;
    }
 
-   {
-      const VkPipelineInputAssemblyStateCreateInfo *ia = pipeline->graphics_create_info.pInputAssemblyState;
-
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)]) {
-         state->info.mode = vk_conv_topology(ia->topology);
-         state->rs_dirty = true;
-      }
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE)])
-         state->info.primitive_restart = ia->primitiveRestartEnable;
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY)) {
+      state->info.mode = vk_conv_topology(ps->ia->primitive_topology);
+      state->rs_dirty = true;
    }
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE))
+      state->info.primitive_restart = ps->ia->primitive_restart_enable;
 
-   if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT)]) {
-      if (pipeline->graphics_create_info.pTessellationState) {
-         const VkPipelineTessellationStateCreateInfo *ts = pipeline->graphics_create_info.pTessellationState;
-         state->patch_vertices = ts->patchControlPoints;
-      } else {
-         state->patch_vertices = 0;
-      }
-   }
+   if (ps->ts && !BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS))
+      state->patch_vertices = ps->ts->patch_control_points;
 
-   bool halfz_changed = false;
-   if (!pipeline->negative_one_to_one != clip_halfz) {
-      state->rs_state.clip_halfz = !pipeline->negative_one_to_one;
-      halfz_changed = state->rs_dirty = true;
-   }
-
-   if (pipeline->graphics_create_info.pViewportState) {
-      const VkPipelineViewportStateCreateInfo *vpi= pipeline->graphics_create_info.pViewportState;
-      int i;
-
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT)]) {
-         state->num_viewports = vpi->viewportCount;
+   if (ps->vp) {
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT)) {
+         state->num_viewports = ps->vp->viewport_count;
          state->vp_dirty = true;
       }
-      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT)]) {
-         state->num_scissors = vpi->scissorCount;
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VP_SCISSOR_COUNT)) {
+         state->num_scissors = ps->vp->scissor_count;
          state->scissor_dirty = true;
       }
 
-      if (!dynamic_states[VK_DYNAMIC_STATE_VIEWPORT] &&
-          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT)]) {
-         for (i = 0; i < vpi->viewportCount; i++) {
-            get_viewport_xform(state, &vpi->pViewports[i], i);
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VP_VIEWPORTS)) {
+         for (uint32_t i = 0; i < ps->vp->viewport_count; i++) {
+            get_viewport_xform(state, &ps->vp->viewports[i], i);
             set_viewport_depth_xform(state, i);
          }
          state->vp_dirty = true;
-      } else if (halfz_changed) {
-         /* handle dynamic state: convert from one transform to the other */
-         unsigned num_viewports = dynamic_states[VK_DYNAMIC_STATE_VIEWPORT] ? vpi->viewportCount : state->num_viewports;
-         for (i = 0; i < num_viewports; i++)
-            set_viewport_depth_xform(state, i);
-         state->vp_dirty = true;
       }
-      if (!dynamic_states[VK_DYNAMIC_STATE_SCISSOR] &&
-          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT)]) {
-         for (i = 0; i < vpi->scissorCount; i++) {
-            const VkRect2D *ss = &vpi->pScissors[i];
+      if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VP_SCISSORS)) {
+         for (uint32_t i = 0; i < ps->vp->scissor_count; i++) {
+            const VkRect2D *ss = &ps->vp->scissors[i];
             state->scissors[i].minx = ss->offset.x;
             state->scissors[i].miny = ss->offset.y;
             state->scissors[i].maxx = ss->offset.x + ss->extent.width;
             state->scissors[i].maxy = ss->offset.y + ss->extent.height;
-            state->scissor_dirty = true;
          }
+         state->scissor_dirty = true;
+      }
 
+      if (state->rs_state.clip_halfz != !ps->vp->negative_one_to_one) {
+         state->rs_state.clip_halfz = !ps->vp->negative_one_to_one;
+         state->rs_dirty = true;
+         for (uint32_t i = 0; i < state->num_viewports; i++)
+            set_viewport_depth_xform(state, i);
+         state->vp_dirty = true;
       }
    }
 
