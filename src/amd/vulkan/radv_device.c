@@ -5489,17 +5489,19 @@ radv_queue_submit_with_ace(struct radv_queue *queue, struct vk_queue_submit *sub
          .ip_type = AMD_IP_COMPUTE,
          .cs_array = ace_cs_array,
          .cs_count = 0,
+         .preamble_count = 1,
          .initial_preamble_cs = need_wait
-                                   ? queue->ace_internal_state->initial_full_flush_preamble_cs
-                                   : queue->ace_internal_state->initial_preamble_cs,
+                                   ? &queue->ace_internal_state->initial_full_flush_preamble_cs
+                                   : &queue->ace_internal_state->initial_preamble_cs,
       },
       {
          .ip_type = radv_queue_ring(queue),
          .queue_index = queue->vk.index_in_family,
          .cs_array = cs_array,
          .cs_count = 0,
-         .initial_preamble_cs = need_wait ? queue->state.initial_full_flush_preamble_cs
-                                          : queue->state.initial_preamble_cs,
+         .preamble_count = 1,
+         .initial_preamble_cs = need_wait ? &queue->state.initial_full_flush_preamble_cs
+                                          : &queue->state.initial_preamble_cs,
       }};
 
    for (uint32_t advance, j = 0; j < cs_count; j += advance) {
@@ -5538,9 +5540,9 @@ radv_queue_submit_with_ace(struct radv_queue *queue, struct vk_queue_submit *sub
       }
 
       submit[1].cs_array += submit[1].cs_count;
-      submit[1].initial_preamble_cs = queue->state.initial_preamble_cs;
+      submit[1].initial_preamble_cs = &queue->state.initial_preamble_cs;
       submit[0].cs_count = 0;
-      submit[0].initial_preamble_cs = queue->ace_internal_state->initial_preamble_cs;
+      submit[0].initial_preamble_cs = &queue->ace_internal_state->initial_preamble_cs;
    }
 
 finish:
@@ -5611,8 +5613,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       .queue_index = queue->vk.index_in_family,
       .cs_array = cs_array,
       .cs_count = 0,
-      .initial_preamble_cs =
-         need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs,
+      .preamble_count = 1,
+      .initial_preamble_cs = need_wait ? &queue->state.initial_full_flush_preamble_cs
+                                       : &queue->state.initial_preamble_cs,
       .continue_preamble_cs = queue->state.continue_preamble_cs,
    };
 
@@ -5641,7 +5644,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       }
 
       submit.cs_array += advance;
-      submit.initial_preamble_cs = queue->state.initial_preamble_cs;
+      submit.initial_preamble_cs = &queue->state.initial_preamble_cs;
    }
 
 fail:

@@ -191,8 +191,9 @@ struct radv_winsys_submit_info {
    enum amd_ip_type ip_type;
    int queue_index;
    unsigned cs_count;
+   unsigned preamble_count;
    struct radeon_cmdbuf **cs_array;
-   struct radeon_cmdbuf *initial_preamble_cs;
+   struct radeon_cmdbuf **initial_preamble_cs;
    struct radeon_cmdbuf *continue_preamble_cs;
 };
 
