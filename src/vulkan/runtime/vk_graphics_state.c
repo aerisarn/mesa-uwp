@@ -1066,16 +1066,6 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    if (info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
       const VkGraphicsPipelineLibraryCreateInfoEXT *gfx_lib_info =
          vk_find_struct_const(info->pNext, GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT);
-
-      /* If we're building a pipeline library, trust the client.
-       *
-       * From the Vulkan 1.3.218 spec:
-       *
-       *    VUID-VkGraphicsPipelineLibraryCreateInfoEXT-flags-requiredbitmask
-       *
-       *    "flags must not be 0"
-       */
-      assert(gfx_lib_info->flags != 0);
       lib = gfx_lib_info->flags;
    } else {
       /* We're building a complete pipeline.  From the Vulkan 1.3.218 spec:
