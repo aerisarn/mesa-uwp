@@ -52,23 +52,6 @@ d3d12_bufmgr(struct pb_manager *mgr)
    return (struct d3d12_bufmgr *)mgr;
 }
 
-static struct TransitionableResourceState *
-create_trans_state(ID3D12Resource *res)
-{
-   D3D12_RESOURCE_DESC desc = GetDesc(res);
-
-   // Calculate the total number of subresources
-   unsigned arraySize = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ?
-                        1 : desc.DepthOrArraySize;
-   unsigned total_subresources = desc.MipLevels *
-                                 arraySize *
-                                 d3d12_non_opaque_plane_count(desc.Format);
-
-   return new TransitionableResourceState(res,
-                                          total_subresources,
-                                          d3d12_resource_supports_simultaneous_access(&desc));
-}
-
 static void
 describe_direct_bo(char *buf, struct d3d12_bo *ptr)
 {
@@ -104,15 +87,21 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum d3d12_r
    if (!bo)
       return NULL;
 
+   D3D12_RESOURCE_DESC desc = GetDesc(res);
+   unsigned array_size = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : desc.DepthOrArraySize;
+   unsigned total_subresources = desc.MipLevels * array_size * d3d12_non_opaque_plane_count(desc.Format);
+   bool supports_simultaneous_access = d3d12_resource_supports_simultaneous_access(&desc);
+
    pipe_reference_init(&bo->reference, 1);
    bo->screen = screen;
    bo->res = res;
-   bo->trans_state = create_trans_state(res);
+   bo->trans_state = new TransitionableResourceState(res, total_subresources, supports_simultaneous_access);
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
+   if (!supports_simultaneous_access)
+      d3d12_resource_state_init(&bo->global_state, total_subresources, false);
 
    bo->residency_status = residency;
    bo->last_used_timestamp = 0;
-   D3D12_RESOURCE_DESC desc = GetDesc(res);
    screen->dev->GetCopyableFootprints(&desc, 0, bo->trans_state->NumSubresources(), 0, nullptr, nullptr, nullptr, &bo->estimated_size);
    if (residency != d3d12_evicted) {
       mtx_lock(&screen->submit_mutex);
@@ -212,6 +201,7 @@ d3d12_bo_unreference(struct d3d12_bo *bo)
 
       mtx_unlock(&bo->screen->submit_mutex);
 
+      d3d12_resource_state_cleanup(&bo->global_state);
       if (bo->trans_state)
          delete bo->trans_state;
       if (bo->res)

@@ -269,7 +269,9 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
       d3d12_bo *bo = (d3d12_bo *)bo_entry->key;
       d3d12_context_state_table_entry *bo_state = find_or_create_state_entry(ctx->bo_state_table, bo);
       if (!bo_state->batch_end.supports_simultaneous_access) {
+         assert(bo->res && bo->global_state.subresource_states);
          d3d12_resource_state_copy(&bo_state->batch_begin, &bo_state->batch_end);
+         d3d12_resource_state_copy(&bo->global_state, &bo_state->batch_end);
       } else {
          d3d12_reset_resource_state(&bo_state->batch_end);
       }

@@ -29,6 +29,7 @@
 #include "util/list.h"
 
 #include "d3d12_common.h"
+#include "d3d12_resource_state.h"
 
 struct d3d12_bufmgr;
 struct d3d12_screen;
@@ -47,6 +48,7 @@ struct d3d12_bo {
    ID3D12Resource *res;
    struct pb_buffer *buffer;
    struct TransitionableResourceState *trans_state;
+   struct d3d12_resource_state global_state;
 
    /* Used as a key in per-context resource state maps,
     * to avoid needing to lock them for single-threaded lookups to
