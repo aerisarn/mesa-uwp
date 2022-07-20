@@ -979,21 +979,30 @@ vk_dynamic_graphics_state_init_rp(struct vk_dynamic_graphics_state *dst,
    f(MESA_VK_GRAPHICS_STATE_RENDER_PASS_BIT,             \
      vk_render_pass_state, rp);
 
-static void
-vk_graphics_pipeline_state_validate(const struct vk_graphics_pipeline_state *state)
+static enum mesa_vk_graphics_state_groups
+vk_graphics_pipeline_state_groups(const struct vk_graphics_pipeline_state *state)
 {
-#ifndef NDEBUG
    /* For now, we just validate dynamic state */
-   enum mesa_vk_graphics_state_groups has = 0;
+   enum mesa_vk_graphics_state_groups groups = 0;
 
 #define FILL_HAS(STATE, type, s) \
-   if (state->s != NULL) has |= STATE
+   if (state->s != NULL) groups |= STATE
 
    FOREACH_STATE_GROUP(FILL_HAS)
 
 #undef FILL_HAS
 
-   validate_dynamic_state_groups(state->dynamic, has);
+   return groups | fully_dynamic_state_groups(state->dynamic);
+}
+
+static void
+vk_graphics_pipeline_state_validate(const struct vk_graphics_pipeline_state *state)
+{
+#ifndef NDEBUG
+   /* For now, we just validate dynamic state */
+   enum mesa_vk_graphics_state_groups groups =
+      vk_graphics_pipeline_state_groups(state);
+   validate_dynamic_state_groups(state->dynamic, groups);
 #endif
 }
 
@@ -1224,7 +1233,7 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
     * this after we've filtered dynamic state because we still want them to
     * show up in the dynamic state but don't want the actual state.
     */
-   needs &= ~fully_dynamic_state_groups(dynamic);
+   needs &= ~fully_dynamic_state_groups(state->dynamic);
 
    /* If we don't need to set up any new states, bail early */
    if (needs == 0)
