@@ -1205,9 +1205,7 @@ resolve_to_temp:
    blit.src.resource = tmp;
    blit.src.box.z = 0;
 
-   si_blitter_begin(sctx, SI_BLIT | (info->render_condition_enable ? 0 : SI_DISABLE_RENDER_COND));
-   util_blitter_blit(sctx->blitter, &blit);
-   si_blitter_end(sctx);
+   ctx->blit(ctx, &blit);
 
    pipe_resource_reference(&tmp, NULL);
    return true;
