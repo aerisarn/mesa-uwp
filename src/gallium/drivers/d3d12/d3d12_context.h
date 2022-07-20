@@ -181,6 +181,7 @@ struct d3d12_context {
    unsigned current_batch_idx;
 
    struct util_dynarray recently_destroyed_bos;
+   struct util_dynarray barrier_scratch;
 
    struct pipe_constant_buffer cbufs[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_framebuffer_state fb;
@@ -243,6 +244,7 @@ struct d3d12_context {
 
    uint64_t submit_id;
    ID3D12GraphicsCommandList *cmdlist;
+   ID3D12GraphicsCommandList *state_fixup_cmdlist;
 
    struct list_head active_queries;
    bool queries_disabled;

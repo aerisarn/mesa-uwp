@@ -25,6 +25,9 @@
 #include "d3d12_context.h"
 #include "d3d12_format.h"
 #include "d3d12_resource_state.h"
+#include "d3d12_screen.h"
+
+#include <dxguids/dxguids.h>
 
 #include <assert.h>
 
@@ -149,7 +152,6 @@ d3d12_resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
                                  bool simultaneous_access,
                                  const d3d12_subresource_state *current_state)
 {
-   D3D12_RESOURCE_STATES result = D3D12_RESOURCE_STATE_COMMON;
    const D3D12_RESOURCE_STATES promotable_states = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
                                                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
                                                    D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_COPY_DEST;
@@ -211,6 +213,9 @@ d3d12_context_state_table_destroy(struct d3d12_context *ctx)
    hash_table_foreach(ctx->bo_state_table->table, entry)
       destroy_context_state_table_entry((d3d12_context_state_table_entry *)entry->data);
    _mesa_hash_table_u64_destroy(ctx->bo_state_table);
+   util_dynarray_fini(&ctx->barrier_scratch);
+   if (ctx->state_fixup_cmdlist)
+      ctx->state_fixup_cmdlist->Release();
 }
 
 static unsigned
@@ -253,7 +258,76 @@ find_or_create_state_entry(struct hash_table_u64 *table, d3d12_bo *bo)
    return bo_state;
 }
 
-void
+static ID3D12GraphicsCommandList *
+ensure_state_fixup_cmdlist(struct d3d12_context *ctx, ID3D12CommandAllocator *alloc)
+{
+   if (!ctx->state_fixup_cmdlist) {
+      struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
+      screen->dev->CreateCommandList(0,
+                                     D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                     alloc,
+                                     nullptr,
+                                     IID_PPV_ARGS(&ctx->state_fixup_cmdlist));
+   } else if (FAILED(ctx->state_fixup_cmdlist->Reset(alloc, nullptr))) {
+      ctx->state_fixup_cmdlist->Release();
+      ctx->state_fixup_cmdlist = nullptr;
+   }
+
+   return ctx->state_fixup_cmdlist;
+}
+
+static bool
+transition_required(D3D12_RESOURCE_STATES current_state, D3D12_RESOURCE_STATES *destination_state)
+{
+   // An exact match never needs a transition.
+   if (current_state == *destination_state) {
+      return false;
+   }
+
+   if (current_state == D3D12_RESOURCE_STATE_COMMON || *destination_state == D3D12_RESOURCE_STATE_COMMON) {
+      return true;
+   }
+
+   // Current state already contains the destination state, we're good.
+   if ((current_state & *destination_state) == *destination_state) {
+      *destination_state = current_state;
+      return false;
+   }
+
+   // If the transition involves a write state, then the destination should just be the requested destination.
+   // Otherwise, accumulate read states to minimize future transitions (by triggering the above condition).
+   if (!d3d12_is_write_state(*destination_state) && !d3d12_is_write_state(current_state)) {
+      *destination_state |= current_state;
+   }
+   return true;
+}
+
+static void
+resolve_global_state(struct d3d12_context *ctx, ID3D12Resource *res, d3d12_resource_state *batch_state, d3d12_resource_state *res_state)
+{
+   assert(batch_state->num_subresources == res_state->num_subresources);
+   unsigned num_subresources = batch_state->homogenous && res_state->homogenous ? 1 : batch_state->num_subresources;
+   for (unsigned i = 0; i < num_subresources; ++i) {
+      const d3d12_subresource_state *current_state = d3d12_get_subresource_state(res_state, i);
+      const d3d12_subresource_state *target_state = d3d12_get_subresource_state(batch_state, i);
+      D3D12_RESOURCE_STATES promotable_state =
+         d3d12_resource_state_if_promoted(target_state->state, false, current_state);
+
+      D3D12_RESOURCE_STATES after = target_state->state;
+      if ((promotable_state & target_state->state) == target_state->state ||
+          !transition_required(current_state->state, &after))
+         continue;
+
+      D3D12_RESOURCE_BARRIER barrier = { D3D12_RESOURCE_BARRIER_TYPE_TRANSITION };
+      barrier.Transition.pResource = res;
+      barrier.Transition.StateBefore = current_state->state;
+      barrier.Transition.StateAfter = after;
+      barrier.Transition.Subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
+      util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, barrier);
+   }
+}
+
+bool
 d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_batch *batch)
 {
    util_dynarray_foreach(&ctx->recently_destroyed_bos, uint64_t, id) {
@@ -270,10 +344,26 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
       d3d12_context_state_table_entry *bo_state = find_or_create_state_entry(ctx->bo_state_table, bo);
       if (!bo_state->batch_end.supports_simultaneous_access) {
          assert(bo->res && bo->global_state.subresource_states);
+
+         resolve_global_state(ctx, bo->res, &bo_state->batch_begin, &bo->global_state);
+
          d3d12_resource_state_copy(&bo_state->batch_begin, &bo_state->batch_end);
          d3d12_resource_state_copy(&bo->global_state, &bo_state->batch_end);
       } else {
          d3d12_reset_resource_state(&bo_state->batch_end);
       }
    }
+
+   bool needs_execute_fixup = false;
+   if (ctx->barrier_scratch.size) {
+      ID3D12GraphicsCommandList *cmdlist = ensure_state_fixup_cmdlist(ctx, batch->cmdalloc);
+      if (cmdlist) {
+         cmdlist->ResourceBarrier(util_dynarray_num_elements(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER),
+                                  (D3D12_RESOURCE_BARRIER *)ctx->barrier_scratch.data);
+         needs_execute_fixup = SUCCEEDED(cmdlist->Close());
+      }
+
+      util_dynarray_clear(&ctx->barrier_scratch);
+   }
+   return needs_execute_fixup;
 }

@@ -213,10 +213,16 @@ d3d12_end_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
 
    d3d12_process_batch_residency(screen, batch);
 
-   d3d12_context_state_resolve_submission(ctx, batch);
+   bool has_state_fixup = d3d12_context_state_resolve_submission(ctx, batch);
 
-   ID3D12CommandList* cmdlists[] = { ctx->cmdlist };
-   screen->cmdqueue->ExecuteCommandLists(1, cmdlists);
+   ID3D12CommandList *cmdlists[] = { ctx->state_fixup_cmdlist, ctx->cmdlist };
+   ID3D12CommandList **to_execute = cmdlists;
+   UINT count_to_execute = ARRAY_SIZE(cmdlists);
+   if (!has_state_fixup) {
+      to_execute++;
+      count_to_execute--;
+   }
+   screen->cmdqueue->ExecuteCommandLists(count_to_execute, to_execute);
    batch->fence = d3d12_create_fence(screen);
 
    mtx_unlock(&screen->submit_mutex);
