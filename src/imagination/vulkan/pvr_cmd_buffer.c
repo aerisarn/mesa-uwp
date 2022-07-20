@@ -1708,13 +1708,6 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-VkResult pvr_ResetCommandBuffer(VkCommandBuffer commandBuffer,
-                                VkCommandBufferResetFlags flags)
-{
-   assert(!"Unimplemented");
-   return VK_SUCCESS;
-}
-
 static void pvr_cmd_bind_compute_pipeline(
    const struct pvr_compute_pipeline *const compute_pipeline,
    struct pvr_cmd_buffer *const cmd_buffer)
@@ -2555,6 +2548,16 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
           sizeof(*state->barriers_needed) * ARRAY_SIZE(state->barriers_needed));
 
    cmd_buffer->status = PVR_CMD_BUFFER_STATUS_RECORDING;
+
+   return VK_SUCCESS;
+}
+
+VkResult pvr_ResetCommandBuffer(VkCommandBuffer commandBuffer,
+                                VkCommandBufferResetFlags flags)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+
+   pvr_cmd_buffer_reset(cmd_buffer);
 
    return VK_SUCCESS;
 }
