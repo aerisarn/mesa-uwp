@@ -977,6 +977,16 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    if (nir->info.ray_queries > 0) {
+      /* Lower shared variables early to prevent the over allocation of shared memory in
+       * radv_nir_lower_ray_queries.  */
+      if (nir->info.stage == MESA_SHADER_COMPUTE) {
+         if (!nir->info.shared_memory_explicit_layout)
+            NIR_PASS(_, nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared, shared_var_info);
+
+         NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_shared,
+                  nir_address_format_32bit_offset);
+      }
+
       NIR_PASS(_, nir, nir_opt_ray_queries);
       NIR_PASS(_, nir, nir_opt_ray_query_ranges);
       NIR_PASS(_, nir, radv_nir_lower_ray_queries, device);
