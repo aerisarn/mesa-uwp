@@ -66,6 +66,21 @@ d3d12_resource_destroy(struct pipe_screen *pscreen,
                        struct pipe_resource *presource)
 {
    struct d3d12_resource *resource = d3d12_resource(presource);
+
+   // When instanciating a planar d3d12_resource, the same resource->dt pointer
+   // is copied to all their planes linked list resources
+   // Different instances of objects like d3d12_surface, can be pointing
+   // to different planes of the same overall (ie. NV12) planar d3d12_resource
+   // sharing the same dt, so keep a refcount when destroying them
+   // and only destroy it on the last plane being destroyed
+   if (resource->dt_refcount > 0)
+      resource->dt_refcount--;
+   if ((resource->dt_refcount == 0) && resource->dt)
+   {
+      struct d3d12_screen *screen = d3d12_screen(pscreen);
+      screen->winsys->displaytarget_destroy(screen->winsys, resource->dt);
+   }
+
    threaded_resource_deinit(presource);
    if (can_map_directly(presource))
       util_range_destroy(&resource->valid_buffer_range);
@@ -291,6 +306,7 @@ init_texture(struct d3d12_screen *screen,
                                              templ->height0,
                                              64, NULL,
                                              &res->dt_stride);
+      res->dt_refcount = 1;
    }
 
    res->bo = d3d12_bo_wrap_res(screen, d3d12_res, init_residency);
@@ -314,6 +330,7 @@ convert_planar_resource(struct d3d12_resource *res)
       if (!plane_res) {
          plane_res = CALLOC_STRUCT(d3d12_resource);
          *plane_res = *res;
+         plane_res->dt_refcount = num_planes;
          d3d12_bo_reference(plane_res->bo);
          pipe_reference_init(&plane_res->base.b.reference, 1);
          threaded_resource_init(&plane_res->base.b, false);
