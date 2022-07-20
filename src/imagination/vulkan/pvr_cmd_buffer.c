@@ -1237,6 +1237,7 @@ pvr_compute_flat_slot_size(const struct pvr_physical_device *pdevice,
 
 static void
 pvr_compute_generate_control_stream(struct pvr_csb *csb,
+                                    struct pvr_sub_cmd_compute *sub_cmd,
                                     const struct pvr_compute_kernel_info *info)
 {
    /* Compute kernel 0. */
@@ -1255,9 +1256,7 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
    pvr_csb_emit (csb, CDMCTRL_KERNEL1, kernel1) {
       kernel1.data_addr = PVR_DEV_ADDR(info->pds_data_offset);
       kernel1.sd_type = info->sd_type;
-
-      if (!info->is_fence)
-         kernel1.usc_common_shared = info->usc_common_shared;
+      kernel1.usc_common_shared = info->usc_common_shared;
    }
 
    /* Compute kernel 2. */
@@ -1308,6 +1307,18 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
       kernel8.workgroup_size_y = info->local_size[1U] - 1U;
       assert(info->local_size[2U] > 0U);
       kernel8.workgroup_size_z = info->local_size[2U] - 1U;
+   }
+
+   /* Track the highest amount of shared registers usage in this dispatch.
+    * This is used by the FW for context switching, so must be large enough
+    * to contain all the shared registers that might be in use for this compute
+    * job. Coefficients don't need to be included as the context switch will not
+    * happen within the execution of a single workgroup, thus nothing needs to
+    * be preserved.
+    */
+   if (info->usc_common_shared) {
+      sub_cmd->num_shared_regs =
+         MAX2(sub_cmd->num_shared_regs, info->usc_common_size);
    }
 }
 
@@ -1362,7 +1373,7 @@ pvr_compute_generate_idfwdf(struct pvr_cmd_buffer *cmd_buffer,
                                  false,
                                  1U);
 
-   pvr_compute_generate_control_stream(csb, &info);
+   pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
 static void
@@ -1400,7 +1411,7 @@ pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
     */
    info.max_instances = pvr_compute_flat_slot_size(pdevice, 0U, false, 1U);
 
-   pvr_compute_generate_control_stream(csb, &info);
+   pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
 static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
@@ -2978,7 +2989,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
    info.max_instances =
       pvr_compute_flat_slot_size(pdevice, const_shared_reg_count, false, 1U);
 
-   pvr_compute_generate_control_stream(csb, &info);
+   pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
 static uint32_t
@@ -3088,7 +3099,7 @@ static void pvr_compute_update_kernel(
    info.max_instances =
       pvr_compute_flat_slot_size(pdevice, coeff_regs, false, work_size);
 
-   pvr_compute_generate_control_stream(csb, &info);
+   pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
 void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
