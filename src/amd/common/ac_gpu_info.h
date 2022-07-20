@@ -192,6 +192,7 @@ struct radeon_info {
    bool has_eqaa_surface_allocator;
    bool has_sparse_vm_mappings;
    bool has_scheduled_fence_dependency;
+   bool has_gang_submit;
    bool has_stable_pstate;
    /* Whether SR-IOV is enabled or amdgpu.mcbp=1 was set on the kernel command line. */
    bool mid_command_buffer_preemption_enabled;

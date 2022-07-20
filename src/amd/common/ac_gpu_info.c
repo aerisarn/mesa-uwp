@@ -927,6 +927,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
     */
    info->has_sparse_vm_mappings = info->gfx_level >= GFX7;
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
+   info->has_gang_submit = info->drm_minor >= 49;
    info->mid_command_buffer_preemption_enabled = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, device_info.ids_flags);
    info->kernel_has_modifiers = has_modifiers(fd);
@@ -1545,6 +1546,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_sparse_vm_mappings = %u\n", info->has_sparse_vm_mappings);
    fprintf(f, "    has_stable_pstate = %u\n", info->has_stable_pstate);
    fprintf(f, "    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
+   fprintf(f, "    has_gang_submit = %u\n", info->has_gang_submit);
    fprintf(f, "    mid_command_buffer_preemption_enabled = %u\n",
            info->mid_command_buffer_preemption_enabled);
    fprintf(f, "    has_tmz_support = %u\n", info->has_tmz_support);
