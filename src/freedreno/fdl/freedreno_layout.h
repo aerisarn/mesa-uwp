@@ -293,6 +293,8 @@ struct fdl6_view {
 
    bool ubwc_enabled;
 
+   enum pipe_format format;
+
    uint32_t descriptor[FDL6_TEX_CONST_DWORDS];
 
    /* Descriptor for use as a storage image as opposed to a sampled image.

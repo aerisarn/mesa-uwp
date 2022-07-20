@@ -249,6 +249,8 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
          storage_format = FMT6_8_8_8_8_UNORM;
    }
 
+   view->format = args->format;
+
    memset(view->descriptor, 0, sizeof(view->descriptor));
 
    view->descriptor[0] =
