@@ -1180,12 +1180,10 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    }
 
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
-      if (rp.attachment_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                                   VK_IMAGE_ASPECT_STENCIL_BIT))
-         needs |= MESA_VK_GRAPHICS_STATE_DEPTH_STENCIL_BIT;
-
       if (rp.attachment_aspects & (VK_IMAGE_ASPECT_COLOR_BIT))
          needs |= MESA_VK_GRAPHICS_STATE_COLOR_BLEND_BIT;
+
+      needs |= MESA_VK_GRAPHICS_STATE_MULTISAMPLE_BIT;
    }
 
    /*
