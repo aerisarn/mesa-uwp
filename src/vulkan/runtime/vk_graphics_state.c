@@ -1012,9 +1012,8 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    BITSET_DECLARE(dynamic, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
    vk_get_dynamic_graphics_states(dynamic, info->pDynamicState);
 
-   VkShaderStageFlags stages = 0;
    for (uint32_t i = 0; i < info->stageCount; i++)
-      stages |= info->pStages[i].stage;
+      state->shader_stages |= info->pStages[i].stage;
 
    /* In case we return early */
    if (alloc_ptr_out != NULL)
@@ -1055,7 +1054,7 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
        */
       lib = VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
 
-      if (stages & VK_SHADER_STAGE_VERTEX_BIT)
+      if (state->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
          lib |= VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT;
 
       if (may_have_rasterization(state, dynamic, info)) {
@@ -1103,11 +1102,11 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
        *    state the stage member of one element of pStages must be either
        *    VK_SHADER_STAGE_VERTEX_BIT or VK_SHADER_STAGE_MESH_BIT_NV"
        */
-      assert(stages & (VK_SHADER_STAGE_VERTEX_BIT |
-                       VK_SHADER_STAGE_MESH_BIT_NV));
+      assert(state->shader_stages & (VK_SHADER_STAGE_VERTEX_BIT |
+                                     VK_SHADER_STAGE_MESH_BIT_NV));
 
-      if (stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
+      if (state->shader_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
          needs |= MESA_VK_GRAPHICS_STATE_TESSELLATION_BIT;
 
       if (may_have_rasterization(state, dynamic, info))
@@ -1316,6 +1315,8 @@ vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
    vk_graphics_pipeline_state_validate(src);
 
    BITSET_OR(dst->dynamic, dst->dynamic, src->dynamic);
+
+   dst->shader_stages |= src->shader_stages;
 
    /* Render pass state needs special care because a render pass state may be
     * incomplete (view mask only).  See vk_render_pass_state_init().

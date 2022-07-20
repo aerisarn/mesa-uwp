@@ -703,6 +703,8 @@ struct vk_graphics_pipeline_state {
    /** Bitset of which states are dynamic */
    BITSET_DECLARE(dynamic, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
 
+   VkShaderStageFlags shader_stages;
+
    /** Vertex input state */
    const struct vk_vertex_input_state *vi;
 
