@@ -2127,8 +2127,10 @@ zink_update_fbfetch(struct zink_context *ctx)
    ctx->di.fbfetch.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
    if (changed) {
       zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, PIPE_SHADER_FRAGMENT, ZINK_DESCRIPTOR_TYPE_UBO, 0, 1);
-      ctx->rp_changed = true;
-      zink_batch_no_rp(ctx);
+      if (!had_fbfetch) {
+         ctx->rp_changed = true;
+         zink_batch_no_rp(ctx);
+      }
    }
 }
 
