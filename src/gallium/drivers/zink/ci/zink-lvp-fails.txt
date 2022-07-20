@@ -143,9 +143,7 @@ glx@glx-copy-sub-buffer samples=2,Fail
 glx@glx-copy-sub-buffer samples=4,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth,Crash
-glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil,Crash
-glx@glx-visuals-stencil -pixmap,Crash
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 # X error 167 (GLXBadFBConfig (9)) was generated, but X error 8 was expected.
 glx@glx_arb_create_context_no_error@no error,Crash

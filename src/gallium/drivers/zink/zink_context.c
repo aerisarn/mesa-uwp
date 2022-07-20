@@ -101,6 +101,17 @@ zink_context_destroy(struct pipe_context *pctx)
    if (ctx->batch.state && !screen->device_lost && VKSCR(QueueWaitIdle)(screen->queue) != VK_SUCCESS)
       mesa_loge("ZINK: vkQueueWaitIdle failed");
 
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_cache); i++) {
+      hash_table_foreach(&ctx->program_cache[i], entry) {
+         struct zink_program *pg = entry->data;
+         screen->descriptor_program_deinit(ctx, pg);
+      }
+   }
+   hash_table_foreach(&ctx->compute_program_cache, entry) {
+      struct zink_program *pg = entry->data;
+      screen->descriptor_program_deinit(ctx, pg);
+   }
+
    if (ctx->blitter)
       util_blitter_destroy(ctx->blitter);
    for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++)
