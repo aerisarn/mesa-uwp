@@ -17,8 +17,13 @@ class LogSectionType(Enum):
 
 FALLBACK_GITLAB_SECTION_TIMEOUT = timedelta(minutes=10)
 DEFAULT_GITLAB_SECTION_TIMEOUTS = {
-    # Empirically, the devices boot time takes 3 minutes on average.
-    LogSectionType.LAVA_BOOT: timedelta(minutes=5),
+    # Empirically, successful device boot in LAVA time takes less than 3
+    # minutes.
+    # LAVA itself is configured to attempt thrice to boot the device,
+    # summing up to 9 minutes.
+    # It is better to retry the boot than cancel the job and re-submit to avoid
+    # the enqueue delay.
+    LogSectionType.LAVA_BOOT: timedelta(minutes=9),
     # Test suite phase is where the initialization happens.
     LogSectionType.TEST_SUITE: timedelta(minutes=5),
     # Test cases may take a long time, this script has no right to interrupt
