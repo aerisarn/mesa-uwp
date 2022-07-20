@@ -459,9 +459,9 @@ brw_nir_memcpy_global(nir_builder *b,
 
    for (unsigned offset = 0; offset < size; offset += 16) {
       nir_ssa_def *data =
-         brw_nir_rt_load(b, nir_iadd_imm(b, src_addr, offset), src_align,
+         brw_nir_rt_load(b, nir_iadd_imm(b, src_addr, offset), 16,
                          4, 32);
-      brw_nir_rt_store(b, nir_iadd_imm(b, dst_addr, offset), dst_align,
+      brw_nir_rt_store(b, nir_iadd_imm(b, dst_addr, offset), 16,
                        data, 0xf /* write_mask */);
    }
 }
