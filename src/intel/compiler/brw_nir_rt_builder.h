@@ -439,24 +439,6 @@ brw_nir_rt_load_mem_hit_from_addr(nir_builder *b,
 }
 
 static inline void
-brw_nir_rt_init_mem_hit_at_addr(nir_builder *b,
-                                nir_ssa_def *stack_addr,
-                                bool committed,
-                                nir_ssa_def *t_max)
-{
-   nir_ssa_def *mem_hit_addr =
-      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, committed);
-
-   /* Set the t_max value from the ray initialization */
-   nir_ssa_def *hit_t_addr = mem_hit_addr;
-   brw_nir_rt_store(b, hit_t_addr, 4, t_max, 0x1);
-
-   /* Clear all the flags packed behind primIndexDelta */
-   nir_ssa_def *state_addr = nir_iadd_imm(b, mem_hit_addr, 12);
-   brw_nir_rt_store(b, state_addr, 4, nir_imm_int(b, 0), 0x1);
-}
-
-static inline void
 brw_nir_rt_load_mem_hit(nir_builder *b,
                         struct brw_nir_rt_mem_hit_defs *defs,
                         bool committed)
