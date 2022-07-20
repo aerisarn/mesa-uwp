@@ -65,9 +65,10 @@ class LogSection:
         if match := re.search(self.regex, lava_log_line["msg"]):
             section_id = self.section_id.format(*match.groups())
             section_header = self.section_header.format(*match.groups())
+            timeout = DEFAULT_GITLAB_SECTION_TIMEOUTS[self.section_type]
             return GitlabSection(
                 id=section_id,
-                header=section_header,
+                header=f"{section_header} - Timeout: {timeout}",
                 type=self.section_type,
                 start_collapsed=self.collapsed,
             )
