@@ -932,7 +932,7 @@ radv_device_init_meta_blit_state(struct radv_device *device, bool on_demand)
       radv_CreateDescriptorSetLayout(radv_device_to_handle(device), &ds_layout_info,
                                      &device->meta_state.alloc, &device->meta_state.blit.ds_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    const VkPushConstantRange push_constant_range = {VK_SHADER_STAGE_VERTEX_BIT, 0, 20};
 
@@ -947,20 +947,15 @@ radv_device_init_meta_blit_state(struct radv_device *device, bool on_demand)
                                       &device->meta_state.alloc,
                                       &device->meta_state.blit.pipeline_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    result = radv_device_init_meta_blit_color(device, on_demand);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    result = radv_device_init_meta_blit_depth(device, on_demand);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
-   result = radv_device_init_meta_blit_stencil(device, on_demand);
-
-fail:
-   if (result != VK_SUCCESS)
-      radv_device_finish_meta_blit_state(device);
-   return result;
+   return radv_device_init_meta_blit_stencil(device, on_demand);
 }

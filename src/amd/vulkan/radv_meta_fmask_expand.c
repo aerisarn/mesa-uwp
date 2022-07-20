@@ -239,7 +239,7 @@ radv_device_init_meta_fmask_expand_state(struct radv_device *device)
    result = radv_CreateDescriptorSetLayout(radv_device_to_handle(device), &ds_create_info,
                                            &state->alloc, &state->fmask_expand.ds_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    VkPipelineLayoutCreateInfo color_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -252,17 +252,14 @@ radv_device_init_meta_fmask_expand_state(struct radv_device *device)
    result = radv_CreatePipelineLayout(radv_device_to_handle(device), &color_create_info,
                                       &state->alloc, &state->fmask_expand.p_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    for (uint32_t i = 0; i < MAX_SAMPLES_LOG2; i++) {
       uint32_t samples = 1 << i;
       result = create_fmask_expand_pipeline(device, samples, &state->fmask_expand.pipeline[i]);
       if (result != VK_SUCCESS)
-         goto fail;
+         return result;
    }
 
    return VK_SUCCESS;
-fail:
-   radv_device_finish_meta_fmask_expand_state(device);
-   return result;
 }

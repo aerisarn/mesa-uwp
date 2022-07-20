@@ -335,7 +335,7 @@ radv_device_init_meta_depth_decomp_state(struct radv_device *device, bool on_dem
 
       res = create_pipeline_layout(device, &state->depth_decomp[i].p_layout);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       if (on_demand)
          continue;
@@ -343,23 +343,15 @@ radv_device_init_meta_depth_decomp_state(struct radv_device *device, bool on_dem
       res = create_pipeline(device, samples, state->depth_decomp[i].p_layout, DEPTH_DECOMPRESS,
                             &state->depth_decomp[i].decompress_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_pipeline(device, samples, state->depth_decomp[i].p_layout, DEPTH_RESUMMARIZE,
                             &state->depth_decomp[i].resummarize_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
    }
 
-   res = create_expand_depth_stencil_compute(device);
-   if (res != VK_SUCCESS)
-      goto fail;
-
-   return VK_SUCCESS;
-
-fail:
-   radv_device_finish_meta_depth_decomp_state(device);
-   return res;
+   return create_expand_depth_stencil_compute(device);
 }
 
 static VkPipeline *

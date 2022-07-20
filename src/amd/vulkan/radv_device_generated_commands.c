@@ -956,7 +956,7 @@ radv_device_init_dgc_prepare_state(struct radv_device *device)
                                            &device->meta_state.alloc,
                                            &device->meta_state.dgc_prepare.ds_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto cleanup;
 
    const VkPipelineLayoutCreateInfo leaf_pl_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -971,7 +971,7 @@ radv_device_init_dgc_prepare_state(struct radv_device *device)
                                       &device->meta_state.alloc,
                                       &device->meta_state.dgc_prepare.p_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto cleanup;
 
    VkPipelineShaderStageCreateInfo shader_stage = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -992,12 +992,9 @@ radv_device_init_dgc_prepare_state(struct radv_device *device)
       radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
       &pipeline_info, &device->meta_state.alloc, &device->meta_state.dgc_prepare.pipeline);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto cleanup;
 
-   ralloc_free(cs);
-   return VK_SUCCESS;
-fail:
-   radv_device_finish_dgc_prepare_state(device);
+cleanup:
    ralloc_free(cs);
    return result;
 }

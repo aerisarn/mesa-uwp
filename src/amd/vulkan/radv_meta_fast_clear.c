@@ -381,8 +381,6 @@ create_pipeline(struct radv_device *device, VkShaderModule vs_module_h, VkPipeli
    if (result != VK_SUCCESS)
       goto cleanup;
 
-   goto cleanup;
-
 cleanup:
    ralloc_free(fs_module);
    return result;
@@ -427,26 +425,21 @@ radv_device_init_meta_fast_clear_flush_state_internal(struct radv_device *device
    if (!vs_module) {
       /* XXX: Need more accurate error */
       res = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
+      goto cleanup;
    }
 
    res = create_pipeline_layout(device, &device->meta_state.fast_clear_flush.p_layout);
    if (res != VK_SUCCESS)
-      goto fail;
+      goto cleanup;
 
    VkShaderModule vs_module_h = vk_shader_module_handle_from_nir(vs_module);
    res = create_pipeline(device, vs_module_h, device->meta_state.fast_clear_flush.p_layout);
    if (res != VK_SUCCESS)
-      goto fail;
+      goto cleanup;
 
    res = create_dcc_compress_compute(device);
    if (res != VK_SUCCESS)
-      goto fail;
-
-   goto cleanup;
-
-fail:
-   radv_device_finish_meta_fast_clear_flush_state(device);
+      goto cleanup;
 
 cleanup:
    ralloc_free(vs_module);

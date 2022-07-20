@@ -195,7 +195,7 @@ radv_device_init_meta_fmask_copy_state(struct radv_device *device)
                                            &device->meta_state.alloc,
                                            &device->meta_state.fmask_copy.ds_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    VkPipelineLayoutCreateInfo pl_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -209,19 +209,16 @@ radv_device_init_meta_fmask_copy_state(struct radv_device *device)
       radv_CreatePipelineLayout(radv_device_to_handle(device), &pl_create_info,
                                 &device->meta_state.alloc, &device->meta_state.fmask_copy.p_layout);
    if (result != VK_SUCCESS)
-      goto fail;
+      return result;
 
    for (uint32_t i = 0; i < MAX_SAMPLES_LOG2; i++) {
       uint32_t samples = 1 << i;
       result = create_fmask_copy_pipeline(device, samples, &device->meta_state.fmask_copy.pipeline[i]);
       if (result != VK_SUCCESS)
-         goto fail;
+         return result;
    }
 
    return VK_SUCCESS;
-fail:
-   radv_device_finish_meta_fmask_copy_state(device);
-   return result;
 }
 
 static void

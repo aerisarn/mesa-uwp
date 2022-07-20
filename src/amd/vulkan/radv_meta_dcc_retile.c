@@ -173,8 +173,6 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device, struct radeon
       goto cleanup;
 
 cleanup:
-   if (result != VK_SUCCESS)
-      radv_device_finish_meta_dcc_retile_state(device);
    ralloc_free(cs);
    return result;
 }

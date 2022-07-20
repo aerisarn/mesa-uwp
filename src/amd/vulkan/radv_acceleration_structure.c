@@ -1924,7 +1924,6 @@ create_build_pipeline(struct radv_device *device, nir_shader *shader, unsigned p
    VkResult result = radv_CreatePipelineLayout(radv_device_to_handle(device), &pl_create_info,
                                                &device->meta_state.alloc, layout);
    if (result != VK_SUCCESS) {
-      radv_device_finish_accel_struct_build_state(device);
       ralloc_free(shader);
       return result;
    }
@@ -1949,7 +1948,6 @@ create_build_pipeline(struct radv_device *device, nir_shader *shader, unsigned p
                                         &pipeline_info, &device->meta_state.alloc, pipeline);
 
    if (result != VK_SUCCESS) {
-      radv_device_finish_accel_struct_build_state(device);
       ralloc_free(shader);
       return result;
    }

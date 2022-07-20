@@ -1174,48 +1174,33 @@ radv_device_init_meta_bufimage_state(struct radv_device *device)
 
    result = radv_device_init_meta_itob_state(device);
    if (result != VK_SUCCESS)
-      goto fail_itob;
+      return result;
 
    result = radv_device_init_meta_btoi_state(device);
    if (result != VK_SUCCESS)
-      goto fail_btoi;
+      return result;
 
    result = radv_device_init_meta_btoi_r32g32b32_state(device);
    if (result != VK_SUCCESS)
-      goto fail_btoi_r32g32b32;
+      return result;
 
    result = radv_device_init_meta_itoi_state(device);
    if (result != VK_SUCCESS)
-      goto fail_itoi;
+      return result;
 
    result = radv_device_init_meta_itoi_r32g32b32_state(device);
    if (result != VK_SUCCESS)
-      goto fail_itoi_r32g32b32;
+      return result;
 
    result = radv_device_init_meta_cleari_state(device);
    if (result != VK_SUCCESS)
-      goto fail_cleari;
+      return result;
 
    result = radv_device_init_meta_cleari_r32g32b32_state(device);
    if (result != VK_SUCCESS)
-      goto fail_cleari_r32g32b32;
+      return result;
 
    return VK_SUCCESS;
-fail_cleari_r32g32b32:
-   radv_device_finish_meta_cleari_r32g32b32_state(device);
-fail_cleari:
-   radv_device_finish_meta_cleari_state(device);
-fail_itoi_r32g32b32:
-   radv_device_finish_meta_itoi_r32g32b32_state(device);
-fail_itoi:
-   radv_device_finish_meta_itoi_state(device);
-fail_btoi_r32g32b32:
-   radv_device_finish_meta_btoi_r32g32b32_state(device);
-fail_btoi:
-   radv_device_finish_meta_btoi_state(device);
-fail_itob:
-   radv_device_finish_meta_itob_state(device);
-   return result;
 }
 
 static void

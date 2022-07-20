@@ -148,7 +148,6 @@ radv_device_init_meta_buffer_state(struct radv_device *device)
    ralloc_free(copy_cs);
    return VK_SUCCESS;
 fail:
-   radv_device_finish_meta_buffer_state(device);
    ralloc_free(fill_cs);
    ralloc_free(copy_cs);
    return result;

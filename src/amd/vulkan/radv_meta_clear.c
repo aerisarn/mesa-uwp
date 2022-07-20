@@ -991,8 +991,6 @@ init_meta_clear_htile_mask_state(struct radv_device *device)
                                         radv_pipeline_cache_to_handle(&state->cache), 1,
                                         &pipeline_info, NULL, &state->clear_htile_mask_pipeline);
 
-   ralloc_free(cs);
-   return result;
 fail:
    ralloc_free(cs);
    return result;
@@ -1146,7 +1144,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
                                    &device->meta_state.alloc,
                                    &device->meta_state.clear_color_p_layout);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    VkPipelineLayoutCreateInfo pl_depth_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1159,7 +1157,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
                                    &device->meta_state.alloc,
                                    &device->meta_state.clear_depth_p_layout);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    VkPipelineLayoutCreateInfo pl_depth_unrestricted_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1172,15 +1170,15 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
                                    &pl_depth_unrestricted_create_info, &device->meta_state.alloc,
                                    &device->meta_state.clear_depth_unrestricted_p_layout);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    res = init_meta_clear_htile_mask_state(device);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    res = init_meta_clear_dcc_comp_to_single_state(device);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    if (on_demand)
       return VK_SUCCESS;
@@ -1197,7 +1195,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
          res = create_color_pipeline(device, samples, 0, format,
                                      &state->color_clear[i][0].color_pipelines[fs_key]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
       }
    }
    for (uint32_t i = 0; i < ARRAY_SIZE(state->ds_clear); ++i) {
@@ -1207,42 +1205,38 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
          res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_DEPTH_BIT, samples, j, false,
                                             &state->ds_clear[i].depth_only_pipeline[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
 
          res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, false,
                                             &state->ds_clear[i].stencil_only_pipeline[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
 
          res = create_depthstencil_pipeline(
             device, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, false,
             &state->ds_clear[i].depthstencil_pipeline[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
 
          res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_DEPTH_BIT, samples, j, true,
                                             &state->ds_clear[i].depth_only_unrestricted_pipeline[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
 
          res =
             create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, true,
                                          &state->ds_clear[i].stencil_only_unrestricted_pipeline[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
 
          res = create_depthstencil_pipeline(
             device, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, true,
             &state->ds_clear[i].depthstencil_unrestricted_pipeline[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
       }
    }
    return VK_SUCCESS;
-
-fail:
-   radv_device_finish_meta_clear_state(device);
-   return res;
 }
 
 static uint32_t

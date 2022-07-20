@@ -620,19 +620,12 @@ radv_device_init_meta_etc_decode_state(struct radv_device *device, bool on_deman
 
    res = create_layout(device);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    if (on_demand)
       return VK_SUCCESS;
 
-   res = create_decode_pipeline(device, &state->etc_decode.pipeline);
-   if (res != VK_SUCCESS)
-      goto fail;
-
-   return VK_SUCCESS;
-fail:
-   radv_device_finish_meta_etc_decode_state(device);
-   return res;
+   return create_decode_pipeline(device, &state->etc_decode.pipeline);
 }
 
 void

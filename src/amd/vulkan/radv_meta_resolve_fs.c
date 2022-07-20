@@ -523,7 +523,7 @@ radv_device_init_meta_resolve_fragment_state(struct radv_device *device, bool on
 
    res = create_layout(device);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    if (on_demand)
       return VK_SUCCESS;
@@ -532,49 +532,42 @@ radv_device_init_meta_resolve_fragment_state(struct radv_device *device, bool on
       for (unsigned j = 0; j < NUM_META_FS_KEYS; ++j) {
          res = create_resolve_pipeline(device, i, radv_fs_key_format_exemplars[j]);
          if (res != VK_SUCCESS)
-            goto fail;
+            return res;
       }
 
       res = create_depth_stencil_resolve_pipeline(device, i, DEPTH_RESOLVE,
                                                   VK_RESOLVE_MODE_AVERAGE_BIT);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, i, DEPTH_RESOLVE,
                                                   VK_RESOLVE_MODE_MIN_BIT);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, i, DEPTH_RESOLVE,
                                                   VK_RESOLVE_MODE_MAX_BIT);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, i, STENCIL_RESOLVE,
                                                   VK_RESOLVE_MODE_MIN_BIT);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, i, STENCIL_RESOLVE,
                                                   VK_RESOLVE_MODE_MAX_BIT);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
    }
 
    res = create_depth_stencil_resolve_pipeline(device, 0, DEPTH_RESOLVE,
                                                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
-   res = create_depth_stencil_resolve_pipeline(device, 0, STENCIL_RESOLVE,
-                                               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-   if (res != VK_SUCCESS)
-      goto fail;
-
-   return VK_SUCCESS;
-fail:
-   radv_device_finish_meta_resolve_fragment_state(device);
-   return res;
+   return create_depth_stencil_resolve_pipeline(device, 0, STENCIL_RESOLVE,
+                                                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
 }
 
 void

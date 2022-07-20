@@ -210,7 +210,7 @@ radv_device_init_meta_resolve_state(struct radv_device *device, bool on_demand)
    if (!vs_module) {
       /* XXX: Need more accurate error */
       res = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
+      goto cleanup;
    }
 
    for (uint32_t i = 0; i < NUM_META_FS_KEYS; ++i) {
@@ -220,13 +220,8 @@ radv_device_init_meta_resolve_state(struct radv_device *device, bool on_demand)
       VkShaderModule vs_module_h = vk_shader_module_handle_from_nir(vs_module);
       res = create_pipeline(device, vs_module_h, format, &state->resolve.pipeline[fs_key]);
       if (res != VK_SUCCESS)
-         goto fail;
+         goto cleanup;
    }
-
-   goto cleanup;
-
-fail:
-   radv_device_finish_meta_resolve_state(device);
 
 cleanup:
    ralloc_free(vs_module);

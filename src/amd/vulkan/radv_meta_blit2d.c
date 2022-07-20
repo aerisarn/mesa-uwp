@@ -1131,7 +1131,7 @@ radv_device_init_meta_blit2d_state(struct radv_device *device, bool on_demand)
 
          result = meta_blit2d_create_pipe_layout(device, src, log2_samples);
          if (result != VK_SUCCESS)
-            goto fail;
+            return result;
 
          if (on_demand)
             continue;
@@ -1140,22 +1140,18 @@ radv_device_init_meta_blit2d_state(struct radv_device *device, bool on_demand)
             result = blit2d_init_color_pipeline(device, src, radv_fs_key_format_exemplars[j],
                                                 log2_samples);
             if (result != VK_SUCCESS)
-               goto fail;
+               return result;
          }
 
          result = blit2d_init_depth_only_pipeline(device, src, log2_samples);
          if (result != VK_SUCCESS)
-            goto fail;
+            return result;
 
          result = blit2d_init_stencil_only_pipeline(device, src, log2_samples);
          if (result != VK_SUCCESS)
-            goto fail;
+            return result;
       }
    }
 
    return VK_SUCCESS;
-
-fail:
-   radv_device_finish_meta_blit2d_state(device);
-   return result;
 }

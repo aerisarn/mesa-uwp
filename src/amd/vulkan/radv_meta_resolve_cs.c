@@ -373,7 +373,7 @@ radv_device_init_meta_resolve_compute_state(struct radv_device *device, bool on_
 
    res = create_layout(device);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
    if (on_demand)
       return VK_SUCCESS;
@@ -384,65 +384,58 @@ radv_device_init_meta_resolve_compute_state(struct radv_device *device, bool on_
       res = create_resolve_pipeline(device, samples, false, false,
                                     &state->resolve_compute.rc[i].pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_resolve_pipeline(device, samples, true, false,
                                     &state->resolve_compute.rc[i].i_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_resolve_pipeline(device, samples, false, true,
                                     &state->resolve_compute.rc[i].srgb_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(
          device, samples, DEPTH_RESOLVE, VK_RESOLVE_MODE_AVERAGE_BIT,
          &state->resolve_compute.depth[i].average_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, samples, DEPTH_RESOLVE,
                                                   VK_RESOLVE_MODE_MAX_BIT,
                                                   &state->resolve_compute.depth[i].max_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, samples, DEPTH_RESOLVE,
                                                   VK_RESOLVE_MODE_MIN_BIT,
                                                   &state->resolve_compute.depth[i].min_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, samples, STENCIL_RESOLVE,
                                                   VK_RESOLVE_MODE_MAX_BIT,
                                                   &state->resolve_compute.stencil[i].max_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
 
       res = create_depth_stencil_resolve_pipeline(device, samples, STENCIL_RESOLVE,
                                                   VK_RESOLVE_MODE_MIN_BIT,
                                                   &state->resolve_compute.stencil[i].min_pipeline);
       if (res != VK_SUCCESS)
-         goto fail;
+         return res;
    }
 
    res = create_depth_stencil_resolve_pipeline(device, 0, DEPTH_RESOLVE,
                                                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
                                                &state->resolve_compute.depth_zero_pipeline);
    if (res != VK_SUCCESS)
-      goto fail;
+      return res;
 
-   res = create_depth_stencil_resolve_pipeline(device, 0, STENCIL_RESOLVE,
-                                               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
-                                               &state->resolve_compute.stencil_zero_pipeline);
-   if (res != VK_SUCCESS)
-      goto fail;
-
-   return VK_SUCCESS;
-fail:
-   radv_device_finish_meta_resolve_compute_state(device);
-   return res;
+   return create_depth_stencil_resolve_pipeline(device, 0, STENCIL_RESOLVE,
+                                                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
+                                                &state->resolve_compute.stencil_zero_pipeline);
 }
 
 void

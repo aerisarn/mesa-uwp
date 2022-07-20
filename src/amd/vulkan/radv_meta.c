@@ -641,36 +641,38 @@ radv_device_init_meta(struct radv_device *device)
    return VK_SUCCESS;
 
 fail_dgc:
-   radv_device_finish_meta_etc_decode_state(device);
+   radv_device_finish_dgc_prepare_state(device);
 fail_etc_decode:
-   radv_device_finish_meta_fmask_copy_state(device);
+   radv_device_finish_meta_etc_decode_state(device);
 fail_fmask_copy:
-   radv_device_finish_accel_struct_build_state(device);
+   radv_device_finish_meta_fmask_copy_state(device);
 fail_accel_struct_build:
-   radv_device_finish_meta_fmask_expand_state(device);
+   radv_device_finish_accel_struct_build_state(device);
 fail_fmask_expand:
-   radv_device_finish_meta_resolve_fragment_state(device);
+   radv_device_finish_meta_fmask_expand_state(device);
 fail_resolve_fragment:
-   radv_device_finish_meta_resolve_compute_state(device);
+   radv_device_finish_meta_resolve_fragment_state(device);
 fail_resolve_compute:
-   radv_device_finish_meta_fast_clear_flush_state(device);
+   radv_device_finish_meta_resolve_compute_state(device);
 fail_fast_clear:
-   radv_device_finish_meta_query_state(device);
+   radv_device_finish_meta_fast_clear_flush_state(device);
 fail_query:
-   radv_device_finish_meta_buffer_state(device);
+   radv_device_finish_meta_query_state(device);
 fail_buffer:
-   radv_device_finish_meta_depth_decomp_state(device);
+   radv_device_finish_meta_buffer_state(device);
 fail_depth_decomp:
-   radv_device_finish_meta_bufimage_state(device);
+   radv_device_finish_meta_depth_decomp_state(device);
 fail_bufimage:
-   radv_device_finish_meta_blit2d_state(device);
+   radv_device_finish_meta_bufimage_state(device);
 fail_blit2d:
-   radv_device_finish_meta_blit_state(device);
+   radv_device_finish_meta_blit2d_state(device);
 fail_blit:
-   radv_device_finish_meta_resolve_state(device);
+   radv_device_finish_meta_blit_state(device);
 fail_resolve:
-   radv_device_finish_meta_clear_state(device);
+   radv_device_finish_meta_resolve_state(device);
 fail_clear:
+   radv_device_finish_meta_clear_state(device);
+
    mtx_destroy(&device->meta_state.mtx);
    radv_pipeline_cache_finish(&device->meta_state.cache);
    return result;
