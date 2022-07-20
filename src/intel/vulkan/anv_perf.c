@@ -52,18 +52,8 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
                            false /* pipeline statistics */,
                            true /* register snapshots */);
 
-   if (!perf->n_queries) {
-      if (perf->platform_supported) {
-         static bool warned_once = false;
-
-         if (!warned_once) {
-            mesa_logw("Performance support disabled, "
-                      "consider sysctl dev.i915.perf_stream_paranoid=0\n");
-            warned_once = true;
-         }
-      }
+   if (!perf->n_queries)
       goto err;
-   }
 
    /* We need DRM_I915_PERF_PROP_HOLD_PREEMPTION support, only available in
     * perf revision 2.
