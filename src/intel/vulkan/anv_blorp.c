@@ -1852,6 +1852,11 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
     * resolve and then use a second PIPE_CONTROL after the resolve to ensure
     * that it is completed before any additional drawing occurs.
     */
+
+   /* Wa_14015264727, on DG2 we need to flush data cache before fast clear. */
+   bool data_cache_flush_needed =
+      intel_device_info_is_dg2(&cmd_buffer->device->info);
+
    anv_add_pending_pipe_bits(cmd_buffer,
                              ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
                              ANV_PIPE_TILE_CACHE_FLUSH_BIT |
@@ -1859,6 +1864,8 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
                                 ANV_PIPE_DEPTH_STALL_BIT : 0) |
                              (devinfo->verx10 == 125 ?
                                 ANV_PIPE_HDC_PIPELINE_FLUSH_BIT : 0) |
+                             (data_cache_flush_needed ?
+                             ANV_PIPE_DATA_CACHE_FLUSH_BIT : 0) |
                              ANV_PIPE_PSS_STALL_SYNC_BIT |
                              ANV_PIPE_END_OF_PIPE_SYNC_BIT,
                              "before fast clear mcs");
