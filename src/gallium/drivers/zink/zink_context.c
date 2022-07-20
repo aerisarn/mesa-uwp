@@ -2353,6 +2353,7 @@ zink_batch_rp(struct zink_context *ctx)
       clear_buffers = zink_begin_render_pass(ctx);
    else
       clear_buffers = begin_rendering(ctx);
+   assert(!ctx->rp_changed);
    if (in_rp || !ctx->batch.in_rp)
       return; //dead swapchain or continued renderpass
    if (ctx->render_condition.query)
