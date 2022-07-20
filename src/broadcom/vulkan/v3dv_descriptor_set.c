@@ -421,7 +421,6 @@ v3dv_CreateDescriptorPool(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO);
 
-   assert(pCreateInfo->poolSizeCount > 0);
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       /* Verify supported descriptor type */
       switch(pCreateInfo->pPoolSizes[i].type) {
