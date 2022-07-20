@@ -408,6 +408,7 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
                   "buffer_subdata to upload compressed bitstream.\n");
    pD3D12Screen->base.fence_finish(&pD3D12Screen->base, NULL, pUploadGPUCompletionFence, PIPE_TIMEOUT_INFINITE);
    pD3D12Screen->base.fence_reference(&pD3D12Screen->base, &pUploadGPUCompletionFence, NULL);
+   pipe_resource_reference(&pPipeCompressedBufferObj, NULL);
 
    // [After buffer_subdata GPU work is finished] Clear CPU staging buffer now that end_frame is called and was uploaded
    // to GPU for DecodeFrame call.
@@ -648,6 +649,7 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
                      "resource_copy_region on decoded frame.\n");
       pD3D12Screen->base.fence_finish(&pD3D12Screen->base, NULL, completion_fence, PIPE_TIMEOUT_INFINITE);
       pD3D12Screen->base.fence_reference(&pD3D12Screen->base, &completion_fence, NULL);
+      pipe_resource_reference(&pPipeSrc, NULL);
    }
 }
 

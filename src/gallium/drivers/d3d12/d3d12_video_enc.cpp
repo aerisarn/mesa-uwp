@@ -1631,6 +1631,7 @@ d3d12_video_encoder_extract_encode_metadata(
 
    // Unmap the buffer tmp storage
    pipe_buffer_unmap(pD3D12Enc->base.context, mapTransfer);
+   pipe_resource_reference(&pPipeResolvedMetadataBuffer, NULL);
 }
 
 /**

@@ -705,6 +705,7 @@ d3d12_resource_from_resource(struct pipe_screen *pscreen,
     handle.type = WINSYS_HANDLE_TYPE_D3D12_RES;
     handle.format = d3d12_get_pipe_format(input_desc.Format);
     handle.com_obj = input_res;
+    input_res->AddRef();
 
     struct pipe_resource templ;
     memset(&templ, 0, sizeof(templ));
