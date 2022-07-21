@@ -371,6 +371,79 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
    return needs_execute_fixup;
 }
 
+static void
+append_barrier(struct d3d12_context *ctx,
+               d3d12_bo *bo,
+               d3d12_context_state_table_entry *state_entry,
+               D3D12_RESOURCE_STATES after,
+               UINT subresource,
+               bool is_implicit_dispatch)
+{
+   uint64_t offset;
+   ID3D12Resource *res = d3d12_bo_get_base(bo, &offset)->res;
+   d3d12_resource_state *current_state = &state_entry->batch_end;
+
+   D3D12_RESOURCE_BARRIER transition_desc = { D3D12_RESOURCE_BARRIER_TYPE_TRANSITION };
+   transition_desc.Transition.pResource = res;
+   transition_desc.Transition.Subresource = subresource;
+
+   // This is a transition into a state that is both write and non-write.
+   // This is invalid according to D3D12. We're venturing into undefined behavior
+   // land, but let's just pick the write state.
+   if (d3d12_is_write_state(after) && (after & ~RESOURCE_STATE_ALL_WRITE_BITS) != 0) {
+      after &= RESOURCE_STATE_ALL_WRITE_BITS;
+
+      // For now, this is the only way I've seen where this can happen.
+      assert(after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+   }
+
+   assert((subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES && current_state->homogenous) ||
+          subresource < current_state->num_subresources);
+   d3d12_subresource_state current_subresource_state = *d3d12_get_subresource_state(current_state, subresource);
+
+   // If the last time this state was set was in a different execution
+   // period and is decayable then decay the current state to COMMON
+   if (ctx->submit_id != current_subresource_state.execution_id && current_subresource_state.may_decay) {
+      current_subresource_state.state = D3D12_RESOURCE_STATE_COMMON;
+      current_subresource_state.is_promoted = false;
+   }
+   bool may_decay = false;
+   bool is_promotion = false;
+
+   D3D12_RESOURCE_STATES state_if_promoted =
+      d3d12_resource_state_if_promoted(after, current_state->supports_simultaneous_access, &current_subresource_state);
+
+   if (D3D12_RESOURCE_STATE_COMMON == state_if_promoted) {
+      // No promotion
+      if (current_subresource_state.state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
+            after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
+            is_implicit_dispatch) {
+         D3D12_RESOURCE_BARRIER uav_barrier = { D3D12_RESOURCE_BARRIER_TYPE_UAV };
+         uav_barrier.UAV.pResource = res;
+         util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, uav_barrier);
+      } else if (transition_required(current_subresource_state.state, /*inout*/ &after)) {
+         // Insert a single concrete barrier (for non-simultaneous access resources).
+         transition_desc.Transition.StateBefore = current_subresource_state.state;
+         transition_desc.Transition.StateAfter = after;
+         assert(transition_desc.Transition.StateBefore != transition_desc.Transition.StateAfter);
+         util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, transition_desc);
+
+         may_decay = current_state->supports_simultaneous_access && !d3d12_is_write_state(after);
+         is_promotion = false;
+      }
+   } else if (after != state_if_promoted) {
+      after = state_if_promoted;
+      may_decay = !d3d12_is_write_state(after);
+      is_promotion = true;
+   }
+
+   d3d12_subresource_state new_subresource_state { after, ctx->submit_id, is_promotion, may_decay };
+   if (subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+      d3d12_set_resource_state(current_state, &new_subresource_state);
+   else
+      d3d12_set_subresource_state(current_state, subresource, &new_subresource_state);
+}
+
 void
 d3d12_transition_resource_state(struct d3d12_context *ctx,
                                 struct d3d12_resource *res,
@@ -419,8 +492,6 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
 {
    set_foreach_remove(ctx->pending_barriers_bos, entry) {
       d3d12_bo *bo = (d3d12_bo *)entry->key;
-      uint64_t offset;
-      ID3D12Resource *res = d3d12_bo_get_base(bo, &offset)->res;
 
       d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, bo);
       d3d12_desired_resource_state *destination_state = &state_entry->desired;
@@ -429,13 +500,10 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
       // Figure out the set of subresources that are transitioning
       bool all_resources_at_once = current_state->homogenous && destination_state->homogenous;
 
-      D3D12_RESOURCE_BARRIER transition_desc = { D3D12_RESOURCE_BARRIER_TYPE_TRANSITION };
-      transition_desc.Transition.pResource = res;
-
       UINT num_subresources = all_resources_at_once ? 1 : current_state->num_subresources;
       for (UINT i = 0; i < num_subresources; ++i) {
          D3D12_RESOURCE_STATES after = d3d12_get_desired_subresource_state(destination_state, i);
-         transition_desc.Transition.Subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
+         UINT subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
 
          // Is this subresource currently being used, or is it just being iterated over?
          if (after == UNKNOWN_RESOURCE_STATE) {
@@ -443,59 +511,7 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
             continue;
          }
 
-         // This is a transition into a state that is both write and non-write.
-         // This is invalid according to D3D12. We're venturing into undefined behavior
-         // land, but let's just pick the write state.
-         if (d3d12_is_write_state(after) && (after & ~RESOURCE_STATE_ALL_WRITE_BITS) != 0) {
-            after &= RESOURCE_STATE_ALL_WRITE_BITS;
-
-            // For now, this is the only way I've seen where this can happen.
-            assert(after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-         }
-
-         d3d12_subresource_state current_subresource_state = *d3d12_get_subresource_state(current_state, i);
-
-         // If the last time this state was set was in a different execution
-         // period and is decayable then decay the current state to COMMON
-         if (ctx->submit_id != current_subresource_state.execution_id && current_subresource_state.may_decay) {
-            current_subresource_state.state = D3D12_RESOURCE_STATE_COMMON;
-            current_subresource_state.is_promoted = false;
-         }
-         bool may_decay = false;
-         bool is_promotion = false;
-
-         D3D12_RESOURCE_STATES state_if_promoted =
-            d3d12_resource_state_if_promoted(after, current_state->supports_simultaneous_access, &current_subresource_state);
-
-         if (D3D12_RESOURCE_STATE_COMMON == state_if_promoted) {
-            // No promotion
-            if (current_subresource_state.state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
-                after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
-                is_implicit_dispatch) {
-               D3D12_RESOURCE_BARRIER uav_barrier = { D3D12_RESOURCE_BARRIER_TYPE_UAV };
-               uav_barrier.UAV.pResource = res;
-               util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, uav_barrier);
-            } else if (transition_required(current_subresource_state.state, /*inout*/ &after)) {
-               // Insert a single concrete barrier (for non-simultaneous access resources).
-               transition_desc.Transition.StateBefore = current_subresource_state.state;
-               transition_desc.Transition.StateAfter = after;
-               assert(transition_desc.Transition.StateBefore != transition_desc.Transition.StateAfter);
-               util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, transition_desc);
-
-               may_decay = current_state->supports_simultaneous_access && !d3d12_is_write_state(after);
-               is_promotion = false;
-            }
-         } else if (after != state_if_promoted) {
-            after = state_if_promoted;
-            may_decay = !d3d12_is_write_state(after);
-            is_promotion = true;
-         }
-
-         d3d12_subresource_state new_subresource_state { after, ctx->submit_id, is_promotion, may_decay };
-         if (num_subresources == 1)
-            d3d12_set_resource_state(current_state, &new_subresource_state);
-         else
-            d3d12_set_subresource_state(current_state, i, &new_subresource_state);
+         append_barrier(ctx, bo, state_entry, after, subresource, is_implicit_dispatch);
       }
 
       // Update destination states.
