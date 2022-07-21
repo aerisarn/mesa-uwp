@@ -1454,8 +1454,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
                                  RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 
-   if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->db_depth_control != pipeline->db_depth_control)
+   if (!cmd_buffer->state.emitted_graphics_pipeline)
       cmd_buffer->state.dirty |=
          RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE | RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
@@ -1720,28 +1719,17 @@ radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_depth_control(struct radv_cmd_buffer *cmd_buffer)
 {
-   unsigned db_depth_control = cmd_buffer->state.graphics_pipeline->db_depth_control;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   db_depth_control &= C_028800_Z_ENABLE &
-                       C_028800_Z_WRITE_ENABLE &
-                       C_028800_ZFUNC &
-                       C_028800_DEPTH_BOUNDS_ENABLE &
-                       C_028800_STENCIL_ENABLE &
-                       C_028800_BACKFACE_ENABLE &
-                       C_028800_STENCILFUNC &
-                       C_028800_STENCILFUNC_BF;
-
-   db_depth_control |= S_028800_Z_ENABLE(d->depth_test_enable ? 1 : 0) |
-                       S_028800_Z_WRITE_ENABLE(d->depth_write_enable ? 1 : 0) |
-                       S_028800_ZFUNC(d->depth_compare_op) |
-                       S_028800_DEPTH_BOUNDS_ENABLE(d->depth_bounds_test_enable ? 1 : 0) |
-                       S_028800_STENCIL_ENABLE(d->stencil_test_enable ? 1 : 0) |
-                       S_028800_BACKFACE_ENABLE(d->stencil_test_enable ? 1 : 0) |
-                       S_028800_STENCILFUNC(d->stencil_op.front.compare_op) |
-                       S_028800_STENCILFUNC_BF(d->stencil_op.back.compare_op);
-
-   radeon_set_context_reg(cmd_buffer->cs, R_028800_DB_DEPTH_CONTROL, db_depth_control);
+   radeon_set_context_reg(cmd_buffer->cs, R_028800_DB_DEPTH_CONTROL,
+                          S_028800_Z_ENABLE(d->depth_test_enable ? 1 : 0) |
+                          S_028800_Z_WRITE_ENABLE(d->depth_write_enable ? 1 : 0) |
+                          S_028800_ZFUNC(d->depth_compare_op) |
+                          S_028800_DEPTH_BOUNDS_ENABLE(d->depth_bounds_test_enable ? 1 : 0) |
+                          S_028800_STENCIL_ENABLE(d->stencil_test_enable ? 1 : 0) |
+                          S_028800_BACKFACE_ENABLE(d->stencil_test_enable ? 1 : 0) |
+                          S_028800_STENCILFUNC(d->stencil_op.front.compare_op) |
+                          S_028800_STENCILFUNC_BF(d->stencil_op.back.compare_op));
 }
 
 static void

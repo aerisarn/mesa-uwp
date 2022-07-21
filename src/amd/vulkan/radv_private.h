@@ -2152,7 +2152,6 @@ struct radv_graphics_pipeline {
    uint64_t needed_dynamic_state;
    unsigned tess_patch_control_points;
    unsigned pa_su_sc_mode_cntl;
-   unsigned db_depth_control;
    unsigned pa_cl_clip_cntl;
    unsigned cb_color_control;
    uint32_t binding_stride[MAX_VBS];

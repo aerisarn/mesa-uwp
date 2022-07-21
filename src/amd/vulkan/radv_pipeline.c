@@ -2200,15 +2200,9 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
    const struct radv_device *device = pipeline->base.device;
 
    pipeline->pa_su_sc_mode_cntl =
-      S_028814_FACE(info->rs.front_face) |
-      S_028814_CULL_FRONT(!!(info->rs.cull_mode & VK_CULL_MODE_FRONT_BIT)) |
-      S_028814_CULL_BACK(!!(info->rs.cull_mode & VK_CULL_MODE_BACK_BIT)) |
       S_028814_POLY_MODE(info->rs.polygon_mode != V_028814_X_DRAW_TRIANGLES) |
       S_028814_POLYMODE_FRONT_PTYPE(info->rs.polygon_mode) |
       S_028814_POLYMODE_BACK_PTYPE(info->rs.polygon_mode) |
-      S_028814_POLY_OFFSET_FRONT_ENABLE(info->rs.depth_bias_enable) |
-      S_028814_POLY_OFFSET_BACK_ENABLE(info->rs.depth_bias_enable) |
-      S_028814_POLY_OFFSET_PARA_ENABLE(info->rs.depth_bias_enable) |
       S_028814_PROVOKING_VTX_LAST(info->rs.provoking_vtx_last);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
@@ -2221,7 +2215,6 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
       S_028810_DX_CLIP_SPACE_DEF(!pipeline->negative_one_to_one) |
       S_028810_ZCLIP_NEAR_DISABLE(info->rs.depth_clip_disable) |
       S_028810_ZCLIP_FAR_DISABLE(info->rs.depth_clip_disable) |
-      S_028810_DX_RASTERIZATION_KILL(info->rs.discard_enable) |
       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
    pipeline->uses_conservative_overestimate =
@@ -2248,10 +2241,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_depth_stencil_state ds_state = {0};
-   uint32_t db_depth_control = 0;
 
    bool has_depth_attachment = info->ri.depth_att_format != VK_FORMAT_UNDEFINED;
-   bool has_stencil_attachment = info->ri.stencil_att_format != VK_FORMAT_UNDEFINED;
 
    if (has_depth_attachment) {
       /* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
@@ -2259,17 +2250,6 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 
       if (pdevice->rad_info.gfx_level >= GFX10_3)
          ds_state.db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
-
-      db_depth_control = S_028800_Z_ENABLE(info->ds.depth_test_enable) |
-                         S_028800_Z_WRITE_ENABLE(info->ds.depth_write_enable) |
-                         S_028800_ZFUNC(info->ds.depth_compare_op) |
-                         S_028800_DEPTH_BOUNDS_ENABLE(info->ds.depth_bounds_test_enable);
-   }
-
-   if (has_stencil_attachment && info->ds.stencil_test_enable) {
-      db_depth_control |= S_028800_STENCIL_ENABLE(1) | S_028800_BACKFACE_ENABLE(1);
-      db_depth_control |= S_028800_STENCILFUNC(info->ds.front.compare_op);
-      db_depth_control |= S_028800_STENCILFUNC_BF(info->ds.back.compare_op);
    }
 
    ds_state.db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
@@ -2304,8 +2284,6 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
       ds_state.db_render_control |= S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) |
                                     S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
    }
-
-   pipeline->db_depth_control = db_depth_control;
 
    return ds_state;
 }
