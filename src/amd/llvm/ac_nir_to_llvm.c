@@ -4571,7 +4571,8 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx, LLVMValue
 
 static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
                            struct waterfall_context *wctx, LLVMValueRef *res_ptr,
-                           LLVMValueRef *samp_ptr, LLVMValueRef *fmask_ptr)
+                           LLVMValueRef *samp_ptr, LLVMValueRef *fmask_ptr,
+                           bool divergent)
 {
    LLVMValueRef texture_dynamic_handle = NULL;
    LLVMValueRef sampler_dynamic_handle = NULL;
@@ -4640,10 +4641,10 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
    if (texture_dynamic_handle) {
       /* descriptor handles given through nir_tex_src_{texture,sampler}_handle */
       if (instr->texture_non_uniform)
-         texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, true);
+         texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, divergent);
 
       if (instr->sampler_non_uniform)
-         sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, true);
+         sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, divergent);
 
       *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
                                              main_descriptor, false, false, true);
@@ -4673,11 +4674,11 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
     */
    if (instr->texture_non_uniform ||
        (ctx->abi->use_waterfall_for_divergent_tex_samplers && texture_deref_instr->dest.ssa.divergent))
-      texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, true);
+      texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, divergent);
 
    if (instr->sampler_non_uniform ||
        (ctx->abi->use_waterfall_for_divergent_tex_samplers && sampler_deref_instr->dest.ssa.divergent))
-      sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, true);
+      sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, divergent);
 
    *res_ptr = get_sampler_desc(ctx, texture_deref_instr, main_descriptor, &instr->instr,
                                texture_dynamic_index, false, false);
@@ -4711,7 +4712,14 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    unsigned offset_src = 0;
    struct waterfall_context wctx[2] = {{{0}}};
 
-   tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler, &fmask_ptr);
+   /* Don't use the waterfall loop when returning a descriptor. */
+   tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler, &fmask_ptr,
+                  instr->op != nir_texop_descriptor_amd);
+
+   if (instr->op == nir_texop_descriptor_amd) {
+      result = args.resource;
+      goto write_result;
+   }
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
