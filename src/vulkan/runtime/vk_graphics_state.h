@@ -50,6 +50,7 @@ enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY,
    MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE,
    MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS,
+   MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN,
    MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT,
    MESA_VK_DYNAMIC_VP_VIEWPORTS,
    MESA_VK_DYNAMIC_VP_SCISSOR_COUNT,
@@ -151,10 +152,16 @@ struct vk_input_assembly_state {
 };
 
 struct vk_tessellation_state {
-   /** VkPipelineTessellationStateCreateInfo::patchControlPoints */
+   /** VkPipelineTessellationStateCreateInfo::patchControlPoints
+    *
+    * MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS
+    */
    uint8_t patch_control_points;
 
-   /** VkPipelineTessellationDomainOriginStateCreateInfo::domainOrigin */
+   /** VkPipelineTessellationDomainOriginStateCreateInfo::domainOrigin
+    *
+    * MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN
+    */
    uint8_t domain_origin;
 };
 
@@ -616,11 +623,11 @@ struct vk_dynamic_graphics_state {
     */
    uint16_t vi_binding_strides[MESA_VK_MAX_VERTEX_BINDINGS];
 
+   /** Input assembly state */
    struct vk_input_assembly_state ia;
 
-   struct {
-      uint32_t patch_control_points;
-   } ts;
+   /** Tessellation state */
+   struct vk_tessellation_state ts;
 
    /** Viewport state */
    struct vk_viewport_state vp;

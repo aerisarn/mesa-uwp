@@ -49,8 +49,10 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE);
    }
 
-   if (groups & MESA_VK_GRAPHICS_STATE_TESSELLATION_BIT)
+   if (groups & MESA_VK_GRAPHICS_STATE_TESSELLATION_BIT) {
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
+   }
 
    if (groups & MESA_VK_GRAPHICS_STATE_VIEWPORT_BIT) {
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT);
@@ -115,6 +117,10 @@ fully_dynamic_state_groups(const BITSET_WORD *dynamic)
 
    if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI))
       groups |= MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT;
+
+   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN))
+      groups |= MESA_VK_GRAPHICS_STATE_TESSELLATION_BIT;
 
    if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_FSR))
       groups |= MESA_VK_GRAPHICS_STATE_FRAGMENT_SHADING_RATE_BIT;
@@ -209,6 +215,7 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       CASE( PATCH_CONTROL_POINTS_EXT,     TS_PATCH_CONTROL_POINTS)
       CASE( LOGIC_OP_EXT,                 CB_LOGIC_OP)
       CASE( COLOR_WRITE_ENABLE_EXT,       CB_COLOR_WRITE_ENABLES)
+      CASE( TESSELLATION_DOMAIN_ORIGIN_EXT, TS_DOMAIN_ORIGIN)
       CASE( DEPTH_CLAMP_ENABLE_EXT,       RS_DEPTH_CLAMP_ENABLE)
       CASE( POLYGON_MODE_EXT,             RS_POLYGON_MODE)
       CASE( RASTERIZATION_STREAM_EXT,     RS_RASTERIZATION_STREAM)
@@ -343,14 +350,15 @@ vk_tessellation_state_init(struct vk_tessellation_state *ts,
       ts->patch_control_points = ts_info->patchControlPoints;
    }
 
-   const VkPipelineTessellationDomainOriginStateCreateInfo *ts_do_info =
-      vk_find_struct_const(ts_info->pNext,
-                           PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
-   if (ts_do_info != NULL) {
-      assert(ts_do_info->domainOrigin <= UINT8_MAX);
-      ts->domain_origin = ts_do_info->domainOrigin;
-   } else {
-      ts->domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
+   ts->domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
+   if (!IS_DYNAMIC(TS_DOMAIN_ORIGIN)) {
+      const VkPipelineTessellationDomainOriginStateCreateInfo *ts_do_info =
+         vk_find_struct_const(ts_info->pNext,
+                              PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
+      if (ts_do_info != NULL) {
+         assert(ts_do_info->domainOrigin <= UINT8_MAX);
+         ts->domain_origin = ts_do_info->domainOrigin;
+      }
    }
 }
 
@@ -359,7 +367,7 @@ vk_dynamic_graphics_state_init_ts(struct vk_dynamic_graphics_state *dst,
                                   const BITSET_WORD *needed,
                                   const struct vk_tessellation_state *ts)
 {
-   dst->ts.patch_control_points = ts->patch_control_points;
+   dst->ts = *ts;
 }
 
 static void
@@ -1569,6 +1577,7 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
    COPY_IF_SET(IA_PRIMITIVE_TOPOLOGY, ia.primitive_topology);
    COPY_IF_SET(IA_PRIMITIVE_RESTART_ENABLE, ia.primitive_restart_enable);
    COPY_IF_SET(TS_PATCH_CONTROL_POINTS, ts.patch_control_points);
+   COPY_IF_SET(TS_DOMAIN_ORIGIN, ts.domain_origin);
 
    COPY_IF_SET(VP_VIEWPORT_COUNT, vp.viewport_count);
    if (IS_SET_IN_SRC(VP_VIEWPORTS)) {
@@ -1785,6 +1794,16 @@ vk_common_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer,
 
    SET_DYN_VALUE(dyn, TS_PATCH_CONTROL_POINTS,
                  ts.patch_control_points, patchControlPoints);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetTessellationDomainOriginEXT(VkCommandBuffer commandBuffer,
+                                            VkTessellationDomainOrigin domainOrigin)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, TS_DOMAIN_ORIGIN, ts.domain_origin, domainOrigin);
 }
 
 VKAPI_ATTR void VKAPI_CALL
