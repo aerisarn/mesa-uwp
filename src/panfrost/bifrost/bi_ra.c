@@ -718,9 +718,8 @@ bi_lower_vector(bi_context *ctx)
                         bi_index src = I->src[0];
                         assert(src.offset == 0);
 
-                        for (unsigned i = 0; i < I->nr_dests; ++i) {
-                                if (bi_is_null(I->dest[i]))
-                                        continue;
+                        bi_foreach_dest(I, i) {
+                                assert(!bi_is_null(I->dest[i]));
 
                                 src.offset = i;
                                 bi_mov_i32_to(&b, I->dest[i], src);

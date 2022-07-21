@@ -46,8 +46,6 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                         bool all_null = true;
 
                         bi_foreach_dest(ins, d) {
-                                unsigned index = bi_get_node(ins->dest[d]);
-
                                 /* Destination required */
                                 if (ins->op == BI_OPCODE_AXCHG_I32 ||
                                     ins->op == BI_OPCODE_ACMPXCHG_I32 ||
@@ -58,10 +56,12 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                                     ins->op == BI_OPCODE_ZS_EMIT)
                                         continue;
 
-                                if (index < temp_count && !(live[index] & bi_writemask(ins, d)))
-                                        ins->dest[d] = bi_null();
+                                unsigned index = bi_get_node(ins->dest[d]);
 
-                                all_null &= bi_is_null(ins->dest[d]);
+                                if (index >= temp_count)
+                                        all_null = false;
+                                else if (live[index] & bi_writemask(ins, d))
+                                        all_null = false;
                         }
 
                         if (all_null && !bi_side_effects(ins))
