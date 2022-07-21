@@ -4865,6 +4865,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          if (lowered_ngg)
             radv_lower_ngg(device, &stages[i], pipeline_key);
 
+         if (radv_use_llvm_for_stage(device, i) &&
+             stages[i].nir->info.uses_resource_info_query)
+            NIR_PASS(_, stages[i].nir, ac_nir_lower_resinfo, device->physical_device->rad_info.gfx_level);
+
          NIR_PASS(_, stages[i].nir, ac_nir_lower_global_access);
          NIR_PASS_V(stages[i].nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level,
                     &stages[i].info, &stages[i].args, pipeline_key,
