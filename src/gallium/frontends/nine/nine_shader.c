@@ -28,6 +28,7 @@
 #include "nine_state.h"
 #include "vertexdeclaration9.h"
 
+#include "util/bitscan.h"
 #include "util/macros.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -465,7 +466,7 @@ struct shader_translator
     struct {
         struct ureg_dst *r;
         struct ureg_dst oPos;
-        struct ureg_dst oPos_out; /* the real output when doing streamout */
+        struct ureg_dst oPos_out; /* the real output when doing streamout or clipplane emulation */
         struct ureg_dst oFog;
         struct ureg_dst oPts;
         struct ureg_dst oCol[4];
@@ -1339,9 +1340,13 @@ _tx_dst_param(struct shader_translator *tx, const struct sm1_dst_param *param)
         assert(!param->rel);
         switch (param->idx) {
         case 0:
-            if (ureg_dst_is_undef(tx->regs.oPos))
-                tx->regs.oPos =
-                    ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_POSITION, 0);
+            if (ureg_dst_is_undef(tx->regs.oPos)) {
+                if (tx->info->clip_plane_emulation > 0) {
+                    tx->regs.oPos = ureg_DECL_temporary(tx->ureg);
+                } else {
+                    tx->regs.oPos = tx->regs.oPos_out;
+                }
+            }
             dst = tx->regs.oPos;
             break;
         case 1:
@@ -2327,8 +2332,9 @@ DECL_SPECIAL(DCL)
             tx->regs.o[sem.reg.idx] = ureg_DECL_output_masked(
                 ureg, tgsi.Name, tgsi.Index, sem.reg.mask, 0, 1);
             nine_record_outputs(tx, sem.usage, sem.usage_idx, sem.reg.mask, sem.reg.idx);
-            if (tx->info->process_vertices && sem.usage == D3DDECLUSAGE_POSITION && sem.usage_idx == 0) {
-                tx->regs.oPos_out = tx->regs.o[sem.reg.idx];
+            if ((tx->info->process_vertices || tx->info->clip_plane_emulation > 0) &&
+                sem.usage == D3DDECLUSAGE_POSITION && sem.usage_idx == 0) {
+                tx->regs.oPos_out = tx->regs.o[sem.reg.idx]; /* TODO: probably not good declare it twice */
                 tx->regs.o[sem.reg.idx] = ureg_DECL_temporary(ureg);
                 tx->regs.oPos = tx->regs.o[sem.reg.idx];
             }
@@ -3711,7 +3717,7 @@ tx_ctor(struct shader_translator *tx, struct pipe_screen *screen, struct nine_sh
      * (Some drivers like nv50 are buggy and rely on that.)
      */
     if (IS_VS) {
-        tx->regs.oPos = ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_POSITION, 0);
+        tx->regs.oPos_out = ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_POSITION, 0);
     } else {
         ureg_property(tx->ureg, TGSI_PROPERTY_FS_COORD_ORIGIN, TGSI_FS_COORD_ORIGIN_UPPER_LEFT);
         if (!tx->shift_wpos)
@@ -3906,8 +3912,31 @@ static void parse_shader(struct shader_translator *tx)
         info->point_size = TRUE;
     } else if (IS_VS && tx->always_output_pointsize) {
         struct ureg_dst oPts = ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_PSIZE, 0);
-        ureg_MOV(tx->ureg, ureg_writemask(oPts, TGSI_WRITEMASK_X), nine_special_constant_src(tx, 0));
+        ureg_MOV(tx->ureg, ureg_writemask(oPts, TGSI_WRITEMASK_X), nine_special_constant_src(tx, 8));
         info->point_size = TRUE;
+    }
+
+    if (IS_VS && tx->info->clip_plane_emulation > 0) {
+        struct ureg_dst clipdist[2] = {ureg_dst_undef(), ureg_dst_undef()};
+        int num_clipdist = ffs(tx->info->clip_plane_emulation);
+        int i;
+        /* TODO: handle undefined channels of oPos (w is not always written to I think. default is 1) *
+         * Note in d3d9 it's not possible to output clipvert, so we don't need to check
+         * for its existence */
+        clipdist[0] = ureg_DECL_output_masked(tx->ureg, TGSI_SEMANTIC_CLIPDIST, 0, ((1 << num_clipdist) - 1) & 0xf, 0, 1);
+        if (num_clipdist >= 5)
+            clipdist[1] = ureg_DECL_output_masked(tx->ureg, TGSI_SEMANTIC_CLIPDIST, 1, ((1 << (num_clipdist - 4)) - 1) & 0xf, 0, 1);
+        ureg_property(tx->ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED, num_clipdist);
+        for (i = 0; i < num_clipdist; i++) {
+            assert(!ureg_dst_is_undef(clipdist[i>>2]));
+            if (!(tx->info->clip_plane_emulation & (1 << i)))
+                ureg_MOV(tx->ureg, ureg_writemask(clipdist[i>>2], 1 << (i & 0x2)), ureg_imm1f(tx->ureg, 0.f));
+            else
+                ureg_DP4(tx->ureg, ureg_writemask(clipdist[i>>2], 1 << (i & 0x2)),
+                         ureg_src(tx->regs.oPos), nine_special_constant_src(tx, i));
+        }
+
+        ureg_MOV(tx->ureg, tx->regs.oPos_out, ureg_src(tx->regs.oPos));
     }
 
     if (info->process_vertices)

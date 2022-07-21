@@ -563,10 +563,13 @@ NineDevice9_ctor( struct NineDevice9 *This,
     /* Always write pointsize output when the driver doesn't support point_size_per_vertex = 0.
      * TODO: Only generate pointsize for draw calls that need it */
     This->driver_caps.always_output_pointsize = !GET_PCAP(POINT_SIZE_FIXED);
+    This->driver_caps.emulate_ucp = !(GET_PCAP(CLIP_PLANES) == 1 || GET_PCAP(CLIP_PLANES) >= 8);
 
     /* Disable SPE constants if there is no room for them */
-    if (This->max_vs_const_f != NINE_MAX_CONST_F)
+    if (This->max_vs_const_f != NINE_MAX_CONST_F) {
         This->driver_caps.always_output_pointsize = false;
+        This->driver_caps.emulate_ucp = false;
+    }
 
     This->context.inline_constants = pCTX->shader_inline_constants;
     /* Code would be needed when integers are not available to correctly

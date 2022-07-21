@@ -76,6 +76,7 @@ struct nine_shader_info
     uint8_t projected; /* ps 1.1 to 1.3 */
     uint16_t fetch4;
     uint8_t alpha_test_emulation;
+    uint8_t clip_plane_emulation;
 
     unsigned const_i_base; /* in vec4 (16 byte) units */
     unsigned const_b_base; /* in vec4 (16 byte) units */

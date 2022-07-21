@@ -135,6 +135,7 @@ struct NineDevice9
         boolean offset_units_unscaled;
         boolean alpha_test_emulation;
         boolean always_output_pointsize;
+        boolean emulate_ucp;
     } driver_caps;
 
     struct {

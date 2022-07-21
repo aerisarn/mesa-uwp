@@ -389,8 +389,14 @@ prepare_vs_constants_userbuf_swvp(struct NineDevice9 *device)
 {
     struct nine_context *context = &device->context;
 
+    if (device->driver_caps.emulate_ucp) {
+        /* TODO: Avoid memcpy all time by storing directly into the array */
+        memcpy(&context->vs_const_f[4 * NINE_MAX_CONST_SWVP_SPE_OFFSET], &context->clip.ucp, sizeof(context->clip));
+        context->changed.vs_const_f = 1; /* TODO optimize */
+    }
+
     if (device->driver_caps.always_output_pointsize) {
-        context->vs_const_f[4 * NINE_MAX_CONST_SWVP_SPE_OFFSET] =
+        context->vs_const_f[4 * (NINE_MAX_CONST_SWVP_SPE_OFFSET + 8)] =
             CLAMP(asfloat(context->rs[D3DRS_POINTSIZE]),
                 asfloat(context->rs[D3DRS_POINTSIZE_MIN]),
                 asfloat(context->rs[D3DRS_POINTSIZE_MAX]));
@@ -479,8 +485,12 @@ prepare_vs_constants_userbuf(struct NineDevice9 *device)
         return;
     }
 
+    if (device->driver_caps.emulate_ucp) {
+        /* TODO: Avoid memcpy all time by storing directly into the array */
+        memcpy(&context->vs_const_f[4 * NINE_MAX_CONST_VS_SPE_OFFSET], &context->clip.ucp, sizeof(context->clip));
+    }
     if (device->driver_caps.always_output_pointsize) {
-        context->vs_const_f[4 * NINE_MAX_CONST_VS_SPE_OFFSET] =
+        context->vs_const_f[4 * (NINE_MAX_CONST_VS_SPE_OFFSET + 8)] =
             CLAMP(asfloat(context->rs[D3DRS_POINTSIZE]),
                 asfloat(context->rs[D3DRS_POINTSIZE_MIN]),
                 asfloat(context->rs[D3DRS_POINTSIZE_MAX]));
@@ -1474,6 +1484,9 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
         if (State == D3DRS_POINTSIZE || State == D3DRS_POINTSIZE_MIN || State == D3DRS_POINTSIZE_MAX)
             context->changed.group |= NINE_STATE_VS_CONST;
     }
+
+    if (device->driver_caps.emulate_ucp && State == D3DRS_CLIPPLANEENABLE)
+        context->changed.group |= NINE_STATE_VS_PARAMS_MISC | NINE_STATE_VS_CONST;
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_set_texture_apply,
@@ -2047,7 +2060,10 @@ CSMT_ITEM_NO_WAIT(nine_context_set_clip_plane,
     struct nine_context *context = &device->context;
 
     memcpy(&context->clip.ucp[Index][0], pPlane, sizeof(context->clip.ucp[0]));
-    context->changed.ucp = TRUE;
+    if (!device->driver_caps.emulate_ucp)
+        context->changed.ucp = TRUE;
+    else
+        context->changed.group |= NINE_STATE_FF_VS_OTHER | NINE_STATE_VS_CONST;
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_set_swvp,

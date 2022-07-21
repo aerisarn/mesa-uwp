@@ -20,13 +20,14 @@
 #include "pipe/p_context.h"
 #include "tgsi/tgsi_ureg.h"
 #include "tgsi/tgsi_dump.h"
+#include "util/bitscan.h"
 #include "util/u_box.h"
 #include "util/u_hash_table.h"
 #include "util/u_upload_mgr.h"
 
 #define DBG_CHANNEL DBG_FF
 
-#define NINE_FF_NUM_VS_CONST 196
+#define NINE_FF_NUM_VS_CONST 204
 #define NINE_FF_NUM_PS_CONST 24
 
 struct fvec4
@@ -67,7 +68,7 @@ struct nine_ff_vs_key
             uint32_t tc_gen : 24; /* 8 * 3 bits */
             uint32_t pad4 : 8;
             uint32_t tc_idx : 24;
-            uint32_t pad5 : 8;
+            uint32_t clipplane_emulate : 8;
             uint32_t passthrough;
         };
         uint64_t value64[3]; /* don't forget to resize VertexShader9.ff_key */
@@ -273,6 +274,9 @@ static void nine_ureg_tgsi_dump(struct ureg_program *ureg, boolean override)
  * CONST[164] D3DTS_WORLDMATRIX[1] * D3DTS_VIEW
  * ...
  * CONST[192] D3DTS_WORLDMATRIX[8] * D3DTS_VIEW
+ * CONST[196] UCP0
+ ...
+ * CONST[203] UCP7
  */
 struct vs_build_ctx
 {
@@ -1053,12 +1057,32 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
     /* ucp for ff applies on world coordinates.
      * aVtx is in worldview coordinates. */
     if (key->ucp) {
-        struct ureg_dst clipVect = ureg_DECL_output(ureg, TGSI_SEMANTIC_CLIPVERTEX, 0);
         struct ureg_dst tmp = ureg_DECL_temporary(ureg);
         ureg_MUL(ureg, tmp, _XXXX(vs->aVtx), _CONST(12));
         ureg_MAD(ureg, tmp, _YYYY(vs->aVtx), _CONST(13),  ureg_src(tmp));
         ureg_MAD(ureg, tmp, _ZZZZ(vs->aVtx), _CONST(14), ureg_src(tmp));
-        ureg_ADD(ureg, clipVect, _CONST(15), ureg_src(tmp));
+        if (!key->clipplane_emulate) {
+            struct ureg_dst clipVect = ureg_DECL_output(ureg, TGSI_SEMANTIC_CLIPVERTEX, 0);
+            ureg_ADD(ureg, clipVect, _CONST(15), ureg_src(tmp));
+        } else {
+            struct ureg_dst clipdist[2] = {ureg_dst_undef(), ureg_dst_undef()};
+            int num_clipdist = ffs(key->clipplane_emulate);
+            ureg_ADD(ureg, tmp, _CONST(15), ureg_src(tmp));
+            clipdist[0] = ureg_DECL_output_masked(ureg, TGSI_SEMANTIC_CLIPDIST, 0,
+                                                      ((1 << num_clipdist) - 1) & 0xf, 0, 1);
+            if (num_clipdist >= 5)
+                clipdist[1] = ureg_DECL_output_masked(ureg, TGSI_SEMANTIC_CLIPDIST, 1,
+                                                      ((1 << (num_clipdist - 4)) - 1) & 0xf, 0, 1);
+            ureg_property(ureg, TGSI_PROPERTY_NUM_CLIPDIST_ENABLED, num_clipdist);
+            for (i = 0; i < num_clipdist; i++) {
+                assert(!ureg_dst_is_undef(clipdist[i>>2]));
+                if (!(key->clipplane_emulate & (1 << i)))
+                    ureg_MOV(ureg, ureg_writemask(clipdist[i>>2], 1 << (i & 0x2)), ureg_imm1f(ureg, 0.f));
+                else
+                    ureg_DP4(ureg, ureg_writemask(clipdist[i>>2], 1 << (i & 0x2)),
+                             ureg_src(tmp), _CONST(196+i));
+            }
+        }
         ureg_release_temporary(ureg, tmp);
     }
 
@@ -1662,6 +1686,7 @@ nine_ff_get_vs(struct NineDevice9 *device)
     key.localviewer = !!context->rs[D3DRS_LOCALVIEWER];
     key.normalizenormals = !!context->rs[D3DRS_NORMALIZENORMALS];
     key.ucp = !!context->rs[D3DRS_CLIPPLANEENABLE];
+    key.clipplane_emulate = device->driver_caps.emulate_ucp ? (context->rs[D3DRS_CLIPPLANEENABLE] & 0xff) : 0;
 
     if (context->rs[D3DRS_VERTEXBLEND] != D3DVBF_DISABLE) {
         key.vertexblend_indexed = !!context->rs[D3DRS_INDEXEDVERTEXBLENDENABLE] && has_indexes;
@@ -1973,6 +1998,8 @@ nine_ff_load_point_and_fog_params(struct NineDevice9 *device)
     if (isinf(dst[28].y))
         dst[28].y = 0.0f;
     dst[28].z = asfloat(context->rs[D3DRS_FOGDENSITY]);
+    if (device->driver_caps.emulate_ucp)
+        memcpy(&dst[196], &context->clip.ucp, sizeof(context->clip));
 }
 
 static void
