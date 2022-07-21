@@ -54,6 +54,7 @@ enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_VP_VIEWPORTS,
    MESA_VK_DYNAMIC_VP_SCISSOR_COUNT,
    MESA_VK_DYNAMIC_VP_SCISSORS,
+   MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
    MESA_VK_DYNAMIC_DR_RECTANGLES,
    MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE,
    MESA_VK_DYNAMIC_RS_CULL_MODE,
@@ -149,20 +150,33 @@ struct vk_tessellation_state {
 };
 
 struct vk_viewport_state {
-   /** VkPipelineViewportDepthClipControlCreateInfoEXT::negativeOneToOne */
+   /** VkPipelineViewportDepthClipControlCreateInfoEXT::negativeOneToOne
+    */
    bool depth_clip_negative_one_to_one;
 
-   /** VkPipelineViewportStateCreateInfo::viewportCount */
+   /** VkPipelineViewportStateCreateInfo::viewportCount
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_VIEWPORT_COUNT
+    */
    uint8_t viewport_count;
 
-   /** VkPipelineViewportStateCreateInfo::scissorCount */
+   /** VkPipelineViewportStateCreateInfo::scissorCount
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_SCISSOR_COUNT
+    */
    uint8_t scissor_count;
 
-   /** VkPipelineViewportStateCreateInfo::pViewports */
-   VkRect2D scissors[MESA_VK_MAX_SCISSORS];
-
-   /** VkPipelineViewportStateCreateInfo::pScissors */
+   /** VkPipelineViewportStateCreateInfo::pViewports
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_VIEWPORTS
+    */
    VkViewport viewports[MESA_VK_MAX_VIEWPORTS];
+
+   /** VkPipelineViewportStateCreateInfo::pScissors
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_SCISSORS
+    */
+   VkRect2D scissors[MESA_VK_MAX_SCISSORS];
 };
 
 struct vk_discard_rectangles_state {
@@ -545,31 +559,7 @@ struct vk_dynamic_graphics_state {
    } ts;
 
    /** Viewport state */
-   struct {
-      /** Viewport count
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_VIEWPORT_COUNT
-       */
-      uint32_t viewport_count;
-
-      /** Viewports
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_VIEWPORTS
-       */
-      VkViewport viewports[MESA_VK_MAX_VIEWPORTS];
-
-      /** Scissor count
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_SCISSOR_COUNT
-       */
-      uint32_t scissor_count;
-
-      /** Scissor rects
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_VP_SCISSORS
-       */
-      VkRect2D scissors[MESA_VK_MAX_SCISSORS];
-   } vp;
+   struct vk_viewport_state vp;
 
    /** Discard rectangles
     *

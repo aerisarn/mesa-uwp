@@ -57,6 +57,7 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_VP_VIEWPORTS);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_VP_SCISSOR_COUNT);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_VP_SCISSORS);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE);
    }
 
    if (groups & MESA_VK_GRAPHICS_STATE_DISCARD_RECTANGLES_BIT)
@@ -199,6 +200,7 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       CASE( PATCH_CONTROL_POINTS_EXT,     TS_PATCH_CONTROL_POINTS)
       CASE( LOGIC_OP_EXT,                 CB_LOGIC_OP)
       CASE( COLOR_WRITE_ENABLE_EXT,       CB_COLOR_WRITE_ENABLES)
+      CASE( DEPTH_CLIP_NEGATIVE_ONE_TO_ONE_EXT, VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)
       default:
          unreachable("Unsupported dynamic graphics state");
       }
@@ -372,11 +374,13 @@ vk_viewport_state_init(struct vk_viewport_state *vp,
                    vp_info->scissorCount);
    }
 
-   const VkPipelineViewportDepthClipControlCreateInfoEXT *vp_dcc_info =
-      vk_find_struct_const(vp_info->pNext,
-                           PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
-   if (vp_dcc_info != NULL)
-      vp->depth_clip_negative_one_to_one = vp_dcc_info->negativeOneToOne;
+   if (!IS_DYNAMIC(VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)) {
+      const VkPipelineViewportDepthClipControlCreateInfoEXT *vp_dcc_info =
+         vk_find_struct_const(vp_info->pNext,
+                              PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
+      if (vp_dcc_info != NULL)
+         vp->depth_clip_negative_one_to_one = vp_dcc_info->negativeOneToOne;
+   }
 }
 
 static void
@@ -391,6 +395,8 @@ vk_dynamic_graphics_state_init_vp(struct vk_dynamic_graphics_state *dst,
    dst->vp.scissor_count = vp->scissor_count;
    if (IS_NEEDED(VP_SCISSORS))
       typed_memcpy(dst->vp.scissors, vp->scissors, vp->scissor_count);
+
+   dst->vp.depth_clip_negative_one_to_one = vp->depth_clip_negative_one_to_one;
 }
 
 static void
@@ -1566,6 +1572,9 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
       COPY_ARRAY(VP_SCISSORS, vp.scissors, src->vp.scissor_count);
    }
 
+   COPY_IF_SET(VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
+               vp.depth_clip_negative_one_to_one);
+
    if (IS_SET_IN_SRC(DR_RECTANGLES)) {
       COPY_MEMBER(DR_RECTANGLES, dr.rectangle_count);
       COPY_ARRAY(DR_RECTANGLES, dr.rectangles, src->dr.rectangle_count);
@@ -1807,6 +1816,17 @@ vk_common_CmdSetScissorWithCount(VkCommandBuffer commandBuffer,
 
    SET_DYN_VALUE(dyn, VP_SCISSOR_COUNT, vp.scissor_count, scissorCount);
    SET_DYN_ARRAY(dyn, VP_SCISSORS, vp.scissors, 0, scissorCount, pScissors);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthClipNegativeOneToOneEXT(VkCommandBuffer commandBuffer,
+                                             VkBool32 negativeOneToOne)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
+                vp.depth_clip_negative_one_to_one, negativeOneToOne);
 }
 
 VKAPI_ATTR void VKAPI_CALL
