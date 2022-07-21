@@ -98,6 +98,20 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
    }
 }
 
+static enum mesa_vk_graphics_state_groups
+fully_dynamic_state_groups(const BITSET_WORD *dynamic)
+{
+   enum mesa_vk_graphics_state_groups groups = 0;
+
+   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI))
+      groups |= MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT;
+
+   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_FSR))
+      groups |= MESA_VK_GRAPHICS_STATE_FRAGMENT_SHADING_RATE_BIT;
+
+   return groups;
+}
+
 static void
 validate_dynamic_state_groups(const BITSET_WORD *dynamic,
                               enum mesa_vk_graphics_state_groups groups)
@@ -1206,16 +1220,11 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    BITSET_OR(state->dynamic, state->dynamic, dynamic);
 
    /*
-    * If vertex state or fragment shading rate state are fully dynamic, we
-    * don't need to even allocate them.  Do this after we've filtered
-    * dynamic state because we want to keep the MESA_VK_DYNAMIC_VI and
-    * MESA_VK_DYNAMIC_FSR bits in the dynamic state but don't want the
-    * actual state.
+    * If a state is fully dynamic, we don't need to even allocate them.  Do
+    * this after we've filtered dynamic state because we still want them to
+    * show up in the dynamic state but don't want the actual state.
     */
-   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI))
-      needs &= ~MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT;
-   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_FSR))
-      needs &= ~MESA_VK_GRAPHICS_STATE_FRAGMENT_SHADING_RATE_BIT;
+   needs &= ~fully_dynamic_state_groups(dynamic);
 
    /* If we don't need to set up any new states, bail early */
    if (needs == 0)
