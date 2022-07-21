@@ -248,7 +248,7 @@ form_hard_clauses(Program* program)
 {
    for (Block& block : program->blocks) {
       unsigned num_instrs = 0;
-      aco_ptr<Instruction> current_instrs[64];
+      aco_ptr<Instruction> current_instrs[63];
       clause_type current_type = clause_other;
 
       std::vector<aco_ptr<Instruction>> new_instructions;
@@ -259,7 +259,7 @@ form_hard_clauses(Program* program)
          aco_ptr<Instruction>& instr = block.instructions[i];
 
          clause_type type = get_type(program, instr);
-         if (type != current_type || num_instrs == 64 ||
+         if (type != current_type || num_instrs == 63 ||
              (num_instrs && !should_form_clause(current_instrs[0].get(), instr.get()))) {
             emit_clause(bld, num_instrs, current_instrs);
             num_instrs = 0;
