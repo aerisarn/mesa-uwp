@@ -40,36 +40,27 @@ _TEMPLATE_H = Template(COPYRIGHT + """
 #include <stdbool.h>
 
 %if driver == 'vk':
-#define VK_INSTANCE_EXTENSION_COUNT ${len(instance_extensions)}
 
-extern const VkExtensionProperties vk_instance_extensions[];
+<%def name="extension_table(type, extensions)">
+#define VK_${type.upper()}_EXTENSION_COUNT ${len(extensions)}
 
-struct vk_instance_extension_table {
+extern const VkExtensionProperties vk_${type}_extensions[];
+
+struct vk_${type}_extension_table {
    union {
-      bool extensions[VK_INSTANCE_EXTENSION_COUNT];
+      bool extensions[VK_${type.upper()}_EXTENSION_COUNT];
       struct {
-%for ext in instance_extensions:
+%for ext in extensions:
          bool ${ext.name[3:]};
 %endfor
       };
    };
 };
+</%def>
 
+${extension_table('instance', instance_extensions)}
+${extension_table('device', device_extensions)}
 
-#define VK_DEVICE_EXTENSION_COUNT ${len(device_extensions)}
-
-extern const VkExtensionProperties vk_device_extensions[];
-
-struct vk_device_extension_table {
-   union {
-      bool extensions[VK_DEVICE_EXTENSION_COUNT];
-      struct {
-%for ext in device_extensions:
-        bool ${ext.name[3:]};
-%endfor
-      };
-   };
-};
 %else:
 #include "vk_extensions.h"
 %endif
