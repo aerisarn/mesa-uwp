@@ -1290,9 +1290,9 @@ void Shader::get_shader_info(r600_shader *sh_info)
 {
    sh_info->ninput = m_inputs.size();
    int lds_pos = 0;
-   int output_array_array_loc = 0;
+   int input_array_array_loc = 0;
    for (auto& [index, info] : m_inputs) {
-      r600_shader_io& io = sh_info->input[output_array_array_loc++];
+      r600_shader_io& io = sh_info->input[input_array_array_loc++];
 
       io.sid = info.sid();
       io.gpr = info.gpr();
@@ -1316,9 +1316,10 @@ void Shader::get_shader_info(r600_shader *sh_info)
    sh_info->nlds = lds_pos;
    sh_info->noutput = m_outputs.size();
    sh_info->num_loops = m_nloops;
+   int output_array_array_loc = 0;
 
    for (auto& [index, info] : m_outputs) {
-      r600_shader_io& io = sh_info->output[index];
+      r600_shader_io& io = sh_info->output[output_array_array_loc++];
       io.sid = info.sid();
       io.gpr = info.gpr();
       io.spi_sid = info.spi_sid();
