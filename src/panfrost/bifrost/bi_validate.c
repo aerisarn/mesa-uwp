@@ -171,8 +171,8 @@ bi_validate_src_dest_count(bi_context *ctx)
                         }
                 }
 
-                for (unsigned d = I->nr_dests; d < ARRAY_SIZE(I->dest); ++d) {
-                        if (!bi_is_null(I->dest[d])) {
+                for (unsigned d = 0; d < ARRAY_SIZE(I->dest); ++d) {
+                        if ((d < I->nr_dests) == bi_is_null(I->dest[d])) {
                                 succ = false;
                                 fprintf(stderr,
                                         "unexpected dest %u, expected %u sources\n",
