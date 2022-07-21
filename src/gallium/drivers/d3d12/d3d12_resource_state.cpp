@@ -34,8 +34,16 @@
 
 #define UNKNOWN_RESOURCE_STATE (D3D12_RESOURCE_STATES) 0x8000u
 
-bool
-d3d12_desired_resource_state_init(d3d12_desired_resource_state *state, uint32_t subresource_count)
+/* Stores the current desired state of either an entire resource, or each subresource. */
+struct desired_resource_state
+{
+   bool homogenous;
+   uint32_t num_subresources;
+   D3D12_RESOURCE_STATES *subresource_states;
+};
+
+static bool
+desired_resource_state_init(desired_resource_state *state, uint32_t subresource_count)
 {
    state->homogenous = true;
    state->num_subresources = subresource_count;
@@ -43,14 +51,14 @@ d3d12_desired_resource_state_init(d3d12_desired_resource_state *state, uint32_t 
    return state->subresource_states != nullptr;
 }
 
-void
-d3d12_desired_resource_state_cleanup(d3d12_desired_resource_state *state)
+static void
+desired_resource_state_cleanup(desired_resource_state *state)
 {
    free(state->subresource_states);
 }
 
-D3D12_RESOURCE_STATES
-d3d12_get_desired_subresource_state(const d3d12_desired_resource_state *state, uint32_t subresource_index)
+static D3D12_RESOURCE_STATES
+get_desired_subresource_state(const desired_resource_state *state, uint32_t subresource_index)
 {
    if (state->homogenous)
       subresource_index = 0;
@@ -69,15 +77,15 @@ update_subresource_state(D3D12_RESOURCE_STATES *existing_state, D3D12_RESOURCE_S
    }
 }
 
-void
-d3d12_set_desired_resource_state(d3d12_desired_resource_state *state_obj, D3D12_RESOURCE_STATES state)
+static void
+set_desired_resource_state(desired_resource_state *state_obj, D3D12_RESOURCE_STATES state)
 {
    state_obj->homogenous = true;
    update_subresource_state(&state_obj->subresource_states[0], state);
 }
 
-void
-d3d12_set_desired_subresource_state(d3d12_desired_resource_state *state_obj,
+static void
+set_desired_subresource_state(desired_resource_state *state_obj,
                                     uint32_t subresource,
                                     D3D12_RESOURCE_STATES state)
 {
@@ -91,10 +99,10 @@ d3d12_set_desired_subresource_state(d3d12_desired_resource_state *state_obj,
    update_subresource_state(&state_obj->subresource_states[subresource], state);
 }
 
-void
-d3d12_reset_desired_resource_state(d3d12_desired_resource_state *state_obj)
+static void
+reset_desired_resource_state(desired_resource_state *state_obj)
 {
-   d3d12_set_desired_resource_state(state_obj, UNKNOWN_RESOURCE_STATE);
+   set_desired_resource_state(state_obj, UNKNOWN_RESOURCE_STATE);
 }
 
 bool
@@ -113,23 +121,23 @@ d3d12_resource_state_cleanup(d3d12_resource_state *state)
    free(state->subresource_states);
 }
 
-const d3d12_subresource_state *
-d3d12_get_subresource_state(const d3d12_resource_state *state, uint32_t subresource)
+static const d3d12_subresource_state *
+get_subresource_state(const d3d12_resource_state *state, uint32_t subresource)
 {
    if (state->homogenous)
       subresource = 0;
    return &state->subresource_states[subresource];
 }
 
-void
-d3d12_set_resource_state(d3d12_resource_state *state_obj, const d3d12_subresource_state *state)
+static void
+set_resource_state(d3d12_resource_state *state_obj, const d3d12_subresource_state *state)
 {
    state_obj->homogenous = true;
    state_obj->subresource_states[0] = *state;
 }
 
-void
-d3d12_set_subresource_state(d3d12_resource_state *state_obj, uint32_t subresource, const d3d12_subresource_state *state)
+static void
+set_subresource_state(d3d12_resource_state *state_obj, uint32_t subresource, const d3d12_subresource_state *state)
 {
    if (state_obj->homogenous && state_obj->num_subresources > 1) {
       for (unsigned i = 1; i < state_obj->num_subresources; ++i) {
@@ -141,17 +149,17 @@ d3d12_set_subresource_state(d3d12_resource_state *state_obj, uint32_t subresourc
    state_obj->subresource_states[subresource] = *state;
 }
 
-void
-d3d12_reset_resource_state(d3d12_resource_state *state)
+static void
+reset_resource_state(d3d12_resource_state *state)
 {
    d3d12_subresource_state subres_state = {};
-   d3d12_set_resource_state(state, &subres_state);
+   set_resource_state(state, &subres_state);
 }
 
-D3D12_RESOURCE_STATES
-d3d12_resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
-                                 bool simultaneous_access,
-                                 const d3d12_subresource_state *current_state)
+static D3D12_RESOURCE_STATES
+resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
+                           bool simultaneous_access,
+                           const d3d12_subresource_state *current_state)
 {
    const D3D12_RESOURCE_STATES promotable_states = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
                                                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
@@ -174,12 +182,12 @@ d3d12_resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
    return D3D12_RESOURCE_STATE_COMMON;
 }
 
-void
-d3d12_resource_state_copy(d3d12_resource_state *dest, d3d12_resource_state *src)
+static void
+copy_resource_state(d3d12_resource_state *dest, d3d12_resource_state *src)
 {
    assert(dest->num_subresources == src->num_subresources);
    if (src->homogenous)
-      d3d12_set_resource_state(dest, &src->subresource_states[0]);
+      set_resource_state(dest, &src->subresource_states[0]);
    else {
       dest->homogenous = false;
       for (unsigned i = 0; i < src->num_subresources; ++i)
@@ -189,14 +197,14 @@ d3d12_resource_state_copy(d3d12_resource_state *dest, d3d12_resource_state *src)
 
 struct d3d12_context_state_table_entry
 {
-   struct d3d12_desired_resource_state desired;
+   struct desired_resource_state desired;
    struct d3d12_resource_state batch_begin, batch_end;
 };
 
 static void
 destroy_context_state_table_entry(d3d12_context_state_table_entry *entry)
 {
-   d3d12_desired_resource_state_cleanup(&entry->desired);
+   desired_resource_state_cleanup(&entry->desired);
    d3d12_resource_state_cleanup(&entry->batch_begin);
    d3d12_resource_state_cleanup(&entry->batch_end);
    free(entry);
@@ -240,7 +248,7 @@ init_state_table_entry(d3d12_context_state_table_entry *bo_state, d3d12_bo *bo)
       supports_simultaneous_access = d3d12_resource_supports_simultaneous_access(&desc);
    }
 
-   d3d12_desired_resource_state_init(&bo_state->desired, subresource_count);
+   desired_resource_state_init(&bo_state->desired, subresource_count);
    d3d12_resource_state_init(&bo_state->batch_end, subresource_count, supports_simultaneous_access);
 
    /* We'll never need state fixups for simultaneous access resources, so don't bother initializing this second state */
@@ -311,10 +319,10 @@ resolve_global_state(struct d3d12_context *ctx, ID3D12Resource *res, d3d12_resou
    assert(batch_state->num_subresources == res_state->num_subresources);
    unsigned num_subresources = batch_state->homogenous && res_state->homogenous ? 1 : batch_state->num_subresources;
    for (unsigned i = 0; i < num_subresources; ++i) {
-      const d3d12_subresource_state *current_state = d3d12_get_subresource_state(res_state, i);
-      const d3d12_subresource_state *target_state = d3d12_get_subresource_state(batch_state, i);
+      const d3d12_subresource_state *current_state = get_subresource_state(res_state, i);
+      const d3d12_subresource_state *target_state = get_subresource_state(batch_state, i);
       D3D12_RESOURCE_STATES promotable_state =
-         d3d12_resource_state_if_promoted(target_state->state, false, current_state);
+         resource_state_if_promoted(target_state->state, false, current_state);
 
       D3D12_RESOURCE_STATES after = target_state->state;
       if ((promotable_state & target_state->state) == target_state->state ||
@@ -350,10 +358,10 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
 
          resolve_global_state(ctx, bo->res, &bo_state->batch_begin, &bo->global_state);
 
-         d3d12_resource_state_copy(&bo_state->batch_begin, &bo_state->batch_end);
-         d3d12_resource_state_copy(&bo->global_state, &bo_state->batch_end);
+         copy_resource_state(&bo_state->batch_begin, &bo_state->batch_end);
+         copy_resource_state(&bo->global_state, &bo_state->batch_end);
       } else {
-         d3d12_reset_resource_state(&bo_state->batch_end);
+         reset_resource_state(&bo_state->batch_end);
       }
    }
 
@@ -399,7 +407,7 @@ append_barrier(struct d3d12_context *ctx,
 
    assert((subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES && current_state->homogenous) ||
           subresource < current_state->num_subresources);
-   d3d12_subresource_state current_subresource_state = *d3d12_get_subresource_state(current_state, subresource);
+   d3d12_subresource_state current_subresource_state = *get_subresource_state(current_state, subresource);
 
    // If the last time this state was set was in a different execution
    // period and is decayable then decay the current state to COMMON
@@ -411,7 +419,7 @@ append_barrier(struct d3d12_context *ctx,
    bool is_promotion = false;
 
    D3D12_RESOURCE_STATES state_if_promoted =
-      d3d12_resource_state_if_promoted(after, current_state->supports_simultaneous_access, &current_subresource_state);
+      resource_state_if_promoted(after, current_state->supports_simultaneous_access, &current_subresource_state);
 
    if (D3D12_RESOURCE_STATE_COMMON == state_if_promoted) {
       // No promotion
@@ -439,9 +447,9 @@ append_barrier(struct d3d12_context *ctx,
 
    d3d12_subresource_state new_subresource_state { after, ctx->submit_id, is_promotion, may_decay };
    if (subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
-      d3d12_set_resource_state(current_state, &new_subresource_state);
+      set_resource_state(current_state, &new_subresource_state);
    else
-      d3d12_set_subresource_state(current_state, subresource, &new_subresource_state);
+      set_subresource_state(current_state, subresource, &new_subresource_state);
 }
 
 void
@@ -455,7 +463,7 @@ d3d12_transition_resource_state(struct d3d12_context *ctx,
 
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
    if (flags & D3D12_TRANSITION_FLAG_ACCUMULATE_STATE) {
-      d3d12_set_desired_resource_state(&state_entry->desired, state);
+      set_desired_resource_state(&state_entry->desired, state);
       _mesa_set_add(ctx->pending_barriers_bos, res->bo);
    } else if (state_entry->batch_end.homogenous) {
       append_barrier(ctx, res->bo, state_entry, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, false);
@@ -483,7 +491,7 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
    bool is_accumulate = (flags & D3D12_TRANSITION_FLAG_ACCUMULATE_STATE) != 0;
 
    if (is_whole_resource && is_accumulate) {
-      d3d12_set_desired_resource_state(&state_entry->desired, state);
+      set_desired_resource_state(&state_entry->desired, state);
    } else if (is_whole_resource && state_entry->batch_end.homogenous) {
       append_barrier(ctx, res->bo, state_entry, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, false);
    } else {
@@ -497,7 +505,7 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
                   level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
                assert(subres_id < state_entry->desired.num_subresources);
                if (is_accumulate)
-                  d3d12_set_desired_subresource_state(&state_entry->desired, subres_id, state);
+                  set_desired_subresource_state(&state_entry->desired, subres_id, state);
                else
                   append_barrier(ctx, res->bo, state_entry, state, subres_id, false);
             }
@@ -516,7 +524,7 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
       d3d12_bo *bo = (d3d12_bo *)entry->key;
 
       d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, bo);
-      d3d12_desired_resource_state *destination_state = &state_entry->desired;
+      desired_resource_state *destination_state = &state_entry->desired;
       d3d12_resource_state *current_state = &state_entry->batch_end;
 
       // Figure out the set of subresources that are transitioning
@@ -524,7 +532,7 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
 
       UINT num_subresources = all_resources_at_once ? 1 : current_state->num_subresources;
       for (UINT i = 0; i < num_subresources; ++i) {
-         D3D12_RESOURCE_STATES after = d3d12_get_desired_subresource_state(destination_state, i);
+         D3D12_RESOURCE_STATES after = get_desired_subresource_state(destination_state, i);
          UINT subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
 
          // Is this subresource currently being used, or is it just being iterated over?
@@ -537,7 +545,7 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
       }
 
       // Update destination states.
-      d3d12_reset_desired_resource_state(destination_state);
+      reset_desired_resource_state(destination_state);
    }
 
    if (ctx->barrier_scratch.size) {

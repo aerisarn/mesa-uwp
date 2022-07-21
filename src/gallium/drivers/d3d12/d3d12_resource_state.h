@@ -51,35 +51,6 @@ d3d12_resource_supports_simultaneous_access(const D3D12_RESOURCE_DESC *desc)
           (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) != D3D12_RESOURCE_FLAG_NONE;
 }
 
-/* Stores the current desired state of either an entire resource, or each subresource. */
-struct d3d12_desired_resource_state
-{
-   bool homogenous;
-   uint32_t num_subresources;
-   D3D12_RESOURCE_STATES *subresource_states;
-};
-
-bool
-d3d12_desired_resource_state_init(d3d12_desired_resource_state *state,
-                                  uint32_t subresource_count);
-
-void
-d3d12_desired_resource_state_cleanup(d3d12_desired_resource_state *state);
-
-D3D12_RESOURCE_STATES
-d3d12_get_desired_subresource_state(const d3d12_desired_resource_state *state, uint32_t subresource_index);
-
-void
-d3d12_set_desired_resource_state(d3d12_desired_resource_state *state_obj, D3D12_RESOURCE_STATES state);
-
-void
-d3d12_set_desired_subresource_state(d3d12_desired_resource_state *state_obj,
-                                    uint32_t subresource,
-                                    D3D12_RESOURCE_STATES state);
-
-void
-d3d12_reset_desired_resource_state(d3d12_desired_resource_state *state_obj);
-
 struct d3d12_subresource_state
 {
    D3D12_RESOURCE_STATES state;
@@ -102,26 +73,6 @@ d3d12_resource_state_init(d3d12_resource_state *state, uint32_t subresource_coun
 
 void
 d3d12_resource_state_cleanup(d3d12_resource_state *state);
-
-const d3d12_subresource_state *
-d3d12_get_subresource_state(const d3d12_resource_state *state, uint32_t subresource);
-
-void
-d3d12_set_resource_state(d3d12_resource_state *state_obj, const d3d12_subresource_state *state);
-
-void
-d3d12_set_subresource_state(d3d12_resource_state *state_obj, uint32_t subresource, const d3d12_subresource_state *state);
-
-void
-d3d12_reset_resource_state(d3d12_resource_state *state);
-
-D3D12_RESOURCE_STATES
-d3d12_resource_state_if_promoted(D3D12_RESOURCE_STATES desired_state,
-                                 bool simultaneous_access,
-                                 const d3d12_subresource_state *current_state);
-
-void
-d3d12_resource_state_copy(d3d12_resource_state *dest, d3d12_resource_state *src);
 
 void
 d3d12_context_state_table_init(struct d3d12_context *ctx);
