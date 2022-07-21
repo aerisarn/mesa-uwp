@@ -85,15 +85,26 @@ aco_ptr<Instruction> create_s_mov(Definition dst, Operand src);
 
 enum sendmsg {
    sendmsg_none = 0,
-   _sendmsg_gs = 2,
-   _sendmsg_gs_done = 3,
-   sendmsg_save_wave = 4,
-   sendmsg_stall_wave_gen = 5,
-   sendmsg_halt_waves = 6,
-   sendmsg_ordered_ps_done = 7,
-   sendmsg_early_prim_dealloc = 8,
-   sendmsg_gs_alloc_req = 9,
-   sendmsg_id_mask = 0xf,
+   _sendmsg_gs = 2, /* gfx6 to gfx10.3 */
+   _sendmsg_gs_done = 3, /* gfx6 to gfx10.3 */
+   sendmsg_hs_tessfactor = 2, /* gfx11+ */
+   sendmsg_dealloc_vgprs = 3, /* gfx11+ */
+   sendmsg_save_wave = 4, /* gfx8 to gfx10.3 */
+   sendmsg_stall_wave_gen = 5, /* gfx9+ */
+   sendmsg_halt_waves = 6, /* gfx9+ */
+   sendmsg_ordered_ps_done = 7, /* gfx9+ */
+   sendmsg_early_prim_dealloc = 8, /* gfx9 to gfx10 */
+   sendmsg_gs_alloc_req = 9, /* gfx9+ */
+   sendmsg_get_doorbell = 10, /* gfx9 to gfx10.3 */
+   sendmsg_get_ddid = 11, /* gfx10 to gfx10.3 */
+   sendmsg_rtn_get_doorbell = 128, /* gfx11+ */
+   sendmsg_rtn_get_ddid = 129, /* gfx11+ */
+   sendmsg_rtn_get_tma = 130, /* gfx11+ */
+   sendmsg_rtn_get_realtime = 131, /* gfx11+ */
+   sendmsg_rtn_save_wave = 132, /* gfx11+ */
+   sendmsg_rtn_get_tba = 133, /* gfx11+ */
+   sendmsg_id_mask_gfx6 = 0xf,
+   sendmsg_id_mask_gfx11 = 0xff,
 };
 
 inline sendmsg

@@ -333,16 +333,25 @@ print_instr_format_specific(enum amd_gfx_level gfx_level, const Instruction* ins
          break;
       }
       case aco_opcode::s_sendmsg: {
-         unsigned id = imm & sendmsg_id_mask;
+         unsigned id =
+            gfx_level >= GFX11 ? (imm & sendmsg_id_mask_gfx11) : (imm & sendmsg_id_mask_gfx6);
+         static_assert(_sendmsg_gs == sendmsg_hs_tessfactor);
+         static_assert(_sendmsg_gs_done == sendmsg_dealloc_vgprs);
          switch (id) {
          case sendmsg_none: fprintf(output, " sendmsg(MSG_NONE)"); break;
          case _sendmsg_gs:
-            fprintf(output, " sendmsg(gs%s%s, %u)", imm & 0x10 ? ", cut" : "",
-                    imm & 0x20 ? ", emit" : "", imm >> 8);
+            if (gfx_level >= GFX11)
+               fprintf(output, " sendmsg(hs_tessfactor)");
+            else
+               fprintf(output, " sendmsg(gs%s%s, %u)", imm & 0x10 ? ", cut" : "",
+                       imm & 0x20 ? ", emit" : "", imm >> 8);
             break;
          case _sendmsg_gs_done:
-            fprintf(output, " sendmsg(gs_done%s%s, %u)", imm & 0x10 ? ", cut" : "",
-                    imm & 0x20 ? ", emit" : "", imm >> 8);
+            if (gfx_level >= GFX11)
+               fprintf(output, " sendmsg(dealloc_vgprs)");
+            else
+               fprintf(output, " sendmsg(gs_done%s%s, %u)", imm & 0x10 ? ", cut" : "",
+                       imm & 0x20 ? ", emit" : "", imm >> 8);
             break;
          case sendmsg_save_wave: fprintf(output, " sendmsg(save_wave)"); break;
          case sendmsg_stall_wave_gen: fprintf(output, " sendmsg(stall_wave_gen)"); break;
@@ -350,6 +359,15 @@ print_instr_format_specific(enum amd_gfx_level gfx_level, const Instruction* ins
          case sendmsg_ordered_ps_done: fprintf(output, " sendmsg(ordered_ps_done)"); break;
          case sendmsg_early_prim_dealloc: fprintf(output, " sendmsg(early_prim_dealloc)"); break;
          case sendmsg_gs_alloc_req: fprintf(output, " sendmsg(gs_alloc_req)"); break;
+         case sendmsg_get_doorbell: fprintf(output, " sendmsg(get_doorbell)"); break;
+         case sendmsg_get_ddid: fprintf(output, " sendmsg(get_ddid)"); break;
+         case sendmsg_rtn_get_doorbell: fprintf(output, " sendmsg(rtn_get_doorbell)"); break;
+         case sendmsg_rtn_get_ddid: fprintf(output, " sendmsg(rtn_get_ddid)"); break;
+         case sendmsg_rtn_get_tma: fprintf(output, " sendmsg(rtn_get_Tma)"); break;
+         case sendmsg_rtn_get_realtime: fprintf(output, " sendmsg(rtn_get_realtime)"); break;
+         case sendmsg_rtn_save_wave: fprintf(output, " sendmsg(rtn_save_wave)"); break;
+         case sendmsg_rtn_get_tba: fprintf(output, " sendmsg(rtn_get_Tba)"); break;
+         default: fprintf(output, " imm:%u", imm);
          }
          break;
       }
