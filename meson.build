@@ -1703,7 +1703,7 @@ endif
 llvm_modules = ['bitwriter', 'engine', 'mcdisassembler', 'mcjit', 'core', 'executionengine', 'scalaropts', 'transformutils', 'instcombine']
 llvm_optional_modules = ['coroutines']
 if with_amd_vk or with_gallium_radeonsi or with_gallium_r600
-  llvm_modules += ['amdgpu', 'native', 'bitreader', 'ipo']
+  llvm_modules += ['amdgpu', 'bitreader', 'ipo']
   if with_gallium_r600
     llvm_modules += 'asmparser'
   endif
@@ -1719,7 +1719,8 @@ if with_clc
   llvm_modules += ['coverage', 'target', 'linker', 'irreader', 'option', 'libdriver', 'lto']
   llvm_optional_modules += ['all-targets']
 endif
-if with_tests or with_gallium_softpipe
+draw_with_llvm = get_option('draw-use-llvm')
+if draw_with_llvm
   llvm_modules += 'native'
 endif
 
@@ -1765,7 +1766,6 @@ endif
 
 dep_llvm = null_dep
 with_llvm = false
-draw_with_llvm = get_option('draw-use-llvm')
 if _llvm != 'disabled'
   dep_llvm = dependency(
     'llvm',
