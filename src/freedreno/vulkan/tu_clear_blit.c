@@ -2958,7 +2958,7 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
          vk_format_is_depth_or_stencil(attachment->format)));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 4);
-   if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+   if (iview->image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (!separate_stencil) {
          tu_cs_emit(cs, tu_image_view_depth(iview, RB_BLIT_DST_INFO));
          tu_cs_emit_qw(cs, iview->depth_base_addr);
@@ -2966,16 +2966,10 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
 
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
          tu_cs_image_flag_ref(cs, &iview->view, 0);
-
-         tu_cs_emit_regs(cs,
-                        A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
       } else {
          tu_cs_emit(cs, tu_image_view_stencil(iview, RB_BLIT_DST_INFO) & ~A6XX_RB_BLIT_DST_INFO_FLAGS);
          tu_cs_emit_qw(cs, iview->stencil_base_addr);
          tu_cs_emit(cs, iview->stencil_PITCH);
-
-         tu_cs_emit_regs(cs,
-                        A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset_stencil));
       }
    } else {
       tu_cs_emit(cs, iview->view.RB_BLIT_DST_INFO);
@@ -2983,9 +2977,14 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
       tu_cs_image_flag_ref(cs, &iview->view, 0);
+   }
 
+   if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT && separate_stencil) {
+         tu_cs_emit_regs(cs,
+                        A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset_stencil));
+   } else {
       tu_cs_emit_regs(cs,
-                      A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
+                     A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
    }
 
    tu6_emit_event_write(cmd, cs, BLIT);

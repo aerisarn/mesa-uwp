@@ -2,14 +2,8 @@
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
 
-# VK-GL-CTS 1.3.2.0 uprev
-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_sfloat_s8_uint_separate_layouts.compatibility_depth_zero_stencil_zero_testing_stencil,Fail
-gmem-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_sfloat_s8_uint.compatibility_depth_zero_stencil_zero_testing_stencil,Fail
-
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3590
 dEQP-VK.api.info.get_physical_device_properties2.memory_properties,Fail
-
-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_sfloat_s8_uint.compatibility_depth_zero_stencil_zero_testing_stencil,Fail
 
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3759
 # deqp-vk: ../src/freedreno/vulkan/tu_pipeline.c:3894: tu_pipeline_builder_init_graphics: Assertion `subpass->color_count == 0 || !create_info->pColorBlendState || subpass->color_count == create_info->pColorBlendState->attachmentCount' failed
