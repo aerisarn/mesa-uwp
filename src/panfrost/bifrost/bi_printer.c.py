@@ -90,9 +90,9 @@ bi_print_index(FILE *fp, bi_index index)
     else if (index.type == BI_INDEX_PASS)
         fprintf(fp, "%s", bir_passthrough_name(index.value));
     else if (index.type == BI_INDEX_REGISTER)
-        fprintf(fp, "br%u", index.value);
-    else if (index.type == BI_INDEX_NORMAL && index.reg)
         fprintf(fp, "r%u", index.value);
+    else if (index.type == BI_INDEX_NORMAL && index.reg)
+        fprintf(fp, "nr%u", index.value);
     else if (index.type == BI_INDEX_NORMAL)
         fprintf(fp, "%u", index.value);
     else
