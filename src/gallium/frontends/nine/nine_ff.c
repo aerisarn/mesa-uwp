@@ -1956,7 +1956,9 @@ nine_ff_load_point_and_fog_params(struct NineDevice9 *device)
         return;
     dst[26].x = asfloat(context->rs[D3DRS_POINTSIZE_MIN]);
     dst[26].y = asfloat(context->rs[D3DRS_POINTSIZE_MAX]);
-    dst[26].z = asfloat(context->rs[D3DRS_POINTSIZE]);
+    dst[26].z = CLAMP(asfloat(context->rs[D3DRS_POINTSIZE]),
+                asfloat(context->rs[D3DRS_POINTSIZE_MIN]),
+                asfloat(context->rs[D3DRS_POINTSIZE_MAX]));
     dst[26].w = asfloat(context->rs[D3DRS_POINTSCALE_A]);
     dst[27].x = asfloat(context->rs[D3DRS_POINTSCALE_B]);
     dst[27].y = asfloat(context->rs[D3DRS_POINTSCALE_C]);
