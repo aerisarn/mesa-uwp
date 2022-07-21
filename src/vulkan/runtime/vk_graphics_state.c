@@ -376,7 +376,7 @@ vk_viewport_state_init(struct vk_viewport_state *vp,
       vk_find_struct_const(vp_info->pNext,
                            PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
    if (vp_dcc_info != NULL)
-      vp->negative_one_to_one = vp_dcc_info->negativeOneToOne;
+      vp->depth_clip_negative_one_to_one = vp_dcc_info->negativeOneToOne;
 }
 
 static void

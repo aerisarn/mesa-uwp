@@ -150,7 +150,7 @@ struct vk_tessellation_state {
 
 struct vk_viewport_state {
    /** VkPipelineViewportDepthClipControlCreateInfoEXT::negativeOneToOne */
-   bool negative_one_to_one;
+   bool depth_clip_negative_one_to_one;
 
    /** VkPipelineViewportStateCreateInfo::viewportCount */
    uint8_t viewport_count;

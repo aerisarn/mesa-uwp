@@ -6179,7 +6179,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    radv_pipeline_init_dynamic_state(pipeline, &state);
 
    if (state.vp)
-      pipeline->negative_one_to_one = state.vp->negative_one_to_one;
+      pipeline->negative_one_to_one = state.vp->depth_clip_negative_one_to_one;
 
    radv_pipeline_init_raster_state(pipeline, &state);
 

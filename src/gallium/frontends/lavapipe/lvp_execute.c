@@ -955,8 +955,8 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->scissor_dirty = true;
       }
 
-      if (state->rs_state.clip_halfz != !ps->vp->negative_one_to_one) {
-         state->rs_state.clip_halfz = !ps->vp->negative_one_to_one;
+      if (state->rs_state.clip_halfz != !ps->vp->depth_clip_negative_one_to_one) {
+         state->rs_state.clip_halfz = !ps->vp->depth_clip_negative_one_to_one;
          state->rs_dirty = true;
          for (uint32_t i = 0; i < state->num_viewports; i++)
             set_viewport_depth_xform(state, i);
