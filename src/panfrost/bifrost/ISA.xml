@@ -2496,6 +2496,9 @@
   <ins name="+ATEST" staging="w=1" mask="0xfff00" exact="0xc8f00" message="atest" table="true">
     <src start="0" mask="0xf7"/>
     <src start="3" mask="0xf7"/>
+    <!-- ATEST parameter datum. Implicitly encoded into the tuple on Bifrost.
+         Real source on Valhall. -->
+    <src start="6" pseudo="true"/>
     <mod name="widen1" start="6" size="2">
       <reserved/>
       <opt>none</opt>

@@ -193,17 +193,16 @@ TEST_F(ValhallPacking, Mux) {
 }
 
 TEST_F(ValhallPacking, AtestFP16) {
-   bi_instr *I = bi_atest_to(b, bi_register(60), bi_register(60),
-         bi_half(bi_register(1), true));
-   I->src[2] = bi_fau(BIR_FAU_ATEST_PARAM, false);
-
-   CASE(I, 0x007dbc0208ea013c);
+   CASE(bi_atest_to(b, bi_register(60), bi_register(60),
+                    bi_half(bi_register(1), true),
+                    bi_fau(BIR_FAU_ATEST_PARAM, false)),
+        0x007dbc0208ea013c);
 }
 
 TEST_F(ValhallPacking, AtestFP32) {
-   bi_instr *I = bi_atest_to(b, bi_register(60), bi_register(60), one);
-   I->src[2] = bi_fau(BIR_FAU_ATEST_PARAM, false);
-   CASE(I, 0x007dbc0200ead03c);
+   CASE(bi_atest_to(b, bi_register(60), bi_register(60), one,
+                    bi_fau(BIR_FAU_ATEST_PARAM, false)),
+        0x007dbc0200ead03c);
 }
 
 TEST_F(ValhallPacking, Transcendentals) {

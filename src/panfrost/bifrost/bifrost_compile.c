@@ -859,12 +859,9 @@ bi_skip_atest(bi_context *ctx, bool emit_zs)
 static void
 bi_emit_atest(bi_builder *b, bi_index alpha)
 {
-        bi_instr *atest = bi_atest_to(b, bi_temp(b->shader), bi_coverage(b), alpha);
+        b->shader->coverage = bi_atest(b, bi_coverage(b), alpha,
+                                          bi_fau(BIR_FAU_ATEST_PARAM, false));
         b->shader->emitted_atest = true;
-        b->shader->coverage = atest->dest[0];
-
-        /* Pseudo-source to encode in the tuple */
-        atest->src[2] = bi_fau(BIR_FAU_ATEST_PARAM, false);
 }
 
 static void
