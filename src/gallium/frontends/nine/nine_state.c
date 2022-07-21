@@ -572,20 +572,12 @@ prepare_ps_constants_userbuf(struct NineDevice9 *device)
     }
 
     /* Upload special constants needed to implement PS1.x instructions like TEXBEM,TEXBEML and BEM */
-    if (context->ps->bumpenvmat_needed) {
-        memcpy(context->ps_lconstf_temp, cb.user_buffer, 8 * sizeof(float[4]));
-        memcpy(&context->ps_lconstf_temp[4 * 8], &device->context.bumpmap_vars, sizeof(device->context.bumpmap_vars));
-
-        cb.user_buffer = context->ps_lconstf_temp;
-    }
+    if (context->ps->bumpenvmat_needed)
+        memcpy(&context->ps_const_f[4 * NINE_MAX_CONST_PS_SPE_OFFSET], &device->context.bumpmap_vars, sizeof(device->context.bumpmap_vars));
 
     if (context->ps->byte_code.version < 0x30 &&
         context->rs[D3DRS_FOGENABLE]) {
-        float *dst = &context->ps_lconstf_temp[4 * 32];
-        if (cb.user_buffer != context->ps_lconstf_temp) {
-            memcpy(context->ps_lconstf_temp, cb.user_buffer, 32 * sizeof(float[4]));
-            cb.user_buffer = context->ps_lconstf_temp;
-        }
+        float *dst = &context->ps_const_f[4 * (NINE_MAX_CONST_PS_SPE_OFFSET + 12)];
 
         d3dcolor_to_rgba(dst, context->rs[D3DRS_FOGCOLOR]);
         if (context->rs[D3DRS_FOGTABLEMODE] == D3DFOG_LINEAR) {
@@ -595,6 +587,8 @@ prepare_ps_constants_userbuf(struct NineDevice9 *device)
             dst[4] = asfloat(context->rs[D3DRS_FOGDENSITY]);
         }
     }
+
+    context->ps_const_f[4 * (NINE_MAX_CONST_PS_SPE_OFFSET + 14)] = context->rs[D3DRS_ALPHAREF] / 255.f;
 
     if (!cb.buffer_size)
         return;
@@ -1159,6 +1153,7 @@ static inline void
 commit_vs(struct NineDevice9 *device)
 {
     struct nine_context *context = &device->context;
+    assert(context->cso_shader.vs);
 
     context->pipe->bind_vs_state(context->pipe, context->cso_shader.vs);
 }
@@ -1443,6 +1438,16 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
 
     context->rs[State] = nine_fix_render_state_value(State, Value);
     context->changed.group |= nine_render_state_group[State];
+
+    if (device->driver_caps.alpha_test_emulation) {
+        if (State == D3DRS_ALPHATESTENABLE || State == D3DRS_ALPHAFUNC) {
+            context->rs[NINED3DRS_EMULATED_ALPHATEST] = context->rs[D3DRS_ALPHATESTENABLE] ?
+                d3dcmpfunc_to_pipe_func(context->rs[D3DRS_ALPHAFUNC]) : 7;
+            context->changed.group |= NINE_STATE_PS_PARAMS_MISC | NINE_STATE_PS_CONST | NINE_STATE_FF_SHADER;
+        }
+        if (State == D3DRS_ALPHAREF)
+            context->changed.group |= NINE_STATE_PS_CONST | NINE_STATE_FF_PS_CONSTS;
+    }
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_set_texture_apply,
@@ -2803,7 +2808,8 @@ static const DWORD nine_render_state_defaults[NINED3DRS_LAST + 1] =
     [NINED3DRS_RTMASK] = 0xf,
     [NINED3DRS_ALPHACOVERAGE] = FALSE,
     [NINED3DRS_MULTISAMPLE] = FALSE,
-    [NINED3DRS_FETCH4] = 0
+    [NINED3DRS_FETCH4] = 0,
+    [NINED3DRS_EMULATED_ALPHATEST] = 7 /* ALWAYS pass */
 };
 static const DWORD nine_tex_stage_state_defaults[NINED3DTSS_LAST + 1] =
 {

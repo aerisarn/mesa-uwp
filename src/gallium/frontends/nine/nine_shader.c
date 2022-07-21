@@ -640,6 +640,25 @@ static struct ureg_src nine_boolean_constant_src(struct shader_translator *tx, i
     return src;
 }
 
+static struct ureg_src nine_special_constant_src(struct shader_translator *tx, int idx)
+{
+    struct ureg_src src;
+
+    unsigned slot_idx = idx + NINE_MAX_CONST_PS_SPE_OFFSET;
+
+    assert(!tx->info->swvp_on); /* Only used for ps currently */
+    if (tx->slot_map)
+        slot_idx = tx->slot_map[slot_idx];
+    src = ureg_src_register(TGSI_FILE_CONSTANT, slot_idx);
+    src = ureg_src_dimension(src, 0);
+
+    tx->slots_used[slot_idx] = TRUE;
+    if (tx->num_slots < (slot_idx + 1))
+        tx->num_slots = slot_idx + 1;
+
+    return src;
+}
+
 static boolean
 tx_lconstf(struct shader_translator *tx, struct ureg_src *src, INT index)
 {
@@ -1355,8 +1374,9 @@ _tx_dst_param(struct shader_translator *tx, const struct sm1_dst_param *param)
         assert(!param->rel);
         tx->info->rt_mask |= 1 << param->idx;
         if (ureg_dst_is_undef(tx->regs.oCol[param->idx])) {
-            /* ps < 3: oCol[0] will have fog blending afterward */
-            if (!IS_VS && tx->version.major < 3 && param->idx == 0) {
+            /* ps < 3: oCol[0] will have fog blending afterward
+             * ps: oCol[0] might have alphatest afterward */
+            if (!IS_VS && param->idx == 0) {
                 tx->regs.oCol[0] = ureg_DECL_temporary(tx->ureg);
             } else {
                 tx->regs.oCol[param->idx] =
@@ -2572,8 +2592,8 @@ DECL_SPECIAL(TEXBEM)
      * 10 is Z
      * 11 is W
      */
-    c8m = nine_float_constant_src(tx, 8+m);
-    c16m2 = nine_float_constant_src(tx, 8+8+m/2);
+    c8m = nine_special_constant_src(tx, m);
+    c16m2 = nine_special_constant_src(tx, 8+m/2);
 
     m00 = NINE_APPLY_SWIZZLE(c8m, X);
     m01 = NINE_APPLY_SWIZZLE(c8m, Y);
@@ -2925,7 +2945,7 @@ DECL_SPECIAL(BEM)
      * 10 is Z
      * 11 is W
      */
-    c8m = nine_float_constant_src(tx, 8+m);
+    c8m = nine_special_constant_src(tx, m);
     m00 = NINE_APPLY_SWIZZLE(c8m, X);
     m01 = NINE_APPLY_SWIZZLE(c8m, Y);
     m10 = NINE_APPLY_SWIZZLE(c8m, Z);
@@ -3742,16 +3762,15 @@ shader_add_vs_viewport_transform(struct shader_translator *tx)
 }
 
 static void
-shader_add_ps_fog_stage(struct shader_translator *tx, struct ureg_src src_col)
+shader_add_ps_fog_stage(struct shader_translator *tx, struct ureg_dst dst_col, struct ureg_src src_col)
 {
     struct ureg_program *ureg = tx->ureg;
-    struct ureg_dst oCol0 = ureg_DECL_output(ureg, TGSI_SEMANTIC_COLOR, 0);
     struct ureg_src fog_end, fog_coeff, fog_density, fog_params;
     struct ureg_src fog_vs, fog_color;
     struct ureg_dst fog_factor, depth;
 
     if (!tx->info->fog_enable) {
-        ureg_MOV(ureg, oCol0, src_col);
+        ureg_MOV(ureg, dst_col, src_col);
         return;
     }
 
@@ -3763,8 +3782,8 @@ shader_add_ps_fog_stage(struct shader_translator *tx, struct ureg_src src_col)
             ureg_RCP(ureg, depth, ureg_scalar(nine_get_position_input(tx), TGSI_SWIZZLE_W));
     }
 
-    fog_color = nine_float_constant_src(tx, 32);
-    fog_params = nine_float_constant_src(tx, 33);
+    fog_color = nine_special_constant_src(tx, 12);
+    fog_params = nine_special_constant_src(tx, 13);
     fog_factor = tx_scratch_scalar(tx);
 
     if (tx->info->fog_mode == D3DFOG_LINEAR) {
@@ -3790,9 +3809,29 @@ shader_add_ps_fog_stage(struct shader_translator *tx, struct ureg_src src_col)
         ureg_MOV(ureg, fog_factor, fog_vs);
     }
 
-    ureg_LRP(ureg, ureg_writemask(oCol0, TGSI_WRITEMASK_XYZ),
+    ureg_LRP(ureg, ureg_writemask(dst_col, TGSI_WRITEMASK_XYZ),
              tx_src_scalar(fog_factor), src_col, fog_color);
-    ureg_MOV(ureg, ureg_writemask(oCol0, TGSI_WRITEMASK_W), src_col);
+    ureg_MOV(ureg, ureg_writemask(dst_col, TGSI_WRITEMASK_W), src_col);
+}
+
+static void
+shader_add_ps_alpha_test_stage(struct shader_translator *tx, struct ureg_src src_color)
+{
+    struct ureg_program *ureg = tx->ureg;
+    unsigned cmp_op;
+    struct ureg_src src[2];
+    struct ureg_dst tmp = tx_scratch(tx);
+    if (tx->info->alpha_test_emulation == PIPE_FUNC_ALWAYS)
+        return;
+    if (tx->info->alpha_test_emulation == PIPE_FUNC_NEVER) {
+        ureg_KILL(ureg);
+        return;
+    }
+    cmp_op = pipe_comp_to_tgsi_opposite(tx->info->alpha_test_emulation);
+    src[0] = ureg_scalar(src_color, TGSI_SWIZZLE_W); /* Read color alpha channel */
+    src[1] = ureg_scalar(nine_special_constant_src(tx, 14), TGSI_SWIZZLE_X); /* Read alphatest */
+    ureg_insn(tx->ureg, cmp_op, &tmp, 1, src, 2, 0);
+    ureg_KILL_IF(tx->ureg, ureg_negate(ureg_scalar(ureg_src(tmp), TGSI_SWIZZLE_X))); /* if opposite test passes, discard */
 }
 
 static void parse_shader(struct shader_translator *tx)
@@ -3806,14 +3845,24 @@ static void parse_shader(struct shader_translator *tx)
     if (tx->failure)
         return;
 
-    if (IS_PS && tx->version.major < 3) {
-        if (tx->version.major < 2) {
-            assert(tx->num_temp); /* there must be color output */
-            info->rt_mask |= 0x1;
-            shader_add_ps_fog_stage(tx, ureg_src(tx->regs.r[0]));
+    if (IS_PS) {
+        struct ureg_dst oCol0 = ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_COLOR, 0);
+        struct ureg_dst tmp_oCol0;
+        if (tx->version.major < 3) {
+            tmp_oCol0 = ureg_DECL_temporary(tx->ureg);
+            if (tx->version.major < 2) {
+                assert(tx->num_temp); /* there must be color output */
+                info->rt_mask |= 0x1;
+                shader_add_ps_fog_stage(tx, tmp_oCol0, ureg_src(tx->regs.r[0]));
+            } else {
+                shader_add_ps_fog_stage(tx, tmp_oCol0, ureg_src(tx->regs.oCol[0]));
+            }
         } else {
-            shader_add_ps_fog_stage(tx, ureg_src(tx->regs.oCol[0]));
+            assert(!ureg_dst_is_undef(tx->regs.oCol[0]));
+            tmp_oCol0 = tx->regs.oCol[0];
         }
+        shader_add_ps_alpha_test_stage(tx, ureg_src(tmp_oCol0));
+        ureg_MOV(tx->ureg, oCol0, ureg_src(tmp_oCol0));
     }
 
     if (IS_VS && tx->version.major < 3 && ureg_dst_is_undef(tx->regs.oFog) && info->fog_enable) {

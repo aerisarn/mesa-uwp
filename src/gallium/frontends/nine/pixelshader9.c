@@ -61,6 +61,7 @@ NinePixelShader9_ctor( struct NinePixelShader9 *This,
     info.sampler_ps1xtypes = 0x0;
     info.fog_enable = 0;
     info.projected = 0;
+    info.alpha_test_emulation = 0;
     info.add_constants_defs.c_combination = NULL;
     info.add_constants_defs.int_const_added = NULL;
     info.add_constants_defs.bool_const_added = NULL;
@@ -218,6 +219,7 @@ NinePixelShader9_GetVariant( struct NinePixelShader9 *This,
         info.add_constants_defs.bool_const_added = &This->bool_slots_used;
         info.fetch4 = (key >> 32) & 0xffff;
         info.force_color_in_centroid = (key >> 48) & 1;
+        info.alpha_test_emulation = (key >> 49) & 0x7;
         info.process_vertices = false;
         info.swvp_on = false;
 

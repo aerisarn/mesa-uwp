@@ -113,7 +113,8 @@ struct nine_ff_ps_key
             uint32_t fog_mode : 2;
             uint32_t fog_source : 1; /* 0: Z, 1: W */
             uint32_t specular : 1;
-            uint32_t pad1 : 11; /* 9 32-bit words with this */
+            uint32_t alpha_test_emulation : 3;
+            uint32_t pad1 : 8; /* 9 32-bit words with this */
             uint8_t colorarg_b4[3];
             uint8_t colorarg_b5[3];
             uint8_t alphaarg_b4[3]; /* 11 32-bit words plus a byte */
@@ -1083,6 +1084,7 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
  * CONST[22].x___ RS.FogEnd
  * CONST[22]._y__ 1.0f / (RS.FogEnd - RS.FogStart)
  * CONST[22].__z_ RS.FogDensity
+ * CONST[22].___w Alpha ref
  */
 struct ps_build_ctx
 {
@@ -1507,6 +1509,19 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
     if (key->specular)
         ureg_ADD(ureg, ureg_writemask(ps.rCur, TGSI_WRITEMASK_XYZ), ps.rCurSrc, ps.vC[1]);
 
+    if (key->alpha_test_emulation == PIPE_FUNC_NEVER) {
+        ureg_KILL(ureg);
+    } else if (key->alpha_test_emulation != PIPE_FUNC_ALWAYS) {
+        unsigned cmp_op;
+        struct ureg_src src[2];
+        struct ureg_dst tmp = ps.rTmp;
+        cmp_op = pipe_comp_to_tgsi_opposite(key->alpha_test_emulation);
+        src[0] = ureg_scalar(ps.rCurSrc, TGSI_SWIZZLE_W); /* Read color alpha channel */
+        src[1] = _WWWW(_CONST(22)); /* Read alpha ref */
+        ureg_insn(ureg, cmp_op, &tmp, 1, src, 2, 0);
+        ureg_KILL_IF(ureg, ureg_negate(ureg_scalar(ureg_src(tmp), TGSI_SWIZZLE_X))); /* if opposite test passes, discard */
+    }
+
     /* Fog.
      */
     if (key->fog_mode) {
@@ -1827,6 +1842,7 @@ nine_ff_get_ps(struct NineDevice9 *device)
     key.fog = !!context->rs[D3DRS_FOGENABLE];
     if (key.fog_mode && key.fog)
         key.fog_source = !context->zfog;
+    key.alpha_test_emulation = context->rs[NINED3DRS_EMULATED_ALPHATEST] & 0x7;
 
     DBG("PS ff key hash: %x\n", nine_ff_ps_key_hash(&key));
     ps = util_hash_table_get(device->ff.ht_ps, &key);
@@ -2002,6 +2018,7 @@ nine_ff_load_ps_params(struct NineDevice9 *device)
     dst[22].x = asfloat(context->rs[D3DRS_FOGEND]);
     dst[22].y = 1.0f / (asfloat(context->rs[D3DRS_FOGEND]) - asfloat(context->rs[D3DRS_FOGSTART]));
     dst[22].z = asfloat(context->rs[D3DRS_FOGDENSITY]);
+    dst[22].w = (float)context->rs[D3DRS_ALPHAREF] / 255.f;
 }
 
 static void
