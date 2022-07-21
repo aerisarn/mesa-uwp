@@ -60,6 +60,10 @@ hash_instr(const void *data)
         uint32_t hash = 0;
 
         hash = HASH(hash, I->op);
+        hash = HASH(hash, I->nr_dests);
+        hash = HASH(hash, I->nr_srcs);
+
+        assert(!I->flow && !I->slot && "CSE must be early");
 
         /* Explcitly skip destinations, except for size details */
         bi_foreach_dest(I, d) {
@@ -87,8 +91,9 @@ instrs_equal(const void *_i1, const void *_i2)
 {
         const bi_instr *i1 = _i1, *i2 = _i2;
 
-	if (i1->op != i2->op)
-		return false;
+        if (i1->op != i2->op) return false;
+        if (i1->nr_srcs != i2->nr_srcs) return false;
+        if (i1->nr_dests != i2->nr_dests) return false;
 
         /* Explicitly skip destinations */
 
