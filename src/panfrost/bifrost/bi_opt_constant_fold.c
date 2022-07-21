@@ -95,6 +95,7 @@ bi_opt_constant_fold(bi_context *ctx)
                 if (unsupported) continue;
 
                 /* Replace with constant move, to be copypropped */
+                assert(ins->nr_dests == 1);
                 bi_builder b = bi_init_builder(ctx, bi_after_instr(ins));
                 bi_mov_i32_to(&b, ins->dest[0], bi_imm_u32(replace));
                 bi_remove_instruction(ins);

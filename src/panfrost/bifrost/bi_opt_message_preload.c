@@ -96,7 +96,7 @@ bi_opt_message_preload(bi_context *ctx)
         bi_builder b = bi_init_builder(ctx, bi_before_nonempty_block(block));
 
         bi_foreach_instr_in_block_safe(block, I) {
-                if (!bi_is_ssa(I->dest[0])) continue;
+                if (I->nr_dests != 1 || !bi_is_ssa(I->dest[0])) continue;
 
                 struct bifrost_message_preload msg;
 

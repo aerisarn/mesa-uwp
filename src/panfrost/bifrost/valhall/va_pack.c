@@ -191,6 +191,7 @@ va_pack_atom_opc_1(const bi_instr *I)
 static unsigned
 va_pack_dest(const bi_instr *I)
 {
+   assert(I->nr_dests);
    return va_pack_reg(I, I->dest[0]) | (va_pack_wrmask(I) << 6);
 }
 
@@ -442,7 +443,7 @@ va_pack_alu(const bi_instr *I)
    if (info.has_dest && info.nr_staging_dests == 0) {
       hex |= (uint64_t) va_pack_dest(I) << 40;
    } else if (info.nr_staging_dests == 0 && info.nr_staging_srcs == 0) {
-      pack_assert(I, bi_is_null(I->dest[0]));
+      pack_assert(I, I->nr_dests == 0);
       hex |= 0xC0ull << 40; /* Placeholder */
    }
 

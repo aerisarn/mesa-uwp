@@ -585,8 +585,7 @@ bi_can_add(bi_instr *ins)
 static bool
 bi_must_not_last(bi_instr *ins)
 {
-        return !bi_is_null(ins->dest[0]) && !bi_is_null(ins->dest[1]) &&
-               (ins->op != BI_OPCODE_TEXC_DUAL);
+        return (ins->nr_dests >= 2) && (ins->op != BI_OPCODE_TEXC_DUAL);
 }
 
 /* Check for a message-passing instruction. +DISCARD.f32 is special-cased; we
@@ -970,6 +969,9 @@ bi_has_staging_passthrough_hazard(bi_index fma, bi_instr *add)
 static bool
 bi_has_cross_passthrough_hazard(bi_tuple *succ, bi_instr *ins)
 {
+        if (ins->nr_dests == 0)
+                return false;
+
         bi_foreach_instr_in_tuple(succ, pins) {
                 bi_foreach_src(pins, s) {
                         if (bi_is_word_equiv(ins->dest[0], pins->src[s]) &&
@@ -1103,7 +1105,7 @@ bi_instr_schedulable(bi_instr *instr,
 
         /* If this choice of FMA would force a staging passthrough, the ADD
          * instruction must support such a passthrough */
-        if (tuple->add && bi_has_staging_passthrough_hazard(instr->dest[0], tuple->add))
+        if (tuple->add && instr->nr_dests && bi_has_staging_passthrough_hazard(instr->dest[0], tuple->add))
                 return false;
 
         /* If this choice of destination would force a cross-tuple passthrough, the next tuple must support that */
@@ -1138,9 +1140,15 @@ bi_instr_schedulable(bi_instr *instr,
                 return false;
 
         /* Count effective reads for the successor */
-        unsigned succ_reads = bi_count_succ_reads(instr->dest[0],
-                        tuple->add ? tuple->add->dest[0] : bi_null(),
-                        tuple->prev_reads, tuple->nr_prev_reads);
+        unsigned succ_reads = 0;
+
+        if (instr->nr_dests) {
+                bool has_t1 = tuple->add && tuple->add->nr_dests;
+                succ_reads = bi_count_succ_reads(instr->dest[0],
+                                                 has_t1 ? tuple->add->dest[0] : bi_null(),
+                                                 tuple->prev_reads,
+                                                 tuple->nr_prev_reads);
+        }
 
         /* Successor must satisfy R+W <= 4, so we require W <= 4-R */
         if ((signed) total_writes > (4 - (signed) succ_reads))
@@ -1310,8 +1318,10 @@ bi_use_passthrough(bi_instr *ins, bi_index old,
                 bool except_sr)
 {
         /* Optional for convenience */
-        if (!ins || bi_is_null(old))
+        if (!ins)
                 return;
+
+        assert(!bi_is_null(old));
 
         bi_foreach_src(ins, i) {
                 if ((i == 0 || i == 4) && except_sr)
@@ -1339,12 +1349,12 @@ bi_rewrite_passthrough(bi_tuple prec, bi_tuple succ)
 {
         bool sr_read = succ.add ? bi_opcode_props[succ.add->op].sr_read : false;
 
-        if (prec.add) {
+        if (prec.add && prec.add->nr_dests) {
                 bi_use_passthrough(succ.fma, prec.add->dest[0], BIFROST_SRC_PASS_ADD, false);
                 bi_use_passthrough(succ.add, prec.add->dest[0], BIFROST_SRC_PASS_ADD, sr_read);
         }
 
-        if (prec.fma) {
+        if (prec.fma && prec.fma->nr_dests) {
                 bi_use_passthrough(succ.fma, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, false);
                 bi_use_passthrough(succ.add, prec.fma->dest[0], BIFROST_SRC_PASS_FMA, sr_read);
         }
@@ -1776,7 +1786,7 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st, uint
                  * passthrough the sources of the ADD that read from the
                  * destination of the FMA */
 
-                if (tuple->fma) {
+                if (tuple->fma && tuple->fma->nr_dests) {
                         bi_use_passthrough(tuple->add, tuple->fma->dest[0],
                                         BIFROST_SRC_STAGE, false);
                 }

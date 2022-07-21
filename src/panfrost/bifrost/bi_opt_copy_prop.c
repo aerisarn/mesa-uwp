@@ -77,7 +77,7 @@ bi_opt_copy_prop(bi_context *ctx)
                         /* Lower the split to moves, copyprop cleans up */
                         bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
 
-                        for (unsigned d = 0; d < I->nr_dests; ++d)
+                        bi_foreach_dest(I, d)
                                 bi_mov_i32_to(&b, I->dest[d], collect->src[d]);
 
                         bi_remove_instruction(I);
@@ -101,6 +101,7 @@ bi_opt_copy_prop(bi_context *ctx)
                                         replace = chained;
                         }
 
+                        assert(ins->nr_dests == 1);
                         replacement[ins->dest[0].value] = replace;
                 }
 

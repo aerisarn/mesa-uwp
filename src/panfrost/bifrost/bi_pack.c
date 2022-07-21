@@ -137,7 +137,7 @@ bi_assign_slots(bi_tuple *now, bi_tuple *prev)
          * +ATEST wants its destination written to both a staging register
          * _and_ a regular write, because it may not generate a message */
 
-        if (prev->add && (!write_dreg || prev->add->op == BI_OPCODE_ATEST)) {
+        if (prev->add && prev->add->nr_dests && (!write_dreg || prev->add->op == BI_OPCODE_ATEST)) {
                 bi_index idx = prev->add->dest[0];
 
                 if (idx.type == BI_INDEX_REGISTER) {
@@ -146,8 +146,8 @@ bi_assign_slots(bi_tuple *now, bi_tuple *prev)
                 }
         }
 
-        if (prev->fma) {
-                bi_index idx = (prev->fma)->dest[0];
+        if (prev->fma && prev->fma->nr_dests) {
+                bi_index idx = prev->fma->dest[0];
 
                 if (idx.type == BI_INDEX_REGISTER) {
                         if (now->regs.slot23.slot3) {
