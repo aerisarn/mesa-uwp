@@ -984,15 +984,17 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    struct radv_amdgpu_cs_request request;
    struct amdgpu_cs_ib_info *ibs;
-   struct radv_amdgpu_cs *cs0;
+   struct radv_amdgpu_cs *last_cs;
    struct radv_amdgpu_winsys *aws;
    unsigned num_handles = 0;
    unsigned number_of_ibs;
    VkResult result;
 
    assert(cs_count);
-   cs0 = radv_amdgpu_cs(cs_array[0]);
-   aws = cs0->ws;
+
+   /* Last CS is "the gang leader", its IP type determines which fence to signal. */
+   last_cs = radv_amdgpu_cs(cs_array[cs_count - 1]);
+   aws = last_cs->ws;
 
    /* Compute the number of IBs for this submit. */
    number_of_ibs = cs_count + !!initial_preamble_cs;
@@ -1000,8 +1002,8 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
    u_rwlock_rdlock(&aws->global_bo_list.lock);
 
    /* Get the BO list. */
-   result = radv_amdgpu_get_bo_list(cs0->ws, &cs_array[0], cs_count, NULL, 0, &initial_preamble_cs,
-                                    1, &num_handles, &handles);
+   result = radv_amdgpu_get_bo_list(last_cs->ws, &cs_array[0], cs_count, NULL, 0,
+                                    &initial_preamble_cs, 1, &num_handles, &handles);
    if (result != VK_SUCCESS) {
       goto fail;
    }
@@ -1033,7 +1035,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
       }
    }
 
-   request.ip_type = cs0->hw_ip;
+   request.ip_type = last_cs->hw_ip;
    request.ip_instance = 0;
    request.ring = queue_idx;
    request.handles = handles;
