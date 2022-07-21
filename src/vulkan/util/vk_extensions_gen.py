@@ -37,6 +37,7 @@ _TEMPLATE_H = Template(COPYRIGHT + """
 #ifndef ${driver.upper()}_EXTENSIONS_H
 #define ${driver.upper()}_EXTENSIONS_H
 
+#include <assert.h>
 #include <stdbool.h>
 
 %if driver == 'vk':
@@ -56,6 +57,17 @@ struct vk_${type}_extension_table {
       };
    };
 };
+
+static inline void
+assert_${type}_extensions_requirements(const struct vk_${type}_extension_table *${type}_ext${
+', const struct vk_instance_extension_table *instance_ext' if type == 'device' else ''
+}) {
+% for ext in extensions:
+  % for req in ext.requires:
+   assert(!${ext.type}_ext->${ext.name[3:]} || ${req.type}_ext->${req.name[3:]});
+  % endfor
+% endfor
+}
 </%def>
 
 ${extension_table('instance', instance_extensions)}
