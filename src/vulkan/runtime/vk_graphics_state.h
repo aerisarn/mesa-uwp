@@ -90,8 +90,12 @@ enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK,
    MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK,
    MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE,
+   MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE,
    MESA_VK_DYNAMIC_CB_LOGIC_OP,
    MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES,
+   MESA_VK_DYNAMIC_CB_BLEND_ENABLES,
+   MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS,
+   MESA_VK_DYNAMIC_CB_WRITE_MASKS,
    MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS,
 
    /* Must be left at the end */
@@ -515,48 +519,89 @@ void vk_optimize_depth_stencil_state(struct vk_depth_stencil_state *ds,
                                      bool consider_write_mask);
 
 struct vk_color_blend_attachment_state {
-   /** VkPipelineColorBlendAttachmentState::blendEnable */
+   /** VkPipelineColorBlendAttachmentState::blendEnable
+    *
+    * This will be true if blend enables are dynamic
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_ENABLES
+    */
    bool blend_enable;
 
-   /** VkPipelineColorBlendAttachmentState::srcColorBlendFactor */
+   /** VkPipelineColorBlendAttachmentState::srcColorBlendFactor
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS
+    */
    uint8_t src_color_blend_factor;
 
-   /** VkPipelineColorBlendAttachmentState::dstColorBlendFactor */
+   /** VkPipelineColorBlendAttachmentState::dstColorBlendFactor
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS
+    */
    uint8_t dst_color_blend_factor;
 
-   /** VkPipelineColorBlendAttachmentState::srcAlphaBlendFactor */
+   /** VkPipelineColorBlendAttachmentState::srcAlphaBlendFactor
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS
+    */
    uint8_t src_alpha_blend_factor;
 
-   /** VkPipelineColorBlendAttachmentState::dstAlphaBlendFactor */
+   /** VkPipelineColorBlendAttachmentState::dstAlphaBlendFactor
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS
+    */
    uint8_t dst_alpha_blend_factor;
 
-   /** VkPipelineColorBlendAttachmentState::colorWriteMask */
+   /** VkPipelineColorBlendAttachmentState::colorWriteMask
+    *
+    * MESA_VK_DYNAMIC_CB_WRITE_MASKS
+    */
    uint8_t write_mask;
 
-   /** VkPipelineColorBlendAttachmentState::colorBlendOp */
+   /** VkPipelineColorBlendAttachmentState::colorBlendOp
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS
+    */
    VkBlendOp color_blend_op;
 
-   /** VkPipelineColorBlendAttachmentState::alphaBlendOp */
+   /** VkPipelineColorBlendAttachmentState::alphaBlendOp
+    *
+    * MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS
+    */
    VkBlendOp alpha_blend_op;
 };
 
 struct vk_color_blend_state {
-   /** VkPipelineColorBlendStateCreateInfo::logicOpEnable */
+   /** VkPipelineColorBlendStateCreateInfo::logicOpEnable
+    *
+    * MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE,
+    */
    bool logic_op_enable;
 
-   /** VkPipelineColorBlendStateCreateInfo::logicOp */
+   /** VkPipelineColorBlendStateCreateInfo::logicOp
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_LOGIC_OP,
+    */
    uint8_t logic_op;
 
-   /** VkPipelineColorWriteCreateInfoEXT::pColorWriteEnables */
+   /** VkPipelineColorWriteCreateInfoEXT::pColorWriteEnables
+    *
+    * Bitmask of color write enables, indexed by color attachment index.
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_COLOR_WRITE_ENABLES,
+    */
    uint8_t color_write_enables;
 
-   /** VkPipelineColorBlendStateCreateInfo::attachmentCount */
+   /** VkPipelineColorBlendStateCreateInfo::attachmentCount
+    */
    uint8_t attachment_count;
 
    /** VkPipelineColorBlendStateCreateInfo::pAttachments */
    struct vk_color_blend_attachment_state attachments[MESA_VK_MAX_COLOR_ATTACHMENTS];
 
-   /** VkPipelineColorBlendStateCreateInfo::blendConstants */
+   /** VkPipelineColorBlendStateCreateInfo::blendConstants
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_BLEND_CONSTANTS,
+    */
    float blend_constants[4];
 };
 
@@ -697,30 +742,11 @@ struct vk_dynamic_graphics_state {
       struct vk_sample_locations_state *sample_locations;
    } ms;
 
+   /** Depth stencil state */
    struct vk_depth_stencil_state ds;
 
    /** Color blend state */
-   struct {
-      /** Integer color logic op
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_LOGIC_OP,
-       */
-      VkLogicOp logic_op;
-
-      /** Color write enables
-       *
-       * Bitmask of color write enables, indexed by color attachment index.
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_COLOR_WRITE_ENABLES,
-       */
-      uint32_t color_write_enables;
-
-      /** Blend constants
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_BLEND_CONSTANTS,
-       */
-      float blend_constants[4];
-   } cb;
+   struct vk_color_blend_state cb;
 
    /** For pipelines, which bits of dynamic state are set */
    BITSET_DECLARE(set, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);

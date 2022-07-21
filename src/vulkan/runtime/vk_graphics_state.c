@@ -110,8 +110,12 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
    }
 
    if (groups & MESA_VK_GRAPHICS_STATE_COLOR_BLEND_BIT) {
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_ENABLES);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_WRITE_MASKS);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS);
    }
 }
@@ -142,6 +146,15 @@ fully_dynamic_state_groups(const BITSET_WORD *dynamic)
        BITSET_TEST(dynamic, MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK) &&
        BITSET_TEST(dynamic, MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE))
       groups |= MESA_VK_GRAPHICS_STATE_DEPTH_STENCIL_BIT;
+
+   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_BLEND_ENABLES) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_WRITE_MASKS) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS))
+      groups |= MESA_VK_GRAPHICS_STATE_COLOR_BLEND_BIT;
 
    return groups;
 }
@@ -228,6 +241,10 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       CASE( SAMPLE_MASK_EXT,              MS_SAMPLE_MASK)
       CASE( ALPHA_TO_COVERAGE_ENABLE_EXT, MS_ALPHA_TO_COVERAGE_ENABLE)
       CASE( ALPHA_TO_ONE_ENABLE_EXT,      MS_ALPHA_TO_ONE_ENABLE)
+      CASE( LOGIC_OP_ENABLE_EXT,          CB_LOGIC_OP_ENABLE)
+      CASE( COLOR_BLEND_ENABLE_EXT,       CB_BLEND_ENABLES)
+      CASE( COLOR_BLEND_EQUATION_EXT,     CB_BLEND_EQUATIONS)
+      CASE( COLOR_WRITE_MASK_EXT,         CB_WRITE_MASKS)
       CASE( RASTERIZATION_STREAM_EXT,     RS_RASTERIZATION_STREAM)
       CASE( CONSERVATIVE_RASTERIZATION_MODE_EXT, RS_CONSERVATIVE_MODE)
       CASE( DEPTH_CLIP_ENABLE_EXT,        RS_DEPTH_CLIP_ENABLE)
@@ -874,19 +891,20 @@ vk_color_blend_state_init(struct vk_color_blend_state *cb,
 
    assert(cb_info->attachmentCount <= MESA_VK_MAX_COLOR_ATTACHMENTS);
    cb->attachment_count = cb_info->attachmentCount;
+   /* pAttachments is ignored if any of these is not set */
+   bool full_dynamic = IS_DYNAMIC(CB_BLEND_ENABLES) && IS_DYNAMIC(CB_BLEND_EQUATIONS) && IS_DYNAMIC(CB_WRITE_MASKS);
    for (uint32_t a = 0; a < cb_info->attachmentCount; a++) {
-      const VkPipelineColorBlendAttachmentState *att =
-         &cb_info->pAttachments[a];
+      const VkPipelineColorBlendAttachmentState *att = full_dynamic ? NULL : &cb_info->pAttachments[a];
 
       cb->attachments[a] = (struct vk_color_blend_attachment_state) {
-         .blend_enable = att->blendEnable,
-         .src_color_blend_factor = att->srcColorBlendFactor,
-         .dst_color_blend_factor = att->dstColorBlendFactor,
-         .src_alpha_blend_factor = att->srcAlphaBlendFactor,
-         .dst_alpha_blend_factor = att->dstAlphaBlendFactor,
-         .write_mask = att->colorWriteMask,
-         .color_blend_op = att->colorBlendOp,
-         .alpha_blend_op = att->alphaBlendOp,
+         .blend_enable = IS_DYNAMIC(CB_BLEND_ENABLES) || att->blendEnable,
+         .src_color_blend_factor = IS_DYNAMIC(CB_BLEND_EQUATIONS) ? 0 : att->srcColorBlendFactor,
+         .dst_color_blend_factor = IS_DYNAMIC(CB_BLEND_EQUATIONS) ? 0 : att->dstColorBlendFactor,
+         .src_alpha_blend_factor = IS_DYNAMIC(CB_BLEND_EQUATIONS) ? 0 : att->srcAlphaBlendFactor,
+         .dst_alpha_blend_factor = IS_DYNAMIC(CB_BLEND_EQUATIONS) ? 0 : att->dstAlphaBlendFactor,
+         .write_mask = IS_DYNAMIC(CB_WRITE_MASKS) ? 0xf : att->colorWriteMask,
+         .color_blend_op = IS_DYNAMIC(CB_BLEND_EQUATIONS) ? 0 : att->colorBlendOp,
+         .alpha_blend_op = IS_DYNAMIC(CB_BLEND_EQUATIONS) ? 0 : att->alphaBlendOp,
       };
    }
 
@@ -911,8 +929,18 @@ vk_dynamic_graphics_state_init_cb(struct vk_dynamic_graphics_state *dst,
                                   const BITSET_WORD *needed,
                                   const struct vk_color_blend_state *cb)
 {
+   dst->cb.logic_op_enable = cb->logic_op_enable;
    dst->cb.logic_op = cb->logic_op;
    dst->cb.color_write_enables = cb->color_write_enables;
+
+   if (IS_NEEDED(CB_BLEND_ENABLES) ||
+       IS_NEEDED(CB_BLEND_EQUATIONS) ||
+       IS_NEEDED(CB_WRITE_MASKS)) {
+      dst->cb.attachment_count = cb->attachment_count;
+      typed_memcpy(dst->cb.attachments, cb->attachments, cb->attachment_count);
+   } else {
+      dst->cb.attachment_count = 0;
+   }
 
    if (IS_NEEDED(CB_BLEND_CONSTANTS))
       typed_memcpy(dst->cb.blend_constants, cb->blend_constants, 4);
@@ -1464,7 +1492,8 @@ const struct vk_dynamic_graphics_state vk_default_dynamic_graphics_state = {
       },
    },
    .cb = {
-      .color_write_enables = 0xffffffffu,
+      .color_write_enables = 0xffu,
+      .attachment_count = MESA_VK_MAX_COLOR_ATTACHMENTS,
    },
 };
 
@@ -1696,8 +1725,31 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
       COPY_MEMBER(DS_STENCIL_REFERENCE, ds.stencil.back.reference);
    }
 
+   COPY_IF_SET(CB_LOGIC_OP_ENABLE, cb.logic_op_enable);
    COPY_IF_SET(CB_LOGIC_OP, cb.logic_op);
    COPY_IF_SET(CB_COLOR_WRITE_ENABLES, cb.color_write_enables);
+   if (IS_SET_IN_SRC(CB_BLEND_ENABLES)) {
+      for (uint32_t a = 0; a < src->cb.attachment_count; a++)
+         COPY_MEMBER(CB_BLEND_ENABLES, cb.attachments[a].blend_enable);
+   }
+   if (IS_SET_IN_SRC(CB_BLEND_EQUATIONS)) {
+      for (uint32_t a = 0; a < src->cb.attachment_count; a++) {
+         COPY_MEMBER(CB_BLEND_EQUATIONS,
+                     cb.attachments[a].src_color_blend_factor);
+         COPY_MEMBER(CB_BLEND_EQUATIONS,
+                     cb.attachments[a].dst_color_blend_factor);
+         COPY_MEMBER(CB_BLEND_EQUATIONS,
+                     cb.attachments[a].src_alpha_blend_factor);
+         COPY_MEMBER(CB_BLEND_EQUATIONS,
+                     cb.attachments[a].dst_alpha_blend_factor);
+         COPY_MEMBER(CB_BLEND_EQUATIONS, cb.attachments[a].color_blend_op);
+         COPY_MEMBER(CB_BLEND_EQUATIONS, cb.attachments[a].alpha_blend_op);
+      }
+   }
+   if (IS_SET_IN_SRC(CB_WRITE_MASKS)) {
+      for (uint32_t a = 0; a < src->cb.attachment_count; a++)
+         COPY_MEMBER(CB_WRITE_MASKS, cb.attachments[a].write_mask);
+   }
    if (IS_SET_IN_SRC(CB_BLEND_CONSTANTS))
       COPY_ARRAY(CB_BLEND_CONSTANTS, cb.blend_constants, 4);
 
@@ -2329,6 +2381,16 @@ vk_common_CmdSetStencilReference(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetLogicOpEnableEXT(VkCommandBuffer commandBuffer,
+                                 VkBool32 logicOpEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, CB_LOGIC_OP_ENABLE, cb.logic_op_enable, logicOpEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer,
                            VkLogicOp logicOp)
 {
@@ -2356,6 +2418,81 @@ vk_common_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer,
 
    SET_DYN_VALUE(dyn, CB_COLOR_WRITE_ENABLES,
                  cb.color_write_enables, color_write_enables);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetColorBlendEnableEXT(VkCommandBuffer commandBuffer,
+                                    uint32_t firstAttachment,
+                                    uint32_t attachmentCount,
+                                    const VkBool32 *pColorBlendEnables)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   for (uint32_t i = 0; i < attachmentCount; i++) {
+      uint32_t a = firstAttachment + i;
+      assert(a < ARRAY_SIZE(dyn->cb.attachments));
+
+      SET_DYN_BOOL(dyn, CB_BLEND_ENABLES,
+                   cb.attachments[a].blend_enable, pColorBlendEnables[i]);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetColorBlendEquationEXT(VkCommandBuffer commandBuffer,
+                                      uint32_t firstAttachment,
+                                      uint32_t attachmentCount,
+                                      const VkColorBlendEquationEXT *pColorBlendEquations)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   for (uint32_t i = 0; i < attachmentCount; i++) {
+      uint32_t a = firstAttachment + i;
+      assert(a < ARRAY_SIZE(dyn->cb.attachments));
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].src_color_blend_factor,
+                    pColorBlendEquations[i].srcColorBlendFactor);
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].dst_color_blend_factor,
+                    pColorBlendEquations[i].dstColorBlendFactor);
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].color_blend_op,
+                    pColorBlendEquations[i].colorBlendOp);
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].src_alpha_blend_factor,
+                    pColorBlendEquations[i].srcAlphaBlendFactor);
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].dst_alpha_blend_factor,
+                    pColorBlendEquations[i].dstAlphaBlendFactor);
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].alpha_blend_op,
+                    pColorBlendEquations[i].alphaBlendOp);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetColorWriteMaskEXT(VkCommandBuffer commandBuffer,
+                                  uint32_t firstAttachment,
+                                  uint32_t attachmentCount,
+                                  const VkColorComponentFlags *pColorWriteMasks)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   for (uint32_t i = 0; i < attachmentCount; i++) {
+      uint32_t a = firstAttachment + i;
+      assert(a < ARRAY_SIZE(dyn->cb.attachments));
+
+      SET_DYN_VALUE(dyn, CB_BLEND_EQUATIONS,
+                    cb.attachments[a].write_mask, pColorWriteMasks[i]);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
