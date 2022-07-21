@@ -300,4 +300,5 @@ bi_replace_mux_with_csel(bi_instr *I, bool must_sign)
         I->src[1] = bi_zero();
         I->src[2] = vTrue;
         I->src[3] = vFalse;
+        I->nr_srcs = 4;
 }

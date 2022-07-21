@@ -102,6 +102,7 @@ va_fuse_add_imm(bi_instr *I)
 
    I->src[0] = I->src[1 - s];
    I->src[1] = bi_null();
+   I->nr_srcs = 1;
 }
 
 void

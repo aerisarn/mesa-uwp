@@ -94,6 +94,8 @@ bi_instr * bi_${opcode.replace('.', '_').lower()}${to_suffix(ops[opcode])}(${sig
 {
     bi_instr *I = rzalloc(b->shader, bi_instr);
     I->op = BI_OPCODE_${opcode.replace('.', '_').upper()};
+    I->nr_dests = ${ops[opcode]["dests"]};
+    I->nr_srcs = ${src_count(ops[opcode])};
 % for dest in range(ops[opcode]["dests"]):
     I->dest[${dest}] = dest${dest};
 % endfor

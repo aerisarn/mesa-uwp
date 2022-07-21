@@ -145,6 +145,7 @@ bi_fuse_discard_fcmp(bi_instr *I, bi_instr *mod, unsigned arch)
         I->cmpf = mod->cmpf;
         I->src[0] = mod->src[0];
         I->src[1] = mod->src[1];
+        I->nr_srcs = 2;
 
         if (mod->op == BI_OPCODE_FCMP_V2F16) {
                 I->src[0].swizzle = bi_compose_swizzle_16(r, I->src[0].swizzle);
@@ -442,12 +443,14 @@ bi_lower_opt_instruction(bi_instr *I)
 
                 I->round = BI_ROUND_NONE;
                 I->src[1] = bi_negzero();
+                I->nr_srcs = 2;
                 break;
 
         case BI_OPCODE_DISCARD_B32:
                 I->op = BI_OPCODE_DISCARD_F32;
                 I->src[1] = bi_imm_u32(0);
                 I->cmpf = BI_CMPF_NE;
+                I->nr_srcs = 2;
                 break;
 
         default:

@@ -329,9 +329,12 @@ bi_lower_cubeface(bi_context *ctx,
         pinstr->op = BI_OPCODE_CUBEFACE2;
         pinstr->dest[0] = pinstr->dest[1];
         pinstr->dest[1] = bi_null();
+        pinstr->nr_dests = 1;
+
         pinstr->src[0] = cubeface1->dest[0];
         pinstr->src[1] = bi_null();
         pinstr->src[2] = bi_null();
+        pinstr->nr_srcs = 1;
 
         return cubeface1;
 }
@@ -355,6 +358,7 @@ bi_lower_atom_c(bi_context *ctx, struct bi_clause_state *clause, struct
 
         pinstr->op = BI_OPCODE_ATOM_CX;
         pinstr->src[3] = atom_c->src[2];
+        pinstr->nr_srcs = 4;
 
         return atom_c;
 }
@@ -376,6 +380,7 @@ bi_lower_atom_c1(bi_context *ctx, struct bi_clause_state *clause, struct
         pinstr->src[1] = pinstr->src[0];
         pinstr->src[3] = bi_dontcare(&b);
         pinstr->src[0] = bi_null();
+        pinstr->nr_srcs = 4;
 
         return atom_c;
 }
@@ -393,6 +398,7 @@ bi_lower_seg_add(bi_context *ctx,
         pinstr->op = BI_OPCODE_SEG_ADD;
         pinstr->src[0] = pinstr->src[1];
         pinstr->src[1] = bi_null();
+        pinstr->nr_srcs = 1;
 
         assert(pinstr->dest[0].type == BI_INDEX_REGISTER);
         pinstr->dest[0].value += 1;
@@ -409,6 +415,7 @@ bi_lower_dtsel(bi_context *ctx,
 
         bi_instr *dtsel = bi_dtsel_imm_to(&b, bi_temp(b.shader),
                         add->src[0], add->table);
+        assert(add->nr_srcs >= 1);
         add->src[0] = dtsel->dest[0];
 
         assert(bi_supports_dtsel(add));
@@ -1289,6 +1296,7 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
                 assert(bi_can_iaddc(instr));
                 instr->op = BI_OPCODE_IADDC_I32;
                 instr->src[2] = bi_zero();
+                instr->nr_srcs = 3;
         } else if (fma && bi_can_replace_with_csel(instr)) {
                 bi_replace_mux_with_csel(instr, false);
         }

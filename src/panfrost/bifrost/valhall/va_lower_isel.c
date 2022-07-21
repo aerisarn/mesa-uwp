@@ -34,26 +34,31 @@ va_lower_isel(bi_instr *I)
    case BI_OPCODE_SWZ_V2I16:
       I->op = BI_OPCODE_IADD_V2U16;
       I->src[1] = bi_zero();
+      I->nr_srcs = 2;
       break;
 
    case BI_OPCODE_SWZ_V4I8:
       I->op = BI_OPCODE_IADD_V4U8;
       I->src[1] = bi_zero();
+      I->nr_srcs = 2;
       break;
 
    case BI_OPCODE_ICMP_I32:
       I->op = BI_OPCODE_ICMP_OR_U32;
       I->src[2] = bi_zero();
+      I->nr_srcs = 3;
       break;
 
    case BI_OPCODE_ICMP_V2I16:
       I->op = BI_OPCODE_ICMP_OR_V2U16;
       I->src[2] = bi_zero();
+      I->nr_srcs = 3;
       break;
 
    case BI_OPCODE_ICMP_V4I8:
       I->op = BI_OPCODE_ICMP_OR_V4U8;
       I->src[2] = bi_zero();
+      I->nr_srcs = 3;
       break;
 
    case BI_OPCODE_ICMP_U32:
@@ -101,6 +106,7 @@ va_lower_isel(bi_instr *I)
    case BI_OPCODE_FCMP_V2F16:
       I->op = BI_OPCODE_FCMP_OR_V2F16;
       I->src[2] = bi_zero();
+      I->nr_srcs = 3;
       break;
 
    /* Integer CSEL must have a signedness */
@@ -117,6 +123,7 @@ va_lower_isel(bi_instr *I)
       I->op = I->branch_target ? BI_OPCODE_BRANCHZ_I16 : BI_OPCODE_BRANCHZI;
       I->src[1] = I->src[0];
       I->src[0] = bi_zero();
+      I->nr_srcs = 2;
       I->cmpf = BI_CMPF_EQ;
       break;
 
@@ -152,6 +159,7 @@ va_lower_isel(bi_instr *I)
       I->src[3] = I->src[2];
       I->src[2] = I->src[1];
       I->src[1] = bi_imm_f32(1.0);
+      I->nr_srcs = 4;
       break;
 
    default:
