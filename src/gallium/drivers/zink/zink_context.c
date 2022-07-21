@@ -941,15 +941,16 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
           */
           if (zink_format_is_voidable_rgba_variant(state->format)) {
              const struct util_format_description *desc = util_format_description(state->format);
-             sampler_view->base.swizzle_r = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_r);
-             sampler_view->base.swizzle_g = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_g);
-             sampler_view->base.swizzle_b = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_b);
-             sampler_view->base.swizzle_a = zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_a);
+             ivci.components.r = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_r));
+             ivci.components.g = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_g));
+             ivci.components.b = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_b));
+             ivci.components.a = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_a));
+          } else {
+             ivci.components.r = zink_component_mapping(sampler_view->base.swizzle_r);
+             ivci.components.g = zink_component_mapping(sampler_view->base.swizzle_g);
+             ivci.components.b = zink_component_mapping(sampler_view->base.swizzle_b);
+             ivci.components.a = zink_component_mapping(sampler_view->base.swizzle_a);
           }
-          ivci.components.r = zink_component_mapping(sampler_view->base.swizzle_r);
-          ivci.components.g = zink_component_mapping(sampler_view->base.swizzle_g);
-          ivci.components.b = zink_component_mapping(sampler_view->base.swizzle_b);
-          ivci.components.a = zink_component_mapping(sampler_view->base.swizzle_a);
       }
       assert(ivci.format);
 
