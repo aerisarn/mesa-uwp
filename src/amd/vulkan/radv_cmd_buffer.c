@@ -7327,17 +7327,13 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    /* Cull every triangle when rasterizer discard is enabled. */
-   if (d->rasterizer_discard_enable ||
-       G_028810_DX_RASTERIZATION_KILL(cmd_buffer->state.graphics_pipeline->pa_cl_clip_cntl))
+   if (d->rasterizer_discard_enable)
       return radv_nggc_front_face | radv_nggc_back_face;
 
-   uint32_t pa_su_sc_mode_cntl = cmd_buffer->state.graphics_pipeline->pa_su_sc_mode_cntl;
    uint32_t nggc_settings = radv_nggc_none;
 
    /* The culling code needs to know whether face is CW or CCW. */
-   bool ccw = (pipeline->needed_dynamic_state & RADV_DYNAMIC_FRONT_FACE)
-              ? d->front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE
-              : G_028814_FACE(pa_su_sc_mode_cntl) == 0;
+   bool ccw = d->front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
    /* Take inverted viewport into account. */
    ccw ^= vp_y_inverted;
@@ -7346,13 +7342,9 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
       nggc_settings |= radv_nggc_face_is_ccw;
 
    /* Face culling settings. */
-   if ((pipeline->needed_dynamic_state & RADV_DYNAMIC_CULL_MODE)
-         ? (d->cull_mode & VK_CULL_MODE_FRONT_BIT)
-         : G_028814_CULL_FRONT(pa_su_sc_mode_cntl))
+   if (d->cull_mode & VK_CULL_MODE_FRONT_BIT)
       nggc_settings |= radv_nggc_front_face;
-   if ((pipeline->needed_dynamic_state & RADV_DYNAMIC_CULL_MODE)
-         ? (d->cull_mode & VK_CULL_MODE_BACK_BIT)
-         : G_028814_CULL_BACK(pa_su_sc_mode_cntl))
+   if (d->cull_mode & VK_CULL_MODE_BACK_BIT)
       nggc_settings |= radv_nggc_back_face;
 
    /* Small primitive culling is only valid when conservative overestimation is not used. It's also
