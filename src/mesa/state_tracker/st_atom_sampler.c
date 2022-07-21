@@ -91,7 +91,6 @@ st_convert_sampler(const struct st_context *st,
                    PIPE_TEX_WRAP_MIRROR_REPEAT |
                    PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE) & 0x1) == 0);
 
-   /* For non-black borders... */
    if (msamp->Attrib.IsBorderColorNonZero &&
        /* This is true if wrap modes are using the border color: */
        (sampler->wrap_s | sampler->wrap_t | sampler->wrap_r) & 0x1) {
@@ -103,40 +102,56 @@ st_convert_sampler(const struct st_context *st,
       if (texobj->StencilSampling)
          texBaseFormat = GL_STENCIL_INDEX;
 
-      if (st->apply_texture_swizzle_to_border_color) {
-         const struct gl_texture_object *stobj = st_texture_object_const(texobj);
-         /* XXX: clean that up to not use the sampler view at all */
-         const struct st_sampler_view *sv = st_texture_get_current_sampler_view(st, stobj);
+      if (st->apply_texture_swizzle_to_border_color ||
+          st->alpha_border_color_is_not_w || st->use_format_with_border_color) {
+         if (st->apply_texture_swizzle_to_border_color) {
+            const struct gl_texture_object *stobj = st_texture_object_const(texobj);
+            /* XXX: clean that up to not use the sampler view at all */
+            const struct st_sampler_view *sv = st_texture_get_current_sampler_view(st, stobj);
 
-         if (sv) {
-            struct pipe_sampler_view *view = sv->view;
-            union pipe_color_union tmp = sampler->border_color;
-            const unsigned char swz[4] =
-            {
-               view->swizzle_r,
-               view->swizzle_g,
-               view->swizzle_b,
-               view->swizzle_a,
-            };
+            if (sv) {
+               struct pipe_sampler_view *view = sv->view;
+               union pipe_color_union tmp = sampler->border_color;
+               const unsigned char swz[4] =
+               {
+                  view->swizzle_r,
+                  view->swizzle_g,
+                  view->swizzle_b,
+                  view->swizzle_a,
+               };
 
-            st_translate_color(&tmp, texBaseFormat, is_integer);
+               st_translate_color(&tmp, texBaseFormat, is_integer);
 
-            util_format_apply_color_swizzle(&sampler->border_color,
-                                            &tmp, swz, is_integer);
+               util_format_apply_color_swizzle(&sampler->border_color,
+                                               &tmp, swz, is_integer);
+            } else {
+               st_translate_color(&sampler->border_color,
+                                  texBaseFormat, is_integer);
+            }
          } else {
-            st_translate_color(&sampler->border_color,
-                               texBaseFormat, is_integer);
-         }
-      } else {
-         st_translate_color(&sampler->border_color,
-                            texBaseFormat, is_integer);
-         if (st->use_format_with_border_color) {
             bool srgb_skip_decode = false;
 
             if (!ignore_srgb_decode && msamp->Attrib.sRGBDecode == GL_SKIP_DECODE_EXT)
                srgb_skip_decode = true;
-            sampler->border_color_format = st_get_sampler_view_format(st, texobj, srgb_skip_decode);
+            enum pipe_format format = st_get_sampler_view_format(st, texobj, srgb_skip_decode);
+            if (st->use_format_with_border_color)
+               sampler->border_color_format = format;
+            /* alpha is not w, so set it to the first available component: */
+            if (st->alpha_border_color_is_not_w && util_format_is_alpha(format)) {
+               /* use x component */
+               sampler->border_color.ui[0] = sampler->border_color.ui[3];
+            } else if (st->alpha_border_color_is_not_w && util_format_is_luminance_alpha(format)) {
+               /* use y component */
+               sampler->border_color.ui[1] = sampler->border_color.ui[3];
+            } else {
+               /* not an alpha format */
+               st_translate_color(&sampler->border_color,
+                                  texBaseFormat, is_integer);
+            }
          }
+      } else {
+         st_translate_color(&sampler->border_color,
+                            texBaseFormat, is_integer);
       }
       sampler->border_color_is_integer = is_integer;
    }
