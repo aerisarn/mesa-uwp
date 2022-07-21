@@ -425,9 +425,9 @@ def get_array_copy(command, param):
         field_size = "1"
     else:
         field_size = "sizeof(*%s)" % field_name
-    allocation = "%s = vk_zalloc(queue->alloc, %s * %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);\n   if (%s == NULL) goto err;\n" % (field_name, field_size, param.len, field_name)
+    allocation = "%s = vk_zalloc(queue->alloc, %s * (%s), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);\n   if (%s == NULL) goto err;\n" % (field_name, field_size, param.len, field_name)
     const_cast = remove_suffix(param.decl.replace("const", ""), param.name)
-    copy = "memcpy((%s)%s, %s, %s * %s);" % (const_cast, field_name, param.name, field_size, param.len)
+    copy = "memcpy((%s)%s, %s, %s * (%s));" % (const_cast, field_name, param.name, field_size, param.len)
     return "%s\n   %s" % (allocation, copy)
 
 def get_array_member_copy(struct, src_name, member):
@@ -513,7 +513,7 @@ def get_types(doc):
             mem_type = p.find('./type').text
             mem_name = p.find('./name').text
             mem_decl = ''.join(p.itertext())
-            mem_len = p.attrib.get('len', None)
+            mem_len = p.attrib.get('altlen', p.attrib.get('len', None))
             if mem_len is None and '*' in mem_decl and mem_name != 'pNext':
                 mem_len = "struct-ptr"
 
