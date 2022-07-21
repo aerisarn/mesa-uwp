@@ -835,15 +835,28 @@ wait_imm::wait_imm(uint16_t vm_, uint16_t exp_, uint16_t lgkm_, uint16_t vs_)
 
 wait_imm::wait_imm(enum amd_gfx_level gfx_level, uint16_t packed) : vs(unset_counter)
 {
-   vm = packed & 0xf;
-   if (gfx_level >= GFX9)
-      vm |= (packed >> 10) & 0x30;
+   if (gfx_level == GFX11) {
+      vm = (packed >> 10) & 0x3f;
+      lgkm = (packed >> 4) & 0x3f;
+      exp = packed & 0x7;
+   } else {
+      vm = packed & 0xf;
+      if (gfx_level >= GFX9)
+         vm |= (packed >> 10) & 0x30;
 
-   exp = (packed >> 4) & 0x7;
+      exp = (packed >> 4) & 0x7;
 
-   lgkm = (packed >> 8) & 0xf;
-   if (gfx_level >= GFX10)
-      lgkm |= (packed >> 8) & 0x30;
+      lgkm = (packed >> 8) & 0xf;
+      if (gfx_level >= GFX10)
+         lgkm |= (packed >> 8) & 0x30;
+   }
+
+   if (vm == (gfx_level >= GFX9 ? 0x3f : 0xf))
+      vm = wait_imm::unset_counter;
+   if (exp == 0x7)
+      exp = wait_imm::unset_counter;
+   if (lgkm == (gfx_level >= GFX10 ? 0x3f : 0xf))
+      lgkm = wait_imm::unset_counter;
 }
 
 uint16_t
