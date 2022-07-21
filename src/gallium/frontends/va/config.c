@@ -259,7 +259,7 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
          return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
       }
 
-      config->entrypoint = PIPE_VIDEO_ENTRYPOINT_UNKNOWN;
+      config->entrypoint = PIPE_VIDEO_ENTRYPOINT_PROCESSING;
       config->profile = PIPE_VIDEO_PROFILE_UNKNOWN;
       supported_rt_formats = VA_RT_FORMAT_YUV420 |
                              VA_RT_FORMAT_YUV420_10BPP |
@@ -441,7 +441,7 @@ vlVaQueryConfigAttributes(VADriverContextP ctx, VAConfigID config_id, VAProfile 
    case PIPE_VIDEO_ENTRYPOINT_ENCODE:
       *entrypoint = VAEntrypointEncSlice;
       break;
-   case PIPE_VIDEO_ENTRYPOINT_UNKNOWN:
+   case PIPE_VIDEO_ENTRYPOINT_PROCESSING:
       *entrypoint = VAEntrypointVideoProc;
       break;
    default:

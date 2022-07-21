@@ -252,7 +252,7 @@ vlVaCreateContext(VADriverContextP ctx, VAConfigID config_id, int picture_width,
    if (is_vpp) {
       context->decoder = NULL;
    } else {
-      if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_UNKNOWN) {
+      if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
          max_supported_width = drv->vscreen->pscreen->get_video_param(drv->vscreen->pscreen,
                         config->profile, config->entrypoint,
                         PIPE_VIDEO_CAP_MAX_WIDTH);

@@ -523,7 +523,7 @@ vlVaQuerySurfaceAttributes(VADriverContextP ctx, VAConfigID config_id,
    }
 #endif
 
-   if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_UNKNOWN) {
+   if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
       attribs[i].type = VASurfaceAttribMaxWidth;
       attribs[i].value.type = VAGenericValueTypeInteger;
       attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
