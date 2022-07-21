@@ -655,6 +655,7 @@ bi_reads_temps(bi_instr *ins, unsigned src)
 static bool
 bi_impacted_t_modifiers(bi_instr *I, unsigned src)
 {
+        assert(src < I->nr_srcs);
         enum bi_swizzle swizzle = I->src[src].swizzle;
 
         switch (I->op) {
@@ -881,6 +882,7 @@ bi_update_fau(struct bi_clause_state *clause,
 static bool
 bi_tuple_is_new_src(bi_instr *instr, struct bi_reg_state *reg, unsigned src_idx)
 {
+        assert(src_idx < instr->nr_srcs);
         bi_index src = instr->src[src_idx];
 
         /* Only consider sources which come from the register file */
@@ -1971,6 +1973,7 @@ bi_schedule_block(bi_context *ctx, bi_block *block)
 static bool
 bi_check_fau_src(bi_instr *ins, unsigned s, uint32_t *constants, unsigned *cwords, bi_index *fau)
 {
+        assert(s < ins->nr_srcs);
         bi_index src = ins->src[s];
 
         /* Staging registers can't have FAU accesses */

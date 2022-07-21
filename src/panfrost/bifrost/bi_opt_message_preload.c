@@ -137,7 +137,7 @@ bi_opt_message_preload(bi_context *ctx)
                  * moves are free.
                  */
                 b.cursor = bi_before_block(block);
-                for (unsigned i = 0; i < collect->nr_srcs; ++i) {
+                bi_foreach_src(collect, i) {
                         unsigned reg = (nr_preload * 4) + i;
 
                         collect->src[i] = bi_mov_i32(&b, bi_register(reg));

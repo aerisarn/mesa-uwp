@@ -302,7 +302,7 @@ bi_get_src_slot(bi_registers *regs, unsigned reg)
 static inline enum bifrost_packed_src
 bi_get_src_new(bi_instr *ins, bi_registers *regs, unsigned s)
 {
-        if (!ins)
+        if (!ins || s >= ins->nr_srcs)
                 return 0;
 
         bi_index src = ins->src[s];

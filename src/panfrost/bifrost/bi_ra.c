@@ -728,7 +728,7 @@ bi_lower_vector(bi_context *ctx)
                         assert(dest.offset == 0);
                         assert((bi_is_ssa(dest) || I->nr_srcs == 1) && "nir_lower_phis_to_scalar");
 
-                        for (unsigned i = 0; i < I->nr_srcs; ++i) {
+                        bi_foreach_src(I, i) {
                                 if (bi_is_null(I->src[i]))
                                         continue;
 
@@ -764,14 +764,12 @@ bi_lower_vector(bi_context *ctx)
 static bool
 bi_is_tied(const bi_instr *I)
 {
-        if (bi_is_null(I->src[0]))
-                return false;
-
         return (I->op == BI_OPCODE_TEXC ||
                 I->op == BI_OPCODE_TEXC_DUAL ||
                 I->op == BI_OPCODE_ATOM_RETURN_I32 ||
                 I->op == BI_OPCODE_AXCHG_I32 ||
-                I->op == BI_OPCODE_ACMPXCHG_I32);
+                I->op == BI_OPCODE_ACMPXCHG_I32) &&
+                !bi_is_null(I->src[0]);
 }
 
 /*
