@@ -1044,17 +1044,17 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         if (nr < nir_intrinsic_src_components(instr, 0)) {
                 assert(T_size == 32 && "todo: 16-bit trim");
 
-                bi_instr *split = bi_split_i32_to(b, bi_null(), data);
-                split->nr_dests = nir_intrinsic_src_components(instr, 0);
+                bi_index chans[4] = { bi_null(), bi_null(), bi_null(), bi_null() };
+                unsigned src_comps = nir_intrinsic_src_components(instr, 0);
+
+                bi_emit_split_i32(b, chans, data, src_comps);
 
                 bi_index tmp = bi_temp(b->shader);
                 bi_instr *collect = bi_collect_i32_to(b, tmp);
                 collect->nr_srcs = nr;
 
-                for (unsigned w = 0; w < nr; ++w) {
-                        split->dest[w] = bi_temp(b->shader);
-                        collect->src[w] = split->dest[w];
-                }
+                for (unsigned w = 0; w < nr; ++w)
+                        collect->src[w] = chans[w];
 
                 data = tmp;
         }
