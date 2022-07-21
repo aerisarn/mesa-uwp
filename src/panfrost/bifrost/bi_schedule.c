@@ -577,16 +577,16 @@ bi_can_add(bi_instr *ins)
  * paired instructions) can run afoul of the "no two writes on the last clause"
  * constraint, so we check for that here.
  *
- * Exception to the exception: TEXC, which writes to multiple sets of staging
- * registers. Staging registers bypass the usual register write mechanism so
- * this restriction does not apply.
+ * Exception to the exception: TEXC_DUAL, which writes to multiple sets of
+ * staging registers. Staging registers bypass the usual register write
+ * mechanism so this restriction does not apply.
  */
 
 static bool
 bi_must_not_last(bi_instr *ins)
 {
         return !bi_is_null(ins->dest[0]) && !bi_is_null(ins->dest[1]) &&
-               (ins->op != BI_OPCODE_TEXC);
+               (ins->op != BI_OPCODE_TEXC_DUAL);
 }
 
 /* Check for a message-passing instruction. +DISCARD.f32 is special-cased; we
@@ -747,6 +747,7 @@ bi_reads_t(bi_instr *ins, unsigned src)
         case BI_OPCODE_ST_CVT:
         case BI_OPCODE_ST_TILE:
         case BI_OPCODE_TEXC:
+        case BI_OPCODE_TEXC_DUAL:
                 return src != 2;
         case BI_OPCODE_BLEND:
                 return src != 2 && src != 3;
@@ -2026,7 +2027,7 @@ bi_lower_fau(bi_context *ctx)
                 /* Dual texturing requires the texture operation descriptor
                  * encoded as an immediate so we can fix up.
                  */
-                if (ins->op == BI_OPCODE_TEXC) {
+                if (ins->op == BI_OPCODE_TEXC_DUAL) {
                         assert(ins->src[3].type == BI_INDEX_CONSTANT);
                         constants[cwords++] = ins->src[3].value;
                 }

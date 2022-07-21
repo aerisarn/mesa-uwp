@@ -67,6 +67,7 @@ bi_has_skip_bit(enum bi_opcode op)
         switch (op) {
         case BI_OPCODE_TEX_SINGLE:
         case BI_OPCODE_TEXC:
+        case BI_OPCODE_TEXC_DUAL:
         case BI_OPCODE_TEXS_2D_F16:
         case BI_OPCODE_TEXS_2D_F32:
         case BI_OPCODE_TEXS_CUBE_F16:
@@ -88,6 +89,7 @@ bi_instr_uses_helpers(bi_instr *I)
 {
         switch (I->op) {
         case BI_OPCODE_TEXC:
+        case BI_OPCODE_TEXC_DUAL:
         case BI_OPCODE_TEXS_2D_F16:
         case BI_OPCODE_TEXS_2D_F32:
         case BI_OPCODE_TEXS_CUBE_F16:

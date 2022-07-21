@@ -517,7 +517,7 @@ bi_install_registers(bi_context *ctx, struct lcra_state *l)
                 bi_foreach_src(ins, s)
                         ins->src[s] = bi_reg_from_index(ctx, l, ins->src[s]);
 
-                if (ins->op == BI_OPCODE_TEXC && !bi_is_null(ins->dest[1]))
+                if (ins->op == BI_OPCODE_TEXC_DUAL)
                         bi_fixup_dual_tex_register(ins);
         }
 }
@@ -774,6 +774,7 @@ bi_is_tied(const bi_instr *I)
                 return false;
 
         return (I->op == BI_OPCODE_TEXC ||
+                I->op == BI_OPCODE_TEXC_DUAL ||
                 I->op == BI_OPCODE_ATOM_RETURN_I32 ||
                 I->op == BI_OPCODE_AXCHG_I32 ||
                 I->op == BI_OPCODE_ACMPXCHG_I32);

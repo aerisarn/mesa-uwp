@@ -731,10 +731,31 @@ bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
         assert(!(ctx->info.bifrost->blend[loc].return_offset & 0x7));
 }
 
+/*
+ * The second register destination of TEXC_DUAL is encoded into the texture
+ * operation descriptor during register allocation. It's dropped as late as
+ * possible (instruction packing) so the register remains recorded in the IR,
+ * for clause scoreboarding and so on.
+ */
+static void
+bi_lower_texc_dual(bi_context *ctx)
+{
+        bi_foreach_instr_global(ctx, I) {
+                if (I->op == BI_OPCODE_TEXC_DUAL) {
+                        /* In hardware, TEXC has 1 destination */
+                        I->op = BI_OPCODE_TEXC;
+                        I->dest[1] = bi_null();
+                        I->nr_dests = 1;
+                }
+        }
+}
+
 unsigned
 bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
         unsigned previous_size = emission->size;
+
+        bi_lower_texc_dual(ctx);
 
         bi_foreach_block(ctx, block) {
                 bi_assign_branch_offset(ctx, block);

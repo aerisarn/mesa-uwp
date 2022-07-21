@@ -105,6 +105,7 @@ bi_count_write_registers(const bi_instr *ins, unsigned d)
         if (d == 0 && bi_opcode_props[ins->op].sr_write) {
                 switch (ins->op) {
                 case BI_OPCODE_TEXC:
+                case BI_OPCODE_TEXC_DUAL:
                         if (ins->sr_count_2)
                                 return ins->sr_count;
                         else
@@ -131,7 +132,7 @@ bi_count_write_registers(const bi_instr *ins, unsigned d)
                 }
         } else if (ins->op == BI_OPCODE_SEG_ADD_I64) {
                 return 2;
-        } else if (ins->op == BI_OPCODE_TEXC && d == 1) {
+        } else if (ins->op == BI_OPCODE_TEXC_DUAL && d == 1) {
                 return ins->sr_count_2;
         } else if (ins->op == BI_OPCODE_COLLECT_I32 && d == 0) {
                 return ins->nr_srcs;
