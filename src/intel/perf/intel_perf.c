@@ -898,28 +898,23 @@ get_passes_mask(struct intel_perf_config *perf,
       /* Now go through each metric set and find one that contains this
        * counter.
        */
-      for (uint32_t q = 0; q < perf->n_queries; q++) {
-         bool found = false;
+      bool found = false;
+      for (uint32_t w = 0; w < BITSET_WORDS(INTEL_PERF_MAX_METRIC_SETS); w++) {
+         if (!counter_info->query_mask[w])
+            continue;
 
-         for (uint32_t w = 0; w < BITSET_WORDS(INTEL_PERF_MAX_METRIC_SETS); w++) {
-            if (!counter_info->query_mask[w])
-               continue;
+         uint32_t query_idx = w * BITSET_WORDBITS + ffsll(counter_info->query_mask[w]) - 1;
 
-            uint32_t query_idx = w * BITSET_WORDBITS + ffsll(counter_info->query_mask[w]) - 1;
+         /* Since we already looked for this in the query_mask, it should not
+          * be set.
+          */
+         assert(!BITSET_TEST(queries_mask, query_idx));
 
-            /* Since we already looked for this in the query_mask, it should
-             * not be set.
-             */
-            assert(!BITSET_TEST(queries_mask, query_idx));
-
-            BITSET_SET(queries_mask, query_idx);
-            found = true;
-            break;
-         }
-
-         if (found)
-            break;
+         BITSET_SET(queries_mask, query_idx);
+         found = true;
+         break;
       }
+      assert(found);
    }
 }
 
