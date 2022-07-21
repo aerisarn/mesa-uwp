@@ -101,15 +101,6 @@ d3d12_resource_resource(struct d3d12_resource *res)
    return ret;
 }
 
-static inline struct TransitionableResourceState *
-d3d12_transitionable_resource_state(struct d3d12_resource *res)
-{
-   uint64_t offset;
-   if (!res->bo)
-      return NULL;
-   return d3d12_bo_get_base(res->bo, &offset)->trans_state;
-}
-
 static inline D3D12_GPU_VIRTUAL_ADDRESS
 d3d12_resource_gpu_virtual_address(struct d3d12_resource *res)
 {

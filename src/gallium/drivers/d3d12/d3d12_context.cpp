@@ -52,8 +52,6 @@
 #include "util/u_dl.h"
 #include "nir_to_dxil.h"
 
-#include "D3D12ResourceState.h"
-
 #include <dxguids/dxguids.h>
 
 extern "C" {
@@ -112,8 +110,6 @@ d3d12_context_destroy(struct pipe_context *pctx)
       u_upload_destroy(pctx->stream_uploader);
    if (pctx->const_uploader)
       u_upload_destroy(pctx->const_uploader);
-
-   delete ctx->resource_state_manager;
 
    FREE(ctx);
 }
@@ -1760,7 +1756,7 @@ d3d12_set_shader_images(struct pipe_context *pctx,
    ctx->shader_dirty[shader] |= D3D12_SHADER_DIRTY_IMAGE;
 }
 
-static void
+void
 d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resource *res) {
    // For each shader type, if the resource is currently bound as CBV, SRV, or UAV
    // set the context shader_dirty bit.
@@ -1966,54 +1962,6 @@ d3d12_flush_cmdlist_and_wait(struct d3d12_context *ctx)
       d3d12_reset_batch(ctx, old_batch, PIPE_TIMEOUT_INFINITE);
    d3d12_flush_cmdlist(ctx);
    d3d12_reset_batch(ctx, batch, PIPE_TIMEOUT_INFINITE);
-}
-
-void
-d3d12_transition_resource_state(struct d3d12_context *ctx,
-                                struct d3d12_resource *res,
-                                D3D12_RESOURCE_STATES state,
-                                d3d12_bind_invalidate_option bind_invalidate)
-{
-   TransitionableResourceState *xres = d3d12_transitionable_resource_state(res);
-   
-   if (bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
-      d3d12_invalidate_context_bindings(ctx, res);
-
-   ctx->resource_state_manager->TransitionResource(xres, state);
-}
-
-void
-d3d12_transition_subresources_state(struct d3d12_context *ctx,
-                                    struct d3d12_resource *res,
-                                    uint32_t start_level, uint32_t num_levels,
-                                    uint32_t start_layer, uint32_t num_layers,
-                                    uint32_t start_plane, uint32_t num_planes,
-                                    D3D12_RESOURCE_STATES state,
-                                    d3d12_bind_invalidate_option bind_invalidate)
-{
-   TransitionableResourceState *xres = d3d12_transitionable_resource_state(res);
-
-   if(bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
-      d3d12_invalidate_context_bindings(ctx, res);
-
-   for (uint32_t l = 0; l < num_levels; l++) {
-      const uint32_t level = start_level + l;
-      for (uint32_t a = 0; a < num_layers; a++) {
-         const uint32_t layer = start_layer + a;
-         for( uint32_t p = 0; p < num_planes; p++) {
-            const uint32_t plane = start_plane + p;
-            uint32_t subres_id = level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
-            assert(subres_id < xres->NumSubresources());
-            ctx->resource_state_manager->TransitionSubresource(xres, subres_id, state);
-         }
-      }
-   }
-}
-
-void
-d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch)
-{
-   ctx->resource_state_manager->ApplyAllResourceTransitions(ctx->cmdlist, ctx->submit_id, is_implicit_dispatch);
 }
 
 static void
@@ -2630,8 +2578,6 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->blitter = util_blitter_create(&ctx->base);
    if (!ctx->blitter)
       return NULL;
-
-   ctx->resource_state_manager = new ResourceStateManager();
 
    if (!d3d12_init_polygon_stipple(&ctx->base)) {
       debug_printf("D3D12: failed to initialize polygon stipple resources\n");

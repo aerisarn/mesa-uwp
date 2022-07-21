@@ -182,6 +182,7 @@ struct d3d12_context {
 
    struct util_dynarray recently_destroyed_bos;
    struct util_dynarray barrier_scratch;
+   struct set *pending_barriers_bos;
 
    struct pipe_constant_buffer cbufs[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_framebuffer_state fb;
@@ -358,6 +359,9 @@ d3d12_need_zero_one_depth_range(struct d3d12_context *ctx);
 
 void
 d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view);
+
+void
+d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resource *res);
 
 #ifdef HAVE_GALLIUM_D3D12_VIDEO
 struct pipe_video_codec* d3d12_video_create_codec( struct pipe_context *context,

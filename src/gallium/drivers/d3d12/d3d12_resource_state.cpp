@@ -24,6 +24,7 @@
 #include "d3d12_bufmgr.h"
 #include "d3d12_context.h"
 #include "d3d12_format.h"
+#include "d3d12_resource.h"
 #include "d3d12_resource_state.h"
 #include "d3d12_screen.h"
 
@@ -205,6 +206,7 @@ void
 d3d12_context_state_table_init(struct d3d12_context *ctx)
 {
    ctx->bo_state_table = _mesa_hash_table_u64_create(nullptr);
+   ctx->pending_barriers_bos = _mesa_pointer_set_create(nullptr);
 }
 
 void
@@ -216,6 +218,7 @@ d3d12_context_state_table_destroy(struct d3d12_context *ctx)
    util_dynarray_fini(&ctx->barrier_scratch);
    if (ctx->state_fixup_cmdlist)
       ctx->state_fixup_cmdlist->Release();
+   _mesa_set_destroy(ctx->pending_barriers_bos, nullptr);
 }
 
 static unsigned
@@ -366,4 +369,142 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
       util_dynarray_clear(&ctx->barrier_scratch);
    }
    return needs_execute_fixup;
+}
+
+void
+d3d12_transition_resource_state(struct d3d12_context *ctx,
+                                struct d3d12_resource *res,
+                                D3D12_RESOURCE_STATES state,
+                                d3d12_bind_invalidate_option bind_invalidate)
+{
+   if (bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
+      d3d12_invalidate_context_bindings(ctx, res);
+
+   d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
+   d3d12_set_desired_resource_state(&state_entry->desired, state);
+   _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+}
+
+void
+d3d12_transition_subresources_state(struct d3d12_context *ctx,
+                                    struct d3d12_resource *res,
+                                    uint32_t start_level, uint32_t num_levels,
+                                    uint32_t start_layer, uint32_t num_layers,
+                                    uint32_t start_plane, uint32_t num_planes,
+                                    D3D12_RESOURCE_STATES state,
+                                    d3d12_bind_invalidate_option bind_invalidate)
+{
+   if(bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
+      d3d12_invalidate_context_bindings(ctx, res);
+
+   d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
+   for (uint32_t l = 0; l < num_levels; l++) {
+      const uint32_t level = start_level + l;
+      for (uint32_t a = 0; a < num_layers; a++) {
+         const uint32_t layer = start_layer + a;
+         for( uint32_t p = 0; p < num_planes; p++) {
+            const uint32_t plane = start_plane + p;
+            uint32_t subres_id = level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
+            assert(subres_id < state_entry->desired.num_subresources);
+            d3d12_set_desired_subresource_state(&state_entry->desired, subres_id, state);
+         }
+      }
+   }
+
+   _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+}
+
+void
+d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch)
+{
+   set_foreach_remove(ctx->pending_barriers_bos, entry) {
+      d3d12_bo *bo = (d3d12_bo *)entry->key;
+      uint64_t offset;
+      ID3D12Resource *res = d3d12_bo_get_base(bo, &offset)->res;
+
+      d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, bo);
+      d3d12_desired_resource_state *destination_state = &state_entry->desired;
+      d3d12_resource_state *current_state = &state_entry->batch_end;
+
+      // Figure out the set of subresources that are transitioning
+      bool all_resources_at_once = current_state->homogenous && destination_state->homogenous;
+
+      D3D12_RESOURCE_BARRIER transition_desc = { D3D12_RESOURCE_BARRIER_TYPE_TRANSITION };
+      transition_desc.Transition.pResource = res;
+
+      UINT num_subresources = all_resources_at_once ? 1 : current_state->num_subresources;
+      for (UINT i = 0; i < num_subresources; ++i) {
+         D3D12_RESOURCE_STATES after = d3d12_get_desired_subresource_state(destination_state, i);
+         transition_desc.Transition.Subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
+
+         // Is this subresource currently being used, or is it just being iterated over?
+         if (after == UNKNOWN_RESOURCE_STATE) {
+            // This subresource doesn't have any transition requested - move on to the next.
+            continue;
+         }
+
+         // This is a transition into a state that is both write and non-write.
+         // This is invalid according to D3D12. We're venturing into undefined behavior
+         // land, but let's just pick the write state.
+         if (d3d12_is_write_state(after) && (after & ~RESOURCE_STATE_ALL_WRITE_BITS) != 0) {
+            after &= RESOURCE_STATE_ALL_WRITE_BITS;
+
+            // For now, this is the only way I've seen where this can happen.
+            assert(after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+         }
+
+         d3d12_subresource_state current_subresource_state = *d3d12_get_subresource_state(current_state, i);
+
+         // If the last time this state was set was in a different execution
+         // period and is decayable then decay the current state to COMMON
+         if (ctx->submit_id != current_subresource_state.execution_id && current_subresource_state.may_decay) {
+            current_subresource_state.state = D3D12_RESOURCE_STATE_COMMON;
+            current_subresource_state.is_promoted = false;
+         }
+         bool may_decay = false;
+         bool is_promotion = false;
+
+         D3D12_RESOURCE_STATES state_if_promoted =
+            d3d12_resource_state_if_promoted(after, current_state->supports_simultaneous_access, &current_subresource_state);
+
+         if (D3D12_RESOURCE_STATE_COMMON == state_if_promoted) {
+            // No promotion
+            if (current_subresource_state.state == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
+                after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
+                is_implicit_dispatch) {
+               D3D12_RESOURCE_BARRIER uav_barrier = { D3D12_RESOURCE_BARRIER_TYPE_UAV };
+               uav_barrier.UAV.pResource = res;
+               util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, uav_barrier);
+            } else if (transition_required(current_subresource_state.state, /*inout*/ &after)) {
+               // Insert a single concrete barrier (for non-simultaneous access resources).
+               transition_desc.Transition.StateBefore = current_subresource_state.state;
+               transition_desc.Transition.StateAfter = after;
+               assert(transition_desc.Transition.StateBefore != transition_desc.Transition.StateAfter);
+               util_dynarray_append(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER, transition_desc);
+
+               may_decay = current_state->supports_simultaneous_access && !d3d12_is_write_state(after);
+               is_promotion = false;
+            }
+         } else if (after != state_if_promoted) {
+            after = state_if_promoted;
+            may_decay = !d3d12_is_write_state(after);
+            is_promotion = true;
+         }
+
+         d3d12_subresource_state new_subresource_state { after, ctx->submit_id, is_promotion, may_decay };
+         if (num_subresources == 1)
+            d3d12_set_resource_state(current_state, &new_subresource_state);
+         else
+            d3d12_set_subresource_state(current_state, i, &new_subresource_state);
+      }
+
+      // Update destination states.
+      d3d12_reset_desired_resource_state(destination_state);
+   }
+
+   if (ctx->barrier_scratch.size) {
+      ctx->cmdlist->ResourceBarrier(util_dynarray_num_elements(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER),
+                                    (D3D12_RESOURCE_BARRIER *) ctx->barrier_scratch.data);
+      util_dynarray_clear(&ctx->barrier_scratch);
+   }
 }

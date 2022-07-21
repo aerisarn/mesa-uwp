@@ -34,7 +34,6 @@
 struct d3d12_bufmgr;
 struct d3d12_screen;
 struct pb_manager;
-struct TransitionableResourceState;
 
 enum d3d12_residency_status {
    d3d12_evicted,
@@ -47,7 +46,6 @@ struct d3d12_bo {
    struct d3d12_screen *screen;
    ID3D12Resource *res;
    struct pb_buffer *buffer;
-   struct TransitionableResourceState *trans_state;
    struct d3d12_resource_state global_state;
 
    /* Used as a key in per-context resource state maps,

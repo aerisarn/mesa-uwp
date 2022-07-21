@@ -26,8 +26,6 @@
 #include "d3d12_format.h"
 #include "d3d12_screen.h"
 
-#include "D3D12ResourceState.h"
-
 #include "pipebuffer/pb_buffer.h"
 #include "pipebuffer/pb_bufmgr.h"
 
@@ -95,14 +93,13 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum d3d12_r
    pipe_reference_init(&bo->reference, 1);
    bo->screen = screen;
    bo->res = res;
-   bo->trans_state = new TransitionableResourceState(res, total_subresources, supports_simultaneous_access);
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
    if (!supports_simultaneous_access)
       d3d12_resource_state_init(&bo->global_state, total_subresources, false);
 
    bo->residency_status = residency;
    bo->last_used_timestamp = 0;
-   screen->dev->GetCopyableFootprints(&desc, 0, bo->trans_state->NumSubresources(), 0, nullptr, nullptr, nullptr, &bo->estimated_size);
+   screen->dev->GetCopyableFootprints(&desc, 0, total_subresources, 0, nullptr, nullptr, nullptr, &bo->estimated_size);
    if (residency != d3d12_evicted) {
       mtx_lock(&screen->submit_mutex);
       list_add(&bo->residency_list_entry, &screen->residency_list);
@@ -168,7 +165,6 @@ d3d12_bo_wrap_buffer(struct d3d12_screen *screen, struct pb_buffer *buf)
    pipe_reference_init(&bo->reference, 1);
    bo->screen = screen;
    bo->buffer = buf;
-   bo->trans_state = NULL; /* State from base BO will be used */
    bo->unique_id = p_atomic_inc_return(&screen->resource_id_generator);
    bo->residency_status = d3d12_evicted;
 
@@ -202,8 +198,6 @@ d3d12_bo_unreference(struct d3d12_bo *bo)
       mtx_unlock(&bo->screen->submit_mutex);
 
       d3d12_resource_state_cleanup(&bo->global_state);
-      if (bo->trans_state)
-         delete bo->trans_state;
       if (bo->res)
          bo->res->Release();
       FREE(bo);
