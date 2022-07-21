@@ -942,14 +942,7 @@ struct tu_attachment_info
    struct tu_image_view *attachment;
 };
 
-struct tu_framebuffer
-{
-   struct vk_object_base base;
-
-   uint32_t width;
-   uint32_t height;
-   uint32_t layers;
-
+struct tu_tiling_config {
    /* size of the first tile */
    VkExtent2D tile0;
    /* number of tiles */
@@ -969,6 +962,27 @@ struct tu_framebuffer
    /* pipe register values */
    uint32_t pipe_config[MAX_VSC_PIPES];
    uint32_t pipe_sizes[MAX_VSC_PIPES];
+};
+
+enum tu_gmem_layout
+{
+   /* Use all of GMEM for attachments */
+   TU_GMEM_LAYOUT_FULL,
+   /* Avoid using the region of GMEM that the CCU needs */
+   TU_GMEM_LAYOUT_AVOID_CCU,
+   /* Number of layouts we have, also the value set when we don't know the layout in a secondary. */
+   TU_GMEM_LAYOUT_COUNT,
+};
+
+struct tu_framebuffer
+{
+   struct vk_object_base base;
+
+   uint32_t width;
+   uint32_t height;
+   uint32_t layers;
+
+   struct tu_tiling_config tiling[TU_GMEM_LAYOUT_COUNT];
 
    uint32_t attachment_count;
    struct tu_attachment_info attachments[0];
@@ -1031,7 +1045,8 @@ struct tu_render_pass_attachment
    uint32_t clear_views;
    bool load;
    bool store;
-   int32_t gmem_offset;
+   bool gmem;
+   int32_t gmem_offset[TU_GMEM_LAYOUT_COUNT];
    bool will_be_resolved;
    /* for D32S8 separate stencil: */
    bool load_stencil;
@@ -1040,7 +1055,7 @@ struct tu_render_pass_attachment
    bool cond_load_allowed;
    bool cond_store_allowed;
 
-   int32_t gmem_offset_stencil;
+   int32_t gmem_offset_stencil[TU_GMEM_LAYOUT_COUNT];
 };
 
 struct tu_render_pass
@@ -1049,7 +1064,7 @@ struct tu_render_pass
 
    uint32_t attachment_count;
    uint32_t subpass_count;
-   uint32_t gmem_pixels;
+   uint32_t gmem_pixels[TU_GMEM_LAYOUT_COUNT];
    uint32_t tile_align_w;
 
    /* memory bandwidth costs (in bytes) for gmem / sysmem rendering */
@@ -1425,9 +1440,15 @@ struct tu_cmd_state
 
    enum tu_cmd_ccu_state ccu_state;
 
+   /* Decides which GMEM layout to use from the tu_pass, based on whether the CCU
+    * might get used by tu_store_gmem_attachment().
+    */
+   enum tu_gmem_layout gmem_layout;
+
    const struct tu_render_pass *pass;
    const struct tu_subpass *subpass;
    const struct tu_framebuffer *framebuffer;
+   const struct tu_tiling_config *tiling;
    VkRect2D render_area;
 
    const struct tu_image_view **attachments;
@@ -1442,6 +1463,7 @@ struct tu_cmd_state
       const struct tu_subpass *subpass;
       const struct tu_framebuffer *framebuffer;
       VkRect2D render_area;
+      enum tu_gmem_layout gmem_layout;
 
       const struct tu_image_view **attachments;
 
@@ -1644,6 +1666,22 @@ struct tu_cmd_buffer
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;
 };
+
+static inline uint32_t
+tu_attachment_gmem_offset(struct tu_cmd_buffer *cmd,
+                          const struct tu_render_pass_attachment *att)
+{
+   assert(cmd->state.gmem_layout < TU_GMEM_LAYOUT_COUNT);
+   return att->gmem_offset[cmd->state.gmem_layout];
+}
+
+static inline uint32_t
+tu_attachment_gmem_offset_stencil(struct tu_cmd_buffer *cmd,
+                                  const struct tu_render_pass_attachment *att)
+{
+   assert(cmd->state.gmem_layout < TU_GMEM_LAYOUT_COUNT);
+   return att->gmem_offset_stencil[cmd->state.gmem_layout];
+}
 
 /* Temporary struct for tracking a register state to be written, used by
  * a6xx-pack.h and tu_cs_emit_regs()
@@ -2053,6 +2091,9 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t a,
                          uint32_t gmem_a,
                          bool cond_exec_allowed);
+
+void
+tu_choose_gmem_layout(struct tu_cmd_buffer *cmd);
 
 enum pipe_format tu_vk_format_to_pipe_format(VkFormat vk_format);
 

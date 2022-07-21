@@ -1039,7 +1039,7 @@ r3d_src_gmem(struct tu_cmd_buffer *cmd,
    desc[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
    desc[2] =
       A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
-      A6XX_TEX_CONST_2_PITCH(cmd->state.framebuffer->tile0.width * cpp);
+      A6XX_TEX_CONST_2_PITCH(cmd->state.tiling->tile0.width * cpp);
    desc[3] = 0;
    desc[4] = cmd->device->physical_device->gmem_base + gmem_offset;
    desc[5] = A6XX_TEX_CONST_5_DEPTH(1);
@@ -2717,13 +2717,14 @@ tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
    enum pipe_format format = tu_vk_format_to_pipe_format(att->format);
    if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (mask & VK_IMAGE_ASPECT_DEPTH_BIT)
-         clear_gmem_attachment(cmd, cs, PIPE_FORMAT_Z32_FLOAT, 0xf, att->gmem_offset, value);
+         clear_gmem_attachment(cmd, cs, PIPE_FORMAT_Z32_FLOAT, 0xf, tu_attachment_gmem_offset(cmd, att), value);
       if (mask & VK_IMAGE_ASPECT_STENCIL_BIT)
-         clear_gmem_attachment(cmd, cs, PIPE_FORMAT_S8_UINT, 0xf, att->gmem_offset_stencil, value);
+         clear_gmem_attachment(cmd, cs, PIPE_FORMAT_S8_UINT, 0xf, tu_attachment_gmem_offset_stencil(cmd, att), value);
       return;
    }
 
-   clear_gmem_attachment(cmd, cs, format, aspect_write_mask(format, mask), att->gmem_offset, value);
+   clear_gmem_attachment(cmd, cs, format, aspect_write_mask(format, mask),
+                         tu_attachment_gmem_offset(cmd, att), value);
 
    trace_end_gmem_clear(&cmd->trace, cs, att->format, att->samples);
 }
@@ -2789,12 +2790,15 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
       tu_lrz_disable_during_renderpass(cmd);
    }
 
-   /* vkCmdClearAttachments is supposed to respect the predicate if active.
-    * The easiest way to do this is to always use the 3d path, which always
-    * works even with GMEM because it's just a simple draw using the existing
+   /* vkCmdClearAttachments is supposed to respect the predicate if active. The
+    * easiest way to do this is to always use the 3d path, which always works
+    * even with GMEM because it's just a simple draw using the existing
     * attachment state.
+    *
+    * Similarly, we also use the 3D path when in a secondary command buffer that
+    * doesn't know the GMEM layout that will be chosen by the primary.
     */
-   if (cmd->state.predication_active) {
+   if (cmd->state.predication_active || cmd->state.gmem_layout == TU_GMEM_LAYOUT_COUNT) {
       tu_clear_sysmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
       return;
    }
@@ -2981,10 +2985,10 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
 
    if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT && separate_stencil) {
          tu_cs_emit_regs(cs,
-                        A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset_stencil));
+                        A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset_stencil(cmd, attachment)));
    } else {
       tu_cs_emit_regs(cs,
-                     A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset));
+                     A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset(cmd, attachment)));
    }
 
    tu6_emit_event_write(cmd, cs, BLIT);
@@ -3156,7 +3160,7 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
                    /* note: src size does not matter when not scaling */
                    A6XX_SP_PS_2D_SRC_SIZE( .width = 0x3fff, .height = 0x3fff),
                    A6XX_SP_PS_2D_SRC(.qword = cmd->device->physical_device->gmem_base + gmem_offset),
-                   A6XX_SP_PS_2D_SRC_PITCH(.pitch = cmd->state.framebuffer->tile0.width * cpp));
+                   A6XX_SP_PS_2D_SRC_PITCH(.pitch = cmd->state.tiling->tile0.width * cpp));
 
    /* sync GMEM writes with CACHE. */
    tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
@@ -3243,6 +3247,61 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
                   CP_SCRATCH_TO_REG_0_CNT(1 - 1));
 }
 
+static bool
+tu_attachment_store_unaligned(struct tu_cmd_buffer *cmd, uint32_t a)
+{
+   struct tu_physical_device *phys_dev = cmd->device->physical_device;
+   const struct tu_image_view *iview = cmd->state.attachments[a];
+   const VkRect2D *render_area = &cmd->state.render_area;
+
+   /* Unaligned store is incredibly rare in CTS, we have to force it to test. */
+   if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_UNALIGNED_STORE))
+      return true;
+
+   uint32_t x1 = render_area->offset.x;
+   uint32_t y1 = render_area->offset.y;
+   uint32_t x2 = x1 + render_area->extent.width;
+   uint32_t y2 = y1 + render_area->extent.height;
+   /* x2/y2 can be unaligned if equal to the size of the image, since it will
+    * write into padding space. The one exception is linear levels which don't
+    * have the required y padding in the layout (except for the last level)
+    */
+   bool need_y2_align =
+      y2 != iview->view.height || iview->view.need_y2_align;
+
+   return (x1 % phys_dev->info->gmem_align_w ||
+           (x2 % phys_dev->info->gmem_align_w && x2 != iview->view.width) ||
+           y1 % phys_dev->info->gmem_align_h ||
+           (y2 % phys_dev->info->gmem_align_h && need_y2_align));
+}
+
+/* Choose the GMEM layout (use the CCU space or not) based on whether the
+ * current attachments will need.  This has to happen at vkBeginRenderPass()
+ * time because tu_attachment_store_unaligned() looks at the image views, which
+ * are only available at that point.  This should match the logic for the
+ * !unaligned case in tu_store_gmem_attachment().
+ */
+void
+tu_choose_gmem_layout(struct tu_cmd_buffer *cmd)
+{
+   cmd->state.gmem_layout = TU_GMEM_LAYOUT_FULL;
+
+   for (unsigned i = 0; i < cmd->state.pass->attachment_count; i++) {
+      if (!cmd->state.attachments[i])
+         continue;
+
+      struct tu_render_pass_attachment *att =
+         &cmd->state.pass->attachments[i];
+      if ((att->store || att->store_stencil) &&
+          tu_attachment_store_unaligned(cmd, i))
+         cmd->state.gmem_layout = TU_GMEM_LAYOUT_AVOID_CCU;
+      if (att->will_be_resolved && !blit_can_resolve(att->format))
+         cmd->state.gmem_layout = TU_GMEM_LAYOUT_AVOID_CCU;
+   }
+
+   cmd->state.tiling = &cmd->state.framebuffer->tiling[cmd->state.gmem_layout];
+}
+
 void
 tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          struct tu_cs *cs,
@@ -3250,7 +3309,6 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t gmem_a,
                          bool cond_exec_allowed)
 {
-   struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const VkRect2D *render_area = &cmd->state.render_area;
    struct tu_render_pass_attachment *dst = &cmd->state.pass->attachments[a];
    const struct tu_image_view *iview = cmd->state.attachments[a];
@@ -3267,26 +3325,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       tu_begin_load_store_cond_exec(cmd, cs, false);
    }
 
-   uint32_t x1 = render_area->offset.x;
-   uint32_t y1 = render_area->offset.y;
-   uint32_t x2 = x1 + render_area->extent.width;
-   uint32_t y2 = y1 + render_area->extent.height;
-   /* x2/y2 can be unaligned if equal to the size of the image,
-    * since it will write into padding space
-    * the one exception is linear levels which don't have the
-    * required y padding in the layout (except for the last level)
-    */
-   bool need_y2_align =
-      y2 != iview->view.height || iview->view.need_y2_align;
-
-   bool unaligned =
-      x1 % phys_dev->info->gmem_align_w ||
-      (x2 % phys_dev->info->gmem_align_w && x2 != iview->view.width) ||
-      y1 % phys_dev->info->gmem_align_h || (y2 % phys_dev->info->gmem_align_h && need_y2_align);
-
-   /* Unaligned store is incredibly rare in CTS, we have to force it to test. */
-   if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_UNALIGNED_STORE))
-      unaligned = true;
+   bool unaligned = tu_attachment_store_unaligned(cmd, a);
 
    /* D32_SFLOAT_S8_UINT is quite special format: it has two planes,
     * one for depth and other for stencil. When resolving a MSAA
@@ -3324,6 +3363,8 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       return;
    }
 
+   assert(cmd->state.gmem_layout == TU_GMEM_LAYOUT_AVOID_CCU);
+
    enum pipe_format src_format = tu_vk_format_to_pipe_format(src->format);
    if (src_format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
       src_format = PIPE_FORMAT_Z32_FLOAT;
@@ -3345,23 +3386,23 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
 
       if (store_common) {
          store_3d_blit(cmd, cs, iview, dst->samples, false, src_format,
-                       dst_format, render_area, src->gmem_offset, src->cpp);
+                       dst_format, render_area, tu_attachment_gmem_offset(cmd, src), src->cpp);
       }
       if (store_separate_stencil) {
          store_3d_blit(cmd, cs, iview, dst->samples, true, PIPE_FORMAT_S8_UINT,
                        PIPE_FORMAT_S8_UINT, render_area,
-                       src->gmem_offset_stencil, src->samples);
+                       tu_attachment_gmem_offset_stencil(cmd, src), src->samples);
       }
    } else {
       r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
 
       if (store_common) {
          store_cp_blit(cmd, cs, iview, src->samples, false, src_format,
-                       dst_format, src->gmem_offset, src->cpp);
+                       dst_format, tu_attachment_gmem_offset(cmd, src), src->cpp);
       }
       if (store_separate_stencil) {
          store_cp_blit(cmd, cs, iview, src->samples, true, PIPE_FORMAT_S8_UINT,
-                       PIPE_FORMAT_S8_UINT, src->gmem_offset_stencil, src->samples);
+                       PIPE_FORMAT_S8_UINT, tu_attachment_gmem_offset_stencil(cmd, src), src->samples);
       }
    }
 
