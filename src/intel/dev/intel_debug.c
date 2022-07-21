@@ -99,6 +99,7 @@ static const struct debug_control debug_control[] = {
    { "mesh",        DEBUG_MESH },
    { "stall",       DEBUG_STALL },
    { "capture-all", DEBUG_CAPTURE_ALL },
+   { "perf-symbol-names", DEBUG_PERF_SYMBOL_NAMES },
    { NULL,    0 }
 };
 
