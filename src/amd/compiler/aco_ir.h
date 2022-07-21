@@ -2320,7 +2320,8 @@ enum print_flags {
 };
 
 void aco_print_operand(const Operand* operand, FILE* output, unsigned flags = 0);
-void aco_print_instr(const Instruction* instr, FILE* output, unsigned flags = 0);
+void aco_print_instr(enum amd_gfx_level gfx_level, const Instruction* instr, FILE* output,
+                     unsigned flags = 0);
 void aco_print_program(const Program* program, FILE* output, unsigned flags = 0);
 void aco_print_program(const Program* program, FILE* output, const live& live_vars,
                        unsigned flags = 0);

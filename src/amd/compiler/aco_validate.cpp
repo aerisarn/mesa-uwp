@@ -91,7 +91,7 @@ validate_ir(Program* program)
          FILE* const memf = u_memstream_get(&mem);
 
          fprintf(memf, "%s: ", msg);
-         aco_print_instr(instr, memf);
+         aco_print_instr(program->gfx_level, instr, memf);
          u_memstream_close(&mem);
 
          aco_err(program, "%s", out);
@@ -776,14 +776,14 @@ ra_fail(Program* program, Location loc, Location loc2, const char* fmt, ...)
 
    fprintf(memf, "RA error found at instruction in BB%d:\n", loc.block->index);
    if (loc.instr) {
-      aco_print_instr(loc.instr, memf);
+      aco_print_instr(program->gfx_level, loc.instr, memf);
       fprintf(memf, "\n%s", msg);
    } else {
       fprintf(memf, "%s", msg);
    }
    if (loc2.block) {
       fprintf(memf, " in BB%d:\n", loc2.block->index);
-      aco_print_instr(loc2.instr, memf);
+      aco_print_instr(program->gfx_level, loc2.instr, memf);
    }
    fprintf(memf, "\n\n");
    u_memstream_close(&mem);

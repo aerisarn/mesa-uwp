@@ -277,7 +277,7 @@ print_sync(memory_sync_info sync, FILE* output)
 }
 
 static void
-print_instr_format_specific(const Instruction* instr, FILE* output)
+print_instr_format_specific(enum amd_gfx_level gfx_level, const Instruction* instr, FILE* output)
 {
    switch (instr->format) {
    case Format::SOPK: {
@@ -289,15 +289,13 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       uint16_t imm = instr->sopp().imm;
       switch (instr->opcode) {
       case aco_opcode::s_waitcnt: {
-         /* we usually should check the gfx level for vmcnt/lgkm, but
-          * insert_waitcnt() should fill it in regardless. */
-         unsigned vmcnt = (imm & 0xF) | ((imm & (0x3 << 14)) >> 10);
-         if (vmcnt != 63)
-            fprintf(output, " vmcnt(%d)", vmcnt);
-         if (((imm >> 4) & 0x7) < 0x7)
-            fprintf(output, " expcnt(%d)", (imm >> 4) & 0x7);
-         if (((imm >> 8) & 0x3F) < 0x3F)
-            fprintf(output, " lgkmcnt(%d)", (imm >> 8) & 0x3F);
+         wait_imm unpacked(gfx_level, imm);
+         if (unpacked.vm != wait_imm::unset_counter)
+            fprintf(output, " vmcnt(%d)", unpacked.vm);
+         if (unpacked.exp != wait_imm::unset_counter)
+            fprintf(output, " expcnt(%d)", unpacked.exp);
+         if (unpacked.lgkm != wait_imm::unset_counter)
+            fprintf(output, " lgkmcnt(%d)", unpacked.lgkm);
          break;
       }
       case aco_opcode::s_waitcnt_depctr: {
@@ -700,7 +698,8 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
 }
 
 void
-aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
+aco_print_instr(enum amd_gfx_level gfx_level, const Instruction* instr, FILE* output,
+                unsigned flags)
 {
    if (!instr->definitions.empty()) {
       for (unsigned i = 0; i < instr->definitions.size(); ++i) {
@@ -797,7 +796,7 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
          }
       }
    }
-   print_instr_format_specific(instr, output);
+   print_instr_format_specific(gfx_level, instr, output);
 }
 
 static void
@@ -883,7 +882,8 @@ print_stage(Stage stage, FILE* output)
 }
 
 void
-aco_print_block(const Block* block, FILE* output, unsigned flags, const live& live_vars)
+aco_print_block(enum amd_gfx_level gfx_level, const Block* block, FILE* output, unsigned flags,
+                const live& live_vars)
 {
    fprintf(output, "BB%d\n", block->index);
    fprintf(output, "/* logical preds: ");
@@ -916,7 +916,7 @@ aco_print_block(const Block* block, FILE* output, unsigned flags, const live& li
       if (flags & print_perf_info)
          fprintf(output, "(%3u clk)   ", instr->pass_flags);
 
-      aco_print_instr(instr.get(), output, flags);
+      aco_print_instr(gfx_level, instr.get(), output, flags);
       fprintf(output, "\n");
       index++;
    }
@@ -937,7 +937,7 @@ aco_print_program(const Program* program, FILE* output, const live& live_vars, u
    print_stage(program->stage, output);
 
    for (Block const& block : program->blocks)
-      aco_print_block(&block, output, flags, live_vars);
+      aco_print_block(program->gfx_level, &block, output, flags, live_vars);
 
    if (program->constant_data.size()) {
       fprintf(output, "\n/* constant data */\n");

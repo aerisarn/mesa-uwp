@@ -46,7 +46,7 @@ perfwarn(Program* program, bool cond, const char* msg, Instruction* instr)
       FILE* const memf = u_memstream_get(&mem);
 
       fprintf(memf, "%s: ", msg);
-      aco_print_instr(instr, memf);
+      aco_print_instr(program->gfx_level, instr, memf);
       u_memstream_close(&mem);
 
       aco_perfwarn(program, out);

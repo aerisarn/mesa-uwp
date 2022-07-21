@@ -126,7 +126,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       FILE* const memf = u_memstream_get(&mem);
 
       fprintf(memf, "Unsupported opcode: ");
-      aco_print_instr(instr, memf);
+      aco_print_instr(ctx.gfx_level, instr, memf);
       u_memstream_close(&mem);
 
       aco_err(ctx.program, outmem);

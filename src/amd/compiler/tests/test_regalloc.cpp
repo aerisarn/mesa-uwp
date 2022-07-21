@@ -272,7 +272,7 @@ BEGIN_TEST(regalloc.linear_vgpr.live_range_split.get_reg_impl)
 
    //>> lv1: %5:v[2] = p_parallelcopy %3:v[1] scc:1 scratch:s1
    Pseudo_instruction& parallelcopy = program->blocks[0].instructions[3]->pseudo();
-   aco_print_instr(&parallelcopy, output);
+   aco_print_instr(program->gfx_level, &parallelcopy, output);
    fprintf(output, " scc:%u scratch:s%u\n", parallelcopy.tmp_in_scc, parallelcopy.scratch_sgpr.reg());
 END_TEST
 
