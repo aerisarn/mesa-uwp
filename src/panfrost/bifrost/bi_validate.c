@@ -149,6 +149,43 @@ bi_validate_width(bi_context *ctx)
         return succ;
 }
 
+/*
+ * Temporary stopgap to check that source/destination counts are correct. This
+ * validation pass will go away later this series when we dynamically allocate
+ * sources and destinations.
+ */
+static bool
+bi_validate_src_dest_count(bi_context *ctx)
+{
+        bool succ = true;
+
+        bi_foreach_instr_global(ctx, I) {
+                for (unsigned s = I->nr_srcs; s < ARRAY_SIZE(I->src); ++s) {
+                        if (!bi_is_null(I->src[s])) {
+                                succ = false;
+                                fprintf(stderr,
+                                        "unexpected source %u, expected %u sources\n",
+                                        s, I->nr_srcs);
+                                bi_print_instr(I, stderr);
+                                fprintf(stderr, "\n");
+                        }
+                }
+
+                for (unsigned d = I->nr_dests; d < ARRAY_SIZE(I->dest); ++d) {
+                        if (!bi_is_null(I->dest[d])) {
+                                succ = false;
+                                fprintf(stderr,
+                                        "unexpected dest %u, expected %u sources\n",
+                                        d, I->nr_dests);
+                                bi_print_instr(I, stderr);
+                                fprintf(stderr, "\n");
+                        }
+                }
+        }
+
+        return succ;
+}
+
 void
 bi_validate(bi_context *ctx, const char *after)
 {
@@ -169,6 +206,11 @@ bi_validate(bi_context *ctx, const char *after)
 
         if (!bi_validate_width(ctx)) {
                 fprintf(stderr, "Unexpected vector with after %s\n", after);
+                fail = true;
+        }
+
+        if (!bi_validate_src_dest_count(ctx)) {
+                fprintf(stderr, "Unexpected source/dest count after %s\n", after);
                 fail = true;
         }
 
