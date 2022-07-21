@@ -471,15 +471,21 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
       d3d12_invalidate_context_bindings(ctx, res);
 
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
-   for (uint32_t l = 0; l < num_levels; l++) {
-      const uint32_t level = start_level + l;
-      for (uint32_t a = 0; a < num_layers; a++) {
-         const uint32_t layer = start_layer + a;
-         for( uint32_t p = 0; p < num_planes; p++) {
-            const uint32_t plane = start_plane + p;
-            uint32_t subres_id = level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
-            assert(subres_id < state_entry->desired.num_subresources);
-            d3d12_set_desired_subresource_state(&state_entry->desired, subres_id, state);
+   bool is_whole_resource = num_levels * num_layers * num_planes == state_entry->batch_end.num_subresources;
+   if (is_whole_resource) {
+      d3d12_set_desired_resource_state(&state_entry->desired, state);
+   } else {
+      for (uint32_t l = 0; l < num_levels; l++) {
+         const uint32_t level = start_level + l;
+         for (uint32_t a = 0; a < num_layers; a++) {
+            const uint32_t layer = start_layer + a;
+            for (uint32_t p = 0; p < num_planes; p++) {
+               const uint32_t plane = start_plane + p;
+               uint32_t subres_id =
+                  level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
+               assert(subres_id < state_entry->desired.num_subresources);
+               d3d12_set_desired_subresource_state(&state_entry->desired, subres_id, state);
+            }
          }
       }
    }
