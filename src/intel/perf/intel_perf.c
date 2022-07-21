@@ -643,7 +643,7 @@ build_unique_counter_list(struct intel_perf_config *perf)
    perf->n_counters = 0;
 
    struct hash_table *counters_table =
-      _mesa_hash_table_create(perf,
+      _mesa_hash_table_create(NULL,
                               _mesa_hash_string,
                               _mesa_key_string_equal);
    struct hash_entry *entry;
@@ -677,9 +677,7 @@ build_unique_counter_list(struct intel_perf_config *perf)
 
    _mesa_hash_table_destroy(counters_table, NULL);
 
-   /* Now we can realloc counter_infos array because hash table doesn't exist. */
-   perf->counter_infos = reralloc_array_size(perf, counter_infos,
-         sizeof(counter_infos[0]), perf->n_counters);
+   perf->counter_infos = counter_infos;
 
    qsort(perf->counter_infos, perf->n_counters, sizeof(perf->counter_infos[0]),
          compare_counter_categories_and_names);
