@@ -770,8 +770,9 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
       /* Mitigation for VMEM is needed only if there was already a branch after */
       ctx.has_VMEM = ctx.has_branch_after_VMEM;
    } else if (instr_is_branch(instr)) {
-      ctx.has_branch_after_VMEM = ctx.has_VMEM;
-      ctx.has_branch_after_DS = ctx.has_DS;
+      ctx.has_branch_after_VMEM |= ctx.has_VMEM;
+      ctx.has_branch_after_DS |= ctx.has_DS;
+      ctx.has_VMEM = ctx.has_DS = false;
    } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt) {
       /* Only s_waitcnt_vscnt can mitigate the hazard */
       const SOPK_instruction& sopk = instr->sopk();
