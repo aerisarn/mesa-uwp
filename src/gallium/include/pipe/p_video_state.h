@@ -131,6 +131,18 @@ enum pipe_h2645_enc_rate_control_method
    PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE = 0x04
 };
 
+enum pipe_slice_buffer_placement_type
+{
+   /* whole slice is in the buffer */
+   PIPE_SLICE_BUFFER_PLACEMENT_TYPE_WHOLE = 0x0,
+   /* The beginning of the slice is in the buffer but the end is not */
+   PIPE_SLICE_BUFFER_PLACEMENT_TYPE_BEGIN = 0x1,
+   /* Neither beginning nor end of the slice is in the buffer */
+   PIPE_SLICE_BUFFER_PLACEMENT_TYPE_MIDDLE = 0x2,
+   /* end of the slice is in the buffer */
+   PIPE_SLICE_BUFFER_PLACEMENT_TYPE_END = 0x3,
+};
+
 struct pipe_picture_desc
 {
    enum pipe_video_profile profile;
@@ -659,6 +671,15 @@ struct pipe_h265_picture_desc
    uint8_t RefPicList[2][15];
    bool UseRefPicList;
    bool UseStRpsBits;
+
+   struct
+   {
+      bool slice_info_present;
+      uint32_t slice_count;
+      uint32_t slice_data_size[128];
+      uint32_t slice_data_offset[128];
+      enum pipe_slice_buffer_placement_type slice_data_flag[128];
+   } slice_parameter;
 };
 
 struct pipe_mjpeg_picture_desc

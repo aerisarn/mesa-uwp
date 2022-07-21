@@ -177,6 +177,12 @@ void vlVaHandlePictureParameterBufferHEVC(vlVaDriver *drv, vlVaContext *context,
    }
    context->desc.h265.pps->st_rps_bits = hevc->st_rps_bits;
    context->desc.h265.UseStRpsBits = true;
+
+   context->desc.h265.slice_parameter.slice_count = 0;
+   context->desc.h265.slice_parameter.slice_info_present = false;
+   memset(context->desc.h265.slice_parameter.slice_data_flag, 0, sizeof(context->desc.h265.slice_parameter.slice_data_flag));
+   memset(context->desc.h265.slice_parameter.slice_data_offset, 0, sizeof(context->desc.h265.slice_parameter.slice_data_offset));
+   memset(context->desc.h265.slice_parameter.slice_data_size, 0, sizeof(context->desc.h265.slice_parameter.slice_data_size));
 }
 
 void vlVaHandleIQMatrixBufferHEVC(vlVaContext *context, vlVaBuffer *buf)
@@ -220,4 +226,31 @@ void vlVaHandleSliceParameterBufferHEVC(vlVaContext *context, vlVaBuffer *buf)
          context->desc.h265.RefPicList[i][j] = h265->RefPicList[i][j];
    }
    context->desc.h265.UseRefPicList = true;
+
+   const size_t max_pipe_hevc_slices = ARRAY_SIZE(context->desc.h265.slice_parameter.slice_data_offset);
+   assert(context->desc.h265.slice_parameter.slice_count < max_pipe_hevc_slices);
+
+   context->desc.h265.slice_parameter.slice_info_present = true;
+   context->desc.h265.slice_parameter.slice_data_size[context->desc.h265.slice_parameter.slice_count] = h265->slice_data_size;
+   context->desc.h265.slice_parameter.slice_data_offset[context->desc.h265.slice_parameter.slice_count] = h265->slice_data_offset;
+
+   switch (h265->slice_data_flag) {
+   case VA_SLICE_DATA_FLAG_ALL:
+      context->desc.h265.slice_parameter.slice_data_flag[context->desc.h265.slice_parameter.slice_count] = PIPE_SLICE_BUFFER_PLACEMENT_TYPE_WHOLE;
+      break;
+   case VA_SLICE_DATA_FLAG_BEGIN:
+      context->desc.h265.slice_parameter.slice_data_flag[context->desc.h265.slice_parameter.slice_count] = PIPE_SLICE_BUFFER_PLACEMENT_TYPE_BEGIN;
+      break;
+   case VA_SLICE_DATA_FLAG_MIDDLE:
+      context->desc.h265.slice_parameter.slice_data_flag[context->desc.h265.slice_parameter.slice_count] = PIPE_SLICE_BUFFER_PLACEMENT_TYPE_MIDDLE;
+      break;
+   case VA_SLICE_DATA_FLAG_END:
+      context->desc.h265.slice_parameter.slice_data_flag[context->desc.h265.slice_parameter.slice_count] = PIPE_SLICE_BUFFER_PLACEMENT_TYPE_END;
+      break;
+   default:
+      break;
+   }
+
+   /* assert(buf->num_elements == 1) above; */
+   context->desc.h265.slice_parameter.slice_count++;
 }
