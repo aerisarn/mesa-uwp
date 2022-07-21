@@ -1170,11 +1170,11 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       d3d12_context(pD3D12Enc->base.context),
       pInputVideoBuffer->texture,   // d3d12_resource wrapper for pInputVideoD3D12Res
       D3D12_RESOURCE_STATE_COMMON,
-      D3D12_BIND_INVALIDATE_FULL);
+      D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_transition_resource_state(d3d12_context(pD3D12Enc->base.context),
                                    pOutputBitstreamBuffer,   // d3d12_resource wrapped for pOutputBufferD3D12Res
                                    D3D12_RESOURCE_STATE_COMMON,
-                                   D3D12_BIND_INVALIDATE_FULL);
+                                   D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_apply_resource_states(d3d12_context(pD3D12Enc->base.context), false);
 
    d3d12_resource_wait_idle(d3d12_context(pD3D12Enc->base.context),

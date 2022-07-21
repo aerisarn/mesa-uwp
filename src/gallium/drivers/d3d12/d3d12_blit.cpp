@@ -118,10 +118,10 @@ blit_resolve(struct d3d12_context *ctx, const struct pipe_blit_info *info)
 
    d3d12_transition_resource_state(ctx, src,
                                    D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-                                   D3D12_BIND_INVALIDATE_FULL);
+                                   D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_transition_resource_state(ctx, dst,
                                    D3D12_RESOURCE_STATE_RESOLVE_DEST,
-                                   D3D12_BIND_INVALIDATE_FULL);
+                                   D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
 
    d3d12_apply_resource_states(ctx, false);
 
@@ -424,13 +424,13 @@ d3d12_direct_copy(struct d3d12_context *ctx,
                                        d3d12_get_format_start_plane(src->base.b.format),
                                        d3d12_get_format_num_planes(src->base.b.format),
                                        D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                       D3D12_BIND_INVALIDATE_FULL);
+                                       D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
 
    d3d12_transition_subresources_state(ctx, dst, dst_subres, 1, 0, 1,
                                        d3d12_get_format_start_plane(dst->base.b.format),
                                        d3d12_get_format_num_planes(dst->base.b.format),
                                        D3D12_RESOURCE_STATE_COPY_DEST,
-                                       D3D12_BIND_INVALIDATE_FULL);
+                                       D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
 
    d3d12_apply_resource_states(ctx, false);
 
@@ -821,11 +821,11 @@ blit_resolve_stencil(struct d3d12_context *ctx,
    d3d12_transition_subresources_state(ctx, d3d12_resource(tmp),
                                        0, 1, 0, 1, 0, 1,
                                        D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                       D3D12_BIND_INVALIDATE_NONE);
+                                       D3D12_TRANSITION_FLAG_NONE);
    d3d12_transition_subresources_state(ctx, dst,
                                        0, 1, 0, 1, 1, 1,
                                        D3D12_RESOURCE_STATE_COPY_DEST,
-                                       D3D12_BIND_INVALIDATE_FULL);
+                                       D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_apply_resource_states(ctx, false);
 
    struct d3d12_batch *batch = d3d12_current_batch(ctx);

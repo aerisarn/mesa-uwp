@@ -375,9 +375,9 @@ void
 d3d12_transition_resource_state(struct d3d12_context *ctx,
                                 struct d3d12_resource *res,
                                 D3D12_RESOURCE_STATES state,
-                                d3d12_bind_invalidate_option bind_invalidate)
+                                d3d12_transition_flags flags)
 {
-   if (bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
+   if (flags & D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS)
       d3d12_invalidate_context_bindings(ctx, res);
 
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
@@ -392,9 +392,9 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
                                     uint32_t start_layer, uint32_t num_layers,
                                     uint32_t start_plane, uint32_t num_planes,
                                     D3D12_RESOURCE_STATES state,
-                                    d3d12_bind_invalidate_option bind_invalidate)
+                                    d3d12_transition_flags flags)
 {
-   if(bind_invalidate == D3D12_BIND_INVALIDATE_FULL)
+   if(flags & D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS)
       d3d12_invalidate_context_bindings(ctx, res);
 
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);

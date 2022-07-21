@@ -1981,7 +1981,7 @@ d3d12_clear_render_target(struct pipe_context *pctx,
    struct d3d12_resource *res = d3d12_resource(psurf->texture);
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_RENDER_TARGET,
-                                   D3D12_BIND_INVALIDATE_FULL);
+                                   D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_apply_resource_states(ctx, false);
 
    enum pipe_format format = psurf->texture->format;
@@ -2040,7 +2040,7 @@ d3d12_clear_depth_stencil(struct pipe_context *pctx,
    struct d3d12_resource *res = d3d12_resource(ctx->fb.zsbuf->texture);
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_DEPTH_WRITE,
-                                   D3D12_BIND_INVALIDATE_FULL);
+                                   D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_apply_resource_states(ctx, false);
 
    D3D12_RECT rect = { (int)dstx, (int)dsty,
@@ -2109,7 +2109,7 @@ d3d12_flush_resource(struct pipe_context *pctx,
 
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_COMMON,
-                                   D3D12_BIND_INVALIDATE_FULL);
+                                   D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
    d3d12_apply_resource_states(ctx, false);
 }
 
