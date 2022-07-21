@@ -631,6 +631,50 @@ vn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    return VK_SUCCESS;
 }
 
+struct vn_command_buffer_begin_info {
+   VkCommandBufferBeginInfo begin;
+   VkCommandBufferInheritanceInfo inheritance;
+
+   bool has_inherited_pass;
+};
+
+static const VkCommandBufferBeginInfo *
+vn_fix_command_buffer_begin_info(struct vn_command_buffer *cmd,
+                                 const VkCommandBufferBeginInfo *begin_info,
+                                 struct vn_command_buffer_begin_info *local)
+{
+   local->has_inherited_pass = false;
+
+   if (!begin_info->pInheritanceInfo)
+      return begin_info;
+
+   const bool is_cmd_secondary =
+      cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+   const bool has_continue =
+      begin_info->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+   const bool has_renderpass =
+      begin_info->pInheritanceInfo->renderPass != VK_NULL_HANDLE;
+
+   local->begin = *begin_info;
+
+   if (!is_cmd_secondary) {
+      local->begin.pInheritanceInfo = NULL;
+      return &local->begin;
+   }
+
+   if (!has_continue) {
+      local->inheritance = *begin_info->pInheritanceInfo;
+      local->inheritance.framebuffer = VK_NULL_HANDLE;
+      local->inheritance.renderPass = VK_NULL_HANDLE;
+      local->inheritance.subpass = 0;
+      local->begin.pInheritanceInfo = &local->inheritance;
+   } else {
+      local->has_inherited_pass = has_renderpass;
+   }
+
+   return &local->begin;
+}
+
 VkResult
 vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                       const VkCommandBufferBeginInfo *pBeginInfo)
@@ -645,24 +689,9 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    cmd->draw_cmd_batched = 0;
 
    /* TODO: add support for VK_KHR_dynamic_rendering */
-   VkCommandBufferBeginInfo local_begin_info;
-   VkCommandBufferInheritanceInfo local_inheritance_info;
-   if (pBeginInfo->pInheritanceInfo) {
-      if (cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-         local_begin_info = *pBeginInfo;
-         local_begin_info.pInheritanceInfo = NULL;
-         pBeginInfo = &local_begin_info;
-      } else if (!(pBeginInfo->flags &
-                   VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
-         local_inheritance_info = *pBeginInfo->pInheritanceInfo;
-         local_inheritance_info.framebuffer = VK_NULL_HANDLE;
-         local_inheritance_info.renderPass = VK_NULL_HANDLE;
-         local_inheritance_info.subpass = 0;
-         local_begin_info = *pBeginInfo;
-         local_begin_info.pInheritanceInfo = &local_inheritance_info;
-         pBeginInfo = &local_begin_info;
-      }
-   }
+   struct vn_command_buffer_begin_info local_begin_info;
+   pBeginInfo =
+      vn_fix_command_buffer_begin_info(cmd, pBeginInfo, &local_begin_info);
 
    cmd_size = vn_sizeof_vkBeginCommandBuffer(commandBuffer, pBeginInfo);
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size)) {
@@ -674,9 +703,7 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    cmd->state = VN_COMMAND_BUFFER_STATE_RECORDING;
 
-   if (cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
-       (pBeginInfo->flags &
-        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
+   if (local_begin_info.has_inherited_pass) {
       const VkCommandBufferInheritanceInfo *inheritance_info =
          pBeginInfo->pInheritanceInfo;
       vn_cmd_begin_render_pass(
