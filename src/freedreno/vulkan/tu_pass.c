@@ -599,14 +599,15 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
          continue;
       }
 
-      /* TODO: using ccu_offset_gmem so that BLIT_OP_SCALE resolve path
-       * doesn't break things. maybe there is a better solution?
-       * TODO: this algorithm isn't optimal
+      /* TODO: this algorithm isn't optimal
        * for example, two attachments with cpp = {1, 4}
        * result:  nblocks = {12, 52}, pixels = 196608
        * optimal: nblocks = {13, 51}, pixels = 208896
        */
-      uint32_t gmem_blocks = phys_dev->ccu_offset_gmem / gmem_align;
+      uint32_t gmem_size = layout == TU_GMEM_LAYOUT_FULL
+                              ? phys_dev->gmem_size
+                              : phys_dev->ccu_offset_gmem;
+      uint32_t gmem_blocks = gmem_size / gmem_align;
       uint32_t offset = 0, pixels = ~0u, i;
       for (i = 0; i < pass->attachment_count; i++) {
          struct tu_render_pass_attachment *att = &pass->attachments[i];
