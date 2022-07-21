@@ -255,9 +255,7 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
 
                 bi_foreach_dest(ins, d) {
                         unsigned node = bi_get_node(ins->dest[d]);
-
-                        if (node >= node_count)
-                                continue;
+                        assert(node < node_count);
 
                         /* Don't allocate to anything that's read later as a
                          * preloaded register. The affinity is the intersection
@@ -374,9 +372,9 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
                         unsigned dest = bi_get_node(ins->dest[d]);
+                        assert(dest < node_count);
 
-                        if (dest < node_count)
-                                l->affinity[dest] = default_affinity;
+                        l->affinity[dest] = default_affinity;
                 }
 
                 /* Blend shaders expect the src colour to be in r0-r3 */
@@ -545,9 +543,7 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
                         unsigned node = bi_get_node(ins->dest[d]);
-
-                        if (node >= l->node_count)
-                                continue;
+                        assert(node < l->node_count);
 
                         /* Don't allow spilling coverage mask writes because the
                          * register preload logic assumes it will stay in R60.
@@ -719,8 +715,6 @@ bi_lower_vector(bi_context *ctx)
                         assert(src.offset == 0);
 
                         bi_foreach_dest(I, i) {
-                                assert(!bi_is_null(I->dest[i]));
-
                                 src.offset = i;
                                 bi_mov_i32_to(&b, I->dest[i], src);
 
@@ -829,8 +823,7 @@ squeeze_index(bi_context *ctx)
 
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_dest(I, d) {
-                        if (I->dest[d].type == BI_INDEX_NORMAL)
-                                I->dest[d].value = find_or_allocate_temp(map, I->dest[d].value, &ctx->ssa_alloc);
+                        I->dest[d].value = find_or_allocate_temp(map, I->dest[d].value, &ctx->ssa_alloc);
                 }
 
                 bi_foreach_src(I, s) {

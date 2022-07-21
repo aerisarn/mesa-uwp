@@ -264,7 +264,7 @@ bi_create_dependency_graph(struct bi_worklist st, bool inorder, bool is_blend)
                 }
 
                 bi_foreach_dest(ins, d) {
-                        if (ins->dest[d].type != BI_INDEX_REGISTER) continue;
+                        assert(ins->dest[d].type == BI_INDEX_REGISTER);
                         unsigned dest = ins->dest[d].value;
 
                         unsigned count = bi_count_write_registers(ins, d);
@@ -999,9 +999,6 @@ bi_write_count(bi_instr *instr, uint64_t live_after_temp)
                 if (d == 0 && bi_opcode_props[instr->op].sr_write)
                         continue;
 
-                if (bi_is_null(instr->dest[d]))
-                        continue;
-
                 assert(instr->dest[0].type == BI_INDEX_REGISTER);
                 if (live_after_temp & BITFIELD64_BIT(instr->dest[0].value))
                         count++;
@@ -1071,9 +1068,6 @@ bi_instr_schedulable(bi_instr *instr,
          * instruction can't be scheduled */
         if (bi_opcode_props[instr->op].sr_write) {
                 bi_foreach_dest(instr, d) {
-                        if (bi_is_null(instr->dest[d]))
-                                continue;
-
                         unsigned nr = bi_count_write_registers(instr, d);
                         assert(instr->dest[d].type == BI_INDEX_REGISTER);
                         unsigned reg = instr->dest[d].value;

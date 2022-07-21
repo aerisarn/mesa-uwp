@@ -114,13 +114,12 @@ create_dag(bi_context *ctx, bi_block *block, void *memctx)
                 /* Writes depend on reads and writes */
                 bi_foreach_dest(I, s) {
                         bi_index dest = I->dest[s];
+                        assert(dest.type == BI_INDEX_NORMAL);
 
-                        if (dest.type == BI_INDEX_NORMAL) {
-                                add_dep(node, last_read[label_index(ctx, dest)]);
-                                add_dep(node, last_write[label_index(ctx, dest)]);
+                        add_dep(node, last_read[label_index(ctx, dest)]);
+                        add_dep(node, last_write[label_index(ctx, dest)]);
 
-                                last_write[label_index(ctx, dest)] = node;
-                        }
+                        last_write[label_index(ctx, dest)] = node;
                 }
 
                 bi_foreach_src(I, s) {
@@ -233,8 +232,9 @@ calculate_pressure_delta(bi_instr *I, uint8_t *live, unsigned max)
         /* Destinations must be unique */
         bi_foreach_dest(I, d) {
                 unsigned node = bi_get_node(I->dest[d]);
+                assert(node < max);
 
-                if (node < max && live[node])
+                if (live[node])
                         delta -= bi_count_write_registers(I, d);
         }
 

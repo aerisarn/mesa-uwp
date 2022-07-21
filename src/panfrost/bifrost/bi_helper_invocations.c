@@ -202,9 +202,6 @@ bi_helper_block_update(BITSET_WORD *deps, bi_block *block)
         bi_foreach_instr_in_block_rev(block, I) {
                 /* If a destination is required by helper invocation... */
                 bi_foreach_dest(I, d) {
-                        if (bi_is_null(I->dest[d]))
-                                continue;
-
                         if (!BITSET_TEST(deps, bi_get_node(I->dest[d])))
                                 continue;
 
@@ -269,8 +266,8 @@ bi_analyze_helper_requirements(bi_context *ctx)
                 bool exec = false;
 
                 bi_foreach_dest(I, d) {
-                        if (I->dest[d].type == BI_INDEX_NORMAL)
-                                exec |= BITSET_TEST(deps, bi_get_node(I->dest[d]));
+                        assert(I->dest[d].type == BI_INDEX_NORMAL);
+                        exec |= BITSET_TEST(deps, bi_get_node(I->dest[d]));
                 }
 
                 I->skip = !exec;

@@ -117,7 +117,6 @@ bi_validate_width(bi_context *ctx)
 
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_dest(I, d) {
-                        if (bi_is_null(I->dest[d])) continue;
                         if (!bi_is_ssa(I->dest[d])) continue;
 
                         unsigned v = I->dest[d].value;
