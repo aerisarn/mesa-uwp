@@ -24,13 +24,13 @@ COPYRIGHT = """\
  */
 """
 
-import xml.etree.ElementTree as et
+import argparse
 
 from mako.template import Template
 
 # Mesa-local imports must be declared in meson variable
 # '{file_without_suffix}_depend_files'.
-from vk_extensions import *
+from vk_extensions import get_all_exts_from_xml, init_exts_from_xml
 
 _TEMPLATE_H = Template(COPYRIGHT + """
 
@@ -209,7 +209,7 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version,
         init_exts_from_xml(filename, extensions, platform_defines)
 
     for ext in extensions:
-        assert ext.type == 'instance' or ext.type == 'device'
+        assert ext.type in {'instance', 'device'}
 
     template_env = {
         'driver': driver,
@@ -229,7 +229,7 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version,
             f.write(_TEMPLATE_C.render(**template_env))
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out-c', help='Output C file.')
     parser.add_argument('--out-h', help='Output H file.')
@@ -246,3 +246,6 @@ if __name__ == '__main__':
 
     gen_extensions('vk', args.xml_files, None, None,
                    extensions, args.out_c, args.out_h)
+
+if __name__ == '__main__':
+    main()
