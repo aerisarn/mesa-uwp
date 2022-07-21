@@ -57,11 +57,20 @@ enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
    MESA_VK_DYNAMIC_DR_RECTANGLES,
    MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE,
+   MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE,
+   MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE,
+   MESA_VK_DYNAMIC_RS_POLYGON_MODE,
    MESA_VK_DYNAMIC_RS_CULL_MODE,
    MESA_VK_DYNAMIC_RS_FRONT_FACE,
+   MESA_VK_DYNAMIC_RS_CONSERVATIVE_MODE,
+   MESA_VK_DYNAMIC_RS_RASTERIZATION_ORDER_AMD,
+   MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX,
+   MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM,
    MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE,
    MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS,
    MESA_VK_DYNAMIC_RS_LINE_WIDTH,
+   MESA_VK_DYNAMIC_RS_LINE_MODE,
+   MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE,
    MESA_VK_DYNAMIC_RS_LINE_STIPPLE,
    MESA_VK_DYNAMIC_FSR,
    MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS,
@@ -194,69 +203,124 @@ struct vk_rasterization_state {
    /** VkPipelineRasterizationStateCreateInfo::rasterizerDiscardEnable
     *
     * This will be false if rasterizer discard is dynamic
+    *
+    * MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE
     */
    bool rasterizer_discard_enable;
 
-   /** VkPipelineRasterizationStateCreateInfo::depthClampEnable */
+   /** VkPipelineRasterizationStateCreateInfo::depthClampEnable
+    *
+    * MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE
+    */
    bool depth_clamp_enable;
 
-   /** VkPipelineRasterizationDepthClipStateCreateInfoEXT::depthClipEnable */
+   /** VkPipelineRasterizationDepthClipStateCreateInfoEXT::depthClipEnable
+    *
+    * MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE
+    */
    bool depth_clip_enable;
 
-   /** VkPipelineRasterizationStateCreateInfo::polygonMode */
+   /** denotes the presence of VkPipelineRasterizationDepthClipStateCreateInfoEXT */
+   bool depth_clip_present;
+
+   /** VkPipelineRasterizationStateCreateInfo::polygonMode
+    *
+    * MESA_VK_DYNAMIC_RS_POLYGON_MODE_ENABLEDEPTH_CLIP_ENABLE
+    */
    VkPolygonMode polygon_mode;
 
-   /** VkPipelineRasterizationStateCreateInfo::cullMode */
+   /** VkPipelineRasterizationStateCreateInfo::cullMode
+    *
+    * MESA_VK_DYNAMIC_RS_CULL_MODE
+    */
    VkCullModeFlags cull_mode;
 
-   /** VkPipelineRasterizationStateCreateInfo::frontFace */
+   /** VkPipelineRasterizationStateCreateInfo::frontFace
+    *
+    * MESA_VK_DYNAMIC_RS_FRONT_FACE
+    */
    VkFrontFace front_face;
 
-   /** VkPipelineRasterizationConservativeStateCreateInfoEXT::conservativeRasterizationMode */
+   /** VkPipelineRasterizationConservativeStateCreateInfoEXT::conservativeRasterizationMode
+    *
+    * MESA_VK_DYNAMIC_RS_CONSERVATIVE_MODE
+    */
    VkConservativeRasterizationModeEXT conservative_mode;
 
    /** VkPipelineRasterizationStateRasterizationOrderAMD::rasterizationOrder */
    VkRasterizationOrderAMD rasterization_order_amd;
 
-   /** VkPipelineRasterizationProvokingVertexStateCreateInfoEXT::provokingVertexMode */
+   /** VkPipelineRasterizationProvokingVertexStateCreateInfoEXT::provokingVertexMode
+    *
+    * MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX
+    */
    VkProvokingVertexModeEXT provoking_vertex;
 
-   /** VkPipelineRasterizationStateStreamCreateInfoEXT::rasterizationStream */
+   /** VkPipelineRasterizationStateStreamCreateInfoEXT::rasterizationStream
+    *
+    * MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM
+    */
    uint32_t rasterization_stream;
 
    struct {
-      /** VkPipelineRasterizationStateCreateInfo::depthBiasEnable */
+      /** VkPipelineRasterizationStateCreateInfo::depthBiasEnable
+       *
+       * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE
+       */
       bool enable;
 
-      /** VkPipelineRasterizationStateCreateInfo::depthBiasConstantFactor */
+      /** VkPipelineRasterizationStateCreateInfo::depthBiasConstantFactor
+       *
+       * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS
+       */
       float constant;
 
-      /** VkPipelineRasterizationStateCreateInfo::depthBiasClamp */
+      /** VkPipelineRasterizationStateCreateInfo::depthBiasClamp
+       *
+       * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS
+       */
       float clamp;
 
-      /** VkPipelineRasterizationStateCreateInfo::depthBiasSlopeFactor */
+      /** VkPipelineRasterizationStateCreateInfo::depthBiasSlopeFactor
+       *
+       * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS
+       */
       float slope;
    } depth_bias;
 
    struct {
-      /** VkPipelineRasterizationStateCreateInfo::lineWidth */
+      /** VkPipelineRasterizationStateCreateInfo::lineWidth
+       *
+       * MESA_VK_DYNAMIC_RS_LINE_WIDTH
+       */
       float width;
 
       /** VkPipelineRasterizationLineStateCreateInfoEXT::lineRasterizationMode
        *
        * Will be set to VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT if
        * VkPipelineRasterizationLineStateCreateInfoEXT is not provided.
+       *
+       * MESA_VK_DYNAMIC_RS_LINE_MODE
        */
       VkLineRasterizationModeEXT mode;
 
       struct {
-         /** VkPipelineRasterizationLineStateCreateInfoEXT::stippledLineEnable */
+         /** VkPipelineRasterizationLineStateCreateInfoEXT::stippledLineEnable
+          *
+          * MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE
+          */
          bool enable;
 
-         /** VkPipelineRasterizationLineStateCreateInfoEXT::lineStippleFactor */
+         /** VkPipelineRasterizationLineStateCreateInfoEXT::lineStippleFactor
+          *
+          * MESA_VK_DYNAMIC_RS_LINE_STIPPLE
+          */
          uint32_t factor;
 
-         /** VkPipelineRasterizationLineStateCreateInfoEXT::lineStipplePattern */
+         /** VkPipelineRasterizationLineStateCreateInfoEXT::lineStipplePattern
+          *
+          * MESA_VK_DYNAMIC_RS_LINE_STIPPLE
+          */
          uint16_t pattern;
       } stipple;
    } line;
@@ -571,69 +635,9 @@ struct vk_dynamic_graphics_state {
    } dr;
 
    /** Rasterization state */
-   struct {
-      /** Rasterizer discard
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_RASTERIZER_DISCARD_ENABLE
-       */
-      bool rasterizer_discard_enable;
+   struct vk_rasterization_state rs;
 
-      /** Cull mode
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_CULL_MODE
-       */
-      VkCullModeFlags cull_mode;
-
-      /** Front face
-       *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_FRONT_FACE
-       */
-      VkFrontFace front_face;
-
-      struct {
-         /** Depth bias enable
-          *
-          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_ENABLE
-          */
-         bool enable;
-
-         /** Depth bias constant factor
-          *
-          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_FACTORS
-          */
-         float constant;
-
-         /** Depth bias clamp
-          *
-          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_FACTORS
-          */
-         float clamp;
-
-         /** Depth bias slope
-          *
-          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_DEPTH_BIAS_FACTORS
-          */
-         float slope;
-      } depth_bias;
-
-      struct {
-         /** Line width
-          *
-          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_LINE_WIDTH
-          */
-         float width;
-
-         /** Line stipple
-          *
-          * MESA_VK_DYNAMIC_GRAPHICS_STATE_RS_LINE_STIPPLE
-          */
-         struct {
-            uint32_t factor;
-            uint16_t pattern;
-         } stipple;
-      } line;
-   } rs;
-
+   /* Fragment shading rate state */
    struct vk_fragment_shading_rate_state fsr;
 
    /** Multisample state */

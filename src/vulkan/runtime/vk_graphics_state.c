@@ -65,11 +65,20 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
 
    if (groups & MESA_VK_GRAPHICS_STATE_RASTERIZATION_BIT) {
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_POLYGON_MODE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_CULL_MODE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_FRONT_FACE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_CONSERVATIVE_MODE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_RASTERIZATION_ORDER_AMD);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_LINE_WIDTH);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_LINE_MODE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_RS_LINE_STIPPLE);
    }
 
@@ -200,6 +209,14 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       CASE( PATCH_CONTROL_POINTS_EXT,     TS_PATCH_CONTROL_POINTS)
       CASE( LOGIC_OP_EXT,                 CB_LOGIC_OP)
       CASE( COLOR_WRITE_ENABLE_EXT,       CB_COLOR_WRITE_ENABLES)
+      CASE( DEPTH_CLAMP_ENABLE_EXT,       RS_DEPTH_CLAMP_ENABLE)
+      CASE( POLYGON_MODE_EXT,             RS_POLYGON_MODE)
+      CASE( RASTERIZATION_STREAM_EXT,     RS_RASTERIZATION_STREAM)
+      CASE( CONSERVATIVE_RASTERIZATION_MODE_EXT, RS_CONSERVATIVE_MODE)
+      CASE( DEPTH_CLIP_ENABLE_EXT,        RS_DEPTH_CLIP_ENABLE)
+      CASE( PROVOKING_VERTEX_MODE_EXT,    RS_PROVOKING_VERTEX)
+      CASE( LINE_RASTERIZATION_MODE_EXT,  RS_LINE_MODE)
+      CASE( LINE_STIPPLE_ENABLE_EXT,      RS_LINE_STIPPLE_ENABLE)
       CASE( DEPTH_CLIP_NEGATIVE_ONE_TO_ONE_EXT, VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)
       default:
          unreachable("Unsupported dynamic graphics state");
@@ -483,6 +500,7 @@ vk_rasterization_state_init(struct vk_rasterization_state *rs,
          const VkPipelineRasterizationDepthClipStateCreateInfoEXT *rdc_info =
             (const VkPipelineRasterizationDepthClipStateCreateInfoEXT *)ext;
          rs->depth_clip_enable = rdc_info->depthClipEnable;
+         rs->depth_clip_present = true;
          break;
       }
 
@@ -490,8 +508,9 @@ vk_rasterization_state_init(struct vk_rasterization_state *rs,
          const VkPipelineRasterizationLineStateCreateInfoEXT *rl_info =
             (const VkPipelineRasterizationLineStateCreateInfoEXT *)ext;
          rs->line.mode = rl_info->lineRasterizationMode;
-         rs->line.stipple.enable = rl_info->stippledLineEnable;
-         if (rs->line.stipple.enable && !IS_DYNAMIC(RS_LINE_STIPPLE)) {
+         if (!IS_DYNAMIC(RS_LINE_STIPPLE_ENABLE))
+            rs->line.stipple.enable = rl_info->stippledLineEnable;
+         if ((IS_DYNAMIC(RS_LINE_STIPPLE_ENABLE) || rs->line.stipple.enable) && !IS_DYNAMIC(RS_LINE_STIPPLE)) {
             rs->line.stipple.factor = rl_info->lineStippleFactor;
             rs->line.stipple.pattern = rl_info->lineStipplePattern;
          }
@@ -530,16 +549,7 @@ vk_dynamic_graphics_state_init_rs(struct vk_dynamic_graphics_state *dst,
                                   const BITSET_WORD *needed,
                                   const struct vk_rasterization_state *rs)
 {
-   dst->rs.rasterizer_discard_enable = rs->rasterizer_discard_enable;
-   dst->rs.cull_mode = rs->cull_mode;
-   dst->rs.front_face = rs->front_face;
-   dst->rs.depth_bias.enable = rs->depth_bias.enable;
-   dst->rs.depth_bias.constant = rs->depth_bias.constant;
-   dst->rs.depth_bias.clamp = rs->depth_bias.clamp;
-   dst->rs.depth_bias.slope = rs->depth_bias.slope;
-   dst->rs.line.width = rs->line.width;
-   dst->rs.line.stipple.factor = rs->line.stipple.factor;
-   dst->rs.line.stipple.pattern = rs->line.stipple.pattern;
+   dst->rs = *rs;
 }
 
 static void
@@ -1581,13 +1591,22 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
    }
 
    COPY_IF_SET(RS_RASTERIZER_DISCARD_ENABLE, rs.rasterizer_discard_enable);
+   COPY_IF_SET(RS_DEPTH_CLAMP_ENABLE, rs.depth_clamp_enable);
+   COPY_IF_SET(RS_DEPTH_CLIP_ENABLE, rs.depth_clip_enable);
+   COPY_IF_SET(RS_POLYGON_MODE, rs.polygon_mode);
    COPY_IF_SET(RS_CULL_MODE, rs.cull_mode);
    COPY_IF_SET(RS_FRONT_FACE, rs.front_face);
+   COPY_IF_SET(RS_CONSERVATIVE_MODE, rs.conservative_mode);
+   COPY_IF_SET(RS_RASTERIZATION_ORDER_AMD, rs.rasterization_order_amd);
+   COPY_IF_SET(RS_PROVOKING_VERTEX, rs.provoking_vertex);
+   COPY_IF_SET(RS_RASTERIZATION_STREAM, rs.rasterization_stream);
    COPY_IF_SET(RS_DEPTH_BIAS_ENABLE, rs.depth_bias.enable);
    COPY_IF_SET(RS_DEPTH_BIAS_FACTORS, rs.depth_bias.constant);
    COPY_IF_SET(RS_DEPTH_BIAS_FACTORS, rs.depth_bias.clamp);
    COPY_IF_SET(RS_DEPTH_BIAS_FACTORS, rs.depth_bias.slope);
    COPY_IF_SET(RS_LINE_WIDTH, rs.line.width);
+   COPY_IF_SET(RS_LINE_MODE, rs.line.mode);
+   COPY_IF_SET(RS_LINE_STIPPLE_ENABLE, rs.line.stipple.enable);
    COPY_IF_SET(RS_LINE_STIPPLE, rs.line.stipple.factor);
    COPY_IF_SET(RS_LINE_STIPPLE, rs.line.stipple.pattern);
 
@@ -1855,6 +1874,38 @@ vk_common_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthClampEnableEXT(VkCommandBuffer commandBuffer,
+                                    VkBool32 depthClampEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, RS_DEPTH_CLAMP_ENABLE,
+                rs.depth_clamp_enable, depthClampEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetDepthClipEnableEXT(VkCommandBuffer commandBuffer,
+                                   VkBool32 depthClipEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, RS_DEPTH_CLIP_ENABLE,
+                rs.depth_clip_enable, depthClipEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetPolygonModeEXT(VkCommandBuffer commandBuffer,
+                               VkPolygonMode polygonMode)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, RS_POLYGON_MODE, rs.polygon_mode, polygonMode);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdSetCullMode(VkCommandBuffer commandBuffer,
                          VkCullModeFlags cullMode)
 {
@@ -1872,6 +1923,40 @@ vk_common_CmdSetFrontFace(VkCommandBuffer commandBuffer,
    struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
 
    SET_DYN_VALUE(dyn, RS_FRONT_FACE, rs.front_face, frontFace);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetConservativeRasterizationModeEXT(
+   VkCommandBuffer commandBuffer,
+   VkConservativeRasterizationModeEXT conservativeRasterizationMode)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_CONSERVATIVE_MODE, rs.conservative_mode,
+                 conservativeRasterizationMode);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetProvokingVertexModeEXT(VkCommandBuffer commandBuffer,
+                                       VkProvokingVertexModeEXT provokingVertexMode)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_PROVOKING_VERTEX,
+                 rs.provoking_vertex, provokingVertexMode);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetRasterizationStreamEXT(VkCommandBuffer commandBuffer,
+                                       uint32_t rasterizationStream)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_PROVOKING_VERTEX,
+                 rs.rasterization_stream, rasterizationStream);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1910,6 +1995,27 @@ vk_common_CmdSetLineWidth(VkCommandBuffer commandBuffer,
    struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
 
    SET_DYN_VALUE(dyn, RS_LINE_WIDTH, rs.line.width, lineWidth);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetLineRasterizationModeEXT(VkCommandBuffer commandBuffer,
+                                         VkLineRasterizationModeEXT lineRasterizationMode)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, RS_LINE_MODE, rs.line.mode, lineRasterizationMode);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetLineStippleEnableEXT(VkCommandBuffer commandBuffer,
+                                     VkBool32 stippledLineEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, RS_LINE_STIPPLE_ENABLE,
+                rs.line.stipple.enable, stippledLineEnable);
 }
 
 VKAPI_ATTR void VKAPI_CALL
