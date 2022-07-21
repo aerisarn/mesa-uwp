@@ -309,7 +309,7 @@ void AssamblerVisitor::emit_alu_op(const AluInstr& ai)
          alu.src[i].kc_rel = 1;
       }
 
-      if (ai.has_lds_access()) {
+      if (ai.has_lds_queue_read()) {
          assert(m_bc->cf_last->nlds_read > 0);
          m_bc->cf_last->nlds_read--;
       }

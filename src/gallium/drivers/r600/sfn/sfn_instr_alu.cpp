@@ -788,14 +788,20 @@ bool AluInstr::propagate_death()
 
 bool AluInstr::has_lds_access() const
 {
-   if (has_alu_flag(alu_is_lds))
-      return true;
+   return has_alu_flag(alu_is_lds) || has_lds_queue_read();
+}
 
-   for (auto& s : m_src)
-      if (s->as_inline_const() &&
-          (s->as_inline_const()->sel() == ALU_SRC_LDS_OQ_A_POP))
+bool AluInstr::has_lds_queue_read() const
+{
+   for (auto& s : m_src) {
+      auto ic = s->as_inline_const();
+      if (!ic)
+         continue;
+
+      if (ic->sel() == ALU_SRC_LDS_OQ_A_POP ||
+          ic->sel() == ALU_SRC_LDS_OQ_B_POP)
          return true;
-
+   }
    return false;
 }
 

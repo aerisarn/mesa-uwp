@@ -127,6 +127,7 @@ public:
    bool is_equal_to(const AluInstr& lhs) const;
 
    bool has_lds_access() const;
+   bool has_lds_queue_read() const;
 
    static const std::map<ECFAluOpCode, std::string> cf_map;
    static const std::map<AluBankSwizzle, std::string> bank_swizzle_map;
