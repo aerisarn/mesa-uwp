@@ -135,7 +135,7 @@ def get_entrypoints(doc, entrypoints_to_defines):
 
         ext_name = extension.attrib['name']
 
-        ext = Extension(ext_name, 1, True)
+        ext = Extension(ext_name, 1, True, None)
         ext.type = extension.attrib['type']
 
         for command in extension.findall('./require/command'):
