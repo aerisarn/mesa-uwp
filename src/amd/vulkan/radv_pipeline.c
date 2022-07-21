@@ -1599,7 +1599,9 @@ radv_pipeline_init_input_assembly_info(struct radv_graphics_pipeline *pipeline,
    struct radv_input_assembly_info info = {0};
 
    info.primitive_topology = si_translate_prim(ia->topology);
-   info.primitive_restart_enable = !!ia->primitiveRestartEnable;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE))
+      info.primitive_restart_enable = !!ia->primitiveRestartEnable;
 
    return info;
 }
@@ -1661,16 +1663,31 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
    const VkPipelineRasterizationStateCreateInfo *rs = pCreateInfo->pRasterizationState;
    struct radv_rasterization_info info = {0};
 
-   info.discard_enable = rs->rasterizerDiscardEnable;
-   info.front_face = rs->frontFace;
-   info.cull_mode = rs->cullMode;
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE))
+      info.discard_enable = rs->rasterizerDiscardEnable;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_FRONT_FACE))
+      info.front_face = rs->frontFace;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_CULL_MODE))
+      info.cull_mode = rs->cullMode;
+
    info.polygon_mode = si_translate_fill(rs->polygonMode);
-   info.depth_bias_enable = rs->depthBiasEnable;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE))
+      info.depth_bias_enable = rs->depthBiasEnable;
+
    info.depth_clamp_enable = rs->depthClampEnable;
-   info.line_width = rs->lineWidth;
-   info.depth_bias_constant_factor = rs->depthBiasConstantFactor;
-   info.depth_bias_clamp = rs->depthBiasClamp;
-   info.depth_bias_slope_factor = rs->depthBiasSlopeFactor;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_LINE_WIDTH))
+      info.line_width = rs->lineWidth;
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BIAS)) {
+      info.depth_bias_constant_factor = rs->depthBiasConstantFactor;
+      info.depth_bias_clamp = rs->depthBiasClamp;
+      info.depth_bias_slope_factor = rs->depthBiasSlopeFactor;
+   }
+
    info.depth_clip_disable = rs->depthClampEnable;
 
    const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
@@ -1691,8 +1708,11 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
    if (rast_line_info) {
       info.stippled_line_enable = rast_line_info->stippledLineEnable;
       info.line_raster_mode = rast_line_info->lineRasterizationMode;
-      info.line_stipple_factor = rast_line_info->lineStippleFactor;
-      info.line_stipple_pattern = rast_line_info->lineStipplePattern;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_LINE_STIPPLE)) {
+         info.line_stipple_factor = rast_line_info->lineStippleFactor;
+         info.line_stipple_pattern = rast_line_info->lineStipplePattern;
+      }
    }
 
    const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
@@ -1787,27 +1807,51 @@ radv_pipeline_init_depth_stencil_info(struct radv_graphics_pipeline *pipeline,
    if (radv_is_raster_enabled(pipeline, pCreateInfo) &&
        (ri->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
         ri->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)) {
-      info.depth_bounds_test_enable = ds->depthBoundsTestEnable;
-      info.depth_bounds.min = ds->minDepthBounds;
-      info.depth_bounds.max = ds->maxDepthBounds;
-      info.stencil_test_enable = ds->stencilTestEnable;
-      info.front.fail_op = ds->front.failOp;
-      info.front.pass_op = ds->front.passOp;
-      info.front.depth_fail_op = ds->front.depthFailOp;
-      info.front.compare_op = ds->front.compareOp;
-      info.front.compare_mask = ds->front.compareMask;
-      info.front.write_mask = ds->front.writeMask;
-      info.front.reference = ds->front.reference;
-      info.back.fail_op = ds->back.failOp;
-      info.back.pass_op = ds->back.passOp;
-      info.back.depth_fail_op = ds->back.depthFailOp;
-      info.back.compare_op = ds->back.compareOp;
-      info.back.compare_mask = ds->back.compareMask;
-      info.back.write_mask = ds->back.writeMask;
-      info.back.reference = ds->back.reference;
-      info.depth_test_enable = ds->depthTestEnable;
-      info.depth_write_enable = ds->depthWriteEnable;
-      info.depth_compare_op = ds->depthCompareOp;
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE))
+         info.depth_bounds_test_enable = ds->depthBoundsTestEnable;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS)) {
+         info.depth_bounds.min = ds->minDepthBounds;
+         info.depth_bounds.max = ds->maxDepthBounds;
+      }
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_TEST_ENABLE))
+         info.depth_test_enable = ds->depthTestEnable;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_WRITE_ENABLE))
+         info.depth_write_enable = ds->depthWriteEnable;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_COMPARE_OP))
+         info.depth_compare_op = ds->depthCompareOp;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_COMPARE_MASK)) {
+         info.front.compare_mask = ds->front.compareMask;
+         info.back.compare_mask = ds->back.compareMask;
+      }
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_WRITE_MASK)) {
+         info.front.write_mask = ds->front.writeMask;
+         info.back.write_mask = ds->back.writeMask;
+      }
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_REFERENCE)) {
+         info.front.reference = ds->front.reference;
+         info.back.reference = ds->back.reference;
+      }
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_TEST_ENABLE))
+         info.stencil_test_enable = ds->stencilTestEnable;
+
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_OP)) {
+         info.front.fail_op = ds->front.failOp;
+         info.front.pass_op = ds->front.passOp;
+         info.front.depth_fail_op = ds->front.depthFailOp;
+         info.front.compare_op = ds->front.compareOp;
+         info.back.fail_op = ds->back.failOp;
+         info.back.pass_op = ds->back.passOp;
+         info.back.depth_fail_op = ds->back.depthFailOp;
+         info.back.compare_op = ds->back.compareOp;
+      }
    }
 
    return info;
@@ -1869,17 +1913,19 @@ radv_pipeline_init_color_blend_info(struct radv_graphics_pipeline *pipeline,
       }
       info.att_count = cb->attachmentCount;
 
-      for (uint32_t i = 0; i < 4; i++) {
-         info.blend_constants[i] = cb->blendConstants[i];
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_BLEND_CONSTANTS)) {
+         for (uint32_t i = 0; i < 4; i++) {
+            info.blend_constants[i] = cb->blendConstants[i];
+         }
       }
 
       info.logic_op_enable = cb->logicOpEnable;
-      if (info.logic_op_enable)
+      if (info.logic_op_enable && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP))
          info.logic_op = si_translate_blend_logic_op(cb->logicOp);
 
       const VkPipelineColorWriteCreateInfoEXT *color_write_info =
          vk_find_struct_const(cb->pNext, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
-      if (color_write_info) {
+      if (color_write_info && !(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_ENABLE)) {
          for (uint32_t i = 0; i < color_write_info->attachmentCount; i++) {
             info.color_write_enable |=
                color_write_info->pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
