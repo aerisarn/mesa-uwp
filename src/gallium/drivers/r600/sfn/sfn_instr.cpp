@@ -302,17 +302,43 @@ void Block::push_back(PInst instr)
 
 bool Block::try_reserve_kcache(const AluGroup& group)
 {
+   auto kcache = m_kcache;
+
    auto kcache_constants = group.get_kconsts();
    for (auto& kc : kcache_constants)  {
       auto u = kc->as_uniform();
       assert(u);
-      if (!try_reserve_kcache(*u))
+      if (!try_reserve_kcache(*u, kcache)) {
+         m_kcache_alloc_failed = true;
          return false;
+      }
    }
+
+   m_kcache = kcache;
+   m_kcache_alloc_failed = false;
    return true;
 }
 
-bool Block::try_reserve_kcache(const UniformValue& u)
+bool Block::try_reserve_kcache(const AluInstr& instr)
+{
+   auto kcache = m_kcache;
+
+   for (auto& src : instr.sources()) {
+      auto u = src->as_uniform();
+      if (u) {
+         if (!try_reserve_kcache(*u, kcache)) {
+            m_kcache_alloc_failed = true;
+            return false;
+         }
+      }
+   }
+   m_kcache = kcache;
+   m_kcache_alloc_failed = false;
+   return true;
+}
+
+bool Block::try_reserve_kcache(const UniformValue& u,
+                               std::array<KCacheLine, 4>& kcache) const
 {
    const int kcache_banks = 4; // TODO: handle pre-evergreen
 
@@ -323,49 +349,50 @@ bool Block::try_reserve_kcache(const UniformValue& u)
    bool found = false;
 
    for (int i = 0; i < kcache_banks && !found; ++i) {
-      if (m_kcache[i].mode) {
-         if (m_kcache[i].bank < bank)
+      if (kcache[i].mode) {
+         if (kcache[i].bank < bank)
             continue;
 
-         if ((m_kcache[i].bank == bank &&
-              m_kcache[i].addr > line  + 1) ||
-             m_kcache[i].bank > bank) {
-            if (m_kcache[kcache_banks - 1].mode)
+         if ((kcache[i].bank == bank &&
+              kcache[i].addr > line  + 1) ||
+             kcache[i].bank > bank) {
+            if (kcache[kcache_banks - 1].mode)
                return false;
 
-            memmove(&m_kcache[i+1],&m_kcache[i], (kcache_banks-i-1)*sizeof(KCacheLine));
-            m_kcache[i].mode = KCacheLine::lock_1;
-            m_kcache[i].bank = bank;
-            m_kcache[i].addr = line;
+            memmove(&kcache[i+1],&kcache[i], (kcache_banks-i-1)*sizeof(KCacheLine));
+            kcache[i].mode = KCacheLine::lock_1;
+            kcache[i].bank = bank;
+            kcache[i].addr = line;
             return true;
          }
 
-         int d = line - m_kcache[i].addr;
+         int d = line - kcache[i].addr;
 
          if (d == -1) {
-            m_kcache[i].addr--;
-            if (m_kcache[i].mode == KCacheLine::lock_2) {
+            kcache[i].addr--;
+            if (kcache[i].mode == KCacheLine::lock_2) {
                /* we are prepending the line to the current set,
-          * discarding the existing second line,
-          * so we'll have to insert line+2 after it */
+                * discarding the existing second line,
+                * so we'll have to insert line+2 after it */
                line += 2;
                continue;
-            } else if (m_kcache[i].mode == KCacheLine::lock_1) {
-               m_kcache[i].mode = KCacheLine::lock_2;
+            } else if (kcache[i].mode == KCacheLine::lock_1) {
+               kcache[i].mode = KCacheLine::lock_2;
                return true;
             } else {
                /* V_SQ_CF_KCACHE_LOCK_LOOP_INDEX is not supported */
                return false;
             }
          } else if (d == 1) {
-            m_kcache[i].mode = KCacheLine::lock_2;
+            kcache[i].mode = KCacheLine::lock_2;
             return true;
-         } else if (d == 0)
+         } else if (d == 0) {
             return true;
+         }
       } else { /* free kcache set - use it */
-         m_kcache[i].mode = KCacheLine::lock_1;
-         m_kcache[i].bank = bank;
-         m_kcache[i].addr = line;
+         kcache[i].mode = KCacheLine::lock_1;
+         kcache[i].bank = bank;
+         kcache[i].addr = line;
          return true;
       }
    }

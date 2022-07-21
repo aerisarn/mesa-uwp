@@ -196,7 +196,8 @@ public:
    void set_type(Type t);
    uint32_t remaining_slots() const { return m_remaining_slots;}
 
-   bool try_reserve_kcache(const AluGroup& group);
+   bool try_reserve_kcache(const AluGroup& instr);
+   bool try_reserve_kcache(const AluInstr& group);
 
    auto last_lds_instr() {return m_last_lds_instr;}
    void set_last_lds_instr(Instr *instr) {m_last_lds_instr = instr;}
@@ -207,8 +208,11 @@ public:
 
    size_t size() const { return m_instructions.size();}
 
+   bool kcache_reservation_failed() const { return m_kcache_alloc_failed;}
+
 private:
-   bool try_reserve_kcache(const UniformValue& u);
+   bool try_reserve_kcache(const UniformValue& u,
+                           std::array<KCacheLine, 4>& kcache) const;
 
    bool do_ready() const override {return true;};
    void do_print(std::ostream& os) const override;
@@ -221,11 +225,13 @@ private:
    uint32_t m_remaining_slots{0xffff};
 
    std::array<KCacheLine, 4> m_kcache;
+   bool m_kcache_alloc_failed{false};
 
    Instr *m_last_lds_instr{nullptr};
 
    int m_lds_group_requirement{0};
    AluInstr *m_lds_group_start{nullptr};
+
 };
 
 class InstrWithVectorResult : public Instr {
