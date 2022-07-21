@@ -300,6 +300,30 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
             fprintf(output, " lgkmcnt(%d)", (imm >> 8) & 0x3F);
          break;
       }
+      case aco_opcode::s_waitcnt_depctr: {
+         unsigned va_vdst = (imm >> 12) & 0xf;
+         unsigned va_sdst = (imm >> 9) & 0x7;
+         unsigned va_ssrc = (imm >> 8) & 0x1;
+         unsigned hold_cnt = (imm >> 7) & 0x1;
+         unsigned vm_vsrc = (imm >> 2) & 0x7;
+         unsigned va_vcc = (imm >> 1) & 0x1;
+         unsigned sa_sdst = imm & 0x1;
+         if (va_vdst != 0xf)
+            fprintf(output, " va_vdst(%d)", va_vdst);
+         if (va_sdst != 0x7)
+            fprintf(output, " va_sdst(%d)", va_sdst);
+         if (va_ssrc != 0x1)
+            fprintf(output, " va_ssrc(%d)", va_ssrc);
+         if (hold_cnt != 0x1)
+            fprintf(output, " holt_cnt(%d)", hold_cnt);
+         if (vm_vsrc != 0x7)
+            fprintf(output, " vm_vsrc(%d)", vm_vsrc);
+         if (va_vcc != 0x1)
+            fprintf(output, " va_vcc(%d)", va_vcc);
+         if (sa_sdst != 0x1)
+            fprintf(output, " sa_sdst(%d)", sa_sdst);
+         break;
+      }
       case aco_opcode::s_endpgm:
       case aco_opcode::s_endpgm_saved:
       case aco_opcode::s_endpgm_ordered_ps_done:
