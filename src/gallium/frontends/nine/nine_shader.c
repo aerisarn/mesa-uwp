@@ -456,6 +456,7 @@ struct shader_translator
     boolean wpos_is_sysval;
     boolean face_is_sysval_integer;
     boolean mul_zero_wins;
+    boolean always_output_pointsize;
     unsigned texcoord_sn;
 
     struct sm1_instruction insn; /* current instruction */
@@ -644,15 +645,16 @@ static struct ureg_src nine_special_constant_src(struct shader_translator *tx, i
 {
     struct ureg_src src;
 
-    unsigned slot_idx = idx + NINE_MAX_CONST_PS_SPE_OFFSET;
+    unsigned slot_idx = idx + (IS_PS ? NINE_MAX_CONST_PS_SPE_OFFSET :
+        (tx->info->swvp_on ? NINE_MAX_CONST_SWVP_SPE_OFFSET : NINE_MAX_CONST_VS_SPE_OFFSET));
 
-    assert(!tx->info->swvp_on); /* Only used for ps currently */
-    if (tx->slot_map)
+    if (!tx->info->swvp_on && tx->slot_map)
         slot_idx = tx->slot_map[slot_idx];
     src = ureg_src_register(TGSI_FILE_CONSTANT, slot_idx);
     src = ureg_src_dimension(src, 0);
 
-    tx->slots_used[slot_idx] = TRUE;
+    if (!tx->info->swvp_on)
+        tx->slots_used[slot_idx] = TRUE;
     if (tx->num_slots < (slot_idx + 1))
         tx->num_slots = slot_idx + 1;
 
@@ -3878,6 +3880,10 @@ static void parse_shader(struct shader_translator *tx)
         ureg_MAX(tx->ureg, ureg_writemask(tx->regs.oPts, TGSI_WRITEMASK_X), ureg_src(tx->regs.oPts), ureg_imm1f(tx->ureg, info->point_size_min));
         ureg_MIN(tx->ureg, ureg_writemask(oPts, TGSI_WRITEMASK_X), ureg_src(tx->regs.oPts), ureg_imm1f(tx->ureg, info->point_size_max));
         info->point_size = TRUE;
+    } else if (IS_VS && tx->always_output_pointsize) {
+        struct ureg_dst oPts = ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_PSIZE, 0);
+        ureg_MOV(tx->ureg, ureg_writemask(oPts, TGSI_WRITEMASK_X), nine_special_constant_src(tx, 0));
+        info->point_size = TRUE;
     }
 
     if (info->process_vertices)
@@ -4022,6 +4028,7 @@ nine_translate_shader(struct NineDevice9 *device, struct nine_shader_info *info,
         hr = E_OUTOFMEMORY;
         goto out;
     }
+    tx->always_output_pointsize = device->driver_caps.always_output_pointsize;
 
     assert(IS_VS || !info->swvp_on);
 
@@ -4100,6 +4107,7 @@ nine_translate_shader(struct NineDevice9 *device, struct nine_shader_info *info,
             hr = E_OUTOFMEMORY;
             goto out;
         }
+        tx->always_output_pointsize = device->driver_caps.always_output_pointsize;
         tx->slot_map = slot_map;
         parse_shader(tx);
         assert(!tx->failure);

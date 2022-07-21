@@ -427,7 +427,7 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
         oFog = ureg_writemask(oFog, TGSI_WRITEMASK_X);
     }
 
-    if (key->vertexpointsize || key->pointscale) {
+    if (key->vertexpointsize || key->pointscale || device->driver_caps.always_output_pointsize) {
         oPsz = ureg_DECL_output_masked(ureg, TGSI_SEMANTIC_PSIZE, 0,
                                        TGSI_WRITEMASK_X, 0, 1);
         oPsz = ureg_writemask(oPsz, TGSI_WRITEMASK_X);
@@ -588,7 +588,7 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
 
     /* === Process point size:
      */
-    if (key->vertexpointsize || key->pointscale) {
+    if (key->vertexpointsize || key->pointscale || device->driver_caps.always_output_pointsize) {
         struct ureg_dst tmp = ureg_DECL_temporary(ureg);
         struct ureg_dst tmp_x = ureg_writemask(tmp, TGSI_WRITEMASK_X);
         struct ureg_dst tmp_y = ureg_writemask(tmp, TGSI_WRITEMASK_Y);
@@ -1720,7 +1720,7 @@ nine_ff_get_vs(struct NineDevice9 *device)
             vs->input_map[n].ndecl = bld.input[n];
 
         vs->position_t = key.position_t;
-        vs->point_size = key.vertexpointsize | key.pointscale;
+        vs->point_size = key.vertexpointsize | key.pointscale | device->driver_caps.always_output_pointsize;
     }
     return vs;
 }

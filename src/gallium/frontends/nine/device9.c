@@ -451,7 +451,10 @@ NineDevice9_ctor( struct NineDevice9 *This,
         /* ps 3.0: 224 float constants. All cards supported support at least
          * 256 constants for ps */
 
-        This->max_vs_const_f = max_const_vs -
+        if (max_const_vs == NINE_MAX_CONST_ALL_VS)
+            This->max_vs_const_f = NINE_MAX_CONST_F;
+        else /* Do not count SPE constants as we won't use them */
+            This->max_vs_const_f = max_const_vs -
                                (NINE_MAX_CONST_I + NINE_MAX_CONST_B / 4);
 
         This->vs_const_size = max_const_vs * sizeof(float[4]);
@@ -556,6 +559,13 @@ NineDevice9_ctor( struct NineDevice9 *This,
     This->driver_caps.ps_integer = pScreen->get_shader_param(pScreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_INTEGERS);
     This->driver_caps.offset_units_unscaled = GET_PCAP(POLYGON_OFFSET_UNITS_UNSCALED);
     This->driver_caps.alpha_test_emulation = !GET_PCAP(ALPHA_TEST);
+    /* Always write pointsize output when the driver doesn't support point_size_per_vertex = 0.
+     * TODO: Only generate pointsize for draw calls that need it */
+    This->driver_caps.always_output_pointsize = !GET_PCAP(POINT_SIZE_FIXED);
+
+    /* Disable SPE constants if there is no room for them */
+    if (This->max_vs_const_f != NINE_MAX_CONST_F)
+        This->driver_caps.always_output_pointsize = false;
 
     This->context.inline_constants = pCTX->shader_inline_constants;
     /* Code would be needed when integers are not available to correctly

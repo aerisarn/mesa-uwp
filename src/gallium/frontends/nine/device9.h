@@ -133,6 +133,7 @@ struct NineDevice9
         boolean ps_integer;
         boolean offset_units_unscaled;
         boolean alpha_test_emulation;
+        boolean always_output_pointsize;
     } driver_caps;
 
     struct {

@@ -389,6 +389,14 @@ prepare_vs_constants_userbuf_swvp(struct NineDevice9 *device)
 {
     struct nine_context *context = &device->context;
 
+    if (device->driver_caps.always_output_pointsize) {
+        context->vs_const_f[4 * NINE_MAX_CONST_SWVP_SPE_OFFSET] =
+            CLAMP(asfloat(context->rs[D3DRS_POINTSIZE]),
+                asfloat(context->rs[D3DRS_POINTSIZE_MIN]),
+                asfloat(context->rs[D3DRS_POINTSIZE_MAX]));
+        context->changed.vs_const_f = 1; /* TODO optimize */
+    }
+
     if (context->changed.vs_const_f || context->changed.group & NINE_STATE_SWVP) {
         struct pipe_constant_buffer cb;
 
@@ -469,6 +477,13 @@ prepare_vs_constants_userbuf(struct NineDevice9 *device)
     if (context->swvp) {
         prepare_vs_constants_userbuf_swvp(device);
         return;
+    }
+
+    if (device->driver_caps.always_output_pointsize) {
+        context->vs_const_f[4 * NINE_MAX_CONST_VS_SPE_OFFSET] =
+            CLAMP(asfloat(context->rs[D3DRS_POINTSIZE]),
+                asfloat(context->rs[D3DRS_POINTSIZE_MIN]),
+                asfloat(context->rs[D3DRS_POINTSIZE_MAX]));
     }
 
     if (context->changed.vs_const_i || context->changed.group & NINE_STATE_SWVP) {
@@ -1447,6 +1462,11 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
         }
         if (State == D3DRS_ALPHAREF)
             context->changed.group |= NINE_STATE_PS_CONST | NINE_STATE_FF_PS_CONSTS;
+    }
+
+    if (device->driver_caps.always_output_pointsize) {
+        if (State == D3DRS_POINTSIZE || State == D3DRS_POINTSIZE_MIN || State == D3DRS_POINTSIZE_MAX)
+            context->changed.group |= NINE_STATE_VS_CONST;
     }
 }
 
