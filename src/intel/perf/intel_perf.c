@@ -638,7 +638,7 @@ build_unique_counter_list(struct intel_perf_config *perf)
     * below contains pointers to this array.
     */
    struct intel_perf_query_counter_info *counter_infos =
-         ralloc_array_size(perf, sizeof(counter_infos[0]), max_counters);
+         rzalloc_array_size(perf, sizeof(counter_infos[0]), max_counters);
 
    perf->n_counters = 0;
 
