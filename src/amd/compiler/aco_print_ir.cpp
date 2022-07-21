@@ -111,6 +111,8 @@ print_physReg(PhysReg reg, unsigned bytes, FILE* output, unsigned flags)
       fprintf(output, "scc");
    } else if (reg == 126) {
       fprintf(output, "exec");
+   } else if (reg == 125) {
+      fprintf(output, "null");
    } else {
       bool is_vgpr = reg / 256;
       unsigned r = reg % 256;
