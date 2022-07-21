@@ -62,7 +62,8 @@ st_convert_sampler(const struct st_context *st,
                    float tex_unit_lod_bias,
                    struct pipe_sampler_state *sampler,
                    bool seamless_cube_map,
-                   bool ignore_srgb_decode)
+                   bool ignore_srgb_decode,
+                   bool glsl130_or_later)
 {
    memcpy(sampler, &msamp->Attrib.state, sizeof(*sampler));
 
@@ -152,7 +153,8 @@ st_convert_sampler(const struct st_context *st,
 void
 st_convert_sampler_from_unit(const struct st_context *st,
                              struct pipe_sampler_state *sampler,
-                             GLuint texUnit)
+                             GLuint texUnit,
+                             bool glsl130_or_later)
 {
    const struct gl_texture_object *texobj;
    struct gl_context *ctx = st->ctx;
@@ -164,7 +166,7 @@ st_convert_sampler_from_unit(const struct st_context *st,
    msamp = _mesa_get_samplerobj(ctx, texUnit);
 
    st_convert_sampler(st, texobj, msamp, ctx->Texture.Unit[texUnit].LodBiasQuantized,
-                      sampler, ctx->Texture.CubeMapSeamless, true);
+                      sampler, ctx->Texture.CubeMapSeamless, true, glsl130_or_later);
 }
 
 
@@ -209,7 +211,8 @@ update_shader_samplers(struct st_context *st,
       if (samplers_used & 1 &&
           (ctx->Texture.Unit[tex_unit]._Current->Target != GL_TEXTURE_BUFFER ||
            st->texture_buffer_sampler)) {
-         st_convert_sampler_from_unit(st, sampler, tex_unit);
+         st_convert_sampler_from_unit(st, sampler, tex_unit,
+                                      prog->sh.data && prog->sh.data->Version >= 130);
          states[unit] = sampler;
       } else {
          states[unit] = NULL;
