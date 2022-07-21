@@ -659,6 +659,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_idiv, &idiv_options);
    NIR_PASS_V(sel->nir, r600_nir_lower_trigen);
    NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar, false);
+   NIR_PASS_V(sel->nir, nir_lower_undef_to_zero);
 
    if (lower_64bit)
       NIR_PASS_V(sel->nir, nir_lower_int64);
