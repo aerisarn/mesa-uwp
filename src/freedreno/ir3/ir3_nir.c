@@ -776,11 +776,13 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
             .src_types = (1 << nir_tex_src_coord) |
                          (1 << nir_tex_src_lod) |
                          (1 << nir_tex_src_bias) |
+                         (1 << nir_tex_src_offset) |
                          (1 << nir_tex_src_comparator) |
                          (1 << nir_tex_src_min_lod) |
                          (1 << nir_tex_src_ms_index) |
                          (1 << nir_tex_src_ddx) |
                          (1 << nir_tex_src_ddy),
+            .only_fold_all = true,
          };
          struct nir_fold_16bit_tex_image_options fold_16bit_options = {
             .rounding_mode = nir_rounding_mode_rtz,
@@ -791,29 +793,6 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
             .fold_srcs_options = &fold_srcs_options,
          };
          OPT(s, nir_fold_16bit_tex_image, &fold_16bit_options);
-
-
-         /* Now that we stripped off the 16-bit conversions, legalize so that we
-          * don't have a mix of 16- and 32-bit args that will need to be
-          * collected together in the coordinate vector.
-          */
-         nir_tex_src_type_constraints tex_constraints = {
-            [nir_tex_src_lod] = {true, 0, nir_tex_src_coord},
-            [nir_tex_src_bias] = {true, 0, nir_tex_src_coord},
-            [nir_tex_src_offset] = {true, 0, nir_tex_src_coord},
-            [nir_tex_src_comparator] = {true, 0, nir_tex_src_coord},
-
-            [nir_tex_src_min_lod] = {true, 0, nir_tex_src_coord},
-            [nir_tex_src_ms_index] = {true, 0, nir_tex_src_coord},
-            [nir_tex_src_ddx] = {true, 0, nir_tex_src_coord},
-            [nir_tex_src_ddy] = {true, 0, nir_tex_src_coord},
-
-         };
-         bool scalarize = false;
-         NIR_PASS(scalarize, s, nir_legalize_16bit_sampler_srcs, tex_constraints);
-         if (scalarize) {
-            OPT(s, nir_lower_alu_to_scalar, NULL, NULL);
-         }
       }
       OPT_V(s, nir_opt_constant_folding);
       OPT_V(s, nir_copy_prop);
