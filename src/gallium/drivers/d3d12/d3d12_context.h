@@ -315,6 +315,7 @@ d3d12_flush_cmdlist_and_wait(struct d3d12_context *ctx);
 enum d3d12_transition_flags {
    D3D12_TRANSITION_FLAG_NONE = 0,
    D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS = 1,
+   D3D12_TRANSITION_FLAG_ACCUMULATE_STATE = 2,
 };
 
 void

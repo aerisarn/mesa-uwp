@@ -454,8 +454,16 @@ d3d12_transition_resource_state(struct d3d12_context *ctx,
       d3d12_invalidate_context_bindings(ctx, res);
 
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
-   d3d12_set_desired_resource_state(&state_entry->desired, state);
-   _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+   if (flags & D3D12_TRANSITION_FLAG_ACCUMULATE_STATE) {
+      d3d12_set_desired_resource_state(&state_entry->desired, state);
+      _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+   } else if (state_entry->batch_end.homogenous) {
+      append_barrier(ctx, res->bo, state_entry, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, false);
+   } else {
+      for (unsigned i = 0; i < state_entry->batch_end.num_subresources; ++i) {
+         append_barrier(ctx, res->bo, state_entry, state, i, false);
+      }
+   }
 }
 
 void
@@ -472,8 +480,12 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
 
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, res->bo);
    bool is_whole_resource = num_levels * num_layers * num_planes == state_entry->batch_end.num_subresources;
-   if (is_whole_resource) {
+   bool is_accumulate = (flags & D3D12_TRANSITION_FLAG_ACCUMULATE_STATE) != 0;
+
+   if (is_whole_resource && is_accumulate) {
       d3d12_set_desired_resource_state(&state_entry->desired, state);
+   } else if (is_whole_resource && state_entry->batch_end.homogenous) {
+      append_barrier(ctx, res->bo, state_entry, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, false);
    } else {
       for (uint32_t l = 0; l < num_levels; l++) {
          const uint32_t level = start_level + l;
@@ -484,13 +496,17 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
                uint32_t subres_id =
                   level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
                assert(subres_id < state_entry->desired.num_subresources);
-               d3d12_set_desired_subresource_state(&state_entry->desired, subres_id, state);
+               if (is_accumulate)
+                  d3d12_set_desired_subresource_state(&state_entry->desired, subres_id, state);
+               else
+                  append_barrier(ctx, res->bo, state_entry, state, subres_id, false);
             }
          }
       }
    }
 
-   _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+   if (is_accumulate)
+      _mesa_set_add(ctx->pending_barriers_bos, res->bo);
 }
 
 void
