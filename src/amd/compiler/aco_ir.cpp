@@ -943,4 +943,28 @@ should_form_clause(const Instruction* a, const Instruction* b)
    return false;
 }
 
+bool
+dealloc_vgprs(Program* program)
+{
+   if (program->gfx_level < GFX11)
+      return false;
+
+   /* skip if deallocating VGPRs won't increase occupancy */
+   uint16_t max_waves = program->dev.max_wave64_per_simd * (64 / program->wave_size);
+   max_waves = max_suitable_waves(program, max_waves);
+   if (program->max_reg_demand.vgpr <= get_addr_vgpr_from_waves(program, max_waves))
+      return false;
+
+   Block& block = program->blocks.back();
+
+   /* don't bother checking if there is a pending VMEM store or export: there almost always is */
+   Builder bld(program);
+   if (!block.instructions.empty() && block.instructions.back()->opcode == aco_opcode::s_endpgm) {
+      bld.reset(&block.instructions, block.instructions.begin() + (block.instructions.size() - 1));
+      bld.sopp(aco_opcode::s_sendmsg, -1, sendmsg_dealloc_vgprs);
+   }
+
+   return true;
+}
+
 } // namespace aco
