@@ -87,8 +87,14 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
    if (groups & MESA_VK_GRAPHICS_STATE_FRAGMENT_SHADING_RATE_BIT)
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_FSR);
 
-   if (groups & MESA_VK_GRAPHICS_STATE_MULTISAMPLE_BIT)
+   if (groups & MESA_VK_GRAPHICS_STATE_MULTISAMPLE_BIT) {
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_MASK);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS);
+   }
 
    if (groups & MESA_VK_GRAPHICS_STATE_DEPTH_STENCIL_BIT) {
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE);
@@ -218,9 +224,14 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       CASE( TESSELLATION_DOMAIN_ORIGIN_EXT, TS_DOMAIN_ORIGIN)
       CASE( DEPTH_CLAMP_ENABLE_EXT,       RS_DEPTH_CLAMP_ENABLE)
       CASE( POLYGON_MODE_EXT,             RS_POLYGON_MODE)
+      CASE( RASTERIZATION_SAMPLES_EXT,    MS_RASTERIZATION_SAMPLES)
+      CASE( SAMPLE_MASK_EXT,              MS_SAMPLE_MASK)
+      CASE( ALPHA_TO_COVERAGE_ENABLE_EXT, MS_ALPHA_TO_COVERAGE_ENABLE)
+      CASE( ALPHA_TO_ONE_ENABLE_EXT,      MS_ALPHA_TO_ONE_ENABLE)
       CASE( RASTERIZATION_STREAM_EXT,     RS_RASTERIZATION_STREAM)
       CASE( CONSERVATIVE_RASTERIZATION_MODE_EXT, RS_CONSERVATIVE_MODE)
       CASE( DEPTH_CLIP_ENABLE_EXT,        RS_DEPTH_CLIP_ENABLE)
+      CASE( SAMPLE_LOCATIONS_ENABLE_EXT,  MS_SAMPLE_LOCATIONS_ENABLE)
       CASE( PROVOKING_VERTEX_MODE_EXT,    RS_PROVOKING_VERTEX)
       CASE( LINE_RASTERIZATION_MODE_EXT,  RS_LINE_MODE)
       CASE( LINE_STIPPLE_ENABLE_EXT,      RS_LINE_STIPPLE_ENABLE)
@@ -615,6 +626,7 @@ vk_multisample_state_init(struct vk_multisample_state *ms,
                           const BITSET_WORD *dynamic,
                           const VkPipelineMultisampleStateCreateInfo *ms_info)
 {
+   assert(ms_info->rasterizationSamples <= MESA_VK_MAX_SAMPLES);
    ms->rasterization_samples = ms_info->rasterizationSamples;
    ms->sample_shading_enable = ms_info->sampleShadingEnable;
    ms->min_sample_shading = ms_info->minSampleShading;
@@ -640,7 +652,8 @@ needs_sample_locations_state(
    const VkPipelineSampleLocationsStateCreateInfoEXT *sl_info)
 {
    return !IS_DYNAMIC(MS_SAMPLE_LOCATIONS) &&
-          sl_info != NULL && sl_info->sampleLocationsEnable;
+          (IS_DYNAMIC(MS_SAMPLE_LOCATIONS_ENABLE) ||
+           (sl_info != NULL && sl_info->sampleLocationsEnable));
 }
 
 static void
@@ -652,14 +665,15 @@ vk_multisample_sample_locations_state_init(
    const VkPipelineSampleLocationsStateCreateInfoEXT *sl_info)
 {
    ms->sample_locations_enable =
-      sl_info != NULL && sl_info->sampleLocationsEnable;
+      IS_DYNAMIC(MS_SAMPLE_LOCATIONS_ENABLE) ||
+      (sl_info != NULL && sl_info->sampleLocationsEnable);
 
    assert(ms->sample_locations == NULL);
    if (!IS_DYNAMIC(MS_SAMPLE_LOCATIONS)) {
       if (ms->sample_locations_enable) {
          vk_sample_locations_state_init(sl, &sl_info->sampleLocationsInfo);
          ms->sample_locations = sl;
-      } else {
+      } else if (!IS_DYNAMIC(MS_SAMPLE_MASK)) {
          /* Otherwise, pre-populate with the standard sample locations.  If
           * the driver doesn't support standard sample locations, it probably
           * doesn't support custom locations either and can completely ignore
@@ -676,6 +690,12 @@ vk_dynamic_graphics_state_init_ms(struct vk_dynamic_graphics_state *dst,
                                   const BITSET_WORD *needed,
                                   const struct vk_multisample_state *ms)
 {
+   dst->ms.rasterization_samples = ms->rasterization_samples;
+   dst->ms.sample_mask = ms->sample_mask;
+   dst->ms.alpha_to_coverage_enable = ms->alpha_to_coverage_enable;
+   dst->ms.alpha_to_one_enable = ms->alpha_to_one_enable;
+   dst->ms.sample_locations_enable = ms->sample_locations_enable;
+
    if (IS_NEEDED(MS_SAMPLE_LOCATIONS))
       *dst->ms.sample_locations = *ms->sample_locations;
 }
@@ -1624,6 +1644,12 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
    COPY_IF_SET(FSR, fsr.combiner_ops[0]);
    COPY_IF_SET(FSR, fsr.combiner_ops[1]);
 
+   COPY_IF_SET(MS_RASTERIZATION_SAMPLES, ms.rasterization_samples);
+   COPY_IF_SET(MS_SAMPLE_MASK, ms.sample_mask);
+   COPY_IF_SET(MS_ALPHA_TO_COVERAGE_ENABLE, ms.alpha_to_coverage_enable);
+   COPY_IF_SET(MS_ALPHA_TO_ONE_ENABLE, ms.alpha_to_one_enable);
+   COPY_IF_SET(MS_SAMPLE_LOCATIONS_ENABLE, ms.sample_locations_enable);
+
    assert((dst->ms.sample_locations == NULL) ==
           (src->ms.sample_locations == NULL));
    if (dst->ms.sample_locations != NULL &&
@@ -2063,6 +2089,54 @@ vk_common_CmdSetFragmentShadingRateKHR(VkCommandBuffer commandBuffer,
    SET_DYN_VALUE(dyn, FSR, fsr.fragment_size.height, pFragmentSize->height);
    SET_DYN_VALUE(dyn, FSR, fsr.combiner_ops[0], combinerOps[0]);
    SET_DYN_VALUE(dyn, FSR, fsr.combiner_ops[1], combinerOps[1]);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetRasterizationSamplesEXT(VkCommandBuffer commandBuffer,
+                                        VkSampleCountFlagBits rasterizationSamples)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   assert(rasterizationSamples <= MESA_VK_MAX_SAMPLES);
+
+   SET_DYN_VALUE(dyn, MS_RASTERIZATION_SAMPLES,
+                 ms.rasterization_samples, rasterizationSamples);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetSampleMaskEXT(VkCommandBuffer commandBuffer,
+                              VkSampleCountFlagBits samples,
+                              const VkSampleMask *pSampleMask)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   assert(samples <= MESA_VK_MAX_SAMPLES);
+
+   SET_DYN_VALUE(dyn, MS_SAMPLE_MASK, ms.sample_mask, *pSampleMask);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetAlphaToCoverageEnableEXT(VkCommandBuffer commandBuffer,
+                                         VkBool32 alphaToCoverageEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, MS_ALPHA_TO_COVERAGE_ENABLE,
+                 ms.alpha_to_coverage_enable, alphaToCoverageEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetAlphaToOneEnableEXT(VkCommandBuffer commandBuffer,
+                                    VkBool32 alphaToOneEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, MS_ALPHA_TO_ONE_ENABLE,
+                 ms.alpha_to_one_enable, alphaToOneEnable);
 }
 
 VKAPI_ATTR void VKAPI_CALL

@@ -74,6 +74,11 @@ enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE,
    MESA_VK_DYNAMIC_RS_LINE_STIPPLE,
    MESA_VK_DYNAMIC_FSR,
+   MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES,
+   MESA_VK_DYNAMIC_MS_SAMPLE_MASK,
+   MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE,
+   MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE,
+   MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE,
    MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS,
    MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE,
    MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE,
@@ -377,7 +382,10 @@ struct vk_multisample_state {
    /** VkPipelineMultisampleStateCreateInfo::alphaToOneEnable */
    bool alpha_to_one_enable;
 
-   /** VkPipelineSampleLocationsStateCreateInfoEXT::sampleLocationsEnable */
+   /** VkPipelineSampleLocationsStateCreateInfoEXT::sampleLocationsEnable
+    *
+    * This will be true if sample locations enable dynamic.
+    */
    bool sample_locations_enable;
 
    /** VkPipelineSampleLocationsStateCreateInfoEXT::sampleLocationsInfo
@@ -649,12 +657,42 @@ struct vk_dynamic_graphics_state {
 
    /** Multisample state */
    struct {
+      /** Rasterization samples
+       *
+       * MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES
+       */
+      VkSampleCountFlagBits rasterization_samples;
+
+      /** Sample mask
+       *
+       * MESA_VK_DYNAMIC_MS_SAMPLE_MASK
+       */
+      uint16_t sample_mask;
+
+      /** Alpha to coverage enable
+       *
+       * MESA_VK_DYNAMIC_MS_ALPHA_TO_CONVERAGE_ENABLE
+       */
+      bool alpha_to_coverage_enable;
+
+      /** Alpha to one enable
+       *
+       * MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE
+       */
+      bool alpha_to_one_enable;
+
+      /** Custom sample locations enable
+       *
+       * MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE
+       */
+      bool sample_locations_enable;
+
       /** Sample locations
        *
        * Must be provided by the driver if VK_EXT_sample_locations is
        * supported.
        *
-       * MESA_VK_DYNAMIC_GRAPHICS_STATE_MS_SAMPLE_LOCATIONS
+       * MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS
        */
       struct vk_sample_locations_state *sample_locations;
    } ms;
