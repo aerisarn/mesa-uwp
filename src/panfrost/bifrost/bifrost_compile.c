@@ -791,9 +791,6 @@ static void
 bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
                  bi_index rgba2, nir_alu_type T2, unsigned rt)
 {
-        /* On Valhall, BLEND does not encode the return address */
-        bool bifrost = b->shader->arch <= 8;
-
         /* Reads 2 or 4 staging registers to cover the input */
         unsigned size = nir_alu_type_get_type_size(T);
         unsigned size_2 = nir_alu_type_get_type_size(T2);
@@ -819,21 +816,19 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
 
-                bi_blend_to(b, bifrost ? bi_temp(b->shader) : bi_null(), rgba,
-                                bi_coverage(b),
-                                bi_imm_u32(blend_desc),
-                                bi_imm_u32(blend_desc >> 32),
-                                bi_null(), regfmt, sr_count, 0);
+                bi_blend_to(b, bi_temp(b->shader), rgba, bi_coverage(b),
+                               bi_imm_u32(blend_desc),
+                               bi_imm_u32(blend_desc >> 32),
+                               bi_null(), regfmt, sr_count, 0);
         } else {
                 /* Blend descriptor comes from the FAU RAM. By convention, the
                  * return address on Bifrost is stored in r48 and will be used
                  * by the blend shader to jump back to the fragment shader */
 
-                bi_blend_to(b, bifrost ? bi_temp(b->shader) : bi_null(), rgba,
-                                bi_coverage(b),
-                                bi_fau(BIR_FAU_BLEND_0 + rt, false),
-                                bi_fau(BIR_FAU_BLEND_0 + rt, true),
-                                rgba2, regfmt, sr_count, sr_count_2);
+                bi_blend_to(b, bi_temp(b->shader), rgba, bi_coverage(b),
+                               bi_fau(BIR_FAU_BLEND_0 + rt, false),
+                               bi_fau(BIR_FAU_BLEND_0 + rt, true),
+                               rgba2, regfmt, sr_count, sr_count_2);
         }
 
         assert(rt < 8);

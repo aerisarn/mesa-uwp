@@ -902,9 +902,6 @@ va_lower_branch_target(bi_context *ctx, bi_block *start, bi_instr *I)
 static void
 va_lower_blend(bi_context *ctx)
 {
-   /* Link register (ABI between fragment and blend shaders) */
-   bi_index lr = bi_register(48);
-
    /* Program counter for *next* instruction */
    bi_index pc = bi_fau(BIR_FAU_PROGRAM_COUNTER, false);
 
@@ -916,10 +913,13 @@ va_lower_blend(bi_context *ctx)
 
       unsigned prolog_length = 2 * 8;
 
+      /* By ABI, r48 is the link register shared with blend shaders */
+      assert(bi_is_equiv(I->dest[0], bi_register(48)));
+
       if (I->flow == VA_FLOW_END)
-         bi_iadd_imm_i32_to(&b, lr, va_zero_lut(), 0);
+         bi_iadd_imm_i32_to(&b, I->dest[0], va_zero_lut(), 0);
       else
-         bi_iadd_imm_i32_to(&b, lr, pc, prolog_length - 8);
+         bi_iadd_imm_i32_to(&b, I->dest[0], pc, prolog_length - 8);
 
       bi_branchzi(&b, va_zero_lut(), I->src[3], BI_CMPF_EQ);
 
