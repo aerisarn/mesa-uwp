@@ -2066,7 +2066,6 @@ bi_add_nop_for_atest(bi_context *ctx)
 
         bi_instr *I = rzalloc(ctx, bi_instr);
         I->op = BI_OPCODE_NOP;
-        I->dest[0] = bi_null();
 
         bi_clause *new_clause = ralloc(ctx, bi_clause);
         *new_clause = (bi_clause) {
