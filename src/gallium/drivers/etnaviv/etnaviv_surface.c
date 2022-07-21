@@ -33,6 +33,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 #include "util/u_inlines.h"
+#include "util/u_math.h"
 #include "util/u_memory.h"
 
 #include "hw/common.xml.h"
@@ -170,7 +171,7 @@ etna_create_surface(struct pipe_context *pctx, struct pipe_resource *prsc,
             .dest_tiling = ETNA_LAYOUT_TILED,
             .dither = {0xffffffff, 0xffffffff},
             .width = 16,
-            .height = etna_align_up(surf->surf.ts_size / 0x40, 4),
+            .height = align(surf->surf.ts_size / 0x40, 4),
             .clear_value = {screen->specs.ts_clear_value},
             .clear_mode = VIVS_RS_CLEAR_CONTROL_MODE_ENABLED1,
             .clear_bits = 0xffff
