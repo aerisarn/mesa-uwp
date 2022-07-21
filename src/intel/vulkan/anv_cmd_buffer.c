@@ -1087,7 +1087,7 @@ void anv_CmdSetRayTracingPipelineStackSizeKHR(
       struct anv_bo *new_bo;
       VkResult result = anv_device_alloc_bo(device, "RT scratch",
                                             rt->scratch.layout.total_size,
-                                            0, /* alloc_flags */
+                                            ANV_BO_ALLOC_LOCAL_MEM,
                                             0, /* explicit_address */
                                             &new_bo);
       if (result != VK_SUCCESS) {
