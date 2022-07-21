@@ -3825,8 +3825,8 @@ static void parse_shader(struct shader_translator *tx)
 
     if (IS_VS && !ureg_dst_is_undef(tx->regs.oPts)) {
         struct ureg_dst oPts = ureg_DECL_output(tx->ureg, TGSI_SEMANTIC_PSIZE, 0);
-        ureg_MAX(tx->ureg, tx->regs.oPts, ureg_src(tx->regs.oPts), ureg_imm1f(tx->ureg, info->point_size_min));
-        ureg_MIN(tx->ureg, oPts, ureg_src(tx->regs.oPts), ureg_imm1f(tx->ureg, info->point_size_max));
+        ureg_MAX(tx->ureg, ureg_writemask(tx->regs.oPts, TGSI_WRITEMASK_X), ureg_src(tx->regs.oPts), ureg_imm1f(tx->ureg, info->point_size_min));
+        ureg_MIN(tx->ureg, ureg_writemask(oPts, TGSI_WRITEMASK_X), ureg_src(tx->regs.oPts), ureg_imm1f(tx->ureg, info->point_size_max));
         info->point_size = TRUE;
     }
 
