@@ -1026,10 +1026,10 @@ bi_node_to_index(unsigned node, unsigned node_count)
         util_dynarray_foreach(&(blk)->predecessors, bi_block *, v)
 
 #define bi_foreach_src(ins, v) \
-        for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
+        for (unsigned v = 0; v < ins->nr_srcs; ++v)
 
 #define bi_foreach_dest(ins, v) \
-        for (unsigned v = 0; v < ARRAY_SIZE(ins->dest); ++v)
+        for (unsigned v = 0; v < ins->nr_dests; ++v)
 
 #define bi_foreach_instr_and_src_in_tuple(tuple, ins, s) \
         bi_foreach_instr_in_tuple(tuple, ins) \
