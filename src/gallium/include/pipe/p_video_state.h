@@ -34,6 +34,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_hash_table.h"
 #include "util/u_inlines.h"
+#include "util/u_rect.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -961,6 +962,22 @@ struct pipe_av1_picture_desc
       uint32_t slice_data_size[256];
       uint32_t slice_data_offset[256];
    } slice_parameter;
+};
+
+struct pipe_vpp_blend
+{
+   enum pipe_video_vpp_blend_mode mode;
+   /* To be used with PIPE_VIDEO_VPP_BLEND_MODE_GLOBAL_ALPHA */
+   float global_alpha;
+};
+
+struct pipe_vpp_desc
+{
+   struct pipe_picture_desc base;
+   struct u_rect src_region;
+   struct u_rect dst_region;
+   enum pipe_video_vpp_orientation orientation;
+   struct pipe_vpp_blend blend;
 };
 
 #ifdef __cplusplus
