@@ -1261,24 +1261,26 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
    image->serial = (uint32_t) chain->send_sbc;
 
    xcb_void_cookie_t cookie =
-      xcb_present_pixmap(chain->conn,
-                         chain->window,
-                         image->pixmap,
-                         image->serial,
-                         0,                                    /* valid */
-                         image->update_area,                   /* update */
-                         0,                                    /* x_off */
-                         0,                                    /* y_off */
-                         XCB_NONE,                             /* target_crtc */
-                         XCB_NONE,
-                         image->sync_fence,
-                         options,
-                         target_msc,
-                         divisor,
-                         remainder, 0, NULL);
-   xcb_discard_reply(chain->conn, cookie.sequence);
-
-   xcb_flush(chain->conn);
+      xcb_present_pixmap_checked(chain->conn,
+                                 chain->window,
+                                 image->pixmap,
+                                 image->serial,
+                                 0,                            /* valid */
+                                 image->update_area,           /* update */
+                                 0,                            /* x_off */
+                                 0,                            /* y_off */
+                                 XCB_NONE,                     /* target_crtc */
+                                 XCB_NONE,
+                                 image->sync_fence,
+                                 options,
+                                 target_msc,
+                                 divisor,
+                                 remainder, 0, NULL);
+   xcb_generic_error_t *error = xcb_request_check(chain->conn, cookie);
+   if (error) {
+      free(error);
+      return x11_swapchain_result(chain, VK_ERROR_SURFACE_LOST_KHR);
+   }
 
    return x11_swapchain_result(chain, VK_SUCCESS);
 }

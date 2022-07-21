@@ -39,7 +39,6 @@ glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth,Crash
 glx@glx-visuals-depth -pixmap,Crash
-glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
 # #6322
