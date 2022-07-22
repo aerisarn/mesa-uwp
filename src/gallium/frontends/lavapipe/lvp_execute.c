@@ -1779,7 +1779,7 @@ static void render_clear(struct rendering_state *state)
    uint32_t sclear_val = 0;
    if (state->stencil_att.load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
       ds_clear_flags |= PIPE_CLEAR_STENCIL;
-      sclear_val = state->depth_att.clear_value.depthStencil.stencil;
+      sclear_val = state->stencil_att.clear_value.depthStencil.stencil;
    }
 
    if (ds_clear_flags) {
