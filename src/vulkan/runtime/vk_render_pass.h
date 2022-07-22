@@ -198,6 +198,9 @@ struct vk_subpass {
     * VkCommandBufferInheritanceInfo::renderPass != VK_NULL_HANDLE.
     */
    VkCommandBufferInheritanceRenderingInfo inheritance_info;
+
+   /** VkMultisampledRenderToSingleSampledInfoEXT for this subpass */
+   VkMultisampledRenderToSingleSampledInfoEXT mrtss;
 };
 
 struct vk_render_pass_attachment {
