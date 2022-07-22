@@ -256,16 +256,15 @@ bool GeometryShader::store_output(nir_intrinsic_instr* instr)
 
    AluInstr *ir = nullptr;
    if (m_streamout_data[location]) {
-      auto value = m_streamout_data[location]->value();
+      const auto& value = m_streamout_data[location]->value();
       auto tmp = value_factory().temp_vec4(pin_group);
-
       for (unsigned i = 0; i < 4 - shift; ++i) {
          if (!(write_mask & (1 << i)))
             continue;
-         if (value[i]->chan() < 4) {
-            ir = new AluInstr(op1_mov, tmp[i], value[src_swz[i]], AluInstr::write);
-         } else if (out_value[i]->chan() < 4) {
-            ir = new AluInstr(op1_mov, tmp[i], out_value[i], AluInstr::write);
+         if (out_value[i + shift]->chan() < 4) {
+            ir = new AluInstr(op1_mov, tmp[i + shift], out_value[i  + shift], AluInstr::write);
+         } else if (value[i]->chan() < 4) {
+            ir = new AluInstr(op1_mov, tmp[i + shift], value[i], AluInstr::write);
          } else
             continue;
          emit_instruction(ir);
