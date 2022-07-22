@@ -151,6 +151,7 @@ struct blitter_context_priv
    bool has_txf;
    bool has_sample_shading;
    bool cube_as_2darray;
+   bool has_texrect;
    bool cached_all_shaders;
 
    /* The Draw module overrides these functions.
@@ -219,6 +220,7 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
                                                      PIPE_CAP_SAMPLE_SHADING);
    ctx->cube_as_2darray = pipe->screen->get_param(pipe->screen,
                                                   PIPE_CAP_SAMPLER_VIEW_TARGET);
+   ctx->has_texrect = pipe->screen->get_param(pipe->screen, PIPE_CAP_TEXRECT);
 
    /* blend state objects */
    memset(&blend, 0, sizeof(blend));
@@ -273,15 +275,19 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    sampler_state.wrap_r = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    sampler_state.normalized_coords = 1;
    ctx->sampler_state = pipe->create_sampler_state(pipe, &sampler_state);
-   sampler_state.normalized_coords = 0;
-   ctx->sampler_state_rect = pipe->create_sampler_state(pipe, &sampler_state);
+   if (ctx->has_texrect) {
+      sampler_state.normalized_coords = 0;
+      ctx->sampler_state_rect = pipe->create_sampler_state(pipe, &sampler_state);
+   }
 
    sampler_state.min_img_filter = PIPE_TEX_FILTER_LINEAR;
    sampler_state.mag_img_filter = PIPE_TEX_FILTER_LINEAR;
    sampler_state.normalized_coords = 1;
    ctx->sampler_state_linear = pipe->create_sampler_state(pipe, &sampler_state);
-   sampler_state.normalized_coords = 0;
-   ctx->sampler_state_rect_linear = pipe->create_sampler_state(pipe, &sampler_state);
+   if (ctx->has_texrect) {
+      sampler_state.normalized_coords = 0;
+      ctx->sampler_state_rect_linear = pipe->create_sampler_state(pipe, &sampler_state);
+   }
 
    /* rasterizer state */
    memset(&rs_state, 0, sizeof(rs_state));
@@ -581,8 +587,10 @@ void util_blitter_destroy(struct blitter_context *blitter)
       if (ctx->fs_stencil_blit_fallback[i])
          ctx->delete_fs_state(pipe, ctx->fs_stencil_blit_fallback[i]);
 
-   pipe->delete_sampler_state(pipe, ctx->sampler_state_rect_linear);
-   pipe->delete_sampler_state(pipe, ctx->sampler_state_rect);
+   if (ctx->sampler_state_rect_linear)
+      pipe->delete_sampler_state(pipe, ctx->sampler_state_rect_linear);
+   if (ctx->sampler_state_rect)
+      pipe->delete_sampler_state(pipe, ctx->sampler_state_rect);
    pipe->delete_sampler_state(pipe, ctx->sampler_state_linear);
    pipe->delete_sampler_state(pipe, ctx->sampler_state);
    FREE(ctx);
@@ -1277,6 +1285,9 @@ void util_blitter_cache_all_shaders(struct blitter_context *blitter)
             }
             if (!has_cubearraytex &&
                 (target == PIPE_TEXTURE_CUBE_ARRAY))
+               continue;
+            if (!ctx->has_texrect &&
+                (target == PIPE_TEXTURE_RECT))
                continue;
 
             if (samples > 1 &&
@@ -2145,13 +2156,13 @@ void util_blitter_blit_generic(struct blitter_context *blitter,
 
    /* Set the linear filter only for scaled color non-MSAA blits. */
    if (filter == PIPE_TEX_FILTER_LINEAR) {
-      if (src_target == PIPE_TEXTURE_RECT) {
+      if (src_target == PIPE_TEXTURE_RECT && ctx->has_texrect) {
          sampler_state = ctx->sampler_state_rect_linear;
       } else {
          sampler_state = ctx->sampler_state_linear;
       }
    } else {
-      if (src_target == PIPE_TEXTURE_RECT) {
+      if (src_target == PIPE_TEXTURE_RECT && ctx->has_texrect) {
          sampler_state = ctx->sampler_state_rect;
       } else {
          sampler_state = ctx->sampler_state;
