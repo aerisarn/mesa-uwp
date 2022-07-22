@@ -1098,7 +1098,6 @@ bool bi_side_effects(const bi_instr *I);
 bool bi_reconverge_branches(bi_block *block);
 
 bool bi_can_replace_with_csel(bi_instr *I);
-void bi_replace_mux_with_csel(bi_instr *I, bool must_sign);
 
 void bi_print_instr(const bi_instr *I, FILE *fp);
 void bi_print_slots(bi_registers *regs, FILE *fp);
@@ -1399,6 +1398,8 @@ bi_builder_insert(bi_cursor *cursor, bi_instr *I)
 
     unreachable("Invalid cursor option");
 }
+
+bi_instr *bi_csel_from_mux(bi_builder *b, const bi_instr *I, bool must_sign);
 
 /* Read back power-efficent garbage, TODO maybe merge with null? */
 static inline bi_index

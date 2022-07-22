@@ -1299,7 +1299,11 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
                 instr->src[2] = bi_zero();
                 instr->nr_srcs = 3;
         } else if (fma && bi_can_replace_with_csel(instr)) {
-                bi_replace_mux_with_csel(instr, false);
+                bi_builder b = bi_init_builder(ctx, bi_before_instr(instr));
+                bi_instr *csel = bi_csel_from_mux(&b, instr, false);
+
+                bi_remove_instruction(instr);
+                instr = csel;
         }
 
         return instr;

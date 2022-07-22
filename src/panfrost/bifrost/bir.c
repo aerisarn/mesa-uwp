@@ -25,6 +25,7 @@
  */
 
 #include "compiler.h"
+#include "bi_builder.h"
 
 bool
 bi_has_arg(const bi_instr *ins, bi_index arg)
@@ -287,19 +288,17 @@ bi_csel_for_mux(bool must_sign, bool b32, enum bi_mux mux)
         }
 }
 
-void
-bi_replace_mux_with_csel(bi_instr *I, bool must_sign)
+bi_instr *
+bi_csel_from_mux(bi_builder *b, const bi_instr *I, bool must_sign)
 {
         assert(I->op == BI_OPCODE_MUX_I32 || I->op == BI_OPCODE_MUX_V2I16);
-        I->op = bi_csel_for_mux(must_sign, I->op == BI_OPCODE_MUX_I32, I->mux);
-        I->cmpf = (I->mux == BI_MUX_NEG) ? BI_CMPF_LT : BI_CMPF_EQ;
-        I->mux = 0;
 
-        bi_index vTrue = I->src[0], vFalse = I->src[1], cond = I->src[2];
+        /* Build a new CSEL */
+        enum bi_cmpf cmpf = (I->mux == BI_MUX_NEG) ? BI_CMPF_LT : BI_CMPF_EQ;
+        bi_instr *csel = bi_csel_u32_to(b, I->dest[0], I->src[2], bi_zero(),
+                                        I->src[0], I->src[1], cmpf);
 
-        I->src[0] = cond;
-        I->src[1] = bi_zero();
-        I->src[2] = vTrue;
-        I->src[3] = vFalse;
-        I->nr_srcs = 4;
+        /* Fixup the opcode and use it */
+        csel->op = bi_csel_for_mux(must_sign, I->op == BI_OPCODE_MUX_I32, I->mux);
+        return csel;
 }
