@@ -372,7 +372,8 @@ cs_thread_payload::cs_thread_payload(const fs_visitor &v)
       subgroup_id_ = brw_ud1_grf(0, 2);
 
    /* TODO: Fill out uses_btd_stack_ids automatically */
-   num_regs = 1 + brw_cs_prog_data(v.prog_data)->uses_btd_stack_ids;
+   num_regs = (1 + brw_cs_prog_data(v.prog_data)->uses_btd_stack_ids) *
+              reg_unit(v.devinfo);
 }
 
 void
