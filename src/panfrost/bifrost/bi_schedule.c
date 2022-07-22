@@ -1293,13 +1293,17 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
         bi_pop_instr(clause, tuple, instr, live_after_temp, fma);
 
         /* Fixups */
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(instr));
+
         if (instr->op == BI_OPCODE_IADD_U32 && fma) {
                 assert(bi_can_iaddc(instr));
-                instr->op = BI_OPCODE_IADDC_I32;
-                instr->src[2] = bi_zero();
-                instr->nr_srcs = 3;
+                bi_instr *iaddc =
+                        bi_iaddc_i32_to(&b, instr->dest[0], instr->src[0],
+                                        instr->src[1], bi_zero());
+
+                bi_remove_instruction(instr);
+                instr = iaddc;
         } else if (fma && bi_can_replace_with_csel(instr)) {
-                bi_builder b = bi_init_builder(ctx, bi_before_instr(instr));
                 bi_instr *csel = bi_csel_from_mux(&b, instr, false);
 
                 bi_remove_instruction(instr);
