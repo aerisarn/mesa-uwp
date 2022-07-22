@@ -39,6 +39,7 @@
 #include "util/u_sampler.h"
 #include "util/u_box.h"
 #include "util/u_inlines.h"
+#include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_prim_restart.h"
 #include "util/format/u_format_zs.h"
@@ -171,6 +172,9 @@ struct rendering_state {
    struct lvp_render_attachment stencil_att;
    struct lvp_image_view *ds_imgv;
    struct lvp_image_view *ds_resolve_imgv;
+   uint32_t                                     forced_sample_count;
+   VkResolveModeFlagBits                        forced_depth_resolve_mode;
+   VkResolveModeFlagBits                        forced_stencil_resolve_mode;
 
    uint32_t sample_mask;
    unsigned min_samples;
@@ -1861,30 +1865,50 @@ slow_clear:
    render_clear(state);
 }
 
-static void
-resolve_ds(struct rendering_state *state)
+static struct lvp_image_view *
+destroy_multisample_surface(struct rendering_state *state, struct lvp_image_view *imgv)
 {
-   if (!state->depth_att.resolve_mode && !state->stencil_att.resolve_mode)
+   assert(imgv->image->vk.samples > 1);
+   struct lvp_image_view *base = imgv->multisample;
+   base->multisample = NULL;
+   free((void*)imgv->image);
+   pipe_surface_reference(&imgv->surface, NULL);
+   free(imgv);
+   return base;
+}
+
+static void
+resolve_ds(struct rendering_state *state, bool multi)
+{
+   VkResolveModeFlagBits depth_resolve_mode = multi ? state->forced_depth_resolve_mode : state->depth_att.resolve_mode;
+   VkResolveModeFlagBits stencil_resolve_mode = multi ? state->forced_stencil_resolve_mode : state->stencil_att.resolve_mode;
+   if (!depth_resolve_mode && !stencil_resolve_mode)
       return;
 
    struct lvp_image_view *src_imgv = state->ds_imgv;
+   if (multi && !src_imgv->multisample)
+      return;
+   if (!multi && src_imgv->image->vk.samples == 1)
+      return;
 
    assert(state->depth_att.resolve_imgv == NULL ||
           state->stencil_att.resolve_imgv == NULL ||
-          state->depth_att.resolve_imgv == state->stencil_att.resolve_imgv);
+          state->depth_att.resolve_imgv == state->stencil_att.resolve_imgv ||
+          multi);
    struct lvp_image_view *dst_imgv =
+      multi ? src_imgv->multisample :
       state->depth_att.resolve_imgv ? state->depth_att.resolve_imgv :
                                       state->stencil_att.resolve_imgv;
 
    int num_blits = 1;
-   if (state->depth_att.resolve_mode != state->stencil_att.resolve_mode)
+   if (depth_resolve_mode != stencil_resolve_mode)
       num_blits = 2;
 
    for (unsigned i = 0; i < num_blits; i++) {
-      if (i == 0 && state->depth_att.resolve_mode == VK_RESOLVE_MODE_NONE)
+      if (i == 0 && depth_resolve_mode == VK_RESOLVE_MODE_NONE)
          continue;
 
-      if (i == 1 && state->stencil_att.resolve_mode == VK_RESOLVE_MODE_NONE)
+      if (i == 1 && stencil_resolve_mode == VK_RESOLVE_MODE_NONE)
          continue;
 
       struct pipe_blit_info info;
@@ -1903,9 +1927,9 @@ resolve_ds(struct rendering_state *state)
       else
          info.mask = PIPE_MASK_S;
 
-      if (i == 0 && state->depth_att.resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+      if (i == 0 && depth_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
          info.sample0_only = true;
-      if (i == 1 && state->stencil_att.resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+      if (i == 1 && stencil_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
          info.sample0_only = true;
 
       info.src.box.x = state->render_area.offset.x;
@@ -1918,17 +1942,23 @@ resolve_ds(struct rendering_state *state)
 
       state->pctx->blit(state->pctx, &info);
    }
+   if (multi)
+      state->ds_imgv = destroy_multisample_surface(state, state->ds_imgv);
 }
 
 static void
-resolve_color(struct rendering_state *state)
+resolve_color(struct rendering_state *state, bool multi)
 {
    for (uint32_t i = 0; i < state->color_att_count; i++) {
-      if (!state->color_att[i].resolve_mode)
+      if (!state->color_att[i].resolve_mode &&
+          !(multi && state->forced_sample_count && state->color_att[i].imgv))
          continue;
 
       struct lvp_image_view *src_imgv = state->color_att[i].imgv;
-      struct lvp_image_view *dst_imgv = state->color_att[i].resolve_imgv;
+      /* skip non-msrtss resolves during msrtss resolve */
+      if (multi && !src_imgv->multisample)
+         continue;
+      struct lvp_image_view *dst_imgv = multi ? src_imgv->multisample : state->color_att[i].resolve_imgv;
 
       struct pipe_blit_info info;
       memset(&info, 0, sizeof(info));
@@ -1952,12 +1982,74 @@ resolve_color(struct rendering_state *state)
 
       state->pctx->blit(state->pctx, &info);
    }
+
+   if (!multi)
+      return;
+   for (uint32_t i = 0; i < state->color_att_count; i++) {
+      struct lvp_image_view *src_imgv = state->color_att[i].imgv;
+      if (src_imgv && src_imgv->multisample) //check if it has a msrtss view
+         state->color_att[i].imgv = destroy_multisample_surface(state, src_imgv);
+   }
 }
 
 static void render_resolve(struct rendering_state *state)
 {
-   resolve_ds(state);
-   resolve_color(state);
+   if (state->forced_sample_count) {
+      resolve_ds(state, true);
+      resolve_color(state, true);
+   }
+   resolve_ds(state, false);
+   resolve_color(state, false);
+}
+
+static void
+replicate_attachment(struct rendering_state *state, struct lvp_image_view *src, struct lvp_image_view *dst)
+{
+   unsigned level = dst->surface->u.tex.level;
+   struct pipe_box box;
+   u_box_3d(0, 0, 0,
+            u_minify(dst->image->bo->width0, level),
+            u_minify(dst->image->bo->height0, level),
+            u_minify(dst->image->bo->depth0, level),
+            &box);
+   state->pctx->resource_copy_region(state->pctx, dst->image->bo, level, 0, 0, 0, src->image->bo, level, &box);
+}
+
+static struct lvp_image_view *
+create_multisample_surface(struct rendering_state *state, struct lvp_image_view *imgv, uint32_t samples, bool replicate)
+{
+   assert(!imgv->multisample);
+
+   struct pipe_resource templ = *imgv->surface->texture;
+   templ.nr_samples = samples;
+   struct lvp_image *image = mem_dup(imgv->image, sizeof(struct lvp_image));
+   image->vk.samples = samples;
+   image->pmem = NULL;
+   image->bo = state->pctx->screen->resource_create(state->pctx->screen, &templ);
+
+   struct lvp_image_view *multi = mem_dup(imgv, sizeof(struct lvp_image_view));
+   multi->image = image;
+   multi->surface = state->pctx->create_surface(state->pctx, image->bo, imgv->surface);
+   struct pipe_resource *ref = image->bo;
+   pipe_resource_reference(&ref, NULL);
+   imgv->multisample = multi;
+   multi->multisample = imgv;
+   if (replicate)
+      replicate_attachment(state, imgv, multi);
+   return multi;
+}
+
+static bool
+att_needs_replicate(const struct rendering_state *state, const struct lvp_image_view *imgv, VkAttachmentLoadOp load_op)
+{
+   if (load_op == VK_ATTACHMENT_LOAD_OP_LOAD || load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+      return true;
+   if (state->render_area.offset.x || state->render_area.offset.y)
+      return true;
+   if (state->render_area.extent.width < imgv->image->vk.extent.width ||
+       state->render_area.extent.height < imgv->image->vk.extent.height)
+      return true;
+   return false;
 }
 
 static void render_att_init(struct lvp_render_attachment* att,
@@ -1989,6 +2081,18 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
    bool resuming = (info->flags & VK_RENDERING_RESUMING_BIT) == VK_RENDERING_RESUMING_BIT;
    bool suspending = (info->flags & VK_RENDERING_SUSPENDING_BIT) == VK_RENDERING_SUSPENDING_BIT;
 
+   const VkMultisampledRenderToSingleSampledInfoEXT *ssi =
+         vk_find_struct_const(info->pNext, MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT);
+   if (ssi && ssi->multisampledRenderToSingleSampledEnable) {
+      state->forced_sample_count = ssi->rasterizationSamples;
+      state->forced_depth_resolve_mode = info->pDepthAttachment ? info->pDepthAttachment->resolveMode : 0;
+      state->forced_stencil_resolve_mode = info->pStencilAttachment ? info->pStencilAttachment->resolveMode : 0;
+   } else {
+      state->forced_sample_count = 0;
+      state->forced_depth_resolve_mode = 0;
+      state->forced_stencil_resolve_mode = 0;
+   }
+
    state->info.view_mask = info->viewMask;
    state->render_area = info->renderArea;
    state->suspending = suspending;
@@ -2004,8 +2108,12 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
    for (unsigned i = 0; i < info->colorAttachmentCount; i++) {
       render_att_init(&state->color_att[i], &info->pColorAttachments[i]);
       if (state->color_att[i].imgv) {
-         add_img_view_surface(state, state->color_att[i].imgv,
+         struct lvp_image_view *imgv = state->color_att[i].imgv;
+         add_img_view_surface(state, imgv,
                               state->framebuffer.width, state->framebuffer.height);
+         if (state->forced_sample_count && imgv->image->vk.samples == 1)
+            state->color_att[i].imgv = create_multisample_surface(state, imgv, state->forced_sample_count,
+                                                                  att_needs_replicate(state, imgv, state->color_att[i].load_op));
          state->framebuffer.cbufs[i] = state->color_att[i].imgv->surface;
       } else {
          state->framebuffer.cbufs[i] = NULL;
@@ -2020,8 +2128,22 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
              state->depth_att.imgv == state->stencil_att.imgv);
       state->ds_imgv = state->depth_att.imgv ? state->depth_att.imgv :
                                                state->stencil_att.imgv;
-      add_img_view_surface(state, state->ds_imgv,
+      struct lvp_image_view *imgv = state->ds_imgv;
+      add_img_view_surface(state, imgv,
                            state->framebuffer.width, state->framebuffer.height);
+      if (state->forced_sample_count && imgv->image->vk.samples == 1) {
+         VkAttachmentLoadOp load_op;
+         if (state->depth_att.load_op == VK_ATTACHMENT_LOAD_OP_CLEAR ||
+             state->stencil_att.load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+            load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+         else if (state->depth_att.load_op == VK_ATTACHMENT_LOAD_OP_LOAD ||
+                  state->stencil_att.load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+            load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+         else
+            load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+         state->ds_imgv = create_multisample_surface(state, imgv, state->forced_sample_count,
+                                                     att_needs_replicate(state, imgv, load_op));
+      }
       state->framebuffer.zsbuf = state->ds_imgv->surface;
    } else {
       state->ds_imgv = NULL;

@@ -192,6 +192,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFormatProperties2(
       prop3->optimalTilingFeatures = format_props.optimalTilingFeatures;
       prop3->bufferFeatures = format_props.bufferFeatures;
    }
+   VkSubpassResolvePerformanceQueryEXT *perf = (void*)vk_find_struct_const(pFormatProperties->pNext, SUBPASS_RESOLVE_PERFORMANCE_QUERY_EXT);
+   if (perf)
+      perf->optimal = VK_FALSE;
 }
 static VkResult lvp_get_image_format_properties(struct lvp_physical_device *physical_device,
                                                  const VkPhysicalDeviceImageFormatInfo2 *info,
