@@ -364,6 +364,8 @@ files_libmesa = files(
   'state_tracker/st_scissor.h',
   'state_tracker/st_shader_cache.c',
   'state_tracker/st_shader_cache.h',
+  'state_tracker/st_texcompress_compute.c',
+  'state_tracker/st_texcompress_compute.h',
   'state_tracker/st_texture.c',
   'state_tracker/st_texture.h',
   'state_tracker/st_util.h',
