@@ -127,6 +127,17 @@ static void lp_blit(struct pipe_context *pipe,
       return; /* done */
    }
 
+   if (blit_info->src.resource->format == blit_info->src.format &&
+       blit_info->dst.resource->format == blit_info->dst.format &&
+       blit_info->src.format == blit_info->dst.format &&
+       blit_info->src.resource->nr_samples > 1 &&
+       blit_info->dst.resource->nr_samples < 2 &&
+       blit_info->sample0_only) {
+      util_resource_copy_region(pipe, blit_info->dst.resource, blit_info->dst.level, blit_info->dst.box.x, blit_info->dst.box.y, blit_info->dst.box.z,
+                                blit_info->src.resource, blit_info->src.level, &blit_info->src.box);
+      return;
+   }
+
    if (!util_blitter_is_blit_supported(lp->blitter, &info)) {
       debug_printf("llvmpipe: blit unsupported %s -> %s\n",
                    util_format_short_name(info.src.resource->format),
