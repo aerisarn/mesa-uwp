@@ -1054,7 +1054,8 @@ static void fill_sampler_stage(struct rendering_state *state,
       return;
    ss_idx += array_idx;
    ss_idx += dyn_info->stage[stage].sampler_count;
-   state->ss[p_stage][ss_idx] = binding->immutable_samplers ? binding->immutable_samplers[array_idx]->state : descriptor->sampler->state;
+   struct pipe_sampler_state *ss = binding->immutable_samplers ? binding->immutable_samplers[array_idx] : descriptor->sampler;
+   state->ss[p_stage][ss_idx] = *ss;
    if (state->num_sampler_states[p_stage] <= ss_idx)
       state->num_sampler_states[p_stage] = ss_idx + 1;
    state->ss_dirty[p_stage] = true;
@@ -3291,10 +3292,16 @@ static struct lvp_cmd_push_descriptor_set *create_push_descriptor_set(struct vk_
          union lvp_descriptor_info *info = &out_cmd->infos[descriptor_index + j];
          switch (desc->descriptor_type) {
          case VK_DESCRIPTOR_TYPE_SAMPLER:
-            info->sampler = lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler);
+            if (in_cmd->descriptor_writes[i].pImageInfo[j].sampler)
+               info->sampler = &lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler)->state;
+            else
+               info->sampler = NULL;
             break;
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            info->sampler = lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler);
+            if (in_cmd->descriptor_writes[i].pImageInfo[j].sampler)
+               info->sampler = &lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler)->state;
+            else
+               info->sampler = NULL;
             info->iview = lvp_image_view_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].imageView);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:

@@ -68,8 +68,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
 
    set_layout->immutable_sampler_count = immutable_sampler_count;
    /* We just allocate all the samplers at the end of the struct */
-   struct lvp_sampler **samplers =
-      (struct lvp_sampler **)&set_layout->binding[num_bindings];
+   struct pipe_sampler_state **samplers =
+      (struct pipe_sampler_state **)&set_layout->binding[num_bindings];
 
    set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
@@ -123,9 +123,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
             set_layout->binding[b].immutable_samplers = samplers;
             samplers += binding->descriptorCount;
 
-            for (uint32_t i = 0; i < binding->descriptorCount; i++)
-               set_layout->binding[b].immutable_samplers[i] =
-                  lvp_sampler_from_handle(binding->pImmutableSamplers[i]);
+            for (uint32_t i = 0; i < binding->descriptorCount; i++) {
+               if (binding->pImmutableSamplers[i])
+                  set_layout->binding[b].immutable_samplers[i] =
+                     &lvp_sampler_from_handle(binding->pImmutableSamplers[i])->state;
+               else
+                  set_layout->binding[b].immutable_samplers[i] = NULL;
+            }
          }
          break;
       default:
@@ -436,7 +440,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             desc[j] = (struct lvp_descriptor) {
                .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-               .info.sampler = sampler,
+               .info.sampler = &sampler->state,
             };
          }
          break;
@@ -458,7 +462,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
                LVP_FROM_HANDLE(lvp_sampler, sampler,
                                write->pImageInfo[j].sampler);
 
-               desc[j].info.sampler = sampler;
+               desc[j].info.sampler = &sampler->state;
             }
          }
          break;
@@ -696,7 +700,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
                             *(VkSampler *)pSrc);
             desc[idx] = (struct lvp_descriptor) {
                .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-               .info.sampler = sampler,
+               .info.sampler = &sampler->state,
             };
             break;
          }
@@ -705,7 +709,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
             desc[idx] = (struct lvp_descriptor) {
                .type = entry->descriptorType,
                .info.iview = lvp_image_view_from_handle(info->imageView),
-               .info.sampler = lvp_sampler_from_handle(info->sampler),
+               .info.sampler = info->sampler ? &lvp_sampler_from_handle(info->sampler)->state : NULL,
             };
             break;
          }

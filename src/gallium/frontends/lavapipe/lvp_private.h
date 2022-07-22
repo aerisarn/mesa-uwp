@@ -283,7 +283,7 @@ struct lvp_descriptor_set_binding_layout {
    } stage[MESA_SHADER_STAGES];
 
    /* Immutable samplers (or NULL if no immutable samplers) */
-   struct lvp_sampler **immutable_samplers;
+   struct pipe_sampler_state **immutable_samplers;
 };
 
 struct lvp_descriptor_set_layout {
@@ -328,7 +328,7 @@ vk_to_lvp_descriptor_set_layout(const struct vk_descriptor_set_layout *layout)
 
 union lvp_descriptor_info {
    struct {
-      struct lvp_sampler *sampler;
+      struct pipe_sampler_state *sampler;
       struct lvp_image_view *iview;
    };
    struct {
