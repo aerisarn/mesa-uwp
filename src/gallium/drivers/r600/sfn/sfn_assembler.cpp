@@ -319,7 +319,6 @@ void AssamblerVisitor::emit_alu_op(const AluInstr& ai)
       alu.bank_swizzle_force = ai.bank_swizzle();
 
    alu.last = ai.has_alu_flag(alu_last_instr);
-   //alu.update_pred = ai.has_alu_flag(alu_update_pred);
    alu.execute_mask = ai.has_alu_flag(alu_update_exec);
 
    /* If the destination register is equal to the last loaded address register
@@ -1249,9 +1248,8 @@ const std::map<EAluOp, int> opcode_map = {
    {op2_pred_setgt, ALU_OP2_PRED_SETGT},
    {op2_pred_setge, ALU_OP2_PRED_SETGE},
    {op2_pred_setne, ALU_OP2_PRED_SETNE},
-   //{op2_pred_set_inv, ALU_OP2_PRED_SET},
-   //{op2_pred_set_clr, ALU_OP2_PRED_SET_CRL},
-   //{op2_pred_set_restore, ALU_OP2_PRED_SET_RESTORE},
+   {op0_pred_set_clr, ALU_OP0_PRED_SET_CLR},
+   {op1_pred_set_restore, ALU_OP1_PRED_SET_RESTORE},
    {op2_pred_sete_push, ALU_OP2_PRED_SETE_PUSH},
    {op2_pred_setgt_push, ALU_OP2_PRED_SETGT_PUSH},
    {op2_pred_setge_push, ALU_OP2_PRED_SETGE_PUSH},
@@ -1278,7 +1276,6 @@ const std::map<EAluOp, int> opcode_map = {
    {op2_setge_uint, ALU_OP2_SETGE_UINT},
    {op2_killgt_uint, ALU_OP2_KILLGT_UINT},
    {op2_killge_uint, ALU_OP2_KILLGE_UINT},
-   //p2_prede_int, ALU_OP2_PREDE_INT},
    {op2_pred_setgt_int, ALU_OP2_PRED_SETGT_INT},
    {op2_pred_setge_int, ALU_OP2_PRED_SETGE_INT},
    {op2_pred_setne_int, ALU_OP2_PRED_SETNE_INT},
@@ -1372,9 +1369,9 @@ const std::map<EAluOp, int> opcode_map = {
    {op1_flt32_to_flt64, ALU_OP1_FLT32_TO_FLT64},
    {op2_sad_accum_prev_uint, ALU_OP2_SAD_ACCUM_PREV_UINT},
    {op2_dot, ALU_OP2_DOT},
-   //p2_mul_prev, ALU_OP2_MUL_PREV},
-   //p2_mul_ieee_prev, ALU_OP2_MUL_IEEE_PREV},
-   //p2_add_prev, ALU_OP2_ADD_PREV},
+   {op1_mul_prev, ALU_OP1_MUL_PREV},
+   {op1_mul_ieee_prev, ALU_OP1_MUL_IEEE_PREV},
+   {op1_add_prev, ALU_OP1_ADD_PREV},
    {op2_muladd_prev, ALU_OP2_MULADD_PREV},
    {op2_muladd_ieee_prev, ALU_OP2_MULADD_IEEE_PREV},
    {op2_interp_xy, ALU_OP2_INTERP_XY},
@@ -1389,7 +1386,6 @@ const std::map<EAluOp, int> opcode_map = {
    {op1_interp_load_p0, ALU_OP1_INTERP_LOAD_P0},
    {op1_interp_load_p10, ALU_OP1_INTERP_LOAD_P10},
    {op1_interp_load_p20, ALU_OP1_INTERP_LOAD_P20},
-      // {op 3 all left shift 6
    {op3_bfe_uint, ALU_OP3_BFE_UINT},
    {op3_bfe_int, ALU_OP3_BFE_INT},
    {op3_bfi_int, ALU_OP3_BFI_INT},
