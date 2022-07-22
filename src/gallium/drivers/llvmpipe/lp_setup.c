@@ -212,11 +212,6 @@ lp_setup_rasterize_scene(struct lp_setup_context *setup)
 
    lp_scene_end_binning(scene);
 
-   lp_fence_reference(&setup->last_fence, scene->fence);
-
-   if (setup->last_fence)
-      setup->last_fence->issued = TRUE;
-
    mtx_lock(&screen->rast_mutex);
    lp_rast_queue_scene(screen->rast, scene);
    mtx_unlock(&screen->rast_mutex);
@@ -393,16 +388,9 @@ fail:
 
 void
 lp_setup_flush(struct lp_setup_context *setup,
-               struct pipe_fence_handle **fence,
                const char *reason)
 {
    set_scene_state(setup, SETUP_FLUSHED, reason);
-
-   if (fence) {
-      lp_fence_reference((struct lp_fence **)fence, setup->last_fence);
-      if (!*fence)
-         *fence = (struct pipe_fence_handle *)lp_fence_create(0);
-   }
 }
 
 
@@ -571,7 +559,7 @@ lp_setup_clear(struct lp_setup_context *setup,
    if (flags & PIPE_CLEAR_DEPTHSTENCIL) {
       unsigned flagszs = flags & PIPE_CLEAR_DEPTHSTENCIL;
       if (!lp_setup_try_clear_zs(setup, depth, stencil, flagszs)) {
-         lp_setup_flush(setup, NULL, __FUNCTION__);
+         set_scene_state( setup, SETUP_FLUSHED, __FUNCTION__ );
 
          if (!lp_setup_try_clear_zs(setup, depth, stencil, flagszs))
             assert(0);
@@ -583,7 +571,7 @@ lp_setup_clear(struct lp_setup_context *setup,
       for (unsigned i = 0; i < setup->fb.nr_cbufs; i++) {
          if ((flags & (1 << (2 + i))) && setup->fb.cbufs[i]) {
             if (!lp_setup_try_clear_color_buffer(setup, color, i)) {
-               lp_setup_flush(setup, NULL, __FUNCTION__);
+               set_scene_state( setup, SETUP_FLUSHED, __FUNCTION__ );
 
                if (!lp_setup_try_clear_color_buffer(setup, color, i))
                   assert(0);
@@ -1561,7 +1549,6 @@ lp_setup_destroy(struct lp_setup_context *setup)
 
    LP_DBG(DEBUG_SETUP, "number of scenes used: %d\n", setup->num_active_scenes);
    slab_destroy(&setup->scene_slab);
-   lp_fence_reference(&setup->last_fence, NULL);
 
    FREE(setup);
 }
@@ -1726,7 +1713,8 @@ lp_setup_end_query(struct lp_setup_context *setup, struct llvmpipe_query *pq)
       }
    }
    else {
-      lp_fence_reference(&pq->fence, setup->last_fence);
+      struct llvmpipe_screen *screen = llvmpipe_screen(setup->pipe->screen);
+      lp_rast_fence(screen->rast, &pq->fence);
    }
 
 fail:

@@ -38,7 +38,9 @@
 #include "lp_flush.h"
 #include "lp_context.h"
 #include "lp_setup.h"
-
+#include "lp_fence.h"
+#include "lp_screen.h"
+#include "lp_rast.h"
 
 /**
  * \param fence  if non-null, returns pointer to a fence which can be waited on
@@ -49,11 +51,15 @@ llvmpipe_flush( struct pipe_context *pipe,
                 const char *reason)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
-
+   struct llvmpipe_screen *screen = llvmpipe_screen(pipe->screen);
    draw_flush(llvmpipe->draw);
 
    /* ask the setup module to flush */
-   lp_setup_flush(llvmpipe->setup, fence, reason);
+   lp_setup_flush(llvmpipe->setup, reason);
+
+   lp_rast_fence(screen->rast, (struct lp_fence **)fence);
+   if (fence && (!*fence))
+      *fence = (struct pipe_fence_handle *)lp_fence_create(0);
 
    /* Enable to dump BMPs of the color/depth buffers each frame */
    if (0) {

@@ -431,5 +431,6 @@ lp_debug_draw_bins_by_cmd_length( struct lp_scene *scene );
 void
 lp_debug_draw_bins_by_coverage( struct lp_scene *scene );
 
-
+void lp_rast_fence(struct lp_rasterizer *rast,
+                   struct lp_fence **fence);
 #endif
