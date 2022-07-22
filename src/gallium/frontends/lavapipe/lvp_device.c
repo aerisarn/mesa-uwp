@@ -155,6 +155,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_image_robustness                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_inline_uniform_block              = true,
+   .EXT_multisampled_render_to_single_sampled = true,
    .EXT_multi_draw                        = true,
    .EXT_non_seamless_cube_map             = true,
    .EXT_pipeline_creation_feedback        = true,
@@ -805,7 +806,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          }
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT: {
+         VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT *features =
+            (VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT *)ext;
+         features->multisampledRenderToSingleSampled = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
          VkPhysicalDeviceIndexTypeUint8FeaturesEXT *features =
             (VkPhysicalDeviceIndexTypeUint8FeaturesEXT *)ext;
