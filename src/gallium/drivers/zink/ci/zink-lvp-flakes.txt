@@ -13,6 +13,10 @@ spec@arb_compute_variable_group_size@local-size
 # "X connection to :99 broken (explicit kill or server shutdown)."
 glx@glx-multi-context-ib-1
 
+# depth/stencil visuals
+glx@glx-visuals-depth
+glx@glx-visuals-stencil
+
 # mysterious
 glx@glx-shader-sharing
 
