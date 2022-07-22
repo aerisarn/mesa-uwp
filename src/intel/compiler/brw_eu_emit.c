@@ -3274,9 +3274,9 @@ gfx12_set_memory_fence_message(struct brw_codegen *p,
                                enum brw_message_target sfid,
                                uint32_t desc)
 {
-   const unsigned mlen = 1; /* g0 header */
+   const unsigned mlen = 1 * reg_unit(p->devinfo); /* g0 header */
     /* Completion signaled by write to register. No data returned. */
-   const unsigned rlen = 1;
+   const unsigned rlen = 1 * reg_unit(p->devinfo);
 
    brw_inst_set_sfid(p->devinfo, insn, sfid);
 
