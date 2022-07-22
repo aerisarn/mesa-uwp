@@ -264,7 +264,6 @@ struct lvp_sampler {
    VkSamplerCreateInfo create_info;
    union pipe_color_union border_color;
    VkSamplerReductionMode reduction_mode;
-   uint32_t state[4];
 };
 
 struct lvp_descriptor_set_binding_layout {
