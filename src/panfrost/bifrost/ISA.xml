@@ -8854,9 +8854,9 @@
     </mod>
   </ins>
 
-  <ins name="+COLLECT.i32" pseudo="true"/>
+  <ins name="+COLLECT.i32" pseudo="true" variable_srcs="true"/>
 
-  <ins name="+SPLIT.i32" pseudo="true">
+  <ins name="+SPLIT.i32" pseudo="true" variable_dests="true">
     <src start="0"/>
   </ins>
 

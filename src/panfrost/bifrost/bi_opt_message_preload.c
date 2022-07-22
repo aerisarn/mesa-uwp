@@ -129,8 +129,8 @@ bi_opt_message_preload(bi_context *ctx)
                  */
                 b.cursor = bi_before_instr(I);
 
-                bi_instr *collect = bi_collect_i32_to(&b, I->dest[0]);
-                collect->nr_srcs = bi_count_write_registers(I, 0);
+                unsigned nr = bi_count_write_registers(I, 0);
+                bi_instr *collect = bi_collect_i32_to(&b, I->dest[0], nr);
 
                 /* The registers themselves must be preloaded at the start of
                  * the program. Preloaded registers are coalesced, so these

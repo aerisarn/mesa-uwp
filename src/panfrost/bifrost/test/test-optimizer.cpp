@@ -429,8 +429,8 @@ TEST_F(Optimizer, VarTexCoord32)
 
          bi_index x = bi_temp(b->shader);
          bi_index y = bi_temp(b->shader);
-         bi_instr *split = bi_split_i32_to(b, x, ld);
-         split->nr_dests = 2;
+         bi_instr *split = bi_split_i32_to(b, 2, ld);
+         split->dest[0] = x;
          split->dest[1] = y;
 
          bi_texs_2d_f32_to(b, reg, x, y, false, 0, 0);

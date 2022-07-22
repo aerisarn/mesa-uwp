@@ -158,8 +158,7 @@ bi_extract(bi_builder *b, bi_index vec, unsigned channel)
          * Bypass the cache and emit an explicit split for registers.
          */
         if (vec.reg) {
-                bi_instr *I = bi_split_i32_to(b, bi_null(), vec);
-                I->nr_dests = channel + 1;
+                bi_instr *I = bi_split_i32_to(b, channel + 1, vec);
                 I->dest[channel] = bi_temp(b->shader);
                 return I->dest[channel];
         }
@@ -210,10 +209,9 @@ bi_emit_split_i32(bi_builder *b, bi_index dests[4], bi_index vec, unsigned n)
         if (n == 1) {
                 bi_mov_i32_to(b, dests[0], vec);
         } else {
-                bi_instr *I = bi_split_i32_to(b, dests[0], vec);
-                I->nr_dests = n;
+                bi_instr *I = bi_split_i32_to(b, n, vec);
 
-                for (unsigned j = 1; j < n; ++j)
+                bi_foreach_dest(I, j)
                         I->dest[j] = dests[j];
         }
 }
@@ -251,10 +249,9 @@ bi_emit_collect_to(bi_builder *b, bi_index dst, bi_index *chan, unsigned n)
         if (n == 1)
                 return bi_mov_i32_to(b, dst, chan[0]);
 
-        bi_instr *I = bi_collect_i32_to(b, dst);
-        I->nr_srcs = n;
+        bi_instr *I = bi_collect_i32_to(b, dst, n);
 
-        for (unsigned i = 0; i < n; ++i)
+        bi_foreach_src(I, i)
                 I->src[i] = chan[i];
 
         bi_cache_collect(b, dst, chan, n);
@@ -1050,10 +1047,9 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_emit_split_i32(b, chans, data, src_comps);
 
                 bi_index tmp = bi_temp(b->shader);
-                bi_instr *collect = bi_collect_i32_to(b, tmp);
-                collect->nr_srcs = nr;
+                bi_instr *collect = bi_collect_i32_to(b, tmp, nr);
 
-                for (unsigned w = 0; w < nr; ++w)
+                bi_foreach_src(collect, w)
                         collect->src[w] = chans[w];
 
                 data = tmp;
