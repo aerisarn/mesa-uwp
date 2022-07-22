@@ -147,19 +147,17 @@ TEST_F(ValhallPacking, FaddImm) {
 }
 
 TEST_F(ValhallPacking, Comparions) {
-   bi_instr *I =
-      bi_icmp_v2s16_to(b, bi_register(2),
+   CASE(bi_icmp_or_v2s16_to(b, bi_register(2),
             bi_discard(bi_swz_16(bi_register(3), true, false)),
             bi_discard(bi_swz_16(bi_register(2), true, false)),
-            BI_CMPF_GT,
-            BI_RESULT_TYPE_M1);
-   I->src[2] = zero; // TODO: model in the IR
+            zero, BI_CMPF_GT, BI_RESULT_TYPE_M1),
+        0x00f9c21184c04243);
 
-   CASE(I, 0x00f9c21184c04243);
-
-   I->op = BI_OPCODE_FCMP_V2F16;
-   I->src[1] = bi_discard(bi_swz_16(bi_register(2), false, false));
-   CASE(I, 0x00f5c20190c04243);
+   CASE(bi_fcmp_or_v2f16_to(b, bi_register(2),
+            bi_discard(bi_swz_16(bi_register(3), true, false)),
+            bi_discard(bi_swz_16(bi_register(2), false, false)),
+            zero, BI_CMPF_GT, BI_RESULT_TYPE_M1),
+         0x00f5c20190c04243);
 }
 
 TEST_F(ValhallPacking, Conversions) {
@@ -307,11 +305,9 @@ TEST_F(ValhallPacking, Convert16To32) {
 }
 
 TEST_F(ValhallPacking, Swizzle8) {
-   bi_instr *I = bi_icmp_v4u8_to(b, bi_register(1), bi_byte(bi_register(0), 0),
-                                 zero, BI_CMPF_NE, BI_RESULT_TYPE_I1);
-   I->src[2] = zero; // TODO: model in the IR
-
-   CASE(I, 0x00f2c14300c0c000);
+   CASE(bi_icmp_or_v4u8_to(b, bi_register(1), bi_byte(bi_register(0), 0),
+                           zero, zero, BI_CMPF_NE, BI_RESULT_TYPE_I1),
+        0x00f2c14300c0c000);
 }
 
 TEST_F(ValhallPacking, FauPage1) {

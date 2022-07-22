@@ -2161,54 +2161,109 @@
     <saturate/>
   </group>
 
-  <group name="ICMP" title="Unsigned integer compare" dests="1" unit="CVT">
+  <group name="ICMP_OR" title="Unsigned integer compare" dests="1" unit="CVT" opcode2="0">
     <desc>
-      Evaluates the given condition, do a logical and/or with the condition in
+      Evaluates the given condition, do a logical or with the condition in
       the result source, and return in the given result type (integer
       one, integer minus one, or floating-point one). The third source is useful
       for chaining together conditions without intermediate bitwise arithmetic;
-      when this is not desired, tie it to zero and use the OR combine mode (do
-      not set the `.and` modifier).
-
-      The sequence modifier `.seq` is used to construct 64-bit compares in 2
-      `ICMP.u32` instructions, in conjunction with the `u1` result type on the
-      low half, the `m1` result type on the high half, and the result of the low
-      half comparison passed as the third source. For comparisons other than
-      64-bit, do not set the `.seq` modifier and do not use the `u1` result
-      type.
+      when this is not desired, tie it to zero.
     </desc>
-    <ins name="ICMP.u32" opcode="0xF0"/>
-    <ins name="ICMP.v2u16" opcode="0xF1"/>
-    <ins name="ICMP.v4u8" opcode="0xF2"/>
+    <ins name="ICMP_OR.u32" opcode="0xF0"/>
+    <ins name="ICMP_OR.v2u16" opcode="0xF1"/>
+    <ins name="ICMP_OR.v4u8" opcode="0xF2"/>
     <cmp/>
     <result_type/>
-    <mod name="and" start="24" size="1"/>
-    <mod name="seq" start="25" size="1"/>
     <src widen="true">A</src>
     <src widen="true">B</src>
     <src>C</src>
   </group>
 
-  <group name="FCMP" title="Floating-point compare" dests="1" unit="CVT">
+  <group name="ICMP_AND" title="Unsigned integer compare" dests="1" unit="CVT" opcode2="1">
     <desc>
-      Evaluates the given condition, do a logical and/or with the condition in
+      Evaluates the given condition, do a logical and with the condition in
+      the result source, and return in the given result type (integer
+      one, integer minus one, or floating-point one). The third source is useful
+      for chaining together conditions without intermediate bitwise arithmetic.
+    </desc>
+    <ins name="ICMP_AND.u32" opcode="0xF0"/>
+    <ins name="ICMP_AND.v2u16" opcode="0xF1"/>
+    <ins name="ICMP_AND.v4u8" opcode="0xF2"/>
+    <cmp/>
+    <result_type/>
+    <src widen="true">A</src>
+    <src widen="true">B</src>
+    <src>C</src>
+  </group>
+
+  <group name="FCMP_OR" title="Floating-point compare" dests="1" unit="CVT" opcode2="0">
+    <desc>
+      Evaluates the given condition, do a logical or with the condition in
       the result source, and return in the given result type (integer
       one, integer minus one, or floating-point one). The third source is useful
       for chaining together conditions without intermediate bitwise arithmetic;
-      when this is not desired, tie it to zero and use the OR combine mode (do
-      not set the `.and` modifier).
+      when this is not desired, tie it to zero.
     </desc>
-    <ins name="FCMP.f32" opcode="0xF4"/>
-    <ins name="FCMP.v2f16" opcode="0xF5"/>
+    <ins name="FCMP_OR.f32" opcode="0xF4"/>
+    <ins name="FCMP_OR.v2f16" opcode="0xF5"/>
     <cmp/>
     <result_type/>
-    <mod name="and" start="24" size="1"/>
     <src absneg="true" swizzle="true">A</src>
     <src absneg="true" swizzle="true">B</src>
     <src>C</src>
   </group>
 
-  <group name="ICMP" title="Signed integer compare" dests="1" unit="CVT">
+  <group name="FCMP_AND" title="Floating-point compare" dests="1" unit="CVT" opcode2="1">
+    <desc>
+      Evaluates the given condition, do a logical and/or with the condition in
+      the result source, and return in the given result type (integer
+      one, integer minus one, or floating-point one). The third source is useful
+      for chaining together conditions without intermediate bitwise arithmetic.
+    </desc>
+    <ins name="FCMP_AND.f32" opcode="0xF4"/>
+    <ins name="FCMP_AND.v2f16" opcode="0xF5"/>
+    <cmp/>
+    <result_type/>
+    <src absneg="true" swizzle="true">A</src>
+    <src absneg="true" swizzle="true">B</src>
+    <src>C</src>
+  </group>
+
+  <group name="ICMP_OR" title="Signed integer compare" dests="1" unit="CVT" opcode2="0">
+    <desc>
+      Evaluates the given condition, do a logical or with the condition in
+      the result source, and return in the given result type (integer
+      one, integer minus one, or floating-point one). The third source is useful
+      for chaining together conditions without intermediate bitwise arithmetic.
+    </desc>
+    <ins name="ICMP_OR.s32" opcode="0xF8"/>
+    <ins name="ICMP_OR.v2s16" opcode="0xF9"/>
+    <ins name="ICMP_OR.v4s8" opcode="0xFA"/>
+    <cmp/>
+    <result_type/>
+    <src widen="true">A</src>
+    <src widen="true">B</src>
+    <src>C</src>
+  </group>
+
+  <group name="ICMP_AND" title="Signed integer compare" dests="1" unit="CVT" opcode2="1">
+    <desc>
+      Evaluates the given condition, do a logical and with the condition in
+      the result source, and return in the given result type (integer
+      one, integer minus one, or floating-point one). The third source is useful
+      for chaining together conditions without intermediate bitwise arithmetic.
+    </desc>
+    <ins name="ICMP_AND.s32" opcode="0xF8"/>
+    <ins name="ICMP_AND.v2s16" opcode="0xF9"/>
+    <ins name="ICMP_AND.v4s8" opcode="0xFA"/>
+    <cmp/>
+    <result_type/>
+    <src widen="true">A</src>
+    <src widen="true">B</src>
+    <src>C</src>
+  </group>
+
+  <group name="ICMP_MULTI" title="Integer compare" dests="1" unit="CVT" opcode2="2">
     <desc>
       Evaluates the given condition, do a logical and/or with the condition in
       the result source, and return in the given result type (integer
@@ -2217,20 +2272,15 @@
       when this is not desired, tie it to zero and use the OR combine mode (do
       not set the `.and` modifier).
 
-      The sequence modifier `.seq` is used to construct signed 64-bit compares
+      Used to construct signed 64-bit compares
       in 1 `ICMP.u32` and 1 `ICMP.s32` instruction, in conjunction with the `u1`
       result type on the low half, the `m1` result type on the high half, and
-      the result of the low half comparison passed as the third source. For
-      comparisons other than 64-bit, do not set the `.seq` modifier and do not
-      use the `u1` result type.
+      the result of the low half comparison passed as the third source.
     </desc>
-    <ins name="ICMP.s32" opcode="0xF8"/>
-    <ins name="ICMP.v2s16" opcode="0xF9"/>
-    <ins name="ICMP.v4s8" opcode="0xFA"/>
+    <ins name="ICMP_MULTI.u32" opcode="0xF0"/>
+    <ins name="ICMP_MULTI.s32" opcode="0xF8"/>
     <cmp/>
     <result_type/>
-    <mod name="and" start="24" size="1"/>
-    <mod name="seq" start="25" size="1"/>
     <src widen="true">A</src>
     <src widen="true">B</src>
     <src>C</src>

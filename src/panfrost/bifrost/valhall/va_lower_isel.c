@@ -41,30 +41,65 @@ va_lower_isel(bi_instr *I)
       I->src[1] = bi_zero();
       break;
 
-   /* Extra source in Valhall not yet modeled in the Bifrost IR */
    case BI_OPCODE_ICMP_I32:
-      I->op = BI_OPCODE_ICMP_U32;
+      I->op = BI_OPCODE_ICMP_OR_U32;
       I->src[2] = bi_zero();
       break;
 
    case BI_OPCODE_ICMP_V2I16:
-      I->op = BI_OPCODE_ICMP_V2U16;
+      I->op = BI_OPCODE_ICMP_OR_V2U16;
       I->src[2] = bi_zero();
       break;
 
    case BI_OPCODE_ICMP_V4I8:
-      I->op = BI_OPCODE_ICMP_V4U8;
+      I->op = BI_OPCODE_ICMP_OR_V4U8;
       I->src[2] = bi_zero();
       break;
 
    case BI_OPCODE_ICMP_U32:
+      I->op = BI_OPCODE_ICMP_OR_U32;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_ICMP_V2U16:
+      I->op = BI_OPCODE_ICMP_OR_V2U16;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_ICMP_V4U8:
+      I->op = BI_OPCODE_ICMP_OR_V4U8;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_ICMP_S32:
+      I->op = BI_OPCODE_ICMP_OR_S32;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_ICMP_V2S16:
+      I->op = BI_OPCODE_ICMP_OR_V2S16;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_ICMP_V4S8:
+      I->op = BI_OPCODE_ICMP_OR_V4S8;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_FCMP_F32:
+      I->op = BI_OPCODE_FCMP_OR_F32;
+      I->src[2] = bi_zero();
+      I->nr_srcs = 3;
+      break;
+
    case BI_OPCODE_FCMP_V2F16:
+      I->op = BI_OPCODE_FCMP_OR_V2F16;
       I->src[2] = bi_zero();
       break;
 

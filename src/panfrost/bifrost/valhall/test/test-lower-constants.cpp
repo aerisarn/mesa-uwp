@@ -114,70 +114,70 @@ TEST_F(LowerConstants, Int8InInt32)
 
 TEST_F(LowerConstants, ZeroExtendForUnsigned)
 {
-   CASE(bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFF), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_byte(va_lut(1), 0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_u32_to(b, bi_register(0), bi_register(0), bi_imm_u32(0xFF),
+                           bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_byte(va_lut(1), 0), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 
-   CASE(bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFFFF), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_half(va_lut(1), 0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFFFF), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_half(va_lut(1), 0), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 }
 
 TEST_F(LowerConstants, SignExtendPositiveForSigned)
 {
-   CASE(bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0x7F), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_byte(va_lut(2), 3), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0x7F), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_byte(va_lut(2), 3), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 
-   CASE(bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0x7FFF), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_half(va_lut(2), 1), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0x7FFF), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_half(va_lut(2), 1), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 }
 
 TEST_F(LowerConstants, SignExtendNegativeForSigned)
 {
-   CASE(bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFFFFFFF8), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_byte(va_lut(23), 0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFFFFFFF8), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_byte(va_lut(23), 0), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 
-   CASE(bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFFFFFAFC), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_half(va_lut(3), 1), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFFFFFAFC), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_half(va_lut(3), 1), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 }
 
 TEST_F(LowerConstants, DontZeroExtendForSigned)
 {
-   CASE(bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFF), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_iadd_imm_i32(b, va_lut(0), 0xFF), BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFF), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_iadd_imm_i32(b, va_lut(0), 0xFF), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1));
 
-   CASE(bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFFFF), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_s32_to(b, bi_register(0), bi_register(0),
-                       bi_iadd_imm_i32(b, va_lut(0), 0xFFFF),
-                       BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFFFF), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_s32_to(b, bi_register(0), bi_register(0),
+                           bi_iadd_imm_i32(b, va_lut(0), 0xFFFF), bi_register(0),
+                           BI_CMPF_LT, BI_RESULT_TYPE_I1));
 }
 
 TEST_F(LowerConstants, DontZeroExtendNegative)
 {
-   CASE(bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFFFFFFF8), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_iadd_imm_i32(b, va_lut(0), 0xFFFFFFF8),
-                       BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFFFFFFF8), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_iadd_imm_i32(b, va_lut(0), 0xFFFFFFF8), bi_register(0),
+                           BI_CMPF_LT, BI_RESULT_TYPE_I1));
 
-   CASE(bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_imm_u32(0xFFFFFAFC), BI_CMPF_LT, BI_RESULT_TYPE_I1),
-        bi_icmp_u32_to(b, bi_register(0), bi_register(0),
-                       bi_iadd_imm_i32(b, va_lut(0), 0xFFFFFAFC),
-                       BI_CMPF_LT, BI_RESULT_TYPE_I1));
+   CASE(bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_imm_u32(0xFFFFFAFC), bi_register(0), BI_CMPF_LT, BI_RESULT_TYPE_I1),
+        bi_icmp_and_u32_to(b, bi_register(0), bi_register(0),
+                           bi_iadd_imm_i32(b, va_lut(0), 0xFFFFFAFC), bi_register(0),
+                           BI_CMPF_LT, BI_RESULT_TYPE_I1));
 }
 
 TEST_F(LowerConstants, HandleTrickyNegativesFP16)
