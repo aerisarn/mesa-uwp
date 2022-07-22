@@ -1545,6 +1545,7 @@ finalize_image_bind(struct zink_context *ctx, struct zink_resource *res, bool is
 static struct zink_surface *
 create_image_surface(struct zink_context *ctx, const struct pipe_image_view *view, bool is_compute)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_resource *res = zink_resource(view->resource);
    struct pipe_surface tmpl = {0};
    enum pipe_texture_target target = res->base.b.target;
@@ -1558,6 +1559,11 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
       if (depth < u_minify(res->base.b.depth0, view->u.tex.level)) {
          assert(depth == 1);
          target = PIPE_TEXTURE_2D;
+         if (!screen->info.have_EXT_image_2d_view_of_3d ||
+             !screen->info.view2d_feats.image2DViewOf3D) {
+            static bool warned = false;
+            warn_missing_feature(warned, "image2DViewOf3D");
+         }
       } else {
          assert(tmpl.u.tex.first_layer == 0);
          tmpl.u.tex.last_layer = 0;
@@ -1570,7 +1576,7 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
       break;
    default: break;
    }
-   VkImageViewCreateInfo ivci = create_ivci(zink_screen(ctx->base.screen), res, &tmpl, target);
+   VkImageViewCreateInfo ivci = create_ivci(screen, res, &tmpl, target);
    struct pipe_surface *psurf = zink_get_surface(ctx, view->resource, &tmpl, &ivci);
    if (!psurf)
       return NULL;
