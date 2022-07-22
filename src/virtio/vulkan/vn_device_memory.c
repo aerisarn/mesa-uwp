@@ -155,10 +155,10 @@ vn_device_memory_pool_suballocate(struct vn_device *dev,
                                   uint32_t mem_type_index)
 {
    const VkDeviceSize pool_size = 16 * 1024 * 1024;
-   /* XXX We don't know the alignment requirement. Use 64K because some GPUs
-    * have 64K pages (e.g. newer Intel ones). Meanwhile, we are not able to
-    * easily get rid of suballocation because layering clients like angle and
-    * zink heavily rely on this to be performant on venus.
+   /* XXX We don't know the alignment requirement.  Use 64K because some GPUs
+    * have 64K pages.  It is also required by newer Intel GPUs.  But really we
+    * should require kernel 5.12+, where there is no KVM memslot limit, and
+    * remove this whole thing.
     */
    const VkDeviceSize pool_align = 64 * 1024;
    struct vn_device_memory_pool *pool = &dev->memory_pools[mem_type_index];
@@ -193,19 +193,24 @@ vn_device_memory_should_suballocate(const struct vn_device *dev,
                                     const VkMemoryAllocateInfo *alloc_info,
                                     const VkMemoryPropertyFlags flags)
 {
-   /* Native Vulkan apps usually manage suballocation better. However, for
-    * layering clients like angle or zink, they don't have enough information
-    * to make wiser choices. Doing suballocation here makes layering more
-    * performant at this moment.
-    */
    const struct vn_instance *instance = dev->physical_device->instance;
    const struct vn_renderer_info *renderer = &instance->renderer->info;
 
    if (renderer->has_guest_vram)
       return false;
 
-   /* reject large allocations */
-   if (alloc_info->allocationSize > 128 * 1024)
+   /* We should not support suballocations because apps can do better.  But
+    * each BO takes up a KVM memslot currently and some CTS tests exhausts
+    * them.  This might not be needed on newer (host) kernels where there are
+    * many more KVM memslots.
+    */
+
+   /* consider host-visible memory only */
+   if (!(flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+      return false;
+
+   /* reject larger allocations */
+   if (alloc_info->allocationSize > 64 * 1024)
       return false;
 
    /* reject if there is any pnext struct other than
