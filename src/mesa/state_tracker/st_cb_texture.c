@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include "main/bufferobj.h"
+#include "main/context.h"
 #include "main/enums.h"
 #include "main/errors.h"
 #include "main/fbobject.h"
@@ -65,6 +66,7 @@
 #include "state_tracker/st_gen_mipmap.h"
 #include "state_tracker/st_atom.h"
 #include "state_tracker/st_sampler_view.h"
+#include "state_tracker/st_texcompress_compute.h"
 #include "state_tracker/st_util.h"
 
 #include "pipe/p_context.h"
@@ -556,6 +558,35 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
       if (itransfer->box.depth != 0) {
          assert(itransfer->box.depth == 1);
+
+         if (_mesa_is_format_astc_2d(texImage->TexFormat) &&
+             util_format_is_compressed(texImage->pt->format)) {
+
+            /* DXT5 is the only supported transcode target from ASTC. */
+            assert(texImage->pt->format == PIPE_FORMAT_DXT5_RGBA ||
+                   texImage->pt->format == PIPE_FORMAT_DXT5_SRGBA);
+
+            /* Try a compute-based transcode. */
+            if (itransfer->box.x == 0 &&
+                itransfer->box.y == 0 &&
+                itransfer->box.width == texImage->Width &&
+                itransfer->box.height == texImage->Height &&
+                _mesa_has_compute_shaders(ctx) &&
+                st_compute_transcode_astc_to_dxt5(st,
+                   itransfer->temp_data,
+                   itransfer->temp_stride,
+                   texImage->TexFormat,
+                   texImage->pt,
+                   st_texture_image_resource_level(texImage),
+                   itransfer->box.z)) {
+
+               /* Mark the unmap as complete. */
+               assert(itransfer->transfer == NULL);
+               memset(itransfer, 0, sizeof(struct st_texture_image_transfer));
+
+               return;
+            }
+         }
 
          struct pipe_transfer *transfer;
          GLubyte *map = st_texture_image_map(st, texImage,
