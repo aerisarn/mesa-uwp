@@ -922,6 +922,12 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_ring_attr_amd:
       return si_llvm_build_attr_ring_desc(ctx);
 
+   case nir_intrinsic_load_lds_ngg_scratch_base_amd:
+      return LLVMBuildBitCast(ctx->ac.builder, ctx->gs_ngg_scratch.value, ctx->ac.i32, "");
+
+   case nir_intrinsic_load_lds_ngg_gs_out_vertex_base_amd:
+      return LLVMBuildBitCast(ctx->ac.builder, ctx->gs_ngg_emit, ctx->ac.i32, "");
+
    default:
       return NULL;
    }

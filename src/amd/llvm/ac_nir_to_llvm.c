@@ -3645,6 +3645,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_prim_gen_query_enabled_amd:
    case nir_intrinsic_load_prim_xfb_query_enabled_amd:
    case nir_intrinsic_load_clamp_vertex_color_amd:
+   case nir_intrinsic_load_lds_ngg_scratch_base_amd:
+   case nir_intrinsic_load_lds_ngg_gs_out_vertex_base_amd:
       result = ctx->abi->intrinsic_load(ctx->abi, instr->intrinsic);
       break;
    case nir_intrinsic_load_user_clip_plane:
