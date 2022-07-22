@@ -1080,6 +1080,12 @@ struct v3dv_job {
     */
    bool uses_buffer_device_address;
 
+   /* True if we have not identified anything that would be incompatible
+    * with double-buffer (like MSAA) or that would make double-buffer mode
+    * not efficient (like tile loads or not having any stores).
+    */
+   bool can_use_double_buffer;
+
    enum v3dv_job_type type;
 
    struct v3dv_device *device;
