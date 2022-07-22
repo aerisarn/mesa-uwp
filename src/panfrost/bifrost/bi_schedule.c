@@ -118,6 +118,12 @@ enum bi_ftz_state {
         BI_FTZ_STATE_ENABLE,
 };
 
+/* At this point, pseudoinstructions have been lowered so sources/destinations
+ * are limited to what's physically supported.
+ */
+#define BI_MAX_PHYS_SRCS 4
+#define BI_MAX_PHYS_DESTS 2
+
 struct bi_clause_state {
         /* Has a message-passing instruction already been assigned? */
         bool message;
@@ -125,7 +131,7 @@ struct bi_clause_state {
         /* Indices already accessed, this needs to be tracked to avoid hazards
          * around message-passing instructions */
         unsigned access_count;
-        bi_index accesses[(BI_MAX_SRCS + BI_MAX_DESTS) * 16];
+        bi_index accesses[(BI_MAX_PHYS_SRCS + BI_MAX_PHYS_DESTS) * 16];
 
         unsigned tuple_count;
         struct bi_const_state consts[8];
@@ -1219,12 +1225,16 @@ bi_pop_instr(struct bi_clause_state *clause, struct bi_tuple_state *tuple,
 {
         bi_update_fau(clause, tuple, instr, fma, true);
 
-        /* TODO: maybe opt a bit? or maybe doesn't matter */
-        assert(clause->access_count + BI_MAX_SRCS + BI_MAX_DESTS <= ARRAY_SIZE(clause->accesses));
-        memcpy(clause->accesses + clause->access_count, instr->src, sizeof(instr->src));
-        clause->access_count += BI_MAX_SRCS;
-        memcpy(clause->accesses + clause->access_count, instr->dest, sizeof(instr->dest));
-        clause->access_count += BI_MAX_DESTS;
+        assert(clause->access_count + instr->nr_srcs + instr->nr_dests <= ARRAY_SIZE(clause->accesses));
+
+        memcpy(clause->accesses + clause->access_count,
+               instr->src, sizeof(instr->src[0]) * instr->nr_srcs);
+        clause->access_count += instr->nr_srcs;
+
+        memcpy(clause->accesses + clause->access_count,
+               instr->dest, sizeof(instr->dest[0]) * instr->nr_dests);
+        clause->access_count += instr->nr_dests;
+
         tuple->reg.nr_writes += bi_write_count(instr, live_after_temp);
 
         bi_foreach_src(instr, s) {
