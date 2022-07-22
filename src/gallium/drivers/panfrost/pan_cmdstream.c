@@ -2689,6 +2689,11 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                 panfrost_emit_varyings(batch,
                                 &varyings[pan_varying_index(present, PAN_VARY_GENERAL)],
                                 stride, vertex_count);
+        } else {
+                /* The indirect draw code reads the stride field, make sure
+                 * that it is initialised */
+                memset(varyings + pan_varying_index(present, PAN_VARY_GENERAL), 0,
+                       sizeof(*varyings));
         }
 
         /* fp32 vec4 gl_Position */
