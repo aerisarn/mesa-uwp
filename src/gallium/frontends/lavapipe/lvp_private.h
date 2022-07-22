@@ -333,7 +333,6 @@ union lvp_descriptor_info {
    struct {
       struct lvp_sampler *sampler;
       struct lvp_image_view *iview;
-      VkImageLayout image_layout;
    };
    struct {
       struct lvp_buffer *buffer;

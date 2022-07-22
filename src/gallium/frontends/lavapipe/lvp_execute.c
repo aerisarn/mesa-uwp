@@ -3327,13 +3327,11 @@ static struct lvp_cmd_push_descriptor_set *create_push_descriptor_set(struct vk_
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             info->sampler = lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler);
             info->iview = lvp_image_view_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].imageView);
-            info->image_layout = in_cmd->descriptor_writes[i].pImageInfo[j].imageLayout;
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             info->iview = lvp_image_view_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].imageView);
-            info->image_layout = in_cmd->descriptor_writes[i].pImageInfo[j].imageLayout;
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
