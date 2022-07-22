@@ -62,6 +62,7 @@ typedef struct
    unsigned num_vertices_per_primitives;
    unsigned provoking_vtx_idx;
    unsigned max_es_num_vertices;
+   unsigned position_store_base;
    unsigned total_lds_bytes;
 
    uint64_t inputs_needed_by_pos;
@@ -175,10 +176,6 @@ typedef struct
 typedef struct {
    nir_variable *pre_cull_position_value_var;
 } remove_culling_shader_outputs_state;
-
-typedef struct {
-   nir_variable *pos_value_replacement;
-} remove_extra_position_output_state;
 
 /* Per-vertex LDS layout of culling shaders */
 enum {
@@ -590,7 +587,7 @@ rewrite_uses_to_var(nir_builder *b, nir_ssa_def *old_def, nir_variable *replacem
 static bool
 remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
 {
-   remove_extra_position_output_state *s = (remove_extra_position_output_state *) state;
+   lower_ngg_nogs_state *s = (lower_ngg_nogs_state *) state;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -618,6 +615,9 @@ remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
    nir_ssa_def *store_val = intrin->src[0].ssa;
    unsigned store_pos_component = nir_intrinsic_component(intrin);
 
+   /* save the store base for re-construct store output instruction */
+   s->position_store_base = nir_intrinsic_base(intrin);
+
    nir_instr_remove(instr);
 
    if (store_val->parent_instr->type == nir_instr_type_alu) {
@@ -644,12 +644,12 @@ remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
             vec_comps[i] = alu->src[i].src.ssa;
 
          for (unsigned i = 0; i < num_vec_src; i++)
-            rewrite_uses_to_var(b, vec_comps[i], s->pos_value_replacement, store_pos_component + i);
+            rewrite_uses_to_var(b, vec_comps[i], s->position_value_var, store_pos_component + i);
       } else {
-         rewrite_uses_to_var(b, store_val, s->pos_value_replacement, store_pos_component);
+         rewrite_uses_to_var(b, store_val, s->position_value_var, store_pos_component);
       }
    } else {
-      rewrite_uses_to_var(b, store_val, s->pos_value_replacement, store_pos_component);
+      rewrite_uses_to_var(b, store_val, s->position_value_var, store_pos_component);
    }
 
    return true;
@@ -658,12 +658,9 @@ remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
 static void
 remove_extra_pos_outputs(nir_shader *shader, lower_ngg_nogs_state *nogs_state)
 {
-   remove_extra_position_output_state s = {
-      .pos_value_replacement = nogs_state->position_value_var,
-   };
-
    nir_shader_instructions_pass(shader, remove_extra_pos_output,
-                                nir_metadata_block_index | nir_metadata_dominance, &s);
+                                nir_metadata_block_index | nir_metadata_dominance,
+                                nogs_state);
 }
 
 static bool
@@ -1524,7 +1521,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
 
       nir_ssa_def *pos_val = nir_load_var(b, state.position_value_var);
       nir_io_semantics io_sem = { .location = VARYING_SLOT_POS, .num_slots = 1 };
-      nir_store_output(b, pos_val, nir_imm_int(b, 0), .base = VARYING_SLOT_POS, .component = 0, .io_semantics = io_sem);
+      nir_store_output(b, pos_val, nir_imm_int(b, 0), .base = state.position_store_base,
+                       .component = 0, .io_semantics = io_sem);
    }
 
    nir_metadata_preserve(impl, nir_metadata_none);
