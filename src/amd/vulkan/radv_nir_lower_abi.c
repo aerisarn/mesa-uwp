@@ -370,6 +370,13 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement =
          ac_nir_load_arg(b, &s->args->ac, s->args->ac.streamout_offset[nir_intrinsic_base(intrin)]);
       break;
+
+   case nir_intrinsic_load_lds_ngg_gs_out_vertex_base_amd:
+      replacement = nir_imm_int(b, s->info->ngg_info.esgs_ring_size);
+      break;
+   case nir_intrinsic_load_lds_ngg_scratch_base_amd:
+      replacement = nir_imm_int(b, s->info->ngg_info.scratch_lds_base);
+      break;
    default:
       progress = false;
       break;

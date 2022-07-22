@@ -66,13 +66,11 @@ typedef struct
    unsigned wave_size;
    unsigned max_num_waves;
    unsigned num_vertices_per_primitives;
-   unsigned max_es_num_vertices;
    unsigned position_store_base;
    int primitive_id_location;
 
    /* LDS params */
    unsigned pervertex_lds_bytes;
-   unsigned total_lds_bytes;
 
    uint64_t inputs_needed_by_pos;
    uint64_t inputs_needed_by_others;
@@ -110,8 +108,8 @@ typedef struct
    unsigned wave_size;
    unsigned max_num_waves;
    unsigned num_vertices_per_primitive;
-   unsigned lds_addr_gs_out_vtx;
-   unsigned lds_addr_gs_scratch;
+   nir_ssa_def *lds_addr_gs_out_vtx;
+   nir_ssa_def *lds_addr_gs_scratch;
    unsigned lds_bytes_per_gs_out_vertex;
    unsigned lds_offs_primflags;
    bool has_xfb_query;
@@ -303,7 +301,7 @@ summarize_repack(nir_builder *b, nir_ssa_def *packed_counts, unsigned num_lds_dw
  */
 static wg_repack_result
 repack_invocations_in_workgroup(nir_builder *b, nir_ssa_def *input_bool,
-                                unsigned lds_addr_base, unsigned max_num_waves,
+                                nir_ssa_def *lds_addr_base, unsigned max_num_waves,
                                 unsigned wave_size)
 {
    /* Input boolean: 1 if the current invocation should survive the repack. */
@@ -340,15 +338,17 @@ repack_invocations_in_workgroup(nir_builder *b, nir_ssa_def *input_bool,
    assert(num_lds_dwords <= 2);
 
    nir_ssa_def *wave_id = nir_load_subgroup_id(b);
+   nir_ssa_def *lds_offset = nir_iadd(b, lds_addr_base, wave_id);
    nir_ssa_def *dont_care = nir_ssa_undef(b, 1, num_lds_dwords * 32);
    nir_if *if_first_lane = nir_push_if(b, nir_elect(b, 1));
 
-   nir_store_shared(b, nir_u2u8(b, surviving_invocations_in_current_wave), wave_id, .base = lds_addr_base);
+   nir_store_shared(b, nir_u2u8(b, surviving_invocations_in_current_wave), lds_offset);
 
    nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-   nir_ssa_def *packed_counts = nir_load_shared(b, 1, num_lds_dwords * 32, nir_imm_int(b, 0), .base = lds_addr_base, .align_mul = 8u);
+   nir_ssa_def *packed_counts =
+      nir_load_shared(b, 1, num_lds_dwords * 32, lds_addr_base, .align_mul = 8u);
 
    nir_pop_if(b, if_first_lane);
 
@@ -893,7 +893,6 @@ compact_vertices_after_culling(nir_builder *b,
                                nir_ssa_def *es_exporter_tid,
                                nir_ssa_def *num_live_vertices_in_workgroup,
                                nir_ssa_def *fully_culled,
-                               unsigned ngg_scratch_lds_base_addr,
                                unsigned pervertex_lds_bytes,
                                unsigned max_exported_args)
 {
@@ -1273,25 +1272,38 @@ clipdist_culling_es_part(nir_builder *b, lower_ngg_nogs_state *nogs_state,
    }
 }
 
+static unsigned
+ngg_nogs_get_culling_pervertex_lds_size(gl_shader_stage stage,
+                                        bool uses_instance_id,
+                                        bool uses_primitive_id,
+                                        unsigned *max_exported_args)
+{
+   unsigned max_args;
+   if (stage == MESA_SHADER_VERTEX) {
+      max_args = uses_instance_id ? 2 : 1;
+   } else {
+      assert(stage == MESA_SHADER_TESS_EVAL);
+      max_args = uses_primitive_id ? 4 : 3;
+   }
+
+   if (max_exported_args)
+      *max_exported_args = max_args;
+
+   return lds_es_arg_0 + max_args * 4u;
+}
+
 static void
 add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_cf, lower_ngg_nogs_state *nogs_state)
 {
    bool uses_instance_id = BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
    bool uses_tess_primitive_id = BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
 
-   unsigned max_exported_args = b->shader->info.stage == MESA_SHADER_VERTEX ? 2 : 4;
-   if (b->shader->info.stage == MESA_SHADER_VERTEX && !uses_instance_id)
-      max_exported_args--;
-   else if (b->shader->info.stage == MESA_SHADER_TESS_EVAL && !uses_tess_primitive_id)
-      max_exported_args--;
-
-   unsigned pervertex_lds_bytes = lds_es_arg_0 + max_exported_args * 4u;
-   unsigned total_es_lds_bytes = pervertex_lds_bytes * nogs_state->max_es_num_vertices;
-   unsigned max_num_waves = nogs_state->max_num_waves;
-   unsigned ngg_scratch_lds_base_addr = ALIGN(total_es_lds_bytes, 8u);
-   unsigned ngg_scratch_lds_bytes = ALIGN(max_num_waves, 4u);
-   nogs_state->total_lds_bytes = MAX2(nogs_state->total_lds_bytes,
-                                      ngg_scratch_lds_base_addr + ngg_scratch_lds_bytes);
+   unsigned max_exported_args;
+   unsigned pervertex_lds_bytes =
+      ngg_nogs_get_culling_pervertex_lds_size(b->shader->info.stage,
+                                              uses_instance_id,
+                                              uses_tess_primitive_id,
+                                              &max_exported_args);
 
    nir_function_impl *impl = nir_shader_get_entrypoint(b->shader);
 
@@ -1367,6 +1379,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    nir_metadata_preserve(impl, nir_metadata_none);
    remove_culling_shader_outputs(b->shader, nogs_state);
    b->cursor = nir_after_cf_list(&impl->body);
+
+   nir_ssa_def *lds_scratch_base = nir_load_lds_ngg_scratch_base_amd(b);
 
    /* Run culling algorithms if culling is enabled.
     *
@@ -1470,8 +1484,9 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_ssa_def *es_accepted = nir_load_var(b, es_accepted_var);
 
       /* Repack the vertices that survived the culling. */
-      wg_repack_result rep = repack_invocations_in_workgroup(b, es_accepted, ngg_scratch_lds_base_addr,
-                                                            nogs_state->max_num_waves, nogs_state->wave_size);
+      wg_repack_result rep = repack_invocations_in_workgroup(b, es_accepted, lds_scratch_base,
+                                                             nogs_state->max_num_waves,
+                                                             nogs_state->wave_size);
       nir_ssa_def *num_live_vertices_in_workgroup = rep.num_repacked_invocations;
       nir_ssa_def *es_exporter_tid = rep.repacked_invocation_index;
 
@@ -1492,7 +1507,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
                                      repacked_arg_vars, gs_vtxaddr_vars,
                                      invocation_index, es_vertex_lds_addr,
                                      es_exporter_tid, num_live_vertices_in_workgroup, fully_culled,
-                                     ngg_scratch_lds_base_addr, pervertex_lds_bytes, max_exported_args);
+                                     pervertex_lds_bytes, max_exported_args);
    }
    nir_push_else(b, if_cull_en);
    {
@@ -1601,8 +1616,8 @@ ngg_nogs_store_all_outputs_to_lds(nir_shader *shader, lower_ngg_nogs_state *st)
 static void
 ngg_build_streamout_buffer_info(nir_builder *b,
                                 nir_xfb_info *info,
-                                unsigned scratch_base,
                                 bool has_prim_query,
+                                nir_ssa_def *scratch_base,
                                 nir_ssa_def *tid_in_tg,
                                 nir_ssa_def *gen_prim[4],
                                 nir_ssa_def *prim_stride_ret[4],
@@ -1677,8 +1692,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
             nir_imin(b, emit_prim[stream], remain_prim));
 
          /* Save to LDS for being accessed by other waves in this workgroup. */
-         nir_store_shared(b, buffer_offset, nir_imm_int(b, buffer * 4),
-                          .base = scratch_base);
+         nir_store_shared(b, buffer_offset, scratch_base, .base = buffer * 4);
       }
 
       /* No need to fixup the global buffer offset once we overflowed,
@@ -1690,8 +1704,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
          if (!(info->streams_written & BITFIELD_BIT(stream)))
             continue;
 
-         nir_store_shared(b, emit_prim[stream], nir_imm_int(b, stream * 4),
-                          .base = scratch_base + 16);
+         nir_store_shared(b, emit_prim[stream], scratch_base, .base = 16 + stream * 4);
       }
 
       /* Update shader query. */
@@ -1719,7 +1732,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
          continue;
 
       buffer_offsets_ret[buffer] =
-         nir_load_shared(b, 1, 32, nir_imm_int(b, buffer * 4), .base = scratch_base);
+         nir_load_shared(b, 1, 32, scratch_base, .base = buffer * 4);
    }
 
    /* Fetch the per-stream emit prim in all waves. */
@@ -1728,7 +1741,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
             continue;
 
       emit_prim_ret[stream] =
-         nir_load_shared(b, 1, 32, nir_imm_int(b, stream * 4), .base = scratch_base + 16);
+         nir_load_shared(b, 1, 32, scratch_base, .base = 16 + stream * 4);
    }
 }
 
@@ -1780,11 +1793,7 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
       return;
    }
 
-   unsigned total_es_lds_bytes = s->pervertex_lds_bytes * s->max_es_num_vertices;
-   unsigned scratch_base = ALIGN(total_es_lds_bytes, 8u);
-   /* 4 dwords for 4 streamout buffer offset, 1 dword for emit prim count */
-   unsigned scratch_size = 20;
-   s->total_lds_bytes = MAX2(s->total_lds_bytes, scratch_base + scratch_size);
+   nir_ssa_def *lds_scratch_base = nir_load_lds_ngg_scratch_base_amd(b);
 
    /* Get global buffer offset where this workgroup will stream out data to. */
    nir_ssa_def *generated_prim = nir_load_workgroup_num_input_primitives_amd(b);
@@ -1794,8 +1803,8 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
    nir_ssa_def *so_buffer[4] = {0};
    nir_ssa_def *prim_stride[4] = {0};
    nir_ssa_def *tid_in_tg = nir_load_local_invocation_index(b);
-   ngg_build_streamout_buffer_info(b, info, scratch_base,
-                                   s->has_prim_query, tid_in_tg,
+   ngg_build_streamout_buffer_info(b, info, s->has_prim_query,
+                                   lds_scratch_base, tid_in_tg,
                                    gen_prim_per_stream, prim_stride,
                                    so_buffer, buffer_offsets,
                                    emit_prim_per_stream);
@@ -1840,10 +1849,42 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
    free(info);
 }
 
+static unsigned
+ngg_nogs_get_pervertex_lds_size(gl_shader_stage stage,
+                                unsigned shader_num_outputs,
+                                bool streamout_enabled,
+                                bool export_prim_id,
+                                bool has_user_edgeflags)
+{
+   unsigned pervertex_lds_bytes = 0;
+
+   if (streamout_enabled) {
+      /* The extra dword is used to avoid LDS bank conflicts and store the primitive id.
+       * TODO: only alloc space for outputs that really need streamout.
+       */
+      pervertex_lds_bytes = (shader_num_outputs * 4 + 1) * 4;
+   }
+
+   bool need_prim_id_store_shared = export_prim_id && stage == MESA_SHADER_VERTEX;
+   if (need_prim_id_store_shared || has_user_edgeflags) {
+      unsigned size = 0;
+      if (need_prim_id_store_shared)
+         size += 4;
+      if (has_user_edgeflags)
+         size += 4;
+
+      /* pad to odd dwords to avoid LDS bank conflict */
+      size |= 4;
+
+      pervertex_lds_bytes = MAX2(pervertex_lds_bytes, size);
+   }
+
+   return pervertex_lds_bytes;
+}
+
 void
 ac_nir_lower_ngg_nogs(nir_shader *shader,
                       enum radeon_family family,
-                      unsigned max_num_es_vertices,
                       unsigned num_vertices_per_primitives,
                       unsigned max_workgroup_size,
                       unsigned wave_size,
@@ -1860,7 +1901,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
-   assert(max_num_es_vertices && max_workgroup_size && wave_size);
+   assert(max_workgroup_size && wave_size);
    assert(!(can_cull && passthrough));
 
    nir_variable *position_value_var = nir_local_variable_create(impl, glsl_vec4_type(), "position_value");
@@ -1894,7 +1935,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .es_accepted_var = es_accepted_var,
       .gs_accepted_var = gs_accepted_var,
       .max_num_waves = DIV_ROUND_UP(max_workgroup_size, wave_size),
-      .max_es_num_vertices = max_num_es_vertices,
       .wave_size = wave_size,
       .instance_rate_inputs = instance_rate_inputs,
       .clipdist_enable_mask = clipdist_enable_mask,
@@ -1965,23 +2005,12 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    }
 
    /* determine the LDS vertex stride */
-   if (state.streamout_enabled) {
-      /* The extra dword is used to avoid LDS bank conflicts and store the primitive id.
-       * TODO: only alloc space for outputs that really need streamout.
-       */
-      state.pervertex_lds_bytes = (shader->num_outputs * 4 + 1) * 4;
-   } else if (need_prim_id_store_shared || state.has_user_edgeflags) {
-      if (need_prim_id_store_shared)
-         state.pervertex_lds_bytes += 4;
-      if (state.has_user_edgeflags)
-         state.pervertex_lds_bytes += 4;
-
-      /* pad to odd dwords to avoid LDS bank conflict */
-      state.pervertex_lds_bytes |= 4;
-
-      state.total_lds_bytes = MAX2(state.total_lds_bytes,
-                                   state.pervertex_lds_bytes * max_num_es_vertices);
-   }
+   state.pervertex_lds_bytes =
+      ngg_nogs_get_pervertex_lds_size(shader->info.stage,
+                                      shader->num_outputs,
+                                      state.streamout_enabled,
+                                      primitive_id_location >= 0,
+                                      state.has_user_edgeflags);
 
    if (need_prim_id_store_shared) {
       emit_ngg_nogs_prim_id_store_shared(b, &state);
@@ -2071,8 +2100,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       if (can_cull)
          progress |= cleanup_culling_shader_after_dce(shader, b->impl, &state);
    } while (progress);
-
-   shader->info.shared_size = state.total_lds_bytes;
 }
 
 /**
@@ -2119,7 +2146,7 @@ ngg_gs_out_vertex_addr(nir_builder *b, nir_ssa_def *out_vtx_idx, lower_ngg_gs_st
    }
 
    nir_ssa_def *out_vtx_offs = nir_imul_imm(b, out_vtx_idx, s->lds_bytes_per_gs_out_vertex);
-   return nir_iadd_imm_nuw(b, out_vtx_offs, s->lds_addr_gs_out_vtx);
+   return nir_iadd_nuw(b, out_vtx_offs, s->lds_addr_gs_out_vtx);
 }
 
 static nir_ssa_def *
@@ -2729,6 +2756,8 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
       prim_live[stream] = nir_i2b(b, nir_iand_imm(b, out_vtx_primflag[stream], 1));
 
       unsigned scratch_stride = ALIGN(st->max_num_waves, 4);
+      nir_ssa_def *scratch_base =
+         nir_iadd_imm(b, st->lds_addr_gs_scratch, stream * scratch_stride);
 
       /* We want to export primitives to streamout buffer in sequence,
        * but not all vertices are alive or mark end of a primitive, so
@@ -2743,8 +2772,7 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
        * stream..
        */
       wg_repack_result rep =
-         repack_invocations_in_workgroup(b, prim_live[stream],
-                                         st->lds_addr_gs_scratch + stream * scratch_stride,
+         repack_invocations_in_workgroup(b, prim_live[stream], scratch_base,
                                          st->max_num_waves, st->wave_size);
 
       /* nir_intrinsic_set_vertex_and_primitive_count can also get primitive count of
@@ -2766,8 +2794,8 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
    nir_ssa_def *buffer_offsets[4] = {0};
    nir_ssa_def *so_buffer[4] = {0};
    nir_ssa_def *prim_stride[4] = {0};
-   ngg_build_streamout_buffer_info(b, info, st->lds_addr_gs_scratch,
-                                   st->has_xfb_query, tid_in_tg, gen_prim,
+   ngg_build_streamout_buffer_info(b, info, st->has_xfb_query,
+                                   st->lds_addr_gs_scratch, tid_in_tg, gen_prim,
                                    prim_stride, so_buffer, buffer_offsets, emit_prim);
 
    /* GS use packed location for vertex LDS storage. */
@@ -2884,9 +2912,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
                     enum amd_gfx_level gfx_level,
                     unsigned wave_size,
                     unsigned max_workgroup_size,
-                    unsigned esgs_ring_lds_bytes,
                     unsigned gs_out_vtx_bytes,
-                    unsigned gs_total_out_vtx_bytes,
                     bool has_xfb_query,
                     bool can_cull,
                     bool disable_streamout)
@@ -2899,22 +2925,12 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
       .gfx_level = gfx_level,
       .max_num_waves = DIV_ROUND_UP(max_workgroup_size, wave_size),
       .wave_size = wave_size,
-      .lds_addr_gs_out_vtx = esgs_ring_lds_bytes,
-      .lds_addr_gs_scratch = ALIGN(esgs_ring_lds_bytes + gs_total_out_vtx_bytes, 8u /* for the repacking code */),
       .lds_offs_primflags = gs_out_vtx_bytes,
       .lds_bytes_per_gs_out_vertex = gs_out_vtx_bytes + 4u,
       .can_cull = can_cull,
       .streamout_enabled = shader->xfb_info && !disable_streamout,
       .has_xfb_query = has_xfb_query,
    };
-
-   unsigned lds_scratch_bytes = ALIGN(state.max_num_waves, 4u);
-   /* streamout take 8 dwords for buffer offset and emit vertex per stream */
-   if (state.streamout_enabled)
-      lds_scratch_bytes = MAX2(lds_scratch_bytes, 32);
-
-   unsigned total_lds_bytes = state.lds_addr_gs_scratch + lds_scratch_bytes;
-   shader->info.shared_size = total_lds_bytes;
 
    if (!can_cull) {
       nir_gs_count_vertices_and_primitives(shader, state.const_out_vtxcnt,
@@ -2949,6 +2965,9 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
    nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
+   state.lds_addr_gs_out_vtx = nir_load_lds_ngg_gs_out_vertex_base_amd(b);
+   state.lds_addr_gs_scratch = nir_load_lds_ngg_scratch_base_amd(b);
+
    /* Wrap the GS control flow. */
    nir_if *if_gs_thread = nir_push_if(b, nir_has_input_primitive_amd(b));
 
@@ -2980,6 +2999,57 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
    nir_lower_vars_to_ssa(shader);
    nir_remove_dead_variables(shader, nir_var_function_temp, NULL);
    nir_metadata_preserve(impl, nir_metadata_none);
+}
+
+unsigned
+ac_ngg_nogs_get_pervertex_lds_size(gl_shader_stage stage,
+                                   unsigned shader_num_outputs,
+                                   bool streamout_enabled,
+                                   bool export_prim_id,
+                                   bool has_user_edgeflags,
+                                   bool can_cull,
+                                   bool uses_instance_id,
+                                   bool uses_primitive_id)
+{
+   /* for culling time lds layout only */
+   unsigned culling_pervertex_lds_bytes = can_cull ?
+      ngg_nogs_get_culling_pervertex_lds_size(
+         stage, uses_instance_id, uses_primitive_id, NULL) : 0;
+
+   unsigned pervertex_lds_bytes =
+      ngg_nogs_get_pervertex_lds_size(stage, shader_num_outputs, streamout_enabled,
+                                      export_prim_id, has_user_edgeflags);
+
+   return MAX2(culling_pervertex_lds_bytes, pervertex_lds_bytes);
+}
+
+unsigned
+ac_ngg_get_scratch_lds_size(gl_shader_stage stage,
+                            unsigned workgroup_size,
+                            unsigned wave_size,
+                            bool streamout_enabled,
+                            bool can_cull)
+{
+   unsigned scratch_lds_size = 0;
+   unsigned max_num_waves = DIV_ROUND_UP(workgroup_size, wave_size);
+
+   if (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL) {
+      if (streamout_enabled) {
+         /* 4 dwords for 4 streamout buffer offset, 1 dword for emit prim count */
+         scratch_lds_size = 20;
+      } else if (can_cull) {
+         scratch_lds_size = ALIGN(max_num_waves, 4u);
+      }
+   } else {
+      assert(stage == MESA_SHADER_GEOMETRY);
+
+      scratch_lds_size = ALIGN(max_num_waves, 4u);
+      /* streamout take 8 dwords for buffer offset and emit vertex per stream */
+      if (streamout_enabled)
+         scratch_lds_size = MAX2(scratch_lds_size, 32);
+   }
+
+   return scratch_lds_size;
 }
 
 static void
