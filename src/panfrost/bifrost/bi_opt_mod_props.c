@@ -430,32 +430,44 @@ bi_opt_mod_prop_backward(bi_context *ctx)
         free(multiple);
 }
 
-/** Lower pseudo instructions that exist to simplify the optimizer */
-
-void
-bi_lower_opt_instruction(bi_instr *I)
+/*
+ * Lower pseudo instructions that exist to simplify the optimizer. Returns the
+ * replacement instruction, or NULL if no replacement is needed.
+ */
+static bool
+bi_lower_opt_instruction_helper(bi_builder *b, bi_instr *I)
 {
+        bi_instr *repl;
+
         switch (I->op) {
         case BI_OPCODE_FABSNEG_F32:
-        case BI_OPCODE_FABSNEG_V2F16:
         case BI_OPCODE_FCLAMP_F32:
-        case BI_OPCODE_FCLAMP_V2F16:
-                I->op = (bi_opcode_props[I->op].size == BI_SIZE_32) ?
-                        BI_OPCODE_FADD_F32 : BI_OPCODE_FADD_V2F16;
+                repl = bi_fadd_f32_to(b, I->dest[0], I->src[0], bi_negzero());
+                repl->clamp = I->clamp;
+                return true;
 
-                I->round = BI_ROUND_NONE;
-                I->src[1] = bi_negzero();
-                I->nr_srcs = 2;
-                break;
+        case BI_OPCODE_FABSNEG_V2F16:
+        case BI_OPCODE_FCLAMP_V2F16:
+                repl = bi_fadd_v2f16_to(b, I->dest[0], I->src[0], bi_negzero());
+                repl->clamp = I->clamp;
+                return true;
 
         case BI_OPCODE_DISCARD_B32:
-                I->op = BI_OPCODE_DISCARD_F32;
-                I->src[1] = bi_imm_u32(0);
-                I->cmpf = BI_CMPF_NE;
-                I->nr_srcs = 2;
-                break;
+                bi_discard_f32(b, I->src[0], bi_zero(), BI_CMPF_NE);
+                return true;
 
         default:
-                break;
+                return false;
+        }
+}
+
+void
+bi_lower_opt_instructions(bi_context *ctx)
+{
+        bi_foreach_instr_global_safe(ctx, I) {
+                bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
+
+                if (bi_lower_opt_instruction_helper(&b, I))
+                        bi_remove_instruction(I);
         }
 }

@@ -5063,9 +5063,7 @@ bi_compile_variant_nir(nir_shader *nir,
                 bi_validate(ctx, "Optimization passes");
         }
 
-        bi_foreach_instr_global(ctx, I) {
-                bi_lower_opt_instruction(I);
-        }
+        bi_lower_opt_instructions(ctx);
 
         if (ctx->arch >= 9) {
                 va_optimize(ctx);
