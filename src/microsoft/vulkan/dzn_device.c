@@ -92,12 +92,12 @@ static void
 dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 {
    pdev->vk.supported_extensions = (struct vk_device_extension_table) {
-      .KHR_create_renderpass2                = true,
-      .KHR_depth_stencil_resolve             = true,
+      .KHR_create_renderpass2                = false,
+      .KHR_depth_stencil_resolve             = false,
       .KHR_descriptor_update_template        = true,
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
-      .KHR_dynamic_rendering                 = true,
+      .KHR_dynamic_rendering                 = false,
       .KHR_shader_draw_parameters            = true,
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
