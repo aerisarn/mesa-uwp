@@ -125,32 +125,33 @@ bi_compose_float_index(bi_index old, bi_index repl)
 
 /* DISCARD.b32(FCMP.f(x, y)) --> DISCARD.f(x, y) */
 
-static inline void
-bi_fuse_discard_fcmp(bi_instr *I, bi_instr *mod, unsigned arch)
+static inline bool
+bi_fuse_discard_fcmp(bi_context *ctx, bi_instr *I, bi_instr *mod)
 {
-        if (I->op != BI_OPCODE_DISCARD_B32) return;
-        if (mod->op != BI_OPCODE_FCMP_F32 && mod->op != BI_OPCODE_FCMP_V2F16) return;
-        if (mod->cmpf >= BI_CMPF_GTLT) return;
+        if (!mod) return false;
+        if (I->op != BI_OPCODE_DISCARD_B32) return false;
+        if (mod->op != BI_OPCODE_FCMP_F32 && mod->op != BI_OPCODE_FCMP_V2F16) return false;
+        if (mod->cmpf >= BI_CMPF_GTLT) return false;
+
+        /* result_type doesn't matter */
 
         /* .abs and .neg modifiers allowed on Valhall DISCARD but not Bifrost */
         bool absneg = mod->src[0].neg || mod->src[0].abs;
         absneg     |= mod->src[1].neg || mod->src[1].abs;
 
-        if (arch <= 8 && absneg) return;
+        if (ctx->arch <= 8 && absneg) return false;
 
         enum bi_swizzle r = I->src[0].swizzle;
 
-        /* result_type doesn't matter */
-        I->op = BI_OPCODE_DISCARD_F32;
-        I->cmpf = mod->cmpf;
-        I->src[0] = mod->src[0];
-        I->src[1] = mod->src[1];
-        I->nr_srcs = 2;
+        bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
+        I = bi_discard_f32(&b, mod->src[0], mod->src[1], mod->cmpf);
 
         if (mod->op == BI_OPCODE_FCMP_V2F16) {
                 I->src[0].swizzle = bi_compose_swizzle_16(r, I->src[0].swizzle);
                 I->src[1].swizzle = bi_compose_swizzle_16(r, I->src[1].swizzle);
         }
+
+        return true;
 }
 
 /*
@@ -192,6 +193,19 @@ bi_opt_mod_prop_forward(bi_context *ctx)
         bi_instr **lut = calloc(sizeof(bi_instr *), ctx->ssa_alloc);
 
         bi_foreach_instr_global_safe(ctx, I) {
+                /* Try fusing FCMP into DISCARD.b32, building a new DISCARD.f32
+                 * instruction. As this is the only optimization DISCARD is
+                 * involved in, this shortcircuits other processing.
+                 */
+                if (I->op == BI_OPCODE_DISCARD_B32) {
+                        if (bi_is_ssa(I->src[0]) &&
+                            bi_fuse_discard_fcmp(ctx, I, lut[I->src[0].value])) {
+                                bi_remove_instruction(I);
+                        }
+
+                        continue;
+                }
+
                 bi_foreach_dest(I, d) {
                         if (bi_is_ssa(I->dest[d]))
                                 lut[I->dest[d].value] = I;
@@ -208,7 +222,6 @@ bi_opt_mod_prop_forward(bi_context *ctx)
 
                         unsigned size = bi_opcode_props[I->op].size;
 
-                        bi_fuse_discard_fcmp(I, mod, ctx->arch);
                         bi_fuse_small_int_to_f32(I, mod);
 
                         if (bi_is_fabsneg(mod->op, size)) {
