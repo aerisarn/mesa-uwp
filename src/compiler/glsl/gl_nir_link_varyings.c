@@ -1620,17 +1620,19 @@ varying_matches_store_locations(struct varying_matches *vm)
       /* Find locations suitable for native packing via
        * ARB_enhanced_layouts.
        */
-      if (producer_var && consumer_var) {
-         if (vm->enhanced_layouts_enabled) {
-            const struct glsl_type *type =
-               get_varying_type(producer_var, vm->producer_stage);
+      if (vm->enhanced_layouts_enabled) {
+         nir_variable *var = producer_var ? producer_var : consumer_var;
+         unsigned stage = producer_var ? vm->producer_stage : vm->consumer_stage;
+         const struct glsl_type *type =
+            get_varying_type(var, stage);
+         unsigned comp_slots = glsl_get_component_slots(type) + offset;
+         unsigned slots = comp_slots / 4;
+         if (comp_slots % 4)
+            slots += 1;
+
+         if (producer_var && consumer_var) {
             if (glsl_type_is_array_or_matrix(type) || glsl_type_is_struct(type) ||
                 glsl_type_is_64bit(type)) {
-               unsigned comp_slots = glsl_get_component_slots(type) + offset;
-               unsigned slots = comp_slots / 4;
-               if (comp_slots % 4)
-                  slots += 1;
-
                for (unsigned j = 0; j < slots; j++) {
                   pack_loc[slot + j] = true;
                }
@@ -1640,9 +1642,11 @@ varying_matches_store_locations(struct varying_matches *vm)
             } else {
                loc_type[slot][offset] = type;
             }
+         } else {
+            for (unsigned j = 0; j < slots; j++) {
+               pack_loc[slot + j] = true;
+            }
          }
-      } else {
-         pack_loc[slot] = true;
       }
    }
 
