@@ -85,6 +85,7 @@ libfreedreno_ir3_files = files(
   'ir3_image.h',
   'ir3.h',
   'ir3_legalize.c',
+  'ir3_legalize_relative.c',
   'ir3_liveness.c',
   'ir3_lower_parallelcopy.c',
   'ir3_lower_spill.c',

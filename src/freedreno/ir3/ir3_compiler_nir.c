@@ -4892,6 +4892,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    IR3_PASS(ir, ir3_postsched, so);
 
+   IR3_PASS(ir, ir3_legalize_relative);
    IR3_PASS(ir, ir3_lower_subgroups);
 
    if (so->type == MESA_SHADER_FRAGMENT)

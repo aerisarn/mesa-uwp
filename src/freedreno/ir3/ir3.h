@@ -1865,6 +1865,7 @@ bool ir3_lower_subgroups(struct ir3 *ir);
 
 /* legalize: */
 bool ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary);
+bool ir3_legalize_relative(struct ir3 *ir);
 
 static inline bool
 ir3_has_latency_to_hide(struct ir3 *ir)
