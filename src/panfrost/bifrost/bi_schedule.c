@@ -328,13 +328,10 @@ bi_lower_cubeface(bi_context *ctx,
 
         pinstr->op = BI_OPCODE_CUBEFACE2;
         pinstr->dest[0] = pinstr->dest[1];
-        pinstr->dest[1] = bi_null();
-        pinstr->nr_dests = 1;
+        bi_drop_dests(pinstr, 1);
 
         pinstr->src[0] = cubeface1->dest[0];
-        pinstr->src[1] = bi_null();
-        pinstr->src[2] = bi_null();
-        pinstr->nr_srcs = 1;
+        bi_drop_srcs(pinstr, 1);
 
         return cubeface1;
 }
@@ -397,8 +394,7 @@ bi_lower_seg_add(bi_context *ctx,
 
         pinstr->op = BI_OPCODE_SEG_ADD;
         pinstr->src[0] = pinstr->src[1];
-        pinstr->src[1] = bi_null();
-        pinstr->nr_srcs = 1;
+        bi_drop_srcs(pinstr, 1);
 
         assert(pinstr->dest[0].type == BI_INDEX_REGISTER);
         pinstr->dest[0].value += 1;

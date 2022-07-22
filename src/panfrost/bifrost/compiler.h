@@ -547,6 +547,33 @@ bi_is_staging_src(const bi_instr *I, unsigned s)
         return (s == 0 || s == 4) && bi_opcode_props[I->op].sr_read;
 }
 
+/*
+ * Safe helpers to remove destinations/sources at the end of the
+ * destination/source array when changing opcodes. Unlike adding
+ * sources/destinations, this does not require reallocation.
+ */
+static inline void
+bi_drop_dests(bi_instr *I, unsigned new_count)
+{
+        assert(new_count < I->nr_dests);
+
+        for (unsigned i = new_count; i < I->nr_dests; ++i)
+                I->dest[i] = bi_null();
+
+        I->nr_dests = new_count;
+}
+
+static inline void
+bi_drop_srcs(bi_instr *I, unsigned new_count)
+{
+        assert(new_count < I->nr_srcs);
+
+        for (unsigned i = new_count; i < I->nr_srcs; ++i)
+                I->src[i] = bi_null();
+
+        I->nr_srcs = new_count;
+}
+
 /* Represents the assignment of slots for a given bi_tuple */
 
 typedef struct {

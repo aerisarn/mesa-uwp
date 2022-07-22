@@ -744,8 +744,7 @@ bi_lower_texc_dual(bi_context *ctx)
                 if (I->op == BI_OPCODE_TEXC_DUAL) {
                         /* In hardware, TEXC has 1 destination */
                         I->op = BI_OPCODE_TEXC;
-                        I->dest[1] = bi_null();
-                        I->nr_dests = 1;
+                        bi_drop_dests(I, 1);
                 }
         }
 }
