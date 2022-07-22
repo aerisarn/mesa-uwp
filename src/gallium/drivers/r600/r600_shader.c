@@ -291,29 +291,10 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		}
 	}
 
-        if (dump) {
-           FILE *f;
-           char fname[1024];
-           snprintf(fname, 1024, "shader_from_%s_%d.cpp",
-                    (sel->ir_type == PIPE_SHADER_IR_TGSI ?
-                        (rscreen->b.debug_flags & DBG_NIR_PREFERRED ? "tgsi-nir" : "tgsi")
-                      : "nir"), nshader);
-           f = fopen(fname, "w");
-           print_shader_info(f, nshader++, &shader->shader);
-           print_shader_info(stderr, nshader++, &shader->shader);
-           print_pipe_info(stderr, &sel->info);
-           if (sel->ir_type == PIPE_SHADER_IR_TGSI) {
-              fprintf(f, "/****TGSI**********************************\n");
-              tgsi_dump_to_file(sel->tokens, 0, f);
-           }
-
-           if (rscreen->b.debug_flags & DBG_NIR_PREFERRED){
-              fprintf(f, "/****NIR **********************************\n");
-              nir_print_shader(sel->nir, f);
-           }
-           fprintf(f, "******************************************/\n");
-           fclose(f);
-        }
+	if (dump) {
+		print_shader_info(stderr, nshader++, &shader->shader);
+		print_pipe_info(stderr, &sel->info);
+	}
 
 	if (shader->gs_copy_shader) {
 		if (dump) {
