@@ -982,12 +982,15 @@ bool Shader::emit_local_store(nir_intrinsic_instr *instr)
    unsigned write_mask = nir_intrinsic_write_mask(instr);
 
    auto address = value_factory().src(instr->src[1], 0);
-   int swizzle_base = (write_mask & 0x3) ? 0 : 2;
-   write_mask |= write_mask >> 2;
+   int swizzle_base = 0;
+   unsigned w = write_mask;
+   while (!(w & 1)) {
+      ++swizzle_base;
+      w >>= 1;
+   }
+   write_mask = write_mask >> swizzle_base;
 
    if ((write_mask & 3) != 3) {
-      if (write_mask == 2)
-         swizzle_base += 1;
       auto value = value_factory().src(instr->src[0], swizzle_base);
       emit_instruction(new LDSAtomicInstr(LDS_WRITE, nullptr, address, {value}));
    } else {
