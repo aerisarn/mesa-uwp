@@ -1583,6 +1583,16 @@ void v3dv_cmd_buffer_add_private_obj(struct v3dv_cmd_buffer *cmd_buffer,
 void v3dv_cmd_buffer_merge_barrier_state(struct v3dv_barrier_state *dst,
                                          struct v3dv_barrier_state *src);
 
+bool v3dv_cmd_buffer_check_needs_load(const struct v3dv_cmd_buffer_state *state,
+                                      VkImageAspectFlags aspect,
+                                      uint32_t first_subpass_idx,
+                                      VkAttachmentLoadOp load_op);
+
+bool v3dv_cmd_buffer_check_needs_store(const struct v3dv_cmd_buffer_state *state,
+                                       VkImageAspectFlags aspect,
+                                       uint32_t last_subpass_idx,
+                                       VkAttachmentStoreOp store_op);
+
 struct v3dv_event {
    struct vk_object_base base;
    int state;

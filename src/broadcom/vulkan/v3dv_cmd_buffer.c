@@ -1399,6 +1399,68 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_CmdClearAttachments(_cmd_buffer, att_count, atts, 1, &rect);
 }
 
+bool
+v3dv_cmd_buffer_check_needs_load(const struct v3dv_cmd_buffer_state *state,
+                                 VkImageAspectFlags aspect,
+                                 uint32_t first_subpass_idx,
+                                 VkAttachmentLoadOp load_op)
+{
+   /* We call this with image->vk.aspects & aspect, so 0 means the aspect we are
+    * testing does not exist in the image.
+    */
+   if (!aspect)
+      return false;
+
+   /* Attachment (or view) load operations apply on the first subpass that
+    * uses the attachment (or view), otherwise we always need to load.
+    */
+   if (state->job->first_subpass > first_subpass_idx)
+      return true;
+
+   /* If the job is continuing a subpass started in another job, we always
+    * need to load.
+    */
+   if (state->job->is_subpass_continue)
+      return true;
+
+   /* If the area is not aligned to tile boundaries, we always need to load */
+   if (!state->tile_aligned_render_area)
+      return true;
+
+   /* The attachment load operations must be LOAD */
+   return load_op == VK_ATTACHMENT_LOAD_OP_LOAD;
+}
+
+bool
+v3dv_cmd_buffer_check_needs_store(const struct v3dv_cmd_buffer_state *state,
+                                  VkImageAspectFlags aspect,
+                                  uint32_t last_subpass_idx,
+                                  VkAttachmentStoreOp store_op)
+{
+   /* We call this with image->vk.aspects & aspect, so 0 means the aspect we are
+    * testing does not exist in the image.
+    */
+   if (!aspect)
+      return false;
+
+   /* Attachment (or view) store operations only apply on the last subpass
+    * where the attachment (or view)  is used, in other subpasses we always
+    * need to store.
+    */
+   if (state->subpass_idx < last_subpass_idx)
+      return true;
+
+   /* Attachment store operations only apply on the last job we emit on the the
+    * last subpass where the attachment is used, otherwise we always need to
+    * store.
+    */
+   if (!state->job->is_subpass_finish)
+      return true;
+
+   /* The attachment store operation must be STORE */
+   return store_op == VK_ATTACHMENT_STORE_OP_STORE;
+}
+
 static struct v3dv_job *
 cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                               uint32_t subpass_idx,
