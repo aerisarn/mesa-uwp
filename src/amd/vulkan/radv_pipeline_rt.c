@@ -134,8 +134,8 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
          RADV_FROM_HANDLE(vk_shader_module, module, pipeline->stages[i].module);
 
          const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
-            vk_find_struct_const(pCreateInfo->pStages[i].pNext,
-               PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
+            vk_find_struct_const(local_create_info.pStages[i].pNext,
+                                 PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
 
          if (module) {
             struct vk_shader_module *new_module = vk_shader_module_clone(NULL, module);
