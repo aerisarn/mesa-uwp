@@ -353,9 +353,11 @@ bi_lower_atom_c(bi_context *ctx, struct bi_clause_state *clause, struct
         if (bi_is_null(pinstr->dest[0]))
                 atom_c->op = BI_OPCODE_ATOM_C_I32;
 
-        pinstr->op = BI_OPCODE_ATOM_CX;
-        pinstr->src[3] = atom_c->src[2];
-        pinstr->nr_srcs = 4;
+        bi_instr *atom_cx = bi_atom_cx_to(&b, pinstr->dest[0], pinstr->src[0],
+                        pinstr->src[1], pinstr->src[2], pinstr->src[0],
+                        pinstr->sr_count);
+        tuple->add = atom_cx;
+        bi_remove_instruction(pinstr);
 
         return atom_c;
 }
@@ -372,12 +374,12 @@ bi_lower_atom_c1(bi_context *ctx, struct bi_clause_state *clause, struct
         if (bi_is_null(pinstr->dest[0]))
                 atom_c->op = BI_OPCODE_ATOM_C1_I32;
 
-        pinstr->op = BI_OPCODE_ATOM_CX;
-        pinstr->src[2] = pinstr->src[1];
-        pinstr->src[1] = pinstr->src[0];
-        pinstr->src[3] = bi_dontcare(&b);
-        pinstr->src[0] = bi_null();
-        pinstr->nr_srcs = 4;
+
+        bi_instr *atom_cx = bi_atom_cx_to(&b, pinstr->dest[0], bi_null(),
+                        pinstr->src[0], pinstr->src[1], bi_dontcare(&b),
+                        pinstr->sr_count);
+        tuple->add = atom_cx;
+        bi_remove_instruction(pinstr);
 
         return atom_c;
 }
