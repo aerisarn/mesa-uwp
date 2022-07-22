@@ -2079,7 +2079,11 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
-   screen->driver_workarounds.color_write_missing = !screen->info.have_EXT_color_write_enable;
+
+   screen->driver_workarounds.color_write_missing =
+      !screen->info.have_EXT_color_write_enable ||
+      !screen->info.cwrite_feats.colorWriteEnable;
+
    screen->driver_workarounds.depth_clip_control_missing = !screen->info.have_EXT_depth_clip_control;
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
       /* this completely breaks xfb somehow */
