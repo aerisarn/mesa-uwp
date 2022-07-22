@@ -49,6 +49,8 @@ Here's a list of those requirements:
     * ``stippledBresenhamLines``
     * ``stippledSmoothLines``
 
+  * `VK_KHR_swapchain_mutable_format`_
+
 In addition to this, `VK_KHR_external_memory`_ is required to support the
 DRI code-path.
 
@@ -316,4 +318,5 @@ questions, don't hesitate to visit `#zink on OFTC
 .. _VK_EXT_custom_border_color: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_custom_border_color.html
 .. _VK_EXT_provoking_vertex: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_provoking_vertex.html
 .. _VK_EXT_line_rasterization: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_line_rasterization.html
+.. _VK_KHR_swapchain_mutable_format: https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_KHR_swapchain_mutable_format.html
 .. _VK_EXT_depth_clip_enable: https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_EXT_depth_clip_enable.html
