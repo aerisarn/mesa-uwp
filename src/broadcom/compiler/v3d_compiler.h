@@ -645,6 +645,7 @@ struct v3d_compile {
                         uint8_t component_mask;
                 } flush[MAX_TMU_QUEUE_SIZE];
                 uint32_t flush_count;
+                uint32_t total_count;
         } tmu;
 
         /**
@@ -919,6 +920,7 @@ struct v3d_prog_data {
         uint32_t spill_size;
         uint32_t tmu_spills;
         uint32_t tmu_fills;
+        uint32_t tmu_count;
 
         uint32_t qpu_read_stalls;
 

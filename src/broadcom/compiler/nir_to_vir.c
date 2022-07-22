@@ -324,6 +324,7 @@ ntq_add_pending_tmu_flush(struct v3d_compile *c,
         c->tmu.flush[c->tmu.flush_count].dest = dest;
         c->tmu.flush[c->tmu.flush_count].component_mask = component_mask;
         c->tmu.flush_count++;
+        c->tmu.total_count++;
 
         if (c->disable_tmu_pipelining)
                 ntq_flush_tmu(c);

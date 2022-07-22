@@ -855,6 +855,7 @@ v3d_set_prog_data(struct v3d_compile *c,
         prog_data->spill_size = c->spill_size;
         prog_data->tmu_spills = c->spills;
         prog_data->tmu_fills = c->fills;
+        prog_data->tmu_count = c->tmu.total_count;
         prog_data->qpu_read_stalls = c->qpu_inst_stalled_count;
         prog_data->compile_strategy_idx = c->compile_strategy_idx;
         prog_data->tmu_dirty_rcl = c->tmu_dirty_rcl;
