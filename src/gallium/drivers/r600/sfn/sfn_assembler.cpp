@@ -199,20 +199,10 @@ void AssamblerVisitor::emit_lds_op(const AluInstr& lds)
    alu.is_lds_idx_op = true;
    alu.op = lds.lds_opcode();
 
-   /* All paired LDS fetch + read from queue instructions
-    * have to fit into the same ALU CF, 256 DW fit in, but we leave some
-    * space for weired things the backend assembler might do. */
-   const bool is_lds_start = lds.has_alu_flag(alu_lds_group_start);
-   const unsigned expected_alu_clause_fill = m_bc->cf_last->ndw +
-                                             2 * lds.required_slots();
-
-   if (is_lds_start && expected_alu_clause_fill > 240)
-      m_bc->force_add_cf = 1;
-
    bool has_lds_fetch = false;
    switch (alu.op) {
-   case DS_OP_WRITE:
-      alu.op = LDS_OP2_LDS_WRITE;
+   case LDS_WRITE:
+      alu.op =LDS_OP2_LDS_WRITE;
       break;
    case LDS_WRITE_REL:
       alu.op = LDS_OP3_LDS_WRITE_REL;
@@ -233,8 +223,18 @@ void AssamblerVisitor::emit_lds_op(const AluInstr& lds)
    case LDS_CMP_XCHG_RET:
       has_lds_fetch = true;
       break;
+   case LDS_ADD:
+   case LDS_AND:
+   case LDS_OR:
+   case LDS_MAX_INT:
+   case LDS_MAX_UINT:
+   case LDS_MIN_INT:
+   case LDS_MIN_UINT:
+   case LDS_XOR:
+      break;
    default:
-      ;
+      std::cerr << "\n R600: error op: " << lds << "\n";
+      unreachable("Unhandled LDS op");
    }
 
    copy_src(alu.src[0], lds.src(0));
@@ -379,13 +379,14 @@ void AssamblerVisitor::visit(const AluGroup& group)
       return;
 
    if (group.has_lds_group_start()) {
-      if (m_bc->cf_last->ndw + 2 * (*group.begin())->required_slots() > 240) {
+      if (m_bc->cf_last->ndw + 2 * (*group.begin())->required_slots() > 220) {
          assert(m_bc->cf_last->nlds_read == 0);
          m_bc->force_add_cf = 1;
          m_last_addr = nullptr;
       }
    } else if (m_bc->cf_last) {
       if (m_bc->cf_last->ndw + 2 * group.slots() > 240) {
+         assert(m_bc->cf_last->nlds_read == 0);
          m_bc->force_add_cf = 1;
          m_last_addr = nullptr;
       } else {
@@ -394,6 +395,7 @@ void AssamblerVisitor::visit(const AluGroup& group)
              !instr->has_alu_flag(alu_is_lds) &&
              instr->opcode() == op0_group_barrier &&
              m_bc->cf_last->ndw + 14 > 240) {
+            assert(m_bc->cf_last->nlds_read == 0);
             m_bc->force_add_cf = 1;
             m_last_addr = nullptr;
          }
