@@ -1493,6 +1493,11 @@ intrinsic("atomic_add_gs_emit_prim_count_amd", [1])
 intrinsic("atomic_add_gen_prim_count_amd", [1], indices=[STREAM_ID])
 intrinsic("atomic_add_xfb_prim_count_amd", [1], indices=[STREAM_ID])
 
+# LDS offset for scratch section in NGG shader
+system_value("lds_ngg_scratch_base_amd", 1)
+# LDS offset for NGG GS shader vertex emit
+system_value("lds_ngg_gs_out_vertex_base_amd", 1)
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
