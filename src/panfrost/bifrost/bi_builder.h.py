@@ -92,23 +92,28 @@ def to_suffix(op):
 static inline
 bi_instr * bi_${opcode.replace('.', '_').lower()}${to_suffix(ops[opcode])}(${signature(ops[opcode], modifiers)})
 {
-    bi_instr *I = rzalloc(b->shader, bi_instr);
-    I->op = BI_OPCODE_${opcode.replace('.', '_').upper()};
+<%
+    op = ops[opcode]
+    nr_dests = "nr_dests" if op["variable_dests"] else op["dests"]
+    nr_srcs = "nr_srcs" if op["variable_srcs"] else src_count(op)
+%>
+    size_t size = sizeof(bi_instr) + sizeof(bi_index) * (${nr_dests} + ${nr_srcs});
+    bi_instr *I = (bi_instr *) rzalloc_size(b->shader, size);
 
-% if ops[opcode]["variable_dests"]:
-    I->nr_dests = nr_dests;
-% else:
-    I->nr_dests = ${ops[opcode]["dests"]};
-% for dest in range(ops[opcode]["dests"]):
+    I->op = BI_OPCODE_${opcode.replace('.', '_').upper()};
+    I->nr_dests = ${nr_dests};
+    I->nr_srcs = ${nr_srcs};
+    I->dest = (bi_index *) (&I[1]);
+    I->src = I->dest + ${nr_dests};
+
+% if not op["variable_dests"]:
+% for dest in range(op["dests"]):
     I->dest[${dest}] = dest${dest};
 % endfor
 %endif
 
-% if ops[opcode]["variable_srcs"]:
-    I->nr_srcs = nr_srcs;
-% else:
-    I->nr_srcs = ${src_count(ops[opcode])};
-% for src in range(src_count(ops[opcode])):
+% if not op["variable_srcs"]:
+% for src in range(src_count(op)):
     I->src[${src}] = src${src};
 % endfor
 % endif

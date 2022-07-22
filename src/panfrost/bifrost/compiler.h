@@ -371,14 +371,12 @@ bi_is_value_equiv(bi_index left, bi_index right)
 typedef struct {
         /* Must be first */
         struct list_head link;
+        bi_index *dest;
+        bi_index *src;
 
         enum bi_opcode op;
         uint8_t nr_srcs;
         uint8_t nr_dests;
-
-        /* Data flow */
-        bi_index dest[BI_MAX_DESTS];
-        bi_index src[BI_MAX_SRCS];
 
         /* For a branch */
         struct bi_block *branch_target;
