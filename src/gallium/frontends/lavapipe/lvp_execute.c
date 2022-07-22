@@ -1041,31 +1041,6 @@ struct dyn_info {
    uint32_t dynamic_offset_count;
 };
 
-static void fill_sampler(struct pipe_sampler_state *ss,
-                         struct lvp_sampler *samp)
-{
-   ss->wrap_s = vk_conv_wrap_mode(samp->create_info.addressModeU);
-   ss->wrap_t = vk_conv_wrap_mode(samp->create_info.addressModeV);
-   ss->wrap_r = vk_conv_wrap_mode(samp->create_info.addressModeW);
-   ss->min_img_filter = samp->create_info.minFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
-   ss->min_mip_filter = samp->create_info.mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR ? PIPE_TEX_MIPFILTER_LINEAR : PIPE_TEX_MIPFILTER_NEAREST;
-   ss->mag_img_filter = samp->create_info.magFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
-   ss->min_lod = samp->create_info.minLod;
-   ss->max_lod = samp->create_info.maxLod;
-   ss->lod_bias = samp->create_info.mipLodBias;
-   if (samp->create_info.anisotropyEnable)
-      ss->max_anisotropy = samp->create_info.maxAnisotropy;
-   else
-      ss->max_anisotropy = 1;
-   ss->normalized_coords = !samp->create_info.unnormalizedCoordinates;
-   ss->compare_mode = samp->create_info.compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
-   ss->compare_func = samp->create_info.compareOp;
-   ss->seamless_cube_map = !(samp->create_info.flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
-   ss->reduction_mode = samp->reduction_mode;
-   memcpy(&ss->border_color, &samp->border_color,
-          sizeof(union pipe_color_union));
-}
-
 static void fill_sampler_stage(struct rendering_state *state,
                                struct dyn_info *dyn_info,
                                gl_shader_stage stage,
@@ -1079,7 +1054,7 @@ static void fill_sampler_stage(struct rendering_state *state,
       return;
    ss_idx += array_idx;
    ss_idx += dyn_info->stage[stage].sampler_count;
-   fill_sampler(&state->ss[p_stage][ss_idx], binding->immutable_samplers ? binding->immutable_samplers[array_idx] : descriptor->sampler);
+   state->ss[p_stage][ss_idx] = binding->immutable_samplers ? binding->immutable_samplers[array_idx]->state : descriptor->sampler->state;
    if (state->num_sampler_states[p_stage] <= ss_idx)
       state->num_sampler_states[p_stage] = ss_idx + 1;
    state->ss_dirty[p_stage] = true;

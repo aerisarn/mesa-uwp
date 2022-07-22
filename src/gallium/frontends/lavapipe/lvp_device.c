@@ -22,6 +22,7 @@
  */
 
 #include "lvp_private.h"
+#include "lvp_conv.h"
 
 #include "pipe-loader/pipe_loader.h"
 #include "git_sha1.h"
@@ -2171,16 +2172,36 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
 
    vk_object_base_init(&device->vk, &sampler->base,
                        VK_OBJECT_TYPE_SAMPLER);
-   sampler->create_info = *pCreateInfo;
 
    VkClearColorValue border_color =
       vk_sampler_border_color_value(pCreateInfo, NULL);
-   STATIC_ASSERT(sizeof(sampler->border_color) == sizeof(border_color));
-   memcpy(&sampler->border_color, &border_color, sizeof(border_color));
+   STATIC_ASSERT(sizeof(sampler->state.border_color) == sizeof(border_color));
 
-   sampler->reduction_mode = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+   sampler->state.wrap_s = vk_conv_wrap_mode(pCreateInfo->addressModeU);
+   sampler->state.wrap_t = vk_conv_wrap_mode(pCreateInfo->addressModeV);
+   sampler->state.wrap_r = vk_conv_wrap_mode(pCreateInfo->addressModeW);
+   sampler->state.min_img_filter = pCreateInfo->minFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
+   sampler->state.min_mip_filter = pCreateInfo->mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR ? PIPE_TEX_MIPFILTER_LINEAR : PIPE_TEX_MIPFILTER_NEAREST;
+   sampler->state.mag_img_filter = pCreateInfo->magFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
+   sampler->state.min_lod = pCreateInfo->minLod;
+   sampler->state.max_lod = pCreateInfo->maxLod;
+   sampler->state.lod_bias = pCreateInfo->mipLodBias;
+   if (pCreateInfo->anisotropyEnable)
+      sampler->state.max_anisotropy = pCreateInfo->maxAnisotropy;
+   else
+      sampler->state.max_anisotropy = 1;
+   sampler->state.normalized_coords = !pCreateInfo->unnormalizedCoordinates;
+   sampler->state.compare_mode = pCreateInfo->compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
+   sampler->state.compare_func = pCreateInfo->compareOp;
+   sampler->state.seamless_cube_map = !(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
+   STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE == (unsigned)PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE);
+   STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_MIN == (unsigned)PIPE_TEX_REDUCTION_MIN);
+   STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_MAX == (unsigned)PIPE_TEX_REDUCTION_MAX);
    if (reduction_mode_create_info)
-      sampler->reduction_mode = reduction_mode_create_info->reductionMode;
+      sampler->state.reduction_mode = (enum pipe_tex_reduction_mode)reduction_mode_create_info->reductionMode;
+   else
+      sampler->state.reduction_mode = PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
+   memcpy(&sampler->state.border_color, &border_color, sizeof(border_color));
 
    *pSampler = lvp_sampler_to_handle(sampler);
 

@@ -261,9 +261,7 @@ struct lvp_image_view {
 
 struct lvp_sampler {
    struct vk_object_base base;
-   VkSamplerCreateInfo create_info;
-   union pipe_color_union border_color;
-   VkSamplerReductionMode reduction_mode;
+   struct pipe_sampler_state state;
 };
 
 struct lvp_descriptor_set_binding_layout {
