@@ -30,7 +30,7 @@ struct state {
 
    struct primitive_map {
       /* +POSITION, +PSIZE, ... - see shader_io_get_unique_index */
-      unsigned loc[32 + 11];
+      unsigned loc[12 + 32];
       unsigned stride;
    } map;
 
@@ -114,10 +114,10 @@ shader_io_get_unique_index(gl_varying_slot slot)
    case VARYING_SLOT_VIEWPORT:    return 11;
    case VARYING_SLOT_VAR0 ... VARYING_SLOT_VAR31: {
       struct state state = {};
-      STATIC_ASSERT(ARRAY_SIZE(state.map.loc) ==
+      STATIC_ASSERT(ARRAY_SIZE(state.map.loc) - 1 ==
                     (12 + VARYING_SLOT_VAR31 - VARYING_SLOT_VAR0));
       struct ir3_shader_variant v = {};
-      STATIC_ASSERT(ARRAY_SIZE(v.output_loc) ==
+      STATIC_ASSERT(ARRAY_SIZE(v.output_loc) - 1 ==
                     (12 + VARYING_SLOT_VAR31 - VARYING_SLOT_VAR0));
       return 12 + (slot - VARYING_SLOT_VAR0);
    }
