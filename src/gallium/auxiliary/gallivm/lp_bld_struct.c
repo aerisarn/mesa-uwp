@@ -51,11 +51,7 @@ lp_build_struct_get_ptr(struct gallivm_state *gallivm,
    LLVMValueRef indices[2];
    LLVMValueRef member_ptr;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-
-   /* Starting with LLVM 15, we're not supposed to look at pointer element type anymore. */
-#if LLVM_VERSION_MAJOR < 15
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
-#endif
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
 
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = lp_build_const_int32(gallivm, member);
@@ -73,9 +69,7 @@ lp_build_struct_get(struct gallivm_state *gallivm,
    LLVMValueRef member_ptr;
    LLVMValueRef res;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-#if LLVM_VERSION_MAJOR < 15
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
-#endif
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
    member_ptr = lp_build_struct_get_ptr(gallivm, ptr, member, name);
    res = LLVMBuildLoad(gallivm->builder, member_ptr, "");
    lp_build_name(res, "%s.%s", LLVMGetValueName(ptr), name);
@@ -92,11 +86,7 @@ lp_build_struct_get_ptr2(struct gallivm_state *gallivm,
    LLVMValueRef indices[2];
    LLVMValueRef member_ptr;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-
-   /* Starting with LLVM 15, we're not supposed to look at pointer element type anymore. */
-#if LLVM_VERSION_MAJOR < 15
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
-#endif
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
 
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = lp_build_const_int32(gallivm, member);
@@ -115,9 +105,7 @@ lp_build_struct_get2(struct gallivm_state *gallivm,
    LLVMValueRef member_ptr;
    LLVMValueRef res;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-#if LLVM_VERSION_MAJOR < 15
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
-#endif
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
    member_ptr = lp_build_struct_get_ptr2(gallivm, ptr_type, ptr, member, name);
    res = LLVMBuildLoad(gallivm->builder, member_ptr, "");
    lp_build_name(res, "%s.%s", LLVMGetValueName(ptr), name);
