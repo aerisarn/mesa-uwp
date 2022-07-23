@@ -2660,7 +2660,6 @@ fs_visitor::lower_logical_sends()
          lower_surface_logical_send(ibld, inst);
          break;
 
-      case SHADER_OPCODE_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
       case SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL:
          lower_surface_block_logical_send(ibld, inst);

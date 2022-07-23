@@ -758,7 +758,6 @@ fs_inst::components_read(unsigned i) const
          return 1;
       }
 
-   case SHADER_OPCODE_OWORD_BLOCK_READ_LOGICAL:
    case SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
       assert(src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
       return 1;
