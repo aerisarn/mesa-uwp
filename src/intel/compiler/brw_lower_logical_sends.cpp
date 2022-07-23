@@ -202,6 +202,8 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
                prog_data->uses_kill) ||
               (devinfo->ver < 11 &&
                (color1.file != BAD_FILE || key->nr_color_regions > 1))) {
+      assert(devinfo->ver < 20);
+
       /* From the Sandy Bridge PRM, volume 4, page 198:
        *
        *     "Dispatched Pixel Enables. One bit per pixel indicating
@@ -289,8 +291,8 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
    }
 
    if (sample_mask.file != BAD_FILE) {
-      sources[length] = fs_reg(VGRF, bld.shader->alloc.allocate(1),
-                               BRW_REGISTER_TYPE_UD);
+      const fs_reg tmp(VGRF, bld.shader->alloc.allocate(reg_unit(devinfo)),
+                       BRW_REGISTER_TYPE_UD);
 
       /* Hand over gl_SampleMask.  Only the lower 16 bits of each channel are
        * relevant.  Since it's unsigned single words one vgrf is always
@@ -303,10 +305,12 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       sample_mask.stride *= 2;
 
       bld.exec_all().annotate("FB write oMask")
-         .MOV(horiz_offset(retype(sources[length], BRW_REGISTER_TYPE_UW),
-                           inst->group % 16),
+         .MOV(horiz_offset(retype(tmp, BRW_REGISTER_TYPE_UW),
+                           inst->group % (16 * reg_unit(devinfo))),
               sample_mask);
-      length++;
+
+      for (unsigned i = 0; i < reg_unit(devinfo); i++)
+         sources[length++] = byte_offset(tmp, REG_SIZE * i);
    }
 
    payload_header_size = length;
@@ -331,13 +335,13 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
 
    if (src_stencil.file != BAD_FILE) {
       assert(devinfo->ver >= 9);
-      assert(bld.dispatch_width() == 8);
+      assert(bld.dispatch_width() == 8 * reg_unit(devinfo));
 
       /* XXX: src_stencil is only available on gfx9+. dst_depth is never
        * available on gfx9+. As such it's impossible to have both enabled at the
        * same time and therefore length cannot overrun the array.
        */
-      assert(length < 15);
+      assert(length < 15 * reg_unit(devinfo));
 
       sources[length] = bld.vgrf(BRW_REGISTER_TYPE_UD);
       bld.exec_all().annotate("FB write OS")
