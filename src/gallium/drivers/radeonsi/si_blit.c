@@ -894,50 +894,6 @@ struct texture_orig_info {
    unsigned npix0_y;
 };
 
-static bool si_can_use_compute_blit(struct si_context *sctx, enum pipe_format format,
-                                    unsigned num_samples, bool is_store, bool has_dcc)
-{
-   /* TODO: This format fails AMD_TEST=imagecopy. */
-   if (format == PIPE_FORMAT_A8R8_UNORM && is_store)
-      return false;
-
-   if (num_samples > 1)
-      return false;
-
-   if (util_format_is_depth_or_stencil(format))
-      return false;
-
-   /* Image stores support DCC since GFX10. */
-   if (has_dcc && is_store && sctx->gfx_level < GFX10)
-      return false;
-
-   return true;
-}
-
-static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
-                                                  struct pipe_resource *texture,
-                                                  unsigned level)
-{
-   struct si_texture *tex = (struct si_texture *)texture;
-
-   /* If we are uploading into FP16 or R11G11B10_FLOAT via a blit, CB clobbers NaNs,
-    * so in order to preserve them exactly, we have to use the compute blit.
-    * The compute blit is used only when the destination doesn't have DCC, so
-    * disable it here, which is kinda a hack.
-    * If we are uploading into 32-bit floats with DCC via a blit, NaNs will also get
-    * lost so we need to disable DCC as well.
-    *
-    * This makes KHR-GL45.texture_view.view_classes pass on gfx9.
-    */
-   if (vi_dcc_enabled(tex, level) &&
-       util_format_is_float(texture->format) &&
-       /* Check if disabling DCC enables the compute copy. */
-       !si_can_use_compute_blit(sctx, texture->format, texture->nr_samples, true, true) &&
-       si_can_use_compute_blit(sctx, texture->format, texture->nr_samples, true, false)) {
-      si_texture_disable_dcc(sctx, tex);
-   }
-}
-
 void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst,
                              unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
                              struct pipe_resource *src, unsigned src_level,
@@ -945,7 +901,6 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_texture *ssrc = (struct si_texture *)src;
-   struct si_texture *sdst = (struct si_texture *)dst;
    struct pipe_surface *dst_view, dst_templ;
    struct pipe_sampler_view src_templ, *src_view;
    struct pipe_box dstbox;
@@ -956,25 +911,9 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
       return;
    }
 
-   si_use_compute_copy_for_float_formats(sctx, dst, dst_level);
-
-   /* The compute copy is mandatory for compressed and subsampled formats because the gfx copy
-    * doesn't support them. In all other cases, call si_can_use_compute_blit.
-    *
-    * The format is identical (we only need to check the src format) except compressed formats,
-    * which can be paired with an equivalent integer format.
-    */
-   if (util_format_is_compressed(src->format) ||
-       util_format_is_compressed(dst->format) ||
-       util_format_is_subsampled_422(src->format) ||
-       (si_can_use_compute_blit(sctx, dst->format, dst->nr_samples, true,
-                                vi_dcc_enabled(sdst, dst_level)) &&
-        si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
-                                vi_dcc_enabled(ssrc, src_level)))) {
-      si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
-                            src_box, SI_OP_SYNC_BEFORE_AFTER);
+   if (si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
+                             src_box, SI_OP_SYNC_BEFORE_AFTER))
       return;
-   }
 
    assert(u_max_sample(dst) == u_max_sample(src));
 

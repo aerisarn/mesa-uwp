@@ -28,6 +28,50 @@
 #include "util/format_srgb.h"
 #include "util/u_helpers.h"
 
+static bool si_can_use_compute_blit(struct si_context *sctx, enum pipe_format format,
+                                    unsigned num_samples, bool is_store, bool has_dcc)
+{
+   /* TODO: This format fails AMD_TEST=imagecopy. */
+   if (format == PIPE_FORMAT_A8R8_UNORM && is_store)
+      return false;
+
+   if (num_samples > 1)
+      return false;
+
+   if (util_format_is_depth_or_stencil(format))
+      return false;
+
+   /* Image stores support DCC since GFX10. */
+   if (has_dcc && is_store && sctx->gfx_level < GFX10)
+      return false;
+
+   return true;
+}
+
+static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
+                                                  struct pipe_resource *texture,
+                                                  unsigned level)
+{
+   struct si_texture *tex = (struct si_texture *)texture;
+
+   /* If we are uploading into FP16 or R11G11B10_FLOAT via a blit, CB clobbers NaNs,
+    * so in order to preserve them exactly, we have to use the compute blit.
+    * The compute blit is used only when the destination doesn't have DCC, so
+    * disable it here, which is kinda a hack.
+    * If we are uploading into 32-bit floats with DCC via a blit, NaNs will also get
+    * lost so we need to disable DCC as well.
+    *
+    * This makes KHR-GL45.texture_view.view_classes pass on gfx9.
+    */
+   if (vi_dcc_enabled(tex, level) &&
+       util_format_is_float(texture->format) &&
+       /* Check if disabling DCC enables the compute copy. */
+       !si_can_use_compute_blit(sctx, texture->format, texture->nr_samples, true, true) &&
+       si_can_use_compute_blit(sctx, texture->format, texture->nr_samples, true, false)) {
+      si_texture_disable_dcc(sctx, tex);
+   }
+}
+
 /* Determine the cache policy. */
 static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_coherency coher,
                                              uint64_t size)
@@ -549,13 +593,31 @@ static void si_launch_grid_internal_images(struct si_context *sctx,
       pipe_resource_reference(&saved_image[i].resource, NULL);
 }
 
-void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
+bool si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
                            struct pipe_resource *src, unsigned src_level, unsigned dstx,
                            unsigned dsty, unsigned dstz, const struct pipe_box *src_box,
                            unsigned flags)
 {
    struct si_texture *ssrc = (struct si_texture*)src;
    struct si_texture *sdst = (struct si_texture*)dst;
+
+   si_use_compute_copy_for_float_formats(sctx, dst, dst_level);
+
+   /* The compute copy is mandatory for compressed and subsampled formats because the gfx copy
+    * doesn't support them. In all other cases, call si_can_use_compute_blit.
+    *
+    * The format is identical (we only need to check the src format) except compressed formats,
+    * which can be paired with an equivalent integer format.
+    */
+   if (!util_format_is_compressed(src->format) &&
+       !util_format_is_compressed(dst->format) &&
+       !util_format_is_subsampled_422(src->format) &&
+       (!si_can_use_compute_blit(sctx, dst->format, dst->nr_samples, true,
+                                 vi_dcc_enabled(sdst, dst_level)) ||
+        !si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
+                                 vi_dcc_enabled(ssrc, src_level))))
+      return false;
+
    enum pipe_format src_format = util_format_linear(src->format);
    enum pipe_format dst_format = util_format_linear(dst->format);
    bool is_linear = ssrc->surface.is_linear || sdst->surface.is_linear;
@@ -644,7 +706,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       src_format = dst_format = util_format_snorm_to_sint(dst_format);
 
    if (src_box->width == 0 || src_box->height == 0 || src_box->depth == 0)
-      return;
+      return true; /* success - nothing to do */
 
    struct pipe_image_view image[2] = {0};
    image[0].resource = src;
@@ -698,6 +760,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    assert(*copy_image_cs_ptr);
 
    si_launch_grid_internal_images(sctx, image, 2, &info, *copy_image_cs_ptr, flags);
+   return true;
 }
 
 void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
