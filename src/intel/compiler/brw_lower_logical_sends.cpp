@@ -1514,6 +1514,7 @@ emit_predicate_on_vector_mask(const fs_builder &bld, fs_inst *inst)
       assert(inst->predicate == BRW_PREDICATE_NORMAL);
       assert(!inst->predicate_inverse);
       assert(inst->flag_subreg == 0);
+      assert(s.devinfo->ver < 20);
       /* Combine the vector mask with the existing predicate by using a
        * vertical predication mode.
        */

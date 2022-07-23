@@ -984,22 +984,26 @@ fs_inst::size_read(int arg) const
 
 namespace {
    unsigned
-   predicate_width(brw_predicate predicate)
+   predicate_width(const intel_device_info *devinfo, brw_predicate predicate)
    {
-      switch (predicate) {
-      case BRW_PREDICATE_NONE:            return 1;
-      case BRW_PREDICATE_NORMAL:          return 1;
-      case BRW_PREDICATE_ALIGN1_ANY2H:    return 2;
-      case BRW_PREDICATE_ALIGN1_ALL2H:    return 2;
-      case BRW_PREDICATE_ALIGN1_ANY4H:    return 4;
-      case BRW_PREDICATE_ALIGN1_ALL4H:    return 4;
-      case BRW_PREDICATE_ALIGN1_ANY8H:    return 8;
-      case BRW_PREDICATE_ALIGN1_ALL8H:    return 8;
-      case BRW_PREDICATE_ALIGN1_ANY16H:   return 16;
-      case BRW_PREDICATE_ALIGN1_ALL16H:   return 16;
-      case BRW_PREDICATE_ALIGN1_ANY32H:   return 32;
-      case BRW_PREDICATE_ALIGN1_ALL32H:   return 32;
-      default: unreachable("Unsupported predicate");
+      if (devinfo->ver >= 20) {
+         return 1;
+      } else {
+         switch (predicate) {
+         case BRW_PREDICATE_NONE:            return 1;
+         case BRW_PREDICATE_NORMAL:          return 1;
+         case BRW_PREDICATE_ALIGN1_ANY2H:    return 2;
+         case BRW_PREDICATE_ALIGN1_ALL2H:    return 2;
+         case BRW_PREDICATE_ALIGN1_ANY4H:    return 4;
+         case BRW_PREDICATE_ALIGN1_ALL4H:    return 4;
+         case BRW_PREDICATE_ALIGN1_ANY8H:    return 8;
+         case BRW_PREDICATE_ALIGN1_ALL8H:    return 8;
+         case BRW_PREDICATE_ALIGN1_ANY16H:   return 16;
+         case BRW_PREDICATE_ALIGN1_ALL16H:   return 16;
+         case BRW_PREDICATE_ALIGN1_ANY32H:   return 32;
+         case BRW_PREDICATE_ALIGN1_ALL32H:   return 32;
+         default: unreachable("Unsupported predicate");
+         }
       }
    }
 
@@ -1039,15 +1043,15 @@ namespace {
 unsigned
 fs_inst::flags_read(const intel_device_info *devinfo) const
 {
-   if (predicate == BRW_PREDICATE_ALIGN1_ANYV ||
-       predicate == BRW_PREDICATE_ALIGN1_ALLV) {
+   if (devinfo->ver < 20 && (predicate == BRW_PREDICATE_ALIGN1_ANYV ||
+                             predicate == BRW_PREDICATE_ALIGN1_ALLV)) {
       /* The vertical predication modes combine corresponding bits from
        * f0.0 and f1.0 on Gfx7+, and f0.0 and f0.1 on older hardware.
        */
       const unsigned shift = devinfo->ver >= 7 ? 4 : 2;
       return flag_mask(this, 1) << shift | flag_mask(this, 1);
    } else if (predicate) {
-      return flag_mask(this, predicate_width(predicate));
+      return flag_mask(this, predicate_width(devinfo, predicate));
    } else {
       unsigned mask = 0;
       for (int i = 0; i < sources; i++) {
@@ -4607,6 +4611,7 @@ brw_emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
       assert(inst->predicate == BRW_PREDICATE_NORMAL);
       assert(!inst->predicate_inverse);
       assert(inst->flag_subreg == 0);
+      assert(s.devinfo->ver < 20);
       /* Combine the sample mask with the existing predicate by using a
        * vertical predication mode.
        */

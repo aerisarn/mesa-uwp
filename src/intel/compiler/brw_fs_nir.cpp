@@ -4176,7 +4176,8 @@ fs_nir_emit_fs_intrinsic(nir_to_brw_state &ntb,
          /* Only jump when the whole quad is demoted.  For historical
           * reasons this is also used for discard.
           */
-         jump->predicate = BRW_PREDICATE_ALIGN1_ANY4H;
+         jump->predicate = (devinfo->ver >= 20 ? XE2_PREDICATE_ANY :
+                            BRW_PREDICATE_ALIGN1_ANY4H);
       }
 
       if (devinfo->ver < 7)
@@ -7167,7 +7168,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
       unreachable("not reached");
 
    case nir_intrinsic_vote_any: {
-      const fs_builder ubld = bld.exec_all().group(1, 0);
+      const fs_builder ubld1 = bld.exec_all().group(1, 0);
 
       /* The any/all predicates do not consider channel enables. To prevent
        * dead channels from affecting the result, we initialize the flag with
@@ -7175,10 +7176,10 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
        */
       if (s.dispatch_width == 32) {
          /* For SIMD32, we use a UD type so we fill both f0.0 and f0.1. */
-         ubld.MOV(retype(brw_flag_reg(0, 0), BRW_REGISTER_TYPE_UD),
-                         brw_imm_ud(0));
+         ubld1.MOV(retype(brw_flag_reg(0, 0), BRW_REGISTER_TYPE_UD),
+                   brw_imm_ud(0));
       } else {
-         ubld.MOV(brw_flag_reg(0, 0), brw_imm_uw(0));
+         ubld1.MOV(brw_flag_reg(0, 0), brw_imm_uw(0));
       }
       bld.CMP(bld.null_reg_d(), get_nir_src(ntb, instr->src[0]), brw_imm_d(0), BRW_CONDITIONAL_NZ);
 
@@ -7188,18 +7189,20 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
        * getting garbage in the second half.  Work around this by using a pair
        * of 1-wide MOVs and scattering the result.
        */
+      const fs_builder ubld = devinfo->ver >= 20 ? bld.exec_all() : ubld1;
       fs_reg res1 = ubld.vgrf(BRW_REGISTER_TYPE_D);
       ubld.MOV(res1, brw_imm_d(0));
-      set_predicate(s.dispatch_width == 8  ? BRW_PREDICATE_ALIGN1_ANY8H :
+      set_predicate(devinfo->ver >= 20 ? XE2_PREDICATE_ANY :
+                    s.dispatch_width == 8  ? BRW_PREDICATE_ALIGN1_ANY8H :
                     s.dispatch_width == 16 ? BRW_PREDICATE_ALIGN1_ANY16H :
-                                              BRW_PREDICATE_ALIGN1_ANY32H,
+                                             BRW_PREDICATE_ALIGN1_ANY32H,
                     ubld.MOV(res1, brw_imm_d(-1)));
 
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D), component(res1, 0));
       break;
    }
    case nir_intrinsic_vote_all: {
-      const fs_builder ubld = bld.exec_all().group(1, 0);
+      const fs_builder ubld1 = bld.exec_all().group(1, 0);
 
       /* The any/all predicates do not consider channel enables. To prevent
        * dead channels from affecting the result, we initialize the flag with
@@ -7207,10 +7210,10 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
        */
       if (s.dispatch_width == 32) {
          /* For SIMD32, we use a UD type so we fill both f0.0 and f0.1. */
-         ubld.MOV(retype(brw_flag_reg(0, 0), BRW_REGISTER_TYPE_UD),
-                         brw_imm_ud(0xffffffff));
+         ubld1.MOV(retype(brw_flag_reg(0, 0), BRW_REGISTER_TYPE_UD),
+                   brw_imm_ud(0xffffffff));
       } else {
-         ubld.MOV(brw_flag_reg(0, 0), brw_imm_uw(0xffff));
+         ubld1.MOV(brw_flag_reg(0, 0), brw_imm_uw(0xffff));
       }
       bld.CMP(bld.null_reg_d(), get_nir_src(ntb, instr->src[0]), brw_imm_d(0), BRW_CONDITIONAL_NZ);
 
@@ -7220,11 +7223,13 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
        * getting garbage in the second half.  Work around this by using a pair
        * of 1-wide MOVs and scattering the result.
        */
+      const fs_builder ubld = devinfo->ver >= 20 ? bld.exec_all() : ubld1;
       fs_reg res1 = ubld.vgrf(BRW_REGISTER_TYPE_D);
       ubld.MOV(res1, brw_imm_d(0));
-      set_predicate(s.dispatch_width == 8  ? BRW_PREDICATE_ALIGN1_ALL8H :
+      set_predicate(devinfo->ver >= 20 ? XE2_PREDICATE_ALL :
+                    s.dispatch_width == 8  ? BRW_PREDICATE_ALIGN1_ALL8H :
                     s.dispatch_width == 16 ? BRW_PREDICATE_ALIGN1_ALL16H :
-                                              BRW_PREDICATE_ALIGN1_ALL32H,
+                                             BRW_PREDICATE_ALIGN1_ALL32H,
                     ubld.MOV(res1, brw_imm_d(-1)));
 
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D), component(res1, 0));
@@ -7240,7 +7245,7 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
       }
 
       fs_reg uniformized = bld.emit_uniformize(value);
-      const fs_builder ubld = bld.exec_all().group(1, 0);
+      const fs_builder ubld1 = bld.exec_all().group(1, 0);
 
       /* The any/all predicates do not consider channel enables. To prevent
        * dead channels from affecting the result, we initialize the flag with
@@ -7248,10 +7253,10 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
        */
       if (s.dispatch_width == 32) {
          /* For SIMD32, we use a UD type so we fill both f0.0 and f0.1. */
-         ubld.MOV(retype(brw_flag_reg(0, 0), BRW_REGISTER_TYPE_UD),
+         ubld1.MOV(retype(brw_flag_reg(0, 0), BRW_REGISTER_TYPE_UD),
                          brw_imm_ud(0xffffffff));
       } else {
-         ubld.MOV(brw_flag_reg(0, 0), brw_imm_uw(0xffff));
+         ubld1.MOV(brw_flag_reg(0, 0), brw_imm_uw(0xffff));
       }
       bld.CMP(bld.null_reg_d(), value, uniformized, BRW_CONDITIONAL_Z);
 
@@ -7261,11 +7266,13 @@ fs_nir_emit_intrinsic(nir_to_brw_state &ntb,
        * getting garbage in the second half.  Work around this by using a pair
        * of 1-wide MOVs and scattering the result.
        */
+      const fs_builder ubld = devinfo->ver >= 20 ? bld.exec_all() : ubld1;
       fs_reg res1 = ubld.vgrf(BRW_REGISTER_TYPE_D);
       ubld.MOV(res1, brw_imm_d(0));
-      set_predicate(s.dispatch_width == 8  ? BRW_PREDICATE_ALIGN1_ALL8H :
+      set_predicate(devinfo->ver >= 20 ? XE2_PREDICATE_ALL :
+                    s.dispatch_width == 8  ? BRW_PREDICATE_ALIGN1_ALL8H :
                     s.dispatch_width == 16 ? BRW_PREDICATE_ALIGN1_ALL16H :
-                                              BRW_PREDICATE_ALIGN1_ALL32H,
+                                             BRW_PREDICATE_ALIGN1_ALL32H,
                     ubld.MOV(res1, brw_imm_d(-1)));
 
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D), component(res1, 0));
