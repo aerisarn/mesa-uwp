@@ -420,8 +420,12 @@ ngg_nogs_init_vertex_indices_vars(nir_builder *b, nir_function_impl *impl, lower
    for (unsigned v = 0; v < st->num_vertices_per_primitives; ++v) {
       st->gs_vtx_indices_vars[v] = nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx_addr");
 
-      nir_ssa_def *vtx = nir_ubfe(b, nir_load_gs_vertex_offset_amd(b, .base = v / 2u),
-                         nir_imm_int(b, (v & 1u) * 16u), nir_imm_int(b, 16u));
+      nir_ssa_def *vtx = st->passthrough ?
+         nir_ubfe(b, nir_load_packed_passthrough_primitive_amd(b),
+                  nir_imm_int(b, 10 * v), nir_imm_int(b, 9)) :
+         nir_ubfe(b, nir_load_gs_vertex_offset_amd(b, .base = v / 2u),
+                  nir_imm_int(b, (v & 1u) * 16u), nir_imm_int(b, 16u));
+
       nir_store_var(b, st->gs_vtx_indices_vars[v], vtx, 0x1);
    }
 }
@@ -430,7 +434,6 @@ static nir_ssa_def *
 emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *st)
 {
    if (st->passthrough) {
-      assert(st->primitive_id_location < 0 || b->shader->info.stage != MESA_SHADER_VERTEX);
       return nir_load_packed_passthrough_primitive_amd(b);
    } else {
       nir_ssa_def *vtx_idx[3] = {0};
