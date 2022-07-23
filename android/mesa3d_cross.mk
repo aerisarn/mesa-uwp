@@ -169,13 +169,14 @@ define m-lld-flags
 endef
 
 define m-lld-flags-cleaned
+  $(patsubst -Wl$(comma)--build-id=%,, \
   $(subst prebuilts/,$(AOSP_ABSOLUTE_PATH)/prebuilts/, \
   $(subst $(OUT_DIR)/,$(call relative-to-absolute,$(OUT_DIR))/, \
   $(subst -Wl$(comma)--fatal-warnings,,                \
   $(subst -Wl$(comma)--no-undefined-version,,          \
   $(subst -Wl$(comma)--gc-sections,,                   \
   $(patsubst %dummy.o,,                                \
-    $(m-lld-flags)))))))
+    $(m-lld-flags))))))))
 endef
 
 define m-cpp-flags
