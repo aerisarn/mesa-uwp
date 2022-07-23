@@ -1026,9 +1026,14 @@ static bool resolve_formats_compatible(enum pipe_format src, enum pipe_format ds
    return *need_rgb_to_bgr;
 }
 
-static bool do_hardware_msaa_resolve(struct pipe_context *ctx, const struct pipe_blit_info *info)
+static bool si_msaa_resolve_blit_via_CB(struct pipe_context *ctx, const struct pipe_blit_info *info)
 {
    struct si_context *sctx = (struct si_context *)ctx;
+
+   /* Gfx11 doesn't have CB_RESOLVE. */
+   if (sctx->gfx_level >= GFX11)
+      return false;
+
    struct si_texture *src = (struct si_texture *)info->src.resource;
    struct si_texture *dst = (struct si_texture *)info->dst.resource;
    ASSERTED struct si_texture *stmp;
@@ -1156,11 +1161,6 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_texture *sdst = (struct si_texture *)info->dst.resource;
 
-   /* Gfx11 doesn't have CB_RESOLVE. */
-   /* TODO: Use compute-based resolving instead. */
-   if (sctx->gfx_level < GFX11 && do_hardware_msaa_resolve(ctx, info))
-      return;
-
    if (sctx->gfx_level >= GFX7 &&
        (info->dst.resource->bind & PIPE_BIND_PRIME_BLIT_DST) && sdst->surface.is_linear &&
        /* Use SDMA or async compute when copying to a DRI_PRIME imported linear surface. */
@@ -1195,6 +1195,12 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
       simple_mtx_unlock(&sscreen->async_compute_context_lock);
    }
+
+   if (unlikely(sctx->thread_trace_enabled))
+      sctx->sqtt_next_event = EventCmdResolveImage;
+
+   if (si_msaa_resolve_blit_via_CB(ctx, info))
+      return;
 
    if (unlikely(sctx->thread_trace_enabled))
       sctx->sqtt_next_event = EventCmdCopyImage;
