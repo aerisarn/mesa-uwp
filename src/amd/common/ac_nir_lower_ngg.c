@@ -84,6 +84,7 @@ typedef struct
 
 typedef struct
 {
+   nir_function_impl *impl;
    nir_variable *output_vars[VARYING_SLOT_MAX][4];
    nir_variable *current_clear_primflag_idx_var;
    int const_out_vtxcnt[4];
@@ -1712,7 +1713,15 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       info->stream = stream;
       info->components_mask |= BITFIELD_BIT(component_offset + comp);
 
-      nir_variable *var = s->output_vars[location][component_offset + comp];
+      unsigned component = component_offset + comp;
+      nir_variable *var = s->output_vars[location][component];
+      if (!var) {
+         var = nir_local_variable_create(
+            s->impl, glsl_uintN_t_type(store_val->bit_size), "output");
+         s->output_vars[location][component] = var;
+      }
+      assert(glsl_base_type_bit_size(glsl_get_base_type(var->type)) == store_val->bit_size);
+
       nir_store_var(b, var, nir_channel(b, store_val, comp), 0x1u);
    }
 
@@ -1747,10 +1756,22 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
          u_bit_scan_consecutive_range(&mask, &start, &count);
          nir_ssa_def *values[4] = {0};
          for (int c = start; c < start + count; ++c) {
+            nir_variable *var = s->output_vars[slot][c];
+            if (!var) {
+               /* no one write to this output before */
+               values[c - start] = nir_ssa_undef(b, 1, 32);
+               continue;
+            }
+
             /* Load output from variable. */
-            values[c - start] = nir_load_var(b, s->output_vars[slot][c]);
+            nir_ssa_def *val = nir_load_var(b, var);
+
+            /* extend 8/16 bit to 32 bit, 64 bit has been lowered */
+            unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
+            values[c - start] = bit_size == 32 ? val : nir_u2u32(b, val);
+
             /* Clear the variable (it is undefined after emit_vertex) */
-            nir_store_var(b, s->output_vars[slot][c], nir_ssa_undef(b, 1, 32), 0x1);
+            nir_store_var(b, s->output_vars[slot][c], nir_ssa_undef(b, 1, bit_size), 0x1);
          }
 
          nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
@@ -1893,16 +1914,6 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
       exported_out_vtx_lds_addr = ngg_gs_out_vertex_addr(b, nir_u2u32(b, exported_vtx_idx), s);
    }
 
-   /* Remember proper bit sizes of output variables. */
-   uint8_t out_bitsizes[VARYING_SLOT_MAX];
-   memset(out_bitsizes, 32, VARYING_SLOT_MAX);
-   nir_foreach_shader_out_variable(var, b->shader) {
-      /* Check 8/16-bit. All others should be lowered to 32-bit already. */
-      unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(glsl_without_array(var->type)));
-      if (bit_size == 8 || bit_size == 16)
-         out_bitsizes[var->data.location] = bit_size;
-   }
-
    for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
       if (!(b->shader->info.outputs_written & BITFIELD64_BIT(slot)))
          continue;
@@ -1923,13 +1934,21 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
                             .base = packed_location * 16 + start * 4,
                             .align_mul = 4);
 
-         /* Convert to the expected bit size of the output variable. */
-         if (out_bitsizes[slot] != 32)
-            load = nir_u2u(b, load, out_bitsizes[slot]);
+         for (int i = 0; i < count; i++) {
+            nir_variable *var = s->output_vars[slot][start + i];
+            assert(var);
 
-         nir_store_output(b, load, nir_imm_int(b, 0), .base = info->base,
-                          .io_semantics = io_sem, .component = start,
-                          .write_mask = BITFIELD_MASK(count));
+            nir_ssa_def *val = nir_channel(b, load, i);
+
+            /* Convert to the expected bit size of the output variable. */
+            unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
+            if (bit_size != 32)
+               val = nir_u2u(b, val, bit_size);
+
+            nir_store_output(b, val, nir_imm_int(b, 0), .base = info->base,
+                             .io_semantics = io_sem, .component = start + i,
+                             .write_mask = 1);
+         }
       }
    }
 
@@ -2043,6 +2062,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
    assert(impl);
 
    lower_ngg_gs_state state = {
+      .impl = impl,
       .max_num_waves = DIV_ROUND_UP(max_workgroup_size, wave_size),
       .wave_size = wave_size,
       .lds_addr_gs_out_vtx = esgs_ring_lds_bytes,
@@ -2087,13 +2107,6 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
 
    /* Wrap the GS control flow. */
    nir_if *if_gs_thread = nir_push_if(b, nir_has_input_primitive_amd(b));
-
-   /* Create and initialize output variables */
-   for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
-      for (unsigned comp = 0; comp < 4; ++comp) {
-         state.output_vars[slot][comp] = nir_local_variable_create(impl, glsl_uint_type(), "output");
-      }
-   }
 
    nir_cf_reinsert(&extracted, b->cursor);
    b->cursor = nir_after_cf_list(&if_gs_thread->then_list);
