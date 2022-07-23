@@ -2041,7 +2041,8 @@ void util_blitter_blit_generic(struct blitter_context *blitter,
    }
 
    bool is_scaled = dstbox->width != abs(srcbox->width) ||
-                    dstbox->height != abs(srcbox->height);
+                    dstbox->height != abs(srcbox->height) ||
+                    dstbox->depth != abs(srcbox->depth);
 
    if (src_has_stencil || !is_scaled)
       filter = PIPE_TEX_FILTER_NEAREST;
