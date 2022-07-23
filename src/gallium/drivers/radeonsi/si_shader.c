@@ -334,7 +334,8 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_
    } else if (ctx->screen->info.gfx_level >= GFX10) {
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
-                 &ctx->args.vs_prim_id); /* user vgpr or PrimID (legacy) */
+                 /* user vgpr or PrimID (legacy) */
+                 shader->key.ge.as_ngg ? NULL : &ctx->args.vs_prim_id);
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
    } else {
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
