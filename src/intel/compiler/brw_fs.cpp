@@ -4900,8 +4900,9 @@ get_fpu_lowered_simd_width(const struct brw_compiler *compiler,
    /* Calculate the maximum execution size of the instruction based on the
     * factor by which it goes over the hardware limit of 2 GRFs.
     */
-   if (reg_count > 2)
-      max_width = MIN2(max_width, inst->exec_size / DIV_ROUND_UP(reg_count, 2));
+   const unsigned max_reg_count = 2 * reg_unit(devinfo);
+   if (reg_count > max_reg_count)
+      max_width = MIN2(max_width, inst->exec_size / DIV_ROUND_UP(reg_count, max_reg_count));
 
    /* According to the IVB PRMs:
     *  "When destination spans two registers, the source MUST span two
@@ -4978,7 +4979,8 @@ get_fpu_lowered_simd_width(const struct brw_compiler *compiler,
     * From the BDW PRMs (applies to later hardware too):
     *  "Ternary instruction with condition modifiers must not use SIMD32."
     */
-   if (inst->conditional_mod && (devinfo->ver < 8 || inst->is_3src(compiler)))
+   if (inst->conditional_mod && (devinfo->ver < 8 ||
+                                 (inst->is_3src(compiler) && devinfo->ver < 12)))
       max_width = MIN2(max_width, 16);
 
    /* From the IVB PRMs (applies to other devices that don't have the
@@ -5041,7 +5043,7 @@ get_fpu_lowered_simd_width(const struct brw_compiler *compiler,
     * instructions do not support HF types and conversions from/to F are
     * required.
     */
-   if (is_mixed_float_with_fp32_dst(inst))
+   if (is_mixed_float_with_fp32_dst(inst) && devinfo->ver < 20)
       max_width = MIN2(max_width, 8);
 
    /* From the SKL PRM, Special Restrictions for Handling Mixed Mode
@@ -5050,7 +5052,7 @@ get_fpu_lowered_simd_width(const struct brw_compiler *compiler,
     *    "No SIMD16 in mixed mode when destination is packed f16 for both
     *     Align1 and Align16."
     */
-   if (is_mixed_float_with_packed_fp16_dst(inst))
+   if (is_mixed_float_with_packed_fp16_dst(inst) && devinfo->ver < 20)
       max_width = MIN2(max_width, 8);
 
    /* Only power-of-two execution sizes are representable in the instruction
