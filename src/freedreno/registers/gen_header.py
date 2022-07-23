@@ -345,6 +345,38 @@ class Parser(object):
 		except ValueError as e:
 			raise self.error(e);
 
+	def do_validate(self, schemafile):
+		try:
+			from lxml import etree
+
+			parser, filename = self.stack[-1]
+			dirname = os.path.dirname(filename)
+
+			# we expect this to look like <namespace url> schema.xsd.. I think
+			# technically it is supposed to be just a URL, but that doesn't
+			# quite match up to what we do.. Just skip over everything up to
+			# and including the first whitespace character:
+			schemafile = schemafile[schemafile.rindex(" ")+1:]
+
+			# this is a bit cheezy, but the xml file to validate could be
+			# in a child director, ie. we don't really know where the schema
+			# file is, the way the rnn C code does.  So if it doesn't exist
+			# just look one level up
+			if not os.path.exists(dirname + "/" + schemafile):
+				schemafile = "../" + schemafile
+
+			if not os.path.exists(dirname + "/" + schemafile):
+				raise self.error("Cannot find schema for: " + filename)
+
+			xmlschema_doc = etree.parse(dirname + "/" + schemafile)
+			xmlschema = etree.XMLSchema(xmlschema_doc)
+
+			xml_doc = etree.parse(filename)
+			if not xmlschema.validate(xml_doc):
+				raise self.error("Schema validation failed for: " + filename)
+		except ImportError:
+			print("lxml not found, skipping validation", file=sys.stderr)
+
 	def do_parse(self, filename):
 		file = open(filename, "rb")
 		parser = xml.parsers.expat.ParserCreate()
@@ -422,6 +454,8 @@ class Parser(object):
 				self.file.append(self.current_bitset)
 		elif name == "bitfield" and self.current_bitset:
 			self.parse_field(attrs["name"], attrs)
+		elif name == "database":
+			self.do_validate(attrs["xsi:schemaLocation"])
 
 	def end_element(self, name):
 		if name == "domain":
@@ -474,7 +508,7 @@ def main():
 	try:
 		p.parse(rnn_path, xml_file)
 	except Error as e:
-		print(e)
+		print(e, file=sys.stderr)
 		exit(1)
 
 	if do_structs:
