@@ -1161,40 +1161,39 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    if (sctx->gfx_level < GFX11 && do_hardware_msaa_resolve(ctx, info))
       return;
 
-   if ((info->dst.resource->bind & PIPE_BIND_PRIME_BLIT_DST) && sdst->surface.is_linear &&
-       sctx->gfx_level >= GFX7) {
+   if (sctx->gfx_level >= GFX7 &&
+       (info->dst.resource->bind & PIPE_BIND_PRIME_BLIT_DST) && sdst->surface.is_linear &&
+       /* Use SDMA or async compute when copying to a DRI_PRIME imported linear surface. */
+       info->dst.box.x == 0 && info->dst.box.y == 0 && info->dst.box.z == 0 &&
+       info->src.box.x == 0 && info->src.box.y == 0 && info->src.box.z == 0 &&
+       info->dst.level == 0 && info->src.level == 0 &&
+       info->src.box.width == info->dst.resource->width0 &&
+       info->src.box.height == info->dst.resource->height0 &&
+       info->src.box.depth == 1 &&
+       util_can_blit_via_copy_region(info, true, sctx->render_cond != NULL)) {
       struct si_texture *ssrc = (struct si_texture *)info->src.resource;
-      /* Use SDMA or async compute when copying to a DRI_PRIME imported linear surface. */
-      bool async_copy = info->dst.box.x == 0 && info->dst.box.y == 0 && info->dst.box.z == 0 &&
-                        info->src.box.x == 0 && info->src.box.y == 0 && info->src.box.z == 0 &&
-                        info->dst.level == 0 && info->src.level == 0 &&
-                        info->src.box.width == info->dst.resource->width0 &&
-                        info->src.box.height == info->dst.resource->height0 &&
-                        info->src.box.depth == 1 &&
-                        util_can_blit_via_copy_region(info, true, sctx->render_cond != NULL);
+
       /* Try SDMA first... */
-      if (async_copy && si_sdma_copy_image(sctx, sdst, ssrc))
+      if (si_sdma_copy_image(sctx, sdst, ssrc))
          return;
 
       /* ... and use async compute as the fallback. */
-      if (async_copy) {
-         struct si_screen *sscreen = sctx->screen;
+      struct si_screen *sscreen = sctx->screen;
 
-         simple_mtx_lock(&sscreen->async_compute_context_lock);
-         if (!sscreen->async_compute_context)
-            si_init_aux_async_compute_ctx(sscreen);
+      simple_mtx_lock(&sscreen->async_compute_context_lock);
+      if (!sscreen->async_compute_context)
+         si_init_aux_async_compute_ctx(sscreen);
 
-         if (sscreen->async_compute_context) {
-            si_compute_copy_image((struct si_context*)sctx->screen->async_compute_context,
-                                  info->dst.resource, 0, info->src.resource, 0, 0, 0, 0,
-                                  &info->src.box, 0);
-            si_flush_gfx_cs((struct si_context*)sctx->screen->async_compute_context, 0, NULL);
-            simple_mtx_unlock(&sscreen->async_compute_context_lock);
-            return;
-         }
-
+      if (sscreen->async_compute_context) {
+         si_compute_copy_image((struct si_context*)sctx->screen->async_compute_context,
+                               info->dst.resource, 0, info->src.resource, 0, 0, 0, 0,
+                               &info->src.box, 0);
+         si_flush_gfx_cs((struct si_context*)sctx->screen->async_compute_context, 0, NULL);
          simple_mtx_unlock(&sscreen->async_compute_context_lock);
+         return;
       }
+
+      simple_mtx_unlock(&sscreen->async_compute_context_lock);
    }
 
    if (unlikely(sctx->thread_trace_enabled))
