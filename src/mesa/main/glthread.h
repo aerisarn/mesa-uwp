@@ -129,6 +129,7 @@ struct glthread_attrib_node {
    GLbitfield Mask;
    int ActiveTexture;
    GLenum MatrixMode;
+   bool CullFace;
 };
 
 typedef enum {

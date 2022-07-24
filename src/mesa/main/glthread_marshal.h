@@ -506,6 +506,9 @@ _mesa_glthread_PushAttrib(struct gl_context *ctx, GLbitfield mask)
 
    attr->Mask = mask;
 
+   if (mask & (GL_POLYGON_BIT | GL_ENABLE_BIT))
+      attr->CullFace = ctx->GLThread.CullFace;
+
    if (mask & GL_TEXTURE_BIT)
       attr->ActiveTexture = ctx->GLThread.ActiveTexture;
 
@@ -522,6 +525,9 @@ _mesa_glthread_PopAttrib(struct gl_context *ctx)
    struct glthread_attrib_node *attr =
       &ctx->GLThread.AttribStack[--ctx->GLThread.AttribStackDepth];
    unsigned mask = attr->Mask;
+
+   if (mask & (GL_POLYGON_BIT | GL_ENABLE_BIT))
+      ctx->GLThread.CullFace = attr->CullFace;
 
    if (mask & GL_TEXTURE_BIT)
       ctx->GLThread.ActiveTexture = attr->ActiveTexture;
