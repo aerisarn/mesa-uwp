@@ -449,6 +449,7 @@ bool VertexShader::do_scan_instruction(nir_instr *instr)
          add_output(output);
          break;
       }
+      break;
    }
    case nir_intrinsic_load_vertex_id:
       m_sv_values.set(es_vertexid);
