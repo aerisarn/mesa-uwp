@@ -195,6 +195,8 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		}
 	} else {
 		if (sel->ir_type == PIPE_SHADER_IR_TGSI) {
+			if (sel->nir)
+				ralloc_free(sel->nir);
 			sel->nir = tgsi_to_nir(sel->tokens, ctx->screen, true);
                         const nir_shader_compiler_options *nir_options =
                               (const nir_shader_compiler_options *)
