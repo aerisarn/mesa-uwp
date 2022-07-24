@@ -1034,6 +1034,23 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
    *result = LLVMBuildLoad2(builder, LLVMTypeOf(val), atom_res, "");
 }
 
+/* Returns a boolean for whether the offset is in range of the given limit for
+ * SSBO/UBO dereferences.
+ */
+static LLVMValueRef
+lp_offset_in_range(struct lp_build_nir_context *bld_base,
+                   LLVMValueRef offset,
+                   LLVMValueRef limit)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+
+   LLVMValueRef fetch_extent = LLVMBuildAdd(builder, offset, lp_build_const_int32(gallivm, 1), "");
+   LLVMValueRef fetch_in_bounds = LLVMBuildICmp(gallivm->builder, LLVMIntUGE, limit, fetch_extent, "");
+   LLVMValueRef fetch_non_negative = LLVMBuildICmp(gallivm->builder, LLVMIntSGE, offset, lp_build_const_int32(gallivm, 0), "");
+   return LLVMBuildAnd(gallivm->builder, fetch_in_bounds, fetch_non_negative, "");
+}
+
 static void emit_load_ubo(struct lp_build_nir_context *bld_base,
                           unsigned nc,
                           unsigned bit_size,
@@ -1080,12 +1097,8 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
          LLVMValueRef res_store = lp_build_alloca(gallivm, LLVMTypeOf(zero), "");
          LLVMBuildStore(builder, zero, res_store);
 
-         LLVMValueRef fetch_extent = LLVMBuildAdd(builder, chan_offset, lp_build_const_int32(gallivm, 1), "");
-         LLVMValueRef fetch_cond = LLVMBuildICmp(gallivm->builder, LLVMIntUGE, num_consts, fetch_extent, "");
-         LLVMValueRef fetch_cond2 = LLVMBuildICmp(gallivm->builder, LLVMIntSGE, chan_offset, lp_build_const_int32(gallivm, 0), "");
-         LLVMValueRef fetch_cond_final = LLVMBuildAnd(gallivm->builder, fetch_cond, fetch_cond2, "");
          struct lp_build_if_state ifthen;
-         lp_build_if(&ifthen, gallivm, fetch_cond_final);
+         lp_build_if(&ifthen, gallivm, lp_offset_in_range(bld_base, chan_offset, num_consts));
          LLVMBuildStore(builder, lp_build_pointer_get(builder, consts_ptr, chan_offset), res_store);
          lp_build_endif(&ifthen);
 
@@ -1209,12 +1222,8 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
             LLVMValueRef res_store = lp_build_alloca(gallivm, LLVMTypeOf(zero), "");
             LLVMBuildStore(builder, zero, res_store);
 
-            LLVMValueRef fetch_extent = LLVMBuildAdd(builder, chan_offset, lp_build_const_int32(gallivm, 1), "");
-            LLVMValueRef fetch_cond = LLVMBuildICmp(gallivm->builder, LLVMIntUGE, ssbo_limit, fetch_extent, "");
-            LLVMValueRef fetch_cond2 = LLVMBuildICmp(gallivm->builder, LLVMIntSGE, chan_offset, lp_build_const_int32(gallivm, 0), "");
-            LLVMValueRef fetch_cond_final = LLVMBuildAnd(gallivm->builder, fetch_cond, fetch_cond2, "");
             struct lp_build_if_state ifthen;
-            lp_build_if(&ifthen, gallivm, fetch_cond_final);
+            lp_build_if(&ifthen, gallivm, lp_offset_in_range(bld_base, chan_offset, ssbo_limit));
             LLVMBuildStore(builder, lp_build_pointer_get(builder, mem_ptr, chan_offset), res_store);
             lp_build_endif(&ifthen);
 
