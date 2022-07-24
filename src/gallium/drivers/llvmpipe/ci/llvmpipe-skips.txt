@@ -13,7 +13,6 @@ KHR-GL45.texture_size_promotion.functional
 KHR-GL45.texture_swizzle.functional
 KHR-GL45.texture_swizzle.smoke
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2
-dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.36
 arb_pipeline_statistics_query-comp
 gl-1.0-blend-func
 
