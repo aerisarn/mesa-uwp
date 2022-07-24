@@ -120,7 +120,11 @@ private:
 
    const pipe_stream_output_info *m_so_info {nullptr};
 
-   std::unordered_map<int, RegisterVec4 *> m_output_registers;
+   template <typename Key, typename T>
+   using unordered_map_alloc = std::unordered_map<Key, T, std::hash<Key>, std::equal_to<Key>,
+   Allocator<std::pair<const Key, T>>>;
+
+   unordered_map_alloc<int, RegisterVec4 *> m_output_registers;
 };
 
 

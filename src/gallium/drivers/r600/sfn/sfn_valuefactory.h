@@ -37,6 +37,7 @@
 #include <cassert>
 #include <ostream>
 #include <unordered_map>
+#include <list>
 
 struct r600_shader;
 
@@ -282,7 +283,7 @@ private:
     using ROValueMap = unordered_reg_map_alloc<RegisterKey, PVirtualValue>;
 
     RegisterMap m_registers;
-    std::vector<PRegister> m_pinned_registers;
+    std::list<PRegister, Allocator<PRegister>> m_pinned_registers;
     ROValueMap m_values;
     unordered_map_alloc<uint32_t, PLiteralVirtualValue> m_literal_values;
     unordered_map_alloc<uint32_t, InlineConstant::Pointer> m_inline_constants;

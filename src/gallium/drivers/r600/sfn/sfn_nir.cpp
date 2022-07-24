@@ -628,10 +628,20 @@ bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
    }
 }
 
+
+class MallocPoolRelease {
+public:
+   ~MallocPoolRelease() {
+      r600::release_pool();
+   }
+};
+
 int r600_shader_from_nir(struct r600_context *rctx,
                          struct r600_pipe_shader *pipeshader,
                          r600_shader_key *key)
 {
+   MallocPoolRelease pool_release;
+
    struct r600_pipe_shader_selector *sel = pipeshader->selector;
 
    bool lower_64bit = (rctx->b.gfx_level < CAYMAN  &&
