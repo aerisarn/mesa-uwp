@@ -280,7 +280,6 @@ struct st_context
    struct {
       struct pipe_rasterizer_state rasterizer;
       struct pipe_sampler_state sampler;
-      struct pipe_sampler_state atlas_sampler;
       enum pipe_format tex_format;
       struct st_bitmap_cache cache;
    } bitmap;

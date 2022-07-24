@@ -36,7 +36,6 @@ struct dd_function_table;
 struct st_context;
 struct gl_program;
 struct st_program;
-struct gl_bitmap_atlas;
 struct gl_context;
 struct gl_pixelstore_attrib;
 
@@ -49,7 +48,5 @@ st_flush_bitmap_cache(struct st_context *st);
 void st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
                GLsizei width, GLsizei height,
                const struct gl_pixelstore_attrib *unpack, const GLubyte *bitmap);
-void st_DrawAtlasBitmaps(struct gl_context *ctx,
-                         const struct gl_bitmap_atlas *atlas,
-                         GLuint count, const GLubyte *ids);
+
 #endif /* ST_CB_BITMAP_H */
