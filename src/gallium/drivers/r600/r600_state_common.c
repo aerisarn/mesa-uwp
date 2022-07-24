@@ -996,7 +996,7 @@ struct r600_pipe_shader_selector *r600_create_shader_state_tokens(struct pipe_co
 			ir = PIPE_SHADER_IR_TGSI;
 			tgsi_scan_shader(sel->tokens, &sel->info);
 		} else {
-			sel->nir = nir_shader_clone(NULL, s);
+			sel->nir = s;
 			nir_tgsi_scan_shader(sel->nir, &sel->info, true);
 		}
 	}
