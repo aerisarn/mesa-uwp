@@ -4184,10 +4184,13 @@ fs_visitor::swizzle_nir_scratch_addr(const brw::fs_builder &bld,
 }
 
 static unsigned
-choose_oword_block_size_dwords(unsigned dwords)
+choose_oword_block_size_dwords(const struct intel_device_info *devinfo,
+                               unsigned dwords)
 {
    unsigned block;
-   if (dwords >= 32) {
+   if (devinfo->has_lsc && dwords >= 64) {
+      block = 64;
+   } else if (dwords >= 32) {
       block = 32;
    } else if (dwords >= 16) {
       block = 16;
@@ -5670,7 +5673,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       while (loaded < total) {
          const unsigned block =
-            choose_oword_block_size_dwords(total - loaded);
+            choose_oword_block_size_dwords(devinfo, total - loaded);
          const unsigned block_bytes = block * 4;
 
          const fs_builder &ubld = block == 8 ? ubld8 : ubld16;
@@ -5707,7 +5710,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       while (written < total) {
          const unsigned block =
-            choose_oword_block_size_dwords(total - written);
+            choose_oword_block_size_dwords(devinfo, total - written);
 
          fs_reg srcs[A64_LOGICAL_NUM_SRCS];
          srcs[A64_LOGICAL_ADDRESS] = address;
@@ -5751,7 +5754,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       while (loaded < total) {
          const unsigned block =
-            choose_oword_block_size_dwords(total - loaded);
+            choose_oword_block_size_dwords(devinfo, total - loaded);
          const unsigned block_bytes = block * 4;
 
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(block);
@@ -5793,7 +5796,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       while (written < total) {
          const unsigned block =
-            choose_oword_block_size_dwords(total - written);
+            choose_oword_block_size_dwords(devinfo, total - written);
 
          srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(block);
          srcs[SURFACE_LOGICAL_SRC_DATA] =
