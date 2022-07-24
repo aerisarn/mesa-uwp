@@ -745,9 +745,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sh, r600_lower_tess_coord, u_tess_prim_from_shader(sh->info.tess._primitive_mode));
    }
 
-   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
-   NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar, false);
-   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sh, nir_lower_phis_to_scalar, false);
+   NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
 
    NIR_PASS_V(sh, r600::r600_nir_split_64bit_io);
    NIR_PASS_V(sh, r600::r600_split_64bit_alu_and_phi);
