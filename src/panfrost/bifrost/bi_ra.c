@@ -624,7 +624,6 @@ bi_rewrite_index_src_single(bi_instr *ins, bi_index old, bi_index new)
         bi_foreach_src(ins, i) {
                 if (bi_is_equiv(ins->src[i], old)) {
                         ins->src[i].type = new.type;
-                        ins->src[i].reg = new.reg;
                         ins->src[i].value = new.value;
                 }
         }
@@ -952,13 +951,11 @@ squeeze_index(bi_context *ctx)
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_dest(I, d) {
                         I->dest[d].value = find_or_allocate_temp(map, bi_get_node(I->dest[d]), &ctx->ssa_alloc);
-                        I->dest[d].reg = false;
                 }
 
                 bi_foreach_src(I, s) {
                         if (I->src[s].type == BI_INDEX_NORMAL)
                                 I->src[s].value = find_or_allocate_temp(map, bi_get_node(I->src[s]), &ctx->ssa_alloc);
-                        I->src[s].reg = false;
                 }
         }
 

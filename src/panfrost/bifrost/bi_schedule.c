@@ -1348,7 +1348,6 @@ bi_use_passthrough(bi_instr *ins, bi_index old,
                 if (bi_is_word_equiv(ins->src[i], old)) {
                         ins->src[i].type = BI_INDEX_PASS;
                         ins->src[i].value = new;
-                        ins->src[i].reg = false;
                         ins->src[i].offset = 0;
                 }
         }

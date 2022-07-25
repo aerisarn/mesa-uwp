@@ -131,11 +131,10 @@ typedef struct {
          * the lower half, other values unused. */
         enum bi_swizzle swizzle : 4;
         uint32_t offset : 3;
-        bool reg : 1;
         enum bi_index_type type : 3;
 
         /* Must be zeroed so we can hash the whole 64-bits at a time */
-        unsigned padding : (32 - 14);
+        unsigned padding : (32 - 13);
 } bi_index;
 
 static inline bi_index
@@ -145,7 +144,6 @@ bi_get_index(unsigned value, bool is_reg, unsigned offset)
                 .value = value,
                 .swizzle = BI_SWIZZLE_H01,
                 .offset = offset,
-                .reg = is_reg,
                 .type = BI_INDEX_NORMAL,
         };
 }
@@ -317,7 +315,7 @@ bi_is_null(bi_index idx)
 static inline bool
 bi_is_ssa(bi_index idx)
 {
-        return idx.type == BI_INDEX_NORMAL && !idx.reg;
+        return idx.type == BI_INDEX_NORMAL;
 }
 
 /* Compares equivalence as references. Does not compare offsets, swizzles, or
@@ -328,7 +326,6 @@ static inline bool
 bi_is_equiv(bi_index left, bi_index right)
 {
         return (left.type == right.type) &&
-                (left.reg == right.reg) &&
                 (left.value == right.value);
 }
 
@@ -359,7 +356,6 @@ bi_is_value_equiv(bi_index left, bi_index right)
                        (left.neg == right.neg) &&
                        (left.swizzle == right.swizzle) &&
                        (left.offset == right.offset) &&
-                       (left.reg == right.reg) &&
                        (left.type == right.type);
         }
 }
@@ -930,12 +926,6 @@ bi_temp(bi_context *ctx)
         return bi_get_index(ctx->ssa_alloc++, false, 0);
 }
 
-static inline bi_index
-bi_temp_reg(bi_context *ctx)
-{
-        return bi_get_index(ctx->reg_alloc++, true, 0);
-}
-
 /* Inline constants automatically, will be lowered out by bi_lower_fau where a
  * constant is not allowed. load_const_to_scalar gaurantees that this makes
  * sense */
@@ -964,7 +954,7 @@ bi_get_node(bi_index index)
         if (bi_is_null(index) || index.type != BI_INDEX_NORMAL)
                 return ~0;
         else
-                return (index.value << 1) | index.reg;
+                return index.value;
 }
 
 static inline bi_index
@@ -973,7 +963,7 @@ bi_node_to_index(unsigned node, unsigned node_count)
         assert(node < node_count);
         assert(node_count < ~0u);
 
-        return bi_get_index(node >> 1, node & PAN_IS_REG, 0);
+        return bi_get_index(node, false, 0);
 }
 
 /* Iterators for Bifrost IR */
