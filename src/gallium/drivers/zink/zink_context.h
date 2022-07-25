@@ -415,6 +415,12 @@ zink_fb_clear_enabled(const struct zink_context *ctx, unsigned idx)
    return ctx->clears_enabled & (PIPE_CLEAR_COLOR0 << idx);
 }
 
+static inline uint32_t
+zink_program_cache_stages(uint32_t stages_present)
+{
+   return stages_present >> 2;
+}
+
 void
 zink_fence_wait(struct pipe_context *ctx);
 

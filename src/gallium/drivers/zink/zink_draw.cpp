@@ -188,7 +188,7 @@ update_gfx_program(struct zink_context *ctx)
    if (ctx->gfx_dirty) {
       struct zink_gfx_program *prog = NULL;
 
-      struct hash_table *ht = &ctx->program_cache[ctx->shader_stages >> 2];
+      struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(ctx->shader_stages)];
       const uint32_t hash = ctx->gfx_hash;
       struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
       if (entry) {
@@ -1064,23 +1064,30 @@ zink_invalid_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info 
    unreachable("compute shader not bound");
 }
 
+#define STAGE_BASE 0
+#define STAGE_BASE_GS 1
+#define STAGE_BASE_TES 4
+#define STAGE_BASE_TES_GS 5
+#define STAGE_BASE_TCS_TES 6
+#define STAGE_BASE_TCS_TES_GS 7
+
 template <unsigned STAGE_MASK>
 static uint32_t
 hash_gfx_program(const void *key)
 {
    const struct zink_shader **shaders = (const struct zink_shader**)key;
    uint32_t base_hash = shaders[PIPE_SHADER_VERTEX]->hash ^ shaders[PIPE_SHADER_FRAGMENT]->hash;
-   if (STAGE_MASK == 0) //VS+FS
+   if (STAGE_MASK == STAGE_BASE) //VS+FS
       return base_hash;
-   if (STAGE_MASK == 1) //VS+GS+FS
+   if (STAGE_MASK == STAGE_BASE_GS) //VS+GS+FS
       return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash;
    /*VS+TCS+FS isn't a thing */
    /*VS+TCS+GS+FS isn't a thing */
-   if (STAGE_MASK == 4) //VS+TES+FS
+   if (STAGE_MASK == STAGE_BASE_TES) //VS+TES+FS
       return base_hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
-   if (STAGE_MASK == 5) //VS+TES+GS+FS
+   if (STAGE_MASK == STAGE_BASE_TES_GS) //VS+TES+GS+FS
       return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
-   if (STAGE_MASK == 6) //VS+TCS+TES+FS
+   if (STAGE_MASK == STAGE_BASE_TCS_TES) //VS+TCS+TES+FS
       return base_hash ^ shaders[PIPE_SHADER_TESS_CTRL]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
 
    /* all stages */
@@ -1093,17 +1100,17 @@ equals_gfx_program(const void *a, const void *b)
 {
    const void **sa = (const void**)a;
    const void **sb = (const void**)b;
-   if (STAGE_MASK == 0) //VS+FS
+   if (STAGE_MASK == STAGE_BASE) //VS+FS
       return !memcmp(a, b, sizeof(void*) * 2);
-   if (STAGE_MASK == 1) //VS+GS+FS
+   if (STAGE_MASK == STAGE_BASE_GS) //VS+GS+FS
       return !memcmp(a, b, sizeof(void*) * 3);
    /*VS+TCS+FS isn't a thing */
    /*VS+TCS+GS+FS isn't a thing */
-   if (STAGE_MASK == 4) //VS+TES+FS
+   if (STAGE_MASK == STAGE_BASE_TES) //VS+TES+FS
       return sa[PIPE_SHADER_TESS_EVAL] == sb[PIPE_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 2);
-   if (STAGE_MASK == 5) //VS+TES+GS+FS
+   if (STAGE_MASK == STAGE_BASE_TES_GS) //VS+TES+GS+FS
       return sa[PIPE_SHADER_TESS_EVAL] == sb[PIPE_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 3);
-   if (STAGE_MASK == 6) //VS+TCS+TES+FS
+   if (STAGE_MASK == STAGE_BASE_TCS_TES) //VS+TCS+TES+FS
       return !memcmp(&sa[PIPE_SHADER_TESS_CTRL], &sb[PIPE_SHADER_TESS_CTRL], sizeof(void*) * 2) &&
              !memcmp(a, b, sizeof(void*) * 2);
 
