@@ -215,10 +215,8 @@ bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins, unsigned max)
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
         bi_foreach_dest(ins, d) {
-                unsigned node = bi_get_node(ins->dest[d]);
-
-                if (node < max)
-                        live[node] &= ~bi_writemask(ins, d);
+                if (bi_is_ssa(ins->dest[d]))
+                        live[ins->dest[d].value] &= ~bi_writemask(ins, d);
         }
 
         bi_foreach_src(ins, src) {
@@ -226,9 +224,8 @@ bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins, unsigned max)
                 unsigned rmask = BITFIELD_MASK(count);
                 uint8_t mask = (rmask << ins->src[src].offset);
 
-                unsigned node = bi_get_node(ins->src[src]);
-                if (node < max)
-                        live[node] |= mask;
+                if (bi_is_ssa(ins->src[src]))
+                        live[ins->src[src].value] |= mask;
         }
 }
 
@@ -352,8 +349,8 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                  * interfering with the destination */
 
                 bi_foreach_dest(ins, d) {
-                        unsigned node = bi_get_node(ins->dest[d]);
-                        assert(node < node_count);
+                        assert(bi_is_ssa(ins->dest[d]));
+                        unsigned node = ins->dest[d].value;
 
                         /* Don't allocate to anything that's read later as a
                          * preloaded register. The affinity is the intersection
@@ -381,7 +378,8 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                                  * coalescing.
                                  */
                                 if (ins->op == BI_OPCODE_MOV_I32 &&
-                                    i == bi_get_node(ins->src[0])) {
+                                    bi_is_ssa(ins->src[0]) &&
+                                    i == ins->src[0].value) {
 
                                         r &= ~BITFIELD_BIT(ins->src[0].offset);
                                 }
@@ -392,8 +390,8 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                                 }
                         }
 
-                        unsigned node_first = bi_get_node(ins->dest[0]);
-                        if (d == 1 && node_first < node_count) {
+                        unsigned node_first = ins->dest[0].value;
+                        if (d == 1) {
                                 lcra_add_node_interference(l, node, bi_writemask(ins, 1),
                                                            node_first, bi_writemask(ins, 0));
                         }
@@ -403,10 +401,8 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                 if (aligned_sr) {
                         bi_foreach_src(ins, s) {
                                 if (bi_count_read_registers(ins, s) >= 2) {
-                                        unsigned node = bi_get_node(ins->src[s]);
-
-                                        if (node < node_count)
-                                                l->affinity[node] &= EVEN_BITS_MASK;
+                                        if (bi_is_ssa(ins->src[s]))
+                                                l->affinity[ins->src[s].value] &= EVEN_BITS_MASK;
                                 }
                         }
                 }
@@ -469,39 +465,31 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
-                        unsigned dest = bi_get_node(ins->dest[d]);
-                        assert(dest < node_count);
+                        assert(bi_is_ssa(ins->dest[d]));
 
-                        l->affinity[dest] = default_affinity;
+                        l->affinity[ins->dest[d].value] = default_affinity;
                 }
 
                 /* Blend shaders expect the src colour to be in r0-r3 */
                 if (ins->op == BI_OPCODE_BLEND &&
                     !ctx->inputs->is_blend) {
-                        unsigned node = bi_get_node(ins->src[0]);
-                        assert(node < node_count);
-                        l->solutions[node] = 0;
+                        assert(bi_is_ssa(ins->src[0]));
+                        l->solutions[ins->src[0].value] = 0;
 
                         /* Dual source blend input in r4-r7 */
-                        node = bi_get_node(ins->src[4]);
-                        if (node < node_count)
-                                l->solutions[node] = 4;
+                        if (bi_is_ssa(ins->src[4]))
+                                l->solutions[ins->src[4].value] = 4;
 
                         /* Writes to R48 */
-                        node = bi_get_node(ins->dest[0]);
-                        if (!bi_is_null(ins->dest[0])) {
-                                assert(node < node_count);
-                                l->solutions[node] = 48;
-                        }
+                        if (!bi_is_null(ins->dest[0]))
+                                l->solutions[ins->dest[0].value] = 48;
                 }
 
                 /* Coverage mask writes stay in R60 */
                 if ((ins->op == BI_OPCODE_ATEST ||
                      ins->op == BI_OPCODE_ZS_EMIT) &&
                     !bi_is_null(ins->dest[0])) {
-                        unsigned node = bi_get_node(ins->dest[0]);
-                        assert(node < node_count);
-                        l->solutions[node] = 60;
+                        l->solutions[ins->dest[0].value] = 60;
                 }
 
                 /* Experimentally, it seems coverage masks inputs to ATEST must
@@ -510,9 +498,8 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
                  * settings is legal if depth/stencil writes are disabled).
                  */
                 if (ins->op == BI_OPCODE_ATEST) {
-                        unsigned node = bi_get_node(ins->src[0]);
-                        assert(node < node_count);
-                        l->solutions[node] = 60;
+                        assert(bi_is_ssa(ins->src[0]));
+                        l->solutions[ins->src[0].value] = 60;
                 }
         }
 
@@ -526,8 +513,7 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
                 if (I->src[0].type != BI_INDEX_REGISTER) continue;
 
                 unsigned reg = I->src[0].value;
-                unsigned node = bi_get_node(I->dest[0]);
-                assert(node < node_count);
+                unsigned node = I->dest[0].value;
 
                 if (l->solutions[node] != ~0) continue;
 
@@ -564,13 +550,13 @@ bi_reg_from_index(bi_context *ctx, struct lcra_state *l, bi_index index)
         unsigned node_count = bi_max_temp(ctx);
 
         /* Did we run RA for this index at all */
-        if (bi_get_node(index) >= node_count) {
+        if (!bi_is_ssa(index)) {
                 assert(!is_offset);
                 return index;
         }
 
         /* LCRA didn't bother solving this index (how lazy!) */
-        signed solution = l->solutions[bi_get_node(index)];
+        signed solution = l->solutions[index.value];
         if (solution < 0) {
                 assert(!is_offset);
                 return index;
@@ -639,9 +625,6 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
 
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
-                        unsigned node = bi_get_node(ins->dest[d]);
-                        assert(node < l->node_count);
-
                         /* Don't allow spilling coverage mask writes because the
                          * register preload logic assumes it will stay in R60.
                          * This could be optimized.
@@ -652,7 +635,7 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
                             (ins->op == BI_OPCODE_MOV_I32 &&
                              ins->src[0].type == BI_INDEX_REGISTER &&
                              ins->src[0].value == 60)) {
-                                BITSET_SET(no_spill, node);
+                                BITSET_SET(no_spill, ins->dest[d].value);
                         }
                 }
         }
@@ -863,11 +846,9 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
                         bool all_null = true;
 
                         bi_foreach_dest(ins, d) {
-                                unsigned index = bi_get_node(ins->dest[d]);
-
-                                if (index >= temp_count)
+                                if (!bi_is_ssa(ins->dest[d]))
                                         all_null = false;
-                                else if (live[index] & bi_writemask(ins, d))
+                                else if (live[ins->dest[d].value] & bi_writemask(ins, d))
                                         all_null = false;
                         }
 
@@ -945,17 +926,17 @@ find_or_allocate_temp(unsigned *map, unsigned value, unsigned *alloc)
 static void
 squeeze_index(bi_context *ctx)
 {
-        unsigned *map = rzalloc_array(ctx, unsigned, bi_max_temp(ctx));
+        unsigned *map = rzalloc_array(ctx, unsigned, ctx->ssa_alloc);
         ctx->ssa_alloc = 0;
 
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_dest(I, d) {
-                        I->dest[d].value = find_or_allocate_temp(map, bi_get_node(I->dest[d]), &ctx->ssa_alloc);
+                        I->dest[d].value = find_or_allocate_temp(map, I->dest[d].value, &ctx->ssa_alloc);
                 }
 
                 bi_foreach_src(I, s) {
                         if (I->src[s].type == BI_INDEX_NORMAL)
-                                I->src[s].value = find_or_allocate_temp(map, bi_get_node(I->src[s]), &ctx->ssa_alloc);
+                                I->src[s].value = find_or_allocate_temp(map, I->src[s].value, &ctx->ssa_alloc);
                 }
         }
 

@@ -948,15 +948,6 @@ bi_dest_index(nir_dest *dst)
         return bi_get_index(dst->ssa.index, false, 0);
 }
 
-static inline unsigned
-bi_get_node(bi_index index)
-{
-        if (bi_is_null(index) || index.type != BI_INDEX_NORMAL)
-                return ~0;
-        else
-                return index.value;
-}
-
 static inline bi_index
 bi_node_to_index(unsigned node, unsigned node_count)
 {
