@@ -317,6 +317,17 @@ struct brw_vs_prog_key {
     */
    uint8_t gl_attrib_wa_flags[MAX2(MAX_GL_VERT_ATTRIB, MAX_VK_VERT_ATTRIB)];
 
+   /**
+    * For pre-Gfx6 hardware, a bitfield indicating which texture coordinates
+    * are going to be replaced with point coordinates (as a consequence of a
+    * call to glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)).  Because
+    * our SF thread requires exact matching between VS outputs and FS inputs,
+    * these texture coordinates will need to be unconditionally included in
+    * the VUE, even if they aren't written by the vertex shader.
+    */
+   uint8_t point_coord_replace;
+   unsigned clamp_pointsize:1;
+
    bool copy_edgeflag:1;
 
    bool clamp_vertex_color:1;
@@ -330,18 +341,7 @@ struct brw_vs_prog_key {
     */
    unsigned nr_userclip_plane_consts:4;
 
-   /**
-    * For pre-Gfx6 hardware, a bitfield indicating which texture coordinates
-    * are going to be replaced with point coordinates (as a consequence of a
-    * call to glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)).  Because
-    * our SF thread requires exact matching between VS outputs and FS inputs,
-    * these texture coordinates will need to be unconditionally included in
-    * the VUE, even if they aren't written by the vertex shader.
-    */
-   unsigned clamp_pointsize:1;
-   unsigned padding_1: 1;
-   uint8_t point_coord_replace;
-   unsigned padding_2: 24;
+   uint32_t padding: 25;
 };
 
 /** The program key for Tessellation Control Shaders. */
@@ -349,19 +349,18 @@ struct brw_tcs_prog_key
 {
    struct brw_base_prog_key base;
 
+   /** A bitfield of per-vertex outputs written. */
+   uint64_t outputs_written;
+
    enum tess_primitive_mode _tes_primitive_mode;
 
    unsigned input_vertices;
 
    /** A bitfield of per-patch outputs written. */
    uint32_t patch_outputs_written;
-   unsigned padding_1:32;
-
-   /** A bitfield of per-vertex outputs written. */
-   uint64_t outputs_written;
 
    bool quads_workaround;
-   uint64_t padding_2:56;
+   uint32_t padding:24;
 };
 
 /** The program key for Tessellation Evaluation Shaders. */
@@ -369,12 +368,11 @@ struct brw_tes_prog_key
 {
    struct brw_base_prog_key base;
 
-   /** A bitfield of per-patch inputs read. */
-   uint32_t patch_inputs_read;
-   unsigned padding_1:32;
-
    /** A bitfield of per-vertex inputs read. */
    uint64_t inputs_read;
+
+   /** A bitfield of per-patch inputs read. */
+   uint32_t patch_inputs_read;
 
    /**
     * How many user clipping planes are being uploaded to the tessellation
@@ -385,7 +383,7 @@ struct brw_tes_prog_key
     */
    unsigned nr_userclip_plane_consts:4;
    unsigned clamp_pointsize:1;
-   uint64_t padding_2:59;
+   uint32_t padding:27;
 };
 
 /** The program key for Geometry Shaders. */
@@ -458,6 +456,9 @@ enum brw_clip_fill_mode {
  */
 struct brw_clip_prog_key {
    uint64_t attrs;
+   float offset_factor;
+   float offset_units;
+   float offset_clamp;
    bool contains_flat_varying;
    bool contains_noperspective_varying;
    unsigned char interp_mode[65]; /* BRW_VARYING_SLOT_COUNT */
@@ -472,12 +473,7 @@ struct brw_clip_prog_key {
    bool copy_bfc_cw:1;
    bool copy_bfc_ccw:1;
    enum brw_clip_mode clip_mode:3;
-
-   unsigned padding_1:19;
-   float offset_factor;
-   float offset_units;
-   float offset_clamp;
-   unsigned padding_2:32;
+   uint64_t padding:51;
 };
 
 /* A big lookup table is used to figure out which and how many
@@ -505,6 +501,10 @@ enum brw_wm_aa_enable {
 struct brw_wm_prog_key {
    struct brw_base_prog_key base;
 
+   uint64_t input_slots_valid;
+   float alpha_test_ref;
+   uint8_t color_outputs_valid;
+
    /* Some collection of BRW_WM_IZ_* */
    uint8_t iz_lookup;
    bool stats_wm:1;
@@ -522,13 +522,8 @@ struct brw_wm_prog_key {
    bool coherent_fb_fetch:1;
    bool ignore_sample_mask_out:1;
    bool coarse_pixel:1;
-   unsigned padding_1:2;
 
-   uint8_t color_outputs_valid;
-   unsigned padding_2:24;
-   uint64_t input_slots_valid;
-   float alpha_test_ref;
-   unsigned padding_3:32;
+   uint64_t padding:58;
 };
 
 struct brw_cs_prog_key {
@@ -543,6 +538,20 @@ struct brw_ff_gs_prog_key {
    uint64_t attrs;
 
    /**
+    * Map from the index of a transform feedback binding table entry to the
+    * gl_varying_slot that should be streamed out through that binding table
+    * entry.
+    */
+   unsigned char transform_feedback_bindings[BRW_MAX_SOL_BINDINGS];
+
+   /**
+    * Map from the index of a transform feedback binding table entry to the
+    * swizzles that should be used when streaming out data through that
+    * binding table entry.
+    */
+   unsigned char transform_feedback_swizzles[BRW_MAX_SOL_BINDINGS];
+
+   /**
     * Hardware primitive type being drawn, e.g. _3DPRIM_TRILIST.
     */
    unsigned primitive:8;
@@ -554,22 +563,7 @@ struct brw_ff_gs_prog_key {
     * Number of varyings that are output to transform feedback.
     */
    unsigned num_transform_feedback_bindings:7; /* 0-BRW_MAX_SOL_BINDINGS */
-
-   /**
-    * Map from the index of a transform feedback binding table entry to the
-    * gl_varying_slot that should be streamed out through that binding table
-    * entry.
-    */
-   unsigned padding_1:7;
-   unsigned char transform_feedback_bindings[BRW_MAX_SOL_BINDINGS];
-
-   /**
-    * Map from the index of a transform feedback binding table entry to the
-    * swizzles that should be used when streaming out data through that
-    * binding table entry.
-    */
-   unsigned char transform_feedback_swizzles[BRW_MAX_SOL_BINDINGS];
-   unsigned padding_2:32;
+   uint64_t padding:47;
 };
 
 /* brw_any_prog_key is any of the keys that map to an API stage */
