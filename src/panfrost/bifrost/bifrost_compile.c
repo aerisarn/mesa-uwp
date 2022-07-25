@@ -5121,6 +5121,10 @@ bi_compile_variant_nir(nir_shader *nir,
                 va_lower_isel(ctx);
 
                 bi_foreach_instr_global_safe(ctx, I) {
+                        /* Phis become single moves so shouldn't be affected */
+                        if (I->op == BI_OPCODE_PHI)
+                                continue;
+
                         va_lower_constants(ctx, I);
 
                         bi_builder b = bi_init_builder(ctx, bi_before_instr(I));

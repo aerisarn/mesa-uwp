@@ -873,10 +873,15 @@ squeeze_index(bi_context *ctx)
 static void
 bi_out_of_ssa(bi_context *ctx)
 {
+        bi_index zero = bi_fau(BIR_FAU_IMMEDIATE | 0, false);
+
+        /* Trivially lower phis */
         bi_foreach_block(ctx, block) {
                 bi_foreach_instr_in_block_safe(block, I) {
                         if (I->op != BI_OPCODE_PHI)
                                 break;
+
+                        assert(bi_is_ssa(I->dest[0]));
 
                         /* Assign a register for the phi */
                         bi_index reg = bi_temp_reg(ctx);
@@ -887,15 +892,106 @@ bi_out_of_ssa(bi_context *ctx)
                          */
                         bi_foreach_predecessor(block, pred) {
                                 bi_builder b = bi_init_builder(ctx, bi_after_block_logical(*pred));
-
                                 unsigned i = bi_predecessor_index(block, *pred);
-                                bi_mov_i32_to(&b, reg, I->src[i]);
+
+                                assert(!I->src[i].abs);
+                                assert(!I->src[i].neg);
+                                assert(I->src[i].swizzle == BI_SWIZZLE_H01);
+
+                                /* MOV of immediate needs lowering on Valhall */
+                                if (ctx->arch >= 9 && I->src[i].type == BI_INDEX_CONSTANT)
+                                        bi_iadd_imm_i32_to(&b, reg, zero, I->src[i].value);
+                                else
+                                        bi_mov_i32_to(&b, reg, I->src[i]);
                         }
 
                         /* Replace the phi with a move */
                         bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
                         bi_mov_i32_to(&b, I->dest[0], reg);
                         bi_remove_instruction(I);
+
+                        /* Propagate that move within the block. The destination
+                         * is SSA and the source is not written in this block,
+                         * so this is legal. The move itself will be DCE'd if
+                         * possible in the next pass.
+                         */
+                        bi_foreach_instr_in_block_rev(block, prop) {
+                                if (prop->op == BI_OPCODE_PHI)
+                                        break;
+
+                                bi_foreach_src(prop, s) {
+                                        if (bi_is_equiv(prop->src[s], I->dest[0])) {
+                                                prop->src[s] = bi_replace_index(prop->src[s], reg);
+                                        }
+                                }
+                        }
+                }
+        }
+
+        /* Try to locally propagate the moves we created. We need to be extra
+         * careful because we're not in SSA at this point, as such this
+         * algorithm is quadratic. This will go away when we go out of SSA after
+         * RA.
+         */
+        BITSET_WORD *used = calloc(sizeof(BITSET_WORD), BITSET_WORDS(ctx->ssa_alloc));
+        BITSET_WORD *multiple_uses = calloc(sizeof(BITSET_WORD), BITSET_WORDS(ctx->ssa_alloc));
+
+        bi_foreach_instr_global(ctx, I) {
+                bi_foreach_src(I, s) {
+                        if (!bi_is_ssa(I->src[s]))
+                                continue;
+
+                        if (BITSET_TEST(used, I->src[s].value))
+                                BITSET_SET(multiple_uses, I->src[s].value);
+                        else
+                                BITSET_SET(used, I->src[s].value);
+                }
+        }
+
+        bi_foreach_block(ctx, block) {
+                bi_foreach_instr_in_block_safe_rev(block, mov) {
+                        /* Match "reg = ssa" */
+                        if (mov->op != BI_OPCODE_MOV_I32) continue;
+                        if (mov->dest[0].type != BI_INDEX_NORMAL) continue;
+                        if (!mov->dest[0].reg) continue;
+                        if (!bi_is_ssa(mov->src[0])) continue;
+                        if (BITSET_TEST(multiple_uses, mov->src[0].value)) continue;
+
+                        bool found = false;
+
+                        /* Look locally for the write of the SSA */
+                        bi_foreach_instr_in_block_rev(block, I) {
+                                bool bail = false;
+
+                                bi_foreach_src(I, s) {
+                                        /* Bail: write-after-read */
+                                        if (bi_is_equiv(I->src[s], mov->dest[0]))
+                                                bail = true;
+                                }
+
+                                if (bail)
+                                        break;
+
+                                bi_foreach_dest(I, d) {
+                                        /* Bail: write-after-write */
+                                        if (bi_is_equiv(I->dest[d], mov->dest[0]))
+                                                break;
+
+                                        if (!bi_is_equiv(I->dest[d], mov->src[0]))
+                                                continue;
+
+                                        /* We found it, replace */
+                                        I->dest[d] = bi_replace_index(I->dest[d], mov->dest[0]);
+                                        found = true;
+                                        break;
+                                }
+
+                                if (found)
+                                        break;
+                        }
+
+                        if (found)
+                                bi_remove_instruction(mov);
                 }
         }
 }
@@ -914,10 +1010,9 @@ bi_register_allocate(bi_context *ctx)
         if (ctx->arch >= 9)
                 va_lower_split_64bit(ctx);
 
-        bi_lower_vector(ctx);
-
         /* Lower tied operands. SSA is broken from here on. */
         bi_out_of_ssa(ctx);
+        bi_lower_vector(ctx);
         bi_coalesce_tied(ctx);
         squeeze_index(ctx);
 
