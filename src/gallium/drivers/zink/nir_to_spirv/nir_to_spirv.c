@@ -877,6 +877,12 @@ get_bare_image_type(struct ntv_context *ctx, struct nir_variable *var, bool is_s
       else
          spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImage1D);
    }
+   if (dimension == SpvDimBuffer) {
+      if (is_sampler)
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageBuffer);
+      else
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampledBuffer);
+   }
 
    bool arrayed = glsl_sampler_type_is_array(type);
    if (dimension == SpvDimCube && arrayed)
@@ -4115,9 +4121,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
       goto fail;
 
    spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShader);
-   if (BITSET_COUNT(s->info.image_buffers) != 0)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageBuffer);
-   spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampledBuffer);
 
    switch (s->info.stage) {
    case MESA_SHADER_FRAGMENT:
