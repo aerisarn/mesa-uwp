@@ -1168,7 +1168,7 @@ static void fill_sampler_buffer_view_stage(struct rendering_state *state,
       templ.swizzle_b = PIPE_SWIZZLE_Z;
       templ.swizzle_a = PIPE_SWIZZLE_W;
       templ.format = bv->pformat;
-      templ.u.buf.offset = bv->offset + bv->buffer->offset;
+      templ.u.buf.offset = bv->offset;
       templ.u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset) : bv->range;
       templ.texture = bv->buffer->bo;
       templ.context = state->pctx;
@@ -1242,7 +1242,7 @@ static void fill_image_buffer_view_stage(struct rendering_state *state,
    if (bv) {
       state->iv[p_stage][idx].resource = bv->buffer->bo;
       state->iv[p_stage][idx].format = bv->pformat;
-      state->iv[p_stage][idx].u.buf.offset = bv->offset + bv->buffer->offset;
+      state->iv[p_stage][idx].u.buf.offset = bv->offset;
       state->iv[p_stage][idx].u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset): bv->range;
    } else {
       state->iv[p_stage][idx].resource = NULL;
@@ -1297,7 +1297,7 @@ static void handle_descriptor(struct rendering_state *state,
          state->const_buffer[p_stage][idx].buffer_size = 0;
       } else {
          state->const_buffer[p_stage][idx].buffer = descriptor->buffer->bo;
-         state->const_buffer[p_stage][idx].buffer_offset = descriptor->offset + descriptor->buffer->offset;
+         state->const_buffer[p_stage][idx].buffer_offset = descriptor->offset;
          if (descriptor->range == VK_WHOLE_SIZE)
             state->const_buffer[p_stage][idx].buffer_size = descriptor->buffer->bo->width0 - state->const_buffer[p_stage][idx].buffer_offset;
          else
@@ -1326,7 +1326,7 @@ static void handle_descriptor(struct rendering_state *state,
          state->sb[p_stage][idx].buffer_size = 0;
       } else {
          state->sb[p_stage][idx].buffer = descriptor->buffer->bo;
-         state->sb[p_stage][idx].buffer_offset = descriptor->offset + descriptor->buffer->offset;
+         state->sb[p_stage][idx].buffer_offset = descriptor->offset;
          if (descriptor->range == VK_WHOLE_SIZE)
             state->sb[p_stage][idx].buffer_size = descriptor->buffer->bo->width0 - state->sb[p_stage][idx].buffer_offset;
          else
@@ -2959,7 +2959,7 @@ static void handle_copy_query_pool_results(struct vk_cmd_queue_entry *cmd,
       flags |= PIPE_QUERY_PARTIAL;
    unsigned result_size = copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4;
    for (unsigned i = copycmd->first_query; i < copycmd->first_query + copycmd->query_count; i++) {
-      unsigned offset = copycmd->dst_offset + lvp_buffer_from_handle(copycmd->dst_buffer)->offset + (copycmd->stride * (i - copycmd->first_query));
+      unsigned offset = copycmd->dst_offset + (copycmd->stride * (i - copycmd->first_query));
       if (pool->queries[i]) {
          unsigned num_results = 0;
          if (copycmd->flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
@@ -3565,7 +3565,7 @@ static void handle_draw_indirect_byte_count(struct vk_cmd_queue_entry *cmd,
 
    pipe_buffer_read(state->pctx,
                     lvp_buffer_from_handle(dibc->counter_buffer)->bo,
-                    lvp_buffer_from_handle(dibc->counter_buffer)->offset + dibc->counter_buffer_offset,
+                    dibc->counter_buffer_offset,
                     4, &draw.count);
 
    state->info.start_instance = cmd->u.draw_indirect_byte_count_ext.first_instance;
@@ -3583,7 +3583,7 @@ static void handle_begin_conditional_rendering(struct vk_cmd_queue_entry *cmd,
    struct VkConditionalRenderingBeginInfoEXT *bcr = cmd->u.begin_conditional_rendering_ext.conditional_rendering_begin;
    state->pctx->render_condition_mem(state->pctx,
                                      lvp_buffer_from_handle(bcr->buffer)->bo,
-                                     lvp_buffer_from_handle(bcr->buffer)->offset + bcr->offset,
+                                     bcr->offset,
                                      bcr->flags & VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT);
 }
 

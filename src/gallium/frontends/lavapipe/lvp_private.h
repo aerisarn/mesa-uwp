@@ -461,7 +461,6 @@ struct lvp_buffer {
    VkDeviceSize                                 size;
 
    VkBufferUsageFlags                           usage;
-   VkDeviceSize                                 offset;
 
    struct pipe_memory_allocation *pmem;
    struct pipe_resource *bo;

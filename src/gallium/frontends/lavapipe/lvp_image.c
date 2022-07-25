@@ -290,7 +290,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
    vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
    buffer->size = pCreateInfo->size;
    buffer->usage = pCreateInfo->usage;
-   buffer->offset = 0;
 
    {
       struct pipe_resource template;
