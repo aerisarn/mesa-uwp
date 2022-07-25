@@ -46,7 +46,7 @@ traces:
   - path: TheRavenRemastered/Raven-f10900-v2.trace
     expectations:
       - device: freedreno-a630
-        checksum: 8ed1975d6914142dd0cc7b1cf9cf9434
+        checksum: 1dbb16cb6a61f166c0a8d0db6e88a63d
   - path: PenumbraOverture/penumbra-ov-s0-2-864-f1500-v2.trace
     expectations:
       - device: freedreno-a630
