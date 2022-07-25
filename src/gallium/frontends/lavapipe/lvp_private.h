@@ -255,6 +255,9 @@ struct lvp_image_view {
 
    enum pipe_format pformat;
 
+   struct pipe_sampler_view *sv;
+   struct pipe_image_view iv;
+
    struct pipe_surface *surface; /* have we created a pipe surface for this? */
    struct lvp_image_view *multisample; //VK_EXT_multisampled_render_to_single_sampled
 };
@@ -329,11 +332,11 @@ vk_to_lvp_descriptor_set_layout(const struct vk_descriptor_set_layout *layout)
 union lvp_descriptor_info {
    struct {
       struct pipe_sampler_state *sampler;
-      struct lvp_image_view *iview;
+      struct pipe_sampler_view *sampler_view;
    };
+   struct pipe_image_view image_view;
    struct pipe_shader_buffer ssbo;
    struct pipe_constant_buffer ubo;
-   struct lvp_buffer_view *buffer_view;
    uint8_t *uniform;
 };
 
@@ -468,6 +471,8 @@ struct lvp_buffer_view {
    struct vk_object_base base;
    VkFormat format;
    enum pipe_format pformat;
+   struct pipe_sampler_view *sv;
+   struct pipe_image_view iv;
    struct lvp_buffer *buffer;
    uint32_t offset;
    uint64_t range;

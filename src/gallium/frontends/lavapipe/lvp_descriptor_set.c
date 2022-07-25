@@ -450,7 +450,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
             LVP_FROM_HANDLE(lvp_image_view, iview,
                             write->pImageInfo[j].imageView);
             desc[j].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            desc[j].info.iview = iview;
+            desc[j].info.sampler_view = iview ? iview->sv : NULL;
             /*
              * All consecutive bindings updated via a single VkWriteDescriptorSet structure, except those
              * with a descriptorCount of zero, must all either use immutable samplers or must all not
@@ -468,6 +468,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
          break;
 
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            LVP_FROM_HANDLE(lvp_image_view, iview,
+                            write->pImageInfo[j].imageView);
+
+            desc[j] = (struct lvp_descriptor) {
+               .type = write->descriptorType,
+               .info.sampler_view = iview ? iview->sv : NULL,
+            };
+         }
+         break;
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
@@ -476,12 +486,23 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
-               .info.iview = iview,
+               .info.image_view = iview ? iview->iv : ((struct pipe_image_view){0}),
             };
          }
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            LVP_FROM_HANDLE(lvp_buffer_view, bview,
+                            write->pTexelBufferView[j]);
+
+            desc[j] = (struct lvp_descriptor) {
+               .type = write->descriptorType,
+               .info.sampler_view = bview ? bview->sv : NULL,
+            };
+         }
+         break;
+
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             LVP_FROM_HANDLE(lvp_buffer_view, bview,
@@ -489,7 +510,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
-               .info.buffer_view = bview,
+               .info.image_view = bview ? bview->iv : ((struct pipe_image_view){0}),
             };
          }
          break;
@@ -720,31 +741,48 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
          }
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
             VkDescriptorImageInfo *info = (VkDescriptorImageInfo *)pSrc;
+            LVP_FROM_HANDLE(lvp_image_view, iview, info->imageView);
             desc[idx] = (struct lvp_descriptor) {
                .type = entry->descriptorType,
-               .info.iview = lvp_image_view_from_handle(info->imageView),
+               .info.sampler_view = iview ? iview->sv : NULL,
                .info.sampler = info->sampler ? &lvp_sampler_from_handle(info->sampler)->state : NULL,
             };
             break;
          }
-         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+            VkDescriptorImageInfo *info = (VkDescriptorImageInfo *)pSrc;
+            LVP_FROM_HANDLE(lvp_image_view, iview, info->imageView);
+            desc[idx] = (struct lvp_descriptor) {
+               .type = entry->descriptorType,
+               .info.sampler_view = iview ? iview->sv : NULL,
+            };
+            break;
+         }
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             LVP_FROM_HANDLE(lvp_image_view, iview,
                             ((VkDescriptorImageInfo *)pSrc)->imageView);
             desc[idx] = (struct lvp_descriptor) {
                .type = entry->descriptorType,
-               .info.iview = iview,
+               .info.image_view = iview ? iview->iv : ((struct pipe_image_view){0}),
             };
             break;
          }
-         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+            LVP_FROM_HANDLE(lvp_buffer_view, bview,
+                            *(VkBufferView *)pSrc);
+            desc[idx] = (struct lvp_descriptor) {
+               .type = entry->descriptorType,
+               .info.sampler_view = bview ? bview->sv : NULL,
+            };
+            break;
+         }
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
             LVP_FROM_HANDLE(lvp_buffer_view, bview,
                             *(VkBufferView *)pSrc);
             desc[idx] = (struct lvp_descriptor) {
                .type = entry->descriptorType,
-               .info.buffer_view = bview,
+               .info.image_view = bview ? bview->iv : ((struct pipe_image_view){0}),
             };
             break;
          }
