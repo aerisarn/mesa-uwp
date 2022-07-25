@@ -251,7 +251,7 @@ bi_lower_swizzle(bi_context *ctx)
         BITSET_WORD *replicates_16 = calloc(sizeof(bi_index), ctx->ssa_alloc);
 
         bi_foreach_instr_global(ctx, ins) {
-                if (ins->nr_dests && bi_is_ssa(ins->dest[0]) && bi_instr_replicates(ins, replicates_16))
+                if (ins->nr_dests && bi_instr_replicates(ins, replicates_16))
                         BITSET_SET(replicates_16, ins->dest[0].value);
 
                 if (ins->op == BI_OPCODE_SWZ_V2I16 && bi_is_ssa(ins->src[0]) &&
