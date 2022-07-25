@@ -1083,28 +1083,6 @@ static void fill_sampler_view_stage(struct rendering_state *state,
    state->sv_dirty[p_stage] = true;
 }
 
-static void fill_sampler_buffer_view_stage(struct rendering_state *state,
-                                           struct dyn_info *dyn_info,
-                                           gl_shader_stage stage,
-                                           enum pipe_shader_type p_stage,
-                                           int array_idx,
-                                           const union lvp_descriptor_info *descriptor,
-                                           const struct lvp_descriptor_set_binding_layout *binding)
-{
-   int sv_idx = binding->stage[stage].sampler_view_index;
-   if (sv_idx == -1)
-      return;
-   sv_idx += array_idx;
-   sv_idx += dyn_info->stage[stage].sampler_view_count;
-
-   assert(sv_idx < ARRAY_SIZE(state->sv[p_stage]));
-   state->sv[p_stage][sv_idx] = descriptor->sampler_view;
-
-   if (state->num_sampler_views[p_stage] <= sv_idx)
-      state->num_sampler_views[p_stage] = sv_idx + 1;
-   state->sv_dirty[p_stage] = true;
-}
-
 static void fill_image_view_stage(struct rendering_state *state,
                                   struct dyn_info *dyn_info,
                                   gl_shader_stage stage,
@@ -1127,29 +1105,6 @@ static void fill_image_view_stage(struct rendering_state *state,
    if (state->num_shader_images[p_stage] <= idx)
       state->num_shader_images[p_stage] = idx + 1;
 
-   state->iv_dirty[p_stage] = true;
-}
-
-static void fill_image_buffer_view_stage(struct rendering_state *state,
-                                         struct dyn_info *dyn_info,
-                                         gl_shader_stage stage,
-                                         enum pipe_shader_type p_stage,
-                                         int array_idx,
-                                         const union lvp_descriptor_info *descriptor,
-                                         const struct lvp_descriptor_set_binding_layout *binding)
-{
-   int idx = binding->stage[stage].image_index;
-   if (idx == -1)
-      return;
-   idx += array_idx;
-   idx += dyn_info->stage[stage].image_count;
-   uint16_t access = state->iv[p_stage][idx].access;
-   uint16_t shader_access = state->iv[p_stage][idx].shader_access;
-   state->iv[p_stage][idx] = descriptor->image_view;
-   state->iv[p_stage][idx].access = access;
-   state->iv[p_stage][idx].shader_access = shader_access;
-   if (state->num_shader_images[p_stage] <= idx)
-      state->num_shader_images[p_stage] = idx + 1;
    state->iv_dirty[p_stage] = true;
 }
 
@@ -1178,6 +1133,7 @@ static void handle_descriptor(struct rendering_state *state,
       break;
    }
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
       fill_image_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       break;
@@ -1223,17 +1179,12 @@ static void handle_descriptor(struct rendering_state *state,
       fill_sampler_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       break;
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
       fill_sampler_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       break;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       fill_sampler_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       fill_sampler_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      break;
-   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      fill_sampler_buffer_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      break;
-   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-      fill_image_buffer_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       break;
    default:
       fprintf(stderr, "Unhandled descriptor set %d\n", type);
