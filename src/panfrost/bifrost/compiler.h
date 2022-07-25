@@ -948,15 +948,6 @@ bi_dest_index(nir_dest *dst)
         return bi_get_index(dst->ssa.index, false, 0);
 }
 
-static inline bi_index
-bi_node_to_index(unsigned node, unsigned node_count)
-{
-        assert(node < node_count);
-        assert(node_count < ~0u);
-
-        return bi_get_index(node, false, 0);
-}
-
 /* Iterators for Bifrost IR */
 
 #define bi_foreach_block(ctx, v) \
