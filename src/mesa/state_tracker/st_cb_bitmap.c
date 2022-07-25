@@ -321,16 +321,16 @@ draw_bitmap_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
       assert(height <= (GLsizei) maxSize);
    }
 
-   setup_render_state(ctx, sv, color);
-
-   /* convert Z from [0,1] to [-1,-1] to match viewport Z scale/bias */
-   z = z * 2.0f - 1.0f;
-
    if (sv->texture->target == PIPE_TEXTURE_RECT) {
       /* use non-normalized texcoords */
       sRight = (float) width;
       tBot = (float) height;
    }
+
+   setup_render_state(ctx, sv, color);
+
+   /* convert Z from [0,1] to [-1,-1] to match viewport Z scale/bias */
+   z = z * 2.0f - 1.0f;
 
    if (!st_draw_quad(st, clip_x0, clip_y0, clip_x1, clip_y1, z,
                      sLeft, tBot, sRight, tTop, color, 0)) {
