@@ -269,6 +269,9 @@ struct iris_gs_prog_key {
 struct iris_fs_prog_key {
    struct iris_base_prog_key base;
 
+   uint64_t input_slots_valid;
+   uint8_t color_outputs_valid;
+
    unsigned nr_color_regions:5;
    bool flat_shade:1;
    bool alpha_test_replicate_alpha:1;
@@ -278,12 +281,7 @@ struct iris_fs_prog_key {
    bool multisample_fbo:1;
    bool force_dual_color_blend:1;
    bool coherent_fb_fetch:1;
-   unsigned padding_1:3;
-
-   uint8_t color_outputs_valid;
-   uint64_t padding_2:40;
-
-   uint64_t input_slots_valid;
+   uint64_t padding:43;
 };
 
 struct iris_cs_prog_key {
