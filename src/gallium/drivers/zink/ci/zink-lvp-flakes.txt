@@ -15,6 +15,7 @@ glx@glx-multi-context-ib-1
 
 # depth visuals
 glx@glx-visuals-depth
+glx@glx-visuals-stencil
 
 # mysterious
 glx@glx-shader-sharing
