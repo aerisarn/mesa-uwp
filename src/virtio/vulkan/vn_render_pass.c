@@ -50,6 +50,16 @@
       }                                                                      \
    } while (false)
 
+#define INIT_SUBPASSES(_pass, _pCreateInfo)                                  \
+   do {                                                                      \
+      for (uint32_t i = 0; i < _pCreateInfo->subpassCount; i++) {            \
+         _pass->subpasses[i].has_color_attachment =                          \
+            (_pCreateInfo->pSubpasses[i].colorAttachmentCount > 0);          \
+         _pass->subpasses[i].has_depth_stencil_attachment =                  \
+            (_pCreateInfo->pSubpasses[i].pDepthStencilAttachment != NULL);   \
+      }                                                                      \
+   } while (false)
+
 static void
 vn_render_pass_count_present_src(const VkRenderPassCreateInfo *create_info,
                                  uint32_t *initial_count,
@@ -117,16 +127,19 @@ static struct vn_render_pass *
 vn_render_pass_create(struct vn_device *dev,
                       uint32_t present_acquire_count,
                       uint32_t present_release_count,
+                      uint32_t subpass_count,
                       const VkAllocationCallbacks *alloc)
 {
    uint32_t present_count = present_acquire_count + present_release_count;
    struct vn_render_pass *pass;
    struct vn_present_src_attachment *present_atts;
+   struct vn_subpass *subpasses;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &pass, __typeof__(*pass), 1);
    vk_multialloc_add(&ma, &present_atts, __typeof__(*present_atts),
                      present_count);
+   vk_multialloc_add(&ma, &subpasses, __typeof__(*subpasses), subpass_count);
 
    if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return NULL;
@@ -136,6 +149,7 @@ vn_render_pass_create(struct vn_device *dev,
    pass->present_count = present_count;
    pass->present_acquire_count = present_acquire_count;
    pass->present_release_count = present_release_count;
+   pass->subpass_count = subpass_count;
 
    /* For each array pointer, set it only if its count != 0. This allows code
     * elsewhere to intuitively use either condition, `foo_atts == NULL` or
@@ -148,6 +162,8 @@ vn_render_pass_create(struct vn_device *dev,
    if (present_release_count)
       pass->present_release_attachments =
          present_atts + present_acquire_count;
+   if (subpass_count)
+      pass->subpasses = subpasses;
 
    return pass;
 }
@@ -169,10 +185,12 @@ vn_CreateRenderPass(VkDevice device,
    vn_render_pass_count_present_src(pCreateInfo, &acquire_count,
                                     &release_count);
 
-   struct vn_render_pass *pass =
-      vn_render_pass_create(dev, acquire_count, release_count, alloc);
+   struct vn_render_pass *pass = vn_render_pass_create(
+      dev, acquire_count, release_count, pCreateInfo->subpassCount, alloc);
    if (!pass)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   INIT_SUBPASSES(pass, pCreateInfo);
 
    VkRenderPassCreateInfo local_pass_info;
    if (pass->present_count) {
@@ -219,10 +237,12 @@ vn_CreateRenderPass2(VkDevice device,
    vn_render_pass_count_present_src2(pCreateInfo, &acquire_count,
                                      &release_count);
 
-   struct vn_render_pass *pass =
-      vn_render_pass_create(dev, acquire_count, release_count, alloc);
+   struct vn_render_pass *pass = vn_render_pass_create(
+      dev, acquire_count, release_count, pCreateInfo->subpassCount, alloc);
    if (!pass)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   INIT_SUBPASSES(pass, pCreateInfo);
 
    VkRenderPassCreateInfo2 local_pass_info;
    if (pass->present_count) {
