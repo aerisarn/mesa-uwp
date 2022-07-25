@@ -1175,9 +1175,6 @@ bool bi_opt_constant_fold(bi_context *ctx);
 
 /* Liveness */
 
-void bi_compute_liveness(bi_context *ctx);
-void bi_liveness_ins_update(uint8_t *live, bi_instr *ins, unsigned max);
-
 void bi_compute_liveness_ssa(bi_context *ctx);
 void bi_liveness_ins_update_ssa(BITSET_WORD *live, const bi_instr *ins);
 

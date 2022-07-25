@@ -205,6 +205,104 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
         return count;
 }
 
+/* Liveness analysis is a backwards-may dataflow analysis pass. Within a block,
+ * we compute live_out from live_in. The intrablock pass is linear-time. It
+ * returns whether progress was made. */
+
+static void
+bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins, unsigned max)
+{
+        /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
+
+        bi_foreach_dest(ins, d) {
+                unsigned node = bi_get_node(ins->dest[d]);
+
+                if (node < max)
+                        live[node] &= ~bi_writemask(ins, d);
+        }
+
+        bi_foreach_src(ins, src) {
+                unsigned count = bi_count_read_registers(ins, src);
+                unsigned rmask = BITFIELD_MASK(count);
+                uint8_t mask = (rmask << ins->src[src].offset);
+
+                unsigned node = bi_get_node(ins->src[src]);
+                if (node < max)
+                        live[node] |= mask;
+        }
+}
+
+static bool
+liveness_block_update(bi_block *blk, unsigned temp_count)
+{
+        bool progress = false;
+
+        /* live_out[s] = sum { p in succ[s] } ( live_in[p] ) */
+        bi_foreach_successor(blk, succ) {
+                for (unsigned i = 0; i < temp_count; ++i)
+                        blk->live_out[i] |= succ->live_in[i];
+        }
+
+        uint8_t *live = ralloc_array(blk, uint8_t, temp_count);
+        memcpy(live, blk->live_out, temp_count);
+
+        bi_foreach_instr_in_block_rev(blk, ins)
+                bi_liveness_ins_update_ra(live, ins, temp_count);
+
+        /* To figure out progress, diff live_in */
+
+        for (unsigned i = 0; (i < temp_count) && !progress; ++i)
+                progress |= (blk->live_in[i] != live[i]);
+
+        ralloc_free(blk->live_in);
+        blk->live_in = live;
+
+        return progress;
+}
+
+/* Globally, liveness analysis uses a fixed-point algorithm based on a
+ * worklist. We initialize a work list with the exit block. We iterate the work
+ * list to compute live_in from live_out for each block on the work list,
+ * adding the predecessors of the block to the work list if we made progress.
+ */
+
+static void
+bi_compute_liveness_ra(bi_context *ctx)
+{
+        unsigned temp_count = bi_max_temp(ctx);
+
+        u_worklist worklist;
+        bi_worklist_init(ctx, &worklist);
+
+        bi_foreach_block(ctx, block) {
+                if (block->live_in)
+                        ralloc_free(block->live_in);
+
+                if (block->live_out)
+                        ralloc_free(block->live_out);
+
+                block->live_in = rzalloc_array(block, uint8_t, temp_count);
+                block->live_out = rzalloc_array(block, uint8_t, temp_count);
+
+                bi_worklist_push_tail(&worklist, block);
+        }
+
+        while (!u_worklist_is_empty(&worklist)) {
+                /* Pop off in reverse order since liveness is backwards */
+                bi_block *blk = bi_worklist_pop_tail(&worklist);
+
+                /* Update liveness information. If we made progress, we need to
+                 * reprocess the predecessors
+                 */
+                if (liveness_block_update(blk, temp_count)) {
+                        bi_foreach_predecessor(blk, pred)
+                                bi_worklist_push_head(&worklist, *pred);
+                }
+        }
+
+        u_worklist_fini(&worklist);
+}
+
 /* Construct an affinity mask such that the vector with `count` elements does
  * not intersect any of the registers in the bitset `clobber`. In other words,
  * an allocated register r needs to satisfy for each i < count: a + i != b.
@@ -325,7 +423,7 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
 
                 /* Update live_in */
                 preload_live = bi_postra_liveness_ins(preload_live, ins);
-                bi_liveness_ins_update(live, ins, node_count);
+                bi_liveness_ins_update_ra(live, ins, node_count);
         }
 
         block->reg_live_in = preload_live;
@@ -336,7 +434,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
 {
         unsigned node_count = bi_max_temp(ctx);
 
-        bi_compute_liveness(ctx);
+        bi_compute_liveness_ra(ctx);
         bi_postra_liveness(ctx);
 
         bi_foreach_block_rev(ctx, blk) {
@@ -752,7 +850,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
         /* After generating a pile of moves, clean up */
         unsigned temp_count = bi_max_temp(ctx);
 
-        bi_compute_liveness(ctx);
+        bi_compute_liveness_ra(ctx);
 
         bi_foreach_block_rev(ctx, block) {
                 uint8_t *live = rzalloc_array(block, uint8_t, temp_count);
@@ -777,7 +875,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
                         if (all_null && !bi_side_effects(ins))
                                 bi_remove_instruction(ins);
                         else
-                                bi_liveness_ins_update(live, ins, temp_count);
+                                bi_liveness_ins_update_ra(live, ins, temp_count);
                 }
 
                 ralloc_free(block->live_in);
