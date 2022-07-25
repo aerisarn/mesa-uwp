@@ -250,6 +250,7 @@ vn_MergePipelineCaches(VkDevice device,
 struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
    bool ignore_viewport_state;
+   bool ignore_viewports;
    bool ignore_multisample_state;
    bool ignore_depth_stencil_state;
    bool ignore_color_blend_state;
@@ -258,6 +259,7 @@ struct vn_graphics_pipeline_create_info_fix {
 /** Temporary storage for fixes in vkCreateGraphicsPipelines. */
 struct vn_create_graphics_pipelines_fixes {
    VkGraphicsPipelineCreateInfo *create_infos;
+   VkPipelineViewportStateCreateInfo *viewport_state_create_infos;
 };
 
 static struct vn_create_graphics_pipelines_fixes *
@@ -266,16 +268,20 @@ vn_alloc_create_graphics_pipelines_fixes(const VkAllocationCallbacks *alloc,
 {
    struct vn_create_graphics_pipelines_fixes *fixes;
    VkGraphicsPipelineCreateInfo *create_infos;
+   VkPipelineViewportStateCreateInfo *viewport_state_create_infos;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &fixes, __typeof__(*fixes), 1);
    vk_multialloc_add(&ma, &create_infos, __typeof__(*create_infos),
                      info_count);
+   vk_multialloc_add(&ma, &viewport_state_create_infos,
+                     __typeof__(*viewport_state_create_infos), info_count);
 
    if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
       return NULL;
 
    fixes->create_infos = create_infos;
+   fixes->viewport_state_create_infos = viewport_state_create_infos;
 
    return fixes;
 }
@@ -306,6 +312,7 @@ vn_fix_graphics_pipeline_create_info(
       /* VkDynamicState */
       struct {
          bool rasterizer_discard_enable;
+         bool viewport;
       } has_dynamic_state = { 0 };
 
       if (info->pDynamicState) {
@@ -313,6 +320,9 @@ vn_fix_graphics_pipeline_create_info(
             switch (info->pDynamicState->pDynamicStates[j]) {
             case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
                has_dynamic_state.rasterizer_discard_enable = true;
+               break;
+            case VK_DYNAMIC_STATE_VIEWPORT:
+               has_dynamic_state.viewport = true;
                break;
             default:
                break;
@@ -400,6 +410,23 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
+      /* Ignore pViewports?
+       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-00747
+       *
+       * Even if pViewportState is non-null, we must not dereference it if it
+       * is ignored.
+       */
+      if (!fix.ignore_viewport_state && info->pViewportState &&
+          info->pViewportState->pViewports) {
+         const bool has_dynamic_viewport =
+            has_pre_raster_state && has_dynamic_state.viewport;
+
+         if (has_dynamic_viewport) {
+            fix.ignore_viewports = true;
+            any_fix = true;
+         }
+      }
+
       /* Ignore pMultisampleState?
        *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00751
        */
@@ -452,6 +479,13 @@ vn_fix_graphics_pipeline_create_info(
 
       if (fix.ignore_viewport_state)
          fixes->create_infos[i].pViewportState = NULL;
+
+      if (fix.ignore_viewports && fixes->create_infos[i].pViewportState) {
+         fixes->viewport_state_create_infos[i] = *info->pViewportState;
+         fixes->viewport_state_create_infos[i].pViewports = NULL;
+         fixes->create_infos[i].pViewportState =
+            &fixes->viewport_state_create_infos[i];
+      }
 
       if (fix.ignore_multisample_state)
          fixes->create_infos[i].pMultisampleState = NULL;
