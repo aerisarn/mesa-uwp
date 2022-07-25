@@ -871,6 +871,13 @@ get_bare_image_type(struct ntv_context *ctx, struct nir_variable *var, bool is_s
    }
 
    SpvDim dimension = type_to_dim(glsl_get_sampler_dim(type), &is_ms);
+   if (dimension == SpvDim1D) {
+      if (is_sampler)
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampled1D);
+      else
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImage1D);
+   }
+
    bool arrayed = glsl_sampler_type_is_array(type);
    if (dimension == SpvDimCube && arrayed)
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageCubeArray);
@@ -4180,15 +4187,11 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityMultiViewport);
    }
 
-   if (s->info.num_textures) {
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
+   if (s->info.num_textures)
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
-   }
 
-   if (s->info.num_images) {
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImage1D);
+   if (s->info.num_images)
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
-   }
 
    ctx.stage = s->info.stage;
    ctx.sinfo = sinfo;
