@@ -750,7 +750,39 @@ bi_lower_vector(bi_context *ctx)
         free(remap);
 
         /* After generating a pile of moves, clean up */
-        bi_opt_dead_code_eliminate(ctx);
+        unsigned temp_count = bi_max_temp(ctx);
+
+        bi_compute_liveness(ctx);
+
+        bi_foreach_block_rev(ctx, block) {
+                uint8_t *live = rzalloc_array(block, uint8_t, temp_count);
+
+                bi_foreach_successor(block, succ) {
+                        for (unsigned i = 0; i < temp_count; ++i)
+                                live[i] |= succ->live_in[i];
+                }
+
+                bi_foreach_instr_in_block_safe_rev(block, ins) {
+                        bool all_null = true;
+
+                        bi_foreach_dest(ins, d) {
+                                unsigned index = bi_get_node(ins->dest[d]);
+
+                                if (index >= temp_count)
+                                        all_null = false;
+                                else if (live[index] & bi_writemask(ins, d))
+                                        all_null = false;
+                        }
+
+                        if (all_null && !bi_side_effects(ins))
+                                bi_remove_instruction(ins);
+                        else
+                                bi_liveness_ins_update(live, ins, temp_count);
+                }
+
+                ralloc_free(block->live_in);
+                block->live_in = live;
+        }
 }
 
 /*
