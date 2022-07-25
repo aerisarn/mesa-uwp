@@ -418,7 +418,9 @@ zink_fb_clear_enabled(const struct zink_context *ctx, unsigned idx)
 static inline uint32_t
 zink_program_cache_stages(uint32_t stages_present)
 {
-   return stages_present >> 2;
+   return (stages_present & ((1 << PIPE_SHADER_TESS_CTRL) |
+                             (1 << PIPE_SHADER_TESS_EVAL) |
+                             (1 << PIPE_SHADER_GEOMETRY))) >> 1;
 }
 
 void

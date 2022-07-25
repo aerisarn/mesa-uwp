@@ -1065,10 +1065,10 @@ zink_invalid_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info 
 }
 
 #define STAGE_BASE 0
-#define STAGE_BASE_GS 1
-#define STAGE_BASE_TES 4
-#define STAGE_BASE_TES_GS 5
-#define STAGE_BASE_TCS_TES 6
+#define STAGE_BASE_GS 4
+#define STAGE_BASE_TES 2
+#define STAGE_BASE_TES_GS 6
+#define STAGE_BASE_TCS_TES 3
 #define STAGE_BASE_TCS_TES_GS 7
 
 template <unsigned STAGE_MASK>
