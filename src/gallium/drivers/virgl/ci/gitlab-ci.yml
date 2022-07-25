@@ -23,6 +23,7 @@ virpipe-on-gl:
     - .test-gl
     - .virgl-rules
   variables:
+    FLAKES_CHANNEL: "#virgl-ci"
     GALLIUM_DRIVER: "virgl"
     CROSVM_GALLIUM_DRIVER: "llvmpipe"
     CROSVM_GPU_ARGS: "gles=false,backend=virglrenderer,egl=true,surfaceless=true,width=1024,height=768"
