@@ -111,10 +111,12 @@ llvmpipe_flush_resource(struct pipe_context *pipe,
                         boolean do_not_block,
                         const char *reason)
 {
-   unsigned referenced;
-
-   referenced = llvmpipe_is_resource_referenced(pipe, resource, level);
-
+   unsigned referenced = 0;
+   struct llvmpipe_screen *lp_screen = llvmpipe_screen(pipe->screen);
+   mtx_lock(&lp_screen->ctx_mutex);
+   list_for_each_entry(struct llvmpipe_context, ctx, &lp_screen->ctx_list, list)
+      referenced |= llvmpipe_is_resource_referenced((struct pipe_context *)ctx, resource, level);
+   mtx_unlock(&lp_screen->ctx_mutex);
    if ((referenced & LP_REFERENCED_FOR_WRITE) ||
        ((referenced & LP_REFERENCED_FOR_READ) && !read_only)) {
 

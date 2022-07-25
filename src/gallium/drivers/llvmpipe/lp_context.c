@@ -57,8 +57,12 @@
 static void llvmpipe_destroy( struct pipe_context *pipe )
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context( pipe );
+   struct llvmpipe_screen *lp_screen = llvmpipe_screen(pipe->screen);
    uint i;
 
+   mtx_lock(&lp_screen->ctx_mutex);
+   list_del(&llvmpipe->list);
+   mtx_unlock(&lp_screen->ctx_mutex);
    lp_print_counters();
 
    if (llvmpipe->csctx) {
@@ -189,8 +193,9 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
                         unsigned flags)
 {
    struct llvmpipe_context *llvmpipe;
+   struct llvmpipe_screen *lp_screen = llvmpipe_screen(screen);
 
-   if (!llvmpipe_screen_late_init(llvmpipe_screen(screen)))
+   if (!llvmpipe_screen_late_init(lp_screen))
       return NULL;
 
    llvmpipe = align_malloc(sizeof(struct llvmpipe_context), 16);
@@ -258,7 +263,7 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
       goto fail;
 
    draw_set_disk_cache_callbacks(llvmpipe->draw,
-                                 llvmpipe_screen(screen),
+                                 lp_screen,
                                  lp_draw_disk_cache_find_shader,
                                  lp_draw_disk_cache_insert_shader);
 
@@ -311,6 +316,9 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
     */
    llvmpipe->dirty |= LP_NEW_SCISSOR;
 
+   mtx_lock(&lp_screen->ctx_mutex);
+   list_addtail(&llvmpipe->list, &lp_screen->ctx_list);
+   mtx_unlock(&lp_screen->ctx_mutex);
    return &llvmpipe->pipe;
 
  fail:
