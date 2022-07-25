@@ -684,8 +684,17 @@ set_image_access(struct lvp_pipeline *pipeline, nir_shader *nir,
                    bool reads, bool writes)
 {
    nir_variable *var = nir_intrinsic_get_var(instr, 0);
+   /* calculate the variable's offset in the layout */
+   unsigned value = 0;
+   const struct lvp_descriptor_set_binding_layout *binding =
+      get_binding_layout(pipeline->layout, var->data.descriptor_set, var->data.binding);
+   for (unsigned s = 0; s < var->data.descriptor_set; s++) {
+     if (pipeline->layout->vk.set_layouts[s])
+        value += get_set_layout(pipeline->layout, s)->stage[nir->info.stage].image_count;
+   }
+   value += binding->stage[nir->info.stage].image_index;
    const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
-   unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
+   unsigned mask = BITFIELD_MASK(MAX2(size, 1)) << value;
 
    if (reads)
       pipeline->access[nir->info.stage].images_read |= mask;
@@ -709,10 +718,18 @@ set_buffer_access(struct lvp_pipeline *pipeline, nir_shader *nir,
    }
    if (var->data.mode != nir_var_mem_ssbo)
       return;
+   /* calculate the variable's offset in the layout */
+   unsigned value = 0;
+   const struct lvp_descriptor_set_binding_layout *binding =
+      get_binding_layout(pipeline->layout, var->data.descriptor_set, var->data.binding);
+   for (unsigned s = 0; s < var->data.descriptor_set; s++) {
+     if (pipeline->layout->vk.set_layouts[s])
+        value += get_set_layout(pipeline->layout, s)->stage[nir->info.stage].shader_buffer_count;
+   }
+   value += binding->stage[nir->info.stage].shader_buffer_index;
    /* Structs have been lowered already, so get_aoa_size is sufficient. */
    const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
-   unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
-
+   unsigned mask = BITFIELD_MASK(MAX2(size, 1)) << value;
    pipeline->access[nir->info.stage].buffers_written |= mask;
 }
 
