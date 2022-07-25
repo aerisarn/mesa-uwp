@@ -318,7 +318,9 @@ vn_fix_graphics_pipeline_create_info(
       struct {
          bool rasterizer_discard_enable;
          bool viewport;
+         bool viewport_with_count;
          bool scissor;
+         bool scissor_with_count;
       } has_dynamic_state = { 0 };
 
       if (info->pDynamicState) {
@@ -330,8 +332,14 @@ vn_fix_graphics_pipeline_create_info(
             case VK_DYNAMIC_STATE_VIEWPORT:
                has_dynamic_state.viewport = true;
                break;
+            case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
+               has_dynamic_state.viewport_with_count = true;
+               break;
             case VK_DYNAMIC_STATE_SCISSOR:
                has_dynamic_state.scissor = true;
+               break;
+            case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
+               has_dynamic_state.scissor_with_count = true;
                break;
             default:
                break;
@@ -431,7 +439,7 @@ vn_fix_graphics_pipeline_create_info(
       }
 
       /* Ignore pViewports?
-       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-00747
+       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04130
        *
        * Even if pViewportState is non-null, we must not dereference it if it
        * is ignored.
@@ -439,7 +447,8 @@ vn_fix_graphics_pipeline_create_info(
       if (!fix.ignore_viewport_state && info->pViewportState &&
           info->pViewportState->pViewports) {
          const bool has_dynamic_viewport =
-            has_pre_raster_state && has_dynamic_state.viewport;
+            has_pre_raster_state && (has_dynamic_state.viewport ||
+                                     has_dynamic_state.viewport_with_count);
 
          if (has_dynamic_viewport) {
             fix.ignore_viewports = true;
@@ -448,7 +457,7 @@ vn_fix_graphics_pipeline_create_info(
       }
 
       /* Ignore pScissors?
-       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-00748
+       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04131
        *
        * Even if pViewportState is non-null, we must not dereference it if it
        * is ignored.
@@ -456,8 +465,8 @@ vn_fix_graphics_pipeline_create_info(
       if (!fix.ignore_viewport_state && info->pViewportState &&
           info->pViewportState->pScissors) {
          const bool has_dynamic_scissor =
-            has_pre_raster_state && has_dynamic_state.scissor;
-
+            has_pre_raster_state && (has_dynamic_state.scissor ||
+                                     has_dynamic_state.scissor_with_count);
          if (has_dynamic_scissor) {
             fix.ignore_scissors = true;
             any_fix = true;
