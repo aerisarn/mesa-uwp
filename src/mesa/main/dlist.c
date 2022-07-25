@@ -52,8 +52,10 @@
 #include "util/u_memory.h"
 #include "api_exec_decl.h"
 
+#include "state_tracker/st_context.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_bitmap.h"
+#include "state_tracker/st_sampler_view.h"
 
 static bool
 _mesa_glthread_should_execute_list(struct gl_context *ctx,
@@ -860,9 +862,11 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
          case OPCODE_DRAW_PIXELS:
             free(get_pointer(&n[5]));
             break;
-         case OPCODE_BITMAP:
-            free(get_pointer(&n[7]));
+         case OPCODE_BITMAP: {
+            struct pipe_resource *tex = get_pointer(&n[7]);
+            pipe_resource_reference(&tex, NULL);
             break;
+         }
          case OPCODE_POLYGON_STIPPLE:
             free(get_pointer(&n[1]));
             break;
@@ -1336,21 +1340,32 @@ save_Bitmap(GLsizei width, GLsizei height,
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
    ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
-   n = alloc_instruction(ctx, OPCODE_BITMAP, 6 + POINTER_DWORDS);
-   if (n) {
-      n[1].i = (GLint) width;
-      n[2].i = (GLint) height;
-      n[3].f = xorig;
-      n[4].f = yorig;
-      n[5].f = xmove;
-      n[6].f = ymove;
-      save_pointer(&n[7],
-                   unpack_image(ctx, 2, width, height, 1, GL_COLOR_INDEX,
-                                GL_BITMAP, pixels, &ctx->Unpack));
+   struct pipe_resource *tex =
+      st_make_bitmap_texture(ctx, width, height, &ctx->Unpack, pixels);
+
+   if (!tex) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glNewList -> glBitmap");
+      return;
    }
+
+   n = alloc_instruction(ctx, OPCODE_BITMAP, 6 + POINTER_DWORDS);
+   if (!n) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glNewList -> glBitmap (3)");
+      pipe_resource_reference(&tex, NULL);
+      return;
+   }
+
+   n[1].i = (GLint) width;
+   n[2].i = (GLint) height;
+   n[3].f = xorig;
+   n[4].f = yorig;
+   n[5].f = xmove;
+   n[6].f = ymove;
+   save_pointer(&n[7], tex);
+
    if (ctx->ExecuteFlag) {
-      CALL_Bitmap(ctx->Exec, (width, height,
-                              xorig, yorig, xmove, ymove, pixels));
+      ASSERT_OUTSIDE_BEGIN_END(ctx);
+      _mesa_bitmap(ctx, width, height, xorig, yorig, xmove, ymove, NULL, tex);
    }
 }
 
@@ -10853,13 +10868,12 @@ execute_list(struct gl_context *ctx, GLuint list)
             CALL_BindTexture(ctx->Exec, (n[1].e, n[2].ui));
             break;
          case OPCODE_BITMAP:
-            {
-               const struct gl_pixelstore_attrib save = ctx->Unpack;
-               ctx->Unpack = ctx->DefaultPacking;
-               CALL_Bitmap(ctx->Exec, ((GLsizei) n[1].i, (GLsizei) n[2].i,
-                                       n[3].f, n[4].f, n[5].f, n[6].f,
-                                       get_pointer(&n[7])));
-               ctx->Unpack = save;      /* restore */
+            if (_mesa_inside_begin_end(ctx)) {
+               _mesa_error(ctx, GL_INVALID_OPERATION,
+                           "glCallList -> glBitmap inside Begin/End");
+            } else {
+               _mesa_bitmap(ctx, n[1].i, n[2].i, n[3].f, n[4].f, n[5].f,
+                            n[6].f, NULL, get_pointer(&n[7]));
             }
             break;
          case OPCODE_BLEND_COLOR:

@@ -88,6 +88,8 @@ static GLboolean UseBitmapCache = GL_TRUE;
 /** Epsilon for Z comparisons */
 #define Z_EPSILON 1e-06
 
+static void
+init_bitmap_state(struct st_context *st);
 
 /**
  * Copy user-provide bitmap bits into texture buffer, expanding
@@ -114,16 +116,19 @@ unpack_bitmap(struct st_context *st,
 /**
  * Create a texture which represents a bitmap image.
  */
-static struct pipe_resource *
-make_bitmap_texture(struct gl_context *ctx, GLsizei width, GLsizei height,
-                    const struct gl_pixelstore_attrib *unpack,
-                    const GLubyte *bitmap)
+struct pipe_resource *
+st_make_bitmap_texture(struct gl_context *ctx, GLsizei width, GLsizei height,
+                       const struct gl_pixelstore_attrib *unpack,
+                       const GLubyte *bitmap)
 {
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct pipe_transfer *transfer;
    ubyte *dest;
    struct pipe_resource *pt;
+
+   if (!st->bitmap.tex_format)
+      init_bitmap_state(st);
 
    /* PBO source... */
    bitmap = _mesa_map_pbo_source(ctx, unpack, bitmap);
@@ -283,12 +288,13 @@ restore_render_state(struct gl_context *ctx)
 
 /**
  * Render a glBitmap by drawing a textured quad
+ *
+ * take_ownership means the callee will be resposible for unreferencing sv.
  */
 static void
 draw_bitmap_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
                  GLsizei width, GLsizei height,
-                 struct pipe_sampler_view *sv,
-                 const GLfloat *color)
+                 struct pipe_sampler_view *sv, const GLfloat *color)
 {
    struct st_context *st = st_context(ctx);
    const float fb_width = (float) st->state.fb_width;
@@ -589,15 +595,17 @@ init_bitmap_state(struct st_context *st)
 void
 st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
           GLsizei width, GLsizei height,
-          const struct gl_pixelstore_attrib *unpack, const GLubyte *bitmap)
+          const struct gl_pixelstore_attrib *unpack, const GLubyte *bitmap,
+          struct pipe_resource *tex)
 {
    struct st_context *st = st_context(ctx);
-   struct pipe_resource *pt;
 
    assert(width > 0);
    assert(height > 0);
 
    st_invalidate_readpix_cache(st);
+   if (tex)
+      st_flush_bitmap_cache(st);
 
    if (!st->bitmap.tex_format) {
       init_bitmap_state(st);
@@ -613,23 +621,30 @@ st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
       st_validate_state(st, ST_PIPELINE_META);
    }
 
-   if (UseBitmapCache && accum_bitmap(ctx, x, y, width, height, unpack, bitmap))
-      return;
+   struct pipe_sampler_view *view = NULL;
 
-   pt = make_bitmap_texture(ctx, width, height, unpack, bitmap);
-   if (pt) {
-      struct pipe_sampler_view *sv =
-         st_create_texture_sampler_view(st->pipe, pt);
+   if (!tex) {
+      if (UseBitmapCache && accum_bitmap(ctx, x, y, width, height, unpack, bitmap))
+         return;
+
+      struct pipe_resource *pt =
+         st_make_bitmap_texture(ctx, width, height, unpack, bitmap);
+      if (!pt)
+         return;
 
       assert(pt->target == PIPE_TEXTURE_2D || pt->target == PIPE_TEXTURE_RECT);
 
-      if (sv) {
-         draw_bitmap_quad(ctx, x, y, ctx->Current.RasterPos[2],
-                          width, height, sv, ctx->Current.RasterColor);
-      }
-
-      /* release/free the texture */
+      view = st_create_texture_sampler_view(st->pipe, pt);
+      /* unreference the texture because it's referenced by sv */
       pipe_resource_reference(&pt, NULL);
+   } else {
+      /* tex comes from a display list. */
+      view = st_create_texture_sampler_view(st->pipe, tex);
+   }
+
+   if (view) {
+      draw_bitmap_quad(ctx, x, y, ctx->Current.RasterPos[2],
+                       width, height, view, ctx->Current.RasterColor);
    }
 }
 

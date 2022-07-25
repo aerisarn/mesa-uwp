@@ -45,8 +45,14 @@ st_destroy_bitmap(struct st_context *st);
 extern void
 st_flush_bitmap_cache(struct st_context *st);
 
+struct pipe_resource *
+st_make_bitmap_texture(struct gl_context *ctx, GLsizei width, GLsizei height,
+                       const struct gl_pixelstore_attrib *unpack,
+                       const GLubyte *bitmap);
+
 void st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
                GLsizei width, GLsizei height,
-               const struct gl_pixelstore_attrib *unpack, const GLubyte *bitmap);
+               const struct gl_pixelstore_attrib *unpack, const GLubyte *bitmap,
+               struct pipe_resource *tex);
 
 #endif /* ST_CB_BITMAP_H */
