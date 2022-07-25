@@ -42,9 +42,7 @@ bi_fold_constant(bi_instr *I, bool *unsupported)
 {
         /* We can only fold instructions where all sources are constant */
         bi_foreach_src(I, s) {
-                enum bi_index_type type = I->src[s].type;
-
-                if (!(type == BI_INDEX_NULL || type == BI_INDEX_CONSTANT)) {
+                if (I->src[s].type != BI_INDEX_CONSTANT) {
                         *unsupported = true;
                         return 0;
                 }
