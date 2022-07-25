@@ -937,8 +937,6 @@ struct gl_texture_object
    GLboolean _MipmapComplete;  /**< Is the whole mipmap valid? */
    GLboolean _IsIntegerFormat; /**< Does the texture store integer values? */
    GLboolean _RenderToTexture; /**< Any rendering to this texture? */
-   GLboolean Purgeable;        /**< Is the buffer purgeable under memory
-                                    pressure? */
    GLboolean Immutable;        /**< GL_ARB_texture_storage */
    GLboolean _IsFloat;         /**< GL_OES_float_texture */
    GLboolean _IsHalfFloat;     /**< GL_OES_half_float_texture */
@@ -1440,7 +1438,6 @@ struct gl_buffer_object
    GLubyte *Data;       /**< Location of storage either in RAM or VRAM. */
    GLboolean DeletePending;   /**< true if buffer object is removed from the hash */
    GLboolean Written;   /**< Ever written to? (for debugging) */
-   GLboolean Purgeable; /**< Is the buffer purgeable under memory pressure? */
    GLboolean Immutable; /**< GL_ARB_buffer_storage */
    gl_buffer_usage UsageHistory; /**< How has this buffer been used so far? */
 
@@ -2560,7 +2557,6 @@ struct gl_renderbuffer
    GLint RefCount;
    GLuint Width, Height;
    GLuint Depth;
-   GLboolean Purgeable;  /**< Is the buffer purgeable under memory pressure? */
    GLboolean AttachedAnytime; /**< TRUE if it was attached to a framebuffer */
    GLubyte NumSamples;    /**< zero means not multisampled */
    GLubyte NumStorageSamples; /**< for AMD_framebuffer_multisample_advanced */
