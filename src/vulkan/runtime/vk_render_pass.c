@@ -1003,6 +1003,11 @@ vk_get_command_buffer_inheritance_as_rendering_resume(
       __vk_append_struct(&data->rendering, &data->fsr_att);
    }
 
+   /* Append this one last because it lives in the subpass and we don't want
+    * to be changed by appending other structures later.
+    */
+   __vk_append_struct(&data->rendering, (void *)&subpass->self_dep_info);
+
    return &data->rendering;
 }
 
