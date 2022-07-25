@@ -281,6 +281,8 @@ deep_copy_dynamic_state(void *mem_ctx,
       switch (src->pDynamicStates[i]) {
       case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE:
       case VK_DYNAMIC_STATE_VERTEX_INPUT_EXT:
+      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
+      case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
          if (stages & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT)
             states[dst->dynamicStateCount++] = src->pDynamicStates[i];
          break;
@@ -291,12 +293,10 @@ deep_copy_dynamic_state(void *mem_ctx,
       case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
       case VK_DYNAMIC_STATE_CULL_MODE:
       case VK_DYNAMIC_STATE_FRONT_FACE:
-      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
       case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
       case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
       case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:
       case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
-      case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
          if (stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT)
             states[dst->dynamicStateCount++] = src->pDynamicStates[i];
          break;
