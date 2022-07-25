@@ -390,7 +390,14 @@ def fetch_logs(job, max_idle_time, log_follower) -> None:
         job.heartbeat()
     parsed_lines = log_follower.flush()
 
-    parsed_lines = job.parse_job_result_from_log(parsed_lines)
+    # Only parse job results when the script reaches the end of the logs.
+    # Depending on how much payload the RPC scheduler.jobs.logs get, it may
+    # reach the LAVA_POST_PROCESSING phase.
+    if log_follower.current_section.type in (
+        LogSectionType.TEST_CASE,
+        LogSectionType.LAVA_POST_PROCESSING,
+    ):
+        parsed_lines = job.parse_job_result_from_log(parsed_lines)
 
     for line in parsed_lines:
         print_log(line)
