@@ -302,9 +302,12 @@ vn_fix_graphics_pipeline_create_info(
    struct vn_create_graphics_pipelines_fixes *fixes = NULL;
 
    for (uint32_t i = 0; i < info_count; i++) {
-      const VkGraphicsPipelineCreateInfo *info = &create_infos[i];
       struct vn_graphics_pipeline_create_info_fix fix = { 0 };
       bool any_fix = false;
+
+      const VkGraphicsPipelineCreateInfo *info = &create_infos[i];
+      const VkPipelineRenderingCreateInfo *rendering_info =
+         vk_find_struct_const(info, PIPELINE_RENDERING_CREATE_INFO);
 
       VkShaderStageFlags stages = 0;
       for (uint32_t j = 0; j < info->stageCount; j++) {
@@ -342,6 +345,17 @@ vn_fix_graphics_pipeline_create_info(
       const struct vn_subpass *subpass = NULL;
       if (pass)
          subpass = &pass->subpasses[info->subpass];
+
+      /* TODO: Ignore VkPipelineRenderingCreateInfo when not using dynamic
+       * rendering. This requires either a deep rewrite of
+       * VkGraphicsPipelineCreateInfo::pNext or a fix in the generated protocol
+       * code.
+       *
+       * The Vulkan spec (1.3.223) says about VkPipelineRenderingCreateInfo:
+       *    If a graphics pipeline is created with a valid VkRenderPass,
+       *    parameters of this structure are ignored.
+       */
+      const bool has_dynamic_rendering = !pass && rendering_info;
 
       /* For each pipeline state category, we define a bool.
        *
@@ -458,30 +472,53 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
-      /* Ignore pDepthStencilState?
-       *    VUID-VkGraphicsPipelineCreateInfo-renderPass-06043
-       */
+      /* Ignore pDepthStencilState? */
       if (info->pDepthStencilState) {
          const bool has_static_attachment =
             subpass && subpass->has_depth_stencil_attachment;
 
-         if (!has_fragment_shader_state || !has_static_attachment) {
-            fix.ignore_depth_stencil_state = true;
-            any_fix = true;
+         /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06043 */
+         bool require_state =
+            has_fragment_shader_state && has_static_attachment;
+
+         if (!require_state) {
+            const bool has_dynamic_attachment =
+               has_dynamic_rendering &&
+               (rendering_info->depthAttachmentFormat !=
+                   VK_FORMAT_UNDEFINED ||
+                rendering_info->stencilAttachmentFormat !=
+                   VK_FORMAT_UNDEFINED);
+
+            /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06053 */
+            require_state = has_fragment_shader_state &&
+                            has_fragment_output_state &&
+                            has_dynamic_attachment;
          }
+
+         fix.ignore_depth_stencil_state = !require_state;
+         any_fix |= fix.ignore_depth_stencil_state;
       }
 
-      /* Ignore pColorBlendState?
-       *    VUID-VkGraphicsPipelineCreateInfo-renderPass-06044
-       */
+      /* Ignore pColorBlendState? */
       if (info->pColorBlendState) {
          const bool has_static_attachment =
             subpass && subpass->has_color_attachment;
 
-         if (!has_fragment_output_state || !has_static_attachment) {
-            fix.ignore_color_blend_state = true;
-            any_fix = true;
+         /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06044 */
+         bool require_state =
+            has_fragment_output_state && has_static_attachment;
+
+         if (!require_state) {
+            const bool has_dynamic_attachment =
+               has_dynamic_rendering && rendering_info->colorAttachmentCount;
+
+            /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06054 */
+            require_state =
+               has_fragment_output_state && has_dynamic_attachment;
          }
+
+         fix.ignore_color_blend_state = !require_state;
+         any_fix |= fix.ignore_color_blend_state;
       }
 
       /* Ignore basePipelineHandle?
