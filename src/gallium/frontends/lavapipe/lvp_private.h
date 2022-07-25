@@ -417,9 +417,9 @@ struct lvp_pipeline_layout {
 };
 
 struct lvp_access_info {
-   uint32_t images_read;
-   uint32_t images_written;
-   uint32_t buffers_written;
+   uint64_t images_read;
+   uint64_t images_written;
+   uint64_t buffers_written;
 };
 
 struct lvp_pipeline {
