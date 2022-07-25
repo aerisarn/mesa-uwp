@@ -706,6 +706,10 @@ typedef struct bi_block {
         uint8_t *live_in;
         uint8_t *live_out;
 
+        /* Scalar liveness indexed by SSA index */
+        BITSET_WORD *ssa_live_in;
+        BITSET_WORD *ssa_live_out;
+
         /* If true, uses clauses; if false, uses instructions */
         bool scheduled;
         struct list_head clauses; /* list of bi_clause */
@@ -1179,6 +1183,9 @@ bool bi_opt_constant_fold(bi_context *ctx);
 
 void bi_compute_liveness(bi_context *ctx);
 void bi_liveness_ins_update(uint8_t *live, bi_instr *ins, unsigned max);
+
+void bi_compute_liveness_ssa(bi_context *ctx);
+void bi_liveness_ins_update_ssa(BITSET_WORD *live, const bi_instr *ins);
 
 void bi_postra_liveness(bi_context *ctx);
 uint64_t MUST_CHECK bi_postra_liveness_ins(uint64_t live, bi_instr *ins);

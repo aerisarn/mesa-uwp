@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2020 Collabora, Ltd.
  * Copyright (C) 2018-2019 Alyssa Rosenzweig <alyssa@rosenzweig.io>
+ * Copyright © 2014 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -119,6 +120,104 @@ bi_compute_liveness(bi_context *ctx)
                 if (liveness_block_update(blk, temp_count)) {
                         bi_foreach_predecessor(blk, pred)
                                 bi_worklist_push_head(&worklist, *pred);
+                }
+        }
+
+        u_worklist_fini(&worklist);
+}
+
+void
+bi_liveness_ins_update_ssa(BITSET_WORD *live, const bi_instr *I)
+{
+        bi_foreach_dest(I, d) {
+                assert(I->dest[d].type == BI_INDEX_NORMAL);
+                BITSET_CLEAR(live, I->dest[d].value);
+        }
+
+        bi_foreach_src(I, s) {
+                if (I->src[s].type == BI_INDEX_NORMAL)
+                        BITSET_SET(live, I->src[s].value);
+        }
+}
+
+void
+bi_compute_liveness_ssa(bi_context *ctx)
+{
+        u_worklist worklist;
+        u_worklist_init(&worklist, ctx->num_blocks, NULL);
+
+        /* Free any previous liveness, and allocate */
+        unsigned words = BITSET_WORDS(ctx->ssa_alloc);
+
+        bi_foreach_block(ctx, block) {
+                if (block->ssa_live_in)
+                        ralloc_free(block->ssa_live_in);
+
+                if (block->ssa_live_out)
+                        ralloc_free(block->ssa_live_out);
+
+                block->ssa_live_in = rzalloc_array(block, BITSET_WORD, words);
+                block->ssa_live_out = rzalloc_array(block, BITSET_WORD, words);
+
+                bi_worklist_push_head(&worklist, block);
+        }
+
+        /* Iterate the work list */
+        while(!u_worklist_is_empty(&worklist)) {
+                /* Pop in reverse order since liveness is a backwards pass */
+                bi_block *blk = bi_worklist_pop_head(&worklist);
+
+                /* Update its liveness information */
+                memcpy(blk->ssa_live_in, blk->ssa_live_out, words * sizeof(BITSET_WORD));
+
+                bi_foreach_instr_in_block_rev(blk, I) {
+                        /* Phi nodes are handled separately, so we skip them. As phi nodes are
+                         * at the beginning and we're iterating backwards, we stop as soon as
+                         * we hit a phi node.
+                         */
+                        if (I->op == BI_OPCODE_PHI)
+                                break;
+
+                        bi_liveness_ins_update_ssa(blk->ssa_live_in, I);
+                }
+
+                /* Propagate the live in of the successor (blk) to the live out of
+                 * predecessors.
+                 *
+                 * Phi nodes are logically on the control flow edge and act in parallel.
+                 * To handle when propagating, we kill writes from phis and make live the
+                 * corresponding sources.
+                 */
+                bi_foreach_predecessor(blk, pred) {
+                        BITSET_WORD *live = ralloc_array(blk, BITSET_WORD, words);
+                        memcpy(live, blk->ssa_live_in, words * sizeof(BITSET_WORD));
+
+                        /* Kill write */
+                        bi_foreach_instr_in_block(blk, I) {
+                                if (I->op != BI_OPCODE_PHI) break;
+
+                                assert(I->dest[0].type == BI_INDEX_NORMAL);
+                                BITSET_CLEAR(live, I->dest[0].value);
+                        }
+
+                        /* Make live the corresponding source */
+                        bi_foreach_instr_in_block(blk, I) {
+                                if (I->op != BI_OPCODE_PHI) break;
+
+                                bi_index operand = I->src[bi_predecessor_index(blk, *pred)];
+                                if (operand.type == BI_INDEX_NORMAL)
+                                        BITSET_SET(live, operand.value);
+                        }
+
+                        BITSET_WORD progress = 0;
+
+                        for (unsigned i = 0; i < words; ++i) {
+                                progress |= live[i] & ~((*pred)->ssa_live_out[i]);
+                                (*pred)->ssa_live_out[i] |= live[i];
+                        }
+
+                        if (progress != 0)
+                                bi_worklist_push_tail(&worklist, *pred);
                 }
         }
 
