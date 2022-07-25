@@ -76,20 +76,6 @@ lower_uniform_block_access(const nir_instr *instr, const void *data_cb)
    return deref->modes == nir_var_mem_ubo;
 }
 
-static const struct lvp_descriptor_set_layout *
-get_set_layout(const struct lvp_pipeline_layout *layout, uint32_t set)
-{
-   return container_of(layout->vk.set_layouts[set],
-                       const struct lvp_descriptor_set_layout, vk);
-}
-
-static const struct lvp_descriptor_set_binding_layout *
-get_binding_layout(const struct lvp_pipeline_layout *layout,
-                   uint32_t set, uint32_t binding)
-{
-   return &get_set_layout(layout, set)->binding[binding];
-}
-
 static nir_ssa_def *
 lower_block_instr(nir_builder *b, nir_instr *instr, void *data_cb)
 {

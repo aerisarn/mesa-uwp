@@ -521,6 +521,20 @@ struct lvp_cmd_buffer {
 };
 
 
+static inline const struct lvp_descriptor_set_layout *
+get_set_layout(const struct lvp_pipeline_layout *layout, uint32_t set)
+{
+   return container_of(layout->vk.set_layouts[set],
+                       const struct lvp_descriptor_set_layout, vk);
+}
+
+static inline const struct lvp_descriptor_set_binding_layout *
+get_binding_layout(const struct lvp_pipeline_layout *layout,
+                   uint32_t set, uint32_t binding)
+{
+   return &get_set_layout(layout, set)->binding[binding];
+}
+
 #define LVP_FROM_HANDLE(__lvp_type, __name, __handle) \
    struct __lvp_type *__name = __lvp_type ## _from_handle(__handle)
 
