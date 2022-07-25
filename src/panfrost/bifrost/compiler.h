@@ -914,12 +914,6 @@ va_zero_lut()
         return va_lut(0);
 }
 
-static inline unsigned
-bi_max_temp(bi_context *ctx)
-{
-        return (MAX2(ctx->reg_alloc, ctx->ssa_alloc) + 2) << 1;
-}
-
 static inline bi_index
 bi_temp(bi_context *ctx)
 {

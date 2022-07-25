@@ -210,7 +210,7 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
  * returns whether progress was made. */
 
 static void
-bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins, unsigned max)
+bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
@@ -244,7 +244,7 @@ liveness_block_update(bi_block *blk, unsigned temp_count)
         memcpy(live, blk->live_out, temp_count);
 
         bi_foreach_instr_in_block_rev(blk, ins)
-                bi_liveness_ins_update_ra(live, ins, temp_count);
+                bi_liveness_ins_update_ra(live, ins);
 
         /* To figure out progress, diff live_in */
 
@@ -266,8 +266,6 @@ liveness_block_update(bi_block *blk, unsigned temp_count)
 static void
 bi_compute_liveness_ra(bi_context *ctx)
 {
-        unsigned temp_count = bi_max_temp(ctx);
-
         u_worklist worklist;
         bi_worklist_init(ctx, &worklist);
 
@@ -278,8 +276,8 @@ bi_compute_liveness_ra(bi_context *ctx)
                 if (block->live_out)
                         ralloc_free(block->live_out);
 
-                block->live_in = rzalloc_array(block, uint8_t, temp_count);
-                block->live_out = rzalloc_array(block, uint8_t, temp_count);
+                block->live_in = rzalloc_array(block, uint8_t, ctx->ssa_alloc);
+                block->live_out = rzalloc_array(block, uint8_t, ctx->ssa_alloc);
 
                 bi_worklist_push_tail(&worklist, block);
         }
@@ -291,7 +289,7 @@ bi_compute_liveness_ra(bi_context *ctx)
                 /* Update liveness information. If we made progress, we need to
                  * reprocess the predecessors
                  */
-                if (liveness_block_update(blk, temp_count)) {
+                if (liveness_block_update(blk, ctx->ssa_alloc)) {
                         bi_foreach_predecessor(blk, pred)
                                 bi_worklist_push_head(&worklist, *pred);
                 }
@@ -419,7 +417,7 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
 
                 /* Update live_in */
                 preload_live = bi_postra_liveness_ins(preload_live, ins);
-                bi_liveness_ins_update_ra(live, ins, node_count);
+                bi_liveness_ins_update_ra(live, ins);
         }
 
         block->reg_live_in = preload_live;
@@ -428,17 +426,15 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
 static void
 bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
 {
-        unsigned node_count = bi_max_temp(ctx);
-
         bi_compute_liveness_ra(ctx);
         bi_postra_liveness(ctx);
 
         bi_foreach_block_rev(ctx, blk) {
-                uint8_t *live = mem_dup(blk->live_out, node_count);
+                uint8_t *live = mem_dup(blk->live_out, ctx->ssa_alloc);
 
                 bi_mark_interference(blk, l, live, blk->reg_live_out,
-                                node_count, ctx->inputs->is_blend, !full_regs,
-                                ctx->arch >= 9);
+                                ctx->ssa_alloc, ctx->inputs->is_blend,
+                                !full_regs, ctx->arch >= 9);
 
                 free(live);
         }
@@ -447,8 +443,7 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
 static struct lcra_state *
 bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
 {
-        unsigned node_count = bi_max_temp(ctx);
-        struct lcra_state *l = lcra_alloc_equations(node_count);
+        struct lcra_state *l = lcra_alloc_equations(ctx->ssa_alloc);
 
         /* Blend shaders are restricted to R0-R15. Other shaders at full
          * occupancy also can access R48-R63. At half occupancy they can access
@@ -547,7 +542,6 @@ bi_reg_from_index(bi_context *ctx, struct lcra_state *l, bi_index index)
 
         ASSERTED bool is_offset = (index.offset > 0) &&
                 (index.type != BI_INDEX_FAU);
-        unsigned node_count = bi_max_temp(ctx);
 
         /* Did we run RA for this index at all */
         if (!bi_is_ssa(index)) {
@@ -830,15 +824,13 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
         free(remap);
 
         /* After generating a pile of moves, clean up */
-        unsigned temp_count = bi_max_temp(ctx);
-
         bi_compute_liveness_ra(ctx);
 
         bi_foreach_block_rev(ctx, block) {
-                uint8_t *live = rzalloc_array(block, uint8_t, temp_count);
+                uint8_t *live = rzalloc_array(block, uint8_t, ctx->ssa_alloc);
 
                 bi_foreach_successor(block, succ) {
-                        for (unsigned i = 0; i < temp_count; ++i)
+                        for (unsigned i = 0; i < ctx->ssa_alloc; ++i)
                                 live[i] |= succ->live_in[i];
                 }
 
@@ -855,7 +847,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
                         if (all_null && !bi_side_effects(ins))
                                 bi_remove_instruction(ins);
                         else
-                                bi_liveness_ins_update_ra(live, ins, temp_count);
+                                bi_liveness_ins_update_ra(live, ins);
                 }
 
                 ralloc_free(block->live_in);
