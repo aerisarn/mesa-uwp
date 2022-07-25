@@ -516,6 +516,7 @@ crocus_destroy_query(struct pipe_context *ctx, struct pipe_query *p_query)
       crocus_syncobj_reference(screen, &query->syncobj, NULL);
       screen->base.fence_reference(ctx->screen, &query->fence, NULL);
    }
+   pipe_resource_reference(&query->query_state_ref.res, NULL);
    free(query);
 }
 
