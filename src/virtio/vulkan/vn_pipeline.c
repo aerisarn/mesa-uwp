@@ -255,6 +255,7 @@ struct vn_graphics_pipeline_create_info_fix {
    bool ignore_multisample_state;
    bool ignore_depth_stencil_state;
    bool ignore_color_blend_state;
+   bool ignore_base_pipeline_handle;
 };
 
 /** Temporary storage for fixes in vkCreateGraphicsPipelines. */
@@ -483,6 +484,15 @@ vn_fix_graphics_pipeline_create_info(
          }
       }
 
+      /* Ignore basePipelineHandle?
+       *    VUID-VkGraphicsPipelineCreateInfo-flags-00722
+       */
+      if (!(info->flags & VK_PIPELINE_CREATE_DERIVATIVE_BIT) ||
+          info->basePipelineIndex != -1) {
+         fix.ignore_base_pipeline_handle = true;
+         any_fix = true;
+      }
+
       if (!any_fix)
          continue;
 
@@ -524,6 +534,9 @@ vn_fix_graphics_pipeline_create_info(
 
       if (fix.ignore_color_blend_state)
          fixes->create_infos[i].pColorBlendState = NULL;
+
+      if (fix.ignore_base_pipeline_handle)
+         fixes->create_infos[i].basePipelineHandle = VK_NULL_HANDLE;
    }
 
    if (!fixes)
