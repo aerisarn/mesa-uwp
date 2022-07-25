@@ -1291,18 +1291,7 @@ static void handle_descriptor(struct rendering_state *state,
          return;
       idx += array_idx;
       idx += dyn_info->stage[stage].const_buffer_count;
-      if (!descriptor->buffer) {
-         state->const_buffer[p_stage][idx].buffer = NULL;
-         state->const_buffer[p_stage][idx].buffer_offset = 0;
-         state->const_buffer[p_stage][idx].buffer_size = 0;
-      } else {
-         state->const_buffer[p_stage][idx].buffer = descriptor->buffer->bo;
-         state->const_buffer[p_stage][idx].buffer_offset = descriptor->offset;
-         if (descriptor->range == VK_WHOLE_SIZE)
-            state->const_buffer[p_stage][idx].buffer_size = descriptor->buffer->bo->width0 - state->const_buffer[p_stage][idx].buffer_offset;
-         else
-            state->const_buffer[p_stage][idx].buffer_size = descriptor->range;
-      }
+      state->const_buffer[p_stage][idx] = descriptor->ubo;
       if (is_dynamic) {
          uint32_t offset = dyn_info->dynamic_offsets[dyn_info->dyn_index + binding->dynamic_index + array_idx];
          state->const_buffer[p_stage][idx].buffer_offset += offset;
@@ -1320,18 +1309,7 @@ static void handle_descriptor(struct rendering_state *state,
          return;
       idx += array_idx;
       idx += dyn_info->stage[stage].shader_buffer_count;
-      if (!descriptor->buffer) {
-         state->sb[p_stage][idx].buffer = NULL;
-         state->sb[p_stage][idx].buffer_offset = 0;
-         state->sb[p_stage][idx].buffer_size = 0;
-      } else {
-         state->sb[p_stage][idx].buffer = descriptor->buffer->bo;
-         state->sb[p_stage][idx].buffer_offset = descriptor->offset;
-         if (descriptor->range == VK_WHOLE_SIZE)
-            state->sb[p_stage][idx].buffer_size = descriptor->buffer->bo->width0 - state->sb[p_stage][idx].buffer_offset;
-         else
-            state->sb[p_stage][idx].buffer_size = descriptor->range;
-      }
+      state->sb[p_stage][idx] = descriptor->ssbo;
       if (is_dynamic) {
          uint32_t offset = dyn_info->dynamic_offsets[dyn_info->dyn_index + binding->dynamic_index + array_idx];
          state->sb[p_stage][idx].buffer_offset += offset;
@@ -3314,13 +3292,26 @@ static struct lvp_cmd_push_descriptor_set *create_push_descriptor_set(struct vk_
             info->buffer_view = lvp_buffer_view_from_handle(in_cmd->descriptor_writes[i].pTexelBufferView[j]);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
+            LVP_FROM_HANDLE(lvp_buffer, buffer, in_cmd->descriptor_writes[i].pBufferInfo[j].buffer);
+            info->ubo.buffer = buffer ? buffer->bo : NULL;
+            info->ubo.buffer_offset = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].offset : 0;
+            info->ubo.buffer_size = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].range : 0;
+            if (buffer && in_cmd->descriptor_writes[i].pBufferInfo[j].range == VK_WHOLE_SIZE)
+               info->ubo.buffer_size = info->ubo.buffer->width0 - info->ubo.buffer_offset;
+            break;
+         }
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+            LVP_FROM_HANDLE(lvp_buffer, buffer, in_cmd->descriptor_writes[i].pBufferInfo[j].buffer);
+            info->ssbo.buffer = buffer ? buffer->bo : NULL;
+            info->ssbo.buffer_offset = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].offset : 0;
+            info->ssbo.buffer_size = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].range : 0;
+            if (buffer && in_cmd->descriptor_writes[i].pBufferInfo[j].range == VK_WHOLE_SIZE)
+               info->ssbo.buffer_size = info->ssbo.buffer->width0 - info->ssbo.buffer_offset;
+            break;
+         }
          default:
-            info->buffer = lvp_buffer_from_handle(in_cmd->descriptor_writes[i].pBufferInfo[j].buffer);
-            info->offset = in_cmd->descriptor_writes[i].pBufferInfo[j].offset;
-            info->range = in_cmd->descriptor_writes[i].pBufferInfo[j].range;
             break;
          }
       }

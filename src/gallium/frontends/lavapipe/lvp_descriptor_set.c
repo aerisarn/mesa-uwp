@@ -495,18 +495,32 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            LVP_FROM_HANDLE(lvp_buffer, buffer, write->pBufferInfo[j].buffer);
+            desc[j] = (struct lvp_descriptor) {
+               .type = write->descriptorType,
+               .info.ubo.buffer_offset = buffer ? write->pBufferInfo[j].offset : 0,
+               .info.ubo.buffer = buffer ? buffer->bo : NULL,
+               .info.ubo.buffer_size = buffer ? write->pBufferInfo[j].range : 0,
+            };
+            if (buffer && write->pBufferInfo[j].range == VK_WHOLE_SIZE)
+               desc[j].info.ubo.buffer_size = buffer->bo->width0 - desc[j].info.ubo.buffer_offset;
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             LVP_FROM_HANDLE(lvp_buffer, buffer, write->pBufferInfo[j].buffer);
             desc[j] = (struct lvp_descriptor) {
                .type = write->descriptorType,
-               .info.offset = write->pBufferInfo[j].offset,
-               .info.buffer = buffer,
-               .info.range =  write->pBufferInfo[j].range,
+               .info.ssbo.buffer_offset = buffer ? write->pBufferInfo[j].offset : 0,
+               .info.ssbo.buffer = buffer ? buffer->bo : NULL,
+               .info.ssbo.buffer_size = buffer ? write->pBufferInfo[j].range : 0,
             };
-
+            if (buffer && write->pBufferInfo[j].range == VK_WHOLE_SIZE)
+               desc[j].info.ssbo.buffer_size = buffer->bo->width0 - desc[j].info.ssbo.buffer_offset;
          }
          break;
 
@@ -736,16 +750,32 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
          }
 
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
             VkDescriptorBufferInfo *info = (VkDescriptorBufferInfo *)pSrc;
+            LVP_FROM_HANDLE(lvp_buffer, buffer, info->buffer);
             desc[idx] = (struct lvp_descriptor) {
                .type = entry->descriptorType,
-               .info.offset = info->offset,
-               .info.buffer = lvp_buffer_from_handle(info->buffer),
-               .info.range =  info->range,
+               .info.ubo.buffer_offset = buffer ? info->offset : 0,
+               .info.ubo.buffer = buffer ? buffer->bo : NULL,
+               .info.ubo.buffer_size = buffer ? info->range : 0,
             };
+            if (buffer && info->range == VK_WHOLE_SIZE)
+               desc[idx].info.ubo.buffer_size = buffer->bo->width0 - desc[idx].info.ubo.buffer_offset;
+            break;
+         }
+
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+            VkDescriptorBufferInfo *info = (VkDescriptorBufferInfo *)pSrc;
+            LVP_FROM_HANDLE(lvp_buffer, buffer, info->buffer);
+            desc[idx] = (struct lvp_descriptor) {
+               .type = entry->descriptorType,
+               .info.ssbo.buffer_offset = buffer ? info->offset : 0,
+               .info.ssbo.buffer = buffer ? buffer->bo : NULL,
+               .info.ssbo.buffer_size =  buffer ? info->range : 0,
+            };
+            if (buffer && info->range == VK_WHOLE_SIZE)
+               desc[idx].info.ssbo.buffer_size = buffer->bo->width0 - desc[idx].info.ssbo.buffer_offset;
             break;
          }
          default:

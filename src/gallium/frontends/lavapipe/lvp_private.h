@@ -331,11 +331,8 @@ union lvp_descriptor_info {
       struct pipe_sampler_state *sampler;
       struct lvp_image_view *iview;
    };
-   struct {
-      struct lvp_buffer *buffer;
-      VkDeviceSize offset;
-      VkDeviceSize range;
-   };
+   struct pipe_shader_buffer ssbo;
+   struct pipe_constant_buffer ubo;
    struct lvp_buffer_view *buffer_view;
    uint8_t *uniform;
 };
