@@ -1103,14 +1103,35 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    }
 }
 
+static void
+handle_pipeline_access(struct rendering_state *state, enum pipe_shader_type pstage)
+{
+   for (unsigned i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
+      state->iv[pstage][i].access = 0;
+      state->iv[pstage][i].shader_access = 0;
+   }
+   u_foreach_bit(idx, state->access[pstage].images_read) {
+      state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_READ;
+      state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_READ;
+   }
+   u_foreach_bit(idx, state->access[pstage].images_written) {
+      state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_WRITE;
+      state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_WRITE;
+   }
+}
+
 static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
                             struct rendering_state *state)
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
-   if (pipeline->is_compute_pipeline)
+   if (pipeline->is_compute_pipeline) {
       handle_compute_pipeline(cmd, state);
-   else
+      handle_pipeline_access(state, PIPE_SHADER_COMPUTE);
+   } else {
       handle_graphics_pipeline(cmd, state);
+      for (unsigned i = 0; i < PIPE_SHADER_COMPUTE; i++)
+         handle_pipeline_access(state, i);
+   }
    state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
    state->pipeline[pipeline->is_compute_pipeline] = pipeline;
 }
@@ -1353,18 +1374,6 @@ static void fill_image_view_stage(struct rendering_state *state,
       state->iv[p_stage][idx].u.tex.first_layer = 0;
       state->iv[p_stage][idx].u.tex.last_layer = 0;
       state->iv[p_stage][idx].u.tex.level = 0;
-   }
-
-   assert(idx < 32);
-   state->iv[p_stage][idx].access = 0;
-   state->iv[p_stage][idx].shader_access = 0;
-   if (state->access[stage].images_read & BITFIELD_BIT(idx)) {
-      state->iv[p_stage][idx].access |= PIPE_IMAGE_ACCESS_READ;
-      state->iv[p_stage][idx].shader_access |= PIPE_IMAGE_ACCESS_READ;
-   }
-   if (state->access[stage].images_written & BITFIELD_BIT(idx)) {
-      state->iv[p_stage][idx].access |= PIPE_IMAGE_ACCESS_WRITE;
-      state->iv[p_stage][idx].shader_access |= PIPE_IMAGE_ACCESS_WRITE;
    }
 
    if (state->num_shader_images[p_stage] <= idx)
