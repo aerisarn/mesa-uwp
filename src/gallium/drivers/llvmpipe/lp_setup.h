@@ -140,10 +140,6 @@ lp_setup_set_sample_mask(struct lp_setup_context *setup,
                          uint32_t sample_mask);
 
 void
-lp_setup_set_flatshade_first( struct lp_setup_context *setup, 
-                              boolean flatshade_first );
-
-void
 lp_setup_set_rasterizer_discard( struct lp_setup_context *setup, 
                                  boolean rasterizer_discard );
 
