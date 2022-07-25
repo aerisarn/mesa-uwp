@@ -384,7 +384,10 @@ lvp_CreateBufferView(VkDevice _device,
    view->format = pCreateInfo->format;
    view->pformat = lvp_vk_format_to_pipe_format(pCreateInfo->format);
    view->offset = pCreateInfo->offset;
-   view->range = pCreateInfo->range;
+   if (pCreateInfo->range == VK_WHOLE_SIZE)
+      view->range = view->buffer->size - view->offset;
+   else
+      view->range = pCreateInfo->range;
    *pView = lvp_buffer_view_to_handle(view);
 
    return VK_SUCCESS;

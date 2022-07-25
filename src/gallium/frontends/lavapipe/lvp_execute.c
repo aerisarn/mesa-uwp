@@ -1169,7 +1169,7 @@ static void fill_sampler_buffer_view_stage(struct rendering_state *state,
       templ.swizzle_a = PIPE_SWIZZLE_W;
       templ.format = bv->pformat;
       templ.u.buf.offset = bv->offset;
-      templ.u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset) : bv->range;
+      templ.u.buf.size = bv->range;
       templ.texture = bv->buffer->bo;
       templ.context = state->pctx;
       state->sv[p_stage][sv_idx] = state->pctx->create_sampler_view(state->pctx, bv->buffer->bo, &templ);
@@ -1243,7 +1243,7 @@ static void fill_image_buffer_view_stage(struct rendering_state *state,
       state->iv[p_stage][idx].resource = bv->buffer->bo;
       state->iv[p_stage][idx].format = bv->pformat;
       state->iv[p_stage][idx].u.buf.offset = bv->offset;
-      state->iv[p_stage][idx].u.buf.size = bv->range == VK_WHOLE_SIZE ? (bv->buffer->size - bv->offset): bv->range;
+      state->iv[p_stage][idx].u.buf.size = bv->range;
    } else {
       state->iv[p_stage][idx].resource = NULL;
       state->iv[p_stage][idx].format = PIPE_FORMAT_NONE;
