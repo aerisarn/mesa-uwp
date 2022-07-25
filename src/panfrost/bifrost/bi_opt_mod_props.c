@@ -207,8 +207,7 @@ bi_opt_mod_prop_forward(bi_context *ctx)
                 }
 
                 bi_foreach_dest(I, d) {
-                        if (bi_is_ssa(I->dest[d]))
-                                lut[I->dest[d].value] = I;
+                        lut[I->dest[d].value] = I;
                 }
 
                 bi_foreach_src(I, s) {
@@ -406,7 +405,7 @@ bi_opt_mod_prop_backward(bi_context *ctx)
                         }
                 }
 
-                if (!I->nr_dests || !bi_is_ssa(I->dest[0]))
+                if (!I->nr_dests)
                         continue;
 
                 bi_instr *use = uses[I->dest[0].value];
