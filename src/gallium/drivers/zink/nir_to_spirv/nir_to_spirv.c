@@ -2859,6 +2859,8 @@ emit_image_deref_size(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    /* SPIRV requires 2 components for non-array cube size */
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_CUBE && !glsl_sampler_type_is_array(type))
       num_components = 2;
+
+   spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageQuery);
    SpvId result = spirv_builder_emit_image_query_size(&ctx->builder, get_uvec_type(ctx, 32, num_components), img, 0);
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
@@ -2871,6 +2873,8 @@ emit_image_deref_samples(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    nir_variable *var = deref->deref_type == nir_deref_type_var ? deref->var : get_var_from_image(ctx, img_var);
    SpvId img_type = var->data.bindless ? get_bare_image_type(ctx, var, false) : ctx->image_types[var->data.driver_location];
    SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
+
+   spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageQuery);
    SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples, get_dest_type(ctx, &intr->dest, nir_type_uint), img);
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
@@ -3503,6 +3507,9 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    if (tex->is_sparse)
       tex->dest.ssa.num_components--;
    SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
+
+   if (nir_tex_instr_is_query(tex))
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageQuery);
 
    if (!tex_instr_is_lod_allowed(tex))
       lod = 0;
@@ -4189,12 +4196,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
       else
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityMultiViewport);
    }
-
-   if (s->info.num_textures)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
-
-   if (s->info.num_images)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
 
    ctx.stage = s->info.stage;
    ctx.sinfo = sinfo;
