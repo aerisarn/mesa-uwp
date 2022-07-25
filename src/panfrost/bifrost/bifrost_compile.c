@@ -4727,19 +4727,16 @@ bi_lower_branch(bi_context *ctx, bi_block *block)
 {
         bool cull_terminal = (ctx->arch <= 8);
         bool branched = false;
-        ASSERTED bool was_jump = false;
 
         bi_foreach_instr_in_block_safe(block, ins) {
                 if (!ins->branch_target) continue;
 
                 if (branched) {
-                        assert(was_jump && (ins->op == BI_OPCODE_JUMP));
                         bi_remove_instruction(ins);
                         continue;
                 }
 
                 branched = true;
-                was_jump = ins->op == BI_OPCODE_JUMP;
 
                 if (!bi_is_terminal_block(ins->branch_target))
                         continue;
