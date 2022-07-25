@@ -44,18 +44,6 @@ struct sched_node {
         bi_instr *instr;
 };
 
-static unsigned
-label_index(bi_context *ctx, bi_index idx)
-{
-        if (idx.reg) {
-                assert(idx.value < ctx->reg_alloc);
-                return idx.value + ctx->ssa_alloc;
-        } else {
-                assert(idx.value < ctx->ssa_alloc);
-                return idx.value;
-        }
-}
-
 static void
 add_dep(struct sched_node *a, struct sched_node *b)
 {
@@ -68,11 +56,8 @@ create_dag(bi_context *ctx, bi_block *block, void *memctx)
 {
         struct dag *dag = dag_create(ctx);
 
-        unsigned count = ctx->ssa_alloc + ctx->reg_alloc;
-        struct sched_node **last_read =
-                calloc(count, sizeof(struct sched_node *));
         struct sched_node **last_write =
-                calloc(count, sizeof(struct sched_node *));
+                calloc(ctx->ssa_alloc, sizeof(struct sched_node *));
         struct sched_node *coverage = NULL;
         struct sched_node *preload = NULL;
 
@@ -93,38 +78,18 @@ create_dag(bi_context *ctx, bi_block *block, void *memctx)
                 node->instr = I;
                 dag_init_node(dag, &node->dag);
 
-                /* Reads depend on writes */
+                /* Reads depend on writes, no other hazards in SSA */
                 bi_foreach_src(I, s) {
                         bi_index src = I->src[s];
 
-                        if (src.type == BI_INDEX_NORMAL) {
-                                add_dep(node, last_write[label_index(ctx, src)]);
-
-                                /* Serialize access to nir_register for
-                                 * simplicity. We could do better.
-                                 */
-                                if (src.reg)
-                                        add_dep(node, last_read[label_index(ctx, src)]);
-                        }
+                        if (bi_is_ssa(src))
+                                add_dep(node, last_write[src.value]);
                 }
 
-                /* Writes depend on reads and writes */
-                bi_foreach_dest(I, s) {
-                        bi_index dest = I->dest[s];
-                        assert(dest.type == BI_INDEX_NORMAL);
+                bi_foreach_dest(I, d) {
+                        assert(bi_is_ssa(I->dest[d]));
 
-                        add_dep(node, last_read[label_index(ctx, dest)]);
-                        add_dep(node, last_write[label_index(ctx, dest)]);
-
-                        last_write[label_index(ctx, dest)] = node;
-                }
-
-                bi_foreach_src(I, s) {
-                        bi_index src = I->src[s];
-
-                        if (src.type == BI_INDEX_NORMAL) {
-                                last_read[label_index(ctx, src)] = node;
-                        }
+                        last_write[I->dest[d].value] = node;
                 }
 
                 switch (bi_opcode_props[I->op].message) {
@@ -208,7 +173,6 @@ create_dag(bi_context *ctx, bi_block *block, void *memctx)
                 }
         }
 
-        free(last_read);
         free(last_write);
 
         return dag;
