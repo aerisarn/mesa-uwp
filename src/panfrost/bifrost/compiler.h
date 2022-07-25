@@ -943,25 +943,19 @@ bi_temp_reg(bi_context *ctx)
 static inline bi_index
 bi_src_index(nir_src *src)
 {
-        if (nir_src_is_const(*src) && nir_src_bit_size(*src) <= 32)
+        if (nir_src_is_const(*src) && nir_src_bit_size(*src) <= 32) {
                 return bi_imm_u32(nir_src_as_uint(*src));
-        else if (src->is_ssa)
+        } else {
+                assert(src->is_ssa);
                 return bi_get_index(src->ssa->index, false, 0);
-        else {
-                assert(!src->reg.indirect);
-                return bi_get_index(src->reg.reg->index, true, 0);
         }
 }
 
 static inline bi_index
 bi_dest_index(nir_dest *dst)
 {
-        if (dst->is_ssa)
-                return bi_get_index(dst->ssa.index, false, 0);
-        else {
-                assert(!dst->reg.indirect);
-                return bi_get_index(dst->reg.reg->index, true, 0);
-        }
+        assert(dst->is_ssa);
+        return bi_get_index(dst->ssa.index, false, 0);
 }
 
 static inline unsigned

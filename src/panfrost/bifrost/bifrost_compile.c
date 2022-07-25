@@ -2297,11 +2297,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         if (sz == 16 && comps == 1)
                 dst.swizzle = BI_SWIZZLE_H00;
 
-        if (!instr->dest.dest.is_ssa) {
-                for (unsigned i = 0; i < comps; ++i)
-                        assert(instr->dest.write_mask);
-        }
-
         /* First, match against the various moves in NIR. These are
          * special-cased because they can operate on vectors even after
          * lowering ALU to scalar. For Bifrost, bi_alu_src_index assumes the
@@ -4821,8 +4816,6 @@ bi_gather_texcoords(nir_builder *b, nir_instr *instr, void *data)
                 return false;
 
         nir_src src = tex->src[coord_idx].src;
-        assert(src.is_ssa);
-
         nir_ssa_scalar x = nir_ssa_scalar_resolved(src.ssa, 0);
         nir_ssa_scalar y = nir_ssa_scalar_resolved(src.ssa, 1);
 
