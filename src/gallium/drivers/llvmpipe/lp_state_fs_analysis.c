@@ -213,8 +213,26 @@ get_nir_input_info(const nir_alu_src *src,
       return false;
    }
 
+   /*
+    * If the texture coordinate input is declared as two variables like this:
+    * decl_var shader_in INTERP_MODE_NONE float coord (VARYING_SLOT_VAR0.x, 0, 0)
+    * decl_var shader_in INTERP_MODE_NONE float coord@0 (VARYING_SLOT_VAR0.y, 0, 0)
+    * Then deref->var->data.location_frac will be 0 for the first var and 1
+    * for the second var and the texcoord will be set up with:
+    *   vec2 32 ssa_5 = vec2 ssa_2, ssa_4  (note: no swizzles)
+    *
+    * Alternately, if the texture coordinate input is declared as one
+    * variable like this:
+    * decl_var shader_in INTERP_MODE_NONE vec4 i1xyzw (VARYING_SLOT_VAR1.xyzw, 0, 0)
+    * then deref->var->data.location_frac will be 0 and the
+    * tex coord will be setup with:
+    *   vec2 32 ssa_2 = vec2 ssa_1.x, ssa_1.y
+    *
+    * We can handle both cases by adding deref->var->data.location_frac and
+    * src->swizzle[0].
+    */
    *input_index = deref->var->data.driver_location;
-   *input_component = src->swizzle[0];
+   *input_component = deref->var->data.location_frac + src->swizzle[0];
    assert(*input_component >= 0);
    assert(*input_component <= 3);
 
