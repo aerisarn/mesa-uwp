@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "c11/threads.h"
 #include "dev/intel_device_info.h"
+#include "util/macros.h"
 #include "util/ralloc.h"
 #include "util/u_math.h"
 #include "brw_isa_info.h"
@@ -181,6 +182,13 @@ enum PACKED gfx6_gather_sampler_wa {
 
 #define BRW_MAX_SAMPLERS 32
 
+/* Provide explicit padding for each member, to ensure that the compiler
+ * initializes every bit in the shader cache keys.  The keys will be compared
+ * with memcmp.
+ */
+PRAGMA_DIAGNOSTIC_PUSH
+PRAGMA_DIAGNOSTIC_ERROR(-Wpadded)
+
 /**
  * Sampler information needed by VS, WM, and GS program cache keys.
  */
@@ -241,6 +249,8 @@ struct brw_base_prog_key {
     * avoid precision issues.
     */
    bool limit_trig_input_range;
+   unsigned padding:16;
+
    struct brw_sampler_prog_key_data tex;
 };
 
@@ -328,8 +338,10 @@ struct brw_vs_prog_key {
     * these texture coordinates will need to be unconditionally included in
     * the VUE, even if they aren't written by the vertex shader.
     */
-   uint8_t point_coord_replace;
    unsigned clamp_pointsize:1;
+   unsigned padding_1: 1;
+   uint8_t point_coord_replace;
+   unsigned padding_2: 24;
 };
 
 /** The program key for Tessellation Control Shaders. */
@@ -343,11 +355,13 @@ struct brw_tcs_prog_key
 
    /** A bitfield of per-patch outputs written. */
    uint32_t patch_outputs_written;
+   unsigned padding_1:32;
 
    /** A bitfield of per-vertex outputs written. */
    uint64_t outputs_written;
 
    bool quads_workaround;
+   uint64_t padding_2:56;
 };
 
 /** The program key for Tessellation Evaluation Shaders. */
@@ -357,6 +371,7 @@ struct brw_tes_prog_key
 
    /** A bitfield of per-patch inputs read. */
    uint32_t patch_inputs_read;
+   unsigned padding_1:32;
 
    /** A bitfield of per-vertex inputs read. */
    uint64_t inputs_read;
@@ -370,6 +385,7 @@ struct brw_tes_prog_key
     */
    unsigned nr_userclip_plane_consts:4;
    unsigned clamp_pointsize:1;
+   uint64_t padding_2:59;
 };
 
 /** The program key for Geometry Shaders. */
@@ -386,6 +402,7 @@ struct brw_gs_prog_key
     */
    unsigned nr_userclip_plane_consts:4;
    unsigned clamp_pointsize:1;
+   unsigned padding:27;
 };
 
 struct brw_task_prog_key
@@ -417,6 +434,7 @@ struct brw_sf_prog_key {
    bool do_point_coord:1;
    bool sprite_origin_lower_left:1;
    bool userclip_active:1;
+   unsigned padding: 32;
 };
 
 enum brw_clip_mode {
@@ -455,9 +473,11 @@ struct brw_clip_prog_key {
    bool copy_bfc_ccw:1;
    enum brw_clip_mode clip_mode:3;
 
+   unsigned padding_1:19;
    float offset_factor;
    float offset_units;
    float offset_clamp;
+   unsigned padding_2:32;
 };
 
 /* A big lookup table is used to figure out which and how many
@@ -502,10 +522,13 @@ struct brw_wm_prog_key {
    bool coherent_fb_fetch:1;
    bool ignore_sample_mask_out:1;
    bool coarse_pixel:1;
+   unsigned padding_1:2;
 
    uint8_t color_outputs_valid;
+   unsigned padding_2:24;
    uint64_t input_slots_valid;
    float alpha_test_ref;
+   unsigned padding_3:32;
 };
 
 struct brw_cs_prog_key {
@@ -537,6 +560,7 @@ struct brw_ff_gs_prog_key {
     * gl_varying_slot that should be streamed out through that binding table
     * entry.
     */
+   unsigned padding_1:7;
    unsigned char transform_feedback_bindings[BRW_MAX_SOL_BINDINGS];
 
    /**
@@ -545,6 +569,7 @@ struct brw_ff_gs_prog_key {
     * binding table entry.
     */
    unsigned char transform_feedback_swizzles[BRW_MAX_SOL_BINDINGS];
+   unsigned padding_2:32;
 };
 
 /* brw_any_prog_key is any of the keys that map to an API stage */
@@ -560,6 +585,8 @@ union brw_any_prog_key {
    struct brw_task_prog_key task;
    struct brw_mesh_prog_key mesh;
 };
+
+PRAGMA_DIAGNOSTIC_POP
 
 /*
  * Image metadata structure as laid out in the shader parameter
