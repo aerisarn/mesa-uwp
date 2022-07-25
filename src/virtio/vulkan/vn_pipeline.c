@@ -251,6 +251,7 @@ struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
    bool ignore_viewport_state;
    bool ignore_viewports;
+   bool ignore_scissors;
    bool ignore_multisample_state;
    bool ignore_depth_stencil_state;
    bool ignore_color_blend_state;
@@ -313,6 +314,7 @@ vn_fix_graphics_pipeline_create_info(
       struct {
          bool rasterizer_discard_enable;
          bool viewport;
+         bool scissor;
       } has_dynamic_state = { 0 };
 
       if (info->pDynamicState) {
@@ -323,6 +325,9 @@ vn_fix_graphics_pipeline_create_info(
                break;
             case VK_DYNAMIC_STATE_VIEWPORT:
                has_dynamic_state.viewport = true;
+               break;
+            case VK_DYNAMIC_STATE_SCISSOR:
+               has_dynamic_state.scissor = true;
                break;
             default:
                break;
@@ -427,6 +432,23 @@ vn_fix_graphics_pipeline_create_info(
          }
       }
 
+      /* Ignore pScissors?
+       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-00748
+       *
+       * Even if pViewportState is non-null, we must not dereference it if it
+       * is ignored.
+       */
+      if (!fix.ignore_viewport_state && info->pViewportState &&
+          info->pViewportState->pScissors) {
+         const bool has_dynamic_scissor =
+            has_pre_raster_state && has_dynamic_state.scissor;
+
+         if (has_dynamic_scissor) {
+            fix.ignore_scissors = true;
+            any_fix = true;
+         }
+      }
+
       /* Ignore pMultisampleState?
        *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00751
        */
@@ -480,11 +502,18 @@ vn_fix_graphics_pipeline_create_info(
       if (fix.ignore_viewport_state)
          fixes->create_infos[i].pViewportState = NULL;
 
-      if (fix.ignore_viewports && fixes->create_infos[i].pViewportState) {
-         fixes->viewport_state_create_infos[i] = *info->pViewportState;
-         fixes->viewport_state_create_infos[i].pViewports = NULL;
-         fixes->create_infos[i].pViewportState =
-            &fixes->viewport_state_create_infos[i];
+      if (fixes->create_infos[i].pViewportState) {
+         if (fix.ignore_viewports || fix.ignore_scissors) {
+            fixes->viewport_state_create_infos[i] = *info->pViewportState;
+            fixes->create_infos[i].pViewportState =
+               &fixes->viewport_state_create_infos[i];
+         }
+
+         if (fix.ignore_viewports)
+            fixes->viewport_state_create_infos[i].pViewports = NULL;
+
+         if (fix.ignore_scissors)
+            fixes->viewport_state_create_infos[i].pScissors = NULL;
       }
 
       if (fix.ignore_multisample_state)
