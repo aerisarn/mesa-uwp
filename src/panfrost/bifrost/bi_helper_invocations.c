@@ -202,15 +202,14 @@ bi_helper_block_update(BITSET_WORD *deps, bi_block *block)
         bi_foreach_instr_in_block_rev(block, I) {
                 /* If a destination is required by helper invocation... */
                 bi_foreach_dest(I, d) {
-                        if (!BITSET_TEST(deps, bi_get_node(I->dest[d])))
+                        if (!BITSET_TEST(deps, I->dest[d].value))
                                 continue;
 
                         /* ...so are the sources */
                         bi_foreach_src(I, s) {
-                                if (I->src[s].type == BI_INDEX_NORMAL) {
-                                        unsigned node = bi_get_node(I->src[s]);
-                                        progress |= !BITSET_TEST(deps, node);
-                                        BITSET_SET(deps, node);
+                                if (bi_is_ssa(I->src[s])) {
+                                        progress |= !BITSET_TEST(deps, I->src[s].value);
+                                        BITSET_SET(deps, I->src[s].value);
                                 }
                         }
 
@@ -224,8 +223,7 @@ bi_helper_block_update(BITSET_WORD *deps, bi_block *block)
 void
 bi_analyze_helper_requirements(bi_context *ctx)
 {
-        unsigned temp_count = bi_max_temp(ctx);
-        BITSET_WORD *deps = calloc(sizeof(BITSET_WORD), BITSET_WORDS(temp_count));
+        BITSET_WORD *deps = calloc(sizeof(BITSET_WORD), ctx->ssa_alloc);
 
         /* Initialize with the sources of instructions consuming
          * derivatives */
@@ -234,8 +232,8 @@ bi_analyze_helper_requirements(bi_context *ctx)
                 if (!bi_instr_uses_helpers(I)) continue;
 
                 bi_foreach_src(I, s) {
-                        if (I->src[s].type == BI_INDEX_NORMAL)
-                                BITSET_SET(deps, bi_get_node(I->src[s]));
+                        if (bi_is_ssa(I->src[s]))
+                                BITSET_SET(deps, I->src[s].value);
                 }
         }
 
@@ -266,8 +264,8 @@ bi_analyze_helper_requirements(bi_context *ctx)
                 bool exec = false;
 
                 bi_foreach_dest(I, d) {
-                        assert(I->dest[d].type == BI_INDEX_NORMAL);
-                        exec |= BITSET_TEST(deps, bi_get_node(I->dest[d]));
+                        assert(bi_is_ssa(I->dest[d]));
+                        exec |= BITSET_TEST(deps, I->dest[d].value);
                 }
 
                 I->skip = !exec;
