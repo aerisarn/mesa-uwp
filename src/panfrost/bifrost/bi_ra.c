@@ -865,6 +865,41 @@ squeeze_index(bi_context *ctx)
         ralloc_free(map);
 }
 
+/*
+ * Brainless out-of-SSA pass. The eventual goal is to go out-of-SSA after RA and
+ * coalesce implicitly with biased colouring in a tree scan allocator. For now,
+ * this should be good enough for LCRA.
+ */
+static void
+bi_out_of_ssa(bi_context *ctx)
+{
+        bi_foreach_block(ctx, block) {
+                bi_foreach_instr_in_block_safe(block, I) {
+                        if (I->op != BI_OPCODE_PHI)
+                                break;
+
+                        /* Assign a register for the phi */
+                        bi_index reg = bi_temp_reg(ctx);
+
+                        /* Lower to a move in each predecessor. The destinations
+                         * cannot interfere so these can be sequentialized
+                         * in arbitrary order.
+                         */
+                        bi_foreach_predecessor(block, pred) {
+                                bi_builder b = bi_init_builder(ctx, bi_after_block_logical(*pred));
+
+                                unsigned i = bi_predecessor_index(block, *pred);
+                                bi_mov_i32_to(&b, reg, I->src[i]);
+                        }
+
+                        /* Replace the phi with a move */
+                        bi_builder b = bi_init_builder(ctx, bi_before_instr(I));
+                        bi_mov_i32_to(&b, I->dest[0], reg);
+                        bi_remove_instruction(I);
+                }
+        }
+}
+
 void
 bi_register_allocate(bi_context *ctx)
 {
@@ -882,6 +917,7 @@ bi_register_allocate(bi_context *ctx)
         bi_lower_vector(ctx);
 
         /* Lower tied operands. SSA is broken from here on. */
+        bi_out_of_ssa(ctx);
         bi_coalesce_tied(ctx);
         squeeze_index(ctx);
 
