@@ -5970,6 +5970,8 @@ bool nir_opt_offsets(nir_shader *shader, const nir_opt_offsets_options *options)
 bool nir_opt_peephole_select(nir_shader *shader, unsigned limit,
                              bool indirect_load_ok, bool expensive_alu_ok);
 
+bool nir_opt_reassociate_bfi(nir_shader *shader);
+
 bool nir_opt_rematerialize_compares(nir_shader *shader);
 
 bool nir_opt_remove_phis(nir_shader *shader);
