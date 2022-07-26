@@ -223,6 +223,7 @@ get_soa_array_offsets(struct lp_build_context *uint_bld,
 static LLVMValueRef
 build_gather(struct lp_build_nir_context *bld_base,
              struct lp_build_context *bld,
+             LLVMTypeRef base_type,
              LLVMValueRef base_ptr,
              LLVMValueRef indexes,
              LLVMValueRef overflow_mask,
@@ -284,8 +285,8 @@ build_gather(struct lp_build_nir_context *bld_base,
                                          indexes, si, "");
       }
 
-      scalar_ptr = LLVMBuildGEP(builder, base_ptr, &index, 1, "gather_ptr");
-      scalar = LLVMBuildLoad(builder, scalar_ptr, "");
+      scalar_ptr = LLVMBuildGEP2(builder, base_type, base_ptr, &index, 1, "gather_ptr");
+      scalar = LLVMBuildLoad2(builder, base_type, scalar_ptr, "");
 
       res = LLVMBuildInsertElement(builder, res, scalar, di, "");
    }
@@ -326,7 +327,7 @@ emit_mask_scatter(struct lp_build_nir_soa_context *bld,
       LLVMValueRef ii = lp_build_const_int32(gallivm, i);
       LLVMValueRef index = LLVMBuildExtractElement(builder, indexes, ii, "");
       LLVMValueRef val = LLVMBuildExtractElement(builder, values, ii, "scatter_val");
-      LLVMValueRef scalar_ptr = LLVMBuildGEP(builder, base_ptr, &index, 1, "scatter_ptr");
+      LLVMValueRef scalar_ptr = LLVMBuildGEP2(builder, LLVMTypeOf(val), base_ptr, &index, 1, "scatter_ptr");
       LLVMValueRef scalar_pred = pred ?
          LLVMBuildExtractElement(builder, pred, ii, "scatter_pred") : NULL;
 
@@ -468,17 +469,15 @@ static void emit_load_var(struct lp_build_nir_context *bld_base,
                                                               attrib_index_val, 4, idx,
                                                               TRUE);
                LLVMValueRef index_vec2 = NULL;
-               LLVMTypeRef fptr_type;
-               LLVMValueRef inputs_array;
-               fptr_type = LLVMPointerType(LLVMFloatTypeInContext(gallivm->context), 0);
-               inputs_array = LLVMBuildBitCast(gallivm->builder, bld->inputs_array, fptr_type, "");
+               LLVMTypeRef scalar_type = LLVMFloatTypeInContext(gallivm->context);
+               LLVMValueRef inputs_array = LLVMBuildBitCast(gallivm->builder, bld->inputs_array, LLVMPointerType(scalar_type, 0), "");
 
                if (bit_size == 64)
                   index_vec2 = get_soa_array_offsets(&bld_base->uint_bld,
                                                      indir_index, 4, idx + 1, TRUE);
 
                /* Gather values from the input register array */
-               result[i] = build_gather(bld_base, &bld_base->base, inputs_array, index_vec, NULL, index_vec2);
+               result[i] = build_gather(bld_base, &bld_base->base, scalar_type, inputs_array, index_vec, NULL, index_vec2);
             } else {
                if (bld->indirects & nir_var_shader_in) {
                   LLVMValueRef lindex = lp_build_const_int32(gallivm,
@@ -706,13 +705,13 @@ static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
       reg_storage = LLVMBuildBitCast(builder, reg_storage, LLVMPointerType(reg_bld->elem_type, 0), "");
       for (unsigned i = 0; i < nc; i++) {
          LLVMValueRef indirect_offset = get_soa_array_offsets(uint_bld, indirect_val, nc, i, TRUE);
-         vals[i] = build_gather(bld_base, reg_bld, reg_storage, indirect_offset, NULL, NULL);
+         vals[i] = build_gather(bld_base, reg_bld, reg_bld->elem_type, reg_storage, indirect_offset, NULL, NULL);
       }
    } else {
       for (unsigned i = 0; i < nc; i++) {
          LLVMValueRef this_storage = nc == 1 ? reg_storage : lp_build_array_get_ptr(gallivm, reg_storage,
                                                                                     lp_build_const_int32(gallivm, i));
-         vals[i] = LLVMBuildLoad(builder, this_storage, "");
+         vals[i] = LLVMBuildLoad2(builder, reg_bld->vec_type, this_storage, "");
       }
    }
    return nc == 1 ? vals[0] : lp_nir_array_build_gather_values(builder, vals, nc);
@@ -1103,7 +1102,7 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
          LLVMBuildStore(builder, lp_build_pointer_get(builder, consts_ptr, chan_offset), res_store);
          lp_build_endif(&ifthen);
 
-         scalar = LLVMBuildLoad(builder, res_store, "");
+         scalar = LLVMBuildLoad2(builder, LLVMTypeOf(zero), res_store, "");
 
          result[c] = lp_build_broadcast_scalar(load_bld, scalar);
       }
@@ -1122,7 +1121,7 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
          LLVMValueRef this_offset = lp_build_add(uint_bld, offset, lp_build_const_int_vec(gallivm, uint_bld->type, c));
          overflow_mask = lp_build_compare(gallivm, uint_bld->type, PIPE_FUNC_GEQUAL,
                                           this_offset, num_consts);
-         result[c] = build_gather(bld_base, bld_broad, consts_ptr, this_offset, overflow_mask, NULL);
+         result[c] = build_gather(bld_base, bld_broad, bld_broad->elem_type, consts_ptr, this_offset, overflow_mask, NULL);
       }
    }
 }
@@ -2232,14 +2231,14 @@ static void emit_shuffle(struct lp_build_nir_context *bld_base, LLVMValueRef src
        */
       src_value = LLVMBuildFreeze(builder, src_value, "");
 
-      LLVMValueRef res = LLVMBuildLoad(builder, res_store, "");
+      LLVMValueRef res = LLVMBuildLoad2(builder, int_bld->vec_type, res_store, "");
       res = LLVMBuildInsertElement(builder, res, src_value, loop_state.counter, "");
       LLVMBuildStore(builder, res, res_store);
 
       lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
                              NULL, LLVMIntUGE);
 
-      result[0] = LLVMBuildLoad(builder, res_store, "");
+      result[0] = LLVMBuildLoad2(builder, int_bld->vec_type, res_store, "");
    }
 }
 #endif
@@ -2653,7 +2652,8 @@ emit_clock(struct lp_build_nir_context *bld_base,
 
    lp_init_clock_hook(gallivm);
 
-   LLVMValueRef result = LLVMBuildCall(builder, gallivm->get_time_hook, NULL, 0, "");
+   LLVMTypeRef get_time_type = LLVMFunctionType(LLVMInt64TypeInContext(gallivm->context), NULL, 0, 1);
+   LLVMValueRef result = LLVMBuildCall2(builder, get_time_type, gallivm->get_time_hook, NULL, 0, "");
 
    LLVMValueRef hi = LLVMBuildShl(builder, result, lp_build_const_int64(gallivm, 32), "");
    hi = LLVMBuildTrunc(builder, hi, uint_bld->elem_type, "");
