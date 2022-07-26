@@ -105,7 +105,7 @@ bi_opt_copy_prop(bi_context *ctx)
                                 continue;
 
                         if (!bi_is_null(repl))
-                                ins->src[s] = bi_replace_index(ins->src[s], repl);
+                                bi_replace_src(ins, s, repl);
                 }
         }
 

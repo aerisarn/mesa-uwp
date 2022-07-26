@@ -574,6 +574,12 @@ bi_drop_srcs(bi_instr *I, unsigned new_count)
         I->nr_srcs = new_count;
 }
 
+static inline void
+bi_replace_src(bi_instr *I, unsigned src_index, bi_index replacement)
+{
+        I->src[src_index] = bi_replace_index(I->src[src_index], replacement);
+}
+
 /* Represents the assignment of slots for a given bi_tuple */
 
 typedef struct {

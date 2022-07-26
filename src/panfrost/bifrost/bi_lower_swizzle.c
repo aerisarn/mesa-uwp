@@ -132,8 +132,7 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
 
         /* Lower it away */
         bi_builder b = bi_init_builder(ctx, bi_before_instr(ins));
-        ins->src[src] = bi_replace_index(ins->src[src],
-                        bi_swz_v2i16(&b, ins->src[src]));
+        bi_replace_src(ins, src, bi_swz_v2i16(&b, ins->src[src]));
         ins->src[src].swizzle = BI_SWIZZLE_H01;
 }
 

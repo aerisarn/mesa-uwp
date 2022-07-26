@@ -808,7 +808,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_ssa_src(I, s) {
                         if (I->src[s].value < first_reg && !bi_is_null(remap[I->src[s].value]))
-                                I->src[s] = bi_replace_index(I->src[s], remap[I->src[s].value]);
+                                bi_replace_src(I, s, remap[I->src[s].value]);
                 }
         }
 
@@ -887,7 +887,7 @@ bi_coalesce_tied(bi_context *ctx)
                         bi_mov_i32_to(&b, dst, src);
                 }
 
-                I->src[0] = bi_replace_index(I->src[0], I->dest[0]);
+                bi_replace_src(I, 0, I->dest[0]);
         }
 }
 
@@ -977,7 +977,7 @@ bi_out_of_ssa(bi_context *ctx)
 
                                 bi_foreach_src(prop, s) {
                                         if (bi_is_equiv(prop->src[s], I->dest[0])) {
-                                                prop->src[s] = bi_replace_index(prop->src[s], reg);
+                                                bi_replace_src(prop, s, reg);
                                         }
                                 }
                         }

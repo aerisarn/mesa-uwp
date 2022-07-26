@@ -160,7 +160,7 @@ bi_opt_cse(bi_context *ctx)
 
                                 bi_index repl = replacement[instr->src[s].value];
                                 if (!bi_is_null(repl))
-                                        instr->src[s] = bi_replace_index(instr->src[s], repl);
+                                        bi_replace_src(instr, s, repl);
                         }
 
                         if (!instr_can_cse(instr))

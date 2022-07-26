@@ -1386,7 +1386,7 @@ bi_rewrite_fau_to_pass(bi_tuple *tuple)
                 bi_index pass = bi_passthrough(ins->src[s].offset ?
                                 BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
 
-                ins->src[s] = bi_replace_index(ins->src[s], pass);
+                bi_replace_src(ins, s, pass);
         }
 }
 
@@ -1399,7 +1399,7 @@ bi_rewrite_zero(bi_instr *ins, bool fma)
                 bi_index src = ins->src[s];
 
                 if (src.type == BI_INDEX_CONSTANT && src.value == 0)
-                        ins->src[s] = bi_replace_index(src, zero);
+                        bi_replace_src(ins, s, zero);
         }
 }
 
@@ -1430,9 +1430,8 @@ bi_rewrite_constants_to_pass(bi_tuple *tuple, uint64_t constant, bool pcrel)
 
                 assert(lo || hi);
 
-                ins->src[s] = bi_replace_index(ins->src[s],
-                                bi_passthrough(hi ?  BIFROST_SRC_FAU_HI :
-                                        BIFROST_SRC_FAU_LO));
+                bi_replace_src(ins, s,
+                               bi_passthrough(hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO));
         }
 }
 
@@ -2062,7 +2061,7 @@ bi_lower_fau(bi_context *ctx)
                         if (bi_check_fau_src(ins, s, constants, &cwords, &fau)) continue;
 
                         bi_index copy = bi_mov_i32(&b, ins->src[s]);
-                        ins->src[s] = bi_replace_index(ins->src[s], copy);
+                        bi_replace_src(ins, s, copy);
                 }
         }
 }
