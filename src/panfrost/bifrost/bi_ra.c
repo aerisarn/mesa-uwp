@@ -848,17 +848,19 @@ find_or_allocate_temp(unsigned *map, unsigned value, unsigned *alloc)
 static void
 squeeze_index(bi_context *ctx)
 {
-        unsigned *map = rzalloc_array(ctx, unsigned, ctx->ssa_alloc);
+        unsigned *map = rzalloc_array(ctx, unsigned, bi_max_temp(ctx));
         ctx->ssa_alloc = 0;
 
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_dest(I, d) {
-                        I->dest[d].value = find_or_allocate_temp(map, I->dest[d].value, &ctx->ssa_alloc);
+                        I->dest[d].value = find_or_allocate_temp(map, bi_get_node(I->dest[d]), &ctx->ssa_alloc);
+                        I->dest[d].reg = false;
                 }
 
                 bi_foreach_src(I, s) {
                         if (I->src[s].type == BI_INDEX_NORMAL)
-                                I->src[s].value = find_or_allocate_temp(map, I->src[s].value, &ctx->ssa_alloc);
+                                I->src[s].value = find_or_allocate_temp(map, bi_get_node(I->src[s]), &ctx->ssa_alloc);
+                        I->src[s].reg = false;
                 }
         }
 
