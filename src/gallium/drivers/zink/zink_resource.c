@@ -547,7 +547,7 @@ retry:
 }
 
 static struct zink_resource_object *
-resource_object_create(struct zink_screen *screen, const struct pipe_resource *templ, struct winsys_handle *whandle, bool *optimal_tiling,
+resource_object_create(struct zink_screen *screen, const struct pipe_resource *templ, struct winsys_handle *whandle, bool *linear,
                        const uint64_t *modifiers, int modifiers_count, const void *loader_private)
 {
    struct zink_resource_object *obj = CALLOC_STRUCT(zink_resource_object);
@@ -736,8 +736,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          }
       }
 
-      if (optimal_tiling)
-         *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
+      if (linear)
+         *linear = ici.tiling == VK_IMAGE_TILING_LINEAR;
 
       if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
          obj->transfer_dst = true;
@@ -1110,7 +1110,7 @@ resource_create(struct pipe_screen *pscreen,
    pipe_reference_init(&res->base.b.reference, 1);
    res->base.b.screen = pscreen;
 
-   bool optimal_tiling = false;
+   bool linear = false;
    struct pipe_resource templ2 = *templ;
    if (templ2.flags & PIPE_RESOURCE_FLAG_SPARSE)
       templ2.bind |= PIPE_BIND_SHADER_IMAGE;
@@ -1118,7 +1118,7 @@ resource_create(struct pipe_screen *pscreen,
       templ2.flags &= ~PIPE_RESOURCE_FLAG_SPARSE;
       res->base.b.flags &= ~PIPE_RESOURCE_FLAG_SPARSE;
    }
-   res->obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, modifiers, modifiers_count, loader_private);
+   res->obj = resource_object_create(screen, &templ2, whandle, &linear, modifiers, modifiers_count, loader_private);
    if (!res->obj) {
       free(res->modifiers);
       FREE_CL(res);
@@ -1155,7 +1155,7 @@ resource_create(struct pipe_screen *pscreen,
       res->dmabuf_acquire = whandle && whandle->type == WINSYS_HANDLE_TYPE_FD;
       res->dmabuf = res->dmabuf_acquire = whandle && whandle->type == WINSYS_HANDLE_TYPE_FD;
       res->layout = res->dmabuf_acquire ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
-      res->optimal_tiling = optimal_tiling;
+      res->linear = linear;
       res->aspect = aspect_from_format(templ->format);
    }
 
@@ -1185,7 +1185,7 @@ resource_create(struct pipe_screen *pscreen,
          res->obj->vkflags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
       res->obj->vkusage = cdt->swapchain->scci.imageUsage;
       res->base.b.bind |= PIPE_BIND_DISPLAY_TARGET;
-      res->optimal_tiling = true;
+      res->linear = false;
       res->swapchain = true;
    }
    if (!res->obj->host_visible)
@@ -1238,7 +1238,7 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
       res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
       res->modifiers[0] = DRM_FORMAT_MOD_LINEAR;
    }
-   struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling, res->modifiers, res->modifiers_count, NULL);
+   struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->linear, res->modifiers, res->modifiers_count, NULL);
    if (!new_obj) {
       debug_printf("new backing resource alloc failed!");
       res->base.b.bind &= ~bind;
@@ -1922,7 +1922,7 @@ zink_image_map(struct pipe_context *pctx,
    else if (usage & PIPE_MAP_READ)
       /* if the map region intersects with any clears then we have to apply them */
       zink_fb_clears_apply_region(ctx, pres, zink_rect_from_box(box));
-   if (res->optimal_tiling || !res->obj->host_visible) {
+   if (!res->linear || !res->obj->host_visible) {
       enum pipe_format format = pres->format;
       if (usage & PIPE_MAP_DEPTH_ONLY)
          format = util_format_get_depth_only(pres->format);
@@ -1962,7 +1962,7 @@ zink_image_map(struct pipe_context *pctx,
 
       ptr = map_resource(screen, staging_res);
    } else {
-      assert(!res->optimal_tiling);
+      assert(res->linear);
       ptr = map_resource(screen, res);
       if (!ptr)
          goto fail;
