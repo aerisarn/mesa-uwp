@@ -732,10 +732,18 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 }
 
 static VkResult
-anv_physical_device_try_create(struct anv_instance *instance,
-                               drmDevicePtr drm_device,
-                               struct anv_physical_device **device_out)
+anv_physical_device_try_create(struct vk_instance *vk_instance,
+                               struct _drmDevice *drm_device,
+                               struct vk_physical_device **out)
 {
+   struct anv_instance *instance =
+      container_of(vk_instance, struct anv_instance, vk);
+
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
+       drm_device->bustype != DRM_BUS_PCI ||
+       drm_device->deviceinfo.pci->vendor_id != 0x8086)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+
    const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result;
@@ -1004,7 +1012,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    anv_genX(&device->info, init_physical_device_state)(device);
 
-   *device_out = device;
+   *out = &device->vk;
 
    struct stat st;
 
@@ -1048,8 +1056,11 @@ fail_fd:
 }
 
 static void
-anv_physical_device_destroy(struct anv_physical_device *device)
+anv_physical_device_destroy(struct vk_physical_device *vk_device)
 {
+   struct anv_physical_device *device =
+      container_of(vk_device, struct anv_physical_device, vk);
+
    anv_finish_wsi(device);
    anv_measure_device_destroy(device);
    free(device->engine_info);
@@ -1126,8 +1137,8 @@ VkResult anv_CreateInstance(
       return vk_error(NULL, result);
    }
 
-   instance->physical_devices_enumerated = false;
-   list_inithead(&instance->physical_devices);
+   instance->vk.physical_devices.try_create_for_drm = anv_physical_device_try_create;
+   instance->vk.physical_devices.destroy = anv_physical_device_destroy;
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
@@ -1149,10 +1160,6 @@ void anv_DestroyInstance(
    if (!instance)
       return;
 
-   list_for_each_entry_safe(struct anv_physical_device, pdevice,
-                            &instance->physical_devices, link)
-      anv_physical_device_destroy(pdevice);
-
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
    driDestroyOptionCache(&instance->dri_options);
@@ -1160,103 +1167,6 @@ void anv_DestroyInstance(
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);
-}
-
-static VkResult
-anv_enumerate_physical_devices(struct anv_instance *instance)
-{
-   if (instance->physical_devices_enumerated)
-      return VK_SUCCESS;
-
-   instance->physical_devices_enumerated = true;
-
-   /* TODO: Check for more devices ? */
-   drmDevicePtr devices[8];
-   int max_devices;
-
-   max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
-   if (max_devices < 1)
-      return VK_SUCCESS;
-
-   VkResult result = VK_SUCCESS;
-   for (unsigned i = 0; i < (unsigned)max_devices; i++) {
-      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-          devices[i]->bustype == DRM_BUS_PCI &&
-          devices[i]->deviceinfo.pci->vendor_id == 0x8086) {
-
-         struct anv_physical_device *pdevice;
-         result = anv_physical_device_try_create(instance, devices[i],
-                                                 &pdevice);
-         /* Incompatible DRM device, skip. */
-         if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
-            result = VK_SUCCESS;
-            continue;
-         }
-
-         /* Error creating the physical device, report the error. */
-         if (result != VK_SUCCESS)
-            break;
-
-         list_addtail(&pdevice->link, &instance->physical_devices);
-      }
-   }
-   drmFreeDevices(devices, max_devices);
-
-   /* If we successfully enumerated any devices, call it success */
-   return result;
-}
-
-VkResult anv_EnumeratePhysicalDevices(
-    VkInstance                                  _instance,
-    uint32_t*                                   pPhysicalDeviceCount,
-    VkPhysicalDevice*                           pPhysicalDevices)
-{
-   ANV_FROM_HANDLE(anv_instance, instance, _instance);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out,
-                          pPhysicalDevices, pPhysicalDeviceCount);
-
-   VkResult result = anv_enumerate_physical_devices(instance);
-   if (result != VK_SUCCESS)
-      return result;
-
-   list_for_each_entry(struct anv_physical_device, pdevice,
-                       &instance->physical_devices, link) {
-      vk_outarray_append_typed(VkPhysicalDevice, &out, i) {
-         *i = anv_physical_device_to_handle(pdevice);
-      }
-   }
-
-   return vk_outarray_status(&out);
-}
-
-VkResult anv_EnumeratePhysicalDeviceGroups(
-    VkInstance                                  _instance,
-    uint32_t*                                   pPhysicalDeviceGroupCount,
-    VkPhysicalDeviceGroupProperties*            pPhysicalDeviceGroupProperties)
-{
-   ANV_FROM_HANDLE(anv_instance, instance, _instance);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
-                          pPhysicalDeviceGroupProperties,
-                          pPhysicalDeviceGroupCount);
-
-   VkResult result = anv_enumerate_physical_devices(instance);
-   if (result != VK_SUCCESS)
-      return result;
-
-   list_for_each_entry(struct anv_physical_device, pdevice,
-                       &instance->physical_devices, link) {
-      vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p) {
-         p->physicalDeviceCount = 1;
-         memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
-         p->physicalDevices[0] = anv_physical_device_to_handle(pdevice);
-         p->subsetAllocation = false;
-
-         vk_foreach_struct(ext, p->pNext)
-            anv_debug_ignored_stype(ext->sType);
-      }
-   }
-
-   return vk_outarray_status(&out);
 }
 
 void anv_GetPhysicalDeviceFeatures(

@@ -1076,9 +1076,6 @@ anv_physical_device_has_vram(const struct anv_physical_device *device)
 struct anv_instance {
     struct vk_instance                          vk;
 
-    bool                                        physical_devices_enumerated;
-    struct list_head                            physical_devices;
-
     struct driOptionCache                       dri_options;
     struct driOptionCache                       available_dri_options;
 
