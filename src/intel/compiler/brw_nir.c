@@ -710,6 +710,13 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler)
       OPT(nir_opt_intrinsics);
       OPT(nir_opt_idiv_const, 32);
       OPT(nir_opt_algebraic);
+
+      /* BFI2 did not exist until Gfx7, so there's no point in trying to
+       * optimize an instruction that should not get generated.
+       */
+      if (compiler->devinfo->ver >= 7)
+         OPT(nir_opt_reassociate_bfi);
+
       OPT(nir_lower_constant_convert_alu_types);
       OPT(nir_opt_constant_folding);
 
