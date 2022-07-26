@@ -155,52 +155,47 @@ void si_nir_late_opts(nir_shader *nir)
 
 static void si_late_optimize_16bit_samplers(struct si_screen *sscreen, nir_shader *nir)
 {
-   /* Optimize and fix types of image_sample sources and destinations.
+   /* Optimize types of image_sample sources and destinations.
     *
-    * The image_sample constraints are:
-    *   nir_tex_src_coord:       has_a16 ? select 16 or 32 : 32
+    * The image_sample sources bit sizes are:
+    *   nir_tex_src_coord:       a16 ? 16 : 32
     *   nir_tex_src_comparator:  32
     *   nir_tex_src_offset:      32
-    *   nir_tex_src_bias:        32
-    *   nir_tex_src_lod:         match coord
-    *   nir_tex_src_min_lod:     match coord
-    *   nir_tex_src_ms_index:    match coord
-    *   nir_tex_src_ddx:         has_g16 && coord == 32 ? select 16 or 32 : match coord
-    *   nir_tex_src_ddy:         match ddy
+    *   nir_tex_src_bias:        a16 ? 16 : 32
+    *   nir_tex_src_lod:         a16 ? 16 : 32
+    *   nir_tex_src_min_lod:     a16 ? 16 : 32
+    *   nir_tex_src_ms_index:    a16 ? 16 : 32
+    *   nir_tex_src_ddx:         has_g16 ? (g16 ? 16 : 32) : (a16 ? 16 : 32)
+    *   nir_tex_src_ddy:         has_g16 ? (g16 ? 16 : 32) : (a16 ? 16 : 32)
     *
-    * coord and ddx are selected optimally. The types of the rest are legalized
-    * based on those two.
+    * We only use a16/g16 if all of the affected sources are 16bit.
     */
-   /* TODO: The constraints can't represent the ddx constraint. */
-   /*bool has_g16 = sscreen->info.gfx_level >= GFX10 && LLVM_VERSION_MAJOR >= 12;*/
-   bool has_g16 = false;
-   nir_tex_src_type_constraints tex_constraints = {
-      [nir_tex_src_comparator]   = {true, 32},
-      [nir_tex_src_offset]       = {true, 32},
-      [nir_tex_src_bias]         = {true, 32},
-      [nir_tex_src_lod]          = {true, 0, nir_tex_src_coord},
-      [nir_tex_src_min_lod]      = {true, 0, nir_tex_src_coord},
-      [nir_tex_src_ms_index]     = {true, 0, nir_tex_src_coord},
-      [nir_tex_src_ddx]          = {!has_g16, 0, nir_tex_src_coord},
-      [nir_tex_src_ddy]          = {true, 0, has_g16 ? nir_tex_src_ddx : nir_tex_src_coord},
-   };
-   bool changed = false;
-
-   struct nir_fold_tex_srcs_options fold_srcs_options = {
-      .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
-      .src_types = (1 << nir_tex_src_coord) |
-                   (has_g16 ? 1 << nir_tex_src_ddx : 0),
+   bool has_g16 = sscreen->info.gfx_level >= GFX10 && LLVM_VERSION_MAJOR >= 12;
+   struct nir_fold_tex_srcs_options fold_srcs_options[] = {
+      {
+         .sampler_dims =
+            ~(BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) | BITFIELD_BIT(GLSL_SAMPLER_DIM_BUF)),
+         .src_types = (1 << nir_tex_src_coord) | (1 << nir_tex_src_lod) |
+                      (1 << nir_tex_src_bias) | (1 << nir_tex_src_min_lod) |
+                      (1 << nir_tex_src_ms_index) |
+                      (has_g16 ? 0 : (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy)),
+         .only_fold_all = true,
+      },
+      {
+         .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
+         .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
+         .only_fold_all = true,
+      },
    };
    struct nir_fold_16bit_tex_image_options fold_16bit_options = {
       .rounding_mode = nir_rounding_mode_rtne,
       .fold_tex_dest = true,
       .fold_image_load_store_data = true,
-      .fold_srcs_options_count = 1,
-      .fold_srcs_options = &fold_srcs_options,
+      .fold_srcs_options_count = has_g16 ? 2 : 1,
+      .fold_srcs_options = fold_srcs_options,
    };
+   bool changed = false;
    NIR_PASS(changed, nir, nir_fold_16bit_tex_image, &fold_16bit_options);
-
-   NIR_PASS(changed, nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    if (changed) {
       si_nir_opts(sscreen, nir, false);
