@@ -6195,7 +6195,7 @@
     <src start="6" mask="0xf7"/>
   </ins>
 
-  <ins name="+KABOOM" mask="0xffff8" exact="0xd7858" unused="true" message="job_management">
+  <ins name="+KABOOM" mask="0xffff8" exact="0xd7858" message="job" dests="0">
     <src start="0"/>
   </ins>
 

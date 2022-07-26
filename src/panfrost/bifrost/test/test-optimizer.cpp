@@ -35,7 +35,14 @@ bi_optimizer(bi_context *ctx)
    bi_opt_dead_code_eliminate(ctx);
 }
 
-#define CASE(instr, expected) INSTRUCTION_CASE(instr, expected, bi_optimizer)
+/* Define reg first so it has a consistent variable index, and pass it to an
+ * instruction that cannot be dead code eliminated so the program is nontrivial.
+ */
+#define CASE(instr, expected) INSTRUCTION_CASE(\
+      { UNUSED bi_index reg = bi_temp(b->shader); instr; bi_kaboom(b, reg); }, \
+      { UNUSED bi_index reg = bi_temp(b->shader); expected; bi_kaboom(b, reg); }, \
+      bi_optimizer);
+
 #define NEGCASE(instr) CASE(instr, instr)
 
 class Optimizer : public testing::Test {
@@ -43,7 +50,6 @@ protected:
    Optimizer() {
       mem_ctx = ralloc_context(NULL);
 
-      reg     = bi_register(0);
       x       = bi_register(1);
       y       = bi_register(2);
       negabsx = bi_neg(bi_abs(x));
@@ -55,7 +61,6 @@ protected:
 
    void *mem_ctx;
 
-   bi_index reg;
    bi_index x;
    bi_index y;
    bi_index negabsx;
