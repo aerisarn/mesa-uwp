@@ -138,12 +138,11 @@ typedef struct {
 } bi_index;
 
 static inline bi_index
-bi_get_index(unsigned value, bool is_reg, unsigned offset)
+bi_get_index(unsigned value)
 {
         return (bi_index) {
                 .value = value,
                 .swizzle = BI_SWIZZLE_H01,
-                .offset = offset,
                 .type = BI_INDEX_NORMAL,
         };
 }
@@ -917,7 +916,7 @@ va_zero_lut()
 static inline bi_index
 bi_temp(bi_context *ctx)
 {
-        return bi_get_index(ctx->ssa_alloc++, false, 0);
+        return bi_get_index(ctx->ssa_alloc++);
 }
 
 /* Inline constants automatically, will be lowered out by bi_lower_fau where a
@@ -931,7 +930,7 @@ bi_src_index(nir_src *src)
                 return bi_imm_u32(nir_src_as_uint(*src));
         } else {
                 assert(src->is_ssa);
-                return bi_get_index(src->ssa->index, false, 0);
+                return bi_get_index(src->ssa->index);
         }
 }
 
@@ -939,7 +938,7 @@ static inline bi_index
 bi_dest_index(nir_dest *dst)
 {
         assert(dst->is_ssa);
-        return bi_get_index(dst->ssa.index, false, 0);
+        return bi_get_index(dst->ssa.index);
 }
 
 /* Iterators for Bifrost IR */

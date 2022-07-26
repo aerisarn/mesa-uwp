@@ -1129,8 +1129,7 @@ bi_register_allocate(bi_context *ctx)
                                 spill_count = ALIGN_POT(spill_count, 16);
 
                         spill_count += bi_spill_register(ctx,
-                                        bi_get_index(spill_node, false, 0),
-                                        spill_count);
+                                        bi_get_index(spill_node), spill_count);
 
                         /* In case the spill affected an instruction with tied
                          * operands, we need to fix up.

@@ -1949,7 +1949,7 @@ bi_emit_load_const(bi_builder *b, nir_load_const_instr *instr)
                 acc |= (v << (i * instr->def.bit_size));
         }
 
-        bi_mov_i32_to(b, bi_get_index(instr->def.index, false, 0), bi_imm_u32(acc));
+        bi_mov_i32_to(b, bi_get_index(instr->def.index), bi_imm_u32(acc));
 }
 
 static bi_index
