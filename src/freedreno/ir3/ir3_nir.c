@@ -782,7 +782,6 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
                          (1 << nir_tex_src_ms_index) |
                          (1 << nir_tex_src_ddx) |
                          (1 << nir_tex_src_ddy),
-            .only_fold_all = true,
          };
          struct nir_fold_16bit_tex_image_options fold_16bit_options = {
             .rounding_mode = nir_rounding_mode_rtz,

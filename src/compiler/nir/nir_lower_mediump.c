@@ -707,10 +707,10 @@ fold_16bit_tex_srcs(nir_builder *b, nir_tex_instr *tex,
        * because it's out of bounds and the higher bits don't
        * matter.
        */
-      if (can_fold_16bit_src(src->ssa, src_type, false))
-         fold_srcs |= (1 << i);
-      else if (options->only_fold_all)
+      if (!can_fold_16bit_src(src->ssa, src_type, false))
          return false;
+
+      fold_srcs |= (1 << i);
    }
 
    u_foreach_bit(i, fold_srcs) {

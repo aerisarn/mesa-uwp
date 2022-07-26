@@ -179,12 +179,10 @@ static void si_late_optimize_16bit_samplers(struct si_screen *sscreen, nir_shade
                       (1 << nir_tex_src_bias) | (1 << nir_tex_src_min_lod) |
                       (1 << nir_tex_src_ms_index) |
                       (has_g16 ? 0 : (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy)),
-         .only_fold_all = true,
       },
       {
          .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
          .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
-         .only_fold_all = true,
       },
    };
    struct nir_fold_16bit_tex_image_options fold_16bit_options = {

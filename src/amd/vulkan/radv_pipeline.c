@@ -4896,12 +4896,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                                (1 << nir_tex_src_bias) | (1 << nir_tex_src_min_lod) |
                                (1 << nir_tex_src_ms_index) |
                                (separate_g16 ? 0 : (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy)),
-                  .only_fold_all = true,
                },
                {
                   .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
                   .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
-                  .only_fold_all = true,
                },
             };
             struct nir_fold_16bit_tex_image_options fold_16bit_options = {
