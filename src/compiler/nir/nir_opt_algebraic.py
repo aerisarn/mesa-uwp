@@ -1385,6 +1385,15 @@ optimizations.extend([
    (('uror@16', a, b), ('ior', ('ushr', a, b), ('ishl', a, ('isub', 16, b))), 'options->lower_rotate'),
    (('uror@32', a, b), ('ior', ('ushr', a, b), ('ishl', a, ('isub', 32, b))), 'options->lower_rotate'),
    (('uror@64', a, b), ('ior', ('ushr', a, b), ('ishl', a, ('isub', 64, b))), 'options->lower_rotate'),
+
+   # Because 'a' is a positive power of two, the result of the bfi is either 0
+   # or 'a' depending on whether or not 'b' is odd.  Use 'b&1' for the zero
+   # value to help platforms that can't have two constants in a bcsel.
+   (('u2f32', ('bfi', '#a(is_pos_power_of_two)', b, 0)),
+    ('bcsel', ('ieq', ('iand', b, 1), 0), ('iand', b, 1), ('u2f', a))),
+   (('u2f', ('bfi', '#a(is_pos_power_of_two)', b, 0)),
+    ('bcsel', ('ieq', ('iand', b, 1), 0), 0, ('u2f', a))),
+
    # Exponential/logarithmic identities
    (('~fexp2', ('flog2', a)), a), # 2^lg2(a) = a
    (('~flog2', ('fexp2', a)), a), # lg2(2^a) = a
