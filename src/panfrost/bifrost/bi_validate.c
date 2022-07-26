@@ -116,7 +116,7 @@ bi_validate_width(bi_context *ctx)
 
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_dest(I, d) {
-                        if (!bi_is_ssa(I->dest[d])) continue;
+                        assert(bi_is_ssa(I->dest[d]));
 
                         unsigned v = I->dest[d].value;
                         assert(width[v] == 0 && "broken SSA");
