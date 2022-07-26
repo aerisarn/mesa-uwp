@@ -1151,8 +1151,7 @@ tu_CreateDescriptorUpdateTemplate(
    VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_descriptor_set_layout, set_layout,
-                  pCreateInfo->descriptorSetLayout);
+   struct tu_descriptor_set_layout *set_layout = NULL;
    const uint32_t entry_count = pCreateInfo->descriptorUpdateEntryCount;
    const size_t size =
       sizeof(struct tu_descriptor_update_template) +
@@ -1176,6 +1175,10 @@ tu_CreateDescriptorUpdateTemplate(
       set_layout = pipeline_layout->set[pCreateInfo->set].layout;
 
       templ->bind_point = pCreateInfo->pipelineBindPoint;
+   } else {
+      TU_FROM_HANDLE(tu_descriptor_set_layout, _set_layout,
+                     pCreateInfo->descriptorSetLayout);
+      set_layout = _set_layout;
    }
 
    for (uint32_t i = 0; i < entry_count; i++) {
