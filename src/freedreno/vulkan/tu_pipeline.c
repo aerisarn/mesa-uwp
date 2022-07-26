@@ -150,6 +150,15 @@ tu6_emit_load_state(struct tu_pipeline *pipeline,
           */
          VkShaderStageFlags stages = pipeline->active_stages & binding->shader_stages;
          unsigned count = binding->array_size;
+
+         /* If this is a variable-count descriptor, then the array_size is an
+          * upper bound on the size, but we don't know how many descriptors
+          * will actually be used. Therefore we can't pre-load them here.
+          */
+         if (j == set_layout->binding_count - 1 &&
+             set_layout->has_variable_descriptors)
+            continue;
+
          if (count == 0 || stages == 0)
             continue;
          switch (binding->type) {
