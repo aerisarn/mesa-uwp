@@ -35,7 +35,9 @@ pool_base(struct tu_descriptor_pool *pool)
 }
 
 static uint32_t
-descriptor_size(struct tu_device *dev, VkDescriptorType type)
+descriptor_size(struct tu_device *dev,
+                const VkDescriptorSetLayoutBinding *binding,
+                VkDescriptorType type)
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -63,6 +65,9 @@ descriptor_size(struct tu_device *dev, VkDescriptorType type)
       } else {
          return A6XX_TEX_CONST_DWORDS * 4;
       }
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+      return A6XX_TEX_CONST_DWORDS * 4 +
+         ALIGN(binding->descriptorCount, A6XX_TEX_CONST_DWORDS * 4);
    default:
       return A6XX_TEX_CONST_DWORDS * 4;
    }
@@ -76,12 +81,13 @@ is_dynamic(VkDescriptorType type)
 }
 
 static uint32_t
-mutable_descriptor_size(struct tu_device *dev, const VkMutableDescriptorTypeListVALVE *list)
+mutable_descriptor_size(struct tu_device *dev,
+                        const VkMutableDescriptorTypeListVALVE *list)
 {
    uint32_t max_size = 0;
 
    for (uint32_t i = 0; i < list->descriptorTypeCount; i++) {
-      uint32_t size = descriptor_size(dev, list->pDescriptorTypes[i]);
+      uint32_t size = descriptor_size(dev, NULL, list->pDescriptorTypes[i]);
       max_size = MAX2(max_size, size);
    }
 
@@ -163,6 +169,7 @@ tu_CreateDescriptorSetLayout(
    set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
    set_layout->has_immutable_samplers = false;
+   set_layout->has_inline_uniforms = false;
    set_layout->size = 0;
 
    uint32_t dynamic_offset_size = 0;
@@ -172,7 +179,9 @@ tu_CreateDescriptorSetLayout(
       uint32_t b = binding->binding;
 
       set_layout->binding[b].type = binding->descriptorType;
-      set_layout->binding[b].array_size = binding->descriptorCount;
+      set_layout->binding[b].array_size =
+         binding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK ?
+         1 : binding->descriptorCount;
       set_layout->binding[b].offset = set_layout->size;
       set_layout->binding[b].dynamic_offset_offset = dynamic_offset_size;
       set_layout->binding[b].shader_stages = binding->stageFlags;
@@ -184,8 +193,12 @@ tu_CreateDescriptorSetLayout(
          set_layout->binding[b].size =
             mutable_descriptor_size(device, &mutable_info->pMutableDescriptorTypeLists[j]);
       } else {
-         set_layout->binding[b].size = descriptor_size(device, binding->descriptorType);
+         set_layout->binding[b].size =
+            descriptor_size(device, binding, binding->descriptorType);
       }
+
+      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
+         set_layout->has_inline_uniforms = true;
 
       if (variable_flags && binding->binding < variable_flags->bindingCount &&
           (variable_flags->pBindingFlags[binding->binding] &
@@ -231,12 +244,12 @@ tu_CreateDescriptorSetLayout(
          }
       }
 
+      uint32_t size =
+         ALIGN_POT(set_layout->binding[b].array_size * set_layout->binding[b].size, 4 * A6XX_TEX_CONST_DWORDS);
       if (is_dynamic(binding->descriptorType)) {
-         dynamic_offset_size +=
-            binding->descriptorCount * set_layout->binding[b].size;
+         dynamic_offset_size += size;
       } else {
-         set_layout->size +=
-            binding->descriptorCount * set_layout->binding[b].size;
+         set_layout->size += size;
       }
 
       set_layout->shader_stages |= binding->stageFlags;
@@ -323,7 +336,8 @@ tu_GetDescriptorSetLayoutSupport(
             /* Don't support the input attachement and combined image sampler type
              * for mutable descriptors */
             if (list->pDescriptorTypes[j] == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
-                list->pDescriptorTypes[j] == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+                list->pDescriptorTypes[j] == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+                list->pDescriptorTypes[j] == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
                supported = false;
                goto out;
             }
@@ -332,7 +346,7 @@ tu_GetDescriptorSetLayoutSupport(
          descriptor_sz =
             mutable_descriptor_size(device, &mutable_info->pMutableDescriptorTypeLists[i]);
       } else {
-         descriptor_sz = descriptor_size(device, binding->descriptorType);
+         descriptor_sz = descriptor_size(device, binding, binding->descriptorType);
       }
       uint64_t descriptor_alignment = 4 * A6XX_TEX_CONST_DWORDS;
 
@@ -342,10 +356,16 @@ tu_GetDescriptorSetLayoutSupport(
       size = ALIGN_POT(size, descriptor_alignment);
 
       uint64_t max_count = MAX_SET_SIZE;
-      if (descriptor_sz)
+      unsigned descriptor_count = binding->descriptorCount;
+      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         max_count = MAX_SET_SIZE - size;
+         descriptor_count = descriptor_sz;
+         descriptor_sz = 1;
+      } else if (descriptor_sz) {
          max_count = (MAX_SET_SIZE - size) / descriptor_sz;
+      }
 
-      if (max_count < binding->descriptorCount) {
+      if (max_count < descriptor_count) {
          supported = false;
       }
 
@@ -356,7 +376,7 @@ tu_GetDescriptorSetLayoutSupport(
          variable_count->maxVariableDescriptorCount =
             MIN2(UINT32_MAX, max_count);
       }
-      size += binding->descriptorCount * descriptor_sz;
+      size += descriptor_count * descriptor_sz;
    }
 
 out:
@@ -532,9 +552,15 @@ tu_descriptor_set_create(struct tu_device *device,
    uint32_t layout_size = layout->size;
    if (variable_count) {
       assert(layout->has_variable_descriptors);
-      uint32_t stride = layout->binding[layout->binding_count - 1].size;
-      layout_size = layout->binding[layout->binding_count - 1].offset +
-                    *variable_count * stride;
+      struct tu_descriptor_set_binding_layout *binding =
+         &layout->binding[layout->binding_count - 1];
+      if (binding->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         layout_size = binding->offset + A6XX_TEX_CONST_DWORDS * 4 +
+            ALIGN(*variable_count, A6XX_TEX_CONST_DWORDS * 4);
+      } else {
+         uint32_t stride = binding->size;
+         layout_size = binding->offset + *variable_count * stride;
+      }
    }
 
    if (layout_size) {
@@ -607,6 +633,24 @@ tu_descriptor_set_create(struct tu_device *device,
       }
    }
 
+   if (layout->has_inline_uniforms) {
+      for (unsigned i = 0; i < layout->binding_count; i++) {
+         if (layout->binding[i].type != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
+            continue;
+
+         uint32_t *ptr = set->mapped_ptr + layout->binding[i].offset / 4;
+         uint64_t va = set->va + layout->binding[i].offset +
+            A6XX_TEX_CONST_DWORDS * 4;
+         uint32_t size =
+            (layout->has_variable_descriptors && i == layout->binding_count - 1) ?
+            *variable_count : layout->binding[i].size - A6XX_TEX_CONST_DWORDS * 4;
+         size = ALIGN_POT(size, 16) / 16;
+
+         ptr[0] = A6XX_UBO_0_BASE_LO(va);
+         ptr[1] = A6XX_UBO_1_BASE_HI(va >> 32) | A6XX_UBO_1_SIZE(size);
+      }
+   }
+
    tu_descriptor_set_layout_ref(layout);
    list_addtail(&set->pool_link, &pool->desc_sets);
 
@@ -654,10 +698,29 @@ tu_CreateDescriptorPool(VkDevice _device,
       vk_find_struct_const( pCreateInfo->pNext,
          MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
 
+   const VkDescriptorPoolInlineUniformBlockCreateInfo *inline_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO);
+
+   if (inline_info) {
+      /* In addition to the size of the descriptors, we have to factor in the
+       * padding for each binding. The sizes are 4 aligned but we have to
+       * align to a descriptor size, and in the worst case each inline
+       * binding has a size of 4 bytes and we have to pad each one out.
+       */
+      bo_size += (2 * 4 * A6XX_TEX_CONST_DWORDS - 4) *
+         inline_info->maxInlineUniformBlockBindings;
+   }
+
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       const VkDescriptorPoolSize *pool_size = &pCreateInfo->pPoolSizes[i];
 
       switch (pool_size->type) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         dynamic_size += descriptor_size(device, NULL, pool_size->type) *
+            pool_size->descriptorCount;
+         break;
       case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
          if (mutable_info && i < mutable_info->mutableDescriptorTypeListCount &&
              mutable_info->pMutableDescriptorTypeLists[i].descriptorTypeCount > 0) {
@@ -669,17 +732,15 @@ tu_CreateDescriptorPool(VkDevice _device,
             bo_size += 2 * A6XX_TEX_CONST_DWORDS * 4 *
                   pool_size->descriptorCount;
          }
-         continue;
+         break;
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+         bo_size += pool_size->descriptorCount;
+         break;
       default:
+         bo_size += descriptor_size(device, NULL, pool_size->type) *
+                              pool_size->descriptorCount;
          break;
       }
-
-      const uint32_t desc_size = descriptor_size(device, pool_size->type) *
-         pool_size->descriptorCount;
-      if (is_dynamic(pool_size->type))
-         dynamic_size += desc_size;
-      else
-         bo_size += desc_size;
    }
 
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
@@ -1024,7 +1085,47 @@ tu_update_descriptor_sets(const struct tu_device *device,
       const struct tu_sampler *samplers =
          tu_immutable_samplers(set->layout, binding_layout);
 
-      ptr += (binding_layout->size / 4) * writeset->dstArrayElement;
+      if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         /* We need to respect this note:
+          *
+          *    The same behavior applies to bindings with a descriptor type of
+          *    VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK where descriptorCount
+          *    specifies the number of bytes to update while dstArrayElement
+          *    specifies the starting byte offset, thus in this case if the
+          *    dstBinding has a smaller byte size than the sum of
+          *    dstArrayElement and descriptorCount, then the remainder will be
+          *    used to update the subsequent binding - dstBinding+1 starting
+          *    at offset zero. This falls out as a special case of the above
+          *    rule.
+          *
+          * This means we can't just do a straight memcpy, because due to
+          * alignment padding and the descriptor itself there are gaps between
+          * sequential bindings. We have to loop over each binding updated.
+          */
+         const VkWriteDescriptorSetInlineUniformBlock *inline_write =
+            vk_find_struct_const(writeset->pNext,
+                                 WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK);
+         uint32_t remaining = inline_write->dataSize;
+         const uint8_t *src = inline_write->pData;
+         uint32_t dst_offset = writeset->dstArrayElement;
+         do {
+            uint8_t *dst = (uint8_t *)(ptr + A6XX_TEX_CONST_DWORDS) + dst_offset;
+            uint32_t binding_size =
+               binding_layout->size - A6XX_TEX_CONST_DWORDS * 4 - dst_offset;
+            uint32_t to_write = MIN2(remaining, binding_size);
+            memcpy(dst, src, to_write);
+
+            binding_layout++;
+            ptr = set->mapped_ptr + binding_layout->offset / 4;
+            dst_offset = 0;
+            src += to_write;
+            remaining -= to_write;
+         } while (remaining > 0);
+
+         continue;
+      }
+
+      ptr += binding_layout->size / 4 * writeset->dstArrayElement;
       for (j = 0; j < writeset->descriptorCount; ++j) {
          switch(writeset->descriptorType) {
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -1096,6 +1197,44 @@ tu_update_descriptor_sets(const struct tu_device *device,
          dst_ptr += dst_binding_layout->offset / 4;
       }
 
+      if (src_binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         uint32_t remaining = copyset->descriptorCount;
+         uint32_t src_start = copyset->srcArrayElement;
+         uint32_t dst_start = copyset->dstArrayElement;
+         uint8_t *src = (uint8_t *)(src_ptr + A6XX_TEX_CONST_DWORDS) + src_start;
+         uint8_t *dst = (uint8_t *)(dst_ptr + A6XX_TEX_CONST_DWORDS) + dst_start;
+         uint32_t src_remaining =
+            src_binding_layout->size - src_start - 4 * A6XX_TEX_CONST_DWORDS;
+         uint32_t dst_remaining =
+            dst_binding_layout->size - dst_start - 4 * A6XX_TEX_CONST_DWORDS;
+         do {
+            uint32_t to_write = MIN3(remaining, src_remaining, dst_remaining);
+            memcpy(dst, src, to_write);
+
+            src += to_write;
+            dst += to_write;
+            src_remaining -= to_write;
+            dst_remaining -= to_write;
+            remaining -= to_write;
+            
+            if (src_remaining == 0) {
+               src_binding_layout++;
+               src_ptr = src_set->mapped_ptr + src_binding_layout->offset / 4;
+               src = (uint8_t *)(src_ptr + A6XX_TEX_CONST_DWORDS);
+               src_remaining = src_binding_layout->size - 4 * A6XX_TEX_CONST_DWORDS;
+            }
+
+            if (dst_remaining == 0) {
+               dst_binding_layout++;
+               dst_ptr = dst_set->mapped_ptr + dst_binding_layout->offset / 4;
+               dst = (uint8_t *)(dst_ptr + A6XX_TEX_CONST_DWORDS);
+               dst_remaining = dst_binding_layout->size - 4 * A6XX_TEX_CONST_DWORDS;
+            }
+         } while (remaining > 0);
+
+         continue;
+      }
+
       src_ptr += src_binding_layout->size * copyset->srcArrayElement / 4;
       dst_ptr += dst_binding_layout->size * copyset->dstArrayElement / 4;
 
@@ -1136,17 +1275,7 @@ tu_CreateDescriptorUpdateTemplate(
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_descriptor_set_layout *set_layout = NULL;
    const uint32_t entry_count = pCreateInfo->descriptorUpdateEntryCount;
-   const size_t size =
-      sizeof(struct tu_descriptor_update_template) +
-      sizeof(struct tu_descriptor_update_template_entry) * entry_count;
-   struct tu_descriptor_update_template *templ;
-
-   templ = vk_object_alloc(&device->vk, pAllocator, size,
-                           VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
-   if (!templ)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   templ->entry_count = entry_count;
+   uint32_t dst_entry_count = 0;
 
    if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR) {
       TU_FROM_HANDLE(tu_pipeline_layout, pipeline_layout, pCreateInfo->pipelineLayout);
@@ -1156,14 +1285,54 @@ tu_CreateDescriptorUpdateTemplate(
        */
       assert(pCreateInfo->set < MAX_SETS);
       set_layout = pipeline_layout->set[pCreateInfo->set].layout;
-
-      templ->bind_point = pCreateInfo->pipelineBindPoint;
    } else {
       TU_FROM_HANDLE(tu_descriptor_set_layout, _set_layout,
                      pCreateInfo->descriptorSetLayout);
       set_layout = _set_layout;
    }
 
+   for (uint32_t i = 0; i < entry_count; i++) {
+      const VkDescriptorUpdateTemplateEntry *entry = &pCreateInfo->pDescriptorUpdateEntries[i];
+      if (entry->descriptorType != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         dst_entry_count++;
+         continue;
+      }
+
+      /* Calculate how many bindings this update steps over, so we can split
+       * up the template entry. This lets the actual update be a simple
+       * memcpy.
+       */
+      uint32_t remaining = entry->descriptorCount;
+      const struct tu_descriptor_set_binding_layout *binding_layout =
+         set_layout->binding + entry->dstBinding;
+      uint32_t dst_start = entry->dstArrayElement;
+      do {
+         uint32_t size = binding_layout->size - A6XX_TEX_CONST_DWORDS * 4;
+         uint32_t count = MIN2(remaining, size - dst_start);
+         remaining -= count;
+         binding_layout++;
+         dst_entry_count++;
+         dst_start = 0;
+      } while (remaining > 0);
+   }
+
+   const size_t size =
+      sizeof(struct tu_descriptor_update_template) +
+      sizeof(struct tu_descriptor_update_template_entry) * dst_entry_count;
+   struct tu_descriptor_update_template *templ;
+
+   templ = vk_object_alloc(&device->vk, pAllocator, size,
+                           VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
+   if (!templ)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   templ->entry_count = dst_entry_count;
+
+   if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR) {
+      templ->bind_point = pCreateInfo->pipelineBindPoint;
+   }
+
+   uint32_t j = 0;
    for (uint32_t i = 0; i < entry_count; i++) {
       const VkDescriptorUpdateTemplateEntry *entry = &pCreateInfo->pDescriptorUpdateEntries[i];
 
@@ -1180,6 +1349,30 @@ tu_CreateDescriptorUpdateTemplate(
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          dst_offset = binding_layout->dynamic_offset_offset / 4;
          break;
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
+         uint32_t remaining = entry->descriptorCount;
+         uint32_t dst_start = entry->dstArrayElement;
+         uint32_t src_offset = entry->offset;
+         /* See comment in update_descriptor_sets() */
+         do {
+            dst_offset =
+               binding_layout->offset + A6XX_TEX_CONST_DWORDS * 4 + dst_start;
+            uint32_t size = binding_layout->size - A6XX_TEX_CONST_DWORDS * 4;
+            uint32_t count = MIN2(remaining, size - dst_start);
+            templ->entry[j++] = (struct tu_descriptor_update_template_entry) {
+               .descriptor_type = entry->descriptorType,
+               .descriptor_count = count,
+               .src_offset = src_offset,
+               .dst_offset = dst_offset,
+            };
+            remaining -= count;
+            src_offset += count;
+            binding_layout++;
+            dst_start = 0;
+         } while (remaining > 0);
+
+         continue;
+      }
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_SAMPLER:
          if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR &&
@@ -1195,7 +1388,7 @@ tu_CreateDescriptorUpdateTemplate(
       dst_offset += (binding_layout->size * entry->dstArrayElement) / 4;
       dst_stride = binding_layout->size / 4;
 
-      templ->entry[i] = (struct tu_descriptor_update_template_entry) {
+      templ->entry[j++] = (struct tu_descriptor_update_template_entry) {
          .descriptor_type = entry->descriptorType,
          .descriptor_count = entry->descriptorCount,
          .src_offset = entry->offset,
@@ -1206,6 +1399,8 @@ tu_CreateDescriptorUpdateTemplate(
          .immutable_samplers = immutable_samplers,
       };
    }
+
+   assert(j == dst_entry_count);
 
    *pDescriptorUpdateTemplate =
       tu_descriptor_update_template_to_handle(templ);
@@ -1243,6 +1438,12 @@ tu_update_descriptor_set_with_template(
       uint32_t *ptr = set->mapped_ptr;
       const void *src = ((const char *) pData) + templ->entry[i].src_offset;
       const struct tu_sampler *samplers = templ->entry[i].immutable_samplers;
+
+      if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+         memcpy(((uint8_t *) ptr) + templ->entry[i].dst_offset, src,
+                templ->entry[i].descriptor_count);
+         continue;
+      }
 
       ptr += templ->entry[i].dst_offset;
       unsigned dst_offset = templ->entry[i].dst_offset;

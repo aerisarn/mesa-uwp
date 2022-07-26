@@ -196,9 +196,17 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
       break;
    }
 
-   unsigned stride = binding_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
-   assert(util_is_power_of_two_nonzero(stride));
-   nir_ssa_def *shift = nir_imm_int(b, util_logbase2(stride));
+   nir_ssa_def *shift;
+
+   if (binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
+      /* Inline uniform blocks cannot have arrays so the stride is unused */
+      shift = nir_imm_int(b, 0);
+   } else {
+      unsigned stride = binding_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
+      assert(util_is_power_of_two_nonzero(stride));
+      shift = nir_imm_int(b, util_logbase2(stride));
+   }
+
    nir_ssa_def *def = nir_vec3(b, nir_imm_int(b, set),
                                nir_iadd(b, nir_imm_int(b, base),
                                         nir_ishl(b, vulkan_idx, shift)),

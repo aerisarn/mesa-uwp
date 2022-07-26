@@ -234,6 +234,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_load_store_op_none = true,
       .EXT_non_seamless_cube_map = true,
       .EXT_tooling_info = true,
+      .EXT_inline_uniform_block = true,
    };
 }
 
@@ -590,8 +591,8 @@ tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
                                     VkPhysicalDeviceVulkan13Features *features)
 {
    features->robustImageAccess                   = true;
-   features->inlineUniformBlock                  = false;
-   features->descriptorBindingInlineUniformBlockUpdateAfterBind = false;
+   features->inlineUniformBlock                  = true;
+   features->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
    features->pipelineCreationCacheControl        = true;
    features->privateData                         = true;
    features->shaderDemoteToHelperInvocation      = true;
@@ -1039,13 +1040,19 @@ tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
    p->maxComputeWorkgroupSubgroups = 16; /* max_waves */
    p->requiredSubgroupSizeStages = VK_SHADER_STAGE_ALL;
 
-   /* VK_EXT_inline_uniform_block is not implemented */
-   p->maxInlineUniformBlockSize = 0;
-   p->maxPerStageDescriptorInlineUniformBlocks = 0;
-   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = 0;
-   p->maxDescriptorSetInlineUniformBlocks = 0;
-   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = 0;
-   p->maxInlineUniformTotalSize = 0;
+   /* Inline uniform buffers are just normal UBOs */
+   p->maxInlineUniformBlockSize = MAX_UNIFORM_BUFFER_RANGE;
+
+   /* Halve the normal limit on the number of descriptors, see below. */
+   p->maxPerStageDescriptorInlineUniformBlocks = max_descriptor_set_size / 2;
+   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = max_descriptor_set_size / 2;
+   p->maxDescriptorSetInlineUniformBlocks = max_descriptor_set_size / 2;
+   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = max_descriptor_set_size / 2;
+   /* Because we halve the normal limit on the number of descriptors, in the
+    * worst case each descriptor takes up half the space, leaving the rest for
+    * the actual data.
+    */
+   p->maxInlineUniformTotalSize = MAX_SET_SIZE / 2;
 
    p->integerDotProduct8BitUnsignedAccelerated = false;
    p->integerDotProduct8BitSignedAccelerated = false;

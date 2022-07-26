@@ -74,6 +74,7 @@ struct tu_descriptor_set_layout
 
    bool has_immutable_samplers;
    bool has_variable_descriptors;
+   bool has_inline_uniforms;
 
    /* Bindings in this descriptor set */
    struct tu_descriptor_set_binding_layout binding[0];
