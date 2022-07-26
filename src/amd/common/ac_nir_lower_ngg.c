@@ -88,10 +88,10 @@ typedef struct
 {
    /* store output base (driver location) */
    uint8_t base;
+   /* output stream index, 2 bit per component */
+   uint8_t stream;
    /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
    uint8_t components_mask : 4;
-   /* output stream index  */
-   uint8_t stream : 2;
 } gs_output_info;
 
 typedef struct
@@ -2139,13 +2139,19 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       if (!(b->shader->info.gs.active_stream_mask & (1 << stream)))
          continue;
 
-      /* The same output should always belong to the same stream and base. */
-      assert(!info->components_mask || (info->stream == stream && info->base == base_index));
-      info->base = base_index;
-      info->stream = stream;
-      info->components_mask |= BITFIELD_BIT(component_offset + comp);
-
       unsigned component = component_offset + comp;
+
+      /* The same output should always belong to the same base. */
+      assert(!info->components_mask || info->base == base_index);
+      /* The same output component should always belong to the same stream. */
+      assert(!(info->components_mask & (1 << component)) ||
+             ((info->stream >> (component * 2)) & 3) == stream);
+
+      info->base = base_index;
+      /* Components of the same output slot may belong to different streams. */
+      info->stream |= stream << (component * 2);
+      info->components_mask |= BITFIELD_BIT(component);
+
       nir_variable *var = s->output_vars[location][component];
       if (!var) {
          var = nir_local_variable_create(
@@ -2159,6 +2165,22 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
    nir_instr_remove(&intrin->instr);
    return true;
+}
+
+static unsigned
+gs_output_component_mask_with_stream(gs_output_info *info, unsigned stream)
+{
+   unsigned mask = info->components_mask;
+   if (!mask)
+      return 0;
+
+   /* clear component when not requested stream */
+   for (int i = 0; i < 4; i++) {
+      if (((info->stream >> (i * 2)) & 3) != stream)
+         mask &= ~(1 << i);
+   }
+
+   return mask;
 }
 
 static bool
@@ -2179,10 +2201,11 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
    for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
       gs_output_info *info = &s->output_info[slot];
-      if (info->stream != stream || !info->components_mask)
+
+      unsigned mask = gs_output_component_mask_with_stream(info, stream);
+      if (!mask)
          continue;
 
-      unsigned mask = info->components_mask;
       while (mask) {
          int start, count;
          u_bit_scan_consecutive_range(&mask, &start, &count);
@@ -2356,13 +2379,13 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
          continue;
 
       gs_output_info *info = &s->output_info[slot];
-      if (!info->components_mask || info->stream != 0)
+      unsigned mask = gs_output_component_mask_with_stream(info, 0);
+      if (!mask)
          continue;
 
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
       nir_io_semantics io_sem = { .location = slot, .num_slots = 1 };
 
-      unsigned mask = info->components_mask;
       while (mask) {
          int start, count;
          u_bit_scan_consecutive_range(&mask, &start, &count);
