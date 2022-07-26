@@ -651,7 +651,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 /* Different GPUs support different forms of the CLPER.i32
                  * instruction. Check we use the right one for the target.
                  */
-                if (add && add->op == BI_OPCODE_CLPER_V6_I32)
+                if (add && add->op == BI_OPCODE_CLPER_OLD_I32)
                         assert(ctx->quirks & BIFROST_LIMITED_CLPER);
                 else if (add && add->op == BI_OPCODE_CLPER_I32)
                         assert(!(ctx->quirks & BIFROST_LIMITED_CLPER));
