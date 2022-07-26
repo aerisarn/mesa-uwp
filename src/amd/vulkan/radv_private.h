@@ -263,9 +263,6 @@ struct radv_binning_settings {
 struct radv_physical_device {
    struct vk_physical_device vk;
 
-   /* Link in radv_instance::physical_devices */
-   struct list_head link;
-
    struct radv_instance *instance;
 
    struct radeon_winsys *ws;
@@ -353,9 +350,6 @@ struct radv_instance {
 
    uint64_t debug_flags;
    uint64_t perftest_flags;
-
-   bool physical_devices_enumerated;
-   struct list_head physical_devices;
 
    struct driOptionCache dri_options;
    struct driOptionCache available_dri_options;
