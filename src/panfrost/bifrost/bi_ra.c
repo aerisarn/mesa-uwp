@@ -703,7 +703,7 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
  * these vector moves.
  */
 static void
-bi_lower_vector(bi_context *ctx)
+bi_lower_vector(bi_context *ctx, unsigned first_reg)
 {
         bi_index *remap = calloc(ctx->ssa_alloc, sizeof(bi_index));
 
@@ -718,7 +718,7 @@ bi_lower_vector(bi_context *ctx)
                                 src.offset = i;
                                 bi_mov_i32_to(&b, I->dest[i], src);
 
-                                if (bi_is_ssa(I->dest[i]))
+                                if (bi_is_ssa(I->dest[i]) && I->dest[i].value < first_reg)
                                         remap[I->dest[i].value] = src;
                         }
 
@@ -726,7 +726,7 @@ bi_lower_vector(bi_context *ctx)
                 } else if (I->op == BI_OPCODE_COLLECT_I32) {
                         bi_index dest = I->dest[0];
                         assert(dest.offset == 0);
-                        assert((bi_is_ssa(dest) || I->nr_srcs == 1) && "nir_lower_phis_to_scalar");
+                        assert(((bi_is_ssa(dest) && dest.value < first_reg) || I->nr_srcs == 1) && "nir_lower_phis_to_scalar");
 
                         bi_foreach_src(I, i) {
                                 if (bi_is_null(I->src[i]))
@@ -742,7 +742,7 @@ bi_lower_vector(bi_context *ctx)
 
         bi_foreach_instr_global(ctx, I) {
                 bi_foreach_src(I, s) {
-                        if (bi_is_ssa(I->src[s]) && !bi_is_null(remap[I->src[s].value]))
+                        if (bi_is_ssa(I->src[s]) && I->src[s].value < first_reg && !bi_is_null(remap[I->src[s].value]))
                                 I->src[s] = bi_replace_index(I->src[s], remap[I->src[s].value]);
                 }
         }
@@ -872,10 +872,11 @@ squeeze_index(bi_context *ctx)
  * coalesce implicitly with biased colouring in a tree scan allocator. For now,
  * this should be good enough for LCRA.
  */
-static void
+static unsigned
 bi_out_of_ssa(bi_context *ctx)
 {
         bi_index zero = bi_fau(BIR_FAU_IMMEDIATE | 0, false);
+        unsigned first_reg = ctx->ssa_alloc;
 
         /* Trivially lower phis */
         bi_foreach_block(ctx, block) {
@@ -886,7 +887,8 @@ bi_out_of_ssa(bi_context *ctx)
                         assert(bi_is_ssa(I->dest[0]));
 
                         /* Assign a register for the phi */
-                        bi_index reg = bi_temp_reg(ctx);
+                        bi_index reg = bi_temp(ctx);
+                        assert(reg.value >= first_reg);
 
                         /* Lower to a move in each predecessor. The destinations
                          * cannot interfere so these can be sequentialized
@@ -955,8 +957,9 @@ bi_out_of_ssa(bi_context *ctx)
                         /* Match "reg = ssa" */
                         if (mov->op != BI_OPCODE_MOV_I32) continue;
                         if (mov->dest[0].type != BI_INDEX_NORMAL) continue;
-                        if (!mov->dest[0].reg) continue;
+                        if (mov->dest[0].value < first_reg) continue;
                         if (!bi_is_ssa(mov->src[0])) continue;
+                        if (mov->src[0].value >= first_reg) continue;
                         if (BITSET_TEST(multiple_uses, mov->src[0].value)) continue;
 
                         bool found = false;
@@ -996,6 +999,8 @@ bi_out_of_ssa(bi_context *ctx)
                                 bi_remove_instruction(mov);
                 }
         }
+
+        return first_reg;
 }
 
 void
@@ -1013,8 +1018,8 @@ bi_register_allocate(bi_context *ctx)
                 va_lower_split_64bit(ctx);
 
         /* Lower tied operands. SSA is broken from here on. */
-        bi_out_of_ssa(ctx);
-        bi_lower_vector(ctx);
+        unsigned first_reg = bi_out_of_ssa(ctx);
+        bi_lower_vector(ctx, first_reg);
         bi_coalesce_tied(ctx);
         squeeze_index(ctx);
 
