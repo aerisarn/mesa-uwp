@@ -975,17 +975,18 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 }
 
 static void
-handle_pipeline_access(struct rendering_state *state, enum pipe_shader_type pstage)
+handle_pipeline_access(struct rendering_state *state, gl_shader_stage stage)
 {
+   enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
    for (unsigned i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
       state->iv[pstage][i].access = 0;
       state->iv[pstage][i].shader_access = 0;
    }
-   u_foreach_bit(idx, state->access[pstage].images_read) {
+   u_foreach_bit(idx, state->access[stage].images_read) {
       state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_READ;
       state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_READ;
    }
-   u_foreach_bit(idx, state->access[pstage].images_written) {
+   u_foreach_bit(idx, state->access[stage].images_written) {
       state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_WRITE;
       state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_WRITE;
    }
@@ -997,10 +998,10 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    if (pipeline->is_compute_pipeline) {
       handle_compute_pipeline(cmd, state);
-      handle_pipeline_access(state, PIPE_SHADER_COMPUTE);
+      handle_pipeline_access(state, MESA_SHADER_COMPUTE);
    } else {
       handle_graphics_pipeline(cmd, state);
-      for (unsigned i = 0; i < PIPE_SHADER_COMPUTE; i++)
+      for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++)
          handle_pipeline_access(state, i);
    }
    state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
