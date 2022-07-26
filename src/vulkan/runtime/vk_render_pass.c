@@ -1991,7 +1991,6 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
 
    VkRenderingInfo rendering = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-      .pNext = &subpass->self_dep_info,
       .renderArea = cmd_buffer->render_area,
       .layerCount = pass->is_multiview ? 1 : framebuffer->layers,
       .viewMask = pass->is_multiview ? subpass->view_mask : 0,
@@ -2031,6 +2030,11 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
       sample_locations_tmp = *sample_locations;
       __vk_append_struct(&rendering, &sample_locations_tmp);
    }
+
+   /* Append this one last because it lives in the subpass and we don't want
+    * to be changed by appending other structures later.
+    */
+   __vk_append_struct(&rendering, (void *)&subpass->self_dep_info);
 
    disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd_buffer),
                            &rendering);
