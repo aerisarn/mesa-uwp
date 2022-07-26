@@ -215,8 +215,7 @@ bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins)
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
         bi_foreach_dest(ins, d) {
-                if (bi_is_ssa(ins->dest[d]))
-                        live[ins->dest[d].value] &= ~bi_writemask(ins, d);
+                live[ins->dest[d].value] &= ~bi_writemask(ins, d);
         }
 
         bi_foreach_ssa_src(ins, src) {
@@ -345,7 +344,6 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                  * interfering with the destination */
 
                 bi_foreach_dest(ins, d) {
-                        assert(bi_is_ssa(ins->dest[d]));
                         unsigned node = ins->dest[d].value;
 
                         /* Don't allocate to anything that's read later as a
@@ -455,11 +453,8 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
                 default_affinity &= BITFIELD64_MASK(48) << 8;
 
         bi_foreach_instr_global(ctx, ins) {
-                bi_foreach_dest(ins, d) {
-                        assert(bi_is_ssa(ins->dest[d]));
-
+                bi_foreach_dest(ins, d)
                         l->affinity[ins->dest[d].value] = default_affinity;
-                }
 
                 /* Blend shaders expect the src colour to be in r0-r3 */
                 if (ins->op == BI_OPCODE_BLEND &&
@@ -788,7 +783,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
                                 src.offset = i;
                                 bi_mov_i32_to(&b, I->dest[i], src);
 
-                                if (bi_is_ssa(I->dest[i]) && I->dest[i].value < first_reg)
+                                if (I->dest[i].value < first_reg)
                                         remap[I->dest[i].value] = src;
                         }
 
@@ -796,7 +791,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
                 } else if (I->op == BI_OPCODE_COLLECT_I32) {
                         bi_index dest = I->dest[0];
                         assert(dest.offset == 0);
-                        assert(((bi_is_ssa(dest) && dest.value < first_reg) || I->nr_srcs == 1) && "nir_lower_phis_to_scalar");
+                        assert(((dest.value < first_reg) || I->nr_srcs == 1) && "nir_lower_phis_to_scalar");
 
                         bi_foreach_src(I, i) {
                                 if (bi_is_null(I->src[i]))
@@ -834,9 +829,7 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
                         bool all_null = true;
 
                         bi_foreach_dest(ins, d) {
-                                if (!bi_is_ssa(ins->dest[d]))
-                                        all_null = false;
-                                else if (live[ins->dest[d].value] & bi_writemask(ins, d))
+                                if (live[ins->dest[d].value] & bi_writemask(ins, d))
                                         all_null = false;
                         }
 
@@ -944,8 +937,6 @@ bi_out_of_ssa(bi_context *ctx)
                 bi_foreach_instr_in_block_safe(block, I) {
                         if (I->op != BI_OPCODE_PHI)
                                 break;
-
-                        assert(bi_is_ssa(I->dest[0]));
 
                         /* Assign a register for the phi */
                         bi_index reg = bi_temp(ctx);

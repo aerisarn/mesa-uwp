@@ -417,7 +417,6 @@ bi_opt_mod_prop_backward(bi_context *ctx)
                         /* Need to see through the split in a
                          * ld_var_imm/split/var_tex  sequence
                          */
-                        assert(bi_is_ssa(use->dest[0]));
                         bi_instr *tex = uses[use->dest[0].value];
 
                         if (!tex || BITSET_TEST(multiple, use->dest[0].value))
