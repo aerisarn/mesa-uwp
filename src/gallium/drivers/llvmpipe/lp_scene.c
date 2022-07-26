@@ -262,7 +262,7 @@ lp_scene_end_rasterization(struct lp_scene *scene )
          j++;
          llvmpipe_resource_unmap(ref->resource[i], 0, 0);
          pipe_resource_reference(&ref->resource[i], NULL);
-         }
+      }
    }
 
    for (struct resource_ref *ref = scene->writeable_resources; ref;
