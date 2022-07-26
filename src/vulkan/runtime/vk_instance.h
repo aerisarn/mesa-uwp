@@ -55,6 +55,9 @@ struct vk_app_info {
    uint32_t           api_version;
 };
 
+struct _drmDevice;
+struct vk_physical_device;
+
 /** Base struct for all `VkInstance` implementations
  *
  * This contains data structures necessary for detecting enabled extensions,
@@ -101,6 +104,46 @@ struct vk_instance {
       /* Persistent callbacks */
       struct list_head callbacks;
    } debug_utils;
+
+   /** List of all physical devices and callbacks
+   *
+   * This is used for automatic physical device creation,
+   * deletion and enumeration.
+   */
+   struct {
+      struct list_head list;
+      bool enumerated;
+
+      /** Enumerate physical devices for this instance
+       *
+       * The driver can implement this callback for custom physical device
+       * enumeration. The callback should always return VK_SUCCESS unless
+       * an allocation failed.
+       * 
+       * If this callback is not set, try_create_for_drm will be used for
+       * enumeration.
+       */
+      VkResult (*enumerate)(struct vk_instance *instance);
+
+      /** Try to create a physical device for a drm device
+       * 
+       * For incompatible devices this callback should return
+       * VK_ERROR_INCOMPATIBLE_DRIVER.
+       */
+      VkResult (*try_create_for_drm)(struct vk_instance *instance,
+                                     struct _drmDevice *device,
+                                     struct vk_physical_device **out);
+
+      /** Handle the destruction of a physical device
+       * 
+       * This callback has to be implemented when using common physical device
+       * management. The device pointer and any resource allocated for the
+       * device should be freed here.
+       */
+      void (*destroy)(struct vk_physical_device *pdevice);
+
+      mtx_t mutex;
+   } physical_devices;
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_instance, base, VkInstance,
