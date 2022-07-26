@@ -154,11 +154,8 @@ bi_opt_cse(bi_context *ctx)
                 bi_foreach_instr_in_block(block, instr) {
                         /* Rewrite before trying to CSE anything so we converge
                          * locally in one iteration */
-                        bi_foreach_src(instr, s) {
+                        bi_foreach_ssa_src(instr, s) {
                                 if (bi_is_staging_src(instr, s))
-                                        continue;
-
-                                if (!bi_is_ssa(instr->src[s]))
                                         continue;
 
                                 bi_index repl = replacement[instr->src[s].value];

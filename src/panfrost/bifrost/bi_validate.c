@@ -126,9 +126,7 @@ bi_validate_width(bi_context *ctx)
         }
 
         bi_foreach_instr_global(ctx, I) {
-                bi_foreach_src(I, s) {
-                        if (!bi_is_ssa(I->src[s])) continue;
-
+                bi_foreach_ssa_src(I, s) {
                         unsigned v = I->src[s].value;
                         unsigned n = bi_count_read_registers(I, s);
 

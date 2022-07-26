@@ -206,11 +206,9 @@ bi_helper_block_update(BITSET_WORD *deps, bi_block *block)
                                 continue;
 
                         /* ...so are the sources */
-                        bi_foreach_src(I, s) {
-                                if (bi_is_ssa(I->src[s])) {
-                                        progress |= !BITSET_TEST(deps, I->src[s].value);
-                                        BITSET_SET(deps, I->src[s].value);
-                                }
+                        bi_foreach_ssa_src(I, s) {
+                                progress |= !BITSET_TEST(deps, I->src[s].value);
+                                BITSET_SET(deps, I->src[s].value);
                         }
 
                         break;
@@ -231,10 +229,8 @@ bi_analyze_helper_requirements(bi_context *ctx)
         bi_foreach_instr_global(ctx, I) {
                 if (!bi_instr_uses_helpers(I)) continue;
 
-                bi_foreach_src(I, s) {
-                        if (bi_is_ssa(I->src[s]))
-                                BITSET_SET(deps, I->src[s].value);
-                }
+                bi_foreach_ssa_src(I, s)
+                        BITSET_SET(deps, I->src[s].value);
         }
 
         /* Propagate that up */
@@ -263,10 +259,8 @@ bi_analyze_helper_requirements(bi_context *ctx)
 
                 bool exec = false;
 
-                bi_foreach_dest(I, d) {
-                        assert(bi_is_ssa(I->dest[d]));
+                bi_foreach_dest(I, d)
                         exec |= BITSET_TEST(deps, I->dest[d].value);
-                }
 
                 I->skip = !exec;
         }

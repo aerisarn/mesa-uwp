@@ -1026,6 +1026,10 @@ bi_dest_index(nir_dest *dst)
 #define bi_foreach_dest(ins, v) \
         for (unsigned v = 0; v < ins->nr_dests; ++v)
 
+#define bi_foreach_ssa_src(ins, v) \
+        for (unsigned v = 0; v < ins->nr_srcs; ++v) \
+                if (ins->src[v].type == BI_INDEX_NORMAL)
+
 #define bi_foreach_instr_and_src_in_tuple(tuple, ins, s) \
         bi_foreach_instr_in_tuple(tuple, ins) \
                 bi_foreach_src(ins, s)

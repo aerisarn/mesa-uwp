@@ -29,15 +29,11 @@
 void
 bi_liveness_ins_update_ssa(BITSET_WORD *live, const bi_instr *I)
 {
-        bi_foreach_dest(I, d) {
-                assert(I->dest[d].type == BI_INDEX_NORMAL);
+        bi_foreach_dest(I, d)
                 BITSET_CLEAR(live, I->dest[d].value);
-        }
 
-        bi_foreach_src(I, s) {
-                if (I->src[s].type == BI_INDEX_NORMAL)
-                        BITSET_SET(live, I->src[s].value);
-        }
+        bi_foreach_ssa_src(I, s)
+                BITSET_SET(live, I->src[s].value);
 }
 
 void
@@ -96,7 +92,6 @@ bi_compute_liveness_ssa(bi_context *ctx)
                         bi_foreach_instr_in_block(blk, I) {
                                 if (I->op != BI_OPCODE_PHI) break;
 
-                                assert(I->dest[0].type == BI_INDEX_NORMAL);
                                 BITSET_CLEAR(live, I->dest[0].value);
                         }
 
@@ -105,7 +100,7 @@ bi_compute_liveness_ssa(bi_context *ctx)
                                 if (I->op != BI_OPCODE_PHI) break;
 
                                 bi_index operand = I->src[bi_predecessor_index(blk, *pred)];
-                                if (operand.type == BI_INDEX_NORMAL)
+                                if (bi_is_ssa(operand))
                                         BITSET_SET(live, operand.value);
                         }
 

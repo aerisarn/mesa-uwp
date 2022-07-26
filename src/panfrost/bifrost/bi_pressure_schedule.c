@@ -79,18 +79,11 @@ create_dag(bi_context *ctx, bi_block *block, void *memctx)
                 dag_init_node(dag, &node->dag);
 
                 /* Reads depend on writes, no other hazards in SSA */
-                bi_foreach_src(I, s) {
-                        bi_index src = I->src[s];
+                bi_foreach_ssa_src(I, s)
+                        add_dep(node, last_write[I->src[s].value]);
 
-                        if (bi_is_ssa(src))
-                                add_dep(node, last_write[src.value]);
-                }
-
-                bi_foreach_dest(I, d) {
-                        assert(bi_is_ssa(I->dest[d]));
-
+                bi_foreach_dest(I, d)
                         last_write[I->dest[d].value] = node;
-                }
 
                 switch (bi_opcode_props[I->op].message) {
                 case BIFROST_MESSAGE_LOAD:
@@ -194,16 +187,11 @@ calculate_pressure_delta(bi_instr *I, BITSET_WORD *live)
 
         /* Destinations must be unique */
         bi_foreach_dest(I, d) {
-                assert(I->dest[d].type == BI_INDEX_NORMAL);
-
                 if (BITSET_TEST(live, I->dest[d].value))
                         delta -= bi_count_write_registers(I, d);
         }
 
-        bi_foreach_src(I, src) {
-                if (I->src[src].type != BI_INDEX_NORMAL)
-                        continue;
-
+        bi_foreach_ssa_src(I, src) {
                 /* Filter duplicates */
                 bool dupe = false;
 

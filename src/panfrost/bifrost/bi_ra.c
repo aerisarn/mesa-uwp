@@ -219,13 +219,11 @@ bi_liveness_ins_update_ra(uint8_t *live, bi_instr *ins)
                         live[ins->dest[d].value] &= ~bi_writemask(ins, d);
         }
 
-        bi_foreach_src(ins, src) {
+        bi_foreach_ssa_src(ins, src) {
                 unsigned count = bi_count_read_registers(ins, src);
                 unsigned rmask = BITFIELD_MASK(count);
-                uint8_t mask = (rmask << ins->src[src].offset);
 
-                if (bi_is_ssa(ins->src[src]))
-                        live[ins->src[src].value] |= mask;
+                live[ins->src[src].value] |= (rmask << ins->src[src].offset);
         }
 }
 
@@ -397,11 +395,9 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
 
                 /* Valhall needs >= 64-bit reads to be pair-aligned */
                 if (aligned_sr) {
-                        bi_foreach_src(ins, s) {
-                                if (bi_count_read_registers(ins, s) >= 2) {
-                                        if (bi_is_ssa(ins->src[s]))
-                                                l->affinity[ins->src[s].value] &= EVEN_BITS_MASK;
-                                }
+                        bi_foreach_ssa_src(ins, s) {
+                                if (bi_count_read_registers(ins, s) >= 2)
+                                        l->affinity[ins->src[s].value] &= EVEN_BITS_MASK;
                         }
                 }
 
@@ -815,8 +811,8 @@ bi_lower_vector(bi_context *ctx, unsigned first_reg)
         }
 
         bi_foreach_instr_global(ctx, I) {
-                bi_foreach_src(I, s) {
-                        if (bi_is_ssa(I->src[s]) && I->src[s].value < first_reg && !bi_is_null(remap[I->src[s].value]))
+                bi_foreach_ssa_src(I, s) {
+                        if (I->src[s].value < first_reg && !bi_is_null(remap[I->src[s].value]))
                                 I->src[s] = bi_replace_index(I->src[s], remap[I->src[s].value]);
                 }
         }
@@ -922,14 +918,11 @@ squeeze_index(bi_context *ctx)
         ctx->ssa_alloc = 0;
 
         bi_foreach_instr_global(ctx, I) {
-                bi_foreach_dest(I, d) {
+                bi_foreach_dest(I, d)
                         I->dest[d].value = find_or_allocate_temp(map, I->dest[d].value, &ctx->ssa_alloc);
-                }
 
-                bi_foreach_src(I, s) {
-                        if (I->src[s].type == BI_INDEX_NORMAL)
-                                I->src[s].value = find_or_allocate_temp(map, I->src[s].value, &ctx->ssa_alloc);
-                }
+                bi_foreach_ssa_src(I, s)
+                        I->src[s].value = find_or_allocate_temp(map, I->src[s].value, &ctx->ssa_alloc);
         }
 
         ralloc_free(map);
@@ -1009,10 +1002,7 @@ bi_out_of_ssa(bi_context *ctx)
         BITSET_WORD *multiple_uses = calloc(sizeof(BITSET_WORD), BITSET_WORDS(ctx->ssa_alloc));
 
         bi_foreach_instr_global(ctx, I) {
-                bi_foreach_src(I, s) {
-                        if (!bi_is_ssa(I->src[s]))
-                                continue;
-
+                bi_foreach_ssa_src(I, s) {
                         if (BITSET_TEST(used, I->src[s].value))
                                 BITSET_SET(multiple_uses, I->src[s].value);
                         else

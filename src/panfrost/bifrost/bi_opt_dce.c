@@ -55,11 +55,9 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                         if (!needed)
                                 continue;
 
-                        bi_foreach_src(I, s) {
-                                if (bi_is_ssa(I->src[s])) {
-                                        progress |= !BITSET_TEST(mark, I->src[s].value);
-                                        BITSET_SET(mark, I->src[s].value);
-                                }
+                        bi_foreach_ssa_src(I, s) {
+                                progress |= !BITSET_TEST(mark, I->src[s].value);
+                                BITSET_SET(mark, I->src[s].value);
                         }
                 }
 

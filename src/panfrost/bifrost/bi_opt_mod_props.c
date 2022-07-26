@@ -210,10 +210,7 @@ bi_opt_mod_prop_forward(bi_context *ctx)
                         lut[I->dest[d].value] = I;
                 }
 
-                bi_foreach_src(I, s) {
-                        if (!bi_is_ssa(I->src[s]))
-                                continue;
-
+                bi_foreach_ssa_src(I, s) {
                         bi_instr *mod = lut[I->src[s].value];
 
                         if (!mod)
@@ -394,15 +391,13 @@ bi_opt_mod_prop_backward(bi_context *ctx)
         BITSET_WORD *multiple = calloc(BITSET_WORDS(count), sizeof(*multiple));
 
         bi_foreach_instr_global_rev(ctx, I) {
-                bi_foreach_src(I, s) {
-                        if (bi_is_ssa(I->src[s])) {
-                                unsigned v = I->src[s].value;
+                bi_foreach_ssa_src(I, s) {
+                        unsigned v = I->src[s].value;
 
-                                if (uses[v] && uses[v] != I)
-                                        BITSET_SET(multiple, v);
-                                else
-                                        uses[v] = I;
-                        }
+                        if (uses[v] && uses[v] != I)
+                                BITSET_SET(multiple, v);
+                        else
+                                uses[v] = I;
                 }
 
                 if (!I->nr_dests)
