@@ -13,6 +13,14 @@
  */
 #define MAX_SETS 4
 
+/* I have no idea what the maximum size is, but the hardware supports very
+ * large numbers of descriptors (at least 2^16). This limit is based on
+ * CP_LOAD_STATE6, which has a 28-bit field for the DWORD offset, so that
+ * we don't have to think about what to do if that overflows, but really
+ * nothing is likely to get close to this.
+ */
+#define MAX_SET_SIZE ((1 << 28) * 4)
+
 struct tu_descriptor_set_binding_layout
 {
    VkDescriptorType type;

@@ -934,23 +934,17 @@ tu_get_physical_device_properties_1_1(struct tu_physical_device *pdevice,
    p->maxMultiviewViewCount = MAX_VIEWS;
    p->maxMultiviewInstanceIndex = INT_MAX;
    p->protectedNoFault = false;
-   /* Make sure everything is addressable by a signed 32-bit int, and
-    * our largest descriptors are 96 bytes.
+   /* Our largest descriptors are 2 texture descriptors, or a texture and
+    * sampler descriptor.
     */
-   p->maxPerSetDescriptors = (1ull << 31) / 96;
+   p->maxPerSetDescriptors = MAX_SET_SIZE / (2 * A6XX_TEX_CONST_DWORDS * 4);
    /* Our buffer size fields allow only this much */
    p->maxMemoryAllocationSize = 0xFFFFFFFFull;
 
 }
 
 
-/* I have no idea what the maximum size is, but the hardware supports very
- * large numbers of descriptors (at least 2^16). This limit is based on
- * CP_LOAD_STATE6, which has a 28-bit field for the DWORD offset, so that
- * we don't have to think about what to do if that overflows, but really
- * nothing is likely to get close to this.
- */
-static const size_t max_descriptor_set_size = (1 << 28) / A6XX_TEX_CONST_DWORDS;
+static const size_t max_descriptor_set_size = MAX_SET_SIZE / (4 * A6XX_TEX_CONST_DWORDS);
 static const VkSampleCountFlags sample_counts =
    VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
 

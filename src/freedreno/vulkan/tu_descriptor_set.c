@@ -334,16 +334,16 @@ tu_GetDescriptorSetLayoutSupport(
       } else {
          descriptor_sz = descriptor_size(device, binding->descriptorType);
       }
-      uint64_t descriptor_alignment = 8;
+      uint64_t descriptor_alignment = 4 * A6XX_TEX_CONST_DWORDS;
 
       if (size && !ALIGN_POT(size, descriptor_alignment)) {
          supported = false;
       }
       size = ALIGN_POT(size, descriptor_alignment);
 
-      uint64_t max_count = UINT64_MAX;
+      uint64_t max_count = MAX_SET_SIZE;
       if (descriptor_sz)
-         max_count = (UINT64_MAX - size) / descriptor_sz;
+         max_count = (MAX_SET_SIZE - size) / descriptor_sz;
 
       if (max_count < binding->descriptorCount) {
          supported = false;
