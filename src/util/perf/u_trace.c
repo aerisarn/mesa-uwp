@@ -718,7 +718,7 @@ u_trace_clone_append(struct u_trace_iterator begin_it,
             break;
 
          from_idx = 0;
-         from_chunk = LIST_ENTRY(struct u_trace_chunk, from_chunk->node.next, node);
+         from_chunk = list_entry(from_chunk->node.next, struct u_trace_chunk, node);
       }
    }
 }
@@ -737,7 +737,7 @@ u_trace_disable_event_range(struct u_trace_iterator begin_it,
       memset(&current_chunk->traces[start_idx], 0,
              (current_chunk->num_traces - start_idx) * sizeof(struct u_trace_event));
       start_idx = 0;
-      current_chunk = LIST_ENTRY(struct u_trace_chunk, current_chunk->node.next, node);
+      current_chunk = list_entry(current_chunk->node.next, struct u_trace_chunk, node);
    }
 
    memset(&current_chunk->traces[start_idx], 0,

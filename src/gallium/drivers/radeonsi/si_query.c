@@ -1090,7 +1090,7 @@ static void si_emit_query_predication(struct si_context *ctx)
       while (first) {
          qbuf = first;
          if (first != last)
-            first = LIST_ENTRY(struct gfx10_sh_query_buffer, qbuf->list.next, list);
+            first = list_entry(qbuf->list.next, struct gfx10_sh_query_buffer, list);
          else
             first = NULL;
 

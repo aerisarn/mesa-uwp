@@ -553,7 +553,7 @@ anv_batch_bo_list_clone(const struct list_head *list,
 static struct anv_batch_bo *
 anv_cmd_buffer_current_batch_bo(struct anv_cmd_buffer *cmd_buffer)
 {
-   return LIST_ENTRY(struct anv_batch_bo, cmd_buffer->batch_bos.prev, link);
+   return list_entry(cmd_buffer->batch_bos.prev, struct anv_batch_bo, link);
 }
 
 struct anv_address

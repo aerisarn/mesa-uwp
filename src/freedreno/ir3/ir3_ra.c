@@ -2037,7 +2037,7 @@ insert_liveout_copy(struct ir3_block *block, physreg_t dst, physreg_t src,
    struct ir3_instruction *old_pcopy = NULL;
    if (!list_is_empty(&block->instr_list)) {
       struct ir3_instruction *last =
-         LIST_ENTRY(struct ir3_instruction, block->instr_list.prev, node);
+         list_entry(block->instr_list.prev, struct ir3_instruction, node);
       if (last->opc == OPC_META_PARALLEL_COPY)
          old_pcopy = last;
    }

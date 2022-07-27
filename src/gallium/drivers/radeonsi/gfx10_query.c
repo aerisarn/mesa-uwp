@@ -46,7 +46,7 @@ static void gfx10_release_query_buffers(struct si_context *sctx,
    while (first) {
       struct gfx10_sh_query_buffer *qbuf = first;
       if (first != last)
-         first = LIST_ENTRY(struct gfx10_sh_query_buffer, qbuf->list.next, list);
+         first = list_entry(qbuf->list.next, struct gfx10_sh_query_buffer, list);
       else
          first = NULL;
 
@@ -242,7 +242,7 @@ static bool gfx10_sh_query_get_result(struct si_context *sctx, struct si_query *
    assert(query->last);
 
    for (struct gfx10_sh_query_buffer *qbuf = query->last;;
-        qbuf = LIST_ENTRY(struct gfx10_sh_query_buffer, qbuf->list.prev, list)) {
+        qbuf = list_entry(qbuf->list.prev, struct gfx10_sh_query_buffer, list)) {
       unsigned usage = PIPE_MAP_READ | (wait ? 0 : PIPE_MAP_DONTBLOCK);
       void *map;
 
@@ -411,7 +411,7 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
 
       if (qbuf == query->last)
          break;
-      qbuf = LIST_ENTRY(struct gfx10_sh_query_buffer, qbuf->list.next, list);
+      qbuf = list_entry(qbuf->list.next, struct gfx10_sh_query_buffer, list);
    }
 
    si_restore_qbo_state(sctx, &saved_state);

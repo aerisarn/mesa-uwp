@@ -310,7 +310,7 @@ debug_memory_end(unsigned long start_no)
       void *ptr;
       struct debug_memory_footer *ftr;
 
-      hdr = LIST_ENTRY(struct debug_memory_header, entry, head);
+      hdr = list_entry(entry, struct debug_memory_header, head);
       ptr = data_from_header(hdr);
       ftr = footer_from_header(hdr);
 
@@ -417,7 +417,7 @@ debug_memory_check(void)
       struct debug_memory_footer *ftr;
       const char *ptr;
 
-      hdr = LIST_ENTRY(struct debug_memory_header, entry, head);
+      hdr = list_entry(entry, struct debug_memory_header, head);
       ftr = footer_from_header(hdr);
       ptr = (const char *) data_from_header(hdr);
 

@@ -694,7 +694,7 @@ hud_stop_queries(struct hud_context *hud, struct pipe_context *pipe)
              * per frame. It will eventually reach an equilibrium.
              */
             if (gr->current_value <
-                LIST_ENTRY(struct hud_graph, next, head)->current_value) {
+                list_entry(next, struct hud_graph, head)->current_value) {
                list_del(&gr->head);
                list_add(&gr->head, &next->head);
             }
@@ -1432,7 +1432,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
          strip_hyphens(s);
          if (added && !list_is_empty(&pane->graph_list)) {
             struct hud_graph *graph;
-            graph = LIST_ENTRY(struct hud_graph, pane->graph_list.prev, head);
+            graph = list_entry(pane->graph_list.prev, struct hud_graph, head);
             strncpy(graph->name, s, sizeof(graph->name)-1);
             graph->name[sizeof(graph->name)-1] = 0;
          }

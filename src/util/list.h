@@ -187,7 +187,7 @@ static inline void list_move_to(struct list_head *item, struct list_head *loc) {
    list_add(item, loc);
 }
 
-#define LIST_ENTRY(__type, __item, __field)   \
+#define list_entry(__item, __type, __field)   \
     ((__type *)(((char *)(__item)) - offsetof(__type, __field)))
 
 /**
@@ -200,10 +200,10 @@ static inline void list_move_to(struct list_head *item, struct list_head *loc) {
 	     - ((char *)&(sample)->member - (char *)(sample)))
 
 #define list_first_entry(ptr, type, member) \
-        LIST_ENTRY(type, (ptr)->next, member)
+        list_entry((ptr)->next, type, member)
 
 #define list_last_entry(ptr, type, member) \
-        LIST_ENTRY(type, (ptr)->prev, member)
+        list_entry((ptr)->prev, type, member)
 
 
 #define LIST_FOR_EACH_ENTRY(pos, head, member)				\
@@ -234,57 +234,57 @@ static inline void list_move_to(struct list_head *item, struct list_head *loc) {
 	pos = list_container_of(pos->member.prev, pos, member))
 
 #define list_for_each_entry(type, pos, head, member)                    \
-   for (type *pos = LIST_ENTRY(type, (head)->next, member),             \
-	     *__next = LIST_ENTRY(type, pos->member.next, member);      \
+   for (type *pos = list_entry((head)->next, type, member),        \
+	     *__next = list_entry(pos->member.next, type, member); \
 	&pos->member != (head);                                         \
-	pos = LIST_ENTRY(type, pos->member.next, member),               \
+	pos = list_entry(pos->member.next, type, member),          \
 	list_assert(pos == __next, "use _safe iterator"),               \
-	__next = LIST_ENTRY(type, __next->member.next, member))
+	__next = list_entry(__next->member.next, type, member))
 
 #define list_for_each_entry_safe(type, pos, head, member)               \
-   for (type *pos = LIST_ENTRY(type, (head)->next, member),             \
-	     *__next = LIST_ENTRY(type, pos->member.next, member);      \
+   for (type *pos = list_entry((head)->next, type, member),        \
+	     *__next = list_entry(pos->member.next, type, member); \
 	&pos->member != (head);                                         \
 	pos = __next,                                                   \
-	__next = LIST_ENTRY(type, __next->member.next, member))
+	__next = list_entry(__next->member.next, type, member))
 
 #define list_for_each_entry_rev(type, pos, head, member)                \
-   for (type *pos = LIST_ENTRY(type, (head)->prev, member),             \
-	     *__prev = LIST_ENTRY(type, pos->member.prev, member);      \
+   for (type *pos = list_entry((head)->prev, type, member),        \
+	     *__prev = list_entry(pos->member.prev, type, member); \
 	&pos->member != (head);                                         \
-	pos = LIST_ENTRY(type, pos->member.prev, member),               \
+	pos = list_entry(pos->member.prev, type, member),          \
 	list_assert(pos == __prev, "use _safe iterator"),               \
-	__prev = LIST_ENTRY(type, __prev->member.prev, member))
+	__prev = list_entry(__prev->member.prev, type, member))
 
 #define list_for_each_entry_safe_rev(type, pos, head, member)           \
-   for (type *pos = LIST_ENTRY(type, (head)->prev, member),             \
-	     *__prev = LIST_ENTRY(type, pos->member.prev, member);      \
+   for (type *pos = list_entry((head)->prev, type, member),        \
+	     *__prev = list_entry(pos->member.prev, type, member); \
 	&pos->member != (head);                                         \
 	pos = __prev,                                                   \
-        __prev = LIST_ENTRY(type, __prev->member.prev, member))
+        __prev = list_entry(__prev->member.prev, type, member))
 
 #define list_for_each_entry_from(type, pos, start, head, member)        \
-   for (type *pos = LIST_ENTRY(type, (start), member);                  \
+   for (type *pos = list_entry((start), type, member);             \
 	&pos->member != (head);                                         \
-	pos = LIST_ENTRY(type, pos->member.next, member))
+	pos = list_entry(pos->member.next, type, member))
 
 #define list_for_each_entry_from_safe(type, pos, start, head, member)   \
-   for (type *pos = LIST_ENTRY(type, (start), member),                  \
-	     *__next = LIST_ENTRY(type, pos->member.next, member);      \
+   for (type *pos = list_entry((start), type, member),             \
+	     *__next = list_entry(pos->member.next, type, member); \
 	&pos->member != (head);                                         \
 	pos = __next,                                                   \
-	__next = LIST_ENTRY(type, __next->member.next, member))
+	__next = list_entry(__next->member.next, type, member))
 
 #define list_for_each_entry_from_rev(type, pos, start, head, member)    \
-   for (type *pos = LIST_ENTRY(type, (start), member);                  \
+   for (type *pos = list_entry((start), type, member);             \
 	&pos->member != (head);                                         \
-	pos = LIST_ENTRY(type, pos->member.prev, member))
+	pos = list_entry(pos->member.prev, type, member))
 
 #define list_pair_for_each_entry(type, pos1, pos2, head1, head2, member) \
-   for (type *pos1 = LIST_ENTRY(type, (head1)->next, member),           \
-             *pos2 = LIST_ENTRY(type, (head2)->next, member);           \
+   for (type *pos1 = list_entry((head1)->next, type, member),      \
+             *pos2 = list_entry((head2)->next, type, member);      \
         &pos1->member != (head1) && &pos2->member != (head2);           \
-	pos1 = LIST_ENTRY(type, pos1->member.next, member),               \
-	pos2 = LIST_ENTRY(type, pos2->member.next, member))
+	pos1 = list_entry(pos1->member.next, type, member),        \
+	pos2 = list_entry(pos2->member.next, type, member))
 
 #endif /*_UTIL_LIST_H_*/

@@ -204,7 +204,7 @@ static unsigned get_cpb_num(struct rvce_encoder *enc)
  */
 struct rvce_cpb_slot *current_slot(struct rvce_encoder *enc)
 {
-	return LIST_ENTRY(struct rvce_cpb_slot, enc->cpb_slots.prev, list);
+	return list_entry(enc->cpb_slots.prev, struct rvce_cpb_slot, list);
 }
 
 /**
@@ -212,7 +212,7 @@ struct rvce_cpb_slot *current_slot(struct rvce_encoder *enc)
  */
 struct rvce_cpb_slot *l0_slot(struct rvce_encoder *enc)
 {
-	return LIST_ENTRY(struct rvce_cpb_slot, enc->cpb_slots.next, list);
+	return list_entry(enc->cpb_slots.next, struct rvce_cpb_slot, list);
 }
 
 /**
@@ -220,7 +220,7 @@ struct rvce_cpb_slot *l0_slot(struct rvce_encoder *enc)
  */
 struct rvce_cpb_slot *l1_slot(struct rvce_encoder *enc)
 {
-	return LIST_ENTRY(struct rvce_cpb_slot, enc->cpb_slots.next->next, list);
+	return list_entry(enc->cpb_slots.next->next, struct rvce_cpb_slot, list);
 }
 
 /**
@@ -334,8 +334,9 @@ static void rvce_end_frame(struct pipe_video_codec *encoder,
 			   struct pipe_picture_desc *picture)
 {
 	struct rvce_encoder *enc = (struct rvce_encoder*)encoder;
-	struct rvce_cpb_slot *slot = LIST_ENTRY(
-		struct rvce_cpb_slot, enc->cpb_slots.prev, list);
+	struct rvce_cpb_slot *slot = list_entry(enc->cpb_slots.prev,
+	                                        struct rvce_cpb_slot,
+	                                        list);
 
 	if (!enc->dual_inst || enc->bs_idx > 1)
 		flush(enc);

@@ -387,7 +387,7 @@ static int assign_alu_units(struct r600_bytecode *bc, struct r600_bytecode_alu *
 	for (i = 0; i < max_slots; i++)
 		assignment[i] = NULL;
 
-	for (alu = alu_first; alu; alu = LIST_ENTRY(struct r600_bytecode_alu, alu->list.next, list)) {
+	for (alu = alu_first; alu; alu = list_entry(alu->list.next, struct r600_bytecode_alu, list)) {
 		chan = alu->dst.chan;
 		if (max_slots == 4)
 			trans = 0;
@@ -990,7 +990,7 @@ static int merge_inst_groups(struct r600_bytecode *bc, struct r600_bytecode_alu 
 	}
 
 	/* determine new last instruction */
-	LIST_ENTRY(struct r600_bytecode_alu, bc->cf_last->alu.prev, list)->last = 1;
+	list_entry(bc->cf_last->alu.prev, struct r600_bytecode_alu, list)->last = 1;
 
 	/* determine new first instruction */
 	for (i = 0; i < max_slots; ++i) {

@@ -1516,7 +1516,7 @@ get_hole(struct radv_shader_arena *arena, struct list_head *head)
    if (head == &arena->entries)
       return NULL;
 
-   union radv_shader_arena_block *hole = LIST_ENTRY(union radv_shader_arena_block, head, list);
+   union radv_shader_arena_block *hole = list_entry(head, union radv_shader_arena_block, list);
    return hole->freelist.prev ? hole : NULL;
 }
 

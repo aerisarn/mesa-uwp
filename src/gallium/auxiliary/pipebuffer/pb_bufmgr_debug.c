@@ -348,7 +348,7 @@ pb_debug_manager_dump_locked(struct pb_debug_manager *mgr)
    curr = mgr->list.next;
    next = curr->next;
    while(curr != &mgr->list) {
-      buf = LIST_ENTRY(struct pb_debug_buffer, curr, head);
+      buf = list_entry(curr, struct pb_debug_buffer, head);
 
       debug_printf("buffer = %p\n", (void *) buf);
       debug_printf("    .size = 0x%"PRIx64"\n", buf->base.size);

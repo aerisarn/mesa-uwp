@@ -3971,10 +3971,10 @@ nir_before_src(nir_src *src, bool is_if_condition)
       }
       assert(found);
 #endif
-      /* The LIST_ENTRY macro is a generic container-of macro, it just happens
+      /* The list_entry() macro is a generic container-of macro, it just happens
        * to have a more specific name.
        */
-      nir_phi_src *phi_src = LIST_ENTRY(nir_phi_src, src, src);
+      nir_phi_src *phi_src = list_entry(src, nir_phi_src, src);
       return nir_after_block_before_jump(phi_src->pred);
    } else {
       return nir_before_instr(src->parent_instr);

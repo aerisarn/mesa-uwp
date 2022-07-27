@@ -1370,7 +1370,7 @@ add_barrier_deps(struct ir3_block *block, struct ir3_instruction *instr)
     */
    while (prev != &block->instr_list) {
       struct ir3_instruction *pi =
-         LIST_ENTRY(struct ir3_instruction, prev, node);
+         list_entry(prev, struct ir3_instruction, node);
 
       prev = prev->prev;
 
@@ -1391,7 +1391,7 @@ add_barrier_deps(struct ir3_block *block, struct ir3_instruction *instr)
     */
    while (next != &block->instr_list) {
       struct ir3_instruction *ni =
-         LIST_ENTRY(struct ir3_instruction, next, node);
+         list_entry(next, struct ir3_instruction, node);
 
       next = next->next;
 

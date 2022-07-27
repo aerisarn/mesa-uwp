@@ -365,13 +365,13 @@ ensure_sanity(const struct util_cache *cache)
    }
    else {
       struct util_cache_entry *header =
-         LIST_ENTRY(struct util_cache_entry, &cache->lru, list);
+         list_entry(&cache->lru, struct util_cache_entry, list);
 
       assert (header);
       assert (!list_is_empty(&cache->lru.list));
 
       for (i = 0; i < cache->count; i++)
-         header = LIST_ENTRY(struct util_cache_entry, &header, list);
+         header = list_entry(&header, struct util_cache_entry, list);
 
       assert(header == &cache->lru);
    }
