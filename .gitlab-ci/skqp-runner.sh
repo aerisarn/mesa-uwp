@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (C) 2022 Collabora Limited
 # Author: Guilherme Gallo <guilherme.gallo@collabora.com>
@@ -22,6 +22,135 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# sponge allows piping to files that are being used as input.
+# E.g.: sort file.txt | sponge file.txt
+# In order to avoid installing moreutils just to have the sponge binary, we can
+# use a bash function for it
+# Source https://unix.stackexchange.com/a/561346/310927
+sponge () (
+    set +x
+    append=false
+
+    while getopts 'a' opt; do
+        case $opt in
+            a) append=true ;;
+            *) echo error; exit 1
+        esac
+    done
+    shift "$(( OPTIND - 1 ))"
+
+    outfile=$1
+
+    tmpfile=$(mktemp "$(dirname "$outfile")/tmp-sponge.XXXXXXXX") &&
+    cat >"$tmpfile" &&
+    if "$append"; then
+        cat "$tmpfile" >>"$outfile"
+    else
+        if [ -f "$outfile" ]; then
+            chmod --reference="$outfile" "$tmpfile"
+        fi
+        if [ -f "$outfile" ]; then
+            mv "$tmpfile" "$outfile"
+        elif [ -n "$outfile" ] && [ ! -e "$outfile" ]; then
+            cat "$tmpfile" >"$outfile"
+        else
+            cat "$tmpfile"
+        fi
+    fi &&
+    rm -f "$tmpfile"
+)
+
+remove_comments_from_files() (
+    INPUT_FILES="$*"
+    for INPUT_FILE in ${INPUT_FILES}
+    do
+        [ -f "${INPUT_FILE}" ] || continue
+        sed -i '/#/d' "${INPUT_FILE}"
+        sed -i '/^\s*$/d' "${INPUT_FILE}"
+    done
+)
+
+subtract_test_lists() (
+    MINUEND=$1
+    sort "${MINUEND}" | sponge "${MINUEND}"
+    shift
+    for SUBTRAHEND in "$@"
+    do
+        sort "${SUBTRAHEND}" | sponge "${SUBTRAHEND}"
+        join -v 1 "${MINUEND}" "${SUBTRAHEND}" |
+            sponge "${MINUEND}"
+    done
+)
+
+merge_rendertests_files() {
+    BASE_FILE=$1
+    shift
+    FILES="$*"
+    cat $FILES "$BASE_FILE" |
+        sort --unique --stable --field-separator=, --key=1,1 |
+        sponge "$BASE_FILE"
+}
+
+# Generate rendertests from scratch, customizing with fails/flakes/crashes files
+generate_rendertests() (
+    set -ex
+    GENERATED_FILE=$(mktemp)
+    TESTS_FILE_PREFIX="${SKQP_FILE_PREFIX}-${SKQP_BACKEND}_rendertests"
+    FLAKES_FILE="${TESTS_FILE_PREFIX}-flakes.txt"
+    FAILS_FILE="${TESTS_FILE_PREFIX}-fails.txt"
+    CRASHES_FILE="${TESTS_FILE_PREFIX}-crashes.txt"
+    RENDER_TESTS_FILE="${TESTS_FILE_PREFIX}.txt"
+
+    # Default to an empty known flakes file if it doesn't exist.
+    touch "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
+
+    # skqp does not support comments in rendertests.txt file
+    remove_comments_from_files "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
+
+    # create an exhaustive rendertest list
+    /skqp/list_gms | sort > "$GENERATED_FILE"
+
+    # Remove undesirable tests from the list
+    subtract_test_lists "${GENERATED_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}"
+
+    # Add ",0" to each test to set the expected diff sum to zero
+    sed -i 's/$/,0/g' "$GENERATED_FILE"
+
+    merge_rendertests_files "$GENERATED_FILE" "${FAILS_FILE}"
+
+    mv "${GENERATED_FILE}" "${RENDER_TESTS_FILE}"
+
+    echo "${RENDER_TESTS_FILE}"
+)
+
+generate_unittests() (
+    set -ex
+    GENERATED_FILE=$(mktemp)
+    TESTS_FILE_PREFIX="${SKQP_FILE_PREFIX}_unittests"
+    FLAKES_FILE="${TESTS_FILE_PREFIX}-flakes.txt"
+    FAILS_FILE="${TESTS_FILE_PREFIX}-fails.txt"
+    CRASHES_FILE="${TESTS_FILE_PREFIX}-crashes.txt"
+    UNIT_TESTS_FILE="${TESTS_FILE_PREFIX}.txt"
+
+    # Default to an empty known flakes file if it doesn't exist.
+    touch "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
+
+    # Remove unitTest_ prefix
+    for UT_FILE in "${FAILS_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}"; do
+        sed -i 's/^unitTest_//g' "${UT_FILE}"
+    done
+
+    # create an exhaustive unittests list
+    /skqp/list_gpu_unit_tests | sort > "${GENERATED_FILE}"
+
+    # Remove undesirable tests from the list
+    subtract_test_lists "${GENERATED_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}" "${FAILS_FILE}"
+
+    remove_comments_from_files "${GENERATED_FILE}"
+    mv "${GENERATED_FILE}" "${UNIT_TESTS_FILE}"
+
+    echo "${UNIT_TESTS_FILE}"
+)
 
 run_all_tests() {
     rm "${SKQP_ASSETS_DIR}"/skqp/*.txt
@@ -37,9 +166,10 @@ copy_tests_files() (
 
     if echo "${SKQP_BACKEND}" | grep -qE 'vk|gl(es)?'
     then
-        SKQP_RENDER_TESTS_FILE="${SKQP_FILE_PREFIX}-${SKQP_BACKEND}_rendertests.txt"
-        [ -f "${SKQP_RENDER_TESTS_FILE}" ] || return 1
-        cp "${SKQP_RENDER_TESTS_FILE}" "${SKQP_ASSETS_DIR}"/skqp/rendertests.txt
+        GENERATED_RENDERTESTS=$(generate_rendertests)
+        cp "${GENERATED_RENDERTESTS}" "${SKQP_ASSETS_DIR}"/skqp/rendertests.txt
+        mkdir -p "${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"
+        cp "${GENERATED_RENDERTESTS}" "${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"/generated_rendertests.txt
         return 0
     fi
 
@@ -47,9 +177,10 @@ copy_tests_files() (
     # that is why it needs to be a special case.
     if echo "${SKQP_BACKEND}" | grep -qE "unitTest"
     then
-        SKQP_UNIT_TESTS_FILE="${SKQP_FILE_PREFIX}_unittests.txt"
-        [ -f "${SKQP_UNIT_TESTS_FILE}" ] || return 1
-        cp "${SKQP_UNIT_TESTS_FILE}" "${SKQP_ASSETS_DIR}"/skqp/unittests.txt
+        GENERATED_UNITTESTS=$(generate_unittests)
+        cp "${GENERATED_UNITTESTS}" "${SKQP_ASSETS_DIR}"/skqp/unittests.txt
+        mkdir -p "${SKQP_RESULTS_DIR}/${SKQP_BACKEND}"
+        cp "${GENERATED_UNITTESTS}" "${SKQP_RESULTS_DIR}/${SKQP_BACKEND}/generated_unittests.txt"
     fi
 )
 
@@ -175,7 +306,7 @@ LD_LIBRARY_PATH=$INSTALL:$LD_LIBRARY_PATH
 setup_backends
 
 SKQP_ASSETS_DIR=/skqp/assets
-SKQP_RESULTS_DIR="${SKQP_RESULTS_DIR:-$PWD/results}"
+SKQP_RESULTS_DIR="${SKQP_RESULTS_DIR:-${PWD}/results}"
 
 mkdir -p "${SKQP_ASSETS_DIR}"/skqp
 
