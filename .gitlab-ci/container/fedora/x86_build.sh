@@ -8,10 +8,12 @@ EPHEMERAL="
         autoconf
         automake
         bzip2
+        cmake
         git
         libtool
         pkgconfig(epoxy)
         pkgconfig(gbm)
+        pkgconfig(openssl)
         unzip
         wget
         xz
@@ -82,6 +84,8 @@ wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2
 cd $XORGMACROS_VERSION; ./configure; make install; cd ..
 rm -rf $XORGMACROS_VERSION
+
+. .gitlab-ci/container/build-mold.sh
 
 . .gitlab-ci/container/build-libdrm.sh
 

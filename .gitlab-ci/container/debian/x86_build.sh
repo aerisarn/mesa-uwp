@@ -12,6 +12,7 @@ STABLE_EPHEMERAL=" \
       autotools-dev \
       bzip2 \
       libtool \
+      libssl-dev \
       python3-pip \
       "
 
@@ -57,6 +58,8 @@ apt-get install -y --no-remove \
 export              XORG_RELEASES=https://xorg.freedesktop.org/releases/individual
 
 export         XORGMACROS_VERSION=util-macros-1.19.0
+
+. .gitlab-ci/container/build-mold.sh
 
 wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2

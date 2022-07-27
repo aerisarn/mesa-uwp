@@ -8,8 +8,15 @@ sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian buster main' >/etc/apt/sources.list.d/buster.list
 apt-get update
 
+# Ephemeral packages (installed for this script and removed again at
+# the end)
+STABLE_EPHEMERAL=" \
+        libssl-dev \
+        "
+
 apt-get -y install \
 	${EXTRA_LOCAL_PACKAGES} \
+	${STABLE_EPHEMERAL} \
 	abootimg \
 	autoconf \
 	automake \
@@ -68,8 +75,12 @@ arch=armhf
 
 . .gitlab-ci/container/container_pre_build.sh
 
+. .gitlab-ci/container/build-mold.sh
+
 # dependencies where we want a specific version
 EXTRA_MESON_ARGS=
 . .gitlab-ci/container/build-libdrm.sh
+
+apt-get purge -y $STABLE_EPHEMERAL
 
 . .gitlab-ci/container/container_post_build.sh

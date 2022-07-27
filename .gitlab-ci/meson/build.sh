@@ -79,7 +79,15 @@ meson _build --native-file=native.file \
       ${EXTRA_OPTION}
 cd _build
 meson configure
-ninja
+if command -V mold &> /dev/null ; then
+    mold --run ninja
+else
+    ninja
+fi
 LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4} --print-errorlogs ${MESON_TEST_ARGS}
-ninja install
+if command -V mold &> /dev/null ; then
+    mold --run ninja install
+else
+    ninja install
+fi
 cd ..

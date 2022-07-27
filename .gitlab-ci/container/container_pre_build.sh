@@ -17,7 +17,8 @@ export PATH=$CCACHE_PATH:$PATH
 export CC="${CCACHE_PATH}/gcc"
 export CXX="${CCACHE_PATH}/g++"
 
-# Force linkers to gold, since it's so much faster for building.  We can't use
+# When not using the mold linker (e.g. unsupported architecture), force
+# linkers to gold, since it's so much faster for building.  We can't use
 # lld because we're on old debian and it's buggy.  ming fails meson builds
 # with it with "meson.build:21:0: ERROR: Unable to determine dynamic linker"
 find /usr/bin -name \*-ld -o -name ld | \
