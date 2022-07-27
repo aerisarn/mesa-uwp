@@ -79,7 +79,12 @@
  * expensive pthread_getspecific() or its equivalent).
  */
 #ifdef USE_ELF_TLS
-#if defined(__GLIBC__)
+#if DETECT_OS_APPLE
+/* Apple Clang emits wrappers when using thread_local that break module linkage,
+ * but not with __thread
+ */
+#define __THREAD_INITIAL_EXEC __thread
+#elif defined(__GLIBC__)
 #define __THREAD_INITIAL_EXEC thread_local __attribute__((tls_model("initial-exec")))
 #define REALLY_INITIAL_EXEC
 #else
