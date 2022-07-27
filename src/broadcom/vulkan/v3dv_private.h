@@ -1086,6 +1086,15 @@ struct v3dv_job {
     */
    bool can_use_double_buffer;
 
+   /* We only need to allocate tile state for all layers if the binner
+    * writes primitives to layers other than the first. This can only be
+    * done using layered rendering (writing gl_Layer from a geometry shader),
+    * so for other cases of multilayered framebuffers (typically with
+    * meta copy/clear operations) that won't use layered rendering, we only
+    * need one layer worth of of tile state for the binner.
+    */
+   bool allocate_tile_state_for_all_layers;
+
    enum v3dv_job_type type;
 
    struct v3dv_device *device;
@@ -1218,6 +1227,8 @@ v3dv_cmd_buffer_ensure_array_state(struct v3dv_cmd_buffer *cmd_buffer,
 
 void v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
                                    bool indexed, bool indirect);
+
+bool v3dv_job_allocate_tile_state(struct v3dv_job *job);
 
 /* FIXME: only used on v3dv_cmd_buffer and v3dvx_cmd_buffer, perhaps move to a
  * cmd_buffer specific header?
