@@ -39,13 +39,6 @@
 /* define macros for use by assembly dispatchers */
 #define ENTRY_CURRENT_TABLE U_STRINGIFY(u_current_table)
 
-/* in bridge mode, mapi is a user of glapi */
-#ifdef MAPI_MODE_BRIDGE
-#define ENTRY_CURRENT_TABLE_GET "_glapi_get_dispatch"
-#else
-#define ENTRY_CURRENT_TABLE_GET U_STRINGIFY(u_current_get_table_internal)
-#endif
-
 /* REALLY_INITIAL_EXEC implies __GLIBC__ */
 #if defined(USE_X86_ASM) && defined(REALLY_INITIAL_EXEC)
 #include "entry_x86_tls.h"
