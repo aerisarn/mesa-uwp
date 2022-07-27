@@ -166,7 +166,7 @@ def generate_lava_yaml(args):
 
     run_steps += [
       'mkdir -p {}'.format(args.ci_project_dir),
-      'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
+      'wget -S --progress=dot:giga -O- {} | tar --zstd -x -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
 
       # Sleep a bit to give time for bash to dump shell xtrace messages into

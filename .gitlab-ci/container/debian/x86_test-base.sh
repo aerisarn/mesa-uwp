@@ -57,7 +57,8 @@ apt-get install -y --no-remove \
       waffle-utils \
       xauth \
       xvfb \
-      zlib1g
+      zlib1g \
+      zstd
 
 apt-get install -y --no-install-recommends \
       $STABLE_EPHEMERAL
