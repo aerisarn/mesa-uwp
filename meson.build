@@ -1089,6 +1089,10 @@ if cc.compiles('__uint128_t foo(void) { return 0; }',
   pre_args += '-DHAVE_UINT128'
 endif
 
+if cc.has_function('reallocarray')
+   pre_args += '-DHAVE_REALLOCARRAY'
+endif
+
 # TODO: this is very incomplete
 if ['linux', 'cygwin', 'gnu', 'freebsd', 'gnu/kfreebsd', 'haiku', 'android'].contains(host_machine.system())
   pre_args += '-D_GNU_SOURCE'
