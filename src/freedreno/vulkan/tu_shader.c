@@ -146,11 +146,17 @@ lower_load_push_constant(struct tu_device *dev,
 {
    uint32_t base = nir_intrinsic_base(instr);
    assert(base % 4 == 0);
-   assert(base >= shader->push_consts.lo * 4);
-   base -= shader->push_consts.lo * 4;
 
-   if (tu6_shared_constants_enable(layout, dev->compiler))
+   if (tu6_shared_constants_enable(layout, dev->compiler)) {
+      /* All stages share the same range.  We could potentially add
+       * push_constant_offset to layout and apply it, but this is good for
+       * now.
+       */
       base += dev->compiler->shared_consts_base_offset * 4;
+   } else {
+      assert(base >= shader->push_consts.lo * 4);
+      base -= shader->push_consts.lo * 4;
+   }
 
    nir_ssa_def *load =
       nir_load_uniform(b, instr->num_components,
@@ -641,7 +647,8 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
             struct tu_shader *tu_shader,
             const struct tu_pipeline_layout *layout)
 {
-   gather_push_constants(shader, tu_shader);
+   if (!tu6_shared_constants_enable(layout, dev->compiler))
+      gather_push_constants(shader, tu_shader);
 
    struct lower_instr_params params = {
       .dev = dev,
@@ -835,6 +842,8 @@ tu_shader_create(struct tu_device *dev,
 
    uint32_t reserved_consts_vec4 = align(shader->push_consts.dwords, 16) / 4;
    bool shared_consts_enable = tu6_shared_constants_enable(layout, dev->compiler);
+   if (shared_consts_enable)
+      assert(!shader->push_consts.dwords);
 
    shader->ir3_shader =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {

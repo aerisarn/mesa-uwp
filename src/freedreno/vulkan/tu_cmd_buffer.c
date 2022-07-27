@@ -4213,6 +4213,12 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
 
    if (pipeline->shared_consts.dwords > 0) {
       tu6_emit_shared_consts(&cs, pipeline, cmd->push_constants, compute);
+
+      for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->program.link); i++) {
+         const struct tu_program_descriptor_linkage *link =
+            &pipeline->program.link[i];
+         assert(!link->push_consts.dwords);
+      }
    } else {
       if (compute) {
          tu6_emit_user_consts(&cs, pipeline, MESA_SHADER_COMPUTE, cmd->push_constants);
