@@ -471,6 +471,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
                      uint32_t height,
                      uint32_t layers,
                      bool allocate_tile_state_for_all_layers,
+                     bool allocate_tile_state_now,
                      uint32_t render_target_count,
                      uint8_t max_internal_bpp,
                      bool msaa)
@@ -487,8 +488,14 @@ v3dv_job_start_frame(struct v3dv_job *job,
    v3dv_return_if_oom(NULL, job);
 
    job->allocate_tile_state_for_all_layers = allocate_tile_state_for_all_layers;
-   if (!v3dv_job_allocate_tile_state(job))
-      return;
+
+   /* For subpass jobs we postpone tile state allocation until we are finishing
+    * the job and have made a decision about double-buffer.
+    */
+   if (allocate_tile_state_now) {
+      if (!v3dv_job_allocate_tile_state(job))
+         return;
+   }
 
    v3dv_X(job->device, job_emit_binning_prolog)(job, tiling,
       allocate_tile_state_for_all_layers ? tiling->layers : 1);
@@ -500,7 +507,8 @@ v3dv_job_start_frame(struct v3dv_job *job,
 static void
 cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->state.job);
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
 
    /* Typically, we have a single job for each subpass and we emit the job's RCL
     * here when we are ending the frame for the subpass. However, some commands
@@ -510,10 +518,17 @@ cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
     * those jobs, so we only emit the subpass RCL if the job has not recorded
     * any RCL commands of its own.
     */
-   if (v3dv_cl_offset(&cmd_buffer->state.job->rcl) == 0)
-      v3dv_X(cmd_buffer->device, cmd_buffer_emit_render_pass_rcl)(cmd_buffer);
+   if (v3dv_cl_offset(&job->rcl) == 0) {
+      /* At this point we have decided whether we want to use double-buffer or
+       * not and the job's frame tiling represents that decision so we can
+       * allocate the tile state, which we need to do before we emit the RCL.
+       */
+      v3dv_job_allocate_tile_state(job);
 
-   v3dv_X(cmd_buffer->device, job_emit_binning_flush)(cmd_buffer->state.job);
+      v3dv_X(cmd_buffer->device, cmd_buffer_emit_render_pass_rcl)(cmd_buffer);
+   }
+
+   v3dv_X(cmd_buffer->device, job_emit_binning_flush)(job);
 }
 
 struct v3dv_job *
@@ -1629,7 +1644,7 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                            framebuffer->width,
                            framebuffer->height,
                            layers,
-                           true,
+                           true, false,
                            subpass->color_count,
                            internal_bpp,
                            msaa);
@@ -2593,7 +2608,7 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
                         old_job->frame_tiling.width,
                         old_job->frame_tiling.height,
                         old_job->frame_tiling.layers,
-                        true,
+                        true, false,
                         old_job->frame_tiling.render_target_count,
                         old_job->frame_tiling.internal_bpp,
                         true /* msaa */);
