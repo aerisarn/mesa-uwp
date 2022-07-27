@@ -411,7 +411,7 @@ Shader *Shader::translate_from_nir(nir_shader *nir, const pipe_stream_output_inf
 
    switch (nir->info.stage) {
    case MESA_SHADER_FRAGMENT:
-      shader = new FragmentShader(key);
+      shader = new FragmentShaderEG(key);
    break;
    case MESA_SHADER_VERTEX:
       shader = new VertexShader(so_info, gs_shader, key);
