@@ -522,40 +522,34 @@ cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
 
-   /* Typically, we have a single job for each subpass and we emit the job's RCL
-    * here when we are ending the frame for the subpass. However, some commands
-    * such as vkCmdClearAttachments need to run in their own separate job and
-    * they emit their own RCL even if they execute inside a subpass. In this
-    * scenario, we don't want to emit subpass RCL when we end the frame for
-    * those jobs, so we only emit the subpass RCL if the job has not recorded
-    * any RCL commands of its own.
+
+   /* For subpass jobs we always emit the RCL here */
+   assert(v3dv_cl_offset(&job->rcl) == 0);
+
+   /* Decide if we want to enable double-buffer for this job. If we do, then
+    * we need to rewrite the TILE_BINNING_MODE_CFG packet in the BCL.
     */
-   if (v3dv_cl_offset(&job->rcl) == 0) {
-      /* Decide if we want to enable double-buffer for this job. If we do, then
-       * we need to rewrite the TILE_BINNING_MODE_CFG packet in the BCL.
-       */
-      if (job_should_enable_double_buffer(job)) {
-         assert(!job->frame_tiling.double_buffer);
-         job_compute_frame_tiling(job,
-                                  job->frame_tiling.width,
-                                  job->frame_tiling.height,
-                                  job->frame_tiling.layers,
-                                  job->frame_tiling.render_target_count,
-                                  job->frame_tiling.internal_bpp,
-                                  job->frame_tiling.msaa,
-                                  true);
+   if (job_should_enable_double_buffer(job)) {
+      assert(!job->frame_tiling.double_buffer);
+      job_compute_frame_tiling(job,
+                               job->frame_tiling.width,
+                               job->frame_tiling.height,
+                               job->frame_tiling.layers,
+                               job->frame_tiling.render_target_count,
+                               job->frame_tiling.internal_bpp,
+                               job->frame_tiling.msaa,
+                               true);
 
-         v3dv_X(job->device, job_emit_enable_double_buffer)(job);
-      }
-
-      /* At this point we have decided whether we want to use double-buffer or
-       * not and the job's frame tiling represents that decision so we can
-       * allocate the tile state, which we need to do before we emit the RCL.
-       */
-      v3dv_job_allocate_tile_state(job);
-
-      v3dv_X(cmd_buffer->device, cmd_buffer_emit_render_pass_rcl)(cmd_buffer);
+      v3dv_X(job->device, job_emit_enable_double_buffer)(job);
    }
+
+   /* At this point we have decided whether we want to use double-buffer or
+    * not and the job's frame tiling represents that decision so we can
+    * allocate the tile state, which we need to do before we emit the RCL.
+    */
+   v3dv_job_allocate_tile_state(job);
+
+   v3dv_X(cmd_buffer->device, cmd_buffer_emit_render_pass_rcl)(cmd_buffer);
 
    v3dv_X(cmd_buffer->device, job_emit_binning_flush)(job);
 }
