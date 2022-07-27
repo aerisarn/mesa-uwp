@@ -617,6 +617,7 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
    info->ordered = aco_opcode::num_opcodes;
    info->unordered = aco_opcode::num_opcodes;
    info->swapped = aco_opcode::num_opcodes;
+   info->inverse = aco_opcode::num_opcodes;
    info->f32 = aco_opcode::num_opcodes;
    switch (op) {
       // clang-format off
@@ -686,6 +687,15 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
       CMPI(ge, le, lt)
 #undef CMPI
 #undef CMPI2
+#define CMPCLASS(sz)                                                                               \
+   case aco_opcode::v_cmp_class_f##sz:                                                             \
+      info->vcmpx = aco_opcode::v_cmpx_class_f##sz;                                                \
+      info->size = sz;                                                                             \
+      return true;
+      CMPCLASS(16)
+      CMPCLASS(32)
+      CMPCLASS(64)
+#undef CMPCLASS
       // clang-format on
    default: return false;
    }
