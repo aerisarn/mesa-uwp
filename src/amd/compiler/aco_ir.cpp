@@ -616,6 +616,7 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
    info->ordered = aco_opcode::num_opcodes;
    info->unordered = aco_opcode::num_opcodes;
    info->swapped = aco_opcode::num_opcodes;
+   info->f32 = aco_opcode::num_opcodes;
    switch (op) {
       // clang-format off
 #define CMP2(ord, unord, ord_swap, unord_swap, sz)                                                 \
@@ -658,6 +659,27 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
       ORD_TEST(32)
       ORD_TEST(64)
 #undef ORD_TEST
+#define CMPI2(op, swap, inv, type, sz)                                                             \
+   case aco_opcode::v_cmp_##op##_##type##sz:                                                       \
+      info->swapped = aco_opcode::v_cmp_##swap##_##type##sz;                                       \
+      info->inverse = aco_opcode::v_cmp_##inv##_##type##sz;                                        \
+      info->size = sz;                                                                             \
+      return true;
+#define CMPI(op, swap, inv)                                                                        \
+   CMPI2(op, swap, inv, i, 16)                                                                     \
+   CMPI2(op, swap, inv, u, 16)                                                                     \
+   CMPI2(op, swap, inv, i, 32)                                                                     \
+   CMPI2(op, swap, inv, u, 32)                                                                     \
+   CMPI2(op, swap, inv, i, 64)                                                                     \
+   CMPI2(op, swap, inv, u, 64)
+      CMPI(lt, gt, ge)
+      CMPI(eq, eq, lg)
+      CMPI(le, ge, gt)
+      CMPI(gt, lt, le)
+      CMPI(lg, lg, eq)
+      CMPI(ge, le, lt)
+#undef CMPI
+#undef CMPI2
       // clang-format on
    default: return false;
    }
