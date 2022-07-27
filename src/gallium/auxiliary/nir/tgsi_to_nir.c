@@ -2213,6 +2213,7 @@ ttn_add_output_stores(struct ttn_compile *c)
       src.reg.base_offset = c->output_regs[i].offset;
 
       nir_ssa_def *store_value = nir_ssa_for_src(b, src, 4);
+      uint32_t store_mask = BITFIELD_MASK(store_value->num_components);
       if (c->build.shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* TGSI uses TGSI_SEMANTIC_POSITION.z for the depth output
           * and TGSI_SEMANTIC_STENCIL.y for the stencil output,
@@ -2231,10 +2232,18 @@ ttn_add_output_stores(struct ttn_compile *c)
              var->data.location == VARYING_SLOT_PSIZ) {
             store_value = nir_channel(b, store_value, 0);
          }
+         if (var->data.location == VARYING_SLOT_CLIP_DIST0)
+            store_mask = BITFIELD_MASK(MIN2(c->build.shader->info.clip_distance_array_size, 4));
+         else if (var->data.location == VARYING_SLOT_CLIP_DIST1) {
+            if (c->build.shader->info.clip_distance_array_size > 4)
+               store_mask = BITFIELD_MASK(c->build.shader->info.clip_distance_array_size - 4);
+            else
+               store_mask = 0;
+         }
       }
 
-      nir_store_deref(b, nir_build_deref_var(b, var), store_value,
-                      (1 << store_value->num_components) - 1);
+      if (store_mask)
+         nir_store_deref(b, nir_build_deref_var(b, var), store_value, store_mask);
    }
 }
 
