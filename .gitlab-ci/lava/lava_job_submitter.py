@@ -96,8 +96,8 @@ def generate_lava_yaml(args):
         'url': '{}/{}'.format(args.kernel_url_prefix, args.kernel_image_name),
       },
       'nfsrootfs': {
-        'url': '{}/lava-rootfs.tgz'.format(args.rootfs_url_prefix),
-        'compression': 'gz',
+        'url': '{}/lava-rootfs.tar.zst'.format(args.rootfs_url_prefix),
+        'compression': 'zstd',
       }
     }
     if args.kernel_image_type:
