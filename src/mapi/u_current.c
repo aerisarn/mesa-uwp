@@ -72,25 +72,17 @@ extern void (*__glapi_noop_table[])(void);
  *
  * Depending on whether or not multithreading is support, and the type of
  * support available, several variables are used to store the current context
- * pointer and the current dispatch table pointer.  In the non-threaded case,
+ * pointer and the current dispatch table pointer. In the non-threaded case,
  * the variables \c _glapi_Dispatch and \c _glapi_Context are used for this
  * purpose.
  *
- * In the "normal" threaded case, the variables \c _glapi_Dispatch and
- * \c _glapi_Context will be \c NULL if an application is detected as being
- * multithreaded.  Single-threaded applications will use \c _glapi_Dispatch
- * and \c _glapi_Context just like the case without any threading support.
- * When \c _glapi_Dispatch and \c _glapi_Context are \c NULL, the thread state
- * data \c _gl_DispatchTSD and \c ContextTSD are used.  Drivers and the
+ * In multi threaded case, The TLS variables \c _glapi_tls_Dispatch and
+ * \c _glapi_tls_Context are used. Having \c _glapi_Dispatch and \c _glapi_Context
+ * be hardcoded to \c NULL maintains binary compatability between TLS enabled
+ * loaders and non-TLS DRI drivers. When \c _glapi_Dispatch and \c _glapi_Context
+ * are \c NULL, the thread state data \c ContextTSD are used. Drivers and the
  * static dispatch functions access these variables via \c _glapi_get_dispatch
  * and \c _glapi_get_context.
- *
- *
- * In the TLS case, the variables \c _glapi_Dispatch and \c _glapi_Context are
- * hardcoded to \c NULL.  Instead the TLS variables \c _glapi_tls_Dispatch and
- * \c _glapi_tls_Context are used.  Having \c _glapi_Dispatch and
- * \c _glapi_Context be hardcoded to \c NULL maintains binary compatability
- * between TLS enabled loaders and non-TLS DRI drivers.
  */
 /*@{*/
 
