@@ -1086,6 +1086,16 @@ struct v3dv_job {
     */
    bool can_use_double_buffer;
 
+   /* This structure keeps track of various scores to inform a heuristic
+    * for double-buffer mode.
+    */
+   struct {
+      /* Cost of geometry shading */
+      uint32_t geom;
+      /* Cost of shader rendering */
+      uint32_t render;
+   } double_buffer_score;
+
    /* We only need to allocate tile state for all layers if the binner
     * writes primitives to layers other than the first. This can only be
     * done using layered rendering (writing gl_Layer from a geometry shader),
@@ -1094,6 +1104,12 @@ struct v3dv_job {
     * need one layer worth of of tile state for the binner.
     */
    bool allocate_tile_state_for_all_layers;
+
+   /* A pointer to the location of the TILE_BINNING_MODE_CFG packet so we can
+    * rewrite it to enable double-buffer mode by the time we have enough info
+    * about the job to make that decision.
+    */
+   struct v3dv_cl_out *bcl_tile_binning_mode_ptr;
 
    enum v3dv_job_type type;
 
@@ -1227,7 +1243,8 @@ v3dv_cmd_buffer_ensure_array_state(struct v3dv_cmd_buffer *cmd_buffer,
                                    void **ptr);
 
 void v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
-                                   bool indexed, bool indirect);
+                                   bool indexed, bool indirect,
+                                   uint32_t vertex_count);
 
 bool v3dv_job_allocate_tile_state(struct v3dv_job *job);
 

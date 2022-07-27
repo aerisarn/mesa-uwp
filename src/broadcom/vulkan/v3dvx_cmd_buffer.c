@@ -43,6 +43,29 @@ v3dX(job_emit_binning_flush)(struct v3dv_job *job)
 }
 
 void
+v3dX(job_emit_enable_double_buffer)(struct v3dv_job *job)
+{
+   assert(job->can_use_double_buffer);
+   assert(job->frame_tiling.double_buffer);
+   assert(!job->frame_tiling.msaa);
+   assert(job->bcl_tile_binning_mode_ptr);
+
+   const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
+   struct cl_packet_struct(TILE_BINNING_MODE_CFG) config = {
+      cl_packet_header(TILE_BINNING_MODE_CFG),
+   };
+   config.width_in_pixels = tiling->width;
+   config.height_in_pixels = tiling->height;
+   config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
+   config.multisample_mode_4x = tiling->msaa;
+   config.double_buffer_in_non_ms_mode = tiling->double_buffer;
+   config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+
+   uint8_t *rewrite_addr = (uint8_t *)job->bcl_tile_binning_mode_ptr;
+   cl_packet_pack(TILE_BINNING_MODE_CFG)(NULL, rewrite_addr, &config);
+}
+
+void
 v3dX(job_emit_binning_prolog)(struct v3dv_job *job,
                               const struct v3dv_frame_tiling *tiling,
                               uint32_t layers)
@@ -55,6 +78,7 @@ v3dX(job_emit_binning_prolog)(struct v3dv_job *job,
    }
 
    assert(!tiling->double_buffer || !tiling->msaa);
+   job->bcl_tile_binning_mode_ptr = cl_start(&job->bcl);
    cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
       config.width_in_pixels = tiling->width;
       config.height_in_pixels = tiling->height;
@@ -1655,6 +1679,14 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
                }
             }
 
+            if (!secondary_job->can_use_double_buffer) {
+               primary_job->can_use_double_buffer = false;
+            } else {
+               primary_job->double_buffer_score.geom +=
+                  secondary_job->double_buffer_score.geom;
+               primary_job->double_buffer_score.render +=
+                  secondary_job->double_buffer_score.render;
+            }
             primary_job->tmu_dirty_rcl |= secondary_job->tmu_dirty_rcl;
          } else {
             /* This is a regular job (CPU or GPU), so just finish the current

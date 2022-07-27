@@ -470,18 +470,13 @@ v3dv_job_start_frame(struct v3dv_job *job,
 {
    assert(job);
 
-   /* FIXME: if we are emitting any tile loads the hardware will serialize
-    * loads and stores across tiles effectively disabling double buffering,
-    * so we would want to check for that and not enable it in that case to
-    * avoid reducing the tile size.
+   /* Start by computing frame tiling spec for this job assuming that
+    * double-buffer mode is disabled.
     */
-   bool double_buffer = unlikely(V3D_DEBUG & V3D_DEBUG_DOUBLE_BUFFER) && !msaa;
-
-   /* Start by computing frame tiling spec for this job */
    const struct v3dv_frame_tiling *tiling =
       job_compute_frame_tiling(job, width, height, layers,
                                render_target_count, max_internal_bpp,
-                               msaa, double_buffer);
+                               msaa, false);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
    v3dv_return_if_oom(NULL, job);
@@ -503,6 +498,24 @@ v3dv_job_start_frame(struct v3dv_job *job,
    job->first_ez_state = V3D_EZ_UNDECIDED;
 }
 
+static bool
+job_should_enable_double_buffer(struct v3dv_job *job)
+{
+   /* Inocmpatibility with double-buffer */
+   if (!job->can_use_double_buffer)
+      return false;
+
+   /* Too much geometry processing */
+   if (job->double_buffer_score.geom > 2000000)
+      return false;
+
+   /* Too little rendering to make up for tile store latency */
+   if (job->double_buffer_score.render < 100000)
+      return false;
+
+   return true;
+}
+
 static void
 cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -518,6 +531,23 @@ cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
     * any RCL commands of its own.
     */
    if (v3dv_cl_offset(&job->rcl) == 0) {
+      /* Decide if we want to enable double-buffer for this job. If we do, then
+       * we need to rewrite the TILE_BINNING_MODE_CFG packet in the BCL.
+       */
+      if (job_should_enable_double_buffer(job)) {
+         assert(!job->frame_tiling.double_buffer);
+         job_compute_frame_tiling(job,
+                                  job->frame_tiling.width,
+                                  job->frame_tiling.height,
+                                  job->frame_tiling.layers,
+                                  job->frame_tiling.render_target_count,
+                                  job->frame_tiling.internal_bpp,
+                                  job->frame_tiling.msaa,
+                                  true);
+
+         v3dv_X(job->device, job_emit_enable_double_buffer)(job);
+      }
+
       /* At this point we have decided whether we want to use double-buffer or
        * not and the job's frame tiling represents that decision so we can
        * allocate the tile state, which we need to do before we emit the RCL.
@@ -996,6 +1026,13 @@ cmd_buffer_begin_render_pass_secondary(
       framebuffer ? framebuffer->width : V3D_MAX_IMAGE_DIMENSION;
    cmd_buffer->state.render_area.extent.height =
       framebuffer ? framebuffer->height : V3D_MAX_IMAGE_DIMENSION;
+
+   /* We only really execute double-buffer mode in primary jobs, so allow this
+    * mode in render pass secondaries to keep track of the double-buffer mode
+    * score in them and update the primaries accordingly when they are executed
+    * into them.
+    */
+    job->can_use_double_buffer = true;
 
    return VK_SUCCESS;
 }
@@ -2701,9 +2738,64 @@ consume_bcl_sync(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_job *job)
    cmd_buffer->state.barrier.bcl_image_access = 0;
 }
 
+static inline uint32_t
+compute_prog_score(struct v3dv_shader_variant *vs)
+{
+   const uint32_t inst_count = vs->qpu_insts_size / sizeof(uint64_t);
+   const uint32_t tmu_count = vs->prog_data.base->tmu_count +
+                              vs->prog_data.base->tmu_spills +
+                              vs->prog_data.base->tmu_fills;
+   return inst_count + 4 * tmu_count;
+}
+
+static void
+job_update_double_buffer_score(struct v3dv_job *job,
+                               struct v3dv_pipeline *pipeline,
+                               uint32_t vertex_count,
+                               VkExtent2D *render_area)
+{
+   /* FIXME: assume anything with GS workloads is too expensive */
+   struct v3dv_shader_variant *gs_bin =
+      pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN];
+   if (gs_bin) {
+      job->can_use_double_buffer = false;
+      return;
+   }
+
+   /* Keep track of vertex processing: too much geometry processing would not
+    * be good for double-buffer.
+    */
+   struct v3dv_shader_variant *vs_bin =
+      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN];
+   assert(vs_bin);
+   uint32_t geom_score = vertex_count * compute_prog_score(vs_bin);
+
+   struct v3dv_shader_variant *vs =
+      pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX];
+   assert(vs);
+   uint32_t vs_score = vertex_count * compute_prog_score(vs);
+   geom_score += vs_score;
+
+   job->double_buffer_score.geom += geom_score;
+
+   /* Compute pixel rendering cost.
+    *
+    * We estimate that on average a draw would render 0.2% of the pixels in
+    * the render area. That would be a 64x64 region in a 1920x1080 area.
+    */
+   struct v3dv_shader_variant *fs =
+      pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
+   assert(fs);
+   uint32_t pixel_count = 0.002f * render_area->width * render_area->height;
+   uint32_t render_score = vs_score + pixel_count * compute_prog_score(fs);
+
+   job->double_buffer_score.render += render_score;
+}
+
 void
 v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
-                              bool indexed, bool indirect)
+                              bool indexed, bool indirect,
+                              uint32_t vertex_count)
 {
    assert(cmd_buffer->state.gfx.pipeline);
    assert(!(cmd_buffer->state.gfx.pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
@@ -2808,6 +2900,16 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE))
       v3dv_X(device, cmd_buffer_emit_color_write_mask)(cmd_buffer);
 
+   /* We disable double-buffer mode if indirect draws are used because in that
+    * case we don't know the vertex count.
+    */
+   if (indirect) {
+      job->can_use_double_buffer = false;
+   } else if (job->can_use_double_buffer) {
+      job_update_double_buffer_score(job, pipeline, vertex_count,
+                                      &cmd_buffer->state.render_area.extent);
+   }
+
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
 
@@ -2823,10 +2925,12 @@ static void
 cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_draw_info *info)
 {
+   uint32_t vertex_count =
+      info->vertex_count * info->instance_count;
 
    struct v3dv_render_pass *pass = cmd_buffer->state.pass;
    if (likely(!pass->multiview_enabled)) {
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, false);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, false, vertex_count);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw)(cmd_buffer, info);
       return;
    }
@@ -2834,7 +2938,7 @@ cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
    while (view_mask) {
       cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, false);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, false, vertex_count);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw)(cmd_buffer, info);
    }
 }
@@ -2872,9 +2976,11 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   uint32_t vertex_count = indexCount * instanceCount;
+
    struct v3dv_render_pass *pass = cmd_buffer->state.pass;
    if (likely(!pass->multiview_enabled)) {
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, false);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, false, vertex_count);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
          (cmd_buffer, indexCount, instanceCount,
           firstIndex, vertexOffset, firstInstance);
@@ -2884,7 +2990,7 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
    while (view_mask) {
       cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, false);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, false, vertex_count);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indexed)
          (cmd_buffer, indexCount, instanceCount,
           firstIndex, vertexOffset, firstInstance);
@@ -2907,7 +3013,7 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 
    struct v3dv_render_pass *pass = cmd_buffer->state.pass;
    if (likely(!pass->multiview_enabled)) {
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, true);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, true, 0);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indirect)
          (cmd_buffer, buffer, offset, drawCount, stride);
       return;
@@ -2916,7 +3022,7 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
    while (view_mask) {
       cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, true);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, false, true, 0);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_draw_indirect)
          (cmd_buffer, buffer, offset, drawCount, stride);
    }
@@ -2938,7 +3044,7 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
 
    struct v3dv_render_pass *pass = cmd_buffer->state.pass;
    if (likely(!pass->multiview_enabled)) {
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, true);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, true, 0);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_indexed_indirect)
          (cmd_buffer, buffer, offset, drawCount, stride);
       return;
@@ -2947,7 +3053,7 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    uint32_t view_mask = pass->subpasses[cmd_buffer->state.subpass_idx].view_mask;
    while (view_mask) {
       cmd_buffer_set_view_index(cmd_buffer, u_bit_scan(&view_mask));
-      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, true);
+      v3dv_cmd_buffer_emit_pre_draw(cmd_buffer, true, true, 0);
       v3dv_X(cmd_buffer->device, cmd_buffer_emit_indexed_indirect)
          (cmd_buffer, buffer, offset, drawCount, stride);
    }
