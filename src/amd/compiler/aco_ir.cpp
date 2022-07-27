@@ -651,12 +651,14 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
 #define ORD_TEST(sz)                                                                               \
    case aco_opcode::v_cmp_u_f##sz:                                                                 \
       info->f32 = aco_opcode::v_cmp_u_f32;                                                         \
+      info->swapped = aco_opcode::v_cmp_u_f##sz;                                                   \
       info->inverse = aco_opcode::v_cmp_o_f##sz;                                                   \
       info->vcmpx = aco_opcode::v_cmpx_u_f##sz;                                                    \
       info->size = sz;                                                                             \
       return true;                                                                                 \
    case aco_opcode::v_cmp_o_f##sz:                                                                 \
       info->f32 = aco_opcode::v_cmp_o_f32;                                                         \
+      info->swapped = aco_opcode::v_cmp_o_f##sz;                                                   \
       info->inverse = aco_opcode::v_cmp_u_f##sz;                                                   \
       info->vcmpx = aco_opcode::v_cmpx_o_f##sz;                                                    \
       info->size = sz;                                                                             \
