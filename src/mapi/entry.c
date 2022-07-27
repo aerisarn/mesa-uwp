@@ -36,9 +36,6 @@
 #define _U_STRINGIFY(x) #x
 #define U_STRINGIFY(x) _U_STRINGIFY(x)
 
-/* define macros for use by assembly dispatchers */
-#define ENTRY_CURRENT_TABLE U_STRINGIFY(_glapi_tls_Dispatch)
-
 /* REALLY_INITIAL_EXEC implies __GLIBC__ */
 #if defined(USE_X86_ASM) && defined(REALLY_INITIAL_EXEC)
 #include "entry_x86_tls.h"
