@@ -34,8 +34,10 @@
 #include "stub.h"
 
 /*
- * Global variables, _glapi_get_context, and _glapi_get_dispatch are defined in
- * u_current.c.
+ * _glapi_tls_Dispatch, _glapi_tls_Context,
+ * _glapi_set_context, _glapi_get_context,
+ * _glapi_set_dispatch, and _glapi_get_dispatch
+ * are defined in u_current.c.
  */
 
 /* not used, but defined for compatibility */
@@ -50,18 +52,6 @@ _glapi_destroy_multithread(void)
 void
 _glapi_check_multithread(void)
 {
-}
-
-void
-_glapi_set_context(void *context)
-{
-   u_current_set_context((const void *) context);
-}
-
-void
-_glapi_set_dispatch(struct _glapi_table *dispatch)
-{
-   u_current_set_table((const struct _glapi_table *) dispatch);
 }
 
 /**
