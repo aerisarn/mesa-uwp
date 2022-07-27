@@ -1076,14 +1076,6 @@ anv_physical_device_has_vram(const struct anv_physical_device *device)
    return device->vram_mappable.size > 0;
 }
 
-struct anv_app_info {
-   const char*        app_name;
-   uint32_t           app_version;
-   const char*        engine_name;
-   uint32_t           engine_version;
-   uint32_t           api_version;
-};
-
 struct anv_instance {
     struct vk_instance                          vk;
 
