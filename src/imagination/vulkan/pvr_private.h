@@ -1285,15 +1285,6 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
                                   uint64_t size,
                                   uint32_t flags,
                                   struct pvr_bo **const pvr_bo_out);
-VkResult pvr_cmd_buffer_upload_pds(struct pvr_cmd_buffer *const cmd_buffer,
-                                   const uint32_t *data,
-                                   uint32_t data_size_dwords,
-                                   uint32_t data_alignment,
-                                   const uint32_t *code,
-                                   uint32_t code_size_dwords,
-                                   uint32_t code_alignment,
-                                   uint64_t min_alignment,
-                                   struct pvr_pds_upload *const pds_upload_out);
 
 void pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
                                    const uint32_t vs_output_size,
@@ -1421,6 +1412,15 @@ VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
                                        const void *const data,
                                        const size_t size,
                                        struct pvr_bo **const pvr_bo_out);
+VkResult pvr_cmd_buffer_upload_pds(struct pvr_cmd_buffer *const cmd_buffer,
+                                   const uint32_t *data,
+                                   uint32_t data_size_dwords,
+                                   uint32_t data_alignment,
+                                   const uint32_t *code,
+                                   uint32_t code_size_dwords,
+                                   uint32_t code_alignment,
+                                   uint64_t min_alignment,
+                                   struct pvr_pds_upload *const pds_upload_out);
 
 VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
                                       enum pvr_sub_cmd_type type);

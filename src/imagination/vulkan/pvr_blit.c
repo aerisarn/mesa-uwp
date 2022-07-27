@@ -70,51 +70,6 @@ void pvr_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
-void pvr_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
-                         VkBuffer dstBuffer,
-                         VkDeviceSize dstOffset,
-                         VkDeviceSize dataSize,
-                         const void *pData)
-{
-   assert(!"Unimplemented");
-}
-
-void pvr_CmdFillBuffer(VkCommandBuffer commandBuffer,
-                       VkBuffer dstBuffer,
-                       VkDeviceSize dstOffset,
-                       VkDeviceSize fillSize,
-                       uint32_t data)
-{
-   assert(!"Unimplemented");
-}
-
-void pvr_CmdCopyBufferToImage2KHR(
-   VkCommandBuffer commandBuffer,
-   const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
-{
-   assert(!"Unimplemented");
-}
-
-void pvr_CmdClearColorImage(VkCommandBuffer commandBuffer,
-                            VkImage _image,
-                            VkImageLayout imageLayout,
-                            const VkClearColorValue *pColor,
-                            uint32_t rangeCount,
-                            const VkImageSubresourceRange *pRanges)
-{
-   assert(!"Unimplemented");
-}
-
-void pvr_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
-                                   VkImage image_h,
-                                   VkImageLayout imageLayout,
-                                   const VkClearDepthStencilValue *pDepthStencil,
-                                   uint32_t rangeCount,
-                                   const VkImageSubresourceRange *pRanges)
-{
-   assert(!"Unimplemented");
-}
-
 static struct pvr_transfer_cmd *
 pvr_transfer_cmd_alloc(struct pvr_cmd_buffer *cmd_buffer)
 {
@@ -246,6 +201,67 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
    }
 
    return VK_SUCCESS;
+}
+
+void pvr_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
+                         VkBuffer dstBuffer,
+                         VkDeviceSize dstOffset,
+                         VkDeviceSize dataSize,
+                         const void *pData)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   PVR_FROM_HANDLE(pvr_buffer, dst, dstBuffer);
+   struct pvr_bo *pvr_bo;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   result = pvr_cmd_buffer_upload_general(cmd_buffer, pData, dataSize, &pvr_bo);
+   if (result != VK_SUCCESS)
+      return;
+
+   pvr_cmd_copy_buffer_region(cmd_buffer,
+                              pvr_bo->vma->dev_addr,
+                              0,
+                              dst->dev_addr,
+                              dstOffset,
+                              dataSize);
+}
+
+void pvr_CmdFillBuffer(VkCommandBuffer commandBuffer,
+                       VkBuffer dstBuffer,
+                       VkDeviceSize dstOffset,
+                       VkDeviceSize fillSize,
+                       uint32_t data)
+{
+   assert(!"Unimplemented");
+}
+
+void pvr_CmdCopyBufferToImage2KHR(
+   VkCommandBuffer commandBuffer,
+   const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
+{
+   assert(!"Unimplemented");
+}
+
+void pvr_CmdClearColorImage(VkCommandBuffer commandBuffer,
+                            VkImage _image,
+                            VkImageLayout imageLayout,
+                            const VkClearColorValue *pColor,
+                            uint32_t rangeCount,
+                            const VkImageSubresourceRange *pRanges)
+{
+   assert(!"Unimplemented");
+}
+
+void pvr_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
+                                   VkImage image_h,
+                                   VkImageLayout imageLayout,
+                                   const VkClearDepthStencilValue *pDepthStencil,
+                                   uint32_t rangeCount,
+                                   const VkImageSubresourceRange *pRanges)
+{
+   assert(!"Unimplemented");
 }
 
 void pvr_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
