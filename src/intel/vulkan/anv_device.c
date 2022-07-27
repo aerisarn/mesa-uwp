@@ -2771,7 +2771,11 @@ anv_get_memory_budget(VkPhysicalDevice physicalDevice,
 
       if (device->memory.heaps[i].is_local_mem) {
          total_heaps_size = total_vram_heaps_size;
-         mem_available = device->vram_non_mappable.available;
+         if (device->vram_non_mappable.size > 0 && i == 0) {
+            mem_available = device->vram_non_mappable.available;
+         } else {
+            mem_available = device->vram_mappable.available;
+         }
       } else {
          total_heaps_size = total_sys_heaps_size;
          mem_available = device->sys.available;
