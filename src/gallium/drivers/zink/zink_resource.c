@@ -737,7 +737,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
 
       if (optimal_tiling)
-         *optimal_tiling = ici.tiling == VK_IMAGE_TILING_OPTIMAL;
+         *optimal_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
 
       if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
          obj->transfer_dst = true;
