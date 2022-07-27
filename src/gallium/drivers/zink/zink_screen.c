@@ -1323,7 +1323,8 @@ choose_pdev(struct zink_screen *screen)
    assert(pdev_count > 0);
 
    VkPhysicalDeviceProperties props;
-   bool cpu = debug_get_bool_option("LIBGL_ALWAYS_SOFTWARE", false);
+   bool cpu = debug_get_bool_option("LIBGL_ALWAYS_SOFTWARE", false) ||
+              debug_get_bool_option("D3D_ALWAYS_SOFTWARE", false);
    /* priority when multiple drivers are available (highest to lowest):
       VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU
       VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
