@@ -446,7 +446,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
    /* The PTB will request the tile alloc initial size per tile at start
     * of tile binning.
     */
-   uint32_t tile_alloc_size = 64 * tiling->layers *
+   uint32_t tile_alloc_size = 64 * layers *
                               tiling->draw_tiles_x *
                               tiling->draw_tiles_y;
 
@@ -475,7 +475,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
    v3dv_job_add_bo_unchecked(job, job->tile_alloc);
 
    const uint32_t tsda_per_tile_size = 256;
-   const uint32_t tile_state_size = tiling->layers *
+   const uint32_t tile_state_size = layers *
                                     tiling->draw_tiles_x *
                                     tiling->draw_tiles_y *
                                     tsda_per_tile_size;
