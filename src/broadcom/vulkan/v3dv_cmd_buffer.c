@@ -357,7 +357,8 @@ job_compute_frame_tiling(struct v3dv_job *job,
                          uint32_t layers,
                          uint32_t render_target_count,
                          uint8_t max_internal_bpp,
-                         bool msaa)
+                         bool msaa,
+                         bool double_buffer)
 {
    assert(job);
    struct v3dv_frame_tiling *tiling = &job->frame_tiling;
@@ -368,18 +369,9 @@ job_compute_frame_tiling(struct v3dv_job *job,
    tiling->render_target_count = render_target_count;
    tiling->msaa = msaa;
    tiling->internal_bpp = max_internal_bpp;
+   tiling->double_buffer = double_buffer;
 
-   /* We can use double-buffer when MSAA is disabled to reduce tile store
-    * overhead.
-    *
-    * FIXME: if we are emitting any tile loads the hardware will serialize
-    * loads and stores across tiles effectivley disabling double buffering,
-    * so we would want to check for that and not enable it in that case to
-    * avoid reducing the tile size.
-    */
-   tiling->double_buffer =
-      unlikely(V3D_DEBUG & V3D_DEBUG_DOUBLE_BUFFER) && !msaa;
-
+   /* Double-buffer is incompatible with MSAA */
    assert(!tiling->msaa || !tiling->double_buffer);
 
    v3d_choose_tile_size(render_target_count, max_internal_bpp,
@@ -478,11 +470,18 @@ v3dv_job_start_frame(struct v3dv_job *job,
 {
    assert(job);
 
+   /* FIXME: if we are emitting any tile loads the hardware will serialize
+    * loads and stores across tiles effectively disabling double buffering,
+    * so we would want to check for that and not enable it in that case to
+    * avoid reducing the tile size.
+    */
+   bool double_buffer = unlikely(V3D_DEBUG & V3D_DEBUG_DOUBLE_BUFFER) && !msaa;
+
    /* Start by computing frame tiling spec for this job */
    const struct v3dv_frame_tiling *tiling =
-      job_compute_frame_tiling(job,
-                               width, height, layers,
-                               render_target_count, max_internal_bpp, msaa);
+      job_compute_frame_tiling(job, width, height, layers,
+                               render_target_count, max_internal_bpp,
+                               msaa, double_buffer);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
    v3dv_return_if_oom(NULL, job);
