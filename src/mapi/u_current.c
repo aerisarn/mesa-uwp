@@ -99,7 +99,23 @@ __THREAD_INITIAL_EXEC struct _glapi_table *_glapi_tls_Dispatch
 
 __THREAD_INITIAL_EXEC void *_glapi_tls_Context;
 
+/* not used, but defined for compatibility */
+const struct _glapi_table *_glapi_Dispatch;
+const void *_glapi_Context;
+
 /*@}*/
+
+/* not used, but defined for compatibility */
+void
+_glapi_destroy_multithread(void)
+{
+}
+
+/* not used, but defined for compatibility */
+void
+_glapi_check_multithread(void)
+{
+}
 
 /**
  * Set the current context pointer for this thread.
