@@ -639,7 +639,7 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
       CMP(lt, /*n*/ge, gt, /*n*/le)
       CMP(eq, /*n*/lg, eq, /*n*/lg)
       CMP(le, /*n*/gt, ge, /*n*/lt)
-      CMP(gt, /*n*/le, lt, /*n*/le)
+      CMP(gt, /*n*/le, lt, /*n*/ge)
       CMP(lg, /*n*/eq, lg, /*n*/eq)
       CMP(ge, /*n*/lt, le, /*n*/gt)
 #undef CMP
