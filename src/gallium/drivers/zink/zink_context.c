@@ -2803,8 +2803,13 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    unsigned samples = state->nr_cbufs || state->zsbuf ? 0 : state->samples;
+   unsigned w = ctx->fb_state.width;
+   unsigned h = ctx->fb_state.height;
+   unsigned layers = MAX2(zink_framebuffer_get_num_layers(state), 1);
 
-   bool flush_clears = false;
+   bool flush_clears = ctx->clears_enabled &&
+                       (ctx->dynamic_fb.info.layerCount != layers ||
+                        state->width != w || state->height != h);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       if (i >= state->nr_cbufs || ctx->fb_state.cbufs[i] != state->cbufs[i])
          flush_clears |= zink_fb_clear_enabled(ctx, i);
@@ -2838,9 +2843,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->rp_changed |= ctx->fb_state.nr_cbufs != state->nr_cbufs;
    ctx->rp_changed |= !!ctx->fb_state.zsbuf != !!state->zsbuf;
 
-   unsigned w = ctx->fb_state.width;
-   unsigned h = ctx->fb_state.height;
-
    util_copy_framebuffer_state(&ctx->fb_state, state);
    zink_update_fbfetch(ctx);
    unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
@@ -2853,7 +2855,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->dynamic_fb.info.renderArea.extent.width = state->width;
    ctx->dynamic_fb.info.renderArea.extent.height = state->height;
    ctx->dynamic_fb.info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
-   unsigned layers = MAX2(zink_framebuffer_get_num_layers(state), 1);
    ctx->rp_changed |= ctx->dynamic_fb.info.layerCount != layers;
    ctx->dynamic_fb.info.layerCount = layers;
    ctx->gfx_pipeline_state.rendering_info.colorAttachmentCount = ctx->fb_state.nr_cbufs;
