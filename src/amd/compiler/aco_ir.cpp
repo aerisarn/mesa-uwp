@@ -604,8 +604,7 @@ needs_exec_mask(const Instruction* instr)
 struct CmpInfo {
    aco_opcode ordered;
    aco_opcode unordered;
-   aco_opcode ordered_swapped;
-   aco_opcode unordered_swapped;
+   aco_opcode swapped;
    aco_opcode inverse;
    aco_opcode f32;
    unsigned size;
@@ -616,8 +615,7 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
 {
    info->ordered = aco_opcode::num_opcodes;
    info->unordered = aco_opcode::num_opcodes;
-   info->ordered_swapped = aco_opcode::num_opcodes;
-   info->unordered_swapped = aco_opcode::num_opcodes;
+   info->swapped = aco_opcode::num_opcodes;
    switch (op) {
       // clang-format off
 #define CMP2(ord, unord, ord_swap, unord_swap, sz)                                                 \
@@ -625,8 +623,8 @@ get_cmp_info(aco_opcode op, CmpInfo* info)
    case aco_opcode::v_cmp_n##unord##_f##sz:                                                        \
       info->ordered = aco_opcode::v_cmp_##ord##_f##sz;                                             \
       info->unordered = aco_opcode::v_cmp_n##unord##_f##sz;                                        \
-      info->ordered_swapped = aco_opcode::v_cmp_##ord_swap##_f##sz;                                \
-      info->unordered_swapped = aco_opcode::v_cmp_n##unord_swap##_f##sz;                           \
+      info->swapped = op == aco_opcode::v_cmp_##ord##_f##sz ? aco_opcode::v_cmp_##ord_swap##_f##sz \
+                                                      : aco_opcode::v_cmp_n##unord_swap##_f##sz;   \
       info->inverse = op == aco_opcode::v_cmp_n##unord##_f##sz ? aco_opcode::v_cmp_##unord##_f##sz \
                                                                : aco_opcode::v_cmp_n##ord##_f##sz; \
       info->f32 = op == aco_opcode::v_cmp_##ord##_f##sz ? aco_opcode::v_cmp_##ord##_f32            \
@@ -752,13 +750,8 @@ can_swap_operands(aco_ptr<Instruction>& instr, aco_opcode* new_op)
    case aco_opcode::v_sub_u32: *new_op = aco_opcode::v_subrev_u32; return true;
    default: {
       CmpInfo info;
-      get_cmp_info(instr->opcode, &info);
-      if (info.ordered == instr->opcode) {
-         *new_op = info.ordered_swapped;
-         return true;
-      }
-      if (info.unordered == instr->opcode) {
-         *new_op = info.unordered_swapped;
+      if (get_cmp_info(instr->opcode, &info) && info.swapped != aco_opcode::num_opcodes) {
+         *new_op = info.swapped;
          return true;
       }
       return false;
