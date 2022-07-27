@@ -108,7 +108,7 @@ generate_rendertests() (
     remove_comments_from_files "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
 
     # create an exhaustive rendertest list
-    /skqp/list_gms | sort > "$GENERATED_FILE"
+    "${SKQP_BIN_DIR}"/list_gms | sort > "$GENERATED_FILE"
 
     # Remove undesirable tests from the list
     subtract_test_lists "${GENERATED_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}"
@@ -141,7 +141,7 @@ generate_unittests() (
     done
 
     # create an exhaustive unittests list
-    /skqp/list_gpu_unit_tests | sort > "${GENERATED_FILE}"
+    "${SKQP_BIN_DIR}"/list_gpu_unit_tests | sort > "${GENERATED_FILE}"
 
     # Remove undesirable tests from the list
     subtract_test_lists "${GENERATED_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}" "${FAILS_FILE}"
@@ -168,8 +168,8 @@ copy_tests_files() (
     then
         GENERATED_RENDERTESTS=$(generate_rendertests)
         cp "${GENERATED_RENDERTESTS}" "${SKQP_ASSETS_DIR}"/skqp/rendertests.txt
-        mkdir -p "${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"
-        cp "${GENERATED_RENDERTESTS}" "${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"/generated_rendertests.txt
+        mkdir -p "${SKQP_RESULTS_DIR}/${SKQP_BACKEND}"
+        cp "${GENERATED_RENDERTESTS}" "${SKQP_RESULTS_DIR}/${SKQP_BACKEND}/generated_rendertests.txt"
         return 0
     fi
 
@@ -305,9 +305,11 @@ fi
 LD_LIBRARY_PATH=$INSTALL:$LD_LIBRARY_PATH
 setup_backends
 
-SKQP_ASSETS_DIR=/skqp/assets
+SKQP_BIN_DIR=${SKQP_BIN_DIR:-/skqp}
+SKQP_ASSETS_DIR=${SKQP_BIN_DIR}/assets
 SKQP_RESULTS_DIR="${SKQP_RESULTS_DIR:-${PWD}/results}"
 
+# Directory where the skqp tests files are located
 mkdir -p "${SKQP_ASSETS_DIR}"/skqp
 
 # Show the reports on exit, even when a test crashes
@@ -320,7 +322,7 @@ do
     SKQP_BACKEND_RESULTS_DIR="${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"
     mkdir -p "${SKQP_BACKEND_RESULTS_DIR}"
     BACKEND_EXITCODE=0
-    /skqp/skqp "${SKQP_ASSETS_DIR}" "${SKQP_BACKEND_RESULTS_DIR}" "${SKQP_BACKEND}_" ||
+    "${SKQP_BIN_DIR}"/skqp "${SKQP_ASSETS_DIR}" "${SKQP_BACKEND_RESULTS_DIR}" "${SKQP_BACKEND}_" ||
         BACKEND_EXITCODE=$?
 
     if [ ! $BACKEND_EXITCODE -eq 0 ]
