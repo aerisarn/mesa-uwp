@@ -15,8 +15,6 @@
 #define u_current_get_table_internal _glapi_get_dispatch
 #define u_current_get_context_internal _glapi_get_context
 
-#define u_current_table_tsd _gl_DispatchTSD
-
 #else /* MAPI_MODE_UTIL || MAPI_MODE_GLAPI || MAPI_MODE_BRIDGE */
 
 struct _glapi_table;
