@@ -415,7 +415,6 @@ struct intel_perf_config {
 struct intel_perf_counter_pass {
    struct intel_perf_query_info *query;
    struct intel_perf_query_counter *counter;
-   uint32_t pass;
 };
 
 /** Initialize the intel_perf_config object for a given device.

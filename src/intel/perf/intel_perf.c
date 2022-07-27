@@ -985,12 +985,9 @@ intel_perf_get_counters_passes(struct intel_perf_config *perf,
          }
       }
 
-      if (pass_idx == UINT32_MAX) {
+      if (pass_idx == UINT32_MAX)
          pass_array[n_written_passes] = counter_pass[i].query;
-         pass_idx = n_written_passes++;
-      }
 
-      counter_pass[i].pass = pass_idx;
       assert(n_written_passes <= n_passes);
    }
 }
