@@ -1088,6 +1088,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
        * ffract+fsub back into ffloor.
        */
       screen->compiler_options.lower_ffloor = true;
+      screen->compiler_options.lower_fneg = true;
    }
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct virgl_transfer), 16);

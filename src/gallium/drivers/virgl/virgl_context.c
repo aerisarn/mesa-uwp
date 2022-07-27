@@ -686,7 +686,8 @@ static void *virgl_shader_encoder(struct pipe_context *ctx,
 
    if (shader->type == PIPE_SHADER_IR_NIR) {
       struct nir_to_tgsi_options options = {
-         .unoptimized_ra = true
+         .unoptimized_ra = true,
+         .lower_fabs = true
       };
       nir_shader *s = nir_shader_clone(NULL, shader->ir.nir);
 
@@ -1375,7 +1376,8 @@ static void *virgl_create_compute_state(struct pipe_context *ctx,
 
    if (state->ir_type == PIPE_SHADER_IR_NIR) {
       struct nir_to_tgsi_options options = {
-         .unoptimized_ra = true
+         .unoptimized_ra = true,
+         .lower_fabs = true
       };
       nir_shader *s = nir_shader_clone(NULL, state->prog);
       ntt_tokens = tokens = nir_to_tgsi_options(s, vctx->base.screen, &options); /* takes ownership */
