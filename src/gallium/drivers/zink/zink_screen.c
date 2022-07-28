@@ -591,7 +591,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.props.limits.maxImageArrayLayers;
 
    case PIPE_CAP_DEPTH_CLIP_DISABLE:
-      return screen->info.feats.features.depthClamp;
+      return !screen->driver_workarounds.depth_clip_control_missing;
 
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
       return screen->info.have_EXT_shader_stencil_export;
