@@ -30,7 +30,7 @@
  * driver doesn't really \e have to use any of this - it's optional.  But, some
  * useful stuff is done here that otherwise would have to be duplicated in most
  * drivers.
- * 
+ *
  * Basically, these utility functions take care of some of the dirty details of
  * screen initialization, context creation, context binding, DRM setup, etc.
  *
@@ -216,7 +216,7 @@ driSWRastCreateNewScreen2(int scrn, const __DRIextension **extensions,
 
 /**
  * Destroy the per-screen private information.
- * 
+ *
  * \internal
  * This function calls __DriverAPIRec::DestroyScreen on \p screenPrivate, calls
  * drmClose(), and finally frees \p screenPrivate.
@@ -662,7 +662,7 @@ driCreateNewContext(__DRIscreen *screen, const __DRIconfig *config,
 
 /**
  * Destroy the per-context private information.
- * 
+ *
  * \internal
  * This function calls __DriverAPIRec::DestroyContext on \p contextPrivate, calls
  * drmDestroyContext(), and finally frees \p contextPrivate.
@@ -729,19 +729,19 @@ static int driBindContext(__DRIcontext *pcp,
 
 /**
  * Unbind context.
- * 
+ *
  * \param scrn the screen.
  * \param gc context.
  *
  * \return \c GL_TRUE on success, or \c GL_FALSE on failure.
- * 
+ *
  * \internal
  * This function calls __DriverAPIRec::UnbindContext, and then decrements
  * __DRIdrawableRec::refcount which must be non-zero for a successful
  * return.
- * 
+ *
  * While casting the opaque private pointers associated with the parameters
- * into their respective real types it also assures they are not \c NULL. 
+ * into their respective real types it also assures they are not \c NULL.
  */
 static int driUnbindContext(__DRIcontext *pcp)
 {
