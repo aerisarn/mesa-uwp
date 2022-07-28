@@ -2401,7 +2401,18 @@ DECL_SPECIAL(POW)
         tx_src_param(tx, &tx->insn.src[0]),
         tx_src_param(tx, &tx->insn.src[1])
     };
-    ureg_POW(tx->ureg, dst, ureg_abs(src[0]), src[1]);
+    /* Anything^0 is 1, including 0^0.
+     * Assume mul_zero_wins drivers already have
+     * this behaviour. Emulate for the others. */
+    if (tx->mul_zero_wins) {
+        ureg_POW(tx->ureg, dst, ureg_abs(src[0]), src[1]);
+    } else {
+        struct ureg_dst tmp = tx_scratch_scalar(tx);
+        ureg_POW(tx->ureg, tmp, ureg_abs(src[0]), src[1]);
+        ureg_CMP(tx->ureg, dst,
+             ureg_negate(ureg_abs(ureg_scalar(src[1], TGSI_SWIZZLE_X))),
+             tx_src_scalar(tmp), ureg_imm1f(tx->ureg, 1.0f));
+    }
     return D3D_OK;
 }
 
