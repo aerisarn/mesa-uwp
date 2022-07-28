@@ -224,6 +224,7 @@ private:
 
 Shader *schedule(Shader *original)
 {
+   Block::set_chipclass(original->chip_class());
    AluGroup::set_chipclass(original->chip_class());
 
    sfn_log << SfnLog::schedule << "Original shader\n";
