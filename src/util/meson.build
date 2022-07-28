@@ -343,7 +343,6 @@ if with_tests
     'tests/register_allocate_test.cpp',
     'tests/roundeven_test.cpp',
     'tests/set_test.cpp',
-    'tests/sparse_array_test.cpp',
     'tests/timespec_test.cpp',
     'tests/u_atomic_test.cpp',
     'tests/u_debug_stack_test.cpp',
@@ -363,6 +362,13 @@ if with_tests
   if host_machine.system() != 'windows'
     files_util_tests += files(
       'tests/mesa-sha1_test.cpp',
+    )
+  endif
+
+  # FIXME: this test cause a big timeout on MacOS
+  if host_machine.system() != 'darwin'
+    files_util_tests += files(
+      'tests/sparse_array_test.cpp',
     )
   endif
 
