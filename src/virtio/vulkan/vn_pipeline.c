@@ -245,6 +245,7 @@ vn_MergePipelineCaches(VkDevice device,
 
 /* pipeline commands */
 
+/** Fixes for a single VkGraphicsPipelineCreateInfo. */
 struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
 
@@ -257,21 +258,45 @@ struct vn_graphics_pipeline_create_info_fix {
    bool ignore_raster_dedicated_states;
 };
 
+/** Temporary storage for fixes in vkCreateGraphicsPipelines. */
+struct vn_create_graphics_pipelines_fixes {
+   VkGraphicsPipelineCreateInfo *create_infos;
+};
+
+static struct vn_create_graphics_pipelines_fixes *
+vn_alloc_create_graphics_pipelines_fixes(const VkAllocationCallbacks *alloc,
+                                         uint32_t info_count)
+{
+   struct vn_create_graphics_pipelines_fixes *fixes;
+   VkGraphicsPipelineCreateInfo *create_infos;
+
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &fixes, __typeof__(*fixes), 1);
+   vk_multialloc_add(&ma, &create_infos, __typeof__(*create_infos),
+                     info_count);
+
+   if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
+      return NULL;
+
+   fixes->create_infos = create_infos;
+
+   return fixes;
+}
+
 static const VkGraphicsPipelineCreateInfo *
 vn_fix_graphics_pipeline_create_info(
    struct vn_device *dev,
-   uint32_t create_info_count,
+   uint32_t info_count,
    const VkGraphicsPipelineCreateInfo *create_infos,
    const VkAllocationCallbacks *alloc,
-   VkGraphicsPipelineCreateInfo **out)
+   struct vn_create_graphics_pipelines_fixes **out_fixes)
 {
    VN_TRACE_FUNC();
-   VkGraphicsPipelineCreateInfo *infos = NULL;
 
-   /* Defer allocation until we find a needed fix. */
-   struct vn_graphics_pipeline_create_info_fix *fixes = NULL;
+   /* Defer allocation until we need a fix. */
+   struct vn_create_graphics_pipelines_fixes *fixes = NULL;
 
-   for (uint32_t i = 0; i < create_info_count; i++) {
+   for (uint32_t i = 0; i < info_count; i++) {
       const VkGraphicsPipelineCreateInfo *info = &create_infos[i];
       struct vn_graphics_pipeline_create_info_fix fix = { 0 };
       bool any_fix = false;
@@ -316,50 +341,35 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
-      if (any_fix) {
-         if (!fixes) {
-            fixes = vk_zalloc(alloc, create_info_count * sizeof(fixes[0]),
-                              VN_DEFAULT_ALIGN,
-                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-            if (!fixes)
-               return NULL;
-         }
+      if (!any_fix)
+         continue;
 
-         fixes[i] = fix;
+      if (!fixes) {
+         fixes = vn_alloc_create_graphics_pipelines_fixes(alloc, info_count);
+
+         if (!fixes)
+            return NULL;
+
+         memcpy(fixes->create_infos, create_infos,
+                info_count * sizeof(create_infos[0]));
+      }
+
+      if (fix.ignore_tessellation_state)
+         fixes->create_infos[i].pTessellationState = NULL;
+
+      if (fix.ignore_raster_dedicated_states) {
+         fixes->create_infos[i].pViewportState = NULL;
+         fixes->create_infos[i].pMultisampleState = NULL;
+         fixes->create_infos[i].pDepthStencilState = NULL;
+         fixes->create_infos[i].pColorBlendState = NULL;
       }
    }
 
    if (!fixes)
       return create_infos;
 
-   infos = vk_alloc(alloc, sizeof(*infos) * create_info_count,
-                    VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!infos) {
-      vk_free(alloc, fixes);
-      return NULL;
-   }
-
-   memcpy(infos, create_infos, sizeof(*infos) * create_info_count);
-
-   for (uint32_t i = 0; i < create_info_count; i++) {
-      VkGraphicsPipelineCreateInfo *info = &infos[i];
-      struct vn_graphics_pipeline_create_info_fix fix = fixes[i];
-
-      if (fix.ignore_tessellation_state)
-         info->pTessellationState = NULL;
-
-      if (fix.ignore_raster_dedicated_states) {
-         info->pViewportState = NULL;
-         info->pMultisampleState = NULL;
-         info->pDepthStencilState = NULL;
-         info->pColorBlendState = NULL;
-      }
-   }
-
-   vk_free(alloc, fixes);
-
-   *out = infos;
-   return infos;
+   *out_fixes = fixes;
+   return fixes->create_infos;
 }
 
 VkResult
@@ -374,10 +384,10 @@ vn_CreateGraphicsPipelines(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
-   VkGraphicsPipelineCreateInfo *local_infos = NULL;
+   struct vn_create_graphics_pipelines_fixes *fixes = NULL;
 
    pCreateInfos = vn_fix_graphics_pipeline_create_info(
-      dev, createInfoCount, pCreateInfos, alloc, &local_infos);
+      dev, createInfoCount, pCreateInfos, alloc, &fixes);
    if (!pCreateInfos)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -389,9 +399,7 @@ vn_CreateGraphicsPipelines(VkDevice device,
          for (uint32_t j = 0; j < i; j++)
             vk_free(alloc, vn_pipeline_from_handle(pPipelines[j]));
 
-         if (local_infos)
-            vk_free(alloc, local_infos);
-
+         vk_free(alloc, fixes);
          memset(pPipelines, 0, sizeof(*pPipelines) * createInfoCount);
          return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
@@ -407,8 +415,7 @@ vn_CreateGraphicsPipelines(VkDevice device,
                                       createInfoCount, pCreateInfos, NULL,
                                       pPipelines);
 
-   if (local_infos)
-      vk_free(alloc, local_infos);
+   vk_free(alloc, fixes);
 
    return VK_SUCCESS;
 }
