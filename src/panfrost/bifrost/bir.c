@@ -230,21 +230,10 @@ bi_side_effects(const bi_instr *I)
 bool
 bi_reconverge_branches(bi_block *block)
 {
-        /* Last block of a program */
-        if (!block->successors[0]) {
-                assert(!block->successors[1]);
+        if (bi_num_successors(block) == 1)
+                return bi_num_predecessors(block->successors[0]) > 1;
+        else
                 return true;
-        }
-
-        /* Multiple successors? We're branching */
-        if (block->successors[1])
-                return true;
-
-        /* Must have at least one successor */
-        struct bi_block *succ = block->successors[0];
-
-        /* Reconverge if the successor has multiple predecessors */
-        return bi_num_predecessors(succ) > 1;
 }
 
 /*

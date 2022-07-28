@@ -731,6 +731,20 @@ typedef struct bi_block {
 } bi_block;
 
 static inline unsigned
+bi_num_successors(bi_block *block)
+{
+        STATIC_ASSERT(ARRAY_SIZE(block->successors) == 2);
+        assert(block->successors[0] || !block->successors[1]);
+
+        if (block->successors[1])
+                return 2;
+        else if (block->successors[0])
+                return 1;
+        else
+                return 0;
+}
+
+static inline unsigned
 bi_num_predecessors(bi_block *block)
 {
         return util_dynarray_num_elements(&block->predecessors, bi_block *);
@@ -748,7 +762,7 @@ static inline bi_block *
 bi_exit_block(struct list_head *blocks)
 {
         bi_block *last = list_last_entry(blocks, bi_block, link);
-        assert(!last->successors[0] && !last->successors[1]);
+        assert(bi_num_successors(last) == 0);
         return last;
 }
 
