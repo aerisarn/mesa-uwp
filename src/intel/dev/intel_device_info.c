@@ -1999,6 +1999,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       /* Provide some sensible values for NO_HW. */
       devinfo->gtt_size =
          devinfo->ver >= 8 ? (1ull << 48) : 2ull * 1024 * 1024 * 1024;
+      compute_system_memory(devinfo, false);
       return true;
    }
 
