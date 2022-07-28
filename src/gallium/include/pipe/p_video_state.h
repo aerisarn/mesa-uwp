@@ -1063,6 +1063,221 @@ struct pipe_vpp_desc
    struct pipe_vpp_blend blend;
 };
 
+
+/* To be used with PIPE_VIDEO_CAP_ENC_HEVC_PREDICTION_DIRECTION */
+enum pipe_h265_enc_pred_direction
+{
+   /* No restrictions*/
+   PIPE_H265_PRED_DIRECTION_ALL = 0x0,
+   /* P Frame*/
+   PIPE_H265_PRED_DIRECTION_PREVIOUS = 0x1,
+   /* Same reference lists for B Frame*/
+   PIPE_H265_PRED_DIRECTION_FUTURE = 0x2,
+   /* Low delay B frames */
+   PIPE_H265_PRED_DIRECTION_BI_NOT_EMPTY = 0x4,
+};
+
+/* To be used on each h265 feature bit field 
+   defined in pipe_h265_enc_cap_features
+*/
+enum pipe_h265_enc_feature
+{
+   PIPE_H265_ENC_FEATURE_NOT_SUPPORTED = 0x0,
+   PIPE_H265_ENC_FEATURE_SUPPORTED = 0x1,
+   PIPE_H265_ENC_FEATURE_REQUIRED = 0x2,
+};
+
+/* To be used with PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS
+   the config_supported bit is used to differenciate a supported
+   config with all bits as zero and unsupported by driver with value=0
+*/
+union pipe_h265_enc_cap_features {
+   struct {
+      /** Separate colour planes.
+      *
+      * Allows setting separate_colour_plane_flag in the SPS.
+      */
+      uint32_t separate_colour_planes    : 2;
+      /** Scaling lists.
+      *
+      * Allows scaling_list() elements to be present in both the SPS
+      * and the PPS.  The decoded form of the scaling lists must also
+      * be supplied in a VAQMatrixBufferHEVC buffer when scaling lists
+      * are enabled.
+      */
+      uint32_t scaling_lists             : 2;
+      /** Asymmetric motion partitions.
+      *
+      * Allows setting amp_enabled_flag in the SPS.
+      */
+      uint32_t amp                       : 2;
+      /** Sample adaptive offset filter.
+      *
+      * Allows setting slice_sao_luma_flag and slice_sao_chroma_flag
+      * in slice headers.
+      */
+      uint32_t sao                       : 2;
+      /** PCM sample blocks.
+      *
+      * Allows setting pcm_enabled_flag in the SPS.  When enabled
+      * PCM parameters must be supplied with the sequence parameters,
+      * including block sizes which may be further constrained as
+      * noted in the VAConfigAttribEncHEVCBlockSizes attribute.
+      */
+      uint32_t pcm                       : 2;
+      /** Temporal motion vector Prediction.
+      *
+      * Allows setting slice_temporal_mvp_enabled_flag in slice
+      * headers.
+      */
+      uint32_t temporal_mvp              : 2;
+      /** Strong intra smoothing.
+      *
+      * Allows setting strong_intra_smoothing_enabled_flag in the SPS.
+      */
+      uint32_t strong_intra_smoothing    : 2;
+      /** Dependent slices.
+      *
+      * Allows setting dependent_slice_segment_flag in slice headers.
+      */
+      uint32_t dependent_slices          : 2;
+      /** Sign data hiding.
+      *
+      * Allows setting sign_data_hiding_enable_flag in the PPS.
+      */
+      uint32_t sign_data_hiding          : 2;
+      /** Constrained intra prediction.
+      *
+      * Allows setting constrained_intra_pred_flag in the PPS.
+      */
+      uint32_t constrained_intra_pred    : 2;
+      /** Transform skipping.
+      *
+      * Allows setting transform_skip_enabled_flag in the PPS.
+      */
+      uint32_t transform_skip            : 2;
+      /** QP delta within coding units.
+      *
+      * Allows setting cu_qp_delta_enabled_flag in the PPS.
+      */
+      uint32_t cu_qp_delta               : 2;
+      /** Weighted prediction.
+      *
+      * Allows setting weighted_pred_flag and weighted_bipred_flag in
+      * the PPS.  The pred_weight_table() data must be supplied with
+      * every slice header when weighted prediction is enabled.
+      */
+      uint32_t weighted_prediction       : 2;
+      /** Transform and quantisation bypass.
+      *
+      * Allows setting transquant_bypass_enabled_flag in the PPS.
+      */
+      uint32_t transquant_bypass         : 2;
+      /** Deblocking filter disable.
+      *
+      * Allows setting slice_deblocking_filter_disabled_flag.
+      */
+      uint32_t deblocking_filter_disable : 2;
+      /** Flag indicating this is a supported configuration
+      *
+      *  It could be possible all the bits above are set to zero
+      *  and this is a valid configuration, so we distinguish
+      *  between get_video_param returning 0 for no support
+      *  and this case with this bit flag.
+      */
+      uint32_t config_supported                          : 1;
+   } bits;
+   uint32_t value;
+};
+
+/* To be used with PIPE_VIDEO_CAP_ENC_HEVC_BLOCK_SIZES
+   the config_supported bit is used to differenciate a supported
+   config with all bits as zero and unsupported by driver with value=0 */
+union pipe_h265_enc_cap_block_sizes {
+   struct {
+      /** Largest supported size of coding tree blocks.
+      *
+      * CtbLog2SizeY must not be larger than this.
+      */
+      uint32_t log2_max_coding_tree_block_size_minus3    : 2;
+      /** Smallest supported size of coding tree blocks.
+      *
+      * CtbLog2SizeY must not be smaller than this.
+      *
+      * This may be the same as the maximum size, indicating that only
+      * one CTB size is supported.
+      */
+      uint32_t log2_min_coding_tree_block_size_minus3    : 2;
+
+      /** Smallest supported size of luma coding blocks.
+      *
+      * MinCbLog2SizeY must not be smaller than this.
+      */
+      uint32_t log2_min_luma_coding_block_size_minus3    : 2;
+
+      /** Largest supported size of luma transform blocks.
+      *
+      * MaxTbLog2SizeY must not be larger than this.
+      */
+      uint32_t log2_max_luma_transform_block_size_minus2 : 2;
+      /** Smallest supported size of luma transform blocks.
+      *
+      * MinTbLog2SizeY must not be smaller than this.
+      */
+      uint32_t log2_min_luma_transform_block_size_minus2 : 2;
+
+      /** Largest supported transform hierarchy depth in inter
+      *  coding units.
+      *
+      * max_transform_hierarchy_depth_inter must not be larger
+      * than this.
+      */
+      uint32_t max_max_transform_hierarchy_depth_inter   : 2;
+      /** Smallest supported transform hierarchy depth in inter
+      *  coding units.
+      *
+      * max_transform_hierarchy_depth_inter must not be smaller
+      * than this.
+      */
+      uint32_t min_max_transform_hierarchy_depth_inter   : 2;
+
+      /** Largest supported transform hierarchy depth in intra
+      *  coding units.
+      *
+      * max_transform_hierarchy_depth_intra must not be larger
+      * than this.
+      */
+      uint32_t max_max_transform_hierarchy_depth_intra   : 2;
+      /** Smallest supported transform hierarchy depth in intra
+      *  coding units.
+      *
+      * max_transform_hierarchy_depth_intra must not be smaller
+      * than this.
+      */
+      uint32_t min_max_transform_hierarchy_depth_intra   : 2;
+
+      /** Largest supported size of PCM coding blocks.
+      *
+      *  Log2MaxIpcmCbSizeY must not be larger than this.
+      */
+      uint32_t log2_max_pcm_coding_block_size_minus3     : 2;
+      /** Smallest supported size of PCM coding blocks.
+      *
+      *  Log2MinIpcmCbSizeY must not be smaller than this.
+      */
+      uint32_t log2_min_pcm_coding_block_size_minus3     : 2;
+      /** Flag indicating this is a supported configuration
+      *
+      *  It could be possible all the bits above are set to zero
+      *  and this is a valid configuration, so we distinguish
+      *  between get_video_param returning 0 for no support
+      *  and this case with this bit flag.
+      */
+      uint32_t config_supported                          : 1;
+      } bits;
+      uint32_t value;
+};
+
 #ifdef __cplusplus
 }
 #endif
