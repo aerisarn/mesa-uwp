@@ -588,10 +588,6 @@ vc4_screen_create(int fd, struct renderonly *ro)
 
         vc4_fence_screen_init(screen);
 
-        vc4_debug = debug_get_option_vc4_debug();
-        if (vc4_debug & VC4_DEBUG_SHADERDB)
-                vc4_debug |= VC4_DEBUG_NORAST;
-
 #ifdef USE_VC4_SIMULATOR
         vc4_simulator_init(screen);
 #endif
