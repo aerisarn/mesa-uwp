@@ -141,8 +141,18 @@ wsi_x11_check_dri3_compatible(const struct wsi_device *wsi_dev,
 }
 
 static bool
-wsi_x11_detect_xwayland(xcb_connection_t *conn)
+wsi_x11_detect_xwayland(xcb_connection_t *conn,
+                        xcb_query_extension_reply_t *randr_reply,
+                        xcb_query_extension_reply_t *xwl_reply)
 {
+   /* Newer Xwayland exposes an X11 extension we can check for */
+   if (xwl_reply && xwl_reply->present)
+      return true;
+
+   /* Older Xwayland uses the word "XWAYLAND" in the RandR output names */
+   if (!randr_reply || !randr_reply->present)
+      return false;
+
    xcb_randr_query_version_cookie_t ver_cookie =
       xcb_randr_query_version_unchecked(conn, 1, 3);
    xcb_randr_query_version_reply_t *ver_reply =
@@ -192,10 +202,10 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
 {
    xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie,
                                 amd_cookie, nv_cookie, shm_cookie, sync_cookie,
-                                xfixes_cookie;
+                                xfixes_cookie, xwl_cookie;
    xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply,
                                *amd_reply, *nv_reply, *shm_reply = NULL,
-                               *xfixes_reply;
+                               *xfixes_reply, *xwl_reply;
    bool wants_shm = wsi_dev->sw && !(WSI_DEBUG & WSI_DEBUG_NOSHM) &&
                     wsi_dev->has_import_memory_host;
    bool has_dri3_v1_2 = false;
@@ -212,6 +222,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    pres_cookie = xcb_query_extension(conn, 7, "Present");
    randr_cookie = xcb_query_extension(conn, 5, "RANDR");
    xfixes_cookie = xcb_query_extension(conn, 6, "XFIXES");
+   xwl_cookie = xcb_query_extension(conn, 8, "XWAYLAND");
 
    if (wants_shm)
       shm_cookie = xcb_query_extension(conn, 7, "MIT-SHM");
@@ -235,12 +246,14 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    amd_reply = xcb_query_extension_reply(conn, amd_cookie, NULL);
    nv_reply = xcb_query_extension_reply(conn, nv_cookie, NULL);
    xfixes_reply = xcb_query_extension_reply(conn, xfixes_cookie, NULL);
+   xwl_reply = xcb_query_extension_reply(conn, xwl_cookie, NULL);
    if (wants_shm)
       shm_reply = xcb_query_extension_reply(conn, shm_cookie, NULL);
    if (!dri3_reply || !pres_reply || !xfixes_reply) {
       free(dri3_reply);
       free(pres_reply);
       free(xfixes_reply);
+      free(xwl_reply);
       free(randr_reply);
       free(amd_reply);
       free(nv_reply);
@@ -289,10 +302,8 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
       free(ver_reply);
    }
 
-   if (randr_reply && randr_reply->present != 0)
-      wsi_conn->is_xwayland = wsi_x11_detect_xwayland(conn);
-   else
-      wsi_conn->is_xwayland = false;
+   wsi_conn->is_xwayland = wsi_x11_detect_xwayland(conn, randr_reply,
+                                                   xwl_reply);
 
    wsi_conn->has_dri3_modifiers = has_dri3_v1_2 && has_present_v1_2;
    wsi_conn->is_proprietary_x11 = false;
@@ -329,6 +340,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    free(dri3_reply);
    free(pres_reply);
    free(randr_reply);
+   free(xwl_reply);
    free(amd_reply);
    free(nv_reply);
    if (wants_shm)
