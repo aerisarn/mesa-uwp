@@ -611,7 +611,9 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->offset_point = rs_state->offset_point;
    state->offset_line = rs_state->offset_line;
    state->offset_tri = rs_state->offset_tri;
-   state->offset_units = rs_state->offset_units * 2;
+   state->offset_units = rs_state->offset_units;
+   if (!rs_state->offset_units_unscaled)
+      state->offset_units *= 2;
    state->offset_clamp = rs_state->offset_clamp;
    state->offset_scale = rs_state->offset_scale;
 

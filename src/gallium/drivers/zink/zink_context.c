@@ -2896,6 +2896,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
    if (ctx->gfx_pipeline_state.void_alpha_attachments != prev_void_alpha_attachments)
       ctx->gfx_pipeline_state.dirty = true;
+   unsigned depth_bias_scale_factor = ctx->depth_bias_scale_factor;
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
       struct zink_surface *transient = zink_transient_surface(psurf);
@@ -2906,7 +2907,31 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       if (zink_csurface(psurf)->info.layerCount > layers)
          ctx->fb_layer_mismatch |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       zink_resource(psurf->texture)->fb_binds++;
+      switch (psurf->format) {
+      case PIPE_FORMAT_Z16_UNORM:
+      case PIPE_FORMAT_Z16_UNORM_S8_UINT:
+         ctx->depth_bias_scale_factor = zink_screen(ctx->base.screen)->driver_workarounds.z16_unscaled_bias;
+         break;
+      case PIPE_FORMAT_Z24X8_UNORM:
+      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      case PIPE_FORMAT_X24S8_UINT:
+      case PIPE_FORMAT_X8Z24_UNORM:
+         ctx->depth_bias_scale_factor = zink_screen(ctx->base.screen)->driver_workarounds.z24_unscaled_bias;
+         break;
+      case PIPE_FORMAT_Z32_FLOAT:
+      case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      case PIPE_FORMAT_Z32_UNORM:
+         ctx->depth_bias_scale_factor = 1<<23;
+         break;
+      default:
+         ctx->depth_bias_scale_factor = 0;
+      }
+   } else {
+      ctx->depth_bias_scale_factor = 0;
    }
+   if (depth_bias_scale_factor != ctx->depth_bias_scale_factor &&
+       ctx->rast_state && ctx->rast_state->base.offset_units_unscaled)
+      ctx->rast_state_changed = true;
    rebind_fb_state(ctx, NULL, true);
    ctx->fb_state.samples = MAX2(samples, 1);
    zink_update_framebuffer_state(ctx);

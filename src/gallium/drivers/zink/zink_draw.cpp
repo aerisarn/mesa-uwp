@@ -696,10 +696,15 @@ zink_draw(struct pipe_context *pctx,
       }
 
       VKCTX(CmdSetLineWidth)(batch->state->cmdbuf, rast_state->line_width);
-      if (depth_bias)
-         VKCTX(CmdSetDepthBias)(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
-      else
+      if (depth_bias) {
+         if (rast_state->base.offset_units_unscaled) {
+            VKCTX(CmdSetDepthBias)(batch->state->cmdbuf, rast_state->offset_units * ctx->depth_bias_scale_factor, rast_state->offset_clamp, rast_state->offset_scale);
+         } else {
+            VKCTX(CmdSetDepthBias)(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
+         }
+      } else {
          VKCTX(CmdSetDepthBias)(batch->state->cmdbuf, 0.0f, 0.0f, 0.0f);
+      }
    }
    ctx->rast_state_changed = false;
 

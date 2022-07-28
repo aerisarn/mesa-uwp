@@ -466,6 +466,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
       return screen->info.have_KHR_sampler_mirror_clamp_to_edge;
 
+   case PIPE_CAP_POLYGON_OFFSET_UNITS_UNSCALED:
+      return 1;
+
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
       return screen->info.feats.features.depthBiasClamp;
 
@@ -2121,6 +2124,17 @@ init_driver_workarounds(struct zink_screen *screen)
       /* performance */
       screen->info.border_color_feats.customBorderColorWithoutFormat = VK_FALSE;
    }
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE || 
+       screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY || 
+       screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY || 
+       screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV)
+      screen->driver_workarounds.z24_unscaled_bias = 1<<23;
+   else
+      screen->driver_workarounds.z24_unscaled_bias = 1<<24;
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
+      screen->driver_workarounds.z16_unscaled_bias = 1<<15;
+   else
+      screen->driver_workarounds.z16_unscaled_bias = 1<<16;
 }
 
 static struct zink_screen *
