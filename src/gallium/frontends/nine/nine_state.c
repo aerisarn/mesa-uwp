@@ -2372,6 +2372,7 @@ init_draw_info(struct pipe_draw_info *info,
     info->increment_draw_id = FALSE;
     info->was_line_loop = FALSE;
     info->restart_index = 0;
+    info->view_mask = 0;
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_draw_primitive,
