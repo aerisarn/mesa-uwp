@@ -538,8 +538,10 @@ drisw_init_screen(__DRIscreen * sPriv)
    }
 
    bool success = false;
+#ifdef HAVE_PIPE_LOADER_KMS
    if (screen->fd != -1)
       success = pipe_loader_sw_probe_kms(&screen->dev, screen->fd);
+#endif
    if (!success)
       success = pipe_loader_sw_probe_dri(&screen->dev, lf);
    if (success) {
