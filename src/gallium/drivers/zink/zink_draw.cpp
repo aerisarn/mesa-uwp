@@ -585,6 +585,15 @@ zink_draw(struct pipe_context *pctx,
             CLAMP(ctx->vp_state.viewport_states[i].translate[2] + ctx->vp_state.viewport_states[i].scale[2],
                   0, 1)
          };
+         if (!ctx->rast_state->base.half_pixel_center) {
+             /* magic constant value from dxvk */
+             float cf = 0.5f - (1.0f / 128.0f);
+             viewport.x += cf;
+             if (viewport.height < 0)
+                viewport.y += cf;
+             else
+                viewport.y -= cf;
+         }
          viewports[i] = viewport;
       }
       if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE)
