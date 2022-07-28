@@ -30,6 +30,7 @@
 #include "lp_bld_gather.h"
 #include "lp_bld_const.h"
 #include "lp_bld_struct.h"
+#include "lp_bld_jit_types.h"
 #include "lp_bld_arit.h"
 #include "lp_bld_bitarit.h"
 #include "lp_bld_coro.h"
@@ -1064,8 +1065,8 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    struct lp_build_context *bld_broad = get_int_bld(bld_base, true, bit_size);
-   LLVMValueRef consts_ptr = lp_build_array_get(gallivm, bld->consts_ptr, index);
-   LLVMValueRef num_consts = lp_build_array_get(gallivm, bld->const_sizes_ptr, index);
+   LLVMValueRef consts_ptr = lp_llvm_buffer_base(gallivm, bld->consts_ptr, index, LP_MAX_TGSI_CONST_BUFFERS);
+   LLVMValueRef num_consts = lp_llvm_buffer_num_elements(gallivm, bld->consts_ptr, index, LP_MAX_TGSI_CONST_BUFFERS);
    unsigned size_shift = bit_size_to_shift_size(bit_size);
    if (size_shift)
       offset = lp_build_shr(uint_bld, offset, lp_build_const_int_vec(gallivm, uint_bld->type, size_shift));
@@ -1158,8 +1159,8 @@ ssbo_base_pointer(struct lp_build_nir_context *bld_base,
    uint32_t shift_val = bit_size_to_shift_size(bit_size);
 
    LLVMValueRef ssbo_idx = LLVMBuildExtractElement(gallivm->builder, index, invocation, "");
-   LLVMValueRef ssbo_size_ptr = lp_build_array_get(gallivm, bld->ssbo_sizes_ptr, ssbo_idx);
-   LLVMValueRef ssbo_ptr = lp_build_array_get(gallivm, bld->ssbo_ptr, ssbo_idx);
+   LLVMValueRef ssbo_size_ptr = lp_llvm_buffer_num_elements(gallivm, bld->ssbo_ptr, ssbo_idx, LP_MAX_TGSI_SHADER_BUFFERS);
+   LLVMValueRef ssbo_ptr = lp_llvm_buffer_base(gallivm, bld->ssbo_ptr, ssbo_idx, LP_MAX_TGSI_SHADER_BUFFERS);
    if (bounds)
       *bounds = LLVMBuildAShr(gallivm->builder, ssbo_size_ptr, lp_build_const_int32(gallivm, shift_val), "");
 
@@ -1540,8 +1541,8 @@ static LLVMValueRef emit_get_ssbo_size(struct lp_build_nir_context *bld_base,
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    struct lp_build_context *bld_broad = &bld_base->uint_bld;
-   LLVMValueRef size_ptr = lp_build_array_get(bld_base->base.gallivm, bld->ssbo_sizes_ptr,
-                                              LLVMBuildExtractElement(builder, index, lp_build_const_int32(gallivm, 0), ""));
+   LLVMValueRef size_ptr = lp_llvm_buffer_num_elements(gallivm, bld->ssbo_ptr, LLVMBuildExtractElement(builder, index, lp_build_const_int32(gallivm, 0), ""), LP_MAX_TGSI_SHADER_BUFFERS);
+
    return lp_build_broadcast_scalar(bld_broad, size_ptr);
 }
 
@@ -2780,9 +2781,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.inputs = params->inputs;
    bld.outputs = outputs;
    bld.consts_ptr = params->consts_ptr;
-   bld.const_sizes_ptr = params->const_sizes_ptr;
    bld.ssbo_ptr = params->ssbo_ptr;
-   bld.ssbo_sizes_ptr = params->ssbo_sizes_ptr;
    bld.sampler = params->sampler;
 //   bld.bld_base.info = params->info;
 
