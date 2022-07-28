@@ -57,3 +57,5 @@ dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
 dEQP-VK.ubo.random.all_out_of_order_offsets.45
 dEQP-VK.ubo.random.all_shared_buffer.48
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertcheckuv2.store.single.std140.frag
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertcheckuv2.nostore.single.std140.frag
