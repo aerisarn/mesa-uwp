@@ -254,11 +254,6 @@ fast_clear_color(struct iris_context *ice,
     * and again afterwards to ensure that the resolve is complete before we
     * do any more regular drawing.
     */
-
-   /* Wa_14015264727, on DG2 we need to flush data cache before fast clear. */
-   bool data_cache_flush_needed =
-      intel_device_info_is_dg2(&batch->screen->devinfo);
-
    iris_emit_end_of_pipe_sync(batch,
                               "fast clear: pre-flush",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
@@ -266,9 +261,8 @@ fast_clear_color(struct iris_context *ice,
                               (devinfo->verx10 == 120 ?
                                  PIPE_CONTROL_DEPTH_STALL : 0) |
                               (devinfo->verx10 == 125 ?
-                                 PIPE_CONTROL_FLUSH_HDC : 0) |
-                              (data_cache_flush_needed ?
-                              PIPE_CONTROL_DATA_CACHE_FLUSH : 0) |
+                                 PIPE_CONTROL_FLUSH_HDC |
+                                 PIPE_CONTROL_DATA_CACHE_FLUSH : 0) |
                               PIPE_CONTROL_PSS_STALL_SYNC);
 
    iris_batch_sync_region_start(batch);
