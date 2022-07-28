@@ -761,11 +761,14 @@ struct pvr_dynamic_state {
    /* Saved information from pCreateInfo. */
    float line_width;
 
-   struct {
+   /* Do not change this. This is the format used for the depth_bias_array
+    * elements uploaded to the device.
+    */
+   struct pvr_depth_bias_state {
       /* Saved information from pCreateInfo. */
       float constant_factor;
-      float clamp;
       float slope_factor;
+      float clamp;
    } depth_bias;
    float blend_constants[4];
    struct {

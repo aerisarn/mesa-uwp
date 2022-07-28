@@ -1997,8 +1997,8 @@ void pvr_CmdSetDepthBias(VkCommandBuffer commandBuffer,
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
 
    state->dynamic.common.depth_bias.constant_factor = depthBiasConstantFactor;
-   state->dynamic.common.depth_bias.clamp = depthBiasClamp;
    state->dynamic.common.depth_bias.slope_factor = depthBiasSlopeFactor;
+   state->dynamic.common.depth_bias.clamp = depthBiasClamp;
    state->dirty.depth_bias = true;
 }
 
@@ -3546,6 +3546,97 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
    ppp_state->isp.back_b = back_b;
 }
 
+static float
+pvr_calculate_final_depth_bias_contant_factor(struct pvr_device_info *dev_info,
+                                              VkFormat format,
+                                              float depth_bias)
+{
+   /* Information for future modifiers of these depth bias calculations.
+    * ==================================================================
+    * Specified depth bias equations scale the specified constant factor by a
+    * value 'r' that is guaranteed to cause a resolvable difference in depth
+    * across the entire range of depth values.
+    * For floating point depth formats 'r' is calculated by taking the maximum
+    * exponent across the triangle.
+    * For UNORM formats 'r' is constant.
+    * Here 'n' is the number of mantissa bits stored in the floating point
+    * representation (23 for F32).
+    *
+    *    UNORM Format -> z += dbcf * r + slope
+    *    FLOAT Format -> z += dbcf * 2^(e-n) + slope
+    *
+    * HW Variations.
+    * ==============
+    * The HW either always performs the F32 depth bias equation (exponent based
+    * r), or in the case of HW that correctly supports the integer depth bias
+    * equation for UNORM depth formats, we can select between both equations
+    * using the ROGUE_CR_ISP_CTL.dbias_is_int flag - this is required to
+    * correctly perform Vulkan UNORM depth bias (constant r).
+    *
+    *    if ern42307:
+    *       if DBIAS_IS_INT_EN:
+    *          z += dbcf + slope
+    *       else:
+    *          z += dbcf * 2^(e-n) + slope
+    *    else:
+    *       z += dbcf * 2^(e-n) + slope
+    *
+    */
+
+   float nudge_factor;
+
+   if (PVR_HAS_ERN(dev_info, 42307)) {
+      switch (format) {
+      case VK_FORMAT_D16_UNORM:
+         return depth_bias / (1 << 15);
+
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+      case VK_FORMAT_X8_D24_UNORM_PACK32:
+         return depth_bias / (1 << 23);
+
+      default:
+         return depth_bias;
+      }
+   }
+
+   /* The reasoning behind clamping/nudging the value here is because UNORM
+    * depth formats can have higher precision over our underlying D32F
+    * representation for some depth ranges.
+    *
+    * When the HW scales the depth bias value by 2^(e-n) [The 'r' term'] a depth
+    * bias of 1 can result in a value smaller than one F32 ULP, which will get
+    * quantized to 0 - resulting in no bias.
+    *
+    * Biasing small values away from zero will ensure that small depth biases of
+    * 1 still yield a result and overcome Z-fighting.
+    */
+   switch (format) {
+   case VK_FORMAT_D16_UNORM:
+      depth_bias *= 512.0f;
+      nudge_factor = 1.0f;
+      break;
+
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+      depth_bias *= 2.0f;
+      nudge_factor = 2.0f;
+      break;
+
+   default:
+      nudge_factor = 0.0f;
+      break;
+   }
+
+   if (nudge_factor != 0.0f) {
+      if (depth_bias < 0.0f && depth_bias > -nudge_factor)
+         depth_bias -= nudge_factor;
+      else if (depth_bias > 0.0f && depth_bias < nudge_factor)
+         depth_bias += nudge_factor;
+   }
+
+   return depth_bias;
+}
+
 static void pvr_get_viewport_scissor_overlap(const VkViewport *const viewport,
                                              const VkRect2D *const scissor,
                                              VkRect2D *const rect_out)
@@ -3612,7 +3703,6 @@ pvr_get_geom_region_clip_align_size(struct pvr_device_info *const dev_info)
    return 16U + 16U * (!PVR_HAS_FEATURE(dev_info, tile_size_16x16));
 }
 
-/* FIXME: Remove device param when PVR_HAS_FEATURE() accepts const dev_info */
 static void
 pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
 {
@@ -3625,8 +3715,26 @@ pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
    struct pvr_device_info *const dev_info =
       &cmd_buffer->device->pdevice->dev_info;
 
-   if (ispctl->dbenable)
-      assert(!"Unimplemented");
+   if (ispctl->dbenable && (cmd_buffer->state.dirty.depth_bias ||
+                            cmd_buffer->depth_bias_array.size == 0)) {
+      struct pvr_depth_bias_state depth_bias = dynamic_state->depth_bias;
+
+      depth_bias.constant_factor =
+         pvr_calculate_final_depth_bias_contant_factor(
+            dev_info,
+            cmd_buffer->state.depth_format,
+            depth_bias.constant_factor);
+
+      ppp_state->depthbias_scissor_indices.depthbias_index =
+         util_dynarray_num_elements(&cmd_buffer->depth_bias_array,
+                                    __typeof__(depth_bias));
+
+      util_dynarray_append(&cmd_buffer->depth_bias_array,
+                           __typeof__(depth_bias),
+                           depth_bias);
+
+      emit_state->isp_dbsc = true;
+   }
 
    if (ispctl->scenable) {
       const uint32_t region_clip_align_size =

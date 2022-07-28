@@ -1778,12 +1778,11 @@ static void pvr_graphics_pipeline_init_dynamic_state(
 
       /* TODO: Do we need the depthBiasEnable check? */
       if (!(dynamic_states & PVR_DYNAMIC_STATE_BIT_DEPTH_BIAS)) {
-         internal_dynamic_state->depth_bias.constant_factor =
-            rasterization_state->depthBiasConstantFactor;
-         internal_dynamic_state->depth_bias.clamp =
-            rasterization_state->depthBiasClamp;
-         internal_dynamic_state->depth_bias.slope_factor =
-            rasterization_state->depthBiasSlopeFactor;
+         internal_dynamic_state->depth_bias = (struct pvr_depth_bias_state){
+            .constant_factor = rasterization_state->depthBiasConstantFactor,
+            .slope_factor = rasterization_state->depthBiasSlopeFactor,
+            .clamp = rasterization_state->depthBiasClamp,
+         };
       }
    }
 
