@@ -450,4 +450,26 @@ typedef int lock_cap_t;
 /* TODO: this could be different on non-x86 architectures. */
 #define CACHE_LINE_SIZE 64
 
+#define DO_PRAGMA(X) _Pragma (#X)
+
+#if defined(__clang__)
+#define PRAGMA_DIAGNOSTIC_PUSH       _Pragma("clang diagnostic push")
+#define PRAGMA_DIAGNOSTIC_POP        _Pragma("clang diagnostic pop")
+#define PRAGMA_DIAGNOSTIC_ERROR(X)   DO_PRAGMA( clang diagnostic error #X )
+#define PRAGMA_DIAGNOSTIC_WARNING(X) DO_PRAGMA( clang diagnostic warning #X )
+#define PRAGMA_DIAGNOSTIC_IGNORED(X) DO_PRAGMA( clang diagnostic ignored #X )
+#elif defined(__GNUC__)
+#define PRAGMA_DIAGNOSTIC_PUSH       _Pragma("GCC diagnostic push")
+#define PRAGMA_DIAGNOSTIC_POP        _Pragma("GCC diagnostic pop")
+#define PRAGMA_DIAGNOSTIC_ERROR(X)   DO_PRAGMA( GCC diagnostic error #X )
+#define PRAGMA_DIAGNOSTIC_WARNING(X) DO_PRAGMA( GCC diagnostic warning #X )
+#define PRAGMA_DIAGNOSTIC_IGNORED(X) DO_PRAGMA( GCC diagnostic ignored #X )
+#else
+#define PRAGMA_DIAGNOSTIC_PUSH
+#define PRAGMA_DIAGNOSTIC_POP
+#define PRAGMA_DIAGNOSTIC_ERROR(X)
+#define PRAGMA_DIAGNOSTIC_WARNING(X)
+#define PRAGMA_DIAGNOSTIC_IGNORED(X)
+#endif
+
 #endif /* UTIL_MACROS_H */
