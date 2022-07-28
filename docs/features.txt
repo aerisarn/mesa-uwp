@@ -428,8 +428,8 @@ Vulkan 1.1 -- all DONE: anv, lvp, radv, tu, vn
   VK_KHR_device_group_creation                          DONE (anv, lvp, tu, v3dv, vn)
   VK_KHR_external_fence                                 DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_external_fence_capabilities                    DONE (anv, lvp, radv, tu, v3dv, vn)
-  VK_KHR_external_memory                                DONE (anv, lvp, radv, tu, v3dv, vn)
-  VK_KHR_external_memory_capabilities                   DONE (anv, lvp, radv, tu, v3dv, vn)
+  VK_KHR_external_memory                                DONE (anv, lvp, pvr, radv, tu, v3dv, vn)
+  VK_KHR_external_memory_capabilities                   DONE (anv, lvp, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_semaphore                             DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_external_semaphore_capabilities                DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_get_memory_requirements2                       DONE (anv, lvp, radv, tu, v3dv, vn)
@@ -487,7 +487,7 @@ Vulkan 1.3 -- all DONE: anv, radv, lvp
   VK_EXT_inline_uniform_block                           DONE (anv, lvp, radv, v3dv, vn)
   VK_EXT_pipeline_creation_cache_control                DONE (anv, lvp, radv, tu, v3dv)
   VK_EXT_pipeline_creation_feedback                     DONE (anv, lvp, radv, tu, v3dv)
-  VK_EXT_private_data                                   DONE (anv, lvp, radv, tu, v3dv)
+  VK_EXT_private_data                                   DONE (anv, lvp, pvr, radv, tu, v3dv)
   VK_EXT_image_robustness                               DONE (anv, lvp, radv, tu, vn)
   VK_EXT_shader_demote_to_helper_invocation             DONE (anv, lvp, radv, tu, vn)
   VK_EXT_subgroup_size_control                          DONE (anv, lvp, radv, tu)
@@ -498,11 +498,11 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_acceleration_structure                         DONE (radv/gfx10.3+)
   VK_KHR_android_surface                                not started
   VK_KHR_deferred_host_operations                       DONE (anv, radv)
-  VK_KHR_display                                        DONE (anv, lvp, radv, tu, v3dv)
+  VK_KHR_display                                        DONE (anv, lvp, pvr, radv, tu, v3dv)
   VK_KHR_display_swapchain                              not started
   VK_KHR_external_fence_fd                              DONE (anv, radv, tu, v3dv, vn)
   VK_KHR_external_fence_win32                           not started
-  VK_KHR_external_memory_fd                             DONE (anv, lvp, radv, tu, v3dv, vn)
+  VK_KHR_external_memory_fd                             DONE (anv, lvp, pvr, radv, tu, v3dv, vn)
   VK_KHR_external_memory_win32                          not started
   VK_KHR_external_semaphore_fd                          DONE (anv, radv, tu, v3dv, vn)
   VK_KHR_external_semaphore_win32                       not started
@@ -521,9 +521,9 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_shader_integer_dot_product                     DONE (anv, lvp, radv, tu)
   VK_KHR_shader_subgroup_uniform_control_flow           DONE (anv, radv)
   VK_KHR_shared_presentable_image                       not started
-  VK_KHR_surface                                        DONE (anv, dzn, lvp, panvk, radv, tu, v3dv, vn)
+  VK_KHR_surface                                        DONE (anv, dzn, lvp, panvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_surface_protected_capabilities                 DONE (anv, lvp, radv, v3dv, vn)
-  VK_KHR_swapchain                                      DONE (anv, dzn, lvp, panvk, radv, tu, v3dv, vn)
+  VK_KHR_swapchain                                      DONE (anv, dzn, lvp, panvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_swapchain_mutable_format                       DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_wayland_surface                                DONE (anv, dzn, lvp, panvk, radv, tu, v3dv, vn)
   VK_KHR_workgroup_memory_explicit_layout               DONE (anv, radv)
@@ -544,7 +544,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_depth_range_unrestricted                       DONE (radv, lvp)
   VK_EXT_discard_rectangles                             DONE (radv)
   VK_EXT_display_control                                DONE (anv, radv, tu)
-  VK_EXT_external_memory_dma_buf                        DONE (anv, radv, tu, v3dv, vn)
+  VK_EXT_external_memory_dma_buf                        DONE (anv, pvr, radv, tu, v3dv, vn)
   VK_EXT_external_memory_host                           DONE (anv, lvp, radv)
   VK_EXT_filter_cubic                                   DONE (tu/a650)
   VK_EXT_fragment_shader_interlock                      DONE (anv/gen9+)
