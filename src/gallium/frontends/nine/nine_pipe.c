@@ -108,8 +108,17 @@ nine_convert_rasterizer_state(struct NineDevice9 *device,
  /* rast.lower_left_origin = 0; */
  /* rast.bottom_edge_rule = 0; */
  /* rast.rasterizer_discard = 0; */
-    rast.depth_clip_near = 1;
-    rast.depth_clip_far = 1;
+    if (rs[NINED3DRS_POSITIONT] &&
+        !device->driver_caps.window_space_position_support &&
+        device->driver_caps.disabling_depth_clipping_support) {
+        /* rast.depth_clip_near = 0; */
+        /* rast.depth_clip_far = 0; */
+        rast.depth_clamp = 1;
+    } else {
+        rast.depth_clip_near = 1;
+        rast.depth_clip_far = 1;
+        /* rast.depth_clamp = 0; */
+    }
     rast.clip_halfz = 1;
     rast.clip_plane_enable = rs[D3DRS_CLIPPLANEENABLE];
  /* rast.line_stipple_factor = 0; */

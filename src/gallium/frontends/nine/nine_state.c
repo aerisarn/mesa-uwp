@@ -673,6 +673,12 @@ prepare_vs(struct NineDevice9 *device, uint8_t shader_changed)
         context->rs[NINED3DRS_VSPOINTSIZE] = vs->point_size;
         changed_group |= NINE_STATE_RASTERIZER;
     }
+    if (context->rs[NINED3DRS_POSITIONT] != vs->position_t) {
+        context->rs[NINED3DRS_POSITIONT] = vs->position_t;
+        if (!device->driver_caps.window_space_position_support &&
+            device->driver_caps.disabling_depth_clipping_support)
+            changed_group |= NINE_STATE_RASTERIZER;
+    }
 
     if ((context->bound_samplers_mask_vs & vs->sampler_mask) != vs->sampler_mask)
         /* Bound dummy sampler. */

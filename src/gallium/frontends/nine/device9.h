@@ -129,6 +129,7 @@ struct NineDevice9
     struct {
         boolean user_sw_vbufs;
         boolean window_space_position_support;
+        boolean disabling_depth_clipping_support;
         boolean vs_integer;
         boolean ps_integer;
         boolean offset_units_unscaled;
