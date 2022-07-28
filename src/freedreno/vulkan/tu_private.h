@@ -1740,7 +1740,6 @@ struct tu_compiled_shaders
 {
    struct vk_pipeline_cache_object base;
 
-   struct tu_push_constant_range shared_consts;
    struct tu_push_constant_range push_consts[MESA_SHADER_STAGES];
    uint8_t active_desc_sets;
    bool multi_pos_output;

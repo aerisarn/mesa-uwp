@@ -2992,7 +2992,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
       stage_feedbacks[stage].duration += os_time_get_nano() - stage_start;
    }
-   compiled_shaders->shared_consts = pipeline->shared_consts;
 
    uint32_t safe_constlens = ir3_trim_constlen(compiled_shaders->variants, compiler);
 
@@ -4163,7 +4162,6 @@ tu_compute_pipeline_create(VkDevice device,
 
       compiled->active_desc_sets = shader->active_desc_sets;
       compiled->push_consts[MESA_SHADER_COMPUTE] = shader->push_consts;
-      compiled->shared_consts = pipeline->shared_consts;
 
       struct ir3_shader_variant *v =
          ir3_shader_create_variant(shader->ir3_shader, &ir3_key, executable_info);
