@@ -284,8 +284,9 @@ static void r600_set_clip_state(struct pipe_context *ctx,
 	rctx->clip_state.state = *state;
 	r600_mark_atom_dirty(rctx, &rctx->clip_state.atom);
 	rctx->driver_consts[PIPE_SHADER_VERTEX].vs_ucp_dirty = true;
-	rctx->driver_consts[PIPE_SHADER_TESS_EVAL].vs_ucp_dirty = true;
 	rctx->driver_consts[PIPE_SHADER_GEOMETRY].vs_ucp_dirty = true;
+	if (rctx->b.family >= CHIP_CEDAR)
+		rctx->driver_consts[PIPE_SHADER_TESS_EVAL].vs_ucp_dirty = true;
 }
 
 static void r600_set_stencil_ref(struct pipe_context *ctx,
