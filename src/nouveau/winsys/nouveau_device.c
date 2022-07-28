@@ -1,11 +1,10 @@
 #include "nouveau_device.h"
 
-#include <drm/drm.h>
+#include <xf86drm.h>
 #include <nouveau_drm.h>
 #include <nouveau/nvif/ioctl.h>
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
-#include <xf86drm.h>
 
 #include "util/u_debug.h"
 #include "util/os_file.h"

@@ -1,10 +1,9 @@
 #include "nouveau_context.h"
 
-#include <drm/drm.h>
+#include <xf86drm.h>
 #include <errno.h>
 #include <nouveau_drm.h>
 #include <nouveau/nvif/ioctl.h>
-#include <xf86drm.h>
 
 #include "nouveau_device.h"
 
