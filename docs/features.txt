@@ -495,7 +495,7 @@ Vulkan 1.3 -- all DONE: anv, radv, lvp
 
 Khronos extensions that are not part of any Vulkan version:
 
-  VK_KHR_acceleration_structure                         in progress
+  VK_KHR_acceleration_structure                         DONE (radv/gfx10.3+)
   VK_KHR_android_surface                                not started
   VK_KHR_deferred_host_operations                       DONE (anv, radv)
   VK_KHR_display                                        DONE (anv, lvp, radv, tu, v3dv)
@@ -510,11 +510,12 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_get_display_properties2                        DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_get_surface_capabilities2                      DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_incremental_present                            DONE (anv, lvp, radv, tu, v3dv, vn)
-  VK_KHR_performance_query                              DONE (anv/gen8+, tu, v3dv)
+  VK_KHR_performance_query                              DONE (anv/gen8+, radv/gfx10.3+, tu, v3dv)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv, tu, v3dv)
   VK_KHR_pipeline_library                               DONE (lvp, radv)
   VK_KHR_push_descriptor                                DONE (anv, lvp, radv, tu)
-  VK_KHR_ray_query                                      in progress
+  VK_KHR_ray_query                                      DONE (radv/gfx10.3+)
+  VK_KHR_ray_tracing_maintenance1                       DONE (radv/gfx10.3+)
   VK_KHR_ray_tracing_pipeline                           in progress
   VK_KHR_shader_clock                                   DONE (anv, lvp, radv)
   VK_KHR_shader_integer_dot_product                     DONE (anv, lvp, radv, tu)
@@ -542,7 +543,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_depth_clip_control                             DONE (anv, lvp, radv, tu)
   VK_EXT_depth_range_unrestricted                       DONE (radv, lvp)
   VK_EXT_discard_rectangles                             DONE (radv)
-  VK_EXT_display_control                                DONE (anv, tu)
+  VK_EXT_display_control                                DONE (anv, radv, tu)
   VK_EXT_external_memory_dma_buf                        DONE (anv, radv, tu, v3dv, vn)
   VK_EXT_external_memory_host                           DONE (anv, lvp, radv)
   VK_EXT_filter_cubic                                   DONE (tu/a650)
@@ -550,7 +551,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_global_priority                                DONE (anv, radv)
   VK_EXT_global_priority_query                          DONE (anv, radv)
   VK_EXT_graphics_pipeline_library                      DONE (lvp)
-  VK_EXT_image_2d_view_of_3d                            DONE (anv, tu, lvp)
+  VK_EXT_image_2d_view_of_3d                            DONE (anv, radv, tu, lvp)
   VK_EXT_image_drm_format_modifier                      DONE (anv, radv/gfx9+, tu, v3dv, vn)
   VK_EXT_image_view_min_lod                             DONE (anv, radv, tu)
   VK_EXT_index_type_uint8                               DONE (anv, lvp, radv/gfx8+, v3dv, tu)
