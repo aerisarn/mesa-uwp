@@ -963,6 +963,8 @@ const __DRIcoreExtension driCoreExtension = {
     .unbindContext              = driUnbindContext
 };
 
+#if HAVE_DRI2
+
 /** DRI2 interface */
 const __DRIdri2Extension driDRI2Extension = {
     .base = { __DRI_DRI2, 4 },
@@ -991,6 +993,8 @@ const __DRIdri2Extension swkmsDRI2Extension = {
     .createContextAttribs       = driCreateContextAttribs,
     .createNewScreen2           = driCreateNewScreen2,
 };
+
+#endif
 
 const __DRIswrastExtension driSWRastExtension = {
     .base = { __DRI_SWRAST, 4 },
