@@ -27,6 +27,7 @@
 #if !defined(HAVE_REALLOCARRAY)
 
 #include <stdlib.h> // size_t
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C" {
