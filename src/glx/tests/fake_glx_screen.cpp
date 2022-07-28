@@ -98,7 +98,7 @@ struct glx_context dummyContext = {
    sizeof(dummyBuffer),
    &dummyVtable
 };
-thread_local void *__glX_tls_Context = &dummyContext;
+__THREAD_INITIAL_EXEC void *__glX_tls_Context = &dummyContext;
 
 #if !defined(USE_ELF_TLS)
 extern "C" struct glx_context *
