@@ -157,7 +157,7 @@ bool
 pipe_loader_vk_probe_dri(struct pipe_loader_device **devs,
                          const struct drisw_loader_funcs *drisw_lf);
 
-#ifdef HAVE_PIPE_LOADER_KMS
+#ifdef HAVE_DRISW_KMS
 /**
  * Initialize a kms backed sw device given an fd.
  *

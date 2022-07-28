@@ -1690,10 +1690,10 @@ if dep_libdrm.found()
 endif
 
 if with_dri
-  pre_args += '-DHAVE_PIPE_LOADER_DRI'
+  pre_args += '-DHAVE_DRI'
 endif
 if with_gallium_drisw_kms
-  pre_args += '-DHAVE_PIPE_LOADER_KMS'
+  pre_args += '-DHAVE_DRISW_KMS'
 endif
 
 dep_libudev = dependency('libudev', required : false)

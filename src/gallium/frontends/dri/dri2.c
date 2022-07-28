@@ -2528,7 +2528,7 @@ dri_swrast_kms_init_screen(__DRIscreen * sPriv)
 
    sPriv->driverPrivate = (void *)screen;
 
-#ifdef HAVE_PIPE_LOADER_KMS
+#ifdef HAVE_DRISW_KMS
    if (pipe_loader_sw_probe_kms(&screen->dev, screen->fd)) {
       pscreen = pipe_loader_create_screen(screen->dev);
       dri_init_options(screen);
