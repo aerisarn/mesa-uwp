@@ -217,8 +217,9 @@ cache_put_job(void *data, void *gdata, int thread_index)
    struct zink_program *pg = data;
    struct zink_screen *screen = gdata;
    size_t size = 0;
-   if (VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, NULL) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkGetPipelineCacheData failed");
+   VkResult result = VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, NULL);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPipelineCacheData failed (%s)", vk_Result_to_str(result));
       return;
    }
    if (pg->pipeline_cache_size == size)
@@ -226,14 +227,15 @@ cache_put_job(void *data, void *gdata, int thread_index)
    void *pipeline_data = malloc(size);
    if (!pipeline_data)
       return;
-   if (VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, pipeline_data) == VK_SUCCESS) {
+   result = VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, pipeline_data);
+   if (result == VK_SUCCESS) {
       pg->pipeline_cache_size = size;
 
       cache_key key;
       disk_cache_compute_key(screen->disk_cache, pg->sha1, sizeof(pg->sha1), key);
       disk_cache_put_nocopy(screen->disk_cache, key, pipeline_data, size, NULL);
    } else {
-      mesa_loge("ZINK: vkGetPipelineCacheData failed");
+      mesa_loge("ZINK: vkGetPipelineCacheData failed (%s)", vk_Result_to_str(result));
    }
 }
 
@@ -264,8 +266,10 @@ cache_get_job(void *data, void *gdata, int thread_index)
    disk_cache_compute_key(screen->disk_cache, pg->sha1, sizeof(pg->sha1), key);
    pcci.pInitialData = disk_cache_get(screen->disk_cache, key, &pg->pipeline_cache_size);
    pcci.initialDataSize = pg->pipeline_cache_size;
-   if (VKSCR(CreatePipelineCache)(screen->dev, &pcci, NULL, &pg->pipeline_cache) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreatePipelineCache failed");
+
+   VkResult res = VKSCR(CreatePipelineCache)(screen->dev, &pcci, NULL, &pg->pipeline_cache);
+   if (res != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreatePipelineCache failed (%s)", vk_Result_to_str(res));
    }
    free((void*)pcci.pInitialData);
 }
@@ -1306,7 +1310,7 @@ choose_pdev(struct zink_screen *screen)
    bool is_cpu = false;
    VkResult result = VKSCR(EnumeratePhysicalDevices)(screen->instance, &pdev_count, NULL);
    if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkEnumeratePhysicalDevices failed");
+      mesa_loge("ZINK: vkEnumeratePhysicalDevices failed (%s)", vk_Result_to_str(result));
       return is_cpu;
    }
 
@@ -1573,14 +1577,16 @@ check_have_device_time(struct zink_screen *screen)
 {
    uint32_t num_domains = 0;
    VkTimeDomainEXT domains[8]; //current max is 4
-   if (VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, NULL) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkGetPhysicalDeviceCalibrateableTimeDomainsEXT failed");
+   VkResult result = VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, NULL);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPhysicalDeviceCalibrateableTimeDomainsEXT failed (%s)", vk_Result_to_str(result));
    }
    assert(num_domains > 0);
    assert(num_domains < ARRAY_SIZE(domains));
 
-   if (VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, domains) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkGetPhysicalDeviceCalibrateableTimeDomainsEXT failed");
+   result = VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, domains);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPhysicalDeviceCalibrateableTimeDomainsEXT failed (%s)", vk_Result_to_str(result));
    }
 
    /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
@@ -1654,12 +1660,13 @@ create_debug(struct zink_screen *screen)
 
    VkDebugUtilsMessengerEXT vkDebugUtilsCallbackEXT = VK_NULL_HANDLE;
 
-   if (VKSCR(CreateDebugUtilsMessengerEXT)(
+   VkResult result = VKSCR(CreateDebugUtilsMessengerEXT)(
            screen->instance,
            &vkDebugUtilsMessengerCreateInfoEXT,
            NULL,
-           &vkDebugUtilsCallbackEXT) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateDebugUtilsMessengerEXT failed");
+           &vkDebugUtilsCallbackEXT);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateDebugUtilsMessengerEXT failed (%s)", vk_Result_to_str(result));
    }
 
    screen->debugUtilsCallbackHandle = vkDebugUtilsCallbackEXT;
@@ -1750,7 +1757,7 @@ populate_format_props(struct zink_screen *screen)
                                                                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                                                 0, &image_props);
    if (ret != VK_SUCCESS && ret != VK_ERROR_FORMAT_NOT_SUPPORTED) {
-      mesa_loge("ZINK: vkGetPhysicalDeviceImageFormatProperties failed");
+      mesa_loge("ZINK: vkGetPhysicalDeviceImageFormatProperties failed (%s)", vk_Result_to_str(ret));
    }
    screen->need_2D_zs = ret != VK_SUCCESS;
 
@@ -1805,10 +1812,11 @@ zink_get_loader_version(struct zink_screen *screen)
    GET_PROC_ADDR_INSTANCE_LOCAL(screen, NULL, EnumerateInstanceVersion);
    if (vk_EnumerateInstanceVersion) {
       uint32_t loader_version_temp = VK_API_VERSION_1_0;
-      if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)(&loader_version_temp)) {
+      VkResult result = (*vk_EnumerateInstanceVersion)(&loader_version_temp);
+      if (VK_SUCCESS == result) {
          loader_version = loader_version_temp;
       } else {
-         mesa_loge("ZINK: vkEnumerateInstanceVersion failed");
+         mesa_loge("ZINK: vkEnumerateInstanceVersion failed (%s)", vk_Result_to_str(result));
       }
    }
 
@@ -2016,9 +2024,10 @@ zink_create_logical_device(struct zink_screen *screen)
    dci.ppEnabledExtensionNames = screen->info.extensions;
    dci.enabledExtensionCount = screen->info.num_extensions;
 
-   if (VKSCR(CreateDevice)(screen->pdev, &dci, NULL, &dev) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateDevice failed");
-   }
+   VkResult result = VKSCR(CreateDevice)(screen->pdev, &dci, NULL, &dev);
+   if (result != VK_SUCCESS)
+      mesa_loge("ZINK: vkCreateDevice failed (%s)", vk_Result_to_str(result));
+   
    return dev;
 }
 

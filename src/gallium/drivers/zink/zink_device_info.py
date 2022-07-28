@@ -359,6 +359,7 @@ void zink_stub_${cmd.lstrip("vk")}(void);
 impl_code = """
 <%namespace name="helpers" file="helpers"/>
 
+#include "vk_enum_to_str.h"
 #include "zink_device_info.h"
 #include "zink_screen.h"
 
@@ -377,14 +378,16 @@ zink_get_physical_device_info(struct zink_screen *screen)
    screen->vk.GetPhysicalDeviceMemoryProperties(screen->pdev, &info->mem_props);
 
    // enumerate device supported extensions
-   if (screen->vk.EnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, NULL) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkEnumerateDeviceExtensionProperties failed");
+   VkResult result = screen->vk.EnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, NULL);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkEnumerateDeviceExtensionProperties failed (%s)", vk_Result_to_str(result));
    } else {
       if (num_extensions > 0) {
          VkExtensionProperties *extensions = MALLOC(sizeof(VkExtensionProperties) * num_extensions);
          if (!extensions) goto fail;
-         if (screen->vk.EnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, extensions) != VK_SUCCESS) {
-            mesa_loge("ZINK: vkEnumerateDeviceExtensionProperties failed");
+         result = screen->vk.EnumerateDeviceExtensionProperties(screen->pdev, NULL, &num_extensions, extensions);
+         if (result != VK_SUCCESS) {
+            mesa_loge("ZINK: vkEnumerateDeviceExtensionProperties failed (%s)", vk_Result_to_str(result));
          }
 
          for (uint32_t i = 0; i < num_extensions; ++i) {

@@ -98,8 +98,12 @@ zink_context_destroy(struct pipe_context *pctx)
 
    if (util_queue_is_initialized(&screen->flush_queue))
       util_queue_finish(&screen->flush_queue);
-   if (ctx->batch.state && !screen->device_lost && VKSCR(QueueWaitIdle)(screen->queue) != VK_SUCCESS)
-      mesa_loge("ZINK: vkQueueWaitIdle failed");
+   if (ctx->batch.state && !screen->device_lost) {
+      VkResult result = VKSCR(QueueWaitIdle)(screen->queue);
+
+      if (result != VK_SUCCESS)
+         mesa_loge("ZINK: vkQueueWaitIdle failed (%s)", vk_Result_to_str(result));
+   }
 
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_cache); i++) {
       hash_table_foreach(&ctx->program_cache[i], entry) {
@@ -445,15 +449,17 @@ zink_create_sampler_state(struct pipe_context *pctx,
    if (!sampler)
       return NULL;
 
-   if (VKSCR(CreateSampler)(screen->dev, &sci, NULL, &sampler->sampler) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateSampler failed");
+   VkResult result = VKSCR(CreateSampler)(screen->dev, &sci, NULL, &sampler->sampler);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateSampler failed (%s)", vk_Result_to_str(result));
       FREE(sampler);
       return NULL;
    }
    if (need_clamped_border_color) {
       sci.pNext = &cbci_clamped;
-      if (VKSCR(CreateSampler)(screen->dev, &sci, NULL, &sampler->sampler_clamped) != VK_SUCCESS) {
-         mesa_loge("ZINK: vkCreateSampler failed");
+      result = VKSCR(CreateSampler)(screen->dev, &sci, NULL, &sampler->sampler_clamped);
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateSampler failed (%s)", vk_Result_to_str(result));
          VKSCR(DestroySampler)(screen->dev, sampler->sampler, NULL);
          FREE(sampler);
          return NULL;
@@ -810,8 +816,9 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, VkBufferVie
       p_atomic_inc(&buffer_view->reference.count);
    } else {
       VkBufferView view;
-      if (VKSCR(CreateBufferView)(screen->dev, bvci, NULL, &view) != VK_SUCCESS) {
-         mesa_loge("ZINK: vkCreateBufferView failed");
+      VkResult result = VKSCR(CreateBufferView)(screen->dev, bvci, NULL, &view);
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateBufferView failed (%s)", vk_Result_to_str(result));
          goto out;
       }
       buffer_view = CALLOC_STRUCT(zink_buffer_view);

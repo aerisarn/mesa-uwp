@@ -27,7 +27,6 @@
 #include "zink_screen.h"
 #include "zink_resource.h"
 #include "zink_kopper.h"
-#include "vk_enum_to_str.h"
 
 static void
 zink_kopper_set_present_mode_for_interval(struct kopper_displaytarget *cdt, int interval)
@@ -283,8 +282,9 @@ kopper_CreateSwapchain(struct zink_screen *screen, struct kopper_displaytarget *
    if (error == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
       if (util_queue_is_initialized(&screen->flush_queue))
          util_queue_finish(&screen->flush_queue);
-      if (VKSCR(QueueWaitIdle)(screen->queue) != VK_SUCCESS)
-         debug_printf("vkQueueWaitIdle failed\n");
+      VkResult result = VKSCR(QueueWaitIdle)(screen->queue);
+      if (result != VK_SUCCESS)
+         mesa_loge("ZINK: vkQueueWaitIdle failed (%s)", vk_Result_to_str(result));
       zink_kopper_deinit_displaytarget(screen, cdt);
       error = VKSCR(CreateSwapchainKHR)(screen->dev, &cswap->scci, NULL,
                                    &cswap->swapchain);

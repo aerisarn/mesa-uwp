@@ -242,8 +242,9 @@ zink_create_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfenc
 
    *pfence = NULL;
 
-   if (VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &mfence->sem) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateSemaphore failed");
+   VkResult result = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &mfence->sem);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateSemaphore failed (%s)", vk_Result_to_str(result));
       FREE(mfence);
       return;
    }

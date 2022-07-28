@@ -785,7 +785,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          }
       }
       if (result != VK_SUCCESS) {
-         mesa_loge("ZINK: vkCreateImage failed");
+         mesa_loge("ZINK: vkCreateImage failed (%s)", vk_Result_to_str(result));
          goto fail1;
       }
 

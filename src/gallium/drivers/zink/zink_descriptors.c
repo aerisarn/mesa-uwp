@@ -332,8 +332,9 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
    dpci.flags = 0;
    dpci.maxSets = ZINK_DEFAULT_MAX_DESCS;
    assert(pool_key->num_type_sizes);
-   if (VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &pool->descpool) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateDescriptorPool failed");
+   VkResult result = VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &pool->descpool);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateDescriptorPool failed (%s)", vk_Result_to_str(result));
       goto fail;
    }
 
@@ -376,8 +377,9 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
          return VK_NULL_HANDLE;
       }
    }
-   if (VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &dsl) != VK_SUCCESS)
-      mesa_loge("ZINK: vkCreateDescriptorSetLayout failed");
+   VkResult result = VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &dsl);
+   if (result != VK_SUCCESS)
+      mesa_loge("ZINK: vkCreateDescriptorSetLayout failed (%s)", vk_Result_to_str(result));
    return dsl;
 }
 
@@ -625,8 +627,9 @@ zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayou
       layouts[i] = dsl;
    dsai.pSetLayouts = layouts;
 
-   if (VKSCR(AllocateDescriptorSets)(screen->dev, &dsai, sets) != VK_SUCCESS) {
-      mesa_loge("ZINK: %" PRIu64 " failed to allocate descriptor set :/", (uint64_t)dsl);
+   VkResult result = VKSCR(AllocateDescriptorSets)(screen->dev, &dsai, sets);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: %" PRIu64 " failed to allocate descriptor set :/ (%s)", (uint64_t)dsl, vk_Result_to_str(result));
       return false;
    }
    return true;
@@ -1956,8 +1959,9 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
    
    dcslci.bindingCount = num_bindings;
    dcslci.pBindings = bindings;
-   if (VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &ctx->dd->bindless_layout) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateDescriptorSetLayout failed");
+   VkResult result = VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &ctx->dd->bindless_layout);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateDescriptorSetLayout failed (%s)", vk_Result_to_str(result));
       return;
    }
 
@@ -1972,8 +1976,9 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
    dpci.poolSizeCount = 4;
    dpci.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
    dpci.maxSets = 1;
-   if (VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &ctx->dd->bindless_pool) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateDescriptorPool failed");
+   result = VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &ctx->dd->bindless_pool);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateDescriptorPool failed (%s)", vk_Result_to_str(result));
       return;
    }
 

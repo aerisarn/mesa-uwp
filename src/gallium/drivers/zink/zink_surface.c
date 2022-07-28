@@ -172,9 +172,10 @@ create_surface(struct pipe_context *pctx,
    if (!actually)
       return surface;
    assert(ivci->image);
-   if (VKSCR(CreateImageView)(screen->dev, ivci, NULL,
-                         &surface->image_view) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateImageView failed");
+   VkResult result = VKSCR(CreateImageView)(screen->dev, ivci, NULL,
+                                            &surface->image_view);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateImageView failed (%s)", vk_Result_to_str(result));
       FREE(surface);
       return NULL;
    }
@@ -363,8 +364,9 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    assert(entry);
    _mesa_hash_table_remove(&res->surface_cache, entry);
    VkImageView image_view;
-   if (VKSCR(CreateImageView)(screen->dev, &ivci, NULL, &image_view) != VK_SUCCESS) {
-      mesa_loge("ZINK: failed to create new imageview");
+   VkResult result = VKSCR(CreateImageView)(screen->dev, &ivci, NULL, &image_view);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: failed to create new imageview (%s)", vk_Result_to_str(result));
       simple_mtx_unlock(&res->surface_mtx);
       return false;
    }

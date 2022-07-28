@@ -29,6 +29,7 @@
  *    Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
  */
 
+#include "zink_context.h"
 #include "zink_bo.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
@@ -682,7 +683,7 @@ zink_bo_map(struct zink_screen *screen, struct zink_bo *bo)
       if (!cpu) {
          VkResult result = VKSCR(MapMemory)(screen->dev, real->mem, 0, real->base.size, 0, &cpu);
          if (result != VK_SUCCESS) {
-            mesa_loge("ZINK: vkMapMemory failed");
+            mesa_loge("ZINK: vkMapMemory failed (%s)", vk_Result_to_str(result));
             simple_mtx_unlock(&real->lock);
             return NULL;
          }

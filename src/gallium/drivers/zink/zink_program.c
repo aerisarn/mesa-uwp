@@ -389,8 +389,9 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg,
    plci.pPushConstantRanges = &pcr[0];
 
    VkPipelineLayout layout;
-   if (VKSCR(CreatePipelineLayout)(screen->dev, &plci, NULL, &layout) != VK_SUCCESS) {
-      mesa_loge("vkCreatePipelineLayout failed");
+   VkResult result = VKSCR(CreatePipelineLayout)(screen->dev, &plci, NULL, &layout);
+   if (result != VK_SUCCESS) {
+      mesa_loge("vkCreatePipelineLayout failed (%s)", vk_Result_to_str(result));
       return VK_NULL_HANDLE;
    }
 

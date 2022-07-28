@@ -118,9 +118,9 @@ struct pipe_resource;
 """
 
 impl_code = """
+#include "vk_enum_to_str.h"
 #include "zink_instance.h"
 #include "zink_screen.h"
-#include "vk_enum_to_str.h"
 
 bool
 zink_create_instance(struct zink_screen *screen)

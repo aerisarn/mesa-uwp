@@ -221,8 +221,9 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    rpci.pDependencies = input_count ? fbfetch_deps : deps;
 
    VkRenderPass render_pass;
-   if (VKSCR(CreateRenderPass2)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateRenderPass2 failed");
+   VkResult result = VKSCR(CreateRenderPass2)(screen->dev, &rpci, NULL, &render_pass);
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateRenderPass2 failed (%s)", vk_Result_to_str(result));
       return VK_NULL_HANDLE;
    }
 

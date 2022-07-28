@@ -47,6 +47,7 @@
 #include "util/slab.h"
 #include "util/list.h"
 #include "util/u_dynarray.h"
+#include "vk_enum_to_str.h"
 
 #include <vulkan/vulkan.h>
 
