@@ -141,6 +141,8 @@ static void si_emit_cull_state(struct si_context *sctx)
     *
     * So pass only the first 4 bits of the float exponent to the shader.
     */
+   SET_FIELD(sctx->current_gs_state, GS_STATE_SMALL_PRIM_PRECISION_NO_AA,
+             (fui(info.small_prim_precision_no_aa) >> 23) & 0xf);
    SET_FIELD(sctx->current_gs_state, GS_STATE_SMALL_PRIM_PRECISION,
              (fui(info.small_prim_precision) >> 23) & 0xf);
 }

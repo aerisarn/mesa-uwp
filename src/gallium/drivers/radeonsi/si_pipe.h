@@ -913,8 +913,8 @@ struct si_small_prim_cull_info {
    float scale[2], translate[2];
    float scale_no_aa[2], translate_no_aa[2];
    float clip_half_line_width[2];      /* line_width * 0.5 in clip space in X and Y directions */
-   float small_prim_precision_no_aa;   /* same as the small prim precision, but ignores MSAA */
    /* The above fields are uploaded to memory. The below fields are passed via user SGPRs. */
+   float small_prim_precision_no_aa;   /* same as the small prim precision, but ignores MSAA */
    float small_prim_precision;
 };
 
