@@ -37,6 +37,7 @@
 #include "tu_dynamic_rendering.h"
 #include "tu_formats.h"
 #include "tu_image.h"
+#include "tu_lrz.h"
 #include "tu_perfetto.h"
 #include "tu_pipeline.h"
 #include "tu_query.h"
@@ -850,35 +851,6 @@ struct tu_cache_state {
    enum tu_cmd_flush_bits flush_bits;
 };
 
-enum tu_lrz_force_disable_mask {
-   TU_LRZ_FORCE_DISABLE_LRZ = 1 << 0,
-   TU_LRZ_FORCE_DISABLE_WRITE = 1 << 1,
-};
-
-enum tu_lrz_direction {
-   TU_LRZ_UNKNOWN,
-   /* Depth func less/less-than: */
-   TU_LRZ_LESS,
-   /* Depth func greater/greater-than: */
-   TU_LRZ_GREATER,
-};
-
-struct tu_lrz_state
-{
-   /* Depth/Stencil image currently on use to do LRZ */
-   const struct tu_image_view *image_view;
-   VkClearValue depth_clear_value;
-   /* If LRZ is in invalid state we cannot use it until depth is cleared */
-   bool valid : 1;
-   /* Allows to temporary disable LRZ */
-   bool enabled : 1;
-   bool fast_clear : 1;
-   bool gpu_dir_tracking : 1;
-   /* Continue using old LRZ state (LOAD_OP_LOAD of depth) */
-   bool reuse_previous_state : 1;
-   enum tu_lrz_direction prev_direction;
-};
-
 struct tu_vs_params {
    uint32_t vertex_offset;
    uint32_t first_instance;
@@ -1294,46 +1266,6 @@ struct tu_event
    struct vk_object_base base;
    struct tu_bo *bo;
 };
-
-void
-tu6_emit_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
-
-void
-tu_disable_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-               struct tu_image *image);
-
-void
-tu_lrz_clear_depth_image(struct tu_cmd_buffer *cmd,
-                         struct tu_image *image,
-                         const VkClearDepthStencilValue *pDepthStencil,
-                         uint32_t rangeCount,
-                         const VkImageSubresourceRange *pRanges);
-
-void
-tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
-                        const VkClearValue *clear_values);
-
-void
-tu_lrz_begin_resumed_renderpass(struct tu_cmd_buffer *cmd,
-                                const VkClearValue *clear_values);
-
-void
-tu_lrz_begin_secondary_cmdbuf(struct tu_cmd_buffer *cmd);
-
-void
-tu_lrz_tiling_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
-
-void
-tu_lrz_tiling_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
-
-void
-tu_lrz_sysmem_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
-
-void
-tu_lrz_sysmem_end(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
-
-void
-tu_lrz_disable_during_renderpass(struct tu_cmd_buffer *cmd);
 
 void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples,
                    enum a5xx_line_mode line_mode);

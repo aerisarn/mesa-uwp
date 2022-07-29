@@ -21,6 +21,7 @@
  * SOFTWARE.
  */
 
+#include "tu_lrz.h"
 #include "tu_private.h"
 
 #include "tu_cs.h"
