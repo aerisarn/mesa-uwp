@@ -25,6 +25,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_pipeline.h"
+
 #include "common/freedreno_guardband.h"
 #include "tu_private.h"
 
