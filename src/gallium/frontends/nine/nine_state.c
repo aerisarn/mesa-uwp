@@ -1437,11 +1437,8 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
         }
     }
     if (unlikely(State == D3DRS_ALPHATESTENABLE && (context->rs[NINED3DRS_ALPHACOVERAGE] & 2))) {
-        DWORD alphacoverage_prev = context->rs[NINED3DRS_ALPHACOVERAGE];
         context->rs[NINED3DRS_ALPHACOVERAGE] &= 6;
-        context->rs[NINED3DRS_ALPHACOVERAGE] |= (context->rs[D3DRS_ALPHATESTENABLE] ? 1 : 0);
-        if (context->rs[NINED3DRS_ALPHACOVERAGE] != alphacoverage_prev)
-            context->changed.group |= NINE_STATE_BLEND;
+        context->rs[NINED3DRS_ALPHACOVERAGE] |= (Value ? 1 : 0);
     }
 
     context->rs[State] = nine_fix_render_state_value(State, Value);
