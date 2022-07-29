@@ -394,11 +394,9 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    LLVMValueRef input;
    LLVMValueRef buffer_index;
    unsigned attrib_index = driver_location - VERT_ATTRIB_GENERIC0;
-   unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[attrib_index];
-   unsigned data_format = attrib_format & 0x0f;
-   unsigned num_format = (attrib_format >> 4) & 0x07;
-   bool is_float =
-      num_format != V_008F0C_BUF_NUM_FORMAT_UINT && num_format != V_008F0C_BUF_NUM_FORMAT_SINT;
+   enum pipe_format attrib_format = ctx->options->key.vs.vertex_attribute_formats[attrib_index];
+   const struct util_format_description *desc = util_format_description(attrib_format);
+   bool is_float = !desc->channel[0].pure_integer;
    uint8_t input_usage_mask =
       ctx->shader_info->vs.input_usage_mask[driver_location];
    unsigned num_input_channels = util_last_bit(input_usage_mask);
@@ -424,13 +422,17 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
                                   ac_get_arg(&ctx->ac, ctx->args->ac.base_vertex), "");
    }
 
-   const struct ac_data_format_info *vtx_info = ac_get_data_format_info(data_format);
+   const struct ac_vtx_format_info *vtx_info =
+      ac_get_vtx_format_info(GFX8, CHIP_POLARIS10, attrib_format);
 
    /* Adjust the number of channels to load based on the vertex attribute format. */
    unsigned num_channels = MIN2(num_input_channels, vtx_info->num_channels);
    unsigned attrib_binding = ctx->options->key.vs.vertex_attribute_bindings[attrib_index];
    unsigned attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[attrib_index];
    unsigned attrib_stride = ctx->options->key.vs.vertex_attribute_strides[attrib_index];
+
+   unsigned data_format = vtx_info->hw_format[num_channels - 1] & 0xf;
+   unsigned num_format = vtx_info->hw_format[0] >> 4;
 
    unsigned desc_index =
       ctx->shader_info->vs.use_per_attribute_vb_descs ? attrib_index : attrib_binding;
@@ -444,8 +446,9 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
     * dynamic) is unaligned and also if the VBO offset is aligned to a scalar (eg. stride is 8 and
     * VBO offset is 2 for R16G16B16A16_SNORM).
     */
-   if ((ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10) && vtx_info->chan_byte_size) {
-      unsigned chan_format = vtx_info->chan_format;
+   if (((ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10) && vtx_info->chan_byte_size) ||
+       !(vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1))) {
+      unsigned chan_format = vtx_info->hw_format[0] & 0xf;
       LLVMValueRef values[4];
 
       for (unsigned chan = 0; chan < num_channels; chan++) {

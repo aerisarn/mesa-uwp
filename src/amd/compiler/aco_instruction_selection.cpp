@@ -5386,11 +5386,10 @@ visit_load_interpolated_input(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 bool
-check_vertex_fetch_size(isel_context* ctx, const ac_data_format_info* vtx_info, unsigned offset,
+check_vertex_fetch_size(isel_context* ctx, const ac_vtx_format_info* vtx_info, unsigned offset,
                         unsigned binding_align, unsigned channels)
 {
-   unsigned vertex_byte_size = vtx_info->chan_byte_size * channels;
-   if (vtx_info->chan_byte_size != 4 && channels == 3)
+   if (!(vtx_info->has_hw_format & BITFIELD_BIT(channels - 1)))
       return false;
 
    /* Split typed vertex buffer loads on GFX6 and GFX10+ to avoid any
@@ -5399,17 +5398,18 @@ check_vertex_fetch_size(isel_context* ctx, const ac_data_format_info* vtx_info, 
     * also if the VBO offset is aligned to a scalar (eg. stride is 8 and VBO
     * offset is 2 for R16G16B16A16_SNORM).
     */
+   unsigned vertex_byte_size = vtx_info->chan_byte_size * channels;
    return (ctx->options->gfx_level >= GFX7 && ctx->options->gfx_level <= GFX9) ||
           (offset % vertex_byte_size == 0 && MAX2(binding_align, 1) % vertex_byte_size == 0);
 }
 
 uint8_t
-get_fetch_data_format(isel_context* ctx, const ac_data_format_info* vtx_info, unsigned offset,
-                      unsigned* channels, unsigned max_channels, unsigned binding_align)
+get_fetch_format(isel_context* ctx, const ac_vtx_format_info* vtx_info, unsigned offset,
+                 unsigned* channels, unsigned max_channels, unsigned binding_align)
 {
    if (!vtx_info->chan_byte_size) {
       *channels = vtx_info->num_channels;
-      return vtx_info->chan_format;
+      return vtx_info->hw_format[0];
    }
 
    unsigned num_channels = *channels;
@@ -5434,22 +5434,7 @@ get_fetch_data_format(isel_context* ctx, const ac_data_format_info* vtx_info, un
       num_channels = new_channels;
    }
 
-   switch (vtx_info->chan_format) {
-   case V_008F0C_BUF_DATA_FORMAT_8:
-      return std::array<uint8_t, 4>{V_008F0C_BUF_DATA_FORMAT_8, V_008F0C_BUF_DATA_FORMAT_8_8,
-                                    V_008F0C_BUF_DATA_FORMAT_INVALID,
-                                    V_008F0C_BUF_DATA_FORMAT_8_8_8_8}[num_channels - 1];
-   case V_008F0C_BUF_DATA_FORMAT_16:
-      return std::array<uint8_t, 4>{V_008F0C_BUF_DATA_FORMAT_16, V_008F0C_BUF_DATA_FORMAT_16_16,
-                                    V_008F0C_BUF_DATA_FORMAT_INVALID,
-                                    V_008F0C_BUF_DATA_FORMAT_16_16_16_16}[num_channels - 1];
-   case V_008F0C_BUF_DATA_FORMAT_32:
-      return std::array<uint8_t, 4>{V_008F0C_BUF_DATA_FORMAT_32, V_008F0C_BUF_DATA_FORMAT_32_32,
-                                    V_008F0C_BUF_DATA_FORMAT_32_32_32,
-                                    V_008F0C_BUF_DATA_FORMAT_32_32_32_32}[num_channels - 1];
-   }
-   unreachable("shouldn't reach here");
-   return V_008F0C_BUF_DATA_FORMAT_INVALID;
+   return vtx_info->hw_format[num_channels - 1];
 }
 
 void
@@ -5503,12 +5488,12 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
       unsigned attrib_binding = ctx->options->key.vs.vertex_attribute_bindings[location];
       uint32_t attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[location];
       uint32_t attrib_stride = ctx->options->key.vs.vertex_attribute_strides[location];
-      unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[location];
+      enum pipe_format attrib_format =
+         (enum pipe_format)ctx->options->key.vs.vertex_attribute_formats[location];
       unsigned binding_align = ctx->options->key.vs.vertex_binding_align[attrib_binding];
 
-      unsigned dfmt = attrib_format & 0xf;
-      unsigned nfmt = (attrib_format >> 4) & 0x7;
-      const struct ac_data_format_info* vtx_info = ac_get_data_format_info(dfmt);
+      const struct ac_vtx_format_info* vtx_info =
+         ac_get_vtx_format_info(GFX8, CHIP_POLARIS10, attrib_format);
 
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa) << component;
       unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
@@ -5559,15 +5544,11 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
          /* use MUBUF when possible to avoid possible alignment issues */
          /* TODO: we could use SDWA to unpack 8/16-bit attributes without extra instructions */
-         bool use_mubuf =
-            (nfmt == V_008F0C_BUF_NUM_FORMAT_FLOAT || nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
-             nfmt == V_008F0C_BUF_NUM_FORMAT_SINT) &&
-            vtx_info->chan_byte_size == 4 && bitsize != 16;
-         unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
+         bool use_mubuf = vtx_info->chan_byte_size == 4 && bitsize != 16;
+         unsigned fetch_fmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
          if (!use_mubuf) {
-            fetch_dfmt =
-               get_fetch_data_format(ctx, vtx_info, fetch_offset, &fetch_component,
-                                     vtx_info->num_channels - channel_start, binding_align);
+            fetch_fmt = get_fetch_format(ctx, vtx_info, fetch_offset, &fetch_component,
+                                         vtx_info->num_channels - channel_start, binding_align);
          } else {
             /* GFX6 only supports loading vec3 with MTBUF, split to vec2,scalar. */
             if (fetch_component == 3 && ctx->options->gfx_level == GFX6)
@@ -5644,8 +5625,10 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
                                     .instr;
             mubuf->mubuf().vtx_binding = attrib_binding + 1;
          } else {
+            unsigned dfmt = fetch_fmt & 0xf;
+            unsigned nfmt = fetch_fmt >> 4;
             Instruction* mtbuf = bld.mtbuf(opcode, Definition(fetch_dst), list, fetch_index,
-                                           soffset, fetch_dfmt, nfmt, fetch_offset, false, true)
+                                           soffset, dfmt, nfmt, fetch_offset, false, true)
                                     .instr;
             mtbuf->mtbuf().vtx_binding = attrib_binding + 1;
          }
@@ -5665,7 +5648,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (!direct_fetch) {
          bool is_float =
-            nfmt != V_008F0C_BUF_NUM_FORMAT_UINT && nfmt != V_008F0C_BUF_NUM_FORMAT_SINT;
+            nir_alu_type_get_base_type(nir_intrinsic_dest_type(instr)) == nir_type_float;
 
          unsigned num_components = instr->dest.ssa.num_components;
 

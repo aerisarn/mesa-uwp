@@ -416,30 +416,19 @@ init_context(isel_context* ctx, nir_shader* shader)
    ctx->ub_config.max_workgroup_size[1] = 2048;
    ctx->ub_config.max_workgroup_size[2] = 2048;
    for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
-      unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[i];
-      unsigned dfmt = attrib_format & 0xf;
-      unsigned nfmt = (attrib_format >> 4) & 0x7;
+      pipe_format format = (pipe_format)ctx->options->key.vs.vertex_attribute_formats[i];
+      const struct util_format_description* desc = util_format_description(format);
 
-      uint32_t max = UINT32_MAX;
-      if (nfmt == V_008F0C_BUF_NUM_FORMAT_UNORM) {
+      uint32_t max;
+      if (desc->channel[0].type != UTIL_FORMAT_TYPE_UNSIGNED) {
+         max = UINT32_MAX;
+      } else if (desc->channel[0].normalized) {
          max = 0x3f800000u;
-      } else if (nfmt == V_008F0C_BUF_NUM_FORMAT_UINT || nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED) {
-         bool uscaled = nfmt == V_008F0C_BUF_NUM_FORMAT_USCALED;
-         switch (dfmt) {
-         case V_008F0C_BUF_DATA_FORMAT_8:
-         case V_008F0C_BUF_DATA_FORMAT_8_8:
-         case V_008F0C_BUF_DATA_FORMAT_8_8_8_8: max = uscaled ? 0x437f0000u : UINT8_MAX; break;
-         case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
-         case V_008F0C_BUF_DATA_FORMAT_2_10_10_10: max = uscaled ? 0x447fc000u : 1023; break;
-         case V_008F0C_BUF_DATA_FORMAT_10_11_11:
-         case V_008F0C_BUF_DATA_FORMAT_11_11_10: max = uscaled ? 0x44ffe000u : 2047; break;
-         case V_008F0C_BUF_DATA_FORMAT_16:
-         case V_008F0C_BUF_DATA_FORMAT_16_16:
-         case V_008F0C_BUF_DATA_FORMAT_16_16_16_16: max = uscaled ? 0x477fff00u : UINT16_MAX; break;
-         case V_008F0C_BUF_DATA_FORMAT_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32_32:
-         case V_008F0C_BUF_DATA_FORMAT_32_32_32_32: max = uscaled ? 0x4f800000u : UINT32_MAX; break;
+      } else {
+         max = 0;
+         for (unsigned j = 0; j < desc->nr_channels; j++) {
+            uint32_t chan_max = u_uintN_max(desc->channel[0].size);
+            max = MAX2(max, desc->channel[j].pure_integer ? chan_max : fui(chan_max));
          }
       }
       ctx->ub_config.vertex_attrib_max[i] = max;

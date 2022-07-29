@@ -3010,6 +3010,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
                                     const struct radv_blend_state *blend)
 {
    struct radv_device *device = pipeline->base.device;
+   const struct radv_physical_device *pdevice = device->physical_device;
    struct radv_pipeline_key key = radv_generate_pipeline_key(&pipeline->base, pCreateInfo->flags);
 
    key.has_multiview_view_index = !!state->rp->view_mask;
@@ -3023,16 +3024,9 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       u_foreach_bit(i, state->vi->attributes_valid) {
          uint32_t binding = state->vi->attributes[i].binding;
          uint32_t offset = state->vi->attributes[i].offset;
-         VkFormat format = state->vi->attributes[i].format;
-         const struct util_format_description *format_desc;
-         unsigned num_format, data_format;
-         bool post_shuffle;
+         enum pipe_format format = vk_format_to_pipe_format(state->vi->attributes[i].format);
 
-         format_desc = vk_format_description(format);
-         radv_translate_vertex_format(device->physical_device, format, format_desc, &data_format,
-                                      &num_format, &post_shuffle, &key.vs.vertex_alpha_adjust[i]);
-
-         key.vs.vertex_attribute_formats[i] = data_format | (num_format << 4);
+         key.vs.vertex_attribute_formats[i] = format;
          key.vs.vertex_attribute_bindings[i] = binding;
          key.vs.vertex_attribute_offsets[i] = offset;
          key.vs.instance_rate_divisors[i] = state->vi->bindings[binding].divisor;
@@ -3056,13 +3050,10 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
             key.vs.instance_rate_inputs |= 1u << i;
          }
 
-         if (post_shuffle) {
-            key.vs.vertex_post_shuffle |= 1u << i;
-         }
-
-         const struct ac_data_format_info *dfmt_info = ac_get_data_format_info(data_format);
+         const struct ac_vtx_format_info *vtx_info =
+            ac_get_vtx_format_info(pdevice->rad_info.gfx_level, pdevice->rad_info.family, format);
          unsigned attrib_align =
-            dfmt_info->chan_byte_size ? dfmt_info->chan_byte_size : dfmt_info->element_size;
+            vtx_info->chan_byte_size ? vtx_info->chan_byte_size : vtx_info->element_size;
 
          /* If offset is misaligned, then the buffer offset must be too. Just skip updating
           * vertex_binding_align in this case.
@@ -3803,7 +3794,8 @@ radv_adjust_vertex_fetch_alpha(nir_builder *b, enum ac_vs_input_alpha_adjust alp
 }
 
 static bool
-radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_key)
+radv_lower_vs_input(nir_shader *nir, const struct radv_physical_device *pdevice,
+                    const struct radv_pipeline_key *pipeline_key)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
@@ -3824,25 +3816,22 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
             continue;
 
          unsigned location = nir_intrinsic_base(intrin) - VERT_ATTRIB_GENERIC0;
-         enum ac_vs_input_alpha_adjust alpha_adjust =
-            pipeline_key->vs.vertex_alpha_adjust[location];
-         bool post_shuffle = pipeline_key->vs.vertex_post_shuffle & (1 << location);
 
          unsigned component = nir_intrinsic_component(intrin);
          unsigned num_components = intrin->dest.ssa.num_components;
 
-         unsigned attrib_format = pipeline_key->vs.vertex_attribute_formats[location];
-         unsigned dfmt = attrib_format & 0xf;
-         unsigned nfmt = (attrib_format >> 4) & 0x7;
-         const struct ac_data_format_info *vtx_info = ac_get_data_format_info(dfmt);
+         enum pipe_format attrib_format = pipeline_key->vs.vertex_attribute_formats[location];
+         const struct ac_vtx_format_info *desc = ac_get_vtx_format_info(
+            pdevice->rad_info.gfx_level, pdevice->rad_info.family, attrib_format);
          bool is_float =
-            nfmt != V_008F0C_BUF_NUM_FORMAT_UINT && nfmt != V_008F0C_BUF_NUM_FORMAT_SINT;
+            nir_alu_type_get_base_type(nir_intrinsic_dest_type(intrin)) == nir_type_float;
 
          unsigned mask = nir_ssa_def_components_read(&intrin->dest.ssa) << component;
-         unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
+         unsigned num_channels = MIN2(util_last_bit(mask), desc->num_channels);
 
          static const unsigned swizzle_normal[4] = {0, 1, 2, 3};
          static const unsigned swizzle_post_shuffle[4] = {2, 1, 0, 3};
+         bool post_shuffle = G_008F0C_DST_SEL_X(desc->dst_sel) == V_008F0C_SQ_SEL_Z;
          const unsigned *swizzle = post_shuffle ? swizzle_post_shuffle : swizzle_normal;
 
          b.cursor = nir_after_instr(instr);
@@ -3871,9 +3860,9 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
             }
          }
 
-         if (alpha_adjust != AC_ALPHA_ADJUST_NONE && component + num_components == 4) {
+         if (desc->alpha_adjust != AC_ALPHA_ADJUST_NONE && component + num_components == 4) {
             unsigned idx = num_components - 1;
-            channels[idx] = radv_adjust_vertex_fetch_alpha(&b, alpha_adjust, channels[idx]);
+            channels[idx] = radv_adjust_vertex_fetch_alpha(&b, desc->alpha_adjust, channels[idx]);
          }
 
          nir_ssa_def *new_dest = nir_vec(&b, channels, num_components);
@@ -4579,7 +4568,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    if (stages[MESA_SHADER_VERTEX].nir) {
-      NIR_PASS(_, stages[MESA_SHADER_VERTEX].nir, radv_lower_vs_input, pipeline_key);
+      NIR_PASS(_, stages[MESA_SHADER_VERTEX].nir, radv_lower_vs_input, device->physical_device,
+               pipeline_key);
    }
 
    if (stages[MESA_SHADER_FRAGMENT].nir && !radv_use_llvm_for_stage(device, MESA_SHADER_FRAGMENT)) {
