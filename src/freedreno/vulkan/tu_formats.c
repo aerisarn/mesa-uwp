@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_formats.h"
 #include "tu_private.h"
 
 #include "fdl/fd6_format_table.h"

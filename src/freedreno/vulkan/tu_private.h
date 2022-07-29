@@ -33,6 +33,7 @@
 #include "tu_cs.h"
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
+#include "tu_formats.h"
 #include "tu_image.h"
 #include "tu_perfetto.h"
 #include "tu_query.h"
@@ -1777,30 +1778,6 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
 
 void
 tu_choose_gmem_layout(struct tu_cmd_buffer *cmd);
-
-enum pipe_format tu_vk_format_to_pipe_format(VkFormat vk_format);
-
-struct tu_native_format
-{
-   enum a6xx_format fmt : 8;
-   enum a3xx_color_swap swap : 8;
-   enum a6xx_tile_mode tile_mode : 8;
-};
-
-enum pipe_format tu_vk_format_to_pipe_format(VkFormat vk_format);
-bool tu6_format_vtx_supported(VkFormat format);
-struct tu_native_format tu6_format_vtx(VkFormat format);
-bool tu6_format_color_supported(enum pipe_format format);
-struct tu_native_format tu6_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode);
-bool tu6_format_texture_supported(enum pipe_format format);
-struct tu_native_format tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode);
-
-static inline enum a6xx_format
-tu6_base_format(enum pipe_format format)
-{
-   /* note: tu6_format_color doesn't care about tiling for .fmt field */
-   return tu6_format_color(format, TILE6_LINEAR).fmt;
-}
 
 struct tu_sampler_ycbcr_conversion {
    struct vk_object_base base;
