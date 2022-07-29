@@ -43,6 +43,8 @@
 uint32_t mesa_spirv_debug = 0;
 
 static const struct debug_named_value mesa_spirv_debug_control[] = {
+   { "structured", MESA_SPIRV_DEBUG_STRUCTURED,
+     "Print information of the SPIR-V structured control flow parsing" },
    DEBUG_NAMED_VALUE_END,
 };
 
@@ -6694,8 +6696,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    bool progress;
    do {
       progress = false;
-      vtn_foreach_cf_node(node, &b->functions) {
-         struct vtn_function *func = vtn_cf_node_as_function(node);
+      vtn_foreach_function(func, &b->functions) {
          if ((options->create_library || func->referenced) && !func->emitted) {
             b->const_table = _mesa_pointer_hash_table_create(b);
 
@@ -6719,6 +6720,9 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
 
    /* structurize the CFG */
    nir_lower_goto_ifs(b->shader);
+
+   nir_validate_shader(b->shader, "after spirv cfg");
+
    nir_lower_continue_constructs(b->shader);
 
    /* A SPIR-V module can have multiple shaders stages and also multiple
