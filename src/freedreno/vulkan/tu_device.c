@@ -25,6 +25,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_device.h"
 #include "tu_private.h"
 #include "tu_cs.h"
 #include "tu_tracepoints.h"

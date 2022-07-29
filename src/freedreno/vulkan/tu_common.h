@@ -121,12 +121,16 @@ struct tu_descriptor_set;
 struct tu_descriptor_set_layout;
 struct tu_descriptor_update_template;
 struct tu_device;
+struct tu_device_memory;
+struct tu_event;
+struct tu_framebuffer;
 struct tu_image;
 struct tu_image_view;
 struct tu_instance;
 struct tu_physical_device;
 struct tu_pipeline_layout;
 struct tu_query_pool;
+struct tu_queue;
 struct tu_render_pass;
 struct tu_sampler;
 struct tu_sampler_ycbcr_conversion;
@@ -138,5 +142,6 @@ struct tu_cs_entry;
 struct tu_suballoc_bo;
 struct tu_suballocator;
 struct tu_subpass;
+struct tu_u_trace_submission_data;
 
 #endif /* TU_COMMON_H */
