@@ -22,6 +22,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_drm.h"
+
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>

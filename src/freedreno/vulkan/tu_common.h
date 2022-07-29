@@ -112,4 +112,10 @@
 #define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
    VK_FROM_HANDLE(__tu_type, __name, __handle)
 
+/* vk object types */
+struct tu_device;
+struct tu_instance;
+
+struct tu_bo;
+
 #endif /* TU_COMMON_H */

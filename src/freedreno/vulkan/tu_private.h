@@ -29,10 +29,11 @@
 #define TU_PRIVATE_H
 
 #include "tu_common.h"
-#include "tu_descriptor_set.h"
 #include "tu_autotune.h"
-#include "tu_util.h"
+#include "tu_descriptor_set.h"
+#include "tu_drm.h"
 #include "tu_perfetto.h"
+#include "tu_util.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -46,7 +47,6 @@ typedef uint32_t xcb_window_t;
  * propagating errors. Might be useful to plug in a stack trace here.
  */
 
-struct tu_instance;
 struct breadcrumbs_context;
 
 VkResult
@@ -198,13 +198,6 @@ bool
 tu_physical_device_extension_supported(struct tu_physical_device *dev,
                                        const char *name);
 
-enum tu_bo_alloc_flags
-{
-   TU_BO_ALLOC_NO_FLAGS = 0,
-   TU_BO_ALLOC_ALLOW_DUMP = 1 << 0,
-   TU_BO_ALLOC_GPU_READ_ONLY = 1 << 1,
-};
-
 struct cache_entry;
 
 struct tu_pipeline_cache
@@ -233,35 +226,6 @@ struct tu_pipeline_key
 
 #define TU_MAX_QUEUE_FAMILIES 1
 
-/* Keep tu_syncobj until porting to common code for kgsl too */
-#ifdef TU_USE_KGSL
-struct tu_syncobj;
-#endif
-struct tu_u_trace_syncobj;
-
-/* Define tu_timeline_sync type based on drm syncobj for a point type
- * for vk_sync_timeline, and the logic to handle is mostly copied from
- * anv_bo_sync since it seems it can be used by similar way to anv.
- */
-enum tu_timeline_sync_state {
-   /** Indicates that this is a new (or newly reset fence) */
-   TU_TIMELINE_SYNC_STATE_RESET,
-
-   /** Indicates that this fence has been submitted to the GPU but is still
-    * (as far as we know) in use by the GPU.
-    */
-   TU_TIMELINE_SYNC_STATE_SUBMITTED,
-
-   TU_TIMELINE_SYNC_STATE_SIGNALED,
-};
-
-struct tu_timeline_sync {
-   struct vk_sync base;
-
-   enum tu_timeline_sync_state state;
-   uint32_t syncobj;
-};
-
 struct tu_queue
 {
    struct vk_queue vk;
@@ -270,21 +234,6 @@ struct tu_queue
 
    uint32_t msm_queue_id;
    int fence;
-};
-
-struct tu_bo
-{
-   uint32_t gem_handle;
-   uint64_t size;
-   uint64_t iova;
-   void *map;
-   int32_t refcnt;
-
-#ifndef TU_USE_KGSL
-   uint32_t bo_list_idx;
-#endif
-
-   bool implicit_sync : 1;
 };
 
 /* externally-synchronized BO suballocator. */
@@ -554,41 +503,13 @@ VkResult tu_insert_dynamic_cmdbufs(struct tu_device *dev,
 VkResult
 tu_device_submit_deferred_locked(struct tu_device *dev);
 
-VkResult
-tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj);
-
 uint64_t
 tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);
-
-VkResult
-tu_device_check_status(struct vk_device *vk_device);
-
-VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo **bo, uint64_t size,
-               enum tu_bo_alloc_flags flags);
-VkResult
-tu_bo_init_dmabuf(struct tu_device *dev,
-                  struct tu_bo **bo,
-                  uint64_t size,
-                  int fd);
-int
-tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo);
-void
-tu_bo_finish(struct tu_device *dev, struct tu_bo *bo);
-VkResult
-tu_bo_map(struct tu_device *dev, struct tu_bo *bo);
 
 static inline struct tu_bo *
 tu_device_lookup_bo(struct tu_device *device, uint32_t handle)
 {
    return (struct tu_bo *) util_sparse_array_get(&device->bo_map, handle);
-}
-
-static inline struct tu_bo *
-tu_bo_get_ref(struct tu_bo *bo)
-{
-   p_atomic_inc(&bo->refcnt);
-   return bo;
 }
 
 /* Get a scratch bo for use inside a command buffer. This will always return
@@ -2192,31 +2113,6 @@ tu_update_descriptor_set_with_template(
 VkResult
 tu_physical_device_init(struct tu_physical_device *device,
                         struct tu_instance *instance);
-VkResult
-tu_enumerate_devices(struct tu_instance *instance);
-
-int
-tu_device_get_gpu_timestamp(struct tu_device *dev,
-                            uint64_t *ts);
-
-int
-tu_device_get_suspend_count(struct tu_device *dev,
-                            uint64_t *suspend_count);
-
-int
-tu_drm_submitqueue_new(const struct tu_device *dev,
-                       int priority,
-                       uint32_t *queue_id);
-
-void
-tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
-
-int
-tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync);
-
-VkResult
-tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit);
-
 void
 tu_copy_timestamp_buffer(struct u_trace_context *utctx, void *cmdstream,
                          void *ts_from, uint32_t from_offset,
@@ -2316,9 +2212,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, base, VkSamplerYcbcrConversion,
                                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
-
-/* for TU_FROM_HANDLE with both VkFence and VkSemaphore: */
-#define tu_syncobj_from_handle(x) ((struct tu_syncobj*) (uintptr_t) (x))
 
 void
 update_stencil_mask(uint32_t *value, VkStencilFaceFlags face, uint32_t mask);
