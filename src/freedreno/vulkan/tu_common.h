@@ -113,7 +113,11 @@
    VK_FROM_HANDLE(__tu_type, __name, __handle)
 
 /* vk object types */
+struct tu_buffer;
+struct tu_buffer_view;
 struct tu_device;
+struct tu_image;
+struct tu_image_view;
 struct tu_instance;
 struct tu_query_pool;
 

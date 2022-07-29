@@ -25,7 +25,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_image.h"
 #include "tu_private.h"
+
 #include "fdl/fd6_format_table.h"
 
 #include "util/debug.h"

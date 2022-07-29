@@ -33,6 +33,7 @@
 #include "tu_cs.h"
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
+#include "tu_image.h"
 #include "tu_perfetto.h"
 #include "tu_query.h"
 #include "tu_suballoc.h"
@@ -1627,8 +1628,6 @@ struct tu_pipeline
    struct util_dynarray executables;
 };
 
-struct tu_image;
-
 void
 tu6_clear_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image, const VkClearValue *value);
 
@@ -1736,8 +1735,6 @@ tu6_emit_vpc(struct tu_cs *cs,
 void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs);
 
-struct tu_image_view;
-
 void
 tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
                   struct tu_cs *cs,
@@ -1805,56 +1802,6 @@ tu6_base_format(enum pipe_format format)
    return tu6_format_color(format, TILE6_LINEAR).fmt;
 }
 
-struct tu_image
-{
-   struct vk_image vk;
-
-   struct fdl_layout layout[3];
-   uint32_t total_size;
-
-#ifdef ANDROID
-   /* For VK_ANDROID_native_buffer, the WSI image owns the memory, */
-   VkDeviceMemory owned_memory;
-#endif
-
-   /* Set when bound */
-   struct tu_bo *bo;
-   uint64_t iova;
-
-   uint32_t lrz_height;
-   uint32_t lrz_pitch;
-   uint32_t lrz_offset;
-   uint32_t lrz_fc_offset;
-   uint32_t lrz_fc_size;
-};
-
-uint32_t tu6_plane_count(VkFormat format);
-enum pipe_format tu6_plane_format(VkFormat format, uint32_t plane);
-
-uint32_t tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask);
-
-enum pipe_format tu_format_for_aspect(enum pipe_format format,
-                                      VkImageAspectFlags aspect_mask);
-
-struct tu_image_view
-{
-   struct vk_image_view vk;
-
-   struct tu_image *image; /**< VkImageViewCreateInfo::image */
-
-   struct fdl6_view view;
-
-   /* for d32s8 separate depth */
-   uint64_t depth_base_addr;
-   uint32_t depth_layer_size;
-   uint32_t depth_PITCH;
-
-   /* for d32s8 separate stencil */
-   uint64_t stencil_base_addr;
-   uint32_t stencil_layer_size;
-   uint32_t stencil_PITCH;
-};
-
 struct tu_sampler_ycbcr_conversion {
    struct vk_object_base base;
 
@@ -1873,27 +1820,6 @@ struct tu_sampler {
    struct tu_sampler_ycbcr_conversion *ycbcr_sampler;
 };
 
-void
-tu_cs_image_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer);
-
-void
-tu_cs_image_ref_2d(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer, bool src);
-
-void
-tu_cs_image_flag_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer);
-
-void
-tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
-
-void
-tu_cs_image_depth_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
-
-#define tu_image_view_stencil(iview, x) \
-   ((iview->view.x & ~A6XX_##x##_COLOR_FORMAT__MASK) | A6XX_##x##_COLOR_FORMAT(FMT6_8_UINT))
-
-#define tu_image_view_depth(iview, x) \
-   ((iview->view.x & ~A6XX_##x##_COLOR_FORMAT__MASK) | A6XX_##x##_COLOR_FORMAT(FMT6_32_FLOAT))
-
 VkResult
 tu_gralloc_info(struct tu_device *device,
                 const VkNativeBufferANDROID *gralloc_info,
@@ -1905,27 +1831,6 @@ tu_import_memory_from_gralloc_handle(VkDevice device_h,
                                      int dma_buf,
                                      const VkAllocationCallbacks *alloc,
                                      VkImage image_h);
-
-bool
-tiling_possible(VkFormat format);
-
-bool
-ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, VkImageUsageFlags stencil_usage,
-              const struct fd_dev_info *info, VkSampleCountFlagBits samples,
-              bool use_z24uint_s8uint);
-
-struct tu_buffer_view
-{
-   struct vk_object_base base;
-
-   uint32_t descriptor[A6XX_TEX_CONST_DWORDS];
-
-   struct tu_buffer *buffer;
-};
-void
-tu_buffer_view_init(struct tu_buffer_view *view,
-                    struct tu_device *device,
-                    const VkBufferViewCreateInfo *pCreateInfo);
 
 uint32_t
 tu_subpass_get_attachment_to_resolve(const struct tu_subpass *subpass, uint32_t index);
@@ -2007,8 +1912,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_cmd_pool, vk.base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer, base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer_view, base, VkBufferView,
-                               VK_OBJECT_TYPE_BUFFER_VIEW)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_pool, base, VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set, base, VkDescriptorSet,
@@ -2024,9 +1927,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, base, VkDeviceMemory,
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, vk.base, VkImageView,
-                               VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline, base, VkPipeline,
