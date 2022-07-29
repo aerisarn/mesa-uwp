@@ -913,9 +913,6 @@ struct si_small_prim_cull_info {
    float scale[2], translate[2];
    float scale_no_aa[2], translate_no_aa[2];
    float clip_half_line_width[2];      /* line_width * 0.5 in clip space in X and Y directions */
-   /* The above fields are uploaded to memory. The below fields are passed via user SGPRs. */
-   float small_prim_precision_no_aa;   /* same as the small prim precision, but ignores MSAA */
-   float small_prim_precision;
 };
 
 struct si_vertex_state {
@@ -1585,7 +1582,7 @@ struct pipe_video_buffer *si_video_buffer_create_with_modifiers(struct pipe_cont
                                                                 const uint64_t *modifiers,
                                                                 unsigned int modifiers_count);
 
-/* si_viewport.c */
+/* si_state_viewport.c */
 void si_update_vs_viewport_state(struct si_context *ctx);
 void si_init_viewport_functions(struct si_context *ctx);
 
