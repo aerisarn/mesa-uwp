@@ -25,6 +25,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_cmd_buffer.h"
 #include "tu_private.h"
 
 #include "vk_render_pass.h"
