@@ -115,6 +115,7 @@
 /* vk object types */
 struct tu_device;
 struct tu_instance;
+struct tu_query_pool;
 
 struct breadcrumbs_context;
 struct tu_bo;

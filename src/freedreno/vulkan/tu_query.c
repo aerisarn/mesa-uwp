@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_query.h"
 #include "tu_private.h"
 
 #include <fcntl.h>

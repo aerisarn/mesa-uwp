@@ -34,6 +34,7 @@
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
 #include "tu_perfetto.h"
+#include "tu_query.h"
 #include "tu_suballoc.h"
 #include "tu_util.h"
 
@@ -1926,34 +1927,6 @@ tu_buffer_view_init(struct tu_buffer_view *view,
                     struct tu_device *device,
                     const VkBufferViewCreateInfo *pCreateInfo);
 
-#define PERF_CNTRS_REG 4
-
-struct tu_perf_query_data
-{
-   uint32_t gid;      /* group-id */
-   uint32_t cid;      /* countable-id within the group */
-   uint32_t cntr_reg; /* counter register within the group */
-   uint32_t pass;     /* pass index that countables can be requested */
-   uint32_t app_idx;  /* index provided by apps */
-};
-
-struct tu_query_pool
-{
-   struct vk_object_base base;
-
-   VkQueryType type;
-   uint32_t stride;
-   uint64_t size;
-   uint32_t pipeline_statistics;
-   struct tu_bo *bo;
-
-   /* For performance query */
-   const struct fd_perfcntr_group *perf_group;
-   uint32_t perf_group_count;
-   uint32_t counter_index_count;
-   struct tu_perf_query_data perf_query_data[0];
-};
-
 uint32_t
 tu_subpass_get_attachment_to_resolve(const struct tu_subpass *subpass, uint32_t index);
 
@@ -2060,8 +2033,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_layout, base, VkPipelineLayout,
                                VK_OBJECT_TYPE_PIPELINE_LAYOUT)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_query_pool, base, VkQueryPool,
-                               VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_render_pass, base, VkRenderPass,
                                VK_OBJECT_TYPE_RENDER_PASS)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, base, VkSampler,
