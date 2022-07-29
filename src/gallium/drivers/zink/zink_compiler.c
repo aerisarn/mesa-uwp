@@ -1469,6 +1469,7 @@ rewrite_and_discard_read(nir_builder *b, nir_instr *instr, void *data)
    nir_variable *deref_var = nir_intrinsic_get_var(intr, 0);
    if (deref_var != var)
       return false;
+   b->cursor = nir_before_instr(instr);
    nir_ssa_def *undef = nir_ssa_undef(b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest));
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, undef);
    return true;
