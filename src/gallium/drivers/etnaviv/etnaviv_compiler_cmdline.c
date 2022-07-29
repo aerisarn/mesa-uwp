@@ -113,7 +113,7 @@ main(int argc, char **argv)
       return 1;
    }
 
-   etna_mesa_debug = ETNA_DBG_MSGS;
+   etna_mesa_debug = ETNA_DBG_MSGS | ETNA_DBG_NOCACHE;
 
    while (n < argc) {
       if (!strcmp(argv[n], "--verbose")) {
