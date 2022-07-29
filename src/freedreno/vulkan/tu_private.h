@@ -37,6 +37,7 @@
 #include "tu_image.h"
 #include "tu_perfetto.h"
 #include "tu_query.h"
+#include "tu_shader.h"
 #include "tu_suballoc.h"
 #include "tu_util.h"
 
@@ -1353,27 +1354,6 @@ struct tu_event
    struct tu_bo *bo;
 };
 
-struct tu_push_constant_range
-{
-   uint32_t lo;
-   uint32_t dwords;
-};
-
-struct tu_shader
-{
-   struct ir3_shader *ir3_shader;
-
-   struct tu_push_constant_range push_consts;
-   uint8_t active_desc_sets;
-   bool multi_pos_output;
-};
-
-struct tu_shader_key {
-   unsigned multiview_mask;
-   bool force_sample_interp;
-   enum ir3_wavesize_option api_wavesize, real_wavesize;
-};
-
 struct tu_compiled_shaders
 {
    struct vk_pipeline_cache_object base;
@@ -1386,28 +1366,6 @@ struct tu_compiled_shaders
 };
 
 extern const struct vk_pipeline_cache_object_ops tu_shaders_ops;
-
-bool
-tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, bool *multi_pos_output,
-                       struct tu_device *dev);
-
-nir_shader *
-tu_spirv_to_nir(struct tu_device *dev,
-                void *mem_ctx,
-                const VkPipelineShaderStageCreateInfo *stage_info,
-                gl_shader_stage stage);
-
-struct tu_shader *
-tu_shader_create(struct tu_device *dev,
-                 nir_shader *nir,
-                 const struct tu_shader_key *key,
-                 struct tu_pipeline_layout *layout,
-                 const VkAllocationCallbacks *alloc);
-
-void
-tu_shader_destroy(struct tu_device *dev,
-                  struct tu_shader *shader,
-                  const VkAllocationCallbacks *alloc);
 
 static bool inline
 tu6_shared_constants_enable(const struct tu_pipeline_layout *layout,

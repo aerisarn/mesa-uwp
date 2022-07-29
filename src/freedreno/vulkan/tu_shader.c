@@ -21,6 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_shader.h"
 #include "tu_private.h"
 
 #include "spirv/nir_spirv.h"

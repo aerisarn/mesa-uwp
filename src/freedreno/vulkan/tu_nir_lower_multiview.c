@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "tu_shader.h"
 #include "tu_private.h"
 #include "nir_builder.h"
 
