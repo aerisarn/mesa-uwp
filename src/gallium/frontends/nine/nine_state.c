@@ -2841,10 +2841,10 @@ void nine_state_restore_non_cso(struct NineDevice9 *device)
 {
     struct nine_context *context = &device->context;
 
-    context->changed.group = NINE_STATE_ALL;
+    context->changed.group = NINE_STATE_ALL; /* TODO: we can remove states that have prepared commits */
     context->changed.vtxbuf = (1ULL << device->caps.MaxStreams) - 1;
     context->changed.ucp = TRUE;
-    context->commit |= NINE_STATE_COMMIT_CONST_VS | NINE_STATE_COMMIT_CONST_PS;
+    context->commit |= 0xffffffff; /* re-commit everything */
     context->enabled_sampler_count_vs = 0;
     context->enabled_sampler_count_ps = 0;
 }
