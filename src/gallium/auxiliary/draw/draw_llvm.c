@@ -376,31 +376,32 @@ create_gs_jit_context_type(struct gallivm_state *gallivm,
    LLVMTypeRef elem_types[DRAW_GS_JIT_CTX_NUM_FIELDS];
    LLVMTypeRef context_type;
 
-   elem_types[0] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
-                                 LP_MAX_TGSI_CONST_BUFFERS);
-   elem_types[1] = LLVMArrayType(int_type, /* num_constants */
-                                 LP_MAX_TGSI_CONST_BUFFERS);
-   elem_types[2] = LLVMPointerType(LLVMArrayType(LLVMArrayType(float_type, 4),
-                                                 DRAW_TOTAL_CLIP_PLANES), 0);
-   elem_types[3] = LLVMPointerType(float_type, 0); /* viewports */
+   elem_types[DRAW_GS_JIT_CTX_CONSTANTS] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
+                                                         LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[DRAW_GS_JIT_CTX_NUM_CONSTANTS] = LLVMArrayType(int_type, /* num_constants */
+                                                             LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[DRAW_GS_JIT_CTX_PLANES] = LLVMPointerType(LLVMArrayType(LLVMArrayType(float_type, 4),
+                                                                      DRAW_TOTAL_CLIP_PLANES), 0);
+   elem_types[DRAW_GS_JIT_CTX_VIEWPORT] = LLVMPointerType(float_type, 0); /* viewports */
 
-   elem_types[4] = LLVMArrayType(texture_type,
-                                 PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
-   elem_types[5] = LLVMArrayType(sampler_type,
-                                 PIPE_MAX_SAMPLERS); /* samplers */
-   elem_types[6] = LLVMArrayType(image_type,
-                                 PIPE_MAX_SHADER_IMAGES); /* images */
-   elem_types[7] = LLVMPointerType(LLVMPointerType(int_type, 0), 0);
-   elem_types[8] = LLVMPointerType(LLVMVectorType(int_type,
-                                                  vector_length), 0);
-   elem_types[9] = LLVMPointerType(LLVMVectorType(int_type,
-                                                  vector_length), 0);
+   elem_types[DRAW_GS_JIT_CTX_TEXTURES] = LLVMArrayType(texture_type,
+                                                        PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
+   elem_types[DRAW_GS_JIT_CTX_SAMPLERS] = LLVMArrayType(sampler_type,
+                                                        PIPE_MAX_SAMPLERS); /* samplers */
+   elem_types[DRAW_GS_JIT_CTX_IMAGES] = LLVMArrayType(image_type,
+                                                      PIPE_MAX_SHADER_IMAGES); /* images */
+   elem_types[DRAW_GS_JIT_CTX_PRIM_LENGTHS] = LLVMPointerType(LLVMPointerType(int_type, 0), 0);
+   elem_types[DRAW_GS_JIT_CTX_EMITTED_VERTICES] = LLVMPointerType(LLVMVectorType(int_type,
+                                                                                 vector_length), 0);
+   elem_types[DRAW_GS_JIT_CTX_EMITTED_PRIMS] = LLVMPointerType(LLVMVectorType(int_type,
+                                                                              vector_length), 0);
 
-   elem_types[10] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
+   elem_types[DRAW_GS_JIT_CTX_SSBOS] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
+                                                     LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[DRAW_GS_JIT_CTX_NUM_SSBOS] = LLVMArrayType(int_type, /* num_ssbos */
                                  LP_MAX_TGSI_SHADER_BUFFERS);
-   elem_types[11] = LLVMArrayType(int_type, /* num_ssbos */
-                                 LP_MAX_TGSI_SHADER_BUFFERS);
-   elem_types[12] = LLVMPointerType(float_type, 0); /* aniso table */
+   elem_types[DRAW_GS_JIT_CTX_ANISO_FILTER_TABLE] = LLVMPointerType(float_type, 0); /* aniso table */
+
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
@@ -556,25 +557,25 @@ create_tcs_jit_context_type(struct gallivm_state *gallivm,
    LLVMTypeRef elem_types[DRAW_TCS_JIT_CTX_NUM_FIELDS];
    LLVMTypeRef context_type;
 
-   elem_types[0] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
-                                 LP_MAX_TGSI_CONST_BUFFERS);
-   elem_types[1] = LLVMArrayType(int_type, /* num_constants */
-                                 LP_MAX_TGSI_CONST_BUFFERS);
-   elem_types[2] = LLVMInt32TypeInContext(gallivm->context);
-   elem_types[3] = LLVMInt32TypeInContext(gallivm->context);
+   elem_types[DRAW_TCS_JIT_CTX_CONSTANTS] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
+                                                          LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[DRAW_TCS_JIT_CTX_NUM_CONSTANTS] = LLVMArrayType(int_type, /* num_constants */
+                                                              LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[DRAW_TCS_JIT_CTX_DUMMY1] = LLVMInt32TypeInContext(gallivm->context);
+   elem_types[DRAW_TCS_JIT_CTX_DUMMY2] = LLVMInt32TypeInContext(gallivm->context);
 
-   elem_types[4] = LLVMArrayType(texture_type,
-                                 PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
-   elem_types[5] = LLVMArrayType(sampler_type,
-                                 PIPE_MAX_SAMPLERS); /* samplers */
-   elem_types[6] = LLVMArrayType(image_type,
-                                 PIPE_MAX_SHADER_IMAGES); /* images */
+   elem_types[DRAW_TCS_JIT_CTX_TEXTURES] = LLVMArrayType(texture_type,
+                                                         PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
+   elem_types[DRAW_TCS_JIT_CTX_SAMPLERS] = LLVMArrayType(sampler_type,
+                                                         PIPE_MAX_SAMPLERS); /* samplers */
+   elem_types[DRAW_TCS_JIT_CTX_IMAGES] = LLVMArrayType(image_type,
+                                                       PIPE_MAX_SHADER_IMAGES); /* images */
 
-   elem_types[7] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
-                                 LP_MAX_TGSI_SHADER_BUFFERS);
-   elem_types[8] = LLVMArrayType(int_type, /* num_ssbos */
-                                 LP_MAX_TGSI_SHADER_BUFFERS);
-   elem_types[9] = LLVMPointerType(float_type, 0); /* aniso table */
+   elem_types[DRAW_TCS_JIT_CTX_SSBOS] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
+                                                      LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[DRAW_TCS_JIT_CTX_NUM_SSBOS] = LLVMArrayType(int_type, /* num_ssbos */
+                                                          LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[DRAW_TCS_JIT_CTX_ANISO_FILTER_TABLE] = LLVMPointerType(float_type, 0); /* aniso table */
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
@@ -654,50 +655,50 @@ create_tes_jit_context_type(struct gallivm_state *gallivm,
    LLVMTargetDataRef target = gallivm->target;
    LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
    LLVMTypeRef int_type = LLVMInt32TypeInContext(gallivm->context);
-   LLVMTypeRef elem_types[DRAW_TCS_JIT_CTX_NUM_FIELDS];
+   LLVMTypeRef elem_types[DRAW_TES_JIT_CTX_NUM_FIELDS];
    LLVMTypeRef context_type;
 
-   elem_types[0] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
-                                 LP_MAX_TGSI_CONST_BUFFERS);
-   elem_types[1] = LLVMArrayType(int_type, /* num_constants */
-                                 LP_MAX_TGSI_CONST_BUFFERS);
-   elem_types[2] = LLVMInt32TypeInContext(gallivm->context);
-   elem_types[3] = LLVMInt32TypeInContext(gallivm->context);
+   elem_types[DRAW_TES_JIT_CTX_CONSTANTS] = LLVMArrayType(LLVMPointerType(float_type, 0), /* constants */
+                                                          LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[DRAW_TES_JIT_CTX_NUM_CONSTANTS] = LLVMArrayType(int_type, /* num_constants */
+                                                              LP_MAX_TGSI_CONST_BUFFERS);
+   elem_types[DRAW_TES_JIT_CTX_DUMMY1] = LLVMInt32TypeInContext(gallivm->context);
+   elem_types[DRAW_TES_JIT_CTX_DUMMY2] = LLVMInt32TypeInContext(gallivm->context);
 
-   elem_types[4] = LLVMArrayType(texture_type,
-                                 PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
-   elem_types[5] = LLVMArrayType(sampler_type,
-                                 PIPE_MAX_SAMPLERS); /* samplers */
-   elem_types[6] = LLVMArrayType(image_type,
-                                 PIPE_MAX_SHADER_IMAGES); /* images */
+   elem_types[DRAW_TES_JIT_CTX_TEXTURES] = LLVMArrayType(texture_type,
+                                                         PIPE_MAX_SHADER_SAMPLER_VIEWS); /* textures */
+   elem_types[DRAW_TES_JIT_CTX_SAMPLERS] = LLVMArrayType(sampler_type,
+                                                         PIPE_MAX_SAMPLERS); /* samplers */
+   elem_types[DRAW_TES_JIT_CTX_IMAGES] = LLVMArrayType(image_type,
+                                                       PIPE_MAX_SHADER_IMAGES); /* images */
 
-   elem_types[7] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
-                                 LP_MAX_TGSI_SHADER_BUFFERS);
-   elem_types[8] = LLVMArrayType(int_type, /* num_ssbos */
-                                 LP_MAX_TGSI_SHADER_BUFFERS);
-   elem_types[9] = LLVMPointerType(float_type, 0); /* aniso table */
+   elem_types[DRAW_TES_JIT_CTX_SSBOS] = LLVMArrayType(LLVMPointerType(int_type, 0), /* ssbos */
+                                                      LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[DRAW_TES_JIT_CTX_NUM_SSBOS] = LLVMArrayType(int_type, /* num_ssbos */
+                                                          LP_MAX_TGSI_SHADER_BUFFERS);
+   elem_types[DRAW_TES_JIT_CTX_ANISO_FILTER_TABLE] = LLVMPointerType(float_type, 0); /* aniso table */
    context_type = LLVMStructTypeInContext(gallivm->context, elem_types,
                                           ARRAY_SIZE(elem_types), 0);
 
    (void) target; /* silence unused var warning for non-debug build */
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, constants,
-                          target, context_type, DRAW_TCS_JIT_CTX_CONSTANTS);
+                          target, context_type, DRAW_TES_JIT_CTX_CONSTANTS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, num_constants,
-                          target, context_type, DRAW_TCS_JIT_CTX_NUM_CONSTANTS);
+                          target, context_type, DRAW_TES_JIT_CTX_NUM_CONSTANTS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, textures,
                           target, context_type,
-                          DRAW_TCS_JIT_CTX_TEXTURES);
+                          DRAW_TES_JIT_CTX_TEXTURES);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, samplers,
                           target, context_type,
-                          DRAW_TCS_JIT_CTX_SAMPLERS);
+                          DRAW_TES_JIT_CTX_SAMPLERS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, ssbos,
-                          target, context_type, DRAW_TCS_JIT_CTX_SSBOS);
+                          target, context_type, DRAW_TES_JIT_CTX_SSBOS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, num_ssbos,
-                          target, context_type, DRAW_TCS_JIT_CTX_NUM_SSBOS);
+                          target, context_type, DRAW_TES_JIT_CTX_NUM_SSBOS);
    LP_CHECK_MEMBER_OFFSET(struct draw_tes_jit_context, images,
-                          target, context_type, DRAW_TCS_JIT_CTX_IMAGES);
+                          target, context_type, DRAW_TES_JIT_CTX_IMAGES);
    LP_CHECK_MEMBER_OFFSET(struct draw_tcs_jit_context, aniso_filter_table,
-                          target, context_type, DRAW_TCS_JIT_CTX_ANISO_FILTER_TABLE);
+                          target, context_type, DRAW_TES_JIT_CTX_ANISO_FILTER_TABLE);
    LP_CHECK_STRUCT_SIZE(struct draw_tes_jit_context,
                         target, context_type);
 
