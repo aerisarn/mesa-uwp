@@ -1694,6 +1694,7 @@ genX(BeginCommandBuffer)(
          const VkCommandBufferInheritanceRenderingInfo *inheritance_info =
             vk_get_command_buffer_inheritance_rendering_info(cmd_buffer->vk.level,
                                                              pBeginInfo);
+         assert(inheritance_info);
 
          gfx->rendering_flags = inheritance_info->flags;
          gfx->render_area = (VkRect2D) { };
