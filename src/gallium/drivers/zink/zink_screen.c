@@ -441,6 +441,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CULL_DISTANCE_NOCOMBINE:
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
    case PIPE_CAP_LOAD_CONSTBUF:
+   case PIPE_CAP_MULTISAMPLE_Z_RESOLVE:
       return 1;
 
    case PIPE_CAP_DRAW_VERTEX_STATE:
