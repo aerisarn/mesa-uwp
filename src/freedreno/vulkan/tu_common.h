@@ -126,6 +126,7 @@ struct tu_image_view;
 struct tu_instance;
 struct tu_pipeline_layout;
 struct tu_query_pool;
+struct tu_render_pass;
 struct tu_sampler;
 struct tu_sampler_ycbcr_conversion;
 
@@ -135,5 +136,6 @@ struct tu_cs;
 struct tu_cs_entry;
 struct tu_suballoc_bo;
 struct tu_suballocator;
+struct tu_subpass;
 
 #endif /* TU_COMMON_H */

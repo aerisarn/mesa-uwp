@@ -24,6 +24,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+
+#include "tu_pass.h"
 #include "tu_private.h"
 
 #include "vk_util.h"
