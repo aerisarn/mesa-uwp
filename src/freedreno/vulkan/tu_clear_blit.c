@@ -6,6 +6,7 @@
  *    Jonathan Marek <jonathan@marek.ca>
  */
 
+#include "tu_clear_blit.h"
 #include "tu_private.h"
 
 #include "tu_cs.h"

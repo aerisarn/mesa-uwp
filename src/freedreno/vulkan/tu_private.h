@@ -30,6 +30,7 @@
 
 #include "tu_common.h"
 #include "tu_autotune.h"
+#include "tu_clear_blit.h"
 #include "tu_cs.h"
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
@@ -428,10 +429,6 @@ struct tu_device
 
    bool use_z24uint_s8uint;
 };
-
-void tu_init_clear_blit_shaders(struct tu_device *dev);
-
-void tu_destroy_clear_blit_shaders(struct tu_device *dev);
 
 VkResult tu_init_dynamic_rendering(struct tu_device *dev);
 
@@ -1306,12 +1303,6 @@ struct tu_event
 };
 
 void
-tu6_clear_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image, const VkClearValue *value);
-
-void
-tu6_dirty_lrz_fc(struct tu_cmd_buffer *cmd, struct tu_cs *cs, struct tu_image* image);
-
-void
 tu6_emit_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
 
 void
@@ -1362,49 +1353,6 @@ void tu_disable_draw_states(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
 
 void tu6_apply_depth_bounds_workaround(struct tu_device *device,
                                        uint32_t *rb_depth_cntl);
-
-void
-tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
-                  struct tu_cs *cs,
-                  const struct tu_image_view *src,
-                  const struct tu_image_view *dst,
-                  uint32_t layer_mask,
-                  uint32_t layers,
-                  const VkRect2D *rect);
-
-void
-tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
-                           struct tu_cs *cs,
-                           uint32_t a,
-                           const VkClearValue *value);
-
-void
-tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
-                         struct tu_cs *cs,
-                         uint32_t a,
-                         const VkClearValue *value);
-
-void
-tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
-                        struct tu_cs *cs,
-                        uint32_t a,
-                        bool cond_exec_allowed,
-                        bool force_load);
-
-/* expose this function to be able to emit load without checking LOAD_OP */
-void
-tu_emit_load_gmem_attachment(struct tu_cmd_buffer *cmd, struct tu_cs *cs, uint32_t a);
-
-/* note: gmem store can also resolve */
-void
-tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
-                         struct tu_cs *cs,
-                         uint32_t a,
-                         uint32_t gmem_a,
-                         bool cond_exec_allowed);
-
-void
-tu_choose_gmem_layout(struct tu_cmd_buffer *cmd);
 
 struct tu_sampler {
    struct vk_object_base base;

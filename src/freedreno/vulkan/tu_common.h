@@ -115,6 +115,7 @@
 /* vk object types */
 struct tu_buffer;
 struct tu_buffer_view;
+struct tu_cmd_buffer;
 struct tu_descriptor_pool;
 struct tu_descriptor_set;
 struct tu_descriptor_set_layout;
