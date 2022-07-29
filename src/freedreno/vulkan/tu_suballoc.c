@@ -38,7 +38,7 @@
  * reallocation may happen for workloads where default size < working set size.
  */
 
-#include "tu_private.h"
+#include "tu_suballoc.h"
 
 /* Initializes a BO sub-allocator using refcounts on BOs.
  */

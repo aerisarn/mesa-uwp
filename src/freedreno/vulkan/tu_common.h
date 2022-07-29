@@ -117,5 +117,7 @@ struct tu_device;
 struct tu_instance;
 
 struct tu_bo;
+struct tu_suballoc_bo;
+struct tu_suballocator;
 
 #endif /* TU_COMMON_H */

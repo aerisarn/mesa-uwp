@@ -33,6 +33,7 @@
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
 #include "tu_perfetto.h"
+#include "tu_suballoc.h"
 #include "tu_util.h"
 
 /* Pre-declarations needed for WSI entrypoints */
@@ -235,47 +236,6 @@ struct tu_queue
    uint32_t msm_queue_id;
    int fence;
 };
-
-/* externally-synchronized BO suballocator. */
-struct tu_suballocator
-{
-   struct tu_device *dev;
-
-   uint32_t default_size;
-   enum tu_bo_alloc_flags flags;
-
-   /** Current BO we're suballocating out of. */
-   struct tu_bo *bo;
-   uint32_t next_offset;
-
-   /** Optional BO cached for recycling as the next suballoc->bo, instead of having to allocate one. */
-   struct tu_bo *cached_bo;
-};
-
-struct tu_suballoc_bo
-{
-   struct tu_bo *bo;
-   uint64_t iova;
-   uint32_t size; /* bytes */
-};
-
-void
-tu_bo_suballocator_init(struct tu_suballocator *suballoc,
-                        struct tu_device *dev,
-                        uint32_t default_size,
-                        uint32_t flags);
-void
-tu_bo_suballocator_finish(struct tu_suballocator *suballoc);
-
-VkResult
-tu_suballoc_bo_alloc(struct tu_suballoc_bo *suballoc_bo, struct tu_suballocator *suballoc,
-                     uint32_t size, uint32_t align);
-
-void *
-tu_suballoc_bo_map(struct tu_suballoc_bo *bo);
-
-void
-tu_suballoc_bo_free(struct tu_suballocator *suballoc, struct tu_suballoc_bo *bo);
 
 enum global_shader {
    GLOBAL_SH_VS_BLIT,
