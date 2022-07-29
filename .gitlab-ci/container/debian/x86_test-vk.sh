@@ -60,9 +60,6 @@ apt-get install -y --no-remove \
       xserver-xorg-video-amdgpu \
       xserver-xorg-video-ati
 
-# We need multiarch for Wine
-dpkg --add-architecture i386
-
 # Install a more recent version of Wine than exists in Debian.
 apt-key add .gitlab-ci/container/debian/winehq.gpg.key
 apt-add-repository https://dl.winehq.org/wine-builds/debian/
@@ -72,7 +69,16 @@ apt-get update -q
 # hardware on the test devices.
 pip3 install gfxinfo-mupuf==0.0.9
 
-apt-get install -y --no-remove --install-recommends winehq-stable
+# workaround wine needing 32-bit
+# https://bugs.winehq.org/show_bug.cgi?id=53393
+apt-get install -y --no-remove wine-stable-amd64  # a requirement for wine-stable
+WINE_PKG="wine-stable"
+WINE_PKG_DROP="wine-stable-i386"
+apt-get download "${WINE_PKG}"
+dpkg --ignore-depends="${WINE_PKG_DROP}" -i "${WINE_PKG}"*.deb
+rm "${WINE_PKG}"*.deb
+sed -i "/${WINE_PKG_DROP}/d" /var/lib/dpkg/status
+apt-get install -y --no-remove winehq-stable  # symlinks-only, depends on wine-stable
 
 ############### Install DXVK
 
@@ -83,7 +89,7 @@ apt-get install -y --no-remove --install-recommends winehq-stable
 
 . .gitlab-ci/container/install-wine-apitrace.sh
 # Add the apitrace path to the registry
-wine \
+wine64 \
     reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment" \
     /v Path \
     /t REG_EXPAND_SZ \
