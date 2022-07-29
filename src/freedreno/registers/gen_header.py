@@ -188,8 +188,8 @@ class Bitset(object):
 		print("            fields.unknown | fields.%s," % (value_name,))
 
 		if address:
-			print("        .is_address = true,")
 			print("        .bo = fields.bo,")
+			print("        .is_address = true,")
 			if f.type == "waddress":
 				print("        .bo_write = true,")
 			print("        .bo_offset = fields.bo_offset,")
