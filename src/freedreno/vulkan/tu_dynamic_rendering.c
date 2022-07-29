@@ -36,6 +36,7 @@
  * to make the commands owned by the device and roll our own memory tracking.
  */
 
+#include "tu_dynamic_rendering.h"
 #include "tu_private.h"
 #include "tu_cs.h"
 

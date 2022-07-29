@@ -34,6 +34,7 @@
 #include "tu_cs.h"
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
+#include "tu_dynamic_rendering.h"
 #include "tu_formats.h"
 #include "tu_image.h"
 #include "tu_perfetto.h"
@@ -429,14 +430,6 @@ struct tu_device
 
    bool use_z24uint_s8uint;
 };
-
-VkResult tu_init_dynamic_rendering(struct tu_device *dev);
-
-void tu_destroy_dynamic_rendering(struct tu_device *dev);
-
-VkResult tu_insert_dynamic_cmdbufs(struct tu_device *dev,
-                                   struct tu_cmd_buffer ***cmds_ptr,
-                                   uint32_t *size);
 
 VkResult
 tu_device_submit_deferred_locked(struct tu_device *dev);
