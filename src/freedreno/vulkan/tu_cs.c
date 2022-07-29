@@ -23,6 +23,8 @@
 
 #include "tu_cs.h"
 
+#include "tu_suballoc.h"
+
 /**
  * Initialize a command stream.
  */

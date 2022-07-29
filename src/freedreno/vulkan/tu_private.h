@@ -30,6 +30,7 @@
 
 #include "tu_common.h"
 #include "tu_autotune.h"
+#include "tu_cs.h"
 #include "tu_descriptor_set.h"
 #include "tu_drm.h"
 #include "tu_perfetto.h"
@@ -47,8 +48,6 @@ typedef uint32_t xcb_window_t;
  * debugging, where we can break on it. Only call at error site, not when
  * propagating errors. Might be useful to plug in a stack trace here.
  */
-
-struct breadcrumbs_context;
 
 VkResult
 __vk_startup_errorf(struct tu_instance *instance,
@@ -481,25 +480,6 @@ tu_device_lookup_bo(struct tu_device *device, uint32_t handle)
 VkResult
 tu_get_scratch_bo(struct tu_device *dev, uint64_t size, struct tu_bo **bo);
 
-struct tu_cs_entry
-{
-   /* No ownership */
-   const struct tu_bo *bo;
-
-   uint32_t size;
-   uint32_t offset;
-};
-
-struct tu_cs_memory {
-   uint32_t *map;
-   uint64_t iova;
-};
-
-struct tu_draw_state {
-   uint64_t iova : 48;
-   uint32_t size : 16;
-};
-
 enum tu_dynamic_state
 {
    /* re-use VK_DYNAMIC_STATE_ enums for non-extended dynamic states */
@@ -541,71 +521,6 @@ enum tu_draw_state_group_id
    /* dynamic state related draw states */
    TU_DRAW_STATE_DYNAMIC,
    TU_DRAW_STATE_COUNT = TU_DRAW_STATE_DYNAMIC + TU_DYNAMIC_STATE_COUNT,
-};
-
-enum tu_cs_mode
-{
-
-   /*
-    * A command stream in TU_CS_MODE_GROW mode grows automatically whenever it
-    * is full.  tu_cs_begin must be called before command packet emission and
-    * tu_cs_end must be called after.
-    *
-    * This mode may create multiple entries internally.  The entries must be
-    * submitted together.
-    */
-   TU_CS_MODE_GROW,
-
-   /*
-    * A command stream in TU_CS_MODE_EXTERNAL mode wraps an external,
-    * fixed-size buffer.  tu_cs_begin and tu_cs_end are optional and have no
-    * effect on it.
-    *
-    * This mode does not create any entry or any BO.
-    */
-   TU_CS_MODE_EXTERNAL,
-
-   /*
-    * A command stream in TU_CS_MODE_SUB_STREAM mode does not support direct
-    * command packet emission.  tu_cs_begin_sub_stream must be called to get a
-    * sub-stream to emit comamnd packets to.  When done with the sub-stream,
-    * tu_cs_end_sub_stream must be called.
-    *
-    * This mode does not create any entry internally.
-    */
-   TU_CS_MODE_SUB_STREAM,
-};
-
-#define TU_COND_EXEC_STACK_SIZE 4
-
-struct tu_cs
-{
-   uint32_t *start;
-   uint32_t *cur;
-   uint32_t *reserved_end;
-   uint32_t *end;
-
-   struct tu_device *device;
-   enum tu_cs_mode mode;
-   uint32_t next_bo_size;
-
-   struct tu_cs_entry *entries;
-   uint32_t entry_count;
-   uint32_t entry_capacity;
-
-   struct tu_bo **bos;
-   uint32_t bo_count;
-   uint32_t bo_capacity;
-
-   /* Optional BO that this CS is sub-allocated from for TU_CS_MODE_SUB_STREAM */
-   struct tu_bo *refcount_bo;
-
-   /* state for cond_exec_start/cond_exec_end */
-   uint32_t cond_stack_depth;
-   uint32_t cond_flags[TU_COND_EXEC_STACK_SIZE];
-   uint32_t *cond_dwords[TU_COND_EXEC_STACK_SIZE];
-
-   uint32_t breadcrumb_emit_after;
 };
 
 struct tu_device_memory
@@ -1466,19 +1381,6 @@ tu_attachment_gmem_offset_stencil(struct tu_cmd_buffer *cmd,
    return att->gmem_offset_stencil[cmd->state.gmem_layout];
 }
 
-/* Temporary struct for tracking a register state to be written, used by
- * a6xx-pack.h and tu_cs_emit_regs()
- */
-struct tu_reg_value {
-   uint32_t reg;
-   uint64_t value;
-   bool is_address;
-   struct tu_bo *bo;
-   bool bo_write;
-   uint32_t bo_offset;
-   uint32_t bo_shift;
-};
-
 VkResult tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
                              VkCommandBufferUsageFlags usage_flags);
 
@@ -2118,12 +2020,6 @@ void
 tu_u_trace_submission_data_finish(
    struct tu_device *device,
    struct tu_u_trace_submission_data *submission_data);
-
-void
-tu_breadcrumbs_init(struct tu_device *device);
-
-void
-tu_breadcrumbs_finish(struct tu_device *device);
 
 VK_DEFINE_HANDLE_CASTS(tu_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)

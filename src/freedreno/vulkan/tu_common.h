@@ -116,7 +116,10 @@
 struct tu_device;
 struct tu_instance;
 
+struct breadcrumbs_context;
 struct tu_bo;
+struct tu_cs;
+struct tu_cs_entry;
 struct tu_suballoc_bo;
 struct tu_suballocator;
 
