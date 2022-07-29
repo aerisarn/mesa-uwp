@@ -9,6 +9,8 @@
 #ifndef TU_UTIL_H
 #define TU_UTIL_H
 
+#include "tu_common.h"
+
 #include <assert.h>
 #include <stdint.h>
 

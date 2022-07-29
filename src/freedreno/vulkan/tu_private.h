@@ -28,57 +28,7 @@
 #ifndef TU_PRIVATE_H
 #define TU_PRIVATE_H
 
-#include <assert.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#ifdef HAVE_VALGRIND
-#include <memcheck.h>
-#include <valgrind.h>
-#define VG(x) x
-#else
-#define VG(x) ((void)0)
-#endif
-
-#define MESA_LOG_TAG "TU"
-
-#include "c11/threads.h"
-#include "util/rounding.h"
-#include "util/bitscan.h"
-#include "util/list.h"
-#include "util/log.h"
-#include "util/macros.h"
-#include "util/sparse_array.h"
-#include "util/u_atomic.h"
-#include "util/u_dynarray.h"
-#include "util/xmlconfig.h"
-#include "util/perf/u_trace.h"
-#include "vk_alloc.h"
-#include "vk_debug_report.h"
-#include "vk_device.h"
-#include "vk_dispatch_table.h"
-#include "vk_extensions.h"
-#include "vk_instance.h"
-#include "vk_log.h"
-#include "vk_physical_device.h"
-#include "vk_shader_module.h"
-#include "vk_pipeline_cache.h"
-#include "wsi_common.h"
-
-#include "ir3/ir3_compiler.h"
-#include "ir3/ir3_shader.h"
-
-#include "adreno_common.xml.h"
-#include "adreno_pm4.xml.h"
-#include "a6xx.xml.h"
-#include "fdl/freedreno_layout.h"
-#include "common/freedreno_dev_info.h"
-#include "common/freedreno_common.h"
-#include "perfcntrs/freedreno_perfcntr.h"
-
+#include "tu_common.h"
 #include "tu_descriptor_set.h"
 #include "tu_autotune.h"
 #include "tu_util.h"
@@ -90,54 +40,6 @@ struct wl_display;
 typedef struct xcb_connection_t xcb_connection_t;
 typedef uint32_t xcb_visualid_t;
 typedef uint32_t xcb_window_t;
-
-#include <vulkan/vk_android_native_buffer.h>
-#include <vulkan/vk_icd.h>
-#include <vulkan/vulkan.h>
-
-#include "tu_entrypoints.h"
-#include "vulkan/runtime/vk_common_entrypoints.h"
-
-#include "vk_format.h"
-#include "vk_image.h"
-#include "vk_command_buffer.h"
-#include "vk_command_pool.h"
-#include "vk_queue.h"
-#include "vk_object.h"
-#include "vk_sync.h"
-#include "vk_drm_syncobj.h"
-#include "vk_sync_timeline.h"
-
-#define MAX_VBS 32
-#define MAX_VERTEX_ATTRIBS 32
-#define MAX_RTS 8
-#define MAX_VSC_PIPES 32
-#define MAX_VIEWPORTS 16
-#define MAX_VIEWPORT_SIZE (1 << 14)
-#define MAX_SCISSORS 16
-#define MAX_DISCARD_RECTANGLES 4
-#define MAX_PUSH_CONSTANTS_SIZE 256
-#define MAX_PUSH_DESCRIPTORS 32
-#define MAX_DYNAMIC_UNIFORM_BUFFERS 16
-#define MAX_DYNAMIC_STORAGE_BUFFERS 8
-#define MAX_DYNAMIC_BUFFERS_SIZE                                             \
-   (MAX_DYNAMIC_UNIFORM_BUFFERS + 2 * MAX_DYNAMIC_STORAGE_BUFFERS) *         \
-   A6XX_TEX_CONST_DWORDS
-
-#define TU_MAX_DRM_DEVICES 8
-#define MAX_VIEWS 16
-#define MAX_BIND_POINTS 2 /* compute + graphics */
-/* The Qualcomm driver exposes 0x20000058 */
-#define MAX_STORAGE_BUFFER_RANGE 0x20000000
-/* We use ldc for uniform buffer loads, just like the Qualcomm driver, so
- * expose the same maximum range.
- * TODO: The SIZE bitfield is 15 bits, and in 4-dword units, so the actual
- * range might be higher.
- */
-#define MAX_UNIFORM_BUFFER_RANGE 0x10000
-
-#define A6XX_TEX_CONST_DWORDS 16
-#define A6XX_TEX_SAMP_DWORDS 4
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
@@ -2366,9 +2268,6 @@ tu_breadcrumbs_init(struct tu_device *device);
 
 void
 tu_breadcrumbs_finish(struct tu_device *device);
-
-#define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
-   VK_FROM_HANDLE(__tu_type, __name, __handle)
 
 VK_DEFINE_HANDLE_CASTS(tu_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)

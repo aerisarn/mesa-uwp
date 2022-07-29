@@ -24,6 +24,8 @@
 #ifndef TU_AUTOTUNE_H
 #define TU_AUTOTUNE_H
 
+#include "tu_common.h"
+
 #include "util/hash_table.h"
 #include "util/list.h"
 #include "util/rwlock.h"

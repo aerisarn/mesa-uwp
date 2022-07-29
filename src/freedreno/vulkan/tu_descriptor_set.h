@@ -24,6 +24,8 @@
 #ifndef TU_DESCRIPTOR_SET_H
 #define TU_DESCRIPTOR_SET_H
 
+#include "tu_common.h"
+
 #include <vulkan/vulkan.h>
 
 /* The hardware supports 5 descriptor sets, but we reserve 1 for dynamic
