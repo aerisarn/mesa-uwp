@@ -28,6 +28,7 @@
 #include "amd_family.h"
 #include "compiler/nir/nir.h"
 #include "compiler/shader_enums.h"
+#include "util/format/u_format.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -53,6 +54,29 @@ struct ac_data_format_info {
    uint8_t num_channels;
    uint8_t chan_byte_size;
    uint8_t chan_format;
+};
+
+enum ac_vs_input_alpha_adjust {
+   AC_ALPHA_ADJUST_NONE = 0,
+   AC_ALPHA_ADJUST_SNORM = 1,
+   AC_ALPHA_ADJUST_SSCALED = 2,
+   AC_ALPHA_ADJUST_SINT = 3,
+};
+
+struct ac_vtx_format_info {
+   uint16_t dst_sel;
+   uint8_t element_size;
+   uint8_t num_channels;
+   uint8_t chan_byte_size; /* 0 for packed formats */
+
+   /* These last three are dependent on the family. */
+
+   uint8_t has_hw_format;
+   /* Index is number of channels minus one. Use any index for packed formats.
+    * GFX6-8 is dfmt[0:3],nfmt[4:7].
+    */
+   uint8_t hw_format[4];
+   enum ac_vs_input_alpha_adjust alpha_adjust : 8;
 };
 
 struct ac_spi_color_formats {
@@ -100,6 +124,13 @@ uint32_t ac_vgt_gs_mode(unsigned gs_max_vert_out, enum amd_gfx_level gfx_level);
 unsigned ac_get_tbuffer_format(enum amd_gfx_level gfx_level, unsigned dfmt, unsigned nfmt);
 
 const struct ac_data_format_info *ac_get_data_format_info(unsigned dfmt);
+
+const struct ac_vtx_format_info *ac_get_vtx_format_info_table(enum amd_gfx_level level,
+                                                              enum radeon_family family);
+
+const struct ac_vtx_format_info *ac_get_vtx_format_info(enum amd_gfx_level level,
+                                                        enum radeon_family family,
+                                                        enum pipe_format fmt);
 
 enum ac_image_dim ac_get_sampler_dim(enum amd_gfx_level gfx_level, enum glsl_sampler_dim dim,
                                      bool is_array);

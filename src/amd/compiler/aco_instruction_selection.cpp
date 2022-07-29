@@ -12353,7 +12353,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
       unsigned alpha_adjust = (key->state.alpha_adjust_lo >> loc) & 0x1;
       alpha_adjust |= ((key->state.alpha_adjust_hi >> loc) & 0x1) << 1;
 
-      if (alpha_adjust == ALPHA_ADJUST_SSCALED)
+      if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED)
          bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(alpha, v1), Operand(alpha, v1));
 
       /* For the integer-like cases, do a natural sign extension.
@@ -12362,16 +12362,16 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
        * and happen to contain 0, 1, 2, 3 as the two LSBs of the
        * exponent.
        */
-      unsigned offset = alpha_adjust == ALPHA_ADJUST_SNORM ? 23u : 0u;
+      unsigned offset = alpha_adjust == AC_ALPHA_ADJUST_SNORM ? 23u : 0u;
       bld.vop3(aco_opcode::v_bfe_i32, Definition(alpha, v1), Operand(alpha, v1),
                Operand::c32(offset), Operand::c32(2u));
 
       /* Convert back to the right type. */
-      if (alpha_adjust == ALPHA_ADJUST_SNORM) {
+      if (alpha_adjust == AC_ALPHA_ADJUST_SNORM) {
          bld.vop1(aco_opcode::v_cvt_f32_i32, Definition(alpha, v1), Operand(alpha, v1));
          bld.vop2(aco_opcode::v_max_f32, Definition(alpha, v1), Operand::c32(0xbf800000u),
                   Operand(alpha, v1));
-      } else if (alpha_adjust == ALPHA_ADJUST_SSCALED) {
+      } else if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED) {
          bld.vop1(aco_opcode::v_cvt_f32_i32, Definition(alpha, v1), Operand(alpha, v1));
       }
    }

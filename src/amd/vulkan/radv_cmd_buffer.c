@@ -5967,7 +5967,7 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       if (!found) {
          unsigned nfmt, dfmt;
          bool post_shuffle;
-         enum radv_vs_input_alpha_adjust alpha_adjust;
+         enum ac_vs_input_alpha_adjust alpha_adjust;
          const struct util_format_description *format_desc = vk_format_description(attrib->format);
 
          found = util_dynarray_grow(&cmd_buffer->cached_vertex_formats,

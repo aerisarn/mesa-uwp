@@ -3776,11 +3776,10 @@ radv_consider_force_vrs(const struct radv_pipeline *pipeline, bool noop_fs,
 }
 
 static nir_ssa_def *
-radv_adjust_vertex_fetch_alpha(nir_builder *b,
-                               enum radv_vs_input_alpha_adjust alpha_adjust,
+radv_adjust_vertex_fetch_alpha(nir_builder *b, enum ac_vs_input_alpha_adjust alpha_adjust,
                                nir_ssa_def *alpha)
 {
-   if (alpha_adjust == ALPHA_ADJUST_SSCALED)
+   if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED)
       alpha = nir_f2u32(b, alpha);
 
    /* For the integer-like cases, do a natural sign extension.
@@ -3788,15 +3787,15 @@ radv_adjust_vertex_fetch_alpha(nir_builder *b,
     * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0 and happen to contain 0, 1, 2, 3 as
     * the two LSBs of the exponent.
     */
-   unsigned offset = alpha_adjust == ALPHA_ADJUST_SNORM ? 23u : 0u;
+   unsigned offset = alpha_adjust == AC_ALPHA_ADJUST_SNORM ? 23u : 0u;
 
    alpha = nir_ibfe_imm(b, alpha, offset, 2u);
 
    /* Convert back to the right type. */
-   if (alpha_adjust == ALPHA_ADJUST_SNORM) {
+   if (alpha_adjust == AC_ALPHA_ADJUST_SNORM) {
       alpha = nir_i2f32(b, alpha);
       alpha = nir_fmax(b, alpha, nir_imm_float(b, -1.0f));
-   } else if (alpha_adjust == ALPHA_ADJUST_SSCALED) {
+   } else if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED) {
       alpha = nir_i2f32(b, alpha);
    }
 
@@ -3825,7 +3824,8 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
             continue;
 
          unsigned location = nir_intrinsic_base(intrin) - VERT_ATTRIB_GENERIC0;
-         enum radv_vs_input_alpha_adjust alpha_adjust = pipeline_key->vs.vertex_alpha_adjust[location];
+         enum ac_vs_input_alpha_adjust alpha_adjust =
+            pipeline_key->vs.vertex_alpha_adjust[location];
          bool post_shuffle = pipeline_key->vs.vertex_post_shuffle & (1 << location);
 
          unsigned component = nir_intrinsic_component(intrin);
@@ -3871,7 +3871,7 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
             }
          }
 
-         if (alpha_adjust != ALPHA_ADJUST_NONE && component + num_components == 4) {
+         if (alpha_adjust != AC_ALPHA_ADJUST_NONE && component + num_components == 4) {
             unsigned idx = num_components - 1;
             channels[idx] = radv_adjust_vertex_fetch_alpha(&b, alpha_adjust, channels[idx]);
          }
