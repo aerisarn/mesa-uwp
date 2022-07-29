@@ -533,92 +533,6 @@ struct tu_device_memory
    struct tu_bo *bo;
 };
 
-struct tu_descriptor_range
-{
-   uint64_t va;
-   uint32_t size;
-};
-
-struct tu_descriptor_set
-{
-   struct vk_object_base base;
-
-   /* Link to descriptor pool's desc_sets list . */
-   struct list_head pool_link;
-
-   struct tu_descriptor_set_layout *layout;
-   struct tu_descriptor_pool *pool;
-   uint32_t size;
-
-   uint64_t va;
-   uint32_t *mapped_ptr;
-
-   uint32_t *dynamic_descriptors;
-};
-
-struct tu_descriptor_pool_entry
-{
-   uint32_t offset;
-   uint32_t size;
-   struct tu_descriptor_set *set;
-};
-
-struct tu_descriptor_pool
-{
-   struct vk_object_base base;
-
-   struct tu_bo *bo;
-   uint64_t current_offset;
-   uint64_t size;
-
-   uint8_t *host_memory_base;
-   uint8_t *host_memory_ptr;
-   uint8_t *host_memory_end;
-   uint8_t *host_bo;
-
-   struct list_head desc_sets;
-
-   uint32_t entry_count;
-   uint32_t max_entry_count;
-   struct tu_descriptor_pool_entry entries[0];
-};
-
-struct tu_descriptor_update_template_entry
-{
-   VkDescriptorType descriptor_type;
-
-   /* The number of descriptors to update */
-   uint32_t descriptor_count;
-
-   /* Into mapped_ptr or dynamic_descriptors, in units of the respective array
-    */
-   uint32_t dst_offset;
-
-   /* In dwords. Not valid/used for dynamic descriptors */
-   uint32_t dst_stride;
-
-   uint32_t buffer_offset;
-
-   /* Only valid for combined image samplers and samplers */
-   uint16_t has_sampler;
-
-   /* In bytes */
-   size_t src_offset;
-   size_t src_stride;
-
-   /* For push descriptors */
-   const struct tu_sampler *immutable_samplers;
-};
-
-struct tu_descriptor_update_template
-{
-   struct vk_object_base base;
-
-   uint32_t entry_count;
-   VkPipelineBindPoint bind_point;
-   struct tu_descriptor_update_template_entry entry[0];
-};
-
 struct tu_buffer
 {
    struct vk_object_base base;
@@ -1779,17 +1693,6 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
 void
 tu_choose_gmem_layout(struct tu_cmd_buffer *cmd);
 
-struct tu_sampler_ycbcr_conversion {
-   struct vk_object_base base;
-
-   VkFormat format;
-   VkSamplerYcbcrModelConversion ycbcr_model;
-   VkSamplerYcbcrRange ycbcr_range;
-   VkComponentMapping components;
-   VkChromaLocation chroma_offsets[2];
-   VkFilter chroma_filter;
-};
-
 struct tu_sampler {
    struct vk_object_base base;
 
@@ -1811,21 +1714,6 @@ tu_import_memory_from_gralloc_handle(VkDevice device_h,
 
 uint32_t
 tu_subpass_get_attachment_to_resolve(const struct tu_subpass *subpass, uint32_t index);
-
-void
-tu_update_descriptor_sets(const struct tu_device *device,
-                          VkDescriptorSet overrideSet,
-                          uint32_t descriptorWriteCount,
-                          const VkWriteDescriptorSet *pDescriptorWrites,
-                          uint32_t descriptorCopyCount,
-                          const VkCopyDescriptorSet *pDescriptorCopies);
-
-void
-tu_update_descriptor_set_with_template(
-   const struct tu_device *device,
-   struct tu_descriptor_set *set,
-   VkDescriptorUpdateTemplate descriptorUpdateTemplate,
-   const void *pData);
 
 VkResult
 tu_physical_device_init(struct tu_physical_device *device,
@@ -1889,16 +1777,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_cmd_pool, vk.base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer, base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_pool, base, VkDescriptorPool,
-                               VK_OBJECT_TYPE_DESCRIPTOR_POOL)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set, base, VkDescriptorSet,
-                               VK_OBJECT_TYPE_DESCRIPTOR_SET)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout, base,
-                               VkDescriptorSetLayout,
-                               VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_update_template, base,
-                               VkDescriptorUpdateTemplate,
-                               VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
@@ -1908,14 +1786,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_layout, base, VkPipelineLayout,
-                               VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_render_pass, base, VkRenderPass,
                                VK_OBJECT_TYPE_RENDER_PASS)
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, base, VkSamplerYcbcrConversion,
-                               VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
 
 void
 update_stencil_mask(uint32_t *value, VkStencilFaceFlags face, uint32_t mask);

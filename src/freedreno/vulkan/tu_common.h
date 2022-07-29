@@ -115,11 +115,18 @@
 /* vk object types */
 struct tu_buffer;
 struct tu_buffer_view;
+struct tu_descriptor_pool;
+struct tu_descriptor_set;
+struct tu_descriptor_set_layout;
+struct tu_descriptor_update_template;
 struct tu_device;
 struct tu_image;
 struct tu_image_view;
 struct tu_instance;
+struct tu_pipeline_layout;
 struct tu_query_pool;
+struct tu_sampler;
+struct tu_sampler_ycbcr_conversion;
 
 struct breadcrumbs_context;
 struct tu_bo;

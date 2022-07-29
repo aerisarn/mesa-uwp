@@ -35,6 +35,7 @@
  * descriptor set at CmdBindDescriptors time/draw time.
  */
 
+#include "tu_descriptor_set.h"
 #include "tu_private.h"
 
 #include <fcntl.h>
