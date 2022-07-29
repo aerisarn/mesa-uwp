@@ -698,8 +698,15 @@ bool TexInstr::emit_tex_txs(nir_tex_instr *tex, Inputs& src,
    auto dest = vf.dest_vec4(tex->dest, pin_group);
 
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
-      shader.emit_instruction(new QueryBufferSizeInstr(dest, {0,7,7,7},
-                                                       tex->sampler_index + R600_MAX_CONST_BUFFERS));
+      if (shader.chip_class() >= ISA_CC_EVERGREEN) {
+         shader.emit_instruction(new QueryBufferSizeInstr(dest, {0,7,7,7},
+                                                          tex->sampler_index + R600_MAX_CONST_BUFFERS));
+      } else {
+         int id = 2 * tex->sampler_index + (512 + R600_BUFFER_INFO_OFFSET / 16) + 1;
+         auto src = vf.uniform(id, 1, R600_BUFFER_INFO_CONST_BUFFER);
+         shader.emit_instruction(new AluInstr(op1_mov, dest[0], src, AluInstr::last_write));
+         shader.set_flag(Shader::sh_uses_tex_buffer);
+      }
    } else {
 
       auto src_lod = vf.temp_register();
