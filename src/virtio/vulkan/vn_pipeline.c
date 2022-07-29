@@ -306,6 +306,76 @@ vn_fix_graphics_pipeline_create_info(
          stages |= info->pStages[j].stage;
       }
 
+      /* VkDynamicState */
+      struct {
+         bool rasterizer_discard_enable;
+      } has_dynamic_state = { 0 };
+
+      if (info->pDynamicState) {
+         for (uint32_t j = 0; j < info->pDynamicState->dynamicStateCount; j++) {
+            switch (info->pDynamicState->pDynamicStates[j]) {
+            case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
+               has_dynamic_state.rasterizer_discard_enable = true;
+               break;
+            default:
+               break;
+            }
+         }
+      }
+
+      /* For each pipeline state category, we define a bool.
+       *
+       * The Vulkan spec (1.3.223) says:
+       *    The state required for a graphics pipeline is divided into vertex
+       *    input state, pre-rasterization shader state, fragment shader
+       *    state, and fragment output state.
+       *
+       * Without VK_EXT_graphics_pipeline_library, most states are
+       * unconditionally included in the pipeline. Despite that, we still
+       * reference the state bools in the ignore rules because (a) it makes the
+       * ignore condition easier to validate against the text of the relevant
+       * VUs; and (b) it makes it easier to enable
+       * VK_EXT_graphics_pipeline_library because we won't need to carefully
+       * revisit the text of each VU to untangle the missing pipeline state
+       * bools.
+       */
+
+      /* VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT
+       *
+       * The Vulkan spec (1.3.223) says:
+       *    If the pre-rasterization shader state includes a vertex shader,
+       * then vertex input state is included in a complete graphics pipeline.
+       *
+       * We support no extension yet that allows the vertex stage to be
+       * omitted, such as VK_EXT_vertex_input_dynamic_state or
+       * VK_EXT_graphics_pipeline_library.
+       */
+      const bool UNUSED has_vertex_input_state = true;
+
+      /* VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT */
+      const bool UNUSED has_pre_raster_state = true;
+
+      /* The spec does not assign a name to this state. We define it just to
+       * deduplicate code.
+       *
+       * The Vulkan spec (1.3.223) says:
+       *    If the value of [...]rasterizerDiscardEnable in the
+       *    pre-rasterization shader state is VK_FALSE or the
+       *    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE dynamic state is enabled
+       *    fragment shader state and fragment output interface state is
+       *    included in a complete graphics pipeline.
+       */
+      const bool has_raster_state =
+         has_dynamic_state.rasterizer_discard_enable ||
+         (info->pRasterizationState &&
+          info->pRasterizationState->rasterizerDiscardEnable == VK_FALSE);
+
+      /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT */
+      const bool UNUSED has_fragment_shader_state = has_raster_state;
+
+      /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT */
+      const bool UNUSED has_fragment_output_state = has_raster_state;
+
       /* Fix pTessellationState?
        *    VUID-VkGraphicsPipelineCreateInfo-pStages-00731
        */
@@ -316,25 +386,11 @@ vn_fix_graphics_pipeline_create_info(
          any_fix = true;
       }
 
-      bool ignore_raster_dedicated_states =
-         !info->pRasterizationState ||
-         info->pRasterizationState->rasterizerDiscardEnable == VK_TRUE;
-      if (ignore_raster_dedicated_states && info->pDynamicState) {
-         for (uint32_t j = 0; j < info->pDynamicState->dynamicStateCount;
-              j++) {
-            if (info->pDynamicState->pDynamicStates[j] ==
-                VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE) {
-               ignore_raster_dedicated_states = false;
-               break;
-            }
-         }
-      }
-
       /* FIXME: Conditions for ignoring pDepthStencilState and
        * pColorBlendState miss some cases that depend on the render pass. Make
        * them agree with the VUIDs.
        */
-      if (ignore_raster_dedicated_states &&
+      if (!has_raster_state &&
           (info->pViewportState || info->pMultisampleState ||
            info->pDepthStencilState || info->pColorBlendState)) {
          fix.ignore_raster_dedicated_states = true;
