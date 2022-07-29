@@ -130,6 +130,8 @@ NinePixelShader9_UpdateKey( struct NinePixelShader9 *ps,
     if (context->rt[0]->base.info.nr_samples)
         key |= ((uint64_t)1) << 48;
     key |= ((uint64_t)(context->rs[NINED3DRS_EMULATED_ALPHATEST] & 0x7)) << 49; /* 3 bits */
+    if (context->rs[D3DRS_SHADEMODE] == D3DSHADE_FLAT)
+        key |= ((uint64_t)1) << 52;
 
     res = ps->last_key != key;
     if (res)

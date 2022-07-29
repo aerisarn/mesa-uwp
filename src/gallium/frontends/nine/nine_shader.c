@@ -1074,7 +1074,7 @@ tx_src_param(struct shader_translator *tx, const struct sm1_src_param *param)
             if (tx->version.major < 3) {
                 src = ureg_DECL_fs_input_centroid(
                     ureg, TGSI_SEMANTIC_COLOR, param->idx,
-                    TGSI_INTERPOLATE_COLOR,
+                    tx->info->color_flatshade ? TGSI_INTERPOLATE_CONSTANT : TGSI_INTERPOLATE_PERSPECTIVE,
                     tx->info->force_color_in_centroid ?
                       TGSI_INTERPOLATE_LOC_CENTROID : 0,
                     0, 1);
@@ -2340,6 +2340,7 @@ DECL_SPECIAL(DCL)
         }
     } else {
         if (is_input && tx->version.major >= 3) {
+            unsigned interp_flag;
             unsigned interp_location = 0;
             /* SM3 only, SM2 input semantic determined by file */
             assert(sem.reg.idx < ARRAY_SIZE(tx->regs.v));
@@ -2360,10 +2361,15 @@ DECL_SPECIAL(DCL)
             if (sem.reg.mod & NINED3DSPDM_CENTROID ||
                 (tgsi.Name == TGSI_SEMANTIC_COLOR && tx->info->force_color_in_centroid))
                 interp_location = TGSI_INTERPOLATE_LOC_CENTROID;
+            interp_flag = nine_tgsi_to_interp_mode(&tgsi);
+            /* We replace TGSI_INTERPOLATE_COLOR because some drivers don't support it,
+             * and those who support it do the same replacement we do */
+            if (interp_flag == TGSI_INTERPOLATE_COLOR)
+                interp_flag = tx->info->color_flatshade ? TGSI_INTERPOLATE_CONSTANT : TGSI_INTERPOLATE_PERSPECTIVE;
 
             tx->regs.v[sem.reg.idx] = ureg_DECL_fs_input_centroid(
                 ureg, tgsi.Name, tgsi.Index,
-                nine_tgsi_to_interp_mode(&tgsi),
+                interp_flag,
                 interp_location, 0, 1);
         } else
         if (!is_input && 0) { /* declare in COLOROUT/DEPTHOUT case */

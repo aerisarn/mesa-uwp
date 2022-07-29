@@ -62,6 +62,7 @@ NinePixelShader9_ctor( struct NinePixelShader9 *This,
     info.fog_enable = 0;
     info.projected = 0;
     info.alpha_test_emulation = 0;
+    info.color_flatshade = 0;
     info.add_constants_defs.c_combination = NULL;
     info.add_constants_defs.int_const_added = NULL;
     info.add_constants_defs.bool_const_added = NULL;
@@ -220,6 +221,8 @@ NinePixelShader9_GetVariant( struct NinePixelShader9 *This,
         info.fetch4 = (key >> 32) & 0xffff;
         info.force_color_in_centroid = (key >> 48) & 1;
         info.alpha_test_emulation = (key >> 49) & 0x7;
+        info.color_flatshade = (key >> 52) & 1;
+        info.force_color_in_centroid &= !info.color_flatshade; /* centroid doesn't make sense with flatshade */
         info.process_vertices = false;
         info.swvp_on = false;
 

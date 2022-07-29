@@ -114,7 +114,8 @@ struct nine_ff_ps_key
             uint32_t fog_source : 1; /* 0: Z, 1: W */
             uint32_t specular : 1;
             uint32_t alpha_test_emulation : 3;
-            uint32_t pad1 : 8; /* 9 32-bit words with this */
+            uint32_t flatshade : 1;
+            uint32_t pad1 : 7; /* 9 32-bit words with this */
             uint8_t colorarg_b4[3];
             uint8_t colorarg_b5[3];
             uint8_t alphaarg_b4[3]; /* 11 32-bit words plus a byte */
@@ -1089,6 +1090,7 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
 struct ps_build_ctx
 {
     struct ureg_program *ureg;
+    unsigned color_interpolate_flag;
 
     struct ureg_src vC[2]; /* DIFFUSE, SPECULAR */
     struct ureg_src vT[8]; /* TEXCOORD[i] */
@@ -1121,10 +1123,10 @@ ps_get_ts_arg(struct ps_build_ctx *ps, unsigned ta)
         reg = (ps->stage.index == ps->stage.index_pre_mod) ? ureg_src(ps->rMod) : ps->rCurSrc;
         break;
     case D3DTA_DIFFUSE:
-        reg = ureg_DECL_fs_input(ps->ureg, TGSI_SEMANTIC_COLOR, 0, TGSI_INTERPOLATE_COLOR);
+        reg = ureg_DECL_fs_input(ps->ureg, TGSI_SEMANTIC_COLOR, 0, ps->color_interpolate_flag);
         break;
     case D3DTA_SPECULAR:
-        reg = ureg_DECL_fs_input(ps->ureg, TGSI_SEMANTIC_COLOR, 1, TGSI_INTERPOLATE_COLOR);
+        reg = ureg_DECL_fs_input(ps->ureg, TGSI_SEMANTIC_COLOR, 1, ps->color_interpolate_flag);
         break;
     case D3DTA_TEMP:
         reg = ps->rTmpSrc;
@@ -1331,9 +1333,10 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
 
     memset(&ps, 0, sizeof(ps));
     ps.ureg = ureg;
+    ps.color_interpolate_flag = key->flatshade ? TGSI_INTERPOLATE_CONSTANT : TGSI_INTERPOLATE_PERSPECTIVE;
     ps.stage.index_pre_mod = -1;
 
-    ps.vC[0] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 0, TGSI_INTERPOLATE_COLOR);
+    ps.vC[0] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 0, ps.color_interpolate_flag);
 
     ps.rCur = ureg_DECL_temporary(ureg);
     ps.rTmp = ureg_DECL_temporary(ureg);
@@ -1354,7 +1357,7 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
             if (key->ts[s].colorarg0 == D3DTA_SPECULAR ||
                 key->ts[s].colorarg1 == D3DTA_SPECULAR ||
                 key->ts[s].colorarg2 == D3DTA_SPECULAR)
-                ps.vC[1] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 1, TGSI_INTERPOLATE_COLOR);
+                ps.vC[1] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 1, ps.color_interpolate_flag);
 
             if (key->ts[s].colorarg0 == D3DTA_TEXTURE ||
                 key->ts[s].colorarg1 == D3DTA_TEXTURE ||
@@ -1373,7 +1376,7 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
             if (key->ts[s].alphaarg0 == D3DTA_SPECULAR ||
                 key->ts[s].alphaarg1 == D3DTA_SPECULAR ||
                 key->ts[s].alphaarg2 == D3DTA_SPECULAR)
-                ps.vC[1] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 1, TGSI_INTERPOLATE_COLOR);
+                ps.vC[1] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 1, ps.color_interpolate_flag);
 
             if (key->ts[s].alphaarg0 == D3DTA_TEXTURE ||
                 key->ts[s].alphaarg1 == D3DTA_TEXTURE ||
@@ -1386,7 +1389,7 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
         }
     }
     if (key->specular)
-        ps.vC[1] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 1, TGSI_INTERPOLATE_COLOR);
+        ps.vC[1] = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_COLOR, 1, ps.color_interpolate_flag);
 
     oCol = ureg_DECL_output(ureg, TGSI_SEMANTIC_COLOR, 0);
 
@@ -1834,6 +1837,7 @@ nine_ff_get_ps(struct NineDevice9 *device)
 
     key.projected = nine_ff_get_projected_key_ff(context);
     key.specular = !!context->rs[D3DRS_SPECULARENABLE];
+    key.flatshade = context->rs[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
 
     for (; s < 8; ++s)
         key.ts[s].colorop = key.ts[s].alphaop = D3DTOP_DISABLE;
