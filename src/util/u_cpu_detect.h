@@ -62,12 +62,6 @@ typedef uint32_t util_affinity_mask[UTIL_MAX_CPUS / 32];
 
 struct util_cpu_caps_t {
    /**
-    * Initialized to 0 and set to non-zero with an atomic after the entire
-    * struct has been initialized.
-    */
-   uint32_t detect_done;
-
-   /**
     * Number of CPUs available to the process.
     *
     * This will be less than or equal to \c max_cpus.  This is the number of
@@ -132,13 +126,23 @@ struct util_cpu_caps_t {
    util_affinity_mask *L3_affinity_mask;
 };
 
+struct _util_cpu_caps_state_t {
+   once_flag once_flag;
+   /**
+    * Initialized to 0 and set to non-zero with an atomic after the entire
+    * struct has been initialized.
+    */
+   uint32_t detect_done;
+   struct util_cpu_caps_t caps;
+};
+
 #define U_CPU_INVALID_L3 0xffff
 
 static inline ATTRIBUTE_CONST const struct util_cpu_caps_t *
 util_get_cpu_caps(void)
 {
-   extern void _util_cpu_detect_local(void);
-   extern struct util_cpu_caps_t util_cpu_caps;
+   extern void _util_cpu_detect_once(void);
+   extern struct _util_cpu_caps_state_t _util_cpu_caps_state;
 
    /* On most CPU architectures, an atomic read is simply a regular memory
     * load instruction with some extra compiler magic to prevent code
@@ -163,10 +167,10 @@ util_get_cpu_caps(void)
     * sure, but that state is such that it appears to return exactly the same
     * value with the same internal data every time.
     */
-   if (unlikely(!p_atomic_read(&util_cpu_caps.detect_done)))
-      _util_cpu_detect_local();
+   if (unlikely(!p_atomic_read(&_util_cpu_caps_state.detect_done)))
+      call_once(&_util_cpu_caps_state.once_flag, _util_cpu_detect_once);
 
-   return &util_cpu_caps;
+   return &_util_cpu_caps_state.caps;
 }
 
 #ifdef __cplusplus

@@ -92,8 +92,14 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(dump_cpu, "GALLIUM_DUMP_CPU", false)
 
-/* Do not try to access util_cpu_caps directly, call to util_get_cpu_caps instead */
+static
 struct util_cpu_caps_t util_cpu_caps;
+
+/* Do not try to access _util_cpu_caps_state directly, call to util_get_cpu_caps instead */
+struct _util_cpu_caps_state_t _util_cpu_caps_state = {
+   .once_flag = ONCE_FLAG_INIT,
+   .detect_done = 0,
+};
 
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
 static int has_cpuid(void);
@@ -584,8 +590,10 @@ get_cpu_topology(void)
 #endif
 }
 
-static void
-util_cpu_detect_once(void)
+void _util_cpu_detect_once(void);
+
+void
+_util_cpu_detect_once(void)
 {
    int available_cpus = 0;
    int total_cpus = 0;
@@ -912,18 +920,8 @@ util_cpu_detect_once(void)
       printf("util_cpu_caps.num_L3_caches = %u\n", util_cpu_caps.num_L3_caches);
       printf("util_cpu_caps.num_cpu_mask_bits = %u\n", util_cpu_caps.num_cpu_mask_bits);
    }
+   _util_cpu_caps_state.caps = util_cpu_caps;
 
    /* This must happen at the end as it's used to guard everything else */
-   p_atomic_set(&util_cpu_caps.detect_done, 1);
-}
-
-static once_flag cpu_once_flag = ONCE_FLAG_INIT;
-
-void _util_cpu_detect_local(void);
-
-/* Do not call to this function directly, using util_get_cpu_caps instead */
-void
-_util_cpu_detect_local(void)
-{
-   call_once(&cpu_once_flag, util_cpu_detect_once);
+   p_atomic_set(&_util_cpu_caps_state.detect_done, 1);
 }

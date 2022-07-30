@@ -921,8 +921,8 @@ static void update_cache_sha1_cpu(struct mesa_sha1 *ctx)
     * Don't need the cpu cache affinity stuff. The rest
     * is contained in first 5 dwords.
     */
-   STATIC_ASSERT(offsetof(struct util_cpu_caps_t, num_L3_caches) == 6 * sizeof(uint32_t));
-   _mesa_sha1_update(ctx, cpu_caps, 6 * sizeof(uint32_t));
+   STATIC_ASSERT(offsetof(struct util_cpu_caps_t, num_L3_caches) == 5 * sizeof(uint32_t));
+   _mesa_sha1_update(ctx, cpu_caps, 5 * sizeof(uint32_t));
 }
 
 static void lp_disk_cache_create(struct llvmpipe_screen *screen)
