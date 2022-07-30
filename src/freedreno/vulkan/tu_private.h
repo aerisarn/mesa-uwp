@@ -29,6 +29,7 @@
 #define TU_PRIVATE_H
 
 #include "tu_common.h"
+#include "tu_android.h"
 #include "tu_autotune.h"
 #include "tu_clear_blit.h"
 #include "tu_cmd_buffer.h"
@@ -96,17 +97,5 @@ void
 tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
                              const struct tu_device *device,
                              const struct tu_render_pass *pass);
-
-VkResult
-tu_gralloc_info(struct tu_device *device,
-                const VkNativeBufferANDROID *gralloc_info,
-                int *dma_buf,
-                uint64_t *modifier);
-
-VkResult
-tu_import_memory_from_gralloc_handle(VkDevice device_h,
-                                     int dma_buf,
-                                     const VkAllocationCallbacks *alloc,
-                                     VkImage image_h);
 
 #endif /* TU_PRIVATE_H */

@@ -21,6 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_android.h"
 #include "tu_private.h"
 
 #include <hardware/gralloc.h>
