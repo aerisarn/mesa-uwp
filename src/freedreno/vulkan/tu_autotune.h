@@ -29,11 +29,9 @@
 #include "util/hash_table.h"
 #include "util/rwlock.h"
 
-struct tu_device;
-struct tu_cmd_buffer;
+#include "tu_suballoc.h"
 
 struct tu_renderpass_history;
-struct tu_renderpass_result;
 
 /**
  * "autotune" our decisions about bypass vs GMEM rendering, based on historical
@@ -111,6 +109,27 @@ struct tu_renderpass_samples {
    uint64_t __pad0;
    uint64_t samples_end;
    uint64_t __pad1;
+};
+
+/**
+ * Tracks the results from an individual renderpass. Initially created
+ * per renderpass, and appended to the tail of at->pending_results. At a later
+ * time, when the GPU has finished writing the results, we fill samples_passed.
+ */
+struct tu_renderpass_result {
+   /* Points into GPU memory */
+   struct tu_renderpass_samples* samples;
+
+   struct tu_suballoc_bo bo;
+
+   /*
+    * Below here, only used internally within autotune
+    */
+   uint64_t rp_key;
+   struct tu_renderpass_history *history;
+   struct list_head node;
+   uint32_t fence;
+   uint64_t samples_passed;
 };
 
 VkResult tu_autotune_init(struct tu_autotune *at, struct tu_device *dev);
