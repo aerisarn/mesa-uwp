@@ -21,6 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_util.h"
 #include "tu_private.h"
 
 #include <errno.h>
