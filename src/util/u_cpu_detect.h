@@ -134,11 +134,10 @@ struct util_cpu_caps_t {
 
 #define U_CPU_INVALID_L3 0xffff
 
-void util_cpu_detect(void);
-
 static inline ATTRIBUTE_CONST const struct util_cpu_caps_t *
 util_get_cpu_caps(void)
 {
+   extern void _util_cpu_detect_local(void);
    extern struct util_cpu_caps_t util_cpu_caps;
 
    /* On most CPU architectures, an atomic read is simply a regular memory
@@ -165,7 +164,7 @@ util_get_cpu_caps(void)
     * value with the same internal data every time.
     */
    if (unlikely(!p_atomic_read(&util_cpu_caps.detect_done)))
-      util_cpu_detect();
+      _util_cpu_detect_local();
 
    return &util_cpu_caps;
 }

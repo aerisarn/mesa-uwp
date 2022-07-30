@@ -92,7 +92,7 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(dump_cpu, "GALLIUM_DUMP_CPU", false)
 
-
+/* Do not try to access util_cpu_caps directly, call to util_get_cpu_caps instead */
 struct util_cpu_caps_t util_cpu_caps;
 
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
@@ -867,8 +867,11 @@ util_cpu_detect_once(void)
 
 static once_flag cpu_once_flag = ONCE_FLAG_INIT;
 
+void _util_cpu_detect_local(void);
+
+/* Do not call to this function directly, using util_get_cpu_caps instead */
 void
-util_cpu_detect(void)
+_util_cpu_detect_local(void)
 {
    call_once(&cpu_once_flag, util_cpu_detect_once);
 }
