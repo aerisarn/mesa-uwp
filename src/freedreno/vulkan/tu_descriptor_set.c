@@ -36,13 +36,15 @@
  */
 
 #include "tu_descriptor_set.h"
-#include "tu_private.h"
 
 #include <fcntl.h>
 
 #include "util/mesa-sha1.h"
 #include "vk_descriptors.h"
 #include "vk_util.h"
+
+#include "tu_device.h"
+#include "tu_image.h"
 
 static inline uint8_t *
 pool_base(struct tu_descriptor_pool *pool)

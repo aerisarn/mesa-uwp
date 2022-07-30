@@ -22,9 +22,11 @@
  */
 
 #include "tu_lrz.h"
-#include "tu_private.h"
 
+#include "tu_clear_blit.h"
+#include "tu_cmd_buffer.h"
 #include "tu_cs.h"
+#include "tu_image.h"
 
 /* Low-resolution Z buffer is very similar to a depth prepass that helps
  * the HW avoid executing the fragment shader on those fragments that will

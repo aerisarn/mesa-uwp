@@ -26,9 +26,12 @@
  */
 
 #include "tu_pass.h"
-#include "tu_private.h"
 
 #include "vk_util.h"
+
+#include "tu_cmd_buffer.h"
+#include "tu_device.h"
+#include "tu_image.h"
 
 /* Return true if we have to fallback to sysmem rendering because the
  * dependency can't be satisfied with tiled rendering.

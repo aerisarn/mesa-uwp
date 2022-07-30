@@ -44,9 +44,10 @@
 #include "util/timespec.h"
 #include "util/os_time.h"
 
-#include "tu_private.h"
-
+#include "tu_cmd_buffer.h"
 #include "tu_cs.h"
+#include "tu_device.h"
+#include "tu_dynamic_rendering.h"
 
 struct tu_queue_submit
 {

@@ -24,15 +24,17 @@
  */
 
 #include "tu_query.h"
-#include "tu_private.h"
 
 #include <fcntl.h>
 
 #include "nir/nir_builder.h"
 #include "util/os_time.h"
 
-#include "tu_cs.h"
 #include "vk_util.h"
+
+#include "tu_cmd_buffer.h"
+#include "tu_cs.h"
+#include "tu_device.h"
 
 #define NSEC_PER_SEC 1000000000ull
 #define WAIT_TIMEOUT 5

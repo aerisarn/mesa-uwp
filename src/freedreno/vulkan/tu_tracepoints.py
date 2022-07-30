@@ -54,7 +54,7 @@ tu_default_tps = []
 
 Header('util/u_dump.h')
 Header('vk_format.h')
-Header('freedreno/vulkan/tu_private.h', scope=HeaderScope.SOURCE)
+Header('freedreno/vulkan/tu_device.h', scope=HeaderScope.SOURCE)
 
 ForwardDecl('struct tu_device')
 

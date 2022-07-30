@@ -28,7 +28,6 @@
 #include "tu_pipeline.h"
 
 #include "common/freedreno_guardband.h"
-#include "tu_private.h"
 
 #include "ir3/ir3_nir.h"
 #include "main/menums.h"
@@ -41,7 +40,12 @@
 #include "vk_render_pass.h"
 #include "vk_util.h"
 
+#include "tu_cmd_buffer.h"
 #include "tu_cs.h"
+#include "tu_device.h"
+#include "tu_formats.h"
+#include "tu_lrz.h"
+#include "tu_pass.h"
 
 /* Emit IB that preloads the descriptors that the shader uses */
 

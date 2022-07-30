@@ -26,15 +26,12 @@
  */
 
 #include "tu_device.h"
-#include "tu_private.h"
-#include "tu_cs.h"
-#include "tu_tracepoints.h"
-#include "git_sha1.h"
 
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/sysinfo.h>
 
+#include "git_sha1.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/driconf.h"
@@ -44,6 +41,17 @@
 
 /* for fd_get_driver/device_uuid() */
 #include "freedreno/common/freedreno_uuid.h"
+
+#include "tu_clear_blit.h"
+#include "tu_cmd_buffer.h"
+#include "tu_cs.h"
+#include "tu_descriptor_set.h"
+#include "tu_dynamic_rendering.h"
+#include "tu_image.h"
+#include "tu_pass.h"
+#include "tu_query.h"
+#include "tu_tracepoints.h"
+#include "tu_wsi.h"
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
      defined(VK_USE_PLATFORM_XCB_KHR) || \

@@ -7,9 +7,6 @@
  */
 
 #include "tu_clear_blit.h"
-#include "tu_private.h"
-
-#include "tu_cs.h"
 
 #include "ir3/ir3_nir.h"
 
@@ -19,6 +16,10 @@
 #include "util/half_float.h"
 #include "compiler/nir/nir_builder.h"
 
+#include "tu_cmd_buffer.h"
+#include "tu_cs.h"
+#include "tu_formats.h"
+#include "tu_image.h"
 #include "tu_tracepoints.h"
 
 static uint32_t

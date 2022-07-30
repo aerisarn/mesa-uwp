@@ -24,11 +24,12 @@
  */
 
 #include "tu_wsi.h"
-#include "tu_private.h"
 
 #include "vk_util.h"
 #include "wsi_common_drm.h"
 #include "drm-uapi/drm_fourcc.h"
+
+#include "tu_device.h"
 
 static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 tu_wsi_proc_addr(VkPhysicalDevice physicalDevice, const char *pName)

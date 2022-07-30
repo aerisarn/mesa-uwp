@@ -21,10 +21,10 @@
  * SOFTWARE.
  */
 
-#include "tu_private.h"
+#include "tu_device.h"
 #include "tu_perfetto.h"
 
-/* Including tu_private.h in tu_perfetto.cc doesn't work, so
+/* Including tu_device.h in tu_perfetto.cc doesn't work, so
  * we need some helper methods to access tu_device.
  */
 

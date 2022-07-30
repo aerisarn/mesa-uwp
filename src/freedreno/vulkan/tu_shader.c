@@ -22,7 +22,6 @@
  */
 
 #include "tu_shader.h"
-#include "tu_private.h"
 
 #include "spirv/nir_spirv.h"
 #include "util/mesa-sha1.h"
@@ -31,6 +30,10 @@
 #include "vk_util.h"
 
 #include "ir3/ir3_nir.h"
+
+#include "tu_device.h"
+#include "tu_descriptor_set.h"
+#include "tu_pipeline.h"
 
 nir_shader *
 tu_spirv_to_nir(struct tu_device *dev,

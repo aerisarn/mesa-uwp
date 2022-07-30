@@ -22,7 +22,6 @@
  */
 
 #include "tu_util.h"
-#include "tu_private.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -30,6 +29,9 @@
 #include "util/u_math.h"
 #include "util/timespec.h"
 #include "vk_enum_to_str.h"
+
+#include "tu_device.h"
+#include "tu_pass.h"
 
 void PRINTFLIKE(3, 4)
    __tu_finishme(const char *file, int line, const char *format, ...)

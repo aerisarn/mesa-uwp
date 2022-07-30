@@ -22,8 +22,12 @@
  */
 
 #include "tu_autotune.h"
-#include "tu_private.h"
+
+#include "tu_cmd_buffer.h"
 #include "tu_cs.h"
+#include "tu_device.h"
+#include "tu_image.h"
+#include "tu_pass.h"
 
 /* How does it work?
  *

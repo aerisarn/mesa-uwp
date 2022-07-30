@@ -26,7 +26,6 @@
  */
 
 #include "tu_image.h"
-#include "tu_private.h"
 
 #include "fdl/fd6_format_table.h"
 
@@ -35,7 +34,11 @@
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
 
+#include "tu_android.h"
 #include "tu_cs.h"
+#include "tu_descriptor_set.h"
+#include "tu_device.h"
+#include "tu_formats.h"
 
 uint32_t
 tu6_plane_count(VkFormat format)

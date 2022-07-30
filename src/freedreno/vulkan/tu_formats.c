@@ -1,4 +1,3 @@
-
 /*
  * Copyright © 2016 Red Hat.
  * Copyright © 2016 Bas Nieuwenhuizen
@@ -24,12 +23,14 @@
  */
 
 #include "tu_formats.h"
-#include "tu_private.h"
 
 #include "fdl/fd6_format_table.h"
 
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
+
+#include "tu_device.h"
+#include "tu_image.h"
 
 struct tu_native_format
 tu6_format_vtx(VkFormat vk_format)

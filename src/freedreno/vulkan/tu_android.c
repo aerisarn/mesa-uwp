@@ -22,7 +22,6 @@
  */
 
 #include "tu_android.h"
-#include "tu_private.h"
 
 #include <hardware/gralloc.h>
 
@@ -37,6 +36,9 @@
 
 #include "util/libsync.h"
 #include "util/os_file.h"
+
+#include "tu_device.h"
+#include "tu_image.h"
 
 static int
 tu_hal_open(const struct hw_module_t *mod,

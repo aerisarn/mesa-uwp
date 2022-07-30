@@ -22,7 +22,6 @@
  */
 
 #include "tu_drm.h"
-#include "tu_private.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -33,6 +32,11 @@
 #include "vk_util.h"
 
 #include "util/debug.h"
+
+#include "tu_cmd_buffer.h"
+#include "tu_cs.h"
+#include "tu_device.h"
+#include "tu_dynamic_rendering.h"
 
 struct tu_syncobj {
    struct vk_object_base base;

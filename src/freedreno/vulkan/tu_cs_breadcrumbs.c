@@ -22,11 +22,12 @@
  */
 
 #include "tu_cs.h"
-#include "tu_private.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
+#include "tu_device.h"
 
 /* A simple implementations of breadcrumbs tracking of GPU progress
  * intended to be a last resort when debugging unrecoverable hangs.
