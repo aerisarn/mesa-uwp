@@ -1102,6 +1102,17 @@ iris_init_render_context(struct iris_batch *batch)
    }
 #endif
 
+#if GFX_VERx10 == 120
+   /* Wa_1806527549 says to disable the following HiZ optimization when the
+    * depth buffer is D16_UNORM. We've found the WA to help with more depth
+    * buffer configurations however, so we always disable it just to be safe.
+    */
+   iris_emit_reg(batch, GENX(HIZ_CHICKEN), reg) {
+      reg.HZDepthTestLEGEOptimizationDisable = true;
+      reg.HZDepthTestLEGEOptimizationDisableMask = true;
+   }
+#endif
+
    upload_pixel_hashing_tables(batch);
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
@@ -5743,15 +5754,6 @@ genX(emit_depth_state_workarounds)(struct iris_context *ice,
    iris_emit_reg(batch, GENX(COMMON_SLICE_CHICKEN1), reg) {
       reg.HIZPlaneOptimizationdisablebit = fmt_is_d16 && surf->samples == 1;
       reg.HIZPlaneOptimizationdisablebitMask = true;
-   }
-
-   /* Wa_1806527549
-    *
-    * Set HIZ_CHICKEN (7018h) bit 13 = 1 when depth buffer is D16_UNORM.
-    */
-   iris_emit_reg(batch, GENX(HIZ_CHICKEN), reg) {
-      reg.HZDepthTestLEGEOptimizationDisable = fmt_is_d16;
-      reg.HZDepthTestLEGEOptimizationDisableMask = true;
    }
 
    ice->state.genx->depth_reg_mode =
