@@ -124,6 +124,7 @@ struct tu_device;
 struct tu_image;
 struct tu_image_view;
 struct tu_instance;
+struct tu_physical_device;
 struct tu_pipeline_layout;
 struct tu_query_pool;
 struct tu_render_pass;

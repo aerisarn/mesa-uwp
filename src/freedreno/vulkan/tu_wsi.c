@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "tu_wsi.h"
 #include "tu_private.h"
 
 #include "vk_util.h"

@@ -45,13 +45,7 @@
 #include "tu_shader.h"
 #include "tu_suballoc.h"
 #include "tu_util.h"
-
-/* Pre-declarations needed for WSI entrypoints */
-struct wl_surface;
-struct wl_display;
-typedef struct xcb_connection_t xcb_connection_t;
-typedef uint32_t xcb_visualid_t;
-typedef uint32_t xcb_window_t;
+#include "tu_wsi.h"
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
@@ -193,11 +187,6 @@ struct tu_instance
 
    enum tu_debug_flags debug_flags;
 };
-
-VkResult
-tu_wsi_init(struct tu_physical_device *physical_device);
-void
-tu_wsi_finish(struct tu_physical_device *physical_device);
 
 bool
 tu_instance_extension_supported(const char *name);
