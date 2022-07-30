@@ -438,19 +438,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 
 #if defined(PIPE_ARCH_PPC)
    MAttrs.push_back(util_get_cpu_caps()->has_altivec ? "+altivec" : "-altivec");
-#if (LLVM_VERSION_MAJOR < 4)
-   /*
-    * Make sure VSX instructions are disabled
-    * See LLVM bugs:
-    * https://llvm.org/bugs/show_bug.cgi?id=25503#c7 (fixed in 3.8.1)
-    * https://llvm.org/bugs/show_bug.cgi?id=26775 (fixed in 3.8.1)
-    * https://llvm.org/bugs/show_bug.cgi?id=33531 (fixed in 4.0)
-    * https://llvm.org/bugs/show_bug.cgi?id=34647 (llc performance on certain unusual shader IR; intro'd in 4.0, pending as of 5.0)
-    */
-   if (util_get_cpu_caps()->has_altivec) {
-      MAttrs.push_back("-vsx");
-   }
-#else
    /*
     * Bug 25503 is fixed, by the same fix that fixed
     * bug 26775, in versions of LLVM later than 3.8 (starting with 3.8.1).
@@ -464,7 +451,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    if (util_get_cpu_caps()->has_altivec) {
       MAttrs.push_back(util_get_cpu_caps()->has_vsx ? "+vsx" : "-vsx");
    }
-#endif
 #endif
 
 #if defined(PIPE_ARCH_MIPS64)
