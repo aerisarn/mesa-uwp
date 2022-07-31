@@ -488,17 +488,45 @@ bool TexInstr::emit_tex_txf(nir_tex_instr *tex, Inputs& src, Shader& shader)
 
 bool TexInstr::emit_buf_txf(nir_tex_instr *tex, Inputs& src, Shader& shader)
 {
-   auto dst = shader.value_factory().dest_vec4(tex->dest, pin_group);
+   auto& vf = shader.value_factory();
+   auto dst = vf.dest_vec4(tex->dest, pin_group);
 
    PRegister tex_offset = nullptr;
    if (src.texture_offset)
       tex_offset = shader.emit_load_to_register(src.texture_offset);
-   auto ir = new LoadFromBuffer(dst, {0,1,2,3}, src.coord[0], 0,
+
+   auto *real_dst = &dst;
+   RegisterVec4 tmp = vf.temp_vec4(pin_group);
+
+   if (shader.chip_class() < ISA_CC_EVERGREEN) {
+      real_dst = &tmp;
+   }
+
+   auto ir = new LoadFromBuffer(*real_dst, {0,1,2,3}, src.coord[0], 0,
                                 tex->texture_index +  R600_MAX_CONST_BUFFERS,
-                                tex_offset, fmt_32_32_32_32_float);
+                                tex_offset, fmt_invalid);
    ir->set_fetch_flag(FetchInstr::use_const_field);
    shader.emit_instruction(ir);
    shader.set_flag(Shader::sh_uses_tex_buffer);
+
+   if (shader.chip_class() < ISA_CC_EVERGREEN) {
+      auto tmp_w = vf.temp_register();
+      int buf_sel = (512 + R600_BUFFER_INFO_OFFSET / 16) + 2 * tex->texture_index;
+      AluInstr *ir = nullptr;
+      for (int i = 0; i < 4; ++i) {
+         auto d = i < 3 ? dst[i] : tmp_w;
+         ir = new AluInstr(op2_and_int,  d, tmp[i],
+                           vf.uniform(buf_sel, i, R600_BUFFER_INFO_CONST_BUFFER),
+                           AluInstr::write);
+         shader.emit_instruction(ir);
+      }
+
+      ir->set_alu_flag(alu_last_instr);
+      shader.emit_instruction(new AluInstr(op2_or_int, dst[3], tmp_w,
+                              vf.uniform(buf_sel + 1, 0, R600_BUFFER_INFO_CONST_BUFFER),
+                              AluInstr::last_write));
+   }
+
    return true;
 }
 
