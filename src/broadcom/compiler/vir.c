@@ -541,6 +541,17 @@ v3d_compiler_free(const struct v3d_compiler *compiler)
         ralloc_free((void *)compiler);
 }
 
+struct v3d_compiler_strategy {
+        const char *name;
+        uint32_t max_threads;
+        uint32_t min_threads;
+        bool disable_general_tmu_sched;
+        bool disable_loop_unrolling;
+        bool disable_ubo_load_sorting;
+        bool disable_tmu_pipelining;
+        uint32_t max_tmu_spills;
+};
+
 static struct v3d_compile *
 vir_compile_init(const struct v3d_compiler *compiler,
                  struct v3d_key *key,
@@ -550,13 +561,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                  void *debug_output_data,
                  int program_id, int variant_id,
                  uint32_t compile_strategy_idx,
-                 uint32_t max_threads,
-                 uint32_t min_threads_for_reg_alloc,
-                 uint32_t max_tmu_spills,
-                 bool disable_general_tmu_sched,
-                 bool disable_loop_unrolling,
-                 bool disable_constant_ubo_load_sorting,
-                 bool disable_tmu_pipelining,
+                 const struct v3d_compiler_strategy *strategy,
                  bool fallback_scheduler)
 {
         struct v3d_compile *c = rzalloc(NULL, struct v3d_compile);
@@ -567,18 +572,19 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->program_id = program_id;
         c->variant_id = variant_id;
         c->compile_strategy_idx = compile_strategy_idx;
-        c->threads = max_threads;
+        c->threads = strategy->max_threads;
         c->debug_output = debug_output;
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
-        c->min_threads_for_reg_alloc = min_threads_for_reg_alloc;
-        c->max_tmu_spills = max_tmu_spills;
+        c->min_threads_for_reg_alloc = strategy->min_threads;
+        c->max_tmu_spills = strategy->max_tmu_spills;
         c->fallback_scheduler = fallback_scheduler;
-        c->disable_general_tmu_sched = disable_general_tmu_sched;
-        c->disable_tmu_pipelining = disable_tmu_pipelining;
-        c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
+        c->disable_general_tmu_sched = strategy->disable_general_tmu_sched;
+        c->disable_tmu_pipelining = strategy->disable_tmu_pipelining;
+        c->disable_constant_ubo_load_sorting = strategy->disable_ubo_load_sorting;
         c->disable_loop_unrolling = V3D_DBG(NO_LOOP_UNROLL)
-                ? true : disable_loop_unrolling;
+                ? true : strategy->disable_loop_unrolling;
+
 
         s = nir_shader_clone(c, s);
         c->s = s;
@@ -1716,16 +1722,7 @@ int v3d_shaderdb_dump(struct v3d_compile *c,
  * register allocation to any particular thread count). This is fine
  * because v3d_nir_to_vir will cap this to the actual minimum.
  */
-struct v3d_compiler_strategy {
-        const char *name;
-        uint32_t max_threads;
-        uint32_t min_threads;
-        bool disable_general_tmu_sched;
-        bool disable_loop_unrolling;
-        bool disable_ubo_load_sorting;
-        bool disable_tmu_pipelining;
-        uint32_t max_tmu_spills;
-} static const strategies[] = {
+static const struct v3d_compiler_strategy strategies[] = {
   /*0*/  { "default",                        4, 4, false, false, false, false,  0 },
   /*1*/  { "disable general TMU sched",      4, 4, true,  false, false, false,  0 },
   /*2*/  { "disable loop unrolling",         4, 4, true,  true,  false, false,  0 },
@@ -1830,14 +1827,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 c = vir_compile_init(compiler, key, s,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
-                                     strat,
-                                     strategies[strat].max_threads,
-                                     strategies[strat].min_threads,
-                                     strategies[strat].max_tmu_spills,
-                                     strategies[strat].disable_general_tmu_sched,
-                                     strategies[strat].disable_loop_unrolling,
-                                     strategies[strat].disable_ubo_load_sorting,
-                                     strategies[strat].disable_tmu_pipelining,
+                                     strat, &strategies[strat],
                                      strat == ARRAY_SIZE(strategies) - 1);
 
                 v3d_attempt_compile(c);
