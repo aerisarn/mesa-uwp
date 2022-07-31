@@ -1500,8 +1500,8 @@ agx_set_st_vary_final(agx_context *ctx)
    }
 }
 
-static void
-agx_print_stats(agx_context *ctx, unsigned size, FILE *fp)
+static int
+agx_dump_stats(agx_context *ctx, unsigned size, char **out)
 {
    unsigned nr_ins = 0, max_reg = 0;
 
@@ -1521,9 +1521,9 @@ agx_print_stats(agx_context *ctx, unsigned size, FILE *fp)
    /* TODO: Pipe through occupancy */
    unsigned nr_threads = 1;
 
-   fprintf(stderr, "%s - %s shader: %u inst, %u bytes, %u halfregs, %u threads, "
-           "%u loops, %u:%u spills:fills\n",
-           ctx->nir->info.label ?: "",
+   return asprintf(out,
+           "%s shader: %u inst, %u bytes, %u halfregs, %u threads, "
+           "%u loops, %u:%u spills:fills",
            gl_shader_stage_name(ctx->stage),
            nr_ins, size, max_reg, nr_threads, ctx->loop_count,
            ctx->spills, ctx->fills);
@@ -1740,6 +1740,7 @@ agx_flat_varying_mask(nir_shader *nir)
 void
 agx_compile_shader_nir(nir_shader *nir,
       struct agx_shader_key *key,
+      struct util_debug_callback *debug,
       struct util_dynarray *binary,
       struct agx_shader_info *out)
 {
@@ -1884,8 +1885,20 @@ agx_compile_shader_nir(nir_shader *nir,
 
    agx_pack_binary(ctx, binary);
 
-   if ((agx_debug & AGX_DBG_SHADERDB) && !skip_internal)
-      agx_print_stats(ctx, binary->size, stderr);
+   if (!skip_internal) {
+      char *stats;
+      int ret = agx_dump_stats(ctx, binary->size, &stats);
+
+      if (ret >= 0) {
+         if (agx_debug & AGX_DBG_SHADERDB)
+            fprintf(stderr, "SHADER-DB: %s - %s\n", nir->info.label ?: "", stats);
+
+         if (debug)
+            util_debug_message(debug, SHADER_INFO, "%s", stats);
+
+         free(stats);
+      }
+   }
 
    ralloc_free(ctx);
 }

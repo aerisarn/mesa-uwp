@@ -41,6 +41,7 @@
 #include "gallium/auxiliary/util/u_transfer_helper.h"
 #include "gallium/auxiliary/util/u_surface.h"
 #include "gallium/auxiliary/util/u_framebuffer.h"
+#include "gallium/auxiliary/util/u_debug_cb.h"
 #include "agx_public.h"
 #include "agx_state.h"
 #include "magic.h"
@@ -666,6 +667,7 @@ agx_create_context(struct pipe_screen *screen,
 
    pctx->buffer_subdata = u_default_buffer_subdata;
    pctx->texture_subdata = u_default_texture_subdata;
+   pctx->set_debug_callback = u_default_set_debug_callback;
    pctx->invalidate_resource = agx_invalidate_resource;
    agx_init_state_functions(pctx);
 

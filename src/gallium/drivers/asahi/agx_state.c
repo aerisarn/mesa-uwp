@@ -1,6 +1,7 @@
 /*
  * Copyright 2021 Alyssa Rosenzweig
  * Copyright (C) 2019-2020 Collabora, Ltd.
+ * Copyright © 2014-2017 Broadcom
  * Copyright 2010 Red Hat Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -1033,6 +1034,7 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
 static struct agx_compiled_shader *
 agx_compile_variant(struct agx_device *dev,
                     struct agx_uncompiled_shader *so,
+                    struct util_debug_callback *debug,
                     struct asahi_shader_key *key)
 {
    struct agx_compiled_shader *compiled = CALLOC_STRUCT(agx_compiled_shader);
@@ -1070,7 +1072,7 @@ agx_compile_variant(struct agx_device *dev,
       }
    }
 
-   agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
+   agx_compile_shader_nir(nir, &key->base, debug, &binary, &compiled->info);
 
    if (binary.size) {
       compiled->bo = agx_bo_create(dev, binary.size, AGX_MEMORY_TYPE_SHADER);
@@ -1141,7 +1143,7 @@ agx_create_shader_state(struct pipe_context *pctx,
          unreachable("Unknown shader stage in shader-db precompile");
       }
 
-      agx_compile_variant(dev, so, &key);
+      agx_compile_variant(dev, so, &pctx->debug, &key);
    }
 
    return so;
@@ -1166,7 +1168,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    }
 
    struct agx_device *dev = agx_device(ctx->base.screen);
-   *out = agx_compile_variant(dev, so, key);
+   *out = agx_compile_variant(dev, so, &ctx->base.debug, key);
    return true;
 }
 

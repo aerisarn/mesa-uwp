@@ -202,6 +202,7 @@ struct agx_context {
    bool cond_cond;
    enum pipe_render_cond_flag cond_mode;
 
+   struct util_debug_callback debug;
    bool is_noop;
 
    uint8_t render_target[8][AGX_RENDER_TARGET_LENGTH];
