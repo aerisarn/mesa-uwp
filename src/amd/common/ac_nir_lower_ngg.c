@@ -95,6 +95,9 @@ typedef struct
    uint8_t stream;
    /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
    uint8_t components_mask : 4;
+   /* These fields have the same meaning as in nir_io_semantics. */
+   unsigned no_varying : 1;
+   unsigned no_sysval_output : 1;
 } gs_output_info;
 
 typedef struct
@@ -2300,6 +2303,10 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
       /* The same output should always belong to the same base. */
       assert(!info->components_mask || info->base == base_index);
+      /* The same output should always have same kill state. */
+      assert(!info->components_mask ||
+             (info->no_varying == io_sem.no_varying &&
+              info->no_sysval_output == io_sem.no_sysval_output));
       /* The same output component should always belong to the same stream. */
       assert(!(info->components_mask & (1 << component)) ||
              ((info->stream >> (component * 2)) & 3) == stream);
@@ -2308,6 +2315,8 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       /* Components of the same output slot may belong to different streams. */
       info->stream |= stream << (component * 2);
       info->components_mask |= BITFIELD_BIT(component);
+      info->no_varying = io_sem.no_varying;
+      info->no_sysval_output = io_sem.no_sysval_output;
 
       nir_variable *var = s->output_vars[location][component];
       if (!var) {
@@ -2543,8 +2552,20 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
       if (!mask)
          continue;
 
+      /* Output has been killed but kept only for xfb.
+       * We have done streamout, so no need to re-build store output.
+       */
+      if ((!nir_slot_is_varying(slot) || info->no_varying) &&
+          (!nir_slot_is_sysval_output(slot) || info->no_sysval_output))
+         continue;
+
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
-      nir_io_semantics io_sem = { .location = slot, .num_slots = 1 };
+      nir_io_semantics io_sem = {
+         .location = slot,
+         .num_slots = 1,
+         .no_varying = info->no_varying,
+         .no_sysval_output = info->no_sysval_output,
+      };
 
       while (mask) {
          int start, count;
