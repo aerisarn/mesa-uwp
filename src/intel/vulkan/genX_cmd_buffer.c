@@ -6019,15 +6019,6 @@ genX(cmd_buffer_emit_gfx12_depth_wa)(struct anv_cmd_buffer *cmd_buffer,
       reg.HIZPlaneOptimizationdisablebitMask = true;
    }
 
-   /* Wa_1806527549
-    *
-    * Set HIZ_CHICKEN (7018h) bit 13 = 1 when depth buffer is D16_UNORM.
-    */
-   anv_batch_write_reg(&cmd_buffer->batch, GENX(HIZ_CHICKEN), reg) {
-      reg.HZDepthTestLEGEOptimizationDisable = fmt_is_d16;
-      reg.HZDepthTestLEGEOptimizationDisableMask = true;
-   }
-
    cmd_buffer->state.depth_reg_mode =
       fmt_is_d16 ? ANV_DEPTH_REG_MODE_D16 : ANV_DEPTH_REG_MODE_HW_DEFAULT;
 #endif
