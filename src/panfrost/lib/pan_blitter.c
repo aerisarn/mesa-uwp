@@ -331,6 +331,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                               const struct pan_blit_shader_data *blit_shader,
                               mali_ptr *blend_shaders)
 {
+#if PAN_ARCH <= 5
         if (!rt_count)
                 return;
 
@@ -403,6 +404,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                 pthread_mutex_unlock(&dev->blitter.shaders.lock);
                 blend_shaders[i] = blend_shader->address;
         }
+#endif
 }
 
 static const struct pan_blit_shader_data *

@@ -179,6 +179,14 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_b
                 return 0;
         }
 
+        /* On Bifrost and newer, we can also use fixed-function for opaque
+         * output regardless of the format by configuring the appropriate
+         * conversion descriptor in the internal blend descriptor. (Midgard
+         * requires a blend shader even for this case.)
+         */
+        if (dev->arch >= 6 && info.opaque)
+                return 0;
+
         /* Otherwise, we need to grab a shader */
         struct pan_blend_state pan_blend = blend->pan;
         unsigned nr_samples = surf->nr_samples ? : surf->texture->nr_samples;
