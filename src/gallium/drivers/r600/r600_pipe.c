@@ -414,8 +414,9 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		    rscreen->b.family == CHIP_CYPRESS ||
 		    rscreen->b.family == CHIP_HEMLOCK)
 			return 1;
-                if (is_nir_enabled(&rscreen->b))
-                   return 1;
+		if (is_nir_enabled(&rscreen->b) &&
+			rscreen->b.family >= CHIP_CEDAR)
+			return 1;
 		return 0;
 
 	case PIPE_CAP_TWO_SIDED_COLOR:
