@@ -143,6 +143,7 @@ static void pvr_cmd_buffer_free_resources(struct pvr_cmd_buffer *cmd_buffer)
       pvr_bo_free(cmd_buffer->device, bo);
    }
 
+   util_dynarray_fini(&cmd_buffer->deferred_csb_commands);
    util_dynarray_fini(&cmd_buffer->scissor_array);
    util_dynarray_fini(&cmd_buffer->depth_bias_array);
 }
@@ -206,6 +207,7 @@ static VkResult pvr_cmd_buffer_create(struct pvr_device *device,
 
    util_dynarray_init(&cmd_buffer->depth_bias_array, NULL);
    util_dynarray_init(&cmd_buffer->scissor_array, NULL);
+   util_dynarray_init(&cmd_buffer->deferred_csb_commands, NULL);
 
    cmd_buffer->state.status = VK_SUCCESS;
    cmd_buffer->status = PVR_CMD_BUFFER_STATUS_INITIAL;
@@ -4205,6 +4207,17 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
    }
 }
 
+static inline bool
+pvr_cmd_uses_deferred_cs_cmds(struct pvr_cmd_buffer *const cmd_buffer)
+{
+   const VkCommandBufferUsageFlags deferred_control_stream_flags =
+      VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT &
+      VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+   return cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+          cmd_buffer->usage_flags & deferred_control_stream_flags;
+}
+
 /* Largest valid PPP State update in words = 31
  * 1 - Header
  * 3 - Stream Out Config words 0, 1 and 2
@@ -4223,9 +4236,7 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
 static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
                                    struct pvr_sub_cmd_gfx *const sub_cmd)
 {
-   const bool deferred_secondary =
-      cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
-      cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+   const bool deferred_secondary = pvr_cmd_uses_deferred_cs_cmds(cmd_buffer);
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
    struct pvr_csb *const control_stream = &sub_cmd->control_stream;
@@ -4233,6 +4244,7 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    uint32_t ppp_state_words[PVR_MAX_PPP_STATE_DWORDS];
    const bool emit_dbsc = header->pres_ispctl_dbsc;
    uint32_t *buffer_ptr = ppp_state_words;
+   uint32_t dbsc_patching_offset = 0;
    uint32_t ppp_state_words_count;
    struct pvr_bo *pvr_bo;
    VkResult result;
@@ -4275,6 +4287,8 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
    if (header->pres_ispctl_dbsc) {
       assert(!deferred_secondary);
+
+      dbsc_patching_offset = buffer_ptr - ppp_state_words;
 
       pvr_csb_pack (buffer_ptr, TA_STATE_ISPDBSC, ispdbsc) {
          ispdbsc.dbindex = ppp_state->depthbias_scissor_indices.depthbias_index;
@@ -4409,7 +4423,29 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    }
 
    if (emit_dbsc && cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
-      pvr_finishme("Unimplemented path!!");
+      struct pvr_deferred_cs_command cmd;
+
+      if (deferred_secondary) {
+         cmd = (struct pvr_deferred_cs_command){
+            .type = PVR_DEFERRED_CS_COMMAND_TYPE_DBSC,
+            .dbsc = ppp_state->depthbias_scissor_indices,
+         };
+      } else {
+         /* clang-format off */
+         cmd = (struct pvr_deferred_cs_command){
+            .type = PVR_DEFERRED_CS_COMMAND_TYPE_DBSC2,
+            .dbsc2 = {
+               .state = ppp_state->depthbias_scissor_indices,
+               .ppp_cs_bo = pvr_bo,
+               .patch_offset = dbsc_patching_offset,
+            }
+         };
+         /* clang-format on */
+      }
+
+      util_dynarray_append(&cmd_buffer->deferred_csb_commands,
+                           struct pvr_deferred_cs_command,
+                           cmd);
    }
 
    state->emit_header = (struct PVRX(TA_STATE_HEADER)){ 0 };

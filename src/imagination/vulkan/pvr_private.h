@@ -229,6 +229,11 @@ enum pvr_event_state {
    PVR_EVENT_STATE_RESET_BY_DEVICE
 };
 
+enum pvr_deferred_cs_command_type {
+   PVR_DEFERRED_CS_COMMAND_TYPE_DBSC,
+   PVR_DEFERRED_CS_COMMAND_TYPE_DBSC2,
+};
+
 struct pvr_bo;
 struct pvr_compute_ctx;
 struct pvr_compute_pipeline;
@@ -812,7 +817,7 @@ struct pvr_ppp_state {
       uint32_t back_b;
    } isp;
 
-   struct {
+   struct pvr_ppp_dbsc {
       uint16_t scissor_index;
       uint16_t depthbias_index;
    } depthbias_scissor_indices;
@@ -848,6 +853,23 @@ struct pvr_ppp_state {
    uint32_t varying_word[2];
 
    uint32_t ppp_control;
+};
+
+/* Represents a control stream related command that is deferred for execution in
+ * a secondary command buffer.
+ */
+struct pvr_deferred_cs_command {
+   enum pvr_deferred_cs_command_type type;
+   union {
+      struct pvr_ppp_dbsc dbsc;
+
+      struct {
+         struct pvr_ppp_dbsc state;
+
+         struct pvr_bo *ppp_cs_bo;
+         uint32_t patch_offset;
+      } dbsc2;
+   };
 };
 
 #define PVR_DYNAMIC_STATE_BIT_VIEWPORT BITFIELD_BIT(0U)
@@ -1035,6 +1057,11 @@ struct pvr_cmd_buffer {
    uint32_t scissor_words[2];
 
    struct pvr_cmd_buffer_state state;
+
+   /* List of struct pvr_deferred_cs_command control stream related commands to
+    * execute in secondary command buffer.
+    */
+   struct util_dynarray deferred_csb_commands;
 
    /* List of pvr_bo structs associated with this cmd buffer. */
    struct list_head bo_list;
