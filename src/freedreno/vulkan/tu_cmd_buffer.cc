@@ -1453,21 +1453,6 @@ tu_set_input_attachments(struct tu_cmd_buffer *cmd, const struct tu_subpass *sub
 static void
 tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd)
 {
-   struct tu_cs *cs = &cmd->draw_cs;
-
-   /* Emit sysmem loads and clears, which we do all of in one cond block at the
-    * beginning of the render pass.
-    *
-    * gmem loads and clears happen per-subpass, so we can reuse gmem space
-    * between attachments in separate subpasses.
-    */
-   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
-
-   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_clear_sysmem_attachment(cmd, cs, i);
-
-   tu_cond_exec_end(cs);
-
    /* We need to re-emit any draw states that are patched in order for them to
     * be correctly added to the per-renderpass patchpoint list, even if they
     * are the same as before.
@@ -3627,8 +3612,28 @@ tu_emit_subpass_begin_gmem(struct tu_cmd_buffer *cmd)
    tu_cond_exec_end(cs); /* CP_COND_EXEC_0_RENDER_MODE_GMEM */
 }
 
-/* emit gmem loads/clears, and mrt/zs/msaa/ubwc state for the subpass that is
+/* Emits sysmem clears that are first used in this subpass. */
+static void
+tu_emit_subpass_begin_sysmem(struct tu_cmd_buffer *cmd)
+{
+   struct tu_cs *cs = &cmd->draw_cs;
+   uint32_t subpass_idx = cmd->state.subpass - cmd->state.pass->subpasses;
+
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i) {
+      struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[i];
+      if (att->clear_mask && att->first_subpass_idx == subpass_idx)
+         tu_clear_sysmem_attachment(cmd, cs, i);
+   }
+   tu_cond_exec_end(cs); /* sysmem */
+}
+
+/* emit loads, clears, and mrt/zs/msaa/ubwc state for the subpass that is
  * starting (either at vkCmdBeginRenderPass2() or vkCmdNextSubpass2())
+ *
+ * Clears and loads have to happen at this point, because with
+ * VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT the loads may depend on the output of
+ * a previous aliased attachment's store.
  */
 static void
 tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
@@ -3636,6 +3641,8 @@ tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
    tu_fill_render_pass_state(&cmd->state.vk_rp, cmd->state.pass, cmd->state.subpass);
 
    tu_emit_subpass_begin_gmem(cmd);
+   tu_emit_subpass_begin_sysmem(cmd);
+
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
