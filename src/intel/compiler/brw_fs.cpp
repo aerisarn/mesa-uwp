@@ -6987,7 +6987,7 @@ fs_visitor::run_vs()
 {
    assert(stage == MESA_SHADER_VERTEX);
 
-   payload_ = new vs_thread_payload();
+   payload_ = new vs_thread_payload(*this);
 
    emit_nir_code();
 

@@ -25,11 +25,18 @@
 
 using namespace brw;
 
-vs_thread_payload::vs_thread_payload()
+vs_thread_payload::vs_thread_payload(const fs_visitor &v)
 {
-   urb_handles = brw_ud8_grf(1, 0);
+   unsigned r = 0;
 
-   num_regs = 2;
+   /* R0: Thread header. */
+   r += reg_unit(v.devinfo);
+
+   /* R1: URB handles. */
+   urb_handles = brw_ud8_grf(r, 0);
+   r += reg_unit(v.devinfo);
+
+   num_regs = r;
 }
 
 tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)

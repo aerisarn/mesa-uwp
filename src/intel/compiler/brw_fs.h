@@ -98,7 +98,7 @@ protected:
 };
 
 struct vs_thread_payload : public thread_payload {
-   vs_thread_payload();
+   vs_thread_payload(const fs_visitor &v);
 
    fs_reg urb_handles;
 };
