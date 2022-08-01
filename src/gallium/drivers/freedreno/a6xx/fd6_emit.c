@@ -1368,6 +1368,8 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
       assert(screen->tess_bo);
       OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR, 2);
       OUT_RELOC(ring, screen->tess_bo, 0, 0, 0);
+      /* Updating PC_TESSFACTOR_ADDR could race with the next draw which uses it. */
+      OUT_WFI5(ring);
    }
 
    if (!batch->nondraw) {
