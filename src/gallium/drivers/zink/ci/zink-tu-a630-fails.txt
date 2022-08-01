@@ -30,11 +30,5 @@ KHR-GL46.gpu_shader_fp64.builtin.mod_dvec4,Fail
 KHR-GL46.copy_image.functional,Fail
 KHR-GL46.texture_view.view_classes,Fail
 
-# WFI is likely required after PC_TESSFACTOR_ADDR update,
-# otherwise GPU may use not updated address.
-KHR-GLES32.core.tessellation_shader.tessellation_shader_point_mode.point_rendering,Fail
-KHR-GLES32.core.tessellation_shader.winding.quads_cw,Fail
-KHR-GLES32.core.tessellation_shader.winding.triangles_cw,Fail
-
 # https://gerrit.khronos.org/c/vk-gl-cts/+/9891/
 KHR-GLES31.core.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail

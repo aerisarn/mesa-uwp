@@ -77,6 +77,8 @@ tu6_lazy_emit_tessfactor_addr(struct tu_cmd_buffer *cmd)
       return;
 
    tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo->iova));
+   /* Updating PC_TESSFACTOR_ADDR could race with the next draw which uses it. */
+   cmd->state.cache.flush_bits |= TU_CMD_FLAG_WAIT_FOR_IDLE;
    cmd->state.tessfactor_addr_set = true;
 }
 
