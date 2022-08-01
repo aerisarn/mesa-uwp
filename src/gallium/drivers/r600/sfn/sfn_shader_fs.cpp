@@ -96,7 +96,7 @@ bool FragmentShader::load_input(nir_intrinsic_instr *intr)
    }
 
    if (location == VARYING_SLOT_FACE) {
-      auto ir = new AluInstr(op2_setge_dx10,
+      auto ir = new AluInstr(op2_setgt_dx10,
                              vf.dest(intr->dest, 0, pin_none),
                              m_face_input,
                              vf.inline_const(ALU_SRC_0, 0),
@@ -173,6 +173,8 @@ bool FragmentShader::process_stage_intrinsic(nir_intrinsic_instr *intr)
       return true;
 
    switch (intr->intrinsic) {
+   case nir_intrinsic_load_input:
+      return load_input(intr);
    case nir_intrinsic_load_interpolated_input:
       return load_interpolated_input(intr);
    case nir_intrinsic_discard_if:
@@ -227,16 +229,15 @@ bool FragmentShader::load_interpolated_input(nir_intrinsic_instr *intr)
 
 int FragmentShader::do_allocate_reserved_registers()
 {
-
-   int num_baryc = allocate_register_inputs();
-
-   int next_register = (num_baryc + 1) >> 1;
+   int next_register = allocate_interpolators();
 
    if (m_sv_values.test(es_pos)) {
       m_pos_input = value_factory().allocate_pinned_vec4(next_register++, false);
       for (int i = 0; i < 4; ++i)
          m_pos_input[i]->pin_live_range(true);
    }
+
+   next_register = allocate_register_inputs(next_register);
 
    int face_reg_index = -1;
    if (m_sv_values.test(es_face)) {
@@ -433,7 +434,6 @@ bool FragmentShader::scan_input(nir_intrinsic_instr *intr, int index_src_id)
 
    switch (name) {
    case TGSI_SEMANTIC_PRIMID:
-      std::cerr << "Found primid input\n";
       m_gs_prim_id_input = true;
       m_ps_prim_id_input = ninputs();
       FALLTHROUGH;
@@ -446,12 +446,14 @@ bool FragmentShader::scan_input(nir_intrinsic_instr *intr, int index_src_id)
    case TGSI_SEMANTIC_PCOORD:
    case TGSI_SEMANTIC_VIEWPORT_INDEX:
    case TGSI_SEMANTIC_CLIPDIST: {
+      sfn_log << SfnLog::io <<  " have IO at " << driver_location << "\n";
       auto iinput = find_input(driver_location);
       if (iinput == input_not_found()) {
          ShaderInput input(driver_location, name);
          input.set_sid(sid);
          input.set_need_lds_pos();
          input.set_interpolator(tgsi_interpolate, tgsi_loc, uses_interpol_at_centroid);
+         sfn_log << SfnLog::io <<  "add IO with LDS ID at " << input.location() << "\n";
          add_input(input);
          assert(find_input(input.location()) != input_not_found());
       } else {
@@ -459,7 +461,6 @@ bool FragmentShader::scan_input(nir_intrinsic_instr *intr, int index_src_id)
             iinput->second.set_uses_interpolate_at_centroid();
          }
       }
-
       return true;
    }
    default:
@@ -614,6 +615,74 @@ void FragmentShader::do_print_properties(std::ostream& os) const
    os << "PROP WRITE_ALL_COLORS:" << m_fs_write_all << "\n";
 }
 
+int FragmentShaderR600::allocate_register_inputs(int first_register)
+{
+   int pos = first_register;
+   auto& vf = value_factory();
+   for (auto& [index, inp]: inputs()) {
+      if (inp.need_lds_pos()) {
+
+         RegisterVec4 input(vf.allocate_pinned_register(pos, 0),
+                            vf.allocate_pinned_register(pos, 1),
+                            vf.allocate_pinned_register(pos, 2),
+                            vf.allocate_pinned_register(pos, 3), pin_fully);
+         inp.set_gpr(pos++);
+         for (int i = 0; i < 4; ++i) {
+            input[i]->pin_live_range(true);
+         }
+
+         sfn_log << SfnLog::io << "Reseve input register at pos " <<
+                    index << " as "  << input << " with register " << inp.gpr() << "\n";
+
+         m_interpolated_inputs[index] = input;
+      }
+   }
+   return pos;
+}
+
+int FragmentShaderR600::allocate_interpolators()
+{
+   return 0;
+}
+
+bool FragmentShaderR600::load_input_hw(nir_intrinsic_instr *intr)
+{
+   auto& vf = value_factory();
+   AluInstr *ir = nullptr;
+   for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
+      sfn_log << SfnLog::io << "Inject register "  << *m_interpolated_inputs[nir_intrinsic_base(intr)][i] << "\n";
+      unsigned index = nir_intrinsic_component(intr) + i;
+      assert (index < 4);
+      if (intr->dest.is_ssa) {
+         vf.inject_value(intr->dest, i, m_interpolated_inputs[nir_intrinsic_base(intr)][index]);
+      } else {
+         ir = new AluInstr(op1_mov, vf.dest(intr->dest, i, pin_none),
+                     m_interpolated_inputs[nir_intrinsic_base(intr)][index],
+                     AluInstr::write);
+         emit_instruction(ir);
+      }
+   }
+   if (ir)
+      ir->set_alu_flag(alu_last_instr);
+   return true;
+}
+
+bool FragmentShaderR600::process_stage_intrinsic_hw(nir_intrinsic_instr *intr)
+{
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_barycentric_centroid:
+   case nir_intrinsic_load_barycentric_pixel:
+   case nir_intrinsic_load_barycentric_sample:
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool FragmentShaderR600::load_interpolated_input_hw(nir_intrinsic_instr *intr)
+{
+   return load_input_hw(intr);
+}
 
 bool FragmentShaderEG::load_input_hw(nir_intrinsic_instr *intr)
 {
@@ -646,7 +715,12 @@ bool FragmentShaderEG::load_input_hw(nir_intrinsic_instr *intr)
    return true;
 }
 
-bool FragmentShaderEG::allocate_register_inputs()
+int FragmentShaderEG::allocate_register_inputs(int first_register)
+{
+   return first_register;
+}
+
+int FragmentShaderEG::allocate_interpolators()
 {
    for (unsigned i = 0; i < s_max_interpolators; ++i) {
       if (interpolators_used(i)) {
@@ -671,7 +745,7 @@ bool FragmentShaderEG::allocate_register_inputs()
          m_interpolator[i].ij_index = num_baryc++;
       }
    }
-   return num_baryc;
+   return (num_baryc + 1) >> 1;
 }
 
 bool FragmentShaderEG::process_stage_intrinsic_hw(nir_intrinsic_instr *intr)
@@ -686,8 +760,6 @@ bool FragmentShaderEG::process_stage_intrinsic_hw(nir_intrinsic_instr *intr)
       vf.inject_value(intr->dest, 1, m_interpolator[ij].j);
       return true;
    }
-   case nir_intrinsic_load_input:
-      return load_input(intr);
    case nir_intrinsic_load_barycentric_at_offset:
       return load_barycentric_at_offset(intr);
    case nir_intrinsic_load_barycentric_at_sample:
