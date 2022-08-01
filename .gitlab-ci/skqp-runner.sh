@@ -141,7 +141,7 @@ generate_unittests() (
     done
 
     # create an exhaustive unittests list
-    "${SKQP_BIN_DIR}"/list_gpu_unit_tests | sort > "${GENERATED_FILE}"
+    "${SKQP_BIN_DIR}"/list_gpu_unit_tests > "${GENERATED_FILE}"
 
     # Remove undesirable tests from the list
     subtract_test_lists "${GENERATED_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}" "${FAILS_FILE}"
@@ -306,10 +306,9 @@ LD_LIBRARY_PATH=$INSTALL:$LD_LIBRARY_PATH
 setup_backends
 
 SKQP_BIN_DIR=${SKQP_BIN_DIR:-/skqp}
-SKQP_ASSETS_DIR=${SKQP_BIN_DIR}/assets
+SKQP_ASSETS_DIR="${SKQP_BIN_DIR}"/assets
 SKQP_RESULTS_DIR="${SKQP_RESULTS_DIR:-${PWD}/results}"
 
-# Directory where the skqp tests files are located
 mkdir -p "${SKQP_ASSETS_DIR}"/skqp
 
 # Show the reports on exit, even when a test crashes
