@@ -857,7 +857,7 @@ rewrite_phi_predecessor_blocks(nir_if *nif,
 
       nir_phi_instr *phi = nir_instr_as_phi(instr);
 
-      foreach_list_typed(nir_phi_src, src, node, &phi->srcs) {
+      nir_foreach_phi_src(src, phi) {
          if (src->pred == old_then_block) {
             src->pred = new_then_block;
          } else if (src->pred == old_else_block) {
