@@ -4246,27 +4246,31 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
     */
    header->pres_ispctl_dbsc &= !deferred_secondary;
 
-   pvr_cmd_pack(TA_STATE_HEADER)(buffer_ptr, header);
+   pvr_csb_write_struct(buffer_ptr, TA_STATE_HEADER, header);
 
-   if (*buffer_ptr == 0)
+   static_assert(pvr_cmd_length(TA_STATE_HEADER) == 1,
+                 "Expected 1 dword header.");
+   /* If the header is empty we exit early and prevent a bo alloc of 0 size. */
+   if (ppp_state_words[0] == 0)
       return VK_SUCCESS;
 
-   buffer_ptr++;
-
    if (header->pres_ispctl) {
-      *buffer_ptr++ = ppp_state->isp.control;
+      pvr_csb_write_value(buffer_ptr, TA_STATE_ISPCTL, ppp_state->isp.control);
 
       assert(header->pres_ispctl_fa);
-      *buffer_ptr++ = ppp_state->isp.front_a;
+      /* This is not a mistake. FA, BA have the ISPA format, and FB, BB have the
+       * ISPB format.
+       */
+      pvr_csb_write_value(buffer_ptr, TA_STATE_ISPA, ppp_state->isp.front_a);
 
       if (header->pres_ispctl_fb)
-         *buffer_ptr++ = ppp_state->isp.front_b;
+         pvr_csb_write_value(buffer_ptr, TA_STATE_ISPB, ppp_state->isp.front_b);
 
       if (header->pres_ispctl_ba)
-         *buffer_ptr++ = ppp_state->isp.back_a;
+         pvr_csb_write_value(buffer_ptr, TA_STATE_ISPA, ppp_state->isp.back_a);
 
       if (header->pres_ispctl_bb)
-         *buffer_ptr++ = ppp_state->isp.back_b;
+         pvr_csb_write_value(buffer_ptr, TA_STATE_ISPB, ppp_state->isp.back_b);
    }
 
    if (header->pres_ispctl_dbsc) {
@@ -4280,14 +4284,27 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    }
 
    if (header->pres_pds_state_ptr0) {
-      *buffer_ptr++ = ppp_state->pds.pixel_shader_base;
-      *buffer_ptr++ = ppp_state->pds.texture_uniform_code_base;
-      *buffer_ptr++ = ppp_state->pds.size_info1;
-      *buffer_ptr++ = ppp_state->pds.size_info2;
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PDS_SHADERBASE,
+                          ppp_state->pds.pixel_shader_base);
+
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PDS_TEXUNICODEBASE,
+                          ppp_state->pds.texture_uniform_code_base);
+
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PDS_SIZEINFO1,
+                          ppp_state->pds.size_info1);
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PDS_SIZEINFO2,
+                          ppp_state->pds.size_info2);
    }
 
-   if (header->pres_pds_state_ptr1)
-      *buffer_ptr++ = ppp_state->pds.varying_base;
+   if (header->pres_pds_state_ptr1) {
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PDS_VARYINGBASE,
+                          ppp_state->pds.varying_base);
+   }
 
    /* We don't use pds_state_ptr2 (texture state programs) control word, but
     * this doesn't mean we need to set it to 0. This is because the hardware
@@ -4295,18 +4312,28 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
     * PDS_SIZEINFO1 is non-zero.
     */
 
-   if (header->pres_pds_state_ptr3)
-      *buffer_ptr++ = ppp_state->pds.uniform_state_data_base;
+   if (header->pres_pds_state_ptr3) {
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PDS_UNIFORMDATABASE,
+                          ppp_state->pds.uniform_state_data_base);
+   }
 
    if (header->pres_region_clip) {
-      *buffer_ptr++ = ppp_state->region_clipping.word0;
-      *buffer_ptr++ = ppp_state->region_clipping.word1;
+      pvr_csb_write_value(buffer_ptr,
+                          TA_REGION_CLIP0,
+                          ppp_state->region_clipping.word0);
+      pvr_csb_write_value(buffer_ptr,
+                          TA_REGION_CLIP1,
+                          ppp_state->region_clipping.word1);
    }
 
    if (header->pres_viewport) {
       const uint32_t viewports = MAX2(1, ppp_state->viewport_count);
 
       for (uint32_t i = 0; i < viewports; i++) {
+         /* These don't have any definitions in the csbgen xml files and none
+          * will be added.
+          */
          *buffer_ptr++ = ppp_state->viewports[i].a0;
          *buffer_ptr++ = ppp_state->viewports[i].m0;
          *buffer_ptr++ = ppp_state->viewports[i].a1;
@@ -4316,32 +4343,45 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       }
    }
 
-   if (header->pres_wclamp)
-      *buffer_ptr++ = fui(0.00001f);
+   if (header->pres_wclamp) {
+      pvr_csb_pack (buffer_ptr, TA_WCLAMP, wclamp) {
+         wclamp.val = fui(0.00001f);
+      }
+      buffer_ptr += pvr_cmd_length(TA_WCLAMP);
+   }
 
    if (header->pres_outselects)
-      *buffer_ptr++ = ppp_state->output_selects;
+      pvr_csb_write_value(buffer_ptr, TA_OUTPUT_SEL, ppp_state->output_selects);
 
-   if (header->pres_varying_word0)
-      *buffer_ptr++ = ppp_state->varying_word[0];
+   if (header->pres_varying_word0) {
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_VARYING0,
+                          ppp_state->varying_word[0]);
+   }
 
-   if (header->pres_varying_word1)
-      *buffer_ptr++ = ppp_state->varying_word[1];
+   if (header->pres_varying_word1) {
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_VARYING1,
+                          ppp_state->varying_word[1]);
+   }
 
    /* We only emit this on the first draw of a render job to prevent us from
     * inheriting a non-zero value set elsewhere.
     */
    if (header->pres_varying_word2)
-      *buffer_ptr++ = 0;
+      pvr_csb_write_value(buffer_ptr, TA_STATE_VARYING2, 0);
 
-   if (header->pres_ppp_ctrl)
-      *buffer_ptr++ = ppp_state->ppp_control;
+   if (header->pres_ppp_ctrl) {
+      pvr_csb_write_value(buffer_ptr,
+                          TA_STATE_PPP_CTRL,
+                          ppp_state->ppp_control);
+   }
 
    /* We only emit this on the first draw of a render job to prevent us from
     * inheriting a non-zero value set elsewhere.
     */
    if (header->pres_stream_out_size)
-      *buffer_ptr++ = 0;
+      pvr_csb_write_value(buffer_ptr, TA_STATE_STREAM_OUT0, 0);
 
    ppp_state_words_count = buffer_ptr - ppp_state_words;
    assert(ppp_state_words_count <= PVR_MAX_PPP_STATE_DWORDS);
