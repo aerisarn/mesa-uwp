@@ -7,6 +7,8 @@ permissions:
 jobs:
   CI:
     runs-on: macos-latest
+    env:
+      GALLIUM_DUMP_CPU: true
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -37,3 +39,10 @@ jobs:
       run: meson test -C build --print-errorlogs
     - name: Install
       run: meson install -C build
+    - name: 'Upload Artifact'
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-result
+        path: build/meson-logs/testlog.txt
+        retention-days: 5
