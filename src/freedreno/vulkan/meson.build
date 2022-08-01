@@ -36,10 +36,8 @@ libtu_files = files(
   'tu_cmd_buffer.c',
   'tu_cs_breadcrumbs.c',
   'tu_cs.c',
-  'tu_cs.h',
   'tu_device.c',
   'tu_descriptor_set.c',
-  'tu_descriptor_set.h',
   'tu_dynamic_rendering.c',
   'tu_formats.c',
   'tu_image.c',
@@ -51,8 +49,6 @@ libtu_files = files(
   'tu_shader.c',
   'tu_suballoc.c',
   'tu_util.c',
-  'tu_util.h',
-  'tu_perfetto.h',
 )
 
 tu_deps = []
