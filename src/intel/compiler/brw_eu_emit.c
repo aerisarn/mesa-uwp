@@ -3590,7 +3590,8 @@ brw_barrier(struct brw_codegen *p, struct brw_reg src)
    brw_set_dest(p, inst, retype(brw_null_reg(), BRW_REGISTER_TYPE_UW));
    brw_set_src0(p, inst, src);
    brw_set_src1(p, inst, brw_null_reg());
-   brw_set_desc(p, inst, brw_message_desc(devinfo, 1, 0, false));
+   brw_set_desc(p, inst, brw_message_desc(devinfo,
+                                          1 * reg_unit(devinfo), 0, false));
 
    brw_inst_set_sfid(devinfo, inst, BRW_SFID_MESSAGE_GATEWAY);
    brw_inst_set_gateway_subfuncid(devinfo, inst,
