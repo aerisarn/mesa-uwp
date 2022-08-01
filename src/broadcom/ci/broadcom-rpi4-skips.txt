@@ -7,8 +7,8 @@ spec@glsl-1.10@execution@loops@glsl-vs-unroll-explosion
 spec@!opengl 1.0@gl-1.0-blend-func
 
 # Extensions not supported
+spec@arb_gpu_shader5.*
 spec@arb_gpu_shader_fp64.*
-spec@arb_gpu_shader_gpu5.*
 spec@arb_gpu_shader_int64.*
 spec@arb_tessellation_shader.*
 spec@arb_texture_cube_map.*
