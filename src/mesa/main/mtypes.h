@@ -789,6 +789,9 @@ struct gl_texture_image
    /** Cube map face: index into gl_texture_object::Image[] array */
    GLuint Face;
 
+   unsigned FormatSwizzle;
+   unsigned FormatSwizzleGLSL130; //for depth formats
+
    /** GL_ARB_texture_multisample */
    GLuint NumSamples;            /**< Sample count, or 0 for non-multisample */
    GLboolean FixedSampleLocations; /**< Same sample locations for all pixels? */
