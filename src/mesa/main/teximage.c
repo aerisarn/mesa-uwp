@@ -3288,6 +3288,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
             GLenum depth_mode = ctx->API == API_OPENGL_CORE ? GL_RED : GL_LUMINANCE;
             if (texObj->Attrib.DepthMode != depth_mode)
                _mesa_update_teximage_format_swizzle(ctx, texObj->Image[0][texObj->Attrib.BaseLevel], texObj->Attrib.DepthMode);
+            _mesa_update_texture_object_swizzle(ctx, texObj);
          }
       }
       _mesa_unlock_texture(ctx, texObj);
@@ -4547,6 +4548,7 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
          _mesa_update_fbo_texture(ctx, texObj, face, level);
 
          _mesa_dirty_texobj(ctx, texObj);
+         _mesa_update_texture_object_swizzle(ctx, texObj);
       }
    }
    _mesa_unlock_texture(ctx, texObj);
@@ -7030,6 +7032,7 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
 
       _mesa_update_fbo_texture(ctx, texObj, 0, 0);
    }
+   _mesa_update_texture_object_swizzle(ctx, texObj);
 }
 
 

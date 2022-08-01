@@ -982,6 +982,9 @@ struct gl_texture_object
     */
    GLuint lastLevel;
 
+   unsigned Swizzle;
+   unsigned SwizzleGLSL130;
+
    unsigned int validated_first_level;
    unsigned int validated_last_level;
 
