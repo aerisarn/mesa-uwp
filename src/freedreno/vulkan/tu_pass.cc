@@ -796,11 +796,8 @@ tu_subpass_use_attachment(struct tu_render_pass *pass, int i, uint32_t a, const 
    update_samples(subpass, pCreateInfo->pAttachments[a].samples);
    att->clear_views |= subpass->multiview_mask;
 
-   /* Loads and clears are emitted at vkBeginRenderPass() time. */
-   if (att->clear_mask || att->load || att->load_stencil)
-      att->first_subpass_idx = 0;
-   else
-      att->first_subpass_idx = MIN2(i, att->first_subpass_idx);
+   /* Loads and clears are emitted at the start of the subpass that needs them. */
+   att->first_subpass_idx = MIN2(i, att->first_subpass_idx);
 
    /* Stores are emitted at vkEndRenderPass() time. */
    if (att->store || att->store_stencil)

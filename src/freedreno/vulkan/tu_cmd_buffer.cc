@@ -756,7 +756,7 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
 
 /* Optimization: there is no reason to load gmem if there is no
  * geometry to process. COND_REG_EXEC predicate is set here,
- * but the actual skip happens in tu6_emit_tile_load() and tile_store_cs,
+ * but the actual skip happens in tu_load_gmem_attachment() and tile_store_cs,
  * for each blit separately.
  */
 static void
@@ -956,17 +956,6 @@ tu6_emit_sysmem_resolves(struct tu_cmd_buffer *cmd,
          tu6_emit_sysmem_resolve(cmd, cs, subpass->multiview_mask, a, gmem_a);
       }
    }
-}
-
-static void
-tu6_emit_tile_load(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
-{
-   tu6_emit_blit_scissor(cmd, cs, true);
-
-   const bool cond_exec_allowed = cmd->state.tiling->binning &&
-                                  cmd->state.pass->has_cond_load_store;
-   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_load_gmem_attachment(cmd, cs, i, cond_exec_allowed, false);
 }
 
 static void
@@ -1466,23 +1455,12 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd)
 {
    struct tu_cs *cs = &cmd->draw_cs;
 
-   if (cmd->state.pass->has_fdm)
-      tu_cs_set_writeable(cs, true);
-
-   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
-
-   tu6_emit_tile_load(cmd, cs);
-
-   tu6_emit_blit_scissor(cmd, cs, false);
-
-   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_clear_gmem_attachment(cmd, cs, i);
-
-   tu_cond_exec_end(cs);
-
-   if (cmd->state.pass->has_fdm)
-      tu_cs_set_writeable(cs, false);
-
+   /* Emit sysmem loads and clears, which we do all of in one cond block at the
+    * beginning of the render pass.
+    *
+    * gmem loads and clears happen per-subpass, so we can reuse gmem space
+    * between attachments in separate subpasses.
+    */
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
@@ -3600,13 +3578,64 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
    tu_flush_for_stage(cache, src_stage, dst_stage);
 }
 
-/* emit mrt/zs/msaa/ubwc state for the subpass that is starting (either at
- * vkCmdBeginRenderPass2() or vkCmdNextSubpass2())
+static void
+tu_emit_subpass_begin_gmem(struct tu_cmd_buffer *cmd)
+{
+   struct tu_cs *cs = &cmd->draw_cs;
+   uint32_t subpass_idx = cmd->state.subpass - cmd->state.pass->subpasses;
+
+   /* If we might choose to bin, then put the loads under a check for geometry
+    * having been binned to this tile.  If we don't choose to bin in the end,
+    * then we will have manually set those registers to say geometry is present.
+    *
+    * However, if the draw CS has a write to the condition for some other reason
+    * (perf queries), then we can't do this optimization since the
+    * start-of-the-CS geometry condition will have been overwritten.
+    */
+   bool cond_load_allowed = cmd->state.tiling->binning &&
+                            cmd->state.pass->has_cond_load_store &&
+                            !cmd->state.rp.draw_cs_writes_to_cond_pred;
+
+   tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
+
+   /* Emit gmem loads that are first used in this subpass. */
+   bool emitted_scissor = false;
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i) {
+      struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[i];
+      if ((att->load || att->load_stencil) && att->first_subpass_idx == subpass_idx) {
+         if (!emitted_scissor) {
+            tu6_emit_blit_scissor(cmd, cs, true);
+            emitted_scissor = true;
+         }
+         tu_load_gmem_attachment(cmd, cs, i, cond_load_allowed, false);
+      }
+   }
+
+   /* Emit gmem clears that are first used in this subpass. */
+   emitted_scissor = false;
+   for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i) {
+      struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[i];
+      if (att->clear_mask && att->first_subpass_idx == subpass_idx) {
+         if (!emitted_scissor) {
+            tu6_emit_blit_scissor(cmd, cs, false);
+            emitted_scissor = true;
+         }
+         tu_clear_gmem_attachment(cmd, cs, i);
+      }
+   }
+
+   tu_cond_exec_end(cs); /* CP_COND_EXEC_0_RENDER_MODE_GMEM */
+}
+
+/* emit gmem loads/clears, and mrt/zs/msaa/ubwc state for the subpass that is
+ * starting (either at vkCmdBeginRenderPass2() or vkCmdNextSubpass2())
  */
 static void
 tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
 {
    tu_fill_render_pass_state(&cmd->state.vk_rp, cmd->state.pass, cmd->state.subpass);
+
+   tu_emit_subpass_begin_gmem(cmd);
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
