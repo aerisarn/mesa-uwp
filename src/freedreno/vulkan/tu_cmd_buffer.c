@@ -27,10 +27,6 @@
 
 #include "tu_private.h"
 
-#include "adreno_pm4.xml.h"
-#include "adreno_common.xml.h"
-
-#include "vk_format.h"
 #include "vk_render_pass.h"
 #include "vk_util.h"
 

@@ -9,7 +9,6 @@
 #include "tu_private.h"
 
 #include "tu_cs.h"
-#include "vk_format.h"
 
 #include "ir3/ir3_nir.h"
 

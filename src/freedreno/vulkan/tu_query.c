@@ -25,15 +25,7 @@
 
 #include "tu_private.h"
 
-#include <assert.h>
 #include <fcntl.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "adreno_pm4.xml.h"
-#include "adreno_common.xml.h"
-#include "a6xx.xml.h"
 
 #include "nir/nir_builder.h"
 #include "util/os_time.h"

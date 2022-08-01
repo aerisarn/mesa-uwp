@@ -37,11 +37,7 @@
 
 #include "tu_private.h"
 
-#include <assert.h>
 #include <fcntl.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "util/mesa-sha1.h"
 #include "vk_descriptors.h"

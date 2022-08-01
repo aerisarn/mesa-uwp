@@ -11,20 +11,11 @@
 
 #include "tu_common.h"
 
-#include <assert.h>
-#include <stdint.h>
-
-#include "util/macros.h"
 #include "util/u_math.h"
 #include "util/format/u_format_pack.h"
 #include "util/format/u_format_zs.h"
 #include "compiler/shader_enums.h"
 
-#include "adreno_common.xml.h"
-#include "adreno_pm4.xml.h"
-#include "a6xx.xml.h"
-
-#include <vulkan/vulkan.h>
 #include "vk_util.h"
 
 #define TU_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)

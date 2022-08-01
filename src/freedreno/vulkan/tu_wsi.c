@@ -26,7 +26,6 @@
 #include "tu_private.h"
 
 #include "vk_util.h"
-#include "wsi_common.h"
 #include "wsi_common_drm.h"
 #include "drm-uapi/drm_fourcc.h"
 

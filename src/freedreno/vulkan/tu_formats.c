@@ -25,11 +25,8 @@
 
 #include "tu_private.h"
 
-#include "adreno_common.xml.h"
-#include "a6xx.xml.h"
 #include "fdl/fd6_format_table.h"
 
-#include "vk_format.h"
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
 

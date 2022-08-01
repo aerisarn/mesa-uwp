@@ -24,7 +24,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <xf86drm.h>
@@ -42,7 +41,6 @@
 #include "util/debug.h"
 #include "util/timespec.h"
 #include "util/os_time.h"
-#include "util/perf/u_trace.h"
 
 #include "tu_private.h"
 

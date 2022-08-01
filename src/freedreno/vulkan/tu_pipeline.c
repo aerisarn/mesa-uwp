@@ -35,8 +35,6 @@
 #include "spirv/nir_spirv.h"
 #include "util/debug.h"
 #include "util/mesa-sha1.h"
-#include "util/u_atomic.h"
-#include "vk_format.h"
 #include "vk_pipeline.h"
 #include "vk_render_pass.h"
 #include "vk_util.h"

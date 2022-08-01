@@ -21,8 +21,6 @@
  * SOFTWARE.
  */
 
-#include <vulkan/vulkan_core.h>
-
 #include "tu_autotune.h"
 #include "tu_private.h"
 #include "tu_cs.h"

@@ -25,8 +25,6 @@
 
 #include "tu_private.h"
 
-#include "adreno_pm4.xml.h"
-
 #include "freedreno_pm4.h"
 
 /* For breadcrumbs we may open a network socket based on the envvar,
@@ -341,7 +339,6 @@ tu_cond_exec_end(struct tu_cs *cs)
 #define fd_reg_pair tu_reg_value
 #define __bo_type struct tu_bo *
 
-#include "a6xx.xml.h"
 #include "a6xx-pack.xml.h"
 
 #define __assert_eq(a, b)                                               \

@@ -32,17 +32,12 @@
 
 #include <fcntl.h>
 #include <poll.h>
-#include <stdbool.h>
-#include <string.h>
 #include <sys/sysinfo.h>
-#include <unistd.h>
 
 #include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/driconf.h"
 #include "util/os_misc.h"
-#include "util/u_atomic.h"
-#include "vk_format.h"
 #include "vk_sampler.h"
 #include "vk_util.h"
 

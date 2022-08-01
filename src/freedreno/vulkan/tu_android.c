@@ -32,9 +32,6 @@
 #include <hardware/hardware.h>
 #include <hardware/hwvulkan.h>
 
-#include <vulkan/vk_android_native_buffer.h>
-#include <vulkan/vk_icd.h>
-
 #include "drm-uapi/drm_fourcc.h"
 
 #include "util/libsync.h"
