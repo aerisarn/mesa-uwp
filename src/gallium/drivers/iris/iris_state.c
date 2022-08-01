@@ -1217,11 +1217,11 @@ struct iris_depth_buffer_state {
 };
 
 #if GFX_VERx10 == 120
-   enum iris_depth_reg_mode {
-      IRIS_DEPTH_REG_MODE_HW_DEFAULT = 0,
-      IRIS_DEPTH_REG_MODE_D16_1X_MSAA,
-      IRIS_DEPTH_REG_MODE_UNKNOWN,
-   };
+enum iris_depth_reg_mode {
+   IRIS_DEPTH_REG_MODE_HW_DEFAULT = 0,
+   IRIS_DEPTH_REG_MODE_D16_1X_MSAA,
+   IRIS_DEPTH_REG_MODE_UNKNOWN,
+};
 #endif
 
 /**
