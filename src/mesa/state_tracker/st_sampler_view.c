@@ -304,57 +304,6 @@ st_delete_texture_sampler_views(struct st_context *st,
    }
 }
 
-
-/**
- * Return swizzle1(swizzle2)
- */
-static unsigned
-swizzle_swizzle(unsigned swizzle1, unsigned swizzle2)
-{
-   unsigned i, swz[4];
-
-   if (swizzle1 == SWIZZLE_XYZW) {
-      /* identity swizzle, no change to swizzle2 */
-      return swizzle2;
-   }
-
-   for (i = 0; i < 4; i++) {
-      unsigned s = GET_SWZ(swizzle1, i);
-      switch (s) {
-      case SWIZZLE_X:
-      case SWIZZLE_Y:
-      case SWIZZLE_Z:
-      case SWIZZLE_W:
-         swz[i] = GET_SWZ(swizzle2, s);
-         break;
-      case SWIZZLE_ZERO:
-         swz[i] = SWIZZLE_ZERO;
-         break;
-      case SWIZZLE_ONE:
-         swz[i] = SWIZZLE_ONE;
-         break;
-      default:
-         assert(!"Bad swizzle term");
-         swz[i] = SWIZZLE_X;
-      }
-   }
-
-   return MAKE_SWIZZLE4(swz[0], swz[1], swz[2], swz[3]);
-}
-
-static unsigned
-get_texture_format_swizzle(const struct st_context *st,
-                           const struct gl_texture_object *texObj,
-                           bool glsl130_or_later)
-{
-   const struct gl_texture_image *img = _mesa_base_tex_image(texObj);
-   unsigned tex_swizzle = glsl130_or_later ? img->FormatSwizzleGLSL130 : img->FormatSwizzle;
-
-   /* Combine the texture format swizzle with user's swizzle */
-   return swizzle_swizzle(texObj->Attrib._Swizzle, tex_swizzle);
-}
-
-
 /**
  * Return TRUE if the texture's sampler view swizzle is not equal to
  * the texture's swizzle.
@@ -367,7 +316,7 @@ check_sampler_swizzle(const struct st_context *st,
                       const struct pipe_sampler_view *sv,
                       bool glsl130_or_later)
 {
-   unsigned swizzle = get_texture_format_swizzle(st, texObj, glsl130_or_later);
+   unsigned swizzle = glsl130_or_later ? texObj->SwizzleGLSL130 : texObj->Swizzle;
 
    return ((sv->swizzle_r != GET_SWZ(swizzle, 0)) ||
            (sv->swizzle_g != GET_SWZ(swizzle, 1)) ||
@@ -487,7 +436,7 @@ st_create_texture_sampler_view_from_stobj(struct st_context *st,
 {
    /* There is no need to clear this structure (consider CPU overhead). */
    struct pipe_sampler_view templ;
-   unsigned swizzle = get_texture_format_swizzle(st, texObj, glsl130_or_later);
+   unsigned swizzle = glsl130_or_later ? texObj->SwizzleGLSL130 : texObj->Swizzle;
 
    templ.format = format;
 
