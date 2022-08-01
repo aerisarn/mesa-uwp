@@ -4503,6 +4503,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         nir_lower_idiv_options idiv_options = {
                 .allow_fp16 = true,
         };
+        NIR_PASS(progress, nir, nir_opt_idiv_const, 8);
         NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
