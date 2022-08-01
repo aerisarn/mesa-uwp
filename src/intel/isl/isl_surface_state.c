@@ -78,7 +78,13 @@ static const uint32_t isl_encode_multisample_layout[] = {
 };
 #endif
 
-#if GFX_VER >= 12
+#if GFX_VER >= 20
+static const uint32_t isl_encode_aux_mode[] = {
+   [ISL_AUX_USAGE_NONE] = AUX_NONE,
+   [ISL_AUX_USAGE_MC] = AUX_NONE,
+   [ISL_AUX_USAGE_MCS_CCS] = AUX_MCS,
+};
+#elif GFX_VER >= 12
 static const uint32_t isl_encode_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_MC] = AUX_NONE,
@@ -664,7 +670,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
             isl_get_render_compression_format(info->surf->format);
       }
 #endif
-#if GFX_VER >= 12
+#if GFX_VER == 12
       s.MemoryCompressionEnable = info->aux_usage == ISL_AUX_USAGE_MC;
 
       /* The Tiger Lake PRM for RENDER_SURFACE_STATE::DecompressInL3 says:
@@ -790,11 +796,11 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
    if (isl_aux_usage_has_fast_clears(info->aux_usage)) {
       if (info->use_clear_address) {
-#if GFX_VER >= 10
+#if GFX_VER > 10 && GFX_VER < 20
          s.ClearValueAddressEnable = true;
          s.ClearValueAddress = info->clear_address;
 #else
-         unreachable("Gfx9 and earlier do not support indirect clear colors");
+         unreachable("Only Gfx11 and Gfx12 support indirect clear colors");
 #endif
       }
 
