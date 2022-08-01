@@ -1591,30 +1591,11 @@ static void pvr_reset_graphics_dirty_state(struct pvr_cmd_buffer_state *state,
 {
    if (start_geom) {
       /*
-       * Initial geometry phase State.
+       * Initial geometry phase state.
        * It's the driver's responsibility to ensure that the state of the
        * hardware is correctly initialized at the start of every geometry
        * phase. This is required to prevent stale state from a previous
-       * geometry phase erroneously affecting the next geometry phase. The
-       * following fields in PPP State Header, and their corresponding state
-       * words, must be supplied in the first PPP State Update of a geometry
-       * phase that contains any geometry (draw calls). Any field not listed
-       * below is safe to ignore.
-       *
-       *	TA_PRES_STREAM_OUT_SIZE
-       *	TA_PRES_PPPCTRL
-       *	TA_PRES_VARYING_WORD2
-       *	TA_PRES_VARYING_WORD1
-       *	TA_PRES_VARYING_WORD0
-       *	TA_PRES_OUTSELECTS
-       *	TA_PRES_WCLAMP
-       *	TA_VIEWPORT_COUNT
-       *	TA_PRES_VIEWPORT
-       *	TA_PRES_REGION_CLIP
-       *	TA_PRES_PDSSTATEPTR0
-       *	TA_PRES_ISPCTLFB
-       *	TA_PRES_ISPCTLFA
-       *	TA_PRES_ISPCTL
+       * geometry phase erroneously affecting the next geometry phase.
        *
        * If a geometry phase does not contain any geometry, this restriction
        * can be ignored. If the first draw call in a geometry phase will only
@@ -1625,30 +1606,30 @@ static void pvr_reset_graphics_dirty_state(struct pvr_cmd_buffer_state *state,
        * phase.
        */
 
-      state->emit_state_bits = 0;
-
-      state->emit_state.stream_out = true;
-      state->emit_state.ppp_control = true;
-      state->emit_state.varying_word2 = true;
-      state->emit_state.varying_word1 = true;
-      state->emit_state.varying_word0 = true;
-      state->emit_state.output_selects = true;
-      state->emit_state.wclamp = true;
-      state->emit_state.viewport = true;
-      state->emit_state.region_clip = true;
-      state->emit_state.pds_fragment_stateptr0 = true;
-      state->emit_state.isp_fb = true;
-      state->emit_state.isp = true;
+      state->emit_header = (struct PVRX(TA_STATE_HEADER)){
+         .pres_stream_out_size = true,
+         .pres_ppp_ctrl = true,
+         .pres_varying_word2 = true,
+         .pres_varying_word1 = true,
+         .pres_varying_word0 = true,
+         .pres_outselects = true,
+         .pres_wclamp = true,
+         .pres_viewport = true,
+         .pres_region_clip = true,
+         .pres_pds_state_ptr0 = true,
+         .pres_ispctl_fb = true,
+         .pres_ispctl = true,
+      };
    } else {
-      state->emit_state.ppp_control = true;
-      state->emit_state.varying_word1 = true;
-      state->emit_state.varying_word0 = true;
-      state->emit_state.output_selects = true;
-      state->emit_state.viewport = true;
-      state->emit_state.region_clip = true;
-      state->emit_state.pds_fragment_stateptr0 = true;
-      state->emit_state.isp_fb = true;
-      state->emit_state.isp = true;
+      state->emit_header.pres_ppp_ctrl = true;
+      state->emit_header.pres_varying_word1 = true;
+      state->emit_header.pres_varying_word0 = true;
+      state->emit_header.pres_outselects = true;
+      state->emit_header.pres_viewport = true;
+      state->emit_header.pres_region_clip = true;
+      state->emit_header.pres_pds_state_ptr0 = true;
+      state->emit_header.pres_ispctl_fb = true;
+      state->emit_header.pres_ispctl = true;
    }
 
    memset(&state->ppp_state, 0U, sizeof(state->ppp_state));
@@ -3448,7 +3429,7 @@ pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
 
 static void pvr_setup_output_select(struct pvr_cmd_buffer *const cmd_buffer)
 {
-   struct pvr_emit_state *const emit_state = &cmd_buffer->state.emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &cmd_buffer->state.emit_header;
    const struct pvr_graphics_pipeline *const gfx_pipeline =
       cmd_buffer->state.gfx_pipeline;
    struct pvr_ppp_state *const ppp_state = &cmd_buffer->state.ppp_state;
@@ -3469,17 +3450,17 @@ static void pvr_setup_output_select(struct pvr_cmd_buffer *const cmd_buffer)
 
    if (ppp_state->output_selects != output_selects) {
       ppp_state->output_selects = output_selects;
-      emit_state->output_selects = true;
+      header->pres_outselects = true;
    }
 
    if (ppp_state->varying_word[0] != vertex_state->varying[0]) {
       ppp_state->varying_word[0] = vertex_state->varying[0];
-      emit_state->varying_word0 = true;
+      header->pres_varying_word0 = true;
    }
 
    if (ppp_state->varying_word[1] != vertex_state->varying[1]) {
       ppp_state->varying_word[1] = vertex_state->varying[1];
-      emit_state->varying_word1 = true;
+      header->pres_varying_word1 = true;
    }
 }
 
@@ -3487,7 +3468,7 @@ static void
 pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
                                 struct PVRX(TA_STATE_ISPA) *const ispa_out)
 {
-   struct pvr_emit_state *const emit_state = &cmd_buffer->state.emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &cmd_buffer->state.emit_header;
    const struct pvr_graphics_pipeline *const gfx_pipeline =
       cmd_buffer->state.gfx_pipeline;
    struct pvr_ppp_state *const ppp_state = &cmd_buffer->state.ppp_state;
@@ -3638,7 +3619,7 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
       } else {
          /* Both faces. */
 
-         emit_state->isp_ba = is_two_sided = true;
+         header->pres_ispctl_ba = is_two_sided = true;
 
          if (gfx_pipeline->raster_state.front_face ==
              VK_FRONT_FACE_COUNTER_CLOCKWISE) {
@@ -3653,13 +3634,15 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
          }
 
          /* HW defaults to stencil off. */
-         if (back_b != ispb_stencil_off)
-            emit_state->isp_fb = emit_state->isp_bb = true;
+         if (back_b != ispb_stencil_off) {
+            header->pres_ispctl_fb = true;
+            header->pres_ispctl_bb = true;
+         }
       }
    }
 
    if (!disable_stencil_test && front_b != ispb_stencil_off)
-      emit_state->isp_fb = true;
+      header->pres_ispctl_fb = true;
 
    pvr_csb_pack (&isp_control, TA_STATE_ISPCTL, ispctl) {
       ispctl.upass = pass_info->userpass_spawn;
@@ -3669,7 +3652,7 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
                                !gfx_pipeline->fragment_shader_state.bo;
 
       ispctl.two_sided = is_two_sided;
-      ispctl.bpres = emit_state->isp_fb || emit_state->isp_bb;
+      ispctl.bpres = header->pres_ispctl_fb || header->pres_ispctl_bb;
 
       ispctl.dbenable = !raster_discard_enabled &&
                         gfx_pipeline->raster_state.depth_bias_enable &&
@@ -3679,7 +3662,7 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
       ppp_state->isp.control_struct = ispctl;
    }
 
-   emit_state->isp = true;
+   header->pres_ispctl = true;
 
    ppp_state->isp.control = isp_control;
    ppp_state->isp.front_a = front_a;
@@ -3848,7 +3831,7 @@ pvr_get_geom_region_clip_align_size(struct pvr_device_info *const dev_info)
 static void
 pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
 {
-   struct pvr_emit_state *const emit_state = &cmd_buffer->state.emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &cmd_buffer->state.emit_header;
    struct pvr_ppp_state *const ppp_state = &cmd_buffer->state.ppp_state;
    const struct pvr_dynamic_state *const dynamic_state =
       &cmd_buffer->state.dynamic.common;
@@ -3875,7 +3858,7 @@ pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
                            __typeof__(depth_bias),
                            depth_bias);
 
-      emit_state->isp_dbsc = true;
+      header->pres_ispctl_dbsc = true;
    }
 
    if (ispctl->scenable) {
@@ -3968,8 +3951,8 @@ pvr_setup_isp_depth_bias_scissor_state(struct pvr_cmd_buffer *const cmd_buffer)
              cmd_buffer->scissor_words,
              sizeof(cmd_buffer->scissor_words));
 
-      emit_state->isp_dbsc = true;
-      emit_state->region_clip = true;
+      header->pres_ispctl_dbsc = true;
+      header->pres_region_clip = true;
    }
 }
 
@@ -3977,7 +3960,7 @@ static void
 pvr_setup_triangle_merging_flag(struct pvr_cmd_buffer *const cmd_buffer,
                                 struct PVRX(TA_STATE_ISPA) * ispa)
 {
-   struct pvr_emit_state *const emit_state = &cmd_buffer->state.emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &cmd_buffer->state.emit_header;
    struct pvr_ppp_state *const ppp_state = &cmd_buffer->state.ppp_state;
    uint32_t merge_word;
    uint32_t mask;
@@ -4001,7 +3984,7 @@ pvr_setup_triangle_merging_flag(struct pvr_cmd_buffer *const cmd_buffer,
 
    if (merge_word != ppp_state->pds.size_info2) {
       ppp_state->pds.size_info2 = merge_word;
-      emit_state->pds_fragment_stateptr0 = true;
+      header->pres_pds_state_ptr0 = true;
    }
 }
 
@@ -4017,7 +4000,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
    const struct pvr_pipeline_stage_state *fragment_state =
       &state->gfx_pipeline->fragment_shader_state.stage_state;
    const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
-   struct pvr_emit_state *const emit_state = &state->emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
    struct pvr_ppp_state *const ppp_state = &state->ppp_state;
 
    const uint32_t pds_uniform_size =
@@ -4093,7 +4076,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
    ppp_state->pds.size_info2 |= size_info2;
 
    if (pds_coeff_program->pvr_bo) {
-      state->emit_state.pds_fragment_stateptr1 = true;
+      header->pres_pds_state_ptr1 = true;
 
       pvr_csb_pack (&ppp_state->pds.varying_base,
                     TA_STATE_PDS_VARYINGBASE,
@@ -4110,19 +4093,19 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
       base.addr = PVR_DEV_ADDR(state->pds_fragment_descriptor_data_offset);
    }
 
-   emit_state->pds_fragment_stateptr0 = true;
-   emit_state->pds_fragment_stateptr3 = true;
+   header->pres_pds_state_ptr0 = true;
+   header->pres_pds_state_ptr3 = true;
 }
 
 static void pvr_setup_viewport(struct pvr_cmd_buffer *const cmd_buffer)
 {
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
-   struct pvr_emit_state *const emit_state = &state->emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
    struct pvr_ppp_state *const ppp_state = &state->ppp_state;
 
    if (ppp_state->viewport_count != state->dynamic.common.viewport.count) {
       ppp_state->viewport_count = state->dynamic.common.viewport.count;
-      emit_state->viewport = true;
+      header->pres_viewport = true;
    }
 
    if (state->gfx_pipeline->raster_state.discard_enable) {
@@ -4131,7 +4114,7 @@ static void pvr_setup_viewport(struct pvr_cmd_buffer *const cmd_buffer)
        * stash the viewport_count as it's our trigger for when
        * rasterizer discard gets disabled.
        */
-      emit_state->viewport = false;
+      header->pres_viewport = false;
       return;
    }
 
@@ -4157,7 +4140,7 @@ static void pvr_setup_viewport(struct pvr_cmd_buffer *const cmd_buffer)
          ppp_state->viewports[i].a2 = z_center;
          ppp_state->viewports[i].m2 = z_scale;
 
-         emit_state->viewport = true;
+         header->pres_viewport = true;
       }
    }
 }
@@ -4166,7 +4149,7 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
 {
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    const struct pvr_graphics_pipeline *const gfx_pipeline = state->gfx_pipeline;
-   struct pvr_emit_state *const emit_state = &state->emit_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
    struct pvr_ppp_state *const ppp_state = &state->ppp_state;
    uint32_t ppp_control;
 
@@ -4218,7 +4201,7 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
 
    if (ppp_control != ppp_state->ppp_control) {
       ppp_state->ppp_control = ppp_control;
-      emit_state->ppp_control = true;
+      header->pres_ppp_ctrl = true;
    }
 }
 
@@ -4240,173 +4223,128 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
 static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
                                    struct pvr_sub_cmd_gfx *const sub_cmd)
 {
+   const bool deferred_secondary =
+      cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+      cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
-   struct pvr_emit_state *const emit_state = &state->emit_state;
-   struct pvr_ppp_state *const ppp_state = &state->ppp_state;
+   struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
    struct pvr_csb *const control_stream = &sub_cmd->control_stream;
+   struct pvr_ppp_state *const ppp_state = &state->ppp_state;
    uint32_t ppp_state_words[PVR_MAX_PPP_STATE_DWORDS];
+   const bool emit_dbsc = header->pres_ispctl_dbsc;
+   uint32_t *buffer_ptr = ppp_state_words;
    uint32_t ppp_state_words_count;
-   uint32_t ppp_state_header;
-   bool deferred_secondary;
    struct pvr_bo *pvr_bo;
-   uint32_t *buffer_ptr;
    VkResult result;
 
-   buffer_ptr = ppp_state_words;
+   header->view_port_count =
+      (ppp_state->viewport_count == 0) ? 0U : (ppp_state->viewport_count - 1);
+   header->pres_ispctl_fa = header->pres_ispctl;
 
-   pvr_csb_pack (&ppp_state_header, TA_STATE_HEADER, header) {
-      header.view_port_count = (ppp_state->viewport_count == 0)
-                                  ? 0U
-                                  : (ppp_state->viewport_count - 1);
+   /* If deferred_secondary is true then we do a separate state update
+    * which gets patched in vkCmdExecuteCommands().
+    */
+   header->pres_ispctl_dbsc &= !deferred_secondary;
 
-      /* Skip over header. */
-      buffer_ptr++;
+   pvr_cmd_pack(TA_STATE_HEADER)(buffer_ptr, header);
 
-      /* Set ISP state. */
-      if (emit_state->isp) {
-         header.pres_ispctl = true;
-         *buffer_ptr++ = ppp_state->isp.control;
-         header.pres_ispctl_fa = true;
-         *buffer_ptr++ = ppp_state->isp.front_a;
+   if (*buffer_ptr == 0)
+      return VK_SUCCESS;
 
-         if (emit_state->isp_fb) {
-            header.pres_ispctl_fb = true;
-            *buffer_ptr++ = ppp_state->isp.front_b;
-         }
+   buffer_ptr++;
 
-         if (emit_state->isp_ba) {
-            header.pres_ispctl_ba = true;
-            *buffer_ptr++ = ppp_state->isp.back_a;
-         }
+   if (header->pres_ispctl) {
+      *buffer_ptr++ = ppp_state->isp.control;
 
-         if (emit_state->isp_bb) {
-            header.pres_ispctl_bb = true;
-            *buffer_ptr++ = ppp_state->isp.back_b;
-         }
+      assert(header->pres_ispctl_fa);
+      *buffer_ptr++ = ppp_state->isp.front_a;
+
+      if (header->pres_ispctl_fb)
+         *buffer_ptr++ = ppp_state->isp.front_b;
+
+      if (header->pres_ispctl_ba)
+         *buffer_ptr++ = ppp_state->isp.back_a;
+
+      if (header->pres_ispctl_bb)
+         *buffer_ptr++ = ppp_state->isp.back_b;
+   }
+
+   if (header->pres_ispctl_dbsc) {
+      assert(!deferred_secondary);
+
+      pvr_csb_pack (buffer_ptr, TA_STATE_ISPDBSC, ispdbsc) {
+         ispdbsc.dbindex = ppp_state->depthbias_scissor_indices.depthbias_index;
+         ispdbsc.scindex = ppp_state->depthbias_scissor_indices.scissor_index;
       }
+      buffer_ptr += pvr_cmd_length(TA_STATE_ISPDBSC);
+   }
 
-      /* Depth bias / scissor
-       * If deferred_secondary is true then we do a separate state update
-       * which gets patched in ExecuteDeferredCommandBuffer.
-       */
-      /* TODO: Update above comment when we port ExecuteDeferredCommandBuffer.
-       */
-      deferred_secondary =
-         cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
-         cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+   if (header->pres_pds_state_ptr0) {
+      *buffer_ptr++ = ppp_state->pds.pixel_shader_base;
+      *buffer_ptr++ = ppp_state->pds.texture_uniform_code_base;
+      *buffer_ptr++ = ppp_state->pds.size_info1;
+      *buffer_ptr++ = ppp_state->pds.size_info2;
+   }
 
-      if (emit_state->isp_dbsc && !deferred_secondary) {
-         header.pres_ispctl_dbsc = true;
+   if (header->pres_pds_state_ptr1)
+      *buffer_ptr++ = ppp_state->pds.varying_base;
 
-         pvr_csb_pack (buffer_ptr++, TA_STATE_ISPDBSC, ispdbsc) {
-            ispdbsc.dbindex =
-               ppp_state->depthbias_scissor_indices.depthbias_index;
-            ispdbsc.scindex =
-               ppp_state->depthbias_scissor_indices.scissor_index;
-         }
-      }
+   /* We don't use pds_state_ptr2 (texture state programs) control word, but
+    * this doesn't mean we need to set it to 0. This is because the hardware
+    * runs the texture state program only when the pds_texture state field of
+    * PDS_SIZEINFO1 is non-zero.
+    */
 
-      /* PDS state. */
-      if (emit_state->pds_fragment_stateptr0) {
-         header.pres_pds_state_ptr0 = true;
+   if (header->pres_pds_state_ptr3)
+      *buffer_ptr++ = ppp_state->pds.uniform_state_data_base;
 
-         *buffer_ptr++ = ppp_state->pds.pixel_shader_base;
-         *buffer_ptr++ = ppp_state->pds.texture_uniform_code_base;
-         *buffer_ptr++ = ppp_state->pds.size_info1;
-         *buffer_ptr++ = ppp_state->pds.size_info2;
-      }
+   if (header->pres_region_clip) {
+      *buffer_ptr++ = ppp_state->region_clipping.word0;
+      *buffer_ptr++ = ppp_state->region_clipping.word1;
+   }
 
-      if (emit_state->pds_fragment_stateptr1) {
-         header.pres_pds_state_ptr1 = true;
-         *buffer_ptr++ = ppp_state->pds.varying_base;
-      }
+   if (header->pres_viewport) {
+      const uint32_t viewports = MAX2(1, ppp_state->viewport_count);
 
-      /* We don't use the pds_fragment_stateptr2 (texture state programs)
-       * control word, but this doesn't mean we need to set it to 0. This is
-       * because the hardware runs the texture state program only when the
-       * pds_texture state field of PDS_SIZEINFO1 is non-zero.
-       */
-
-      if (emit_state->pds_fragment_stateptr3) {
-         header.pres_pds_state_ptr3 = true;
-         *buffer_ptr++ = ppp_state->pds.uniform_state_data_base;
-      }
-
-      /* Region clip. */
-      if (emit_state->region_clip) {
-         header.pres_region_clip = true;
-         *buffer_ptr++ = ppp_state->region_clipping.word0;
-         *buffer_ptr++ = ppp_state->region_clipping.word1;
-      }
-
-      /* Viewport. */
-      if (emit_state->viewport) {
-         const uint32_t viewports = MAX2(1, ppp_state->viewport_count);
-
-         header.pres_viewport = true;
-         for (uint32_t i = 0; i < viewports; i++) {
-            *buffer_ptr++ = ppp_state->viewports[i].a0;
-            *buffer_ptr++ = ppp_state->viewports[i].m0;
-            *buffer_ptr++ = ppp_state->viewports[i].a1;
-            *buffer_ptr++ = ppp_state->viewports[i].m1;
-            *buffer_ptr++ = ppp_state->viewports[i].a2;
-            *buffer_ptr++ = ppp_state->viewports[i].m2;
-         }
-      }
-
-      /* W clamp. */
-      if (emit_state->wclamp) {
-         const float wclamp = 0.00001f;
-
-         header.pres_wclamp = true;
-         *buffer_ptr++ = fui(wclamp);
-      }
-
-      /* Output selects. */
-      if (emit_state->output_selects) {
-         header.pres_outselects = true;
-         *buffer_ptr++ = ppp_state->output_selects;
-      }
-
-      /* Varying words. */
-      if (emit_state->varying_word0) {
-         header.pres_varying_word0 = true;
-         *buffer_ptr++ = ppp_state->varying_word[0];
-      }
-
-      if (emit_state->varying_word1) {
-         header.pres_varying_word1 = true;
-         *buffer_ptr++ = ppp_state->varying_word[1];
-      }
-
-      if (emit_state->varying_word2) {
-         /* We only emit this on the first draw of a render job to prevent us
-          * from inheriting a non-zero value set elsewhere.
-          */
-         header.pres_varying_word2 = true;
-         *buffer_ptr++ = 0;
-      }
-
-      /* PPP control. */
-      if (emit_state->ppp_control) {
-         header.pres_ppp_ctrl = true;
-         *buffer_ptr++ = ppp_state->ppp_control;
-      }
-
-      if (emit_state->stream_out) {
-         /* We only emit this on the first draw of a render job to prevent us
-          * from inheriting a non-zero value set elsewhere.
-          */
-         header.pres_stream_out_size = true;
-         *buffer_ptr++ = 0;
+      for (uint32_t i = 0; i < viewports; i++) {
+         *buffer_ptr++ = ppp_state->viewports[i].a0;
+         *buffer_ptr++ = ppp_state->viewports[i].m0;
+         *buffer_ptr++ = ppp_state->viewports[i].a1;
+         *buffer_ptr++ = ppp_state->viewports[i].m1;
+         *buffer_ptr++ = ppp_state->viewports[i].a2;
+         *buffer_ptr++ = ppp_state->viewports[i].m2;
       }
    }
 
-   if (!ppp_state_header)
-      return VK_SUCCESS;
+   if (header->pres_wclamp)
+      *buffer_ptr++ = fui(0.00001f);
+
+   if (header->pres_outselects)
+      *buffer_ptr++ = ppp_state->output_selects;
+
+   if (header->pres_varying_word0)
+      *buffer_ptr++ = ppp_state->varying_word[0];
+
+   if (header->pres_varying_word1)
+      *buffer_ptr++ = ppp_state->varying_word[1];
+
+   /* We only emit this on the first draw of a render job to prevent us from
+    * inheriting a non-zero value set elsewhere.
+    */
+   if (header->pres_varying_word2)
+      *buffer_ptr++ = 0;
+
+   if (header->pres_ppp_ctrl)
+      *buffer_ptr++ = ppp_state->ppp_control;
+
+   /* We only emit this on the first draw of a render job to prevent us from
+    * inheriting a non-zero value set elsewhere.
+    */
+   if (header->pres_stream_out_size)
+      *buffer_ptr++ = 0;
 
    ppp_state_words_count = buffer_ptr - ppp_state_words;
-   ppp_state_words[0] = ppp_state_header;
+   assert(ppp_state_words_count <= PVR_MAX_PPP_STATE_DWORDS);
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.general_heap,
@@ -4430,14 +4368,28 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       state1.addrlsb = pvr_bo->vma->dev_addr;
    }
 
-   if (emit_state->isp_dbsc &&
-       cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+   if (emit_dbsc && cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       pvr_finishme("Unimplemented path!!");
    }
 
-   state->emit_state_bits = 0;
+   state->emit_header = (struct PVRX(TA_STATE_HEADER)){ 0 };
 
    return VK_SUCCESS;
+}
+
+static inline bool
+pvr_ppp_state_update_required(const struct pvr_cmd_buffer_state *state)
+{
+   const struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
+   return header->pres_ppp_ctrl || header->pres_ispctl ||
+          header->pres_ispctl_fb || header->pres_ispctl_ba ||
+          header->pres_ispctl_bb || header->pres_ispctl_dbsc ||
+          header->pres_pds_state_ptr0 || header->pres_pds_state_ptr1 ||
+          header->pres_pds_state_ptr2 || header->pres_pds_state_ptr3 ||
+          header->pres_region_clip || header->pres_viewport ||
+          header->pres_wclamp || header->pres_outselects ||
+          header->pres_varying_word0 || header->pres_varying_word1 ||
+          header->pres_varying_word2 || header->pres_stream_out_program;
 }
 
 static VkResult
@@ -4450,11 +4402,18 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
                               state->dirty.write_mask || state->dirty.reference;
    VkResult result;
 
+   /* TODO: The emit_header will be dirty only if
+    * pvr_reset_graphics_dirty_state() was called before this (so when command
+    * buffer begins recording or when it's reset). Otherwise it will have been
+    * zeroed out by the previous pvr_emit_ppp_state(). We can probably set a
+    * flag in there and check it here instead of checking the header.
+    * Check if this is true and implement the flag.
+    */
    if (!(dirty_stencil || state->dirty.depth_bias ||
          state->dirty.fragment_descriptors || state->dirty.line_width ||
          state->dirty.gfx_pipeline_binding || state->dirty.scissor ||
          state->dirty.userpass_spawn || state->dirty.viewport ||
-         state->emit_state_bits)) {
+         pvr_ppp_state_update_required(state))) {
       return VK_SUCCESS;
    }
 
@@ -4498,7 +4457,7 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
       state->ppp_state.viewport_count = 1;
 
-      state->emit_state.viewport = true;
+      state->emit_header.pres_viewport = true;
    }
 
    result = pvr_emit_ppp_state(cmd_buffer, sub_cmd);

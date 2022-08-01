@@ -798,27 +798,6 @@ struct pvr_render_pass_info {
    bool scissor_ds_clear;
 };
 
-struct pvr_emit_state {
-   bool ppp_control : 1;
-   bool isp : 1;
-   bool isp_fb : 1;
-   bool isp_ba : 1;
-   bool isp_bb : 1;
-   bool isp_dbsc : 1;
-   bool pds_fragment_stateptr0 : 1;
-   bool pds_fragment_stateptr1 : 1;
-   bool pds_fragment_stateptr2 : 1;
-   bool pds_fragment_stateptr3 : 1;
-   bool region_clip : 1;
-   bool viewport : 1;
-   bool wclamp : 1;
-   bool output_selects : 1;
-   bool varying_word0 : 1;
-   bool varying_word1 : 1;
-   bool varying_word2 : 1;
-   bool stream_out : 1;
-};
-
 struct pvr_ppp_state {
    uint32_t header;
 
@@ -949,13 +928,7 @@ struct pvr_cmd_buffer_state {
 
    struct pvr_ppp_state ppp_state;
 
-   union {
-      struct pvr_emit_state emit_state;
-      /* This is intended to allow setting and clearing of all bits. This
-       * shouldn't be used to access specific bits of ppp_state.
-       */
-      uint32_t emit_state_bits;
-   };
+   struct PVRX(TA_STATE_HEADER) emit_header;
 
    struct {
       /* FIXME: Check if we need a dirty state flag for the given scissor
@@ -1044,11 +1017,6 @@ struct pvr_cmd_buffer_state {
    uint32_t pds_fragment_descriptor_data_offset;
    uint32_t pds_compute_descriptor_data_offset;
 };
-
-static_assert(
-   sizeof(((struct pvr_cmd_buffer_state *)(0))->emit_state) <=
-      sizeof(((struct pvr_cmd_buffer_state *)(0))->emit_state_bits),
-   "Size of emit_state_bits must be greater that or equal to emit_state.");
 
 struct pvr_cmd_buffer {
    struct vk_command_buffer vk;
