@@ -82,11 +82,8 @@ bool AluGroup::add_trans_instructions(AluInstr *instr)
    auto opinfo = alu_ops.find(instr->opcode());
    assert(opinfo != alu_ops.end());
 
-   if (!opinfo->second.can_channel(AluOp::t, s_eg_t_slot_handling)) {
-      std::cerr << *instr << ": t-slot not supported ("<< s_eg_t_slot_handling << ")\n";
+   if (!opinfo->second.can_channel(AluOp::t, s_eg_t_slot_handling))
       return false;
-   }
-
 
    /* if we schedule a non-trans instr into the trans slot, we have to make
     * sure that the corresponding vector slot is already occupied, otherwise
