@@ -11,7 +11,6 @@ spec@arb_gpu_shader5.*
 spec@arb_gpu_shader_fp64.*
 spec@arb_gpu_shader_int64.*
 spec@arb_tessellation_shader.*
-spec@arb_texture_cube_map.*
 spec@glsl-1.30.*
 spec@glsl-1.40.*
 spec@glsl-1.50.*
