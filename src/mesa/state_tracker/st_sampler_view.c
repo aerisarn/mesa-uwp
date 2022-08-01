@@ -342,118 +342,13 @@ swizzle_swizzle(unsigned swizzle1, unsigned swizzle2)
    return MAKE_SWIZZLE4(swz[0], swz[1], swz[2], swz[3]);
 }
 
-
-/**
- * Given a user-specified texture base format, the actual gallium texture
- * format and the current GL_DEPTH_MODE, return a texture swizzle.
- *
- * Consider the case where the user requests a GL_RGB internal texture
- * format the driver actually uses an RGBA format.  The A component should
- * be ignored and sampling from the texture should always return (r,g,b,1).
- * But if we rendered to the texture we might have written A values != 1.
- * By sampling the texture with a ".xyz1" swizzle we'll get the expected A=1.
- * This function computes the texture swizzle needed to get the expected
- * values.
- *
- * In the case of depth textures, the GL_DEPTH_MODE state determines the
- * texture swizzle.
- *
- * This result must be composed with the user-specified swizzle to get
- * the final swizzle.
- */
-static unsigned
-compute_texture_format_swizzle(GLenum baseFormat, GLenum depthMode,
-                               bool glsl130_or_later)
-{
-   switch (baseFormat) {
-   case GL_RGBA:
-      return SWIZZLE_XYZW;
-   case GL_RGB:
-      return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_ONE);
-   case GL_RG:
-      return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_Y, SWIZZLE_ZERO, SWIZZLE_ONE);
-   case GL_RED:
-      return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_ZERO,
-                           SWIZZLE_ZERO, SWIZZLE_ONE);
-   case GL_ALPHA:
-      return MAKE_SWIZZLE4(SWIZZLE_ZERO, SWIZZLE_ZERO,
-                           SWIZZLE_ZERO, SWIZZLE_W);
-   case GL_LUMINANCE:
-      return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_X, SWIZZLE_X, SWIZZLE_ONE);
-   case GL_LUMINANCE_ALPHA:
-      return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_X, SWIZZLE_X, SWIZZLE_W);
-   case GL_INTENSITY:
-      return SWIZZLE_XXXX;
-   case GL_STENCIL_INDEX:
-   case GL_DEPTH_STENCIL:
-   case GL_DEPTH_COMPONENT:
-      /* Now examine the depth mode */
-      switch (depthMode) {
-      case GL_LUMINANCE:
-         return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_X, SWIZZLE_X, SWIZZLE_ONE);
-      case GL_INTENSITY:
-         return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_X, SWIZZLE_X, SWIZZLE_X);
-      case GL_ALPHA:
-         /* The texture(sampler*Shadow) functions from GLSL 1.30 ignore
-          * the depth mode and return float, while older shadow* functions
-          * and ARB_fp instructions return vec4 according to the depth mode.
-          *
-          * The problem with the GLSL 1.30 functions is that GL_ALPHA forces
-          * them to return 0, breaking them completely.
-          *
-          * A proper fix would increase code complexity and that's not worth
-          * it for a rarely used feature such as the GL_ALPHA depth mode
-          * in GL3. Therefore, change GL_ALPHA to GL_INTENSITY for all
-          * shaders that use GLSL 1.30 or later.
-          *
-          * BTW, it's required that sampler views are updated when
-          * shaders change (check_sampler_swizzle takes care of that).
-          */
-         if (glsl130_or_later)
-            return SWIZZLE_XXXX;
-         else
-            return MAKE_SWIZZLE4(SWIZZLE_ZERO, SWIZZLE_ZERO,
-                                 SWIZZLE_ZERO, SWIZZLE_X);
-      case GL_RED:
-         return MAKE_SWIZZLE4(SWIZZLE_X, SWIZZLE_ZERO,
-                              SWIZZLE_ZERO, SWIZZLE_ONE);
-      default:
-         assert(!"Unexpected depthMode");
-         return SWIZZLE_XYZW;
-      }
-   default:
-      assert(!"Unexpected baseFormat");
-      return SWIZZLE_XYZW;
-   }
-}
-
-
 static unsigned
 get_texture_format_swizzle(const struct st_context *st,
                            const struct gl_texture_object *texObj,
                            bool glsl130_or_later)
 {
-   GLenum baseFormat = _mesa_base_tex_image(texObj)->_BaseFormat;
-   unsigned tex_swizzle;
-   GLenum depth_mode = texObj->Attrib.DepthMode;
-
-   /* In ES 3.0, DEPTH_TEXTURE_MODE is expected to be GL_RED for textures
-    * with depth component data specified with a sized internal format.
-    */
-   if (_mesa_is_gles3(st->ctx) &&
-       (baseFormat == GL_DEPTH_COMPONENT ||
-        baseFormat == GL_DEPTH_STENCIL ||
-        baseFormat == GL_STENCIL_INDEX)) {
-      const struct gl_texture_image *firstImage =
-         _mesa_base_tex_image(texObj);
-      if (firstImage->InternalFormat != GL_DEPTH_COMPONENT &&
-          firstImage->InternalFormat != GL_DEPTH_STENCIL &&
-          firstImage->InternalFormat != GL_STENCIL_INDEX)
-         depth_mode = GL_RED;
-   }
-   tex_swizzle = compute_texture_format_swizzle(baseFormat,
-                                                depth_mode,
-                                                glsl130_or_later);
+   const struct gl_texture_image *img = _mesa_base_tex_image(texObj);
+   unsigned tex_swizzle = glsl130_or_later ? img->FormatSwizzleGLSL130 : img->FormatSwizzle;
 
    /* Combine the texture format swizzle with user's swizzle */
    return swizzle_swizzle(texObj->Attrib._Swizzle, tex_swizzle);
