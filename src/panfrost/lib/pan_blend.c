@@ -531,7 +531,11 @@ get_equation_str(const struct pan_blend_rt_state *rt_state,
         int ret;
 
         if (!rt_state->equation.blend_enable) {
-		ret = snprintf(str, len, "replace");
+		ret = snprintf(str, len, "replace(%s%s%s%s)",
+                               (rt_state->equation.color_mask & 1) ? "R" : "",
+                               (rt_state->equation.color_mask & 2) ? "G" : "",
+                               (rt_state->equation.color_mask & 4) ? "B" : "",
+                               (rt_state->equation.color_mask & 8) ? "A" : "");
                 assert(ret > 0);
                 return;
         }
