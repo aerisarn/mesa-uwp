@@ -160,6 +160,8 @@ private:
    bool visit(nir_ssa_undef_instr *);
    bool visit(nir_tex_instr *);
 
+   static unsigned lowerBitSizeCB(const nir_instr *, void *);
+
    // tex stuff
    unsigned int getNIRArgCount(TexInstruction::Target&);
 
@@ -3238,6 +3240,62 @@ nv_nir_move_stores_to_end(nir_shader *s)
                          nir_metadata_dominance);
 }
 
+unsigned
+Converter::lowerBitSizeCB(const nir_instr *instr, void *data)
+{
+   Converter *instance = static_cast<Converter *>(data);
+   nir_alu_instr *alu;
+
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   alu = nir_instr_as_alu(instr);
+
+   switch (alu->op) {
+   /* TODO: Check for operation OP_SET instead of all listed nir opcodes
+    * individually.
+    *
+    * Currently, we can't call getOperation(nir_op), since not all nir opcodes
+    * are handled within getOperation() and we'd run into an assert().
+    *
+    * Adding all nir opcodes to getOperation() isn't trivial, since the
+    * enum operation of some of the nir opcodes isn't distinct (e.g. depends
+    * on the data type).
+    */
+   case nir_op_ieq8:
+   case nir_op_ige8:
+   case nir_op_uge8:
+   case nir_op_ilt8:
+   case nir_op_ult8:
+   case nir_op_ine8:
+   case nir_op_ieq16:
+   case nir_op_ige16:
+   case nir_op_uge16:
+   case nir_op_ilt16:
+   case nir_op_ult16:
+   case nir_op_ine16:
+   case nir_op_feq32:
+   case nir_op_ieq32:
+   case nir_op_fge32:
+   case nir_op_ige32:
+   case nir_op_uge32:
+   case nir_op_flt32:
+   case nir_op_ilt32:
+   case nir_op_ult32:
+   case nir_op_fneu32:
+   case nir_op_ine32: {
+      DataType stype = instance->getSTypes(alu)[0];
+
+      if (isSignedIntType(stype) && typeSizeof(stype) < 4)
+         return 32;
+
+      return 0;
+   }
+   default:
+      return 0;
+   }
+}
+
 bool
 Converter::run()
 {
@@ -3311,6 +3369,8 @@ Converter::run()
       NIR_PASS_V(nir, nv_nir_move_stores_to_end);
 
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
+   NIR_PASS_V(nir, nir_lower_bit_size, Converter::lowerBitSizeCB, this);
+
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    // Garbage collect dead instructions
