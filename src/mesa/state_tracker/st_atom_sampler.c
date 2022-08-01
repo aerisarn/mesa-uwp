@@ -50,6 +50,7 @@
 #include "cso_cache/cso_context.h"
 
 #include "util/format/u_format.h"
+#include "program/prog_instruction.h"
 
 
 /**
@@ -105,29 +106,21 @@ st_convert_sampler(const struct st_context *st,
       if (st->apply_texture_swizzle_to_border_color ||
           st->alpha_border_color_is_not_w || st->use_format_with_border_color) {
          if (st->apply_texture_swizzle_to_border_color) {
-            const struct gl_texture_object *stobj = st_texture_object_const(texobj);
-            /* XXX: clean that up to not use the sampler view at all */
-            const struct st_sampler_view *sv = st_texture_get_current_sampler_view(st, stobj);
+            const unsigned swizzle = glsl130_or_later ? texobj->SwizzleGLSL130 : texobj->Swizzle;
 
-            if (sv) {
-               struct pipe_sampler_view *view = sv->view;
-               union pipe_color_union tmp = sampler->border_color;
-               const unsigned char swz[4] =
-               {
-                  view->swizzle_r,
-                  view->swizzle_g,
-                  view->swizzle_b,
-                  view->swizzle_a,
-               };
+            union pipe_color_union tmp = sampler->border_color;
+            const unsigned char swz[4] =
+            {
+               GET_SWZ(swizzle, 0),
+               GET_SWZ(swizzle, 1),
+               GET_SWZ(swizzle, 2),
+               GET_SWZ(swizzle, 3),
+            };
 
-               st_translate_color(&tmp, texBaseFormat, is_integer);
+            st_translate_color(&tmp, texBaseFormat, is_integer);
 
-               util_format_apply_color_swizzle(&sampler->border_color,
-                                               &tmp, swz, is_integer);
-            } else {
-               st_translate_color(&sampler->border_color,
-                                  texBaseFormat, is_integer);
-            }
+            util_format_apply_color_swizzle(&sampler->border_color,
+                                            &tmp, swz, is_integer);
          } else {
             bool srgb_skip_decode = false;
 
