@@ -23,6 +23,31 @@ radeonsi-raven-skqp:amd64:
     # Possible skqp backends: gl, gles, unitTest and vk
     SKQP_BACKENDS: gl gles vk unitTest  # space separated values
 
+.radeonsi-traces:
+  extends:
+    - .lava-piglit-traces:amd64
+  variables:
+    HWCI_START_XORG: 1
+    PIGLIT_PLATFORM: mixed_glx_egl  # TODO, take wine/VK in account
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-radeonsi.yml"
+    PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
+
+radeonsi-raven-gl-traces:amd64:
+  extends:
+    - .radeonsi-traces
+    - .radeonsi-raven-test:amd64
+    - .test-manual-mr  # only reference run on default wine, not for regular testing
+  variables:
+    PIGLIT_REPLAY_DEVICE_NAME: "gl-${GPU_VERSION}"
+
+radeonsi-raven-vk-traces:amd64:
+  extends:
+    - .radeonsi-traces
+    - .radeonsi-raven-test:amd64
+  variables:
+    PIGLIT_REPLAY_DEVICE_NAME: "vk-${GPU_VERSION}"
+
+
 .radeonsi-stoney-test:amd64:
   extends:
     - .radeonsi-rules

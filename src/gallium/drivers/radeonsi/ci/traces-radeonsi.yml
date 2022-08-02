@@ -4,6 +4,21 @@ traces-db:
   download-url: "http://caching-proxy/cache/?uri=https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
+  unigine/heaven-scene1-low-d3d11.trace-dxgi:
+    vk-radv-raven:
+      checksum: acf06d1e321e1f3f1e2819c25656c6c3
+  unigine/heaven-scene1-low-d3d9.trace-dxgi:
+    vk-radv-raven:
+      label: [broken]
+      checksum: 7dd0b49d585d4265b3f044cd47d8cd7e
+  unigine/tropics-d3d9.trace-dxgi:
+    vk-radv-raven:
+      label: [slow]
+      checksum: 7bba090dffafaeac9e2ddbea092b8f6d
+  unigine/sanctuary-d3d9.trace-dxgi:
+    vk-radv-raven:
+      label: [no-perf]
+      checksum: 25ba37c417f13a431707fad51df7e5de
   glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true-v2.trace:
     gl-radeonsi-stoney:
       checksum: 740fa8f8e9a9d815cf160b1893370755
