@@ -2625,6 +2625,56 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_mux_i32_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
                 break;
 
+        case nir_op_extract_u8:
+        case nir_op_extract_i8: {
+                assert(comps == 1 && "should be scalarized");
+                assert((src_sz == 16 || src_sz == 32) && "should be lowered");
+                unsigned byte = nir_src_as_uint(instr->src[1].src);
+
+                if (s0.swizzle == BI_SWIZZLE_H11) {
+                        assert(byte < 2);
+                        byte += 2;
+                } else if (s0.swizzle != BI_SWIZZLE_H01) {
+                        assert(s0.swizzle == BI_SWIZZLE_H00);
+                }
+
+                assert(byte < 4);
+
+                s0.swizzle = BI_SWIZZLE_H01;
+
+                if (instr->op == nir_op_extract_i8)
+                        bi_s8_to_s32_to(b, dst, bi_byte(s0, byte));
+                else
+                        bi_u8_to_u32_to(b, dst, bi_byte(s0, byte));
+                break;
+        }
+
+        case nir_op_extract_u16:
+        case nir_op_extract_i16: {
+                assert(comps == 1 && "should be scalarized");
+                assert(src_sz == 32 && "should be lowered");
+                unsigned half = nir_src_as_uint(instr->src[1].src);
+                assert(half == 0 || half == 1);
+
+                if (instr->op == nir_op_extract_i16)
+                        bi_s16_to_s32_to(b, dst, bi_half(s0, half));
+                else
+                        bi_u16_to_u32_to(b, dst, bi_half(s0, half));
+                break;
+        }
+
+        case nir_op_insert_u16: {
+                assert(comps == 1 && "should be scalarized");
+                unsigned half = nir_src_as_uint(instr->src[1].src);
+                assert(half == 0 || half == 1);
+
+                if (half == 0)
+                        bi_u16_to_u32_to(b, dst, bi_half(s0, 0));
+                else
+                        bi_mkvec_v2i16_to(b, dst, bi_imm_u16(0), bi_half(s0, 0));
+                break;
+        }
+
         case nir_op_ishl:
                 bi_lshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0));
                 break;
@@ -4319,6 +4369,11 @@ bi_vectorize_filter(const nir_instr *instr, const void *data)
         case nir_op_ushr:
         case nir_op_f2i16:
         case nir_op_f2u16:
+        case nir_op_extract_u8:
+        case nir_op_extract_i8:
+        case nir_op_extract_u16:
+        case nir_op_extract_i16:
+        case nir_op_insert_u16:
                 return 1;
         default:
                 break;
