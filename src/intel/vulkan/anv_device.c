@@ -3407,8 +3407,7 @@ VkResult anv_CreateDevice(
 
    result = anv_device_alloc_bo(device, "workaround", 4096,
                                 ANV_BO_ALLOC_CAPTURE |
-                                ANV_BO_ALLOC_MAPPED |
-                                ANV_BO_ALLOC_LOCAL_MEM,
+                                ANV_BO_ALLOC_MAPPED,
                                 0 /* explicit_address */,
                                 &device->workaround_bo);
    if (result != VK_SUCCESS)
@@ -3433,7 +3432,7 @@ VkResult anv_CreateDevice(
 
       result = anv_device_alloc_bo(device, "ray queries",
                                    ray_queries_size,
-                                   ANV_BO_ALLOC_LOCAL_MEM,
+                                   0,
                                    0 /* explicit_address */,
                                    &device->ray_query_bo);
       if (result != VK_SUCCESS)
@@ -3996,12 +3995,6 @@ VkResult anv_AllocateMemory(
       mem->host_ptr = host_ptr_info->pHostPointer;
       goto success;
    }
-
-   /* Set ALLOC_LOCAL_MEM flag if heap has device local bit set and requested
-    * memory property flag has DEVICE_LOCAL_BIT set.
-    */
-   if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-      alloc_flags |= ANV_BO_ALLOC_LOCAL_MEM;
 
    /* Regular allocate (not importing memory). */
 

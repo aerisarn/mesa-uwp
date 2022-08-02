@@ -509,7 +509,6 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
                                             pool->name,
                                             new_bo_size,
                                             bo_alloc_flags |
-                                            ANV_BO_ALLOC_LOCAL_MEM |
                                             ANV_BO_ALLOC_FIXED_ADDRESS |
                                             ANV_BO_ALLOC_MAPPED |
                                             ANV_BO_ALLOC_SNOOPED,
@@ -1383,7 +1382,6 @@ anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
    VkResult result = anv_device_alloc_bo(pool->device,
                                          pool->name,
                                          pow2_size,
-                                         ANV_BO_ALLOC_LOCAL_MEM |
                                          ANV_BO_ALLOC_MAPPED |
                                          ANV_BO_ALLOC_SNOOPED |
                                          ANV_BO_ALLOC_CAPTURE,
@@ -1490,9 +1488,8 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     *
     * so nothing will ever touch the top page.
     */
-   enum anv_bo_alloc_flags alloc_flags = ANV_BO_ALLOC_LOCAL_MEM;
-   if (devinfo->verx10 < 125)
-      alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
+   const enum anv_bo_alloc_flags alloc_flags =
+      devinfo->verx10 < 125 ? ANV_BO_ALLOC_32BIT_ADDRESS : 0;
    VkResult result = anv_device_alloc_bo(device, "scratch", size,
                                          alloc_flags,
                                          0 /* explicit_address */,
@@ -1668,10 +1665,6 @@ anv_device_alloc_bo(struct anv_device *device,
                     uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
-   if (!(alloc_flags & ANV_BO_ALLOC_LOCAL_MEM))
-      anv_perf_warn(VK_LOG_NO_OBJS(&device->physical->instance->vk.base),
-                                   "system memory used");
-
    if (!device->physical->has_implicit_ccs)
       assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS));
 
@@ -1702,19 +1695,21 @@ anv_device_alloc_bo(struct anv_device *device,
       struct drm_i915_gem_memory_class_instance regions[2];
       uint32_t nregions = 0;
 
-      if (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM) {
-         /* vram_non_mappable & vram_mappable actually are the same region. */
-         regions[nregions++] = device->physical->vram_non_mappable.region;
-      } else {
-         regions[nregions++] = device->physical->sys.region;
-      }
+      /* This always try to put the object in local memory. Here
+       * vram_non_mappable & vram_mappable actually are the same region.
+       */
+      regions[nregions++] = device->physical->vram_non_mappable.region;
 
+      /* If the buffer is mapped on the host, add the system memory region.
+       * This ensures that if the buffer cannot live in mappable local memory,
+       * it can be spilled to system memory.
+       */
       uint32_t flags = 0;
-      if (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE) {
-         assert(alloc_flags & ANV_BO_ALLOC_LOCAL_MEM);
-         /* We're required to add smem as a region when using mappable vram. */
+      if ((alloc_flags & ANV_BO_ALLOC_MAPPED) ||
+          (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE)) {
          regions[nregions++] = device->physical->sys.region;
-         flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
+         if (device->physical->vram_non_mappable.size > 0)
+            flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
       }
 
       gem_handle = anv_gem_create_regions(device, size + ccs_size,
@@ -1737,8 +1732,7 @@ anv_device_alloc_bo(struct anv_device *device,
       .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
       .has_client_visible_address =
          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
-      .has_implicit_ccs = ccs_size > 0 || (device->info->verx10 >= 125 &&
-         (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM)),
+      .has_implicit_ccs = ccs_size > 0 || device->info->verx10 >= 125,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {

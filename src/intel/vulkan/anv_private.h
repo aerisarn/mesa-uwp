@@ -1368,11 +1368,8 @@ enum anv_bo_alloc_flags {
    /** This buffer has implicit CCS data attached to it */
    ANV_BO_ALLOC_IMPLICIT_CCS = (1 << 9),
 
-   /** This buffer is allocated from local memory */
-   ANV_BO_ALLOC_LOCAL_MEM = (1 << 10),
-
    /** This buffer is allocated from local memory and should be cpu visible */
-   ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE = (1 << 11),
+   ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE = (1 << 10),
 };
 
 VkResult anv_device_alloc_bo(struct anv_device *device,
