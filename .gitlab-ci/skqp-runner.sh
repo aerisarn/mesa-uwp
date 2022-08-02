@@ -22,6 +22,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Args:
+# $1: section id
+# $2: section header
+gitlab_section_start() {
+    echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=${GL_COLLAPSED:-false}]\r\e[0K\e[32;1m$2\e[0m"
+}
+
+# Args:
+# $1: section id
+gitlab_section_end() {
+        echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"
+}
+
+
 # sponge allows piping to files that are being used as input.
 # E.g.: sort file.txt | sponge file.txt
 # In order to avoid installing moreutils just to have the sponge binary, we can
@@ -92,9 +106,20 @@ merge_rendertests_files() {
         sponge "$BASE_FILE"
 }
 
+assure_files() (
+    for CASELIST_FILE in $*
+    do
+        >&2 echo "Looking for ${CASELIST_FILE}..."
+        [ -f ${CASELIST_FILE} ] || (
+            >&2 echo "Not found. Creating empty."
+            touch ${CASELIST_FILE}
+        )
+    done
+)
+
 # Generate rendertests from scratch, customizing with fails/flakes/crashes files
 generate_rendertests() (
-    set -ex
+    set -e
     GENERATED_FILE=$(mktemp)
     TESTS_FILE_PREFIX="${SKQP_FILE_PREFIX}-${SKQP_BACKEND}_rendertests"
     FLAKES_FILE="${TESTS_FILE_PREFIX}-flakes.txt"
@@ -103,7 +128,7 @@ generate_rendertests() (
     RENDER_TESTS_FILE="${TESTS_FILE_PREFIX}.txt"
 
     # Default to an empty known flakes file if it doesn't exist.
-    touch "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
+    assure_files ${FLAKES_FILE} ${FAILS_FILE} ${CRASHES_FILE}
 
     # skqp does not support comments in rendertests.txt file
     remove_comments_from_files "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
@@ -125,7 +150,7 @@ generate_rendertests() (
 )
 
 generate_unittests() (
-    set -ex
+    set -e
     GENERATED_FILE=$(mktemp)
     TESTS_FILE_PREFIX="${SKQP_FILE_PREFIX}_unittests"
     FLAKES_FILE="${TESTS_FILE_PREFIX}-flakes.txt"
@@ -134,7 +159,7 @@ generate_unittests() (
     UNIT_TESTS_FILE="${TESTS_FILE_PREFIX}.txt"
 
     # Default to an empty known flakes file if it doesn't exist.
-    touch "${FLAKES_FILE}" "${FAILS_FILE}" "${CRASHES_FILE}"
+    assure_files ${FLAKES_FILE} ${FAILS_FILE} ${CRASHES_FILE}
 
     # Remove unitTest_ prefix
     for UT_FILE in "${FAILS_FILE}" "${CRASHES_FILE}" "${FLAKES_FILE}"; do
@@ -154,7 +179,7 @@ generate_unittests() (
 )
 
 run_all_tests() {
-    rm "${SKQP_ASSETS_DIR}"/skqp/*.txt
+    rm -f "${SKQP_ASSETS_DIR}"/skqp/*.txt
 }
 
 copy_tests_files() (
@@ -167,6 +192,7 @@ copy_tests_files() (
 
     if echo "${SKQP_BACKEND}" | grep -qE 'vk|gl(es)?'
     then
+        echo "Generating rendertests.txt file"
         GENERATED_RENDERTESTS=$(generate_rendertests)
         cp "${GENERATED_RENDERTESTS}" "${SKQP_ASSETS_DIR}"/skqp/rendertests.txt
         mkdir -p "${SKQP_RESULTS_DIR}/${SKQP_BACKEND}"
@@ -178,6 +204,7 @@ copy_tests_files() (
     # that is why it needs to be a special case.
     if echo "${SKQP_BACKEND}" | grep -qE "unitTest"
     then
+        echo "Generating unittests.txt file"
         GENERATED_UNITTESTS=$(generate_unittests)
         cp "${GENERATED_UNITTESTS}" "${SKQP_ASSETS_DIR}"/skqp/unittests.txt
         mkdir -p "${SKQP_RESULTS_DIR}/${SKQP_BACKEND}"
@@ -291,7 +318,7 @@ parse_args() {
     done
 }
 
-set -ex
+set -e
 
 parse_args "${@}"
 
@@ -324,12 +351,17 @@ do
     SKQP_BACKEND_RESULTS_DIR="${SKQP_RESULTS_DIR}"/"${SKQP_BACKEND}"
     mkdir -p "${SKQP_BACKEND_RESULTS_DIR}"
     BACKEND_EXITCODE=0
+
+    GL_COLLAPSED=true gitlab_section_start "skqp_${SKQP_BACKEND}" "skqp logs for ${SKQP_BACKEND}"
     "${SKQP_BIN_DIR}"/skqp "${SKQP_ASSETS_DIR}" "${SKQP_BACKEND_RESULTS_DIR}" "${SKQP_BACKEND}_" ||
         BACKEND_EXITCODE=$?
+    gitlab_section_end "skqp_${SKQP_BACKEND}"
 
     if [ ! $BACKEND_EXITCODE -eq 0 ]
     then
         echo "skqp failed on ${SKQP_BACKEND} tests with exit code: ${BACKEND_EXITCODE}."
+    else
+        echo "skqp succeeded on ${SKQP_BACKEND}."
     fi
 
     # Propagate error codes to leverage the final job result
