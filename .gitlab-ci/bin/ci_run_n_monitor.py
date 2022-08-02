@@ -24,7 +24,7 @@ from typing import Optional
 
 import gitlab
 from colorama import Fore, Style
-from gitlab_gql import GitlabGQL, create_job_needs_dag, filter_dag
+from gitlab_gql import GitlabGQL, create_job_needs_dag, filter_dag, print_dag
 
 REFRESH_WAIT_LOG = 10
 REFRESH_WAIT_JOBS = 6
@@ -254,9 +254,14 @@ def find_dependencies(target_job: str, project_path: str, sha: str) -> set[str]:
     dag, _ = create_job_needs_dag(
         gql_instance, {"projectPath": project_path.path_with_namespace, "sha": sha}
     )
+
     target_dep_dag = filter_dag(dag, target_job)
-    deps = set(chain.from_iterable(target_dep_dag.values()))
-    return deps
+    print(Fore.YELLOW)
+    print("Detected job dependencies:")
+    print()
+    print_dag(target_dep_dag)
+    print(Fore.RESET)
+    return set(chain.from_iterable(target_dep_dag.values()))
 
 
 if __name__ == "__main__":
