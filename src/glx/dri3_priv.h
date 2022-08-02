@@ -112,12 +112,6 @@ struct dri3_screen {
    struct loader_dri3_extensions loader_dri3_ext;
 };
 
-struct dri3_context
-{
-   struct glx_context base;
-   __DRIcontext *driContext;
-};
-
 struct dri3_drawable {
    __GLXDRIdrawable base;
    struct loader_dri3_drawable loader_drawable;

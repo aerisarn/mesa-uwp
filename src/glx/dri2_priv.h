@@ -60,12 +60,6 @@ struct dri2_screen {
    int show_fps_interval;
 };
 
-struct dri2_context
-{
-   struct glx_context base;
-   __DRIcontext *driContext;
-};
-
 _X_HIDDEN int
 dri2_query_renderer_integer(struct glx_screen *base, int attribute,
                             unsigned int *value);
