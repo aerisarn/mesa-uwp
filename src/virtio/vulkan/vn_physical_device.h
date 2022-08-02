@@ -30,6 +30,8 @@ struct vn_physical_device_features {
    VkPhysicalDeviceImageRobustnessFeatures image_robustness;
    VkPhysicalDeviceInlineUniformBlockFeatures inline_uniform_block;
    VkPhysicalDeviceMaintenance4Features maintenance4;
+   VkPhysicalDevicePipelineCreationCacheControlFeatures
+      pipeline_creation_cache_control;
    VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
       shader_demote_to_helper_invocation;
    VkPhysicalDeviceTextureCompressionASTCHDRFeatures

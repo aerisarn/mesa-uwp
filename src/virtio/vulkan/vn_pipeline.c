@@ -277,6 +277,28 @@ vn_create_pipeline_handles(struct vn_device *dev,
    return true;
 }
 
+/** For vkCreate*Pipelines.  */
+static void
+vn_destroy_failed_pipelines(struct vn_device *dev,
+                            uint32_t create_info_count,
+                            VkPipeline *pipelines,
+                            const VkAllocationCallbacks *alloc)
+{
+   for (uint32_t i = 0; i < create_info_count; i++) {
+      struct vn_pipeline *pipeline = vn_pipeline_from_handle(pipelines[i]);
+
+      if (pipeline->base.id == 0) {
+         vn_object_base_fini(&pipeline->base);
+         vk_free(alloc, pipeline);
+         pipelines[i] = VK_NULL_HANDLE;
+      }
+   }
+}
+
+#define VN_PIPELINE_CREATE_SYNC_MASK                                         \
+   (VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT |               \
+    VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+
 /** Fixes for a single VkGraphicsPipelineCreateInfo. */
 struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
@@ -636,6 +658,8 @@ vn_CreateGraphicsPipelines(VkDevice device,
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
    struct vn_create_graphics_pipelines_fixes *fixes = NULL;
+   bool want_sync = false;
+   VkResult result;
 
    pCreateInfos = vn_fix_graphics_pipeline_create_info(
       dev, createInfoCount, pCreateInfos, alloc, &fixes);
@@ -647,13 +671,29 @@ vn_CreateGraphicsPipelines(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   vn_async_vkCreateGraphicsPipelines(dev->instance, device, pipelineCache,
-                                      createInfoCount, pCreateInfos, NULL,
-                                      pPipelines);
+   for (uint32_t i = 0; i < createInfoCount; i++) {
+      if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK)) {
+         want_sync = true;
+         break;
+      }
+   }
+
+   if (want_sync) {
+      result = vn_call_vkCreateGraphicsPipelines(
+         dev->instance, device, pipelineCache, createInfoCount, pCreateInfos,
+         NULL, pPipelines);
+      if (result != VK_SUCCESS)
+         vn_destroy_failed_pipelines(dev, createInfoCount, pPipelines, alloc);
+   } else {
+      vn_async_vkCreateGraphicsPipelines(dev->instance, device, pipelineCache,
+                                         createInfoCount, pCreateInfos, NULL,
+                                         pPipelines);
+      result = VK_SUCCESS;
+   }
 
    vk_free(alloc, fixes);
 
-   return VK_SUCCESS;
+   return vn_result(dev->instance, result);
 }
 
 VkResult
@@ -668,15 +708,33 @@ vn_CreateComputePipelines(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
+   bool want_sync = false;
+   VkResult result;
 
    if (!vn_create_pipeline_handles(dev, createInfoCount, pPipelines, alloc))
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vn_async_vkCreateComputePipelines(dev->instance, device, pipelineCache,
-                                     createInfoCount, pCreateInfos, NULL,
-                                     pPipelines);
+   for (uint32_t i = 0; i < createInfoCount; i++) {
+      if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK)) {
+         want_sync = true;
+         break;
+      }
+   }
 
-   return VK_SUCCESS;
+   if (want_sync) {
+      result = vn_call_vkCreateComputePipelines(
+         dev->instance, device, pipelineCache, createInfoCount, pCreateInfos,
+         NULL, pPipelines);
+      if (result != VK_SUCCESS)
+         vn_destroy_failed_pipelines(dev, createInfoCount, pPipelines, alloc);
+   } else {
+      vn_call_vkCreateComputePipelines(dev->instance, device, pipelineCache,
+                                       createInfoCount, pCreateInfos, NULL,
+                                       pPipelines);
+      result = VK_SUCCESS;
+   }
+
+   return vn_result(dev->instance, result);
 }
 
 void

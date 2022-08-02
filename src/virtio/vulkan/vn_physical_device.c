@@ -132,6 +132,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
                        feats->inline_uniform_block,
                        INLINE_UNIFORM_BLOCK_FEATURES, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_pipeline_creation_cache_control,
+                       feats->pipeline_creation_cache_control,
+                       PIPELINE_CREATION_CACHE_CONTROL_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->KHR_dynamic_rendering, feats->dynamic_rendering,
                        DYNAMIC_RENDERING_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->KHR_maintenance4, feats->maintenance4,
@@ -1002,6 +1005,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_extended_dynamic_state2 = true,
       .EXT_image_robustness = true,
       .EXT_inline_uniform_block = true,
+      .EXT_pipeline_creation_cache_control = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_texture_compression_astc_hdr = true,
       .KHR_copy_commands2 = true,
@@ -1634,6 +1638,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceImageRobustnessFeatures *image_robustness;
       VkPhysicalDeviceInlineUniformBlockFeatures *inline_uniform_block;
       VkPhysicalDeviceMaintenance4Features *maintenance4;
+      VkPhysicalDevicePipelineCreationCacheControlFeatures
+         *pipeline_creation_cache_control;
       VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
          *shader_demote_to_helper_invocation;
       VkPhysicalDeviceTextureCompressionASTCHDRFeatures
@@ -1828,6 +1834,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES:
          *u.inline_uniform_block = feats->inline_uniform_block;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES:
+         *u.pipeline_creation_cache_control = feats->pipeline_creation_cache_control;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES:
          *u.shader_demote_to_helper_invocation =
