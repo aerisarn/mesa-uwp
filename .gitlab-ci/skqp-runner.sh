@@ -86,6 +86,7 @@ merge_rendertests_files() {
     BASE_FILE=$1
     shift
     FILES="$*"
+    # shellcheck disable=SC2086
     cat $FILES "$BASE_FILE" |
         sort --unique --stable --field-separator=, --key=1,1 |
         sponge "$BASE_FILE"
@@ -199,13 +200,14 @@ resolve_tests_files() {
 }
 
 test_vk_backend() {
-    if echo "${SKQP_BACKENDS}" | grep -qE 'vk'
+    if echo "${SKQP_BACKENDS:?}" | grep -qE 'vk'
     then
         if [ -n "$VK_DRIVER" ]; then
             return 0
         fi
 
         echo "VK_DRIVER environment variable is missing."
+        # shellcheck disable=SC2012
         VK_DRIVERS=$(ls "$INSTALL"/share/vulkan/icd.d/ | cut -f 1 -d '_')
         if [ -n "${VK_DRIVERS}" ]
         then
@@ -244,6 +246,7 @@ show_reports() (
     find "${SKQP_RESULTS_DIR}"/**/report.html -type f > "${REPORT_FILES}"
     while read -r REPORT
     do
+        # shellcheck disable=SC2001
         BACKEND_NAME=$(echo "${REPORT}" | sed  's@.*/\([^/]*\)/report.html@\1@')
         echo "See skqp ${BACKEND_NAME} render tests report at:"
         echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts${REPORT}"
