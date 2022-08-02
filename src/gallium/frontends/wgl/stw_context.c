@@ -450,7 +450,7 @@ release_old_framebuffers(struct stw_framebuffer *old_fb, struct stw_framebuffer 
          stw_framebuffer_lock(old_fb);
          stw_framebuffer_release_locked(old_fb, old_ctx->st);
       }
-      if (old_fbRead) {
+      if (old_fbRead && old_fb != old_fbRead) {
          stw_framebuffer_lock(old_fbRead);
          stw_framebuffer_release_locked(old_fbRead, old_ctx->st);
       }
@@ -514,9 +514,10 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
       stw_framebuffer_unlock(fb);
 
       stw_framebuffer_lock(fbRead);
-      if (fbRead != fb)
+      if (fbRead != fb) {
          stw_framebuffer_update(fbRead);
-      stw_framebuffer_reference_locked(fbRead);
+         stw_framebuffer_reference_locked(fbRead);
+      }
       stw_framebuffer_unlock(fbRead);
 
       struct stw_framebuffer *old_fb = ctx->current_framebuffer;
