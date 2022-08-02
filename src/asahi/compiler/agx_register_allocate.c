@@ -30,7 +30,7 @@
 unsigned
 agx_write_registers(agx_instr *I, unsigned d)
 {
-   unsigned size = I->dest[d].size == AGX_SIZE_32 ? 2 : 1;
+   unsigned size = agx_size_align_16(I->dest[d].size);
 
    switch (I->op) {
    case AGX_OPCODE_ITER:
@@ -163,7 +163,7 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
       agx_foreach_dest(I, d) {
          if (I->dest[d].type == AGX_INDEX_NORMAL) {
             unsigned count = agx_write_registers(I, d);
-            unsigned align = (I->dest[d].size == AGX_SIZE_16) ? 1 : 2;
+            unsigned align = agx_size_align_16(I->dest[d].size);
             unsigned reg = agx_assign_regs(used_regs, count, align, AGX_NUM_REGS);
 
             ssa_to_reg[I->dest[d].value] = reg;
