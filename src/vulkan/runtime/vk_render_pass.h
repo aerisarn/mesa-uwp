@@ -173,6 +173,9 @@ struct vk_subpass {
    /** VkFragmentShadingRateAttachmentInfoKHR::shadingRateAttachmentTexelSize */
    VkExtent2D fragment_shading_rate_attachment_texel_size;
 
+   /** Extra VkPipelineCreateFlags for this subpass */
+   VkPipelineCreateFlagBits pipeline_flags;
+
    /** VkRenderingSelfDependencyInfoMESA for this subpass
     *
     * This is in the pNext chain of pipeline_info and inheritance_info.
@@ -328,6 +331,24 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vk_render_pass, base, VkRenderPass,
  */
 const VkPipelineRenderingCreateInfo *
 vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info);
+
+/** Returns any extra VkPipelineCreateFlags from the render pass
+ *
+ * For render-pass-free drivers, this can be used to get any extra pipeline
+ * create flags implied by the render pass.  In particular, a render pass may
+ * want to add one or both of the following:
+ *
+ *  - VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT
+ *  - VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT
+ *  - VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
+ *
+ * If VkGraphicsPipelineCreateInfo::renderPass is VK_NULL_HANDLE, the relevant
+ * flags from VkGraphicsPipelineCreateInfo::flags will be returned.
+ *
+ * @param[in]  info  One of the pCreateInfos from vkCreateGraphicsPipelines
+ */
+VkPipelineCreateFlags
+vk_get_pipeline_rendering_flags(const VkGraphicsPipelineCreateInfo *info);
 
 /** Returns the VkAttachmentSampleCountInfoAMD for a graphics pipeline
  *

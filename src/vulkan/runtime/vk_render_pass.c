@@ -600,6 +600,8 @@ vk_common_CreateRenderPass2(VkDevice _device,
                                     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR);
          subpass->fragment_shading_rate_attachment_texel_size =
             fsr_att_info->shadingRateAttachmentTexelSize;
+         subpass->pipeline_flags |=
+            VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
       }
 
       /* Figure out any self-dependencies */
@@ -618,6 +620,9 @@ vk_common_CreateRenderPass2(VkDevice _device,
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
                subpass->color_attachments[c].layout =
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+               subpass->pipeline_flags |=
+                  VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
                color_self_deps |= (1u << c);
             }
          }
@@ -632,6 +637,8 @@ vk_common_CreateRenderPass2(VkDevice _device,
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
                subpass->depth_stencil_attachment->layout =
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+               subpass->pipeline_flags |=
+                  VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
                has_depth_self_dep = true;
             }
             if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -639,6 +646,8 @@ vk_common_CreateRenderPass2(VkDevice _device,
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
                subpass->depth_stencil_attachment->stencil_layout =
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+               subpass->pipeline_flags |=
+                  VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
                has_stencil_self_dep = true;
             }
          }
@@ -828,6 +837,22 @@ vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info)
    }
 
    return vk_find_struct_const(info->pNext, PIPELINE_RENDERING_CREATE_INFO);
+}
+
+VkPipelineCreateFlags
+vk_get_pipeline_rendering_flags(const VkGraphicsPipelineCreateInfo *info)
+{
+   VkPipelineCreateFlags rendering_flags = info->flags &
+      (VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+       VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+       VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+       VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT);
+
+   VK_FROM_HANDLE(vk_render_pass, render_pass, info->renderPass);
+   if (render_pass != NULL)
+      rendering_flags |= render_pass->subpasses[info->subpass].pipeline_flags;
+
+   return rendering_flags;
 }
 
 const VkAttachmentSampleCountInfoAMD *
