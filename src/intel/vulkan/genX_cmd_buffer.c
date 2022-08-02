@@ -7167,7 +7167,7 @@ void genX(CmdEndRendering)(
     *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
     *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
-    *  - VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA
+    *  - VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
     *
     * For general, we have no nice opportunity to transition so we do the copy
     * to the shadow unconditionally at the end of the subpass. For transfer
@@ -7182,7 +7182,7 @@ void genX(CmdEndRendering)(
 
       if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
           (gfx->stencil_att.layout == VK_IMAGE_LAYOUT_GENERAL ||
-           gfx->stencil_att.layout == VK_IMAGE_LAYOUT_SUBPASS_SELF_DEPENDENCY_MESA)) {
+           gfx->stencil_att.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
          anv_image_copy_to_shadow(cmd_buffer, image,
                                   VK_IMAGE_ASPECT_STENCIL_BIT,
                                   iview->planes[plane].isl.base_level, 1,
