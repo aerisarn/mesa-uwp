@@ -71,40 +71,42 @@ pvr_create_renderpass_hwsetup(struct pvr_device *device,
    subpasses[0].z_replicate = -1;
    subpasses[0].depth_initop = RENDERPASS_SURFACE_INITOP_CLEAR;
    subpasses[0].stencil_clear = false;
-   subpasses[0].driver_id = 0;
-   color_initops[0] = RENDERPASS_SURFACE_INITOP_NOP;
+   subpasses[0].index = 0;
+   if (pass->subpasses[0].color_count)
+      color_initops[0] = RENDERPASS_SURFACE_INITOP_NOP;
+
    subpasses[0].color_initops = color_initops;
    subpasses[0].load_op = NULL;
    renders[0].subpass_count = 1;
    renders[0].subpasses = subpasses;
 
    renders[0].sample_count = 1;
-   renders[0].ds_surface_id = 1;
+   renders[0].ds_attach_idx = 1;
    renders[0].depth_init = RENDERPASS_SURFACE_INITOP_CLEAR;
    renders[0].stencil_init = RENDERPASS_SURFACE_INITOP_NOP;
 
-   mrt_resources[0].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REGISTER;
-   mrt_resources[0].u.reg.out_reg = 0;
-   mrt_resources[0].u.reg.offset = 0;
-   renders[0].init_setup.render_targets_count = 1;
+   mrt_resources[0].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+   mrt_resources[0].reg.output_reg = 0;
+   mrt_resources[0].reg.offset = 0;
+   renders[0].init_setup.num_render_targets = 1;
    renders[0].init_setup.mrt_resources = &mrt_resources[0];
 
    color_inits[0].op = RENDERPASS_SURFACE_INITOP_CLEAR;
-   color_inits[0].driver_id = 0;
+   color_inits[0].index = 0;
    renders[0].color_init_count = 1;
    renders[0].color_init = color_inits;
 
-   mrt_resources[1].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REGISTER;
-   mrt_resources[1].u.reg.out_reg = 0;
-   mrt_resources[1].u.reg.offset = 0;
-   renders[0].eot_setup.render_targets_count = 1;
+   mrt_resources[1].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+   mrt_resources[1].reg.output_reg = 0;
+   mrt_resources[1].reg.offset = 0;
+   renders[0].eot_setup.num_render_targets = 1;
    renders[0].eot_setup.mrt_resources = &mrt_resources[1];
 
-   eot_surface->mrt_index = 0;
-   eot_surface->attachment_index = 0;
+   eot_surface->mrt_idx = 0;
+   eot_surface->attachment_idx = 0;
    eot_surface->need_resolve = false;
    eot_surface->resolve_type = PVR_RESOLVE_TYPE_INVALID;
-   eot_surface->src_attachment_index = 0;
+   eot_surface->src_attachment_idx = 0;
    renders[0].eot_surfaces = eot_surface;
    renders[0].eot_surface_count = 1;
 

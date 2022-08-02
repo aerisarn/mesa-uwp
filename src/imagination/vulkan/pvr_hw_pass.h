@@ -51,7 +51,7 @@ struct pvr_renderpass_hwsetup_subpass {
    bool stencil_clear;
 
    /* Driver Id from the input pvr_render_subpass structure. */
-   uint32_t driver_id;
+   uint32_t index;
 
    /* For each color attachment to the subpass: the operation to perform at
     * the start of the subpass.
@@ -63,7 +63,7 @@ struct pvr_renderpass_hwsetup_subpass {
 
 struct pvr_renderpass_colorinit {
    /* Source surface for the operation. */
-   uint32_t driver_id;
+   uint32_t index;
 
    /* Type of operation: either clear or load. */
    enum pvr_renderpass_surface_initop op;
@@ -75,7 +75,7 @@ struct pvr_renderpass_colorinit {
 /* Specifies the location of render target writes. */
 enum usc_mrt_resource_type {
    USC_MRT_RESOURCE_TYPE_INVALID = 0, /* explicitly treat 0 as invalid */
-   USC_MRT_RESOURCE_TYPE_OUTPUT_REGISTER,
+   USC_MRT_RESOURCE_TYPE_OUTPUT_REG,
    USC_MRT_RESOURCE_TYPE_MEMORY,
 };
 
@@ -87,7 +87,7 @@ struct usc_mrt_resource {
       /* If type == USC_MRT_RESOURCE_TYPE_OUTPUT_REGISTER. */
       struct {
          /* The output register to use. */
-         uint32_t out_reg;
+         uint32_t output_reg;
 
          /* The offset in bytes into the output register. */
          uint32_t offset;
@@ -99,14 +99,14 @@ struct usc_mrt_resource {
          uint32_t tile_buffer;
 
          /* The offset in dwords within the tile buffer. */
-         uint32_t offset_in_dwords;
+         uint32_t offset_dw;
       } mem;
-   } u;
+   };
 };
 
 struct usc_mrt_setup {
    /* Number of render targets present. */
-   uint32_t render_targets_count;
+   uint32_t num_render_targets;
 
    /* Array of MRT resources allocated for each render target. The number of
     * elements is determined by usc_mrt_setup::render_targets_count.
@@ -124,10 +124,10 @@ struct pvr_renderpass_hwsetup_eot_surface {
    /* MRT index to store from. Also used to index into
     * usc_mrt_setup::mrt_resources.
     */
-   uint32_t mrt_index;
+   uint32_t mrt_idx;
 
    /* Index of pvr_render_pass_info::attachments to store into. */
-   uint32_t attachment_index;
+   uint32_t attachment_idx;
 
    /* True if the surface should be resolved. */
    bool need_resolve;
@@ -140,7 +140,7 @@ struct pvr_renderpass_hwsetup_eot_surface {
    /* Index of pvr_render_pass_info::attachments to resolve from. Only valid if
     * pvr_renderpass_hwsetup_eot_surface::need_resolve is set to true.
     */
-   uint32_t src_attachment_index;
+   uint32_t src_attachment_idx;
 };
 
 struct pvr_renderpass_hwsetup_render {
@@ -164,7 +164,7 @@ struct pvr_renderpass_hwsetup_render {
    /* Driver Id for the surface to use for depth/stencil load/store in this
     * render.
     */
-   int32_t ds_surface_id;
+   int32_t ds_attach_idx;
 
    /* Operation on the on-chip depth at the start of the render.
     * Either load from 'ds_surface_id', clear using 'ds_surface_id' or leave

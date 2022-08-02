@@ -89,7 +89,7 @@ static bool pvr_is_subpass_initops_flush_needed(
 
    for (uint32_t i = 0; i < hw_render->color_init_count; i++) {
       if (hw_render->color_init[i].op != RENDERPASS_SURFACE_INITOP_NOP)
-         render_loadop_mask |= (1 << hw_render->color_init[i].driver_id);
+         render_loadop_mask |= (1 << hw_render->color_init[i].index);
    }
 
    /* If there are no load ops then there's nothing to flush. */
@@ -144,11 +144,11 @@ pvr_init_subpass_userpass_spawn(struct pvr_renderpass_hwsetup *hw_setup,
 static inline bool pvr_has_output_register_writes(
    const struct pvr_renderpass_hwsetup_render *hw_render)
 {
-   for (uint32_t i = 0; i < hw_render->init_setup.render_targets_count; i++) {
+   for (uint32_t i = 0; i < hw_render->init_setup.num_render_targets; i++) {
       struct usc_mrt_resource *mrt_resource =
          &hw_render->init_setup.mrt_resources[i];
 
-      if (mrt_resource->type == USC_MRT_RESOURCE_TYPE_OUTPUT_REGISTER)
+      if (mrt_resource->type == USC_MRT_RESOURCE_TYPE_OUTPUT_REG)
          return true;
    }
 

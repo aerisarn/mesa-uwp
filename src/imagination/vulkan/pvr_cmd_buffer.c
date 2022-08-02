@@ -579,9 +579,9 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
    const struct pvr_renderpass_colorinit *color_init =
       &hw_render->color_init[0];
    const struct pvr_render_pass_attachment *attachment =
-      &pass->attachments[color_init->driver_id];
+      &pass->attachments[color_init->index];
    const VkClearValue *clear_value =
-      &render_pass_info->clear_values[color_init->driver_id];
+      &render_pass_info->clear_values[color_init->index];
    uint32_t hw_clear_value;
    struct pvr_bo *clear_bo;
    VkResult result;
@@ -815,12 +815,12 @@ static void pvr_setup_pbe_state(
    /* Setup render parameters. */
 
    if (mrt_resource->type == USC_MRT_RESOURCE_TYPE_MEMORY) {
-      position = mrt_resource->u.mem.offset_in_dwords;
+      position = mrt_resource->mem.offset_dw;
    } else {
-      assert(mrt_resource->type == USC_MRT_RESOURCE_TYPE_OUTPUT_REGISTER);
-      assert(mrt_resource->u.reg.offset == 0);
+      assert(mrt_resource->type == USC_MRT_RESOURCE_TYPE_OUTPUT_REG);
+      assert(mrt_resource->reg.offset == 0);
 
-      position = mrt_resource->u.reg.out_reg;
+      position = mrt_resource->reg.output_reg;
    }
 
    assert(position <= 3 || PVR_HAS_FEATURE(dev_info, eight_output_registers));
@@ -933,14 +933,14 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       const struct pvr_renderpass_hwsetup_eot_surface *surface =
          &hw_render->eot_surfaces[i];
       const struct pvr_image_view *iview =
-         render_pass_info->attachments[surface->attachment_index];
+         render_pass_info->attachments[surface->attachment_idx];
       const struct usc_mrt_resource *mrt_resource =
-         &hw_render->eot_setup.mrt_resources[surface->mrt_index];
+         &hw_render->eot_setup.mrt_resources[surface->mrt_idx];
       uint32_t samples = 1;
 
       if (surface->need_resolve) {
          const struct pvr_image_view *resolve_src =
-            render_pass_info->attachments[surface->src_attachment_index];
+            render_pass_info->attachments[surface->src_attachment_idx];
 
          /* Attachments that are the destination of resolve operations must be
           * loaded before their next use.
@@ -956,7 +956,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
       pvr_setup_pbe_state(dev_info,
                           render_pass_info->framebuffer,
-                          surface->mrt_index,
+                          surface->mrt_idx,
                           mrt_resource,
                           iview,
                           &render_pass_info->render_area,
@@ -1027,9 +1027,9 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                       dev_info);
 
    /* Setup depth/stencil job information. */
-   if (hw_render->ds_surface_id != -1) {
+   if (hw_render->ds_attach_idx != -1) {
       struct pvr_image_view *iview =
-         render_pass_info->attachments[hw_render->ds_surface_id];
+         render_pass_info->attachments[hw_render->ds_attach_idx];
       const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
 
       if (vk_format_has_depth(image->vk.format)) {
@@ -1048,9 +1048,9 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
             u_minify(image->physical_extent.height, iview->vk.base_mip_level);
          job->depth_layer_size = image->layer_size;
 
-         if (hw_render->ds_surface_id < render_pass_info->clear_value_count) {
+         if (hw_render->ds_attach_idx < render_pass_info->clear_value_count) {
             VkClearValue *clear_values =
-               &render_pass_info->clear_values[hw_render->ds_surface_id];
+               &render_pass_info->clear_values[hw_render->ds_attach_idx];
 
             job->depth_clear_value = clear_values->depthStencil.depth;
          } else {
@@ -1092,9 +1092,9 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       job->stencil_addr = PVR_DEV_ADDR_INVALID;
    }
 
-   if (hw_render->ds_surface_id != -1) {
+   if (hw_render->ds_attach_idx != -1) {
       struct pvr_image_view *iview =
-         render_pass_info->attachments[hw_render->ds_surface_id];
+         render_pass_info->attachments[hw_render->ds_attach_idx];
       const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
 
       /* If the HW render pass has a valid depth/stencil surface, determine the
@@ -2293,10 +2293,10 @@ static void pvr_perform_start_of_render_attachment_clear(
       bool is_stencil;
       bool is_depth;
 
-      assert(hw_render->ds_surface_id != -1);
+      assert(hw_render->ds_attach_idx != -1);
       assert(index == 0);
 
-      view_idx = hw_render->ds_surface_id;
+      view_idx = hw_render->ds_attach_idx;
 
       is_depth = vk_format_has_depth(pass->attachments[view_idx].vk_format);
       is_stencil = vk_format_has_stencil(pass->attachments[view_idx].vk_format);
@@ -2314,7 +2314,7 @@ static void pvr_perform_start_of_render_attachment_clear(
               RENDERPASS_SURFACE_INITOP_CLEAR) {
       return;
    } else {
-      view_idx = hw_render->color_init[index].driver_id;
+      view_idx = hw_render->color_init[index].index;
    }
 
    iview = info->attachments[view_idx];
@@ -2379,7 +2379,7 @@ pvr_perform_start_of_render_clears(struct pvr_cmd_buffer *cmd_buffer)
       info->process_empty_tiles = false;
    }
 
-   if (hw_render->ds_surface_id != -1) {
+   if (hw_render->ds_attach_idx != -1) {
       uint32_t ds_index_list = 0;
 
       pvr_perform_start_of_render_attachment_clear(cmd_buffer,
@@ -2400,10 +2400,10 @@ static void pvr_stash_depth_format(struct pvr_cmd_buffer_state *state,
    const struct pvr_renderpass_hwsetup_render *hw_render =
       &pass->hw_setup->renders[sub_cmd->hw_render_idx];
 
-   if (hw_render->ds_surface_id != -1) {
+   if (hw_render->ds_attach_idx != -1) {
       struct pvr_image_view **iviews = state->render_pass_info.attachments;
 
-      state->depth_format = iviews[hw_render->ds_surface_id]->vk.format;
+      state->depth_format = iviews[hw_render->ds_attach_idx]->vk.format;
    }
 }
 
@@ -2411,13 +2411,12 @@ static bool pvr_loadops_contain_clear(struct pvr_renderpass_hwsetup *hw_setup)
 {
    for (uint32_t i = 0; i < hw_setup->render_count; i++) {
       struct pvr_renderpass_hwsetup_render *hw_render = &hw_setup->renders[i];
-      uint32_t render_targets_count =
-         hw_render->init_setup.render_targets_count;
+      uint32_t render_targets_count = hw_render->init_setup.num_render_targets;
 
       for (uint32_t j = 0;
            j < (hw_render->color_init_count * render_targets_count);
            j += render_targets_count) {
-         for (uint32_t k = 0; k < hw_render->init_setup.render_targets_count;
+         for (uint32_t k = 0; k < hw_render->init_setup.num_render_targets;
               k++) {
             if (hw_render->color_init[j + k].op ==
                 RENDERPASS_SURFACE_INITOP_CLEAR) {
@@ -5611,13 +5610,13 @@ static bool pvr_is_stencil_store_load_needed(
 
    hw_render_idx = state->current_sub_cmd->gfx.hw_render_idx;
    hw_render = &pass->hw_setup->renders[hw_render_idx];
-   attachment = attachments[hw_render->ds_surface_id];
+   attachment = attachments[hw_render->ds_attach_idx];
 
    if (!(vk_src_stage_mask & fragment_test_stages) &&
        vk_dst_stage_mask & VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
       return false;
 
-   if (hw_render->ds_surface_id == -1)
+   if (hw_render->ds_attach_idx == -1)
       return false;
 
    for (uint32_t i = 0; i < memory_barrier_count; i++) {
