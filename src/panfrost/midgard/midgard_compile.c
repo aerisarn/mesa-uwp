@@ -333,7 +333,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
 
         NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
         nir_lower_idiv_options idiv_options = {
-                .imprecise_32bit_lowering = true,
                 .allow_fp16 = true,
         };
         NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
