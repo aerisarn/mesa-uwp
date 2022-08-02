@@ -618,20 +618,25 @@ stw_make_current_by_handles(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
          ctx->hDrawDC = NULL;
          ctx->hReadDC = NULL;
       }
+   }
 
-      assert(fb && fbRead);
+   assert(!ctx || (fb && fbRead));
+   if (fb || fbRead) {
       /* In the success case, the context took extra references on these framebuffers,
        * so release our local references.
        */
       stw_lock_framebuffers(stw_dev);
-      stw_framebuffer_lock(fb);
-      stw_framebuffer_release_locked(fb, ctx->st);
-      if (fb != fbRead) {
+      if (fb) {
+         stw_framebuffer_lock(fb);
+         stw_framebuffer_release_locked(fb, ctx ? ctx->st : NULL);
+      }
+      if (fbRead && fbRead != fb) {
          stw_framebuffer_lock(fbRead);
-         stw_framebuffer_release_locked(fbRead, ctx->st);
+         stw_framebuffer_release_locked(fbRead, ctx ? ctx->st : NULL);
       }
       stw_unlock_framebuffers(stw_dev);
    }
+
    return success;
 }
 
