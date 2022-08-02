@@ -296,6 +296,7 @@ class Parser(object):
 		self.current_array = None
 		self.current_domain = None
 		self.current_prefix = None
+		self.current_prefix_type = None
 		self.current_stripe = None
 		self.current_bitset = None
 		self.current_bitsize = 32
@@ -307,8 +308,10 @@ class Parser(object):
 		parser, filename = self.stack[-1]
 		return Error("%s:%d:%d: %s" % (filename, parser.CurrentLineNumber, parser.CurrentColumnNumber, message))
 
-	def prefix(self):
-		if self.current_stripe:
+	def prefix(self, variant=None):
+		if self.current_prefix_type == "variant" and variant:
+			return variant
+		elif self.current_stripe:
 			return self.current_stripe + "_" + self.current_domain
 		elif self.current_prefix:
 			return self.current_prefix + "_" + self.current_domain
@@ -407,7 +410,8 @@ class Parser(object):
 			if "type" in attrs:
 				self.parse_field(None, attrs)
 
-		self.current_reg = Reg(attrs, self.prefix(), self.current_array, bit_size)
+		variant = parse_variants(attrs)
+		self.current_reg = Reg(attrs, self.prefix(variant), self.current_array, bit_size)
 		self.current_reg.bitset = self.current_bitset
 
 		if len(self.stack) == 1:
@@ -419,8 +423,12 @@ class Parser(object):
 			self.do_parse(os.path.join(self.path, filename))
 		elif name == "domain":
 			self.current_domain = attrs["name"]
-			if "prefix" in attrs and attrs["prefix"] == "chip":
+			if "prefix" in attrs:
 				self.current_prefix = parse_variants(attrs)
+				self.current_prefix_type = attrs["prefix"]
+			else:
+				self.current_prefix = None
+				self.current_prefix_type = None
 		elif name == "stripe":
 			self.current_stripe = parse_variants(attrs)
 		elif name == "enum":
@@ -442,7 +450,8 @@ class Parser(object):
 			self.parse_reg(attrs, 64)
 		elif name == "array":
 			self.current_bitsize = 32
-			self.current_array = Array(attrs, self.prefix())
+			variant = parse_variants(attrs)
+			self.current_array = Array(attrs, self.prefix(variant))
 			if len(self.stack) == 1:
 				self.file.append(self.current_array)
 		elif name == "bitset":
@@ -461,6 +470,7 @@ class Parser(object):
 		if name == "domain":
 			self.current_domain = None
 			self.current_prefix = None
+			self.current_prefix_type = None
 		elif name == "stripe":
 			self.current_stripe = None
 		elif name == "bitset":
