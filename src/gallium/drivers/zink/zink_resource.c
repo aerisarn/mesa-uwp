@@ -1233,7 +1233,7 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
    res->base.b.bind |= bind;
    struct zink_resource_object *old_obj = res->obj;
-   if (bind & ZINK_BIND_DMABUF && !res->modifiers_count) {
+   if (bind & ZINK_BIND_DMABUF && !res->modifiers_count && screen->info.have_EXT_image_drm_format_modifier) {
       res->modifiers_count = 1;
       res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
       res->modifiers[0] = DRM_FORMAT_MOD_LINEAR;
