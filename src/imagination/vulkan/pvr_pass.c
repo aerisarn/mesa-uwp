@@ -88,7 +88,7 @@ static bool pvr_is_subpass_initops_flush_needed(
    uint32_t color_attachment_mask;
 
    for (uint32_t i = 0; i < hw_render->color_init_count; i++) {
-      if (hw_render->color_init[i].op != RENDERPASS_SURFACE_INITOP_NOP)
+      if (hw_render->color_init[i].op != VK_ATTACHMENT_LOAD_OP_DONT_CARE)
          render_loadop_mask |= (1 << hw_render->color_init[i].index);
    }
 
@@ -226,9 +226,9 @@ pvr_load_op_create(struct pvr_device *device,
    for (uint32_t i = 0; i < hw_render->color_init_count; i++) {
       struct pvr_renderpass_colorinit *color_init = &hw_render->color_init[i];
 
-      if (color_init->op == RENDERPASS_SURFACE_INITOP_CLEAR)
+      if (color_init->op == VK_ATTACHMENT_LOAD_OP_CLEAR)
          load_op->clear_mask |= 1U << i;
-      else if (color_init->op == RENDERPASS_SURFACE_INITOP_LOAD)
+      else if (color_init->op == VK_ATTACHMENT_LOAD_OP_LOAD)
          pvr_finishme("Missing 'load' load op");
    }
 

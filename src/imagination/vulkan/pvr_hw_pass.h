@@ -26,15 +26,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <vulkan/vulkan.h>
 
 struct pvr_device;
 struct pvr_render_pass;
-
-enum pvr_renderpass_surface_initop {
-   RENDERPASS_SURFACE_INITOP_CLEAR,
-   RENDERPASS_SURFACE_INITOP_LOAD,
-   RENDERPASS_SURFACE_INITOP_NOP,
-};
 
 struct pvr_renderpass_hwsetup_subpass {
    /* If >=0 then copy the depth into this pixel output for all fragment
@@ -45,7 +40,7 @@ struct pvr_renderpass_hwsetup_subpass {
    /* The operation to perform on the depth at the start of the subpass. Loads
     * are deferred to subpasses when depth has been replicated
     */
-   enum pvr_renderpass_surface_initop depth_initop;
+   VkAttachmentLoadOp depth_initop;
 
    /* If true then clear the stencil at the start of the subpass. */
    bool stencil_clear;
@@ -56,7 +51,7 @@ struct pvr_renderpass_hwsetup_subpass {
    /* For each color attachment to the subpass: the operation to perform at
     * the start of the subpass.
     */
-   enum pvr_renderpass_surface_initop *color_initops;
+   VkAttachmentLoadOp *color_initops;
 
    struct pvr_load_op *load_op;
 };
@@ -66,7 +61,7 @@ struct pvr_renderpass_colorinit {
    uint32_t index;
 
    /* Type of operation: either clear or load. */
-   enum pvr_renderpass_surface_initop op;
+   VkAttachmentLoadOp op;
 };
 
 /* FIXME: Adding these USC enums and structures here for now to avoid adding
@@ -170,10 +165,10 @@ struct pvr_renderpass_hwsetup_render {
     * Either load from 'ds_surface_id', clear using 'ds_surface_id' or leave
     * uninitialized.
     */
-   enum pvr_renderpass_surface_initop depth_init;
+   VkAttachmentLoadOp depth_init;
 
    /* Operation on the on-chip stencil at the start of the render. */
-   enum pvr_renderpass_surface_initop stencil_init;
+   VkAttachmentLoadOp stencil_init;
 
    /* For each operation: the destination in the on-chip color storage. */
    struct usc_mrt_setup init_setup;

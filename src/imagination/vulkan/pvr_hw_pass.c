@@ -22,6 +22,7 @@
  */
 
 #include <stdbool.h>
+#include <vulkan/vulkan.h>
 
 #include "pvr_hw_pass.h"
 #include "pvr_private.h"
@@ -39,13 +40,13 @@ pvr_create_renderpass_hwsetup(struct pvr_device *device,
                               bool disable_merge)
 {
    struct pvr_renderpass_hwsetup_eot_surface *eot_surface;
-   enum pvr_renderpass_surface_initop *color_initops;
    struct pvr_renderpass_hwsetup_subpass *subpasses;
    struct pvr_renderpass_hwsetup_render *renders;
    struct pvr_renderpass_colorinit *color_inits;
    struct pvr_renderpass_hwsetup *hw_setup;
    struct pvr_renderpass_hw_map *subpass_map;
    struct usc_mrt_resource *mrt_resources;
+   VkAttachmentLoadOp *color_initops;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &hw_setup, __typeof__(*hw_setup), 1);
@@ -69,11 +70,11 @@ pvr_create_renderpass_hwsetup(struct pvr_device *device,
 
    /* FIXME: Remove hardcoding of hw_setup structure. */
    subpasses[0].z_replicate = -1;
-   subpasses[0].depth_initop = RENDERPASS_SURFACE_INITOP_CLEAR;
+   subpasses[0].depth_initop = VK_ATTACHMENT_LOAD_OP_CLEAR;
    subpasses[0].stencil_clear = false;
    subpasses[0].index = 0;
    if (pass->subpasses[0].color_count)
-      color_initops[0] = RENDERPASS_SURFACE_INITOP_NOP;
+      color_initops[0] = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
    subpasses[0].color_initops = color_initops;
    subpasses[0].load_op = NULL;
@@ -82,8 +83,8 @@ pvr_create_renderpass_hwsetup(struct pvr_device *device,
 
    renders[0].sample_count = 1;
    renders[0].ds_attach_idx = 1;
-   renders[0].depth_init = RENDERPASS_SURFACE_INITOP_CLEAR;
-   renders[0].stencil_init = RENDERPASS_SURFACE_INITOP_NOP;
+   renders[0].depth_init = VK_ATTACHMENT_LOAD_OP_CLEAR;
+   renders[0].stencil_init = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
    mrt_resources[0].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
    mrt_resources[0].reg.output_reg = 0;
@@ -91,7 +92,7 @@ pvr_create_renderpass_hwsetup(struct pvr_device *device,
    renders[0].init_setup.num_render_targets = 1;
    renders[0].init_setup.mrt_resources = &mrt_resources[0];
 
-   color_inits[0].op = RENDERPASS_SURFACE_INITOP_CLEAR;
+   color_inits[0].op = VK_ATTACHMENT_LOAD_OP_CLEAR;
    color_inits[0].index = 0;
    renders[0].color_init_count = 1;
    renders[0].color_init = color_inits;

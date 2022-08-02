@@ -591,8 +591,8 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
    assert(load_op->is_hw_object);
    assert(hw_render->color_init_count == 1);
 
-   /* FIXME: add support for RENDERPASS_SURFACE_INITOP_LOAD. */
-   assert(color_init->op == RENDERPASS_SURFACE_INITOP_CLEAR);
+   /* FIXME: add support for VK_ATTACHMENT_LOAD_OP_LOAD. */
+   assert(color_init->op == VK_ATTACHMENT_LOAD_OP_CLEAR);
 
    /* FIXME: do this at the point we store the clear values? */
    hw_clear_value = pvr_get_hw_clear_color(attachment->vk_format, clear_value);
@@ -2300,9 +2300,8 @@ static void pvr_perform_start_of_render_attachment_clear(
 
       is_depth = vk_format_has_depth(pass->attachments[view_idx].vk_format);
       is_stencil = vk_format_has_stencil(pass->attachments[view_idx].vk_format);
-      depth_clear = hw_render->depth_init == RENDERPASS_SURFACE_INITOP_CLEAR;
-      stencil_clear = hw_render->stencil_init ==
-                      RENDERPASS_SURFACE_INITOP_CLEAR;
+      depth_clear = hw_render->depth_init == VK_ATTACHMENT_LOAD_OP_CLEAR;
+      stencil_clear = hw_render->stencil_init == VK_ATTACHMENT_LOAD_OP_CLEAR;
 
       /* Attempt to clear the ds attachment. Do not erroneously discard an
        * attachment that has no depth clear but has a stencil attachment.
@@ -2310,8 +2309,7 @@ static void pvr_perform_start_of_render_attachment_clear(
       /* if not (a ∧ c) ∨ (b ∧ d) */
       if (!((is_depth && depth_clear) || (is_stencil && stencil_clear)))
          return;
-   } else if (hw_render->color_init[index].op !=
-              RENDERPASS_SURFACE_INITOP_CLEAR) {
+   } else if (hw_render->color_init[index].op != VK_ATTACHMENT_LOAD_OP_CLEAR) {
       return;
    } else {
       view_idx = hw_render->color_init[index].index;
@@ -2419,13 +2417,13 @@ static bool pvr_loadops_contain_clear(struct pvr_renderpass_hwsetup *hw_setup)
          for (uint32_t k = 0; k < hw_render->init_setup.num_render_targets;
               k++) {
             if (hw_render->color_init[j + k].op ==
-                RENDERPASS_SURFACE_INITOP_CLEAR) {
+                VK_ATTACHMENT_LOAD_OP_CLEAR) {
                return true;
             }
          }
       }
-      if (hw_render->depth_init == RENDERPASS_SURFACE_INITOP_CLEAR ||
-          hw_render->stencil_init == RENDERPASS_SURFACE_INITOP_CLEAR) {
+      if (hw_render->depth_init == VK_ATTACHMENT_LOAD_OP_CLEAR ||
+          hw_render->stencil_init == VK_ATTACHMENT_LOAD_OP_CLEAR) {
          return true;
       }
    }
