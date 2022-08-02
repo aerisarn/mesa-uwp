@@ -63,7 +63,6 @@ KHR-GL43.shader_subroutine.ssbo_atomic_image_load_store,Fail
 KHR-GL43.shading_language_420pack.binding_image_array,Fail
 
 KHR-GL43.shading_language_420pack.binding_images,Fail
-KHR-GL43.shading_language_420pack.length_of_vector_and_matrix,Fail
 KHR-GL43.texture_view.view_sampling,Fail
 KHR-GL43.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs,Fail
 KHR-GL43.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs,Fail
@@ -508,20 +507,11 @@ spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
-spec@arb_tessellation_shader@execution@barrier-patch,Fail
 spec@arb_tessellation_shader@execution@double-array-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@double-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@dvec2-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@dvec3-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-float-index-rd-after-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-float-index-wr-before-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec2-index-rd-after-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec2-index-wr-before-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec3-index-rd-after-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec3-index-wr-before-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec4-index-rd-after-barrier,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-vec4-index-wr-before-barrier,Fail
 
 # "	intrinsic copy_deref (ssa_2, ssa_3) (dst_access=0, src_access=0)
 #  error: glsl_get_bare_type(dst->type) == glsl_get_bare_type(src->type) (../src/compiler/nir/nir_validate.c:643)"

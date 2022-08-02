@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2022-08-04-venus-ci"
+   DEBIAN_BASE_TAG: "2022-08-04-virgl-update"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
    DEBIAN_BUILD_TAG: "2022-07-14-directx-headers"
@@ -15,7 +15,7 @@ variables:
    DEBIAN_X86_TEST_VK_TAG: "2022-08-04-crosvm-opaque-fd"
 
    FEDORA_X86_BUILD_TAG: "2022-04-24-spirv-tools-5"
-   KERNEL_ROOTFS_TAG: "2022-07-06-virgl-update"
+   KERNEL_ROOTFS_TAG: "2022-08-04-virgl-update"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-06-15-vs-winsdk"
