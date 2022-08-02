@@ -214,6 +214,33 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
                   nir_const_value_as_uint(instr->value[0], bit_size));
 }
 
+/*
+ * Implement umul_high of 32-bit sources by doing a 32x32->64-bit multiply and
+ * extracting only the high word.
+ */
+static agx_instr *
+agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
+{
+   assert(P.size == Q.size && "source sizes must match");
+   assert(P.size == dst.size && "dest size must match");
+   assert(P.size != AGX_SIZE_64 && "64x64 multiply should have been lowered");
+
+   static_assert(AGX_SIZE_64 == (AGX_SIZE_32 + 1), "enum wrong");
+   static_assert(AGX_SIZE_32 == (AGX_SIZE_16 + 1), "enum wrong");
+
+   agx_index product = agx_temp(b->shader, P.size + 1);
+   agx_imad_to(b, product, agx_abs(P), agx_abs(Q), agx_zero(), 0);
+   return agx_p_split_to(b, agx_null(), dst, agx_null(), agx_null(), product);
+}
+
+static agx_index
+agx_umul_high(agx_builder *b, agx_index P, agx_index Q)
+{
+   agx_index dst = agx_temp(b->shader, P.size);
+   agx_umul_high_to(b, dst, P, Q);
+   return dst;
+}
+
 /* Emit code dividing P by Q */
 static agx_index
 agx_udiv_const(agx_builder *b, agx_index P, uint32_t Q)
@@ -241,16 +268,12 @@ agx_udiv_const(agx_builder *b, agx_index P, uint32_t Q)
    agx_index increment = agx_mov_imm(b, 32, info.increment);
    agx_index postshift = agx_mov_imm(b, 32, info.post_shift);
    agx_index multiplier = agx_mov_imm(b, 32, info.multiplier);
-   agx_index multiplied = agx_temp(b->shader, AGX_SIZE_64);
    agx_index n = P;
 
    if (info.pre_shift != 0) n = agx_ushr(b, n, preshift);
    if (info.increment != 0) n = agx_iadd(b, n, increment, 0);
 
-   /* 64-bit multiplication, zero extending 32-bit x 32-bit, get the top word */
-   agx_imad_to(b, multiplied, agx_abs(n), agx_abs(multiplier), agx_zero(), 0);
-   n = agx_temp(b->shader, AGX_SIZE_32);
-   agx_p_extract_to(b, n, multiplied, 1);
+   n = agx_umul_high(b, n, multiplier);
 
    if (info.post_shift != 0) n = agx_ushr(b, n, postshift);
 
