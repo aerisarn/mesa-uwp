@@ -1284,7 +1284,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
    struct zink_resource_object *obj = res->obj;
    struct winsys_handle whandle;
    VkImageAspectFlags aspect;
-   if (res->modifiers) {
+   if (obj->modifier_aspect) {
       switch (plane) {
       case 0:
          aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
