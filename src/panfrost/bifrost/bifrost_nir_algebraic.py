@@ -53,6 +53,8 @@ algebraic_late = [
 
     (('fabs', ('fddx', a)), ('fabs', ('fddx_must_abs_mali', a))),
     (('fabs', ('fddy', b)), ('fabs', ('fddy_must_abs_mali', b))),
+
+    (('b32csel', 'b@32', ('iadd', 'a@32', 1), a), ('iadd', a, ('b2i32', b))),
 ]
 
 # Handling all combinations of boolean and float sizes for b2f is nontrivial.
