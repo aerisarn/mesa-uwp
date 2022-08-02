@@ -406,6 +406,9 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    if (tag == 0x00000C00) {
       assert(size == AGX_VIEWPORT_LENGTH);
       DUMP_CL(VIEWPORT, map, "Viewport");
+   } else if (tag == 0x100C0000) {
+      assert(size == AGX_INTERPOLATION_LENGTH);
+      DUMP_CL(INTERPOLATION, map, "Interpolation");
    } else if (tag == 0x0C020000) {
       assert(size == AGX_LINKAGE_LENGTH);
       DUMP_CL(LINKAGE, map, "Linkage");
