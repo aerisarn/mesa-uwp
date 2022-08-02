@@ -4171,6 +4171,16 @@ VkResult anv_MapMemory(
       return VK_SUCCESS;
    }
 
+   /* From the Vulkan spec version 1.0.32 docs for MapMemory:
+    *
+    *  * memory must have been created with a memory type that reports
+    *    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+    */
+   if (!(mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+                       "Memory object not mappable.");
+   }
+
    if (size == VK_WHOLE_SIZE)
       size = mem->bo->size - offset;
 
