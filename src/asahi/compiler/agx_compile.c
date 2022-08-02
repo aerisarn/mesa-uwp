@@ -1532,7 +1532,6 @@ agx_optimize_nir(nir_shader *nir)
    bool progress;
 
    nir_lower_idiv_options idiv_options = {
-      .imprecise_32bit_lowering = true,
       .allow_fp16 = true,
    };
 
