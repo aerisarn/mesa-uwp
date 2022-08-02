@@ -32,6 +32,20 @@ struct agx_branch_fixup {
    agx_block *block;
 };
 
+static void
+assert_register_is_aligned(agx_index reg)
+{
+   assert(reg.type == AGX_INDEX_REGISTER);
+
+   switch (reg.size) {
+   case AGX_SIZE_16: return;
+   case AGX_SIZE_32: assert((reg.value & 1) == 0 && "unaligned reg"); return;
+   case AGX_SIZE_64: assert((reg.value & 3) == 0 && "unaligned reg"); return;
+   }
+
+   unreachable("Invalid register size");
+}
+
 /* Texturing has its own operands */
 static unsigned
 agx_pack_sample_coords(agx_index index, bool *flag)
@@ -139,14 +153,10 @@ agx_pack_memory_index(agx_index index, bool *flag)
 static unsigned
 agx_pack_alu_dst(agx_index dest)
 {
-   assert(dest.type == AGX_INDEX_REGISTER);
+   assert_register_is_aligned(dest);
    unsigned reg = dest.value;
    enum agx_size size = dest.size;
    assert(reg < 0x100);
-
-   /* RA invariant: alignment of half-reg */
-   if (size >= AGX_SIZE_32)
-      assert((reg & 1) == 0);
 
    return
       (dest.cache ? (1 << 0) : 0) |
@@ -179,7 +189,7 @@ agx_pack_alu_src(agx_index src)
          (0x1 << 8) |
          (((value >> 6) & BITFIELD_MASK(2)) << 10);
    } else {
-      assert(src.type == AGX_INDEX_REGISTER);
+      assert_register_is_aligned(src);
       assert(!(src.cache && src.discard));
 
       unsigned hint = src.discard ? 0x3 : src.cache ? 0x2 : 0x1;
@@ -225,6 +235,7 @@ agx_pack_cmpsel_src(agx_index src, enum agx_size dest_size)
       assert(!(src.cache && src.discard));
       assert(size == AGX_SIZE_16 || size == AGX_SIZE_32);
       assert(size == dest_size);
+      assert_register_is_aligned(src);
 
       unsigned hint = src.discard ? 0x3 : src.cache ? 0x2 : 0x1;
 
@@ -248,6 +259,7 @@ agx_pack_sample_mask_src(agx_index src)
       return packed_value | (1 << 7);
    } else {
       assert(src.type == AGX_INDEX_REGISTER);
+      assert_register_is_aligned(src);
       assert(!(src.cache && src.discard));
 
       return packed_value;
