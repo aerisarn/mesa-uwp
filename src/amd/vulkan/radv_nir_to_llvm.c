@@ -355,10 +355,10 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set, unsign
 
 static LLVMValueRef
 radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx, LLVMValueRef value,
-                                unsigned num_channels, bool is_float)
+                                unsigned num_channels, bool is_float, bool is_64bit)
 {
-   LLVMValueRef zero = is_float ? ctx->ac.f32_0 : ctx->ac.i32_0;
-   LLVMValueRef one = is_float ? ctx->ac.f32_1 : ctx->ac.i32_1;
+   LLVMValueRef zero = is_64bit ? ctx->ac.i64_0 : (is_float ? ctx->ac.f32_0 : ctx->ac.i32_0);
+   LLVMValueRef one = is_64bit ? ctx->ac.i64_0 : (is_float ? ctx->ac.f32_1 : ctx->ac.i32_1);
    LLVMValueRef chan[4];
 
    if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
@@ -446,8 +446,10 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
     * dynamic) is unaligned and also if the VBO offset is aligned to a scalar (eg. stride is 8 and
     * VBO offset is 2 for R16G16B16A16_SNORM).
     */
+   unsigned chan_dwords = vtx_info->chan_byte_size == 8 ? 2 : 1;
    if (((ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10) && vtx_info->chan_byte_size) ||
-       !(vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1))) {
+       !(vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1)) ||
+       vtx_info->element_size > 16) {
       unsigned chan_format = vtx_info->hw_format[0] & 0xf;
       LLVMValueRef values[4];
 
@@ -466,7 +468,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
 
          values[chan] = ac_build_struct_tbuffer_load(
             &ctx->ac, t_list, chan_index, LLVMConstInt(ctx->ac.i32, chan_offset, false),
-            ctx->ac.i32_0, 1, chan_format, num_format, 0, true);
+            ctx->ac.i32_0, chan_dwords, chan_format, num_format, 0, true);
       }
 
       input = ac_build_gather_values(&ctx->ac, values, num_channels);
@@ -482,10 +484,15 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
 
       input = ac_build_struct_tbuffer_load(
          &ctx->ac, t_list, buffer_index, LLVMConstInt(ctx->ac.i32, attrib_offset, false),
-         ctx->ac.i32_0, num_channels, data_format, num_format, 0, true);
+         ctx->ac.i32_0, num_channels * chan_dwords, data_format, num_format, 0, true);
    }
 
-   input = radv_fixup_vertex_input_fetches(ctx, input, num_channels, is_float);
+   if (vtx_info->chan_byte_size == 8)
+      input =
+         LLVMBuildBitCast(ctx->ac.builder, input, LLVMVectorType(ctx->ac.i64, num_channels), "");
+
+   input = radv_fixup_vertex_input_fetches(ctx, input, num_channels, is_float,
+                                           vtx_info->chan_byte_size == 8);
 
    for (unsigned chan = 0; chan < 4; chan++) {
       LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, chan, false);

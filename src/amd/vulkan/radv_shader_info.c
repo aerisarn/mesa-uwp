@@ -42,8 +42,11 @@ gather_intrinsic_load_input_info(const nir_shader *nir, const nir_intrinsic_inst
       unsigned idx = nir_intrinsic_io_semantics(instr).location;
       unsigned component = nir_intrinsic_component(instr);
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
+      mask = (instr->dest.ssa.bit_size == 64 ? util_widen_mask(mask, 2) : mask) << component;
 
-      info->vs.input_usage_mask[idx] |= mask << component;
+      info->vs.input_usage_mask[idx] |= mask & 0xf;
+      if (mask >> 4)
+         info->vs.input_usage_mask[idx + 1] |= mask >> 4;
       break;
    }
    default:
@@ -313,6 +316,40 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
 }
 
 static void
+gather_info_input_decl_vs(const nir_shader *nir, unsigned location, const struct glsl_type *type,
+                          const struct radv_pipeline_key *key, struct radv_shader_info *info)
+{
+   if (glsl_type_is_scalar(type) || glsl_type_is_vector(type)) {
+      if (key->vs.instance_rate_inputs & BITFIELD_BIT(location)) {
+         info->vs.needs_instance_id = true;
+         info->vs.needs_base_instance = true;
+      }
+
+      if (info->vs.use_per_attribute_vb_descs)
+         info->vs.vb_desc_usage_mask |= BITFIELD_BIT(location);
+      else
+         info->vs.vb_desc_usage_mask |= BITFIELD_BIT(key->vs.vertex_attribute_bindings[location]);
+
+      info->vs.input_slot_usage_mask |=
+         BITFIELD_RANGE(location, glsl_count_attribute_slots(type, false));
+   } else if (glsl_type_is_matrix(type) || glsl_type_is_array(type)) {
+      const struct glsl_type *elem = glsl_get_array_element(type);
+      unsigned stride = glsl_count_attribute_slots(elem, false);
+
+      for (unsigned i = 0; i < glsl_get_length(type); ++i)
+         gather_info_input_decl_vs(nir, location + i * stride, elem, key, info);
+   } else {
+      assert(glsl_type_is_struct_or_ifc(type));
+
+      for (unsigned i = 0; i < glsl_get_length(type); i++) {
+         const struct glsl_type *field = glsl_get_struct_field(type, i);
+         gather_info_input_decl_vs(nir, location, field, key, info);
+         location += glsl_count_attribute_slots(field, false);
+      }
+   }
+}
+
+static void
 gather_shader_info_vs(struct radv_device *device, const nir_shader *nir,
                       const struct radv_pipeline_key *pipeline_key, struct radv_shader_info *info)
 {
@@ -331,25 +368,9 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir,
    info->vs.needs_base_instance |= info->vs.has_prolog;
    info->vs.needs_draw_id |= info->vs.has_prolog;
 
-   nir_foreach_shader_in_variable(var, nir) {
-      unsigned attrib_count = glsl_count_attribute_slots(var->type, true);
-
-      for (unsigned i = 0; i < attrib_count; ++i) {
-         unsigned attrib_index = var->data.location + i - VERT_ATTRIB_GENERIC0;
-
-         if (pipeline_key->vs.instance_rate_inputs & (1u << attrib_index)) {
-            info->vs.needs_instance_id = true;
-            info->vs.needs_base_instance = true;
-         }
-
-         if (info->vs.use_per_attribute_vb_descs) {
-            info->vs.vb_desc_usage_mask |= 1u << attrib_index;
-         } else {
-            info->vs.vb_desc_usage_mask |=
-               1u << pipeline_key->vs.vertex_attribute_bindings[attrib_index];
-         }
-      }
-   }
+   nir_foreach_shader_in_variable(var, nir)
+      gather_info_input_decl_vs(nir, var->data.location - VERT_ATTRIB_GENERIC0, var->type,
+                                pipeline_key, info);
 }
 
 static void

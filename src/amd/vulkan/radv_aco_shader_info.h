@@ -82,6 +82,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(vs.tcs_temp_only_input_mask);
    ASSIGN_FIELD(vs.use_per_attribute_vb_descs);
    ASSIGN_FIELD(vs.vb_desc_usage_mask);
+   ASSIGN_FIELD(vs.input_slot_usage_mask);
    ASSIGN_FIELD(vs.has_prolog);
    ASSIGN_FIELD(vs.dynamic_inputs);
    ASSIGN_FIELD_CP(gs.output_usage_mask);

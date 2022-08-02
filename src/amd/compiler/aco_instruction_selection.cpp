@@ -5450,17 +5450,23 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
                   "Unimplemented non-zero nir_intrinsic_load_input offset");
 
       unsigned location = nir_intrinsic_base(instr) - VERT_ATTRIB_GENERIC0;
-      unsigned component = nir_intrinsic_component(instr);
       unsigned bitsize = instr->dest.ssa.bit_size;
+      unsigned component = nir_intrinsic_component(instr) >> (bitsize == 64 ? 1 : 0);
       unsigned num_components = instr->dest.ssa.num_components;
-
-      Temp input = get_arg(ctx, ctx->args->vs_inputs[location]);
 
       aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(
          aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
       std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
       for (unsigned i = 0; i < num_components; i++) {
-         elems[i] = emit_extract_vector(ctx, input, component + i, bitsize == 64 ? v2 : v1);
+         if (bitsize == 64) {
+            Temp input = get_arg(ctx, ctx->args->vs_inputs[location + (component + i) / 2]);
+            elems[i] = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2),
+                                  emit_extract_vector(ctx, input, (component + i) * 2 % 4, v1),
+                                  emit_extract_vector(ctx, input, (component + i) * 2 % 4 + 1, v1));
+         } else {
+            Temp input = get_arg(ctx, ctx->args->vs_inputs[location]);
+            elems[i] = emit_extract_vector(ctx, input, component + i, v1);
+         }
          if (bitsize == 16) {
             if (nir_alu_type_get_base_type(nir_intrinsic_dest_type(instr)) == nir_type_float)
                elems[i] = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), elems[i]);
@@ -5483,8 +5489,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.vertex_buffers));
 
       unsigned location = nir_intrinsic_base(instr) - VERT_ATTRIB_GENERIC0;
-      unsigned component = nir_intrinsic_component(instr);
       unsigned bitsize = instr->dest.ssa.bit_size;
+      unsigned component = nir_intrinsic_component(instr) >> (bitsize == 64 ? 1 : 0);
       unsigned attrib_binding = ctx->options->key.vs.vertex_attribute_bindings[location];
       uint32_t attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[location];
       uint32_t attrib_stride = ctx->options->key.vs.vertex_attribute_strides[location];
@@ -5639,8 +5645,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
             channels[channel_start] = fetch_dst;
          } else {
             for (unsigned i = 0; i < MIN2(fetch_component, num_channels - channel_start); i++)
-               channels[channel_start + i] =
-                  emit_extract_vector(ctx, fetch_dst, i, bitsize == 16 ? v2b : v1);
+               channels[channel_start + i] = emit_extract_vector(
+                  ctx, fetch_dst, i, RegClass::get(RegType::vgpr, bitsize / 8u));
          }
 
          channel_start += fetch_component;
@@ -5664,6 +5670,12 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
                num_temp++;
                elems[i] = channel;
+            } else if (bitsize == 64) {
+               /* 22.1.1. Attribute Location and Component Assignment of Vulkan 1.3 specification:
+                * For 64-bit data types, no default attribute values are provided. Input variables
+                * must not use more components than provided by the attribute.
+                */
+               vec->operands[i] = Operand(v2);
             } else if (is_float && idx == 3) {
                vec->operands[i] = bitsize == 16 ? Operand::c16(0x3c00u) : Operand::c32(0x3f800000u);
             } else if (!is_float && idx == 3) {
@@ -11477,7 +11489,7 @@ add_startpgm(struct isel_context* ctx)
    }
 
    if (ctx->stage.has(SWStage::VS) && ctx->program->info.vs.dynamic_inputs) {
-      unsigned num_attributes = util_last_bit(ctx->program->info.vs.vb_desc_usage_mask);
+      unsigned num_attributes = util_last_bit(ctx->program->info.vs.input_slot_usage_mask);
       for (unsigned i = 0; i < num_attributes; i++) {
          Definition def(get_arg(ctx, ctx->args->vs_inputs[i]));
 
@@ -12262,7 +12274,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
       bld.sopp(aco_opcode::s_waitcnt, -1, lgkm_imm.pack(program->gfx_level));
 
-      for (unsigned i = 0; i < num_descs; i++, loc++) {
+      for (unsigned i = 0; i < num_descs;) {
          PhysReg dest(attributes_start.reg() + loc * 4u);
 
          /* calculate index */
@@ -12307,6 +12319,10 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
                   bld.mubuf(aco_opcode::buffer_load_dword, Definition(dest.advance(j * 4u), v1),
                             Operand(cur_desc, s4), fetch_index, Operand::c32(0u), offset, false,
                             false, true);
+               else if (vtx_info->chan_byte_size == 8)
+                  bld.mtbuf(aco_opcode::tbuffer_load_format_xy,
+                            Definition(dest.advance(j * 8u), v2), Operand(cur_desc, s4),
+                            fetch_index, Operand::c32(0u), dfmt, nfmt, offset, false, true);
                else
                   bld.mtbuf(aco_opcode::tbuffer_load_format_x, Definition(dest.advance(j * 4u), v1),
                             Operand(cur_desc, s4), fetch_index, Operand::c32(0u), dfmt, nfmt,
@@ -12316,13 +12332,23 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
                nfmt == V_008F0C_BUF_NUM_FORMAT_UINT || nfmt == V_008F0C_BUF_NUM_FORMAT_SINT
                   ? 1u
                   : 0x3f800000u;
-            for (unsigned j = vtx_info->num_channels; j < 4; j++) {
+            /* 22.1.1. Attribute Location and Component Assignment of Vulkan 1.3 specification:
+             * For 64-bit data types, no default attribute values are provided. Input variables must
+             * not use more components than provided by the attribute.
+             */
+            for (unsigned j = vtx_info->num_channels; vtx_info->chan_byte_size != 8 && j < 4; j++) {
                bld.vop1(aco_opcode::v_mov_b32, Definition(dest.advance(j * 4u), v1),
                         Operand::c32(j == 3 ? one : 0u));
             }
+
+            unsigned slots = vtx_info->chan_byte_size == 8 && vtx_info->num_channels > 2 ? 2 : 1;
+            loc += slots;
+            i += slots;
          } else {
             bld.mubuf(aco_opcode::buffer_load_format_xyzw, Definition(dest, v4),
                       Operand(cur_desc, s4), fetch_index, Operand::c32(0u), 0u, false, false, true);
+            loc++;
+            i++;
          }
       }
    }

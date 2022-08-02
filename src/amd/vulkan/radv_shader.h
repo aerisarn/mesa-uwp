@@ -260,6 +260,7 @@ struct radv_shader_info {
       bool needs_base_instance;
       bool use_per_attribute_vb_descs;
       uint32_t vb_desc_usage_mask;
+      uint32_t input_slot_usage_mask;
       bool has_prolog;
       bool dynamic_inputs;
    } vs;

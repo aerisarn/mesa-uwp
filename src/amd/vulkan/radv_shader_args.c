@@ -340,7 +340,7 @@ declare_vs_input_vgprs(enum amd_gfx_level gfx_level, const struct radv_shader_in
 
    if (info->vs.dynamic_inputs) {
       assert(info->vs.use_per_attribute_vb_descs);
-      unsigned num_attributes = util_last_bit(info->vs.vb_desc_usage_mask);
+      unsigned num_attributes = util_last_bit(info->vs.input_slot_usage_mask);
       for (unsigned i = 0; i < num_attributes; i++)
          ac_add_arg(&args->ac, AC_ARG_VGPR, 4, AC_ARG_INT, &args->vs_inputs[i]);
       /* Ensure the main shader doesn't use less vgprs than the prolog. The prolog requires one
