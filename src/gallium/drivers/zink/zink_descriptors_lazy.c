@@ -582,7 +582,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    bool batch_changed = !bdd->pg[is_compute];
    if (batch_changed) {
       /* update all sets and bind null sets */
-      dd_lazy(ctx)->state_changed[is_compute] = pg->dd->binding_usage;
+      dd_lazy(ctx)->state_changed[is_compute] = pg->dd->binding_usage & BITFIELD_MASK(ZINK_DESCRIPTOR_TYPES);
       dd_lazy(ctx)->push_state_changed[is_compute] = !!pg->dd->push_usage;
    }
 
@@ -649,7 +649,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    bdd->pg[is_compute] = pg;
    ctx->dd->pg[is_compute] = pg;
    bdd->compat_id[is_compute] = pg->compat_id;
-   dd_lazy(ctx)->state_changed[is_compute] = false;
+   dd_lazy(ctx)->state_changed[is_compute] = 0;
 }
 
 void
