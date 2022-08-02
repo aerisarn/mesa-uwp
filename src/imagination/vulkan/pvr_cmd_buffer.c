@@ -4322,9 +4322,11 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
    /* We don't use pds_state_ptr2 (texture state programs) control word, but
     * this doesn't mean we need to set it to 0. This is because the hardware
-    * runs the texture state program only when the pds_texture state field of
-    * PDS_SIZEINFO1 is non-zero.
+    * runs the texture state program only when
+    * ROGUE_TA_STATE_PDS_SIZEINFO1.pds_texturestatesize is non-zero.
     */
+   assert(pvr_csb_unpack(&ppp_state->pds.size_info1, TA_STATE_PDS_SIZEINFO1)
+             .pds_texturestatesize == 0);
 
    if (header->pres_pds_state_ptr3) {
       pvr_csb_write_value(buffer_ptr,
