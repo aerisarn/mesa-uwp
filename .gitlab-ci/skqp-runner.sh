@@ -106,7 +106,7 @@ show_reports() (
         rm -f "${SKQP_RESULTS_DIR}"/unitTest/report.html
 
         echo "See skqp unit test results at:"
-        echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/${SKQP_RESULTS_DIR}/unitTest/unit_tests.txt"
+        echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts${SKQP_RESULTS_DIR}/unitTest/unit_tests.txt"
     fi
 
     REPORT_FILES=$(mktemp)
@@ -115,7 +115,7 @@ show_reports() (
     do
         BACKEND_NAME=$(echo "${REPORT}" | sed  's@.*/\([^/]*\)/report.html@\1@')
         echo "See skqp ${BACKEND_NAME} render tests report at:"
-        echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/${REPORT}"
+        echo "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts${REPORT}"
     done < "${REPORT_FILES}"
 
     # If there is no report available, tell the user that something is wrong.
@@ -162,8 +162,7 @@ set -ex
 parse_args "${@}"
 
 # Needed so configuration files can contain paths to files in /install
-ln -sf "$CI_PROJECT_DIR"/install /install
-INSTALL=${PWD}/install
+INSTALL="$CI_PROJECT_DIR"/install
 
 if [ -z "$GPU_VERSION" ]; then
     echo 'GPU_VERSION must be set to something like "llvmpipe" or
@@ -195,7 +194,7 @@ do
 
     if [ ! $BACKEND_EXITCODE -eq 0 ]
     then
-        echo "skqp failed on ${SKQP_BACKEND} tests with ${BACKEND_EXITCODE} exit code."
+        echo "skqp failed on ${SKQP_BACKEND} tests with exit code: ${BACKEND_EXITCODE}."
     fi
 
     # Propagate error codes to leverage the final job result
