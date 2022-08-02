@@ -171,7 +171,6 @@ radv_is_vertex_buffer_format_supported(VkFormat format)
    switch (desc->channel[first_non_void].size) {
    case 8:
    case 16:
-      return desc->nr_channels != 3;
    case 32:
       return true;
    default:
