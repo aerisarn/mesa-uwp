@@ -871,6 +871,36 @@ clamp_zs_swizzle(enum pipe_swizzle swizzle)
    return swizzle;
 }
 
+ALWAYS_INLINE static enum pipe_swizzle
+clamp_alpha_swizzle(enum pipe_swizzle swizzle)
+{
+   if (swizzle == PIPE_SWIZZLE_W)
+      return PIPE_SWIZZLE_X;
+   if (swizzle < PIPE_SWIZZLE_W)
+      return PIPE_SWIZZLE_0;
+   return swizzle;
+}
+
+ALWAYS_INLINE static enum pipe_swizzle
+clamp_luminance_swizzle(enum pipe_swizzle swizzle)
+{
+   if (swizzle == PIPE_SWIZZLE_W)
+      return PIPE_SWIZZLE_1;
+   if (swizzle < PIPE_SWIZZLE_W)
+      return PIPE_SWIZZLE_X;
+   return swizzle;
+}
+
+ALWAYS_INLINE static enum pipe_swizzle
+clamp_luminance_alpha_swizzle(enum pipe_swizzle swizzle)
+{
+   if (swizzle == PIPE_SWIZZLE_W)
+      return PIPE_SWIZZLE_Y;
+   if (swizzle < PIPE_SWIZZLE_W)
+      return PIPE_SWIZZLE_X;
+   return swizzle;
+}
+
 ALWAYS_INLINE static bool
 viewtype_is_cube(const VkImageViewCreateInfo *ivci)
 {
@@ -945,6 +975,21 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
              ivci.components.g = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_g));
              ivci.components.b = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_b));
              ivci.components.a = zink_component_mapping(zink_clamp_void_swizzle(desc, sampler_view->base.swizzle_a));
+          } else if (util_format_is_alpha(state->format)) {
+             ivci.components.r = zink_component_mapping(clamp_alpha_swizzle(sampler_view->base.swizzle_r));
+             ivci.components.g = zink_component_mapping(clamp_alpha_swizzle(sampler_view->base.swizzle_g));
+             ivci.components.b = zink_component_mapping(clamp_alpha_swizzle(sampler_view->base.swizzle_b));
+             ivci.components.a = zink_component_mapping(clamp_alpha_swizzle(sampler_view->base.swizzle_a));
+          } else if (util_format_is_luminance(state->format)) {
+             ivci.components.r = zink_component_mapping(clamp_luminance_swizzle(sampler_view->base.swizzle_r));
+             ivci.components.g = zink_component_mapping(clamp_luminance_swizzle(sampler_view->base.swizzle_g));
+             ivci.components.b = zink_component_mapping(clamp_luminance_swizzle(sampler_view->base.swizzle_b));
+             ivci.components.a = zink_component_mapping(clamp_luminance_swizzle(sampler_view->base.swizzle_a));
+          } else if (util_format_is_luminance_alpha(state->format)) {
+             ivci.components.r = zink_component_mapping(clamp_luminance_alpha_swizzle(sampler_view->base.swizzle_r));
+             ivci.components.g = zink_component_mapping(clamp_luminance_alpha_swizzle(sampler_view->base.swizzle_g));
+             ivci.components.b = zink_component_mapping(clamp_luminance_alpha_swizzle(sampler_view->base.swizzle_b));
+             ivci.components.a = zink_component_mapping(clamp_luminance_alpha_swizzle(sampler_view->base.swizzle_a));
           } else {
              ivci.components.r = zink_component_mapping(sampler_view->base.swizzle_r);
              ivci.components.g = zink_component_mapping(sampler_view->base.swizzle_g);

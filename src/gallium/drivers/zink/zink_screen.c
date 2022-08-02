@@ -550,9 +550,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GL_CLAMP:
       return 0;
 
-   case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
+   case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK: {
+      enum pipe_quirk_texture_border_color_swizzle quirk = PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_ALPHA_NOT_W;
       if (!screen->info.border_color_feats.customBorderColorWithoutFormat)
-         return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_FREEDRENO;
+         return quirk | PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_FREEDRENO;
       /* assume that if drivers don't implement this extension they either:
        * - don't support custom border colors
        * - handle things correctly
@@ -560,8 +561,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        */
       if (screen->info.have_EXT_border_color_swizzle &&
           !screen->info.border_swizzle_feats.borderColorSwizzleFromImage)
-         return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50;
-      return 0;
+         return quirk | PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50;
+      return quirk;
+   }
 
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return screen->info.props.limits.maxImageDimension2D;
@@ -1515,6 +1517,8 @@ emulate_x8(enum pipe_format format)
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format)
 {
+   format = zink_format_get_emulated_alpha(format);
+
    VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
 
    if (format == PIPE_FORMAT_X32_S8X24_UINT &&
@@ -1543,6 +1547,9 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
        (ret == VK_FORMAT_A4R4G4B4_UNORM_PACK16 &&
         !screen->info.format_4444_feats.formatA4R4G4B4))
       return VK_FORMAT_UNDEFINED;
+
+   if (format == PIPE_FORMAT_R4A4_UNORM)
+      return VK_FORMAT_R4G4_UNORM_PACK8;
 
    return ret;
 }
@@ -1755,6 +1762,12 @@ populate_format_props(struct zink_screen *screen)
          }
       } else
          VKSCR(GetPhysicalDeviceFormatProperties)(screen->pdev, format, &screen->format_props[i]);
+      if (zink_format_is_emulated_alpha(i)) {
+         VkFormatFeatureFlags blocked = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+         screen->format_props[i].linearTilingFeatures &= ~blocked;
+         screen->format_props[i].optimalTilingFeatures &= ~blocked;
+         screen->format_props[i].bufferFeatures = 0;
+      }
    }
    VkImageFormatProperties image_props;
    VkResult ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, VK_FORMAT_D32_SFLOAT,
