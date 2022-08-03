@@ -869,18 +869,6 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    dxil_wrap_sampler_state int_sampler_states[PIPE_MAX_SHADER_SAMPLER_VIEWS] = { {{0}} };
    unsigned sampler_id = 0;
 
-   struct exec_list inline_samplers_list;
-   exec_list_make_empty(&inline_samplers_list);
-
-   // Move inline samplers to the end of the uniforms list
-   nir_foreach_variable_with_modes_safe(var, nir, nir_var_uniform) {
-      if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
-         exec_node_remove(&var->node);
-         exec_list_push_tail(&inline_samplers_list, &var->node);
-      }
-   }
-   exec_node_insert_list_after(exec_list_get_tail(&nir->variables), &inline_samplers_list);
-
    NIR_PASS_V(nir, nir_lower_variable_initializers, ~(nir_var_function_temp | nir_var_shader_temp));
 
    // Lower memcpy
