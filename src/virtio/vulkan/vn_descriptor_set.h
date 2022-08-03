@@ -66,6 +66,12 @@ struct vn_descriptor_pool_state {
    uint32_t descriptor_counts[VN_NUM_DESCRIPTOR_TYPES];
 };
 
+struct vn_descriptor_pool_state_mutable {
+   uint32_t max;
+   uint32_t used;
+   BITSET_DECLARE(types, VN_NUM_DESCRIPTOR_TYPES);
+};
+
 struct vn_descriptor_pool {
    struct vn_object_base base;
 
@@ -75,6 +81,9 @@ struct vn_descriptor_pool {
    struct vn_descriptor_pool_state used;
 
    struct list_head descriptor_sets;
+
+   uint32_t mutable_states_count;
+   struct vn_descriptor_pool_state_mutable *mutable_states;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_pool,
                                base.base,
