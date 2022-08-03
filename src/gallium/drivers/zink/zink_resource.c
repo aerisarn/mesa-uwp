@@ -1234,9 +1234,10 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    res->base.b.bind |= bind;
    struct zink_resource_object *old_obj = res->obj;
    if (bind & ZINK_BIND_DMABUF && !res->modifiers_count && screen->info.have_EXT_image_drm_format_modifier) {
-      res->modifiers_count = 1;
+      res->modifiers_count = screen->modifier_props[res->base.b.format].drmFormatModifierCount;
       res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
-      res->modifiers[0] = DRM_FORMAT_MOD_LINEAR;
+      for (unsigned i = 0; i < screen->modifier_props[res->base.b.format].drmFormatModifierCount; i++)
+         res->modifiers[i] = screen->modifier_props[res->base.b.format].pDrmFormatModifierProperties[i].drmFormatModifier;
    }
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->linear, res->modifiers, res->modifiers_count, NULL);
    if (!new_obj) {
