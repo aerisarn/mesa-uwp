@@ -108,15 +108,17 @@ cull_small_primitive(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox
 
    nir_if *if_cull_small_prims = nir_push_if(b, nir_load_cull_small_primitives_enabled_amd(b));
    {
-      nir_ssa_def *vp_scale[2] = { nir_load_viewport_x_scale(b), nir_load_viewport_y_scale(b), };
-      nir_ssa_def *vp_translate[2] = { nir_load_viewport_x_offset(b), nir_load_viewport_y_offset(b), };
+      nir_ssa_def *vp = nir_load_viewport_xy_scale_and_offset(b);
       nir_ssa_def *small_prim_precision = nir_load_cull_small_prim_precision_amd(b);
       prim_is_small = prim_is_small_else;
 
       for (unsigned chan = 0; chan < 2; ++chan) {
+         nir_ssa_def *vp_scale = nir_channel(b, vp, chan);
+         nir_ssa_def *vp_translate = nir_channel(b, vp, 2 + chan);
+
          /* Convert the position to screen-space coordinates. */
-         nir_ssa_def *min = nir_ffma(b, bbox_min[chan], vp_scale[chan], vp_translate[chan]);
-         nir_ssa_def *max = nir_ffma(b, bbox_max[chan], vp_scale[chan], vp_translate[chan]);
+         nir_ssa_def *min = nir_ffma(b, bbox_min[chan], vp_scale, vp_translate);
+         nir_ssa_def *max = nir_ffma(b, bbox_max[chan], vp_scale, vp_translate);
 
          /* Scale the bounding box according to precision. */
          min = nir_fsub(b, min, small_prim_precision);

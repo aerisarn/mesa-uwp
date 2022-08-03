@@ -174,18 +174,18 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = nir_ldexp(b, nir_imm_float(b, 1.0f), exponent);
       break;
    }
-   case nir_intrinsic_load_viewport_x_scale:
-      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_scale[0]);
+
+   case nir_intrinsic_load_viewport_xy_scale_and_offset: {
+      nir_ssa_def *comps[] = {
+         ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_scale[0]),
+         ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_scale[1]),
+         ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_translate[0]),
+         ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_translate[1]),
+      };
+      replacement = nir_vec(b, comps, 4);
       break;
-   case nir_intrinsic_load_viewport_x_offset:
-      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_translate[0]);
-      break;
-   case nir_intrinsic_load_viewport_y_scale:
-      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_scale[1]);
-      break;
-   case nir_intrinsic_load_viewport_y_offset:
-      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_viewport_translate[1]);
-      break;
+   }
+
    case nir_intrinsic_load_ring_task_draw_amd:
       replacement = load_ring(b, RING_TS_DRAW, s);
       break;
