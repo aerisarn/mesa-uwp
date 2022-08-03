@@ -4244,7 +4244,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
                                VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL)
 
 #define anv_genX(devinfo, thing) ({             \
-   __typeof(&gfx9_##thing) genX_thing;          \
+   __typeof(&gfx7_##thing) genX_thing;          \
    switch ((devinfo)->verx10) {                 \
    case 70:                                     \
       genX_thing = &gfx7_##thing;               \
@@ -4254,18 +4254,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
       break;                                    \
    case 80:                                     \
       genX_thing = &gfx8_##thing;               \
-      break;                                    \
-   case 90:                                     \
-      genX_thing = &gfx9_##thing;               \
-      break;                                    \
-   case 110:                                    \
-      genX_thing = &gfx11_##thing;              \
-      break;                                    \
-   case 120:                                    \
-      genX_thing = &gfx12_##thing;              \
-      break;                                    \
-   case 125:                                    \
-      genX_thing = &gfx125_##thing;             \
       break;                                    \
    default:                                     \
       unreachable("Unknown hardware generation"); \
@@ -4284,18 +4272,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 #  include "anv_genX.h"
 #  undef genX
 #  define genX(x) gfx8_##x
-#  include "anv_genX.h"
-#  undef genX
-#  define genX(x) gfx9_##x
-#  include "anv_genX.h"
-#  undef genX
-#  define genX(x) gfx11_##x
-#  include "anv_genX.h"
-#  undef genX
-#  define genX(x) gfx12_##x
-#  include "anv_genX.h"
-#  undef genX
-#  define genX(x) gfx125_##x
 #  include "anv_genX.h"
 #  undef genX
 #endif

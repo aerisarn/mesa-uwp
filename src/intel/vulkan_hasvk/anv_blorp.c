@@ -105,18 +105,6 @@ anv_device_init_blorp(struct anv_device *device)
    case 80:
       device->blorp.exec = gfx8_blorp_exec;
       break;
-   case 90:
-      device->blorp.exec = gfx9_blorp_exec;
-      break;
-   case 110:
-      device->blorp.exec = gfx11_blorp_exec;
-      break;
-   case 120:
-      device->blorp.exec = gfx12_blorp_exec;
-      break;
-   case 125:
-      device->blorp.exec = gfx125_blorp_exec;
-      break;
    default:
       unreachable("Unknown hardware generation");
    }
