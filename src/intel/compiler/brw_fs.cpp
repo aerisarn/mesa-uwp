@@ -48,7 +48,7 @@
 
 using namespace brw;
 
-static unsigned get_lowered_simd_width(const struct brw_compiler *compiler,
+static unsigned get_lowered_simd_width(const fs_visitor *shader,
                                        const fs_inst *inst);
 
 void
@@ -4259,7 +4259,7 @@ fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block)
       lower_src_modifiers(this, block, inst, 1);
 
    /* Should have been lowered to 8-wide. */
-   assert(inst->exec_size <= get_lowered_simd_width(compiler, inst));
+   assert(inst->exec_size <= get_lowered_simd_width(this, inst));
    const unsigned acc_width = reg_unit(devinfo) * 8;
    const fs_reg acc = suboffset(retype(brw_acc_reg(inst->exec_size), inst->dst.type),
                                 inst->group % acc_width);
@@ -4638,9 +4638,10 @@ is_mixed_float_with_packed_fp16_dst(const fs_inst *inst)
  * excessively restrictive.
  */
 static unsigned
-get_fpu_lowered_simd_width(const struct brw_compiler *compiler,
+get_fpu_lowered_simd_width(const fs_visitor *shader,
                            const fs_inst *inst)
 {
+   const struct brw_compiler *compiler = shader->compiler;
    const struct intel_device_info *devinfo = compiler->devinfo;
 
    /* Maximum execution size representable in the instruction controls. */
@@ -4910,9 +4911,9 @@ get_sampler_lowered_simd_width(const struct intel_device_info *devinfo,
  * original execution size.
  */
 static unsigned
-get_lowered_simd_width(const struct brw_compiler *compiler,
-                       const fs_inst *inst)
+get_lowered_simd_width(const fs_visitor *shader, const fs_inst *inst)
 {
+   const struct brw_compiler *compiler = shader->compiler;
    const struct intel_device_info *devinfo = compiler->devinfo;
 
    switch (inst->opcode) {
@@ -4954,7 +4955,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
    case SHADER_OPCODE_SEL_EXEC:
    case SHADER_OPCODE_CLUSTER_BROADCAST:
    case SHADER_OPCODE_MOV_RELOC_IMM:
-      return get_fpu_lowered_simd_width(compiler, inst);
+      return get_fpu_lowered_simd_width(shader, inst);
 
    case BRW_OPCODE_CMP: {
       /* The Ivybridge/BayTrail WaCMPInstFlagDepClearedEarly workaround says that
@@ -4970,7 +4971,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
        */
       const unsigned max_width = (devinfo->verx10 == 70 &&
                                   !inst->dst.is_null() ? 8 : ~0);
-      return MIN2(max_width, get_fpu_lowered_simd_width(compiler, inst));
+      return MIN2(max_width, get_fpu_lowered_simd_width(shader, inst));
    }
    case BRW_OPCODE_BFI1:
    case BRW_OPCODE_BFI2:
@@ -4979,7 +4980,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
        *  "Force BFI instructions to be executed always in SIMD8."
        */
       return MIN2(devinfo->platform == INTEL_PLATFORM_HSW ? 8 : ~0u,
-                  get_fpu_lowered_simd_width(compiler, inst));
+                  get_fpu_lowered_simd_width(shader, inst));
 
    case BRW_OPCODE_IF:
       assert(inst->src[0].file == BAD_FILE || inst->exec_size <= 16);
@@ -5015,7 +5016,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
 
    case SHADER_OPCODE_USUB_SAT:
    case SHADER_OPCODE_ISUB_SAT:
-      return get_fpu_lowered_simd_width(compiler, inst);
+      return get_fpu_lowered_simd_width(shader, inst);
 
    case SHADER_OPCODE_INT_QUOTIENT:
    case SHADER_OPCODE_INT_REMAINDER:
@@ -5076,7 +5077,7 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
        * is 8-wide on Gfx7+.
        */
       return (devinfo->ver >= 7 ? 8 :
-              get_fpu_lowered_simd_width(compiler, inst));
+              get_fpu_lowered_simd_width(shader, inst));
 
    case FS_OPCODE_FB_WRITE_LOGICAL:
       /* Gfx6 doesn't support SIMD16 depth writes but we cannot handle them
@@ -5169,10 +5170,10 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
    case SHADER_OPCODE_QUAD_SWIZZLE: {
       const unsigned swiz = inst->src[1].ud;
       return (is_uniform(inst->src[0]) ?
-                 get_fpu_lowered_simd_width(compiler, inst) :
+                 get_fpu_lowered_simd_width(shader, inst) :
               devinfo->ver < 11 && type_sz(inst->src[0].type) == 4 ? 8 :
               swiz == BRW_SWIZZLE_XYXY || swiz == BRW_SWIZZLE_ZWZW ? 4 :
-              get_fpu_lowered_simd_width(compiler, inst));
+              get_fpu_lowered_simd_width(shader, inst));
    }
    case SHADER_OPCODE_MOV_INDIRECT: {
       /* From IVB and HSW PRMs:
@@ -5410,7 +5411,7 @@ fs_visitor::lower_simd_width()
    bool progress = false;
 
    foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
-      const unsigned lower_width = get_lowered_simd_width(compiler, inst);
+      const unsigned lower_width = get_lowered_simd_width(this, inst);
 
       if (lower_width != inst->exec_size) {
          /* Builder matching the original instruction.  We may also need to
