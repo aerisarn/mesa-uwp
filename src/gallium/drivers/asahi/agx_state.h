@@ -135,6 +135,7 @@ struct asahi_shader_key {
    struct agx_shader_key base;
    struct agx_blend blend;
    unsigned nr_cbufs;
+   uint8_t clip_plane_enable;
    enum pipe_format rt_formats[PIPE_MAX_COLOR_BUFS];
 };
 

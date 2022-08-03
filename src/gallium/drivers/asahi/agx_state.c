@@ -943,6 +943,11 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
       NIR_PASS_V(nir, nir_lower_blend, &opts);
 
       NIR_PASS_V(nir, nir_lower_fragcolor, key->nr_cbufs);
+
+      if (key->clip_plane_enable) {
+         NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable,
+                    false);
+      }
    }
 
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
@@ -1017,6 +1022,7 @@ agx_update_fs(struct agx_context *ctx)
 {
    struct asahi_shader_key key = {
       .nr_cbufs = ctx->batch->nr_cbufs,
+      .clip_plane_enable = ctx->rast->base.clip_plane_enable,
    };
 
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
