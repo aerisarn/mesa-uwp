@@ -1394,6 +1394,7 @@ tu6_emit_vpc_varying_modes(struct tu_cs *cs,
 {
    uint32_t interp_modes[8] = { 0 };
    uint32_t ps_repl_modes[8] = { 0 };
+   uint32_t interp_regs = 0;
 
    if (fs) {
       for (int i = -1;
@@ -1418,14 +1419,17 @@ tu6_emit_vpc_varying_modes(struct tu_cs *cs,
             interp_modes[n] |= interp_mode >> shift;
             ps_repl_modes[n] |= ps_repl_mode >> shift;
          }
+         interp_regs = MAX2(interp_regs, n + 1);
       }
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_INTERP_MODE(0), 8);
-   tu_cs_emit_array(cs, interp_modes, 8);
+   if (interp_regs) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_INTERP_MODE(0), interp_regs);
+      tu_cs_emit_array(cs, interp_modes, interp_regs);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), 8);
-   tu_cs_emit_array(cs, ps_repl_modes, 8);
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), interp_regs);
+      tu_cs_emit_array(cs, ps_repl_modes, interp_regs);
+   }
 }
 
 void
