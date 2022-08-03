@@ -4647,6 +4647,19 @@ get_fpu_lowered_simd_width(const fs_visitor *shader,
    /* Maximum execution size representable in the instruction controls. */
    unsigned max_width = MIN2(32, inst->exec_size);
 
+   /* Number of channels per polygon handled by a multipolygon PS shader. */
+   const unsigned poly_width = shader->dispatch_width /
+                               MAX2(1, shader->max_polygons);
+
+   /* Number of registers that will be read by an ATTR source if
+    * present for multipolygon PS shaders, since the PS vertex setup
+    * data for each polygon is stored in different contiguous GRFs.
+    */
+   const unsigned attr_reg_count = (shader->stage != MESA_SHADER_FRAGMENT ||
+                                    shader->max_polygons < 2 ? 0 :
+                                    DIV_ROUND_UP(inst->exec_size,
+                                                 poly_width) * reg_unit(devinfo));
+
    /* According to the PRMs:
     *  "A. In Direct Addressing mode, a source cannot span more than 2
     *      adjacent GRF registers.
@@ -4659,7 +4672,8 @@ get_fpu_lowered_simd_width(const fs_visitor *shader,
    unsigned reg_count = DIV_ROUND_UP(inst->size_written, REG_SIZE);
 
    for (unsigned i = 0; i < inst->sources; i++)
-      reg_count = MAX2(reg_count, DIV_ROUND_UP(inst->size_read(i), REG_SIZE));
+      reg_count = MAX3(reg_count, DIV_ROUND_UP(inst->size_read(i), REG_SIZE),
+                       (inst->src[i].file == ATTR ? attr_reg_count : 0));
 
    /* Calculate the maximum execution size of the instruction based on the
     * factor by which it goes over the hardware limit of 2 GRFs.
