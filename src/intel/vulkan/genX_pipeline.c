@@ -1183,8 +1183,10 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
       vs.Enable               = true;
       vs.StatisticsEnable     = true;
       vs.KernelStartPointer   = vs_bin->kernel.offset;
+#if GFX_VER < 20
       vs.SIMD8DispatchEnable  =
          vs_prog_data->base.dispatch_mode == DISPATCH_MODE_SIMD8;
+#endif
 
       assert(!vs_prog_data->base.base.use_alt_mode);
 #if GFX_VER < 11

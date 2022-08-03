@@ -4955,7 +4955,9 @@ iris_store_vs_state(const struct intel_device_info *devinfo,
    iris_pack_command(GENX(3DSTATE_VS), shader->derived_data, vs) {
       INIT_THREAD_DISPATCH_FIELDS(vs, Vertex, MESA_SHADER_VERTEX);
       vs.MaximumNumberofThreads = devinfo->max_vs_threads - 1;
+#if GFX_VER < 20
       vs.SIMD8DispatchEnable = true;
+#endif
       vs.UserClipDistanceCullTestEnableBitmask =
          vue_prog_data->cull_distance_mask;
    }
