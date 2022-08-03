@@ -1,6 +1,53 @@
 <?xml version='1.0' encoding='utf-8'?>
 <genxml name="XE2" gen="20">
   <import name="gen125.xml" />
+  <struct name="INTERFACE_DESCRIPTOR_DATA" length="8">
+    <field name="Kernel Start Pointer" start="6" end="31" type="offset" />
+    <field name="Software Exception Enable" start="71" end="71" type="bool" />
+    <field name="Illegal Opcode Exception Enable" start="77" end="77" type="bool" />
+    <field name="Floating Point Mode" start="80" end="80" type="uint">
+      <value name="IEEE-754" value="0" />
+      <value name="Alternate" value="1" />
+    </field>
+    <field name="Single Program Flow" start="82" end="82" type="uint">
+      <value name="Multiple" value="0" />
+      <value name="Single" value="1" />
+    </field>
+    <field name="Denorm Mode" start="83" end="83" type="uint">
+      <value name="Ftz" value="0" />
+      <value name="SetByKernel" value="1" />
+    </field>
+    <field name="Thread Preemption" start="84" end="84" type="bool" />
+    <field name="Sampler Count" start="98" end="100" type="uint">
+      <value name="No samplers used" value="0" />
+      <value name="Between 1 and 4 samplers used" value="1" />
+      <value name="Between 5 and 8 samplers used" value="2" />
+      <value name="Between 9 and 12 samplers used" value="3" />
+      <value name="Between 13 and 16 samplers used" value="4" />
+    </field>
+    <field name="Sampler State Pointer" start="101" end="127" type="offset" />
+    <field name="Binding Table Entry Count" start="128" end="132" type="uint">
+      <value name="Prefetch disabled" value="0" />
+    </field>
+    <field name="Binding Table Pointer" start="133" end="148" type="offset" />
+    <field name="Number of Threads in GPGPU Thread Group" start="160" end="169" type="uint" />
+    <field name="Shared Local Memory Size" start="176" end="180" type="uint" />
+    <field name="Rounding Mode" start="182" end="183" type="uint">
+      <value name="RTNE" value="0" />
+      <value name="RU" value="1" />
+      <value name="RD" value="2" />
+      <value name="RTZ" value="3" />
+    </field>
+    <field name="Thread Group Dispatch Size" start="186" end="187" type="uint">
+      <value name="TG size 8" value="0" />
+      <value name="TG size 4" value="1" />
+      <value name="TG size 2" value="2" />
+      <value name="TG size 1" value="3" />
+    </field>
+    <field name="Number Of Barriers" start="188" end="190" type="uint" />
+    <field name="BTD Mode" start="191" end="191" type="uint" />
+    <field name="Preferred SLM Allocation Size" start="224" end="227" type="uint" />
+  </struct>
   <instruction name="COMPUTE_WALKER" bias="2" length="40">
     <field name="DWord Length" start="0" end="7" type="uint" default="38" />
     <field name="Predicate Enable" start="8" end="8" type="bool" />
