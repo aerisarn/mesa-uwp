@@ -1570,13 +1570,14 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    smask_regid     = ir3_find_output_regid(fs, FRAG_RESULT_SAMPLE_MASK);
    stencilref_regid = ir3_find_output_regid(fs, FRAG_RESULT_STENCIL);
 
-   uint32_t fragdata_regid[8];
+   int output_reg_count = MAX2(mrt_count, 1);
+   uint32_t fragdata_regid[output_reg_count];
    if (fs->color0_mrt) {
       fragdata_regid[0] = ir3_find_output_regid(fs, FRAG_RESULT_COLOR);
-      for (uint32_t i = 1; i < ARRAY_SIZE(fragdata_regid); i++)
+      for (uint32_t i = 1; i < output_reg_count; i++)
          fragdata_regid[i] = fragdata_regid[0];
    } else {
-      for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++)
+      for (uint32_t i = 0; i < output_reg_count; i++)
          fragdata_regid[i] = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + i);
    }
 
@@ -1589,8 +1590,8 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    uint32_t fs_render_components = 0;
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
-   for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++) {
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), output_reg_count);
+   for (uint32_t i = 0; i < output_reg_count; i++) {
       tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(fragdata_regid[i]) |
                      (COND(fragdata_regid[i] & HALF_REG_ID,
                            A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION)));
