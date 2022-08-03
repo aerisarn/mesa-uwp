@@ -25,9 +25,9 @@ anv_entrypoints = custom_target(
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
     '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
-    '--device-prefix', 'gfx7', '--device-prefix', 'gfx75',
-    '--device-prefix', 'gfx8', '--device-prefix', 'gfx9',
-    '--device-prefix', 'gfx11', '--device-prefix', 'gfx12',
+    '--device-prefix', 'gfx9',
+    '--device-prefix', 'gfx11',
+    '--device-prefix', 'gfx12',
     '--device-prefix', 'gfx125',
   ],
   depend_files : vk_entrypoints_gen_depend_files,
@@ -76,9 +76,9 @@ anv_per_hw_ver_files = files(
   'genX_query.c',
   'genX_state.c',
 )
-foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
-             ['80', ['gfx8_cmd_buffer.c']], ['90', ['gfx8_cmd_buffer.c']],
-             ['110', ['gfx8_cmd_buffer.c']], ['120', ['gfx8_cmd_buffer.c']],
+foreach g : [['90', ['gfx8_cmd_buffer.c']],
+             ['110', ['gfx8_cmd_buffer.c']],
+             ['120', ['gfx8_cmd_buffer.c']],
              ['125', ['gfx8_cmd_buffer.c']]]
   _gfx_ver = g[0]
   libanv_per_hw_ver_libs += static_library(

@@ -768,16 +768,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       goto fail_fd;
    }
 
-   bool is_alpha = true;
-   if (devinfo.platform == INTEL_PLATFORM_HSW) {
-      mesa_logw("Haswell Vulkan support is incomplete");
-   } else if (devinfo.platform == INTEL_PLATFORM_IVB) {
-      mesa_logw("Ivy Bridge Vulkan support is incomplete");
-   } else if (devinfo.platform == INTEL_PLATFORM_BYT) {
-      mesa_logw("Bay Trail Vulkan support is incomplete");
-   } else if (devinfo.ver >= 8 && devinfo.ver <= 12) {
+   if (devinfo.ver >= 9 && devinfo.ver <= 12) {
       /* Gfx8-12 fully supported */
-      is_alpha = false;
    } else {
       result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                          "Vulkan not yet supported on %s", devinfo.name);
@@ -811,7 +803,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
    device->info = devinfo;
-   device->is_alpha = is_alpha;
 
    device->cmd_parser_version = -1;
    if (device->info.ver == 7) {
@@ -2002,25 +1993,12 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
-   /* Don't advertise conformance with a particular version if the hardware's
-    * support is incomplete/alpha.
-    */
-   if (pdevice->is_alpha) {
-      p->conformanceVersion = (VkConformanceVersion) {
-         .major = 0,
-         .minor = 0,
-         .subminor = 0,
-         .patch = 0,
-      };
-   }
-   else {
-      p->conformanceVersion = (VkConformanceVersion) {
-         .major = 1,
-         .minor = 3,
-         .subminor = 0,
-         .patch = 0,
-      };
-   }
+   p->conformanceVersion = (VkConformanceVersion) {
+      .major = 1,
+      .minor = 3,
+      .subminor = 0,
+      .patch = 0,
+   };
 
    p->denormBehaviorIndependence =
       VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;

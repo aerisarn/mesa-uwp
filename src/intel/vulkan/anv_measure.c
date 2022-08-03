@@ -51,15 +51,6 @@ anv_measure_device_init(struct anv_physical_device *device)
    case 90:
       device->cmd_emit_timestamp = &gfx9_cmd_emit_timestamp;
       break;
-   case 80:
-      device->cmd_emit_timestamp = &gfx8_cmd_emit_timestamp;
-      break;
-   case 75:
-      device->cmd_emit_timestamp = &gfx75_cmd_emit_timestamp;
-      break;
-   case 70:
-      device->cmd_emit_timestamp = &gfx7_cmd_emit_timestamp;
-      break;
    default:
       assert(false);
    }

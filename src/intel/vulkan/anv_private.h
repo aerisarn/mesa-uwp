@@ -978,8 +978,6 @@ struct anv_physical_device {
     struct brw_compiler *                       compiler;
     struct isl_device                           isl_dev;
     struct intel_perf_config *                    perf;
-   /* True if hardware support is incomplete/alpha */
-    bool                                        is_alpha;
     /*
      * Number of commands required to implement a performance query begin +
      * end.
@@ -4246,15 +4244,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 #define anv_genX(devinfo, thing) ({             \
    __typeof(&gfx9_##thing) genX_thing;          \
    switch ((devinfo)->verx10) {                 \
-   case 70:                                     \
-      genX_thing = &gfx7_##thing;               \
-      break;                                    \
-   case 75:                                     \
-      genX_thing = &gfx75_##thing;              \
-      break;                                    \
-   case 80:                                     \
-      genX_thing = &gfx8_##thing;               \
-      break;                                    \
    case 90:                                     \
       genX_thing = &gfx9_##thing;               \
       break;                                    \
@@ -4277,15 +4266,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 #ifdef genX
 #  include "anv_genX.h"
 #else
-#  define genX(x) gfx7_##x
-#  include "anv_genX.h"
-#  undef genX
-#  define genX(x) gfx75_##x
-#  include "anv_genX.h"
-#  undef genX
-#  define genX(x) gfx8_##x
-#  include "anv_genX.h"
-#  undef genX
 #  define genX(x) gfx9_##x
 #  include "anv_genX.h"
 #  undef genX

@@ -96,15 +96,6 @@ anv_device_init_blorp(struct anv_device *device)
    device->blorp.lookup_shader = lookup_blorp_shader;
    device->blorp.upload_shader = upload_blorp_shader;
    switch (device->info->verx10) {
-   case 70:
-      device->blorp.exec = gfx7_blorp_exec;
-      break;
-   case 75:
-      device->blorp.exec = gfx75_blorp_exec;
-      break;
-   case 80:
-      device->blorp.exec = gfx8_blorp_exec;
-      break;
    case 90:
       device->blorp.exec = gfx9_blorp_exec;
       break;
