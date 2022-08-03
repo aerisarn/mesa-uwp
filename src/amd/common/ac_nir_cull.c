@@ -31,16 +31,14 @@
 typedef struct
 {
    nir_ssa_def *w_reflection;
-   nir_ssa_def *w_accepted;
-   nir_ssa_def *all_w_positive;
+   nir_ssa_def *all_w_negative;
    nir_ssa_def *any_w_negative;
 } position_w_info;
 
 static void
 analyze_position_w(nir_builder *b, nir_ssa_def *pos[3][4], position_w_info *w_info)
 {
-   nir_ssa_def *all_w_negative = nir_imm_bool(b, true);
-
+   w_info->all_w_negative = nir_imm_bool(b, true);
    w_info->w_reflection = nir_imm_bool(b, false);
    w_info->any_w_negative = nir_imm_bool(b, false);
 
@@ -48,11 +46,8 @@ analyze_position_w(nir_builder *b, nir_ssa_def *pos[3][4], position_w_info *w_in
       nir_ssa_def *neg_w = nir_flt(b, pos[i][3], nir_imm_float(b, 0.0f));
       w_info->w_reflection = nir_ixor(b, neg_w, w_info->w_reflection);
       w_info->any_w_negative = nir_ior(b, neg_w, w_info->any_w_negative);
-      all_w_negative = nir_iand(b, neg_w, all_w_negative);
+      w_info->all_w_negative = nir_iand(b, neg_w, w_info->all_w_negative);
    }
-
-   w_info->all_w_positive = nir_inot(b, w_info->any_w_negative);
-   w_info->w_accepted = nir_inot(b, all_w_negative);
 }
 
 static nir_ssa_def *
@@ -80,9 +75,7 @@ cull_face(nir_builder *b, nir_ssa_def *pos[3][4], const position_w_info *w_info)
    /* Don't reject NaN and +/-infinity, these are tricky.
     * Just trust fixed-function HW to handle these cases correctly.
     */
-   face_culled = nir_iand(b, face_culled, nir_fisfinite(b, det));
-
-   return nir_inot(b, face_culled);
+   return nir_iand(b, face_culled, nir_fisfinite(b, det));
 }
 
 static void
@@ -153,8 +146,8 @@ ac_nir_cull_triangle(nir_builder *b,
    analyze_position_w(b, pos, &w_info);
 
    nir_ssa_def *accepted = initially_accepted;
-   accepted = nir_iand(b, accepted, w_info.w_accepted);
-   accepted = nir_iand(b, accepted, cull_face(b, pos, &w_info));
+   accepted = nir_iand(b, accepted, nir_inot(b, w_info.all_w_negative));
+   accepted = nir_iand(b, accepted, nir_inot(b, cull_face(b, pos, &w_info)));
 
    nir_if *if_accepted = nir_push_if(b, accepted);
    {
@@ -165,7 +158,7 @@ ac_nir_cull_triangle(nir_builder *b,
       nir_ssa_def *prim_is_small = cull_small_primitive(b, bbox_min, bbox_max);
       nir_ssa_def *prim_invisible = nir_ior(b, prim_outside_view, prim_is_small);
 
-      accepted = nir_iand(b, nir_inot(b, prim_invisible), w_info.all_w_positive);
+      accepted = nir_iand(b, nir_inot(b, prim_invisible), nir_inot(b, w_info.any_w_negative));
       nir_if *if_still_accepted = nir_push_if(b, accepted);
       {
          accept_func(b, state);
