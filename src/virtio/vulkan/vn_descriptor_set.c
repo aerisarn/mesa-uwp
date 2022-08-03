@@ -129,6 +129,10 @@ vn_descriptor_set_layout_init(
       vk_find_struct_const(create_info->pNext,
                            DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
 
+   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_descriptor_info =
+      vk_find_struct_const(create_info->pNext,
+                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+
    /* 14.2.1. Descriptor Set Layout
     *
     * If bindingCount is zero or if this structure is not included in
@@ -176,6 +180,19 @@ vn_descriptor_set_layout_init(
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          binding->has_immutable_samplers = binding_info->pImmutableSamplers;
          break;
+      case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+         assert(mutable_descriptor_info->mutableDescriptorTypeListCount &&
+                mutable_descriptor_info->pMutableDescriptorTypeLists[i]
+                   .descriptorTypeCount);
+
+         const VkMutableDescriptorTypeListVALVE *list =
+            &mutable_descriptor_info->pMutableDescriptorTypeLists[i];
+         for (uint32_t j = 0; j < list->descriptorTypeCount; j++) {
+            BITSET_SET(binding->mutable_descriptor_types,
+                       vn_descriptor_type_index(list->pDescriptorTypes[j]));
+         }
+         break;
+
       default:
          break;
       }

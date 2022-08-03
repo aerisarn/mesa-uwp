@@ -41,6 +41,7 @@ struct vn_descriptor_set_layout_binding {
    VkDescriptorType type;
    uint32_t count;
    bool has_immutable_samplers;
+   BITSET_DECLARE(mutable_descriptor_types, VN_NUM_DESCRIPTOR_TYPES);
 };
 
 struct vn_descriptor_set_layout {
