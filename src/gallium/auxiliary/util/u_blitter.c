@@ -215,7 +215,7 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    ctx->has_tex_lz = pipe->screen->get_param(pipe->screen,
                                              PIPE_CAP_TGSI_TEX_TXF_LZ);
    ctx->has_txf = pipe->screen->get_param(pipe->screen,
-                                          PIPE_CAP_GLSL_FEATURE_LEVEL) > 130;
+                                          PIPE_CAP_GLSL_FEATURE_LEVEL) >= 130;
    ctx->has_sample_shading = pipe->screen->get_param(pipe->screen,
                                                      PIPE_CAP_SAMPLE_SHADING);
    ctx->cube_as_2darray = pipe->screen->get_param(pipe->screen,
