@@ -12221,6 +12221,9 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
       num_vgprs++; /* make space for nontrivial_tmp_vgpr1 */
    unsigned num_sgprs = 0;
 
+   const struct ac_vtx_format_info* vtx_info_table =
+      ac_get_vtx_format_info_table(GFX8, CHIP_POLARIS10);
+
    for (unsigned loc = 0; loc < key->num_attributes;) {
       unsigned num_descs =
          load_vb_descs(bld, desc, Operand(vertex_buffers, s2), loc, key->num_attributes - loc);
@@ -12285,9 +12288,12 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
          /* perform load */
          PhysReg cur_desc = desc.advance(i * 16);
          if ((key->misaligned_mask & (1u << loc))) {
-            unsigned dfmt = key->state.formats[loc] & 0xf;
-            unsigned nfmt = key->state.formats[loc] >> 4;
-            const struct ac_data_format_info* vtx_info = ac_get_data_format_info(dfmt);
+            const struct ac_vtx_format_info* vtx_info = &vtx_info_table[key->state.formats[loc]];
+
+            assert(vtx_info->has_hw_format & 0x1);
+            unsigned dfmt = vtx_info->hw_format[0] & 0xf;
+            unsigned nfmt = vtx_info->hw_format[0] >> 4;
+
             for (unsigned j = 0; j < vtx_info->num_channels; j++) {
                bool post_shuffle = key->state.post_shuffle & (1u << loc);
                unsigned offset = vtx_info->chan_byte_size * (post_shuffle && j < 3 ? 2 - j : j);
@@ -12297,14 +12303,14 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
                 * MTBUF can hang, but MUBUF doesn't (probably gives garbage, but GL CTS doesn't
                 * care).
                 */
-               if (vtx_info->chan_format == V_008F0C_BUF_DATA_FORMAT_32)
+               if (dfmt == V_008F0C_BUF_DATA_FORMAT_32)
                   bld.mubuf(aco_opcode::buffer_load_dword, Definition(dest.advance(j * 4u), v1),
                             Operand(cur_desc, s4), fetch_index, Operand::c32(0u), offset, false,
                             false, true);
                else
                   bld.mtbuf(aco_opcode::tbuffer_load_format_x, Definition(dest.advance(j * 4u), v1),
-                            Operand(cur_desc, s4), fetch_index, Operand::c32(0u),
-                            vtx_info->chan_format, nfmt, offset, false, true);
+                            Operand(cur_desc, s4), fetch_index, Operand::c32(0u), dfmt, nfmt,
+                            offset, false, true);
             }
             uint32_t one =
                nfmt == V_008F0C_BUF_NUM_FORMAT_UINT || nfmt == V_008F0C_BUF_NUM_FORMAT_SINT

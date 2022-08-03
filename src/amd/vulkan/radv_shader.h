@@ -374,6 +374,7 @@ struct radv_vs_input_state {
     */
    uint32_t alpha_adjust_lo;
    uint32_t alpha_adjust_hi;
+   uint32_t nontrivial_formats;
 
    uint8_t bindings[MAX_VERTEX_ATTRIBS];
    uint32_t divisors[MAX_VERTEX_ATTRIBS];

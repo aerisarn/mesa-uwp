@@ -308,8 +308,6 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
    list_del(&cmd_buffer->pool_link);
 
-   util_dynarray_fini(&cmd_buffer->cached_vertex_formats);
-
    list_for_each_entry_safe(struct radv_cmd_buffer_upload, up, &cmd_buffer->upload.list, list)
    {
       cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, up->upload_bo);
@@ -379,8 +377,6 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
 
    vk_object_base_init(&device->vk, &cmd_buffer->meta_push_descriptors.base,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET);
-
-   util_dynarray_init(&cmd_buffer->cached_vertex_formats, NULL);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
       vk_object_base_init(&device->vk, &cmd_buffer->descriptors[i].push_set.set.base,
@@ -2964,6 +2960,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
       cmd_buffer->state.vbo_misaligned_mask = misaligned_mask;
       cmd_buffer->state.vbo_misaligned_mask_invalid &= ~attribute_mask;
    }
+   misaligned_mask |= state->nontrivial_formats;
 
    /* try to use a pre-compiled prolog first */
    struct radv_shader_part *prolog = NULL;
@@ -3540,39 +3537,6 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
    cmd_buffer->push_constant_stages |= dirty_stages;
 }
 
-enum radv_dst_sel {
-   DST_SEL_0001 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_0) |
-                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
-   DST_SEL_X001 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_0) |
-                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
-   DST_SEL_XY01 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_0) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
-   DST_SEL_XYZ1 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_1),
-   DST_SEL_XYZW = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W),
-   DST_SEL_ZYXW = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W),
-};
-
-static const uint32_t data_format_dst_sel[] = {
-   [V_008F0C_BUF_DATA_FORMAT_INVALID] = DST_SEL_0001,
-   [V_008F0C_BUF_DATA_FORMAT_8] = DST_SEL_X001,
-   [V_008F0C_BUF_DATA_FORMAT_16] = DST_SEL_X001,
-   [V_008F0C_BUF_DATA_FORMAT_8_8] = DST_SEL_XY01,
-   [V_008F0C_BUF_DATA_FORMAT_32] = DST_SEL_X001,
-   [V_008F0C_BUF_DATA_FORMAT_16_16] = DST_SEL_XY01,
-   [V_008F0C_BUF_DATA_FORMAT_10_11_11] = DST_SEL_XYZ1,
-   [V_008F0C_BUF_DATA_FORMAT_11_11_10] = DST_SEL_XYZ1,
-   [V_008F0C_BUF_DATA_FORMAT_10_10_10_2] = DST_SEL_XYZW,
-   [V_008F0C_BUF_DATA_FORMAT_2_10_10_10] = DST_SEL_XYZW,
-   [V_008F0C_BUF_DATA_FORMAT_8_8_8_8] = DST_SEL_XYZW,
-   [V_008F0C_BUF_DATA_FORMAT_32_32] = DST_SEL_XY01,
-   [V_008F0C_BUF_DATA_FORMAT_16_16_16_16] = DST_SEL_XYZW,
-   [V_008F0C_BUF_DATA_FORMAT_32_32_32] = DST_SEL_XYZ1,
-   [V_008F0C_BUF_DATA_FORMAT_32_32_32_32] = DST_SEL_XYZW,
-};
-
 void
 radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
                               const struct radv_graphics_pipeline *pipeline,
@@ -3580,12 +3544,16 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
 {
    struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
    unsigned desc_index = 0;
    uint32_t mask = pipeline->vb_desc_usage_mask;
    uint64_t va;
    const struct radv_vs_input_state *vs_state =
       vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
    assert(!vs_state || pipeline->use_per_attribute_vb_descs);
+
+   const struct ac_vtx_format_info *vtx_info_table =
+      vs_state ? ac_get_vtx_format_info_table(chip, family) : NULL;
 
    while (mask) {
       unsigned i = u_bit_scan(&mask);
@@ -3598,23 +3566,25 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
       unsigned num_records;
       unsigned stride;
 
-      if (vs_state) {
-         unsigned format = vs_state->formats[i];
-         unsigned dfmt = format & 0xf;
-         unsigned nfmt = (format >> 4) & 0x7;
+      if (vs_state && !(vs_state->nontrivial_formats & BITFIELD_BIT(i))) {
+         const struct ac_vtx_format_info *vtx_info = &vtx_info_table[vs_state->formats[i]];
+         unsigned hw_format = vtx_info->hw_format[vtx_info->num_channels - 1];
 
-         rsrc_word3 = vs_state->post_shuffle & (1u << i) ? DST_SEL_ZYXW : data_format_dst_sel[dfmt];
-
-         if (chip >= GFX10)
-            rsrc_word3 |= S_008F0C_FORMAT(ac_get_tbuffer_format(chip, dfmt, nfmt));
-         else
-            rsrc_word3 |= S_008F0C_NUM_FORMAT(nfmt) | S_008F0C_DATA_FORMAT(dfmt);
+         if (chip >= GFX10) {
+            rsrc_word3 = vtx_info->dst_sel | S_008F0C_FORMAT(hw_format);
+         } else {
+            rsrc_word3 = vtx_info->dst_sel | S_008F0C_NUM_FORMAT((hw_format >> 4) & 0x7) |
+                         S_008F0C_DATA_FORMAT(hw_format & 0xf);
+         }
       } else {
+         rsrc_word3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+                      S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                      S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
          if (chip >= GFX10)
-            rsrc_word3 = DST_SEL_XYZW | S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT);
+            rsrc_word3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT);
          else
-            rsrc_word3 = DST_SEL_XYZW | S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
-                         S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+            rsrc_word3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+                          S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
       }
 
       if (pipeline->dynamic_states & (RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
@@ -5934,6 +5904,9 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
    state->bindings_match_attrib = true;
 
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
+   const struct ac_vtx_format_info *vtx_info_table = ac_get_vtx_format_info_table(chip, family);
+
    for (unsigned i = 0; i < vertexAttributeDescriptionCount; i++) {
       const VkVertexInputAttributeDescription2EXT *attrib = &pVertexAttributeDescriptions[i];
       const VkVertexInputBindingDescription2EXT *binding = bindings[attrib->binding];
@@ -5955,50 +5928,27 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       cmd_buffer->vertex_bindings[attrib->binding].stride = binding->stride;
       state->offsets[loc] = attrib->offset;
 
-      struct dynamic_vertex_format_cache *found = NULL;
-      util_dynarray_foreach(&cmd_buffer->cached_vertex_formats,
-                            struct dynamic_vertex_format_cache,
-                            vf) {
-         if (vf->format == attrib->format) {
-            found = vf;
-            break;
-         }
-      }
-      if (!found) {
-         unsigned nfmt, dfmt;
-         bool post_shuffle;
-         enum ac_vs_input_alpha_adjust alpha_adjust;
-         const struct util_format_description *format_desc = vk_format_description(attrib->format);
+      enum pipe_format format = vk_format_to_pipe_format(attrib->format);
+      const struct ac_vtx_format_info *vtx_info = &vtx_info_table[format];
 
-         found = util_dynarray_grow(&cmd_buffer->cached_vertex_formats,
-                                    struct dynamic_vertex_format_cache, 1);
-         radv_translate_vertex_format(cmd_buffer->device->physical_device, attrib->format, format_desc,
-                                      &dfmt, &nfmt, &post_shuffle, &alpha_adjust);
-         found->format = attrib->format;
-         found->hw_fmt = dfmt | (nfmt << 4);
-         const uint8_t format_align_req_minus_1 = format_desc->channel[0].size >= 32 ? 3 :
-            (format_desc->block.bits / 8u - 1);
-         found->fmt_align_req_minus_1 = format_align_req_minus_1;
-         found->fmt_size = format_desc->block.bits / 8u;
-         found->post_shuffle = post_shuffle;
-         found->alpha_adjust_lo = alpha_adjust & 0x1;
-         found->alpha_adjust_hi = (alpha_adjust >> 1) & 0x1;
-      }
+      state->formats[loc] = format;
+      uint8_t align_req_minus_1 = vtx_info->chan_byte_size >= 4 ? 3 : (vtx_info->element_size - 1);
+      state->format_align_req_minus_1[loc] = align_req_minus_1;
+      state->format_sizes[loc] = vtx_info->element_size;
+      state->alpha_adjust_lo |= (vtx_info->alpha_adjust & 0x1) << loc;
+      state->alpha_adjust_hi |= (vtx_info->alpha_adjust >> 1) << loc;
+      if (G_008F0C_DST_SEL_X(vtx_info->dst_sel) == V_008F0C_SQ_SEL_Z)
+         state->post_shuffle |= BITFIELD_BIT(loc);
 
-      state->formats[loc] = found->hw_fmt;
-      state->format_align_req_minus_1[loc] = found->fmt_align_req_minus_1;
-      state->format_sizes[loc] = found->fmt_size;
-      state->alpha_adjust_lo |= found->alpha_adjust_lo << loc;
-      state->alpha_adjust_hi |= found->alpha_adjust_hi << loc;
-      if (found->post_shuffle)
-         state->post_shuffle |= 1u << loc;
+      if (!(vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1)))
+         state->nontrivial_formats |= BITFIELD_BIT(loc);
 
       if ((chip == GFX6 || chip >= GFX10) &&
           cmd_buffer->state.vbo_bound_mask & BITFIELD_BIT(attrib->binding)) {
-         if (binding->stride & found->fmt_align_req_minus_1) {
+         if (binding->stride & align_req_minus_1) {
             cmd_buffer->state.vbo_misaligned_mask |= BITFIELD_BIT(loc);
          } else if ((cmd_buffer->vertex_bindings[attrib->binding].offset + state->offsets[loc]) &
-                    found->fmt_align_req_minus_1) {
+                    align_req_minus_1) {
             cmd_buffer->state.vbo_misaligned_mask |= BITFIELD_BIT(loc);
          }
       }
