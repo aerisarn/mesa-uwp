@@ -1360,6 +1360,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x00120" name="RBBM_CLOCK_CNTL_TEX_FCHE"/>
 	<reg32 offset="0x00121" name="RBBM_CLOCK_DELAY_TEX_FCHE"/>
 	<reg32 offset="0x00122" name="RBBM_CLOCK_HYST_TEX_FCHE"/>
+	<reg32 offset="0x005ff" name="RBBM_LPAC_GBIF_CLIENT_QOS_CNTL"/>
 
 	<reg32 offset="0x0600" name="DBGC_CFG_DBGBUS_SEL_A"/>
 	<reg32 offset="0x0601" name="DBGC_CFG_DBGBUS_SEL_B"/>
