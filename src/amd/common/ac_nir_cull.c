@@ -155,9 +155,8 @@ ac_nir_cull_triangle(nir_builder *b,
    accepted = nir_iand(b, accepted, cull_face(b, pos, &w_info));
 
    nir_ssa_def *bbox_accepted = NULL;
-   nir_ssa_def *try_cull_bbox = nir_iand(b, accepted, w_info.all_w_positive);
 
-   nir_if *if_cull_bbox = nir_push_if(b, try_cull_bbox);
+   nir_if *if_accepted = nir_push_if(b, accepted);
    {
       nir_ssa_def *bbox_min[3] = {0}, *bbox_max[3] = {0};
       calc_bbox(b, pos, bbox_min, bbox_max);
@@ -166,9 +165,9 @@ ac_nir_cull_triangle(nir_builder *b,
       nir_ssa_def *prim_is_small = cull_small_primitive(b, bbox_min, bbox_max);
       nir_ssa_def *prim_invisible = nir_ior(b, prim_outside_view, prim_is_small);
 
-      bbox_accepted = nir_inot(b, prim_invisible);
+      bbox_accepted = nir_iand(b, nir_inot(b, prim_invisible), w_info.all_w_positive);
    }
-   nir_pop_if(b, if_cull_bbox);
+   nir_pop_if(b, if_accepted);
    accepted = nir_iand(b, accepted, nir_if_phi(b, bbox_accepted, accepted));
 
    return accepted;
