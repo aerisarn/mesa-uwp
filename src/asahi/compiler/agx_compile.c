@@ -39,6 +39,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"verbose",   AGX_DBG_VERBOSE,	"Disassemble verbosely"},
    {"internal",  AGX_DBG_INTERNAL,	"Dump even internal shaders"},
    {"novalidate",AGX_DBG_NOVALIDATE,"Skip IR validation in debug builds"},
+   {"noopt",     AGX_DBG_NOOPT,     "Disable backend optimizations"},
    DEBUG_NAMED_VALUE_END
 };
 
@@ -1743,12 +1744,14 @@ agx_compile_shader_nir(nir_shader *nir,
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
       agx_print_shader(ctx, stdout);
 
-   agx_optimizer(ctx);
-   agx_dce(ctx);
-   agx_validate(ctx, "Optimization");
+   if (likely(!(agx_debug & AGX_DBG_NOOPT))) {
+      agx_optimizer(ctx);
+      agx_dce(ctx);
+      agx_validate(ctx, "Optimization");
 
-   if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
-      agx_print_shader(ctx, stdout);
+      if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
+         agx_print_shader(ctx, stdout);
+   }
 
    agx_ra(ctx);
 

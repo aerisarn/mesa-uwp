@@ -45,6 +45,7 @@ enum agx_dbg {
    AGX_DBG_VERBOSE     = BITFIELD_BIT(3),
    AGX_DBG_INTERNAL    = BITFIELD_BIT(4),
    AGX_DBG_NOVALIDATE  = BITFIELD_BIT(5),
+   AGX_DBG_NOOPT       = BITFIELD_BIT(6),
 };
 
 extern int agx_debug;
