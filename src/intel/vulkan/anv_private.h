@@ -1751,17 +1751,6 @@ struct anv_sampled_image_descriptor {
    uint32_t sampler;
 };
 
-struct anv_texture_swizzle_descriptor {
-   /** Texture swizzle
-    *
-    * See also nir_intrinsic_channel_select_intel
-    */
-   uint8_t swizzle[4];
-
-   /** Unused padding to ensure the struct is a multiple of 64 bits */
-   uint32_t _pad;
-};
-
 /** Struct representing a storage image descriptor */
 struct anv_storage_image_descriptor {
    /** Bindless image handles
@@ -1803,8 +1792,6 @@ enum anv_descriptor_data {
    ANV_DESCRIPTOR_SAMPLED_IMAGE  = (1 << 6),
    /** Storage image handles */
    ANV_DESCRIPTOR_STORAGE_IMAGE  = (1 << 7),
-   /** Storage image handles */
-   ANV_DESCRIPTOR_TEXTURE_SWIZZLE  = (1 << 8),
 };
 
 struct anv_descriptor_set_binding_layout {
@@ -3137,15 +3124,7 @@ struct anv_graphics_pipeline {
     * with dynamic state.
     */
    struct {
-      uint32_t                                  sf[7];
       uint32_t                                  clip[4];
-      uint32_t                                  xfb_bo_pitch[4];
-      uint32_t                                  wm[3];
-      uint32_t                                  blend_state[MAX_RTS * 2];
-      uint32_t                                  streamout_state[3];
-   } gfx7;
-
-   struct {
       uint32_t                                  sf[4];
       uint32_t                                  raster[5];
       uint32_t                                  wm[2];

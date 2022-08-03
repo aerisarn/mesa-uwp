@@ -258,7 +258,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_buffer_device_address             = device->has_a64_buffer_access,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
       .EXT_color_write_enable                = true,
-      .EXT_conditional_rendering             = device->info.verx10 >= 75,
+      .EXT_conditional_rendering             = true,
       .EXT_conservative_rasterization        = device->info.ver >= 9,
       .EXT_custom_border_color               = device->info.ver >= 8,
       .EXT_depth_clip_control                = true,
@@ -805,15 +805,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->info = devinfo;
 
    device->cmd_parser_version = -1;
-   if (device->info.ver == 7) {
-      device->cmd_parser_version =
-         anv_gem_get_param(fd, I915_PARAM_CMD_PARSER_VERSION);
-      if (device->cmd_parser_version == -1) {
-         result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                            "failed to get command parser version");
-         goto fail_base;
-      }
-   }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT)) {
       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
@@ -1428,8 +1419,8 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
          VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)ext;
-         features->conditionalRendering = pdevice->info.verx10 >= 75;
-         features->inheritedConditionalRendering = pdevice->info.verx10 >= 75;
+         features->conditionalRendering = true;
+         features->inheritedConditionalRendering = true;
          break;
       }
 
@@ -1751,8 +1742,7 @@ void anv_GetPhysicalDeviceProperties(
    const uint32_t max_textures =
       pdevice->has_bindless_images ? UINT16_MAX : 128;
    const uint32_t max_samplers =
-      pdevice->has_bindless_samplers ? UINT16_MAX :
-      (devinfo->verx10 >= 75) ? 128 : 16;
+      pdevice->has_bindless_samplers ? UINT16_MAX : 128;
    const uint32_t max_images =
       pdevice->has_bindless_images ? UINT16_MAX : MAX_IMAGES;
 
@@ -2512,8 +2502,7 @@ void anv_GetPhysicalDeviceProperties2(
          props->transformFeedbackQueries = true;
          props->transformFeedbackStreamsLinesTriangles = false;
          props->transformFeedbackRasterizationStreamSelect = false;
-         /* This requires MI_MATH */
-         props->transformFeedbackDraw = pdevice->info.verx10 >= 75;
+         props->transformFeedbackDraw = true;
          break;
       }
 

@@ -583,8 +583,6 @@ genX(emit_l3_config)(struct anv_batch *batch,
 {
    UNUSED const struct intel_device_info *devinfo = device->info;
 
-#if GFX_VER >= 8
-
 #if GFX_VER >= 12
 #define L3_ALLOCATION_REG GENX(L3ALLOC)
 #define L3_ALLOCATION_REG_num GENX(L3ALLOC_num)
@@ -621,81 +619,6 @@ genX(emit_l3_config)(struct anv_batch *batch,
          l3cr.AllAllocation = cfg->n[INTEL_L3P_ALL];
       }
    }
-
-#else /* GFX_VER < 8 */
-
-   const bool has_dc = cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_ALL];
-   const bool has_is = cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_RO] ||
-                       cfg->n[INTEL_L3P_ALL];
-   const bool has_c = cfg->n[INTEL_L3P_C] || cfg->n[INTEL_L3P_RO] ||
-                      cfg->n[INTEL_L3P_ALL];
-   const bool has_t = cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_RO] ||
-                      cfg->n[INTEL_L3P_ALL];
-
-   assert(!cfg->n[INTEL_L3P_ALL]);
-
-   /* When enabled SLM only uses a portion of the L3 on half of the banks,
-    * the matching space on the remaining banks has to be allocated to a
-    * client (URB for all validated configurations) set to the
-    * lower-bandwidth 2-bank address hashing mode.
-    */
-   const bool urb_low_bw = cfg->n[INTEL_L3P_SLM] && devinfo->platform != INTEL_PLATFORM_BYT;
-   assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
-
-   /* Minimum number of ways that can be allocated to the URB. */
-   const unsigned n0_urb = devinfo->platform == INTEL_PLATFORM_BYT ? 32 : 0;
-   assert(cfg->n[INTEL_L3P_URB] >= n0_urb);
-
-   anv_batch_write_reg(batch, GENX(L3SQCREG1), l3sqc) {
-      l3sqc.ConvertDC_UC = !has_dc;
-      l3sqc.ConvertIS_UC = !has_is;
-      l3sqc.ConvertC_UC = !has_c;
-      l3sqc.ConvertT_UC = !has_t;
-#if GFX_VERx10 == 75
-      l3sqc.L3SQGeneralPriorityCreditInitialization = SQGPCI_DEFAULT;
-#else
-      l3sqc.L3SQGeneralPriorityCreditInitialization =
-         devinfo->platform == INTEL_PLATFORM_BYT ? BYT_SQGPCI_DEFAULT : SQGPCI_DEFAULT;
-#endif
-      l3sqc.L3SQHighPriorityCreditInitialization = SQHPCI_DEFAULT;
-   }
-
-   anv_batch_write_reg(batch, GENX(L3CNTLREG2), l3cr2) {
-      l3cr2.SLMEnable = cfg->n[INTEL_L3P_SLM];
-      l3cr2.URBLowBandwidth = urb_low_bw;
-      l3cr2.URBAllocation = cfg->n[INTEL_L3P_URB] - n0_urb;
-#if !GFX_VERx10 == 75
-      l3cr2.ALLAllocation = cfg->n[INTEL_L3P_ALL];
-#endif
-      l3cr2.ROAllocation = cfg->n[INTEL_L3P_RO];
-      l3cr2.DCAllocation = cfg->n[INTEL_L3P_DC];
-   }
-
-   anv_batch_write_reg(batch, GENX(L3CNTLREG3), l3cr3) {
-      l3cr3.ISAllocation = cfg->n[INTEL_L3P_IS];
-      l3cr3.ISLowBandwidth = 0;
-      l3cr3.CAllocation = cfg->n[INTEL_L3P_C];
-      l3cr3.CLowBandwidth = 0;
-      l3cr3.TAllocation = cfg->n[INTEL_L3P_T];
-      l3cr3.TLowBandwidth = 0;
-   }
-
-#if GFX_VERx10 == 75
-   if (device->physical->cmd_parser_version >= 4) {
-      /* Enable L3 atomics on HSW if we have a DC partition, otherwise keep
-       * them disabled to avoid crashing the system hard.
-       */
-      anv_batch_write_reg(batch, GENX(SCRATCH1), s1) {
-         s1.L3AtomicDisable = !has_dc;
-      }
-      anv_batch_write_reg(batch, GENX(CHICKEN3), c3) {
-         c3.L3AtomicDisableMask = true;
-         c3.L3AtomicDisable = !has_dc;
-      }
-   }
-#endif /* GFX_VERx10 == 75 */
-
-#endif /* GFX_VER < 8 */
 }
 
 void
@@ -944,7 +867,7 @@ VkResult genX(CreateSampler)(
 
    sampler->n_planes = 1;
 
-   uint32_t border_color_stride = GFX_VERx10 == 75 ? 512 : 64;
+   uint32_t border_color_stride = 64;
    uint32_t border_color_offset;
    ASSERTED bool has_custom_color = false;
    if (pCreateInfo->borderColor <= VK_BORDER_COLOR_INT_OPAQUE_WHITE) {
@@ -952,7 +875,6 @@ VkResult genX(CreateSampler)(
                             pCreateInfo->borderColor *
                             border_color_stride;
    } else {
-      assert(GFX_VER >= 8);
       sampler->custom_border_color =
          anv_state_reserved_pool_alloc(&device->custom_border_colors);
       border_color_offset = sampler->custom_border_color.offset;
@@ -1077,11 +999,7 @@ VkResult genX(CreateSampler)(
          .CPSLODCompensationEnable = true,
 #endif
 
-#if GFX_VER >= 8
          .LODPreClampMode = CLAMP_MODE_OGL,
-#else
-         .LODPreClampEnable = CLAMP_ENABLE_OGL,
-#endif
 
 #if GFX_VER == 8
          .BaseMipLevel = 0.0,
@@ -1104,9 +1022,7 @@ VkResult genX(CreateSampler)(
 
          .BorderColorPointer = border_color_offset,
 
-#if GFX_VER >= 8
          .LODClampMagnificationMode = MIPNONE,
-#endif
 
          .MaximumAnisotropy = vk_to_intel_max_anisotropy(pCreateInfo->maxAnisotropy),
          .RAddressMinFilterRoundingEnable = enable_min_filter_addr_rounding,

@@ -123,7 +123,7 @@ blorp_get_surface_address(struct blorp_batch *blorp_batch,
    }
 }
 
-#if GFX_VER >= 7 && GFX_VER < 10
+#if GFX_VER >= 8 && GFX_VER < 10
 static struct blorp_address
 blorp_get_surface_base_address(struct blorp_batch *batch)
 {
@@ -389,19 +389,6 @@ genX(blorp_exec)(struct blorp_batch *batch,
          intel_get_default_l3_config(cmd_buffer->device->info);
       genX(cmd_buffer_config_l3)(cmd_buffer, cfg);
    }
-
-#if GFX_VER == 7
-   /* The MI_LOAD/STORE_REGISTER_MEM commands which BLORP uses to implement
-    * indirect fast-clear colors can cause GPU hangs if we don't stall first.
-    * See genX(cmd_buffer_mi_memcpy) for more details.
-    */
-   if (params->src.clear_color_addr.buffer ||
-       params->dst.clear_color_addr.buffer) {
-      anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_CS_STALL_BIT,
-                                "before blorp prep fast clear");
-   }
-#endif
 
    if (batch->flags & BLORP_BATCH_USE_COMPUTE)
       blorp_exec_on_compute(batch, params);

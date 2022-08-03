@@ -358,14 +358,6 @@ anv_image_plane_needs_shadow_surface(const struct intel_device_info *devinfo,
       return true;
    }
 
-   if (devinfo->ver <= 7 &&
-       plane_format.aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
-       (vk_plane_usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
-                          VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-      /* gfx7 can't sample from W-tiled surfaces. */
-      return true;
-   }
-
    return false;
 }
 
@@ -728,11 +720,6 @@ add_aux_surface_if_supported(struct anv_device *device,
        */
       if (!(image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
          /* It will never be used as an attachment, HiZ is pointless. */
-         return VK_SUCCESS;
-      }
-
-      if (device->info->ver == 7) {
-         anv_perf_warn(VK_LOG_OBJS(&image->vk.base), "Implement gfx7 HiZ");
          return VK_SUCCESS;
       }
 
@@ -2377,12 +2364,6 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
    if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       return ANV_FAST_CLEAR_NONE;
 
-   /* We don't support MSAA fast-clears on Ivybridge or Bay Trail because they
-    * lack the MI ALU which we need to determine the predicates.
-    */
-   if (devinfo->verx10 == 70 && image->vk.samples > 1)
-      return ANV_FAST_CLEAR_NONE;
-
    enum isl_aux_state aux_state =
       anv_layout_to_aux_state(devinfo, image, aspect, layout);
 
@@ -2495,22 +2476,8 @@ anv_image_fill_surface_state(struct anv_device *device,
       surface = &image->planes[plane].shadow_surface;
    }
 
-   /* For texturing from stencil on gfx7, we have to sample from a shadow
-    * surface because we don't support W-tiling in the sampler.
-    */
-   if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
-       aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      assert(device->info->ver == 7);
-      assert(view_usage & ISL_SURF_USAGE_TEXTURE_BIT);
-      surface = &image->planes[plane].shadow_surface;
-   }
-
    if (view_usage == ISL_SURF_USAGE_RENDER_TARGET_BIT)
       view.swizzle = anv_swizzle_for_render(view.swizzle);
-
-   /* On Ivy Bridge and Bay Trail we do the swizzle in the shader */
-   if (device->info->verx10 == 70)
-      view.swizzle = ISL_SWIZZLE_IDENTITY;
 
    /* If this is a HiZ buffer we can sample from with a programmable clear
     * value (SKL+), define the clear value to the optimal constant.

@@ -161,10 +161,6 @@ genX(rasterization_mode)(VkPolygonMode raster_mode,
                          uint32_t *api_mode,
                          bool *msaa_rasterization_enable);
 
-uint32_t
-genX(ms_rasterization_mode)(struct anv_graphics_pipeline *pipeline,
-                            VkPolygonMode raster_mode);
-
 VkPolygonMode
 genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
                           VkPrimitiveTopology primitive_topology);
