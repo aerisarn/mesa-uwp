@@ -142,11 +142,20 @@ cull_small_primitive(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox
    return nir_if_phi(b, prim_is_small, prim_is_small_else);
 }
 
-static nir_ssa_def *
-cull_bbox(nir_builder *b, nir_ssa_def *pos[3][4], nir_ssa_def *accepted, const position_w_info *w_info)
+nir_ssa_def *
+ac_nir_cull_triangle(nir_builder *b,
+                     nir_ssa_def *initially_accepted,
+                     nir_ssa_def *pos[3][4])
 {
+   position_w_info w_info = {0};
+   analyze_position_w(b, pos, &w_info);
+
+   nir_ssa_def *accepted = initially_accepted;
+   accepted = nir_iand(b, accepted, w_info.w_accepted);
+   accepted = nir_iand(b, accepted, cull_face(b, pos, &w_info));
+
    nir_ssa_def *bbox_accepted = NULL;
-   nir_ssa_def *try_cull_bbox = nir_iand(b, accepted, w_info->all_w_positive);
+   nir_ssa_def *try_cull_bbox = nir_iand(b, accepted, w_info.all_w_positive);
 
    nir_if *if_cull_bbox = nir_push_if(b, try_cull_bbox);
    {
@@ -160,21 +169,7 @@ cull_bbox(nir_builder *b, nir_ssa_def *pos[3][4], nir_ssa_def *accepted, const p
       bbox_accepted = nir_inot(b, prim_invisible);
    }
    nir_pop_if(b, if_cull_bbox);
-   return nir_if_phi(b, bbox_accepted, accepted);
-}
-
-nir_ssa_def *
-ac_nir_cull_triangle(nir_builder *b,
-                     nir_ssa_def *initially_accepted,
-                     nir_ssa_def *pos[3][4])
-{
-   position_w_info w_info = {0};
-   analyze_position_w(b, pos, &w_info);
-
-   nir_ssa_def *accepted = initially_accepted;
-   accepted = nir_iand(b, accepted, w_info.w_accepted);
-   accepted = nir_iand(b, accepted, cull_face(b, pos, &w_info));
-   accepted = nir_iand(b, accepted, cull_bbox(b, pos, accepted, &w_info));
+   accepted = nir_iand(b, accepted, nir_if_phi(b, bbox_accepted, accepted));
 
    return accepted;
 }
