@@ -46,6 +46,8 @@ struct tu_descriptor_state
    struct tu_descriptor_set *sets[MAX_SETS];
    struct tu_descriptor_set push_set;
    uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS_SIZE];
+   uint32_t max_sets_bound;
+   bool dynamic_bound;
 };
 
 enum tu_cmd_dirty_bits

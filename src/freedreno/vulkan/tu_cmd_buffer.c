@@ -1656,6 +1656,8 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
                                         cmd_buffer->descriptors[i].push_set.layout);
       memset(&cmd_buffer->descriptors[i].push_set, 0, sizeof(cmd_buffer->descriptors[i].push_set));
       cmd_buffer->descriptors[i].push_set.base.type = VK_OBJECT_TYPE_DESCRIPTOR_SET;
+      cmd_buffer->descriptors[i].max_sets_bound = 0;
+      cmd_buffer->descriptors[i].dynamic_bound = 0;
    }
 
    u_trace_fini(&cmd_buffer->trace);
@@ -2069,6 +2071,9 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    struct tu_descriptor_state *descriptors_state =
       tu_get_descriptors_state(cmd, pipelineBindPoint);
 
+   descriptors_state->max_sets_bound =
+      MAX2(descriptors_state->max_sets_bound, firstSet + descriptorSetCount);
+
    for (unsigned i = 0; i < descriptorSetCount; ++i) {
       unsigned idx = i + firstSet;
       TU_FROM_HANDLE(tu_descriptor_set, set, pDescriptorSets[i]);
@@ -2121,10 +2126,11 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    assert(dyn_idx == dynamicOffsetCount);
 
    uint32_t sp_bindless_base_reg, hlsq_bindless_base_reg, hlsq_invalidate_value;
-   uint64_t addr[MAX_SETS + 1] = {};
+   uint64_t addr[MAX_SETS] = {};
+   uint64_t dynamic_addr = 0;
    struct tu_cs *cs, state_cs;
 
-   for (uint32_t i = 0; i < MAX_SETS; i++) {
+   for (uint32_t i = 0; i < descriptors_state->max_sets_bound; i++) {
       struct tu_descriptor_set *set = descriptors_state->sets[i];
       if (set)
          addr[i] = set->va | 3;
@@ -2143,7 +2149,8 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       memcpy(dynamic_desc_set.map, descriptors_state->dynamic_descriptors,
              layout->dynamic_offset_size);
-      addr[MAX_SETS] = dynamic_desc_set.iova | 3;
+      dynamic_addr = dynamic_desc_set.iova | 3;
+      descriptors_state->dynamic_bound = true;
    }
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
@@ -2151,7 +2158,10 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       hlsq_bindless_base_reg = REG_A6XX_HLSQ_BINDLESS_BASE(0);
       hlsq_invalidate_value = A6XX_HLSQ_INVALIDATE_CMD_GFX_BINDLESS(0x1f);
 
-      cmd->state.desc_sets = tu_cs_draw_state(&cmd->sub_cs, &state_cs, 24);
+      cmd->state.desc_sets =
+         tu_cs_draw_state(&cmd->sub_cs, &state_cs,
+                          4 + 4 * descriptors_state->max_sets_bound +
+                             (descriptors_state->dynamic_bound ? 6 : 0));
       cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD;
       cs = &state_cs;
    } else {
@@ -2165,10 +2175,19 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       cs = &cmd->cs;
    }
 
-   tu_cs_emit_pkt4(cs, sp_bindless_base_reg, 10);
-   tu_cs_emit_array(cs, (const uint32_t*) addr, 10);
-   tu_cs_emit_pkt4(cs, hlsq_bindless_base_reg, 10);
-   tu_cs_emit_array(cs, (const uint32_t*) addr, 10);
+   tu_cs_emit_pkt4(cs, sp_bindless_base_reg, 2 * descriptors_state->max_sets_bound);
+   tu_cs_emit_array(cs, (const uint32_t*) addr, 2 * descriptors_state->max_sets_bound);
+   tu_cs_emit_pkt4(cs, hlsq_bindless_base_reg, 2 * descriptors_state->max_sets_bound);
+   tu_cs_emit_array(cs, (const uint32_t*) addr, 2 * descriptors_state->max_sets_bound);
+
+   /* Dynamic descriptors get the last descriptor set. */
+   if (descriptors_state->dynamic_bound) {
+      tu_cs_emit_pkt4(cs, sp_bindless_base_reg + 4 * 2, 2);
+      tu_cs_emit_qw(cs, dynamic_addr);
+      tu_cs_emit_pkt4(cs, hlsq_bindless_base_reg + 4 * 2, 2);
+      tu_cs_emit_qw(cs, dynamic_addr);
+   }
+
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(.dword = hlsq_invalidate_value));
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
