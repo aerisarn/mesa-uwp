@@ -199,6 +199,38 @@ radv_translate_vertex_format(const struct radv_physical_device *pdevice, VkForma
    }
 }
 
+static bool
+radv_is_vertex_buffer_format_supported(VkFormat format)
+{
+   if (format == VK_FORMAT_B10G11R11_UFLOAT_PACK32)
+      return true;
+   if (format == VK_FORMAT_UNDEFINED || vk_format_is_srgb(format))
+      return false;
+
+   int first_non_void = vk_format_get_first_non_void_channel(format);
+   if (first_non_void < 0)
+      return false;
+
+   const struct util_format_description *desc = vk_format_description(format);
+   unsigned type = desc->channel[first_non_void].type;
+   if (type == UTIL_FORMAT_TYPE_FIXED)
+      return false;
+
+   if (desc->nr_channels == 4 && desc->channel[0].size == 10 && desc->channel[1].size == 10 &&
+       desc->channel[2].size == 10 && desc->channel[3].size == 2)
+      return true;
+
+   switch (desc->channel[first_non_void].size) {
+   case 8:
+   case 16:
+      return desc->nr_channels != 3;
+   case 32:
+      return true;
+   default:
+      return false;
+   }
+}
+
 uint32_t
 radv_translate_tex_dataformat(VkFormat format, const struct util_format_description *desc,
                               int first_non_void)
@@ -746,13 +778,13 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
                 VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 
+   if (radv_is_vertex_buffer_format_supported(format))
+      buffer |= VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;
+
    if (radv_is_buffer_format_supported(format, &scaled)) {
-      if (format != VK_FORMAT_R64_UINT && format != VK_FORMAT_R64_SINT &&
-          !vk_format_is_srgb(format)) {
-         buffer |= VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;
-         if (!scaled)
-            buffer |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
-      }
+      if (format != VK_FORMAT_R64_UINT && format != VK_FORMAT_R64_SINT && !scaled &&
+          !vk_format_is_srgb(format))
+         buffer |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
       buffer |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
                 VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
                 VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
