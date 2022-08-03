@@ -5134,7 +5134,9 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
       ps.MaximumNumberofThreadsPerPSD =
          devinfo->max_threads_per_psd - (GFX_VER == 8 ? 2 : 1);
 
+#if GFX_VER < 20
       ps.PushConstantEnable = prog_data->ubo_ranges[0].length > 0;
+#endif
 
       /* From the documentation for this packet:
        * "If the PS kernel does not need the Position XY Offsets to
@@ -7167,15 +7169,19 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                   brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
                ps.DispatchGRFStartRegisterForConstantSetupData1 =
                   brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
+#if GFX_VER < 20
                ps.DispatchGRFStartRegisterForConstantSetupData2 =
                   brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
+#endif
 
                ps.KernelStartPointer0 = KSP(shader) +
                   brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
                ps.KernelStartPointer1 = KSP(shader) +
                   brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
+#if GFX_VER < 20
                ps.KernelStartPointer2 = KSP(shader) +
                   brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
+#endif
 
 #if GFX_VERx10 >= 125
                ps.ScratchSpaceBuffer = scratch_addr >> 4;

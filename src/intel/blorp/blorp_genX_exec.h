@@ -947,15 +947,19 @@ blorp_emit_ps_config(struct blorp_batch *batch,
             brw_wm_prog_data_dispatch_grf_start_reg(prog_data, ps, 0);
          ps.DispatchGRFStartRegisterForConstantSetupData1 =
             brw_wm_prog_data_dispatch_grf_start_reg(prog_data, ps, 1);
+#if GFX_VER < 20
          ps.DispatchGRFStartRegisterForConstantSetupData2 =
             brw_wm_prog_data_dispatch_grf_start_reg(prog_data, ps, 2);
+#endif
 
          ps.KernelStartPointer0 = params->wm_prog_kernel +
                                   brw_wm_prog_data_prog_offset(prog_data, ps, 0);
          ps.KernelStartPointer1 = params->wm_prog_kernel +
                                   brw_wm_prog_data_prog_offset(prog_data, ps, 1);
+#if GFX_VER < 20
          ps.KernelStartPointer2 = params->wm_prog_kernel +
                                   brw_wm_prog_data_prog_offset(prog_data, ps, 2);
+#endif
       }
    }
 

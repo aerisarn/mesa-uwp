@@ -1062,6 +1062,39 @@ struct brw_wm_prog_data {
    uint8_t urb_setup_attribs_count;
 };
 
+#ifdef GFX_VERx10
+
+#if GFX_VERx10 >= 200
+
+/** Returns the SIMD width corresponding to a given KSP index
+ *
+ * The "Variable Pixel Dispatch" table in the PRM (which can be found, for
+ * example in Vol. 7 of the SKL PRM) has a mapping from dispatch widths to
+ * kernel start pointer (KSP) indices that is based on what dispatch widths
+ * are enabled.  This function provides, effectively, the reverse mapping.
+ *
+ * If the given KSP is valid with respect to the SIMD8/16/32 enables, a SIMD
+ * width of 8, 16, or 32 is returned.  If the KSP is invalid, 0 is returned.
+ */
+static inline unsigned
+brw_fs_simd_width_for_ksp(unsigned ksp_idx, bool enabled, unsigned width_sel)
+{
+   if (ksp_idx < 2) {
+      return enabled ? (width_sel == 0 ? 16 : 32) : 0;
+   } else {
+      unreachable("Invalid KSP index");
+   }
+}
+
+#define brw_wm_state_simd_width_for_ksp(wm_state, ksp_idx)              \
+   (ksp_idx == 0 ?                                                      \
+      brw_fs_simd_width_for_ksp(ksp_idx, (wm_state).Kernel0Enable,      \
+                                (wm_state).Kernel0SIMDWidth) :          \
+      brw_fs_simd_width_for_ksp(ksp_idx, (wm_state).Kernel1Enable,      \
+                                (wm_state).Kernel1SIMDWidth))
+
+#else
+
 /** Returns the SIMD width corresponding to a given KSP index
  *
  * The "Variable Pixel Dispatch" table in the PRM (which can be found, for
@@ -1091,10 +1124,14 @@ brw_fs_simd_width_for_ksp(unsigned ksp_idx, bool simd8_enabled,
    }
 }
 
-#define brw_wm_state_simd_width_for_ksp(wm_state, ksp_idx) \
+#define brw_wm_state_simd_width_for_ksp(wm_state, ksp_idx)              \
    brw_fs_simd_width_for_ksp((ksp_idx), (wm_state)._8PixelDispatchEnable, \
                              (wm_state)._16PixelDispatchEnable, \
                              (wm_state)._32PixelDispatchEnable)
+
+#endif
+
+#endif
 
 #define brw_wm_state_has_ksp(wm_state, ksp_idx) \
    (brw_wm_state_simd_width_for_ksp((wm_state), (ksp_idx)) != 0)

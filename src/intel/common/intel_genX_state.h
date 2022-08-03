@@ -119,9 +119,17 @@ intel_set_ps_dispatch_state(struct GENX(3DSTATE_PS) *ps,
 
    assert(enable_8 || enable_16 || enable_32);
 
+#if GFX_VER >= 20
+   assert(!enable_8);
+   ps->Kernel0Enable = enable_16 || enable_32;
+   ps->Kernel0SIMDWidth = enable_16 ? 0 : 1;
+   ps->Kernel1Enable = enable_16 && enable_32;
+   ps->Kernel1SIMDWidth = SIMD32 /* SIMD32 */;
+#else
    ps->_8PixelDispatchEnable = enable_8;
    ps->_16PixelDispatchEnable = enable_16;
    ps->_32PixelDispatchEnable = enable_32;
+#endif
 }
 
 #endif

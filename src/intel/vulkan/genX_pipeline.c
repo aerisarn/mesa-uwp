@@ -1575,16 +1575,20 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
                                brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
       ps.KernelStartPointer1 = fs_bin->kernel.offset +
                                brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
+#if GFX_VER < 20
       ps.KernelStartPointer2 = fs_bin->kernel.offset +
                                brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
+#endif
 
       ps.SingleProgramFlow          = false;
       ps.VectorMaskEnable           = wm_prog_data->uses_vmask;
       /* Wa_1606682166 */
       ps.SamplerCount               = GFX_VER == 11 ? 0 : get_sampler_count(fs_bin);
       ps.BindingTableEntryCount     = fs_bin->bind_map.surface_count;
+#if GFX_VER < 20
       ps.PushConstantEnable         = wm_prog_data->base.nr_params > 0 ||
                                       wm_prog_data->base.ubo_ranges[0].length;
+#endif
       ps.PositionXYOffsetSelect     =
            !wm_prog_data->uses_pos_offset ? POSOFFSET_NONE :
            persample ? POSOFFSET_SAMPLE : POSOFFSET_CENTROID;
@@ -1595,8 +1599,10 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
       ps.DispatchGRFStartRegisterForConstantSetupData1 =
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
+#if GFX_VER < 20
       ps.DispatchGRFStartRegisterForConstantSetupData2 =
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
+#endif
 
 #if GFX_VERx10 >= 125
       ps.ScratchSpaceBuffer =
