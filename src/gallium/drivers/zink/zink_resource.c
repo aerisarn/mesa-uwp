@@ -488,10 +488,6 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    if (templ->target == PIPE_TEXTURE_CUBE)
       ici->arrayLayers *= 6;
 
-   if (templ->usage == PIPE_USAGE_STAGING &&
-       templ->format != PIPE_FORMAT_B4G4R4A4_UNORM &&
-       templ->format != PIPE_FORMAT_B4G4R4A4_UINT)
-      ici->tiling = VK_IMAGE_TILING_LINEAR;
    if (ici->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
       modifiers_count = 0;
 
