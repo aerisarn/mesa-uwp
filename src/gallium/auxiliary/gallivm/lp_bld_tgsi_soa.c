@@ -2624,6 +2624,8 @@ emit_size_query( struct lp_build_tgsi_soa_context *bld,
    case TGSI_TEXTURE_BUFFER:
    case TGSI_TEXTURE_RECT:
    case TGSI_TEXTURE_SHADOWRECT:
+   case TGSI_TEXTURE_2D_MSAA:
+   case TGSI_TEXTURE_2D_ARRAY_MSAA:
       has_lod = 0;
       break;
    default:
