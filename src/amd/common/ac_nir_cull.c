@@ -85,6 +85,63 @@ cull_face(nir_builder *b, nir_ssa_def *pos[3][4], const position_w_info *w_info)
    return nir_inot(b, face_culled);
 }
 
+static void
+calc_bbox(nir_builder *b, nir_ssa_def *pos[3][4], nir_ssa_def *bbox_min[3], nir_ssa_def *bbox_max[3])
+{
+   for (unsigned chan = 0; chan < 2; ++chan) {
+      bbox_min[chan] = nir_fmin(b, pos[0][chan], nir_fmin(b, pos[1][chan], pos[2][chan]));
+      bbox_max[chan] = nir_fmax(b, pos[0][chan], nir_fmax(b, pos[1][chan], pos[2][chan]));
+   }
+}
+
+static nir_ssa_def *
+cull_frustrum(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox_max[3])
+{
+   nir_ssa_def *prim_outside_view = nir_imm_false(b);
+
+   for (unsigned chan = 0; chan < 2; ++chan) {
+      prim_outside_view = nir_ior(b, prim_outside_view, nir_flt(b, bbox_max[chan], nir_imm_float(b, -1.0f)));
+      prim_outside_view = nir_ior(b, prim_outside_view, nir_flt(b, nir_imm_float(b, 1.0f), bbox_min[chan]));
+   }
+
+   return prim_outside_view;
+}
+
+static nir_ssa_def *
+cull_small_primitive(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox_max[3])
+{
+   nir_ssa_def *prim_is_small = NULL;
+   nir_ssa_def *prim_is_small_else = nir_imm_false(b);
+
+   nir_if *if_cull_small_prims = nir_push_if(b, nir_load_cull_small_primitives_enabled_amd(b));
+   {
+      nir_ssa_def *vp_scale[2] = { nir_load_viewport_x_scale(b), nir_load_viewport_y_scale(b), };
+      nir_ssa_def *vp_translate[2] = { nir_load_viewport_x_offset(b), nir_load_viewport_y_offset(b), };
+      nir_ssa_def *small_prim_precision = nir_load_cull_small_prim_precision_amd(b);
+      prim_is_small = nir_imm_false(b);
+
+      for (unsigned chan = 0; chan < 2; ++chan) {
+         /* Convert the position to screen-space coordinates. */
+         nir_ssa_def *min = nir_ffma(b, bbox_min[chan], vp_scale[chan], vp_translate[chan]);
+         nir_ssa_def *max = nir_ffma(b, bbox_max[chan], vp_scale[chan], vp_translate[chan]);
+
+         /* Scale the bounding box according to precision. */
+         min = nir_fsub(b, min, small_prim_precision);
+         max = nir_fadd(b, max, small_prim_precision);
+
+         /* Determine if the bbox intersects the sample point, by checking if the min and max round to the same int. */
+         min = nir_fround_even(b, min);
+         max = nir_fround_even(b, max);
+
+         nir_ssa_def *rounded_to_eq = nir_feq(b, min, max);
+         prim_is_small = nir_ior(b, prim_is_small, rounded_to_eq);
+      }
+   }
+   nir_pop_if(b, if_cull_small_prims);
+
+   return nir_if_phi(b, prim_is_small, prim_is_small_else);
+}
+
 static nir_ssa_def *
 cull_bbox(nir_builder *b, nir_ssa_def *pos[3][4], nir_ssa_def *accepted, const position_w_info *w_info)
 {
@@ -94,51 +151,10 @@ cull_bbox(nir_builder *b, nir_ssa_def *pos[3][4], nir_ssa_def *accepted, const p
    nir_if *if_cull_bbox = nir_push_if(b, try_cull_bbox);
    {
       nir_ssa_def *bbox_min[3] = {0}, *bbox_max[3] = {0};
+      calc_bbox(b, pos, bbox_min, bbox_max);
 
-      for (unsigned chan = 0; chan < 2; ++chan) {
-         bbox_min[chan] = nir_fmin(b, pos[0][chan], nir_fmin(b, pos[1][chan], pos[2][chan]));
-         bbox_max[chan] = nir_fmax(b, pos[0][chan], nir_fmax(b, pos[1][chan], pos[2][chan]));
-      }
-
-      nir_ssa_def *vp_scale[2] = { nir_load_viewport_x_scale(b), nir_load_viewport_y_scale(b), };
-      nir_ssa_def *vp_translate[2] = { nir_load_viewport_x_offset(b), nir_load_viewport_y_offset(b), };
-      nir_ssa_def *prim_outside_view = nir_imm_false(b);
-
-      /* Frustrum culling - eliminate triangles that are fully outside the view. */
-      for (unsigned chan = 0; chan < 2; ++chan) {
-         prim_outside_view = nir_ior(b, prim_outside_view, nir_flt(b, bbox_max[chan], nir_imm_float(b, -1.0f)));
-         prim_outside_view = nir_ior(b, prim_outside_view, nir_flt(b, nir_imm_float(b, 1.0f), bbox_min[chan]));
-      }
-
-      nir_ssa_def *prim_is_small = NULL;
-      nir_ssa_def *prim_is_small_else = nir_imm_false(b);
-
-      /* Small primitive filter - eliminate triangles that are too small to affect a sample. */
-      nir_if *if_cull_small_prims = nir_push_if(b, nir_load_cull_small_primitives_enabled_amd(b));
-      {
-         nir_ssa_def *small_prim_precision = nir_load_cull_small_prim_precision_amd(b);
-         prim_is_small = nir_imm_false(b);
-
-         for (unsigned chan = 0; chan < 2; ++chan) {
-            /* Convert the position to screen-space coordinates. */
-            nir_ssa_def *min = nir_ffma(b, bbox_min[chan], vp_scale[chan], vp_translate[chan]);
-            nir_ssa_def *max = nir_ffma(b, bbox_max[chan], vp_scale[chan], vp_translate[chan]);
-
-            /* Scale the bounding box according to precision. */
-            min = nir_fsub(b, min, small_prim_precision);
-            max = nir_fadd(b, max, small_prim_precision);
-
-            /* Determine if the bbox intersects the sample point, by checking if the min and max round to the same int. */
-            min = nir_fround_even(b, min);
-            max = nir_fround_even(b, max);
-
-            nir_ssa_def *rounded_to_eq = nir_feq(b, min, max);
-            prim_is_small = nir_ior(b, prim_is_small, rounded_to_eq);
-         }
-      }
-      nir_pop_if(b, if_cull_small_prims);
-
-      prim_is_small = nir_if_phi(b, prim_is_small, prim_is_small_else);
+      nir_ssa_def *prim_outside_view = cull_frustrum(b, bbox_min, bbox_max);
+      nir_ssa_def *prim_is_small = cull_small_primitive(b, bbox_min, bbox_max);
       nir_ssa_def *prim_invisible = nir_ior(b, prim_outside_view, prim_is_small);
 
       bbox_accepted = nir_inot(b, prim_invisible);
