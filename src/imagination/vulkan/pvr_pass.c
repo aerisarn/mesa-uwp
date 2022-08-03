@@ -311,12 +311,15 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
    struct pvr_render_pass_attachment *attachments;
    PVR_FROM_HANDLE(pvr_device, device, _device);
    struct pvr_render_subpass *subpasses;
+   const VkAllocationCallbacks *alloc;
    size_t subpass_attachment_count;
    uint32_t *subpass_attachments;
    struct pvr_render_pass *pass;
    uint32_t *dep_list;
    bool *flush_on_dep;
    VkResult result;
+
+   alloc = pAllocator ? pAllocator : &device->vk.alloc;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &pass, __typeof__(*pass), 1);
@@ -348,12 +351,8 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
                      __typeof__(*flush_on_dep),
                      pCreateInfo->dependencyCount);
 
-   if (!vk_multialloc_zalloc2(&ma,
-                              &device->vk.alloc,
-                              pAllocator,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)) {
+   if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-   }
 
    vk_object_base_init(&device->vk, &pass->base, VK_OBJECT_TYPE_RENDER_PASS);
    pass->attachment_count = pCreateInfo->attachmentCount;
@@ -500,11 +499,7 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
       PVR_SPM_LOAD_IN_BUFFERS_COUNT(&device->pdevice->dev_info);
 
    result =
-      pvr_create_renderpass_hwsetup(device,
-                                    pAllocator ? pAllocator : &device->vk.alloc,
-                                    pass,
-                                    false,
-                                    &pass->hw_setup);
+      pvr_create_renderpass_hwsetup(device, alloc, pass, false, &pass->hw_setup);
    if (result != VK_SUCCESS)
       goto err_free_pass;
 
@@ -518,13 +513,45 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
       if (hw_render->tile_buffers_count)
          pvr_finishme("Set up tile buffer table");
 
-      if (!hw_render->color_init_count) {
+      if (hw_render->color_init_count == 0U) {
          assert(!hw_render->load_op);
          continue;
       }
 
-      if (!pvr_has_output_register_writes(hw_render))
-         pvr_finishme("Add output register write");
+      /* Add a dummy output register use to the HW render setup if it has no
+       * output registers in use.
+       */
+      if (!pvr_has_output_register_writes(hw_render)) {
+         const uint32_t last = hw_render->init_setup.num_render_targets;
+         struct usc_mrt_resource *mrt_resources;
+
+         hw_render->init_setup.num_render_targets++;
+
+         mrt_resources = vk_realloc(alloc,
+                                    hw_render->init_setup.mrt_resources,
+                                    hw_render->init_setup.num_render_targets *
+                                       sizeof(*mrt_resources),
+                                    8U,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         if (!mrt_resources) {
+            result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+            goto err_load_op_destroy;
+         }
+
+         hw_render->init_setup.mrt_resources = mrt_resources;
+
+         mrt_resources[last].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+         mrt_resources[last].reg.output_reg = 0U;
+         mrt_resources[last].reg.offset = 0U;
+         mrt_resources[last].intermediate_size = 4U;
+         mrt_resources[last].mrt_desc.intermediate_size = 4U;
+         mrt_resources[last].mrt_desc.component_alignment = 4U;
+         mrt_resources[last].mrt_desc.priority = 0U;
+         mrt_resources[last].mrt_desc.valid_mask[0U] = ~0;
+         mrt_resources[last].mrt_desc.valid_mask[1U] = ~0;
+         mrt_resources[last].mrt_desc.valid_mask[2U] = ~0;
+         mrt_resources[last].mrt_desc.valid_mask[3U] = ~0;
+      }
 
       result = pvr_load_op_create(device, pAllocator, hw_render, &load_op);
       if (result != VK_SUCCESS)
@@ -546,8 +573,7 @@ err_load_op_destroy:
          pvr_load_op_destroy(device, pAllocator, hw_render->load_op);
    }
 
-   pvr_destroy_renderpass_hwsetup(pAllocator ? pAllocator : &device->vk.alloc,
-                                  pass->hw_setup);
+   pvr_destroy_renderpass_hwsetup(alloc, pass->hw_setup);
 
 err_free_pass:
    vk_object_base_finish(&pass->base);
