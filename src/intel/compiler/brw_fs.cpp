@@ -8335,23 +8335,26 @@ bool brw_should_print_shader(const nir_shader *shader, uint64_t debug_flag)
 namespace brw {
    fs_reg
    fetch_payload_reg(const brw::fs_builder &bld, uint8_t regs[2],
-                     brw_reg_type type)
+                     brw_reg_type type, unsigned n)
    {
       if (!regs[0])
          return fs_reg();
 
       if (bld.dispatch_width() > 16) {
-         const fs_reg tmp = bld.vgrf(type);
+         const fs_reg tmp = bld.vgrf(type, n);
          const brw::fs_builder hbld = bld.exec_all().group(16, 0);
          const unsigned m = bld.dispatch_width() / hbld.dispatch_width();
-         fs_reg components[2];
-         assert(m <= 2);
+         fs_reg *const components = new fs_reg[m * n];
 
-         for (unsigned g = 0; g < m; g++)
-               components[g] = retype(brw_vec8_grf(regs[g], 0), type);
+         for (unsigned c = 0; c < n; c++) {
+            for (unsigned g = 0; g < m; g++)
+               components[c * m + g] =
+                  offset(retype(brw_vec8_grf(regs[g], 0), type), hbld, c);
+         }
 
-         hbld.LOAD_PAYLOAD(tmp, components, m, 0);
+         hbld.LOAD_PAYLOAD(tmp, components, m * n, 0);
 
+         delete[] components;
          return tmp;
 
       } else {

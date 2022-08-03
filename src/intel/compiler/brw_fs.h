@@ -574,7 +574,8 @@ private:
 namespace brw {
    fs_reg
    fetch_payload_reg(const brw::fs_builder &bld, uint8_t regs[2],
-                     brw_reg_type type = BRW_REGISTER_TYPE_F);
+                     brw_reg_type type = BRW_REGISTER_TYPE_F,
+                     unsigned n = 1);
 
    fs_reg
    fetch_barycentric_reg(const brw::fs_builder &bld, uint8_t regs[2]);
