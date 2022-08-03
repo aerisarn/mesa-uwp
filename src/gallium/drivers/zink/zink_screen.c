@@ -1517,7 +1517,8 @@ emulate_x8(enum pipe_format format)
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format)
 {
-   format = zink_format_get_emulated_alpha(format);
+   if (!screen->driver_workarounds.broken_l4a4 || format != PIPE_FORMAT_L4A4_UNORM)
+      format = zink_format_get_emulated_alpha(format);
 
    VkFormat ret = zink_pipe_format_to_vk_format(emulate_x8(format));
 
@@ -2127,6 +2128,7 @@ init_driver_workarounds(struct zink_screen *screen)
                                                          screen->driver_workarounds.force_pipeline_library);
    if (!screen->driver_workarounds.force_pipeline_library)
       screen->info.have_EXT_graphics_pipeline_library = false;
+   screen->driver_workarounds.broken_l4a4 = screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
    screen->driver_workarounds.color_write_missing =
       !screen->info.have_EXT_color_write_enable ||
       !screen->info.cwrite_feats.colorWriteEnable;
