@@ -5177,7 +5177,6 @@ iris_store_cs_state(const struct intel_device_info *devinfo,
       desc.BindingTableEntryCount = devinfo->verx10 == 125 ?
          0 : MIN2(shader->bt.size_bytes / 4, 31);
       desc.SamplerCount = encode_sampler_count(shader);
-#if GFX_VER >= 12
       /* TODO: Check if we are missing workarounds and enable mid-thread
        * preemption.
        *
@@ -5187,6 +5186,9 @@ iris_store_cs_state(const struct intel_device_info *devinfo,
        * it later, but for now let's disable it to fix a GPU in compute in Car
        * Chase (and possibly more).
        */
+#if GFX_VER >= 20
+      desc.ThreadPreemption = false;
+#elif GFX_VER >= 12
       desc.ThreadPreemptionDisable = true;
 #endif
    }
