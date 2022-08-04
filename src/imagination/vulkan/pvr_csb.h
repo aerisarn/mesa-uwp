@@ -129,11 +129,7 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
 #define PVRX(x) ROGUE_##x
 #define pvr_cmd_length(x) PVRX(x##_length)
 #define pvr_cmd_header(x) PVRX(x##_header)
-
-/* This helper is internal to this header. It should only be used as part of
- * the pvr_csb_*() macros below.
- */
-#define __pvr_cmd_pack(x) PVRX(x##_pack)
+#define pvr_cmd_pack(x) PVRX(x##_pack)
 
 /**
  * \brief Packs a command/state into one or more dwords and stores them in the
@@ -152,7 +148,7 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
         __builtin_expect(_loop_terminate != NULL, 1);                 \
         ({                                                            \
            STATIC_ASSERT(sizeof(*(_dst)) == pvr_cmd_length(cmd) * 4); \
-           __pvr_cmd_pack(cmd)((_dst), &name);                        \
+           pvr_cmd_pack(cmd)((_dst), &name);                          \
            _loop_terminate = NULL;                                    \
         }))
 
@@ -192,7 +188,7 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
            *_dst = pvr_csb_alloc_dwords(csb, pvr_cmd_length(cmd)); \
         __builtin_expect(_dst != NULL, 1);                         \
         ({                                                         \
-           __pvr_cmd_pack(cmd)(_dst, &name);                       \
+           pvr_cmd_pack(cmd)(_dst, &name);                         \
            _dst = NULL;                                            \
         }))
 
