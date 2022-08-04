@@ -326,34 +326,6 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
    return pipeline_changed;
 }
 
-static bool
-hack_conditional_render(struct pipe_context *pctx,
-                        const struct pipe_draw_info *dinfo,
-                        unsigned drawid_offset,
-                        const struct pipe_draw_indirect_info *dindirect,
-                        const struct pipe_draw_start_count_bias *draws,
-                        unsigned num_draws)
-{
-   struct zink_context *ctx = zink_context(pctx);
-   struct zink_batch_state *bs = ctx->batch.state;
-   static bool warned;
-   if (!warned) {
-      fprintf(stderr, "ZINK: warning, this is cpu-based conditional rendering, say bye-bye to fps\n");
-      warned = true;
-   }
-   if (!zink_check_conditional_render(ctx))
-      return false;
-   if (bs != ctx->batch.state) {
-      bool prev = ctx->render_condition_active;
-      ctx->render_condition_active = false;
-      zink_select_draw_vbo(ctx);
-      pctx->draw_vbo(pctx, dinfo, drawid_offset, dindirect, draws, num_draws);
-      ctx->render_condition_active = prev;
-      return false;
-   }
-   return true;
-}
-
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state DYNAMIC_STATE, bool BATCH_CHANGED, bool DRAW_STATE>
 void
 zink_draw(struct pipe_context *pctx,
@@ -384,11 +356,6 @@ zink_draw(struct pipe_context *pctx,
    bool reads_basevertex = ctx->shader_reads_basevertex;
    unsigned work_count = ctx->batch.work_count;
    enum pipe_prim_type mode = (enum pipe_prim_type)dinfo->mode;
-
-   if (unlikely(!screen->info.have_EXT_conditional_rendering)) {
-      if (!hack_conditional_render(pctx, dinfo, drawid_offset, dindirect, draws, num_draws))
-         return;
-   }
 
    if (ctx->memory_barrier)
       zink_flush_memory_barrier(ctx, false);
