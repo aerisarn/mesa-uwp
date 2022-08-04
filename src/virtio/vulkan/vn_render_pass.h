@@ -14,7 +14,6 @@
 #include "vn_common.h"
 
 struct vn_present_src_attachment {
-   bool acquire;
    uint32_t index;
 
    VkPipelineStageFlags src_stage_mask;

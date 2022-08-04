@@ -39,13 +39,11 @@
       for (uint32_t i = 0; i < att_count; i++) {                             \
          if (out_atts[i].initialLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) { \
             out_atts[i].initialLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;      \
-            _acquire_atts->acquire = true;                                   \
             _acquire_atts->index = i;                                        \
             _acquire_atts++;                                                 \
          }                                                                   \
          if (out_atts[i].finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {   \
             out_atts[i].finalLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;        \
-            _release_atts->acquire = false;                                  \
             _release_atts->index = i;                                        \
             _release_atts++;                                                 \
          }                                                                   \
