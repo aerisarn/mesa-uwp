@@ -126,6 +126,14 @@ struct fd_reloc;
 
 struct fd_ringbuffer_funcs {
    void (*grow)(struct fd_ringbuffer *ring, uint32_t size);
+
+   /**
+    * Alternative to emit_reloc for the softpin case, where we only need
+    * to track that the bo is used (and not track all the extra info that
+    * the kernel would need to do a legacy reloc.
+    */
+   void (*emit_bo)(struct fd_ringbuffer *ring, struct fd_bo *bo);
+
    void (*emit_reloc)(struct fd_ringbuffer *ring, const struct fd_reloc *reloc);
    uint32_t (*emit_reloc_ring)(struct fd_ringbuffer *ring,
                                struct fd_ringbuffer *target, uint32_t cmd_idx);
@@ -215,6 +223,12 @@ struct fd_reloc {
 #define FD_RELOC_FLAGS_INIT (FD_RELOC_READ | FD_RELOC_WRITE)
 
 /* NOTE: relocs are 2 dwords on a5xx+ */
+
+static inline void
+fd_ringbuffer_attach_bo(struct fd_ringbuffer *ring, struct fd_bo *bo)
+{
+   ring->funcs->emit_bo(ring, bo);
+}
 
 static inline void
 fd_ringbuffer_reloc(struct fd_ringbuffer *ring, const struct fd_reloc *reloc)
