@@ -666,9 +666,6 @@ struct zink_gfx_pipeline_state {
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
    struct zink_vertex_elements_hw_state *element_state;
    bool sample_locations_enabled;
-   bool have_EXT_extended_dynamic_state;
-   bool have_EXT_extended_dynamic_state2;
-   bool extendedDynamicState2PatchControlPoints;
    uint8_t has_points; //either gs outputs points or prim type is points
    struct {
       struct zink_shader_key key[5];

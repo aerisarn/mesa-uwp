@@ -4514,10 +4514,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    util_dynarray_init(&ctx->free_batch_states, ctx);
 
-   ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
-   ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state2 = screen->info.have_EXT_extended_dynamic_state2;
-   ctx->gfx_pipeline_state.extendedDynamicState2PatchControlPoints = screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints;
-
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
    slab_create_child(&ctx->transfer_pool_unsync, &screen->transfer_pool);
 
