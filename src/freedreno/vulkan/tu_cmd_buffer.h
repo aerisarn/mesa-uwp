@@ -311,6 +311,9 @@ struct tu_cmd_state
       uint32_t size;
       uint32_t stride;
    } vb[MAX_VBS];
+
+   uint32_t max_vbs_bound;
+
    VkViewport viewport[MAX_VIEWPORTS];
    VkRect2D scissor[MAX_SCISSORS];
    uint32_t max_viewport, max_scissor;

@@ -1663,6 +1663,8 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    u_trace_fini(&cmd_buffer->trace);
    u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->trace_context);
 
+   cmd_buffer->state.max_vbs_bound = 0;
+
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
 
    return cmd_buffer->record_result;
@@ -1981,8 +1983,12 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs cs;
-   /* TODO: track a "max_vb" value for the cmdbuf to save a bit of memory  */
-   cmd->state.vertex_buffers.iova = tu_cs_draw_state(&cmd->sub_cs, &cs, 4 * MAX_VBS).iova;
+
+   cmd->state.max_vbs_bound = MAX2(
+      cmd->state.max_vbs_bound, firstBinding + bindingCount);
+
+   cmd->state.vertex_buffers.iova =
+      tu_cs_draw_state(&cmd->sub_cs, &cs, 4 * cmd->state.max_vbs_bound).iova;
 
    for (uint32_t i = 0; i < bindingCount; i++) {
       if (pBuffers[i] == VK_NULL_HANDLE) {
@@ -1998,7 +2004,7 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
          cmd->state.vb[firstBinding + i].stride = pStrides[i];
    }
 
-   for (uint32_t i = 0; i < MAX_VBS; i++) {
+   for (uint32_t i = 0; i < cmd->state.max_vbs_bound; i++) {
       tu_cs_emit_regs(&cs,
                       A6XX_VFD_FETCH_BASE(i, .qword = cmd->state.vb[i].base),
                       A6XX_VFD_FETCH_SIZE(i, cmd->state.vb[i].size));
@@ -2007,7 +2013,7 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
 
    if (pStrides)
-      tu6_emit_vertex_strides(cmd, MAX_VBS);
+      tu6_emit_vertex_strides(cmd, cmd->state.max_vbs_bound);
 }
 
 VKAPI_ATTR void VKAPI_CALL
