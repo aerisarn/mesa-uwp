@@ -297,6 +297,8 @@ zink_set_fs_point_coord_key(struct zink_context *ctx)
 bool
 zink_set_rasterizer_discard(struct zink_context *ctx, bool disable);
 
+equals_gfx_pipeline_state_func
+zink_get_gfx_pipeline_eq_func(struct zink_screen *screen);
 #ifdef __cplusplus
 }
 #endif

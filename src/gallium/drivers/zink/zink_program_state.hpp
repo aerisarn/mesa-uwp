@@ -260,3 +260,69 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    state->pipeline = cache_entry->pipeline;
    return state->pipeline;
 }
+
+template <zink_pipeline_dynamic_state DYNAMIC_STATE>
+static bool
+equals_gfx_pipeline_state(const void *a, const void *b)
+{
+   const struct zink_gfx_pipeline_state *sa = (const struct zink_gfx_pipeline_state *)a;
+   const struct zink_gfx_pipeline_state *sb = (const struct zink_gfx_pipeline_state *)b;
+   if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
+      return false;
+   /* dynamic vs rp */
+   if (!!sa->render_pass != !!sb->render_pass)
+      return false;
+   if (DYNAMIC_STATE == ZINK_PIPELINE_NO_DYNAMIC_STATE || !sa->uses_dynamic_stride) {
+      if (sa->vertex_buffers_enabled_mask != sb->vertex_buffers_enabled_mask)
+         return false;
+      /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
+      uint32_t mask_a = sa->vertex_buffers_enabled_mask;
+      uint32_t mask_b = sb->vertex_buffers_enabled_mask;
+      while (mask_a || mask_b) {
+         unsigned idx_a = u_bit_scan(&mask_a);
+         unsigned idx_b = u_bit_scan(&mask_b);
+         if (sa->vertex_strides[idx_a] != sb->vertex_strides[idx_b])
+            return false;
+      }
+   }
+   if (DYNAMIC_STATE == ZINK_PIPELINE_NO_DYNAMIC_STATE) {
+      if (memcmp(&sa->dyn_state1, &sb->dyn_state1, offsetof(struct zink_pipeline_dynamic_state1, depth_stencil_alpha_state)))
+         return false;
+      if (!!sa->dyn_state1.depth_stencil_alpha_state != !!sb->dyn_state1.depth_stencil_alpha_state ||
+          (sa->dyn_state1.depth_stencil_alpha_state &&
+           memcmp(sa->dyn_state1.depth_stencil_alpha_state, sb->dyn_state1.depth_stencil_alpha_state,
+                  sizeof(struct zink_depth_stencil_alpha_hw_state))))
+         return false;
+   }
+   if (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_STATE2) {
+      if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
+         return false;
+   } else if (DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_STATE2_PCP && DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP) {
+      if (sa->dyn_state2.vertices_per_patch != sb->dyn_state2.vertices_per_patch)
+         return false;
+   }
+   return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&
+          !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));
+}
+
+equals_gfx_pipeline_state_func
+zink_get_gfx_pipeline_eq_func(struct zink_screen *screen)
+{
+   if (screen->info.have_EXT_extended_dynamic_state) {
+      if (screen->info.have_EXT_extended_dynamic_state2) {
+         if (screen->info.have_EXT_vertex_input_dynamic_state) {
+            if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP>;
+            else
+               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT>;
+         } else {
+            if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_STATE2_PCP>;
+            else
+               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_STATE2>;
+         }
+      }
+      return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_STATE>;
+   }
+   return equals_gfx_pipeline_state<ZINK_PIPELINE_NO_DYNAMIC_STATE>;
+}

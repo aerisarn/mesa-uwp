@@ -223,50 +223,6 @@ equals_pipeline_lib(const void *a, const void *b)
    return !memcmp(a, b, offsetof(struct zink_gfx_library_key, pipeline));
 }
 
-static bool
-equals_gfx_pipeline_state(const void *a, const void *b)
-{
-   const struct zink_gfx_pipeline_state *sa = a;
-   const struct zink_gfx_pipeline_state *sb = b;
-   if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
-      return false;
-   /* dynamic vs rp */
-   if (!!sa->render_pass != !!sb->render_pass)
-      return false;
-   if (!sa->have_EXT_extended_dynamic_state || !sa->uses_dynamic_stride) {
-      if (sa->vertex_buffers_enabled_mask != sb->vertex_buffers_enabled_mask)
-         return false;
-      /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
-      uint32_t mask_a = sa->vertex_buffers_enabled_mask;
-      uint32_t mask_b = sb->vertex_buffers_enabled_mask;
-      while (mask_a || mask_b) {
-         unsigned idx_a = u_bit_scan(&mask_a);
-         unsigned idx_b = u_bit_scan(&mask_b);
-         if (sa->vertex_strides[idx_a] != sb->vertex_strides[idx_b])
-            return false;
-      }
-   }
-   if (!sa->have_EXT_extended_dynamic_state) {
-      if (memcmp(&sa->dyn_state1, &sb->dyn_state1, offsetof(struct zink_pipeline_dynamic_state1, depth_stencil_alpha_state)))
-         return false;
-      if (!!sa->dyn_state1.depth_stencil_alpha_state != !!sb->dyn_state1.depth_stencil_alpha_state ||
-          (sa->dyn_state1.depth_stencil_alpha_state &&
-           memcmp(sa->dyn_state1.depth_stencil_alpha_state, sb->dyn_state1.depth_stencil_alpha_state,
-                  sizeof(struct zink_depth_stencil_alpha_hw_state))))
-         return false;
-   }
-   if (!sa->have_EXT_extended_dynamic_state2) {
-      if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
-         return false;
-   } else if (!sa->extendedDynamicState2PatchControlPoints) {
-      if (sa->dyn_state2.vertices_per_patch != sb->dyn_state2.vertices_per_patch)
-         return false;
-   }
-   return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&
-          !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));
-}
-
-
 uint32_t
 hash_gfx_input_dynamic(const void *key)
 {
@@ -564,7 +520,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
-      _mesa_hash_table_init(&prog->pipelines[i], prog, NULL, equals_gfx_pipeline_state);
+      _mesa_hash_table_init(&prog->pipelines[i], prog, NULL, zink_get_gfx_pipeline_eq_func(screen));
       /* only need first 3/4 for point/line/tri/patch */
       if (screen->info.have_EXT_extended_dynamic_state &&
           i == (prog->last_vertex_stage->nir->info.stage == MESA_SHADER_TESS_EVAL ? 4 : 3))

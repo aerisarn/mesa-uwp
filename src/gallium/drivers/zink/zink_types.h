@@ -100,6 +100,15 @@ typedef enum {
    ZINK_DYNAMIC_VERTEX_INPUT,
 } zink_dynamic_state;
 
+typedef enum {
+   ZINK_PIPELINE_NO_DYNAMIC_STATE,
+   ZINK_PIPELINE_DYNAMIC_STATE,
+   ZINK_PIPELINE_DYNAMIC_STATE2,
+   ZINK_PIPELINE_DYNAMIC_STATE2_PCP,
+   ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT,
+   ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP,
+} zink_pipeline_dynamic_state;
+
 enum zink_blit_flags {
    ZINK_BLIT_NORMAL = 1 << 0,
    ZINK_BLIT_SAVE_FS = 1 << 1,
@@ -739,6 +748,7 @@ struct zink_program {
    bool removed;
 };
 
+typedef bool (*equals_gfx_pipeline_state_func)(const void *a, const void *b);
 
 struct zink_gfx_library_key {
    uint32_t hw_rast_state;
