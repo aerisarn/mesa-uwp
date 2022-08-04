@@ -5563,7 +5563,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          bool use_mubuf =
             (nfmt == V_008F0C_BUF_NUM_FORMAT_FLOAT || nfmt == V_008F0C_BUF_NUM_FORMAT_UINT ||
              nfmt == V_008F0C_BUF_NUM_FORMAT_SINT) &&
-            vtx_info->chan_byte_size == 4;
+            vtx_info->chan_byte_size == 4 && bitsize != 16;
          unsigned fetch_dfmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
          if (!use_mubuf) {
             fetch_dfmt =
@@ -5654,7 +5654,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
             mtbuf->mtbuf().vtx_binding = attrib_binding + 1;
          }
 
-         emit_split_vector(ctx, fetch_dst, fetch_dst.size());
+         emit_split_vector(ctx, fetch_dst, fetch_dst.bytes() * 8 / bitsize);
 
          if (fetch_component == 1) {
             channels[channel_start] = fetch_dst;
@@ -5686,11 +5686,11 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
                num_temp++;
                elems[i] = channel;
             } else if (is_float && idx == 3) {
-               vec->operands[i] = Operand::c32(0x3f800000u);
+               vec->operands[i] = bitsize == 16 ? Operand::c16(0x3c00u) : Operand::c32(0x3f800000u);
             } else if (!is_float && idx == 3) {
-               vec->operands[i] = Operand::c32(1u);
+               vec->operands[i] = Operand::get_const(ctx->options->gfx_level, 1u, bitsize / 8u);
             } else {
-               vec->operands[i] = Operand::zero();
+               vec->operands[i] = Operand::zero(bitsize / 8u);
             }
          }
          vec->definitions[0] = Definition(dst);
