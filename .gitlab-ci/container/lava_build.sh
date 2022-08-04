@@ -135,6 +135,15 @@ if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
                        libxkbcommon-dev:armhf
 fi
 
+mkdir -p "/lava-files/rootfs-${DEBIAN_ARCH}"
+
+############### Setuping
+if [ "$DEBIAN_ARCH" = "amd64" ]; then
+  . .gitlab-ci/container/setup-wine.sh "/dxvk-wine64"
+  . .gitlab-ci/container/install-wine-dxvk.sh
+  mv /dxvk-wine64 "/lava-files/rootfs-${DEBIAN_ARCH}/"
+fi
+
 ############### Installing
 . .gitlab-ci/container/install-wine-apitrace.sh
 mkdir -p "/lava-files/rootfs-${DEBIAN_ARCH}/apitrace-msvc-win64"
