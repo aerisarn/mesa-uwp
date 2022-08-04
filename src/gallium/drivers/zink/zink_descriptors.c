@@ -197,8 +197,10 @@ zink_descriptor_util_pool_key_get(struct zink_context *ctx, enum zink_descriptor
    pool_key->num_type_sizes = num_type_sizes;
    assert(pool_key->num_type_sizes);
    memcpy(pool_key->sizes, sizes, num_type_sizes * sizeof(VkDescriptorPoolSize));
-   if (type != ZINK_DESCRIPTOR_TYPES)
+   if (type != ZINK_DESCRIPTOR_TYPES) {
       _mesa_set_add_pre_hashed(&ctx->desc_pool_keys[type], hash, pool_key);
+      pool_key->id = ctx->desc_pool_keys[type].entries - 1;
+   }
    return pool_key;
 }
 
