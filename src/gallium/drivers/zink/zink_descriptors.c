@@ -104,16 +104,11 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
    if (!dsl)
       return NULL;
 
-   struct zink_descriptor_layout_key *k = ralloc(ctx, struct zink_descriptor_layout_key);
+   size_t bindings_size = num_bindings * sizeof(VkDescriptorSetLayoutBinding);
+   struct zink_descriptor_layout_key *k = ralloc_size(ctx, sizeof(struct zink_descriptor_layout_key) + bindings_size);
    k->num_bindings = num_bindings;
    if (num_bindings) {
-      size_t bindings_size = num_bindings * sizeof(VkDescriptorSetLayoutBinding);
-      k->bindings = ralloc_size(k, bindings_size);
-      if (!k->bindings) {
-         ralloc_free(k);
-         VKSCR(DestroyDescriptorSetLayout)(screen->dev, dsl, NULL);
-         return NULL;
-      }
+      k->bindings = (void *)(k + 1);
       memcpy(k->bindings, bindings, bindings_size);
    }
 
