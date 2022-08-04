@@ -555,7 +555,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
    _mesa_sha1_final(&sctx, prog->base.sha1);
 
-   if (!screen->descriptor_program_init(ctx, &prog->base))
+   if (!zink_descriptor_program_init_lazy(ctx, &prog->base))
       goto fail;
 
    zink_screen_get_pipeline_cache(screen, &prog->base);
@@ -635,7 +635,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    comp->shader = shader;
    memcpy(comp->base.sha1, shader->base.sha1, sizeof(shader->base.sha1));
 
-   if (!screen->descriptor_program_init(ctx, &comp->base))
+   if (!zink_descriptor_program_init_lazy(ctx, &comp->base))
       goto fail;
 
    zink_screen_get_pipeline_cache(screen, &comp->base);
@@ -798,7 +798,7 @@ zink_destroy_gfx_program(struct zink_context *ctx,
    }
    if (prog->base.pipeline_cache)
       VKSCR(DestroyPipelineCache)(screen->dev, prog->base.pipeline_cache, NULL);
-   screen->descriptor_program_deinit(ctx, &prog->base);
+   zink_descriptor_program_deinit_lazy(ctx, &prog->base);
 
    ralloc_free(prog);
 }
@@ -828,7 +828,7 @@ zink_destroy_compute_program(struct zink_context *ctx,
    free(comp->module);
    if (comp->base.pipeline_cache)
       VKSCR(DestroyPipelineCache)(screen->dev, comp->base.pipeline_cache, NULL);
-   screen->descriptor_program_deinit(ctx, &comp->base);
+   zink_descriptor_program_deinit_lazy(ctx, &comp->base);
 
    ralloc_free(comp);
 }

@@ -1553,37 +1553,6 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
    return ret;
 }
 
-void
-zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback)
-{
-   if (!fallback &&
-       zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
-#define LAZY(FUNC) screen->FUNC = zink_##FUNC##_lazy
-      LAZY(descriptor_program_init);
-      LAZY(descriptor_program_deinit);
-      LAZY(context_invalidate_descriptor_state);
-      LAZY(batch_descriptor_init);
-      LAZY(batch_descriptor_reset);
-      LAZY(batch_descriptor_deinit);
-      LAZY(descriptors_init);
-      LAZY(descriptors_deinit);
-      LAZY(descriptors_update);
-#undef LAZY
-   } else {
-#define DEFAULT(FUNC) screen->FUNC = zink_##FUNC
-      DEFAULT(descriptor_program_init);
-      DEFAULT(descriptor_program_deinit);
-      DEFAULT(context_invalidate_descriptor_state);
-      DEFAULT(batch_descriptor_init);
-      DEFAULT(batch_descriptor_reset);
-      DEFAULT(batch_descriptor_deinit);
-      DEFAULT(descriptors_init);
-      DEFAULT(descriptors_deinit);
-      DEFAULT(descriptors_update);
-#undef DEFAULT
-   }
-}
-
 static bool
 check_have_device_time(struct zink_screen *screen)
 {
@@ -2395,7 +2364,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    simple_mtx_init(&screen->dt_lock, mtx_plain);
 
-   zink_screen_init_descriptor_funcs(screen, false);
    util_idalloc_mt_init_tc(&screen->buffer_ids);
 
    util_vertex_state_cache_init(&screen->vertex_state_cache,

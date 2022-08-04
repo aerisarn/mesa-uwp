@@ -81,7 +81,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    util_dynarray_clear(&bs->zombie_samplers);
    util_dynarray_clear(&bs->persistent_resources);
 
-   screen->batch_descriptor_reset(screen, bs);
+   zink_batch_descriptor_reset_lazy(screen, bs);
 
    set_foreach_remove(bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
@@ -184,7 +184,7 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    _mesa_set_destroy(bs->bufferviews, NULL);
    _mesa_set_destroy(bs->programs, NULL);
    _mesa_set_destroy(bs->active_queries, NULL);
-   screen->batch_descriptor_deinit(screen, bs);
+   zink_batch_descriptor_deinit_lazy(screen, bs);
    ralloc_free(bs);
 }
 
@@ -247,7 +247,7 @@ create_batch_state(struct zink_context *ctx)
    cnd_init(&bs->usage.flush);
    mtx_init(&bs->usage.mtx, mtx_plain);
 
-   if (!screen->batch_descriptor_init(screen, bs))
+   if (!zink_batch_descriptor_init_lazy(screen, bs))
       goto fail;
 
    util_queue_fence_init(&bs->flush_completed);
