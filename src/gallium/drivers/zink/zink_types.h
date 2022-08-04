@@ -1355,7 +1355,7 @@ struct zink_context {
    struct set gfx_inputs;
    struct set gfx_outputs;
 
-   struct zink_descriptor_data *dd;
+   struct zink_descriptor_data dd;
 
    struct zink_shader *compute_stage;
    struct zink_compute_pipeline_state compute_pipeline_state;

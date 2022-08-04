@@ -122,8 +122,7 @@ zink_context_destroy(struct pipe_context *pctx)
       pipe_surface_release(&ctx->base, &ctx->dummy_surface[i]);
    zink_buffer_view_reference(screen, &ctx->dummy_bufferview, NULL);
 
-   if (ctx->dd)
-      zink_descriptors_deinit_bindless(ctx);
+   zink_descriptors_deinit_bindless(ctx);
 
    if (ctx->batch.state) {
       zink_clear_batch_state(ctx, ctx->batch.state);
@@ -166,8 +165,7 @@ zink_context_destroy(struct pipe_context *pctx)
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
 
-   if (ctx->dd)
-      zink_descriptors_deinit_lazy(ctx);
+   zink_descriptors_deinit_lazy(ctx);
 
    zink_descriptor_layouts_deinit(ctx);
 
@@ -2743,8 +2741,7 @@ flush_batch(struct zink_context *ctx, bool sync)
          stall(ctx);
       ctx->oom_flush = false;
       ctx->oom_stall = false;
-      if (ctx->dd) //copy context
-         ctx->dd->bindless_bound = false;
+      ctx->dd.bindless_bound = false;
       ctx->di.bindless_refs_dirty = true;
       ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
       if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
