@@ -311,7 +311,6 @@ struct zink_descriptor_data {
    VkDescriptorUpdateTemplate push_template[2]; //gfx, compute
 
    struct zink_descriptor_layout *dummy_dsl;
-   VkDescriptorSet dummy_set;
 
    VkDescriptorSetLayout bindless_layout;
    VkDescriptorPool bindless_pool;

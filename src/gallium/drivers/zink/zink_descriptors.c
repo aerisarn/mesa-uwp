@@ -819,11 +819,8 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    if (need_push && !have_KHR_push_descriptor) {
       struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, bdd->push_pool[pg->is_compute], bdd, pg->is_compute);
       push_set = get_descriptor_set_lazy(pool);
-      if (!push_set) {
-         mesa_loge("ZINK: failed to get push descriptor set!");
-         /* just jam something in to avoid a hang */
-         push_set = ctx->dd->dummy_set;
-      }
+      if (!push_set)
+         mesa_loge("ZINK: failed to get push descriptor set! prepare to crash!");
    }
    /*
     * when binding a pipeline, the pipeline can correctly access any previously bound
