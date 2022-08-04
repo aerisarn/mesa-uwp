@@ -22,6 +22,8 @@
  * SOFTWARE.
  */
 
+#define FD_BO_NO_HARDPIN 1
+
 #include "fd6_const.h"
 #include "fd6_pack.h"
 
