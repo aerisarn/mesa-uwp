@@ -437,12 +437,13 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
        !vk_format_is_depth_or_stencil(image->vk.format)) {
       const VkImageFormatListCreateInfo *fmt_list =
          vk_find_struct_const(pCreateInfo->pNext, IMAGE_FORMAT_LIST_CREATE_INFO);
+      if (!tu6_mutable_format_list_ubwc_compatible(fmt_list)) {
+         ubwc_enabled = false;
 
-      ubwc_enabled = false;
-
-      if (format_list_reinterprets_r8g8_r16(format, fmt_list) ||
-          format_list_has_swaps(fmt_list)) {
-         tile_mode = TILE6_LINEAR;
+         if (format_list_reinterprets_r8g8_r16(format, fmt_list) ||
+            format_list_has_swaps(fmt_list)) {
+            tile_mode = TILE6_LINEAR;
+         }
       }
    }
 
