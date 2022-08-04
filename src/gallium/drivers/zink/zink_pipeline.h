@@ -27,6 +27,11 @@
 
 #include "zink_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 VkPipeline
 zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
@@ -49,4 +54,8 @@ VkPipeline
 zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipeline_state *state);
 VkPipeline
 zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline library, VkPipeline output);
+
+#ifdef __cplusplus
+}
+#endif
 #endif
