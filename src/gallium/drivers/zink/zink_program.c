@@ -463,6 +463,19 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg,
    return layout;
 }
 
+static void *
+create_program(struct zink_context *ctx, bool is_compute)
+{
+   struct zink_program *pg = rzalloc_size(NULL, is_compute ? sizeof(struct zink_compute_program) : sizeof(struct zink_gfx_program));
+   if (!pg)
+      return NULL;
+
+   pipe_reference_init(&pg->reference, 1);
+   util_queue_fence_init(&pg->cache_fence);
+   pg->is_compute = is_compute;
+   return (void*)pg;
+}
+
 static void
 assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_GFX_SHADER_COUNT])
 {
@@ -495,12 +508,9 @@ zink_create_gfx_program(struct zink_context *ctx,
                         unsigned vertices_per_patch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct zink_gfx_program *prog = rzalloc(NULL, struct zink_gfx_program);
+   struct zink_gfx_program *prog = create_program(ctx, false);
    if (!prog)
       goto fail;
-
-   pipe_reference_init(&prog->base.reference, 1);
-   util_queue_fence_init(&prog->base.cache_fence);
 
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       list_inithead(&prog->shader_cache[i][0][0]);
@@ -610,13 +620,9 @@ struct zink_compute_program *
 zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct zink_compute_program *comp = rzalloc(NULL, struct zink_compute_program);
+   struct zink_compute_program *comp = create_program(ctx, true);
    if (!comp)
       goto fail;
-
-   pipe_reference_init(&comp->base.reference, 1);
-   util_queue_fence_init(&comp->base.cache_fence);
-   comp->base.is_compute = true;
 
    comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
