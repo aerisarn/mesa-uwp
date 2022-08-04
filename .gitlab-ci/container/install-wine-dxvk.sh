@@ -19,14 +19,14 @@ dxvk_install_pr() {
     # describe' is used by the dxvk build system to generate a
     # dxvk_version Meson variable, which is nice-to-have.
     git clone https://github.com/doitsujin/dxvk
-    pushd dxvk
+    pushd dxvk || exit 1
     git fetch origin pull/"$__prnum"/head:pr
     git checkout pr
     ./package-release.sh pr ../dxvk-build --no-package
-    popd
-    pushd ./dxvk-build/dxvk-pr
+    popd || exit 1
+    pushd ./dxvk-build/dxvk-pr || exit 1
     ./setup_dxvk.sh install
-    popd
+    popd || exit 1
     rm -rf ./dxvk-build ./dxvk
 }
 
