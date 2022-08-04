@@ -44,7 +44,7 @@
 #include "util/macros.h"
 #include "util/bitscan.h"
 
-#include "egl_dri2.h"
+#include "platform_x11.h"
 #include "loader.h"
 #include "kopper_interface.h"
 
@@ -54,9 +54,6 @@
 
 static EGLBoolean
 dri2_x11_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval);
-
-uint32_t
-dri2_format_for_depth(struct dri2_egl_display *dri2_dpy, uint32_t depth);
 
 static void
 swrastCreateDrawable(struct dri2_egl_display * dri2_dpy,
