@@ -300,6 +300,8 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
    gmem->width = key->width;
    gmem->height = key->height;
 
+   gmem->tile = rzalloc_array(gmem, struct fd_tile, gmem->nbins_x * gmem->nbins_y);
+
    if (BIN_DEBUG) {
       dump_gmem_state(gmem);
       dump_gmem_key(key);
@@ -395,8 +397,6 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
       for (j = 0; j < gmem->nbins_x; j++) {
          struct fd_tile *tile = &gmem->tile[t];
          uint32_t p;
-
-         assert(t < ARRAY_SIZE(gmem->tile));
 
          /* pipe number: */
          p = ((i / tpp_y) * div_round_up(gmem->nbins_x, tpp_x)) + (j / tpp_x);
