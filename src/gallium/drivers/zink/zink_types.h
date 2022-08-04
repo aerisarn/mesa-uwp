@@ -338,18 +338,6 @@ struct zink_program_descriptor_data {
 };
 
 struct zink_batch_descriptor_data {
-   struct set *desc_sets;
-};
-
-struct zink_descriptor_pool {
-   VkDescriptorPool pool;
-   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
-   unsigned set_idx;
-   unsigned sets_alloc;
-};
-
-struct zink_batch_descriptor_data_lazy {
-   struct zink_batch_descriptor_data base;
    struct util_dynarray overflowed_pools;
    struct hash_table pools[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_pool *push_pool[2];
@@ -359,6 +347,13 @@ struct zink_batch_descriptor_data_lazy {
    VkDescriptorSet sets[2][ZINK_DESCRIPTOR_TYPES + 1];
    unsigned push_usage[2];
    bool has_fbfetch;
+};
+
+struct zink_descriptor_pool {
+   VkDescriptorPool pool;
+   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
+   unsigned set_idx;
+   unsigned sets_alloc;
 };
 
 

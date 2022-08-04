@@ -298,12 +298,6 @@ zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayou
    return true;
 }
 
-ALWAYS_INLINE static struct zink_batch_descriptor_data_lazy *
-bdd_lazy(struct zink_batch_state *bs)
-{
-   return (struct zink_batch_descriptor_data_lazy*)bs->dd;
-}
-
 static void
 init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
                     unsigned idx, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx)
@@ -610,11 +604,11 @@ create_pool(struct zink_screen *screen, unsigned num_type_sizes, const VkDescrip
 }
 
 static struct zink_descriptor_pool *
-get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute);
+get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_descriptor_data *bdd, bool is_compute);
 
 static struct zink_descriptor_pool *
 check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, struct hash_entry *he, struct zink_program *pg,
-                 enum zink_descriptor_type type, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute)
+                 enum zink_descriptor_type type, struct zink_batch_descriptor_data *bdd, bool is_compute)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* allocate up to $current * 10, e.g., 10 -> 100 or 100 -> 1000 */
@@ -635,7 +629,7 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, st
 }
 
 static struct zink_descriptor_pool *
-create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute, bool has_fbfetch)
+create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data *bdd, bool is_compute, bool has_fbfetch)
 {
    struct zink_descriptor_pool *pool = rzalloc(bdd, struct zink_descriptor_pool);
    VkDescriptorPoolSize sizes[2];
@@ -652,7 +646,7 @@ create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_l
 }
 
 static struct zink_descriptor_pool *
-check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute)
+check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, struct zink_batch_descriptor_data *bdd, bool is_compute)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* allocate up to $current * 10, e.g., 10 -> 100 or 100 -> 1000 */
@@ -676,7 +670,7 @@ check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *poo
 }
 
 static struct zink_descriptor_pool *
-get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute)
+get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_descriptor_data *bdd, bool is_compute)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct zink_descriptor_pool_key *pool_key = pg->dd->pool_key[type];
@@ -710,7 +704,7 @@ get_descriptor_set_lazy(struct zink_descriptor_pool *pool)
 }
 
 static bool
-populate_sets(struct zink_context *ctx, struct zink_batch_descriptor_data_lazy *bdd,
+populate_sets(struct zink_context *ctx, struct zink_batch_descriptor_data *bdd,
               struct zink_program *pg, uint8_t *changed_sets, VkDescriptorSet *sets)
 {
    u_foreach_bit(type, *changed_sets) {
@@ -737,7 +731,7 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = ctx->batch.state;
-   struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
+   struct zink_batch_descriptor_data *bdd = bs->dd;
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    VkDescriptorSet desc_sets[ZINK_DESCRIPTOR_TYPES];
    if (!pg->dd->binding_usage || (!changed_sets && !bind_sets))
@@ -778,7 +772,7 @@ void
 zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
 {
    struct zink_batch_state *bs = ctx->batch.state;
-   struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
+   struct zink_batch_descriptor_data *bdd = bs->dd;
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    bool have_KHR_push_descriptor = screen->info.have_KHR_push_descriptor;
@@ -870,7 +864,7 @@ zink_batch_descriptor_deinit_lazy(struct zink_screen *screen, struct zink_batch_
 {
    if (!bs->dd)
       return;
-   struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
+   struct zink_batch_descriptor_data *bdd = bs->dd;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&bdd->pools[i], entry) {
          struct zink_descriptor_pool *pool = (void*)entry->data;
@@ -894,7 +888,7 @@ pool_destroy(struct zink_screen *screen, struct zink_descriptor_pool *pool)
 void
 zink_batch_descriptor_reset_lazy(struct zink_screen *screen, struct zink_batch_state *bs)
 {
-   struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
+   struct zink_batch_descriptor_data *bdd = bs->dd;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&bdd->pools[i], entry) {
          const struct zink_descriptor_pool_key *key = entry->key;
@@ -921,10 +915,10 @@ zink_batch_descriptor_reset_lazy(struct zink_screen *screen, struct zink_batch_s
 bool
 zink_batch_descriptor_init_lazy(struct zink_screen *screen, struct zink_batch_state *bs)
 {
-   bs->dd = (void*)rzalloc(bs, struct zink_batch_descriptor_data_lazy);
+   bs->dd = (void*)rzalloc(bs, struct zink_batch_descriptor_data);
    if (!bs->dd)
       return false;
-   struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
+   struct zink_batch_descriptor_data *bdd = bs->dd;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (!_mesa_hash_table_init(&bdd->pools[i], bs->dd, _mesa_hash_pointer, _mesa_key_pointer_equal))
          return false;
