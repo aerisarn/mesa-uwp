@@ -934,10 +934,12 @@ vn_physical_device_get_native_extensions(
    }
 
 #ifdef VN_USE_WSI_PLATFORM
-   /* XXX we should check for EXT_queue_family_foreign */
-   exts->KHR_incremental_present = true;
-   exts->KHR_swapchain = true;
-   exts->KHR_swapchain_mutable_format = true;
+   if (renderer_exts->EXT_image_drm_format_modifier &&
+       renderer_exts->EXT_queue_family_foreign) {
+      exts->KHR_incremental_present = true;
+      exts->KHR_swapchain = true;
+      exts->KHR_swapchain_mutable_format = true;
+   }
 #endif
 #endif /* ANDROID */
 

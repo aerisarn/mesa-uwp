@@ -220,11 +220,7 @@ vn_device_fix_create_info(const struct vn_device *dev,
       app_exts->KHR_swapchain || app_exts->ANDROID_native_buffer ||
       app_exts->ANDROID_external_memory_android_hardware_buffer;
    if (has_wsi) {
-      /* KHR_swapchain may be advertised without the renderer support for
-       * EXT_image_drm_format_modifier
-       */
-      if (!app_exts->EXT_image_drm_format_modifier &&
-          physical_dev->renderer_extensions.EXT_image_drm_format_modifier) {
+      if (!app_exts->EXT_image_drm_format_modifier) {
          extra_exts[extra_count++] =
             VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
 
@@ -235,11 +231,7 @@ vn_device_fix_create_info(const struct vn_device *dev,
          }
       }
 
-      /* XXX KHR_swapchain may be advertised without the renderer support for
-       * EXT_queue_family_foreign
-       */
-      if (!app_exts->EXT_queue_family_foreign &&
-          physical_dev->renderer_extensions.EXT_queue_family_foreign) {
+      if (!app_exts->EXT_queue_family_foreign) {
          extra_exts[extra_count++] =
             VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME;
       }
