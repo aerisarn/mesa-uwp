@@ -29,6 +29,17 @@
 extern "C" {
 #endif
 
+
+struct gfx_pipeline_cache_entry {
+   struct zink_gfx_pipeline_state state;
+   VkPipeline pipeline;
+};
+
+struct compute_pipeline_cache_entry {
+   struct zink_compute_pipeline_state state;
+   VkPipeline pipeline;
+};
+
 #define ZINK_MAX_INLINED_VARIANTS 5
 
 static inline enum zink_descriptor_type

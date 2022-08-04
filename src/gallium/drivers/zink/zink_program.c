@@ -42,16 +42,6 @@
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
 
-struct gfx_pipeline_cache_entry {
-   struct zink_gfx_pipeline_state state;
-   VkPipeline pipeline;
-};
-
-struct compute_pipeline_cache_entry {
-   struct zink_compute_pipeline_state state;
-   VkPipeline pipeline;
-};
-
 void
 debug_describe_zink_gfx_program(char *buf, const struct zink_gfx_program *ptr)
 {
