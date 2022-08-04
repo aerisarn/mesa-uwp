@@ -298,12 +298,6 @@ zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayou
    return true;
 }
 
-ALWAYS_INLINE static struct zink_descriptor_data_lazy *
-dd_lazy(struct zink_context *ctx)
-{
-   return (struct zink_descriptor_data_lazy*)ctx->dd;
-}
-
 ALWAYS_INLINE static struct zink_batch_descriptor_data_lazy *
 bdd_lazy(struct zink_batch_state *bs)
 {
@@ -551,8 +545,8 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       wd_count[i + 1] = pg->dd->pool_key[i] ? pg->dd->pool_key[i]->layout->num_bindings : 0;
 
    VkDescriptorUpdateTemplateEntry *push_entries[2] = {
-      dd_lazy(ctx)->push_entries,
-      &dd_lazy(ctx)->compute_push_entry,
+      ctx->dd->push_entries,
+      &ctx->dd->compute_push_entry,
    };
    for (unsigned i = 0; i < pg->num_dsl; i++) {
       bool is_push = i == 0;
@@ -792,8 +786,8 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    bool batch_changed = !bdd->pg[is_compute];
    if (batch_changed) {
       /* update all sets and bind null sets */
-      dd_lazy(ctx)->state_changed[is_compute] = pg->dd->binding_usage & BITFIELD_MASK(ZINK_DESCRIPTOR_TYPES);
-      dd_lazy(ctx)->push_state_changed[is_compute] = !!pg->dd->push_usage;
+      ctx->dd->state_changed[is_compute] = pg->dd->binding_usage & BITFIELD_MASK(ZINK_DESCRIPTOR_TYPES);
+      ctx->dd->push_state_changed[is_compute] = !!pg->dd->push_usage;
    }
 
    if (pg != bdd->pg[is_compute]) {
@@ -805,16 +799,16 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
        for (unsigned i = 0; i < ARRAY_SIZE(bdd->dsl[is_compute]); i++) {
           /* push set is already detected, start at 1 */
           if (bdd->dsl[is_compute][i] != pg->dsl[i + 1])
-             dd_lazy(ctx)->state_changed[is_compute] |= BITFIELD_BIT(i);
+             ctx->dd->state_changed[is_compute] |= BITFIELD_BIT(i);
           bdd->dsl[is_compute][i] = pg->dsl[i + 1];
        }
-       dd_lazy(ctx)->push_state_changed[is_compute] |= bdd->push_usage[is_compute] != pg->dd->push_usage;
+       ctx->dd->push_state_changed[is_compute] |= bdd->push_usage[is_compute] != pg->dd->push_usage;
        bdd->push_usage[is_compute] = pg->dd->push_usage;
    }
 
-   uint8_t changed_sets = pg->dd->binding_usage & dd_lazy(ctx)->state_changed[is_compute];
+   uint8_t changed_sets = pg->dd->binding_usage & ctx->dd->state_changed[is_compute];
    bool need_push = pg->dd->push_usage &&
-                    (dd_lazy(ctx)->push_state_changed[is_compute] || batch_changed);
+                    (ctx->dd->push_state_changed[is_compute] || batch_changed);
    VkDescriptorSet push_set = VK_NULL_HANDLE;
    if (need_push && !have_KHR_push_descriptor) {
       struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, bdd->push_pool[pg->is_compute], bdd, pg->is_compute);
@@ -828,13 +822,13 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
     * VK 14.2.2
     */
    uint8_t bind_sets = bdd->pg[is_compute] && bdd->compat_id[is_compute] == pg->compat_id ? 0 : pg->dd->binding_usage;
-   if (pg->dd->push_usage && (dd_lazy(ctx)->push_state_changed[is_compute] || bind_sets)) {
+   if (pg->dd->push_usage && (ctx->dd->push_state_changed[is_compute] || bind_sets)) {
       if (have_KHR_push_descriptor) {
-         if (dd_lazy(ctx)->push_state_changed[is_compute])
+         if (ctx->dd->push_state_changed[is_compute])
             VKCTX(CmdPushDescriptorSetWithTemplateKHR)(bs->cmdbuf, pg->dd->templates[0],
                                                         pg->layout, 0, ctx);
       } else {
-         if (dd_lazy(ctx)->push_state_changed[is_compute]) {
+         if (ctx->dd->push_state_changed[is_compute]) {
             VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, push_set, pg->dd->templates[0], ctx);
             bdd->sets[is_compute][0] = push_set;
          }
@@ -845,7 +839,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
                                  0, NULL);
       }
    }
-   dd_lazy(ctx)->push_state_changed[is_compute] = false;
+   ctx->dd->push_state_changed[is_compute] = false;
    zink_descriptors_update_lazy_masked(ctx, is_compute, changed_sets, bind_sets);
    if (pg->dd->bindless && unlikely(!ctx->dd->bindless_bound)) {
       VKCTX(CmdBindDescriptorSets)(ctx->batch.state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -856,18 +850,18 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    bdd->pg[is_compute] = pg;
    ctx->dd->pg[is_compute] = pg;
    bdd->compat_id[is_compute] = pg->compat_id;
-   dd_lazy(ctx)->state_changed[is_compute] = 0;
+   ctx->dd->state_changed[is_compute] = 0;
 }
 
 void
 zink_context_invalidate_descriptor_state_lazy(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned start, unsigned count)
 {
    if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start)
-      dd_lazy(ctx)->push_state_changed[shader == PIPE_SHADER_COMPUTE] = true;
+      ctx->dd->push_state_changed[shader == PIPE_SHADER_COMPUTE] = true;
    else {
       if (zink_screen(ctx->base.screen)->compact_descriptors && type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
          type -= ZINK_DESCRIPTOR_COMPACT;
-      dd_lazy(ctx)->state_changed[shader == PIPE_SHADER_COMPUTE] |= BITFIELD_BIT(type);
+      ctx->dd->state_changed[shader == PIPE_SHADER_COMPUTE] |= BITFIELD_BIT(type);
    }
 }
 
@@ -956,16 +950,16 @@ init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
 bool
 zink_descriptors_init_lazy(struct zink_context *ctx)
 {
-   ctx->dd = (void*)rzalloc(ctx, struct zink_descriptor_data_lazy);
+   ctx->dd = rzalloc(ctx, struct zink_descriptor_data);
    if (!ctx->dd)
       return false;
 
    for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-      VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[i];
+      VkDescriptorUpdateTemplateEntry *entry = &ctx->dd->push_entries[i];
       init_push_template_entry(entry, i);
    }
-   init_push_template_entry(&dd_lazy(ctx)->compute_push_entry, PIPE_SHADER_COMPUTE);
-   VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[ZINK_SHADER_COUNT]; //fbfetch
+   init_push_template_entry(&ctx->dd->compute_push_entry, PIPE_SHADER_COMPUTE);
+   VkDescriptorUpdateTemplateEntry *entry = &ctx->dd->push_entries[ZINK_SHADER_COUNT]; //fbfetch
    entry->dstBinding = ZINK_FBFETCH_BINDING;
    entry->descriptorCount = 1;
    entry->descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;

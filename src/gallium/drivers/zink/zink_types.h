@@ -319,6 +319,11 @@ struct zink_descriptor_data {
 
    bool has_fbfetch;
    struct zink_program *pg[2]; //gfx, compute
+
+   VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES]; //gfx+fbfetch
+   VkDescriptorUpdateTemplateEntry compute_push_entry;
+   bool push_state_changed[2]; //gfx, compute
+   uint8_t state_changed[2]; //gfx, compute
 };
 
 struct zink_program_descriptor_data {
@@ -334,14 +339,6 @@ struct zink_program_descriptor_data {
 
 struct zink_batch_descriptor_data {
    struct set *desc_sets;
-};
-
-struct zink_descriptor_data_lazy {
-   struct zink_descriptor_data base;
-   VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES]; //gfx+fbfetch
-   VkDescriptorUpdateTemplateEntry compute_push_entry;
-   bool push_state_changed[2]; //gfx, compute
-   uint8_t state_changed[2]; //gfx, compute
 };
 
 struct zink_descriptor_pool {
