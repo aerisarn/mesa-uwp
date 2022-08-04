@@ -444,11 +444,9 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
     * dynamic) is unaligned and also if the VBO offset is aligned to a scalar (eg. stride is 8 and
     * VBO offset is 2 for R16G16B16A16_SNORM).
     */
-   if (ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10) {
+   if ((ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10) && vtx_info->chan_byte_size) {
       unsigned chan_format = vtx_info->chan_format;
       LLVMValueRef values[4];
-
-      assert(ctx->ac.gfx_level == GFX6 || ctx->ac.gfx_level >= GFX10);
 
       for (unsigned chan = 0; chan < num_channels; chan++) {
          unsigned chan_offset = attrib_offset + chan * vtx_info->chan_byte_size;
