@@ -751,14 +751,25 @@ zink_program_num_bindings(const struct zink_program *pg, bool is_compute)
    return num_bindings;
 }
 
+static void
+deinit_program(struct zink_context *ctx, struct zink_program *pg)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   util_queue_fence_wait(&pg->cache_fence);
+   if (pg->layout)
+      VKSCR(DestroyPipelineLayout)(screen->dev, pg->layout, NULL);
+
+   if (pg->pipeline_cache)
+      VKSCR(DestroyPipelineCache)(screen->dev, pg->pipeline_cache, NULL);
+   zink_descriptor_program_deinit(ctx, pg);
+}
+
 void
 zink_destroy_gfx_program(struct zink_context *ctx,
                          struct zink_gfx_program *prog)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   util_queue_fence_wait(&prog->base.cache_fence);
-   if (prog->base.layout)
-      VKSCR(DestroyPipelineLayout)(screen->dev, prog->base.layout, NULL);
+   deinit_program(ctx, &prog->base);
 
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (prog->shaders[i]) {
@@ -799,9 +810,6 @@ zink_destroy_gfx_program(struct zink_context *ctx,
          free(pc_entry);
       }
    }
-   if (prog->base.pipeline_cache)
-      VKSCR(DestroyPipelineCache)(screen->dev, prog->base.pipeline_cache, NULL);
-   zink_descriptor_program_deinit(ctx, &prog->base);
 
    ralloc_free(prog);
 }
@@ -811,9 +819,7 @@ zink_destroy_compute_program(struct zink_context *ctx,
                              struct zink_compute_program *comp)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   util_queue_fence_wait(&comp->base.cache_fence);
-   if (comp->base.layout)
-      VKSCR(DestroyPipelineLayout)(screen->dev, comp->base.layout, NULL);
+   deinit_program(ctx, &comp->base);
 
    if (comp->shader)
       _mesa_set_remove_key(comp->shader->programs, comp);
@@ -829,9 +835,6 @@ zink_destroy_compute_program(struct zink_context *ctx,
    _mesa_hash_table_destroy(comp->pipelines, NULL);
    VKSCR(DestroyShaderModule)(screen->dev, comp->module->shader, NULL);
    free(comp->module);
-   if (comp->base.pipeline_cache)
-      VKSCR(DestroyPipelineCache)(screen->dev, comp->base.pipeline_cache, NULL);
-   zink_descriptor_program_deinit(ctx, &comp->base);
 
    ralloc_free(comp);
 }
