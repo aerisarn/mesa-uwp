@@ -298,36 +298,6 @@ zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayou
    return true;
 }
 
-#define MAX_LAZY_DESCRIPTORS (ZINK_DEFAULT_MAX_DESCS / 10)
-
-struct zink_descriptor_data_lazy {
-   struct zink_descriptor_data base;
-   VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES]; //gfx+fbfetch
-   VkDescriptorUpdateTemplateEntry compute_push_entry;
-   bool push_state_changed[2]; //gfx, compute
-   uint8_t state_changed[2]; //gfx, compute
-};
-
-struct zink_descriptor_pool {
-   VkDescriptorPool pool;
-   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
-   unsigned set_idx;
-   unsigned sets_alloc;
-};
-
-struct zink_batch_descriptor_data_lazy {
-   struct zink_batch_descriptor_data base;
-   struct util_dynarray overflowed_pools;
-   struct hash_table pools[ZINK_DESCRIPTOR_TYPES];
-   struct zink_descriptor_pool *push_pool[2];
-   struct zink_program *pg[2]; //gfx, compute
-   uint32_t compat_id[2];
-   VkDescriptorSetLayout dsl[2][ZINK_DESCRIPTOR_TYPES];
-   VkDescriptorSet sets[2][ZINK_DESCRIPTOR_TYPES + 1];
-   unsigned push_usage[2];
-   bool has_fbfetch;
-};
-
 ALWAYS_INLINE static struct zink_descriptor_data_lazy *
 dd_lazy(struct zink_context *ctx)
 {
