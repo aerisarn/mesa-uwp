@@ -753,26 +753,21 @@ init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
 bool
 zink_descriptors_init_lazy(struct zink_context *ctx)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    ctx->dd = (void*)rzalloc(ctx, struct zink_descriptor_data_lazy);
    if (!ctx->dd)
       return false;
 
-   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
-      printf("ZINK: CACHED/NOTEMPLATES DESCRIPTORS\n");
-   else if (screen->info.have_KHR_descriptor_update_template) {
-      for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-         VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[i];
-         init_push_template_entry(entry, i);
-      }
-      init_push_template_entry(&dd_lazy(ctx)->compute_push_entry, PIPE_SHADER_COMPUTE);
-      VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[ZINK_SHADER_COUNT]; //fbfetch
-      entry->dstBinding = ZINK_FBFETCH_BINDING;
-      entry->descriptorCount = 1;
-      entry->descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-      entry->offset = offsetof(struct zink_context, di.fbfetch);
-      entry->stride = sizeof(VkDescriptorImageInfo);
+   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+      VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[i];
+      init_push_template_entry(entry, i);
    }
+   init_push_template_entry(&dd_lazy(ctx)->compute_push_entry, PIPE_SHADER_COMPUTE);
+   VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[ZINK_SHADER_COUNT]; //fbfetch
+   entry->dstBinding = ZINK_FBFETCH_BINDING;
+   entry->descriptorCount = 1;
+   entry->descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+   entry->offset = offsetof(struct zink_context, di.fbfetch);
+   entry->stride = sizeof(VkDescriptorImageInfo);
    struct zink_descriptor_layout_key *layout_key;
    if (!zink_descriptor_util_push_layouts_get(ctx, ctx->dd->push_dsl, ctx->dd->push_layout_keys))
       return false;

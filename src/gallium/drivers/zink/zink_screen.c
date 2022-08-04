@@ -92,8 +92,6 @@ static const struct debug_named_value
 zink_descriptor_options[] = {
    { "auto", ZINK_DESCRIPTOR_MODE_AUTO, "Automatically detect best mode" },
    { "lazy", ZINK_DESCRIPTOR_MODE_LAZY, "Don't cache, do least amount of updates" },
-   { "cached", ZINK_DESCRIPTOR_MODE_CACHED, "Cache, reuse sets" },
-   { "notemplates", ZINK_DESCRIPTOR_MODE_NOTEMPLATES, "Cache, but disable templated updates" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2170,10 +2168,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_debug = debug_get_option_zink_debug();
    zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
-   if (zink_descriptor_mode > ZINK_DESCRIPTOR_MODE_NOTEMPLATES) {
-      printf("Specify exactly one descriptor mode.\n");
-      abort();
-   }
 
    screen->loader_lib = util_dl_open(VK_LIBNAME);
    if (!screen->loader_lib)
@@ -2278,10 +2272,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
    }
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_AUTO) {
-      if (screen->info.have_KHR_descriptor_update_template)
-         zink_descriptor_mode = ZINK_DESCRIPTOR_MODE_LAZY;
-      else
-         zink_descriptor_mode = ZINK_DESCRIPTOR_MODE_CACHED;
+      zink_descriptor_mode = ZINK_DESCRIPTOR_MODE_LAZY;
    }
 
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))

@@ -353,16 +353,14 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    dcslci.pNext = NULL;
    VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {0};
    VkDescriptorBindingFlags flags[ZINK_MAX_DESCRIPTORS_PER_TYPE];
-   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) {
-      dcslci.pNext = &fci;
-      if (t == ZINK_DESCRIPTOR_TYPES)
-         dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-      fci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-      fci.bindingCount = num_bindings;
-      fci.pBindingFlags = flags;
-      for (unsigned i = 0; i < num_bindings; i++) {
-         flags[i] = 0;
-      }
+   dcslci.pNext = &fci;
+   if (t == ZINK_DESCRIPTOR_TYPES)
+      dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+   fci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+   fci.bindingCount = num_bindings;
+   fci.pBindingFlags = flags;
+   for (unsigned i = 0; i < num_bindings; i++) {
+      flags[i] = 0;
    }
    dcslci.bindingCount = num_bindings;
    dcslci.pBindings = bindings;
@@ -526,10 +524,8 @@ init_push_binding(VkDescriptorSetLayoutBinding *binding, unsigned i, VkDescripto
 static VkDescriptorType
 get_push_types(struct zink_screen *screen, enum zink_descriptor_type *dsl_type)
 {
-   *dsl_type = zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
-               screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
-   return zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ?
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+   *dsl_type = screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
+   return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 }
 
 static struct zink_descriptor_layout *
@@ -1136,8 +1132,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       pdd_cached(pg)->pool[i] = pool;
       has_pools = true;
    }
-   if (has_pools && screen->info.have_KHR_descriptor_update_template &&
-       zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
+   if (has_pools)
       create_descriptor_ref_template(ctx, pg);
 
    return true;
@@ -1174,7 +1169,7 @@ zink_descriptor_pool_init(struct zink_context *ctx)
          return false;
    }
    VkDescriptorPoolSize sizes[2];
-   sizes[0].type = zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+   sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
    sizes[0].descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
    sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
    sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
@@ -1380,8 +1375,7 @@ update_descriptors_internal(struct zink_context *ctx, enum zink_descriptor_type 
    if (cache_hit || !zds)
       return;
 
-   if (screen->info.have_KHR_descriptor_update_template &&
-       zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES) {
+   if (1) {
       set_descriptor_set_refs(ctx, zds, pg, cache_hit);
       zink_descriptor_set_update_lazy(ctx, pg, type, zds->desc_set);
       return;
@@ -1910,8 +1904,6 @@ zink_descriptor_util_init_fbfetch(struct zink_context *ctx)
    //ralloc_free(ctx->dd->push_layout_keys[0]);
    ctx->dd->push_dsl[0] = create_gfx_layout(ctx, &ctx->dd->push_layout_keys[0], true);
    ctx->dd->has_fbfetch = true;
-   if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_LAZY)
-      zink_descriptor_pool_init(ctx);
 }
 
 ALWAYS_INLINE static VkDescriptorType
