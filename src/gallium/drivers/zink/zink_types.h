@@ -432,7 +432,7 @@ struct zink_batch_state {
 
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
 
-   struct zink_batch_descriptor_data *dd;
+   struct zink_batch_descriptor_data dd;
 
    VkDeviceSize resource_size;
 
