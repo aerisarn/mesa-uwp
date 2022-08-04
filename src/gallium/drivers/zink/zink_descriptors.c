@@ -280,7 +280,8 @@ bool
 zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayout dsl, VkDescriptorPool pool, VkDescriptorSet *sets, unsigned num_sets)
 {
    VkDescriptorSetAllocateInfo dsai;
-   VkDescriptorSetLayout *layouts = alloca(sizeof(*layouts) * num_sets);
+   VkDescriptorSetLayout layouts[100];
+   assert(num_sets <= ARRAY_SIZE(layouts));
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
    dsai.pNext = NULL;
