@@ -26,14 +26,8 @@
 
 #include <stdbool.h>
 #include <inttypes.h>
+#include "zink_types.h"
 
-struct zink_batch;
-struct zink_batch_state;
-struct zink_context;
-struct zink_fence;
-struct zink_query;
-struct zink_screen;
-struct pipe_screen;
 #ifdef __cplusplus
 extern "C" {
 #endif

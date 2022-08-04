@@ -26,96 +26,12 @@
 
 #ifndef ZINK_BO_H
 #define ZINK_BO_H
-#include <vulkan/vulkan.h>
-#include "pipebuffer/pb_cache.h"
-#include "pipebuffer/pb_slab.h"
+#include "zink_types.h"
 #include "zink_batch.h"
 
 #define VK_VIS_VRAM (VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 #define VK_LAZY_VRAM (VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-enum zink_resource_access {
-   ZINK_RESOURCE_ACCESS_READ = 1,
-   ZINK_RESOURCE_ACCESS_WRITE = 32,
-   ZINK_RESOURCE_ACCESS_RW = ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE,
-};
 
-
-enum zink_heap {
-   ZINK_HEAP_DEVICE_LOCAL,
-   ZINK_HEAP_DEVICE_LOCAL_SPARSE,
-   ZINK_HEAP_DEVICE_LOCAL_LAZY,
-   ZINK_HEAP_DEVICE_LOCAL_VISIBLE,
-   ZINK_HEAP_HOST_VISIBLE_COHERENT,
-   ZINK_HEAP_HOST_VISIBLE_CACHED,
-   ZINK_HEAP_MAX,
-};
-
-enum zink_alloc_flag {
-   ZINK_ALLOC_SPARSE = 1<<0,
-   ZINK_ALLOC_NO_SUBALLOC = 1<<1,
-};
-
-struct bo_export {
-   /** File descriptor associated with a handle export. */
-   int drm_fd;
-
-   /** GEM handle in drm_fd */
-   uint32_t gem_handle;
-
-   struct list_head link;
-};
-
-struct zink_bo {
-   struct pb_buffer base;
-
-   union {
-      struct {
-         void *cpu_ptr; /* for user_ptr and permanent maps */
-         int map_count;
-         struct list_head exports;
-         simple_mtx_t export_lock;
-
-         bool is_user_ptr;
-         bool use_reusable_pool;
-
-         /* Whether buffer_get_handle or buffer_from_handle has been called,
-          * it can only transition from false to true. Protected by lock.
-          */
-         bool is_shared;
-      } real;
-      struct {
-         struct pb_slab_entry entry;
-         struct zink_bo *real;
-      } slab;
-      struct {
-         uint32_t num_va_pages;
-         uint32_t num_backing_pages;
-
-         struct list_head backing;
-
-         /* Commitment information for each page of the virtual memory area. */
-         struct zink_sparse_commitment *commitments;
-      } sparse;
-   } u;
-
-   VkDeviceMemory mem;
-   uint64_t offset;
-
-   uint32_t unique_id;
-
-   simple_mtx_t lock;
-
-   struct zink_batch_usage *reads;
-   struct zink_batch_usage *writes;
-
-   struct pb_cache_entry cache_entry[];
-};
-
-static inline struct zink_bo *
-zink_bo(struct pb_buffer *pbuf)
-{
-   return (struct zink_bo*)pbuf;
-}
 
 static inline enum zink_alloc_flag
 zink_alloc_flags_from_heap(enum zink_heap heap)

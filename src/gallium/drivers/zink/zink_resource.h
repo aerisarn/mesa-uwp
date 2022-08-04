@@ -24,160 +24,13 @@
 #ifndef ZINK_RESOURCE_H
 #define ZINK_RESOURCE_H
 
-struct pipe_screen;
-struct sw_displaytarget;
-struct zink_batch;
-struct zink_context;
-struct zink_bo;
-
-#include "util/hash_table.h"
-#include "util/simple_mtx.h"
-#include "util/u_transfer.h"
-#include "util/u_range.h"
-#include "util/u_dynarray.h"
-#include "util/u_threaded_context.h"
-
-#include "zink_batch.h"
-#include "zink_descriptors.h"
-
-#include <vulkan/vulkan.h>
+#include "zink_types.h"
 
 #define ZINK_MAP_TEMPORARY (PIPE_MAP_DRV_PRV << 0)
 #define ZINK_BIND_DMABUF (1 << 29)
 #define ZINK_BIND_TRANSIENT (1 << 30) //transient fb attachment
 #define ZINK_BIND_VIDEO (1 << 31)
 
-struct zink_resource_object {
-   struct pipe_reference reference;
-
-   VkPipelineStageFlagBits access_stage;
-   VkAccessFlags access;
-   bool unordered_read;
-   bool unordered_write;
-
-   unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
-
-   VkBuffer storage_buffer;
-
-   union {
-      VkBuffer buffer;
-      VkImage image;
-   };
-
-   VkSampleLocationsInfoEXT zs_evaluate;
-   bool needs_zs_evaluate;
-
-   bool storage_init; //layout was set for image
-   bool transfer_dst;
-   bool render_target;
-   bool is_buffer;
-   bool exportable;
-
-   /* TODO: this should be a union */
-   int handle;
-   struct zink_bo *bo;
-   // struct {
-   struct kopper_displaytarget *dt;
-   uint32_t dt_idx;
-   uint32_t last_dt_idx;
-   VkSemaphore present;
-   bool new_dt;
-   bool indefinite_acquire;
-   // }
-
-
-   VkDeviceSize offset, size, alignment;
-   VkImageCreateFlags vkflags;
-   VkImageUsageFlags vkusage;
-   VkFormatFeatureFlags vkfeats;
-   uint64_t modifier;
-   VkImageAspectFlags modifier_aspect;
-   VkSamplerYcbcrConversion sampler_conversion;
-   unsigned plane_offsets[3];
-   unsigned plane_strides[3];
-   unsigned plane_count;
-
-   bool host_visible;
-   bool coherent;
-   bool is_aux;
-};
-
-struct zink_resource {
-   struct threaded_resource base;
-
-   enum pipe_format internal_format:16;
-
-   struct zink_resource_object *obj;
-   union {
-      struct {
-         struct util_range valid_buffer_range;
-         uint32_t vbo_bind_mask : PIPE_MAX_ATTRIBS;
-         uint8_t ubo_bind_count[2];
-         uint8_t ssbo_bind_count[2];
-         uint8_t vbo_bind_count;
-         uint8_t so_bind_count; //not counted in all_binds
-         bool so_valid;
-         uint32_t ubo_bind_mask[PIPE_SHADER_TYPES];
-         uint32_t ssbo_bind_mask[PIPE_SHADER_TYPES];
-      };
-      struct {
-         VkSparseImageMemoryRequirements sparse;
-         VkFormat format;
-         VkImageLayout layout;
-         VkImageAspectFlags aspect;
-         bool linear;
-         bool need_2D;
-         bool valid;
-         uint8_t fb_binds; //not counted in all_binds
-      };
-   };
-   uint32_t sampler_binds[PIPE_SHADER_TYPES];
-   uint32_t image_binds[PIPE_SHADER_TYPES];
-   uint16_t sampler_bind_count[2]; //gfx, compute
-   uint16_t image_bind_count[2]; //gfx, compute
-   uint16_t write_bind_count[2]; //gfx, compute
-   uint16_t bindless[2]; //tex, img
-   union {
-      uint16_t bind_count[2]; //gfx, compute
-      uint32_t all_binds;
-   };
-
-   VkPipelineStageFlagBits gfx_barrier;
-   VkAccessFlagBits barrier_access[2]; //gfx, compute
-
-   union {
-      struct {
-         struct hash_table bufferview_cache;
-         simple_mtx_t bufferview_mtx;
-      };
-      struct {
-         struct hash_table surface_cache;
-         simple_mtx_t surface_mtx;
-      };
-   };
-
-   bool swapchain;
-   bool dmabuf_acquire;
-   bool dmabuf;
-   unsigned dt_stride;
-
-   uint8_t modifiers_count;
-   uint64_t *modifiers;
-   enum pipe_format drm_format;
-};
-
-struct zink_transfer {
-   struct threaded_transfer base;
-   struct pipe_resource *staging_res;
-   unsigned offset;
-   unsigned depthPitch;
-};
-
-static inline struct zink_resource *
-zink_resource(struct pipe_resource *r)
-{
-   return (struct zink_resource *)r;
-}
 
 bool
 zink_screen_resource_init(struct pipe_screen *pscreen);
@@ -229,6 +82,7 @@ zink_is_swapchain(const struct zink_resource *res)
 }
 
 #ifndef __cplusplus
+#include "zink_batch.h"
 #include "zink_bo.h"
 
 static inline bool

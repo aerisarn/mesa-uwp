@@ -21,16 +21,13 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "zink_batch.h"
+#include "zink_clear.h"
 #include "zink_context.h"
-#include "zink_kopper.h"
 #include "zink_format.h"
-#include "zink_framebuffer.h"
 #include "zink_query.h"
-#include "zink_resource.h"
-#include "zink_screen.h"
 
 #include "util/u_blitter.h"
-#include "util/u_dynarray.h"
 #include "util/format/u_format.h"
 #include "util/format_srgb.h"
 #include "util/u_framebuffer.h"

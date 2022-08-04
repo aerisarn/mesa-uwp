@@ -1,19 +1,13 @@
 #include "zink_batch.h"
-
 #include "zink_context.h"
-#include "zink_kopper.h"
-#include "zink_fence.h"
+#include "zink_descriptors.h"
 #include "zink_framebuffer.h"
-#include "zink_query.h"
+#include "zink_kopper.h"
 #include "zink_program.h"
-#include "zink_render_pass.h"
+#include "zink_query.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 #include "zink_surface.h"
-
-#include "util/hash_table.h"
-#include "util/u_debug.h"
-#include "util/set.h"
 
 #ifdef VK_USE_PLATFORM_METAL_EXT
 #include "QuartzCore/CAMetalLayer.h"

@@ -1,3 +1,4 @@
+#include "zink_clear.h"
 #include "zink_context.h"
 #include "zink_format.h"
 #include "zink_kopper.h"

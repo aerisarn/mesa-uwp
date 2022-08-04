@@ -22,12 +22,14 @@
  */
 
 #include "zink_context.h"
+#include "zink_clear.h"
 #include "zink_framebuffer.h"
 #include "zink_kopper.h"
 #include "zink_query.h"
 #include "zink_render_pass.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
+#include "zink_surface.h"
 
 #include "util/u_memory.h"
 #include "util/u_string.h"

@@ -24,6 +24,7 @@
 #include "zink_resource.h"
 
 #include "zink_batch.h"
+#include "zink_clear.h"
 #include "zink_context.h"
 #include "zink_fence.h"
 #include "zink_program.h"
@@ -36,7 +37,6 @@
 #include "vulkan/wsi/wsi_common.h"
 
 #include "vk_format.h"
-#include "util/slab.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
 #include "util/format/u_format.h"

@@ -24,31 +24,8 @@
  *    Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
  */
 
-#include "util/u_dynarray.h"
-#include "pipe/p_state.h"
-#include <vulkan/vulkan.h>
 #include "util/u_rect.h"
-
-struct zink_context;
-struct zink_resource;
-
-struct zink_framebuffer_clear_data {
-   union {
-      union pipe_color_union color;
-      struct {
-         float depth;
-         unsigned stencil;
-         uint8_t bits : 2; // PIPE_CLEAR_DEPTH, PIPE_CLEAR_STENCIL
-      } zs;
-   };
-   struct pipe_scissor_state scissor;
-   bool has_scissor;
-   bool conditional;
-};
-
-struct zink_framebuffer_clear {
-   struct util_dynarray clears;
-};
+#include "zink_types.h"
 
 void
 zink_clear(struct pipe_context *pctx,

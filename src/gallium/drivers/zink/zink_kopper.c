@@ -26,6 +26,7 @@
 
 #include "zink_context.h"
 #include "zink_screen.h"
+#include "zink_surface.h"
 #include "zink_resource.h"
 #include "zink_kopper.h"
 

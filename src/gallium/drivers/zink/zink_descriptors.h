@@ -26,122 +26,16 @@
 
 #ifndef ZINK_DESCRIPTOR_H
 # define  ZINK_DESCRIPTOR_H
-#include <vulkan/vulkan.h>
-#include "util/u_dynarray.h"
-#include "util/u_inlines.h"
-#include "util/simple_mtx.h"
 
-#include "zink_batch.h"
+#include "zink_types.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef ZINK_SHADER_COUNT
-#define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
-#endif
-
 #define ZINK_DESCRIPTOR_COMPACT 2
 
-enum zink_descriptor_type {
-   ZINK_DESCRIPTOR_TYPE_UBO,
-   ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW,
-   ZINK_DESCRIPTOR_TYPE_SSBO,
-   ZINK_DESCRIPTOR_TYPE_IMAGE,
-   ZINK_DESCRIPTOR_TYPES,
-   ZINK_DESCRIPTOR_BINDLESS,
-};
-
-#define ZINK_MAX_DESCRIPTORS_PER_TYPE (32 * ZINK_SHADER_COUNT)
 
 #define ZINK_BINDLESS_IS_BUFFER(HANDLE) (HANDLE >= ZINK_MAX_BINDLESS_HANDLES)
-
-enum zink_descriptor_size_index {
-   ZDS_INDEX_UBO,
-   ZDS_INDEX_COMBINED_SAMPLER,
-   ZDS_INDEX_UNIFORM_TEXELS,
-   ZDS_INDEX_STORAGE_BUFFER,
-   ZDS_INDEX_STORAGE_IMAGE,
-   ZDS_INDEX_STORAGE_TEXELS,
-};
-
-enum zink_descriptor_size_index_compact {
-   ZDS_INDEX_COMP_UBO,
-   ZDS_INDEX_COMP_STORAGE_BUFFER,
-   ZDS_INDEX_COMP_COMBINED_SAMPLER,
-   ZDS_INDEX_COMP_UNIFORM_TEXELS,
-   ZDS_INDEX_COMP_STORAGE_IMAGE,
-   ZDS_INDEX_COMP_STORAGE_TEXELS,
-};
-
-struct hash_table;
-
-struct zink_context;
-struct zink_image_view;
-struct zink_program;
-struct zink_resource;
-struct zink_sampler;
-struct zink_sampler_view;
-struct zink_shader;
-struct zink_screen;
-
-
-struct zink_descriptor_layout_key {
-   unsigned num_bindings;
-   VkDescriptorSetLayoutBinding *bindings;
-};
-
-struct zink_descriptor_layout {
-   VkDescriptorSetLayout layout;
-};
-
-struct zink_descriptor_pool_key {
-   unsigned use_count;
-   unsigned num_type_sizes;
-   struct zink_descriptor_layout_key *layout;
-   VkDescriptorPoolSize sizes[4];
-};
-
-struct zink_descriptor_data {
-   struct zink_descriptor_layout_key *push_layout_keys[2]; //gfx, compute
-   struct zink_descriptor_pool *push_pool[2]; //gfx, compute
-   struct zink_descriptor_layout *push_dsl[2]; //gfx, compute
-   VkDescriptorUpdateTemplate push_template[2]; //gfx, compute
-   uint8_t last_push_usage[2];
-   bool push_valid[2];
-   uint32_t push_state[2];
-   bool gfx_push_valid[ZINK_SHADER_COUNT];
-   uint32_t gfx_push_state[ZINK_SHADER_COUNT];
-   struct zink_descriptor_set *last_set[2];
-
-   VkDescriptorPool dummy_pool;
-   struct zink_descriptor_layout *dummy_dsl;
-   VkDescriptorUpdateTemplate dummy_template;
-   VkDescriptorSet dummy_set;
-
-   VkDescriptorSetLayout bindless_layout;
-   VkDescriptorPool bindless_pool;
-   VkDescriptorSet bindless_set;
-   bool bindless_bound;
-
-   bool changed[2][ZINK_DESCRIPTOR_TYPES + 1];
-   bool has_fbfetch;
-   struct zink_program *pg[2]; //gfx, compute
-};
-
-struct zink_program_descriptor_data {
-   uint8_t push_usage;
-   bool bindless;
-   bool fbfetch;
-   uint8_t binding_usage;
-   uint8_t real_binding_usage;
-   struct zink_descriptor_pool_key *pool_key[ZINK_DESCRIPTOR_TYPES]; //push set doesn't need one
-   struct zink_descriptor_layout *layouts[ZINK_DESCRIPTOR_TYPES + 1];
-   VkDescriptorUpdateTemplate templates[ZINK_DESCRIPTOR_TYPES + 1];
-};
-
-struct zink_batch_descriptor_data {
-   struct set *desc_sets;
-};
 
 static inline enum zink_descriptor_size_index
 zink_vktype_to_size_idx(VkDescriptorType type)

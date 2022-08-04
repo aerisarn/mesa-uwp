@@ -1,5 +1,7 @@
+#include "zink_batch.h"
 #include "zink_compiler.h"
 #include "zink_context.h"
+#include "zink_descriptors.h"
 #include "zink_program.h"
 #include "zink_query.h"
 #include "zink_resource.h"

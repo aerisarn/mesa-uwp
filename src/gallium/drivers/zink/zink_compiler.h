@@ -24,15 +24,7 @@
 #ifndef ZINK_COMPILER_H
 #define ZINK_COMPILER_H
 
-#include "pipe/p_defines.h"
-#include "pipe/p_state.h"
-
-#include "compiler/nir/nir.h"
-#include "compiler/shader_info.h"
-#include "util/u_live_shader_cache.h"
-
-#include <vulkan/vulkan.h>
-#include "zink_descriptors.h"
+#include "zink_types.h"
 
 #define ZINK_WORKGROUP_SIZE_X 1
 #define ZINK_WORKGROUP_SIZE_Y 2
@@ -43,29 +35,10 @@
  */
 #define ZINK_ALWAYS_INLINE_LIMIT 1500
 
-struct pipe_screen;
-struct zink_context;
-struct zink_screen;
 struct zink_shader_key;
-struct zink_shader_module;
-struct zink_gfx_program;
 struct spirv_shader;
 
-struct nir_shader_compiler_options;
-struct nir_shader;
-
-struct set;
-
 struct tgsi_token;
-struct zink_shader_info {
-   struct pipe_stream_output_info so_info;
-   unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
-   uint32_t so_propagate; //left shifted by 32
-   bool last_vertex;
-   bool have_xfb;
-   bool have_sparse;
-   bool have_vulkan_memory_model;
-};
 
 
 const void *
@@ -76,37 +49,6 @@ zink_get_compiler_options(struct pipe_screen *screen,
 struct nir_shader *
 zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
-struct zink_shader {
-   struct util_live_shader base;
-   uint32_t hash;
-   struct nir_shader *nir;
-   enum pipe_prim_type reduced_prim; // PIPE_PRIM_MAX for vs
-
-   struct zink_shader_info sinfo;
-
-   struct {
-      int index;
-      int binding;
-      VkDescriptorType type;
-      unsigned char size;
-   } bindings[ZINK_DESCRIPTOR_TYPES][ZINK_MAX_DESCRIPTORS_PER_TYPE];
-   size_t num_bindings[ZINK_DESCRIPTOR_TYPES];
-   unsigned num_texel_buffers;
-   uint32_t ubos_used; // bitfield of which ubo indices are used
-   uint32_t ssbos_used; // bitfield of which ssbo indices are used
-   bool bindless;
-   bool can_inline;
-   struct spirv_shader *spirv;
-
-   simple_mtx_t lock;
-   struct set *programs;
-
-   union {
-      struct zink_shader *generated; // a generated shader that this shader "owns"
-      bool is_generated; // if this is a driver-created shader (e.g., tcs)
-      nir_variable *fbfetch; //for fs output
-   };
-};
 
 void
 zink_screen_init_compiler(struct zink_screen *screen);
