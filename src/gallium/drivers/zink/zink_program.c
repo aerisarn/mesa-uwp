@@ -466,17 +466,17 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg,
 }
 
 static void
-assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_SHADER_COUNT])
+assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_GFX_SHADER_COUNT])
 {
    struct zink_shader *shaders[PIPE_SHADER_TYPES];
 
    /* build array in pipeline order */
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
       shaders[tgsi_processor_to_shader_stage(i)] = stages[i];
 
    for (unsigned i = 0; i < MESA_SHADER_FRAGMENT;) {
       nir_shader *producer = shaders[i]->nir;
-      for (unsigned j = i + 1; j < ZINK_SHADER_COUNT; i++, j++) {
+      for (unsigned j = i + 1; j < ZINK_GFX_SHADER_COUNT; i++, j++) {
          struct zink_shader *consumer = shaders[j];
          if (!consumer)
             continue;
@@ -504,7 +504,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    pipe_reference_init(&prog->base.reference, 1);
    util_queue_fence_init(&prog->base.cache_fence);
 
-   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       list_inithead(&prog->shader_cache[i][0][0]);
       list_inithead(&prog->shader_cache[i][0][1]);
       list_inithead(&prog->shader_cache[i][1][0]);
@@ -543,7 +543,7 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
-   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (prog->shaders[i]) {
          simple_mtx_lock(&prog->shaders[i]->lock);
          _mesa_set_add(prog->shaders[i]->programs, prog);
@@ -731,7 +731,7 @@ zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descrip
       return get_num_bindings(comp->shader, type);
    }
    struct zink_gfx_program *prog = (void*)pg;
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
       if (prog->shaders[i])
          num_bindings += get_num_bindings(prog->shaders[i], type);
    }
@@ -756,7 +756,7 @@ zink_destroy_gfx_program(struct zink_context *ctx,
    if (prog->base.layout)
       VKSCR(DestroyPipelineLayout)(screen->dev, prog->base.layout, NULL);
 
-   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (prog->shaders[i]) {
          _mesa_set_remove_key(prog->shaders[i]->programs, prog);
          prog->shaders[i] = NULL;

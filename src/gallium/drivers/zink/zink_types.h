@@ -61,7 +61,7 @@
 
 
 #define ZINK_FBFETCH_BINDING 6 //COMPUTE+1
-#define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
+#define ZINK_GFX_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
 
 #define ZINK_DEFAULT_MAX_DESCS 5000
 #define MAX_LAZY_DESCRIPTORS (ZINK_DEFAULT_MAX_DESCS / 10)
@@ -70,7 +70,7 @@
 #define ZINK_MAX_BINDLESS_HANDLES 1024
 
 #define ZINK_MAX_DESCRIPTOR_SETS 6
-#define ZINK_MAX_DESCRIPTORS_PER_TYPE (32 * ZINK_SHADER_COUNT)
+#define ZINK_MAX_DESCRIPTORS_PER_TYPE (32 * ZINK_GFX_SHADER_COUNT)
 
 #define NUM_SLAB_ALLOCATORS 3
 #define MIN_SLAB_ORDER 8
@@ -732,7 +732,7 @@ struct zink_program {
 
 struct zink_gfx_library_key {
    uint32_t hw_rast_state;
-   VkShaderModule modules[ZINK_SHADER_COUNT];
+   VkShaderModule modules[ZINK_GFX_SHADER_COUNT];
    VkPipeline pipeline;
 };
 
@@ -766,16 +766,16 @@ struct zink_gfx_program {
    struct zink_program base;
 
    uint32_t stages_present; //mask of stages present in this program
-   struct nir_shader *nir[ZINK_SHADER_COUNT];
+   struct nir_shader *nir[ZINK_GFX_SHADER_COUNT];
 
-   struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
+   struct zink_shader_module *modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
 
    struct zink_shader *last_vertex_stage;
 
-   struct list_head shader_cache[ZINK_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms
-   unsigned inlined_variant_count[ZINK_SHADER_COUNT];
+   struct list_head shader_cache[ZINK_GFX_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms
+   unsigned inlined_variant_count[ZINK_GFX_SHADER_COUNT];
 
-   struct zink_shader *shaders[ZINK_SHADER_COUNT];
+   struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
    struct hash_table pipelines[11]; // number of draw modes we support
    uint32_t default_variant_hash;
    uint32_t last_variant_hash;
@@ -1341,7 +1341,7 @@ struct zink_context {
    struct set desc_pool_keys[ZINK_DESCRIPTOR_TYPES];
    bool pipeline_changed[2]; //gfx, compute
 
-   struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
+   struct zink_shader *gfx_stages[ZINK_GFX_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;
    bool shader_reads_drawid;
    bool shader_reads_basevertex;
@@ -1362,7 +1362,7 @@ struct zink_context {
    struct hash_table compute_program_cache;
    struct zink_compute_program *curr_compute;
 
-   unsigned shader_stages : ZINK_SHADER_COUNT; /* mask of bound gfx shader stages */
+   unsigned shader_stages : ZINK_GFX_SHADER_COUNT; /* mask of bound gfx shader stages */
    unsigned dirty_shader_stages : 6; /* mask of changed shader stages */
    bool last_vertex_stage_dirty;
 

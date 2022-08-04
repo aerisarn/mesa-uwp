@@ -230,14 +230,14 @@ create_gfx_layout(struct zink_context *ctx, struct zink_descriptor_layout_key **
    VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES];
    enum zink_descriptor_type dsl_type;
    VkDescriptorType vktype = get_push_types(screen, &dsl_type);
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
       init_push_binding(&bindings[i], i, vktype);
    if (fbfetch) {
-      bindings[ZINK_SHADER_COUNT].binding = ZINK_FBFETCH_BINDING;
-      bindings[ZINK_SHADER_COUNT].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-      bindings[ZINK_SHADER_COUNT].descriptorCount = 1;
-      bindings[ZINK_SHADER_COUNT].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-      bindings[ZINK_SHADER_COUNT].pImmutableSamplers = NULL;
+      bindings[ZINK_GFX_SHADER_COUNT].binding = ZINK_FBFETCH_BINDING;
+      bindings[ZINK_GFX_SHADER_COUNT].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+      bindings[ZINK_GFX_SHADER_COUNT].descriptorCount = 1;
+      bindings[ZINK_GFX_SHADER_COUNT].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+      bindings[ZINK_GFX_SHADER_COUNT].pImmutableSamplers = NULL;
    }
    return create_layout(ctx, dsl_type, bindings, fbfetch ? ARRAY_SIZE(bindings) : ARRAY_SIZE(bindings) - 1, layout_key);
 }
@@ -408,7 +408,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 
    unsigned entry_idx[ZINK_DESCRIPTOR_TYPES] = {0};
 
-   unsigned num_shaders = pg->is_compute ? 1 : ZINK_SHADER_COUNT;
+   unsigned num_shaders = pg->is_compute ? 1 : ZINK_GFX_SHADER_COUNT;
    bool have_push = screen->info.have_KHR_push_descriptor;
    for (int i = 0; i < num_shaders; i++) {
       struct zink_shader *shader = stages[i];
@@ -527,7 +527,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
    /* number of descriptors in template */
    unsigned wd_count[ZINK_DESCRIPTOR_TYPES + 1];
    if (push_count)
-      wd_count[0] = pg->is_compute ? 1 : (ZINK_SHADER_COUNT + !!ctx->dd.has_fbfetch);
+      wd_count[0] = pg->is_compute ? 1 : (ZINK_GFX_SHADER_COUNT + !!ctx->dd.has_fbfetch);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
       wd_count[i + 1] = pg->dd.pool_key[i] ? pg->dd.pool_key[i]->layout->num_bindings : 0;
 
@@ -630,7 +630,7 @@ create_push_pool(struct zink_screen *screen, struct zink_batch_state *bs, bool i
    if (is_compute)
       sizes[0].descriptorCount = MAX_LAZY_DESCRIPTORS;
    else {
-      sizes[0].descriptorCount = ZINK_SHADER_COUNT * MAX_LAZY_DESCRIPTORS;
+      sizes[0].descriptorCount = ZINK_GFX_SHADER_COUNT * MAX_LAZY_DESCRIPTORS;
       sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
       sizes[1].descriptorCount = MAX_LAZY_DESCRIPTORS;
    }
@@ -926,12 +926,12 @@ init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
 bool
 zink_descriptors_init(struct zink_context *ctx)
 {
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
       VkDescriptorUpdateTemplateEntry *entry = &ctx->dd.push_entries[i];
       init_push_template_entry(entry, i);
    }
    init_push_template_entry(&ctx->dd.compute_push_entry, PIPE_SHADER_COMPUTE);
-   VkDescriptorUpdateTemplateEntry *entry = &ctx->dd.push_entries[ZINK_SHADER_COUNT]; //fbfetch
+   VkDescriptorUpdateTemplateEntry *entry = &ctx->dd.push_entries[ZINK_GFX_SHADER_COUNT]; //fbfetch
    entry->dstBinding = ZINK_FBFETCH_BINDING;
    entry->descriptorCount = 1;
    entry->descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;

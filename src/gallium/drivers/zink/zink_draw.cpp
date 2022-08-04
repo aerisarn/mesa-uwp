@@ -1131,7 +1131,7 @@ equals_gfx_program(const void *a, const void *b)
              !memcmp(a, b, sizeof(void*) * 2);
 
    /* all stages */
-   return !memcmp(a, b, sizeof(void*) * ZINK_SHADER_COUNT);
+   return !memcmp(a, b, sizeof(void*) * ZINK_GFX_SHADER_COUNT);
 }
 
 extern "C"

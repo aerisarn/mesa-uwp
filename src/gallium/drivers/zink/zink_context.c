@@ -1489,7 +1489,7 @@ update_binds_for_samplerviews(struct zink_context *ctx, struct zink_resource *re
           }
        }
     } else {
-       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+       for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
           u_foreach_bit(slot, res->sampler_binds[i]) {
              if (ctx->di.textures[i][slot].imageLayout != layout) {
                 update_descriptor_state_sampler(ctx, i, slot, res);
@@ -2659,7 +2659,7 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
       if (ctx->curr_compute)
          zink_batch_reference_program(batch, &ctx->curr_compute->base);
    } else {
-      for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
+      for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
          update_resource_refs_for_stage(ctx, i);
       unsigned vertex_buffers_enabled_mask = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
       unsigned last_vbo = util_last_bit(vertex_buffers_enabled_mask);

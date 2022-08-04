@@ -355,9 +355,9 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       tdci.domainOrigin = VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
    }
 
-   VkPipelineShaderStageCreateInfo shader_stages[ZINK_SHADER_COUNT];
+   VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
    uint32_t num_stages = 0;
-   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (!prog->modules[i])
          continue;
 
@@ -763,9 +763,9 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
       tdci.domainOrigin = VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
    }
 
-   VkPipelineShaderStageCreateInfo shader_stages[ZINK_SHADER_COUNT];
+   VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
    uint32_t num_stages = 0;
-   for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (!prog->modules[i])
          continue;
 

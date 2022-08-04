@@ -2585,12 +2585,12 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index, bool compa
          return (stage * PIPE_MAX_SAMPLERS) + index;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         return stage + (compact_descriptors * (ZINK_SHADER_COUNT * 2));
+         return stage + (compact_descriptors * (ZINK_GFX_SHADER_COUNT * 2));
 
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          assert(index < ZINK_MAX_SHADER_IMAGES);
-         return (stage * ZINK_MAX_SHADER_IMAGES) + index + (compact_descriptors * (ZINK_SHADER_COUNT * PIPE_MAX_SAMPLERS));
+         return (stage * ZINK_MAX_SHADER_IMAGES) + index + (compact_descriptors * (ZINK_GFX_SHADER_COUNT * PIPE_MAX_SAMPLERS));
 
       default:
          unreachable("unexpected type");
@@ -3167,7 +3167,7 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       } else {
          struct zink_gfx_program *prog = (void*)entry->key;
          enum pipe_shader_type pstage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-         assert(pstage < ZINK_SHADER_COUNT);
+         assert(pstage < ZINK_GFX_SHADER_COUNT);
          if (!prog->base.removed && (shader->nir->info.stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)) {
             unsigned stages_present = prog->stages_present;
             if (prog->shaders[PIPE_SHADER_TESS_CTRL] && prog->shaders[PIPE_SHADER_TESS_CTRL]->is_generated)
