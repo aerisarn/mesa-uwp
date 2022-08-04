@@ -1518,6 +1518,12 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       return false;
    }
 
+   devinfo->kmd_type = intel_get_kmd_type(fd);
+   if (devinfo->kmd_type == INTEL_KMD_TYPE_INVALID) {
+      mesa_loge("Unknown kernel mode driver");
+      return false;
+   }
+
    /* remaining initializion queries the kernel for device info */
    if (devinfo->no_hw) {
       /* Provide some sensible values for NO_HW. */

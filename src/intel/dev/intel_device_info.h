@@ -30,6 +30,7 @@
 
 #include "util/macros.h"
 #include "compiler/shader_enums.h"
+#include "intel_kmd.h"
 
 #include "intel/common/intel_engine.h"
 
@@ -96,6 +97,8 @@ enum intel_platform {
  */
 struct intel_device_info
 {
+   enum intel_kmd_type kmd_type;
+
    /* Driver internal numbers used to differentiate platforms. */
    int ver;
    int verx10;

@@ -29,6 +29,8 @@ files_libintel_dev = files(
   'intel_device_info.h',
   'intel_hwconfig.c',
   'intel_hwconfig.h',
+  'intel_kmd.c',
+  'intel_kmd.h',
 )
 
 libintel_dev = static_library(
