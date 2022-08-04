@@ -719,7 +719,7 @@ struct zink_program {
    struct zink_batch_usage *batch_uses;
    bool is_compute;
 
-   struct zink_program_descriptor_data *dd;
+   struct zink_program_descriptor_data dd;
 
    uint32_t compat_id;
    VkPipelineLayout layout;

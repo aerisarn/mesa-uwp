@@ -768,7 +768,7 @@ zink_draw(struct pipe_context *pctx,
    if (ctx->di.any_bindless_dirty &&
        /* some apps (d3dretrace) call MakeTextureHandleResidentARB randomly */
        zink_program_has_descriptors(&ctx->curr_program->base) &&
-       ctx->curr_program->base.dd->bindless)
+       ctx->curr_program->base.dd.bindless)
       zink_descriptors_update_bindless(ctx);
 
    if (reads_basevertex) {
@@ -960,7 +960,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    if (zink_program_has_descriptors(&ctx->curr_compute->base))
       zink_descriptors_update_lazy(ctx, true);
-   if (ctx->di.any_bindless_dirty && ctx->curr_compute->base.dd->bindless)
+   if (ctx->di.any_bindless_dirty && ctx->curr_compute->base.dd.bindless)
       zink_descriptors_update_bindless(ctx);
 
    zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
