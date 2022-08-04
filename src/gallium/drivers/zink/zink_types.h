@@ -301,11 +301,15 @@ struct zink_descriptor_layout {
 struct zink_descriptor_pool_key {
    unsigned use_count;
    unsigned num_type_sizes;
-   struct zink_descriptor_layout_key *layout;
    VkDescriptorPoolSize sizes[4];
+   struct zink_descriptor_layout_key *layout;
 };
 
 struct zink_descriptor_data {
+   bool bindless_bound;
+   bool has_fbfetch;
+   bool push_state_changed[2]; //gfx, compute
+   uint8_t state_changed[2]; //gfx, compute
    struct zink_descriptor_layout_key *push_layout_keys[2]; //gfx, compute
    struct zink_descriptor_layout *push_dsl[2]; //gfx, compute
    VkDescriptorUpdateTemplate push_template[2]; //gfx, compute
@@ -315,21 +319,17 @@ struct zink_descriptor_data {
    VkDescriptorSetLayout bindless_layout;
    VkDescriptorPool bindless_pool;
    VkDescriptorSet bindless_set;
-   bool bindless_bound;
 
-   bool has_fbfetch;
    struct zink_program *pg[2]; //gfx, compute
 
    VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES]; //gfx+fbfetch
    VkDescriptorUpdateTemplateEntry compute_push_entry;
-   bool push_state_changed[2]; //gfx, compute
-   uint8_t state_changed[2]; //gfx, compute
 };
 
 struct zink_program_descriptor_data {
-   uint8_t push_usage;
    bool bindless;
    bool fbfetch;
+   uint8_t push_usage;
    uint8_t binding_usage;
    uint8_t real_binding_usage;
    struct zink_descriptor_pool_key *pool_key[ZINK_DESCRIPTOR_TYPES]; //push set doesn't need one
@@ -338,6 +338,7 @@ struct zink_program_descriptor_data {
 };
 
 struct zink_batch_descriptor_data {
+   bool has_fbfetch;
    struct util_dynarray overflowed_pools;
    struct hash_table pools[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_pool *push_pool[2];
@@ -346,14 +347,13 @@ struct zink_batch_descriptor_data {
    VkDescriptorSetLayout dsl[2][ZINK_DESCRIPTOR_TYPES];
    VkDescriptorSet sets[2][ZINK_DESCRIPTOR_TYPES + 1];
    unsigned push_usage[2];
-   bool has_fbfetch;
 };
 
 struct zink_descriptor_pool {
-   VkDescriptorPool pool;
-   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
    unsigned set_idx;
    unsigned sets_alloc;
+   VkDescriptorPool pool;
+   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
 };
 
 
