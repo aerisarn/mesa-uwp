@@ -111,7 +111,6 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
 #endif
    }
 
-   zink_descriptor_set_refs_clear(&obj->desc_set_refs, obj);
    if (obj->dt) {
       FREE(obj->bo); //this is a dummy struct
    } else
@@ -603,7 +602,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
 
    pipe_reference_init(&obj->reference, 1);
-   util_dynarray_init(&obj->desc_set_refs.refs, NULL);
    if (loader_private) {
       obj->bo = CALLOC_STRUCT(zink_bo);
       obj->transfer_dst = true;
@@ -1250,7 +1248,6 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
       needs_unref = false;
    }
    res->obj = new_obj;
-   zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
    for (unsigned i = 0; i <= res->base.b.last_level; i++) {
       struct pipe_box box = {0, 0, 0,
                              u_minify(res->base.b.width0, i),
@@ -1580,7 +1577,6 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    if (!zink_resource_has_usage(res))
       return false;
 
-   struct zink_resource_object *old_obj = res->obj;
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, NULL, NULL, 0, NULL);
    if (!new_obj) {
       debug_printf("new backing resource alloc failed!");
@@ -1590,7 +1586,6 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    zink_batch_reference_resource_move(&ctx->batch, res);
    res->obj = new_obj;
    zink_resource_rebind(ctx, res);
-   zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
    return true;
 }
 

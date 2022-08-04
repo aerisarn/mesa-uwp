@@ -173,7 +173,6 @@ create_surface(struct pipe_context *pctx,
    surface->base.u.tex.first_layer = templ->u.tex.first_layer;
    surface->base.u.tex.last_layer = templ->u.tex.last_layer;
    surface->obj = zink_resource(pres)->obj;
-   util_dynarray_init(&surface->desc_set_refs.refs, NULL);
 
    init_surface_info(surface, res, ivci);
 
@@ -317,7 +316,6 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
       _mesa_hash_table_remove(&res->surface_cache, he);
       simple_mtx_unlock(&res->surface_mtx);
    }
-   zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
    if (surface->simage_view)
       VKSCR(DestroyImageView)(screen->dev, surface->simage_view, NULL);
    if (surface->is_swapchain) {
@@ -359,7 +357,6 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    struct hash_entry *new_entry = _mesa_hash_table_search_pre_hashed(&res->surface_cache, hash, &ivci);
    if (zink_batch_usage_exists(surface->batch_uses))
       zink_batch_reference_surface(&ctx->batch, surface);
-   zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
    if (new_entry) {
       /* reuse existing surface; old one will be cleaned up naturally */
       struct zink_surface *new_surface = new_entry->data;

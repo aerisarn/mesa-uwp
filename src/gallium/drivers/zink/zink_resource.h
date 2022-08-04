@@ -64,7 +64,6 @@ struct zink_resource_object {
    bool unordered_write;
 
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
-   struct zink_descriptor_refs desc_set_refs;
 
    VkBuffer storage_buffer;
 

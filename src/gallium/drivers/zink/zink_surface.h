@@ -55,7 +55,6 @@ struct zink_surface {
    void *obj; //backing resource object
    uint32_t hash;
    struct zink_batch_usage *batch_uses;
-   struct zink_descriptor_refs desc_set_refs;
 };
 
 /* wrapper object that preserves the gallium expectation of having

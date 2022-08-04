@@ -59,14 +59,6 @@
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
 
-static void
-calc_descriptor_hash_sampler_state(struct zink_sampler_state *sampler_state)
-{
-   void *hash_data = &sampler_state->sampler;
-   size_t data_size = sizeof(VkSampler);
-   sampler_state->hash = XXH32(hash_data, data_size, 0);
-}
-
 void
 debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr)
 {
@@ -467,8 +459,6 @@ zink_create_sampler_state(struct pipe_context *pctx,
          return NULL;
       }
    }
-   util_dynarray_init(&sampler->desc_set_refs.refs, NULL);
-   calc_descriptor_hash_sampler_state(sampler);
    sampler->custom_border_color = need_custom;
    if (!screen->info.have_EXT_non_seamless_cube_map)
       sampler->emulate_nonseamless = !state->seamless_cube_map;
@@ -738,7 +728,6 @@ zink_delete_sampler_state(struct pipe_context *pctx,
 {
    struct zink_sampler_state *sampler = sampler_state;
    struct zink_batch *batch = &zink_context(pctx)->batch;
-   zink_descriptor_set_refs_clear(&sampler->desc_set_refs, sampler_state);
    /* may be called if context_create fails */
    if (batch->state) {
       util_dynarray_append(&batch->state->zombie_samplers, VkSampler,
@@ -830,7 +819,6 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, VkBufferVie
       }
       pipe_reference_init(&buffer_view->reference, 1);
       pipe_resource_reference(&buffer_view->pres, &res->base.b);
-      util_dynarray_init(&buffer_view->desc_set_refs.refs, NULL);
       buffer_view->bvci = *bvci;
       buffer_view->buffer_view = view;
       buffer_view->hash = hash;
@@ -1033,7 +1021,6 @@ zink_destroy_buffer_view(struct zink_screen *screen, struct zink_buffer_view *bu
    simple_mtx_unlock(&res->bufferview_mtx);
    pipe_resource_reference(&buffer_view->pres, NULL);
    VKSCR(DestroyBufferView)(screen->dev, buffer_view->buffer_view, NULL);
-   zink_descriptor_set_refs_clear(&buffer_view->desc_set_refs, buffer_view);
    FREE(buffer_view);
 }
 
@@ -3886,7 +3873,6 @@ rebind_ibo(struct zink_context *ctx, enum pipe_shader_type shader, unsigned slot
    struct zink_resource *res = zink_resource(image_view->base.resource);
    if (!res || res->base.b.target != PIPE_BUFFER)
       return NULL;
-   zink_descriptor_set_refs_clear(&image_view->buffer_view->desc_set_refs, image_view->buffer_view);
    if (zink_batch_usage_exists(image_view->buffer_view->batch_uses))
       zink_batch_reference_bufferview(&ctx->batch, image_view->buffer_view);
    VkBufferViewCreateInfo bvci = image_view->buffer_view->bvci;
@@ -4397,7 +4383,6 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    assert(d->obj);
    assert(s->obj);
    util_idalloc_mt_free(&screen->buffer_ids, delete_buffer_id);
-   zink_descriptor_set_refs_clear(&d->obj->desc_set_refs, d->obj);
    /* add a ref just like check_resource_for_batch_ref() would've */
    if (zink_resource_has_binds(d) && zink_resource_has_usage(d))
       zink_batch_reference_resource(&ctx->batch, d);

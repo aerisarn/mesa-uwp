@@ -55,17 +55,6 @@ enum zink_descriptor_type {
 
 #define ZINK_BINDLESS_IS_BUFFER(HANDLE) (HANDLE >= ZINK_MAX_BINDLESS_HANDLES)
 
-struct zink_descriptor_refs {
-   struct util_dynarray refs;
-};
-
-
-/* hashes of all the named types in a given state */
-struct zink_descriptor_state {
-   bool valid[ZINK_DESCRIPTOR_TYPES];
-   uint32_t state[ZINK_DESCRIPTOR_TYPES];
-};
-
 enum zink_descriptor_size_index {
    ZDS_INDEX_UBO,
    ZDS_INDEX_COMBINED_SAMPLER,
@@ -96,11 +85,6 @@ struct zink_shader;
 struct zink_screen;
 
 
-struct zink_descriptor_state_key {
-   bool exists[ZINK_SHADER_COUNT];
-   uint32_t state[ZINK_SHADER_COUNT];
-};
-
 struct zink_descriptor_layout_key {
    unsigned num_bindings;
    VkDescriptorSetLayoutBinding *bindings;
@@ -117,18 +101,7 @@ struct zink_descriptor_pool_key {
    VkDescriptorPoolSize sizes[4];
 };
 
-struct zink_descriptor_reference {
-   void **ref;
-   bool *invalid;
-};
-
 struct zink_descriptor_data {
-   struct zink_descriptor_state gfx_descriptor_states[ZINK_SHADER_COUNT]; // keep incremental hashes here
-   struct zink_descriptor_state descriptor_states[2]; // gfx, compute
-   struct zink_descriptor_state compact_gfx_descriptor_states[ZINK_SHADER_COUNT]; // keep incremental hashes here
-   struct zink_descriptor_state compact_descriptor_states[2]; // gfx, compute
-   struct hash_table *descriptor_pools[ZINK_DESCRIPTOR_TYPES];
-
    struct zink_descriptor_layout_key *push_layout_keys[2]; //gfx, compute
    struct zink_descriptor_pool *push_pool[2]; //gfx, compute
    struct zink_descriptor_layout *push_dsl[2]; //gfx, compute
@@ -251,10 +224,6 @@ zink_descriptor_layouts_init(struct zink_context *ctx);
 void
 zink_descriptor_layouts_deinit(struct zink_context *ctx);
 
-uint32_t
-zink_get_sampler_view_hash(struct zink_context *ctx, struct zink_sampler_view *sampler_view, bool is_buffer);
-uint32_t
-zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer);
 bool
 zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayout dsl, VkDescriptorPool pool, VkDescriptorSet *sets, unsigned num_sets);
 struct zink_descriptor_layout *
@@ -277,48 +246,10 @@ void
 zink_descriptors_deinit_bindless(struct zink_context *ctx);
 void
 zink_descriptors_update_bindless(struct zink_context *ctx);
-/* these two can't be called in lazy mode */
-void
-zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr);
-void
-zink_descriptor_set_recycle(struct zink_descriptor_set *zds);
 
 
 
 
-
-bool
-zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg);
-
-void
-zink_descriptor_program_deinit(struct zink_context *ctx, struct zink_program *pg);
-
-void
-zink_descriptors_update(struct zink_context *ctx, bool is_compute);
-
-
-void
-zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned, unsigned);
-
-uint32_t
-zink_get_sampler_view_hash(struct zink_context *ctx, struct zink_sampler_view *sampler_view, bool is_buffer);
-uint32_t
-zink_get_image_view_hash(struct zink_context *ctx, struct zink_image_view *image_view, bool is_buffer);
-struct zink_resource *
-zink_get_resource_for_descriptor(struct zink_context *ctx, enum zink_descriptor_type type, enum pipe_shader_type shader, int idx);
-
-void
-zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state *bs);
-void
-zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state *bs);
-bool
-zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *bs);
-
-bool
-zink_descriptors_init(struct zink_context *ctx);
-
-void
-zink_descriptors_deinit(struct zink_context *ctx);
 
 //LAZY
 bool
@@ -351,8 +282,6 @@ void
 zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set);
 void
 zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, uint8_t bind_sets);
-VkDescriptorSet
-zink_descriptors_alloc_lazy_push(struct zink_context *ctx);
 #ifdef __cplusplus
 }
 #endif

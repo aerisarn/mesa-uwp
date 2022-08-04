@@ -84,8 +84,6 @@ enum zink_blit_flags {
 struct zink_sampler_state {
    VkSampler sampler;
    VkSampler sampler_clamped;
-   uint32_t hash;
-   struct zink_descriptor_refs desc_set_refs;
    struct zink_batch_usage *batch_uses;
    bool custom_border_color;
    bool emulate_nonseamless;
@@ -98,7 +96,6 @@ struct zink_buffer_view {
    VkBufferView buffer_view;
    uint32_t hash;
    struct zink_batch_usage *batch_uses;
-   struct zink_descriptor_refs desc_set_refs;
 };
 
 struct zink_sampler_view {
