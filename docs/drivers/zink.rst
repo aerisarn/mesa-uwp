@@ -51,6 +51,7 @@ Here's a list of those requirements:
 
   * `VK_KHR_swapchain_mutable_format`_
   * `VK_EXT_border_color_swizzle`_
+  * `VK_KHR_descriptor_update_template`_
 
 In addition to this, `VK_KHR_external_memory`_ is required to support the
 DRI code-path.
@@ -255,11 +256,7 @@ changing the descriptor manager may improve performance:
 ``auto``
    Automatically detect best mode. This is the default.
 ``lazy``
-   Disable caching and attempt to use the least amount of CPU.
-``cached``
-   Use caching to reuse descriptor sets.
-``notemplates``
-   The same as `auto`, but disables the use of `VK_KHR_descriptor_templates`.
+   Attempt to use the least amount of CPU by binding descriptors opportunistically.
 
 Debugging
 ---------
@@ -326,3 +323,4 @@ questions, don't hesitate to visit `#zink on OFTC
 .. _VK_KHR_swapchain_mutable_format: https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_KHR_swapchain_mutable_format.html
 .. _VK_EXT_border_color_swizzle: https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_EXT_border_color_swizzle.html
 .. _VK_EXT_depth_clip_enable: https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_EXT_depth_clip_enable.html
+.. _VK_KHR_descriptor_update_template: https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/VK_KHR_descriptor_update_template.html

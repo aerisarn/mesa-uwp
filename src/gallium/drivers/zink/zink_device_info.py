@@ -226,7 +226,7 @@ EXTENSIONS = [
         alias="push",
         properties=True),
     Extension("VK_KHR_descriptor_update_template",
-        alias="template"),
+        alias="template", required=True),
     Extension("VK_EXT_line_rasterization",
         alias="line_rast",
         properties=True,
