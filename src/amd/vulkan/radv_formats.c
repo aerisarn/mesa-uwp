@@ -172,6 +172,7 @@ radv_is_vertex_buffer_format_supported(VkFormat format)
    case 8:
    case 16:
    case 32:
+   case 64:
       return true;
    default:
       return false;
