@@ -267,12 +267,15 @@ equals_gfx_pipeline_state(const void *a, const void *b)
 {
    const struct zink_gfx_pipeline_state *sa = (const struct zink_gfx_pipeline_state *)a;
    const struct zink_gfx_pipeline_state *sb = (const struct zink_gfx_pipeline_state *)b;
-   if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
-      return false;
+   if (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT) {
+      if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
+         return false;
+   }
    /* dynamic vs rp */
    if (!!sa->render_pass != !!sb->render_pass)
       return false;
-   if (DYNAMIC_STATE == ZINK_PIPELINE_NO_DYNAMIC_STATE || !sa->uses_dynamic_stride) {
+   if (DYNAMIC_STATE == ZINK_PIPELINE_NO_DYNAMIC_STATE ||
+       (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT && !sa->uses_dynamic_stride)) {
       if (sa->vertex_buffers_enabled_mask != sb->vertex_buffers_enabled_mask)
          return false;
       /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
