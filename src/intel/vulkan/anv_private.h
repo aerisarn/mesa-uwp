@@ -1157,7 +1157,7 @@ struct anv_device {
     struct vk_device                            vk;
 
     struct anv_physical_device *                physical;
-    struct intel_device_info                      info;
+    const struct intel_device_info *            info;
     struct isl_device                           isl_dev;
     int                                         context_id;
     int                                         fd;
@@ -1596,7 +1596,7 @@ static inline void
 write_reloc(const struct anv_device *device, void *p, uint64_t v, bool flush)
 {
    unsigned reloc_size = 0;
-   if (device->info.ver >= 8) {
+   if (device->info->ver >= 8) {
       reloc_size = sizeof(uint64_t);
       *(uint64_t *)p = intel_canonical_address(v);
    } else {
@@ -3702,7 +3702,7 @@ anv_image_get_fast_clear_type_addr(const struct anv_device *device,
    struct anv_address addr =
       anv_image_get_clear_color_addr(device, image, aspect);
 
-   const unsigned clear_color_state_size = device->info.ver >= 10 ?
+   const unsigned clear_color_state_size = device->info->ver >= 10 ?
       device->isl_dev.ss.clear_color_state_size :
       device->isl_dev.ss.clear_value_size;
    return anv_address_add(addr, clear_color_state_size);
@@ -3800,7 +3800,7 @@ anv_image_plane_uses_aux_map(const struct anv_device *device,
                              const struct anv_image *image,
                              uint32_t plane)
 {
-   return device->info.has_aux_map &&
+   return device->info->has_aux_map &&
       isl_aux_usage_has_ccs(image->planes[plane].aux_usage);
 }
 

@@ -323,7 +323,7 @@ anv_measure_reset(struct anv_cmd_buffer *cmd_buffer)
     * yet been processed
     */
    intel_measure_gather(&device->physical->measure_device,
-                        &device->info);
+                        device->info);
 
    assert(cmd_buffer->device != NULL);
 

@@ -309,7 +309,7 @@ populate_base_prog_key(const struct anv_device *device,
    key->limit_trig_input_range =
       device->physical->instance->limit_trig_input_range;
 
-   populate_sampler_prog_key(&device->info, &key->tex);
+   populate_sampler_prog_key(device->info, &key->tex);
 }
 
 static void
@@ -1600,7 +1600,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
       next_stage = &stages[s];
    }
 
-   if (pipeline->base.device->info.ver >= 12 &&
+   if (pipeline->base.device->info->ver >= 12 &&
        pipeline->view_mask != 0) {
       /* For some pipelines HW Primitive Replication can be used instead of
        * instancing to implement Multiview.  This depend on how viewIndex is
@@ -1653,7 +1653,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
     * We iterate backwards in the stage and stop on the first shader that can
     * set the value.
     */
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    if (devinfo->has_coarse_pixel_primitive_and_cb &&
        stages[MESA_SHADER_FRAGMENT].info &&
        stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
@@ -1988,7 +1988,7 @@ anv_compute_pipeline_create(struct anv_device *device,
       return result;
    }
 
-   anv_genX(&device->info, compute_pipeline_emit)(pipeline);
+   anv_genX(device->info, compute_pipeline_emit)(pipeline);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
 
@@ -2046,7 +2046,7 @@ VkResult anv_CreateComputePipelines(
 void
 anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm)
 {
-   const struct intel_device_info *devinfo = &pipeline->device->info;
+   const struct intel_device_info *devinfo = pipeline->device->info;
 
    const struct intel_l3_weights w =
       intel_get_default_l3_weights(devinfo, true, needs_slm);
@@ -2191,7 +2191,7 @@ anv_graphics_pipeline_create(struct anv_device *device,
       return result;
    }
 
-   anv_genX(&device->info, graphics_pipeline_emit)(pipeline, &state);
+   anv_genX(device->info, graphics_pipeline_emit)(pipeline, &state);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
 
@@ -2491,7 +2491,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
                                  struct vk_pipeline_cache *cache,
                                  const VkRayTracingPipelineCreateInfoKHR *info)
 {
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    VkResult result;
 
    VkPipelineCreationFeedback pipeline_feedback = {
@@ -2771,7 +2771,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
       nir_shader *trivial_return_nir =
          brw_nir_create_trivial_return_shader(device->physical->compiler, tmp_ctx);
 
-      NIR_PASS_V(trivial_return_nir, brw_nir_lower_rt_intrinsics, &device->info);
+      NIR_PASS_V(trivial_return_nir, brw_nir_lower_rt_intrinsics, device->info);
 
       struct anv_pipeline_bind_map bind_map = {
          .surface_count = 0,
@@ -2942,7 +2942,7 @@ anv_ray_tracing_pipeline_create(
       return result;
    }
 
-   anv_genX(&device->info, ray_tracing_pipeline_emit)(pipeline);
+   anv_genX(device->info, ray_tracing_pipeline_emit)(pipeline);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
 

@@ -148,7 +148,7 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
    }
 
    u_foreach_bit(a, vi->attributes_valid) {
-      enum isl_format format = anv_get_isl_format(&pipeline->base.device->info,
+      enum isl_format format = anv_get_isl_format(pipeline->base.device->info,
                                                   vi->attributes[a].format,
                                                   VK_IMAGE_ASPECT_COLOR_BIT,
                                                   VK_IMAGE_TILING_LINEAR);
@@ -273,7 +273,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                      const unsigned entry_size[4],
                      enum intel_urb_deref_block_size *deref_block_size)
 {
-   const struct intel_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = device->info;
 
    unsigned entries[4];
    unsigned start[4];
@@ -322,7 +322,7 @@ static void
 emit_urb_setup_mesh(struct anv_graphics_pipeline *pipeline,
                     enum intel_urb_deref_block_size *deref_block_size)
 {
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
 
    const struct brw_task_prog_data *task_prog_data =
       anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK) ?
@@ -841,7 +841,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
        rp->depth_attachment_format != VK_FORMAT_UNDEFINED) {
       assert(vk_format_has_depth(rp->depth_attachment_format));
       enum isl_format isl_format =
-         anv_get_isl_format(&pipeline->base.device->info,
+         anv_get_isl_format(pipeline->base.device->info,
                             rp->depth_attachment_format,
                             VK_IMAGE_ASPECT_DEPTH_BIT,
                             VK_IMAGE_TILING_OPTIMAL);
@@ -1018,7 +1018,7 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       surface_count = map->surface_count;
    }
 
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    uint32_t *blend_state_start = devinfo->ver >= 8 ?
       pipeline->gfx8.blend_state : pipeline->gfx7.blend_state;
    uint32_t *state_pos = blend_state_start;
@@ -1363,7 +1363,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
        *    2. Send SO_DECL NP state
        *    3. Send 3D State SOL with SOL Enabled
        */
-      if (intel_device_info_is_dg2(&pipeline->base.device->info))
+      if (intel_device_info_is_dg2(pipeline->base.device->info))
          anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_STREAMOUT), so);
 
       uint32_t *dw = anv_batch_emitn(&pipeline->base.batch, 3 + 2 * max_decls,
@@ -1514,7 +1514,7 @@ get_scratch_surf(struct anv_pipeline *pipeline,
 static void
 emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
 {
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
    const struct anv_shader_bin *vs_bin =
       pipeline->shaders[MESA_SHADER_VERTEX];
@@ -1603,7 +1603,7 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
       return;
    }
 
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct anv_shader_bin *tcs_bin =
       pipeline->shaders[MESA_SHADER_TESS_CTRL];
    const struct anv_shader_bin *tes_bin =
@@ -1748,7 +1748,7 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
 static void
 emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 {
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct anv_shader_bin *gs_bin =
       pipeline->shaders[MESA_SHADER_GEOMETRY];
 
@@ -1905,7 +1905,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
       wm.LineStippleEnable = rs->line.stipple.enable;
    }
 
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    uint32_t *dws = devinfo->ver >= 8 ? pipeline->gfx8.wm : pipeline->gfx7.wm;
    GENX(3DSTATE_WM_pack)(NULL, dws, &wm);
 }
@@ -1916,7 +1916,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
                 const struct vk_color_blend_state *cb)
 {
    UNUSED const struct intel_device_info *devinfo =
-      &pipeline->base.device->info;
+      pipeline->base.device->info;
    const struct anv_shader_bin *fs_bin =
       pipeline->shaders[MESA_SHADER_FRAGMENT];
 
@@ -2182,7 +2182,7 @@ emit_task_state(struct anv_graphics_pipeline *pipeline)
          get_scratch_surf(&pipeline->base, MESA_SHADER_TASK, task_bin);
    }
 
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct brw_task_prog_data *task_prog_data = get_task_prog_data(pipeline);
    const struct brw_cs_dispatch_info task_dispatch =
       brw_cs_get_dispatch_info(devinfo, &task_prog_data->base, NULL);
@@ -2235,7 +2235,7 @@ emit_mesh_state(struct anv_graphics_pipeline *pipeline)
       /* TODO(mesh): MaximumNumberofThreadGroups. */
    }
 
-   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
    const struct brw_cs_dispatch_info mesh_dispatch =
       brw_cs_get_dispatch_info(devinfo, &mesh_prog_data->base, NULL);
@@ -2328,7 +2328,7 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
     * whole fixed function pipeline" means to emit a PIPE_CONTROL with the "CS
     * Stall" bit set.
     */
-   if (device->info.platform == INTEL_PLATFORM_IVB)
+   if (device->info->platform == INTEL_PLATFORM_IVB)
       gfx7_emit_vs_workaround_flush(brw);
 #endif
 
@@ -2384,7 +2384,7 @@ genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline)
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
    const UNUSED struct anv_shader_bin *cs_bin = pipeline->cs;
-   const struct intel_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = device->info;
 
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
@@ -2400,7 +2400,7 @@ void
 genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline)
 {
    struct anv_device *device = pipeline->base.device;
-   const struct intel_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = device->info;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
 
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);

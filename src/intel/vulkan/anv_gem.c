@@ -102,7 +102,7 @@ anv_gem_mmap_offset(struct anv_device *device, uint32_t gem_handle,
 {
    struct drm_i915_gem_mmap_offset gem_mmap = {
       .handle = gem_handle,
-      .flags = device->info.has_local_mem ? I915_MMAP_OFFSET_FIXED :
+      .flags = device->info->has_local_mem ? I915_MMAP_OFFSET_FIXED :
          (flags & I915_MMAP_WC) ? I915_MMAP_OFFSET_WC : I915_MMAP_OFFSET_WB,
    };
    assert(offset == 0);
@@ -122,7 +122,7 @@ static void*
 anv_gem_mmap_legacy(struct anv_device *device, uint32_t gem_handle,
                     uint64_t offset, uint64_t size, uint32_t flags)
 {
-   assert(!device->info.has_local_mem);
+   assert(!device->info->has_local_mem);
 
    struct drm_i915_gem_mmap gem_mmap = {
       .handle = gem_handle,
@@ -286,7 +286,7 @@ anv_gem_set_tiling(struct anv_device *device,
    /* On discrete platforms we don't have DRM_IOCTL_I915_GEM_SET_TILING. So
     * nothing needs to be done.
     */
-   if (!device->info.has_tiling_uapi)
+   if (!device->info->has_tiling_uapi)
       return 0;
 
    /* set_tiling overwrites the input on the error path, so we have to open

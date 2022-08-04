@@ -244,7 +244,7 @@ genX(emit_so_memcpy_init)(struct anv_memcpy_state *state,
    state->batch = batch;
    state->device = device;
 
-   const struct intel_l3_config *cfg = intel_get_default_l3_config(&device->info);
+   const struct intel_l3_config *cfg = intel_get_default_l3_config(device->info);
    genX(emit_l3_config)(batch, device, cfg);
 
    anv_batch_emit(batch, GENX(PIPELINE_SELECT), ps) {
@@ -299,7 +299,7 @@ genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
 
    if (!cmd_buffer->state.current_l3_config) {
       const struct intel_l3_config *cfg =
-         intel_get_default_l3_config(&cmd_buffer->device->info);
+         intel_get_default_l3_config(cmd_buffer->device->info);
       genX(cmd_buffer_config_l3)(cmd_buffer, cfg);
    }
 

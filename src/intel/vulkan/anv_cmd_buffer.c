@@ -240,7 +240,7 @@ VkResult anv_ResetCommandBuffer(
 void
 anv_cmd_buffer_emit_state_base_address(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
    anv_genX(devinfo, cmd_buffer_emit_state_base_address)(cmd_buffer);
 }
 
@@ -253,7 +253,7 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
                                   uint32_t base_layer,
                                   uint32_t layer_count)
 {
-   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
    anv_genX(devinfo, cmd_buffer_mark_image_written)(cmd_buffer, image,
                                                     aspect, aux_usage,
                                                     level, base_layer,
@@ -263,7 +263,7 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
 void
 anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
    anv_genX(devinfo, cmd_emit_conditional_render_predicate)(cmd_buffer);
 }
 
@@ -314,7 +314,7 @@ anv_cmd_buffer_set_ray_query_buffer(struct anv_cmd_buffer *cmd_buffer,
    struct anv_device *device = cmd_buffer->device;
 
    uint64_t ray_shadow_size =
-      align_u64(brw_rt_ray_queries_shadow_stacks_size(&device->info,
+      align_u64(brw_rt_ray_queries_shadow_stacks_size(device->info,
                                                       pipeline->ray_queries),
                 4096);
    if (ray_shadow_size > 0 &&
@@ -359,7 +359,7 @@ anv_cmd_buffer_set_ray_query_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    /* Fill the push constants & mark them dirty. */
    struct anv_state ray_query_global_state =
-      anv_genX(&device->info, cmd_buffer_ray_query_globals)(cmd_buffer);
+      anv_genX(device->info, cmd_buffer_ray_query_globals)(cmd_buffer);
 
    struct anv_address ray_query_globals_addr = (struct anv_address) {
       .bo = device->dynamic_state_pool.block_pool.bo,
@@ -736,7 +736,7 @@ anv_cmd_buffer_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer)
 struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
    struct anv_push_constants *data =
       &cmd_buffer->state.compute.base.push_constants;
    struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
@@ -751,7 +751,7 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
       return (struct anv_state) { .offset = 0 };
 
    const unsigned push_constant_alignment =
-      cmd_buffer->device->info.ver < 8 ? 32 : 64;
+      cmd_buffer->device->info->ver < 8 ? 32 : 64;
    const unsigned aligned_total_push_constants_size =
       ALIGN(total_push_constants_size, push_constant_alignment);
    struct anv_state state;
@@ -1076,7 +1076,7 @@ void anv_CmdSetRayTracingPipelineStackSizeKHR(
    if (rt->scratch.layout.total_size == 1 << stack_size_log2)
       return;
 
-   brw_rt_compute_scratch_layout(&rt->scratch.layout, &device->info,
+   brw_rt_compute_scratch_layout(&rt->scratch.layout, device->info,
                                  stack_ids_per_dss, 1 << stack_size_log2);
 
    unsigned bucket = stack_size_log2 - 10;

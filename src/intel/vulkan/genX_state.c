@@ -44,10 +44,10 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
 {
 #if GFX_VER == 11
    /* Gfx11 hardware has two pixel pipes at most. */
-   for (unsigned i = 2; i < ARRAY_SIZE(device->info.ppipe_subslices); i++)
-      assert(device->info.ppipe_subslices[i] == 0);
+   for (unsigned i = 2; i < ARRAY_SIZE(device->info->ppipe_subslices); i++)
+      assert(device->info->ppipe_subslices[i] == 0);
 
-   if (device->info.ppipe_subslices[0] == device->info.ppipe_subslices[1])
+   if (device->info->ppipe_subslices[0] == device->info->ppipe_subslices[1])
      return;
 
    if (!device->slice_hash.alloc_size) {
@@ -55,8 +55,8 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
       device->slice_hash =
          anv_state_pool_alloc(&device->dynamic_state_pool, size, 64);
 
-      const bool flip = device->info.ppipe_subslices[0] <
-                     device->info.ppipe_subslices[1];
+      const bool flip = device->info->ppipe_subslices[0] <
+                     device->info->ppipe_subslices[1];
       struct GENX(SLICE_HASH_TABLE) table;
       intel_compute_pixel_hash_table_3way(16, 16, 3, 3, flip, table.Entry[0]);
 
@@ -79,12 +79,12 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
 
    for (unsigned n = 0; n < ARRAY_SIZE(ppipes_of); n++) {
       for (unsigned p = 0; p < 3; p++)
-         ppipes_of[n] += (device->info.ppipe_subslices[p] == n);
+         ppipes_of[n] += (device->info->ppipe_subslices[p] == n);
    }
 
    /* Gfx12 has three pixel pipes. */
-   for (unsigned p = 3; p < ARRAY_SIZE(device->info.ppipe_subslices); p++)
-      assert(device->info.ppipe_subslices[p] == 0);
+   for (unsigned p = 3; p < ARRAY_SIZE(device->info->ppipe_subslices); p++)
+      assert(device->info->ppipe_subslices[p] == 0);
 
    if (ppipes_of[2] == 3 || ppipes_of[0] == 2) {
       /* All three pixel pipes have the maximum number of active dual
@@ -117,8 +117,8 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
    }
 #elif GFX_VERx10 == 125
    uint32_t ppipe_mask = 0;
-   for (unsigned p = 0; p < ARRAY_SIZE(device->info.ppipe_subslices); p++) {
-      if (device->info.ppipe_subslices[p])
+   for (unsigned p = 0; p < ARRAY_SIZE(device->info->ppipe_subslices); p++) {
+      if (device->info->ppipe_subslices[p])
          ppipe_mask |= (1u << p);
    }
    assert(ppipe_mask);
@@ -168,7 +168,7 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
    /* Starting with GFX version 11, SLM is no longer part of the L3$ config
     * so it never changes throughout the lifetime of the VkDevice.
     */
-   const struct intel_l3_config *cfg = intel_get_default_l3_config(&device->info);
+   const struct intel_l3_config *cfg = intel_get_default_l3_config(device->info);
    genX(emit_l3_config)(batch, device, cfg);
    device->l3_config = cfg;
 #endif
@@ -319,7 +319,7 @@ init_render_queue_state(struct anv_queue *queue)
    /* hardware specification recommends disabling repacking for
     * the compatibility with decompression mechanism in display controller.
     */
-   if (device->info.disable_ccs_repack) {
+   if (device->info->disable_ccs_repack) {
       anv_batch_write_reg(&batch, GENX(CACHE_MODE_0), cm0) {
          cm0.DisableRepackingforCompression = true;
          cm0.DisableRepackingforCompressionMask = true;
@@ -368,7 +368,7 @@ init_render_queue_state(struct anv_queue *queue)
 #endif
 
 #if GFX_VER == 12
-   if (device->info.has_aux_map) {
+   if (device->info->has_aux_map) {
       uint64_t aux_base_addr = intel_aux_map_get_base(device->aux_map_ctx);
       assert(aux_base_addr % (32 * 1024) == 0);
       anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
@@ -440,9 +440,9 @@ init_compute_queue_state(struct anv_queue *queue)
 }
 
 void
-genX(init_physical_device_state)(ASSERTED struct anv_physical_device *device)
+genX(init_physical_device_state)(ASSERTED struct anv_physical_device *pdevice)
 {
-   assert(device->info.verx10 == GFX_VERx10);
+   assert(pdevice->info.verx10 == GFX_VERx10);
 }
 
 VkResult
@@ -581,7 +581,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
                      const struct anv_device *device,
                      const struct intel_l3_config *cfg)
 {
-   UNUSED const struct intel_device_info *devinfo = &device->info;
+   UNUSED const struct intel_device_info *devinfo = device->info;
 
 #if GFX_VER >= 8
 

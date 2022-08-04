@@ -117,7 +117,7 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
    properties[p++] = metric_id;
 
    properties[p++] = DRM_I915_PERF_PROP_OA_FORMAT;
-   properties[p++] = device->info.ver >= 8 ?
+   properties[p++] = device->info->ver >= 8 ?
       I915_OA_FORMAT_A32u40_A4u32_B8_C8 :
       I915_OA_FORMAT_A45_B8_C8;
 
@@ -139,7 +139,7 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
     * support it.
     */
    if (intel_perf_has_global_sseu(device->physical->perf) &&
-       device->info.verx10 < 125) {
+       device->info->verx10 < 125) {
       properties[p++] = DRM_I915_PERF_PROP_GLOBAL_SSEU;
       properties[p++] = (uintptr_t) &device->physical->perf->sseu;
    }

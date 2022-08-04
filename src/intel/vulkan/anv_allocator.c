@@ -374,7 +374,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
 {
    VkResult result;
 
-   if (device->info.verx10 >= 125) {
+   if (device->info->verx10 >= 125) {
       /* Make sure VMA addresses are 2MiB aligned for the block pool */
       assert(anv_is_aligned(start_address, 2 * 1024 * 1024));
       assert(anv_is_aligned(initial_size, 2 * 1024 * 1024));
@@ -845,7 +845,7 @@ anv_state_pool_init(struct anv_state_pool *pool,
    assert(start_offset < INT32_MAX - (int32_t)BLOCK_POOL_MEMFD_SIZE);
 
    uint32_t initial_size = block_size * 16;
-   if (device->info.verx10 >= 125)
+   if (device->info->verx10 >= 125)
       initial_size = MAX2(initial_size, 2 * 1024 * 1024);
 
    VkResult result = anv_block_pool_init(&pool->block_pool, device, name,
@@ -1455,7 +1455,7 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
 
    assert(stage < ARRAY_SIZE(pool->bos));
 
-   const struct intel_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = device->info;
 
    /* On GFX version 12.5, scratch access changed to a surface-based model.
     * Instead of each shader type having its own layout based on IDs passed
@@ -1635,13 +1635,13 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
    uint32_t align = 4096;
 
    /* Gen12 CCS surface addresses need to be 64K aligned. */
-   if (device->info.ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
+   if (device->info->ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
       align = 64 * 1024;
 
    /* For XeHP, lmem and smem cannot share a single PDE, which means they
     * can't live in the same 2MiB aligned region.
     */
-   if (device->info.verx10 >= 125)
+   if (device->info->verx10 >= 125)
        align = 2 * 1024 * 1024;
 
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
@@ -1683,7 +1683,7 @@ anv_device_alloc_bo(struct anv_device *device,
    size = align_u64(size, 4096);
 
    uint64_t ccs_size = 0;
-   if (device->info.has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
+   if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
       /* Align the size up to the next multiple of 64K so we don't have any
        * AUX-TT entries pointing from a 64K page to itself.
        */
@@ -1737,7 +1737,7 @@ anv_device_alloc_bo(struct anv_device *device,
       .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
       .has_client_visible_address =
          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
-      .has_implicit_ccs = ccs_size > 0 || (device->info.verx10 >= 125 &&
+      .has_implicit_ccs = ccs_size > 0 || (device->info->verx10 >= 125 &&
          (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM)),
    };
 
@@ -1764,7 +1764,7 @@ anv_device_alloc_bo(struct anv_device *device,
        * I915_CACHING_CACHED, which on non-LLC means snooped so there's no
        * need to do this there.
        */
-      if (!device->info.has_llc) {
+      if (!device->info->has_llc) {
          anv_gem_set_caching(device, new_bo.gem_handle,
                              I915_CACHING_CACHED);
       }
@@ -1781,7 +1781,7 @@ anv_device_alloc_bo(struct anv_device *device,
    }
 
    if (new_bo._ccs_size > 0) {
-      assert(device->info.has_aux_map);
+      assert(device->info->has_aux_map);
       intel_aux_map_add_mapping(device->aux_map_ctx,
                                 intel_canonical_address(new_bo.offset),
                                 intel_canonical_address(new_bo.offset + new_bo.size),
@@ -1846,7 +1846,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
 
    assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
-          (device->physical->has_implicit_ccs && device->info.has_aux_map));
+          (device->physical->has_implicit_ccs && device->info->has_aux_map));
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
@@ -1936,7 +1936,7 @@ anv_device_import_bo(struct anv_device *device,
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
 
    assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
-          (device->physical->has_implicit_ccs && device->info.has_aux_map));
+          (device->physical->has_implicit_ccs && device->info->has_aux_map));
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
@@ -2153,7 +2153,7 @@ anv_device_release_bo(struct anv_device *device,
 
    if (bo->_ccs_size > 0) {
       assert(device->physical->has_implicit_ccs);
-      assert(device->info.has_aux_map);
+      assert(device->info->has_aux_map);
       assert(bo->has_implicit_ccs);
       intel_aux_map_unmap_range(device->aux_map_ctx,
                                 intel_canonical_address(bo->offset),

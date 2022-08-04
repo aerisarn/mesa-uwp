@@ -164,6 +164,6 @@ bool intel_measure_ready(struct intel_measure_batch *batch);
 
 struct intel_device_info;
 void intel_measure_gather(struct intel_measure_device *device,
-                          struct intel_device_info *info);
+                          const struct intel_device_info *info);
 
 #endif /* INTEL_MEASURE_H */

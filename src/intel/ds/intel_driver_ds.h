@@ -151,7 +151,7 @@ struct intel_ds_flush_data {
 void intel_driver_ds_init(void);
 
 void intel_ds_device_init(struct intel_ds_device *device,
-                          struct intel_device_info *devinfo,
+                          const struct intel_device_info *devinfo,
                           int drm_fd,
                           uint32_t gpu_id,
                           enum intel_ds_api api);

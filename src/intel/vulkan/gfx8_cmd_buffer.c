@@ -332,7 +332,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          GENX(3DSTATE_SF_header),
       };
 #if GFX_VER == 8
-      if (cmd_buffer->device->info.platform == INTEL_PLATFORM_CHV) {
+      if (cmd_buffer->device->info->platform == INTEL_PLATFORM_CHV) {
          sf.CHVLineWidth = dyn->rs.line.width;
       } else {
          sf.LineWidth = dyn->rs.line.width;
@@ -592,7 +592,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                                                       RR_FREE;
          vfg.DistributionGranularity = BatchLevelGranularity;
          /* Wa_14014890652 */
-         if (intel_device_info_is_dg2(&cmd_buffer->device->info))
+         if (intel_device_info_is_dg2(cmd_buffer->device->info))
             vfg.GranularityThresholdDisable = 1;
          vfg.ListCutIndexEnable = dyn->ia.primitive_restart_enable;
          /* 192 vertices for TRILIST_ADJ */

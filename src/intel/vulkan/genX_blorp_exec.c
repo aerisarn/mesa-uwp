@@ -386,7 +386,7 @@ genX(blorp_exec)(struct blorp_batch *batch,
 
    if (!cmd_buffer->state.current_l3_config) {
       const struct intel_l3_config *cfg =
-         intel_get_default_l3_config(&cmd_buffer->device->info);
+         intel_get_default_l3_config(cmd_buffer->device->info);
       genX(cmd_buffer_config_l3)(cmd_buffer, cfg);
    }
 

@@ -588,7 +588,7 @@ emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
       GFX8_MI_BATCH_BUFFER_START_length - GFX8_MI_BATCH_BUFFER_START_length_bias;
 
    anv_batch_emit(&cmd_buffer->batch, GFX8_MI_BATCH_BUFFER_START, bbs) {
-      bbs.DWordLength               = cmd_buffer->device->info.ver < 8 ?
+      bbs.DWordLength               = cmd_buffer->device->info->ver < 8 ?
                                       gfx7_length : gfx8_length;
       bbs.SecondLevelBatchBuffer    = Firstlevelbatch;
       bbs.AddressSpaceIndicator     = ASI_PPGTT;
@@ -792,7 +792,7 @@ anv_cmd_buffer_alloc_binding_table(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->bt_next.map += bt_size;
    cmd_buffer->bt_next.alloc_size -= bt_size;
 
-   if (cmd_buffer->device->info.verx10 >= 125) {
+   if (cmd_buffer->device->info->verx10 >= 125) {
       /* We're using 3DSTATE_BINDING_TABLE_POOL_ALLOC to change the binding
        * table address independently from surface state base address.  We no
        * longer need any sort of offsetting.
@@ -1018,7 +1018,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
           * prefetch.
           */
          if (cmd_buffer->batch_bos.next == cmd_buffer->batch_bos.prev) {
-            const struct intel_device_info *devinfo = &cmd_buffer->device->info;
+            const struct intel_device_info *devinfo = cmd_buffer->device->info;
             /* Careful to have everything in signed integer. */
             int32_t prefetch_len = devinfo->cs_prefetch_size;
             int32_t batch_len =
@@ -2033,7 +2033,7 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
    if (result != VK_SUCCESS)
       goto error;
 
-   int ret = queue->device->info.no_hw ? 0 :
+   int ret = queue->device->info->no_hw ? 0 :
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
    if (ret)
       result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
@@ -2253,13 +2253,13 @@ anv_queue_exec_locked(struct anv_queue *queue,
          .rsvd1 = device->context_id,
       };
 
-      int ret = queue->device->info.no_hw ? 0 :
+      int ret = queue->device->info->no_hw ? 0 :
          anv_gem_execbuffer(queue->device, &query_pass_execbuf);
       if (ret)
          result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
    }
 
-   int ret = queue->device->info.no_hw ? 0 :
+   int ret = queue->device->info->no_hw ? 0 :
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
    if (ret)
       result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
@@ -2388,7 +2388,7 @@ anv_queue_submit(struct vk_queue *vk_queue,
    struct anv_device *device = queue->device;
    VkResult result;
 
-   if (queue->device->info.no_hw) {
+   if (queue->device->info->no_hw) {
       for (uint32_t i = 0; i < submit->signal_count; i++) {
          result = vk_sync_signal(&device->vk,
                                  submit->signals[i].sync,
@@ -2419,7 +2419,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
    VkResult result = VK_SUCCESS;
    int err;
 
-   if (queue->device->info.no_hw)
+   if (queue->device->info->no_hw)
       return VK_SUCCESS;
 
    /* This is only used by device init so we can assume the queue is empty and

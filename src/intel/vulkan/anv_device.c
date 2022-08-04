@@ -2901,7 +2901,7 @@ anv_state_pool_emit_data(struct anv_state_pool *pool, size_t size, size_t align,
 static void
 anv_device_init_border_colors(struct anv_device *device)
 {
-   if (device->info.platform == INTEL_PLATFORM_HSW) {
+   if (device->info->platform == INTEL_PLATFORM_HSW) {
       static const struct hsw_border_color border_colors[] = {
          [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] =  { .float32 = { 0.0, 0.0, 0.0, 0.0 } },
          [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] =       { .float32 = { 0.0, 0.0, 0.0, 1.0 } },
@@ -3271,7 +3271,7 @@ VkResult anv_CreateDevice(
       }
    }
 
-   device->info = physical_device->info;
+   device->info = &physical_device->info;
    device->isl_dev = physical_device->isl_dev;
 
    /* On Broadwell and later, we can use batch chaining to more efficiently
@@ -3279,7 +3279,7 @@ VkResult anv_CreateDevice(
     * command parser gets in the way and we have to fall back to growing
     * the batch.
     */
-   device->can_chain_batches = device->info.ver >= 8;
+   device->can_chain_batches = device->info->ver >= 8;
 
    device->robust_buffer_access = robust_buffer_access;
 
@@ -3327,7 +3327,7 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_general_state_pool;
 
-   if (device->info.ver >= 8) {
+   if (device->info->ver >= 8) {
       /* The border color pointer is limited to 24 bits, so we need to make
        * sure that any such color used at any point in the program doesn't
        * exceed that limit.
@@ -3352,7 +3352,7 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_instruction_state_pool;
 
-   if (device->info.verx10 >= 125) {
+   if (device->info->verx10 >= 125) {
       /* We're using 3DSTATE_BINDING_TABLE_POOL_ALLOC to give the binding
        * table its own base address separately from surface state base.
        */
@@ -3373,7 +3373,7 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_surface_state_pool;
 
-   if (device->info.has_aux_map) {
+   if (device->info->has_aux_map) {
       device->aux_map_ctx = intel_aux_map_init(device, &aux_map_allocator,
                                                &physical_device->info);
       if (!device->aux_map_ctx)
@@ -3404,7 +3404,7 @@ VkResult anv_CreateDevice(
 
    if (device->vk.enabled_extensions.KHR_ray_query) {
       uint32_t ray_queries_size =
-         align_u32(brw_rt_ray_queries_hw_stacks_size(&device->info), 4096);
+         align_u32(brw_rt_ray_queries_hw_stacks_size(device->info), 4096);
 
       result = anv_device_alloc_bo(device, "ray queries",
                                    ray_queries_size,
@@ -3419,11 +3419,11 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_ray_query_bo;
 
-   if (device->info.ver >= 12 &&
+   if (device->info->ver >= 12 &&
        device->vk.enabled_extensions.KHR_fragment_shading_rate) {
       uint32_t n_cps_states = 3 * 3; /* All combinaisons of X by Y CP sizes (1, 2, 4) */
 
-      if (device->info.has_coarse_pixel_primitive_and_cb)
+      if (device->info->has_coarse_pixel_primitive_and_cb)
          n_cps_states *= 5 * 5; /* 5 combiners by 2 operators */
 
       n_cps_states += 1; /* Disable CPS */
@@ -3433,12 +3433,12 @@ VkResult anv_CreateDevice(
 
       device->cps_states =
          anv_state_pool_alloc(&device->dynamic_state_pool,
-                              n_cps_states * CPS_STATE_length(&device->info) * 4,
+                              n_cps_states * CPS_STATE_length(device->info) * 4,
                               32);
       if (device->cps_states.map == NULL)
          goto fail_trivial_batch;
 
-      anv_genX(&device->info, init_cps_device_state)(device);
+      anv_genX(device->info, init_cps_device_state)(device);
    }
 
    /* Allocate a null surface state at surface state offset 0.  This makes
@@ -3458,7 +3458,7 @@ VkResult anv_CreateDevice(
    /* TODO(RT): Do we want some sort of data structure for this? */
    memset(device->rt_scratch_bos, 0, sizeof(device->rt_scratch_bos));
 
-   result = anv_genX(&device->info, init_device_state)(device);
+   result = anv_genX(device->info, init_device_state)(device);
    if (result != VK_SUCCESS)
       goto fail_trivial_batch_bo_and_scratch_pool;
 
@@ -3515,7 +3515,7 @@ VkResult anv_CreateDevice(
  fail_workaround_bo:
    anv_device_release_bo(device, device->workaround_bo);
  fail_surface_aux_map_pool:
-   if (device->info.has_aux_map) {
+   if (device->info->has_aux_map) {
       intel_aux_map_finish(device->aux_map_ctx);
       device->aux_map_ctx = NULL;
    }
@@ -3527,7 +3527,7 @@ VkResult anv_CreateDevice(
  fail_instruction_state_pool:
    anv_state_pool_finish(&device->instruction_state_pool);
  fail_dynamic_state_pool:
-   if (device->info.ver >= 8)
+   if (device->info->ver >= 8)
       anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_finish(&device->dynamic_state_pool);
  fail_general_state_pool:
@@ -3583,7 +3583,7 @@ void anv_DestroyDevice(
    /* We only need to free these to prevent valgrind errors.  The backing
     * BO will go away in a couple of lines so we don't actually leak.
     */
-   if (device->info.ver >= 8)
+   if (device->info->ver >= 8)
       anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->slice_hash);
@@ -3607,7 +3607,7 @@ void anv_DestroyDevice(
    anv_device_release_bo(device, device->workaround_bo);
    anv_device_release_bo(device, device->trivial_batch_bo);
 
-   if (device->info.has_aux_map) {
+   if (device->info->has_aux_map) {
       intel_aux_map_finish(device->aux_map_ctx);
       device->aux_map_ctx = NULL;
    }
@@ -3858,7 +3858,7 @@ VkResult anv_AllocateMemory(
    }
 
    /* By default, we want all VkDeviceMemory objects to support CCS */
-   if (device->physical->has_implicit_ccs && device->info.has_aux_map)
+   if (device->physical->has_implicit_ccs && device->info->has_aux_map)
       alloc_flags |= ANV_BO_ALLOC_IMPLICIT_CCS;
 
    /* If i915 reported a mappable/non_mappable vram regions and the
@@ -4176,7 +4176,7 @@ VkResult anv_MapMemory(
 
    uint32_t gem_flags = 0;
 
-   if (!device->info.has_llc &&
+   if (!device->info->has_llc &&
        (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
       gem_flags |= I915_MMAP_WC;
 
@@ -4660,7 +4660,7 @@ VkResult anv_GetCalibratedTimestampsEXT(
    uint64_t                                     *pMaxDeviation)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   uint64_t timestamp_frequency = device->info.timestamp_frequency;
+   uint64_t timestamp_frequency = device->info->timestamp_frequency;
    int  ret;
    int d;
    uint64_t begin, end;
