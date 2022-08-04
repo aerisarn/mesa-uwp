@@ -598,6 +598,11 @@ st_nir_vectorize_io(nir_shader *producer, nir_shader *consumer)
       return;
 
    NIR_PASS_V(producer, nir_lower_io_to_vector, nir_var_shader_out);
+
+   if (producer->info.stage == MESA_SHADER_TESS_CTRL &&
+       producer->options->vectorize_tess_levels)
+      NIR_PASS_V(producer, nir_vectorize_tess_levels);
+
    NIR_PASS_V(producer, nir_opt_combine_stores, nir_var_shader_out);
 
    if ((producer)->info.stage != MESA_SHADER_TESS_CTRL) {
