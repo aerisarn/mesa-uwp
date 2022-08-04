@@ -3396,20 +3396,6 @@ zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkA
    return zink_resource_image_needs_barrier(res, layout, flags, pipeline);
 }
 
-VkShaderStageFlagBits
-zink_shader_stage(gl_shader_stage type)
-{
-   VkShaderStageFlagBits stages[] = {
-      [MESA_SHADER_VERTEX] = VK_SHADER_STAGE_VERTEX_BIT,
-      [MESA_SHADER_FRAGMENT] = VK_SHADER_STAGE_FRAGMENT_BIT,
-      [MESA_SHADER_GEOMETRY] = VK_SHADER_STAGE_GEOMETRY_BIT,
-      [MESA_SHADER_TESS_CTRL] = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-      [MESA_SHADER_TESS_EVAL] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
-      [MESA_SHADER_COMPUTE] = VK_SHADER_STAGE_COMPUTE_BIT,
-   };
-   return stages[type];
-}
-
 static void
 zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,

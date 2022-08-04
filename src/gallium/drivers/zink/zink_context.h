@@ -159,9 +159,6 @@ zink_tc_context_unwrap(struct pipe_context *pctx);
 VkPipelineStageFlags
 zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage);
 
-VkShaderStageFlagBits
-zink_shader_stage(gl_shader_stage type);
-
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 

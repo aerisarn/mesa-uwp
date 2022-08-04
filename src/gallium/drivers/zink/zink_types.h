@@ -54,6 +54,8 @@
 #include "util/u_transfer.h"
 #include "util/u_vertex_state_cache.h"
 
+#include "vulkan/util/vk_util.h"
+
 #include "zink_device_info.h"
 #include "zink_instance.h"
 #include "zink_shader_keys.h"

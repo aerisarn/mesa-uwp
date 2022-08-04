@@ -208,7 +208,7 @@ init_push_binding(VkDescriptorSetLayoutBinding *binding, unsigned i, VkDescripto
    binding->binding = i;
    binding->descriptorType = type;
    binding->descriptorCount = 1;
-   binding->stageFlags = zink_shader_stage(i);
+   binding->stageFlags = mesa_to_vk_shader_stage(i);
    binding->pImmutableSamplers = NULL;
 }
 
@@ -412,7 +412,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
          continue;
 
       gl_shader_stage stage = shader->nir->info.stage;
-      VkShaderStageFlagBits stage_flags = zink_shader_stage(stage);
+      VkShaderStageFlagBits stage_flags = mesa_to_vk_shader_stage(stage);
       for (int j = 0; j < ZINK_DESCRIPTOR_TYPES; j++) {
          unsigned desc_set = screen->desc_set_id[j] - 1;
          for (int k = 0; k < shader->num_bindings[j]; k++) {
