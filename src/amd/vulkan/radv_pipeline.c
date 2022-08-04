@@ -3864,9 +3864,10 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
             if (swizzle[i + component] < num_channels) {
                channels[i] = nir_channel(&b, &intrin->dest.ssa, swizzle[idx]);
             } else if (i + component == 3) {
-               channels[i] = is_float ? nir_imm_float(&b, 1.0f) : nir_imm_int(&b, 1u);
+               channels[i] = is_float ? nir_imm_floatN_t(&b, 1.0f, intrin->dest.ssa.bit_size)
+                                      : nir_imm_intN_t(&b, 1u, intrin->dest.ssa.bit_size);
             } else {
-               channels[i] = nir_imm_zero(&b, 1, 32);
+               channels[i] = nir_imm_zero(&b, 1, intrin->dest.ssa.bit_size);
             }
          }
 
