@@ -121,6 +121,11 @@ zink_program_descriptor_is_buffer(struct zink_context *ctx, gl_shader_stage stag
 void
 zink_gfx_program_update(struct zink_context *ctx);
 
+
+uint32_t hash_gfx_output(const void *key);
+uint32_t hash_gfx_input(const void *key);
+uint32_t hash_gfx_input_dynamic(const void *key);
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader **stages,
@@ -129,12 +134,6 @@ zink_create_gfx_program(struct zink_context *ctx,
 void
 zink_destroy_gfx_program(struct zink_context *ctx,
                          struct zink_gfx_program *prog);
-
-VkPipeline
-zink_get_gfx_pipeline(struct zink_context *ctx,
-                      struct zink_gfx_program *prog,
-                      struct zink_gfx_pipeline_state *state,
-                      enum pipe_prim_type mode);
 
 void
 zink_program_init(struct zink_context *ctx);

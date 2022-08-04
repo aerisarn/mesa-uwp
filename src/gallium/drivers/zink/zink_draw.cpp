@@ -3,6 +3,7 @@
 #include "zink_context.h"
 #include "zink_descriptors.h"
 #include "zink_program.h"
+#include "zink_program_state.hpp"
 #include "zink_query.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
@@ -17,7 +18,6 @@
 #include "util/u_inlines.h"
 #include "util/u_prim.h"
 #include "util/u_prim_restart.h"
-
 
 static void
 zink_emit_xfb_counter_barrier(struct zink_context *ctx)
@@ -313,13 +313,17 @@ update_barriers(struct zink_context *ctx, bool is_compute,
    }
 }
 
-template <bool BATCH_CHANGED>
+template <zink_dynamic_state DYNAMIC_STATE, bool BATCH_CHANGED>
 static bool
 update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum pipe_prim_type mode)
 {
    VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
    zink_gfx_program_update(ctx);
-   VkPipeline pipeline = zink_get_gfx_pipeline(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
+   VkPipeline pipeline;
+   if (zink_screen(ctx->base.screen)->info.have_EXT_graphics_pipeline_library)
+      pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, true>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
+   else
+      pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, false>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
    bool pipeline_changed = prev_pipeline != pipeline;
    if (BATCH_CHANGED || pipeline_changed)
       VKCTX(CmdBindPipeline)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -490,7 +494,7 @@ zink_draw(struct pipe_context *pctx,
    if (have_streamout && ctx->dirty_so_targets)
       zink_emit_stream_output_targets(pctx);
 
-   bool pipeline_changed = update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
+   bool pipeline_changed = update_gfx_pipeline<DYNAMIC_STATE, BATCH_CHANGED>(ctx, batch->state, mode);
 
    if (BATCH_CHANGED || ctx->vp_state_changed || (DYNAMIC_STATE == ZINK_NO_DYNAMIC_STATE && pipeline_changed)) {
       VkViewport viewports[PIPE_MAX_VIEWPORTS];

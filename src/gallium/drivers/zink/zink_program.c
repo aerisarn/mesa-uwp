@@ -223,18 +223,6 @@ equals_pipeline_lib(const void *a, const void *b)
    return !memcmp(a, b, offsetof(struct zink_gfx_library_key, pipeline));
 }
 
-static uint32_t
-hash_gfx_pipeline_state(const void *key)
-{
-   const struct zink_gfx_pipeline_state *state = key;
-   uint32_t hash = _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
-   if (!state->have_EXT_extended_dynamic_state2)
-      hash = XXH32(&state->dyn_state2, sizeof(state->dyn_state2), hash);
-   if (state->have_EXT_extended_dynamic_state)
-      return hash;
-   return XXH32(&state->dyn_state1, sizeof(state->dyn_state1), hash);
-}
-
 static bool
 equals_gfx_pipeline_state(const void *a, const void *b)
 {
@@ -279,7 +267,7 @@ equals_gfx_pipeline_state(const void *a, const void *b)
 }
 
 
-static uint32_t
+uint32_t
 hash_gfx_input_dynamic(const void *key)
 {
    const struct zink_gfx_input_key *ikey = key;
@@ -294,7 +282,7 @@ equals_gfx_input_dynamic(const void *a, const void *b)
    return ikey_a->idx == ikey_b->idx;
 }
 
-static uint32_t
+uint32_t
 hash_gfx_input(const void *key)
 {
    const struct zink_gfx_input_key *ikey = key;
@@ -314,7 +302,7 @@ equals_gfx_input(const void *a, const void *b)
    return !memcmp(a, b, offsetof(struct zink_gfx_input_key, pipeline));
 }
 
-static uint32_t
+uint32_t
 hash_gfx_output(const void *key)
 {
    const uint8_t *data = key;
@@ -874,223 +862,6 @@ zink_destroy_compute_program(struct zink_context *ctx,
    free(comp->module);
 
    ralloc_free(comp);
-}
-
-static unsigned
-get_primtype_idx(enum pipe_prim_type mode)
-{
-   if (mode == PIPE_PRIM_PATCHES)
-      return 3;
-   switch (u_reduced_prim(mode)) {
-   case PIPE_PRIM_POINTS:
-      return 0;
-   case PIPE_PRIM_LINES:
-      return 1;
-   default:
-      return 2;
-   }
-}
-
-static void
-create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state, enum pipe_prim_type mode)
-{
-   struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
-   gkey->hw_rast_state = state->rast_state;
-   memcpy(gkey->modules, state->modules, sizeof(gkey->modules));
-   bool line = u_reduced_prim(mode) == PIPE_PRIM_LINES;
-   gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog, (struct zink_rasterizer_hw_state*)state, line);
-   _mesa_set_add(&prog->libs[get_primtype_idx(mode)], gkey);
-}
-
-static unsigned
-get_pipeline_idx(bool have_EXT_extended_dynamic_state, enum pipe_prim_type mode, VkPrimitiveTopology vkmode)
-{
-   /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY specifies that the topology state in
-    * VkPipelineInputAssemblyStateCreateInfo only specifies the topology class,
-    * and the specific topology order and adjacency must be set dynamically
-    * with vkCmdSetPrimitiveTopology before any drawing commands.
-    */
-   if (have_EXT_extended_dynamic_state) {
-      return get_primtype_idx(mode);
-   }
-   return vkmode;
-}
-
-static struct zink_gfx_input_key *
-find_or_create_input_dynamic(struct zink_context *ctx, VkPrimitiveTopology vkmode)
-{
-   uint32_t hash = hash_gfx_input_dynamic(&ctx->gfx_pipeline_state.input);
-   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_inputs, hash, &ctx->gfx_pipeline_state.input);
-   if (!he) {
-      struct zink_gfx_input_key *ikey = rzalloc(ctx, struct zink_gfx_input_key);
-      ikey->idx = ctx->gfx_pipeline_state.idx;
-      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, ctx->element_state->binding_map, vkmode);
-      he = _mesa_set_add_pre_hashed(&ctx->gfx_inputs, hash, ikey);
-   }
-   return (void*)he->key;
-}
-
-static struct zink_gfx_input_key *
-find_or_create_input(struct zink_context *ctx, VkPrimitiveTopology vkmode)
-{
-   uint32_t hash = hash_gfx_input(&ctx->gfx_pipeline_state.input);
-   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_inputs, hash, &ctx->gfx_pipeline_state.input);
-   if (!he) {
-      struct zink_gfx_input_key *ikey = rzalloc(ctx, struct zink_gfx_input_key);
-      if (ctx->gfx_pipeline_state.uses_dynamic_stride) {
-         memcpy(ikey, &ctx->gfx_pipeline_state.input, offsetof(struct zink_gfx_input_key, vertex_buffers_enabled_mask));
-         ikey->element_state = ctx->gfx_pipeline_state.element_state;
-      } else {
-         memcpy(ikey, &ctx->gfx_pipeline_state.input, offsetof(struct zink_gfx_input_key, pipeline));
-      }
-      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, ctx->element_state->binding_map, vkmode);
-      he = _mesa_set_add_pre_hashed(&ctx->gfx_inputs, hash, ikey);
-   }
-   return (void*)he->key;
-}
-
-static struct zink_gfx_output_key *
-find_or_create_output(struct zink_context *ctx)
-{
-   uint32_t hash = hash_gfx_output(&ctx->gfx_pipeline_state);
-   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_outputs, hash, &ctx->gfx_pipeline_state);
-   if (!he) {
-      struct zink_gfx_output_key *okey = rzalloc(ctx, struct zink_gfx_output_key);
-      memcpy(okey, &ctx->gfx_pipeline_state, offsetof(struct zink_gfx_output_key, pipeline));
-      okey->_pad = 0;
-      okey->pipeline = zink_create_gfx_pipeline_output(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state);
-      he = _mesa_set_add_pre_hashed(&ctx->gfx_outputs, hash, okey);
-   }
-   return (void*)he->key;
-}
-
-/*
-   VUID-vkCmdBindVertexBuffers2-pStrides-06209
-   If pStrides is not NULL each element of pStrides must be either 0 or greater than or equal
-   to the maximum extent of all vertex input attributes fetched from the corresponding
-   binding, where the extent is calculated as the VkVertexInputAttributeDescription::offset
-   plus VkVertexInputAttributeDescription::format size
-
-   * thus, if the stride doesn't meet the minimum requirement for a binding,
-   * disable the dynamic state here and use a fully-baked pipeline
- */
-static bool
-check_vertex_strides(struct zink_context *ctx)
-{
-   const struct zink_vertex_elements_state *ves = ctx->element_state;
-   for (unsigned i = 0; i < ves->hw_state.num_bindings; i++) {
-      const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ves->binding_map[i];
-      unsigned stride = vb->buffer.resource ? vb->stride : 0;
-      if (stride && stride < ves->min_stride[i])
-         return false;
-   }
-   return true;
-}
-
-VkPipeline
-zink_get_gfx_pipeline(struct zink_context *ctx,
-                      struct zink_gfx_program *prog,
-                      struct zink_gfx_pipeline_state *state,
-                      enum pipe_prim_type mode)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   const bool have_EXT_vertex_input_dynamic_state = screen->info.have_EXT_vertex_input_dynamic_state;
-   const bool have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
-   bool uses_dynamic_stride = state->uses_dynamic_stride;
-
-   VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
-   const unsigned idx = get_pipeline_idx(screen->info.have_EXT_extended_dynamic_state, mode, vkmode);
-   assert(idx <= ARRAY_SIZE(prog->pipelines));
-   if (!state->dirty && !state->modules_changed &&
-       (have_EXT_vertex_input_dynamic_state || !ctx->vertex_state_changed) &&
-       idx == state->idx)
-      return state->pipeline;
-
-   struct hash_entry *entry = NULL;
-
-   if (state->dirty) {
-      if (state->pipeline) //avoid on first hash
-         state->final_hash ^= state->hash;
-      state->hash = hash_gfx_pipeline_state(state);
-      state->final_hash ^= state->hash;
-      state->dirty = false;
-   }
-   if (!have_EXT_vertex_input_dynamic_state && ctx->vertex_state_changed) {
-      if (state->pipeline)
-         state->final_hash ^= state->vertex_hash;
-      if (have_EXT_extended_dynamic_state)
-         uses_dynamic_stride = check_vertex_strides(ctx);
-      if (!uses_dynamic_stride) {
-         uint32_t hash = 0;
-         /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
-         uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
-         hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
-
-         for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
-            const unsigned buffer_id = ctx->element_state->binding_map[i];
-            struct pipe_vertex_buffer *vb = ctx->vertex_buffers + buffer_id;
-            state->vertex_strides[buffer_id] = vb->buffer.resource ? vb->stride : 0;
-            hash = XXH32(&state->vertex_strides[buffer_id], sizeof(uint32_t), hash);
-         }
-         state->vertex_hash = hash ^ state->element_state->hash;
-      } else
-         state->vertex_hash = state->element_state->hash;
-      state->final_hash ^= state->vertex_hash;
-   }
-   state->modules_changed = false;
-   state->uses_dynamic_stride = uses_dynamic_stride;
-   state->idx = idx;
-   ctx->vertex_state_changed = false;
-
-   entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[idx], state->final_hash, state);
-
-   if (!entry) {
-      util_queue_fence_wait(&prog->base.cache_fence);
-      VkPipeline pipeline = VK_NULL_HANDLE;
-      if (screen->info.have_EXT_graphics_pipeline_library &&
-          /* TODO: if there's ever a dynamic render extension with input attachments */
-          !ctx->gfx_pipeline_state.render_pass) {
-         ctx->gfx_pipeline_state.gkey = ctx->gfx_pipeline_state.rast_state;
-         struct set_entry *he = NULL;
-         /* TODO: this will eventually be pre-populated by async shader compile */
-         //struct set_entry *he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
-         if (!he && screen->driver_workarounds.force_pipeline_library) {
-            create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state, mode);
-            he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
-            assert(he);
-         }
-         if (he) {
-            struct zink_gfx_library_key *gkey = (void*)he->key;
-            struct zink_gfx_input_key *ikey = have_EXT_vertex_input_dynamic_state ?
-                                              find_or_create_input_dynamic(ctx, vkmode) :
-                                              find_or_create_input(ctx, vkmode);
-            struct zink_gfx_output_key *okey = find_or_create_output(ctx);
-            pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline);
-         }
-      }
-      if (!pipeline) {
-         pipeline = zink_create_gfx_pipeline(screen, prog, state,
-                                             ctx->element_state->binding_map,
-                                             vkmode);
-      }
-      if (pipeline == VK_NULL_HANDLE)
-         return VK_NULL_HANDLE;
-
-      zink_screen_update_pipeline_cache(screen, &prog->base);
-      struct gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(gfx_pipeline_cache_entry);
-      if (!pc_entry)
-         return VK_NULL_HANDLE;
-
-      memcpy(&pc_entry->state, state, sizeof(*state));
-      pc_entry->pipeline = pipeline;
-
-      entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[idx], state->final_hash, pc_entry, pc_entry);
-      assert(entry);
-   }
-
-   struct gfx_pipeline_cache_entry *cache_entry = entry->data;
-   state->pipeline = cache_entry->pipeline;
-   return state->pipeline;
 }
 
 VkPipeline
