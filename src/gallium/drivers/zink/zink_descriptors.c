@@ -990,8 +990,6 @@ zink_descriptors_deinit_lazy(struct zink_context *ctx)
 {
    if (ctx->dd) {
       struct zink_screen *screen = zink_screen(ctx->base.screen);
-      if (ctx->dd->dummy_pool)
-         VKSCR(DestroyDescriptorPool)(screen->dev, ctx->dd->dummy_pool, NULL);
       if (ctx->dd->push_dsl[0])
          VKSCR(DestroyDescriptorSetLayout)(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
       if (ctx->dd->push_dsl[1])

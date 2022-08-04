@@ -307,19 +307,10 @@ struct zink_descriptor_pool_key {
 
 struct zink_descriptor_data {
    struct zink_descriptor_layout_key *push_layout_keys[2]; //gfx, compute
-   struct zink_descriptor_pool *push_pool[2]; //gfx, compute
    struct zink_descriptor_layout *push_dsl[2]; //gfx, compute
    VkDescriptorUpdateTemplate push_template[2]; //gfx, compute
-   uint8_t last_push_usage[2];
-   bool push_valid[2];
-   uint32_t push_state[2];
-   bool gfx_push_valid[ZINK_SHADER_COUNT];
-   uint32_t gfx_push_state[ZINK_SHADER_COUNT];
-   struct zink_descriptor_set *last_set[2];
 
-   VkDescriptorPool dummy_pool;
    struct zink_descriptor_layout *dummy_dsl;
-   VkDescriptorUpdateTemplate dummy_template;
    VkDescriptorSet dummy_set;
 
    VkDescriptorSetLayout bindless_layout;
@@ -327,7 +318,6 @@ struct zink_descriptor_data {
    VkDescriptorSet bindless_set;
    bool bindless_bound;
 
-   bool changed[2][ZINK_DESCRIPTOR_TYPES + 1];
    bool has_fbfetch;
    struct zink_program *pg[2]; //gfx, compute
 };
