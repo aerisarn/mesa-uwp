@@ -1353,7 +1353,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
                                       new_res->gfx_barrier);
          new_res->obj->unordered_read = false;
       }
-      update |= ((index || zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY) && ctx->ubos[shader][index].buffer_offset != offset) ||
+      update |= ctx->ubos[shader][index].buffer_offset != offset ||
                 !!res != !!buffer || (res && res->obj->buffer != new_res->obj->buffer) ||
                 ctx->ubos[shader][index].buffer_size != cb->buffer_size;
 
