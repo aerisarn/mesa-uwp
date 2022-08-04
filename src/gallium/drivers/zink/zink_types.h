@@ -343,7 +343,8 @@ struct zink_program_descriptor_data {
 struct zink_batch_descriptor_data {
    bool has_fbfetch;
    struct util_dynarray overflowed_pools;
-   struct hash_table pools[ZINK_DESCRIPTOR_TYPES];
+   unsigned pool_size[ZINK_DESCRIPTOR_TYPES];
+   struct util_dynarray pools[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_pool *push_pool[2];
    struct zink_program *pg[2]; //gfx, compute
    uint32_t compat_id[2];
@@ -357,6 +358,7 @@ struct zink_descriptor_pool {
    unsigned sets_alloc;
    VkDescriptorPool pool;
    VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
+   const struct zink_descriptor_pool_key *pool_key;
 };
 
 

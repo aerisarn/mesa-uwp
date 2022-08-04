@@ -576,6 +576,13 @@ zink_descriptor_program_deinit(struct zink_context *ctx, struct zink_program *pg
    }
 }
 
+static void
+pool_destroy(struct zink_screen *screen, struct zink_descriptor_pool *pool)
+{
+   VKSCR(DestroyDescriptorPool)(screen->dev, pool->pool, NULL);
+   ralloc_free(pool);
+}
+
 static VkDescriptorPool
 create_pool(struct zink_screen *screen, unsigned num_type_sizes, const VkDescriptorPoolSize *sizes, unsigned flags)
 {
@@ -597,8 +604,28 @@ create_pool(struct zink_screen *screen, unsigned num_type_sizes, const VkDescrip
 static struct zink_descriptor_pool *
 get_descriptor_pool(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute);
 
+static bool
+set_pool(struct zink_batch_state *bs, struct zink_program *pg, struct zink_descriptor_pool *pool, enum zink_descriptor_type type)
+{
+   assert(type != ZINK_DESCRIPTOR_TYPES);
+   const struct zink_descriptor_pool_key *pool_key = pg->dd.pool_key[type];
+   if (pool) {
+      size_t size = bs->dd.pools[type].capacity;
+      if (!util_dynarray_resize(&bs->dd.pools[type], struct zink_descriptor_pool*, pool_key->id + 1))
+         return false;
+      if (size != bs->dd.pools[type].capacity) {
+         uint8_t *data = bs->dd.pools[type].data;
+         memset(data + size, 0, bs->dd.pools[type].capacity - size);
+      }
+      bs->dd.pool_size[type] = MAX2(bs->dd.pool_size[type], pool_key->id + 1);
+   }
+   struct zink_descriptor_pool **ppool = util_dynarray_element(&bs->dd.pools[type], struct zink_descriptor_pool*, pool_key->id);
+   *ppool = pool;
+   return true;
+}
+
 static struct zink_descriptor_pool *
-check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, struct hash_entry *he, struct zink_program *pg,
+check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, struct zink_program *pg,
                  enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -608,7 +635,7 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, st
       if (!sets_to_alloc) {
          /* overflowed pool: queue for deletion on next reset */
          util_dynarray_append(&bs->dd.overflowed_pools, struct zink_descriptor_pool*, pool);
-         _mesa_hash_table_remove(&bs->dd.pools[type], he);
+         set_pool(bs, pg, NULL, type);
          return get_descriptor_pool(ctx, pg, type, bs, is_compute);
       }
       if (!zink_descriptor_util_alloc_sets(screen, pg->dsl[type + 1],
@@ -665,23 +692,27 @@ get_descriptor_pool(struct zink_context *ctx, struct zink_program *pg, enum zink
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct zink_descriptor_pool_key *pool_key = pg->dd.pool_key[type];
-   struct hash_entry *he = _mesa_hash_table_search(&bs->dd.pools[type], pool_key);
-   struct zink_descriptor_pool *pool;
-   if (he) {
-      pool = he->data;
-      return check_pool_alloc(ctx, pool, he, pg, type, bs, is_compute);
-   }
-   pool = rzalloc(bs, struct zink_descriptor_pool);
+   struct zink_descriptor_pool **ppool = bs->dd.pool_size[type] > pool_key->id ?
+                                         util_dynarray_element(&bs->dd.pools[type], struct zink_descriptor_pool *, pool_key->id) :
+                                         NULL;
+   if (ppool && *ppool)
+      return check_pool_alloc(ctx, *ppool, pg, type, bs, is_compute);
+   struct zink_descriptor_pool *pool = rzalloc(bs, struct zink_descriptor_pool);
    if (!pool)
       return NULL;
    const unsigned num_type_sizes = pool_key->sizes[1].descriptorCount ? 2 : 1;
    pool->pool = create_pool(screen, num_type_sizes, pool_key->sizes, 0);
+   pool->pool_key = pool_key;
    if (!pool->pool) {
       ralloc_free(pool);
       return NULL;
    }
-   _mesa_hash_table_insert(&bs->dd.pools[type], pool_key, pool);
-   return check_pool_alloc(ctx, pool, he, pg, type, bs, is_compute);
+   if (!set_pool(bs, pg, pool, type)) {
+      pool_destroy(screen, pool);
+      return NULL;
+   }
+   assert(pool_key->id < bs->dd.pool_size[type]);
+   return check_pool_alloc(ctx, pool, pg, type, bs, is_compute);
 }
 
 ALWAYS_INLINE static VkDescriptorSet
@@ -852,10 +883,12 @@ void
 zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      hash_table_foreach(&bs->dd.pools[i], entry) {
-         struct zink_descriptor_pool *pool = (void*)entry->data;
-         VKSCR(DestroyDescriptorPool)(screen->dev, pool->pool, NULL);
+      while (util_dynarray_contains(&bs->dd.pools[i], struct zink_descriptor_pool *)) {
+         struct zink_descriptor_pool *pool = util_dynarray_pop(&bs->dd.pools[i], struct zink_descriptor_pool *);
+         if (pool)
+            VKSCR(DestroyDescriptorPool)(screen->dev, pool->pool, NULL);
       }
+      util_dynarray_fini(&bs->dd.pools[i]);
    }
    if (bs->dd.push_pool[0])
       VKSCR(DestroyDescriptorPool)(screen->dev, bs->dd.push_pool[0]->pool, NULL);
@@ -863,25 +896,21 @@ zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state
       VKSCR(DestroyDescriptorPool)(screen->dev, bs->dd.push_pool[1]->pool, NULL);
 }
 
-static void
-pool_destroy(struct zink_screen *screen, struct zink_descriptor_pool *pool)
-{
-   VKSCR(DestroyDescriptorPool)(screen->dev, pool->pool, NULL);
-   ralloc_free(pool);
-}
-
 void
 zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      hash_table_foreach(&bs->dd.pools[i], entry) {
-         const struct zink_descriptor_pool_key *key = entry->key;
-         struct zink_descriptor_pool *pool = (void*)entry->data;
-         if (key->use_count)
+      struct zink_descriptor_pool **pools = bs->dd.pools[i].data;
+      unsigned count = util_dynarray_num_elements(&bs->dd.pools[i], struct zink_descriptor_pool *);
+      for (unsigned j = 0; j < count; j++) {
+         struct zink_descriptor_pool *pool = pools[j];
+         if (!pool)
+            continue;
+         if (pool->pool_key->use_count)
             pool->set_idx = 0;
          else {
             pool_destroy(screen, pool);
-            _mesa_hash_table_remove(&bs->dd.pools[i], entry);
+            pools[j] = NULL;
          }
       }
    }
@@ -899,10 +928,8 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
 bool
 zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *bs)
 {
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (!_mesa_hash_table_init(&bs->dd.pools[i], bs, _mesa_hash_pointer, _mesa_key_pointer_equal))
-         return false;
-   }
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
+      util_dynarray_init(&bs->dd.pools[i], bs);
    util_dynarray_init(&bs->dd.overflowed_pools, bs);
    if (!screen->info.have_KHR_push_descriptor) {
       bs->dd.push_pool[0] = create_push_pool(screen, bs, false, false);
