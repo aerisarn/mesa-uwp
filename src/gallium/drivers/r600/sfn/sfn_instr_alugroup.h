@@ -99,7 +99,7 @@ private:
    AluReadportReservation m_readports_evaluator;
 
    static int s_max_slots;
-   static bool s_eg_t_slot_handling;
+   static r600_chip_class s_chip_class;
 
    PRegister m_addr_used{nullptr};
 
