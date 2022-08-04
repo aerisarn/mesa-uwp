@@ -382,7 +382,7 @@ descriptor_program_num_sizes_compact(VkDescriptorPoolSize *sizes, unsigned desc_
 }
 
 bool
-zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program *pg)
+zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkDescriptorSetLayoutBinding bindings[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 64];
@@ -562,7 +562,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
 }
 
 void
-zink_descriptor_program_deinit_lazy(struct zink_context *ctx, struct zink_program *pg)
+zink_descriptor_program_deinit(struct zink_context *ctx, struct zink_program *pg)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    for (unsigned i = 0; pg->num_dsl && i < ZINK_DESCRIPTOR_TYPES; i++) {
@@ -596,7 +596,7 @@ create_pool(struct zink_screen *screen, unsigned num_type_sizes, const VkDescrip
 }
 
 static struct zink_descriptor_pool *
-get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute);
+get_descriptor_pool(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute);
 
 static struct zink_descriptor_pool *
 check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, struct hash_entry *he, struct zink_program *pg,
@@ -610,7 +610,7 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, st
          /* overflowed pool: queue for deletion on next reset */
          util_dynarray_append(&bs->dd.overflowed_pools, struct zink_descriptor_pool*, pool);
          _mesa_hash_table_remove(&bs->dd.pools[type], he);
-         return get_descriptor_pool_lazy(ctx, pg, type, bs, is_compute);
+         return get_descriptor_pool(ctx, pg, type, bs, is_compute);
       }
       if (!zink_descriptor_util_alloc_sets(screen, pg->dsl[type + 1],
                                            pool->pool, &pool->sets[pool->sets_alloc], sets_to_alloc))
@@ -662,7 +662,7 @@ check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *poo
 }
 
 static struct zink_descriptor_pool *
-get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute)
+get_descriptor_pool(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct zink_descriptor_pool_key *pool_key = pg->dd.pool_key[type];
@@ -686,7 +686,7 @@ get_descriptor_pool_lazy(struct zink_context *ctx, struct zink_program *pg, enum
 }
 
 ALWAYS_INLINE static VkDescriptorSet
-get_descriptor_set_lazy(struct zink_descriptor_pool *pool)
+get_descriptor_set(struct zink_descriptor_pool *pool)
 {
    if (!pool)
       return VK_NULL_HANDLE;
@@ -701,8 +701,8 @@ populate_sets(struct zink_context *ctx, struct zink_batch_state *bs,
 {
    u_foreach_bit(type, *changed_sets) {
       if (pg->dd.pool_key[type]) {
-         struct zink_descriptor_pool *pool = get_descriptor_pool_lazy(ctx, pg, type, bs, pg->is_compute);
-         sets[type] = get_descriptor_set_lazy(pool);
+         struct zink_descriptor_pool *pool = get_descriptor_pool(ctx, pg, type, bs, pg->is_compute);
+         sets[type] = get_descriptor_set(pool);
          if (!sets[type])
             return false;
       } else
@@ -712,14 +712,14 @@ populate_sets(struct zink_context *ctx, struct zink_batch_state *bs,
 }
 
 void
-zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
+zink_descriptor_set_update(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, set, pg->dd.templates[type + 1], ctx);
 }
 
 void
-zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, uint8_t bind_sets)
+zink_descriptors_update_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, uint8_t bind_sets)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = ctx->batch.state;
@@ -760,7 +760,7 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
 }
 
 void
-zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
+zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 {
    struct zink_batch_state *bs = ctx->batch.state;
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
@@ -796,7 +796,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    VkDescriptorSet push_set = VK_NULL_HANDLE;
    if (need_push && !have_KHR_push_descriptor) {
       struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, bs->dd.push_pool[pg->is_compute], bs, pg->is_compute);
-      push_set = get_descriptor_set_lazy(pool);
+      push_set = get_descriptor_set(pool);
       if (!push_set)
          mesa_loge("ZINK: failed to get push descriptor set! prepare to crash!");
    }
@@ -824,7 +824,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
       }
    }
    ctx->dd.push_state_changed[is_compute] = false;
-   zink_descriptors_update_lazy_masked(ctx, is_compute, changed_sets, bind_sets);
+   zink_descriptors_update_masked(ctx, is_compute, changed_sets, bind_sets);
    if (pg->dd.bindless && unlikely(!ctx->dd.bindless_bound)) {
       VKCTX(CmdBindDescriptorSets)(ctx->batch.state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                                    pg->layout, ZINK_DESCRIPTOR_BINDLESS, 1, &ctx->dd.bindless_set,
@@ -838,7 +838,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
 }
 
 void
-zink_context_invalidate_descriptor_state_lazy(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned start, unsigned count)
+zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned start, unsigned count)
 {
    if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start)
       ctx->dd.push_state_changed[shader == PIPE_SHADER_COMPUTE] = true;
@@ -850,7 +850,7 @@ zink_context_invalidate_descriptor_state_lazy(struct zink_context *ctx, enum pip
 }
 
 void
-zink_batch_descriptor_deinit_lazy(struct zink_screen *screen, struct zink_batch_state *bs)
+zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&bs->dd.pools[i], entry) {
@@ -872,7 +872,7 @@ pool_destroy(struct zink_screen *screen, struct zink_descriptor_pool *pool)
 }
 
 void
-zink_batch_descriptor_reset_lazy(struct zink_screen *screen, struct zink_batch_state *bs)
+zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&bs->dd.pools[i], entry) {
@@ -898,7 +898,7 @@ zink_batch_descriptor_reset_lazy(struct zink_screen *screen, struct zink_batch_s
 }
 
 bool
-zink_batch_descriptor_init_lazy(struct zink_screen *screen, struct zink_batch_state *bs)
+zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (!_mesa_hash_table_init(&bs->dd.pools[i], bs, _mesa_hash_pointer, _mesa_key_pointer_equal))
@@ -923,7 +923,7 @@ init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
 }
 
 bool
-zink_descriptors_init_lazy(struct zink_context *ctx)
+zink_descriptors_init(struct zink_context *ctx)
 {
    for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
       VkDescriptorUpdateTemplateEntry *entry = &ctx->dd.push_entries[i];
@@ -948,7 +948,7 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
 }
 
 void
-zink_descriptors_deinit_lazy(struct zink_context *ctx)
+zink_descriptors_deinit(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (ctx->dd.push_dsl[0])
