@@ -179,14 +179,14 @@ static void
 update_gfx_program(struct zink_context *ctx)
 {
    if (ctx->last_vertex_stage_dirty) {
-      enum pipe_shader_type pstage = pipe_shader_type_from_mesa(ctx->last_vertex_stage->nir->info.stage);
+      gl_shader_stage pstage = ctx->last_vertex_stage->nir->info.stage;
       ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
       memcpy(&ctx->gfx_pipeline_state.shader_keys.key[pstage].key.vs_base,
              &ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base,
              sizeof(struct zink_vs_key_base));
       ctx->last_vertex_stage_dirty = false;
    }
-   unsigned bits = BITFIELD_MASK(PIPE_SHADER_COMPUTE);
+   unsigned bits = BITFIELD_MASK(MESA_SHADER_COMPUTE);
    if (ctx->gfx_dirty) {
       struct zink_gfx_program *prog = NULL;
 
@@ -777,7 +777,7 @@ zink_draw(struct pipe_context *pctx,
                          offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed), sizeof(unsigned),
                          &draw_mode_is_indexed);
    }
-   if (ctx->curr_program->shaders[PIPE_SHADER_TESS_CTRL] && ctx->curr_program->shaders[PIPE_SHADER_TESS_CTRL]->is_generated) {
+   if (ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL] && ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL]->is_generated) {
       VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
                          offsetof(struct zink_gfx_push_constant, default_inner_level), sizeof(float) * 6,
                          &ctx->tess_levels[0]);
@@ -970,10 +970,10 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       zink_update_descriptor_refs(ctx, true);
       zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
    }
-   if (ctx->dirty_shader_stages & BITFIELD_BIT(PIPE_SHADER_COMPUTE)) {
+   if (ctx->dirty_shader_stages & BITFIELD_BIT(MESA_SHADER_COMPUTE)) {
       /* update inlinable constants */
       zink_update_compute_program(ctx);
-      ctx->dirty_shader_stages &= ~BITFIELD_BIT(PIPE_SHADER_COMPUTE);
+      ctx->dirty_shader_stages &= ~BITFIELD_BIT(MESA_SHADER_COMPUTE);
    }
 
    VkPipeline pipeline = zink_get_compute_pipeline(screen, ctx->curr_compute,
@@ -1092,22 +1092,22 @@ static uint32_t
 hash_gfx_program(const void *key)
 {
    const struct zink_shader **shaders = (const struct zink_shader**)key;
-   uint32_t base_hash = shaders[PIPE_SHADER_VERTEX]->hash ^ shaders[PIPE_SHADER_FRAGMENT]->hash;
+   uint32_t base_hash = shaders[MESA_SHADER_VERTEX]->hash ^ shaders[MESA_SHADER_FRAGMENT]->hash;
    if (STAGE_MASK == STAGE_BASE) //VS+FS
       return base_hash;
    if (STAGE_MASK == STAGE_BASE_GS) //VS+GS+FS
-      return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash;
+      return base_hash ^ shaders[MESA_SHADER_GEOMETRY]->hash;
    /*VS+TCS+FS isn't a thing */
    /*VS+TCS+GS+FS isn't a thing */
    if (STAGE_MASK == STAGE_BASE_TES) //VS+TES+FS
-      return base_hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
+      return base_hash ^ shaders[MESA_SHADER_TESS_EVAL]->hash;
    if (STAGE_MASK == STAGE_BASE_TES_GS) //VS+TES+GS+FS
-      return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
+      return base_hash ^ shaders[MESA_SHADER_GEOMETRY]->hash ^ shaders[MESA_SHADER_TESS_EVAL]->hash;
    if (STAGE_MASK == STAGE_BASE_TCS_TES) //VS+TCS+TES+FS
-      return base_hash ^ shaders[PIPE_SHADER_TESS_CTRL]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
+      return base_hash ^ shaders[MESA_SHADER_TESS_CTRL]->hash ^ shaders[MESA_SHADER_TESS_EVAL]->hash;
 
    /* all stages */
-   return base_hash ^ shaders[PIPE_SHADER_GEOMETRY]->hash ^ shaders[PIPE_SHADER_TESS_CTRL]->hash ^ shaders[PIPE_SHADER_TESS_EVAL]->hash;
+   return base_hash ^ shaders[MESA_SHADER_GEOMETRY]->hash ^ shaders[MESA_SHADER_TESS_CTRL]->hash ^ shaders[MESA_SHADER_TESS_EVAL]->hash;
 }
 
 template <unsigned STAGE_MASK>
@@ -1123,11 +1123,11 @@ equals_gfx_program(const void *a, const void *b)
    /*VS+TCS+FS isn't a thing */
    /*VS+TCS+GS+FS isn't a thing */
    if (STAGE_MASK == STAGE_BASE_TES) //VS+TES+FS
-      return sa[PIPE_SHADER_TESS_EVAL] == sb[PIPE_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 2);
+      return sa[MESA_SHADER_TESS_EVAL] == sb[MESA_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 2);
    if (STAGE_MASK == STAGE_BASE_TES_GS) //VS+TES+GS+FS
-      return sa[PIPE_SHADER_TESS_EVAL] == sb[PIPE_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 3);
+      return sa[MESA_SHADER_TESS_EVAL] == sb[MESA_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 3);
    if (STAGE_MASK == STAGE_BASE_TCS_TES) //VS+TCS+TES+FS
-      return !memcmp(&sa[PIPE_SHADER_TESS_CTRL], &sb[PIPE_SHADER_TESS_CTRL], sizeof(void*) * 2) &&
+      return !memcmp(&sa[MESA_SHADER_TESS_CTRL], &sb[MESA_SHADER_TESS_CTRL], sizeof(void*) * 2) &&
              !memcmp(a, b, sizeof(void*) * 2);
 
    /* all stages */

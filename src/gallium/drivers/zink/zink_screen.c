@@ -875,7 +875,7 @@ zink_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
 
 static int
 zink_get_shader_param(struct pipe_screen *pscreen,
-                       enum pipe_shader_type shader,
+                       gl_shader_stage shader,
                        enum pipe_shader_cap param)
 {
    struct zink_screen *screen = zink_screen(pscreen);
@@ -883,22 +883,22 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    switch (param) {
    case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
       switch (shader) {
-      case PIPE_SHADER_FRAGMENT:
-      case PIPE_SHADER_VERTEX:
+      case MESA_SHADER_FRAGMENT:
+      case MESA_SHADER_VERTEX:
          return INT_MAX;
-      case PIPE_SHADER_TESS_CTRL:
-      case PIPE_SHADER_TESS_EVAL:
+      case MESA_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_EVAL:
          if (screen->info.feats.features.tessellationShader &&
              screen->info.have_KHR_maintenance2)
             return INT_MAX;
          break;
 
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_GEOMETRY:
          if (screen->info.feats.features.geometryShader)
             return INT_MAX;
          break;
 
-      case PIPE_SHADER_COMPUTE:
+      case MESA_SHADER_COMPUTE:
          return INT_MAX;
       default:
          break;
@@ -913,19 +913,19 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_INPUTS: {
       uint32_t max = 0;
       switch (shader) {
-      case PIPE_SHADER_VERTEX:
+      case MESA_SHADER_VERTEX:
          max = MIN2(screen->info.props.limits.maxVertexInputAttributes, PIPE_MAX_ATTRIBS);
          break;
-      case PIPE_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_CTRL:
          max = screen->info.props.limits.maxTessellationControlPerVertexInputComponents / 4;
          break;
-      case PIPE_SHADER_TESS_EVAL:
+      case MESA_SHADER_TESS_EVAL:
          max = screen->info.props.limits.maxTessellationEvaluationInputComponents / 4;
          break;
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_GEOMETRY:
          max = screen->info.props.limits.maxGeometryInputComponents / 4;
          break;
-      case PIPE_SHADER_FRAGMENT:
+      case MESA_SHADER_FRAGMENT:
          /* intel drivers report fewer components, but it's a value that's compatible
           * with what we need for GL, so we can still force a conformant value here
           */
@@ -938,9 +938,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
          return 0; /* unsupported stage */
       }
       switch (shader) {
-      case PIPE_SHADER_VERTEX:
-      case PIPE_SHADER_TESS_EVAL:
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_VERTEX:
+      case MESA_SHADER_TESS_EVAL:
+      case MESA_SHADER_GEOMETRY:
          /* last vertex stage must support streamout, and this is capped in glsl compiler */
          return MIN2(max, MAX_VARYING);
       default: break;
@@ -951,19 +951,19 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_OUTPUTS: {
       uint32_t max = 0;
       switch (shader) {
-      case PIPE_SHADER_VERTEX:
+      case MESA_SHADER_VERTEX:
          max = screen->info.props.limits.maxVertexOutputComponents / 4;
          break;
-      case PIPE_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_CTRL:
          max = screen->info.props.limits.maxTessellationControlPerVertexOutputComponents / 4;
          break;
-      case PIPE_SHADER_TESS_EVAL:
+      case MESA_SHADER_TESS_EVAL:
          max = screen->info.props.limits.maxTessellationEvaluationOutputComponents / 4;
          break;
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_GEOMETRY:
          max = screen->info.props.limits.maxGeometryOutputComponents / 4;
          break;
-      case PIPE_SHADER_FRAGMENT:
+      case MESA_SHADER_FRAGMENT:
          max = screen->info.props.limits.maxColorAttachments;
          break;
       default:
@@ -1036,15 +1036,15 @@ zink_get_shader_param(struct pipe_screen *pscreen,
 
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       switch (shader) {
-      case PIPE_SHADER_VERTEX:
-      case PIPE_SHADER_TESS_CTRL:
-      case PIPE_SHADER_TESS_EVAL:
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_VERTEX:
+      case MESA_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_EVAL:
+      case MESA_SHADER_GEOMETRY:
          if (!screen->info.feats.features.vertexPipelineStoresAndAtomics)
             return 0;
          break;
 
-      case PIPE_SHADER_FRAGMENT:
+      case MESA_SHADER_FRAGMENT:
          if (!screen->info.feats.features.fragmentStoresAndAtomics)
             return 0;
          break;

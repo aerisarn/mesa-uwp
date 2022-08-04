@@ -25,10 +25,6 @@
  *    Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
  */
 
-#include "tgsi/tgsi_from_mesa.h"
-
-
-
 #include "zink_context.h"
 #include "zink_descriptors.h"
 #include "zink_program.h"
@@ -209,7 +205,7 @@ zink_descriptor_util_pool_key_get(struct zink_context *ctx, enum zink_descriptor
 static void
 init_push_binding(VkDescriptorSetLayoutBinding *binding, unsigned i, VkDescriptorType type)
 {
-   binding->binding = tgsi_processor_to_shader_stage(i);
+   binding->binding = i;
    binding->descriptorType = type;
    binding->descriptorCount = 1;
    binding->stageFlags = zink_shader_stage(i);
@@ -249,7 +245,7 @@ zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_desc
    VkDescriptorSetLayoutBinding compute_binding;
    enum zink_descriptor_type dsl_type;
    VkDescriptorType vktype = get_push_types(screen, &dsl_type);
-   init_push_binding(&compute_binding, PIPE_SHADER_COMPUTE, vktype);
+   init_push_binding(&compute_binding, MESA_SHADER_COMPUTE, vktype);
    dsls[0] = create_gfx_layout(ctx, &layout_keys[0], false);
    dsls[1] = create_layout(ctx, dsl_type, &compute_binding, 1, &layout_keys[1]);
    return dsls[0] && dsls[1];
@@ -304,7 +300,7 @@ init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
                     unsigned idx, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx)
 {
     int index = shader->bindings[type][idx].index;
-    enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+    gl_shader_stage stage = shader->nir->info.stage;
     entry->dstArrayElement = 0;
     entry->dstBinding = shader->bindings[type][idx].binding;
     entry->descriptorCount = shader->bindings[type][idx].size;
@@ -400,7 +396,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
    else
       stages = ((struct zink_gfx_program*)pg)->shaders;
 
-   if (!pg->is_compute && stages[PIPE_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output) {
+   if (!pg->is_compute && stages[MESA_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output) {
       zink_descriptor_util_init_fbfetch(ctx);
       push_count = 1;
       pg->dd.fbfetch = true;
@@ -415,7 +411,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       if (!shader)
          continue;
 
-      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+      gl_shader_stage stage = shader->nir->info.stage;
       VkShaderStageFlagBits stage_flags = zink_shader_stage(stage);
       for (int j = 0; j < ZINK_DESCRIPTOR_TYPES; j++) {
          unsigned desc_set = screen->desc_set_id[j] - 1;
@@ -839,14 +835,14 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 }
 
 void
-zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned start, unsigned count)
+zink_context_invalidate_descriptor_state(struct zink_context *ctx, gl_shader_stage shader, enum zink_descriptor_type type, unsigned start, unsigned count)
 {
    if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start)
-      ctx->dd.push_state_changed[shader == PIPE_SHADER_COMPUTE] = true;
+      ctx->dd.push_state_changed[shader == MESA_SHADER_COMPUTE] = true;
    else {
       if (zink_screen(ctx->base.screen)->compact_descriptors && type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
          type -= ZINK_DESCRIPTOR_COMPACT;
-      ctx->dd.state_changed[shader == PIPE_SHADER_COMPUTE] |= BITFIELD_BIT(type);
+      ctx->dd.state_changed[shader == MESA_SHADER_COMPUTE] |= BITFIELD_BIT(type);
    }
 }
 
@@ -916,7 +912,7 @@ zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *
 static void
 init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
 {
-   entry->dstBinding = tgsi_processor_to_shader_stage(i);
+   entry->dstBinding = i;
    entry->descriptorCount = 1;
    entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
    entry->offset = offsetof(struct zink_context, di.ubos[i][0]);
@@ -930,7 +926,7 @@ zink_descriptors_init(struct zink_context *ctx)
       VkDescriptorUpdateTemplateEntry *entry = &ctx->dd.push_entries[i];
       init_push_template_entry(entry, i);
    }
-   init_push_template_entry(&ctx->dd.compute_push_entry, PIPE_SHADER_COMPUTE);
+   init_push_template_entry(&ctx->dd.compute_push_entry, MESA_SHADER_COMPUTE);
    VkDescriptorUpdateTemplateEntry *entry = &ctx->dd.push_entries[ZINK_GFX_SHADER_COUNT]; //fbfetch
    entry->dstBinding = ZINK_FBFETCH_BINDING;
    entry->descriptorCount = 1;

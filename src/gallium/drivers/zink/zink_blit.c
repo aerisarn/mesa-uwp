@@ -382,15 +382,15 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
    util_blitter_save_viewport(ctx->blitter, ctx->vp_state.viewport_states);
 
    util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vertex_buffers);
-   util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
-   util_blitter_save_tessctrl_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_TESS_CTRL]);
-   util_blitter_save_tesseval_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]);
-   util_blitter_save_geometry_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_GEOMETRY]);
+   util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[MESA_SHADER_VERTEX]);
+   util_blitter_save_tessctrl_shader(ctx->blitter, ctx->gfx_stages[MESA_SHADER_TESS_CTRL]);
+   util_blitter_save_tesseval_shader(ctx->blitter, ctx->gfx_stages[MESA_SHADER_TESS_EVAL]);
+   util_blitter_save_geometry_shader(ctx->blitter, ctx->gfx_stages[MESA_SHADER_GEOMETRY]);
    util_blitter_save_rasterizer(ctx->blitter, ctx->rast_state);
    util_blitter_save_so_targets(ctx->blitter, ctx->num_so_targets, ctx->so_targets);
 
    if (flags & ZINK_BLIT_SAVE_FS) {
-      util_blitter_save_fragment_constant_buffer_slot(ctx->blitter, ctx->ubos[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_fragment_constant_buffer_slot(ctx->blitter, ctx->ubos[MESA_SHADER_FRAGMENT]);
       util_blitter_save_blend(ctx->blitter, ctx->gfx_pipeline_state.blend_state);
       util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->dsa_state);
       util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
@@ -398,7 +398,7 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
       util_blitter_save_scissor(ctx->blitter, ctx->vp_state.scissor_states);
       /* also util_blitter_save_window_rectangles when we have that? */
 
-      util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[MESA_SHADER_FRAGMENT]);
    }
 
    if (flags & ZINK_BLIT_SAVE_FB)
@@ -407,11 +407,11 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
 
    if (flags & ZINK_BLIT_SAVE_TEXTURES) {
       util_blitter_save_fragment_sampler_states(ctx->blitter,
-                                                ctx->di.num_samplers[PIPE_SHADER_FRAGMENT],
-                                                (void**)ctx->sampler_states[PIPE_SHADER_FRAGMENT]);
+                                                ctx->di.num_samplers[MESA_SHADER_FRAGMENT],
+                                                (void**)ctx->sampler_states[MESA_SHADER_FRAGMENT]);
       util_blitter_save_fragment_sampler_views(ctx->blitter,
-                                               ctx->di.num_sampler_views[PIPE_SHADER_FRAGMENT],
-                                               ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
+                                               ctx->di.num_sampler_views[MESA_SHADER_FRAGMENT],
+                                               ctx->sampler_views[MESA_SHADER_FRAGMENT]);
    }
 
    if (flags & ZINK_BLIT_NO_COND_RENDER && ctx->render_condition_active)

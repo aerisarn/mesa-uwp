@@ -105,7 +105,7 @@ unsigned
 zink_program_num_bindings(const struct zink_program *pg, bool is_compute);
 
 bool
-zink_program_descriptor_is_buffer(struct zink_context *ctx, enum pipe_shader_type stage, enum zink_descriptor_type type, unsigned i);
+zink_program_descriptor_is_buffer(struct zink_context *ctx, gl_shader_stage stage, enum zink_descriptor_type type, unsigned i);
 
 void
 zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog);
@@ -129,7 +129,7 @@ void
 zink_program_init(struct zink_context *ctx);
 
 uint32_t
-zink_program_get_descriptor_usage(struct zink_context *ctx, enum pipe_shader_type stage, enum zink_descriptor_type type);
+zink_program_get_descriptor_usage(struct zink_context *ctx, gl_shader_stage stage, enum zink_descriptor_type type);
 
 void
 debug_describe_zink_gfx_program(char* buf, const struct zink_gfx_program *ptr);
@@ -215,23 +215,23 @@ zink_program_has_descriptors(const struct zink_program *pg)
 static inline struct zink_fs_key *
 zink_set_fs_key(struct zink_context *ctx)
 {
-   ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
-   return (struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_FRAGMENT];
+   ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+   return (struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT];
 }
 
 static inline const struct zink_fs_key *
 zink_get_fs_key(struct zink_context *ctx)
 {
-   return (const struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_FRAGMENT];
+   return (const struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT];
 }
 
 static inline bool
 zink_set_tcs_key_patches(struct zink_context *ctx, uint8_t patch_vertices)
 {
-   struct zink_tcs_key *tcs = (struct zink_tcs_key*)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_CTRL];
+   struct zink_tcs_key *tcs = (struct zink_tcs_key*)&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL];
    if (tcs->patch_vertices == patch_vertices)
       return false;
-   ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
+   ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    tcs->patch_vertices = patch_vertices;
    return true;
 }
@@ -239,7 +239,7 @@ zink_set_tcs_key_patches(struct zink_context *ctx, uint8_t patch_vertices)
 static inline const struct zink_tcs_key *
 zink_get_tcs_key(struct zink_context *ctx)
 {
-   return (const struct zink_tcs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_CTRL];
+   return (const struct zink_tcs_key *)&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL];
 }
 
 void
@@ -248,14 +248,14 @@ zink_update_fs_key_samples(struct zink_context *ctx);
 static inline struct zink_vs_key *
 zink_set_vs_key(struct zink_context *ctx)
 {
-   ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
-   return (struct zink_vs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX];
+   ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_VERTEX);
+   return (struct zink_vs_key *)&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX];
 }
 
 static inline const struct zink_vs_key *
 zink_get_vs_key(struct zink_context *ctx)
 {
-   return (const struct zink_vs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX];
+   return (const struct zink_vs_key *)&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX];
 }
 
 static inline struct zink_vs_key_base *

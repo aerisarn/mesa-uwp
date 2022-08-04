@@ -1080,7 +1080,7 @@ zink_query_update_gs_states(struct zink_context *ctx, bool was_line_loop)
 {
    struct zink_query *query;
    bool suspendall = false;
-   bool have_gs = !!ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
+   bool have_gs = !!ctx->gfx_stages[MESA_SHADER_GEOMETRY];
    bool have_xfb = !!ctx->num_so_targets;
 
    LIST_FOR_EACH_ENTRY(query, &ctx->primitives_generated_queries, stats_list) {

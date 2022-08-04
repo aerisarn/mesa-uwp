@@ -67,9 +67,9 @@ zink_fb_clear_enabled(const struct zink_context *ctx, unsigned idx)
 static inline uint32_t
 zink_program_cache_stages(uint32_t stages_present)
 {
-   return (stages_present & ((1 << PIPE_SHADER_TESS_CTRL) |
-                             (1 << PIPE_SHADER_TESS_EVAL) |
-                             (1 << PIPE_SHADER_GEOMETRY))) >> 1;
+   return (stages_present & ((1 << MESA_SHADER_TESS_CTRL) |
+                             (1 << MESA_SHADER_TESS_EVAL) |
+                             (1 << MESA_SHADER_GEOMETRY))) >> 1;
 }
 
 void
@@ -118,20 +118,20 @@ void
 zink_update_vk_sample_locations(struct zink_context *ctx);
 
 static inline VkPipelineStageFlags
-zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
+zink_pipeline_flags_from_pipe_stage(gl_shader_stage pstage)
 {
    switch (pstage) {
-   case PIPE_SHADER_VERTEX:
+   case MESA_SHADER_VERTEX:
       return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-   case PIPE_SHADER_FRAGMENT:
+   case MESA_SHADER_FRAGMENT:
       return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       return VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-   case PIPE_SHADER_COMPUTE:
+   case MESA_SHADER_COMPUTE:
       return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
    default:
       unreachable("unknown shader stage");
@@ -160,7 +160,7 @@ VkPipelineStageFlags
 zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage);
 
 VkShaderStageFlagBits
-zink_shader_stage(enum pipe_shader_type type);
+zink_shader_stage(gl_shader_stage type);
 
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);

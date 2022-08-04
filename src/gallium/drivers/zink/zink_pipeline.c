@@ -274,12 +274,12 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
          break;
       default: break;
       }
-      if (prog->nir[PIPE_SHADER_TESS_EVAL]) {
-         check_warn |= !prog->nir[PIPE_SHADER_TESS_EVAL]->info.tess.point_mode &&
-                       prog->nir[PIPE_SHADER_TESS_EVAL]->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES;
+      if (prog->nir[MESA_SHADER_TESS_EVAL]) {
+         check_warn |= !prog->nir[MESA_SHADER_TESS_EVAL]->info.tess.point_mode &&
+                       prog->nir[MESA_SHADER_TESS_EVAL]->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES;
       }
-      if (prog->nir[PIPE_SHADER_GEOMETRY]) {
-         switch (prog->nir[PIPE_SHADER_GEOMETRY]->info.gs.output_primitive) {
+      if (prog->nir[MESA_SHADER_GEOMETRY]) {
+         switch (prog->nir[MESA_SHADER_GEOMETRY]->info.gs.output_primitive) {
          case SHADER_PRIM_LINES:
          case SHADER_PRIM_LINE_LOOP:
          case SHADER_PRIM_LINE_STRIP:
@@ -346,7 +346,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->shaders[PIPE_SHADER_TESS_CTRL] && prog->shaders[PIPE_SHADER_TESS_EVAL]) {
+   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = state->dyn_state2.vertices_per_patch;
       pci.pTessellationState = &tci;
@@ -688,12 +688,12 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
       rast_line_state.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
 
       bool check_warn = line;
-      if (prog->nir[PIPE_SHADER_TESS_EVAL]) {
-         check_warn |= !prog->nir[PIPE_SHADER_TESS_EVAL]->info.tess.point_mode &&
-                       prog->nir[PIPE_SHADER_TESS_EVAL]->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES;
+      if (prog->nir[MESA_SHADER_TESS_EVAL]) {
+         check_warn |= !prog->nir[MESA_SHADER_TESS_EVAL]->info.tess.point_mode &&
+                       prog->nir[MESA_SHADER_TESS_EVAL]->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES;
       }
-      if (prog->nir[PIPE_SHADER_GEOMETRY]) {
-         switch (prog->nir[PIPE_SHADER_GEOMETRY]->info.gs.output_primitive) {
+      if (prog->nir[MESA_SHADER_GEOMETRY]) {
+         switch (prog->nir[MESA_SHADER_GEOMETRY]->info.gs.output_primitive) {
          case SHADER_PRIM_LINES:
          case SHADER_PRIM_LINE_LOOP:
          case SHADER_PRIM_LINE_STRIP:
@@ -754,7 +754,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->shaders[PIPE_SHADER_TESS_CTRL] && prog->shaders[PIPE_SHADER_TESS_EVAL]) {
+   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = 3; //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
       pci.pTessellationState = &tci;
