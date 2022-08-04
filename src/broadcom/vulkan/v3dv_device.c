@@ -2495,6 +2495,7 @@ v3dv_BindImageMemory2(VkDevice _device,
                       const VkBindImageMemoryInfo *pBindInfos)
 {
    for (uint32_t i = 0; i < bindInfoCount; i++) {
+#ifndef ANDROID
       const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
          vk_find_struct_const(pBindInfos->pNext,
                               BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR);
@@ -2509,7 +2510,9 @@ v3dv_BindImageMemory2(VkDevice _device,
             .memoryOffset = swapchain_image->mem_offset,
          };
          bind_image_memory(&swapchain_bind);
-      } else {
+      } else
+#endif
+      {
          bind_image_memory(&pBindInfos[i]);
       }
    }

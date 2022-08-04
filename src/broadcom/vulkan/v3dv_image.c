@@ -416,8 +416,14 @@ v3dv_CreateImage(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
+#ifdef ANDROID
+   /* VkImageSwapchainCreateInfoKHR is not useful at all */
+   const VkImageSwapchainCreateInfoKHR *swapchain_info = NULL;
+#else
    const VkImageSwapchainCreateInfoKHR *swapchain_info =
       vk_find_struct_const(pCreateInfo->pNext, IMAGE_SWAPCHAIN_CREATE_INFO_KHR);
+#endif
+
    if (swapchain_info && swapchain_info->swapchain != VK_NULL_HANDLE)
       return create_image_from_swapchain(device, pCreateInfo, swapchain_info,
                                          pAllocator, pImage);
