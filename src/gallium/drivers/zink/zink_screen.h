@@ -272,11 +272,6 @@ zink_screen(struct pipe_screen *pipe)
 }
 
 
-struct mem_cache_entry {
-   VkDeviceMemory mem;
-   void *map;
-};
-
 #define VKCTX(fn) zink_screen(ctx->base.screen)->vk.fn
 #define VKSCR(fn) screen->vk.fn
 

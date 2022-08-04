@@ -47,14 +47,6 @@ struct zink_bo;
 #define ZINK_BIND_TRANSIENT (1 << 30) //transient fb attachment
 #define ZINK_BIND_VIDEO (1 << 31)
 
-struct mem_key {
-   unsigned seen_count;
-   struct {
-      unsigned heap_index;
-      VkMemoryRequirements reqs;
-   } key;
-};
-
 struct zink_resource_object {
    struct pipe_reference reference;
 
