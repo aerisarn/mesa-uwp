@@ -468,7 +468,7 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg,
 static void
 assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_GFX_SHADER_COUNT])
 {
-   struct zink_shader *shaders[PIPE_SHADER_TYPES];
+   struct zink_shader *shaders[MESA_SHADER_STAGES];
 
    /* build array in pipeline order */
    for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
@@ -1148,7 +1148,7 @@ bind_stage(struct zink_context *ctx, enum pipe_shader_type stage,
 static void
 bind_last_vertex_stage(struct zink_context *ctx)
 {
-   enum pipe_shader_type old = ctx->last_vertex_stage ? pipe_shader_type_from_mesa(ctx->last_vertex_stage->nir->info.stage) : PIPE_SHADER_TYPES;
+   enum pipe_shader_type old = ctx->last_vertex_stage ? pipe_shader_type_from_mesa(ctx->last_vertex_stage->nir->info.stage) : MESA_SHADER_STAGES;
    if (ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
       ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
    else if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
@@ -1157,7 +1157,7 @@ bind_last_vertex_stage(struct zink_context *ctx)
       ctx->last_vertex_stage = ctx->gfx_stages[PIPE_SHADER_VERTEX];
    enum pipe_shader_type current = ctx->last_vertex_stage ? pipe_shader_type_from_mesa(ctx->last_vertex_stage->nir->info.stage) : PIPE_SHADER_VERTEX;
    if (old != current) {
-      if (old != PIPE_SHADER_TYPES) {
+      if (old != MESA_SHADER_STAGES) {
          memset(&ctx->gfx_pipeline_state.shader_keys.key[old].key.vs_base, 0, sizeof(struct zink_vs_key_base));
          ctx->dirty_shader_stages |= BITFIELD_BIT(old);
       } else {
