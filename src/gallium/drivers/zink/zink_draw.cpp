@@ -1116,19 +1116,29 @@ equals_gfx_program(const void *a, const void *b)
 {
    const void **sa = (const void**)a;
    const void **sb = (const void**)b;
+   STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
+   STATIC_ASSERT(MESA_SHADER_TESS_CTRL == 1);
+   STATIC_ASSERT(MESA_SHADER_TESS_EVAL == 2);
+   STATIC_ASSERT(MESA_SHADER_GEOMETRY == 3);
+   STATIC_ASSERT(MESA_SHADER_FRAGMENT == 4);
    if (STAGE_MASK == STAGE_BASE) //VS+FS
-      return !memcmp(a, b, sizeof(void*) * 2);
+      return sa[MESA_SHADER_VERTEX] == sb[MESA_SHADER_VERTEX] &&
+             sa[MESA_SHADER_FRAGMENT] == sb[MESA_SHADER_FRAGMENT];
    if (STAGE_MASK == STAGE_BASE_GS) //VS+GS+FS
-      return !memcmp(a, b, sizeof(void*) * 3);
+      return sa[MESA_SHADER_VERTEX] == sb[MESA_SHADER_VERTEX] &&
+             !memcmp(&sa[MESA_SHADER_GEOMETRY], &sb[MESA_SHADER_GEOMETRY], sizeof(void*) * 2);
    /*VS+TCS+FS isn't a thing */
    /*VS+TCS+GS+FS isn't a thing */
    if (STAGE_MASK == STAGE_BASE_TES) //VS+TES+FS
-      return sa[MESA_SHADER_TESS_EVAL] == sb[MESA_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 2);
+      return sa[MESA_SHADER_VERTEX] == sb[MESA_SHADER_VERTEX] &&
+             sa[MESA_SHADER_TESS_EVAL] == sb[MESA_SHADER_TESS_EVAL] &&
+             sa[MESA_SHADER_FRAGMENT] == sb[MESA_SHADER_FRAGMENT];
    if (STAGE_MASK == STAGE_BASE_TES_GS) //VS+TES+GS+FS
-      return sa[MESA_SHADER_TESS_EVAL] == sb[MESA_SHADER_TESS_EVAL] && !memcmp(a, b, sizeof(void*) * 3);
+      return sa[MESA_SHADER_VERTEX] == sb[MESA_SHADER_VERTEX] &&
+             !memcmp(&sa[MESA_SHADER_TESS_EVAL], &sb[MESA_SHADER_TESS_EVAL], sizeof(void*) * 3);
    if (STAGE_MASK == STAGE_BASE_TCS_TES) //VS+TCS+TES+FS
-      return !memcmp(&sa[MESA_SHADER_TESS_CTRL], &sb[MESA_SHADER_TESS_CTRL], sizeof(void*) * 2) &&
-             !memcmp(a, b, sizeof(void*) * 2);
+      return !memcmp(sa, sb, sizeof(void*) * 3) &&
+             sa[MESA_SHADER_FRAGMENT] == sb[MESA_SHADER_FRAGMENT];
 
    /* all stages */
    return !memcmp(a, b, sizeof(void*) * ZINK_GFX_SHADER_COUNT);
