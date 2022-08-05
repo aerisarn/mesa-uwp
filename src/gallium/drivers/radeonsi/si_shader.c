@@ -196,8 +196,7 @@ static void si_dump_streamout(struct pipe_stream_output_info *so)
    }
 }
 
-static void declare_streamout_params(struct si_shader_context *ctx,
-                                     struct pipe_stream_output_info *so)
+static void declare_streamout_params(struct si_shader_context *ctx)
 {
    if (ctx->screen->use_ngg_streamout) {
       if (ctx->stage == MESA_SHADER_TESS_EVAL)
@@ -206,7 +205,7 @@ static void declare_streamout_params(struct si_shader_context *ctx,
    }
 
    /* Streamout SGPRs. */
-   if (so->num_outputs) {
+   if (si_shader_uses_streamout(ctx->shader)) {
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.streamout_config);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.streamout_write_index);
    } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
@@ -215,7 +214,7 @@ static void declare_streamout_params(struct si_shader_context *ctx,
 
    /* A streamout buffer offset is loaded if the stride is non-zero. */
    for (int i = 0; i < 4; i++) {
-      if (!so->stride[i])
+      if (!ctx->shader->selector->info.base.xfb_stride[i])
          continue;
 
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.streamout_offset[i]);
@@ -431,7 +430,7 @@ void si_init_shader_args(struct si_shader_context *ctx)
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
 
       if (ctx->shader->is_gs_copy_shader) {
-         declare_streamout_params(ctx, &ctx->so);
+         declare_streamout_params(ctx);
          /* VGPRs */
          declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
          break;
@@ -447,7 +446,7 @@ void si_init_shader_args(struct si_shader_context *ctx)
       } else if (shader->key.ge.as_ls) {
          /* no extra parameters */
       } else {
-         declare_streamout_params(ctx, &ctx->so);
+         declare_streamout_params(ctx);
       }
 
       /* VGPRs */
@@ -636,7 +635,7 @@ void si_init_shader_args(struct si_shader_context *ctx)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.es2gs_offset);
       } else {
-         declare_streamout_params(ctx, &ctx->so);
+         declare_streamout_params(ctx);
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
       }
 
