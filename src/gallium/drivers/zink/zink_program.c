@@ -182,18 +182,21 @@ update_gfx_shader_modules(struct zink_context *ctx,
    bool default_variants = true;
    bool first = !prog->modules[MESA_SHADER_VERTEX];
    uint32_t variant_hash = prog->last_variant_hash;
-   u_foreach_bit(pstage, mask) {
-      assert(prog->shaders[pstage]);
-      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[pstage], prog, state);
-      state->modules[pstage] = zm->shader;
-      if (prog->modules[pstage] == zm)
+   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
+      if (!(mask & BITFIELD_BIT(i)))
          continue;
-      if (prog->modules[pstage])
-         variant_hash ^= prog->modules[pstage]->hash;
+
+      assert(prog->shaders[i]);
+      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state);
+      state->modules[i] = zm->shader;
+      if (prog->modules[i] == zm)
+         continue;
+      if (prog->modules[i])
+         variant_hash ^= prog->modules[i]->hash;
       hash_changed = true;
       default_variants &= zm->default_variant;
-      prog->modules[pstage] = zm;
-      variant_hash ^= prog->modules[pstage]->hash;
+      prog->modules[i] = zm;
+      variant_hash ^= prog->modules[i]->hash;
    }
 
    if (hash_changed && state) {
