@@ -94,34 +94,46 @@ shader_module_hash(const struct zink_shader_module *zm)
    return _mesa_hash_data(zm->key, key_size);
 }
 
+ALWAYS_INLINE static void
+gather_shader_module_info(struct zink_context *ctx, struct zink_screen *screen,
+                          struct zink_shader *zs, struct zink_gfx_program *prog,
+                          struct zink_gfx_pipeline_state *state,
+                          bool has_inline, //is inlining enabled?
+                          bool has_nonseamless, //is nonseamless ext present?
+                          unsigned *inline_size, unsigned *nonseamless_size)
+{
+   gl_shader_stage stage = zs->nir->info.stage;
+   struct zink_shader_key *key = &state->shader_keys.key[stage];
+   if (has_inline && ctx && zs->nir->info.num_inlinable_uniforms &&
+       ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(stage)) {
+      if (zs->can_inline && (screen->is_cpu || prog->inlined_variant_count[stage] < ZINK_MAX_INLINED_VARIANTS))
+         *inline_size = zs->nir->info.num_inlinable_uniforms;
+      else
+         key->inline_uniforms = false;
+   }
+   if (!has_nonseamless && key->base.nonseamless_cube_mask)
+      *nonseamless_size = sizeof(uint32_t);
+}
+
 ALWAYS_INLINE static struct zink_shader_module *
 get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
                             struct zink_shader *zs, struct zink_gfx_program *prog,
                             struct zink_gfx_pipeline_state *state,
+                            unsigned inline_size, unsigned nonseamless_size,
                             bool has_inline, //is inlining enabled?
                             bool has_nonseamless) //is nonseamless ext present?
 {
    gl_shader_stage stage = zs->nir->info.stage;
    VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
-   unsigned inline_size = 0, nonseamless_size = 0;
    struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
-   if (has_inline && ctx && zs->nir->info.num_inlinable_uniforms &&
-       ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(stage)) {
-      if (zs->can_inline && (screen->is_cpu || prog->inlined_variant_count[stage] < ZINK_MAX_INLINED_VARIANTS))
-         inline_size = zs->nir->info.num_inlinable_uniforms;
-      else
-         key->inline_uniforms = false;
-   }
-   if (!has_nonseamless && key->base.nonseamless_cube_mask)
-      nonseamless_size = sizeof(uint32_t);
 
    struct zink_shader_module *iter, *next;
-   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[stage][!!nonseamless_size][!!inline_size], list) {
+   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[stage][!has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0], list) {
       if (is_nongenerated_tcs) {
-         if (!shader_key_matches_tcs_nongenerated(iter, key, inline_size))
+         if (!shader_key_matches_tcs_nongenerated(iter, key, has_inline ? !!inline_size : 0))
             continue;
       } else {
          if (stage == MESA_SHADER_VERTEX && iter->key_size != key->size)
@@ -175,7 +187,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       if (inline_size)
          prog->inlined_variant_count[stage]++;
    }
-   list_add(&zm->list, &prog->shader_cache[stage][!!nonseamless_size][!!inline_size]);
+   list_add(&zm->list, &prog->shader_cache[stage][!has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0]);
    return zm;
 }
 
@@ -213,7 +225,11 @@ update_gfx_shader_modules(struct zink_context *ctx,
          continue;
 
       assert(prog->shaders[i]);
-      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state, has_inline, has_nonseamless);
+
+      unsigned inline_size = 0, nonseamless_size = 0;
+      gather_shader_module_info(ctx, screen, prog->shaders[i], prog, state, has_inline, has_nonseamless, &inline_size, &nonseamless_size);
+      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
+                                                                  inline_size, nonseamless_size, has_inline, has_nonseamless);
       state->modules[i] = zm->shader;
       if (prog->modules[i] == zm)
          continue;
