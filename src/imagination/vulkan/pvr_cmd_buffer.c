@@ -4769,6 +4769,187 @@ static uint32_t pvr_get_hw_primitive_topology(VkPrimitiveTopology topology)
    }
 }
 
+/* TODO: Rewrite this in terms of ALIGN_POT() and pvr_cmd_length(). */
+/* Aligned to 128 bit for PDS loads / stores */
+#define DUMMY_VDM_CONTROL_STREAM_BLOCK_SIZE 8
+
+static VkResult
+pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
+                                   struct pvr_csb *const csb,
+                                   pvr_dev_addr_t idx_buffer_addr,
+                                   uint32_t idx_stride,
+                                   struct PVRX(VDMCTRL_INDEX_LIST0) * list_hdr,
+                                   struct pvr_buffer *buffer,
+                                   VkDeviceSize offset,
+                                   uint32_t count,
+                                   uint32_t stride)
+{
+   struct pvr_pds_drawindirect_program pds_prog = { 0 };
+   uint32_t word0;
+
+   /* Draw indirect always has index offset and instance count. */
+   list_hdr->index_offset_present = true;
+   list_hdr->index_instance_count_present = true;
+
+   pvr_cmd_pack(VDMCTRL_INDEX_LIST0)(&word0, list_hdr);
+
+   pds_prog.support_base_instance = true;
+   pds_prog.arg_buffer = buffer->dev_addr.addr + offset;
+   pds_prog.index_buffer = idx_buffer_addr.addr;
+   pds_prog.index_block_header = word0;
+   pds_prog.index_stride = idx_stride;
+   pds_prog.num_views = 1U;
+
+   /* TODO: See if we can pre-upload the code section of all the pds programs
+    * and reuse them here.
+    */
+   /* Generate and upload the PDS programs (code + data). */
+   for (uint32_t i = 0U; i < count; i++) {
+      const struct pvr_device_info *dev_info =
+         &cmd_buffer->device->pdevice->dev_info;
+      struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+      struct pvr_bo *dummy_bo;
+      uint32_t *dummy_stream;
+      struct pvr_bo *pds_bo;
+      uint32_t *pds_base;
+      uint32_t pds_size;
+      VkResult result;
+
+      pds_prog.increment_draw_id = (i != 0);
+
+      if (state->draw_state.draw_indexed) {
+         pvr_pds_generate_draw_elements_indirect(&pds_prog,
+                                                 0,
+                                                 PDS_GENERATE_SIZES,
+                                                 dev_info);
+      } else {
+         pvr_pds_generate_draw_arrays_indirect(&pds_prog,
+                                               0,
+                                               PDS_GENERATE_SIZES,
+                                               dev_info);
+      }
+
+      pds_size = (pds_prog.program.data_size_aligned +
+                  pds_prog.program.code_size_aligned)
+                 << 2;
+
+      result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                        cmd_buffer->device->heaps.pds_heap,
+                                        pds_size,
+                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                        &pds_bo);
+      if (result != VK_SUCCESS)
+         return result;
+
+      pds_base = pds_bo->bo->map;
+      memcpy(pds_base,
+             pds_prog.program.code,
+             pds_prog.program.code_size_aligned << 2);
+
+      if (state->draw_state.draw_indexed) {
+         pvr_pds_generate_draw_elements_indirect(
+            &pds_prog,
+            pds_base + pds_prog.program.code_size_aligned,
+            PDS_GENERATE_DATA_SEGMENT,
+            dev_info);
+      } else {
+         pvr_pds_generate_draw_arrays_indirect(
+            &pds_prog,
+            pds_base + pds_prog.program.code_size_aligned,
+            PDS_GENERATE_DATA_SEGMENT,
+            dev_info);
+      }
+
+      pvr_bo_cpu_unmap(cmd_buffer->device, pds_bo);
+
+      /* Write the VDM state update. */
+      pvr_csb_emit (csb, VDMCTRL_PDS_STATE0, state0) {
+         state0.usc_target = PVRX(VDMCTRL_USC_TARGET_ANY);
+
+         state0.pds_temp_size =
+            DIV_ROUND_UP(pds_prog.program.temp_size_aligned << 2,
+                         PVRX(VDMCTRL_PDS_STATE0_PDS_TEMP_SIZE_UNIT_SIZE));
+
+         state0.pds_data_size =
+            DIV_ROUND_UP(pds_prog.program.data_size_aligned << 2,
+                         PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE));
+      }
+
+      pvr_csb_emit (csb, VDMCTRL_PDS_STATE1, state1) {
+         const uint32_t data_offset =
+            pds_bo->vma->dev_addr.addr + (pds_prog.program.code_size << 2) -
+            cmd_buffer->device->heaps.pds_heap->base_addr.addr;
+
+         state1.pds_data_addr = PVR_DEV_ADDR(data_offset);
+         state1.sd_type = PVRX(VDMCTRL_SD_TYPE_PDS);
+         state1.sd_next_type = PVRX(VDMCTRL_SD_TYPE_NONE);
+      }
+
+      pvr_csb_emit (csb, VDMCTRL_PDS_STATE2, state2) {
+         const uint32_t code_offset =
+            pds_bo->vma->dev_addr.addr -
+            cmd_buffer->device->heaps.pds_heap->base_addr.addr;
+
+         state2.pds_code_addr = PVR_DEV_ADDR(code_offset);
+      }
+
+      /* Sync task to ensure the VDM doesn't start reading the dummy blocks
+       * before they are ready.
+       */
+      pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
+         list0.primitive_topology = PVRX(VDMCTRL_PRIMITIVE_TOPOLOGY_TRI_LIST);
+      }
+
+      result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                        cmd_buffer->device->heaps.general_heap,
+                                        DUMMY_VDM_CONTROL_STREAM_BLOCK_SIZE,
+                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                        &dummy_bo);
+      if (result != VK_SUCCESS)
+         return result;
+
+      dummy_stream = dummy_bo->bo->map;
+
+      /* For indexed draw cmds fill in the dummy's header (as it won't change
+       * based on the indirect args) and increment by the in-use size of each
+       * dummy block.
+       */
+      if (!state->draw_state.draw_indexed) {
+         dummy_stream[0] = word0;
+         dummy_stream += 4;
+      } else {
+         dummy_stream += 5;
+      }
+
+      /* clang-format off */
+      pvr_csb_pack (dummy_stream, VDMCTRL_STREAM_RETURN, word);
+      /* clang-format on */
+
+      pvr_bo_cpu_unmap(cmd_buffer->device, dummy_bo);
+
+      /* Stream link to the first dummy which forces the VDM to discard any
+       * prefetched (dummy) control stream.
+       */
+      pvr_csb_emit (csb, VDMCTRL_STREAM_LINK0, link) {
+         link.with_return = true;
+         link.link_addrmsb = dummy_bo->vma->dev_addr;
+      }
+
+      pvr_csb_emit (csb, VDMCTRL_STREAM_LINK1, link) {
+         link.link_addrlsb = dummy_bo->vma->dev_addr;
+      }
+
+      /* Point the pds program to the next argument buffer and the next VDM
+       * dummy buffer.
+       */
+      pds_prog.arg_buffer += stride;
+   }
+
+   return VK_SUCCESS;
+}
+
+#undef DUMMY_VDM_CONTROL_STREAM_BLOCK_SIZE
+
 static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
                                     struct pvr_sub_cmd_gfx *const sub_cmd,
                                     VkPrimitiveTopology topology,
@@ -4776,64 +4957,88 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
                                     uint32_t vertex_count,
                                     uint32_t first_index,
                                     uint32_t index_count,
-                                    uint32_t instance_count)
+                                    uint32_t instance_count,
+                                    struct pvr_buffer *buffer,
+                                    VkDeviceSize offset,
+                                    uint32_t count,
+                                    uint32_t stride)
 {
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
-   struct pvr_csb *const csb = &sub_cmd->control_stream;
+   const bool vertex_shader_has_side_effects =
+      state->gfx_pipeline->vertex_shader_state.stage_state.has_side_effects;
    struct PVRX(VDMCTRL_INDEX_LIST0)
       list_hdr = { pvr_cmd_header(VDMCTRL_INDEX_LIST0) };
    pvr_dev_addr_t index_buffer_addr = PVR_DEV_ADDR_INVALID;
+   struct pvr_csb *const csb = &sub_cmd->control_stream;
    unsigned int index_stride = 0;
 
-   pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
-      const bool vertex_shader_has_side_effects =
-         cmd_buffer->state.gfx_pipeline->vertex_shader_state.stage_state
-            .has_side_effects;
+   list_hdr.primitive_topology = pvr_get_hw_primitive_topology(topology);
 
-      list0.primitive_topology = pvr_get_hw_primitive_topology(topology);
+   /* firstInstance is not handled here in the VDM state, it's implemented as
+    * an addition in the PDS vertex fetch using
+    * PVR_PDS_CONST_MAP_ENTRY_TYPE_BASE_INSTANCE entry type.
+    */
 
-      /* First instance is not handled in the VDM state, it's implemented as
-       * an addition in the PDS vertex fetch.
-       */
-      list0.index_count_present = true;
+   list_hdr.index_count_present = true;
 
-      if (instance_count > 1)
-         list0.index_instance_count_present = true;
+   if (instance_count > 1)
+      list_hdr.index_instance_count_present = true;
 
-      if (first_vertex != 0)
-         list0.index_offset_present = true;
+   if (first_vertex != 0)
+      list_hdr.index_offset_present = true;
 
-      if (state->draw_state.draw_indexed) {
-         struct pvr_buffer *buffer = state->index_buffer_binding.buffer;
+   if (state->draw_state.draw_indexed) {
+      struct pvr_buffer *buffer = state->index_buffer_binding.buffer;
 
-         switch (state->index_buffer_binding.type) {
-         case VK_INDEX_TYPE_UINT32:
-            list0.index_size = PVRX(VDMCTRL_INDEX_SIZE_B32);
-            index_stride = 4;
-            break;
+      switch (state->index_buffer_binding.type) {
+      case VK_INDEX_TYPE_UINT32:
+         list_hdr.index_size = PVRX(VDMCTRL_INDEX_SIZE_B32);
+         index_stride = 4;
+         break;
 
-         case VK_INDEX_TYPE_UINT16:
-            list0.index_size = PVRX(VDMCTRL_INDEX_SIZE_B16);
-            index_stride = 2;
-            break;
+      case VK_INDEX_TYPE_UINT16:
+         list_hdr.index_size = PVRX(VDMCTRL_INDEX_SIZE_B16);
+         index_stride = 2;
+         break;
 
-         default:
-            unreachable("Invalid index type");
-         }
-
-         list0.index_addr_present = true;
-         index_buffer_addr = PVR_DEV_ADDR_OFFSET(
-            buffer->dev_addr,
-            state->index_buffer_binding.offset + first_index * index_stride);
-         list0.index_base_addrmsb = index_buffer_addr;
+      default:
+         unreachable("Invalid index type");
       }
 
-      list0.degen_cull_enable =
-         PVR_HAS_FEATURE(&cmd_buffer->device->pdevice->dev_info,
-                         vdm_degenerate_culling) &&
-         !vertex_shader_has_side_effects;
+      index_buffer_addr = PVR_DEV_ADDR_OFFSET(
+         buffer->dev_addr,
+         state->index_buffer_binding.offset + first_index * index_stride);
 
-      list_hdr = list0;
+      list_hdr.index_addr_present = true;
+
+      /* For indirect draw calls, index buffer address is not embedded into VDM
+       * control stream.
+       */
+      if (!state->draw_state.draw_indirect)
+         list_hdr.index_base_addrmsb = index_buffer_addr;
+   }
+
+   list_hdr.degen_cull_enable =
+      PVR_HAS_FEATURE(&cmd_buffer->device->pdevice->dev_info,
+                      vdm_degenerate_culling) &&
+      !vertex_shader_has_side_effects;
+
+   if (state->draw_state.draw_indirect) {
+      assert(buffer);
+      pvr_write_draw_indirect_vdm_stream(cmd_buffer,
+                                         csb,
+                                         index_buffer_addr,
+                                         index_stride,
+                                         &list_hdr,
+                                         buffer,
+                                         offset,
+                                         count,
+                                         stride);
+      return;
+   }
+
+   pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
+      list0 = list_hdr;
    }
 
    if (list_hdr.index_addr_present) {
@@ -4869,17 +5074,16 @@ void pvr_CmdDraw(VkCommandBuffer commandBuffer,
                  uint32_t firstVertex,
                  uint32_t firstInstance)
 {
+   const struct pvr_cmd_buffer_draw_state draw_state = {
+      .base_vertex = firstVertex,
+      .base_instance = firstInstance,
+   };
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
-   struct pvr_cmd_buffer_draw_state draw_state;
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
 
-   draw_state.base_vertex = firstVertex;
-   draw_state.base_instance = firstInstance;
-   draw_state.draw_indirect = false;
-   draw_state.draw_indexed = false;
    pvr_update_draw_state(state, &draw_state);
 
    result = pvr_validate_draw_state(cmd_buffer);
@@ -4894,7 +5098,11 @@ void pvr_CmdDraw(VkCommandBuffer commandBuffer,
                            vertexCount,
                            0U,
                            0U,
-                           instanceCount);
+                           instanceCount,
+                           NULL,
+                           0U,
+                           0U,
+                           0U);
 }
 
 void pvr_CmdDrawIndexed(VkCommandBuffer commandBuffer,
@@ -4904,17 +5112,17 @@ void pvr_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                         int32_t vertexOffset,
                         uint32_t firstInstance)
 {
+   const struct pvr_cmd_buffer_draw_state draw_state = {
+      .base_vertex = vertexOffset,
+      .base_instance = firstInstance,
+      .draw_indexed = true,
+   };
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
-   struct pvr_cmd_buffer_draw_state draw_state;
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
 
-   draw_state.base_vertex = vertexOffset;
-   draw_state.base_instance = firstInstance;
-   draw_state.draw_indirect = false;
-   draw_state.draw_indexed = true;
    pvr_update_draw_state(state, &draw_state);
 
    result = pvr_validate_draw_state(cmd_buffer);
@@ -4929,7 +5137,11 @@ void pvr_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                            0,
                            firstIndex,
                            indexCount,
-                           instanceCount);
+                           instanceCount,
+                           NULL,
+                           0U,
+                           0U,
+                           0U);
 }
 
 void pvr_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
@@ -4947,7 +5159,35 @@ void pvr_CmdDrawIndirect(VkCommandBuffer commandBuffer,
                          uint32_t drawCount,
                          uint32_t stride)
 {
-   assert(!"Unimplemented");
+   const struct pvr_cmd_buffer_draw_state draw_state = {
+      .draw_indirect = true,
+   };
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   PVR_FROM_HANDLE(pvr_buffer, buffer, _buffer);
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   pvr_update_draw_state(state, &draw_state);
+
+   result = pvr_validate_draw_state(cmd_buffer);
+   if (result != VK_SUCCESS)
+      return;
+
+   /* Write the VDM control stream for the primitive. */
+   pvr_emit_vdm_index_list(cmd_buffer,
+                           &state->current_sub_cmd->gfx,
+                           state->gfx_pipeline->input_asm_state.topology,
+                           0,
+                           0,
+                           0,
+                           0,
+                           0,
+                           buffer,
+                           offset,
+                           drawCount,
+                           stride);
 }
 
 static VkResult
