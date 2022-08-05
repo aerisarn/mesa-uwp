@@ -1677,7 +1677,7 @@ fs_visitor::assign_curb_setup()
                                    LSC_DATA_SIZE_D32,
                                    num_regs * 8 /* num_channels */,
                                    true /* transpose */,
-                                   LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                   LSC_CACHE(devinfo, LOAD, L1STATE_L3MOCS),
                                    true /* has_dest */);
          send->header_size = 0;
          send->mlen = lsc_msg_desc_src0_len(devinfo, send->desc);
