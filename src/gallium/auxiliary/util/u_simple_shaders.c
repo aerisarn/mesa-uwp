@@ -283,26 +283,22 @@ util_make_fragment_tex_shader_xrbias(struct pipe_context *pipe,
 
 /**
  * Make simple fragment texture shader:
- *  IMM {0,0,0,1}                         // (if writemask != 0xf)
- *  MOV TEMP[0], IMM[0]                   // (if writemask != 0xf)
- *  TEX TEMP[0].writemask, IN[0], SAMP[0], 2D;
+ *  TEX TEMP[0], IN[0], SAMP[0], 2D;
  *   .. optional SINT <-> UINT clamping ..
  *  MOV OUT[0], TEMP[0]
  *  END;
  *
  * \param tex_target  one of TGSI_TEXTURE_x
  * \parma interp_mode  either TGSI_INTERPOLATE_LINEAR or PERSPECTIVE
- * \param writemask  mask of TGSI_WRITEMASK_x
  */
 void *
-util_make_fragment_tex_shader_writemask(struct pipe_context *pipe,
-                                        enum tgsi_texture_type tex_target,
-                                        enum tgsi_interpolate_mode interp_mode,
-                                        unsigned writemask,
-                                        enum tgsi_return_type stype,
-                                        enum tgsi_return_type dtype,
-                                        bool load_level_zero,
-                                        bool use_txf)
+util_make_fragment_tex_shader(struct pipe_context *pipe,
+                              enum tgsi_texture_type tex_target,
+                              enum tgsi_interpolate_mode interp_mode,
+                              enum tgsi_return_type stype,
+                              enum tgsi_return_type dtype,
+                              bool load_level_zero,
+                              bool use_txf)
 {
    struct ureg_program *ureg;
    struct ureg_src sampler;
@@ -332,18 +328,12 @@ util_make_fragment_tex_shader_writemask(struct pipe_context *pipe,
 
    temp = ureg_DECL_temporary(ureg);
 
-   if (writemask != TGSI_WRITEMASK_XYZW) {
-      struct ureg_src imm = ureg_imm4f( ureg, 0, 0, 0, 1 );
-
-      ureg_MOV(ureg, temp, imm);
-   }
-
    if (tex_target == TGSI_TEXTURE_BUFFER)
       ureg_TXF(ureg,
-               ureg_writemask(temp, writemask),
+               ureg_writemask(temp, TGSI_WRITEMASK_XYZW),
                tex_target, tex, sampler);
    else
-      ureg_load_tex(ureg, ureg_writemask(temp, writemask), tex, sampler,
+      ureg_load_tex(ureg, ureg_writemask(temp, TGSI_WRITEMASK_XYZW), tex, sampler,
                     tex_target, load_level_zero, use_txf);
 
    if (stype != dtype) {
@@ -365,30 +355,6 @@ util_make_fragment_tex_shader_writemask(struct pipe_context *pipe,
 
    return ureg_create_shader_and_destroy( ureg, pipe );
 }
-
-
-/**
- * Make a simple fragment shader that sets the output color to a color
- * taken from a texture.
- * \param tex_target  one of TGSI_TEXTURE_x
- */
-void *
-util_make_fragment_tex_shader(struct pipe_context *pipe,
-                              enum tgsi_texture_type tex_target,
-                              enum tgsi_interpolate_mode interp_mode,
-                              enum tgsi_return_type stype,
-                              enum tgsi_return_type dtype,
-                              bool load_level_zero,
-                              bool use_txf)
-{
-   return util_make_fragment_tex_shader_writemask( pipe,
-                                                   tex_target,
-                                                   interp_mode,
-                                                   TGSI_WRITEMASK_XYZW,
-                                                   stype, dtype, load_level_zero,
-                                                   use_txf);
-}
-
 
 /**
  * Make a simple fragment texture shader which reads the texture unit 0 and 1
