@@ -257,7 +257,7 @@ spin = itertools.cycle("-\\|/")
 shutil.copy(skips, output_folder)
 skips = os.path.join(output_folder, "skips.csv")
 if not args.slow:
-    # Exclude these 3 tests slow tests
+    # Exclude these 4 tests slow tests
     with open(skips, "a") as f:
         print("KHR-GL46.copy_image.functional", file=f)
         print("KHR-GL46.texture_swizzle.smoke", file=f)
@@ -265,6 +265,7 @@ if not args.slow:
             "KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize",
             file=f,
         )
+        print("KHR-Single-GL46.arrays_of_arrays_gl.AtomicUsage", file=f)
 
 
 def gfx_level_to_str(cl):
@@ -424,6 +425,10 @@ if args.glcts:
         "{}/external/openglcts/modules/glcts".format(glcts_path),
         "--caselist",
         "{}/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-master.txt".format(
+            glcts_path
+        ),
+        "--caselist",
+        "{}/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass_single/4.6.1.x/gl46-khr-single.txt".format(
             glcts_path
         ),
         "--output",
