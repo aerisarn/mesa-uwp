@@ -54,7 +54,7 @@ debug_describe_zink_compute_program(char *buf, const struct zink_compute_program
    sprintf(buf, "zink_compute_program");
 }
 
-static bool
+ALWAYS_INLINE static bool
 shader_key_matches_tcs_nongenerated(const struct zink_shader_module *zm, const struct zink_shader_key *key, unsigned num_uniforms)
 {
    if (zm->num_uniforms != num_uniforms || zm->has_nonseamless != !!key->base.nonseamless_cube_mask)
@@ -65,7 +65,7 @@ shader_key_matches_tcs_nongenerated(const struct zink_shader_module *zm, const s
                                     key->base.inlined_uniform_values, zm->num_uniforms * sizeof(uint32_t)));
 }
 
-static bool
+ALWAYS_INLINE static bool
 shader_key_matches(const struct zink_shader_module *zm,
                    const struct zink_shader_key *key, unsigned num_uniforms)
 {
@@ -86,10 +86,12 @@ shader_module_hash(const struct zink_shader_module *zm)
    return _mesa_hash_data(zm->key, key_size);
 }
 
-static struct zink_shader_module *
+ALWAYS_INLINE static struct zink_shader_module *
 get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
                             struct zink_shader *zs, struct zink_gfx_program *prog,
-                            struct zink_gfx_pipeline_state *state)
+                            struct zink_gfx_pipeline_state *state,
+                            bool has_inline, //is inlining enabled?
+                            bool has_nonseamless) //is nonseamless ext present?
 {
    gl_shader_stage stage = zs->nir->info.stage;
    VkShaderModule mod;
@@ -98,14 +100,14 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
-   if (ctx && zs->nir->info.num_inlinable_uniforms &&
+   if (has_inline && ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(stage)) {
       if (zs->can_inline && (screen->is_cpu || prog->inlined_variant_count[stage] < ZINK_MAX_INLINED_VARIANTS))
          inline_size = zs->nir->info.num_inlinable_uniforms;
       else
          key->inline_uniforms = false;
    }
-   if (key->base.nonseamless_cube_mask)
+   if (!has_nonseamless && key->base.nonseamless_cube_mask)
       nonseamless_size = sizeof(uint32_t);
 
    struct zink_shader_module *iter, *next;
@@ -184,11 +186,13 @@ destroy_shader_cache(struct zink_screen *screen, struct list_head *sc)
    }
 }
 
-static void
+ALWAYS_INLINE static void
 update_gfx_shader_modules(struct zink_context *ctx,
                       struct zink_screen *screen,
                       struct zink_gfx_program *prog, uint32_t mask,
-                      struct zink_gfx_pipeline_state *state)
+                      struct zink_gfx_pipeline_state *state,
+                      bool has_inline, //is inlining enabled?
+                      bool has_nonseamless) //is nonseamless ext present?
 {
    bool hash_changed = false;
    bool default_variants = true;
@@ -199,7 +203,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
          continue;
 
       assert(prog->shaders[i]);
-      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state);
+      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state, has_inline, has_nonseamless);
       state->modules[i] = zm->shader;
       if (prog->modules[i] == zm)
          continue;
@@ -291,10 +295,28 @@ equals_gfx_output(const void *a, const void *b)
    return !memcmp(da + sizeof(uint16_t), db + sizeof(uint16_t), offsetof(struct zink_gfx_output_key, pipeline) - sizeof(uint16_t));
 }
 
+ALWAYS_INLINE static void
+update_gfx_program_nonseamless(struct zink_context *ctx, struct zink_gfx_program *prog, bool has_nonseamless)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (screen->driconf.inline_uniforms)
+      update_gfx_shader_modules(ctx, screen, prog,
+                                ctx->dirty_shader_stages & prog->stages_present, &ctx->gfx_pipeline_state,
+                                true, has_nonseamless);
+   else
+      update_gfx_shader_modules(ctx, screen, prog,
+                                ctx->dirty_shader_stages & prog->stages_present, &ctx->gfx_pipeline_state,
+                                false, has_nonseamless);
+}
+
 static void
 update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
 {
-   update_gfx_shader_modules(ctx, zink_screen(ctx->base.screen), prog, ctx->dirty_shader_stages & prog->stages_present, &ctx->gfx_pipeline_state);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (screen->info.have_EXT_non_seamless_cube_map)
+      update_gfx_program_nonseamless(ctx, prog, true);
+   else
+      update_gfx_program_nonseamless(ctx, prog, false);
 }
 
 void
