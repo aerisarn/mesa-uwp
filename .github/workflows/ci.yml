@@ -32,7 +32,12 @@ jobs:
     - name: Install Mako
       run: pip3 install --user mako
     - name: Configure
-      run: meson . build -Dbuild-tests=true -Dosmesa=true
+      run: |
+        cat > native_config <<EOL
+        [binaries]
+        llvm-config = '/usr/local/opt/llvm/bin/llvm-config'
+        EOL
+        meson . build --native-file=native_config -Dbuild-tests=true -Dosmesa=true -Dgallium-drivers=swrast
     - name: Build
       run: meson compile -C build
     - name: Test
