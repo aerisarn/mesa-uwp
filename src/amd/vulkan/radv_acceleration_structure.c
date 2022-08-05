@@ -494,14 +494,6 @@ static void
 atomic_fminmax(struct radv_device *dev, nir_builder *b, nir_ssa_def *addr, bool is_max,
                nir_ssa_def *val)
 {
-   if (radv_has_shader_buffer_float_minmax(dev->physical_device)) {
-      if (is_max)
-         nir_global_atomic_fmax(b, 32, addr, val);
-      else
-         nir_global_atomic_fmin(b, 32, addr, val);
-      return;
-   }
-
    /* Use an integer comparison to work correctly with negative zero. */
    val = nir_bcsel(b, nir_ilt(b, val, nir_imm_int(b, 0)),
                    nir_isub(b, nir_imm_int(b, -2147483648), val), val);
@@ -517,9 +509,6 @@ read_fminmax_atomic(struct radv_device *dev, nir_builder *b, unsigned channels, 
 {
    nir_ssa_def *val = nir_build_load_global(b, channels, 32, addr,
                                             .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
-
-   if (radv_has_shader_buffer_float_minmax(dev->physical_device))
-      return val;
 
    return nir_bcsel(b, nir_ilt(b, val, nir_imm_int(b, 0)),
                     nir_isub(b, nir_imm_int(b, -2147483648), val), val);
@@ -1448,18 +1437,11 @@ radv_CmdBuildAccelerationStructuresKHR(
 
    if (build_mode != accel_struct_build_unoptimized) {
       for (uint32_t i = 0; i < infoCount; ++i) {
-         if (radv_has_shader_buffer_float_minmax(cmd_buffer->device->physical_device)) {
-            /* Clear the bvh bounds with nan. */
-            si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress,
-                                   6 * sizeof(float), 0x7FC00000);
-         } else {
-            /* Clear the bvh bounds with int max/min. */
-            si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress,
-                                   3 * sizeof(float), 0x7fffffff);
-            si_cp_dma_clear_buffer(cmd_buffer,
-                                   pInfos[i].scratchData.deviceAddress + 3 * sizeof(float),
-                                   3 * sizeof(float), 0x80000000);
-         }
+         /* Clear the bvh bounds with int max/min. */
+         si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress, 3 * sizeof(float),
+                                0x7fffffff);
+         si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress + 3 * sizeof(float),
+                                3 * sizeof(float), 0x80000000);
       }
 
       cmd_buffer->state.flush_bits |= flush_bits;
