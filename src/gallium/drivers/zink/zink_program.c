@@ -231,7 +231,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
 {
    bool hash_changed = false;
    bool default_variants = true;
-   bool first = !prog->modules[MESA_SHADER_VERTEX];
+   assert(prog->modules[MESA_SHADER_VERTEX]);
    uint32_t variant_hash = prog->last_variant_hash;
    for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
       if (!(mask & BITFIELD_BIT(i)))
@@ -249,8 +249,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
       state->modules[i] = zm->shader;
       if (prog->modules[i] == zm)
          continue;
-      if (prog->modules[i])
-         variant_hash ^= prog->modules[i]->hash;
+      variant_hash ^= prog->modules[i]->hash;
       hash_changed = true;
       default_variants &= zm->default_variant;
       prog->modules[i] = zm;
@@ -258,18 +257,46 @@ update_gfx_shader_modules(struct zink_context *ctx,
    }
 
    if (hash_changed && state) {
-      if (default_variants && !first)
+      if (default_variants)
          prog->last_variant_hash = prog->default_variant_hash;
-      else {
+      else
          prog->last_variant_hash = variant_hash;
-         if (first) {
-            p_atomic_dec(&prog->base.reference.count);
-            prog->default_variant_hash = prog->last_variant_hash;
-         }
-      }
 
       state->modules_changed = true;
    }
+}
+
+static void
+generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
+{
+   assert(!prog->modules[MESA_SHADER_VERTEX]);
+   uint32_t variant_hash = 0;
+   bool default_variants = true;
+   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
+      if (!(prog->stages_present & BITFIELD_BIT(i)))
+         continue;
+
+      assert(prog->shaders[i]);
+
+      unsigned inline_size = 0, nonseamless_size = 0;
+      gather_shader_module_info(ctx, screen, prog->shaders[i], prog, state,
+                                screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map,
+                                &inline_size, &nonseamless_size);
+      struct zink_shader_module *zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
+                                                                     inline_size, nonseamless_size,
+                                                                     screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
+      state->modules[i] = zm->shader;
+      prog->modules[i] = zm;
+      default_variants &= zm->default_variant;
+      variant_hash ^= prog->modules[i]->hash;
+   }
+
+   prog->last_variant_hash = variant_hash;
+   p_atomic_dec(&prog->base.reference.count);
+   if (default_variants)
+      prog->default_variant_hash = prog->last_variant_hash;
+
+   state->modules_changed = true;
 }
 
 static uint32_t
@@ -385,12 +412,13 @@ zink_gfx_program_update(struct zink_context *ctx)
             ctx->gfx_pipeline_state.modules[stage] = prog->modules[stage]->shader;
          /* ensure variants are always updated if keys have changed since last use */
          ctx->dirty_shader_stages |= prog->stages_present;
+         update_gfx_program(ctx, prog);
       } else {
          ctx->dirty_shader_stages |= bits;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
+         generate_gfx_program_modules(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
       }
-      update_gfx_program(ctx, prog);
       if (prog && prog != ctx->curr_program)
          zink_batch_reference_program(&ctx->batch, &prog->base);
       if (ctx->curr_program)
