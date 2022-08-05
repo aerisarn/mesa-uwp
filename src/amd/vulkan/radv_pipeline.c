@@ -4321,6 +4321,10 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    }
 
    NIR_PASS(_, stage->nir, radv_nir_lower_ycbcr_textures, pipeline_layout);
+
+   if (stage->nir->info.uses_resource_info_query)
+      NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);
+
    NIR_PASS_V(stage->nir, radv_nir_apply_pipeline_layout, device, pipeline_layout,
               &stage->info, &stage->args);
 
@@ -4352,10 +4356,6 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    bool lowered_ngg = pipeline_has_ngg && stage->stage == last_vgt_api_stage;
    if (lowered_ngg)
       radv_lower_ngg(device, stage, pipeline_key);
-
-   if (radv_use_llvm_for_stage(device, stage->stage) &&
-       stage->nir->info.uses_resource_info_query)
-      NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);
 
    NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
    NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, &stage->info, &stage->args, pipeline_key,

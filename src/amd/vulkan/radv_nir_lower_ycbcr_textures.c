@@ -56,6 +56,8 @@ get_texture_size(struct ycbcr_state *state, nir_deref_instr *texture)
    nir_ssa_dest_init(&tex->instr, &tex->dest, nir_tex_instr_dest_size(tex), 32, NULL);
    nir_builder_instr_insert(b, &tex->instr);
 
+   state->builder->shader->info.uses_resource_info_query = true;
+
    return nir_i2f32(b, &tex->dest.ssa);
 }
 
