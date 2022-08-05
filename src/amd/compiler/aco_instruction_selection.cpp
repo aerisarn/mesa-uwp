@@ -6586,112 +6586,6 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
-get_buffer_size(isel_context* ctx, Temp desc, Temp dst)
-{
-   if (ctx->options->gfx_level == GFX8) {
-      /* we only have to divide by 1, 2, 4, 8, 12 or 16 */
-      Builder bld(ctx->program, ctx->block);
-
-      Temp size = emit_extract_vector(ctx, desc, 2, s1);
-
-      Temp size_div3 = bld.vop3(aco_opcode::v_mul_hi_u32, bld.def(v1),
-                                bld.copy(bld.def(v1), Operand::c32(0xaaaaaaabu)), size);
-      size_div3 = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc),
-                           bld.as_uniform(size_div3), Operand::c32(1u));
-
-      Temp stride = emit_extract_vector(ctx, desc, 1, s1);
-      stride = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), stride,
-                        Operand::c32((5u << 16) | 16u));
-
-      Temp is12 = bld.sopc(aco_opcode::s_cmp_eq_i32, bld.def(s1, scc), stride, Operand::c32(12u));
-      size = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), size_div3, size, bld.scc(is12));
-
-      Temp shr_dst = dst.type() == RegType::vgpr ? bld.tmp(s1) : dst;
-      bld.sop2(aco_opcode::s_lshr_b32, Definition(shr_dst), bld.def(s1, scc), size,
-               bld.sop1(aco_opcode::s_ff1_i32_b32, bld.def(s1), stride));
-      if (dst.type() == RegType::vgpr)
-         bld.copy(Definition(dst), shr_dst);
-
-      /* TODO: we can probably calculate this faster with v_skip when stride != 12 */
-   } else {
-      emit_extract_vector(ctx, desc, 2, dst);
-   }
-}
-
-void
-visit_image_size(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
-   bool is_array = nir_intrinsic_image_array(instr);
-   Builder bld(ctx->program, ctx->block);
-
-   if (dim == GLSL_SAMPLER_DIM_BUF) {
-      Temp desc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
-      return get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa));
-   }
-
-   /* LOD */
-   assert(nir_src_as_uint(instr->src[1]) == 0);
-   std::vector<Temp> lod{bld.copy(bld.def(v1), Operand::zero())};
-
-   /* Resource */
-   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
-
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-
-   MIMG_instruction* mimg =
-      emit_mimg(bld, aco_opcode::image_get_resinfo, Definition(dst), resource, Operand(s4), lod);
-   uint8_t& dmask = mimg->dmask;
-   mimg->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
-   mimg->dmask = (1 << instr->dest.ssa.num_components) - 1;
-   mimg->da = is_array;
-
-   if (ctx->options->gfx_level == GFX9 && dim == GLSL_SAMPLER_DIM_1D && is_array) {
-      assert(instr->dest.ssa.num_components == 2);
-      dmask = 0x5;
-   }
-
-   emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
-}
-
-void
-get_image_samples(isel_context* ctx, Definition dst, Temp resource)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   Temp dword3 = emit_extract_vector(ctx, resource, 3, s1);
-   Temp samples_log2 = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3,
-                                Operand::c32(16u | 4u << 16));
-   Temp samples = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), Operand::c32(1u),
-                           samples_log2);
-   Temp type = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3,
-                        Operand::c32(28u | 4u << 16 /* offset=28, width=4 */));
-
-   Operand default_sample = Operand::c32(1u);
-   if (ctx->options->robust_buffer_access) {
-      /* Extract the second dword of the descriptor, if it's
-       * all zero, then it's a null descriptor.
-       */
-      Temp dword1 = emit_extract_vector(ctx, resource, 1, s1);
-      Temp is_non_null_descriptor =
-         bld.sopc(aco_opcode::s_cmp_gt_u32, bld.def(s1, scc), dword1, Operand::zero());
-      default_sample = Operand(is_non_null_descriptor);
-   }
-
-   Temp is_msaa = bld.sopc(aco_opcode::s_cmp_ge_u32, bld.def(s1, scc), type, Operand::c32(14u));
-   bld.sop2(aco_opcode::s_cselect_b32, dst, samples, default_sample, bld.scc(is_msaa));
-}
-
-void
-visit_image_samples(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   Builder bld(ctx->program, ctx->block);
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
-   get_image_samples(ctx, Definition(dst), resource);
-}
-
-void
 visit_load_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -8466,8 +8360,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_bindless_image_atomic_comp_swap:
    case nir_intrinsic_bindless_image_atomic_fmin:
    case nir_intrinsic_bindless_image_atomic_fmax: visit_image_atomic(ctx, instr); break;
-   case nir_intrinsic_bindless_image_size: visit_image_size(ctx, instr); break;
-   case nir_intrinsic_bindless_image_samples: visit_image_samples(ctx, instr); break;
    case nir_intrinsic_load_ssbo: visit_load_ssbo(ctx, instr); break;
    case nir_intrinsic_store_ssbo: visit_store_ssbo(ctx, instr); break;
    case nir_intrinsic_load_buffer_amd: visit_load_buffer(ctx, instr); break;
@@ -9529,14 +9421,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       }
    }
 
-   if (instr->op == nir_texop_txs && instr->sampler_dim == GLSL_SAMPLER_DIM_BUF)
-      return get_buffer_size(ctx, resource, get_ssa_temp(ctx, &instr->dest.ssa));
-
-   if (instr->op == nir_texop_texture_samples) {
-      get_image_samples(ctx, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), resource);
-      return;
-   }
-
    if (has_offset) {
       assert(instr->op != nir_texop_txf);
 
@@ -9692,27 +9576,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
               dst.type() == RegType::sgpr) {
       unsigned bytes = util_bitcount(dmask) * instr->dest.ssa.bit_size / 8;
       tmp_dst = bld.tmp(RegClass::get(RegType::vgpr, bytes));
-   }
-
-   if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
-      if (!has_lod)
-         lod = bld.copy(bld.def(v1), Operand::zero());
-
-      MIMG_instruction* tex = emit_mimg(bld, aco_opcode::image_get_resinfo, Definition(tmp_dst),
-                                        resource, Operand(s4), std::vector<Temp>{lod});
-      if (ctx->options->gfx_level == GFX9 && instr->op == nir_texop_txs &&
-          instr->sampler_dim == GLSL_SAMPLER_DIM_1D && instr->is_array) {
-         tex->dmask = (dmask & 0x1) | ((dmask & 0x2) << 1);
-      } else if (instr->op == nir_texop_query_levels) {
-         tex->dmask = 1 << 3;
-      } else {
-         tex->dmask = dmask;
-      }
-      tex->da = da;
-      tex->dim = dim;
-
-      expand_vector(ctx, tmp_dst, dst, instr->dest.ssa.num_components, dmask);
-      return;
    }
 
    Temp tg4_compare_cube_wa64 = Temp();
