@@ -15,6 +15,8 @@ use std::ffi::CString;
 use std::mem::size_of;
 use std::ptr;
 use std::slice;
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
@@ -50,6 +52,7 @@ pub struct Program {
     pub devs: Vec<Arc<Device>>,
     pub src: CString,
     pub il: Vec<u8>,
+    pub kernel_count: AtomicU32,
     spec_constants: Mutex<Vec<spirv::SpecConstant>>,
     build: Mutex<ProgramBuild>,
 }
@@ -140,6 +143,7 @@ impl Program {
             devs: devs.to_vec(),
             src: src,
             il: Vec::new(),
+            kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
@@ -212,6 +216,7 @@ impl Program {
             devs: devs,
             src: CString::new("").unwrap(),
             il: Vec::new(),
+            kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
@@ -244,6 +249,7 @@ impl Program {
             context: context,
             src: CString::new("").unwrap(),
             il: spirv.to_vec(),
+            kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
@@ -352,6 +358,10 @@ impl Program {
 
     pub fn kernels(&self) -> Vec<String> {
         self.build_info().kernels.clone()
+    }
+
+    pub fn active_kernels(&self) -> bool {
+        self.kernel_count.load(Ordering::Relaxed) != 0
     }
 
     pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
@@ -505,6 +515,7 @@ impl Program {
             devs: devs,
             src: CString::new("").unwrap(),
             il: Vec::new(),
+            kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
@@ -572,5 +583,9 @@ impl Program {
                 &mut [],
             )
             .unwrap()
+    }
+
+    pub fn is_binary(&self) -> bool {
+        self.src.to_bytes().is_empty() && self.il.is_empty()
     }
 }

@@ -225,6 +225,11 @@ pub fn build_program(
 
     check_cb(&pfn_notify, user_data)?;
 
+    // CL_INVALID_OPERATION if there are kernel objects attached to program.
+    if p.active_kernels() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
     // CL_BUILD_PROGRAM_FAILURE if there is a failure to build the program executable. This error
     // will be returned if clBuildProgram does not return until the build has completed.
     for dev in devs {
@@ -236,7 +241,6 @@ pub fn build_program(
     //• CL_INVALID_BINARY if program is created with clCreateProgramWithBinary and devices listed in device_list do not have a valid program binary loaded.
     //• CL_INVALID_BUILD_OPTIONS if the build options specified by options are invalid.
     //• CL_INVALID_OPERATION if the build of a program executable for any of the devices listed in device_list by a previous call to clBuildProgram for program has not completed.
-    //• CL_INVALID_OPERATION if there are kernel objects attached to program.
     //• CL_INVALID_OPERATION if program was not created with clCreateProgramWithSource, clCreateProgramWithIL or clCreateProgramWithBinary.
 
     if res {
@@ -282,6 +286,17 @@ pub fn compile_program(
         }
     }
 
+    // CL_INVALID_OPERATION if program has no source or IL available, i.e. it has not been created
+    // with clCreateProgramWithSource or clCreateProgramWithIL.
+    if p.is_binary() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_OPERATION if there are kernel objects attached to program.
+    if p.active_kernels() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
     // CL_COMPILE_PROGRAM_FAILURE if there is a failure to compile the program source. This error
     // will be returned if clCompileProgram does not return until the compile has completed.
     for dev in devs {
@@ -290,10 +305,8 @@ pub fn compile_program(
 
     call_cb(pfn_notify, program, user_data);
 
-    // CL_INVALID_OPERATION if program has no source or IL available, i.e. it has not been created with clCreateProgramWithSource or clCreateProgramWithIL.
     // • CL_INVALID_COMPILER_OPTIONS if the compiler options specified by options are invalid.
     // • CL_INVALID_OPERATION if the compilation or build of a program executable for any of the devices listed in device_list by a previous call to clCompileProgram or clBuildProgram for program has not completed.
-    // • CL_INVALID_OPERATION if there are kernel objects attached to program.
 
     if res {
         Ok(())
