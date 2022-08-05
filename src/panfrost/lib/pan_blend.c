@@ -621,6 +621,16 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
         const struct util_format_description *format_desc =
                 util_format_description(rt_state->format);
         nir_alu_type nir_type = pan_unpacked_type_for_format(format_desc);
+
+        /* Bifrost/Valhall support 16-bit and 32-bit register formats for
+         * LD_TILE/ST_TILE/BLEND, but do not support 8-bit. Rather than making
+         * the fragment output 8-bit and inserting extra conversions in the
+         * compiler, promote the output to 16-bit. The larger size is still
+         * compatible with correct conversion semantics.
+         */
+        if (PAN_ARCH >= 6 && nir_alu_type_get_type_size(nir_type) == 8)
+                nir_type = nir_alu_type_get_base_type(nir_type) | 16;
+
         enum glsl_base_type glsl_type = nir_get_glsl_base_type_for_nir_type(nir_type);
 
         nir_lower_blend_options options = {

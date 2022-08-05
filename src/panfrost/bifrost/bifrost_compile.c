@@ -4635,70 +4635,6 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         }
 }
 
-/* The cmdstream lowers 8-bit fragment output as 16-bit, so we need to do the
- * same lowering here to zero-extend correctly */
-
-static bool
-bifrost_nir_lower_i8_fragout_impl(struct nir_builder *b,
-                nir_intrinsic_instr *intr, UNUSED void *data)
-{
-        if (nir_src_bit_size(intr->src[0]) != 8)
-                return false;
-
-        nir_alu_type type =
-                nir_alu_type_get_base_type(nir_intrinsic_src_type(intr));
-
-        assert(type == nir_type_int || type == nir_type_uint);
-
-        b->cursor = nir_before_instr(&intr->instr);
-        nir_ssa_def *cast = nir_convert_to_bit_size(b, intr->src[0].ssa, type, 16);
-
-        nir_intrinsic_set_src_type(intr, type | 16);
-        nir_instr_rewrite_src_ssa(&intr->instr, &intr->src[0], cast);
-        return true;
-}
-
-static bool
-bifrost_nir_lower_i8_fragin_impl(struct nir_builder *b,
-                nir_intrinsic_instr *intr, UNUSED void *data)
-{
-        if (nir_dest_bit_size(intr->dest) != 8)
-                return false;
-
-        nir_alu_type type =
-                nir_alu_type_get_base_type(nir_intrinsic_dest_type(intr));
-
-        assert(type == nir_type_int || type == nir_type_uint);
-
-        b->cursor = nir_before_instr(&intr->instr);
-        nir_ssa_def *out =
-                nir_load_output(b, intr->num_components, 16, intr->src[0].ssa,
-                        .base = nir_intrinsic_base(intr),
-                        .component = nir_intrinsic_component(intr),
-                        .dest_type = type | 16,
-                        .io_semantics = nir_intrinsic_io_semantics(intr));
-
-        nir_ssa_def *cast = nir_convert_to_bit_size(b, out, type, 8);
-        nir_ssa_def_rewrite_uses(&intr->dest.ssa, cast);
-        return true;
-}
-
-static bool
-bifrost_nir_lower_i8_frag(struct nir_builder *b,
-                nir_instr *instr, UNUSED void *data)
-{
-        if (instr->type != nir_instr_type_intrinsic)
-                return false;
-
-        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-        if (intr->intrinsic == nir_intrinsic_load_output)
-                return bifrost_nir_lower_i8_fragin_impl(b, intr, data);
-        else if (intr->intrinsic == nir_intrinsic_store_output)
-                return bifrost_nir_lower_i8_fragout_impl(b, intr, data);
-        else
-                return false;
-}
-
 static void
 bi_opt_post_ra(bi_context *ctx)
 {
@@ -4973,13 +4909,6 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
         NIR_PASS_V(nir, pan_lower_sample_pos);
         NIR_PASS_V(nir, nir_lower_bit_size, bi_lower_bit_size, NULL);
-
-        if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-                NIR_PASS_V(nir, nir_shader_instructions_pass,
-                                bifrost_nir_lower_i8_frag,
-                                nir_metadata_block_index | nir_metadata_dominance,
-                                NULL);
-        }
 
         if (nir->xfb_info != NULL && nir->info.has_transform_feedback_varyings) {
                 NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
