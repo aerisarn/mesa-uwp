@@ -67,15 +67,23 @@ shader_key_matches_tcs_nongenerated(const struct zink_shader_module *zm, const s
 
 ALWAYS_INLINE static bool
 shader_key_matches(const struct zink_shader_module *zm,
-                   const struct zink_shader_key *key, unsigned num_uniforms)
+                   const struct zink_shader_key *key, unsigned num_uniforms,
+                   bool has_inline, bool has_nonseamless)
 {
-   if (zm->key_size != key->size || zm->num_uniforms != num_uniforms || zm->has_nonseamless != !!key->base.nonseamless_cube_mask)
-      return false;
-   const uint32_t nonseamless_size = zm->has_nonseamless ? sizeof(uint32_t) : 0;
-   return !memcmp(zm->key, key, zm->key_size) &&
-          (!nonseamless_size || !memcmp(zm->key + zm->key_size, &key->base.nonseamless_cube_mask, nonseamless_size)) &&
-          (!num_uniforms || !memcmp(zm->key + zm->key_size + nonseamless_size,
-                                    key->base.inlined_uniform_values, zm->num_uniforms * sizeof(uint32_t)));
+   const uint32_t nonseamless_size = !has_nonseamless && zm->has_nonseamless ? sizeof(uint32_t) : 0;
+   if (has_inline) {
+      if (zm->num_uniforms != num_uniforms ||
+          (num_uniforms &&
+           memcmp(zm->key + zm->key_size + nonseamless_size,
+                  key->base.inlined_uniform_values, zm->num_uniforms * sizeof(uint32_t))))
+         return false;
+   }
+   if (!has_nonseamless) {
+      if (zm->has_nonseamless != !!key->base.nonseamless_cube_mask ||
+          (nonseamless_size && memcmp(zm->key + zm->key_size, &key->base.nonseamless_cube_mask, nonseamless_size)))
+         return false;
+   }
+   return !memcmp(zm->key, key, zm->key_size);
 }
 
 static uint32_t
@@ -116,7 +124,9 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
          if (!shader_key_matches_tcs_nongenerated(iter, key, inline_size))
             continue;
       } else {
-         if (!shader_key_matches(iter, key, inline_size))
+         if (stage == MESA_SHADER_VERTEX && iter->key_size != key->size)
+            continue;
+         if (!shader_key_matches(iter, key, inline_size, has_inline, has_nonseamless))
             continue;
       }
       list_delinit(&iter->list);
@@ -389,7 +399,9 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
    if (inline_size || nonseamless_size) {
       struct zink_shader_module *iter, *next;
       LIST_FOR_EACH_ENTRY_SAFE(iter, next, &comp->shader_cache[!!nonseamless_size], list) {
-         if (!shader_key_matches(iter, key, inline_size))
+         if (!shader_key_matches(iter, key, inline_size,
+                                 screen->driconf.inline_uniforms,
+                                 screen->info.have_EXT_non_seamless_cube_map))
             continue;
          list_delinit(&iter->list);
          zm = iter;
