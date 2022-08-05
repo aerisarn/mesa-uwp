@@ -261,7 +261,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    return state->pipeline;
 }
 
-template <zink_pipeline_dynamic_state DYNAMIC_STATE>
+template <zink_pipeline_dynamic_state DYNAMIC_STATE, unsigned STAGE_MASK>
 static bool
 equals_gfx_pipeline_state(const void *a, const void *b)
 {
@@ -304,28 +304,64 @@ equals_gfx_pipeline_state(const void *a, const void *b)
       if (sa->dyn_state2.vertices_per_patch != sb->dyn_state2.vertices_per_patch)
          return false;
    }
-   return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&
-          !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));
+   if (STAGE_MASK & BITFIELD_BIT(MESA_SHADER_TESS_CTRL)) {
+      if (sa->modules[MESA_SHADER_TESS_CTRL] != sb->modules[MESA_SHADER_TESS_CTRL])
+         return false;
+   }
+   if (STAGE_MASK & BITFIELD_BIT(MESA_SHADER_TESS_EVAL)) {
+      if (sa->modules[MESA_SHADER_TESS_EVAL] != sb->modules[MESA_SHADER_TESS_EVAL])
+         return false;
+   }
+   if (STAGE_MASK & BITFIELD_BIT(MESA_SHADER_GEOMETRY)) {
+      if (sa->modules[MESA_SHADER_GEOMETRY] != sb->modules[MESA_SHADER_GEOMETRY])
+         return false;
+   }
+   if (sa->modules[MESA_SHADER_VERTEX] != sb->modules[MESA_SHADER_VERTEX])
+      return false;
+   if (sa->modules[MESA_SHADER_FRAGMENT] != sb->modules[MESA_SHADER_FRAGMENT])
+      return false;
+   return !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));
+}
+
+template <zink_pipeline_dynamic_state DYNAMIC_STATE>
+static equals_gfx_pipeline_state_func
+get_gfx_pipeline_stage_eq_func(struct zink_gfx_program *prog)
+{
+   unsigned vertex_stages = prog->stages_present & BITFIELD_MASK(MESA_SHADER_FRAGMENT);
+   if (vertex_stages == BITFIELD_MASK(MESA_SHADER_FRAGMENT))
+      /* all stages */
+      return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                       BITFIELD_MASK(MESA_SHADER_COMPUTE)>;
+   if (vertex_stages == BITFIELD_MASK(MESA_SHADER_GEOMETRY))
+      /* tess only: includes generated tcs too */
+      return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                       BITFIELD_MASK(MESA_SHADER_COMPUTE) & ~BITFIELD_BIT(MESA_SHADER_GEOMETRY)>;
+   if (vertex_stages == (BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_GEOMETRY)))
+      /* geom only */
+      return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                       BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_FRAGMENT) | BITFIELD_BIT(MESA_SHADER_GEOMETRY)>;
+   return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                    BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_FRAGMENT)>;
 }
 
 equals_gfx_pipeline_state_func
-zink_get_gfx_pipeline_eq_func(struct zink_screen *screen)
+zink_get_gfx_pipeline_eq_func(struct zink_screen *screen, struct zink_gfx_program *prog)
 {
    if (screen->info.have_EXT_extended_dynamic_state) {
       if (screen->info.have_EXT_extended_dynamic_state2) {
          if (screen->info.have_EXT_vertex_input_dynamic_state) {
             if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
-               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP>;
+               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP>(prog);
             else
-               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT>;
+               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT>(prog);
          } else {
             if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
-               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_STATE2_PCP>;
+               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_STATE2_PCP>(prog);
             else
-               return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_STATE2>;
+               return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_STATE2>(prog);
          }
       }
-      return equals_gfx_pipeline_state<ZINK_PIPELINE_DYNAMIC_STATE>;
+      return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_DYNAMIC_STATE>(prog);
    }
-   return equals_gfx_pipeline_state<ZINK_PIPELINE_NO_DYNAMIC_STATE>;
+   return get_gfx_pipeline_stage_eq_func<ZINK_PIPELINE_NO_DYNAMIC_STATE>(prog);
 }

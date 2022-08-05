@@ -298,7 +298,7 @@ bool
 zink_set_rasterizer_discard(struct zink_context *ctx, bool disable);
 
 equals_gfx_pipeline_state_func
-zink_get_gfx_pipeline_eq_func(struct zink_screen *screen);
+zink_get_gfx_pipeline_eq_func(struct zink_screen *screen, struct zink_gfx_program *prog);
 #ifdef __cplusplus
 }
 #endif

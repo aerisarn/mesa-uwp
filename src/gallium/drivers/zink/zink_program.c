@@ -629,7 +629,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
 
    for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
-      _mesa_hash_table_init(&prog->pipelines[i], prog, NULL, zink_get_gfx_pipeline_eq_func(screen));
+      _mesa_hash_table_init(&prog->pipelines[i], prog, NULL, zink_get_gfx_pipeline_eq_func(screen, prog));
       /* only need first 3/4 for point/line/tri/patch */
       if (screen->info.have_EXT_extended_dynamic_state &&
           i == (prog->last_vertex_stage->nir->info.stage == MESA_SHADER_TESS_EVAL ? 4 : 3))
