@@ -75,7 +75,6 @@ util_make_fragment_tex_shader_xrbias(struct pipe_context *pipe,
 extern void *
 util_make_fragment_tex_shader(struct pipe_context *pipe,
                               enum tgsi_texture_type tex_target,
-                              enum tgsi_interpolate_mode interp_mode,
                               enum tgsi_return_type stype,
                               enum tgsi_return_type dtype,
                               bool load_level_zero,

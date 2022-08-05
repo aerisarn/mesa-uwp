@@ -289,12 +289,10 @@ util_make_fragment_tex_shader_xrbias(struct pipe_context *pipe,
  *  END;
  *
  * \param tex_target  one of TGSI_TEXTURE_x
- * \parma interp_mode  either TGSI_INTERPOLATE_LINEAR or PERSPECTIVE
  */
 void *
 util_make_fragment_tex_shader(struct pipe_context *pipe,
                               enum tgsi_texture_type tex_target,
-                              enum tgsi_interpolate_mode interp_mode,
                               enum tgsi_return_type stype,
                               enum tgsi_return_type dtype,
                               bool load_level_zero,
@@ -307,8 +305,6 @@ util_make_fragment_tex_shader(struct pipe_context *pipe,
    struct ureg_dst out;
 
    assert((stype == TGSI_RETURN_TYPE_FLOAT) == (dtype == TGSI_RETURN_TYPE_FLOAT));
-   assert(interp_mode == TGSI_INTERPOLATE_LINEAR ||
-          interp_mode == TGSI_INTERPOLATE_PERSPECTIVE);
 
    ureg = ureg_create( PIPE_SHADER_FRAGMENT );
    if (!ureg)
@@ -320,7 +316,7 @@ util_make_fragment_tex_shader(struct pipe_context *pipe,
 
    tex = ureg_DECL_fs_input( ureg, 
                              TGSI_SEMANTIC_GENERIC, 0, 
-                             interp_mode );
+                             TGSI_INTERPOLATE_LINEAR );
 
    out = ureg_DECL_output( ureg, 
                            TGSI_SEMANTIC_COLOR,

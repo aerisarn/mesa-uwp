@@ -1068,7 +1068,6 @@ static void *blitter_get_fs_texfetch_col(struct blitter_context_priv *ctx,
       if (!*shader) {
          assert(!ctx->cached_all_shaders);
          *shader = util_make_fragment_tex_shader(pipe, tgsi_tex,
-                                                 TGSI_INTERPOLATE_LINEAR,
                                                  stype, dtype,
                                                  ctx->has_tex_lz, use_txf);
       }
