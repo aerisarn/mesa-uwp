@@ -168,7 +168,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 
    VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
    const unsigned idx = get_pipeline_idx<DYNAMIC_STATE >= ZINK_DYNAMIC_STATE>(mode, vkmode);
-   assert(idx <= ARRAY_SIZE(prog->pipelines));
+   assert(idx <= ARRAY_SIZE(prog->pipelines[0]));
    if (!state->dirty && !state->modules_changed &&
        (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || !ctx->vertex_state_changed) &&
        idx == state->idx)
@@ -210,7 +210,8 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    state->idx = idx;
    ctx->vertex_state_changed = false;
 
-   entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[idx], state->final_hash, state);
+   const int rp_idx = state->render_pass ? 1 : 0;
+   entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, state);
 
    if (!entry) {
       util_queue_fence_wait(&prog->base.cache_fence);
@@ -252,7 +253,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[idx], state->final_hash, pc_entry, pc_entry);
+      entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, pc_entry, pc_entry);
       assert(entry);
    }
 
@@ -271,9 +272,6 @@ equals_gfx_pipeline_state(const void *a, const void *b)
       if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
          return false;
    }
-   /* dynamic vs rp */
-   if (!!sa->render_pass != !!sb->render_pass)
-      return false;
    if (DYNAMIC_STATE == ZINK_PIPELINE_NO_DYNAMIC_STATE ||
        (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT && !sa->uses_dynamic_stride)) {
       if (sa->vertex_buffers_enabled_mask != sb->vertex_buffers_enabled_mask)

@@ -628,12 +628,14 @@ zink_create_gfx_program(struct zink_context *ctx,
    else
       prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
 
-   for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
-      _mesa_hash_table_init(&prog->pipelines[i], prog, NULL, zink_get_gfx_pipeline_eq_func(screen, prog));
-      /* only need first 3/4 for point/line/tri/patch */
-      if (screen->info.have_EXT_extended_dynamic_state &&
-          i == (prog->last_vertex_stage->nir->info.stage == MESA_SHADER_TESS_EVAL ? 4 : 3))
-         break;
+   for (int r = 0; r < ARRAY_SIZE(prog->pipelines); ++r) {
+      for (int i = 0; i < ARRAY_SIZE(prog->pipelines[0]); ++i) {
+         _mesa_hash_table_init(&prog->pipelines[r][i], prog, NULL, zink_get_gfx_pipeline_eq_func(screen, prog));
+         /* only need first 3/4 for point/line/tri/patch */
+         if (screen->info.have_EXT_extended_dynamic_state &&
+             i == (prog->last_vertex_stage->nir->info.stage == MESA_SHADER_TESS_EVAL ? 4 : 3))
+            break;
+      }
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(prog->libs); i++)
@@ -880,7 +882,7 @@ zink_destroy_gfx_program(struct zink_context *ctx,
       }
    }
 
-   unsigned max_idx = ARRAY_SIZE(prog->pipelines);
+   unsigned max_idx = ARRAY_SIZE(prog->pipelines[0]);
    if (screen->info.have_EXT_extended_dynamic_state) {
       /* only need first 3/4 for point/line/tri/patch */
       if ((prog->stages_present &
@@ -892,12 +894,14 @@ zink_destroy_gfx_program(struct zink_context *ctx,
       max_idx++;
    }
 
-   for (int i = 0; i < max_idx; ++i) {
-      hash_table_foreach(&prog->pipelines[i], entry) {
-         struct gfx_pipeline_cache_entry *pc_entry = entry->data;
+   for (unsigned r = 0; r < ARRAY_SIZE(prog->pipelines); r++) {
+      for (int i = 0; i < max_idx; ++i) {
+         hash_table_foreach(&prog->pipelines[r][i], entry) {
+            struct gfx_pipeline_cache_entry *pc_entry = entry->data;
 
-         VKSCR(DestroyPipeline)(screen->dev, pc_entry->pipeline, NULL);
-         free(pc_entry);
+            VKSCR(DestroyPipeline)(screen->dev, pc_entry->pipeline, NULL);
+            free(pc_entry);
+         }
       }
    }
 

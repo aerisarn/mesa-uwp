@@ -793,7 +793,7 @@ struct zink_gfx_program {
    unsigned inlined_variant_count[ZINK_GFX_SHADER_COUNT];
 
    struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
-   struct hash_table pipelines[11]; // number of draw modes we support
+   struct hash_table pipelines[2][11]; // [dynamic, renderpass][number of draw modes we support]
    uint32_t default_variant_hash;
    uint32_t last_variant_hash;
 
