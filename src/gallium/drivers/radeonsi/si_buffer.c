@@ -201,8 +201,10 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
 
    /* Print debug information. */
    if (sscreen->debug_flags & DBG(VM) && res->b.b.target == PIPE_BUFFER) {
-      fprintf(stderr, "VM start=0x%" PRIX64 "  end=0x%" PRIX64 " | Buffer %" PRIu64 " bytes\n",
+      fprintf(stderr, "VM start=0x%" PRIX64 "  end=0x%" PRIX64 " | Buffer %" PRIu64 " bytes | Flags: ",
               res->gpu_address, res->gpu_address + res->buf->size, res->buf->size);
+      si_res_print_flags(res->flags);
+      fprintf(stderr, "\n");
    }
 
    if (res->b.b.flags & SI_RESOURCE_FLAG_CLEAR)
