@@ -1865,6 +1865,39 @@ enum lsc_cache_load {
 
 /*
  * Specifies the dataport message override to the default L1 and L3 memory
+ * cache policies. Dataport L1 cache policies are uncached (UC), cached (C),
+ * streaming (S) and invalidate-after-read (IAR). Dataport L3 cache policies
+ * are uncached (UC), cached (C), cached-as-a-constand (CC) and
+ * invalidate-after-read (IAR).
+ */
+enum PACKED xe2_lsc_cache_load {
+   /* No override. Use the non-pipelined or surface state cache settings for L1
+    * and L3.
+    */
+   XE2_LSC_CACHE_LOAD_L1STATE_L3MOCS = 0,
+   /* Override to L1 uncached and L3 uncached */
+   XE2_LSC_CACHE_LOAD_L1UC_L3UC = 2,
+   /* Override to L1 uncached and L3 cached */
+   XE2_LSC_CACHE_LOAD_L1UC_L3C = 4,
+   /* Override to L1 uncached and L3 cached as a constant */
+   XE2_LSC_CACHE_LOAD_L1UC_L3CC = 5,
+   /* Override to L1 cached and L3 uncached */
+   XE2_LSC_CACHE_LOAD_L1C_L3UC = 6,
+   /* Override to L1 cached and L3 cached */
+   XE2_LSC_CACHE_LOAD_L1C_L3C = 8,
+   /* Override to L1 cached and L3 cached as a constant */
+   XE2_LSC_CACHE_LOAD_L1C_L3CC = 9,
+   /* Override to L1 cached as streaming load and L3 uncached */
+   XE2_LSC_CACHE_LOAD_L1S_L3UC = 10,
+   /* Override to L1 cached as streaming load and L3 cached */
+   XE2_LSC_CACHE_LOAD_L1S_L3C = 12,
+   /* Override to L1 and L3 invalidate after read */
+   XE2_LSC_CACHE_LOAD_L1IAR_L3IAR = 14,
+
+};
+
+/*
+ * Specifies the dataport message override to the default L1 and L3 memory
  * cache policies. Dataport L1 cache policies are uncached (UC), write-through
  * (WT), write-back (WB) and streaming (S). Dataport L3 cache policies are
  * uncached (UC) and cached (WB).
