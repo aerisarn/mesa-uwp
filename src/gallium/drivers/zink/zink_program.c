@@ -116,6 +116,63 @@ gather_shader_module_info(struct zink_context *ctx, struct zink_screen *screen,
 }
 
 ALWAYS_INLINE static struct zink_shader_module *
+create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
+                               struct zink_shader *zs, struct zink_gfx_program *prog,
+                               struct zink_gfx_pipeline_state *state,
+                               unsigned inline_size, unsigned nonseamless_size,
+                               bool has_inline, //is inlining enabled?
+                               bool has_nonseamless) //is nonseamless ext present?
+{
+   gl_shader_stage stage = zs->nir->info.stage;
+   VkShaderModule mod;
+   struct zink_shader_module *zm;
+   struct zink_shader_key *key = &state->shader_keys.key[stage];
+   /* non-generated tcs won't use the shader key */
+   const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
+   zm = malloc(sizeof(struct zink_shader_module) + key->size + (!has_nonseamless ? nonseamless_size : 0) + inline_size * sizeof(uint32_t));
+   if (!zm) {
+      return NULL;
+   }
+   unsigned patch_vertices = state->shader_keys.key[MESA_SHADER_TESS_CTRL ].key.tcs.patch_vertices;
+   if (stage == MESA_SHADER_TESS_CTRL && zs->is_generated && zs->spirv) {
+      assert(ctx); //TODO async
+      mod = zink_shader_tcs_compile(screen, zs, patch_vertices);
+   } else {
+      mod = zink_shader_compile(screen, zs, prog->nir[stage], key);
+   }
+   if (!mod) {
+      FREE(zm);
+      return NULL;
+   }
+   zm->shader = mod;
+   list_inithead(&zm->list);
+   zm->num_uniforms = inline_size;
+   if (!is_nongenerated_tcs) {
+      zm->key_size = key->size;
+      memcpy(zm->key, key, key->size);
+   } else {
+      zm->key_size = 0;
+      memset(zm->key, 0, key->size);
+   }
+   if (!has_nonseamless && nonseamless_size) {
+      /* nonseamless mask gets added to base key if it exists */
+      memcpy(zm->key + key->size, &key->base.nonseamless_cube_mask, nonseamless_size);
+   }
+   zm->has_nonseamless = has_nonseamless ? 0 : !!nonseamless_size;
+   if (inline_size)
+      memcpy(zm->key + key->size + nonseamless_size, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
+   if (stage == MESA_SHADER_TESS_CTRL && zs->is_generated)
+      zm->hash = patch_vertices;
+   else
+      zm->hash = shader_module_hash(zm);
+   zm->default_variant = !inline_size && list_is_empty(&prog->shader_cache[stage][0][0]);
+   if (inline_size)
+      prog->inlined_variant_count[stage]++;
+   list_add(&zm->list, &prog->shader_cache[stage][has_nonseamless ? 0 : !!nonseamless_size][!!inline_size]);
+   return zm;
+}
+
+ALWAYS_INLINE static struct zink_shader_module *
 get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
                             struct zink_shader *zs, struct zink_gfx_program *prog,
                             struct zink_gfx_pipeline_state *state,
@@ -124,8 +181,6 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
                             bool has_nonseamless) //is nonseamless ext present?
 {
    gl_shader_stage stage = zs->nir->info.stage;
-   VkShaderModule mod;
-   struct zink_shader_module *zm = NULL;
    struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
@@ -142,53 +197,11 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
             continue;
       }
       list_delinit(&iter->list);
-      zm = iter;
-      break;
+      list_add(&iter->list, &prog->shader_cache[stage][has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0]);
+      return iter;
    }
 
-   if (!zm) {
-      zm = malloc(sizeof(struct zink_shader_module) + key->size + nonseamless_size + inline_size * sizeof(uint32_t));
-      if (!zm) {
-         return NULL;
-      }
-      unsigned patch_vertices = state->shader_keys.key[MESA_SHADER_TESS_CTRL ].key.tcs.patch_vertices;
-      if (stage == MESA_SHADER_TESS_CTRL && zs->is_generated && zs->spirv) {
-         assert(ctx); //TODO async
-         mod = zink_shader_tcs_compile(screen, zs, patch_vertices);
-      } else {
-         mod = zink_shader_compile(screen, zs, prog->nir[stage], key);
-      }
-      if (!mod) {
-         FREE(zm);
-         return NULL;
-      }
-      zm->shader = mod;
-      list_inithead(&zm->list);
-      zm->num_uniforms = inline_size;
-      if (!is_nongenerated_tcs) {
-         zm->key_size = key->size;
-         memcpy(zm->key, key, key->size);
-      } else {
-         zm->key_size = 0;
-         memset(zm->key, 0, key->size);
-      }
-      if (nonseamless_size) {
-         /* nonseamless mask gets added to base key if it exists */
-         memcpy(zm->key + key->size, &key->base.nonseamless_cube_mask, nonseamless_size);
-      }
-      zm->has_nonseamless = !!nonseamless_size;
-      if (inline_size)
-         memcpy(zm->key + key->size + nonseamless_size, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
-      if (stage == MESA_SHADER_TESS_CTRL && zs->is_generated)
-         zm->hash = patch_vertices;
-      else
-         zm->hash = shader_module_hash(zm);
-      zm->default_variant = !inline_size && list_is_empty(&prog->shader_cache[stage][0][0]);
-      if (inline_size)
-         prog->inlined_variant_count[stage]++;
-   }
-   list_add(&zm->list, &prog->shader_cache[stage][!has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0]);
-   return zm;
+   return NULL;
 }
 
 static void
@@ -230,6 +243,9 @@ update_gfx_shader_modules(struct zink_context *ctx,
       gather_shader_module_info(ctx, screen, prog->shaders[i], prog, state, has_inline, has_nonseamless, &inline_size, &nonseamless_size);
       struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
                                                                   inline_size, nonseamless_size, has_inline, has_nonseamless);
+      if (!zm)
+         zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
+                                             inline_size, nonseamless_size, has_inline, has_nonseamless);
       state->modules[i] = zm->shader;
       if (prog->modules[i] == zm)
          continue;
