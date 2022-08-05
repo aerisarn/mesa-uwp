@@ -29,9 +29,9 @@
 #include "compiler/shader_info.h"
 
 struct zink_vs_key_base {
-   bool clip_halfz;
-   bool push_drawid;
-   bool last_vertex_stage;
+   bool clip_halfz : 1;
+   bool push_drawid : 1;
+   bool last_vertex_stage : 1;
 };
 
 struct zink_vs_key {
@@ -56,12 +56,12 @@ struct zink_vs_key {
 };
 
 struct zink_fs_key {
+   bool coord_replace_yinvert : 1;
+   bool samples : 1;
+   bool force_dual_color_blend : 1;
+   bool force_persample_interp : 1;
+   bool fbfetch_ms : 1;
    uint8_t coord_replace_bits;
-   bool coord_replace_yinvert;
-   bool samples;
-   bool force_dual_color_blend;
-   bool force_persample_interp;
-   bool fbfetch_ms;
 };
 
 struct zink_tcs_key {
