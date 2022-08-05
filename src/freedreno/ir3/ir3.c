@@ -340,7 +340,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
             if (instr->opc == OPC_NOP) {
                nops_count = 1 + instr->repeat;
                info->instrs_per_cat[0] += nops_count;
-            } else {
+            } else if (!is_meta(instr)) {
                info->instrs_per_cat[opc_cat(instr->opc)] += 1 + instr->repeat;
                info->instrs_per_cat[0] += nops_count;
             }

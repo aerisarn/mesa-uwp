@@ -1139,7 +1139,7 @@ cat4_full_opc(opc_t opc)
 static inline bool
 is_meta(struct ir3_instruction *instr)
 {
-   return (opc_cat(instr->opc) == -1);
+   return (opc_cat(instr->opc) == OPC_META);
 }
 
 static inline unsigned
