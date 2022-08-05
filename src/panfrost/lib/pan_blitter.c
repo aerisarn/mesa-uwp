@@ -484,9 +484,10 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                 };
 
                 unsigned ncomps = key->surfaces[i].loc >= FRAG_RESULT_DATA0 ? 4 : 1;
+                enum glsl_base_type type = nir_get_glsl_base_type_for_nir_type(key->surfaces[i].type);
                 nir_variable *out =
                         nir_variable_create(b.shader, nir_var_shader_out,
-                                            glsl_vector_type(GLSL_TYPE_FLOAT, ncomps),
+                                            glsl_vector_type(type, ncomps),
                                             out_names[active_count]);
                 out->data.location = key->surfaces[i].loc;
                 out->data.driver_location = active_count;
