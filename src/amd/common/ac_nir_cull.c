@@ -101,17 +101,17 @@ cull_frustrum(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox_max[3]
 }
 
 static nir_ssa_def *
-cull_small_primitive(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox_max[3])
+cull_small_primitive(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox_max[3],
+                     nir_ssa_def *prim_is_small_else)
 {
    nir_ssa_def *prim_is_small = NULL;
-   nir_ssa_def *prim_is_small_else = nir_imm_false(b);
 
    nir_if *if_cull_small_prims = nir_push_if(b, nir_load_cull_small_primitives_enabled_amd(b));
    {
       nir_ssa_def *vp_scale[2] = { nir_load_viewport_x_scale(b), nir_load_viewport_y_scale(b), };
       nir_ssa_def *vp_translate[2] = { nir_load_viewport_x_offset(b), nir_load_viewport_y_offset(b), };
       nir_ssa_def *small_prim_precision = nir_load_cull_small_prim_precision_amd(b);
-      prim_is_small = nir_imm_false(b);
+      prim_is_small = prim_is_small_else;
 
       for (unsigned chan = 0; chan < 2; ++chan) {
          /* Convert the position to screen-space coordinates. */
@@ -155,8 +155,7 @@ ac_nir_cull_triangle(nir_builder *b,
       calc_bbox(b, pos, bbox_min, bbox_max);
 
       nir_ssa_def *prim_outside_view = cull_frustrum(b, bbox_min, bbox_max);
-      nir_ssa_def *prim_is_small = cull_small_primitive(b, bbox_min, bbox_max);
-      nir_ssa_def *prim_invisible = nir_ior(b, prim_outside_view, prim_is_small);
+      nir_ssa_def *prim_invisible = cull_small_primitive(b, bbox_min, bbox_max, prim_outside_view);
 
       accepted = nir_iand(b, nir_inot(b, prim_invisible), nir_inot(b, w_info.any_w_negative));
       nir_if *if_still_accepted = nir_push_if(b, accepted);
