@@ -1244,6 +1244,9 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    case nir_texop_fragment_mask_fetch_amd:
       fprintf(fp, "fragment_mask_fetch_amd ");
       break;
+   case nir_texop_descriptor_amd:
+      fprintf(fp, "descriptor_amd ");
+      break;
    default:
       unreachable("Invalid texture operation");
       break;
