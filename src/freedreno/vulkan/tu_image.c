@@ -352,7 +352,7 @@ format_list_reinterprets_r8g8_r16(enum pipe_format format, const VkImageFormatLi
    /* If there's no format list, then the app may reinterpret to any compatible
     * format.
     */
-   if (!fmt_list)
+   if (!fmt_list || !fmt_list->viewFormatCount)
       return true;
 
    bool has_r8g8 = false;
@@ -374,7 +374,7 @@ format_list_has_swaps(const VkImageFormatListCreateInfo *fmt_list)
    /* If there's no format list, then the app may reinterpret to any compatible
     * format, and presumably one would have the swap set.
     */
-   if (!fmt_list)
+   if (!fmt_list || !fmt_list->viewFormatCount)
       return true;
 
    for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
