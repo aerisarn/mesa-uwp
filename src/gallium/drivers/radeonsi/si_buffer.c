@@ -109,7 +109,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->b.b.bind & PIPE_BIND_PROTECTED ||
        /* Force scanout/depth/stencil buffer allocation to be encrypted */
        (sscreen->debug_flags & DBG(TMZ) &&
-        res->b.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL)))
+        res->b.b.bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL)))
       res->flags |= RADEON_FLAG_ENCRYPTED;
 
    if (res->b.b.flags & PIPE_RESOURCE_FLAG_ENCRYPTED)
