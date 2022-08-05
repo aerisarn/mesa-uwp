@@ -340,27 +340,32 @@ struct zink_program_descriptor_data {
    VkDescriptorUpdateTemplate templates[ZINK_DESCRIPTOR_TYPES + 1];
 };
 
+struct zink_descriptor_pool {
+   unsigned set_idx;
+   unsigned sets_alloc;
+   VkDescriptorPool pool;
+   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
+};
+
+struct zink_descriptor_pool_multi {
+   bool reinit_overflow;
+   unsigned overflow_idx;
+   struct util_dynarray overflowed_pools[2];
+   struct zink_descriptor_pool *pool;
+   const struct zink_descriptor_pool_key *pool_key;
+};
+
 struct zink_batch_descriptor_data {
    bool has_fbfetch;
-   struct util_dynarray overflowed_pools;
    unsigned pool_size[ZINK_DESCRIPTOR_TYPES];
    struct util_dynarray pools[ZINK_DESCRIPTOR_TYPES];
-   struct zink_descriptor_pool *push_pool[2];
+   struct zink_descriptor_pool_multi push_pool[2];
    struct zink_program *pg[2]; //gfx, compute
    uint32_t compat_id[2];
    VkDescriptorSetLayout dsl[2][ZINK_DESCRIPTOR_TYPES];
    VkDescriptorSet sets[2][ZINK_DESCRIPTOR_TYPES + 1];
    unsigned push_usage[2];
 };
-
-struct zink_descriptor_pool {
-   unsigned set_idx;
-   unsigned sets_alloc;
-   VkDescriptorPool pool;
-   VkDescriptorSet sets[MAX_LAZY_DESCRIPTORS];
-   const struct zink_descriptor_pool_key *pool_key;
-};
-
 
 /** batch types */
 /* zink_batch_usage concepts:
