@@ -20,6 +20,7 @@
 
 bvh_shaders = [
   'internal.comp',
+  'leaf.comp',
   'morton.comp'
 ]
 
@@ -29,6 +30,7 @@ bvh_includes = files(
   'build_helpers.h',
   'bvh.h',
   'internal.h',
+  'leaf.h',
   'morton.h'
 )
 
