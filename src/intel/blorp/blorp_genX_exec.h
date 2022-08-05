@@ -967,7 +967,9 @@ blorp_emit_ps_config(struct blorp_batch *batch,
    blorp_emit(batch, GENX(3DSTATE_PS_EXTRA), psx) {
       if (prog_data) {
          psx.PixelShaderValid = true;
+#if GFX_VER < 20
          psx.AttributeEnable = prog_data->num_varying_inputs > 0;
+#endif
          psx.PixelShaderIsPerSample = prog_data->persample_dispatch;
          psx.PixelShaderComputedDepthMode = prog_data->computed_depth_mode;
 #if GFX_VER >= 9

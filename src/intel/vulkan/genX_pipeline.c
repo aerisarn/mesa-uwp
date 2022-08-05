@@ -1631,7 +1631,9 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
 
    anv_pipeline_emit(pipeline, final.ps_extra, GENX(3DSTATE_PS_EXTRA), ps) {
       ps.PixelShaderValid              = true;
+#if GFX_VER < 20
       ps.AttributeEnable               = wm_prog_data->num_varying_inputs > 0;
+#endif
       ps.oMaskPresenttoRenderTarget    = wm_prog_data->uses_omask;
       ps.PixelShaderIsPerSample        =
          brw_wm_prog_data_is_persample(wm_prog_data, pipeline->fs_msaa_flags);
@@ -1649,7 +1651,11 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
                                          wm_prog_data->uses_kill;
 
       ps.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
+#if GFX_VER >= 20
+      assert(!wm_prog_data->pulls_bary);
+#else
       ps.PixelShaderPullsBary    = wm_prog_data->pulls_bary;
+#endif
 
       ps.InputCoverageMaskState = ICMS_NONE;
       assert(!wm_prog_data->inner_coverage); /* Not available in SPIR-V */

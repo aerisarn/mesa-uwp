@@ -212,7 +212,9 @@ genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
 
    anv_batch_emit(batch, GENX(3DSTATE_PS_EXTRA), psx) {
       psx.PixelShaderValid = true;
+#if GFX_VER < 20
       psx.AttributeEnable = prog_data->num_varying_inputs > 0;
+#endif
       psx.PixelShaderIsPerSample = prog_data->persample_dispatch;
       psx.PixelShaderComputedDepthMode = prog_data->computed_depth_mode;
       psx.PixelShaderComputesStencil = prog_data->computed_stencil;

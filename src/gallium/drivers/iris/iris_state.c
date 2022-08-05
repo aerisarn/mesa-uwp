@@ -5165,7 +5165,9 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
       psx.PixelShaderValid = true;
       psx.PixelShaderComputedDepthMode = wm_prog_data->computed_depth_mode;
       psx.PixelShaderKillsPixel = wm_prog_data->uses_kill;
+#if GFX_VER < 20
       psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
+#endif
       psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
       psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
       psx.PixelShaderIsPerSample =
@@ -5173,7 +5175,11 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
       psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
 
 #if GFX_VER >= 9
+#if GFX_VER >= 20
+      assert(!wm_prog_data->pulls_bary);
+#else
       psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
+#endif
       psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
 #endif
    }
