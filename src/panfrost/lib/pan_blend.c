@@ -681,13 +681,18 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
 
         nir_ssa_def *s_src[] = {nir_load_var(&b, c_src), nir_load_var(&b, c_src1)};
 
-        /* Saturate integer conversions */
+        /* On Midgard, the blend shader is responsible for format conversion.
+         * As the OpenGL spec requires integer conversions to saturate, we must
+         * saturate ourselves here. On Bifrost and later, the conversion
+         * hardware handles this automatically.
+         */
         for (int i = 0; i < ARRAY_SIZE(s_src); ++i) {
                 nir_alu_type T = nir_alu_type_get_base_type(nir_type);
+                bool should_saturate = (PAN_ARCH <= 5) && (T != nir_type_float);
                 s_src[i] = nir_convert_with_rounding(&b, s_src[i],
                                 src_types[i], nir_type,
                                 nir_rounding_mode_undef,
-                                T != nir_type_float);
+                                should_saturate);
         }
 
         /* Build a trivial blend shader */
