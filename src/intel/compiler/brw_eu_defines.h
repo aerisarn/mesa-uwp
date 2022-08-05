@@ -1892,6 +1892,34 @@ enum ENUM_PACKED lsc_cache_store {
 };
 
 /*
+ * Specifies the dataport message override to the default L1 and L3 memory
+ * cache policies. Dataport L1 cache policies are uncached (UC), write-through
+ * (WT), write-back (WB) and streaming (S). Dataport L3 cache policies are
+ * uncached (UC) and cached (WB).
+ */
+enum PACKED xe2_lsc_cache_store {
+   /* No override. Use the non-pipelined or surface state cache settings for L1
+    * and L3.
+    */
+   XE2_LSC_CACHE_STORE_L1STATE_L3MOCS = 0,
+   /* Override to L1 uncached and L3 uncached */
+   XE2_LSC_CACHE_STORE_L1UC_L3UC = 2,
+   /* Override to L1 uncached and L3 cached */
+   XE2_LSC_CACHE_STORE_L1UC_L3WB = 4,
+   /* Override to L1 write-through and L3 uncached */
+   XE2_LSC_CACHE_STORE_L1WT_L3UC = 6,
+   /* Override to L1 write-through and L3 cached */
+   XE2_LSC_CACHE_STORE_L1WT_L3WB = 8,
+   /* Override to L1 streaming and L3 uncached */
+   XE2_LSC_CACHE_STORE_L1S_L3UC = 10,
+   /* Override to L1 streaming and L3 cached */
+   XE2_LSC_CACHE_STORE_L1S_L3WB = 12,
+   /* Override to L1 write-back and L3 cached */
+   XE2_LSC_CACHE_STORE_L1WB_L3WB = 14,
+
+};
+
+/*
  * Specifies which components of the data payload 4-element vector (X,Y,Z,W) is
  * packed into the register payload.
  */
