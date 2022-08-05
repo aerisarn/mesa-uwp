@@ -1254,7 +1254,7 @@ nir_lower_txs_cube_array(nir_builder *b, nir_tex_instr *tex)
    assert(tex->dest.is_ssa);
    assert(tex->dest.ssa.num_components == 3);
    nir_ssa_def *size = &tex->dest.ssa;
-   size = nir_vec3(b, nir_channel(b, size, 0),
+   size = nir_vec3(b, nir_channel(b, size, 1),
                       nir_channel(b, size, 1),
                       nir_idiv(b, nir_channel(b, size, 2),
                                   nir_imm_int(b, 6)));
