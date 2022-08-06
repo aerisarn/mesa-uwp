@@ -4825,7 +4825,12 @@ store_lds(isel_context* ctx, unsigned elem_size_bytes, Temp data, uint32_t wrmas
 
    wrmask = util_widen_mask(wrmask, elem_size_bytes);
 
+   const unsigned wrmask_bitcnt = util_bitcount(wrmask);
    uint32_t todo = u_bit_consecutive(0, data.bytes());
+
+   if (u_bit_consecutive(0, wrmask_bitcnt) == wrmask)
+      todo = MIN2(todo, wrmask);
+
    while (todo) {
       int offset, byte;
       if (!scan_write_mask(wrmask, todo, &offset, &byte)) {
