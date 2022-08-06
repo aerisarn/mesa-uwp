@@ -166,6 +166,7 @@ ac_nir_cull_triangle(nir_builder *b,
       /* for caller which need to react when primitive is accepted */
       if (accept_func) {
          nir_if *if_still_accepted = nir_push_if(b, bbox_accepted);
+         if_still_accepted->control = nir_selection_control_divergent_always_taken;
          {
             accept_func(b, state);
          }
