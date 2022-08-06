@@ -151,7 +151,7 @@ cso_hash_find_data_from_template(struct cso_hash *hash,
 struct cso_hash_iter
 cso_find_state_template(struct cso_cache *sc,
                         unsigned hash_key, enum cso_cache_type type,
-                        void *templ, unsigned size)
+                        const void *templ, unsigned size)
 {
    struct cso_hash_iter iter = cso_find_state(sc, hash_key, type);
    while (!cso_hash_iter_is_null(iter)) {

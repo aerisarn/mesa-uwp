@@ -456,10 +456,10 @@ cso_set_blend(struct cso_context *ctx,
    const unsigned key_size = templ->independent_blend_enable ?
       sizeof(struct pipe_blend_state) :
       (char *)&(templ->rt[1]) - (char *)templ;
-   const unsigned hash_key = cso_construct_key((void*)templ, key_size);
+   const unsigned hash_key = cso_construct_key(templ, key_size);
    struct cso_hash_iter iter =
-      cso_find_state_template(&ctx->cache, hash_key, CSO_BLEND,
-                              (void*)templ, key_size);
+      cso_find_state_template(&ctx->cache, hash_key, CSO_BLEND, templ,
+                              key_size);
    void *handle;
 
    if (cso_hash_iter_is_null(iter)) {
@@ -514,11 +514,11 @@ cso_set_depth_stencil_alpha(struct cso_context *ctx,
                             const struct pipe_depth_stencil_alpha_state *templ)
 {
    const unsigned key_size = sizeof(struct pipe_depth_stencil_alpha_state);
-   const unsigned hash_key = cso_construct_key((void*)templ, key_size);
+   const unsigned hash_key = cso_construct_key(templ, key_size);
    struct cso_hash_iter iter = cso_find_state_template(&ctx->cache,
                                                        hash_key,
                                                        CSO_DEPTH_STENCIL_ALPHA,
-                                                       (void*)templ, key_size);
+                                                       templ, key_size);
    void *handle;
 
    if (cso_hash_iter_is_null(iter)) {
@@ -577,11 +577,11 @@ cso_set_rasterizer(struct cso_context *ctx,
                    const struct pipe_rasterizer_state *templ)
 {
    const unsigned key_size = sizeof(struct pipe_rasterizer_state);
-   const unsigned hash_key = cso_construct_key((void*)templ, key_size);
+   const unsigned hash_key = cso_construct_key(templ, key_size);
    struct cso_hash_iter iter = cso_find_state_template(&ctx->cache,
                                                        hash_key,
                                                        CSO_RASTERIZER,
-                                                       (void*)templ, key_size);
+                                                       templ, key_size);
    void *handle = NULL;
 
    /* We can't have both point_quad_rasterization (sprites) and point_smooth
@@ -1097,7 +1097,7 @@ cso_set_vertex_elements_direct(struct cso_context *ctx,
    const unsigned hash_key = cso_construct_key((void*)velems, key_size);
    struct cso_hash_iter iter =
       cso_find_state_template(&ctx->cache, hash_key, CSO_VELEMENTS,
-                              (void*)velems, key_size);
+                              velems, key_size);
    void *handle;
 
    if (cso_hash_iter_is_null(iter)) {
@@ -1279,12 +1279,12 @@ set_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
             unsigned idx, const struct pipe_sampler_state *templ,
             size_t key_size)
 {
-   unsigned hash_key = cso_construct_key((void*)templ, key_size);
+   unsigned hash_key = cso_construct_key(templ, key_size);
    struct cso_sampler *cso;
    struct cso_hash_iter iter =
       cso_find_state_template(&ctx->cache,
                               hash_key, CSO_SAMPLER,
-                              (void *) templ, key_size);
+                              templ, key_size);
 
    if (cso_hash_iter_is_null(iter)) {
       cso = MALLOC(sizeof(struct cso_sampler));

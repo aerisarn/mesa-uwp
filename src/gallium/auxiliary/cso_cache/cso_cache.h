@@ -174,7 +174,7 @@ cso_find_state(struct cso_cache *sc,
 struct cso_hash_iter
 cso_find_state_template(struct cso_cache *sc,
                         unsigned hash_key, enum cso_cache_type type,
-                        void *templ, unsigned size);
+                        const void *templ, unsigned size);
 
 void
 cso_set_maximum_cache_size(struct cso_cache *sc, int number);
@@ -185,9 +185,10 @@ cso_delete_state(struct pipe_context *pipe, void *state,
 
 
 static inline unsigned
-cso_construct_key(void *key, int key_size)
+cso_construct_key(const void *key, int key_size)
 {
-   unsigned hash = 0, *ikey = (unsigned *)key;
+   unsigned hash = 0;
+   const unsigned *ikey = (const unsigned *)key;
    unsigned num_elements = key_size / 4;
 
    assert(key_size % 4 == 0);
