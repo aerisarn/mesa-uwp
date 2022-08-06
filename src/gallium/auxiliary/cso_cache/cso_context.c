@@ -137,19 +137,23 @@ delete_cso(struct cso_context *ctx,
 {
    switch (type) {
    case CSO_BLEND:
-      if (ctx->blend == ((struct cso_blend*)state)->data)
+      if (ctx->blend == ((struct cso_blend*)state)->data ||
+          ctx->blend_saved == ((struct cso_blend*)state)->data)
          return false;
       break;
    case CSO_DEPTH_STENCIL_ALPHA:
-      if (ctx->depth_stencil == ((struct cso_depth_stencil_alpha*)state)->data)
+      if (ctx->depth_stencil == ((struct cso_depth_stencil_alpha*)state)->data ||
+          ctx->depth_stencil_saved == ((struct cso_depth_stencil_alpha*)state)->data)
          return false;
       break;
    case CSO_RASTERIZER:
-      if (ctx->rasterizer == ((struct cso_rasterizer*)state)->data)
+      if (ctx->rasterizer == ((struct cso_rasterizer*)state)->data ||
+          ctx->rasterizer_saved == ((struct cso_rasterizer*)state)->data)
          return false;
       break;
    case CSO_VELEMENTS:
-      if (ctx->velements == ((struct cso_velements*)state)->data)
+      if (ctx->velements == ((struct cso_velements*)state)->data ||
+          ctx->velements_saved == ((struct cso_velements*)state)->data)
          return false;
       break;
    case CSO_SAMPLER:
@@ -184,7 +188,7 @@ sanitize_hash(struct cso_hash *hash, enum cso_cache_type type,
       return;
 
    if (type == CSO_SAMPLER) {
-      samplers_to_restore = MALLOC(PIPE_SHADER_TYPES * PIPE_MAX_SAMPLERS *
+      samplers_to_restore = MALLOC((PIPE_SHADER_TYPES + 2) * PIPE_MAX_SAMPLERS *
                                    sizeof(*samplers_to_restore));
 
       /* Temporarily remove currently bound sampler states from the hash
@@ -197,6 +201,18 @@ sanitize_hash(struct cso_hash *hash, enum cso_cache_type type,
             if (sampler && cso_hash_take(hash, sampler->hash_key))
                samplers_to_restore[to_restore++] = sampler;
          }
+      }
+      for (int j = 0; j < PIPE_MAX_SAMPLERS; j++) {
+         struct cso_sampler *sampler = ctx->fragment_samplers_saved.cso_samplers[j];
+
+         if (sampler && cso_hash_take(hash, sampler->hash_key))
+            samplers_to_restore[to_restore++] = sampler;
+      }
+      for (int j = 0; j < PIPE_MAX_SAMPLERS; j++) {
+         struct cso_sampler *sampler = ctx->compute_samplers_saved.cso_samplers[j];
+
+         if (sampler && cso_hash_take(hash, sampler->hash_key))
+            samplers_to_restore[to_restore++] = sampler;
       }
    }
 
