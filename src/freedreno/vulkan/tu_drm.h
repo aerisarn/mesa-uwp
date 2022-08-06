@@ -117,9 +117,6 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
 void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
-int
-tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync);
-
 VkResult
 tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit);
 

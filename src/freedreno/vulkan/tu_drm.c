@@ -1184,12 +1184,3 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
 
    return VK_SUCCESS;
 }
-
-int
-tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync)
-{
-   VkResult ret;
-   int fd;
-   ret = vk_sync_export_opaque_fd(&device->vk, sync, &fd);
-   return ret ? -1 : fd;
-}

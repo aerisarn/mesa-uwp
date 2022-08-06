@@ -726,13 +726,6 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
    return VK_SUCCESS;
 }
 
-int
-tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync)
-{
-   tu_finishme("tu_syncobj_to_fd");
-   return -1;
-}
-
 VkResult
 tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
 {
