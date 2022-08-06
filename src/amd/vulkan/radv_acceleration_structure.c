@@ -32,32 +32,7 @@
 /* Min and max bounds of the bvh used to compute morton codes */
 #define SCRATCH_TOTAL_BOUNDS_SIZE (6 * sizeof(float))
 
-enum accel_struct_build {
-   accel_struct_build_unoptimized,
-   accel_struct_build_lbvh,
-};
-
-static enum accel_struct_build
-get_accel_struct_build(const struct radv_physical_device *pdevice,
-                       VkAccelerationStructureBuildTypeKHR buildType)
-{
-   return buildType == VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR
-             ? accel_struct_build_lbvh
-             : accel_struct_build_unoptimized;
-}
-
-static uint32_t
-get_node_id_stride(enum accel_struct_build build_mode)
-{
-   switch (build_mode) {
-   case accel_struct_build_unoptimized:
-      return 4;
-   case accel_struct_build_lbvh:
-      return 8;
-   default:
-      unreachable("Unhandled accel_struct_build!");
-   }
-}
+#define KEY_ID_PAIR_SIZE 8
 
 VKAPI_ATTR void VKAPI_CALL
 radv_GetAccelerationStructureBuildSizesKHR(
@@ -110,26 +85,18 @@ radv_GetAccelerationStructureBuildSizesKHR(
 
    pSizeInfo->accelerationStructureSize = size;
 
-   /* 2x the max number of nodes in a BVH layer and order information for sorting when using
-    * LBVH (one uint32_t each, two buffers) plus space to store the bounds.
-    * LBVH is only supported for device builds and hardware that supports global atomics.
-    */
-   enum accel_struct_build build_mode = get_accel_struct_build(device->physical_device, buildType);
-   uint32_t node_id_stride = get_node_id_stride(build_mode);
-
+   /* 2x the max number of nodes in a BVH layer and order information for sorting. */
    uint32_t leaf_count = boxes + instances + triangles;
-   VkDeviceSize scratchSize = 2 * leaf_count * node_id_stride;
+   VkDeviceSize scratchSize = 2 * leaf_count * KEY_ID_PAIR_SIZE;
 
-   if (build_mode == accel_struct_build_lbvh) {
-      radix_sort_vk_memory_requirements_t requirements;
-      radix_sort_vk_get_memory_requirements(device->meta_state.accel_struct_build.radix_sort,
-                                            leaf_count, &requirements);
+   radix_sort_vk_memory_requirements_t requirements;
+   radix_sort_vk_get_memory_requirements(device->meta_state.accel_struct_build.radix_sort,
+                                         leaf_count, &requirements);
 
-      /* Make sure we have the space required by the radix sort. */
-      scratchSize = MAX2(scratchSize, requirements.keyvals_size * 2);
+   /* Make sure we have the space required by the radix sort. */
+   scratchSize = MAX2(scratchSize, requirements.keyvals_size * 2);
 
-      scratchSize += requirements.internal_size + SCRATCH_TOTAL_BOUNDS_SIZE;
-   }
+   scratchSize += requirements.internal_size + SCRATCH_TOTAL_BOUNDS_SIZE;
 
    scratchSize = MAX2(4096, scratchSize);
    pSizeInfo->updateScratchSize = scratchSize;
@@ -467,29 +434,6 @@ nir_invert_3x3(nir_builder *b, nir_ssa_def *in[3][3], nir_ssa_def *out[3][3])
    }
 }
 
-static nir_ssa_def *
-id_to_node_id_offset(nir_builder *b, nir_ssa_def *global_id,
-                     const struct radv_physical_device *pdevice)
-{
-   uint32_t stride = get_node_id_stride(
-      get_accel_struct_build(pdevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR));
-
-   return nir_imul_imm(b, global_id, stride);
-}
-
-static nir_ssa_def *
-id_to_morton_offset(nir_builder *b, nir_ssa_def *global_id,
-                    const struct radv_physical_device *pdevice)
-{
-   enum accel_struct_build build_mode =
-      get_accel_struct_build(pdevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR);
-   assert(build_mode == accel_struct_build_lbvh);
-
-   uint32_t stride = get_node_id_stride(build_mode);
-
-   return nir_iadd_imm(b, nir_imul_imm(b, global_id, stride), sizeof(uint32_t));
-}
-
 static void
 atomic_fminmax(struct radv_device *dev, nir_builder *b, nir_ssa_def *addr, bool is_max,
                nir_ssa_def *val)
@@ -517,9 +461,6 @@ read_fminmax_atomic(struct radv_device *dev, nir_builder *b, unsigned channels, 
 static nir_shader *
 build_leaf_shader(struct radv_device *dev)
 {
-   enum accel_struct_build build_mode =
-      get_accel_struct_build(dev->physical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR);
-
    const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
    nir_builder b = create_accel_build_shader(dev, "accel_build_leaf_shader");
 
@@ -546,12 +487,11 @@ build_leaf_shader(struct radv_device *dev)
                nir_imul_imm(&b, nir_channels(&b, nir_load_workgroup_id(&b, 32), 1),
                             b.shader->info.workgroup_size[0]),
                nir_channels(&b, nir_load_local_invocation_id(&b), 1));
-   nir_ssa_def *scratch_dst_addr =
-      nir_iadd(&b, scratch_addr,
-               nir_u2u64(&b, nir_iadd(&b, scratch_offset,
-                                      id_to_node_id_offset(&b, global_id, dev->physical_device))));
-   if (build_mode != accel_struct_build_unoptimized)
-      scratch_dst_addr = nir_iadd_imm(&b, scratch_dst_addr, SCRATCH_TOTAL_BOUNDS_SIZE);
+
+   nir_ssa_def *scratch_dst_addr = nir_iadd(
+      &b, scratch_addr,
+      nir_u2u64(&b, nir_iadd(&b, scratch_offset, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE))));
+   scratch_dst_addr = nir_iadd_imm(&b, scratch_dst_addr, SCRATCH_TOTAL_BOUNDS_SIZE);
 
    nir_variable *bounds[2] = {
       nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "min_bound"),
@@ -776,28 +716,26 @@ build_leaf_shader(struct radv_device *dev)
    nir_pop_if(&b, NULL);
    nir_pop_if(&b, NULL);
 
-   if (build_mode != accel_struct_build_unoptimized) {
-      nir_ssa_def *min = nir_load_var(&b, bounds[0]);
-      nir_ssa_def *max = nir_load_var(&b, bounds[1]);
+   nir_ssa_def *min = nir_load_var(&b, bounds[0]);
+   nir_ssa_def *max = nir_load_var(&b, bounds[1]);
 
-      nir_ssa_def *min_reduced = nir_reduce(&b, min, .reduction_op = nir_op_fmin);
-      nir_ssa_def *max_reduced = nir_reduce(&b, max, .reduction_op = nir_op_fmax);
+   nir_ssa_def *min_reduced = nir_reduce(&b, min, .reduction_op = nir_op_fmin);
+   nir_ssa_def *max_reduced = nir_reduce(&b, max, .reduction_op = nir_op_fmax);
 
-      nir_push_if(&b, nir_elect(&b, 1));
+   nir_push_if(&b, nir_elect(&b, 1));
 
-      atomic_fminmax(dev, &b, scratch_addr, false, nir_channel(&b, min_reduced, 0));
-      atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 4), false,
-                     nir_channel(&b, min_reduced, 1));
-      atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 8), false,
-                     nir_channel(&b, min_reduced, 2));
+   atomic_fminmax(dev, &b, scratch_addr, false, nir_channel(&b, min_reduced, 0));
+   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 4), false,
+                  nir_channel(&b, min_reduced, 1));
+   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 8), false,
+                  nir_channel(&b, min_reduced, 2));
 
-      atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 12), true,
-                     nir_channel(&b, max_reduced, 0));
-      atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 16), true,
-                     nir_channel(&b, max_reduced, 1));
-      atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 20), true,
-                     nir_channel(&b, max_reduced, 2));
-   }
+   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 12), true,
+                  nir_channel(&b, max_reduced, 0));
+   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 16), true,
+                  nir_channel(&b, max_reduced, 1));
+   atomic_fminmax(dev, &b, nir_iadd_imm(&b, scratch_addr, 20), true,
+                  nir_channel(&b, max_reduced, 2));
 
    return b.shader;
 }
@@ -898,7 +836,7 @@ build_morton_shader(struct radv_device *dev)
 
    nir_ssa_def *node_id_addr =
       nir_iadd(&b, nir_iadd_imm(&b, scratch_addr, SCRATCH_TOTAL_BOUNDS_SIZE),
-               nir_u2u64(&b, id_to_node_id_offset(&b, global_id, dev->physical_device)));
+               nir_u2u64(&b, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE)));
    nir_ssa_def *node_id =
       nir_build_load_global(&b, 1, 32, node_id_addr, .align_mul = 4, .align_offset = 0);
 
@@ -938,7 +876,7 @@ build_morton_shader(struct radv_device *dev)
 
    nir_ssa_def *dst_addr =
       nir_iadd(&b, nir_iadd_imm(&b, scratch_addr, SCRATCH_TOTAL_BOUNDS_SIZE),
-               nir_u2u64(&b, id_to_morton_offset(&b, global_id, dev->physical_device)));
+               nir_u2u64(&b, nir_iadd_imm(&b, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE), 4)));
    nir_build_store_global(&b, key, dst_addr, .align_mul = 4);
 
    return b.shader;
@@ -984,19 +922,14 @@ build_internal_shader(struct radv_device *dev)
    nir_ssa_def *node_offset = nir_iadd(&b, node_dst_offset, nir_ishl_imm(&b, global_id, 7));
    nir_ssa_def *node_dst_addr = nir_iadd(&b, node_addr, nir_u2u64(&b, node_offset));
 
-   nir_ssa_def *src_base_addr =
-      nir_iadd(&b, scratch_addr,
-               nir_u2u64(&b, nir_iadd(&b, src_scratch_offset,
-                                      id_to_node_id_offset(&b, src_idx, dev->physical_device))));
-
-   enum accel_struct_build build_mode =
-      get_accel_struct_build(dev->physical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR);
-   uint32_t node_id_stride = get_node_id_stride(build_mode);
+   nir_ssa_def *src_base_addr = nir_iadd(
+      &b, scratch_addr,
+      nir_u2u64(&b, nir_iadd(&b, src_scratch_offset, nir_imul_imm(&b, src_idx, KEY_ID_PAIR_SIZE))));
 
    nir_ssa_def *src_nodes[4];
    for (uint32_t i = 0; i < 4; i++) {
       src_nodes[i] =
-         nir_build_load_global(&b, 1, 32, nir_iadd_imm(&b, src_base_addr, i * node_id_stride));
+         nir_build_load_global(&b, 1, 32, nir_iadd_imm(&b, src_base_addr, i * KEY_ID_PAIR_SIZE));
       nir_build_store_global(&b, src_nodes[i], nir_iadd_imm(&b, node_dst_addr, i * 4));
    }
 
@@ -1026,10 +959,10 @@ build_internal_shader(struct radv_device *dev)
 
    nir_ssa_def *node_id =
       nir_iadd_imm(&b, nir_ushr_imm(&b, node_offset, 3), radv_bvh_node_internal);
-   nir_ssa_def *dst_scratch_addr =
-      nir_iadd(&b, scratch_addr,
-               nir_u2u64(&b, nir_iadd(&b, dst_scratch_offset,
-                                      id_to_node_id_offset(&b, global_id, dev->physical_device))));
+   nir_ssa_def *dst_scratch_addr = nir_iadd(
+      &b, scratch_addr,
+      nir_u2u64(&b,
+                nir_iadd(&b, dst_scratch_offset, nir_imul_imm(&b, global_id, KEY_ID_PAIR_SIZE))));
    nir_build_store_global(&b, node_id, dst_scratch_addr);
 
    nir_push_if(&b, fill_header);
@@ -1374,27 +1307,23 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   if (get_accel_struct_build(device->physical_device,
-                              VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR) ==
-       accel_struct_build_lbvh) {
-      nir_shader *morton_cs = build_morton_shader(device);
+   nir_shader *morton_cs = build_morton_shader(device);
 
-      result = create_build_pipeline(device, morton_cs, sizeof(struct morton_constants),
-                                     &device->meta_state.accel_struct_build.morton_pipeline,
-                                     &device->meta_state.accel_struct_build.morton_p_layout);
-      if (result != VK_SUCCESS)
-         return result;
+   result = create_build_pipeline(device, morton_cs, sizeof(struct morton_constants),
+                                  &device->meta_state.accel_struct_build.morton_pipeline,
+                                  &device->meta_state.accel_struct_build.morton_p_layout);
+   if (result != VK_SUCCESS)
+      return result;
 
-      device->meta_state.accel_struct_build.radix_sort =
-         radv_create_radix_sort_u64(radv_device_to_handle(device), &device->meta_state.alloc,
-                                    radv_pipeline_cache_to_handle(&device->meta_state.cache));
+   device->meta_state.accel_struct_build.radix_sort =
+      radv_create_radix_sort_u64(radv_device_to_handle(device), &device->meta_state.alloc,
+                                 radv_pipeline_cache_to_handle(&device->meta_state.cache));
 
-      struct radix_sort_vk_sort_devaddr_info *radix_sort_info =
-         &device->meta_state.accel_struct_build.radix_sort_info;
-      radix_sort_info->ext = NULL;
-      radix_sort_info->key_bits = 24;
-      radix_sort_info->fill_buffer = radix_sort_fill_buffer;
-   }
+   struct radix_sort_vk_sort_devaddr_info *radix_sort_info =
+      &device->meta_state.accel_struct_build.radix_sort_info;
+   radix_sort_info->ext = NULL;
+   radix_sort_info->key_bits = 24;
+   radix_sort_info->fill_buffer = radix_sort_fill_buffer;
 
    return result;
 }
@@ -1426,26 +1355,20 @@ radv_CmdBuildAccelerationStructuresKHR(
       radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
                             NULL);
 
-   enum accel_struct_build build_mode = get_accel_struct_build(
-      cmd_buffer->device->physical_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR);
-   uint32_t node_id_stride = get_node_id_stride(build_mode);
-
    radv_meta_save(
       &saved_state, cmd_buffer,
       RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
    struct bvh_state *bvh_states = calloc(infoCount, sizeof(struct bvh_state));
 
-   if (build_mode != accel_struct_build_unoptimized) {
-      for (uint32_t i = 0; i < infoCount; ++i) {
-         /* Clear the bvh bounds with int max/min. */
-         si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress, 3 * sizeof(float),
-                                0x7fffffff);
-         si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress + 3 * sizeof(float),
-                                3 * sizeof(float), 0x80000000);
-      }
-
-      cmd_buffer->state.flush_bits |= flush_bits;
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      /* Clear the bvh bounds with int max/min. */
+      si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress, 3 * sizeof(float),
+                             0x7fffffff);
+      si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress + 3 * sizeof(float),
+                             3 * sizeof(float), 0x80000000);
    }
+
+   cmd_buffer->state.flush_bits |= flush_bits;
 
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.leaf_pipeline);
@@ -1520,83 +1443,75 @@ radv_CmdBuildAccelerationStructuresKHR(
                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(prim_consts), &prim_consts);
             radv_unaligned_dispatch(cmd_buffer, buildRangeInfo->primitiveCount, 1, 1);
             prim_consts.dst_offset += prim_size * buildRangeInfo->primitiveCount;
-            prim_consts.dst_scratch_offset += node_id_stride * buildRangeInfo->primitiveCount;
+            prim_consts.dst_scratch_offset += KEY_ID_PAIR_SIZE * buildRangeInfo->primitiveCount;
          }
       }
       bvh_states[i].node_offset = prim_consts.dst_offset;
-      bvh_states[i].node_count = prim_consts.dst_scratch_offset / node_id_stride;
+      bvh_states[i].node_count = prim_consts.dst_scratch_offset / KEY_ID_PAIR_SIZE;
    }
 
-   if (build_mode == accel_struct_build_lbvh) {
-      cmd_buffer->state.flush_bits |= flush_bits;
+   cmd_buffer->state.flush_bits |= flush_bits;
 
-      radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                           cmd_buffer->device->meta_state.accel_struct_build.morton_pipeline);
+   radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+                        cmd_buffer->device->meta_state.accel_struct_build.morton_pipeline);
 
-      for (uint32_t i = 0; i < infoCount; ++i) {
-         RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
-                          pInfos[i].dstAccelerationStructure);
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
+                       pInfos[i].dstAccelerationStructure);
 
-         const struct morton_constants consts = {
-            .node_addr = radv_accel_struct_get_va(accel_struct),
-            .scratch_addr = pInfos[i].scratchData.deviceAddress,
-         };
+      const struct morton_constants consts = {
+         .node_addr = radv_accel_struct_get_va(accel_struct),
+         .scratch_addr = pInfos[i].scratchData.deviceAddress,
+      };
 
-         radv_CmdPushConstants(commandBuffer,
-                               cmd_buffer->device->meta_state.accel_struct_build.morton_p_layout,
-                               VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
-         radv_unaligned_dispatch(cmd_buffer, bvh_states[i].node_count, 1, 1);
-      }
-
-      cmd_buffer->state.flush_bits |= flush_bits;
-
-      for (uint32_t i = 0; i < infoCount; ++i) {
-         struct radix_sort_vk_memory_requirements requirements;
-         radix_sort_vk_get_memory_requirements(
-            cmd_buffer->device->meta_state.accel_struct_build.radix_sort, bvh_states[i].node_count,
-            &requirements);
-
-         struct radix_sort_vk_sort_devaddr_info info =
-            cmd_buffer->device->meta_state.accel_struct_build.radix_sort_info;
-         info.count = bvh_states[i].node_count;
-
-         VkDeviceAddress base_addr =
-            pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE;
-
-         info.keyvals_even.buffer = VK_NULL_HANDLE;
-         info.keyvals_even.offset = 0;
-         info.keyvals_even.devaddr = base_addr;
-
-         info.keyvals_odd = base_addr + requirements.keyvals_size;
-
-         info.internal.buffer = VK_NULL_HANDLE;
-         info.internal.offset = 0;
-         info.internal.devaddr = base_addr + requirements.keyvals_size * 2;
-
-         VkDeviceAddress result_addr;
-         radix_sort_vk_sort_devaddr(cmd_buffer->device->meta_state.accel_struct_build.radix_sort,
-                                    &info, radv_device_to_handle(cmd_buffer->device), commandBuffer,
-                                    &result_addr);
-
-         assert(result_addr == info.keyvals_even.devaddr || result_addr == info.keyvals_odd);
-
-         if (result_addr == info.keyvals_even.devaddr) {
-            bvh_states[i].buffer_1_offset = SCRATCH_TOTAL_BOUNDS_SIZE;
-            bvh_states[i].buffer_2_offset = SCRATCH_TOTAL_BOUNDS_SIZE + requirements.keyvals_size;
-         } else {
-            bvh_states[i].buffer_1_offset = SCRATCH_TOTAL_BOUNDS_SIZE + requirements.keyvals_size;
-            bvh_states[i].buffer_2_offset = SCRATCH_TOTAL_BOUNDS_SIZE;
-         }
-         bvh_states[i].scratch_offset = bvh_states[i].buffer_1_offset;
-      }
-
-      cmd_buffer->state.flush_bits |= flush_bits;
-   } else {
-      for (uint32_t i = 0; i < infoCount; ++i) {
-         bvh_states[i].buffer_1_offset = 0;
-         bvh_states[i].buffer_2_offset = bvh_states[i].node_count * 4;
-      }
+      radv_CmdPushConstants(commandBuffer,
+                            cmd_buffer->device->meta_state.accel_struct_build.morton_p_layout,
+                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+      radv_unaligned_dispatch(cmd_buffer, bvh_states[i].node_count, 1, 1);
    }
+
+   cmd_buffer->state.flush_bits |= flush_bits;
+
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      struct radix_sort_vk_memory_requirements requirements;
+      radix_sort_vk_get_memory_requirements(
+         cmd_buffer->device->meta_state.accel_struct_build.radix_sort, bvh_states[i].node_count,
+         &requirements);
+
+      struct radix_sort_vk_sort_devaddr_info info =
+         cmd_buffer->device->meta_state.accel_struct_build.radix_sort_info;
+      info.count = bvh_states[i].node_count;
+
+      VkDeviceAddress base_addr = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE;
+
+      info.keyvals_even.buffer = VK_NULL_HANDLE;
+      info.keyvals_even.offset = 0;
+      info.keyvals_even.devaddr = base_addr;
+
+      info.keyvals_odd = base_addr + requirements.keyvals_size;
+
+      info.internal.buffer = VK_NULL_HANDLE;
+      info.internal.offset = 0;
+      info.internal.devaddr = base_addr + requirements.keyvals_size * 2;
+
+      VkDeviceAddress result_addr;
+      radix_sort_vk_sort_devaddr(cmd_buffer->device->meta_state.accel_struct_build.radix_sort,
+                                 &info, radv_device_to_handle(cmd_buffer->device), commandBuffer,
+                                 &result_addr);
+
+      assert(result_addr == info.keyvals_even.devaddr || result_addr == info.keyvals_odd);
+
+      if (result_addr == info.keyvals_even.devaddr) {
+         bvh_states[i].buffer_1_offset = SCRATCH_TOTAL_BOUNDS_SIZE;
+         bvh_states[i].buffer_2_offset = SCRATCH_TOTAL_BOUNDS_SIZE + requirements.keyvals_size;
+      } else {
+         bvh_states[i].buffer_1_offset = SCRATCH_TOTAL_BOUNDS_SIZE + requirements.keyvals_size;
+         bvh_states[i].buffer_2_offset = SCRATCH_TOTAL_BOUNDS_SIZE;
+      }
+      bvh_states[i].scratch_offset = bvh_states[i].buffer_1_offset;
+   }
+
+   cmd_buffer->state.flush_bits |= flush_bits;
 
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.internal_pipeline);
