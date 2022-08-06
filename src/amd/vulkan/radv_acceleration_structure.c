@@ -382,19 +382,9 @@ struct build_primitive_constants {
    };
 };
 
-struct bounds_constants {
-   uint64_t node_addr;
-   uint64_t scratch_addr;
-};
-
 struct morton_constants {
    uint64_t node_addr;
    uint64_t scratch_addr;
-};
-
-struct fill_constants {
-   uint64_t addr;
-   uint32_t value;
 };
 
 struct build_internal_constants {
