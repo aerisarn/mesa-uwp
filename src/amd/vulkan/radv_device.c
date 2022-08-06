@@ -1677,7 +1677,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->accelerationStructure = true;
          features->accelerationStructureCaptureReplay = false;
          features->accelerationStructureIndirectBuild = false;
-         features->accelerationStructureHostCommands = true;
+         features->accelerationStructureHostCommands = false;
          features->descriptorBindingAccelerationStructureUpdateAfterBind = true;
          break;
       }
