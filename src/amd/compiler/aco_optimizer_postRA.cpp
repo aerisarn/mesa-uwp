@@ -450,6 +450,13 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 void
 process_instruction(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
+   /* Don't try to optimize instructions which are already dead. */
+   if (!instr || is_dead(ctx.uses, instr.get())) {
+      instr.reset();
+      ctx.current_instr_idx++;
+      return;
+   }
+
    try_apply_branch_vcc(ctx, instr);
 
    try_optimize_scc_nocompare(ctx, instr);
