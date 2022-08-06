@@ -244,8 +244,8 @@ cso_init_vbuf(struct cso_context *cso, unsigned flags)
        (uses_user_vertex_buffers &&
         caps.fallback_only_for_user_vbuffers)) {
       cso->vbuf = u_vbuf_create(cso->pipe, &caps);
-      cso->vbuf_current = cso->vbuf;
       cso->always_use_vbuf = caps.fallback_always;
+      cso->vbuf_current = caps.fallback_always ? cso->vbuf : NULL;
    }
 }
 
