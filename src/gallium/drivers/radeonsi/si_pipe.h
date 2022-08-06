@@ -1115,7 +1115,6 @@ struct si_context {
    bool vertex_buffer_user_sgprs_dirty;
    struct pipe_vertex_buffer vertex_buffer[SI_NUM_VERTEX_BUFFERS];
    uint16_t vertex_buffer_unaligned; /* bitmask of not dword-aligned buffers */
-   uint32_t *vb_descriptors_gpu_list;
    struct si_resource *vb_descriptors_buffer;
    unsigned vb_descriptors_offset;
    unsigned vb_descriptor_user_sgprs[5 * 4];

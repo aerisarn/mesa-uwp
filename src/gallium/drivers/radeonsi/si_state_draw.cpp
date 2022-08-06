@@ -1919,11 +1919,9 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
                         (struct pipe_resource **)&sctx->vb_descriptors_buffer, (void **)&ptr);
          if (!sctx->vb_descriptors_buffer) {
             sctx->vb_descriptors_offset = 0;
-            sctx->vb_descriptors_gpu_list = NULL;
             return false;
          }
 
-         sctx->vb_descriptors_gpu_list = ptr;
          radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->vb_descriptors_buffer,
                                    RADEON_USAGE_READ | RADEON_PRIO_DESCRIPTORS);
          /* GFX6 doesn't support the L2 prefetch. */

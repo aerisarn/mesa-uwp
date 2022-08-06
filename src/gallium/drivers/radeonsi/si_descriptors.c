@@ -2885,7 +2885,6 @@ void si_release_all_descriptors(struct si_context *sctx)
       si_release_descriptors(&sctx->descriptors[i]);
 
    si_resource_reference(&sctx->vb_descriptors_buffer, NULL);
-   sctx->vb_descriptors_gpu_list = NULL; /* points into a mapped buffer */
 
    si_release_bindless_descriptors(sctx);
 }
