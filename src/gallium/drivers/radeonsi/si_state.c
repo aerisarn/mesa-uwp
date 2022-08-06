@@ -5089,14 +5089,7 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
 
    sctx->vertex_elements = v;
    sctx->num_vertex_elements = v->count;
-
-   if (sctx->num_vertex_elements) {
-      sctx->vertex_buffers_dirty = true;
-   } else {
-      sctx->vertex_buffers_dirty = false;
-      sctx->vertex_buffer_pointer_dirty = false;
-      sctx->vertex_buffer_user_sgprs_dirty = false;
-   }
+   sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
 
    if (old->instance_divisor_is_one != v->instance_divisor_is_one ||
        old->instance_divisor_is_fetched != v->instance_divisor_is_fetched ||
