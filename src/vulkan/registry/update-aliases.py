@@ -62,9 +62,44 @@ def main(paths: list[str]):
     """
     def prepare_identifier(identifier: str) -> str:
         for prefix in [
-            # vk_find_struct() prepends `VK_STRUCTURE_TYPE_`, so that prefix
-            # might not appear in the code
+            # Various macros prepend these, so they will not appear in the code using them.
+            # List generated using this command:
+            #   $ prefixes=$(git grep -woiE 'VK_\w+_' -- src/ ':!src/vulkan/registry/' | cut -d: -f2 | sort -u)
+            #   $ for prefix in $prefixes; do grep -q $prefix src/vulkan/registry/vk.xml && echo "'$prefix',"; done
+            # (the second part eliminates prefixes used only in mesa code and not upstream)
+            'VK_BLEND_FACTOR_',
+            'VK_BLEND_OP_',
+            'VK_BORDER_COLOR_',
+            'VK_COMMAND_BUFFER_RESET_',
+            'VK_COMMAND_POOL_RESET_',
+            'VK_COMPARE_OP_',
+            'VK_COMPONENT_SWIZZLE_',
+            'VK_DESCRIPTOR_TYPE_',
+            'VK_DRIVER_ID_',
+            'VK_DYNAMIC_STATE_',
+            'VK_ERROR_',
+            'VK_FORMAT_',
+            'VK_IMAGE_ASPECT_MEMORY_PLANE_',
+            'VK_IMAGE_ASPECT_PLANE_',
+            'VK_IMAGE_USAGE_',
+            'VK_NV_',
+            'VK_PERFORMANCE_COUNTER_UNIT_',
+            'VK_PIPELINE_BIND_POINT_',
+            'VK_SAMPLER_ADDRESS_MODE_',
+            'VK_SHADER_STAGE_',
+            'VK_SHADER_STAGE_TESSELLATION_',
+            'VK_STENCIL_OP_',
             'VK_STRUCTURE_TYPE_',
+            'VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_',
+            'VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_',
+            'VK_USE_PLATFORM_',
+            'VK_VERSION_',
+
+            # Many places use the identifier without the `vk` prefix
+            # (eg. with the driver name as a prefix instead)
+            'VK_',
+            'Vk',
+            'vk',
         ]:
             identifier = remove_prefix(identifier, prefix)
         return identifier
