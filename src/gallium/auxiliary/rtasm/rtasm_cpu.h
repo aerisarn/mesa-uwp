@@ -36,7 +36,5 @@
 
 int rtasm_cpu_has_sse(void);
 
-int rtasm_cpu_has_sse2(void);
-
 
 #endif /* _RTASM_CPU_H_ */
