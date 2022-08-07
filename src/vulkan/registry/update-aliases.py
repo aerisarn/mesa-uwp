@@ -56,7 +56,7 @@ def chunks(lst: list, n: int):
         yield lst[i:i + n]
 
 
-def main():
+def main(paths: list[str]):
     """
     Entrypoint; perform the search for all the aliases and replace them.
     """
@@ -93,9 +93,9 @@ def main():
             'grep',
             '-rlP',
             '|'.join(aliases_chunk),
-            'src/'
-        ], stderr=subprocess.DEVNULL).decode()
+        ] + paths, stderr=subprocess.DEVNULL).decode()
         files_with_aliases.update(search_output.splitlines())
+
 
     def file_matches_path(file: str, path: str) -> bool:
         # if path is a folder; match any file within
@@ -128,5 +128,9 @@ def main():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('paths',
+                        nargs=argparse.ZERO_OR_MORE,
+                        default=['src/'],
+                        help='Limit script to these paths (default: `src/`)')
     args = parser.parse_args()
     main(**vars(args))
