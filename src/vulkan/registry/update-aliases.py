@@ -56,10 +56,9 @@ def chunks(lst: list, n: int):
         yield lst[i:i + n]
 
 
-def main(check_only: bool):
+def main():
     """
-    Entrypoint; perform the search for all the aliases, and if `check_only`
-    is not True, replace them.
+    Entrypoint; perform the search for all the aliases and replace them.
     """
     def prepare_identifier(identifier: str) -> str:
         # vk_find_struct() prepends `VK_STRUCTURE_TYPE_`, so that prefix
@@ -117,11 +116,6 @@ def main(check_only: bool):
     print(f'{len(files_with_aliases)} files contain aliases:')
     print('\n'.join(f'- {file}' for file in files_with_aliases))
 
-    if check_only:
-        print('You can automatically fix this by running '
-              f'`{THIS_FILE.relative_to(CWD)}`.')
-        sys.exit(1)
-
     command = [
         'sed',
         '-i',
@@ -134,8 +128,5 @@ def main(check_only: bool):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--check-only',
-                        action='store_true',
-                        help='Replace aliases found')
     args = parser.parse_args()
     main(**vars(args))
