@@ -456,7 +456,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       agx_index index_src = I->src[0];
       assert(index_src.type == AGX_INDEX_IMMEDIATE);
       assert(!(flat && I->perspective));
-      unsigned index = index_src.value;
+      unsigned cf_I = index_src.value;
+      assert(cf_I < 0x100);
+      unsigned cf_J = 0; /* TODO: in the IR */
+      assert(cf_J < 0x100);
       bool kill = false; // TODO: optimize
 
       uint64_t raw =
@@ -464,11 +467,14 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
             (I->perspective ? (1 << 6) : 0) |
             ((D & 0xFF) << 7) |
             (1ull << 15) | /* XXX */
-            (((uint64_t) index) << 16) |
+            ((cf_I & BITFIELD_MASK(6)) << 16) |
+            ((cf_J & BITFIELD_MASK(6)) << 24) |
             (((uint64_t) channels) << 30) |
             (!flat ? (1ull << 46) : 0) | /* XXX */
             (kill ? (1ull << 52) : 0) | /* XXX */
-            (((uint64_t) (D >> 8)) << 56);
+            (((uint64_t) (D >> 8)) << 56) |
+            ((uint64_t) (cf_I >> 6) << 58) |
+            ((uint64_t) (cf_J >> 6) << 60);
 
       unsigned size = 8;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
