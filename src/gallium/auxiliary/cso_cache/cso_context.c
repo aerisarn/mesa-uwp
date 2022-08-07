@@ -460,6 +460,9 @@ cso_destroy_context(struct cso_context *ctx)
  * template, insert it in the cache and return it.
  */
 
+#define CSO_BLEND_KEY_SIZE_RT0      offsetof(struct pipe_blend_state, rt[1])
+#define CSO_BLEND_KEY_SIZE_ALL_RT   sizeof(struct pipe_blend_state)
+
 /*
  * If the driver returns 0 from the create method then they will assign
  * the data member of the cso to be the template itself.
@@ -469,14 +472,25 @@ enum pipe_error
 cso_set_blend(struct cso_context *ctx,
               const struct pipe_blend_state *templ)
 {
-   const unsigned key_size = templ->independent_blend_enable ?
-      sizeof(struct pipe_blend_state) :
-      (char *)&(templ->rt[1]) - (char *)templ;
-   const unsigned hash_key = cso_construct_key(templ, key_size);
-   struct cso_hash_iter iter =
-      cso_find_state_template(&ctx->cache, hash_key, CSO_BLEND, templ,
-                              key_size);
+   unsigned key_size, hash_key;
+   struct cso_hash_iter iter;
    void *handle;
+
+   if (templ->independent_blend_enable) {
+      /* This is duplicated with the else block below because we want key_size
+       * to be a literal constant, so that memcpy and the hash computation can
+       * be inlined and unrolled.
+       */
+      hash_key = cso_construct_key(templ, CSO_BLEND_KEY_SIZE_ALL_RT);
+      iter = cso_find_state_template(&ctx->cache, hash_key, CSO_BLEND,
+                                     templ, CSO_BLEND_KEY_SIZE_ALL_RT);
+      key_size = CSO_BLEND_KEY_SIZE_ALL_RT;
+   } else {
+      hash_key = cso_construct_key(templ, CSO_BLEND_KEY_SIZE_RT0);
+      iter = cso_find_state_template(&ctx->cache, hash_key, CSO_BLEND,
+                                     templ, CSO_BLEND_KEY_SIZE_RT0);
+      key_size = CSO_BLEND_KEY_SIZE_RT0;
+   }
 
    if (cso_hash_iter_is_null(iter)) {
       struct cso_blend *cso = MALLOC(sizeof(struct cso_blend));
