@@ -794,6 +794,9 @@ util_cpu_detect_once(void)
             util_cpu_caps.cacheline = cacheline;
       }
    }
+   if (debug_get_bool_option("GALLIUM_NOSSE", false)) {
+      util_cpu_caps.has_sse = 0;
+   }
 #endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
 
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)

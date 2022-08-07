@@ -29,7 +29,6 @@
 #include "util/format/u_format.h"
 #include "util/half_float.h"
 #include "util/u_cpu_detect.h"
-#include "rtasm/rtasm_cpu.h"
 
 /* don't use this for serious use */
 static double rand_double()
@@ -86,7 +85,7 @@ int main(int argc, char** argv)
    }
    else if (!strcmp(argv[1], "sse"))
    {
-      if(!util_get_cpu_caps()->has_sse || !rtasm_cpu_has_sse())
+      if(!util_get_cpu_caps()->has_sse)
       {
          printf("Error: CPU doesn't support SSE (test with qemu)\n");
          return 2;
@@ -98,7 +97,7 @@ int main(int argc, char** argv)
    }
    else if (!strcmp(argv[1], "sse2"))
    {
-      if(!util_get_cpu_caps()->has_sse2 || !rtasm_cpu_has_sse())
+      if(!util_get_cpu_caps()->has_sse2)
       {
          printf("Error: CPU doesn't support SSE2 (test with qemu)\n");
          return 2;
@@ -109,7 +108,7 @@ int main(int argc, char** argv)
    }
    else if (!strcmp(argv[1], "sse3"))
    {
-      if(!util_get_cpu_caps()->has_sse3 || !rtasm_cpu_has_sse())
+      if(!util_get_cpu_caps()->has_sse3)
       {
          printf("Error: CPU doesn't support SSE3 (test with qemu)\n");
          return 2;
@@ -119,7 +118,7 @@ int main(int argc, char** argv)
    }
    else if (!strcmp(argv[1], "sse4.1"))
    {
-      if(!util_get_cpu_caps()->has_sse4_1 || !rtasm_cpu_has_sse())
+      if(!util_get_cpu_caps()->has_sse4_1)
       {
          printf("Error: CPU doesn't support SSE4.1 (test with qemu)\n");
          return 2;

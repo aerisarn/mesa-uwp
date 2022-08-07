@@ -166,8 +166,6 @@ files_libgallium = files(
   'rbug/rbug_shader.h',
   'rbug/rbug_texture.c',
   'rbug/rbug_texture.h',
-  'rtasm/rtasm_cpu.c',
-  'rtasm/rtasm_cpu.h',
   'rtasm/rtasm_execmem.c',
   'rtasm/rtasm_execmem.h',
   'rtasm/rtasm_x86sse.c',
