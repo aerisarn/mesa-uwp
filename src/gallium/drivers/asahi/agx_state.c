@@ -670,14 +670,11 @@ agx_upload_viewport_scissor(struct agx_pool *pool,
 
       cfg.translate_x = vp->translate[0];
       cfg.translate_y = vp->translate[1];
+      cfg.translate_z = vp->translate[2];
       cfg.scale_x = vp->scale[0];
       cfg.scale_y = vp->scale[1];
-
-      /* Assumes [0, 1] clip coordinates. If half-z is not in use, lower_half_z
-       * is called to ensure this works. */
-      cfg.translate_z = minz;
-      cfg.scale_z = maxz - minz;
-   };
+      cfg.scale_z = vp->scale[2];
+   }
 
    /* Allocate a new scissor descriptor */
    struct agx_scissor_packed *ptr = batch->scissor.bo->ptr.cpu;
@@ -1083,7 +1080,6 @@ agx_update_vs(struct agx_context *ctx)
 {
    struct agx_vs_shader_key key = {
       .num_vbufs = util_last_bit(ctx->vb_mask),
-      .clip_halfz = ctx->rast->base.clip_halfz,
    };
 
    memcpy(key.attributes, ctx->attributes,

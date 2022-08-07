@@ -581,6 +581,7 @@
     <field name="Deflake 3" start="110:0" size="64" type="address"/>
     <field name="Unk 112" start="112:0" size="32" default="0x1" type="hex"/>
     <field name="Unk 114" start="114:0" size="32" default="0x1c" type="hex"/>
+    <field name="OpenGL depth clipping" start="116:24" size="1" type="bool"/>
     <field name="Unk 118" start="118:0" size="32" default="0xffffffff" type="hex"/>
     <field name="Unk 119" start="119:0" size="32" default="0xffffffff" type="hex"/>
     <field name="Unk 120" start="120:0" size="32" default="0xffffffff" type="hex"/>

@@ -236,9 +236,6 @@ struct agx_vs_shader_key {
    unsigned vbuf_strides[AGX_MAX_VBUFS];
 
    struct agx_attribute attributes[AGX_MAX_ATTRIBS];
-
-   /* Set to true for clip coordinates to range [0, 1] instead of [-1, 1] */
-   bool clip_halfz : 1;
 };
 
 struct agx_fs_shader_key {

@@ -268,6 +268,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.attachment_length = nr_attachments * AGX_IOGPU_ATTACHMENT_LENGTH;
       cfg.unknown_offset = offset_unk;
       cfg.encoder = encoder_ptr;
+      cfg.opengl_depth_clipping = true;
 
       cfg.deflake_1 = deflake_1;
       cfg.deflake_2 = deflake_2;
