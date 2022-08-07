@@ -88,12 +88,18 @@ def main(paths: list[str]):
     # be extremely slow.
     files_with_aliases = set()
     for aliases_chunk in chunks([*aliases], 500):
-        search_output = subprocess.check_output([
+        grep_cmd = [
             'git',
             'grep',
             '-rlP',
             '|'.join(aliases_chunk),
-        ] + paths, stderr=subprocess.DEVNULL).decode()
+        ] + paths
+        search_output = subprocess.run(
+            grep_cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        ).stdout.decode()
         files_with_aliases.update(search_output.splitlines())
 
 
