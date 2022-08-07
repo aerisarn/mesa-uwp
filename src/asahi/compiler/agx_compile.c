@@ -332,8 +332,9 @@ agx_emit_load_vary_flat(agx_builder *b, agx_index *dests, nir_intrinsic_instr *i
 
    for (unsigned i = 0; i < components; ++i) {
       /* vec3 for each vertex, unknown what first 2 channels are for */
-      agx_index values = agx_ldcf(b, cf, 1);
-      dests[i] = agx_p_extract(b, values, 2);
+      agx_index d[3] = { agx_null() };
+      agx_emit_split(b, d, agx_ldcf(b, cf, 1), 3);
+      dests[i] = d[2];
 
       /* Each component accesses a sequential coefficient register */
       cf.value++;
