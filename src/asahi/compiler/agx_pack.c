@@ -453,13 +453,23 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       unsigned D = agx_pack_alu_dst(I->dest[0]);
       unsigned channels = (I->channels & 0x3);
       assert(I->mask < 0xF); /* 0 indicates full mask */
-      agx_index index_src = I->src[0];
-      assert(index_src.type == AGX_INDEX_IMMEDIATE);
+
+      agx_index src_I = I->src[0];
+      assert(src_I.type == AGX_INDEX_IMMEDIATE);
       assert(!(flat && I->perspective));
-      unsigned cf_I = index_src.value;
+
+      unsigned cf_I = src_I.value;
+      unsigned cf_J = 0;
+
+      if (I->perspective) {
+         agx_index src_J = I->src[1];
+         assert(src_J.type == AGX_INDEX_IMMEDIATE);
+         cf_J = src_J.value;
+      }
+
       assert(cf_I < 0x100);
-      unsigned cf_J = 0; /* TODO: in the IR */
       assert(cf_J < 0x100);
+
       bool kill = false; // TODO: optimize
 
       uint64_t raw =

@@ -60,7 +60,7 @@ agx_get_cf(agx_context *ctx, bool smooth, bool perspective,
    unsigned cf_base = varyings->nr_cf;
 
    if (slot == VARYING_SLOT_POS) {
-      assert(offset == 2 || (cf_base == 0 && offset == 3));
+      assert(offset == 2 || offset == 3);
       varyings->reads_z |= (offset == 2);
    }
 
@@ -356,13 +356,15 @@ agx_emit_load_vary(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
 
-   /* TODO: Make use of w explicit int he IR */
+   /* For perspective interpolation, we need W */
+   agx_index J = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
+
    agx_index I = agx_get_cf(b->shader, true, true,
                            sem.location + nir_src_as_uint(*offset), 0,
                            components);
 
    agx_index vec = agx_vec_for_intr(b->shader, instr);
-   agx_ld_vary_to(b, vec, I, components, true);
+   agx_ld_vary_to(b, vec, I, J, components, true);
    agx_emit_split(b, dests, vec, components);
 }
 
@@ -502,10 +504,11 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index *dests, nir_intrinsic_instr *
                AGX_ROUND_RTE), agx_immediate_f(0.5f));
    }
 
+   agx_index w = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
    agx_index z = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 2, 1);
 
-   dests[2] = agx_ld_vary(b, z, 1, false);
-   dests[3] = agx_ld_vary(b, agx_immediate(0), 1, false); /* cf0 is w */
+   dests[2] = agx_ld_vary(b, z, agx_null(), 1, false);
+   dests[3] = agx_ld_vary(b, w, agx_null(), 1, false);
 }
 
 static agx_instr *
@@ -1692,15 +1695,8 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_discard_if);
 
    /* Must be last since NIR passes can remap driver_location freely */
-   if (ctx->stage == MESA_SHADER_VERTEX) {
+   if (ctx->stage == MESA_SHADER_VERTEX)
       agx_remap_varyings_vs(nir, &out->varyings.vs);
-   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      /* Ensure cf0 is W */
-      ASSERTED agx_index w =
-         agx_get_cf(ctx, true, false, VARYING_SLOT_POS, 3, 1);
-
-      assert(w.value == 0);
-   }
 
    bool skip_internal = nir->info.internal;
    skip_internal &= !(agx_debug & AGX_DBG_INTERNAL);
