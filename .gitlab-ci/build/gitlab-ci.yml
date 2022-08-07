@@ -393,6 +393,7 @@ debian-clang:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
+    GALLIUM_DUMP_CPU: "true"
     C_ARGS: >
       -Wno-error=constant-conversion
       -Wno-error=enum-conversion
