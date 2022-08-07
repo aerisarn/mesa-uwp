@@ -38,10 +38,8 @@ private:
    }
 
 protected:
-   u_memstream stream;
    char *out_buffer = nullptr;
    size_t buffer_size = 0;
-   FILE *out;
 
    struct format {
       std::vector<char> fmt;
@@ -54,13 +52,13 @@ protected:
 
    virtual void SetUp()
    {
-      u_memstream_open(&stream, &out_buffer, &buffer_size);
-      out = u_memstream_get(&stream);
    }
 
    virtual void TearDown()
    {
-      free(out_buffer);
+      if (out_buffer != NULL) {
+         free(out_buffer);
+      }
    }
 
    void add_format(const char *string, std::vector<unsigned> arg_sizes)
@@ -103,6 +101,10 @@ protected:
 
    std::string parse()
    {
+      u_memstream stream;
+      FILE* out;
+      u_memstream_open(&stream, &out_buffer, &buffer_size);
+      out = u_memstream_get(&stream);
       std::vector<u_printf_info> infos;
 
       for (auto& format : formats) {
