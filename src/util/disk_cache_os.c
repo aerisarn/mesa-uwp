@@ -644,14 +644,15 @@ create_cache_item_header_and_blob(struct disk_cache_put_job *dc_job,
    /* Compress the cache item data */
    size_t max_buf = util_compress_max_compressed_len(dc_job->size);
    size_t compressed_size;
-   void *compressed_data = malloc(max_buf);
-   if (compressed_data == NULL)
-      return false;
+   void *compressed_data;
 
    if (dc_job->cache->compression_disabled) {
       compressed_size = dc_job->size;
       compressed_data = dc_job->data;
    } else {
+      compressed_data = malloc(max_buf);
+      if (compressed_data == NULL)
+         return false;
       compressed_size =
          util_compress_deflate(dc_job->data, dc_job->size,
                               compressed_data, max_buf);
