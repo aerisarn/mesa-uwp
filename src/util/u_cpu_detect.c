@@ -793,13 +793,39 @@ util_cpu_detect_once(void)
          if (cacheline > 0)
             util_cpu_caps.cacheline = cacheline;
       }
+   }
+#endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
 
-      if (!util_cpu_caps.has_sse) {
-         util_cpu_caps.has_sse2 = 0;
-         util_cpu_caps.has_sse3 = 0;
-         util_cpu_caps.has_ssse3 = 0;
-         util_cpu_caps.has_sse4_1 = 0;
-      }
+#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+   if (!util_cpu_caps.has_sse) {
+      util_cpu_caps.has_sse2 = 0;
+   }
+   if (!util_cpu_caps.has_sse2) {
+      util_cpu_caps.has_sse3 = 0;
+   }
+   if (!util_cpu_caps.has_sse3) {
+      util_cpu_caps.has_ssse3 = 0;
+      util_cpu_caps.has_sse4_1 = 0;
+   }
+   if (!util_cpu_caps.has_sse4_1) {
+      util_cpu_caps.has_sse4_2 = 0;
+      util_cpu_caps.has_avx = 0;
+   }
+   if (!util_cpu_caps.has_avx) {
+      util_cpu_caps.has_avx2 = 0;
+      util_cpu_caps.has_f16c = 0;
+      util_cpu_caps.has_fma = 0;
+
+      /* avx512 are cleared */
+      util_cpu_caps.has_avx512f    = 0;
+      util_cpu_caps.has_avx512dq   = 0;
+      util_cpu_caps.has_avx512ifma = 0;
+      util_cpu_caps.has_avx512pf   = 0;
+      util_cpu_caps.has_avx512er   = 0;
+      util_cpu_caps.has_avx512cd   = 0;
+      util_cpu_caps.has_avx512bw   = 0;
+      util_cpu_caps.has_avx512vl   = 0;
+      util_cpu_caps.has_avx512vbmi = 0;
    }
 #endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
 
