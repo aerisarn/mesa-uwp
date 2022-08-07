@@ -342,19 +342,6 @@ agx_ra(agx_context *ctx)
          agx_emit_parallel_copies(&b, copies, n);
          agx_remove_instruction(ins);
          continue;
-      } else if (ins->op == AGX_OPCODE_P_EXTRACT) {
-         /* Uses the destination size */
-         unsigned size = agx_size_align_16(ins->dest[0].size);
-         unsigned left = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
-         unsigned right = agx_index_to_reg(ssa_to_reg, ins->src[0]) + (size * ins->imm);
-
-         if (left != right) {
-            agx_mov_to(&b, agx_register(left, ins->dest[0].size),
-                  agx_register(right, ins->src[0].size));
-         }
-
-         agx_remove_instruction(ins);
-         continue;
       } else if (ins->op == AGX_OPCODE_P_SPLIT) {
          unsigned base = agx_index_to_reg(ssa_to_reg, ins->src[0]);
          unsigned width = agx_size_align_16(agx_split_width(ins));
