@@ -410,11 +410,37 @@ debian-clang:
       -Wno-error=unused-const-variable
       -Wno-error=unused-private-field
     DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=enabled
+      -D egl=enabled
       -D glvnd=true
+      -D platforms=x11,wayland
+    GALLIUM_ST: >
+      -D dri3=enabled
+      -D gallium-extra-hud=true
+      -D gallium-vdpau=enabled
+      -D gallium-xvmc=enabled
+      -D gallium-omx=bellagio
+      -D gallium-va=enabled
+      -D gallium-xa=enabled
+      -D gallium-nine=true
+      -D gallium-opencl=icd
+      -D gles1=enabled
+      -D gles2=enabled
+      -D llvm=enabled
+      -D microsoft-clc=enabled
+      -D shared-llvm=enabled
+      -D opencl-spirv=true
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus,i915,asahi"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost,imagination-experimental,microsoft-experimental
     EXTRA_OPTION:
       -D spirv-to-dxil=true
+      -D osmesa=true
+      -D imagination-srv=true
+      -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,xvmc,lima,panfrost,asahi,imagination
+      -D vulkan-layers=device-select,overlay
+      -D build-aco-tests=true
+      -D intel-clc=enabled
       -D imagination-srv=true
     CC: clang
     CXX: clang++
