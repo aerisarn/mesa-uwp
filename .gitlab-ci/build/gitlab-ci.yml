@@ -445,6 +445,11 @@ debian-clang:
     CC: clang
     CXX: clang++
 
+debian-clang-release:
+  extends: debian-clang
+  variables:
+    BUILDTYPE: "release"
+
 windows-vs2019:
   extends:
     - .build-windows
