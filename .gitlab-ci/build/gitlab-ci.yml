@@ -412,7 +412,7 @@ debian-clang:
       -D glvnd=true
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus,i915,asahi"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost,imagination-experimental,microsoft-experimental
-    EXTRA_OPTIONS:
+    EXTRA_OPTION:
       -D spirv-to-dxil=true
       -D imagination-srv=true
     CC: clang
