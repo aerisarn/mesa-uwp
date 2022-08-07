@@ -522,21 +522,25 @@ agx_emit_load_ubo(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
    return NULL;
 }
 
+/*
+ * Emit code to generate gl_FragCoord. The xy components are calculated from
+ * special registers, whereas the zw components are interpolated varyings.
+ * Because interpolating varyings requires allocating coefficient registers that
+ * might not be used, we only emit code for components that are actually used.
+ */
 static void
 agx_emit_load_frag_coord(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
 {
-   /* xy */
-   for (unsigned i = 0; i < 2; ++i) {
-      dests[i] = agx_fadd(b, agx_convert(b, agx_immediate(AGX_CONVERT_U32_TO_F),
-               agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X + i),
-               AGX_ROUND_RTE), agx_immediate_f(0.5f));
+   u_foreach_bit(i, nir_ssa_def_components_read(&instr->dest.ssa)) {
+      if (i < 2) {
+         dests[i] = agx_fadd(b, agx_convert(b, agx_immediate(AGX_CONVERT_U32_TO_F),
+                  agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X + i),
+                  AGX_ROUND_RTE), agx_immediate_f(0.5f));
+      } else {
+         agx_index cf = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, i, 1);
+         dests[i] = agx_iter(b, cf, agx_null(), 1, false);
+      }
    }
-
-   agx_index w = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
-   agx_index z = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 2, 1);
-
-   dests[2] = agx_iter(b, z, agx_null(), 1, false);
-   dests[3] = agx_iter(b, w, agx_null(), 1, false);
 }
 
 static agx_instr *
