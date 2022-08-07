@@ -1323,10 +1323,19 @@ void
 cso_single_sampler(struct cso_context *ctx, enum pipe_shader_type shader_stage,
                    unsigned idx, const struct pipe_sampler_state *templ)
 {
-   size_t size = ctx->sampler_format ? sizeof(struct pipe_sampler_state) :
-             offsetof(struct pipe_sampler_state, border_color_format);
-   if (cso_set_sampler(ctx, shader_stage, idx, templ, size))
-      ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
+   /* The reasons both blocks are duplicated is that we want the size parameter
+    * to be a constant expression to inline and unroll memcmp and hash key
+    * computations.
+    */
+   if (ctx->sampler_format) {
+      if (cso_set_sampler(ctx, shader_stage, idx, templ,
+                          sizeof(struct pipe_sampler_state)))
+         ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
+   } else {
+      if (cso_set_sampler(ctx, shader_stage, idx, templ,
+                          offsetof(struct pipe_sampler_state, border_color_format)))
+         ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, (int)idx);
+   }
 }
 
 
@@ -1403,10 +1412,16 @@ cso_set_samplers(struct cso_context *ctx,
                  unsigned nr,
                  const struct pipe_sampler_state **templates)
 {
+   int last;
+
    /* ensure sampler size is a constant for memcmp */
-   size_t size = ctx->sampler_format ? sizeof(struct pipe_sampler_state) :
-                   offsetof(struct pipe_sampler_state, border_color_format);
-   int last = set_samplers(ctx, shader_stage, nr, templates, size);
+   if (ctx->sampler_format) {
+      last = set_samplers(ctx, shader_stage, nr, templates,
+                          sizeof(struct pipe_sampler_state));
+   } else {
+      last = set_samplers(ctx, shader_stage, nr, templates,
+                          offsetof(struct pipe_sampler_state, border_color_format));
+   }
 
    ctx->max_sampler_seen = MAX2(ctx->max_sampler_seen, last);
    cso_single_sampler_done(ctx, shader_stage);
