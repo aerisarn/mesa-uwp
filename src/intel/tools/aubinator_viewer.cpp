@@ -1180,7 +1180,7 @@ int main(int argc, char *argv[])
       { NULL,            0,                 NULL,                          0 }
    };
 
-   memset(&context, 0, sizeof(context));
+   context = {};
 
    i = 0;
    while ((c = getopt_long(argc, argv, "x:s:", aubinator_opts, &i)) != -1) {
