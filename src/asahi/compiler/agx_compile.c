@@ -332,7 +332,7 @@ agx_emit_load_vary_flat(agx_builder *b, agx_index *dests, nir_intrinsic_instr *i
 
    for (unsigned i = 0; i < components; ++i) {
       /* vec3 for each vertex, unknown what first 2 channels are for */
-      agx_index values = agx_ld_vary_flat(b, cf, 1);
+      agx_index values = agx_ldcf(b, cf, 1);
       dests[i] = agx_p_extract(b, values, 2);
 
       /* Each component accesses a sequential coefficient register */
@@ -364,7 +364,7 @@ agx_emit_load_vary(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
                            components);
 
    agx_index vec = agx_vec_for_intr(b->shader, instr);
-   agx_ld_vary_to(b, vec, I, J, components, true);
+   agx_iter_to(b, vec, I, J, components, true);
    agx_emit_split(b, dests, vec, components);
 }
 
@@ -507,8 +507,8 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index *dests, nir_intrinsic_instr *
    agx_index w = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
    agx_index z = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 2, 1);
 
-   dests[2] = agx_ld_vary(b, z, agx_null(), 1, false);
-   dests[3] = agx_ld_vary(b, w, agx_null(), 1, false);
+   dests[2] = agx_iter(b, z, agx_null(), 1, false);
+   dests[3] = agx_iter(b, w, agx_null(), 1, false);
 }
 
 static agx_instr *

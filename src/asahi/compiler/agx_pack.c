@@ -446,10 +446,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       break;
    }
 
-   case AGX_OPCODE_LD_VARY:
-   case AGX_OPCODE_LD_VARY_FLAT:
+   case AGX_OPCODE_ITER:
+   case AGX_OPCODE_LDCF:
    {
-      bool flat = (I->op == AGX_OPCODE_LD_VARY_FLAT);
+      bool flat = (I->op == AGX_OPCODE_LDCF);
       unsigned D = agx_pack_alu_dst(I->dest[0]);
       unsigned channels = (I->channels & 0x3);
       assert(I->mask < 0xF); /* 0 indicates full mask */

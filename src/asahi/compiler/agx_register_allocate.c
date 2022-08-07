@@ -33,7 +33,7 @@ agx_write_registers(agx_instr *I, unsigned d)
    unsigned size = I->dest[d].size == AGX_SIZE_32 ? 2 : 1;
 
    switch (I->op) {
-   case AGX_OPCODE_LD_VARY:
+   case AGX_OPCODE_ITER:
       assert(1 <= I->channels && I->channels <= 4);
       return I->channels * size;
 
@@ -43,7 +43,7 @@ agx_write_registers(agx_instr *I, unsigned d)
       /* TODO: mask */
       return 4 * size;
 
-   case AGX_OPCODE_LD_VARY_FLAT:
+   case AGX_OPCODE_LDCF:
       return 6;
    case AGX_OPCODE_P_COMBINE:
    {
