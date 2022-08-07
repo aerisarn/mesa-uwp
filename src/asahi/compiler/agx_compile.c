@@ -345,27 +345,31 @@ static void
 agx_emit_load_vary(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
 {
    ASSERTED unsigned components = instr->num_components;
-   ASSERTED nir_intrinsic_instr *parent = nir_src_as_intrinsic(instr->src[0]);
+   nir_intrinsic_instr *bary = nir_src_as_intrinsic(instr->src[0]);
 
    assert(components >= 1 && components <= 4);
-   assert(parent);
 
    /* TODO: Interpolation modes */
-   assert(parent->intrinsic == nir_intrinsic_load_barycentric_pixel);
+   assert(bary != NULL);
+   assert(bary->intrinsic == nir_intrinsic_load_barycentric_pixel);
+
+   bool perspective =
+      nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE;
 
    nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
 
    /* For perspective interpolation, we need W */
-   agx_index J = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
+   agx_index J = !perspective ? agx_zero() :
+                  agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
 
-   agx_index I = agx_get_cf(b->shader, true, true,
+   agx_index I = agx_get_cf(b->shader, true, perspective,
                            sem.location + nir_src_as_uint(*offset), 0,
                            components);
 
    agx_index vec = agx_vec_for_intr(b->shader, instr);
-   agx_iter_to(b, vec, I, J, components, true);
+   agx_iter_to(b, vec, I, J, components, perspective);
    agx_emit_split(b, dests, vec, components);
 }
 
