@@ -61,9 +61,12 @@ def main(paths: list[str]):
     Entrypoint; perform the search for all the aliases and replace them.
     """
     def prepare_identifier(identifier: str) -> str:
-        # vk_find_struct() prepends `VK_STRUCTURE_TYPE_`, so that prefix
-        # might not appear in the code
-        identifier = remove_prefix(identifier, 'VK_STRUCTURE_TYPE_')
+        for prefix in [
+            # vk_find_struct() prepends `VK_STRUCTURE_TYPE_`, so that prefix
+            # might not appear in the code
+            'VK_STRUCTURE_TYPE_',
+        ]:
+            identifier = remove_prefix(identifier, prefix)
         return identifier
 
     aliases = {}
