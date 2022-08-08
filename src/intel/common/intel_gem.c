@@ -75,14 +75,9 @@ intel_gem_create_context_engines(int fd,
                                  int num_engines, uint16_t *engine_classes)
 {
    assert(info != NULL);
-   const size_t engine_inst_sz = 2 * sizeof(__u16); /* 1 class, 1 instance */
-   const size_t engines_param_size =
-      sizeof(__u64) /* extensions */ + num_engines * engine_inst_sz;
-
-   void *engines_param = malloc(engines_param_size);
-   assert(engines_param);
-   *(__u64*)engines_param = 0;
-   __u16 *class_inst_ptr = (__u16*)(((__u64*)engines_param) + 1);
+   assert(num_engines <= 64);
+   I915_DEFINE_CONTEXT_PARAM_ENGINES(engines_param, 64);
+   engines_param.extensions = 0;
 
    /* For each type of drm_i915_gem_engine_class of interest, we keep track of
     * the previous engine instance used.
@@ -111,7 +106,6 @@ intel_gem_create_context_engines(int fd,
              engine_class == I915_ENGINE_CLASS_COPY ||
              engine_class == I915_ENGINE_CLASS_COMPUTE);
       if (i915_engine_counts[engine_class] <= 0) {
-         free(engines_param);
          return -1;
       }
 
@@ -130,34 +124,30 @@ intel_gem_create_context_engines(int fd,
          }
       }
       if (engine_instance < 0) {
-         free(engines_param);
          return -1;
       }
 
-      *class_inst_ptr++ = engine_class;
-      *class_inst_ptr++ = engine_instance;
+      engines_param.engines[i].engine_class = engine_class;
+      engines_param.engines[i].engine_instance = engine_instance;
    }
 
-   assert((uintptr_t)engines_param + engines_param_size ==
-          (uintptr_t)class_inst_ptr);
-
+   uint32_t size = sizeof(engines_param.extensions);
+   size += sizeof(engines_param.engines[0]) * num_engines;
    struct drm_i915_gem_context_create_ext_setparam set_engines = {
       .base = {
          .name = I915_CONTEXT_CREATE_EXT_SETPARAM,
       },
       .param = {
          .param = I915_CONTEXT_PARAM_ENGINES,
-         .value = (uintptr_t)engines_param,
-         .size = engines_param_size,
+         .value = (uintptr_t)&engines_param,
+         .size = size,
       }
    };
    struct drm_i915_gem_context_create_ext create = {
       .flags = I915_CONTEXT_CREATE_FLAGS_USE_EXTENSIONS,
       .extensions = (uintptr_t)&set_engines,
    };
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT, &create);
-   free(engines_param);
-   if (ret == -1)
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT, &create) == -1)
       return -1;
 
    return create.ctx_id;
