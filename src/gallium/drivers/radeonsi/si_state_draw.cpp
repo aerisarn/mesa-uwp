@@ -1942,8 +1942,8 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
 
          /* GFX6 doesn't support the L2 prefetch. */
          if (GFX_VERSION >= GFX7)
-            si_cp_dma_prefetch(sctx, &sctx->last_const_upload_buffer->b.b, offset,
-                               alloc_size);
+            si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, &sctx->last_const_upload_buffer->b.b,
+                                                   offset, alloc_size);
       }
 
       if (IS_DRAW_VERTEX_STATE) {
