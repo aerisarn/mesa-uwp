@@ -641,7 +641,14 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
 
    do {
       progress = false;
-      OPT(nir_split_array_vars, nir_var_function_temp);
+      /* This pass is causing problems with types used by OpenCL :
+       *    https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/13955
+       *
+       * Running with it disabled made no difference in the resulting assembly
+       * code.
+       */
+      if (nir->info.stage != MESA_SHADER_KERNEL)
+         OPT(nir_split_array_vars, nir_var_function_temp);
       OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
       OPT(nir_opt_deref);
       if (OPT(nir_opt_memcpy))
