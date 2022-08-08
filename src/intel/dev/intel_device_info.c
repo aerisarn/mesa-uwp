@@ -1582,7 +1582,7 @@ query_topology(struct intel_device_info *devinfo, int fd)
  * and/or device local memory.
  */
 static bool
-query_regions(struct intel_device_info *devinfo, int fd, bool update)
+i915_query_regions(struct intel_device_info *devinfo, int fd, bool update)
 {
    struct drm_i915_query_memory_regions *meminfo =
       intel_i915_query_alloc(fd, DRM_I915_QUERY_MEMORY_REGIONS, NULL);
@@ -1940,6 +1940,70 @@ intel_device_info_calc_engine_prefetch(const struct intel_device_info *devinfo,
    return 1024;
 }
 
+static bool
+intel_i915_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
+{
+   if (intel_get_and_process_hwconfig_table(fd, devinfo)) {
+      /* After applying hwconfig values, some items need to be recalculated. */
+      devinfo->max_cs_threads =
+         devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
+
+      update_cs_workgroup_threads(devinfo);
+   }
+
+   int timestamp_frequency;
+   if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
+                &timestamp_frequency))
+      devinfo->timestamp_frequency = timestamp_frequency;
+   else if (devinfo->ver >= 10) {
+      mesa_loge("Kernel 4.15 required to read the CS timestamp frequency.");
+      return false;
+   }
+
+   if (!getparam(fd, I915_PARAM_REVISION, &devinfo->revision))
+      devinfo->revision = 0;
+
+   if (!query_topology(devinfo, fd)) {
+      if (devinfo->ver >= 10) {
+         /* topology uAPI required for CNL+ (kernel 4.17+) */
+         return false;
+      }
+
+      /* else use the kernel 4.13+ api for gfx8+.  For older kernels, topology
+       * will be wrong, affecting GPU metrics. In this case, fail silently.
+       */
+      getparam_topology(devinfo, fd);
+   }
+
+   /* If the memory region uAPI query is not available, try to generate some
+    * numbers out of os_* utils for sram only.
+    */
+   if (!i915_query_regions(devinfo, fd, false))
+      compute_system_memory(devinfo, false);
+
+   if (devinfo->platform == INTEL_PLATFORM_CHV)
+      fixup_chv_device_info(devinfo);
+
+   /* Broadwell PRM says:
+    *
+    *   "Before Gfx8, there was a historical configuration control field to
+    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
+    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
+    *    DISP_ARB_CTL[14:13].
+    *
+    *    For Gfx8 and subsequent generations, the swizzle fields are all
+    *    reserved, and the CPU's memory controller performs all address
+    *    swizzling modifications."
+    */
+   devinfo->has_bit6_swizzle = devinfo->ver < 8 && has_bit6_swizzle(fd);
+
+   intel_get_aperture_size(fd, &devinfo->aperture_bytes);
+   get_context_param(fd, 0, I915_CONTEXT_PARAM_GTT_SIZE, &devinfo->gtt_size);
+   devinfo->has_tiling_uapi = has_get_tiling(fd);
+
+   return true;
+}
+
 bool
 intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
@@ -1985,69 +2049,13 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       return true;
    }
 
-   if (intel_get_and_process_hwconfig_table(fd, devinfo)) {
-      /* After applying hwconfig values, some items need to be recalculated. */
-      devinfo->max_cs_threads =
-         devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
-
-      update_cs_workgroup_threads(devinfo);
-   }
-
-   int timestamp_frequency;
-   if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
-                &timestamp_frequency))
-      devinfo->timestamp_frequency = timestamp_frequency;
-   else if (devinfo->ver >= 10) {
-      mesa_loge("Kernel 4.15 required to read the CS timestamp frequency.");
-      return false;
-   }
-
-   if (!getparam(fd, I915_PARAM_REVISION, &devinfo->revision))
-      devinfo->revision = 0;
-
-   if (!query_topology(devinfo, fd)) {
-      if (devinfo->ver >= 10) {
-         /* topology uAPI required for CNL+ (kernel 4.17+) */
-         return false;
-      }
-
-      /* else use the kernel 4.13+ api for gfx8+.  For older kernels, topology
-       * will be wrong, affecting GPU metrics. In this case, fail silently.
-       */
-      getparam_topology(devinfo, fd);
-   }
-
-   /* If the memory region uAPI query is not available, try to generate some
-    * numbers out of os_* utils for sram only.
-    */
-   if (!query_regions(devinfo, fd, false))
-      compute_system_memory(devinfo, false);
+   intel_i915_get_device_info_from_fd(fd, devinfo);
 
    /* region info is required for lmem support */
    if (devinfo->has_local_mem && !devinfo->mem.use_class_instance) {
       mesa_logw("Could not query local memory size.");
       return false;
    }
-
-   if (devinfo->platform == INTEL_PLATFORM_CHV)
-      fixup_chv_device_info(devinfo);
-
-   /* Broadwell PRM says:
-    *
-    *   "Before Gfx8, there was a historical configuration control field to
-    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
-    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
-    *    DISP_ARB_CTL[14:13].
-    *
-    *    For Gfx8 and subsequent generations, the swizzle fields are all
-    *    reserved, and the CPU's memory controller performs all address
-    *    swizzling modifications."
-    */
-   devinfo->has_bit6_swizzle = devinfo->ver < 8 && has_bit6_swizzle(fd);
-
-   intel_get_aperture_size(fd, &devinfo->aperture_bytes);
-   get_context_param(fd, 0, I915_CONTEXT_PARAM_GTT_SIZE, &devinfo->gtt_size);
-   devinfo->has_tiling_uapi = has_get_tiling(fd);
 
    /* Gfx7 and older do not support EU/Subslice info */
    assert(devinfo->subslice_total >= 1 || devinfo->ver <= 7);
@@ -2065,5 +2073,5 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 
 bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int fd)
 {
-   return query_regions(devinfo, fd, true) || compute_system_memory(devinfo, true);
+   return i915_query_regions(devinfo, fd, true) || compute_system_memory(devinfo, true);
 }
