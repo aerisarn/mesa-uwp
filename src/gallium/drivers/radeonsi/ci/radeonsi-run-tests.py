@@ -364,9 +364,9 @@ flakes = os.path.join(
 )
 
 if os.path.exists(baseline):
-    print_yellow("Baseline: {}\n".format(baseline), args.verbose > 0)
+    print_yellow("Baseline: {}".format(baseline))
 if os.path.exists(flakes):
-    print_yellow("[flakes {}]\n".format(flakes), args.verbose > 0)
+    print_yellow("[flakes {}]".format(flakes))
 
 # piglit test
 if args.piglit:
@@ -374,7 +374,7 @@ if args.piglit:
     new_baseline = os.path.join(
         new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name)
     )
-    print_yellow("Running piglit tests\n", args.verbose > 0)
+    print_yellow("Running piglit tests", args.verbose > 0)
     cmd = [
         "piglit-runner",
         "run",
@@ -400,8 +400,10 @@ if args.piglit:
         cmd += ["--flakes", flakes]
 
     run_cmd(cmd, args.verbose)
-    shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
-    verify_results(new_baseline)
+    failures_path = os.path.join(out, "failures.csv")
+    if os.path.exists(failures_path):
+        shutil.copy(failures_path, new_baseline)
+        verify_results(new_baseline)
 
 deqp_args = "-- --deqp-surface-width=256 --deqp-surface-height=256 --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-visibility=hidden".split(
     " "
@@ -445,8 +447,11 @@ if args.glcts:
         cmd += ["--baseline", baseline]
     cmd += deqp_args
     run_cmd(cmd, args.verbose)
-    shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
-    verify_results(new_baseline)
+
+    failures_path = os.path.join(out, "failures.csv")
+    if os.path.exists(failures_path):
+        shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
+        verify_results(new_baseline)
 
 if args.deqp:
     print_yellow("Running   dEQP tests", args.verbose > 0)
@@ -504,5 +509,8 @@ if args.deqp:
         suite_filename,
     ] + filters_args
     run_cmd(cmd, args.verbose)
-    shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
-    verify_results(new_baseline)
+
+    failures_path = os.path.join(out, "failures.csv")
+    if os.path.exists(failures_path):
+        shutil.copy(failures_path, new_baseline)
+        verify_results(new_baseline)
