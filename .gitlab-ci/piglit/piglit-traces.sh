@@ -28,6 +28,9 @@ esac
 
 PATH="/opt/wine-stable/bin/:$PATH" # WineHQ path
 
+# Avoid asking about Gecko or Mono instalation
+export WINEDLLOVERRIDES=mscoree=d;mshtml=d
+
 # Set environment for DXVK.
 export DXVK_LOG_LEVEL="info"
 export DXVK_LOG="$RESULTS/dxvk"
