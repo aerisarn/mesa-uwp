@@ -196,28 +196,30 @@ static void si_dump_streamout(struct pipe_stream_output_info *so)
    }
 }
 
-static void declare_streamout_params(struct si_shader_context *ctx)
+static void declare_streamout_params(struct si_shader_args *args, struct si_shader *shader)
 {
-   if (ctx->screen->use_ngg_streamout) {
-      if (ctx->stage == MESA_SHADER_TESS_EVAL)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+   struct si_shader_selector *sel = shader->selector;
+
+   if (sel->screen->use_ngg_streamout) {
+      if (sel->stage == MESA_SHADER_TESS_EVAL)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
       return;
    }
 
    /* Streamout SGPRs. */
-   if (si_shader_uses_streamout(ctx->shader)) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.streamout_config);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.streamout_write_index);
-   } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+   if (si_shader_uses_streamout(shader)) {
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_config);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_write_index);
+   } else if (sel->stage == MESA_SHADER_TESS_EVAL) {
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
    }
 
    /* A streamout buffer offset is loaded if the stride is non-zero. */
    for (int i = 0; i < 4; i++) {
-      if (!ctx->shader->selector->info.base.xfb_stride[i])
+      if (!sel->info.base.xfb_stride[i])
          continue;
 
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.streamout_offset[i]);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_offset[i]);
    }
 }
 
@@ -256,131 +258,135 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
    return max_work_group_size;
 }
 
-static void declare_const_and_shader_buffers(struct si_shader_context *ctx, bool assign_params)
+static void declare_const_and_shader_buffers(struct si_shader_args *args,
+                                             struct si_shader *shader,
+                                             bool assign_params)
 {
    enum ac_arg_type const_shader_buf_type;
 
-   if (ctx->shader->selector->info.base.num_ubos == 1 &&
-       ctx->shader->selector->info.base.num_ssbos == 0)
+   if (shader->selector->info.base.num_ubos == 1 &&
+       shader->selector->info.base.num_ssbos == 0)
       const_shader_buf_type = AC_ARG_CONST_FLOAT_PTR;
    else
       const_shader_buf_type = AC_ARG_CONST_DESC_PTR;
 
    ac_add_arg(
-      &ctx->args, AC_ARG_SGPR, 1, const_shader_buf_type,
-      assign_params ? &ctx->const_and_shader_buffers : &ctx->other_const_and_shader_buffers);
+      &args->ac, AC_ARG_SGPR, 1, const_shader_buf_type,
+      assign_params ? &args->const_and_shader_buffers : &args->other_const_and_shader_buffers);
 }
 
-static void declare_samplers_and_images(struct si_shader_context *ctx, bool assign_params)
+static void declare_samplers_and_images(struct si_shader_args *args, bool assign_params)
 {
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR,
-              assign_params ? &ctx->samplers_and_images : &ctx->other_samplers_and_images);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR,
+              assign_params ? &args->samplers_and_images : &args->other_samplers_and_images);
 }
 
-static void declare_per_stage_desc_pointers(struct si_shader_context *ctx, bool assign_params)
+static void declare_per_stage_desc_pointers(struct si_shader_args *args,
+                                            struct si_shader *shader,
+                                            bool assign_params)
 {
-   declare_const_and_shader_buffers(ctx, assign_params);
-   declare_samplers_and_images(ctx, assign_params);
+   declare_const_and_shader_buffers(args, shader, assign_params);
+   declare_samplers_and_images(args, assign_params);
 }
 
-static void declare_global_desc_pointers(struct si_shader_context *ctx)
+static void declare_global_desc_pointers(struct si_shader_args *args)
 {
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->internal_bindings);
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR,
-              &ctx->bindless_samplers_and_images);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->internal_bindings);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR,
+              &args->bindless_samplers_and_images);
 }
 
-static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
+static void declare_vb_descriptor_input_sgprs(struct si_shader_args *args,
+                                              struct si_shader *shader)
 {
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->args.vertex_buffers);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->ac.vertex_buffers);
 
-   unsigned num_vbos_in_user_sgprs = ctx->shader->selector->info.num_vbos_in_user_sgprs;
+   unsigned num_vbos_in_user_sgprs = shader->selector->info.num_vbos_in_user_sgprs;
    if (num_vbos_in_user_sgprs) {
-      unsigned user_sgprs = ctx->args.num_sgprs_used;
+      unsigned user_sgprs = args->ac.num_sgprs_used;
 
-      if (si_is_merged_shader(ctx->shader))
+      if (si_is_merged_shader(shader))
          user_sgprs -= 8;
       assert(user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
 
       /* Declare unused SGPRs to align VB descriptors to 4 SGPRs (hw requirement). */
       for (unsigned i = user_sgprs; i < SI_SGPR_VS_VB_DESCRIPTOR_FIRST; i++)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
 
-      assert(num_vbos_in_user_sgprs <= ARRAY_SIZE(ctx->vb_descriptors));
+      assert(num_vbos_in_user_sgprs <= ARRAY_SIZE(args->vb_descriptors));
       for (unsigned i = 0; i < num_vbos_in_user_sgprs; i++)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 4, AC_ARG_INT, &ctx->vb_descriptors[i]);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 4, AC_ARG_INT, &args->vb_descriptors[i]);
    }
 }
 
-static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_prolog_vgprs)
+static void declare_vs_input_vgprs(struct si_shader_args *args, struct si_shader *shader,
+                                   unsigned *num_prolog_vgprs)
 {
-   struct si_shader *shader = ctx->shader;
-
-   ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.vertex_id);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vertex_id);
    if (shader->key.ge.as_ls) {
-      if (ctx->screen->info.gfx_level >= GFX11) {
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
-      } else if (ctx->screen->info.gfx_level >= GFX10) {
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.vs_rel_patch_id);
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
+      if (shader->selector->screen->info.gfx_level >= GFX11) {
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
+      } else if (shader->selector->screen->info.gfx_level >= GFX10) {
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vs_rel_patch_id);
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
       } else {
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.vs_rel_patch_id);
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* unused */
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vs_rel_patch_id);
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* unused */
       }
-   } else if (ctx->screen->info.gfx_level >= GFX10) {
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT,
+   } else if (shader->selector->screen->info.gfx_level >= GFX10) {
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user VGPR */
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT,
                  /* user vgpr or PrimID (legacy) */
-                 shader->key.ge.as_ngg ? NULL : &ctx->args.vs_prim_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
+                 shader->key.ge.as_ngg ? NULL : &args->ac.vs_prim_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
    } else {
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.instance_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.vs_prim_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* unused */
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vs_prim_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* unused */
    }
 
    if (!shader->is_gs_copy_shader) {
       /* Vertex load indices. */
       if (shader->selector->info.num_inputs) {
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->vertex_index0);
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->vertex_index0);
          for (unsigned i = 1; i < shader->selector->info.num_inputs; i++)
-            ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, NULL);
+            ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL);
       }
       *num_prolog_vgprs += shader->selector->info.num_inputs;
    }
 }
 
-static void declare_vs_blit_inputs(struct si_shader_context *ctx, unsigned vs_blit_property)
+static void declare_vs_blit_inputs(struct si_shader_args *args, unsigned vs_blit_property)
 {
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_blit_inputs); /* i16 x1, y1 */
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);                 /* i16 x1, y1 */
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL);               /* depth */
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_blit_inputs); /* i16 x1, y1 */
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);                  /* i16 x1, y1 */
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL);                /* depth */
 
    if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color0 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color1 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color2 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color3 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color0 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color1 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color2 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* color3 */
    } else if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.x1 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.y1 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.x2 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.y2 */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.z */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.w */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.x1 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.y1 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.x2 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.y2 */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.z */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_FLOAT, NULL); /* texcoord.w */
    }
 }
 
-static void declare_tes_input_vgprs(struct si_shader_context *ctx)
+static void declare_tes_input_vgprs(struct si_shader_args *args)
 {
-   ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.tes_u);
-   ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.tes_v);
-   ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tes_rel_patch_id);
-   ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tes_patch_id);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.tes_u);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.tes_v);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tes_rel_patch_id);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tes_patch_id);
 }
 
 enum
@@ -397,138 +403,139 @@ void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, u
    ac_add_arg(args, file, registers, type, arg);
 }
 
-void si_init_shader_args(struct si_shader_context *ctx)
+void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
 {
-   struct si_shader *shader = ctx->shader;
    unsigned i, num_returns, num_return_sgprs;
    unsigned num_prolog_vgprs = 0;
-   unsigned stage = ctx->stage;
+   struct si_shader_selector *sel = shader->selector;
+   unsigned stage = shader->is_gs_copy_shader ? MESA_SHADER_VERTEX : sel->stage;
+   unsigned stage_case = stage;
 
-   memset(&ctx->args, 0, sizeof(ctx->args));
+   memset(args, 0, sizeof(*args));
 
    /* Set MERGED shaders. */
-   if (ctx->screen->info.gfx_level >= GFX9 && stage <= MESA_SHADER_GEOMETRY) {
+   if (sel->screen->info.gfx_level >= GFX9 && stage <= MESA_SHADER_GEOMETRY) {
       if (shader->key.ge.as_ls || stage == MESA_SHADER_TESS_CTRL)
-         stage = SI_SHADER_MERGED_VERTEX_TESSCTRL; /* LS or HS */
+         stage_case = SI_SHADER_MERGED_VERTEX_TESSCTRL; /* LS or HS */
       else if (shader->key.ge.as_es || shader->key.ge.as_ngg || stage == MESA_SHADER_GEOMETRY)
-         stage = SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY;
+         stage_case = SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY;
    }
 
-   switch (stage) {
+   switch (stage_case) {
    case MESA_SHADER_VERTEX:
-      declare_global_desc_pointers(ctx);
+      declare_global_desc_pointers(args);
 
-      if (shader->selector->info.base.vs.blit_sgprs_amd) {
-         declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
+      if (sel->info.base.vs.blit_sgprs_amd) {
+         declare_vs_blit_inputs(args, sel->info.base.vs.blit_sgprs_amd);
 
          /* VGPRs */
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+         declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
          break;
       }
 
-      declare_per_stage_desc_pointers(ctx, true);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+      declare_per_stage_desc_pointers(args, shader, true);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
 
-      if (ctx->shader->is_gs_copy_shader) {
-         declare_streamout_params(ctx);
+      if (shader->is_gs_copy_shader) {
+         declare_streamout_params(args, shader);
          /* VGPRs */
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+         declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
          break;
       }
 
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
-      declare_vb_descriptor_input_sgprs(ctx);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+      declare_vb_descriptor_input_sgprs(args, shader);
 
       if (shader->key.ge.as_es) {
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.es2gs_offset);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
       } else if (shader->key.ge.as_ls) {
          /* no extra parameters */
       } else {
-         declare_streamout_params(ctx);
+         declare_streamout_params(args, shader);
       }
 
       /* VGPRs */
-      declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+      declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
       break;
 
    case MESA_SHADER_TESS_CTRL: /* GFX6-GFX8 */
-      declare_global_desc_pointers(ctx);
-      declare_per_stage_desc_pointers(ctx, true);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_offsets);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_layout);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tcs_factor_offset);
+      declare_global_desc_pointers(args);
+      declare_per_stage_desc_pointers(args, shader, true);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_offsets);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_layout);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_factor_offset);
 
       /* VGPRs */
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_patch_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_rel_ids);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_patch_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_rel_ids);
 
       /* param_tcs_offchip_offset and param_tcs_factor_offset are
        * placed after the user SGPRs.
        */
       for (i = 0; i < GFX6_TCS_NUM_USER_SGPR + 2; i++)
-         ac_add_return(&ctx->args, AC_ARG_SGPR);
+         ac_add_return(&args->ac, AC_ARG_SGPR);
       for (i = 0; i < 11; i++)
-         ac_add_return(&ctx->args, AC_ARG_VGPR);
+         ac_add_return(&args->ac, AC_ARG_VGPR);
       break;
 
    case SI_SHADER_MERGED_VERTEX_TESSCTRL:
       /* Merged stages have 8 system SGPRs at the beginning. */
       /* Gfx9-10: SPI_SHADER_USER_DATA_ADDR_LO/HI_HS */
       /* Gfx11+:  SPI_SHADER_PGM_LO/HI_HS */
-      declare_per_stage_desc_pointers(ctx, ctx->stage == MESA_SHADER_TESS_CTRL);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.merged_wave_info);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tcs_factor_offset);
-      if (ctx->screen->info.gfx_level >= GFX11)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tcs_wave_id);
+      declare_per_stage_desc_pointers(args, shader, stage == MESA_SHADER_TESS_CTRL);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.merged_wave_info);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_factor_offset);
+      if (sel->screen->info.gfx_level >= GFX11)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_wave_id);
       else
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.scratch_offset);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
 
-      declare_global_desc_pointers(ctx);
-      declare_per_stage_desc_pointers(ctx, ctx->stage == MESA_SHADER_VERTEX);
+      declare_global_desc_pointers(args);
+      declare_per_stage_desc_pointers(args, shader, stage == MESA_SHADER_VERTEX);
 
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_offsets);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_layout);
-      if (ctx->stage == MESA_SHADER_VERTEX)
-         declare_vb_descriptor_input_sgprs(ctx);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_offsets);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_layout);
+      if (stage == MESA_SHADER_VERTEX)
+         declare_vb_descriptor_input_sgprs(args, shader);
 
       /* VGPRs (first TCS, then VS) */
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_patch_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_rel_ids);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_patch_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_rel_ids);
 
-      if (ctx->stage == MESA_SHADER_VERTEX) {
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+      if (stage == MESA_SHADER_VERTEX) {
+         declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
 
          /* LS return values are inputs to the TCS main shader part. */
          for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
-            ac_add_return(&ctx->args, AC_ARG_SGPR);
+            ac_add_return(&args->ac, AC_ARG_SGPR);
          for (i = 0; i < 2; i++)
-            ac_add_return(&ctx->args, AC_ARG_VGPR);
+            ac_add_return(&args->ac, AC_ARG_VGPR);
 
          /* VS outputs passed via VGPRs to TCS. */
          if (shader->key.ge.opt.same_patch_vertices) {
             unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
             for (i = 0; i < num_outputs * 4; i++)
-               ac_add_return(&ctx->args, AC_ARG_VGPR);
+               ac_add_return(&args->ac, AC_ARG_VGPR);
          }
       } else {
          /* TCS inputs are passed via VGPRs from VS. */
          if (shader->key.ge.opt.same_patch_vertices) {
             unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->info.outputs_written);
             for (i = 0; i < num_inputs * 4; i++)
-               ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
+               ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
          }
 
          /* TCS return values are inputs to the TCS epilog.
@@ -538,9 +545,9 @@ void si_init_shader_args(struct si_shader_context *ctx)
           * should be passed to the epilog.
           */
          for (i = 0; i <= 8 + GFX9_SGPR_TCS_OUT_LAYOUT; i++)
-            ac_add_return(&ctx->args, AC_ARG_SGPR);
+            ac_add_return(&args->ac, AC_ARG_SGPR);
          for (i = 0; i < 11; i++)
-            ac_add_return(&ctx->args, AC_ARG_VGPR);
+            ac_add_return(&args->ac, AC_ARG_VGPR);
       }
       break;
 
@@ -548,157 +555,157 @@ void si_init_shader_args(struct si_shader_context *ctx)
       /* Merged stages have 8 system SGPRs at the beginning. */
       /* Gfx9-10: SPI_SHADER_USER_DATA_ADDR_LO/HI_GS */
       /* Gfx11+:  SPI_SHADER_PGM_LO/HI_GS */
-      declare_per_stage_desc_pointers(ctx, ctx->stage == MESA_SHADER_GEOMETRY);
+      declare_per_stage_desc_pointers(args, shader, stage == MESA_SHADER_GEOMETRY);
 
-      if (ctx->shader->key.ge.as_ngg)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.gs_tg_info);
+      if (shader->key.ge.as_ngg)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs_tg_info);
       else
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.gs2vs_offset);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs2vs_offset);
 
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.merged_wave_info);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
-      if (ctx->screen->info.gfx_level >= GFX11)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.gs_attr_offset);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.merged_wave_info);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
+      if (sel->screen->info.gfx_level >= GFX11)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs_attr_offset);
       else
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.scratch_offset);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
 
-      declare_global_desc_pointers(ctx);
-      if (ctx->stage != MESA_SHADER_VERTEX || !shader->selector->info.base.vs.blit_sgprs_amd) {
+      declare_global_desc_pointers(args);
+      if (stage != MESA_SHADER_VERTEX || !sel->info.base.vs.blit_sgprs_amd) {
          declare_per_stage_desc_pointers(
-            ctx, (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL));
+            args, shader, (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL));
       }
 
-      if (ctx->stage == MESA_SHADER_VERTEX && shader->selector->info.base.vs.blit_sgprs_amd) {
-         declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
+      if (stage == MESA_SHADER_VERTEX && sel->info.base.vs.blit_sgprs_amd) {
+         declare_vs_blit_inputs(args, sel->info.base.vs.blit_sgprs_amd);
       } else {
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
 
-         if (ctx->stage == MESA_SHADER_VERTEX) {
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
-         } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tes_offchip_addr);
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+         if (stage == MESA_SHADER_VERTEX) {
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+         } else if (stage == MESA_SHADER_TESS_EVAL) {
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_offchip_addr);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
          } else {
             /* GS */
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
          }
 
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
-         if (ctx->screen->info.gfx_level >= GFX11)
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->gs_attr_address);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->small_prim_cull_info);
+         if (sel->screen->info.gfx_level >= GFX11)
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->gs_attr_address);
          else
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
 
-         if (ctx->stage == MESA_SHADER_VERTEX)
-            declare_vb_descriptor_input_sgprs(ctx);
+         if (stage == MESA_SHADER_VERTEX)
+            declare_vb_descriptor_input_sgprs(args, shader);
       }
 
       /* VGPRs (first GS, then VS/TES) */
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[0]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[1]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_prim_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_invocation_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[2]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[0]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[1]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_prim_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_invocation_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[2]);
 
-      if (ctx->stage == MESA_SHADER_VERTEX) {
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
-      } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-         declare_tes_input_vgprs(ctx);
+      if (stage == MESA_SHADER_VERTEX) {
+         declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
+      } else if (stage == MESA_SHADER_TESS_EVAL) {
+         declare_tes_input_vgprs(args);
       }
 
-      if (ctx->shader->key.ge.as_es &&
-          (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL)) {
+      if (shader->key.ge.as_es &&
+          (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL)) {
          /* ES return values are inputs to GS. */
          for (i = 0; i < 8 + GFX9_GS_NUM_USER_SGPR; i++)
-            ac_add_return(&ctx->args, AC_ARG_SGPR);
+            ac_add_return(&args->ac, AC_ARG_SGPR);
          for (i = 0; i < 5; i++)
-            ac_add_return(&ctx->args, AC_ARG_VGPR);
+            ac_add_return(&args->ac, AC_ARG_VGPR);
       }
       break;
 
    case MESA_SHADER_TESS_EVAL:
-      declare_global_desc_pointers(ctx);
-      declare_per_stage_desc_pointers(ctx, true);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tes_offchip_addr);
+      declare_global_desc_pointers(args);
+      declare_per_stage_desc_pointers(args, shader, true);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_offchip_addr);
 
       if (shader->key.ge.as_es) {
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.es2gs_offset);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
       } else {
-         declare_streamout_params(ctx);
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
+         declare_streamout_params(args, shader);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
       }
 
       /* VGPRs */
-      declare_tes_input_vgprs(ctx);
+      declare_tes_input_vgprs(args);
       break;
 
    case MESA_SHADER_GEOMETRY:
-      declare_global_desc_pointers(ctx);
-      declare_per_stage_desc_pointers(ctx, true);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.gs2vs_offset);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.gs_wave_id);
+      declare_global_desc_pointers(args);
+      declare_per_stage_desc_pointers(args, shader, true);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs2vs_offset);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs_wave_id);
 
       /* VGPRs */
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[0]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[1]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_prim_id);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[2]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[3]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[4]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_vtx_offset[5]);
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.gs_invocation_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[0]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[1]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_prim_id);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[2]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[3]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[4]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[5]);
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_invocation_id);
       break;
 
    case MESA_SHADER_FRAGMENT:
-      declare_global_desc_pointers(ctx);
-      declare_per_stage_desc_pointers(ctx, true);
-      si_add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL, SI_PARAM_ALPHA_REF);
-      si_add_arg_checked(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.prim_mask,
+      declare_global_desc_pointers(args);
+      declare_per_stage_desc_pointers(args, shader, true);
+      si_add_arg_checked(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL, SI_PARAM_ALPHA_REF);
+      si_add_arg_checked(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask,
                          SI_PARAM_PRIM_MASK);
 
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.persp_sample,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_sample,
                          SI_PARAM_PERSP_SAMPLE);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.persp_center,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_center,
                          SI_PARAM_PERSP_CENTER);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.persp_centroid,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_centroid,
                          SI_PARAM_PERSP_CENTROID);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_INT, NULL, SI_PARAM_PERSP_PULL_MODEL);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.linear_sample,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 3, AC_ARG_INT, NULL, SI_PARAM_PERSP_PULL_MODEL);
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.linear_sample,
                          SI_PARAM_LINEAR_SAMPLE);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.linear_center,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.linear_center,
                          SI_PARAM_LINEAR_CENTER);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 2, AC_ARG_INT, &ctx->args.linear_centroid,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.linear_centroid,
                          SI_PARAM_LINEAR_CENTROID);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL, SI_PARAM_LINE_STIPPLE_TEX);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.frag_pos[0],
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL, SI_PARAM_LINE_STIPPLE_TEX);
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.frag_pos[0],
                          SI_PARAM_POS_X_FLOAT);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.frag_pos[1],
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.frag_pos[1],
                          SI_PARAM_POS_Y_FLOAT);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.frag_pos[2],
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.frag_pos[2],
                          SI_PARAM_POS_Z_FLOAT);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.frag_pos[3],
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.frag_pos[3],
                          SI_PARAM_POS_W_FLOAT);
-      shader->info.face_vgpr_index = ctx->args.num_vgprs_used;
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.front_face,
+      shader->info.face_vgpr_index = args->ac.num_vgprs_used;
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.front_face,
                          SI_PARAM_FRONT_FACE);
-      shader->info.ancillary_vgpr_index = ctx->args.num_vgprs_used;
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.ancillary,
+      shader->info.ancillary_vgpr_index = args->ac.num_vgprs_used;
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.ancillary,
                          SI_PARAM_ANCILLARY);
-      shader->info.sample_coverage_vgpr_index = ctx->args.num_vgprs_used;
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.sample_coverage,
+      shader->info.sample_coverage_vgpr_index = args->ac.num_vgprs_used;
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.sample_coverage,
                          SI_PARAM_SAMPLE_COVERAGE);
-      si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->pos_fixed_pt,
+      si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->pos_fixed_pt,
                          SI_PARAM_POS_FIXED_PT);
 
       /* Color inputs from the prolog. */
@@ -706,7 +713,7 @@ void si_init_shader_args(struct si_shader_context *ctx)
          unsigned num_color_elements = util_bitcount(shader->selector->info.colors_read);
 
          for (i = 0; i < num_color_elements; i++)
-            ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
+            ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
 
          num_prolog_vgprs += num_color_elements;
       }
@@ -718,67 +725,67 @@ void si_init_shader_args(struct si_shader_context *ctx)
                     shader->selector->info.writes_samplemask + 1 /* SampleMaskIn */;
 
       for (i = 0; i < num_return_sgprs; i++)
-         ac_add_return(&ctx->args, AC_ARG_SGPR);
+         ac_add_return(&args->ac, AC_ARG_SGPR);
       for (; i < num_returns; i++)
-         ac_add_return(&ctx->args, AC_ARG_VGPR);
+         ac_add_return(&args->ac, AC_ARG_VGPR);
       break;
 
    case MESA_SHADER_COMPUTE:
-      declare_global_desc_pointers(ctx);
-      declare_per_stage_desc_pointers(ctx, true);
+      declare_global_desc_pointers(args);
+      declare_per_stage_desc_pointers(args, shader, true);
       if (shader->selector->info.uses_grid_size)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 3, AC_ARG_INT, &ctx->args.num_work_groups);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
       if (shader->selector->info.uses_variable_block_size)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->block_size);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->block_size);
 
       unsigned cs_user_data_dwords =
          shader->selector->info.base.cs.user_data_components_amd;
       if (cs_user_data_dwords) {
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, cs_user_data_dwords, AC_ARG_INT, &ctx->cs_user_data);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, cs_user_data_dwords, AC_ARG_INT, &args->cs_user_data);
       }
 
       /* Some descriptors can be in user SGPRs. */
       /* Shader buffers in user SGPRs. */
       for (unsigned i = 0; i < shader->selector->cs_num_shaderbufs_in_user_sgprs; i++) {
-         while (ctx->args.num_sgprs_used % 4 != 0)
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+         while (args->ac.num_sgprs_used % 4 != 0)
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
 
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 4, AC_ARG_INT, &ctx->cs_shaderbuf[i]);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 4, AC_ARG_INT, &args->cs_shaderbuf[i]);
       }
       /* Images in user SGPRs. */
       for (unsigned i = 0; i < shader->selector->cs_num_images_in_user_sgprs; i++) {
          unsigned num_sgprs = BITSET_TEST(shader->selector->info.base.image_buffers, i) ? 4 : 8;
 
-         while (ctx->args.num_sgprs_used % num_sgprs != 0)
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
+         while (args->ac.num_sgprs_used % num_sgprs != 0)
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
 
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, num_sgprs, AC_ARG_INT, &ctx->cs_image[i]);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, num_sgprs, AC_ARG_INT, &args->cs_image[i]);
       }
 
       /* Hardware SGPRs. */
       for (i = 0; i < 3; i++) {
          if (shader->selector->info.uses_block_id[i]) {
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.workgroup_ids[i]);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.workgroup_ids[i]);
          }
       }
       if (shader->selector->info.uses_subgroup_info)
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tg_size);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tg_size);
 
       /* Hardware VGPRs. */
       /* Thread IDs are packed in VGPR0, 10 bits per component or stored in 3 separate VGPRs */
-      if (ctx->screen->info.gfx_level >= GFX11 ||
-          (!ctx->screen->info.has_graphics && ctx->screen->info.family >= CHIP_MI200))
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.local_invocation_ids);
+      if (sel->screen->info.gfx_level >= GFX11 ||
+          (!sel->screen->info.has_graphics && sel->screen->info.family >= CHIP_MI200))
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.local_invocation_ids);
       else
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 3, AC_ARG_INT, &ctx->args.local_invocation_ids);
+         ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_INT, &args->ac.local_invocation_ids);
       break;
    default:
       assert(0 && "unimplemented shader");
       return;
    }
 
-   shader->info.num_input_sgprs = ctx->args.num_sgprs_used;
-   shader->info.num_input_vgprs = ctx->args.num_vgprs_used;
+   shader->info.num_input_sgprs = args->ac.num_sgprs_used;
+   shader->info.num_input_vgprs = args->ac.num_vgprs_used;
 
    assert(shader->info.num_input_vgprs >= num_prolog_vgprs);
    shader->info.num_input_vgprs -= num_prolog_vgprs;
@@ -1964,6 +1971,10 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
    struct si_shader_selector *sel = shader->selector;
+
+   struct si_shader_args args;
+   si_init_shader_args(shader, &args);
+
    bool free_nir;
    struct nir_shader *nir = si_get_nir_shader(shader, &free_nir, 0);
 
@@ -2021,7 +2032,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
     * with PS and NGG VS), but monolithic shaders should be compiled
     * by LLVM due to more complicated compilation.
     */
-   if (!si_llvm_compile_shader(sscreen, compiler, shader, &so, debug, nir, free_nir))
+   if (!si_llvm_compile_shader(sscreen, compiler, shader, &args, &so, debug, nir, free_nir))
       return false;
 
    shader->config.float_mode = float_mode;
@@ -2192,6 +2203,9 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
 
    ctx.shader = &shader;
    ctx.stage = stage;
+
+   struct si_shader_args args;
+   ctx.args = &args;
 
    build(&ctx, key);
 

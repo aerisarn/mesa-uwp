@@ -292,7 +292,7 @@ enum
 } while (0)
 
 /* This is called during shader compilation and returns LLVMValueRef. */
-#define GET_FIELD(ctx, field) si_unpack_param((ctx), (ctx)->vs_state_bits, field##__SHIFT, \
+#define GET_FIELD(ctx, field) si_unpack_param((ctx), (ctx)->args->vs_state_bits, field##__SHIFT, \
                                              util_bitcount(field##__MASK))
 
 enum

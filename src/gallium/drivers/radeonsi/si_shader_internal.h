@@ -36,28 +36,8 @@ struct si_shader_output_values {
    ubyte semantic;
 };
 
-struct si_shader_context {
-   struct ac_llvm_context ac;
-   struct si_shader *shader;
-   struct si_screen *screen;
-   struct pipe_stream_output_info so;
-
-   gl_shader_stage stage;
-
-   /* For clamping the non-constant index in resource indexing: */
-   unsigned num_const_buffers;
-   unsigned num_shader_buffers;
-   unsigned num_images;
-   unsigned num_samplers;
-
-   struct ac_shader_args args;
-   struct ac_shader_abi abi;
-
-   LLVMBasicBlockRef merged_wrap_if_entry_block;
-   int merged_wrap_if_label;
-
-   struct ac_llvm_pointer main_fn;
-   LLVMTypeRef return_type;
+struct si_shader_args {
+   struct ac_shader_args ac;
 
    struct ac_arg const_and_shader_buffers;
    struct ac_arg samplers_and_images;
@@ -132,6 +112,30 @@ struct si_shader_context {
    struct ac_arg cs_user_data;
    struct ac_arg cs_shaderbuf[3];
    struct ac_arg cs_image[3];
+};
+
+struct si_shader_context {
+   struct ac_llvm_context ac;
+   struct si_shader *shader;
+   struct si_screen *screen;
+   struct pipe_stream_output_info so;
+
+   gl_shader_stage stage;
+
+   /* For clamping the non-constant index in resource indexing: */
+   unsigned num_const_buffers;
+   unsigned num_shader_buffers;
+   unsigned num_images;
+   unsigned num_samplers;
+
+   struct si_shader_args *args;
+   struct ac_shader_abi abi;
+
+   LLVMBasicBlockRef merged_wrap_if_entry_block;
+   int merged_wrap_if_label;
+
+   struct ac_llvm_pointer main_fn;
+   LLVMTypeRef return_type;
 
    struct ac_llvm_compiler *compiler;
 
@@ -158,7 +162,7 @@ bool si_is_multi_part_shader(struct si_shader *shader);
 bool si_is_merged_shader(struct si_shader *shader);
 void si_add_arg_checked(struct ac_shader_args *args, enum ac_arg_regfile file, unsigned registers,
                         enum ac_arg_type type, struct ac_arg *arg, unsigned idx);
-void si_init_shader_args(struct si_shader_context *ctx);
+void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args);
 unsigned si_get_max_workgroup_size(const struct si_shader *shader);
 bool si_vs_needs_prolog(const struct si_shader_selector *sel,
                         const struct si_vs_prolog_bits *prolog_key);
@@ -219,7 +223,8 @@ void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_poi
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
                            struct nir_shader *nir, bool free_nir);
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-                            struct si_shader *shader, const struct pipe_stream_output_info *so,
+                            struct si_shader *shader, struct si_shader_args *args,
+                            const struct pipe_stream_output_info *so,
                             struct util_debug_callback *debug, struct nir_shader *nir,
                             bool free_nir);
 

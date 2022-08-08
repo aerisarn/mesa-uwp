@@ -100,7 +100,7 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
        */
       LLVMValueRef sel_y1 = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, vertex_id, ctx->ac.i32_1, "");
 
-      unsigned param_vs_blit_inputs = ctx->vs_blit_inputs.arg_index;
+      unsigned param_vs_blit_inputs = ctx->args->vs_blit_inputs.arg_index;
       if (input_index == 0) {
          /* Position: */
          LLVMValueRef x1y1 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs);
@@ -165,11 +165,11 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
    LLVMValueRef tmp;
 
    if (input_index < num_vbos_in_user_sgprs) {
-      vb_desc = ac_get_arg(&ctx->ac, ctx->vb_descriptors[input_index]);
+      vb_desc = ac_get_arg(&ctx->ac, ctx->args->vb_descriptors[input_index]);
    } else {
       unsigned index = input_index - num_vbos_in_user_sgprs;
       vb_desc = ac_build_load_to_sgpr(
-         &ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->args.vertex_buffers),
+         &ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->ac.vertex_buffers),
          LLVMConstInt(ctx->ac.i32, index, 0));
    }
 
@@ -182,10 +182,11 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
 
       vertex_index = get_vertex_index(ctx, &ctx->shader->key.ge.part.vs.prolog,
                                       input_index, ctx->instance_divisor_constbuf,
-                                      ctx->args.start_instance.arg_index,
-                                      ctx->args.base_vertex.arg_index);
+                                      ctx->args->ac.start_instance.arg_index,
+                                      ctx->args->ac.base_vertex.arg_index);
    } else {
-      vertex_index = LLVMGetParam(ctx->main_fn.value, ctx->vertex_index0.arg_index + input_index);
+      vertex_index = LLVMGetParam(ctx->main_fn.value,
+                                  ctx->args->vertex_index0.arg_index + input_index);
    }
 
    /* Use the open-coded implementation for all loads of doubles and
@@ -382,7 +383,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
    int i;
 
    /* Get bits [22:16], i.e. (so_param >> 16) & 127; */
-   LLVMValueRef so_vtx_count = si_unpack_param(ctx, ctx->args.streamout_config, 16, 7);
+   LLVMValueRef so_vtx_count = si_unpack_param(ctx, ctx->args->ac.streamout_config, 16, 7);
 
    LLVMValueRef tid = ac_get_thread_id(&ctx->ac);
 
@@ -400,7 +401,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
        *                attrib_offset
        */
 
-      LLVMValueRef so_write_index = ac_get_arg(&ctx->ac, ctx->args.streamout_write_index);
+      LLVMValueRef so_write_index = ac_get_arg(&ctx->ac, ctx->args->ac.streamout_write_index);
 
       /* Compute (streamout_write_index + thread_id). */
       so_write_index = LLVMBuildAdd(builder, so_write_index, tid, "");
@@ -409,7 +410,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
        * enabled buffer. */
       LLVMValueRef so_write_offset[4] = {};
       LLVMValueRef so_buffers[4];
-      struct ac_llvm_pointer arg = ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->internal_bindings);
+      struct ac_llvm_pointer arg = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings);
 
       for (i = 0; i < 4; i++) {
          if (!so->stride[i])
@@ -419,7 +420,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
 
          so_buffers[i] = ac_build_load_to_sgpr(&ctx->ac, arg, offset);
 
-         LLVMValueRef so_offset = ac_get_arg(&ctx->ac, ctx->args.streamout_offset[i]);
+         LLVMValueRef so_offset = ac_get_arg(&ctx->ac, ctx->args->ac.streamout_offset[i]);
          so_offset = LLVMBuildMul(builder, so_offset, LLVMConstInt(ctx->ac.i32, 4, 0), "");
 
          so_write_offset[i] = ac_build_imad(
@@ -452,7 +453,7 @@ void si_llvm_clipvertex_to_clipdist(struct si_shader_context *ctx,
    LLVMValueRef base_elt;
    LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
    LLVMValueRef const_resource = ac_build_load_to_sgpr(
-      &ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->internal_bindings), constbuf_index);
+      &ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings), constbuf_index);
    unsigned clipdist_mask = ctx->shader->selector->info.clipdist_mask &
                             ~ctx->shader->key.ge.opt.kill_clip_distances;
 
@@ -791,7 +792,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    unsigned num_all_input_regs = key->vs_prolog.num_input_sgprs + num_input_vgprs;
    unsigned user_sgpr_base = key->vs_prolog.num_merged_next_stage_vgprs ? 8 : 0;
 
-   memset(&ctx->args, 0, sizeof(ctx->args));
+   memset(ctx->args, 0, sizeof(*ctx->args));
 
    /* 4 preloaded VGPRs + vertex load indices as prolog outputs */
    returns = alloca((num_all_input_regs + key->vs_prolog.num_inputs) * sizeof(LLVMTypeRef));
@@ -799,13 +800,13 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
 
    /* Declare input and output SGPRs. */
    for (i = 0; i < key->vs_prolog.num_input_sgprs; i++) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &input_sgpr_param[i]);
+      ac_add_arg(&ctx->args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &input_sgpr_param[i]);
       returns[num_returns++] = ctx->ac.i32;
    }
 
    /* Preloaded VGPRs (outputs must be floats) */
    for (i = 0; i < num_input_vgprs; i++) {
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &input_vgpr_param[i]);
+      ac_add_arg(&ctx->args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &input_vgpr_param[i]);
       returns[num_returns++] = ctx->ac.f32;
    }
 
@@ -888,7 +889,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
                                             user_sgpr_base + SI_SGPR_BASE_VERTEX);
 
       index = ac_to_float(&ctx->ac, index);
-      ret = LLVMBuildInsertValue(ctx->ac.builder, ret, index, ctx->args.arg_count + i, "");
+      ret = LLVMBuildInsertValue(ctx->ac.builder, ret, index, ctx->args->ac.arg_count + i, "");
    }
 
    si_llvm_build_ret(ctx, ret);

@@ -28,7 +28,7 @@
 
 static LLVMValueRef get_wave_id_in_tg(struct si_shader_context *ctx)
 {
-   return si_unpack_param(ctx, ctx->args.merged_wave_info, 24, 4);
+   return si_unpack_param(ctx, ctx->args->ac.merged_wave_info, 24, 4);
 }
 
 LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx)
@@ -42,13 +42,15 @@ LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx)
 
 static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 {
-   return ac_build_load_to_sgpr(&ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->internal_bindings),
+   return ac_build_load_to_sgpr(&ctx->ac,
+                                ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings),
                                 LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_BUF, false));
 }
 
 static LLVMValueRef ngg_get_emulated_counters_buf(struct si_shader_context *ctx)
 {
-   return ac_build_load_to_sgpr(&ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->internal_bindings),
+   return ac_build_load_to_sgpr(&ctx->ac,
+                                ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings),
                                 LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
 }
 
