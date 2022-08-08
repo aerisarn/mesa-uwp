@@ -1946,21 +1946,21 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
                                                    offset, alloc_size);
       }
 
-      if (IS_DRAW_VERTEX_STATE) {
-         unsigned i = 0;
+      unsigned count_in_user_sgprs = MIN2(count, num_vbos_in_user_sgprs);
+      unsigned i = 0;
 
+      if (IS_DRAW_VERTEX_STATE) {
          radeon_begin(&sctx->gfx_cs);
 
-         if (num_vbos_in_user_sgprs) {
-            unsigned num_vb_sgprs = MIN2(count, num_vbos_in_user_sgprs) * 4;
+         if (count_in_user_sgprs) {
+            radeon_set_sh_reg_seq(sh_base + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4, count_in_user_sgprs * 4);
 
-            radeon_set_sh_reg_seq(sh_base + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4, num_vb_sgprs);
-
-            for (; partial_velem_mask && i < num_vbos_in_user_sgprs; i++) {
+            /* the first iteration always executes */
+            do {
                unsigned velem_index = get_next_vertex_state_elem<POPCNT>(state, &partial_velem_mask);
 
                radeon_emit_array(&vstate->descriptors[velem_index * 4], 4);
-            }
+            } while (++i < count_in_user_sgprs);
          }
 
          if (partial_velem_mask) {
@@ -1971,12 +1971,14 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
 
             radeon_set_sh_reg(vb_desc_offset, vb_descriptors_address);
 
-            for (; partial_velem_mask; i++) {
+            /* the first iteration always executes */
+            do {
                unsigned velem_index = get_next_vertex_state_elem<POPCNT>(state, &partial_velem_mask);
                uint32_t *desc = &ptr[(i - num_vbos_in_user_sgprs) * 4];
 
                memcpy(desc, &vstate->descriptors[velem_index * 4], 16);
-            }
+               i++;
+            } while (partial_velem_mask);
          }
          radeon_end();
 
@@ -1989,9 +1991,6 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
          /* The next draw_vbo should recompute and rebind vertex buffer descriptors. */
          sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
       } else {
-         unsigned count_in_user_sgprs = MIN2(count, num_vbos_in_user_sgprs);
-         unsigned i = 0;
-
          if (count_in_user_sgprs) {
             radeon_begin(&sctx->gfx_cs);
             radeon_set_sh_reg_seq(sh_base + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4,
