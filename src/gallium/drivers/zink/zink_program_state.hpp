@@ -300,7 +300,10 @@ equals_gfx_pipeline_state(const void *a, const void *b)
    if (DYNAMIC_STATE < ZINK_PIPELINE_DYNAMIC_STATE2) {
       if (memcmp(&sa->dyn_state2, &sb->dyn_state2, sizeof(sa->dyn_state2)))
          return false;
-   } else if (DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_STATE2_PCP && DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP) {
+   } else if (DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_STATE2_PCP &&
+              DYNAMIC_STATE != ZINK_PIPELINE_DYNAMIC_VERTEX_INPUT_PCP &&
+              (STAGE_MASK & BITFIELD_BIT(MESA_SHADER_TESS_EVAL)) &&
+              !(STAGE_MASK & BITFIELD_BIT(MESA_SHADER_TESS_CTRL))) {
       if (sa->dyn_state2.vertices_per_patch != sb->dyn_state2.vertices_per_patch)
          return false;
    }
@@ -328,14 +331,32 @@ static equals_gfx_pipeline_state_func
 get_gfx_pipeline_stage_eq_func(struct zink_gfx_program *prog)
 {
    unsigned vertex_stages = prog->stages_present & BITFIELD_MASK(MESA_SHADER_FRAGMENT);
-   if (vertex_stages == BITFIELD_MASK(MESA_SHADER_FRAGMENT))
-      /* all stages */
+   if (vertex_stages & BITFIELD_BIT(MESA_SHADER_TESS_CTRL)) {
+      if (prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
+         vertex_stages &= ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+   }
+   if (vertex_stages & BITFIELD_BIT(MESA_SHADER_TESS_CTRL)) {
+      if (vertex_stages == BITFIELD_MASK(MESA_SHADER_FRAGMENT))
+         /* all stages */
+         return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                          BITFIELD_MASK(MESA_SHADER_COMPUTE)>;
+      if (vertex_stages == BITFIELD_MASK(MESA_SHADER_GEOMETRY))
+         /* tess only: includes generated tcs too */
+         return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                          BITFIELD_MASK(MESA_SHADER_COMPUTE) & ~BITFIELD_BIT(MESA_SHADER_GEOMETRY)>;
+      if (vertex_stages == (BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_GEOMETRY)))
+         /* geom only */
+         return equals_gfx_pipeline_state<DYNAMIC_STATE,
+                                          BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_FRAGMENT) | BITFIELD_BIT(MESA_SHADER_GEOMETRY)>;
+   }
+   if (vertex_stages == (BITFIELD_MASK(MESA_SHADER_FRAGMENT) & ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL)))
+      /* all stages but tcs */
       return equals_gfx_pipeline_state<DYNAMIC_STATE,
-                                       BITFIELD_MASK(MESA_SHADER_COMPUTE)>;
-   if (vertex_stages == BITFIELD_MASK(MESA_SHADER_GEOMETRY))
-      /* tess only: includes generated tcs too */
+                                       BITFIELD_MASK(MESA_SHADER_COMPUTE) & ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL)>;
+   if (vertex_stages == (BITFIELD_MASK(MESA_SHADER_GEOMETRY) & ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL)))
+      /* tess only: generated tcs */
       return equals_gfx_pipeline_state<DYNAMIC_STATE,
-                                       BITFIELD_MASK(MESA_SHADER_COMPUTE) & ~BITFIELD_BIT(MESA_SHADER_GEOMETRY)>;
+                                       BITFIELD_MASK(MESA_SHADER_COMPUTE) & ~(BITFIELD_BIT(MESA_SHADER_GEOMETRY) | BITFIELD_BIT(MESA_SHADER_TESS_CTRL))>;
    if (vertex_stages == (BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_GEOMETRY)))
       /* geom only */
       return equals_gfx_pipeline_state<DYNAMIC_STATE,
