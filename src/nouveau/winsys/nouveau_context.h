@@ -16,6 +16,7 @@ struct nouveau_ws_context {
 
    struct nouveau_ws_object copy;
    struct nouveau_ws_object eng2d;
+   struct nouveau_ws_object eng3d;
    struct nouveau_ws_object m2mf;
    struct nouveau_ws_object compute;
 };

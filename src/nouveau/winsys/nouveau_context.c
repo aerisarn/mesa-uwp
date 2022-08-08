@@ -149,6 +149,11 @@ nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_conte
    if (ret)
       goto fail_subchan;
 
+   obj_class = nouveau_ws_context_find_class(classes, 0x97);
+   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef003d, obj_class, &(*out)->eng3d);
+   if (ret)
+      goto fail_subchan;
+
    obj_class = nouveau_ws_context_find_class(classes, 0xc0);
    ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef00c0, obj_class, &(*out)->compute);
    if (ret)
@@ -162,6 +167,7 @@ nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_conte
 
 fail_subchan:
    nouveau_ws_subchan_dealloc(dev->fd, &(*out)->compute);
+   nouveau_ws_subchan_dealloc(dev->fd, &(*out)->eng3d);
    nouveau_ws_subchan_dealloc(dev->fd, &(*out)->m2mf);
    nouveau_ws_subchan_dealloc(dev->fd, &(*out)->eng2d);
 fail_2d:
@@ -175,6 +181,7 @@ void
 nouveau_ws_context_destroy(struct nouveau_ws_context *context)
 {
    nouveau_ws_subchan_dealloc(context->dev->fd, &context->compute);
+   nouveau_ws_subchan_dealloc(context->dev->fd, &context->eng3d);
    nouveau_ws_subchan_dealloc(context->dev->fd, &context->m2mf);
    nouveau_ws_subchan_dealloc(context->dev->fd, &context->eng2d);
    nouveau_ws_channel_dealloc(context->dev->fd, context->channel);
