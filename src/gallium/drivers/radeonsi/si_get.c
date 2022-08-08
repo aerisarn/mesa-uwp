@@ -618,6 +618,11 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return 4;
          else
             return 0;
+      case PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL:
+         if (sscreen->info.family >= CHIP_RAVEN)
+            return 32;
+         else
+            return 0;
       default:
          return 0;
       }

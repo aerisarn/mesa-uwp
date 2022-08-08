@@ -197,6 +197,16 @@ vlVaHandleVAEncMiscParameterTypeFrameRateHEVC(vlVaContext *context, VAEncMiscPar
    return VA_STATUS_SUCCESS;
 }
 
+VAStatus
+vlVaHandleVAEncMiscParameterTypeQualityLevelHEVC(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAEncMiscParameterBufferQualityLevel *ql = (VAEncMiscParameterBufferQualityLevel *)misc->data;
+   vlVaHandleVAEncMiscParameterTypeQualityLevel(&context->desc.h265enc.quality_modes,
+                               (vlVaQualityBits *)&ql->quality_level);
+
+   return VA_STATUS_SUCCESS;
+}
+
 static void profile_tier(struct vl_rbsp *rbsp)
 {
    vl_rbsp_u(rbsp, 2); /* general_profile_space */

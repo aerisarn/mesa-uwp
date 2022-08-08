@@ -207,6 +207,18 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
             else
                value = supportedSliceStructuresFlagSet;
          } break;
+         case VAConfigAttribEncQualityRange:
+         {
+            /*
+             * this quality range provides different options within the range; and it isn't strictly
+             * faster when higher value used.
+             * 0, not used; 1, default value; others are using vlVaQualityBits for different modes.
+             */
+            int quality_range = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                 PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                 PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL);
+            value = quality_range ? quality_range : VA_ATTRIB_NOT_SUPPORTED;
+         } break;
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;

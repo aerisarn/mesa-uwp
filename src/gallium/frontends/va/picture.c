@@ -113,6 +113,52 @@ vlVaGetReferenceFrame(vlVaDriver *drv, VASurfaceID surface_id,
    else
       *ref_frame = NULL;
 }
+/*
+ * in->quality = 0; without any settings, it is using speed preset
+ *                  and no preencode and no vbaq. It is the fastest setting.
+ * in->quality = 1; suggested setting, with balanced preset, and
+ *                  preencode and vbaq
+ * in->quality = others; it is the customized setting
+ *                  with valid bit (bit #0) set to "1"
+ *                  for example:
+ *
+ *                  0x3  (balance preset, no pre-encoding, no vbaq)
+ *                  0x13 (balanced preset, no pre-encoding, vbaq)
+ *                  0x13 (balanced preset, no pre-encoding, vbaq)
+ *                  0x9  (speed preset, pre-encoding, no vbaq)
+ *                  0x19 (speed preset, pre-encoding, vbaq)
+ *
+ *                  The quality value has to be treated as a combination
+ *                  of preset mode, pre-encoding and vbaq settings.
+ *                  The quality and speed could be vary according to
+ *                  different settings,
+ */
+void
+vlVaHandleVAEncMiscParameterTypeQualityLevel(struct pipe_enc_quality_modes *p, vlVaQualityBits *in)
+{
+   if (!in->quality) {
+      p->level = 0;
+      p->preset_mode = PRESET_MODE_SPEED;
+      p->pre_encode_mode = PREENCODING_MODE_DISABLE;
+      p->vbaq_mode = VBAQ_DISABLE;
+
+      return;
+   }
+
+   if (p->level != in->quality) {
+      if (in->quality == 1) {
+         p->preset_mode = PRESET_MODE_BALANCE;
+         p->pre_encode_mode = PREENCODING_MODE_DEFAULT;
+         p->vbaq_mode = VBAQ_AUTO;
+      } else {
+         p->preset_mode = in->preset_mode > PRESET_MODE_QUALITY
+            ? PRESET_MODE_QUALITY : in->preset_mode;
+         p->pre_encode_mode = in->pre_encode_mode;
+         p->vbaq_mode = in->vbaq_mode;
+      }
+   }
+   p->level = in->quality;
+}
 
 static VAStatus
 handlePictureParameterBuffer(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *buf)
@@ -457,6 +503,27 @@ handleVAEncSequenceParameterBufferType(vlVaDriver *drv, vlVaContext *context, vl
 }
 
 static VAStatus
+handleVAEncMiscParameterTypeQualityLevel(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAStatus status = VA_STATUS_SUCCESS;
+
+   switch (u_reduce_video_profile(context->templat.profile)) {
+   case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      status = vlVaHandleVAEncMiscParameterTypeQualityLevelH264(context, misc);
+      break;
+
+   case PIPE_VIDEO_FORMAT_HEVC:
+      status = vlVaHandleVAEncMiscParameterTypeQualityLevelHEVC(context, misc);
+      break;
+
+   default:
+      break;
+   }
+
+   return status;
+}
+
+static VAStatus
 handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 {
    VAStatus vaStatus = VA_STATUS_SUCCESS;
@@ -474,6 +541,10 @@ handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 
    case VAEncMiscParameterTypeTemporalLayerStructure:
       vaStatus = handleVAEncMiscParameterTypeTemporalLayer(context, misc);
+      break;
+
+   case VAEncMiscParameterTypeQualityLevel:
+      vaStatus = handleVAEncMiscParameterTypeQualityLevel(context, misc);
       break;
 
    default:

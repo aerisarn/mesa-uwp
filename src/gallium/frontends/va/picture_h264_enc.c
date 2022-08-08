@@ -247,6 +247,16 @@ vlVaHandleVAEncMiscParameterTypeTemporalLayerH264(vlVaContext *context, VAEncMis
    return VA_STATUS_SUCCESS;
 }
 
+VAStatus
+vlVaHandleVAEncMiscParameterTypeQualityLevelH264(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAEncMiscParameterBufferQualityLevel *ql = (VAEncMiscParameterBufferQualityLevel *)misc->data;
+   vlVaHandleVAEncMiscParameterTypeQualityLevel(&context->desc.h264enc.quality_modes,
+                               (vlVaQualityBits *)&ql->quality_level);
+
+   return VA_STATUS_SUCCESS;
+}
+
 void getEncParamPresetH264(vlVaContext *context)
 {
    //motion estimation preset
