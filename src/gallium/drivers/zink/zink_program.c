@@ -408,8 +408,10 @@ zink_gfx_program_update(struct zink_context *ctx)
       struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
       if (entry) {
          prog = (struct zink_gfx_program*)entry->data;
-         u_foreach_bit(stage, prog->stages_present & ~ctx->dirty_shader_stages)
-            ctx->gfx_pipeline_state.modules[stage] = prog->modules[stage]->shader;
+         for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+            if (prog->stages_present & ctx->dirty_shader_stages & BITFIELD_BIT(i))
+               ctx->gfx_pipeline_state.modules[i] = prog->modules[i]->shader;
+         }
          /* ensure variants are always updated if keys have changed since last use */
          ctx->dirty_shader_stages |= prog->stages_present;
          update_gfx_program(ctx, prog);
