@@ -10,6 +10,7 @@ import sys
 
 # where should files go
 dirs = {
+  '/classes/3d/': 'classes/',
   '/classes/compute/': 'classes/',
   '/classes/dma-copy/': 'classes/',
   '/classes/host/': 'classes/',
