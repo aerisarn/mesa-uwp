@@ -1702,6 +1702,16 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    /* Vertex buffers. */
    if (!buffer) {
       sctx->vertex_buffers_dirty = num_elems > 0;
+
+      /* We don't know which buffer was invalidated, so we have to add all of them. */
+      for (unsigned i = 0; i < ARRAY_SIZE(sctx->vertex_buffer); i++) {
+         struct si_resource *buf = si_resource(sctx->vertex_buffer[i].buffer.resource);
+         if (buf) {
+            radeon_add_to_gfx_buffer_list_check_mem(sctx, buf,
+                                                    RADEON_USAGE_READ |
+                                                    RADEON_PRIO_VERTEX_BUFFER, true);
+         }
+      }
    } else if (buffer->bind_history & SI_BIND_VERTEX_BUFFER) {
       for (i = 0; i < num_elems; i++) {
          int vb = sctx->vertex_elements->vertex_buffer_index[i];
@@ -1713,6 +1723,9 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 
          if (sctx->vertex_buffer[vb].buffer.resource == buf) {
             sctx->vertex_buffers_dirty = num_elems > 0;
+            radeon_add_to_gfx_buffer_list_check_mem(sctx, buffer,
+                                                    RADEON_USAGE_READ |
+                                                    RADEON_PRIO_VERTEX_BUFFER, true);
             break;
          }
       }
@@ -2952,6 +2965,14 @@ void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx)
    }
    si_buffer_resources_begin_new_cs(sctx, &sctx->internal_bindings);
    si_vertex_buffers_begin_new_cs(sctx);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(sctx->vertex_buffer); i++) {
+      struct si_resource *buf = si_resource(sctx->vertex_buffer[i].buffer.resource);
+      if (buf) {
+         radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, buf,
+                                   RADEON_USAGE_READ | RADEON_PRIO_VERTEX_BUFFER);
+      }
+   }
 
    if (sctx->bo_list_add_all_resident_resources)
       si_resident_buffers_add_all_to_bo_list(sctx);

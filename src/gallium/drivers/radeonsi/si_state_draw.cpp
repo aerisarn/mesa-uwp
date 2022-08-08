@@ -1802,7 +1802,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
 /* Return false if not bound. */
 template<amd_gfx_level GFX_VERSION>
-static bool ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems,
+static void ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems,
                                                struct pipe_vertex_buffer *vb,
                                                unsigned index, /* vertex element index */
                                                uint32_t *desc) /* where to upload descriptors */
@@ -1812,7 +1812,7 @@ static bool ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
 
    if (!buf || offset >= buf->b.b.width0) {
       memset(desc, 0, 16);
-      return false;
+      return;
    }
 
    uint64_t va = buf->gpu_address + offset;
@@ -1838,7 +1838,6 @@ static bool ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
    desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(vb->stride);
    desc[2] = num_records;
    desc[3] = rsrc_word3;
-   return true;
 }
 
 #if GFX_VER == 6 /* declare this function only once because it supports all chips. */
@@ -1971,21 +1970,13 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
          user_sgprs_dirty = false; /* We just set them above. */
          pointer_dirty = count > num_vbos_in_user_sgprs;
       } else {
-         unsigned first_vb_use_mask = velems->first_vb_use_mask;
-
          for (unsigned i = 0; i < count; i++) {
             unsigned vbo_index = velems->vertex_buffer_index[i];
             struct pipe_vertex_buffer *vb = &sctx->vertex_buffer[vbo_index];
             uint32_t *desc = i < num_vbos_in_user_sgprs ? &sctx->vb_descriptor_user_sgprs[i * 4]
                                                         : &ptr[(i - num_vbos_in_user_sgprs) * 4];
 
-            if (!si_set_vb_descriptor<GFX_VERSION>(velems, vb, i, desc))
-               continue;
-
-            if (first_vb_use_mask & (1 << i)) {
-               radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(vb->buffer.resource),
-                                         RADEON_USAGE_READ | RADEON_PRIO_VERTEX_BUFFER);
-            }
+            si_set_vb_descriptor<GFX_VERSION>(velems, vb, i, desc);
          }
 
          sctx->vertex_buffers_dirty = false;
