@@ -736,6 +736,80 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 }
 
 static VkResult
+anv_i915_physical_device_get_parameters(struct anv_physical_device *device)
+{
+   VkResult result = VK_SUCCESS;
+   int fd = device->local_fd;
+
+   if (!anv_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT)) {
+       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                          "kernel missing gem wait");
+       return result;
+   }
+
+   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXECBUF2)) {
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing execbuf2");
+      return result;
+   }
+
+   if (!device->info.has_llc &&
+       anv_gem_get_param(fd, I915_PARAM_MMAP_VERSION) < 1) {
+       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                          "kernel missing wc mmap");
+       return result;
+   }
+
+   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing softpin");
+      return result;
+   }
+
+   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_FENCE_ARRAY)) {
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing syncobj support");
+      return result;
+   }
+
+   device->has_exec_async = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_ASYNC);
+   device->has_exec_capture = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE);
+
+   /* Start with medium; sorted low to high */
+   const int priorities[] = {
+      INTEL_CONTEXT_MEDIUM_PRIORITY,
+      INTEL_CONTEXT_HIGH_PRIORITY,
+      INTEL_CONTEXT_REALTIME_PRIORITY,
+   };
+   device->max_context_priority = INT_MIN;
+   for (unsigned i = 0; i < ARRAY_SIZE(priorities); i++) {
+      if (!anv_gem_has_context_priority(fd, priorities[i]))
+         break;
+      device->max_context_priority = priorities[i];
+   }
+
+   device->has_context_isolation =
+      anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
+
+   device->has_exec_timeline =
+      anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES);
+
+   device->has_mmap_offset =
+      anv_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
+
+   device->has_userptr_probe =
+      anv_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE);
+
+   return result;
+}
+
+static VkResult
+anv_physical_device_get_parameters(struct anv_physical_device *device)
+{
+   return anv_i915_physical_device_get_parameters(device);
+}
+
+static VkResult
 anv_physical_device_try_create(struct vk_instance *vk_instance,
                                struct _drmDevice *drm_device,
                                struct vk_physical_device **out)
@@ -810,52 +884,10 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->info = devinfo;
 
-   if (!anv_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT)) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing gem wait");
+   device->local_fd = fd;
+   result = anv_physical_device_get_parameters(device);
+   if (result != VK_SUCCESS)
       goto fail_base;
-   }
-
-   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXECBUF2)) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing execbuf2");
-      goto fail_base;
-   }
-
-   if (!device->info.has_llc &&
-       anv_gem_get_param(fd, I915_PARAM_MMAP_VERSION) < 1) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing wc mmap");
-      goto fail_base;
-   }
-
-   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing softpin");
-      goto fail_alloc;
-   }
-
-   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_FENCE_ARRAY)) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing syncobj support");
-      goto fail_base;
-   }
-
-   device->has_exec_async = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_ASYNC);
-   device->has_exec_capture = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE);
-
-   /* Start with medium; sorted low to high */
-   const int priorities[] = {
-      INTEL_CONTEXT_MEDIUM_PRIORITY,
-      INTEL_CONTEXT_HIGH_PRIORITY,
-      INTEL_CONTEXT_REALTIME_PRIORITY,
-   };
-   device->max_context_priority = INT_MIN;
-   for (unsigned i = 0; i < ARRAY_SIZE(priorities); i++) {
-      if (!anv_gem_has_context_priority(fd, priorities[i]))
-         break;
-      device->max_context_priority = priorities[i];
-   }
 
    device->gtt_size = device->info.gtt_size ? device->info.gtt_size :
                                               device->info.aperture_bytes;
@@ -870,11 +902,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (result != VK_SUCCESS)
       goto fail_base;
 
-   device->has_context_isolation =
-      anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
-
-   device->has_exec_timeline =
-      anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES);
    if (env_var_as_boolean("ANV_QUEUE_THREAD_DISABLE", false))
       device->has_exec_timeline = false;
 
@@ -915,12 +942,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->always_flush_cache = INTEL_DEBUG(DEBUG_STALL) ||
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
 
-   device->has_mmap_offset =
-      anv_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
-
-   device->has_userptr_probe =
-      anv_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE);
-
    device->compiler = brw_compiler_create(NULL, &device->info);
    if (device->compiler == NULL) {
       result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -957,8 +978,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->engine_info = intel_engine_get_info(fd);
    anv_physical_device_init_queue_families(device);
-
-   device->local_fd = fd;
 
    anv_physical_device_init_perf(device, fd);
 
