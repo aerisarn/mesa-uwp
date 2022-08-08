@@ -871,11 +871,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->supports_48bit_addresses = (device->info.ver >= 8) &&
                                       device->gtt_size > (4ULL << 30 /* GiB */);
 
-   /* Initialize memory regions struct to 0. */
-   memset(&device->vram_non_mappable, 0, sizeof(device->vram_non_mappable));
-   memset(&device->vram_mappable, 0, sizeof(device->vram_mappable));
-   memset(&device->sys, 0, sizeof(device->sys));
-
    result = anv_physical_device_init_heaps(device, fd);
    if (result != VK_SUCCESS)
       goto fail_base;
