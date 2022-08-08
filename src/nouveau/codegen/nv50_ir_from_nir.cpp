@@ -2509,10 +2509,10 @@ Converter::convert(nir_load_const_instr *insn, uint8_t idx)
       val = loadImm(getSSA(4), insn->value[idx].u32);
       break;
    case 16:
-      val = loadImm(getSSA(2), insn->value[idx].u16);
+      val = loadImm(getSSA(4), insn->value[idx].u16);
       break;
    case 8:
-      val = loadImm(getSSA(1), insn->value[idx].u8);
+      val = loadImm(getSSA(4), insn->value[idx].u8);
       break;
    default:
       unreachable("unhandled bit size!\n");
