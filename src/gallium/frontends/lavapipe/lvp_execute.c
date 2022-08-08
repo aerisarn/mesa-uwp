@@ -152,7 +152,6 @@ struct rendering_state {
    uint32_t color_write_disables:8;
    uint32_t pad:13;
 
-   void *ss_cso[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    void *velems_cso;
 
    uint8_t push_constants[128 * 4];
@@ -389,12 +388,7 @@ static void emit_compute_state(struct rendering_state *state)
    }
 
    if (state->ss_dirty[PIPE_SHADER_COMPUTE]) {
-      for (unsigned i = 0; i < state->num_sampler_states[PIPE_SHADER_COMPUTE]; i++) {
-         if (state->ss_cso[PIPE_SHADER_COMPUTE][i])
-            state->pctx->delete_sampler_state(state->pctx, state->ss_cso[PIPE_SHADER_COMPUTE][i]);
-         state->ss_cso[PIPE_SHADER_COMPUTE][i] = state->pctx->create_sampler_state(state->pctx, &state->ss[PIPE_SHADER_COMPUTE][i]);
-      }
-      state->pctx->bind_sampler_states(state->pctx, PIPE_SHADER_COMPUTE, 0, state->num_sampler_states[PIPE_SHADER_COMPUTE], state->ss_cso[PIPE_SHADER_COMPUTE]);
+      cso_set_samplers(state->cso, PIPE_SHADER_COMPUTE, state->num_sampler_states[PIPE_SHADER_COMPUTE], state->cso_ss_ptr[PIPE_SHADER_COMPUTE]);
       state->ss_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 }
@@ -4197,12 +4191,6 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
          if (state->sv[s][i])
             pipe_sampler_view_reference(&state->sv[s][i], NULL);
       }
-   }
-
-   for (unsigned i = 0;
-        i < ARRAY_SIZE(state->cso_ss_ptr[PIPE_SHADER_COMPUTE]); i++) {
-      if (state->cso_ss_ptr[PIPE_SHADER_COMPUTE][i])
-         state->pctx->delete_sampler_state(state->pctx, state->ss_cso[PIPE_SHADER_COMPUTE][i]);
    }
 
    free(state->color_att);
