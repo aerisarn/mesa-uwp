@@ -129,6 +129,9 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       /* More properties */
    };
 
+   snprintf(pProperties->properties.deviceName, sizeof(pProperties->properties.deviceName),
+            "%s", pdevice->dev->device_name);
+
    VkPhysicalDeviceVulkan11Properties core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
       /* Vulkan 1.1 properties */
