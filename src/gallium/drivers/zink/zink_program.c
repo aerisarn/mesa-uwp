@@ -145,7 +145,6 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
       return NULL;
    }
    zm->shader = mod;
-   list_inithead(&zm->list);
    zm->num_uniforms = inline_size;
    if (!is_nongenerated_tcs) {
       zm->key_size = key->size;
@@ -165,10 +164,10 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
       zm->hash = patch_vertices;
    else
       zm->hash = shader_module_hash(zm);
-   zm->default_variant = !inline_size && list_is_empty(&prog->shader_cache[stage][0][0]);
+   zm->default_variant = !inline_size && !util_dynarray_contains(&prog->shader_cache[stage][0][0], void*);
    if (inline_size)
       prog->inlined_variant_count[stage]++;
-   list_add(&zm->list, &prog->shader_cache[stage][has_nonseamless ? 0 : !!nonseamless_size][!!inline_size]);
+   util_dynarray_append(&prog->shader_cache[stage][has_nonseamless ? 0 : !!nonseamless_size][!!inline_size], void*, zm);
    return zm;
 }
 
@@ -185,8 +184,11 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
 
-   struct zink_shader_module *iter, *next;
-   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[stage][!has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0], list) {
+   struct util_dynarray *shader_cache = &prog->shader_cache[stage][!has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0];
+   unsigned count = util_dynarray_num_elements(shader_cache, struct zink_shader_module *);
+   struct zink_shader_module **pzm = shader_cache->data;
+   for (unsigned i = 0; i < count; i++) {
+      struct zink_shader_module *iter = pzm[i];
       if (is_nongenerated_tcs) {
          if (!shader_key_matches_tcs_nongenerated(iter, key, has_inline ? !!inline_size : 0))
             continue;
@@ -196,8 +198,11 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
          if (!shader_key_matches(iter, key, inline_size, has_inline, has_nonseamless))
             continue;
       }
-      list_delinit(&iter->list);
-      list_add(&iter->list, &prog->shader_cache[stage][has_nonseamless ? !!nonseamless_size : 0][has_inline ? !!inline_size : 0]);
+      if (i > 0) {
+         struct zink_shader_module *zero = pzm[0];
+         pzm[0] = iter;
+         pzm[i] = zero;
+      }
       return iter;
    }
 
@@ -212,11 +217,10 @@ zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module
 }
 
 static void
-destroy_shader_cache(struct zink_screen *screen, struct list_head *sc)
+destroy_shader_cache(struct zink_screen *screen, struct util_dynarray *sc)
 {
-   struct zink_shader_module *zm, *next;
-   LIST_FOR_EACH_ENTRY_SAFE(zm, next, sc, list) {
-      list_delinit(&zm->list);
+   while (util_dynarray_contains(sc, void*)) {
+      struct zink_shader_module *zm = util_dynarray_pop(sc, struct zink_shader_module*);
       zink_destroy_shader_module(screen, zm);
    }
 }
@@ -459,15 +463,21 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       nonseamless_size = sizeof(uint32_t);
 
    if (inline_size || nonseamless_size) {
-      struct zink_shader_module *iter, *next;
-      LIST_FOR_EACH_ENTRY_SAFE(iter, next, &comp->shader_cache[!!nonseamless_size], list) {
+      struct util_dynarray *shader_cache = &comp->shader_cache[!!nonseamless_size];
+      unsigned count = util_dynarray_num_elements(shader_cache, struct zink_shader_module *);
+      struct zink_shader_module **pzm = shader_cache->data;
+      for (unsigned i = 0; i < count; i++) {
+         struct zink_shader_module *iter = pzm[i];
          if (!shader_key_matches(iter, key, inline_size,
                                  screen->driconf.inline_uniforms,
                                  screen->info.have_EXT_non_seamless_cube_map))
             continue;
-         list_delinit(&iter->list);
+         if (i > 0) {
+            struct zink_shader_module *zero = pzm[0];
+            pzm[0] = iter;
+            pzm[i] = zero;
+         }
          zm = iter;
-         break;
       }
    } else {
       zm = comp->module;
@@ -484,7 +494,6 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
          return;
       }
       zm->shader = mod;
-      list_inithead(&zm->list);
       zm->num_uniforms = inline_size;
       zm->key_size = 0;
       zm->has_nonseamless = !!nonseamless_size;
@@ -497,9 +506,11 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       zm->default_variant = false;
       if (inline_size)
          comp->inlined_variant_count++;
+
+      /* this is otherwise the default variant, which is stored as comp->module */
+      if (zm->num_uniforms || nonseamless_size)
+         util_dynarray_append(&comp->shader_cache[!!nonseamless_size], void*, zm);
    }
-   if (zm->num_uniforms || nonseamless_size)
-      list_add(&zm->list, &comp->shader_cache[!!nonseamless_size]);
    if (comp->curr == zm)
       return;
    ctx->compute_pipeline_state.final_hash ^= ctx->compute_pipeline_state.module_hash;
@@ -605,10 +616,10 @@ zink_create_gfx_program(struct zink_context *ctx,
       goto fail;
 
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      list_inithead(&prog->shader_cache[i][0][0]);
-      list_inithead(&prog->shader_cache[i][0][1]);
-      list_inithead(&prog->shader_cache[i][1][0]);
-      list_inithead(&prog->shader_cache[i][1][1]);
+      util_dynarray_init(&prog->shader_cache[i][0][0], NULL);
+      util_dynarray_init(&prog->shader_cache[i][0][1], NULL);
+      util_dynarray_init(&prog->shader_cache[i][1][0], NULL);
+      util_dynarray_init(&prog->shader_cache[i][1][1], NULL);
       if (stages[i]) {
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
@@ -722,8 +733,8 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    assert(comp->module);
    comp->module->shader = zink_shader_compile(screen, shader, shader->nir, NULL);
    assert(comp->module->shader);
-   list_inithead(&comp->shader_cache[0]);
-   list_inithead(&comp->shader_cache[1]);
+   util_dynarray_init(&comp->shader_cache[0], NULL);
+   util_dynarray_init(&comp->shader_cache[1], NULL);
 
    comp->pipelines = _mesa_hash_table_create(NULL, NULL,
                                              equals_compute_pipeline_state);

@@ -716,7 +716,6 @@ struct zink_cs_push_constant {
  * allowing us to skip going through shader keys
  */
 struct zink_shader_module {
-   struct list_head list;
    VkShaderModule shader;
    uint32_t hash;
    bool default_variant;
@@ -789,7 +788,7 @@ struct zink_gfx_program {
 
    struct zink_shader *last_vertex_stage;
 
-   struct list_head shader_cache[ZINK_GFX_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms
+   struct util_dynarray shader_cache[ZINK_GFX_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms
    unsigned inlined_variant_count[ZINK_GFX_SHADER_COUNT];
 
    struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
@@ -806,7 +805,7 @@ struct zink_compute_program {
    struct zink_shader_module *curr;
 
    struct zink_shader_module *module; //base
-   struct list_head shader_cache[2]; //nonseamless cubes, inline uniforms
+   struct util_dynarray shader_cache[2]; //nonseamless cubes, inline uniforms
    unsigned inlined_variant_count;
 
    struct zink_shader *shader;
