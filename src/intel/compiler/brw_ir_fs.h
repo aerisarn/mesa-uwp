@@ -121,8 +121,16 @@ horiz_offset(const fs_reg &reg, unsigned delta)
       if (reg.is_null()) {
          return reg;
       } else {
-         const unsigned stride = reg.hstride ? 1 << (reg.hstride - 1) : 0;
-         return byte_offset(reg, delta * stride * type_sz(reg.type));
+         const unsigned hstride = reg.hstride ? 1 << (reg.hstride - 1) : 0;
+         const unsigned vstride = reg.vstride ? 1 << (reg.vstride - 1) : 0;
+         const unsigned width = 1 << reg.width;
+
+         if (delta % width == 0) {
+            return byte_offset(reg, delta / width * vstride * type_sz(reg.type));
+         } else {
+            assert(vstride == hstride * width);
+            return byte_offset(reg, delta * hstride * type_sz(reg.type));
+         }
       }
    }
    unreachable("Invalid register file");
