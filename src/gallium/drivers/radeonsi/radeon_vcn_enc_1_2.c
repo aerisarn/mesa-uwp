@@ -752,7 +752,7 @@ static void radeon_enc_nalu_vps(struct radeon_encoder *enc)
    RADEON_ENC_END();
 }
 
-static void radeon_enc_nalu_aud_hevc(struct radeon_encoder *enc)
+static void radeon_enc_nalu_aud(struct radeon_encoder *enc)
 {
    RADEON_ENC_BEGIN(enc->cmd.nalu);
    RADEON_ENC_CS(RENCODE_DIRECT_OUTPUT_NALU_TYPE_AUD);
@@ -760,10 +760,15 @@ static void radeon_enc_nalu_aud_hevc(struct radeon_encoder *enc)
    radeon_enc_reset(enc);
    radeon_enc_set_emulation_prevention(enc, false);
    radeon_enc_code_fixed_bits(enc, 0x00000001, 32);
-   radeon_enc_code_fixed_bits(enc, 0x0, 1);
-   radeon_enc_code_fixed_bits(enc, 35, 6);
-   radeon_enc_code_fixed_bits(enc, 0x0, 6);
-   radeon_enc_code_fixed_bits(enc, 0x1, 3);
+
+   if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
+      radeon_enc_code_fixed_bits(enc, 0x9, 8);
+   else if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC) {
+      radeon_enc_code_fixed_bits(enc, 0x0, 1);
+      radeon_enc_code_fixed_bits(enc, 35, 6);
+      radeon_enc_code_fixed_bits(enc, 0x0, 6);
+      radeon_enc_code_fixed_bits(enc, 0x1, 3);
+   }
    radeon_enc_byte_align(enc);
    radeon_enc_set_emulation_prevention(enc, true);
    switch (enc->enc_pic.picture_type) {
@@ -1254,6 +1259,7 @@ static void begin(struct radeon_encoder *enc)
 
 static void radeon_enc_headers_h264(struct radeon_encoder *enc)
 {
+   enc->nalu_aud(enc);
    if (enc->enc_pic.layer_ctrl.num_temporal_layers > 1)
       enc->nalu_prefix(enc);
    if (enc->enc_pic.is_idr) {
@@ -1393,6 +1399,7 @@ void radeon_enc_1_2_init(struct radeon_encoder *enc)
    enc->op_preset = radeon_enc_op_preset;
    enc->encode_params = radeon_enc_encode_params;
    enc->session_init = radeon_enc_session_init;
+   enc->nalu_aud = radeon_enc_nalu_aud;
 
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
       enc->slice_control = radeon_enc_slice_control;
@@ -1412,7 +1419,6 @@ void radeon_enc_1_2_init(struct radeon_encoder *enc)
       enc->nalu_sps = radeon_enc_nalu_sps_hevc;
       enc->nalu_pps = radeon_enc_nalu_pps_hevc;
       enc->nalu_vps = radeon_enc_nalu_vps;
-      enc->nalu_aud = radeon_enc_nalu_aud_hevc;
       enc->slice_header = radeon_enc_slice_header_hevc;
       enc->encode_headers = radeon_enc_headers_hevc;
    }
