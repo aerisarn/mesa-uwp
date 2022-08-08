@@ -129,14 +129,15 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 #ifdef ANDROID
 #define ANV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
 #else
-#define ANV_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
+#define ANV_API_VERSION_1_3 VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
+#define ANV_API_VERSION_1_2 VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
 #endif
 
 VkResult anv_EnumerateInstanceVersion(
     uint32_t*                                   pApiVersion)
 {
-    *pApiVersion = ANV_API_VERSION;
-    return VK_SUCCESS;
+   *pApiVersion = ANV_API_VERSION_1_3;
+   return VK_SUCCESS;
 }
 
 static const struct vk_instance_extension_table instance_extensions = {
@@ -1913,7 +1914,7 @@ void anv_GetPhysicalDeviceProperties(
    };
 
    *pProperties = (VkPhysicalDeviceProperties) {
-      .apiVersion = ANV_API_VERSION,
+      .apiVersion = pdevice->use_softpin ? ANV_API_VERSION_1_3 : ANV_API_VERSION_1_2,
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x8086,
       .deviceID = pdevice->info.pci_device_id,
@@ -2016,7 +2017,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    else {
       p->conformanceVersion = (VkConformanceVersion) {
          .major = 1,
-         .minor = 3,
+         .minor = pdevice->use_softpin ? 3 : 2,
          .subminor = 0,
          .patch = 0,
       };
