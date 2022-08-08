@@ -3009,6 +3009,37 @@ uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
    }
 }
 
+uint64_t
+ac_surface_addr_from_coord(struct ac_addrlib *addrlib, const struct radeon_info *info,
+                           const struct radeon_surf *surf, const struct ac_surf_info *surf_info,
+                           unsigned level, unsigned x, unsigned y, unsigned layer, bool is_3d)
+{
+   /* Only implemented for GFX9+ */
+   assert(info->gfx_level >= GFX9);
+
+   ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT input = {0};
+   input.size = sizeof(ADDR_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT);
+   input.slice = layer;
+   input.mipId = level;
+   input.unalignedWidth = DIV_ROUND_UP(surf_info->width, surf->blk_w);
+   input.unalignedHeight = DIV_ROUND_UP(surf_info->height, surf->blk_h);
+   input.numSlices = is_3d ? surf_info->depth : surf_info->array_size;
+   input.numMipLevels = surf_info->levels;
+   input.numSamples = surf_info->samples;
+   input.numFrags = surf_info->samples;
+   input.swizzleMode = surf->u.gfx9.swizzle_mode;
+   input.resourceType = surf->u.gfx9.resource_type;
+   input.pipeBankXor = surf->tile_swizzle;
+   input.bpp = surf->bpe * 8;
+   input.x = x;
+   input.y = y;
+
+   ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT output = {0};
+   output.size = sizeof(ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT);
+   Addr2ComputeSurfaceAddrFromCoord(addrlib->handle, &input, &output);
+   return output.addr;
+}
+
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf)
 {

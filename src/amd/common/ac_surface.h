@@ -470,6 +470,11 @@ uint64_t ac_surface_get_plane_stride(enum amd_gfx_level gfx_level,
 uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
                                    unsigned plane);
 
+uint64_t ac_surface_addr_from_coord(struct ac_addrlib *addrlib, const struct radeon_info *info,
+                                    const struct radeon_surf *surf,
+                                    const struct ac_surf_info *surf_info, unsigned level,
+                                    unsigned x, unsigned y, unsigned layer, bool is_3d);
+
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf);
 
