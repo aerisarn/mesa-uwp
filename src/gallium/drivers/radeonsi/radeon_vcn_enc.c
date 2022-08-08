@@ -38,11 +38,28 @@
 
 static const unsigned index_to_shifts[4] = {24, 16, 8, 0};
 
+/* set quality modes from the input */
+static void radeon_vcn_enc_quality_modes(struct radeon_encoder *enc,
+                                         struct pipe_enc_quality_modes *in)
+{
+   rvcn_enc_quality_modes_t *p = &enc->enc_pic.quality_modes;
+
+   p->preset_mode = in->preset_mode > RENCODE_PRESET_MODE_QUALITY
+                                    ? RENCODE_PRESET_MODE_QUALITY
+                                    : in->preset_mode;
+   p->pre_encode_mode = in->pre_encode_mode ? RENCODE_PREENCODE_MODE_4X
+                                            : RENCODE_PREENCODE_MODE_NONE;
+   p->vbaq_mode = in->vbaq_mode ? RENCODE_VBAQ_AUTO : RENCODE_VBAQ_NONE;
+}
+
 static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_picture_desc *picture)
 {
    if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
       struct pipe_h264_enc_picture_desc *pic = (struct pipe_h264_enc_picture_desc *)picture;
       enc->enc_pic.picture_type = pic->picture_type;
+      enc->enc_pic.bit_depth_luma_minus8 = 0;
+      enc->enc_pic.bit_depth_chroma_minus8 = 0;
+      radeon_vcn_enc_quality_modes(enc, &pic->quality_modes);
       enc->enc_pic.frame_num = pic->frame_num;
       enc->enc_pic.pic_order_cnt = pic->pic_order_cnt;
       enc->enc_pic.pic_order_cnt_type = pic->pic_order_cnt_type;
@@ -107,12 +124,14 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
          enc->enc_pic.spec_misc.cabac_enable = pic->pic_ctrl.enc_cabac_enable;
       else
          enc->enc_pic.spec_misc.cabac_enable = false;
+
       enc->enc_pic.spec_misc.cabac_init_idc = enc->enc_pic.spec_misc.cabac_enable ? pic->pic_ctrl.enc_cabac_init_idc : 0;
 
    } else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_HEVC) {
       struct pipe_h265_enc_picture_desc *pic = (struct pipe_h265_enc_picture_desc *)picture;
       enc->enc_pic.picture_type = pic->picture_type;
       enc->enc_pic.frame_num = pic->frame_num;
+      radeon_vcn_enc_quality_modes(enc, &pic->quality_modes);
       enc->enc_pic.pic_order_cnt = pic->pic_order_cnt;
       enc->enc_pic.pic_order_cnt_type = pic->pic_order_cnt_type;
       enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0;

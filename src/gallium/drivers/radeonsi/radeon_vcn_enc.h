@@ -54,6 +54,13 @@
 #define RENCODE_PREENCODE_MODE_2X                                                   0x00000002
 #define RENCODE_PREENCODE_MODE_4X                                                   0x00000004
 
+#define RENCODE_VBAQ_NONE                                                           0x00000000
+#define RENCODE_VBAQ_AUTO                                                           0x00000001
+
+#define RENCODE_PRESET_MODE_SPEED                                                   0x00000000
+#define RENCODE_PRESET_MODE_BALANCE                                                 0x00000001
+#define RENCODE_PRESET_MODE_QUALITY                                                 0x00000002
+
 #define RENCODE_H264_SLICE_CONTROL_MODE_FIXED_MBS                                   0x00000000
 #define RENCODE_H264_SLICE_CONTROL_MODE_FIXED_BITS                                  0x00000001
 
@@ -426,6 +433,13 @@ typedef struct rvcn_enc_cmd_s {
    uint32_t output_format;
 } rvcn_enc_cmd_t;
 
+typedef struct rvcn_enc_quality_modes_s
+{
+   unsigned pre_encode_mode;
+   unsigned vbaq_mode;
+   unsigned preset_mode;
+} rvcn_enc_quality_modes_t;
+
 typedef void (*radeon_enc_get_buffer)(struct pipe_resource *resource, struct pb_buffer **handle,
                                       struct radeon_surf **surface);
 
@@ -467,6 +481,7 @@ struct radeon_enc_pic {
    unsigned temporal_id;
    unsigned num_temporal_layers;
    unsigned temporal_layer_pattern_index;
+   rvcn_enc_quality_modes_t quality_modes;
 
    bool not_referenced;
    bool is_idr;
