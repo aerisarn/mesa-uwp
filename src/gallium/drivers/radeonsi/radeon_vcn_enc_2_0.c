@@ -428,6 +428,40 @@ static void radeon_enc_output_format(struct radeon_encoder *enc)
    RADEON_ENC_END();
 }
 
+static void radeon_enc_ctx(struct radeon_encoder *enc)
+{
+   enc->enc_pic.ctx_buf.swizzle_mode = 0;
+   enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
+
+   RADEON_ENC_BEGIN(enc->cmd.ctx);
+   RADEON_ENC_READWRITE(enc->dpb->res->buf, enc->dpb->res->domains, 0);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.swizzle_mode);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_luma_pitch);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_chroma_pitch);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.num_reconstructed_pictures);
+
+   for (int i = 0; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset);
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset);
+   }
+
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_picture_luma_pitch);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_picture_chroma_pitch);
+
+   for (int i = 0; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i].luma_offset);
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i].chroma_offset);
+   }
+
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.yuv.luma_offset);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.yuv.chroma_offset);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.rgb.red_offset);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.rgb.green_offset);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.rgb.blue_offset);
+
+   RADEON_ENC_END();
+}
 static void encode(struct radeon_encoder *enc)
 {
    enc->before_encode(enc);
@@ -454,13 +488,14 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc)
    enc->encode = encode;
    enc->input_format = radeon_enc_input_format;
    enc->output_format = radeon_enc_output_format;
+   enc->ctx = radeon_enc_ctx;
+   enc->op_preset = radeon_enc_op_balance;
 
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC) {
       enc->deblocking_filter = radeon_enc_loop_filter_hevc;
       enc->nalu_sps = radeon_enc_nalu_sps_hevc;
       enc->nalu_pps = radeon_enc_nalu_pps_hevc;
       enc->slice_header = radeon_enc_slice_header_hevc;
-      enc->op_preset = radeon_enc_op_balance;
    }
 
    enc->cmd.session_info = RENCODE_IB_PARAM_SESSION_INFO;

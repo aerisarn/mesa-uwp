@@ -102,9 +102,9 @@ static void radeon_enc_session_init(struct radeon_encoder *enc)
       enc->enc_pic.session_init.aligned_picture_width - enc->base.width;
    enc->enc_pic.session_init.padding_height =
       enc->enc_pic.session_init.aligned_picture_height - enc->base.height;
-   enc->enc_pic.session_init.pre_encode_mode = RENCODE_PREENCODE_MODE_NONE;
-   enc->enc_pic.session_init.pre_encode_chroma_enabled = false;
    enc->enc_pic.session_init.display_remote = 0;
+   enc->enc_pic.session_init.pre_encode_mode = enc->enc_pic.quality_modes.pre_encode_mode;
+   enc->enc_pic.session_init.pre_encode_chroma_enabled = !!(enc->enc_pic.quality_modes.pre_encode_mode);
 
    RADEON_ENC_BEGIN(enc->cmd.session_init);
    RADEON_ENC_CS(enc->enc_pic.session_init.encode_standard);
@@ -1036,27 +1036,8 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    enc->enc_pic.ctx_buf.swizzle_mode = 0;
    enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
 
-   uint32_t aligned_width = enc->enc_pic.session_init.aligned_picture_width;
-   uint32_t aligned_height = enc->enc_pic.session_init.aligned_picture_height;
-
-   enc->enc_pic.ctx_buf.rec_luma_pitch = align(aligned_width, enc->alignment);
-   enc->enc_pic.ctx_buf.rec_chroma_pitch = align(aligned_width, enc->alignment);
-
-   int luma_size = enc->enc_pic.ctx_buf.rec_luma_pitch * align(aligned_height, enc->alignment);
-   if (enc->enc_pic.bit_depth_luma_minus8 == 2)
-      luma_size *= 2;
-   int chroma_size = align(luma_size / 2, enc->alignment);
-   int offset = 0;
-
-   for (int i = 0; i < enc->enc_pic.ctx_buf.num_reconstructed_pictures; i++) {
-      offset += luma_size;
-      offset += chroma_size;
-   }
-
-   assert(offset == enc->dpb_size);
-
    RADEON_ENC_BEGIN(enc->cmd.ctx);
-   RADEON_ENC_READWRITE(enc->cpb.res->buf, enc->cpb.res->domains, 0);
+   RADEON_ENC_READWRITE(enc->dpb->res->buf, enc->dpb->res->domains, 0);
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.swizzle_mode);
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_luma_pitch);
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_chroma_pitch);
@@ -1067,14 +1048,16 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
       RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset);
    }
 
-   //  2: 1 pre encode pitch * 2 (luma + chroma)
-   // 68: 34 pre encode reconstructed pics * 2 (luma + chroma offsets)
-   //  2: 1 pre encode input pic * 2 (luma + chroma)
-   //----
-   // 72
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_picture_luma_pitch);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_picture_chroma_pitch);
 
-   for (int i = 0; i < 72; i++)
-      RADEON_ENC_CS(0x00000000);
+   for (int i = 0; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i].luma_offset);
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i].chroma_offset);
+   }
+
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.yuv.luma_offset);
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.yuv.chroma_offset);
 
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);
    RADEON_ENC_END();
@@ -1317,7 +1300,7 @@ static void destroy(struct radeon_encoder *enc)
 static int find_short_ref_idx(struct radeon_encoder *enc, int frame_num)
 {
    for (int i = 0; i < enc->base.max_references + 1; i++)
-      if (enc->dpb[i].frame_num == frame_num && enc->dpb[i].in_use)
+      if (enc->dpb_info[i].frame_num == frame_num && enc->dpb_info[i].in_use)
          return i;
 
    return -1;
@@ -1326,8 +1309,8 @@ static int find_short_ref_idx(struct radeon_encoder *enc, int frame_num)
 static int get_picture_storage(struct radeon_encoder *enc)
 {
    for (int i = 0; i < enc->base.max_references + 1; i++) {
-      if (!enc->dpb[i].in_use) {
-         memset(&(enc->dpb[i]), 0, sizeof(rvcn_enc_picture_info_t));
+      if (!enc->dpb_info[i].in_use) {
+         memset(&(enc->dpb_info[i]), 0, sizeof(rvcn_enc_picture_info_t));
          return i;
       }
    }
@@ -1336,13 +1319,13 @@ static int get_picture_storage(struct radeon_encoder *enc)
    unsigned int oldest_frame_num = 0xFFFFFFFF;
    int oldest_idx = -1;
    for (int i = 0; i < enc->base.max_references + 1; i++)
-      if (enc->dpb[i].frame_num < oldest_frame_num) {
-         oldest_frame_num = enc->dpb[i].frame_num;
+      if (enc->dpb_info[i].frame_num < oldest_frame_num) {
+         oldest_frame_num = enc->dpb_info[i].frame_num;
          oldest_idx = i;
       }
 
    if (oldest_idx >= 0)
-      enc->dpb[oldest_idx].in_use = FALSE;
+      enc->dpb_info[oldest_idx].in_use = FALSE;
 
    return oldest_idx;
 }
@@ -1354,7 +1337,7 @@ static void manage_dpb_before_encode(struct radeon_encoder *enc)
    if (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR) {
       /* clear reference frames */
       for (int i = 0; i < enc->base.max_references + 1; i++)
-         memset(&(enc->dpb[i]), 0, sizeof(rvcn_enc_picture_info_t));
+         memset(&(enc->dpb_info[i]), 0, sizeof(rvcn_enc_picture_info_t));
    }
 
    current_pic_idx = get_picture_storage(enc);
@@ -1363,9 +1346,9 @@ static void manage_dpb_before_encode(struct radeon_encoder *enc)
    int ref0_idx = find_short_ref_idx(enc, enc->enc_pic.ref_idx_l0);
 
    if (!enc->enc_pic.not_referenced)
-      enc->dpb[current_pic_idx].in_use = TRUE;
+      enc->dpb_info[current_pic_idx].in_use = TRUE;
 
-   enc->dpb[current_pic_idx].frame_num = enc->enc_pic.frame_num;
+   enc->dpb_info[current_pic_idx].frame_num = enc->enc_pic.frame_num;
 
    if (enc->enc_pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR)
       enc->enc_pic.enc_params.reference_picture_index = 0xFFFFFFFF;
