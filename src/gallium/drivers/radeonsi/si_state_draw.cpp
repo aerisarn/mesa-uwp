@@ -1808,15 +1808,9 @@ static bool ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
                                                uint32_t *desc) /* where to upload descriptors */
 {
    struct si_resource *buf = si_resource(vb->buffer.resource);
-   if (!buf) {
-      memset(desc, 0, 16);
-      return false;
-   }
-
    int64_t offset = (int64_t)((int)vb->buffer_offset) + velems->src_offset[index];
 
-   if (offset >= buf->b.b.width0) {
-      assert(offset < buf->b.b.width0);
+   if (!buf || offset >= buf->b.b.width0) {
       memset(desc, 0, 16);
       return false;
    }
