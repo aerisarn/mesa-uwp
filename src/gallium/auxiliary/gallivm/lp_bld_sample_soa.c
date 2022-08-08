@@ -3729,7 +3729,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
             derived_sampler_state.min_img_filter == derived_sampler_state.mag_img_filter))) {
          if (use_aos) {
             /* do sampling/filtering with fixed pt arithmetic */
-            lp_build_sample_aos(&bld, sampler_index,
+            lp_build_sample_aos(&bld,
                                 newcoords[0], newcoords[1],
                                 newcoords[2],
                                 offsets, lod_positive, lod_fpart,
@@ -3869,7 +3869,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
 
             if (use_aos) {
                /* do sampling/filtering with fixed pt arithmetic */
-               lp_build_sample_aos(&bld4, sampler_index,
+               lp_build_sample_aos(&bld4,
                                    s4, t4, r4, offsets4,
                                    lod_positive4, lod_fpart4,
                                    ilevel04, ilevel14,
