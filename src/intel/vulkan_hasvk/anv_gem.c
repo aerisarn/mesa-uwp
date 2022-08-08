@@ -384,9 +384,3 @@ anv_gem_fd_to_handle(struct anv_device *device, int fd)
 
    return args.handle;
 }
-
-struct drm_i915_query_engine_info *
-anv_gem_get_engine_info(int fd)
-{
-   return intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO, NULL);
-}

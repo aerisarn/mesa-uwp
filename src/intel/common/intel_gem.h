@@ -38,6 +38,8 @@ extern "C" {
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+#include "intel_engine.h"
+
 static inline uint64_t
 intel_canonical_address(uint64_t v)
 {
@@ -156,11 +158,9 @@ intel_i915_query_alloc(int fd, uint64_t query_id, int32_t *query_length)
 
 bool intel_gem_supports_syncobj_wait(int fd);
 
-int intel_gem_count_engines(const struct drm_i915_query_engine_info *info,
-                            enum drm_i915_gem_engine_class engine_class);
 int intel_gem_create_context_engines(int fd,
-                                     const struct drm_i915_query_engine_info *info,
-                                     int num_engines, uint16_t *engine_classes);
+                                     const struct intel_query_engine_info *info,
+                                     int num_engines, enum intel_engine_class *engine_classes);
 
 bool intel_gem_read_render_timestamp(int fd, uint64_t *value);
 

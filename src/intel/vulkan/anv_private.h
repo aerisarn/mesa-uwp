@@ -43,6 +43,7 @@
 
 #include "common/intel_clflush.h"
 #include "common/intel_decoder.h"
+#include "common/intel_engine.h"
 #include "common/intel_gem.h"
 #include "common/intel_l3_config.h"
 #include "common/intel_measure.h"
@@ -927,8 +928,7 @@ struct anv_queue_family {
    VkQueueFlags   queueFlags;
    uint32_t       queueCount;
 
-   /* Driver internal information */
-   enum drm_i915_gem_engine_class engine_class;
+   enum intel_engine_class engine_class;
 };
 
 #define ANV_MAX_QUEUE_FAMILIES 3
@@ -1053,7 +1053,7 @@ struct anv_physical_device {
     bool                                        has_master;
     int64_t                                     master_major;
     int64_t                                     master_minor;
-    struct drm_i915_query_engine_info *         engine_info;
+    struct intel_query_engine_info *            engine_info;
 
     void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_device *, struct anv_address, bool);
     struct intel_measure_device                 measure_device;
@@ -1374,7 +1374,6 @@ uint32_t anv_gem_fd_to_handle(struct anv_device *device, int fd);
 int anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle, uint32_t caching);
 int anv_i915_query(int fd, uint64_t query_id, void *buffer,
                    int32_t *buffer_len);
-struct drm_i915_query_engine_info *anv_gem_get_engine_info(int fd);
 
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,
