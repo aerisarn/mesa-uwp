@@ -30,7 +30,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       mesa_loge("ZINK: vkResetCommandPool failed (%s)", vk_Result_to_str(result));
 
    /* unref all used resources */
-   set_foreach_remove(bs->resources, entry) {
+   set_foreach_remove(&bs->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
       if (!zink_resource_object_usage_unset(obj, bs)) {
          obj->unordered_read = obj->unordered_write = false;
@@ -49,17 +49,17 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       }
    }
 
-   set_foreach_remove(bs->active_queries, entry) {
+   set_foreach_remove(&bs->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
       zink_prune_query(screen, bs, query);
    }
 
-   set_foreach_remove(bs->surfaces, entry) {
+   set_foreach_remove(&bs->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
       zink_batch_usage_unset(&surf->batch_uses, bs);
       zink_surface_reference(screen, &surf, NULL);
    }
-   set_foreach_remove(bs->bufferviews, entry) {
+   set_foreach_remove(&bs->bufferviews, entry) {
       struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
       zink_batch_usage_unset(&buffer_view->batch_uses, bs);
       zink_buffer_view_reference(screen, &buffer_view, NULL);
@@ -77,7 +77,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    zink_batch_descriptor_reset(screen, bs);
 
-   set_foreach_remove(bs->programs, entry) {
+   set_foreach_remove(&bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
       zink_batch_usage_unset(&pg->batch_uses, bs);
       zink_program_reference(ctx, &pg, NULL);
@@ -178,10 +178,6 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->acquires);
    util_dynarray_fini(&bs->acquire_flags);
    util_dynarray_fini(&bs->dead_swapchains);
-   _mesa_set_destroy(bs->surfaces, NULL);
-   _mesa_set_destroy(bs->bufferviews, NULL);
-   _mesa_set_destroy(bs->programs, NULL);
-   _mesa_set_destroy(bs->active_queries, NULL);
    zink_batch_descriptor_deinit(screen, bs);
    ralloc_free(bs);
 }
@@ -219,17 +215,16 @@ create_batch_state(struct zink_context *ctx)
    }
 
 #define SET_CREATE_OR_FAIL(ptr) \
-   ptr = _mesa_pointer_set_create(bs); \
-   if (!ptr) \
+   if (!_mesa_set_init(ptr, bs, _mesa_hash_pointer, _mesa_key_pointer_equal)) \
       goto fail
 
    bs->ctx = ctx;
 
-   SET_CREATE_OR_FAIL(bs->resources);
-   SET_CREATE_OR_FAIL(bs->surfaces);
-   SET_CREATE_OR_FAIL(bs->bufferviews);
-   SET_CREATE_OR_FAIL(bs->programs);
-   SET_CREATE_OR_FAIL(bs->active_queries);
+   SET_CREATE_OR_FAIL(&bs->resources);
+   SET_CREATE_OR_FAIL(&bs->surfaces);
+   SET_CREATE_OR_FAIL(&bs->bufferviews);
+   SET_CREATE_OR_FAIL(&bs->programs);
+   SET_CREATE_OR_FAIL(&bs->active_queries);
    util_dynarray_init(&bs->wait_semaphores, NULL);
    util_dynarray_init(&bs->wait_semaphore_stages, NULL);
    util_dynarray_init(&bs->zombie_samplers, NULL);
@@ -559,7 +554,7 @@ check_oom_flush(struct zink_context *ctx, const struct zink_batch *batch)
 void
 zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *res)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->resources, res->obj))
+   if (!batch_ptr_add_usage(batch, &batch->state->resources, res->obj))
       return;
    pipe_reference(NULL, &res->obj->reference);
    batch->state->resource_size += res->obj->size;
@@ -570,7 +565,7 @@ zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *re
 void
 zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resource *res)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->resources, res->obj))
+   if (!batch_ptr_add_usage(batch, &batch->state->resources, res->obj))
       return;
    batch->state->resource_size += res->obj->size;
    check_oom_flush(batch->state->ctx, batch);
@@ -580,7 +575,7 @@ zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resourc
 void
 zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->bufferviews, buffer_view))
+   if (!batch_ptr_add_usage(batch, &batch->state->bufferviews, buffer_view))
       return;
    pipe_reference(NULL, &buffer_view->reference);
    batch->has_work = true;
@@ -589,7 +584,7 @@ zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_vie
 void
 zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface)
 {
-   if (!batch_ptr_add_usage(batch, batch->state->surfaces, surface))
+   if (!batch_ptr_add_usage(batch, &batch->state->surfaces, surface))
       return;
    struct pipe_surface *surf = NULL;
    pipe_surface_reference(&surf, &surface->base);
@@ -614,7 +609,7 @@ zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
    if (zink_batch_usage_matches(pg->batch_uses, batch->state) ||
-       !batch_ptr_add_usage(batch, batch->state->programs, pg))
+       !batch_ptr_add_usage(batch, &batch->state->programs, pg))
       return;
    pipe_reference(NULL, &pg->reference);
    zink_batch_usage_set(&pg->batch_uses, batch->state);

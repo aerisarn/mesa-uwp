@@ -831,7 +831,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       VKCTX(CmdWriteTimestamp)(batch->state->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
       update_qbo(ctx, q);
       zink_batch_usage_set(&q->batch_uses, batch->state);
-      _mesa_set_add(batch->state->active_queries, q);
+      _mesa_set_add(&batch->state->active_queries, q);
    }
    /* ignore the rest of begin_query for timestamps */
    if (is_time_query(q))
@@ -866,7 +866,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    zink_batch_usage_set(&q->batch_uses, batch->state);
-   _mesa_set_add(batch->state->active_queries, q);
+   _mesa_set_add(&batch->state->active_queries, q);
    if (q->needs_rast_discard_workaround) {
       ctx->primitives_generated_active = true;
       if (zink_set_rasterizer_discard(ctx, true))
@@ -997,7 +997,7 @@ zink_end_query(struct pipe_context *pctx,
       VKCTX(CmdWriteTimestamp)(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
       zink_batch_usage_set(&query->batch_uses, batch->state);
-      _mesa_set_add(batch->state->active_queries, query);
+      _mesa_set_add(&batch->state->active_queries, query);
       check_update(ctx, query);
    } else if (query->active)
       end_query(ctx, batch, query);
@@ -1054,7 +1054,7 @@ suspend_query(struct zink_context *ctx, struct zink_query *query)
 void
 zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
-   set_foreach(batch->state->active_queries, entry) {
+   set_foreach(&batch->state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
       if (query->active && !is_time_query(query))
          /* the fence is going to steal the set off the batch, so we have to copy

@@ -436,11 +436,11 @@ struct zink_batch_state {
 
    struct util_queue_fence flush_completed;
 
-   struct set *programs;
+   struct set programs;
 
-   struct set *resources;
-   struct set *surfaces;
-   struct set *bufferviews;
+   struct set resources;
+   struct set surfaces;
+   struct set bufferviews;
 
    struct util_dynarray unref_resources;
    struct util_dynarray bindless_releases[2];
@@ -449,7 +449,7 @@ struct zink_batch_state {
    struct util_dynarray zombie_samplers;
    struct util_dynarray dead_framebuffers;
 
-   struct set *active_queries; /* zink_query objects which were active at some point in this batch */
+   struct set active_queries; /* zink_query objects which were active at some point in this batch */
 
    struct zink_batch_descriptor_data dd;
 
