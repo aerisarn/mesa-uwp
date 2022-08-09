@@ -1881,11 +1881,10 @@ radv_pipeline_init_color_blend_info(struct radv_graphics_pipeline *pipeline,
          vk_find_struct_const(cb->pNext, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
       if (color_write_info && !(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_ENABLE)) {
          for (uint32_t i = 0; i < color_write_info->attachmentCount; i++) {
-            info.color_write_enable |=
-               color_write_info->pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
+            info.color_write_enable |= color_write_info->pColorWriteEnables[i] ? (1u << i) : 0;
          }
       } else {
-         info.color_write_enable = 0xffffffffu;
+         info.color_write_enable = 0xffu;
       }
    }
 
@@ -2135,7 +2134,9 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_COLOR_WRITE_ENABLE) {
-      dynamic->color_write_enable = info->cb.color_write_enable;
+      u_foreach_bit(i, info->cb.color_write_enable) {
+         dynamic->color_write_enable |= 0xfu << (i * 4);
+      }
    }
 
    pipeline->dynamic_state.mask = states;

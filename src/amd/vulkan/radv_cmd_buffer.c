@@ -118,7 +118,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .primitive_restart_enable = 0u,
    .rasterizer_discard_enable = 0u,
    .logic_op = 0u,
-   .color_write_enable = 0xffffffffu,
+   .color_write_enable = 0u,
 };
 
 static void
