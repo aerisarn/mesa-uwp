@@ -68,6 +68,7 @@ meson _build --native-file=native.file \
       -D build-tests=false \
       -D c_args="$(echo -n $C_ARGS)" \
       -D cpp_args="$(echo -n $CPP_ARGS)" \
+      -D enable-glcpp-tests=false \
       -D libunwind=${UNWIND} \
       ${DRI_LOADERS} \
       ${GALLIUM_ST} \
