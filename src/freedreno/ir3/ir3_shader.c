@@ -229,11 +229,11 @@ try_override_shader_variant(struct ir3_shader_variant *v,
 }
 
 static void
-assemble_variant(struct ir3_shader_variant *v)
+assemble_variant(struct ir3_shader_variant *v, bool internal)
 {
    v->bin = ir3_shader_assemble(v);
 
-   bool dbg_enabled = shader_debug_enabled(v->type);
+   bool dbg_enabled = shader_debug_enabled(v->type, internal);
    if (dbg_enabled || ir3_shader_override_path || v->disasm_info.write_disasm) {
       unsigned char sha1[21];
       char sha1buf[41];
@@ -297,7 +297,7 @@ compile_variant(struct ir3_shader *shader, struct ir3_shader_variant *v)
       return false;
    }
 
-   assemble_variant(v);
+   assemble_variant(v, shader->nir->info.internal);
    if (!v->bin) {
       mesa_loge("assemble failed! (%s:%s)", shader->nir->info.name,
                 shader->nir->info.label);

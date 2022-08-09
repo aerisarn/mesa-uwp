@@ -432,6 +432,7 @@ build_blit_vs_shader(void)
    nir_builder _b =
       nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "blit vs");
    nir_builder *b = &_b;
+   b->shader->info.internal = true;
 
    nir_variable *out_pos =
       nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
@@ -476,6 +477,7 @@ build_clear_vs_shader(void)
    nir_builder _b =
       nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "blit vs");
    nir_builder *b = &_b;
+   b->shader->info.internal = true;
 
    nir_variable *out_pos =
       nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
@@ -512,6 +514,7 @@ build_blit_fs_shader(bool zscale)
       nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
                                      zscale ? "zscale blit fs" : "blit fs");
    nir_builder *b = &_b;
+   b->shader->info.internal = true;
 
    nir_variable *out_color =
       nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
@@ -562,6 +565,7 @@ build_ms_copy_fs_shader(void)
       nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
                                      "multisample copy fs");
    nir_builder *b = &_b;
+   b->shader->info.internal = true;
 
    nir_variable *out_color =
       nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
@@ -617,6 +621,7 @@ build_clear_fs_shader(unsigned mrts)
       nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
                                      "mrt%u clear fs", mrts);
    nir_builder *b = &_b;
+   b->shader->info.internal = true;
 
    for (unsigned i = 0; i < mrts; i++) {
       nir_variable *out_color =
