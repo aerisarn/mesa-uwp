@@ -6924,6 +6924,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       pipeline->active_stages |= sinfo->stage;
    }
 
+   struct vk_graphics_pipeline_all_state all;
+   struct vk_graphics_pipeline_state state = {0};
+   result = vk_graphics_pipeline_state_fill(&device->vk, &state, pCreateInfo, NULL, &all, NULL, 0,
+                                            NULL);
+   if (result != VK_SUCCESS)
+      return result;
+
    struct radv_graphics_pipeline_info info = radv_pipeline_init_graphics_info(pipeline, pCreateInfo);
 
    struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo, &info);
