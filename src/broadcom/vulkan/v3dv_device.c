@@ -863,6 +863,7 @@ physical_device_init(struct v3dv_physical_device *device,
     */
    device->drm_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
 
+#ifndef ANDROID
    /* Sync file export is incompatible with the current model of execution
     * where some jobs may run on the CPU.  There are CTS tests which do the
     * following:
@@ -888,6 +889,7 @@ physical_device_init(struct v3dv_physical_device *device,
     */
    device->drm_syncobj_type.import_sync_file = NULL;
    device->drm_syncobj_type.export_sync_file = NULL;
+#endif
 
    /* Multiwait is required for emulated timeline semaphores and is supported
     * by the v3d kernel interface.
