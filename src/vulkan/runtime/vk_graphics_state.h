@@ -504,6 +504,12 @@ struct vk_render_pass_state {
 
    /** VkPipelineRenderingCreateInfo::stencilAttachmentFormat */
    VkFormat stencil_attachment_format;
+
+   /** VkAttachmentSampleCountInfoAMD::pColorAttachmentSamples */
+   uint8_t color_attachment_samples[MESA_VK_MAX_COLOR_ATTACHMENTS];
+
+   /** VkAttachmentSampleCountInfoAMD::depthStencilAttachmentSamples */
+   uint8_t depth_stencil_attachment_samples;
 };
 
 /** Struct representing all dynamic graphics state

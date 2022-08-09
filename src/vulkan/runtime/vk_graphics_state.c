@@ -963,6 +963,17 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
       rp->depth_self_dependency = rsd_info->depthSelfDependency;
       rp->stencil_self_dependency = rsd_info->stencilSelfDependency;
    }
+
+   const VkAttachmentSampleCountInfoAMD *asc_info =
+      vk_get_pipeline_sample_count_info_amd(info);
+   if (asc_info != NULL) {
+      assert(asc_info->colorAttachmentCount == rp->color_attachment_count);
+      for (uint32_t i = 0; i < asc_info->colorAttachmentCount; i++) {
+         rp->color_attachment_samples[i] = asc_info->pColorAttachmentSamples[i];
+      }
+
+      rp->depth_stencil_attachment_samples = asc_info->depthStencilAttachmentSamples;
+   }
 }
 
 static void
