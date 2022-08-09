@@ -126,7 +126,7 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
 {
    VkShaderModule mod;
    struct zink_shader_module *zm;
-   struct zink_shader_key *key = &state->shader_keys.key[stage];
+   const struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
    zm = malloc(sizeof(struct zink_shader_module) + key->size + (!has_nonseamless ? nonseamless_size : 0) + inline_size * sizeof(uint32_t));
@@ -180,7 +180,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
                             bool has_inline, //is inlining enabled?
                             bool has_nonseamless) //is nonseamless ext present?
 {
-   struct zink_shader_key *key = &state->shader_keys.key[stage];
+   const struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
 
