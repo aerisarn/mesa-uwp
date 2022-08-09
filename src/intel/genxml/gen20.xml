@@ -16,6 +16,21 @@
     <value name="SLM_ENCODES_256K" value="9" />
     <value name="SLM_ENCODES_384K" value="10" />
   </enum>
+  <enum name="UNIFIED_COMPRESSION_FORMAT">
+    <value name="CMF_R8" value="0" />
+    <value name="CMF_R8_G8" value="1" />
+    <value name="CMF_R8_G8_B8_A8" value="2" />
+    <value name="CMF_R10_G10_B10_A2" value="3" />
+    <value name="CMF_R11_G11_B10" value="4" />
+    <value name="CMF_R16" value="5" />
+    <value name="CMF_R16_G16" value="6" />
+    <value name="CMF_R16_G16_B16_A16" value="7" />
+    <value name="CMF_R32" value="8" />
+    <value name="CMF_R32_G32" value="9" />
+    <value name="CMF_R32_G32_B32_A32" value="10" />
+    <value name="CMF_Y16_U16_Y16_V16" value="11" />
+    <value name="CMF_ML8" value="15" />
+  </enum>
   <struct name="INTERFACE_DESCRIPTOR_DATA" length="8">
     <field name="Kernel Start Pointer" start="6" end="31" type="offset" />
     <field name="Software Exception Enable" start="71" end="71" type="bool" />
