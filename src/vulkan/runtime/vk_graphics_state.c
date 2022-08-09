@@ -106,10 +106,6 @@ fully_dynamic_state_groups(const BITSET_WORD *dynamic)
    if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI))
       groups |= MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT;
 
-   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) &&
-       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE))
-      groups |= MESA_VK_GRAPHICS_STATE_INPUT_ASSEMBLY_BIT;
-
    if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_FSR))
       groups |= MESA_VK_GRAPHICS_STATE_FRAGMENT_SHADING_RATE_BIT;
 
@@ -294,12 +290,16 @@ vk_input_assembly_state_init(struct vk_input_assembly_state *ia,
                              const BITSET_WORD *dynamic,
                              const VkPipelineInputAssemblyStateCreateInfo *ia_info)
 {
-   if (IS_DYNAMIC(IA_PRIMITIVE_TOPOLOGY)) {
-      ia->primitive_topology = -1;
-   } else {
-      assert(ia_info->topology <= UINT8_MAX);
-      ia->primitive_topology = ia_info->topology;
-   }
+   /* From the Vulkan 1.3.224 spec:
+    *
+    *    "VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY specifies that the topology
+    *    state in VkPipelineInputAssemblyStateCreateInfo only specifies the
+    *    topology class, and the specific topology order and adjacency must be
+    *    set dynamically with vkCmdSetPrimitiveTopology before any drawing
+    *    commands."
+   */
+   assert(ia_info->topology <= UINT8_MAX);
+   ia->primitive_topology = ia_info->topology;
 
    ia->primitive_restart_enable = ia_info->primitiveRestartEnable;
 }
