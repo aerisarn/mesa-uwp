@@ -438,7 +438,7 @@ struct zink_batch_state {
 
    struct set programs;
 
-   struct set resources;
+   struct set resources[2];
    struct set surfaces;
    struct set bufferviews;
 

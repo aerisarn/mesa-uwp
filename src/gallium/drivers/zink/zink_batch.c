@@ -30,14 +30,16 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       mesa_loge("ZINK: vkResetCommandPool failed (%s)", vk_Result_to_str(result));
 
    /* unref all used resources */
-   set_foreach_remove(&bs->resources, entry) {
-      struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      if (!zink_resource_object_usage_unset(obj, bs)) {
-         obj->unordered_read = obj->unordered_write = false;
-         obj->access = 0;
-         obj->access_stage = 0;
+   for (unsigned i = 0; i < ARRAY_SIZE(bs->resources); i++) {
+      set_foreach_remove(&bs->resources[i], entry) {
+         struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
+         if (!zink_resource_object_usage_unset(obj, bs)) {
+            obj->unordered_read = obj->unordered_write = false;
+            obj->access = 0;
+            obj->access_stage = 0;
+         }
+         util_dynarray_append(&bs->unref_resources, struct zink_resource_object*, obj);
       }
-      util_dynarray_append(&bs->unref_resources, struct zink_resource_object*, obj);
    }
 
    for (unsigned i = 0; i < 2; i++) {
@@ -220,7 +222,8 @@ create_batch_state(struct zink_context *ctx)
 
    bs->ctx = ctx;
 
-   SET_CREATE_OR_FAIL(&bs->resources);
+   SET_CREATE_OR_FAIL(&bs->resources[0]);
+   SET_CREATE_OR_FAIL(&bs->resources[1]);
    SET_CREATE_OR_FAIL(&bs->surfaces);
    SET_CREATE_OR_FAIL(&bs->bufferviews);
    SET_CREATE_OR_FAIL(&bs->programs);
@@ -554,7 +557,7 @@ check_oom_flush(struct zink_context *ctx, const struct zink_batch *batch)
 void
 zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *res)
 {
-   if (!batch_ptr_add_usage(batch, &batch->state->resources, res->obj))
+   if (!batch_ptr_add_usage(batch, &batch->state->resources[res->obj->is_buffer], res->obj))
       return;
    pipe_reference(NULL, &res->obj->reference);
    batch->state->resource_size += res->obj->size;
@@ -565,7 +568,7 @@ zink_batch_reference_resource(struct zink_batch *batch, struct zink_resource *re
 void
 zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resource *res)
 {
-   if (!batch_ptr_add_usage(batch, &batch->state->resources, res->obj))
+   if (!batch_ptr_add_usage(batch, &batch->state->resources[res->obj->is_buffer], res->obj))
       return;
    batch->state->resource_size += res->obj->size;
    check_oom_flush(batch->state->ctx, batch);
