@@ -1672,7 +1672,7 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
    if (!(pipeline->dynamic_states & RADV_DYNAMIC_CULL_MODE))
       info.cull_mode = rs->cullMode;
 
-   info.polygon_mode = si_translate_fill(rs->polygonMode);
+   info.polygon_mode = rs->polygonMode;
 
    if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE))
       info.depth_bias_enable = rs->depthBiasEnable;
@@ -2193,15 +2193,15 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
    const struct radv_device *device = pipeline->base.device;
 
    pipeline->pa_su_sc_mode_cntl =
-      S_028814_POLY_MODE(info->rs.polygon_mode != V_028814_X_DRAW_TRIANGLES) |
-      S_028814_POLYMODE_FRONT_PTYPE(info->rs.polygon_mode) |
-      S_028814_POLYMODE_BACK_PTYPE(info->rs.polygon_mode) |
+      S_028814_POLY_MODE(info->rs.polygon_mode != VK_POLYGON_MODE_FILL) |
+      S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(info->rs.polygon_mode)) |
+      S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(info->rs.polygon_mode)) |
       S_028814_PROVOKING_VTX_LAST(info->rs.provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
       /* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */
       pipeline->pa_su_sc_mode_cntl |=
-         S_028814_KEEP_TOGETHER_ENABLE(info->rs.polygon_mode != V_028814_X_DRAW_TRIANGLES);
+         S_028814_KEEP_TOGETHER_ENABLE(info->rs.polygon_mode != VK_POLYGON_MODE_FILL);
    }
 
    pipeline->pa_cl_clip_cntl =
