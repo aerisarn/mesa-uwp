@@ -127,6 +127,8 @@ namespace {
          return TGL_PIPE_NONE;
       else if (devinfo->verx10 < 125)
          return TGL_PIPE_FLOAT;
+      else if (inst->is_math() && devinfo->ver >= 20)
+         return TGL_PIPE_MATH;
       else if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT ||
                inst->opcode == SHADER_OPCODE_BROADCAST ||
                inst->opcode == SHADER_OPCODE_SHUFFLE ||
@@ -1016,8 +1018,8 @@ namespace {
       const ordered_address jp = p ? ordered_address(p, jps[ip].jp[IDX(p)]) :
                                      ordered_address();
       const bool is_ordered = ordered_unit(devinfo, inst, IDX(TGL_PIPE_ALL));
-      const bool uses_math_pipe =
-         inst->is_math() ||
+      const bool is_unordered_math =
+         (inst->is_math() && devinfo->ver < 20) ||
          (devinfo->has_64bit_float_via_math_pipe &&
           (get_exec_type(inst) == BRW_REGISTER_TYPE_DF ||
            inst->dst.type == BRW_REGISTER_TYPE_DF));
@@ -1029,7 +1031,7 @@ namespace {
       for (unsigned i = 0; i < inst->sources; i++) {
          const dependency rd_dep =
             (inst->is_payload(i) ||
-             uses_math_pipe) ? dependency(TGL_SBID_SRC, ip, exec_all) :
+             is_unordered_math) ? dependency(TGL_SBID_SRC, ip, exec_all) :
             is_ordered ? dependency(TGL_REGDIST_SRC, jp, exec_all) :
             dependency::done;
 
