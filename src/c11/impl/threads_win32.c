@@ -34,6 +34,8 @@
 
 #include "c11/threads.h"
 
+#include "threads_win32.h"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
 #endif
@@ -77,7 +79,6 @@ Implementation limits:
     (see EMULATED_THREADS_USE_NATIVE_CALL_ONCE macro)
   - Emulated `mtx_timelock()' with mtx_trylock() + *busy loop*
 */
-static void impl_tss_dtor_invoke(void);  // forward decl.
 
 struct impl_thrd_param {
     thrd_start_t func;
@@ -91,7 +92,6 @@ static unsigned __stdcall impl_thrd_routine(void *p)
     memcpy(&pack, p, sizeof(struct impl_thrd_param));
     free(p);
     code = pack.func(pack.arg);
-    impl_tss_dtor_invoke();
     return (unsigned)code;
 }
 
@@ -304,6 +304,11 @@ mtx_unlock(mtx_t *mtx)
     return thrd_success;
 }
 
+void
+__threads_win32_tls_callback(void)
+{
+    impl_tss_dtor_invoke();
+}
 
 /*------------------- 7.25.5 Thread functions -------------------*/
 // 7.25.5.1
@@ -389,7 +394,6 @@ _Noreturn
 void
 thrd_exit(int res)
 {
-    impl_tss_dtor_invoke();
     _endthreadex((unsigned)res);
 }
 
