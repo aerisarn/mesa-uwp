@@ -756,7 +756,12 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
    if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-      tci.patchControlPoints = 3; //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
+      //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
+      if (!screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
+         static bool warned = false;
+         warn_missing_feature(warned, "extendedDynamicState2PatchControlPoints");
+      }
+      tci.patchControlPoints = prog->shaders[MESA_SHADER_TESS_EVAL]->nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES ? 2 : 3;
       pci.pTessellationState = &tci;
       tci.pNext = &tdci;
       tdci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO;
