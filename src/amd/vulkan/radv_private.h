@@ -1992,7 +1992,7 @@ struct radv_rasterization_info {
    float depth_bias_clamp;
    float depth_bias_slope_factor;
    VkConservativeRasterizationModeEXT conservative_mode;
-   bool provoking_vtx_last;
+   VkProvokingVertexModeEXT provoking_vertex;
    bool stippled_line_enable;
    VkLineRasterizationModeEXT line_raster_mode;
    uint32_t line_stipple_factor;

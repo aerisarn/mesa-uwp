@@ -1692,9 +1692,8 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
 
    const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
       vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
-   if (provoking_vtx_info &&
-       provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
-      info.provoking_vtx_last = true;
+   if (provoking_vtx_info) {
+      info.provoking_vertex = provoking_vtx_info->provokingVertexMode;
    }
 
    const VkPipelineRasterizationConservativeStateCreateInfoEXT *conservative_raster =
@@ -2197,7 +2196,7 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
       S_028814_POLY_MODE(info->rs.polygon_mode != V_028814_X_DRAW_TRIANGLES) |
       S_028814_POLYMODE_FRONT_PTYPE(info->rs.polygon_mode) |
       S_028814_POLYMODE_BACK_PTYPE(info->rs.polygon_mode) |
-      S_028814_PROVOKING_VTX_LAST(info->rs.provoking_vtx_last);
+      S_028814_PROVOKING_VTX_LAST(info->rs.provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
       /* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */
@@ -3371,7 +3370,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    key.vs.topology = info->ia.primitive_topology;
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
-      key.vs.provoking_vtx_last = info->rs.provoking_vtx_last;
+      key.vs.provoking_vtx_last =
+         info->rs.provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
    }
 
    if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
