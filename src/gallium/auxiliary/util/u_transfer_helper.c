@@ -243,6 +243,13 @@ transfer_map_msaa(struct pipe_context *pctx,
    return ss_map;
 }
 
+static void *
+u_transfer_helper_deinterleave_transfer_map(struct pipe_context *pctx,
+                                            struct pipe_resource *prsc,
+                                            unsigned level, unsigned usage,
+                                            const struct pipe_box *box,
+                                            struct pipe_transfer **pptrans);
+
 void *
 u_transfer_helper_transfer_map(struct pipe_context *pctx,
                                struct pipe_resource *prsc,
@@ -519,6 +526,10 @@ u_transfer_helper_transfer_flush_region(struct pipe_context *pctx,
    }
 }
 
+static void
+u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
+                                              struct pipe_transfer *ptrans);
+
 void
 u_transfer_helper_transfer_unmap(struct pipe_context *pctx,
                                  struct pipe_transfer *ptrans)
@@ -592,7 +603,7 @@ u_transfer_helper_destroy(struct u_transfer_helper *helper)
  * drivers should expect to be passed the same buffer repeatedly with the format changed
  * to indicate which component is being mapped
  */
-void *
+static void *
 u_transfer_helper_deinterleave_transfer_map(struct pipe_context *pctx,
                                             struct pipe_resource *prsc,
                                             unsigned level, unsigned usage,
@@ -696,7 +707,7 @@ fail:
    return NULL;
 }
 
-void
+static void
 u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
                                               struct pipe_transfer *ptrans)
 {
