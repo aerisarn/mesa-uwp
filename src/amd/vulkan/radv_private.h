@@ -1967,11 +1967,6 @@ struct radv_input_assembly_info {
    bool primitive_restart_enable;
 };
 
-struct radv_tessellation_info {
-   uint8_t patch_control_points;
-   VkTessellationDomainOrigin domain_origin;
-};
-
 struct radv_viewport_info {
    bool negative_one_to_one;
    uint8_t viewport_count;
@@ -2079,7 +2074,6 @@ struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
    struct radv_input_assembly_info ia;
 
-   struct radv_tessellation_info ts;
    struct radv_viewport_info vp;
    struct radv_rasterization_info rs;
    struct radv_discard_rectangle_info dr;

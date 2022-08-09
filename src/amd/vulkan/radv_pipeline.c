@@ -1566,28 +1566,6 @@ radv_pipeline_init_input_assembly_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
-static struct radv_tessellation_info
-radv_pipeline_init_tessellation_info(struct radv_graphics_pipeline *pipeline,
-                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineTessellationStateCreateInfo *ts = pCreateInfo->pTessellationState;
-   const VkShaderStageFlagBits tess_stages = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                             VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-   struct radv_tessellation_info info = {0};
-
-   if ((pipeline->active_stages & tess_stages) == tess_stages) {
-      info.patch_control_points = ts->patchControlPoints;
-
-      const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
-         vk_find_struct_const(ts->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
-      if (domain_origin_state) {
-         info.domain_origin = domain_origin_state->domainOrigin;
-      }
-   }
-
-   return info;
-}
-
 static struct radv_viewport_info
 radv_pipeline_init_viewport_info(struct radv_graphics_pipeline *pipeline,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1924,7 +1902,6 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
       info.ia = radv_pipeline_init_input_assembly_info(pipeline, pCreateInfo);
    }
 
-   info.ts = radv_pipeline_init_tessellation_info(pipeline, pCreateInfo);
    info.vp = radv_pipeline_init_viewport_info(pipeline, pCreateInfo);
    info.rs = radv_pipeline_init_rasterization_info(pipeline, pCreateInfo);
    info.dr = radv_pipeline_init_discard_rectangle_info(pipeline, pCreateInfo);
@@ -3276,6 +3253,7 @@ static struct radv_pipeline_key
 radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_graphics_pipeline_info *info,
+                                    const struct vk_graphics_pipeline_state *state,
                                     const struct radv_blend_state *blend)
 {
    struct radv_device *device = pipeline->base.device;
@@ -3304,7 +3282,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.vs.vertex_binding_align[i] = info->vi.vertex_binding_align[i];
    }
 
-   key.tcs.tess_input_vertices = info->ts.patch_control_points;
+   if (state->ts)
+      key.tcs.tess_input_vertices = state->ts->patch_control_points;
 
    if (info->ms.raster_samples > 1) {
       uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(info);
@@ -6000,7 +5979,8 @@ radv_pipeline_emit_tess_shaders(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdb
 static void
 radv_pipeline_emit_tess_state(struct radeon_cmdbuf *ctx_cs,
                               const struct radv_graphics_pipeline *pipeline,
-                              const struct radv_graphics_pipeline_info *info)
+                              const struct radv_graphics_pipeline_info *info,
+                              const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_shader *tes = radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL);
@@ -6008,7 +5988,7 @@ radv_pipeline_emit_tess_state(struct radeon_cmdbuf *ctx_cs,
    unsigned num_tcs_input_cp, num_tcs_output_cp, num_patches;
    unsigned ls_hs_config;
 
-   num_tcs_input_cp = info->ts.patch_control_points;
+   num_tcs_input_cp = state->ts->patch_control_points;
    num_tcs_output_cp =
       pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; // TCS VERTICES OUT
    num_patches = pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
@@ -6051,7 +6031,7 @@ radv_pipeline_emit_tess_state(struct radeon_cmdbuf *ctx_cs,
    }
 
    bool ccw = tes->info.tes.ccw;
-   if (info->ts.domain_origin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
+   if (state->ts->domain_origin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
       ccw = !ccw;
 
    if (tes->info.tes.point_mode)
@@ -6672,7 +6652,9 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
                        const struct radv_blend_state *blend,
                        const struct radv_depth_stencil_state *ds_state,
                        uint32_t vgt_gs_out_prim_type,
-                       const struct radv_graphics_pipeline_info *info)
+                       const struct radv_graphics_pipeline_info *info,
+                       const struct vk_graphics_pipeline_state *state)
+
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radeon_cmdbuf *ctx_cs = &pipeline->base.ctx_cs;
@@ -6693,7 +6675,7 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
       radv_pipeline_emit_tess_shaders(ctx_cs, cs, pipeline);
-      radv_pipeline_emit_tess_state(ctx_cs, pipeline, info);
+      radv_pipeline_emit_tess_state(ctx_cs, pipeline, info, state);
    }
 
    radv_pipeline_emit_geometry_shader(ctx_cs, cs, pipeline);
@@ -6939,7 +6921,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
    struct radv_pipeline_key key =
-      radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &info, &blend);
+      radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &info, &state, &blend);
 
    result = radv_create_shaders(&pipeline->base, pipeline_layout, device, cache, &key, pCreateInfo->pStages,
                                 pCreateInfo->stageCount, pCreateInfo->flags, NULL,
@@ -6999,7 +6981,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    }
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      pipeline->tess_patch_control_points = info.ts.patch_control_points;
+      pipeline->tess_patch_control_points = state.ts->patch_control_points;
    }
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
@@ -7029,7 +7011,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_init_extra(pipeline, extra, &blend, &ds_state, &info, &vgt_gs_out_prim_type);
    }
 
-   radv_pipeline_emit_pm4(pipeline, &blend, &ds_state, vgt_gs_out_prim_type, &info);
+   radv_pipeline_emit_pm4(pipeline, &blend, &ds_state, vgt_gs_out_prim_type, &info, &state);
 
    return result;
 }
