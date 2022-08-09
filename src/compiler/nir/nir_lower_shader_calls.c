@@ -151,11 +151,15 @@ can_remat_instr(nir_instr *instr, struct brw_bitset *remat)
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
+      case nir_intrinsic_load_uniform:
       case nir_intrinsic_load_ubo:
       case nir_intrinsic_vulkan_resource_index:
       case nir_intrinsic_vulkan_resource_reindex:
       case nir_intrinsic_load_vulkan_descriptor:
       case nir_intrinsic_load_push_constant:
+      case nir_intrinsic_load_global_constant:
+      case nir_intrinsic_load_global_const_block_intel:
+      case nir_intrinsic_load_desc_set_address_intel:
          /* These intrinsics don't need to be spilled as long as they don't
           * depend on any spilled values.
           */
@@ -178,6 +182,7 @@ can_remat_instr(nir_instr *instr, struct brw_bitset *remat)
       case nir_intrinsic_load_callable_sbt_stride_intel:
       case nir_intrinsic_load_reloc_const_intel:
       case nir_intrinsic_load_ray_query_global_intel:
+      case nir_intrinsic_load_ray_launch_size:
          /* Notably missing from the above list is btd_local_arg_addr_intel.
           * This is because the resume shader will have a different local
           * argument pointer because it has a different BSR.  Any access of
