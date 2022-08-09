@@ -1476,7 +1476,6 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
             count = mod_reply->num_screen_modifiers;
             modifiers = malloc(count * sizeof(uint64_t));
             if (!modifiers) {
-               free(modifiers);
                free(mod_reply);
                goto no_image;
             }
