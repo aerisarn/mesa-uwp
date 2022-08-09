@@ -31,6 +31,9 @@
 #define ZINK_BIND_TRANSIENT (1 << 30) //transient fb attachment
 #define ZINK_BIND_VIDEO (1 << 31)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 bool
 zink_screen_resource_init(struct pipe_screen *pscreen);
@@ -81,7 +84,9 @@ zink_is_swapchain(const struct zink_resource *res)
    return res->swapchain;
 }
 
-#ifndef __cplusplus
+#ifdef __cplusplus
+}
+#else
 #include "zink_batch.h"
 #include "zink_bo.h"
 
@@ -141,4 +146,5 @@ zink_resource_object_usage_unset(struct zink_resource_object *obj, struct zink_b
 }
 
 #endif
+
 #endif
