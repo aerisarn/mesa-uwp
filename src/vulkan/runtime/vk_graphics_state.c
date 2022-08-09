@@ -403,11 +403,11 @@ vk_discard_rectangles_state_init(struct vk_discard_rectangles_state *dr,
    if (dr_info == NULL)
       return;
 
+   assert(dr_info->discardRectangleCount <= MESA_VK_MAX_DISCARD_RECTANGLES);
    dr->mode = dr_info->discardRectangleMode;
+   dr->rectangle_count = dr_info->discardRectangleCount;
 
    if (!IS_DYNAMIC(DR_RECTANGLES)) {
-      assert(dr_info->discardRectangleCount <= MESA_VK_MAX_DISCARD_RECTANGLES);
-      dr->rectangle_count = dr_info->discardRectangleCount;
       typed_memcpy(dr->rectangles, dr_info->pDiscardRectangles,
                    dr_info->discardRectangleCount);
    }
