@@ -3056,6 +3056,85 @@ static struct intel_mapped_pinned_buffer_alloc aux_map_allocator = {
 
 static VkResult anv_device_check_status(struct vk_device *vk_device);
 
+static VkResult
+anv_device_setup_context(struct anv_device *device,
+                         const VkDeviceCreateInfo *pCreateInfo,
+                         const uint32_t num_queues)
+{
+   struct anv_physical_device *physical_device = device->physical;
+   VkResult result = VK_SUCCESS;
+
+   if (device->physical->engine_info) {
+      /* The kernel API supports at most 64 engines */
+      assert(num_queues <= 64);
+      uint16_t engine_classes[64];
+      int engine_count = 0;
+      for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
+         const VkDeviceQueueCreateInfo *queueCreateInfo =
+            &pCreateInfo->pQueueCreateInfos[i];
+
+         assert(queueCreateInfo->queueFamilyIndex <
+                physical_device->queue.family_count);
+         struct anv_queue_family *queue_family =
+            &physical_device->queue.families[queueCreateInfo->queueFamilyIndex];
+
+         for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
+            engine_classes[engine_count++] = queue_family->engine_class;
+      }
+      device->context_id =
+         intel_gem_create_context_engines(device->fd,
+                                          physical_device->engine_info,
+                                          engine_count, engine_classes);
+   } else {
+      assert(num_queues == 1);
+      device->context_id = anv_gem_create_context(device);
+   }
+
+   if (device->context_id == -1) {
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      return result;
+   }
+
+   /* Here we tell the kernel not to attempt to recover our context but
+    * immediately (on the next batchbuffer submission) report that the
+    * context is lost, and we will do the recovery ourselves.  In the case
+    * of Vulkan, recovery means throwing VK_ERROR_DEVICE_LOST and letting
+    * the client clean up the pieces.
+    */
+   anv_gem_set_context_param(device->fd, device->context_id,
+                             I915_CONTEXT_PARAM_RECOVERABLE, false);
+
+   /* Check if client specified queue priority. */
+   const VkDeviceQueueGlobalPriorityCreateInfoKHR *queue_priority =
+      vk_find_struct_const(pCreateInfo->pQueueCreateInfos[0].pNext,
+                           DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
+
+   VkQueueGlobalPriorityKHR priority =
+      queue_priority ? queue_priority->globalPriority :
+         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
+
+   /* As per spec, the driver implementation may deny requests to acquire
+    * a priority above the default priority (MEDIUM) if the caller does not
+    * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_KHR
+    * is returned.
+    */
+   if (physical_device->max_context_priority >= INTEL_CONTEXT_MEDIUM_PRIORITY) {
+      int err = anv_gem_set_context_param(device->fd, device->context_id,
+                                          I915_CONTEXT_PARAM_PRIORITY,
+                                          vk_priority_to_gen(priority));
+      if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
+         result = vk_error(device, VK_ERROR_NOT_PERMITTED_KHR);
+         goto fail_context;
+      }
+   }
+
+   return result;
+
+fail_context:
+   anv_gem_destroy_context(device, device->context_id);
+   return result;
+}
+
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -3098,15 +3177,6 @@ VkResult anv_CreateDevice(
       if (pCreateInfo->pQueueCreateInfos[i].flags != 0)
          return vk_error(physical_device, VK_ERROR_INITIALIZATION_FAILED);
    }
-
-   /* Check if client specified queue priority. */
-   const VkDeviceQueueGlobalPriorityCreateInfoKHR *queue_priority =
-      vk_find_struct_const(pCreateInfo->pQueueCreateInfos[0].pNext,
-                           DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
-
-   VkQueueGlobalPriorityKHR priority =
-      queue_priority ? queue_priority->globalPriority :
-         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
 
    device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
                        sizeof(*device), 8,
@@ -3163,44 +3233,9 @@ VkResult anv_CreateDevice(
    for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
       num_queues += pCreateInfo->pQueueCreateInfos[i].queueCount;
 
-   if (device->physical->engine_info) {
-      /* The kernel API supports at most 64 engines */
-      assert(num_queues <= 64);
-      uint16_t engine_classes[64];
-      int engine_count = 0;
-      for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
-         const VkDeviceQueueCreateInfo *queueCreateInfo =
-            &pCreateInfo->pQueueCreateInfos[i];
-
-         assert(queueCreateInfo->queueFamilyIndex <
-                physical_device->queue.family_count);
-         struct anv_queue_family *queue_family =
-            &physical_device->queue.families[queueCreateInfo->queueFamilyIndex];
-
-         for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
-            engine_classes[engine_count++] = queue_family->engine_class;
-      }
-      device->context_id =
-         intel_gem_create_context_engines(device->fd,
-                                          physical_device->engine_info,
-                                          engine_count, engine_classes);
-   } else {
-      assert(num_queues == 1);
-      device->context_id = anv_gem_create_context(device);
-   }
-   if (device->context_id == -1) {
-      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+   result = anv_device_setup_context(device, pCreateInfo, num_queues);
+   if (result != VK_SUCCESS)
       goto fail_fd;
-   }
-
-   /* Here we tell the kernel not to attempt to recover our context but
-    * immediately (on the next batchbuffer submission) report that the
-    * context is lost, and we will do the recovery ourselves.  In the case
-    * of Vulkan, recovery means throwing VK_ERROR_DEVICE_LOST and letting
-    * the client clean up the pieces.
-    */
-   anv_gem_set_context_param(device->fd, device->context_id,
-                             I915_CONTEXT_PARAM_RECOVERABLE, false);
 
    device->queues =
       vk_zalloc(&device->vk.alloc, num_queues * sizeof(*device->queues), 8,
@@ -3255,22 +3290,6 @@ VkResult anv_CreateDevice(
    }
 
    list_inithead(&device->memory_objects);
-
-   /* As per spec, the driver implementation may deny requests to acquire
-    * a priority above the default priority (MEDIUM) if the caller does not
-    * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_KHR
-    * is returned.
-    */
-   if (physical_device->max_context_priority >= INTEL_CONTEXT_MEDIUM_PRIORITY) {
-      int err = anv_gem_set_context_param(device->fd, device->context_id,
-                                          I915_CONTEXT_PARAM_PRIORITY,
-                                          vk_priority_to_gen(priority));
-      if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
-         result = vk_error(device, VK_ERROR_NOT_PERMITTED_KHR);
-         goto fail_vmas;
-      }
-   }
-
 
    /* On Broadwell and later, we can use batch chaining to more efficiently
     * implement growing command buffers.  Prior to Haswell, the kernel
