@@ -2251,6 +2251,8 @@ gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
 
 devenv = environment()
 
+dir_compiler_nir = join_paths(meson.current_source_dir(), 'src/compiler/nir/')
+
 subdir('include')
 subdir('bin')
 subdir('src')
