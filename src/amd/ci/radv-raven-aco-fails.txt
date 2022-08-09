@@ -1,5 +1,3 @@
-dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail.basic,Crash
-
 # The following are a guess, based on Renoir
 dEQP-VK.rasterization.rasterization_order_attachment_access.depth.samples_1.multi_draw_barriers,Fail
 dEQP-VK.rasterization.rasterization_order_attachment_access.format_float.attachments_4_samples_2.multi_draw_barriers,Fail
