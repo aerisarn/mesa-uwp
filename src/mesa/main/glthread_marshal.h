@@ -780,15 +780,32 @@ _mesa_glthread_DeleteLists(struct gl_context *ctx, GLsizei range)
 }
 
 static inline void
+_mesa_glthread_BindFramebuffer(struct gl_context *ctx, GLenum target, GLuint id)
+{
+   switch (target) {
+   case GL_FRAMEBUFFER:
+      ctx->GLThread.CurrentDrawFramebuffer = id;
+      ctx->GLThread.CurrentReadFramebuffer = id;
+      break;
+   case GL_DRAW_FRAMEBUFFER:
+      ctx->GLThread.CurrentDrawFramebuffer = id;
+      break;
+   case GL_READ_FRAMEBUFFER:
+      ctx->GLThread.CurrentReadFramebuffer = id;
+      break;
+   }
+}
+
+static inline void
 _mesa_glthread_DeleteFramebuffers(struct gl_context *ctx, GLsizei n,
                                   const GLuint *ids)
 {
    if (ctx->GLThread.CurrentDrawFramebuffer) {
       for (int i = 0; i < n; i++) {
-         if (ctx->GLThread.CurrentDrawFramebuffer == ids[i]) {
+         if (ctx->GLThread.CurrentDrawFramebuffer == ids[i])
             ctx->GLThread.CurrentDrawFramebuffer = 0;
-            break;
-         }
+         if (ctx->GLThread.CurrentReadFramebuffer == ids[i])
+            ctx->GLThread.CurrentReadFramebuffer = 0;
       }
    }
 }
