@@ -1308,6 +1308,9 @@ create_bview_for_r32g32b32(struct radv_cmd_buffer *cmd_buffer, struct radv_buffe
  * radv_image_view_init). Some texels are unaddressable and cannot be copied
  * to/from by a compute shader. Here we will perform a buffer copy to copy the
  * texels that the hardware missed.
+ *
+ * GFX10 will not use this workaround because it can be fixed by adjusting its
+ * image view descriptors instead.
  */
 static void
 fixup_gfx9_cs_copy(struct radv_cmd_buffer *cmd_buffer,
@@ -1322,8 +1325,10 @@ fixup_gfx9_cs_copy(struct radv_cmd_buffer *cmd_buffer,
    const struct radeon_info *rad_info = &device->physical_device->rad_info;
    struct ac_addrlib *addrlib = device->ws->get_addrlib(device->ws);
 
-   if (rad_info->gfx_level < GFX9 || image->vk.mip_levels == 1 ||
-       !vk_format_is_block_compressed(image->vk.format))
+   /* GFX10 will use a different workaround unless this is not a 2D image */
+   if (rad_info->gfx_level < GFX9 ||
+       (rad_info->gfx_level >= GFX10 && image->vk.image_type == VK_IMAGE_TYPE_2D) ||
+       image->vk.mip_levels == 1 || !vk_format_is_block_compressed(image->vk.format))
       return;
 
    /* The physical extent of the base mip */
