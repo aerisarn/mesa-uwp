@@ -2883,8 +2883,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
    zink_update_fbfetch(ctx);
-   unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
-   ctx->gfx_pipeline_state.void_alpha_attachments = 0;
    ctx->transient_attachments = 0;
    ctx->fb_layer_mismatch = 0;
 
@@ -2926,14 +2924,11 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          }
          res->fb_binds++;
          if (util_format_has_alpha1(psurf->format)) {
-            ctx->gfx_pipeline_state.void_alpha_attachments |= BITFIELD_BIT(i);
             if (!res->valid)
                ctx->void_clears |= (PIPE_CLEAR_COLOR0 << i);
          }
       }
    }
-   if (ctx->gfx_pipeline_state.void_alpha_attachments != prev_void_alpha_attachments)
-      ctx->gfx_pipeline_state.dirty = true;
    unsigned depth_bias_scale_factor = ctx->depth_bias_scale_factor;
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;

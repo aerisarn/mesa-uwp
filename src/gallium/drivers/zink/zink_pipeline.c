@@ -104,7 +104,6 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       }
    }
 
-   VkPipelineColorBlendAttachmentState blend_att[PIPE_MAX_COLOR_BUFS];
    VkPipelineColorBlendStateCreateInfo blend_state = {0};
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
    if (state->blend_state) {
@@ -113,18 +112,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
                                  state->rendering_info.colorAttachmentCount;
       if (state->render_pass && state->render_pass->state.have_zsbuf)
          num_attachments--;
-      if (state->void_alpha_attachments) {
-         for (unsigned i = 0; i < num_attachments; i++) {
-            blend_att[i] = state->blend_state->attachments[i];
-            if (state->void_alpha_attachments & BITFIELD_BIT(i)) {
-               blend_att[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-               blend_att[i].srcColorBlendFactor = clamp_void_blend_factor(blend_att[i].srcColorBlendFactor);
-               blend_att[i].dstColorBlendFactor = clamp_void_blend_factor(blend_att[i].dstColorBlendFactor);
-            }
-         }
-         blend_state.pAttachments = blend_att;
-      } else
-         blend_state.pAttachments = state->blend_state->attachments;
+      blend_state.pAttachments = state->blend_state->attachments;
       blend_state.attachmentCount = num_attachments;
       blend_state.logicOpEnable = state->blend_state->logicop_enable;
       blend_state.logicOp = state->blend_state->logicop_func;
@@ -436,23 +424,11 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
       VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT,
    };
 
-   VkPipelineColorBlendAttachmentState blend_att[PIPE_MAX_COLOR_BUFS];
    VkPipelineColorBlendStateCreateInfo blend_state = {0};
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
    if (state->blend_state) {
       unsigned num_attachments = state->rendering_info.colorAttachmentCount;
-      if (state->void_alpha_attachments) {
-         for (unsigned i = 0; i < num_attachments; i++) {
-            blend_att[i] = state->blend_state->attachments[i];
-            if (state->void_alpha_attachments & BITFIELD_BIT(i)) {
-               blend_att[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-               blend_att[i].srcColorBlendFactor = clamp_void_blend_factor(blend_att[i].srcColorBlendFactor);
-               blend_att[i].dstColorBlendFactor = clamp_void_blend_factor(blend_att[i].dstColorBlendFactor);
-            }
-         }
-         blend_state.pAttachments = blend_att;
-      } else
-         blend_state.pAttachments = state->blend_state->attachments;
+      blend_state.pAttachments = state->blend_state->attachments;
       blend_state.attachmentCount = num_attachments;
       blend_state.logicOpEnable = state->blend_state->logicop_enable;
       blend_state.logicOp = state->blend_state->logicop_func;

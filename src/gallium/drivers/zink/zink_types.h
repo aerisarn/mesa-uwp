@@ -629,8 +629,7 @@ struct zink_gfx_pipeline_state {
    uint32_t _pad1 : 6;
    uint32_t force_persample_interp:1; //duplicated for gpl hashing
    /* order matches zink_gfx_output_key: uint16_t offset */
-   uint32_t rast_samples:8; //2 extra bits
-   uint32_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
+   uint32_t rast_samples:16; //10 extra bits
    VkSampleMask sample_mask;
    unsigned rp_state;
    uint32_t blend_id;
@@ -769,8 +768,7 @@ struct zink_gfx_input_key {
 struct zink_gfx_output_key {
    uint32_t _pad:15;
    uint32_t force_persample_interp:1;
-   uint32_t rast_samples:8;
-   uint32_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
+   uint32_t rast_samples:16;
    VkSampleMask sample_mask;
 
    unsigned rp_state;
