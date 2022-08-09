@@ -2266,12 +2266,13 @@ bool
 zink_screen_resource_init(struct pipe_screen *pscreen)
 {
    struct zink_screen *screen = zink_screen(pscreen);
-   pscreen->resource_create = zink_resource_create;
+   pscreen->resource_create = u_transfer_helper_resource_create;
    pscreen->resource_create_with_modifiers = zink_resource_create_with_modifiers;
    pscreen->resource_create_drawable = zink_resource_create_drawable;
-   pscreen->resource_destroy = zink_resource_destroy;
+   pscreen->resource_destroy = u_transfer_helper_resource_destroy;
    pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
       U_TRANSFER_HELPER_SEPARATE_Z32S8 | U_TRANSFER_HELPER_SEPARATE_STENCIL |
+      U_TRANSFER_HELPER_INTERLEAVE_IN_PLACE |
       (!screen->have_D24_UNORM_S8_UINT ? U_TRANSFER_HELPER_Z24_IN_Z32F : 0));
 
    if (screen->info.have_KHR_external_memory_fd || screen->info.have_KHR_external_memory_win32) {
@@ -2292,8 +2293,8 @@ zink_context_resource_init(struct pipe_context *pctx)
 {
    pctx->buffer_map = zink_buffer_map;
    pctx->buffer_unmap = zink_buffer_unmap;
-   pctx->texture_map = u_transfer_helper_deinterleave_transfer_map;
-   pctx->texture_unmap = u_transfer_helper_deinterleave_transfer_unmap;
+   pctx->texture_map = u_transfer_helper_transfer_map;
+   pctx->texture_unmap = u_transfer_helper_transfer_unmap;
 
    pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
    pctx->buffer_subdata = zink_buffer_subdata;
