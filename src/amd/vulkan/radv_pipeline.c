@@ -1688,7 +1688,7 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
       info.depth_bias_slope_factor = rs->depthBiasSlopeFactor;
    }
 
-   info.depth_clip_disable = rs->depthClampEnable;
+   info.depth_clip_enable = !rs->depthClampEnable;
 
    const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
       vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
@@ -1717,7 +1717,7 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
    const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
       vk_find_struct_const(rs->pNext, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
    if (depth_clip_state) {
-      info.depth_clip_disable = !depth_clip_state->depthClipEnable;
+      info.depth_clip_enable = depth_clip_state->depthClipEnable;
    }
 
    const VkPipelineRasterizationStateRasterizationOrderAMD *raster_order =
@@ -2206,8 +2206,8 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
 
    pipeline->pa_cl_clip_cntl =
       S_028810_DX_CLIP_SPACE_DEF(!pipeline->negative_one_to_one) |
-      S_028810_ZCLIP_NEAR_DISABLE(info->rs.depth_clip_disable) |
-      S_028810_ZCLIP_FAR_DISABLE(info->rs.depth_clip_disable) |
+      S_028810_ZCLIP_NEAR_DISABLE(!info->rs.depth_clip_enable) |
+      S_028810_ZCLIP_FAR_DISABLE(!info->rs.depth_clip_enable) |
       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
    pipeline->uses_conservative_overestimate =
@@ -2219,7 +2219,7 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
        * application disables clamping explicitly or uses depth values outside of the [0.0, 1.0]
        * range.
        */
-      if (info->rs.depth_clip_disable ||
+      if (!info->rs.depth_clip_enable ||
           device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
          pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_DISABLED;
       } else {

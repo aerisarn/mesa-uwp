@@ -1997,7 +1997,7 @@ struct radv_rasterization_info {
    VkLineRasterizationModeEXT line_raster_mode;
    uint32_t line_stipple_factor;
    uint16_t line_stipple_pattern;
-   bool depth_clip_disable;
+   bool depth_clip_enable;
    VkRasterizationOrderAMD order;
 };
 
