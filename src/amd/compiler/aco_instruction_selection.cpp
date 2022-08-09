@@ -12107,6 +12107,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
    init_program(program, compute_cs, info, options->gfx_level, options->family, options->wgp_mode,
                 config);
+   program->dev.vgpr_limit = 256;
 
    Block* block = program->create_and_insert_block();
    block->kind = block_kind_top_level;

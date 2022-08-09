@@ -95,7 +95,7 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    /* apparently gfx702 also has 16-bank LDS but I can't find a family for that */
    program->dev.has_16bank_lds = family == CHIP_KABINI || family == CHIP_STONEY;
 
-   program->dev.vgpr_limit = 256;
+   program->dev.vgpr_limit = gfx_level >= GFX11 ? 128 : 256; //TODO: fix encoding for 16-bit v128+
    program->dev.physical_vgprs = 256;
    program->dev.vgpr_alloc_granule = 4;
 
