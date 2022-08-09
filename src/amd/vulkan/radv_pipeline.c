@@ -657,7 +657,8 @@ radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkB
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                               const struct radv_graphics_pipeline_info *info)
+                               const struct radv_graphics_pipeline_info *info,
+                               const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_device *device = pipeline->base.device;
    struct radv_blend_state blend = {0};
@@ -683,7 +684,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                S_028B70_OFFSET_ROUND(1);
    }
 
-   if (info->ms.alpha_to_coverage_enable) {
+   if (state->ms && state->ms->alpha_to_coverage_enable) {
       blend.db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(1);
       blend.need_src_alpha |= 0x1;
    }
@@ -846,33 +847,36 @@ si_translate_fill(VkPolygonMode func)
 }
 
 static unsigned
-radv_pipeline_color_samples( const struct radv_graphics_pipeline_info *info)
+radv_pipeline_color_samples(const struct radv_graphics_pipeline_info *info,
+                            const struct vk_graphics_pipeline_state *state)
 {
    if (info->color_att_samples && radv_pipeline_has_color_attachments(&info->ri)) {
       return info->color_att_samples;
    }
 
-   return info->ms.raster_samples;
+   return state->ms ? state->ms->rasterization_samples : 1;
 }
 
 static unsigned
-radv_pipeline_depth_samples(const struct radv_graphics_pipeline_info *info)
+radv_pipeline_depth_samples(const struct radv_graphics_pipeline_info *info,
+                            const struct vk_graphics_pipeline_state *state)
 {
    if (info->ds_att_samples && radv_pipeline_has_ds_attachments(&info->ri)) {
       return info->ds_att_samples;
    }
 
-   return info->ms.raster_samples;
+   return state->ms ? state->ms->rasterization_samples : 1;
 }
 
 static uint8_t
-radv_pipeline_get_ps_iter_samples(const struct radv_graphics_pipeline_info *info)
+radv_pipeline_get_ps_iter_samples(const struct radv_graphics_pipeline_info *info,
+                                  const struct vk_graphics_pipeline_state *state)
 {
    uint32_t ps_iter_samples = 1;
-   uint32_t num_samples = radv_pipeline_color_samples(info);
+   uint32_t num_samples = radv_pipeline_color_samples(info, state);
 
-   if (info->ms.sample_shading_enable) {
-      ps_iter_samples = ceilf(info->ms.min_sample_shading * num_samples);
+   if (state->ms && state->ms->sample_shading_enable) {
+      ps_iter_samples = ceilf(state->ms->min_sample_shading * num_samples);
       ps_iter_samples = util_next_power_of_two(ps_iter_samples);
    }
    return ps_iter_samples;
@@ -1048,9 +1052,10 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    unsigned num_tile_pipes = pdevice->rad_info.num_tile_pipes;
    const VkConservativeRasterizationModeEXT mode = state->rs->conservative_mode;
    bool out_of_order_rast = false;
+   uint32_t sample_mask = 0xffff;
    int ps_iter_samples = 1;
 
-   ms->num_samples = info->ms.raster_samples;
+   ms->num_samples = state->ms ? state->ms->rasterization_samples : 1;
 
    /* From the Vulkan 1.1.129 spec, 26.7. Sample Shading:
     *
@@ -1071,7 +1076,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
       ps_iter_samples = ms->num_samples;
    } else {
-      ps_iter_samples = radv_pipeline_get_ps_iter_samples(info);
+      ps_iter_samples = radv_pipeline_get_ps_iter_samples(info, state);
    }
 
    if (state->rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
@@ -1126,7 +1131,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (ms->num_samples > 1) {
-      uint32_t z_samples = radv_pipeline_depth_samples(info);
+      uint32_t z_samples = radv_pipeline_depth_samples(info, state);
       unsigned log_samples = util_logbase2(ms->num_samples);
       unsigned log_z_samples = util_logbase2(z_samples);
       unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
@@ -1145,19 +1150,24 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
          pipeline->spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
    }
 
-   ms->pa_sc_aa_mask[0] = info->ms.sample_mask | ((uint32_t)info->ms.sample_mask << 16);
-   ms->pa_sc_aa_mask[1] = info->ms.sample_mask | ((uint32_t)info->ms.sample_mask << 16);
+   if (state->ms) {
+      sample_mask = state->ms->sample_mask & 0xffff;
+   }
+
+   ms->pa_sc_aa_mask[0] = sample_mask | ((uint32_t)sample_mask << 16);
+   ms->pa_sc_aa_mask[1] = sample_mask | ((uint32_t)sample_mask << 16);
 }
 
 static void
 gfx103_pipeline_init_vrs_state(struct radv_graphics_pipeline *pipeline,
-                               const struct radv_graphics_pipeline_info *info)
+                               const struct radv_graphics_pipeline_info *info,
+                               const struct vk_graphics_pipeline_state *state)
 {
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    struct radv_multisample_state *ms = &pipeline->ms;
    struct radv_vrs_state *vrs = &pipeline->vrs;
 
-   if (info->ms.sample_shading_enable ||
+   if ((state->ms && state->ms->sample_shading_enable) ||
        ps->info.ps.uses_sample_shading || ps->info.ps.reads_sample_mask_in) {
       /* Disable VRS and use the rates from PS_ITER_SAMPLES if:
        *
@@ -1347,7 +1357,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
    if (!state->dr->rectangle_count)
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
 
-   if (!info->ms.sample_locs_enable)
+   if (!state->ms || !state->ms->sample_locations_enable)
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
    if (!state->rs->line.stipple.enable)
@@ -1559,51 +1569,6 @@ radv_pipeline_init_vertex_input_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
-static struct radv_multisample_info
-radv_pipeline_init_multisample_info(struct radv_graphics_pipeline *pipeline,
-                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineMultisampleStateCreateInfo *ms = pCreateInfo->pMultisampleState;
-   struct radv_multisample_info info = {0};
-
-   if (radv_is_raster_enabled(pipeline, pCreateInfo)) {
-      info.raster_samples = ms->rasterizationSamples;
-      info.sample_shading_enable = ms->sampleShadingEnable;
-      info.min_sample_shading = ms->minSampleShading;
-      info.alpha_to_coverage_enable = ms->alphaToCoverageEnable;
-      if (ms->pSampleMask) {
-         info.sample_mask = ms->pSampleMask[0] & 0xffff;
-      } else {
-         info.sample_mask = 0xffff;
-      }
-
-      const VkPipelineSampleLocationsStateCreateInfoEXT *sample_location_info =
-         vk_find_struct_const(ms->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
-      if (sample_location_info) {
-         /* If sampleLocationsEnable is VK_FALSE, the default sample locations are used and the
-          * values specified in sampleLocationsInfo are ignored.
-          */
-         info.sample_locs_enable = sample_location_info->sampleLocationsEnable;
-         if (sample_location_info->sampleLocationsEnable) {
-            const VkSampleLocationsInfoEXT *pSampleLocationsInfo =
-               &sample_location_info->sampleLocationsInfo;
-            assert(pSampleLocationsInfo->sampleLocationsCount <= MAX_SAMPLE_LOCATIONS);
-
-            info.sample_locs_per_pixel = pSampleLocationsInfo->sampleLocationsPerPixel;
-            info.sample_locs_grid_size = pSampleLocationsInfo->sampleLocationGridSize;
-            for (uint32_t i = 0; i < pSampleLocationsInfo->sampleLocationsCount; i++) {
-               info.sample_locs[i] = pSampleLocationsInfo->pSampleLocations[i];
-            }
-            info.sample_locs_count = pSampleLocationsInfo->sampleLocationsCount;
-         }
-      }
-   } else {
-      info.raster_samples = VK_SAMPLE_COUNT_1_BIT;
-   }
-
-   return info;
-}
-
 static struct radv_rendering_info
 radv_pipeline_init_rendering_info(struct radv_graphics_pipeline *pipeline,
                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1690,7 +1655,6 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
       info.vi = radv_pipeline_init_vertex_input_info(pipeline, pCreateInfo);
    }
 
-   info.ms = radv_pipeline_init_multisample_info(pipeline, pCreateInfo);
    info.ri = radv_pipeline_init_rendering_info(pipeline, pCreateInfo);
    info.cb = radv_pipeline_init_color_blend_info(pipeline, pCreateInfo);
 
@@ -1855,11 +1819,15 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
-      dynamic->sample_location.per_pixel = info->ms.sample_locs_per_pixel;
-      dynamic->sample_location.grid_size = info->ms.sample_locs_grid_size;
-      dynamic->sample_location.count = info->ms.sample_locs_count;
-      typed_memcpy(&dynamic->sample_location.locations[0], info->ms.sample_locs,
-                   info->ms.sample_locs_count);
+      unsigned count = state->ms->sample_locations->per_pixel *
+                       state->ms->sample_locations->grid_size.width *
+                       state->ms->sample_locations->grid_size.height;
+
+      dynamic->sample_location.per_pixel = state->ms->sample_locations->per_pixel;
+      dynamic->sample_location.grid_size = state->ms->sample_locations->grid_size;
+      dynamic->sample_location.count = count;
+      typed_memcpy(&dynamic->sample_location.locations[0], state->ms->sample_locations->locations,
+                   count);
    }
 
    if (states & RADV_DYNAMIC_LINE_STIPPLE) {
@@ -1957,7 +1925,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 
    if (has_depth_attachment) {
       /* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
-      ds_state.db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(info->ms.raster_samples > 2);
+      ds_state.db_render_override2 |=
+         S_028010_DECOMPRESS_Z_ON_FLUSH(state->ms && state->ms->rasterization_samples > 2);
 
       if (pdevice->rad_info.gfx_level >= GFX10_3)
          ds_state.db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
@@ -1971,8 +1940,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       unsigned max_allowed_tiles_in_wave = 0;
-      unsigned num_samples = MAX2(radv_pipeline_color_samples(info),
-                                  radv_pipeline_depth_samples(info));
+      unsigned num_samples = MAX2(radv_pipeline_color_samples(info, state),
+                                  radv_pipeline_depth_samples(info, state));
 
       if (pdevice->rad_info.has_dedicated_vram) {
          if (num_samples == 8)
@@ -3070,9 +3039,9 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (state->ts)
       key.tcs.tess_input_vertices = state->ts->patch_control_points;
 
-   if (info->ms.raster_samples > 1) {
-      uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(info);
-      key.ps.num_samples = info->ms.raster_samples;
+   if (state->ms && state->ms->rasterization_samples > 1) {
+      uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(info, state);
+      key.ps.num_samples = state->ms->rasterization_samples;
       key.ps.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
    }
 
@@ -3083,8 +3052,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.ps.is_int8 = blend->col_format_is_int8;
       key.ps.is_int10 = blend->col_format_is_int10;
    }
-   if (device->physical_device->rad_info.gfx_level >= GFX11) {
-      key.ps.alpha_to_coverage_via_mrtz = info->ms.alpha_to_coverage_enable;
+   if (device->physical_device->rad_info.gfx_level >= GFX11 && state->ms) {
+      key.ps.alpha_to_coverage_via_mrtz = state->ms->alpha_to_coverage_enable;
    }
 
    if (state->ia) {
@@ -6705,7 +6674,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    struct radv_graphics_pipeline_info info = radv_pipeline_init_graphics_info(pipeline, pCreateInfo);
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo, &info);
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo, &info, &state);
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
@@ -6738,7 +6707,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_init_depth_stencil_state(pipeline, &info, &state);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
-      gfx103_pipeline_init_vrs_state(pipeline, &info);
+      gfx103_pipeline_init_vrs_state(pipeline, &info, &state);
 
    /* Ensure that some export memory is always allocated, for two reasons:
     *
@@ -6791,7 +6760,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.has_ngg_culling;
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
-   pipeline->uses_user_sample_locations = info.ms.sample_locs_enable;
+   pipeline->uses_user_sample_locations = state.ms && state.ms->sample_locations_enable;
    pipeline->rast_prim = vgt_gs_out_prim_type;
    pipeline->line_width = state.rs->line.width;
 
