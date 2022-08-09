@@ -1,1 +1,2 @@
 VK_EXT_descriptor_buffer on RADV
+VK_AMD_shader_early_and_late_fragment_tests on RADV

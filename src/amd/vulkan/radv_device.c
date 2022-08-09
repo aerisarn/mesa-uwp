@@ -656,6 +656,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .AMD_shader_ballot = true,
       .AMD_shader_core_properties = true,
       .AMD_shader_core_properties2 = true,
+      .AMD_shader_early_and_late_fragment_tests = true,
       /* TODO: Figure out if it's possible to implement it on gfx11. */
       .AMD_shader_explicit_vertex_parameter = device->rad_info.gfx_level < GFX11,
       .AMD_shader_fragment_mask = device->use_fmask,
@@ -1974,6 +1975,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->descriptorBufferCaptureReplay = false;
          features->descriptorBufferImageLayoutIgnored = true;
          features->descriptorBufferPushDescriptors = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EARLY_AND_LATE_FRAGMENT_TESTS_FEATURES_AMD: {
+         VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD *features =
+            (VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD *)ext;
+         features->shaderEarlyAndLateFragmentTests = true;
          break;
       }
       default:
