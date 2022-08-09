@@ -35,7 +35,7 @@ bo_allocate(struct virtio_bo *virtio_bo)
       };
       int ret;
 
-      ret = drmIoctl(bo->dev->fd, DRM_IOCTL_VIRTGPU_MAP, &req);
+      ret = virtio_ioctl(bo->dev->fd, VIRTGPU_MAP, &req);
       if (ret) {
          ERROR_MSG("alloc failed: %s", strerror(errno));
          return ret;
@@ -67,7 +67,7 @@ virtio_bo_cpu_prep_guest(struct fd_bo *bo)
    int ret;
 
    /* Side note, this ioctl is defined as IO_WR but should be IO_W: */
-   ret = drmIoctl(bo->dev->fd, DRM_IOCTL_VIRTGPU_WAIT, &args);
+   ret = virtio_ioctl(bo->dev->fd, VIRTGPU_WAIT, &args);
    if (ret && errno == EBUSY)
       return -EBUSY;
 
@@ -288,7 +288,7 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
    };
    int ret;
 
-   ret = drmCommandWriteRead(dev->fd, DRM_VIRTGPU_RESOURCE_INFO, &args, sizeof(args));
+   ret = virtio_ioctl(dev->fd, VIRTGPU_RESOURCE_INFO, &args);
    if (ret) {
       INFO_MSG("failed to get resource info: %s", strerror(errno));
       free(virtio_bo);
@@ -383,7 +383,7 @@ virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
    simple_mtx_lock(&virtio_dev->eb_lock);
    if (args.cmd)
       req.hdr.seqno = ++virtio_dev->next_seqno;
-   ret = drmIoctl(dev->fd, DRM_IOCTL_VIRTGPU_RESOURCE_CREATE_BLOB, &args);
+   ret = virtio_ioctl(dev->fd, VIRTGPU_RESOURCE_CREATE_BLOB, &args);
    simple_mtx_unlock(&virtio_dev->eb_lock);
    if (ret)
       goto fail;
