@@ -2061,12 +2061,12 @@ struct radv_color_blend_info {
    struct {
       uint8_t color_write_mask;
       bool blend_enable;
-      uint16_t color_blend_op;
-      uint16_t alpha_blend_op;
-      uint16_t src_color_blend_factor;
-      uint16_t dst_color_blend_factor;
-      uint16_t src_alpha_blend_factor;
-      uint16_t dst_alpha_blend_factor;
+      VkBlendOp color_blend_op;
+      VkBlendOp alpha_blend_op;
+      VkBlendFactor src_color_blend_factor;
+      VkBlendFactor dst_color_blend_factor;
+      VkBlendFactor src_alpha_blend_factor;
+      VkBlendFactor dst_alpha_blend_factor;
    } att[MAX_RTS];
 };
 
