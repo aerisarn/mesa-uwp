@@ -2055,7 +2055,7 @@ struct radv_rendering_info {
 struct radv_color_blend_info {
    bool logic_op_enable;
    uint8_t att_count;
-   uint16_t logic_op;
+   VkLogicOp logic_op;
    uint32_t color_write_enable;
    float blend_constants[4];
    struct {

@@ -701,7 +701,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    int i;
 
    if (info->cb.logic_op_enable)
-      cb_color_control |= S_028808_ROP3(info->cb.logic_op);
+      cb_color_control |= S_028808_ROP3(si_translate_blend_logic_op(info->cb.logic_op));
    else
       cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
 
@@ -1920,7 +1920,7 @@ radv_pipeline_init_color_blend_info(struct radv_graphics_pipeline *pipeline,
 
       info.logic_op_enable = cb->logicOpEnable;
       if (info.logic_op_enable && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP))
-         info.logic_op = si_translate_blend_logic_op(cb->logicOp);
+         info.logic_op = cb->logicOp;
 
       const VkPipelineColorWriteCreateInfoEXT *color_write_info =
          vk_find_struct_const(cb->pNext, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
@@ -2173,7 +2173,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (radv_pipeline_has_color_attachments(&info->ri) && states & RADV_DYNAMIC_LOGIC_OP) {
       if (info->cb.logic_op_enable) {
-         dynamic->logic_op = info->cb.logic_op;
+         dynamic->logic_op = si_translate_blend_logic_op(info->cb.logic_op);
       } else {
          dynamic->logic_op = V_028808_ROP3_COPY;
       }
