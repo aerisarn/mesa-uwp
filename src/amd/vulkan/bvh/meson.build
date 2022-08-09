@@ -29,9 +29,6 @@ bvh_include_dir = meson.source_root() + '/src/amd/vulkan/bvh'
 bvh_includes = files(
   'build_helpers.h',
   'bvh.h',
-  'internal.h',
-  'leaf.h',
-  'morton.h'
 )
 
 bvh_spv = []
