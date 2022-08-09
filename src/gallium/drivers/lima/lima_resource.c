@@ -934,9 +934,7 @@ lima_resource_screen_init(struct lima_screen *screen)
    screen->base.resource_get_param = lima_resource_get_param;
    screen->base.set_damage_region = lima_resource_set_damage_region;
    screen->base.transfer_helper = u_transfer_helper_create(&transfer_vtbl,
-                                                           false, false,
-                                                           false, true,
-                                                           false);
+                                                           U_TRANSFER_HELPER_MSAA_MAP);
 }
 
 void

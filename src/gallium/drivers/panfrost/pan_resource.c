@@ -1461,8 +1461,9 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
         pscreen->resource_get_handle = panfrost_resource_get_handle;
         pscreen->resource_get_param = panfrost_resource_get_param;
         pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
-                                        true, false,
-                                        fake_rgtc, true, false);
+                                        U_TRANSFER_HELPER_SEPARATE_Z32S8 |
+                                        U_TRANSFER_HELPER_MSAA_MAP |
+                                        (fake_rgtc ? U_TRANSFER_HELPER_FAKE_RGTC : 0));
 }
 void
 panfrost_resource_screen_destroy(struct pipe_screen *pscreen)

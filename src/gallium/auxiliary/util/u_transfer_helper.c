@@ -553,20 +553,16 @@ u_transfer_helper_transfer_unmap(struct pipe_context *pctx,
 
 struct u_transfer_helper *
 u_transfer_helper_create(const struct u_transfer_vtbl *vtbl,
-                         bool separate_z32s8,
-                         bool separate_stencil,
-                         bool fake_rgtc,
-                         bool msaa_map,
-                         bool z24_in_z32f)
+                         enum u_transfer_helper_flags flags)
 {
    struct u_transfer_helper *helper = calloc(1, sizeof(*helper));
 
    helper->vtbl = vtbl;
-   helper->separate_z32s8 = separate_z32s8;
-   helper->separate_stencil = separate_stencil;
-   helper->fake_rgtc = fake_rgtc;
-   helper->msaa_map = msaa_map;
-   helper->z24_in_z32f = z24_in_z32f;
+   helper->separate_z32s8 = flags & U_TRANSFER_HELPER_SEPARATE_Z32S8;
+   helper->separate_stencil = flags & U_TRANSFER_HELPER_SEPARATE_STENCIL;
+   helper->fake_rgtc = flags & U_TRANSFER_HELPER_FAKE_RGTC;
+   helper->msaa_map = flags & U_TRANSFER_HELPER_MSAA_MAP;
+   helper->z24_in_z32f = flags & U_TRANSFER_HELPER_Z24_IN_Z32F;
 
    return helper;
 }

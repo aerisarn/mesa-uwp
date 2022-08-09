@@ -2007,9 +2007,15 @@ crocus_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
    pscreen->memobj_create_from_handle = crocus_memobj_create_from_handle;
    pscreen->memobj_destroy = crocus_memobj_destroy;
+
+   enum u_transfer_helper_flags transfer_flags = U_TRANSFER_HELPER_MSAA_MAP;
+   if (screen->devinfo.ver >= 6) {
+      transfer_flags |= U_TRANSFER_HELPER_SEPARATE_Z32S8 |
+               U_TRANSFER_HELPER_SEPARATE_STENCIL;
+   }
+
    pscreen->transfer_helper =
-      u_transfer_helper_create(&transfer_vtbl, screen->devinfo.ver >= 6,
-                               screen->devinfo.ver >= 6, false, true, false);
+      u_transfer_helper_create(&transfer_vtbl, transfer_flags);
 }
 
 void
