@@ -1240,13 +1240,6 @@ zink_is_format_supported(struct pipe_screen *pscreen,
          return false;
    }
 
-   if (util_format_is_compressed(format)) {
-      const struct util_format_description *desc = util_format_description(format);
-      if (desc->layout == UTIL_FORMAT_LAYOUT_BPTC &&
-          !screen->info.feats.features.textureCompressionBC)
-         return false;
-   }
-
    return true;
 }
 
