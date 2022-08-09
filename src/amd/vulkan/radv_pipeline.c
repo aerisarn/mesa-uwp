@@ -1559,21 +1559,6 @@ radv_pipeline_init_vertex_input_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
-static struct radv_input_assembly_info
-radv_pipeline_init_input_assembly_info(struct radv_graphics_pipeline *pipeline,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineInputAssemblyStateCreateInfo *ia = pCreateInfo->pInputAssemblyState;
-   struct radv_input_assembly_info info = {0};
-
-   info.primitive_topology = ia->topology;
-
-   if (!(pipeline->dynamic_states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE))
-      info.primitive_restart_enable = !!ia->primitiveRestartEnable;
-
-   return info;
-}
-
 static struct radv_multisample_info
 radv_pipeline_init_multisample_info(struct radv_graphics_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1703,7 +1688,6 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
    /* Vertex input interface structs have to be ignored if the pipeline includes a mesh shader. */
    if (!(pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV)) {
       info.vi = radv_pipeline_init_vertex_input_info(pipeline, pCreateInfo);
-      info.ia = radv_pipeline_init_input_assembly_info(pipeline, pCreateInfo);
    }
 
    info.ms = radv_pipeline_init_multisample_info(pipeline, pCreateInfo);
@@ -1793,7 +1777,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-      dynamic->primitive_topology = si_translate_prim(info->ia.primitive_topology);
+      dynamic->primitive_topology = si_translate_prim(state->ia->primitive_topology);
    }
 
    /* If there is no depthstencil attachment, then don't read
@@ -1894,7 +1878,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
-      dynamic->primitive_restart_enable = info->ia.primitive_restart_enable;
+      dynamic->primitive_restart_enable = state->ia->primitive_restart_enable;
    }
 
    if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
@@ -3103,7 +3087,9 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.ps.alpha_to_coverage_via_mrtz = info->ms.alpha_to_coverage_enable;
    }
 
-   key.vs.topology = si_translate_prim(info->ia.primitive_topology);
+   if (state->ia) {
+      key.vs.topology = si_translate_prim(state->ia->primitive_topology);
+   }
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
       key.vs.provoking_vtx_last =
@@ -6604,7 +6590,7 @@ radv_pipeline_init_shader_stages_state(struct radv_graphics_pipeline *pipeline)
 
 static uint32_t
 radv_pipeline_init_vgt_gs_out(struct radv_graphics_pipeline *pipeline,
-                              const struct radv_graphics_pipeline_info *info)
+                              const struct vk_graphics_pipeline_state *state)
 {
    uint32_t gs_out;
 
@@ -6622,7 +6608,7 @@ radv_pipeline_init_vgt_gs_out(struct radv_graphics_pipeline *pipeline,
       gs_out =
          si_conv_gl_prim_to_gs_out(pipeline->base.shaders[MESA_SHADER_MESH]->info.ms.output_prim);
    } else {
-      gs_out = si_conv_prim_to_gs_out(si_translate_prim(info->ia.primitive_topology));
+      gs_out = si_conv_prim_to_gs_out(si_translate_prim(state->ia->primitive_topology));
    }
 
    return gs_out;
@@ -6735,7 +6721,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    pipeline->spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
 
-   uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &info);
+   uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &state);
 
    radv_pipeline_init_multisample_state(pipeline, &blend, &info, &state, vgt_gs_out_prim_type);
 

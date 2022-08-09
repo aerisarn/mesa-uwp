@@ -1962,11 +1962,6 @@ struct radv_vertex_input_info {
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
 };
 
-struct radv_input_assembly_info {
-   VkPrimitiveTopology primitive_topology;
-   bool primitive_restart_enable;
-};
-
 struct radv_multisample_info {
    bool sample_shading_enable;
    bool alpha_to_coverage_enable;
@@ -2008,7 +2003,6 @@ struct radv_color_blend_info {
 
 struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
-   struct radv_input_assembly_info ia;
 
    struct radv_multisample_info ms;
    struct radv_rendering_info ri;
