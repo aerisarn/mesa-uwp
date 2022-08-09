@@ -38,11 +38,14 @@ struct u_transfer_helper {
    bool fake_rgtc;
    bool msaa_map;
    bool z24_in_z32f; /* the z24 values are stored in a z32 - translate them. */
+   bool interleave_in_place;
 };
 
 static inline bool need_interleave_path(struct u_transfer_helper *helper,
                                         enum pipe_format format)
 {
+   if (!helper->interleave_in_place)
+      return false;
    if (helper->separate_stencil && util_format_is_depth_and_stencil(format))
       return true;
    if (helper->separate_z32s8 && format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
@@ -103,8 +106,9 @@ u_transfer_helper_resource_create(struct pipe_screen *pscreen,
    enum pipe_format format = templ->format;
    struct pipe_resource *prsc;
 
-   if ((helper->separate_stencil && util_format_is_depth_and_stencil(format)) ||
-       (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT && helper->separate_z32s8)) {
+   if (((helper->separate_stencil && util_format_is_depth_and_stencil(format)) ||
+        (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT && helper->separate_z32s8)) &&
+       !helper->interleave_in_place) {
       struct pipe_resource t = *templ;
       struct pipe_resource *stencil;
 
@@ -151,7 +155,7 @@ u_transfer_helper_resource_destroy(struct pipe_screen *pscreen,
 {
    struct u_transfer_helper *helper = pscreen->transfer_helper;
 
-   if (helper->vtbl->get_stencil) {
+   if (helper->vtbl->get_stencil && !helper->interleave_in_place) {
       struct pipe_resource *stencil = helper->vtbl->get_stencil(prsc);
 
       pipe_resource_reference(&stencil, NULL);
@@ -253,7 +257,9 @@ u_transfer_helper_transfer_map(struct pipe_context *pctx,
    unsigned width = box->width;
    unsigned height = box->height;
 
-   if (!handle_transfer(prsc))
+   if (need_interleave_path(helper, format))
+      return u_transfer_helper_deinterleave_transfer_map(pctx, prsc, level, usage, box, pptrans);
+   else if (!handle_transfer(prsc))
       return helper->vtbl->transfer_map(pctx, prsc, level, usage, box, pptrans);
 
    if (helper->msaa_map && (prsc->nr_samples > 1))
@@ -519,6 +525,11 @@ u_transfer_helper_transfer_unmap(struct pipe_context *pctx,
 {
    struct u_transfer_helper *helper = pctx->screen->transfer_helper;
 
+   if (need_interleave_path(helper, ptrans->resource->format)) {
+      u_transfer_helper_deinterleave_transfer_unmap(pctx, ptrans);
+      return;
+   }
+
    if (handle_transfer(ptrans->resource)) {
       struct u_transfer *trans = u_transfer(ptrans);
 
@@ -563,6 +574,7 @@ u_transfer_helper_create(const struct u_transfer_vtbl *vtbl,
    helper->fake_rgtc = flags & U_TRANSFER_HELPER_FAKE_RGTC;
    helper->msaa_map = flags & U_TRANSFER_HELPER_MSAA_MAP;
    helper->z24_in_z32f = flags & U_TRANSFER_HELPER_Z24_IN_Z32F;
+   helper->interleave_in_place = flags & U_TRANSFER_HELPER_INTERLEAVE_IN_PLACE;
 
    return helper;
 }
