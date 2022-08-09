@@ -86,6 +86,7 @@ zink_is_swapchain(const struct zink_resource *res)
 
 #include "zink_batch.h"
 #include "zink_bo.h"
+#include "zink_kopper.h"
 
 static inline bool
 zink_resource_usage_is_unflushed(const struct zink_resource *res)
@@ -140,6 +141,27 @@ static inline bool
 zink_resource_object_usage_unset(struct zink_resource_object *obj, struct zink_batch_state *bs)
 {
    return zink_bo_usage_unset(obj->bo, bs);
+}
+
+static inline void
+zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write)
+{
+   if (res->obj->dt) {
+      VkSemaphore acquire = zink_kopper_acquire_submit(zink_screen(batch->state->ctx->base.screen), res);
+      if (acquire)
+         util_dynarray_append(&batch->state->acquires, VkSemaphore, acquire);
+   }
+   if (write && !res->obj->is_buffer) {
+      if (!res->valid && res->fb_binds)
+         batch->state->ctx->rp_loadop_changed = true;
+      res->valid = true;
+   }
+   zink_resource_usage_set(res, batch->state, write);
+   /* multiple array entries are fine */
+   if (!res->obj->coherent && res->obj->persistent_maps)
+      util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
+
+   batch->has_work = true;
 }
 
 #ifdef __cplusplus

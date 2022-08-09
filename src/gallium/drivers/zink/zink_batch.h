@@ -69,9 +69,6 @@ void
 zink_batch_add_wait_semaphore(struct zink_batch *batch, VkSemaphore sem);
 
 void
-zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write);
-
-void
 zink_batch_reference_resource_rw(struct zink_batch *batch,
                                  struct zink_resource *res,
                                  bool write);

@@ -521,27 +521,6 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 }
 
 void
-zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write)
-{
-   if (res->obj->dt) {
-      VkSemaphore acquire = zink_kopper_acquire_submit(zink_screen(batch->state->ctx->base.screen), res);
-      if (acquire)
-         util_dynarray_append(&batch->state->acquires, VkSemaphore, acquire);
-   }
-   if (write && !res->obj->is_buffer) {
-      if (!res->valid && res->fb_binds)
-         batch->state->ctx->rp_loadop_changed = true;
-      res->valid = true;
-   }
-   zink_resource_usage_set(res, batch->state, write);
-   /* multiple array entries are fine */
-   if (!res->obj->coherent && res->obj->persistent_maps)
-      util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
-
-   batch->has_work = true;
-}
-
-void
 zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
    /* if the resource already has usage of any sort set for this batch, */
