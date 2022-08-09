@@ -84,9 +84,6 @@ zink_is_swapchain(const struct zink_resource *res)
    return res->swapchain;
 }
 
-#ifdef __cplusplus
-}
-#else
 #include "zink_batch.h"
 #include "zink_bo.h"
 
@@ -145,6 +142,8 @@ zink_resource_object_usage_unset(struct zink_resource_object *obj, struct zink_b
    return zink_bo_usage_unset(obj->bo, bs);
 }
 
+#ifdef __cplusplus
+}
 #endif
 
 #endif
