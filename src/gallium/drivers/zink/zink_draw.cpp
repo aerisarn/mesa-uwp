@@ -164,7 +164,7 @@ zink_bind_vertex_state(struct zink_batch *batch, struct zink_context *ctx,
    assert(hw_state);
 
    struct zink_resource *res = zink_resource(vstate->input.vbuffer.buffer.resource);
-   zink_batch_resource_usage_set(&ctx->batch, res, false);
+   zink_batch_resource_usage_set(&ctx->batch, res, false, true);
    VkDeviceSize offset = vstate->input.vbuffer.buffer_offset;
    VKCTX(CmdBindVertexBuffers)(batch->state->cmdbuf, 0,
                                hw_state->num_bindings,

@@ -144,22 +144,25 @@ zink_resource_object_usage_unset(struct zink_resource_object *obj, struct zink_b
 }
 
 static inline void
-zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write)
+zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *res, bool write, bool is_buffer)
 {
-   if (res->obj->dt) {
-      VkSemaphore acquire = zink_kopper_acquire_submit(zink_screen(batch->state->ctx->base.screen), res);
-      if (acquire)
-         util_dynarray_append(&batch->state->acquires, VkSemaphore, acquire);
-   }
-   if (write && !res->obj->is_buffer) {
-      if (!res->valid && res->fb_binds)
-         batch->state->ctx->rp_loadop_changed = true;
-      res->valid = true;
+   if (is_buffer) {
+      /* multiple array entries are fine */
+      if (!res->obj->coherent && res->obj->persistent_maps)
+         util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
+   } else {
+      if (res->obj->dt) {
+         VkSemaphore acquire = zink_kopper_acquire_submit(zink_screen(batch->state->ctx->base.screen), res);
+         if (acquire)
+            util_dynarray_append(&batch->state->acquires, VkSemaphore, acquire);
+      }
+      if (write && !res->obj->is_buffer) {
+         if (!res->valid && res->fb_binds)
+            batch->state->ctx->rp_loadop_changed = true;
+         res->valid = true;
+      }
    }
    zink_resource_usage_set(res, batch->state, write);
-   /* multiple array entries are fine */
-   if (!res->obj->coherent && res->obj->persistent_maps)
-      util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
 
    batch->has_work = true;
 }
