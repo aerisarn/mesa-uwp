@@ -1566,34 +1566,6 @@ radv_pipeline_init_input_assembly_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
-static struct radv_viewport_info
-radv_pipeline_init_viewport_info(struct radv_graphics_pipeline *pipeline,
-                                 const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineViewportStateCreateInfo *vp = pCreateInfo->pViewportState;
-   struct radv_viewport_info info = {0};
-
-   if (radv_is_raster_enabled(pipeline, pCreateInfo)) {
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_VIEWPORT)) {
-         typed_memcpy(info.viewports, vp->pViewports, vp->viewportCount);
-      }
-      info.viewport_count = vp->viewportCount;
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_SCISSOR)) {
-         typed_memcpy(info.scissors, vp->pScissors, vp->scissorCount);
-      }
-      info.scissor_count = vp->scissorCount;
-
-      const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
-         vk_find_struct_const(vp->pNext, PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
-      if (depth_clip_control) {
-         info.negative_one_to_one = !!depth_clip_control->negativeOneToOne;
-      }
-   }
-
-   return info;
-}
-
 static struct radv_rasterization_info
 radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1902,7 +1874,6 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
       info.ia = radv_pipeline_init_input_assembly_info(pipeline, pCreateInfo);
    }
 
-   info.vp = radv_pipeline_init_viewport_info(pipeline, pCreateInfo);
    info.rs = radv_pipeline_init_rasterization_info(pipeline, pCreateInfo);
    info.dr = radv_pipeline_init_discard_rectangle_info(pipeline, pCreateInfo);
 
@@ -1937,7 +1908,8 @@ radv_pipeline_init_input_assembly_state(struct radv_graphics_pipeline *pipeline,
 
 static void
 radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
-                                 const struct radv_graphics_pipeline_info *info)
+                                 const struct radv_graphics_pipeline_info *info,
+                                 const struct vk_graphics_pipeline_state *state)
 {
    uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, info);
    uint64_t states = needed_states;
@@ -1950,9 +1922,9 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
    if (needed_states & RADV_DYNAMIC_VIEWPORT) {
-      dynamic->viewport.count = info->vp.viewport_count;
+      dynamic->viewport.count = state->vp->viewport_count;
       if (states & RADV_DYNAMIC_VIEWPORT) {
-         typed_memcpy(dynamic->viewport.viewports, info->vp.viewports, info->vp.viewport_count);
+         typed_memcpy(dynamic->viewport.viewports, state->vp->viewports, state->vp->viewport_count);
          for (unsigned i = 0; i < dynamic->viewport.count; i++)
             radv_get_viewport_xform(&dynamic->viewport.viewports[i],
                                     dynamic->viewport.xform[i].scale, dynamic->viewport.xform[i].translate);
@@ -1960,9 +1932,9 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (needed_states & RADV_DYNAMIC_SCISSOR) {
-      dynamic->scissor.count = info->vp.scissor_count;
+      dynamic->scissor.count = state->vp->scissor_count;
       if (states & RADV_DYNAMIC_SCISSOR) {
-         typed_memcpy(dynamic->scissor.scissors, info->vp.scissors, info->vp.scissor_count);
+         typed_memcpy(dynamic->scissor.scissors, state->vp->scissors, state->vp->scissor_count);
       }
    }
 
@@ -6937,9 +6909,10 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(pipeline, &info);
-   radv_pipeline_init_dynamic_state(pipeline, &info);
+   radv_pipeline_init_dynamic_state(pipeline, &info, &state);
 
-   pipeline->negative_one_to_one = info.vp.negative_one_to_one;
+   if (state.vp)
+      pipeline->negative_one_to_one = state.vp->negative_one_to_one;
 
    radv_pipeline_init_raster_state(pipeline, &info);
 

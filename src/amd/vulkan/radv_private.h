@@ -1967,14 +1967,6 @@ struct radv_input_assembly_info {
    bool primitive_restart_enable;
 };
 
-struct radv_viewport_info {
-   bool negative_one_to_one;
-   uint8_t viewport_count;
-   uint8_t scissor_count;
-   VkRect2D scissors[MAX_SCISSORS];
-   VkViewport viewports[MAX_VIEWPORTS];
-};
-
 struct radv_rasterization_info {
    bool discard_enable;
    VkFrontFace front_face;
@@ -2074,7 +2066,6 @@ struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
    struct radv_input_assembly_info ia;
 
-   struct radv_viewport_info vp;
    struct radv_rasterization_info rs;
    struct radv_discard_rectangle_info dr;
 
