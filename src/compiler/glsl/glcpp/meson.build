@@ -86,7 +86,7 @@ glcpp = executable(
 #
 # FIXME: these fail on windows due to whitespace differences
 if with_any_opengl and with_tests and meson.has_exe_wrapper() and \
-   host_machine.system() != 'windows'
+   host_machine.system() != 'windows' and with_glcpp_tests
   modes = ['unix', 'windows', 'oldmac', 'bizarro']
 
   foreach m : modes
