@@ -36,21 +36,20 @@
 static inline enum zink_alloc_flag
 zink_alloc_flags_from_heap(enum zink_heap heap)
 {
-   enum zink_alloc_flag flags = 0;
    switch (heap) {
    case ZINK_HEAP_DEVICE_LOCAL_SPARSE:
-      flags |= ZINK_ALLOC_SPARSE;
+      return ZINK_ALLOC_SPARSE;
       break;
    default:
       break;
    }
-   return flags;
+   return (enum zink_alloc_flag)0;
 }
 
 static inline VkMemoryPropertyFlags
 vk_domain_from_heap(enum zink_heap heap)
 {
-   VkMemoryPropertyFlags domains = 0;
+   VkMemoryPropertyFlags domains = (VkMemoryPropertyFlags)0;
 
    switch (heap) {
    case ZINK_HEAP_DEVICE_LOCAL:
