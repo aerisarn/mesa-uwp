@@ -38,10 +38,6 @@ extern "C" {
 #endif
 
 
-/* not real api don't use */
-bool
-batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr);
-
 void
 zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs);
 

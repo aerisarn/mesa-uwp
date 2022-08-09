@@ -533,7 +533,7 @@ zink_batch_add_wait_semaphore(struct zink_batch *batch, VkSemaphore sem)
    util_dynarray_append(&batch->state->acquires, VkSemaphore, sem);
 }
 
-bool
+static bool
 batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr)
 {
    bool found = false;
