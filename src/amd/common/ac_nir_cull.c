@@ -137,7 +137,7 @@ cull_small_primitive(nir_builder *b, nir_ssa_def *bbox_min[3], nir_ssa_def *bbox
    return nir_if_phi(b, prim_is_small, prim_is_small_else);
 }
 
-void
+nir_ssa_def *
 ac_nir_cull_triangle(nir_builder *b,
                      nir_ssa_def *initially_accepted,
                      nir_ssa_def *pos[3][4],
@@ -151,6 +151,8 @@ ac_nir_cull_triangle(nir_builder *b,
    accepted = nir_iand(b, accepted, nir_inot(b, w_info.all_w_negative));
    accepted = nir_iand(b, accepted, nir_inot(b, cull_face(b, pos, &w_info)));
 
+   nir_ssa_def *bbox_accepted = NULL;
+
    nir_if *if_accepted = nir_push_if(b, accepted);
    {
       nir_ssa_def *bbox_min[3] = {0}, *bbox_max[3] = {0};
@@ -159,12 +161,18 @@ ac_nir_cull_triangle(nir_builder *b,
       nir_ssa_def *prim_outside_view = cull_frustrum(b, bbox_min, bbox_max);
       nir_ssa_def *prim_invisible = cull_small_primitive(b, bbox_min, bbox_max, prim_outside_view);
 
-      accepted = nir_ior(b, nir_inot(b, prim_invisible), w_info.any_w_negative);
-      nir_if *if_still_accepted = nir_push_if(b, accepted);
-      {
-         accept_func(b, state);
+      bbox_accepted = nir_ior(b, nir_inot(b, prim_invisible), w_info.any_w_negative);
+
+      /* for caller which need to react when primitive is accepted */
+      if (accept_func) {
+         nir_if *if_still_accepted = nir_push_if(b, bbox_accepted);
+         {
+            accept_func(b, state);
+         }
+         nir_pop_if(b, if_still_accepted);
       }
-      nir_pop_if(b, if_still_accepted);
    }
    nir_pop_if(b, if_accepted);
+
+   return nir_if_phi(b, bbox_accepted, accepted);
 }

@@ -161,7 +161,7 @@ ac_nir_lower_mesh_inputs_to_mem(nir_shader *shader,
                                 unsigned task_payload_entry_bytes,
                                 unsigned task_num_entries);
 
-void
+nir_ssa_def *
 ac_nir_cull_triangle(nir_builder *b,
                      nir_ssa_def *initially_accepted,
                      nir_ssa_def *pos[3][4],
