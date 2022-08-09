@@ -118,12 +118,12 @@ gather_shader_module_info(struct zink_context *ctx, struct zink_screen *screen,
 ALWAYS_INLINE static struct zink_shader_module *
 create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
                                struct zink_shader *zs, struct zink_gfx_program *prog,
+                               gl_shader_stage stage,
                                struct zink_gfx_pipeline_state *state,
                                unsigned inline_size, unsigned nonseamless_size,
                                bool has_inline, //is inlining enabled?
                                bool has_nonseamless) //is nonseamless ext present?
 {
-   gl_shader_stage stage = zs->nir->info.stage;
    VkShaderModule mod;
    struct zink_shader_module *zm;
    struct zink_shader_key *key = &state->shader_keys.key[stage];
@@ -174,12 +174,12 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
 ALWAYS_INLINE static struct zink_shader_module *
 get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
                             struct zink_shader *zs, struct zink_gfx_program *prog,
+                            gl_shader_stage stage,
                             struct zink_gfx_pipeline_state *state,
                             unsigned inline_size, unsigned nonseamless_size,
                             bool has_inline, //is inlining enabled?
                             bool has_nonseamless) //is nonseamless ext present?
 {
-   gl_shader_stage stage = zs->nir->info.stage;
    struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->is_generated;
@@ -245,10 +245,10 @@ update_gfx_shader_modules(struct zink_context *ctx,
 
       unsigned inline_size = 0, nonseamless_size = 0;
       gather_shader_module_info(ctx, screen, prog->shaders[i], prog, state, has_inline, has_nonseamless, &inline_size, &nonseamless_size);
-      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
+      struct zink_shader_module *zm = get_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                                                   inline_size, nonseamless_size, has_inline, has_nonseamless);
       if (!zm)
-         zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
+         zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                              inline_size, nonseamless_size, has_inline, has_nonseamless);
       state->modules[i] = zm->shader;
       if (prog->modules[i] == zm)
@@ -286,7 +286,7 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
       gather_shader_module_info(ctx, screen, prog->shaders[i], prog, state,
                                 screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map,
                                 &inline_size, &nonseamless_size);
-      struct zink_shader_module *zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, state,
+      struct zink_shader_module *zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                                                      inline_size, nonseamless_size,
                                                                      screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
       state->modules[i] = zm->shader;
