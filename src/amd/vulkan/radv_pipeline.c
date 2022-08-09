@@ -876,25 +876,25 @@ radv_pipeline_get_ps_iter_samples(const struct radv_graphics_pipeline_info *info
 }
 
 static bool
-radv_is_depth_write_enabled(const struct radv_depth_stencil_info *ds_info)
+radv_is_depth_write_enabled(const struct vk_depth_stencil_state *ds)
 {
-   return ds_info->depth_test_enable && ds_info->depth_write_enable &&
-          ds_info->depth_compare_op != VK_COMPARE_OP_NEVER;
+   return ds->depth.test_enable && ds->depth.write_enable &&
+          ds->depth.compare_op != VK_COMPARE_OP_NEVER;
 }
 
 static bool
-radv_writes_stencil(const struct radv_stencil_op_info *info)
+radv_writes_stencil(const struct vk_stencil_test_face_state *face)
 {
-   return info->write_mask &&
-          (info->fail_op != VK_STENCIL_OP_KEEP || info->pass_op != VK_STENCIL_OP_KEEP ||
-           info->depth_fail_op != VK_STENCIL_OP_KEEP);
+   return face->write_mask &&
+          (face->op.fail != VK_STENCIL_OP_KEEP || face->op.pass != VK_STENCIL_OP_KEEP ||
+           face->op.depth_fail != VK_STENCIL_OP_KEEP);
 }
 
 static bool
-radv_is_stencil_write_enabled(const struct radv_depth_stencil_info *ds_info)
+radv_is_stencil_write_enabled(const struct vk_depth_stencil_state *ds)
 {
-   return ds_info->stencil_test_enable &&
-          (radv_writes_stencil(&ds_info->front) || radv_writes_stencil(&ds_info->back));
+   return ds->stencil.test_enable &&
+          (radv_writes_stencil(&ds->stencil.front) || radv_writes_stencil(&ds->stencil.back));
 }
 
 static bool
@@ -909,20 +909,20 @@ radv_order_invariant_stencil_op(VkStencilOp op)
 }
 
 static bool
-radv_order_invariant_stencil_state(const struct radv_stencil_op_info *info)
+radv_order_invariant_stencil_state(const struct vk_stencil_test_face_state *face)
 {
    /* Compute whether, assuming Z writes are disabled, this stencil state
     * is order invariant in the sense that the set of passing fragments as
     * well as the final stencil buffer result does not depend on the order
     * of fragments.
     */
-   return !info->write_mask ||
+   return !face->write_mask ||
           /* The following assumes that Z writes are disabled. */
-          (info->compare_op == VK_COMPARE_OP_ALWAYS &&
-           radv_order_invariant_stencil_op(info->pass_op) &&
-           radv_order_invariant_stencil_op(info->depth_fail_op)) ||
-          (info->compare_op == VK_COMPARE_OP_NEVER &&
-           radv_order_invariant_stencil_op(info->fail_op));
+          (face->op.compare == VK_COMPARE_OP_ALWAYS &&
+           radv_order_invariant_stencil_op(face->op.pass) &&
+           radv_order_invariant_stencil_op(face->op.depth_fail)) ||
+          (face->op.compare == VK_COMPARE_OP_NEVER &&
+           radv_order_invariant_stencil_op(face->op.fail));
 }
 
 static bool
@@ -939,7 +939,8 @@ radv_pipeline_has_dynamic_ds_states(const struct radv_graphics_pipeline *pipelin
 static bool
 radv_pipeline_out_of_order_rast(struct radv_graphics_pipeline *pipeline,
                                 const struct radv_blend_state *blend,
-                                const struct radv_graphics_pipeline_info *info)
+                                const struct radv_graphics_pipeline_info *info,
+                                const struct vk_graphics_pipeline_state *state)
 {
    unsigned colormask = blend->cb_target_enabled_4bit;
 
@@ -960,54 +961,56 @@ radv_pipeline_out_of_order_rast(struct radv_graphics_pipeline *pipeline,
    /* Default depth/stencil invariance when no attachment is bound. */
    struct radv_dsa_order_invariance dsa_order_invariant = {.zs = true, .pass_set = true};
 
-   bool has_stencil = info->ri.stencil_att_format != VK_FORMAT_UNDEFINED;
-   struct radv_dsa_order_invariance order_invariance[2];
-   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+   if (state->ds) {
+      bool has_stencil = info->ri.stencil_att_format != VK_FORMAT_UNDEFINED;
+      struct radv_dsa_order_invariance order_invariance[2];
+      struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
 
-   /* Compute depth/stencil order invariance in order to know if
-    * it's safe to enable out-of-order.
-    */
-   bool zfunc_is_ordered = info->ds.depth_compare_op == VK_COMPARE_OP_NEVER ||
-                           info->ds.depth_compare_op == VK_COMPARE_OP_LESS ||
-                           info->ds.depth_compare_op == VK_COMPARE_OP_LESS_OR_EQUAL ||
-                           info->ds.depth_compare_op == VK_COMPARE_OP_GREATER ||
-                           info->ds.depth_compare_op == VK_COMPARE_OP_GREATER_OR_EQUAL;
-   bool depth_write_enabled = radv_is_depth_write_enabled(&info->ds);
-   bool stencil_write_enabled = radv_is_stencil_write_enabled(&info->ds);
-   bool ds_write_enabled = depth_write_enabled || stencil_write_enabled;
+      /* Compute depth/stencil order invariance in order to know if
+       * it's safe to enable out-of-order.
+       */
+      bool zfunc_is_ordered = state->ds->depth.compare_op == VK_COMPARE_OP_NEVER ||
+                              state->ds->depth.compare_op == VK_COMPARE_OP_LESS ||
+                              state->ds->depth.compare_op == VK_COMPARE_OP_LESS_OR_EQUAL ||
+                              state->ds->depth.compare_op == VK_COMPARE_OP_GREATER ||
+                              state->ds->depth.compare_op == VK_COMPARE_OP_GREATER_OR_EQUAL;
+      bool depth_write_enabled = radv_is_depth_write_enabled(state->ds);
+      bool stencil_write_enabled = radv_is_stencil_write_enabled(state->ds);
+      bool ds_write_enabled = depth_write_enabled || stencil_write_enabled;
 
-   bool nozwrite_and_order_invariant_stencil =
-      !ds_write_enabled ||
-      (!depth_write_enabled && radv_order_invariant_stencil_state(&info->ds.front) &&
-       radv_order_invariant_stencil_state(&info->ds.back));
+      bool nozwrite_and_order_invariant_stencil =
+         !ds_write_enabled ||
+         (!depth_write_enabled && radv_order_invariant_stencil_state(&state->ds->stencil.front) &&
+          radv_order_invariant_stencil_state(&state->ds->stencil.back));
 
-   order_invariance[1].zs = nozwrite_and_order_invariant_stencil ||
-                            (!stencil_write_enabled && zfunc_is_ordered);
-   order_invariance[0].zs = !depth_write_enabled || zfunc_is_ordered;
+      order_invariance[1].zs = nozwrite_and_order_invariant_stencil ||
+                               (!stencil_write_enabled && zfunc_is_ordered);
+      order_invariance[0].zs = !depth_write_enabled || zfunc_is_ordered;
 
-   order_invariance[1].pass_set =
-      nozwrite_and_order_invariant_stencil ||
-      (!stencil_write_enabled &&
-       (info->ds.depth_compare_op == VK_COMPARE_OP_ALWAYS ||
-        info->ds.depth_compare_op == VK_COMPARE_OP_NEVER));
-   order_invariance[0].pass_set =
-      !depth_write_enabled ||
-      (info->ds.depth_compare_op == VK_COMPARE_OP_ALWAYS ||
-       info->ds.depth_compare_op == VK_COMPARE_OP_NEVER);
+      order_invariance[1].pass_set =
+         nozwrite_and_order_invariant_stencil ||
+         (!stencil_write_enabled &&
+          (state->ds->depth.compare_op == VK_COMPARE_OP_ALWAYS ||
+           state->ds->depth.compare_op == VK_COMPARE_OP_NEVER));
+      order_invariance[0].pass_set =
+         !depth_write_enabled ||
+         (state->ds->depth.compare_op == VK_COMPARE_OP_ALWAYS ||
+          state->ds->depth.compare_op == VK_COMPARE_OP_NEVER);
 
-   dsa_order_invariant = order_invariance[has_stencil];
-   if (!dsa_order_invariant.zs)
-      return false;
+      dsa_order_invariant = order_invariance[has_stencil];
+      if (!dsa_order_invariant.zs)
+         return false;
 
-   /* The set of PS invocations is always order invariant,
-    * except when early Z/S tests are requested.
-    */
-   if (ps && ps->info.ps.writes_memory && ps->info.ps.early_fragment_test &&
-       !dsa_order_invariant.pass_set)
-      return false;
+      /* The set of PS invocations is always order invariant,
+       * except when early Z/S tests are requested.
+       */
+      if (ps && ps->info.ps.writes_memory && ps->info.ps.early_fragment_test &&
+          !dsa_order_invariant.pass_set)
+         return false;
 
-   /* Determine if out-of-order rasterization should be disabled when occlusion queries are used. */
-   pipeline->disable_out_of_order_rast_for_occlusion = !dsa_order_invariant.pass_set;
+      /* Determine if out-of-order rasterization should be disabled when occlusion queries are used. */
+      pipeline->disable_out_of_order_rast_for_occlusion = !dsa_order_invariant.pass_set;
+   }
 
    /* No color buffers are enabled for writing. */
    if (!colormask)
@@ -1077,7 +1080,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       /* Determine if the driver can enable out-of-order
        * rasterization internally.
        */
-      out_of_order_rast = radv_pipeline_out_of_order_rast(pipeline, blend, info);
+      out_of_order_rast = radv_pipeline_out_of_order_rast(pipeline, blend, info, state);
    }
 
    ms->pa_sc_aa_config = 0;
@@ -1329,12 +1332,12 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
        !(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE))
       states &= ~RADV_DYNAMIC_DEPTH_BIAS;
 
-   if (!info->ds.depth_bounds_test_enable &&
-       !(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE))
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE) &&
+       (!state->ds || !state->ds->depth.bounds_test.enable))
       states &= ~RADV_DYNAMIC_DEPTH_BOUNDS;
 
-   if (!info->ds.stencil_test_enable &&
-       !(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_TEST_ENABLE))
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_TEST_ENABLE) &&
+       (!state->ds || !state->ds->stencil.test_enable))
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
                   RADV_DYNAMIC_STENCIL_REFERENCE | RADV_DYNAMIC_STENCIL_OP);
 
@@ -1613,68 +1616,6 @@ radv_pipeline_init_multisample_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
-static struct radv_depth_stencil_info
-radv_pipeline_init_depth_stencil_info(struct radv_graphics_pipeline *pipeline,
-                                      const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineDepthStencilStateCreateInfo *ds = pCreateInfo->pDepthStencilState;
-   const VkPipelineRenderingCreateInfo *ri =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
-   struct radv_depth_stencil_info info = {0};
-
-   if (radv_is_raster_enabled(pipeline, pCreateInfo) &&
-       (ri->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
-        ri->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)) {
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE))
-         info.depth_bounds_test_enable = ds->depthBoundsTestEnable;
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS)) {
-         info.depth_bounds.min = ds->minDepthBounds;
-         info.depth_bounds.max = ds->maxDepthBounds;
-      }
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_TEST_ENABLE))
-         info.depth_test_enable = ds->depthTestEnable;
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_WRITE_ENABLE))
-         info.depth_write_enable = ds->depthWriteEnable;
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_COMPARE_OP))
-         info.depth_compare_op = ds->depthCompareOp;
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_COMPARE_MASK)) {
-         info.front.compare_mask = ds->front.compareMask;
-         info.back.compare_mask = ds->back.compareMask;
-      }
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_WRITE_MASK)) {
-         info.front.write_mask = ds->front.writeMask;
-         info.back.write_mask = ds->back.writeMask;
-      }
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_REFERENCE)) {
-         info.front.reference = ds->front.reference;
-         info.back.reference = ds->back.reference;
-      }
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_TEST_ENABLE))
-         info.stencil_test_enable = ds->stencilTestEnable;
-
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_STENCIL_OP)) {
-         info.front.fail_op = ds->front.failOp;
-         info.front.pass_op = ds->front.passOp;
-         info.front.depth_fail_op = ds->front.depthFailOp;
-         info.front.compare_op = ds->front.compareOp;
-         info.back.fail_op = ds->back.failOp;
-         info.back.pass_op = ds->back.passOp;
-         info.back.depth_fail_op = ds->back.depthFailOp;
-         info.back.compare_op = ds->back.compareOp;
-      }
-   }
-
-   return info;
-}
-
 static struct radv_rendering_info
 radv_pipeline_init_rendering_info(struct radv_graphics_pipeline *pipeline,
                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1784,7 +1725,6 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
    }
 
    info.ms = radv_pipeline_init_multisample_info(pipeline, pCreateInfo);
-   info.ds = radv_pipeline_init_depth_stencil_info(pipeline, pCreateInfo);
    info.ri = radv_pipeline_init_rendering_info(pipeline, pCreateInfo);
    info.cb = radv_pipeline_init_color_blend_info(pipeline, pCreateInfo);
 
@@ -1890,55 +1830,55 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
     */
    if (needed_states && radv_pipeline_has_ds_attachments(&info->ri)) {
       if (states & RADV_DYNAMIC_DEPTH_BOUNDS) {
-         dynamic->depth_bounds.min = info->ds.depth_bounds.min;
-         dynamic->depth_bounds.max = info->ds.depth_bounds.max;
+         dynamic->depth_bounds.min = state->ds->depth.bounds_test.min;
+         dynamic->depth_bounds.max = state->ds->depth.bounds_test.max;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_COMPARE_MASK) {
-         dynamic->stencil_compare_mask.front = info->ds.front.compare_mask;
-         dynamic->stencil_compare_mask.back = info->ds.back.compare_mask;
+         dynamic->stencil_compare_mask.front = state->ds->stencil.front.compare_mask;
+         dynamic->stencil_compare_mask.back = state->ds->stencil.back.compare_mask;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_WRITE_MASK) {
-         dynamic->stencil_write_mask.front = info->ds.front.write_mask;
-         dynamic->stencil_write_mask.back = info->ds.back.write_mask;
+         dynamic->stencil_write_mask.front = state->ds->stencil.front.write_mask;
+         dynamic->stencil_write_mask.back = state->ds->stencil.back.write_mask;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_REFERENCE) {
-         dynamic->stencil_reference.front = info->ds.front.reference;
-         dynamic->stencil_reference.back = info->ds.back.reference;
+         dynamic->stencil_reference.front = state->ds->stencil.front.reference;
+         dynamic->stencil_reference.back = state->ds->stencil.back.reference;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_TEST_ENABLE) {
-         dynamic->depth_test_enable = info->ds.depth_test_enable;
+         dynamic->depth_test_enable = state->ds->depth.test_enable;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_WRITE_ENABLE) {
-         dynamic->depth_write_enable = info->ds.depth_write_enable;
+         dynamic->depth_write_enable = state->ds->depth.write_enable;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_COMPARE_OP) {
-         dynamic->depth_compare_op = info->ds.depth_compare_op;
+         dynamic->depth_compare_op = state->ds->depth.compare_op;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE) {
-         dynamic->depth_bounds_test_enable = info->ds.depth_bounds_test_enable;
+         dynamic->depth_bounds_test_enable = state->ds->depth.bounds_test.enable;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_TEST_ENABLE) {
-         dynamic->stencil_test_enable = info->ds.stencil_test_enable;
+         dynamic->stencil_test_enable = state->ds->stencil.test_enable;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_OP) {
-         dynamic->stencil_op.front.compare_op = info->ds.front.compare_op;
-         dynamic->stencil_op.front.fail_op = info->ds.front.fail_op;
-         dynamic->stencil_op.front.pass_op = info->ds.front.pass_op;
-         dynamic->stencil_op.front.depth_fail_op = info->ds.front.depth_fail_op;
+         dynamic->stencil_op.front.compare_op = state->ds->stencil.front.op.compare;
+         dynamic->stencil_op.front.fail_op = state->ds->stencil.front.op.fail;
+         dynamic->stencil_op.front.pass_op = state->ds->stencil.front.op.pass;
+         dynamic->stencil_op.front.depth_fail_op = state->ds->stencil.front.op.depth_fail;
 
-         dynamic->stencil_op.back.compare_op = info->ds.back.compare_op;
-         dynamic->stencil_op.back.fail_op = info->ds.back.fail_op;
-         dynamic->stencil_op.back.pass_op = info->ds.back.pass_op;
-         dynamic->stencil_op.back.depth_fail_op = info->ds.back.depth_fail_op;
+         dynamic->stencil_op.back.compare_op = state->ds->stencil.back.op.compare;
+         dynamic->stencil_op.back.fail_op = state->ds->stencil.back.op.fail;
+         dynamic->stencil_op.back.pass_op = state->ds->stencil.back.op.pass;
+         dynamic->stencil_op.back.depth_fail_op = state->ds->stencil.back.op.depth_fail;
       }
    }
 
@@ -2043,7 +1983,8 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
 
 static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
-                                       const struct radv_graphics_pipeline_info *info)
+                                       const struct radv_graphics_pipeline_info *info,
+                                       const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_depth_stencil_state ds_state = {0};
@@ -6826,7 +6767,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    radv_pipeline_init_raster_state(pipeline, &info, &state);
 
    struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(pipeline, &info);
+      radv_pipeline_init_depth_stencil_state(pipeline, &info, &state);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &info);

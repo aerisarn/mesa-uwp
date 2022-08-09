@@ -1980,30 +1980,6 @@ struct radv_multisample_info {
    VkSampleLocationEXT sample_locs[MAX_SAMPLE_LOCATIONS];
 };
 
-struct radv_stencil_op_info {
-   VkStencilOp fail_op;
-   VkStencilOp pass_op;
-   VkStencilOp depth_fail_op;
-   VkCompareOp compare_op;
-   uint8_t compare_mask;
-   uint8_t write_mask;
-   uint8_t reference;
-};
-
-struct radv_depth_stencil_info {
-   bool stencil_test_enable;
-   bool depth_test_enable;
-   bool depth_write_enable;
-   bool depth_bounds_test_enable;
-   struct {
-      float min;
-      float max;
-   } depth_bounds;
-   struct radv_stencil_op_info front;
-   struct radv_stencil_op_info back;
-   VkCompareOp depth_compare_op;
-};
-
 struct radv_rendering_info {
    uint32_t view_mask;
    uint32_t color_att_count;
@@ -2040,7 +2016,6 @@ struct radv_graphics_pipeline_info {
    struct radv_input_assembly_info ia;
 
    struct radv_multisample_info ms;
-   struct radv_depth_stencil_info ds;
    struct radv_rendering_info ri;
    struct radv_color_blend_info cb;
 
