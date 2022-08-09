@@ -95,6 +95,7 @@
 #include <string.h>
 #include "c11/threads.h"
 #include "util/debug.h"
+#include "util/log.h"
 #include "util/macros.h"
 
 #include "egldefines.h"
@@ -282,6 +283,7 @@ _eglSetFuncName(const char *funcName, _EGLDisplay *disp, EGLenum objectType, _EG
 
 #define _EGL_FUNC_START(disp, objectType, object, ret) \
    do { \
+      MESA_TRACE_FUNC(); \
       if (!_eglSetFuncName(__func__, disp, objectType, (_EGLResource *) object)) { \
          if (disp)                                 \
             _eglUnlockDisplay(disp);               \
