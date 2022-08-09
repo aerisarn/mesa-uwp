@@ -166,25 +166,46 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
                            !(nir->info.stage == MESA_SHADER_FRAGMENT &&
                              mode == nir_var_shader_out);
 
-         if (!sem.medium_precision ||
-             (is_varying && sem.location <= VARYING_SLOT_VAR31 &&
-              !(varying_mask & BITFIELD64_BIT(sem.location))))
+         if (is_varying && sem.location <= VARYING_SLOT_VAR31 &&
+            !(varying_mask & BITFIELD64_BIT(sem.location))) {
             continue; /* can't lower */
+         }
 
          if (nir_intrinsic_has_src_type(intr)) {
             /* Stores. */
             nir_alu_type type = nir_intrinsic_src_type(intr);
 
+            nir_op upconvert_op;
             switch (type) {
             case nir_type_float32:
                convert = nir_f2fmp;
+               upconvert_op = nir_op_f2f32;
                break;
             case nir_type_int32:
+               convert = nir_i2imp;
+               upconvert_op = nir_op_i2i32;
+               break;
             case nir_type_uint32:
                convert = nir_i2imp;
+               upconvert_op = nir_op_u2u32;
                break;
             default:
                continue; /* already lowered? */
+            }
+
+            /* Check that the output is mediump, or (for fragment shader
+             * outputs) is a conversion from a mediump value, and lower it to
+             * mediump.  Note that we don't automatically apply it to
+             * gl_FragDepth, as GLSL ES declares it highp and so hardware such
+             * as Adreno a6xx doesn't expect a half-float output for it.
+             */
+            nir_ssa_def *val = intr->src[0].ssa;
+            bool is_fragdepth = (nir->info.stage == MESA_SHADER_FRAGMENT &&
+                                 sem.location == FRAG_RESULT_DEPTH);
+            if (!sem.medium_precision &&
+                (is_varying || is_fragdepth || val->parent_instr->type != nir_instr_type_alu ||
+                 nir_instr_as_alu(val->parent_instr)->op != upconvert_op)) {
+               continue;
             }
 
             /* Convert the 32-bit store into a 16-bit store. */
@@ -193,6 +214,9 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
                                       convert(&b, intr->src[0].ssa));
             nir_intrinsic_set_src_type(intr, (type & ~32) | 16);
          } else {
+            if (!sem.medium_precision)
+               continue;
+
             /* Loads. */
             nir_alu_type type = nir_intrinsic_dest_type(intr);
 
