@@ -1988,12 +1988,6 @@ struct radv_rasterization_info {
    VkRasterizationOrderAMD order;
 };
 
-struct radv_discard_rectangle_info {
-   VkDiscardRectangleModeEXT mode;
-   VkRect2D rects[MAX_DISCARD_RECTANGLES];
-   uint8_t count;
-};
-
 struct radv_multisample_info {
    bool sample_shading_enable;
    bool alpha_to_coverage_enable;
@@ -2067,7 +2061,6 @@ struct radv_graphics_pipeline_info {
    struct radv_input_assembly_info ia;
 
    struct radv_rasterization_info rs;
-   struct radv_discard_rectangle_info dr;
 
    struct radv_multisample_info ms;
    struct radv_depth_stencil_info ds;

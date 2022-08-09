@@ -1296,7 +1296,8 @@ radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
 
 static uint64_t
 radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline,
-                                   const struct radv_graphics_pipeline_info *info)
+                                   const struct radv_graphics_pipeline_info *info,
+                                   const struct vk_graphics_pipeline_state *state)
 {
    bool has_color_att = radv_pipeline_has_color_attachments(&info->ri);
    bool raster_enabled = !info->rs.discard_enable ||
@@ -1336,7 +1337,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
                   RADV_DYNAMIC_STENCIL_REFERENCE | RADV_DYNAMIC_STENCIL_OP);
 
-   if (!info->dr.count)
+   if (!state->dr->rectangle_count)
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
 
    if (!info->ms.sample_locs_enable)
@@ -1639,26 +1640,6 @@ radv_pipeline_init_rasterization_info(struct radv_graphics_pipeline *pipeline,
    return info;
 }
 
-static struct radv_discard_rectangle_info
-radv_pipeline_init_discard_rectangle_info(struct radv_graphics_pipeline *pipeline,
-                                          const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const VkPipelineDiscardRectangleStateCreateInfoEXT *discard_rectangle_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT);
-   struct radv_discard_rectangle_info info = {0};
-
-   if (discard_rectangle_info) {
-      info.mode = discard_rectangle_info->discardRectangleMode;
-      if (!(pipeline->dynamic_states & RADV_DYNAMIC_DISCARD_RECTANGLE)) {
-         typed_memcpy(info.rects, discard_rectangle_info->pDiscardRectangles,
-                      discard_rectangle_info->discardRectangleCount);
-      }
-      info.count = discard_rectangle_info->discardRectangleCount;
-   }
-
-   return info;
-}
-
 static struct radv_multisample_info
 radv_pipeline_init_multisample_info(struct radv_graphics_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1875,7 +1856,6 @@ radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
    }
 
    info.rs = radv_pipeline_init_rasterization_info(pipeline, pCreateInfo);
-   info.dr = radv_pipeline_init_discard_rectangle_info(pipeline, pCreateInfo);
 
    info.ms = radv_pipeline_init_multisample_info(pipeline, pCreateInfo);
    info.ds = radv_pipeline_init_depth_stencil_info(pipeline, pCreateInfo);
@@ -1911,7 +1891,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
                                  const struct radv_graphics_pipeline_info *info,
                                  const struct vk_graphics_pipeline_state *state)
 {
-   uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, info);
+   uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, info, state);
    uint64_t states = needed_states;
 
    pipeline->dynamic_state = default_dynamic_state;
@@ -2037,9 +2017,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (needed_states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-      dynamic->discard_rectangle.count = info->dr.count;
+      dynamic->discard_rectangle.count = state->dr->rectangle_count;
       if (states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-         typed_memcpy(dynamic->discard_rectangle.rectangles, info->dr.rects, info->dr.count);
+         typed_memcpy(dynamic->discard_rectangle.rectangles, state->dr->rectangles,
+                     state->dr->rectangle_count);
       }
    }
 
@@ -6461,11 +6442,11 @@ radv_pipeline_emit_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_emit_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
-                                 const struct radv_graphics_pipeline_info *info)
+                                 const struct vk_graphics_pipeline_state *state)
 {
    uint32_t cliprect_rule = 0;
 
-   if (!info->dr.count) {
+   if (!state->dr->rectangle_count) {
       cliprect_rule = 0xffff;
    } else {
       for (unsigned i = 0; i < (1u << MAX_DISCARD_RECTANGLES); ++i) {
@@ -6474,12 +6455,12 @@ radv_pipeline_emit_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
           * the pixel is contained should pass the cliprect
           * test.
           */
-         unsigned relevant_subset = i & ((1u << info->dr.count) - 1);
+         unsigned relevant_subset = i & ((1u << state->dr->rectangle_count) - 1);
 
-         if (info->dr.mode == VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT && !relevant_subset)
+         if (state->dr->mode == VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT && !relevant_subset)
             continue;
 
-         if (info->dr.mode == VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT && relevant_subset)
+         if (state->dr->mode == VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT && relevant_subset)
             continue;
 
          cliprect_rule |= 1u << i;
@@ -6655,7 +6636,7 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
    radv_pipeline_emit_ps_inputs(ctx_cs, pipeline);
    radv_pipeline_emit_vgt_vertex_reuse(ctx_cs, pipeline);
    radv_pipeline_emit_vgt_shader_config(ctx_cs, pipeline);
-   radv_pipeline_emit_cliprect_rule(ctx_cs, info);
+   radv_pipeline_emit_cliprect_rule(ctx_cs, state);
    radv_pipeline_emit_vgt_gs_out(ctx_cs, pipeline, vgt_gs_out_prim_type);
 
    if (pdevice->rad_info.gfx_level >= GFX10 && !radv_pipeline_has_ngg(pipeline))
