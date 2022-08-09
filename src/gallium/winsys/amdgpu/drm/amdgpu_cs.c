@@ -1489,7 +1489,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
    bool noop = false;
 
-   if (acs->allow_context_lost && acs->ctx->num_rejected_cs) {
+   if (acs->ctx->num_rejected_cs) {
       r = -ECANCELED;
    } else {
       struct drm_amdgpu_cs_chunk chunks[7];
@@ -1632,6 +1632,16 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    }
 
    if (r) {
+      if (!acs->allow_context_lost) {
+         /* Non-robust contexts are allowed to terminate the process. The only alternative is
+          * to skip command submission, which would look like a freeze because nothing is drawn,
+          * which is not a useful state to be in under any circumstances.
+          */
+         fprintf(stderr, "amdgpu: The CS has been rejected (%i), but the context isn't robust.\n", r);
+         fprintf(stderr, "amdgpu: The process will be terminated.\n");
+         exit(1);
+      }
+
       if (r == -ECANCELED)
          fprintf(stderr, "amdgpu: The CS has been cancelled because the context is lost.\n");
       else
