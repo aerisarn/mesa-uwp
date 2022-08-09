@@ -1533,8 +1533,7 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
 
    if (ret == VK_FORMAT_D24_UNORM_S8_UINT &&
        !screen->have_D24_UNORM_S8_UINT) {
-      assert(zink_is_depth_format_supported(screen,
-                                            VK_FORMAT_D32_SFLOAT_S8_UINT));
+      assert(screen->have_D32_SFLOAT_S8_UINT);
       return VK_FORMAT_D32_SFLOAT_S8_UINT;
    }
 
@@ -2207,6 +2206,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                                               VK_FORMAT_X8_D24_UNORM_PACK32);
    screen->have_D24_UNORM_S8_UINT = zink_is_depth_format_supported(screen,
                                               VK_FORMAT_D24_UNORM_S8_UINT);
+   screen->have_D32_SFLOAT_S8_UINT = zink_is_depth_format_supported(screen,
+                                              VK_FORMAT_D32_SFLOAT_S8_UINT);
 
    if (!zink_get_physical_device_info(screen)) {
       debug_printf("ZINK: failed to detect features\n");
