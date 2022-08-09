@@ -475,7 +475,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    struct si_context *sctx = CALLOC_STRUCT(si_context);
    struct radeon_winsys *ws = sscreen->ws;
    int shader, i;
-   bool stop_exec_on_failure = (flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET) != 0;
    enum radeon_ctx_priority priority;
 
    if (!sctx) {
@@ -537,7 +536,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    }
 
    ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? AMD_IP_GFX : AMD_IP_COMPUTE,
-                 (void *)si_flush_gfx_cs, sctx, stop_exec_on_failure);
+                 (void *)si_flush_gfx_cs, sctx, flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET);
 
    /* Initialize private allocators. */
    u_suballocator_init(&sctx->allocator_zeroed_memory, &sctx->b, 128 * 1024, 0,

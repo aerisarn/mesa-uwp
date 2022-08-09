@@ -531,7 +531,7 @@ struct radeon_winsys {
                      struct radeon_winsys_ctx *ctx, enum amd_ip_type amd_ip_type,
                      void (*flush)(void *ctx, unsigned flags,
                                    struct pipe_fence_handle **fence),
-                     void *flush_ctx, bool stop_exec_on_failure);
+                     void *flush_ctx, bool allow_context_lost);
 
    /**
     * Set or change the CS preamble, which is a sequence of packets that is executed before
