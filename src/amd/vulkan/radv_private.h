@@ -1967,27 +1967,6 @@ struct radv_input_assembly_info {
    bool primitive_restart_enable;
 };
 
-struct radv_rasterization_info {
-   bool discard_enable;
-   VkFrontFace front_face;
-   VkCullModeFlags cull_mode;
-   VkPolygonMode polygon_mode;
-   bool depth_bias_enable;
-   bool depth_clamp_enable;
-   float line_width;
-   float depth_bias_constant_factor;
-   float depth_bias_clamp;
-   float depth_bias_slope_factor;
-   VkConservativeRasterizationModeEXT conservative_mode;
-   VkProvokingVertexModeEXT provoking_vertex;
-   bool stippled_line_enable;
-   VkLineRasterizationModeEXT line_raster_mode;
-   uint32_t line_stipple_factor;
-   uint16_t line_stipple_pattern;
-   bool depth_clip_enable;
-   VkRasterizationOrderAMD order;
-};
-
 struct radv_multisample_info {
    bool sample_shading_enable;
    bool alpha_to_coverage_enable;
@@ -2059,8 +2038,6 @@ struct radv_fragment_shading_rate_info {
 struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
    struct radv_input_assembly_info ia;
-
-   struct radv_rasterization_info rs;
 
    struct radv_multisample_info ms;
    struct radv_depth_stencil_info ds;
