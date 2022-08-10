@@ -469,24 +469,28 @@ _mesa_unpack_rgtc(uint8_t *dst_row,
 {
    switch (format) {
    case MESA_FORMAT_R_RGTC1_UNORM:
+   case MESA_FORMAT_L_LATC1_UNORM:
       util_format_rgtc1_unorm_unpack_r_8unorm(dst_row, dst_stride,
                                               src_row, src_stride,
                                               src_width, src_height);
       break;
 
    case MESA_FORMAT_R_RGTC1_SNORM:
+   case MESA_FORMAT_L_LATC1_SNORM:
       util_format_rgtc1_snorm_unpack_r_8snorm((int8_t *)dst_row, dst_stride,
                                               src_row, src_stride,
                                               src_width, src_height);
       break;
 
    case MESA_FORMAT_RG_RGTC2_UNORM:
+   case MESA_FORMAT_LA_LATC2_UNORM:
       util_format_rgtc2_unorm_unpack_rg_8unorm(dst_row, dst_stride,
                                                src_row, src_stride,
                                                src_width, src_height);
       break;
 
    case MESA_FORMAT_RG_RGTC2_SNORM:
+   case MESA_FORMAT_LA_LATC2_SNORM:
       util_format_rgtc2_snorm_unpack_rg_8snorm((int8_t *)dst_row, dst_stride,
                                                src_row, src_stride,
                                                src_width, src_height);
