@@ -1946,10 +1946,6 @@ struct radv_pipeline_slab {
 
 void radv_pipeline_slab_destroy(struct radv_device *device, struct radv_pipeline_slab *slab);
 
-struct radv_graphics_pipeline_info {
-
-};
-
 enum radv_depth_clamp_mode {
    RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,       /* Clamp to the viewport min/max depth bounds */
    RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1,    /* Clamp between 0.0f and 1.0f */
