@@ -119,6 +119,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    }
 
    /* Vulkan 1.3 */
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_integer_dot_product,
+                       feats->shader_integer_dot_product,
+                       SHADER_INTEGER_DOT_PRODUCT_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_4444_formats, feats->argb_4444_formats,
                        4444_FORMATS_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state,
@@ -486,6 +489,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
                        props->inline_uniform_block,
                        INLINE_UNIFORM_BLOCK_PROPERTIES, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_integer_dot_product,
+                       props->shader_integer_dot_product,
+                       SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, properties2);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT(
@@ -1041,6 +1047,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_copy_commands2 = true,
       .KHR_dynamic_rendering = true,
       .KHR_maintenance4 = true,
+      .KHR_shader_integer_dot_product = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
@@ -1663,6 +1670,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(MAINTENANCE_4_FEATURES, maintenance4);
       CASE(PIPELINE_CREATION_CACHE_CONTROL_FEATURES, pipeline_creation_cache_control);
       CASE(SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, shader_demote_to_helper_invocation);
+      CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
       CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
 
       /* EXT */
@@ -1717,6 +1725,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       /* clang-format off */
       /* Vulkan 1.3 */
       CASE(INLINE_UNIFORM_BLOCK_PROPERTIES, inline_uniform_block);
+      CASE(SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, shader_integer_dot_product);
 
       /* EXT */
       CASE(CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, conservative_rasterization);

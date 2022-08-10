@@ -34,6 +34,7 @@ struct vn_physical_device_features {
       pipeline_creation_cache_control;
    VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
       shader_demote_to_helper_invocation;
+   VkPhysicalDeviceShaderIntegerDotProductFeatures shader_integer_dot_product;
    VkPhysicalDeviceTextureCompressionASTCHDRFeatures
       texture_compression_astc_hdr;
 
@@ -60,6 +61,8 @@ struct vn_physical_device_properties {
    /* Vulkan 1.3 */
    VkPhysicalDeviceInlineUniformBlockProperties inline_uniform_block;
    VkPhysicalDeviceMaintenance4Properties maintenance4;
+   VkPhysicalDeviceShaderIntegerDotProductProperties
+      shader_integer_dot_product;
 
    /* EXT */
    VkPhysicalDeviceConservativeRasterizationPropertiesEXT
