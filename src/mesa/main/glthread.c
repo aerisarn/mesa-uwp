@@ -103,7 +103,7 @@ glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
    simple_mtx_unlock(&shared->Mutex);
 
    /* Execute the GL calls. */
-   _glapi_set_dispatch(ctx->CurrentServerDispatch);
+   _glapi_set_dispatch(ctx->Dispatch.Current);
 
    /* Here we lock the mutexes once globally if possible. If not, we just
     * fallback to the individual API calls doing it.
@@ -249,7 +249,7 @@ _mesa_glthread_destroy(struct gl_context *ctx)
 void _mesa_glthread_enable(struct gl_context *ctx)
 {
    if (ctx->GLThread.enabled ||
-       ctx->CurrentServerDispatch == ctx->ContextLost ||
+       ctx->Dispatch.Current == ctx->Dispatch.ContextLost ||
        ctx->GLThread.DebugOutputSynchronous)
       return;
 
@@ -257,7 +257,7 @@ void _mesa_glthread_enable(struct gl_context *ctx)
    ctx->CurrentClientDispatch = ctx->MarshalExec;
 
    /* Update the dispatch only if the dispatch is current. */
-   if (_glapi_get_dispatch() == ctx->CurrentServerDispatch) {
+   if (_glapi_get_dispatch() == ctx->Dispatch.Current) {
        _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
 }
@@ -270,7 +270,7 @@ void _mesa_glthread_disable(struct gl_context *ctx)
    _mesa_glthread_finish(ctx);
 
    ctx->GLThread.enabled = false;
-   ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
+   ctx->CurrentClientDispatch = ctx->Dispatch.Current;
 
    /* Update the dispatch only if the dispatch is current. */
    if (_glapi_get_dispatch() == ctx->MarshalExec) {
@@ -291,7 +291,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    if (!glthread->enabled)
       return;
 
-   if (ctx->CurrentServerDispatch == ctx->ContextLost) {
+   if (ctx->Dispatch.Current == ctx->Dispatch.ContextLost) {
       _mesa_glthread_disable(ctx);
       return;
    }

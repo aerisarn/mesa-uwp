@@ -909,7 +909,7 @@ _mesa_initialize_dispatch_tables(struct gl_context *ctx)
    /* Do the code-generated setup of the exec table in api_exec_init.c. */
    _mesa_init_dispatch(ctx);
 
-   if (ctx->Save)
+   if (ctx->Dispatch.Save)
       _mesa_init_dispatch_save(ctx);
 
    vbo_init_dispatch_begin_end(ctx);
@@ -1005,11 +1005,11 @@ _mesa_initialize_context(struct gl_context *ctx,
       ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR;
 
    /* setup the API dispatch tables with all nop functions */
-   ctx->OutsideBeginEnd = _mesa_alloc_dispatch_table(false);
-   if (!ctx->OutsideBeginEnd)
+   ctx->Dispatch.OutsideBeginEnd = _mesa_alloc_dispatch_table(false);
+   if (!ctx->Dispatch.OutsideBeginEnd)
       goto fail;
-   ctx->Exec = ctx->OutsideBeginEnd;
-   ctx->CurrentClientDispatch = ctx->CurrentServerDispatch = ctx->OutsideBeginEnd;
+   ctx->Dispatch.Exec = ctx->Dispatch.OutsideBeginEnd;
+   ctx->CurrentClientDispatch = ctx->Dispatch.Current = ctx->Dispatch.OutsideBeginEnd;
 
    _mesa_reset_vertex_processing_mode(ctx);
 
@@ -1022,9 +1022,9 @@ _mesa_initialize_context(struct gl_context *ctx,
 
    switch (ctx->API) {
    case API_OPENGL_COMPAT:
-      ctx->BeginEnd = _mesa_alloc_dispatch_table(false);
-      ctx->Save = _mesa_alloc_dispatch_table(false);
-      if (!ctx->BeginEnd || !ctx->Save)
+      ctx->Dispatch.BeginEnd = _mesa_alloc_dispatch_table(false);
+      ctx->Dispatch.Save = _mesa_alloc_dispatch_table(false);
+      if (!ctx->Dispatch.BeginEnd || !ctx->Dispatch.Save)
          goto fail;
 
       FALLTHROUGH;
@@ -1058,9 +1058,9 @@ _mesa_initialize_context(struct gl_context *ctx,
 
 fail:
    _mesa_reference_shared_state(ctx, &ctx->Shared, NULL);
-   free(ctx->BeginEnd);
-   free(ctx->OutsideBeginEnd);
-   free(ctx->Save);
+   free(ctx->Dispatch.BeginEnd);
+   free(ctx->Dispatch.OutsideBeginEnd);
+   free(ctx->Dispatch.Save);
    return GL_FALSE;
 }
 
@@ -1135,12 +1135,12 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    _mesa_free_buffer_objects(ctx);
 
    /* free dispatch tables */
-   free(ctx->BeginEnd);
-   free(ctx->OutsideBeginEnd);
-   free(ctx->Save);
-   free(ctx->ContextLost);
+   free(ctx->Dispatch.BeginEnd);
+   free(ctx->Dispatch.OutsideBeginEnd);
+   free(ctx->Dispatch.Save);
+   free(ctx->Dispatch.ContextLost);
    free(ctx->MarshalExec);
-   free(ctx->HWSelectModeBeginEnd);
+   free(ctx->Dispatch.HWSelectModeBeginEnd);
 
    /* Shared context state (display lists, textures, etc) */
    _mesa_reference_shared_state(ctx, &ctx->Shared, NULL);
