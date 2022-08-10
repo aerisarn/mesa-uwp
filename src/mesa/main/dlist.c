@@ -13455,7 +13455,6 @@ _mesa_CallList(GLuint list)
    /* also restore API function pointers to point to "save" versions */
    if (save_compile_flag) {
       ctx->CurrentServerDispatch = ctx->Save;
-       _glapi_set_dispatch(ctx->CurrentServerDispatch);
       if (!ctx->GLThread.enabled) {
          ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
       }
@@ -13579,7 +13578,6 @@ _mesa_CallLists(GLsizei n, GLenum type, const GLvoid * lists)
    /* also restore API function pointers to point to "save" versions */
    if (save_compile_flag) {
       ctx->CurrentServerDispatch = ctx->Save;
-      _glapi_set_dispatch(ctx->CurrentServerDispatch);
       if (!ctx->GLThread.enabled) {
          ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
       }
