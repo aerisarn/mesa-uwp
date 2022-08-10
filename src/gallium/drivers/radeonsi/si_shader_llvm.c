@@ -1350,7 +1350,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          shader_ls.is_monolithic = true;
 
          si_init_shader_args(&shader_ls, ctx.args);
-         nir = si_get_nir_shader(&shader_ls, &free_nir, sel->info.tcs_vgpr_only_inputs);
+         nir = si_get_nir_shader(&shader_ls, ctx.args, &free_nir, sel->info.tcs_vgpr_only_inputs);
          si_update_shader_binary_info(shader, nir);
 
          if (!si_llvm_translate_nir(&ctx, &shader_ls, nir, free_nir)) {
@@ -1422,7 +1422,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          shader_es.is_monolithic = true;
 
          si_init_shader_args(&shader_es, ctx.args);
-         nir = si_get_nir_shader(&shader_es, &free_nir, 0);
+         nir = si_get_nir_shader(&shader_es, ctx.args, &free_nir, 0);
          si_update_shader_binary_info(shader, nir);
 
          if (!si_llvm_translate_nir(&ctx, &shader_es, nir, free_nir)) {

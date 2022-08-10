@@ -1789,8 +1789,8 @@ static void si_assign_param_offsets(nir_shader *nir, struct si_shader *shader)
    si_nir_assign_param_offsets(nir, shader, slot_remap);
 }
 
-struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
-                                     uint64_t tcs_vgpr_only_inputs)
+struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_args *args,
+                                     bool *free_nir, uint64_t tcs_vgpr_only_inputs)
 {
    struct si_shader_selector *sel = shader->selector;
    const union si_shader_key *key = &shader->key;
@@ -1928,6 +1928,8 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
       opt_offsets = true;
    }
 
+   NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
+
    if (progress2 || opt_offsets)
       si_nir_opts(sel->screen, nir, false);
 
@@ -1976,7 +1978,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    si_init_shader_args(shader, &args);
 
    bool free_nir;
-   struct nir_shader *nir = si_get_nir_shader(shader, &free_nir, 0);
+   struct nir_shader *nir = si_get_nir_shader(shader, &args, &free_nir, 0);
 
    struct pipe_stream_output_info so = {};
    /* NGG streamout has been lowered to buffer store in nir. */

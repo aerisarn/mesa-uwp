@@ -169,8 +169,8 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_sgprs,
                           const struct si_vs_prolog_bits *prolog_key,
                           struct si_shader *shader_out, union si_shader_part_key *key);
-struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
-                                     uint64_t tcs_vgpr_only_inputs);
+struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_args *args,
+                                     bool *free_nir, uint64_t tcs_vgpr_only_inputs);
 void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
@@ -188,6 +188,9 @@ void gfx10_ngg_atomic_add_prim_count(struct ac_shader_abi *abi, unsigned stream,
 void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader);
 bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
+
+/* si_nir_lower_abi.c */
+bool si_nir_lower_abi(nir_shader *nir, struct si_shader *shader, struct si_shader_args *args);
 
 /* si_shader_llvm.c */
 bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
