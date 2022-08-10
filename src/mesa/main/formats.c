@@ -646,6 +646,16 @@ _mesa_is_format_astc_2d(mesa_format format)
 
 
 /**
+ * Return TRUE if format is an BPTC compressed format.
+ */
+bool
+_mesa_is_format_bptc(mesa_format format)
+{
+   return _mesa_get_format_layout(format) == MESA_FORMAT_LAYOUT_BPTC;
+}
+
+
+/**
  * If the given format is a compressed format, return a corresponding
  * uncompressed format.
  */
