@@ -44,6 +44,7 @@
 #include "main/pixeltransfer.h"
 #include "main/texcompress.h"
 #include "main/texcompress_astc.h"
+#include "main/texcompress_bptc.h"
 #include "main/texcompress_etc.h"
 #include "main/texgetimage.h"
 #include "main/teximage.h"
@@ -438,6 +439,8 @@ st_compressed_format_fallback(struct st_context *st, mesa_format format)
       return !st->has_etc1;
    case MESA_FORMAT_LAYOUT_ETC2:
       return !st->has_etc2;
+   case MESA_FORMAT_LAYOUT_BPTC:
+      return !st->has_bptc;
    case MESA_FORMAT_LAYOUT_ASTC:
       return st_astc_format_fallback(st, format);
    default:
@@ -618,6 +621,12 @@ st_UnmapTextureImage(struct gl_context *ctx,
                                         itransfer->temp_stride,
                                         transfer->box.width, transfer->box.height,
                                         texImage->TexFormat);
+            } else if (_mesa_is_format_bptc(texImage->TexFormat)) {
+               _mesa_unpack_bptc(itransfer->map, transfer->stride,
+                                 itransfer->temp_data,
+                                 itransfer->temp_stride,
+                                 transfer->box.width, transfer->box.height,
+                                 texImage->TexFormat);
             } else {
                unreachable("unexpected format for a compressed format fallback");
             }
