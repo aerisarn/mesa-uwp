@@ -48,6 +48,7 @@ apt-get install -y --no-remove \
       python3-pytest \
       procps \
       spirv-tools \
+      shellcheck \
       strace \
       time \
       zstd
