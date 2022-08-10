@@ -4386,11 +4386,17 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef base = get_src(ctx, instr->src[0]);
       LLVMValueRef offset = get_src(ctx, instr->src[1]);
 
+      bool is_addr_32bit = nir_src_bit_size(instr->src[0]) == 32;
+      int addr_space = is_addr_32bit ? AC_ADDR_SPACE_CONST_32BIT : AC_ADDR_SPACE_CONST;
+
       LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
-      LLVMTypeRef byte_ptr_type = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_CONST);
+      LLVMTypeRef byte_ptr_type = LLVMPointerType(ctx->ac.i8, addr_space);
 
       LLVMValueRef addr = LLVMBuildIntToPtr(ctx->ac.builder, base, byte_ptr_type, "");
-      addr = LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, addr, &offset, 1, "");
+      /* see ac_build_load_custom() for 32bit/64bit addr GEP difference */
+      addr = is_addr_32bit ?
+         LLVMBuildInBoundsGEP2(ctx->ac.builder, ctx->ac.i8, addr, &offset, 1, "") :
+         LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, addr, &offset, 1, "");
 
       LLVMSetMetadata(addr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
       result = LLVMBuildLoad2(ctx->ac.builder, result_type, addr, "");

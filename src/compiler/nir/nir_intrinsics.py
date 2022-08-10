@@ -1477,7 +1477,7 @@ intrinsic("load_force_vrs_rates_amd", dest_comp=1, bit_sizes=[32], flags=[CAN_EL
 intrinsic("load_scalar_arg_amd", dest_comp=0, bit_sizes=[32], indices=[BASE, ARG_UPPER_BOUND_U32_AMD], flags=[CAN_ELIMINATE, CAN_REORDER])
 intrinsic("load_vector_arg_amd", dest_comp=0, bit_sizes=[32], indices=[BASE, ARG_UPPER_BOUND_U32_AMD], flags=[CAN_ELIMINATE, CAN_REORDER])
 
-# src[] = { 64-bit base address, 32-bit offset }.
+# src[] = { 32/64-bit base address, 32-bit offset }.
 intrinsic("load_smem_amd", src_comp=[1, 1], dest_comp=0, bit_sizes=[32],
                            indices=[ALIGN_MUL, ALIGN_OFFSET],
                            flags=[CAN_ELIMINATE, CAN_REORDER])
