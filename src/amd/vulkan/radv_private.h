@@ -1962,22 +1962,8 @@ struct radv_vertex_input_info {
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
 };
 
-struct radv_rendering_info {
-   uint32_t view_mask;
-   uint32_t color_att_count;
-   VkFormat color_att_formats[MAX_RTS];
-   VkFormat depth_att_format;
-   VkFormat stencil_att_format;
-};
-
 struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
-
-   struct radv_rendering_info ri;
-
-   /* VK_AMD_mixed_attachment_samples */
-   uint8_t color_att_samples;
-   uint8_t ds_att_samples;
 };
 
 enum radv_depth_clamp_mode {
