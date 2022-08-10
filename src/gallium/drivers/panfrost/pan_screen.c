@@ -529,7 +529,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                               unsigned bind)
 {
         struct panfrost_device *dev = pan_device(screen);
-        const struct util_format_description *format_desc;
 
         assert(target == PIPE_BUFFER ||
                target == PIPE_TEXTURE_1D ||
@@ -540,8 +539,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                target == PIPE_TEXTURE_3D ||
                target == PIPE_TEXTURE_CUBE ||
                target == PIPE_TEXTURE_CUBE_ARRAY);
-
-        format_desc = util_format_description(format);
 
         /* MSAA 2x gets rounded up to 4x. MSAA 8x/16x only supported on v5+.
          * TODO: debug MSAA 8x/16x */
@@ -578,13 +575,12 @@ panfrost_is_format_supported( struct pipe_screen *screen,
 
         /* Also check that compressed texture formats are supported on this
          * particular chip. They may not be depending on system integration
-         * differences. RGTC can be emulated so is always supported. */
+         * differences. */
 
-        bool is_rgtc = format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC;
         bool supported = panfrost_supports_compressed_format(dev,
                         MALI_EXTRACT_INDEX(fmt.hw));
 
-        if (!is_rgtc && !supported)
+        if (!supported)
                 return false;
 
         return MALI_EXTRACT_INDEX(fmt.hw) && ((relevant_bind & ~fmt.bind) == 0);
