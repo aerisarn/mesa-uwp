@@ -271,12 +271,6 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
          return NULL;
       }
 
-      if (prsc->depth0 > 1 && rsc->ts_bo) {
-         slab_free(&ctx->transfer_pool, trans);
-         BUG("resource has depth >1 with tile status");
-         return NULL;
-      }
-
       struct pipe_resource templ = *prsc;
       templ.nr_samples = 0;
       templ.bind = PIPE_BIND_RENDER_TARGET;
