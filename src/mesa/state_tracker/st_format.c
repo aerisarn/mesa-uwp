@@ -124,6 +124,21 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
                                                 PIPE_FORMAT_R8G8B8A8_UNORM;
    }
 
+   if ((_mesa_is_format_rgtc(mesaFormat) && !st->has_rgtc)) {
+      switch (mesaFormat) {
+      case MESA_FORMAT_R_RGTC1_UNORM:
+         return PIPE_FORMAT_R8_UNORM;
+      case MESA_FORMAT_R_RGTC1_SNORM:
+         return PIPE_FORMAT_R8_SNORM;
+      case MESA_FORMAT_RG_RGTC2_UNORM:
+         return PIPE_FORMAT_R8G8_UNORM;
+      case MESA_FORMAT_RG_RGTC2_SNORM:
+         return PIPE_FORMAT_R8G8_SNORM;
+      default:
+         unreachable("Unknown RGTC format");
+      }
+   }
+
    if (_mesa_is_format_bptc(mesaFormat) && !st->has_bptc) {
       switch (mesaFormat) {
       case MESA_FORMAT_BPTC_RGB_SIGNED_FLOAT:
