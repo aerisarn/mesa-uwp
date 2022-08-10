@@ -540,9 +540,9 @@ vtest_vcmd_submit_cmd2(struct vtest *vtest,
          .sync_offset = sync_offset / sizeof(uint32_t),
          .sync_count = batch->sync_count,
       };
-      if (!batch->sync_queue_cpu) {
+      if (vtest->base.info.supports_multiple_timelines) {
          dst.flags = VCMD_SUBMIT_CMD2_FLAG_SYNC_QUEUE;
-         dst.sync_queue_index = batch->sync_queue_index;
+         dst.sync_queue_index = batch->ring_idx;
          dst.sync_queue_id = batch->vk_queue_id;
       }
       vtest_write(vtest, &dst, sizeof(dst));

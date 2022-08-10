@@ -86,20 +86,18 @@ struct vn_renderer_submit_batch {
    size_t cs_size;
 
    /*
-    * Submit cs to the virtual sync queue identified by sync_queue_index.  The
-    * virtual queue is assumed to be associated with the physical VkQueue
-    * identified by vk_queue_id.  After the execution completes on the
-    * VkQueue, the virtual sync queue is signaled.
+    * Submit cs to the timeline identified by ring_idx. A timeline is
+    * typically associated with a physical VkQueue and bound to the ring_idx
+    * during VkQueue creation. After execution completes on the VkQueue, the
+    * timeline sync point is signaled.
     *
-    * sync_queue_index must be less than max_sync_queue_count.
-    *
-    * vk_queue_id specifies the object id of a VkQueue.
-    *
-    * When sync_queue_cpu is true, it specifies the special CPU sync queue,
-    * and sync_queue_index/vk_queue_id are ignored.  TODO revisit this later
+    * ring_idx 0 is reserved for the context-specific CPU timeline. sync
+    * points on the CPU timeline are signaled immediately after command
+    * processing by the renderer.
     */
-   uint32_t sync_queue_index;
-   bool sync_queue_cpu;
+   uint32_t ring_idx;
+
+   // TODO remove once vtest supports multiple timelines
    vn_object_id vk_queue_id;
 
    /* syncs to update when the virtual sync queue is signaled */

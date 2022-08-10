@@ -509,6 +509,8 @@ sim_submit_alloc_gem_handles(struct vn_renderer_bo *const *bos,
 static int
 sim_submit(struct virtgpu *gpu, const struct vn_renderer_submit *submit)
 {
+   const bool use_ring_idx = gpu->base.info.supports_multiple_timelines;
+
    /* TODO replace submit->bos by submit->gem_handles to avoid malloc/loop */
    uint32_t *gem_handles = NULL;
    if (submit->bo_count) {
@@ -523,11 +525,13 @@ sim_submit(struct virtgpu *gpu, const struct vn_renderer_submit *submit)
       const struct vn_renderer_submit_batch *batch = &submit->batches[i];
 
       struct drm_virtgpu_execbuffer args = {
-         .flags = batch->sync_count ? VIRTGPU_EXECBUF_FENCE_FD_OUT : 0,
+         .flags = (batch->sync_count ? VIRTGPU_EXECBUF_FENCE_FD_OUT : 0) |
+                  (use_ring_idx ? VIRTGPU_EXECBUF_RING_IDX : 0),
          .size = batch->cs_size,
          .command = (uintptr_t)batch->cs_data,
          .bo_handles = (uintptr_t)gem_handles,
          .num_bo_handles = submit->bo_count,
+         .ring_idx = (use_ring_idx ? batch->ring_idx : 0),
       };
 
       ret = drmIoctl(gpu->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &args);
@@ -539,7 +543,7 @@ sim_submit(struct virtgpu *gpu, const struct vn_renderer_submit *submit)
       if (batch->sync_count) {
          ret = sim_submit_signal_syncs(gpu, args.fence_fd, batch->syncs,
                                        batch->sync_values, batch->sync_count,
-                                       batch->sync_queue_cpu);
+                                       batch->ring_idx == 0);
          close(args.fence_fd);
          if (ret)
             break;
