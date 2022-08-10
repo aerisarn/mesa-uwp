@@ -3615,36 +3615,12 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
    case nir_intrinsic_load_base_vertex:
    case nir_intrinsic_load_first_vertex:
-   case nir_intrinsic_load_workgroup_size:
-   case nir_intrinsic_load_tess_level_outer_default:
-   case nir_intrinsic_load_tess_level_inner_default:
    case nir_intrinsic_load_tess_rel_patch_id_amd:
-   case nir_intrinsic_load_patch_vertices_in:
-   case nir_intrinsic_load_sample_mask_in:
-   case nir_intrinsic_load_viewport_xy_scale_and_offset:
    case nir_intrinsic_load_ring_tess_factors_amd:
    case nir_intrinsic_load_ring_tess_offchip_amd:
-   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
    case nir_intrinsic_load_ring_esgs_amd:
-   case nir_intrinsic_load_ring_es2gs_offset_amd:
    case nir_intrinsic_load_ring_attr_amd:
    case nir_intrinsic_load_ring_gsvs_amd:
-   case nir_intrinsic_load_lshs_vertex_stride_amd:
-   case nir_intrinsic_load_tcs_num_patches_amd:
-   case nir_intrinsic_load_hs_out_patch_data_offset_amd:
-   case nir_intrinsic_load_clip_half_line_width_amd:
-   case nir_intrinsic_load_num_vertices_per_primitive_amd:
-   case nir_intrinsic_load_cull_ccw_amd:
-   case nir_intrinsic_load_cull_any_enabled_amd:
-   case nir_intrinsic_load_cull_back_face_enabled_amd:
-   case nir_intrinsic_load_cull_front_face_enabled_amd:
-   case nir_intrinsic_load_cull_small_prim_precision_amd:
-   case nir_intrinsic_load_cull_small_primitives_enabled_amd:
-   case nir_intrinsic_load_provoking_vtx_in_prim_amd:
-   case nir_intrinsic_load_pipeline_stat_query_enabled_amd:
-   case nir_intrinsic_load_prim_gen_query_enabled_amd:
-   case nir_intrinsic_load_prim_xfb_query_enabled_amd:
-   case nir_intrinsic_load_clamp_vertex_color_amd:
    case nir_intrinsic_load_lds_ngg_scratch_base_amd:
    case nir_intrinsic_load_lds_ngg_gs_out_vertex_base_amd:
       result = ctx->abi->intrinsic_load(ctx->abi, instr->intrinsic);
