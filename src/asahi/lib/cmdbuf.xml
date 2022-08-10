@@ -403,24 +403,24 @@
     <field name="Start (halfs)" size="8" start="0:8" type="uint"/>
     <field name="Unk" size="4" start="0:16" type="hex" default="0x0"/>
     <!-- Exact split is unknown. -->
-    <field name="Size (halfs)" size="8" start="0:20" type="uint"/>
-    <field name="Buffer" size="36" start="0:28" type="address" modifier="shr(4)"/>
+    <field name="Size (halfs)" size="7" start="0:20" type="uint"/>
+    <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
   </struct>
 
   <struct name="Bind texture" size="8">
     <field name="Tag" size="8" start="0:0" type="hex" default="0xdd"/>
     <field name="Start" size="8" start="0:8" type="uint"/>
-    <!-- Exact split is unknown. Count is at least 5 bits. -->
-    <field name="Count" size="8" start="0:20" type="uint"/>
-    <field name="Buffer" size="36" start="0:28" type="address" modifier="shr(4)"/>
+    <!-- Exact split is unknown. Count is at least 5 bits. Less than 8 bits. -->
+    <field name="Count" size="7" start="0:20" type="uint"/>
+    <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
   </struct>
 
   <struct name="Bind sampler" size="8">
     <field name="Tag" size="8" start="0:0" type="hex" default="0x9d"/>
     <field name="Start" size="8" start="0:8" type="uint"/>
-    <field name="Count" size="8" start="0:20" type="uint"/>
+    <field name="Count" size="7" start="0:20" type="uint"/>
     <!-- Exact split is unknown. -->
-    <field name="Buffer" size="36" start="0:28" type="address" modifier="shr(4)"/>
+    <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
   </struct>
 
   <enum name="Preshader mode">
