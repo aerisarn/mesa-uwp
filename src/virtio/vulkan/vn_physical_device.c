@@ -1038,6 +1038,9 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_shader_viewport_index_layer = true,
 
       /* promoted to VK_VERSION_1_3 */
+      .KHR_copy_commands2 = true,
+      .KHR_dynamic_rendering = true,
+      .KHR_maintenance4 = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
@@ -1046,9 +1049,6 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_pipeline_creation_cache_control = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_texture_compression_astc_hdr = true,
-      .KHR_copy_commands2 = true,
-      .KHR_dynamic_rendering = true,
-      .KHR_maintenance4 = true,
 
       /* EXT */
       .EXT_calibrated_timestamps = true,
