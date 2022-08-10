@@ -630,21 +630,7 @@ _mesa_is_format_srgb(mesa_format format)
 bool
 _mesa_is_format_etc2(mesa_format format)
 {
-   switch (format) {
-   case MESA_FORMAT_ETC2_RGB8:
-   case MESA_FORMAT_ETC2_SRGB8:
-   case MESA_FORMAT_ETC2_RGBA8_EAC:
-   case MESA_FORMAT_ETC2_SRGB8_ALPHA8_EAC:
-   case MESA_FORMAT_ETC2_R11_EAC:
-   case MESA_FORMAT_ETC2_RG11_EAC:
-   case MESA_FORMAT_ETC2_SIGNED_R11_EAC:
-   case MESA_FORMAT_ETC2_SIGNED_RG11_EAC:
-   case MESA_FORMAT_ETC2_RGB8_PUNCHTHROUGH_ALPHA1:
-   case MESA_FORMAT_ETC2_SRGB8_PUNCHTHROUGH_ALPHA1:
-      return true;
-   default:
-      return false;
-   }
+   return _mesa_get_format_layout(format) == MESA_FORMAT_LAYOUT_ETC2;
 }
 
 
