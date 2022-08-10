@@ -1970,29 +1970,10 @@ struct radv_rendering_info {
    VkFormat stencil_att_format;
 };
 
-struct radv_color_blend_info {
-   bool logic_op_enable;
-   uint8_t att_count;
-   VkLogicOp logic_op;
-   uint32_t color_write_enable;
-   float blend_constants[4];
-   struct {
-      uint8_t color_write_mask;
-      bool blend_enable;
-      VkBlendOp color_blend_op;
-      VkBlendOp alpha_blend_op;
-      VkBlendFactor src_color_blend_factor;
-      VkBlendFactor dst_color_blend_factor;
-      VkBlendFactor src_alpha_blend_factor;
-      VkBlendFactor dst_alpha_blend_factor;
-   } att[MAX_RTS];
-};
-
 struct radv_graphics_pipeline_info {
    struct radv_vertex_input_info vi;
 
    struct radv_rendering_info ri;
-   struct radv_color_blend_info cb;
 
    /* VK_AMD_mixed_attachment_samples */
    uint8_t color_att_samples;
