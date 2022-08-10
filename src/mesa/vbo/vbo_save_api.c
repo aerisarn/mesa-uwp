@@ -972,10 +972,6 @@ end:
    /* Deal with GL_COMPILE_AND_EXECUTE:
     */
    if (ctx->ExecuteFlag) {
-      struct _glapi_table *dispatch = GET_DISPATCH();
-
-      _glapi_set_dispatch(ctx->Exec);
-
       /* _vbo_loopback_vertex_list doesn't use the index buffer, so we have to
        * use buffer_in_ram (which contains all vertices) instead of current_bo
        * (which contains deduplicated vertices *when* UseLoopback is false).
@@ -989,8 +985,6 @@ end:
       vao->BufferBinding[0].Offset = -(GLintptr)(start_offset * stride);
       _vbo_loopback_vertex_list(ctx, node, save->vertex_store->buffer_in_ram);
       vao->BufferBinding[0].Offset = original;
-
-      _glapi_set_dispatch(dispatch);
    }
 
    /* Reset our structures for the next run of vertices:
