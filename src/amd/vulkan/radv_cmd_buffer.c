@@ -6723,7 +6723,7 @@ radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
    radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
 }
 
-static inline void
+ALWAYS_INLINE static void
 radv_emit_userdata_vertex_internal(struct radv_cmd_buffer *cmd_buffer,
                                    const struct radv_draw_info *info, const uint32_t vertex_offset)
 {
