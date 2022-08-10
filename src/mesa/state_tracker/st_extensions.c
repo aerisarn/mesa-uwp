@@ -961,6 +961,13 @@ void st_init_extensions(struct pipe_screen *screen,
           PIPE_FORMAT_LATC2_UNORM,
           PIPE_FORMAT_LATC2_SNORM } },
 
+      /* LATC software fallback support. */
+      { { o(EXT_texture_compression_latc) },
+        { PIPE_FORMAT_L8_UNORM,
+          PIPE_FORMAT_L8_SNORM,
+          PIPE_FORMAT_L8A8_UNORM,
+          PIPE_FORMAT_L8A8_SNORM } },
+
       { { o(EXT_texture_compression_s3tc),
           o(ANGLE_texture_compression_dxt) },
         { PIPE_FORMAT_DXT1_RGB,
@@ -1063,6 +1070,9 @@ void st_init_extensions(struct pipe_screen *screen,
 
       { { o(ATI_texture_compression_3dc) },
         { PIPE_FORMAT_LATC2_UNORM } },
+
+      { { o(ATI_texture_compression_3dc) },
+        { PIPE_FORMAT_L8A8_UNORM } },
 
       { { o(MESA_ycbcr_texture) },
         { PIPE_FORMAT_UYVY,
