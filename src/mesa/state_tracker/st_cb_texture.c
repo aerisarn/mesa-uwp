@@ -433,16 +433,16 @@ st_astc_format_fallback(const struct st_context *st, mesa_format format)
 bool
 st_compressed_format_fallback(struct st_context *st, mesa_format format)
 {
-   if (format == MESA_FORMAT_ETC1_RGB8)
+   switch (_mesa_get_format_layout(format)) {
+   case MESA_FORMAT_LAYOUT_ETC1:
       return !st->has_etc1;
-
-   if (_mesa_is_format_etc2(format))
+   case MESA_FORMAT_LAYOUT_ETC2:
       return !st->has_etc2;
-
-   if (st_astc_format_fallback(st, format))
-      return true;
-
-   return false;
+   case MESA_FORMAT_LAYOUT_ASTC:
+      return st_astc_format_fallback(st, format);
+   default:
+      return false;
+   }
 }
 
 
