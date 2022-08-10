@@ -1979,13 +1979,52 @@ anv_queue_submit(struct vk_queue *vk_queue,
    return result;
 }
 
+static VkResult
+anv_i915_execute_simple_batch(struct anv_queue *queue,
+                              struct anv_bo *batch_bo,
+                              uint32_t batch_bo_size)
+{
+   struct anv_device *device = queue->device;
+   struct anv_execbuf execbuf = {
+      .alloc = &queue->device->vk.alloc,
+      .alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
+   };
+
+   VkResult result = anv_execbuf_add_bo(device, &execbuf, batch_bo, NULL, 0);
+   if (result != VK_SUCCESS)
+      return result;
+
+   execbuf.execbuf = (struct drm_i915_gem_execbuffer2) {
+      .buffers_ptr = (uintptr_t) execbuf.objects,
+      .buffer_count = execbuf.bo_count,
+      .batch_start_offset = 0,
+      .batch_len = batch_bo_size,
+      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
+      .rsvd1 = device->context_id,
+      .rsvd2 = 0,
+   };
+
+   if (anv_gem_execbuffer(device, &execbuf.execbuf)) {
+      result = vk_device_set_lost(&device->vk, "anv_gem_execbuffer failed: %m");
+      goto fail;
+   }
+
+   result = anv_device_wait(device, batch_bo, INT64_MAX);
+   if (result != VK_SUCCESS)
+      result = vk_device_set_lost(&device->vk,
+                                  "anv_device_wait failed: %m");
+
+fail:
+   anv_execbuf_finish(&execbuf);
+   return result;
+}
+
 VkResult
 anv_queue_submit_simple_batch(struct anv_queue *queue,
                               struct anv_batch *batch)
 {
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
-   int err;
 
    if (queue->device->info->no_hw)
       return VK_SUCCESS;
@@ -2006,15 +2045,6 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
    if (device->physical->memory.need_clflush)
       intel_flush_range(batch_bo->map, batch_size);
 
-   struct anv_execbuf execbuf = {
-      .alloc = &queue->device->vk.alloc,
-      .alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
-   };
-
-   result = anv_execbuf_add_bo(device, &execbuf, batch_bo, NULL, 0);
-   if (result != VK_SUCCESS)
-      goto fail;
-
    if (INTEL_DEBUG(DEBUG_BATCH)) {
       intel_print_batch(&device->decoder_ctx,
                         batch_bo->map,
@@ -2022,31 +2052,8 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
                         batch_bo->offset, false);
    }
 
-   execbuf.execbuf = (struct drm_i915_gem_execbuffer2) {
-      .buffers_ptr = (uintptr_t) execbuf.objects,
-      .buffer_count = execbuf.bo_count,
-      .batch_start_offset = 0,
-      .batch_len = batch_size,
-      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
-      .rsvd1 = device->context_id,
-      .rsvd2 = 0,
-   };
+   result = anv_i915_execute_simple_batch(queue, batch_bo, batch_size);
 
-   err = anv_gem_execbuffer(device, &execbuf.execbuf);
-   if (err) {
-      result = vk_device_set_lost(&device->vk, "anv_gem_execbuffer failed: %m");
-      goto fail;
-   }
-
-   result = anv_device_wait(device, batch_bo, INT64_MAX);
-   if (result != VK_SUCCESS) {
-      result = vk_device_set_lost(&device->vk,
-                                  "anv_device_wait failed: %m");
-      goto fail;
-   }
-
-fail:
-   anv_execbuf_finish(&execbuf);
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);
 
    return result;
