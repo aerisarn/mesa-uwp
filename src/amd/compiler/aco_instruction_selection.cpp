@@ -5631,7 +5631,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          }
 
          Temp fetch_dst;
-         if (channel_start == 0 && fetch_bytes == dst.bytes() && num_channels <= 3) {
+         if (channel_start == 0 && fetch_bytes == dst.bytes()) {
             direct_fetch = true;
             fetch_dst = dst;
          } else {
