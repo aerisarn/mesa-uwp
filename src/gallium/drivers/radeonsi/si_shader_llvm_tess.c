@@ -95,7 +95,7 @@ static LLVMValueRef get_tcs_out_current_patch_data_offset(struct si_shader_conte
    return ac_build_imad(&ctx->ac, patch_stride, rel_patch_id, patch0_patch_data_offset);
 }
 
-LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx)
+static LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx)
 {
    unsigned tcs_out_vertices =
       ctx->shader->selector ? ctx->shader->selector->info.base.tess.tcs_vertices_out
@@ -107,28 +107,6 @@ LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx)
 
    return LLVMBuildAdd(ctx->ac.builder,
                        si_unpack_param(ctx, ctx->args->tcs_offchip_layout, 6, 5), ctx->ac.i32_1, "");
-}
-
-LLVMValueRef si_get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
-{
-   unsigned stride;
-
-   switch (ctx->stage) {
-   case MESA_SHADER_VERTEX:
-      stride = ctx->shader->selector->info.lshs_vertex_stride / 4;
-      return LLVMConstInt(ctx->ac.i32, stride, 0);
-
-   case MESA_SHADER_TESS_CTRL:
-      if (ctx->screen->info.gfx_level >= GFX9 && ctx->shader->is_monolithic) {
-         stride = ctx->shader->key.ge.part.tcs.ls->info.lshs_vertex_stride / 4;
-         return LLVMConstInt(ctx->ac.i32, stride, 0);
-      }
-      return GET_FIELD(ctx, VS_STATE_LS_OUT_VERTEX_SIZE);
-
-   default:
-      assert(0);
-      return NULL;
-   }
 }
 
 /* The offchip buffer layout for TCS->TES is

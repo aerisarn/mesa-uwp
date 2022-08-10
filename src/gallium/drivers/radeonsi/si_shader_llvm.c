@@ -700,36 +700,6 @@ void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_poi
       LLVMBuildRet(builder, ret);
 }
 
-static LLVMValueRef si_get_num_vertices_per_prim(struct si_shader_context *ctx)
-{
-   const struct si_shader_info *info = &ctx->shader->selector->info;
-
-   unsigned num_vertices;
-   if (ctx->stage == MESA_SHADER_GEOMETRY) {
-      num_vertices = u_vertices_per_prim(info->base.gs.output_primitive);
-   } else if (ctx->stage == MESA_SHADER_VERTEX) {
-      if (info->base.vs.blit_sgprs_amd) {
-         num_vertices = 3;
-      } else if (ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES) {
-         num_vertices = 2;
-      } else {
-         /* Extract OUTPRIM field. */
-         LLVMValueRef num = GET_FIELD(ctx, GS_STATE_OUTPRIM);
-         return LLVMBuildAdd(ctx->ac.builder, num, ctx->ac.i32_1, "");
-      }
-   } else {
-      assert(ctx->stage == MESA_SHADER_TESS_EVAL);
-
-      if (info->base.tess.point_mode)
-         num_vertices = 1;
-      else if (info->base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
-         num_vertices = 2;
-      else
-         num_vertices = 3;
-   }
-   return LLVMConstInt(ctx->ac.i32, num_vertices, false);
-}
-
 static LLVMValueRef si_llvm_build_attr_ring_desc(struct si_shader_context *ctx)
 {
    struct si_shader *shader = ctx->shader;
@@ -768,158 +738,14 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
    switch (op) {
-   case nir_intrinsic_load_first_vertex:
-      return ac_get_arg(&ctx->ac, ctx->args->ac.base_vertex);
-
-   case nir_intrinsic_load_base_vertex: {
-      /* For non-indexed draws, the base vertex set by the driver
-       * (for direct draws) or the CP (for indirect draws) is the
-       * first vertex ID, but GLSL expects 0 to be returned.
-       */
-      LLVMValueRef indexed = GET_FIELD(ctx, VS_STATE_INDEXED);
-      indexed = LLVMBuildTrunc(ctx->ac.builder, indexed, ctx->ac.i1, "");
-      return LLVMBuildSelect(ctx->ac.builder, indexed, ac_get_arg(&ctx->ac, ctx->args->ac.base_vertex),
-                             ctx->ac.i32_0, "");
-   }
-
-   case nir_intrinsic_load_workgroup_size: {
-      assert(ctx->shader->selector->info.base.workgroup_size_variable &&
-             ctx->shader->selector->info.uses_variable_block_size);
-      LLVMValueRef chan[3] = {
-         si_unpack_param(ctx, ctx->args->block_size, 0, 10),
-         si_unpack_param(ctx, ctx->args->block_size, 10, 10),
-         si_unpack_param(ctx, ctx->args->block_size, 20, 10),
-      };
-      return ac_build_gather_values(&ctx->ac, chan, 3);
-   }
-
-   case nir_intrinsic_load_tess_level_outer_default:
-   case nir_intrinsic_load_tess_level_inner_default: {
-      LLVMValueRef slot = LLVMConstInt(ctx->ac.i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
-      LLVMValueRef buf =
-         ac_build_load_to_sgpr(&ctx->ac,
-                               ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings),
-                               slot);
-      int offset = op == nir_intrinsic_load_tess_level_inner_default ? 4 : 0;
-      LLVMValueRef val[4];
-
-      for (int i = 0; i < 4; i++)
-         val[i] = si_buffer_load_const(ctx, buf, LLVMConstInt(ctx->ac.i32, (offset + i) * 4, 0));
-      return ac_build_gather_values(&ctx->ac, val, 4);
-   }
-
-   case nir_intrinsic_load_patch_vertices_in:
-      if (ctx->stage == MESA_SHADER_TESS_CTRL)
-         return si_unpack_param(ctx, ctx->args->tcs_out_lds_layout, 13, 6);
-      else if (ctx->stage == MESA_SHADER_TESS_EVAL)
-         return si_get_num_tcs_out_vertices(ctx);
-      else
-         return NULL;
-
-   case nir_intrinsic_load_sample_mask_in:
-      return ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.sample_coverage));
-
-   case nir_intrinsic_load_lshs_vertex_stride_amd:
-      return LLVMBuildShl(ctx->ac.builder, si_get_tcs_in_vertex_dw_stride(ctx),
-                          LLVMConstInt(ctx->ac.i32, 2, 0), "");
-
-   case nir_intrinsic_load_tcs_num_patches_amd:
-      return LLVMBuildAdd(ctx->ac.builder,
-                          si_unpack_param(ctx, ctx->args->tcs_offchip_layout, 0, 6),
-                          ctx->ac.i32_1, "");
-
-   case nir_intrinsic_load_hs_out_patch_data_offset_amd:
-      return si_unpack_param(ctx, ctx->args->tcs_offchip_layout, 11, 21);
-
    case nir_intrinsic_load_ring_tess_offchip_amd:
       return ctx->tess_offchip_ring;
-
-   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
-      return ac_get_arg(&ctx->ac, ctx->args->ac.tess_offchip_offset);
 
    case nir_intrinsic_load_tess_rel_patch_id_amd:
       return si_get_rel_patch_id(ctx);
 
    case nir_intrinsic_load_ring_esgs_amd:
       return ctx->esgs_ring;
-
-   case nir_intrinsic_load_ring_es2gs_offset_amd:
-      return ac_get_arg(&ctx->ac, ctx->args->ac.es2gs_offset);
-
-   case nir_intrinsic_load_clip_half_line_width_amd: {
-      LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->args->small_prim_cull_info);
-      return ac_build_load_to_sgpr(&ctx->ac,
-         (struct ac_llvm_pointer) { .t = ctx->ac.v2f32, .v = ptr }, LLVMConstInt(ctx->ac.i32, 4, 0));
-   }
-
-   case nir_intrinsic_load_viewport_xy_scale_and_offset: {
-      bool prim_is_lines = ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES;
-      struct ac_llvm_pointer ptr = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->small_prim_cull_info);
-      LLVMValueRef terms =
-         ac_build_load_to_sgpr(&ctx->ac, ptr, prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
-      return LLVMBuildBitCast(ctx->ac.builder, terms, ctx->ac.v4f32, "");
-   }
-
-   case nir_intrinsic_load_num_vertices_per_primitive_amd:
-      return si_get_num_vertices_per_prim(ctx);
-
-   case nir_intrinsic_load_cull_ccw_amd:
-      /* radeonsi embed cw/ccw info into front/back face enabled */
-      return ctx->ac.i1false;
-
-   case nir_intrinsic_load_cull_any_enabled_amd:
-      return ctx->shader->key.ge.opt.ngg_culling ? ctx->ac.i1true : ctx->ac.i1false;
-
-   case nir_intrinsic_load_cull_back_face_enabled_amd:
-      return ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_BACK_FACE ?
-         ctx->ac.i1true : ctx->ac.i1false;
-
-   case nir_intrinsic_load_cull_front_face_enabled_amd:
-      return ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE ?
-         ctx->ac.i1true : ctx->ac.i1false;
-
-   case nir_intrinsic_load_cull_small_prim_precision_amd: {
-      LLVMValueRef small_prim_precision =
-         ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES ?
-         GET_FIELD(ctx, GS_STATE_SMALL_PRIM_PRECISION_NO_AA) :
-         GET_FIELD(ctx, GS_STATE_SMALL_PRIM_PRECISION);
-
-      /* Extract the small prim precision. */
-      small_prim_precision =
-         LLVMBuildOr(ctx->ac.builder, small_prim_precision,
-                     LLVMConstInt(ctx->ac.i32, 0x70, 0), "");
-      small_prim_precision =
-         LLVMBuildShl(ctx->ac.builder, small_prim_precision,
-                      LLVMConstInt(ctx->ac.i32, 23, 0), "");
-
-      return LLVMBuildBitCast(ctx->ac.builder, small_prim_precision, ctx->ac.f32, "");
-   }
-
-   case nir_intrinsic_load_cull_small_primitives_enabled_amd:
-      if (ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES)
-         return ctx->shader->key.ge.opt.ngg_culling & SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT ?
-            ctx->ac.i1true : ctx->ac.i1false;
-      else
-         return ctx->ac.i1true;
-
-   case nir_intrinsic_load_provoking_vtx_in_prim_amd:
-      return GET_FIELD(ctx, GS_STATE_PROVOKING_VTX_INDEX);
-
-   case nir_intrinsic_load_pipeline_stat_query_enabled_amd: {
-      LLVMValueRef enabled = GET_FIELD(ctx, GS_STATE_PIPELINE_STATS_EMU);
-      return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
-   }
-
-   case nir_intrinsic_load_prim_gen_query_enabled_amd:
-   case nir_intrinsic_load_prim_xfb_query_enabled_amd: {
-      LLVMValueRef enabled = GET_FIELD(ctx, GS_STATE_STREAMOUT_QUERY_ENABLED);
-      return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
-   }
-
-   case nir_intrinsic_load_clamp_vertex_color_amd: {
-      LLVMValueRef enabled = GET_FIELD(ctx, VS_STATE_CLAMP_VERTEX_COLOR);
-      return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
-   }
 
    case nir_intrinsic_load_ring_attr_amd:
       return si_llvm_build_attr_ring_desc(ctx);
