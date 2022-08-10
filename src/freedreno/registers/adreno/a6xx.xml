@@ -2592,7 +2592,7 @@ to upconvert to 32b float internally?
 
 	<!-- New in a6xx gen3+ -->
 	<reg32 offset="0x9808" name="PC_SO_STREAM_CNTL">
-		<bitfield name="STREAM_ENABLE" pos="15" type="boolean"/>
+		<bitfield name="STREAM_ENABLE" low="15" high="18" type="hex"/>
 	</reg32>
 
 	<reg32 offset="0x980a" name="PC_DGEN_SU_CONSERVATIVE_RAS_CNTL">

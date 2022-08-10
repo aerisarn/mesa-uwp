@@ -281,7 +281,7 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
        * tess + xfb fails some tests if we don't emit this.
        */
       OUT_RING(ring, REG_A6XX_PC_SO_STREAM_CNTL);
-      OUT_RING(ring, A6XX_PC_SO_STREAM_CNTL_STREAM_ENABLE);
+      OUT_RING(ring, A6XX_PC_SO_STREAM_CNTL_STREAM_ENABLE(0x1));
    }
 
    state->streamout_stateobj = ring;
