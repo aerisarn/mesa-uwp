@@ -39,6 +39,8 @@ struct vn_physical_device_features {
       shader_terminate_invocation;
    VkPhysicalDeviceTextureCompressionASTCHDRFeatures
       texture_compression_astc_hdr;
+   VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures
+      zero_initialize_workgroup_memory;
 
    /* EXT */
    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering;

@@ -152,6 +152,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_texture_compression_astc_hdr,
                        feats->texture_compression_astc_hdr,
                        TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_zero_initialize_workgroup_memory,
+                       feats->zero_initialize_workgroup_memory,
+                       ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, features2);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT(exts->EXT_conditional_rendering,
@@ -1053,6 +1056,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_shader_terminate_invocation = true,
+      .KHR_zero_initialize_workgroup_memory = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
@@ -1678,6 +1682,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
       CASE(SHADER_TERMINATE_INVOCATION_FEATURES, shader_terminate_invocation);
       CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
+      CASE(ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, zero_initialize_workgroup_memory);
 
       /* EXT */
       CASE(CONDITIONAL_RENDERING_FEATURES_EXT, conditional_rendering);
