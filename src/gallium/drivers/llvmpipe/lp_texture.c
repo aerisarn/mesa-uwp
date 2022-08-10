@@ -90,7 +90,16 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
     * of a block for all formats) though this should not be strictly necessary
     * neither. In any case it can only affect compressed or 1d textures.
     */
-   unsigned mip_align = MAX2(64, util_get_cpu_caps()->cacheline);
+   uint64_t mip_align = MAX2(64, util_get_cpu_caps()->cacheline);
+
+   /* KVM on Linux requires memory mapping to be aligned to the page size,
+    * otherwise Linux kernel errors out on trying to map host GPU mapping
+    * to guest (ARB_map_buffer_range). The improper alignment creates trouble
+    * for the virgl driver when host uses llvmpipe, causing Qemu and crosvm to
+    * bail out on the KVM error.
+    */
+   if (lpr->base.flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT)
+      os_get_page_size(&mip_align);
 
    assert(LP_MAX_TEXTURE_2D_LEVELS <= LP_MAX_TEXTURE_LEVELS);
    assert(LP_MAX_TEXTURE_3D_LEVELS <= LP_MAX_TEXTURE_LEVELS);
@@ -280,7 +289,12 @@ llvmpipe_resource_create_all(struct pipe_screen *_screen,
          lpr->size_required += (LP_RASTER_BLOCK_SIZE - 1) * 4 * sizeof(float);
 
       if (alloc_backing) {
-         lpr->data = align_malloc(lpr->size_required, 64);
+         uint64_t alignment = 64;
+
+         if (templat->flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT)
+            os_get_page_size(&alignment);
+
+         lpr->data = align_malloc(lpr->size_required, alignment);
 
          if (!lpr->data)
             goto fail;
