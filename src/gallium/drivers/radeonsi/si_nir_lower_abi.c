@@ -228,6 +228,11 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_load_smem_buffer_amd(b, 4, buf, nir_imm_int(b, offset));
       break;
    }
+   case nir_intrinsic_load_streamout_buffer_amd: {
+      unsigned slot = SI_VS_STREAMOUT_BUF0 + nir_intrinsic_base(intrin);
+      replacement = load_internal_binding(b, args, slot);
+      break;
+   }
    default:
       return false;
    }

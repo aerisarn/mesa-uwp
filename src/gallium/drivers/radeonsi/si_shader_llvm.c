@@ -761,15 +761,6 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    }
 }
 
-static LLVMValueRef si_llvm_load_streamout_buffer(struct ac_shader_abi *abi, unsigned buffer)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   struct ac_llvm_pointer buf_ptr = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings);
-
-   return ac_build_load_to_sgpr(
-      &ctx->ac, buf_ptr, LLVMConstInt(ctx->ac.i32, SI_VS_STREAMOUT_BUF0 + buffer, false));
-}
-
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
                            struct nir_shader *nir, bool free_nir)
 {
@@ -786,7 +777,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->num_images = info->base.num_images;
 
    ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
-   ctx->abi.load_streamout_buffer = si_llvm_load_streamout_buffer;
    ctx->abi.export_vertex = gfx10_ngg_export_vertex;
    ctx->abi.atomic_add_prim_count = gfx10_ngg_atomic_add_prim_count;
 
