@@ -1603,25 +1603,6 @@ _mesa_get_current_context( void )
    return (struct gl_context *) _glapi_get_context();
 }
 
-
-/**
- * Get context's current API dispatch table.
- *
- * It'll either be the immediate-mode execute dispatcher, the display list
- * compile dispatcher, or the thread marshalling dispatcher.
- *
- * \param ctx GL context.
- *
- * \return pointer to dispatch_table.
- *
- * Simply returns __struct gl_contextRec::CurrentClientDispatch.
- */
-struct _glapi_table *
-_mesa_get_dispatch(struct gl_context *ctx)
-{
-   return ctx->CurrentClientDispatch;
-}
-
 /*@}*/
 
 
