@@ -1660,7 +1660,6 @@ void
 fd_resource_screen_init(struct pipe_screen *pscreen)
 {
    struct fd_screen *screen = fd_screen(pscreen);
-   bool fake_rgtc = screen->gen < 4;
 
    pscreen->resource_create = u_transfer_helper_resource_create;
    /* NOTE: u_transfer_helper does not yet support the _with_modifiers()
@@ -1674,8 +1673,7 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
    pscreen->transfer_helper =
       u_transfer_helper_create(&transfer_vtbl,
                                U_TRANSFER_HELPER_SEPARATE_Z32S8 |
-                               U_TRANSFER_HELPER_MSAA_MAP |
-                               (fake_rgtc ? U_TRANSFER_HELPER_FAKE_RGTC : 0));
+                               U_TRANSFER_HELPER_MSAA_MAP);
 
    if (!screen->layout_resource_for_modifier)
       screen->layout_resource_for_modifier = fd_layout_resource_for_modifier;
