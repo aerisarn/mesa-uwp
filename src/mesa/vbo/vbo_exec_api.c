@@ -860,11 +860,11 @@ _mesa_Begin(GLenum mode)
    if (ctx->GLThread.enabled) {
       if (ctx->Dispatch.Current == ctx->Dispatch.OutsideBeginEnd)
          ctx->Dispatch.Current = ctx->Dispatch.Exec;
-   } else if (ctx->CurrentClientDispatch == ctx->Dispatch.OutsideBeginEnd) {
-      ctx->CurrentClientDispatch = ctx->Dispatch.Current = ctx->Dispatch.Exec;
-      _glapi_set_dispatch(ctx->CurrentClientDispatch);
+   } else if (ctx->GLApi == ctx->Dispatch.OutsideBeginEnd) {
+      ctx->GLApi = ctx->Dispatch.Current = ctx->Dispatch.Exec;
+      _glapi_set_dispatch(ctx->GLApi);
    } else {
-      assert(ctx->CurrentClientDispatch == ctx->Dispatch.Save);
+      assert(ctx->GLApi == ctx->Dispatch.Save);
    }
 }
 
@@ -922,10 +922,10 @@ _mesa_End(void)
           ctx->Dispatch.Current == ctx->Dispatch.HWSelectModeBeginEnd) {
          ctx->Dispatch.Current = ctx->Dispatch.Exec;
       }
-   } else if (ctx->CurrentClientDispatch == ctx->Dispatch.BeginEnd ||
-              ctx->CurrentClientDispatch == ctx->Dispatch.HWSelectModeBeginEnd) {
-      ctx->CurrentClientDispatch = ctx->Dispatch.Current = ctx->Dispatch.Exec;
-      _glapi_set_dispatch(ctx->CurrentClientDispatch);
+   } else if (ctx->GLApi == ctx->Dispatch.BeginEnd ||
+              ctx->GLApi == ctx->Dispatch.HWSelectModeBeginEnd) {
+      ctx->GLApi = ctx->Dispatch.Current = ctx->Dispatch.Exec;
+      _glapi_set_dispatch(ctx->GLApi);
    }
 
    if (exec->vtx.prim_count > 0) {

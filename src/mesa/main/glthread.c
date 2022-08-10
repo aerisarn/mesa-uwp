@@ -254,11 +254,11 @@ void _mesa_glthread_enable(struct gl_context *ctx)
       return;
 
    ctx->GLThread.enabled = true;
-   ctx->CurrentClientDispatch = ctx->MarshalExec;
+   ctx->GLApi = ctx->MarshalExec;
 
    /* Update the dispatch only if the dispatch is current. */
    if (_glapi_get_dispatch() == ctx->Dispatch.Current) {
-       _glapi_set_dispatch(ctx->CurrentClientDispatch);
+       _glapi_set_dispatch(ctx->GLApi);
    }
 }
 
@@ -270,11 +270,11 @@ void _mesa_glthread_disable(struct gl_context *ctx)
    _mesa_glthread_finish(ctx);
 
    ctx->GLThread.enabled = false;
-   ctx->CurrentClientDispatch = ctx->Dispatch.Current;
+   ctx->GLApi = ctx->Dispatch.Current;
 
    /* Update the dispatch only if the dispatch is current. */
    if (_glapi_get_dispatch() == ctx->MarshalExec) {
-       _glapi_set_dispatch(ctx->CurrentClientDispatch);
+       _glapi_set_dispatch(ctx->GLApi);
    }
 
    /* Unbind VBOs in all VAOs that glthread bound for non-VBO vertex uploads

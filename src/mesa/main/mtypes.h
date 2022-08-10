@@ -3301,7 +3301,7 @@ struct gl_context
     * program.  If API calls are being marshalled to another thread, this ==
     * MarshalExec.  Otherwise it == Dispatch.Current.
     */
-   struct _glapi_table *CurrentClientDispatch;
+   struct _glapi_table *GLApi;
 
    /*@}*/
 

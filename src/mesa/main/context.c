@@ -1009,7 +1009,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    if (!ctx->Dispatch.OutsideBeginEnd)
       goto fail;
    ctx->Dispatch.Exec = ctx->Dispatch.OutsideBeginEnd;
-   ctx->CurrentClientDispatch = ctx->Dispatch.Current = ctx->Dispatch.OutsideBeginEnd;
+   ctx->GLApi = ctx->Dispatch.Current = ctx->Dispatch.OutsideBeginEnd;
 
    _mesa_reset_vertex_processing_mode(ctx);
 
@@ -1482,7 +1482,7 @@ _mesa_make_current( struct gl_context *newCtx,
    else {
       _glapi_set_context((void *) newCtx);
       assert(_mesa_get_current_context() == newCtx);
-      _glapi_set_dispatch(newCtx->CurrentClientDispatch);
+      _glapi_set_dispatch(newCtx->GLApi);
 
       if (drawBuffer && readBuffer) {
          assert(_mesa_is_winsys_fbo(drawBuffer));
