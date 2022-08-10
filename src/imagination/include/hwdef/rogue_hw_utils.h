@@ -211,7 +211,7 @@ static inline uint32_t
 rogue_max_compute_shared_registers(const struct pvr_device_info *dev_info)
 {
    if (PVR_HAS_FEATURE(dev_info, compute))
-      return 2U * 1024U;
+      return 1024U;
 
    return 0U;
 }
