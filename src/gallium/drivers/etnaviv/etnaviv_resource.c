@@ -84,9 +84,11 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
                               struct etna_resource *rsc)
 {
    struct etna_screen *screen = etna_screen(pscreen);
+   struct pipe_resource *prsc = &rsc->base;
    size_t rt_ts_size, ts_layer_stride;
    uint8_t ts_mode = TS_MODE_128B;
    int8_t ts_compress_fmt;
+   unsigned layers;
 
    assert(!rsc->ts_bo);
 
@@ -94,8 +96,8 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
     * v4 compression can be enabled everywhere without any known drawback,
     * except that in-place resolve must go through a slower path
     */
-   ts_compress_fmt = (screen->specs.v4_compression || rsc->base.nr_samples > 1) ?
-                      translate_ts_format(rsc->base.format) : -1;
+   ts_compress_fmt = (screen->specs.v4_compression || prsc->nr_samples > 1) ?
+                      translate_ts_format(prsc->format) : -1;
 
    /* enable 256B ts mode with compression, as it improves performance
     * the size of the resource might also determine if we want to use it or not
@@ -104,11 +106,12 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
        ts_compress_fmt >= 0)
          ts_mode = TS_MODE_256B;
 
+   layers = prsc->target == PIPE_TEXTURE_3D ? prsc->depth0 : prsc->array_size;
    ts_layer_stride = align(DIV_ROUND_UP(rsc->levels[0].layer_stride,
                                         etna_screen_get_tile_size(screen, ts_mode) *
                                         8 / screen->specs.bits_per_tile),
                            0x100 * screen->specs.pixel_pipes);
-   rt_ts_size = ts_layer_stride * rsc->base.array_size;
+   rt_ts_size = ts_layer_stride * layers;
    if (rt_ts_size == 0)
       return true;
 
