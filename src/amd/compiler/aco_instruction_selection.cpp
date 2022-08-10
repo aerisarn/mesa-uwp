@@ -5556,7 +5556,6 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
       while (channel_start < num_channels) {
          unsigned fetch_component = num_channels - channel_start;
          unsigned fetch_offset = attrib_offset + channel_start * vtx_info->chan_byte_size;
-         bool expanded = false;
 
          /* use MUBUF when possible to avoid possible alignment issues */
          /* TODO: we could use SDWA to unpack 8/16-bit attributes without extra instructions */
@@ -5570,11 +5569,9 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
                get_fetch_data_format(ctx, vtx_info, fetch_offset, &fetch_component,
                                      vtx_info->num_channels - channel_start, binding_align);
          } else {
-            if (fetch_component == 3 && ctx->options->gfx_level == GFX6) {
-               /* GFX6 only supports loading vec3 with MTBUF, expand to vec4. */
-               fetch_component = 4;
-               expanded = true;
-            }
+            /* GFX6 only supports loading vec3 with MTBUF, split to vec2,scalar. */
+            if (fetch_component == 3 && ctx->options->gfx_level == GFX6)
+               fetch_component = 2;
          }
 
          unsigned fetch_bytes = fetch_component * bitsize / 8;
@@ -5634,8 +5631,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          }
 
          Temp fetch_dst;
-         if (channel_start == 0 && fetch_bytes == dst.bytes() && !expanded &&
-             num_channels <= 3) {
+         if (channel_start == 0 && fetch_bytes == dst.bytes() && num_channels <= 3) {
             direct_fetch = true;
             fetch_dst = dst;
          } else {
