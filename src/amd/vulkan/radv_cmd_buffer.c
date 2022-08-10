@@ -6754,16 +6754,10 @@ radv_emit_userdata_vertex(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    const bool uses_baseinstance = state->graphics_pipeline->uses_baseinstance;
    const bool uses_drawid = state->graphics_pipeline->uses_drawid;
 
-   /* this looks very dumb, but it allows the compiler to optimize better and yields
-    * ~3-4% perf increase in drawoverhead
-    */
-   if (vertex_offset != state->last_vertex_offset) {
+   if (vertex_offset != state->last_vertex_offset ||
+       (uses_drawid && 0 != state->last_drawid) ||
+       (uses_baseinstance && info->first_instance != state->last_first_instance))
       radv_emit_userdata_vertex_internal(cmd_buffer, info, vertex_offset);
-   } else if (uses_drawid && 0 != state->last_drawid) {
-      radv_emit_userdata_vertex_internal(cmd_buffer, info, vertex_offset);
-   } else if (uses_baseinstance && info->first_instance != state->last_first_instance) {
-      radv_emit_userdata_vertex_internal(cmd_buffer, info, vertex_offset);
-   }
 }
 
 ALWAYS_INLINE static void
