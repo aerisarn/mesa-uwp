@@ -761,17 +761,6 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    }
 }
 
-static LLVMValueRef si_llvm_load_user_clip_plane(struct ac_shader_abi *abi, unsigned ucp_id)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   struct ac_llvm_pointer ptr = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings);
-   LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
-   LLVMValueRef const_resource = ac_build_load_to_sgpr(&ctx->ac, ptr, constbuf_index);
-   LLVMValueRef addr = LLVMConstInt(ctx->ac.i32, ucp_id * 16, 0);
-   return ac_build_buffer_load(&ctx->ac, const_resource, 4, NULL, addr, NULL,
-                               ctx->ac.f32, 0, true, true);
-}
-
 static LLVMValueRef si_llvm_load_streamout_buffer(struct ac_shader_abi *abi, unsigned buffer)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -797,7 +786,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->num_images = info->base.num_images;
 
    ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
-   ctx->abi.load_user_clip_plane = si_llvm_load_user_clip_plane;
    ctx->abi.load_streamout_buffer = si_llvm_load_streamout_buffer;
    ctx->abi.export_vertex = gfx10_ngg_export_vertex;
    ctx->abi.atomic_add_prim_count = gfx10_ngg_atomic_add_prim_count;

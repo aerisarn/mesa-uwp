@@ -222,6 +222,12 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_clamp_vertex_color_amd:
       replacement = nir_i2b(b, GET_FIELD_NIR(VS_STATE_CLAMP_VERTEX_COLOR));
       break;
+   case nir_intrinsic_load_user_clip_plane: {
+      nir_ssa_def *buf = load_internal_binding(b, args, SI_VS_CONST_CLIP_PLANES);
+      unsigned offset = nir_intrinsic_ucp_id(intrin) * 16;
+      replacement = nir_load_smem_buffer_amd(b, 4, buf, nir_imm_int(b, offset));
+      break;
+   }
    default:
       return false;
    }

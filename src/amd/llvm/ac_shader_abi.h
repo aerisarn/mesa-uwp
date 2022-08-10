@@ -116,8 +116,6 @@ struct ac_shader_abi {
 
    LLVMValueRef (*load_sample_position)(struct ac_shader_abi *abi, LLVMValueRef sample_id);
 
-   LLVMValueRef (*load_user_clip_plane)(struct ac_shader_abi *abi, unsigned ucp_id);
-
    LLVMValueRef (*load_streamout_buffer)(struct ac_shader_abi *abi, unsigned buffer);
 
    LLVMValueRef (*emit_fbfetch)(struct ac_shader_abi *abi);
