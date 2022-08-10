@@ -1558,7 +1558,7 @@ radv_pipeline_init_input_assembly_info(struct radv_graphics_pipeline *pipeline,
    const VkPipelineInputAssemblyStateCreateInfo *ia = pCreateInfo->pInputAssemblyState;
    struct radv_input_assembly_info info = {0};
 
-   info.primitive_topology = si_translate_prim(ia->topology);
+   info.primitive_topology = ia->topology;
 
    if (!(pipeline->dynamic_states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE))
       info.primitive_restart_enable = !!ia->primitiveRestartEnable;
@@ -2019,7 +2019,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-      dynamic->primitive_topology = info->ia.primitive_topology;
+      dynamic->primitive_topology = si_translate_prim(info->ia.primitive_topology);
    }
 
    /* If there is no depthstencil attachment, then don't read
@@ -3322,7 +3322,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.ps.alpha_to_coverage_via_mrtz = info->ms.alpha_to_coverage_enable;
    }
 
-   key.vs.topology = info->ia.primitive_topology;
+   key.vs.topology = si_translate_prim(info->ia.primitive_topology);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
       key.vs.provoking_vtx_last =
@@ -6835,7 +6835,7 @@ radv_pipeline_init_vgt_gs_out(struct radv_graphics_pipeline *pipeline,
       gs_out =
          si_conv_gl_prim_to_gs_out(pipeline->base.shaders[MESA_SHADER_MESH]->info.ms.output_prim);
    } else {
-      gs_out = si_conv_prim_to_gs_out(info->ia.primitive_topology);
+      gs_out = si_conv_prim_to_gs_out(si_translate_prim(info->ia.primitive_topology));
    }
 
    return gs_out;

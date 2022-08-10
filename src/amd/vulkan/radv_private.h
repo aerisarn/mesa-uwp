@@ -1963,7 +1963,7 @@ struct radv_vertex_input_info {
 };
 
 struct radv_input_assembly_info {
-   uint8_t primitive_topology; /* VkPrimitiveTopology */
+   VkPrimitiveTopology primitive_topology;
    bool primitive_restart_enable;
 };
 
