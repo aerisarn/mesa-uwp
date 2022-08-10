@@ -963,11 +963,20 @@ void st_init_extensions(struct pipe_screen *screen,
           PIPE_FORMAT_DXT3_RGBA,
           PIPE_FORMAT_DXT5_RGBA } },
 
+      /* S3TC software fallback support. */
+      { { o(EXT_texture_compression_s3tc),
+          o(ANGLE_texture_compression_dxt) },
+        { PIPE_FORMAT_R8G8B8A8_UNORM } },
+
       { { o(EXT_texture_compression_s3tc_srgb) },
         { PIPE_FORMAT_DXT1_SRGB,
           PIPE_FORMAT_DXT1_SRGBA,
           PIPE_FORMAT_DXT3_SRGBA,
           PIPE_FORMAT_DXT5_SRGBA } },
+
+      /* S3TC SRGB software fallback support. */
+      { { o(EXT_texture_compression_s3tc_srgb) },
+        { PIPE_FORMAT_R8G8B8A8_SRGB } },
 
       { { o(ARB_texture_compression_bptc) },
         { PIPE_FORMAT_BPTC_RGBA_UNORM,
