@@ -90,7 +90,7 @@ etna_create_surface(struct pipe_context *pctx, struct pipe_resource *prsc,
    assert(templat->u.tex.first_layer == templat->u.tex.last_layer);
    unsigned layer = templat->u.tex.first_layer;
    unsigned level = templat->u.tex.level;
-   assert(layer < rsc->base.array_size);
+   assert(layer <= util_max_layer(prsc, level));
 
    surf->base.context = pctx;
 
