@@ -26,6 +26,8 @@
  * GL_ARB_texture_compression_bptc support.
  */
 
+#define BPTC_BLOCK_DECODE
+
 #include <stdbool.h>
 #include "texcompress.h"
 #include "texcompress_bptc.h"
@@ -240,4 +242,36 @@ _mesa_texstore_bptc_rgb_unsigned_float(TEXSTORE_PARAMS)
                                   srcFormat, srcType,
                                   srcAddr, srcPacking,
                                   false /* unsigned */);
+}
+
+void
+_mesa_unpack_bptc(uint8_t *dst_row,
+                  unsigned dst_stride,
+                  const uint8_t *src_row,
+                  unsigned src_stride,
+                  unsigned src_width,
+                  unsigned src_height,
+                  mesa_format format)
+{
+   switch (format) {
+   case MESA_FORMAT_BPTC_RGB_SIGNED_FLOAT:
+      decompress_rgb_float(src_width, src_height,
+                           src_row, src_stride,
+                           (float *)dst_row, dst_stride,
+                           true);
+      break;
+
+   case MESA_FORMAT_BPTC_RGB_UNSIGNED_FLOAT:
+      decompress_rgb_float(src_width, src_height,
+                           src_row, src_stride,
+                           (float *)dst_row, dst_stride,
+                           false);
+      break;
+
+   default:
+      decompress_rgba_unorm(src_width, src_height,
+                            src_row, src_stride,
+                            dst_row, dst_stride);
+      break;
+   }
 }
