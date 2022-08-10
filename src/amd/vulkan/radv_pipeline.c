@@ -1485,116 +1485,11 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *vi, uint32_t 
    return 0;
 }
 
-static struct radv_vertex_input_info
-radv_pipeline_init_vertex_input_info(struct radv_graphics_pipeline *pipeline,
-                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   const VkPipelineVertexInputStateCreateInfo *vi = pCreateInfo->pVertexInputState;
-   struct radv_vertex_input_info info = {0};
-
-   if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT)) {
-      /* Vertex input */
-      const VkPipelineVertexInputDivisorStateCreateInfoEXT *divisor_state =
-         vk_find_struct_const(vi->pNext, PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
-
-      uint32_t binding_input_rate = 0;
-      uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
-      for (unsigned i = 0; i < vi->vertexBindingDescriptionCount; ++i) {
-         const VkVertexInputBindingDescription *desc = &vi->pVertexBindingDescriptions[i];
-
-         if (desc->inputRate) {
-            unsigned binding = vi->pVertexBindingDescriptions[i].binding;
-            binding_input_rate |= 1u << binding;
-            instance_rate_divisors[binding] = 1;
-         }
-
-         info.binding_stride[desc->binding] = desc->stride;
-      }
-
-      if (divisor_state) {
-         for (unsigned i = 0; i < divisor_state->vertexBindingDivisorCount; ++i) {
-            instance_rate_divisors[divisor_state->pVertexBindingDivisors[i].binding] =
-               divisor_state->pVertexBindingDivisors[i].divisor;
-         }
-      }
-
-      for (unsigned i = 0; i < vi->vertexAttributeDescriptionCount; ++i) {
-         const VkVertexInputAttributeDescription *desc = &vi->pVertexAttributeDescriptions[i];
-         const struct util_format_description *format_desc;
-         unsigned location = desc->location;
-         unsigned binding = desc->binding;
-         unsigned num_format, data_format;
-         bool post_shuffle;
-
-         if (binding_input_rate & (1u << binding)) {
-            info.instance_rate_inputs |= 1u << location;
-            info.instance_rate_divisors[location] = instance_rate_divisors[binding];
-         }
-
-         format_desc = vk_format_description(desc->format);
-         radv_translate_vertex_format(pdevice, desc->format, format_desc, &data_format, &num_format,
-                                      &post_shuffle, &info.vertex_alpha_adjust[location]);
-
-         info.vertex_attribute_formats[location] = data_format | (num_format << 4);
-         info.vertex_attribute_bindings[location] = desc->binding;
-         info.vertex_attribute_offsets[location] = desc->offset;
-
-         const struct ac_data_format_info *dfmt_info = ac_get_data_format_info(data_format);
-         unsigned attrib_align =
-            dfmt_info->chan_byte_size ? dfmt_info->chan_byte_size : dfmt_info->element_size;
-
-         /* If desc->offset is misaligned, then the buffer offset must be too. Just
-          * skip updating vertex_binding_align in this case.
-          */
-         if (desc->offset % attrib_align == 0)
-            info.vertex_binding_align[desc->binding] =
-               MAX2(info.vertex_binding_align[desc->binding], attrib_align);
-
-         if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE)) {
-            /* From the Vulkan spec 1.2.157:
-             *
-             * "If the bound pipeline state object was created
-             *  with the
-             *  VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
-             *  dynamic state enabled then pStrides[i] specifies
-             *  the distance in bytes between two consecutive
-             *  elements within the corresponding buffer. In this
-             *  case the VkVertexInputBindingDescription::stride
-             *  state from the pipeline state object is ignored."
-             *
-             * Make sure the vertex attribute stride is zero to
-             * avoid computing a wrong offset if it's initialized
-             * to something else than zero.
-             */
-            info.vertex_attribute_strides[location] = radv_get_attrib_stride(vi, desc->binding);
-         }
-
-         if (post_shuffle)
-            info.vertex_post_shuffle |= 1 << location;
-
-         uint32_t end = desc->offset + vk_format_get_blocksize(desc->format);
-         info.attrib_ends[desc->location] = end;
-         if (info.binding_stride[desc->binding])
-            info.attrib_index_offset[desc->location] =
-               desc->offset / info.binding_stride[desc->binding];
-         info.attrib_bindings[desc->location] = desc->binding;
-      }
-   }
-
-   return info;
-}
-
 static struct radv_graphics_pipeline_info
 radv_pipeline_init_graphics_info(struct radv_graphics_pipeline *pipeline,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    struct radv_graphics_pipeline_info info = {0};
-
-   /* Vertex input interface structs have to be ignored if the pipeline includes a mesh shader. */
-   if (!(pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV)) {
-      info.vi = radv_pipeline_init_vertex_input_info(pipeline, pCreateInfo);
-   }
 
    return info;
 }
@@ -2946,20 +2841,59 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    }
 
    /* Vertex input state */
-   key.vs.instance_rate_inputs = info->vi.instance_rate_inputs;
-   key.vs.vertex_post_shuffle = info->vi.vertex_post_shuffle;
+   if (state->vi) {
+      u_foreach_bit(i, state->vi->attributes_valid) {
+         uint32_t binding = state->vi->attributes[i].binding;
+         uint32_t offset = state->vi->attributes[i].offset;
+         VkFormat format = state->vi->attributes[i].format;
+         const struct util_format_description *format_desc;
+         unsigned num_format, data_format;
+         bool post_shuffle;
 
-   for (uint32_t i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
-      key.vs.instance_rate_divisors[i] = info->vi.instance_rate_divisors[i];
-      key.vs.vertex_attribute_formats[i] = info->vi.vertex_attribute_formats[i];
-      key.vs.vertex_attribute_bindings[i] = info->vi.vertex_attribute_bindings[i];
-      key.vs.vertex_attribute_offsets[i] = info->vi.vertex_attribute_offsets[i];
-      key.vs.vertex_attribute_strides[i] = info->vi.vertex_attribute_strides[i];
-      key.vs.vertex_alpha_adjust[i] = info->vi.vertex_alpha_adjust[i];
-   }
+         format_desc = vk_format_description(format);
+         radv_translate_vertex_format(device->physical_device, format, format_desc, &data_format,
+                                      &num_format, &post_shuffle, &key.vs.vertex_alpha_adjust[i]);
 
-   for (uint32_t i = 0; i < MAX_VBS; i++) {
-      key.vs.vertex_binding_align[i] = info->vi.vertex_binding_align[i];
+         key.vs.vertex_attribute_formats[i] = data_format | (num_format << 4);
+         key.vs.vertex_attribute_bindings[i] = binding;
+         key.vs.vertex_attribute_offsets[i] = offset;
+         key.vs.instance_rate_divisors[i] = state->vi->bindings[binding].divisor;
+
+         if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE)) {
+            /* From the Vulkan spec 1.2.157:
+             *
+             * "If the bound pipeline state object was created with the
+             * VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE dynamic state enabled then pStrides[i]
+             * specifies the distance in bytes between two consecutive elements within the
+             * corresponding buffer. In this case the VkVertexInputBindingDescription::stride state
+             * from the pipeline state object is ignored."
+             *
+             * Make sure the vertex attribute stride is zero to avoid computing a wrong offset if
+             * it's initialized to something else than zero.
+             */
+            key.vs.vertex_attribute_strides[i] = state->vi->bindings[binding].stride;
+         }
+
+         if (state->vi->bindings[binding].input_rate) {
+            key.vs.instance_rate_inputs |= 1u << i;
+         }
+
+         if (post_shuffle) {
+            key.vs.vertex_post_shuffle |= 1u << i;
+         }
+
+         const struct ac_data_format_info *dfmt_info = ac_get_data_format_info(data_format);
+         unsigned attrib_align =
+            dfmt_info->chan_byte_size ? dfmt_info->chan_byte_size : dfmt_info->element_size;
+
+         /* If offset is misaligned, then the buffer offset must be too. Just skip updating
+          * vertex_binding_align in this case.
+          */
+         if (offset % attrib_align == 0) {
+            key.vs.vertex_binding_align[binding] =
+               MAX2(key.vs.vertex_binding_align[binding], attrib_align);
+         }
+      }
    }
 
    if (state->ts)
@@ -6397,19 +6331,29 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
 
 static void
 radv_pipeline_init_vertex_input_state(struct radv_graphics_pipeline *pipeline,
-                                      const struct radv_graphics_pipeline_info *info)
+                                      const struct radv_graphics_pipeline_info *info,
+                                      const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    const struct radv_shader_info *vs_info = &radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX)->info;
 
-   for (uint32_t i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
-      pipeline->attrib_ends[i] = info->vi.attrib_ends[i];
-      pipeline->attrib_index_offset[i] = info->vi.attrib_index_offset[i];
-      pipeline->attrib_bindings[i] = info->vi.attrib_bindings[i];
-   }
+   if (state->vi) {
+      u_foreach_bit(i, state->vi->attributes_valid) {
+         uint32_t binding = state->vi->attributes[i].binding;
+         uint32_t offset = state->vi->attributes[i].offset;
+         VkFormat format = state->vi->attributes[i].format;
 
-   for (uint32_t i = 0; i < MAX_VBS; i++) {
-      pipeline->binding_stride[i] = info->vi.binding_stride[i];
+         pipeline->attrib_ends[i] = offset + vk_format_get_blocksize(format);
+         pipeline->attrib_bindings[i] = binding;
+
+         if (state->vi->bindings[binding].stride) {
+            pipeline->attrib_index_offset[i] = offset / state->vi->bindings[binding].stride;
+         }
+      }
+
+      u_foreach_bit(i, state->vi->bindings_valid) {
+         pipeline->binding_stride[i] = state->vi->bindings[i].stride;
+      }
    }
 
    pipeline->use_per_attribute_vb_descs = vs_info->vs.use_per_attribute_vb_descs;
@@ -6682,7 +6626,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    }
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
-      radv_pipeline_init_vertex_input_state(pipeline, &info);
+      radv_pipeline_init_vertex_input_state(pipeline, &info, &state);
 
    radv_pipeline_init_binning_state(pipeline, &blend, &info, &state);
    radv_pipeline_init_shader_stages_state(pipeline);

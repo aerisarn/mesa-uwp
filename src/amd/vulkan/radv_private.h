@@ -1946,24 +1946,8 @@ struct radv_pipeline_slab {
 
 void radv_pipeline_slab_destroy(struct radv_device *device, struct radv_pipeline_slab *slab);
 
-struct radv_vertex_input_info {
-   uint32_t instance_rate_inputs;
-   uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
-   uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_attribute_bindings[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
-   uint8_t vertex_binding_align[MAX_VBS];
-   enum radv_vs_input_alpha_adjust vertex_alpha_adjust[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_post_shuffle;
-   uint32_t binding_stride[MAX_VBS];
-   uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
-   uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
-   uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
-};
-
 struct radv_graphics_pipeline_info {
-   struct radv_vertex_input_info vi;
+
 };
 
 enum radv_depth_clamp_mode {
