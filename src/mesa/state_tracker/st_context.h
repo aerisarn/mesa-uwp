@@ -145,6 +145,7 @@ struct st_context
    boolean has_astc_5x5_ldr;
    boolean has_s3tc;
    boolean has_rgtc;
+   boolean has_latc;
    boolean has_bptc;
    boolean prefer_blit_based_texture_transfer;
    boolean allow_compute_based_texture_transfer;
