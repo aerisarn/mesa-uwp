@@ -544,7 +544,7 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    agxdecode_stateful(*encoder, "Encoder", agxdecode_cmd, verbose);
 
    if (pip.clear_pipeline_unk) {
-      assert(pip.clear_pipeline_unk == 0x4);
+      fprintf(agxdecode_dump_stream, "Unk: %X\n", pip.clear_pipeline_unk);
       agxdecode_stateful(pip.clear_pipeline, "Clear pipeline",
             agxdecode_pipeline, verbose);
    }
