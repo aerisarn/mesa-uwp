@@ -35,6 +35,8 @@ struct vn_physical_device_features {
    VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
       shader_demote_to_helper_invocation;
    VkPhysicalDeviceShaderIntegerDotProductFeatures shader_integer_dot_product;
+   VkPhysicalDeviceShaderTerminateInvocationFeatures
+      shader_terminate_invocation;
    VkPhysicalDeviceTextureCompressionASTCHDRFeatures
       texture_compression_astc_hdr;
 

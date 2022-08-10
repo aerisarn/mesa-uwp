@@ -122,6 +122,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_integer_dot_product,
                        feats->shader_integer_dot_product,
                        SHADER_INTEGER_DOT_PRODUCT_FEATURES, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_terminate_invocation,
+                       feats->shader_terminate_invocation,
+                       SHADER_TERMINATE_INVOCATION_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_4444_formats, feats->argb_4444_formats,
                        4444_FORMATS_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state,
@@ -1049,6 +1052,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_maintenance4 = true,
       .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
+      .KHR_shader_terminate_invocation = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
@@ -1672,6 +1676,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(PIPELINE_CREATION_CACHE_CONTROL_FEATURES, pipeline_creation_cache_control);
       CASE(SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, shader_demote_to_helper_invocation);
       CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
+      CASE(SHADER_TERMINATE_INVOCATION_FEATURES, shader_terminate_invocation);
       CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
 
       /* EXT */
