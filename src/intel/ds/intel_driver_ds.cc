@@ -80,6 +80,14 @@ static const struct {
       INTEL_DS_QUEUE_STAGE_COMPUTE,
    },
    {
+      "as-build",
+      INTEL_DS_QUEUE_STAGE_AS,
+   },
+   {
+      "RT",
+      INTEL_DS_QUEUE_STAGE_RT,
+   },
+   {
       "render-pass",
       INTEL_DS_QUEUE_STAGE_RENDER_PASS,
    },
@@ -402,6 +410,8 @@ CREATE_DUAL_EVENT_CALLBACK(query_clear_blorp, INTEL_DS_QUEUE_STAGE_INTERNAL_OPS)
 CREATE_DUAL_EVENT_CALLBACK(query_clear_cs, INTEL_DS_QUEUE_STAGE_INTERNAL_OPS)
 CREATE_DUAL_EVENT_CALLBACK(query_copy_cs, INTEL_DS_QUEUE_STAGE_INTERNAL_OPS)
 CREATE_DUAL_EVENT_CALLBACK(query_copy_shader, INTEL_DS_QUEUE_STAGE_INTERNAL_OPS)
+CREATE_DUAL_EVENT_CALLBACK(rays, INTEL_DS_QUEUE_STAGE_RT)
+CREATE_DUAL_EVENT_CALLBACK(as_build, INTEL_DS_QUEUE_STAGE_AS)
 
 void
 intel_ds_begin_cmd_buffer_annotation(struct intel_ds_device *device,

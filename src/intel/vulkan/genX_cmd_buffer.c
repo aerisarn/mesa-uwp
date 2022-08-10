@@ -6254,6 +6254,8 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
         params->launch_size[2] == 0))
       return;
 
+   trace_intel_begin_rays(&cmd_buffer->trace);
+
    genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->base.l3_config);
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
 
@@ -6454,6 +6456,11 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       STATIC_ASSERT(sizeof(trampoline_params) == 32);
       memcpy(cw.InlineData, &trampoline_params, sizeof(trampoline_params));
    }
+
+   trace_intel_end_rays(&cmd_buffer->trace,
+                        params->launch_size[0],
+                        params->launch_size[1],
+                        params->launch_size[2]);
 }
 
 void

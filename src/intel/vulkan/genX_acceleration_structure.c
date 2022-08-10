@@ -33,8 +33,9 @@
 #include "genxml/genX_pack.h"
 #include "genxml/genX_rt_pack.h"
 
-#if GFX_VERx10 == 125
+#include "ds/intel_tracepoints.h"
 
+#if GFX_VERx10 == 125
 #include "grl/grl_structs.h"
 
 /* Wait for the previous dispatches to finish and flush their data port
@@ -622,6 +623,8 @@ cmd_build_acceleration_structures(
       return;
    }
 
+   trace_intel_begin_as_build(&cmd_buffer->trace);
+
    /* TODO: Indirect */
    assert(ppBuildRangeInfos != NULL);
 
@@ -1102,6 +1105,8 @@ cmd_build_acceleration_structures(
    anv_add_pending_pipe_bits(cmd_buffer,
                              ANV_GRL_FLUSH_FLAGS,
                              "building accel struct");
+
+   trace_intel_end_as_build(&cmd_buffer->trace);
 
  error:
    vk_free(&cmd_buffer->device->vk.alloc, builds);
