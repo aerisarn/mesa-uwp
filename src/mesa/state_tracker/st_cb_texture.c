@@ -46,6 +46,7 @@
 #include "main/texcompress_astc.h"
 #include "main/texcompress_bptc.h"
 #include "main/texcompress_etc.h"
+#include "main/texcompress_s3tc.h"
 #include "main/texgetimage.h"
 #include "main/teximage.h"
 #include "main/texobj.h"
@@ -439,6 +440,8 @@ st_compressed_format_fallback(struct st_context *st, mesa_format format)
       return !st->has_etc1;
    case MESA_FORMAT_LAYOUT_ETC2:
       return !st->has_etc2;
+   case MESA_FORMAT_LAYOUT_S3TC:
+      return !st->has_s3tc;
    case MESA_FORMAT_LAYOUT_BPTC:
       return !st->has_bptc;
    case MESA_FORMAT_LAYOUT_ASTC:
@@ -635,6 +638,12 @@ st_UnmapTextureImage(struct gl_context *ctx,
                                         itransfer->temp_stride,
                                         transfer->box.width, transfer->box.height,
                                         texImage->TexFormat);
+            } else if (_mesa_is_format_s3tc(texImage->TexFormat)) {
+               _mesa_unpack_s3tc(map, transfer->stride,
+                                 itransfer->temp_data,
+                                 itransfer->temp_stride,
+                                 transfer->box.width, transfer->box.height,
+                                 texImage->TexFormat);
             } else if (_mesa_is_format_bptc(texImage->TexFormat)) {
                _mesa_unpack_bptc(map, transfer->stride,
                                  itransfer->temp_data,

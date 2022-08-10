@@ -119,6 +119,11 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       }
    }
 
+   if (_mesa_is_format_s3tc(mesaFormat) && !st->has_s3tc) {
+      return _mesa_is_format_srgb(mesaFormat) ? PIPE_FORMAT_R8G8B8A8_SRGB :
+                                                PIPE_FORMAT_R8G8B8A8_UNORM;
+   }
+
    if (_mesa_is_format_bptc(mesaFormat) && !st->has_bptc) {
       switch (mesaFormat) {
       case MESA_FORMAT_BPTC_RGB_SIGNED_FLOAT:
