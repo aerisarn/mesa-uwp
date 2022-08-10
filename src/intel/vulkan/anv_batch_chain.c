@@ -1218,12 +1218,6 @@ struct anv_execbuf {
 };
 
 static void
-anv_execbuf_init(struct anv_execbuf *exec)
-{
-   memset(exec, 0, sizeof(*exec));
-}
-
-static void
 anv_execbuf_finish(struct anv_execbuf *exec)
 {
    vk_free(exec->alloc, exec->syncobjs);
@@ -2024,10 +2018,10 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
    assert(flush->batch_bo);
 
    struct anv_device *device = queue->device;
-   struct anv_execbuf execbuf;
-   anv_execbuf_init(&execbuf);
-   execbuf.alloc = &device->vk.alloc;
-   execbuf.alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE;
+   struct anv_execbuf execbuf = {
+      .alloc = &device->vk.alloc,
+      .alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
+   };
 
    VkResult result = setup_utrace_execbuf(&execbuf, queue, flush);
    if (result != VK_SUCCESS)
@@ -2088,11 +2082,11 @@ anv_queue_exec_locked(struct anv_queue *queue,
 {
    struct anv_device *device = queue->device;
    struct anv_utrace_flush_copy *utrace_flush_data = NULL;
-   struct anv_execbuf execbuf;
-   anv_execbuf_init(&execbuf);
-   execbuf.alloc = &queue->device->vk.alloc;
-   execbuf.alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE;
-   execbuf.perf_query_pass = perf_query_pass;
+   struct anv_execbuf execbuf = {
+      .alloc = &queue->device->vk.alloc,
+      .alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
+      .perf_query_pass = perf_query_pass,
+   };
 
    /* Flush the trace points first, they need to be moved */
    VkResult result =
@@ -2437,10 +2431,10 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
    if (device->physical->memory.need_clflush)
       intel_flush_range(batch_bo->map, batch_size);
 
-   struct anv_execbuf execbuf;
-   anv_execbuf_init(&execbuf);
-   execbuf.alloc = &queue->device->vk.alloc;
-   execbuf.alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE;
+   struct anv_execbuf execbuf = {
+      .alloc = &queue->device->vk.alloc,
+      .alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE,
+   };
 
    result = anv_execbuf_add_bo(device, &execbuf, batch_bo, NULL, 0);
    if (result != VK_SUCCESS)
