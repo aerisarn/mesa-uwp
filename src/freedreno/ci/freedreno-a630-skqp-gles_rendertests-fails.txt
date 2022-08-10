@@ -1178,6 +1178,8 @@ image_from_yuv_textures,-1
 image_scale_aligned,-1
 imagealphathreshold_image,-1
 imageblur,-1
+# A few pixels at the edge of the blur, nothing more noticeable at those points than the jaggedness elsewhere.
+imageblurclampmode,180
 imagefilters_xfermodes,-1
 imagefiltersbase,-1
 imagefiltersclipped,-1

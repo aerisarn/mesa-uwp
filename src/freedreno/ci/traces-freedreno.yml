@@ -207,7 +207,7 @@ traces:
     freedreno-a530:
       checksum: 70e18ba06d56fea277cd3fb000729879
     freedreno-a630:
-      checksum: 9eb6d261c0c5946d8aeb0f41b2b7c1b1
+      checksum: 92944a4996ea019f51cfcdeaf4fc6926
 
   glmark2/desktop:windows=4:effect=shadow-v2.trace:
     freedreno-a306:
@@ -223,7 +223,7 @@ traces:
     freedreno-a530:
       checksum: 7712c8143a244c56922124f4ac207722
     freedreno-a630:
-      checksum: 7712c8143a244c56922124f4ac207722
+      checksum: 8a3b04aff4848fd36de9d956f24fac2f
 
   glmark2/effect2d:kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;-v2.trace:
     freedreno-a306:
@@ -231,7 +231,7 @@ traces:
     freedreno-a530:
       checksum: 50f1841f2bb96905c9fcd1815c4a95c0
     freedreno-a630:
-      checksum: 50f1841f2bb96905c9fcd1815c4a95c0
+      checksum: 05e7d72609840c897f734dca03748ead
 
   glmark2/function:fragment-steps=5:fragment-complexity=low-v2.trace:
     freedreno-a306:

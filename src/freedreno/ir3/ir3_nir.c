@@ -463,6 +463,40 @@ ir3_nir_post_finalize(struct ir3_shader *shader)
 
    if (compiler->gen >= 6 && s->info.stage == MESA_SHADER_FRAGMENT &&
        !(ir3_shader_debug & IR3_DBG_NOFP16)) {
+      /* Lower FS mediump inputs to 16-bit. If you declared it mediump, you
+       * probably want 16-bit instructions (and have set
+       * mediump/RelaxedPrecision on most of the rest of the shader's
+       * instructions).  If we don't lower it in NIR, then comparisons of the
+       * results of mediump ALU ops with the mediump input will happen in highp,
+       * causing extra conversions (and, incidentally, causing
+       * dEQP-GLES2.functional.shaders.algorithm.rgb_to_hsl_fragment on ANGLE to
+       * fail)
+       *
+       * However, we can't do flat inputs because flat.b doesn't have the
+       * destination type for how to downconvert the
+       * 32-bit-in-the-varyings-interpolator value. (also, even if it did, watch
+       * out for how gl_nir_lower_packed_varyings packs all flat-interpolated
+       * things together as ivec4s, so when we lower a formerly-float input
+       * you'd end up with an incorrect f2f16(i2i32(load_input())) instead of
+       * load_input).
+       */
+      uint64_t mediump_varyings = 0;
+      nir_foreach_shader_in_variable(var, s) {
+         if ((var->data.precision == GLSL_PRECISION_MEDIUM ||
+              var->data.precision == GLSL_PRECISION_LOW) &&
+             var->data.interpolation != INTERP_MODE_FLAT) {
+            mediump_varyings |= BITFIELD64_BIT(var->data.location);
+         }
+      }
+
+      if (mediump_varyings) {
+         NIR_PASS_V(s, nir_lower_mediump_io,
+                  nir_var_shader_in,
+                  mediump_varyings,
+                  false);
+      }
+
+      /* This should come after input lowering, to opportunistically lower non-mediump outputs. */
       NIR_PASS_V(s, nir_lower_mediump_io, nir_var_shader_out, 0, false);
    }
 
