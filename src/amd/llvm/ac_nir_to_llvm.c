@@ -4403,6 +4403,15 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
       break;
    }
+   case nir_intrinsic_load_smem_buffer_amd: {
+      LLVMValueRef descriptor = get_src(ctx, instr->src[0]);
+      LLVMValueRef offset = get_src(ctx, instr->src[1]);
+      unsigned num_components = instr->dest.ssa.num_components;
+
+      result = ac_build_buffer_load(&ctx->ac, descriptor, num_components, NULL, offset, NULL,
+                                    ctx->ac.i32, 0, true, true);
+      break;
+   }
    case nir_intrinsic_ordered_xfb_counter_add_amd: {
       /* must be called in a single lane of a workgroup. */
       LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);

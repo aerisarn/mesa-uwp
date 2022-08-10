@@ -185,6 +185,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_tess_level_outer_default:
    case nir_intrinsic_load_scalar_arg_amd:
    case nir_intrinsic_load_smem_amd:
+   case nir_intrinsic_load_smem_buffer_amd:
    case nir_intrinsic_load_rt_dynamic_callable_stack_base_amd:
    case nir_intrinsic_load_global_const_block_intel:
    case nir_intrinsic_load_reloc_const_intel:
