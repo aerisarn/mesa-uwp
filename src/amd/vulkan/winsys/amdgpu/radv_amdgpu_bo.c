@@ -622,7 +622,7 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws, void *pointer, uint64_
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    if (amdgpu_create_bo_from_user_mem(ws->dev, pointer, size, &buf_handle)) {
-      result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto error;
    }
 
