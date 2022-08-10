@@ -1048,6 +1048,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_dynamic_rendering = true,
       .KHR_maintenance4 = true,
       .KHR_shader_integer_dot_product = true,
+      .KHR_shader_non_semantic_info = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
