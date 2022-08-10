@@ -140,7 +140,7 @@ wgl_add_config(_EGLDisplay *disp, const struct stw_pixelformat_info *stw_config,
          return NULL;
    }
    else if (num_configs == 0) {
-      conf = calloc(1, sizeof * conf);
+      conf = calloc(1, sizeof(*conf));
       if (conf == NULL)
          return NULL;
 
@@ -233,7 +233,7 @@ wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
    struct wgl_egl_display *wgl_dpy;
    const char* err;
 
-   wgl_dpy = calloc(1, sizeof * wgl_dpy);
+   wgl_dpy = calloc(1, sizeof(*wgl_dpy));
    if (!wgl_dpy)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
@@ -398,7 +398,7 @@ wgl_create_context(_EGLDisplay *disp, _EGLConfig *conf,
    struct wgl_egl_config *wgl_config = wgl_egl_config(conf);
    const struct stw_pixelformat_info *stw_config;
 
-   wgl_ctx = malloc(sizeof * wgl_ctx);
+   wgl_ctx = malloc(sizeof(*wgl_ctx));
    if (!wgl_ctx) {
       _eglError(EGL_BAD_ALLOC, "eglCreateContext");
       return NULL;
