@@ -479,14 +479,6 @@
    DRI_CONF_OPT_B(force_sw_rendering_on_cpu, def, \
                   "If set to false, emulates software rendering on the requested device, else uses a software renderer.")
 
-/**
- * \brief radeonsi specific configuration options
- */
-
-#define DRI_CONF_RADEONSI_ZERO_ALL_VRAM_ALLOCS(def) \
-   DRI_CONF_OPT_B(radeonsi_zerovram, def, \
-                  "Zero all vram allocations")
-
 #define DRI_CONF_V3D_NONMSAA_TEXTURE_SIZE_LIMIT(def) \
    DRI_CONF_OPT_B(v3d_nonmsaa_texture_size_limit, def, \
                   "Report the non-MSAA-only texture size limit")
