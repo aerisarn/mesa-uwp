@@ -149,6 +149,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        feats->shader_demote_to_helper_invocation,
                        SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES,
                        features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_subgroup_size_control,
+                       feats->subgroup_size_control,
+                       SUBGROUP_SIZE_CONTROL_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_texture_compression_astc_hdr,
                        feats->texture_compression_astc_hdr,
                        TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, features2);
@@ -498,6 +501,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_integer_dot_product,
                        props->shader_integer_dot_product,
                        SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_subgroup_size_control,
+                       props->subgroup_size_control,
+                       SUBGROUP_SIZE_CONTROL_PROPERTIES, properties2);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT(
@@ -1064,6 +1070,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_inline_uniform_block = true,
       .EXT_pipeline_creation_cache_control = true,
       .EXT_shader_demote_to_helper_invocation = true,
+      .EXT_subgroup_size_control = true,
       .EXT_texture_compression_astc_hdr = true,
 
       /* EXT */
@@ -1681,6 +1688,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, shader_demote_to_helper_invocation);
       CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
       CASE(SHADER_TERMINATE_INVOCATION_FEATURES, shader_terminate_invocation);
+      CASE(SUBGROUP_SIZE_CONTROL_FEATURES, subgroup_size_control);
       CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
       CASE(ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, zero_initialize_workgroup_memory);
 
@@ -1737,6 +1745,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       /* Vulkan 1.3 */
       CASE(INLINE_UNIFORM_BLOCK_PROPERTIES, inline_uniform_block);
       CASE(SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, shader_integer_dot_product);
+      CASE(SUBGROUP_SIZE_CONTROL_PROPERTIES, subgroup_size_control);
 
       /* EXT */
       CASE(CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, conservative_rasterization);

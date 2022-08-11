@@ -37,6 +37,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceShaderIntegerDotProductFeatures shader_integer_dot_product;
    VkPhysicalDeviceShaderTerminateInvocationFeatures
       shader_terminate_invocation;
+   VkPhysicalDeviceSubgroupSizeControlFeatures subgroup_size_control;
    VkPhysicalDeviceTextureCompressionASTCHDRFeatures
       texture_compression_astc_hdr;
    VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures
@@ -67,6 +68,7 @@ struct vn_physical_device_properties {
    VkPhysicalDeviceMaintenance4Properties maintenance4;
    VkPhysicalDeviceShaderIntegerDotProductProperties
       shader_integer_dot_product;
+   VkPhysicalDeviceSubgroupSizeControlProperties subgroup_size_control;
 
    /* EXT */
    VkPhysicalDeviceConservativeRasterizationPropertiesEXT
