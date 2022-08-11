@@ -257,6 +257,12 @@ update_gfx_shader_modules(struct zink_context *ctx,
       hash_changed = true;
       default_variants &= zm->default_variant;
       prog->modules[i] = zm;
+      if (has_inline) {
+         if (zm->num_uniforms)
+            prog->inline_variants |= BITFIELD_BIT(i);
+         else
+            prog->inline_variants &= ~BITFIELD_BIT(i);
+      }
       variant_hash ^= prog->modules[i]->hash;
    }
 

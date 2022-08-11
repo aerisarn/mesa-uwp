@@ -793,6 +793,7 @@ struct zink_gfx_program {
    struct hash_table pipelines[2][11]; // [dynamic, renderpass][number of draw modes we support]
    uint32_t default_variant_hash;
    uint32_t last_variant_hash;
+   uint8_t inline_variants; //which stages are using inlined uniforms
 
    struct set libs[4]; //zink_gfx_library_key[primtype] -> VkPipeline
 };
