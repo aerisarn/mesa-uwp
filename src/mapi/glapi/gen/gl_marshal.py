@@ -192,6 +192,7 @@ class PrintCode(gl_XML.gl_print_base):
         val = mapping.get(str, 9999)
         if val == 9999:
             print('Unhandled type in gl_marshal.py.get_type_size: ' + str, file=sys.stderr)
+            assert False
         return val
 
     def print_async_struct(self, func):
@@ -367,10 +368,6 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
 
     def print_init_marshal_table(self, functions):
-        out('/* _mesa_create_marshal_table takes a long time to compile with -O2 */')
-        out('#if defined(__GNUC__) && !defined(__clang__)')
-        out('__attribute__((optimize("O1")))')
-        out('#endif')
         out('void')
         out('_mesa_glthread_init_dispatch%u(struct gl_context *ctx, '
                                            'struct _glapi_table *table)' % file_index)
@@ -385,12 +382,8 @@ class PrintCode(gl_XML.gl_print_base):
                 if not condition:
                     continue
 
-                # Don't use the SET_* functions, because they increase compile time
-                # by 20 seconds (on Ryzen 1700X).
                 settings_by_condition[condition].append(
-                    ('if (_gloffset_{0} >= 0)\n' +
-                     '   ((_glapi_proc *)table)[_gloffset_{0}] =' +
-                     ' (_glapi_proc)_mesa_marshal_{0};').format(func.name))
+                    'SET_{0}(table, _mesa_marshal_{0});'.format(func.name))
 
             # Print out an if statement for each unique condition, with
             # the SET_* calls nested inside it.
