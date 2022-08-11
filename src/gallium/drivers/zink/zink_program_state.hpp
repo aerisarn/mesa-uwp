@@ -211,6 +211,12 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    ctx->vertex_state_changed = false;
 
    const int rp_idx = state->render_pass ? 1 : 0;
+   if (DYNAMIC_STATE >= ZINK_DYNAMIC_VERTEX_INPUT) {
+      if (prog->last_finalized_hash[rp_idx][idx] == state->final_hash && !prog->inline_variants && likely(prog->last_pipeline[rp_idx][idx])) {
+         state->pipeline = prog->last_pipeline[rp_idx][idx];
+         return state->pipeline;
+      }
+   }
    entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, state);
 
    if (!entry) {
@@ -259,6 +265,10 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 
    struct gfx_pipeline_cache_entry *cache_entry = (struct gfx_pipeline_cache_entry *)entry->data;
    state->pipeline = cache_entry->pipeline;
+   if (DYNAMIC_STATE >= ZINK_DYNAMIC_VERTEX_INPUT) {
+      prog->last_finalized_hash[rp_idx][idx] = state->final_hash;
+      prog->last_pipeline[rp_idx][idx] = state->pipeline;
+   }
    return state->pipeline;
 }
 
