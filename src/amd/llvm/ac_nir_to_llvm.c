@@ -4315,6 +4315,26 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ac_build_atomic_rmw(&ctx->ac, LLVMAtomicRMWBinOpAdd, gds_base, store_val, "workgroup-one-as");
       break;
    }
+   case nir_intrinsic_buffer_atomic_add_amd: {
+      LLVMValueRef desc = get_src(ctx, instr->src[0]);
+      LLVMValueRef data = get_src(ctx, instr->src[1]);
+      unsigned base = nir_intrinsic_base(instr);
+      LLVMTypeRef return_type = LLVMTypeOf(data);
+
+      LLVMValueRef args[] = {
+         data, desc,
+         LLVMConstInt(ctx->ac.i32, base, false),
+         ctx->ac.i32_0, /* soffset */
+         ctx->ac.i32_0, /* cachepolicy */
+      };
+
+      char name[64], type[8];
+      ac_build_type_name_for_intr(return_type, type, sizeof(type));
+      snprintf(name, sizeof(name), "llvm.amdgcn.raw.buffer.atomic.add.%s", type);
+
+      result = ac_build_intrinsic(&ctx->ac, name, return_type, args, 5, 0);
+      break;
+   }
    case nir_intrinsic_export_vertex_amd:
       ctx->abi->export_vertex(ctx->abi);
       break;
