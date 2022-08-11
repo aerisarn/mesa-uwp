@@ -1630,304 +1630,58 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
-   const struct vn_physical_device_features *feats = &physical_dev->features;
-   const struct VkPhysicalDeviceVulkan11Features *vk11_feats =
-      &feats->vulkan_1_1;
-   const struct VkPhysicalDeviceVulkan12Features *vk12_feats =
-      &feats->vulkan_1_2;
-   union {
-      VkBaseOutStructure *pnext;
+   const struct vn_physical_device_features *in_feats =
+      &physical_dev->features;
 
-      VkPhysicalDeviceFeatures2 *features2;
-      VkPhysicalDeviceVulkan11Features *vulkan_1_1;
-      VkPhysicalDeviceVulkan12Features *vulkan_1_2;
+   pFeatures->features = in_feats->vulkan_1_0;
 
-      /* Vulkan 1.1 */
-      VkPhysicalDevice16BitStorageFeatures *sixteen_bit_storage;
-      VkPhysicalDeviceMultiviewFeatures *multiview;
-      VkPhysicalDeviceVariablePointersFeatures *variable_pointers;
-      VkPhysicalDeviceProtectedMemoryFeatures *protected_memory;
-      VkPhysicalDeviceSamplerYcbcrConversionFeatures *sampler_ycbcr_conversion;
-      VkPhysicalDeviceShaderDrawParametersFeatures *shader_draw_parameters;
+   vk_foreach_struct(out, pFeatures->pNext) {
+      if (vk_get_physical_device_core_1_1_feature_ext(out,
+                                                      &in_feats->vulkan_1_1))
+         continue;
 
-      /* Vulkan 1.2 */
-      VkPhysicalDevice8BitStorageFeatures *eight_bit_storage;
-      VkPhysicalDeviceShaderAtomicInt64Features *shader_atomic_int64;
-      VkPhysicalDeviceShaderFloat16Int8Features *shader_float16_int8;
-      VkPhysicalDeviceDescriptorIndexingFeatures *descriptor_indexing;
-      VkPhysicalDeviceScalarBlockLayoutFeatures *scalar_block_layout;
-      VkPhysicalDeviceImagelessFramebufferFeatures *imageless_framebuffer;
-      VkPhysicalDeviceUniformBufferStandardLayoutFeatures
-         *uniform_buffer_standard_layout;
-      VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures
-         *shader_subgroup_extended_types;
-      VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures
-         *separate_depth_stencil_layouts;
-      VkPhysicalDeviceHostQueryResetFeatures *host_query_reset;
-      VkPhysicalDeviceTimelineSemaphoreFeatures *timeline_semaphore;
-      VkPhysicalDeviceBufferDeviceAddressFeatures *buffer_device_address;
-      VkPhysicalDeviceVulkanMemoryModelFeatures *vulkan_memory_model;
+      if (vk_get_physical_device_core_1_2_feature_ext(out,
+                                                      &in_feats->vulkan_1_2))
+         continue;
 
+      switch (out->sType) {
+
+#define CASE(stype, member)                                                  \
+   case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##stype:                           \
+      vk_copy_struct_guts(out, (VkBaseInStructure *)&in_feats->member,       \
+                          sizeof(in_feats->member));                         \
+      break
+
+      /* clang-format off */
       /* Vulkan 1.3 */
-      VkPhysicalDevice4444FormatsFeaturesEXT *argb_4444_formats;
-      VkPhysicalDeviceDynamicRenderingFeatures *dynamic_rendering;
-      VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
-      VkPhysicalDeviceExtendedDynamicState2FeaturesEXT
-         *extended_dynamic_state2;
-      VkPhysicalDeviceImageRobustnessFeatures *image_robustness;
-      VkPhysicalDeviceInlineUniformBlockFeatures *inline_uniform_block;
-      VkPhysicalDeviceMaintenance4Features *maintenance4;
-      VkPhysicalDevicePipelineCreationCacheControlFeatures
-         *pipeline_creation_cache_control;
-      VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
-         *shader_demote_to_helper_invocation;
-      VkPhysicalDeviceTextureCompressionASTCHDRFeatures
-         *texture_compression_astc_hdr;
+      CASE(4444_FORMATS_FEATURES_EXT, argb_4444_formats);
+      CASE(DYNAMIC_RENDERING_FEATURES, dynamic_rendering);
+      CASE(EXTENDED_DYNAMIC_STATE_FEATURES_EXT, extended_dynamic_state);
+      CASE(EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, extended_dynamic_state_2);
+      CASE(IMAGE_ROBUSTNESS_FEATURES, image_robustness);
+      CASE(INLINE_UNIFORM_BLOCK_FEATURES, inline_uniform_block);
+      CASE(MAINTENANCE_4_FEATURES, maintenance4);
+      CASE(PIPELINE_CREATION_CACHE_CONTROL_FEATURES, pipeline_creation_cache_control);
+      CASE(SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, shader_demote_to_helper_invocation);
+      CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
 
       /* EXT */
-      VkPhysicalDeviceConditionalRenderingFeaturesEXT *conditional_rendering;
-      VkPhysicalDeviceCustomBorderColorFeaturesEXT *custom_border_color;
-      VkPhysicalDeviceDepthClipEnableFeaturesEXT *depth_clip_enable;
-      VkPhysicalDeviceIndexTypeUint8FeaturesEXT *index_type_uint8;
-      VkPhysicalDeviceLineRasterizationFeaturesEXT *line_rasterization;
-      VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT
-         *primitive_topology_list_restart;
-      VkPhysicalDeviceProvokingVertexFeaturesEXT *provoking_vertex;
-      VkPhysicalDeviceRobustness2FeaturesEXT *robustness_2;
-      VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
-      VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT
-         *vertex_attribute_divisor;
-   } u;
+      CASE(CONDITIONAL_RENDERING_FEATURES_EXT, conditional_rendering);
+      CASE(CUSTOM_BORDER_COLOR_FEATURES_EXT, custom_border_color);
+      CASE(DEPTH_CLIP_ENABLE_FEATURES_EXT, depth_clip_enable);
+      CASE(INDEX_TYPE_UINT8_FEATURES_EXT, index_type_uint8);
+      CASE(LINE_RASTERIZATION_FEATURES_EXT, line_rasterization);
+      CASE(PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, primitive_topology_list_restart);
+      CASE(PROVOKING_VERTEX_FEATURES_EXT, provoking_vertex);
+      CASE(ROBUSTNESS_2_FEATURES_EXT, robustness_2);
+      CASE(TRANSFORM_FEEDBACK_FEATURES_EXT, transform_feedback);
+      CASE(VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, vertex_attribute_divisor);
+      /* clang-format on */
 
-   u.pnext = (VkBaseOutStructure *)pFeatures;
-   while (u.pnext) {
-      void *saved = u.pnext->pNext;
-      switch (u.pnext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2:
-         u.features2->features = feats->vulkan_1_0;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
-         *u.vulkan_1_1 = *vk11_feats;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
-         *u.vulkan_1_2 = *vk12_feats;
-         break;
-
-      /* Vulkan 1.1 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES:
-         u.sixteen_bit_storage->storageBuffer16BitAccess =
-            vk11_feats->storageBuffer16BitAccess;
-         u.sixteen_bit_storage->uniformAndStorageBuffer16BitAccess =
-            vk11_feats->uniformAndStorageBuffer16BitAccess;
-         u.sixteen_bit_storage->storagePushConstant16 =
-            vk11_feats->storagePushConstant16;
-         u.sixteen_bit_storage->storageInputOutput16 =
-            vk11_feats->storageInputOutput16;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES:
-         u.multiview->multiview = vk11_feats->multiview;
-         u.multiview->multiviewGeometryShader =
-            vk11_feats->multiviewGeometryShader;
-         u.multiview->multiviewTessellationShader =
-            vk11_feats->multiviewTessellationShader;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES:
-         u.variable_pointers->variablePointersStorageBuffer =
-            vk11_feats->variablePointersStorageBuffer;
-         u.variable_pointers->variablePointers = vk11_feats->variablePointers;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES:
-         u.protected_memory->protectedMemory = vk11_feats->protectedMemory;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES:
-         u.sampler_ycbcr_conversion->samplerYcbcrConversion =
-            vk11_feats->samplerYcbcrConversion;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES:
-         u.shader_draw_parameters->shaderDrawParameters =
-            vk11_feats->shaderDrawParameters;
-         break;
-
-      /* Vulkan 1.2 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES:
-         u.eight_bit_storage->storageBuffer8BitAccess =
-            vk12_feats->storageBuffer8BitAccess;
-         u.eight_bit_storage->uniformAndStorageBuffer8BitAccess =
-            vk12_feats->uniformAndStorageBuffer8BitAccess;
-         u.eight_bit_storage->storagePushConstant8 =
-            vk12_feats->storagePushConstant8;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES:
-         u.shader_atomic_int64->shaderBufferInt64Atomics =
-            vk12_feats->shaderBufferInt64Atomics;
-         u.shader_atomic_int64->shaderSharedInt64Atomics =
-            vk12_feats->shaderSharedInt64Atomics;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES:
-         u.shader_float16_int8->shaderFloat16 = vk12_feats->shaderFloat16;
-         u.shader_float16_int8->shaderInt8 = vk12_feats->shaderInt8;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES:
-         u.descriptor_indexing->shaderInputAttachmentArrayDynamicIndexing =
-            vk12_feats->shaderInputAttachmentArrayDynamicIndexing;
-         u.descriptor_indexing->shaderUniformTexelBufferArrayDynamicIndexing =
-            vk12_feats->shaderUniformTexelBufferArrayDynamicIndexing;
-         u.descriptor_indexing->shaderStorageTexelBufferArrayDynamicIndexing =
-            vk12_feats->shaderStorageTexelBufferArrayDynamicIndexing;
-         u.descriptor_indexing->shaderUniformBufferArrayNonUniformIndexing =
-            vk12_feats->shaderUniformBufferArrayNonUniformIndexing;
-         u.descriptor_indexing->shaderSampledImageArrayNonUniformIndexing =
-            vk12_feats->shaderSampledImageArrayNonUniformIndexing;
-         u.descriptor_indexing->shaderStorageBufferArrayNonUniformIndexing =
-            vk12_feats->shaderStorageBufferArrayNonUniformIndexing;
-         u.descriptor_indexing->shaderStorageImageArrayNonUniformIndexing =
-            vk12_feats->shaderStorageImageArrayNonUniformIndexing;
-         u.descriptor_indexing->shaderInputAttachmentArrayNonUniformIndexing =
-            vk12_feats->shaderInputAttachmentArrayNonUniformIndexing;
-         u.descriptor_indexing
-            ->shaderUniformTexelBufferArrayNonUniformIndexing =
-            vk12_feats->shaderUniformTexelBufferArrayNonUniformIndexing;
-         u.descriptor_indexing
-            ->shaderStorageTexelBufferArrayNonUniformIndexing =
-            vk12_feats->shaderStorageTexelBufferArrayNonUniformIndexing;
-         u.descriptor_indexing->descriptorBindingUniformBufferUpdateAfterBind =
-            vk12_feats->descriptorBindingUniformBufferUpdateAfterBind;
-         u.descriptor_indexing->descriptorBindingSampledImageUpdateAfterBind =
-            vk12_feats->descriptorBindingSampledImageUpdateAfterBind;
-         u.descriptor_indexing->descriptorBindingStorageImageUpdateAfterBind =
-            vk12_feats->descriptorBindingStorageImageUpdateAfterBind;
-         u.descriptor_indexing->descriptorBindingStorageBufferUpdateAfterBind =
-            vk12_feats->descriptorBindingStorageBufferUpdateAfterBind;
-         u.descriptor_indexing
-            ->descriptorBindingUniformTexelBufferUpdateAfterBind =
-            vk12_feats->descriptorBindingUniformTexelBufferUpdateAfterBind;
-         u.descriptor_indexing
-            ->descriptorBindingStorageTexelBufferUpdateAfterBind =
-            vk12_feats->descriptorBindingStorageTexelBufferUpdateAfterBind;
-         u.descriptor_indexing->descriptorBindingUpdateUnusedWhilePending =
-            vk12_feats->descriptorBindingUpdateUnusedWhilePending;
-         u.descriptor_indexing->descriptorBindingPartiallyBound =
-            vk12_feats->descriptorBindingPartiallyBound;
-         u.descriptor_indexing->descriptorBindingVariableDescriptorCount =
-            vk12_feats->descriptorBindingVariableDescriptorCount;
-         u.descriptor_indexing->runtimeDescriptorArray =
-            vk12_feats->runtimeDescriptorArray;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES:
-         u.scalar_block_layout->scalarBlockLayout =
-            vk12_feats->scalarBlockLayout;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES:
-         u.imageless_framebuffer->imagelessFramebuffer =
-            vk12_feats->imagelessFramebuffer;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES:
-         u.uniform_buffer_standard_layout->uniformBufferStandardLayout =
-            vk12_feats->uniformBufferStandardLayout;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES:
-         u.shader_subgroup_extended_types->shaderSubgroupExtendedTypes =
-            vk12_feats->shaderSubgroupExtendedTypes;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES:
-         u.separate_depth_stencil_layouts->separateDepthStencilLayouts =
-            vk12_feats->separateDepthStencilLayouts;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES:
-         u.host_query_reset->hostQueryReset = vk12_feats->hostQueryReset;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES:
-         u.timeline_semaphore->timelineSemaphore =
-            vk12_feats->timelineSemaphore;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES:
-         u.buffer_device_address->bufferDeviceAddress =
-            vk12_feats->bufferDeviceAddress;
-         u.buffer_device_address->bufferDeviceAddressCaptureReplay =
-            vk12_feats->bufferDeviceAddressCaptureReplay;
-         u.buffer_device_address->bufferDeviceAddressMultiDevice =
-            vk12_feats->bufferDeviceAddressMultiDevice;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES:
-         u.vulkan_memory_model->vulkanMemoryModel =
-            vk12_feats->vulkanMemoryModel;
-         u.vulkan_memory_model->vulkanMemoryModelDeviceScope =
-            vk12_feats->vulkanMemoryModelDeviceScope;
-         u.vulkan_memory_model->vulkanMemoryModelAvailabilityVisibilityChains =
-            vk12_feats->vulkanMemoryModelAvailabilityVisibilityChains;
-         break;
-
-      /* Vulkan 1.3 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
-         *u.argb_4444_formats = feats->argb_4444_formats;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES:
-         *u.dynamic_rendering = feats->dynamic_rendering;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
-         *u.extended_dynamic_state = feats->extended_dynamic_state;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT:
-         *u.extended_dynamic_state2 = feats->extended_dynamic_state_2;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES:
-         *u.image_robustness = feats->image_robustness;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES:
-         *u.inline_uniform_block = feats->inline_uniform_block;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES:
-         *u.pipeline_creation_cache_control = feats->pipeline_creation_cache_control;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES:
-         *u.shader_demote_to_helper_invocation =
-            feats->shader_demote_to_helper_invocation;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES:
-         *u.texture_compression_astc_hdr =
-            feats->texture_compression_astc_hdr;
-         break;
-
-      /* EXT */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT:
-         *u.conditional_rendering = feats->conditional_rendering;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
-         *u.custom_border_color = feats->custom_border_color;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT:
-         *u.depth_clip_enable = feats->depth_clip_enable;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT:
-         *u.index_type_uint8 = feats->index_type_uint8;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
-         *u.line_rasterization = feats->line_rasterization;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT:
-         *u.primitive_topology_list_restart = feats->primitive_topology_list_restart;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT:
-         *u.provoking_vertex = feats->provoking_vertex;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT:
-         *u.robustness_2 = feats->robustness_2;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
-         *u.transform_feedback = feats->transform_feedback;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT:
-         *u.vertex_attribute_divisor = feats->vertex_attribute_divisor;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES:
-         *u.maintenance4 = feats->maintenance4;
-         break;
       default:
          break;
+#undef CASE
       }
-
-      u.pnext->pNext = saved;
-      u.pnext = u.pnext->pNext;
    }
 }
 
