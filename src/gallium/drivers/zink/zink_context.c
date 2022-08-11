@@ -102,10 +102,6 @@ zink_context_destroy(struct pipe_context *pctx)
          pg->removed = true;
       }
    }
-   hash_table_foreach(&ctx->compute_program_cache, entry) {
-      struct zink_program *pg = entry->data;
-      pg->removed = true;
-   }
 
    if (ctx->blitter)
       util_blitter_destroy(ctx->blitter);
@@ -162,7 +158,6 @@ zink_context_destroy(struct pipe_context *pctx)
    slab_destroy_child(&ctx->transfer_pool);
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_cache); i++)
       _mesa_hash_table_clear(&ctx->program_cache[i], NULL);
-   _mesa_hash_table_clear(&ctx->compute_program_cache, NULL);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
 
@@ -4536,7 +4531,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL].size = sizeof(struct zink_tcs_key);
    ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_GEOMETRY].size = sizeof(struct zink_vs_key_base);
    ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT].size = sizeof(struct zink_fs_key);
-   _mesa_hash_table_init(&ctx->compute_program_cache, ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
    _mesa_hash_table_init(&ctx->framebuffer_cache, ctx, hash_framebuffer_imageless, equals_framebuffer_imageless);
    if (!zink_init_render_pass(ctx))
       goto fail;

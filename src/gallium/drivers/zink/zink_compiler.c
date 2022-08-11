@@ -3211,36 +3211,27 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 void
 zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
 {
+   assert(shader->nir->info.stage != MESA_SHADER_COMPUTE);
    set_foreach(shader->programs, entry) {
-      if (shader->nir->info.stage == MESA_SHADER_COMPUTE) {
-         struct zink_compute_program *comp = (void*)entry->key;
-         if (!comp->base.removed) {
-            _mesa_hash_table_remove_key(&ctx->compute_program_cache, comp->shader);
-            comp->base.removed = true;
-         }
-         comp->shader = NULL;
-         zink_compute_program_reference(ctx, &comp, NULL);
-      } else {
-         struct zink_gfx_program *prog = (void*)entry->key;
-         gl_shader_stage stage = shader->nir->info.stage;
-         assert(stage < ZINK_GFX_SHADER_COUNT);
-         if (!prog->base.removed && (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)) {
-            unsigned stages_present = prog->stages_present;
-            if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
-               stages_present &= ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
-            struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(stages_present)];
-            struct hash_entry *he = _mesa_hash_table_search(ht, prog->shaders);
-            assert(he);
-            _mesa_hash_table_remove(ht, he);
-            prog->base.removed = true;
-         }
-         if (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)
-            prog->shaders[stage] = NULL;
-         /* only remove generated tcs during parent tes destruction */
-         if (stage == MESA_SHADER_TESS_EVAL && shader->generated)
-            prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
-         zink_gfx_program_reference(ctx, &prog, NULL);
+      struct zink_gfx_program *prog = (void*)entry->key;
+      gl_shader_stage stage = shader->nir->info.stage;
+      assert(stage < ZINK_GFX_SHADER_COUNT);
+      if (!prog->base.removed && (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)) {
+         unsigned stages_present = prog->stages_present;
+         if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
+            stages_present &= ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+         struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(stages_present)];
+         struct hash_entry *he = _mesa_hash_table_search(ht, prog->shaders);
+         assert(he);
+         _mesa_hash_table_remove(ht, he);
+         prog->base.removed = true;
       }
+      if (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)
+         prog->shaders[stage] = NULL;
+      /* only remove generated tcs during parent tes destruction */
+      if (stage == MESA_SHADER_TESS_EVAL && shader->generated)
+         prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
+      zink_gfx_program_reference(ctx, &prog, NULL);
    }
    if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated) {
       /* automatically destroy generated tcs shaders when tes is destroyed */

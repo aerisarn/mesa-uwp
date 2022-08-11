@@ -161,8 +161,6 @@ zink_gfx_program_reference(struct zink_context *ctx,
    return ret;
 }
 
-struct zink_compute_program *
-zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader);
 void
 zink_destroy_compute_program(struct zink_context *ctx,
                              struct zink_compute_program *comp);

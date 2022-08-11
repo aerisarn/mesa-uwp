@@ -576,7 +576,6 @@ struct zink_shader_info {
    bool have_vulkan_memory_model;
 };
 
-
 struct zink_shader {
    struct util_live_shader base;
    uint32_t hash;
@@ -1376,9 +1375,7 @@ struct zink_context {
 
    struct zink_descriptor_data dd;
 
-   struct zink_shader *compute_stage;
    struct zink_compute_pipeline_state compute_pipeline_state;
-   struct hash_table compute_program_cache;
    struct zink_compute_program *curr_compute;
 
    unsigned shader_stages : ZINK_GFX_SHADER_COUNT; /* mask of bound gfx shader stages */
