@@ -21,7 +21,6 @@
 # IN THE SOFTWARE.
 
 import contextlib
-import getopt
 import gl_XML
 import license
 import marshal_XML
@@ -452,27 +451,18 @@ class PrintCode(gl_XML.gl_print_base):
 
 
 def show_usage():
-    print('Usage: %s [-f input_file_name]' % sys.argv[0])
+    print('Usage: %s [file_name] [file_index] [total file count]' % sys.argv[0])
     sys.exit(1)
 
 
 if __name__ == '__main__':
-    file_name = 'gl_API.xml'
-
     try:
-        (args, trail) = getopt.getopt(sys.argv[1:], 'm:f:i:n:')
+        file_name = sys.argv[1]
+        file_index = int(sys.argv[2])
+        file_count = int(sys.argv[3])
     except Exception:
         show_usage()
 
-    for (arg,val) in args:
-        if arg == '-f':
-            file_name = val
-        elif arg == '-i':
-            file_index = int(val)
-        elif arg == '-n':
-            file_count = int(val)
-
-    assert file_index < file_count
     printer = PrintCode()
 
     api = gl_XML.parse_GL_API(file_name, marshal_XML.marshal_item_factory())
