@@ -318,7 +318,7 @@ wgl_initialize(_EGLDisplay *disp)
     * to free it up correctly.
     */
    if (wgl_dpy) {
-      wgl_dpy->ref_count++;
+      p_atomic_inc(&wgl_dpy->ref_count);
       return EGL_TRUE;
    }
 
@@ -338,7 +338,7 @@ wgl_initialize(_EGLDisplay *disp)
       return EGL_FALSE;
 
    wgl_dpy = wgl_egl_display(disp);
-   wgl_dpy->ref_count++;
+   p_atomic_inc(&wgl_dpy->ref_count);
 
    return EGL_TRUE;
 }
@@ -357,9 +357,7 @@ wgl_display_release(_EGLDisplay *disp)
    wgl_dpy = wgl_egl_display(disp);
 
    assert(wgl_dpy->ref_count > 0);
-   wgl_dpy->ref_count--;
-
-   if (wgl_dpy->ref_count > 0)
+   if (!p_atomic_dec_zero(&wgl_dpy->ref_count))
       return;
 
    _eglCleanupDisplay(disp);
@@ -643,7 +641,7 @@ wgl_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
           * EGLDisplay is terminated and then initialized again while a
           * context is still bound. See wgl_intitialize() for a more in depth
           * explanation. */
-         wgl_dpy->ref_count++;
+         p_atomic_inc(&wgl_dpy->ref_count);
       }
    }
 
