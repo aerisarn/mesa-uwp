@@ -590,6 +590,17 @@ byte_align_vector(isel_context* ctx, Temp vec, Operand offset, Temp dst, unsigne
 }
 
 Temp
+get_ssa_temp_tex(struct isel_context* ctx, nir_ssa_def* def, bool is_16bit)
+{
+   RegClass rc = RegClass::get(RegType::vgpr, (is_16bit ? 2 : 4) * def->num_components);
+   Temp tmp = get_ssa_temp(ctx, def);
+   if (tmp.bytes() != rc.bytes())
+      return emit_extract_vector(ctx, tmp, 0, rc);
+   else
+      return tmp;
+}
+
+Temp
 bool_to_vector_condition(isel_context* ctx, Temp val, Temp dst = Temp(0, s2))
 {
    Builder bld(ctx->program, ctx->block);
@@ -9452,11 +9463,12 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord: {
          assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
-         coord = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         coord = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, a16);
          break;
       }
       case nir_tex_src_bias:
          assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
+         /* Doesn't need get_ssa_temp_tex because we pack it into its own dword anyway. */
          bias = get_ssa_temp(ctx, instr->src[i].src.ssa);
          has_bias = true;
          break;
@@ -9465,14 +9477,14 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
             level_zero = true;
          } else {
             assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
-            lod = get_ssa_temp(ctx, instr->src[i].src.ssa);
+            lod = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, a16);
             has_lod = true;
          }
          break;
       }
       case nir_tex_src_min_lod:
          assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
-         clamped_lod = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         clamped_lod = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, a16);
          has_clamped_lod = true;
          break;
       case nir_tex_src_comparator:
@@ -9490,17 +9502,17 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          break;
       case nir_tex_src_ddx:
          assert(instr->src[i].src.ssa->bit_size == (g16 ? 16 : 32));
-         ddx = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         ddx = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, g16);
          has_ddx = true;
          break;
       case nir_tex_src_ddy:
          assert(instr->src[i].src.ssa->bit_size == (g16 ? 16 : 32));
-         ddy = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         ddy = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, g16);
          has_ddy = true;
          break;
       case nir_tex_src_ms_index:
          assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
-         sample_index = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         sample_index = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, a16);
          has_sample_index = true;
          break;
       case nir_tex_src_texture_offset:
