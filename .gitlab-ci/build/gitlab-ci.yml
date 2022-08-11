@@ -145,7 +145,7 @@ debian-clover-testing:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-debian-gallium:
+debian-build-testing:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
