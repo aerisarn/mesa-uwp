@@ -723,6 +723,30 @@ fold_16bit_tex_srcs(nir_builder *b, nir_tex_instr *tex,
 }
 
 static bool
+fold_16bit_image_srcs(nir_builder *b, nir_intrinsic_instr *instr, int lod_idx)
+{
+   enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
+   bool is_ms = (dim == GLSL_SAMPLER_DIM_MS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
+   nir_src *coords = &instr->src[1];
+   nir_src *sample = is_ms ? &instr->src[2] : NULL;
+   nir_src *lod = lod_idx >= 0 ? &instr->src[lod_idx] : NULL;
+
+   if (dim == GLSL_SAMPLER_DIM_BUF ||
+       !can_fold_16bit_src(coords->ssa, nir_type_int32, false) ||
+       (sample && !can_fold_16bit_src(sample->ssa, nir_type_int32, false)) ||
+       (lod && !can_fold_16bit_src(lod->ssa, nir_type_int32, false)))
+      return false;
+
+   fold_16bit_src(b, &instr->instr, coords, nir_type_int32);
+   if (sample)
+      fold_16bit_src(b, &instr->instr, sample, nir_type_int32);
+   if (lod)
+      fold_16bit_src(b, &instr->instr, lod, nir_type_int32);
+
+   return true;
+}
+
+static bool
 fold_16bit_tex_image(nir_builder *b, nir_instr *instr, void *params)
 {
    struct nir_fold_16bit_tex_image_options *options = params;
@@ -738,12 +762,70 @@ fold_16bit_tex_image(nir_builder *b, nir_instr *instr, void *params)
       case nir_intrinsic_image_store:
          if (options->fold_image_load_store_data)
             progress |= fold_16bit_store_data(b, intrinsic);
+         if (options->fold_image_srcs)
+            progress |= fold_16bit_image_srcs(b, intrinsic, 4);
          break;
       case nir_intrinsic_bindless_image_load:
       case nir_intrinsic_image_deref_load:
       case nir_intrinsic_image_load:
          if (options->fold_image_load_store_data)
             progress |= fold_16bit_load_data(b, intrinsic, exec_mode, options->rounding_mode);
+         if (options->fold_image_srcs)
+            progress |= fold_16bit_image_srcs(b, intrinsic, 3);
+         break;
+      case nir_intrinsic_bindless_image_sparse_load:
+      case nir_intrinsic_image_deref_sparse_load:
+      case nir_intrinsic_image_sparse_load:
+         if (options->fold_image_srcs)
+            progress |= fold_16bit_image_srcs(b, intrinsic, 3);
+         break;
+      case nir_intrinsic_bindless_image_atomic_add:
+      case nir_intrinsic_bindless_image_atomic_imin:
+      case nir_intrinsic_bindless_image_atomic_umin:
+      case nir_intrinsic_bindless_image_atomic_imax:
+      case nir_intrinsic_bindless_image_atomic_umax:
+      case nir_intrinsic_bindless_image_atomic_and:
+      case nir_intrinsic_bindless_image_atomic_or:
+      case nir_intrinsic_bindless_image_atomic_xor:
+      case nir_intrinsic_bindless_image_atomic_exchange:
+      case nir_intrinsic_bindless_image_atomic_comp_swap:
+      case nir_intrinsic_bindless_image_atomic_fadd:
+      case nir_intrinsic_bindless_image_atomic_fmin:
+      case nir_intrinsic_bindless_image_atomic_fmax:
+      case nir_intrinsic_bindless_image_atomic_inc_wrap:
+      case nir_intrinsic_bindless_image_atomic_dec_wrap:
+      case nir_intrinsic_image_deref_atomic_add:
+      case nir_intrinsic_image_deref_atomic_umin:
+      case nir_intrinsic_image_deref_atomic_imin:
+      case nir_intrinsic_image_deref_atomic_umax:
+      case nir_intrinsic_image_deref_atomic_imax:
+      case nir_intrinsic_image_deref_atomic_and:
+      case nir_intrinsic_image_deref_atomic_or:
+      case nir_intrinsic_image_deref_atomic_xor:
+      case nir_intrinsic_image_deref_atomic_exchange:
+      case nir_intrinsic_image_deref_atomic_comp_swap:
+      case nir_intrinsic_image_deref_atomic_fadd:
+      case nir_intrinsic_image_deref_atomic_fmin:
+      case nir_intrinsic_image_deref_atomic_fmax:
+      case nir_intrinsic_image_deref_atomic_inc_wrap:
+      case nir_intrinsic_image_deref_atomic_dec_wrap:
+      case nir_intrinsic_image_atomic_add:
+      case nir_intrinsic_image_atomic_imin:
+      case nir_intrinsic_image_atomic_umin:
+      case nir_intrinsic_image_atomic_imax:
+      case nir_intrinsic_image_atomic_umax:
+      case nir_intrinsic_image_atomic_and:
+      case nir_intrinsic_image_atomic_or:
+      case nir_intrinsic_image_atomic_xor:
+      case nir_intrinsic_image_atomic_exchange:
+      case nir_intrinsic_image_atomic_comp_swap:
+      case nir_intrinsic_image_atomic_fadd:
+      case nir_intrinsic_image_atomic_fmin:
+      case nir_intrinsic_image_atomic_fmax:
+      case nir_intrinsic_image_atomic_inc_wrap:
+      case nir_intrinsic_image_atomic_dec_wrap:
+         if (options->fold_image_srcs)
+            progress |= fold_16bit_image_srcs(b, intrinsic, -1);
          break;
       default:
          break;
