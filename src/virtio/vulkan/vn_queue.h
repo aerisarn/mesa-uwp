@@ -23,7 +23,11 @@ struct vn_queue {
    uint32_t index;
    uint32_t flags;
 
+   /* wait fence used for vn_QueueWaitIdle */
    VkFence wait_fence;
+
+   /* sync fence used for Android wsi */
+   VkFence sync_fence;
 };
 VK_DEFINE_HANDLE_CASTS(vn_queue, base.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 

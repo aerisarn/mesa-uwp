@@ -22,9 +22,13 @@
 static void
 vn_queue_fini(struct vn_queue *queue)
 {
+   VkDevice dev_handle = vn_device_to_handle(queue->device);
+
    if (queue->wait_fence != VK_NULL_HANDLE) {
-      vn_DestroyFence(vn_device_to_handle(queue->device), queue->wait_fence,
-                      NULL);
+      vn_DestroyFence(dev_handle, queue->wait_fence, NULL);
+   }
+   if (queue->sync_fence != VK_NULL_HANDLE) {
+      vn_DestroyFence(dev_handle, queue->sync_fence, NULL);
    }
    vn_object_base_fini(&queue->base);
 }

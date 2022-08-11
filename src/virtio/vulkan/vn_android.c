@@ -796,17 +796,38 @@ vn_AcquireImageANDROID(VkDevice device,
    return vn_result(dev->instance, result);
 }
 
+static VkResult
+vn_android_sync_fence_create(struct vn_queue *queue)
+{
+   struct vn_device *dev = queue->device;
+
+   const VkExportFenceCreateInfo export_info = {
+      .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+      .pNext = NULL,
+      .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+   };
+   const VkFenceCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .pNext =
+         dev->instance->experimental.globalFencing ? &export_info : NULL,
+      .flags = 0,
+   };
+   return vn_CreateFence(vn_device_to_handle(dev), &create_info, NULL,
+                         &queue->sync_fence);
+}
+
 VkResult
-vn_QueueSignalReleaseImageANDROID(VkQueue queue,
+vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
                                   uint32_t waitSemaphoreCount,
                                   const VkSemaphore *pWaitSemaphores,
                                   VkImage image,
                                   int *pNativeFenceFd)
 {
    VN_TRACE_FUNC();
-   struct vn_queue *que = vn_queue_from_handle(queue);
-   struct vn_device *dev = que->device;
+   struct vn_queue *queue = vn_queue_from_handle(_queue);
+   struct vn_device *dev = queue->device;
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   const bool has_global_fencing = dev->instance->experimental.globalFencing;
    VkDevice device = vn_device_to_handle(dev);
    VkPipelineStageFlags local_stage_masks[8];
    VkPipelineStageFlags *stage_masks = local_stage_masks;
@@ -816,6 +837,13 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
    if (waitSemaphoreCount == 0) {
       *pNativeFenceFd = -1;
       return VK_SUCCESS;
+   }
+
+   /* lazily create sync fence for Android wsi */
+   if (queue->sync_fence == VK_NULL_HANDLE) {
+      result = vn_android_sync_fence_create(queue);
+      if (result != VK_SUCCESS)
+         return result;
    }
 
    if (waitSemaphoreCount > ARRAY_SIZE(local_stage_masks)) {
@@ -844,10 +872,9 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
     * reset the fence during vn_GetFenceFdKHR currently. Thus to ensure proper
     * host driver behavior, we pass VK_NULL_HANDLE here.
     */
-   result = vn_QueueSubmit(
-      queue, 1, &submit_info,
-      dev->instance->experimental.globalFencing == VK_TRUE ? VK_NULL_HANDLE
-                                                           : que->wait_fence);
+   result =
+      vn_QueueSubmit(_queue, 1, &submit_info,
+                     has_global_fencing ? VK_NULL_HANDLE : queue->sync_fence);
 
    if (stage_masks != local_stage_masks)
       vk_free(alloc, stage_masks);
@@ -855,7 +882,7 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 
-   if (dev->instance->experimental.globalFencing == VK_TRUE) {
+   if (has_global_fencing) {
       /* With globalFencing, the external queue fence was not passed in the
        * above vn_QueueSubmit to hint it to be synchronous. So we need to wait
        * for the ring here before vn_GetFenceFdKHR which is pure kernel ops.
@@ -867,17 +894,17 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
       const VkFenceGetFdInfoKHR fd_info = {
          .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
          .pNext = NULL,
-         .fence = que->wait_fence,
+         .fence = queue->sync_fence,
          .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
       };
       result = vn_GetFenceFdKHR(device, &fd_info, &fd);
    } else {
       result =
-         vn_WaitForFences(device, 1, &que->wait_fence, VK_TRUE, UINT64_MAX);
+         vn_WaitForFences(device, 1, &queue->sync_fence, VK_TRUE, UINT64_MAX);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
 
-      result = vn_ResetFences(device, 1, &que->wait_fence);
+      result = vn_ResetFences(device, 1, &queue->sync_fence);
    }
 
    if (result != VK_SUCCESS)
