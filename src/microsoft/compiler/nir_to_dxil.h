@@ -88,6 +88,7 @@ enum dxil_shader_model {
    SHADER_MODEL_6_3,
    SHADER_MODEL_6_4,
    SHADER_MODEL_6_5,
+   SHADER_MODEL_6_6,
 };
 
 struct nir_to_dxil_options {
