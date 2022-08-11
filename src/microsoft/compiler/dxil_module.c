@@ -888,6 +888,27 @@ dxil_module_get_samplepos_type(struct dxil_module *m)
 }
 
 const struct dxil_type *
+dxil_module_get_res_bind_type(struct dxil_module *mod)
+{
+   /* %dx.types.ResBind = type { i32, i32, i32, i8 } */
+   const struct dxil_type *int32_type = dxil_module_get_int_type(mod, 32);
+   const struct dxil_type *int8_type = dxil_module_get_int_type(mod, 8);
+   const struct dxil_type *fields[4] = { int32_type, int32_type, int32_type, int8_type };
+
+   return dxil_module_get_struct_type(mod, "dx.types.ResBind", fields, 4);
+}
+
+const struct dxil_type *
+dxil_module_get_res_props_type(struct dxil_module *mod)
+{
+   /* %dx.types.ResourceProperties = type { i32, i32 } */
+   const struct dxil_type *int32_type = dxil_module_get_int_type(mod, 32);
+   const struct dxil_type *fields[2] = { int32_type, int32_type };
+
+   return dxil_module_get_struct_type(mod, "dx.types.ResourceProperties", fields, 2);
+}
+
+const struct dxil_type *
 dxil_module_add_function_type(struct dxil_module *m,
                               const struct dxil_type *ret_type,
                               const struct dxil_type **arg_types,
