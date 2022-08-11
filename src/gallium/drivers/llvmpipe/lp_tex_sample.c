@@ -339,14 +339,6 @@ lp_llvm_texture_cache_ptr(struct gallivm_state *gallivm,
 }
 #endif
 
-
-static void
-lp_llvm_sampler_soa_destroy(struct lp_build_sampler_soa *sampler)
-{
-   FREE(sampler);
-}
-
-
 /**
  * Fetch filtered values from texture.
  * The 'texel' parameter returns four vectors corresponding to R, G, B, A.
@@ -423,7 +415,6 @@ lp_llvm_sampler_soa_create(const struct lp_sampler_static_state *static_state,
    if (!sampler)
       return NULL;
 
-   sampler->base.destroy = lp_llvm_sampler_soa_destroy;
    sampler->base.emit_tex_sample = lp_llvm_sampler_soa_emit_fetch_texel;
    sampler->base.emit_size_query = lp_llvm_sampler_soa_emit_size_query;
    sampler->dynamic_state.base.width = lp_llvm_texture_width;
@@ -451,13 +442,6 @@ lp_llvm_sampler_soa_create(const struct lp_sampler_static_state *static_state,
 
    sampler->nr_samplers = nr_samplers;
    return &sampler->base;
-}
-
-
-static void
-lp_llvm_image_soa_destroy(struct lp_build_image_soa *image)
-{
-   FREE(image);
 }
 
 
@@ -522,7 +506,6 @@ lp_llvm_image_soa_create(const struct lp_image_static_state *static_state,
    if (!image)
       return NULL;
 
-   image->base.destroy = lp_llvm_image_soa_destroy;
    image->base.emit_op = lp_llvm_image_soa_emit_op;
    image->base.emit_size_query = lp_llvm_image_soa_emit_size_query;
 

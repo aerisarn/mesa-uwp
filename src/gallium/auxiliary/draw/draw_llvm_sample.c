@@ -307,12 +307,6 @@ DRAW_LLVM_IMAGE_MEMBER(img_stride, DRAW_JIT_IMAGE_IMG_STRIDE, TRUE)
 DRAW_LLVM_IMAGE_MEMBER(num_samples, DRAW_JIT_IMAGE_NUM_SAMPLES, TRUE)
 DRAW_LLVM_IMAGE_MEMBER(sample_stride, DRAW_JIT_IMAGE_SAMPLE_STRIDE, TRUE)
 
-static void
-draw_llvm_sampler_soa_destroy(struct lp_build_sampler_soa *sampler)
-{
-   FREE(sampler);
-}
-
 
 /**
  * Fetch filtered values from texture.
@@ -382,7 +376,6 @@ draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_stat
    if (!sampler)
       return NULL;
 
-   sampler->base.destroy = draw_llvm_sampler_soa_destroy;
    sampler->base.emit_tex_sample = draw_llvm_sampler_soa_emit_fetch_texel;
    sampler->base.emit_size_query = draw_llvm_sampler_soa_emit_size_query;
    sampler->dynamic_state.base.width = draw_llvm_texture_width;
@@ -453,11 +446,6 @@ draw_llvm_image_soa_emit_size_query(const struct lp_build_image_soa *base,
                            &image->dynamic_state.base,
                            params);
 }
-static void
-draw_llvm_image_soa_destroy(struct lp_build_image_soa *image)
-{
-   FREE(image);
-}
 
 struct lp_build_image_soa *
 draw_llvm_image_soa_create(const struct draw_image_static_state *static_state,
@@ -469,7 +457,6 @@ draw_llvm_image_soa_create(const struct draw_image_static_state *static_state,
    if (!image)
       return NULL;
 
-   image->base.destroy = draw_llvm_image_soa_destroy;
    image->base.emit_op = draw_llvm_image_soa_emit_op;
    image->base.emit_size_query = draw_llvm_image_soa_emit_size_query;
 

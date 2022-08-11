@@ -915,10 +915,21 @@ draw_tes_llvm_dump_variant_key(struct draw_tes_llvm_variant_key *key);
 struct lp_build_sampler_soa *
 draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_state,
                              unsigned nr_samplers);
+static inline void
+draw_llvm_sampler_soa_destroy(struct lp_build_sampler_soa *sampler)
+{
+   FREE(sampler);
+}
 
 struct lp_build_image_soa *
 draw_llvm_image_soa_create(const struct draw_image_static_state *static_state,
                            unsigned nr_images);
+
+static inline void
+draw_llvm_image_soa_destroy(struct lp_build_image_soa *image)
+{
+   FREE(image);
+}
 
 void
 draw_llvm_set_sampler_state(struct draw_context *draw,

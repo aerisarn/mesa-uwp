@@ -3386,8 +3386,8 @@ generate_fragment(struct llvmpipe_context *lp,
       }
    }
 
-   sampler->destroy(sampler);
-   image->destroy(image);
+   lp_llvm_sampler_soa_destroy(sampler);
+   lp_llvm_image_soa_destroy(image);
 
    /* Loop over color outputs / color buffers to do blending */
    for (unsigned cbuf = 0; cbuf < key->nr_cbufs; cbuf++) {

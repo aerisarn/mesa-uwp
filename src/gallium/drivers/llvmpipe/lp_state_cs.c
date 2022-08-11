@@ -464,8 +464,8 @@ generate_compute(struct llvmpipe_context *lp,
       LLVMBuildRet(builder, coro_hdl);
    }
 
-   sampler->destroy(sampler);
-   image->destroy(image);
+   lp_llvm_sampler_soa_destroy(sampler);
+   lp_llvm_image_soa_destroy(image);
 
    gallivm_verify_function(gallivm, coro);
    gallivm_verify_function(gallivm, function);

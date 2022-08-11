@@ -2318,8 +2318,8 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    }
    lp_build_loop_end_cond(&lp_loop, count, step, LLVMIntUGE);
 
-   sampler->destroy(sampler);
-   image->destroy(image);
+   draw_llvm_sampler_soa_destroy(sampler);
+   draw_llvm_image_soa_destroy(image);
 
    /* return clipping boolean value for function */
    ret = clipmask_booli8(gallivm, vs_type, clipmask_bool_ptr,
@@ -2866,8 +2866,8 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
                        &params,
                        outputs);
 
-   sampler->destroy(sampler);
-   image->destroy(image);
+   draw_llvm_sampler_soa_destroy(sampler);
+   draw_llvm_image_soa_destroy(image);
 
    lp_build_mask_end(&mask);
 
@@ -3531,8 +3531,8 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
       LLVMBuildRet(builder, coro_hdl);
    }
 
-   sampler->destroy(sampler);
-   image->destroy(image);
+   draw_llvm_sampler_soa_destroy(sampler);
+   draw_llvm_image_soa_destroy(image);
    gallivm_verify_function(gallivm, variant_func);
    gallivm_verify_function(gallivm, variant_coro);
 }
@@ -4059,8 +4059,8 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
                      draw_total_tes_outputs(llvm->draw), tes_type, FALSE);
    }
    lp_build_loop_end_cond(&lp_loop, num_tess_coord, step, LLVMIntUGE);
-   sampler->destroy(sampler);
-   image->destroy(image);
+   draw_llvm_sampler_soa_destroy(sampler);
+   draw_llvm_image_soa_destroy(image);
 
    LLVMBuildRet(builder, lp_build_zero(gallivm, lp_type_uint(32)));
    gallivm_verify_function(gallivm, variant_func);
