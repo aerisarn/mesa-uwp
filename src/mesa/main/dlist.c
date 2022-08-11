@@ -13615,7 +13615,7 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
     * normal-execution dispatch table.  This lets us skip populating functions
     * that should be called directly instead of compiled into display lists.
     */
-   memcpy(table, ctx->Exec, numEntries * sizeof(_glapi_proc));
+   memcpy(table, ctx->OutsideBeginEnd, numEntries * sizeof(_glapi_proc));
 
 #include "api_save_init.h"
 }

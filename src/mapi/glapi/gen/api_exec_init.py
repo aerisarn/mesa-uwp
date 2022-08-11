@@ -22,7 +22,7 @@
 
 # This script generates the file api_exec_init.c, which contains
 # _mesa_initialize_exec_table().  It is responsible for populating all
-# entries in the "exec" dispatch table that aren't dynamic.
+# entries in the "OutsideBeginEnd" dispatch table.
 
 import argparse
 import collections
@@ -53,21 +53,19 @@ header = """/**
 
 
 /**
- * Initialize a context's exec table with pointers to Mesa's supported
+ * Initialize a context's OutsideBeginEnd table with pointers to Mesa's supported
  * GL functions.
  *
  * This function depends on ctx->Version.
  *
- * \param ctx  GL context to which \c exec belongs.
+ * \param ctx  GL context
  */
 void
 _mesa_initialize_exec_table(struct gl_context *ctx)
 {
-   struct _glapi_table *exec;
+   struct _glapi_table *table = ctx->OutsideBeginEnd;
 
-   exec = ctx->Exec;
-   assert(exec != NULL);
-
+   assert(table != NULL);
    assert(ctx->Version > 0);
 """
 
@@ -113,12 +111,12 @@ class PrintCode(gl_XML.gl_print_base):
                 no_error_condition = '_mesa_is_no_error_enabled(ctx) && ({0})'.format(condition)
                 error_condition = '!_mesa_is_no_error_enabled(ctx) && ({0})'.format(condition)
                 settings_by_condition[no_error_condition].append(
-                    'SET_{0}(exec, {1}{0}_no_error);'.format(f.name, prefix, f.name))
+                    'SET_{0}(table, {1}{0}_no_error);'.format(f.name, prefix, f.name))
                 settings_by_condition[error_condition].append(
-                    'SET_{0}(exec, {1}{0});'.format(f.name, prefix, f.name))
+                    'SET_{0}(table, {1}{0});'.format(f.name, prefix, f.name))
             else:
                 settings_by_condition[condition].append(
-                    'SET_{0}(exec, {1}{0});'.format(f.name, prefix, f.name))
+                    'SET_{0}(table, {1}{0});'.format(f.name, prefix, f.name))
         # Print out an if statement for each unique condition, with
         # the SET_* calls nested inside it.
         for condition in sorted(settings_by_condition.keys()):
