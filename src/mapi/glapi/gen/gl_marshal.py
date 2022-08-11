@@ -106,57 +106,6 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
         out('')
 
-    def print_async_dispatch(self, func):
-        out('cmd = _mesa_glthread_allocate_command(ctx, '
-            'DISPATCH_CMD_{0}, cmd_size);'.format(func.name))
-
-        # We want glthread to ignore variable-sized parameters if the only thing
-        # we want is to pass the pointer parameter as-is, e.g. when a PBO is bound.
-        # Making it conditional on marshal_sync is kinda hacky, but it's the easiest
-        # path towards handling PBOs in glthread, which use marshal_sync to check whether
-        # a PBO is bound.
-        if func.marshal_sync:
-            fixed_params = func.fixed_params + func.variable_params
-            variable_params = []
-        else:
-            fixed_params = func.fixed_params
-            variable_params = func.variable_params
-
-        for p in fixed_params:
-            if p.count:
-                out('memcpy(cmd->{0}, {0}, {1});'.format(
-                        p.name, p.size_string()))
-            elif p.type_string() == 'GLenum':
-                out('cmd->{0} = MIN2({0}, 0xffff); /* clamped to 0xffff (invalid enum) */'.format(p.name))
-            else:
-                out('cmd->{0} = {0};'.format(p.name))
-        if variable_params:
-            out('char *variable_data = (char *) (cmd + 1);')
-            i = 1
-            for p in variable_params:
-                if p.img_null_flag:
-                    out('cmd->{0}_null = !{0};'.format(p.name))
-                    out('if (!cmd->{0}_null) {{'.format(p.name))
-                    with indent():
-                        out(('memcpy(variable_data, {0}, {0}_size);').format(p.name))
-                        if i < len(variable_params):
-                            out('variable_data += {0}_size;'.format(p.name))
-                    out('}')
-                else:
-                    out(('memcpy(variable_data, {0}, {0}_size);').format(p.name))
-                    if i < len(variable_params):
-                        out('variable_data += {0}_size;'.format(p.name))
-                i += 1
-
-        if not fixed_params and not variable_params:
-            out('(void) cmd;')
-
-        if func.marshal_call_after:
-            out(func.marshal_call_after);
-
-        # Uncomment this if you want to call _mesa_glthread_finish for debugging
-        #out('_mesa_glthread_finish(ctx);')
-
     def get_type_size(self, str):
         if str.find('*') != -1:
             return 8;
@@ -195,7 +144,12 @@ class PrintCode(gl_XML.gl_print_base):
             assert False
         return val
 
-    def print_async_struct(self, func):
+    def print_async_body(self, func):
+        # We want glthread to ignore variable-sized parameters if the only thing
+        # we want is to pass the pointer parameter as-is, e.g. when a PBO is bound.
+        # Making it conditional on marshal_sync is kinda hacky, but it's the easiest
+        # path towards handling PBOs in glthread, which use marshal_sync to check whether
+        # a PBO is bound.
         if func.marshal_sync:
             fixed_params = func.fixed_params + func.variable_params
             variable_params = []
@@ -203,6 +157,7 @@ class PrintCode(gl_XML.gl_print_base):
             fixed_params = func.fixed_params
             variable_params = func.variable_params
 
+        out('/* {0}: marshalled asynchronously */'.format(func.name))
         out('struct marshal_cmd_{0}'.format(func.name))
         out('{')
         with indent():
@@ -228,22 +183,14 @@ class PrintCode(gl_XML.gl_print_base):
                 if p.count_scale != 1:
                     out(('/* Next {0} bytes are '
                          '{1} {2}[{3}][{4}] */').format(
-                            p.size_string(marshal = 1), p.get_base_type_string(),
+                            p.size_string(marshal=1), p.get_base_type_string(),
                             p.name, p.counter, p.count_scale))
                 else:
                     out(('/* Next {0} bytes are '
                          '{1} {2}[{3}] */').format(
-                            p.size_string(marshal = 1), p.get_base_type_string(),
+                            p.size_string(marshal=1), p.get_base_type_string(),
                             p.name, p.counter))
         out('};')
-
-    def print_async_unmarshal(self, func):
-        if func.marshal_sync:
-            fixed_params = func.fixed_params + func.variable_params
-            variable_params = []
-        else:
-            fixed_params = func.fixed_params
-            variable_params = func.variable_params
 
         out('uint32_t')
         out(('_mesa_unmarshal_{0}(struct gl_context *ctx, '
@@ -282,44 +229,21 @@ class PrintCode(gl_XML.gl_print_base):
                         if i < len(variable_params):
                             out('else')
                             with indent():
-                                out('variable_data += {0};'.format(p.size_string(False, marshal = 1)))
+                                out('variable_data += {0};'.format(p.size_string(False, marshal=1)))
                     elif i < len(variable_params):
-                        out('variable_data += {0};'.format(p.size_string(False, marshal = 1)))
+                        out('variable_data += {0};'.format(p.size_string(False, marshal=1)))
                     i += 1
 
-            self.print_sync_call(func, unmarshal = 1)
+            self.print_sync_call(func, unmarshal=1)
             if variable_params:
                 out('return cmd->cmd_base.cmd_size;')
             else:
                 struct = 'struct marshal_cmd_{0}'.format(func.name)
                 out('const unsigned cmd_size = (align(sizeof({0}), 8) / 8);'.format(struct))
                 out('assert (cmd_size == cmd->cmd_base.cmd_size);')
-                out('return cmd_size;'.format(struct))
+                out('return cmd_size;')
         out('}')
 
-    def validate_count_or_fallback(self, func):
-        # Check that any counts for variable-length arguments might be < 0, in
-        # which case the command alloc or the memcpy would blow up before we
-        # get to the validation in Mesa core.
-        list = []
-        for p in func.parameters:
-            if p.is_variable_length():
-                list.append('{0}_size < 0'.format(p.name))
-                list.append('({0}_size > 0 && !{0})'.format(p.name))
-
-        if len(list) == 0:
-            return
-
-        list.append('(unsigned)cmd_size > MARSHAL_MAX_CMD_SIZE')
-
-        out('if (unlikely({0})) {{'.format(' || '.join(list)))
-        with indent():
-            out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-            self.print_sync_call(func)
-            out('return;')
-        out('}')
-
-    def print_async_marshal(self, func):
         out('{0}{1} GLAPIENTRY'.format('static ' if func.marshal_is_static() else '', func.return_type))
         out('_mesa_marshal_{0}({1})'.format(
                 func.name, func.get_parameter_string()))
@@ -331,7 +255,7 @@ class PrintCode(gl_XML.gl_print_base):
 
             if not func.marshal_sync:
                 for p in func.variable_params:
-                    out('int {0}_size = {1};'.format(p.name, p.size_string(marshal = 1)))
+                    out('int {0}_size = {1};'.format(p.name, p.size_string(marshal=1)))
 
             struct = 'struct marshal_cmd_{0}'.format(func.name)
             size_terms = ['sizeof({0})'.format(struct)]
@@ -352,18 +276,69 @@ class PrintCode(gl_XML.gl_print_base):
                     out('return;')
                 out('}')
             else:
-                self.validate_count_or_fallback(func)
+                # Fall back to syncing if variable-length sizes can't be handled.
+                #
+                # Check that any counts for variable-length arguments might be < 0, in
+                # which case the command alloc or the memcpy would blow up before we
+                # get to the validation in Mesa core.
+                list = []
+                for p in func.parameters:
+                    if p.is_variable_length():
+                        list.append('{0}_size < 0'.format(p.name))
+                        list.append('({0}_size > 0 && !{0})'.format(p.name))
 
-            self.print_async_dispatch(func)
+                if len(list) != 0:
+                    list.append('(unsigned)cmd_size > MARSHAL_MAX_CMD_SIZE')
+
+                    out('if (unlikely({0})) {{'.format(' || '.join(list)))
+                    with indent():
+                        out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
+                        self.print_sync_call(func)
+                        out('return;')
+                    out('}')
+
+            # Add the call into the batch.
+            out('cmd = _mesa_glthread_allocate_command(ctx, '
+                'DISPATCH_CMD_{0}, cmd_size);'.format(func.name))
+
+            for p in fixed_params:
+                if p.count:
+                    out('memcpy(cmd->{0}, {0}, {1});'.format(
+                            p.name, p.size_string()))
+                elif p.type_string() == 'GLenum':
+                    out('cmd->{0} = MIN2({0}, 0xffff); /* clamped to 0xffff (invalid enum) */'.format(p.name))
+                else:
+                    out('cmd->{0} = {0};'.format(p.name))
+            if variable_params:
+                out('char *variable_data = (char *) (cmd + 1);')
+                i = 1
+                for p in variable_params:
+                    if p.img_null_flag:
+                        out('cmd->{0}_null = !{0};'.format(p.name))
+                        out('if (!cmd->{0}_null) {{'.format(p.name))
+                        with indent():
+                            out(('memcpy(variable_data, {0}, {0}_size);').format(p.name))
+                            if i < len(variable_params):
+                                out('variable_data += {0}_size;'.format(p.name))
+                        out('}')
+                    else:
+                        out(('memcpy(variable_data, {0}, {0}_size);').format(p.name))
+                        if i < len(variable_params):
+                            out('variable_data += {0}_size;'.format(p.name))
+                    i += 1
+
+            if not fixed_params and not variable_params:
+                out('(void) cmd;')
+
+            if func.marshal_call_after:
+                out(func.marshal_call_after)
+
+            # Uncomment this if you want to call _mesa_glthread_finish for debugging
+            #out('_mesa_glthread_finish(ctx);')
+
             if func.return_type == 'GLboolean':
-                out('return GL_TRUE;') # for glUnmapBuffer
+                out('return GL_TRUE;')  # for glUnmapBuffer
         out('}')
-
-    def print_async_body(self, func):
-        out('/* {0}: marshalled asynchronously */'.format(func.name))
-        self.print_async_struct(func)
-        self.print_async_unmarshal(func)
-        self.print_async_marshal(func)
         out('')
         out('')
 
