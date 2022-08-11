@@ -178,6 +178,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_primitive_topology_list_restart,
                        feats->primitive_topology_list_restart,
                        PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_private_data, feats->private_data,
+                       PRIVATE_DATA_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, feats->provoking_vertex,
                        PROVOKING_VERTEX_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_robustness2, feats->robustness_2,
@@ -1098,6 +1100,23 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_index_type_uint8 = true,
       .EXT_line_rasterization = true,
       .EXT_primitive_topology_list_restart = true,
+      /* TODO(VK_EXT_private_data): Support natively.
+       *
+       * We support this extension with a hybrid native/passthrough model
+       * until we teach venus how to do deep surgery on pNext
+       * chains to (a) remove VkDevicePrivateDataCreateInfoEXT, (b) remove Vk
+       * VkPhysicalDevicePrivateDataFeaturesEXT, and (c) modify its bits in
+       * VkPhysicalDeviceVulkan13Features.
+       *
+       * For now, we implement the extension functions natively by using Mesa's
+       * commong implementation. We passthrough VkDevicePrivateDataCreateInfoEXT
+       * to the renderer, which is harmless. We passthrough the extension
+       * enablement and feature bits to the renderer because otherwise
+       * VkDevicePrivateDataCreateInfoEXT would cause invalid usage in the
+       * renderer. Therefore, even though we implement the extension natively,
+       * we expose the extension only if the renderer supports it too.
+       */
+      .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
       .EXT_robustness2 = true,
@@ -1697,6 +1716,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(INLINE_UNIFORM_BLOCK_FEATURES, inline_uniform_block);
       CASE(MAINTENANCE_4_FEATURES, maintenance4);
       CASE(PIPELINE_CREATION_CACHE_CONTROL_FEATURES, pipeline_creation_cache_control);
+      CASE(PRIVATE_DATA_FEATURES, private_data);
       CASE(SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, shader_demote_to_helper_invocation);
       CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
       CASE(SHADER_TERMINATE_INVOCATION_FEATURES, shader_terminate_invocation);

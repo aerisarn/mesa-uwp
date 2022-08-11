@@ -32,6 +32,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceMaintenance4Features maintenance4;
    VkPhysicalDevicePipelineCreationCacheControlFeatures
       pipeline_creation_cache_control;
+   VkPhysicalDevicePrivateDataFeatures private_data;
    VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
       shader_demote_to_helper_invocation;
    VkPhysicalDeviceShaderIntegerDotProductFeatures shader_integer_dot_product;
