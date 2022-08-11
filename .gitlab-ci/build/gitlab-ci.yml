@@ -86,7 +86,6 @@ debian-testing:
     MINIO_ARTIFACT_NAME: mesa-amd64
     LLVM_VERSION: "13"
   script:
-    - .gitlab-ci/lava/lava-pytest.sh
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
   artifacts:
@@ -171,6 +170,7 @@ debian-build-testing:
       -D osmesa=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,xvmc,lima,panfrost,asahi
   script:
+    - .gitlab-ci/lava/lava-pytest.sh
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/run-shader-db.sh
 
