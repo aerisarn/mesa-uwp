@@ -2015,7 +2015,8 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
     * etc. */
    if (!_mesa_texstore_can_use_memcpy(ctx,
                              _mesa_get_format_base_format(mesa_src_format),
-                             mesa_src_format, format, type, unpack)) {
+                             mesa_src_format, format, type, unpack) ||
+       st_compressed_format_fallback(st, texImage->TexFormat)) {
       goto fallback;
    }
 
