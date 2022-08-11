@@ -71,8 +71,8 @@ class PrintCode(gl_XML.gl_print_base):
                 print('struct marshal_cmd_{0};'.format(func.name))
                 print(('uint32_t _mesa_unmarshal_{0}(struct gl_context *ctx, '
                        'const struct marshal_cmd_{0} *cmd, const uint64_t *last);').format(func.name))
-                print('{0} GLAPIENTRY _mesa_marshal_{1}({2});'.format(func.return_type, func.name, func.get_parameter_string()))
-            elif flavor == 'sync':
+
+            if flavor in ('custom', 'async', 'sync') and not func.marshal_is_static():
                 print('{0} GLAPIENTRY _mesa_marshal_{1}({2});'.format(func.return_type, func.name, func.get_parameter_string()))
 
 

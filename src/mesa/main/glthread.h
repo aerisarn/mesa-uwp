@@ -61,6 +61,7 @@ extern "C" {
 struct gl_context;
 struct gl_buffer_object;
 struct _mesa_HashTable;
+struct _glapi_table;
 
 struct glthread_attrib_binding {
    struct gl_buffer_object *buffer; /**< where non-VBO data was uploaded */
@@ -243,6 +244,23 @@ struct glthread_state
 
 void _mesa_glthread_init(struct gl_context *ctx);
 void _mesa_glthread_destroy(struct gl_context *ctx, const char *reason);
+
+void _mesa_glthread_init_dispatch0(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch1(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch2(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch3(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch4(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch5(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch6(struct gl_context *ctx,
+                                   struct _glapi_table *table);
+void _mesa_glthread_init_dispatch7(struct gl_context *ctx,
+                                   struct _glapi_table *table);
 
 void _mesa_glthread_flush_batch(struct gl_context *ctx);
 void _mesa_glthread_finish(struct gl_context *ctx);

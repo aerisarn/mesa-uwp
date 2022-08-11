@@ -93,7 +93,7 @@ class PrintCode(gl_XML.gl_print_base):
 
     def print_sync_body(self, func):
         out('/* {0}: marshalled synchronously */'.format(func.name))
-        out('{0} GLAPIENTRY'.format(func.return_type))
+        out('{0}{1} GLAPIENTRY'.format('static ' if func.marshal_is_static() else '', func.return_type))
         out('_mesa_marshal_{0}({1})'.format(func.name, func.get_parameter_string()))
         out('{')
         with indent():
@@ -319,7 +319,7 @@ class PrintCode(gl_XML.gl_print_base):
         out('}')
 
     def print_async_marshal(self, func):
-        out('{0} GLAPIENTRY'.format(func.return_type))
+        out('{0}{1} GLAPIENTRY'.format('static ' if func.marshal_is_static() else '', func.return_type))
         out('_mesa_marshal_{0}({1})'.format(
                 func.name, func.get_parameter_string()))
         out('{')
@@ -366,29 +366,21 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
         out('')
 
-    def print_create_marshal_table(self, api):
+    def print_init_marshal_table(self, functions):
         out('/* _mesa_create_marshal_table takes a long time to compile with -O2 */')
         out('#if defined(__GNUC__) && !defined(__clang__)')
         out('__attribute__((optimize("O1")))')
         out('#endif')
-        out('bool')
-        out('_mesa_create_marshal_tables(struct gl_context *ctx)')
+        out('void')
+        out('_mesa_glthread_init_dispatch%u(struct gl_context *ctx, '
+                                           'struct _glapi_table *table)' % file_index)
         out('{')
         with indent():
-            out('ctx->MarshalExec = _mesa_alloc_dispatch_table(true);')
-            out('if (!ctx->MarshalExec)')
-            with indent():
-                out('return false;')
-            out('')
-
             # Collect SET_* calls by the condition under which they should
             # be called.
             settings_by_condition = collections.defaultdict(lambda: [])
 
-            for func in api.functionIterateAll():
-                if func.marshal_flavor() == 'skip':
-                    continue
-
+            for func in functions:
                 condition = apiexec.get_api_condition(func)
                 if not condition:
                     continue
@@ -397,7 +389,7 @@ class PrintCode(gl_XML.gl_print_base):
                 # by 20 seconds (on Ryzen 1700X).
                 settings_by_condition[condition].append(
                     ('if (_gloffset_{0} >= 0)\n' +
-                     '   ((_glapi_proc *)(ctx->MarshalExec))[_gloffset_{0}] =' +
+                     '   ((_glapi_proc *)table)[_gloffset_{0}] =' +
                      ' (_glapi_proc)_mesa_marshal_{0};').format(func.name))
 
             # Print out an if statement for each unique condition, with
@@ -409,32 +401,31 @@ class PrintCode(gl_XML.gl_print_base):
                         for line in setting.split('\n'):
                             out(line)
                 out('}')
-
-        out('')
-        out('   return true;')
         out('}')
 
     def printBody(self, api):
-        # The first file only contains the dispatch tables
-        if file_index == 0:
-            self.print_create_marshal_table(api)
-            return
+        # Don't generate marshal/unmarshal functions for skipped and custom functions
+        functions = [func for func in api.functionIterateAll()
+                     if func.marshal_flavor() not in ('skip', 'custom')]
+        # Divide the functions between files
+        func_per_file = len(functions) // file_count + 1
+        functions = functions[file_index*func_per_file:(file_index+1)*func_per_file]
 
-        # The remaining files contain the marshal and unmarshal functions
-        func_per_file = (len(api.functionIterateAll()) // (file_count - 1)) + 1
-        i = -1
-        for func in api.functionIterateAll():
-            i += 1
-            if i // func_per_file != (file_index - 1):
-                continue
-
+        for func in functions:
             flavor = func.marshal_flavor()
-            if flavor in ('skip', 'custom'):
-                continue
-            elif flavor == 'async':
+            if flavor == 'async':
                 self.print_async_body(func)
             elif flavor == 'sync':
                 self.print_sync_body(func)
+            else:
+                assert False
+
+        # The first file will also set custom functions
+        if file_index == 0:
+            functions += [func for func in api.functionIterateAll()
+                          if func.marshal_flavor() == 'custom']
+
+        self.print_init_marshal_table(functions)
 
 
 def show_usage():

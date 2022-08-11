@@ -133,10 +133,6 @@ _mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(const struct gl_conte
            (vao->UserPointerMask & vao->BufferEnabled));
 }
 
-
-bool
-_mesa_create_marshal_tables(struct gl_context *ctx);
-
 static inline unsigned
 _mesa_buffer_enum_to_count(GLenum buffer)
 {
