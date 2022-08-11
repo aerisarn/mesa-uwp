@@ -1097,7 +1097,14 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
       }
 
       if (!basic_ind.def) {
-         if (nir_is_terminator_condition_with_two_inputs(cond)) {
+         if (nir_is_supported_terminator_condition(cond)) {
+            /* Extract and inverse the comparision if it is wrapped in an inot
+             */
+            if (alu_op == nir_op_inot) {
+               cond = nir_ssa_scalar_chase_alu_src(cond, 0);
+               alu_op = inverse_comparison(nir_ssa_scalar_alu_op(cond));
+            }
+
             get_induction_and_limit_vars(cond, &basic_ind,
                                          &limit, &limit_rhs, state);
          }
