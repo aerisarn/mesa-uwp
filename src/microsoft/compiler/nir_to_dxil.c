@@ -1633,6 +1633,14 @@ get_module_flags(struct ntd_context *ctx)
    if (ctx->opts->disable_math_refactoring)
       flags |= (1 << 1);
 
+   /* Work around https://github.com/microsoft/DirectXShaderCompiler/issues/4616
+    * When targeting SM6.7 and with at least one UAV, if no other flags are present,
+    * set the resources-may-not-alias flag, or else the DXIL validator may end up
+    * with uninitialized memory which will fail validation, due to missing that flag.
+    */
+   if (flags == 0 && ctx->mod.minor_version >= 7 && ctx->num_uavs > 0)
+      flags |= (1ull << 33);
+
    return flags;
 }
 
@@ -5928,7 +5936,7 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 static const unsigned dxil_validator_min_capable_version = DXIL_VALIDATOR_1_4;
 static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_7;
 static const unsigned dxil_min_shader_model = SHADER_MODEL_6_1;
-static const unsigned dxil_max_shader_model = SHADER_MODEL_6_6;
+static const unsigned dxil_max_shader_model = SHADER_MODEL_6_7;
 
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
