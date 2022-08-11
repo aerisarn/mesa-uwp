@@ -2151,7 +2151,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       }
    }
 
-   if (needed_states & RADV_DYNAMIC_LINE_STIPPLE) {
+   if (states & RADV_DYNAMIC_LINE_STIPPLE) {
       dynamic->line_stipple.factor = info->rs.line_stipple_factor;
       dynamic->line_stipple.pattern = info->rs.line_stipple_pattern;
    }
