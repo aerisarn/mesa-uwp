@@ -1691,302 +1691,82 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
-   const struct vn_physical_device_properties *props =
+   const struct vn_physical_device_properties *in_props =
       &physical_dev->properties;
-   const struct VkPhysicalDeviceVulkan11Properties *vk11_props =
-      &props->vulkan_1_1;
-   const struct VkPhysicalDeviceVulkan12Properties *vk12_props =
-      &props->vulkan_1_2;
-   union {
-      VkBaseOutStructure *pnext;
 
-      VkPhysicalDeviceProperties2 *properties2;
-      VkPhysicalDeviceVulkan11Properties *vulkan_1_1;
-      VkPhysicalDeviceVulkan12Properties *vulkan_1_2;
+   pProperties->properties = in_props->vulkan_1_0;
 
-      /* Vulkan 1.1 */
-      VkPhysicalDeviceIDProperties *id;
-      VkPhysicalDeviceSubgroupProperties *subgroup;
-      VkPhysicalDevicePointClippingProperties *point_clipping;
-      VkPhysicalDeviceMultiviewProperties *multiview;
-      VkPhysicalDeviceProtectedMemoryProperties *protected_memory;
-      VkPhysicalDeviceMaintenance3Properties *maintenance_3;
+   vk_foreach_struct(out, pProperties->pNext) {
+      if (vk_get_physical_device_core_1_1_property_ext(out,
+                                                       &in_props->vulkan_1_1))
+         continue;
 
-      /* Vulkan 1.2 */
-      VkPhysicalDeviceDriverProperties *driver;
-      VkPhysicalDeviceFloatControlsProperties *float_controls;
-      VkPhysicalDeviceDescriptorIndexingProperties *descriptor_indexing;
-      VkPhysicalDeviceDepthStencilResolveProperties *depth_stencil_resolve;
-      VkPhysicalDeviceSamplerFilterMinmaxProperties *sampler_filter_minmax;
-      VkPhysicalDeviceTimelineSemaphoreProperties *timeline_semaphore;
+      if (vk_get_physical_device_core_1_2_property_ext(out,
+                                                       &in_props->vulkan_1_2))
+         continue;
 
+      /* Cast to avoid warnings for values outside VkStructureType. */
+      switch ((int32_t)out->sType) {
+
+#define CASE(stype, member)                                                  \
+   case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##stype:                           \
+      vk_copy_struct_guts(out, (VkBaseInStructure *)&in_props->member,       \
+                          sizeof(in_props->member));                         \
+      break
+
+      /* clang-format off */
       /* Vulkan 1.3 */
-      VkPhysicalDeviceInlineUniformBlockProperties *inline_uniform_block;
+      CASE(INLINE_UNIFORM_BLOCK_PROPERTIES, inline_uniform_block);
 
       /* EXT */
-      VkPhysicalDeviceConservativeRasterizationPropertiesEXT
-         *conservative_rasterization;
-      VkPhysicalDeviceCustomBorderColorPropertiesEXT *custom_border_color;
-      VkPhysicalDeviceDrmPropertiesEXT *drm;
-      VkPhysicalDeviceLineRasterizationPropertiesEXT *line_rasterization;
-      VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
-      VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
-      VkPhysicalDeviceProvokingVertexPropertiesEXT *provoking_vertex;
-      VkPhysicalDeviceRobustness2PropertiesEXT *robustness_2;
-      VkPhysicalDeviceMaintenance4Properties *maintenance4;
-      VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
-      VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT
-         *vertex_attribute_divisor;
-   } u;
+      CASE(CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, conservative_rasterization);
+      CASE(CUSTOM_BORDER_COLOR_PROPERTIES_EXT, custom_border_color);
+      CASE(LINE_RASTERIZATION_PROPERTIES_EXT, line_rasterization);
+      CASE(MAINTENANCE_4_PROPERTIES, maintenance4);
+      CASE(PROVOKING_VERTEX_PROPERTIES_EXT, provoking_vertex);
+      CASE(ROBUSTNESS_2_PROPERTIES_EXT, robustness_2);
+      CASE(TRANSFORM_FEEDBACK_PROPERTIES_EXT, transform_feedback);
+      CASE(VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT, vertex_attribute_divisor);
+      /* clang-format on */
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
+         VkPhysicalDeviceDrmPropertiesEXT *out_props = (void *)out;
+         const struct vn_renderer_info *info =
+            &physical_dev->instance->renderer->info;
 
-   u.pnext = (VkBaseOutStructure *)pProperties;
-   while (u.pnext) {
-      void *saved = u.pnext->pNext;
-      switch ((int32_t)u.pnext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2:
-         u.properties2->properties = props->vulkan_1_0;
+         out_props->hasPrimary = info->drm.has_primary;
+         out_props->primaryMajor = info->drm.primary_major;
+         out_props->primaryMinor = info->drm.primary_minor;
+         out_props->hasRender = info->drm.has_render;
+         out_props->renderMajor = info->drm.render_major;
+         out_props->renderMinor = info->drm.render_minor;
          break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
-         *u.vulkan_1_1 = *vk11_props;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
-         *u.vulkan_1_2 = *vk12_props;
-         break;
-
-      /* Vulkan 1.1 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES:
-         memcpy(u.id->deviceUUID, vk11_props->deviceUUID,
-                sizeof(vk11_props->deviceUUID));
-         memcpy(u.id->driverUUID, vk11_props->driverUUID,
-                sizeof(vk11_props->driverUUID));
-         memcpy(u.id->deviceLUID, vk11_props->deviceLUID,
-                sizeof(vk11_props->deviceLUID));
-         u.id->deviceNodeMask = vk11_props->deviceNodeMask;
-         u.id->deviceLUIDValid = vk11_props->deviceLUIDValid;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES:
-         u.subgroup->subgroupSize = vk11_props->subgroupSize;
-         u.subgroup->supportedStages = vk11_props->subgroupSupportedStages;
-         u.subgroup->supportedOperations =
-            vk11_props->subgroupSupportedOperations;
-         u.subgroup->quadOperationsInAllStages =
-            vk11_props->subgroupQuadOperationsInAllStages;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES:
-         u.point_clipping->pointClippingBehavior =
-            vk11_props->pointClippingBehavior;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES:
-         u.multiview->maxMultiviewViewCount =
-            vk11_props->maxMultiviewViewCount;
-         u.multiview->maxMultiviewInstanceIndex =
-            vk11_props->maxMultiviewInstanceIndex;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES:
-         u.protected_memory->protectedNoFault = vk11_props->protectedNoFault;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES:
-         u.maintenance_3->maxPerSetDescriptors =
-            vk11_props->maxPerSetDescriptors;
-         u.maintenance_3->maxMemoryAllocationSize =
-            vk11_props->maxMemoryAllocationSize;
-         break;
-
-      /* Vulkan 1.2 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES:
-         u.driver->driverID = vk12_props->driverID;
-         memcpy(u.driver->driverName, vk12_props->driverName,
-                sizeof(vk12_props->driverName));
-         memcpy(u.driver->driverInfo, vk12_props->driverInfo,
-                sizeof(vk12_props->driverInfo));
-         u.driver->conformanceVersion = vk12_props->conformanceVersion;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES:
-         u.float_controls->denormBehaviorIndependence =
-            vk12_props->denormBehaviorIndependence;
-         u.float_controls->roundingModeIndependence =
-            vk12_props->roundingModeIndependence;
-         u.float_controls->shaderSignedZeroInfNanPreserveFloat16 =
-            vk12_props->shaderSignedZeroInfNanPreserveFloat16;
-         u.float_controls->shaderSignedZeroInfNanPreserveFloat32 =
-            vk12_props->shaderSignedZeroInfNanPreserveFloat32;
-         u.float_controls->shaderSignedZeroInfNanPreserveFloat64 =
-            vk12_props->shaderSignedZeroInfNanPreserveFloat64;
-         u.float_controls->shaderDenormPreserveFloat16 =
-            vk12_props->shaderDenormPreserveFloat16;
-         u.float_controls->shaderDenormPreserveFloat32 =
-            vk12_props->shaderDenormPreserveFloat32;
-         u.float_controls->shaderDenormPreserveFloat64 =
-            vk12_props->shaderDenormPreserveFloat64;
-         u.float_controls->shaderDenormFlushToZeroFloat16 =
-            vk12_props->shaderDenormFlushToZeroFloat16;
-         u.float_controls->shaderDenormFlushToZeroFloat32 =
-            vk12_props->shaderDenormFlushToZeroFloat32;
-         u.float_controls->shaderDenormFlushToZeroFloat64 =
-            vk12_props->shaderDenormFlushToZeroFloat64;
-         u.float_controls->shaderRoundingModeRTEFloat16 =
-            vk12_props->shaderRoundingModeRTEFloat16;
-         u.float_controls->shaderRoundingModeRTEFloat32 =
-            vk12_props->shaderRoundingModeRTEFloat32;
-         u.float_controls->shaderRoundingModeRTEFloat64 =
-            vk12_props->shaderRoundingModeRTEFloat64;
-         u.float_controls->shaderRoundingModeRTZFloat16 =
-            vk12_props->shaderRoundingModeRTZFloat16;
-         u.float_controls->shaderRoundingModeRTZFloat32 =
-            vk12_props->shaderRoundingModeRTZFloat32;
-         u.float_controls->shaderRoundingModeRTZFloat64 =
-            vk12_props->shaderRoundingModeRTZFloat64;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES:
-         u.descriptor_indexing->maxUpdateAfterBindDescriptorsInAllPools =
-            vk12_props->maxUpdateAfterBindDescriptorsInAllPools;
-         u.descriptor_indexing
-            ->shaderUniformBufferArrayNonUniformIndexingNative =
-            vk12_props->shaderUniformBufferArrayNonUniformIndexingNative;
-         u.descriptor_indexing
-            ->shaderSampledImageArrayNonUniformIndexingNative =
-            vk12_props->shaderSampledImageArrayNonUniformIndexingNative;
-         u.descriptor_indexing
-            ->shaderStorageBufferArrayNonUniformIndexingNative =
-            vk12_props->shaderStorageBufferArrayNonUniformIndexingNative;
-         u.descriptor_indexing
-            ->shaderStorageImageArrayNonUniformIndexingNative =
-            vk12_props->shaderStorageImageArrayNonUniformIndexingNative;
-         u.descriptor_indexing
-            ->shaderInputAttachmentArrayNonUniformIndexingNative =
-            vk12_props->shaderInputAttachmentArrayNonUniformIndexingNative;
-         u.descriptor_indexing->robustBufferAccessUpdateAfterBind =
-            vk12_props->robustBufferAccessUpdateAfterBind;
-         u.descriptor_indexing->quadDivergentImplicitLod =
-            vk12_props->quadDivergentImplicitLod;
-         u.descriptor_indexing->maxPerStageDescriptorUpdateAfterBindSamplers =
-            vk12_props->maxPerStageDescriptorUpdateAfterBindSamplers;
-         u.descriptor_indexing
-            ->maxPerStageDescriptorUpdateAfterBindUniformBuffers =
-            vk12_props->maxPerStageDescriptorUpdateAfterBindUniformBuffers;
-         u.descriptor_indexing
-            ->maxPerStageDescriptorUpdateAfterBindStorageBuffers =
-            vk12_props->maxPerStageDescriptorUpdateAfterBindStorageBuffers;
-         u.descriptor_indexing
-            ->maxPerStageDescriptorUpdateAfterBindSampledImages =
-            vk12_props->maxPerStageDescriptorUpdateAfterBindSampledImages;
-         u.descriptor_indexing
-            ->maxPerStageDescriptorUpdateAfterBindStorageImages =
-            vk12_props->maxPerStageDescriptorUpdateAfterBindStorageImages;
-         u.descriptor_indexing
-            ->maxPerStageDescriptorUpdateAfterBindInputAttachments =
-            vk12_props->maxPerStageDescriptorUpdateAfterBindInputAttachments;
-         u.descriptor_indexing->maxPerStageUpdateAfterBindResources =
-            vk12_props->maxPerStageUpdateAfterBindResources;
-         u.descriptor_indexing->maxDescriptorSetUpdateAfterBindSamplers =
-            vk12_props->maxDescriptorSetUpdateAfterBindSamplers;
-         u.descriptor_indexing->maxDescriptorSetUpdateAfterBindUniformBuffers =
-            vk12_props->maxDescriptorSetUpdateAfterBindUniformBuffers;
-         u.descriptor_indexing
-            ->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic =
-            vk12_props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic;
-         u.descriptor_indexing->maxDescriptorSetUpdateAfterBindStorageBuffers =
-            vk12_props->maxDescriptorSetUpdateAfterBindStorageBuffers;
-         u.descriptor_indexing
-            ->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic =
-            vk12_props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
-         u.descriptor_indexing->maxDescriptorSetUpdateAfterBindSampledImages =
-            vk12_props->maxDescriptorSetUpdateAfterBindSampledImages;
-         u.descriptor_indexing->maxDescriptorSetUpdateAfterBindStorageImages =
-            vk12_props->maxDescriptorSetUpdateAfterBindStorageImages;
-         u.descriptor_indexing
-            ->maxDescriptorSetUpdateAfterBindInputAttachments =
-            vk12_props->maxDescriptorSetUpdateAfterBindInputAttachments;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES:
-         u.depth_stencil_resolve->supportedDepthResolveModes =
-            vk12_props->supportedDepthResolveModes;
-         u.depth_stencil_resolve->supportedStencilResolveModes =
-            vk12_props->supportedStencilResolveModes;
-         u.depth_stencil_resolve->independentResolveNone =
-            vk12_props->independentResolveNone;
-         u.depth_stencil_resolve->independentResolve =
-            vk12_props->independentResolve;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES:
-         u.sampler_filter_minmax->filterMinmaxSingleComponentFormats =
-            vk12_props->filterMinmaxSingleComponentFormats;
-         u.sampler_filter_minmax->filterMinmaxImageComponentMapping =
-            vk12_props->filterMinmaxImageComponentMapping;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES:
-         u.timeline_semaphore->maxTimelineSemaphoreValueDifference =
-            vk12_props->maxTimelineSemaphoreValueDifference;
-         break;
-
-      /* Vulkan 1.3 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES:
-         *u.inline_uniform_block = props->inline_uniform_block;
-         break;
-
-      /* EXT */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT:
-         *u.conservative_rasterization = props->conservative_rasterization;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
-         *u.custom_border_color = props->custom_border_color;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT:
-         u.drm->hasPrimary =
-            physical_dev->instance->renderer->info.drm.has_primary;
-         u.drm->primaryMajor =
-            physical_dev->instance->renderer->info.drm.primary_major;
-         u.drm->primaryMinor =
-            physical_dev->instance->renderer->info.drm.primary_minor;
-         u.drm->hasRender =
-            physical_dev->instance->renderer->info.drm.has_render;
-         u.drm->renderMajor =
-            physical_dev->instance->renderer->info.drm.render_major;
-         u.drm->renderMinor =
-            physical_dev->instance->renderer->info.drm.render_minor;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT:
-         *u.line_rasterization = props->line_rasterization;
-         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
          /* this is used by WSI */
          if (physical_dev->instance->renderer->info.pci.has_bus_info) {
-            u.pci_bus_info->pciDomain =
-               physical_dev->instance->renderer->info.pci.domain;
-            u.pci_bus_info->pciBus =
-               physical_dev->instance->renderer->info.pci.bus;
-            u.pci_bus_info->pciDevice =
-               physical_dev->instance->renderer->info.pci.device;
-            u.pci_bus_info->pciFunction =
-               physical_dev->instance->renderer->info.pci.function;
+            VkPhysicalDevicePCIBusInfoPropertiesEXT *out_props = (void *)out;
+            const struct vn_renderer_info *info =
+               &physical_dev->instance->renderer->info;
+
+            out_props->pciDomain = info->pci.domain;
+            out_props->pciBus = info->pci.bus;
+            out_props->pciDevice = info->pci.device;
+            out_props->pciFunction = info->pci.function;
          }
          break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID:
-         u.presentation_properties->sharedImage =
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID: {
+         VkPhysicalDevicePresentationPropertiesANDROID *out_props =
+            (void *)out;
+         out_props->sharedImage =
             vn_android_gralloc_get_shared_present_usage() ? VK_TRUE
                                                           : VK_FALSE;
          break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT:
-         *u.provoking_vertex = props->provoking_vertex;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
-         *u.robustness_2 = props->robustness_2;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
-         *u.transform_feedback = props->transform_feedback;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT:
-         *u.vertex_attribute_divisor = props->vertex_attribute_divisor;
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES:
-         *u.maintenance4 = props->maintenance4;
-         break;
-      default:
-         break;
       }
 
-      u.pnext->pNext = saved;
-      u.pnext = u.pnext->pNext;
+      default:
+         break;
+#undef CASE
+      }
    }
 }
 
