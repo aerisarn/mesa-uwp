@@ -934,6 +934,8 @@ _eglNativeSurfaceAlreadyUsed(_EGLDisplay *disp, void *native_surface)
 {
    _EGLResource *list;
 
+   simple_mtx_assert_locked(&disp->Mutex);
+
    list = disp->ResourceLists[_EGL_RESOURCE_SURFACE];
    while (list) {
       _EGLSurface *surf = (_EGLSurface *) list;

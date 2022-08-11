@@ -313,6 +313,8 @@ _eglReleaseDisplayResources(_EGLDisplay *display)
    _EGLResource *list;
    const _EGLDriver *drv = display->Driver;
 
+   simple_mtx_assert_locked(&display->Mutex);
+
    list = display->ResourceLists[_EGL_RESOURCE_CONTEXT];
    while (list) {
       _EGLContext *ctx = (_EGLContext *) list;
@@ -400,6 +402,8 @@ _eglCheckResource(void *res, _EGLResourceType type, _EGLDisplay *disp)
 {
    _EGLResource *list = disp->ResourceLists[type];
    
+   simple_mtx_assert_locked(&disp->Mutex);
+
    if (!res)
       return EGL_FALSE;
 
@@ -462,6 +466,7 @@ void
 _eglLinkResource(_EGLResource *res, _EGLResourceType type)
 {
    assert(res->Display);
+   simple_mtx_assert_locked(&res->Display->Mutex);
 
    res->IsLinked = EGL_TRUE;
    res->Next = res->Display->ResourceLists[type];
@@ -477,6 +482,8 @@ void
 _eglUnlinkResource(_EGLResource *res, _EGLResourceType type)
 {
    _EGLResource *prev;
+
+   simple_mtx_assert_locked(&res->Display->Mutex);
 
    prev = res->Display->ResourceLists[type];
    if (prev != res) {
