@@ -158,6 +158,16 @@ enum radeon_ctx_priority
    RADEON_CTX_PRIORITY_REALTIME,
 };
 
+enum radeon_ctx_pstate
+{
+   RADEON_CTX_PSTATE_NONE = 0,
+   RADEON_CTX_PSTATE_STANDARD,
+   RADEON_CTX_PSTATE_MIN_SCLK,
+   RADEON_CTX_PSTATE_MIN_MCLK,
+   RADEON_CTX_PSTATE_PEAK,
+};
+
+
 /* Each group of two has the same priority. */
 #define RADEON_PRIO_FENCE_TRACE (1 << 0)
 #define RADEON_PRIO_SO_FILLED_SIZE (1 << 1)
@@ -733,6 +743,11 @@ struct radeon_winsys {
     * Secure context
     */
    bool (*cs_is_secure)(struct radeon_cmdbuf *cs);
+
+   /**
+    * Stable pstate
+    */
+   bool (*cs_set_pstate)(struct radeon_cmdbuf *cs, enum radeon_ctx_pstate state);
 };
 
 static inline bool radeon_emitted(struct radeon_cmdbuf *cs, unsigned num_dw)

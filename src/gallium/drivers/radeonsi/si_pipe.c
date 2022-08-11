@@ -204,8 +204,14 @@ static void si_destroy_context(struct pipe_context *context)
    if (sctx->gfx_level >= GFX10 && sctx->has_graphics)
       gfx10_destroy_query(sctx);
 
-   if (sctx->thread_trace)
+   if (sctx->thread_trace) {
+      struct si_screen *sscreen = sctx->screen;
+      if (sscreen->info.has_stable_pstate && sscreen->b.num_contexts == 1 &&
+          !(sctx->context_flags & SI_CONTEXT_FLAG_AUX))
+          sscreen->ws->cs_set_pstate(&sctx->gfx_cs, RADEON_CTX_PSTATE_NONE);
+
       si_destroy_thread_trace(sctx);
+   }
 
    pipe_resource_reference(&sctx->esgs_ring, NULL);
    pipe_resource_reference(&sctx->gsvs_ring, NULL);
@@ -871,6 +877,11 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
    ctx = si_create_context(screen, flags);
 
    if (ctx && sscreen->info.gfx_level >= GFX9 && sscreen->debug_flags & DBG(SQTT)) {
+      /* Auto-enable stable performance profile if possible. */
+      if (sscreen->info.has_stable_pstate && screen->num_contexts == 1 &&
+          sscreen->ws->cs_set_pstate(&((struct si_context *)ctx)->gfx_cs, RADEON_CTX_PSTATE_PEAK)) {
+      }
+
       if (ac_check_profile_state(&sscreen->info)) {
          fprintf(stderr, "radeonsi: Canceling RGP trace request as a hang condition has been "
                          "detected. Force the GPU into a profiling mode with e.g. "
