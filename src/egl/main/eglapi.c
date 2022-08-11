@@ -264,7 +264,7 @@ _eglUnlockDisplay(_EGLDisplay *disp)
    mtx_unlock(&disp->Mutex);
 }
 
-static EGLBoolean
+static void
 _eglSetFuncName(const char *funcName, _EGLDisplay *disp, EGLenum objectType, _EGLResource *object)
 {
    _EGLThreadInfo *thr = _eglGetCurrentThread();
@@ -277,18 +277,12 @@ _eglSetFuncName(const char *funcName, _EGLDisplay *disp, EGLenum objectType, _EG
       thr->CurrentObjectLabel = disp->Label;
    else if (object)
       thr->CurrentObjectLabel = object->Label;
-
-   return EGL_TRUE;
 }
 
 #define _EGL_FUNC_START(disp, objectType, object, ret) \
    do { \
       MESA_TRACE_FUNC(); \
-      if (!_eglSetFuncName(__func__, disp, objectType, (_EGLResource *) object)) { \
-         if (disp)                                 \
-            _eglUnlockDisplay(disp);               \
-         return ret; \
-      } \
+      _eglSetFuncName(__func__, disp, objectType, (_EGLResource *) object); \
    } while(0)
 
 /**
@@ -2622,11 +2616,7 @@ eglSetBlobCacheFuncsANDROID(EGLDisplay *dpy, EGLSetBlobFuncANDROID set,
     * utilize the helper macros _EGL_FUNC_START or _EGL_CHECK_DISPLAY.
     */
    _EGLDisplay *disp = _eglLockDisplay(dpy);
-   if (!_eglSetFuncName(__func__, disp, EGL_OBJECT_DISPLAY_KHR, NULL)) {
-      if (disp)
-         _eglUnlockDisplay(disp);
-      return;
-   }
+   _eglSetFuncName(__func__, disp, EGL_OBJECT_DISPLAY_KHR, NULL);
 
    if (!_eglCheckDisplay(disp, __func__)) {
       if (disp)
