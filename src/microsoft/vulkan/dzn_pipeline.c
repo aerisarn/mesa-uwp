@@ -338,6 +338,14 @@ adjust_var_bindings(nir_shader *shader,
                                        nir_metadata_all, (void *)layout);
 }
 
+enum dxil_shader_model
+   dzn_get_shader_model(const struct dzn_physical_device *pdev)
+{
+   static_assert(D3D_SHADER_MODEL_6_0 == 0x60 && SHADER_MODEL_6_0 == 0x60000, "Validating math below");
+   static_assert(D3D_SHADER_MODEL_6_7 == 0x67 && SHADER_MODEL_6_7 == 0x60007, "Validating math below");
+   return ((pdev->shader_model & 0xf0) << 12) | (pdev->shader_model & 0xf);
+}
+
 static VkResult
 dzn_pipeline_compile_shader(struct dzn_device *device,
                             nir_shader *nir,
@@ -345,9 +353,11 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
 {
    struct dzn_instance *instance =
       container_of(device->vk.physical->instance, struct dzn_instance, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
-      .shader_model_max = SHADER_MODEL_6_2,
+      .shader_model_max = dzn_get_shader_model(pdev),
 #ifdef _WIN32
       .validator_version_max = dxil_get_validator_version(instance->dxil_validator),
 #endif

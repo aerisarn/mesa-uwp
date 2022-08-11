@@ -201,6 +201,7 @@ struct dzn_physical_device {
    mtx_t dev_lock;
    ID3D12Device2 *dev;
    D3D_FEATURE_LEVEL feature_level;
+   D3D_SHADER_MODEL shader_model;
    D3D12_FEATURE_DATA_ARCHITECTURE1 architecture;
    D3D12_FEATURE_DATA_D3D12_OPTIONS options;
    D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2;
@@ -218,6 +219,9 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
 uint32_t
 dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_device *pdev,
                                                    const D3D12_RESOURCE_DESC *desc);
+
+enum dxil_shader_model
+dzn_get_shader_model(const struct dzn_physical_device *pdev);
 
 #define dzn_debug_ignored_stype(sType) \
    mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
