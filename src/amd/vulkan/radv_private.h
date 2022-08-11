@@ -2173,7 +2173,6 @@ struct radv_graphics_pipeline {
    bool disable_out_of_order_rast_for_occlusion;
    bool uses_drawid;
    bool uses_baseinstance;
-   bool uses_dynamic_stride;
    bool uses_conservative_overestimate;
    bool negative_one_to_one;
    enum radv_depth_clamp_mode depth_clamp_mode;

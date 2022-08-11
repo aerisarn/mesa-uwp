@@ -3628,7 +3628,8 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
                          S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
       }
 
-      if (pipeline->uses_dynamic_stride) {
+      if (pipeline->dynamic_states & (RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
+                                      RADV_DYNAMIC_VERTEX_INPUT)) {
          stride = cmd_buffer->vertex_bindings[binding].stride;
       } else {
          stride = pipeline->binding_stride[binding];

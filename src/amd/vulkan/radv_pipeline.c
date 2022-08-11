@@ -2156,10 +2156,6 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->line_stipple.pattern = info->rs.line_stipple_pattern;
    }
 
-   if (!(states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE) ||
-       !(states & RADV_DYNAMIC_VERTEX_INPUT))
-      pipeline->uses_dynamic_stride = true;
-
    if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
       dynamic->fragment_shading_rate.size = info->fsr.size;
       for (int i = 0; i < 2; i++)
