@@ -872,7 +872,7 @@ deinit_program(struct zink_context *ctx, struct zink_program *pg)
 
    if (pg->pipeline_cache)
       VKSCR(DestroyPipelineCache)(screen->dev, pg->pipeline_cache, NULL);
-   zink_descriptor_program_deinit(ctx, pg);
+   zink_descriptor_program_deinit(screen, pg);
 }
 
 void

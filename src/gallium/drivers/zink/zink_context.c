@@ -100,13 +100,13 @@ zink_context_destroy(struct pipe_context *pctx)
       hash_table_foreach(&ctx->program_cache[i], entry) {
          struct zink_program *pg = entry->data;
          pg->removed = true;
-         zink_descriptor_program_deinit(ctx, pg);
+         zink_descriptor_program_deinit(screen, pg);
       }
    }
    hash_table_foreach(&ctx->compute_program_cache, entry) {
       struct zink_program *pg = entry->data;
       pg->removed = true;
-      zink_descriptor_program_deinit(ctx, pg);
+      zink_descriptor_program_deinit(screen, pg);
    }
 
    if (ctx->blitter)
