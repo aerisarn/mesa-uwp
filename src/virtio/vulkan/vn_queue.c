@@ -483,14 +483,28 @@ vn_QueueWaitIdle(VkQueue _queue)
 {
    VN_TRACE_FUNC();
    struct vn_queue *queue = vn_queue_from_handle(_queue);
-   VkDevice device = vn_device_to_handle(queue->device);
+   VkDevice dev_handle = vn_device_to_handle(queue->device);
+   VkResult result;
 
-   VkResult result = vn_QueueSubmit(_queue, 0, NULL, queue->wait_fence);
+   /* lazily create queue wait fence for queue idle waiting */
+   if (queue->wait_fence == VK_NULL_HANDLE) {
+      const VkFenceCreateInfo create_info = {
+         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+         .flags = 0,
+      };
+      result =
+         vn_CreateFence(dev_handle, &create_info, NULL, &queue->wait_fence);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   result = vn_QueueSubmit(_queue, 0, NULL, queue->wait_fence);
    if (result != VK_SUCCESS)
       return result;
 
-   result = vn_WaitForFences(device, 1, &queue->wait_fence, true, UINT64_MAX);
-   vn_ResetFences(device, 1, &queue->wait_fence);
+   result =
+      vn_WaitForFences(dev_handle, 1, &queue->wait_fence, true, UINT64_MAX);
+   vn_ResetFences(dev_handle, 1, &queue->wait_fence);
 
    return vn_result(queue->device->instance, result);
 }
