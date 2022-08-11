@@ -208,6 +208,44 @@ namespace {
    }
 
    /*
+    * Return the stride between channels of the specified register in
+    * byte units, or ~0u if the region cannot be represented with a
+    * single one-dimensional stride.
+    */
+   unsigned
+   byte_stride(const fs_reg &reg)
+   {
+      switch (reg.file) {
+      case BAD_FILE:
+      case UNIFORM:
+      case IMM:
+      case VGRF:
+      case MRF:
+      case ATTR:
+         return reg.stride * type_sz(reg.type);
+      case ARF:
+      case FIXED_GRF:
+         if (reg.is_null()) {
+            return 0;
+         } else {
+            const unsigned hstride = reg.hstride ? 1 << (reg.hstride - 1) : 0;
+            const unsigned vstride = reg.vstride ? 1 << (reg.vstride - 1) : 0;
+            const unsigned width = 1 << reg.width;
+
+            if (width == 1) {
+               return vstride * type_sz(reg.type);
+            } else if (hstride * width == vstride) {
+               return hstride * type_sz(reg.type);
+            } else {
+               return ~0u;
+            }
+         }
+      default:
+         unreachable("Invalid register file");
+      }
+   }
+
+   /*
     * Return whether the instruction has an unsupported channel bit layout
     * specified for the i-th source region.
     */
@@ -236,15 +274,12 @@ namespace {
          return true;
       }
 
-      const unsigned dst_byte_stride = inst->dst.stride * type_sz(inst->dst.type);
-      const unsigned src_byte_stride = inst->src[i].stride *
-         type_sz(inst->src[i].type);
       const unsigned dst_byte_offset = reg_offset(inst->dst) % REG_SIZE;
       const unsigned src_byte_offset = reg_offset(inst->src[i]) % REG_SIZE;
 
       return has_dst_aligned_region_restriction(devinfo, inst) &&
              !is_uniform(inst->src[i]) &&
-             (src_byte_stride != dst_byte_stride ||
+             (byte_stride(inst->src[i]) != byte_stride(inst->dst) ||
               src_byte_offset != dst_byte_offset);
    }
 
@@ -261,15 +296,14 @@ namespace {
       } else {
          const brw_reg_type exec_type = get_exec_type(inst);
          const unsigned dst_byte_offset = reg_offset(inst->dst) % REG_SIZE;
-         const unsigned dst_byte_stride = inst->dst.stride * type_sz(inst->dst.type);
          const bool is_narrowing_conversion = !is_byte_raw_mov(inst) &&
             type_sz(inst->dst.type) < type_sz(exec_type);
 
          return (has_dst_aligned_region_restriction(devinfo, inst) &&
-                 (required_dst_byte_stride(inst) != dst_byte_stride ||
+                 (required_dst_byte_stride(inst) != byte_stride(inst->dst) ||
                   required_dst_byte_offset(inst) != dst_byte_offset)) ||
                 (is_narrowing_conversion &&
-                 required_dst_byte_stride(inst) != dst_byte_stride);
+                 required_dst_byte_stride(inst) != byte_stride(inst->dst));
       }
    }
 
