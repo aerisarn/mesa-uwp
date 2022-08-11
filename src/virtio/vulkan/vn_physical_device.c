@@ -1067,6 +1067,7 @@ vn_physical_device_get_passthrough_extensions(
       /* promoted to VK_VERSION_1_3 */
       .KHR_copy_commands2 = true,
       .KHR_dynamic_rendering = true,
+      .KHR_format_feature_flags2 = true,
       .KHR_maintenance4 = true,
       .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
