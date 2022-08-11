@@ -976,6 +976,21 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
    return 0;
 }
 
+static const struct dxil_value *
+emit_createhandle_call_dynamic(struct ntd_context *ctx,
+                               enum dxil_resource_class resource_class,
+                               unsigned space,
+                               unsigned binding,
+                               const struct dxil_value *resource_range_index,
+                               bool non_uniform_resource_index)
+{
+   return emit_createhandle_call(ctx,
+                                 resource_class,
+                                 get_resource_id(ctx, resource_class, space, binding),
+                                 resource_range_index,
+                                 non_uniform_resource_index);
+}
+
 static bool
 emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
@@ -2903,8 +2918,8 @@ get_resource_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
        class == DXIL_RESOURCE_CLASS_CBV)
       base_binding = 1;
 
-   const struct dxil_value *handle = emit_createhandle_call(ctx, class, 
-      get_resource_id(ctx, class, space, base_binding), value, !const_block_index);
+   const struct dxil_value *handle = emit_createhandle_call_dynamic(ctx, class,
+      space, base_binding, value, !const_block_index);
    if (handle_entry)
       *handle_entry = handle;
 
@@ -4163,9 +4178,7 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!index_value)
       return false;
 
-   handle = emit_createhandle_call(ctx, resource_class,
-      get_resource_id(ctx, resource_class, space, binding),
-      index_value, false);
+   handle = emit_createhandle_call_dynamic(ctx, resource_class, space, binding, index_value, false);
 
    store_dest_value(ctx, &intr->dest, 0, handle);
    store_dest(ctx, &intr->dest, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32), nir_type_uint32);
@@ -4532,8 +4545,8 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    
    unsigned descriptor_set = ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN ?
       var->data.descriptor_set : (glsl_type_is_image(type) ? 1 : 0);
-   const struct dxil_value *handle = emit_createhandle_call(ctx, res_class,
-      get_resource_id(ctx, res_class, descriptor_set, binding_val), binding, false);
+   const struct dxil_value *handle = emit_createhandle_call_dynamic(ctx, res_class,
+      descriptor_set, binding_val, binding, false);
    if (!handle)
       return false;
 
@@ -4929,8 +4942,8 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          break;
 
       case nir_tex_src_texture_offset:
-         params.tex = emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_SRV,
-            get_resource_id(ctx, DXIL_RESOURCE_CLASS_SRV, 0, instr->texture_index),
+         params.tex = emit_createhandle_call_dynamic(ctx, DXIL_RESOURCE_CLASS_SRV,
+            0, instr->texture_index,
             dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
                get_src_ssa(ctx, instr->src[i].src.ssa, 0),
                dxil_module_get_int32_const(&ctx->mod, instr->texture_index), 0),
@@ -4939,8 +4952,8 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 
       case nir_tex_src_sampler_offset:
          if (nir_tex_instr_need_sampler(instr)) {
-            params.sampler = emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
-               get_resource_id(ctx, DXIL_RESOURCE_CLASS_SAMPLER, 0, instr->sampler_index),
+            params.sampler = emit_createhandle_call_dynamic(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
+               0, instr->sampler_index,
                dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
                   get_src_ssa(ctx, instr->src[i].src.ssa, 0),
                   dxil_module_get_int32_const(&ctx->mod, instr->sampler_index), 0),
