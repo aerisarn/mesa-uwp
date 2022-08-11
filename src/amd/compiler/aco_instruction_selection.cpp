@@ -1420,6 +1420,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
                const_vals[idx] |= nir_src_as_uint(instr->src[i].src) << offset;
                continue;
             }
+            if (nir_src_is_undef(instr->src[i].src))
+               continue;
 
             if (offset != packed_size - instr->dest.dest.ssa.bit_size)
                elems[i] =
