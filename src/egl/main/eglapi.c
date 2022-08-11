@@ -250,7 +250,7 @@ _eglLockDisplay(EGLDisplay dpy)
 {
    _EGLDisplay *disp = _eglLookupDisplay(dpy);
    if (disp)
-      mtx_lock(&disp->Mutex);
+      simple_mtx_lock(&disp->Mutex);
    return disp;
 }
 
@@ -261,7 +261,7 @@ _eglLockDisplay(EGLDisplay dpy)
 static inline void
 _eglUnlockDisplay(_EGLDisplay *disp)
 {
-   mtx_unlock(&disp->Mutex);
+   simple_mtx_unlock(&disp->Mutex);
 }
 
 static void
@@ -1518,7 +1518,7 @@ _eglWaitClientCommon(void)
       RETURN_EGL_SUCCESS(NULL, EGL_TRUE);
 
    disp = ctx->Resource.Display;
-   mtx_lock(&disp->Mutex);
+   simple_mtx_lock(&disp->Mutex);
 
    /* let bad current context imply bad current surface */
    if (_eglGetContextHandle(ctx) == EGL_NO_CONTEXT ||
@@ -1561,7 +1561,7 @@ eglWaitNative(EGLint engine)
    _EGL_FUNC_START(NULL, EGL_OBJECT_THREAD_KHR, NULL);
 
    disp = ctx->Resource.Display;
-   mtx_lock(&disp->Mutex);
+   simple_mtx_lock(&disp->Mutex);
 
    /* let bad current context imply bad current surface */
    if (_eglGetContextHandle(ctx) == EGL_NO_CONTEXT ||
@@ -1720,9 +1720,9 @@ eglReleaseThread(void)
    if (ctx) {
       _EGLDisplay *disp = ctx->Resource.Display;
 
-      mtx_lock(&disp->Mutex);
+      simple_mtx_lock(&disp->Mutex);
       (void) disp->Driver->MakeCurrent(disp, NULL, NULL, NULL);
-      mtx_unlock(&disp->Mutex);
+      simple_mtx_unlock(&disp->Mutex);
    }
 
    _eglDestroyCurrentThread();
@@ -2495,7 +2495,7 @@ eglDebugMessageControlKHR(EGLDEBUGPROCKHR callback,
 
    _EGL_FUNC_START(NULL, EGL_NONE, NULL);
 
-   mtx_lock(_eglGlobal.Mutex);
+   simple_mtx_lock(_eglGlobal.Mutex);
 
    newEnabled = _eglGlobal.debugTypesEnabled;
    if (attrib_list != NULL) {
@@ -2515,7 +2515,7 @@ eglDebugMessageControlKHR(EGLDEBUGPROCKHR callback,
          default:
             // On error, set the last error code, call the current
             // debug callback, and return the error code.
-            mtx_unlock(_eglGlobal.Mutex);
+            simple_mtx_unlock(_eglGlobal.Mutex);
             _eglReportError(EGL_BAD_ATTRIBUTE, NULL,
                   "Invalid attribute 0x%04lx", (unsigned long) attrib_list[i]);
             return EGL_BAD_ATTRIBUTE;
@@ -2531,7 +2531,7 @@ eglDebugMessageControlKHR(EGLDEBUGPROCKHR callback,
       _eglGlobal.debugTypesEnabled = _EGL_DEBUG_BIT_CRITICAL | _EGL_DEBUG_BIT_ERROR;
    }
 
-   mtx_unlock(_eglGlobal.Mutex);
+   simple_mtx_unlock(_eglGlobal.Mutex);
    return EGL_SUCCESS;
 }
 
@@ -2540,7 +2540,7 @@ eglQueryDebugKHR(EGLint attribute, EGLAttrib *value)
 {
    _EGL_FUNC_START(NULL, EGL_NONE, NULL);
 
-   mtx_lock(_eglGlobal.Mutex);
+   simple_mtx_lock(_eglGlobal.Mutex);
 
    switch (attribute) {
    case EGL_DEBUG_MSG_CRITICAL_KHR:
@@ -2556,13 +2556,13 @@ eglQueryDebugKHR(EGLint attribute, EGLAttrib *value)
       *value = (EGLAttrib) _eglGlobal.debugCallback;
       break;
    default:
-      mtx_unlock(_eglGlobal.Mutex);
+      simple_mtx_unlock(_eglGlobal.Mutex);
       _eglReportError(EGL_BAD_ATTRIBUTE, NULL,
                       "Invalid attribute 0x%04lx", (unsigned long) attribute);
       return EGL_FALSE;
    }
 
-   mtx_unlock(_eglGlobal.Mutex);
+   simple_mtx_unlock(_eglGlobal.Mutex);
    return EGL_TRUE;
 }
 

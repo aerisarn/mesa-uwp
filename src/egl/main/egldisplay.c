@@ -263,7 +263,7 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
    if (plat == _EGL_INVALID_PLATFORM)
       return NULL;
 
-   mtx_lock(_eglGlobal.Mutex);
+   simple_mtx_lock(_eglGlobal.Mutex);
 
    /* search the display list first */
    for (disp = _eglGlobal.DisplayList; disp; disp = disp->Next) {
@@ -278,7 +278,7 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
    if (!disp)
       goto out;
 
-   mtx_init(&disp->Mutex, mtx_plain);
+   simple_mtx_init(&disp->Mutex, mtx_plain);
    disp->Platform = plat;
    disp->PlatformDisplay = plat_dpy;
    num_attribs = _eglNumAttribs(attrib_list);
@@ -298,7 +298,7 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
    _eglGlobal.DisplayList = disp;
 
 out:
-   mtx_unlock(_eglGlobal.Mutex);
+   simple_mtx_unlock(_eglGlobal.Mutex);
 
    return disp;
 }
@@ -379,14 +379,14 @@ _eglCheckDisplayHandle(EGLDisplay dpy)
 {
    _EGLDisplay *cur;
 
-   mtx_lock(_eglGlobal.Mutex);
+   simple_mtx_lock(_eglGlobal.Mutex);
    cur = _eglGlobal.DisplayList;
    while (cur) {
       if (cur == (_EGLDisplay *) dpy)
          break;
       cur = cur->Next;
    }
-   mtx_unlock(_eglGlobal.Mutex);
+   simple_mtx_unlock(_eglGlobal.Mutex);
    return (cur != NULL);
 }
 
