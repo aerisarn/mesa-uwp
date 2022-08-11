@@ -80,16 +80,13 @@ class PrintCode(gl_XML.gl_print_base):
     def printRealFooter(self):
         pass
 
-    def print_sync_call(self, func, unmarshal = 0):
+    def print_call(self, func, unmarshal=0):
+        ret = 'return ' if func.return_type != 'void' and not unmarshal else '';
         call = 'CALL_{0}(ctx->CurrentServerDispatch, ({1}))'.format(
             func.name, func.get_called_parameter_string())
-        if func.return_type == 'void' or unmarshal:
-            out('{0};'.format(call))
-            if func.marshal_call_after and not unmarshal:
-                out(func.marshal_call_after);
-        else:
-            out('return {0};'.format(call))
-            assert not func.marshal_call_after
+        out('{0}{1};'.format(ret, call))
+        if func.marshal_call_after and ret == '' and not unmarshal:
+            out(func.marshal_call_after);
 
     def print_sync_body(self, func):
         out('/* {0}: marshalled synchronously */'.format(func.name))
@@ -101,7 +98,7 @@ class PrintCode(gl_XML.gl_print_base):
             if func.marshal_call_before:
                 out(func.marshal_call_before);
             out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-            self.print_sync_call(func)
+            self.print_call(func)
         out('}')
         out('')
         out('')
@@ -234,7 +231,7 @@ class PrintCode(gl_XML.gl_print_base):
                         out('variable_data += {0};'.format(p.size_string(False, marshal=1)))
                     i += 1
 
-            self.print_sync_call(func, unmarshal=1)
+            self.print_call(func, unmarshal=1)
             if variable_params:
                 out('return cmd->cmd_base.cmd_size;')
             else:
@@ -272,7 +269,7 @@ class PrintCode(gl_XML.gl_print_base):
                 out('if ({0}) {{'.format(func.marshal_sync))
                 with indent():
                     out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-                    self.print_sync_call(func)
+                    self.print_call(func)
                     out('return;')
                 out('}')
             else:
@@ -293,7 +290,7 @@ class PrintCode(gl_XML.gl_print_base):
                     out('if (unlikely({0})) {{'.format(' || '.join(list)))
                     with indent():
                         out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-                        self.print_sync_call(func)
+                        self.print_call(func)
                         out('return;')
                     out('}')
 
