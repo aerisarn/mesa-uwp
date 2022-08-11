@@ -843,6 +843,9 @@ emit_atomic_cmpxchg(struct ntd_context *ctx,
 static const struct dxil_value *
 emit_createhandle_call(struct ntd_context *ctx,
                        enum dxil_resource_class resource_class,
+                       unsigned lower_bound,
+                       unsigned upper_bound,
+                       unsigned space,
                        unsigned resource_range_id,
                        const struct dxil_value *resource_range_index,
                        bool non_uniform_resource_index)
@@ -875,6 +878,9 @@ emit_createhandle_call(struct ntd_context *ctx,
 static const struct dxil_value *
 emit_createhandle_call_const_index(struct ntd_context *ctx,
                                    enum dxil_resource_class resource_class,
+                                   unsigned lower_bound,
+                                   unsigned upper_bound,
+                                   unsigned space,
                                    unsigned resource_range_id,
                                    unsigned resource_range_index,
                                    bool non_uniform_resource_index)
@@ -884,8 +890,8 @@ emit_createhandle_call_const_index(struct ntd_context *ctx,
    if (!resource_range_index_value)
       return NULL;
 
-   return emit_createhandle_call(ctx, resource_class, resource_range_id,
-                                 resource_range_index_value,
+   return emit_createhandle_call(ctx, resource_class, lower_bound, upper_bound, space,
+                                 resource_range_id, resource_range_index_value,
                                  non_uniform_resource_index);
 }
 
@@ -928,9 +934,13 @@ add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
    }
 }
 
-static unsigned
-get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
-                unsigned space, unsigned binding)
+static const struct dxil_value *
+emit_createhandle_call_dynamic(struct ntd_context *ctx,
+                               enum dxil_resource_class resource_class,
+                               unsigned space,
+                               unsigned binding,
+                               const struct dxil_value *resource_range_index,
+                               bool non_uniform_resource_index)
 {
    unsigned offset = 0;
    unsigned count = 0;
@@ -940,7 +950,7 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
    unsigned num_cbvs = util_dynarray_num_elements(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *);
    unsigned num_samplers = util_dynarray_num_elements(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *);
 
-   switch (class) {
+   switch (resource_class) {
    case DXIL_RESOURCE_CLASS_UAV:
       offset = num_srvs + num_samplers + num_cbvs;
       count = num_uavs;
@@ -967,27 +977,15 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
       if (resource->space == space &&
           resource->lower_bound <= binding &&
           resource->upper_bound >= binding) {
-         return i - offset;
+         return emit_createhandle_call(ctx, resource_class, resource->lower_bound,
+                                       resource->upper_bound, space,
+                                       i - offset,
+                                       resource_range_index,
+                                       non_uniform_resource_index);
       }
    }
 
    unreachable("Resource access for undeclared range");
-   return 0;
-}
-
-static const struct dxil_value *
-emit_createhandle_call_dynamic(struct ntd_context *ctx,
-                               enum dxil_resource_class resource_class,
-                               unsigned space,
-                               unsigned binding,
-                               const struct dxil_value *resource_range_index,
-                               bool non_uniform_resource_index)
-{
-   return emit_createhandle_call(ctx,
-                                 resource_class,
-                                 get_resource_id(ctx, resource_class, space, binding),
-                                 resource_range_index,
-                                 non_uniform_resource_index);
 }
 
 static bool
@@ -1372,7 +1370,14 @@ emit_static_indexing_handles(struct ntd_context *ctx)
          continue;
 
       for (unsigned i = res->lower_bound; i <= res->upper_bound; ++i) {
-         handle_array[i] = emit_createhandle_call_const_index(ctx, res_class, id, i, false);
+         handle_array[i] = emit_createhandle_call_const_index(ctx,
+                                                              res_class,
+                                                              res->lower_bound,
+                                                              res->upper_bound,
+                                                              res->space,
+                                                              id,
+                                                              i,
+                                                              false);
          if (!handle_array[i])
             return false;
       }
