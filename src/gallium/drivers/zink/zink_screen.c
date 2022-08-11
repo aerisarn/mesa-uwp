@@ -1490,7 +1490,7 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format)
 static enum pipe_format
 emulate_x8(enum pipe_format format)
 {
-   /* convert missing X8 variants to A8 */
+   /* convert missing Xn variants to An */
    switch (format) {
    case PIPE_FORMAT_B8G8R8X8_UNORM:
       return PIPE_FORMAT_B8G8R8A8_UNORM;
@@ -1515,6 +1515,11 @@ emulate_x8(enum pipe_format format)
       return PIPE_FORMAT_R16G16B16A16_SNORM;
    case PIPE_FORMAT_R16G16B16X16_UNORM:
       return PIPE_FORMAT_R16G16B16A16_UNORM;
+
+   case PIPE_FORMAT_R32G32B32X32_FLOAT:
+      return PIPE_FORMAT_R32G32B32A32_FLOAT;
+   case PIPE_FORMAT_R32G32B32X32_SINT:
+      return PIPE_FORMAT_R32G32B32A32_SINT;
 
    default:
       return format;

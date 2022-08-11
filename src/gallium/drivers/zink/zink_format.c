@@ -315,7 +315,8 @@ zink_format_is_voidable_rgba_variant(enum pipe_format format)
 
    if(desc->block.width != 1 ||
       desc->block.height != 1 ||
-      (desc->block.bits != 32 && desc->block.bits != 64))
+      (desc->block.bits != 32 && desc->block.bits != 64 &&
+       desc->block.bits != 128))
       return false;
 
    if (desc->nr_channels != 4)
