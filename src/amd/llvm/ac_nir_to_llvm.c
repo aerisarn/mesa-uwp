@@ -4465,21 +4465,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_build_gather_values(&ctx->ac, global_count, instr->num_components);
       break;
    }
-   case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
-      ctx->abi->atomic_add_prim_count(ctx->abi, ~0U, get_src(ctx, instr->src[0]),
-                                      ac_prim_count_gs_emit);
-      break;
-   case nir_intrinsic_atomic_add_gen_prim_count_amd:
-   case nir_intrinsic_atomic_add_xfb_prim_count_amd: {
-      LLVMValueRef prim_count = get_src(ctx, instr->src[0]);
-      unsigned stream = nir_intrinsic_stream_id(instr);
-      enum ac_prim_count count_type =
-         instr->intrinsic == nir_intrinsic_atomic_add_gen_prim_count_amd ?
-         ac_prim_count_gen : ac_prim_count_xfb;
-
-      ctx->abi->atomic_add_prim_count(ctx->abi, stream, prim_count, count_type);
-      break;
-   }
    default:
       fprintf(stderr, "Unknown intrinsic: ");
       nir_print_instr(&instr->instr, stderr);

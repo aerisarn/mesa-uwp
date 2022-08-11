@@ -778,7 +778,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
 
    ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
    ctx->abi.export_vertex = gfx10_ngg_export_vertex;
-   ctx->abi.atomic_add_prim_count = gfx10_ngg_atomic_add_prim_count;
 
    si_llvm_init_resource_callbacks(ctx);
    si_llvm_create_main_func(ctx);

@@ -183,8 +183,6 @@ LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
 bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 void gfx10_ngg_export_vertex(struct ac_shader_abi *abi);
-void gfx10_ngg_atomic_add_prim_count(struct ac_shader_abi *abi, unsigned stream,
-                                     LLVMValueRef prim_count, enum ac_prim_count count_type);
 void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader);
 bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);

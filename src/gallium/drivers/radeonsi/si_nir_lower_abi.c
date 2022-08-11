@@ -233,6 +233,26 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = load_internal_binding(b, args, slot);
       break;
    }
+   case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
+   case nir_intrinsic_atomic_add_gen_prim_count_amd:
+   case nir_intrinsic_atomic_add_xfb_prim_count_amd: {
+      unsigned offset;
+      nir_ssa_def *buf;
+      if (intrin->intrinsic == nir_intrinsic_atomic_add_gs_emit_prim_count_amd) {
+         buf = load_internal_binding(b, args, SI_GS_QUERY_EMULATED_COUNTERS_BUF);
+         offset = si_query_pipestat_end_dw_offset(sel->screen, PIPE_STAT_QUERY_GS_PRIMITIVES) * 4;
+      } else {
+         unsigned stream = nir_intrinsic_stream_id(intrin);
+         buf = load_internal_binding(b, args, SI_GS_QUERY_BUF);
+         offset = intrin->intrinsic == nir_intrinsic_atomic_add_gen_prim_count_amd ?
+            offsetof(struct gfx10_sh_query_buffer_mem, stream[stream].generated_primitives) :
+            offsetof(struct gfx10_sh_query_buffer_mem, stream[stream].emitted_primitives);
+      }
+
+      nir_ssa_def *prim_count = intrin->src[0].ssa;
+      nir_buffer_atomic_add_amd(b, 32, buf, prim_count, .base = offset);
+      break;
+   }
    default:
       return false;
    }
