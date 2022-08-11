@@ -191,6 +191,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_vertex_attribute_divisor,
                        feats->vertex_attribute_divisor,
                        VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_ycbcr_2plane_444_formats,
+                       feats->ycbcr_2plane_444_formats,
+                       YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, features2);
 
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev), &features2);
@@ -1079,6 +1082,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_subgroup_size_control = true,
       .EXT_texel_buffer_alignment = true,
       .EXT_texture_compression_astc_hdr = true,
+      .EXT_ycbcr_2plane_444_formats = true,
 
       /* EXT */
       .EXT_calibrated_timestamps = true,
@@ -1698,6 +1702,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(SUBGROUP_SIZE_CONTROL_FEATURES, subgroup_size_control);
       CASE(TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, texel_buffer_alignment);
       CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
+      CASE(YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, ycbcr_2plane_444_formats);
       CASE(ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, zero_initialize_workgroup_memory);
 
       /* EXT */

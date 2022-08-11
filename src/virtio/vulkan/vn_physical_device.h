@@ -57,6 +57,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT texel_buffer_alignment;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertex_attribute_divisor;
+   VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT ycbcr_2plane_444_formats;
 };
 
 struct vn_physical_device_properties {
