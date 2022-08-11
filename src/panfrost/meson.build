@@ -82,3 +82,7 @@ endif
 if with_tools.contains('drm-shim')
   subdir('drm-shim')
 endif
+
+if with_tools.contains('panfrost')
+   subdir('tools')
+endif
