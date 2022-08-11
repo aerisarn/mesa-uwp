@@ -2141,14 +2141,12 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       }
    }
 
-   if (needed_states & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
-      if (info->ms.sample_locs_enable) {
-         dynamic->sample_location.per_pixel = info->ms.sample_locs_per_pixel;
-         dynamic->sample_location.grid_size = info->ms.sample_locs_grid_size;
-         dynamic->sample_location.count = info->ms.sample_locs_count;
-         typed_memcpy(&dynamic->sample_location.locations[0], info->ms.sample_locs,
-                      info->ms.sample_locs_count);
-      }
+   if (states & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
+      dynamic->sample_location.per_pixel = info->ms.sample_locs_per_pixel;
+      dynamic->sample_location.grid_size = info->ms.sample_locs_grid_size;
+      dynamic->sample_location.count = info->ms.sample_locs_count;
+      typed_memcpy(&dynamic->sample_location.locations[0], info->ms.sample_locs,
+                   info->ms.sample_locs_count);
    }
 
    if (states & RADV_DYNAMIC_LINE_STIPPLE) {
