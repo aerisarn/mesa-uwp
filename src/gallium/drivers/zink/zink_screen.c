@@ -2086,6 +2086,7 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->info.have_EXT_graphics_pipeline_library = screen->info.have_EXT_extended_dynamic_state &&
                                                         screen->info.have_EXT_extended_dynamic_state2 &&
                                                         screen->info.have_KHR_dynamic_rendering &&
+                                                        screen->info.have_EXT_non_seamless_cube_map &&
                                                         (screen->info.gpl_props.graphicsPipelineLibraryFastLinking ||
                                                          screen->is_cpu ||
                                                          screen->driver_workarounds.force_pipeline_library);
