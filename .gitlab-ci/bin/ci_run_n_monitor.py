@@ -104,11 +104,18 @@ def pretty_wait(sec: int) -> None:
 
 
 def monitor_pipeline(
-    project, pipeline, target_job: Optional[str], dependencies, force_manual: bool
+    project,
+    pipeline,
+    target_job: Optional[str],
+    dependencies,
+    force_manual: bool,
+    stress: bool,
 ) -> tuple[Optional[int], Optional[int]]:
     """Monitors pipeline and delegate canceling jobs"""
     statuses = {}
     target_statuses = {}
+    stress_succ = 0
+    stress_fail = 0
 
     if target_job:
         target_jobs_regex = re.compile(target_job.strip())
@@ -120,6 +127,13 @@ def monitor_pipeline(
             if target_job and target_jobs_regex.match(job.name):
                 if force_manual and job.status == "manual":
                     enable_job(project, job, True)
+
+                if stress and job.status in ["success", "failed"]:
+                    if job.status == "success":
+                        stress_succ += 1
+                    if job.status == "failed":
+                        stress_fail += 1
+                    retry_job(project, job)
 
                 if (job.id not in target_statuses) or (
                     job.status not in target_statuses[job.id]
@@ -152,6 +166,14 @@ def monitor_pipeline(
         if target_job:
             cancel_jobs(project, to_cancel)
 
+        if stress:
+            print(
+                "∑ succ: " + str(stress_succ) + "; fail: " + str(stress_fail),
+                flush=False,
+            )
+            pretty_wait(REFRESH_WAIT_JOBS)
+            continue
+
         print("---------------------------------", flush=False)
 
         if len(target_statuses) == 1 and {"running"}.intersection(
@@ -176,6 +198,14 @@ def enable_job(project, job, target: bool) -> None:
         jtype = "🞋 "
     else:
         jtype = "(dependency)"
+    print(Fore.MAGENTA + f"{jtype} job {job.name} manually enabled" + Style.RESET_ALL)
+
+
+def retry_job(project, job) -> None:
+    """retry job"""
+    pjob = project.jobs.get(job.id, lazy=True)
+    pjob.retry()
+    jtype = "↻"
     print(Fore.MAGENTA + f"{jtype} job {job.name} manually enabled" + Style.RESET_ALL)
 
 
@@ -234,6 +264,7 @@ def parse_args() -> None:
     parser.add_argument(
         "--force-manual", action="store_true", help="Force jobs marked as manual"
     )
+    parser.add_argument("--stress", action="store_true", help="Stresstest job(s)")
     return parser.parse_args()
 
 
@@ -285,7 +316,7 @@ if __name__ == "__main__":
                 target_job=args.target, sha=args.rev, project_path=cur_project
             )
         target_job_id, ret = monitor_pipeline(
-            cur_project, pipe, args.target, deps, args.force_manual
+            cur_project, pipe, args.target, deps, args.force_manual, args.stress
         )
 
         if target_job_id:
