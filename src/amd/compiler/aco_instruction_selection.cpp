@@ -6016,12 +6016,12 @@ image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
    case GLSL_SAMPLER_DIM_BUF: return 1;
    case GLSL_SAMPLER_DIM_1D: return array ? 2 : 1;
    case GLSL_SAMPLER_DIM_2D: return array ? 3 : 2;
-   case GLSL_SAMPLER_DIM_MS: return array ? 4 : 3;
+   case GLSL_SAMPLER_DIM_MS: return array ? 3 : 2;
    case GLSL_SAMPLER_DIM_3D:
    case GLSL_SAMPLER_DIM_CUBE: return 3;
    case GLSL_SAMPLER_DIM_RECT:
    case GLSL_SAMPLER_DIM_SUBPASS: return 2;
-   case GLSL_SAMPLER_DIM_SUBPASS_MS: return 3;
+   case GLSL_SAMPLER_DIM_SUBPASS_MS: return 2;
    default: break;
    }
    return 0;
@@ -6125,6 +6125,8 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
 {
 
    Temp src0 = get_ssa_temp(ctx, instr->src[1].ssa);
+   bool a16 = instr->src[1].ssa->bit_size == 16;
+   RegClass rc = a16 ? v2b : v1;
    enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    bool is_array = nir_intrinsic_image_array(instr);
    ASSERTED bool add_frag_pos =
@@ -6133,21 +6135,17 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
    bool is_ms = (dim == GLSL_SAMPLER_DIM_MS || dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
    bool gfx9_1d = ctx->options->gfx_level == GFX9 && dim == GLSL_SAMPLER_DIM_1D;
    int count = image_type_to_components_count(dim, is_array);
-   std::vector<Temp> coords(count);
+   std::vector<Temp> coords;
    Builder bld(ctx->program, ctx->block);
 
-   if (is_ms)
-      coords[--count] = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[2].ssa), 0, v1);
-
    if (gfx9_1d) {
-      coords[0] = emit_extract_vector(ctx, src0, 0, v1);
-      coords.resize(coords.size() + 1);
-      coords[1] = bld.copy(bld.def(v1), Operand::zero());
+      coords.emplace_back(emit_extract_vector(ctx, src0, 0, rc));
+      coords.emplace_back(bld.copy(bld.def(rc), Operand::zero(a16 ? 16 : 32)));
       if (is_array)
-         coords[2] = emit_extract_vector(ctx, src0, 1, v1);
+         coords.emplace_back(emit_extract_vector(ctx, src0, 1, rc));
    } else {
       for (int i = 0; i < count; i++)
-         coords[i] = emit_extract_vector(ctx, src0, i, v1);
+         coords.emplace_back(emit_extract_vector(ctx, src0, i, rc));
    }
 
    if (ctx->options->key.image_2d_view_of_3d &&
@@ -6163,21 +6161,30 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
       Temp first_layer =
          bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), rsrc_word5,
                   Operand::c32(0u), Operand::c32(13u));
-      coords.emplace_back(first_layer);
+      if (a16)
+         coords.emplace_back(emit_extract_vector(ctx, first_layer, 0, v2b));
+      else
+         coords.emplace_back(first_layer);
+   }
+
+   if (is_ms) {
+      assert(instr->src[2].ssa->bit_size == (a16 ? 16 : 32));
+      coords.emplace_back(get_ssa_temp_tex(ctx, instr->src[2].ssa, a16));
    }
 
    if (instr->intrinsic == nir_intrinsic_bindless_image_load ||
        instr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
        instr->intrinsic == nir_intrinsic_bindless_image_store) {
       int lod_index = instr->intrinsic == nir_intrinsic_bindless_image_store ? 4 : 3;
+      assert(instr->src[lod_index].ssa->bit_size == (a16 ? 16 : 32));
       bool level_zero =
          nir_src_is_const(instr->src[lod_index]) && nir_src_as_uint(instr->src[lod_index]) == 0;
 
       if (!level_zero)
-         coords.emplace_back(get_ssa_temp(ctx, instr->src[lod_index].ssa));
+         coords.emplace_back(get_ssa_temp_tex(ctx, instr->src[lod_index].ssa, a16));
    }
 
-   return coords;
+   return emit_pack_v1(ctx, coords);
 }
 
 memory_sync_info
@@ -6306,6 +6313,7 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
       load->dlc =
          load->glc && (ctx->options->gfx_level == GFX10 || ctx->options->gfx_level == GFX10_3);
       load->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
+      load->a16 = instr->src[1].ssa->bit_size == 16;
       load->d16 = d16;
       load->dmask = dmask;
       load->unrm = true;
@@ -6432,6 +6440,7 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    store->glc = glc;
    store->dlc = false;
    store->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
+   store->a16 = instr->src[1].ssa->bit_size == 16;
    store->d16 = d16;
    store->dmask = dmask;
    store->unrm = true;
@@ -6567,6 +6576,7 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    mimg->dlc = false; /* Not needed for atomics */
    mimg->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
    mimg->dmask = (1 << data.size()) - 1;
+   mimg->a16 = instr->src[1].ssa->bit_size == 16;
    mimg->unrm = true;
    mimg->da = should_declare_array(ctx, dim, is_array);
    mimg->disable_wqm = true;
