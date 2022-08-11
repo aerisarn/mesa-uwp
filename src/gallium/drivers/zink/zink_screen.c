@@ -186,16 +186,13 @@ disk_cache_init(struct zink_screen *screen)
    if (!screen->disk_cache)
       return true;
 
-   if (!util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen) ||
-      !util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
-         UTIL_QUEUE_INIT_RESIZE_IF_FULL | UTIL_QUEUE_INIT_SCALE_THREADS, screen)) {
+   if (!util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen)) {
       mesa_loge("zink: Failed to create disk cache queue\n");
 
       disk_cache_destroy(screen->disk_cache);
       screen->disk_cache = NULL;
 
       util_queue_destroy(&screen->cache_put_thread);
-      util_queue_destroy(&screen->cache_get_thread);
 
       return false;
    }
@@ -1261,13 +1258,13 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    }
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
+   util_queue_finish(&screen->cache_get_thread);
+   util_queue_destroy(&screen->cache_get_thread);
 #ifdef ENABLE_SHADER_CACHE
    if (screen->disk_cache) {
       util_queue_finish(&screen->cache_put_thread);
-      util_queue_finish(&screen->cache_get_thread);
       disk_cache_wait_for_idle(screen->disk_cache);
       util_queue_destroy(&screen->cache_put_thread);
-      util_queue_destroy(&screen->cache_get_thread);
    }
 #endif
    disk_cache_destroy(screen->disk_cache);
@@ -2305,6 +2302,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_screen_init_compiler(screen);
    if (!disk_cache_init(screen))
+      goto fail;
+   if (!util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
+                        UTIL_QUEUE_INIT_RESIZE_IF_FULL | UTIL_QUEUE_INIT_SCALE_THREADS, screen))
       goto fail;
    populate_format_props(screen);
    pre_hash_descriptor_states(screen);
