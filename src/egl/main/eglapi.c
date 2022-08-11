@@ -1973,8 +1973,8 @@ eglDestroySyncKHR(EGLDisplay dpy, EGLSync sync)
 
 
 static EGLint
-_eglClientWaitSyncCommon(_EGLDisplay *disp, EGLDisplay dpy,
-                         _EGLSync *s, EGLint flags, EGLTime timeout)
+_eglClientWaitSyncCommon(_EGLDisplay *disp, _EGLSync *s,
+                         EGLint flags, EGLTime timeout)
 {
    EGLint ret;
 
@@ -1992,7 +1992,7 @@ _eglClientWaitSyncCommon(_EGLDisplay *disp, EGLDisplay dpy,
     */
 
    if (s->Type == EGL_SYNC_REUSABLE_KHR)
-      _eglUnlockDisplay(dpy);
+      _eglUnlockDisplay(disp);
 
    ret = disp->Driver->ClientWaitSyncKHR(disp, s, flags, timeout);
 
@@ -2013,7 +2013,7 @@ eglClientWaitSync(EGLDisplay dpy, EGLSync sync,
    _EGLDisplay *disp = _eglLockDisplay(dpy);
    _EGLSync *s = _eglLookupSync(sync, disp);
    _EGL_FUNC_START(disp, EGL_OBJECT_SYNC_KHR, s);
-   return _eglClientWaitSyncCommon(disp, dpy, s, flags, timeout);
+   return _eglClientWaitSyncCommon(disp, s, flags, timeout);
 }
 
 static EGLint EGLAPIENTRY
@@ -2023,7 +2023,7 @@ eglClientWaitSyncKHR(EGLDisplay dpy, EGLSync sync,
    _EGLDisplay *disp = _eglLockDisplay(dpy);
    _EGLSync *s = _eglLookupSync(sync, disp);
    _EGL_FUNC_START(disp, EGL_OBJECT_SYNC_KHR, s);
-   return _eglClientWaitSyncCommon(disp, dpy, s, flags, timeout);
+   return _eglClientWaitSyncCommon(disp, s, flags, timeout);
 }
 
 
