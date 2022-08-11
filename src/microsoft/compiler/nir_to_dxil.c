@@ -443,7 +443,6 @@ emit_sampler_metadata(struct dxil_module *m, const struct dxil_type *struct_type
    const struct glsl_type *type = glsl_without_array(var->type);
 
    fill_resource_metadata(m, fields, struct_type, var->name, layout);
-   fields[6] = dxil_get_metadata_int32(m, DXIL_SAMPLER_KIND_DEFAULT); // sampler kind
    enum dxil_sampler_kind sampler_kind = glsl_sampler_type_is_shadow(type) ?
           DXIL_SAMPLER_KIND_COMPARISON : DXIL_SAMPLER_KIND_DEFAULT;
    fields[6] = dxil_get_metadata_int32(m, sampler_kind); // sampler kind
