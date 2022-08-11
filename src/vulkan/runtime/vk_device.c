@@ -527,13 +527,6 @@ vk_common_DeviceWaitIdle(VkDevice _device)
    return VK_SUCCESS;
 }
 
-static void
-copy_vk_struct_guts(VkBaseOutStructure *dst, VkBaseInStructure *src, size_t struct_size)
-{
-   STATIC_ASSERT(sizeof(*dst) == sizeof(*src));
-   memcpy(dst + 1, src + 1, struct_size - sizeof(VkBaseOutStructure));
-}
-
 #define CORE_FEATURE(feature) features->feature = core->feature
 
 bool
@@ -585,7 +578,7 @@ vk_get_physical_device_core_1_1_feature_ext(struct VkBaseOutStructure *ext,
    }
 
    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
-      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      vk_copy_struct_guts(ext, (void *)core, sizeof(*core));
       return true;
 
    default:
@@ -705,7 +698,7 @@ vk_get_physical_device_core_1_2_feature_ext(struct VkBaseOutStructure *ext,
    }
 
    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
-      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      vk_copy_struct_guts(ext, (void *)core, sizeof(*core));
       return true;
 
    default:
@@ -799,7 +792,7 @@ vk_get_physical_device_core_1_3_feature_ext(struct VkBaseOutStructure *ext,
    }
 
    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
-      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      vk_copy_struct_guts(ext, (void *)core, sizeof(*core));
       return true;
 
    default:
@@ -868,7 +861,7 @@ vk_get_physical_device_core_1_1_property_ext(struct VkBaseOutStructure *ext,
    }
 
    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
-      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      vk_copy_struct_guts(ext, (void *)core, sizeof(*core));
       return true;
 
    default:
@@ -963,7 +956,7 @@ vk_get_physical_device_core_1_2_property_ext(struct VkBaseOutStructure *ext,
    }
 
    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
-      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      vk_copy_struct_guts(ext, (void *)core, sizeof(*core));
       return true;
 
    default:
@@ -1049,7 +1042,7 @@ vk_get_physical_device_core_1_3_property_ext(struct VkBaseOutStructure *ext,
    }
 
    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES:
-      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      vk_copy_struct_guts(ext, (void *)core, sizeof(*core));
       return true;
 
    default:
