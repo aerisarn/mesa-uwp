@@ -928,14 +928,14 @@ void
 _mesa_initialize_dispatch_tables(struct gl_context *ctx)
 {
    /* Do the code-generated setup of the exec table in api_exec_init.c. */
-   _mesa_initialize_exec_table(ctx);
+   _mesa_init_dispatch(ctx);
 
    if (ctx->Save)
-      _mesa_initialize_save_table(ctx);
+      _mesa_init_dispatch_save(ctx);
 
-   vbo_install_exec_vtxfmt(ctx);
+   vbo_init_dispatch_begin_end(ctx);
    if (ctx->API == API_OPENGL_COMPAT)
-      _mesa_install_save_vtxfmt(ctx);
+      _mesa_init_dispatch_save_begin_end(ctx);
 }
 
 /**

@@ -13602,7 +13602,7 @@ _mesa_ListBase(GLuint base)
  * building functions.
  */
 void
-_mesa_initialize_save_table(const struct gl_context *ctx)
+_mesa_init_dispatch_save(const struct gl_context *ctx)
 {
    struct _glapi_table *table = ctx->Save;
    int numEntries = MAX2(_gloffset_COUNT, _glapi_get_dispatch_table_size());
@@ -14090,7 +14090,7 @@ _mesa_init_display_list(struct gl_context *ctx)
 
 
 void
-_mesa_install_save_vtxfmt(struct gl_context *ctx)
+_mesa_init_dispatch_save_begin_end(struct gl_context *ctx)
 {
    struct _glapi_table *tab = ctx->Save;
    assert(ctx->API == API_OPENGL_COMPAT);

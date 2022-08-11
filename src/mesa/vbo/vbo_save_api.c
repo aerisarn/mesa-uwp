@@ -1408,7 +1408,7 @@ _save_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 
 
 static void
-vbo_install_save_vtxfmt(struct gl_context *ctx);
+vbo_init_dispatch_save_begin_end(struct gl_context *ctx);
 
 
 /* Cope with EvalCoord/CallList called within a begin/end object:
@@ -1445,7 +1445,7 @@ dlist_fallback(struct gl_context *ctx)
       vbo_install_save_vtxfmt_noop(ctx);
    }
    else {
-      _mesa_install_save_vtxfmt(ctx);
+      _mesa_init_dispatch_save_begin_end(ctx);
    }
    ctx->Driver.SaveNeedFlush = GL_FALSE;
 }
@@ -1541,7 +1541,7 @@ vbo_save_NotifyBegin(struct gl_context *ctx, GLenum mode,
 
    save->no_current_update = no_current_update;
 
-   vbo_install_save_vtxfmt(ctx);
+   vbo_init_dispatch_save_begin_end(ctx);
 
    /* We need to call vbo_save_SaveFlushVertices() if there's state change */
    ctx->Driver.SaveNeedFlush = GL_TRUE;
@@ -1567,7 +1567,7 @@ _save_End(void)
       vbo_install_save_vtxfmt_noop(ctx);
    }
    else {
-      _mesa_install_save_vtxfmt(ctx);
+      _mesa_init_dispatch_save_begin_end(ctx);
    }
 }
 
@@ -1930,7 +1930,7 @@ save_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 
 
 static void
-vbo_install_save_vtxfmt(struct gl_context *ctx)
+vbo_init_dispatch_save_begin_end(struct gl_context *ctx)
 {
 #define NAME_AE(x) _mesa_##x
 #define NAME_CALLLIST(x) _save_##x
@@ -2011,7 +2011,7 @@ vbo_save_EndList(struct gl_context *ctx)
        * etc. received between here and the next begin will be compiled
        * as opcodes.
        */
-      _mesa_install_save_vtxfmt(ctx);
+      _mesa_init_dispatch_save_begin_end(ctx);
    }
 
    assert(save->vertex_size == 0);

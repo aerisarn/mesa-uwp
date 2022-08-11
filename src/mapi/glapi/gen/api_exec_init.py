@@ -21,7 +21,7 @@
 # IN THE SOFTWARE.
 
 # This script generates the file api_exec_init.c, which contains
-# _mesa_initialize_exec_table().  It is responsible for populating all
+# _mesa_init_dispatch().  It is responsible for populating all
 # entries in the "OutsideBeginEnd" dispatch table.
 
 import argparse
@@ -61,7 +61,7 @@ header = """/**
  * \param ctx  GL context
  */
 void
-_mesa_initialize_exec_table(struct gl_context *ctx)
+_mesa_init_dispatch(struct gl_context *ctx)
 {
    struct _glapi_table *table = ctx->OutsideBeginEnd;
 

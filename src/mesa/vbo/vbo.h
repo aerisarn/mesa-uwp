@@ -188,10 +188,10 @@ void
 _vbo_DestroyContext(struct gl_context *ctx);
 
 void
-vbo_install_exec_vtxfmt(struct gl_context *ctx);
+vbo_init_dispatch_begin_end(struct gl_context *ctx);
 
 void
-vbo_install_hw_select_begin_end(struct gl_context *ctx);
+vbo_init_dispatch_hw_select_begin_end(struct gl_context *ctx);
 
 void
 vbo_install_exec_vtxfmt_noop(struct gl_context *ctx);

@@ -1069,7 +1069,7 @@ _es_VertexAttrib4fvARB(GLuint indx, const GLfloat* values)
 
 
 void
-vbo_install_exec_vtxfmt(struct gl_context *ctx)
+vbo_init_dispatch_begin_end(struct gl_context *ctx)
 {
 #define NAME_AE(x) _mesa_##x
 #define NAME_CALLLIST(x) _mesa_##x
@@ -1243,7 +1243,7 @@ _es_Materialf(GLenum face, GLenum pname, GLfloat param)
 #include "vbo_attrib_tmp.h"
 
 void
-vbo_install_hw_select_begin_end(struct gl_context *ctx)
+vbo_init_dispatch_hw_select_begin_end(struct gl_context *ctx)
 {
    int numEntries = MAX2(_gloffset_COUNT, _glapi_get_dispatch_table_size());
    memcpy(ctx->HWSelectModeBeginEnd, ctx->BeginEnd, numEntries * sizeof(_glapi_proc));

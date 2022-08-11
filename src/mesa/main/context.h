@@ -82,7 +82,7 @@ extern struct _glapi_table *
 _mesa_alloc_dispatch_table(bool glthread);
 
 extern void
-_mesa_initialize_exec_table(struct gl_context *ctx);
+_mesa_init_dispatch(struct gl_context *ctx);
 
 extern void
 _mesa_initialize_dispatch_tables(struct gl_context *ctx);
