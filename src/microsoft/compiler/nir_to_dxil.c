@@ -5807,6 +5807,8 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 
 static const unsigned dxil_validator_min_capable_version = DXIL_VALIDATOR_1_4;
 static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_7;
+static const unsigned dxil_min_shader_model = SHADER_MODEL_6_1;
+static const unsigned dxil_max_shader_model = SHADER_MODEL_6_5;
 
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
@@ -5817,13 +5819,17 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    debug_dxil = (int)debug_get_option_debug_dxil();
    blob_init(blob);
 
-   if (opts->shader_model_max < SHADER_MODEL_6_1) {
-      debug_printf("D3D12: cannot support emitting shader model 6.0 or lower\n");
+   if (opts->shader_model_max < dxil_min_shader_model) {
+      debug_printf("D3D12: cannot support emitting shader models lower than %d.%d\n",
+                   dxil_min_shader_model >> 16,
+                   dxil_min_shader_model & 0xffff);
       return false;
    }
 
-   if (opts->shader_model_max > SHADER_MODEL_6_2) {
-      debug_printf("D3D12: cannot support emitting higher than shader model 6.2\n");
+   if (opts->shader_model_max > dxil_max_shader_model) {
+      debug_printf("D3D12: cannot support emitting higher than shader model %d.%d\n",
+                   dxil_max_shader_model >> 16,
+                   dxil_max_shader_model & 0xffff);
       return false;
    }
 
