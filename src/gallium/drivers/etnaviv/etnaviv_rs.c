@@ -109,6 +109,8 @@ etna_compile_rs_state(struct etna_context *ctx, struct compiled_rs_state *cs,
    if (VIV_FEATURE(ctx->screen, chipMinorFeatures6, CACHE128B256BPERLINE))
       cs->RS_SOURCE_STRIDE |= VIVS_RS_SOURCE_STRIDE_TS_MODE(rs->source_ts_mode) |
                               COND(src_super, VIVS_RS_SOURCE_STRIDE_SUPER_TILED_NEW);
+   else if ((rs->downsample_x || rs->downsample_y) && VIV_FEATURE(screen, chipMinorFeatures4, SMALL_MSAA))
+      cs->RS_SOURCE_STRIDE |= VIVS_RS_SOURCE_STRIDE_TS_MODE(TS_MODE_256B);
 
    /* Initially all pipes are set to the base address of the source and
     * destination buffer respectively. This will be overridden below as
