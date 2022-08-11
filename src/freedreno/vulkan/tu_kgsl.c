@@ -632,6 +632,43 @@ tu_DestroyFence(VkDevice _device, VkFence fence, const VkAllocationCallbacks *pA
    vk_object_free(&device->vk, pAllocator, sync);
 }
 
+/* safe_ioctl is not enough as restarted waits would not adjust the timeout
+ * which could lead to waiting substantially longer than requested
+ */
+static int
+wait_timestamp_safe(int fd,
+                    unsigned int context_id,
+                    unsigned int timestamp,
+                    int64_t timeout_ms)
+{
+   int64_t start_time = os_time_get_nano();
+   struct kgsl_device_waittimestamp_ctxtid wait = {
+      .context_id = context_id,
+      .timestamp = timestamp,
+      .timeout = timeout_ms,
+   };
+
+   while (true) {
+      int ret = ioctl(fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID, &wait);
+
+      if (ret == -1 && (errno == EINTR || errno == EAGAIN)) {
+         int64_t current_time = os_time_get_nano();
+
+         /* update timeout to consider time that has passed since the start */
+         timeout_ms -= (current_time - start_time) / 1000000;
+         if (timeout_ms <= 0) {
+            errno = ETIME;
+            return -1;
+         }
+
+         wait.timeout = (unsigned int) timeout_ms;
+         start_time = current_time;
+      } else {
+         return ret;
+      }
+   }
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_WaitForFences(VkDevice _device,
                  uint32_t count,
@@ -645,12 +682,10 @@ tu_WaitForFences(VkDevice _device,
    if (!s.timestamp_valid)
       return VK_SUCCESS;
 
-   int ret = ioctl(device->fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID,
-                   &(struct kgsl_device_waittimestamp_ctxtid) {
-      .context_id = device->queues[0]->msm_queue_id,
-      .timestamp = s.timestamp,
-      .timeout = timeout / 1000000,
-   });
+   int ret = wait_timestamp_safe(device->fd, 
+                                 device->queues[0]->msm_queue_id, 
+                                 s.timestamp, 
+                                 timeout / 1000000);
    if (ret) {
       assert(errno == ETIME);
       return VK_TIMEOUT;
@@ -678,12 +713,11 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
    if (!sync->timestamp_valid)
       return VK_NOT_READY;
 
-   int ret = ioctl(device->fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID,
-               &(struct kgsl_device_waittimestamp_ctxtid) {
-      .context_id = device->queues[0]->msm_queue_id,
-      .timestamp = sync->timestamp,
-      .timeout = 0,
-   });
+
+   int ret = wait_timestamp_safe(device->fd, 
+                                 device->queues[0]->msm_queue_id, 
+                                 sync->timestamp, 
+                                 0);
    if (ret) {
       assert(errno == ETIME);
       return VK_NOT_READY;
