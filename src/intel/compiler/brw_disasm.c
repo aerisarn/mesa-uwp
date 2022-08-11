@@ -754,6 +754,30 @@ static const char* const lsc_cache_store[] = {
    [LSC_CACHE_STORE_L1WB_L3WB]       = "L1WB_L3WB",
 };
 
+static const char* const xe2_lsc_cache_load[] = {
+   [XE2_LSC_CACHE_LOAD_L1STATE_L3MOCS]   = "L1STATE_L3MOCS",
+   [XE2_LSC_CACHE_LOAD_L1UC_L3UC]        = "L1UC_L3UC",
+   [XE2_LSC_CACHE_LOAD_L1UC_L3C]         = "L1UC_L3C",
+   [XE2_LSC_CACHE_LOAD_L1UC_L3CC]        = "L1UC_L3CC",
+   [XE2_LSC_CACHE_LOAD_L1C_L3UC]         = "L1C_L3UC",
+   [XE2_LSC_CACHE_LOAD_L1C_L3C]          = "L1C_L3C",
+   [XE2_LSC_CACHE_LOAD_L1C_L3CC]         = "L1C_L3CC",
+   [XE2_LSC_CACHE_LOAD_L1S_L3UC]         = "L1S_L3UC",
+   [XE2_LSC_CACHE_LOAD_L1S_L3C]          = "L1S_L3C",
+   [XE2_LSC_CACHE_LOAD_L1IAR_L3IAR]      = "L1IAR_L3IAR",
+};
+
+static const char* const xe2_lsc_cache_store[] = {
+   [XE2_LSC_CACHE_STORE_L1STATE_L3MOCS]  = "L1STATE_L3MOCS",
+   [XE2_LSC_CACHE_STORE_L1UC_L3UC]       = "L1UC_L3UC",
+   [XE2_LSC_CACHE_STORE_L1UC_L3WB]       = "L1UC_L3WB",
+   [XE2_LSC_CACHE_STORE_L1WT_L3UC]       = "L1WT_L3UC",
+   [XE2_LSC_CACHE_STORE_L1WT_L3WB]       = "L1WT_L3WB",
+   [XE2_LSC_CACHE_STORE_L1S_L3UC]        = "L1S_L3UC",
+   [XE2_LSC_CACHE_STORE_L1S_L3WB]        = "L1S_L3WB",
+   [XE2_LSC_CACHE_STORE_L1WB_L3WB]       = "L1WB_L3WB",
+};
+
 static int column;
 
 static int
@@ -2373,6 +2397,8 @@ brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
                case LSC_OP_LOAD:
                   format(file, ",");
                   err |= control(file, "cache_load",
+                                 devinfo->ver >= 20 ?
+                                 xe2_lsc_cache_load :
                                  lsc_cache_load,
                                  lsc_msg_desc_cache_ctrl(devinfo, imm_desc),
                                  &space);
@@ -2380,6 +2406,8 @@ brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
                default:
                   format(file, ",");
                   err |= control(file, "cache_store",
+                                 devinfo->ver >= 20 ?
+                                 xe2_lsc_cache_store :
                                  lsc_cache_store,
                                  lsc_msg_desc_cache_ctrl(devinfo, imm_desc),
                                  &space);
