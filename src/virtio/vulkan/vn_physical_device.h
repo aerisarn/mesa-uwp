@@ -54,6 +54,7 @@ struct vn_physical_device_features {
       primitive_topology_list_restart;
    VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
    VkPhysicalDeviceRobustness2FeaturesEXT robustness_2;
+   VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT texel_buffer_alignment;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertex_attribute_divisor;
 };
@@ -69,6 +70,7 @@ struct vn_physical_device_properties {
    VkPhysicalDeviceShaderIntegerDotProductProperties
       shader_integer_dot_product;
    VkPhysicalDeviceSubgroupSizeControlProperties subgroup_size_control;
+   VkPhysicalDeviceTexelBufferAlignmentProperties texel_buffer_alignment;
 
    /* EXT */
    VkPhysicalDeviceConservativeRasterizationPropertiesEXT

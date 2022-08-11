@@ -182,6 +182,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        PROVOKING_VERTEX_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_robustness2, feats->robustness_2,
                        ROBUSTNESS_2_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_texel_buffer_alignment,
+                       feats->texel_buffer_alignment,
+                       TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
                        feats->transform_feedback,
                        TRANSFORM_FEEDBACK_FEATURES_EXT, features2);
@@ -504,6 +507,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_subgroup_size_control,
                        props->subgroup_size_control,
                        SUBGROUP_SIZE_CONTROL_PROPERTIES, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_texel_buffer_alignment,
+                       props->texel_buffer_alignment,
+                       TEXEL_BUFFER_ALIGNMENT_PROPERTIES, properties2);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT(
@@ -1071,6 +1077,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_pipeline_creation_cache_control = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_subgroup_size_control = true,
+      .EXT_texel_buffer_alignment = true,
       .EXT_texture_compression_astc_hdr = true,
 
       /* EXT */
@@ -1689,6 +1696,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
       CASE(SHADER_TERMINATE_INVOCATION_FEATURES, shader_terminate_invocation);
       CASE(SUBGROUP_SIZE_CONTROL_FEATURES, subgroup_size_control);
+      CASE(TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, texel_buffer_alignment);
       CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
       CASE(ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, zero_initialize_workgroup_memory);
 
@@ -1746,6 +1754,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       CASE(INLINE_UNIFORM_BLOCK_PROPERTIES, inline_uniform_block);
       CASE(SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, shader_integer_dot_product);
       CASE(SUBGROUP_SIZE_CONTROL_PROPERTIES, subgroup_size_control);
+      CASE(TEXEL_BUFFER_ALIGNMENT_PROPERTIES, texel_buffer_alignment);
 
       /* EXT */
       CASE(CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, conservative_rasterization);
