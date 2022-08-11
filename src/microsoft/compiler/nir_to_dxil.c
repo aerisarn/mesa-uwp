@@ -841,14 +841,14 @@ emit_atomic_cmpxchg(struct ntd_context *ctx,
 }
 
 static const struct dxil_value *
-emit_createhandle_call(struct ntd_context *ctx,
-                       enum dxil_resource_class resource_class,
-                       unsigned lower_bound,
-                       unsigned upper_bound,
-                       unsigned space,
-                       unsigned resource_range_id,
-                       const struct dxil_value *resource_range_index,
-                       bool non_uniform_resource_index)
+emit_createhandle_call_pre_6_6(struct ntd_context *ctx,
+                               enum dxil_resource_class resource_class,
+                               unsigned lower_bound,
+                               unsigned upper_bound,
+                               unsigned space,
+                               unsigned resource_range_id,
+                               const struct dxil_value *resource_range_index,
+                               bool non_uniform_resource_index)
 {
    const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_CREATE_HANDLE);
    const struct dxil_value *resource_class_value = dxil_module_get_int8_const(&ctx->mod, resource_class);
@@ -873,6 +873,106 @@ emit_createhandle_call(struct ntd_context *ctx,
          return NULL;
 
    return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static const struct dxil_value *
+emit_annotate_handle(struct ntd_context *ctx,
+                     enum dxil_resource_class resource_class,
+                     unsigned resource_range_id,
+                     const struct dxil_value *unannotated_handle)
+{
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_ANNOTATE_HANDLE);
+   if (!opcode)
+      return NULL;
+
+   const struct util_dynarray *mdnodes;
+   switch (resource_class) {
+   case DXIL_RESOURCE_CLASS_SRV:
+      mdnodes = &ctx->srv_metadata_nodes;
+      break;
+   case DXIL_RESOURCE_CLASS_UAV:
+      mdnodes = &ctx->uav_metadata_nodes;
+      break;
+   case DXIL_RESOURCE_CLASS_CBV:
+      mdnodes = &ctx->cbv_metadata_nodes;
+      break;
+   case DXIL_RESOURCE_CLASS_SAMPLER:
+      mdnodes = &ctx->sampler_metadata_nodes;
+      break;
+   default:
+      unreachable("Invalid resource class");
+   }
+
+   const struct dxil_mdnode *mdnode = *util_dynarray_element(mdnodes, const struct dxil_mdnode *, resource_range_id);
+   const struct dxil_value *res_props = dxil_module_get_res_props_const(&ctx->mod, resource_class, mdnode);
+   if (!res_props)
+      return NULL;
+
+   const struct dxil_value *args[] = {
+      opcode,
+      unannotated_handle,
+      res_props
+   };
+
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.annotateHandle", DXIL_NONE);
+
+   if (!func)
+      return NULL;
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static const struct dxil_value *
+emit_createhandle_and_annotate(struct ntd_context *ctx,
+                               enum dxil_resource_class resource_class,
+                               unsigned lower_bound,
+                               unsigned upper_bound,
+                               unsigned space,
+                               unsigned resource_range_id,
+                               const struct dxil_value *resource_range_index,
+                               bool non_uniform_resource_index)
+{
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_CREATE_HANDLE_FROM_BINDING);
+   const struct dxil_value *res_bind = dxil_module_get_res_bind_const(&ctx->mod, lower_bound, upper_bound, space, resource_class);
+   const struct dxil_value *non_uniform_resource_index_value = dxil_module_get_int1_const(&ctx->mod, non_uniform_resource_index);
+   if (!opcode || !res_bind || !non_uniform_resource_index_value)
+      return NULL;
+
+   const struct dxil_value *args[] = {
+      opcode,
+      res_bind,
+      resource_range_index,
+      non_uniform_resource_index_value
+   };
+
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.createHandleFromBinding", DXIL_NONE);
+
+   if (!func)
+      return NULL;
+
+   const struct dxil_value *unannotated_handle = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   if (!unannotated_handle)
+      return NULL;
+
+   return emit_annotate_handle(ctx, resource_class, resource_range_id, unannotated_handle);
+}
+
+static const struct dxil_value *
+emit_createhandle_call(struct ntd_context *ctx,
+                       enum dxil_resource_class resource_class,
+                       unsigned lower_bound,
+                       unsigned upper_bound,
+                       unsigned space,
+                       unsigned resource_range_id,
+                       const struct dxil_value *resource_range_index,
+                       bool non_uniform_resource_index)
+{
+   if (ctx->mod.minor_version < 6)
+      return emit_createhandle_call_pre_6_6(ctx, resource_class, lower_bound, upper_bound, space, resource_range_id, resource_range_index, non_uniform_resource_index);
+   else
+      return emit_createhandle_and_annotate(ctx, resource_class, lower_bound, upper_bound, space, resource_range_id, resource_range_index, non_uniform_resource_index);
 }
 
 static const struct dxil_value *
