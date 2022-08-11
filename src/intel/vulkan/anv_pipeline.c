@@ -3067,6 +3067,14 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
       prog_data = anv_pipeline_to_compute(pipeline)->cs->prog_data;
       break;
    }
+   case ANV_PIPELINE_RAY_TRACING: {
+      struct anv_shader_bin **shader =
+         util_dynarray_element(&anv_pipeline_to_ray_tracing(pipeline)->shaders,
+                               struct anv_shader_bin *,
+                               pExecutableInfo->executableIndex);
+      prog_data = (*shader)->prog_data;
+      break;
+   }
    default:
       unreachable("invalid pipeline type");
    }
