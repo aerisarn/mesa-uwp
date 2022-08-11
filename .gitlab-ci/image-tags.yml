@@ -1,9 +1,9 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2022-09-07-ci-templates"
+   DEBIAN_BASE_TAG: "2022-09-11-rusticl"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-09-07-ci-templates"
+   DEBIAN_BUILD_TAG: "2022-09-11-rusticl"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
    DEBIAN_BUILD_MINGW_TAG: "2022-08-25-shellcheck"
@@ -11,8 +11,8 @@ variables:
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
    DEBIAN_X86_TEST_IMAGE_PATH: "debian/x86_test-gl"
-   DEBIAN_X86_TEST_GL_TAG: "2022-09-07-ci-templates"
-   DEBIAN_X86_TEST_VK_TAG: "2022-09-07-ci-templates"
+   DEBIAN_X86_TEST_GL_TAG: "2022-09-11-rusticl"
+   DEBIAN_X86_TEST_VK_TAG: "2022-09-11-rusticl"
 
    FEDORA_X86_BUILD_TAG: "2022-08-25-shellcheck"
    KERNEL_ROOTFS_TAG: "2022-09-08-nouveau"

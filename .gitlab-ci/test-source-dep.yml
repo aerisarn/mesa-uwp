@@ -114,7 +114,7 @@
   stage: software-renderer
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
-    - changes:
+    - changes: &llvmpipe_cl_files
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
       - meson.build
@@ -130,8 +130,19 @@
     - changes:
         *llvmpipe_file_list
       when: on_success
-    - changes: &clover_file_list
+
+.llvmpipe-clover-rules:
+  rules:
+    - !reference [.llvmpipe-cl-rules, rules]
+    - changes:
       - src/gallium/frontends/clover/**/*
+      when: on_success
+
+.llvmpipe-rusticl-rules:
+  rules:
+    - !reference [.llvmpipe-cl-rules, rules]
+    - changes:
+      - src/gallium/frontends/rusticl/**/*
       when: on_success
 
 .collabora-farm-rules:
@@ -626,4 +637,13 @@
       when: on_success
     - changes:
         *lavapipe_file_list
+      when: on_success
+
+# Rules for linters
+.lint-rustfmt-rules:
+   rules:
+    - !reference [.no_scheduled_pipelines-rules, rules]
+    - !reference [.core-rules, rules]
+    - changes:
+      - src/**/*.rs
       when: on_success

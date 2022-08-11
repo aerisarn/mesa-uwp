@@ -17,6 +17,18 @@
     paths:
       - results/
 
+rustfmt:
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
+  stage: lint
+  extends:
+    - .use-debian/x86_build
+    - .lint-rustfmt-rules
+  variables:
+    GIT_STRATEGY: fetch
+  script:
+    - git ls-files */{lib,app}.rs | xargs rustfmt --check
+
 .test-gl:
   extends:
     - .test
@@ -39,7 +51,6 @@
     - .use-debian/x86_test-gl
   needs:
     - debian/x86_test-gl
-    - debian-clover-testing
 
 .vkd3d-proton-test:
   artifacts:

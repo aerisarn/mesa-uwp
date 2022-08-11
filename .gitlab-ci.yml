@@ -87,6 +87,7 @@ stages:
   - git-archive
   - build-x86_64
   - build-misc
+  - lint
   - amd
   - intel
   - nouveau

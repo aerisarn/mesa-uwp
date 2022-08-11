@@ -28,6 +28,7 @@ apt-get install -y --no-remove \
         bison \
         ccache \
         dpkg-cross \
+        findutils \
         flex \
         g++ \
         cmake \
@@ -77,6 +78,11 @@ apt-get install -y --no-remove \
 
 # Needed for ci-fairy, this revision is able to upload files to MinIO
 pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@34f4ade99434043f88e164933f570301fd18b125
+
+# We need at least 0.61.4 for proper Rust
+pip3 install meson==0.61.5
+
+. .gitlab-ci/container/build-rust.sh
 
 . .gitlab-ci/container/debian/x86_build-base-wine.sh
 
