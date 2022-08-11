@@ -366,18 +366,6 @@ class PrintCode(gl_XML.gl_print_base):
         out('')
         out('')
 
-    def print_unmarshal_dispatch_cmd(self, api):
-        out('const _mesa_unmarshal_func _mesa_unmarshal_dispatch[NUM_DISPATCH_CMD] = {')
-        with indent():
-            for func in api.functionIterateAll():
-                flavor = func.marshal_flavor()
-                if flavor in ('skip', 'sync'):
-                    continue
-                out('[DISPATCH_CMD_{0}] = (_mesa_unmarshal_func)_mesa_unmarshal_{0},'.format(func.name))
-        out('};')
-        out('')
-        out('')
-
     def print_create_marshal_table(self, api):
         out('/* _mesa_create_marshal_table takes a long time to compile with -O2 */')
         out('#if defined(__GNUC__) && !defined(__clang__)')
@@ -429,7 +417,6 @@ class PrintCode(gl_XML.gl_print_base):
     def printBody(self, api):
         # The first file only contains the dispatch tables
         if file_index == 0:
-            self.print_unmarshal_dispatch_cmd(api)
             self.print_create_marshal_table(api)
             return
 
