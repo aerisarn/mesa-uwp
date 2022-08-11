@@ -1268,6 +1268,18 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    }
    screen->max_feature_level = feature_levels.MaxSupportedFeatureLevel;
 
+   static const D3D_SHADER_MODEL valid_shader_models[] = {
+      D3D_SHADER_MODEL_6_7, D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5, D3D_SHADER_MODEL_6_4,
+      D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1,
+   };
+   for (UINT i = 0; i < ARRAY_SIZE(valid_shader_models); ++i) {
+      D3D12_FEATURE_DATA_SHADER_MODEL shader_model = { valid_shader_models[i] };
+      if (SUCCEEDED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shader_model, sizeof(shader_model)))) {
+         screen->max_shader_model = shader_model.HighestShaderModel;
+         break;
+      }
+   }
+
    D3D12_COMMAND_QUEUE_DESC queue_desc;
    queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
    queue_desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
