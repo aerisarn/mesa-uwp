@@ -5150,7 +5150,36 @@ void pvr_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
                                 uint32_t drawCount,
                                 uint32_t stride)
 {
-   assert(!"Unimplemented");
+   const struct pvr_cmd_buffer_draw_state draw_state = {
+      .draw_indirect = true,
+      .draw_indexed = true,
+   };
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   PVR_FROM_HANDLE(pvr_buffer, buffer, _buffer);
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   pvr_update_draw_state(state, &draw_state);
+
+   result = pvr_validate_draw_state(cmd_buffer);
+   if (result != VK_SUCCESS)
+      return;
+
+   /* Write the VDM control stream for the primitive. */
+   pvr_emit_vdm_index_list(cmd_buffer,
+                           &state->current_sub_cmd->gfx,
+                           state->gfx_pipeline->input_asm_state.topology,
+                           0,
+                           0,
+                           0,
+                           0,
+                           0,
+                           buffer,
+                           offset,
+                           drawCount,
+                           stride);
 }
 
 void pvr_CmdDrawIndirect(VkCommandBuffer commandBuffer,
