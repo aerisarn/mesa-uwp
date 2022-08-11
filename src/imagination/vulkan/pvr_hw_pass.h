@@ -58,7 +58,7 @@ struct pvr_renderpass_hwsetup_subpass {
     */
    enum pvr_renderpass_surface_initop *color_initops;
 
-   void *client_data;
+   struct pvr_load_op *load_op;
 };
 
 struct pvr_renderpass_colorinit {

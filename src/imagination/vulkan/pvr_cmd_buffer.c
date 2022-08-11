@@ -2470,6 +2470,125 @@ pvr_cmd_buffer_set_clear_values(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
+static bool
+pvr_is_large_clear_required(const struct pvr_cmd_buffer *const cmd_buffer)
+{
+   const struct pvr_device_info *const dev_info =
+      &cmd_buffer->device->pdevice->dev_info;
+   const VkRect2D render_area = cmd_buffer->state.render_pass_info.render_area;
+   const uint32_t vf_max_x = rogue_get_param_vf_max_x(dev_info);
+   const uint32_t vf_max_y = rogue_get_param_vf_max_x(dev_info);
+
+   return (render_area.extent.width > (vf_max_x / 2) - 1) ||
+          (render_area.extent.height > (vf_max_y / 2) - 1);
+}
+
+static void pvr_emit_clear_words(struct pvr_cmd_buffer *const cmd_buffer,
+                                 struct pvr_sub_cmd_gfx *const sub_cmd)
+{
+   struct pvr_csb *csb = &sub_cmd->control_stream;
+   struct pvr_device *device = cmd_buffer->device;
+   uint32_t *stream;
+
+   stream = pvr_csb_alloc_dwords(csb, PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+   if (!stream) {
+      cmd_buffer->state.status = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return;
+   }
+
+   if (pvr_is_large_clear_required(cmd_buffer)) {
+      memcpy(stream,
+             device->static_clear_state.large_clear_vdm_words,
+             sizeof(device->static_clear_state.large_clear_vdm_words));
+   } else {
+      memcpy(stream,
+             device->static_clear_state.vdm_words,
+             sizeof(device->static_clear_state.vdm_words));
+   }
+}
+
+static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
+                                     struct pvr_sub_cmd_gfx *sub_cmd,
+                                     struct pvr_load_op *load_op,
+                                     uint32_t userpass_spawn)
+{
+   const struct pvr_device *device = cmd_buffer->device;
+   struct pvr_static_clear_ppp_template template =
+      device->static_clear_state.ppp_templates[PVR_STATIC_CLEAR_COLOR_BIT];
+   uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
+   struct pvr_pds_upload shareds_update_program;
+   struct pvr_bo *pvr_bo;
+   VkResult result;
+
+   result = pvr_load_op_data_create_and_upload(cmd_buffer,
+                                               0,
+                                               &shareds_update_program);
+   if (result != VK_SUCCESS)
+      return result;
+
+   template.config.ispctl.upass = userpass_spawn;
+
+   /* It might look odd that we aren't specifying the code segment's
+    * address anywhere. This is because the hardware always assumes that the
+    * data size is 2 128bit words and the code segments starts after that.
+    */
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SHADERBASE],
+                 TA_STATE_PDS_SHADERBASE,
+                 shaderbase) {
+      shaderbase.addr = PVR_DEV_ADDR(load_op->pds_frag_prog.data_offset);
+   }
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXUNICODEBASE],
+                 TA_STATE_PDS_TEXUNICODEBASE,
+                 texunicodebase) {
+      texunicodebase.addr =
+         PVR_DEV_ADDR(load_op->pds_tex_state_prog.code_offset);
+   }
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO1],
+                 TA_STATE_PDS_SIZEINFO1,
+                 sizeinfo1) {
+      /* Dummy coefficient loading program. */
+      sizeinfo1.pds_varyingsize = 0;
+
+      sizeinfo1.pds_texturestatesize = DIV_ROUND_UP(
+         shareds_update_program.data_size,
+         PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEXTURESTATESIZE_UNIT_SIZE));
+
+      sizeinfo1.pds_tempsize =
+         DIV_ROUND_UP(load_op->temps_count,
+                      PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEMPSIZE_UNIT_SIZE));
+   }
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO2],
+                 TA_STATE_PDS_SIZEINFO2,
+                 sizeinfo2) {
+      sizeinfo2.usc_sharedsize =
+         DIV_ROUND_UP(load_op->const_shareds_count,
+                      PVRX(TA_STATE_PDS_SIZEINFO2_USC_SHAREDSIZE_UNIT_SIZE));
+   }
+
+   /* Dummy coefficient loading program. */
+   pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_VARYINGBASE] = 0;
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE],
+                 TA_STATE_PDS_TEXTUREDATABASE,
+                 texturedatabase) {
+      texturedatabase.addr = PVR_DEV_ADDR(shareds_update_program.data_offset);
+   }
+
+   template.config.pds_state = &pds_state;
+
+   pvr_emit_ppp_from_template(&sub_cmd->control_stream, &template, &pvr_bo);
+   list_add(&pvr_bo->link, &cmd_buffer->bo_list);
+
+   pvr_emit_clear_words(cmd_buffer, sub_cmd);
+
+   pvr_reset_graphics_dirty_state(&cmd_buffer->state, false);
+
+   return VK_SUCCESS;
+}
+
 void pvr_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                              const VkRenderPassBeginInfo *pRenderPassBeginInfo,
                              const VkSubpassBeginInfo *pSubpassBeginInfo)
@@ -2524,8 +2643,14 @@ void pvr_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
     * object.
     */
    hw_subpass = pvr_get_hw_subpass(pass, 0);
-   if (hw_subpass->client_data)
-      pvr_finishme("Unimplemented path!");
+   if (hw_subpass->load_op) {
+      result = pvr_cs_write_load_op(cmd_buffer,
+                                    &cmd_buffer->state.current_sub_cmd->gfx,
+                                    hw_subpass->load_op,
+                                    0);
+      if (result != VK_SUCCESS)
+         return;
+   }
 
    pvr_perform_start_of_render_clears(cmd_buffer);
    pvr_stash_depth_format(&cmd_buffer->state,
@@ -5276,19 +5401,6 @@ void pvr_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
-static bool
-pvr_is_large_clear_required(const struct pvr_cmd_buffer *const cmd_buffer)
-{
-   const struct pvr_device_info *const dev_info =
-      &cmd_buffer->device->pdevice->dev_info;
-   const VkRect2D render_area = cmd_buffer->state.render_pass_info.render_area;
-   const uint32_t vf_max_x = rogue_get_param_vf_max_x(dev_info);
-   const uint32_t vf_max_y = rogue_get_param_vf_max_x(dev_info);
-
-   return (render_area.extent.width > (vf_max_x / 2) - 1) ||
-          (render_area.extent.height > (vf_max_y / 2) - 1);
-}
-
 static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
                                        struct pvr_sub_cmd_gfx *const sub_cmd)
 {
@@ -5301,7 +5413,6 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
    uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT] = { 0 };
    struct pvr_csb *csb = &sub_cmd->control_stream;
    struct pvr_bo *ppp_bo;
-   void *stream;
 
    assert(clear.requires_pds_state);
 
@@ -5332,17 +5443,7 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
                     PVR_CLEAR_VDM_STATE_DWORD_COUNT * sizeof(uint32_t),
                  "Clear VDM control stream word length mismatch");
 
-   stream = pvr_csb_alloc_dwords(csb, PVR_CLEAR_VDM_STATE_DWORD_COUNT);
-
-   if (pvr_is_large_clear_required(cmd_buffer)) {
-      memcpy(stream,
-             device->static_clear_state.large_clear_vdm_words,
-             sizeof(device->static_clear_state.large_clear_vdm_words));
-   } else {
-      memcpy(stream,
-             device->static_clear_state.vdm_words,
-             sizeof(device->static_clear_state.vdm_words));
-   }
+   pvr_emit_clear_words(cmd_buffer, sub_cmd);
 
    /* Reset graphics state. */
    pvr_reset_graphics_dirty_state(&cmd_buffer->state, false);

@@ -74,7 +74,7 @@ pvr_create_renderpass_hwsetup(struct pvr_device *device,
    subpasses[0].driver_id = 0;
    color_initops[0] = RENDERPASS_SURFACE_INITOP_NOP;
    subpasses[0].color_initops = color_initops;
-   subpasses[0].client_data = NULL;
+   subpasses[0].load_op = NULL;
    renders[0].subpass_count = 1;
    renders[0].subpasses = subpasses;
 
