@@ -1009,6 +1009,8 @@ vn_physical_device_get_native_extensions(
 #endif /* ANDROID */
 
    exts->EXT_physical_device_drm = true;
+   /* use common implementation */
+   exts->EXT_tooling_info = true;
 }
 
 static void
