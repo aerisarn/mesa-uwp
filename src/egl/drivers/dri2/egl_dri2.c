@@ -1162,7 +1162,7 @@ dri2_initialize(_EGLDisplay *disp)
     * to free it up correctly.
     */
    if (dri2_dpy) {
-      dri2_dpy->ref_count++;
+      p_atomic_inc(&dri2_dpy->ref_count);
       return EGL_TRUE;
    }
 
@@ -1197,7 +1197,7 @@ dri2_initialize(_EGLDisplay *disp)
       return EGL_FALSE;
 
    dri2_dpy = dri2_egl_display(disp);
-   dri2_dpy->ref_count++;
+   p_atomic_inc(&dri2_dpy->ref_count);
 
    return EGL_TRUE;
 }
@@ -1216,9 +1216,8 @@ dri2_display_release(_EGLDisplay *disp)
    dri2_dpy = dri2_egl_display(disp);
 
    assert(dri2_dpy->ref_count > 0);
-   dri2_dpy->ref_count--;
 
-   if (dri2_dpy->ref_count > 0)
+   if (!p_atomic_dec_zero(&dri2_dpy->ref_count))
       return;
 
    _eglCleanupDisplay(disp);
@@ -1878,7 +1877,7 @@ dri2_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
           * EGLDisplay is terminated and then initialized again while a
           * context is still bound. See dri2_intitialize() for a more in depth
           * explanation. */
-         dri2_dpy->ref_count++;
+         p_atomic_inc(&dri2_dpy->ref_count);
       }
    }
 
