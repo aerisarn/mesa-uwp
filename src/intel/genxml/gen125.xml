@@ -13,6 +13,13 @@
     <exclude name="MEDIA_STATE_FLUSH" />
     <exclude name="MEDIA_VFE_STATE" />
   </import>
+  <enum name="L1_CACHE_CONTROL" prefix="L1CC">
+    <value name="WBP" value="0" />
+    <value name="UC" value="1" />
+    <value name="WB" value="2" />
+    <value name="WT" value="3" />
+    <value name="WS" value="4" />
+  </enum>
   <enum name="PREF_SLM_ALLOCATION_SIZE">
     <value name="SLM_ENCODES_0K" value="8" />
     <value name="SLM_ENCODES_16K" value="9" />
@@ -347,13 +354,7 @@
     <field name="Surface Min LOD" start="164" end="167" type="uint" />
     <field name="Mip Tail Start LOD" start="168" end="171" type="uint" />
     <field name="Coherency Type" start="174" end="174" type="mbz" />
-    <field name="L1 Cache Control" start="176" end="178" type="uint" prefix="L1CC">
-      <value name="WBP" value="0" />
-      <value name="UC" value="1" />
-      <value name="WB" value="2" />
-      <value name="WT" value="3" />
-      <value name="WS" value="4" />
-    </field>
+    <field name="L1 Cache Control" start="176" end="178" type="L1_CACHE_CONTROL" />
     <field name="EWA Disable For Cube" start="180" end="180" type="bool" />
     <field name="Y Offset" start="181" end="183" type="uint" />
     <field name="X Offset" start="185" end="191" type="uint" />
