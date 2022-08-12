@@ -188,6 +188,71 @@
     <field name="LOD" start="240" end="243" type="uint" />
     <field name="Render Target View Extent" start="245" end="255" type="uint" />
   </instruction>
+  <instruction name="3DSTATE_GS" bias="2" length="10" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="8" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="17" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="3" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="Kernel Start Pointer" start="38" end="95" type="offset" />
+    <field name="Expected Vertex Count" start="96" end="101" type="uint" />
+    <field name="Software Exception Enable" start="103" end="103" type="bool" />
+    <field name="Mask Stack Exception Enable" start="107" end="107" type="bool" />
+    <field name="Accesses UAV" start="108" end="108" type="bool" />
+    <field name="Illegal Opcode Exception Enable" start="109" end="109" type="bool" />
+    <field name="Floating Point Mode" start="112" end="112" type="uint">
+      <value name="IEEE-754" value="0" />
+      <value name="Alternate" value="1" />
+    </field>
+    <field name="Thread Dispatch Priority" start="113" end="113" type="uint">
+      <value name="Normal" value="0" />
+      <value name="High" value="1" />
+    </field>
+    <field name="Binding Table Entry Count" start="114" end="121" type="uint" />
+    <field name="Sampler Count" start="123" end="125" type="uint">
+      <value name="No Samplers" value="0" />
+      <value name="1-4 Samplers" value="1" />
+      <value name="5-8 Samplers" value="2" />
+      <value name="9-12 Samplers" value="3" />
+      <value name="13-16 Samplers" value="4" />
+    </field>
+    <field name="Vector Mask Enable" start="126" end="126" type="uint">
+      <value name="Dmask" value="0" />
+    </field>
+    <field name="Single Program Flow" start="127" end="127" type="bool" />
+    <field name="Scratch Space Buffer" start="138" end="159" type="uint" />
+    <field name="Dispatch GRF Start Register For URB Data" start="192" end="195" type="uint" />
+    <field name="Vertex URB Entry Read Offset" start="196" end="201" type="uint" />
+    <field name="Include Vertex Handles" start="202" end="202" type="bool" />
+    <field name="Vertex URB Entry Read Length" start="203" end="208" type="uint" />
+    <field name="Output Topology" start="209" end="214" type="3D_Prim_Topo_Type" />
+    <field name="Output Vertex Size" start="215" end="220" type="uint" />
+    <field name="Dispatch GRF Start Register For URB Data [5:4]" start="221" end="222" type="uint" />
+    <field name="Enable" start="224" end="224" type="bool" />
+    <field name="Discard Adjacency" start="225" end="225" type="bool" />
+    <field name="Reorder Mode" start="226" end="226" type="uint">
+      <value name="LEADING" value="0" />
+      <value name="TRAILING" value="1" />
+    </field>
+    <field name="Hint" start="227" end="227" type="bool" />
+    <field name="Include Primitive ID" start="228" end="228" type="bool" />
+    <field name="Invocations Increment Value" start="229" end="233" type="uint" />
+    <field name="Statistics Enable" start="234" end="234" type="bool" />
+    <field name="Default Stream Id" start="237" end="238" type="uint" />
+    <field name="Instance Control" start="239" end="243" type="uint" />
+    <field name="Control Data Header Size" start="244" end="247" type="uint" />
+    <field name="Maximum Number of Threads" start="256" end="264" type="uint" />
+    <field name="Static Output Vertex Count" start="272" end="282" type="uint" />
+    <field name="Static Output" start="286" end="286" type="bool" />
+    <field name="Control Data Format" start="287" end="287" type="uint">
+      <value name="CUT" value="0" />
+      <value name="SID" value="1" />
+    </field>
+    <field name="User Clip Distance Cull Test Enable Bitmask" start="288" end="295" type="uint" />
+    <field name="User Clip Distance Clip Test Enable Bitmask" start="296" end="303" type="uint" />
+    <field name="Vertex URB Entry Output Length" start="304" end="308" type="uint" />
+    <field name="Vertex URB Entry Output Read Offset" start="309" end="314" type="uint" />
+  </instruction>
   <instruction name="3DSTATE_PS" bias="2" length="12" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="10" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="32" />

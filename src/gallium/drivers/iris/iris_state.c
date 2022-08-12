@@ -5087,7 +5087,9 @@ iris_store_gs_state(const struct intel_device_info *devinfo,
       gs.ControlDataHeaderSize =
          gs_prog_data->control_data_header_size_hwords;
       gs.InstanceControl = gs_prog_data->invocations - 1;
+#if GFX_VER < 20
       gs.DispatchMode = DISPATCH_MODE_SIMD8;
+#endif
       gs.IncludePrimitiveID = gs_prog_data->include_primitive_id;
       gs.ControlDataFormat = gs_prog_data->control_data_format;
       gs.ReorderMode = TRAILING;

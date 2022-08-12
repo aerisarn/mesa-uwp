@@ -1445,7 +1445,9 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
       gs.Enable                  = true;
       gs.StatisticsEnable        = true;
       gs.KernelStartPointer      = gs_bin->kernel.offset;
+#if GFX_VER < 20
       gs.DispatchMode            = gs_prog_data->base.dispatch_mode;
+#endif
 
       gs.SingleProgramFlow       = false;
       gs.VectorMaskEnable        = false;
