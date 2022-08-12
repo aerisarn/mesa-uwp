@@ -803,6 +803,8 @@ struct zink_gfx_program {
 struct zink_compute_program {
    struct zink_program base;
 
+   bool use_local_size;
+
    struct zink_shader_module *curr;
 
    struct zink_shader_module *module; //base

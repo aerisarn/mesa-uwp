@@ -698,13 +698,9 @@ hash_compute_pipeline_state(const void *key)
 void
 zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3])
 {
-   struct zink_shader *zs = comp->shader;
-   bool use_local_size = !(zs->nir->info.workgroup_size[0] ||
-                           zs->nir->info.workgroup_size[1] ||
-                           zs->nir->info.workgroup_size[2]);
-   if (ctx->compute_pipeline_state.use_local_size != use_local_size)
+   if (ctx->compute_pipeline_state.use_local_size != comp->use_local_size)
       ctx->compute_pipeline_state.dirty = true;
-   ctx->compute_pipeline_state.use_local_size = use_local_size;
+   ctx->compute_pipeline_state.use_local_size = comp->use_local_size;
 
    if (ctx->compute_pipeline_state.use_local_size) {
       for (int i = 0; i < ARRAY_SIZE(ctx->compute_pipeline_state.local_size); i++) {
@@ -742,6 +738,10 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
    assert(comp->module->shader);
    util_dynarray_init(&comp->shader_cache[0], NULL);
    util_dynarray_init(&comp->shader_cache[1], NULL);
+
+   comp->use_local_size = !(nir->info.workgroup_size[0] ||
+                            nir->info.workgroup_size[1] ||
+                            nir->info.workgroup_size[2]);
 
    comp->pipelines = _mesa_hash_table_create(NULL, NULL,
                                              equals_compute_pipeline_state);
