@@ -83,6 +83,13 @@ struct tu_submission_data {
    uint32_t buffers_count;
 };
 
+static uint32_t
+get_autotune_fence(struct tu_autotune *at)
+{
+   const struct tu6_global *global = at->device->global_bo->map;
+   return global->autotune_fence;
+}
+
 static struct tu_submission_data *
 create_submission_data(struct tu_device *dev, struct tu_autotune *at)
 {
@@ -230,11 +237,9 @@ history_add_result(struct tu_device *dev, struct tu_renderpass_history *history,
 }
 
 static void
-process_results(struct tu_autotune *at)
+process_results(struct tu_autotune *at, uint32_t current_fence)
 {
    struct tu_device *dev = at->device;
-   struct tu6_global *global = dev->global_bo->map;
-   uint32_t current_fence = global->autotune_fence;
 
    list_for_each_entry_safe(struct tu_renderpass_result, result,
                             &at->pending_results, node) {
@@ -288,7 +293,9 @@ tu_autotune_on_submit(struct tu_device *dev,
 {
    /* We are single-threaded here */
 
-   process_results(at);
+   const uint32_t gpu_fence = get_autotune_fence(at);
+
+   process_results(at, gpu_fence);
 
    /* pre-increment so zero isn't valid fence */
    uint32_t new_fence = ++at->fence_counter;
@@ -349,7 +356,8 @@ tu_autotune_on_submit(struct tu_device *dev,
    hash_table_foreach(at->ht, entry) {
       struct tu_renderpass_history *history = entry->data;
       if (history->last_fence == 0 ||
-          (new_fence - history->last_fence) <= MAX_HISTORY_LIFETIME)
+          gpu_fence < history->last_fence ||
+          (gpu_fence - history->last_fence) <= MAX_HISTORY_LIFETIME)
          continue;
 
       if (TU_AUTOTUNE_DEBUG_LOG)
@@ -400,7 +408,8 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
 {
    if (TU_AUTOTUNE_LOG_AT_FINISH) {
       while (!list_is_empty(&at->pending_results)) {
-         process_results(at);
+         const uint32_t gpu_fence = get_autotune_fence(at);
+         process_results(at, gpu_fence);
       }
 
       hash_table_foreach(at->ht, entry) {
