@@ -1124,6 +1124,8 @@ st_GetTexSubImage_shader(struct gl_context * ctx,
    dst = download_texture_compute(st, &ctx->Pack, xoffset, yoffset, zoffset, width, height, depth,
                                   level, layer, format, type, src_format, view_target, src, dst_format,
                                   swizzle_clamp);
+   if (!dst)
+      return false;
 
    if (!can_copy_direct(&ctx->Pack) || !ctx->Pack.BufferObj) {
       copy_converted_buffer(ctx, &ctx->Pack, view_target, dst, dst_format, xoffset, yoffset, zoffset,
