@@ -845,8 +845,9 @@ vn_physical_device_init_external_fence_handles(
     * vkWaitForFences is translated to repeated vkGetFenceStatus.
     *
     * External fence is not possible currently.  At best, we could cheat by
-    * translating vkGetFenceFdKHR to vkWaitForFences and returning -1, when
-    * the handle type is sync file.
+    * translating vkGetFenceFdKHR to an empty renderer submission for the
+    * out fence, along with a venus protocol command to fix renderer side
+    * fence payload.
     *
     * We would like to create a vn_renderer_sync from a host-side VkFence,
     * similar to how a vn_renderer_bo is created from a host-side
@@ -856,6 +857,8 @@ vn_physical_device_init_external_fence_handles(
     * either of them depending on the occasions, and support external fences
     * and idle waiting.
     */
+   physical_dev->renderer_sync_fd_fence_features = 0;
+
    physical_dev->external_fence_handles = 0;
 
 #ifdef ANDROID
@@ -876,9 +879,9 @@ vn_physical_device_init_external_semaphore_handles(
     * vkWaitSemaphores is translated to repeated vkGetSemaphoreCounterValue.
     *
     * External semaphore is not possible currently.  We could cheat when the
-    * semaphore is binary and the handle type is sync file, but that would
-    * require associating a fence with the semaphore and doing vkWaitForFences
-    * in vkGetSemaphoreFdKHR.
+    * semaphore is binary and the handle type is sync file. We could do an
+    * empty renderer submission for the out fence, along with a venus protocol
+    * command to fix renderer side semaphore payload.
     *
     * We would like to create a vn_renderer_sync from a host-side VkSemaphore,
     * similar to how a vn_renderer_bo is created from a host-side
@@ -888,6 +891,8 @@ vn_physical_device_init_external_semaphore_handles(
     * host-side VkSemaphore.  That would allow the consumers to wait on the
     * host side rather than the guest side.
     */
+   physical_dev->renderer_sync_fd_semaphore_features = 0;
+
    physical_dev->external_binary_semaphore_handles = 0;
    physical_dev->external_timeline_semaphore_handles = 0;
 
