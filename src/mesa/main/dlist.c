@@ -13600,10 +13600,6 @@ _mesa_ListBase(GLuint base)
 /**
  * Setup the given dispatch table to point to Mesa's display list
  * building functions.
- *
- * This does not include any of the tnl functions - they are
- * initialized from _mesa_init_api_defaults and from the active vtxfmt
- * struct.
  */
 void
 _mesa_initialize_save_table(const struct gl_context *ctx)

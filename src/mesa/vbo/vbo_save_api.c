@@ -1605,11 +1605,6 @@ _save_PrimitiveRestartNV(void)
 }
 
 
-/* Unlike the functions above, these are to be hooked into the vtxfmt
- * maintained in ctx->ListState, active when the list is known or
- * suspected to be outside any begin/end primitive.
- * Note: OBE = Outside Begin/End
- */
 void GLAPIENTRY
 save_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 {
