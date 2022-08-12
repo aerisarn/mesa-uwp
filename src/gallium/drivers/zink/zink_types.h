@@ -684,7 +684,6 @@ struct zink_compute_pipeline_state {
    uint32_t hash;
    uint32_t final_hash;
    bool dirty;
-   bool use_local_size;
    uint32_t local_size[3];
 
    uint32_t module_hash;

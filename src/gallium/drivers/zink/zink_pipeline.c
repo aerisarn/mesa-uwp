@@ -390,7 +390,7 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
 
    VkSpecializationInfo sinfo = {0};
    VkSpecializationMapEntry me[3];
-   if (state->use_local_size) {
+   if (comp->use_local_size) {
       stage.pSpecializationInfo = &sinfo;
       sinfo.mapEntryCount = 3;
       sinfo.pMapEntries = &me[0];
