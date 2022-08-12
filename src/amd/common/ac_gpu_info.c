@@ -906,22 +906,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->uvd_fw_version = info->ip[AMD_IP_UVD].num_queues ? uvd_version : 0;
    info->vce_fw_version = info->ip[AMD_IP_VCE].num_queues ? vce_version : 0;
 
-   /* Based on MemoryOpsPerClockTable from PAL. */
-   switch (info->vram_type) {
-   case AMDGPU_VRAM_TYPE_DDR2:
-   case AMDGPU_VRAM_TYPE_DDR3:
-   case AMDGPU_VRAM_TYPE_DDR4: /* same for LPDDR4 */
-   case AMDGPU_VRAM_TYPE_HBM: /* same for HBM2 and HBM3 */
-      info->memory_freq_mhz_effective *= 2;
-      break;
-   case AMDGPU_VRAM_TYPE_DDR5: /* same for LPDDR5 */
-   case AMDGPU_VRAM_TYPE_GDDR5:
-      info->memory_freq_mhz_effective *= 4;
-      break;
-   case AMDGPU_VRAM_TYPE_GDDR6:
-      info->memory_freq_mhz_effective *= 16;
-      break;
-   }
+   info->memory_freq_mhz_effective *= ac_memory_ops_per_clock(info->vram_type);
 
    /* unified ring */
    info->has_video_hw.vcn_decode
@@ -2011,15 +1996,16 @@ void ac_get_task_info(struct radeon_info *info,
 
 uint32_t ac_memory_ops_per_clock(uint32_t vram_type)
 {
+   /* Based on MemoryOpsPerClockTable from PAL. */
    switch (vram_type) {
    case AMDGPU_VRAM_TYPE_UNKNOWN:
       return 0;
    case AMDGPU_VRAM_TYPE_DDR2:
    case AMDGPU_VRAM_TYPE_DDR3:
-   case AMDGPU_VRAM_TYPE_DDR4:
-   case AMDGPU_VRAM_TYPE_HBM:
+   case AMDGPU_VRAM_TYPE_DDR4: /* same for LPDDR4 */
+   case AMDGPU_VRAM_TYPE_HBM: /* same for HBM2 and HBM3 */
       return 2;
-   case AMDGPU_VRAM_TYPE_DDR5:
+   case AMDGPU_VRAM_TYPE_DDR5: /* same for LPDDR5 */
    case AMDGPU_VRAM_TYPE_GDDR5:
       return 4;
    case AMDGPU_VRAM_TYPE_GDDR6:
