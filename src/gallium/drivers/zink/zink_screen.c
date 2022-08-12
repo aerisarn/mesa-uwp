@@ -265,12 +265,15 @@ cache_get_job(void *data, void *gdata, int thread_index)
 }
 
 void
-zink_screen_get_pipeline_cache(struct zink_screen *screen, struct zink_program *pg)
+zink_screen_get_pipeline_cache(struct zink_screen *screen, struct zink_program *pg, bool in_thread)
 {
    if (!screen->disk_cache)
       return;
 
-   util_queue_add_job(&screen->cache_get_thread, pg, &pg->cache_fence, cache_get_job, NULL, 0);
+   if (in_thread)
+      cache_get_job(pg, screen, 0);
+   else
+      util_queue_add_job(&screen->cache_get_thread, pg, &pg->cache_fence, cache_get_job, NULL, 0);
 }
 
 static int
