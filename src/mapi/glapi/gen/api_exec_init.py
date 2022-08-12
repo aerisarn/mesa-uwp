@@ -33,7 +33,7 @@ import apiexec
 
 
 exec_flavor_map = {
-    'vtxfmt': None,
+    'beginend': None,
     'dlist': '_mesa_',
     'mesa': '_mesa_',
     'skip': None,
@@ -105,7 +105,7 @@ class PrintCode(gl_XML.gl_print_base):
             prefix = exec_flavor_map[f.exec_flavor]
             if prefix is None:
                 # This function is not implemented, or is dispatched
-                # via vtxfmt.
+                # via beginend.
                 continue
             if f.has_no_error_variant:
                 no_error_condition = '_mesa_is_no_error_enabled(ctx) && ({0})'.format(condition)

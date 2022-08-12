@@ -20,7 +20,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-# This script generates the file api_vtxfmt_init.h.
+# This script generates the file api_beginend_init.h.
 
 import argparse
 import collections
@@ -35,7 +35,7 @@ class PrintCode(gl_XML.gl_print_base):
     def __init__(self):
         super().__init__()
 
-        self.name = 'api_vtxfmt_init_h.py'
+        self.name = 'api_beginend_init_h.py'
         self.license = license.bsd_license_template % (
             'Copyright (C) 2012 Intel Corporation\n'
             'Copyright (C) 2021 Advanced Micro Devices, Inc.',
@@ -47,7 +47,7 @@ class PrintCode(gl_XML.gl_print_base):
         settings_by_condition = collections.defaultdict(lambda: [])
 
         for f in api.functionIterateAll():
-            if f.exec_flavor != 'vtxfmt':
+            if f.exec_flavor != 'beginend':
                 continue
 
             condition = apiexec.get_api_condition(f)

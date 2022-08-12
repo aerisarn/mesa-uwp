@@ -447,7 +447,7 @@ files_libmesa += [
   main_api_exec_decl_h,
   main_api_save_h,
   main_api_save_init_h,
-  main_api_vtxfmt_init_h,
+  main_api_beginend_init_h,
   main_api_hw_select_init_h,
   main_enums_c,
   format_fallback_c,

@@ -1943,7 +1943,7 @@ vbo_install_save_vtxfmt(struct gl_context *ctx)
 #define NAME_ES(x) _save_##x
 
    struct _glapi_table *tab = ctx->Save;
-   #include "api_vtxfmt_init.h"
+   #include "api_beginend_init.h"
 }
 
 

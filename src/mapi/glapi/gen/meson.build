@@ -253,10 +253,10 @@ main_api_save_h = custom_target(
   capture : true,
 )
 
-main_api_vtxfmt_init_h = custom_target(
-  'api_vtxfmt_init.h',
-  input : ['api_vtxfmt_init_h.py', 'gl_and_es_API.xml'],
-  output : 'api_vtxfmt_init.h',
+main_api_beginend_init_h = custom_target(
+  'api_beginend_init.h',
+  input : ['api_beginend_init_h.py', 'gl_and_es_API.xml'],
+  output : 'api_beginend_init.h',
   command : [prog_python, '@INPUT0@', '-f', '@INPUT1@'],
   depend_files : files('apiexec.py') + glapi_gen_depends,
   capture : true,

@@ -1077,11 +1077,11 @@ vbo_install_exec_vtxfmt(struct gl_context *ctx)
 #define NAME_ES(x) _es_##x
 
    struct _glapi_table *tab = ctx->OutsideBeginEnd;
-   #include "api_vtxfmt_init.h"
+   #include "api_beginend_init.h"
 
    if (ctx->BeginEnd) {
       tab = ctx->BeginEnd;
-      #include "api_vtxfmt_init.h"
+      #include "api_beginend_init.h"
    }
 }
 

@@ -14104,5 +14104,5 @@ _mesa_install_save_vtxfmt(struct gl_context *ctx)
 #define NAME(x) save_##x
 #define NAME_ES(x) save_##x
 
-   #include "api_vtxfmt_init.h"
+   #include "api_beginend_init.h"
 }

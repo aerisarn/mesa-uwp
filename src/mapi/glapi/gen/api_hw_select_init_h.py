@@ -43,7 +43,7 @@ class PrintCode(gl_XML.gl_print_base):
 
     def printBody(self, api):
         for f in api.functionIterateAll():
-            if f.exec_flavor != 'vtxfmt':
+            if f.exec_flavor != 'beginend':
                 continue
 
             if (re.match('Vertex*', f.name)):
