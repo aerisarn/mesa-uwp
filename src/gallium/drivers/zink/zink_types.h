@@ -813,6 +813,8 @@ struct zink_compute_program {
 
    struct zink_shader *shader;
    struct hash_table *pipelines;
+
+   VkPipeline base_pipeline;
 };
 
 

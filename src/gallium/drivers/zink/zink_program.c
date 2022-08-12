@@ -967,6 +967,10 @@ zink_get_compute_pipeline(struct zink_screen *screen,
       state->dirty = false;
       state->final_hash ^= state->hash;
    }
+   if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless && comp->base_pipeline) {
+      state->pipeline = comp->base_pipeline;
+      return state->pipeline;
+   }
    entry = _mesa_hash_table_search_pre_hashed(comp->pipelines, state->final_hash, state);
 
    if (!entry) {
@@ -985,6 +989,8 @@ zink_get_compute_pipeline(struct zink_screen *screen,
 
       entry = _mesa_hash_table_insert_pre_hashed(comp->pipelines, state->final_hash, pc_entry, pc_entry);
       assert(entry);
+      if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless)
+         comp->base_pipeline = pipeline;
    }
 
    struct compute_pipeline_cache_entry *cache_entry = entry->data;
