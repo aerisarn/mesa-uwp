@@ -1258,24 +1258,35 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       tu_cs_emit(cs, hs->tess.tcs_vertices_out);
 
+      uint32_t patch_local_mem_size_16b =
+         patch_control_points * vs->output_size / 4;
+
       /* Total attribute slots in HS incoming patch. */
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
-      tu_cs_emit(cs, patch_control_points * vs->output_size / 4);
+      tu_cs_emit(cs, patch_local_mem_size_16b);
 
       const uint32_t wavesize = 64;
-      const uint32_t max_wave_input_size = 64;
+      const uint32_t vs_hs_local_mem_size = 16384;
 
-      /* note: if HS is really just the VS extended, then this
-       * should be by MAX2(patch_control_points, hs->tess.tcs_vertices_out)
-       * however that doesn't match the blob, and fails some dEQP tests.
-       */
-      uint32_t prims_per_wave = wavesize / hs->tess.tcs_vertices_out;
-      uint32_t max_prims_per_wave =
-         max_wave_input_size * wavesize / (vs->output_size * patch_control_points);
-      prims_per_wave = MIN2(prims_per_wave, max_prims_per_wave);
+      uint32_t max_patches_per_wave;
+      if (cs->device->physical_device->info->a6xx.tess_use_shared) {
+         /* HS invocations for a patch are always within the same wave,
+          * making barriers less expensive. VS can't have barriers so we
+          * don't care about VS invocations being in the same wave.
+          */
+         max_patches_per_wave = wavesize / hs->tess.tcs_vertices_out;
+      } else {
+         /* VS is also in the same wave */
+         max_patches_per_wave =
+            wavesize / MAX2(patch_control_points, hs->tess.tcs_vertices_out);
+      }
 
-      uint32_t total_size = vs->output_size * patch_control_points * prims_per_wave;
-      uint32_t wave_input_size = DIV_ROUND_UP(total_size, wavesize);
+      uint32_t patches_per_wave =
+         MIN2(vs_hs_local_mem_size / (patch_local_mem_size_16b * 16),
+              max_patches_per_wave);
+
+      uint32_t wave_input_size = DIV_ROUND_UP(
+         patches_per_wave * patch_local_mem_size_16b * 16, 256);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
       tu_cs_emit(cs, wave_input_size);
