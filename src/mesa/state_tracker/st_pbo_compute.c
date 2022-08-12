@@ -1167,3 +1167,12 @@ st_GetTexSubImage_shader(struct gl_context * ctx,
    return true;
 }
 
+void
+st_pbo_compute_deinit(struct st_context *st)
+{
+   if (!st->pbo.shaders)
+      return;
+   hash_table_foreach(st->pbo.shaders, entry)
+      st->pipe->delete_compute_state(st->pipe, entry->data);
+   _mesa_hash_table_destroy(st->pbo.shaders, NULL);
+}

@@ -739,9 +739,5 @@ st_destroy_pbo_helpers(struct st_context *st)
       st->pbo.vs = NULL;
    }
 
-   if (st->pbo.shaders) {
-      hash_table_foreach(st->pbo.shaders, entry)
-         st->pipe->delete_compute_state(st->pipe, entry->data);
-      _mesa_hash_table_destroy(st->pbo.shaders, NULL);
-   }
+   st_pbo_compute_deinit(st);
 }
