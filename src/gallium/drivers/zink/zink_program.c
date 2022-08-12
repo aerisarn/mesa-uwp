@@ -37,6 +37,7 @@
 #include "util/u_debug.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
+#include "nir_serialize.h"
 
 /* for pipeline cache */
 #define XXH_INLINE_ALL
@@ -769,7 +770,15 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
                                                        equals_compute_pipeline_state_local_size :
                                                        equals_compute_pipeline_state);
 
-   memcpy(comp->base.sha1, comp->shader->base.sha1, sizeof(comp->shader->base.sha1));
+   struct blob blob = {0};
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+
+   struct mesa_sha1 sha1_ctx;
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, blob.data, blob.size);
+   _mesa_sha1_final(&sha1_ctx, comp->base.sha1);
+   blob_finish(&blob);
 
    if (!zink_descriptor_program_init(ctx, &comp->base))
       goto fail;
