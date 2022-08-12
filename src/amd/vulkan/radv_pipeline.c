@@ -2927,7 +2927,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.vs.topology = si_translate_prim(state->ia->primitive_topology);
    }
 
-   if (device->physical_device->rad_info.gfx_level >= GFX10) {
+   if (device->physical_device->rad_info.gfx_level >= GFX10 && state->rs) {
       key.vs.provoking_vtx_last =
          state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
    }
