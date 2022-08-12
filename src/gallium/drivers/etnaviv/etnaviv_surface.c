@@ -114,7 +114,10 @@ etna_create_surface(struct pipe_context *pctx, struct pipe_resource *prsc,
        /* needs to be RS/BLT compatible for transfer_map/unmap */
        (rsc->levels[level].padded_width & ETNA_RS_WIDTH_MASK) == 0 &&
        (rsc->levels[level].padded_height & ETNA_RS_HEIGHT_MASK) == 0 &&
-       etna_resource_hw_tileable(screen->specs.use_blt, prsc)) {
+       etna_resource_hw_tileable(screen->specs.use_blt, prsc) &&
+       /* Multi-layer resources would need to keep much more state (TS valid and
+        * clear color per layer) and are unlikely to profit from TS usage. */
+       prsc->depth0 == 1 && prsc->array_size == 1) {
       etna_screen_resource_alloc_ts(pctx->screen, rsc);
    }
 
