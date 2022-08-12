@@ -943,6 +943,7 @@ zink_destroy_compute_program(struct zink_context *ctx,
       VKSCR(DestroyPipeline)(screen->dev, pc_entry->pipeline, NULL);
       free(pc_entry);
    }
+   VKSCR(DestroyPipeline)(screen->dev, comp->base_pipeline, NULL);
    VKSCR(DestroyShaderModule)(screen->dev, comp->module->shader, NULL);
    free(comp->module);
 
@@ -978,6 +979,12 @@ zink_get_compute_pipeline(struct zink_screen *screen,
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
+      if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless) {
+         /* don't add base pipeline to cache */
+         state->pipeline = comp->base_pipeline = pipeline;
+         return state->pipeline;
+      }
+
       struct compute_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(compute_pipeline_cache_entry);
       if (!pc_entry)
          return VK_NULL_HANDLE;
@@ -987,8 +994,6 @@ zink_get_compute_pipeline(struct zink_screen *screen,
 
       entry = _mesa_hash_table_insert_pre_hashed(&comp->pipelines, state->final_hash, pc_entry, pc_entry);
       assert(entry);
-      if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless)
-         comp->base_pipeline = pipeline;
    }
 
    struct compute_pipeline_cache_entry *cache_entry = entry->data;
