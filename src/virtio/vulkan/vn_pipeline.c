@@ -646,6 +646,34 @@ vn_fix_graphics_pipeline_create_info(
    return fixes->create_infos;
 }
 
+/**
+ * We invalidate each VkPipelineCreationFeedback. This is a legal but useless
+ * implementation.
+ *
+ * We invalidate because the venus protocol (as of 2022-08-25) does not know
+ * that the VkPipelineCreationFeedback structs in the
+ * VkGraphicsPipelineCreateInfo pNext are output parameters. Before
+ * VK_EXT_pipeline_creation_feedback, the pNext chain was input-only.
+ */
+static void
+vn_invalidate_pipeline_creation_feedback(const VkBaseInStructure *chain)
+{
+   const VkPipelineCreationFeedbackCreateInfo *feedback_info =
+      vk_find_struct_const(chain, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+
+   if (!feedback_info)
+      return;
+
+   feedback_info->pPipelineCreationFeedback->flags &=
+      ~VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+
+   for (uint32_t i = 0; i < feedback_info->pipelineStageCreationFeedbackCount;
+        i++) {
+      feedback_info->pPipelineStageCreationFeedbacks[i].flags &=
+         ~VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+   }
+}
+
 VkResult
 vn_CreateGraphicsPipelines(VkDevice device,
                            VkPipelineCache pipelineCache,
@@ -673,10 +701,11 @@ vn_CreateGraphicsPipelines(VkDevice device,
    }
 
    for (uint32_t i = 0; i < createInfoCount; i++) {
-      if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK)) {
+      if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK))
          want_sync = true;
-         break;
-      }
+
+      vn_invalidate_pipeline_creation_feedback(
+         (const VkBaseInStructure *)pCreateInfos[i].pNext);
    }
 
    if (want_sync) {
@@ -716,10 +745,11 @@ vn_CreateComputePipelines(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    for (uint32_t i = 0; i < createInfoCount; i++) {
-      if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK)) {
+      if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK))
          want_sync = true;
-         break;
-      }
+
+      vn_invalidate_pipeline_creation_feedback(
+         (const VkBaseInStructure *)pCreateInfos[i].pNext);
    }
 
    if (want_sync) {

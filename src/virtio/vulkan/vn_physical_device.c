@@ -1090,6 +1090,19 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_image_robustness = true,
       .EXT_inline_uniform_block = true,
       .EXT_pipeline_creation_cache_control = true,
+      /* TODO(VK_EXT_pipeline_creation_feedback): The native implementation
+       * invalidates all feedback. Teach the venus protocol to receive valid
+       * feedback from renderer.
+       *
+       * Even though we implement this natively, we still require host driver
+       * support to avoid invalid usage in the renderer, because we (the guest
+       * driver) do not scrub the extension bits from the
+       * VkGraphicsPipelineCreateInfo pNext chain.  The host driver still writes
+       * feedback into VkPipelineCreationFeedback, which is harmless, but the
+       * renderer does not send the returned feedback to us due to protocol
+       * deficiencies.
+       */
+      .EXT_pipeline_creation_feedback = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_subgroup_size_control = true,
       .EXT_texel_buffer_alignment = true,
