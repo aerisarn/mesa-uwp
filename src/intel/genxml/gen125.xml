@@ -30,6 +30,16 @@
     <value name="SLM_ENCODES_192K" value="14" />
     <value name="SLM_ENCODES_256K" value="15" />
   </enum>
+  <enum name="STATE_SURFACE_TYPE">
+    <value name="SURFTYPE_1D" value="0" />
+    <value name="SURFTYPE_2D" value="1" />
+    <value name="SURFTYPE_3D" value="2" />
+    <value name="SURFTYPE_CUBE" value="3" />
+    <value name="SURFTYPE_BUFFER" value="4" />
+    <value name="SURFTYPE_RES5" value="5" />
+    <value name="SURFTYPE_SCRATCH" value="6" />
+    <value name="SURFTYPE_NULL" value="7" />
+  </enum>
   <struct name="INTERFACE_DESCRIPTOR_DATA" length="8">
     <field name="Kernel Start Pointer" start="6" end="31" type="offset" />
     <field name="Software Exception Enable" start="71" end="71" type="bool" />
@@ -307,16 +317,7 @@
     </field>
     <field name="Surface Format" start="18" end="26" type="uint" />
     <field name="Surface Array" start="28" end="28" type="bool" />
-    <field name="Surface Type" start="29" end="31" type="uint">
-      <value name="SURFTYPE_1D" value="0" />
-      <value name="SURFTYPE_2D" value="1" />
-      <value name="SURFTYPE_3D" value="2" />
-      <value name="SURFTYPE_CUBE" value="3" />
-      <value name="SURFTYPE_BUFFER" value="4" />
-      <value name="SURFTYPE_STRBUF" value="5" />
-      <value name="SURFTYPE_SCRATCH" value="6" />
-      <value name="SURFTYPE_NULL" value="7" />
-    </field>
+    <field name="Surface Type" start="29" end="31" type="STATE_SURFACE_TYPE" />
     <field name="Surface QPitch" start="32" end="46" type="uint" />
     <field name="Sample Tap Discard Disable" start="47" end="47" type="bool" />
     <field name="Double Fetch Disable" start="49" end="49" type="bool" />
