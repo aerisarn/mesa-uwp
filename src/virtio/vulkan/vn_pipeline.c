@@ -259,7 +259,9 @@ vn_create_pipeline_handles(struct vn_device *dev,
 
       if (!pipeline) {
          for (uint32_t j = 0; j < i; j++) {
-            vk_free(alloc, pipeline_handles[j]);
+            pipeline = vn_pipeline_from_handle(pipeline_handles[j]);
+            vn_object_base_fini(&pipeline->base);
+            vk_free(alloc, pipeline);
          }
 
          memset(pipeline_handles, 0,
