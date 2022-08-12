@@ -5001,7 +5001,9 @@ iris_store_tcs_state(const struct intel_device_info *devinfo,
 #endif
 
 #if GFX_VER >= 9
+#if GFX_VER < 20
       hs.DispatchMode = vue_prog_data->dispatch_mode;
+#endif
       hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
 #endif
    }

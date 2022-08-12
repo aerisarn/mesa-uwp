@@ -1314,7 +1314,9 @@ emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
       hs.PatchCountThreshold = tcs_prog_data->patch_count_threshold;
 #endif
 
+#if GFX_VER < 20
       hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
+#endif
       hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
    };
 
