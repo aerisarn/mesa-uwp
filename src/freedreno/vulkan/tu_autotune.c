@@ -80,7 +80,6 @@ struct tu_submission_data {
    uint32_t fence;
 
    struct tu_cs fence_cs;
-   uint32_t buffers_count;
 };
 
 static uint32_t
@@ -299,7 +298,6 @@ tu_autotune_on_submit(struct tu_device *dev,
 
    /* pre-increment so zero isn't valid fence */
    uint32_t new_fence = ++at->fence_counter;
-   uint32_t result_buffers = 0;
 
    /* Create history entries here to minimize work and locking being
     * done on renderpass end.
@@ -328,15 +326,10 @@ tu_autotune_on_submit(struct tu_device *dev,
          result->fence = new_fence;
          result->history = history;
       }
-
-      if (!list_is_empty(&cmdbuf->renderpass_autotune_results)) {
-         result_buffers++;
-      }
    }
 
    struct tu_submission_data *submission_data =
       create_submission_data(dev, at);
-   submission_data->buffers_count = result_buffers;
 
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       struct tu_cmd_buffer *cmdbuf = cmd_buffers[i];
