@@ -31,6 +31,7 @@
 #include "state_tracker/st_nir.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_pbo.h"
+#include "state_tracker/st_program.h"
 #include "state_tracker/st_texture.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_format_convert.h"
@@ -599,7 +600,7 @@ do_shader_conversion(nir_builder *b, nir_ssa_def *pixel,
    nir_pop_if(b, NULL);
 }
 
-static void *
+static nir_shader *
 create_conversion_shader(struct st_context *st, enum pipe_texture_target target, unsigned num_components)
 {
    const nir_shader_compiler_options *options = st_get_nir_compiler_options(st, MESA_SHADER_COMPUTE);
@@ -673,7 +674,8 @@ create_conversion_shader(struct st_context *st, enum pipe_texture_target target,
 
    nir_validate_shader(b.shader, NULL);
    gl_nir_opts(b.shader);
-   return st_nir_finish_builtin_shader(st, b.shader);
+   st_nir_finish_builtin_nir(st, b.shader);
+   return b.shader;
 }
 
 static void
@@ -829,7 +831,13 @@ download_texture_compute(struct st_context *st,
    struct hash_entry *he = _mesa_hash_table_search(st->pbo.shaders, (void*)(uintptr_t)hash_key);
    void *cs;
    if (!he) {
-      cs = create_conversion_shader(st, view_target, num_components);
+      nir_shader *nir = create_conversion_shader(st, view_target, num_components);
+      struct pipe_shader_state state = {
+         .type = PIPE_SHADER_IR_NIR,
+         .ir.nir = nir,
+      };
+
+      cs = st_create_nir_shader(st, &state);
       he = _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, cs);
    }
    cs = he->data;
