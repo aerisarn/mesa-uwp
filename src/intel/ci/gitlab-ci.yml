@@ -103,6 +103,15 @@ anv-tgl-vk:
     GPU_VERSION: iris-cml
     RUNNER_TAG: mesa-ci-x86-64-lava-asus-C436FA-flip-hatch
 
+# 8 boards
+.iris-jsl-test:
+  extends:
+    - .iris-test
+  variables:
+    DEVICE_TYPE: acer-cb317-1h-c3z6-dedede
+    GPU_VERSION: iris-jsl
+    RUNNER_TAG: mesa-ci-x86-64-lava-acer-cb317-1h-c3z6-dedede
+
 iris-apl-deqp:
   extends:
     - .iris-apl-test
@@ -161,6 +170,13 @@ iris-cml-deqp:
   variables:
     DEQP_SUITE: iris-cml
   parallel: 4
+
+iris-jsl-deqp:
+  extends:
+    - .iris-jsl-test
+  variables:
+    DEQP_SUITE: iris-jsl
+  parallel: 8
 
 iris-amly-egl:
   extends:
