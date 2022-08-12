@@ -413,7 +413,6 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
       mesa_loge("ZINK: vkCreateComputePipelines failed (%s)", vk_Result_to_str(result));
       return VK_NULL_HANDLE;
    }
-   zink_screen_update_pipeline_cache(screen, &comp->base);
 
    return pipeline;
 }
