@@ -743,8 +743,7 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
                             nir->info.workgroup_size[1] ||
                             nir->info.workgroup_size[2]);
 
-   comp->pipelines = _mesa_hash_table_create(NULL, NULL,
-                                             equals_compute_pipeline_state);
+   _mesa_hash_table_init(&comp->pipelines, comp, NULL, equals_compute_pipeline_state);
 
    memcpy(comp->base.sha1, comp->shader->base.sha1, sizeof(comp->shader->base.sha1));
 
@@ -938,13 +937,12 @@ zink_destroy_compute_program(struct zink_context *ctx,
    destroy_shader_cache(screen, &comp->shader_cache[0]);
    destroy_shader_cache(screen, &comp->shader_cache[1]);
 
-   hash_table_foreach(comp->pipelines, entry) {
+   hash_table_foreach(&comp->pipelines, entry) {
       struct compute_pipeline_cache_entry *pc_entry = entry->data;
 
       VKSCR(DestroyPipeline)(screen->dev, pc_entry->pipeline, NULL);
       free(pc_entry);
    }
-   _mesa_hash_table_destroy(comp->pipelines, NULL);
    VKSCR(DestroyShaderModule)(screen->dev, comp->module->shader, NULL);
    free(comp->module);
 
@@ -971,7 +969,7 @@ zink_get_compute_pipeline(struct zink_screen *screen,
       state->pipeline = comp->base_pipeline;
       return state->pipeline;
    }
-   entry = _mesa_hash_table_search_pre_hashed(comp->pipelines, state->final_hash, state);
+   entry = _mesa_hash_table_search_pre_hashed(&comp->pipelines, state->final_hash, state);
 
    if (!entry) {
       util_queue_fence_wait(&comp->base.cache_fence);
@@ -987,7 +985,7 @@ zink_get_compute_pipeline(struct zink_screen *screen,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      entry = _mesa_hash_table_insert_pre_hashed(comp->pipelines, state->final_hash, pc_entry, pc_entry);
+      entry = _mesa_hash_table_insert_pre_hashed(&comp->pipelines, state->final_hash, pc_entry, pc_entry);
       assert(entry);
       if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless)
          comp->base_pipeline = pipeline;

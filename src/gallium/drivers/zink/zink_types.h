@@ -812,7 +812,7 @@ struct zink_compute_program {
    unsigned inlined_variant_count;
 
    struct zink_shader *shader;
-   struct hash_table *pipelines;
+   struct hash_table pipelines;
 
    VkPipeline base_pipeline;
 };
