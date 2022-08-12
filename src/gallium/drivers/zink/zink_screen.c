@@ -163,6 +163,23 @@ zink_get_device_node_mask(struct pipe_screen *pscreen)
    }
 }
 
+static void
+zink_set_max_shader_compiler_threads(struct pipe_screen *pscreen, unsigned max_threads)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   util_queue_adjust_num_threads(&screen->cache_get_thread, max_threads);
+}
+
+static bool
+zink_is_parallel_shader_compilation_finished(struct pipe_screen *screen, void *shader, enum pipe_shader_type shader_type)
+{
+   /* not supported yet */
+   if (shader_type != MESA_SHADER_COMPUTE)
+      return true;
+   struct zink_program *pg = shader;
+   return !pg->can_precompile || util_queue_fence_is_signalled(&pg->cache_fence);
+}
+
 static VkDeviceSize
 get_video_mem(struct zink_screen *screen)
 {
@@ -2261,6 +2278,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->base.get_device_luid = zink_get_device_luid;
       screen->base.get_device_node_mask = zink_get_device_node_mask;
    }
+   screen->base.set_max_shader_compiler_threads = zink_set_max_shader_compiler_threads;
+   screen->base.is_parallel_shader_compilation_finished = zink_is_parallel_shader_compilation_finished;
    screen->base.get_vendor = zink_get_vendor;
    screen->base.get_device_vendor = zink_get_device_vendor;
    screen->base.get_compute_param = zink_get_compute_param;

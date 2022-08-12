@@ -731,6 +731,7 @@ struct zink_program {
    size_t pipeline_cache_size;
    struct zink_batch_usage *batch_uses;
    bool is_compute;
+   bool can_precompile;
 
    struct zink_program_descriptor_data dd;
 
