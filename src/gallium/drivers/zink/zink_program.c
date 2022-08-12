@@ -732,6 +732,15 @@ equals_compute_pipeline_state_local_size(const void *a, const void *b)
           sa->module == sb->module;
 }
 
+static void
+precompile_compute(struct zink_compute_program *comp, struct zink_screen *screen)
+{
+   zink_screen_get_pipeline_cache(screen, &comp->base, true);
+   comp->base_pipeline = zink_create_compute_pipeline(screen, comp, NULL);
+   if (comp->base_pipeline)
+      zink_screen_update_pipeline_cache(screen, &comp->base, true);
+}
+
 static struct zink_compute_program *
 create_compute_program(struct zink_context *ctx, nir_shader *nir)
 {
@@ -761,7 +770,11 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
    if (!zink_descriptor_program_init(ctx, &comp->base))
       goto fail;
 
-   zink_screen_get_pipeline_cache(screen, &comp->base, false);
+   if (comp->use_local_size || (!screen->info.have_EXT_non_seamless_cube_map && comp->shader->has_cubes)) {
+      zink_screen_get_pipeline_cache(screen, &comp->base, false);
+   } else {
+      precompile_compute(comp, screen);
+   }
    return comp;
 
 fail:
