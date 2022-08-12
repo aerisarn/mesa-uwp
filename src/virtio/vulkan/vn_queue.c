@@ -18,6 +18,7 @@
 
 #include "vn_device.h"
 #include "vn_device_memory.h"
+#include "vn_physical_device.h"
 #include "vn_renderer.h"
 #include "vn_wsi.h"
 
@@ -644,14 +645,7 @@ vn_CreateFence(VkDevice device,
 
    const struct VkExportFenceCreateInfo *export_info =
       vk_find_struct_const(pCreateInfo->pNext, EXPORT_FENCE_CREATE_INFO);
-   VkFenceCreateInfo local_create_info;
-   if (export_info) {
-      local_create_info = *pCreateInfo;
-      local_create_info.pNext = NULL;
-      pCreateInfo = &local_create_info;
-
-      fence->is_external = !!export_info->handleTypes;
-   }
+   fence->is_external = export_info && export_info->handleTypes;
 
    result = vn_fence_init_payloads(dev, fence, signaled, alloc);
    if (result != VK_SUCCESS)
@@ -901,7 +895,6 @@ vn_ImportFenceFdKHR(VkDevice device,
                                    VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
    const int fd = pImportFenceFdInfo->fd;
 
-   /* TODO update fence->is_external after we support opaque fd import */
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
    if (fd >= 0) {
@@ -928,21 +921,32 @@ vn_GetFenceFdKHR(VkDevice device,
    const bool sync_file =
       pGetFdInfo->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
    struct vn_sync_payload *payload = fence->payload;
+   VkResult result;
 
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
    int fd = -1;
    if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {
-      VkResult result = vn_create_sync_file(dev, &fd);
+      result = vn_create_sync_file(dev, &fd);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
-   }
 
-   if (sync_file) {
+      /* perform reset operation on the host fence */
+      if (dev->physical_device->renderer_sync_fd_fence_features &
+          VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT) {
+         vn_async_vkResetFenceResource100000MESA(dev->instance, device,
+                                                 pGetFdInfo->fence);
+      }
+
       vn_sync_payload_release(dev, &fence->temporary);
       fence->payload = &fence->permanent;
+   } else {
+      assert(payload->type == VN_SYNC_TYPE_WSI_SIGNALED);
 
-      /* XXX implies reset operation on the host fence */
+      /* reset host fence in case in signaled state before import */
+      result = vn_ResetFences(device, 1, &pGetFdInfo->fence);
+      if (result != VK_SUCCESS)
+         return result;
    }
 
    *pFd = fd;
