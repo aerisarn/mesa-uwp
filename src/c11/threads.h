@@ -133,9 +133,8 @@ typedef pthread_once_t  once_flag;
 enum
 {
    mtx_plain = 0,
-   mtx_try = 1,
+   mtx_recursive = 1,
    mtx_timed = 2,
-   mtx_recursive = 4
 };
 
 enum

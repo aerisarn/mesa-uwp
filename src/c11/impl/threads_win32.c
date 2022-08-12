@@ -266,10 +266,9 @@ int
 mtx_init(mtx_t *mtx, int type)
 {
     assert(mtx != NULL);
-    if (type != mtx_plain && type != mtx_timed && type != mtx_try
+    if (type != mtx_plain && type != mtx_timed
       && type != (mtx_plain|mtx_recursive)
-      && type != (mtx_timed|mtx_recursive)
-      && type != (mtx_try|mtx_recursive))
+      && type != (mtx_timed|mtx_recursive))
         return thrd_error;
     InitializeCriticalSection((PCRITICAL_SECTION)mtx);
     return thrd_success;
