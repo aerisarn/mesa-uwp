@@ -264,7 +264,9 @@ SOFTWARE.
   <struct name="IMAGE_WORD0" length="2">
     <field name="smpcnt" start="62" end="63" type="uint"/>
     <field name="height" start="48" end="61" type="uint"/>
-    <field name="width" start="34" end="47" type="uint"/>
+    <field name="width" start="34" end="47" type="uint">
+      <define name="MAX_SIZE" value="16383"/>
+    </field>
     <field name="texformat" start="27" end="33" type="FORMAT"/>
     <field name="texformat_compressed" start="27" end="33" type="FORMAT_COMPRESSED"/>
     <field name="minlod" start="17" end="26" type="uint"/>
@@ -294,7 +296,9 @@ SOFTWARE.
     <condition type="endif" check="TPU_IMAGE_STATE_V2"/>
     <field name="texaddr" start="16" end="53" shift="2" type="address"/>
     <field name="mipmaps_present" start="15" end="15" type="bool"/>
-    <field name="depth" start="4" end="14" type="uint"/>
+    <field name="depth" start="4" end="14" type="uint">
+      <define name="MAX_SIZE" value="2047"/>
+    </field>
     <field name="num_mip_levels" start="0" end="3" type="uint"/>
   </struct>
 

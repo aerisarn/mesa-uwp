@@ -28,9 +28,31 @@
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 
+enum pvr_pbe_accum_format {
+   PVR_PBE_ACCUM_FORMAT_INVALID = 0, /* Explicitly treat 0 as invalid. */
+   PVR_PBE_ACCUM_FORMAT_U8,
+   PVR_PBE_ACCUM_FORMAT_S8,
+   PVR_PBE_ACCUM_FORMAT_U16,
+   PVR_PBE_ACCUM_FORMAT_S16,
+   PVR_PBE_ACCUM_FORMAT_F16,
+   PVR_PBE_ACCUM_FORMAT_F32,
+   PVR_PBE_ACCUM_FORMAT_UINT8,
+   PVR_PBE_ACCUM_FORMAT_UINT16,
+   PVR_PBE_ACCUM_FORMAT_UINT32,
+   PVR_PBE_ACCUM_FORMAT_SINT8,
+   PVR_PBE_ACCUM_FORMAT_SINT16,
+   PVR_PBE_ACCUM_FORMAT_SINT32,
+   /* Formats with medp shader output precision. */
+   PVR_PBE_ACCUM_FORMAT_UINT32_MEDP,
+   PVR_PBE_ACCUM_FORMAT_SINT32_MEDP,
+   PVR_PBE_ACCUM_FORMAT_U1010102,
+   PVR_PBE_ACCUM_FORMAT_U24,
+};
+
 const uint8_t *pvr_get_format_swizzle(VkFormat vk_format);
 uint32_t pvr_get_tex_format(VkFormat vk_format);
 uint32_t pvr_get_pbe_packmode(VkFormat vk_format);
+uint32_t pvr_get_pbe_accum_format(VkFormat vk_format);
 bool pvr_format_is_pbe_downscalable(VkFormat vk_format);
 
 #endif /* PVR_FORMATS_H */

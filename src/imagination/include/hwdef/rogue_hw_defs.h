@@ -93,8 +93,6 @@
 /* Number of TEXSTATE_SAMPLER state words that need setting up. */
 #define ROGUE_NUM_TEXSTATE_SAMPLER_WORDS 2U
 
-#define ROGUE_MAX_RENDER_TARGETS 2048U
-
 /* 12 dwords reserved for shared register management. The first dword is the
  * number of shared register blocks to reload. Should be a multiple of 4 dwords,
  * size in bytes.

@@ -39,8 +39,14 @@
 
 #define PVR_MAX_PUSH_CONSTANTS_SIZE 256U
 
+#define PVR_MAX_TEXTURE_EXTENT_Z \
+   (PVRX(TEXSTATE_IMAGE_WORD1_DEPTH_MAX_SIZE) + 1U)
+
+#define PVR_MAX_ARRAY_LAYERS (PVRX(TEXSTATE_IMAGE_WORD1_DEPTH_MAX_SIZE) + 1U)
+
 #define PVR_MAX_DESCRIPTOR_SETS 4U
-#define PVR_MAX_FRAMEBUFFER_LAYERS ROGUE_MAX_RENDER_TARGETS
+
+#define PVR_MAX_FRAMEBUFFER_LAYERS PVR_MAX_ARRAY_LAYERS
 
 /* The limit is somewhat arbitrary, it just translates into more pds code
  * and larger arrays, 32 appears to be the popular (and highest choice) across

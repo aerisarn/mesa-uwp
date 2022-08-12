@@ -21,44 +21,56 @@
  * SOFTWARE.
  */
 
+#include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <vulkan/vulkan.h>
 
+#include "hwdef/rogue_hw_utils.h"
 #include "pvr_formats.h"
 #include "pvr_private.h"
+#include "util/log.h"
+#include "util/macros.h"
+#include "util/u_math.h"
 #include "vk_enum_to_str.h"
 #include "vk_format.h"
 #include "vk_log.h"
 #include "vk_util.h"
 
-#define FORMAT(vk, tex_fmt, pack_mode)                     \
-   [VK_FORMAT_##vk] = {                                    \
-      .vk_format = VK_FORMAT_##vk,                         \
-      .tex_format = ROGUE_TEXSTATE_FORMAT_##tex_fmt,       \
-      .pbe_packmode = ROGUE_PBESTATE_PACKMODE_##pack_mode, \
-      .supported = true,                                   \
+#define FORMAT(vk, tex_fmt, pack_mode, accum_format)           \
+   [VK_FORMAT_##vk] = {                                        \
+      .vk_format = VK_FORMAT_##vk,                             \
+      .tex_format = ROGUE_TEXSTATE_FORMAT_##tex_fmt,           \
+      .pbe_packmode = ROGUE_PBESTATE_PACKMODE_##pack_mode,     \
+      .pbe_accum_format = PVR_PBE_ACCUM_FORMAT_##accum_format, \
+      .supported = true,                                       \
    }
 
 struct pvr_format {
    VkFormat vk_format;
    uint32_t tex_format;
    uint32_t pbe_packmode;
+   enum pvr_pbe_accum_format pbe_accum_format;
    bool supported;
 };
 
-/* TODO: add all supported core formats */
+/* TODO: Add all supported core formats. */
 static const struct pvr_format pvr_format_table[] = {
    /* VK_FORMAT_R8_UINT = 13. */
-   FORMAT(R8_UINT, U8, U8),
+   FORMAT(R8_UINT, U8, U8, UINT8),
+   /* VK_FORMAT_R8G8B8A8_UNORM = 37. */
+   FORMAT(R8G8B8A8_UNORM, U8U8U8U8, U8U8U8U8, U8),
    /* VK_FORMAT_B8G8R8A8_UNORM = 44. */
-   FORMAT(B8G8R8A8_UNORM, U8U8U8U8, U8U8U8U8),
+   FORMAT(B8G8R8A8_UNORM, U8U8U8U8, U8U8U8U8, U8),
    /* VK_FORMAT_R32_UINT = 98. */
-   FORMAT(R32_UINT, U32, U32),
+   FORMAT(R32_UINT, U32, U32, UINT32),
    /* VK_FORMAT_R32G32B32A32_UINT = 107. */
-   FORMAT(R32G32B32A32_UINT, U32U32U32U32, U32U32U32U32),
+   FORMAT(R32G32B32A32_UINT, U32U32U32U32, U32U32U32U32, UINT32),
    /* VK_FORMAT_R32G32B32A32_SFLOAT = 109. */
-   FORMAT(R32G32B32A32_SFLOAT, F32F32F32F32, F32F32F32F32),
+   FORMAT(R32G32B32A32_SFLOAT, F32F32F32F32, F32F32F32F32, F32),
    /* VK_FORMAT_D32_SFLOAT = 126. */
-   FORMAT(D32_SFLOAT, F32, F32),
+   FORMAT(D32_SFLOAT, F32, F32, F16),
 };
 
 #undef FORMAT
@@ -94,6 +106,15 @@ uint32_t pvr_get_pbe_packmode(VkFormat vk_format)
       return pvr_format->pbe_packmode;
 
    return ROGUE_PBESTATE_PACKMODE_INVALID;
+}
+
+uint32_t pvr_get_pbe_accum_format(VkFormat vk_format)
+{
+   const struct pvr_format *pvr_format = pvr_get_format(vk_format);
+   if (pvr_format)
+      return pvr_format->pbe_accum_format;
+
+   return PVR_PBE_ACCUM_FORMAT_INVALID;
 }
 
 static VkFormatFeatureFlags
@@ -159,8 +180,162 @@ pvr_get_image_format_properties(struct pvr_physical_device *pdevice,
                                 const VkPhysicalDeviceImageFormatInfo2 *info,
                                 VkImageFormatProperties *pImageFormatProperties)
 {
-   assert(!"Unimplemented");
+   /* Input attachments aren't rendered but they must have the same size
+    * restrictions as any framebuffer attachment.
+    */
+   const VkImageUsageFlags render_usage =
+      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+      VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+   const struct pvr_format *pvr_format = pvr_get_format(info->format);
+   VkFormatFeatureFlags tiling_features;
+   VkResult result;
+
+   if (!pvr_format) {
+      result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+      goto err_unsupported_format;
+   }
+
+   tiling_features = pvr_get_image_format_features(pvr_format, info->tiling);
+   if (tiling_features == 0) {
+      result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+      goto err_unsupported_format;
+   }
+
+   /* If VK_IMAGE_CREATE_EXTENDED_USAGE_BIT is set, the driver can't decide if a
+    * specific format isn't supported based on the usage.
+    */
+   if ((info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) == 0 &&
+       info->usage & (VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) &&
+       pvr_format->pbe_accum_format == PVR_PBE_ACCUM_FORMAT_INVALID) {
+      result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+      goto err_unsupported_format;
+   }
+
+   if (info->type == VK_IMAGE_TYPE_3D) {
+      const VkImageUsageFlags transfer_usage =
+         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+         VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
+
+      /* We don't support 3D depth/stencil images. */
+      if (tiling_features & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+         result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         goto err_unsupported_format;
+      }
+
+      /* Linear tiled 3D images may only be used for transfer or blit
+       * operations.
+       */
+      if (info->tiling == VK_IMAGE_TILING_LINEAR &&
+          info->usage & ~transfer_usage) {
+         result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         goto err_unsupported_format;
+      }
+   }
+
+   if (info->usage & render_usage) {
+      const uint32_t max_render_size =
+         rogue_get_render_size_max(&pdevice->dev_info);
+
+      pImageFormatProperties->maxExtent.width = max_render_size;
+      pImageFormatProperties->maxExtent.height = max_render_size;
+      pImageFormatProperties->maxExtent.depth = PVR_MAX_TEXTURE_EXTENT_Z;
+   } else {
+      const uint32_t max_texture_extent_xy =
+         PVRX(TEXSTATE_IMAGE_WORD0_WIDTH_MAX_SIZE) + 1U;
+
+      pImageFormatProperties->maxExtent.width = max_texture_extent_xy;
+      pImageFormatProperties->maxExtent.height = max_texture_extent_xy;
+      pImageFormatProperties->maxExtent.depth = PVR_MAX_TEXTURE_EXTENT_Z;
+   }
+
+   if (info->tiling == VK_IMAGE_TILING_LINEAR) {
+      pImageFormatProperties->maxExtent.depth = 1;
+      pImageFormatProperties->maxArrayLayers = 1;
+      pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+   } else {
+      /* Default value is the minimum value found in all existing cores. */
+      const uint32_t max_multisample =
+         PVR_GET_FEATURE_VALUE(&pdevice->dev_info, max_multisample, 4);
+
+      const uint32_t max_sample_bits = ((max_multisample << 1) - 1);
+
+      pImageFormatProperties->maxArrayLayers = PVR_MAX_ARRAY_LAYERS;
+      pImageFormatProperties->sampleCounts = max_sample_bits;
+   }
+
+   if (!(tiling_features & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ||
+         tiling_features & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+   }
+
+   switch (info->type) {
+   case VK_IMAGE_TYPE_1D:
+      pImageFormatProperties->maxExtent.height = 1;
+      pImageFormatProperties->maxExtent.depth = 1;
+      pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+      break;
+
+   case VK_IMAGE_TYPE_2D:
+      pImageFormatProperties->maxExtent.depth = 1;
+
+      /* If a 2D image is created to be used in a cube map, then the sample
+       * count must be restricted to 1 sample.
+       */
+      if (info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
+         pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+
+      break;
+
+   case VK_IMAGE_TYPE_3D:
+      pImageFormatProperties->maxArrayLayers = 1;
+      pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+      break;
+
+   default:
+      unreachable("Invalid image type.");
+   }
+
+   /* The spec says maxMipLevels may be 1 when tiling is VK_IMAGE_TILING_LINEAR
+    * or VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT, so for simplicity don't
+    * support miplevels for these tilings.
+    */
+   if (info->tiling == VK_IMAGE_TILING_LINEAR) {
+      pImageFormatProperties->maxMipLevels = 1;
+   } else {
+      const uint32_t max_size = MAX3(pImageFormatProperties->maxExtent.width,
+                                     pImageFormatProperties->maxExtent.height,
+                                     pImageFormatProperties->maxExtent.depth);
+
+      pImageFormatProperties->maxMipLevels = util_logbase2(max_size) + 1U;
+   }
+
+   /* Return 2GB (minimum required from spec).
+    *
+    * From the Vulkan spec:
+    *
+    *    maxResourceSize is an upper bound on the total image size in bytes,
+    *    inclusive of all image subresources. Implementations may have an
+    *    address space limit on total size of a resource, which is advertised by
+    *    this property. maxResourceSize must be at least 2^31.
+    */
+   pImageFormatProperties->maxResourceSize = 2ULL * 1024 * 1024 * 1024;
+
    return VK_SUCCESS;
+
+err_unsupported_format:
+   /* From the Vulkan 1.0.42 spec:
+    *
+    *    If the combination of parameters to
+    *    vkGetPhysicalDeviceImageFormatProperties2 is not supported by the
+    *    implementation for use in vkCreateImage, then all members of
+    *    imageFormatProperties will be filled with zero.
+    */
+   *pImageFormatProperties = (VkImageFormatProperties){ 0 };
+
+   return result;
 }
 
 /* FIXME: Should this be returning VK_ERROR_FORMAT_NOT_SUPPORTED when tiling is
