@@ -4,7 +4,6 @@
 #   Tomeu Vizoso <tomeu.vizoso@collabora.com>
 #   David Heidelberg <david.heidelberg@collabora.com>
 #
-# TODO GraphQL for dependencies
 # SPDX-License-Identifier: MIT
 
 """
