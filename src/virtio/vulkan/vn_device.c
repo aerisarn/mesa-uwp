@@ -232,8 +232,16 @@ vn_device_fix_create_info(const struct vn_device *dev,
             VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME;
       }
 
-      if (app_exts->ANDROID_native_buffer)
+      if (app_exts->ANDROID_native_buffer) {
+         if (!app_exts->KHR_external_fence_fd &&
+             (physical_dev->renderer_sync_fd_fence_features &
+              VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT)) {
+            extra_exts[extra_count++] =
+               VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME;
+         }
+
          block_exts[block_count++] = VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME;
+      }
 
       if (app_exts->ANDROID_external_memory_android_hardware_buffer) {
          block_exts[block_count++] =
