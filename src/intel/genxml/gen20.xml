@@ -134,6 +134,87 @@
       <field name="Inline Data" start="0" end="31" type="uint" />
     </group>
   </struct>
+  <instruction name="3DSTATE_TE" bias="2" length="5" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="3" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="28" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="0" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="3" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="TE Enable" start="32" end="32" type="bool" />
+    <field name="TE Mode" start="33" end="34" type="uint">
+      <value name="HW_TESS" value="0" />
+      <value name="FORCE_MIN" value="3" />
+    </field>
+    <field name="TE Domain" start="36" end="37" type="uint">
+      <value name="QUAD" value="0" />
+      <value name="TRI" value="1" />
+      <value name="ISOLINE" value="2" />
+    </field>
+    <field name="Output Topology" start="40" end="41" type="uint" prefix="OUTPUT">
+      <value name="POINT" value="0" />
+      <value name="LINE" value="1" />
+      <value name="TRI_CW" value="2" />
+      <value name="TRI_CCW" value="3" />
+    </field>
+    <field name="Partitioning" start="44" end="45" type="uint">
+      <value name="INTEGER" value="0" />
+      <value name="ODD_FRACTIONAL" value="1" />
+      <value name="EVEN_FRACTIONAL" value="2" />
+      <value name="POW2" value="3" />
+    </field>
+    <field name="Tessellation Distribution Mode" start="46" end="47" type="uint">
+      <value name="TEDMODE_OFF" value="0" />
+      <value name="TEDMODE_RR_STRICT" value="1" />
+      <value name="TEDMODE_RR_FREE" value="2" />
+    </field>
+    <field name="Tessellation Distribution Level" start="49" end="50" type="uint">
+      <value name="TEDLEVEL_PATCH" value="0" />
+      <value name="TEDLEVEL_REGION" value="1" />
+    </field>
+    <field name="Tessellation Scale Factor Enable" start="51" end="51" type="bool" />
+    <field name="Tessellation Factor Format" start="52" end="52" type="uint">
+      <value name="FLOAT32" value="0" />
+      <value name="FLOAT16" value="1" />
+    </field>
+    <field name="Patch Header Layout" start="54" end="55" type="uint">
+      <value name="LEGACY" value="0" />
+      <value name="REVERSED" value="2" />
+      <value name="REVERSED_TRI_INSIDE_SEPARATE" value="3" />
+    </field>
+    <field name="Small Patch Threshold" start="56" end="57" type="uint" prefix="SPT">
+      <value name="8_TRIANGLES" value="0" />
+      <value name="16_TRIANGLES" value="1" />
+      <value name="32_TRIANGLES" value="2" />
+      <value name="64_TRIANGLES" value="3" />
+    </field>
+    <field name="Target Block Size" start="58" end="61" type="uint">
+      <value name="64_TRIANGLES" value="0" />
+      <value name="96_TRIANGLES" value="1" />
+      <value name="128_TRIANGLES" value="2" />
+      <value name="192_TRIANGLES" value="3" />
+      <value name="256_TRIANGLES" value="4" />
+      <value name="384_TRIANGLES" value="5" />
+      <value name="512_TRIANGLES" value="6" />
+      <value name="768_TRIANGLES" value="7" />
+      <value name="1K_TRIANGLES" value="8" />
+      <value name="1.5K_TRIANGLES" value="9" />
+      <value name="2K_TRIANGLES" value="10" />
+      <value name="3K_TRIANGLES" value="11" />
+      <value name="4K_TRIANGLES" value="12" />
+      <value name="6K_TRIANGLES" value="13" />
+      <value name="8K_TRIANGLES" value="14" />
+      <value name="12K_TRIANGLES" value="15" />
+    </field>
+    <field name="Local BOP Accumulator Threshold" start="62" end="63" type="uint">
+      <value name="MULTIPLIER_0" value="0" />
+      <value name="MULTIPLIER_1" value="1" />
+      <value name="MULTIPLIER_2" value="2" />
+      <value name="MULTIPLIER_4" value="3" />
+    </field>
+    <field name="Maximum Tessellation Factor Odd" start="64" end="95" type="float" />
+    <field name="Maximum Tessellation Factor Not Odd" start="96" end="127" type="float" />
+    <field name="Tessellation Scale Factor" start="128" end="159" type="float" />
+  </instruction>
   <instruction name="COMPUTE_WALKER" bias="2" length="40">
     <field name="DWord Length" start="0" end="7" type="uint" default="38" />
     <field name="Predicate Enable" start="8" end="8" type="bool" />
