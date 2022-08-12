@@ -82,6 +82,13 @@ struct tu_submission_data {
    struct tu_cs fence_cs;
 };
 
+static bool
+fence_before(uint32_t a, uint32_t b)
+{
+   /* essentially a < b, but handle wrapped values */
+   return (int32_t)(a - b) < 0;
+}
+
 static uint32_t
 get_autotune_fence(struct tu_autotune *at)
 {
@@ -90,11 +97,12 @@ get_autotune_fence(struct tu_autotune *at)
 }
 
 static struct tu_submission_data *
-create_submission_data(struct tu_device *dev, struct tu_autotune *at)
+create_submission_data(struct tu_device *dev, struct tu_autotune *at,
+                       uint32_t fence)
 {
    struct tu_submission_data *submission_data =
       calloc(1, sizeof(struct tu_submission_data));
-   submission_data->fence = at->fence_counter;
+   submission_data->fence = fence;
 
    struct tu_cs* fence_cs = &submission_data->fence_cs;
    tu_cs_init(fence_cs, dev, TU_CS_MODE_GROW, 5);
@@ -103,7 +111,7 @@ create_submission_data(struct tu_device *dev, struct tu_autotune *at)
    tu_cs_emit_pkt7(fence_cs, CP_EVENT_WRITE, 4);
    tu_cs_emit(fence_cs, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_TS));
    tu_cs_emit_qw(fence_cs, dev->global_bo->iova + gb_offset(autotune_fence));
-   tu_cs_emit(fence_cs, at->fence_counter);
+   tu_cs_emit(fence_cs, fence);
 
    tu_cs_end(fence_cs);
 
@@ -242,7 +250,7 @@ process_results(struct tu_autotune *at, uint32_t current_fence)
 
    list_for_each_entry_safe(struct tu_renderpass_result, result,
                             &at->pending_results, node) {
-      if (result->fence > current_fence)
+      if (fence_before(current_fence, result->fence))
          break;
 
       struct tu_renderpass_history *history = result->history;
@@ -254,7 +262,7 @@ process_results(struct tu_autotune *at, uint32_t current_fence)
 
    list_for_each_entry_safe(struct tu_submission_data, submission_data,
                             &at->pending_submission_data, node) {
-      if (submission_data->fence > current_fence)
+      if (fence_before(current_fence, submission_data->fence))
          break;
 
       free_submission_data(submission_data);
@@ -293,11 +301,9 @@ tu_autotune_on_submit(struct tu_device *dev,
    /* We are single-threaded here */
 
    const uint32_t gpu_fence = get_autotune_fence(at);
+   const uint32_t new_fence = at->fence_counter++;
 
    process_results(at, gpu_fence);
-
-   /* pre-increment so zero isn't valid fence */
-   uint32_t new_fence = ++at->fence_counter;
 
    /* Create history entries here to minimize work and locking being
     * done on renderpass end.
@@ -329,7 +335,7 @@ tu_autotune_on_submit(struct tu_device *dev,
    }
 
    struct tu_submission_data *submission_data =
-      create_submission_data(dev, at);
+      create_submission_data(dev, at, new_fence);
 
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       struct tu_cmd_buffer *cmdbuf = cmd_buffers[i];
@@ -348,9 +354,7 @@ tu_autotune_on_submit(struct tu_device *dev,
     */
    hash_table_foreach(at->ht, entry) {
       struct tu_renderpass_history *history = entry->data;
-      if (history->last_fence == 0 ||
-          gpu_fence < history->last_fence ||
-          (gpu_fence - history->last_fence) <= MAX_HISTORY_LIFETIME)
+      if (fence_before(gpu_fence, history->last_fence + MAX_HISTORY_LIFETIME))
          continue;
 
       if (TU_AUTOTUNE_DEBUG_LOG)
@@ -392,6 +396,9 @@ tu_autotune_init(struct tu_autotune *at, struct tu_device *dev)
 
    list_inithead(&at->pending_results);
    list_inithead(&at->pending_submission_data);
+
+   /* start from 1 because tu6_global::autotune_fence is initialized to 0 */
+   at->fence_counter = 1;
 
    return VK_SUCCESS;
 }
