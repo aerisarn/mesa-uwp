@@ -246,6 +246,35 @@ vn_MergePipelineCaches(VkDevice device,
 
 /* pipeline commands */
 
+static bool
+vn_create_pipeline_handles(struct vn_device *dev,
+                           uint32_t pipeline_count,
+                           VkPipeline *pipeline_handles,
+                           const VkAllocationCallbacks *alloc)
+{
+   for (uint32_t i = 0; i < pipeline_count; i++) {
+      struct vn_pipeline *pipeline =
+         vk_zalloc(alloc, sizeof(*pipeline), VN_DEFAULT_ALIGN,
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+      if (!pipeline) {
+         for (uint32_t j = 0; j < i; j++) {
+            vk_free(alloc, pipeline_handles[j]);
+         }
+
+         memset(pipeline_handles, 0,
+                pipeline_count * sizeof(pipeline_handles[0]));
+         return false;
+      }
+
+      vn_object_base_init(&pipeline->base, VK_OBJECT_TYPE_PIPELINE,
+                          &dev->base);
+      pipeline_handles[i] = vn_pipeline_to_handle(pipeline);
+   }
+
+   return true;
+}
+
 /** Fixes for a single VkGraphicsPipelineCreateInfo. */
 struct vn_graphics_pipeline_create_info_fix {
    bool ignore_tessellation_state;
@@ -611,24 +640,9 @@ vn_CreateGraphicsPipelines(VkDevice device,
    if (!pCreateInfos)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   for (uint32_t i = 0; i < createInfoCount; i++) {
-      struct vn_pipeline *pipeline =
-         vk_zalloc(alloc, sizeof(*pipeline), VN_DEFAULT_ALIGN,
-                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (!pipeline) {
-         for (uint32_t j = 0; j < i; j++)
-            vk_free(alloc, vn_pipeline_from_handle(pPipelines[j]));
-
-         vk_free(alloc, fixes);
-         memset(pPipelines, 0, sizeof(*pPipelines) * createInfoCount);
-         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
-
-      vn_object_base_init(&pipeline->base, VK_OBJECT_TYPE_PIPELINE,
-                          &dev->base);
-
-      VkPipeline pipeline_handle = vn_pipeline_to_handle(pipeline);
-      pPipelines[i] = pipeline_handle;
+   if (!vn_create_pipeline_handles(dev, createInfoCount, pPipelines, alloc)) {
+      vk_free(alloc, fixes);
+      return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    vn_async_vkCreateGraphicsPipelines(dev->instance, device, pipelineCache,
@@ -653,23 +667,8 @@ vn_CreateComputePipelines(VkDevice device,
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
 
-   for (uint32_t i = 0; i < createInfoCount; i++) {
-      struct vn_pipeline *pipeline =
-         vk_zalloc(alloc, sizeof(*pipeline), VN_DEFAULT_ALIGN,
-                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (!pipeline) {
-         for (uint32_t j = 0; j < i; j++)
-            vk_free(alloc, vn_pipeline_from_handle(pPipelines[j]));
-         memset(pPipelines, 0, sizeof(*pPipelines) * createInfoCount);
-         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
-
-      vn_object_base_init(&pipeline->base, VK_OBJECT_TYPE_PIPELINE,
-                          &dev->base);
-
-      VkPipeline pipeline_handle = vn_pipeline_to_handle(pipeline);
-      pPipelines[i] = pipeline_handle;
-   }
+   if (!vn_create_pipeline_handles(dev, createInfoCount, pPipelines, alloc))
+      return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vn_async_vkCreateComputePipelines(dev->instance, device, pipelineCache,
                                      createInfoCount, pCreateInfos, NULL,
