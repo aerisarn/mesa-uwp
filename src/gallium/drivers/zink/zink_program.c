@@ -710,10 +710,7 @@ zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink
             ctx->compute_pipeline_state.dirty = true;
          ctx->compute_pipeline_state.local_size[i] = block[i];
       }
-   } else
-      ctx->compute_pipeline_state.local_size[0] =
-      ctx->compute_pipeline_state.local_size[1] =
-      ctx->compute_pipeline_state.local_size[2] = 0;
+   }
 }
 
 static bool
