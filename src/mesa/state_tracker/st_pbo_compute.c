@@ -40,6 +40,15 @@
 #include "util/u_sampler.h"
 #include "util/streaming-load-memcpy.h"
 
+struct pbo_async_data {
+   struct st_context *st;
+   enum pipe_texture_target target;
+   unsigned num_components;
+   struct util_queue_fence fence;
+   nir_shader *nir;
+   struct pipe_shader_state *cs;
+};
+
 #define BGR_FORMAT(NAME) \
     {{ \
      [0] = PIPE_FORMAT_##NAME##_SNORM, \
@@ -778,6 +787,13 @@ can_copy_direct(const struct gl_pixelstore_attrib *pack)
             pack->SkipImages);
 }
 
+static void
+create_conversion_shader_async(void *data, void *gdata, int thread_index)
+{
+   struct pbo_async_data *async = data;
+   async->nir = create_conversion_shader(async->st, async->target, async->num_components);
+}
+
 static struct pipe_resource *
 download_texture_compute(struct st_context *st,
                          const struct gl_pixelstore_attrib *pack,
@@ -802,47 +818,79 @@ download_texture_compute(struct st_context *st,
 
    unsigned num_components = 0;
    /* Upload constants */
-   {
-      struct pipe_constant_buffer cb;
-      assert(view_target != PIPE_TEXTURE_1D_ARRAY || !zoffset);
-      struct pbo_data pd = {
-         .x = MIN2(xoffset, 65535),
-         .y = view_target == PIPE_TEXTURE_1D_ARRAY ? 0 : MIN2(yoffset, 65535),
-         .width = MIN2(width, 65535),
-         .height = MIN2(height, 65535),
-         .depth = MIN2(depth, 65535),
-         .invert = pack->Invert,
-         .blocksize = util_format_get_blocksize(dst_format) - 1,
-         .alignment = ffs(MAX2(pack->Alignment, 1)) - 1,
-      };
-      num_components = fill_pbo_data(&pd, src_format, dst_format, pack->SwapBytes == 1);
+   struct pipe_constant_buffer cb;
+   assert(view_target != PIPE_TEXTURE_1D_ARRAY || !yoffset);
+   struct pbo_data pd = {
+      .x = MIN2(xoffset, 65535),
+      .y = view_target == PIPE_TEXTURE_1D_ARRAY ? 0 : MIN2(yoffset, 65535),
+      .width = MIN2(width, 65535),
+      .height = MIN2(height, 65535),
+      .depth = MIN2(depth, 65535),
+      .invert = pack->Invert,
+      .blocksize = util_format_get_blocksize(dst_format) - 1,
+      .alignment = ffs(MAX2(pack->Alignment, 1)) - 1,
+   };
+   num_components = fill_pbo_data(&pd, src_format, dst_format, pack->SwapBytes == 1);
 
-      cb.buffer = NULL;
-      cb.user_buffer = &pd;
-      cb.buffer_offset = 0;
-      cb.buffer_size = sizeof(pd);
-
-      pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, &cb);
-   }
+   cb.buffer = NULL;
+   cb.user_buffer = &pd;
+   cb.buffer_offset = 0;
+   cb.buffer_size = sizeof(pd);
 
    uint32_t hash_key = compute_shader_key(view_target, num_components);
    assert(hash_key != 0);
 
    struct hash_entry *he = _mesa_hash_table_search(st->pbo.shaders, (void*)(uintptr_t)hash_key);
-   void *cs;
-   if (!he) {
-      nir_shader *nir = create_conversion_shader(st, view_target, num_components);
-      struct pipe_shader_state state = {
-         .type = PIPE_SHADER_IR_NIR,
-         .ir.nir = nir,
-      };
+   void *cs = NULL;
+   if (he) {
+      if (screen->driver_thread_add_job) {
+         struct pbo_async_data *async = he->data;
+         if (!util_queue_fence_is_signalled(&async->fence))
+            return NULL;
+         /* nir is definitely done */
+         if (!async->cs) {
+            /* cs job not yet started */
+            assert(async->nir && !async->cs);
+            struct pipe_compute_state state = {0};
+            state.ir_type = PIPE_SHADER_IR_NIR;
+            state.req_local_mem = async->nir->info.shared_size;
+            state.prog = async->nir;
+            async->nir = NULL;
+            async->cs = pipe->create_compute_state(pipe, &state);
+         }
+         /* cs *may* be done */
+         if (screen->is_parallel_shader_compilation_finished &&
+             !screen->is_parallel_shader_compilation_finished(screen, async->cs, MESA_SHADER_COMPUTE))
+            return NULL;
+         cs = async->cs;
+      }
+   } else {
+      if (screen->driver_thread_add_job) {
+         struct pbo_async_data *async = malloc(sizeof(struct pbo_async_data));
+         async->st = st;
+         async->target = view_target;
+         async->num_components = num_components;
+         async->nir = NULL;
+         async->cs = NULL;
+         util_queue_fence_init(&async->fence);
+         screen->driver_thread_add_job(screen, async, &async->fence, create_conversion_shader_async, NULL, 0);
+         _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, async);
+         return NULL;
+      } else {
+         nir_shader *nir = create_conversion_shader(st, view_target, num_components);
+         struct pipe_shader_state state = {
+            .type = PIPE_SHADER_IR_NIR,
+            .ir.nir = nir,
+         };
 
-      cs = st_create_nir_shader(st, &state);
+         cs = st_create_nir_shader(st, &state);
+      }
       he = _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, cs);
    }
-   cs = he->data;
    assert(cs);
    struct cso_context *cso = st->cso_context;
+
+   pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, &cb);
 
    cso_save_compute_state(cso, CSO_BIT_COMPUTE_SHADER | CSO_BIT_COMPUTE_SAMPLERS);
    cso_set_compute_shader_handle(cso, cs);
@@ -1170,9 +1218,19 @@ st_GetTexSubImage_shader(struct gl_context * ctx,
 void
 st_pbo_compute_deinit(struct st_context *st)
 {
+   struct pipe_screen *screen = st->screen;
    if (!st->pbo.shaders)
       return;
-   hash_table_foreach(st->pbo.shaders, entry)
-      st->pipe->delete_compute_state(st->pipe, entry->data);
+   hash_table_foreach(st->pbo.shaders, entry) {
+      if (screen->driver_thread_add_job) {
+         struct pbo_async_data *async = entry->data;
+         util_queue_fence_wait(&async->fence);
+         st->pipe->delete_compute_state(st->pipe, async->cs);
+         util_queue_fence_destroy(&async->fence);
+         free(async);
+      } else {
+         st->pipe->delete_compute_state(st->pipe, entry->data);
+      }
+   }
    _mesa_hash_table_destroy(st->pbo.shaders, NULL);
 }
