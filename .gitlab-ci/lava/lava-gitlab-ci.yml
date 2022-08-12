@@ -27,6 +27,8 @@
       - results/
     exclude:
       - results/*.shader_cache
+    reports:
+      junit: results/junit.xml
   tags:
     - $RUNNER_TAG
   after_script:
