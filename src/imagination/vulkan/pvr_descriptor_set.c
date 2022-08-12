@@ -1075,7 +1075,18 @@ VkResult pvr_ResetDescriptorPool(VkDevice _device,
                                  VkDescriptorPool descriptorPool,
                                  VkDescriptorPoolResetFlags flags)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_descriptor_pool, pool, descriptorPool);
+   PVR_FROM_HANDLE(pvr_device, device, _device);
+
+   list_for_each_entry_safe (struct pvr_descriptor_set,
+                             set,
+                             &pool->descriptor_sets,
+                             link) {
+      pvr_free_descriptor_set(device, pool, set);
+   }
+
+   pool->current_size_in_dwords = 0;
+
    return VK_SUCCESS;
 }
 
