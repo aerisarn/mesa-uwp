@@ -269,9 +269,6 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst)
 static void
 lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
 {
-   /* FINISHME: This is not yet implemented. */
-   assert(inst->src[URB_LOGICAL_SRC_CHANNEL_MASK].file == BAD_FILE);
-
    const intel_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->has_lsc);
 
@@ -298,6 +295,9 @@ lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
    }
 
    if (inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE) {
+      /* FINISHME: This is not yet implemented. */
+      assert(inst->src[URB_LOGICAL_SRC_CHANNEL_MASK].file == BAD_FILE);
+
       fs_reg offsets = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
       fs_reg payload1 = bld.vgrf(BRW_REGISTER_TYPE_UD);
       fs_reg payload2 = bld.vgrf(BRW_REGISTER_TYPE_UD);
@@ -370,19 +370,28 @@ lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
       inst->src[2] = payload1;
       inst->src[3] = payload2;
    } else {
+      const fs_reg cmask = inst->src[URB_LOGICAL_SRC_CHANNEL_MASK];
+      unsigned mask = 0;
+
+      if (cmask.file != BAD_FILE) {
+         assert(cmask.file == IMM);
+         assert(cmask.type == BRW_REGISTER_TYPE_UD);
+         mask = cmask.ud >> 16;
+      }
+
       fs_reg payload2 = bld.move_to_vgrf(src, src_comps);
       const unsigned ex_mlen = (src_comps * src_sz * inst->exec_size) / REG_SIZE;
 
       inst->sfid = BRW_SFID_URB;
 
-      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, inst->exec_size,
+      enum lsc_opcode op = mask ? LSC_OP_STORE_CMASK : LSC_OP_STORE;
+      inst->desc = lsc_msg_desc_wcmask(devinfo, op, inst->exec_size,
                                 LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
                                 1 /* num_coordinates */,
                                 LSC_DATA_SIZE_D32, src_comps /* num_channels */,
                                 false /* transpose */,
                                 LSC_CACHE_STORE_L1UC_L3UC,
-                                false /* has_dest */);
-
+                                false /* has_dest */, mask);
 
       /* Update the original instruction. */
       inst->opcode = SHADER_OPCODE_SEND;
