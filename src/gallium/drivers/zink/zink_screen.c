@@ -267,7 +267,6 @@ cache_get_job(void *data, void *gdata, int thread_index)
 void
 zink_screen_get_pipeline_cache(struct zink_screen *screen, struct zink_program *pg)
 {
-   util_queue_fence_init(&pg->cache_fence);
    if (!screen->disk_cache)
       return;
 
