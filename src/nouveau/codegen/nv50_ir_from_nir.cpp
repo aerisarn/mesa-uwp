@@ -2672,10 +2672,11 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_u2u64: {
       DEFAULT_CHECKS;
       LValues &newDefs = convert(&insn->dest);
+      DataType stype = sTypes[0];
       Instruction *i = mkOp1(getOperation(op), dType, newDefs[0], getSrc(&insn->src[0]));
-      if (op == nir_op_f2i32 || op == nir_op_f2i64 || op == nir_op_f2u32 || op == nir_op_f2u64)
+      if (::isFloatType(stype) && isIntType(dType))
          i->rnd = ROUND_Z;
-      i->sType = sTypes[0];
+      i->sType = stype;
       break;
    }
    // compare instructions
