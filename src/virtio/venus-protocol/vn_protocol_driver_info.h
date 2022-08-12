@@ -19,8 +19,8 @@ struct vn_info_extension {
 };
 
 /* sorted by extension names for bsearch */
-static const uint32_t _vn_info_extension_count = 91;
-static const struct vn_info_extension _vn_info_extensions[91] = {
+static const uint32_t _vn_info_extension_count = 92;
+static const struct vn_info_extension _vn_info_extensions[92] = {
    { "VK_EXT_4444_formats", 341, 1 },
    { "VK_EXT_calibrated_timestamps", 185, 2 },
    { "VK_EXT_command_serialization", 384, 0 },
@@ -80,6 +80,7 @@ static const struct vn_info_extension _vn_info_extensions[91] = {
    { "VK_KHR_external_memory_fd", 75, 1 },
    { "VK_KHR_external_semaphore", 78, 1 },
    { "VK_KHR_external_semaphore_capabilities", 77, 1 },
+   { "VK_KHR_external_semaphore_fd", 80, 1 },
    { "VK_KHR_format_feature_flags2", 361, 1 },
    { "VK_KHR_get_memory_requirements2", 147, 1 },
    { "VK_KHR_get_physical_device_properties2", 60, 2 },
