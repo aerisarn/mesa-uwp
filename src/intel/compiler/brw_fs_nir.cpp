@@ -2674,7 +2674,7 @@ fs_visitor::get_indirect_offset(nir_intrinsic_instr *instr)
    if (nir_src_is_const(*offset_src)) {
       /* The only constant offset we should find is 0.  brw_nir.c's
        * add_const_offset_to_base() will fold other constant offsets
-       * into instr->const_index[0].
+       * into the "base" index.
        */
       assert(nir_src_as_uint(*offset_src) == 0);
       return fs_reg();
@@ -2912,7 +2912,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_load_per_vertex_input: {
       assert(nir_dest_bit_size(instr->dest) == 32);
       fs_reg indirect_offset = get_indirect_offset(instr);
-      unsigned imm_offset = instr->const_index[0];
+      unsigned imm_offset = nir_intrinsic_base(instr);
       fs_inst *inst;
 
       fs_reg icp_handle =
@@ -2986,7 +2986,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_load_per_vertex_output: {
       assert(nir_dest_bit_size(instr->dest) == 32);
       fs_reg indirect_offset = get_indirect_offset(instr);
-      unsigned imm_offset = instr->const_index[0];
+      unsigned imm_offset = nir_intrinsic_base(instr);
       unsigned first_component = nir_intrinsic_component(instr);
 
       struct brw_reg output_handles = get_tcs_output_urb_handle();
@@ -3055,8 +3055,8 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       assert(nir_src_bit_size(instr->src[0]) == 32);
       fs_reg value = get_nir_src(instr->src[0]);
       fs_reg indirect_offset = get_indirect_offset(instr);
-      unsigned imm_offset = instr->const_index[0];
-      unsigned mask = instr->const_index[1];
+      unsigned imm_offset = nir_intrinsic_base(instr);
+      unsigned mask = nir_intrinsic_write_mask(instr);
 
       if (mask == 0)
          break;
@@ -3133,7 +3133,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
    case nir_intrinsic_load_per_vertex_input: {
       assert(nir_dest_bit_size(instr->dest) == 32);
       fs_reg indirect_offset = get_indirect_offset(instr);
-      unsigned imm_offset = instr->const_index[0];
+      unsigned imm_offset = nir_intrinsic_base(instr);
       unsigned first_component = nir_intrinsic_component(instr);
 
       fs_inst *inst;
@@ -3241,13 +3241,13 @@ fs_visitor::nir_emit_gs_intrinsic(const fs_builder &bld,
       unreachable("load_input intrinsics are invalid for the GS stage");
 
    case nir_intrinsic_load_per_vertex_input:
-      emit_gs_input_load(dest, instr->src[0], instr->const_index[0],
+      emit_gs_input_load(dest, instr->src[0], nir_intrinsic_base(instr),
                          instr->src[1], instr->num_components,
                          nir_intrinsic_component(instr));
       break;
 
    case nir_intrinsic_emit_vertex_with_counter:
-      emit_gs_vertex(instr->src[0], instr->const_index[0]);
+      emit_gs_vertex(instr->src[0], nir_intrinsic_stream_id(instr));
       break;
 
    case nir_intrinsic_end_primitive_with_counter:
@@ -4692,18 +4692,19 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       /* Offsets are in bytes but they should always aligned to
        * the type size
        */
-      assert(instr->const_index[0] % 4 == 0 ||
-             instr->const_index[0] % type_sz(dest.type) == 0);
+      unsigned base_offset = nir_intrinsic_base(instr);
+      assert(base_offset % 4 == 0 || base_offset % type_sz(dest.type) == 0);
 
-      fs_reg src(UNIFORM, instr->const_index[0] / 4, dest.type);
+      fs_reg src(UNIFORM, base_offset / 4, dest.type);
 
       if (nir_src_is_const(instr->src[0])) {
          unsigned load_offset = nir_src_as_uint(instr->src[0]);
          assert(load_offset % type_sz(dest.type) == 0);
-         /* For 16-bit types we add the module of the const_index[0]
-          * offset to access to not 32-bit aligned element
+         /* The base offset can only handle 32-bit units, so for 16-bit
+          * data take the modulo of the offset with 4 bytes and add it to
+          * the offset to read from within the source register.
           */
-         src.offset = load_offset + instr->const_index[0] % 4;
+         src.offset = load_offset + base_offset % 4;
 
          for (unsigned j = 0; j < instr->num_components; j++) {
             bld.MOV(offset(dest, bld, j), offset(src, bld, j));
@@ -4717,9 +4718,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
           * component from running past, we subtract off the size of all but
           * one component of the vector.
           */
-         assert(instr->const_index[1] >=
-                instr->num_components * (int) type_sz(dest.type));
-         unsigned read_size = instr->const_index[1] -
+         assert(nir_intrinsic_range(instr) >=
+                instr->num_components * type_sz(dest.type));
+         unsigned read_size = nir_intrinsic_range(instr) -
             (instr->num_components - 1) * type_sz(dest.type);
 
          bool supports_64bit_indirects =
@@ -6089,12 +6090,13 @@ fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
    /* Get the offset */
    if (nir_src_is_const(instr->src[0])) {
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-         brw_imm_ud(instr->const_index[0] + nir_src_as_uint(instr->src[0]));
+         brw_imm_ud(nir_intrinsic_base(instr) +
+                    nir_src_as_uint(instr->src[0]));
    } else {
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = vgrf(glsl_type::uint_type);
       bld.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
 	      retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_UD),
-	      brw_imm_ud(instr->const_index[0]));
+	      brw_imm_ud(nir_intrinsic_base(instr)));
    }
 
    /* Emit the actual atomic operation operation */
@@ -6129,12 +6131,13 @@ fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
    /* Get the offset */
    if (nir_src_is_const(instr->src[0])) {
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-         brw_imm_ud(instr->const_index[0] + nir_src_as_uint(instr->src[0]));
+         brw_imm_ud(nir_intrinsic_base(instr) +
+                    nir_src_as_uint(instr->src[0]));
    } else {
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = vgrf(glsl_type::uint_type);
       bld.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
 	      retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_UD),
-	      brw_imm_ud(instr->const_index[0]));
+	      brw_imm_ud(nir_intrinsic_base(instr)));
    }
 
    /* Emit the actual atomic operation operation */
