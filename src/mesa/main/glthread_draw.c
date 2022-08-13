@@ -292,7 +292,9 @@ _mesa_unmarshal_DrawArrays(struct gl_context *ctx,
    CALL_DrawArraysInstancedBaseInstance(ctx->CurrentServerDispatch,
                                         (mode, first, count, instance_count,
                                          baseinstance));
-   return cmd->cmd_base.cmd_size;
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
 }
 
 static ALWAYS_INLINE void
@@ -609,7 +611,9 @@ _mesa_unmarshal_DrawElementsInstancedARB(struct gl_context *ctx,
                                                     (mode, count, type, indices,
                                                      instance_count, basevertex,
                                                      baseinstance));
-   return cmd->cmd_base.cmd_size;
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
 }
 
 struct marshal_cmd_DrawRangeElementsBaseVertex
@@ -640,7 +644,9 @@ _mesa_unmarshal_DrawRangeElementsBaseVertex(struct gl_context *ctx,
    CALL_DrawRangeElementsBaseVertex(ctx->CurrentServerDispatch,
                                     (mode, min_index, max_index, count,
                                      type, indices, basevertex));
-   return cmd->cmd_base.cmd_size;
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
 }
 
 static ALWAYS_INLINE void

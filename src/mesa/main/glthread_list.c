@@ -31,7 +31,10 @@ _mesa_unmarshal_CallList(struct gl_context *ctx, const struct marshal_cmd_CallLi
 {
    const GLuint list = cmd->list;
    uint64_t *ptr = (uint64_t *) cmd;
-   ptr += cmd->cmd_base.cmd_size;
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   ptr += cmd_size;
 
    if (ptr < last) {
       const struct marshal_cmd_base *next =
@@ -50,13 +53,16 @@ _mesa_unmarshal_CallList(struct gl_context *ctx, const struct marshal_cmd_CallLi
 
          int count = 2;
 
-         ptr += next->cmd_size;
+         assert(cmd_size == next_callist->cmd_base.cmd_size);
+         ptr += cmd_size;
+
          while (ptr < last && count < max_list_count) {
             next = (const struct marshal_cmd_base *)ptr;
             if (next->cmd_id == DISPATCH_CMD_CallList) {
                next_callist = (struct marshal_cmd_CallList *) next;
                lists[count++] = next_callist->list;
-               ptr += next->cmd_size;
+               assert(cmd_size == next_callist->cmd_base.cmd_size);
+               ptr += cmd_size;
             } else {
                break;
             }
@@ -69,7 +75,7 @@ _mesa_unmarshal_CallList(struct gl_context *ctx, const struct marshal_cmd_CallLi
    }
 
    CALL_CallList(ctx->CurrentServerDispatch, (list));
-   return cmd->cmd_base.cmd_size;
+   return cmd_size;
 }
 
 void GLAPIENTRY
