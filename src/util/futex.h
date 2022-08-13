@@ -123,6 +123,7 @@ static inline int futex_wait(uint32_t *addr, int32_t value, const struct timespe
 #include <windows.h>
 #include <stdint.h>
 #include <c11/time.h>
+#include <limits.h>
 #include <assert.h>
 #include <errno.h>
 
