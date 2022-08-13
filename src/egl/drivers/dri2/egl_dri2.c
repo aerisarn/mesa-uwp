@@ -1543,8 +1543,7 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
          break;
       default:
          _eglError(EGL_BAD_PARAMETER, "eglCreateContext");
-         free(dri2_ctx);
-         return NULL;
+         goto cleanup;
       }
       break;
    case EGL_OPENGL_API:
@@ -1561,8 +1560,7 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
       break;
    default:
       _eglError(EGL_BAD_PARAMETER, "eglCreateContext");
-      free(dri2_ctx);
-      return NULL;
+      goto cleanup;
    }
 
    if (conf != NULL) {
@@ -2792,11 +2790,11 @@ dri2_query_dma_buf_formats(_EGLDisplay *disp, EGLint max,
 
    if (dri2_dpy->image->base.version < 15 ||
        dri2_dpy->image->queryDmaBufFormats == NULL)
-      return EGL_FALSE;
+      goto fail;
 
    if (!dri2_dpy->image->queryDmaBufFormats(dri2_dpy->dri_screen, max,
                                             formats, count))
-      return EGL_FALSE;
+      goto fail;
 
    if (max > 0) {
       /* Assert that all of the formats returned are actually fourcc formats.
@@ -2811,6 +2809,9 @@ dri2_query_dma_buf_formats(_EGLDisplay *disp, EGLint max,
    }
 
    return EGL_TRUE;
+
+fail:
+   return EGL_FALSE;
 }
 
 static EGLBoolean
@@ -2974,15 +2975,15 @@ dri2_create_drm_image_mesa(_EGLDisplay *disp, const EGLint *attr_list)
 
    if (!attr_list) {
       _eglError(EGL_BAD_PARAMETER, __func__);
-      return EGL_NO_IMAGE_KHR;
+      goto fail;
    }
 
    if (!_eglParseImageAttribList(&attrs, disp, attr_list))
-      return EGL_NO_IMAGE_KHR;
+      goto fail;
 
    if (attrs.Width <= 0 || attrs.Height <= 0) {
       _eglError(EGL_BAD_PARAMETER, __func__);
-      return EGL_NO_IMAGE_KHR;
+      goto fail;
    }
 
    switch (attrs.DRMBufferFormatMESA) {
@@ -2991,7 +2992,7 @@ dri2_create_drm_image_mesa(_EGLDisplay *disp, const EGLint *attr_list)
       break;
    default:
       _eglError(EGL_BAD_PARAMETER, __func__);
-      return EGL_NO_IMAGE_KHR;
+      goto fail;
    }
 
    valid_mask =
@@ -3000,7 +3001,7 @@ dri2_create_drm_image_mesa(_EGLDisplay *disp, const EGLint *attr_list)
       EGL_DRM_BUFFER_USE_CURSOR_MESA;
    if (attrs.DRMBufferUseMESA & ~valid_mask) {
       _eglError(EGL_BAD_PARAMETER, __func__);
-      return EGL_NO_IMAGE_KHR;
+      goto fail;
    }
 
    dri_use = 0;
@@ -3014,7 +3015,7 @@ dri2_create_drm_image_mesa(_EGLDisplay *disp, const EGLint *attr_list)
    dri2_img = malloc(sizeof *dri2_img);
    if (!dri2_img) {
       _eglError(EGL_BAD_ALLOC, "dri2_create_image_khr");
-      return EGL_NO_IMAGE_KHR;
+      goto fail;
    }
 
    _eglInitImage(&dri2_img->base, disp);
@@ -3025,11 +3026,14 @@ dri2_create_drm_image_mesa(_EGLDisplay *disp, const EGLint *attr_list)
                                    format, dri_use, dri2_img);
    if (dri2_img->dri_image == NULL) {
       free(dri2_img);
-       _eglError(EGL_BAD_ALLOC, "dri2_create_drm_image_mesa");
-      return EGL_NO_IMAGE_KHR;
+      _eglError(EGL_BAD_ALLOC, "dri2_create_drm_image_mesa");
+      goto fail;
    }
 
    return &dri2_img->base;
+
+fail:
+   return EGL_NO_IMAGE_KHR;
 }
 
 static EGLBoolean
@@ -3278,13 +3282,13 @@ dri2_bind_wayland_display_wl(_EGLDisplay *disp, struct wl_display *wl_dpy)
    uint64_t cap;
 
    if (dri2_dpy->wl_server_drm)
-           return EGL_FALSE;
+      goto fail;
 
    device_name = drmGetRenderDeviceNameFromFd(dri2_dpy->fd);
    if (!device_name)
       device_name = strdup(dri2_dpy->device_name);
    if (!device_name)
-      return EGL_FALSE;
+      goto fail;
 
    if (drmGetCap(dri2_dpy->fd, DRM_CAP_PRIME, &cap) == 0 &&
        cap == (DRM_PRIME_CAP_IMPORT | DRM_PRIME_CAP_EXPORT) &&
@@ -3299,7 +3303,7 @@ dri2_bind_wayland_display_wl(_EGLDisplay *disp, struct wl_display *wl_dpy)
    free(device_name);
 
    if (!dri2_dpy->wl_server_drm)
-           return EGL_FALSE;
+      goto fail;
 
 #ifdef HAVE_DRM_PLATFORM
    /* We have to share the wl_drm instance with gbm, so gbm can convert
@@ -3309,6 +3313,9 @@ dri2_bind_wayland_display_wl(_EGLDisplay *disp, struct wl_display *wl_dpy)
 #endif
 
    return EGL_TRUE;
+
+fail:
+   return EGL_FALSE;
 }
 
 static EGLBoolean
@@ -3397,12 +3404,11 @@ dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
    dri2_sync = calloc(1, sizeof(struct dri2_egl_sync));
    if (!dri2_sync) {
       _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
-      return NULL;
+      goto fail;
    }
 
    if (!_eglInitSync(&dri2_sync->base, disp, type, attrib_list)) {
-      free(dri2_sync);
-      return NULL;
+      goto fail;
    }
 
    switch (type) {
@@ -3413,8 +3419,7 @@ dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
           * a generic EGL error that doesn't communicate user error.
           */
          _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
-         free(dri2_sync);
-         return NULL;
+         goto fail;
       }
       break;
 
@@ -3425,8 +3430,7 @@ dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
       /* this can only happen if the cl_event passed in is invalid. */
       if (!dri2_sync->fence) {
          _eglError(EGL_BAD_ATTRIBUTE, "eglCreateSyncKHR");
-         free(dri2_sync);
-         return NULL;
+         goto fail;
       }
 
       /* the initial status must be "signaled" if the cl_event is signaled */
@@ -3441,8 +3445,7 @@ dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
 
       if (ret) {
          _eglError(EGL_BAD_ACCESS, "eglCreateSyncKHR");
-         free(dri2_sync);
-         return NULL;
+         goto fail;
       }
 
       /* change clock attribute to CLOCK_MONOTONIC */
@@ -3450,16 +3453,14 @@ dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
 
       if (ret) {
          _eglError(EGL_BAD_ACCESS, "eglCreateSyncKHR");
-         free(dri2_sync);
-         return NULL;
+         goto fail;
       }
 
       ret = pthread_cond_init(&dri2_sync->cond, &attr);
 
       if (ret) {
          _eglError(EGL_BAD_ACCESS, "eglCreateSyncKHR");
-         free(dri2_sync);
-         return NULL;
+         goto fail;
       }
 
       /* initial status of reusable sync must be "unsignaled" */
@@ -3474,14 +3475,17 @@ dri2_create_sync(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
       }
       if (!dri2_sync->fence) {
          _eglError(EGL_BAD_ATTRIBUTE, "eglCreateSyncKHR");
-         free(dri2_sync);
-         return NULL;
+         goto fail;
       }
       break;
    }
 
    p_atomic_set(&dri2_sync->refcount, 1);
    return &dri2_sync->base;
+
+fail:
+   free(dri2_sync);
+   return NULL;
 }
 
 static EGLBoolean
