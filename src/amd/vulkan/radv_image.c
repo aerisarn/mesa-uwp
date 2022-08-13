@@ -2164,7 +2164,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
        * the plain converted dimensions the physical layout is correct.
        */
       if (device->physical_device->rad_info.gfx_level >= GFX9 &&
-          vk_format_is_compressed(image->vk.format) && !vk_format_is_compressed(iview->vk.format)) {
+          vk_format_is_block_compressed(image->vk.format) &&
+          !vk_format_is_block_compressed(iview->vk.format)) {
          /* If we have multiple levels in the view we should ideally take the last level,
           * but the mip calculation has a max(..., 1) so walking back to the base mip in an
           * useful way is hard. */
