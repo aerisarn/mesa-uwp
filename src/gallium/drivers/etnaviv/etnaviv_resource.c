@@ -74,10 +74,9 @@ static uint64_t layout_to_modifier(enum etna_surface_layout layout)
    }
 }
 
-/* A tile is 4x4 pixels, having 'screen->specs.bits_per_tile' of tile status.
- * So, in a buffer of N pixels, there are N / (4 * 4) tiles.
- * We need N * screen->specs.bits_per_tile / (4 * 4) bits of tile status, or
- * N * screen->specs.bits_per_tile / (4 * 4 * 8) bytes.
+/* A tile is either 64 bytes or, when the GPU has the CACHE128B256BPERLINE
+ * feature, 128/256 bytes of color/depth data, tracked by
+ * 'screen->specs.bits_per_tile' bits of tile status.
  */
 bool
 etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
