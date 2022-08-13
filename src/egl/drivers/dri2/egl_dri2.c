@@ -3637,10 +3637,11 @@ dri2_client_wait_sync(_EGLDisplay *disp, _EGLSync *sync,
          }
       }
       break;
-  }
-  dri2_egl_unref_sync(dri2_dpy, dri2_sync);
+   }
 
-  return ret;
+   dri2_egl_unref_sync(dri2_dpy, dri2_sync);
+
+   return ret;
 }
 
 static EGLBoolean
