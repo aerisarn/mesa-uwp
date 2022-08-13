@@ -553,12 +553,6 @@ etna_try_blt_blit(struct pipe_context *pctx,
    return true;
 }
 
-static bool
-etna_blit_blt(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
-{
-   return etna_try_blt_blit(pctx, blit_info);
-}
-
 void
 etna_clear_blit_blt_init(struct pipe_context *pctx)
 {
@@ -566,5 +560,5 @@ etna_clear_blit_blt_init(struct pipe_context *pctx)
 
    DBG("etnaviv: Using BLT blit engine");
    pctx->clear = etna_clear_blt;
-   ctx->blit = etna_blit_blt;
+   ctx->blit = etna_try_blt_blit;
 }
