@@ -857,7 +857,21 @@ vn_physical_device_init_external_fence_handles(
     * either of them depending on the occasions, and support external fences
     * and idle waiting.
     */
-   physical_dev->renderer_sync_fd_fence_features = 0;
+   if (physical_dev->renderer_extensions.KHR_external_fence_fd) {
+      const VkPhysicalDeviceExternalFenceInfo info = {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO,
+         .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+      };
+      VkExternalFenceProperties props = {
+         .sType = VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES,
+      };
+      vn_call_vkGetPhysicalDeviceExternalFenceProperties(
+         physical_dev->instance, vn_physical_device_to_handle(physical_dev),
+         &info, &props);
+
+      physical_dev->renderer_sync_fd_fence_features =
+         props.externalFenceFeatures;
+   }
 
    physical_dev->external_fence_handles = 0;
 
@@ -891,7 +905,21 @@ vn_physical_device_init_external_semaphore_handles(
     * host-side VkSemaphore.  That would allow the consumers to wait on the
     * host side rather than the guest side.
     */
-   physical_dev->renderer_sync_fd_semaphore_features = 0;
+   if (physical_dev->renderer_extensions.KHR_external_semaphore_fd) {
+      const VkPhysicalDeviceExternalSemaphoreInfo info = {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO,
+         .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+      };
+      VkExternalSemaphoreProperties props = {
+         .sType = VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES,
+      };
+      vn_call_vkGetPhysicalDeviceExternalSemaphoreProperties(
+         physical_dev->instance, vn_physical_device_to_handle(physical_dev),
+         &info, &props);
+
+      physical_dev->renderer_sync_fd_semaphore_features =
+         props.externalSemaphoreFeatures;
+   }
 
    physical_dev->external_binary_semaphore_handles = 0;
    physical_dev->external_timeline_semaphore_handles = 0;
