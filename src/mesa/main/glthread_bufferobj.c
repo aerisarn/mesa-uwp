@@ -232,7 +232,7 @@ struct marshal_cmd_BindBuffer
 
 uint32_t
 _mesa_unmarshal_BindBuffer(struct gl_context *ctx,
-                           const struct marshal_cmd_BindBuffer *cmd)
+                           const struct marshal_cmd_BindBuffer *restrict cmd)
 {
    CALL_BindBuffer(ctx->Dispatch.Current, (cmd->target[0], cmd->buffer[0]));
 
@@ -330,7 +330,7 @@ struct marshal_cmd_BufferData
 
 uint32_t
 _mesa_unmarshal_BufferData(struct gl_context *ctx,
-                           const struct marshal_cmd_BufferData *cmd)
+                           const struct marshal_cmd_BufferData *restrict cmd)
 {
    const GLuint target_or_name = cmd->target_or_name;
    const GLsizei size = cmd->size;
@@ -359,7 +359,7 @@ _mesa_unmarshal_BufferData(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
-                                const struct marshal_cmd_NamedBufferData *cmd)
+                                const struct marshal_cmd_NamedBufferData *restrict cmd)
 {
    unreachable("never used - all BufferData variants use DISPATCH_CMD_BufferData");
    return 0;
@@ -367,7 +367,7 @@ _mesa_unmarshal_NamedBufferData(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_NamedBufferDataEXT(struct gl_context *ctx,
-                                   const struct marshal_cmd_NamedBufferDataEXT *cmd)
+                                   const struct marshal_cmd_NamedBufferDataEXT *restrict cmd)
 {
    unreachable("never used - all BufferData variants use DISPATCH_CMD_BufferData");
    return 0;
@@ -454,7 +454,7 @@ struct marshal_cmd_BufferSubData
 
 uint32_t
 _mesa_unmarshal_BufferSubData(struct gl_context *ctx,
-                              const struct marshal_cmd_BufferSubData *cmd)
+                              const struct marshal_cmd_BufferSubData *restrict cmd)
 {
    const GLenum target_or_name = cmd->target_or_name;
    const GLintptr offset = cmd->offset;
@@ -476,7 +476,7 @@ _mesa_unmarshal_BufferSubData(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_NamedBufferSubData(struct gl_context *ctx,
-                                   const struct marshal_cmd_NamedBufferSubData *cmd)
+                                   const struct marshal_cmd_NamedBufferSubData *restrict cmd)
 {
    unreachable("never used - all BufferSubData variants use DISPATCH_CMD_BufferSubData");
    return 0;
@@ -484,7 +484,7 @@ _mesa_unmarshal_NamedBufferSubData(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_NamedBufferSubDataEXT(struct gl_context *ctx,
-                                      const struct marshal_cmd_NamedBufferSubDataEXT *cmd)
+                                      const struct marshal_cmd_NamedBufferSubDataEXT *restrict cmd)
 {
    unreachable("never used - all BufferSubData variants use DISPATCH_CMD_BufferSubData");
    return 0;

@@ -292,7 +292,7 @@ struct marshal_cmd_DrawArrays
 
 uint32_t
 _mesa_unmarshal_DrawArrays(struct gl_context *ctx,
-                           const struct marshal_cmd_DrawArrays *cmd)
+                           const struct marshal_cmd_DrawArrays *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLint first = cmd->first;
@@ -317,7 +317,7 @@ struct marshal_cmd_DrawArraysInstancedBaseInstance
 
 uint32_t
 _mesa_unmarshal_DrawArraysInstancedBaseInstance(struct gl_context *ctx,
-                                                const struct marshal_cmd_DrawArraysInstancedBaseInstance *cmd)
+                                                const struct marshal_cmd_DrawArraysInstancedBaseInstance *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLint first = cmd->first;
@@ -380,7 +380,7 @@ struct marshal_cmd_DrawArraysUserBuf
 
 uint32_t
 _mesa_unmarshal_DrawArraysUserBuf(struct gl_context *ctx,
-                                  const struct marshal_cmd_DrawArraysUserBuf *cmd)
+                                  const struct marshal_cmd_DrawArraysUserBuf *restrict cmd)
 {
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
    const struct glthread_attrib_binding *buffers =
@@ -518,7 +518,7 @@ struct marshal_cmd_MultiDrawArraysUserBuf
 
 uint32_t
 _mesa_unmarshal_MultiDrawArraysUserBuf(struct gl_context *ctx,
-                                       const struct marshal_cmd_MultiDrawArraysUserBuf *cmd)
+                                       const struct marshal_cmd_MultiDrawArraysUserBuf *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLsizei draw_count = cmd->draw_count;
@@ -643,7 +643,7 @@ struct marshal_cmd_DrawElementsInstanced
 
 uint32_t
 _mesa_unmarshal_DrawElementsInstanced(struct gl_context *ctx,
-                                      const struct marshal_cmd_DrawElementsInstanced *cmd)
+                                      const struct marshal_cmd_DrawElementsInstanced *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLsizei count = cmd->count;
@@ -671,7 +671,7 @@ struct marshal_cmd_DrawElementsBaseVertex
 
 uint32_t
 _mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx,
-                                       const struct marshal_cmd_DrawElementsBaseVertex *cmd)
+                                       const struct marshal_cmd_DrawElementsBaseVertex *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLsizei count = cmd->count;
@@ -701,7 +701,7 @@ struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance
 
 uint32_t
 _mesa_unmarshal_DrawElementsInstancedBaseVertexBaseInstance(struct gl_context *ctx,
-                                                            const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *cmd)
+                                                            const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLsizei count = cmd->count;
@@ -735,7 +735,7 @@ struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstanceDrawID
 
 uint32_t
 _mesa_unmarshal_DrawElementsInstancedBaseVertexBaseInstanceDrawID(struct gl_context *ctx,
-                                                                  const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstanceDrawID *cmd)
+                                                                  const struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstanceDrawID *restrict cmd)
 {
    const GLenum mode = cmd->mode;
    const GLsizei count = cmd->count;
@@ -774,7 +774,7 @@ struct marshal_cmd_DrawElementsUserBuf
 
 uint32_t
 _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
-                                    const struct marshal_cmd_DrawElementsUserBuf *cmd)
+                                    const struct marshal_cmd_DrawElementsUserBuf *restrict cmd)
 {
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
    const struct glthread_attrib_binding *buffers =
@@ -1010,7 +1010,7 @@ struct marshal_cmd_MultiDrawElementsUserBuf
 
 uint32_t
 _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
-                                         const struct marshal_cmd_MultiDrawElementsUserBuf *cmd)
+                                         const struct marshal_cmd_MultiDrawElementsUserBuf *restrict cmd)
 {
    const GLsizei draw_count = cmd->draw_count;
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
@@ -1815,7 +1815,7 @@ _mesa_marshal_MultiDrawElements(GLenum mode, const GLsizei *count,
 
 uint32_t
 _mesa_unmarshal_DrawArraysInstanced(struct gl_context *ctx,
-                                    const struct marshal_cmd_DrawArraysInstanced *cmd)
+                                    const struct marshal_cmd_DrawArraysInstanced *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1823,7 +1823,7 @@ _mesa_unmarshal_DrawArraysInstanced(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_MultiDrawArrays(struct gl_context *ctx,
-                                const struct marshal_cmd_MultiDrawArrays *cmd)
+                                const struct marshal_cmd_MultiDrawArrays *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1831,7 +1831,7 @@ _mesa_unmarshal_MultiDrawArrays(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_DrawElements(struct gl_context *ctx,
-                             const struct marshal_cmd_DrawElements *cmd)
+                             const struct marshal_cmd_DrawElements *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1839,7 +1839,7 @@ _mesa_unmarshal_DrawElements(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_DrawRangeElements(struct gl_context *ctx,
-                                  const struct marshal_cmd_DrawRangeElements *cmd)
+                                  const struct marshal_cmd_DrawRangeElements *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1855,7 +1855,7 @@ _mesa_unmarshal_DrawRangeElementsBaseVertex(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_DrawElementsInstancedBaseVertex(struct gl_context *ctx,
-                                                const struct marshal_cmd_DrawElementsInstancedBaseVertex *cmd)
+                                                const struct marshal_cmd_DrawElementsInstancedBaseVertex *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1863,7 +1863,7 @@ _mesa_unmarshal_DrawElementsInstancedBaseVertex(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_DrawElementsInstancedBaseInstance(struct gl_context *ctx,
-                                                  const struct marshal_cmd_DrawElementsInstancedBaseInstance *cmd)
+                                                  const struct marshal_cmd_DrawElementsInstancedBaseInstance *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1871,7 +1871,7 @@ _mesa_unmarshal_DrawElementsInstancedBaseInstance(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_MultiDrawElements(struct gl_context *ctx,
-                                  const struct marshal_cmd_MultiDrawElements *cmd)
+                                  const struct marshal_cmd_MultiDrawElements *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;
@@ -1879,7 +1879,7 @@ _mesa_unmarshal_MultiDrawElements(struct gl_context *ctx,
 
 uint32_t
 _mesa_unmarshal_MultiDrawElementsBaseVertex(struct gl_context *ctx,
-                                            const struct marshal_cmd_MultiDrawElementsBaseVertex *cmd)
+                                            const struct marshal_cmd_MultiDrawElementsBaseVertex *restrict cmd)
 {
    unreachable("should never end up here");
    return 0;

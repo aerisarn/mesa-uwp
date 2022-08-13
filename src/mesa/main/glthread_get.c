@@ -26,7 +26,7 @@
 
 uint32_t
 _mesa_unmarshal_GetIntegerv(struct gl_context *ctx,
-                            const struct marshal_cmd_GetIntegerv *cmd)
+                            const struct marshal_cmd_GetIntegerv *restrict cmd)
 {
    unreachable("never executed");
    return 0;

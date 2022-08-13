@@ -34,7 +34,8 @@ struct marshal_cmd_CallList
 };
 
 uint32_t
-_mesa_unmarshal_CallList(struct gl_context *ctx, const struct marshal_cmd_CallList *cmd)
+_mesa_unmarshal_CallList(struct gl_context *ctx,
+                         const struct marshal_cmd_CallList *restrict cmd)
 {
    const GLuint num = cmd->num;
 
