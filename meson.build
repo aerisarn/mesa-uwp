@@ -1449,6 +1449,15 @@ if cc.has_header_symbol('time.h', 'struct timespec')
    pre_args += '-DHAVE_STRUCT_TIMESPEC'
 endif
 
+with_c11_threads = false
+if cc.has_function('thrd_create', prefix: '#include <threads.h>')
+  if with_platform_android
+    # Current only Android's c11 <threads.h> are verified
+    pre_args += '-DHAVE_THRD_CREATE'
+    with_c11_threads = true
+  endif
+endif
+
 if cc.has_header_symbol('errno.h', 'program_invocation_name',
                         args : '-D_GNU_SOURCE')
    pre_args += '-DHAVE_PROGRAM_INVOCATION_NAME'
