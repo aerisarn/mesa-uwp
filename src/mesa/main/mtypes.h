@@ -3673,6 +3673,11 @@ struct gl_context
    /*@}*/
 
    bool shader_builtin_ref;
+
+   struct pipe_draw_start_count_bias *tmp_draws;
+   struct _mesa_prim *tmp_prims;
+   unsigned num_tmp_draws;
+   unsigned num_tmp_prims;
 };
 
 #ifndef NDEBUG

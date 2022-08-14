@@ -1188,6 +1188,8 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    }
 
    free(ctx->Const.SpirVExtensions);
+   free(ctx->tmp_draws);
+   free(ctx->tmp_prims);
 }
 
 

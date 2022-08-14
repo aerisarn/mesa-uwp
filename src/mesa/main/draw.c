@@ -924,28 +924,45 @@ _mesa_validate_MultiDrawElementsIndirectCount(struct gl_context *ctx,
    return !error;
 }
 
+static inline struct pipe_draw_start_count_bias *
+get_temp_draws(struct gl_context *ctx, unsigned primcount)
+{
+   if (primcount > ctx->num_tmp_draws) {
+      struct pipe_draw_start_count_bias *tmp =
+         realloc(ctx->tmp_draws, primcount * sizeof(ctx->tmp_draws[0]));
 
-#define MAX_ALLOCA_PRIMS(prim) (50000 / sizeof(*prim))
+      if (tmp) {
+         ctx->tmp_draws = tmp;
+         ctx->num_tmp_draws = primcount;
+      } else {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "can't alloc tmp_draws");
+         free(ctx->tmp_draws); /* realloc doesn't free on failure */
+         ctx->tmp_draws = NULL;
+         ctx->num_tmp_draws = 0;
+      }
+   }
+   return ctx->tmp_draws;
+}
 
-/* Use calloc for large allocations and alloca for small allocations. */
-/* We have to use a macro because alloca is local within the function. */
-#define ALLOC_PRIMS(prim, primcount, func) do { \
-   if (unlikely(primcount > MAX_ALLOCA_PRIMS(prim))) { \
-      prim = calloc(primcount, sizeof(*prim)); \
-      if (!prim) { \
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, func); \
-         return; \
-      } \
-   } else { \
-      prim = alloca(primcount * sizeof(*prim)); \
-   } \
-} while (0)
+static inline struct _mesa_prim *
+get_temp_prims(struct gl_context *ctx, unsigned primcount)
+{
+   if (primcount > ctx->num_tmp_prims) {
+      struct _mesa_prim *tmp =
+         realloc(ctx->tmp_prims, primcount * sizeof(ctx->tmp_prims[0]));
 
-#define FREE_PRIMS(prim, primcount) do { \
-   if (primcount > MAX_ALLOCA_PRIMS(prim)) \
-      free(prim); \
-} while (0)
-
+      if (tmp) {
+         ctx->tmp_prims = tmp;
+         ctx->num_tmp_prims = primcount;
+      } else {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "can't alloc tmp_prims");
+         free(ctx->tmp_prims); /* realloc doesn't free on failure */
+         ctx->tmp_prims = NULL;
+         ctx->num_tmp_prims = 0;
+      }
+   }
+   return ctx->tmp_prims;
+}
 
 /**
  * Called via Driver.DrawGallium. This is a fallback invoking Driver.Draw.
@@ -1019,11 +1036,12 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
       return;
    }
 
-   struct _mesa_prim *prim;
+   struct _mesa_prim *prim = get_temp_prims(ctx, num_draws);
+   if (!prim)
+      return;
+
    unsigned max_count = 0;
    unsigned num_prims = 0;
-
-   ALLOC_PRIMS(prim, num_draws, "DrawGallium");
 
    min_index = ~0u;
    max_index = 0;
@@ -1067,7 +1085,6 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
                            index_bounds_valid, info->primitive_restart,
                            info->restart_index, min_index, max_index,
                            info->instance_count, info->start_instance);
-   FREE_PRIMS(prim, num_draws);
 }
 
 
@@ -1625,9 +1642,9 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
       return;
 
    struct pipe_draw_info info;
-   struct pipe_draw_start_count_bias *draw;
-
-   ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
+   struct pipe_draw_start_count_bias *draw = get_temp_draws(ctx, primcount);
+   if (!draw)
+      return;
 
    info.mode = mode;
    info.index_size = 0;
@@ -1653,8 +1670,6 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
-
-   FREE_PRIMS(draw, primcount);
 }
 
 
@@ -2177,9 +2192,9 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          * greater than UINT32_MAX bytes.
          */
         max_index_ptr - min_index_ptr <= UINT32_MAX)) {
-      struct pipe_draw_start_count_bias *draw;
-
-      ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
+      struct pipe_draw_start_count_bias *draw = get_temp_draws(ctx, primcount);
+      if (!draw)
+         return;
 
       if (info.has_user_indices) {
          for (int i = 0; i < primcount; i++) {
@@ -2198,7 +2213,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       }
 
       ctx->Driver.DrawGallium(ctx, &info, 0, draw, primcount);
-      FREE_PRIMS(draw, primcount);
    } else {
       /* draw[i].start would overflow. Draw one at a time. */
       assert(info.has_user_indices);
