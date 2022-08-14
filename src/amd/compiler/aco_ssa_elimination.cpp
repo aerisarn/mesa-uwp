@@ -411,22 +411,25 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       exec_copy->operands[0] = Operand(exec, ctx.program->lane_mask);
    }
 
-   if (save_original_exec) {
-      /* Insert a new instruction that saves the original exec before it is overwritten. */
-      const auto it = std::next(block.instructions.begin(), save_original_exec_idx);
-      aco_ptr<Instruction> copy(
-         create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 1, 1));
-      copy->definitions[0] = exec_copy_def;
-      copy->operands[0] = Operand(exec, ctx.program->lane_mask);
-      block.instructions.insert(it, std::move(copy));
-   }
-
    if (exec_val->opcode == aco_opcode::p_parallelcopy && exec_val->operands[0].isConstant() &&
        exec_val->operands[0].constantValue()) {
       /* Remove the branch instruction when exec is constant non-zero. */
       aco_ptr<Instruction>& branch = block.instructions.back();
       if (branch->isBranch() && branch->operands.size() && branch->operands[0].physReg() == exec)
          block.instructions.back().reset();
+   }
+
+   if (save_original_exec) {
+      /* Insert a new instruction that saves the original exec before it is overwritten.
+       * Do this last, because inserting in the instructions vector may invalidate the exec_val
+       * reference.
+       */
+      const auto it = std::next(block.instructions.begin(), save_original_exec_idx);
+      aco_ptr<Instruction> copy(
+         create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 1, 1));
+      copy->definitions[0] = exec_copy_def;
+      copy->operands[0] = Operand(exec, ctx.program->lane_mask);
+      block.instructions.insert(it, std::move(copy));
    }
 }
 
