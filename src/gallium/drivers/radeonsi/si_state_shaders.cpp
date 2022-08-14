@@ -3313,15 +3313,20 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
 
 static void si_update_rasterized_prim(struct si_context *sctx)
 {
+   struct si_shader *hw_vs = si_get_vs(sctx)->current;
+
    if (sctx->shader.gs.cso) {
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      si_set_rasterized_prim(sctx, sctx->shader.gs.cso->rast_prim);
+      si_set_rasterized_prim(sctx, sctx->shader.gs.cso->rast_prim, hw_vs, sctx->ngg);
    } else if (sctx->shader.tes.cso) {
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      si_set_rasterized_prim(sctx, sctx->shader.tes.cso->rast_prim);
+      si_set_rasterized_prim(sctx, sctx->shader.tes.cso->rast_prim, hw_vs, sctx->ngg);
    } else {
       /* The rasterized prim is determined by draw calls. */
    }
+
+   /* This must be done unconditionally because it also depends on si_shader fields. */
+   si_update_ngg_prim_state_sgpr(sctx, hw_vs, sctx->ngg);
 }
 
 static void si_update_common_shader_state(struct si_context *sctx, struct si_shader_selector *sel,

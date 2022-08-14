@@ -2105,9 +2105,34 @@ void si_check_dirty_buffers_textures(struct si_context *sctx)
    }
 }
 
-/* Set the primitive type seen by the rasterizer. GS and tessellation affect this. */
+/* Update these two GS_STATE fields. They depend on whatever the last shader before PS is
+ * and the rasterizer state.
+ *
+ * It's expected that hw_vs and ngg are inline constants in draw_vbo after optimizations.
+ */
 static inline void
-si_set_rasterized_prim(struct si_context *sctx, enum pipe_prim_type rast_prim)
+si_update_ngg_prim_state_sgpr(struct si_context *sctx, struct si_shader *hw_vs, bool ngg)
+{
+   if (!ngg || !hw_vs)
+      return;
+
+   if (hw_vs->uses_vs_state_provoking_vertex) {
+      unsigned vtx_index = sctx->queued.named.rasterizer->flatshade_first ? 0 : sctx->gs_out_prim;
+
+      SET_FIELD(sctx->current_gs_state, GS_STATE_PROVOKING_VTX_INDEX, vtx_index);
+   }
+
+   if (hw_vs->uses_gs_state_outprim) {
+      SET_FIELD(sctx->current_gs_state, GS_STATE_OUTPRIM, sctx->gs_out_prim);
+   }
+}
+
+/* Set the primitive type seen by the rasterizer. GS and tessellation affect this.
+ * It's expected that hw_vs and ngg are inline constants in draw_vbo after optimizations.
+ */
+static inline void
+si_set_rasterized_prim(struct si_context *sctx, enum pipe_prim_type rast_prim,
+                       struct si_shader *hw_vs, bool ngg)
 {
    if (rast_prim != sctx->current_rast_prim) {
       bool is_rect = rast_prim == SI_PRIM_RECTANGLE_LIST;
@@ -2123,6 +2148,7 @@ si_set_rasterized_prim(struct si_context *sctx, enum pipe_prim_type rast_prim)
                           is_lines ? V_028A6C_LINESTRIP :
                           is_rect ? V_028A6C_RECTLIST : V_028A6C_POINTLIST;
       sctx->do_update_shaders = true;
+      si_update_ngg_prim_state_sgpr(sctx, hw_vs, ngg);
    }
 }
 

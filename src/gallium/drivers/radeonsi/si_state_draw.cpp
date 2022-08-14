@@ -110,6 +110,8 @@ static bool si_update_shaders(struct si_context *sctx)
    struct pipe_context *ctx = (struct pipe_context *)sctx;
    struct si_shader *old_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
    unsigned old_pa_cl_vs_out_cntl = old_vs ? old_vs->pa_cl_vs_out_cntl : 0;
+   bool old_uses_vs_state_provoking_vertex = old_vs ? old_vs->uses_vs_state_provoking_vertex : false;
+   bool old_uses_gs_state_outprim = old_vs ? old_vs->uses_gs_state_outprim : false;
    struct si_shader *old_ps = sctx->shader.ps.current;
    unsigned old_spi_shader_col_format =
       old_ps ? old_ps->key.ps.part.epilog.spi_shader_col_format : 0;
@@ -247,9 +249,15 @@ static bool si_update_shaders(struct si_context *sctx)
       *pm4 = si_build_vgt_shader_config(sctx->screen, key);
    si_pm4_bind_state(sctx, vgt_shader_config, *pm4);
 
-   if (old_pa_cl_vs_out_cntl !=
-          si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->pa_cl_vs_out_cntl)
+   struct si_shader *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
+
+   if (old_pa_cl_vs_out_cntl != hw_vs->pa_cl_vs_out_cntl)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
+
+   /* If we start to use any of these, we need to update the SGPR. */
+   if ((hw_vs->uses_vs_state_provoking_vertex && !old_uses_vs_state_provoking_vertex) ||
+       (hw_vs->uses_gs_state_outprim && !old_uses_gs_state_outprim))
+      si_update_ngg_prim_state_sgpr(sctx, hw_vs, NGG);
 
    r = si_shader_select(ctx, &sctx->shader.ps);
    if (r)
@@ -1157,20 +1165,6 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       radeon_end_update_context_roll(sctx);
    else
       radeon_end();
-
-   if (NGG) {
-      struct si_shader *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
-
-      if (hw_vs->uses_vs_state_provoking_vertex) {
-         unsigned vtx_index = rs->flatshade_first ? 0 : gs_out_prim;
-
-         SET_FIELD(sctx->current_gs_state, GS_STATE_PROVOKING_VTX_INDEX, vtx_index);
-      }
-
-      if (hw_vs->uses_gs_state_outprim) {
-         SET_FIELD(sctx->current_gs_state, GS_STATE_OUTPRIM, gs_out_prim);
-      }
-   }
 }
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
@@ -2333,7 +2327,8 @@ static void si_draw(struct pipe_context *ctx,
          rast_prim = prim;
       }
 
-      si_set_rasterized_prim(sctx, rast_prim);
+      si_set_rasterized_prim(sctx, rast_prim, si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current,
+                             NGG);
    }
 
    if (IS_DRAW_VERTEX_STATE) {
