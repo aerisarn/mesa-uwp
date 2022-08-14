@@ -944,26 +944,6 @@ get_temp_draws(struct gl_context *ctx, unsigned primcount)
    return ctx->tmp_draws;
 }
 
-static inline struct _mesa_prim *
-get_temp_prims(struct gl_context *ctx, unsigned primcount)
-{
-   if (primcount > ctx->num_tmp_prims) {
-      struct _mesa_prim *tmp =
-         realloc(ctx->tmp_prims, primcount * sizeof(ctx->tmp_prims[0]));
-
-      if (tmp) {
-         ctx->tmp_prims = tmp;
-         ctx->num_tmp_prims = primcount;
-      } else {
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, "can't alloc tmp_prims");
-         free(ctx->tmp_prims); /* realloc doesn't free on failure */
-         ctx->tmp_prims = NULL;
-         ctx->num_tmp_prims = 0;
-      }
-   }
-   return ctx->tmp_prims;
-}
- 
 /**
  * Check that element 'j' of the array has reasonable data.
  * Map VBO if needed.

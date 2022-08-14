@@ -37,7 +37,6 @@
 #include "main/glheader.h"
 
 struct _mesa_index_buffer;
-struct _mesa_prim;
 struct gl_context;
 struct st_context;
 
