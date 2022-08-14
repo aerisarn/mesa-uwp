@@ -1374,9 +1374,6 @@ static void si_emit_draw_registers(struct si_context *sctx,
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned num_patches = HAS_TESS ? sctx->num_patches_per_workgroup : 0;
 
-   if (IS_DRAW_VERTEX_STATE)
-      primitive_restart = false;
-
    if (GFX_VERSION >= GFX10)
       gfx10_emit_ge_cntl<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, num_patches);
    else
@@ -2343,11 +2340,6 @@ static void si_draw(struct pipe_context *ctx,
       }
    }
 
-   bool primitive_restart =
-      info->primitive_restart &&
-      (!sctx->screen->options.prim_restart_tri_strips_only ||
-       (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
-
    /* Set the rasterization primitive type.
     *
     * This must be done after si_decompress_textures, which can call
@@ -2487,6 +2479,8 @@ static void si_draw(struct pipe_context *ctx,
           sctx->dirty_states & si_states_that_always_roll_context())
          sctx->context_roll = true;
    }
+
+   bool primitive_restart = !IS_DRAW_VERTEX_STATE && info->primitive_restart;
 
    /* Use optimal packet order based on whether we need to sync the pipeline. */
    if (unlikely(sctx->flags & (SI_CONTEXT_FLUSH_AND_INV_CB | SI_CONTEXT_FLUSH_AND_INV_DB |

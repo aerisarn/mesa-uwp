@@ -7,7 +7,6 @@ OPT_BOOL(debug_disassembly, false,
 OPT_BOOL(halt_shaders, false, "Halt shaders at the start (will hang)")
 OPT_BOOL(vs_fetch_always_opencode, false,
          "Always open code vertex fetches (less efficient, purely for testing)")
-OPT_BOOL(prim_restart_tri_strips_only, false, "Only enable primitive restart for triangle strips")
 OPT_BOOL(no_infinite_interp, false, "Kill PS with infinite interp coeff")
 OPT_BOOL(clamp_div_by_zero, false, "Clamp div by zero (x / 0 becomes FLT_MAX instead of NaN)")
 OPT_BOOL(vrs2x2, false, "Enable 2x2 coarse shading for non-GUI elements")
