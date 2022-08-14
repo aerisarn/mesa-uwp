@@ -544,7 +544,7 @@ eliminate_useless_exec_writes_in_block(ssa_elimination_ctx& ctx, Block& block)
 
       /* For a newly encountered exec write, clear the used flag. */
       if (writes_exec) {
-         if (!logical_end_found && branch_reads_exec && instr->operands.size() == 1) {
+         if (!logical_end_found && branch_reads_exec && instr->operands.size()) {
             /* We are in a branch that jumps according to exec.
              * We just found the instruction that copies to exec before the branch.
              */
@@ -560,13 +560,16 @@ eliminate_useless_exec_writes_in_block(ssa_elimination_ctx& ctx, Block& block)
          }
 
          exec_write_used = false;
-      }
-
-      if (branch_exec_tempid && !exec_write_used && instr->definitions.size() &&
-          instr->definitions[0].tempId() == branch_exec_tempid) {
+      } else if (branch_exec_tempid && instr->definitions.size() &&
+                 instr->definitions[0].tempId() == branch_exec_tempid) {
          /* We just found the instruction that produces the exec mask that is copied. */
          assert(branch_exec_val_idx == -1);
          branch_exec_val_idx = i;
+      } else if (branch_exec_tempid && branch_exec_val_idx == -1 && needs_exec) {
+         /* There is an instruction that needs the original exec mask before
+          * branch_exec_val_idx was found, so we can't optimize the branching sequence. */
+         branch_exec_copy_idx = -1;
+         branch_exec_tempid = 0;
       }
 
       /* If the current instruction needs exec, mark it as used. */
