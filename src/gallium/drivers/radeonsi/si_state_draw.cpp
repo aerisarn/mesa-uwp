@@ -2422,11 +2422,22 @@ static void si_draw(struct pipe_context *ctx,
       return;
    }
 
+   /* This is the optimal packet order:
+    * Set all states first, so that all SET packets are processed in parallel with previous
+    * draw calls. Then flush caches and wait if needed. Then draw and prefetch at the end.
+    * It's better to draw before prefetches because we want to start fetching indices before
+    * shaders. The idea is to minimize the time when the CUs are idle.
+    */
+   unsigned masked_atoms = 0;
+   if (unlikely(sctx->flags & SI_CONTEXT_FLUSH_FOR_RENDER_COND)) {
+      /* The render condition state should be emitted after cache flushes. */
+      masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
+   }
+
    /* Vega10/Raven scissor bug workaround. When any context register is
     * written (i.e. the GPU rolls the context), PA_SC_VPORT_SCISSOR
     * registers must be written too.
     */
-   unsigned masked_atoms = 0;
    bool gfx9_scissor_bug = false;
 
    if (GFX_VERSION == GFX9 && sctx->screen->info.has_gfx9_scissor_bug) {
@@ -2441,95 +2452,49 @@ static void si_draw(struct pipe_context *ctx,
 
    bool primitive_restart = !IS_DRAW_VERTEX_STATE && info->primitive_restart;
 
-   /* Use optimal packet order based on whether we need to sync the pipeline. */
-   if (unlikely(sctx->flags & (SI_CONTEXT_FLUSH_AND_INV_CB | SI_CONTEXT_FLUSH_AND_INV_DB |
-                               SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
-                               SI_CONTEXT_VS_PARTIAL_FLUSH | SI_CONTEXT_VGT_FLUSH))) {
-      /* If we have to wait for idle, set all states first, so that all
-       * SET packets are processed in parallel with previous draw calls.
-       * Then draw and prefetch at the end. This ensures that the time
-       * the CUs are idle is very short.
-       */
-      if (unlikely(sctx->flags & SI_CONTEXT_FLUSH_FOR_RENDER_COND))
-         masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
-
-      /* Emit all states except possibly render condition. */
-      si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
-            (sctx, info, indirect, prim, instance_count, min_direct_count,
-             primitive_restart, masked_atoms);
+   /* Emit all states except possibly render condition. */
+   si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
+         (sctx, info, indirect, prim, instance_count, min_direct_count,
+          primitive_restart, masked_atoms);
+   if (sctx->flags)
       sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
-      /* <-- CUs are idle here. */
+   /* <-- CUs are idle here if we waited. */
 
-      /* This uploads VBO descriptors, sets user SGPRs, and executes the L2 prefetch.
-       * It should done after cache flushing.
-       */
-      if (unlikely((!si_upload_and_prefetch_VB_descriptors
-                        <GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE, POPCNT>
-                        (sctx, state, partial_velem_mask)))) {
-         DRAW_CLEANUP;
-         return;
-      }
-
-      if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
-         sctx->atoms.s.render_cond.emit(sctx);
-         sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
-      }
-
-      if (GFX_VERSION == GFX9 && gfx9_scissor_bug &&
-          (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
-         sctx->atoms.s.scissors.emit(sctx);
-         sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
-      }
-      assert(sctx->dirty_atoms == 0);
-
-      si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE>
-            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf,
-             index_size, index_offset, instance_count);
-      /* <-- CUs are busy here. */
-
-      /* Start prefetches after the draw has been started. Both will run
-       * in parallel, but starting the draw first is more important.
-       */
-      si_prefetch_shaders<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_ALL>(sctx);
-   } else {
-      /* If we don't wait for idle, start prefetches first, then set
-       * states, and draw at the end.
-       */
-      if (sctx->flags)
-         sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
-
-      /* Only prefetch the API VS and VBO descriptors. */
-      si_prefetch_shaders<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_BEFORE_DRAW>(sctx);
-
-      /* This uploads VBO descriptors, sets user SGPRs, and executes the L2 prefetch.
-       * It should done after cache flushing and after the VS prefetch.
-       */
-      if (unlikely((!si_upload_and_prefetch_VB_descriptors
-                       <GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE, POPCNT>
-                       (sctx, state, partial_velem_mask)))) {
-         DRAW_CLEANUP;
-         return;
-      }
-
-      si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
-            (sctx, info, indirect, prim, instance_count, min_direct_count,
-             primitive_restart, masked_atoms);
-
-      if (GFX_VERSION == GFX9 && gfx9_scissor_bug &&
-          (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
-         sctx->atoms.s.scissors.emit(sctx);
-         sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
-      }
-      assert(sctx->dirty_atoms == 0);
-
-      si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE>
-            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf,
-             index_size, index_offset, instance_count);
-
-      /* Prefetch the remaining shaders after the draw has been
-       * started. */
-      si_prefetch_shaders<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_AFTER_DRAW>(sctx);
+   /* If we haven't emitted the render condition state (because it depends on cache flushes),
+    * do it now.
+    */
+   if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
+      sctx->atoms.s.render_cond.emit(sctx);
+      sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
    }
+
+   /* This needs to be done after cache flushes because ACQUIRE_MEM rolls the context. */
+   if (GFX_VERSION == GFX9 && gfx9_scissor_bug &&
+       (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
+      sctx->atoms.s.scissors.emit(sctx);
+      sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
+   }
+   assert(sctx->dirty_atoms == 0);
+
+   /* This uploads VBO descriptors, sets user SGPRs, and executes the L2 prefetch.
+    * It should done after cache flushing.
+    */
+   if (unlikely((!si_upload_and_prefetch_VB_descriptors
+                     <GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE, POPCNT>
+                     (sctx, state, partial_velem_mask)))) {
+      DRAW_CLEANUP;
+      return;
+   }
+
+   si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE>
+         (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf,
+          index_size, index_offset, instance_count);
+   /* <-- CUs start to get busy here if we waited. */
+
+   /* Start prefetches after the draw has been started. Both will run
+    * in parallel, but starting the draw first is more important.
+    */
+   si_prefetch_shaders<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_ALL>(sctx);
 
    /* Clear the context roll flag after the draw call.
     * Only used by the gfx9 scissor bug.
