@@ -72,7 +72,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
 GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, virgl, zink, d3d12, panfrost
 
   Forward compatible context support/deprecations       DONE
-  GL_ARB_draw_instanced (Instanced drawing)             DONE (v3d)
+  GL_ARB_draw_instanced (Instanced drawing)             DONE (etnaviv/HALTI2, v3d)
   GL_ARB_copy_buffer (Buffer copying)                   DONE (v3d, vc4, lima)
   GL_NV_primitive_restart (Primitive restart)           DONE (v3d)
   16 vertex texture image units                         DONE ()
@@ -107,7 +107,7 @@ GL 3.3, GLSL 3.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_ARB_texture_rgb10_a2ui                             DONE (v3d, panfrost)
   GL_ARB_texture_swizzle                                DONE (v3d, vc4, panfrost, lima)
   GL_ARB_timer_query                                    DONE ()
-  GL_ARB_instanced_arrays                               DONE (v3d, panfrost)
+  GL_ARB_instanced_arrays                               DONE (etnaviv/HALTI2, v3d, panfrost)
   GL_ARB_vertex_type_2_10_10_10_rev                     DONE (v3d, panfrost)
 
 
