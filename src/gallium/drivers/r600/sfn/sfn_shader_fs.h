@@ -47,8 +47,7 @@ private:
 
    bool load_interpolated_input(nir_intrinsic_instr *intr);
 
-   virtual int allocate_register_inputs(int first_register) = 0;
-   virtual int allocate_interpolators() = 0;
+   virtual int allocate_interpolators_or_inputs() = 0;
    virtual bool load_input_hw(nir_intrinsic_instr *intr) = 0;
    virtual bool process_stage_intrinsic_hw(nir_intrinsic_instr *intr)  = 0;
    virtual bool load_interpolated_input_hw(nir_intrinsic_instr *intr) = 0;
@@ -92,14 +91,15 @@ private:
    int m_nsys_inputs{0};
    bool m_apply_sample_mask{false};
    int m_rat_base{0};
+   int m_pos_driver_loc{0};
+   int m_face_driver_loc{0};
 };
 
 class FragmentShaderR600 : public FragmentShader {
 public:
    using FragmentShader::FragmentShader;
 private:
-   int allocate_register_inputs(int first_register) override;
-   int allocate_interpolators() override;
+   int allocate_interpolators_or_inputs() override;
    bool load_input_hw(nir_intrinsic_instr *intr) override;
    bool process_stage_intrinsic_hw(nir_intrinsic_instr *intr) override;
    bool load_interpolated_input_hw(nir_intrinsic_instr *intr) override;
@@ -127,8 +127,7 @@ private:
       int base;
    };
 
-   int allocate_register_inputs(int first_register) override;
-   int allocate_interpolators() override;
+   int allocate_interpolators_or_inputs() override;
    bool load_input_hw(nir_intrinsic_instr *intr) override;
    bool process_stage_intrinsic_hw(nir_intrinsic_instr *intr) override;
    bool load_interpolated_input_hw(nir_intrinsic_instr *intr) override;
