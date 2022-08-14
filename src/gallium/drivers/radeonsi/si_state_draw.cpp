@@ -619,7 +619,7 @@ static void si_prefetch_shaders(struct si_context *sctx)
  * The information about LDS and other non-compile-time parameters is then
  * written to userdata SGPRs.
  */
-static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_patches)
+static void si_emit_derived_tess_state(struct si_context *sctx)
 {
    struct si_shader *ls_current;
    struct si_shader_selector *ls;
@@ -640,10 +640,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
 
    if (sctx->last_ls == ls_current && sctx->last_tcs == tcs &&
        sctx->last_tes_sh_base == tes_sh_base && sctx->last_num_tcs_input_cp == num_tcs_input_cp &&
-       (!has_primid_instancing_bug || (sctx->last_tess_uses_primid == tess_uses_primid))) {
-      *num_patches = sctx->last_num_patches;
+       (!has_primid_instancing_bug || (sctx->last_tess_uses_primid == tess_uses_primid)))
       return;
-   }
 
    sctx->last_ls = ls_current;
    sctx->last_tcs = tcs;
@@ -692,23 +690,23 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
     * vertices per threadgroup are at most 256, which is the hw limit.
     */
    unsigned max_verts_per_patch = MAX2(num_tcs_input_cp, num_tcs_output_cp);
-   *num_patches = 256 / max_verts_per_patch;
+   unsigned num_patches = 256 / max_verts_per_patch;
 
    /* Not necessary for correctness, but higher numbers are slower.
     * The hardware can do more, but the radeonsi shader constant is
     * limited to 6 bits.
     */
-   *num_patches = MIN2(*num_patches, 64); /* e.g. 64 triangles in exactly 3 waves */
+   num_patches = MIN2(num_patches, 64); /* e.g. 64 triangles in exactly 3 waves */
 
    /* When distributed tessellation is unsupported, switch between SEs
     * at a higher frequency to manually balance the workload between SEs.
     */
    if (!sctx->screen->info.has_distributed_tess && sctx->screen->info.max_se > 1)
-      *num_patches = MIN2(*num_patches, 16); /* recommended */
+      num_patches = MIN2(num_patches, 16); /* recommended */
 
    /* Make sure the output data fits in the offchip buffer */
-   *num_patches =
-      MIN2(*num_patches, (sctx->screen->hs.tess_offchip_block_dw_size * 4) / output_patch_size);
+   num_patches =
+      MIN2(num_patches, (sctx->screen->hs.tess_offchip_block_dw_size * 4) / output_patch_size);
 
    /* Make sure that the data fits in LDS. This assumes the shaders only
     * use LDS for the inputs and outputs.
@@ -718,26 +716,26 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
     */
    ASSERTED unsigned max_lds_size = 32 * 1024; /* hw limit */
    unsigned target_lds_size = 16 * 1024; /* target at least 2 workgroups per CU, 16K each */
-   *num_patches = MIN2(*num_patches, target_lds_size / lds_per_patch);
-   *num_patches = MAX2(*num_patches, 1);
-   assert(*num_patches * lds_per_patch <= max_lds_size);
+   num_patches = MIN2(num_patches, target_lds_size / lds_per_patch);
+   num_patches = MAX2(num_patches, 1);
+   assert(num_patches * lds_per_patch <= max_lds_size);
 
    /* Make sure that vector lanes are fully occupied by cutting off the last wave
     * if it's only partially filled.
     */
-   unsigned temp_verts_per_tg = *num_patches * max_verts_per_patch;
+   unsigned temp_verts_per_tg = num_patches * max_verts_per_patch;
    unsigned wave_size = ls_current->wave_size;
 
    if (temp_verts_per_tg > wave_size &&
        (wave_size - temp_verts_per_tg % wave_size >= MAX2(max_verts_per_patch, 8)))
-      *num_patches = (temp_verts_per_tg & ~(wave_size - 1)) / max_verts_per_patch;
+      num_patches = (temp_verts_per_tg & ~(wave_size - 1)) / max_verts_per_patch;
 
    if (sctx->gfx_level == GFX6) {
       /* GFX6 bug workaround, related to power management. Limit LS-HS
        * threadgroups to only one wave.
        */
       unsigned one_wave = wave_size / max_verts_per_patch;
-      *num_patches = MIN2(*num_patches, one_wave);
+      num_patches = MIN2(num_patches, one_wave);
    }
 
    /* The VGT HS block increments the patch ID unconditionally
@@ -751,11 +749,11 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
     * SE to switch to.
     */
    if (has_primid_instancing_bug && tess_uses_primid)
-      *num_patches = 1;
+      num_patches = 1;
 
-   sctx->last_num_patches = *num_patches;
+   sctx->num_patches_per_workgroup = num_patches;
 
-   unsigned output_patch0_offset = input_patch_size * *num_patches;
+   unsigned output_patch0_offset = input_patch_size * num_patches;
    unsigned perpatch_output_offset = output_patch0_offset + pervertex_output_patch_size;
 
    /* Compute userdata SGPRs. */
@@ -767,8 +765,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
    assert(((perpatch_output_offset / 4) & ~0xffff) == 0);
    assert(num_tcs_input_cp <= 32);
    assert(num_tcs_output_cp <= 32);
-   assert(*num_patches <= 64);
-   assert(((pervertex_output_patch_size * *num_patches) & ~0x1fffff) == 0);
+   assert(num_patches <= 64);
+   assert(((pervertex_output_patch_size * num_patches) & ~0x1fffff) == 0);
 
    uint64_t ring_va = (unlikely(sctx->ws->cs_is_secure(&sctx->gfx_cs)) ?
       si_resource(sctx->tess_rings_tmz) : si_resource(sctx->tess_rings))->gpu_address;
@@ -777,11 +775,11 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
    unsigned tcs_out_layout = (output_patch_size / 4) | (num_tcs_input_cp << 13) | ring_va;
    unsigned tcs_out_offsets = (output_patch0_offset / 4) | ((perpatch_output_offset / 4) << 16);
    unsigned offchip_layout =
-      (*num_patches - 1) | ((num_tcs_output_cp - 1) << 6) |
-      ((pervertex_output_patch_size * *num_patches) << 11);
+      (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) |
+      ((pervertex_output_patch_size * num_patches) << 11);
 
    /* Compute the LDS size. */
-   unsigned lds_size = lds_per_patch * *num_patches;
+   unsigned lds_size = lds_per_patch * num_patches;
 
    if (sctx->gfx_level >= GFX7) {
       assert(lds_size <= 65536);
@@ -849,7 +847,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
    radeon_end();
 
    unsigned ls_hs_config =
-         S_028B58_NUM_PATCHES(*num_patches) |
+         S_028B58_NUM_PATCHES(num_patches) |
          S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
          S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
 
@@ -1369,11 +1367,12 @@ template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static void si_emit_draw_registers(struct si_context *sctx,
                                    const struct pipe_draw_indirect_info *indirect,
-                                   enum pipe_prim_type prim, unsigned num_patches,
+                                   enum pipe_prim_type prim,
                                    unsigned instance_count, bool primitive_restart,
                                    unsigned restart_index, unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   unsigned num_patches = HAS_TESS ? sctx->num_patches_per_workgroup : 0;
 
    if (IS_DRAW_VERTEX_STATE)
       primitive_restart = false;
@@ -2114,11 +2113,9 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
                                unsigned min_vertex_count, bool primitive_restart,
                                unsigned skip_atom_mask)
 {
-   unsigned num_patches = 0;
-
    si_emit_rasterizer_prim_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx);
    if (HAS_TESS)
-      si_emit_derived_tess_state(sctx, &num_patches);
+      si_emit_derived_tess_state(sctx);
 
    /* Emit state atoms. */
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
@@ -2150,7 +2147,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    /* Emit draw states. */
    si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>(sctx, info->index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
-         (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
+         (sctx, indirect, prim, instance_count, primitive_restart,
           info->restart_index, min_vertex_count);
 }
 

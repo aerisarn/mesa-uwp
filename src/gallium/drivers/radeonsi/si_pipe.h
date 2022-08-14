@@ -1183,7 +1183,7 @@ struct si_context {
    unsigned last_num_tcs_input_cp;
    unsigned last_tes_sh_base;
    bool last_tess_uses_primid;
-   unsigned last_num_patches;
+   unsigned num_patches_per_workgroup;
    unsigned last_ls_hs_config;
 
    /* Debug state. */
