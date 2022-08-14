@@ -2222,7 +2222,6 @@ static void si_draw(struct pipe_context *ctx,
       }
    }
 
-   enum pipe_prim_type prim = (enum pipe_prim_type)info->mode;
    unsigned instance_count = info->instance_count;
 
    /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
@@ -2239,10 +2238,12 @@ static void si_draw(struct pipe_context *ctx,
    if (unlikely(!vs ||
                 (!IS_DRAW_VERTEX_STATE && sctx->num_vertex_elements < vs->info.num_vs_inputs) ||
                 (IS_DRAW_VERTEX_STATE && vstate->velems.count < vs->info.num_vs_inputs) ||
-                !sctx->shader.ps.cso || (HAS_TESS != (prim == PIPE_PRIM_PATCHES)))) {
+                !sctx->shader.ps.cso || (HAS_TESS != (info->mode == PIPE_PRIM_PATCHES)))) {
       assert(0);
       return;
    }
+
+   enum pipe_prim_type prim = HAS_TESS ? PIPE_PRIM_PATCHES : (enum pipe_prim_type)info->mode;
 
    if (GFX_VERSION <= GFX9 && HAS_GS) {
       /* Determine whether the GS triangle strip adjacency fix should
