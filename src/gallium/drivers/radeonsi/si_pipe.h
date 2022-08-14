@@ -2101,6 +2101,19 @@ void si_check_dirty_buffers_textures(struct si_context *sctx)
    }
 }
 
+/* Set the primitive type seen by the rasterizer. GS and tessellation affect this. */
+static inline void
+si_set_rasterized_prim(struct si_context *sctx, enum pipe_prim_type rast_prim)
+{
+   if (rast_prim != sctx->current_rast_prim) {
+      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
+          util_prim_is_points_or_lines(rast_prim))
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
+
+      sctx->current_rast_prim = rast_prim;
+      sctx->do_update_shaders = true;
+   }
+}
 
 #define PRINT_ERR(fmt, args...)                                                                    \
    fprintf(stderr, "EE %s:%d %s - " fmt, __FILE__, __LINE__, __func__, ##args)

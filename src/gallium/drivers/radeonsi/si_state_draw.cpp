@@ -2362,14 +2362,7 @@ static void si_draw(struct pipe_context *ctx,
          rast_prim = prim;
       }
 
-      if (rast_prim != sctx->current_rast_prim) {
-         if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
-             util_prim_is_points_or_lines(rast_prim))
-            si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
-
-         sctx->current_rast_prim = rast_prim;
-         sctx->do_update_shaders = true;
-      }
+      si_set_rasterized_prim(sctx, rast_prim);
    }
 
    if (IS_DRAW_VERTEX_STATE) {

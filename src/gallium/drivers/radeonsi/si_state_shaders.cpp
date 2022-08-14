@@ -3313,25 +3313,14 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
 
 static void si_update_rasterized_prim(struct si_context *sctx)
 {
-   enum pipe_prim_type rast_prim;
-
    if (sctx->shader.gs.cso) {
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      rast_prim = sctx->shader.gs.cso->rast_prim;
+      si_set_rasterized_prim(sctx, sctx->shader.gs.cso->rast_prim);
    } else if (sctx->shader.tes.cso) {
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      rast_prim = sctx->shader.tes.cso->rast_prim;
+      si_set_rasterized_prim(sctx, sctx->shader.tes.cso->rast_prim);
    } else {
-      /* Determined by draw calls. */
-      return;
-   }
-
-   if (rast_prim != sctx->current_rast_prim) {
-      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
-          util_prim_is_points_or_lines(rast_prim))
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
-
-      sctx->current_rast_prim = rast_prim;
+      /* The rasterized prim is determined by draw calls. */
    }
 }
 
