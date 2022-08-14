@@ -2343,7 +2343,6 @@ static void si_draw(struct pipe_context *ctx,
       }
    }
 
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    bool primitive_restart =
       info->primitive_restart &&
       (!sctx->screen->options.prim_restart_tri_strips_only ||
@@ -2414,6 +2413,8 @@ static void si_draw(struct pipe_context *ctx,
            * until we pass the total_direct_count check and then it stays enabled until
            * the shader is changed. This eliminates most culling on/off state changes. */
           (old_ngg_culling || total_direct_count > hw_vs->ngg_cull_vert_threshold)) {
+         struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
          /* Check that the current shader allows culling. */
          assert(hw_vs->ngg_cull_vert_threshold != UINT_MAX);
 
