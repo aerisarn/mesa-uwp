@@ -48,6 +48,9 @@ extern "C" {
 #define ATI_VENDOR_ID         0x1002
 #define SI_NOT_QUERY          0xffffffff
 
+/* special primitive types */
+#define SI_PRIM_RECTANGLE_LIST PIPE_PRIM_MAX
+
 /* The base vertex and primitive restart can be any number, but we must pick
  * one which will mean "unknown" for the purpose of state tracking and
  * the number shouldn't be a commonly-used one. */
@@ -1163,6 +1166,7 @@ struct si_context {
    unsigned last_vs_state;
    unsigned last_gs_state;
    enum pipe_prim_type current_rast_prim; /* primitive type after TES, GS */
+   unsigned gs_out_prim;
 
    struct si_small_prim_cull_info last_small_prim_cull_info;
    struct si_resource *small_prim_cull_info_buf;
@@ -2106,11 +2110,18 @@ static inline void
 si_set_rasterized_prim(struct si_context *sctx, enum pipe_prim_type rast_prim)
 {
    if (rast_prim != sctx->current_rast_prim) {
-      if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=
-          util_prim_is_points_or_lines(rast_prim))
+      bool is_rect = rast_prim == SI_PRIM_RECTANGLE_LIST;
+      bool is_points = rast_prim == PIPE_PRIM_POINTS;
+      bool is_lines = util_prim_is_lines(rast_prim);
+      bool is_triangles = util_rast_prim_is_triangles(rast_prim);
+
+      if ((is_points || is_lines) != util_prim_is_points_or_lines(sctx->current_rast_prim))
          si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
 
       sctx->current_rast_prim = rast_prim;
+      sctx->gs_out_prim = is_triangles ? V_028A6C_TRISTRIP :
+                          is_lines ? V_028A6C_LINESTRIP :
+                          is_rect ? V_028A6C_RECTLIST : V_028A6C_POINTLIST;
       sctx->do_update_shaders = true;
    }
 }

@@ -48,9 +48,6 @@
 #error "Unknown gfx level"
 #endif
 
-/* special primitive types */
-#define SI_PRIM_RECTANGLE_LIST PIPE_PRIM_MAX
-
 template<int NUM_INTERP>
 static void si_emit_spi_map(struct si_context *sctx)
 {
@@ -1123,32 +1120,6 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
    return ia_multi_vgt_param;
 }
 
-ALWAYS_INLINE
-static unsigned si_conv_prim_to_gs_out(unsigned mode)
-{
-   static const int prim_conv[] = {
-      [PIPE_PRIM_POINTS] = V_028A6C_POINTLIST,
-      [PIPE_PRIM_LINES] = V_028A6C_LINESTRIP,
-      [PIPE_PRIM_LINE_LOOP] = V_028A6C_LINESTRIP,
-      [PIPE_PRIM_LINE_STRIP] = V_028A6C_LINESTRIP,
-      [PIPE_PRIM_TRIANGLES] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_TRIANGLE_STRIP] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_TRIANGLE_FAN] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_QUADS] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_QUAD_STRIP] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_POLYGON] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_LINES_ADJACENCY] = V_028A6C_LINESTRIP,
-      [PIPE_PRIM_LINE_STRIP_ADJACENCY] = V_028A6C_LINESTRIP,
-      [PIPE_PRIM_TRIANGLES_ADJACENCY] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY] = V_028A6C_TRISTRIP,
-      [PIPE_PRIM_PATCHES] = V_028A6C_POINTLIST,
-      [SI_PRIM_RECTANGLE_LIST] = V_028A6C_RECTLIST,
-   };
-   assert(mode < ARRAY_SIZE(prim_conv));
-
-   return prim_conv[mode];
-}
-
 /* rast_prim is the primitive type after GS. */
 template<amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
 static void si_emit_rasterizer_prim_state(struct si_context *sctx)
@@ -1173,7 +1144,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
                                  value);
    }
 
-   unsigned gs_out_prim = si_conv_prim_to_gs_out(rast_prim);
+   unsigned gs_out_prim = sctx->gs_out_prim;
    if (unlikely(gs_out_prim != sctx->last_gs_out_prim && (NGG || HAS_GS))) {
       if (GFX_VERSION >= GFX11)
          radeon_set_uconfig_reg(R_030998_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
