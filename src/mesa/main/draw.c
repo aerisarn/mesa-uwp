@@ -2217,56 +2217,6 @@ _mesa_DrawTransformFeedbackStreamInstanced(GLenum mode, GLuint name,
 }
 
 
-static void
-_mesa_validated_multidrawarraysindirect(struct gl_context *ctx, GLenum mode,
-                                        GLintptr indirect,
-                                        GLintptr drawcount_offset,
-                                        GLsizei drawcount, GLsizei stride,
-                                        struct gl_buffer_object *drawcount_buffer)
-{
-   /* If drawcount_buffer is set, drawcount is the maximum draw count.*/
-   if (drawcount == 0)
-      return;
-
-   st_indirect_draw_vbo(ctx, mode, ctx->DrawIndirectBuffer, indirect,
-                        drawcount, stride, drawcount_buffer,
-                        drawcount_offset, NULL, false, 0);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
-      _mesa_flush(ctx);
-}
-
-
-static void
-_mesa_validated_multidrawelementsindirect(struct gl_context *ctx,
-                                          GLenum mode, GLenum type,
-                                          GLintptr indirect,
-                                          GLintptr drawcount_offset,
-                                          GLsizei drawcount, GLsizei stride,
-                                          struct gl_buffer_object *drawcount_buffer)
-{
-   /* If drawcount_buffer is set, drawcount is the maximum draw count.*/
-   if (drawcount == 0)
-      return;
-
-   /* NOTE: IndexBufferObj is guaranteed to be a VBO. */
-   struct _mesa_index_buffer ib;
-   ib.count = 0;                /* unknown */
-   ib.obj = ctx->Array.VAO->IndexBufferObj;
-   ib.ptr = NULL;
-   ib.index_size_shift = get_index_size_shift(type);
-
-   st_indirect_draw_vbo(ctx, mode, ctx->DrawIndirectBuffer, indirect,
-                        drawcount, stride, drawcount_buffer,
-                        drawcount_offset, &ib,
-                        ctx->Array._PrimitiveRestart[ib.index_size_shift],
-                        ctx->Array._RestartIndex[ib.index_size_shift]);
-
-   if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
-      _mesa_flush(ctx);
-}
-
-
 /**
  * Like [Multi]DrawArrays/Elements, but they take most arguments from
  * a buffer object.
@@ -2305,8 +2255,7 @@ _mesa_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
        !_mesa_validate_DrawArraysIndirect(ctx, mode, indirect))
       return;
 
-   _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect,
-                                           0, 1, 16, NULL);
+   st_indirect_draw_vbo(ctx, mode, 0, (GLintptr)indirect, 0, 1, 16);
 }
 
 
@@ -2364,9 +2313,7 @@ _mesa_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
        !_mesa_validate_DrawElementsIndirect(ctx, mode, type, indirect))
       return;
 
-   _mesa_validated_multidrawelementsindirect(ctx, mode, type,
-                                             (GLintptr)indirect, 0,
-                                             1, 20, NULL);
+   st_indirect_draw_vbo(ctx, mode, type, (GLintptr)indirect, 0, 1, 20);
 }
 
 
@@ -2441,8 +2388,7 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
                                                primcount, stride))
       return;
 
-   _mesa_validated_multidrawarraysindirect(ctx, mode, (GLintptr)indirect, 0,
-                                           primcount, stride, NULL);
+   st_indirect_draw_vbo(ctx, mode, 0, (GLintptr)indirect, 0, primcount, stride);
 }
 
 
@@ -2536,9 +2482,7 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
                                                  primcount, stride))
       return;
 
-   _mesa_validated_multidrawelementsindirect(ctx, mode, type,
-                                             (GLintptr)indirect, 0, primcount,
-                                             stride, NULL);
+   st_indirect_draw_vbo(ctx, mode, type, (GLintptr)indirect, 0, primcount, stride);
 }
 
 
@@ -2566,9 +2510,8 @@ _mesa_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
                                                     maxdrawcount, stride))
       return;
 
-   _mesa_validated_multidrawarraysindirect(ctx, mode, indirect,
-                                           drawcount_offset, maxdrawcount,
-                                           stride, ctx->ParameterBuffer);
+   st_indirect_draw_vbo(ctx, mode, 0, (GLintptr)indirect, drawcount_offset,
+                        maxdrawcount, stride);
 }
 
 
@@ -2598,9 +2541,8 @@ _mesa_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
                                                       maxdrawcount, stride))
       return;
 
-   _mesa_validated_multidrawelementsindirect(ctx, mode, type, indirect,
-                                             drawcount_offset, maxdrawcount,
-                                             stride, ctx->ParameterBuffer);
+   st_indirect_draw_vbo(ctx, mode, type, (GLintptr)indirect, drawcount_offset,
+                        maxdrawcount, stride);
 }
 
 

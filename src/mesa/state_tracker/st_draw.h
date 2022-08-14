@@ -36,7 +36,6 @@
 
 #include "main/glheader.h"
 
-struct _mesa_index_buffer;
 struct gl_context;
 struct st_context;
 
@@ -89,16 +88,10 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 
 void
 st_indirect_draw_vbo(struct gl_context *ctx,
-                     GLuint mode,
-                     struct gl_buffer_object *indirect_data,
-                     GLsizeiptr indirect_offset,
-                     unsigned draw_count,
-                     unsigned stride,
-                     struct gl_buffer_object *indirect_draw_count,
-                     GLsizeiptr indirect_draw_count_offset,
-                     const struct _mesa_index_buffer *ib,
-                     bool primitive_restart,
-                     unsigned restart_index);
+                     GLenum mode, GLenum index_type,
+                     GLintptr indirect_offset,
+                     GLintptr indirect_draw_count_offset,
+                     GLsizei draw_count, GLsizei stride);
 
 bool
 st_draw_hw_select_prepare_common(struct gl_context *ctx);
