@@ -48,18 +48,19 @@ void st_destroy_draw( struct st_context *st );
 
 struct draw_context *st_get_draw_context(struct st_context *st);
 
-extern void
+void
 st_feedback_draw_vbo(struct gl_context *ctx,
-                     const struct _mesa_prim *prims,
-                     unsigned nr_prims,
-                     const struct _mesa_index_buffer *ib,
-		     bool index_bounds_valid,
-                     bool primitive_restart,
-                     unsigned restart_index,
-                     unsigned min_index,
-                     unsigned max_index,
-                     unsigned num_instances,
-                     unsigned base_instance);
+                     struct pipe_draw_info *info,
+                     unsigned drawid_offset,
+                     const struct pipe_draw_start_count_bias *draws,
+                     unsigned num_draws);
+
+void
+st_feedback_draw_vbo_multi_mode(struct gl_context *ctx,
+                                struct pipe_draw_info *info,
+                                const struct pipe_draw_start_count_bias *draws,
+                                const unsigned char *mode,
+                                unsigned num_draws);
 
 /**
  * When drawing with VBOs, the addresses specified with
