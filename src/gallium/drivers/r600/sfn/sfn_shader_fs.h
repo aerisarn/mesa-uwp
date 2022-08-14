@@ -60,7 +60,7 @@ private:
    bool scan_input(nir_intrinsic_instr *instr, int index_src_id);
 
 
-   bool emit_export_pixel(nir_intrinsic_instr& intr, int num_outputs);
+   bool emit_export_pixel(nir_intrinsic_instr& intr);
    bool emit_load_sample_mask_in(nir_intrinsic_instr* instr);
    bool emit_load_helper_invocation(nir_intrinsic_instr* instr);
    bool emit_load_sample_pos(nir_intrinsic_instr* instr);

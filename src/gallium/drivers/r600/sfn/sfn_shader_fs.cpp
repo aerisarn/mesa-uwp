@@ -112,23 +112,11 @@ bool FragmentShader::store_output(nir_intrinsic_instr *intr)
 {
    auto location = nir_intrinsic_io_semantics(intr).location;
 
-   if (location == FRAG_RESULT_COLOR) {
-      if (!m_dual_source_blend) {
+   if (location == FRAG_RESULT_COLOR && !m_dual_source_blend) {
          m_fs_write_all = true;
-      }
-
-      return emit_export_pixel(*intr, m_dual_source_blend ? 1 : m_max_color_exports);
    }
 
-   if ((location >= FRAG_RESULT_DATA0 &&
-        location <= FRAG_RESULT_DATA7) ||
-       location == FRAG_RESULT_DEPTH ||
-       location == FRAG_RESULT_STENCIL ||
-       location == FRAG_RESULT_SAMPLE_MASK)
-      return emit_export_pixel(*intr, 1);
-
-   sfn_log << SfnLog::err << "r600-NIR: Unimplemented store_output for " << location << ")\n";
-   return false;
+   return emit_export_pixel(*intr);
 }
 
 unsigned
@@ -471,7 +459,7 @@ bool FragmentShader::scan_input(nir_intrinsic_instr *intr, int index_src_id)
    }
 }
 
-bool FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr, int num_outputs)
+bool FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr)
 {
    RegisterVec4::Swizzle swizzle;
    auto semantics = nir_intrinsic_io_semantics(&intr);
@@ -503,7 +491,11 @@ bool FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr, int num_output
       ShaderOutput output(driver_location, TGSI_SEMANTIC_COLOR, write_mask);
       add_output(output);
 
-      for (int k = 0 ; k < num_outputs; ++k) {
+      unsigned color_outputs = m_fs_write_all && chip_class() >= ISA_CC_EVERGREEN ?
+                                  m_max_color_exports : 1;
+
+
+      for (unsigned k = 0; k < color_outputs; ++k) {
 
          unsigned location = (m_dual_source_blend && (semantics.location == FRAG_RESULT_COLOR)
                               ? semantics.dual_source_blend_index : driver_location) + k - m_depth_exports;
@@ -514,7 +506,7 @@ bool FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr, int num_output
             sfn_log << SfnLog::io << "Pixel output loc:" << location
                     << " dl:" << driver_location
                     << " skipped  because  we have only "   << m_max_color_exports << " CBs\n";
-            continue;
+            return true; ;
          }
 
          m_last_pixel_export = new ExportInstr(ExportInstr::pixel, location, value);
@@ -536,8 +528,7 @@ bool FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr, int num_output
          m_color_export_mask |= mask;
 
          emit_instruction(m_last_pixel_export);
-
-      };
+      }
    } else if (semantics.location == FRAG_RESULT_DEPTH ||
               semantics.location == FRAG_RESULT_STENCIL ||
               semantics.location == FRAG_RESULT_SAMPLE_MASK) {
