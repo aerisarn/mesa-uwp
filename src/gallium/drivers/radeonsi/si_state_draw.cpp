@@ -377,6 +377,12 @@ static bool si_update_shaders(struct si_context *sctx)
       }
    }
 
+   /* si_shader_select_with_key can clear the ngg_culling in the shader key if the shader
+    * compilation hasn't finished. Set it to the same value in si_context.
+    */
+   if (GFX_VERSION >= GFX10 && NGG)
+      sctx->ngg_culling = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.ge.opt.ngg_culling;
+
    sctx->do_update_shaders = false;
    return true;
 }
@@ -2437,12 +2443,6 @@ static void si_draw(struct pipe_context *ctx,
          DRAW_CLEANUP;
          return;
       }
-
-      /* si_update_shaders can clear the ngg_culling in the shader key if the shader compilation
-       * hasn't finished. Set it to the correct value in si_context.
-       */
-      if (GFX_VERSION >= GFX10 && NGG)
-         sctx->ngg_culling = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.ge.opt.ngg_culling;
    }
 
    /* Since we've called si_context_add_resource_size for vertex buffers,
