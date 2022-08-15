@@ -752,7 +752,7 @@ v3dv_job_init(struct v3dv_job *job,
 
       v3dv_cl_init(job, &job->indirect);
 
-      if (unlikely(V3D_DEBUG & V3D_DEBUG_ALWAYS_FLUSH))
+      if (V3D_DBG(ALWAYS_FLUSH))
          job->always_flush = true;
    }
 
@@ -1521,7 +1521,7 @@ cmd_buffer_subpass_check_double_buffer_mode(struct v3dv_cmd_buffer *cmd_buffer,
    job->can_use_double_buffer = false;
 
    /* Double-buffer can only be used if requested via V3D_DEBUG */
-   if (!unlikely(V3D_DEBUG & V3D_DEBUG_DOUBLE_BUFFER))
+   if (!V3D_DBG(DOUBLE_BUFFER))
       return;
 
    /* Double-buffer cannot be enabled for MSAA jobs */

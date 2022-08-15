@@ -311,7 +311,7 @@ v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
 
       size_t buffer_size;
       uint8_t *buffer = disk_cache_get(disk_cache, cache_key, &buffer_size);
-      if (unlikely(V3D_DEBUG & V3D_DEBUG_CACHE)) {
+      if (V3D_DBG(CACHE)) {
          char sha1buf[41];
          _mesa_sha1_format(sha1buf, cache_key);
          fprintf(stderr, "[v3dv on-disk cache] %s %s\n",
@@ -478,7 +478,7 @@ pipeline_cache_upload_shared_data(struct v3dv_pipeline_cache *cache,
          cache_key cache_key;
          disk_cache_compute_key(disk_cache, shared_data->sha1_key, 20, cache_key);
 
-         if (unlikely(V3D_DEBUG & V3D_DEBUG_CACHE)) {
+         if (V3D_DBG(CACHE)) {
             char sha1buf[41];
             _mesa_sha1_format(sha1buf, shared_data->sha1_key);
             fprintf(stderr, "[v3dv on-disk cache] storing %s\n", sha1buf);

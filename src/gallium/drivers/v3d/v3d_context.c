@@ -338,8 +338,8 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         struct v3d_context *v3d;
 
         /* Prevent dumping of the shaders built during context setup. */
-        uint32_t saved_shaderdb_flag = V3D_DEBUG & V3D_DEBUG_SHADERDB;
-        V3D_DEBUG &= ~V3D_DEBUG_SHADERDB;
+        uint32_t saved_shaderdb_flag = v3d_mesa_debug & V3D_DEBUG_SHADERDB;
+        v3d_mesa_debug &= ~V3D_DEBUG_SHADERDB;
 
         v3d = rzalloc(NULL, struct v3d_context);
         if (!v3d)
@@ -394,7 +394,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                 goto fail;
         v3d->blitter->use_index_buffer = true;
 
-        V3D_DEBUG |= saved_shaderdb_flag;
+        v3d_mesa_debug |= saved_shaderdb_flag;
 
         v3d->sample_mask = (1 << V3D_MAX_SAMPLES) - 1;
         v3d->active_queries = true;

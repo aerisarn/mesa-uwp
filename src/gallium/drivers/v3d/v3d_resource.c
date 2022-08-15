@@ -41,7 +41,7 @@
 static void
 v3d_debug_resource_layout(struct v3d_resource *rsc, const char *caller)
 {
-        if (!(unlikely(V3D_DEBUG & V3D_DEBUG_SURFACE)))
+        if (!V3D_DBG(SURFACE))
                 return;
 
         struct pipe_resource *prsc = &rsc->base;

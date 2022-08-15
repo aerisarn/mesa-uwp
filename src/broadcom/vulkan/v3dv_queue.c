@@ -37,16 +37,16 @@ v3dv_clif_dump(struct v3dv_device *device,
                struct v3dv_job *job,
                struct drm_v3d_submit_cl *submit)
 {
-   if (!(unlikely(V3D_DEBUG & (V3D_DEBUG_CL |
-                               V3D_DEBUG_CL_NO_BIN |
-                               V3D_DEBUG_CLIF))))
+   if (!(V3D_DBG(CL) ||
+         V3D_DBG(CL_NO_BIN) ||
+         V3D_DBG(CLIF)))
       return;
 
    struct clif_dump *clif = clif_dump_init(&device->devinfo,
                                            stderr,
-                                           V3D_DEBUG & (V3D_DEBUG_CL |
-                                                        V3D_DEBUG_CL_NO_BIN),
-                                           V3D_DEBUG & V3D_DEBUG_CL_NO_BIN);
+                                           V3D_DBG(CL) ||
+                                           V3D_DBG(CL_NO_BIN),
+                                           V3D_DBG(CL_NO_BIN));
 
    set_foreach(job->bos, entry) {
       struct v3dv_bo *bo = (void *)entry->key;

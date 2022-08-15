@@ -645,7 +645,7 @@ struct v3d_blend_state {
 };
 
 #define perf_debug(...) do {                            \
-        if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))       \
+        if (V3D_DBG(PERF))                            \
                 fprintf(stderr, __VA_ARGS__);           \
         if (unlikely(v3d->debug.debug_message))         \
                 util_debug_message(&v3d->debug, PERF_INFO, __VA_ARGS__);    \

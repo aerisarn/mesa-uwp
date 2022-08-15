@@ -577,7 +577,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->disable_general_tmu_sched = disable_general_tmu_sched;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
-        c->disable_loop_unrolling = V3D_DEBUG & V3D_DEBUG_NO_LOOP_UNROLL
+        c->disable_loop_unrolling = V3D_DBG(NO_LOOP_UNROLL)
                 ? true : disable_loop_unrolling;
 
         s = nir_shader_clone(c, s);
@@ -1798,7 +1798,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                                            c->program_id, c->variant_id);
 
                         if (ret >= 0) {
-                                if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))
+                                if (V3D_DBG(PERF))
                                         fprintf(stderr, "%s\n", debug_msg);
 
                                 c->debug_output(debug_msg, c->debug_output_data);
@@ -1846,7 +1846,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                                 best_spill_fill_count = c->spills + c->fills;
                         }
 
-                        if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF)) {
+                        if (V3D_DBG(PERF)) {
                                 char *debug_msg;
                                 int ret = asprintf(&debug_msg,
                                                    "Compiled %s prog %d/%d with %d "
@@ -1877,7 +1877,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 c = best_c;
         }
 
-        if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF) &&
+        if (V3D_DBG(PERF) &&
             c->compilation_result !=
             V3D_COMPILATION_FAILED_REGISTER_ALLOCATION &&
             c->spills > 0) {
@@ -1913,7 +1913,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         char *shaderdb;
         int ret = v3d_shaderdb_dump(c, &shaderdb);
         if (ret >= 0) {
-                if (V3D_DEBUG & V3D_DEBUG_SHADERDB)
+                if (V3D_DBG(SHADERDB))
                         fprintf(stderr, "SHADER-DB-%s - %s\n", s->info.name, shaderdb);
 
                 c->debug_output(shaderdb, c->debug_output_data);

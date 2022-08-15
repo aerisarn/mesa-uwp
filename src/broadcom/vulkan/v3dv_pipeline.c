@@ -438,7 +438,7 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    const nir_shader_compiler_options *nir_options = &v3dv_nir_options;
 
 
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_DUMP_SPIRV) && stage->module->nir == NULL)
+   if (V3D_DBG(DUMP_SPIRV) && stage->module->nir == NULL)
       v3dv_print_spirv(stage->module->data, stage->module->size, stderr);
 
    /* vk_shader_module_to_nir also handles internal shaders, when module->nir
@@ -456,15 +456,14 @@ shader_module_compile_to_nir(struct v3dv_device *device,
       return NULL;
    assert(nir->info.stage == broadcom_shader_stage_to_gl(stage->stage));
 
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERDB) && stage->module->nir == NULL) {
+   if (V3D_DBG(SHADERDB) && stage->module->nir == NULL) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, stage->pipeline->sha1);
       nir->info.name = ralloc_strdup(nir, sha1buf);
    }
 
-   if (unlikely(V3D_DEBUG & (V3D_DEBUG_NIR |
-                             v3d_debug_flag_for_shader_stage(
-                                broadcom_shader_stage_to_gl(stage->stage))))) {
+   if (V3D_DBG(NIR) ||
+       v3d_debug_flag_for_shader_stage(broadcom_shader_stage_to_gl(stage->stage))) {
       fprintf(stderr, "NIR after vk_shader_module_to_nir: %s prog %d NIR:\n",
               broadcom_shader_stage_name(stage->stage),
               stage->program_id);
@@ -743,9 +742,9 @@ lower_tex_src_to_offset(nir_builder *b,
       base_index;
 
    uint8_t return_size;
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_TMU_16BIT))
+   if (V3D_DBG(TMU_16BIT))
       return_size = 16;
-   else  if (unlikely(V3D_DEBUG & V3D_DEBUG_TMU_32BIT))
+   else  if (V3D_DBG(TMU_32BIT))
       return_size = 32;
    else
       return_size = relaxed_precision || instr->is_shadow ? 16 : 32;
@@ -1649,9 +1648,8 @@ pipeline_compile_shader_variant(struct v3dv_pipeline_stage *p_stage,
       &pipeline->device->instance->physicalDevice;
    const struct v3d_compiler *compiler = physical_device->compiler;
 
-   if (unlikely(V3D_DEBUG & (V3D_DEBUG_NIR |
-                             v3d_debug_flag_for_shader_stage
-                             (broadcom_shader_stage_to_gl(p_stage->stage))))) {
+   if (V3D_DBG(NIR) ||
+       v3d_debug_flag_for_shader_stage(broadcom_shader_stage_to_gl(p_stage->stage))) {
       fprintf(stderr, "Just before v3d_compile: %s prog %d NIR:\n",
               broadcom_shader_stage_name(p_stage->stage),
               p_stage->program_id);
@@ -3080,7 +3078,7 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    VkResult result = VK_SUCCESS;
 
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+   if (V3D_DBG(SHADERS))
       mtx_lock(&device->pdevice->mutex);
 
    uint32_t i = 0;
@@ -3106,7 +3104,7 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
    for (; i < count; i++)
       pPipelines[i] = VK_NULL_HANDLE;
 
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+   if (V3D_DBG(SHADERS))
       mtx_unlock(&device->pdevice->mutex);
 
    return result;
@@ -3318,7 +3316,7 @@ v3dv_CreateComputePipelines(VkDevice _device,
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    VkResult result = VK_SUCCESS;
 
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+   if (V3D_DBG(SHADERS))
       mtx_lock(&device->pdevice->mutex);
 
    uint32_t i = 0;
@@ -3343,7 +3341,7 @@ v3dv_CreateComputePipelines(VkDevice _device,
    for (; i < createInfoCount; i++)
       pPipelines[i] = VK_NULL_HANDLE;
 
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
+   if (V3D_DBG(SHADERS))
       mtx_unlock(&device->pdevice->mutex);
 
    return result;

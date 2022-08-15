@@ -103,7 +103,7 @@
 #endif
 
 #define perf_debug(...) do {                       \
-   if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))       \
+   if (V3D_DBG(PERF))                            \
       fprintf(stderr, __VA_ARGS__);                \
 } while (0)
 
