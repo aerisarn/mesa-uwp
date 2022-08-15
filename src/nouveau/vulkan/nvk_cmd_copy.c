@@ -446,6 +446,14 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
       P_IMMD(push, NV902D, SET_DST_FORMAT, V_A8B8G8R8);
       P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_A8B8G8R8);
       break;
+   case 8:
+      P_IMMD(push, NV902D, SET_DST_FORMAT, V_RF16_GF16_BF16_AF16);
+      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_RF16_GF16_BF16_AF16);
+      break;
+   case 16:
+      P_IMMD(push, NV902D, SET_DST_FORMAT, V_RF32_GF32_BF32_AF32);
+      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_RF32_GF32_BF32_AF32);
+      break;
    default:
       unreachable("TODO: More formats in CmdClearColorImage");
    }
