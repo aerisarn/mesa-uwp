@@ -623,7 +623,12 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding |= vop3.opsel << 11;
          for (unsigned i = 0; i < 3; i++)
             encoding |= vop3.abs[i] << (8 + i);
-         if (instr->definitions.size() == 2)
+         /* On GFX9 and older, v_cmpx implicitly writes exec besides writing an SGPR pair.
+          * On GFX10 and newer, v_cmpx always writes just exec.
+          */
+         if (instr->definitions.size() == 2 && instr->isVOPC())
+            assert(ctx.gfx_level <= GFX9 && instr->definitions[1].physReg() == exec);
+         else if (instr->definitions.size() == 2)
             encoding |= instr->definitions[1].physReg() << 8;
          encoding |= (0xFF & instr->definitions[0].physReg());
          out.push_back(encoding);
