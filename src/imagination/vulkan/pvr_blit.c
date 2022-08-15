@@ -37,6 +37,7 @@
 #include "pvr_types.h"
 #include "util/list.h"
 #include "util/macros.h"
+#include "util/bitscan.h"
 #include "vk_alloc.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
@@ -45,13 +46,6 @@
 
 /* TODO: Investigate where this limit comes from. */
 #define PVR_MAX_TRANSFER_SIZE_IN_TEXELS 2048U
-
-void pvr_CmdCopyImageToBuffer2KHR(
-   VkCommandBuffer commandBuffer,
-   const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
-{
-   assert(!"Unimplemented");
-}
 
 static struct pvr_transfer_cmd *
 pvr_transfer_cmd_alloc(struct pvr_cmd_buffer *cmd_buffer)
@@ -793,6 +787,170 @@ void pvr_CmdCopyBufferToImage2KHR(
                                          src,
                                          dst,
                                          &pCopyBufferToImageInfo->pRegions[i]);
+      if (result != VK_SUCCESS)
+         return;
+   }
+}
+
+static VkResult
+pvr_copy_image_to_buffer_region(struct pvr_device *device,
+                                struct pvr_cmd_buffer *cmd_buffer,
+                                const struct pvr_image *image,
+                                const struct pvr_buffer *buffer,
+                                const VkBufferImageCopy2 *region)
+{
+   const VkImageAspectFlags aspect_mask = region->imageSubresource.aspectMask;
+   VkFormat image_format = pvr_get_copy_format(image->vk.format);
+   struct pvr_transfer_cmd_surface dst_surface = { 0 };
+   VkImageSubresource sub_resource;
+   uint32_t buffer_image_height;
+   uint32_t buffer_row_length;
+   uint32_t buffer_slice_size;
+   uint32_t max_array_layers;
+   VkRect2D dst_rect = { 0 };
+   uint32_t max_depth_slice;
+   VkSubresourceLayout info;
+   VkFormat dst_format;
+
+   /* Only images with VK_SAMPLE_COUNT_1_BIT can be copied to buffer. */
+   assert(image->vk.samples == 1);
+
+   /* Only one aspect bit should be set per region. */
+   assert(util_is_power_of_two_nonzero(aspect_mask));
+
+   /* Color and depth aspect copies can be done using an appropriate raw format.
+    */
+   if (aspect_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT)) {
+      image_format = pvr_get_raw_copy_format(image_format);
+      dst_format = image_format;
+   } else if (aspect_mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      /* From the Vulkan spec:
+       *
+       *    Data copied to or from the stencil aspect of any depth/stencil
+       *    format is tightly packed with one VK_FORMAT_S8_UINT value per texel.
+       */
+      dst_format = VK_FORMAT_S8_UINT;
+   } else {
+      /* YUV Planes require specific formats. */
+      dst_format = image_format;
+   }
+
+   if (region->bufferRowLength == 0)
+      buffer_row_length = region->imageExtent.width;
+   else
+      buffer_row_length = region->bufferRowLength;
+
+   if (region->bufferImageHeight == 0)
+      buffer_image_height = region->imageExtent.height;
+   else
+      buffer_image_height = region->bufferImageHeight;
+
+   max_array_layers =
+      region->imageSubresource.baseArrayLayer +
+      vk_image_subresource_layer_count(&image->vk, &region->imageSubresource);
+
+   buffer_slice_size = buffer_image_height * buffer_row_length *
+                       vk_format_get_blocksize(dst_format);
+
+   max_depth_slice = region->imageExtent.depth + region->imageOffset.z;
+
+   pvr_setup_buffer_surface(&dst_surface,
+                            &dst_rect,
+                            buffer->dev_addr,
+                            region->bufferOffset,
+                            dst_format,
+                            buffer_row_length,
+                            buffer_image_height,
+                            buffer_row_length);
+
+   dst_rect.extent.width = region->imageExtent.width;
+   dst_rect.extent.height = region->imageExtent.height;
+
+   sub_resource = (VkImageSubresource){
+      .aspectMask = region->imageSubresource.aspectMask,
+      .mipLevel = region->imageSubresource.mipLevel,
+      .arrayLayer = region->imageSubresource.baseArrayLayer,
+   };
+
+   pvr_get_image_subresource_layout(image, &sub_resource, &info);
+
+   for (uint32_t i = region->imageSubresource.baseArrayLayer;
+        i < max_array_layers;
+        i++) {
+      struct pvr_transfer_cmd_surface src_surface = { 0 };
+      VkRect2D src_rect = { 0 };
+
+      /* Note: Set the depth to the initial depth offset, the memory address (or
+       * the z_position) for the depth slice will be incremented manually in the
+       * loop below.
+       */
+      pvr_setup_transfer_surface(device,
+                                 &src_surface,
+                                 &src_rect,
+                                 image,
+                                 i,
+                                 region->imageSubresource.mipLevel,
+                                 &region->imageOffset,
+                                 &region->imageExtent,
+                                 region->imageOffset.z,
+                                 image_format,
+                                 region->imageSubresource.aspectMask);
+
+      for (uint32_t j = region->imageOffset.z; j < max_depth_slice; j++) {
+         struct pvr_transfer_cmd *transfer_cmd;
+         VkResult result;
+
+         /* TODO: See if we can allocate all the transfer cmds in one go. */
+         transfer_cmd = pvr_transfer_cmd_alloc(cmd_buffer);
+         if (!transfer_cmd)
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+         transfer_cmd->mappings[0].src_rect = src_rect;
+         transfer_cmd->mappings[0].dst_rect = dst_rect;
+         transfer_cmd->mapping_count++;
+
+         transfer_cmd->src = src_surface;
+         transfer_cmd->src_present = true;
+
+         transfer_cmd->dst = dst_surface;
+         transfer_cmd->scissor = dst_rect;
+
+         result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
+         if (result != VK_SUCCESS) {
+            vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
+            return result;
+         }
+
+         transfer_cmd->dst.dev_addr.addr += buffer_slice_size;
+
+         if (src_surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
+            src_surface.z_position += 1.0f;
+         else
+            src_surface.dev_addr.addr += info.depthPitch;
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
+void pvr_CmdCopyImageToBuffer2(
+   VkCommandBuffer commandBuffer,
+   const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
+{
+   PVR_FROM_HANDLE(pvr_buffer, dst, pCopyImageToBufferInfo->dstBuffer);
+   PVR_FROM_HANDLE(pvr_image, src, pCopyImageToBufferInfo->srcImage);
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   for (uint32_t i = 0U; i < pCopyImageToBufferInfo->regionCount; i++) {
+      const VkBufferImageCopy2 *region = &pCopyImageToBufferInfo->pRegions[i];
+      const VkResult result =
+         pvr_copy_image_to_buffer_region(cmd_buffer->device,
+                                         cmd_buffer,
+                                         src,
+                                         dst,
+                                         region);
       if (result != VK_SUCCESS)
          return;
    }
