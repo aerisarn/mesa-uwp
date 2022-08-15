@@ -479,8 +479,10 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       for (int idx = exec_val_idx + 1; idx < exec_copy_idx; ++idx) {
          aco_ptr<Instruction>& instr = block.instructions[idx];
          for (Operand& op : instr->operands) {
-            if (!op.isConstant() && op.physReg() == exec_wr_def.physReg())
-               op = Operand(exec, ctx.program->lane_mask);
+            if (op.physReg() == exec_wr_def.physReg())
+               op = Operand(exec, op.regClass());
+            if (exec_wr_def.size() == 2 && op.physReg() == exec_wr_def.physReg().advance(4))
+               op = Operand(exec_hi, op.regClass());
          }
       }
    }
