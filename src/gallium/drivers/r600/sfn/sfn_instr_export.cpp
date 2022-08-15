@@ -206,7 +206,7 @@ bool WriteScratchInstr::do_ready() const
 
 void WriteScratchInstr::do_print(std::ostream& os) const
 {
-   char buf[6];
+   char buf[6] = {0};
 
    os << "WRITE_SCRATCH ";
    if (m_address)
