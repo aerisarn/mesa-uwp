@@ -474,6 +474,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_format_feature_flags2 = true,
       .KHR_fragment_shading_rate = device->rad_info.gfx_level >= GFX10_3,
       .KHR_get_memory_requirements2 = true,
+      .KHR_global_priority = true,
       .KHR_image_format_list = true,
       .KHR_imageless_framebuffer = true,
 #ifdef RADV_USE_WSI_PLATFORM
