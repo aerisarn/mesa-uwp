@@ -489,23 +489,7 @@ pandecode_uniforms(mali_ptr uniforms, unsigned uniform_count)
 }
 #endif
 
-static const char *
-shader_type_for_job(unsigned type)
-{
-        switch (type) {
-#if PAN_ARCH <= 7
-        case MALI_JOB_TYPE_VERTEX:  return "VERTEX";
-#endif
-        case MALI_JOB_TYPE_TILER:   return "FRAGMENT";
-        case MALI_JOB_TYPE_FRAGMENT: return "FRAGMENT";
-        case MALI_JOB_TYPE_COMPUTE: return "COMPUTE";
-        default: return "UNKNOWN";
-        }
-}
-
-static unsigned shader_id = 0;
-
-static struct midgard_disasm_stats
+static void
 pandecode_shader_disassemble(mali_ptr shader_ptr, int type, unsigned gpu_id)
 {
         uint8_t *PANDECODE_PTR_VAR(code, shader_ptr);
@@ -519,31 +503,15 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int type, unsigned gpu_id)
 
         pandecode_log_cont("\n\n");
 
-        struct midgard_disasm_stats stats = { 0 };
-
 #if PAN_ARCH >= 9
         disassemble_valhall(pandecode_dump_stream, (const uint64_t *) code, sz, true);
 #elif PAN_ARCH >= 6 && PAN_ARCH <= 7
         disassemble_bifrost(pandecode_dump_stream, code, sz, false);
 #else
-	stats = disassemble_midgard(pandecode_dump_stream,
-                                    code, sz, gpu_id, true);
+        disassemble_midgard(pandecode_dump_stream, code, sz, gpu_id, true);
 #endif
 
-        unsigned nr_threads =
-                (stats.work_count <= 4) ? 4 :
-                (stats.work_count <= 8) ? 2 :
-                1;
-
-        pandecode_log_cont("shader%d - MESA_SHADER_%s shader: "
-                "%u inst, %u bundles, %u quadwords, "
-                "%u registers, %u threads, 0 loops, 0:0 spills:fills\n\n\n",
-                shader_id++,
-                shader_type_for_job(type),
-                stats.instruction_count, stats.bundle_count, stats.quadword_count,
-                stats.work_count, nr_threads);
-
-        return stats;
+        pandecode_log_cont("\n\n");
 }
 
 #if PAN_ARCH <= 7
@@ -653,30 +621,6 @@ pandecode_bifrost_texture(const void *cl, unsigned tex)
 
 #if PAN_ARCH <= 7
 static void
-pandecode_blend_shader_disassemble(mali_ptr shader, int job_type,
-                                   unsigned gpu_id)
-{
-        struct midgard_disasm_stats stats =
-                pandecode_shader_disassemble(shader, job_type, gpu_id);
-
-        bool has_texture = (stats.texture_count > 0);
-        bool has_sampler = (stats.sampler_count > 0);
-        bool has_attribute = (stats.attribute_count > 0);
-        bool has_varying = (stats.varying_count > 0);
-        bool has_uniform = (stats.uniform_count > 0);
-        bool has_ubo = (stats.uniform_buffer_count > 0);
-
-        if (has_texture || has_sampler)
-                pandecode_log("// XXX: blend shader accessing textures\n");
-
-        if (has_attribute || has_varying)
-                pandecode_log("// XXX: blend shader accessing interstage\n");
-
-        if (has_uniform || has_ubo)
-                pandecode_log("// XXX: blend shader accessing uniforms\n");
-}
-
-static void
 pandecode_textures(mali_ptr textures, unsigned texture_count)
 {
         if (!textures)
@@ -781,7 +725,7 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
 #if PAN_ARCH == 4
                 mali_ptr shader = state.blend_shader & ~0xF;
                 if (state.multisample_misc.blend_shader && shader)
-                        pandecode_blend_shader_disassemble(shader, job_type, gpu_id);
+                        pandecode_shader_disassemble(shader, job_type, gpu_id);
 #endif
                 pandecode_indent--;
                 pandecode_log("\n");
@@ -804,7 +748,7 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
                                 shader = pandecode_midgard_blend_mrt(blend_base, i);
 #endif
                                 if (shader & ~0xF)
-                                        pandecode_blend_shader_disassemble(shader, job_type,
+                                        pandecode_shader_disassemble(shader, job_type,
                                                                            gpu_id);
                         }
                 }
