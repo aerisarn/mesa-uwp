@@ -1324,3 +1324,42 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
       P_IMMD(p, NV9097, END, 0);
    }
 }
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
+                   uint32_t indexCount,
+                   uint32_t instanceCount,
+                   uint32_t firstIndex,
+                   int32_t vertexOffset,
+                   uint32_t firstInstance)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+   struct nouveau_ws_push *p = cmd->push;
+
+   nvk_flush_gfx_state(cmd);
+
+   const uint32_t begin_op =
+      vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology);
+
+   P_IMMD(p, NV9097, SET_GLOBAL_BASE_VERTEX_INDEX, vertexOffset);
+   P_IMMD(p, NV9097, SET_VERTEX_ID_BASE, vertexOffset);
+   P_IMMD(p, NV9097, SET_GLOBAL_BASE_INSTANCE_INDEX, firstInstance);
+
+   for (unsigned i = 0; i < instanceCount; i++) {
+      P_IMMD(p, NV9097, BEGIN, {
+         .op = begin_op,
+         .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+         .instance_id = (i == 0) ? NV9097_BEGIN_INSTANCE_ID_FIRST :
+                                   NV9097_BEGIN_INSTANCE_ID_SUBSEQUENT,
+         .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+      });
+
+      P_MTHD(p, NV9097, SET_INDEX_BUFFER_F);
+      P_NV9097_SET_INDEX_BUFFER_F(p, firstIndex);
+      P_NV9097_DRAW_INDEX_BUFFER(p, indexCount);
+
+      P_IMMD(p, NV9097, END, 0);
+   }
+}
