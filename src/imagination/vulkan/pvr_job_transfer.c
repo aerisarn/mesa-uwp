@@ -3052,60 +3052,82 @@ static void pvr_isp_prim_block_isp_state(const struct pvr_device_info *dev_info,
                                          bool read_bgnd,
                                          uint32_t **const cs_ptr_out)
 {
+   const bool has_simple_internal_parameter_format_v2 =
+      PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2);
    uint32_t *cs_ptr = *cs_ptr_out;
 
-   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2)) {
-      pvr_finishme("Unimplemented path.");
-   } else {
-      /* ISP state words. */
+   if (has_simple_internal_parameter_format_v2) {
+      const uint32_t tsp_data_per_vrx_in_bytes =
+         tsp_data_size_in_bytes / num_isp_vertices;
 
-      /* clang-format off */
-      pvr_csb_pack (cs_ptr, TA_STATE_ISPCTL, ispctl);
-      /* clang-format on */
-      cs_ptr += pvr_cmd_length(TA_STATE_ISPCTL);
+      pvr_csb_pack ((uint64_t *)cs_ptr,
+                    IPF_VERTEX_FORMAT_WORD_SIPF2,
+                    vert_fmt) {
+         vert_fmt.vf_isp_state_size =
+            pvr_cmd_length(TA_STATE_ISPCTL) + pvr_cmd_length(TA_STATE_ISPA);
 
-      pvr_csb_pack (cs_ptr, TA_STATE_ISPA, ispa) {
-         ispa.objtype = PVRX(TA_OBJTYPE_TRIANGLE);
-         ispa.passtype = read_bgnd ? PVRX(TA_PASSTYPE_TRANSLUCENT)
-                                   : PVRX(TA_PASSTYPE_OPAQUE);
-         ispa.dcmpmode = PVRX(TA_CMPMODE_ALWAYS);
-         ispa.dwritedisable = true;
+         vert_fmt.vf_tsp_vtx_raw = true;
+         vert_fmt.vf_isp_vtx_raw = true;
+
+         vert_fmt.vf_varying_vertex_bits = tsp_data_per_vrx_in_bytes * 8U;
+         vert_fmt.vf_primitive_total = (num_isp_vertices / 2U) - 1U;
+         vert_fmt.vf_vertex_total = num_isp_vertices - 1U;
       }
-      cs_ptr += pvr_cmd_length(TA_STATE_ISPA);
-
-      /* How many bytes the TSP compression format needs? */
-      pvr_csb_pack (cs_ptr, IPF_COMPRESSION_SIZE_WORD, word) {
-         word.cs_isp_comp_table_size = 0U;
-         word.cs_tsp_comp_format_size = tsp_comp_format_in_dw;
-         word.cs_tsp_comp_table_size = 0U;
-         word.cs_tsp_comp_vertex_size =
-            tsp_data_size_in_bytes / num_isp_vertices;
-      }
-      cs_ptr += pvr_cmd_length(IPF_COMPRESSION_SIZE_WORD);
-
-      /* ISP vertex compression. */
-      pvr_csb_pack (cs_ptr, IPF_ISP_COMPRESSION_WORD_0, word0) {
-         word0.cf_isp_comp_fmt_x0 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_x1 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_x2 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_y0 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_y1 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_y2 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_z0 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word0.cf_isp_comp_fmt_z1 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-      }
-      cs_ptr += pvr_cmd_length(IPF_ISP_COMPRESSION_WORD_0);
-
-      pvr_csb_pack (cs_ptr, IPF_ISP_COMPRESSION_WORD_1, word1) {
-         word1.vf_prim_msaa = 0U;
-         word1.vf_prim_id_pres = 0U;
-         word1.vf_vertex_clipped = 0U;
-         word1.vf_vertex_total = num_isp_vertices - 1U;
-         word1.cf_isp_comp_fmt_z3 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-         word1.cf_isp_comp_fmt_z2 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
-      }
-      cs_ptr += pvr_cmd_length(IPF_ISP_COMPRESSION_WORD_1);
+      cs_ptr += pvr_cmd_length(IPF_VERTEX_FORMAT_WORD_SIPF2);
    }
+
+   /* ISP state words. */
+
+   /* clang-format off */
+   pvr_csb_pack (cs_ptr, TA_STATE_ISPCTL, ispctl);
+   /* clang-format on */
+   cs_ptr += pvr_cmd_length(TA_STATE_ISPCTL);
+
+   pvr_csb_pack (cs_ptr, TA_STATE_ISPA, ispa) {
+      ispa.objtype = PVRX(TA_OBJTYPE_TRIANGLE);
+      ispa.passtype = read_bgnd ? PVRX(TA_PASSTYPE_TRANSLUCENT)
+                                : PVRX(TA_PASSTYPE_OPAQUE);
+      ispa.dcmpmode = PVRX(TA_CMPMODE_ALWAYS);
+      ispa.dwritedisable = true;
+   }
+   cs_ptr += pvr_cmd_length(TA_STATE_ISPA);
+
+   if (has_simple_internal_parameter_format_v2) {
+      *cs_ptr_out = cs_ptr;
+      return;
+   }
+
+   /* How many bytes the TSP compression format needs? */
+   pvr_csb_pack (cs_ptr, IPF_COMPRESSION_SIZE_WORD, word) {
+      word.cs_isp_comp_table_size = 0U;
+      word.cs_tsp_comp_format_size = tsp_comp_format_in_dw;
+      word.cs_tsp_comp_table_size = 0U;
+      word.cs_tsp_comp_vertex_size = tsp_data_size_in_bytes / num_isp_vertices;
+   }
+   cs_ptr += pvr_cmd_length(IPF_COMPRESSION_SIZE_WORD);
+
+   /* ISP vertex compression. */
+   pvr_csb_pack (cs_ptr, IPF_ISP_COMPRESSION_WORD_0, word0) {
+      word0.cf_isp_comp_fmt_x0 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_x1 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_x2 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_y0 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_y1 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_y2 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_z0 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word0.cf_isp_comp_fmt_z1 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+   }
+   cs_ptr += pvr_cmd_length(IPF_ISP_COMPRESSION_WORD_0);
+
+   pvr_csb_pack (cs_ptr, IPF_ISP_COMPRESSION_WORD_1, word1) {
+      word1.vf_prim_msaa = 0U;
+      word1.vf_prim_id_pres = 0U;
+      word1.vf_vertex_clipped = 0U;
+      word1.vf_vertex_total = num_isp_vertices - 1U;
+      word1.cf_isp_comp_fmt_z3 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+      word1.cf_isp_comp_fmt_z2 = PVRX(IPF_COMPRESSION_FORMAT_RAW_BYTE);
+   }
+   cs_ptr += pvr_cmd_length(IPF_ISP_COMPRESSION_WORD_1);
 
    *cs_ptr_out = cs_ptr;
 }
@@ -3118,49 +3140,75 @@ pvr_isp_prim_block_index_block(const struct pvr_device_info *dev_info,
    uint32_t *cs_ptr = *cs_ptr_out;
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
-      pvr_finishme("Unimplemented path.");
-   } else {
-      for (uint32_t i = 0U, j = 0U; i < num_mappings; i++, j += 4U) {
-         if ((i & 1U) == 0U) {
-            pvr_csb_pack (cs_ptr, IPF_INDEX_DATA, word) {
-               word.ix_index0_0 = j;
-               word.ix_index0_1 = j + 1U;
-               word.ix_index0_2 = j + 2U;
-               word.ix_index1_0 = j + 3U;
-            }
-            cs_ptr += pvr_cmd_length(IPF_INDEX_DATA);
+      for (uint32_t i = 0U; i < DIV_ROUND_UP(num_mappings, 2U); i++) {
+         const uint32_t idx = i * 8U;
 
-            /* Don't increment cs_ptr here. IPF_INDEX_DATA is patched in the
-             * else part and then cs_ptr is incremented.
-             */
-            pvr_csb_pack (cs_ptr, IPF_INDEX_DATA, word) {
-               word.ix_index0_0 = j + 2U;
-               word.ix_index0_1 = j + 1U;
-            }
-         } else {
-            uint32_t tmp;
+         pvr_csb_pack ((uint64_t *)cs_ptr,
+                       IPF_INDEX_DATA_WORDS_SIPF,
+                       idx_data_word) {
+            idx_data_word.ix_triangle3_index_2 = idx + 5U;
+            idx_data_word.ix_triangle3_index_1 = idx + 6U;
+            idx_data_word.ix_triangle3_index_0 = idx + 7U;
 
-            pvr_csb_pack (&tmp, IPF_INDEX_DATA, word) {
-               word.ix_index0_2 = j;
-               word.ix_index1_0 = j + 1U;
-            }
-            *cs_ptr |= tmp;
-            cs_ptr += pvr_cmd_length(IPF_INDEX_DATA);
+            idx_data_word.ix_triangle2_index_2 = idx + 6U;
+            idx_data_word.ix_triangle2_index_1 = idx + 5U;
+            idx_data_word.ix_triangle2_index_0 = idx + 4U;
 
-            pvr_csb_pack (cs_ptr, IPF_INDEX_DATA, word) {
-               word.ix_index0_0 = j + 2U;
-               word.ix_index0_1 = j + 3U;
-               word.ix_index0_2 = j + 2U;
-               word.ix_index1_0 = j + 1U;
-            }
-            cs_ptr += pvr_cmd_length(IPF_INDEX_DATA);
+            idx_data_word.ix_triangle1_index_2 = idx + 1U;
+            idx_data_word.ix_triangle1_index_1 = idx + 2U;
+            idx_data_word.ix_triangle1_index_0 = idx + 3U;
+
+            idx_data_word.ix_triangle0_index_2 = idx + 2U;
+            idx_data_word.ix_triangle0_index_1 = idx + 1U;
+            idx_data_word.ix_triangle0_index_0 = idx + 0U;
          }
+         cs_ptr += pvr_cmd_length(IPF_INDEX_DATA_WORDS_SIPF);
       }
 
-      /* The last pass didn't ++. */
-      if ((num_mappings & 1U) != 0U)
-         cs_ptr++;
+      *cs_ptr_out = cs_ptr;
+      return;
    }
+
+   for (uint32_t i = 0U, j = 0U; i < num_mappings; i++, j += 4U) {
+      if ((i & 1U) == 0U) {
+         pvr_csb_pack (cs_ptr, IPF_INDEX_DATA, word) {
+            word.ix_index0_0 = j;
+            word.ix_index0_1 = j + 1U;
+            word.ix_index0_2 = j + 2U;
+            word.ix_index1_0 = j + 3U;
+         }
+         cs_ptr += pvr_cmd_length(IPF_INDEX_DATA);
+
+         /* Don't increment cs_ptr here. IPF_INDEX_DATA is patched in the
+          * else part and then cs_ptr is incremented.
+          */
+         pvr_csb_pack (cs_ptr, IPF_INDEX_DATA, word) {
+            word.ix_index0_0 = j + 2U;
+            word.ix_index0_1 = j + 1U;
+         }
+      } else {
+         uint32_t tmp;
+
+         pvr_csb_pack (&tmp, IPF_INDEX_DATA, word) {
+            word.ix_index0_2 = j;
+            word.ix_index1_0 = j + 1U;
+         }
+         *cs_ptr |= tmp;
+         cs_ptr += pvr_cmd_length(IPF_INDEX_DATA);
+
+         pvr_csb_pack (cs_ptr, IPF_INDEX_DATA, word) {
+            word.ix_index0_0 = j + 2U;
+            word.ix_index0_1 = j + 3U;
+            word.ix_index0_2 = j + 2U;
+            word.ix_index1_0 = j + 1U;
+         }
+         cs_ptr += pvr_cmd_length(IPF_INDEX_DATA);
+      }
+   }
+
+   /* The last pass didn't ++. */
+   if ((num_mappings & 1U) != 0U)
+      cs_ptr++;
 
    *cs_ptr_out = cs_ptr;
 }
@@ -3170,11 +3218,42 @@ pvr_isp_prim_block_index_block(const struct pvr_device_info *dev_info,
 static inline VkResult
 pvr_int32_to_isp_xy_vtx(const struct pvr_device_info *dev_info,
                         int32_t val,
-                        UNUSED bool bias,
+                        bool bias,
                         uint32_t *word_out)
 {
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
-      pvr_finishme("Unimplemented path.");
+      const uint32_t max_fractional = PVRX(IPF_ISP_VERTEX_XY_SIPF_FRAC_MAX_VAL);
+      const uint32_t max_integer = PVRX(IPF_ISP_VERTEX_XY_SIPF_INTEGER_MAX_VAL);
+
+      uint32_t fractional;
+      uint32_t integer;
+
+      if (bias)
+         val += PVRX(IPF_ISP_VERTEX_XY_BIAS_VALUE_SIPF);
+
+      if (val < 0 || val > max_integer + 1) {
+         mesa_loge("ISP vertex xy value out of range.");
+         return vk_error(NULL, VK_ERROR_UNKNOWN);
+      }
+
+      if (val <= max_integer) {
+         integer = val;
+         fractional = 0;
+      } else if (val == max_integer + 1) {
+         /* The integer field is 13 bits long so the max value is
+          * 2 ^ 13 - 1 = 8191. For 8k support we need to handle 8192 so we set
+          * all fractional bits to get as close as possible. The best we can do
+          * is: 0x1FFF.F = 8191.9375 ≈ 8192 .
+          */
+         integer = max_integer;
+         fractional = max_fractional;
+      }
+
+      pvr_csb_pack (word_out, IPF_ISP_VERTEX_XY_SIPF, word) {
+         word.integer = integer;
+         word.frac = fractional;
+      }
+
       return VK_SUCCESS;
    }
 
@@ -3245,66 +3324,90 @@ pvr_isp_prim_block_isp_vertices(const struct pvr_device_info *dev_info,
          return result;
 
       if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
-         pvr_finishme("Unimplemented path.");
-      } else {
-         /* ISP vertices 0 and 1. */
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_0, word0) {
-            word0.x0 = left;
-            word0.y0 = top & 0xFF;
+         pvr_csb_pack ((uint64_t *)cs_ptr, IPF_ISP_VERTEX_WORD_SIPF, word) {
+            word.y = top;
+            word.x = left;
          }
-         cs_ptr++;
+         cs_ptr += pvr_cmd_length(IPF_ISP_VERTEX_WORD_SIPF);
 
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_1, word1) {
-            word1.y0 = top >> PVRX(IPF_ISP_VERTEX_WORD_1_Y0_SHIFT);
+         pvr_csb_pack ((uint64_t *)cs_ptr, IPF_ISP_VERTEX_WORD_SIPF, word) {
+            word.y = top;
+            word.x = right;
          }
-         cs_ptr++;
+         cs_ptr += pvr_cmd_length(IPF_ISP_VERTEX_WORD_SIPF);
 
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_2, word2) {
-            word2.x1 = right & 0xFFFF;
-            word2.z0 = 0U;
+         pvr_csb_pack ((uint64_t *)cs_ptr, IPF_ISP_VERTEX_WORD_SIPF, word) {
+            word.y = bottom;
+            word.x = left;
          }
-         cs_ptr++;
+         cs_ptr += pvr_cmd_length(IPF_ISP_VERTEX_WORD_SIPF);
 
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_3, word3) {
-            word3.x1 = right >> PVRX(IPF_ISP_VERTEX_WORD_3_X1_SHIFT);
-            word3.y1 = top;
+         pvr_csb_pack ((uint64_t *)cs_ptr, IPF_ISP_VERTEX_WORD_SIPF, word) {
+            word.y = bottom;
+            word.x = right;
          }
-         cs_ptr++;
+         cs_ptr += pvr_cmd_length(IPF_ISP_VERTEX_WORD_SIPF);
 
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_4, word4) {
-            word4.z1 = 0U;
-         }
-         cs_ptr++;
-
-         /* ISP vertices 2 and 3. */
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_0, word0) {
-            word0.x0 = left;
-            word0.y0 = bottom & 0xFF;
-         }
-         cs_ptr++;
-
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_1, word1) {
-            word1.y0 = bottom >> PVRX(IPF_ISP_VERTEX_WORD_1_Y0_SHIFT);
-         }
-         cs_ptr++;
-
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_2, word2) {
-            word2.x1 = right & 0xFFFF;
-            word2.z0 = 0U;
-         }
-         cs_ptr++;
-
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_3, word3) {
-            word3.x1 = right >> PVRX(IPF_ISP_VERTEX_WORD_3_X1_SHIFT);
-            word3.y1 = bottom;
-         }
-         cs_ptr++;
-
-         pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_4, word4) {
-            word4.z1 = 0U;
-         }
-         cs_ptr++;
+         continue;
       }
+
+      /* ISP vertices 0 and 1. */
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_0, word0) {
+         word0.x0 = left;
+         word0.y0 = top & 0xFF;
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_1, word1) {
+         word1.y0 = top >> PVRX(IPF_ISP_VERTEX_WORD_1_Y0_SHIFT);
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_2, word2) {
+         word2.x1 = right & 0xFFFF;
+         word2.z0 = 0U;
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_3, word3) {
+         word3.x1 = right >> PVRX(IPF_ISP_VERTEX_WORD_3_X1_SHIFT);
+         word3.y1 = top;
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_4, word4) {
+         word4.z1 = 0U;
+      }
+      cs_ptr++;
+
+      /* ISP vertices 2 and 3. */
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_0, word0) {
+         word0.x0 = left;
+         word0.y0 = bottom & 0xFF;
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_1, word1) {
+         word1.y0 = bottom >> PVRX(IPF_ISP_VERTEX_WORD_1_Y0_SHIFT);
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_2, word2) {
+         word2.x1 = right & 0xFFFF;
+         word2.z0 = 0U;
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_3, word3) {
+         word3.x1 = right >> PVRX(IPF_ISP_VERTEX_WORD_3_X1_SHIFT);
+         word3.y1 = bottom;
+      }
+      cs_ptr++;
+
+      pvr_csb_pack (cs_ptr, IPF_ISP_VERTEX_WORD_4, word4) {
+         word4.z1 = 0U;
+      }
+      cs_ptr++;
    }
    *cs_ptr_out = cs_ptr;
 
@@ -3422,7 +3525,49 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
    cs_ptr_start = *cs_ptr_out;
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
-      pvr_finishme("Unimplemented path.");
+      /* This includes:
+       *    Vertex formats.
+       *    ISP state words.
+       */
+      pvr_isp_prim_block_isp_state(dev_info,
+                                   tsp_comp_format_in_dw,
+                                   tsp_data_size_in_bytes,
+                                   num_isp_vertices,
+                                   read_bgnd,
+                                   cs_ptr_out);
+
+      /* This include:
+       *    Index data / point pitch.
+       */
+      pvr_isp_prim_block_index_block(dev_info, num_mappings, cs_ptr_out);
+
+      result = pvr_isp_prim_block_isp_vertices(dev_info,
+                                               state,
+                                               mappings,
+                                               num_mappings,
+                                               mapping_offset,
+                                               cs_ptr_out);
+      if (result != VK_SUCCESS)
+         return result;
+
+      pvr_isp_prim_block_pds_state(dev_info, ctx, state, cs_ptr_out);
+
+      if (!color_fill) {
+         /* This includes:
+          *    TSP vertex formats.
+          */
+         pvr_isp_prim_block_tsp_vertex_block(dev_info,
+                                             src,
+                                             mappings,
+                                             custom_filter,
+                                             num_mappings,
+                                             mapping_offset,
+                                             transfer_cmd->filter,
+                                             tsp_comp_format_in_dw,
+                                             cs_ptr_out);
+      }
+
+      *cs_start_offset = 0;
    } else {
       if (!color_fill) {
          /* This includes:
@@ -3492,6 +3637,26 @@ pvr_transfer_max_quads_per_pb(const struct pvr_device_info *dev_info)
 {
    return PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) ? 4U
                                                                       : 16U;
+}
+
+static inline uint8_t *pvr_isp_ctrl_stream_sipf_write_aligned(uint8_t *stream,
+                                                              uint32_t data,
+                                                              uint32_t size)
+{
+   const uint32_t offset = (uintptr_t)stream & 0x3U;
+   uint32_t *aligned_stream = (uint32_t *)(stream - offset);
+   const uint32_t current_data = *aligned_stream & ((1U << (offset * 8U)) - 1U);
+
+   assert(size > 0 && size <= 4U);
+
+   *aligned_stream = current_data | data << (offset * 8U);
+
+   if (offset + size > 4U) {
+      aligned_stream++;
+      *aligned_stream = data >> ((4U - offset) * 8);
+   }
+
+   return stream + size;
 }
 
 /**
@@ -3835,7 +4000,64 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
          prim_blk_addr.addr += stream_start_offset;
 
          if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2)) {
-            pvr_finishme("Unimplemented path.");
+            uint8_t *cs_byte_ptr = (uint8_t *)cs_ptr;
+            uint32_t tmp;
+
+            /* This part of the control stream is byte granular. */
+
+            pvr_csb_pack (&tmp, IPF_PRIMITIVE_HEADER_SIPF2, prim_header) {
+               prim_header.cs_prim_base_size = 1;
+               prim_header.cs_mask_num_bytes = 1;
+               prim_header.cs_valid_tile0 = true;
+            }
+            cs_byte_ptr =
+               pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
+
+            pvr_csb_pack (&tmp, IPF_PRIMITIVE_BASE_SIPF2, word) {
+               word.cs_prim_base = prim_blk_addr;
+            }
+            cs_byte_ptr =
+               pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 4);
+
+            /* IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2 since
+             * IPF_PRIMITIVE_HEADER_SIPF2.cs_mask_num_bytes == 1.
+             */
+            pvr_csb_pack (&tmp,
+                          IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2,
+                          mask) {
+               switch (num_mappings) {
+               case 4:
+                  mask.cs_mask_one_byte_tile0_7 = true;
+                  mask.cs_mask_one_byte_tile0_6 = true;
+                  FALLTHROUGH;
+               case 3:
+                  mask.cs_mask_one_byte_tile0_5 = true;
+                  mask.cs_mask_one_byte_tile0_4 = true;
+                  FALLTHROUGH;
+               case 2:
+                  mask.cs_mask_one_byte_tile0_3 = true;
+                  mask.cs_mask_one_byte_tile0_2 = true;
+                  FALLTHROUGH;
+               case 1:
+                  mask.cs_mask_one_byte_tile0_1 = true;
+                  mask.cs_mask_one_byte_tile0_0 = true;
+                  break;
+               default:
+                  /* Unreachable since we clamped the value earlier so reaching
+                   * this is an implementation error.
+                   */
+                  unreachable("num_mapping exceeded max_mappings_per_pb");
+                  break;
+               }
+            }
+            /* Only 1 byte since there's only 1 valid tile within the single
+             * IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2 mask.
+             * ROGUE_IPF_PRIMITIVE_HEADER_SIPF2.cs_valid_tile0 == true.
+             */
+            cs_byte_ptr =
+               pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
+
+            cs_ptr = (uint32_t *)cs_byte_ptr;
          } else {
             pvr_csb_pack (cs_ptr, IPF_PRIMITIVE_FORMAT, word) {
                word.cs_type = PVRX(IPF_CS_TYPE_PRIM);
@@ -3861,10 +4083,23 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    if (PVR_HAS_FEATURE(dev_info, ipf_creq_pf))
       pvr_finishme("Unimplemented path.");
 
-   pvr_csb_pack (cs_ptr, IPF_CONTROL_STREAM, word) {
-      word.cs_type = PVRX(IPF_CS_TYPE_TERM);
+   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2)) {
+      uint8_t *cs_byte_ptr = (uint8_t *)cs_ptr;
+      uint32_t tmp;
+
+      /* clang-format off */
+      pvr_csb_pack (&tmp, IPF_CONTROL_STREAM_TERMINATE_SIPF2, term);
+      /* clang-format on */
+
+      cs_byte_ptr = pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
+
+      cs_ptr = (uint32_t *)cs_byte_ptr;
+   } else {
+      pvr_csb_pack (cs_ptr, IPF_CONTROL_STREAM, word) {
+         word.cs_type = PVRX(IPF_CS_TYPE_TERM);
+      }
+      cs_ptr += pvr_cmd_length(IPF_CONTROL_STREAM);
    }
-   cs_ptr += pvr_cmd_length(IPF_CONTROL_STREAM);
 
    pvr_csb_pack (&regs->isp_mtile_base, CR_ISP_MTILE_BASE, reg) {
       reg.addr =
@@ -3876,10 +4111,20 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
       reg.mode_type = PVRX(CR_ISP_RENDER_MODE_TYPE_FAST_2D);
    }
 
-   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2))
-      pvr_finishme("Unimplemented path.");
-   else
-      regs->isp_rgn = 0UL;
+   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2) &&
+       PVR_HAS_FEATURE(dev_info, ipf_creq_pf)) {
+      pvr_csb_pack (&regs->isp_rgn, CR_ISP_RGN_SIPF, isp_rgn) {
+         /* Bit 0 in CR_ISP_RGN.cs_size_ipf_creq_pf is used to indicate the
+          * presence of a link.
+          */
+         pvr_finishme("Unimplemented isp link. Defaulting to no link.");
+         isp_rgn.cs_size_ipf_creq_pf = 0;
+      }
+   } else {
+      /* clang-format off */
+      pvr_csb_pack(&regs->isp_rgn, CR_ISP_RGN, isp_rgn);
+      /* clang-format on */
+   }
 
    return VK_SUCCESS;
 }
