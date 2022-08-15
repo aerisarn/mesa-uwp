@@ -213,6 +213,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_pipeline_creation_feedback = true,
       .EXT_pipeline_creation_cache_control = true,
       .EXT_vertex_input_dynamic_state = true,
+      .EXT_attachment_feedback_loop_layout = true,
 #ifndef TU_USE_KGSL
       .EXT_physical_device_drm = true,
 #endif
@@ -924,6 +925,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *features =
             (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *)ext;
          features->nonSeamlessCubeMap = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT: {
+         VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT *features =
+            (VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT*)ext;
+         features->attachmentFeedbackLoopLayout = true;
          break;
       }
 

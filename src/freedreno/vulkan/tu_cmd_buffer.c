@@ -2561,6 +2561,25 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS |
                        TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_VS_PARAMS;
 
+   if (pipeline->feedback_loop_may_involve_textures) {
+      /* VK_EXT_attachment_feedback_loop_layout allows feedback loop to involve
+       * not only input attachments but also sampled images or image resources.
+       * But we cannot just patch gmem for image in the descriptors.
+       *
+       * At the moment, in context of DXVK, it is expected that only a few
+       * drawcalls in a frame would use feedback loop and they would be wrapped
+       * in their own renderpasses, so it should be ok to force sysmem.
+       *
+       * However, there are two further possible optimizations if need would
+       * arise for other translation layer:
+       * - Tiling could be enabled if we ensure that there is no barrier in
+       *   the renderpass;
+       * - Check that both pipeline and attachments agree that feedback loop
+       *   is needed.
+       */
+      cmd->state.rp.disable_gmem = true;
+   }
+
    struct tu_cs *cs = &cmd->draw_cs;
 
    /* note: this also avoids emitting draw states before renderpass clears,

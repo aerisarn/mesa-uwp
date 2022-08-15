@@ -270,6 +270,7 @@ struct tu_pipeline_builder
    bool subpass_raster_order_attachment_access;
    bool subpass_feedback_loop_color;
    bool subpass_feedback_loop_ds;
+   bool feedback_loop_may_involve_textures;
 };
 
 static bool
@@ -3438,6 +3439,9 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
 
+   pipeline->feedback_loop_may_involve_textures =
+      builder->feedback_loop_may_involve_textures;
+
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
    builder->depth_clip_disable = rast_info->depthClampEnable;
@@ -4053,6 +4057,15 @@ tu_pipeline_builder_init_graphics(
       }
    }
 
+   if (builder->create_info->flags & VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) {
+      builder->subpass_feedback_loop_color = true;
+      builder->feedback_loop_may_involve_textures = true;
+   }
+
+   if (builder->create_info->flags & VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) {
+      builder->subpass_feedback_loop_ds = true;
+      builder->feedback_loop_may_involve_textures = true;
+   }
 
    if (builder->rasterizer_discard) {
       builder->samples = VK_SAMPLE_COUNT_1_BIT;

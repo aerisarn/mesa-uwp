@@ -191,6 +191,7 @@ struct tu_pipeline
    /* In other words - framebuffer fetch support */
    bool raster_order_attachment_access;
    bool subpass_feedback_loop_ds;
+   bool feedback_loop_may_involve_textures;
 
    bool z_negative_one_to_one;
 
