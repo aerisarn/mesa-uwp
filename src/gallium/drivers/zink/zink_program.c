@@ -582,6 +582,7 @@ create_program(struct zink_context *ctx, bool is_compute)
    pipe_reference_init(&pg->reference, 1);
    util_queue_fence_init(&pg->cache_fence);
    pg->is_compute = is_compute;
+   pg->ctx = ctx;
    return (void*)pg;
 }
 

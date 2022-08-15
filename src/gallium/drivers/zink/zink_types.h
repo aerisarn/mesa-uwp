@@ -725,6 +725,7 @@ struct zink_shader_module {
 
 struct zink_program {
    struct pipe_reference reference;
+   struct zink_context *ctx;
    unsigned char sha1[20];
    struct util_queue_fence cache_fence;
    VkPipelineCache pipeline_cache;
