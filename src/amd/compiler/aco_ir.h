@@ -1812,6 +1812,7 @@ aco_opcode get_f32_cmp(aco_opcode op);
 aco_opcode get_vcmpx(aco_opcode op);
 unsigned get_cmp_bitsize(aco_opcode op);
 bool is_fp_cmp(aco_opcode op);
+bool is_cmpx(aco_opcode op);
 
 bool can_swap_operands(aco_ptr<Instruction>& instr, aco_opcode* new_op);
 

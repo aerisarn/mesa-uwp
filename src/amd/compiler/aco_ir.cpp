@@ -753,6 +753,13 @@ is_fp_cmp(aco_opcode op)
 }
 
 bool
+is_cmpx(aco_opcode op)
+{
+   CmpInfo info;
+   return !get_cmp_info(op, &info);
+}
+
+bool
 can_swap_operands(aco_ptr<Instruction>& instr, aco_opcode* new_op)
 {
    if (instr->isDPP())

@@ -308,3 +308,35 @@ BEGIN_TEST(assembler.p_constaddr)
    aco::lower_to_hw_instr(program.get());
    finish_assembler_test();
 END_TEST
+
+BEGIN_TEST(assembler.vopc_sdwa)
+   for (unsigned i = GFX9; i <= GFX10; i++) {
+      if (!setup_cs(NULL, (amd_gfx_level)i))
+         continue;
+
+      //~gfx9>> v_cmp_lt_u32_sdwa vcc, 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7d9300f9 86860080
+      //~gfx10>> v_cmp_lt_u32_sdwa vcc, 0, 0 src0_sel:DWORD src1_sel:DWORD   ; 7d8300f9 86860080
+      bld.vopc_sdwa(aco_opcode::v_cmp_lt_u32, Definition(vcc, s2), Operand::zero(), Operand::zero());
+
+      //~gfx9! v_cmp_lt_u32_sdwa s[44:45], 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7d9300f9 8686ac80
+      //~gfx10! v_cmp_lt_u32_sdwa s[44:45], 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7d8300f9 8686ac80
+      bld.vopc_sdwa(aco_opcode::v_cmp_lt_u32, Definition(PhysReg(0x2c), s2), Operand::zero(), Operand::zero());
+
+      //~gfx9! v_cmp_lt_u32_sdwa exec, 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7d9300f9 8686fe80
+      //~gfx10! v_cmp_lt_u32_sdwa exec, 0, 0 src0_sel:DWORD src1_sel:DWORD  ; 7d8300f9 8686fe80
+      bld.vopc_sdwa(aco_opcode::v_cmp_lt_u32, Definition(exec, s2), Operand::zero(), Operand::zero());
+
+      if (i == GFX10) {
+         //~gfx10! v_cmpx_lt_u32_sdwa 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7da300f9 86860080
+         bld.vopc_sdwa(aco_opcode::v_cmpx_lt_u32, Definition(exec, s2), Operand::zero(), Operand::zero());
+      } else {
+         //~gfx9! v_cmpx_lt_u32_sdwa vcc, 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7db300f9 86860080
+         bld.vopc_sdwa(aco_opcode::v_cmpx_lt_u32, Definition(vcc, s2), Definition(exec, s2), Operand::zero(), Operand::zero());
+
+         //~gfx9! v_cmpx_lt_u32_sdwa s[44:45], 0, 0 src0_sel:DWORD src1_sel:DWORD ; 7db300f9 8686ac80
+         bld.vopc_sdwa(aco_opcode::v_cmpx_lt_u32, Definition(PhysReg(0x2c), s2), Definition(exec, s2), Operand::zero(), Operand::zero());
+      }
+
+      finish_assembler_test();
+   }
+END_TEST

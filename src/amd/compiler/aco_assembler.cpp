@@ -725,7 +725,8 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          uint32_t encoding = 0;
 
          if (instr->isVOPC()) {
-            if (instr->definitions[0].physReg() != vcc && instr->definitions[0].physReg() != exec) {
+            if (instr->definitions[0].physReg() !=
+                (ctx.gfx_level >= GFX10 && is_cmpx(instr->opcode) ? exec : vcc)) {
                encoding |= instr->definitions[0].physReg() << 8;
                encoding |= 1 << 15;
             }
