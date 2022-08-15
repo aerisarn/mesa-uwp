@@ -622,23 +622,23 @@ void ResolveIndirectArrayAddr::visit(const UniformValue& value)
    }
 }
 
-std::pair<PRegister, bool> AluInstr::indirect_addr() const
+std::tuple<PRegister, bool, bool> AluInstr::indirect_addr() const
 {
    ResolveIndirectArrayAddr visitor;
 
    if (m_dest) {
       m_dest->accept(visitor);
       if (visitor.addr)
-         return {visitor.addr, false};
+         return {visitor.addr, false, false};
    }
 
    for (auto s: m_src) {
       s->accept(visitor);
       if (visitor.addr) {
-         return {visitor.addr, visitor.is_index};
+         return {visitor.addr, !visitor.is_index, visitor.is_index};
       }
    }
-   return {nullptr, false};
+   return {nullptr, false, false};
 }
 
 AluGroup *AluInstr::split(ValueFactory& vf)

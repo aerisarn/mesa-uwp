@@ -145,7 +145,7 @@ public:
    static const std::set<AluModifiers> last;
    static const std::set<AluModifiers> last_write;
 
-   std::pair<PRegister, bool> indirect_addr() const;
+   std::tuple<PRegister, bool, bool> indirect_addr() const;
 
    void add_extra_dependency(PVirtualValue reg);
 

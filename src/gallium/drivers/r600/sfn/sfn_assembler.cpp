@@ -413,7 +413,7 @@ void AssamblerVisitor::visit(const AluGroup& group)
             m_last_addr = addr.first;
             m_bc->ar_loaded = 0;
 
-            r600_load_ar(m_bc);
+            r600_load_ar(m_bc, group.addr_for_src());
          }
       } else {
          emit_index_reg(*addr.first, 0);
@@ -849,7 +849,7 @@ void AssamblerVisitor::visit(const IfInstr& instr)
    }
 
    auto pred = instr.predicate();
-   auto [addr, dummy ] = pred->indirect_addr(); {}
+   auto [addr, dummy0, dummy1 ] = pred->indirect_addr(); {}
    if (addr) {
       if (!m_last_addr || !m_bc->ar_loaded ||
           !m_last_addr->equal_to(*addr)) {
@@ -858,7 +858,7 @@ void AssamblerVisitor::visit(const IfInstr& instr)
             m_last_addr = addr;
             m_bc->ar_loaded = 0;
 
-            r600_load_ar(m_bc);
+            r600_load_ar(m_bc, true);
       }
    }
 

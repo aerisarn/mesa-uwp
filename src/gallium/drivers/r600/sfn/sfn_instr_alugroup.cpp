@@ -231,13 +231,14 @@ bool AluGroup::try_readport(AluInstr *instr, AluBankSwizzle cycle)
 
 bool AluGroup::update_indirect_access(AluInstr *instr)
 {
-   auto indirect_addr = instr->indirect_addr();
+   auto [indirect_addr, for_src, is_index ] = instr->indirect_addr();
 
-   if (indirect_addr.first) {
+   if (indirect_addr) {
       if (!m_addr_used) {
-         m_addr_used = indirect_addr.first;
-         m_addr_is_index = indirect_addr.second;
-      } else if (!indirect_addr.first->equal_to(*m_addr_used)) {
+         m_addr_used = indirect_addr;
+         m_addr_for_src = for_src;
+         m_addr_is_index = is_index;
+      } else if (!indirect_addr->equal_to(*m_addr_used)) {
          return false;
       }
    }

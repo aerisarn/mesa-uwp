@@ -824,7 +824,7 @@ bool BlockSheduler::collect_ready_alu_vec(std::list<AluInstr *>& ready, std::lis
             auto opinfo = alu_ops.find((*i)->opcode());
             assert(opinfo != alu_ops.end());
             if (opinfo->second.can_channel(AluOp::t, m_chip_class) &&
-                !(*i)->indirect_addr().first)
+                !std::get<0>((*i)->indirect_addr()))
                priority = -1;
          }
 
