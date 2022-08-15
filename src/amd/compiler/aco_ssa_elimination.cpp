@@ -406,10 +406,10 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       }
 
       /* Check if the instruction may implicitly read VCC, eg. v_cndmask or add with carry.
-       * Some of these may be fine to convert to VOP3 but there are edge cases, eg. SDWA.
-       * Better leave these instructions alone.
+       * Rewriting these operands may require format conversion because of encoding limitations.
        */
-      if (instr->isVALU() && instr->operands.size() >= 3 && !instr->isVOP3())
+      if (exec_wr_def.physReg() == vcc && instr->isVALU() && instr->operands.size() >= 3 &&
+          !instr->isVOP3())
          return;
    }
 
