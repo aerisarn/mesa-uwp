@@ -61,22 +61,6 @@
         DUMP_CL(T, cl, __VA_ARGS__); \
 }
 
-/* Semantic logging type.
- *
- * Raw: for raw messages to be printed as is.
- * Message: for helpful information to be commented out in replays.
- *
- * Use one of pandecode_log or pandecode_msg as syntax sugar.
- */
-
-enum pandecode_log_type {
-        PANDECODE_RAW,
-        PANDECODE_MESSAGE,
-};
-
-#define pandecode_log(...)  pandecode_log_typed(PANDECODE_RAW,      __VA_ARGS__)
-#define pandecode_msg(...)  pandecode_log_typed(PANDECODE_MESSAGE,  __VA_ARGS__)
-
 static unsigned pandecode_indent = 0;
 
 static void
@@ -86,16 +70,12 @@ pandecode_make_indent(void)
                 fprintf(pandecode_dump_stream, "  ");
 }
 
-static void PRINTFLIKE(2, 3)
-pandecode_log_typed(enum pandecode_log_type type, const char *format, ...)
+static void PRINTFLIKE(1, 2)
+pandecode_log(const char *format, ...)
 {
         va_list ap;
 
         pandecode_make_indent();
-
-        if (type == PANDECODE_MESSAGE)
-                fprintf(pandecode_dump_stream, "// ");
-
         va_start(ap, format);
         vfprintf(pandecode_dump_stream, format, ap);
         va_end(ap);
@@ -121,7 +101,7 @@ static void
 pandecode_validate_buffer(mali_ptr addr, size_t sz)
 {
         if (!addr) {
-                pandecode_msg("XXX: null pointer deref\n");
+                pandecode_log("// XXX: null pointer deref\n");
                 return;
         }
 
@@ -131,7 +111,7 @@ pandecode_validate_buffer(mali_ptr addr, size_t sz)
                 pandecode_find_mapped_gpu_mem_containing(addr);
 
         if (!bo) {
-                pandecode_msg("XXX: invalid memory dereference\n");
+                pandecode_log("// XXX: invalid memory dereference\n");
                 return;
         }
 
@@ -141,7 +121,7 @@ pandecode_validate_buffer(mali_ptr addr, size_t sz)
         unsigned total = offset + sz;
 
         if (total > bo->length) {
-                pandecode_msg("XXX: buffer overrun. "
+                pandecode_log("// XXX: buffer overrun. "
                                 "Chunk of size %zu at offset %d in buffer of size %zu. "
                                 "Overrun by %zu bytes. \n",
                                 sz, offset, bo->length, total - bo->length);
@@ -359,7 +339,7 @@ pandecode_attributes(mali_ptr addr, int job_no, char *suffix, int count,
         assert(addr);
 
         if (!count) {
-                pandecode_msg("warn: No %s records\n", prefix);
+                pandecode_log("// warn: No %s records\n", prefix);
                 return;
         }
 
@@ -493,11 +473,11 @@ pandecode_primitive(const void *p)
                  * size */
 
                 if (!size)
-                        pandecode_msg("XXX: index size missing\n");
+                        pandecode_log("// XXX: index size missing\n");
                 else
                         pandecode_validate_buffer(primitive.indices, primitive.index_count * size);
         } else if (primitive.index_type)
-                pandecode_msg("XXX: unexpected index size\n");
+                pandecode_log("// XXX: unexpected index size\n");
 #endif
 }
 
@@ -725,13 +705,13 @@ pandecode_blend_shader_disassemble(mali_ptr shader, int job_no, int job_type,
         bool has_ubo = (stats.uniform_buffer_count > 0);
 
         if (has_texture || has_sampler)
-                pandecode_msg("XXX: blend shader accessing textures\n");
+                pandecode_log("// XXX: blend shader accessing textures\n");
 
         if (has_attribute || has_varying)
-                pandecode_msg("XXX: blend shader accessing interstage\n");
+                pandecode_log("// XXX: blend shader accessing interstage\n");
 
         if (has_uniform || has_ubo)
-                pandecode_msg("XXX: blend shader accessing uniforms\n");
+                pandecode_log("// XXX: blend shader accessing uniforms\n");
 }
 
 static void
@@ -875,7 +855,7 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 }
 #endif
         } else
-                pandecode_msg("XXX: missing shader descriptor\n");
+                pandecode_log("// XXX: missing shader descriptor\n");
 
         if (p->viewport) {
                 DUMP_ADDR(VIEWPORT, p->viewport, "Viewport:\n");
@@ -901,9 +881,9 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 if (uniform_buffer_count)
                         pandecode_uniform_buffers(p->uniform_buffers, uniform_buffer_count, job_no);
                 else
-                        pandecode_msg("warn: UBOs specified but not referenced\n");
+                        pandecode_log("// warn: UBOs specified but not referenced\n");
         } else if (uniform_buffer_count)
-                pandecode_msg("XXX: UBOs referenced but not specified\n");
+                pandecode_log("// XXX: UBOs referenced but not specified\n");
 
         /* We don't want to actually dump uniforms, but we do need to validate
          * that the counts we were given are sane */
@@ -912,9 +892,9 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 if (uniform_count)
                         pandecode_uniforms(p->push_uniforms, uniform_count);
                 else
-                        pandecode_msg("warn: Uniforms specified but not referenced\n");
+                        pandecode_log("// warn: Uniforms specified but not referenced\n");
         } else if (uniform_count)
-                pandecode_msg("XXX: Uniforms referenced but not specified\n");
+                pandecode_log("// XXX: Uniforms referenced but not specified\n");
 
         if (p->textures)
                 pandecode_textures(p->textures, texture_count, job_no);
@@ -1077,7 +1057,7 @@ pandecode_fragment_job(mali_ptr job, int job_no, unsigned gpu_id)
         unsigned tag = (s.framebuffer & MALI_FBD_TAG_MASK);
 
         if (tag != expected_tag)
-                pandecode_msg("XXX: expected FBD tag %X but got %X\n", expected_tag, tag);
+                pandecode_log("// XXX: expected FBD tag %X but got %X\n", expected_tag, tag);
 #endif
 
         pandecode_log("\n");
