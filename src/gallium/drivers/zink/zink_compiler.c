@@ -3369,3 +3369,14 @@ zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsig
    ret->is_generated = true;
    return ret;
 }
+
+bool
+zink_shader_has_cubes(nir_shader *nir)
+{
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+      const struct glsl_type *type = glsl_without_array(var->type);
+      if (glsl_type_is_sampler(type) && glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_CUBE)
+         return true;
+   }
+   return false;
+}

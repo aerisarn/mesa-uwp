@@ -80,4 +80,6 @@ zink_shader_descriptor_is_buffer(struct zink_shader *zs, enum zink_descriptor_ty
           zs->bindings[type][i].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 }
 
+bool
+zink_shader_has_cubes(nir_shader *nir);
 #endif
