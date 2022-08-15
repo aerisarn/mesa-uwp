@@ -355,7 +355,8 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
    nir_lower_idiv_options idiv_options = {
       .allow_fp16 = true,
    };
-   const bool idiv_progress = OPT(s, nir_lower_idiv, &idiv_options);
+   bool idiv_progress = OPT(s, nir_opt_idiv_const, 8);
+   idiv_progress |= OPT(s, nir_lower_idiv, &idiv_options);
 
    if (idiv_progress)
       ir3_optimize_loop(compiler, s);
