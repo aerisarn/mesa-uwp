@@ -3648,6 +3648,7 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    b.tables[RADV_APP_DISPATCH_TABLE] = &device->layer_dispatch.app;
    b.tables[RADV_RGP_DISPATCH_TABLE] = &device->layer_dispatch.rgp;
    b.tables[RADV_RRA_DISPATCH_TABLE] = &device->layer_dispatch.rra;
+   b.tables[RADV_RMV_DISPATCH_TABLE] = &device->layer_dispatch.rmv;
 
    if (!strcmp(physical_device->instance->app_layer, "metroexodus"))
       add_entrypoints(&b, &metro_exodus_device_entrypoints, RADV_APP_DISPATCH_TABLE);
@@ -3657,6 +3658,11 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
 
    if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false))
       add_entrypoints(&b, &rra_device_entrypoints, RADV_RRA_DISPATCH_TABLE);
+
+#ifndef _WIN32
+   if (vk_memory_trace_enabled())
+      add_entrypoints(&b, &rmv_device_entrypoints, RADV_RMV_DISPATCH_TABLE);
+#endif
 
    add_entrypoints(&b, &radv_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
    add_entrypoints(&b, &wsi_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
@@ -3983,6 +3989,16 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       }
    }
 
+#ifndef _WIN32
+   if (vk_memory_trace_enabled()) {
+      struct vk_rmv_device_info info;
+      memset(&info, 0, sizeof(struct vk_rmv_device_info));
+      radv_rmv_fill_device_info(physical_device, &info);
+      vk_memory_trace_init(&device->vk, &info);
+      radv_memory_trace_init(device);
+   }
+#endif
+
    if (getenv("RADV_TRAP_HANDLER")) {
       /* TODO: Add support for more hardware. */
       assert(device->physical_device->rad_info.gfx_level == GFX8);
@@ -4199,6 +4215,8 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    radv_thread_trace_finish(device);
 
    radv_rra_trace_finish(_device, &device->rra_trace);
+
+   radv_memory_trace_finish(device);
 
    radv_spm_finish(device);
 
