@@ -720,7 +720,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          uint32_t encoding = 0;
 
          if (instr->isVOPC()) {
-            if (instr->definitions[0].physReg() != vcc) {
+            if (instr->definitions[0].physReg() != vcc && instr->definitions[0].physReg() != exec) {
                encoding |= instr->definitions[0].physReg() << 8;
                encoding |= 1 << 15;
             }
