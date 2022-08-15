@@ -533,13 +533,41 @@ format_is_float32(VkFormat format)
           desc->channel[channel].type == UTIL_FORMAT_TYPE_FLOAT && desc->channel[channel].size == 32;
 }
 
+static unsigned
+radv_compact_spi_shader_col_format(const struct radv_shader *ps,
+                                   const struct radv_blend_state *blend)
+{
+   unsigned spi_shader_col_format = blend->spi_shader_col_format;
+   unsigned value = 0, num_mrts = 0;
+   unsigned i, num_targets;
+
+   /* Make sure to clear color attachments without exports because MRT holes are removed during
+    * compilation for optimal performance.
+    */
+   spi_shader_col_format &= ps->info.ps.colors_written;
+
+   /* Compute the number of MRTs. */
+   num_targets = DIV_ROUND_UP(util_last_bit(spi_shader_col_format), 4);
+
+   /* Remove holes in spi_shader_col_format. */
+   for (i = 0; i < num_targets; i++) {
+      unsigned spi_format = (spi_shader_col_format >> (i * 4)) & 0xf;
+
+      if (spi_format) {
+         value |= spi_format << (num_mrts * 4);
+         num_mrts++;
+      }
+   }
+
+   return value;
+}
+
 static void
 radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pipeline,
                                         struct radv_blend_state *blend,
                                         const struct vk_graphics_pipeline_state *state)
 {
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0;
-   unsigned num_targets;
 
    for (unsigned i = 0; i < state->rp->color_attachment_count; ++i) {
       unsigned cf;
@@ -570,16 +598,6 @@ radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pip
        * the depth attachment needs it.
        */
       col_format |= V_028714_SPI_SHADER_32_AR;
-   }
-
-   /* If the i-th target format is set, all previous target formats must
-    * be non-zero to avoid hangs.
-    */
-   num_targets = (util_last_bit(col_format) + 3) / 4;
-   for (unsigned i = 0; i < num_targets; i++) {
-      if (!(col_format & (0xfu << (i * 4)))) {
-         col_format |= V_028714_SPI_SHADER_32_R << (i * 4);
-      }
    }
 
    /* The output for dual source blending should have the same format as
@@ -6030,6 +6048,9 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
 
+   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+   blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
+
    /* Ensure that some export memory is always allocated, for two reasons:
     *
     * 1) Correctness: The hardware ignores the EXEC mask if no export
@@ -6045,7 +6066,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
     * color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
     */
-   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    if ((device->physical_device->rad_info.gfx_level <= GFX9 || ps->info.ps.can_discard) &&
        !blend.spi_shader_col_format) {
       if (!ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask)
