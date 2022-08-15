@@ -66,13 +66,13 @@ dpkg --add-architecture i386
 # Install a more recent version of Wine than exists in Debian.
 apt-key add .gitlab-ci/container/debian/winehq.gpg.key
 apt-add-repository https://dl.winehq.org/wine-builds/debian/
-apt update -qyy
+apt-get update -q
 
 # Needed for Valve's tracing jobs to collect information about the graphics
 # hardware on the test devices.
 pip3 install gfxinfo-mupuf==0.0.9
 
-apt install -y --no-remove --install-recommends winehq-stable
+apt-get install -y --no-remove --install-recommends winehq-stable
 
 ############### Install DXVK
 
