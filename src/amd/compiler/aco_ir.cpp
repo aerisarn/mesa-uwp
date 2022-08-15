@@ -32,6 +32,8 @@
 
 namespace aco {
 
+thread_local aco::monotonic_buffer_resource instruction_buffer(65536);
+
 uint64_t debug_flags = 0;
 
 static const struct debug_control aco_debug_options[] = {{"validateir", DEBUG_VALIDATE_IR},

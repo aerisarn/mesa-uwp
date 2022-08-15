@@ -1774,8 +1774,13 @@ struct Pseudo_reduction_instruction : public Instruction {
 static_assert(sizeof(Pseudo_reduction_instruction) == sizeof(Instruction) + 4,
               "Unexpected padding");
 
+extern thread_local aco::monotonic_buffer_resource instruction_buffer;
+
 struct instr_deleter_functor {
-   void operator()(void* p) { free(p); }
+   /* Don't yet free any instructions. They will be de-allocated
+    * all at once after compilation finished.
+    */
+   void operator()(void* p) { return; }
 };
 
 template <typename T> using aco_ptr = std::unique_ptr<T, instr_deleter_functor>;
@@ -1787,7 +1792,8 @@ create_instruction(aco_opcode opcode, Format format, uint32_t num_operands,
 {
    std::size_t size =
       sizeof(T) + num_operands * sizeof(Operand) + num_definitions * sizeof(Definition);
-   void* data = calloc(1, size);
+   void* data = instruction_buffer.allocate(size, alignof(uint32_t));
+   memset(data, 0, size);
    T* inst = (T*)data;
 
    inst->opcode = opcode;
