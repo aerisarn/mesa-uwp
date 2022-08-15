@@ -85,10 +85,18 @@ __pandecode_fetch_gpu_mem(uint64_t gpu_va, size_t size,
 	name = __pandecode_fetch_gpu_mem(gpu_va, sizeof(*name), \
 				       __LINE__, __FILE__)
 
-#ifdef PAN_ARCH
-void GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id);
-void GENX(pandecode_abort_on_fault)(mali_ptr jc_gpu_va);
-#endif
+/* Forward declare for all supported gens to permit thunking */
+void pandecode_jc_v4(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v5(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v6(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v7(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v9(mali_ptr jc_gpu_va, unsigned gpu_id);
+
+void pandecode_abort_on_fault_v4(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v5(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v6(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v7(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v9(mali_ptr jc_gpu_va);
 
 static inline void
 pan_hexdump(FILE *fp, const uint8_t *hex, size_t cnt, bool with_strings)

@@ -300,12 +300,6 @@ pandecode_dump_mappings(void)
         simple_mtx_unlock(&pandecode_lock);
 }
 
-void pandecode_abort_on_fault_v4(mali_ptr jc_gpu_va);
-void pandecode_abort_on_fault_v5(mali_ptr jc_gpu_va);
-void pandecode_abort_on_fault_v6(mali_ptr jc_gpu_va);
-void pandecode_abort_on_fault_v7(mali_ptr jc_gpu_va);
-void pandecode_abort_on_fault_v9(mali_ptr jc_gpu_va);
-
 void
 pandecode_abort_on_fault(mali_ptr jc_gpu_va, unsigned gpu_id)
 {
@@ -322,12 +316,6 @@ pandecode_abort_on_fault(mali_ptr jc_gpu_va, unsigned gpu_id)
 
         simple_mtx_unlock(&pandecode_lock);
 }
-
-void pandecode_jc_v4(mali_ptr jc_gpu_va, unsigned gpu_id);
-void pandecode_jc_v5(mali_ptr jc_gpu_va, unsigned gpu_id);
-void pandecode_jc_v6(mali_ptr jc_gpu_va, unsigned gpu_id);
-void pandecode_jc_v7(mali_ptr jc_gpu_va, unsigned gpu_id);
-void pandecode_jc_v9(mali_ptr jc_gpu_va, unsigned gpu_id);
 
 void
 pandecode_jc(mali_ptr jc_gpu_va, unsigned gpu_id)
