@@ -342,26 +342,20 @@ pandecode_attributes(mali_ptr addr, int count,
 }
 #endif
 
-#if PAN_ARCH >= 6
-/* Decodes a Bifrost blend constant. See the notes in bifrost_blend_rt */
-
+#if PAN_ARCH >= 5
 static mali_ptr
-pandecode_bifrost_blend(void *descs, int rt_no, mali_ptr frag_shader)
+pandecode_blend(void *descs, int rt_no, mali_ptr frag_shader)
 {
         pan_unpack(descs + (rt_no * pan_size(BLEND)), BLEND, b);
         DUMP_UNPACKED(BLEND, b, "Blend RT %d:\n", rt_no);
+#if PAN_ARCH >= 6
         if (b.internal.mode != MALI_BLEND_MODE_SHADER)
                 return 0;
 
         return (frag_shader & 0xFFFFFFFF00000000ULL) | b.internal.shader.pc;
-}
-#elif PAN_ARCH == 5
-static mali_ptr
-pandecode_midgard_blend_mrt(void *descs, int rt_no)
-{
-        pan_unpack(descs + (rt_no * pan_size(BLEND)), BLEND, b);
-        DUMP_UNPACKED(BLEND, b, "Blend RT %d:\n", rt_no);
+#else
         return b.blend_shader ? (b.shader_pc & ~0xf) : 0;
+#endif
 }
 #endif
 
@@ -592,7 +586,7 @@ pandecode_texture(mali_ptr u, unsigned tex)
 }
 #else
 static void
-pandecode_bifrost_texture(const void *cl, unsigned tex)
+pandecode_texture(const void *cl, unsigned tex)
 {
         pan_unpack(cl, TEXTURE, temp);
         DUMP_UNPACKED(TEXTURE, temp, "Texture:\n")
@@ -634,7 +628,7 @@ pandecode_textures(mali_ptr textures, unsigned texture_count)
                                                            texture_count);
 
         for (unsigned tex = 0; tex < texture_count; ++tex)
-                pandecode_bifrost_texture(cl + pan_size(TEXTURE) * tex, tex);
+                pandecode_texture(cl + pan_size(TEXTURE) * tex, tex);
 #else
         mali_ptr *PANDECODE_PTR_VAR(u, textures);
 
@@ -674,7 +668,6 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
 {
 #if PAN_ARCH >= 5
         struct pandecode_fbd fbd_info = {
-                /* Default for Bifrost */
                 .rt_count = 1
         };
 #endif
@@ -739,14 +732,9 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
                         void* blend_base = ((void *) cl) + pan_size(RENDERER_STATE);
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
-                                mali_ptr shader = 0;
-
-#if PAN_ARCH >= 6
-                                shader = pandecode_bifrost_blend(blend_base, i,
-                                                                 state.shader.shader);
-#else
-                                shader = pandecode_midgard_blend_mrt(blend_base, i);
-#endif
+                                mali_ptr shader =
+                                        pandecode_blend(blend_base, i,
+                                                        state.shader.shader);
                                 if (shader & ~0xF)
                                         pandecode_shader_disassemble(shader, job_type,
                                                                            gpu_id);
@@ -822,21 +810,16 @@ pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
 
 #if PAN_ARCH >= 6
 static void
-pandecode_bifrost_tiler_heap(mali_ptr gpu_va)
-{
-        pan_unpack(PANDECODE_PTR(gpu_va, void), TILER_HEAP, h);
-        DUMP_UNPACKED(TILER_HEAP, h, "Bifrost Tiler Heap:\n");
-}
-
-static void
-pandecode_bifrost_tiler(mali_ptr gpu_va)
+pandecode_tiler(mali_ptr gpu_va)
 {
         pan_unpack(PANDECODE_PTR(gpu_va, void), TILER_CONTEXT, t);
 
-        if (t.heap)
-                pandecode_bifrost_tiler_heap(t.heap);
+        if (t.heap) {
+                pan_unpack(PANDECODE_PTR(t.heap, void), TILER_HEAP, h);
+                DUMP_UNPACKED(TILER_HEAP, h, "Tiler Heap:\n");
+        }
 
-        DUMP_UNPACKED(TILER_CONTEXT, t, "Bifrost Tiler:\n");
+        DUMP_UNPACKED(TILER_CONTEXT, t, "Tiler:\n");
 }
 
 #if PAN_ARCH <= 7
@@ -859,7 +842,7 @@ pandecode_indexed_vertex_job(const struct MALI_JOB_HEADER *h,
         pan_section_unpack(p, INDEXED_VERTEX_JOB, TILER, tiler_ptr);
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
-        pandecode_bifrost_tiler(tiler_ptr.address);
+        pandecode_tiler(tiler_ptr.address);
         pandecode_indent--;
 
         pandecode_invocation(pan_section_ptr(p, INDEXED_VERTEX_JOB, INVOCATION));
@@ -892,7 +875,7 @@ pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
 
 #if PAN_ARCH >= 6
         pan_section_unpack(p, TILER_JOB, TILER, tiler_ptr);
-        pandecode_bifrost_tiler(tiler_ptr.address);
+        pandecode_tiler(tiler_ptr.address);
 
         /* TODO: gl_PointSize on Bifrost */
         pandecode_primitive_size(pan_section_ptr(p, TILER_JOB, PRIMITIVE_SIZE), true);
@@ -1013,7 +996,7 @@ pandecode_resources(mali_ptr addr, unsigned size)
                         DUMP_CL(SAMPLER, cl + i, "Sampler:\n");
                         break;
                 case MALI_DESCRIPTOR_TYPE_TEXTURE:
-                        pandecode_bifrost_texture(cl + i, i);
+                        pandecode_texture(cl + i, i);
                         break;
                 case MALI_DESCRIPTOR_TYPE_ATTRIBUTE:
                         DUMP_CL(ATTRIBUTE, cl + i, "Attribute:\n");
@@ -1083,7 +1066,7 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
         for (unsigned i = 0; i < p->blend_count; ++i) {
                 struct mali_blend_packed *PANDECODE_PTR_VAR(blend_descs, p->blend);
 
-                mali_ptr blend_shader = pandecode_bifrost_blend(blend_descs, i, frag_shader);
+                mali_ptr blend_shader = pandecode_blend(blend_descs, i, frag_shader);
                 if (blend_shader) {
                         fprintf(pandecode_dump_stream, "Blend shader %u", i);
                         pandecode_shader_disassemble(blend_shader, 0, gpu_id);
@@ -1113,7 +1096,7 @@ pandecode_malloc_vertex_job(mali_ptr job, unsigned gpu_id)
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
         if (tiler_ptr.address)
-                pandecode_bifrost_tiler(tiler_ptr.address);
+                pandecode_tiler(tiler_ptr.address);
         else
                 pandecode_log("<omitted>\n");
         pandecode_indent--;
