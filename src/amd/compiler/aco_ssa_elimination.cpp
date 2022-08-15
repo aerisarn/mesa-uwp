@@ -551,6 +551,7 @@ eliminate_useless_exec_writes_in_block(ssa_elimination_ctx& ctx, Block& block)
 
    bool logical_end_found = false;
    bool branch_reads_exec = false;
+   bool branch_exec_val_found = false;
    int branch_exec_val_idx = -1;
    int branch_exec_copy_idx = -1;
    unsigned branch_exec_tempid = 0;
@@ -581,13 +582,15 @@ eliminate_useless_exec_writes_in_block(ssa_elimination_ctx& ctx, Block& block)
 
       /* For a newly encountered exec write, clear the used flag. */
       if (writes_exec) {
-         if (!logical_end_found && branch_reads_exec && instr->operands.size()) {
+         if (!logical_end_found && branch_reads_exec && instr->operands.size() &&
+             !branch_exec_val_found) {
             /* We are in a branch that jumps according to exec.
              * We just found the instruction that copies to exec before the branch.
              */
             assert(branch_exec_copy_idx == -1);
             branch_exec_copy_idx = i;
             branch_exec_tempid = instr->operands[0].tempId();
+            branch_exec_val_found = true;
          } else if (branch_exec_val_idx == -1) {
             /* The current instruction overwrites exec before branch_exec_val_idx was
              * found, therefore we can't optimize the branching sequence.
