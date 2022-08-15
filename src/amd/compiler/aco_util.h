@@ -27,6 +27,7 @@
 #define ACO_UTIL_H
 
 #include "util/bitscan.h"
+#include "util/u_math.h"
 
 #include <cassert>
 #include <cstddef>
@@ -393,6 +394,87 @@ IDSet::Iterator::operator*() const
 {
    return (word << 6) | bit;
 }
+
+/*
+ * Light-weight memory resource which allows to sequentially allocate from
+ * a buffer. Both, the release() method and the destructor release all managed
+ * memory.
+ *
+ * The memory resource is not thread-safe.
+ * This class mimics std::pmr::monotonic_buffer_resource
+ */
+class monotonic_buffer_resource final {
+public:
+   explicit monotonic_buffer_resource(size_t size = initial_size)
+   {
+      /* The size parameter refers to the total size of the buffer.
+       * The usable data_size is size - sizeof(Buffer).
+       */
+      size = std::max(size, minimum_size);
+      buffer = (Buffer*)malloc(size);
+      buffer->next = nullptr;
+      buffer->data_size = size - sizeof(Buffer);
+      buffer->current_idx = 0;
+   }
+
+   ~monotonic_buffer_resource()
+   {
+      release();
+      free(buffer);
+   }
+
+   /* delete copy-constructor and -assigment to avoid double free() */
+   monotonic_buffer_resource(const monotonic_buffer_resource&) = delete;
+   monotonic_buffer_resource& operator=(const monotonic_buffer_resource&) = delete;
+
+   void* allocate(size_t size, size_t alignment)
+   {
+      buffer->current_idx = align(buffer->current_idx, alignment);
+      if (buffer->current_idx + size <= buffer->data_size) {
+         uint8_t* ptr = &buffer->data[buffer->current_idx];
+         buffer->current_idx += size;
+         return ptr;
+      }
+
+      /* create new larger buffer */
+      uint32_t total_size = buffer->data_size + sizeof(Buffer);
+      do {
+         total_size *= 2;
+      } while (total_size - sizeof(Buffer) < size);
+      Buffer* next = buffer;
+      buffer = (Buffer*)malloc(total_size);
+      buffer->next = next;
+      buffer->data_size = total_size - sizeof(Buffer);
+      buffer->current_idx = 0;
+
+      return allocate(size, alignment);
+   }
+
+   void release()
+   {
+      while (buffer->next) {
+         Buffer* next = buffer->next;
+         free(buffer);
+         buffer = next;
+      }
+      buffer->current_idx = 0;
+   }
+
+   bool operator==(const monotonic_buffer_resource& other) { return buffer == other.buffer; }
+
+private:
+   struct Buffer {
+      Buffer* next;
+      uint32_t current_idx;
+      uint32_t data_size;
+      uint8_t data[];
+   };
+
+   Buffer* buffer;
+   static constexpr size_t initial_size = 4096;
+   static constexpr size_t minimum_size = 128;
+   static_assert(minimum_size > sizeof(Buffer));
+};
 
 } // namespace aco
 
