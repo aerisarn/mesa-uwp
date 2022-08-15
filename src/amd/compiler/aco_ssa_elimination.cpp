@@ -347,9 +347,10 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
    aco_ptr<Instruction>& exec_val = block.instructions[exec_val_idx];
    aco_ptr<Instruction>& exec_copy = block.instructions[exec_copy_idx];
 
-   if (exec_copy->opcode != aco_opcode::s_and_saveexec_b32 &&
-       exec_copy->opcode != aco_opcode::s_and_saveexec_b64 &&
-       exec_copy->opcode != aco_opcode::p_parallelcopy)
+   const aco_opcode and_saveexec = ctx.program->lane_mask == s2 ? aco_opcode::s_and_saveexec_b64
+                                                                : aco_opcode::s_and_saveexec_b32;
+
+   if (exec_copy->opcode != and_saveexec && exec_copy->opcode != aco_opcode::p_parallelcopy)
       return;
 
    if (exec_val->definitions.size() > 1)
@@ -361,8 +362,7 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
    const bool vopc = v_cmpx_op != aco_opcode::num_opcodes;
 
    /* If s_and_saveexec is used, we'll need to insert a new instruction to save the old exec. */
-   const bool save_original_exec = exec_copy->opcode == aco_opcode::s_and_saveexec_b32 ||
-                                   exec_copy->opcode == aco_opcode::s_and_saveexec_b64;
+   const bool save_original_exec = exec_copy->opcode == and_saveexec;
    /* Position where the original exec mask copy should be inserted. */
    const int save_original_exec_idx = exec_val_idx;
    /* The copy can be removed when it kills its operand.
