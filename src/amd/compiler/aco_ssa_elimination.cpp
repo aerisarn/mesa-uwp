@@ -417,6 +417,13 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       }
    }
 
+   if (save_original_exec) {
+      /* We insert the exec copy before exec_val, so exec_val can't use those registers. */
+      for (const Operand& op : exec_val->operands)
+         if (regs_intersect(exec_copy_def, op))
+            return;
+   }
+
    /* Reassign the instruction to write exec directly. */
    exec_val->definitions[0] = Definition(exec, ctx.program->lane_mask);
 
