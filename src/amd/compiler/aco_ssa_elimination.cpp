@@ -296,6 +296,18 @@ instr_writes_exec(Instruction* instr)
    return false;
 }
 
+template <typename T, typename U>
+bool
+regs_intersect(const T& a, const U& b)
+{
+   const unsigned a_lo = a.physReg();
+   const unsigned a_hi = a_lo + a.size();
+   const unsigned b_lo = b.physReg();
+   const unsigned b_hi = b_lo + b.size();
+
+   return a_hi > b_lo && b_hi > a_lo;
+}
+
 void
 try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const int exec_val_idx,
                                 const int exec_copy_idx)
@@ -350,6 +362,8 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
    const int save_original_exec_idx = exec_val_idx;
    /* The copy can be removed when it kills its operand. */
    const bool can_remove_copy = exec_copy->operands[0].isKill();
+   /* Whether exec_val and exec_copy are adjacent (with p_logical_end inbetween). */
+   const bool val_and_copy_adjacent = exec_val_idx == exec_copy_idx - 2;
 
    /* Only use v_cmpx on GFX10+ where it doesn't always clobber the VCC.
     * Also check if a suitable v_cmpx opcode exists.
@@ -376,6 +390,33 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
    const Definition exec_wr_def = exec_val->definitions[0];
    const Definition exec_copy_def = exec_copy->definitions[0];
 
+   if (!val_and_copy_adjacent) {
+      /* When exec_val and exec_copy are non-adjacent, check whether there are any
+       * instructions inbetween (besides p_logical_end) which may inhibit the optimization.
+       */
+      for (int idx = exec_val_idx + 1; idx < exec_copy_idx; ++idx) {
+         aco_ptr<Instruction>& instr = block.instructions[idx];
+
+         if (save_original_exec) {
+            /* Check if the instruction uses the exec_copy_def register, in which case we can't
+             * optimize. */
+            for (const Operand& op : instr->operands)
+               if (regs_intersect(exec_copy_def, op))
+                  return;
+            for (const Definition& def : instr->definitions)
+               if (regs_intersect(exec_copy_def, def))
+                  return;
+         }
+
+         /* Check if the instruction may implicitly read VCC, eg. v_cndmask or add with carry.
+          * Some of these may be fine to convert to VOP3 but there are edge cases, eg. SDWA.
+          * Better leave these instructions alone.
+          */
+         if (instr->isVALU() && instr->operands.size() >= 3 && !instr->isVOP3())
+            return;
+      }
+   }
+
    /* Reassign the instruction to write exec directly. */
    exec_val->definitions[0] = Definition(exec, ctx.program->lane_mask);
 
@@ -386,7 +427,7 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       /* TODO: change instruction from VOP3 to plain VOPC when possible. */
    }
 
-   if (exec_val_idx != exec_copy_idx - 2) {
+   if (!val_and_copy_adjacent) {
       /* If there are other instructions (besides p_logical_end) between
        * writing the value and copying it to exec, reassign uses
        * of the old definition.
