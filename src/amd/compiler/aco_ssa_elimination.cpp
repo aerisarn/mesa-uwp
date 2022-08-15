@@ -502,7 +502,7 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
        exec_val->operands[0].constantValue()) {
       /* Remove the branch instruction when exec is constant non-zero. */
       aco_ptr<Instruction>& branch = block.instructions.back();
-      if (branch->isBranch() && branch->operands.size() && branch->operands[0].physReg() == exec)
+      if (branch->opcode == aco_opcode::p_cbranch_z && branch->operands[0].physReg() == exec)
          block.instructions.back().reset();
    }
 
