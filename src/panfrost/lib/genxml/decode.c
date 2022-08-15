@@ -250,7 +250,7 @@ pandecode_sample_locations(const void *fb)
 
 static void
 pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
-              char *suffix, unsigned gpu_id);
+              unsigned gpu_id);
 
 #if PAN_ARCH >= 5
 static struct pandecode_fbd
@@ -271,21 +271,21 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
                 const void *PANDECODE_PTR_VAR(dcd, bparams.frame_shader_dcds + (0 * dcd_size));
                 pan_unpack(dcd, DRAW, draw);
                 pandecode_log("Pre frame 0:\n");
-                pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, "", gpu_id);
+                pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         }
 
         if (bparams.pre_frame_1 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
                 const void *PANDECODE_PTR_VAR(dcd, bparams.frame_shader_dcds + (1 * dcd_size));
                 pan_unpack(dcd, DRAW, draw);
                 pandecode_log("Pre frame 1:\n");
-                pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, "", gpu_id);
+                pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         }
 
         if (bparams.post_frame != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
                 const void *PANDECODE_PTR_VAR(dcd, bparams.frame_shader_dcds + (2 * dcd_size));
                 pan_unpack(dcd, DRAW, draw);
                 pandecode_log("Post frame:\n");
-                pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, "", gpu_id);
+                pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         }
 #endif
  
@@ -331,7 +331,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
 
 #if PAN_ARCH <= 7
 static void
-pandecode_attributes(mali_ptr addr, char *suffix, int count,
+pandecode_attributes(mali_ptr addr, int count,
                      bool varying, enum mali_job_type job_type)
 {
         char *prefix = varying ? "Varying" : "Attribute";
@@ -759,7 +759,7 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count)
 
 static void
 pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
-              char *suffix, unsigned gpu_id)
+              unsigned gpu_id)
 {
 #if PAN_ARCH >= 5
         struct pandecode_fbd fbd_info = {
@@ -860,14 +860,14 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
                 max_attr_index = pandecode_attribute_meta(attribute_count, p->attributes, false);
 
         if (p->attribute_buffers)
-                pandecode_attributes(p->attribute_buffers, suffix, max_attr_index, false, job_type);
+                pandecode_attributes(p->attribute_buffers, max_attr_index, false, job_type);
 
         if (p->varyings) {
                 varying_count = pandecode_attribute_meta(varying_count, p->varyings, true);
         }
 
         if (p->varying_buffers)
-                pandecode_attributes(p->varying_buffers, suffix, varying_count, true, job_type);
+                pandecode_attributes(p->varying_buffers, varying_count, true, job_type);
 
         if (p->uniform_buffers) {
                 if (uniform_buffer_count)
@@ -901,7 +901,7 @@ pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
 {
         struct mali_compute_job_packed *PANDECODE_PTR_VAR(p, job);
         pan_section_unpack(p, COMPUTE_JOB, DRAW, draw);
-        pandecode_dcd(&draw, h->type, "", gpu_id);
+        pandecode_dcd(&draw, h->type, gpu_id);
 
         pandecode_log("Vertex Job Payload:\n");
         pandecode_indent++;
@@ -941,12 +941,12 @@ pandecode_indexed_vertex_job(const struct MALI_JOB_HEADER *h,
 
         pandecode_log("Vertex:\n");
         pan_section_unpack(p, INDEXED_VERTEX_JOB, VERTEX_DRAW, vert_draw);
-        pandecode_dcd(&vert_draw, h->type, "", gpu_id);
+        pandecode_dcd(&vert_draw, h->type, gpu_id);
         DUMP_UNPACKED(DRAW, vert_draw, "Vertex Draw:\n");
 
         pandecode_log("Fragment:\n");
         pan_section_unpack(p, INDEXED_VERTEX_JOB, FRAGMENT_DRAW, frag_draw);
-        pandecode_dcd(&frag_draw, MALI_JOB_TYPE_FRAGMENT, "", gpu_id);
+        pandecode_dcd(&frag_draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         DUMP_UNPACKED(DRAW, frag_draw, "Fragment Draw:\n");
 
         pan_section_unpack(p, INDEXED_VERTEX_JOB, TILER, tiler_ptr);
@@ -972,7 +972,7 @@ pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
 {
         struct mali_tiler_job_packed *PANDECODE_PTR_VAR(p, job);
         pan_section_unpack(p, TILER_JOB, DRAW, draw);
-        pandecode_dcd(&draw, h->type, "", gpu_id);
+        pandecode_dcd(&draw, h->type, gpu_id);
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
 
@@ -1177,7 +1177,7 @@ pandecode_shader_environment(const struct MALI_SHADER_ENVIRONMENT *p,
 
 static void
 pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
-              char *suffix, unsigned gpu_id)
+              unsigned gpu_id)
 {
         mali_ptr frag_shader = 0;
 
@@ -1221,7 +1221,7 @@ pandecode_malloc_vertex_job(mali_ptr job, unsigned gpu_id)
                 pandecode_log("<omitted>\n");
         pandecode_indent--;
 
-        pandecode_dcd(&dcd, 0, NULL, gpu_id);
+        pandecode_dcd(&dcd, 0, gpu_id);
 
         pan_section_unpack(p, MALLOC_VERTEX_JOB, POSITION, position);
         pan_section_unpack(p, MALLOC_VERTEX_JOB, VARYING, varying);
