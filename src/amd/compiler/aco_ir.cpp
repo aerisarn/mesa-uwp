@@ -746,7 +746,7 @@ get_cmp_bitsize(aco_opcode op)
 }
 
 bool
-is_cmp(aco_opcode op)
+is_fp_cmp(aco_opcode op)
 {
    CmpInfo info;
    return get_cmp_info(op, &info) && info.ordered != aco_opcode::num_opcodes;
