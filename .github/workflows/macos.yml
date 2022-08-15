@@ -1,4 +1,4 @@
-name: CI
+name: macOS CI
 on: push
 
 permissions:
