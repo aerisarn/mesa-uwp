@@ -159,45 +159,6 @@ pandecode_midgard_tiler_descriptor(
 }
 #endif
 
-/* Information about the framebuffer passed back for additional analysis */
-struct pandecode_fbd {
-        unsigned rt_count;
-        bool has_extra;
-};
-
-#if PAN_ARCH == 4
-static struct pandecode_fbd
-pandecode_sfbd(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
-{
-        const void *PANDECODE_PTR_VAR(s, (mali_ptr) gpu_va);
-
-        pandecode_log("Framebuffer:\n");
-        pandecode_indent++;
-
-        DUMP_SECTION(FRAMEBUFFER, LOCAL_STORAGE, s, "Local Storage:\n");
-        pan_section_unpack(s, FRAMEBUFFER, PARAMETERS, p);
-        DUMP_UNPACKED(FRAMEBUFFER_PARAMETERS, p, "Parameters:\n");
-
-        const void *t = pan_section_ptr(s, FRAMEBUFFER, TILER);
-        const void *w = pan_section_ptr(s, FRAMEBUFFER, TILER_WEIGHTS);
-
-        pandecode_midgard_tiler_descriptor(t, w);
-
-        pandecode_indent--;
-
-        /* Dummy unpack of the padding section to make sure all words are 0.
-         * No need to call print here since the section is supposed to be empty.
-         */
-        pan_section_unpack(s, FRAMEBUFFER, PADDING_1, padding1);
-        pan_section_unpack(s, FRAMEBUFFER, PADDING_2, padding2);
-        pandecode_log("\n");
-
-        return (struct pandecode_fbd) {
-                .rt_count = 1
-        };
-}
-#endif
-
 #if PAN_ARCH >= 5
 static void
 pandecode_local_storage(uint64_t gpu_va)
@@ -245,35 +206,45 @@ static void
 pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
               unsigned gpu_id);
 
-#if PAN_ARCH >= 5
+/* Information about the framebuffer passed back for additional analysis */
+struct pandecode_fbd {
+        unsigned rt_count;
+        bool has_extra;
+};
+
 static struct pandecode_fbd
-pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
+pandecode_fbd(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
 {
+#if PAN_ARCH >= 5
+        /* We only see MFBDs on architectures that support them */
+        assert(gpu_va & MALI_FBD_TAG_IS_MFBD);
+        gpu_va &= ~MALI_FBD_TAG_MASK;
+#endif
+
         const void *PANDECODE_PTR_VAR(fb, (mali_ptr) gpu_va);
         pan_section_unpack(fb, FRAMEBUFFER, PARAMETERS, params);
 
 #if PAN_ARCH >= 6
         pandecode_sample_locations(fb);
 
-        pan_section_unpack(fb, FRAMEBUFFER, PARAMETERS, bparams);
         unsigned dcd_size = pan_size(DRAW);
 
-        if (bparams.pre_frame_0 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
-                const void *PANDECODE_PTR_VAR(dcd, bparams.frame_shader_dcds + (0 * dcd_size));
+        if (params.pre_frame_0 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
+                const void *PANDECODE_PTR_VAR(dcd, params.frame_shader_dcds + (0 * dcd_size));
                 pan_unpack(dcd, DRAW, draw);
                 pandecode_log("Pre frame 0:\n");
                 pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         }
 
-        if (bparams.pre_frame_1 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
-                const void *PANDECODE_PTR_VAR(dcd, bparams.frame_shader_dcds + (1 * dcd_size));
+        if (params.pre_frame_1 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
+                const void *PANDECODE_PTR_VAR(dcd, params.frame_shader_dcds + (1 * dcd_size));
                 pan_unpack(dcd, DRAW, draw);
                 pandecode_log("Pre frame 1:\n");
                 pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         }
 
-        if (bparams.post_frame != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
-                const void *PANDECODE_PTR_VAR(dcd, bparams.frame_shader_dcds + (2 * dcd_size));
+        if (params.post_frame != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
+                const void *PANDECODE_PTR_VAR(dcd, params.frame_shader_dcds + (2 * dcd_size));
                 pan_unpack(dcd, DRAW, draw);
                 pandecode_log("Post frame:\n");
                 pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
@@ -286,7 +257,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         pandecode_midgard_tiler_descriptor(t, w);
 #endif
 
-        pandecode_log("Multi-Target Framebuffer:\n");
+        pandecode_log("Framebuffer:\n");
         pandecode_indent++;
 
         DUMP_UNPACKED(FRAMEBUFFER_PARAMETERS, params, "Parameters:\n");
@@ -294,6 +265,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         pandecode_indent--;
         pandecode_log("\n");
 
+#if PAN_ARCH >= 5
         gpu_va += pan_size(FRAMEBUFFER);
 
         if (params.has_zs_crc_extension) {
@@ -311,8 +283,18 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
                 .rt_count = params.render_target_count,
                 .has_extra = params.has_zs_crc_extension
         };
-}
+#else
+        /* Dummy unpack of the padding section to make sure all words are 0.
+         * No need to call print here since the section is supposed to be empty.
+         */
+        pan_section_unpack(fb, FRAMEBUFFER, PADDING_1, padding1);
+        pan_section_unpack(fb, FRAMEBUFFER, PADDING_2, padding2);
+
+        return (struct pandecode_fbd) {
+                .rt_count = 1
+        };
 #endif
+}
 
 #if PAN_ARCH <= 7
 static void
@@ -753,19 +735,15 @@ pandecode_dcd(const struct MALI_DRAW *p, enum mali_job_type job_type,
         };
 #endif
 
-#if PAN_ARCH >= 6
-        pandecode_local_storage(p->thread_storage & ~1);
-#elif PAN_ARCH == 5
-        if (job_type != MALI_JOB_TYPE_TILER) {
+        if (PAN_ARCH >= 6 || (PAN_ARCH == 5 && job_type != MALI_JOB_TYPE_TILER)) {
+#if PAN_ARCH >= 5
                 pandecode_local_storage(p->thread_storage & ~1);
-	} else {
-                assert(p->fbd & MALI_FBD_TAG_IS_MFBD);
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->fbd) & ~MALI_FBD_TAG_MASK,
-                                              false, gpu_id);
-        }
-#else
-        pandecode_sfbd((u64) (uintptr_t) p->fbd, false, gpu_id);
 #endif
+	} else {
+#if PAN_ARCH <= 5
+                pandecode_fbd(p->fbd, false, gpu_id);
+#endif
+        }
 
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
@@ -999,17 +977,7 @@ pandecode_fragment_job(mali_ptr job, unsigned gpu_id)
         struct mali_fragment_job_packed *PANDECODE_PTR_VAR(p, job);
         pan_section_unpack(p, FRAGMENT_JOB, PAYLOAD, s);
 
-
-#if PAN_ARCH == 4
-        pandecode_sfbd(s.framebuffer, true, gpu_id);
-#else
-        assert(s.framebuffer & MALI_FBD_TAG_IS_MFBD);
-
-        struct pandecode_fbd info;
-
-        info = pandecode_mfbd_bfr(s.framebuffer & ~MALI_FBD_TAG_MASK,
-                                  true, gpu_id);
-#endif
+        UNUSED struct pandecode_fbd info = pandecode_fbd(s.framebuffer, true, gpu_id);
 
 #if PAN_ARCH >= 5
         unsigned expected_tag = 0;
