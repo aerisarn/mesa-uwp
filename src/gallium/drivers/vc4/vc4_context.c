@@ -158,8 +158,8 @@ vc4_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         int err;
 
         /* Prevent dumping of the shaders built during context setup. */
-        uint32_t saved_shaderdb_flag = vc4_debug & VC4_DEBUG_SHADERDB;
-        vc4_debug &= ~VC4_DEBUG_SHADERDB;
+        uint32_t saved_shaderdb_flag = vc4_mesa_debug & VC4_DEBUG_SHADERDB;
+        vc4_mesa_debug &= ~VC4_DEBUG_SHADERDB;
 
         vc4 = rzalloc(NULL, struct vc4_context);
         if (!vc4)
@@ -202,7 +202,7 @@ vc4_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         if (!vc4->blitter)
                 goto fail;
 
-        vc4_debug |= saved_shaderdb_flag;
+        vc4_mesa_debug |= saved_shaderdb_flag;
 
         vc4->sample_mask = (1 << VC4_MAX_SAMPLES) - 1;
 

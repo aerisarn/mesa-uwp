@@ -377,7 +377,7 @@ vc4_dump_to_file(struct vc4_exec_info *exec)
         struct drm_vc4_get_hang_state_bo *bo_state;
         unsigned int dump_version = 0;
 
-        if (!(vc4_debug & VC4_DEBUG_DUMP))
+        if (!VC4_DBG(DUMP))
                 return;
 
         state = calloc(1, sizeof(*state));
@@ -477,7 +477,7 @@ vc4_simulator_submit_cl_ioctl(int fd, struct drm_vc4_submit_cl *args)
         if (ret)
                 return ret;
 
-        if (vc4_debug & VC4_DEBUG_CL) {
+        if (VC4_DBG(CL)) {
                 fprintf(stderr, "RCL:\n");
                 vc4_dump_cl(sim_state.mem + exec.ct1ca,
                             exec.ct1ea - exec.ct1ca, true);

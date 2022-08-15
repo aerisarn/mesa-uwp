@@ -73,7 +73,7 @@ static const struct debug_named_value vc4_debug_options[] = {
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(vc4_debug, "VC4_DEBUG", vc4_debug_options, 0)
-uint32_t vc4_debug;
+uint32_t vc4_mesa_debug;
 
 static const char *
 vc4_screen_get_name(struct pipe_screen *pscreen)
@@ -588,7 +588,7 @@ vc4_screen_create(int fd, struct renderonly *ro)
 
         vc4_fence_screen_init(screen);
 
-        vc4_debug = debug_get_option_vc4_debug();
+        vc4_mesa_debug = debug_get_option_vc4_debug();
 
 #ifdef USE_VC4_SIMULATOR
         vc4_simulator_init(screen);

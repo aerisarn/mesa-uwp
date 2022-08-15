@@ -2327,14 +2327,14 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
-        if (vc4_debug & VC4_DEBUG_SHADERDB) {
+        if (VC4_DBG(SHADERDB)) {
                 fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d NIR instructions\n",
                         qir_get_stage_name(c->stage),
                         c->program_id, c->variant_id,
                         count_nir_instrs(c->s));
         }
 
-        if (vc4_debug & VC4_DEBUG_NIR) {
+        if (VC4_DBG(NIR)) {
                 fprintf(stderr, "%s prog %d/%d NIR:\n",
                         qir_get_stage_name(c->stage),
                         c->program_id, c->variant_id);
@@ -2368,7 +2368,7 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
                 break;
         }
 
-        if (vc4_debug & VC4_DEBUG_QIR) {
+        if (VC4_DBG(QIR)) {
                 fprintf(stderr, "%s prog %d/%d pre-opt QIR:\n",
                         qir_get_stage_name(c->stage),
                         c->program_id, c->variant_id);
@@ -2382,7 +2382,7 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
         qir_schedule_instructions(c);
         qir_emit_uniform_stream_resets(c);
 
-        if (vc4_debug & VC4_DEBUG_QIR) {
+        if (VC4_DBG(QIR)) {
                 fprintf(stderr, "%s prog %d/%d QIR:\n",
                         qir_get_stage_name(c->stage),
                         c->program_id, c->variant_id);
@@ -2393,7 +2393,7 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
         qir_reorder_uniforms(c);
         vc4_generate_code(vc4, c);
 
-        if (vc4_debug & VC4_DEBUG_SHADERDB) {
+        if (VC4_DBG(SHADERDB)) {
                 fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d instructions\n",
                         qir_get_stage_name(c->stage),
                         c->program_id, c->variant_id,
@@ -2430,7 +2430,7 @@ vc4_shader_state_create(struct pipe_context *pctx,
        } else {
                 assert(cso->type == PIPE_SHADER_IR_TGSI);
 
-                if (vc4_debug & VC4_DEBUG_TGSI) {
+                if (VC4_DBG(TGSI)) {
                         fprintf(stderr, "prog %d TGSI:\n",
                                 so->program_id);
                         tgsi_dump(cso->tokens, 0);
@@ -2461,7 +2461,7 @@ vc4_shader_state_create(struct pipe_context *pctx,
         so->base.type = PIPE_SHADER_IR_NIR;
         so->base.ir.nir = s;
 
-        if (vc4_debug & VC4_DEBUG_NIR) {
+        if (VC4_DBG(NIR)) {
                 fprintf(stderr, "%s prog %d NIR:\n",
                         gl_shader_stage_name(s->info.stage),
                         so->program_id);
@@ -2621,7 +2621,7 @@ vc4_get_compiled_shader(struct vc4_context *vc4, enum qstage stage,
 
         shader->fs_threaded = c->fs_threaded;
 
-        if ((vc4_debug & VC4_DEBUG_SHADERDB) && stage == QSTAGE_FRAG) {
+        if (VC4_DBG(SHADERDB) && stage == QSTAGE_FRAG) {
                 fprintf(stderr, "SHADER-DB: %s prog %d/%d: %d FS threads\n",
                         qir_get_stage_name(c->stage),
                         c->program_id, c->variant_id,
