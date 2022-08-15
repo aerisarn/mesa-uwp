@@ -2124,9 +2124,6 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_fge, SpvOpFOrdGreaterThanEqual)
    BINOP(nir_op_feq, SpvOpFOrdEqual)
    BINOP(nir_op_fneu, SpvOpFUnordNotEqual)
-   BINOP(nir_op_ishl, SpvOpShiftLeftLogical)
-   BINOP(nir_op_ishr, SpvOpShiftRightArithmetic)
-   BINOP(nir_op_ushr, SpvOpShiftRightLogical)
    BINOP(nir_op_frem, SpvOpFRem)
 #undef BINOP
 
@@ -2145,6 +2142,23 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP_LOG(nir_op_ine, SpvOpINotEqual, SpvOpLogicalNotEqual)
    BINOP_LOG(nir_op_ixor, SpvOpBitwiseXor, SpvOpLogicalNotEqual)
 #undef BINOP_LOG
+
+#define BINOP_SHIFT(nir_op, spirv_op) \
+   case nir_op: { \
+      assert(nir_op_infos[alu->op].num_inputs == 2); \
+      int shift_bit_size = nir_src_bit_size(alu->src[1].src); \
+      nir_alu_type shift_nir_type = nir_alu_type_get_base_type(nir_op_infos[alu->op].input_types[1]); \
+      SpvId shift_type = get_alu_type(ctx, shift_nir_type, num_components, shift_bit_size); \
+      SpvId shift_mask = get_ivec_constant(ctx, shift_bit_size, num_components, bit_size - 1); \
+      SpvId shift_count = emit_binop(ctx, SpvOpBitwiseAnd, shift_type, src[1], shift_mask); \
+      result = emit_binop(ctx, spirv_op, dest_type, src[0], shift_count); \
+      break; \
+   }
+
+   BINOP_SHIFT(nir_op_ishl, SpvOpShiftLeftLogical)
+   BINOP_SHIFT(nir_op_ishr, SpvOpShiftRightArithmetic)
+   BINOP_SHIFT(nir_op_ushr, SpvOpShiftRightLogical)
+#undef BINOP_SHIFT
 
 #define BUILTIN_BINOP(nir_op, spirv_op) \
    case nir_op: \
