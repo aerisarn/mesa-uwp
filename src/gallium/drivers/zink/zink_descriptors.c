@@ -402,7 +402,6 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       stages = ((struct zink_gfx_program*)pg)->shaders;
 
    if (!pg->is_compute && stages[MESA_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output) {
-      zink_descriptor_util_init_fbfetch(ctx);
       push_count = 1;
       pg->dd.fbfetch = true;
    }
@@ -452,8 +451,6 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       }
       pg->dd.bindless |= shader->bindless;
    }
-   if (pg->dd.bindless)
-      zink_descriptors_init_bindless(ctx);
    pg->dd.binding_usage = has_bindings;
    if (!has_bindings && !push_count && !pg->dd.bindless) {
       pg->layout = zink_pipeline_layout_create(screen, pg, &pg->compat_id);

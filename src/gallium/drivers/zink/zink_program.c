@@ -1213,6 +1213,9 @@ zink_create_cs_state(struct pipe_context *pctx,
    else
       nir = (struct nir_shader *)shader->prog;
 
+   if (nir->info.uses_bindless)
+      zink_descriptors_init_bindless(zink_context(pctx));
+
    return create_compute_program(zink_context(pctx), nir);
 }
 
@@ -1266,6 +1269,11 @@ zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader
       nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
    else
       nir = (struct nir_shader *)shader->ir.nir;
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_fbfetch_output)
+      zink_descriptor_util_init_fbfetch(zink_context(pctx));
+   if (nir->info.uses_bindless)
+      zink_descriptors_init_bindless(zink_context(pctx));
 
    return zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
 }
