@@ -3285,7 +3285,7 @@ VkResult anv_CreateDevice(
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_queues;
+      goto fail_vmas;
    }
 
    pthread_condattr_t condattr;
