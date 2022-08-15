@@ -131,7 +131,9 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
 
    if (type != ZINK_DESCRIPTOR_TYPES) {
       hash = hash_descriptor_layout(&key);
+      simple_mtx_lock(&ctx->desc_set_layouts_lock);
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->desc_set_layouts[type], hash, &key);
+      simple_mtx_unlock(&ctx->desc_set_layouts_lock);
       if (he) {
          *layout_key = (void*)he->key;
          return he->data;
@@ -140,7 +142,9 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
 
    struct zink_descriptor_layout *layout = create_layout(ctx, type, bindings, num_bindings, layout_key);
    if (layout && type != ZINK_DESCRIPTOR_TYPES) {
+      simple_mtx_lock(&ctx->desc_set_layouts_lock);
       _mesa_hash_table_insert_pre_hashed(&ctx->desc_set_layouts[type], hash, *layout_key, layout);
+      simple_mtx_unlock(&ctx->desc_set_layouts_lock);
    }
    return layout;
 }
@@ -182,7 +186,9 @@ zink_descriptor_util_pool_key_get(struct zink_context *ctx, enum zink_descriptor
       key.layout = layout_key;
       memcpy(key.sizes, sizes, num_type_sizes * sizeof(VkDescriptorPoolSize));
       hash = hash_descriptor_pool_key(&key);
+      simple_mtx_lock(&ctx->desc_pool_keys_lock);
       struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->desc_pool_keys[type], hash, &key);
+      simple_mtx_unlock(&ctx->desc_pool_keys_lock);
       if (he)
          return (void*)he->key;
    }
@@ -193,8 +199,10 @@ zink_descriptor_util_pool_key_get(struct zink_context *ctx, enum zink_descriptor
    assert(pool_key->num_type_sizes);
    memcpy(pool_key->sizes, sizes, num_type_sizes * sizeof(VkDescriptorPoolSize));
    if (type != ZINK_DESCRIPTOR_TYPES) {
+      simple_mtx_lock(&ctx->desc_pool_keys_lock);
       _mesa_set_add_pre_hashed(&ctx->desc_pool_keys[type], hash, pool_key);
       pool_key->id = ctx->desc_pool_keys[type].entries - 1;
+      simple_mtx_unlock(&ctx->desc_pool_keys_lock);
    }
    return pool_key;
 }
@@ -1046,6 +1054,8 @@ zink_descriptor_layouts_init(struct zink_context *ctx)
       if (!_mesa_set_init(&ctx->desc_pool_keys[i], ctx, hash_descriptor_pool_key, equals_descriptor_pool_key))
          return false;
    }
+   simple_mtx_init(&ctx->desc_set_layouts_lock, mtx_plain);
+   simple_mtx_init(&ctx->desc_pool_keys_lock, mtx_plain);
    return true;
 }
 
@@ -1061,6 +1071,8 @@ zink_descriptor_layouts_deinit(struct zink_context *ctx)
          _mesa_hash_table_remove(&ctx->desc_set_layouts[i], he);
       }
    }
+   simple_mtx_destroy(&ctx->desc_set_layouts_lock);
+   simple_mtx_destroy(&ctx->desc_pool_keys_lock);
 }
 
 

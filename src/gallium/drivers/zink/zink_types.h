@@ -1360,7 +1360,9 @@ struct zink_context {
    struct zink_rasterizer_state *rast_state;
    struct zink_depth_stencil_alpha_state *dsa_state;
 
+   simple_mtx_t desc_set_layouts_lock;
    struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_TYPES];
+   simple_mtx_t desc_pool_keys_lock;
    struct set desc_pool_keys[ZINK_DESCRIPTOR_TYPES];
    bool pipeline_changed[2]; //gfx, compute
 
