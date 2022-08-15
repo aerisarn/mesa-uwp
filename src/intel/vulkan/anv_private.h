@@ -37,9 +37,6 @@
 #include <valgrind.h>
 #include <memcheck.h>
 #define VG(x) x
-#ifndef NDEBUG
-#define __gen_validate_value(x) VALGRIND_CHECK_MEM_IS_DEFINED(&(x), sizeof(x))
-#endif
 #else
 #define VG(x) ((void)0)
 #endif
