@@ -278,22 +278,18 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
                 pandecode_log("Post frame:\n");
                 pandecode_dcd(&draw, MALI_JOB_TYPE_FRAGMENT, gpu_id);
         }
-#endif
- 
-        pandecode_log("Multi-Target Framebuffer:\n");
-        pandecode_indent++;
-
-#if PAN_ARCH <= 5
+#else
         DUMP_SECTION(FRAMEBUFFER, LOCAL_STORAGE, fb, "Local Storage:\n");
-#endif
 
-        DUMP_UNPACKED(FRAMEBUFFER_PARAMETERS, params, "Parameters:\n");
-
-#if PAN_ARCH <= 5
         const void *t = pan_section_ptr(fb, FRAMEBUFFER, TILER);
         const void *w = pan_section_ptr(fb, FRAMEBUFFER, TILER_WEIGHTS);
         pandecode_midgard_tiler_descriptor(t, w);
 #endif
+
+        pandecode_log("Multi-Target Framebuffer:\n");
+        pandecode_indent++;
+
+        DUMP_UNPACKED(FRAMEBUFFER_PARAMETERS, params, "Parameters:\n");
 
         pandecode_indent--;
         pandecode_log("\n");
