@@ -159,12 +159,8 @@ pandecode_midgard_tiler_descriptor(
 }
 #endif
 
-/* Information about the framebuffer passed back for
- * additional analysis */
-
+/* Information about the framebuffer passed back for additional analysis */
 struct pandecode_fbd {
-        unsigned width;
-        unsigned height;
         unsigned rt_count;
         bool has_extra;
 };
@@ -174,11 +170,6 @@ static struct pandecode_fbd
 pandecode_sfbd(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
 {
         const void *PANDECODE_PTR_VAR(s, (mali_ptr) gpu_va);
-
-        struct pandecode_fbd info = {
-                .has_extra = false,
-                .rt_count = 1
-        };
 
         pandecode_log("Framebuffer:\n");
         pandecode_indent++;
@@ -201,7 +192,9 @@ pandecode_sfbd(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         pan_section_unpack(s, FRAMEBUFFER, PADDING_2, padding2);
         pandecode_log("\n");
 
-        return info;
+        return (struct pandecode_fbd) {
+                .rt_count = 1
+        };
 }
 #endif
 
@@ -259,8 +252,6 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         const void *PANDECODE_PTR_VAR(fb, (mali_ptr) gpu_va);
         pan_section_unpack(fb, FRAMEBUFFER, PARAMETERS, params);
 
-        struct pandecode_fbd info;
-
 #if PAN_ARCH >= 6
         pandecode_sample_locations(fb);
 
@@ -296,9 +287,6 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         DUMP_SECTION(FRAMEBUFFER, LOCAL_STORAGE, fb, "Local Storage:\n");
 #endif
 
-        info.width = params.width;
-        info.height = params.height;
-        info.rt_count = params.render_target_count;
         DUMP_UNPACKED(FRAMEBUFFER_PARAMETERS, params, "Parameters:\n");
 
 #if PAN_ARCH <= 5
@@ -312,9 +300,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
 
         gpu_va += pan_size(FRAMEBUFFER);
 
-        info.has_extra = params.has_zs_crc_extension;
-
-        if (info.has_extra) {
+        if (params.has_zs_crc_extension) {
                 const struct mali_zs_crc_extension_packed *PANDECODE_PTR_VAR(zs_crc, (mali_ptr)gpu_va);
                 DUMP_CL(ZS_CRC_EXTENSION, zs_crc, "ZS CRC Extension:\n");
                 pandecode_log("\n");
@@ -325,7 +311,10 @@ pandecode_mfbd_bfr(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         if (is_fragment)
                 pandecode_render_target(gpu_va, gpu_id, &params);
 
-        return info;
+        return (struct pandecode_fbd) {
+                .rt_count = params.render_target_count,
+                .has_extra = params.has_zs_crc_extension
+        };
 }
 #endif
 
