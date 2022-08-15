@@ -53,12 +53,11 @@ void pandecode_map_read_write(void);
 void pandecode_dump_mappings(void);
 
 static inline void *
-__pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
-                          uint64_t gpu_va, size_t size,
+__pandecode_fetch_gpu_mem(uint64_t gpu_va, size_t size,
                           int line, const char *filename)
 {
-        if (!mem)
-                mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
+        const struct pandecode_mapped_memory *mem =
+                pandecode_find_mapped_gpu_mem_containing(gpu_va);
 
         if (!mem) {
                 fprintf(stderr, "Access to unknown memory %" PRIx64 " in %s:%d\n",
@@ -66,25 +65,24 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
                 assert(0);
         }
 
-        assert(mem);
         assert(size + (gpu_va - mem->gpu_va) <= mem->length);
 
         return mem->addr + gpu_va - mem->gpu_va;
 }
 
-#define pandecode_fetch_gpu_mem(mem, gpu_va, size) \
-	__pandecode_fetch_gpu_mem(mem, gpu_va, size, __LINE__, __FILE__)
+#define pandecode_fetch_gpu_mem(gpu_va, size) \
+	__pandecode_fetch_gpu_mem(gpu_va, size, __LINE__, __FILE__)
 
 /* Returns a validated pointer to mapped GPU memory with the given pointer type,
  * size automatically determined from the pointer type
  */
-#define PANDECODE_PTR(mem, gpu_va, type) \
-	((type*)(__pandecode_fetch_gpu_mem(mem, gpu_va, sizeof(type), \
+#define PANDECODE_PTR(gpu_va, type) \
+	((type*)(__pandecode_fetch_gpu_mem(gpu_va, sizeof(type), \
 					 __LINE__, __FILE__)))
 
-/* Usage: <variable type> PANDECODE_PTR_VAR(name, mem, gpu_va) */
-#define PANDECODE_PTR_VAR(name, mem, gpu_va) \
-	name = __pandecode_fetch_gpu_mem(mem, gpu_va, sizeof(*name), \
+/* Usage: <variable type> PANDECODE_PTR_VAR(name, gpu_va) */
+#define PANDECODE_PTR_VAR(name, gpu_va) \
+	name = __pandecode_fetch_gpu_mem(gpu_va, sizeof(*name), \
 				       __LINE__, __FILE__)
 
 #ifdef PAN_ARCH
