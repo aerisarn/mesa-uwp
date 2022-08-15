@@ -51,7 +51,7 @@ class LODClamp : public testing::Test {
 TEST_F(LODClamp, Encode)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(lod_cases); ++i)
-      ASSERT_EQ(__float_to_lod(lod_cases[i].f), lod_cases[i].encoded);
+      ASSERT_EQ(__gen_pack_lod(lod_cases[i].f, 0, 9), lod_cases[i].encoded);
 }
 
 TEST_F(LODClamp, Decode)
