@@ -106,12 +106,6 @@ struct brw_compiler {
    bool supports_shader_constants;
 
    /**
-    * Whether or not the driver wants variable group size to be lowered by the
-    * back-end compiler.
-    */
-   bool lower_variable_group_size;
-
-   /**
     * Whether indirect UBO loads should use the sampler or go through the
     * data/constant cache.  For the sampler, UBO surface states have to be set
     * up with VK_FORMAT_R32G32B32A32_FLOAT whereas if it's going through the

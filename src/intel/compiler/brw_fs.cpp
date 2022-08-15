@@ -1148,8 +1148,6 @@ fs_visitor::import_uniforms(fs_visitor *v)
    this->push_constant_loc = v->push_constant_loc;
    this->uniforms = v->uniforms;
    this->subgroup_id = v->subgroup_id;
-   for (unsigned i = 0; i < ARRAY_SIZE(this->group_size); i++)
-      this->group_size[i] = v->group_size[i];
 }
 
 void
