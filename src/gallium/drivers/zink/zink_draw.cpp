@@ -882,11 +882,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
                                 0, 1, &mb, 0, NULL, 0, NULL);
    }
 
-   if (zink_program_has_descriptors(&ctx->curr_compute->base))
-      zink_descriptors_update(ctx, true);
-   if (ctx->di.any_bindless_dirty && ctx->curr_compute->base.dd.bindless)
-      zink_descriptors_update_bindless(ctx);
-
    zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
    VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;
 
@@ -909,6 +904,11 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       ctx->pipeline_changed[1] = false;
       zink_select_launch_grid(ctx);
    }
+
+   if (zink_program_has_descriptors(&ctx->curr_compute->base))
+      zink_descriptors_update(ctx, true);
+   if (ctx->di.any_bindless_dirty && ctx->curr_compute->base.dd.bindless)
+      zink_descriptors_update_bindless(ctx);
 
    if (BITSET_TEST(ctx->curr_compute->shader->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
       VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_compute->base.layout, VK_SHADER_STAGE_COMPUTE_BIT,
