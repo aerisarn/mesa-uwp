@@ -2337,6 +2337,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.get_sample_pixel_grid = zink_get_sample_pixel_grid;
    screen->base.is_compute_copy_faster = zink_is_compute_copy_faster;
    screen->base.is_format_supported = zink_is_format_supported;
+   screen->base.driver_thread_add_job = zink_driver_thread_add_job;
    if (screen->info.have_EXT_image_drm_format_modifier && screen->info.have_EXT_external_memory_dma_buf) {
       screen->base.query_dmabuf_modifiers = zink_query_dmabuf_modifiers;
       screen->base.is_dmabuf_modifier_supported = zink_is_dmabuf_modifier_supported;

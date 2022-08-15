@@ -294,7 +294,12 @@ zink_set_fs_point_coord_key(struct zink_context *ctx)
 
 bool
 zink_set_rasterizer_discard(struct zink_context *ctx, bool disable);
-
+void
+zink_driver_thread_add_job(struct pipe_screen *pscreen, void *data,
+                           struct util_queue_fence *fence,
+                           pipe_driver_thread_func execute,
+                           pipe_driver_thread_func cleanup,
+                           const size_t job_size);
 equals_gfx_pipeline_state_func
 zink_get_gfx_pipeline_eq_func(struct zink_screen *screen, struct zink_gfx_program *prog);
 #ifdef __cplusplus

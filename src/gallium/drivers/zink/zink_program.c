@@ -1359,3 +1359,14 @@ zink_set_rasterizer_discard(struct zink_context *ctx, bool disable)
    ctx->rasterizer_discard_changed = true;
    return true;
 }
+
+void
+zink_driver_thread_add_job(struct pipe_screen *pscreen, void *data,
+                           struct util_queue_fence *fence,
+                           pipe_driver_thread_func execute,
+                           pipe_driver_thread_func cleanup,
+                           const size_t job_size)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   util_queue_add_job(&screen->cache_get_thread, data, fence, execute, cleanup, job_size);
+}
