@@ -2274,8 +2274,14 @@ void r600_bytecode_disasm(struct r600_bytecode *bc)
 				fprintf(stderr, "\n");
 			} else if (r600_isa_cf(cf->op)->flags & CF_MEM) {
 				int o = 0;
-				const char *exp_type[] = {"WRITE", "WRITE_IND", "WRITE_ACK",
-						"WRITE_IND_ACK"};
+				const char *exp_type_r600[] = {"WRITE", "WRITE_IND", "READ",
+				                               "READ_IND"};
+				const char *exp_type_r700[] = {"WRITE", "WRITE_IND", "WRITE_ACK",
+				                               "WRITE_IND_ACK"};
+
+				const char **exp_type = bc->gfx_level >= R700 ?
+                                       exp_type_r700 : exp_type_r600;
+
 				o += fprintf(stderr, "%04d %08X %08X  %s ", id,
 						bc->bytecode[id], bc->bytecode[id + 1], cfop->name);
 				o += print_indent(o, 43);
