@@ -64,11 +64,11 @@ fail_bo:
 
 void
 nouveau_ws_push_init_cpu(struct nouveau_ws_push *push,
-                         void *data, size_t size)
+                         void *data, size_t size_bytes)
 {
    push->map = data;
    push->orig_map = push->map;
-   push->end = push->map + size;
+   push->end = push->map + (size_bytes / sizeof(uint32_t));
 
    util_dynarray_init(&push->bos, NULL);
 }

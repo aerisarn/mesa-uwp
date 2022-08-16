@@ -26,7 +26,7 @@ struct nouveau_ws_push {
 
 struct nouveau_ws_push *nouveau_ws_push_new(struct nouveau_ws_device *, uint64_t size);
 void nouveau_ws_push_init_cpu(struct nouveau_ws_push *push,
-                              void *data, size_t size);
+                              void *data, size_t size_bytes);
 void nouveau_ws_push_destroy(struct nouveau_ws_push *);
 void nouveau_ws_push_append(struct nouveau_ws_push *,
                             const struct nouveau_ws_push *);
