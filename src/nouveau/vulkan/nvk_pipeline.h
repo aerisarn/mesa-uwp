@@ -53,7 +53,7 @@ struct nvk_graphics_pipeline {
    struct nvk_pipeline base;
 
    struct nouveau_ws_push push;
-   uint32_t push_data[64];
+   uint32_t push_data[128];
 
    struct vk_vertex_input_state _dynamic_vi;
    struct vk_sample_locations_state _dynamic_ms_sl;
