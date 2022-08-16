@@ -87,4 +87,15 @@ void *pvr_bo_cpu_map(struct pvr_device *device, struct pvr_bo *bo);
 void pvr_bo_cpu_unmap(struct pvr_device *device, struct pvr_bo *bo);
 void pvr_bo_free(struct pvr_device *device, struct pvr_bo *bo);
 
+#if defined(HAVE_VALGRIND)
+void *pvr_bo_cpu_map_unchanged(struct pvr_device *device,
+                               struct pvr_bo *pvr_bo);
+#else /* defined(HAVE_VALGRIND) */
+static ALWAYS_INLINE void *pvr_bo_cpu_map_unchanged(struct pvr_device *device,
+                                                    struct pvr_bo *pvr_bo)
+{
+   return pvr_bo_cpu_map(device, pvr_bo);
+}
+#endif /* defined(HAVE_VALGRIND) */
+
 #endif /* PVR_BO_H */

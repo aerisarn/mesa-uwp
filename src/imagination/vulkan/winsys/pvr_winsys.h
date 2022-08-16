@@ -121,6 +121,10 @@ struct pvr_winsys_bo {
    uint64_t size;
 
    bool is_imported;
+
+#if defined(HAVE_VALGRIND)
+   char *vbits;
+#endif /* defined(HAVE_VALGRIND) */
 };
 
 struct pvr_winsys_vma {

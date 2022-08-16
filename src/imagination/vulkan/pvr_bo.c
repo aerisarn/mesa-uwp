@@ -171,8 +171,23 @@ void *pvr_bo_cpu_map(struct pvr_device *device, struct pvr_bo *pvr_bo)
  */
 void pvr_bo_cpu_unmap(struct pvr_device *device, struct pvr_bo *pvr_bo)
 {
-   assert(pvr_bo->bo->map);
-   device->ws->ops->buffer_unmap(pvr_bo->bo);
+   struct pvr_winsys_bo *bo = pvr_bo->bo;
+
+   assert(bo->map);
+
+#if defined(HAVE_VALGRIND)
+   if (!bo->vbits)
+      bo->vbits = vk_alloc(&device->vk.alloc,
+                           bo->size,
+                           8,
+                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (bo->vbits)
+      VALGRIND_GET_VBITS(bo->map, bo->vbits, bo->size);
+   else
+      mesa_loge("Failed to alloc vbits storage; expect bad valgrind results.");
+#endif /* defined(HAVE_VALGRIND) */
+
+   device->ws->ops->buffer_unmap(bo);
 }
 
 /**
@@ -188,6 +203,10 @@ void pvr_bo_free(struct pvr_device *device, struct pvr_bo *pvr_bo)
    if (!pvr_bo)
       return;
 
+#if defined(HAVE_VALGRIND)
+   vk_free(&device->vk.alloc, pvr_bo->bo->vbits);
+#endif /* defined(HAVE_VALGRIND) */
+
    device->ws->ops->vma_unmap(pvr_bo->vma);
    device->ws->ops->heap_free(pvr_bo->vma);
 
@@ -198,3 +217,14 @@ void pvr_bo_free(struct pvr_device *device, struct pvr_bo *pvr_bo)
 
    vk_free(&device->vk.alloc, pvr_bo);
 }
+
+#if defined(HAVE_VALGRIND)
+void *pvr_bo_cpu_map_unchanged(struct pvr_device *device, struct pvr_bo *pvr_bo)
+{
+   void *ret = pvr_bo_cpu_map(device, pvr_bo);
+   if (ret)
+      VALGRIND_SET_VBITS(pvr_bo->bo->map, pvr_bo->bo->vbits, pvr_bo->bo->size);
+
+   return ret;
+}
+#endif /* defined(HAVE_VALGRIND) */
