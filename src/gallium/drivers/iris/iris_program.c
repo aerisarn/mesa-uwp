@@ -1611,7 +1611,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
       .vue.base.program_string_id = tcs ? tcs->program_id : 0,
       ._tes_primitive_mode = tes_info->tess._primitive_mode,
       .input_vertices =
-         !tcs || compiler->use_tcs_8_patch ? ice->state.vertices_per_patch : 0,
+         !tcs || compiler->use_tcs_multi_patch ? ice->state.vertices_per_patch : 0,
       .quads_workaround = devinfo->ver < 9 &&
                           tes_info->tess._primitive_mode == TESS_PRIMITIVE_QUADS &&
                           tes_info->tess.spacing == TESS_SPACING_EQUAL,
@@ -2620,12 +2620,12 @@ iris_create_shader_state(struct pipe_context *ctx,
          .patch_outputs_written = info->patch_outputs_written,
       };
 
-      /* 8_PATCH mode needs the key to contain the input patch dimensionality.
+      /* MULTI_PATCH mode needs the key to contain the input patch dimensionality.
        * We don't have that information, so we randomly guess that the input
        * and output patches are the same size.  This is a bad guess, but we
        * can't do much better.
        */
-      if (screen->compiler->use_tcs_8_patch)
+      if (screen->compiler->use_tcs_multi_patch)
          key.tcs.input_vertices = info->tess.tcs_vertices_out;
 
       key_size = sizeof(key.tcs);

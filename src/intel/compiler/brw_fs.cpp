@@ -6674,7 +6674,7 @@ fs_visitor::set_tcs_invocation_id()
 
    invocation_id = bld.vgrf(BRW_REGISTER_TYPE_UD);
 
-   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH) {
+   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH) {
       /* gl_InvocationID is just the thread number */
       bld.SHR(invocation_id, t, brw_imm_ud(instance_id_shift));
       return;
@@ -6706,13 +6706,13 @@ fs_visitor::run_tcs()
    struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
 
    assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH ||
-          vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH);
+          vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
 
    if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
       /* r1-r4 contain the ICP handles. */
       payload.num_regs = 5;
    } else {
-      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH);
+      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
       assert(tcs_key->input_vertices > 0);
       /* r1 contains output handles, r2 may contain primitive ID, then the
        * ICP handles occupy the next 1-32 registers.

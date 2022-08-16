@@ -320,7 +320,7 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 }
 
 /**
- * Return the number of patches to accumulate before an 8_PATCH mode thread is
+ * Return the number of patches to accumulate before a MULTI_PATCH mode thread is
  * launched.  In cases with a large number of input control points and a large
  * amount of VS outputs, the VS URB space needed to store an entire 8 patches
  * worth of data can be prohibitive, so it can be beneficial to launch threads
@@ -394,8 +394,8 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    prog_data->patch_count_threshold = brw::get_patch_count_threshold(key->input_vertices);
 
-   if (compiler->use_tcs_8_patch) {
-      vue_prog_data->dispatch_mode = DISPATCH_MODE_TCS_8_PATCH;
+   if (compiler->use_tcs_multi_patch) {
+      vue_prog_data->dispatch_mode = DISPATCH_MODE_TCS_MULTI_PATCH;
       prog_data->instances = nir->info.tess.tcs_vertices_out;
       prog_data->include_primitive_id = has_primitive_id;
    } else {

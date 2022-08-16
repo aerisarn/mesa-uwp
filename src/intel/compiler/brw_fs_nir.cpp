@@ -2757,7 +2757,7 @@ fs_visitor::get_tcs_single_patch_icp_handle(const fs_builder &bld,
 }
 
 fs_reg
-fs_visitor::get_tcs_eight_patch_icp_handle(const fs_builder &bld,
+fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
                                            nir_intrinsic_instr *instr)
 {
    struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
@@ -2818,7 +2818,7 @@ fs_visitor::get_tcs_output_urb_handle()
    if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
       return retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
    } else {
-      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH);
+      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
       return retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
    }
 }
@@ -2832,8 +2832,8 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
 
-   bool eight_patch =
-      vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH;
+   bool multi_patch =
+      vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH;
 
    fs_reg dst;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
@@ -2841,7 +2841,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_primitive_id:
-      bld.MOV(dst, fs_reg(eight_patch ? brw_vec8_grf(2, 0)
+      bld.MOV(dst, fs_reg(multi_patch ? brw_vec8_grf(2, 0)
                                       : brw_vec1_grf(0, 1)));
       break;
    case nir_intrinsic_load_invocation_id:
@@ -2906,7 +2906,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       fs_inst *inst;
 
       fs_reg icp_handle =
-         eight_patch ? get_tcs_eight_patch_icp_handle(bld, instr)
+         multi_patch ? get_tcs_multi_patch_icp_handle(bld, instr)
                      : get_tcs_single_patch_icp_handle(bld, instr);
 
       /* We can only read two double components with each URB read, so

@@ -84,7 +84,7 @@ struct brw_compiler {
    void (*shader_perf_log)(void *, unsigned *id, const char *str, ...) PRINTFLIKE(3, 4);
 
    bool scalar_stage[MESA_ALL_SHADER_STAGES];
-   bool use_tcs_8_patch;
+   bool use_tcs_multi_patch;
    struct nir_shader_compiler_options *nir_options[MESA_ALL_SHADER_STAGES];
 
    /**
@@ -1258,7 +1258,7 @@ enum shader_dispatch_mode {
    DISPATCH_MODE_SIMD8 = 3,
 
    DISPATCH_MODE_TCS_SINGLE_PATCH = 0,
-   DISPATCH_MODE_TCS_8_PATCH = 2,
+   DISPATCH_MODE_TCS_MULTI_PATCH = 2,
 };
 
 /**
