@@ -349,7 +349,7 @@ double_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, VkImageUsag
 }
 
 static VkImageUsageFlags
-get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, uint64_t *mod)
+get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, unsigned bind, unsigned modifiers_count, uint64_t *modifiers, uint64_t *mod)
 {
    VkImageTiling tiling = ici->tiling;
    bool need_extended = false;
@@ -358,6 +358,9 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
       bool have_linear = false;
       const struct zink_modifier_prop *prop = &screen->modifier_props[templ->format];
       assert(tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+      bool found = false;
+      uint64_t good_mod = 0;
+      VkImageUsageFlags good_usage = 0;
       for (unsigned i = 0; i < modifiers_count; i++) {
          if (modifiers[i] == DRM_FORMAT_MOD_LINEAR) {
             have_linear = true;
@@ -369,9 +372,20 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
          if (feats) {
             VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind, &need_extended);
             assert(!need_extended);
-            if (double_check_ici(screen, ici, usage, mod))
-               return usage;
+            if (double_check_ici(screen, ici, usage, mod)) {
+               if (!found) {
+                  found = true;
+                  good_mod = modifiers[i];
+                  good_usage = usage;
+               }
+            } else {
+               modifiers[i] = DRM_FORMAT_MOD_LINEAR;
+            }
          }
+      }
+      if (found) {
+         *mod = good_mod;
+         return good_usage;
       }
       /* only try linear if no other options available */
       if (have_linear) {
@@ -403,7 +417,7 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
 }
 
 static uint64_t
-create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, bool dmabuf, unsigned bind, unsigned modifiers_count, const uint64_t *modifiers, bool *success)
+create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe_resource *templ, bool dmabuf, unsigned bind, unsigned modifiers_count, uint64_t *modifiers, bool *success)
 {
    ici->sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
    /* pNext may already be set */
@@ -543,7 +557,7 @@ retry:
 
 static struct zink_resource_object *
 resource_object_create(struct zink_screen *screen, const struct pipe_resource *templ, struct winsys_handle *whandle, bool *linear,
-                       const uint64_t *modifiers, int modifiers_count, const void *loader_private)
+                       uint64_t *modifiers, int modifiers_count, const void *loader_private)
 {
    struct zink_resource_object *obj = CALLOC_STRUCT(zink_resource_object);
    if (!obj)
@@ -646,7 +660,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          if (modifiers_count > 1)
             try_modifiers = true;
       }
-      const uint64_t *ici_modifiers = winsys_modifier ? &whandle->modifier : modifiers;
+      uint64_t *ici_modifiers = winsys_modifier ? &whandle->modifier : modifiers;
       unsigned ici_modifier_count = winsys_modifier ? 1 : modifiers_count;
       bool success = false;
       VkImageCreateInfo ici;
@@ -1115,7 +1129,7 @@ resource_create(struct pipe_screen *pscreen,
       templ2.flags &= ~PIPE_RESOURCE_FLAG_SPARSE;
       res->base.b.flags &= ~PIPE_RESOURCE_FLAG_SPARSE;
    }
-   res->obj = resource_object_create(screen, &templ2, whandle, &linear, modifiers, modifiers_count, loader_private);
+   res->obj = resource_object_create(screen, &templ2, whandle, &linear, res->modifiers, res->modifiers_count, loader_private);
    if (!res->obj) {
       free(res->modifiers);
       FREE_CL(res);
