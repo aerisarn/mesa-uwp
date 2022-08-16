@@ -2264,11 +2264,9 @@ anv_queue_exec_locked(struct anv_queue *queue,
    if (ret)
       result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
 
-   if (queue->sync) {
-      VkResult result = vk_sync_wait(&device->vk,
-                                     queue->sync, 0,
-                                     VK_SYNC_WAIT_COMPLETE,
-                                     UINT64_MAX);
+   if (result == VK_SUCCESS && queue->sync) {
+      result = vk_sync_wait(&device->vk, queue->sync, 0,
+                            VK_SYNC_WAIT_COMPLETE, UINT64_MAX);
       if (result != VK_SUCCESS)
          result = vk_queue_set_lost(&queue->vk, "sync wait failed");
    }
