@@ -40,6 +40,8 @@ static const struct debug_named_value debug_control[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(pvr_debug, "PVR_DEBUG", debug_control, 0)
 
+#define PVR_DEBUG_SET(x) PVR_DEBUG |= (PVR_DEBUG_##x)
+
 void pvr_process_debug_variable(void)
 {
    PVR_DEBUG = debug_get_option_pvr_debug();
@@ -47,4 +49,7 @@ void pvr_process_debug_variable(void)
    /* Perform any automatic selections. For example, if one debug option
     * implies another it should be set here.
     */
+
+   if (PVR_IS_DEBUG_SET(DUMP_CONTROL_STREAM))
+      PVR_DEBUG_SET(TRACK_BOS);
 }

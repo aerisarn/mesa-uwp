@@ -470,6 +470,64 @@ static inline void pvr_dump_field_x32(struct pvr_dump_ctx *const ctx,
 }
 
 /*****************************************************************************
+   Field printers: floating point
+*****************************************************************************/
+
+static inline void pvr_dump_field_f32(struct pvr_dump_ctx *const ctx,
+                                      const char *const name,
+                                      const float value)
+{
+   pvr_dump_field_computed(ctx, name, "%f", "0x%08" PRIx32, value, fui(value));
+}
+
+/*****************************************************************************
+   Field printers: fixed point
+*****************************************************************************/
+
+/* clang-format off */
+static const char *const __fixed_frac_str_table_4[1 << 4] = {
+   "0", "0625", "125", "1875", "25", "3125", "375", "4375",
+   "5", "5625", "625", "6875", "75", "8125", "875", "9375",
+};
+/* clang-format on */
+
+static inline void pvr_dump_field_uq4_4(struct pvr_dump_ctx *const ctx,
+                                        const char *const name,
+                                        const uint32_t raw_value)
+{
+   const uint32_t int_part = (raw_value & BITFIELD_RANGE(4, 4)) >> 4;
+   const uint32_t frac_part = raw_value & BITFIELD_MASK(4);
+
+   pvr_dump_field_computed(ctx,
+                           name,
+                           "%" PRIu32 ".%s",
+                           "0x%02" PRIx32, /* Or %0*x where *=(nr_bits+3)/4 */
+                           int_part,
+                           __fixed_frac_str_table_4[frac_part],
+                           raw_value & BITFIELD_MASK(8));
+}
+
+static inline void pvr_dump_field_uq4_4_offset(struct pvr_dump_ctx *const ctx,
+                                               const char *const name,
+                                               const uint32_t raw_value,
+                                               const uint32_t raw_offset)
+{
+   const uint32_t raw_offset_value = raw_value + raw_offset;
+
+   const uint32_t int_part = (raw_offset_value & BITFIELD_RANGE(4, 4)) >> 4;
+   const uint32_t frac_part = raw_offset_value & BITFIELD_MASK(4);
+
+   pvr_dump_field_computed(ctx,
+                           name,
+                           "%" PRIu32 ".%s",
+                           "0x%02" PRIx32 " + 0x%02" PRIx32,
+                           int_part,
+                           __fixed_frac_str_table_4[frac_part],
+                           raw_value & BITFIELD_MASK(8),
+                           raw_offset);
+}
+
+/*****************************************************************************
    Field printers: device address
 *****************************************************************************/
 
@@ -573,6 +631,12 @@ static inline void pvr_dump_field_not_present(struct pvr_dump_ctx *const ctx,
 
 #define pvr_dump_field_member_f32(ctx, compound, member) \
    pvr_dump_field_f32(ctx, #member, (compound)->member)
+
+#define pvr_dump_field_member_uq4_4(ctx, compound, member) \
+   pvr_dump_field_uq4_4(ctx, #member, (compound)->member)
+
+#define pvr_dump_field_member_uq4_4_offset(ctx, compound, member, raw_offset) \
+   pvr_dump_field_uq4_4_offset(ctx, #member, (compound)->member, raw_offset)
 
 #define pvr_dump_field_member_addr(ctx, compound, member) \
    pvr_dump_field_addr(ctx, #member, (compound)->member)

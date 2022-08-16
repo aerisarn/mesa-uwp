@@ -46,6 +46,14 @@
 
 #define PVR_DUMP_CSB_WORD_SIZE ((unsigned)sizeof(uint32_t))
 
+enum buffer_type {
+   BUFFER_TYPE_NONE = 0,
+   BUFFER_TYPE_CDMCTRL,
+   BUFFER_TYPE_VDMCTRL,
+   BUFFER_TYPE_PPP,
+   BUFFER_TYPE_INVALID, /* Must be last. */
+};
+
 struct pvr_dump_csb_ctx {
    struct pvr_dump_buffer_ctx base;
 
@@ -204,6 +212,17 @@ __pvr_dump_field_needs_feature(struct pvr_dump_ctx *const ctx,
       (void)&(compound)->member;                                            \
       pvr_dump_field_needs_feature(ctx, #member, feature);                  \
    } while (0)
+
+/******************************************************************************
+   Sub buffer printer declaration
+ ******************************************************************************/
+
+static bool print_sub_buffer(struct pvr_dump_ctx *ctx,
+                             struct pvr_device *device,
+                             enum buffer_type type,
+                             pvr_dev_addr_t addr,
+                             uint64_t expected_size,
+                             char const *size_src);
 
 /******************************************************************************
    Block printers
@@ -410,6 +429,9 @@ print_block_vdmctrl_ppp_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    bool ret = false;
 
+   pvr_dev_addr_t ppp_addr;
+   uint32_t ppp_size;
+
    struct PVRX(VDMCTRL_PPP_STATE0) state0;
    struct PVRX(VDMCTRL_PPP_STATE1) state1;
 
@@ -421,10 +443,17 @@ print_block_vdmctrl_ppp_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
       goto end_pop_ctx;
    }
 
+   ppp_addr = PVR_DEV_ADDR(state0.addrmsb.addr | state1.addrlsb.addr);
+   ppp_size = state0.word_count ? state0.word_count : 256;
+
    pvr_dump_field_member_u32_zero(base_ctx, &state0, word_count, 256);
    pvr_dump_field_addr_split(base_ctx, "addr", state0.addrmsb, state1.addrlsb);
-
-   ret = true;
+   ret = print_sub_buffer(base_ctx,
+                          device,
+                          BUFFER_TYPE_PPP,
+                          ppp_addr,
+                          ppp_size,
+                          "word_count");
 
 end_pop_ctx:
    pvr_dump_csb_block_ctx_pop(&ctx);
@@ -878,6 +907,724 @@ end_out:
    return ret;
 }
 
+static bool
+print_block_ppp_state_header(struct pvr_dump_csb_ctx *const csb_ctx,
+                             struct PVRX(TA_STATE_HEADER) *const header_out)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_HEADER) header;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_HEADER"))
+      goto end_out;
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_HEADER, &header))
+      goto end_pop_ctx;
+
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ispctl);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ispctl_fa);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ispctl_fb);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ispctl_ba);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ispctl_bb);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ispctl_dbsc);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_pds_state_ptr0);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_pds_state_ptr1);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_pds_state_ptr2);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_pds_state_ptr3);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_region_clip);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_viewport);
+   pvr_dump_field_member_u32_offset(base_ctx, &header, view_port_count, 1);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_wclamp);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_outselects);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_varying_word0);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_varying_word1);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_varying_word2);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_ppp_ctrl);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_stream_out_size);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_stream_out_program);
+   pvr_dump_field_member_bool(base_ctx, &header, context_switch);
+   pvr_dump_field_member_bool(base_ctx, &header, pres_terminate);
+   pvr_dump_field_member_bool(base_ctx, &header, not_final_term);
+
+   if (header_out)
+      *header_out = header;
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool
+print_block_ppp_state_isp_one_side(struct pvr_dump_csb_block_ctx *const ctx,
+                                   const bool bpres)
+{
+   struct pvr_dump_ctx *const base_ctx = &ctx->base.base;
+
+   struct PVRX(TA_STATE_ISPA) isp_a;
+   struct PVRX(TA_STATE_ISPB) isp_b;
+
+   if (!pvr_dump_csb_block_take_packed(ctx, TA_STATE_ISPA, &isp_a))
+      return false;
+
+   pvr_dump_field_member_enum(base_ctx,
+                              &isp_a,
+                              objtype,
+                              pvr_cmd_enum_to_str(TA_OBJTYPE));
+   pvr_dump_field_member_enum(base_ctx,
+                              &isp_a,
+                              passtype,
+                              pvr_cmd_enum_to_str(TA_PASSTYPE));
+   pvr_dump_field_member_bool(base_ctx, &isp_a, ovgvispassmaskop);
+   pvr_dump_field_member_bool(base_ctx, &isp_a, maskval);
+   pvr_dump_field_member_bool(base_ctx, &isp_a, dwritedisable);
+   pvr_dump_field_member_bool(base_ctx, &isp_a, dfbztestenable);
+   pvr_dump_field_member_enum(base_ctx,
+                              &isp_a,
+                              dcmpmode,
+                              pvr_cmd_enum_to_str(TA_CMPMODE));
+   pvr_dump_field_member_bool(base_ctx, &isp_a, linefilllastpixel);
+   pvr_dump_field_member_uq4_4_offset(base_ctx, &isp_a, pointlinewidth, 0x01);
+   pvr_dump_field_member_u32(base_ctx, &isp_a, sref);
+
+   if (bpres) {
+      if (!pvr_dump_csb_block_take_packed(ctx, TA_STATE_ISPB, &isp_b))
+         return false;
+
+      pvr_dump_field_member_enum(base_ctx,
+                                 &isp_b,
+                                 scmpmode,
+                                 pvr_cmd_enum_to_str(TA_CMPMODE));
+      pvr_dump_field_member_enum(base_ctx,
+                                 &isp_b,
+                                 sop1,
+                                 pvr_cmd_enum_to_str(TA_ISPB_STENCILOP));
+      pvr_dump_field_member_enum(base_ctx,
+                                 &isp_b,
+                                 sop2,
+                                 pvr_cmd_enum_to_str(TA_ISPB_STENCILOP));
+      pvr_dump_field_member_enum(base_ctx,
+                                 &isp_b,
+                                 sop3,
+                                 pvr_cmd_enum_to_str(TA_ISPB_STENCILOP));
+      pvr_dump_field_member_x32(base_ctx, &isp_b, scmpmask, 2);
+      pvr_dump_field_member_x32(base_ctx, &isp_b, swmask, 2);
+   } else {
+      pvr_dump_field_member_not_present(base_ctx, &isp_b, scmpmode);
+      pvr_dump_field_member_not_present(base_ctx, &isp_b, sop1);
+      pvr_dump_field_member_not_present(base_ctx, &isp_b, sop2);
+      pvr_dump_field_member_not_present(base_ctx, &isp_b, sop3);
+      pvr_dump_field_member_not_present(base_ctx, &isp_b, scmpmask);
+      pvr_dump_field_member_not_present(base_ctx, &isp_b, swmask);
+   }
+
+   return true;
+}
+
+static bool print_block_ppp_state_isp(struct pvr_dump_csb_ctx *const csb_ctx)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_ISPCTL) isp_ctl;
+   struct PVRX(TA_STATE_ISPDBSC) isp_dbsc;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_ISP"))
+      goto end_out;
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_ISPCTL, &isp_ctl))
+      goto end_pop_ctx;
+
+   pvr_dump_field_member_u32(base_ctx, &isp_ctl, visreg);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, visbool);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, vistest);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, scenable);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, dbenable);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, bpres);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, two_sided);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, ovgmtestdisable);
+   pvr_dump_field_member_bool(base_ctx, &isp_ctl, tagwritedisable);
+   pvr_dump_field_member_u32(base_ctx, &isp_ctl, upass);
+   pvr_dump_field_member_u32(base_ctx, &isp_ctl, validid);
+
+   pvr_dump_println(base_ctx, "front");
+   pvr_dump_indent(base_ctx);
+   ret = print_block_ppp_state_isp_one_side(&ctx, isp_ctl.bpres);
+   pvr_dump_dedent(base_ctx);
+   if (!ret)
+      goto end_pop_ctx;
+
+   if (isp_ctl.two_sided) {
+      pvr_dump_println(base_ctx, "back");
+      pvr_dump_indent(base_ctx);
+      ret = print_block_ppp_state_isp_one_side(&ctx, isp_ctl.bpres);
+      pvr_dump_dedent(base_ctx);
+      if (!ret)
+         goto end_pop_ctx;
+   } else {
+      pvr_dump_field_not_present(base_ctx, "back");
+   }
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_ISPDBSC, &isp_dbsc))
+      goto end_pop_ctx;
+
+   pvr_dump_field_member_u32(base_ctx, &isp_dbsc, dbindex);
+   pvr_dump_field_member_u32(base_ctx, &isp_dbsc, scindex);
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool print_block_ppp_state_pds(struct pvr_dump_csb_ctx *const csb_ctx,
+                                      const bool has_initial_words,
+                                      const bool has_varying,
+                                      const bool has_texturedata,
+                                      const bool has_uniformdata)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_PDS_SHADERBASE) shader_base;
+   struct PVRX(TA_STATE_PDS_TEXUNICODEBASE) tex_unicode_base;
+   struct PVRX(TA_STATE_PDS_SIZEINFO1) size_info1;
+   struct PVRX(TA_STATE_PDS_SIZEINFO2) size_info2;
+   struct PVRX(TA_STATE_PDS_VARYINGBASE) varying_base;
+   struct PVRX(TA_STATE_PDS_TEXTUREDATABASE) texture_data_base;
+   struct PVRX(TA_STATE_PDS_UNIFORMDATABASE) uniform_data_base;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_PDS"))
+      goto end_out;
+
+   if (has_initial_words) {
+      if (!pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_SHADERBASE,
+                                          &shader_base) ||
+          !pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_TEXUNICODEBASE,
+                                          &tex_unicode_base) ||
+          !pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_SIZEINFO1,
+                                          &size_info1) ||
+          !pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_SIZEINFO2,
+                                          &size_info2)) {
+         goto end_pop_ctx;
+      }
+
+      pvr_dump_field_addr(base_ctx, "shaderbase", shader_base.addr);
+      pvr_dump_field_addr(base_ctx, "texunicodebase", tex_unicode_base.addr);
+
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &size_info1,
+         pds_uniformsize,
+         PVRX(TA_STATE_PDS_SIZEINFO1_PDS_UNIFORMSIZE_UNIT_SIZE),
+         "words");
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &size_info1,
+         pds_texturestatesize,
+         PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEXTURESTATESIZE_UNIT_SIZE),
+         "words");
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &size_info1,
+         pds_varyingsize,
+         PVRX(TA_STATE_PDS_SIZEINFO1_PDS_VARYINGSIZE_UNIT_SIZE),
+         "words");
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &size_info1,
+         usc_varyingsize,
+         PVRX(TA_STATE_PDS_SIZEINFO1_USC_VARYINGSIZE_UNIT_SIZE),
+         "words");
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &size_info1,
+         pds_tempsize,
+         PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEMPSIZE_UNIT_SIZE),
+         "words");
+
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &size_info2,
+         usc_sharedsize,
+         PVRX(TA_STATE_PDS_SIZEINFO2_USC_SHAREDSIZE_UNIT_SIZE),
+         "words");
+      pvr_dump_field_member_bool(base_ctx, &size_info2, pds_tri_merge_disable);
+      pvr_dump_field_member_u32(base_ctx, &size_info2, pds_batchnum);
+   } else {
+      pvr_dump_field_not_present(base_ctx, "shaderbase");
+      pvr_dump_field_not_present(base_ctx, "texunicodebase");
+      pvr_dump_field_member_not_present(base_ctx, &size_info1, pds_uniformsize);
+      pvr_dump_field_member_not_present(base_ctx,
+                                        &size_info1,
+                                        pds_texturestatesize);
+      pvr_dump_field_member_not_present(base_ctx, &size_info1, pds_varyingsize);
+      pvr_dump_field_member_not_present(base_ctx, &size_info1, usc_varyingsize);
+      pvr_dump_field_member_not_present(base_ctx, &size_info1, pds_tempsize);
+      pvr_dump_field_member_not_present(base_ctx, &size_info2, usc_sharedsize);
+      pvr_dump_field_member_not_present(base_ctx,
+                                        &size_info2,
+                                        pds_tri_merge_disable);
+      pvr_dump_field_member_not_present(base_ctx, &size_info2, pds_batchnum);
+   }
+
+   if (has_varying) {
+      if (!pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_VARYINGBASE,
+                                          &varying_base)) {
+         goto end_pop_ctx;
+      }
+
+      pvr_dump_field_addr(base_ctx, "varyingbase", varying_base.addr);
+   } else {
+      pvr_dump_field_not_present(base_ctx, "varyingbase");
+   }
+
+   if (has_texturedata) {
+      if (!pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_TEXTUREDATABASE,
+                                          &texture_data_base)) {
+         goto end_pop_ctx;
+      }
+
+      pvr_dump_field_addr(base_ctx, "texturedatabase", texture_data_base.addr);
+   } else {
+      pvr_dump_field_not_present(base_ctx, "texturedatabase");
+   }
+
+   if (has_uniformdata) {
+      if (!pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_PDS_UNIFORMDATABASE,
+                                          &uniform_data_base)) {
+         goto end_pop_ctx;
+      }
+
+      pvr_dump_field_addr(base_ctx, "uniformdatabase", uniform_data_base.addr);
+   } else {
+      pvr_dump_field_not_present(base_ctx, "uniformdatabase");
+   }
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool print_block_ppp_region_clip(struct pvr_dump_csb_ctx *const csb_ctx)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_REGION_CLIP0) clip0;
+   struct PVRX(TA_REGION_CLIP1) clip1;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "REGION_CLIP"))
+      goto end_out;
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_REGION_CLIP0, &clip0) ||
+       !pvr_dump_csb_block_take_packed(&ctx, TA_REGION_CLIP1, &clip1)) {
+      goto end_pop_ctx;
+   }
+
+   pvr_dump_field_member_enum(base_ctx,
+                              &clip0,
+                              mode,
+                              pvr_cmd_enum_to_str(TA_REGION_CLIP_MODE));
+   pvr_dump_field_member_u32_scaled_units(base_ctx, &clip0, left, 32, "pixels");
+   pvr_dump_field_member_u32_scaled_units(base_ctx, &clip0, right, 32, "pixels");
+
+   pvr_dump_field_member_u32_scaled_units(base_ctx, &clip1, top, 32, "pixels");
+   pvr_dump_field_member_u32_scaled_units(base_ctx,
+                                          &clip1,
+                                          bottom,
+                                          32,
+                                          "pixels");
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool print_block_ppp_viewport(struct pvr_dump_csb_ctx *const csb_ctx,
+                                     const uint32_t idx)
+{
+   static char const *const field_names[] = {
+      "a0", "m0", "a1", "m1", "a2", "m2"
+   };
+
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   STATIC_ASSERT(sizeof(float) == 4);
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "VIEWPORT %" PRIu32, idx))
+      goto end_out;
+
+   for (uint32_t i = 0; i < ARRAY_SIZE(field_names); i++) {
+      const uint32_t *const value = pvr_dump_csb_block_take(&ctx, 1);
+      if (!value)
+         goto end_pop_ctx;
+
+      pvr_dump_field_f32(base_ctx, field_names[i], uif(*value));
+   }
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool print_block_ppp_wclamp(struct pvr_dump_csb_ctx *const csb_ctx)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   STATIC_ASSERT(sizeof(float) == 4);
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "WCLAMP"))
+      goto end_out;
+
+   const uint32_t *const value = pvr_dump_csb_block_take(&ctx, 1);
+   if (!value)
+      goto end_pop_ctx;
+
+   pvr_dump_field_f32(base_ctx, "value", uif(*value));
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool print_block_ppp_output_sel(struct pvr_dump_csb_ctx *const csb_ctx)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_OUTPUT_SEL) output_sel;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "OUTPUT_SEL"))
+      goto end_out;
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_OUTPUT_SEL, &output_sel))
+      goto end_pop_ctx;
+
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane0);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane1);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane2);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane3);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane4);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane5);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane6);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, plane7);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane0);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane1);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane2);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane3);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane4);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane5);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane6);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, cullplane7);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, rhw_pres);
+   pvr_dump_field_member_bool(base_ctx,
+                              &output_sel,
+                              isp_position_depth_clamp_z);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, psprite_size_pres);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, vpt_tgt_pres);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, render_tgt_pres);
+   pvr_dump_field_member_bool(base_ctx, &output_sel, tsp_unclamped_z_pres);
+   pvr_dump_field_member_u32(base_ctx, &output_sel, vtxsize);
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool
+print_block_ppp_state_varying(struct pvr_dump_csb_ctx *const csb_ctx,
+                              const bool has_word0,
+                              const bool has_word1,
+                              const bool has_word2)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_VARYING0) varying0;
+   struct PVRX(TA_STATE_VARYING1) varying1;
+   struct PVRX(TA_STATE_VARYING2) varying2;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_VARYING"))
+      goto end_out;
+
+   if (has_word0) {
+      if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_VARYING0, &varying0))
+         goto end_pop_ctx;
+
+      pvr_dump_field_member_u32(base_ctx, &varying0, f32_linear);
+      pvr_dump_field_member_u32(base_ctx, &varying0, f32_flat);
+      pvr_dump_field_member_u32(base_ctx, &varying0, f32_npc);
+   } else {
+      pvr_dump_field_member_not_present(base_ctx, &varying0, f32_linear);
+      pvr_dump_field_member_not_present(base_ctx, &varying0, f32_flat);
+      pvr_dump_field_member_not_present(base_ctx, &varying0, f32_npc);
+   }
+
+   if (has_word1) {
+      if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_VARYING1, &varying1))
+         goto end_pop_ctx;
+
+      pvr_dump_field_member_u32(base_ctx, &varying1, f16_linear);
+      pvr_dump_field_member_u32(base_ctx, &varying1, f16_flat);
+      pvr_dump_field_member_u32(base_ctx, &varying1, f16_npc);
+   } else {
+      pvr_dump_field_member_not_present(base_ctx, &varying1, f16_linear);
+      pvr_dump_field_member_not_present(base_ctx, &varying1, f16_flat);
+      pvr_dump_field_member_not_present(base_ctx, &varying1, f16_npc);
+   }
+
+   if (has_word2) {
+      if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_VARYING2, &varying2))
+         goto end_pop_ctx;
+
+      pvr_dump_field_member_u32(base_ctx, &varying2, output_clip_planes);
+   } else {
+      pvr_dump_field_member_not_present(base_ctx,
+                                        &varying2,
+                                        output_clip_planes);
+   }
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool
+print_block_ppp_state_ppp_ctrl(struct pvr_dump_csb_ctx *const csb_ctx)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_PPP_CTRL) ppp_ctrl;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_PPP_CTRL"))
+      goto end_out;
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_PPP_CTRL, &ppp_ctrl))
+      goto end_pop_ctx;
+
+   pvr_dump_field_member_enum(base_ctx,
+                              &ppp_ctrl,
+                              cullmode,
+                              pvr_cmd_enum_to_str(TA_CULLMODE));
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, updatebbox);
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, resetbbox);
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, wbuffen);
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, wclampen);
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, pretransform);
+   pvr_dump_field_member_enum(base_ctx,
+                              &ppp_ctrl,
+                              flatshade_vtx,
+                              pvr_cmd_enum_to_str(TA_FLATSHADE));
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, drawclippededges);
+   pvr_dump_field_member_enum(base_ctx,
+                              &ppp_ctrl,
+                              clip_mode,
+                              pvr_cmd_enum_to_str(TA_CLIP_MODE));
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, pres_prim_id);
+   pvr_dump_field_member_enum(base_ctx,
+                              &ppp_ctrl,
+                              gs_output_topology,
+                              pvr_cmd_enum_to_str(TA_GS_OUTPUT_TOPOLOGY));
+   pvr_dump_field_member_bool(base_ctx, &ppp_ctrl, prim_msaa);
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool
+print_block_ppp_state_stream_out(struct pvr_dump_csb_ctx *const csb_ctx,
+                                 const bool has_word0,
+                                 const bool has_words12)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_STREAM_OUT0) stream_out0;
+   struct PVRX(TA_STATE_STREAM_OUT1) stream_out1;
+   struct PVRX(TA_STATE_STREAM_OUT2) stream_out2;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_STREAM_OUT"))
+      goto end_out;
+
+   if (has_word0) {
+      if (!pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_STREAM_OUT0,
+                                          &stream_out0)) {
+         goto end_pop_ctx;
+      }
+
+      pvr_dump_field_member_bool(base_ctx, &stream_out0, stream0_ta_output);
+      pvr_dump_field_member_bool(base_ctx, &stream_out0, stream0_mem_output);
+      pvr_dump_field_member_u32_units(base_ctx,
+                                      &stream_out0,
+                                      stream1_size,
+                                      "words");
+      pvr_dump_field_member_u32_units(base_ctx,
+                                      &stream_out0,
+                                      stream2_size,
+                                      "words");
+      pvr_dump_field_member_u32_units(base_ctx,
+                                      &stream_out0,
+                                      stream3_size,
+                                      "words");
+   } else {
+      pvr_dump_field_member_not_present(base_ctx,
+                                        &stream_out0,
+                                        stream0_ta_output);
+      pvr_dump_field_member_not_present(base_ctx,
+                                        &stream_out0,
+                                        stream0_mem_output);
+      pvr_dump_field_member_not_present(base_ctx, &stream_out0, stream1_size);
+      pvr_dump_field_member_not_present(base_ctx, &stream_out0, stream2_size);
+      pvr_dump_field_member_not_present(base_ctx, &stream_out0, stream3_size);
+   }
+
+   if (has_words12) {
+      if (!pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_STREAM_OUT1,
+                                          &stream_out1) ||
+          !pvr_dump_csb_block_take_packed(&ctx,
+                                          TA_STATE_STREAM_OUT2,
+                                          &stream_out2)) {
+         goto end_pop_ctx;
+      }
+
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &stream_out1,
+         pds_temp_size,
+         PVRX(TA_STATE_STREAM_OUT1_PDS_TEMP_SIZE_UNIT_SIZE),
+         "bytes");
+      pvr_dump_field_member_u32_scaled_units(
+         base_ctx,
+         &stream_out1,
+         pds_data_size,
+         PVRX(TA_STATE_STREAM_OUT1_PDS_DATA_SIZE_UNIT_SIZE),
+         "bytes");
+      pvr_dump_field_member_bool(base_ctx, &stream_out1, sync);
+      pvr_dump_field_member_addr(base_ctx, &stream_out2, pds_data_addr);
+   } else {
+      pvr_dump_field_member_not_present(base_ctx, &stream_out1, pds_temp_size);
+      pvr_dump_field_member_not_present(base_ctx, &stream_out1, pds_data_size);
+      pvr_dump_field_member_not_present(base_ctx, &stream_out1, sync);
+      pvr_dump_field_member_not_present(base_ctx, &stream_out2, pds_data_addr);
+   }
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
+static bool
+print_block_ppp_state_terminate(struct pvr_dump_csb_ctx *const csb_ctx)
+{
+   struct pvr_dump_csb_block_ctx ctx;
+   struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_TERMINATE0) terminate0;
+   struct PVRX(TA_STATE_TERMINATE1) terminate1;
+
+   if (!pvr_dump_csb_block_ctx_push(&ctx, csb_ctx, "STATE_TERMINATE"))
+      goto end_out;
+
+   if (!pvr_dump_csb_block_take_packed(&ctx, TA_STATE_TERMINATE0, &terminate0) ||
+       !pvr_dump_csb_block_take_packed(&ctx, TA_STATE_TERMINATE1, &terminate1)) {
+      goto end_pop_ctx;
+   }
+
+   pvr_dump_field_member_u32_scaled_units(base_ctx,
+                                          &terminate0,
+                                          clip_right,
+                                          32,
+                                          "pixels");
+   pvr_dump_field_member_u32_scaled_units(base_ctx,
+                                          &terminate0,
+                                          clip_top,
+                                          32,
+                                          "pixels");
+   pvr_dump_field_member_u32_scaled_units(base_ctx,
+                                          &terminate0,
+                                          clip_bottom,
+                                          32,
+                                          "pixels");
+   pvr_dump_field_member_u32_scaled_units(base_ctx,
+                                          &terminate1,
+                                          clip_left,
+                                          32,
+                                          "pixels");
+   pvr_dump_field_member_u32(base_ctx, &terminate1, render_target);
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_block_ctx_pop(&ctx);
+
+end_out:
+   return ret;
+}
+
 /******************************************************************************
    Buffer printers
  ******************************************************************************/
@@ -1014,6 +1761,181 @@ end_pop_ctx:
    return ret;
 }
 
+static bool print_ppp_buffer(struct pvr_dump_buffer_ctx *const parent_ctx,
+                             const struct pvr_device_info *const dev_info)
+{
+   struct pvr_dump_csb_ctx ctx;
+   bool ret = false;
+
+   struct PVRX(TA_STATE_HEADER) header = { 0 };
+
+   if (!pvr_dump_csb_ctx_push(&ctx, parent_ctx))
+      goto end_out;
+
+   if (!print_block_ppp_state_header(&ctx, &header))
+      goto end_pop_ctx;
+
+   if (header.pres_ispctl_fa || header.pres_ispctl_fb ||
+       header.pres_ispctl_ba || header.pres_ispctl_bb ||
+       header.pres_ispctl_dbsc) {
+      if (!header.pres_ispctl) {
+         ret =
+            pvr_dump_field_error(&ctx.base.base, "missing ispctl control word");
+         goto end_pop_ctx;
+      }
+
+      print_block_ppp_state_isp(&ctx);
+   }
+
+   if (header.pres_pds_state_ptr0 || header.pres_pds_state_ptr1 ||
+       header.pres_pds_state_ptr2 || header.pres_pds_state_ptr3) {
+      print_block_ppp_state_pds(&ctx,
+                                header.pres_pds_state_ptr0,
+                                header.pres_pds_state_ptr1,
+                                header.pres_pds_state_ptr2,
+                                header.pres_pds_state_ptr3);
+   }
+
+   if (header.pres_region_clip)
+      print_block_ppp_region_clip(&ctx);
+
+   if (header.pres_viewport) {
+      for (uint32_t i = 0; i < header.view_port_count + 1; i++)
+         print_block_ppp_viewport(&ctx, i);
+   }
+
+   if (header.pres_wclamp)
+      print_block_ppp_wclamp(&ctx);
+
+   if (header.pres_outselects)
+      print_block_ppp_output_sel(&ctx);
+
+   if (header.pres_varying_word0 || header.pres_varying_word1 ||
+       header.pres_varying_word2) {
+      print_block_ppp_state_varying(&ctx,
+                                    header.pres_varying_word0,
+                                    header.pres_varying_word1,
+                                    header.pres_varying_word2);
+   }
+
+   if (header.pres_ppp_ctrl)
+      print_block_ppp_state_ppp_ctrl(&ctx);
+
+   if (header.pres_stream_out_size || header.pres_stream_out_program) {
+      print_block_ppp_state_stream_out(&ctx,
+                                       header.pres_stream_out_size,
+                                       header.pres_stream_out_program);
+   }
+
+   if (header.pres_terminate)
+      print_block_ppp_state_terminate(&ctx);
+
+   ret = true;
+
+end_pop_ctx:
+   pvr_dump_csb_ctx_pop(&ctx, true);
+
+end_out:
+   return ret;
+}
+
+/******************************************************************************
+   Sub buffer printer definition
+ ******************************************************************************/
+
+static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
+                             struct pvr_device *const device,
+                             const enum buffer_type type,
+                             const pvr_dev_addr_t addr,
+                             const uint64_t expected_size,
+                             const char *const size_src)
+{
+   struct pvr_dump_bo_ctx sub_ctx;
+   struct pvr_dump_ctx *base_ctx;
+   struct pvr_bo *bo;
+   uint64_t real_size;
+   uint64_t offset;
+   bool ret = false;
+
+   pvr_dump_indent(ctx);
+
+   bo = pvr_bo_store_lookup(device, addr);
+   if (!bo) {
+      pvr_dump_println(ctx, "<buffer does not exist>");
+      goto end_out;
+   }
+
+   offset = addr.addr - bo->vma->dev_addr.addr;
+
+   if (!pvr_dump_bo_ctx_push(&sub_ctx, ctx, device, bo)) {
+      pvr_dump_println(&sub_ctx.base.base, "<unable to read buffer>");
+      goto end_out;
+   }
+
+   base_ctx = &sub_ctx.base.base;
+
+   if (!pvr_dump_buffer_advance(&sub_ctx.base, offset))
+      goto end_pop_ctx;
+
+   real_size = sub_ctx.base.remaining_size;
+
+   if (!expected_size) {
+      pvr_dump_field(base_ctx,
+                     "<buffer size>",
+                     "%" PRIu64 " words (%" PRIu64 " bytes) mapped",
+                     real_size,
+                     real_size * PVR_DUMP_CSB_WORD_SIZE);
+   } else if (expected_size > real_size) {
+      pvr_dump_field(base_ctx,
+                     "<buffer size>",
+                     "%" PRIu64 " (%" PRIu64 " bytes) mapped, expected %" PRIu64
+                     " (%" PRIu64 " bytes) from %s",
+                     real_size,
+                     real_size * PVR_DUMP_CSB_WORD_SIZE,
+                     expected_size,
+                     expected_size * PVR_DUMP_CSB_WORD_SIZE,
+                     size_src);
+   } else {
+      pvr_dump_field(base_ctx,
+                     "<buffer size>",
+                     "%" PRIu64 " (%" PRIu64 " bytes; from %s)",
+                     expected_size,
+                     expected_size * PVR_DUMP_CSB_WORD_SIZE,
+                     size_src);
+      pvr_dump_buffer_truncate(&sub_ctx.base,
+                               expected_size * PVR_DUMP_CSB_WORD_SIZE);
+   }
+
+   if (sub_ctx.bo_mapped_in_ctx)
+      pvr_dump_field(base_ctx, "<host addr>", "<unmapped>");
+   else
+      pvr_dump_field(base_ctx, "<host addr>", "%p", sub_ctx.base.ptr);
+
+   switch (type) {
+   case BUFFER_TYPE_NONE:
+      pvr_dump_field(base_ctx, "<content>", "<not decoded>");
+      ret = true;
+      break;
+
+   case BUFFER_TYPE_PPP:
+      pvr_dump_field(base_ctx, "<content>", "<decoded as PPP>");
+      ret = print_ppp_buffer(&sub_ctx.base, &device->pdevice->dev_info);
+      break;
+
+   default:
+      pvr_dump_field(base_ctx, "<content>", "<unsupported format>");
+      goto end_pop_ctx;
+   }
+
+end_pop_ctx:
+   pvr_dump_bo_ctx_pop(&sub_ctx);
+
+end_out:
+   pvr_dump_dedent(ctx);
+
+   return ret;
+}
+
 /******************************************************************************
    Top-level dumping
  ******************************************************************************/
@@ -1061,6 +1983,8 @@ void pvr_csb_dump(const struct pvr_csb *const csb,
 
    struct pvr_dump_bo_ctx first_bo_ctx;
    struct pvr_dump_ctx root_ctx;
+
+   pvr_bo_store_dump(device);
 
    pvr_dump_begin(&root_ctx, stderr, "CONTROL STREAM DUMP", 6);
 
