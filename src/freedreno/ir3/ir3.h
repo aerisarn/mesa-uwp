@@ -196,8 +196,8 @@ struct ir3_register {
       } array;
    };
 
-   /* For IR3_REG_DEST, pointer back to the instruction containing this
-    * register.
+   /* For IR3_REG_SSA, dst registers contain pointer back to the instruction
+    * containing this register.
     */
    struct ir3_instruction *instr;
 
