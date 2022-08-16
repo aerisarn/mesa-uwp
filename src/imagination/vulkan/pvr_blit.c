@@ -1063,7 +1063,9 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
                                            VkDeviceSize src_offset,
                                            pvr_dev_addr_t dst_addr,
                                            VkDeviceSize dst_offset,
-                                           VkDeviceSize size)
+                                           VkDeviceSize size,
+                                           uint32_t fill_data,
+                                           bool is_fill)
 {
    VkDeviceSize offset = 0;
 
@@ -1077,7 +1079,10 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
       uint32_t height;
       uint32_t width;
 
-      if (remaining_size >= 16U) {
+      if (is_fill) {
+         vk_format = VK_FORMAT_R32_UINT;
+         texel_width = 4U;
+      } else if (remaining_size >= 16U) {
          vk_format = VK_FORMAT_R32G32B32A32_UINT;
          texel_width = 16U;
       } else if (remaining_size >= 4U) {
@@ -1106,7 +1111,7 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
       if (!transfer_cmd)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-      if (!(transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_FILL)) {
+      if (!is_fill) {
          pvr_setup_buffer_surface(&transfer_cmd->src,
                                   &transfer_cmd->mappings[0].src_rect,
                                   src_addr,
@@ -1116,6 +1121,11 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
                                   height,
                                   width);
          transfer_cmd->src_present = true;
+      } else {
+         transfer_cmd->flags |= PVR_TRANSFER_CMD_FLAGS_FILL;
+
+         for (uint32_t i = 0; i < ARRAY_SIZE(transfer_cmd->clear_color); i++)
+            transfer_cmd->clear_color[i].ui = fill_data;
       }
 
       pvr_setup_buffer_surface(&transfer_cmd->dst,
@@ -1166,16 +1176,9 @@ void pvr_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
                               0,
                               dst->dev_addr,
                               dstOffset,
-                              dataSize);
-}
-
-void pvr_CmdFillBuffer(VkCommandBuffer commandBuffer,
-                       VkBuffer dstBuffer,
-                       VkDeviceSize dstOffset,
-                       VkDeviceSize fillSize,
-                       uint32_t data)
-{
-   assert(!"Unimplemented");
+                              dataSize,
+                              0U,
+                              false);
 }
 
 void pvr_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
@@ -1194,10 +1197,45 @@ void pvr_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
                                     pCopyBufferInfo->pRegions[i].srcOffset,
                                     dst->dev_addr,
                                     pCopyBufferInfo->pRegions[i].dstOffset,
-                                    pCopyBufferInfo->pRegions[i].size);
+                                    pCopyBufferInfo->pRegions[i].size,
+                                    0U,
+                                    false);
       if (result != VK_SUCCESS)
          return;
    }
+}
+
+void pvr_CmdFillBuffer(VkCommandBuffer commandBuffer,
+                       VkBuffer dstBuffer,
+                       VkDeviceSize dstOffset,
+                       VkDeviceSize fillSize,
+                       uint32_t data)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   PVR_FROM_HANDLE(pvr_buffer, dst, dstBuffer);
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   fillSize = vk_buffer_range(&dst->vk, dstOffset, fillSize);
+
+   /* From the Vulkan spec:
+    *
+    *    "size is the number of bytes to fill, and must be either a multiple
+    *    of 4, or VK_WHOLE_SIZE to fill the range from offset to the end of
+    *    the buffer. If VK_WHOLE_SIZE is used and the remaining size of the
+    *    buffer is not a multiple of 4, then the nearest smaller multiple is
+    *    used."
+    */
+   fillSize &= ~3ULL;
+
+   pvr_cmd_copy_buffer_region(cmd_buffer,
+                              PVR_DEV_ADDR_INVALID,
+                              0,
+                              dst->dev_addr,
+                              dstOffset,
+                              fillSize,
+                              data,
+                              true);
 }
 
 /**
