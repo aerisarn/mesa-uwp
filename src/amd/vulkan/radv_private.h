@@ -2043,6 +2043,9 @@ struct radv_graphics_pipeline {
 
    unsigned rast_prim;
    float line_width;
+
+   /* For vk_graphics_pipeline_state */
+   void *state_data;
 };
 
 struct radv_compute_pipeline {

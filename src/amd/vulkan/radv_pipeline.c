@@ -194,7 +194,11 @@ void
 radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                       const VkAllocationCallbacks *allocator)
 {
-   if (pipeline->type == RADV_PIPELINE_COMPUTE) {
+   if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+
+      vk_free(&device->vk.alloc, graphics_pipeline->state_data);
+   } else if (pipeline->type == RADV_PIPELINE_COMPUTE) {
       struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
 
       free(compute_pipeline->rt_group_handles);
@@ -1477,7 +1481,6 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *vi, uint32_t 
 static VkResult
 radv_pipeline_import_graphics_info(struct radv_graphics_pipeline *pipeline,
                                    struct vk_graphics_pipeline_state *state,
-                                   struct vk_graphics_pipeline_all_state *state_all,
                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    struct radv_device *device = pipeline->base.device;
@@ -1498,8 +1501,9 @@ radv_pipeline_import_graphics_info(struct radv_graphics_pipeline *pipeline,
       pipeline->active_stages |= sinfo->stage;
    }
 
-   return vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, state_all, NULL, 0,
-                                          NULL);
+   return vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, NULL, NULL,
+                                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT,
+                                          &pipeline->state_data);
 }
 
 static void
@@ -6518,13 +6522,12 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
                             const struct radv_graphics_pipeline_create_info *extra)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
-   struct vk_graphics_pipeline_all_state state_all;
    struct vk_graphics_pipeline_state state = {0};
    VkResult result;
 
    pipeline->last_vgt_api_stage = MESA_SHADER_NONE;
 
-   result = radv_pipeline_import_graphics_info(pipeline, &state, &state_all, pCreateInfo);
+   result = radv_pipeline_import_graphics_info(pipeline, &state, pCreateInfo);
    if (result != VK_SUCCESS)
       return result;
 
