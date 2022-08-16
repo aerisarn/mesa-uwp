@@ -644,8 +644,11 @@ iris_resource_level_has_hiz(const struct intel_device_info *devinfo,
 
    /* Disable HiZ for LOD > 0 unless the width/height are 8x4 aligned.
     * For LOD == 0, we can grow the dimensions to make it work.
+    *
+    * This doesn't appear to be necessary on Gfx11+.  See details here:
+    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/3788
     */
-   if (level > 0) {
+   if (devinfo->ver < 11 && level > 0) {
       if (u_minify(res->base.b.width0, level) & 7)
          return false;
 
