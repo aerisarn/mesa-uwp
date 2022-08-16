@@ -502,37 +502,43 @@ iris_sample_with_depth_aux(const struct intel_device_info *devinfo,
                            const struct iris_resource *res)
 {
    switch (res->aux.usage) {
-   case ISL_AUX_USAGE_HIZ:
-      if (devinfo->has_sample_with_hiz)
-         break;
-      return false;
-   case ISL_AUX_USAGE_HIZ_CCS:
-      return false;
    case ISL_AUX_USAGE_HIZ_CCS_WT:
       /* Always support sampling with HIZ_CCS_WT.  Although the sampler
        * doesn't comprehend HiZ, write-through means that the correct data
        * will be in the CCS, and the sampler can simply rely on that.
        */
       return true;
+   case ISL_AUX_USAGE_HIZ_CCS:
+      /* Without write-through, the CCS data may be out of sync with HiZ
+       * and the sampler won't see the correct data.  Skip both.
+       */
+      return false;
+   case ISL_AUX_USAGE_HIZ:
+      /* From the Broadwell PRM (Volume 2d: Command Reference: Structures
+       * RENDER_SURFACE_STATE.AuxiliarySurfaceMode):
+       *
+       *   "If this field is set to AUX_HIZ, Number of Multisamples must be
+       *    MULTISAMPLECOUNT_1, and Surface Type cannot be SURFTYPE_3D.
+       *
+       * There is no such blurb for 1D textures, but there is sufficient
+       * evidence that this is broken on SKL+.
+       */
+      if (!devinfo->has_sample_with_hiz ||
+          res->surf.samples != 1 ||
+          res->surf.dim != ISL_SURF_DIM_2D)
+         return false;
+
+      /* Make sure that HiZ exists for all necessary miplevels. */
+      for (unsigned level = 0; level < res->surf.levels; ++level) {
+         if (!iris_resource_level_has_hiz(devinfo, res, level))
+            return false;
+      }
+
+      /* We can sample directly from HiZ in this case. */
+      return true;
    default:
       return false;
    }
-
-   for (unsigned level = 0; level < res->surf.levels; ++level) {
-      if (!iris_resource_level_has_hiz(devinfo, res, level))
-         return false;
-   }
-
-   /* From the BDW PRM (Volume 2d: Command Reference: Structures
-    *                   RENDER_SURFACE_STATE.AuxiliarySurfaceMode):
-    *
-    *  "If this field is set to AUX_HIZ, Number of Multisamples must be
-    *   MULTISAMPLECOUNT_1, and Surface Type cannot be SURFTYPE_3D.
-    *
-    * There is no such blurb for 1D textures, but there is sufficient evidence
-    * that this is broken on SKL+.
-    */
-   return res->surf.samples == 1 && res->surf.dim == ISL_SURF_DIM_2D;
 }
 
 /**
