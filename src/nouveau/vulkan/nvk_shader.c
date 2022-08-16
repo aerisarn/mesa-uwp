@@ -138,8 +138,16 @@ count_location_slots(const struct glsl_type *type, bool bindless)
 static void
 assign_io_locations(nir_shader *nir)
 {
-   nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
-                            count_location_slots);
+   if (nir->info.stage != MESA_SHADER_VERTEX)
+      nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
+                               count_location_slots);
+   else {
+      nir_foreach_shader_in_variable(var, nir) {
+         assert(var->data.location >= VERT_ATTRIB_GENERIC0);
+         var->data.driver_location = var->data.location - VERT_ATTRIB_GENERIC0;
+      }
+   }
+
    nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                             count_location_slots);
 }
