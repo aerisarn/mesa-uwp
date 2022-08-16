@@ -395,6 +395,7 @@ main(int argc, char *argv[])
             enum address_space gtt;
          } bo_types[] = {
             { "gtt_offset", BO_TYPE_BATCH,      default_gtt },
+            { "batch",      BO_TYPE_BATCH,      default_gtt },
             { "user",       BO_TYPE_USER,       default_gtt },
             { "HW context", BO_TYPE_CONTEXT,    GGTT },
             { "ringbuffer", BO_TYPE_RINGBUFFER, GGTT },
