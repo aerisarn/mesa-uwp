@@ -70,35 +70,28 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
    indices[1] = LLVMBuildSelect(gallivm->builder, cond, buffers_offset, lp_build_const_int32(gallivm, 0), "");
    indices[2] = lp_build_const_int32(gallivm, member_index);
 
-   LLVMValueRef ptr =
-      LLVMBuildGEP(builder, buffers_ptr, indices, ARRAY_SIZE(indices), "");
+   LLVMTypeRef buffer_type = lp_build_create_jit_buffer_type(gallivm);
+   LLVMTypeRef buffers_type = LLVMArrayType(buffer_type, LP_MAX_TGSI_CONST_BUFFERS);
+   LLVMValueRef ptr = LLVMBuildGEP2(builder, buffers_type, buffers_ptr, indices, ARRAY_SIZE(indices), "");
 
-   LLVMValueRef res = LLVMBuildLoad(builder, ptr, "");
+   LLVMTypeRef res_type = LLVMStructGetTypeAtIndex(buffer_type, member_index);
+   LLVMValueRef res = LLVMBuildLoad2(builder, res_type, ptr, "");
 
    lp_build_name(res, "buffer.%s", member_name);
 
    return res;
 }
 
-/**
- * Helper macro to instantiate the functions that generate the code to
- * fetch the members of lp_jit_buffer to fulfill the sampler code
- * generator requests.
- *
- * This complexity is the price we have to pay to keep the image
- * sampler code generator a reusable module without dependencies to
- * llvmpipe internals.
- */
-#define LP_LLVM_BUFFER_MEMBER(_name, _index)  \
-   LLVMValueRef \
-   lp_llvm_buffer_##_name(struct gallivm_state *gallivm,               \
-                          LLVMValueRef buffers_ptr,                     \
-                          LLVMValueRef buffers_offset, unsigned buffers_limit) \
-   { \
-      return lp_llvm_buffer_member(gallivm, buffers_ptr, \
-                                  buffers_offset, buffers_limit, \
-                                  _index, #_name);  \
-   }
+LLVMValueRef
+lp_llvm_buffer_base(struct gallivm_state *gallivm,
+                    LLVMValueRef buffers_ptr, LLVMValueRef buffers_offset, unsigned buffers_limit)
+{
+   return lp_llvm_buffer_member(gallivm, buffers_ptr, buffers_offset, buffers_limit, LP_JIT_BUFFER_BASE, "base");
+}
 
-LP_LLVM_BUFFER_MEMBER(base, LP_JIT_BUFFER_BASE)
-LP_LLVM_BUFFER_MEMBER(num_elements, LP_JIT_BUFFER_NUM_ELEMENTS)
+LLVMValueRef
+lp_llvm_buffer_num_elements(struct gallivm_state *gallivm,
+                    LLVMValueRef buffers_ptr, LLVMValueRef buffers_offset, unsigned buffers_limit)
+{
+   return lp_llvm_buffer_member(gallivm, buffers_ptr, buffers_offset, buffers_limit, LP_JIT_BUFFER_NUM_ELEMENTS, "num_elements");
+}
