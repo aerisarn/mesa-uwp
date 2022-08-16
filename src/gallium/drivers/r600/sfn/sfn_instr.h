@@ -45,7 +45,7 @@ class ExportInstr;
 class FetchInstr;
 class ControlFlowInstr;
 class IfInstr;
-class WriteScratchInstr;
+class ScratchIOInstr;
 class StreamOutInstr;
 class MemRingOutInstr;
 class EmitVertexInstr;
@@ -286,7 +286,7 @@ public:
    virtual void visit(const Block& instr) = 0;
    virtual void visit(const ControlFlowInstr& instr) = 0;
    virtual void visit(const IfInstr& instr) = 0;
-   virtual void visit(const WriteScratchInstr& instr) = 0;
+   virtual void visit(const ScratchIOInstr& instr) = 0;
    virtual void visit(const StreamOutInstr& instr) = 0;
    virtual void visit(const MemRingOutInstr& instr) = 0;
    virtual void visit(const EmitVertexInstr& instr) = 0;
@@ -307,7 +307,7 @@ public:
    virtual void visit(Block *instr) = 0;
    virtual void visit(ControlFlowInstr *instr) = 0;
    virtual void visit(IfInstr *instr) = 0;
-   virtual void visit(WriteScratchInstr *instr) = 0;
+   virtual void visit(ScratchIOInstr *instr) = 0;
    virtual void visit(StreamOutInstr *instr) = 0;
    virtual void visit(MemRingOutInstr *instr) = 0;
    virtual void visit(EmitVertexInstr *instr) = 0;

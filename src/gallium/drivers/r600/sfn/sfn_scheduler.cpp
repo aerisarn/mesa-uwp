@@ -87,7 +87,7 @@ public:
       m_cf_instr = instr;
    }
 
-   void visit(WriteScratchInstr *instr) override {
+   void visit(ScratchIOInstr *instr) override {
       mem_write_instr.push_back(instr);
    }
 
