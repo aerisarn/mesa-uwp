@@ -1678,7 +1678,8 @@ want_pma_fix(struct iris_context *ice)
    /* 3DSTATE_DEPTH_BUFFER::SURFACE_TYPE != NULL &&
     * 3DSTATE_DEPTH_BUFFER::HIZ Enable &&
     */
-   if (!zres || !iris_resource_level_has_hiz(zres, cso_fb->zsbuf->u.tex.level))
+   if (!zres ||
+       !iris_resource_level_has_hiz(devinfo, zres, cso_fb->zsbuf->u.tex.level))
       return false;
 
    /* 3DSTATE_WM::EDSC_Mode != EDSC_PREPS */
@@ -3216,6 +3217,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct isl_device *isl_dev = &screen->isl_dev;
    struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
    struct iris_resource *zres;
@@ -3285,7 +3287,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
          view.format = zres->surf.format;
 
-         if (iris_resource_level_has_hiz(zres, view.base_level)) {
+         if (iris_resource_level_has_hiz(devinfo, zres, view.base_level)) {
             info.hiz_usage = zres->aux.usage;
             info.hiz_surf = &zres->aux.surf;
             info.hiz_address = zres->aux.bo->address + zres->aux.offset;
