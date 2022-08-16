@@ -105,13 +105,31 @@ LoweringHelper::handleCVT(Instruction *insn)
 
    bld.setPosition(insn, false);
 
-   if ((dTy == TYPE_S32 && sTy == TYPE_S64) ||
-       (dTy == TYPE_U32 && sTy == TYPE_U64)) {
+   /* We can't convert from a 64 bit integer to any integer smaller than 64 bit
+    * directly, hence split the value first and then cvt / mov to the target
+    * type.
+    */
+   if (isIntType(dTy) && typeSizeof(dTy) <= 4 &&
+       isIntType(sTy) && typeSizeof(sTy) == 8) {
+      DataType tmpTy = (isSignedIntType(dTy)) ? TYPE_S32 : TYPE_U32;
       Value *src[2];
+
       bld.mkSplit(src, 4, insn->getSrc(0));
-      insn->op = OP_MOV;
       insn->setSrc(0, src[0]);
-   } else if (dTy == TYPE_S64 && sTy == TYPE_S32) {
+
+      /* For a 32 bit integer, we just need to mov the value to it's
+       * destination. */
+      if (typeSizeof(dTy) == 4) {
+         insn->op = OP_MOV;
+      } else { /* We're smaller than 32 bit, hence convert. */
+         insn->op = OP_CVT;
+         insn->setType(dTy, tmpTy);
+      }
+
+      return true;
+   }
+
+   if (dTy == TYPE_S64 && sTy == TYPE_S32) {
       Value *tmp = bld.getSSA();
       bld.mkOp2(OP_SHR, TYPE_S32, tmp, insn->getSrc(0), bld.loadImm(bld.getSSA(), 31));
       insn->op = OP_MERGE;
