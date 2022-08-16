@@ -53,60 +53,6 @@ static LLVMValueRef si_llvm_bound_index(struct si_shader_context *ctx, LLVMValue
    return index;
 }
 
-static LLVMValueRef load_const_buffer_desc_fast_path(struct si_shader_context *ctx)
-{
-   LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->args->const_and_shader_buffers);
-   struct si_shader_selector *sel = ctx->shader->selector;
-
-   /* Do the bounds checking with a descriptor, because
-    * doing computation and manual bounds checking of 64-bit
-    * addresses generates horrible VALU code with very high
-    * VGPR usage and very low SIMD occupancy.
-    */
-   ptr = LLVMBuildPtrToInt(ctx->ac.builder, ptr, ctx->ac.intptr, "");
-
-   LLVMValueRef desc0, desc1;
-   desc0 = ptr;
-   desc1 = LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi), 0);
-
-   uint32_t rsrc3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                    S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-   if (ctx->screen->info.gfx_level >= GFX11)
-      rsrc3 |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
-               S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW);
-   else if (ctx->screen->info.gfx_level >= GFX10)
-      rsrc3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
-               S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
-   else
-      rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-               S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-
-   LLVMValueRef desc_elems[] = {desc0, desc1,
-                                LLVMConstInt(ctx->ac.i32, sel->info.constbuf0_num_slots * 16, 0),
-                                LLVMConstInt(ctx->ac.i32, rsrc3, false)};
-
-   return ac_build_gather_values(&ctx->ac, desc_elems, 4);
-}
-
-static LLVMValueRef load_ubo(struct ac_shader_abi *abi, LLVMValueRef index)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   struct si_shader_selector *sel = ctx->shader->selector;
-
-   if (sel->info.base.num_ubos == 1 && sel->info.base.num_ssbos == 0) {
-      return load_const_buffer_desc_fast_path(ctx);
-   }
-
-   index = si_llvm_bound_index(ctx, index, ctx->num_const_buffers);
-   index =
-      LLVMBuildAdd(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i32, SI_NUM_SHADER_BUFFERS, 0), "");
-
-   return ac_build_load_to_sgpr(&ctx->ac,
-                                ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->const_and_shader_buffers),
-                                index);
-}
-
 static LLVMValueRef load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, bool write, bool non_uniform)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -335,7 +281,6 @@ static LLVMValueRef si_nir_load_sampler_desc(struct ac_shader_abi *abi, unsigned
 
 void si_llvm_init_resource_callbacks(struct si_shader_context *ctx)
 {
-   ctx->abi.load_ubo = load_ubo;
    ctx->abi.load_ssbo = load_ssbo;
    ctx->abi.load_sampler_desc = si_nir_load_sampler_desc;
 }
