@@ -194,15 +194,6 @@ enum {
 #define draw_jit_context_viewports(_variant, _ptr) \
    lp_build_struct_get2(_variant->gallivm, _variant->context_type, _ptr, DRAW_JIT_CTX_VIEWPORT, "viewports")
 
-#define draw_jit_context_textures(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_TEXTURES, "textures")
-
-#define draw_jit_context_samplers(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_SAMPLERS, "samplers")
-
-#define draw_jit_context_images(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_IMAGES, "images")
-
 #define draw_jit_context_ssbos(_variant, _ptr) \
    lp_build_struct_get_ptr2(_variant->gallivm, _variant->context_type, _ptr, DRAW_JIT_CTX_SSBOS, "ssbos")
 
@@ -292,21 +283,6 @@ enum {
 #define draw_gs_jit_context_constants(_variant, _ptr) \
    lp_build_struct_get_ptr2(_variant->gallivm, _variant->context_type, _ptr, DRAW_GS_JIT_CTX_CONSTANTS, "constants")
 
-#define draw_gs_jit_context_planes(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, DRAW_GS_JIT_CTX_PLANES, "planes")
-
-#define draw_gs_jit_context_viewports(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, DRAW_GS_JIT_CTX_VIEWPORT, "viewports")
-
-#define draw_gs_jit_context_textures(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_TEXTURES, "textures")
-
-#define draw_gs_jit_context_samplers(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_SAMPLERS, "samplers")
-
-#define draw_gs_jit_context_images(_gallivm, _ptr)                      \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_IMAGES, "images")
-
 #define draw_gs_jit_prim_lengths(_variant, _ptr) \
    lp_build_struct_get2(_variant->gallivm, _variant->context_type, _ptr, DRAW_GS_JIT_CTX_PRIM_LENGTHS, "prim_lengths")
 
@@ -353,15 +329,6 @@ enum {
 #define draw_tcs_jit_context_constants(_variant, _ptr) \
    lp_build_struct_get_ptr2(_variant->gallivm, _variant->context_type, _ptr, DRAW_TCS_JIT_CTX_CONSTANTS, "constants")
 
-#define draw_tcs_jit_context_textures(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_TEXTURES, "textures")
-
-#define draw_tcs_jit_context_samplers(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_SAMPLERS, "samplers")
-
-#define draw_tcs_jit_context_images(_gallivm, _ptr)                      \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TCS_JIT_CTX_IMAGES, "images")
-
 #define draw_tcs_jit_context_ssbos(_variant, _ptr) \
    lp_build_struct_get_ptr2(_variant->gallivm, _variant->context_type, _ptr, DRAW_TCS_JIT_CTX_SSBOS, "ssbos")
 
@@ -398,15 +365,6 @@ enum {
 
 #define draw_tes_jit_context_constants(_variant, _ptr) \
    lp_build_struct_get_ptr2(_variant->gallivm, _variant->context_type, _ptr, DRAW_TES_JIT_CTX_CONSTANTS, "constants")
-
-#define draw_tes_jit_context_textures(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_TEXTURES, "textures")
-
-#define draw_tes_jit_context_samplers(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_SAMPLERS, "samplers")
-
-#define draw_tes_jit_context_images(_gallivm, _ptr)                      \
-   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_TES_JIT_CTX_IMAGES, "images")
 
 #define draw_tes_jit_context_ssbos(_variant, _ptr) \
    lp_build_struct_get_ptr2(_variant->gallivm, _variant->context_type, _ptr, DRAW_TES_JIT_CTX_SSBOS, "ssbos")
