@@ -1198,6 +1198,18 @@ resource_create(struct pipe_screen *pscreen,
       res->base.b.bind |= PIPE_BIND_DISPLAY_TARGET;
       res->linear = false;
       res->swapchain = true;
+      /* on swapchain create, try to get an implicit format modifier for dmabuf export */
+      if (screen->implicit_mod == DRM_FORMAT_MOD_INVALID) {
+         /* context isn't actually used, so just pass copy context */
+         if (zink_kopper_acquire(screen->copy_context, res, UINT64_MAX)) {
+            VkImageDrmFormatModifierPropertiesEXT modprops = {0};
+            modprops.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
+            VkResult result = VKSCR(GetImageDrmFormatModifierPropertiesEXT)(screen->dev, res->obj->image, &modprops);
+            /* if this fails, no big deal */
+            if (result == VK_SUCCESS)
+               screen->implicit_mod = modprops.drmFormatModifier;
+         }
+      }
    }
    if (!res->obj->host_visible)
       res->base.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
@@ -1245,10 +1257,16 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    res->base.b.bind |= bind;
    struct zink_resource_object *old_obj = res->obj;
    if (bind & ZINK_BIND_DMABUF && !res->modifiers_count && screen->info.have_EXT_image_drm_format_modifier) {
-      res->modifiers_count = screen->modifier_props[res->base.b.format].drmFormatModifierCount;
-      res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
-      for (unsigned i = 0; i < screen->modifier_props[res->base.b.format].drmFormatModifierCount; i++)
-         res->modifiers[i] = screen->modifier_props[res->base.b.format].pDrmFormatModifierProperties[i].drmFormatModifier;
+      if (screen->implicit_mod != DRM_FORMAT_MOD_INVALID) {
+         res->modifiers_count = 1;
+         res->modifiers = malloc(sizeof(uint64_t));
+         res->modifiers[0] = screen->implicit_mod;
+      } else {
+         res->modifiers_count = screen->modifier_props[res->base.b.format].drmFormatModifierCount;
+         res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
+         for (unsigned i = 0; i < screen->modifier_props[res->base.b.format].drmFormatModifierCount; i++)
+            res->modifiers[i] = screen->modifier_props[res->base.b.format].pDrmFormatModifierProperties[i].drmFormatModifier;
+      }
    }
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->linear, res->modifiers, res->modifiers_count, NULL);
    if (!new_obj) {
@@ -2272,6 +2290,8 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
    pscreen->resource_create_drawable = zink_resource_create_drawable;
    pscreen->resource_destroy = zink_resource_destroy;
    pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl, true, true, false, false, !screen->have_D24_UNORM_S8_UINT);
+   if (screen->info.have_EXT_image_drm_format_modifier)
+      screen->implicit_mod = DRM_FORMAT_MOD_INVALID;
 
    if (screen->info.have_KHR_external_memory_fd || screen->info.have_KHR_external_memory_win32) {
       pscreen->resource_get_handle = zink_resource_get_handle;
