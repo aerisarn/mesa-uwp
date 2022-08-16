@@ -85,8 +85,23 @@ LoweringHelper::handleCVT(Instruction *insn)
    DataType dTy = insn->dType;
    DataType sTy = insn->sType;
 
-   if (typeSizeof(dTy) <= 4 && typeSizeof(sTy) <= 4)
+   bld.setPosition(insn, true);
+
+   /* We can't convert from 32bit floating point to 8bit integer and from 64bit
+    * floating point to any integer smaller than 32bit, hence add an instruction
+    * to convert to a 32bit integer first.
+    */
+   if (((typeSizeof(dTy) == 1) && isFloatType(sTy)) ||
+       ((typeSizeof(dTy) <= 2) && sTy == TYPE_F64)) {
+      Value *tmp = insn->getDef(0);
+      DataType tmpTy = (isSignedIntType(dTy)) ? TYPE_S32 : TYPE_U32;
+
+      insn->setType(tmpTy, sTy);
+      insn->setDef(0, bld.getSSA());
+      bld.mkCvt(OP_CVT, dTy, tmp, tmpTy, insn->getDef(0))->saturate = 1;
+
       return true;
+   }
 
    bld.setPosition(insn, false);
 
