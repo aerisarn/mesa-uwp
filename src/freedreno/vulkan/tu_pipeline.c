@@ -3625,7 +3625,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 
    if (builder->shaders->variants[MESA_SHADER_FRAGMENT]) {
       const struct ir3_shader_variant *fs = builder->shaders->variants[MESA_SHADER_FRAGMENT];
-      if (fs->has_kill || fs->no_earlyz || fs->writes_pos) {
+      if (fs->has_kill || builder->alpha_to_coverage) {
          pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
       if (fs->no_earlyz || fs->writes_pos) {
