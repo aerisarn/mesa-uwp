@@ -298,6 +298,9 @@ typedef struct shader_info {
    bool uses_control_barrier : 1;
    bool uses_memory_barrier : 1;
 
+   /* Whether ARB_bindless_texture ops or variables are used */
+   bool uses_bindless : 1;
+
    /**
     * Shared memory types have explicit layout set.  Used for
     * SPV_KHR_workgroup_storage_explicit_layout.

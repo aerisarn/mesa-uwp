@@ -463,6 +463,44 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    }
 }
 
+static bool
+intrinsic_is_bindless(nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_fadd:
+   case nir_intrinsic_bindless_image_atomic_fmax:
+   case nir_intrinsic_bindless_image_atomic_fmin:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_descriptor_amd:
+   case nir_intrinsic_bindless_image_format:
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_load_raw_intel:
+   case nir_intrinsic_bindless_image_order:
+   case nir_intrinsic_bindless_image_samples:
+   case nir_intrinsic_bindless_image_samples_identical:
+   case nir_intrinsic_bindless_image_size:
+   case nir_intrinsic_bindless_image_sparse_load:
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_bindless_image_store_raw_intel:
+   case nir_intrinsic_bindless_resource_ir3:
+      return true;
+   default:
+      break;
+   }
+   return false;
+}
+
 static void
 gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
                       void *dead_ctx)
@@ -834,6 +872,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
       break;
 
    default:
+      shader->info.uses_bindless |= intrinsic_is_bindless(instr);
       if (nir_intrinsic_writes_external_memory(instr))
          shader->info.writes_memory = true;
 
@@ -854,6 +893,10 @@ gather_tex_info(nir_tex_instr *instr, nir_shader *shader)
    if (shader->info.stage == MESA_SHADER_FRAGMENT &&
        nir_tex_instr_has_implicit_derivative(instr))
       shader->info.fs.needs_quad_helper_invocations = true;
+
+   if (nir_tex_instr_src_index(instr, nir_tex_src_texture_handle) != -1 ||
+       nir_tex_instr_src_index(instr, nir_tex_src_sampler_handle) != -1)
+      shader->info.uses_bindless = true;
 
    switch (instr->op) {
    case nir_texop_tg4:
@@ -945,8 +988,11 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    shader->info.num_images = 0;
    shader->info.bit_sizes_float = 0;
    shader->info.bit_sizes_int = 0;
+   shader->info.uses_bindless = false;
 
    nir_foreach_variable_with_modes(var, shader, nir_var_image | nir_var_uniform) {
+      if (var->data.bindless)
+         shader->info.uses_bindless = true;
       /* Bindless textures and images don't use non-bindless slots.
        * Interface blocks imply inputs, outputs, UBO, or SSBO, which can only
        * mean bindless.
@@ -956,6 +1002,13 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
 
       shader->info.num_textures += glsl_type_get_sampler_count(var->type);
       shader->info.num_images += glsl_type_get_image_count(var->type);
+   }
+
+   /* these types may not initially be marked bindless */
+   nir_foreach_variable_with_modes(var, shader, nir_var_shader_in | nir_var_shader_out) {
+      const struct glsl_type *type = glsl_without_array(var->type);
+      if (glsl_type_is_sampler(type) || glsl_type_is_image(type))
+         shader->info.uses_bindless = true;
    }
 
    shader->info.inputs_read = 0;
