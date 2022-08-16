@@ -662,8 +662,8 @@ nvk_flush_ia_state(struct nvk_cmd_buffer *cmd)
    /** Nothing to do for MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY */
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
-      P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART_VERTEX_ARRAY,
-         dyn->ia.primitive_restart_enable);
+      P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART,
+             dyn->ia.primitive_restart_enable);
    }
 }
 
@@ -1077,6 +1077,21 @@ vk_to_nv_index_format(VkIndexType type)
    }
 }
 
+static uint32_t
+vk_index_to_restart(VkIndexType index_type)
+{
+   switch (index_type) {
+   case VK_INDEX_TYPE_UINT16:
+      return 0xffff;
+   case VK_INDEX_TYPE_UINT32:
+      return 0xffffffff;
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return 0xff;
+   default:
+      unreachable("unexpected index type");
+   }
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
                        VkBuffer _buffer,
@@ -1094,6 +1109,9 @@ nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    } else {
       range = addr = 0;
    }
+
+   P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART_INDEX,
+          vk_index_to_restart(indexType));
 
    P_MTHD(p, NV9097, SET_INDEX_BUFFER_A);
    P_NV9097_SET_INDEX_BUFFER_A(p, addr >> 32);
