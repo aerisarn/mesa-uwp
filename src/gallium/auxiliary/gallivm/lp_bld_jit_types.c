@@ -60,8 +60,7 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
                       LLVMValueRef buffers_offset,
                       unsigned buffers_limit,
                       unsigned member_index,
-                      const char *member_name,
-                      boolean emit_load)
+                      const char *member_name)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef indices[3];
@@ -74,7 +73,7 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
    LLVMValueRef ptr =
       LLVMBuildGEP(builder, buffers_ptr, indices, ARRAY_SIZE(indices), "");
 
-   LLVMValueRef res = emit_load ? LLVMBuildLoad(builder, ptr, "") : ptr;
+   LLVMValueRef res = LLVMBuildLoad(builder, ptr, "");
 
    lp_build_name(res, "buffer.%s", member_name);
 
@@ -90,7 +89,7 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
  * sampler code generator a reusable module without dependencies to
  * llvmpipe internals.
  */
-#define LP_LLVM_BUFFER_MEMBER(_name, _index, _emit_load)  \
+#define LP_LLVM_BUFFER_MEMBER(_name, _index)  \
    LLVMValueRef \
    lp_llvm_buffer_##_name(struct gallivm_state *gallivm,               \
                           LLVMValueRef buffers_ptr,                     \
@@ -98,8 +97,8 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
    { \
       return lp_llvm_buffer_member(gallivm, buffers_ptr, \
                                   buffers_offset, buffers_limit, \
-                                  _index, #_name, _emit_load );  \
+                                  _index, #_name);  \
    }
 
-LP_LLVM_BUFFER_MEMBER(base, LP_JIT_BUFFER_BASE, TRUE)
-LP_LLVM_BUFFER_MEMBER(num_elements, LP_JIT_BUFFER_NUM_ELEMENTS, TRUE)
+LP_LLVM_BUFFER_MEMBER(base, LP_JIT_BUFFER_BASE)
+LP_LLVM_BUFFER_MEMBER(num_elements, LP_JIT_BUFFER_NUM_ELEMENTS)
