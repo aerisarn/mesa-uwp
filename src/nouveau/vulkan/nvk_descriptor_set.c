@@ -437,6 +437,9 @@ nvk_DestroyDescriptorPool(VkDevice _device, VkDescriptorPool _pool,
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, _pool);
 
+   if (!_pool)
+      return;
+
    nvk_destroy_descriptor_pool(device, pAllocator, pool);
 }
 
