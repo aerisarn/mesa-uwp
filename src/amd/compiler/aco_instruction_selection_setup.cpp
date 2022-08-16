@@ -934,6 +934,10 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
 
    ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.program->wave_size, 1024);
 
+   unsigned nir_num_blocks = 0;
+   for (unsigned i = 0; i < shader_count; i++)
+      nir_num_blocks += nir_shader_get_entrypoint(shaders[i])->num_blocks;
+   ctx.program->blocks.reserve(nir_num_blocks * 2);
    ctx.block = ctx.program->create_and_insert_block();
    ctx.block->kind = block_kind_top_level;
 

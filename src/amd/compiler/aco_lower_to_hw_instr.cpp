@@ -2009,6 +2009,7 @@ lower_to_hw_instr(Program* program)
       lower_context ctx;
       ctx.program = program;
       ctx.block = block;
+      ctx.instructions.reserve(block->instructions.size());
       Builder bld(program, &ctx.instructions);
 
       emit_set_mode_from_block(bld, *program, block, (block_idx == 0));
@@ -2520,7 +2521,7 @@ lower_to_hw_instr(Program* program)
             ctx.instructions.emplace_back(std::move(instr));
          }
       }
-      block->instructions.swap(ctx.instructions);
+      block->instructions = std::move(ctx.instructions);
    }
 }
 

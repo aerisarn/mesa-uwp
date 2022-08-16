@@ -10290,6 +10290,8 @@ visit_jump(isel_context* ctx, nir_jump_instr* instr)
 void
 visit_block(isel_context* ctx, nir_block* block)
 {
+   ctx->block->instructions.reserve(ctx->block->instructions.size() +
+                                    exec_list_length(&block->instr_list) * 2);
    nir_foreach_instr (instr, block) {
       switch (instr->type) {
       case nir_instr_type_alu: visit_alu_instr(ctx, nir_instr_as_alu(instr)); break;
