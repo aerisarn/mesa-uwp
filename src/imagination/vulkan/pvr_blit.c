@@ -1944,5 +1944,25 @@ void pvr_CmdClearAttachments(VkCommandBuffer commandBuffer,
 void pvr_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
                              const VkResolveImageInfo2 *pResolveImageInfo)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_image, src, pResolveImageInfo->srcImage);
+   PVR_FROM_HANDLE(pvr_image, dst, pResolveImageInfo->dstImage);
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   for (uint32_t i = 0U; i < pResolveImageInfo->regionCount; i++) {
+      VkImageCopy2 region = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2,
+         .srcSubresource = pResolveImageInfo->pRegions[i].srcSubresource,
+         .srcOffset = pResolveImageInfo->pRegions[i].srcOffset,
+         .dstSubresource = pResolveImageInfo->pRegions[i].dstSubresource,
+         .dstOffset = pResolveImageInfo->pRegions[i].dstOffset,
+         .extent = pResolveImageInfo->pRegions[i].extent,
+      };
+
+      VkResult result =
+         pvr_copy_or_resolve_color_image_region(cmd_buffer, src, dst, &region);
+      if (result != VK_SUCCESS)
+         return;
+   }
 }
