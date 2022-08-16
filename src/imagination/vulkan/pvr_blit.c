@@ -972,7 +972,8 @@ static void pvr_calc_mip_level_extents(const struct pvr_image *image,
 static VkResult pvr_clear_image_range(struct pvr_cmd_buffer *cmd_buffer,
                                       const struct pvr_image *image,
                                       const VkClearColorValue *pColor,
-                                      const VkImageSubresourceRange *psRange)
+                                      const VkImageSubresourceRange *psRange,
+                                      uint32_t flags)
 {
    const uint32_t layer_count =
       vk_image_subresource_layer_count(&image->vk, psRange);
@@ -1001,6 +1002,7 @@ static VkResult pvr_clear_image_range(struct pvr_cmd_buffer *cmd_buffer,
             if (!transfer_cmd)
                return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+            transfer_cmd->flags |= flags;
             transfer_cmd->flags |= PVR_TRANSFER_CMD_FLAGS_FILL;
 
             for (uint32_t i = 0; i < ARRAY_SIZE(transfer_cmd->clear_color); i++)
@@ -1042,20 +1044,48 @@ void pvr_CmdClearColorImage(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < rangeCount; i++) {
       const VkResult result =
-         pvr_clear_image_range(cmd_buffer, image, pColor, &pRanges[i]);
+         pvr_clear_image_range(cmd_buffer, image, pColor, &pRanges[i], 0);
       if (result != VK_SUCCESS)
          return;
    }
 }
 
 void pvr_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
-                                   VkImage image_h,
+                                   VkImage _image,
                                    VkImageLayout imageLayout,
                                    const VkClearDepthStencilValue *pDepthStencil,
                                    uint32_t rangeCount,
                                    const VkImageSubresourceRange *pRanges)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   PVR_FROM_HANDLE(pvr_image, image, _image);
+
+   for (uint32_t i = 0; i < rangeCount; i++) {
+      const VkImageAspectFlags ds_aspect = VK_IMAGE_ASPECT_DEPTH_BIT |
+                                           VK_IMAGE_ASPECT_STENCIL_BIT;
+      VkClearColorValue clear_ds = { 0 };
+      uint32_t flags = 0U;
+      VkResult result;
+
+      if (image->vk.format == VK_FORMAT_D24_UNORM_S8_UINT &&
+          pRanges[i].aspectMask != ds_aspect) {
+         /* A depth or stencil blit to a packed_depth_stencil requires a merge
+          * operation.
+          */
+         flags |= PVR_TRANSFER_CMD_FLAGS_DSMERGE;
+
+         if (pRanges[i].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+            flags |= PVR_TRANSFER_CMD_FLAGS_PICKD;
+      }
+
+      clear_ds.float32[0] = pDepthStencil->depth;
+      clear_ds.uint32[1] = pDepthStencil->stencil;
+
+      result =
+         pvr_clear_image_range(cmd_buffer, image, &clear_ds, pRanges + i, flags);
+      if (result != VK_SUCCESS)
+         return;
+   }
 }
 
 static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
