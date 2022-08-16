@@ -784,11 +784,23 @@ brw_vec1_grf(unsigned nr, unsigned subnr)
    return brw_vec1_reg(BRW_GENERAL_REGISTER_FILE, nr, subnr);
 }
 
+static inline struct brw_reg
+xe2_vec1_grf(unsigned nr, unsigned subnr)
+{
+   return brw_vec1_reg(BRW_GENERAL_REGISTER_FILE, 2 * nr + subnr / 8, subnr % 8);
+}
+
 /** Construct float[2] general-purpose register */
 static inline struct brw_reg
 brw_vec2_grf(unsigned nr, unsigned subnr)
 {
    return brw_vec2_reg(BRW_GENERAL_REGISTER_FILE, nr, subnr);
+}
+
+static inline struct brw_reg
+xe2_vec2_grf(unsigned nr, unsigned subnr)
+{
+   return brw_vec2_reg(BRW_GENERAL_REGISTER_FILE, 2 * nr + subnr / 8, subnr % 8);
 }
 
 /** Construct float[4] general-purpose register */
@@ -798,11 +810,23 @@ brw_vec4_grf(unsigned nr, unsigned subnr)
    return brw_vec4_reg(BRW_GENERAL_REGISTER_FILE, nr, subnr);
 }
 
+static inline struct brw_reg
+xe2_vec4_grf(unsigned nr, unsigned subnr)
+{
+   return brw_vec4_reg(BRW_GENERAL_REGISTER_FILE, 2 * nr + subnr / 8, subnr % 8);
+}
+
 /** Construct float[8] general-purpose register */
 static inline struct brw_reg
 brw_vec8_grf(unsigned nr, unsigned subnr)
 {
    return brw_vec8_reg(BRW_GENERAL_REGISTER_FILE, nr, subnr);
+}
+
+static inline struct brw_reg
+xe2_vec8_grf(unsigned nr, unsigned subnr)
+{
+   return brw_vec8_reg(BRW_GENERAL_REGISTER_FILE, 2 * nr + subnr / 8, subnr % 8);
 }
 
 /** Construct float[16] general-purpose register */
@@ -813,11 +837,22 @@ brw_vec16_grf(unsigned nr, unsigned subnr)
 }
 
 static inline struct brw_reg
+xe2_vec16_grf(unsigned nr, unsigned subnr)
+{
+   return brw_vec16_reg(BRW_GENERAL_REGISTER_FILE, 2 * nr + subnr / 8, subnr % 8);
+}
+
+static inline struct brw_reg
 brw_vecn_grf(unsigned width, unsigned nr, unsigned subnr)
 {
    return brw_vecn_reg(width, BRW_GENERAL_REGISTER_FILE, nr, subnr);
 }
 
+static inline struct brw_reg
+xe2_vecn_grf(unsigned width, unsigned nr, unsigned subnr)
+{
+   return brw_vecn_reg(width, BRW_GENERAL_REGISTER_FILE, nr + subnr / 8, subnr % 8);
+}
 
 static inline struct brw_reg
 brw_uw1_grf(unsigned nr, unsigned subnr)
