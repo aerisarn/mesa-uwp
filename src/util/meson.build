@@ -102,6 +102,7 @@ files_mesa_util = files(
   'rounding.h',
   'set.c',
   'set.h',
+  'simple_mtx.c',
   'simple_mtx.h',
   'slab.c',
   'slab.h',
