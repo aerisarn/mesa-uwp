@@ -490,9 +490,9 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       });
       P_NV9097_SET_ZT_ARRAY_PITCH(p, image->nil.array_stride_B >> 2);
 
-      P_MTHD(p, NV9097, SET_ZT_SELECT);
-      P_NV9097_SET_ZT_SELECT(p, 1 /* target_count */);
+      P_IMMD(p, NV9097, SET_ZT_SELECT, 1 /* target_count */);
 
+      P_MTHD(p, NV9097, SET_ZT_SIZE_A);
       P_NV9097_SET_ZT_SIZE_A(p, iview->vk.extent.width);
       P_NV9097_SET_ZT_SIZE_B(p, iview->vk.extent.height);
       P_NV9097_SET_ZT_SIZE_C(p, {
