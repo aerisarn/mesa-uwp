@@ -45,7 +45,7 @@ struct amdgpu_ctx {
    uint64_t *user_fence_cpu_address_base;
    int refcount;
    unsigned initial_num_total_rejected_cs;
-   unsigned num_rejected_cs;
+   bool rejected_any_cs;
 };
 
 struct amdgpu_cs_buffer {

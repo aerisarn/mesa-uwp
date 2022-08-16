@@ -408,7 +408,7 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
    if (ctx->ws->num_total_rejected_cs > ctx->initial_num_total_rejected_cs) {
       if (needs_reset)
          *needs_reset = true;
-      return ctx->num_rejected_cs ? PIPE_GUILTY_CONTEXT_RESET :
+      return ctx->rejected_any_cs ? PIPE_GUILTY_CONTEXT_RESET :
                                     PIPE_INNOCENT_CONTEXT_RESET;
    }
    if (needs_reset)
@@ -1606,7 +1606,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
    assert(num_chunks <= ARRAY_SIZE(chunks));
 
-   if (unlikely(acs->ctx->num_rejected_cs)) {
+   if (unlikely(acs->ctx->rejected_any_cs)) {
       r = -ECANCELED;
    } else if (unlikely(noop)) {
       r = 0;
@@ -1659,8 +1659,9 @@ cleanup:
       }
 
       fprintf(stderr, "amdgpu: The CS has been rejected (%i). Recreate the context.\n", r);
-      acs->ctx->num_rejected_cs++;
-      ws->num_total_rejected_cs++;
+      if (!acs->ctx->rejected_any_cs)
+         ws->num_total_rejected_cs++;
+      acs->ctx->rejected_any_cs = true;
    }
 
    /* If there was an error, signal the fence, because it won't be signalled
