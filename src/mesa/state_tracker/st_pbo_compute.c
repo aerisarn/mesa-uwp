@@ -209,13 +209,20 @@ struct pbo_data {
  * so bitwise operations must be used to "unpact" everything
  */
 static void
-init_pbo_shader_data(nir_builder *b, struct pbo_shader_data *sd)
+init_pbo_shader_data(nir_builder *b, struct pbo_shader_data *sd, unsigned coord_components)
 {
    nir_variable *ubo = nir_variable_create(b->shader, nir_var_uniform, glsl_uvec4_type(), "offset");
    nir_ssa_def *ubo_load = nir_load_var(b, ubo);
 
    sd->offset = nir_u2u32(b, nir_extract_bits(b, &ubo_load, 1, STRUCT_OFFSET(x), 2, 16));
+   if (coord_components == 1)
+      sd->offset = nir_vector_insert_imm(b, sd->offset, nir_imm_int(b, 0), 1);
    sd->range = nir_u2u32(b, nir_extract_bits(b, &ubo_load, 1, STRUCT_OFFSET(width), 3, 16));
+   if (coord_components < 3) {
+      sd->range = nir_vector_insert_imm(b, sd->range, nir_imm_int(b, 1), 2);
+      if (coord_components == 1)
+         sd->range = nir_vector_insert_imm(b, sd->range, nir_imm_int(b, 1), 1);
+   }
 
    STRUCT_BLOCK(80,
       STRUCT_MEMBER_BOOL(80, invert, 0);
@@ -610,7 +617,7 @@ create_conversion_shader(struct st_context *st, enum pipe_texture_target target,
    sampler->data.explicit_binding = 1;
 
    struct pbo_shader_data sd;
-   init_pbo_shader_data(&b, &sd);
+   init_pbo_shader_data(&b, &sd, coord_components);
 
    nir_ssa_def *bsize = nir_imm_ivec4(&b,
                                       b.shader->info.workgroup_size[0],
