@@ -154,9 +154,11 @@ LoweringHelper::handleCVT(Instruction *insn)
       return true;
    }
 
-   if (dTy == TYPE_U64 && sTy == TYPE_U32) {
+   if (dTy == TYPE_U64 && isUnsignedIntType(sTy) && typeSizeof(sTy) <= 4) {
       insn->op = OP_MERGE;
       insn->setSrc(1, bld.loadImm(bld.getSSA(), 0));
+
+      return true;
    }
 
    return true;
