@@ -143,7 +143,7 @@ anv_gem_set_context_param(int fd, int context, uint32_t param, uint64_t value)
 }
 
 bool
-anv_gem_has_context_priority(int fd, int priority)
+anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority)
 {
    unreachable("Unused");
 }

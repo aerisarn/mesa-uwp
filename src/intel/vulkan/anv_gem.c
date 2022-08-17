@@ -296,7 +296,7 @@ anv_gem_get_param(int fd, uint32_t param)
 }
 
 bool
-anv_gem_has_context_priority(int fd, int priority)
+anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority)
 {
    return !anv_gem_set_context_param(fd, 0, I915_CONTEXT_PARAM_PRIORITY,
                                      priority);
@@ -324,9 +324,29 @@ anv_gem_destroy_context(struct anv_device *device, int context)
    return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &destroy);
 }
 
+static int
+vk_priority_to_i915(VkQueueGlobalPriorityKHR priority)
+{
+   switch (priority) {
+   case VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR:
+      return INTEL_CONTEXT_LOW_PRIORITY;
+   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR:
+      return INTEL_CONTEXT_MEDIUM_PRIORITY;
+   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR:
+      return INTEL_CONTEXT_HIGH_PRIORITY;
+   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR:
+      return INTEL_CONTEXT_REALTIME_PRIORITY;
+   default:
+      unreachable("Invalid priority");
+   }
+}
+
 int
 anv_gem_set_context_param(int fd, int context, uint32_t param, uint64_t value)
 {
+   if (param == I915_CONTEXT_PARAM_PRIORITY)
+      value = vk_priority_to_i915(value);
+
    struct drm_i915_gem_context_param p = {
       .ctx_id = context,
       .param = param,

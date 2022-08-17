@@ -987,7 +987,7 @@ struct anv_physical_device {
     uint32_t                                    n_perf_query_commands;
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
-    int                                         max_context_priority;
+    VkQueueGlobalPriorityKHR                    max_context_priority;
     bool                                        has_context_isolation;
     bool                                        has_mmap_offset;
     bool                                        has_userptr_probe;
@@ -1361,7 +1361,7 @@ int anv_gem_execbuffer(struct anv_device *device,
 int anv_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,
                        uint32_t stride, uint32_t tiling);
 int anv_gem_create_context(struct anv_device *device);
-bool anv_gem_has_context_priority(int fd, int priority);
+bool anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority);
 int anv_gem_destroy_context(struct anv_device *device, int context);
 int anv_gem_set_context_param(int fd, int context, uint32_t param,
                               uint64_t value);

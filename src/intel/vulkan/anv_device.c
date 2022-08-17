@@ -282,9 +282,9 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_external_memory_host              = true,
       .EXT_fragment_shader_interlock         = true,
       .EXT_global_priority                   = device->max_context_priority >=
-                                               INTEL_CONTEXT_MEDIUM_PRIORITY,
+                                               VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
       .EXT_global_priority_query             = device->max_context_priority >=
-                                               INTEL_CONTEXT_MEDIUM_PRIORITY,
+                                               VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
       .EXT_host_query_reset                  = true,
       .EXT_image_2d_view_of_3d               = true,
       .EXT_image_robustness                  = true,
@@ -776,12 +776,13 @@ anv_i915_physical_device_get_parameters(struct anv_physical_device *device)
    device->has_exec_capture = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE);
 
    /* Start with medium; sorted low to high */
-   const int priorities[] = {
-      INTEL_CONTEXT_MEDIUM_PRIORITY,
-      INTEL_CONTEXT_HIGH_PRIORITY,
-      INTEL_CONTEXT_REALTIME_PRIORITY,
+   const VkQueueGlobalPriorityKHR priorities[] = {
+         VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR,
+         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
+         VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR,
+         VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR,
    };
-   device->max_context_priority = INT_MIN;
+   device->max_context_priority = VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR;
    for (unsigned i = 0; i < ARRAY_SIZE(priorities); i++) {
       if (!anv_gem_has_context_priority(fd, priorities[i]))
          break;
@@ -2683,23 +2684,6 @@ void anv_GetPhysicalDeviceProperties2(
    }
 }
 
-static int
-vk_priority_to_gen(int priority)
-{
-   switch (priority) {
-   case VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR:
-      return INTEL_CONTEXT_LOW_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR:
-      return INTEL_CONTEXT_MEDIUM_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR:
-      return INTEL_CONTEXT_HIGH_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR:
-      return INTEL_CONTEXT_REALTIME_PRIORITY;
-   default:
-      unreachable("Invalid priority");
-   }
-}
-
 static const VkQueueFamilyProperties
 anv_queue_family_properties_template = {
    .timestampValidBits = 36, /* XXX: Real value here */
@@ -2738,8 +2722,7 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2(
 
                uint32_t count = 0;
                for (unsigned i = 0; i < ARRAY_SIZE(all_priorities); i++) {
-                  if (vk_priority_to_gen(all_priorities[i]) >
-                      pdevice->max_context_priority)
+                  if (all_priorities[i] > pdevice->max_context_priority)
                      break;
 
                   properties->priorities[count++] = all_priorities[i];
@@ -3158,10 +3141,10 @@ anv_device_setup_context(struct anv_device *device,
     * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_KHR
     * is returned.
     */
-   if (physical_device->max_context_priority >= INTEL_CONTEXT_MEDIUM_PRIORITY) {
+   if (physical_device->max_context_priority >= VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
       int err = anv_gem_set_context_param(device->fd, device->context_id,
                                           I915_CONTEXT_PARAM_PRIORITY,
-                                          vk_priority_to_gen(priority));
+                                          priority);
       if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
          result = vk_error(device, VK_ERROR_NOT_PERMITTED_KHR);
          goto fail_context;
