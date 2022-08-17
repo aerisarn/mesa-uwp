@@ -2533,6 +2533,30 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
          first_layer = LLVMBuildExtractElement(ctx->ac.builder, args->resource, const5, "");
          first_layer = LLVMBuildAnd(ctx->ac.builder, first_layer, mask, "");
 
+         if (instr->intrinsic == nir_intrinsic_bindless_image_load ||
+             instr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
+             instr->intrinsic == nir_intrinsic_bindless_image_store) {
+            int lod_index = instr->intrinsic == nir_intrinsic_bindless_image_store ? 4 : 3;
+            bool has_lod = !nir_src_is_const(instr->src[lod_index]) ||
+                           nir_src_as_uint(instr->src[lod_index]) != 0;
+            if (has_lod) {
+               /* If there's a lod parameter it matter if the image is 3d or 2d because
+                * the hw reads either the fourth or third component as lod. So detect
+                * 3d images and place the lod at the third component otherwise.
+                */
+               LLVMValueRef const3, const28, const4, rword3, type3d, type, is_3d, lod;
+               const3 = LLVMConstInt(ctx->ac.i32, 3, 0);
+               const28 = LLVMConstInt(ctx->ac.i32, 28, 0);
+               const4 = LLVMConstInt(ctx->ac.i32, 4, 0);
+               type3d = LLVMConstInt(ctx->ac.i32, V_008F1C_SQ_RSRC_IMG_3D, 0);
+               rword3 = LLVMBuildExtractElement(ctx->ac.builder, args->resource, const3, "");
+               type = ac_build_bfe(&ctx->ac, rword3, const28, const4, false);
+               is_3d = emit_int_cmp(&ctx->ac, LLVMIntEQ, type, type3d);
+               lod = get_src(ctx, instr->src[lod_index]);
+               first_layer = emit_bcsel(&ctx->ac, is_3d, first_layer, lod);
+            }
+         }
+
          args->coords[count] = first_layer;
          count++;
       }
