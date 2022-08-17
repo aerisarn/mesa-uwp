@@ -2093,7 +2093,10 @@ anv_get_physical_device_properties_1_3(struct anv_physical_device *pdevice,
 {
    assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES);
 
-   p->minSubgroupSize = 8;
+   if (pdevice->info.ver >= 20)
+      p->minSubgroupSize = 16;
+   else
+      p->minSubgroupSize = 8;
    p->maxSubgroupSize = 32;
    p->maxComputeWorkgroupSubgroups = pdevice->info.max_cs_workgroup_threads;
    p->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT |
