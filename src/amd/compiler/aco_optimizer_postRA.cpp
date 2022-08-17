@@ -76,6 +76,31 @@ struct pr_opt_ctx {
          instr_idx_by_regs(std::unique_ptr<Idx_array[]>{new Idx_array[p->blocks.size()]})
    {}
 
+   ALWAYS_INLINE void reset_block_regs(const std::vector<uint32_t>& preds,
+                                       const unsigned block_index, const unsigned min_reg,
+                                       const unsigned num_regs)
+   {
+      const unsigned num_preds = preds.size();
+      const unsigned first_pred = preds[0];
+
+      /* Copy information from the first predecessor. */
+      memcpy(&instr_idx_by_regs[block_index][min_reg], &instr_idx_by_regs[first_pred][min_reg],
+             num_regs * sizeof(Idx));
+
+      /* Mark overwritten if it doesn't match with other predecessors. */
+      const unsigned until_reg = min_reg + num_regs;
+      for (unsigned pred = 1; pred < num_preds; ++pred) {
+         for (unsigned i = min_reg; i < until_reg; ++i) {
+            Idx& idx = instr_idx_by_regs[block_index][i];
+            if (idx == overwritten_untrackable)
+               continue;
+
+            if (idx != instr_idx_by_regs[pred][i])
+               idx = overwritten_untrackable;
+         }
+      }
+   }
+
    void reset_block(Block* block)
    {
       current_block = block;
@@ -85,40 +110,13 @@ struct pr_opt_ctx {
          std::fill(instr_idx_by_regs[block->index].begin(), instr_idx_by_regs[block->index].end(),
                    not_written_yet);
       } else {
-         const uint32_t first_linear_pred = block->linear_preds[0];
-         const std::vector<uint32_t>& linear_preds = block->linear_preds;
-
-         for (unsigned i = 0; i < max_sgpr_cnt; i++) {
-            const bool all_same = std::all_of(
-               std::next(linear_preds.begin()), linear_preds.end(),
-               [=](unsigned pred)
-               { return instr_idx_by_regs[pred][i] == instr_idx_by_regs[first_linear_pred][i]; });
-
-            if (all_same)
-               instr_idx_by_regs[block->index][i] = instr_idx_by_regs[first_linear_pred][i];
-            else
-               instr_idx_by_regs[block->index][i] = overwritten_untrackable;
-         }
+         reset_block_regs(block->linear_preds, block->index, 0, max_sgpr_cnt);
 
          if (!block->logical_preds.empty()) {
             /* We assume that VGPRs are only read by blocks which have a logical predecessor,
              * ie. any block that reads any VGPR has at least 1 logical predecessor.
              */
-            const unsigned first_logical_pred = block->logical_preds[0];
-            const std::vector<uint32_t>& logical_preds = block->logical_preds;
-
-            for (unsigned i = min_vgpr; i < (min_vgpr + max_vgpr_cnt); i++) {
-               const bool all_same = std::all_of(
-                  std::next(logical_preds.begin()), logical_preds.end(),
-                  [=](unsigned pred) {
-                     return instr_idx_by_regs[pred][i] == instr_idx_by_regs[first_logical_pred][i];
-                  });
-
-               if (all_same)
-                  instr_idx_by_regs[block->index][i] = instr_idx_by_regs[first_logical_pred][i];
-               else
-                  instr_idx_by_regs[block->index][i] = overwritten_untrackable;
-            }
+            reset_block_regs(block->logical_preds, block->index, min_vgpr, max_vgpr_cnt);
          } else {
             /* If a block has no logical predecessors, it is not part of the
              * logical CFG and therefore it also won't have any logical successors.
