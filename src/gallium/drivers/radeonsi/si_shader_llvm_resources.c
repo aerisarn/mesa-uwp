@@ -53,24 +53,6 @@ static LLVMValueRef si_llvm_bound_index(struct si_shader_context *ctx, LLVMValue
    return index;
 }
 
-static LLVMValueRef load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, bool write, bool non_uniform)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-
-   /* Fast path if the shader buffer is in user SGPRs. */
-   if (LLVMIsConstant(index) &&
-       LLVMConstIntGetZExtValue(index) < ctx->shader->selector->cs_num_shaderbufs_in_user_sgprs)
-      return ac_get_arg(&ctx->ac, ctx->args->cs_shaderbuf[LLVMConstIntGetZExtValue(index)]);
-
-   index = si_llvm_bound_index(ctx, index, ctx->num_shader_buffers);
-   index = LLVMBuildSub(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, SI_NUM_SHADER_BUFFERS - 1, 0),
-                        index, "");
-
-   return ac_build_load_to_sgpr(&ctx->ac,
-                                ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->const_and_shader_buffers),
-                                index);
-}
-
 /**
  * Given a 256-bit resource descriptor, force the DCC enable bit to off.
  *
@@ -281,6 +263,5 @@ static LLVMValueRef si_nir_load_sampler_desc(struct ac_shader_abi *abi, unsigned
 
 void si_llvm_init_resource_callbacks(struct si_shader_context *ctx)
 {
-   ctx->abi.load_ssbo = load_ssbo;
    ctx->abi.load_sampler_desc = si_nir_load_sampler_desc;
 }

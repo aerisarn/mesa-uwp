@@ -95,6 +95,26 @@ static nir_ssa_def *load_ubo_desc(nir_builder *b, nir_ssa_def *index,
    return nir_load_smem_amd(b, 4, addr, offset);
 }
 
+static nir_ssa_def *load_ssbo_desc(nir_builder *b, nir_src *index,
+                                   struct lower_resource_state *s)
+{
+   struct si_shader_selector *sel = s->shader->selector;
+
+   /* Fast path if the shader buffer is in user SGPRs. */
+   if (nir_src_is_const(*index)) {
+      unsigned slot = nir_src_as_uint(*index);
+      if (slot < sel->cs_num_shaderbufs_in_user_sgprs)
+         return ac_nir_load_arg(b, &s->args->ac, s->args->cs_shaderbuf[slot]);
+   }
+
+   nir_ssa_def *addr = ac_nir_load_arg(b, &s->args->ac, s->args->const_and_shader_buffers);
+   nir_ssa_def *slot = clamp_index(b, index->ssa, sel->info.base.num_ssbos);
+   slot = nir_isub(b, nir_imm_int(b, SI_NUM_SHADER_BUFFERS - 1), slot);
+
+   nir_ssa_def *offset = nir_ishl_imm(b, slot, 4);
+   return nir_load_smem_amd(b, 4, addr, offset);
+}
+
 static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                                      struct lower_resource_state *s)
 {
@@ -104,6 +124,41 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
 
       nir_ssa_def *desc = load_ubo_desc(b, intrin->src[0].ssa, s);
       nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[0], desc);
+      break;
+   }
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_fmax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap: {
+      assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
+
+      nir_ssa_def *desc = load_ssbo_desc(b, &intrin->src[0], s);
+      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[0], desc);
+      break;
+   }
+   case nir_intrinsic_store_ssbo: {
+      assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
+
+      nir_ssa_def *desc = load_ssbo_desc(b, &intrin->src[1], s);
+      nir_instr_rewrite_src_ssa(&intrin->instr, &intrin->src[1], desc);
+      break;
+   }
+   case nir_intrinsic_get_ssbo_size: {
+      assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
+
+      nir_ssa_def *desc = load_ssbo_desc(b, &intrin->src[0], s);
+      nir_ssa_def *size = nir_channel(b, desc, 2);
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, size);
+      nir_instr_remove(&intrin->instr);
       break;
    }
    default:
