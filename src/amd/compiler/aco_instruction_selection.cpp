@@ -6141,6 +6141,21 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
          coords.emplace_back(emit_extract_vector(ctx, src0, i, rc));
    }
 
+   bool has_lod = false;
+   Temp lod;
+
+   if (instr->intrinsic == nir_intrinsic_bindless_image_load ||
+       instr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
+       instr->intrinsic == nir_intrinsic_bindless_image_store) {
+      int lod_index = instr->intrinsic == nir_intrinsic_bindless_image_store ? 4 : 3;
+      assert(instr->src[lod_index].ssa->bit_size == (a16 ? 16 : 32));
+      has_lod =
+         !nir_src_is_const(instr->src[lod_index]) || nir_src_as_uint(instr->src[lod_index]) != 0;
+
+      if (has_lod)
+         lod = get_ssa_temp_tex(ctx, instr->src[lod_index].ssa, a16);
+   }
+
    if (ctx->options->key.image_2d_view_of_3d &&
        dim == GLSL_SAMPLER_DIM_2D && !is_array) {
       /* The hw can't bind a slice of a 3D image as a 2D image, because it
@@ -6151,9 +6166,25 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
       Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       Temp rsrc_word5 = emit_extract_vector(ctx, rsrc, 5, v1);
       /* Extract the BASE_ARRAY field [0:12] from the descriptor. */
-      Temp first_layer =
-         bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), rsrc_word5,
-                  Operand::c32(0u), Operand::c32(13u));
+      Temp first_layer = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), rsrc_word5, Operand::c32(0u),
+                                  Operand::c32(13u));
+
+      if (has_lod) {
+         /* If there's a lod parameter it matter if the image is 3d or 2d because
+          * the hw reads either the fourth or third component as lod. So detect
+          * 3d images and place the lod at the third component otherwise.
+          * For non 3D descriptors we effectively add lod twice to coords,
+          * but the hw will only read the first one, the second is ignored.
+          */
+         Temp rsrc_word3 = emit_extract_vector(ctx, rsrc, 3, s1);
+         Temp type = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), rsrc_word3,
+                              Operand::c32(28 | (4 << 16))); /* extract last 4 bits */
+         Temp is_3d = bld.vopc_e64(aco_opcode::v_cmp_eq_u32, bld.def(bld.lm), type,
+                                   Operand::c32(V_008F1C_SQ_RSRC_IMG_3D));
+         first_layer =
+            bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), as_vgpr(ctx, lod), first_layer, is_3d);
+      }
+
       if (a16)
          coords.emplace_back(emit_extract_vector(ctx, first_layer, 0, v2b));
       else
@@ -6165,17 +6196,8 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
       coords.emplace_back(get_ssa_temp_tex(ctx, instr->src[2].ssa, a16));
    }
 
-   if (instr->intrinsic == nir_intrinsic_bindless_image_load ||
-       instr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
-       instr->intrinsic == nir_intrinsic_bindless_image_store) {
-      int lod_index = instr->intrinsic == nir_intrinsic_bindless_image_store ? 4 : 3;
-      assert(instr->src[lod_index].ssa->bit_size == (a16 ? 16 : 32));
-      bool level_zero =
-         nir_src_is_const(instr->src[lod_index]) && nir_src_as_uint(instr->src[lod_index]) == 0;
-
-      if (!level_zero)
-         coords.emplace_back(get_ssa_temp_tex(ctx, instr->src[lod_index].ssa, a16));
-   }
+   if (has_lod)
+      coords.emplace_back(lod);
 
    return emit_pack_v1(ctx, coords);
 }
