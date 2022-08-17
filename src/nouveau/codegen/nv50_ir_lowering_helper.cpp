@@ -129,12 +129,32 @@ LoweringHelper::handleCVT(Instruction *insn)
       return true;
    }
 
-   if (dTy == TYPE_S64 && sTy == TYPE_S32) {
-      Value *tmp = bld.getSSA();
-      bld.mkOp2(OP_SHR, TYPE_S32, tmp, insn->getSrc(0), bld.loadImm(bld.getSSA(), 31));
+   /* We can't convert to signed 64 bit integrers, hence shift the upper word
+    * and merge. For sources smaller than 32 bit, convert to 32 bit first.
+    */
+   if (dTy == TYPE_S64 && isSignedIntType(sTy) && typeSizeof(sTy) <= 4) {
+      Value *tmpExtbf;
+      Value *tmpShr = bld.getSSA();
+
+      if (typeSizeof(sTy) < 4) {
+         unsigned int interval = typeSizeof(sTy) == 1 ? 0x800 : 0x1000;
+         tmpExtbf = bld.getSSA();
+         bld.mkOp2(OP_EXTBF, TYPE_S32, tmpExtbf, insn->getSrc(0),
+                   bld.loadImm(bld.getSSA(), interval));
+         insn->setSrc(0, tmpExtbf);
+      } else {
+         tmpExtbf = insn->getSrc(0);
+      }
+
+      bld.mkOp2(OP_SHR, TYPE_S32, tmpShr, tmpExtbf, bld.loadImm(bld.getSSA(), 31));
+
       insn->op = OP_MERGE;
-      insn->setSrc(1, tmp);
-   } else if (dTy == TYPE_U64 && sTy == TYPE_U32) {
+      insn->setSrc(1, tmpShr);
+
+      return true;
+   }
+
+   if (dTy == TYPE_U64 && sTy == TYPE_U32) {
       insn->op = OP_MERGE;
       insn->setSrc(1, bld.loadImm(bld.getSSA(), 0));
    }
