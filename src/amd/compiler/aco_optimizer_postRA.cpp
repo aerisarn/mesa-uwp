@@ -581,10 +581,17 @@ optimize_postRA(Program* program)
     * no longer have any uses.
     */
    for (auto& block : program->blocks) {
-      auto new_end = std::remove_if(block.instructions.begin(), block.instructions.end(),
-                                    [&ctx](const aco_ptr<Instruction>& instr)
-                                    { return !instr || is_dead(ctx.uses, instr.get()); });
-      block.instructions.resize(new_end - block.instructions.begin());
+      std::vector<aco_ptr<Instruction>> instructions;
+      instructions.reserve(block.instructions.size());
+
+      for (aco_ptr<Instruction>& instr : block.instructions) {
+         if (!instr || is_dead(ctx.uses, instr.get()))
+            continue;
+
+         instructions.emplace_back(std::move(instr));
+      }
+
+      block.instructions = std::move(instructions);
    }
 }
 
