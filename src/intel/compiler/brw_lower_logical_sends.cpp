@@ -1642,7 +1642,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    const bool has_side_effects = inst->has_side_effects();
 
    fs_reg sample_mask = allow_sample_mask.ud ? brw_sample_mask_reg(bld) :
-                                               fs_reg(brw_imm_d(0xffff));
+                                               fs_reg(brw_imm_ud(0xffffffff));
 
    /* From the BDW PRM Volume 7, page 147:
     *
@@ -1902,7 +1902,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    /* Predicate the instruction on the sample mask if needed */
    fs_reg sample_mask = allow_sample_mask.ud ? brw_sample_mask_reg(bld) :
-                                               fs_reg(brw_imm_d(0xffff));
+                                               fs_reg(brw_imm_ud(0xffffffff));
    if (sample_mask.file != BAD_FILE && sample_mask.file != IMM)
       brw_emit_predicate_on_sample_mask(bld, inst);
 
