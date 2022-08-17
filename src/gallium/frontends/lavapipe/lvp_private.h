@@ -140,8 +140,6 @@ struct lvp_instance {
    struct vk_instance vk;
 
    uint32_t apiVersion;
-   int physicalDeviceCount;
-   struct lvp_physical_device physicalDevice;
 
    uint64_t debug_flags;
 
