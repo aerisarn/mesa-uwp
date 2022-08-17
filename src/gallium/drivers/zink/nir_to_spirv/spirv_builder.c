@@ -758,6 +758,13 @@ spirv_builder_emit_kill(struct spirv_builder *b)
    spirv_buffer_emit_word(&b->instructions, SpvOpKill | (1 << 16));
 }
 
+void
+spirv_builder_emit_demote(struct spirv_builder *b)
+{
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 1);
+   spirv_buffer_emit_word(&b->instructions, SpvOpDemoteToHelperInvocation | (1 << 16));
+}
+
 SpvId
 spirv_builder_emit_vote(struct spirv_builder *b, SpvOp op, SpvId src)
 {
