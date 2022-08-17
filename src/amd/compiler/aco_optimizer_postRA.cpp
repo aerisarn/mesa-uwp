@@ -63,11 +63,18 @@ Idx const_or_undef{UINT32_MAX, 2};
 Idx overwritten_untrackable{UINT32_MAX, 3};
 
 struct pr_opt_ctx {
+   using Idx_array = std::array<Idx, max_reg_cnt>;
+
    Program* program;
    Block* current_block;
    uint32_t current_instr_idx;
    std::vector<uint16_t> uses;
-   std::vector<std::array<Idx, max_reg_cnt>> instr_idx_by_regs;
+   std::unique_ptr<Idx_array[]> instr_idx_by_regs;
+
+   pr_opt_ctx(Program* p)
+       : program(p), current_block(nullptr), current_instr_idx(0), uses(dead_code_analysis(p)),
+         instr_idx_by_regs(std::unique_ptr<Idx_array[]>{new Idx_array[p->blocks.size()]})
+   {}
 
    void reset_block(Block* block)
    {
@@ -557,10 +564,7 @@ process_instruction(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 void
 optimize_postRA(Program* program)
 {
-   pr_opt_ctx ctx;
-   ctx.program = program;
-   ctx.uses = dead_code_analysis(program);
-   ctx.instr_idx_by_regs.resize(program->blocks.size());
+   pr_opt_ctx ctx(program);
 
    /* Forward pass
     * Goes through each instruction exactly once, and can transform
