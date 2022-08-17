@@ -2048,6 +2048,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++)
       mtx_init(&device->scratch_bos[i].construct_mtx, mtx_plain);
 
+   mtx_init(&device->fiber_pvtmem_bo.mtx, mtx_plain);
+   mtx_init(&device->wave_pvtmem_bo.mtx, mtx_plain);
+
    mtx_init(&device->mutex, mtx_plain);
 
    device->use_z24uint_s8uint =
@@ -2125,6 +2128,12 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       if (device->scratch_bos[i].initialized)
          tu_bo_finish(device, device->scratch_bos[i].bo);
    }
+
+   if (device->fiber_pvtmem_bo.bo)
+      tu_bo_finish(device, device->fiber_pvtmem_bo.bo);
+   
+   if (device->wave_pvtmem_bo.bo)
+      tu_bo_finish(device, device->wave_pvtmem_bo.bo);
 
    tu_destroy_clear_blit_shaders(device);
 

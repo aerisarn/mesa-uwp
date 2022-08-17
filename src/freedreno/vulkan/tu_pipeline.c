@@ -25,6 +25,7 @@
 #include "tu_cmd_buffer.h"
 #include "tu_cs.h"
 #include "tu_device.h"
+#include "tu_drm.h"
 #include "tu_formats.h"
 #include "tu_lrz.h"
 #include "tu_pass.h"
@@ -2287,47 +2288,68 @@ tu6_emit_blend(struct tu_cs *cs,
    }
 }
 
-static uint32_t
-calc_pvtmem_size(struct tu_device *dev, struct tu_pvtmem_config *config,
-                 uint32_t pvtmem_bytes)
-{
-   uint32_t per_fiber_size = ALIGN(pvtmem_bytes, 512);
-   uint32_t per_sp_size =
-      ALIGN(per_fiber_size * dev->physical_device->info->a6xx.fibers_per_sp, 1 << 12);
-
-   if (config) {
-      config->per_fiber_size = per_fiber_size;
-      config->per_sp_size = per_sp_size;
-   }
-
-   return dev->physical_device->info->num_sp_cores * per_sp_size;
-}
-
 static VkResult
 tu_setup_pvtmem(struct tu_device *dev,
                 struct tu_pipeline *pipeline,
                 struct tu_pvtmem_config *config,
-                uint32_t pvtmem_bytes, bool per_wave)
+                uint32_t pvtmem_bytes,
+                bool per_wave)
 {
    if (!pvtmem_bytes) {
       memset(config, 0, sizeof(*config));
       return VK_SUCCESS;
    }
 
-   uint32_t total_size = calc_pvtmem_size(dev, config, pvtmem_bytes);
+   /* There is a substantial memory footprint from private memory BOs being
+    * allocated on a per-pipeline basis and it isn't required as the same
+    * BO can be utilized by multiple pipelines as long as they have the
+    * private memory layout (sizes and per-wave/per-fiber) to avoid being
+    * overwritten by other active pipelines using the same BO with differing
+    * private memory layouts resulting memory corruption.
+    *
+    * To avoid this, we create private memory BOs on a per-device level with
+    * an associated private memory layout then dynamically grow them when
+    * needed and reuse them across pipelines. Growth is done in terms of
+    * powers of two so that we can avoid frequent reallocation of the
+    * private memory BOs.
+    */
+
+   struct tu_pvtmem_bo *pvtmem_bo =
+      per_wave ? &dev->wave_pvtmem_bo : &dev->fiber_pvtmem_bo;
+   mtx_lock(&pvtmem_bo->mtx);
+
+   if (pvtmem_bo->per_fiber_size < pvtmem_bytes) {
+      if (pvtmem_bo->bo)
+         tu_bo_finish(dev, pvtmem_bo->bo);
+
+      pvtmem_bo->per_fiber_size =
+         util_next_power_of_two(ALIGN(pvtmem_bytes, 512));
+      pvtmem_bo->per_sp_size =
+         ALIGN(pvtmem_bo->per_fiber_size *
+                  dev->physical_device->info->a6xx.fibers_per_sp,
+               1 << 12);
+      uint32_t total_size =
+         dev->physical_device->info->num_sp_cores * pvtmem_bo->per_sp_size;
+
+      VkResult result = tu_bo_init_new(dev, &pvtmem_bo->bo, total_size,
+                                       TU_BO_ALLOC_NO_FLAGS);
+      if (result != VK_SUCCESS) {
+         mtx_unlock(&pvtmem_bo->mtx);
+         return result;
+      }
+   }
+
    config->per_wave = per_wave;
+   config->per_fiber_size = pvtmem_bo->per_fiber_size;
+   config->per_sp_size = pvtmem_bo->per_sp_size;
 
-   VkResult result =
-      tu_bo_init_new(dev, &pipeline->pvtmem_bo, total_size,
-                     TU_BO_ALLOC_NO_FLAGS);
-   if (result != VK_SUCCESS)
-      return result;
-
+   pipeline->pvtmem_bo = tu_bo_get_ref(pvtmem_bo->bo);
    config->iova = pipeline->pvtmem_bo->iova;
 
-   return result;
-}
+   mtx_unlock(&pvtmem_bo->mtx);
 
+   return VK_SUCCESS;
+}
 
 static VkResult
 tu_pipeline_allocate_cs(struct tu_device *dev,

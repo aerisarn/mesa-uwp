@@ -236,6 +236,12 @@ struct tu_device
       bool initialized;
    } scratch_bos[48 - MIN_SCRATCH_BO_SIZE_LOG2];
 
+   struct tu_pvtmem_bo {
+      mtx_t mtx;
+      struct tu_bo *bo;
+      uint32_t per_fiber_size, per_sp_size;
+   } fiber_pvtmem_bo, wave_pvtmem_bo;
+
    struct tu_bo *global_bo;
 
    uint32_t implicit_sync_bo_count;
