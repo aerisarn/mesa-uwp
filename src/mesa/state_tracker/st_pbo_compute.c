@@ -40,13 +40,26 @@
 #include "util/u_sampler.h"
 #include "util/streaming-load-memcpy.h"
 
+#define SPEC_USES_THRESHOLD 5
+
+struct pbo_spec_async_data {
+   uint32_t data[4]; //must be first
+   bool created;
+   unsigned uses;
+   struct util_queue_fence fence;
+   nir_shader *nir;
+   struct pipe_shader_state *cs;
+};
+
 struct pbo_async_data {
    struct st_context *st;
    enum pipe_texture_target target;
    unsigned num_components;
    struct util_queue_fence fence;
    nir_shader *nir;
+   nir_shader *copy; //immutable
    struct pipe_shader_state *cs;
+   struct set specialized;
 };
 
 #define BGR_FORMAT(NAME) \
@@ -792,6 +805,53 @@ create_conversion_shader_async(void *data, void *gdata, int thread_index)
 {
    struct pbo_async_data *async = data;
    async->nir = create_conversion_shader(async->st, async->target, async->num_components);
+   /* this is hefty, but specialized shaders need a base to work from */
+   async->copy = nir_shader_clone(NULL, async->nir);
+}
+
+static void
+create_spec_shader_async(void *data, void *gdata, int thread_index)
+{
+   struct pbo_spec_async_data *spec = data;
+   /* this is still the immutable clone: create our own copy */
+   spec->nir = nir_shader_clone(NULL, spec->nir);
+   /* do not inline geometry */
+   uint16_t offsets[2] = {2, 3};
+   nir_inline_uniforms(spec->nir, ARRAY_SIZE(offsets), &spec->data[2], offsets);
+   spec->created = true;
+}
+
+static uint32_t
+hash_pbo_data(const void *data)
+{
+   const struct pbo_data *p = data;
+   return _mesa_hash_data(&p->vec[2], sizeof(uint32_t) * 2);
+}
+
+static bool
+equals_pbo_data(const void *a, const void *b)
+{
+   const struct pbo_data *pa = a, *pb = b;
+   return !memcmp(&pa->vec[2], &pb->vec[2], sizeof(uint32_t) * 2);
+}
+
+static struct pbo_spec_async_data *
+add_spec_data(struct pbo_async_data *async, struct pbo_data *pd)
+{
+   bool found = false;
+   struct pbo_spec_async_data *spec;
+   struct set_entry *entry = _mesa_set_search_or_add(&async->specialized, pd, &found);
+   if (!found) {
+      spec = calloc(1, sizeof(struct pbo_async_data));
+      util_queue_fence_init(&spec->fence);
+      memcpy(spec->data, pd, sizeof(struct pbo_data));
+      entry->key = spec;
+   }
+   spec = (void*)entry->key;
+   if (!spec->nir && !spec->created)
+      spec->nir = async->copy;
+   spec->uses++;
+   return spec;
 }
 
 static struct pipe_resource *
@@ -845,6 +905,7 @@ download_texture_compute(struct st_context *st,
    if (he) {
       if (screen->driver_thread_add_job) {
          struct pbo_async_data *async = he->data;
+         struct pbo_spec_async_data *spec = add_spec_data(async, &pd);
          if (!util_queue_fence_is_signalled(&async->fence))
             return NULL;
          /* nir is definitely done */
@@ -863,18 +924,40 @@ download_texture_compute(struct st_context *st,
              !screen->is_parallel_shader_compilation_finished(screen, async->cs, MESA_SHADER_COMPUTE))
             return NULL;
          cs = async->cs;
+         if (spec->uses > SPEC_USES_THRESHOLD && util_queue_fence_is_signalled(&spec->fence)) {
+            if (spec->created) {
+               if (!spec->cs) {
+                  struct pipe_compute_state state = {0};
+                  state.ir_type = PIPE_SHADER_IR_NIR;
+                  state.req_local_mem = spec->nir->info.shared_size;
+                  state.prog = spec->nir;
+                  spec->nir = NULL;
+                  spec->cs = pipe->create_compute_state(pipe, &state);
+               }
+               if (screen->is_parallel_shader_compilation_finished &&
+                   screen->is_parallel_shader_compilation_finished(screen, spec->cs, MESA_SHADER_COMPUTE)) {
+                  cs = spec->cs;
+                  cb.buffer_size = 2 * sizeof(uint32_t);
+               }
+            } else {
+               screen->driver_thread_add_job(screen, spec, &spec->fence, create_spec_shader_async, NULL, 0);
+            }
+         }
+      } else {
+         cs = he->data;
       }
    } else {
       if (screen->driver_thread_add_job) {
-         struct pbo_async_data *async = malloc(sizeof(struct pbo_async_data));
+         struct pbo_async_data *async = calloc(1, sizeof(struct pbo_async_data));
          async->st = st;
          async->target = view_target;
          async->num_components = num_components;
-         async->nir = NULL;
-         async->cs = NULL;
          util_queue_fence_init(&async->fence);
          screen->driver_thread_add_job(screen, async, &async->fence, create_conversion_shader_async, NULL, 0);
          _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, async);
+
+         _mesa_set_init(&async->specialized, NULL, hash_pbo_data, equals_pbo_data);
+         add_spec_data(async, &pd);
          return NULL;
       } else {
          nir_shader *nir = create_conversion_shader(st, view_target, num_components);
@@ -1225,8 +1308,21 @@ st_pbo_compute_deinit(struct st_context *st)
       if (screen->driver_thread_add_job) {
          struct pbo_async_data *async = entry->data;
          util_queue_fence_wait(&async->fence);
-         st->pipe->delete_compute_state(st->pipe, async->cs);
+         if (async->cs)
+            st->pipe->delete_compute_state(st->pipe, async->cs);
          util_queue_fence_destroy(&async->fence);
+         ralloc_free(async->copy);
+         set_foreach_remove(&async->specialized, se) {
+            struct pbo_spec_async_data *spec = (void*)se->key;
+            util_queue_fence_wait(&spec->fence);
+            util_queue_fence_destroy(&spec->fence);
+            if (spec->created) {
+               ralloc_free(spec->nir);
+               st->pipe->delete_compute_state(st->pipe, spec->cs);
+            }
+            free(spec);
+         }
+         ralloc_free(async->specialized.table);
          free(async);
       } else {
          st->pipe->delete_compute_state(st->pipe, entry->data);
