@@ -214,8 +214,8 @@ init_pbo_shader_data(nir_builder *b, struct pbo_shader_data *sd)
    nir_variable *ubo = nir_variable_create(b->shader, nir_var_uniform, glsl_uvec4_type(), "offset");
    nir_ssa_def *ubo_load = nir_load_var(b, ubo);
 
-   sd->offset = nir_umin(b, nir_u2u32(b, nir_extract_bits(b, &ubo_load, 1, STRUCT_OFFSET(x), 2, 16)), nir_imm_int(b, 65535));
-   sd->range = nir_umin(b, nir_u2u32(b, nir_extract_bits(b, &ubo_load, 1, STRUCT_OFFSET(width), 3, 16)), nir_imm_int(b, 65535));
+   sd->offset = nir_u2u32(b, nir_extract_bits(b, &ubo_load, 1, STRUCT_OFFSET(x), 2, 16));
+   sd->range = nir_u2u32(b, nir_extract_bits(b, &ubo_load, 1, STRUCT_OFFSET(width), 3, 16));
 
    STRUCT_BLOCK(80,
       STRUCT_MEMBER_BOOL(80, invert, 0);
@@ -797,9 +797,11 @@ download_texture_compute(struct st_context *st,
       struct pipe_constant_buffer cb;
       assert(view_target != PIPE_TEXTURE_1D_ARRAY || !zoffset);
       struct pbo_data pd = {
-         .x = xoffset,
-         .y = view_target == PIPE_TEXTURE_1D_ARRAY ? 0 : yoffset;
-         .width = width, .height = height, .depth = depth,
+         .x = MIN2(xoffset, 65535),
+         .y = view_target == PIPE_TEXTURE_1D_ARRAY ? 0 : MIN2(yoffset, 65535),
+         .width = MIN2(width, 65535),
+         .height = MIN2(height, 65535),
+         .depth = MIN2(depth, 65535),
          .invert = pack->Invert,
          .blocksize = util_format_get_blocksize(dst_format) - 1,
          .alignment = ffs(MAX2(pack->Alignment, 1)) - 1,
