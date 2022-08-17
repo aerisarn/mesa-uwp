@@ -790,10 +790,10 @@ download_texture_compute(struct st_context *st,
    /* Upload constants */
    {
       struct pipe_constant_buffer cb;
-      assert(view_target != PIPE_TEXTURE_1D_ARRAY || !yoffset);
+      assert(view_target != PIPE_TEXTURE_1D_ARRAY || !zoffset);
       struct pbo_data pd = {
          .x = xoffset,
-         .y = yoffset,
+         .y = view_target == PIPE_TEXTURE_1D_ARRAY ? 0 : yoffset;
          .width = width, .height = height, .depth = depth,
          .invert = pack->Invert,
          .blocksize = util_format_get_blocksize(dst_format) - 1,
