@@ -24,17 +24,22 @@
                    offsetof(__typeof__(tbl), ext)) -                         \
     (tbl).extensions)
 
-#define VN_PREFIX_STYPE(stype) (VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##stype)
-#define VN_ADD_TO_PNEXT(elem, s_type, head)                                  \
+/** Add `elem` to the pNext chain of `head`. */
+#define VN_ADD_TO_PNEXT_OF(head, s_type, elem)                               \
    do {                                                                      \
-      (elem).sType = VN_PREFIX_STYPE(s_type);                                \
+      (elem).sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##s_type;             \
       (elem).pNext = (head).pNext;                                           \
       (head).pNext = &(elem);                                                \
    } while (0)
-#define VN_ADD_EXT_TO_PNEXT(ext, elem, s_type, head)                         \
+
+/**
+ * If the renderer supports the extension, add `elem` to the pNext chain of
+ * `head`.
+ */
+#define VN_ADD_EXT_TO_PNEXT_OF(head, s_type, elem, ext_name)                 \
    do {                                                                      \
-      if (ext)                                                               \
-         VN_ADD_TO_PNEXT(elem, s_type, head);                                \
+      if (physical_dev->renderer_extensions.ext_name)                        \
+         VN_ADD_TO_PNEXT_OF((head), s_type, (elem));                         \
    } while (0)
 
 static void
@@ -75,139 +80,73 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceVulkanMemoryModelFeatures vulkan_memory_model;
    } local_feats;
 
+   /* clang-format off */
+
    if (physical_dev->renderer_version >= VK_API_VERSION_1_2) {
-      VN_ADD_TO_PNEXT(feats->vulkan_1_1, VULKAN_1_1_FEATURES, features2);
-      VN_ADD_TO_PNEXT(feats->vulkan_1_2, VULKAN_1_2_FEATURES, features2);
+      VN_ADD_TO_PNEXT_OF(features2, VULKAN_1_1_FEATURES, feats->vulkan_1_1);
+      VN_ADD_TO_PNEXT_OF(features2, VULKAN_1_2_FEATURES, feats->vulkan_1_2);
    } else {
       /* Vulkan 1.1 */
-      VN_ADD_TO_PNEXT(local_feats._16bit_storage, 16BIT_STORAGE_FEATURES,
-                      features2);
-      VN_ADD_TO_PNEXT(local_feats.multiview, MULTIVIEW_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.variable_pointers,
-                      VARIABLE_POINTERS_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.protected_memory, PROTECTED_MEMORY_FEATURES,
-                      features2);
-      VN_ADD_TO_PNEXT(local_feats.sampler_ycbcr_conversion,
-                      SAMPLER_YCBCR_CONVERSION_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.shader_draw_parameters,
-                      SHADER_DRAW_PARAMETERS_FEATURES, features2);
+      VN_ADD_TO_PNEXT_OF(features2, 16BIT_STORAGE_FEATURES, local_feats._16bit_storage);
+      VN_ADD_TO_PNEXT_OF(features2, MULTIVIEW_FEATURES, local_feats.multiview);
+      VN_ADD_TO_PNEXT_OF(features2, PROTECTED_MEMORY_FEATURES, local_feats.protected_memory);
+      VN_ADD_TO_PNEXT_OF(features2, SAMPLER_YCBCR_CONVERSION_FEATURES, local_feats.sampler_ycbcr_conversion);
+      VN_ADD_TO_PNEXT_OF(features2, SHADER_DRAW_PARAMETERS_FEATURES, local_feats.shader_draw_parameters);
+      VN_ADD_TO_PNEXT_OF(features2, VARIABLE_POINTERS_FEATURES, local_feats.variable_pointers);
 
       /* Vulkan 1.2 */
-      VN_ADD_TO_PNEXT(local_feats._8bit_storage, 8BIT_STORAGE_FEATURES,
-                      features2);
-      VN_ADD_TO_PNEXT(local_feats.shader_atomic_int64,
-                      SHADER_ATOMIC_INT64_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.shader_float16_int8,
-                      SHADER_FLOAT16_INT8_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.descriptor_indexing,
-                      DESCRIPTOR_INDEXING_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.scalar_block_layout,
-                      SCALAR_BLOCK_LAYOUT_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.imageless_framebuffer,
-                      IMAGELESS_FRAMEBUFFER_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.uniform_buffer_standard_layout,
-                      UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.shader_subgroup_extended_types,
-                      SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.separate_depth_stencil_layouts,
-                      SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.host_query_reset, HOST_QUERY_RESET_FEATURES,
-                      features2);
-      VN_ADD_TO_PNEXT(local_feats.timeline_semaphore,
-                      TIMELINE_SEMAPHORE_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.buffer_device_address,
-                      BUFFER_DEVICE_ADDRESS_FEATURES, features2);
-      VN_ADD_TO_PNEXT(local_feats.vulkan_memory_model,
-                      VULKAN_MEMORY_MODEL_FEATURES, features2);
+      VN_ADD_TO_PNEXT_OF(features2, 8BIT_STORAGE_FEATURES, local_feats._8bit_storage);
+      VN_ADD_TO_PNEXT_OF(features2, BUFFER_DEVICE_ADDRESS_FEATURES, local_feats.buffer_device_address);
+      VN_ADD_TO_PNEXT_OF(features2, DESCRIPTOR_INDEXING_FEATURES, local_feats.descriptor_indexing);
+      VN_ADD_TO_PNEXT_OF(features2, HOST_QUERY_RESET_FEATURES, local_feats.host_query_reset);
+      VN_ADD_TO_PNEXT_OF(features2, IMAGELESS_FRAMEBUFFER_FEATURES, local_feats.imageless_framebuffer);
+      VN_ADD_TO_PNEXT_OF(features2, SCALAR_BLOCK_LAYOUT_FEATURES, local_feats.scalar_block_layout);
+      VN_ADD_TO_PNEXT_OF(features2, SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES, local_feats.separate_depth_stencil_layouts);
+      VN_ADD_TO_PNEXT_OF(features2, SHADER_ATOMIC_INT64_FEATURES, local_feats.shader_atomic_int64);
+      VN_ADD_TO_PNEXT_OF(features2, SHADER_FLOAT16_INT8_FEATURES, local_feats.shader_float16_int8);
+      VN_ADD_TO_PNEXT_OF(features2, SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES, local_feats.shader_subgroup_extended_types);
+      VN_ADD_TO_PNEXT_OF(features2, TIMELINE_SEMAPHORE_FEATURES, local_feats.timeline_semaphore);
+      VN_ADD_TO_PNEXT_OF(features2, UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES, local_feats.uniform_buffer_standard_layout);
+      VN_ADD_TO_PNEXT_OF(features2, VULKAN_MEMORY_MODEL_FEATURES, local_feats.vulkan_memory_model);
    }
 
    /* Vulkan 1.3 */
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_integer_dot_product,
-                       feats->shader_integer_dot_product,
-                       SHADER_INTEGER_DOT_PRODUCT_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_terminate_invocation,
-                       feats->shader_terminate_invocation,
-                       SHADER_TERMINATE_INVOCATION_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_4444_formats, feats->_4444_formats,
-                       4444_FORMATS_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state,
-                       feats->extended_dynamic_state,
-                       EXTENDED_DYNAMIC_STATE_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state2,
-                       feats->extended_dynamic_state_2,
-                       EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_image_robustness, feats->image_robustness,
-                       IMAGE_ROBUSTNESS_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
-                       feats->inline_uniform_block,
-                       INLINE_UNIFORM_BLOCK_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_pipeline_creation_cache_control,
-                       feats->pipeline_creation_cache_control,
-                       PIPELINE_CREATION_CACHE_CONTROL_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_dynamic_rendering, feats->dynamic_rendering,
-                       DYNAMIC_RENDERING_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_maintenance4, feats->maintenance4,
-                       MAINTENANCE_4_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_shader_demote_to_helper_invocation,
-                       feats->shader_demote_to_helper_invocation,
-                       SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES,
-                       features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_subgroup_size_control,
-                       feats->subgroup_size_control,
-                       SUBGROUP_SIZE_CONTROL_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_texture_compression_astc_hdr,
-                       feats->texture_compression_astc_hdr,
-                       TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_zero_initialize_workgroup_memory,
-                       feats->zero_initialize_workgroup_memory,
-                       ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, features2);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, 4444_FORMATS_FEATURES_EXT, feats->_4444_formats, EXT_4444_formats);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, DYNAMIC_RENDERING_FEATURES, feats->dynamic_rendering, KHR_dynamic_rendering);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, feats->extended_dynamic_state_2, EXT_extended_dynamic_state2);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, EXTENDED_DYNAMIC_STATE_FEATURES_EXT, feats->extended_dynamic_state, EXT_extended_dynamic_state);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, IMAGE_ROBUSTNESS_FEATURES_EXT, feats->image_robustness, EXT_image_robustness);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, INLINE_UNIFORM_BLOCK_FEATURES, feats->inline_uniform_block, EXT_inline_uniform_block);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, MAINTENANCE_4_FEATURES, feats->maintenance4, KHR_maintenance4);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, PIPELINE_CREATION_CACHE_CONTROL_FEATURES, feats->pipeline_creation_cache_control, EXT_pipeline_creation_cache_control);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, feats->shader_demote_to_helper_invocation, EXT_shader_demote_to_helper_invocation);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_INTEGER_DOT_PRODUCT_FEATURES, feats->shader_integer_dot_product, KHR_shader_integer_dot_product);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_TERMINATE_INVOCATION_FEATURES, feats->shader_terminate_invocation, KHR_shader_terminate_invocation);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, SUBGROUP_SIZE_CONTROL_FEATURES, feats->subgroup_size_control, EXT_subgroup_size_control);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, feats->texture_compression_astc_hdr, EXT_texture_compression_astc_hdr);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, feats->zero_initialize_workgroup_memory, KHR_zero_initialize_workgroup_memory);
 
    /* EXT */
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_conditional_rendering,
-                       feats->conditional_rendering,
-                       CONDITIONAL_RENDERING_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
-                       feats->custom_border_color,
-                       CUSTOM_BORDER_COLOR_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_depth_clip_enable, feats->depth_clip_enable,
-                       DEPTH_CLIP_ENABLE_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_image_view_min_lod,
-                       feats->image_view_min_lod,
-                       IMAGE_VIEW_MIN_LOD_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_index_type_uint8, feats->index_type_uint8,
-                       INDEX_TYPE_UINT8_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
-                       feats->line_rasterization,
-                       LINE_RASTERIZATION_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_multi_draw, feats->multi_draw,
-                       MULTI_DRAW_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_primitive_topology_list_restart,
-                       feats->primitive_topology_list_restart,
-                       PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT,
-                       features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_private_data, feats->private_data,
-                       PRIVATE_DATA_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, feats->provoking_vertex,
-                       PROVOKING_VERTEX_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_robustness2, feats->robustness_2,
-                       ROBUSTNESS_2_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_texel_buffer_alignment,
-                       feats->texel_buffer_alignment,
-                       TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
-                       feats->transform_feedback,
-                       TRANSFORM_FEEDBACK_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_vertex_attribute_divisor,
-                       feats->vertex_attribute_divisor,
-                       VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_ycbcr_2plane_444_formats,
-                       feats->ycbcr_2plane_444_formats,
-                       YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, CONDITIONAL_RENDERING_FEATURES_EXT, feats->conditional_rendering, EXT_conditional_rendering);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, CUSTOM_BORDER_COLOR_FEATURES_EXT, feats->custom_border_color, EXT_custom_border_color);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, DEPTH_CLIP_ENABLE_FEATURES_EXT, feats->depth_clip_enable, EXT_depth_clip_enable);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, IMAGE_VIEW_MIN_LOD_FEATURES_EXT, feats->image_view_min_lod, EXT_image_view_min_lod);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, INDEX_TYPE_UINT8_FEATURES_EXT, feats->index_type_uint8, EXT_index_type_uint8);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, LINE_RASTERIZATION_FEATURES_EXT, feats->line_rasterization, EXT_line_rasterization);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, MULTI_DRAW_FEATURES_EXT, feats->multi_draw, EXT_multi_draw);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, feats->primitive_topology_list_restart, EXT_primitive_topology_list_restart);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, PRIVATE_DATA_FEATURES, feats->private_data, EXT_private_data);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, PROVOKING_VERTEX_FEATURES_EXT, feats->provoking_vertex, EXT_provoking_vertex);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, ROBUSTNESS_2_FEATURES_EXT, feats->robustness_2, EXT_robustness2);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, feats->texel_buffer_alignment, EXT_texel_buffer_alignment);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, TRANSFORM_FEEDBACK_FEATURES_EXT, feats->transform_feedback, EXT_transform_feedback);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, feats->vertex_attribute_divisor, EXT_vertex_attribute_divisor);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, EXT_ycbcr_2plane_444_formats);
 
-   /* vendor */
-   VN_ADD_EXT_TO_PNEXT(exts->VALVE_mutable_descriptor_type,
-                       feats->mutable_descriptor_type,
-                       MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, features2);
+   /* Vendor */
+   VN_ADD_EXT_TO_PNEXT_OF(features2, MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, feats->mutable_descriptor_type, VALVE_mutable_descriptor_type);
+
+   /* clang-format on */
 
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev), &features2);
@@ -484,74 +423,47 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceTimelineSemaphoreProperties timeline_semaphore;
    } local_props;
 
+   /* clang-format off */
+
    if (physical_dev->renderer_version >= VK_API_VERSION_1_2) {
-      VN_ADD_TO_PNEXT(props->vulkan_1_1, VULKAN_1_1_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(props->vulkan_1_2, VULKAN_1_2_PROPERTIES, properties2);
+      VN_ADD_TO_PNEXT_OF(properties2, VULKAN_1_1_PROPERTIES, props->vulkan_1_1);
+      VN_ADD_TO_PNEXT_OF(properties2, VULKAN_1_2_PROPERTIES, props->vulkan_1_2);
    } else {
       /* Vulkan 1.1 */
-      VN_ADD_TO_PNEXT(local_props.id, ID_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.subgroup, SUBGROUP_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.point_clipping, POINT_CLIPPING_PROPERTIES,
-                      properties2);
-      VN_ADD_TO_PNEXT(local_props.multiview, MULTIVIEW_PROPERTIES,
-                      properties2);
-      VN_ADD_TO_PNEXT(local_props.protected_memory,
-                      PROTECTED_MEMORY_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.maintenance_3, MAINTENANCE_3_PROPERTIES,
-                      properties2);
+      VN_ADD_TO_PNEXT_OF(properties2, ID_PROPERTIES, local_props.id);
+      VN_ADD_TO_PNEXT_OF(properties2, MAINTENANCE_3_PROPERTIES, local_props.maintenance_3);
+      VN_ADD_TO_PNEXT_OF(properties2, MULTIVIEW_PROPERTIES, local_props.multiview);
+      VN_ADD_TO_PNEXT_OF(properties2, POINT_CLIPPING_PROPERTIES, local_props.point_clipping);
+      VN_ADD_TO_PNEXT_OF(properties2, PROTECTED_MEMORY_PROPERTIES, local_props.protected_memory);
+      VN_ADD_TO_PNEXT_OF(properties2, SUBGROUP_PROPERTIES, local_props.subgroup);
 
       /* Vulkan 1.2 */
-      VN_ADD_TO_PNEXT(local_props.driver, DRIVER_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.float_controls, FLOAT_CONTROLS_PROPERTIES,
-                      properties2);
-      VN_ADD_TO_PNEXT(local_props.descriptor_indexing,
-                      DESCRIPTOR_INDEXING_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.depth_stencil_resolve,
-                      DEPTH_STENCIL_RESOLVE_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.sampler_filter_minmax,
-                      SAMPLER_FILTER_MINMAX_PROPERTIES, properties2);
-      VN_ADD_TO_PNEXT(local_props.timeline_semaphore,
-                      TIMELINE_SEMAPHORE_PROPERTIES, properties2);
+      VN_ADD_TO_PNEXT_OF(properties2, DEPTH_STENCIL_RESOLVE_PROPERTIES, local_props.depth_stencil_resolve);
+      VN_ADD_TO_PNEXT_OF(properties2, DESCRIPTOR_INDEXING_PROPERTIES, local_props.descriptor_indexing);
+      VN_ADD_TO_PNEXT_OF(properties2, DRIVER_PROPERTIES, local_props.driver);
+      VN_ADD_TO_PNEXT_OF(properties2, FLOAT_CONTROLS_PROPERTIES, local_props.float_controls);
+      VN_ADD_TO_PNEXT_OF(properties2, SAMPLER_FILTER_MINMAX_PROPERTIES, local_props.sampler_filter_minmax);
+      VN_ADD_TO_PNEXT_OF(properties2, TIMELINE_SEMAPHORE_PROPERTIES, local_props.timeline_semaphore);
    }
 
    /* Vulkan 1.3 */
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_inline_uniform_block,
-                       props->inline_uniform_block,
-                       INLINE_UNIFORM_BLOCK_PROPERTIES, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_integer_dot_product,
-                       props->shader_integer_dot_product,
-                       SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_subgroup_size_control,
-                       props->subgroup_size_control,
-                       SUBGROUP_SIZE_CONTROL_PROPERTIES, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_texel_buffer_alignment,
-                       props->texel_buffer_alignment,
-                       TEXEL_BUFFER_ALIGNMENT_PROPERTIES, properties2);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, INLINE_UNIFORM_BLOCK_PROPERTIES, props->inline_uniform_block, EXT_inline_uniform_block);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, props->shader_integer_dot_product, KHR_shader_integer_dot_product);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, SUBGROUP_SIZE_CONTROL_PROPERTIES, props->subgroup_size_control, EXT_subgroup_size_control);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, TEXEL_BUFFER_ALIGNMENT_PROPERTIES, props->texel_buffer_alignment, EXT_texel_buffer_alignment);
 
    /* EXT */
-   VN_ADD_EXT_TO_PNEXT(
-      exts->EXT_conservative_rasterization, props->conservative_rasterization,
-      CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
-                       props->custom_border_color,
-                       CUSTOM_BORDER_COLOR_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
-                       props->line_rasterization,
-                       LINE_RASTERIZATION_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_multi_draw, props->multi_draw,
-                       MULTI_DRAW_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, props->provoking_vertex,
-                       PROVOKING_VERTEX_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_robustness2, props->robustness_2,
-                       ROBUSTNESS_2_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
-                       props->transform_feedback,
-                       TRANSFORM_FEEDBACK_PROPERTIES_EXT, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->KHR_maintenance4, props->maintenance4,
-                       MAINTENANCE_4_PROPERTIES, properties2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_vertex_attribute_divisor,
-                       props->vertex_attribute_divisor,
-                       VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT, properties2);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, props->conservative_rasterization, EXT_conservative_rasterization);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, CUSTOM_BORDER_COLOR_PROPERTIES_EXT, props->custom_border_color, EXT_custom_border_color);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, LINE_RASTERIZATION_PROPERTIES_EXT, props->line_rasterization, EXT_line_rasterization);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, MAINTENANCE_4_PROPERTIES, props->maintenance4, KHR_maintenance4);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, MULTI_DRAW_PROPERTIES_EXT, props->multi_draw, EXT_multi_draw);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, PROVOKING_VERTEX_PROPERTIES_EXT, props->provoking_vertex, EXT_provoking_vertex);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, ROBUSTNESS_2_PROPERTIES_EXT, props->robustness_2, EXT_robustness2);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, TRANSFORM_FEEDBACK_PROPERTIES_EXT, props->transform_feedback, EXT_transform_feedback);
+   VN_ADD_EXT_TO_PNEXT_OF(properties2, VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT, props->vertex_attribute_divisor, EXT_vertex_attribute_divisor);
+
+   /* clang-format on */
 
    vn_call_vkGetPhysicalDeviceProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &properties2);
