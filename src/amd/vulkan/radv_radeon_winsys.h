@@ -304,6 +304,8 @@ struct radeon_winsys {
 
    int (*get_fd)(struct radeon_winsys *ws);
 
+   struct ac_addrlib *(*get_addrlib)(struct radeon_winsys *ws);
+
    const struct vk_sync_type *const *(*get_sync_types)(struct radeon_winsys *ws);
 };
 
