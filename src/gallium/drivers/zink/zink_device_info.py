@@ -253,6 +253,10 @@ EXTENSIONS = [
     Extension("VK_EXT_depth_clip_enable",
         alias="depth_clip_enable",
         features=True),
+    Extension("VK_EXT_shader_demote_to_helper_invocation",
+        alias="demote",
+        features=True,
+        conditions=["$feats.shaderDemoteToHelperInvocation"]),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
