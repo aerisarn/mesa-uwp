@@ -171,6 +171,8 @@ static void pvr_compute_job_ws_submit_info_init(
    const struct pvr_device *const device = ctx->device;
    const struct pvr_device_info *const dev_info = &device->pdevice->dev_info;
 
+   memset(submit_info, 0, sizeof(*submit_info));
+
    submit_info->frame_num = device->global_queue_present_count;
    submit_info->job_num = device->global_queue_job_count;
 
