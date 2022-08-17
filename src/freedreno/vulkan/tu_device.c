@@ -227,6 +227,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_image_2d_view_of_3d = true,
       .EXT_color_write_enable = true,
       .EXT_load_store_op_none = true,
+      .EXT_non_seamless_cube_map = true,
    };
 }
 
@@ -905,6 +906,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *features =
             (VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *)ext;
          features->vertexInputDynamicState = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: {
+         VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *features =
+            (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *)ext;
+         features->nonSeamlessCubeMap = true;
          break;
       }
 
@@ -2771,7 +2778,8 @@ tu_init_sampler(struct tu_device *device,
       A6XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW)) |
       A6XX_TEX_SAMP_0_LOD_BIAS(pCreateInfo->mipLodBias);
    sampler->descriptor[1] =
-      /* COND(!cso->seamless_cube_map, A6XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) | */
+      COND(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT,
+           A6XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) |
       COND(pCreateInfo->unnormalizedCoordinates, A6XX_TEX_SAMP_1_UNNORM_COORDS) |
       A6XX_TEX_SAMP_1_MIN_LOD(min_lod) |
       A6XX_TEX_SAMP_1_MAX_LOD(max_lod) |

@@ -28,7 +28,7 @@ traces:
       - device: freedreno-a630
         checksum: 14f7656971b98fdaaf00bf576ada7ccf
       - device: zink-a630
-        checksum: affab10e98c1415747b1dc38eb7f7d7d
+        checksum: 45bdbb33bf87ed114bd548248be13408
   - path: valve/portal-2-v2.trace
     expectations:
       # Skipped since it's slow even on a530.
@@ -53,7 +53,7 @@ traces:
       - device: freedreno-a630
         checksum: 339dce29ae08569652438116829510c7
       - device: zink-a630
-        checksum: dc9a01cfe6f2e542756b4892d80ef49c
+        checksum: 2eb996b7d308087c73c57872231f7baa
   - path: xonotic/xonotic-keybench-high.trace
     expectations:
       # Skipped since it's long on a530.
