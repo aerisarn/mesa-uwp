@@ -733,19 +733,12 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    buffer_size = MIN2(buffer_size, max_size);
    buffer_size = MAX2(buffer_size, min_size); /* min_size is more important */
 
-   enum radeon_bo_domain domain;
+   /* Use cached GTT for command buffers. Writing to other heaps is very slow on the CPU.
+    * The speed of writing to GTT WC is somewhere between no difference and very slow, while
+    * VRAM being very slow a lot more often.
+    */
+   enum radeon_bo_domain domain = RADEON_DOMAIN_GTT;
    unsigned flags = RADEON_FLAG_NO_INTERPROCESS_SHARING;
-
-   if (cs->ip_type == AMD_IP_GFX ||
-       cs->ip_type == AMD_IP_COMPUTE ||
-       cs->ip_type == AMD_IP_SDMA) {
-      domain = ws->info.smart_access_memory ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
-      flags |= RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC;
-   } else {
-      /* UVD/VCE */
-      /* TODO: validate that UVD/VCE don't read from IBs and enable WC or even VRAM. */
-      domain = RADEON_DOMAIN_GTT;
-   }
 
    pb = amdgpu_bo_create(ws, buffer_size,
                          ws->info.gart_page_size,
