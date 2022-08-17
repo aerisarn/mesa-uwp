@@ -355,6 +355,13 @@ tu_physical_device_finish(struct tu_physical_device *device)
    vk_physical_device_finish(&device->vk);
 }
 
+static void
+tu_destroy_physical_device(struct vk_physical_device *device)
+{
+   tu_physical_device_finish((struct tu_physical_device *) device);
+   vk_free(&device->instance->alloc, device);
+}
+
 static const struct debug_control tu_debug_options[] = {
    { "startup", TU_DEBUG_STARTUP },
    { "nir", TU_DEBUG_NIR },
@@ -447,7 +454,13 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       return vk_error(NULL, result);
    }
 
-   instance->physical_device_count = -1;
+#ifndef TU_USE_KGSL
+   instance->vk.physical_devices.try_create_for_drm =
+      tu_physical_device_try_create;
+#else
+   instance->vk.physical_devices.enumerate = tu_enumerate_devices;
+#endif
+   instance->vk.physical_devices.destroy = tu_destroy_physical_device;
 
    instance->debug_flags =
       parse_debug_string(os_get_option("TU_DEBUG"), tu_debug_options);
@@ -485,10 +498,6 @@ tu_DestroyInstance(VkInstance _instance,
    if (!instance)
       return;
 
-   for (int i = 0; i < instance->physical_device_count; ++i) {
-      tu_physical_device_finish(instance->physical_devices + i);
-   }
-
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
    driDestroyOptionCache(&instance->dri_options);
@@ -496,64 +505,6 @@ tu_DestroyInstance(VkInstance _instance,
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_EnumeratePhysicalDevices(VkInstance _instance,
-                            uint32_t *pPhysicalDeviceCount,
-                            VkPhysicalDevice *pPhysicalDevices)
-{
-   TU_FROM_HANDLE(tu_instance, instance, _instance);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out,
-                          pPhysicalDevices, pPhysicalDeviceCount);
-
-   VkResult result;
-
-   if (instance->physical_device_count < 0) {
-      result = tu_enumerate_devices(instance);
-      if (result != VK_SUCCESS && result != VK_ERROR_INCOMPATIBLE_DRIVER)
-         return result;
-   }
-
-   for (uint32_t i = 0; i < instance->physical_device_count; ++i) {
-      vk_outarray_append_typed(VkPhysicalDevice, &out, p)
-      {
-         *p = tu_physical_device_to_handle(instance->physical_devices + i);
-      }
-   }
-
-   return vk_outarray_status(&out);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_EnumeratePhysicalDeviceGroups(
-   VkInstance _instance,
-   uint32_t *pPhysicalDeviceGroupCount,
-   VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
-{
-   TU_FROM_HANDLE(tu_instance, instance, _instance);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
-                          pPhysicalDeviceGroupProperties,
-                          pPhysicalDeviceGroupCount);
-   VkResult result;
-
-   if (instance->physical_device_count < 0) {
-      result = tu_enumerate_devices(instance);
-      if (result != VK_SUCCESS && result != VK_ERROR_INCOMPATIBLE_DRIVER)
-         return result;
-   }
-
-   for (uint32_t i = 0; i < instance->physical_device_count; ++i) {
-      vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p)
-      {
-         p->physicalDeviceCount = 1;
-         p->physicalDevices[0] =
-            tu_physical_device_to_handle(instance->physical_devices + i);
-         p->subsetAllocation = false;
-      }
-   }
-
-   return vk_outarray_status(&out);
 }
 
 static void

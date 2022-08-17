@@ -721,11 +721,18 @@ const struct vk_sync_type tu_timeline_sync_type = {
    .wait_many = tu_timeline_sync_wait,
 };
 
-static VkResult
-tu_drm_device_init(struct tu_physical_device *device,
-                   struct tu_instance *instance,
-                   drmDevicePtr drm_device)
+VkResult
+tu_physical_device_try_create(struct vk_instance *vk_instance,
+                              struct _drmDevice *drm_device,
+                              struct vk_physical_device **out)
 {
+   struct tu_instance *instance =
+      container_of(vk_instance, struct tu_instance, vk);
+
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
+       drm_device->bustype != DRM_BUS_PLATFORM)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+
    const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result = VK_SUCCESS;
@@ -770,6 +777,15 @@ tu_drm_device_init(struct tu_physical_device *device,
       drmFreeVersion(version);
       close(fd);
       return result;
+   }
+
+   struct tu_physical_device *device =
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!device) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      drmFreeVersion(version);
+      goto fail;
    }
 
    device->msm_major_version = version->version_major;
@@ -874,54 +890,17 @@ tu_drm_device_init(struct tu_physical_device *device,
 
    result = tu_physical_device_init(device, instance);
 
-   if (result == VK_SUCCESS)
-       return result;
+   if (result == VK_SUCCESS) {
+      *out = &device->vk;
+      return result;
+   }
 
 fail:
+   if (device)
+      vk_free(&instance->vk.alloc, device);
    close(fd);
    if (master_fd != -1)
       close(master_fd);
-   return result;
-}
-
-VkResult
-tu_enumerate_devices(struct tu_instance *instance)
-{
-   /* TODO: Check for more devices ? */
-   drmDevicePtr devices[8];
-   VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
-   int max_devices;
-
-   instance->physical_device_count = 0;
-
-   max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
-
-   if (instance->debug_flags & TU_DEBUG_STARTUP) {
-      if (max_devices < 0)
-         mesa_logi("drmGetDevices2 returned error: %s\n", strerror(max_devices));
-      else
-         mesa_logi("Found %d drm nodes", max_devices);
-   }
-
-   if (max_devices < 1)
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "No DRM devices found");
-
-   for (unsigned i = 0; i < (unsigned) max_devices; i++) {
-      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-          devices[i]->bustype == DRM_BUS_PLATFORM) {
-
-         result = tu_drm_device_init(
-            instance->physical_devices + instance->physical_device_count,
-            instance, devices[i]);
-         if (result == VK_SUCCESS)
-            ++instance->physical_device_count;
-         else if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
-            break;
-      }
-   }
-   drmFreeDevices(devices, max_devices);
-
    return result;
 }
 

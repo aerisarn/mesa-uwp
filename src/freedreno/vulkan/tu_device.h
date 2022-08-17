@@ -138,8 +138,6 @@ struct tu_instance
    struct vk_instance vk;
 
    uint32_t api_version;
-   int physical_device_count;
-   struct tu_physical_device physical_devices[TU_MAX_DRM_DEVICES];
 
    struct driOptionCache dri_options;
    struct driOptionCache available_dri_options;

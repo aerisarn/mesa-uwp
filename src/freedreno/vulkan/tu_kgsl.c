@@ -215,12 +215,13 @@ get_kgsl_prop(int fd, unsigned int type, void *value, size_t size)
 }
 
 VkResult
-tu_enumerate_devices(struct tu_instance *instance)
+tu_enumerate_devices(struct vk_instance *vk_instance)
 {
+   struct tu_instance *instance =
+      container_of(vk_instance, struct tu_instance, vk);
+
    static const char path[] = "/dev/kgsl-3d0";
    int fd;
-
-   struct tu_physical_device *device = &instance->physical_devices[0];
 
    if (instance->vk.enabled_extensions.KHR_display)
       return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
@@ -228,9 +229,16 @@ tu_enumerate_devices(struct tu_instance *instance)
 
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
-      instance->physical_device_count = 0;
       return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                        "failed to open device %s", path);
+   }
+
+   struct tu_physical_device *device =
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!device) {
+      close(fd);
+      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    struct kgsl_devinfo info;
@@ -265,11 +273,12 @@ tu_enumerate_devices(struct tu_instance *instance)
    if (tu_physical_device_init(device, instance) != VK_SUCCESS)
       goto fail;
 
-   instance->physical_device_count = 1;
+   list_addtail(&device->vk.link, &instance->vk.physical_devices.list);
 
    return VK_SUCCESS;
 
 fail:
+   vk_free(&instance->vk.alloc, device);
    close(fd);
    return VK_ERROR_INITIALIZATION_FAILED;
 }
