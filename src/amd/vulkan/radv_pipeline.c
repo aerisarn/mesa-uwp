@@ -4312,6 +4312,10 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    /* Wave and workgroup size should already be filled. */
    assert(stage->info.wave_size && stage->info.workgroup_size);
 
+   if (stage->stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS(_, stage->nir, radv_lower_fs_intrinsics, stage, pipeline_key);
+   }
+
    enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
       nir_lower_non_uniform_ubo_access | nir_lower_non_uniform_ssbo_access |
       nir_lower_non_uniform_texture_access | nir_lower_non_uniform_image_access;
@@ -4668,11 +4672,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    radv_determine_ngg_settings(pipeline, pipeline_key, stages, *last_vgt_api_stage);
 
    radv_declare_pipeline_args(device, stages, pipeline_key);
-
-   if (stages[MESA_SHADER_FRAGMENT].nir) {
-      NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_lower_fs_intrinsics,
-               &stages[MESA_SHADER_FRAGMENT], pipeline_key);
-   }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       if (!stages[i].nir)
