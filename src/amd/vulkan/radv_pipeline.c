@@ -2570,7 +2570,6 @@ static void
 radv_link_shaders(struct radv_pipeline *pipeline,
                   const struct radv_pipeline_key *pipeline_key,
                   const struct radv_pipeline_stage *stages,
-                  bool optimize_conservatively,
                   gl_shader_stage last_vgt_api_stage)
 {
    const struct radv_physical_device *pdevice = pipeline->device->physical_device;
@@ -2617,7 +2616,7 @@ radv_link_shaders(struct radv_pipeline *pipeline,
    bool has_geom_tess = stages[MESA_SHADER_GEOMETRY].nir || stages[MESA_SHADER_TESS_CTRL].nir;
    bool merged_gs = stages[MESA_SHADER_GEOMETRY].nir && pdevice->rad_info.gfx_level >= GFX9;
 
-   if (!optimize_conservatively && shader_count > 1) {
+   if (!pipeline_key->optimisations_disabled && shader_count > 1) {
       unsigned first = ordered_shaders[shader_count - 1]->info.stage;
       unsigned last = ordered_shaders[0]->info.stage;
 
@@ -2686,7 +2685,7 @@ radv_link_shaders(struct radv_pipeline *pipeline,
       NIR_PASS(_, last_vgt_shader, radv_export_implicit_primitive_id);
    }
 
-   if (!optimize_conservatively) {
+   if (!pipeline_key->optimisations_disabled) {
       bool uses_xfb = last_vgt_api_stage != -1 &&
                       stages[last_vgt_api_stage].nir->xfb_info;
 
@@ -2771,7 +2770,7 @@ radv_link_shaders(struct radv_pipeline *pipeline,
       NIR_PASS(_, last_vgt_shader, radv_lower_multiview);
    }
 
-   for (int i = 1; !optimize_conservatively && (i < shader_count); ++i) {
+   for (int i = 1; !pipeline_key->optimisations_disabled && (i < shader_count); ++i) {
       if (nir_link_opt_varyings(ordered_shaders[i], ordered_shaders[i - 1])) {
          nir_validate_shader(ordered_shaders[i], "after nir_link_opt_varyings");
          nir_validate_shader(ordered_shaders[i - 1], "after nir_link_opt_varyings");
@@ -4608,7 +4607,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       NIR_PASS(_, stages[MESA_SHADER_GEOMETRY].nir, nir_lower_gs_intrinsics, nir_gs_flags);
    }
 
-   radv_link_shaders(pipeline, pipeline_key, stages, optimize_conservatively, *last_vgt_api_stage);
+   radv_link_shaders(pipeline, pipeline_key, stages, *last_vgt_api_stage);
    radv_set_driver_locations(pipeline, stages, *last_vgt_api_stage);
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
