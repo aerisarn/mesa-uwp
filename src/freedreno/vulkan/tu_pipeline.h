@@ -207,6 +207,7 @@ struct tu_pipeline
    struct
    {
       uint32_t patch_type;
+      uint32_t patch_control_points;
       uint32_t param_stride;
       bool upper_left_domain_origin;
    } tess;

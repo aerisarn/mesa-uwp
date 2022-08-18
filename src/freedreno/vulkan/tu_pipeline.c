@@ -3424,9 +3424,8 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    const VkPipelineTessellationStateCreateInfo *tess_info =
       builder->create_info->pTessellationState;
 
-   assert(pipeline->ia.primtype == DI_PT_PATCHES0);
    assert(tess_info->patchControlPoints <= 32);
-   pipeline->ia.primtype += tess_info->patchControlPoints;
+   pipeline->tess.patch_control_points = tess_info->patchControlPoints;
    const VkPipelineTessellationDomainOriginStateCreateInfo *domain_info =
          vk_find_struct_const(tess_info->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
    pipeline->tess.upper_left_domain_origin = !domain_info ||

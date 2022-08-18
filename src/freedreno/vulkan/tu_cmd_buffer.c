@@ -2568,7 +2568,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
                            TU_TESS_PARAM_SIZE / pipeline->tess.param_stride);
       /* convert from # of patches to draw count */
-      subdraw_size *= (pipeline->ia.primtype - DI_PT_PATCHES0);
+      subdraw_size *= pipeline->tess.patch_control_points;
 
       /* TODO: Move this packet to pipeline state, since it's constant based on the pipeline. */
       tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
@@ -4540,20 +4540,10 @@ static uint32_t
 tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
-   enum pc_di_primtype primtype = pipeline->ia.primtype;
+   enum pc_di_primtype primtype = cmd->state.primtype;
 
-   if (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)) {
-      if (primtype < DI_PT_PATCHES0) {
-         /* If tesselation used, only VK_PRIMITIVE_TOPOLOGY_PATCH_LIST can be
-          * set via vkCmdSetPrimitiveTopology, but primtype is already
-          * calculated at the pipeline creation based on control points
-          * for each patch.
-          *
-          * Just use the primtype as is for the case.
-          */
-         primtype = cmd->state.primtype;
-      }
-   }
+   if (primtype == DI_PT_PATCHES0)
+      primtype += pipeline->tess.patch_control_points;
 
    uint32_t initiator =
       CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
