@@ -113,6 +113,7 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(R11G11B10_FLOAT,         R11G11B10,     FLOAT,  T, RG11B10F),
    AGX_FMT(R9G9B9E5_FLOAT,          R9G9B9E5,      FLOAT,  F, RGB9E5),
 
+   AGX_FMT(ETC1_RGB8,               ETC2_RGB8,     UNORM,  F,_),
    AGX_FMT(ETC2_RGB8,               ETC2_RGB8,     UNORM,  F,_),
    AGX_FMT(ETC2_SRGB8,              ETC2_RGB8,     UNORM,  F,_),
    AGX_FMT(ETC2_RGB8A1,             ETC2_RGB8A1,   UNORM,  F,_),
