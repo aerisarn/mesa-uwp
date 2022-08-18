@@ -685,13 +685,13 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
         BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
        (cmd->state.color_write_enable &
         MASK(cmd->state.subpass->color_count)) !=
-          MASK(cmd->state.pipeline->num_rts)) {
+          MASK(cmd->state.pipeline->blend.num_rts)) {
       if (gras_lrz_cntl.lrz_write) {
          perf_debug(
             cmd->device,
             "disabling lrz write due to dynamic color write enables (%x/%x)",
             cmd->state.color_write_enable,
-            MASK(cmd->state.pipeline->num_rts));
+            MASK(cmd->state.pipeline->blend.num_rts));
       }
       gras_lrz_cntl.lrz_write = false;
    }
@@ -805,12 +805,12 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
       bool stencil_front_writemask =
          (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
          (cmd->state.dynamic_stencil_wrmask & 0xff) :
-         (pipeline->stencil_wrmask & 0xff);
+         (pipeline->ds.stencil_wrmask & 0xff);
 
       bool stencil_back_writemask =
          (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
          ((cmd->state.dynamic_stencil_wrmask & 0xff00) >> 8) :
-         (pipeline->stencil_wrmask & 0xff00) >> 8;
+         (pipeline->ds.stencil_wrmask & 0xff00) >> 8;
 
       VkCompareOp stencil_front_compare_op =
          (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC__SHIFT;

@@ -1667,12 +1667,12 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                    A6XX_RB_RENDER_COMPONENTS(.dword = fs_render_components));
 
    if (pipeline) {
-      pipeline->lrz.fs_has_kill = fs->has_kill;
-      pipeline->lrz.early_fragment_tests = fs->fs.early_fragment_tests;
+      pipeline->lrz.fs.has_kill = fs->has_kill;
+      pipeline->lrz.fs.early_fragment_tests = fs->fs.early_fragment_tests;
 
       if (!fs->fs.early_fragment_tests &&
           (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz || fs->writes_smask)) {
-         pipeline->lrz.force_late_z = true;
+         pipeline->lrz.fs.force_late_z = true;
       }
    }
 }
@@ -2233,13 +2233,13 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
 
    uint32_t rb_mrt_control_rop = 0;
    if (blend_info->logicOpEnable) {
-      pipeline->logic_op_enabled = true;
+      pipeline->blend.logic_op_enabled = true;
       rb_mrt_control_rop = tu6_rb_mrt_control_rop(blend_info->logicOp,
                                                   rop_reads_dst);
    }
 
    uint32_t total_bpp = 0;
-   pipeline->num_rts = blend_info->attachmentCount;
+   pipeline->blend.num_rts = blend_info->attachmentCount;
    for (uint32_t i = 0; i < blend_info->attachmentCount; i++) {
       const VkPipelineColorBlendAttachmentState *att =
          &blend_info->pAttachments[i];
@@ -2270,17 +2270,17 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
          }
          total_bpp += write_bpp;
 
-         pipeline->color_write_enable |= BIT(i);
+         pipeline->blend.color_write_enable |= BIT(i);
          if (att->blendEnable)
-            pipeline->blend_enable |= BIT(i);
+            pipeline->blend.blend_enable |= BIT(i);
 
          if (att->blendEnable || *rop_reads_dst) {
             total_bpp += write_bpp;
          }
       }
 
-      pipeline->rb_mrt_control[i] = rb_mrt_control & pipeline->rb_mrt_control_mask;
-      pipeline->rb_mrt_blend_control[i] = rb_mrt_blend_control;
+      pipeline->blend.rb_mrt_control[i] = rb_mrt_control & pipeline->blend.rb_mrt_control_mask;
+      pipeline->blend.rb_mrt_blend_control[i] = rb_mrt_blend_control;
    }
 
    *color_bandwidth_per_sample = total_bpp / 8;
@@ -2297,34 +2297,34 @@ tu6_emit_blend_control(struct tu_pipeline *pipeline,
                              : ((1 << msaa_info->rasterizationSamples) - 1);
 
 
-   pipeline->sp_blend_cntl =
+   pipeline->blend.sp_blend_cntl =
        A6XX_SP_BLEND_CNTL(.enable_blend = blend_enable_mask,
                           .dual_color_in_enable = dual_src_blend,
                           .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
-                          .unk8 = true).value & pipeline->sp_blend_cntl_mask;
+                          .unk8 = true).value & pipeline->blend.sp_blend_cntl_mask;
 
    /* set A6XX_RB_BLEND_CNTL_INDEPENDENT_BLEND only when enabled? */
-   pipeline->rb_blend_cntl =
+   pipeline->blend.rb_blend_cntl =
        A6XX_RB_BLEND_CNTL(.enable_blend = blend_enable_mask,
                           .independent_blend = true,
                           .sample_mask = sample_mask,
                           .dual_color_in_enable = dual_src_blend,
                           .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
                           .alpha_to_one = msaa_info->alphaToOneEnable).value &
-      pipeline->rb_blend_cntl_mask;
+      pipeline->blend.rb_blend_cntl_mask;
 }
 
 static void
 tu6_emit_blend(struct tu_cs *cs,
                struct tu_pipeline *pipeline)
 {
-   tu_cs_emit_regs(cs, A6XX_SP_BLEND_CNTL(.dword = pipeline->sp_blend_cntl));
-   tu_cs_emit_regs(cs, A6XX_RB_BLEND_CNTL(.dword = pipeline->rb_blend_cntl));
+   tu_cs_emit_regs(cs, A6XX_SP_BLEND_CNTL(.dword = pipeline->blend.sp_blend_cntl));
+   tu_cs_emit_regs(cs, A6XX_RB_BLEND_CNTL(.dword = pipeline->blend.rb_blend_cntl));
 
-   for (unsigned i = 0; i < pipeline->num_rts; i++) {
+   for (unsigned i = 0; i < pipeline->blend.num_rts; i++) {
       tu_cs_emit_regs(cs,
-                      A6XX_RB_MRT_CONTROL(i, .dword = pipeline->rb_mrt_control[i]),
-                      A6XX_RB_MRT_BLEND_CONTROL(i, .dword = pipeline->rb_mrt_blend_control[i]));
+                      A6XX_RB_MRT_CONTROL(i, .dword = pipeline->blend.rb_mrt_control[i]),
+                      A6XX_RB_MRT_BLEND_CONTROL(i, .dword = pipeline->blend.rb_mrt_blend_control[i]));
    }
 }
 
@@ -3149,14 +3149,14 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
    const VkPipelineDynamicStateCreateInfo *dynamic_info =
       builder->create_info->pDynamicState;
 
-   pipeline->gras_su_cntl_mask = ~0u;
-   pipeline->rb_depth_cntl_mask = ~0u;
-   pipeline->rb_stencil_cntl_mask = ~0u;
-   pipeline->pc_raster_cntl_mask = ~0u;
-   pipeline->vpc_unknown_9107_mask = ~0u;
-   pipeline->sp_blend_cntl_mask = ~0u;
-   pipeline->rb_blend_cntl_mask = ~0u;
-   pipeline->rb_mrt_control_mask = ~0u;
+   pipeline->rast.gras_su_cntl_mask = ~0u;
+   pipeline->rast.pc_raster_cntl_mask = ~0u;
+   pipeline->rast.vpc_unknown_9107_mask = ~0u;
+   pipeline->ds.rb_depth_cntl_mask = ~0u;
+   pipeline->ds.rb_stencil_cntl_mask = ~0u;
+   pipeline->blend.sp_blend_cntl_mask = ~0u;
+   pipeline->blend.rb_blend_cntl_mask = ~0u;
+   pipeline->blend.rb_mrt_control_mask = ~0u;
 
    if (!dynamic_info)
       return;
@@ -3166,19 +3166,19 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       switch (state) {
       case VK_DYNAMIC_STATE_VIEWPORT ... VK_DYNAMIC_STATE_STENCIL_REFERENCE:
          if (state == VK_DYNAMIC_STATE_LINE_WIDTH)
-            pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
+            pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
          pipeline->dynamic_state_mask |= BIT(state);
          break;
       case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS);
          break;
       case VK_DYNAMIC_STATE_CULL_MODE:
-         pipeline->gras_su_cntl_mask &=
+         pipeline->rast.gras_su_cntl_mask &=
             ~(A6XX_GRAS_SU_CNTL_CULL_BACK | A6XX_GRAS_SU_CNTL_CULL_FRONT);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
          break;
       case VK_DYNAMIC_STATE_FRONT_FACE:
-         pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_FRONT_CW;
+         pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_FRONT_CW;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
          break;
       case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
@@ -3194,62 +3194,62 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_SCISSOR);
          break;
       case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
-         pipeline->rb_depth_cntl_mask &=
+         pipeline->ds.rb_depth_cntl_mask &=
             ~(A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
       case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:
-         pipeline->rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+         pipeline->ds.rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
       case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:
-         pipeline->rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_ZFUNC__MASK;
+         pipeline->ds.rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_ZFUNC__MASK;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
       case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:
-         pipeline->rb_depth_cntl_mask &=
+         pipeline->ds.rb_depth_cntl_mask &=
             ~(A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
          break;
       case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:
-         pipeline->rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
-                                             A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
-                                             A6XX_RB_STENCIL_CONTROL_STENCIL_READ);
+         pipeline->ds.rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
+                                                A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
+                                                A6XX_RB_STENCIL_CONTROL_STENCIL_READ);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
          break;
       case VK_DYNAMIC_STATE_STENCIL_OP:
-         pipeline->rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_FUNC__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_FAIL__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_ZPASS__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_ZFAIL__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_FUNC_BF__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_FAIL_BF__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_ZPASS_BF__MASK |
-                                             A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK);
+         pipeline->ds.rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_FUNC__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_FAIL__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_ZPASS__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_ZFAIL__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_FUNC_BF__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_FAIL_BF__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_ZPASS_BF__MASK |
+                                                A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
          break;
       case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
-         pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_POLY_OFFSET;
+         pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_POLY_OFFSET;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
          break;
       case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE);
          break;
       case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
-         pipeline->pc_raster_cntl_mask &= ~A6XX_PC_RASTER_CNTL_DISCARD;
-         pipeline->vpc_unknown_9107_mask &= ~A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
+         pipeline->rast.pc_raster_cntl_mask &= ~A6XX_PC_RASTER_CNTL_DISCARD;
+         pipeline->rast.vpc_unknown_9107_mask &= ~A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD);
          break;
       case VK_DYNAMIC_STATE_LOGIC_OP_EXT:
-         pipeline->sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
-         pipeline->rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
-         pipeline->rb_mrt_control_mask &= ~A6XX_RB_MRT_CONTROL_ROP_CODE__MASK;
+         pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->blend.rb_mrt_control_mask &= ~A6XX_RB_MRT_CONTROL_ROP_CODE__MASK;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_BLEND);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_LOGIC_OP);
          break;
       case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
-         pipeline->sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
-         pipeline->rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_BLEND);
 
          /* Dynamic color write enable doesn't directly change any of the
@@ -3369,7 +3369,7 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
       };
 
       /* Bindings may contain holes */
-      pipeline->num_vbs = MAX2(pipeline->num_vbs, binding->binding + 1);
+      pipeline->vi.num_vbs = MAX2(pipeline->vi.num_vbs, binding->binding + 1);
    }
 
    const VkPipelineVertexInputDivisorStateCreateInfoEXT *div_state =
@@ -3456,12 +3456,12 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
       builder->create_info->pViewportState;
    const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_info =
          vk_find_struct_const(vp_info->pNext, PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
-   pipeline->z_negative_one_to_one = depth_clip_info ? depth_clip_info->negativeOneToOne : false;
+   pipeline->viewport.z_negative_one_to_one = depth_clip_info ? depth_clip_info->negativeOneToOne : false;
 
    struct tu_cs cs;
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * vp_info->viewportCount))
-      tu6_emit_viewport(&cs, vp_info->pViewports, vp_info->viewportCount, pipeline->z_negative_one_to_one);
+      tu6_emit_viewport(&cs, vp_info->pViewports, vp_info->viewportCount, pipeline->viewport.z_negative_one_to_one);
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * vp_info->scissorCount))
       tu6_emit_scissor(&cs, vp_info->pScissors, vp_info->scissorCount);
@@ -3474,7 +3474,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
 
-   pipeline->feedback_loop_may_involve_textures =
+   pipeline->output.feedback_loop_may_involve_textures =
       builder->feedback_loop_may_involve_textures;
 
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
@@ -3486,7 +3486,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    if (depth_clip_state)
       builder->depth_clip_disable = !depth_clip_state->depthClipEnable;
 
-   pipeline->line_mode = RECTANGULAR;
+   pipeline->rast.line_mode = RECTANGULAR;
 
    if (tu6_primtype_line(pipeline->ia.primtype) ||
        (tu6_primtype_patches(pipeline->ia.primtype) &&
@@ -3497,7 +3497,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
       if (rast_line_state && rast_line_state->lineRasterizationMode ==
                VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
-         pipeline->line_mode = BRESENHAM;
+         pipeline->rast.line_mode = BRESENHAM;
       }
    }
 
@@ -3505,7 +3505,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    uint32_t cs_size = 9 +
       (builder->device->physical_device->info->a6xx.has_shading_rate ? 8 : 0) +
       (builder->emit_msaa_state ? 11 : 0);
-   pipeline->rast_state = tu_cs_draw_state(&pipeline->cs, &cs, cs_size);
+   pipeline->rast.state = tu_cs_draw_state(&pipeline->cs, &cs, cs_size);
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
@@ -3513,7 +3513,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                      .zfar_clip_disable = builder->depth_clip_disable,
                      /* TODO should this be depth_clip_disable instead? */
                      .unk5 = rast_info->depthClampEnable,
-                     .zero_gb_scale_z = pipeline->z_negative_one_to_one ? 0 : 1,
+                     .zero_gb_scale_z = pipeline->viewport.z_negative_one_to_one ? 0 : 1,
                      .vp_clip_code_ignore = 1));
 
    tu_cs_emit_regs(&cs,
@@ -3538,30 +3538,30 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
     * It happens when subpass doesn't use any color/depth attachment.
     */
    if (builder->emit_msaa_state)
-      tu6_emit_msaa(&cs, builder->samples, pipeline->line_mode);
+      tu6_emit_msaa(&cs, builder->samples, pipeline->rast.line_mode);
 
    const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
       vk_find_struct_const(rast_info->pNext,
                            PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
    unsigned stream = stream_info ? stream_info->rasterizationStream : 0;
 
-   pipeline->pc_raster_cntl = A6XX_PC_RASTER_CNTL_STREAM(stream);
-   pipeline->vpc_unknown_9107 = 0;
+   pipeline->rast.pc_raster_cntl = A6XX_PC_RASTER_CNTL_STREAM(stream);
+   pipeline->rast.vpc_unknown_9107 = 0;
    if (rast_info->rasterizerDiscardEnable) {
-      pipeline->pc_raster_cntl |= A6XX_PC_RASTER_CNTL_DISCARD;
-      pipeline->vpc_unknown_9107 |= A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
+      pipeline->rast.pc_raster_cntl |= A6XX_PC_RASTER_CNTL_DISCARD;
+      pipeline->rast.vpc_unknown_9107 |= A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RASTERIZER_DISCARD, 4)) {
-      tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = pipeline->pc_raster_cntl));
-      tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = pipeline->vpc_unknown_9107));
+      tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = pipeline->rast.pc_raster_cntl));
+      tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = pipeline->rast.vpc_unknown_9107));
    }
 
-   pipeline->gras_su_cntl =
-      tu6_gras_su_cntl(rast_info, pipeline->line_mode, builder->multiview_mask != 0);
+   pipeline->rast.gras_su_cntl =
+      tu6_gras_su_cntl(rast_info, pipeline->rast.line_mode, builder->multiview_mask != 0);
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_GRAS_SU_CNTL, 2))
-      tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = pipeline->gras_su_cntl));
+      tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = pipeline->rast.gras_su_cntl));
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BIAS, 4)) {
       tu6_emit_depth_bias(&cs, rast_info->depthBiasConstantFactor,
@@ -3571,7 +3571,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    const struct VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_state =
       vk_find_struct_const(rast_info->pNext, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
-   pipeline->provoking_vertex_last = provoking_vtx_state &&
+   pipeline->rast.provoking_vertex_last = provoking_vtx_state &&
       provoking_vtx_state->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
 }
 
@@ -3615,7 +3615,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
       if (ds_info->depthBoundsTestEnable && !ds_info->depthTestEnable)
          tu6_apply_depth_bounds_workaround(builder->device, &rb_depth_cntl);
 
-      pipeline->depth_cpp_per_sample = util_format_get_component_bits(
+      pipeline->output.depth_cpp_per_sample = util_format_get_component_bits(
             pipe_format, UTIL_FORMAT_COLORSPACE_ZS, 0) / 8;
    } else {
       /* if RB_DEPTH_CNTL is set dynamically, we need to make sure it is set
@@ -3623,7 +3623,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
        * is no depth attachment is a problem (at least for the S8_UINT case)
        */
       if (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL))
-         pipeline->rb_depth_cntl_disable = true;
+         pipeline->output.rb_depth_cntl_disable = true;
    }
 
    if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED) {
@@ -3647,7 +3647,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
             A6XX_RB_STENCIL_CONTROL_STENCIL_READ;
       }
 
-      pipeline->stencil_cpp_per_sample = util_format_get_component_bits(
+      pipeline->output.stencil_cpp_per_sample = util_format_get_component_bits(
             pipe_format, UTIL_FORMAT_COLORSPACE_ZS, 1) / 8;
    }
 
@@ -3655,13 +3655,13 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_CNTL, 1);
       tu_cs_emit(&cs, rb_depth_cntl);
    }
-   pipeline->rb_depth_cntl = rb_depth_cntl;
+   pipeline->ds.rb_depth_cntl = rb_depth_cntl;
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_STENCIL_CNTL, 2)) {
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
       tu_cs_emit(&cs, rb_stencil_cntl);
    }
-   pipeline->rb_stencil_cntl = rb_stencil_cntl;
+   pipeline->ds.rb_stencil_cntl = rb_stencil_cntl;
 
    /* the remaining draw states arent used if there is no d/s, leave them empty */
    if (builder->depth_attachment_format == VK_FORMAT_UNDEFINED)
@@ -3679,9 +3679,9 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_WRITE_MASK, 2)) {
-      update_stencil_mask(&pipeline->stencil_wrmask,  VK_STENCIL_FACE_FRONT_BIT, ds_info->front.writeMask);
-      update_stencil_mask(&pipeline->stencil_wrmask,  VK_STENCIL_FACE_BACK_BIT, ds_info->back.writeMask);
-      tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.dword = pipeline->stencil_wrmask));
+      update_stencil_mask(&pipeline->ds.stencil_wrmask,  VK_STENCIL_FACE_FRONT_BIT, ds_info->front.writeMask);
+      update_stencil_mask(&pipeline->ds.stencil_wrmask,  VK_STENCIL_FACE_BACK_BIT, ds_info->back.writeMask);
+      tu_cs_emit_regs(&cs, A6XX_RB_STENCILWRMASK(.dword = pipeline->ds.stencil_wrmask));
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_STENCIL_REFERENCE, 2)) {
@@ -3733,11 +3733,13 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    struct tu_cs cs;
    tu6_emit_rb_mrt_controls(pipeline, blend_info,
                             builder->color_attachment_formats,
-                            &pipeline->rop_reads_dst,
-                            &pipeline->color_bandwidth_per_sample);
+                            &pipeline->blend.rop_reads_dst,
+                            &pipeline->output.color_bandwidth_per_sample);
 
    uint32_t blend_enable_mask =
-      pipeline->rop_reads_dst ? pipeline->color_write_enable : pipeline->blend_enable;
+      pipeline->blend.rop_reads_dst ? 
+      pipeline->blend.color_write_enable :
+      pipeline->blend.blend_enable;
    tu6_emit_blend_control(pipeline, blend_enable_mask,
                           builder->use_dual_src_blend, msaa_info);
 
@@ -3769,7 +3771,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       unsigned mask = MASK(vk_format_get_nr_components(format));
       if (format != VK_FORMAT_UNDEFINED &&
           ((blendAttachment.colorWriteMask & mask) != mask ||
-           !(pipeline->color_write_enable & BIT(i)))) {
+           !(pipeline->blend.color_write_enable & BIT(i)))) {
          pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
    }
@@ -3799,7 +3801,7 @@ tu_pipeline_builder_parse_rasterization_order(
    if (builder->rasterizer_discard)
       return;
 
-   pipeline->subpass_feedback_loop_ds = builder->subpass_feedback_loop_ds;
+   pipeline->output.subpass_feedback_loop_ds = builder->subpass_feedback_loop_ds;
 
    const VkPipelineColorBlendStateCreateInfo *blend_info =
       builder->create_info->pColorBlendState;
@@ -3808,20 +3810,20 @@ tu_pipeline_builder_parse_rasterization_order(
       builder->create_info->pDepthStencilState;
 
    if (builder->use_color_attachments) {
-      pipeline->raster_order_attachment_access =
+      pipeline->output.raster_order_attachment_access =
          blend_info->flags &
          VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT;
    }
 
    if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED) {
-      pipeline->raster_order_attachment_access |=
+      pipeline->output.raster_order_attachment_access |=
          ds_info->flags &
          (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT |
           VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT);
    }
 
    if (unlikely(builder->device->physical_device->instance->debug_flags & TU_DEBUG_RAST_ORDER))
-      pipeline->raster_order_attachment_access = true;
+      pipeline->output.raster_order_attachment_access = true;
 
    /* VK_EXT_blend_operation_advanced would also require ordered access
     * when implemented in the future.
@@ -3830,7 +3832,7 @@ tu_pipeline_builder_parse_rasterization_order(
    uint32_t sysmem_prim_mode = NO_FLUSH;
    uint32_t gmem_prim_mode = NO_FLUSH;
 
-   if (pipeline->raster_order_attachment_access) {
+   if (pipeline->output.raster_order_attachment_access) {
       /* VK_EXT_rasterization_order_attachment_access:
        *
        * This extension allow access to framebuffer attachments when used as
@@ -3839,7 +3841,7 @@ tu_pipeline_builder_parse_rasterization_order(
        */
       sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
       gmem_prim_mode = FLUSH_PER_OVERLAP;
-      pipeline->sysmem_single_prim_mode = true;
+      pipeline->prim_order.sysmem_single_prim_mode = true;
    } else {
       /* If there is a feedback loop, then the shader can read the previous value
        * of a pixel being written out. It can also write some components and then
@@ -3853,18 +3855,18 @@ tu_pipeline_builder_parse_rasterization_order(
           (builder->subpass_feedback_loop_ds &&
            (ds_info->depthWriteEnable || ds_info->stencilTestEnable))) {
          sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
-         pipeline->sysmem_single_prim_mode = true;
+         pipeline->prim_order.sysmem_single_prim_mode = true;
       }
    }
 
    struct tu_cs cs;
 
-   pipeline->prim_order_state_gmem = tu_cs_draw_state(&pipeline->cs, &cs, 2);
+   pipeline->prim_order.state_gmem = tu_cs_draw_state(&pipeline->cs, &cs, 2);
    tu_cs_emit_write_reg(&cs, REG_A6XX_GRAS_SC_CNTL,
                         A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) |
                         A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(gmem_prim_mode));
 
-   pipeline->prim_order_state_sysmem = tu_cs_draw_state(&pipeline->cs, &cs, 2);
+   pipeline->prim_order.state_sysmem = tu_cs_draw_state(&pipeline->cs, &cs, 2);
    tu_cs_emit_write_reg(&cs, REG_A6XX_GRAS_SC_CNTL,
                         A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) |
                         A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(sysmem_prim_mode));
