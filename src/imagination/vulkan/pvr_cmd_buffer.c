@@ -2377,7 +2377,7 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
       allocator = &cmd_buffer->device->suballoc_general;
    else if (heap == cmd_buffer->device->heaps.pds_heap)
       allocator = &cmd_buffer->device->suballoc_pds;
-   else if (heap == cmd_buffer->device->heaps.transfer_3d_heap)
+   else if (heap == cmd_buffer->device->heaps.transfer_frag_heap)
       allocator = &cmd_buffer->device->suballoc_transfer;
    else if (heap == cmd_buffer->device->heaps.usc_heap)
       allocator = &cmd_buffer->device->suballoc_usc;

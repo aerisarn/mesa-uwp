@@ -3994,7 +3994,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
    /* Allocate space for IPF control stream. */
    result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
-                                     ctx->device->heaps.transfer_3d_heap,
+                                     ctx->device->heaps.transfer_frag_heap,
                                      total_stream_size,
                                      &pvr_cs_bo);
    if (result != VK_SUCCESS)
@@ -4002,7 +4002,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
    stream_base_vaddr =
       PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
-                   ctx->device->heaps.transfer_3d_heap->base_addr.addr);
+                   ctx->device->heaps.transfer_frag_heap->base_addr.addr);
 
    cs_ptr = pvr_bo_suballoc_get_map_addr(pvr_cs_bo);
    blk_cs_ptr = cs_ptr + region_arrays_size / sizeof(uint32_t);
@@ -4416,7 +4416,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    pvr_csb_pack (&regs->isp_mtile_base, CR_ISP_MTILE_BASE, reg) {
       reg.addr =
          PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
-                      ctx->device->heaps.transfer_3d_heap->base_addr.addr);
+                      ctx->device->heaps.transfer_frag_heap->base_addr.addr);
    }
 
    pvr_csb_pack (&regs->isp_render, CR_ISP_RENDER, reg) {

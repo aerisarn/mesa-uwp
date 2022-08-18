@@ -617,7 +617,7 @@ static void pvr_srv_winsys_get_heaps_info(struct pvr_winsys *ws,
 
    heaps->general_heap = &srv_ws->general_heap.base;
    heaps->pds_heap = &srv_ws->pds_heap.base;
-   heaps->transfer_3d_heap = &srv_ws->transfer_3d_heap.base;
+   heaps->transfer_frag_heap = &srv_ws->transfer_3d_heap.base;
    heaps->usc_heap = &srv_ws->usc_heap.base;
    heaps->vis_test_heap = &srv_ws->vis_test_heap.base;
 
