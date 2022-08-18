@@ -216,12 +216,35 @@ static VkResult
 tu_allocate_userspace_iova(struct tu_device *dev,
                            uint32_t gem_handle,
                            uint64_t size,
+                           uint64_t client_iova,
+                           enum tu_bo_alloc_flags flags,
                            uint64_t *iova)
 {
    mtx_lock(&dev->physical_device->vma_mutex);
 
-   dev->physical_device->vma.alloc_high = false;
-   *iova = util_vma_heap_alloc(&dev->physical_device->vma, size, 0x1000);
+   *iova = 0;
+
+   if (flags & TU_BO_ALLOC_REPLAYABLE) {
+      if (client_iova) {
+         if (util_vma_heap_alloc_addr(&dev->physical_device->vma, client_iova,
+                                      size)) {
+            *iova = client_iova;
+         } else {
+            return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+         }
+      } else {
+         /* We have to separate replayable IOVAs from ordinary one in order to
+          * for them not to clash. The easiest way to do this is to allocate
+          * them from the other end of the address space.
+          */
+         dev->physical_device->vma.alloc_high = true;
+         *iova =
+            util_vma_heap_alloc(&dev->physical_device->vma, size, 0x1000);
+      }
+   } else {
+      dev->physical_device->vma.alloc_high = false;
+      *iova = util_vma_heap_alloc(&dev->physical_device->vma, size, 0x1000);
+   }
 
    mtx_unlock(&dev->physical_device->vma_mutex);
 
@@ -259,13 +282,17 @@ tu_bo_init(struct tu_device *dev,
            struct tu_bo *bo,
            uint32_t gem_handle,
            uint64_t size,
+           uint64_t client_iova,
            enum tu_bo_alloc_flags flags)
 {
    VkResult result = VK_SUCCESS;
    uint64_t iova = 0;
 
+   assert(!client_iova || dev->physical_device->has_set_iova);
+
    if (dev->physical_device->has_set_iova) {
-      result = tu_allocate_userspace_iova(dev, gem_handle, size, &iova);
+      result = tu_allocate_userspace_iova(dev, gem_handle, size, client_iova,
+                                          flags, &iova);
    } else {
       result = tu_allocate_kernel_iova(dev, gem_handle, &iova);
    }
@@ -317,8 +344,11 @@ fail_bo_list:
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
-               enum tu_bo_alloc_flags flags)
+tu_bo_init_new_explicit_iova(struct tu_device *dev,
+                             struct tu_bo **out_bo,
+                             uint64_t size,
+                             uint64_t client_iova,
+                             enum tu_bo_alloc_flags flags)
 {
    /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
     * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
@@ -340,7 +370,7 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
    assert(bo && bo->gem_handle == 0);
 
    VkResult result =
-      tu_bo_init(dev, bo, req.handle, size, flags);
+      tu_bo_init(dev, bo, req.handle, size, client_iova, flags);
 
    if (result != VK_SUCCESS)
       memset(bo, 0, sizeof(*bo));
@@ -389,7 +419,7 @@ tu_bo_init_dmabuf(struct tu_device *dev,
    }
 
    VkResult result =
-      tu_bo_init(dev, bo, gem_handle, size, TU_BO_ALLOC_NO_FLAGS);
+      tu_bo_init(dev, bo, gem_handle, size, 0, TU_BO_ALLOC_NO_FLAGS);
 
    if (result != VK_SUCCESS)
       memset(bo, 0, sizeof(*bo));

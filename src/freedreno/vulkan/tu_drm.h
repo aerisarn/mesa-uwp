@@ -26,6 +26,7 @@ enum tu_bo_alloc_flags
    TU_BO_ALLOC_NO_FLAGS = 0,
    TU_BO_ALLOC_ALLOW_DUMP = 1 << 0,
    TU_BO_ALLOC_GPU_READ_ONLY = 1 << 1,
+   TU_BO_ALLOC_REPLAYABLE = 1 << 2,
 };
 
 /* Define tu_timeline_sync type based on drm syncobj for a point type
@@ -67,8 +68,18 @@ struct tu_timeline_sync {
 };
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo **bo, uint64_t size,
-               enum tu_bo_alloc_flags flags);
+tu_bo_init_new_explicit_iova(struct tu_device *dev,
+                             struct tu_bo **out_bo,
+                             uint64_t size,
+                             uint64_t client_iova,
+                             enum tu_bo_alloc_flags flags);
+
+static inline VkResult
+tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
+               enum tu_bo_alloc_flags flags)
+{
+   return tu_bo_init_new_explicit_iova(dev, out_bo, size, 0, flags);
+}
 
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,

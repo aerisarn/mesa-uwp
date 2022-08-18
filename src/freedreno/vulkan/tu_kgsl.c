@@ -69,9 +69,14 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
-               enum tu_bo_alloc_flags flags)
+tu_bo_init_new_explicit_iova(struct tu_device *dev,
+                             struct tu_bo **out_bo,
+                             uint64_t size,
+                             uint64_t client_iova,
+                             enum tu_bo_alloc_flags flags)
 {
+   assert(client_iova == 0);
+
    struct kgsl_gpumem_alloc_id req = {
       .size = size,
    };

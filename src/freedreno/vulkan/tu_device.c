@@ -618,7 +618,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->hostQueryReset                      = true;
    features->timelineSemaphore                   = true;
    features->bufferDeviceAddress                 = true;
-   features->bufferDeviceAddressCaptureReplay    = false;
+   features->bufferDeviceAddressCaptureReplay    = pdevice->has_set_iova;
    features->bufferDeviceAddressMultiDevice      = false;
    features->vulkanMemoryModel                   = true;
    features->vulkanMemoryModelDeviceScope        = true;
@@ -2339,9 +2339,28 @@ tu_AllocateMemory(VkDevice _device,
          close(fd_info->fd);
       }
    } else {
-      result =
-         tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize,
-                        TU_BO_ALLOC_NO_FLAGS);
+      uint64_t client_address = 0;
+      enum tu_bo_alloc_flags alloc_flags = TU_BO_ALLOC_NO_FLAGS;
+
+      const VkMemoryOpaqueCaptureAddressAllocateInfo *replay_info =
+         vk_find_struct_const(pAllocateInfo->pNext,
+                              MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO);
+      if (replay_info && replay_info->opaqueCaptureAddress) {
+         client_address = replay_info->opaqueCaptureAddress;
+         alloc_flags |= TU_BO_ALLOC_REPLAYABLE;
+      }
+
+      const VkMemoryAllocateFlagsInfo *flags_info = vk_find_struct_const(
+         pAllocateInfo->pNext, MEMORY_ALLOCATE_FLAGS_INFO);
+      if (flags_info &&
+          (flags_info->flags &
+           VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT)) {
+         alloc_flags |= TU_BO_ALLOC_REPLAYABLE;
+      }
+
+      result = tu_bo_init_new_explicit_iova(device, &mem->bo,
+                                            pAllocateInfo->allocationSize,
+                                            client_address, alloc_flags);
    }
 
 
@@ -3022,7 +3041,7 @@ uint64_t tu_GetBufferOpaqueCaptureAddress(
     VkDevice                                    device,
     const VkBufferDeviceAddressInfo*            pInfo)
 {
-   tu_stub();
+   /* We care only about memory allocation opaque addresses */
    return 0;
 }
 
@@ -3030,6 +3049,6 @@ uint64_t tu_GetDeviceMemoryOpaqueCaptureAddress(
     VkDevice                                    device,
     const VkDeviceMemoryOpaqueCaptureAddressInfo* pInfo)
 {
-   tu_stub();
-   return 0;
+   TU_FROM_HANDLE(tu_device_memory, mem, pInfo->memory);
+   return mem->bo->iova;
 }
