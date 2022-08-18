@@ -519,7 +519,6 @@ spec@arb_shader_texture_image_samples@texturesamples@vs-sampler2dmsarray-2,Fail
 spec@arb_shader_texture_image_samples@texturesamples@vs-usampler2dms-2,Fail
 spec@arb_shader_texture_image_samples@texturesamples@vs-usampler2dmsarray-2,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
-spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail

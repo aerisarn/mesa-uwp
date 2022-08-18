@@ -3473,11 +3473,10 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
     */
    bld.num_mips = bld.num_lods = 1;
 
-   if (bld.no_quad_lod && bld.no_rho_approx &&
-       ((mip_filter != PIPE_TEX_MIPFILTER_NONE && op_is_tex &&
+   if ((mip_filter != PIPE_TEX_MIPFILTER_NONE && op_is_tex &&
          (static_texture_state->target == PIPE_TEXTURE_CUBE ||
           static_texture_state->target == PIPE_TEXTURE_CUBE_ARRAY)) ||
-        op_is_lodq)) {
+        op_is_lodq) {
       /*
        * special case for using per-pixel lod even for implicit lod,
        * which is generally never required (ok by APIs) except to please
