@@ -442,8 +442,7 @@ void
 _eglGetResource(_EGLResource *res)
 {
    assert(res && res->RefCount > 0);
-   /* hopefully a resource is always manipulated with its display locked */
-   res->RefCount++;
+   p_atomic_inc(&res->RefCount);
 }
 
 
@@ -454,8 +453,7 @@ EGLBoolean
 _eglPutResource(_EGLResource *res)
 {
    assert(res && res->RefCount > 0);
-   res->RefCount--;
-   return (!res->RefCount);
+   return p_atomic_dec_zero(&res->RefCount);
 }
 
 
