@@ -513,9 +513,12 @@ vn_QueueWaitIdle(VkQueue _queue)
 /* fence commands */
 
 static void
-vn_sync_payload_release(struct vn_device *dev,
+vn_sync_payload_release(UNUSED struct vn_device *dev,
                         struct vn_sync_payload *payload)
 {
+   if (payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD && payload->fd >= 0)
+      close(payload->fd);
+
    payload->type = VN_SYNC_TYPE_INVALID;
 }
 
@@ -538,7 +541,8 @@ vn_fence_signal_wsi(struct vn_device *dev, struct vn_fence *fence)
    struct vn_sync_payload *temp = &fence->temporary;
 
    vn_sync_payload_release(dev, temp);
-   temp->type = VN_SYNC_TYPE_WSI_SIGNALED;
+   temp->type = VN_SYNC_TYPE_IMPORTED_SYNC_FD;
+   temp->fd = -1;
    fence->payload = temp;
 }
 
@@ -751,8 +755,11 @@ vn_GetFenceStatus(VkDevice device, VkFence _fence)
          result = vn_call_vkGetFenceStatus(dev->instance, device, _fence);
       }
       break;
-   case VN_SYNC_TYPE_WSI_SIGNALED:
-      result = VK_SUCCESS;
+   case VN_SYNC_TYPE_IMPORTED_SYNC_FD:
+      if (payload->fd < 0 || sync_wait(payload->fd, 0) == 0)
+         result = VK_SUCCESS;
+      else
+         result = errno == ETIME ? VK_NOT_READY : VK_ERROR_DEVICE_LOST;
       break;
    default:
       unreachable("unexpected fence payload type");
@@ -884,6 +891,15 @@ vn_create_sync_file(struct vn_device *dev, int *out_fd)
    return *out_fd >= 0 ? VK_SUCCESS : VK_ERROR_TOO_MANY_OBJECTS;
 }
 
+static inline bool
+vn_sync_valid_fd(int fd)
+{
+   /* the special value -1 for fd is treated like a valid sync file descriptor
+    * referring to an object that has already signaled
+    */
+   return (fd >= 0 && sync_valid_fd(fd)) || fd == -1;
+}
+
 VkResult
 vn_ImportFenceFdKHR(VkDevice device,
                     const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
@@ -897,15 +913,15 @@ vn_ImportFenceFdKHR(VkDevice device,
 
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
-   if (fd >= 0) {
-      if (sync_wait(fd, -1))
-         return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
-      close(fd);
-   }
+   if (!vn_sync_valid_fd(fd))
+      return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
-   /* abuse VN_SYNC_TYPE_WSI_SIGNALED */
-   vn_fence_signal_wsi(dev, fence);
+   struct vn_sync_payload *temp = &fence->temporary;
+   vn_sync_payload_release(dev, temp);
+   temp->type = VN_SYNC_TYPE_IMPORTED_SYNC_FD;
+   temp->fd = fd;
+   fence->payload = temp;
 
    return VK_SUCCESS;
 }
@@ -941,12 +957,19 @@ vn_GetFenceFdKHR(VkDevice device,
       vn_sync_payload_release(dev, &fence->temporary);
       fence->payload = &fence->permanent;
    } else {
-      assert(payload->type == VN_SYNC_TYPE_WSI_SIGNALED);
+      assert(payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD);
+
+      /* transfer ownership of imported sync fd to save a dup */
+      fd = payload->fd;
+      payload->fd = -1;
 
       /* reset host fence in case in signaled state before import */
       result = vn_ResetFences(device, 1, &pGetFdInfo->fence);
-      if (result != VK_SUCCESS)
+      if (result != VK_SUCCESS) {
+         /* transfer sync fd ownership back on error */
+         payload->fd = fd;
          return result;
+      }
    }
 
    *pFd = fd;

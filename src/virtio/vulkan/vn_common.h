@@ -26,6 +26,7 @@
 #include "util/bitscan.h"
 #include "util/bitset.h"
 #include "util/compiler.h"
+#include "util/libsync.h"
 #include "util/list.h"
 #include "util/macros.h"
 #include "util/os_time.h"

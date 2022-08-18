@@ -17,7 +17,6 @@
 #include <vulkan/vk_icd.h>
 
 #include "drm-uapi/drm_fourcc.h"
-#include "util/libsync.h"
 #include "util/os_file.h"
 
 #include "vn_buffer.h"

@@ -40,10 +40,16 @@ enum vn_sync_type {
 
    /* already signaled by WSI */
    VN_SYNC_TYPE_WSI_SIGNALED,
+
+   /* payload is an imported sync file */
+   VN_SYNC_TYPE_IMPORTED_SYNC_FD,
 };
 
 struct vn_sync_payload {
    enum vn_sync_type type;
+
+   /* If type is VN_SYNC_TYPE_IMPORTED_SYNC_FD, fd is a sync file. */
+   int fd;
 };
 
 struct vn_fence {
