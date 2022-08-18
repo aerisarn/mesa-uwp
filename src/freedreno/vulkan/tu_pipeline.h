@@ -116,7 +116,6 @@ struct tu_pipeline
    /* Separate BO for private memory since it should GPU writable */
    struct tu_bo *pvtmem_bo;
 
-   bool need_indirect_descriptor_sets;
    VkShaderStageFlags active_stages;
    uint32_t active_desc_sets;
 
