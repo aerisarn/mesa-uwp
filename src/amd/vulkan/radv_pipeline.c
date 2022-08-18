@@ -4683,13 +4683,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                            *last_vgt_api_stage, &stages[i]);
 
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
-   }
 
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (stages[i].nir) {
-         if (radv_can_dump_shader(device, stages[i].nir, false))
+      if (radv_can_dump_shader(device, stages[i].nir, false))
             nir_print_shader(stages[i].nir, stderr);
-      }
    }
 
    /* Compile NIR shaders to AMD assembly. */
