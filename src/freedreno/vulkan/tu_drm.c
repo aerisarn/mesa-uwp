@@ -109,6 +109,26 @@ tu_drm_get_gmem_base(const struct tu_physical_device *dev, uint64_t *base)
    return tu_drm_get_param(dev, MSM_PARAM_GMEM_BASE, base);
 }
 
+static int
+tu_drm_get_va_prop(const struct tu_physical_device *dev,
+                   uint64_t *va_start, uint64_t *va_size)
+{
+   uint64_t value;
+   int ret = tu_drm_get_param(dev, MSM_PARAM_VA_START, &value);
+   if (ret)
+      return ret;
+
+   *va_start = value;
+
+   ret = tu_drm_get_param(dev, MSM_PARAM_VA_SIZE, &value);
+   if (ret)
+      return ret;
+
+   *va_size = value;
+
+   return 0;
+}
+
 int
 tu_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
@@ -193,17 +213,65 @@ tu_gem_info(const struct tu_device *dev, uint32_t gem_handle, uint32_t info)
 }
 
 static VkResult
+tu_allocate_userspace_iova(struct tu_device *dev,
+                           uint32_t gem_handle,
+                           uint64_t size,
+                           uint64_t *iova)
+{
+   mtx_lock(&dev->physical_device->vma_mutex);
+
+   dev->physical_device->vma.alloc_high = false;
+   *iova = util_vma_heap_alloc(&dev->physical_device->vma, size, 0x1000);
+
+   mtx_unlock(&dev->physical_device->vma_mutex);
+
+   if (!*iova)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   struct drm_msm_gem_info req = {
+      .handle = gem_handle,
+      .info = MSM_INFO_SET_IOVA,
+      .value = *iova,
+   };
+
+   int ret =
+      drmCommandWriteRead(dev->fd, DRM_MSM_GEM_INFO, &req, sizeof(req));
+   if (ret < 0)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_allocate_kernel_iova(struct tu_device *dev,
+                        uint32_t gem_handle,
+                        uint64_t *iova)
+{
+   *iova = tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
+   if (!*iova)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 tu_bo_init(struct tu_device *dev,
            struct tu_bo *bo,
            uint32_t gem_handle,
            uint64_t size,
-           bool dump)
+           enum tu_bo_alloc_flags flags)
 {
-   uint64_t iova = tu_gem_info(dev, gem_handle, MSM_INFO_GET_IOVA);
-   if (!iova) {
-      tu_gem_close(dev, gem_handle);
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   VkResult result = VK_SUCCESS;
+   uint64_t iova = 0;
+
+   if (dev->physical_device->has_set_iova) {
+      result = tu_allocate_userspace_iova(dev, gem_handle, size, &iova);
+   } else {
+      result = tu_allocate_kernel_iova(dev, gem_handle, &iova);
    }
+
+   if (result != VK_SUCCESS)
+      goto fail_bo_list;
 
    mtx_lock(&dev->bo_mutex);
    uint32_t idx = dev->bo_count++;
@@ -214,13 +282,16 @@ tu_bo_init(struct tu_device *dev,
       struct drm_msm_gem_submit_bo *new_ptr =
          vk_realloc(&dev->vk.alloc, dev->bo_list, new_len * sizeof(*dev->bo_list),
                     8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-      if (!new_ptr)
+      if (!new_ptr) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail_bo_list;
+      }
 
       dev->bo_list = new_ptr;
       dev->bo_list_size = new_len;
    }
 
+   bool dump = flags & TU_BO_ALLOC_ALLOW_DUMP;
    dev->bo_list[idx] = (struct drm_msm_gem_submit_bo) {
       .flags = MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE |
                COND(dump, MSM_SUBMIT_BO_DUMP),
@@ -242,7 +313,7 @@ tu_bo_init(struct tu_device *dev,
 
 fail_bo_list:
    tu_gem_close(dev, gem_handle);
-   return VK_ERROR_OUT_OF_HOST_MEMORY;
+   return result;
 }
 
 VkResult
@@ -269,7 +340,7 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
    assert(bo && bo->gem_handle == 0);
 
    VkResult result =
-      tu_bo_init(dev, bo, req.handle, size, flags & TU_BO_ALLOC_ALLOW_DUMP);
+      tu_bo_init(dev, bo, req.handle, size, flags);
 
    if (result != VK_SUCCESS)
       memset(bo, 0, sizeof(*bo));
@@ -317,7 +388,8 @@ tu_bo_init_dmabuf(struct tu_device *dev,
       return VK_SUCCESS;
    }
 
-   VkResult result = tu_bo_init(dev, bo, gem_handle, size, false);
+   VkResult result =
+      tu_bo_init(dev, bo, gem_handle, size, TU_BO_ALLOC_NO_FLAGS);
 
    if (result != VK_SUCCESS)
       memset(bo, 0, sizeof(*bo));
@@ -385,6 +457,12 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
       dev->implicit_sync_bo_count--;
 
    mtx_unlock(&dev->bo_mutex);
+
+   if (dev->physical_device->has_set_iova) {
+      mtx_lock(&dev->physical_device->vma_mutex);
+      util_vma_heap_free(&dev->physical_device->vma, bo->iova, bo->size);
+      mtx_unlock(&dev->physical_device->vma_mutex);
+   }
 
    /* Our BO structs are stored in a sparse array in the physical device,
     * so we don't want to free the BO pointer, instead we want to reset it
@@ -708,6 +786,9 @@ tu_drm_device_init(struct tu_physical_device *device,
                                  "could not get GMEM size");
       goto fail;
    }
+
+   device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
+                                              &device->va_size);
 
    struct stat st;
 

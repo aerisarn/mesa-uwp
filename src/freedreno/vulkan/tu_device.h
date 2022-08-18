@@ -18,6 +18,8 @@
 #include "tu_suballoc.h"
 #include "tu_util.h"
 
+#include "util/vma.h"
+
 /* queue types */
 #define TU_QUEUE_GENERAL 0
 
@@ -107,6 +109,10 @@ struct tu_physical_device
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
 
+   bool has_set_iova;
+   uint64_t va_start;
+   uint64_t va_size;
+
    struct fd_dev_id dev_id;
    const struct fd_dev_info *info;
 
@@ -117,6 +123,8 @@ struct tu_physical_device
    uint64_t fault_count;
 
    struct tu_memory_heap heap;
+   mtx_t                 vma_mutex;
+   struct util_vma_heap  vma;
 
    struct vk_sync_type syncobj_type;
    struct vk_sync_timeline_type timeline_type;

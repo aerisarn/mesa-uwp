@@ -281,6 +281,12 @@ tu_physical_device_init(struct tu_physical_device *device,
       goto fail_free_name;
    }
 
+   if (device->has_set_iova) {
+      mtx_init(&device->vma_mutex, mtx_plain);
+      util_vma_heap_init(&device->vma, device->va_start,
+                         ROUND_DOWN_TO(device->va_size, 4096));
+   }
+
    fd_get_driver_uuid(device->driver_uuid);
    fd_get_device_uuid(device->device_uuid, &device->dev_id);
 
@@ -297,7 +303,7 @@ tu_physical_device_init(struct tu_physical_device *device,
                                     &supported_extensions,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
-      goto fail_free_name;
+      goto fail_free_vma;
 
    device->vk.supported_sync_types = device->sync_types;
 
@@ -306,7 +312,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    if (result != VK_SUCCESS) {
       vk_startup_errorf(instance, result, "WSI init failure");
       vk_physical_device_finish(&device->vk);
-      goto fail_free_name;
+      goto fail_free_vma;
    }
 #endif
 
@@ -321,6 +327,9 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    return VK_SUCCESS;
 
+fail_free_vma:
+   if (device->has_set_iova)
+      util_vma_heap_finish(&device->vma);
 fail_free_name:
    vk_free(&instance->vk.alloc, (void *)device->name);
    return result;
@@ -336,6 +345,9 @@ tu_physical_device_finish(struct tu_physical_device *device)
    close(device->local_fd);
    if (device->master_fd != -1)
       close(device->master_fd);
+
+   if (device->has_set_iova)
+      util_vma_heap_finish(&device->vma);
 
    vk_free(&device->instance->vk.alloc, (void *)device->name);
 
