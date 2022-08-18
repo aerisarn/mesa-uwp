@@ -323,29 +323,6 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_GRAS_MAX_LAYER_INDEX(layers - 1));
 }
 
-void
-tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits vk_samples,
-              enum a5xx_line_mode line_mode)
-{
-   const enum a3xx_msaa_samples samples = tu_msaa_samples(vk_samples);
-   bool msaa_disable = (samples == MSAA_ONE) || (line_mode == BRESENHAM);
-
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_TP_RAS_MSAA_CNTL(samples),
-                   A6XX_SP_TP_DEST_MSAA_CNTL(.samples = samples,
-                                             .msaa_disable = msaa_disable));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_RAS_MSAA_CNTL(samples),
-                   A6XX_GRAS_DEST_MSAA_CNTL(.samples = samples,
-                                            .msaa_disable = msaa_disable));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_RAS_MSAA_CNTL(samples),
-                   A6XX_RB_DEST_MSAA_CNTL(.samples = samples,
-                                          .msaa_disable = msaa_disable));
-}
-
 static void
 tu6_emit_bin_size(struct tu_cs *cs,
                   uint32_t bin_w, uint32_t bin_h, uint32_t flags)
@@ -560,6 +537,52 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
                   CP_SET_DRAW_STATE__0_GROUP_ID(id) |
                   COND(!state.size || !state.iova, CP_SET_DRAW_STATE__0_DISABLE));
    tu_cs_emit_qw(cs, state.iova);
+}
+
+void
+tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits vk_samples,
+              bool msaa_disable)
+{
+   const enum a3xx_msaa_samples samples = tu_msaa_samples(vk_samples);
+   msaa_disable |= (samples == MSAA_ONE);
+   tu_cs_emit_regs(cs,
+                   A6XX_SP_TP_RAS_MSAA_CNTL(samples),
+                   A6XX_SP_TP_DEST_MSAA_CNTL(.samples = samples,
+                                             .msaa_disable = msaa_disable));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_RAS_MSAA_CNTL(samples),
+                   A6XX_GRAS_DEST_MSAA_CNTL(.samples = samples,
+                                            .msaa_disable = msaa_disable));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_RAS_MSAA_CNTL(samples),
+                   A6XX_RB_DEST_MSAA_CNTL(.samples = samples,
+                                          .msaa_disable = msaa_disable));
+}
+
+static void
+tu6_update_msaa(struct tu_cmd_buffer *cmd, VkSampleCountFlagBits samples)
+{
+   bool is_line =
+      tu6_primtype_line(cmd->state.primtype) ||
+      (tu6_primtype_patches(cmd->state.primtype) &&
+       cmd->state.pipeline &&
+       cmd->state.pipeline->tess.patch_type == IR3_TESS_ISOLINES);
+   bool msaa_disable = is_line && cmd->state.line_mode == BRESENHAM;
+
+   if (cmd->state.msaa_disable != msaa_disable ||
+       cmd->state.samples != samples) {
+      struct tu_cs cs;
+      cmd->state.msaa = tu_cs_draw_state(&cmd->sub_cs, &cs, 9);
+      tu6_emit_msaa(&cs, samples, msaa_disable);
+      if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
+         tu_cs_emit_pkt7(&cmd->draw_cs, CP_SET_DRAW_STATE, 3);
+         tu_cs_emit_draw_state(&cmd->draw_cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
+      }
+      cmd->state.msaa_disable = msaa_disable;
+      cmd->state.samples = samples;
+   }
 }
 
 static bool
@@ -2552,20 +2575,12 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       tu_cs_emit(cs, subdraw_size);
    }
 
-   if (cmd->state.line_mode != pipeline->rast.line_mode) {
-      cmd->state.line_mode = pipeline->rast.line_mode;
+   cmd->state.line_mode = pipeline->rast.line_mode;
+   if (!(pipeline->dynamic_state_mask &
+         BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)))
+      cmd->state.primtype = pipeline->ia.primtype;
 
-      /* We have to disable MSAA when bresenham lines are used, this is
-       * a hardware limitation and spec allows it:
-       *
-       *    When Bresenham lines are being rasterized, sample locations may
-       *    all be treated as being at the pixel center (this may affect
-       *    attribute and depth interpolation).
-       */
-      if (cmd->state.subpass && cmd->state.subpass->samples) {
-         tu6_emit_msaa(cs, cmd->state.subpass->samples, cmd->state.line_mode);
-      }
-   }
+   tu6_update_msaa(cmd, pipeline->output.samples);
 
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
        (pipeline->viewport.z_negative_one_to_one != cmd->state.z_negative_one_to_one)) {
@@ -2824,6 +2839,7 @@ tu_CmdSetPrimitiveTopologyEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
 
    cmd->state.primtype = tu6_primtype(primitiveTopology);
+   tu6_update_msaa(cmd, cmd->state.samples);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3774,8 +3790,8 @@ tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
 {
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
-   if (cmd->state.subpass->samples)
-      tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples, cmd->state.line_mode);
+   if (cmd->state.subpass->samples != 0)
+      tu6_update_msaa(cmd, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
@@ -4453,6 +4469,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE, cmd->state.lrz_and_depth_plane_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
 
       for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.dynamic_state); i++) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i,

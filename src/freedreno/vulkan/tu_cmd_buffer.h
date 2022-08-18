@@ -35,6 +35,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE,
    TU_DRAW_STATE_PRIM_MODE_GMEM,
    TU_DRAW_STATE_PRIM_MODE_SYSMEM,
+   TU_DRAW_STATE_MSAA,
 
    /* dynamic state related draw states */
    TU_DRAW_STATE_DYNAMIC,
@@ -342,6 +343,7 @@ struct tu_cmd_state
    struct tu_draw_state vertex_buffers;
    struct tu_draw_state shader_const;
    struct tu_draw_state desc_sets;
+   struct tu_draw_state msaa;
 
    struct tu_draw_state vs_params;
 
@@ -400,6 +402,8 @@ struct tu_cmd_state
    bool tessfactor_addr_set;
    bool predication_active;
    enum a5xx_line_mode line_mode;
+   VkSampleCountFlagBits samples;
+   bool msaa_disable;
    bool z_negative_one_to_one;
 
    /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
@@ -645,7 +649,7 @@ tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
 }
 
 void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples,
-                   enum a5xx_line_mode line_mode);
+                   bool msaa_disable);
 
 void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 

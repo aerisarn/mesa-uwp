@@ -258,9 +258,7 @@ struct tu_pipeline_builder
 
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
-   bool emit_msaa_state;
    bool depth_clip_disable;
-   VkSampleCountFlagBits samples;
    bool use_color_attachments;
    bool use_dual_src_blend;
    bool alpha_to_coverage;
@@ -3488,23 +3486,18 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    pipeline->rast.line_mode = RECTANGULAR;
 
-   if (tu6_primtype_line(pipeline->ia.primtype) ||
-       (tu6_primtype_patches(pipeline->ia.primtype) &&
-        pipeline->tess.patch_type == IR3_TESS_ISOLINES)) {
-      const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_state =
-         vk_find_struct_const(rast_info->pNext,
-                              PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+   const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_state =
+      vk_find_struct_const(rast_info->pNext,
+                           PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
 
-      if (rast_line_state && rast_line_state->lineRasterizationMode ==
-               VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
-         pipeline->rast.line_mode = BRESENHAM;
-      }
+   if (rast_line_state &&
+       rast_line_state->lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
+      pipeline->rast.line_mode = BRESENHAM;
    }
 
    struct tu_cs cs;
    uint32_t cs_size = 9 +
-      (builder->device->physical_device->info->a6xx.has_shading_rate ? 8 : 0) +
-      (builder->emit_msaa_state ? 11 : 0);
+      (builder->device->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
    pipeline->rast.state = tu_cs_draw_state(&pipeline->cs, &cs, cs_size);
 
    tu_cs_emit_regs(&cs,
@@ -3533,12 +3526,6 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
       tu_cs_emit_regs(&cs, A6XX_RB_UNKNOWN_8A20());
       tu_cs_emit_regs(&cs, A6XX_RB_UNKNOWN_8A30());
    }
-
-   /* If samples count couldn't be devised from the subpass, we should emit it here.
-    * It happens when subpass doesn't use any color/depth attachment.
-    */
-   if (builder->emit_msaa_state)
-      tu6_emit_msaa(&cs, builder->samples, pipeline->rast.line_mode);
 
    const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
       vk_find_struct_const(rast_info->pNext,
@@ -3720,12 +3707,16 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
     *
     * We leave the relevant registers stale when rasterization is disabled.
     */
-   if (builder->rasterizer_discard)
+   if (builder->rasterizer_discard) {
+      pipeline->output.samples = VK_SAMPLE_COUNT_1_BIT;
       return;
+   }
 
    static const VkPipelineColorBlendStateCreateInfo dummy_blend_info;
    const VkPipelineMultisampleStateCreateInfo *msaa_info =
       builder->create_info->pMultisampleState;
+   pipeline->output.samples = msaa_info->rasterizationSamples;
+
    const VkPipelineColorBlendStateCreateInfo *blend_info =
       builder->use_color_attachments ? builder->create_info->pColorBlendState
                                      : &dummy_blend_info;
@@ -4021,16 +4012,6 @@ tu_pipeline_builder_init_graphics(
 
       builder->multiview_mask = rendering_info->viewMask;
 
-      /* We don't know with dynamic rendering whether the pipeline will be
-       * used in a render pass with none of attachments enabled, so we have to
-       * dynamically emit MSAA state.
-       *
-       * TODO: Move MSAA state to a separate draw state and emit it
-       * dynamically only when the sample count is different from the
-       * subpass's sample count.
-       */
-      builder->emit_msaa_state = !builder->rasterizer_discard;
-
       const VkRenderingSelfDependencyInfoMESA *self_dependency =
          vk_find_struct_const(rendering_info->pNext, RENDERING_SELF_DEPENDENCY_INFO_MESA);
 
@@ -4073,9 +4054,6 @@ tu_pipeline_builder_init_graphics(
 
       builder->multiview_mask = subpass->multiview_mask;
 
-      /* variableMultisampleRate support */
-      builder->emit_msaa_state = (subpass->samples == 0) && !builder->rasterizer_discard;
-
       if (!builder->rasterizer_discard) {
          const uint32_t a = subpass->depth_stencil_attachment.attachment;
          builder->depth_attachment_format = (a != VK_ATTACHMENT_UNUSED) ?
@@ -4107,10 +4085,7 @@ tu_pipeline_builder_init_graphics(
       builder->feedback_loop_may_involve_textures = true;
    }
 
-   if (builder->rasterizer_discard) {
-      builder->samples = VK_SAMPLE_COUNT_1_BIT;
-   } else {
-      builder->samples = create_info->pMultisampleState->rasterizationSamples;
+   if (!builder->rasterizer_discard) {
       builder->alpha_to_coverage = create_info->pMultisampleState->alphaToCoverageEnable;
 
       if (tu_blend_state_is_dual_src(create_info->pColorBlendState)) {
