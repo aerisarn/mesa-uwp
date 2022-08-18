@@ -399,6 +399,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_FBFETCH:
       return 1;
+   case PIPE_CAP_FBFETCH_COHERENT:
+      return screen->info.have_EXT_rasterization_order_attachment_access;
 
    case PIPE_CAP_MEMOBJ:
       return screen->instance_info.have_KHR_external_memory_capabilities && (screen->info.have_KHR_external_memory_fd || screen->info.have_KHR_external_memory_win32);

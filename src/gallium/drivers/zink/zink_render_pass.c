@@ -193,6 +193,8 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    };
 
    VkSubpassDescription2 subpass = {0};
+   if (pstate->fbfetch && screen->info.have_EXT_rasterization_order_attachment_access)
+      subpass.flags |= VK_SUBPASS_DESCRIPTION_RASTERIZATION_ORDER_ATTACHMENT_COLOR_ACCESS_BIT_EXT;
    VkSubpassDescriptionDepthStencilResolve zsresolve;
    subpass.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;

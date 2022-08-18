@@ -3,3 +3,4 @@ VK_KHR_shader_clock on lavapipe
 Mesa-DB, the new single file cache type
 VK_EXT_attachment_feedback_loop_layout on RADV
 VK_KHR_global_priority on RADV
+GL_KHR_blend_equation_advanced_coherent on zink
