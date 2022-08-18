@@ -1422,9 +1422,24 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       radeon_set_context_reg(R_028B30_VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE, t->stride_in_dw);
       radeon_end();
 
-      si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_REG, NULL,
-                      R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE >> 2, COPY_DATA_SRC_MEM,
-                      t->buf_filled_size, t->buf_filled_size_offset);
+      if (GFX_VERSION >= GFX9) {
+         /* Use PKT3_LOAD_CONTEXT_REG_INDEX instead of si_cp_copy_data to support state shadowing. */
+         uint64_t va = t->buf_filled_size->gpu_address + t->buf_filled_size_offset;
+
+         radeon_begin(cs);
+
+         radeon_emit(PKT3(PKT3_LOAD_CONTEXT_REG_INDEX, 3, 0));
+         radeon_emit(va);
+         radeon_emit(va >> 32);
+         radeon_emit((R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE - SI_CONTEXT_REG_OFFSET) >> 2);
+         radeon_emit(1);
+
+         radeon_end();
+      } else {
+         si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_REG, NULL,
+                         R_028B2C_VGT_STRMOUT_DRAW_OPAQUE_BUFFER_FILLED_SIZE >> 2, COPY_DATA_SRC_MEM,
+                         t->buf_filled_size, t->buf_filled_size_offset);
+      }
       use_opaque = S_0287F0_USE_OPAQUE(1);
       indirect = NULL;
    }
