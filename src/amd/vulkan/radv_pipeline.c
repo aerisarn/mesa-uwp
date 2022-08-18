@@ -4394,7 +4394,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
             nir_move_load_input | nir_move_const_undef | nir_move_copies);
 
    /* Lower I/O intrinsics to memory instructions. */
-   bool io_to_mem = radv_lower_io_to_mem(device, stage, pipeline_key);
+   bool io_to_mem = radv_lower_io_to_mem(device, stage);
    bool lowered_ngg = pipeline_has_ngg && stage->stage == last_vgt_api_stage;
    if (lowered_ngg)
       radv_lower_ngg(device, stage, pipeline_key);

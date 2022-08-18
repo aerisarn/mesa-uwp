@@ -1154,8 +1154,7 @@ radv_lower_io(struct radv_device *device, nir_shader *nir, bool is_mesh_shading)
 }
 
 bool
-radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *stage,
-                     const struct radv_pipeline_key *pl_key)
+radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *stage)
 {
    const struct radv_shader_info *info = &stage->info;
    nir_shader *nir = stage->nir;
