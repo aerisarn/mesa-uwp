@@ -2682,7 +2682,8 @@ radv_link_shaders(struct radv_pipeline *pipeline,
        !(stages[last_vgt_api_stage].nir->info.outputs_written & VARYING_BIT_PRIMITIVE_ID) &&
        ((last_vgt_api_stage == MESA_SHADER_VERTEX && !stages[MESA_SHADER_VERTEX].info.is_ngg) ||
         (last_vgt_api_stage == MESA_SHADER_TESS_EVAL && !stages[MESA_SHADER_TESS_EVAL].info.is_ngg))) {
-      radv_export_implicit_primitive_id(stages[last_vgt_api_stage].nir);
+      nir_shader *last_vgt_shader = stages[last_vgt_api_stage].nir;
+      NIR_PASS(_, last_vgt_shader, radv_export_implicit_primitive_id);
    }
 
    if (!optimize_conservatively) {
