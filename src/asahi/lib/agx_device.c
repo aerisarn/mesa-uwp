@@ -285,9 +285,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    /* TODO: Support other models */
    CFDictionaryRef matching = IOServiceNameMatching("AGXAcceleratorG13G_B0");
-
-   io_service_t service =
-      IOServiceGetMatchingService(kIOMasterPortDefault, matching);
+   io_service_t service = IOServiceGetMatchingService(0, matching);
 
    if (!service)
       return false;
