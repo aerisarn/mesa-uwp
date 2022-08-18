@@ -38,9 +38,6 @@ enum vn_sync_type {
    /* device object */
    VN_SYNC_TYPE_DEVICE_ONLY,
 
-   /* already signaled by WSI */
-   VN_SYNC_TYPE_WSI_SIGNALED,
-
    /* payload is an imported sync file */
    VN_SYNC_TYPE_IMPORTED_SYNC_FD,
 };
