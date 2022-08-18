@@ -4299,6 +4299,169 @@ radv_pipeline_load_retained_shaders(struct radv_pipeline *pipeline,
    }
 }
 
+static void
+radv_postprocess_nir(struct radv_pipeline *pipeline,
+                     const struct radv_pipeline_layout *pipeline_layout,
+                     const struct radv_pipeline_key *pipeline_key,
+                     bool pipeline_has_ngg, unsigned last_vgt_api_stage,
+                     struct radv_pipeline_stage *stage)
+{
+   struct radv_device *device = pipeline->device;
+   enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+
+   /* Wave and workgroup size should already be filled. */
+   assert(stage->info.wave_size && stage->info.workgroup_size);
+
+   enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
+      nir_lower_non_uniform_ubo_access | nir_lower_non_uniform_ssbo_access |
+      nir_lower_non_uniform_texture_access | nir_lower_non_uniform_image_access;
+
+   /* In practice, most shaders do not have non-uniform-qualified
+    * accesses (see
+    * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/17558#note_1475069)
+    * thus a cheaper and likely to fail check is run first.
+    */
+   if (nir_has_non_uniform_access(stage->nir, lower_non_uniform_access_types)) {
+      NIR_PASS(_, stage->nir, nir_opt_non_uniform_access);
+
+      if (!radv_use_llvm_for_stage(device, stage->stage)) {
+         nir_lower_non_uniform_access_options options = {
+            .types = lower_non_uniform_access_types,
+            .callback = &non_uniform_access_callback,
+            .callback_data = NULL,
+         };
+         NIR_PASS(_, stage->nir, nir_lower_non_uniform_access, &options);
+      }
+   }
+   NIR_PASS(_, stage->nir, nir_lower_memory_model);
+
+   nir_load_store_vectorize_options vectorize_opts = {
+      .modes = nir_var_mem_ssbo | nir_var_mem_ubo | nir_var_mem_push_const |
+               nir_var_mem_shared | nir_var_mem_global,
+      .callback = mem_vectorize_callback,
+      .robust_modes = 0,
+      /* On GFX6, read2/write2 is out-of-bounds if the offset register is negative, even if
+       * the final offset is not.
+       */
+      .has_shared2_amd = gfx_level >= GFX7,
+   };
+
+   if (device->robust_buffer_access2) {
+      vectorize_opts.robust_modes =
+         nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_push_const;
+   }
+
+   bool progress = false;
+   NIR_PASS(progress, stage->nir, nir_opt_load_store_vectorize, &vectorize_opts);
+   if (progress) {
+      NIR_PASS(_, stage->nir, nir_copy_prop);
+      NIR_PASS(_, stage->nir, nir_opt_shrink_stores,
+               !device->instance->disable_shrink_image_store);
+
+      /* Gather info again, to update whether 8/16-bit are used. */
+      nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
+   }
+
+   NIR_PASS(_, stage->nir, radv_nir_lower_ycbcr_textures, pipeline_layout);
+   NIR_PASS_V(stage->nir, radv_nir_apply_pipeline_layout, device, pipeline_layout,
+              &stage->info, &stage->args);
+
+   NIR_PASS(_, stage->nir, nir_opt_shrink_vectors);
+
+   NIR_PASS(_, stage->nir, nir_lower_alu_width, opt_vectorize_callback, device);
+
+   /* lower ALU operations */
+   NIR_PASS(_, stage->nir, nir_lower_int64);
+
+   NIR_PASS(_, stage->nir, nir_opt_idiv_const, 8);
+
+   NIR_PASS(_, stage->nir, nir_lower_idiv,
+            &(nir_lower_idiv_options){
+               .imprecise_32bit_lowering = false,
+               .allow_fp16 = gfx_level >= GFX9,
+            });
+
+   nir_move_options sink_opts = nir_move_const_undef | nir_move_copies;
+   if (stage->stage != MESA_SHADER_FRAGMENT || !pipeline_key->disable_sinking_load_input_fs)
+      sink_opts |= nir_move_load_input;
+
+   NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
+   NIR_PASS(_, stage->nir, nir_opt_move,
+            nir_move_load_input | nir_move_const_undef | nir_move_copies);
+
+   /* Lower I/O intrinsics to memory instructions. */
+   bool io_to_mem = radv_lower_io_to_mem(device, stage, pipeline_key);
+   bool lowered_ngg = pipeline_has_ngg && stage->stage == last_vgt_api_stage;
+   if (lowered_ngg)
+      radv_lower_ngg(device, stage, pipeline_key);
+
+   if (radv_use_llvm_for_stage(device, stage->stage) &&
+       stage->nir->info.uses_resource_info_query)
+      NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);
+
+   NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
+   NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, &stage->info, &stage->args, pipeline_key,
+              radv_use_llvm_for_stage(device, stage->stage));
+   radv_optimize_nir_algebraic(
+      stage->nir, io_to_mem || lowered_ngg || stage->stage == MESA_SHADER_COMPUTE ||
+      stage->stage == MESA_SHADER_TASK);
+
+   if (stage->nir->info.bit_sizes_int & (8 | 16)) {
+      if (gfx_level >= GFX8) {
+         NIR_PASS(_, stage->nir, nir_convert_to_lcssa, true, true);
+         nir_divergence_analysis(stage->nir);
+      }
+
+      if (nir_lower_bit_size(stage->nir, lower_bit_size_callback, device)) {
+         NIR_PASS(_, stage->nir, nir_opt_constant_folding);
+      }
+
+      if (gfx_level >= GFX8)
+         NIR_PASS(_, stage->nir, nir_opt_remove_phis); /* cleanup LCSSA phis */
+   }
+   if (((stage->nir->info.bit_sizes_int | stage->nir->info.bit_sizes_float) & 16) &&
+       gfx_level >= GFX9) {
+      bool separate_g16 = gfx_level >= GFX10;
+      struct nir_fold_tex_srcs_options fold_srcs_options[] = {
+         {
+            .sampler_dims =
+               ~(BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) | BITFIELD_BIT(GLSL_SAMPLER_DIM_BUF)),
+            .src_types = (1 << nir_tex_src_coord) | (1 << nir_tex_src_lod) |
+                         (1 << nir_tex_src_bias) | (1 << nir_tex_src_min_lod) |
+                         (1 << nir_tex_src_ms_index) |
+                         (separate_g16 ? 0 : (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy)),
+         },
+         {
+            .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
+            .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
+         },
+      };
+      struct nir_fold_16bit_tex_image_options fold_16bit_options = {
+         .rounding_mode = nir_rounding_mode_rtne,
+         .fold_tex_dest = true,
+         .fold_image_load_store_data = true,
+         .fold_srcs_options_count = separate_g16 ? 2 : 1,
+         .fold_srcs_options = fold_srcs_options,
+      };
+      NIR_PASS(_, stage->nir, nir_fold_16bit_tex_image, &fold_16bit_options);
+
+      NIR_PASS(_, stage->nir, nir_opt_vectorize, opt_vectorize_callback, device);
+   }
+
+   /* cleanup passes */
+   NIR_PASS(_, stage->nir, nir_lower_alu_width, opt_vectorize_callback, device);
+   NIR_PASS(_, stage->nir, nir_lower_load_const_to_scalar);
+   NIR_PASS(_, stage->nir, nir_copy_prop);
+   NIR_PASS(_, stage->nir, nir_opt_dce);
+
+   sink_opts |= nir_move_comparisons | nir_move_load_ubo | nir_move_load_ssbo;
+   NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
+
+   nir_move_options move_opts = nir_move_const_undef | nir_move_load_ubo |
+                                nir_move_load_input | nir_move_comparisons | nir_move_copies;
+   NIR_PASS(_, stage->nir, nir_opt_move, move_opts);
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4512,163 +4675,15 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (stages[i].nir) {
-         int64_t stage_start = os_time_get_nano();
+      if (!stages[i].nir)
+         continue;
 
-         /* Wave and workgroup size should already be filled. */
-         assert(stages[i].info.wave_size && stages[i].info.workgroup_size);
+      int64_t stage_start = os_time_get_nano();
 
-         enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
-            nir_lower_non_uniform_ubo_access | nir_lower_non_uniform_ssbo_access |
-            nir_lower_non_uniform_texture_access | nir_lower_non_uniform_image_access;
+      radv_postprocess_nir(pipeline, pipeline_layout, pipeline_key, pipeline_has_ngg,
+                           *last_vgt_api_stage, &stages[i]);
 
-         /* In practice, most shaders do not have non-uniform-qualified
-          * accesses (see
-          * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/17558#note_1475069)
-          * thus a cheaper and likely to fail check is run first.
-          */
-         if (nir_has_non_uniform_access(stages[i].nir, lower_non_uniform_access_types)) {
-            NIR_PASS(_, stages[i].nir, nir_opt_non_uniform_access);
-
-            if (!radv_use_llvm_for_stage(device, i)) {
-               nir_lower_non_uniform_access_options options = {
-                  .types = lower_non_uniform_access_types,
-                  .callback = &non_uniform_access_callback,
-                  .callback_data = NULL,
-               };
-               NIR_PASS(_, stages[i].nir, nir_lower_non_uniform_access, &options);
-            }
-         }
-         NIR_PASS(_, stages[i].nir, nir_lower_memory_model);
-
-         nir_load_store_vectorize_options vectorize_opts = {
-            .modes = nir_var_mem_ssbo | nir_var_mem_ubo | nir_var_mem_push_const |
-                     nir_var_mem_shared | nir_var_mem_global,
-            .callback = mem_vectorize_callback,
-            .robust_modes = 0,
-            /* On GFX6, read2/write2 is out-of-bounds if the offset register is negative, even if
-             * the final offset is not.
-             */
-            .has_shared2_amd = device->physical_device->rad_info.gfx_level >= GFX7,
-         };
-
-         if (device->robust_buffer_access2) {
-            vectorize_opts.robust_modes =
-               nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_push_const;
-         }
-
-         bool progress = false;
-         NIR_PASS(progress, stages[i].nir, nir_opt_load_store_vectorize, &vectorize_opts);
-         if (progress) {
-            NIR_PASS(_, stages[i].nir, nir_copy_prop);
-            NIR_PASS(_, stages[i].nir, nir_opt_shrink_stores,
-                     !device->instance->disable_shrink_image_store);
-
-            /* Gather info again, to update whether 8/16-bit are used. */
-            nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
-         }
-
-         NIR_PASS(_, stages[i].nir, radv_nir_lower_ycbcr_textures, pipeline_layout);
-         NIR_PASS_V(stages[i].nir, radv_nir_apply_pipeline_layout, device, pipeline_layout,
-                    &stages[i].info, &stages[i].args);
-
-         NIR_PASS(_, stages[i].nir, nir_opt_shrink_vectors);
-
-         NIR_PASS(_, stages[i].nir, nir_lower_alu_width, opt_vectorize_callback, device);
-
-         /* lower ALU operations */
-         NIR_PASS(_, stages[i].nir, nir_lower_int64);
-
-         NIR_PASS(_, stages[i].nir, nir_opt_idiv_const, 8);
-
-         NIR_PASS(_, stages[i].nir, nir_lower_idiv,
-                  &(nir_lower_idiv_options){
-                     .imprecise_32bit_lowering = false,
-                     .allow_fp16 = device->physical_device->rad_info.gfx_level >= GFX9,
-                  });
-
-         nir_move_options sink_opts = nir_move_const_undef | nir_move_copies;
-         if (i != MESA_SHADER_FRAGMENT || !pipeline_key->disable_sinking_load_input_fs)
-            sink_opts |= nir_move_load_input;
-
-         NIR_PASS(_, stages[i].nir, nir_opt_sink, sink_opts);
-         NIR_PASS(_, stages[i].nir, nir_opt_move,
-                  nir_move_load_input | nir_move_const_undef | nir_move_copies);
-
-         /* Lower I/O intrinsics to memory instructions. */
-         bool io_to_mem = radv_lower_io_to_mem(device, &stages[i], pipeline_key);
-         bool lowered_ngg = pipeline_has_ngg && i == *last_vgt_api_stage;
-         if (lowered_ngg)
-            radv_lower_ngg(device, &stages[i], pipeline_key);
-
-         if (radv_use_llvm_for_stage(device, i) &&
-             stages[i].nir->info.uses_resource_info_query)
-            NIR_PASS(_, stages[i].nir, ac_nir_lower_resinfo, device->physical_device->rad_info.gfx_level);
-
-         NIR_PASS(_, stages[i].nir, ac_nir_lower_global_access);
-         NIR_PASS_V(stages[i].nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level,
-                    &stages[i].info, &stages[i].args, pipeline_key,
-                    radv_use_llvm_for_stage(device, i));
-         radv_optimize_nir_algebraic(
-            stages[i].nir, io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE || i == MESA_SHADER_TASK);
-
-         if (stages[i].nir->info.bit_sizes_int & (8 | 16)) {
-            if (device->physical_device->rad_info.gfx_level >= GFX8) {
-               NIR_PASS(_, stages[i].nir, nir_convert_to_lcssa, true, true);
-               nir_divergence_analysis(stages[i].nir);
-            }
-
-            if (nir_lower_bit_size(stages[i].nir, lower_bit_size_callback, device)) {
-               NIR_PASS(_, stages[i].nir, nir_opt_constant_folding);
-            }
-
-            if (device->physical_device->rad_info.gfx_level >= GFX8)
-               NIR_PASS(_, stages[i].nir, nir_opt_remove_phis); /* cleanup LCSSA phis */
-         }
-         if (((stages[i].nir->info.bit_sizes_int | stages[i].nir->info.bit_sizes_float) & 16) &&
-             device->physical_device->rad_info.gfx_level >= GFX9) {
-            bool separate_g16 = device->physical_device->rad_info.gfx_level >= GFX10;
-            struct nir_fold_tex_srcs_options fold_srcs_options[] = {
-               {
-                  .sampler_dims =
-                     ~(BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) | BITFIELD_BIT(GLSL_SAMPLER_DIM_BUF)),
-                  .src_types = (1 << nir_tex_src_coord) | (1 << nir_tex_src_lod) |
-                               (1 << nir_tex_src_bias) | (1 << nir_tex_src_min_lod) |
-                               (1 << nir_tex_src_ms_index) |
-                               (separate_g16 ? 0 : (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy)),
-               },
-               {
-                  .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
-                  .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
-               },
-            };
-            struct nir_fold_16bit_tex_image_options fold_16bit_options = {
-               .rounding_mode = nir_rounding_mode_rtne,
-               .fold_tex_dest = true,
-               .fold_image_load_store_data = true,
-               .fold_srcs_options_count = separate_g16 ? 2 : 1,
-               .fold_srcs_options = fold_srcs_options,
-            };
-            NIR_PASS(_, stages[i].nir, nir_fold_16bit_tex_image, &fold_16bit_options);
-
-            NIR_PASS(_, stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, device);
-         }
-
-         /* cleanup passes */
-         NIR_PASS(_, stages[i].nir, nir_lower_alu_width, opt_vectorize_callback, device);
-         NIR_PASS(_, stages[i].nir, nir_lower_load_const_to_scalar);
-         NIR_PASS(_, stages[i].nir, nir_copy_prop);
-         NIR_PASS(_, stages[i].nir, nir_opt_dce);
-
-         sink_opts |= nir_move_comparisons | nir_move_load_ubo | nir_move_load_ssbo;
-         NIR_PASS(_, stages[i].nir, nir_opt_sink, sink_opts);
-
-         nir_move_options move_opts = nir_move_const_undef | nir_move_load_ubo |
-                                      nir_move_load_input | nir_move_comparisons | nir_move_copies;
-         NIR_PASS(_, stages[i].nir, nir_opt_move, move_opts);
-
-         stages[i].feedback.duration += os_time_get_nano() - stage_start;
-      }
+      stages[i].feedback.duration += os_time_get_nano() - stage_start;
    }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
