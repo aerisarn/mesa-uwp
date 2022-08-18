@@ -226,6 +226,39 @@ BEGIN_TEST(assembler.long_jump.constaddr)
    finish_assembler_test();
 END_TEST
 
+BEGIN_TEST(assembler.long_jump.discard_early_exit)
+   if (!setup_cs(NULL, (amd_gfx_level)GFX10))
+      return;
+
+   //! BB0:
+   //! s_cbranch_scc1 BB1                                          ; bf850006
+   //! s_getpc_b64 s[0:1]                                          ; be801f00
+   //! s_addc_u32 s0, s0, 0x20014                                  ; 8200ff00 00020014
+   //! s_bitcmp1_b32 s0, 0                                         ; bf0d8000
+   //! s_bitset0_b32 s0, 0                                         ; be801b80
+   //! s_setpc_b64 s[0:1]                                          ; be802000
+   bld.sopp(aco_opcode::s_cbranch_scc0, 2);
+
+   bld.reset(program->create_and_insert_block());
+
+   //! BB1:
+   //! s_nop 1                                                     ; bf800001
+   //!(then repeated 32766 times)
+   //! s_endpgm                                                    ; bf810000
+   for (unsigned i = 0; i < INT16_MAX; i++)
+      bld.sopp(aco_opcode::s_nop, -1, 1);
+
+   //! BB2:
+   //! s_endpgm                                                    ; bf810000
+   bld.reset(program->create_and_insert_block());
+
+   program->blocks[1].linear_preds.push_back(0u);
+   program->blocks[2].linear_preds.push_back(0u);
+   program->blocks[2].kind = block_kind_discard_early_exit;
+
+   finish_assembler_test();
+END_TEST
+
 BEGIN_TEST(assembler.v_add3)
    for (unsigned i = GFX9; i <= GFX10; i++) {
       if (!setup_cs(NULL, (amd_gfx_level)i))

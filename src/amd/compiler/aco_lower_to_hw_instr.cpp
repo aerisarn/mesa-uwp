@@ -2121,6 +2121,7 @@ lower_to_hw_instr(Program* program)
 
                if (!discard_block) {
                   discard_block = program->create_and_insert_block();
+                  discard_block->kind = block_kind_discard_early_exit;
                   block = &program->blocks[block_idx];
 
                   bld.reset(discard_block);
@@ -2133,8 +2134,7 @@ lower_to_hw_instr(Program* program)
                }
 
                assert(instr->operands[0].physReg() == scc);
-               bld.sopp(aco_opcode::s_cbranch_scc0, Definition(exec, s2), instr->operands[0],
-                        discard_block->index);
+               bld.sopp(aco_opcode::s_cbranch_scc0, instr->operands[0], discard_block->index);
 
                discard_block->linear_preds.push_back(block->index);
                block->linear_succs.push_back(discard_block->index);

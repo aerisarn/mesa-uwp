@@ -902,10 +902,18 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
 {
    Builder bld(ctx.program);
 
-   Definition def_tmp_lo(branch->definitions[0].physReg(), s1);
-   Operand op_tmp_lo(branch->definitions[0].physReg(), s1);
-   Definition def_tmp_hi(branch->definitions[0].physReg().advance(4), s1);
-   Operand op_tmp_hi(branch->definitions[0].physReg().advance(4), s1);
+   Definition def;
+   if (branch->definitions.empty()) {
+      assert(ctx.program->blocks[branch->block].kind & block_kind_discard_early_exit);
+      def = Definition(PhysReg(0), s2); /* The discard early exit block doesn't use SGPRs. */
+   } else {
+      def = branch->definitions[0];
+   }
+
+   Definition def_tmp_lo(def.physReg(), s1);
+   Operand op_tmp_lo(def.physReg(), s1);
+   Definition def_tmp_hi(def.physReg().advance(4), s1);
+   Operand op_tmp_hi(def.physReg().advance(4), s1);
 
    aco_ptr<Instruction> instr;
 
@@ -926,7 +934,7 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
    }
 
    /* create the new PC and stash SCC in the LSB */
-   instr.reset(bld.sop1(aco_opcode::s_getpc_b64, branch->definitions[0]).instr);
+   instr.reset(bld.sop1(aco_opcode::s_getpc_b64, def).instr);
    emit_instruction(ctx, out, instr.get());
 
    instr.reset(
@@ -944,7 +952,7 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
 
    /* create the s_setpc_b64 to jump */
    instr.reset(
-      bld.sop1(aco_opcode::s_setpc_b64, Operand(branch->definitions[0].physReg(), s2)).instr);
+      bld.sop1(aco_opcode::s_setpc_b64, Operand(def.physReg(), s2)).instr);
    emit_instruction(ctx, out, instr.get());
 }
 

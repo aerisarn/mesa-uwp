@@ -1836,6 +1836,7 @@ enum block_kind {
    block_kind_branch = 1 << 8,
    block_kind_merge = 1 << 9,
    block_kind_invert = 1 << 10,
+   block_kind_discard_early_exit = 1 << 11,
    block_kind_uses_discard = 1 << 12,
    block_kind_needs_lowering = 1 << 13,
    block_kind_export_end = 1 << 15,
