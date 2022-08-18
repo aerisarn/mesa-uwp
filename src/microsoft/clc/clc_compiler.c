@@ -1143,11 +1143,11 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       goto err_free_dxil;
    }
 
-   struct dxil_logger dxil_logger = {.priv = logger->priv,
-                                     .log = logger->error};
+   struct dxil_logger dxil_logger = { .priv = logger ? logger->priv : NULL,
+                                     .log = logger ? logger->error : NULL};
 
    struct blob tmp;
-   if (!nir_to_dxil(nir, &opts, &dxil_logger, &tmp)) {
+   if (!nir_to_dxil(nir, &opts, logger ? &dxil_logger : NULL, &tmp)) {
       debug_printf("D3D12: nir_to_dxil failed\n");
       goto err_free_dxil;
    }
