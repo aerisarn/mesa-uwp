@@ -1750,7 +1750,8 @@ vector_immediate_restrictions(const struct brw_isa_info *isa,
    unsigned num_sources = brw_num_sources_from_inst(isa, inst);
    struct string error_msg = { .str = NULL, .len = 0 };
 
-   if (num_sources == 3 || num_sources == 0)
+   if (num_sources == 3 || num_sources == 0 ||
+       (devinfo->ver >= 12 && inst_is_send(isa, inst)))
       return (struct string){};
 
    unsigned file = num_sources == 1 ?
