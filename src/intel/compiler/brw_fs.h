@@ -85,6 +85,25 @@ struct shader_stats {
    unsigned fill_count;
 };
 
+/** Register numbers for thread payload fields. */
+struct thread_payload {
+   /** The number of thread payload registers the hardware will supply. */
+   uint8_t num_regs;
+};
+
+struct fs_thread_payload : public thread_payload {
+   uint8_t subspan_coord_reg[2];
+   uint8_t source_depth_reg[2];
+   uint8_t source_w_reg[2];
+   uint8_t aa_dest_stencil_reg[2];
+   uint8_t dest_depth_reg[2];
+   uint8_t sample_pos_reg[2];
+   uint8_t sample_mask_in_reg[2];
+   uint8_t depth_w_coef_reg[2];
+   uint8_t barycentric_coord_reg[BRW_BARYCENTRIC_MODE_COUNT][2];
+   uint8_t local_invocation_id_reg[2];
+};
+
 /**
  * The fragment shader front-end.
  *
@@ -392,22 +411,7 @@ public:
    bool failed;
    char *fail_msg;
 
-   /** Register numbers for thread payload fields. */
-   struct thread_payload {
-      uint8_t subspan_coord_reg[2];
-      uint8_t source_depth_reg[2];
-      uint8_t source_w_reg[2];
-      uint8_t aa_dest_stencil_reg[2];
-      uint8_t dest_depth_reg[2];
-      uint8_t sample_pos_reg[2];
-      uint8_t sample_mask_in_reg[2];
-      uint8_t depth_w_coef_reg[2];
-      uint8_t barycentric_coord_reg[BRW_BARYCENTRIC_MODE_COUNT][2];
-      uint8_t local_invocation_id_reg[2];
-
-      /** The number of thread payload registers the hardware will supply. */
-      uint8_t num_regs;
-   } payload;
+   fs_thread_payload payload;
 
    bool source_depth_to_render_target;
    bool runtime_check_aads_emit;
