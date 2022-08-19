@@ -152,6 +152,39 @@ bi_fuse_discard_fcmp(bi_instr *I, bi_instr *mod, unsigned arch)
         }
 }
 
+/*
+ * S32_TO_F32(S8_TO_S32(x)) -> S8_TO_F32 and friends. Round modes don't matter
+ * because all 8-bit and 16-bit integers may be represented exactly as fp32.
+ */
+struct {
+        enum bi_opcode inner;
+        enum bi_opcode outer;
+        enum bi_opcode replacement;
+} bi_small_int_patterns[] = {
+        { BI_OPCODE_S8_TO_S32, BI_OPCODE_S32_TO_F32, BI_OPCODE_S8_TO_F32 },
+        { BI_OPCODE_U8_TO_U32, BI_OPCODE_U32_TO_F32, BI_OPCODE_U8_TO_F32 },
+        { BI_OPCODE_U8_TO_U32, BI_OPCODE_S32_TO_F32, BI_OPCODE_U8_TO_F32 },
+        { BI_OPCODE_S16_TO_S32, BI_OPCODE_S32_TO_F32, BI_OPCODE_S16_TO_F32 },
+        { BI_OPCODE_U16_TO_U32, BI_OPCODE_U32_TO_F32, BI_OPCODE_U16_TO_F32 },
+        { BI_OPCODE_U16_TO_U32, BI_OPCODE_S32_TO_F32, BI_OPCODE_U16_TO_F32 },
+};
+
+static inline void
+bi_fuse_small_int_to_f32(bi_instr *I, bi_instr *mod)
+{
+        for (unsigned i = 0; i < ARRAY_SIZE(bi_small_int_patterns); ++i) {
+                if (I->op != bi_small_int_patterns[i].outer)
+                        continue;
+                if (mod->op != bi_small_int_patterns[i].inner)
+                        continue;
+
+                assert(I->src[0].swizzle == BI_SWIZZLE_H01);
+                I->src[0] = mod->src[0];
+                I->round = BI_ROUND_NONE;
+                I->op = bi_small_int_patterns[i].replacement;
+        }
+}
+
 void
 bi_opt_mod_prop_forward(bi_context *ctx)
 {
@@ -173,6 +206,7 @@ bi_opt_mod_prop_forward(bi_context *ctx)
                         unsigned size = bi_opcode_props[I->op].size;
 
                         bi_fuse_discard_fcmp(I, mod, ctx->arch);
+                        bi_fuse_small_int_to_f32(I, mod);
 
                         if (bi_is_fabsneg(mod->op, size)) {
                                 if (mod->src[0].abs && !bi_takes_fabs(ctx->arch, I, mod->src[0], s))
