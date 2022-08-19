@@ -647,7 +647,7 @@ tu_CreateDescriptorPool(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_descriptor_pool *pool;
    uint64_t size = sizeof(struct tu_descriptor_pool);
-   uint64_t bo_size = 0, bo_count = 0, dynamic_size = 0;
+   uint64_t bo_size = 0, dynamic_size = 0;
    VkResult ret;
 
    const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
@@ -656,9 +656,6 @@ tu_CreateDescriptorPool(VkDevice _device,
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       const VkDescriptorPoolSize *pool_size = &pCreateInfo->pPoolSizes[i];
-
-      if (pool_size->type != VK_DESCRIPTOR_TYPE_SAMPLER)
-         bo_count += pool_size->descriptorCount;
 
       switch (pool_size->type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -688,7 +685,6 @@ tu_CreateDescriptorPool(VkDevice _device,
 
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
       uint64_t host_size = pCreateInfo->maxSets * sizeof(struct tu_descriptor_set);
-      host_size += sizeof(struct tu_bo*) * bo_count;
       host_size += dynamic_size;
       size += host_size;
    } else {
