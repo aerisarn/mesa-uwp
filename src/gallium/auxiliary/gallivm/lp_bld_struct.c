@@ -120,7 +120,7 @@ lp_build_array_get_ptr(struct gallivm_state *gallivm,
    LLVMValueRef indices[2];
    LLVMValueRef element_ptr;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMArrayTypeKind);
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMArrayTypeKind);
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = index;
    element_ptr = LLVMBuildGEP(gallivm->builder, ptr, indices, ARRAY_SIZE(indices), "");
@@ -140,7 +140,7 @@ lp_build_array_get(struct gallivm_state *gallivm,
    LLVMValueRef element_ptr;
    LLVMValueRef res;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMArrayTypeKind);
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMArrayTypeKind);
    element_ptr = lp_build_array_get_ptr(gallivm, ptr, index);
    res = LLVMBuildLoad(gallivm->builder, element_ptr, "");
 #ifdef DEBUG
@@ -158,7 +158,7 @@ lp_build_array_set(struct gallivm_state *gallivm,
 {
    LLVMValueRef element_ptr;
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-   assert(LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMArrayTypeKind);
+   assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMArrayTypeKind);
    element_ptr = lp_build_array_get_ptr(gallivm, ptr, index);
    LLVMBuildStore(gallivm->builder, value, element_ptr);
 }

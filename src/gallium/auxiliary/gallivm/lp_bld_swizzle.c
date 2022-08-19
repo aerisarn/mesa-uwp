@@ -63,7 +63,7 @@ lp_build_broadcast(struct gallivm_state *gallivm,
       LLVMTypeRef i32_type = LLVMInt32TypeInContext(gallivm->context);
       LLVMTypeRef i32_vec_type = LLVMVectorType(i32_type, length);
 
-      assert(LLVMGetElementType(vec_type) == LLVMTypeOf(scalar));
+      assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetElementType(vec_type) == LLVMTypeOf(scalar));
 
       res = LLVMBuildInsertElement(builder, undef, scalar, LLVMConstNull(i32_type), "");
       res = LLVMBuildShuffleVector(builder, res, undef, LLVMConstNull(i32_vec_type), "");
