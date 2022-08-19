@@ -12,6 +12,8 @@
 
 #include "tu_common.h"
 
+#include "vk_buffer.h"
+
 #include "tu_autotune.h"
 #include "tu_pass.h"
 #include "tu_perfetto.h"
@@ -350,17 +352,12 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, base, VkDeviceMemory,
 
 struct tu_buffer
 {
-   struct vk_object_base base;
-
-   VkDeviceSize size;
-
-   VkBufferUsageFlags usage;
-   VkBufferCreateFlags flags;
+   struct vk_buffer vk;
 
    struct tu_bo *bo;
    uint64_t iova;
 };
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer, base, VkBuffer,
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer, vk.base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 
 struct tu_attachment_info

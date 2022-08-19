@@ -2176,8 +2176,7 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
    const struct blit_ops *ops = &r2d_ops;
    struct tu_cs *cs = &cmd->cs;
 
-   if (fillSize == VK_WHOLE_SIZE)
-      fillSize = buffer->size - dstOffset;
+   fillSize = vk_buffer_range(&buffer->vk, dstOffset, fillSize);
 
    uint64_t dst_va = buffer->iova + dstOffset;
    uint32_t blocks = fillSize / 4;

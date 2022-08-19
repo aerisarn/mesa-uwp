@@ -937,16 +937,6 @@ write_texel_buffer_descriptor(uint32_t *dst, const VkBufferView buffer_view)
    }
 }
 
-static uint32_t get_range(struct tu_buffer *buf, VkDeviceSize offset,
-                          VkDeviceSize range)
-{
-   if (range == VK_WHOLE_SIZE) {
-      return buf->size - offset;
-   } else {
-      return range;
-   }
-}
-
 static void
 write_buffer_descriptor(const struct tu_device *device,
                         uint32_t *dst,
@@ -967,7 +957,7 @@ write_buffer_descriptor(const struct tu_device *device,
 
    assert((buffer_info->offset & 63) == 0); /* minStorageBufferOffsetAlignment */
    uint64_t va = buffer->iova + buffer_info->offset;
-   uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
+   uint32_t range = vk_buffer_range(&buffer->vk, buffer_info->offset, buffer_info->range);
 
    for (unsigned i = 0; i < descriptors; i++) {
       if (storage_16bit && i == 0) {
@@ -998,7 +988,7 @@ write_ubo_descriptor(uint32_t *dst, const VkDescriptorBufferInfo *buffer_info)
 
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
-   uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
+   uint32_t range = vk_buffer_range(&buffer->vk, buffer_info->offset, buffer_info->range);
    /* The HW range is in vec4 units */
    range = ALIGN_POT(range, 16) / 16;
    uint64_t va = buffer->iova + buffer_info->offset;

@@ -835,12 +835,8 @@ tu_buffer_view_init(struct tu_buffer_view *view,
 
    view->buffer = buffer;
 
-   uint32_t range;
-   if (pCreateInfo->range == VK_WHOLE_SIZE)
-      range = buffer->size - pCreateInfo->offset;
-   else
-      range = pCreateInfo->range;
-
+   uint32_t range = vk_buffer_range(&buffer->vk, pCreateInfo->offset,
+         pCreateInfo->range);
    uint8_t swiz[4] = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z,
                        PIPE_SWIZZLE_W };
 

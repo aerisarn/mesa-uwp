@@ -1944,7 +1944,7 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
       } else {
          struct tu_buffer *buf = tu_buffer_from_handle(pBuffers[i]);
          cmd->state.vb[firstBinding + i].base = buf->iova + pOffsets[i];
-         cmd->state.vb[firstBinding + i].size = pSizes ? pSizes[i] : (buf->size - pOffsets[i]);
+         cmd->state.vb[firstBinding + i].size = pSizes ? pSizes[i] : (buf->vk.size - pOffsets[i]);
       }
 
       if (pStrides)
@@ -2000,10 +2000,10 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    if (cmd->state.index_size != index_size)
       tu_cs_emit_regs(&cmd->draw_cs, A6XX_PC_RESTART_INDEX(restart_index));
 
-   assert(buf->size >= offset);
+   assert(buf->vk.size >= offset);
 
    cmd->state.index_va = buf->iova + offset;
-   cmd->state.max_index_count = (buf->size - offset) >> index_shift;
+   cmd->state.max_index_count = (buf->vk.size - offset) >> index_shift;
    cmd->state.index_size = index_size;
 }
 
