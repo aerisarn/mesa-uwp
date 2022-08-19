@@ -476,7 +476,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.address = agx_map_texture_gpu(rsrc, level, state->u.tex.first_layer);
       cfg.unk_mipmapped = rsrc->mipmapped;
-      cfg.unk_2 = false;
+      cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
 
       if (state->target == PIPE_TEXTURE_3D)
          cfg.depth = u_minify(texture->depth0, level);
