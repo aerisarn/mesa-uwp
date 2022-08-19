@@ -658,11 +658,6 @@ tu_CreateDescriptorPool(VkDevice _device,
       const VkDescriptorPoolSize *pool_size = &pCreateInfo->pPoolSizes[i];
 
       switch (pool_size->type) {
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         dynamic_size += descriptor_size(device, pool_size->type) *
-            pool_size->descriptorCount;
-         break;
       case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
          if (mutable_info && i < mutable_info->mutableDescriptorTypeListCount &&
              mutable_info->pMutableDescriptorTypeLists[i].descriptorTypeCount > 0) {
@@ -679,8 +674,12 @@ tu_CreateDescriptorPool(VkDevice _device,
          break;
       }
 
-      bo_size += descriptor_size(device, pool_size->type) *
-                           pool_size->descriptorCount;
+      const uint32_t desc_size = descriptor_size(device, pool_size->type) *
+         pool_size->descriptorCount;
+      if (is_dynamic(pool_size->type))
+         dynamic_size += desc_size;
+      else
+         bo_size += desc_size;
    }
 
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
