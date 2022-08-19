@@ -2681,7 +2681,7 @@ fs_visitor::lower_logical_sends()
          lower_fb_write_logical_send(ibld, inst,
                                      brw_wm_prog_data(prog_data),
                                      (const brw_wm_prog_key *)key,
-                                     payload);
+                                     fs_payload());
          break;
 
       case FS_OPCODE_FB_READ_LOGICAL:

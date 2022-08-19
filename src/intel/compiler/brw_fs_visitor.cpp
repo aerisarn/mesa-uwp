@@ -194,7 +194,7 @@ fs_visitor::emit_interpolation_setup_gfx4()
       abld.ADD(offset(delta_xy, abld, 1), this->pixel_y, ystart);
    }
 
-   this->pixel_z = fetch_payload_reg(bld, payload.source_depth_reg);
+   this->pixel_z = fetch_payload_reg(bld, fs_payload().source_depth_reg);
 
    /* The SF program automatically handles doing the perspective correction or
     * not based on wm_prog_data::interp_mode[] so we can use the same pixel
@@ -469,7 +469,7 @@ fs_visitor::emit_interpolation_setup_gfx6()
        * pixels locations, here we recompute the Z value with 2 coefficients
        * in X & Y axis.
        */
-      fs_reg coef_payload = fetch_payload_reg(abld, payload.depth_w_coef_reg, BRW_REGISTER_TYPE_F);
+      fs_reg coef_payload = fetch_payload_reg(abld, fs_payload().depth_w_coef_reg, BRW_REGISTER_TYPE_F);
       const fs_reg x_start = brw_vec1_grf(coef_payload.nr, 2);
       const fs_reg y_start = brw_vec1_grf(coef_payload.nr, 6);
       const fs_reg z_cx    = brw_vec1_grf(coef_payload.nr, 1);
@@ -507,19 +507,19 @@ fs_visitor::emit_interpolation_setup_gfx6()
 
    if (wm_prog_data->uses_src_depth) {
       assert(!wm_prog_data->uses_depth_w_coefficients);
-      this->pixel_z = fetch_payload_reg(bld, payload.source_depth_reg);
+      this->pixel_z = fetch_payload_reg(bld, fs_payload().source_depth_reg);
    }
 
    if (wm_prog_data->uses_src_w) {
       abld = bld.annotate("compute pos.w");
-      this->pixel_w = fetch_payload_reg(abld, payload.source_w_reg);
+      this->pixel_w = fetch_payload_reg(abld, fs_payload().source_w_reg);
       this->wpos_w = vgrf(glsl_type::float_type);
       abld.emit(SHADER_OPCODE_RCP, this->wpos_w, this->pixel_w);
    }
 
    for (int i = 0; i < BRW_BARYCENTRIC_MODE_COUNT; ++i) {
       this->delta_xy[i] = fetch_barycentric_reg(
-         bld, payload.barycentric_coord_reg[i]);
+         bld, fs_payload().barycentric_coord_reg[i]);
    }
 
    uint32_t centroid_modes = wm_prog_data->barycentric_interp_modes &
@@ -622,7 +622,7 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
    struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
 
    /* Hand over gl_FragDepth or the payload depth. */
-   const fs_reg dst_depth = fetch_payload_reg(bld, payload.dest_depth_reg);
+   const fs_reg dst_depth = fetch_payload_reg(bld, fs_payload().dest_depth_reg);
    fs_reg src_depth, src_stencil;
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
@@ -636,7 +636,7 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
        * explicitly the pass-through case.
        */
       assert(devinfo->ver <= 5);
-      src_depth = fetch_payload_reg(bld, payload.source_depth_reg);
+      src_depth = fetch_payload_reg(bld, fs_payload().source_depth_reg);
    }
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
@@ -1214,7 +1214,6 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
    init();
 }
 
-
 void
 fs_visitor::init()
 {
@@ -1233,7 +1232,7 @@ fs_visitor::init()
    this->nir_ssa_values = NULL;
    this->nir_system_values = NULL;
 
-   memset(&this->payload, 0, sizeof(this->payload));
+   this->payload_ = new thread_payload();
    this->source_depth_to_render_target = false;
    this->runtime_check_aads_emit = false;
    this->first_non_payload_grf = 0;
@@ -1254,4 +1253,5 @@ fs_visitor::init()
 
 fs_visitor::~fs_visitor()
 {
+   delete this->payload_;
 }

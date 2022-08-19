@@ -1211,9 +1211,9 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_mesh_inline_data_intel:
-      assert(payload.num_regs == 3 || payload.num_regs == 4);
+      assert(payload().num_regs == 3 || payload().num_regs == 4);
       /* Inline Parameter is the last element of the payload. */
-      bld.MOV(dest, retype(brw_vec1_grf(payload.num_regs - 1,
+      bld.MOV(dest, retype(brw_vec1_grf(payload().num_regs - 1,
                                         nir_intrinsic_align_offset(instr)),
                            dest.type));
       break;

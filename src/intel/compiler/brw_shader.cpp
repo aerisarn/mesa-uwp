@@ -1420,7 +1420,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
          return NULL;
       }
 
-      prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
+      prog_data->base.base.dispatch_grf_start_reg = v.payload().num_regs;
       prog_data->base.dispatch_mode = DISPATCH_MODE_SIMD8;
 
       fs_generator g(compiler, params->log_data, mem_ctx,

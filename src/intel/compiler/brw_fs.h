@@ -89,9 +89,15 @@ struct shader_stats {
 struct thread_payload {
    /** The number of thread payload registers the hardware will supply. */
    uint8_t num_regs;
+
+   virtual ~thread_payload() = default;
 };
 
 struct fs_thread_payload : public thread_payload {
+   fs_thread_payload(const fs_visitor &v,
+                     bool &source_depth_to_render_target,
+                     bool &runtime_check_aads_emit);
+
    uint8_t subspan_coord_reg[2];
    uint8_t source_depth_reg[2];
    uint8_t source_w_reg[2];
@@ -150,8 +156,6 @@ public:
    bool run_mesh(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
-   void setup_fs_payload_gfx4();
-   void setup_fs_payload_gfx6();
    void setup_vs_payload();
    void setup_gs_payload();
    void setup_cs_payload();
@@ -411,7 +415,16 @@ public:
    bool failed;
    char *fail_msg;
 
-   fs_thread_payload payload;
+   thread_payload *payload_;
+
+   thread_payload &payload() {
+      return *this->payload_;
+   }
+
+   fs_thread_payload &fs_payload() {
+      assert(stage == MESA_SHADER_FRAGMENT);
+      return *static_cast<fs_thread_payload *>(this->payload_);
+   };
 
    bool source_depth_to_render_target;
    bool runtime_check_aads_emit;

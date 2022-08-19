@@ -65,6 +65,7 @@ libintel_compiler_files = files(
   'brw_fs_saturate_propagation.cpp',
   'brw_fs_scoreboard.cpp',
   'brw_fs_sel_peephole.cpp',
+  'brw_fs_thread_payload.cpp',
   'brw_fs_validate.cpp',
   'brw_fs_visitor.cpp',
   'brw_inst.h',
@@ -139,7 +140,6 @@ libintel_compiler_files = files(
   'brw_vec4_vs_visitor.cpp',
   'brw_vec4_vs.h',
   'brw_vue_map.c',
-  'brw_wm_iz.cpp',
   'gfx6_gs_visitor.cpp',
   'gfx6_gs_visitor.h',
 )
