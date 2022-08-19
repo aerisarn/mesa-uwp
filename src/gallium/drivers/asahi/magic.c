@@ -116,7 +116,7 @@ asahi_pack_iogpu_attachment(void *out, struct agx_resource *rsrc,
    assert(surf->u.tex.first_layer == surf->u.tex.last_layer);
 
    agx_pack(out, IOGPU_ATTACHMENT, cfg) {
-      cfg.type = asahi_classify_attachment(rsrc->base.format);
+      cfg.type = asahi_classify_attachment(rsrc->layout.format);
       cfg.address = agx_map_surface_resource(surf, rsrc);
       cfg.size = rsrc->layout.size_B;
       cfg.percent = (100 * cfg.size) / total_size;
@@ -205,7 +205,11 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       if (framebuffer->zsbuf) {
          struct pipe_surface *zsbuf = framebuffer->zsbuf;
          const struct util_format_description *desc =
-            util_format_description(zsbuf->texture->format);
+            util_format_description(agx_resource(zsbuf->texture)->layout.format);
+
+         assert(desc->format == PIPE_FORMAT_Z32_FLOAT ||
+                desc->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT ||
+                desc->format == PIPE_FORMAT_S8_UINT);
 
          cfg.depth_width = framebuffer->width;
          cfg.depth_height = framebuffer->height;
