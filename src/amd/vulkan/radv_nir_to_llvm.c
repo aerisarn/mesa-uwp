@@ -1497,7 +1497,9 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
       else if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
          prepare_gs_input_vgprs(&ctx, shader_count >= 2);
 
-      ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[shader_idx]);
+      if (!ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[shader_idx])) {
+         abort();
+      }
 
       if (!gl_shader_stage_is_compute(shaders[shader_idx]->info.stage))
          handle_shader_outputs_post(&ctx.abi);
