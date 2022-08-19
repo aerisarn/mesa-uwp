@@ -2716,6 +2716,9 @@ radv_pipeline_link_shaders(const struct radv_device *device,
           !(producer->info.outputs_written & VARYING_BIT_LAYER)) {
          NIR_PASS(_, producer, radv_lower_multiview);
       }
+
+      /* Lower the view index to map on the layer. */
+      NIR_PASS(_, consumer, radv_lower_view_index, producer->info.stage == MESA_SHADER_MESH);
    }
 
    if (pipeline_key->optimisations_disabled)
@@ -4719,7 +4722,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          /* Gather info again, information such as outputs_read can be out-of-date. */
          nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
-         radv_lower_io(device, stages[i].nir, stages[MESA_SHADER_MESH].nir);
+         radv_lower_io(device, stages[i].nir);
 
          stages[i].feedback.duration += os_time_get_nano() - stage_start;
       }

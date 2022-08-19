@@ -1089,8 +1089,8 @@ find_layer_in_var(nir_shader *nir)
  * driver_location.
  */
 
-static bool
-lower_view_index(nir_shader *nir, bool per_primitive)
+bool
+radv_lower_view_index(nir_shader *nir, bool per_primitive)
 {
    bool progress = false;
    nir_function_impl *entry = nir_shader_get_entrypoint(nir);
@@ -1134,13 +1134,12 @@ lower_view_index(nir_shader *nir, bool per_primitive)
 }
 
 void
-radv_lower_io(struct radv_device *device, nir_shader *nir, bool is_mesh_shading)
+radv_lower_io(struct radv_device *device, nir_shader *nir)
 {
    if (nir->info.stage == MESA_SHADER_COMPUTE)
       return;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS(_, nir, lower_view_index, is_mesh_shading);
       nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, MESA_SHADER_FRAGMENT);
    }
 
