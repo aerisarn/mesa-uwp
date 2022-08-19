@@ -210,7 +210,7 @@ panfrost_set_batch_masks_blend(struct panfrost_batch *batch)
         struct panfrost_blend_state *blend = ctx->blend;
 
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
-                if (!blend->info[i].no_colour && batch->key.cbufs[i])
+                if (blend->info[i].enabled && batch->key.cbufs[i])
                         panfrost_draw_target(batch, PIPE_CLEAR_COLOR0 << i);
         }
 }

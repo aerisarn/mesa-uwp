@@ -272,7 +272,7 @@ panfrost_fs_required(
 
         /* If colour is written we need to execute */
         for (unsigned i = 0; i < state->nr_cbufs; ++i) {
-                if (state->cbufs[i] && !blend->info[i].no_colour)
+                if (state->cbufs[i] && blend->info[i].enabled)
                         return true;
         }
 
@@ -332,7 +332,7 @@ panfrost_overdraw_alpha(const struct panfrost_context *ctx, bool zero)
         for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
                 const struct pan_blend_info info = so->info[i];
 
-                bool enabled = ctx->pipe_framebuffer.cbufs[i] && info.no_colour;
+                bool enabled = ctx->pipe_framebuffer.cbufs[i] && !info.enabled;
                 bool flag = zero ? info.alpha_zero_nop : info.alpha_one_store;
 
                 if (enabled && !flag)
@@ -355,7 +355,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
                 struct mali_blend_packed *packed = rts + (i * pan_size(BLEND));
 
                 /* Disable blending for unbacked render targets */
-                if (rt_count == 0 || !batch->key.cbufs[i] || so->info[i].no_colour) {
+                if (rt_count == 0 || !batch->key.cbufs[i] || !so->info[i].enabled) {
                         pan_pack(rts + i * pan_size(BLEND), BLEND, cfg) {
                                 cfg.enable = false;
 #if PAN_ARCH >= 6
@@ -578,7 +578,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                 if (rt_count > 0) {
                         cfg.multisample_misc.load_destination = so->info[0].load_dest;
                         cfg.multisample_misc.blend_shader = (blend_shaders[0] != 0);
-                        cfg.stencil_mask_misc.write_enable = !so->info[0].no_colour;
+                        cfg.stencil_mask_misc.write_enable = so->info[0].enabled;
                         cfg.stencil_mask_misc.srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format);
                         cfg.stencil_mask_misc.dither_disable = !so->base.dither;
                         cfg.stencil_mask_misc.alpha_to_one = so->base.alpha_to_one;
@@ -4592,7 +4592,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                 unsigned constant_mask = pan_blend_constant_mask(equation);
                 const bool supports_2src = pan_blend_supports_2src(PAN_ARCH);
                 so->info[c] = (struct pan_blend_info) {
-                        .no_colour = (equation.color_mask == 0),
+                        .enabled = (equation.color_mask != 0),
                         .opaque = pan_blend_is_opaque(equation),
                         .constant_mask = constant_mask,
 

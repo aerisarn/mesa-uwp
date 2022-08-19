@@ -182,7 +182,7 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_b
         /* On all architectures, we can disable writes for a blend descriptor,
          * at which point the format doesn't matter.
          */
-        if (info.no_colour)
+        if (!info.enabled)
                 return 0;
 
         /* On Bifrost and newer, we can also use fixed-function for opaque
